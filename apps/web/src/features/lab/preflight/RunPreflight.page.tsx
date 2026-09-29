@@ -2,9 +2,9 @@ import { Loading } from "../../../shared/ui/Loading";
 import { LoginRequired, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { useMe } from "../../../core/session/me.service";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useConfirmAndStartRun, usePreflight } from "../lab.service";
-import { useOwnSkills } from "../../skill";
+import { useSkillDetail, useSkillVersions } from "../../skill";
 import { useTestCase } from "../testcases.service";
 import { PreflightShell } from "./components/PreflightShell";
 import { PreflightFacts } from "./components/PreflightFacts";
@@ -12,6 +12,7 @@ import { RunStartControl } from "./components/RunStartControl";
 
 type RunPreflightParams = { skillId?: string; testCaseId?: string };
 type RunPreflightSearch = { version?: string };
+type PreflightProps = { skill: string; linkedVersion: string; testCase: string };
 
 export function RunPreflight() {
   const { skillId: skill = "", testCaseId: testCase = "" } = useParams({
@@ -29,21 +30,16 @@ export function RunPreflight() {
   );
 }
 
-function Preflight({
-  skill,
-  linkedVersion,
-  testCase,
-}: {
-  skill: string;
-  linkedVersion: string;
-  testCase: string;
-}) {
+function Preflight({ skill, linkedVersion, testCase }: PreflightProps) {
   const navigate = useNavigate();
   const version = linkedVersion;
   const me = useMe();
   const testCaseInfo = useTestCase(testCase);
-  const ownSkills = useOwnSkills();
-  const preflight = usePreflight(skill, version, testCase, version !== "");
+  const skillInfo = useSkillDetail(skill);
+  const versions = useSkillVersions(skill);
+  const contextMatches = testCaseInfo.data?.skill_id === skill;
+  const versionKnown = versions.data?.versions.some((item) => item.version_id === version) ?? false;
+  const preflight = usePreflight(skill, version, testCase, contextMatches && versionKnown);
   const start = useConfirmAndStartRun(skill, version, testCase);
 
   if (unauthenticated(me.error)) {
@@ -55,14 +51,12 @@ function Preflight({
     );
   }
 
-  const skillName = ownSkills.data?.skills.find((sk) => sk.skill_id === skill)?.name;
   const criteria = testCaseInfo.data?.acceptance_criteria.length;
 
   const shellProps = {
     skill,
     version,
-    skillName,
-    ownSkills,
+    skillInfo,
     testCaseInfo,
     criteria,
     onPick: (id: string) => {
@@ -75,10 +69,48 @@ function Preflight({
     },
   };
 
+  if (testCaseInfo.isPending)
+    return (
+      <PreflightShell {...shellProps}>
+        <Loading what="Test Case 脈絡" />
+      </PreflightShell>
+    );
+  if (testCaseInfo.error)
+    return (
+      <PreflightShell {...shellProps}>
+        <p className="note">Test Case 可讀取後，才會顯示這次 Run 的權限摘要。</p>
+      </PreflightShell>
+    );
+  if (!contextMatches)
+    return (
+      <PreflightShell {...shellProps}>
+        <ContextMismatch testCaseId={testCase} skillId={testCaseInfo.data.skill_id} />
+      </PreflightShell>
+    );
   if (version === "")
     return (
       <PreflightShell {...shellProps}>
-        <p>請先在上面選一個 Skill Version,才有權限摘要可以看。</p>
+        <p>請先在上面選一個 Skill Version，才有權限摘要可以看。</p>
+      </PreflightShell>
+    );
+  if (versions.isPending)
+    return (
+      <PreflightShell {...shellProps}>
+        <p className="note">正在確認這個 Version 是否屬於目前的 Skill。</p>
+      </PreflightShell>
+    );
+  if (versions.error)
+    return (
+      <PreflightShell {...shellProps}>
+        <p className="note">Version 清單可讀取後，才會顯示權限摘要。</p>
+      </PreflightShell>
+    );
+  if (!versionKnown)
+    return (
+      <PreflightShell {...shellProps}>
+        <p className="notice notice-danger" role="alert">
+          這個 Version 不屬於這個 Skill。請從上面的清單改選；平台沒有讀取權限摘要，也不會開始 Run。
+        </p>
       </PreflightShell>
     );
   if (preflight.isPending)
@@ -90,9 +122,7 @@ function Preflight({
   if (preflight.error) {
     return (
       <PreflightShell {...shellProps}>
-        <ReadFailure error={preflight.error} what="權限摘要">
-          <p role="alert">無法讀取權限摘要:{preflight.error.message}</p>
-        </ReadFailure>
+        <ReadFailure error={preflight.error} what="權限摘要" />
       </PreflightShell>
     );
   }
@@ -120,5 +150,23 @@ function Preflight({
 
       <RunStartControl start={start} hash={hash} blocked={blocked} />
     </PreflightShell>
+  );
+}
+
+function ContextMismatch({ testCaseId, skillId }: { testCaseId: string; skillId: string }) {
+  return (
+    <section className="notice notice-danger" role="alert">
+      <h2>Skill 與 Test Case 不相符</h2>
+      <p>平台沒有讀取權限摘要，也不會開始 Run。</p>
+      <p>
+        <Link
+          to="/skills/$skillId/test-cases/$testCaseId/runs/new"
+          params={{ skillId, testCaseId }}
+          search={{ version: undefined }}
+        >
+          回到這個 Test Case 所屬的 Skill，再選擇 Version
+        </Link>
+      </p>
+    </section>
   );
 }

@@ -1,14 +1,13 @@
 import type { ReactNode } from "react";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { SkillVersionPicker, SkillWorkspaceNav } from "../../../skill";
-import type { useOwnSkills } from "../../../skill";
+import type { useSkillDetail } from "../../../skill";
 import type { useTestCase } from "../../testcases.service";
 
 export function PreflightShell({
   skill,
   version,
-  skillName,
-  ownSkills,
+  skillInfo,
   testCaseInfo,
   criteria,
   onPick,
@@ -16,8 +15,7 @@ export function PreflightShell({
 }: {
   skill: string;
   version: string;
-  skillName: string | undefined;
-  ownSkills: ReturnType<typeof useOwnSkills>;
+  skillInfo: ReturnType<typeof useSkillDetail>;
   testCaseInfo: ReturnType<typeof useTestCase>;
   criteria: number | undefined;
   onPick: (id: string) => void;
@@ -31,27 +29,30 @@ export function PreflightShell({
         versionId={version || undefined}
         testCaseId={testCaseInfo.data?.test_case_id}
       />
-      <p>
-        Skill：
-        <strong>
-          {skillName ??
-            (ownSkills.isPending ? "讀取中…" : ownSkills.error ? "讀取失敗" : "不在你的清單裡")}
-        </strong>
-        {" ・ "}
-        Test Case：
-        <strong>
-          {testCaseInfo.data?.name ??
-            (testCaseInfo.isPending ? "讀取中…" : testCaseInfo.error ? "讀取失敗" : "讀不到名稱")}
-        </strong>
-      </p>
-      {ownSkills.error && <ReadFailure error={ownSkills.error} what="你的 Skill 清單" />}
+      <section className="download-item" aria-labelledby="run-context-title">
+        <h2 id="run-context-title">這次 Run 的脈絡</h2>
+        <p>
+          Skill：
+          <strong>
+            {skillInfo.data?.name ??
+              (skillInfo.isPending ? "讀取中…" : skillInfo.error ? "讀取失敗" : "讀不到名稱")}
+          </strong>
+          {" ・ "}
+          Test Case：
+          <strong>
+            {testCaseInfo.data?.name ??
+              (testCaseInfo.isPending ? "讀取中…" : testCaseInfo.error ? "讀取失敗" : "讀不到名稱")}
+          </strong>
+        </p>
+        <SkillVersionPicker skillId={skill} value={version} onPick={onPick} />
+      </section>
+      {skillInfo.error && <ReadFailure error={skillInfo.error} what="這個 Skill" />}
       {testCaseInfo.error && <ReadFailure error={testCaseInfo.error} what="Test Case" />}
       {criteria === 0 && (
         <p className="note">
           這個 Test Case 沒有驗收條件，所以這次 Run 不會產生逐條判定。試跑本身照常執行。
         </p>
       )}
-      <SkillVersionPicker skillId={skill} value={version} onPick={onPick} />
       {children}
     </section>
   );

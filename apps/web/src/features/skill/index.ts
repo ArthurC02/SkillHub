@@ -11,6 +11,7 @@ export {
   useEmbeddedSkillVersions,
   useOwnSkills,
   useOwnSkillPages,
+  useSkillDetail,
   useSkillSearch,
   useSkillVersions,
 } from "./skills.service";

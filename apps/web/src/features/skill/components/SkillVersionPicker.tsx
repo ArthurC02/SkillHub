@@ -32,11 +32,7 @@ export function SkillVersionPicker({
         ))}
       </select>{" "}
       {versions.isPending && <Loading what="版本清單" className="note" />}
-      <ReadFailure error={versions.error} what="版本清單">
-        <span className="note" role="alert">
-          無法讀取版本清單：{versions.error?.message}
-        </span>
-      </ReadFailure>
+      <ReadFailure error={versions.error} what="版本清單" />
       {!versions.isPending && !versions.error && list.length === 0 && (
         <span className="note">
           這個工作區沒有這個 Skill 的任何版本可選——不代表這個 Skill 沒有版本，Fork

@@ -1,0 +1,38 @@
+.test-case-header > p {
+  max-width: 60ch;
+}
+
+.test-case-context {
+  margin-block: 16px 24px;
+}
+
+.test-case-context > h2,
+.test-case-context-return {
+  margin-block: 0;
+}
+
+.test-case-context-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-block: 16px;
+}
+
+.test-case-context-facts > div {
+  min-width: 0;
+}
+
+.test-case-context-facts dt {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.test-case-context-facts dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.test-case-next-step {
+  margin-block: 24px 32px;
+}

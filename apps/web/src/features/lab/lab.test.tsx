@@ -26,6 +26,7 @@ const SKILL = "11111111-1111-1111-1111-111111111111";
 const VERSION = "22222222-2222-2222-2222-222222222222";
 const OLDER_VERSION = "44444444-4444-4444-4444-444444444444";
 const TEST_CASE = "33333333-3333-3333-3333-333333333333";
+const OTHER_SKILL = "55555555-5555-5555-5555-555555555555";
 
 const VERSIONS = {
   versions: [
@@ -99,8 +100,9 @@ function stubPlatform(
   let refusal = "";
   let runStatus = 0;
   let runBody: unknown = undefined;
-  let ownSkillsStatus = 0;
+  let skillStatus = 0;
   let testCaseStatus = 0;
+  let testCaseSkill = SKILL;
   const json = (body: unknown, status = 200) =>
     Promise.resolve(
       new Response(JSON.stringify(body), {
@@ -113,15 +115,15 @@ function stubPlatform(
     const url = String(input);
     calls.push({ url, body: init?.body as string | undefined });
     if (url.endsWith("/versions")) return json(VERSIONS);
-    if (url.split("?")[0].endsWith("/skills")) {
-      if (ownSkillsStatus) return json({ error: "own skills failed" }, ownSkillsStatus);
-      return json({ skills: [{ skill_id: SKILL, name: "CSV 清理", summary: "整理 CSV。" }] });
+    if (url.includes(`/api/skills/${SKILL}`)) {
+      if (skillStatus) return json({ error: "skill failed" }, skillStatus);
+      return json({ skill_id: SKILL, name: "CSV 清理", summary: "整理 CSV。" });
     }
     if (url.includes(`/test-cases/${TEST_CASE}`)) {
       if (testCaseStatus) return json({ error: "test case failed" }, testCaseStatus);
       return json({
         test_case_id: TEST_CASE,
-        skill_id: SKILL,
+        skill_id: testCaseSkill,
         name: "去重複列",
         user_prompt: "把重複的列去掉。",
         acceptance_criteria: criteria,
@@ -155,11 +157,14 @@ function stubPlatform(
     refuseWith(message: string) {
       refusal = message;
     },
-    failOwnSkills(status: number) {
-      ownSkillsStatus = status;
+    failSkill(status: number) {
+      skillStatus = status;
     },
     failTestCase(status: number) {
       testCaseStatus = status;
+    },
+    moveTestCaseTo(skillId: string) {
+      testCaseSkill = skillId;
     },
     failRunWith(status: number, body?: unknown) {
       runStatus = status;
@@ -207,6 +212,7 @@ async function renderLab(search: { version: string | undefined } = { version: VE
       search,
     });
   });
+  await waitFor(() => container.querySelector("[data-loading]") === null);
 }
 
 const text = () => container.textContent ?? "";
@@ -485,22 +491,42 @@ test("02:RUN-003 the token ceiling says what it depends on, not just a number", 
   expect(text).toContain("15 輪");
 });
 
-test("04 丙-148 ownSkills read failure says so, not 不在你的清單裡", async () => {
+test("04 丙-148 exact Skill read failure says so instead of claiming the Skill is absent", async () => {
   const platform = stubPlatform();
-  platform.failOwnSkills(500);
+  platform.failSkill(500);
   await renderLab();
 
   await waitFor(() => text().includes("讀取失敗"));
-  expect(text()).toContain("無法讀取你的 Skill 清單");
+  expect(text()).toContain("暫時無法讀取這個 Skill");
   expect(text()).not.toContain("不在你的清單裡");
 });
 
-test("04 丙-148 ownSkills read failure on 401 says login, not 讀取失敗 with a raw message", async () => {
+test("04 丙-148 exact Skill read failure on 401 says login, not a raw message", async () => {
   const platform = stubPlatform();
-  platform.failOwnSkills(401);
+  platform.failSkill(401);
   await renderLab();
 
   await waitFor(() => text().includes("需要登入"));
+});
+
+test("a mismatched Test Case stops before requesting a preflight summary", async () => {
+  const platform = stubPlatform();
+  platform.moveTestCaseTo(OTHER_SKILL);
+  await renderLab();
+  await waitFor(() => text().includes("Skill 與 Test Case 不相符"));
+
+  expect(platform.calls.some((call) => call.url.includes("/runs/preflight"))).toBe(false);
+  expect(confirmButton()).toBeUndefined();
+  expect(text()).toContain("平台沒有讀取權限摘要，也不會開始 Run");
+});
+
+test("an unknown Version stops before requesting a preflight summary", async () => {
+  const platform = stubPlatform();
+  await renderLab({ version: "66666666-6666-6666-6666-666666666666" });
+  await waitFor(() => text().includes("Version 不屬於這個 Skill"));
+
+  expect(platform.calls.some((call) => call.url.includes("/runs/preflight"))).toBe(false);
+  expect(confirmButton()).toBeUndefined();
 });
 
 test("04 丙-148 testCase read failure says so, not 讀不到名稱", async () => {

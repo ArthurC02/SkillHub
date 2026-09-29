@@ -92,6 +92,21 @@ const RUN = {
   finished_at: "2026-08-18T00:04:00Z",
 };
 
+const SKILL_VERSIONS = [
+  {
+    version_id: VERSION,
+    version_number: 2,
+    content_hash: "sha256:bb",
+    created_at: "2026-08-18T00:00:00Z",
+  },
+  {
+    version_id: OTHER_VERSION,
+    version_number: 1,
+    content_hash: "sha256:aa",
+    created_at: "2026-08-17T00:00:00Z",
+  },
+];
+
 type Overrides = {
   suggest?: { suggestions: { text: string }[] } | { status: number; error: string };
   suggestResponse?: Promise<Response>;
@@ -101,6 +116,7 @@ type Overrides = {
   testCase?: TestCase;
   create?: { status: number; error: string };
   skills?: { skill_id: string; name: string; summary: string }[];
+  versions?: typeof SKILL_VERSIONS;
 };
 
 function json(body: unknown, status = 200) {
@@ -132,6 +148,14 @@ function platformHandlers(over: Overrides, removedRef: { removed: boolean }) {
         ? json({
             skills: over.skills ?? [{ skill_id: SKILL, name: "去重複工具", summary: "" }],
           })
+        : undefined,
+    (req: PlatformRequest) =>
+      req.path === `/api/skills/${SKILL}`
+        ? json({ skill_id: SKILL, name: "去重複工具", summary: "整理重複資料。" })
+        : undefined,
+    (req: PlatformRequest) =>
+      req.path === `/skills/${SKILL}/versions`
+        ? json({ versions: over.versions ?? SKILL_VERSIONS })
         : undefined,
     (req: PlatformRequest) => {
       if (req.method !== "POST" || req.path !== "/test-cases") return undefined;
@@ -209,6 +233,8 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
   throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
 }
 
+const text = () => container.textContent ?? "";
+
 test("the Test Case Dataset entry preserves the exact Test Case and Version", async () => {
   listSearch = { version: VERSION };
   stubPlatform();
@@ -217,6 +243,61 @@ test("the Test Case Dataset entry preserves the exact Test Case and Version", as
   const link = container.querySelector('[data-to="/lab/test-cases/$testCaseId/datasets"]');
   expect(link?.getAttribute("data-params")).toBe(JSON.stringify({ testCaseId: TEST_CASE }));
   expect(link?.getAttribute("data-search")).toBe(JSON.stringify({ version: VERSION }));
+});
+
+test("the Test Case workbench names the URL-selected Skill, Version and Test Case", async () => {
+  listSearch = { version: OTHER_VERSION };
+  stubPlatform({ runs: [RUN] });
+  await render();
+  await waitFor(() => text().includes("由這個網址選定"));
+
+  const context = container.querySelector("[data-role='test-case-context']")!;
+  expect(context.textContent).toContain("去重複工具");
+  expect(context.textContent).toContain("v1");
+  expect(context.textContent).toContain("去重複列");
+  expect(context.textContent).not.toContain("v2");
+  const runLink = container.querySelector<HTMLAnchorElement>(
+    '[data-to="/skills/$skillId/test-cases/$testCaseId/runs/new"]',
+  );
+  expect(runLink?.getAttribute("data-search")).toBe(JSON.stringify({ version: OTHER_VERSION }));
+});
+
+test("the Test Case workbench labels a Version inherited from the latest matching Run", async () => {
+  stubPlatform({ runs: [RUN] });
+  await render();
+  await waitFor(() => text().includes("沿用最近一次 Run"));
+
+  const context = container.querySelector("[data-role='test-case-context']")!;
+  expect(context.textContent).toContain("v2");
+  const runLink = container.querySelector<HTMLAnchorElement>(
+    '[data-to="/skills/$skillId/test-cases/$testCaseId/runs/new"]',
+  );
+  expect(runLink?.getAttribute("data-search")).toBe(JSON.stringify({ version: VERSION }));
+});
+
+test("the Test Case workbench asks for a Version when no matching Run can supply one", async () => {
+  stubPlatform({ runs: [{ ...RUN, skill_id: OTHER_SKILL }] });
+  await render();
+  await waitFor(() => text().includes("尚未選擇 Version"));
+
+  expect(text()).toContain("選擇 Version 並確認權限");
+  const runLink = container.querySelector<HTMLAnchorElement>(
+    '[data-to="/skills/$skillId/test-cases/$testCaseId/runs/new"]',
+  );
+  expect(runLink?.getAttribute("data-search")).toBe(JSON.stringify({ version: undefined }));
+});
+
+test("the Test Case workbench refuses an URL Version outside the owner-scoped list", async () => {
+  listSearch = { version: "66666666-6666-6666-6666-666666666666" };
+  stubPlatform({ runs: [RUN] });
+  await render();
+  await waitFor(() => text().includes("Version 不屬於目前的 Skill"));
+
+  expect(text()).toContain("選擇 Version 並確認權限");
+  const runLink = container.querySelector<HTMLAnchorElement>(
+    '[data-to="/skills/$skillId/test-cases/$testCaseId/runs/new"]',
+  );
+  expect(runLink?.getAttribute("data-search")).toBe(JSON.stringify({ version: undefined }));
 });
 
 async function submitNewTestCase(skillId: string) {

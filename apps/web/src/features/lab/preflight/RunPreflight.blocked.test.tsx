@@ -5,7 +5,13 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../../core/api/queryClient";
 import { RunPreflight } from "./RunPreflight.page";
 import { BLOCKED_SENTENCE } from "./preflight.model";
-import { SKILL, RUN, TEST_CASE, platformResponse } from "../../../testing/fixtures/platform";
+import {
+  SKILL,
+  RUN,
+  TEST_CASE,
+  VERSION,
+  platformResponse,
+} from "../../../testing/fixtures/platform";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -27,7 +33,7 @@ vi.mock("@tanstack/react-router", () => ({
     <a href={to}>{children as never}</a>
   ),
   useParams: () => ({ skillId: SKILL, runId: RUN, testCaseId: TEST_CASE }),
-  useSearch: () => ({ skill: SKILL, version: "v1", test_case: TEST_CASE }),
+  useSearch: () => ({ skill: SKILL, version: VERSION, test_case: TEST_CASE }),
   useNavigate: () => () => Promise.resolve(),
 }));
 
@@ -66,7 +72,7 @@ async function renderPreflight() {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 5));
     });
-    if (queryClient.isFetching() === 0 && (container.textContent ?? "").length > 0) break;
+    if (queryClient.isFetching() === 0 && container.querySelector('[data-role="evidence"]')) break;
   }
   return container.textContent ?? "";
 }

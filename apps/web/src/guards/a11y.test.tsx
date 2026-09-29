@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import axe from "axe-core";
@@ -255,13 +257,17 @@ function checkNoListNoteRepeats(where: string) {
   ).toBe("");
 }
 
-async function checkHeadingOutlineSnapshot(where: string) {
+function checkHeadingOutlineSnapshot(where: string) {
   const outline = Array.from(container.querySelectorAll("h1,h2,h3,h4,h5,h6"))
     .map((h) => `${h.tagName.toLowerCase()} ${h.textContent?.trim().slice(0, 60)}`)
     .join("\n");
-  await expect(outline).toMatchFileSnapshot(
-    `./__outlines__/${where.replace(/[^\w一-鿿]+/g, "-").replace(/^-|-$/g, "") || "index"}.txt`,
-  );
+  const fileName = `${where.replace(/[^\w一-鿿]+/g, "-").replace(/^-|-$/g, "") || "index"}.txt`;
+  const localPath = resolve("src", "guards", "__outlines__", fileName);
+  const expectedPath = existsSync(localPath)
+    ? localPath
+    : resolve("apps", "web", "src", "guards", "__outlines__", fileName);
+  const expected = readFileSync(expectedPath, "utf8");
+  expect(outline).toBe(expected.trimEnd());
 }
 
 async function scan(where: string) {
@@ -275,7 +281,7 @@ async function scan(where: string) {
   checkLiveRegionsAreChinese(where);
   checkNoRepeatedQualifier(where);
   checkNoListNoteRepeats(where);
-  await checkHeadingOutlineSnapshot(where);
+  checkHeadingOutlineSnapshot(where);
 }
 
 const FOCUSABLE =
