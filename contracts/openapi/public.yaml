@@ -1548,10 +1548,10 @@ paths:
   /me/bundles:
     get:
       operationId: listOwnBundles
-      summary: Every Bundle Version in the caller's workspace, newest first (PACK-018)
+      summary: Every Bundle Version in the caller's workspace, grouped by Bundle name (PACK-018)
       responses:
         "200":
-          description: The Bundle Versions.
+          description: The Bundle Versions, with each Bundle's newest versions first.
           content:
             application/json:
               schema:
@@ -1621,6 +1621,32 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PublishingRefusal" }
+  /me/bundles/overview:
+    get:
+      operationId: listOwnBundleOverview
+      summary: Every Bundle in the caller's workspace with its newest version and publication state (PACK-018)
+      description: >-
+        One row per Bundle, ordered by Bundle name. `latest_version` is the
+        newest version the author created. `publication.latest_release` is the
+        newest immutable release and may therefore identify an older version.
+        `publication` is absent when the Bundle has never been published.
+      responses:
+        "200":
+          description: The owner Bundle overview.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [bundles]
+                properties:
+                  bundles:
+                    type: array
+                    items: { $ref: "#/components/schemas/OwnerBundleSummary" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /me/bundles/{name}/export:
     parameters:
       - name: name
@@ -7443,6 +7469,43 @@ components:
         members:
           type: array
           items: { $ref: "#/components/schemas/BundleMember" }
+    OwnerBundleRelease:
+      type: object
+      description: The newest immutable Bundle release in an owner's Bundle overview.
+      required: [bundle_version, content_hash, released_at]
+      properties:
+        bundle_version: { type: string }
+        content_hash: { type: string }
+        released_at: { type: string, format: date-time }
+    OwnerBundlePublicationSummary:
+      type: object
+      description: The management projection for one published Bundle.
+      required: [publisher, name, address, status, status_changed_at]
+      properties:
+        publisher: { type: string }
+        name: { type: string }
+        address:
+          type: string
+          description: The public page path, /p/{publisher}/{name}.
+        status: { type: string, enum: [published, delisted] }
+        status_changed_at: { type: string, format: date-time }
+        latest_release: { $ref: "#/components/schemas/OwnerBundleRelease" }
+        availability:
+          description: The current server-owned offer state. Absent only when an older server cannot project it.
+          allOf:
+            - $ref: "#/components/schemas/Labelled"
+        acquisition:
+          description: Whether the Plugin is currently offered and the complete sign-in or invitation condition. Absent only when an older server cannot project it.
+          allOf:
+            - $ref: "#/components/schemas/PublicationNote"
+    OwnerBundleSummary:
+      type: object
+      description: One Bundle as an owner manages it, rather than one row per immutable version.
+      required: [bundle, latest_version]
+      properties:
+        bundle: { type: string }
+        latest_version: { $ref: "#/components/schemas/BundleVersion" }
+        publication: { $ref: "#/components/schemas/OwnerBundlePublicationSummary" }
     Acquisition:
       type: object
       required: [artifact_id, file_name, size_bytes, content_hash, expires_at, duplicate, content_url]

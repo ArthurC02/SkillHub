@@ -27,6 +27,29 @@ type bundleVersionView struct {
 	Members     []bundleMemberView `json:"members"`
 }
 
+type ownerBundleReleaseView struct {
+	BundleVersion string `json:"bundle_version"`
+	ContentHash   string `json:"content_hash"`
+	ReleasedAt    string `json:"released_at"`
+}
+
+type ownerBundlePublicationSummaryView struct {
+	Publisher       string                  `json:"publisher"`
+	Name            string                  `json:"name"`
+	Address         string                  `json:"address"`
+	Status          string                  `json:"status"`
+	StatusChangedAt string                  `json:"status_changed_at"`
+	LatestRelease   *ownerBundleReleaseView `json:"latest_release,omitempty"`
+	Availability    labelled                `json:"availability"`
+	Acquisition     noteView                `json:"acquisition"`
+}
+
+type ownerBundleSummaryView struct {
+	Bundle        string                             `json:"bundle"`
+	LatestVersion bundleVersionView                  `json:"latest_version"`
+	Publication   *ownerBundlePublicationSummaryView `json:"publication,omitempty"`
+}
+
 type memberChangeView struct {
 	Name   string `json:"name"`
 	Change string `json:"change"`
@@ -91,6 +114,42 @@ func (h *Handler) OwnBundles(w http.ResponseWriter, r *http.Request) {
 	out := make([]bundleVersionView, 0, len(versions))
 	for _, v := range versions {
 		out = append(out, bundleView(v))
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"bundles": out})
+}
+
+func (h *Handler) OwnBundleOverview(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	overviews, err := h.Svc.BundleOverview(r.Context(), ws)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "bundle overview lookup failed")
+		return
+	}
+	out := make([]ownerBundleSummaryView, 0, len(overviews))
+	for _, overview := range overviews {
+		view := ownerBundleSummaryView{Bundle: overview.Bundle, LatestVersion: bundleView(overview.LatestVersion)}
+		if overview.Publication != nil {
+			publication := overview.Publication
+			publicationView := ownerBundlePublicationSummaryView{
+				Publisher: publication.Publisher, Name: publication.Name,
+				Address: address(publication.Publisher, publication.Name), Status: string(publication.Status),
+				StatusChangedAt: timestamp(publication.StatusChangedAt),
+				Availability:    availabilityView(publication.Availability, publication.UnavailableMember),
+				Acquisition:     h.acquisitionNote(publication.Availability, kindBundle),
+			}
+			if publication.LatestRelease != nil {
+				publicationView.LatestRelease = &ownerBundleReleaseView{
+					BundleVersion: publication.LatestRelease.BundleVersion,
+					ContentHash:   publication.LatestRelease.ContentHash,
+					ReleasedAt:    timestamp(publication.LatestRelease.ReleasedAt),
+				}
+			}
+			view.Publication = &publicationView
+		}
+		out = append(out, view)
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"bundles": out})
 }

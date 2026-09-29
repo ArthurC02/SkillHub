@@ -133,6 +133,27 @@ export interface BundleVersion {
   members: BundleMember[];
 }
 
+export interface OwnerBundlePublicationSummary {
+  publisher: string;
+  name: string;
+  address: string;
+  status: "published" | "delisted";
+  status_changed_at: string;
+  latest_release?: {
+    bundle_version: string;
+    content_hash: string;
+    released_at: string;
+  };
+  availability?: Labelled;
+  acquisition?: PublicationNote;
+}
+
+export interface OwnerBundleSummary {
+  bundle: string;
+  latest_version: BundleVersion;
+  publication?: OwnerBundlePublicationSummary;
+}
+
 export interface Acquisition {
   artifact_id: string;
   file_name: string;
@@ -237,6 +258,14 @@ export function useOwnBundles() {
   });
 }
 
+export function useOwnBundleOverview(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.publishing.bundleOverview,
+    queryFn: () => apiFetch<{ bundles: OwnerBundleSummary[] }>("/me/bundles/overview"),
+    enabled,
+  });
+}
+
 export interface CreateBundleRequest {
   name: string;
   version: string;
@@ -258,7 +287,10 @@ export function useCreateBundleVersion() {
           member_version_ids: memberVersionIds,
         }),
       }),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.publishing.bundles }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.publishing.bundles });
+      void client.invalidateQueries({ queryKey: queryKeys.publishing.bundleOverview });
+    },
   });
 }
 
@@ -296,8 +328,12 @@ export function usePublishBundle(bundle: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, version, rights_attested: rightsAttested }),
       }),
-    onSuccess: () =>
-      client.invalidateQueries({ queryKey: queryKeys.publishing.ownBundlePublication(bundle) }),
+    onSuccess: () => {
+      void client.invalidateQueries({
+        queryKey: queryKeys.publishing.ownBundlePublication(bundle),
+      });
+      void client.invalidateQueries({ queryKey: queryKeys.publishing.bundleOverview });
+    },
   });
 }
 
@@ -306,7 +342,11 @@ export function useDelistBundle(bundle: string) {
   return useMutation({
     mutationFn: () =>
       apiFetch<Publication>(`/me/bundles/${bundle}/publication`, { method: "DELETE" }),
-    onSuccess: () =>
-      client.invalidateQueries({ queryKey: queryKeys.publishing.ownBundlePublication(bundle) }),
+    onSuccess: () => {
+      void client.invalidateQueries({
+        queryKey: queryKeys.publishing.ownBundlePublication(bundle),
+      });
+      void client.invalidateQueries({ queryKey: queryKeys.publishing.bundleOverview });
+    },
   });
 }

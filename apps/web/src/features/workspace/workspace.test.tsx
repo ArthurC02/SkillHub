@@ -1460,6 +1460,7 @@ test("§2.12 第 6 條 activity with nothing running carries no refresh control"
 type BundleRouteOpts = {
   ownSkills?: Array<{ skill_id: string; embedded: unknown; versions?: unknown }>;
   bundles?: unknown[];
+  overview?: unknown[];
   onCreate?: (body: Record<string, unknown>) => { body: unknown; status?: number };
   publication?: (name: string) => { body: unknown; status?: number };
   onExport?: (name: string) => { body: unknown; status?: number };
@@ -1502,6 +1503,21 @@ function bundleRouteHandlers(opts: BundleRouteOpts) {
       req.path === "/me/bundles" && req.method === "GET"
         ? json({ bundles: opts.bundles ?? [] })
         : undefined,
+    (req: BundleRequest) => {
+      if (req.path !== "/me/bundles/overview" || req.method !== "GET") return undefined;
+      const latest = new Map<string, unknown>();
+      for (const value of opts.bundles ?? []) {
+        const version = value as { bundle: string };
+        if (!latest.has(version.bundle)) latest.set(version.bundle, value);
+      }
+      const overview =
+        opts.overview ??
+        Array.from(latest, ([bundle, latestVersion]) => ({
+          bundle,
+          latest_version: latestVersion,
+        }));
+      return json({ bundles: overview });
+    },
     (req: BundleRequest) => {
       if (req.path !== "/me/bundles" || req.method !== "POST") return undefined;
       const result = opts.onCreate?.(req.body ?? {}) ?? {
@@ -1622,7 +1638,7 @@ test("PACK-018 匯出為 Plugin 成功後顯示下載連結，且揭露句在按
 
   expect(text()).toContain("Plugin 只含 Agent Skill，不含 MCP 設定或宿主專屬元件。");
 
-  await act(async () => button("匯出 v1.0.0 為 Plugin")?.click());
+  await act(async () => button("匯出 v1.0.0 Plugin")?.click());
   await waitFor(() => text().includes("pdf-toolkit-1.0.0-plugin.zip"));
 
   const link = Array.from(container.querySelectorAll("a")).find((a) =>
@@ -1641,15 +1657,36 @@ test("PACK-018 尚未發佈時可以送出發佈，422 顯示伺服器的字串"
     }),
   });
   await render(<BundleSection />, () => text().includes("pdf-toolkit-422"));
-  await waitFor(() => Boolean(button("發佈")));
+  await waitFor(() => Boolean(button("首次發佈 v1.0.0")));
 
-  await act(async () => button("發佈")?.click());
+  await act(async () => button("首次發佈 v1.0.0")?.click());
   await waitFor(() => text().includes("Bundle 需要一段說明"));
 });
 
 test("PACK-018 已發佈時顯示公開位址、狀態與撤回按鈕", async () => {
+  const bundle = bundleRow("pdf-toolkit-published");
   stubBundleRoutes({
-    bundles: [bundleRow("pdf-toolkit-published")],
+    bundles: [bundle],
+    overview: [
+      {
+        bundle: bundle.bundle,
+        latest_version: bundle,
+        publication: {
+          publisher: "acme-tools",
+          name: "pdf-toolkit-published",
+          address: "/p/acme-tools/pdf-toolkit-published",
+          status: "published",
+          status_changed_at: "2026-09-01T00:00:00Z",
+          latest_release: {
+            bundle_version: "1.0.0",
+            content_hash: "sha256:bundle-1",
+            released_at: "2026-09-01T00:00:00Z",
+          },
+          availability: { value: "available", label: "提供中", note: "" },
+          acquisition: { available: true, note: "登入後可取得。" },
+        },
+      },
+    ],
     publication: () => ({
       body: {
         kind: "bundle",

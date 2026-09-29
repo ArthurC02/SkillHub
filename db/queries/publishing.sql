@@ -122,6 +122,26 @@ JOIN bundle_versions bv ON bv.bundle_id = b.id
 WHERE b.workspace_id = @workspace_id
 ORDER BY b.name, bv.created_at DESC, bv.id DESC;
 
+-- name: ListWorkspaceBundlePublicationSummaries :many
+SELECT b.name AS bundle_name,
+       p.id AS publication_id, p.bundle_id, p.name, p.status, p.status_changed_at,
+       pb.name AS publisher_name,
+       latest.bundle_version_id AS latest_release_bundle_version_id,
+       latest.content_hash AS latest_release_content_hash,
+       latest.released_at AS latest_released_at
+FROM publications p
+JOIN publishers pb ON pb.id = p.publisher_id
+JOIN bundles b ON b.id = p.bundle_id
+LEFT JOIN LATERAL (
+    SELECT pr.bundle_version_id, pr.content_hash, pr.released_at
+    FROM publication_releases pr
+    WHERE pr.publication_id = p.id
+    ORDER BY pr.released_at DESC, pr.id DESC
+    LIMIT 1
+) latest ON true
+WHERE pb.workspace_id = @workspace_id AND p.bundle_id IS NOT NULL
+ORDER BY b.name, p.id;
+
 -- name: GetBundleVersion :one
 SELECT b.name AS bundle_name, bv.*
 FROM bundles b

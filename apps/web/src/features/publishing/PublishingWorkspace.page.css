@@ -72,6 +72,72 @@
   margin-top: 16px;
 }
 
+.publishing-workspace .bundle-overview-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.publishing-workspace .bundle-overview-header h3,
+.publishing-workspace .bundle-overview-header p {
+  margin-top: 0;
+}
+
+.publishing-workspace .bundle-publication {
+  margin-block: 16px;
+  padding: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.publishing-workspace .bundle-publication-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.publishing-workspace .bundle-publication-grid dt {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.publishing-workspace .bundle-publication-grid dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.publishing-workspace .bundle-version-list {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.publishing-workspace .bundle-version-item {
+  padding: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.publishing-workspace .bundle-version-item > div > :first-child {
+  margin-top: 0;
+}
+
+.publishing-workspace .bundle-version-item .badge + .badge {
+  margin-left: 8px;
+}
+
+.publishing-workspace .bundle-version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .publishing-workspace .download-item[aria-current="location"] {
   border-color: var(--accent-border);
   box-shadow: 0 0 0 2px var(--accent-bg);
@@ -89,6 +155,10 @@
   }
 
   .publishing-workspace .bundle-member {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .publishing-workspace .bundle-publication-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }

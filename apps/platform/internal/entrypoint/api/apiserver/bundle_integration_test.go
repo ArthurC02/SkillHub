@@ -242,6 +242,38 @@ func TestAPublishedBundleShowsItsMembersAndWhatChangedSinceTheLastRelease(t *tes
 	}
 }
 
+func TestTheBundleOverviewKeepsTheNewestVersionSeparateFromTheNewestRelease(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("bundle-overview-alice"))
+	registerPublisher(t, alice, freshName("bundle-overview"))
+	bundle, skillIDs, _ := bundleOfTwo(t, alice, "bundle-overview")
+	publishTheFirstBundleRelease(t, a, alice, bundle, skillIDs[1])
+
+	if code, body := createBundle(
+		t, alice, bundle, "2.0.0",
+		newestVersionID(t, alice, skillIDs[0]), newestVersionID(t, alice, skillIDs[1]),
+	); code != http.StatusCreated {
+		t.Fatalf("bundle 2.0.0: %d %v", code, body)
+	}
+
+	code, body := alice.doJSON(t, http.MethodGet, "/me/bundles/overview", "")
+	if code != http.StatusOK {
+		t.Fatalf("bundle overview: %d %v", code, body)
+	}
+	items := objects(t, body["bundles"])
+	if len(items) != 1 {
+		t.Fatalf("bundle overview = %v, want one Bundle", items)
+	}
+	latestVersion, _ := items[0]["latest_version"].(map[string]any)
+	publication, _ := items[0]["publication"].(map[string]any)
+	latestRelease, _ := publication["latest_release"].(map[string]any)
+	if items[0]["bundle"] != bundle || latestVersion["version"] != "2.0.0" || latestRelease["bundle_version"] != "1.0.0" {
+		t.Errorf("bundle overview = %v, want created 2.0.0 and released 1.0.0", items[0])
+	}
+	assertOwnerDeliveryProjection(t, publication, "available", true)
+}
+
 func publishTheFirstBundleRelease(t *testing.T, a *api, author *client, bundle, memberSkillID string) (address string) {
 	t.Helper()
 	code, own := postJSON(t, author, "/me/bundles/"+bundle+"/publication", `{"rights_attested":true}`)

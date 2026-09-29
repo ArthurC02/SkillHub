@@ -305,6 +305,10 @@ type ListOperatorAuditLogRes interface {
 	listOperatorAuditLogRes()
 }
 
+type ListOwnBundleOverviewRes interface {
+	listOwnBundleOverviewRes()
+}
+
 type ListOwnBundlesRes interface {
 	listOwnBundlesRes()
 }

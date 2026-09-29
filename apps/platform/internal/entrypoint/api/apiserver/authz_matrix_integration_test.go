@@ -58,6 +58,7 @@ var anonymousRoutes = []anonCase{
 	{pattern: "GET /me/publisher", want: http.StatusUnauthorized},
 	{pattern: "GET /me/publications", want: http.StatusUnauthorized},
 	{pattern: "GET /me/bundles", want: http.StatusUnauthorized},
+	{pattern: "GET /me/bundles/overview", want: http.StatusUnauthorized},
 	{pattern: "POST /me/bundles", want: http.StatusUnauthorized},
 	{pattern: "POST /me/bundles/{name}/export", want: http.StatusUnauthorized},
 	{pattern: "GET /me/bundles/{name}/publication", want: http.StatusUnauthorized},

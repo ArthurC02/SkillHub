@@ -149,6 +149,7 @@ func mountPublishingRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("POST /me/publisher", auth.RequireSession(d.Publishing.RegisterPublisher))
 	mux.HandleFunc("GET /me/publications", auth.RequireSession(d.Publishing.OwnPublications))
 	mux.HandleFunc("GET /me/bundles", auth.RequireSession(d.Publishing.OwnBundles))
+	mux.HandleFunc("GET /me/bundles/overview", auth.RequireSession(d.Publishing.OwnBundleOverview))
 	mux.HandleFunc("POST /me/bundles", auth.RequireSession(d.Publishing.CreateBundleVersion))
 	mux.HandleFunc("POST /me/bundles/{name}/export", auth.RequireSession(auth.RequireInvited(d.Publishing.ExportBundle)))
 	mux.HandleFunc("GET /me/bundles/{name}/publication", auth.RequireSession(d.Publishing.OwnBundlePublication))

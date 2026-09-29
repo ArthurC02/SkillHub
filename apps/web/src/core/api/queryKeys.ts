@@ -105,6 +105,7 @@ export const queryKeys = {
     ownPublication: (skillId: string) => ["skills", skillId, "publication"],
     publicPublication: (publisher: string, name: string) => ["publication", publisher, name],
     bundles: ["bundles"],
+    bundleOverview: ["bundles", "overview"],
     ownBundlePublication: (bundle: string) => ["bundles", bundle, "publication"],
   },
   admin: {

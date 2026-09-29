@@ -379,6 +379,11 @@ import {
     ListOperatorAuditLog200ResponseToJSON,
 } from '../models/ListOperatorAuditLog200Response';
 import {
+    type ListOwnBundleOverview200Response,
+    ListOwnBundleOverview200ResponseFromJSON,
+    ListOwnBundleOverview200ResponseToJSON,
+} from '../models/ListOwnBundleOverview200Response';
+import {
     type ListOwnBundles200Response,
     ListOwnBundles200ResponseFromJSON,
     ListOwnBundles200ResponseToJSON,
@@ -3577,6 +3582,28 @@ export interface DefaultApiInterface {
     listOperatorAuditLog(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOperatorAuditLog200Response>;
 
     /**
+     * Creates request options for listOwnBundleOverview without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listOwnBundleOverviewRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * One row per Bundle, ordered by Bundle name. `latest_version` is the newest version the author created. `publication.latest_release` is the newest immutable release and may therefore identify an older version. `publication` is absent when the Bundle has never been published.
+     * @summary Every Bundle in the caller\'s workspace with its newest version and publication state (PACK-018)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listOwnBundleOverviewRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOwnBundleOverview200Response>>;
+
+    /**
+     * One row per Bundle, ordered by Bundle name. `latest_version` is the newest version the author created. `publication.latest_release` is the newest immutable release and may therefore identify an older version. `publication` is absent when the Bundle has never been published.
+     * Every Bundle in the caller\'s workspace with its newest version and publication state (PACK-018)
+     */
+    listOwnBundleOverview(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOwnBundleOverview200Response>;
+
+    /**
      * Creates request options for listOwnBundles without sending the request
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -3585,7 +3612,7 @@ export interface DefaultApiInterface {
 
     /**
      * 
-     * @summary Every Bundle Version in the caller\'s workspace, newest first (PACK-018)
+     * @summary Every Bundle Version in the caller\'s workspace, grouped by Bundle name (PACK-018)
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -3593,7 +3620,7 @@ export interface DefaultApiInterface {
     listOwnBundlesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOwnBundles200Response>>;
 
     /**
-     * Every Bundle Version in the caller\'s workspace, newest first (PACK-018)
+     * Every Bundle Version in the caller\'s workspace, grouped by Bundle name (PACK-018)
      */
     listOwnBundles(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOwnBundles200Response>;
 
@@ -8339,6 +8366,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for listOwnBundleOverview without sending the request
+     */
+    async listOwnBundleOverviewRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/me/bundles/overview`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * One row per Bundle, ordered by Bundle name. `latest_version` is the newest version the author created. `publication.latest_release` is the newest immutable release and may therefore identify an older version. `publication` is absent when the Bundle has never been published.
+     * Every Bundle in the caller\'s workspace with its newest version and publication state (PACK-018)
+     */
+    async listOwnBundleOverviewRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOwnBundleOverview200Response>> {
+        const requestOptions = await this.listOwnBundleOverviewRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListOwnBundleOverview200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * One row per Bundle, ordered by Bundle name. `latest_version` is the newest version the author created. `publication.latest_release` is the newest immutable release and may therefore identify an older version. `publication` is absent when the Bundle has never been published.
+     * Every Bundle in the caller\'s workspace with its newest version and publication state (PACK-018)
+     */
+    async listOwnBundleOverview(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOwnBundleOverview200Response> {
+        const response = await this.listOwnBundleOverviewRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listOwnBundles without sending the request
      */
     async listOwnBundlesRequestOpts(): Promise<runtime.RequestOpts> {
@@ -8358,7 +8424,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Every Bundle Version in the caller\'s workspace, newest first (PACK-018)
+     * Every Bundle Version in the caller\'s workspace, grouped by Bundle name (PACK-018)
      */
     async listOwnBundlesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOwnBundles200Response>> {
         const requestOptions = await this.listOwnBundlesRequestOpts();
@@ -8368,7 +8434,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Every Bundle Version in the caller\'s workspace, newest first (PACK-018)
+     * Every Bundle Version in the caller\'s workspace, grouped by Bundle name (PACK-018)
      */
     async listOwnBundles(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOwnBundles200Response> {
         const response = await this.listOwnBundlesRaw(initOverrides);

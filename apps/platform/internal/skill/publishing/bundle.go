@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"slices"
 	"strings"
@@ -39,6 +40,28 @@ type BundleVersion struct {
 	ContentHash string
 	CreatedAt   time.Time
 	Members     []BundleMember
+}
+
+type BundleOverview struct {
+	Bundle        string
+	LatestVersion BundleVersion
+	Publication   *BundlePublicationSummary
+}
+
+type BundlePublicationSummary struct {
+	Publisher         string
+	Name              string
+	Status            Status
+	StatusChangedAt   time.Time
+	LatestRelease     *BundleReleaseSummary
+	Availability      Availability
+	UnavailableMember string
+}
+
+type BundleReleaseSummary struct {
+	BundleVersion string
+	ContentHash   string
+	ReleasedAt    time.Time
 }
 
 type BundleInput struct {
@@ -249,6 +272,65 @@ func (s *Service) Bundles(ctx context.Context, ws identity.Workspace) ([]BundleV
 		}
 	}
 	return out, nil
+}
+
+func (s *Service) BundleOverview(ctx context.Context, ws identity.Workspace) ([]BundleOverview, error) {
+	versions, err := s.Bundles(ctx, ws)
+	if err != nil {
+		return nil, err
+	}
+	overviews := make([]BundleOverview, 0)
+	versionsByID := make(map[pgtype.UUID]*BundleVersion, len(versions))
+	for i := range versions {
+		version := &versions[i]
+		versionsByID[version.ID] = version
+		if len(overviews) == 0 || overviews[len(overviews)-1].Bundle != version.Bundle {
+			overviews = append(overviews, BundleOverview{Bundle: version.Bundle, LatestVersion: *version})
+		}
+	}
+
+	rows, err := gen.New(s.Pool).ListWorkspaceBundlePublicationSummaries(ctx, ws.ID)
+	if err != nil {
+		return nil, err
+	}
+	overviewByBundle := make(map[string]*BundleOverview, len(overviews))
+	for i := range overviews {
+		overviewByBundle[overviews[i].Bundle] = &overviews[i]
+	}
+	for _, row := range rows {
+		overview := overviewByBundle[row.BundleName]
+		if overview == nil {
+			return nil, fmt.Errorf("bundle publication %s has no bundle version", row.BundleName)
+		}
+		publication := Publication{
+			Publisher: row.PublisherName, Name: row.Name, BundleID: row.BundleID,
+			Status: Status(row.Status), StatusChangedAt: row.StatusChangedAt.Time,
+		}
+		var latestRelease *BundleReleaseSummary
+		if row.LatestReleaseBundleVersionID.Valid {
+			version := versionsByID[row.LatestReleaseBundleVersionID]
+			if version == nil {
+				return nil, fmt.Errorf("bundle publication %s latest release has no bundle version", row.BundleName)
+			}
+			publication.Releases = []Release{{
+				Bundle: version, ContentHash: row.LatestReleaseContentHash, ReleasedAt: row.LatestReleasedAt.Time,
+			}}
+			latestRelease = &BundleReleaseSummary{
+				BundleVersion: version.Version, ContentHash: row.LatestReleaseContentHash,
+				ReleasedAt: row.LatestReleasedAt.Time,
+			}
+		}
+		publication, err = s.withAvailability(ctx, ws.ID, publication)
+		if err != nil {
+			return nil, err
+		}
+		overview.Publication = &BundlePublicationSummary{
+			Publisher: publication.Publisher, Name: publication.Name, Status: publication.Status,
+			StatusChangedAt: publication.StatusChangedAt, LatestRelease: latestRelease,
+			Availability: publication.Availability, UnavailableMember: publication.UnavailableMember,
+		}
+	}
+	return overviews, nil
 }
 
 func membersOf(ctx context.Context, q *gen.Queries, bundleVersionIDs []pgtype.UUID) (map[pgtype.UUID][]BundleMember, error) {

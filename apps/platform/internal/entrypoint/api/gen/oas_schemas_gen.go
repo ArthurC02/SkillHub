@@ -7044,6 +7044,7 @@ func (*Error) getSkillImportLimitsRes()            {}
 func (*Error) listDownloadArtifactsRes()           {}
 func (*Error) listExposureQueueRes()               {}
 func (*Error) listModelCallBudgetsRes()            {}
+func (*Error) listOwnBundleOverviewRes()           {}
 func (*Error) listOwnBundlesRes()                  {}
 func (*Error) listOwnPublicationsRes()             {}
 func (*Error) listSkillVersionsRes()               {}
@@ -11830,6 +11831,22 @@ func (s *ListOperatorAuditLogOK) SetEvents(val []OperatorAuditEvent) {
 
 func (*ListOperatorAuditLogOK) listOperatorAuditLogRes() {}
 
+type ListOwnBundleOverviewOK struct {
+	Bundles []OwnerBundleSummary `json:"bundles"`
+}
+
+// GetBundles returns the value of Bundles.
+func (s *ListOwnBundleOverviewOK) GetBundles() []OwnerBundleSummary {
+	return s.Bundles
+}
+
+// SetBundles sets the value of Bundles.
+func (s *ListOwnBundleOverviewOK) SetBundles(val []OwnerBundleSummary) {
+	s.Bundles = val
+}
+
+func (*ListOwnBundleOverviewOK) listOwnBundleOverviewRes() {}
+
 type ListOwnBundlesOK struct {
 	Bundles []BundleVersion `json:"bundles"`
 }
@@ -14805,6 +14822,98 @@ func (o OptNilString) Or(d string) string {
 	return d
 }
 
+// NewOptOwnerBundlePublicationSummary returns new OptOwnerBundlePublicationSummary with value set to v.
+func NewOptOwnerBundlePublicationSummary(v OwnerBundlePublicationSummary) OptOwnerBundlePublicationSummary {
+	return OptOwnerBundlePublicationSummary{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptOwnerBundlePublicationSummary is optional OwnerBundlePublicationSummary.
+type OptOwnerBundlePublicationSummary struct {
+	Value OwnerBundlePublicationSummary
+	Set   bool
+}
+
+// IsSet returns true if OptOwnerBundlePublicationSummary was set.
+func (o OptOwnerBundlePublicationSummary) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptOwnerBundlePublicationSummary) Reset() {
+	var v OwnerBundlePublicationSummary
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptOwnerBundlePublicationSummary) SetTo(v OwnerBundlePublicationSummary) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptOwnerBundlePublicationSummary) Get() (v OwnerBundlePublicationSummary, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptOwnerBundlePublicationSummary) Or(d OwnerBundlePublicationSummary) OwnerBundlePublicationSummary {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptOwnerBundleRelease returns new OptOwnerBundleRelease with value set to v.
+func NewOptOwnerBundleRelease(v OwnerBundleRelease) OptOwnerBundleRelease {
+	return OptOwnerBundleRelease{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptOwnerBundleRelease is optional OwnerBundleRelease.
+type OptOwnerBundleRelease struct {
+	Value OwnerBundleRelease
+	Set   bool
+}
+
+// IsSet returns true if OptOwnerBundleRelease was set.
+func (o OptOwnerBundleRelease) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptOwnerBundleRelease) Reset() {
+	var v OwnerBundleRelease
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptOwnerBundleRelease) SetTo(v OwnerBundleRelease) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptOwnerBundleRelease) Get() (v OwnerBundleRelease, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptOwnerBundleRelease) Or(d OwnerBundleRelease) OwnerBundleRelease {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptOwnerPublicationRelease returns new OptOwnerPublicationRelease with value set to v.
 func NewOptOwnerPublicationRelease(v OwnerPublicationRelease) OptOwnerPublicationRelease {
 	return OptOwnerPublicationRelease{
@@ -16972,6 +17081,220 @@ func (s *OwnSkillRedistribution) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+// The management projection for one published Bundle.
+// Ref: #/components/schemas/OwnerBundlePublicationSummary
+type OwnerBundlePublicationSummary struct {
+	Publisher string `json:"publisher"`
+	Name      string `json:"name"`
+	// The public page path, /p/{publisher}/{name}.
+	Address         string                              `json:"address"`
+	Status          OwnerBundlePublicationSummaryStatus `json:"status"`
+	StatusChangedAt time.Time                           `json:"status_changed_at"`
+	LatestRelease   OptOwnerBundleRelease               `json:"latest_release"`
+	// The current server-owned offer state. Absent only when an older server cannot project it.
+	Availability OptLabelled `json:"availability"`
+	// Whether the Plugin is currently offered and the complete sign-in or invitation condition. Absent
+	// only when an older server cannot project it.
+	Acquisition OptPublicationNote `json:"acquisition"`
+}
+
+// GetPublisher returns the value of Publisher.
+func (s *OwnerBundlePublicationSummary) GetPublisher() string {
+	return s.Publisher
+}
+
+// GetName returns the value of Name.
+func (s *OwnerBundlePublicationSummary) GetName() string {
+	return s.Name
+}
+
+// GetAddress returns the value of Address.
+func (s *OwnerBundlePublicationSummary) GetAddress() string {
+	return s.Address
+}
+
+// GetStatus returns the value of Status.
+func (s *OwnerBundlePublicationSummary) GetStatus() OwnerBundlePublicationSummaryStatus {
+	return s.Status
+}
+
+// GetStatusChangedAt returns the value of StatusChangedAt.
+func (s *OwnerBundlePublicationSummary) GetStatusChangedAt() time.Time {
+	return s.StatusChangedAt
+}
+
+// GetLatestRelease returns the value of LatestRelease.
+func (s *OwnerBundlePublicationSummary) GetLatestRelease() OptOwnerBundleRelease {
+	return s.LatestRelease
+}
+
+// GetAvailability returns the value of Availability.
+func (s *OwnerBundlePublicationSummary) GetAvailability() OptLabelled {
+	return s.Availability
+}
+
+// GetAcquisition returns the value of Acquisition.
+func (s *OwnerBundlePublicationSummary) GetAcquisition() OptPublicationNote {
+	return s.Acquisition
+}
+
+// SetPublisher sets the value of Publisher.
+func (s *OwnerBundlePublicationSummary) SetPublisher(val string) {
+	s.Publisher = val
+}
+
+// SetName sets the value of Name.
+func (s *OwnerBundlePublicationSummary) SetName(val string) {
+	s.Name = val
+}
+
+// SetAddress sets the value of Address.
+func (s *OwnerBundlePublicationSummary) SetAddress(val string) {
+	s.Address = val
+}
+
+// SetStatus sets the value of Status.
+func (s *OwnerBundlePublicationSummary) SetStatus(val OwnerBundlePublicationSummaryStatus) {
+	s.Status = val
+}
+
+// SetStatusChangedAt sets the value of StatusChangedAt.
+func (s *OwnerBundlePublicationSummary) SetStatusChangedAt(val time.Time) {
+	s.StatusChangedAt = val
+}
+
+// SetLatestRelease sets the value of LatestRelease.
+func (s *OwnerBundlePublicationSummary) SetLatestRelease(val OptOwnerBundleRelease) {
+	s.LatestRelease = val
+}
+
+// SetAvailability sets the value of Availability.
+func (s *OwnerBundlePublicationSummary) SetAvailability(val OptLabelled) {
+	s.Availability = val
+}
+
+// SetAcquisition sets the value of Acquisition.
+func (s *OwnerBundlePublicationSummary) SetAcquisition(val OptPublicationNote) {
+	s.Acquisition = val
+}
+
+type OwnerBundlePublicationSummaryStatus string
+
+const (
+	OwnerBundlePublicationSummaryStatusPublished OwnerBundlePublicationSummaryStatus = "published"
+	OwnerBundlePublicationSummaryStatusDelisted  OwnerBundlePublicationSummaryStatus = "delisted"
+)
+
+// AllValues returns all OwnerBundlePublicationSummaryStatus values.
+func (OwnerBundlePublicationSummaryStatus) AllValues() []OwnerBundlePublicationSummaryStatus {
+	return []OwnerBundlePublicationSummaryStatus{
+		OwnerBundlePublicationSummaryStatusPublished,
+		OwnerBundlePublicationSummaryStatusDelisted,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s OwnerBundlePublicationSummaryStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case OwnerBundlePublicationSummaryStatusPublished:
+		return []byte(s), nil
+	case OwnerBundlePublicationSummaryStatusDelisted:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OwnerBundlePublicationSummaryStatus) UnmarshalText(data []byte) error {
+	switch OwnerBundlePublicationSummaryStatus(data) {
+	case OwnerBundlePublicationSummaryStatusPublished:
+		*s = OwnerBundlePublicationSummaryStatusPublished
+		return nil
+	case OwnerBundlePublicationSummaryStatusDelisted:
+		*s = OwnerBundlePublicationSummaryStatusDelisted
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// The newest immutable Bundle release in an owner's Bundle overview.
+// Ref: #/components/schemas/OwnerBundleRelease
+type OwnerBundleRelease struct {
+	BundleVersion string    `json:"bundle_version"`
+	ContentHash   string    `json:"content_hash"`
+	ReleasedAt    time.Time `json:"released_at"`
+}
+
+// GetBundleVersion returns the value of BundleVersion.
+func (s *OwnerBundleRelease) GetBundleVersion() string {
+	return s.BundleVersion
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *OwnerBundleRelease) GetContentHash() string {
+	return s.ContentHash
+}
+
+// GetReleasedAt returns the value of ReleasedAt.
+func (s *OwnerBundleRelease) GetReleasedAt() time.Time {
+	return s.ReleasedAt
+}
+
+// SetBundleVersion sets the value of BundleVersion.
+func (s *OwnerBundleRelease) SetBundleVersion(val string) {
+	s.BundleVersion = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *OwnerBundleRelease) SetContentHash(val string) {
+	s.ContentHash = val
+}
+
+// SetReleasedAt sets the value of ReleasedAt.
+func (s *OwnerBundleRelease) SetReleasedAt(val time.Time) {
+	s.ReleasedAt = val
+}
+
+// One Bundle as an owner manages it, rather than one row per immutable version.
+// Ref: #/components/schemas/OwnerBundleSummary
+type OwnerBundleSummary struct {
+	Bundle        string                           `json:"bundle"`
+	LatestVersion BundleVersion                    `json:"latest_version"`
+	Publication   OptOwnerBundlePublicationSummary `json:"publication"`
+}
+
+// GetBundle returns the value of Bundle.
+func (s *OwnerBundleSummary) GetBundle() string {
+	return s.Bundle
+}
+
+// GetLatestVersion returns the value of LatestVersion.
+func (s *OwnerBundleSummary) GetLatestVersion() BundleVersion {
+	return s.LatestVersion
+}
+
+// GetPublication returns the value of Publication.
+func (s *OwnerBundleSummary) GetPublication() OptOwnerBundlePublicationSummary {
+	return s.Publication
+}
+
+// SetBundle sets the value of Bundle.
+func (s *OwnerBundleSummary) SetBundle(val string) {
+	s.Bundle = val
+}
+
+// SetLatestVersion sets the value of LatestVersion.
+func (s *OwnerBundleSummary) SetLatestVersion(val BundleVersion) {
+	s.LatestVersion = val
+}
+
+// SetPublication sets the value of Publication.
+func (s *OwnerBundleSummary) SetPublication(val OptOwnerBundlePublicationSummary) {
+	s.Publication = val
 }
 
 // The effective Catalog state of the latest immutable Release, not merely its review decision.

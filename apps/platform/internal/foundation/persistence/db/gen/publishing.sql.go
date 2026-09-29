@@ -810,6 +810,71 @@ func (q *Queries) ListSkillVersionsInBundles(ctx context.Context, versionIds []p
 	return items, nil
 }
 
+const listWorkspaceBundlePublicationSummaries = `-- name: ListWorkspaceBundlePublicationSummaries :many
+SELECT b.name AS bundle_name,
+       p.id AS publication_id, p.bundle_id, p.name, p.status, p.status_changed_at,
+       pb.name AS publisher_name,
+       latest.bundle_version_id AS latest_release_bundle_version_id,
+       latest.content_hash AS latest_release_content_hash,
+       latest.released_at AS latest_released_at
+FROM publications p
+JOIN publishers pb ON pb.id = p.publisher_id
+JOIN bundles b ON b.id = p.bundle_id
+LEFT JOIN LATERAL (
+    SELECT pr.bundle_version_id, pr.content_hash, pr.released_at
+    FROM publication_releases pr
+    WHERE pr.publication_id = p.id
+    ORDER BY pr.released_at DESC, pr.id DESC
+    LIMIT 1
+) latest ON true
+WHERE pb.workspace_id = $1 AND p.bundle_id IS NOT NULL
+ORDER BY b.name, p.id
+`
+
+type ListWorkspaceBundlePublicationSummariesRow struct {
+	BundleName                   string
+	PublicationID                pgtype.UUID
+	BundleID                     pgtype.UUID
+	Name                         string
+	Status                       string
+	StatusChangedAt              pgtype.Timestamptz
+	PublisherName                string
+	LatestReleaseBundleVersionID pgtype.UUID
+	LatestReleaseContentHash     string
+	LatestReleasedAt             pgtype.Timestamptz
+}
+
+func (q *Queries) ListWorkspaceBundlePublicationSummaries(ctx context.Context, workspaceID pgtype.UUID) ([]ListWorkspaceBundlePublicationSummariesRow, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceBundlePublicationSummaries, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWorkspaceBundlePublicationSummariesRow
+	for rows.Next() {
+		var i ListWorkspaceBundlePublicationSummariesRow
+		if err := rows.Scan(
+			&i.BundleName,
+			&i.PublicationID,
+			&i.BundleID,
+			&i.Name,
+			&i.Status,
+			&i.StatusChangedAt,
+			&i.PublisherName,
+			&i.LatestReleaseBundleVersionID,
+			&i.LatestReleaseContentHash,
+			&i.LatestReleasedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkspaceBundleVersions = `-- name: ListWorkspaceBundleVersions :many
 SELECT b.id AS bundle_id, b.name AS bundle_name, bv.id, bv.bundle_id, bv.version, bv.description, bv.content_hash, bv.created_by, bv.created_at
 FROM bundles b
