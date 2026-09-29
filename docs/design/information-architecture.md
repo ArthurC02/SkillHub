@@ -4,7 +4,7 @@
 
 **與 [設計系統](./system.md) 的分工**：那份管**一頁之內**長什麼樣（字級、間距、狀態語彙、停用要說原因）；這份管**一頁與一頁之間**。兩份都遵守 system.md §0 的優先序——牴觸時安全與不誤導在前，一致與美觀在後。
 
-**平台化目標與遷移順序見 [平台體驗模型](./platform-experience.md)。** 本檔仍只記已落地的規則與現況；目標模型裡尚未實作的 `/library`、`/activity` 等位址不進 §1～§4，直到同一批程式、測試與本檔一起落地。
+**平台化目標與遷移順序見 [平台體驗模型](./platform-experience.md)。** 本檔仍只記已落地的規則與現況；`/library` 已落地，目標模型裡尚未實作的 `/activity`、`/releases` 等位址不進 §1～§4，直到同一批程式、測試與本檔一起落地。
 
 **方向：§0 的規則走在程式前面，§1～§4 的表跟在程式後面。** 這兩半的權威方向相反，混在一起就沒有一半是真的：
 
@@ -85,7 +85,7 @@
 
 ## 1. 現況：路由清單
 
-`__outlines__/` 的快照份數多於位址數，而這不是矛盾（份數以 §6 為準）：`/` 有帶查詢與不帶查詢兩種、`/runs/$runId` 的兩種閱讀模式各存一份快照、還有一個不是路由的回報問題面板，**以及非成功態與目錄態各自存一份**（例如 `workspace-skills-401`、`skills-skillId-test-cases-testCaseId-runs-new-loading`、`workspace-runs-empty`、`回報問題-驗證訊息`）。**快照認得的狀態比網址多**，這件事本身是 §5 IA-4。
+`__outlines__/` 的快照份數多於位址數，而這不是矛盾（份數以 §6 為準）：`/` 有帶查詢與不帶查詢兩種、`/runs/$runId` 的兩種閱讀模式各存一份快照、還有一個不是路由的回報問題面板，**以及非成功態與目錄態各自存一份**（例如 `library-401`、`skills-skillId-test-cases-testCaseId-runs-new-loading`、`workspace-runs-empty`、`回報問題-驗證訊息`）。**快照認得的狀態比網址多**，這件事本身是 §5 IA-4。
 
 | 位址 | 頁面元件 | 需求 ID（見表下說明） | 價值流／產品領域 |
 | --- | --- | --- | --- |
@@ -98,7 +98,8 @@
 | `/p/$publisher/$name` | `PublicPublication` | 02:PACK-004 | Skill 生命週期／**Skill 發佈**〔不需登入；單筆的 id 是「發佈者／名稱」這一對，所以是兩段〕 |
 | `/workspace` | `WorkspaceHome` | 02:WS-002／WS-004 | 創作者空間／**續作與跨物件注意事項** |
 | `/workspace/import` | `ImportSkill` | SKILL、SEC | Skill 生命週期／**Skill 接納與信任** |
-| `/workspace/skills` | `WorkspaceSkills` | 02:WS-002 第 1 條／WS-004 | 創作者空間／創作者帳戶與工作區 |
+| `/library` | `WorkspaceSkills` | 02:WS-002 第 1 條／WS-004 | Skill 生命週期／**資產庫**〔擁有的 Skill 與新增入口；每個 Skill 續接版本、驗證、打包與發佈工作〕 |
+| `/workspace/skills` | 相容導向 | 02:WS-002 第 1 條／WS-004 | 舊資產清單位址；保留 hash 後導向 `/library` |
 | `/workspace/creations` | `CreateSkill` | 02:GEN-001（旗標 `generate_skill`）／[互動創作](../adr/README.md#互動創作)（旗標 `creation_skill`） | 創作者空間／**Skill 創作**〔負責人指示；旗標關著時這一頁只回一句「這一頁現在不存在」，⛔ `01` §10 邊界 1〕 |
 | `/workspace/runs` | `WorkspaceRuns` | 02:WS-002 第 1 條／WS-004 | 創作者空間／**活動**〔目前只投影 Run owner 清單；不冒充跨物件 Activity〕 |
 | `/workspace/downloads` | `PublishingWorkspace` | 02:WS-002／WS-004、PACK-003～006 | Skill 生命週期／**發佈與交付**〔沿用舊網址；發佈者身分、跨 Skill Publication／最新 Release、精確版本 Bundle 與下載紀錄共用一個平台空間〕 |
@@ -143,7 +144,7 @@
 | --- | --- | --- |
 | 標題 | `Skill Hub` | 已登入到 `/workspace`；匿名到 `/` |
 | 全域搜尋 | 離開 Catalog 後顯示「搜尋小工具或描述任務」；`/` 由 Catalog 頁自己的完整搜尋取代，不重複兩份表單 | `/` 加 `q` |
-| 主要導覽（`<nav aria-label="主要導覽">`） | 首頁、Catalog、資產庫、Studio（旗標）、活動、發佈 | `/workspace`、`/`、`/workspace/skills`、`/workspace/creations`、`/workspace/runs`、`/workspace/downloads` |
+| 主要導覽（`<nav aria-label="主要導覽">`） | 首頁、Catalog、資產庫、Studio（旗標）、活動、發佈 | `/workspace`、`/`、`/library`、`/workspace/creations`、`/workspace/runs`、`/workspace/downloads` |
 | 頁尾 | 回報問題（面板，非路由）、資料保存政策、帳號與刪除、**Build 識別碼**（`<details>`，非路由；IA-11） | `/policy`、`/workspace/account` |
 | 右上 | `AuthControls`（未登入時是「使用 GitHub 登入」）；**`GET /me` 的 `operator` 為真時多一個「後台」**（`02:OPS-001`） | 外部 `/auth/github/login`；`/admin` |
 
@@ -154,10 +155,10 @@
 從 `pages/` 與 `components/` 的 `to="…"` 讀出，自我連結不計：
 
 ```
-Home ───────────► /compare, /skills/$id, /workspace/import, /workspace/skills#create
+Home ───────────► /compare, /skills/$id, /workspace/import, /library#create
 WorkspaceHome ──► /, /skills/$id, /skills/$id/versions/$id, /lab/test-cases/$id,
                   /runs/$id, /workspace/creations, /workspace/import, /workspace/runs,
-                  /workspace/skills
+                  /library
 Compare ────────► /, /skills/$id
 SkillDetail ────► /skills/$id/files, /skills/$id/versions/$id, /lab/test-cases
 SkillFiles ─────► /skills/$id, /skills/$id/versions/$id, /lab/test-cases
@@ -166,7 +167,7 @@ SkillVersion ───► /skills/$id, /skills/$id/files, /skills/$id/package,
 ImportSkill ────► /skills/$id
 Packaging ──────► /skills/$id, /skills/$id/files, /skills/$id/versions/$id,
                   /lab/test-cases, /workspace/downloads
-PublishingWorkspace ► /p/$publisher/$name, /skills/$id, /workspace/skills
+PublishingWorkspace ► /p/$publisher/$name, /skills/$id, /library
 WorkspaceSkills ► /skills/$id, /skills/$id/files, /skills/$id/package,
                   /lab/test-cases, /workspace/runs, /workspace/downloads,
                   /workspace/account, /workspace, /policy
@@ -183,19 +184,19 @@ RunCompare ─────► /skills/$id/test-cases/$id/runs/new, /runs/$id, /l
                   /skills/$id/files
 EvaluationPanel ► /skills/$id/test-cases/$id/runs/new, /skills/$id
                                               （渲染在 /runs/$id 之內）
-WorkspaceAccount► /policy, /workspace/{skills,runs,downloads}
-DataPolicy ─────► /workspace/{skills,runs,downloads,account}
+WorkspaceAccount► /policy, /library, /workspace/{runs,downloads}
+DataPolicy ─────► /library, /workspace/{runs,downloads,account}
 GenerateSkill ──► /skills/$id                 （旗標後面的元件，§2.4）
 GeneratedNotice ► /lab/test-cases             （同上；尚無 Test Case 時先建立情境）
-CreateHub ──────► /, /workspace/import        （渲染在 /workspace/skills 之內）
+CreateHub ──────► /, /workspace/import        （渲染在 /library 之內）
 CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/$id,
-                  /skills/$id/versions/$versionId, /workspace/skills
+                  /skills/$id/versions/$versionId, /library
                                               （渲染在 /workspace/creations 之內）
 ```
 
-> **`/workspace/skills` 的建立中心（`features/creation/components/CreateHub.tsx`）。** 它把三條建立路徑收在同一處：**匯入現成的套件** → `/workspace/import`（該頁唯一的 `.action`，system.md §4.6.3）、**從目錄挑一個來改** → `/`（Fork 需要封測邀請，卡片上直接說）、**依任務描述生成一個** → 旗標後面的那個掛載點（§2.4），不新增邊。首頁的 hero 指著 `/workspace/skills#create`。
+> **`/library` 的新增入口（`features/creation/components/CreateHub.tsx`）。** 它把三條接納路徑收在同一處：**匯入現成的套件** → `/workspace/import`（該頁唯一的 `.action`，system.md §4.6.3）、**從 Catalog Fork** → `/`（Fork 需要封測邀請，入口旁直接說）、**依任務描述創作** → 旗標後面的 Studio（§2.4），不新增邊。首頁的 hero 指著 `/library#create`。
 >
-> **掛載位置由清單空不空決定**：清單空的時候它排在最前面——那時它就是這一頁的答案；清單有東西的時候排在清單**之後**，因為 [system.md](system.md) §3 checklist 第 1 條不准「一整排控制項排在答案前面」。用兩個掛載點而不是 CSS `order`，因為 `order` 只改視覺順序、不改 DOM 順序。空狀態只留 §2.9 的缺席型別詞，不再用另一種措辭把同樣兩條路再講一次。
+> **形狀由資產庫空不空決定**：空的時候先說明這是空清單，再用完整卡片解釋每一條接納路徑；有內容時，Skill 卡片先回答「我擁有什麼」，新增方式收成清單後方的一條入口帶。讀取中或失敗不渲染新增入口，避免把未知冒充成空。兩種形狀的 DOM 順序都讓答案在動作之前。
 >
 > **旗標由入口所在畫面透過既有 hook 讀取**：`RootLayout` 只在 `generate_skill` 開啟時顯示 Studio；`WorkspaceSkills` 以 prop 把兩個創作旗標傳進建立區；`WorkspaceHome` 只有在兩個旗標都開啟時才掛載最近會話查詢。`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊以呼叫旗標 hook 的檔案為鍵。
 
@@ -207,8 +208,8 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 
 | 旗標 | 來源 | 出現在 | 不出現在 |
 | --- | --- | --- | --- |
-| `generate_skill` | `GET /me` 的 `features`（[`useGenerateEntryPoint`](../../apps/web/src/features/creation/generate.service.ts)） | 搜尋的 `no_results` 空狀態、`/workspace/skills` 建立區、全域 Studio 空間；與 `creation_skill` 同時開啟時，首頁可返回已存在且仍可操作的會話 | **搜尋框旁邊的等重動作**——Catalog 仍先搜尋；首頁不提供開始新創作的入口，沒有可續作會話時也不渲染空卡 |
-| `creation_skill` | `GET /me` 的 `features`；`WorkspaceSkills` 與 `WorkspaceHome` 讀取 | `/workspace/skills#create` 內的互動創作，以及首頁的既有會話續作；兩處仍須 `generate_skill` 同時開啟，三種素材共用會話 | 未啟用部署與封測曝光限制中的使用者；預設關閉；首頁不把最近 50 筆清單冒充完整 Activity |
+| `generate_skill` | `GET /me` 的 `features`（[`useGenerateEntryPoint`](../../apps/web/src/features/creation/generate.service.ts)） | 搜尋的 `no_results` 空狀態、`/library` 新增區、全域 Studio 空間；與 `creation_skill` 同時開啟時，首頁可返回已存在且仍可操作的會話 | **搜尋框旁邊的等重動作**——Catalog 仍先搜尋；首頁不提供開始新創作的入口，沒有可續作會話時也不渲染空卡 |
+| `creation_skill` | `GET /me` 的 `features`；`WorkspaceSkills` 與 `WorkspaceHome` 讀取 | `/library#create` 內的互動創作入口，以及首頁的既有會話續作；兩處仍須 `generate_skill` 同時開啟，三種素材共用會話 | 未啟用部署與封測曝光限制中的使用者；預設關閉；首頁不把最近 50 筆清單冒充完整 Activity |
 | `clean_mode` | `GET /me` 的 `features`（[`useCleanMode`](../../apps/web/src/core/session/me.service.ts)） | 每一頁 `<main>` 的第一個元素（[`CleanModeNotice`](../../apps/web/src/app/shell/CleanModeNotice.tsx)，掛在 `router.tsx` 的 `RootLayout`） | 匿名訪客的畫面——`GET /me` 要求 session，`/` 與 `/skills/$id` 未登入可見，PORT-003 今天只對已登入者成立（[淨測試模式](../adr/README.md#淨測試模式) 待決策 1 待敲定） |
 
 **`clean_mode` 這一列是揭露不是入口**：它不帶使用者去任何新地方，只是在已經看得到的畫面上多說一句「這個部署沒有什麼」——上面 `generate_skill` 那一列的「出現在／不出現在」欄位問的是「使用者能不能從這裡走到一個新功能」，這一列的欄位問的是「使用者能不能看到這句話」，兩者是不同的問題，讀這張表時不要用入口的規矩讀這一列。
@@ -231,7 +232,7 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 | 3 | `/skills/$skillId/files`、`/skills/$skillId/package`、`/p/$publisher/$name`、`/workspace/runs`、`/admin/skills`、`/admin/audit-log`、`/admin/trends`、`/admin/exposure` | ✅ |
 | 4 | `/workspace/import`、`/skills/$skillId/test-cases/$testCaseId/runs/new` | ✅ |
 | 5 | `/lab/test-cases/$testCaseId` | ✅ |
-| 7 | `/`、`/workspace/skills` | ✅ |
+| 7 | `/`、`/library` | ✅ |
 | 8 | `/runs/$runId` | ✅ |
 | 9 | `/workspace/downloads` | ✅ |
 | 9 | `/lab/test-cases` | ✅ |
@@ -468,7 +469,7 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 
 **第二條入邊的現行形狀**：`WorkspaceHome` 只對已經存在、仍在保存期且尚未超過操作期限的非終態會話顯示精確 `?session=` 連結；它沒有「開始新創作」按鈕，最近 50 筆裡沒有可續作項目時整區不渲染。這是一條返回既有工作的路，不是把生成入口放到首頁，因此沒有用版面繞過 [`01` §10](../plans/01-goals-and-plan.md) 的封測曝光邊界。
 
-首頁同時要求 `generate_skill` 與 `creation_skill`，任一旗標關閉時不掛載會話查詢，也不留下空卡或提示。`WorkspaceHome.test.tsx` 以兩個單旗標組合守「不請求、不渲染」，`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊把這個掛載點列入。這讓 `/workspace/creations` 有兩條頁內入邊：建立區負責開始，首頁只負責續作；頁面本身仍保留「← 回到我的 Skill」出口，書籤與深連結不依賴瀏覽器上一頁。
+首頁同時要求 `generate_skill` 與 `creation_skill`，任一旗標關閉時不掛載會話查詢，也不留下空卡或提示。`WorkspaceHome.test.tsx` 以兩個單旗標組合守「不請求、不渲染」，`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊把這個掛載點列入。這讓 `/workspace/creations` 有兩條頁內入邊：建立區負責開始，首頁只負責續作；頁面本身仍保留「← 回到資產庫」出口，書籤與深連結不依賴瀏覽器上一頁。
 
 **誰能決定**：位址形狀是本檔的事；曝光邊界是產品負責人的，而這一批沒有動它——旗標關著時卡片整張不存在，直接輸入網址的人看到的是一句「這一頁現在不存在」加兩條出路。
 
@@ -521,7 +522,7 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 
 > **入口存在，落點也已裁定**（見[從描述生成 Skill](../adr/README.md#從描述生成-skill)）。
 
-**現況**：兩個入口，都在 `generate_skill` 旗標後面（§2.4）——搜尋的 `no_results` 空狀態，以及 `/workspace/skills` 清單。**沒有新路由**，所以 §1 那張表一列都沒動。
+**現況**：兩個入口，都在 `generate_skill` 旗標後面（§2.4）——搜尋的 `no_results` 空狀態，以及 `/library` 的新增區。Studio 已有自己的路由；旗標關閉時三處都不留下入口。
 
 **已經定的三件事**：
 

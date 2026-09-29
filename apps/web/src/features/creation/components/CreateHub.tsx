@@ -6,16 +6,46 @@ export function CreateHub({
   generateExposed,
   creationExposed = false,
   explain = true,
+  compact = false,
 }: {
   generateExposed: boolean;
   creationExposed?: boolean;
   explain?: boolean;
+  compact?: boolean;
 }) {
   const doorway = creationExposed ? "和 Agent 一起創作 Skill" : "讓平台依你的描述做一個";
 
+  if (compact) {
+    return (
+      <section
+        className="create-hub create-hub-compact"
+        id="create"
+        aria-labelledby="create-heading"
+      >
+        <h2 id="create-heading">新增到資產庫</h2>
+        <ul className="create-links">
+          <li>
+            <Link to="/workspace/import">匯入套件</Link>
+          </li>
+          <li>
+            <Link to="/" search={{}}>
+              從 Catalog Fork
+            </Link>
+            <span className="note">平台目前只讓有封測邀請的帳號 Fork。</span>
+          </li>
+          {generateExposed && (
+            <li>
+              <Link to="/workspace/creations">開始描述</Link>
+            </li>
+          )}
+        </ul>
+      </section>
+    );
+  }
+
   return (
     <section className="create-hub" id="create" aria-labelledby="create-heading">
-      <h2 id="create-heading">建立一個 Skill</h2>
+      <h2 id="create-heading">新增到資產庫</h2>
 
       <ul className="create-cards" onPointerMove={followPointer} onPointerLeave={releasePointer}>
         <li className="download-item" data-tone="0">

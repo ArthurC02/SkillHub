@@ -74,6 +74,7 @@ test("the platform shell exposes stable places and hides Studio until generation
   expect(nav.textContent).toContain("首頁");
   expect(nav.textContent).toContain("Catalog");
   expect(nav.textContent).toContain("資產庫");
+  expect(nav.querySelector('a[href="/library"]')).not.toBeNull();
   expect(nav.textContent).toContain("活動");
   expect(nav.textContent).toContain("發佈");
   expect(nav.textContent).not.toContain("Studio");

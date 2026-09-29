@@ -403,7 +403,7 @@ test("手機平台框架維持兩列頁首與單列導覽（設計 §4.5）", as
     });
   });
   await page.setViewportSize({ width: 375, height: 900 });
-  await page.goto("/workspace/skills");
+  await page.goto("/library");
   await expect(page.locator(".app-nav a").first()).toBeVisible();
   await page.evaluate(
     () =>
@@ -471,7 +471,7 @@ test("手機橫向導覽只在真的溢位時顯示提示", async ({ page }) => 
 
   for (const width of [375, 383, 391, 400, 503, 640]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/workspace/skills");
+    await page.goto("/library");
     const nav = page.locator(".app-nav");
     const cue = nav.locator(":scope > .nav-scroll-cue");
     const overflows = await nav.evaluate((element) => element.scrollWidth > element.clientWidth);
@@ -504,6 +504,15 @@ test("手機橫向導覽只在真的溢位時顯示提示", async ({ page }) => 
   });
   expect(edges.overflows, "後台導覽沒有溢位，提示沒有用途").toBe(true);
   expect(Math.abs(edges.hintRight - edges.navRight), "後台提示沒有黏在右緣").toBeLessThanOrEqual(2);
+});
+
+test("舊資產清單網址保留建立錨點並導向 Library", async ({ page }) => {
+  await stubPlatform(page);
+  await page.goto("/workspace/skills#create");
+
+  await expect(page).toHaveURL(/\/library#create$/);
+  await expect(page.getByRole("heading", { level: 1, name: "資產庫" })).toBeVisible();
+  await expect(page.locator("#create")).toBeVisible();
 });
 
 test("the validation journey keeps the same Skill workbench in reach", async ({ page }) => {
@@ -540,7 +549,7 @@ test.describe("QA-008 real layout: 桌面版頁首與導覽對齊", () => {
     test(`頁首橫貫視窗，品牌對齊側欄、搜尋對齊內容：${width}px（設計 §4.5）`, async ({ page }) => {
       await stubPlatform(page);
       await page.setViewportSize({ width, height: 900 });
-      await page.goto("/workspace/skills");
+      await page.goto("/library");
       await expect(page.locator(".app-title")).toBeVisible();
 
       const m = await page.evaluate(() => {
@@ -567,26 +576,52 @@ test.describe("QA-008 real layout: 桌面版頁首與導覽對齊", () => {
     });
   }
 
-  test("建立卡的動作落在同一條基線上（設計 §4.3）", async ({ page }) => {
+  test("有內容的資產庫把新增方式收成一條入口帶（設計 §4.3）", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto("/workspace/skills");
-    await expect(page.locator(".create-cards > li").first()).toBeVisible();
+    await page.goto("/library");
+    const hub = page.locator(".create-hub-compact");
+    await expect(hub).toBeVisible();
+    await expect(hub.locator(".create-cards")).toHaveCount(0);
 
-    const tops = await page.evaluate(() =>
-      [...document.querySelectorAll(".create-cards > li > p:last-child")].map((el) =>
-        Math.round(el.getBoundingClientRect().top),
+    const layout = await hub.evaluate((element) => ({
+      links: element.querySelectorAll(".create-links a").length,
+      overflows: element.scrollWidth > element.clientWidth,
+      minimumTarget: Math.min(
+        ...Array.from(element.querySelectorAll(".create-links a"), (link) =>
+          Math.round(link.getBoundingClientRect().height),
+        ),
       ),
-    );
+    }));
 
-    expect(tops.length, "一張卡都沒有量到").toBeGreaterThan(1);
-    expect(new Set(tops).size, `三顆動作落在 ${tops.join("／")} 三個高度上`).toBe(1);
+    expect(layout.links, "新增方式沒有完整列出").toBeGreaterThanOrEqual(2);
+    expect(layout.overflows, "入口帶把資產庫撐出自己的寬度").toBe(false);
+    expect(layout.minimumTarget, "新增入口的最小點按高度不足 40px").toBeGreaterThanOrEqual(40);
+
+    await page.setViewportSize({ width: 375, height: 900 });
+    const mobile = await hub.evaluate((element) => {
+      const heading = element.querySelector("h2")!.getBoundingClientRect();
+      const links = Array.from(element.querySelectorAll(".create-links a"), (link) =>
+        link.getBoundingClientRect(),
+      );
+      return {
+        headingBottom: Math.round(heading.bottom),
+        firstLinkTop: Math.round(links[0].top),
+        linkLefts: links.map((link) => Math.round(link.left)),
+        overflows: element.scrollWidth > element.clientWidth,
+      };
+    });
+    expect(mobile.headingBottom, "手機入口帶的標題沒有排在路徑之前").toBeLessThanOrEqual(
+      mobile.firstLinkTop,
+    );
+    expect(new Set(mobile.linkLefts).size, "手機入口沒有沿同一條左緣排列").toBe(1);
+    expect(mobile.overflows, "手機入口帶發生橫向溢位").toBe(false);
   });
 
   test("工作區導覽是一條列，標題與連結同高（設計 §4.3）", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto("/workspace/skills");
+    await page.goto("/library");
     await expect(page.locator(".workspace-index")).toBeVisible();
 
     const rows = await page.evaluate(() => {
@@ -918,7 +953,7 @@ test.describe("QA-008 the real Tab key", () => {
   test("mobile platform chrome focus follows its visual rows", async ({ page, browserName }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto("/workspace/skills");
+    await page.goto("/library");
     await expect(page.locator(".app-nav a").first()).toBeVisible();
 
     const title = page.locator(".app-title");
@@ -973,7 +1008,8 @@ test.describe("the text budget and the fourth disclosure, in a real engine", () 
     "workspace-account": 42,
     "workspace-downloads": 107,
     "workspace-runs": 18,
-    "workspace-skills": 21,
+    library: 21,
+    "workspace-skills-redirect": 21,
   };
 
   test("flat teaching text: ≤100 runes a block, and never more than the day it was measured", async ({

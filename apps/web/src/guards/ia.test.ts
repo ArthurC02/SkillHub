@@ -169,7 +169,7 @@ const FLAG_OFF_ASSERTED: Record<string, string> = {
   "features/catalog/home/Home.page.tsx":
     "generate.test.tsx — 「the generate entry point is absent until /me says the flag is on」",
   "features/workspace/skills/WorkspaceSkills.page.tsx":
-    "workspace.test.tsx — 「⛔ with the flag off, /workspace/skills has no generation entry point」",
+    "workspace.test.tsx — 「⛔ with the flag off, /library has no generation entry point」",
   "app/shell/CleanModeNotice.tsx":
     "clean-mode.test.tsx — 「without the flag, the notice renders nothing」",
   "features/creation/create/CreateSkill.page.tsx":

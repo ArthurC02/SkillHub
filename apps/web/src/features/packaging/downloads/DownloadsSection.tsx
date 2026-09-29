@@ -58,7 +58,7 @@ export function Downloads({
         (downloads.data.downloads.length === 0 ? (
           <p>
             還沒有打包過任何套件。這裡是空的，代表你還沒有打包過東西，不是紀錄被清掉了。
-            要打包，先從 <Link to="/workspace/skills">我的 Skill</Link> 挑一個。
+            要打包，先從 <Link to="/library">資產庫</Link> 挑一個。
           </p>
         ) : (
           <>

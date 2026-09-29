@@ -128,7 +128,7 @@ function WorkspaceHomeContent({
             <h2>你的資產</h2>
             <p className="note">從一個小工具開始，繼續建構、驗證或發佈。</p>
           </div>
-          <Link className="action-secondary" to="/workspace/skills">
+          <Link className="action-secondary" to="/library">
             打開資產庫
           </Link>
         </header>

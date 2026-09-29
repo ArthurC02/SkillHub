@@ -358,13 +358,13 @@ export function ReferencePicker({
               />
             ))}
           </ul>
-          <h3>我的 Skill</h3>
-          {ownSkills.isPending && <p role="status">載入你的 Skill 中…</p>}
-          <ReadFailure error={ownSkills.error} what="你的 Skill" />
+          <h3>資產庫中的 Skill</h3>
+          {ownSkills.isPending && <p role="status">載入資產庫中的 Skill…</p>}
+          <ReadFailure error={ownSkills.error} what="資產庫中的 Skill" />
           {!ownSkills.isPending &&
             !ownSkills.error &&
             ownSkills.data &&
-            ownMatches.length === 0 && <p role="status">你的 Skill 裡沒有符合項目。</p>}
+            ownMatches.length === 0 && <p role="status">資產庫裡沒有符合項目。</p>}
           <ul className="search-results">
             {ownMatches.map((s) => (
               <ReferenceRow

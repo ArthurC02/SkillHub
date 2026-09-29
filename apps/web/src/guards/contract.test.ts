@@ -183,7 +183,7 @@ const LABEL_TABLES: Array<{
     table: async () => (await import("../features/packaging/packaging.model")).REDISTRIBUTION_GATE,
   },
   {
-    what: "OwnSkill.redistribution → 我的 Skill 的徽章",
+    what: "OwnSkill.redistribution → 資產庫的徽章",
     values: generated.OwnSkillRedistributionEnum,
     table: async () =>
       (await import("../features/workspace/skills/WorkspaceSkills.model")).REDISTRIBUTION_BADGE,

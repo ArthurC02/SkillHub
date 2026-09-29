@@ -54,7 +54,7 @@ export function RootLayout() {
             <Link to="/" activeOptions={{ exact: true }}>
               Catalog
             </Link>
-            <Link to="/workspace/skills">資產庫</Link>
+            <Link to="/library">資產庫</Link>
             {generateExposed && <Link to="/workspace/creations">Studio</Link>}
             <Link to="/workspace/runs">活動</Link>
             <Link to="/workspace/downloads">發佈</Link>

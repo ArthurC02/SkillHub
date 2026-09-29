@@ -267,7 +267,7 @@ const CONTROL_LAYER =
   "wears the base control rule beside `button`, so it has the same box as the button next to it";
 const EVALUATION_LIST = "shares the evaluation list recipe with .criterion-list and .finding-list";
 const DOOR_CARD =
-  "the door-card recipe .skill-card (/workspace/skills) and .create-cards (the create hub) share";
+  "the door-card recipe .skill-card (/library) and .create-cards (the empty Library hub) share";
 
 const GLOBAL_BY_RECIPE: Record<string, string> = {
   "app-header": APP_FRAME,

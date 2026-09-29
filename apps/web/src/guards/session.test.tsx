@@ -170,10 +170,11 @@ test("IA-6 a page's own non-401 wording survives; the 401 branch replaces it", a
   assertHonestArrival();
 });
 
-test("IA-6 /workspace/skills — a nav destination stops printing the server's English", async () => {
+test("IA-6 /library — a nav destination stops printing the server's English", async () => {
   loggedOutPlatform();
   await render(<WorkspaceSkills />, () => settled());
-  expect(text()).toContain("你的 Skill 清單需要登入。");
+  expect(text()).toContain("資產庫內容需要登入。");
+  expect(container.querySelector("#create"), "讀取失敗時不該把新增入口冒充成空狀態").toBeNull();
   assertHonestArrival();
 });
 

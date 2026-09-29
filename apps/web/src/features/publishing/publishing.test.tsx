@@ -172,7 +172,7 @@ test("the publishing space brings identity, Bundles, and delivery records into o
   );
   expect(text()).toContain("公開位址不等於 Catalog 曝光");
   expect(text()).toContain("取得者身分與下載次數尚未提供");
-  expect(container.querySelector('a[href="/workspace/skills"]')?.textContent).toContain(
+  expect(container.querySelector('a[href="/library"]')?.textContent).toContain(
     "選擇要發佈的 Skill",
   );
 });

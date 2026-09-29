@@ -76,7 +76,7 @@ export function SessionHeader({
   return (
     <header className="creation-bar">
       <nav aria-label="離開這一頁">
-        <Link to="/workspace/skills" className="bar-back" aria-label="回到我的 Skill">
+        <Link to="/library" className="bar-back" aria-label="回到資產庫">
           ←
         </Link>
       </nav>

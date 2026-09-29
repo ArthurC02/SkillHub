@@ -146,7 +146,7 @@ test("⛔ with the flag off, /workspace/creations is not a workbench and says so
     "旗標關著卻讀取了創作會話",
   ).toEqual([]);
   const hrefs = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
-  expect(hrefs, "沒有給一條回得去的路").toContain("/workspace/skills");
+  expect(hrefs, "沒有給一條回得去的路").toContain("/library");
 });
 
 test("with generate_skill on, the page is the generation workbench", async () => {
@@ -162,10 +162,10 @@ test.each([
   ["旗標關著", undefined],
 ] as const)("%s 時這一頁都有一條回得去的路", async (_label, features) => {
   stubMe(features);
-  await visit(() => container.querySelector("main a[href='/workspace/skills']") !== null);
+  await visit(() => container.querySelector("main a[href='/library']") !== null);
 
   const back = Array.from(container.querySelectorAll("main a")).filter(
-    (a) => a.getAttribute("href") === "/workspace/skills",
+    (a) => a.getAttribute("href") === "/library",
   );
   expect(back.length, "這一頁沒有出口").toBeGreaterThan(0);
   expect(back.length, "回去的路出現了兩次").toBe(1);

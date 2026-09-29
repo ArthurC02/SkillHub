@@ -216,22 +216,25 @@ export function WorkspaceSkills() {
 
   return (
     <section>
-      <h1>我的 Skill</h1>
+      <h1>資產庫</h1>
       {hasSkills && (
         <p className="note" data-role="teaching">
           Fork 與匯入的都在這裡；公開目錄的不在。
         </p>
       )}
 
-      {isEmpty && <p>你還沒有任何 Skill——這是一份空清單，不是讀取失敗。</p>}
-      {/* Two mount points (here and below) rather than one reordered with CSS
-          `order`: that only moves the visual position, not the DOM/tab order. */}
-      {!hasSkills && (
-        <CreateHub generateExposed={generateExposed} creationExposed={creationExposed} />
+      {isEmpty && (
+        <>
+          <p>資產庫還沒有任何 Skill——這是一份空清單，不是讀取失敗。</p>
+          <p className="note" data-role="teaching">
+            匯入現成套件、從 Catalog Fork，或在開放時從 Studio 開始創作。
+          </p>
+        </>
       )}
+      {isEmpty && <CreateHub generateExposed={generateExposed} creationExposed={creationExposed} />}
 
-      {skills.isPending && <Loading what="你的 Skill 清單" />}
-      <ReadFailure error={skills.error} what="你的 Skill 清單" />
+      {skills.isPending && <Loading what="資產庫內容" />}
+      <ReadFailure error={skills.error} what="資產庫內容" />
       {message && <p role="status">{message}</p>}
       {remove.error && (
         <ReadFailure error={remove.error} what="刪除 Skill">
@@ -268,6 +271,7 @@ export function WorkspaceSkills() {
           generateExposed={generateExposed}
           creationExposed={creationExposed}
           explain={false}
+          compact
         />
       )}
 

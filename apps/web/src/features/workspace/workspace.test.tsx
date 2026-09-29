@@ -601,7 +601,7 @@ test("空清單先說它是哪一種空，三張建立卡才是它的動作（§
   expect(hub, "建立中心不見了").toBeTruthy();
   expect(
     Boolean(absence!.compareDocumentPosition(hub!) & Node.DOCUMENT_POSITION_FOLLOWING),
-    "「還沒有任何 Skill」必須排在「建立一個 Skill」之前：答案先出來，動作在後面",
+    "「還沒有任何 Skill」必須排在「新增到資產庫」之前：答案先出來，動作在後面",
   ).toBe(true);
 });
 
@@ -683,7 +683,7 @@ function stubOwnSkillsWithFeatures(features?: Record<string, boolean>) {
   });
 }
 
-test("GEN-008 ⛔ with the flag off, /workspace/skills has no generation entry point", async () => {
+test("GEN-008 ⛔ with the flag off, /library has no generation entry point", async () => {
   stubOwnSkillsWithFeatures();
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
 
@@ -692,7 +692,7 @@ test("GEN-008 ⛔ with the flag off, /workspace/skills has no generation entry p
   expect(text()).not.toContain("讓平台依你的描述做一個");
 });
 
-test("GEN-008 with the flag on, /workspace/skills shows the door and not the workbench", async () => {
+test("GEN-008 with the flag on, /library shows the door and not the workbench", async () => {
   stubOwnSkillsWithFeatures({ generate_skill: true });
   await render(<WorkspaceSkills />, () => text().includes("開始描述"));
 
@@ -701,35 +701,34 @@ test("GEN-008 with the flag on, /workspace/skills shows the door and not the wor
   const door = Array.from(container.querySelectorAll("a")).find((a) =>
     (a.textContent ?? "").includes("開始描述"),
   );
-  expect(door, "第三張卡不是一扇門").toBeTruthy();
+  expect(door, "生成入口沒有通往 Studio").toBeTruthy();
   expect(door!.getAttribute("href")).toBe("/workspace/creations");
 });
 
 const hub = () => container.querySelector<HTMLElement>(".create-hub");
 const hubText = () => (hub()?.textContent ?? "").replace(/\s+/g, "");
 
-test("建立中心 的三扇門同框，而且這一頁一個填色動作都沒有", async () => {
+test("資產庫有內容時把新增方式收成一條入口帶，而且沒有填色動作", async () => {
   stubOwnSkillsWithFeatures();
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
 
   expect(hub()).not.toBeNull();
   expect(hub()!.id).toBe("create");
+  expect(hub()!.classList.contains("create-hub-compact")).toBe(true);
 
   const actions = container.querySelectorAll("a.action, button.action");
   expect(Array.from(actions).map((a) => a.getAttribute("href") ?? a.textContent)).toEqual([]);
 
-  const doors = hub()!.querySelectorAll("a.action-secondary, button");
-  expect(doors.length, "三扇門沒有全部拿到次要按鈕語彙").toBeGreaterThanOrEqual(2);
-
-  expect(hub()!.querySelectorAll("ul.create-cards > li.download-item").length).toBeGreaterThan(0);
+  expect(hub()!.querySelectorAll("ul.create-cards").length).toBe(0);
+  expect(hub()!.querySelectorAll("ul.create-links > li").length).toBe(2);
 });
 
-test("建立中心 states the invite requirement on the from-catalogue card, in visible text", async () => {
+test("資產庫新增入口 states the invite requirement beside the Catalog path", async () => {
   stubOwnSkillsWithFeatures();
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
 
   const card = Array.from(hub()!.querySelectorAll("li")).find((li) =>
-    (li.textContent ?? "").includes("從目錄挑一個來改"),
+    (li.textContent ?? "").includes("從 Catalog Fork"),
   );
   expect(card, "the from-catalogue card is missing").toBeTruthy();
   const copy = (card!.textContent ?? "").replace(/\s+/g, "");
@@ -740,35 +739,37 @@ test("建立中心 states the invite requirement on the from-catalogue card, in 
   expect(Array.from(card!.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toContain("/");
 });
 
-test("建立中心 ⛔ with the flag off, the hub has no generation card and does not mention 生成", async () => {
+test("資產庫新增入口 ⛔ with the flag off, the hub has no generation path", async () => {
   stubOwnSkillsWithFeatures();
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
 
-  expect(hubText()).toContain("匯入現成的套件");
-  expect(hubText()).toContain("從目錄挑一個來改");
+  expect(hubText()).toContain("匯入套件");
+  expect(hubText()).toContain("從CatalogFork");
 
   expect(hub()!.querySelector("#generate-task")).toBeNull();
   expect(hubText()).not.toContain("生成");
   expect(hubText()).not.toContain("即將推出");
 });
 
-test("建立中心 on an empty list teaches each door", async () => {
+test("空資產庫 uses the full cards to teach each intake path", async () => {
   vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false }));
   await render(<WorkspaceSkills />, () => text().includes("還沒有任何 Skill"));
 
   expect(hub()!.querySelectorAll('[data-role="teaching"]').length).toBe(2);
 });
 
-test("建立中心 below a list that has a Skill keeps every door and the invite rule, without the teaching", async () => {
+test("有內容的資產庫 keeps every compact intake path and the invite rule", async () => {
   stubOwnSkillsWithFeatures({ generate_skill: true });
   await render(<WorkspaceSkills />, () => text().includes("開始描述"));
 
   expect(hub()!.querySelectorAll('[data-role="teaching"]').length).toBe(0);
   expect(hub()!.querySelectorAll("a").length).toBe(3);
+  expect(hub()!.querySelector(".create-links")).not.toBeNull();
+  expect(hub()!.querySelector(".create-cards")).toBeNull();
   expect(hubText()).toContain("平台目前只讓有封測邀請的帳號Fork。");
 });
 
-test("建立中心 with the flag on, the generation entry appears exactly once on the page", async () => {
+test("資產庫 with the flag on, the Studio entry appears exactly once on the page", async () => {
   stubOwnSkillsWithFeatures({ generate_skill: true });
   await render(<WorkspaceSkills />, () => text().includes("開始描述"));
 
@@ -1233,7 +1234,7 @@ test("WS-004 a fork invalidates the list it writes to, and does not touch the se
   expect(queryClient.getQueryState(["skills", "search", "pdf"])?.isInvalidated).toBe(false);
 });
 
-test("SKILL-002 an import invalidates 我的 Skill, and does not re-run the search", async () => {
+test("SKILL-002 an import invalidates the Library, and does not re-run the search", async () => {
   vi.stubGlobal("fetch", () =>
     json(
       {
@@ -1276,7 +1277,7 @@ test("SKILL-002 an import invalidates 我的 Skill, and does not re-run the sear
 
   expect(
     queryClient.getQueryState(["own-skills"])?.isInvalidated,
-    "an import that does not invalidate 我的 Skill leaves the list without the skill just added",
+    "an import that does not invalidate the Library leaves it without the skill just added",
   ).toBe(true);
   expect(queryClient.getQueryState(["skills", "search", "pdf"])?.isInvalidated).toBe(false);
 });

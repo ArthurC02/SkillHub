@@ -1,9 +1,19 @@
 import { describe, expect, test } from "vitest";
 import {
   legacyDatasetDestination,
+  legacyLibraryDestination,
   legacyRunDestination,
   validatePublishingWorkspaceSearch,
 } from "./router";
+
+describe("legacy Library links", () => {
+  test.each([
+    ["the list", "", { to: "/library", hash: "" }],
+    ["the create anchor", "create", { to: "/library", hash: "create" }],
+  ])("sends %s to the canonical platform space", (_name, hash, expected) => {
+    expect(legacyLibraryDestination(hash)).toEqual(expected);
+  });
+});
 
 describe("publishing workspace search", () => {
   test.each([

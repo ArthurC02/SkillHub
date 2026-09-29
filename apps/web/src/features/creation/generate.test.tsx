@@ -778,7 +778,7 @@ test("GEN-006: an empty reference search is stated instead of rendering unexplai
   });
   await waitFor(() => (container.textContent ?? "").includes("目錄裡沒有符合的 Skill"));
 
-  expect(container.textContent).toContain("你的 Skill 裡沒有符合項目");
+  expect(container.textContent).toContain("資產庫裡沒有符合項目");
 });
 
 test("GEN-006: reference search and owned-skill failures are not presented as empty results", async () => {
@@ -799,7 +799,7 @@ test("GEN-006: reference search and owned-skill failures are not presented as em
   });
   await waitFor(() => (container.textContent ?? "").includes("暫時無法讀取參考 Skill 的搜尋結果"));
 
-  expect(container.textContent).toContain("暫時無法讀取你的 Skill");
+  expect(container.textContent).toContain("暫時無法讀取資產庫中的 Skill");
   expect(container.textContent).not.toContain("search backend unavailable");
   expect(container.textContent).not.toContain("workspace backend unavailable");
 });

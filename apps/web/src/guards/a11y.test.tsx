@@ -322,6 +322,7 @@ const SCANNED_ROUTES = [
   "/workspace/downloads",
   "/workspace/import",
   "/workspace/runs",
+  "/library",
   "/workspace/skills",
   "/admin",
   "/admin/accounts",
@@ -634,14 +635,14 @@ test("QA-009: 活動", async () => {
   await scan("/workspace/runs");
 }, 30000);
 
-test("QA-009: 我的 Skill", async () => {
+test("QA-009: 資產庫", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
-    await router.navigate({ to: "/workspace/skills" });
+    await router.navigate({ to: "/library" });
   });
-  await waitFor(has("我的 Skill"));
-  await scan("/workspace/skills");
+  await waitFor(has("資產庫"));
+  await scan("/library");
 }, 30000);
 
 test("QA-009: Workspace 首頁", async () => {
@@ -776,16 +777,16 @@ test("NFR-007: 沒選檔案就按上傳，說的是下一步而不是錯誤碼",
   expect(alert?.textContent).toContain("請先選擇一個檔案");
 }, 30000);
 
-test("QA-009: 我的 Skill（未登入）", async () => {
+test("QA-009: 資產庫（未登入）", async () => {
   vi.stubGlobal("fetch", () => json({ error: "not authenticated" }, 401));
   await mount();
   await act(async () => {
-    await router.navigate({ to: "/workspace/skills" });
+    await router.navigate({ to: "/library" });
   });
   await waitFor(has("需要登入"));
 
   expect(container.textContent).not.toContain("not authenticated");
-  await scan("/workspace/skills 401");
+  await scan("/library 401");
 }, 30000);
 
 test("QA-009: 執行前權限確認（載入中）", async () => {

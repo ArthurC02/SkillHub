@@ -158,13 +158,25 @@ const workspaceHomeRoute = createRoute({
   ),
 });
 
-const workspaceSkillsRoute = createRoute({
+const libraryRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/workspace/skills",
+  path: "/library",
   component: lazyRouteComponent(
     () => import("../features/workspace/skills/WorkspaceSkills.page"),
     "WorkspaceSkills",
   ),
+});
+
+export function legacyLibraryDestination(hash: string) {
+  return { to: "/library", hash } as const;
+}
+
+const legacyWorkspaceSkillsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workspace/skills",
+  beforeLoad: ({ location }) => {
+    throw redirect(legacyLibraryDestination(location.hash));
+  },
 });
 
 const importSkillRoute = createRoute({
@@ -480,7 +492,8 @@ const routeTree = rootRoute.addChildren([
   publicPublicationRoute,
   downloadsRoute,
   workspaceHomeRoute,
-  workspaceSkillsRoute,
+  libraryRoute,
+  legacyWorkspaceSkillsRoute,
   importSkillRoute,
   createSkillRoute,
   workspaceRunsRoute,

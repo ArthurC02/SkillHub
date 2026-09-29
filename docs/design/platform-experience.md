@@ -334,7 +334,7 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 
 | 現行入口 | 目標落點 | 遷移方式 |
 | --- | --- | --- |
-| `/workspace/skills` | Library | 先換全域名稱與殼層，再保留舊網址作相容入口 |
+| `/workspace/skills` | `/library` | 已換成平台資產庫名稱與 canonical 位址；舊網址保留 hash 後作相容導向 |
 | `/workspace/import` | Library 的新增／匯入流程 | 先讓舊頁接受並保留返回脈絡，再收進 Library |
 | `/workspace/creations` | Studio 與 Skill 工作台的建構分頁 | 保留旗標；會話列表在 Studio，單一會話回到 Skill 脈絡 |
 | `/lab/test-cases`、`/lab/test-cases/$testCaseId/datasets` | Skill 工作台的驗證分頁 | Test Case 已固定在 canonical 路徑，Dataset 保留同一個 Skill／Version／Test Case 工作脈絡；舊 `/lab/datasets` 只作相容導向 |

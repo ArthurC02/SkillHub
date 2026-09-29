@@ -33,7 +33,7 @@ export function SearchHeroForm({
         <button type="submit" className="action">
           搜尋
         </button>
-        <Link className="hero-create" to="/workspace/skills" hash="create">
+        <Link className="hero-create" to="/library" hash="create">
           自己做一個 Skill
         </Link>
       </form>

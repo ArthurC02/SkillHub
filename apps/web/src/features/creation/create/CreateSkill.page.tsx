@@ -18,7 +18,7 @@ export function CreateSkill() {
       <>
         <h1>這一頁現在不存在</h1>
         <p>
-          你可以回到 <Link to="/workspace/skills">我的 Skill</Link>，或到{" "}
+          你可以回到 <Link to="/library">資產庫</Link>，或到{" "}
           <Link to="/" search={{}}>
             目錄
           </Link>{" "}
@@ -35,7 +35,7 @@ export function CreateSkill() {
       ) : (
         <>
           <nav>
-            <Link to="/workspace/skills">← 回到我的 Skill</Link>
+            <Link to="/library">← 回到資產庫</Link>
           </nav>
           <GenerateSkill />
         </>

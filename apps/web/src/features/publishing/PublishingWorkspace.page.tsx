@@ -34,7 +34,7 @@ export function PublishingWorkspace() {
             </Link>
           </p>
         )}
-        <Link className="action" to="/workspace/skills">
+        <Link className="action" to="/library">
           選擇要發佈的 Skill
         </Link>
       </header>
@@ -91,7 +91,7 @@ function PublicationOverview({ selectedPublication }: { selectedPublication?: st
       {overview.data &&
         (publications.length === 0 ? (
           <p>
-            還沒有任何 Skill Publication。先到 <Link to="/workspace/skills">資產庫</Link>{" "}
+            還沒有任何 Skill Publication。先到 <Link to="/library">資產庫</Link>{" "}
             選一個精確版本開始。
           </p>
         ) : (

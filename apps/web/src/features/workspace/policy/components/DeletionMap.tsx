@@ -4,7 +4,7 @@ export function DeletionMap() {
   return (
     <ul className="risk-list">
       <li>
-        <Link to="/workspace/skills">我的 Skill</Link>
+        <Link to="/library">資產庫</Link>
         ：刪掉一個 Skill。版本快照會凍結保留，不隨這次刪除消失，誤刪還有救；別人 Fork
         過的版本不受影響。
       </li>
