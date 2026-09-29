@@ -19,6 +19,7 @@ import { SessionEmptyState } from "./SessionEmptyState";
 import { SessionFeed } from "./SessionFeed";
 import { Composer } from "./Composer";
 import { CreationFocusPanel } from "./CreationFocus";
+import { SessionWorkspaceNav } from "./SessionWorkspaceNav";
 import "./CreationSession.css";
 
 type CreationSessionProps = {
@@ -58,6 +59,7 @@ function CandidateRunStatus({ pending, error }: { pending: boolean; error: unkno
 
 export function CreationSession(props: CreationSessionProps) {
   const [id, setID] = useSessionSelection(props);
+  const [sessionsOpen, setSessionsOpen] = useState(!props.sessionId);
   const [budget, setBudget] = useState(""),
     [diagramAnswers, setDiagramAnswers] = useState<Record<string, string>>({});
   const { error, setError, busy, lastAttempt, attempt } = useCreationAttempt();
@@ -69,9 +71,7 @@ export function CreationSession(props: CreationSessionProps) {
   const session = current.data,
     p = session?.snapshot;
   const credits = useCredits();
-  const testCaseID = p?.candidate?.test_case_id;
-  const versionID = p?.candidate?.version_id;
-  const candidateRun = useCandidateRun(testCaseID, versionID);
+  const candidateRun = useCandidateRun(p?.candidate?.test_case_id, p?.candidate?.version_id);
   const { terminal, working } = sessionPhase(session);
   const locked = busy || working || terminal;
   const gate = startGate(!!session, credits.data, limits.data, budget);
@@ -83,34 +83,23 @@ export function CreationSession(props: CreationSessionProps) {
     });
   };
   const messages = p?.messages ?? [];
-  const { stream, latestHidden, unseen, showLatest } = useMessageStream(
-    id,
-    messages.length,
-    messages[messages.length - 1]?.role,
-    working,
-  );
+  const messageState = useMessageStream(id, messages.length, messages.at(-1)?.role, working);
+  const { stream, latestHidden, unseen, showLatest } = messageState;
   const submit = () =>
     attempt("submit", () => composer.send(commands, session, gate.budgetCredits));
   const retry = () => {
     if (lastAttempt === "submit") void submit();
     else if (lastAttempt) void perform(...lastAttempt);
   };
-  const failureBox = !!error && (
-    <FailureToast
-      error={error}
-      busy={busy}
-      canRetry={error instanceof TypeError && !!lastAttempt}
-      onRetry={retry}
-      onClose={() => setError(undefined)}
-    />
-  );
-  const historyMenu = useRef<HTMLDetailsElement>(null);
+  const failureBox = failureNotice({ error, busy, lastAttempt, onRetry: retry, onError: setError });
+  const workspace = useRef<HTMLDivElement>(null);
   const pickSession = (next: string) => {
     setID(next);
     composer.reset();
     commands.forgetPending();
     setError(undefined);
-    if (historyMenu.current) historyMenu.current.open = false;
+    setSessionsOpen(false);
+    queueMicrotask(() => workspace.current?.focus());
   };
   return (
     <div className="creation-shell">
@@ -123,56 +112,91 @@ export function CreationSession(props: CreationSessionProps) {
         busy={busy}
         perform={perform}
         onError={setError}
-        sessionList={sessions.data}
-        currentId={id}
-        onPickSession={pickSession}
-        historyMenu={historyMenu}
+        sessionCount={sessions.data?.length}
+        sessionsOpen={sessionsOpen}
+        onToggleSessions={() => setSessionsOpen((open) => !open)}
       />
-      <CreationFocusPanel session={session} />
-      <div className="creation-stream" ref={stream}>
-        <div className="creation-feed">
-          <ReadFailure error={sessions.error ?? current.error} what="創作紀錄" />
-          <CandidateRunStatus pending={candidateRun.pending} error={candidateRun.error} />
-          {!p && <SessionEmptyState busy={busy} onPick={composer.startFrom} />}
-          {session && p && (
-            <SessionFeed
-              session={session}
-              thumbs={composer.thumbs}
-              working={working}
+      <div className="creation-studio" data-sessions-open={sessionsOpen || undefined}>
+        <SessionWorkspaceNav
+          sessionList={sessions.data}
+          error={sessions.error}
+          currentId={id}
+          busy={busy}
+          onPickSession={pickSession}
+        />
+        <div className="creation-current" id="creation-workspace" tabIndex={-1} ref={workspace}>
+          <CreationFocusPanel session={session} />
+          <div className="creation-stream" ref={stream}>
+            <div className="creation-feed">
+              <ReadFailure error={current.error} what="創作紀錄" />
+              <CandidateRunStatus pending={candidateRun.pending} error={candidateRun.error} />
+              {!p && <SessionEmptyState busy={busy} onPick={composer.startFrom} />}
+              {session && p && (
+                <SessionFeed
+                  session={session}
+                  thumbs={composer.thumbs}
+                  working={working}
+                  busy={busy}
+                  terminal={terminal}
+                  locked={locked}
+                  latest={candidateRun.latest}
+                  perform={perform}
+                  diagramAnswers={diagramAnswers}
+                  onDiagramAnswers={setDiagramAnswers}
+                />
+              )}
+            </div>
+          </div>
+          {!terminal && (
+            <Composer
+              {...composer.inputs}
+              hasSession={!!session}
+              latestHidden={latestHidden}
+              unseen={unseen}
+              onShowLatest={showLatest}
+              failureBox={failureBox}
+              creditsBlocked={gate.creditsBlocked}
+              limitsFailed={!!limits.error}
+              credits={credits.data}
+              choices={gate.choices}
+              budget={budget}
+              onBudget={setBudget}
               busy={busy}
-              terminal={terminal}
               locked={locked}
-              latest={candidateRun.latest}
-              perform={perform}
-              diagramAnswers={diagramAnswers}
-              onDiagramAnswers={setDiagramAnswers}
+              frozen={gate.frozen}
+              onError={setError}
+              onSubmit={submit}
             />
           )}
+          {terminal && failureBox && <div className="composer-dock">{failureBox}</div>}
         </div>
       </div>
-      {!terminal && (
-        <Composer
-          {...composer.inputs}
-          hasSession={!!session}
-          latestHidden={latestHidden}
-          unseen={unseen}
-          onShowLatest={showLatest}
-          failureBox={failureBox}
-          creditsBlocked={gate.creditsBlocked}
-          limitsFailed={!!limits.error}
-          credits={credits.data}
-          choices={gate.choices}
-          budget={budget}
-          onBudget={setBudget}
-          busy={busy}
-          locked={locked}
-          frozen={gate.frozen}
-          onError={setError}
-          onSubmit={submit}
-        />
-      )}
-      {terminal && failureBox && <div className="composer-dock">{failureBox}</div>}
     </div>
+  );
+}
+
+function failureNotice({
+  error,
+  busy,
+  lastAttempt,
+  onRetry,
+  onError,
+}: {
+  error: unknown;
+  busy: boolean;
+  lastAttempt: unknown;
+  onRetry: () => void;
+  onError: (error: undefined) => void;
+}) {
+  if (!error) return null;
+  return (
+    <FailureToast
+      error={error}
+      busy={busy}
+      canRetry={error instanceof TypeError && Boolean(lastAttempt)}
+      onRetry={onRetry}
+      onClose={() => onError(undefined)}
+    />
   );
 }
 

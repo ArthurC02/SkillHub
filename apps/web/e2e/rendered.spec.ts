@@ -336,6 +336,18 @@ async function verifyCreationDecisionOnPhone(page: Page, testInfo: TestInfo) {
     expires_at: "2099-09-30T08:00:00Z",
     deadline: "2099-09-29T09:00:00Z",
   };
+  const otherSession = {
+    ...session,
+    id: "55555555-5555-4555-8555-555555555555",
+    revision: 3,
+    state: "working",
+    snapshot: {
+      ...session.snapshot,
+      brief: "把內部規範整理成可重用檢查表",
+      pending_action: null,
+    },
+    updated_at: "2026-09-29T07:30:00Z",
+  };
   await stubPlatform(page);
   await page.addInitScript(() =>
     Object.defineProperty(window, "EventSource", { value: undefined, configurable: true }),
@@ -363,12 +375,14 @@ async function verifyCreationDecisionOnPhone(page: Page, testInfo: TestInfo) {
       });
       return;
     }
-    await route.fulfill({ json: path.endsWith(sessionID) ? session : [session] });
+    await route.fulfill({ json: path.endsWith(sessionID) ? session : [session, otherSession] });
   });
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto(`/workspace/creations?session=${sessionID}`);
 
   await expect(page.getByRole("heading", { name: "和 Agent 一起創作 Skill" })).toBeVisible();
+  await verifyCreationWorklistOnPhone(page, testInfo, sessionID, session.updated_at);
+
   const workbench = page.locator(".creation-workbench");
   await expect(workbench).toBeInViewport();
   await expect(workbench.getByText("目前待決定")).toBeVisible();
@@ -392,17 +406,58 @@ async function verifyCreationDecisionOnPhone(page: Page, testInfo: TestInfo) {
     fullPage: true,
   });
 
-  const accessibility = await new AxeBuilder({ page }).include(".creation-workbench").analyze();
+  const accessibility = await new AxeBuilder({ page }).include(".creation-shell").analyze();
   expect(accessibility.violations).toEqual([]);
 
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`/workspace/creations?session=${sessionID}`);
+  await verifyCreationWorklistOnDesktop(page);
   await expect(page.locator(".creation-workbench")).toBeInViewport();
   await expect(page.locator(".creation-journey > li")).toHaveCount(4);
   await page.screenshot({
     path: testInfo.outputPath("creation-decision-desktop.png"),
     fullPage: true,
   });
+}
+
+async function verifyCreationWorklistOnPhone(
+  page: Page,
+  testInfo: TestInfo,
+  sessionID: string,
+  updatedAt: string,
+) {
+  const sessionToggle = page.getByRole("button", { name: "創作清單 · 2" });
+  await sessionToggle.click();
+  const sessionRail = page.locator(".creation-sessions");
+  const currentSession = sessionRail.locator(`[data-session="${sessionID}"]`);
+  await expect(sessionRail).toBeInViewport();
+  await expect(page.locator(".creation-current")).toBeHidden();
+  await expect(currentSession).toHaveAttribute("aria-current", "page");
+  await expect(currentSession.locator("time")).toHaveAttribute("datetime", updatedAt);
+  await expect(sessionRail.getByText("正在創作")).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("creation-worklist-phone.png"),
+    fullPage: true,
+  });
+  await currentSession.click();
+  await expect(sessionRail).toBeHidden();
+  await expect(page.locator(".creation-current")).toBeVisible();
+  await expect(page.locator("#creation-workspace")).toBeFocused();
+  await expect(sessionToggle).toHaveAttribute("aria-expanded", "false");
+}
+
+async function verifyCreationWorklistOnDesktop(page: Page) {
+  const desktopRail = page.locator(".creation-sessions");
+  const desktopCurrent = page.locator(".creation-current");
+  await expect(desktopRail).toBeInViewport();
+  await expect(desktopCurrent).toBeInViewport();
+  const [railBox, currentBox] = await Promise.all([
+    desktopRail.boundingBox(),
+    desktopCurrent.boundingBox(),
+  ]);
+  expect(railBox).not.toBeNull();
+  expect(currentBox).not.toBeNull();
+  expect(railBox!.x + railBox!.width).toBeLessThanOrEqual(currentBox!.x);
 }
 
 test.describe("QA-008 real layout", () => {

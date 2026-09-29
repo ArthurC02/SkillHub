@@ -1,4 +1,4 @@
-import { useState, type RefObject } from "react";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { CreationLimits, CreationSession, CreationSnapshot } from "../../creation.service";
 import { creationStateLabel } from "../../creation.service";
@@ -45,10 +45,9 @@ export function SessionHeader({
   busy,
   perform,
   onError,
-  sessionList,
-  currentId,
-  onPickSession,
-  historyMenu,
+  sessionCount,
+  sessionsOpen,
+  onToggleSessions,
 }: {
   session: CreationSession | undefined;
   p: CreationSnapshot | undefined;
@@ -58,10 +57,9 @@ export function SessionHeader({
   busy: boolean;
   perform: Perform;
   onError: (error: Error) => void;
-  sessionList: CreationSession[] | undefined;
-  currentId: string;
-  onPickSession: (id: string) => void;
-  historyMenu: RefObject<HTMLDetailsElement | null>;
+  sessionCount: number | undefined;
+  sessionsOpen: boolean;
+  onToggleSessions: () => void;
 }) {
   const [raiseBudget, setRaiseBudget] = useState("");
   const submitRaiseBudget = async () => {
@@ -108,15 +106,15 @@ export function SessionHeader({
           onSubmitRaiseBudget={submitRaiseBudget}
         />
       )}
-      {sessionList && sessionList.length > 0 && (
-        <SessionHistoryMenu
-          sessionList={sessionList}
-          currentId={currentId}
-          busy={busy}
-          onPickSession={onPickSession}
-          historyMenu={historyMenu}
-        />
-      )}
+      <button
+        type="button"
+        className="creation-session-toggle"
+        aria-controls="creation-sessions"
+        aria-expanded={sessionsOpen}
+        onClick={onToggleSessions}
+      >
+        創作清單{sessionCount === undefined ? "" : ` · ${sessionCount}`}
+      </button>
     </header>
   );
 }
@@ -195,52 +193,6 @@ function SessionCostDetails({
           </button>
         )}
       </div>
-    </details>
-  );
-}
-
-function SessionHistoryMenu({
-  sessionList,
-  currentId,
-  busy,
-  onPickSession,
-  historyMenu,
-}: {
-  sessionList: CreationSession[];
-  currentId: string;
-  busy: boolean;
-  onPickSession: (id: string) => void;
-  historyMenu: RefObject<HTMLDetailsElement | null>;
-}) {
-  return (
-    <details className="creation-history" ref={historyMenu}>
-      <summary>對話紀錄</summary>
-      <ul>
-        <li>
-          <button
-            type="button"
-            disabled={busy}
-            aria-current={!currentId || undefined}
-            onClick={() => onPickSession("")}
-          >
-            ＋ 開始新的創作
-          </button>
-        </li>
-        {sessionList.slice(0, 50).map((s) => (
-          <li key={s.id}>
-            <button
-              type="button"
-              data-session={s.id}
-              disabled={busy}
-              aria-current={s.id === currentId || undefined}
-              onClick={() => onPickSession(s.id)}
-            >
-              <span>{s.snapshot.brief.slice(0, 40) || "尚未確認需求"}</span>
-              <span className="note">{creationStateLabel(s.state)}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
     </details>
   );
 }

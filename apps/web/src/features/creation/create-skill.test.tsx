@@ -172,7 +172,7 @@ test.each([
 });
 
 test("with creation_skill on as well, the page is the conversation", async () => {
-  stubMe({ generate_skill: true, creation_skill: true });
+  stubMe({ generate_skill: true, creation_skill: true }, creationRoute([], []));
   await visit(() => text().includes("和 Agent 一起創作"));
 
   expect(text()).toContain("和 Agent 一起創作");
@@ -194,7 +194,7 @@ test("an invalid session value stays on the session list and never requests a de
   const seen: string[] = [];
   stubMe({ generate_skill: true, creation_skill: true }, creationRoute(seen));
 
-  await visit(() => text().includes("對話紀錄"), "/workspace/creations?session=not-a-uuid");
+  await visit(() => text().includes("近期創作"), "/workspace/creations?session=not-a-uuid");
 
   expect(router.state.location.search.session).toBeUndefined();
   expect(seen).not.toContain("/creation-sessions/not-a-uuid");

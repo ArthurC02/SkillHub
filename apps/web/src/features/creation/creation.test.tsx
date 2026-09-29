@@ -168,7 +168,7 @@ async function openReferencePicker() {
   await click("＋ 參考 Skill");
 }
 async function resume() {
-  const pick = '.creation-history button[data-session="s1"]';
+  const pick = '.creation-sessions button[data-session="s1"]';
   await waitFor(() => !!box.querySelector(pick));
   await act(async () => box.querySelector<HTMLButtonElement>(pick)!.click());
   await waitFor(() => !!box.querySelector('.creation-bar [role="status"]'));
@@ -1458,19 +1458,105 @@ test("a starter card fills the composer with its prompt and sends nothing", asyn
   expect(box.querySelector("textarea")!.value).toContain("會議逐字稿");
   expect(posts, "點一張建議卡就替人送出了").toHaveLength(0);
 });
-test("choosing a conversation from the history menu opens it and folds the menu away", async () => {
+test("recent creation work stays visible in server order with state, time, and current context", async () => {
+  const current = sample();
+  current.snapshot.brief = "整理採購文件";
+  const working = sample({ id: "s2", state: "working" });
+  working.snapshot.brief = "檢查摘要品質";
+  working.updated_at = "2026-09-05T01:00:00Z";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [current, working], current)),
+  );
+
+  await render();
+  await waitFor(() => !!box.querySelector(".creation-sessions"));
+  await act(async () =>
+    box.querySelector<HTMLButtonElement>('.creation-sessions [data-session="s1"]')!.click(),
+  );
+  await waitFor(() => !!box.querySelector('.creation-state [role="status"]'));
+
+  const sessions = [...box.querySelectorAll<HTMLButtonElement>(".creation-session-item")];
+  expect(sessions.map((item) => item.getAttribute("data-session"))).toEqual(["s1", "s2"]);
+  expect(sessions[0].getAttribute("aria-current")).toBe("page");
+  expect(sessions[0].textContent).toContain("整理採購文件");
+  expect(sessions[0].textContent).toContain("目前");
+  expect(sessions[1].textContent).toContain("檢查摘要品質");
+  expect(sessions[1].textContent).toContain("正在創作");
+  expect(sessions[1].querySelector("time")?.getAttribute("datetime")).toBe(working.updated_at);
+});
+test("choosing recent work closes the mobile list and focuses the current workspace", async () => {
   const v = sample();
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string) => routeGet(url, [v], v)),
   );
+  await render(<CreationSession sessionId="s1" />);
+  await waitFor(() => !!box.querySelector(".creation-session-toggle"));
+  const toggle = box.querySelector<HTMLButtonElement>(".creation-session-toggle")!;
+  const studio = box.querySelector<HTMLElement>(".creation-studio")!;
+  await act(async () => toggle.click());
+  expect(toggle.getAttribute("aria-expanded")).toBe("true");
+  expect(studio.hasAttribute("data-sessions-open")).toBe(true);
+  await act(async () =>
+    box.querySelector<HTMLButtonElement>('.creation-session-item[data-session="s1"]')!.click(),
+  );
+  expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  expect(studio.hasAttribute("data-sessions-open")).toBe(false);
+  expect(document.activeElement).toBe(box.querySelector("#creation-workspace"));
+  expect(
+    box.querySelector('.creation-session-item[aria-current="page"]')?.getAttribute("data-session"),
+  ).toBe("s1");
+});
+
+test("a failed session list stays in its rail while the exact current session remains usable", async () => {
+  const current = sample();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      url.endsWith("/creation-sessions")
+        ? response({ error: "offline" }, 503)
+        : routeGet(url, [], current),
+    ),
+  );
+
+  await render(<CreationSession sessionId="s1" />);
+  await waitFor(() => box.querySelector(".creation-sessions [role='alert']") !== null);
+
+  expect(box.querySelector(".creation-sessions")?.textContent).toContain("暫時無法讀取近期創作");
+  expect(box.querySelector(".creation-current")?.textContent).toContain(current.snapshot.brief);
+});
+
+test("an empty session list offers a new workspace without inventing session rows", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [], undefined)),
+  );
+
   await render();
-  await waitFor(() => !!box.querySelector(".creation-history"));
-  const menu = box.querySelector<HTMLDetailsElement>(".creation-history")!;
-  menu.open = true;
-  await resume();
-  expect(menu.open, "選完之後選單還開著，蓋在對話上").toBe(false);
-  expect(menu.querySelector("[aria-current]")!.getAttribute("data-session")).toBe("s1");
+  await waitFor(() => box.querySelector(".creation-session-empty") !== null);
+
+  expect(box.querySelectorAll(".creation-session-item")).toHaveLength(0);
+  expect(box.querySelector(".creation-new-session")?.getAttribute("aria-current")).toBe("page");
+  expect(box.querySelector(".creation-session-empty")?.textContent).toContain("還沒有可續作的創作");
+});
+
+test("the work list states its 50-session boundary instead of implying the rest are visible", async () => {
+  const sessions = Array.from({ length: 51 }, (_, index) => {
+    const item = sample({ id: `s${index + 1}` });
+    item.snapshot.brief = `創作 ${index + 1}`;
+    return item;
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, sessions, sessions[0])),
+  );
+
+  await render();
+  await waitFor(() => box.querySelectorAll(".creation-session-item").length === 50);
+
+  expect(box.querySelectorAll(".creation-session-item")).toHaveLength(50);
+  expect(box.querySelector(".creation-session-limit")?.textContent).toContain("只顯示前 50 場");
 });
 test("the send key goes quiet while there is nothing to send", async () => {
   vi.stubGlobal(
@@ -2001,16 +2087,22 @@ test("the transcript scrolls in its own pane and the composer sits outside it", 
 
   const shell = box.querySelector(".creation-shell")!;
   const bar = shell.querySelector(":scope > .creation-bar")!;
-  const stream = shell.querySelector(":scope > .creation-stream")!;
-  const dock = shell.querySelector(":scope > .composer-dock")!;
+  const studio = shell.querySelector(":scope > .creation-studio")!;
+  const sessions = studio.querySelector(":scope > .creation-sessions")!;
+  const current = studio.querySelector(":scope > .creation-current")!;
+  const stream = current.querySelector(":scope > .creation-stream")!;
+  const dock = current.querySelector(":scope > .composer-dock")!;
   expect(bar, "頂部工具列不是這一格的直系子項").not.toBe(null);
+  expect(studio, "Studio 工作區不是工具列旁的主要區域").not.toBe(null);
+  expect(sessions, "可掃讀的創作清單不在 Studio 工作區").not.toBe(null);
+  expect(current, "目前創作不在 Studio 工作區").not.toBe(null);
   expect(stream, "對話那一格不見了").not.toBe(null);
-  expect(dock, "輸入艙不是這一格的直系子項").not.toBe(null);
+  expect(dock, "輸入艙不是目前創作的直系子項").not.toBe(null);
   expect(stream.querySelector(".creation-log"), "對話不在會捲的那一格裡").not.toBe(null);
   expect(dock.querySelector(".composer"), "輸入艙裡沒有輸入區").not.toBe(null);
   expect(stream.contains(dock), "輸入艙被放進會捲的那一格，會跟著對話一起捲走").toBe(false);
   expect(shell.firstElementChild, "工具列不是第一格").toBe(bar);
-  expect(shell.lastElementChild, "輸入艙不是最後一格").toBe(dock);
+  expect(shell.lastElementChild, "Studio 工作區不是最後一格").toBe(studio);
 });
 
 test.each(["draft", "previous_draft"] as const)(
