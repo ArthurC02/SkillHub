@@ -101,7 +101,7 @@
 | `/library` | `WorkspaceSkills` | 02:WS-002 第 1 條／WS-004 | Skill 生命週期／**資產庫**〔擁有的 Skill 與新增入口；每個 Skill 續接版本、驗證、打包與發佈工作〕 |
 | `/workspace/skills` | 相容導向 | 02:WS-002 第 1 條／WS-004 | 舊資產清單位址；保留 hash 後導向 `/library` |
 | `/workspace/creations` | `CreateSkill` | 02:GEN-001（旗標 `generate_skill`）／[互動創作](../adr/README.md#互動創作)（旗標 `creation_skill`） | 創作者空間／**Skill 創作**〔負責人指示；旗標關著時這一頁只回一句「這一頁現在不存在」，⛔ `01` §10 邊界 1〕 |
-| `/workspace/runs` | `WorkspaceRuns` | 02:WS-002 第 1 條／WS-004 | 創作者空間／**活動**〔目前只投影 Run owner 清單；不冒充跨物件 Activity〕 |
+| `/workspace/runs` | `WorkspaceRuns` | 02:WS-002 第 1 條／WS-004 | 創作者空間／**試跑活動**〔目前只投影 Run owner 清單；不冒充跨物件 Activity〕 |
 | `/workspace/downloads` | `PublishingWorkspace` | 02:WS-002／WS-004、PACK-003～006 | Skill 生命週期／**發佈與交付**〔沿用舊網址；發佈者身分、跨 Skill Publication／最新 Release、精確版本 Bundle 與下載紀錄共用一個平台空間〕 |
 | `/workspace/account` | `WorkspaceAccount` | CORE-007／02:SEC-006 | 創作者空間／創作者帳戶與工作區 |
 | `/policy` | `DataPolicy` | 02:O11Y-004 | 產品營運／創作者使用權益與資料生命週期 |
@@ -144,7 +144,7 @@
 | --- | --- | --- |
 | 標題 | `Skill Hub` | 已登入到 `/workspace`；匿名到 `/` |
 | 全域搜尋 | 離開 Catalog 後顯示「搜尋小工具或描述任務」；`/` 由 Catalog 頁自己的完整搜尋取代，不重複兩份表單 | `/` 加 `q` |
-| 主要導覽（`<nav aria-label="主要導覽">`） | 首頁、Catalog、資產庫、Studio（旗標）、活動、發佈 | `/workspace`、`/`、`/library`、`/workspace/creations`、`/workspace/runs`、`/workspace/downloads` |
+| 主要導覽（`<nav aria-label="主要導覽">`） | 首頁、Catalog、資產庫、Studio（旗標）、試跑活動、發佈 | `/workspace`、`/`、`/library`、`/workspace/creations`、`/workspace/runs`、`/workspace/downloads` |
 | 頁尾 | 回報問題（面板，非路由）、資料保存政策、帳號與刪除、**Build 識別碼**（`<details>`，非路由；IA-11） | `/policy`、`/workspace/account` |
 | 右上 | `AuthControls`（未登入時是「使用 GitHub 登入」）；**`GET /me` 的 `operator` 為真時多一個「後台」**（`02:OPS-001`） | 外部 `/auth/github/login`；`/admin` |
 
@@ -254,7 +254,7 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 | 概念 | 受控中文名 | UI 用什麼 | 合規 |
 | --- | --- | --- | --- |
 | 一次 Run | 試跑 | `Run 結果`／`Run 比較` | ✅ `Run` 是保留術語，兩個標題都說出了自己回答什麼 |
-| 跨物件工作投影 | 活動 | `活動` | ✅ 目前只收錄 owner 回傳的 Run，畫面明示範圍，不自行推演其他事件 |
+| 跨物件工作投影 | 活動 | `試跑活動` | ✅ 完整 Activity 尚未成立；目前只收錄 owner 回傳的 Run，入口與畫面都明示範圍，不自行推演其他事件 |
 | Trace | 執行證據 | `執行紀錄`（`/runs/$id` 的 h2） | ✅ 是那一頁的一個區塊，不是一個位址 |
 | Evaluation | 成果判定 | `任務判定`（同頁 h2，排在最前） | ✅ 同上 |
 | 不可變內容快照 | Skill 版本 | 版本選單、`?version=` | ✅ |

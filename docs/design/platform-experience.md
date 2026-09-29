@@ -275,7 +275,7 @@ Activity 先依使用者能否採取行動分組，再依時間排序：
 
 每列至少顯示物件、工作種類、狀態、最後更新與一個明確下一步。Activity 不複製 Trace、完整評估或套件內容；點開後回到來源物件的精確脈絡。
 
-現行 `/workspace/runs` 是 Activity 的第一個可信切片：只用 Run owner 的 Workspace 清單，依「需要留意／執行中／最近結束」分組，保留建立與結束時間的原始語意。執行失敗與逾時提供「查看原因」，評估故障明示沒有產生判定，成果不符合、部分符合或無法判定則提供「檢視證據」；取消與未知狀態不被前端推測成失敗。這只是檢視優先序，不是真正的待辦指派，因清單尚未提供責任人、可重試權限或處理完成狀態。每列除了回到單一 Run，也使用同一筆 owner facts 直接回到 Skill、該次不可變 Version，以及存在 `test_case_id` 時的精確 Test Case；歷史列沒有 Test Case 識別時就不發明連結。畫面明示目前只收錄試跑；Publication 已有擁有者的 Workspace 跨 Skill 清單，但在 Run 尚無列級最後更新、各來源尚無 Activity 專用分類、權威時間與全域續讀契約以前，不把前端扇出結果稱為完整 Activity。
+現行 `/workspace/runs` 是 Activity 的第一個可信切片，入口與頁面明確稱為「試跑活動」：只用 Run owner 的 Workspace 清單，依「需要留意／執行中／最近結束」分組，保留建立與結束時間的原始語意。執行失敗與逾時提供「查看原因」，評估故障明示沒有產生判定，成果不符合、部分符合或無法判定則提供「檢視證據」；取消與未知狀態不被前端推測成失敗。這只是檢視優先序，不是真正的待辦指派，因清單尚未提供責任人、可重試權限或處理完成狀態。每列除了回到單一 Run，也使用同一筆 owner facts 直接回到 Skill、該次不可變 Version，以及存在 `test_case_id` 時的精確 Test Case；歷史列沒有 Test Case 識別時就不發明連結。Workspace 首頁另有 Creation 續作區，但它與 Run 各自讀取、刷新並揭露錯誤，不冒充跨來源排序。Publication 已有擁有者的 Workspace 跨 Skill 清單，但在 Run 尚無列級最後更新、各來源尚無 Activity 專用分類、權威時間與全域續讀契約以前，不把前端扇出結果稱為完整 Activity。
 
 ### 5.5 微觀互動契約
 
@@ -339,7 +339,7 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 | `/workspace/creations` | Studio 與 Skill 工作台的建構分頁 | 保留旗標；會話列表在 Studio，單一會話回到 Skill 脈絡 |
 | `/lab/test-cases`、`/lab/test-cases/$testCaseId/datasets` | Skill 工作台的驗證分頁 | Test Case 已固定在 canonical 路徑，Dataset 保留同一個 Skill／Version／Test Case 工作脈絡；舊 `/lab/datasets` 只作相容導向 |
 | `/lab/run` | 驗證分頁內的 preflight | 已收進 `/skills/$skillId/test-cases/$testCaseId/runs/new`；原 preflight 服務與同意流程不變，舊網址只作相容導向 |
-| `/workspace/runs` | Activity 的試跑保存檢視 | 全域活動先整合列表；完整內容仍由 `/runs/$runId` 提供 |
+| `/workspace/runs` | 「試跑活動」保存檢視 | 全域 Activity 先整合 owner-backed 列表；完整內容仍由 `/runs/$runId` 提供 |
 | `/runs/$runId` | 工作台驗證脈絡中的精確 Run | URL 保留，增加返回 Skill／Version／Test Case 的持續脈絡 |
 | `/skills/$skillId/files` | 工作台建構分頁 | URL 可作進階檔案檢視的深連結 |
 | `/skills/$skillId/package` | 工作台版本與發佈分頁 | 保留精確 version；把打包結果送入 Activity |

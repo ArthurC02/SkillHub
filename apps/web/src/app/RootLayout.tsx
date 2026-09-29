@@ -56,7 +56,7 @@ export function RootLayout() {
             </Link>
             <Link to="/library">資產庫</Link>
             {generateExposed && <Link to="/workspace/creations">Studio</Link>}
-            <Link to="/workspace/runs">活動</Link>
+            <Link to="/workspace/runs">試跑活動</Link>
             <Link to="/workspace/downloads">發佈</Link>
             <NavScrollCue />
           </nav>

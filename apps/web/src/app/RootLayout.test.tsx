@@ -75,7 +75,10 @@ test("the platform shell exposes stable places and hides Studio until generation
   expect(nav.textContent).toContain("Catalog");
   expect(nav.textContent).toContain("資產庫");
   expect(nav.querySelector('a[href="/library"]')).not.toBeNull();
-  expect(nav.textContent).toContain("活動");
+  const trialActivity = Array.from(nav.querySelectorAll("a")).find(
+    (link) => link.textContent === "試跑活動",
+  );
+  expect(trialActivity?.getAttribute("href")).toBe("/workspace/runs");
   expect(nav.textContent).toContain("發佈");
   expect(nav.textContent).not.toContain("Studio");
   expect(nav.textContent).not.toContain("匯入 Skill");

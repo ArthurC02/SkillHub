@@ -21,13 +21,13 @@ export function WorkspaceRuns() {
 
   return (
     <section>
-      <h1>活動</h1>
+      <h1>試跑活動</h1>
       <p className="note" data-role="teaching">
-        目前只收錄試跑；其他工作仍在原處。
+        這裡只收錄試跑；創作、打包與發佈工作仍在各自的空間。
       </p>
 
-      {runs.isPending && <Loading what="活動" />}
-      <ReadFailure error={runs.error} what="活動" />
+      {runs.isPending && <Loading what="試跑活動" />}
+      <ReadFailure error={runs.error} what="試跑活動" />
       {runs.data && (
         <ListFreshness
           inFlight={rows.some((run) => IN_FLIGHT_RUN_STATUSES.has(run.status))}
