@@ -1340,6 +1340,76 @@ func TestATruncatedSearchSaysHowManyMatchedAndNotJustThatThereWereMore(t *testin
 	}
 }
 
+func TestOwnSkillListingPagesAStableOrderWithoutDuplicates(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "owner-skill-pages")
+	base := uuidText(creationID(t))
+	prefix := base[:len(base)-1]
+	inserted := []string{prefix + "1", prefix + "3", prefix + "2"}
+	createdAt := "2026-09-29T08:00:00Z"
+	for index, id := range inserted {
+		if _, err := pool.Exec(context.Background(), `
+			INSERT INTO skills (id, workspace_id, name, summary, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $5)`,
+			mustUUID(t, id), mustUUID(t, owner.workspaceID), fmt.Sprintf("paged-skill-%d", index),
+			"pagination fixture", createdAt); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	type page struct {
+		Skills []struct {
+			SkillID string `json:"skill_id"`
+		} `json:"skills"`
+		Limit     int32 `json:"limit"`
+		Truncated bool  `json:"truncated"`
+		Total     int64 `json:"total"`
+	}
+	read := func(offset int) page {
+		t.Helper()
+		var result page
+		path := fmt.Sprintf("/skills?limit=2&offset=%d", offset)
+		if code := getJSON(t, owner.Client, owner.base+path, &result); code != http.StatusOK {
+			t.Fatalf("GET %s: got %d, want 200", path, code)
+		}
+		return result
+	}
+
+	first, second := read(0), read(2)
+	if first.Limit != 2 || !first.Truncated || first.Total != 3 || len(first.Skills) != 2 {
+		t.Fatalf("first page = %+v, want two of three rows with another page", first)
+	}
+	if second.Limit != 2 || second.Truncated || second.Total != 3 || len(second.Skills) != 1 {
+		t.Fatalf("second page = %+v, want the final row", second)
+	}
+	want := []string{prefix + "3", prefix + "2", prefix + "1"}
+	got := []string{first.Skills[0].SkillID, first.Skills[1].SkillID, second.Skills[0].SkillID}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("paged ids = %v, want stable id-desc tie breaking %v", got, want)
+		}
+	}
+}
+
+func TestOwnSkillListingRefusesPaginationOutsideTheSchema(t *testing.T) {
+	pool := requireDB(t)
+	owner := newAPI(t, pool).login(t, "owner-skill-page-bounds")
+	for _, path := range []string{
+		"/skills?limit=0",
+		"/skills?limit=101",
+		"/skills?limit=",
+		"/skills?offset=-1",
+		"/skills?offset=2147483648",
+		"/skills?offset=",
+		"/skills?offset=next",
+	} {
+		if got := owner.status(t, http.MethodGet, path); got != http.StatusBadRequest {
+			t.Errorf("GET %s = %d, want 400", path, got)
+		}
+	}
+}
+
 func TestSearchLimitOutsideTheSchemaIsRefused(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

@@ -1291,6 +1291,17 @@ export interface ListSkillVersionsRequest {
     id: string;
 }
 
+export interface ListSkillsRequest {
+    /**
+     * Number of skills to return in this page.
+     */
+    limit?: number;
+    /**
+     * Number of skills to skip from the stable newest-first order.
+     */
+    offset?: number;
+}
+
 export interface ListTestCasesRequest {
     /**
      * Only this skill's test cases. Answers "which test cases have I
@@ -3805,24 +3816,29 @@ export interface DefaultApiInterface {
 
     /**
      * Creates request options for listSkills without sending the request
+     * @param {number} [limit] Number of skills to return in this page.
+     * @param {number} [offset] Number of skills to skip from the stable newest-first order.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    listSkillsRequestOpts(): Promise<runtime.RequestOpts>;
+    listSkillsRequestOpts(requestParameters: ListSkillsRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * 
+     * Workspace scoped from the session. Pages are ordered by newest creation time, then by id so equal timestamps do not move an item between pages.
      * @summary List the caller\'s skills (WS-004)
+     * @param {number} [limit] Number of skills to return in this page.
+     * @param {number} [offset] Number of skills to skip from the stable newest-first order.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    listSkillsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListSkills200Response>>;
+    listSkillsRaw(requestParameters: ListSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListSkills200Response>>;
 
     /**
+     * Workspace scoped from the session. Pages are ordered by newest creation time, then by id so equal timestamps do not move an item between pages.
      * List the caller\'s skills (WS-004)
      */
-    listSkills(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListSkills200Response>;
+    listSkills(requestParameters: ListSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListSkills200Response>;
 
     /**
      * Creates request options for listTestCases without sending the request
@@ -8779,8 +8795,16 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     /**
      * Creates request options for listSkills without sending the request
      */
-    async listSkillsRequestOpts(): Promise<runtime.RequestOpts> {
+    async listSkillsRequestOpts(requestParameters: ListSkillsRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['offset'] != null) {
+            queryParameters['offset'] = requestParameters['offset'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -8796,20 +8820,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Workspace scoped from the session. Pages are ordered by newest creation time, then by id so equal timestamps do not move an item between pages.
      * List the caller\'s skills (WS-004)
      */
-    async listSkillsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListSkills200Response>> {
-        const requestOptions = await this.listSkillsRequestOpts();
+    async listSkillsRaw(requestParameters: ListSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListSkills200Response>> {
+        const requestOptions = await this.listSkillsRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ListSkills200ResponseFromJSON(jsonValue));
     }
 
     /**
+     * Workspace scoped from the session. Pages are ordered by newest creation time, then by id so equal timestamps do not move an item between pages.
      * List the caller\'s skills (WS-004)
      */
-    async listSkills(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListSkills200Response> {
-        const response = await this.listSkillsRaw(initOverrides);
+    async listSkills(requestParameters: ListSkillsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListSkills200Response> {
+        const response = await this.listSkillsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

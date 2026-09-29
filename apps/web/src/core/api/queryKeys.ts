@@ -40,6 +40,7 @@ export const queryKeys = {
     files: (skillId: string) => ["skills", skillId, "files"],
     versions: (skillId: string) => ["skills", skillId, "versions"],
     own: ["own-skills"],
+    ownPages: (limit: number) => ["own-skills", "pages", limit],
   },
   generate: { failures: ["generate", "failures"] },
   creation: {

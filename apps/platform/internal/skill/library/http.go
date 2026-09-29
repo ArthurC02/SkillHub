@@ -3,8 +3,10 @@ package registry
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -68,7 +70,7 @@ type fileDiffResponse struct {
 
 type skillsResponse struct {
 	Skills    []ownSkillResponse `json:"skills"`
-	Limit     int                `json:"limit"`
+	Limit     int32              `json:"limit"`
 	Truncated bool               `json:"truncated"`
 	Total     int64              `json:"total"`
 }
@@ -303,13 +305,44 @@ func (h *Handler) Diff(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, fileDiffResponse{Files: diffs})
 }
 
+const (
+	defaultSkillListingLimit int32 = 100
+	maxSkillListingLimit     int64 = 100
+)
+
+func parseSkillListingPage(r *http.Request) (SkillListingPage, error) {
+	q := r.URL.Query()
+	limit := int64(defaultSkillListingLimit)
+	if q.Has("limit") {
+		parsed, err := strconv.ParseInt(q.Get("limit"), 10, 32)
+		if err != nil || parsed < 1 || parsed > maxSkillListingLimit {
+			return SkillListingPage{}, errors.New("limit 必須是 1 到 100 之間的整數")
+		}
+		limit = parsed
+	}
+	offset := int64(0)
+	if q.Has("offset") {
+		parsed, err := strconv.ParseInt(q.Get("offset"), 10, 64)
+		if err != nil || parsed < 0 || parsed > math.MaxInt32 {
+			return SkillListingPage{}, errors.New("offset 必須是 0 到 2147483647 之間的整數")
+		}
+		offset = parsed
+	}
+	return SkillListingPage{Limit: int32(limit), Offset: int32(offset)}, nil
+}
+
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
 		return
 	}
+	page, err := parseSkillListingPage(r)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
-	listing, err := h.Svc.Listing(r.Context(), ws.ID)
+	listing, err := h.Svc.Listing(r.Context(), ws.ID, page)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
 		return
@@ -326,7 +359,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	httpx.WriteJSON(w, http.StatusOK, skillsResponse{
 		Skills:    out,
-		Limit:     skillListingLimit,
+		Limit:     page.Limit,
 		Truncated: listing.Truncated,
 		Total:     listing.Total,
 	})

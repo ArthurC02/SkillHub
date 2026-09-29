@@ -360,6 +360,14 @@ type ListSkillVersionsParams struct {
 	ID uuid.UUID
 }
 
+// ListSkillsParams is parameters of listSkills operation.
+type ListSkillsParams struct {
+	// Number of skills to return in this page.
+	Limit OptInt `json:",omitempty,omitzero"`
+	// Number of skills to skip from the stable newest-first order.
+	Offset OptInt `json:",omitempty,omitzero"`
+}
+
 // ListTestCasesParams is parameters of listTestCases operation.
 type ListTestCasesParams struct {
 	// Only this skill's test cases. Answers "which test cases have I written for this skill", which the

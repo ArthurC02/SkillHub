@@ -87,6 +87,12 @@ const SKILL: OwnSkill = {
 
 const SECOND: OwnSkill = { ...SKILL, skill_id: "s-2", name: "第二個 Skill" };
 
+const FIRST_PAGE = Array.from({ length: 24 }, (_, index) => ({
+  ...SKILL,
+  skill_id: `page-skill-${index + 1}`,
+  name: `分頁 Skill ${index + 1}`,
+}));
+
 function pointAt(target: Element, type: string, pointerType: string) {
   target.dispatchEvent(
     new PointerEvent(type, { bubbles: true, clientX: 30, clientY: 40, pointerType }),
@@ -119,6 +125,49 @@ test("the card grid lights up where a mouse points, stays dark for touch, and go
     ),
   );
   expect(glow()).toEqual([" ", " "]);
+});
+
+test("the library loads every owner skill page without duplicating the existing cards", async () => {
+  const calls: string[] = [];
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input).replace(/^https?:\/\/[^/]+/, "");
+    if (url.endsWith("/me")) return json(ME);
+    calls.push(url);
+    if (url.includes("offset=24")) {
+      return json({ skills: [FIRST_PAGE[23], SECOND], limit: 24, truncated: false, total: 25 });
+    }
+    return json({ skills: FIRST_PAGE, limit: 24, truncated: true, total: 25 });
+  });
+
+  await render(<WorkspaceSkills />, () => text().includes("已顯示 24 / 25 個 Skill"));
+  expect(calls).toContain("/skills?limit=24&offset=0");
+
+  await act(async () => button("載入更多")?.click());
+  await waitFor(() => text().includes("已顯示 25 / 25 個 Skill"));
+
+  expect(calls).toContain("/skills?limit=24&offset=24");
+  expect(container.querySelectorAll(".skill-card")).toHaveLength(25);
+  expect(text()).toContain("分頁 Skill 1");
+  expect(text()).toContain("第二個 Skill");
+  expect(button("載入更多")).toBeUndefined();
+});
+
+test("a later library page failure keeps the loaded skills and offers the same action again", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input).replace(/^https?:\/\/[^/]+/, "");
+    if (url.endsWith("/me")) return json(ME);
+    if (url.includes("offset=24")) return json({ error: "temporarily unavailable" }, 503);
+    return json({ skills: FIRST_PAGE, limit: 24, truncated: true, total: 25 });
+  });
+
+  await render(<WorkspaceSkills />, () => text().includes("已顯示 24 / 25 個 Skill"));
+  await act(async () => button("載入更多")?.click());
+  await waitFor(() => text().includes("沒有載入更多"));
+
+  expect(container.querySelectorAll(".skill-card")).toHaveLength(24);
+  expect(text()).toContain("已顯示的 24 個仍可使用");
+  expect(text()).not.toContain("temporarily unavailable");
+  expect(button("載入更多")).toBeDefined();
 });
 
 test("a manage menu stays open for a click inside it, and closes on a click outside or Escape", async () => {

@@ -78,6 +78,19 @@
   gap: 20px;
 }
 
+.skill-list-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.skill-list-progress .note {
+  margin: 0;
+}
+
 .skill-card:has(.skill-menu[open]) {
   z-index: 1;
 }

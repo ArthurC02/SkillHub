@@ -499,7 +499,7 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) ver ON true
 WHERE sk.workspace_id = $1 AND sk.deleted_at IS NULL
-ORDER BY sk.created_at DESC
+ORDER BY sk.created_at DESC, sk.id DESC
 LIMIT $3::int OFFSET $2::int
 `
 

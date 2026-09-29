@@ -3,7 +3,7 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { ApiError } from "../../../core/api/client";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useDeleteSkill, useOwnSkills } from "../../skill";
+import { useDeleteSkill, useOwnSkillPages } from "../../skill";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { useGenerateEntryPoint } from "../../creation";
 import { useCreationEntryPoint } from "../../creation";
@@ -203,15 +203,47 @@ function SkillCard({
   );
 }
 
+function SkillListProgress({
+  shown,
+  total,
+  hasNextPage,
+  isFetchingNextPage,
+  onFetchNextPage,
+}: {
+  shown: number;
+  total: number;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  onFetchNextPage: () => void;
+}) {
+  return (
+    <div className="skill-list-progress">
+      <p className="note" role="status" aria-live="polite">
+        已顯示 {shown} / {total} 個 Skill
+      </p>
+      {hasNextPage && (
+        <button type="button" disabled={isFetchingNextPage} onClick={onFetchNextPage}>
+          {isFetchingNextPage ? "載入中…" : "載入更多"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function WorkspaceSkills() {
-  const skills = useOwnSkills();
+  const skills = useOwnSkillPages();
   const remove = useDeleteSkill();
   const [message, setMessage] = useState("");
   const generateExposed = useGenerateEntryPoint();
   const creationExposed = useCreationEntryPoint();
-  const rows = skills.data?.skills ?? [];
+  const pages = skills.data?.pages ?? [];
+  const rows = Array.from(
+    new Map(pages.flatMap((page) => page.skills).map((skill) => [skill.skill_id, skill])).values(),
+  );
+  const lastPage = pages[pages.length - 1];
+  const total = Math.max(rows.length, lastPage?.total ?? 0);
   const hasSkills = rows.length > 0;
-  const isEmpty = Boolean(skills.data) && !hasSkills;
+  const isEmpty = skills.isSuccess && !hasSkills;
   useMenuDismiss();
 
   return (
@@ -234,7 +266,7 @@ export function WorkspaceSkills() {
       {isEmpty && <CreateHub generateExposed={generateExposed} creationExposed={creationExposed} />}
 
       {skills.isPending && <Loading what="資產庫內容" />}
-      <ReadFailure error={skills.error} what="資產庫內容" />
+      {!hasSkills && <ReadFailure error={skills.error} what="資產庫內容" />}
       {message && <p role="status">{message}</p>}
       {remove.error && (
         <ReadFailure error={remove.error} what="刪除 Skill">
@@ -259,11 +291,19 @@ export function WorkspaceSkills() {
         </ul>
       )}
 
-      {skills.data?.truncated && (
-        <p className="notice" role="status">
-          這個工作區的 Skill 共 {skills.data.total} 個，上面只列出前 {skills.data.limit} 個。
-          目前沒有翻頁，其餘的要用搜尋找。
-        </p>
+      {hasSkills && (
+        <SkillListProgress
+          shown={rows.length}
+          total={total}
+          hasNextPage={skills.hasNextPage}
+          isFetchingNextPage={skills.isFetchingNextPage}
+          onFetchNextPage={() => skills.fetchNextPage()}
+        />
+      )}
+      {skills.isFetchNextPageError && (
+        <ReadFailure error={skills.error} what="更多資產庫內容">
+          <p role="alert">沒有載入更多；已顯示的 {rows.length} 個仍可使用。可以再按一次。</p>
+        </ReadFailure>
       )}
 
       {hasSkills && (

@@ -489,7 +489,8 @@ test("WS-004 a gallery card flags only what stops the skill being taken away", a
   expect(flags("平台生成的")).toContain("平台生成，未經人工檢視");
   expect(flags("自己匯入的")).not.toContain("可下載");
   expect(text(), "a card that can be taken away still says so").not.toContain("可打包下載");
-  expect(text()).toContain("只列出前 100 個");
+  expect(text()).toContain("已顯示 4 / 137 個 Skill");
+  expect(button("載入更多")).toBeDefined();
 
   expect(text(), "清單有列的時候，那句『公開目錄的不在』才是它在做的事").toContain(
     "公開目錄的不在",

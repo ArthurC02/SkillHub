@@ -46,7 +46,7 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) ver ON true
 WHERE sk.workspace_id = @workspace_id AND sk.deleted_at IS NULL
-ORDER BY sk.created_at DESC
+ORDER BY sk.created_at DESC, sk.id DESC
 LIMIT @row_limit::int OFFSET @row_offset::int;
 
 -- name: ListForkedFromVersions :many

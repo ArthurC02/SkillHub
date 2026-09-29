@@ -77,6 +77,11 @@ type SkillListing struct {
 	Truncated bool
 }
 
+type SkillListingPage struct {
+	Limit  int32
+	Offset int32
+}
+
 type ListedSkill struct {
 	Skill        Skill
 	Risk         json.RawMessage
@@ -98,26 +103,26 @@ const (
 	ScanInherited     ScanState = "inherited"
 )
 
-const skillListingLimit = 100
-
-func (s *Service) Listing(ctx context.Context, workspaceID pgtype.UUID) (SkillListing, error) {
+func (s *Service) Listing(
+	ctx context.Context, workspaceID pgtype.UUID, page SkillListingPage,
+) (SkillListing, error) {
 	catalogs, err := s.catalogWorkspaceIDs(ctx, s.Pool)
 	if err != nil {
 		return SkillListing{}, err
 	}
 	q := gen.New(s.Pool)
 	rows, err := q.ListSkills(ctx, gen.ListSkillsParams{
-		WorkspaceID: workspaceID, RowLimit: skillListingLimit + 1,
+		WorkspaceID: workspaceID, RowLimit: page.Limit + 1, RowOffset: page.Offset,
 	})
 	if err != nil {
 		return SkillListing{}, err
 	}
-	listing := SkillListing{Truncated: len(rows) > skillListingLimit}
+	listing := SkillListing{Truncated: len(rows) > int(page.Limit)}
 	if len(rows) > 0 {
 		listing.Total = rows[0].TotalMatches
 	}
 	if listing.Truncated {
-		rows = rows[:skillListingLimit]
+		rows = rows[:page.Limit]
 	}
 	ancestors, err := readScanAncestors(ctx, q, rows, catalogs)
 	if err != nil {

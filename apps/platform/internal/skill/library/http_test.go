@@ -1,12 +1,53 @@
 package registry
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+func TestSkillListingPageMatchesThePublicBounds(t *testing.T) {
+	tests := []struct {
+		name    string
+		query   string
+		want    SkillListingPage
+		wantErr bool
+	}{
+		{name: "defaults", want: SkillListingPage{Limit: 100}},
+		{name: "lower limit", query: "?limit=1", want: SkillListingPage{Limit: 1}},
+		{name: "upper limit and zero offset", query: "?limit=100&offset=0", want: SkillListingPage{Limit: 100}},
+		{name: "largest offset", query: "?offset=2147483647", want: SkillListingPage{Limit: 100, Offset: 2147483647}},
+		{name: "limit below range", query: "?limit=0", wantErr: true},
+		{name: "limit above range", query: "?limit=101", wantErr: true},
+		{name: "empty limit", query: "?limit=", wantErr: true},
+		{name: "negative offset", query: "?offset=-1", wantErr: true},
+		{name: "offset above int4", query: "?offset=2147483648", wantErr: true},
+		{name: "empty offset", query: "?offset=", wantErr: true},
+		{name: "non-integer offset", query: "?offset=next", wantErr: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, "/skills"+tc.query, nil)
+			got, err := parseSkillListingPage(request)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("parseSkillListingPage(%q) = %+v, want an error", tc.query, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseSkillListingPage(%q): %v", tc.query, err)
+			}
+			if got != tc.want {
+				t.Errorf("parseSkillListingPage(%q) = %+v, want %+v", tc.query, got, tc.want)
+			}
+		})
+	}
+}
 
 func TestVerificationDistinguishesForkFromImport(t *testing.T) {
 	at := pgtype.Timestamptz{Time: time.Date(2026, 8, 1, 10, 0, 0, 0, time.UTC), Valid: true}

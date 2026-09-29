@@ -1,4 +1,10 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type { CorrectedSearchRequest, SetSkillCategoryRequest } from "@skillhub/api-client-ts";
 import { apiFetch } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
@@ -175,6 +181,23 @@ export function useOwnSkills() {
   return useQuery({
     queryKey: queryKeys.skills.own,
     queryFn: () => apiFetch<OwnSkills>("/skills"),
+  });
+}
+
+export const OWN_SKILL_PAGE_SIZE = 24;
+
+export function getOwnSkillPage(limit: number, offset: number) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  return apiFetch<OwnSkills>(`/skills?${params.toString()}`);
+}
+
+export function useOwnSkillPages(limit = OWN_SKILL_PAGE_SIZE) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.skills.ownPages(limit),
+    queryFn: ({ pageParam }) => getOwnSkillPage(limit, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _pages, lastPageParam) =>
+      lastPage.truncated ? lastPageParam + lastPage.skills.length : undefined,
   });
 }
 

@@ -32,27 +32,20 @@ export interface ListSkills200Response {
      */
     skills: Array<OwnSkill>;
     /**
-     * How many rows this endpoint will return at most. It is a
-     * server-side cap, not a page size the caller chose — there
-     * is no pagination here yet.
+     * The requested page size, or the default when it was omitted.
      * 
      */
     limit: number;
     /**
-     * True when the workspace holds more skills than `limit`.
-     * The cap existed before this field did, and skill 101 simply
-     * did not appear: a limit the platform enforces and the page
-     * cannot see is 02:NFR-001's other direction, and a list that
-     * is silently short reads as a complete answer.
+     * True when at least one more skill follows this page. The
+     * next page starts at the current offset plus `skills.length`.
      * 
      */
     truncated: boolean;
     /**
-     * How many skills the workspace holds, before `limit` cut the
-     * page down. 設計系統 §4.3 asks a truncated list for 「共 N 筆，
-     * 這裡顯示 M 筆，因為 X」; `truncated` above gave the reason and
-     * this is the count. A lower bound such as 「超過 100 個」
-     * cannot distinguish 101 from 10100.
+     * How many skills the workspace holds before pagination. This
+     * lets a client say how much of the library it has loaded
+     * without presenting a bounded page as the complete answer.
      * 
      * Exact: computed by `count(*) OVER ()` inside the listing
      * statement, so it is produced by the same predicate as the

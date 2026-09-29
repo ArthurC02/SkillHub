@@ -10,6 +10,7 @@ export {
   useEmbeddedSkillDetails,
   useEmbeddedSkillVersions,
   useOwnSkills,
+  useOwnSkillPages,
   useSkillSearch,
   useSkillVersions,
 } from "./skills.service";
