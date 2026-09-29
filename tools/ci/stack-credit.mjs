@@ -210,10 +210,16 @@ try {
     }).slice(0, 500),
   );
 
-  if (typeof imported.skill_id === "string") {
-    await page.goto(`${base}/skills/${imported.skill_id}`, {
-      waitUntil: "networkidle",
-    });
+  if (
+    typeof imported.skill_id === "string" &&
+    typeof imported.version_id === "string"
+  ) {
+    await page.goto(
+      `${base}/skills/${imported.skill_id}/versions/${imported.version_id}`,
+      {
+        waitUntil: "networkidle",
+      },
+    );
   }
   await page.locator("#skill-version-file").setInputFiles({
     name: `${importName}-v2.zip`,
@@ -260,6 +266,11 @@ try {
     }).slice(0, 500),
   );
 
+  if (typeof imported.skill_id === "string") {
+    await page.goto(`${base}/skills/${imported.skill_id}`, {
+      waitUntil: "networkidle",
+    });
+  }
   await page.locator("#skill-category").selectOption("data");
   const setCategoryResponse = await Promise.all([
     page.waitForResponse(
