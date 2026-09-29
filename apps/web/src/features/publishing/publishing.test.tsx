@@ -514,8 +514,12 @@ test("a successful owner read names a missing continuation target without select
   expect(container.querySelector('[aria-current="location"]')).toBeNull();
 });
 
-test("a link with two continuation targets explains the conflict and moves no focus", async () => {
-  publishingSearch = { artifact: ARTIFACT, publication: `${PUBLISHER}/${PUBLICATION}` };
+test("a link with multiple continuation targets explains the conflict and moves no focus", async () => {
+  publishingSearch = {
+    artifact: ARTIFACT,
+    publication: `${PUBLISHER}/${PUBLICATION}`,
+    bundleVersion: VERSION,
+  };
   stub({
     "/me/publisher": { body: OWN_PUBLISHER },
     "/me/publications": { body: OWN_PUBLICATIONS },
@@ -524,7 +528,7 @@ test("a link with two continuation targets explains the conflict and moves no fo
     "/downloads": { body: { downloads: [ARTIFACT_ROW] } },
   });
 
-  await render(<PublishingWorkspace />, () => text().includes("同時指定了兩個續接位置"));
+  await render(<PublishingWorkspace />, () => text().includes("同時指定了多個續接位置"));
 
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("一次只能續接一筆");
   expect(container.querySelector('[aria-current="location"]')).toBeNull();
