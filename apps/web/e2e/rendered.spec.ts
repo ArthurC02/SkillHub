@@ -134,7 +134,37 @@ test.describe("QA-008 composite pixels", () => {
   });
 });
 
+async function verifyVersionLinksOnPhone(page: Page, testInfo: TestInfo) {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/lab/test-cases/${TEST_CASE}`);
+
+  const versionLinks = page.locator('[data-role="evidence"]').getByRole("link", {
+    name: "查看這次的版本",
+  });
+  await expect(versionLinks).toHaveCount(2);
+  await expect(versionLinks.first()).toHaveAttribute(
+    "href",
+    `/skills/${SKILL}/versions/${VERSION}`,
+  );
+  const pageWidth = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(pageWidth.scroll).toBeLessThanOrEqual(pageWidth.client);
+  await page.screenshot({
+    path: testInfo.outputPath("test-case-version-links-phone.png"),
+    fullPage: true,
+  });
+}
+
 test.describe("QA-008 real layout", () => {
+  test("test case history keeps each Run's immutable Version in reach on a phone", async ({
+    page,
+  }, testInfo) => {
+    await verifyVersionLinksOnPhone(page, testInfo);
+  });
+
   test("workspace home keeps creation continuation in the platform priority order", async ({
     page,
   }, testInfo) => {

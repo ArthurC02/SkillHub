@@ -61,6 +61,14 @@ export function RunHistory({
                     "尚未結束"
                   )}
                 </p>
+                <p>
+                  <Link
+                    to="/skills/$skillId/versions/$versionId"
+                    params={{ skillId: run.skill_id, versionId: run.skill_version_id }}
+                  >
+                    查看這次的版本
+                  </Link>
+                </p>
                 <details>
                   <summary>Skill Version</summary>
                   <code>{run.skill_version_id}</code>

@@ -27,6 +27,7 @@ afterEach(async () => {
 const TEST_CASE = "33333333-3333-3333-3333-333333333333";
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const VERSION = "22222222-2222-2222-2222-222222222222";
+const OTHER_VERSION = "55555555-5555-5555-5555-555555555555";
 const OTHER_SKILL = "44444444-4444-4444-4444-444444444444";
 
 let listSearch: { skill?: string; version?: string } = {};
@@ -488,8 +489,18 @@ test("a pending suggestion says why its button is disabled", async () => {
   );
 });
 
-test("執行歷史 lists this test case's runs and links to each one", async () => {
-  const calls = stubPlatform({ runs: [RUN] });
+test("執行歷史 links each run to the exact immutable version that produced it", async () => {
+  const calls = stubPlatform({
+    runs: [
+      RUN,
+      {
+        ...RUN,
+        run_id: "88888888-8888-8888-8888-888888888888",
+        skill_version_id: OTHER_VERSION,
+        created_at: "2026-08-19T00:00:00Z",
+      },
+    ],
+  });
   await render();
   await waitFor(() => (container.textContent ?? "").includes("執行歷史"));
 
@@ -507,6 +518,16 @@ test("執行歷史 lists this test case's runs and links to each one", async () 
     .map((p) => p.textContent ?? "")
     .join("");
   expect(flat, "the version id is flat on the row again").not.toContain(VERSION);
+  const versionLinks = Array.from(
+    container.querySelectorAll<HTMLAnchorElement>(
+      'ul[data-role="evidence"] a[data-to="/skills/$skillId/versions/$versionId"]',
+    ),
+  );
+  expect(versionLinks.map((link) => JSON.parse(link.dataset.params ?? "{}"))).toEqual([
+    { skillId: SKILL, versionId: VERSION },
+    { skillId: SKILL, versionId: OTHER_VERSION },
+  ]);
+  expect(versionLinks.every((link) => link.textContent?.includes("查看這次的版本"))).toBe(true);
   expect(container.textContent).toContain("執行完成");
   expect(container.textContent).toContain("任務判定：符合");
   const t = container.textContent ?? "";
