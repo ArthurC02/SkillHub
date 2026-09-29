@@ -1,0 +1,123 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "workspace-activity-owner-contract-v2",
+  "proposer": "codex",
+  "requirement_id": "workspace-activity-owner-contract-v2",
+  "status": "submitted",
+  "change_classification": "material",
+  "submitted_at": "2026-09-29T12:44:26.537322Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "9f7eee9cdac7b3a015ba48c9d1069b71745fe66b",
+    "registry_digest": "sha256:9fb2cf89d1dab47e3999989f41c567d844e53aeebe1a683bdd10ef3e40cf8909"
+  },
+  "affected_contexts": [
+    "identity",
+    "run",
+    "creation",
+    "packaging",
+    "publishing"
+  ],
+  "rule_ids": [
+    "run-terminal-status-is-final",
+    "creation-reaches-its-collaborators-through-inversion"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "none-new-context",
+    "invariant": "Identity resolves the authenticated Session's Workspace only. Run, Creation, Packaging and Publishing remain authoritative for their own Activity facts; the HTTP composition layer may merge but never reinterpret them.",
+    "evidence": [
+      "apps/platform/internal/creator/workspace/doc.go:1-3",
+      "apps/platform/internal/trial/execution/doc.go:1-3",
+      "apps/platform/internal/creator/creation/doc.go:1-3",
+      "apps/platform/internal/skill/delivery/doc.go:1-4",
+      "apps/platform/internal/skill/publishing/doc.go:1-4"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Each lifecycle owner exposes a narrow Workspace-scoped Activity facts reader. The composition layer receives those readers through the existing composition root, queries them with the Session-derived Workspace, merges already-classified facts, applies the public cursor and maps typed continuation targets to transport without importing lifecycle owners into one another.",
+    "consistency": "Synchronous live reads. Pagination is stable for an unchanged dataset and does not claim a cross-request snapshot. Any contracted owner read failure fails closed with HTTP 503, complete=false and unavailable_sources, without items or a cursor.",
+    "prohibited_dependencies": [
+      "browser fan-out across lifecycle endpoints",
+      "composition-owned interpretation of lifecycle statuses",
+      "cross-context SQL or generated query row sharing",
+      "one lifecycle context importing another to build Activity",
+      "analytics events used as lifecycle truth",
+      "silent omission of an unavailable contracted source"
+    ],
+    "evidence": [
+      "docs/development/platform-ddd-practices.md:40-57",
+      "docs/development/platform-ddd-practices.md:74",
+      "docs/development/platform-ddd-practices.md:90",
+      "docs/design/platform-experience.md:267-278"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Returning creators need one place to resume long work without creating a second state machine or losing the exact source object.",
+      "Run execution, evaluation, Creation pending actions, Artifact scan and availability, Publication status, Release recency and Catalog exposure are distinct facts.",
+      "A cross-source feed needs one authorization boundary, total ordering, explicit source coverage and failure semantics that existing independent lists cannot provide.",
+      "Current precise continuations already exist for Run, Creation Session, Artifact and Skill Publication, while Bundle selection does not yet identify an existing Bundle.",
+      "The current Run-only UI must keep its scope disclosure until all contracted owner facts are implemented and proven."
+    ],
+    "decision": "Use no new Aggregate, event stream or persisted Activity Context. The first complete source scope is Run, Creation Session, Packaging Artifact and Skill Publication with its latest Release; Bundle Publication and Catalog exposure are excluded. Each owner returns a minimal read DTO with stable identity, display summary, original status, owner classification, authoritative last_updated_at and one typed continuation target. Packaging quarantined remains a defensive mapping rather than evidence of an observable long-running phase. Publishing proposes max(status_changed_at, latest_released_at) as its recency rule for owner review, while Run and Packaging time semantics remain explicit approval blockers. GET /me/activity performs only Workspace-scoped fan-in, deterministic keyset merge, coverage reporting and transport mapping. No tactical domain pattern is introduced because this is a read projection.",
+    "invariants_preserved": [
+      "Workspace scope comes from the authenticated Session and is applied by every owner reader.",
+      "Each lifecycle Context remains authoritative for status, actionability and update-time meaning.",
+      "Activity is read-only and never changes, repairs or advances source state.",
+      "Run execution and evaluation remain separate axes.",
+      "Artifact scan status and availability remain separate facts.",
+      "Publication, Release and Catalog exposure remain separate facts.",
+      "Unknown, unavailable, absent and empty remain distinguishable."
+    ],
+    "rejected_alternatives": [
+      "A new persisted Activity Context: current evidence requires a query projection, not another state source with replay and consistency obligations.",
+      "Browser-side composition: it cannot establish one authorization boundary, global cursor or truthful source coverage.",
+      "Entrypoint status mapping: it would move owner decisions into transport orchestration.",
+      "A single cross-context SQL query: it bypasses owner Services and hard-codes unrelated schemas into one read path.",
+      "Treating Packaging quarantined as a normal long-running phase: the standard path creates and marks the Artifact available in one transaction.",
+      "Including Bundle Publication in the first scope: the current management search selects a member Version, not an existing Bundle.",
+      "Treating Catalog exposure as Publishing recency: exposure is an independent operator-owned decision."
+    ],
+    "proof_obligations": [
+      "workspace-isolation",
+      "owner-classification",
+      "minimal-item-contract",
+      "global-cursor",
+      "source-failure-visible",
+      "openapi-additive",
+      "first-source-scope",
+      "typed-continuations",
+      "source-coverage-gate",
+      "run-terminal-rule",
+      "creation-inversion-rule"
+    ],
+    "counterfactual_check": "source-failure-visible"
+  },
+  "event_change": null,
+  "contract_change": {
+    "kind": "additive-public-http-read",
+    "producer": "platform-api",
+    "consumers": [
+      "web"
+    ],
+    "description": "Add GET /me/activity as a Session-authenticated Workspace read endpoint with a discriminated item union, typed continuation union, deterministic global keyset cursor and explicit source coverage.",
+    "compatibility": "Additive. Existing lifecycle list endpoints and /workspace/runs remain compatible. Unknown item kinds remain displayable through stable summary fields, and clients never infer actionability from raw status.",
+    "data_classification": "Workspace-scoped metadata only; excludes Creation Snapshot and prompt, Trace payload, evaluation text, package contents and exposure review findings.",
+    "retry_behavior": "Read-only and idempotent. Any contracted owner read failure returns HTTP 503 with complete=false and unavailable_sources, without items or next_cursor; clients retry the whole read."
+  },
+  "registry_updates": [],
+  "risk_flags": [
+    "cross_context",
+    "public_contract"
+  ],
+  "open_questions": [
+    "Which Run changes define authoritative last_updated_at, and must the owner persist a new value?",
+    "Which Packaging state-change timestamp must be added, and how is clock-derived expiry represented without inventing a stored transition?",
+    "What classification and single continuation action does each owner return for every supported state and attached fact?"
+  ],
+  "approvals": []
+}

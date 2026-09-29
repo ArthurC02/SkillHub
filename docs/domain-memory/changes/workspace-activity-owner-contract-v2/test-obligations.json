@@ -1,0 +1,106 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "workspace-activity-owner-contract-v2",
+  "proposal_id": "workspace-activity-owner-contract-v2",
+  "obligations": [
+    {
+      "id": "workspace-isolation",
+      "source_type": "acceptance-criterion",
+      "source_id": "workspace-scoped",
+      "expected_outcome": "A Session sees Activity facts only from its resolved Workspace; foreign IDs yield no items or existence leak.",
+      "level": "integration",
+      "status": "planned",
+      "check": "platform Activity integration test with two Workspaces and every contracted source kind"
+    },
+    {
+      "id": "owner-classification",
+      "source_type": "acceptance-criterion",
+      "source_id": "owner-facts-only",
+      "expected_outcome": "Every owner maps all supported states and attached facts to classification, authoritative time and one continuation; composition contains no owner-status switch.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "owner decision-table tests plus composition-source inspection"
+    },
+    {
+      "id": "minimal-item-contract",
+      "source_type": "acceptance-criterion",
+      "source_id": "actionable-minimum",
+      "expected_outcome": "Every item carries only stable identity, summary, classification, original status, authoritative time and typed continuation; sensitive and bulky content is absent.",
+      "level": "contract",
+      "status": "planned",
+      "check": "OpenAPI schema and representative serialization tests"
+    },
+    {
+      "id": "global-cursor",
+      "source_type": "acceptance-criterion",
+      "source_id": "stable-global-pagination",
+      "expected_outcome": "Group, equal-timestamp and page boundaries return every unchanged multi-source item exactly once in total order.",
+      "level": "integration",
+      "status": "planned",
+      "check": "multi-source keyset boundary-value integration test"
+    },
+    {
+      "id": "source-failure-visible",
+      "source_type": "acceptance-criterion",
+      "source_id": "incomplete-is-visible",
+      "expected_outcome": "Fault injection for each contracted reader returns HTTP 503, complete=false and that unavailable source, with no items or cursor.",
+      "level": "integration",
+      "status": "planned",
+      "check": "owner-reader failure decision-table integration test"
+    },
+    {
+      "id": "openapi-additive",
+      "source_type": "acceptance-criterion",
+      "source_id": "openapi-first-compatible",
+      "expected_outcome": "OpenAPI generation and compatibility checks accept the additive contract, generated types match it and existing clients remain valid.",
+      "level": "contract",
+      "status": "planned",
+      "check": "task gen:check and public contract compatibility gate"
+    },
+    {
+      "id": "first-source-scope",
+      "source_type": "acceptance-criterion",
+      "source_id": "first-source-scope-is-explicit",
+      "expected_outcome": "Fixtures cover exactly Run, Creation Session, Packaging Artifact and Skill Publication; Bundle and Catalog exposure are absent from the first contract.",
+      "level": "contract",
+      "status": "planned",
+      "check": "OpenAPI discriminator and source-coverage fixture test"
+    },
+    {
+      "id": "typed-continuations",
+      "source_type": "acceptance-criterion",
+      "source_id": "continuations-resolve-existing-context",
+      "expected_outcome": "Each continuation kind opens its exact existing context, and a missing source reports absence without pretending a list fallback is exact.",
+      "level": "system",
+      "status": "planned",
+      "check": "web route tests for run, session, artifact, publication and missing targets"
+    },
+    {
+      "id": "source-coverage-gate",
+      "source_type": "acceptance-criterion",
+      "source_id": "all-contracted-sources-before-activity",
+      "expected_outcome": "The UI keeps the trial-only label and disclosure until all four owner sources have contracted facts, authoritative times and continuations.",
+      "level": "system",
+      "status": "planned",
+      "check": "web route and rendered source-coverage gate tests"
+    },
+    {
+      "id": "run-terminal-rule",
+      "source_type": "rule",
+      "source_id": "run-terminal-status-is-final",
+      "expected_outcome": "Activity reads never imply a lifecycle transition after a Run reaches a terminal status.",
+      "level": "aggregate",
+      "status": "planned",
+      "check": "Run owner mapping table with terminal-state transition tests"
+    },
+    {
+      "id": "creation-inversion-rule",
+      "source_type": "rule",
+      "source_id": "creation-reaches-its-collaborators-through-inversion",
+      "expected_outcome": "Creation exposes its facts through an injected reader without importing another lifecycle Context or being imported by one.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "platform depguard and composition wiring test"
+    }
+  ]
+}

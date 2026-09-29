@@ -1,0 +1,44 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "workspace-activity-owner-contract-v2",
+  "proposal_id": "workspace-activity-owner-contract-v2",
+  "registry_revision": {
+    "observed_commit": "9f7eee9cdac7b3a015ba48c9d1069b71745fe66b",
+    "registry_digest": "sha256:9fb2cf89d1dab47e3999989f41c567d844e53aeebe1a683bdd10ef3e40cf8909"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [
+    "docs/design/platform-experience.md",
+    "docs/design/information-architecture.md",
+    "docs/development/platform-ddd-practices.md",
+    "docs/domain-memory/registry/contexts.json",
+    "docs/domain-memory/registry/rules.json",
+    "apps/platform/internal/trial/execution/statemachine.go",
+    "apps/platform/internal/trial/execution/service.go",
+    "apps/platform/internal/creator/creation/state.go",
+    "apps/platform/internal/creator/creation/service.go",
+    "apps/platform/internal/skill/delivery/packaging.go",
+    "apps/platform/internal/skill/publishing/service.go",
+    "apps/platform/internal/skill/publishing/exposure.go",
+    "apps/web/src/features/publishing/PublishingWorkspace.page.tsx",
+    "apps/web/src/features/packaging/downloads/DownloadsSection.tsx",
+    "contracts/openapi/public.yaml",
+    "db/queries/runs.sql",
+    "db/queries/creation.sql",
+    "db/queries/packaging.sql",
+    "db/queries/publishing.sql"
+  ],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "Run owner 尚未定義跨生命週期、評估、取消要求與清理的單一 Activity 更新時間。",
+    "Packaging 沒有掃描狀態變更時間；到期是時鐘推得的可得性，不是已記錄的狀態事件。",
+    "四個 owner 的完整分類與單一續作動作仍待 developer review。",
+    "Publishing 的 max(status_changed_at, latest_released_at) 只是待審規則，Catalog exposure 不包含在該時間內。",
+    "本 package 尚未取得核准、測試 attestation、SCM attestation 或 Registry update。"
+  ]
+}

@@ -3,7 +3,7 @@
   "proposal_id": "workspace-activity-owner-facts",
   "proposer": "codex",
   "requirement_id": "workspace-activity-is-owner-backed",
-  "status": "submitted",
+  "status": "superseded",
   "change_classification": "material",
   "submitted_at": "2026-09-28T20:22:44.996328Z",
   "verified_at": null,
@@ -111,5 +111,9 @@
     "Should Publishing project one Publication with its latest Release, and should Bundle Publication ship in the same first scope?",
     "Which stable deep links select one Packaging Artifact and one Publication in the existing management spaces?"
   ],
-  "approvals": []
+  "approvals": [],
+  "superseded_from_status": "submitted",
+  "superseded_at": "2026-09-29T12:44:32.044712Z",
+  "superseded_reason": "Repository evidence now shows exact Artifact and Skill Publication continuations, Packaging quarantined is not a normal observable long-running phase, and the first source scope must exclude Bundle and Catalog exposure until their own contracts exist.",
+  "superseded_by": "workspace-activity-owner-contract-v2"
 }
