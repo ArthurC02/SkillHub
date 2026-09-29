@@ -277,6 +277,34 @@ async function verifyPublicationAudienceOnPhone(page: Page, testInfo: TestInfo) 
   expect(width.scroll).toBeLessThanOrEqual(width.client);
 }
 
+async function verifyPublishingWorkspaceMapOnPhone(page: Page, testInfo: TestInfo) {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto("/workspace/downloads");
+
+  const map = page.getByRole("navigation", { name: "發佈工作區導覽" });
+  await expect(map.getByRole("link")).toHaveCount(3);
+  await expect(map.getByRole("link", { name: /單一 Skill/ })).toHaveAttribute(
+    "href",
+    "#skill-publications",
+  );
+  await expect(map.getByRole("link", { name: /Bundle/ })).toHaveAttribute(
+    "href",
+    "#bundle-workspace",
+  );
+  await expect(map.getByRole("link", { name: /交付/ })).toHaveAttribute(
+    "href",
+    "#delivery-history",
+  );
+
+  await map.getByRole("link", { name: /Bundle/ }).click();
+  await expect(page.locator("#bundle-workspace")).toBeInViewport();
+  await page.screenshot({
+    path: testInfo.outputPath("publishing-workspace-map-phone.png"),
+    fullPage: true,
+  });
+}
+
 test.describe("QA-008 real layout", () => {
   test("test case history keeps each Run's immutable Version in reach on a phone", async ({
     page,
@@ -311,6 +339,12 @@ test.describe("QA-008 real layout", () => {
     page,
   }, testInfo) => {
     await verifyBundleContinuationOnPhone(page, testInfo);
+  });
+
+  test("the publishing workspace map keeps each product lane reachable on a phone", async ({
+    page,
+  }, testInfo) => {
+    await verifyPublishingWorkspaceMapOnPhone(page, testInfo);
   });
 
   for (const [name, url] of PHONE_ROUTES) {

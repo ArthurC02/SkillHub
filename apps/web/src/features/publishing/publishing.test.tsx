@@ -164,6 +164,18 @@ test("the publishing space brings identity, Bundles, and delivery records into o
   await render(<PublishingWorkspace />, () => text().includes("還沒有打包過任何套件"));
 
   expect(container.querySelector("h1")?.textContent).toBe("發佈與交付");
+  const workspaceMap = container.querySelector('nav[aria-label="發佈工作區導覽"]');
+  expect(workspaceMap).not.toBeNull();
+  expect(
+    Array.from(workspaceMap?.querySelectorAll("a") ?? []).map((link) => [
+      link.getAttribute("href"),
+      link.textContent?.replace(/\s+/g, " ").trim(),
+    ]),
+  ).toEqual([
+    ["#skill-publications", "單一 Skill 不可變版本 → Publication → Release"],
+    ["#bundle-workspace", "Bundle 成員版本 → Bundle Version → Release"],
+    ["#delivery-history", "交付 Artifact → 可得條件 → 下載紀錄"],
+  ]);
   const sections = Array.from(container.querySelectorAll("h2")).map(
     (heading) => heading.textContent,
   );
@@ -636,6 +648,7 @@ test("a publication continuation link focuses only the exact owner row after it 
   expect(current?.textContent).toContain(PUBLICATION);
   expect(current?.textContent).toContain("續接位置");
   expect(document.activeElement).toBe(current);
+  expect(container.querySelector('nav[aria-label="發佈工作區導覽"]')).toBeNull();
 });
 
 test("an artifact continuation link focuses the exact package row after it loads", async () => {

@@ -3,12 +3,58 @@
 }
 
 .publishing-workspace-header {
-  max-width: 760px;
+  max-width: 960px;
   margin-bottom: 32px;
 }
 
 .publishing-workspace-header > .note {
   margin-bottom: 4px;
+}
+
+.publishing-workspace-map {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.publishing-workspace-map a {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  color: var(--text);
+  text-decoration: none;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-rest);
+}
+
+.publishing-workspace-map a:hover {
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow-lift);
+}
+
+.publishing-workspace-map a:focus-visible {
+  border-color: var(--accent-border);
+}
+
+.publishing-workspace-map strong {
+  color: var(--link);
+  font-size: 0.875rem;
+}
+
+.publishing-workspace-map span {
+  overflow-wrap: anywhere;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.publishing-workspace #skill-publications,
+.publishing-workspace #bundle-workspace,
+.publishing-workspace #delivery-history {
+  scroll-margin-top: 24px;
 }
 
 .publishing-workspace-grid {
@@ -145,6 +191,10 @@
 }
 
 @media (max-width: 840px) {
+  .publishing-workspace-map {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .publishing-workspace-grid {
     grid-template-columns: minmax(0, 1fr);
   }

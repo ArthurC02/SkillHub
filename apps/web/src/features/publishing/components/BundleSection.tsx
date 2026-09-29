@@ -100,7 +100,7 @@ export function BundleSection({ selectedVersion }: { selectedVersion?: string })
   }, [choices]);
 
   return (
-    <section>
+    <section id="bundle-workspace">
       <h2>Bundle</h2>
       <p className="note">
         每個 Bundle 是一個持續營運的產品單位；版本是不可變快照，最新建立版本不一定等於目前公開的

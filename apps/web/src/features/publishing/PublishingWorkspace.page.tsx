@@ -16,6 +16,7 @@ export function PublishingWorkspace() {
   const { artifact, publication, bundleVersion } = useSearch({ from: "/workspace/downloads" });
   const targetCount = [artifact, publication, bundleVersion].filter(Boolean).length;
   const conflictingTargets = targetCount > 1;
+  const showWorkspaceMap = targetCount === 0 || conflictingTargets;
 
   return (
     <section className="publishing-workspace">
@@ -37,6 +38,7 @@ export function PublishingWorkspace() {
         <Link className="action" to="/library">
           選擇要發佈的 Skill
         </Link>
+        {showWorkspaceMap && <PublishingWorkspaceMap />}
       </header>
 
       <div className="publishing-workspace-grid">
@@ -60,6 +62,22 @@ export function PublishingWorkspace() {
   );
 }
 
+function PublishingWorkspaceMap() {
+  return (
+    <nav className="publishing-workspace-map" aria-label="發佈工作區導覽">
+      <a href="#skill-publications">
+        <strong>單一 Skill</strong> <span>不可變版本 → Publication → Release</span>
+      </a>
+      <a href="#bundle-workspace">
+        <strong>Bundle</strong> <span>成員版本 → Bundle Version → Release</span>
+      </a>
+      <a href="#delivery-history">
+        <strong>交付</strong> <span>Artifact → 可得條件 → 下載紀錄</span>
+      </a>
+    </nav>
+  );
+}
+
 function PublicationOverview({ selectedPublication }: { selectedPublication?: string }) {
   const overview = useOwnPublications();
   const publications = overview.data?.publications ?? [];
@@ -70,7 +88,7 @@ function PublicationOverview({ selectedPublication }: { selectedPublication?: st
   useContinuationFocus(selectedPublication, Boolean(selected), selectedElement);
 
   return (
-    <section aria-labelledby="publication-overview-title">
+    <section id="skill-publications" aria-labelledby="publication-overview-title">
       <h2 id="publication-overview-title">Skill 發佈</h2>
       <p className="note">
         每筆 Publication 都指向一個不可變 Release；Catalog 是否曝光仍由營運者另行審核。

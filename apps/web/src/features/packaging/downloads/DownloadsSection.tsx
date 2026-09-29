@@ -33,7 +33,7 @@ export function Downloads({
   useContinuationFocus(selectedArtifact, Boolean(selected), selectedElement);
 
   return (
-    <section>
+    <section id={embedded ? "delivery-history" : undefined}>
       <Heading>{embedded ? "交付紀錄" : "下載紀錄"}</Heading>
       <p className="note" data-role="teaching">
         這個工作區打包過的套件，新的在上面。到期的仍然列在這裡並標示已過期——那與「沒有這一筆」是兩個不同的答案。
