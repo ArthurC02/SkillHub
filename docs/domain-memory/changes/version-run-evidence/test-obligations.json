@@ -1,0 +1,61 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "version-run-evidence",
+  "proposal_id": "version-run-evidence",
+  "obligations": [
+    {
+      "id": "exact-version-filter",
+      "source_type": "acceptance-criterion",
+      "source_id": "exact-version-filter",
+      "expected_outcome": "Mixed Runs from two Versions are narrowed to the requested Version before limit and offset, including a matching Run older than hundreds of unrelated rows.",
+      "level": "integration",
+      "status": "executed",
+      "check": "focused platform Run history integration test"
+    },
+    {
+      "id": "filter-never-widens",
+      "source_type": "acceptance-criterion",
+      "source_id": "filter-never-widens",
+      "expected_outcome": "Malformed, foreign-Workspace, and nonexistent Version filters return no Runs and never fall back to the unfiltered history.",
+      "level": "security",
+      "status": "executed",
+      "check": "platform filter decision-table integration test"
+    },
+    {
+      "id": "filters-intersect",
+      "source_type": "acceptance-criterion",
+      "source_id": "filters-intersect",
+      "expected_outcome": "A request carrying Version and Test Case filters returns only their intersection and preserves filtered pagination.",
+      "level": "integration",
+      "status": "executed",
+      "check": "platform combined-filter integration test"
+    },
+    {
+      "id": "version-evidence-states",
+      "source_type": "acceptance-criterion",
+      "source_id": "version-evidence-states",
+      "expected_outcome": "The Version workspace renders distinct loading, failure, empty, in-flight, not-evaluated, and evaluated states without equating succeeded with met.",
+      "level": "system",
+      "status": "executed",
+      "check": "web Version workspace component tests"
+    },
+    {
+      "id": "version-evidence-continuation",
+      "source_type": "acceptance-criterion",
+      "source_id": "version-evidence-continuation",
+      "expected_outcome": "Each Version evidence row has exact Run and optional Test Case links, and the 375px rendered page has no horizontal overflow.",
+      "level": "system",
+      "status": "executed",
+      "check": "web unit links plus Chromium rendered test"
+    },
+    {
+      "id": "additive-contract",
+      "source_type": "acceptance-criterion",
+      "source_id": "additive-contract",
+      "expected_outcome": "OpenAPI and generated clients expose the optional parameter while existing Run list calls and contract drift checks remain valid.",
+      "level": "contract",
+      "status": "executed",
+      "check": "task gen:check and existing Run history regression suites"
+    }
+  ]
+}

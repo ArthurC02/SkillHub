@@ -691,6 +691,18 @@ func (c *client) listRunsForTestCase(t *testing.T, testCaseID string) []runListV
 	return out.Runs
 }
 
+func (c *client) listRunsForVersion(t *testing.T, versionID string) []runListView {
+	t.Helper()
+	var out struct {
+		Runs []runListView `json:"runs"`
+	}
+	url := c.base + "/runs?skill_version_id=" + versionID
+	if code := getJSON(t, c.Client, url, &out); code != http.StatusOK {
+		t.Fatalf("GET %s: got %d", url, code)
+	}
+	return out.Runs
+}
+
 func assertFilteredHistoryIsMyRun(t *testing.T, f fixture, mineRunID, otherRunID string) {
 	t.Helper()
 	rows := f.listRunsForTestCase(t, f.testCaseID)
@@ -801,6 +813,115 @@ func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
 	}
 	if !strings.Contains(indexDefinition, "(test_case_snapshot_id, created_at DESC)") {
 		t.Fatalf("run history index has the wrong columns: %s", indexDefinition)
+	}
+}
+
+func assertVersionHistoryRows(
+	t *testing.T, rows []runListView, versionID, mineRunID, otherCaseRunID, otherVersionRunID string,
+) {
+	t.Helper()
+	if len(rows) != 2 {
+		t.Fatalf("version history = %d runs, want 2: %+v", len(rows), rows)
+	}
+	for _, row := range rows {
+		if row.SkillVersionID != versionID || row.RunID == otherVersionRunID {
+			t.Errorf("version filter returned another version: %+v", row)
+		}
+	}
+	if rows[0].RunID != otherCaseRunID || rows[1].RunID != mineRunID {
+		t.Errorf("version history is not newest first: %+v", rows)
+	}
+}
+
+func assertVersionFilterMatchesNothing(
+	t *testing.T, a *api, pool *pgxpool.Pool, tag string, f fixture,
+) {
+	t.Helper()
+	stranger := newFixture(t, a, pool, tag+"-stranger")
+	for name, versionID := range map[string]string{
+		"another workspace": f.versionID,
+		"invalid":           "not-a-uuid",
+		"empty":             "",
+		"unknown":           "99999999-9999-4999-8999-999999999999",
+	} {
+		client := f
+		if name == "another workspace" {
+			client = stranger
+		}
+		if got := client.listRunsForVersion(t, versionID); len(got) != 0 {
+			t.Errorf("%s skill_version_id returned %d runs, want 0: %+v", name, len(got), got)
+		}
+	}
+}
+
+func TestTheRunHistoryCanBeNarrowedToOneImmutableVersion(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	tag := uniqueWorklistLabel("history-per-version")
+	f := newFixture(t, a, pool, tag)
+
+	otherVersion := seedVersion(t, pool, f.workspaceID, f.skillID, "hash-"+tag+"-other")
+	other := f
+	other.versionID = uuidText(otherVersion.ID)
+	otherCase := f
+	otherCase.testCaseID = seedTestCase(t, pool, f.workspaceID, f.skillID)
+
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	mineRunID := seedRunAt(t, tx, f, "succeeded", "2020-01-01T10:00:00Z")
+	otherVersionRunID := seedRunAt(t, tx, other, "succeeded", "2020-01-01T11:00:00Z")
+	otherCaseRunID := seedRunAt(t, tx, otherCase, "succeeded", "2020-01-01T12:00:00Z")
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	rows := f.listRunsForVersion(t, f.versionID)
+	assertVersionHistoryRows(t, rows, f.versionID, mineRunID, otherCaseRunID, otherVersionRunID)
+	assertVersionFilterMatchesNothing(t, a, pool, tag, f)
+
+	var intersected struct {
+		Runs []runListView `json:"runs"`
+	}
+	url := f.base + "/runs?skill_version_id=" + f.versionID + "&test_case_id=" + f.testCaseID
+	if code := getJSON(t, f.Client, url, &intersected); code != http.StatusOK {
+		t.Fatalf("GET intersected history: got %d", code)
+	}
+	if len(intersected.Runs) != 1 || intersected.Runs[0].RunID != mineRunID {
+		t.Fatalf("combined filters did not intersect: %+v", intersected.Runs)
+	}
+
+	otherSnapshotID := snapshotIDOfRun(t, pool, otherVersionRunID)
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, created_at)
+		SELECT $1, $2, $3, 'test', clock_timestamp() + make_interval(secs => n)
+		FROM generate_series(1, 500) AS n`,
+		mustUUID(t, f.workspaceID), mustUUID(t, other.versionID), mustUUID(t, otherSnapshotID),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	mineSnapshotID := snapshotIDOfRun(t, pool, mineRunID)
+	var newerMatchingID string
+	if err := pool.QueryRow(context.Background(), `
+		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, created_at)
+		VALUES ($1, $2, $3, 'test', clock_timestamp() + interval '1 hour')
+		RETURNING id::text`, mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, mineSnapshotID),
+	).Scan(&newerMatchingID); err != nil {
+		t.Fatal(err)
+	}
+	var secondPage struct {
+		Runs []runListView `json:"runs"`
+	}
+	url = f.base + "/runs?skill_version_id=" + f.versionID + "&limit=1&offset=1"
+	if code := getJSON(t, f.Client, url, &secondPage); code != http.StatusOK {
+		t.Fatalf("GET filtered second page: got %d", code)
+	}
+	if len(secondPage.Runs) != 1 || secondPage.Runs[0].RunID != otherCaseRunID || secondPage.Runs[0].RunID == newerMatchingID {
+		t.Fatalf("version filter pagination was applied before filtering: %+v", secondPage.Runs)
 	}
 }
 

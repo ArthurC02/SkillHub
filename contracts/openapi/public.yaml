@@ -3968,6 +3968,18 @@ paths:
         of runs would make the list the heaviest read in the API for information
         nobody reads a page of.
       parameters:
+        - name: skill_version_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+          description: |
+            Only runs of this exact immutable Skill Version. Filtering happens
+            before ordering and pagination, so an empty page is evidence about
+            this version rather than about whichever runs happened to be fetched.
+            Workspace scoped like the unfiltered list; another workspace's id,
+            an unknown id, an unreadable id, or a present-but-empty value matches
+            nothing and returns an empty `runs` array. When `test_case_id` is also
+            present, both filters must match the same run.
         - name: test_case_id
           in: query
           required: false
@@ -4021,10 +4033,11 @@ paths:
             value reaches the statement as an int4 OFFSET, so a larger offset is
             refused instead of wrapping.
 
-            Both parameters are judged before `test_case_id`, so an out-of-schema
-            page size is a 400 even when the filter is also unreadable - the empty
-            list an unreadable filter answers with must not become the answer to a
-            request whose paging was refused.
+            Both parameters are judged before `skill_version_id` and
+            `test_case_id`, so an out-of-schema page size is a 400 even when a
+            filter is also unreadable - the empty list an unreadable filter
+            answers with must not become the answer to a request whose paging was
+            refused.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

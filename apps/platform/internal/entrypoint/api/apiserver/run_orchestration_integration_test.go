@@ -1606,6 +1606,8 @@ func TestRunHistoryRefusesOutOfSchemaPaging(t *testing.T) {
 
 		"test_case_id=not-a-uuid&limit=0",
 		"test_case_id=not-a-uuid&offset=-1",
+		"skill_version_id=not-a-uuid&limit=0",
+		"skill_version_id=not-a-uuid&offset=-1",
 	} {
 		if code, body := f.doJSON(t, http.MethodGet, "/runs?"+query, ""); code != http.StatusBadRequest {
 			t.Errorf("GET /runs?%s: got %d, want 400 (body %v)", query, code, body)

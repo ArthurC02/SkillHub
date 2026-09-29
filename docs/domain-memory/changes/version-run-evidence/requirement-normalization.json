@@ -1,0 +1,57 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "version-run-evidence",
+  "status": "draft",
+  "intent": "Let a Skill owner judge one immutable Version from its complete Run evidence before rerunning, revising, packaging, or publishing it.",
+  "actor": "authenticated Skill owner",
+  "observable_outcome": "The exact Version workspace lists only that Version's Workspace-scoped Runs, keeps execution and evaluation distinct, and exposes truthful empty, loading, failure, in-flight, and pagination states.",
+  "acceptance_criteria": [
+    {
+      "id": "exact-version-filter",
+      "statement": "GET /runs?skill_version_id=<id> returns only Runs whose immutable skill_version_id exactly matches within the Session-resolved Workspace, with filtering applied before limit and offset."
+    },
+    {
+      "id": "filter-never-widens",
+      "statement": "An invalid, absent-from-Workspace, or foreign skill_version_id produces an empty result rather than falling back to unfiltered Workspace history or leaking another Workspace's Runs."
+    },
+    {
+      "id": "filters-intersect",
+      "statement": "When skill_version_id and test_case_id are both present, a Run must match both filters."
+    },
+    {
+      "id": "version-evidence-states",
+      "statement": "The exact Version page distinguishes loading, read failure, no Runs, in-flight Runs, terminal execution without a verdict, and evaluated Runs without treating execution success as acceptance success."
+    },
+    {
+      "id": "version-evidence-continuation",
+      "statement": "Every visible Run row links to the exact Run evidence and, when known, its Test Case while the page remains anchored to the current immutable Version."
+    },
+    {
+      "id": "additive-contract",
+      "statement": "The optional query parameter is backward compatible, generated clients remain current, and existing unfiltered and test-case-filtered callers keep their behavior."
+    }
+  ],
+  "candidate_terms": [
+    "Run",
+    "Skill Version",
+    "verification evidence"
+  ],
+  "open_questions": [],
+  "risk_flags": [
+    "public_contract"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/design/platform-experience.md:181-191",
+    "docs/design/platform-experience.md:251-265",
+    "docs/design/information-architecture.md:50-52",
+    "contracts/openapi/public.yaml:3957-3980",
+    "apps/platform/internal/trial/execution/doc.go:1-2",
+    "apps/platform/internal/trial/execution/http.go:373-399",
+    "apps/platform/internal/trial/execution/service.go:545-592",
+    "db/queries/runs.sql:14-22",
+    "apps/web/src/features/skill/version/SkillVersion.page.tsx:68-83"
+  ]
+}

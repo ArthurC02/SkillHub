@@ -385,6 +385,13 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	var skillVersionID pgtype.UUID
+	if r.URL.Query().Has("skill_version_id") {
+		if err := skillVersionID.Scan(r.URL.Query().Get("skill_version_id")); err != nil {
+			httpx.WriteJSON(w, http.StatusOK, runListResponse{Runs: []runListItem{}})
+			return
+		}
+	}
 	var testCaseID pgtype.UUID
 	if raw := r.URL.Query().Get("test_case_id"); raw != "" {
 		if err := testCaseID.Scan(raw); err != nil {
@@ -393,7 +400,12 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	rows, err := h.Svc.List(r.Context(), ws.ID, testCaseID, limit, offset)
+	rows, err := h.Svc.List(r.Context(), ws.ID, runListFilter{
+		SkillVersionID: skillVersionID,
+		TestCaseID:     testCaseID,
+		Limit:          limit,
+		Offset:         offset,
+	})
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "run list failed")
 		return

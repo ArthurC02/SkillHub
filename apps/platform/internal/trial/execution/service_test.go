@@ -159,7 +159,9 @@ func TestRunHistoryAndLinkageRefuseWithoutTheirOwnerReaders(t *testing.T) {
 		{"without Test Lab", &Service{Registry: registryReaderFuncs{versionSummary: summaries}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := tc.svc.List(t.Context(), id, id, 10, 0); err == nil {
+			if _, err := tc.svc.List(t.Context(), id, runListFilter{
+				SkillVersionID: id, TestCaseID: id, Limit: 10,
+			}); err == nil {
 				t.Error("List succeeded")
 			}
 			if _, err := tc.svc.Linkage(t.Context(), id, id); err == nil {

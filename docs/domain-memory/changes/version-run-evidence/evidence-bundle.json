@@ -1,0 +1,106 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "version-run-evidence",
+  "proposal_id": "version-run-evidence",
+  "registry_revision": {
+    "observed_commit": "c1a6dc683c99aa57727fc79570655e5bc8a08dcb",
+    "registry_digest": "sha256:9fb2cf89d1dab47e3999989f41c567d844e53aeebe1a683bdd10ef3e40cf8909"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "exact-version-filter",
+    "mutated_protection": "the parsed immutable Version filter reaching the Run-owned persistence query",
+    "failure_evidence": "Passing the zero UUID instead of the parsed skill_version_id returned 3 runs instead of 2 and the focused integration test exited 1. Calling useRuns without skillVersionId also made the exact evidence test fail on the missing query parameter with exit 1.",
+    "restored": true
+  },
+  "sources": [
+    "contracts/openapi/public.yaml",
+    "apps/platform/internal/trial/execution",
+    "db/queries/runs.sql",
+    "apps/web/src/features/skill/version",
+    "apps/web/src/features/runs",
+    "docs/design/platform-experience.md",
+    "docs/design/information-architecture.md"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "exact-version-filter",
+      "status": "passed",
+      "evidence": "TestTheRunHistoryCanBeNarrowedToOneImmutableVersion and TestRunHistoryRefusesOutOfSchemaPaging passed with SKILLHUB_TEST_DATABASE_URL; exit 0.",
+      "command_profile": "go-test-database",
+      "exit_code": 0,
+      "output_sha256": "sha256:8bfe2624305315573bad72cb26185b5d3c862a49598f641be2f17c83e4a81103",
+      "finished_at": "2026-09-29T10:11:00+08:00"
+    },
+    {
+      "obligation_id": "filter-never-widens",
+      "status": "passed",
+      "evidence": "apps/platform: 3433 passed, 20 skipped, 0 failed.",
+      "command_profile": "task-test-platform-database",
+      "exit_code": 0,
+      "output_sha256": "sha256:0a8c362787eea58952cbaec253f6142093b5a6883750e69c9e5de41c88011463",
+      "finished_at": "2026-09-29T10:17:00+08:00"
+    },
+    {
+      "obligation_id": "filters-intersect",
+      "status": "passed",
+      "evidence": "TestTheRunHistoryCanBeNarrowedToOneImmutableVersion and TestRunHistoryRefusesOutOfSchemaPaging passed with SKILLHUB_TEST_DATABASE_URL; exit 0.",
+      "command_profile": "go-test-database",
+      "exit_code": 0,
+      "output_sha256": "sha256:8bfe2624305315573bad72cb26185b5d3c862a49598f641be2f17c83e4a81103",
+      "finished_at": "2026-09-29T10:11:00+08:00"
+    },
+    {
+      "obligation_id": "version-evidence-states",
+      "status": "passed",
+      "evidence": "Test Files 62 passed (62); Tests 961 passed (961).",
+      "command_profile": "task-test-web",
+      "exit_code": 0,
+      "output_sha256": "sha256:d8a6129112bdd0574e74351d365ad2e197354e7d608e918e0219493f28aaab0a",
+      "finished_at": "2026-09-29T10:20:00+08:00"
+    },
+    {
+      "obligation_id": "version-evidence-continuation",
+      "status": "passed",
+      "evidence": "Chromium rendered.spec.ts: 68 passed.",
+      "command_profile": "playwright-chromium",
+      "exit_code": 0,
+      "output_sha256": "sha256:18d2f3be73732fe7960d14f1ca67f981773ff5b3574c00b25ff6fd5fc64c4a64",
+      "finished_at": "2026-09-29T10:17:00+08:00"
+    },
+    {
+      "obligation_id": "additive-contract",
+      "status": "passed",
+      "evidence": "sqlc, TypeScript OpenAPI, Python OpenAPI, and Go OpenAPI generated output is current.",
+      "command_profile": "task-gen-check",
+      "exit_code": 0,
+      "output_sha256": "sha256:f954549e681cd477ad89395e0f68989df02df010db4e33e17a25ebc511c949a0",
+      "finished_at": "2026-09-29T10:17:00+08:00"
+    }
+  ],
+  "contract_checks": [
+    {
+      "contract_id": "GET /runs skill_version_id",
+      "status": "passed",
+      "evidence": "OpenAPI and all generated clients are current; omitting the new optional filter preserves existing callers."
+    }
+  ],
+  "architecture_checks": [
+    {
+      "status": "passed",
+      "evidence": "The predicate remains in the Run-owned query and existing Registry and Test Lab readers only enrich selected rows."
+    }
+  ],
+  "security_checks": [
+    {
+      "status": "passed",
+      "evidence": "The integration decision table covers foreign Workspace, malformed, empty, and unknown Version identifiers without widening history."
+    }
+  ],
+  "residual_risks": [
+    "The Change Package requires developer review before its public contract change is considered approved.",
+    "CI image smoke failures remain independent evidence that a pushed commit is not globally green."
+  ]
+}

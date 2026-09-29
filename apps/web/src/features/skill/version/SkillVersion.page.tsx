@@ -4,9 +4,17 @@ import type { SkillVersionSummary } from "../../../core/api/types";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
+import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { PACKAGING_BLOCKED_LABEL, packagingGate } from "../../packaging";
 import { PublishPanel } from "../../publishing";
-import { VersionDiff } from "../../runs";
+import {
+  IN_FLIGHT_RUN_STATUSES,
+  RunVerdict,
+  VersionDiff,
+  runStatusLabel,
+  useRuns,
+  type RunListItem,
+} from "../../runs";
 import { SkillWorkspaceNav } from "../components/SkillWorkspaceNav";
 import { useSkillDetail, useSkillVersions, skillDiffUrl } from "../skills.service";
 import { VersionUpload } from "./components/VersionUpload";
@@ -66,6 +74,11 @@ export function SkillVersion() {
       <div className="version-workspace-layout">
         <div className="version-workspace-main">
           <VersionFacts version={selected} isLatest={selectedIndex === 0} />
+          <VersionEvidence
+            skillId={skillId}
+            versionId={versionId}
+            versionNumber={selected.version_number}
+          />
           <VersionActions
             skillId={skillId}
             versionId={versionId}
@@ -86,6 +99,107 @@ export function SkillVersion() {
         <VersionRail skillId={skillId} versionId={versionId} versions={list} />
       </div>
     </article>
+  );
+}
+
+function VersionEvidence({
+  skillId,
+  versionId,
+  versionNumber,
+}: {
+  skillId: string;
+  versionId: string;
+  versionNumber: number;
+}) {
+  const runs = useRuns({ skillVersionId: versionId });
+  const rows = runs.data?.pages.flatMap((page) => page.runs) ?? [];
+
+  return (
+    <section aria-labelledby="version-evidence-title">
+      <p className="note">這一版留下的結果</p>
+      <h2 id="version-evidence-title">驗證證據</h2>
+      {runs.isPending && <Loading what="這個版本的 Run 證據" />}
+      <ReadFailure error={runs.error} what="這個版本的 Run 證據">
+        <p role="alert">暫時無法讀取這個版本的 Run 證據。</p>
+      </ReadFailure>
+      {runs.data && (
+        <ListFreshness
+          inFlight={rows.some((run) => IN_FLIGHT_RUN_STATUSES.has(run.status))}
+          updatedAt={runs.dataUpdatedAt}
+          fetching={runs.isFetching && !runs.isFetchingNextPage}
+          refetch={runs.refetch}
+        />
+      )}
+      {runs.data &&
+        (rows.length === 0 ? (
+          <p>
+            這個版本還沒有 Run。從{" "}
+            <Link to="/lab/test-cases" search={{ skill: skillId, version: versionId }}>
+              驗證 v{versionNumber}
+            </Link>
+            開始留下第一筆證據。
+          </p>
+        ) : (
+          <ul className="download-list" data-role="evidence">
+            {rows.map((run) => (
+              <VersionRunRow key={run.run_id} run={run} />
+            ))}
+          </ul>
+        ))}
+      {runs.hasNextPage && (
+        <button
+          type="button"
+          disabled={runs.isFetchingNextPage}
+          onClick={() => runs.fetchNextPage()}
+        >
+          {runs.isFetchingNextPage ? "載入中…" : "載入更多證據"}
+        </button>
+      )}
+    </section>
+  );
+}
+
+function VersionRunRow({ run }: { run: RunListItem }) {
+  return (
+    <li className="download-item">
+      <p>
+        <Link to="/runs/$runId" params={{ runId: run.run_id }}>
+          查看 Run 結果
+        </Link>
+        {run.test_case_id && (
+          <>
+            {" · "}
+            <Link
+              to="/lab/test-cases/$testCaseId"
+              params={{ testCaseId: run.test_case_id }}
+              search={{ version: run.skill_version_id }}
+            >
+              開啟這次的 Test Case
+            </Link>
+          </>
+        )}
+      </p>
+      <p className="badge-row">
+        <RunVerdict verdict={run.evaluation} />
+      </p>
+      <p className="badge-row">
+        <span className="badge">執行狀態：{runStatusLabel(run.status)}</span>
+      </p>
+      {run.status_reason && <p className="note">{run.status_reason}</p>}
+      <p className="note">
+        建立於 <Timestamp at={run.created_at} />
+        {run.finished_at ? (
+          <>
+            {" · "}結束於 <Timestamp at={run.finished_at} />
+          </>
+        ) : (
+          " · 尚未結束"
+        )}
+        {` · Provider ${run.provider}`}
+        {run.failure_class ? ` · 失敗類別 ${run.failure_class.label}` : ""}
+      </p>
+      {run.failure_class && <p className="note">{run.failure_class.note}</p>}
+    </li>
   );
 }
 

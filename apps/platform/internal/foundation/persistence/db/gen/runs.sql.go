@@ -1195,16 +1195,18 @@ SELECT r.id, r.status, r.status_reason, r.provider, r.failure_class,
        r.cancel_requested_at, r.created_at, r.started_at, r.finished_at
 FROM runs r
 WHERE r.workspace_id = $1
-  AND ($2::uuid[] IS NULL OR r.test_case_snapshot_id = ANY($2::uuid[]))
+  AND ($2::uuid IS NULL OR r.skill_version_id = $2::uuid)
+  AND ($3::uuid[] IS NULL OR r.test_case_snapshot_id = ANY($3::uuid[]))
 ORDER BY r.created_at DESC, r.id
-LIMIT $4 OFFSET $3
+LIMIT $5 OFFSET $4
 `
 
 type ListWorkspaceRunsParams struct {
-	WorkspaceID pgtype.UUID
-	SnapshotIds []pgtype.UUID
-	PageOffset  int32
-	PageSize    int32
+	WorkspaceID    pgtype.UUID
+	SkillVersionID pgtype.UUID
+	SnapshotIds    []pgtype.UUID
+	PageOffset     int32
+	PageSize       int32
 }
 
 type ListWorkspaceRunsRow struct {
@@ -1225,6 +1227,7 @@ type ListWorkspaceRunsRow struct {
 func (q *Queries) ListWorkspaceRuns(ctx context.Context, arg ListWorkspaceRunsParams) ([]ListWorkspaceRunsRow, error) {
 	rows, err := q.db.Query(ctx, listWorkspaceRuns,
 		arg.WorkspaceID,
+		arg.SkillVersionID,
 		arg.SnapshotIds,
 		arg.PageOffset,
 		arg.PageSize,

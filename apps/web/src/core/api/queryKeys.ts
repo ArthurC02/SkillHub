@@ -65,7 +65,11 @@ export const queryKeys = {
   },
   runs: {
     lists: ["runs"],
-    list: (testCaseId?: string) => ["runs", testCaseId ?? ""],
+    list: (testCaseId?: string, skillVersionId?: string) => [
+      "runs",
+      testCaseId ?? "",
+      skillVersionId ?? "",
+    ],
     detail: (runId: string) => ["run", runId],
     artifacts: (runId: string) => ["run", runId, "artifacts"],
   },

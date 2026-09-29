@@ -6,6 +6,7 @@ import {
   PUBLICATION,
   PUBLISHER,
   RUN,
+  RUNS,
   SKILL,
   SKILL_B,
   TEST_CASE,
@@ -158,6 +159,43 @@ async function verifyVersionLinksOnPhone(page: Page, testInfo: TestInfo) {
   });
 }
 
+async function verifyVersionEvidenceOnPhone(page: Page, testInfo: TestInfo) {
+  await stubPlatform(page);
+  let requestedVersion = "";
+  await page.route("**/runs?*", async (route) => {
+    requestedVersion = new URL(route.request().url()).searchParams.get("skill_version_id") ?? "";
+    await route.fulfill({ json: RUNS });
+  });
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
+
+  const evidence = page.getByRole("heading", { name: "驗證證據" }).locator("..");
+  await expect(evidence.locator(".download-item")).toHaveCount(2);
+  expect(requestedVersion).toBe(VERSION);
+
+  const runLink = evidence.getByRole("link", { name: "查看 Run 結果" }).first();
+  const testCaseLink = evidence.getByRole("link", { name: "開啟這次的 Test Case" }).first();
+  await expect(runLink).toHaveAttribute("href", `/runs/${RUN}`);
+  await expect(testCaseLink).toHaveAttribute(
+    "href",
+    `/lab/test-cases/${TEST_CASE}?version=${VERSION}`,
+  );
+  await runLink.focus();
+  await expect(runLink).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(testCaseLink).toBeFocused();
+
+  const pageWidth = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(pageWidth.scroll).toBeLessThanOrEqual(pageWidth.client);
+  await page.screenshot({
+    path: testInfo.outputPath("version-evidence-phone.png"),
+    fullPage: true,
+  });
+}
+
 test.describe("QA-008 real layout", () => {
   test("test case history keeps each Run's immutable Version in reach on a phone", async ({
     page,
@@ -170,6 +208,12 @@ test.describe("QA-008 real layout", () => {
   }, testInfo) => {
     await stubCreationContinuations(page);
     await verifyCreationContinuationLayout(page, testInfo);
+  });
+
+  test("a version keeps its exact Run evidence readable and reachable on a phone", async ({
+    page,
+  }, testInfo) => {
+    await verifyVersionEvidenceOnPhone(page, testInfo);
   });
 
   test("a publishing continuation brings the exact artifact into view", async ({ page }) => {

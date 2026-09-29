@@ -27,7 +27,7 @@ export function RunCompare() {
 
   const self = useRun(runId);
   const testCaseId = self.data?.test_case_id;
-  const siblings = useRuns(testCaseId, Boolean(testCaseId));
+  const siblings = useRuns({ testCaseId, enabled: Boolean(testCaseId) });
   const candidates = testCaseId
     ? (siblings.data?.pages.flatMap((p) => p.runs) ?? []).filter((r) => r.run_id !== runId)
     : [];

@@ -1,0 +1,94 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "version-run-evidence",
+  "proposer": "codex",
+  "requirement_id": "version-run-evidence",
+  "status": "submitted",
+  "change_classification": "material",
+  "submitted_at": "2026-09-29T02:24:01.110080Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "c1a6dc683c99aa57727fc79570655e5bc8a08dcb",
+    "registry_digest": "sha256:9fb2cf89d1dab47e3999989f41c567d844e53aeebe1a683bdd10ef3e40cf8909"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Every Run history read is scoped by the Workspace resolved from the Session; a caller-supplied filter may narrow that history but may never widen it.",
+    "evidence": [
+      "contracts/openapi/public.yaml:3957-3970",
+      "apps/platform/internal/trial/execution/http.go:373-399",
+      "db/queries/runs.sql:14-22"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "The existing public Run list accepts an optional immutable Version identifier and the Run owner applies it in the same Workspace-scoped persistence query before pagination. Existing Registry and Test Lab fact readers continue to enrich only the already-selected rows.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "web client filtering an unfiltered page of Runs",
+      "Run reading Registry persistence directly",
+      "caller-supplied workspace_id",
+      "a new cross-Context write or event"
+    ],
+    "evidence": [
+      "apps/platform/internal/trial/execution/service.go:545-592",
+      "db/query-owners.yaml:138",
+      "docs/domain-memory/registry/contexts.json:6-45"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Skill Version is immutable, so evidence used for a release decision must be linked by its exact Version identity rather than inferred from the latest Skill state.",
+      "Run history is paginated; filtering only the rows already loaded in the browser can falsely present an incomplete history as complete.",
+      "Workspace isolation must remain enforced by the Run owner even when a foreign or malformed filter is supplied.",
+      "Execution status and evaluation verdict are separate facts and neither may be inferred from the other."
+    ],
+    "decision": "No new tactical pattern. Extend the existing read-only Run list with one optional exact predicate inside the Run owner query, include that predicate in the web cache key, and render the resulting evidence in the existing exact Version workspace.",
+    "invariants_preserved": [
+      "Run owns lifecycle transitions.",
+      "Workspace scope comes from the Session.",
+      "Skill Versions and historical Runs remain immutable.",
+      "Execution completion does not imply an evaluation verdict."
+    ],
+    "rejected_alternatives": [
+      "Filter the first browser page by skill_version_id: pagination can hide older matching evidence and report a false empty state.",
+      "Add a Version-owned Run endpoint: Run remains the owner of Run history and no new ownership boundary is needed.",
+      "Copy Run rows into a Version projection: this adds consistency and replay obligations for a synchronous read already supported by Run storage.",
+      "Make a passing Run a publishing gate: no reviewed rule says publication requires a particular verdict."
+    ],
+    "proof_obligations": [
+      "exact-version-filter",
+      "filter-never-widens",
+      "filters-intersect",
+      "version-evidence-states",
+      "version-evidence-continuation",
+      "additive-contract"
+    ],
+    "counterfactual_check": "exact-version-filter"
+  },
+  "event_change": null,
+  "contract_change": {
+    "kind": "additive-public-http-query-parameter",
+    "producer": "platform-api Run list",
+    "consumers": [
+      "web exact Version workspace"
+    ],
+    "description": "Add optional skill_version_id to GET /runs. It narrows the Session Workspace's Run history by exact immutable Version identity and composes with test_case_id by intersection.",
+    "compatibility": "Additive. Omitting skill_version_id preserves the existing unfiltered or test-case-filtered response and pagination behavior.",
+    "data_classification": "Workspace-scoped Run metadata already present in RunListItem; no new response fields or sensitive payloads.",
+    "retry_behavior": "Read-only and idempotent. A failed read is reported as unavailable and is never rendered as an empty evidence list."
+  },
+  "registry_updates": [],
+  "risk_flags": [
+    "public_contract"
+  ],
+  "open_questions": [],
+  "approvals": []
+}

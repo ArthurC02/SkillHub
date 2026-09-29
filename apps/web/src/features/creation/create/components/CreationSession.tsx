@@ -45,7 +45,7 @@ export function CreationSession(props: CreationSessionProps) {
     p = session?.snapshot;
   const credits = useCredits();
   const testCaseID = p?.candidate?.test_case_id;
-  const runs = useRuns(testCaseID, Boolean(testCaseID));
+  const runs = useRuns({ testCaseId: testCaseID, enabled: Boolean(testCaseID) });
   const latest = runs.data?.pages[0]?.runs.find((r) => TERMINAL_RUN_STATUSES.has(r.status));
   const { terminal, working } = sessionPhase(session);
   const locked = busy || working || terminal;

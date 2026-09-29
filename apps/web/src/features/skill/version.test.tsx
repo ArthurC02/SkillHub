@@ -18,6 +18,9 @@ let container: HTMLDivElement;
 let root: Root;
 let routeVersion = VERSION;
 
+const RUN_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const TEST_CASE_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
     to,
@@ -69,7 +72,27 @@ function json(body: unknown, status = 200) {
   );
 }
 
-function stubVersions(versions = SKILL_VERSIONS) {
+function runItem(overrides: Record<string, unknown> = {}) {
+  return {
+    run_id: RUN_ID,
+    status: "succeeded",
+    evaluation: { value: "not_evaluated", label: "未評估", note: "尚未產生判定。" },
+    skill_id: SKILL,
+    skill_name: "PDF Summariser",
+    skill_version_id: VERSION,
+    test_case_id: TEST_CASE_ID,
+    provider: "sandbox",
+    cleanup_status: { value: "cleaned", label: "已清理", note: "隔離環境已清理。" },
+    created_at: "2026-09-28T10:00:00Z",
+    finished_at: "2026-09-28T10:01:00Z",
+    ...overrides,
+  };
+}
+
+function stubVersions(
+  versions = SKILL_VERSIONS,
+  runs: { body?: unknown; status?: number } = { body: { runs: [] } },
+) {
   const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
@@ -80,6 +103,7 @@ function stubVersions(versions = SKILL_VERSIONS) {
     if (path === "/me/publisher") return json(OWN_PUBLISHER);
     if (path === `/skills/${SKILL}/publication`) return json(OWN_PUBLICATION);
     if (path === `/skills/${SKILL}/diff`) return json(VERSION_DIFF);
+    if (path === "/runs") return json(runs.body ?? { error: "unavailable" }, runs.status ?? 200);
     return json({ error: "not found" }, 404);
   });
   return calls;
@@ -141,6 +165,63 @@ test("a version from another Skill cannot expose publish, upload or package acti
   expect(container.querySelector('a[href*="/package"]')).toBeNull();
   expect(calls).not.toContain("/me/publisher");
   expect(calls).not.toContain(`/skills/${SKILL}/publication`);
+  expect(calls.some((call) => call.startsWith("/runs?"))).toBe(false);
+});
+
+test("an immutable version shows exact run evidence without collapsing execution and verdict", async () => {
+  const calls = stubVersions(SKILL_VERSIONS, {
+    body: {
+      runs: [
+        runItem(),
+        runItem({
+          run_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          status: "failed",
+          status_reason: "Sandbox stopped before completion.",
+          evaluation: { value: "partially_met", label: "部分符合", note: "部分條件有證據。" },
+          failure_class: { value: "sandbox", label: "隔離環境", note: "執行環境已停止。" },
+        }),
+      ],
+    },
+  });
+  await render(() => text().includes("驗證證據"));
+
+  expect(calls.some((call) => call.includes(`skill_version_id=${VERSION}`))).toBe(true);
+  expect(text()).toContain("執行狀態：執行完成");
+  expect(text()).toContain("任務判定：未評估");
+  expect(text()).not.toContain("任務判定：符合");
+  expect(text()).toContain("執行狀態：執行失敗");
+  expect(text()).toContain("任務判定：部分符合");
+  expect(text()).toContain("Sandbox stopped before completion.");
+  expect(container.querySelector(`a[href="/runs/${RUN_ID}"]`)).not.toBeNull();
+  expect(
+    container.querySelector(`a[href="/lab/test-cases/${TEST_CASE_ID}?version=${VERSION}"]`),
+  ).not.toBeNull();
+});
+
+test("a version with no runs states exact absence and keeps the validation exit", async () => {
+  stubVersions();
+  await render(() => text().includes("這個版本還沒有 Run"));
+
+  expect(text()).toContain("這個版本還沒有 Run");
+  expect(
+    container.querySelector(`a[href="/lab/test-cases?skill=${SKILL}&version=${VERSION}"]`),
+  ).not.toBeNull();
+});
+
+test("a run evidence read failure is not presented as an empty history", async () => {
+  stubVersions(SKILL_VERSIONS, { status: 503 });
+  await render(() => text().includes("暫時無法讀取這個版本的 Run 證據"));
+
+  expect(text()).not.toContain("這個版本還沒有 Run");
+});
+
+test("an in-flight version run exposes freshness and refresh", async () => {
+  stubVersions(SKILL_VERSIONS, {
+    body: { runs: [runItem({ status: "running", finished_at: undefined })] },
+  });
+  await render(() => text().includes("有 Run 還在進行中"));
+
+  expect(container.querySelector("button")?.textContent).toContain("重新整理");
 });
 
 test("an empty owner-scoped version list is absence of access, not absence of history", async () => {

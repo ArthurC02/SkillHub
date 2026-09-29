@@ -17,6 +17,7 @@ SELECT r.id, r.status, r.status_reason, r.provider, r.failure_class,
        r.cancel_requested_at, r.created_at, r.started_at, r.finished_at
 FROM runs r
 WHERE r.workspace_id = @workspace_id
+  AND (sqlc.narg(skill_version_id)::uuid IS NULL OR r.skill_version_id = sqlc.narg(skill_version_id)::uuid)
   AND (sqlc.narg(snapshot_ids)::uuid[] IS NULL OR r.test_case_snapshot_id = ANY(sqlc.narg(snapshot_ids)::uuid[]))
 ORDER BY r.created_at DESC, r.id
 LIMIT @page_size OFFSET @page_offset;

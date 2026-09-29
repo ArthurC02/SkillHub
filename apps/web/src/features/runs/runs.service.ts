@@ -66,13 +66,22 @@ export type RunListItem = {
   finished_at?: string;
 };
 
-export function useRuns(testCaseId?: string, enabled = true) {
+export function useRuns({
+  testCaseId,
+  skillVersionId,
+  enabled = true,
+}: {
+  testCaseId?: string;
+  skillVersionId?: string;
+  enabled?: boolean;
+} = {}) {
   return useInfiniteQuery({
-    queryKey: queryKeys.runs.list(testCaseId),
+    queryKey: queryKeys.runs.list(testCaseId, skillVersionId),
     initialPageParam: 0,
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams({ limit: "51", offset: String(pageParam) });
       if (testCaseId) params.set("test_case_id", testCaseId);
+      if (skillVersionId) params.set("skill_version_id", skillVersionId);
       return apiFetch<{ runs: RunListItem[] }>(`/runs?${params}`).then((page) => ({
         runs: page.runs.slice(0, 50),
         nextOffset: page.runs.length > 50 ? pageParam + 50 : undefined,

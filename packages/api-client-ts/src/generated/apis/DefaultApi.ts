@@ -1241,6 +1241,17 @@ export interface ListRunSuggestionsRequest {
 
 export interface ListRunsRequest {
     /**
+     * Only runs of this exact immutable Skill Version. Filtering happens
+     * before ordering and pagination, so an empty page is evidence about
+     * this version rather than about whichever runs happened to be fetched.
+     * Workspace scoped like the unfiltered list; another workspace's id,
+     * an unknown id, an unreadable id, or a present-but-empty value matches
+     * nothing and returns an empty `runs` array. When `test_case_id` is also
+     * present, both filters must match the same run.
+     * 
+     */
+    skillVersionId?: string;
+    /**
      * Only runs of this test case — the "執行歷史" of one draft, which is
      * what closes the 建立 → 試跑 → 回來看 loop. Matched against the test
      * case the run's snapshot was frozen from, so a run stays in the list
@@ -3703,6 +3714,7 @@ export interface DefaultApiInterface {
 
     /**
      * Creates request options for listRuns without sending the request
+     * @param {string} [skillVersionId] Only runs of this exact immutable Skill Version. Filtering happens before ordering and pagination, so an empty page is evidence about this version rather than about whichever runs happened to be fetched. Workspace scoped like the unfiltered list; another workspace\&#39;s id, an unknown id, an unreadable id, or a present-but-empty value matches nothing and returns an empty &#x60;runs&#x60; array. When &#x60;test_case_id&#x60; is also present, both filters must match the same run. 
      * @param {string} [testCaseId] Only runs of this test case — the \&quot;執行歷史\&quot; of one draft, which is what closes the 建立 → 試跑 → 回來看 loop. Matched against the test case the run\&#39;s snapshot was frozen from, so a run stays in the list after the draft has been edited. Workspace scoped like the unfiltered list; another workspace\&#39;s id matches nothing (WS-006). 
      * @param {number} [limit] Refused with a 400 when outside the schema, not clamped: both bounds are inclusive and an out-of-range value is not replaced by the default. 
      * @param {number} [offset] 
@@ -3714,6 +3726,7 @@ export interface DefaultApiInterface {
     /**
      * 02:WS-002 第 1 條\'s \"Run 歷史\". Workspace scoped from the session like every other run route (iron rule 3).  Each row carries what happened, to which skill, and when. The status transitions and the per-attempt provider ids stay on GET /runs/{id}: they are what a reader opens one run to see, and serving them for a page of runs would make the list the heaviest read in the API for information nobody reads a page of. 
      * @summary The workspace\'s run history, newest first (WS-004)
+     * @param {string} [skillVersionId] Only runs of this exact immutable Skill Version. Filtering happens before ordering and pagination, so an empty page is evidence about this version rather than about whichever runs happened to be fetched. Workspace scoped like the unfiltered list; another workspace\&#39;s id, an unknown id, an unreadable id, or a present-but-empty value matches nothing and returns an empty &#x60;runs&#x60; array. When &#x60;test_case_id&#x60; is also present, both filters must match the same run. 
      * @param {string} [testCaseId] Only runs of this test case — the \&quot;執行歷史\&quot; of one draft, which is what closes the 建立 → 試跑 → 回來看 loop. Matched against the test case the run\&#39;s snapshot was frozen from, so a run stays in the list after the draft has been edited. Workspace scoped like the unfiltered list; another workspace\&#39;s id matches nothing (WS-006). 
      * @param {number} [limit] Refused with a 400 when outside the schema, not clamped: both bounds are inclusive and an out-of-range value is not replaced by the default. 
      * @param {number} [offset] 
@@ -8584,6 +8597,10 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async listRunsRequestOpts(requestParameters: ListRunsRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
+
+        if (requestParameters['skillVersionId'] != null) {
+            queryParameters['skill_version_id'] = requestParameters['skillVersionId'];
+        }
 
         if (requestParameters['testCaseId'] != null) {
             queryParameters['test_case_id'] = requestParameters['testCaseId'];

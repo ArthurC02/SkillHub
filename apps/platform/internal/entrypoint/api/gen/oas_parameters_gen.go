@@ -331,6 +331,12 @@ type ListRunSuggestionsParams struct {
 
 // ListRunsParams is parameters of listRuns operation.
 type ListRunsParams struct {
+	// Only runs of this exact immutable Skill Version. Filtering happens before ordering and pagination,
+	// so an empty page is evidence about this version rather than about whichever runs happened to be
+	// fetched. Workspace scoped like the unfiltered list; another workspace's id, an unknown id, an
+	// unreadable id, or a present-but-empty value matches nothing and returns an empty `runs` array. When
+	// `test_case_id` is also present, both filters must match the same run.
+	SkillVersionID OptUUID `json:",omitempty,omitzero"`
 	// Only runs of this test case — the "執行歷史" of one draft, which is what closes the 建立 →
 	// 試跑 → 回來看 loop. Matched against the test case the run's snapshot was frozen from, so a
 	// run stays in the list after the draft has been edited. Workspace scoped like the unfiltered list;

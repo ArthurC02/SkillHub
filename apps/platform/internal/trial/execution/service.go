@@ -542,21 +542,26 @@ func runView(row gen.Run) RunView {
 	}
 }
 
-func (s *Service) List(
-	ctx context.Context, workspaceID, testCaseID pgtype.UUID, limit, offset int32,
-) ([]RunSummary, error) {
+type runListFilter struct {
+	SkillVersionID pgtype.UUID
+	TestCaseID     pgtype.UUID
+	Limit          int32
+	Offset         int32
+}
+
+func (s *Service) List(ctx context.Context, workspaceID pgtype.UUID, filter runListFilter) ([]RunSummary, error) {
 	if err := s.requireRunLinks(); err != nil {
 		return nil, err
 	}
-	if limit <= 0 || limit > maxRunPageSize {
-		limit = defaultRunPageSize
+	if filter.Limit <= 0 || filter.Limit > maxRunPageSize {
+		filter.Limit = defaultRunPageSize
 	}
-	if offset < 0 {
-		offset = 0
+	if filter.Offset < 0 {
+		filter.Offset = 0
 	}
 	var snapshotIDs []pgtype.UUID
-	if testCaseID.Valid {
-		ids, err := s.TestLab.SnapshotIDsForTestCase(ctx, workspaceID, testCaseID)
+	if filter.TestCaseID.Valid {
+		ids, err := s.TestLab.SnapshotIDsForTestCase(ctx, workspaceID, filter.TestCaseID)
 		if err != nil {
 			return nil, err
 		}
@@ -566,7 +571,8 @@ func (s *Service) List(
 		snapshotIDs = ids
 	}
 	rows, err := s.queries().ListWorkspaceRuns(ctx, gen.ListWorkspaceRunsParams{
-		WorkspaceID: workspaceID, SnapshotIds: snapshotIDs, PageSize: limit, PageOffset: offset,
+		WorkspaceID: workspaceID, SkillVersionID: filter.SkillVersionID, SnapshotIds: snapshotIDs,
+		PageSize: filter.Limit, PageOffset: filter.Offset,
 	})
 	if err != nil {
 		return nil, err

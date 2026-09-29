@@ -17,7 +17,7 @@ export function TestCaseDetail() {
   const { testCaseId } = useParams({ from: "/lab/test-cases/$testCaseId" });
   const { version } = useSearch({ from: "/lab/test-cases/$testCaseId" });
   const testCase = useTestCase(testCaseId);
-  const runs = useRuns(testCaseId);
+  const runs = useRuns({ testCaseId });
   const [deleted, setDeleted] = useState<{ datasets_deleted: number } | null>(null);
 
   if (deleted) {
