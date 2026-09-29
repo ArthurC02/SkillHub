@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page, type TestInfo } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import {
   ARTIFACT,
@@ -14,6 +14,76 @@ import {
 } from "../src/testing/fixtures/platform";
 import { PHONE_ROUTES, ROUTES } from "./routes";
 import { stubPlatform } from "./stub";
+
+async function stubCreationContinuations(page: Page) {
+  await stubPlatform(page);
+  await page.route("**/me", async (route) => {
+    const { body, status } = platformResponse(route.request().url());
+    await route.fulfill({
+      status,
+      json: {
+        ...(body as object),
+        features: { generate_skill: true, creation_skill: true },
+      },
+    });
+  });
+  await page.route("**/creation-sessions", async (route) => {
+    const sessions = [
+      ["11111111-1111-4111-8111-111111111111", "整理採購文件", "waiting_input"],
+      ["22222222-2222-4222-8222-222222222222", "檢查摘要品質", "working"],
+      ["33333333-3333-4333-8333-333333333333", "修正流程圖", "needs_reupload"],
+    ].map(([id, brief, state], index) => ({
+      id,
+      revision: 1,
+      state,
+      snapshot: { brief },
+      created_at: "2026-09-28T10:00:00Z",
+      updated_at: `2026-09-28T1${3 - index}:00:00Z`,
+      expires_at: "2099-09-29T14:00:00Z",
+      deadline: "2099-09-28T14:00:00Z",
+    }));
+    await route.fulfill({ json: sessions });
+  });
+}
+
+async function verifyCreationContinuationLayout(page: Page, testInfo: TestInfo) {
+  for (const [name, width] of [
+    ["desktop", 1280],
+    ["phone", 375],
+  ] as const) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/workspace");
+    await expect(page.getByRole("heading", { name: "繼續進行" })).toBeVisible();
+    await expect(page.locator(".workspace-home h2")).toHaveText([
+      "需要留意",
+      "繼續進行",
+      "執行中",
+      "你的資產",
+    ]);
+    await expect(page.locator(".workspace-home-grid .workspace-home-list > li")).toHaveCount(3);
+    await expect(page.getByRole("link", { name: "開啟會話" })).toHaveAttribute(
+      "href",
+      "/workspace/creations?session=11111111-1111-4111-8111-111111111111",
+    );
+    const pageWidth = await page.evaluate(() => ({
+      client: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+    }));
+    expect(pageWidth.scroll).toBeLessThanOrEqual(pageWidth.client);
+    if (name === "desktop") {
+      const cards = await page
+        .locator(".workspace-home-grid > .workspace-home-section")
+        .evaluateAll((elements) =>
+          elements.map((element) => element.getBoundingClientRect().height),
+        );
+      expect(cards[0]).toBeGreaterThan((cards[1] ?? 0) + 100);
+    }
+    await page.screenshot({
+      path: testInfo.outputPath(`workspace-home-${name}.png`),
+      fullPage: true,
+    });
+  }
+}
 
 test.describe("QA-008 composite pixels", () => {
   for (const [route, where] of [
@@ -65,6 +135,13 @@ test.describe("QA-008 composite pixels", () => {
 });
 
 test.describe("QA-008 real layout", () => {
+  test("workspace home keeps creation continuation in the platform priority order", async ({
+    page,
+  }, testInfo) => {
+    await stubCreationContinuations(page);
+    await verifyCreationContinuationLayout(page, testInfo);
+  });
+
   test("a publishing continuation brings the exact artifact into view", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 667 });

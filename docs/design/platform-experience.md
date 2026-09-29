@@ -347,7 +347,7 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 
 ### 8.2 分階段落地
 
-**階段一：平台殼層與續作。** 第一個切片建立全域殼層、平台空間名稱、Catalog 搜尋入口與首頁的真實續作來源；現有功能頁仍可在新殼層中開啟。有至少一個跨空間指令及其權限模型後，再補上命令入口。完成條件是所有現有路由都能從新導覽找到，而且沒有安全資訊或曝光入口被移動到錯誤層級。
+**階段一：平台殼層與續作。** 第一個切片建立全域殼層、平台空間名稱與 Catalog 搜尋入口；首頁先用 Run owner facts 呈現需要留意與執行中的工作，再以 Creation owner 的最近會話清單補上第一個真實續作來源。創作續作只在兩個曝光旗標都開啟時請求，只連回已有且仍可操作的精確 session；不提供開始入口、沒有項目時不渲染空卡，也不冒充完整 Activity。現有功能頁仍可在新殼層中開啟。有至少一個跨空間指令及其權限模型後，再補上命令入口。完成條件是所有現有路由都能從新導覽找到，而且沒有安全資訊或曝光入口被移動到錯誤層級。
 
 **階段二：Skill 工作台。** 詳情、檔案、Test Case、Dataset、preflight、Run 證據與打包已共享同一個 Skill 導覽；preflight 的 canonical URL 把 Skill 與 Test Case 固定在路徑，只讓可替換的 Version 留在 query，舊 `/lab/run` 只負責改寫舊深連結。Dataset 也已從假全域頁搬到 `/lab/test-cases/$testCaseId/datasets`，先讀 Test Case owner facts 再顯示內容，並保留精確 Version；舊 `/lab/datasets` 只作相容導向。已知 `test_case_id` 的頁面會回到精確 Test Case，Run 比較的兩側也各自回到自己的 Run 與不可變 Version。精確版本頁已把版本清單、差異、驗證、打包與 Release 收在同一個不可變版本脈絡。創作會話現在以 `session` 保存可變工作的精確身分，保存完成後直接交接到該候選的不可變 `version_id`；兩者仍是不同生命週期，沒有把 revision 當成 Version。下一步是讓正式版本能從領域擁有的關係回到來源會話，而不是用「從哪裡來」的臨時網址參數假裝關係。全程重用既有 hook、service 與元件，不建立第二套 API 或狀態。完成條件仍是從一個 Skill 開始可以走完一次「驗證 → 看證據 → 修訂或打包」，過程不用重新選 Skill 或版本。
 

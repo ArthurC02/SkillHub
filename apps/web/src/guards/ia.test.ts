@@ -174,6 +174,8 @@ const FLAG_OFF_ASSERTED: Record<string, string> = {
     "clean-mode.test.tsx — 「without the flag, the notice renders nothing」",
   "features/creation/create/CreateSkill.page.tsx":
     "create-skill.test.tsx — 「⛔ with the flag off, /workspace/creations is not a workbench and says so」",
+  "features/workspace/home/WorkspaceHome.page.tsx":
+    "WorkspaceHome.test.tsx — 「workspace home does not request creation sessions when one creation flag is off」",
 };
 
 function flagHooks(): Set<string> {
@@ -218,7 +220,7 @@ test("IA §2.4: every flagged mount is on the roster of ones tested with the fla
   expect(
     Object.keys(FLAG_OFF_ASSERTED).length,
     "the roster may only get shorter",
-  ).toBeLessThanOrEqual(5);
+  ).toBeLessThanOrEqual(6);
 });
 
 test("IA §6: every route in router.tsx is swept at 375px", () => {

@@ -1,28 +1,11 @@
 import { useState, type RefObject } from "react";
 import { Link } from "@tanstack/react-router";
-import type {
-  CreationLimits,
-  CreationSession,
-  CreationSnapshot,
-  CreationState,
-} from "../../creation.service";
+import type { CreationLimits, CreationSession, CreationSnapshot } from "../../creation.service";
+import { creationStateLabel } from "../../creation.service";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { nextStepBudget, points, raiseBudgetProblem } from "../create.model";
 import type { Perform } from "../create.commands";
 import { AgentAvatar } from "./ConversationLog";
-
-const labels: Record<CreationState, string> = {
-  queued: "等待處理",
-  working: "正在創作",
-  waiting_input: "等待你的補充",
-  waiting_confirmation: "等待你確認",
-  draft_ready: "草稿可供檢查",
-  candidate_ready: "候選版本已建立",
-  saved: "已保存",
-  cancelled: "已取消",
-  failed: "這一步未完成",
-  needs_reupload: "請重新上傳流程圖",
-};
 
 function NextStep({
   costCredits,
@@ -103,7 +86,7 @@ export function SessionHeader({
         <span className="creation-state">
           {session ? (
             <>
-              <span role="status">{labels[session.state]}</span>
+              <span role="status">{creationStateLabel(session.state)}</span>
               {p && limits && ` · ${p.steps}／${limits.max_steps} 步`}
             </>
           ) : (
@@ -253,7 +236,7 @@ function SessionHistoryMenu({
               onClick={() => onPickSession(s.id)}
             >
               <span>{s.snapshot.brief.slice(0, 40) || "尚未確認需求"}</span>
-              <span className="note">{labels[s.state]}</span>
+              <span className="note">{creationStateLabel(s.state)}</span>
             </button>
           </li>
         ))}

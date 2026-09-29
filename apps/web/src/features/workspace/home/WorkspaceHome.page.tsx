@@ -1,9 +1,19 @@
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMe } from "../../../core/session/me.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { LoginRequired, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
+import { Timestamp } from "../../../shared/ui/Timestamp";
+import {
+  creationStateLabel,
+  useCreationEntryPoint,
+  useCreationSessions,
+  useGenerateEntryPoint,
+  type CreationSession,
+  type CreationState,
+} from "../../creation";
 import { useOwnSkills } from "../../skill";
 import {
   RunVerdict,
@@ -18,16 +28,29 @@ import "./WorkspaceHome.page.css";
 
 export function WorkspaceHome() {
   const me = useMe();
+  const generateExposed = useGenerateEntryPoint();
+  const creationExposed = useCreationEntryPoint();
 
   if (me.isPending) return <Loading what="工作區首頁" />;
   if (unauthenticated(me.error)) return <LoginRequired what="工作區首頁" />;
   if (me.error) return <ReadFailure error={me.error} what="工作區首頁" />;
   if (!me.data) return <p role="alert">目前無法確認這個工作區是誰的。</p>;
 
-  return <WorkspaceHomeContent name={me.data.display_name || me.data.email} />;
+  return (
+    <WorkspaceHomeContent
+      name={me.data.display_name || me.data.email}
+      creationExposed={generateExposed && creationExposed}
+    />
+  );
 }
 
-function WorkspaceHomeContent({ name }: { name: string }) {
+function WorkspaceHomeContent({
+  name,
+  creationExposed,
+}: {
+  name: string;
+  creationExposed: boolean;
+}) {
   const skills = useOwnSkills();
   const runs = useRuns();
   const runRows = runs.data?.pages.flatMap((page) => page.runs) ?? [];
@@ -44,33 +67,34 @@ function WorkspaceHomeContent({ name }: { name: string }) {
       <header className="workspace-home-hero">
         <p className="note">{name} 的 Workspace</p>
         <h1>繼續推進你的工作</h1>
-        <p>先查看需要留意的結果，再回到正在演進的小工具；不必先找回上次在哪一頁。</p>
+        <p>先處理需要留意的結果，再續接創作與正在演進的小工具；不必先找回上次在哪一頁。</p>
       </header>
 
-      <div className="workspace-home-grid">
-        <section className="workspace-home-section workspace-home-attention">
-          <header>
-            <h2>需要留意</h2>
-            <p className="note">執行失敗、逾時或仍待判斷的結果會集中在這裡。</p>
-          </header>
-          {runs.isPending && <Loading what="需要處理的試跑" />}
-          <ReadFailure error={runs.error} what="需要處理的試跑" />
-          {runs.data &&
-            (attention.length === 0 ? (
-              <p>目前沒有需要你留意的試跑。</p>
-            ) : (
-              <ul className="workspace-home-list" data-role="evidence">
-                {attention.slice(0, 3).map((run) => (
-                  <RunItem
-                    key={run.run_id}
-                    run={run}
-                    action={runAttentionAction(run.status, run.evaluation.value)}
-                  />
-                ))}
-              </ul>
-            ))}
-        </section>
+      <section className="workspace-home-section workspace-home-attention">
+        <header>
+          <h2>需要留意</h2>
+          <p className="note">執行失敗、逾時或仍待判斷的結果會集中在這裡。</p>
+        </header>
+        {runs.isPending && <Loading what="需要處理的試跑" />}
+        <ReadFailure error={runs.error} what="需要處理的試跑" />
+        {runs.data &&
+          (attention.length === 0 ? (
+            <p>目前沒有需要你留意的試跑。</p>
+          ) : (
+            <ul className="workspace-home-list" data-role="evidence">
+              {attention.slice(0, 3).map((run) => (
+                <RunItem
+                  key={run.run_id}
+                  run={run}
+                  action={runAttentionAction(run.status, run.evaluation.value)}
+                />
+              ))}
+            </ul>
+          ))}
+      </section>
 
+      <div className="workspace-home-grid">
+        {creationExposed && <CreationContinuations />}
         <section className="workspace-home-section">
           <header>
             <h2>執行中</h2>
@@ -143,6 +167,94 @@ function WorkspaceHomeContent({ name }: { name: string }) {
       </section>
     </section>
   );
+}
+
+function CreationContinuations() {
+  const sessions = useCreationSessions();
+  const now = useDeadlineClock(sessions.data);
+  const resumable =
+    sessions.data
+      ?.filter(
+        (session) =>
+          session.state !== "saved" &&
+          session.state !== "cancelled" &&
+          Date.parse(session.deadline) > now,
+      )
+      .slice(0, 3) ?? [];
+  const working = resumable.some(
+    (session) => session.state === "queued" || session.state === "working",
+  );
+
+  if (sessions.data && resumable.length === 0 && !sessions.error) return null;
+
+  return (
+    <section className="workspace-home-section">
+      <header>
+        <h2>繼續進行</h2>
+        <p className="note">回到最近仍可操作的創作會話；草稿還不是已保存的小工具。</p>
+      </header>
+      <ListFreshness
+        inFlight={working}
+        updatedAt={sessions.dataUpdatedAt}
+        fetching={sessions.isFetching}
+        refetch={sessions.refetch}
+        subject="創作"
+      />
+      {sessions.isPending && <Loading what="最近的創作" />}
+      <ReadFailure error={sessions.error} what="最近的創作" />
+      {sessions.data && (
+        <ul className="workspace-home-list">
+          {resumable.map((session) => (
+            <CreationItem key={session.id} session={session} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function useDeadlineClock(sessions: CreationSession[] | undefined): number {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const next = sessions
+      ?.map((session) => Date.parse(session.deadline))
+      .filter((deadline) => deadline > now)
+      .sort((left, right) => left - right)[0];
+    if (next === undefined) return;
+    const timeout = window.setTimeout(
+      () => setNow(Date.now()),
+      Math.max(0, Math.min(next - now + 1, 60_000)),
+    );
+    return () => window.clearTimeout(timeout);
+  }, [now, sessions]);
+
+  return now;
+}
+
+function CreationItem({ session }: { session: CreationSession }) {
+  const brief = session.snapshot.brief.trim().slice(0, 80) || "尚未確認需求";
+  return (
+    <li>
+      <div>
+        <strong>{brief}</strong>
+        <p className="note">創作狀態：{creationStateLabel(session.state)}</p>
+        <p className="note">
+          最後更新：
+          <Timestamp at={session.updated_at} relative />
+        </p>
+      </div>
+      <Link className="action-secondary" to="/workspace/creations" search={{ session: session.id }}>
+        {creationAction(session.state)}
+      </Link>
+    </li>
+  );
+}
+
+function creationAction(state: CreationState): string {
+  if (state === "queued" || state === "working") return "查看進度";
+  if (state === "failed" || state === "needs_reupload") return "查看這一步";
+  return "開啟會話";
 }
 
 function RunItem({ run, action }: { run: RunListItem; action: string }) {

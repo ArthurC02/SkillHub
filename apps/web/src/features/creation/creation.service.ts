@@ -14,6 +14,22 @@ export type CreationState =
   | "cancelled"
   | "failed"
   | "needs_reupload";
+const CREATION_STATE_LABELS: Record<CreationState, string> = {
+  queued: "等待處理",
+  working: "正在創作",
+  waiting_input: "等待你的補充",
+  waiting_confirmation: "等待你確認",
+  draft_ready: "草稿可供檢查",
+  candidate_ready: "候選版本已建立",
+  saved: "已保存",
+  cancelled: "已取消",
+  failed: "這一步未完成",
+  needs_reupload: "請重新上傳流程圖",
+};
+
+export function creationStateLabel(state: CreationState): string {
+  return CREATION_STATE_LABELS[state];
+}
 export interface CreationSkill {
   name: string;
   description: string;

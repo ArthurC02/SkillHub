@@ -156,7 +156,8 @@
 ```
 Home ───────────► /compare, /skills/$id, /workspace/import, /workspace/skills#create
 WorkspaceHome ──► /, /skills/$id, /skills/$id/versions/$id, /lab/test-cases/$id,
-                  /runs/$id, /workspace/import, /workspace/runs, /workspace/skills
+                  /runs/$id, /workspace/creations, /workspace/import, /workspace/runs,
+                  /workspace/skills
 Compare ────────► /, /skills/$id
 SkillDetail ────► /skills/$id/files, /skills/$id/versions/$id, /lab/test-cases
 SkillFiles ─────► /skills/$id, /skills/$id/versions/$id, /lab/test-cases
@@ -196,7 +197,7 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 >
 > **掛載位置由清單空不空決定**：清單空的時候它排在最前面——那時它就是這一頁的答案；清單有東西的時候排在清單**之後**，因為 [system.md](system.md) §3 checklist 第 1 條不准「一整排控制項排在答案前面」。用兩個掛載點而不是 CSS `order`，因為 `order` 只改視覺順序、不改 DOM 順序。空狀態只留 §2.9 的缺席型別詞，不再用另一種措辭把同樣兩條路再講一次。
 >
-> **旗標由入口所在畫面透過既有 hook 讀取**：`RootLayout` 只在 `generate_skill` 開啟時顯示 Studio；`WorkspaceSkills` 以 prop 把兩個創作旗標傳進建立區。`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊以呼叫旗標 hook 的檔案為鍵。
+> **旗標由入口所在畫面透過既有 hook 讀取**：`RootLayout` 只在 `generate_skill` 開啟時顯示 Studio；`WorkspaceSkills` 以 prop 把兩個創作旗標傳進建立區；`WorkspaceHome` 只有在兩個旗標都開啟時才掛載最近會話查詢。`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊以呼叫旗標 hook 的檔案為鍵。
 
 > **這張圖是本節唯一沒有機器守的一格**（§6 上它一列都沒有，而 §2.1、§2.3、§2.4 都有），所以它會無聲過期。它要連 `components/` 的元件一起畫——§2.3 的反向連結數就是這樣數的（`ia.test.ts` 掃 `pages/` 與 `components/` 兩個目錄），只畫 `pages/` 會重現不出那些數字。
 
@@ -206,8 +207,8 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 
 | 旗標 | 來源 | 出現在 | 不出現在 |
 | --- | --- | --- | --- |
-| `generate_skill` | `GET /me` 的 `features`（[`useGenerateEntryPoint`](../../apps/web/src/features/creation/generate.service.ts)） | 搜尋的 `no_results` 空狀態、`/workspace/skills` 建立區、全域 Studio 空間 | **搜尋框旁邊的等重動作**——Catalog 仍先搜尋；Studio 是登入後工作空間，不是把生成按鈕塞回搜尋表單 |
-| `creation_skill` | `GET /me` 的 `features`；`WorkspaceSkills` 讀取 | `/workspace/skills#create` 內的互動創作，仍須 `generate_skill` 同時開啟；三種素材共用會話 | 首頁、未啟用部署與封測曝光限制中的使用者；預設關閉 |
+| `generate_skill` | `GET /me` 的 `features`（[`useGenerateEntryPoint`](../../apps/web/src/features/creation/generate.service.ts)） | 搜尋的 `no_results` 空狀態、`/workspace/skills` 建立區、全域 Studio 空間；與 `creation_skill` 同時開啟時，首頁可返回已存在且仍可操作的會話 | **搜尋框旁邊的等重動作**——Catalog 仍先搜尋；首頁不提供開始新創作的入口，沒有可續作會話時也不渲染空卡 |
+| `creation_skill` | `GET /me` 的 `features`；`WorkspaceSkills` 與 `WorkspaceHome` 讀取 | `/workspace/skills#create` 內的互動創作，以及首頁的既有會話續作；兩處仍須 `generate_skill` 同時開啟，三種素材共用會話 | 未啟用部署與封測曝光限制中的使用者；預設關閉；首頁不把最近 50 筆清單冒充完整 Activity |
 | `clean_mode` | `GET /me` 的 `features`（[`useCleanMode`](../../apps/web/src/core/session/me.service.ts)） | 每一頁 `<main>` 的第一個元素（[`CleanModeNotice`](../../apps/web/src/app/shell/CleanModeNotice.tsx)，掛在 `router.tsx` 的 `RootLayout`） | 匿名訪客的畫面——`GET /me` 要求 session，`/` 與 `/skills/$id` 未登入可見，PORT-003 今天只對已登入者成立（[淨測試模式](../adr/README.md#淨測試模式) 待決策 1 待敲定） |
 
 **`clean_mode` 這一列是揭露不是入口**：它不帶使用者去任何新地方，只是在已經看得到的畫面上多說一句「這個部署沒有什麼」——上面 `generate_skill` 那一列的「出現在／不出現在」欄位問的是「使用者能不能從這裡走到一個新功能」，這一列的欄位問的是「使用者能不能看到這句話」，兩者是不同的問題，讀這張表時不要用入口的規矩讀這一列。
@@ -225,8 +226,8 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 | 入邊 | 位址 | R3 |
 | ---: | --- | --- |
 | **0** | （無） | ✅ 沒有孤兒頁 |
-| **1** | `/compare`、`/lab/test-cases/$testCaseId/datasets`、`/runs/$runId/compare`、`/workspace/creations` | ✅ 四項都是 R3 的「具名」那一支（IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7 |
-| 2 | `/workspace`、`/workspace/account`、`/policy`、`/admin`、`/admin/accounts`、`/admin/dispatch`、`/admin/rosters`、`/admin/model-budgets`、`/admin/cost-statistics` | ✅ |
+| **1** | `/compare`、`/lab/test-cases/$testCaseId/datasets`、`/runs/$runId/compare` | ✅ 三項都是 R3 的「具名」那一支（IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7 |
+| 2 | `/workspace`、`/workspace/account`、`/workspace/creations`、`/policy`、`/admin`、`/admin/accounts`、`/admin/dispatch`、`/admin/rosters`、`/admin/model-budgets`、`/admin/cost-statistics` | ✅ |
 | 3 | `/skills/$skillId/files`、`/skills/$skillId/package`、`/p/$publisher/$name`、`/workspace/runs`、`/admin/skills`、`/admin/audit-log`、`/admin/trends`、`/admin/exposure` | ✅ |
 | 4 | `/workspace/import`、`/skills/$skillId/test-cases/$testCaseId/runs/new` | ✅ |
 | 5 | `/lab/test-cases/$testCaseId` | ✅ |
@@ -456,7 +457,7 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 
 **誰能決定**：不需要產品負責人，是技術題。
 
-### IA-12 ✅ 已裁定（負責人直接指示）：創作工作台有了自己的位址，而它只會有一條入邊
+### IA-12 ✅ 已裁定（負責人直接指示）：創作工作台有自己的位址，已有會話可從首頁續作
 
 **指示**：「最右邊的卡片應該要像另外兩張一樣，有著獨立的頁面，直接呈現 Chat UI」。
 
@@ -464,17 +465,9 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 
 **位址的形狀是查出來的不是選出來的**：§0.1 R2 要清單位址掛在提問者的位置、而且是名詞的複數。`/workspace/creations` 兩條都合——它就是「我的創作會話」那份清單（元件自己的「對話紀錄」選單就是那份清單），所以 `ia.test.ts` 的 R2 檢查判它合規，**§0.2 那份只能縮短的偏離帳一列都沒有多**。`features/creation/components/CreateHub.tsx` 的檔案註解曾經寫著「新增 `/create` 會是清單位置上的一個動詞」——那句話曾同時描述 `/lab/run` 的毛病；preflight 收回指定 Skill／Test Case 的 Run 建立位址後，該偏離已移除，舊網址只作相容導向。
 
-**為什麼它只有一條入邊，而這一次不是欠**：R3 的兩支是「補第二條」與「具名」。這一頁走第二支，理由比前三個（IA-7 的那三頁）更硬——**第二條入邊不是還沒畫，是畫了就違反一條更高順位的規則**：⛔ [`01` §10](../plans/01-goals-and-plan.md) 邊界 1 逐字要求 M5 的生成入口「不得對封測使用者出現，也不得變得更顯眼」，而多一條頁內入邊的定義就是讓它更顯眼。
+**第二條入邊的現行形狀**：`WorkspaceHome` 只對已經存在、仍在保存期且尚未超過操作期限的非終態會話顯示精確 `?session=` 連結；它沒有「開始新創作」按鈕，最近 50 筆裡沒有可續作項目時整區不渲染。這是一條返回既有工作的路，不是把生成入口放到首頁，因此沒有用版面繞過 [`01` §10](../plans/01-goals-and-plan.md) 的封測曝光邊界。
 
-而 R3 要防的那個危險在這一頁不成立：出處是 system.md §1.2「一條入邊的頁面，使用者按上一頁之後就回不去了」，而它唯一的入邊是第三張卡，那張卡就在使用者按上一頁會回到的那一頁上。
-
-**這一列到期就要重看**：邊界 1 解除之後，第二條入邊（例如生成出來的 Skill 頁指回產生它的那一場創作）才是該畫的。現在畫它等於用版面繞過一條凍結中的裁定。
-
-**上一段那句「R3 要防的危險在這一頁不成立」只講對了一半**：它對按瀏覽器上一頁的人成立，對**從書籤或別人給的連結進來的人不成立**——那些人沒有上一頁可按，而這一頁又不在導覽列上（R7：產品能力不進導覽列），於是它一度真的是一間沒有門的房間。同一個判斷 `features/runs/trace/RunTrace.page.tsx` 的檔頭早就寫過：「從別人那裡收到 Run 連結的人沒有『上一頁』可以按」。
-
-**處置**：頁面自己出一條出口（`<nav>` ＋「← 回到我的 Skill」，`SkillFiles`／`RunCompare`／`TestCases` 的既有配方），`create-skill.test.tsx` 兩個旗標狀態各斷言一次、且只准出現一次。**入邊的數字沒有變**（出口是這一頁指出去的邊，不是指進來的），所以這一列仍然是 1，「具名」那一支的理由也仍然成立——但它成立的理由現在只剩⛔ 邊界 1 那一條，不再包含「危險不成立」。
-
-**同一批動了第二道只能縮短的棘輪**：`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊上限 3 → 4。這一頁是名冊上唯一**整頁**都是那個能力的掛載點——另外三個都是某一頁上的一塊，旗標關著時不渲染就結束了——而且它有一個任何人都猜得到的網址，所以旗標判斷必須在頁面自己身上；留在別處等於用「沒有人連過來」當守衛，那不是守衛。**名冊自己要求的順序沒有被繞過**：旗標關閉的斷言（`create-skill.test.tsx`）先寫，才把名字加進去。
+首頁同時要求 `generate_skill` 與 `creation_skill`，任一旗標關閉時不掛載會話查詢，也不留下空卡或提示。`WorkspaceHome.test.tsx` 以兩個單旗標組合守「不請求、不渲染」，`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊把這個掛載點列入。這讓 `/workspace/creations` 有兩條頁內入邊：建立區負責開始，首頁只負責續作；頁面本身仍保留「← 回到我的 Skill」出口，書籤與深連結不依賴瀏覽器上一頁。
 
 **誰能決定**：位址形狀是本檔的事；曝光邊界是產品負責人的，而這一批沒有動它——旗標關著時卡片整張不存在，直接輸入網址的人看到的是一句「這一頁現在不存在」加兩條出路。
 
