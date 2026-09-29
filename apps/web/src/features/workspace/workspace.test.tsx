@@ -137,7 +137,7 @@ test("WS-004 an activity row words `succeeded` as execution, never as a pass", a
   await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
 
   expect(container.querySelector("h1")?.textContent).toBe("試跑活動");
-  expect(text()).toContain("創作、打包與發佈工作仍在各自的空間");
+  expect(text()).toContain("僅收錄試跑；創作、打包、發佈各自保留");
   expect(text()).toContain("執行狀態：執行完成");
   expect(text()).toContain("任務判定：符合");
   expect(text().indexOf("任務判定")).toBeLessThan(text().indexOf("執行狀態"));

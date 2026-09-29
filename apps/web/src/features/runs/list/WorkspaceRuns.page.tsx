@@ -23,7 +23,7 @@ export function WorkspaceRuns() {
     <section>
       <h1>試跑活動</h1>
       <p className="note" data-role="teaching">
-        這裡只收錄試跑；創作、打包與發佈工作仍在各自的空間。
+        僅收錄試跑；創作、打包、發佈各自保留
       </p>
 
       {runs.isPending && <Loading what="試跑活動" />}
