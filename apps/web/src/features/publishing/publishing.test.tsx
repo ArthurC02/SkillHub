@@ -25,6 +25,7 @@ import {
   OWN_BUNDLE,
   SKILL,
   SKILL_VERSIONS,
+  VERSION,
   skillDetail,
 } from "../../testing/fixtures/platform";
 import type { SkillDetail } from "../../core/api/types";
@@ -796,6 +797,7 @@ test("PublishPanel：未登入只說明需要登入，不顯示任何發佈狀�
 });
 
 test("PublishPanel：不是擁有者時整塊不顯示", async () => {
+  const calls = stub({});
   await render(
     <div data-testid="wrap">
       <PublishPanel skill={detail()} isLoggedIn={true} isOwner={false} />
@@ -804,6 +806,7 @@ test("PublishPanel：不是擁有者時整塊不顯示", async () => {
   );
 
   expect(text()).toBe("");
+  expect(calls.some((url) => url.includes("/me/publications"))).toBe(false);
 });
 
 test("PublishPanel：還沒有發佈者時，在精確版本脈絡內提供註冊", async () => {
@@ -834,9 +837,10 @@ test("PublishPanel：已發佈時顯示公開位址、狀態與最新 Release", 
   stub({
     "/me/publisher": { body: OWN_PUBLISHER },
     [`/skills/${SKILL}/publication`]: { body: OWN_PUBLICATION },
+    "/me/publications": { body: OWN_PUBLICATIONS },
   });
   await render(<PublishPanel skill={detail()} isLoggedIn={true} isOwner={true} />, () =>
-    text().includes("公開位址"),
+    text().includes("已列入 Catalog"),
   );
 
   expect(text()).toContain(`/p/${PUBLISHER}/${PUBLICATION}`);
@@ -849,6 +853,90 @@ test("PublishPanel：已發佈時顯示公開位址、狀態與最新 Release", 
   ).toBe(`/workspace/downloads?publication=${encodeURIComponent(`${PUBLISHER}/${PUBLICATION}`)}`);
   expect(button("發佈 v2")).toBeDefined();
   expect(button("撤回")).toBeDefined();
+  expect(text()).toContain("任何人都能從搜尋與 Catalog 找到這個 Release");
+});
+
+test("PublishPanel：歷史 Release 不借用最新 Release 的 Catalog 曝光", async () => {
+  const older = SKILL_VERSIONS.versions[1];
+  const publication = {
+    ...OWN_PUBLICATION,
+    releases: [
+      ...OWN_PUBLICATION.releases,
+      {
+        ...OWN_PUBLICATION.releases[0],
+        version_id: older.version_id,
+        version_number: older.version_number,
+        released_at: "2026-08-01T00:00:00Z",
+      },
+    ],
+  };
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    [`/skills/${SKILL}/publication`]: { body: publication },
+    "/me/publications": { body: OWN_PUBLICATIONS },
+  });
+
+  await render(
+    <PublishPanel skill={detail()} version={older} isLoggedIn={true} isOwner={true} />,
+    () => text().includes("重新整理 Catalog 曝光狀態"),
+  );
+
+  expect(text()).toContain("這一版的目前狀態不適用");
+  expect(text()).toContain("Catalog 曝光狀態只描述");
+  expect(text()).not.toContain("已列入 Catalog");
+  expect(
+    container.querySelector(`a[href="/skills/${SKILL}/versions/${VERSION}"]`)?.textContent,
+  ).toContain("最新 Release v2");
+});
+
+test("PublishPanel：尚無 Release 的版本不產生 Catalog 曝光判斷", async () => {
+  const unreleased = SKILL_VERSIONS.versions[1];
+  const calls = stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    [`/skills/${SKILL}/publication`]: { body: OWN_PUBLICATION },
+    "/me/publications": { body: OWN_PUBLICATIONS },
+  });
+
+  await render(
+    <PublishPanel skill={detail()} version={unreleased} isLoggedIn={true} isOwner={true} />,
+    () => text().includes("Catalog 曝光"),
+  );
+
+  expect(text()).toContain("這一版的目前狀態不適用");
+  expect(text()).toContain("v1 還沒有 Release；Catalog 只審核不可變 Release");
+  expect(text()).not.toContain("已列入 Catalog");
+  expect(calls.some((url) => url.includes("/me/publications"))).toBe(false);
+});
+
+test("PublishPanel：Catalog owner projection 讀取失敗不冒充未曝光", async () => {
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    [`/skills/${SKILL}/publication`]: { body: OWN_PUBLICATION },
+    "/me/publications": { body: { error: "database unavailable" }, status: 500 },
+  });
+
+  await render(<PublishPanel skill={detail()} isLoggedIn={true} isOwner={true} />, () =>
+    text().includes("暫時無法讀取Catalog 曝光狀態"),
+  );
+
+  expect(text()).not.toContain("已列入 Catalog");
+  expect(text()).not.toContain("尚無 Release");
+  expect(text()).not.toContain("database unavailable");
+});
+
+test("PublishPanel：Publication 身分對不上時明示無法確認", async () => {
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    [`/skills/${SKILL}/publication`]: { body: OWN_PUBLICATION },
+    "/me/publications": { body: { publications: [] } },
+  });
+
+  await render(<PublishPanel skill={detail()} isLoggedIn={true} isOwner={true} />, () =>
+    text().includes("發佈資料與工作區清單目前對不上"),
+  );
+
+  expect(text()).not.toContain("已列入 Catalog");
+  expect(button("重新整理 Catalog 曝光狀態")).toBeDefined();
 });
 
 test("PublishPanel：發佈明確送出畫面上的版本，不讓伺服器另選最新版本", async () => {

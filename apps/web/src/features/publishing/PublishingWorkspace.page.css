@@ -60,16 +60,6 @@
   margin-top: 16px;
 }
 
-.publication-exposure {
-  margin: 12px 0;
-  padding-left: 12px;
-  border-left: 2px solid var(--border-strong);
-}
-
-.publication-exposure > p {
-  margin: 4px 0;
-}
-
 .publishing-workspace .download-item[aria-current="location"] {
   border-color: var(--accent-border);
   box-shadow: 0 0 0 2px var(--accent-bg);

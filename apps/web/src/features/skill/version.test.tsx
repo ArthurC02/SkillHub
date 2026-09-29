@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import {
   OWN_PUBLICATION,
+  OWN_PUBLICATIONS,
   OWN_PUBLISHER,
   SKILL,
   SKILL_VERSIONS,
@@ -102,6 +103,7 @@ function stubVersions(
     if (path === `/skills/${SKILL}/versions`) return json(versions);
     if (path === "/me/publisher") return json(OWN_PUBLISHER);
     if (path === `/skills/${SKILL}/publication`) return json(OWN_PUBLICATION);
+    if (path === "/me/publications") return json(OWN_PUBLICATIONS);
     if (path === `/skills/${SKILL}/diff`) return json(VERSION_DIFF);
     if (path === "/runs") return json(runs.body ?? { error: "unavailable" }, runs.status ?? 200);
     return json({ error: "not found" }, 404);
@@ -138,10 +140,11 @@ const text = () => container.textContent ?? "";
 
 test("an owned immutable version becomes one shareable context for validation, package and release", async () => {
   stubVersions();
-  await render(() => text().includes("PDF Summariser v2"));
+  await render(() => text().includes("已列入 Catalog"));
 
   expect(text()).toContain("v2，最新版本");
   expect(text()).toContain("已有 Release");
+  expect(text()).toContain("已列入 Catalog");
   expect(container.querySelector("#skill-version-file")).not.toBeNull();
   expect(
     container.querySelector(`a[href="/lab/test-cases?skill=${SKILL}&version=${VERSION}"]`),

@@ -1,0 +1,9 @@
+.catalog-exposure {
+  margin: 12px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--border-strong);
+}
+
+.catalog-exposure > p {
+  margin: 4px 0;
+}

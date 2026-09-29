@@ -147,10 +147,11 @@ export function useOwnPublisher(enabled = true) {
   });
 }
 
-export function useOwnPublications() {
+export function useOwnPublications(enabled = true) {
   return useQuery({
     queryKey: queryKeys.publishing.publications,
     queryFn: () => apiFetch<{ publications: OwnerPublicationSummary[] }>("/me/publications"),
+    enabled,
   });
 }
 

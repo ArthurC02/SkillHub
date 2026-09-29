@@ -17,6 +17,7 @@ import {
 import { publishGateState, refusalSentence } from "../publishing.model";
 import { PublishForm } from "./PublishForm";
 import { PublisherRegistration } from "./PublisherSection";
+import { VersionCatalogExposure } from "./CatalogExposure";
 
 export function PublishPanel({
   skill,
@@ -88,6 +89,7 @@ export function PublishPanel({
               cannotSubmit={cannotSubmit}
               publish={publish}
               delist={delist}
+              skillId={skill.skill_id}
               version={version}
             />
           ) : notPublishedYet ? (
@@ -120,6 +122,7 @@ function PublishedView({
   cannotSubmit,
   publish,
   delist,
+  skillId,
   version,
 }: {
   publication: Publication;
@@ -130,6 +133,7 @@ function PublishedView({
   cannotSubmit: boolean;
   publish: ReturnType<typeof usePublish>;
   delist: ReturnType<typeof useDelist>;
+  skillId: string;
   version: SkillVersionSummary;
 }) {
   const latest = publication.releases[0];
@@ -176,6 +180,7 @@ function PublishedView({
           " 還沒有 Release。"
         )}
       </p>
+      <VersionCatalogExposure skillId={skillId} publication={publication} version={version} />
 
       {needsAttestation && (
         <p>
