@@ -578,6 +578,45 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "activity",
+      "name": "Workspace Activity",
+      "responsibility": "Owns the Workspace-scoped cross-source activity query: contracted source coverage, completeness, global ordering, cursor semantics and typed continuation composition, but no source lifecycle state.",
+      "subdomain": "supporting",
+      "implementation_path": "product/activity",
+      "requirement_prefixes": [],
+      "evidence": [
+        {
+          "path": "contracts/openapi/public.yaml",
+          "lines": {
+            "start": 381,
+            "end": 425
+          },
+          "content_sha256": "sha256:d073711552b2c6cbcf6b4486310f134548c7eba2e662d2c08251990c3d377365",
+          "excerpt_sha256": "sha256:6fbd05ffa8416562abd6f9fb395642a16cdf25feb6dc1babf9c69a68bff4c3df",
+          "source_kind": "contracts"
+        }
+      ],
+      "review": {
+        "proposal_id": "workspace-activity-owner-contract-v5",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-30T09:52:50.115174Z",
+            "scope": "Unchanged rebased replacement for the explicitly approved v4 scope; only the Activity Context evidence citation now points to the developer-confirmed OpenAPI contract. Query-only Workspace Activity, five owner-produced fact readers, GET /me/activity, backend projection, frontend workbench, tests, documents, and exclusions remain unchanged.",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "37a486291724f48bea3af6e6c022fd29ce6333f5",
+              "registry_digest": "sha256:414f510adf09c6f6357377e106aff73c6a31742894170e50675f61cfdf97f974"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }

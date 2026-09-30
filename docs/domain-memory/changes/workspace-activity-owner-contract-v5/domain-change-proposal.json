@@ -3,12 +3,12 @@
   "proposal_id": "workspace-activity-owner-contract-v5",
   "proposer": "codex",
   "requirement_id": "workspace-activity-owner-contract-v5",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-09-30T09:52:49.716595Z",
   "verified_at": "2026-09-30T09:52:50.560710Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-09-30T09:53:09.323684Z",
+  "applied_at": "2026-09-30T09:53:09.960856Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "37a486291724f48bea3af6e6c022fd29ce6333f5",
@@ -433,5 +433,9 @@
         "registry_digest": "sha256:414f510adf09c6f6357377e106aff73c6a31742894170e50675f61cfdf97f974"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "f250ebe003fda00a9413a9c906c9be91b6937f10",
+    "registry_digest": "sha256:d75493e27760f5054a1ffa592bf40193d910cb0bf71cae4ce535add36d14e15b"
+  }
 }

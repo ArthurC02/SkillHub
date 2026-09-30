@@ -40,6 +40,201 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "run-activity-facts",
+      "producer_context": "run",
+      "consumer_context": "activity",
+      "contract_id": "run-activity-facts-v1",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 51,
+            "end": 53
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:55f486e247dea9aa4a07e92c6564fc3b7024fa1e32e55e93569016fdc1ffc0e8",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "workspace-activity-owner-contract-v5",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-30T09:52:50.115174Z",
+            "scope": "Unchanged rebased replacement for the explicitly approved v4 scope; only the Activity Context evidence citation now points to the developer-confirmed OpenAPI contract. Query-only Workspace Activity, five owner-produced fact readers, GET /me/activity, backend projection, frontend workbench, tests, documents, and exclusions remain unchanged.",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "37a486291724f48bea3af6e6c022fd29ce6333f5",
+              "registry_digest": "sha256:414f510adf09c6f6357377e106aff73c6a31742894170e50675f61cfdf97f974"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "eval-activity-facts",
+      "producer_context": "eval",
+      "consumer_context": "activity",
+      "contract_id": "eval-activity-facts-v1",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 51,
+            "end": 53
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:55f486e247dea9aa4a07e92c6564fc3b7024fa1e32e55e93569016fdc1ffc0e8",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "workspace-activity-owner-contract-v5",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-30T09:52:50.115174Z",
+            "scope": "Unchanged rebased replacement for the explicitly approved v4 scope; only the Activity Context evidence citation now points to the developer-confirmed OpenAPI contract. Query-only Workspace Activity, five owner-produced fact readers, GET /me/activity, backend projection, frontend workbench, tests, documents, and exclusions remain unchanged.",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "37a486291724f48bea3af6e6c022fd29ce6333f5",
+              "registry_digest": "sha256:414f510adf09c6f6357377e106aff73c6a31742894170e50675f61cfdf97f974"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "creation-activity-facts",
+      "producer_context": "creation",
+      "consumer_context": "activity",
+      "contract_id": "creation-activity-facts-v1",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 51,
+            "end": 53
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:55f486e247dea9aa4a07e92c6564fc3b7024fa1e32e55e93569016fdc1ffc0e8",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "workspace-activity-owner-contract-v5",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-30T09:52:50.115174Z",
+            "scope": "Unchanged rebased replacement for the explicitly approved v4 scope; only the Activity Context evidence citation now points to the developer-confirmed OpenAPI contract. Query-only Workspace Activity, five owner-produced fact readers, GET /me/activity, backend projection, frontend workbench, tests, documents, and exclusions remain unchanged.",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "37a486291724f48bea3af6e6c022fd29ce6333f5",
+              "registry_digest": "sha256:414f510adf09c6f6357377e106aff73c6a31742894170e50675f61cfdf97f974"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "packaging-activity-facts",
+      "producer_context": "packaging",
+      "consumer_context": "activity",
+      "contract_id": "packaging-activity-facts-v1",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 51,
+            "end": 53
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:55f486e247dea9aa4a07e92c6564fc3b7024fa1e32e55e93569016fdc1ffc0e8",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "workspace-activity-owner-contract-v5",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-30T09:52:50.115174Z",
+            "scope": "Unchanged rebased replacement for the explicitly approved v4 scope; only the Activity Context evidence citation now points to the developer-confirmed OpenAPI contract. Query-only Workspace Activity, five owner-produced fact readers, GET /me/activity, backend projection, frontend workbench, tests, documents, and exclusions remain unchanged.",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "37a486291724f48bea3af6e6c022fd29ce6333f5",
+              "registry_digest": "sha256:414f510adf09c6f6357377e106aff73c6a31742894170e50675f61cfdf97f974"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "publishing-activity-facts",
+      "producer_context": "publishing",
+      "consumer_context": "activity",
+      "contract_id": "publishing-activity-facts-v1",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 51,
+            "end": 53
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:55f486e247dea9aa4a07e92c6564fc3b7024fa1e32e55e93569016fdc1ffc0e8",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "workspace-activity-owner-contract-v5",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-30T09:52:50.115174Z",
+            "scope": "Unchanged rebased replacement for the explicitly approved v4 scope; only the Activity Context evidence citation now points to the developer-confirmed OpenAPI contract. Query-only Workspace Activity, five owner-produced fact readers, GET /me/activity, backend projection, frontend workbench, tests, documents, and exclusions remain unchanged.",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "37a486291724f48bea3af6e6c022fd29ce6333f5",
+              "registry_digest": "sha256:414f510adf09c6f6357377e106aff73c6a31742894170e50675f61cfdf97f974"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }

@@ -104,6 +104,8 @@ linters:
             - "**/internal/creator/creation/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
               desc: "creation uses injected owner APIs"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
@@ -140,6 +142,8 @@ linters:
             - "**/internal/creator/credit/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing
               desc: "credit records what a call cost; it never reaches into the context that made the call"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
@@ -181,6 +185,8 @@ linters:
             - "**/internal/creator/workspace/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
               desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -221,6 +227,8 @@ linters:
             - "**/internal/product/learning/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
               desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -259,6 +267,8 @@ linters:
             - "**/internal/skill/discovery/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
@@ -291,6 +301,8 @@ linters:
             - "**/internal/trial/improvement/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
@@ -321,6 +333,8 @@ linters:
             - "**/internal/skill/admission/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
               desc: "creation owns its session; integrate through callbacks"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
@@ -353,6 +367,8 @@ linters:
             - "**/internal/skill/delivery/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
               desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -387,6 +403,8 @@ linters:
             - "**/internal/skill/publishing/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
               desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -425,6 +443,8 @@ linters:
             - "**/internal/product/entitlements/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
               desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -465,6 +485,8 @@ linters:
             - "**/internal/skill/library/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
               desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -503,6 +525,8 @@ linters:
             - "**/internal/trial/execution/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
               desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -535,6 +559,8 @@ linters:
             - "**/internal/trial/design/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
               desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -573,6 +599,8 @@ linters:
             - "**/internal/trial/evidence/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
               desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -611,6 +639,8 @@ linters:
             - "**/internal/foundation/storage/objreconcile/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
               desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -651,6 +681,8 @@ linters:
             - "**/internal/shared/skillpkg/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
               desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -704,6 +736,8 @@ linters:
             - "**/internal/foundation/runtime/httpx/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
               desc: "cross-context import forbidden; credit is reached through the hooks the composition root assigns"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
