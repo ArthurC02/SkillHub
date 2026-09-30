@@ -1,17 +1,17 @@
 {
   "format": "domain-change-proposal/v1",
-  "proposal_id": "workspace-activity-owner-contract-v4",
+  "proposal_id": "workspace-activity-owner-contract-v5",
   "proposer": "codex",
-  "requirement_id": "workspace-activity-owner-contract-v4",
-  "status": "superseded",
+  "requirement_id": "workspace-activity-owner-contract-v5",
+  "status": "verified",
   "change_classification": "material",
-  "submitted_at": "2026-09-30T09:40:24.407521Z",
-  "verified_at": "2026-09-30T09:40:33.515233Z",
-  "finalized_at": "2026-09-30T09:51:09.866673Z",
+  "submitted_at": "2026-09-30T09:52:49.716595Z",
+  "verified_at": "2026-09-30T09:52:50.560710Z",
+  "finalized_at": null,
   "applied_at": null,
   "proposal_revision": 1,
   "base_registry_revision": {
-    "observed_commit": "6dd93bd03e95d4f687d7cffda2cdae99c03d9d74",
+    "observed_commit": "37a486291724f48bea3af6e6c022fd29ce6333f5",
     "registry_digest": "sha256:414f510adf09c6f6357377e106aff73c6a31742894170e50675f61cfdf97f974"
   },
   "affected_contexts": [
@@ -147,14 +147,14 @@
         "requirement_prefixes": [],
         "evidence": [
           {
-            "path": "docs/design/platform-experience.md",
+            "path": "contracts/openapi/public.yaml",
             "lines": {
-              "start": 268,
-              "end": 278
+              "start": 381,
+              "end": 425
             },
-            "content_sha256": "sha256:1c97db135b5fd6dd0f421d32cc57b5324e5e5997b18f4536502cd4bf43e3148b",
-            "excerpt_sha256": "sha256:33f1fa58fe8dc5d556bc90c626b30f8c4e2bb28bd4c85c8c8bb92bbcd698cae9",
-            "source_kind": "unclassified"
+            "content_sha256": "sha256:d073711552b2c6cbcf6b4486310f134548c7eba2e662d2c08251990c3d377365",
+            "excerpt_sha256": "sha256:6fbd05ffa8416562abd6f9fb395642a16cdf25feb6dc1babf9c69a68bff4c3df",
+            "source_kind": "contracts"
           }
         ]
       }
@@ -425,17 +425,13 @@
       "role": "developer",
       "reviewer": "ArthurC",
       "decision": "approved",
-      "approved_at": "2026-09-30T09:40:28.935299Z",
-      "scope": "Unchanged rebased replacement for the explicitly approved v3 scope: query-only Workspace Activity, five owner-produced fact readers, GET /me/activity, backend projection, frontend workbench, tests, documents, and the already approved source-corpus confirmation.",
+      "approved_at": "2026-09-30T09:52:50.115174Z",
+      "scope": "Unchanged rebased replacement for the explicitly approved v4 scope; only the Activity Context evidence citation now points to the developer-confirmed OpenAPI contract. Query-only Workspace Activity, five owner-produced fact readers, GET /me/activity, backend projection, frontend workbench, tests, documents, and exclusions remain unchanged.",
       "proposal_revision": 1,
       "base_registry_revision": {
-        "observed_commit": "6dd93bd03e95d4f687d7cffda2cdae99c03d9d74",
+        "observed_commit": "37a486291724f48bea3af6e6c022fd29ce6333f5",
         "registry_digest": "sha256:414f510adf09c6f6357377e106aff73c6a31742894170e50675f61cfdf97f974"
       }
     }
-  ],
-  "superseded_from_status": "approved",
-  "superseded_at": "2026-09-30T09:51:50.837548Z",
-  "superseded_reason": "Approved v4 could not be applied because the Activity Context citation fell outside the developer-confirmed source corpus; v5 preserves the decision and cites the confirmed OpenAPI contract.",
-  "superseded_by": "workspace-activity-owner-contract-v5"
+  ]
 }

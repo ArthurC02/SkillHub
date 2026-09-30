@@ -1,22 +1,13 @@
 {
   "format": "domain-evidence-bundle/v1",
-  "requirement_id": "workspace-activity-owner-contract-v4",
-  "proposal_id": "workspace-activity-owner-contract-v4",
+  "requirement_id": "workspace-activity-owner-contract-v5",
+  "proposal_id": "workspace-activity-owner-contract-v5",
   "registry_revision": {
-    "observed_commit": "6dd93bd03e95d4f687d7cffda2cdae99c03d9d74",
+    "observed_commit": "37a486291724f48bea3af6e6c022fd29ce6333f5",
     "registry_digest": "sha256:414f510adf09c6f6357377e106aff73c6a31742894170e50675f61cfdf97f974"
   },
   "approvals": [],
-  "scm_attestation": {
-    "provider": "git-signed-commit",
-    "commit": "37a486291724f48bea3af6e6c022fd29ce6333f5",
-    "status": "approved",
-    "proposal_revision": 1,
-    "base_registry_revision": {
-      "observed_commit": "6dd93bd03e95d4f687d7cffda2cdae99c03d9d74",
-      "registry_digest": "sha256:414f510adf09c6f6357377e106aff73c6a31742894170e50675f61cfdf97f974"
-    }
-  },
+  "scm_attestation": null,
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "source-failure-visible",
@@ -265,6 +256,7 @@
   "architecture_checks": [],
   "security_checks": [],
   "residual_risks": [
+    "SCM attestation will be added after the signed v5 package commit exists.",
     "Pagination is stable only while the source dataset is unchanged; the contract deliberately does not claim a cross-request snapshot.",
     "A future observable asynchronous Packaging scan requires a successor proposal and a new owner timestamp rather than reinterpreting created_at.",
     "Publishing Activity deliberately excludes Catalog exposure, distribution availability and Bundle Publication from first-version classification and ordering."
