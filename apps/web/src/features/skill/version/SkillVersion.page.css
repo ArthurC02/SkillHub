@@ -21,12 +21,21 @@
 
 .version-facts,
 .version-creation-context,
+.version-continuation,
 .version-workspace-rail {
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--surface);
   box-shadow: var(--shadow-rest);
   padding: 20px;
+}
+
+.version-continuation {
+  border-top: 3px solid var(--accent);
+}
+
+.version-continuation > h2 {
+  margin-top: 0;
 }
 
 .version-creation-context {

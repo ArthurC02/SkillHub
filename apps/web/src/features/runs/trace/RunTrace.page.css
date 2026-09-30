@@ -1,9 +1,33 @@
+.run-workspace,
+.run-workspace-header,
+.run-workspace-main,
+.run-workspace-rail,
+.run-workspace-rail section {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.run-workspace {
+  gap: 24px;
+}
+
+.run-workspace-header > * {
+  margin-block: 0;
+}
+
+.run-eyebrow {
+  font-size: 14px;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+
 .run-identity {
   overflow-wrap: anywhere;
 }
 
 .run-source-context {
-  margin-block: 16px 24px;
+  margin-block: 8px 0;
 }
 
 .run-source-context > strong {
@@ -19,4 +43,120 @@
   display: inline-flex;
   align-items: center;
   min-height: 40px;
+}
+
+.run-workspace-panel,
+.run-workspace-rail {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-rest);
+  padding: 20px;
+}
+
+.run-workspace-panel > :first-child,
+.run-workspace-panel > section:first-child > :first-child,
+.run-workspace-rail h2 {
+  margin-top: 0;
+}
+
+.run-decision {
+  border-top: 3px solid var(--accent);
+}
+
+.run-workspace-layout {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+}
+
+.run-workspace-main {
+  grid-area: main;
+  gap: 24px;
+}
+
+.run-workspace-rail {
+  grid-area: rail;
+}
+
+.run-section-nav {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.run-section-nav a {
+  display: block;
+  padding: 8px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.run-section-nav a:hover {
+  background: var(--surface-hover);
+}
+
+.run-mode-switch {
+  display: inline-flex;
+  width: fit-content;
+  gap: 4px;
+  margin-block: 16px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--code-bg);
+}
+
+.run-mode-switch button {
+  border-color: transparent;
+  background: transparent;
+}
+
+.run-mode-switch button[aria-pressed="true"] {
+  border-color: var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-rest);
+}
+
+#run-decision,
+#run-trace,
+#run-artifacts {
+  scroll-margin-top: 24px;
+}
+
+@media (min-width: 1024px) {
+  .run-workspace-layout {
+    grid-template-columns: minmax(0, 1fr) 280px;
+    grid-template-areas: "main rail";
+    gap: 32px;
+  }
+
+  .run-workspace-rail {
+    position: sticky;
+    top: 88px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .run-workspace-layout {
+    grid-template-areas:
+      "rail"
+      "main";
+  }
+}
+
+@media (max-width: 640px) {
+  .run-workspace-panel,
+  .run-workspace-rail {
+    padding: 16px;
+  }
+
+  .run-mode-switch {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
 }

@@ -85,6 +85,10 @@ export function TestCaseDetail() {
         runsPending={runs.isPending}
         runsError={runs.error}
       />
+      <PromptForm testCase={testCase.data} />
+      <CriteriaSection testCase={testCase.data} />
+      <RubricSection testCase={testCase.data} />
+      <DatasetSection testCaseId={testCaseId} versionId={selectedVersion?.version_id} />
       <section className="test-case-next-step" aria-labelledby="test-case-next-step-title">
         <h2 id="test-case-next-step-title">下一步：試跑這個驗證設計</h2>
         <p>
@@ -101,10 +105,6 @@ export function TestCaseDetail() {
           開始 Run 前會再次顯示權限摘要並要求確認。
         </p>
       </section>
-      <PromptForm testCase={testCase.data} />
-      <CriteriaSection testCase={testCase.data} />
-      <RubricSection testCase={testCase.data} />
-      <DatasetSection testCaseId={testCaseId} versionId={selectedVersion?.version_id} />
       <RunHistory runs={runs} history={history} />
       <DeleteTestCase testCaseId={testCaseId} onDeleted={setDeleted} />
     </section>

@@ -35,4 +35,14 @@
 
 .test-case-next-step {
   margin-block: 24px 32px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-rest);
+}
+
+.test-case-next-step > h2 {
+  margin-top: 0;
 }

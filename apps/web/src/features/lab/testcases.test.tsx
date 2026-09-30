@@ -262,6 +262,26 @@ test("the Test Case workbench names the URL-selected Skill, Version and Test Cas
   expect(runLink?.getAttribute("data-search")).toBe(JSON.stringify({ version: OTHER_VERSION }));
 });
 
+test("the Test Case workbench puts execution after its editable design and before history", async () => {
+  listSearch = { version: VERSION };
+  stubPlatform({ runs: [RUN] });
+  await render();
+
+  const headings = Array.from(
+    container.querySelectorAll("h2,h3"),
+    (heading) => heading.textContent,
+  );
+  const journey = [
+    "名稱與 User Prompt",
+    "驗收條件",
+    "Rubric（選用）",
+    "測試資料",
+    "下一步：試跑這個驗證設計",
+    "執行歷史",
+  ];
+  expect(headings.filter((heading) => heading && journey.includes(heading))).toEqual(journey);
+});
+
 test("the Test Case workbench labels a Version inherited from the latest matching Run", async () => {
   stubPlatform({ runs: [RUN] });
   await render();

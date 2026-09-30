@@ -221,6 +221,15 @@ test("an owned immutable version becomes one shareable context for validation, p
   expect(
     container.querySelector(`a[href="/skills/${SKILL}/versions/${VERSION}"][aria-current="page"]`),
   ).not.toBeNull();
+  const facts = container.querySelector("#version-facts-title")!.closest("section")!;
+  const continuation = container.querySelector("#version-continuation-title")!.closest("section")!;
+  const evidence = container.querySelector("#version-evidence-title")!.closest("section")!;
+  expect(facts.compareDocumentPosition(continuation) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(
+    0,
+  );
+  expect(
+    continuation.compareDocumentPosition(evidence) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).not.toBe(0);
   expect(text()).not.toContain("Activity");
   expect(text()).not.toContain("Studio 歷程");
 });

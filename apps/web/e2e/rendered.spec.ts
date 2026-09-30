@@ -544,7 +544,64 @@ async function verifyCreationWorklistOnDesktop(page: Page) {
   expect(railBox!.x + railBox!.width).toBeLessThanOrEqual(currentBox!.x);
 }
 
+async function verifyRunWorkbench(page: Page, testInfo: TestInfo) {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/runs/${RUN}`);
+
+  const decision = page.locator("#run-decision");
+  const rail = page.getByRole("complementary", { name: "Run 操作與區段導覽" });
+  await expect(decision.getByRole("heading", { name: "任務判定" })).toBeVisible();
+  await expect(rail.getByRole("navigation", { name: "Run 結果導覽" })).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const box = (selector: string) => {
+      const rect = document.querySelector(selector)!.getBoundingClientRect();
+      return { top: rect.top, left: rect.left, right: rect.right, width: rect.width };
+    };
+    return {
+      decision: box("#run-decision"),
+      trace: box("#run-trace"),
+      artifacts: box("#run-artifacts"),
+      rail: box(".run-workspace-rail"),
+    };
+  });
+
+  expect(layout.decision.top).toBeLessThan(layout.trace.top);
+  expect(layout.trace.left).toBeLessThan(layout.rail.left);
+  expect(layout.trace.right).toBeLessThanOrEqual(layout.rail.left);
+  expect(layout.trace.width).toBe(layout.artifacts.width);
+  await page.screenshot({
+    path: testInfo.outputPath("run-workbench-desktop.png"),
+    fullPage: true,
+  });
+
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/runs/${RUN}`);
+  await expect(page.locator("#run-decision")).toBeVisible();
+  const phone = await page.evaluate(() => {
+    const top = (selector: string) => document.querySelector(selector)!.getBoundingClientRect().top;
+    return {
+      decision: top("#run-decision"),
+      rail: top(".run-workspace-rail"),
+      trace: top("#run-trace"),
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    };
+  });
+  expect(phone.decision).toBeLessThan(phone.rail);
+  expect(phone.rail).toBeLessThan(phone.trace);
+  expect(phone.scrollWidth).toBeLessThanOrEqual(phone.clientWidth);
+  await page.screenshot({ path: testInfo.outputPath("run-workbench-phone.png"), fullPage: true });
+}
+
 test.describe("QA-008 real layout", () => {
+  test("Run result keeps judgment first and turns evidence into a desktop workbench", async ({
+    page,
+  }, testInfo) => {
+    await verifyRunWorkbench(page, testInfo);
+  });
+
   test("test case history keeps each Run's immutable Version in reach on a phone", async ({
     page,
   }, testInfo) => {

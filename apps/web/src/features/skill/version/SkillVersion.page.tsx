@@ -80,6 +80,12 @@ export function SkillVersion() {
       <div className="version-workspace-layout">
         <div className="version-workspace-main">
           <VersionFacts version={selected} isLatest={selectedIndex === 0} />
+          <VersionActions
+            skillId={skillId}
+            versionId={versionId}
+            versionNumber={selected.version_number}
+            gate={gate}
+          />
           <VersionCreationContext versionId={versionId} />
           <VersionEvidence
             skillId={skillId}
@@ -87,12 +93,6 @@ export function SkillVersion() {
             versionNumber={selected.version_number}
           />
           <VersionDeliverables skillId={skillId} versionId={versionId} />
-          <VersionActions
-            skillId={skillId}
-            versionId={versionId}
-            versionNumber={selected.version_number}
-            gate={gate}
-          />
 
           {previous && (
             <section>
@@ -334,8 +334,8 @@ function VersionActions({
   gate: ReturnType<typeof packagingGate>;
 }) {
   return (
-    <section>
-      <h2>以這一版繼續</h2>
+    <section className="version-continuation" aria-labelledby="version-continuation-title">
+      <h2 id="version-continuation-title">以這一版繼續</h2>
       <div className="version-workspace-actions">
         <Link
           className="action"
