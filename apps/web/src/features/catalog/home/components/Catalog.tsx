@@ -5,10 +5,9 @@ import { Loading } from "../../../../shared/ui/Loading";
 import { MAX_COMPARE } from "../../../skill";
 import type { PublicSearchResult } from "../../../../core/api/types";
 import { CompareBar } from "./CompareBar";
+import { CatalogSkillCard } from "./CatalogSkillCard";
 import { SearchFacetNotes } from "./SearchFacetNotes";
-import { liftedNotes } from "./SearchFacetNotes.model";
 import { MarkerLegend, MarkerWarning } from "./MarkerLegend";
-import { SearchResultRow } from "./SearchResultRow";
 import "./Catalog.css";
 
 function CatalogHeader({
@@ -82,20 +81,13 @@ export function Catalog({
 
   const { results, total, truncated } = query.data;
 
-  const curated = results.filter((hit) => hit.tier.value === "curated");
-  const rest = results.filter((hit) => hit.tier.value !== "curated");
-  const shelved = !tierFiltered && curated.length > 0 && rest.length > 0;
-
-  const row = (hit: PublicSearchResult) => (
-    <SearchResultRow
+  const card = (hit: PublicSearchResult) => (
+    <CatalogSkillCard
       key={hit.skill_id}
       hit={hit}
       checked={selected.includes(hit.skill_id)}
       atLimit={selected.length >= MAX_COMPARE}
       onToggle={onToggle}
-      rankNoteInList={false}
-      compactFacets
-      lifted={liftedNotes(results)}
     />
   );
 
@@ -113,40 +105,19 @@ export function Catalog({
               個。目前沒有翻頁；用上面的搜尋或篩選縮小範圍。
             </p>
           )}
-          {shelved ? (
-            <>
-              <section className="curated-shelf" aria-labelledby="curated-heading">
-                <div className="catalog-shelf-heading">
-                  <h3 id="curated-heading">精選 Skill（{curated.length}）</h3>
-                </div>
-                <ul className="search-results catalog-gallery" aria-labelledby="curated-heading">
-                  {curated.map(row)}
-                </ul>
-                <p className="note catalog-shelf-note">
-                  這一版由我們逐份讀過，通過九項人工檢視：來源可追溯、License 實查、規格驗證、
-                  Script 逐行審閱、無疑似 Secret、白話摘要、至少一次平台基準試跑符合。
-                  這不是安全保證，也不是推薦；平台未執行套件程式碼來判斷行為。審查綁在這一版的
-                  位元組上；更新後若未重審，就會掉回「已索引」。
-                </p>
-              </section>
-              <section className="catalog-shelf" aria-labelledby="rest-heading">
-                <div className="catalog-shelf-heading">
-                  <h3 id="rest-heading">近期收錄（{rest.length}）</h3>
-                </div>
-                <ul className="search-results catalog-gallery" aria-labelledby="rest-heading">
-                  {rest.map(row)}
-                </ul>
-                <p className="note catalog-shelf-note">
-                  「已索引」表示目前這一版沒有帶著人工審查結論，不是從沒被審過。
-                </p>
-              </section>
-            </>
-          ) : (
-            <ul className="search-results catalog-gallery" aria-label="目錄">
-              {results.map(row)}
-            </ul>
-          )}
+          <ul className="search-results catalog-gallery" aria-label="目錄">
+            {results.map(card)}
+          </ul>
           <div className="catalog-supporting-notes">
+            {!tierFiltered && results.some((hit) => hit.tier.value === "curated") && (
+              <p className="note catalog-curation-note">
+                「精選」表示這一版由我們逐份讀過，通過九項人工檢視：來源可追溯、License 實查、
+                規格驗證、Script 逐行審閱、無疑似 Secret、白話摘要、至少一次平台基準試跑符合。
+                這不是安全保證，也不是推薦；平台未執行套件程式碼來判斷行為。審查綁在這一版的
+                位元組上；更新後若未重審，就會掉回「已索引」。「已索引」表示目前這一版沒有帶著
+                人工審查結論，不是從沒被審過。
+              </p>
+            )}
             <MarkerWarning />
             <SearchFacetNotes hits={results} />
             <MarkerLegend />

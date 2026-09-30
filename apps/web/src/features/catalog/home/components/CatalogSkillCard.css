@@ -1,0 +1,114 @@
+.catalog-skill-card {
+  display: flex;
+  min-width: 0;
+  min-height: 248px;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-rest);
+  padding: 16px;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+
+.catalog-skill-card:hover {
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
+.catalog-card-header,
+.catalog-card-facts,
+.catalog-card-signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.catalog-card-header {
+  align-items: flex-start;
+}
+
+.catalog-card-facts .badge,
+.catalog-card-signals .badge {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.catalog-card-title {
+  color: var(--text-h);
+  text-decoration: none;
+}
+
+.catalog-card-title:hover {
+  color: var(--link);
+  text-decoration: underline;
+}
+
+.catalog-card-title h3 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 118%;
+}
+
+.catalog-card-summary {
+  display: -webkit-box;
+  min-height: 44px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.catalog-card-summary .badge {
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.catalog-card-signals {
+  align-items: center;
+  align-content: flex-start;
+}
+
+.catalog-card-validation {
+  color: var(--text-h);
+  font-size: 14px;
+}
+
+.catalog-card-metadata {
+  display: grid;
+  gap: 4px;
+  margin: auto 0 0;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.catalog-card-metadata > div {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px;
+}
+
+.catalog-card-metadata dt {
+  color: var(--text);
+}
+
+.catalog-card-metadata dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
+.catalog-card-compare {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 8px;
+  font-size: 14px;
+}

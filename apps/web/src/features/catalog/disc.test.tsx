@@ -308,9 +308,10 @@ test("Catalog landing leads with the Skill gallery and keeps creation outside th
   expect(hero.querySelector("h1")?.textContent).toBe("探索能直接採用的 Agent Skill");
   expect(hero.textContent).not.toContain("自己做一個 Skill");
   expect(container.querySelector("#catalog-heading")?.textContent).toBe("Skill 探索畫廊");
-  expect(container.querySelectorAll(".catalog-gallery .search-result")).toHaveLength(
+  expect(container.querySelectorAll(".catalog-gallery .catalog-skill-card")).toHaveLength(
     SHELF_ROWS.length,
   );
+  expect(container.querySelectorAll(".catalog-gallery")).toHaveLength(1);
 
   const create = [...container.querySelectorAll("a")].find((link) =>
     link.textContent?.includes("前往資產庫匯入或建立"),
@@ -427,34 +428,44 @@ test("DISC-001 搜尋文字超過 2000 字：送出前擋下並說明，不打�
   expect(calls.some((url) => url.includes("/api/skills/search"))).toBe(false);
 });
 
-test("the curated and recent shelves count every card without repeating the total", async () => {
+test("the catalogue presents every product in one compact scan surface", async () => {
   stubCategoryCatalog(SHELF_ROWS);
   await browseCatalogue();
 
-  const shelf = container.querySelector(".curated-shelf")!;
-  const curatedCards = shelf.querySelectorAll(".search-result").length;
-  const allCards = container.querySelectorAll(".search-result").length;
+  const galleries = container.querySelectorAll(".catalog-gallery");
+  const cards = [...container.querySelectorAll(".catalog-skill-card")];
 
-  expect(curatedCards).toBe(SHELF_ROWS.filter((r) => r.tier.value === "curated").length);
-  expect(shelf.querySelector("h3")!.textContent).toBe(`精選 Skill（${curatedCards}）`);
-
-  const rest = [...container.querySelectorAll("h3")].find((h) =>
-    h.textContent?.startsWith("近期收錄"),
-  )!;
-  expect(rest.textContent).toBe(`近期收錄（${allCards - curatedCards}）`);
-  expect(allCards).toBe(SHELF_ROWS.length);
+  expect(galleries).toHaveLength(1);
+  expect(cards).toHaveLength(SHELF_ROWS.length);
   expect(container.querySelector(".catalog-total")?.textContent).toContain(
     `共 ${SHELF_ROWS.length} 個 Skill`,
   );
-  expect(container.textContent).not.toContain("全部列在下面");
+  expect(container.querySelector(".curated-shelf")).toBeNull();
+  expect(container.querySelector("#rest-heading")).toBeNull();
+
+  for (const [index, card] of cards.entries()) {
+    const row = SHELF_ROWS[index];
+    const text = card.textContent?.replace(/\s+/g, "") ?? "";
+    expect(card.querySelector("h3")?.textContent).toBe(row.name);
+    expect(text).toContain(row.summary.replace(/\s+/g, ""));
+    expect(text).toContain(row.tier.label);
+    expect(text).toContain(row.category.label);
+    expect(text).toContain("規格驗證：通過");
+    expect(text).toContain("尚未試跑");
+    expect(text).toContain("依賴未提供");
+    expect(text).toContain("掃描未見警告≠安全");
+    expect(card.querySelector('time[datetime="2026-09-03T00:00:00Z"]')).not.toBeNull();
+    expect(card.querySelector(".result-facets")).toBeNull();
+  }
 });
 
-test("r3 提案 A: 精選 書架 states what the review is not, in visible text", async () => {
+test("the curated review explanation follows the unified product gallery", async () => {
   stubCategoryCatalog(SHELF_ROWS);
   await browseCatalogue();
 
-  const shelf = container.querySelector(".curated-shelf")!;
-  const note = shelf.querySelector(".catalog-shelf-note")!.textContent!.replace(/\s+/g, "");
+  const gallery = container.querySelector(".catalog-gallery")!;
+  const noteElement = container.querySelector(".catalog-curation-note")!;
+  const note = noteElement.textContent!.replace(/\s+/g, "");
   expect(note).toContain("這一版由我們逐份讀過");
   expect(note).toContain("九項人工檢視");
   for (const item of [
@@ -472,18 +483,10 @@ test("r3 提案 A: 精選 書架 states what the review is not, in visible text"
   expect(note).toContain("審查綁在這一版的位元組上");
   expect(note).toContain("平台未執行套件程式碼");
   expect(note).toContain("更新後若未重審，就會掉回「已索引」");
-  const firstCard = shelf.querySelector(".search-result")!;
-  expect(precedes(firstCard, noteElement(shelf, "九項人工檢視"))).toBe(true);
-
-  const restHeading = container.querySelector("#rest-heading")!;
-  const restNote = noteElement(container, "不是從沒被審過");
-  const firstRestCard = container.querySelector(
-    'ul[aria-labelledby="rest-heading"] .search-result',
-  )!;
-  expect(precedes(restHeading, restNote)).toBe(true);
-  expect(precedes(firstRestCard, restNote)).toBe(true);
-  expect(shelf.textContent).not.toMatch(/官方推薦|已認證|Verified/);
-  for (const el of shelf.querySelectorAll("[title]")) {
+  expect(precedes(gallery, noteElement)).toBe(true);
+  expect(note).toContain("不是從沒被審過");
+  expect(container.textContent).not.toMatch(/官方推薦|已認證|Verified/);
+  for (const el of container.querySelectorAll("[title]")) {
     expect(el.getAttribute("title")).not.toContain("九項人工檢視");
   }
 });
@@ -505,7 +508,7 @@ test("目錄：先顯示卡片，必要警語、facet 與詞彙說明緊接在�
   stubCategoryCatalog(SHELF_ROWS);
   await browseCatalogue();
 
-  const cards = [...container.querySelectorAll(".search-result")];
+  const cards = [...container.querySelectorAll(".catalog-skill-card")];
   expect(cards).toHaveLength(SHELF_ROWS.length);
   expect(precedes(cards.at(-1)!, noteElement(container, "未經人工核對"))).toBe(true);
   expect(
@@ -536,10 +539,10 @@ test("設計 §2.13: 逐位元相同的 note 提到清單層級，會分辨列�
   const distinct = (pick: (r: PublicSearchResult) => string | undefined) =>
     new Set(SHELF_ROWS.map((r) => pick(r) ?? ""));
   expect(distinct((r) => r.tier.note).size, "the fixture must span two tier notes").toBe(2);
-  const rows = [...container.querySelectorAll(".search-result")];
+  const rows = [...container.querySelectorAll(".catalog-skill-card")];
   expect(rows).toHaveLength(SHELF_ROWS.length);
   const rowNotes = (row: Element) =>
-    [...row.querySelectorAll(".result-facets .note")].map((n) => (n.textContent ?? "").trim());
+    [...row.querySelectorAll(".catalog-card-facts .note")].map((n) => (n.textContent ?? "").trim());
 
   for (const [label, pick] of [
     ["類別", (r: PublicSearchResult) => r.category.note],
@@ -572,9 +575,9 @@ test("設計 §2.13: 逐位元相同的 note 提到清單層級，會分辨列�
     expect(rowNotes(row), "a lifted tier note is still repeated on a row").not.toContain(
       SHELF_ROWS[i].tier.note,
     );
-    const tierBadge = row.querySelector(".result-facets [class*='badge-tier-']");
+    const tierBadge = row.querySelector(".catalog-card-facts [class*='badge-tier-']");
     expect(tierBadge?.textContent).toBe(SHELF_ROWS[i].tier.label);
-    expect(row.querySelector(".result-facets [class*='badge-category-']")?.textContent).toBe(
+    expect(row.querySelector(".catalog-card-facts [class*='badge-category-']")?.textContent).toBe(
       SHELF_ROWS[i].category.label,
     );
   }

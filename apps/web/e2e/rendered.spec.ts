@@ -2,6 +2,7 @@ import { test, expect, type Page, type TestInfo } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import {
   ARTIFACT,
+  CATALOG,
   OTHER_RUN,
   PUBLICATION,
   PUBLISHER,
@@ -105,6 +106,52 @@ async function verifyCreationContinuationLayout(page: Page, testInfo: TestInfo) 
 }
 
 test.describe("QA-008 composite pixels", () => {
+  test("the catalogue opens as one scannable product wall", async ({ page }, testInfo) => {
+    await stubPlatform(page);
+    const fourth = {
+      ...CATALOG.results[1],
+      skill_id: "44444444-4444-4444-8444-444444444444",
+      name: "Meeting Brief",
+      summary: "把會議內容整理成行動摘要",
+    };
+    await page.route("**/api/skills/catalog**", async (route) => {
+      await route.fulfill({
+        json: { ...CATALOG, results: [...CATALOG.results, fourth], total: 4 },
+      });
+    });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/");
+
+    const cards = page.locator(".catalog-gallery > .catalog-skill-card");
+    await expect(cards).toHaveCount(4);
+    const desktop = await cards.evaluateAll((elements) =>
+      elements.map((element) => {
+        const box = element.getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom, height: box.height };
+      }),
+    );
+    await page.screenshot({ path: testInfo.outputPath("catalog-desktop.png"), fullPage: true });
+    expect(new Set(desktop.map((box) => Math.round(box.top))).size).toBe(1);
+    expect(Math.max(...desktop.map((box) => box.height))).toBeLessThanOrEqual(320);
+    expect(Math.max(...desktop.map((box) => box.bottom))).toBeLessThanOrEqual(900);
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.screenshot({
+      path: testInfo.outputPath("catalog-desktop-dark.png"),
+      fullPage: true,
+    });
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.setViewportSize({ width: 375, height: 900 });
+    const phoneWidth = await page.evaluate(() => ({
+      client: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+    }));
+    expect(phoneWidth.scroll).toBeLessThanOrEqual(phoneWidth.client);
+    await page.screenshot({ path: testInfo.outputPath("catalog-phone.png"), fullPage: true });
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.screenshot({ path: testInfo.outputPath("catalog-phone-dark.png"), fullPage: true });
+  });
+
   test("desktop platform chrome stays distinct from the work canvas", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 1280, height: 900 });

@@ -1,24 +1,15 @@
-/* A shelf is a grouping, not a surface: no border, no fill, nothing filled
-   inside it (§4.6.3). Its `h3` keeps the §4.1 scale — a shelf title is a
-   subsection of the page, not a second page title. */
-.curated-shelf {
-  margin: 24px 0 32px;
-}
-
 .catalog-showcase {
   margin-top: 24px;
 }
 
-.catalog-heading-row,
-.catalog-shelf-heading {
+.catalog-heading-row {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px 24px;
 }
 
-.catalog-heading-row h2,
-.catalog-shelf-heading h3 {
+.catalog-heading-row h2 {
   margin: 0;
 }
 
@@ -46,42 +37,21 @@
   margin: 0;
 }
 
-.catalog-shelf {
-  margin: 32px 0;
-}
-
-.catalog-shelf-heading {
-  margin-bottom: 12px;
-}
-
-.catalog-shelf-note {
-  margin-top: 12px;
-}
-
 .catalog-gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 232px), 1fr));
   gap: 16px;
-}
-
-.catalog-gallery .search-result {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-content: start;
-  gap: 8px 12px;
-  border-top: 3px solid var(--accent-border);
-  border-radius: 16px;
-  padding: 20px;
-}
-
-.catalog-gallery .search-result > * {
-  grid-column: 1 / -1;
+  margin-top: 16px;
 }
 
 .catalog-supporting-notes {
   border-top: 1px solid var(--border);
   margin-top: 24px;
   padding-top: 16px;
+}
+
+.catalog-curation-note {
+  margin-bottom: 8px;
 }
 
 .catalog-create-note {
@@ -93,8 +63,7 @@
 }
 
 @media (max-width: 640px) {
-  .catalog-heading-row,
-  .catalog-shelf-heading {
+  .catalog-heading-row {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -102,10 +71,6 @@
   .catalog-heading-meta {
     justify-items: start;
     text-align: left;
-  }
-
-  .catalog-gallery .search-result {
-    padding: 16px;
   }
 }
 

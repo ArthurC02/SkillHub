@@ -272,7 +272,7 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 
 `/compare` 改後的 `Skill 比較` 與 `/runs/$runId/compare` 的 `Run 比較`（`features/runs/compare/RunCompare.page.tsx`）同形；兩者是不同的頁，比的東西也不同。
 
-Catalog landing `/` 的 `<h1>` 是名詞化的產品承諾 `探索能直接採用的 Agent Skill`（`features/catalog/home/components/SearchHeroForm.tsx`）；搜尋是縮小現有畫廊的工具，匯入或建立不與它並列。`/` 是登入前後一致的產品首頁；`/workspace` 是「工作台」，只負責續作與跨物件注意事項，兩者不共用責任。
+Catalog landing `/` 的 `<h1>` 是名詞化的產品承諾 `探索能直接採用的 Agent Skill`（`features/catalog/home/components/SearchHeroForm.tsx`）；搜尋是縮小同一座商品格線的工具，精選與已收錄由卡片標記區分，不另拆書架，匯入或建立也不與搜尋並列。`/` 是登入前後一致的產品首頁；`/workspace` 是「工作台」，只負責續作與跨物件注意事項，兩者不共用責任。
 
 **R5 沒有機器**（見 §0.1），所以這張盤點表與程式的一致性只能靠人比，而這一格會無聲過期。
 
