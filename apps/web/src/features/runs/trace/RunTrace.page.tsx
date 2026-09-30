@@ -10,6 +10,7 @@ import { RunArtifacts } from "./components/RunArtifacts";
 import { GeneralMode } from "./components/GeneralMode";
 import { AdvancedMode } from "./components/AdvancedMode";
 import { SkillWorkspaceNav } from "../../skill";
+import "./RunTrace.page.css";
 
 export function RunTrace() {
   const { runId } = useParams({ from: "/runs/$runId" });
@@ -21,13 +22,51 @@ export function RunTrace() {
   return (
     <section>
       <h1>Run 結果</h1>
+      <p className="run-identity" data-role="evidence">
+        <strong>Run ID：</strong>
+        <code>{runId}</code>
+      </p>
       <ReadFailure error={run.error} what="這個 Run" />
       {run.data && (
-        <SkillWorkspaceNav
-          skillId={run.data.skill_id}
-          versionId={run.data.skill_version_id}
-          testCaseId={run.data.test_case_id}
-        />
+        <>
+          <SkillWorkspaceNav
+            skillId={run.data.skill_id}
+            versionId={run.data.skill_version_id}
+            testCaseId={run.data.test_case_id}
+          />
+          <nav className="download-item run-source-context" aria-label="這次 Run 的來源">
+            <strong>這次 Run 的來源</strong>
+            <ul className="chip-row">
+              <li>
+                <Link to="/skills/$skillId" params={{ skillId: run.data.skill_id }}>
+                  來源 Skill
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/skills/$skillId/versions/$versionId"
+                  params={{
+                    skillId: run.data.skill_id,
+                    versionId: run.data.skill_version_id,
+                  }}
+                >
+                  來源 Version
+                </Link>
+              </li>
+              {run.data.test_case_id && (
+                <li>
+                  <Link
+                    to="/lab/test-cases/$testCaseId"
+                    params={{ testCaseId: run.data.test_case_id }}
+                    search={{ version: run.data.skill_version_id }}
+                  >
+                    來源 Test Case
+                  </Link>
+                </li>
+              )}
+            </ul>
+          </nav>
+        </>
       )}
 
       <EvaluationPanel runId={runId} runStatus={general.data?.status} />

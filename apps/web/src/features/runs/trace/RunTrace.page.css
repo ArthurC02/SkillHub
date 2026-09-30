@@ -1,0 +1,22 @@
+.run-identity {
+  overflow-wrap: anywhere;
+}
+
+.run-source-context {
+  margin-block: 16px 24px;
+}
+
+.run-source-context > strong {
+  display: block;
+  color: var(--text-h);
+}
+
+.run-source-context .chip-row {
+  margin: 8px 0 0;
+}
+
+.run-source-context a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+}

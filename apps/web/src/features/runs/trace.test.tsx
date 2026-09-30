@@ -226,6 +226,18 @@ test("a Run with an owner Test Case returns to that exact case and version", asy
   });
   await render();
 
+  const text = container.textContent ?? "";
+  expect(text).toContain(`Run ID：${summary.run_id}`);
+  const source = container.querySelector('[aria-label="這次 Run 的來源"]');
+  const sourceLinks = Array.from(source?.querySelectorAll("a") ?? [], (link) => [
+    link.textContent,
+    link.getAttribute("href"),
+  ]);
+  expect(sourceLinks).toEqual([
+    ["來源 Skill", "/skills/skill-1"],
+    ["來源 Version", "/skills/skill-1/versions/version-2"],
+    ["來源 Test Case", "/lab/test-cases/case-4?version=version-2"],
+  ]);
   const validation = Array.from(container.querySelectorAll("a")).find(
     (link) => link.textContent === "驗證",
   );

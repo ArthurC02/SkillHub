@@ -51,12 +51,35 @@ for (const width of [1280, 375]) {
   });
 }
 
-test("populated Run results keep the output and task verdict visible", async ({ page }) => {
+test("populated Run results keep identity, sources, output and task verdict visible", async ({
+  page,
+}, testInfo) => {
   await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 667 });
   await page.goto(`/runs/${RUN}`);
   await expect(page.getByRole("heading", { name: "Run 結果", exact: true })).toBeVisible();
+  await expect(page.getByText(`Run ID：${RUN}`, { exact: true })).toBeVisible();
+  const source = page.getByRole("navigation", { name: "這次 Run 的來源" });
+  await expect(source.getByRole("link", { name: "來源 Skill" })).toHaveAttribute(
+    "href",
+    `/skills/${SKILL}`,
+  );
+  await expect(source.getByRole("link", { name: "來源 Version" })).toHaveAttribute(
+    "href",
+    `/skills/${SKILL}/versions/${VERSION}`,
+  );
+  await expect(source.getByRole("link", { name: "來源 Test Case" })).toHaveAttribute(
+    "href",
+    `/lab/test-cases/${TEST_CASE}?version=${VERSION}`,
+  );
   await expect(page.getByText("Removed 17 duplicate rows.", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "任務判定", exact: true })).toBeVisible();
+  const width = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(width.scroll).toBeLessThanOrEqual(width.client);
+  await page.screenshot({ path: testInfo.outputPath("run-identity-phone.png"), fullPage: true });
   await page.getByRole("link", { name: "與另一個 Run 比較" }).click();
   await expect(page.getByRole("heading", { name: "Run 比較", exact: true })).toBeVisible();
 });
