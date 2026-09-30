@@ -13,7 +13,7 @@ def build(plugin_root: Path, skill_name: str, output: Path) -> None:
         raise ValueError(f"output directory is not empty: {output}")
     output.mkdir(parents=True, exist_ok=True)
     skill = (skill_root / "SKILL.md").read_text(encoding="utf-8")
-    skill = skill.replace("../../references/", "references/")
+    skill = skill.replace("../../", "")
     (output / "SKILL.md").write_text(skill, encoding="utf-8")
     shutil.copyfile(plugin_root / "AGENTS.md", output / "AGENTS.md")
     for name in ("references", "templates"):

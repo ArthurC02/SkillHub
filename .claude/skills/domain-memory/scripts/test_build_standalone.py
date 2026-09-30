@@ -50,6 +50,22 @@ class BuildStandaloneTest(unittest.TestCase):
                 for link in links:
                     self.assertTrue((output / link).is_file(), link)
 
+    def test_the_code_rules_read_the_same_on_the_entry_and_the_hygiene_page(self) -> None:
+        plugin = Path(__file__).parents[1]
+
+        def code_rules(page: Path) -> list[str]:
+            text = page.read_text(encoding="utf-8")
+            section = text.split("## When you are the one writing the code", 1)[1]
+            section = section.split("\n## ", 1)[0]
+            return re.findall(r"^\d+\. .+$", section, re.MULTILINE)
+
+        entry = code_rules(plugin / "AGENTS.md")
+        hygiene = code_rules(
+            plugin / "skills/domain-memory-implementation-hygiene/SKILL.md"
+        )
+        self.assertEqual(len(entry), 6)
+        self.assertEqual(entry, hygiene)
+
     def test_unknown_skill_does_not_create_output(self) -> None:
         plugin = Path(__file__).parents[1]
         with tempfile.TemporaryDirectory() as temporary:

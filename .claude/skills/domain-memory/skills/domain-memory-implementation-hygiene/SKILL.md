@@ -9,6 +9,17 @@ Use this after Domain Memory Read or Design and before handing off an implementa
 
 The repository's automation owns formatting and every numeric limit. This check owns how a change meets them: whether the code that turned a check green states the domain more clearly, or only differently.
 
+## When you are the one writing the code
+
+The commands below are in [registry_tools.py](../../scripts/registry_tools.py): run `python3 <that file> <command>` from any directory, with Python 3.10 or later and `git`, and nothing to install. These six hold for every change to source:
+
+1. Run `quality-gates --repo-root <repo>`. The checks it lists must pass, and a check met by a change of form alone is not met: when one forces a change, remove the cause it points at. When `standard` is `none`, say so in your report and claim no standard the repository does not enforce.
+2. Search for what already exists, and use it or extend it.
+3. Take names from the reviewed terms. A business number, such as a threshold, a rate, or a limit, gets the domain's name and one home, and every place it appears uses that name.
+4. Every rule you add or move ends with a test in the repository that fails when the rule is broken. Prove it with `counterfactual`, once for each rule: `survived` means no test protects that rule, so write the test and run it again. A comparison you run once and discard does not count. Report each rule that survived before you wrote its test.
+5. An external system goes behind a Port named in the domain's terms and declared where a decision can reach it without loading the provider. Address, credentials, and status codes stay in the Adapter. A failure the domain survives is handed to the caller or recorded, never dropped.
+6. A mechanical change gets the change, the tests, and a short report.
+
 ## Inputs
 
 Use the compact handoff from [implementation handoff](../../references/implementation-handoff.md) when the change is material. For a routine change, read the smallest reviewed records that identify the Context, owner, and contract. If those facts are unknown, do not infer them from a convenient code shape; route a material uncertainty to Design.
