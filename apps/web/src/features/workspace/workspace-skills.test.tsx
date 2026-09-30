@@ -25,16 +25,29 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({
     to,
     params,
+    search,
+    className,
     children,
   }: {
     to: string;
     params?: Record<string, string>;
+    search?: Record<string, string | undefined>;
+    className?: string;
     children?: unknown;
-  }) => (
-    <a href={Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)}>
-      {children as never}
-    </a>
-  ),
+  }) => {
+    const path = Object.entries(params ?? {}).reduce(
+      (acc, [key, value]) => acc.replace(`$${key}`, value),
+      to,
+    );
+    const query = new URLSearchParams(
+      Object.entries(search ?? {}).filter((entry): entry is [string, string] => Boolean(entry[1])),
+    ).toString();
+    return (
+      <a className={className} href={`${path}${query ? `?${query}` : ""}`}>
+        {children as never}
+      </a>
+    );
+  },
 }));
 
 function json(body: unknown, status = 200) {
@@ -92,6 +105,35 @@ const FIRST_PAGE = Array.from({ length: 24 }, (_, index) => ({
   skill_id: `page-skill-${index + 1}`,
   name: `分頁 Skill ${index + 1}`,
 }));
+
+test("each Library card exposes its owner verification label and validation journey", async () => {
+  const inherited = {
+    ...SECOND,
+    verification: {
+      value: "scanned" as const,
+      label: "繼承的掃描",
+      note: "這是後端提供的來源說明。",
+    },
+  };
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = typeof input === "string" ? input : String(input);
+    if (path.endsWith("/me")) return json(ME);
+    return json({ skills: [SKILL, inherited], limit: 100, truncated: false, total: 2 });
+  });
+
+  await render(<WorkspaceSkills />, () => text().includes("第二個 Skill"));
+
+  const cards = Array.from(container.querySelectorAll(".skill-card"));
+  expect(cards[0].textContent).toContain("工作區驗證：未測量");
+  expect(cards[0].textContent).not.toContain("通過");
+  expect(cards[1].textContent).toContain("工作區驗證：繼承的掃描");
+  expect(cards[1].textContent).not.toContain("已掃描");
+  expect(
+    cards.map((card) =>
+      card.querySelector<HTMLAnchorElement>("a.skill-card-validation")?.getAttribute("href"),
+    ),
+  ).toEqual(["/lab/test-cases?skill=s-1", "/lab/test-cases?skill=s-2"]);
+});
 
 function pointAt(target: Element, type: string, pointerType: string) {
   target.dispatchEvent(

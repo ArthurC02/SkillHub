@@ -766,6 +766,31 @@ test("舊資產清單網址保留建立錨點並導向 Library", async ({ page }
   await expect(page.locator("#create")).toBeVisible();
 });
 
+test("Library cards surface owner verification and the exact validation journey on a phone", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto("/library");
+
+  const card = page.locator(".skill-card").first();
+  await expect(card.getByText("工作區驗證：", { exact: true })).toBeVisible();
+  await expect(card.getByText("已掃描", { exact: true })).toBeVisible();
+  const validation = card.getByRole("link", { name: "Test Case 與試跑" });
+  await expect(validation).toHaveAttribute("href", `/lab/test-cases?skill=${SKILL}`);
+  await validation.focus();
+  await expect(validation).toBeFocused();
+  const width = await card.evaluate((element) => ({
+    client: element.clientWidth,
+    scroll: element.scrollWidth,
+  }));
+  expect(width.scroll).toBeLessThanOrEqual(width.client);
+  await page.screenshot({
+    path: testInfo.outputPath("library-validation-phone.png"),
+    fullPage: true,
+  });
+});
+
 test("the validation journey keeps the same Skill workbench in reach", async ({ page }) => {
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 900 });

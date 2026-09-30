@@ -125,7 +125,20 @@ function SkillCard({
         </span>
         <span className="skill-card-summary">{skill.summary}</span>
       </Link>
-      <SkillFlags skill={skill} />
+      <div className="skill-card-footer">
+        <SkillFlags skill={skill} />
+        <p className="skill-card-verification">
+          <span>工作區驗證：</span>
+          <strong>{skill.verification.label}</strong>
+        </p>
+        <Link
+          className="skill-card-validation"
+          to="/lab/test-cases"
+          search={{ skill: skill.skill_id }}
+        >
+          Test Case 與試跑 <span aria-hidden="true">→</span>
+        </Link>
+      </div>
       <details className="skill-menu" name="skill-menu">
         <summary aria-label={`管理「${skill.name}」`}>
           管理
