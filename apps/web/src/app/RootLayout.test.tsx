@@ -71,6 +71,9 @@ test("the platform shell exposes stable places and hides Studio until generation
   await renderShell();
 
   const nav = container.querySelector('nav[aria-label="主要導覽"]')!;
+  expect(container.querySelector('[aria-label="目前 Workspace"]')?.textContent).toBe(
+    "Workspacetester",
+  );
   expect(nav.textContent).toContain("首頁");
   expect(nav.textContent).toContain("Catalog");
   expect(nav.textContent).toContain("資產庫");

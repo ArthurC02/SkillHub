@@ -63,6 +63,12 @@ const PAIRS: [fg: string, bg: string, min: number, where: string][] = [
 
   ["on-cta", "cta", 4.5, ".action — the one filled primary action per page"],
 
+  ["chrome-text", "chrome", 4.5, "platform navigation labels on the persistent rail"],
+  ["chrome-text-h", "chrome", 4.5, "product and Workspace identity on the rail"],
+  ["chrome-text-h", "chrome-hover", 4.5, "hovered platform navigation label"],
+  ["chrome-text-h", "chrome-active", 4.5, "current platform navigation label"],
+  ["chrome-accent", "chrome-active", 3, "current platform navigation inset marker"],
+
   ["on-tile", "tile-violet", 4.5, ".skill-mono initial on its tile, light stop"],
   ["on-tile", "tile-violet-deep", 4.5, ".skill-mono initial on its tile, deep stop"],
   ["on-tile", "tile-blue", 4.5, ".skill-mono initial on its tile, light stop"],

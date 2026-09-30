@@ -100,6 +100,34 @@ async function verifyCreationContinuationLayout(page: Page, testInfo: TestInfo) 
 }
 
 test.describe("QA-008 composite pixels", () => {
+  test("desktop platform chrome stays distinct from the work canvas", async ({ page }) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/workspace");
+    await expect(page.locator(".app-sidebar .app-nav")).toBeVisible();
+
+    const frame = await page.evaluate(() => {
+      const header = document.querySelector<HTMLElement>(".app-header")!;
+      const title = document.querySelector<HTMLElement>(".app-title")!;
+      const sidebar = document.querySelector<HTMLElement>(".app-sidebar")!;
+      const main = document.querySelector<HTMLElement>("main")!;
+      return {
+        header: getComputedStyle(header).backgroundColor,
+        title: getComputedStyle(title).backgroundColor,
+        sidebar: getComputedStyle(sidebar).backgroundColor,
+        sidebarRight: sidebar.getBoundingClientRect().right,
+        mainLeft: main.getBoundingClientRect().left,
+        sidebarHeight: sidebar.getBoundingClientRect().height,
+        headerHeight: header.getBoundingClientRect().height,
+      };
+    });
+
+    expect(frame.sidebar).toBe(frame.title);
+    expect(frame.sidebar).not.toBe(frame.header);
+    expect(frame.sidebarRight).toBeLessThanOrEqual(frame.mainLeft);
+    expect(frame.sidebarHeight + frame.headerHeight).toBeGreaterThanOrEqual(900);
+  });
+
   for (const [route, where] of [
     ["/?q=pdf", "search results, both .notice bars"],
     ["/policy", "the retention table"],

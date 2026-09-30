@@ -37,6 +37,13 @@
   --surface-hover: #eff1f5;
   --surface-active: #e5e8ee;
   --border: #d0d6e0;
+  --chrome: #171a21;
+  --chrome-hover: #20242d;
+  --chrome-active: #2b303b;
+  --chrome-border: #333945;
+  --chrome-text: #b7c0ce;
+  --chrome-text-h: #f7f8fa;
+  --chrome-accent: #b3a0ff;
   /* WCAG 1.4.11 wants 3:1 for a control's boundary and --border never met it:
      1.27:1 on the old white --bg. This is 3.58:1 light / 4.32:1 dark on
      --surface, and it is for control edges only — a card keeps --border,
@@ -130,6 +137,13 @@
     --surface-hover: #20242d;
     --surface-active: #272c36;
     --border: #333945;
+    --chrome: #171a21;
+    --chrome-hover: #20242d;
+    --chrome-active: #2b303b;
+    --chrome-border: #333945;
+    --chrome-text: #b7c0ce;
+    --chrome-text-h: #f7f8fa;
+    --chrome-accent: #b3a0ff;
     --border-strong: #767f90;
     --cta: #b3a0ff;
     --on-cta: #120c22;

@@ -46,7 +46,10 @@ export function RootLayout() {
       </header>
       <div className="app-frame">
         <aside className="app-sidebar">
-          <p className="app-sidebar-label">Workspace</p>
+          <div className="app-sidebar-context app-sidebar-label" aria-label="目前 Workspace">
+            <span>Workspace</span>
+            <span className="app-sidebar-context-name">{me.data?.display_name ?? "Skill Hub"}</span>
+          </div>
           <nav className="app-nav" aria-label="主要導覽">
             <Link to="/workspace" activeOptions={{ exact: true }}>
               首頁

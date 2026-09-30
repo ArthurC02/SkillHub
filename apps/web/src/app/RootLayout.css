@@ -1,57 +1,106 @@
 .platform-shell {
+  --sidebar-width: 224px;
   min-height: 100dvh;
+  background: var(--bg);
 }
 
 .platform-shell .app-header {
   display: grid;
   grid-template-areas: "title search auth";
-  grid-template-columns:
-    calc(192px + max(0px, (100vw - 1334px) / 2))
-    minmax(280px, 640px) minmax(0, 1fr);
-  gap: 16px;
-  padding: 12px 24px;
+  grid-template-columns: var(--sidebar-width) minmax(280px, 640px) minmax(0, 1fr);
+  min-height: 64px;
+  gap: 0;
+  padding: 0;
+  background: var(--surface);
+  box-shadow: none;
 }
 
 .platform-shell .app-title {
   grid-area: title;
+  align-self: stretch;
+  padding: 0 24px;
+  color: var(--chrome-text-h);
+  background: var(--chrome);
+  border-right: 1px solid var(--chrome-border);
+}
+
+.platform-shell .app-title::before {
+  background: var(--chrome-accent);
 }
 
 .platform-shell .app-search {
   grid-area: search;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  align-self: center;
   gap: 8px;
   min-width: 0;
+  margin-left: max(24px, calc((100vw - var(--sidebar-width) - var(--measure)) / 2 + 24px));
 }
 
 .platform-shell .app-search input {
   width: 100%;
   min-width: 0;
+  background: var(--code-bg);
 }
 
 .platform-shell .app-header > [data-auth-controls] {
   grid-area: auth;
+  align-self: center;
   justify-self: end;
+  padding-right: 24px;
 }
 
 .platform-shell .app-frame {
   display: grid;
-  grid-template-columns: 208px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   flex: 1 0 auto;
   min-width: 0;
+  background: var(--chrome);
 }
 
 .platform-shell .app-sidebar {
-  padding: 24px 12px;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 64px;
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  width: 100%;
+  height: calc(100dvh - 64px);
+  min-height: 0;
+  padding: 20px 12px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  color: var(--chrome-text);
+  background: var(--chrome);
+  border-right: 1px solid var(--chrome-border);
 }
 
+.platform-shell .app-sidebar-context,
 .platform-shell .app-sidebar-label {
-  margin: 0 12px 8px;
-  color: var(--text);
-  font-size: 14px;
+  display: grid;
+  gap: 4px;
+  padding: 0 24px 16px;
+  margin: 0 -12px 8px;
+  border-bottom: 1px solid var(--chrome-border);
+}
+
+.platform-shell .app-sidebar-context span {
+  color: var(--chrome-text);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.platform-shell .app-sidebar-context-name {
+  overflow: hidden;
+  color: var(--chrome-text-h);
+  font-size: 15px;
+  line-height: 20px;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .platform-shell .app-nav {
@@ -62,14 +111,35 @@
 .platform-shell .app-nav a {
   justify-content: flex-start;
   width: 100%;
-  color: var(--text);
-  border-radius: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  color: var(--chrome-text);
+  border-radius: 6px;
+}
+
+.platform-shell .app-nav a:hover {
+  color: var(--chrome-text-h);
+  background: var(--chrome-hover);
+}
+
+.platform-shell .app-nav a[data-status="active"] {
+  color: var(--chrome-text-h);
+  background: var(--chrome-active);
+  box-shadow: inset 3px 0 var(--chrome-accent);
+  font-weight: 600;
+}
+
+.platform-shell :is(.app-title, .app-sidebar a):focus-visible {
+  outline-color: var(--chrome-accent);
 }
 
 .platform-shell .app-content {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: calc(100dvh - 64px);
+  background: var(--bg);
 }
 
 .platform-shell[data-chat] {
@@ -85,6 +155,11 @@
 .platform-shell[data-chat] .app-frame {
   flex: 1 1 auto;
   overflow: hidden;
+}
+
+.platform-shell[data-chat] .app-sidebar {
+  position: static;
+  height: 100%;
 }
 
 .platform-shell[data-chat] .app-content {
@@ -115,41 +190,59 @@
 
 @media (max-width: 800px) {
   .platform-shell .app-header {
-    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "title auth"
       "search search";
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px 12px;
-    padding: 12px;
+    padding: 8px 12px 12px;
+    background: var(--chrome);
+    border-bottom-color: var(--chrome-border);
   }
 
   .platform-shell .app-title {
-    grid-area: title;
+    padding: 0;
+    border-right: 0;
   }
 
   .platform-shell .app-search {
-    grid-area: search;
+    width: 100%;
+    margin-left: 0;
   }
 
   .platform-shell .app-header > [data-auth-controls] {
-    grid-area: auth;
+    max-width: 60vw;
+    padding-right: 0;
+    color: var(--chrome-text);
+  }
+
+  .platform-shell .app-header > [data-auth-controls] a {
+    color: var(--chrome-text-h);
   }
 
   .platform-shell .app-frame {
     grid-template-columns: minmax(0, 1fr);
+    background: var(--chrome);
   }
 
   .platform-shell[data-chat] .app-frame {
     grid-template-rows: auto minmax(0, 1fr);
   }
 
-  .platform-shell .app-sidebar {
+  .platform-shell .app-sidebar,
+  .platform-shell[data-chat] .app-sidebar {
+    position: static;
+    display: block;
+    width: auto;
+    height: auto;
+    min-height: 0;
     padding: 8px 12px;
+    overflow: hidden;
     border-right: 0;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--chrome-border);
   }
 
-  .platform-shell .app-sidebar-label {
+  .platform-shell .app-sidebar-context {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -172,5 +265,9 @@
   .platform-shell .app-nav a {
     flex: 0 0 auto;
     width: auto;
+  }
+
+  .platform-shell .app-content {
+    min-height: 0;
   }
 }
