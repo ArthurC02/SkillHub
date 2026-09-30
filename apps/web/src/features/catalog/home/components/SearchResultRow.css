@@ -6,3 +6,59 @@
   /* 左邊，因為它現在排在 Skill 名字之後（Home.tsx 的 SearchResultRow）。 */
   margin-left: 12px;
 }
+
+.result-card-head {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.result-card-head > a {
+  color: var(--text-h);
+  font-family: var(--heading);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 118%;
+  text-decoration: none;
+}
+
+.result-card-head > a:hover {
+  color: var(--link);
+  text-decoration: underline;
+}
+
+.result-card-mark {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  color: var(--on-tile);
+  background: var(--tile-indigo);
+  border-radius: 10px;
+  font-family: var(--heading);
+  font-weight: 700;
+  place-items: center;
+}
+
+.search-result[data-category="documents"] .result-card-mark {
+  background: var(--tile-blue);
+}
+
+.search-result[data-category="writing"] .result-card-mark {
+  background: var(--tile-cyan);
+}
+
+.search-result[data-category="data"] .result-card-mark {
+  background: var(--tile-teal);
+}
+
+@media (max-width: 640px) {
+  .result-card-head {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .result-card-head .compare-pick {
+    grid-column: 1 / -1;
+    margin-left: 0;
+  }
+}

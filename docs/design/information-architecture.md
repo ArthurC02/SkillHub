@@ -66,7 +66,7 @@
 
 **R7. 導覽列只放穩定的平台空間，不放一次性動作。**
 出處：[平台體驗模型](./platform-experience.md) §2.1～§2.2 ＋ [從描述生成 Skill](../adr/README.md#從描述生成-skill)（生成入口仍不與搜尋等重）。
-判準：導覽項目必須能承接多個物件與多次工作階段，並且離開再回來仍是同一個地方。首頁、Catalog、資產庫、Studio、活動與發佈符合；匯入 Skill、建立 Test Case、開始 Run 與打包是脈絡內動作，不符合。Studio 仍受 `generate_skill` 控制，規則是「旗標開啟時它是不是一個穩定空間」，不是「旗標能不能被導覽繞過」。
+判準：導覽項目必須能承接多個物件與多次工作階段，並且離開再回來仍是同一個地方。探索、工作台、資產庫、Studio、活動與發佈符合；匯入 Skill、建立 Test Case、開始 Run 與打包是脈絡內動作，不符合。Studio 仍受 `generate_skill` 控制，規則是「旗標開啟時它是不是一個穩定空間」，不是「旗標能不能被導覽繞過」。
 機器：**有**（`ia.test.ts` 雙向比對導覽目標與 §2.1，並拒絕已知的動作型入口）。
 
 ### 0.2 偏離帳
@@ -143,9 +143,9 @@
 
 | 位置 | 項目 | 到哪裡 |
 | --- | --- | --- |
-| 標題 | `Skill Hub` | 已登入到 `/workspace`；匿名到 `/` |
+| 標題 | `Skill Hub` | `/`；首頁就是可瀏覽的 Skill Catalog，不因登入狀態改變目的地 |
 | 全域搜尋 | 離開 Catalog 後顯示「搜尋小工具或描述任務」；`/` 由 Catalog 頁自己的完整搜尋取代，不重複兩份表單 | `/` 加 `q` |
-| 主要導覽（`<nav aria-label="主要導覽">`） | 首頁、Catalog、資產庫、Studio（旗標）、活動、發佈 | `/workspace`、`/`、`/library`、`/workspace/creations`、`/activity`、`/workspace/downloads` |
+| 主要導覽（`<nav aria-label="主要導覽">`） | 工作台、探索、資產庫、Studio（旗標）、活動、發佈 | `/workspace`、`/`、`/library`、`/workspace/creations`、`/activity`、`/workspace/downloads` |
 | 頁尾 | 回報問題（面板，非路由）、資料保存政策、帳號與刪除、**Build 識別碼**（`<details>`，非路由；IA-11） | `/policy`、`/workspace/account` |
 | 右上 | `AuthControls`（未登入時是「使用 GitHub 登入」）；**`GET /me` 的 `operator` 為真時多一個「後台」**（`02:OPS-001`） | 外部 `/auth/github/login`；`/admin` |
 
@@ -272,7 +272,7 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 
 `/compare` 改後的 `Skill 比較` 與 `/runs/$runId/compare` 的 `Run 比較`（`features/runs/compare/RunCompare.page.tsx`）同形；兩者是不同的頁，比的東西也不同。
 
-首頁 `/` 的 `<h1>` 是整句指示 `用一句話描述你的任務`（`features/catalog/home/Home.page.tsx`），那是另一種形狀，不在這張清單上，也沒有被裁定過。
+Catalog landing `/` 的 `<h1>` 是名詞化的產品承諾 `探索能直接採用的 Agent Skill`（`features/catalog/home/components/SearchHeroForm.tsx`）；搜尋是縮小現有畫廊的工具，匯入或建立不與它並列。`/` 是登入前後一致的產品首頁；`/workspace` 是「工作台」，只負責續作與跨物件注意事項，兩者不共用責任。
 
 **R5 沒有機器**（見 §0.1），所以這張盤點表與程式的一致性只能靠人比，而這一格會無聲過期。
 

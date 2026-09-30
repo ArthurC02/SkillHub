@@ -30,7 +30,7 @@ export function RootLayout() {
         data-chat={pathname === "/workspace/creations" || undefined}
       >
         <header className="app-header">
-          <Link to={me.data ? "/workspace" : "/"} className="app-title">
+          <Link to="/" className="app-title">
             Skill Hub
           </Link>
           <AuthControls />
@@ -57,10 +57,10 @@ export function RootLayout() {
             </div>
             <nav className="app-nav" aria-label="主要導覽">
               <Link to="/workspace" activeOptions={{ exact: true }}>
-                首頁
+                工作台
               </Link>
               <Link to="/" activeOptions={{ exact: true }}>
-                Catalog
+                探索
               </Link>
               <Link to="/library">資產庫</Link>
               {generateExposed && <Link to="/workspace/creations">Studio</Link>}

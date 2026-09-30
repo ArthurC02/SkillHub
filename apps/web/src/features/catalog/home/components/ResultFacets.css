@@ -77,4 +77,8 @@
   .result-facets {
     grid-template-columns: max-content 1fr max-content 1fr;
   }
+
+  .catalog-card-facets {
+    grid-template-columns: max-content 1fr;
+  }
 }

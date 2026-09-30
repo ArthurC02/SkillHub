@@ -23,35 +23,9 @@
   flex-shrink: 0;
 }
 
-.hero-create {
-  display: inline-flex;
-  align-items: center;
-  font-size: 15px;
-  line-height: 20px;
-  color: var(--text-h);
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  padding: 8px 16px;
-  min-height: 40px;
-  font-weight: 500;
-  box-sizing: border-box;
-  text-decoration: none;
-  white-space: nowrap;
-  transition:
-    background-color var(--dur-fast) var(--ease),
-    border-color var(--dur-fast) var(--ease),
-    color var(--dur-fast) var(--ease);
-}
-
-.hero-create:hover {
-  background: var(--surface-hover);
-}
-
 .hero {
-  background: var(--surface);
-  border: 1px solid var(--accent-border);
-  border-top: 3px solid var(--accent);
+  background: var(--chrome);
+  border: 1px solid var(--chrome-border);
   border-radius: 16px;
   padding: 32px;
   margin: 24px 0 32px;
@@ -64,4 +38,25 @@
 
 .hero h1 {
   margin-top: 0;
+  max-width: 14em;
+  color: var(--chrome-text-h);
+}
+
+.hero-kicker {
+  color: var(--chrome-accent);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.hero-lede {
+  color: var(--chrome-text);
+  max-width: 40em;
+}
+
+.hero form {
+  margin-top: 20px;
+  max-width: 760px;
 }

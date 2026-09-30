@@ -300,6 +300,31 @@ async function browseCatalogue() {
   await waitFor(() => !chips().some((c) => c.includes("…")));
 }
 
+test("Catalog landing leads with the Skill gallery and keeps creation outside the hero", async () => {
+  stubCategoryCatalog(SHELF_ROWS);
+  await browseCatalogue();
+
+  const hero = container.querySelector(".hero")!;
+  expect(hero.querySelector("h1")?.textContent).toBe("探索能直接採用的 Agent Skill");
+  expect(hero.textContent).not.toContain("自己做一個 Skill");
+  expect(container.querySelector("#catalog-heading")?.textContent).toBe("Skill 探索畫廊");
+  expect(container.querySelectorAll(".catalog-gallery .search-result")).toHaveLength(
+    SHELF_ROWS.length,
+  );
+
+  const create = [...container.querySelectorAll("a")].find((link) =>
+    link.textContent?.includes("前往資產庫匯入或建立"),
+  )!;
+  expect(create.closest(".hero")).toBe(null);
+  expect(create.getAttribute("href")).toContain("/library#create");
+
+  const lastGallery = [...container.querySelectorAll(".catalog-gallery")].at(-1)!;
+  const supportingNotes = container.querySelector(".catalog-supporting-notes")!;
+  expect(
+    lastGallery.compareDocumentPosition(supportingNotes) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+});
+
 test("DISC-002 類別: each chip carries the count the server gives for that category", async () => {
   const counts = new Map<string, number>();
   for (const row of SHELF_ROWS) {
@@ -402,7 +427,7 @@ test("DISC-001 搜尋文字超過 2000 字：送出前擋下並說明，不打�
   expect(calls.some((url) => url.includes("/api/skills/search"))).toBe(false);
 });
 
-test("r3 提案 A: 精選 and 其餘目錄 count the cards under them, and together the whole catalogue", async () => {
+test("the curated and recent shelves count every card without repeating the total", async () => {
   stubCategoryCatalog(SHELF_ROWS);
   await browseCatalogue();
 
@@ -411,14 +436,17 @@ test("r3 提案 A: 精選 and 其餘目錄 count the cards under them, and toget
   const allCards = container.querySelectorAll(".search-result").length;
 
   expect(curatedCards).toBe(SHELF_ROWS.filter((r) => r.tier.value === "curated").length);
-  expect(shelf.querySelector("h3")!.textContent).toBe(`精選（${curatedCards}）`);
+  expect(shelf.querySelector("h3")!.textContent).toBe(`精選 Skill（${curatedCards}）`);
 
   const rest = [...container.querySelectorAll("h3")].find((h) =>
-    h.textContent?.startsWith("其餘目錄"),
+    h.textContent?.startsWith("近期收錄"),
   )!;
-  expect(rest.textContent).toBe(`其餘目錄（${allCards - curatedCards}）`);
+  expect(rest.textContent).toBe(`近期收錄（${allCards - curatedCards}）`);
   expect(allCards).toBe(SHELF_ROWS.length);
-  expect(container.textContent).toContain(`目錄共 ${SHELF_ROWS.length} 個 Skill，全部列在下面`);
+  expect(container.querySelector(".catalog-total")?.textContent).toContain(
+    `共 ${SHELF_ROWS.length} 個 Skill`,
+  );
+  expect(container.textContent).not.toContain("全部列在下面");
 });
 
 test("r3 提案 A: 精選 書架 states what the review is not, in visible text", async () => {
@@ -426,7 +454,7 @@ test("r3 提案 A: 精選 書架 states what the review is not, in visible text"
   await browseCatalogue();
 
   const shelf = container.querySelector(".curated-shelf")!;
-  const note = shelf.querySelector(".note")!.textContent!.replace(/\s+/g, "");
+  const note = shelf.querySelector(".catalog-shelf-note")!.textContent!.replace(/\s+/g, "");
   expect(note).toContain("這一版由我們逐份讀過");
   expect(note).toContain("九項人工檢視");
   for (const item of [
@@ -445,7 +473,7 @@ test("r3 提案 A: 精選 書架 states what the review is not, in visible text"
   expect(note).toContain("平台未執行套件程式碼");
   expect(note).toContain("更新後若未重審，就會掉回「已索引」");
   const firstCard = shelf.querySelector(".search-result")!;
-  expect(precedes(noteElement(shelf, "九項人工檢視"), firstCard)).toBe(true);
+  expect(precedes(firstCard, noteElement(shelf, "九項人工檢視"))).toBe(true);
 
   const restHeading = container.querySelector("#rest-heading")!;
   const restNote = noteElement(container, "不是從沒被審過");
@@ -453,7 +481,7 @@ test("r3 提案 A: 精選 書架 states what the review is not, in visible text"
     'ul[aria-labelledby="rest-heading"] .search-result',
   )!;
   expect(precedes(restHeading, restNote)).toBe(true);
-  expect(precedes(restNote, firstRestCard)).toBe(true);
+  expect(precedes(firstRestCard, restNote)).toBe(true);
   expect(shelf.textContent).not.toMatch(/官方推薦|已認證|Verified/);
   for (const el of shelf.querySelectorAll("[title]")) {
     expect(el.getAttribute("title")).not.toContain("九項人工檢視");
@@ -473,17 +501,17 @@ function noteElement(scope: Element, text: string): Element {
   return note!;
 }
 
-test("目錄：必要警語與 facet 說明先於首卡，詞彙說明在末卡之後", async () => {
+test("目錄：先顯示卡片，必要警語、facet 與詞彙說明緊接在畫廊之後", async () => {
   stubCategoryCatalog(SHELF_ROWS);
   await browseCatalogue();
 
   const cards = [...container.querySelectorAll(".search-result")];
   expect(cards).toHaveLength(SHELF_ROWS.length);
-  expect(precedes(noteElement(container, "未經人工核對"), cards[0])).toBe(true);
+  expect(precedes(cards.at(-1)!, noteElement(container, "未經人工核對"))).toBe(true);
   expect(
-    precedes(noteElement(container, "你的 Agent 讀的是套件自己的 description"), cards[0]),
+    precedes(cards.at(-1)!, noteElement(container, "你的 Agent 讀的是套件自己的 description")),
   ).toBe(true);
-  expect(precedes(noteElement(container, "類別：由策展判定。"), cards[0])).toBe(true);
+  expect(precedes(cards.at(-1)!, noteElement(container, "類別：由策展判定。"))).toBe(true);
   expect(precedes(cards.at(-1)!, noteElement(container, "標記說明："))).toBe(true);
   expect(noteElement(container, "標記說明：").textContent).toContain("來源未標示");
 });
@@ -1037,11 +1065,12 @@ test("DISC-009: comparison needs two candidates and accepts at most three", asyn
   await render(<App />);
   await submitSearch("pdf");
 
+  await waitFor(() => container.querySelector(".compare-bar") === null);
   expect(compareLink()).toBeNull();
-  expect(container.textContent).toContain("勾選 2 至 3 個 Skill");
 
   await pick(0);
   expect(compareLink()).toBeNull();
+  expect(container.textContent).toContain("再選 1 個 Skill");
 
   await pick(1);
   expect(compareLink()?.getAttribute("href")).toContain(
@@ -1108,8 +1137,8 @@ test("DISC-009: direct URL navigation clears selections from the previous result
   await act(async () => {
     await router.navigate({ to: "/", search: { q: "another-task" } });
   });
-  await waitFor(() => compareLink() === null);
-  expect(container.textContent).toContain("勾選 2 至 3 個 Skill");
+  await waitFor(() => container.querySelector(".compare-bar") === null);
+  expect(compareLink()).toBeNull();
 });
 
 function detailFixture(overrides: Partial<SkillDetail>): SkillDetail {

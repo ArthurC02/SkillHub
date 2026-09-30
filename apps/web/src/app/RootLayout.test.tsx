@@ -86,8 +86,9 @@ test("the platform shell exposes stable places and hides Studio until generation
   expect(container.querySelector('[aria-label="目前 Workspace"]')?.textContent).toBe(
     "Workspacetester",
   );
-  expect(nav.textContent).toContain("首頁");
-  expect(nav.textContent).toContain("Catalog");
+  expect(nav.textContent).toContain("工作台");
+  expect(nav.textContent).toContain("探索");
+  expect(container.querySelector<HTMLAnchorElement>('header > a[href="/"]')).not.toBeNull();
   expect(nav.textContent).toContain("資產庫");
   expect(nav.querySelector('a[href="/library"]')).not.toBeNull();
   const activity = Array.from(nav.querySelectorAll("a")).find(

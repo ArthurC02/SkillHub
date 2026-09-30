@@ -2,7 +2,111 @@
    inside it (§4.6.3). Its `h3` keeps the §4.1 scale — a shelf title is a
    subsection of the page, not a second page title. */
 .curated-shelf {
-  margin: 24px 0;
+  margin: 24px 0 32px;
+}
+
+.catalog-showcase {
+  margin-top: 24px;
+}
+
+.catalog-heading-row,
+.catalog-shelf-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.catalog-heading-row h2,
+.catalog-shelf-heading h3 {
+  margin: 0;
+}
+
+.catalog-kicker {
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.catalog-total,
+.catalog-order {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.catalog-heading-meta {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  text-align: right;
+}
+
+.catalog-heading-meta p {
+  margin: 0;
+}
+
+.catalog-shelf {
+  margin: 32px 0;
+}
+
+.catalog-shelf-heading {
+  margin-bottom: 12px;
+}
+
+.catalog-shelf-note {
+  margin-top: 12px;
+}
+
+.catalog-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: 16px;
+}
+
+.catalog-gallery .search-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: start;
+  gap: 8px 12px;
+  border-top: 3px solid var(--accent-border);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.catalog-gallery .search-result > * {
+  grid-column: 1 / -1;
+}
+
+.catalog-supporting-notes {
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  padding-top: 16px;
+}
+
+.catalog-create-note {
+  margin-top: 20px;
+}
+
+.catalog-create-note a {
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .catalog-heading-row,
+  .catalog-shelf-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .catalog-heading-meta {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .catalog-gallery .search-result {
+    padding: 16px;
+  }
 }
 
 /* 空目錄：一句例外處理換成一個看得懂下一步的區塊。 */

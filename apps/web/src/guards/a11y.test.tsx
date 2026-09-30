@@ -440,7 +440,7 @@ test("QA-009: 首頁的目錄狀態（02:DISC-006）", async () => {
   await act(async () => {
     await router.navigate({ to: "/" });
   });
-  await waitFor(has("目錄裡有什麼"));
+  await waitFor(has("Skill 探索畫廊"));
   await scan("/ 目錄");
 }, 30000);
 

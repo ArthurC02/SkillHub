@@ -3,6 +3,8 @@ import { MAX_COMPARE } from "../../../skill";
 import "./CompareBar.css";
 
 export function CompareBar({ selected }: { selected: string[] }) {
+  if (selected.length === 0) return null;
+
   return (
     <div className="compare-bar">
       {selected.length >= 2 ? (
@@ -10,7 +12,7 @@ export function CompareBar({ selected }: { selected: string[] }) {
           並排比較這 {selected.length} 個 Skill
         </Link>
       ) : (
-        <p className="note">勾選 2 至 {MAX_COMPARE} 個 Skill，即可並排比較它們的靜態資料。</p>
+        <p className="note">再選 1 個 Skill，即可並排比較靜態資料。</p>
       )}
       {selected.length >= MAX_COMPARE && (
         <p className="note" id="compare-limit">

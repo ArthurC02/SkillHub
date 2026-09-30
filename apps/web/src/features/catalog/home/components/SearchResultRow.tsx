@@ -10,6 +10,7 @@ export function SearchResultRow({
   atLimit,
   onToggle,
   rankNoteInList = true,
+  compactFacets = false,
   lifted = {},
 }: {
   hit: PublicSearchResult;
@@ -18,22 +19,30 @@ export function SearchResultRow({
   onToggle: (skillId: string) => void;
   lifted?: LiftedNotes;
   rankNoteInList?: boolean;
+  compactFacets?: boolean;
 }) {
+  const mark = hit.name.trim().charAt(0).toLocaleUpperCase() || "S";
+
   return (
-    <li className="search-result">
-      <Link to="/skills/$skillId" params={{ skillId: hit.skill_id }}>
-        {hit.name}
-      </Link>
-      <label className="compare-pick">
-        <input
-          type="checkbox"
-          checked={checked}
-          disabled={!checked && atLimit}
-          aria-describedby={!checked && atLimit ? "compare-limit" : undefined}
-          onChange={() => onToggle(hit.skill_id)}
-        />
-        加入比較
-      </label>
+    <li className="search-result" data-category={hit.category.value}>
+      <div className="result-card-head">
+        <span className="result-card-mark" aria-hidden="true">
+          {mark}
+        </span>
+        <Link to="/skills/$skillId" params={{ skillId: hit.skill_id }}>
+          {hit.name}
+        </Link>
+        <label className="compare-pick">
+          <input
+            type="checkbox"
+            checked={checked}
+            disabled={!checked && atLimit}
+            aria-describedby={!checked && atLimit ? "compare-limit" : undefined}
+            onChange={() => onToggle(hit.skill_id)}
+          />
+          加入比較
+        </label>
+      </div>
       <p>
         {hit.summary}{" "}
         {hit.summary_source === "model" && (
@@ -70,7 +79,7 @@ export function SearchResultRow({
           )}
         </p>
       )}
-      <ResultFacets hit={hit} lifted={lifted} />
+      <ResultFacets hit={hit} lifted={lifted} compact={compactFacets} />
       {(hit.rank !== null || rankNoteInList) && (
         <p className="rank">
           {hit.rank === null

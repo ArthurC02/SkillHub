@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import type { FormEvent } from "react";
 
 export function SearchHeroForm({
@@ -14,13 +13,15 @@ export function SearchHeroForm({
 }) {
   return (
     <div className="hero">
-      <h1>用一句話描述你的任務</h1>
-      <form onSubmit={onSubmit}>
+      <p className="hero-kicker">Skill Catalog</p>
+      <h1>探索能直接採用的 Agent Skill</h1>
+      <p className="hero-lede">先看平台收錄的能力，再用任務、輸入或輸出縮小範圍。</p>
+      <form aria-label="搜尋 Skill Catalog" onSubmit={onSubmit}>
         <input
           type="text"
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
-          placeholder="在目錄裡找一個 Skill，例如：把這份 PDF 整理成摘要"
+          placeholder="例如：把 PDF 整理成摘要、清理 CSV 欄位"
           aria-label="任務描述"
           aria-invalid={queryError ? true : undefined}
           aria-describedby={queryError ? "search-query-error" : undefined}
@@ -33,9 +34,6 @@ export function SearchHeroForm({
         <button type="submit" className="action">
           搜尋
         </button>
-        <Link className="hero-create" to="/library" hash="create">
-          自己做一個 Skill
-        </Link>
       </form>
     </div>
   );

@@ -5,13 +5,21 @@ import { Timestamp } from "../../../../shared/ui/Timestamp";
 import type { PublicSearchResult } from "../../../../core/api/types";
 import "./ResultFacets.css";
 
-export function ResultFacets({ hit, lifted }: { hit: PublicSearchResult; lifted: LiftedNotes }) {
+export function ResultFacets({
+  hit,
+  lifted,
+  compact = false,
+}: {
+  hit: PublicSearchResult;
+  lifted: LiftedNotes;
+  compact?: boolean;
+}) {
   const untested =
     hit.compatibility.capability.value === "unverified" &&
     hit.compatibility.runtime.value === "unverified";
 
   return (
-    <dl className="result-facets">
+    <dl className={`result-facets${compact ? " catalog-card-facets" : ""}`}>
       <dt>來源層級</dt>
       <dd>
         <LabelledBadge kind="tier" value={hit.tier} noteInRow={!lifted.tier} />
