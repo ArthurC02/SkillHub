@@ -31,15 +31,26 @@ def transaction_path(root: Path) -> Path:
     return root / ".domain-registry-transaction.json"
 
 
+def read_journal_document(journal: Path) -> Any:
+    if journal.stat().st_size > MAX_JSON_BYTES:
+        raise ValueError("registry recovery journal is too large")
+    return json.loads(
+        journal.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_keys
+    )
+
+
+def discard_transaction(journal: Path, backup: Path, staging: Path) -> None:
+    for leftover in (backup, staging):
+        if leftover.exists():
+            shutil.rmtree(leftover)
+    journal.unlink(missing_ok=True)
+
+
 def recover(root: Path) -> None:
     journal = transaction_path(root)
     if not journal.is_file():
         return
-    if journal.stat().st_size > MAX_JSON_BYTES:
-        raise ValueError("registry recovery journal is too large")
-    value = json.loads(
-        journal.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_keys
-    )
+    value = read_journal_document(journal)
     if not isinstance(value, dict) or not all(
         isinstance(value.get(key), str) for key in ("backup", "staging")
     ):
@@ -59,9 +70,7 @@ def recover(root: Path) -> None:
             backup.replace(target)
         elif target.exists() and backup.exists():
             shutil.rmtree(backup)
-        if staging.exists():
-            shutil.rmtree(staging)
-        journal.unlink(missing_ok=True)
+        discard_transaction(journal, backup, staging)
         return
     if value["phase"] not in {
         "prepared",
@@ -71,11 +80,7 @@ def recover(root: Path) -> None:
     }:
         raise ValueError("registry recovery journal has an invalid phase")
     if value["phase"] == "prepared":
-        if backup.exists():
-            shutil.rmtree(backup)
-        if staging.exists():
-            shutil.rmtree(staging)
-        journal.unlink(missing_ok=True)
+        discard_transaction(journal, backup, staging)
         return
     if value["phase"] == "installed":
         from .audit import read_events
@@ -95,11 +100,7 @@ def recover(root: Path) -> None:
             return
     if value["phase"] == "reconciliation-required":
         raise ValueError("registry transaction requires manual reconciliation")
-    if backup.exists():
-        shutil.rmtree(backup)
-    if staging.exists():
-        shutil.rmtree(staging)
-    journal.unlink(missing_ok=True)
+    discard_transaction(journal, backup, staging)
 
 
 def recover_interrupted_update(root: Path, force: bool) -> None:
@@ -177,11 +178,7 @@ def mutate_registry(
 
 
 def load_journal(path: Path) -> dict[str, Any]:
-    if path.stat().st_size > MAX_JSON_BYTES:
-        raise ValueError("registry recovery journal is too large")
-    value = json.loads(
-        path.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_keys
-    )
+    value = read_journal_document(path)
     if (
         not isinstance(value, dict)
         or value.get("format") != "domain-registry-transaction/v2"

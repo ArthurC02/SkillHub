@@ -6,12 +6,16 @@ from pathlib import Path
 from .attestations import verify_git_signed_commit
 from .policy import review_governance, review_mode
 
+HOOK_MARKER = "domain-memory-pre-push"
+EMPTY_SHA = "0" * 40
+
 
 def inside_repo(path: Path, repo_root: Path) -> str:
+    resolved = path.resolve()
     try:
-        return path.resolve().relative_to(repo_root.resolve()).as_posix()
+        return resolved.relative_to(repo_root.resolve()).as_posix()
     except ValueError:
-        return path.resolve().as_posix()
+        return resolved.as_posix()
 
 
 def hooks_dir(repo_root: Path) -> Path:
@@ -37,9 +41,9 @@ def governance_readiness(registry_root: Path, repo_root: Path) -> dict[str, obje
         if not governance["authorized_signers"]:
             blocks.append("no authorized Git signers")
         hook = hooks_dir(repo_root) / "pre-push"
-        if not hook.is_file() or "domain-memory-pre-push" not in hook.read_text(encoding="utf-8"):
+        if not hook.is_file() or HOOK_MARKER not in hook.read_text(encoding="utf-8"):
             blocks.append("Git HITL pre-push hook is not installed on this machine")
-    return {"status": "ready" if not blocks else "needs-setup", "blocks": blocks}
+    return {"status": "needs-setup" if blocks else "ready", "blocks": blocks}
 
 
 def verify_git_governance(registry_root: Path, repo_root: Path, commit: str) -> list[str]:
@@ -58,13 +62,13 @@ def install_pre_push_hook(registry_root: Path, repo_root: Path, script: Path) ->
     relative = registry_root.resolve().relative_to(repo_root.resolve()).as_posix()
     hook = hooks / "pre-push"
     backup = hooks / "pre-push.domain-memory-existing"
-    if hook.exists() and "domain-memory-pre-push" not in hook.read_text(encoding="utf-8"):
+    if hook.exists() and HOOK_MARKER not in hook.read_text(encoding="utf-8"):
         if backup.exists():
             raise ValueError("existing Domain Memory pre-push hook backup already exists")
         hook.replace(backup)
     script_text = (
         "#!/bin/sh\n"
-        "# domain-memory-pre-push\n"
+        f"# {HOOK_MARKER}\n"
         f"tool='{inside_repo(script, repo_root)}'\n"
         f"memory='{relative}'\n"
         f"existing='{inside_repo(backup, repo_root)}'\n"
@@ -74,15 +78,14 @@ def install_pre_push_hook(registry_root: Path, repo_root: Path, script: Path) ->
         "fi\n"
         "printf '%s\\n' \"$refs\" | while read local_ref local_sha remote_ref remote_sha; do\n"
         "  test -n \"$local_sha\" || continue\n"
-        "  test \"$local_sha\" = \"0000000000000000000000000000000000000000\" && continue\n"
+        f"  test \"$local_sha\" = \"{EMPTY_SHA}\" && continue\n"
         "  range=$local_sha\n"
-        "  test \"$remote_sha\" = \"0000000000000000000000000000000000000000\" || range=$remote_sha..$local_sha\n"
+        f"  test \"$remote_sha\" = \"{EMPTY_SHA}\" || range=$remote_sha..$local_sha\n"
         "  for commit in $(git rev-list $range -- \"$memory\"); do\n"
         "    python \"$tool\" verify-git-governance --registry-root \"$memory\" --repo-root . --commit \"$commit\" || exit 1\n"
         "  done\n"
         "done || exit 1\n"
     )
-    with open(hook, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write(script_text)
+    hook.write_text(script_text, encoding="utf-8", newline="\n")
     hook.chmod(hook.stat().st_mode | 0o111)
     return hook

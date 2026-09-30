@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.attestations import verify_external_scm, verify_git_signed_commit, verify_scm
 from domain_registry.audit import append as append_audit
+from domain_registry.audit import read_events as read_audit_events
 from domain_registry.audit import verify as verify_audit
 from domain_registry.changes import init_change_package, validate_change_package
 from domain_registry.common import ASSET_KEYS, load_json
@@ -468,7 +469,7 @@ class DomainRegistryTest(unittest.TestCase):
         policy_path.write_text(json.dumps(policy), encoding="utf-8")
         self.assertEqual(1, len(lookup(self.repo / "memory", "contexts", "")))
 
-    def test_migrate_evidence_upgrades_existing_line_reference(self) -> None:
+    def seed_line_reference_evidence(self) -> None:
         (self.repo / "source.md").write_text("evidence\n", encoding="utf-8")
         document = self.repo / "memory" / "registry" / "contexts.json"
         value = json.loads(document.read_text(encoding="utf-8"))
@@ -481,10 +482,23 @@ class DomainRegistryTest(unittest.TestCase):
             }
         ]
         document.write_text(json.dumps(value), encoding="utf-8")
+
+    def test_migrate_evidence_upgrades_existing_line_reference(self) -> None:
+        self.seed_line_reference_evidence()
         self.assertEqual(1, migrate_evidence(self.repo / "memory", self.repo))
         self.assertEqual(
             1, verify_evidence(self.repo / "memory", self.repo)["summary"]["current"]
         )
+
+    def test_migrate_evidence_records_how_many_references_it_upgraded(self) -> None:
+        self.seed_line_reference_evidence()
+        migrate_evidence(self.repo / "memory", self.repo)
+        migrations = [
+            event["migrated"]
+            for event in read_audit_events(self.repo / "memory")
+            if event["operation"] == "migrate-evidence"
+        ]
+        self.assertEqual([1], migrations)
 
     def test_scm_attestation_requires_the_same_revision(self) -> None:
         proposal = {
@@ -1689,6 +1703,18 @@ class DomainRegistryTest(unittest.TestCase):
         (self.repo / "apps" / ".cache" / "cached_test.go").write_text(
             "package cache\n", encoding="utf-8"
         )
+
+    def test_discovery_gives_no_file_a_role_by_its_project_specific_name(self) -> None:
+        guidance = self.repo / "docs" / "development" / "platform-context-map.md"
+        guidance.parent.mkdir(parents=True)
+        guidance.write_text("Contexts and their owners.", encoding="utf-8")
+
+        listed = [
+            path
+            for group in discover_sources(self.repo)["source_groups"]
+            for path in group["paths"]
+        ]
+        self.assertNotIn("docs/development/platform-context-map.md", listed)
 
     def test_discovery_leaves_out_what_the_repository_ignores(self) -> None:
         self.seed_generated_cache()

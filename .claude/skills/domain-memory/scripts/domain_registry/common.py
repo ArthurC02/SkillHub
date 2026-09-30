@@ -132,7 +132,7 @@ def load_json(path: Path) -> dict[str, Any]:
     try:
         with path.open(encoding="utf-8") as source:
             value = json.load(source, object_pairs_hook=reject_duplicate_keys)
-    except (json.JSONDecodeError, ValueError) as error:
+    except ValueError as error:
         raise ValueError(f"invalid JSON: {path}") from error
     except OSError as error:
         raise ValueError(f"cannot read JSON file: {path}") from error

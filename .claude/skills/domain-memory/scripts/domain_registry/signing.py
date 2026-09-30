@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import os
 import stat
 import subprocess
@@ -22,15 +23,14 @@ def allowed_signers_path(key_file: Path) -> Path:
 
 
 def _write_verbatim(path: Path, text: str) -> None:
-    with open(path, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write(text if text.endswith("\n") else text + "\n")
+    path.write_text(
+        text if text.endswith("\n") else text + "\n", encoding="utf-8", newline="\n"
+    )
 
 
 def _restrict(path: Path) -> None:
-    try:
+    with contextlib.suppress(OSError):
         path.chmod(stat.S_IRUSR | stat.S_IWUSR)
-    except OSError:
-        pass
 
 
 def _run(command: list[str], stdin: str | None = None) -> subprocess.CompletedProcess[str]:

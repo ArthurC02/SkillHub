@@ -112,13 +112,11 @@ def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
         raise ValueError("only a submitted proposal may be verified")
     require_current_registry_revision(proposal, registry_root, repo_root)
     obligations = load_json(root / "test-obligations.json").get("obligations", [])
-    obligation_ids: set[str] = set()
-    for entry in obligations:
-        if not isinstance(entry, dict):
-            continue
-        identifier = entry.get("id")
-        if isinstance(identifier, str) and completed_identifier(identifier):
-            obligation_ids.add(identifier)
+    obligation_ids = {
+        entry["id"]
+        for entry in obligations
+        if isinstance(entry, dict) and completed_identifier(entry.get("id"))
+    }
     evidence = load_json(root / "evidence-bundle.json")
     errors = test_attestation_errors(evidence, obligation_ids, registry_root)
     if errors:
@@ -143,7 +141,7 @@ def finalize_proposal(
         raise ValueError("only a verified proposal may be finalized")
     require_current_registry_revision(proposal, registry_root, repo_root)
     evidence = load_json(root / "evidence-bundle.json")
-    attestation = evidence.get("scm_attestation") if isinstance(evidence, dict) else None
+    attestation = evidence.get("scm_attestation")
     if not isinstance(attestation, dict):
         raise ValueError("finalizing a proposal requires SCM attestation")
     governance = review_governance(registry_root)

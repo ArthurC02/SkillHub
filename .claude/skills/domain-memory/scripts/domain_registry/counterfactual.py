@@ -4,6 +4,7 @@ import hashlib
 import os
 import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -99,13 +100,13 @@ def write_as_newer(target: Path, content: bytes, seconds_ahead: int) -> None:
 
 
 def run_broken(
-    target: Path, original: bytes, broken: bytes, run: tuple[Path, str, int]
+    target: Path, original: bytes, broken: bytes, run_tests_now: Callable[[], TestRun]
 ) -> TestRun:
     sidecar = sidecar_of(target)
     sidecar.write_bytes(original)
     try:
         write_as_newer(target, broken, MTIME_STEP_SECONDS)
-        return run_tests(*run)
+        return run_tests_now()
     finally:
         write_as_newer(target, original, MTIME_STEP_SECONDS)
         sidecar.unlink()
@@ -138,7 +139,9 @@ def counterfactual(
             "the tests do not pass before anything is broken, "
             "so a failure afterwards would prove nothing:\n" + intact_run.output
         )
-    broken_run = run_broken(target, original, broken, (root, test_command, timeout))
+    broken_run = run_broken(
+        target, original, broken, lambda: run_tests(root, test_command, timeout)
+    )
     return {
         "format": FORMAT,
         "file": target.relative_to(root).as_posix(),

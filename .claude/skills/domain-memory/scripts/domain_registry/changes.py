@@ -20,6 +20,10 @@ from .policy import approved_command_profiles
 from .registry import asset_records
 from .revision import valid_registry_revision
 
+SUBMITTED_OR_LATER = {"submitted", "verified", "approved", "applied"}
+VERIFIED_OR_LATER = {"verified", "approved", "applied"}
+APPROVED_OR_LATER = {"approved", "applied"}
+
 
 def valid_digest(value: Any) -> bool:
     return (
@@ -27,6 +31,12 @@ def valid_digest(value: Any) -> bool:
         and len(value) == 71
         and value.startswith("sha256:")
         and all(character in "0123456789abcdef" for character in value[7:])
+    )
+
+
+def completed_identifiers(values: Any) -> bool:
+    return isinstance(values, list) and all(
+        completed_identifier(value) for value in values
     )
 
 
@@ -102,16 +112,12 @@ def implementation_design_errors(
     errors: list[str] = []
     for field in ("domain_forces", "invariants_preserved", "rejected_alternatives"):
         values = design.get(field)
-        if not isinstance(values, list) or not all(
-            completed_identifier(value) for value in values
-        ):
+        if not completed_identifiers(values):
             errors.append(f"implementation_design requires a valid {field} list")
     if not completed_identifier(design.get("decision")):
         errors.append("implementation_design requires a completed decision")
     proof_obligations = design.get("proof_obligations")
-    if not isinstance(proof_obligations, list) or not all(
-        completed_identifier(value) for value in proof_obligations
-    ):
+    if not completed_identifiers(proof_obligations):
         errors.append("implementation_design requires proof obligation IDs")
     elif set(proof_obligations) - obligation_ids:
         errors.append("implementation_design references an unknown proof obligation")
@@ -147,12 +153,12 @@ def _obligation_errors(
     rule_ids: list[Any],
     contract_ids: list[Any],
 ) -> tuple[list[str], set[str]]:
-    errors: list[str] = []
     obligation_records = obligations.get("obligations")
+    if not isinstance(obligation_records, list) or not obligation_records:
+        return ["test-obligations.json requires obligations"], set()
+    errors: list[str] = []
     obligation_ids: set[str] = set()
     obligation_sources: set[tuple[str, str]] = set()
-    if not isinstance(obligation_records, list) or not obligation_records:
-        return ["test-obligations.json requires obligations"], obligation_ids
     for obligation in obligation_records:
         if not isinstance(obligation, dict) or not completed_identifier(
             obligation.get("id")
@@ -184,18 +190,21 @@ def _obligation_errors(
             )
         if obligation.get("status") not in OBLIGATION_STATUSES:
             errors.append(f"test obligation {obligation_id} has an invalid status")
-    for criterion_id in criterion_ids:
-        if ("acceptance-criterion", criterion_id) not in obligation_sources:
-            errors.append(
-                f"acceptance criterion {criterion_id} lacks a test obligation: "
-                f"add one whose source_type is acceptance-criterion and whose source_id is {criterion_id}"
-            )
-    for rule_id in rule_ids:
-        if ("rule", rule_id) not in obligation_sources:
-            errors.append(f"rule {rule_id} lacks a test obligation")
-    for contract_id in contract_ids:
-        if ("contract", contract_id) not in obligation_sources:
-            errors.append(f"contract {contract_id} lacks a test obligation")
+    errors.extend(
+        f"acceptance criterion {criterion_id} lacks a test obligation: "
+        f"add one whose source_type is acceptance-criterion and whose source_id is {criterion_id}"
+        for criterion_id in criterion_ids
+        if ("acceptance-criterion", criterion_id) not in obligation_sources
+    )
+    errors.extend(
+        f"{source_type} {source_id} lacks a test obligation"
+        for source_type, source_ids in (
+            ("rule", rule_ids),
+            ("contract", contract_ids),
+        )
+        for source_id in source_ids
+        if (source_type, source_id) not in obligation_sources
+    )
     return errors, obligation_ids
 
 
@@ -208,12 +217,11 @@ def _approval_and_revision_errors(
 ) -> list[str]:
     errors: list[str] = []
     required_roles = requirement.get("required_approval_roles", [])
-    if not isinstance(required_roles, list) or not all(
-        completed_identifier(role) for role in required_roles
-    ):
+    if not completed_identifiers(required_roles):
         errors.append(
             "requirement-normalization.json has invalid required_approval_roles"
         )
+    base_revision = proposal.get("base_registry_revision")
     approvals = proposal.get("approvals", [])
     approved_roles: set[str] = set()
     if not isinstance(approvals, list):
@@ -224,46 +232,39 @@ def _approval_and_revision_errors(
                 errors.append("domain-change-proposal.json has invalid approval entry")
                 continue
             if (
-                approval.get("decision") == "approved"
-                and approval.get("proposal_revision") == revision
+                approval.get("decision") != "approved"
+                or approval.get("proposal_revision") != revision
             ):
-                if not all(
-                    (
-                        completed_identifier(approval.get("role")),
-                        completed_identifier(approval.get("reviewer")),
-                        iso_timestamp(approval.get("approved_at")),
-                        completed_identifier(approval.get("scope")),
-                    )
-                ):
-                    errors.append(
-                        "an approval requires role, reviewer, approved_at, and scope"
-                    )
-                elif approval.get("base_registry_revision") != proposal.get(
-                    "base_registry_revision"
-                ):
-                    errors.append(
-                        "an approval must bind to the proposal base_registry_revision"
-                    )
-                else:
-                    approved_roles.add(approval["role"])
+                continue
+            if not all(
+                (
+                    completed_identifier(approval.get("role")),
+                    completed_identifier(approval.get("reviewer")),
+                    iso_timestamp(approval.get("approved_at")),
+                    completed_identifier(approval.get("scope")),
+                )
+            ):
+                errors.append(
+                    "an approval requires role, reviewer, approved_at, and scope"
+                )
+            elif approval.get("base_registry_revision") != base_revision:
+                errors.append(
+                    "an approval must bind to the proposal base_registry_revision"
+                )
+            else:
+                approved_roles.add(approval["role"])
     if (
-        status in {"approved", "applied"}
+        status in APPROVED_OR_LATER
         and set(required_roles if isinstance(required_roles, list) else [])
         - approved_roles
     ):
         errors.append("an approved or applied proposal lacks required approvals")
-    base_revision = proposal.get("base_registry_revision")
-    if status in {
-        "submitted",
-        "verified",
-        "approved",
-        "applied",
-    } and not valid_registry_revision(base_revision):
+    if status in SUBMITTED_OR_LATER and not valid_registry_revision(base_revision):
         errors.append(
             "a submitted, approved, or applied proposal requires a Registry digest base revision"
         )
     if (
-        status in {"submitted", "verified", "approved", "applied"}
+        status in SUBMITTED_OR_LATER
         and evidence.get("registry_revision") != base_revision
     ):
         errors.append(
@@ -309,67 +310,27 @@ def _registry_reference_errors(
     contract_ids: Any,
 ) -> list[str]:
     errors: list[str] = []
-    registry_contexts = {
-        entry.get("id") for entry in asset_records(registry_root, "contexts.json")
-    }
-    registry_rules = {
-        entry.get("id") for entry in asset_records(registry_root, "rules.json")
-    }
-    registry_contracts = {
-        entry.get("id") for entry in asset_records(registry_root, "contracts.json")
-    }
-    if (
-        isinstance(affected_contexts, list)
-        and set(affected_contexts) - registry_contexts
+    for asset, kind, referenced in (
+        ("contexts.json", "context", affected_contexts),
+        ("rules.json", "rule", rule_ids),
+        ("contracts.json", "contract", contract_ids),
     ):
-        errors.append(
-            "domain-change-proposal.json references an unknown registry context"
-        )
-    if isinstance(rule_ids, list) and set(rule_ids) - registry_rules:
-        errors.append("domain-change-proposal.json references an unknown registry rule")
-    if isinstance(contract_ids, list) and set(contract_ids) - registry_contracts:
-        errors.append(
-            "domain-change-proposal.json references an unknown registry contract"
-        )
+        known = {entry.get("id") for entry in asset_records(registry_root, asset)}
+        if isinstance(referenced, list) and set(referenced) - known:
+            errors.append(
+                f"domain-change-proposal.json references an unknown registry {kind}"
+            )
     return errors
 
 
-def _load_change_documents(
-    root: Path,
-) -> tuple[dict[str, Path], dict[str, dict[str, Any]], list[str]]:
-    paths = {name: root / name for name in CHANGE_PACKAGE_FILES}
+def _identity_errors(documents: dict[str, dict[str, Any]]) -> list[str]:
+    requirement = documents["requirement-normalization.json"]
+    proposal = documents["domain-change-proposal.json"]
     errors = [
-        f"missing change package file: {path}"
-        for path in paths.values()
-        if not path.is_file()
+        f"{name} has an invalid format"
+        for name, document in documents.items()
+        if document.get("format") != CHANGE_PACKAGE_FORMATS[name]
     ]
-    if errors:
-        return paths, {}, errors
-    documents = {
-        "requirement": load_json(paths["requirement-normalization.json"]),
-        "proposal": load_json(paths["domain-change-proposal.json"]),
-        "obligations": load_json(paths["test-obligations.json"]),
-        "evidence": load_json(paths["evidence-bundle.json"]),
-    }
-    return paths, documents, errors
-
-
-def _identity_errors(
-    documents: dict[str, dict[str, Any]],
-) -> tuple[list[str], Any, Any]:
-    requirement = documents["requirement"]
-    proposal = documents["proposal"]
-    obligations = documents["obligations"]
-    evidence = documents["evidence"]
-    errors: list[str] = []
-    for name, value in (
-        ("requirement-normalization.json", requirement),
-        ("domain-change-proposal.json", proposal),
-        ("test-obligations.json", obligations),
-        ("evidence-bundle.json", evidence),
-    ):
-        if value.get("format") != CHANGE_PACKAGE_FORMATS[name]:
-            errors.append(f"{name} has an invalid format")
     requirement_id = requirement.get("requirement_id")
     proposal_id = proposal.get("proposal_id")
     if not completed_identifier(requirement_id):
@@ -380,25 +341,26 @@ def _identity_errors(
         errors.append("domain-change-proposal.json requires a completed proposal_id")
     if not completed_identifier(proposal.get("proposer")):
         errors.append("domain-change-proposal.json requires a completed proposer")
-    for name, value in (
-        ("domain-change-proposal.json", proposal),
-        ("test-obligations.json", obligations),
-        ("evidence-bundle.json", evidence),
-    ):
-        if value.get("requirement_id") != requirement_id:
-            errors.append(f"{name} must reference the requirement_id")
-    for name, value in (
-        ("test-obligations.json", obligations),
-        ("evidence-bundle.json", evidence),
-    ):
-        if value.get("proposal_id") != proposal_id:
-            errors.append(f"{name} must reference the proposal_id")
-    return errors, requirement_id, proposal_id
+    errors.extend(
+        f"{name} must reference the requirement_id"
+        for name in (
+            "domain-change-proposal.json",
+            "test-obligations.json",
+            "evidence-bundle.json",
+        )
+        if documents[name].get("requirement_id") != requirement_id
+    )
+    errors.extend(
+        f"{name} must reference the proposal_id"
+        for name in ("test-obligations.json", "evidence-bundle.json")
+        if documents[name].get("proposal_id") != proposal_id
+    )
+    return errors
 
 
 def _requirement_and_proposal_errors(
     requirement: dict[str, Any], proposal: dict[str, Any]
-) -> tuple[list[str], set[str], Any, Any, Any, Any, Any, Any]:
+) -> tuple[list[str], set[str]]:
     errors: list[str] = []
     acceptance_criteria = requirement.get("acceptance_criteria")
     criterion_ids: set[str] = set()
@@ -426,65 +388,43 @@ def _requirement_and_proposal_errors(
         proposal_flags
     ):
         errors.append("domain-change-proposal.json must retain requirement risk flags")
-    status = proposal.get("status")
-    if status not in PROPOSAL_STATUSES:
+    if proposal.get("status") not in PROPOSAL_STATUSES:
         errors.append("domain-change-proposal.json has an invalid status")
-    classification = proposal.get("change_classification")
     revision = proposal.get("proposal_revision")
     if not isinstance(revision, int) or revision < 1:
         errors.append(
             "domain-change-proposal.json requires a positive proposal_revision"
         )
     affected_contexts = proposal.get("affected_contexts")
-    if (
-        not isinstance(affected_contexts, list)
-        or not affected_contexts
-        or not all(completed_identifier(context) for context in affected_contexts)
-    ):
+    if not affected_contexts or not completed_identifiers(affected_contexts):
         errors.append("domain-change-proposal.json requires affected_contexts")
-    rule_ids = proposal.get("rule_ids", [])
-    contract_ids = proposal.get("contract_ids", [])
-    if not isinstance(rule_ids, list) or not all(
-        completed_identifier(value) for value in rule_ids
-    ):
+    if not completed_identifiers(proposal.get("rule_ids", [])):
         errors.append("domain-change-proposal.json has invalid rule_ids")
-    if not isinstance(contract_ids, list) or not all(
-        completed_identifier(value) for value in contract_ids
-    ):
+    if not completed_identifiers(proposal.get("contract_ids", [])):
         errors.append("domain-change-proposal.json has invalid contract_ids")
-    return (
-        errors,
-        criterion_ids,
-        status,
-        classification,
-        revision,
-        affected_contexts,
-        rule_ids,
-        contract_ids,
-    )
+    return errors, criterion_ids
 
 
 def validate_change_package(root: Path, registry_root: Path | None) -> list[str]:
-    _, documents, errors = _load_change_documents(root)
+    errors = [
+        f"missing change package file: {root / name}"
+        for name in CHANGE_PACKAGE_FILES
+        if not (root / name).is_file()
+    ]
     if errors:
         return errors
-    requirement = documents["requirement"]
-    proposal = documents["proposal"]
-    obligations = documents["obligations"]
-    evidence = documents["evidence"]
-    identity_errors, _, _ = _identity_errors(documents)
-    errors.extend(identity_errors)
-    (
-        proposal_errors,
-        criterion_ids,
-        status,
-        classification,
-        revision,
-        affected_contexts,
-        rule_ids,
-        contract_ids,
-    ) = _requirement_and_proposal_errors(requirement, proposal)
+    documents = {name: load_json(root / name) for name in CHANGE_PACKAGE_FORMATS}
+    requirement, proposal, obligations, evidence = documents.values()
+    errors.extend(_identity_errors(documents))
+    proposal_errors, criterion_ids = _requirement_and_proposal_errors(
+        requirement, proposal
+    )
     errors.extend(proposal_errors)
+    status = proposal.get("status")
+    revision = proposal.get("proposal_revision")
+    affected_contexts = proposal.get("affected_contexts")
+    rule_ids = proposal.get("rule_ids", [])
+    contract_ids = proposal.get("contract_ids", [])
     obligation_errors, obligation_ids = _obligation_errors(
         obligations,
         criterion_ids,
@@ -497,11 +437,11 @@ def validate_change_package(root: Path, registry_root: Path | None) -> list[str]
         _approval_and_revision_errors(requirement, proposal, evidence, status, revision)
     )
     errors.extend(_evidence_result_errors(evidence, obligation_ids))
-    if status in {"verified", "approved", "applied"}:
+    if status in VERIFIED_OR_LATER:
         errors.extend(test_attestation_errors(evidence, obligation_ids, registry_root))
-    if classification == "material" and status in {"verified", "approved", "applied"}:
-        errors.extend(counterfactual_errors(evidence, obligation_ids))
-    if status in {"approved", "applied"}:
+        if proposal.get("change_classification") == "material":
+            errors.extend(counterfactual_errors(evidence, obligation_ids))
+    if status in APPROVED_OR_LATER:
         attestation = evidence.get("scm_attestation")
         if not isinstance(attestation, dict):
             errors.append("an approved or applied proposal requires SCM attestation")

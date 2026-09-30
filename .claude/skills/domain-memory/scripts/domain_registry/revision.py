@@ -14,6 +14,26 @@ from .common import (
 )
 from .policy import policy_path
 
+COMMIT_LENGTH = 40
+DIGEST_PREFIX = "sha256:"
+DIGEST_HEX_LENGTH = 64
+
+
+def _is_lowercase_hex(text: str, length: int) -> bool:
+    return len(text) == length and all(
+        character in "0123456789abcdef" for character in text
+    )
+
+
+def _canonical_json(value: Any) -> bytes:
+    return json.dumps(
+        value, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+    ).encode("utf-8")
+
+
+def _feed(digest: Any, name: str, content: bytes) -> None:
+    digest.update(name.encode("utf-8") + b"\0" + content + b"\0")
+
 
 def git_commit(repo_root: Path) -> str | None:
     try:
@@ -29,11 +49,7 @@ def git_commit(repo_root: Path) -> str | None:
     if result.returncode != 0:
         return None
     commit = result.stdout.strip()
-    if len(commit) != 40 or any(
-        character not in "0123456789abcdef" for character in commit
-    ):
-        return None
-    return commit
+    return commit if _is_lowercase_hex(commit, COMMIT_LENGTH) else None
 
 
 def registry_digest(root: Path) -> str:
@@ -44,27 +60,14 @@ def registry_digest(root: Path) -> str:
             raise ValueError(
                 f"registry asset is missing while calculating revision: {path}"
             )
-        digest.update(name.encode("utf-8"))
-        digest.update(b"\0")
-        value = load_json(path)
-        digest.update(
-            json.dumps(
-                value, ensure_ascii=False, separators=(",", ":"), sort_keys=True
-            ).encode("utf-8")
-        )
-        digest.update(b"\0")
+        _feed(digest, name, _canonical_json(load_json(path)))
     policy = policy_path(root)
-    digest.update(policy.name.encode("utf-8"))
-    digest.update(b"\0")
-    digest.update(
-        json.dumps(
-            load_json(policy), ensure_ascii=False, separators=(",", ":"), sort_keys=True
-        ).encode("utf-8")
-        if policy.is_file()
-        else b"absent"
+    _feed(
+        digest,
+        policy.name,
+        _canonical_json(load_json(policy)) if policy.is_file() else b"absent",
     )
-    digest.update(b"\0")
-    return f"sha256:{digest.hexdigest()}"
+    return f"{DIGEST_PREFIX}{digest.hexdigest()}"
 
 
 def current_registry_revision(root: Path, repo_root: Path) -> dict[str, str | None]:
@@ -88,19 +91,11 @@ def valid_registry_revision(value: Any) -> TypeGuard[dict[str, Any]]:
     return (
         (
             commit is None
-            or (
-                isinstance(commit, str)
-                and len(commit) == 40
-                and all(character in "0123456789abcdef" for character in commit)
-            )
+            or (isinstance(commit, str) and _is_lowercase_hex(commit, COMMIT_LENGTH))
         )
         and isinstance(digest, str)
-        and digest.startswith("sha256:")
-        and len(digest) == 71
-        and all(
-            character in "0123456789abcdef"
-            for character in digest.removeprefix("sha256:")
-        )
+        and digest.startswith(DIGEST_PREFIX)
+        and _is_lowercase_hex(digest.removeprefix(DIGEST_PREFIX), DIGEST_HEX_LENGTH)
     )
 
 

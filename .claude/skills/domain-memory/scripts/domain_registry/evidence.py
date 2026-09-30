@@ -19,6 +19,24 @@ def source_map_for(registry_root: Path) -> dict[str, Any]:
     return load_json(path)
 
 
+def _valid_line_range(start: Any, end: Any) -> bool:
+    return (
+        isinstance(start, int)
+        and isinstance(end, int)
+        and start >= 1
+        and end >= start
+    )
+
+
+def _read_lines(path: Path) -> tuple[bytes, list[str]]:
+    content = path.read_bytes()
+    return content, content.decode("utf-8", errors="replace").splitlines(keepends=True)
+
+
+def _excerpt(rows: list[str], start: int, end: int) -> bytes:
+    return "".join(rows[start - 1 : end]).encode("utf-8")
+
+
 def classified(reference: Any, source_map: dict[str, Any]) -> Any:
     if (
         not source_map
@@ -47,37 +65,28 @@ def classify_all(value: Any, source_map: dict[str, Any], depth: int = 0) -> Any:
 def citation(repo_root: Path, relative: str, start: int, end: int) -> dict[str, Any]:
     root = repo_root.resolve()
     path = (root / relative).resolve()
-    try:
-        path.relative_to(root)
-    except ValueError as error:
-        raise ValueError(f"evidence path escapes the repository: {relative}") from error
+    if not path.is_relative_to(root):
+        raise ValueError(f"evidence path escapes the repository: {relative}")
     if not path.is_file():
         raise ValueError(f"no such file to cite: {relative}")
     if path.stat().st_size > MAX_EVIDENCE_BYTES:
         raise ValueError(
             f"evidence source exceeds {MAX_EVIDENCE_BYTES} bytes: {relative}"
         )
-    if (
-        not isinstance(start, int)
-        or not isinstance(end, int)
-        or start < 1
-        or end < start
-    ):
+    if not _valid_line_range(start, end):
         raise ValueError(
             f"a citation needs 1 <= start <= end, got start={start} end={end}"
         )
-    content = path.read_bytes()
-    rows = content.decode("utf-8", errors="replace").splitlines(keepends=True)
+    content, rows = _read_lines(path)
     if end > len(rows):
         raise ValueError(
             f"{relative} has {len(rows)} lines; the citation asks for line {end}"
         )
-    excerpt = "".join(rows[start - 1 : end]).encode("utf-8")
     return {
         "path": path.relative_to(root).as_posix(),
         "lines": {"start": start, "end": end},
         "content_sha256": digest(content),
-        "excerpt_sha256": digest(excerpt),
+        "excerpt_sha256": digest(_excerpt(rows, start, end)),
     }
 
 
@@ -102,17 +111,10 @@ def verify(reference: Any, repo_root: Path) -> dict[str, Any]:
     if not isinstance(path_text, str) or not isinstance(lines, dict):
         return {"status": "invalid", "reason": "evidence requires path and lines"}
     start, end = lines.get("start"), lines.get("end")
-    if (
-        not isinstance(start, int)
-        or not isinstance(end, int)
-        or start < 1
-        or end < start
-    ):
+    if not _valid_line_range(start, end):
         return {"status": "invalid", "reason": "evidence line range is invalid"}
     path = (repo_root / path_text).resolve()
-    try:
-        path.relative_to(repo_root.resolve())
-    except ValueError:
+    if not path.is_relative_to(repo_root.resolve()):
         return {"status": "invalid", "reason": "evidence path escapes repository"}
     if not path.is_file():
         return {"status": "missing", "path": path_text}
@@ -122,16 +124,14 @@ def verify(reference: Any, repo_root: Path) -> dict[str, Any]:
             "reason": f"evidence source exceeds {MAX_EVIDENCE_BYTES} bytes",
             "path": path_text,
         }
-    content = path.read_bytes()
-    rows = content.decode("utf-8", errors="replace").splitlines(keepends=True)
+    _, rows = _read_lines(path)
     if end > len(rows):
         return {
             "status": "invalid",
             "reason": "evidence line range exceeds source",
             "path": path_text,
         }
-    excerpt = "".join(rows[start - 1 : end]).encode("utf-8")
-    if reference.get("excerpt_sha256") != digest(excerpt):
+    if reference.get("excerpt_sha256") != digest(_excerpt(rows, start, end)):
         return {"status": "stale", "path": path_text}
     return {
         "status": "current",
@@ -147,25 +147,21 @@ def migrate_legacy(reference: Any, repo_root: Path) -> Any:
     if not separator or not line_text.isdigit() or int(line_text) < 1:
         return reference
     path = (repo_root / path_text).resolve()
-    try:
-        path.relative_to(repo_root.resolve())
-    except ValueError:
+    if (
+        not path.is_relative_to(repo_root.resolve())
+        or not path.is_file()
+        or path.stat().st_size > MAX_EVIDENCE_BYTES
+    ):
         return reference
-    if not path.is_file():
-        return reference
-    if path.stat().st_size > MAX_EVIDENCE_BYTES:
-        return reference
-    content = path.read_bytes()
-    rows = content.decode("utf-8", errors="replace").splitlines(keepends=True)
+    content, rows = _read_lines(path)
     line = int(line_text)
     if line > len(rows):
         return reference
-    excerpt = rows[line - 1].encode("utf-8")
     return {
         "path": path_text.replace("\\", "/"),
         "lines": {"start": line, "end": line},
         "content_sha256": digest(content),
-        "excerpt_sha256": digest(excerpt),
+        "excerpt_sha256": digest(_excerpt(rows, line, line)),
     }
 
 

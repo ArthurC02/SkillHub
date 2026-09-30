@@ -7,7 +7,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .common import MAX_JSON_BYTES, load_json, reject_duplicate_keys
+from .common import MAX_JSON_BYTES, load_json, reject_duplicate_keys, writer_lock
+
+MANIFEST_FORMAT = "domain-memory-audit/v1"
 
 
 def canonical(value: dict[str, Any]) -> bytes:
@@ -66,7 +68,7 @@ def append_locked(root: Path, event: dict[str, Any]) -> None:
     if manifest_path.is_file():
         manifest = load_json(manifest_path)
         if (
-            manifest.get("format") != "domain-memory-audit/v1"
+            manifest.get("format") != MANIFEST_FORMAT
             or not isinstance(manifest.get("events"), int)
             or manifest["events"] < 0
         ):
@@ -89,7 +91,7 @@ def append_locked(root: Path, event: dict[str, Any]) -> None:
         output.flush()
         os.fsync(output.fileno())
     manifest = {
-        "format": "domain-memory-audit/v1",
+        "format": MANIFEST_FORMAT,
         "events": value["sequence"],
         "head_sha256": value["event_sha256"],
     }
@@ -101,50 +103,40 @@ def append_locked(root: Path, event: dict[str, Any]) -> None:
 
 
 def append(root: Path, event: dict[str, Any]) -> None:
-    from .common import writer_lock
-
     with writer_lock(root):
         append_locked(root, event)
+
+
+def _invalid(reason: str) -> dict[str, Any]:
+    return {"status": "invalid", "reason": reason}
 
 
 def verify(root: Path) -> dict[str, Any]:
     try:
         events = read_events(root)
     except ValueError as error:
-        return {"status": "invalid", "reason": str(error)}
+        return _invalid(str(error))
     previous = None
     for sequence, event in enumerate(events, start=1):
         stored_digest = event.get("event_sha256")
         unsigned = {key: value for key, value in event.items() if key != "event_sha256"}
         if event.get("sequence") != sequence:
-            return {
-                "status": "invalid",
-                "reason": f"audit sequence is invalid at event {sequence}",
-            }
+            return _invalid(f"audit sequence is invalid at event {sequence}")
         if event.get("previous_event_sha256") != previous:
-            return {
-                "status": "invalid",
-                "reason": f"audit chain is broken at event {sequence}",
-            }
+            return _invalid(f"audit chain is broken at event {sequence}")
         if stored_digest != event_digest(unsigned):
-            return {
-                "status": "invalid",
-                "reason": f"audit digest is invalid at event {sequence}",
-            }
+            return _invalid(f"audit digest is invalid at event {sequence}")
         previous = stored_digest
     manifest_path = audit_manifest_path(root)
     if manifest_path.is_file():
         try:
             manifest = load_json(manifest_path)
         except ValueError as error:
-            return {"status": "invalid", "reason": str(error)}
+            return _invalid(str(error))
         if (
-            manifest.get("format") != "domain-memory-audit/v1"
+            manifest.get("format") != MANIFEST_FORMAT
             or manifest.get("events") != len(events)
             or manifest.get("head_sha256") != previous
         ):
-            return {
-                "status": "invalid",
-                "reason": "audit manifest does not match the event log",
-            }
+            return _invalid("audit manifest does not match the event log")
     return {"status": "valid", "events": len(events), "head_sha256": previous}

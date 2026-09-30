@@ -17,6 +17,14 @@ from .common import (
 from .evidence import all_references, classified, migrate_legacy, source_map_for, verify
 from .policy import query_result_limit, review_mode
 
+STANDARD_FILES = (*ASSET_KEYS, "manifest.json")
+ABSENCE_ASSETS = {
+    "vocabulary": "without_vocabulary",
+    "aggregates": "without_aggregate",
+    "rules": "without_rule",
+    "contracts": "without_contract",
+}
+
 
 def init_registry(output: Path) -> None:
     if output.exists() and any(output.iterdir()):
@@ -24,7 +32,7 @@ def init_registry(output: Path) -> None:
     target_registry = registry_dir(output)
     target_registry.mkdir(parents=True, exist_ok=True)
     templates = template_dir()
-    for name in set(ASSET_KEYS) | {"manifest.json"}:
+    for name in STANDARD_FILES:
         shutil.copyfile(templates / name, target_registry / name)
 
 
@@ -32,7 +40,7 @@ def migrate_registry(root: Path) -> list[str]:
     target = registry_dir(root)
     templates = template_dir()
     created = []
-    for name in set(ASSET_KEYS) | {"manifest.json"}:
+    for name in STANDARD_FILES:
         path = target / name
         if not path.exists():
             shutil.copyfile(templates / name, path)
@@ -57,14 +65,11 @@ def asset_records(root: Path, name: str) -> list[dict[str, Any]]:
     return value
 
 
-def evidence_values(value: Any) -> list[Any]:
-    return all_references(value)
-
-
 def _load_registry_assets(
-    root: Path, errors: list[str]
-) -> dict[str, list[dict[str, Any]]]:
+    root: Path,
+) -> tuple[dict[str, list[dict[str, Any]]], list[str]]:
     records: dict[str, list[dict[str, Any]]] = {}
+    errors: list[str] = []
     for name in ASSET_KEYS:
         path = registry_dir(root) / name
         if not path.is_file():
@@ -74,7 +79,7 @@ def _load_registry_assets(
             records[name] = asset_records(root, name)
         except ValueError as error:
             errors.append(str(error))
-    return records
+    return records, errors
 
 
 def _validate_asset_records(
@@ -85,8 +90,7 @@ def _validate_asset_records(
     errors: list[str] = []
     for name, entries in records.items():
         asset = load_json(registry_dir(root) / name)
-        expected_format = ASSET_FORMATS[name]
-        if asset.get("format") != expected_format:
+        if asset.get("format") != ASSET_FORMATS[name]:
             errors.append(f"{name} has an invalid format")
         asset_status = asset.get("status")
         if asset_status not in REGISTRY_STATUSES:
@@ -98,14 +102,12 @@ def _validate_asset_records(
             errors.append(f"{name} entries require non-empty id")
         elif len(identifiers) != len(set(identifiers)):
             errors.append(f"{name} contains duplicate id")
+        status_field = "review_status" if name == "decisions.json" else "status"
         for entry in entries:
-            status = (
-                entry.get("review_status", asset_status)
-                if name == "decisions.json"
-                else entry.get("status", asset_status)
-            )
+            label = f"{name}:{entry.get('id')}"
+            status = entry.get(status_field, asset_status)
             if status not in REGISTRY_STATUSES:
-                errors.append(f"{name}:{entry.get('id')} has an invalid status")
+                errors.append(f"{label} has an invalid status")
                 continue
             if status == "reviewed":
                 missing = [
@@ -115,14 +117,12 @@ def _validate_asset_records(
                 ]
                 if missing:
                     errors.append(
-                        f"{name}:{entry.get('id')} is reviewed but missing {', '.join(missing)}"
+                        f"{label} is reviewed but missing {', '.join(missing)}"
                     )
                 if not entry.get("evidence"):
-                    errors.append(
-                        f"{name}:{entry.get('id')} is reviewed but lacks evidence"
-                    )
+                    errors.append(f"{label} is reviewed but lacks evidence")
             if require_reviewed and status != "reviewed":
-                errors.append(f"{name}:{entry.get('id')} is not reviewed")
+                errors.append(f"{label} is not reviewed")
     errors.extend(_context_placement_problems(records.get("contexts.json", [])))
     return errors
 
@@ -132,10 +132,11 @@ def _context_placement_problems(entries: list[dict[str, Any]]) -> list[str]:
     claimed: dict[str, str] = {}
     for entry in entries:
         identifier = entry.get("id")
+        label = f"contexts.json:{identifier}"
         subdomain = entry.get("subdomain")
         if subdomain is not None and subdomain not in CONTEXT_SUBDOMAINS:
             errors.append(
-                f"contexts.json:{identifier} has an unknown subdomain: "
+                f"{label} has an unknown subdomain: "
                 f"{subdomain!r} is not one of {', '.join(sorted(CONTEXT_SUBDOMAINS))}"
             )
         prefixes = entry.get("requirement_prefixes")
@@ -144,21 +145,18 @@ def _context_placement_problems(entries: list[dict[str, Any]]) -> list[str]:
             or not all(isinstance(p, str) and p.strip() for p in prefixes)
         ):
             errors.append(
-                f"contexts.json:{identifier} requirement_prefixes must be "
-                "a list of non-empty strings"
+                f"{label} requirement_prefixes must be a list of non-empty strings"
             )
         path = entry.get("implementation_path")
         if path is None:
             continue
         if not isinstance(path, str) or not path.strip():
-            errors.append(
-                f"contexts.json:{identifier} implementation_path must be a non-empty string"
-            )
+            errors.append(f"{label} implementation_path must be a non-empty string")
             continue
         for other, owner in claimed.items():
             if _paths_overlap(path, other):
                 errors.append(
-                    f"contexts.json:{identifier} claims {path}, which overlaps "
+                    f"{label} claims {path}, which overlaps "
                     f"{other} claimed by {owner}: code belongs to one Context"
                 )
         claimed[path] = str(identifier)
@@ -178,11 +176,10 @@ def _validate_confirmed_absences(
     errors: list[str] = []
     holding = contexts_holding(records)
     for entry in records.get("contexts.json", []):
+        label = f"contexts.json:{entry.get('id')}"
         declarations = entry.get("confirmed_absences", [])
         if not isinstance(declarations, list):
-            errors.append(
-                f"contexts.json:{entry.get('id')} confirmed_absences must be a list"
-            )
+            errors.append(f"{label} confirmed_absences must be a list")
             continue
         for declaration in declarations:
             if (
@@ -190,22 +187,21 @@ def _validate_confirmed_absences(
                 or declaration.get("asset") not in ABSENCE_ASSETS
             ):
                 errors.append(
-                    f"contexts.json:{entry.get('id')} confirms an absence of an unknown asset; "
+                    f"{label} confirms an absence of an unknown asset; "
                     f"use one of {', '.join(sorted(ABSENCE_ASSETS))}"
                 )
                 continue
-            if (
-                not isinstance(declaration.get("reason"), str)
-                or not declaration["reason"].strip()
-            ):
+            asset = declaration["asset"]
+            reason = declaration.get("reason")
+            if not isinstance(reason, str) or not reason.strip():
                 errors.append(
-                    f"contexts.json:{entry.get('id')} confirms an absence of {declaration['asset']} "
+                    f"{label} confirms an absence of {asset} "
                     "without a reason; a confirmed absence is a finding and needs one"
                 )
-            elif entry.get("id") in holding[declaration["asset"]]:
+            elif entry.get("id") in holding[asset]:
                 errors.append(
-                    f"contexts.json:{entry.get('id')} confirms an absence of {declaration['asset']}, "
-                    f"but {declaration['asset']} records name it"
+                    f"{label} confirms an absence of {asset}, "
+                    f"but {asset} records name it"
                 )
     return errors
 
@@ -222,35 +218,25 @@ def _validate_context_references(
                 errors.append(f"{name}:{entry.get('id')} requires contexts")
             elif set(contexts) - known_contexts:
                 errors.append(f"{name}:{entry.get('id')} references unknown context")
-    for name in ("aggregates.json", "interactions.json"):
-        for entry in records.get(name, []):
-            fields = (
-                ["context"]
-                if name == "aggregates.json"
-                else ["producer_context", "consumer_context"]
-            )
-            for field in fields:
-                if entry.get(field) not in known_contexts:
-                    errors.append(
-                        f"{name}:{entry.get('id')} references unknown context"
-                    )
-    contract_ids = {entry.get("id") for entry in records.get("contracts.json", [])}
-    for name, field in (
-        ("events.json", "owner_context"),
-        ("capabilities.json", "context"),
-        ("value-objects.json", "context"),
+    for name, fields in (
+        ("aggregates.json", ("context",)),
+        ("interactions.json", ("producer_context", "consumer_context")),
+        ("events.json", ("owner_context",)),
+        ("capabilities.json", ("context",)),
+        ("value-objects.json", ("context",)),
     ):
-        for entry in records.get(name, []):
-            if entry.get(field) not in known_contexts:
-                errors.append(f"{name}:{entry.get('id')} references unknown context")
-    for entry in records.get("dependency-policies.json", []):
-        if (
-            entry.get("from_context") not in known_contexts
-            or entry.get("to_context") not in known_contexts
-        ):
-            errors.append(
-                f"dependency-policies.json:{entry.get('id')} references unknown context"
-            )
+        errors.extend(
+            f"{name}:{entry.get('id')} references unknown context"
+            for entry in records.get(name, [])
+            for field in fields
+            if entry.get(field) not in known_contexts
+        )
+    errors.extend(
+        f"dependency-policies.json:{entry.get('id')} references unknown context"
+        for entry in records.get("dependency-policies.json", [])
+        if entry.get("from_context") not in known_contexts
+        or entry.get("to_context") not in known_contexts
+    )
     for entry in records.get("contracts.json", []):
         if entry.get("producer_context") not in known_contexts:
             errors.append(
@@ -261,6 +247,7 @@ def _validate_context_references(
             errors.append(
                 f"contracts.json:{entry.get('id')} references unknown consumer context"
             )
+    contract_ids = {entry.get("id") for entry in records.get("contracts.json", [])}
     for entry in records.get("interactions.json", []):
         contract_id = entry.get("contract_id")
         if contract_id is not None and contract_id not in contract_ids:
@@ -275,14 +262,12 @@ def _validate_evidence(
 ) -> list[str]:
     if repo_root is None:
         return []
-    errors: list[str] = []
-    for reference in evidence_values(records):
-        result = verify(reference, repo_root)
-        if result["status"] in {"invalid", "missing"}:
-            errors.append(
-                f"evidence {result['status']}: {result.get('reason', result.get('path'))}"
-            )
-    return errors
+    results = (verify(reference, repo_root) for reference in all_references(records))
+    return [
+        f"evidence {result['status']}: {result.get('reason', result.get('path'))}"
+        for result in results
+        if result["status"] in {"invalid", "missing"}
+    ]
 
 
 def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list[str]:
@@ -296,7 +281,8 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
     artifacts = manifest.get("artifacts")
     if not isinstance(artifacts, list) or not set(ASSET_KEYS).issubset(artifacts):
         errors.append("manifest artifacts must list every standard registry asset file")
-    records = _load_registry_assets(root, errors)
+    records, load_errors = _load_registry_assets(root)
+    errors.extend(load_errors)
     errors.extend(_validate_asset_records(root, records, require_reviewed))
     errors.extend(_validate_confirmed_absences(records))
     errors.extend(_validate_context_references(records))
@@ -308,7 +294,7 @@ def verify_evidence(root: Path, repo_root: Path) -> dict[str, Any]:
     source_map = source_map_for(root)
     results = [
         verify(classified(reference, source_map), repo_root)
-        for reference in evidence_values(
+        for reference in all_references(
             {name: asset_records(root, name) for name in ASSET_KEYS}
         )
     ]
@@ -356,19 +342,13 @@ def migrate_evidence(root: Path, repo_root: Path) -> int:
             path = registry_dir(staging) / name
             write_json(path, transform(load_json(path)))
 
-    audit_event: Callable[[], dict[str, Any]] | None = None
-    if migrated:
-        audit_event = lambda: {"operation": "migrate-evidence", "migrated": migrated}
-    mutate_registry(root, repo_root, mutate, audit_event=audit_event)
+    mutate_registry(
+        root,
+        repo_root,
+        mutate,
+        audit_event=lambda: {"operation": "migrate-evidence", "migrated": migrated},
+    )
     return migrated
-
-
-ABSENCE_ASSETS = {
-    "vocabulary": "without_vocabulary",
-    "aggregates": "without_aggregate",
-    "rules": "without_rule",
-    "contracts": "without_contract",
-}
 
 
 def contexts_holding(records: dict[str, list[dict[str, Any]]]) -> dict[str, set[Any]]:
@@ -487,10 +467,14 @@ def lookup(root: Path, asset: str, query: str) -> list[dict[str, Any]]:
 
 
 def record_by_id(root: Path, asset: str, identifier: str) -> dict[str, Any] | None:
-    for entry in asset_records(root, f"{asset}.json"):
-        if entry.get("id") == identifier:
-            return entry
-    return None
+    return next(
+        (
+            entry
+            for entry in asset_records(root, f"{asset}.json")
+            if entry.get("id") == identifier
+        ),
+        None,
+    )
 
 
 def resolve_terms(root: Path, query: str, context: str | None) -> list[dict[str, Any]]:
@@ -509,6 +493,12 @@ def resolve_terms(root: Path, query: str, context: str | None) -> list[dict[str,
     return matches[: query_result_limit(root)]
 
 
+def _records_where(
+    root: Path, name: str, keep: Callable[[dict[str, Any]], bool]
+) -> list[dict[str, Any]]:
+    return [entry for entry in asset_records(root, name) if keep(entry)]
+
+
 def context_model(root: Path, identifier: str) -> dict[str, Any] | None:
     context = record_by_id(root, "contexts", identifier)
     if context is None:
@@ -519,69 +509,60 @@ def context_model(root: Path, identifier: str) -> dict[str, Any] | None:
         "usage": "constraint" if mode == "scm-verified" else "working-memory",
         "review_mode": mode,
         "context": context,
-        "vocabulary": [
-            entry
-            for entry in asset_records(root, "vocabulary.json")
-            if identifier in entry.get("contexts", [])
-        ],
-        "aggregates": [
-            entry
-            for entry in asset_records(root, "aggregates.json")
-            if entry.get("context") == identifier
-        ],
-        "rules": [
-            entry
-            for entry in asset_records(root, "rules.json")
-            if identifier in entry.get("contexts", [])
-        ],
+        "vocabulary": _records_where(
+            root,
+            "vocabulary.json",
+            lambda entry: identifier in entry.get("contexts", []),
+        ),
+        "aggregates": _records_where(
+            root, "aggregates.json", lambda entry: entry.get("context") == identifier
+        ),
+        "rules": _records_where(
+            root, "rules.json", lambda entry: identifier in entry.get("contexts", [])
+        ),
         "contracts": [
             entry
             for entry in contracts
             if identifier == entry.get("producer_context")
             or identifier in entry.get("consumer_contexts", [])
         ],
-        "interactions": [
-            entry
-            for entry in asset_records(root, "interactions.json")
-            if identifier
-            in {entry.get("producer_context"), entry.get("consumer_context")}
-        ],
-        "events": [
-            entry
-            for entry in asset_records(root, "events.json")
-            if entry.get("owner_context") == identifier
-        ],
-        "capabilities": [
-            entry
-            for entry in asset_records(root, "capabilities.json")
-            if entry.get("context") == identifier
-        ],
-        "value_objects": [
-            entry
-            for entry in asset_records(root, "value-objects.json")
-            if entry.get("context") == identifier
-        ],
+        "interactions": _records_where(
+            root,
+            "interactions.json",
+            lambda entry: identifier
+            in {entry.get("producer_context"), entry.get("consumer_context")},
+        ),
+        "events": _records_where(
+            root, "events.json", lambda entry: entry.get("owner_context") == identifier
+        ),
+        "capabilities": _records_where(
+            root, "capabilities.json", lambda entry: entry.get("context") == identifier
+        ),
+        "value_objects": _records_where(
+            root, "value-objects.json", lambda entry: entry.get("context") == identifier
+        ),
     }
 
 
 def boundary_analysis(root: Path, source: str, target: str) -> dict[str, Any]:
-    interactions = [
-        entry
-        for entry in asset_records(root, "interactions.json")
-        if entry.get("producer_context") == source
-        and entry.get("consumer_context") == target
-    ]
-    contracts = [
-        entry
-        for entry in asset_records(root, "contracts.json")
-        if entry.get("producer_context") == source
-        and target in entry.get("consumer_contexts", [])
-    ]
-    dependencies = [
-        entry
-        for entry in asset_records(root, "dependency-policies.json")
-        if entry.get("from_context") == source and entry.get("to_context") == target
-    ]
+    interactions = _records_where(
+        root,
+        "interactions.json",
+        lambda entry: entry.get("producer_context") == source
+        and entry.get("consumer_context") == target,
+    )
+    contracts = _records_where(
+        root,
+        "contracts.json",
+        lambda entry: entry.get("producer_context") == source
+        and target in entry.get("consumer_contexts", []),
+    )
+    dependencies = _records_where(
+        root,
+        "dependency-policies.json",
+        lambda entry: entry.get("from_context") == source
+        and entry.get("to_context") == target,
+    )
     return {
         "source_context": source,
         "target_context": target,

@@ -45,16 +45,13 @@ def verify_external_scm(
         return [f"SCM governance verification requires {token_env}"]
     try:
         endpoint = github_api_path(str(value.get("pull_request", "")))
-        base = f"https://api.github.com/{endpoint}"
+        api = "https://api.github.com/"
+        base = api + endpoint
+        repository = "/".join(endpoint.split("/")[:3])
         pull = github_json(base, token)
         reviews = github_json(base + "/reviews", token)
         checks = (
-            github_json(
-                "https://api.github.com/repos/"
-                + "/".join(endpoint.split("/")[1:3])
-                + f"/commits/{value['commit']}/check-runs",
-                token,
-            )
+            github_json(f"{api}{repository}/commits/{value['commit']}/check-runs", token)
             if require_checks
             else None
         )
@@ -65,12 +62,13 @@ def verify_external_scm(
     if pull.get("head", {}).get("sha") != value.get("commit"):
         return ["SCM pull request head does not match the attested commit"]
     latest_reviews: dict[str, str] = {}
-    if isinstance(reviews, list):
-        for review in reviews:
-            user = review.get("user", {}).get("login") if isinstance(review, dict) else None
-            state = review.get("state") if isinstance(review, dict) else None
-            if isinstance(user, str) and isinstance(state, str):
-                latest_reviews[user] = state
+    for review in reviews if isinstance(reviews, list) else []:
+        if not isinstance(review, dict):
+            continue
+        user = review.get("user", {}).get("login")
+        state = review.get("state")
+        if isinstance(user, str) and isinstance(state, str):
+            latest_reviews[user] = state
     if "APPROVED" not in latest_reviews.values():
         return ["SCM pull request has no current approval"]
     if not require_checks:
@@ -88,16 +86,20 @@ def verify_external_scm(
     return []
 
 
+def _git(repo_root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(repo_root), *arguments],
+        capture_output=True, text=True, check=False,
+    )
+
+
 def verify_git_signed_commit(
     value: dict[str, Any], repo_root: Path, registry_root: Path, authorized_signers: list[str]
 ) -> list[str]:
     commit = value.get("commit")
     if not isinstance(commit, str):
         return ["Git commit attestation requires a commit"]
-    verified = subprocess.run(
-        ["git", "-C", str(repo_root), "verify-commit", "--raw", commit],
-        capture_output=True, text=True, check=False,
-    )
+    verified = _git(repo_root, "verify-commit", "--raw", commit)
     if verified.returncode != 0:
         return ["Git commit signature is invalid"]
     output = verified.stdout + verified.stderr
@@ -106,9 +108,8 @@ def verify_git_signed_commit(
     signers.update(re.findall(r"key (SHA256:[A-Za-z0-9+/=]+)", output))
     if not signers.intersection(authorized_signers):
         return ["Git commit signer is not authorized by Domain Memory policy"]
-    changed = subprocess.run(
-        ["git", "-C", str(repo_root), "diff-tree", "--no-commit-id", "--name-only", "-r", "--root", commit],
-        capture_output=True, text=True, check=False,
+    changed = _git(
+        repo_root, "diff-tree", "--no-commit-id", "--name-only", "-r", "--root", commit
     )
     root = registry_root.resolve().relative_to(repo_root.resolve()).as_posix()
     if changed.returncode != 0 or not any(
@@ -119,20 +120,23 @@ def verify_git_signed_commit(
 
 
 def verify_scm_value(value: dict[str, Any], proposal: dict[str, Any]) -> list[str]:
-    errors = []
-    for key in ("provider", "commit", "status"):
-        if not completed_identifier(value.get(key)):
-            errors.append(f"SCM attestation requires {key}")
+    errors = [
+        f"SCM attestation requires {key}"
+        for key in ("provider", "commit", "status")
+        if not completed_identifier(value.get(key))
+    ]
     if value.get("status") != "approved":
         errors.append("SCM attestation status must be approved")
     if value.get("provider") not in {"github", "git-signed-commit"}:
         errors.append("SCM attestation provider must be github or git-signed-commit")
     if value.get("provider") == "github":
-        for key in ("pull_request", "checks_url"):
-            if not isinstance(value.get(key), str) or not value[key].startswith("https://"):
-                errors.append(f"SCM attestation requires an external {key} URL")
+        errors.extend(
+            f"SCM attestation requires an external {key} URL"
+            for key in ("pull_request", "checks_url")
+            if not isinstance(value.get(key), str) or not value[key].startswith("https://")
+        )
     commit = value.get("commit")
-    if not isinstance(commit, str) or len(commit) != 40 or any(c not in "0123456789abcdef" for c in commit):
+    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
         errors.append("SCM attestation requires a pinned 40-character commit")
     if value.get("proposal_revision") != proposal.get("proposal_revision"):
         errors.append("SCM attestation proposal revision does not match")

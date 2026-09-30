@@ -6,14 +6,18 @@ import shutil
 from pathlib import Path
 
 from .attestations import verify_scm
-from .git_hooks import governance_readiness, install_pre_push_hook, verify_git_governance
 from .audit import verify as verify_audit
 from .changes import init_change_package, validate_change_package
 from .common import load_json
 from .contracts import validate_schema
 from .counterfactual import Mutation, counterfactual
-from .gates import quality_gates
 from .evidence import citation, classified, source_map_for
+from .gates import quality_gates
+from .git_hooks import (
+    governance_readiness,
+    install_pre_push_hook,
+    verify_git_governance,
+)
 from .hitl import (
     finalize_proposal,
     record_approval,
@@ -47,8 +51,8 @@ from .sources import (
     confirm_sources,
     discover_sources,
     probe_sources,
-    refresh_sources,
     refine_sources,
+    refresh_sources,
     selected_source_map,
     verify_source_map,
     write_source_map,
@@ -61,16 +65,48 @@ from .updates import (
     upsert_candidate,
 )
 
+COUNTERFACTUAL_EXIT_CODES = {"killed": 0, "survived": 1, "inconclusive": 2}
+
+
+def report_errors(errors: list[str], success_message: str) -> int:
+    if errors:
+        print("\n".join(f"ERROR: {error}" for error in errors))
+        return 1
+    print(success_message)
+    return 0
+
+
+def print_json(value: object, indent: int | None = 2) -> None:
+    print(json.dumps(value, indent=indent, ensure_ascii=False))
+
+
+def existing_policy(registry_root: Path) -> dict | None:
+    policy = policy_path(registry_root)
+    return load_json(policy) if policy.is_file() else None
+
+
+def sources_under(repo_root: Path, sources: list[Path]) -> list[Path]:
+    return [repo_root / source for source in sources]
+
 
 def probe_summary(result: dict, registry_root: Path) -> str:
     where = f"Domain Memory at {registry_root}"
     if result["status"] == "absent":
-        return f"{where}: none. Nothing is initialized here; a developer decides whether to create one."
+        return (
+            f"{where}: none. Nothing is initialized here; "
+            "a developer decides whether to create one."
+        )
     if result["status"] == "current":
-        return f"{where}: current, {result['selection_status']}, established by {result['checked']}."
+        return (
+            f"{where}: current, {result['selection_status']}, "
+            f"established by {result['checked']}."
+        )
     if result["status"] == "stale":
         names = ", ".join(source["path"] for source in result["changed_sources"][:5])
-        return f"{where}: stale. {len(result['changed_sources'])} sources moved ({names}); refresh before trusting it."
+        return (
+            f"{where}: stale. {len(result['changed_sources'])} sources moved "
+            f"({names}); refresh before trusting it."
+        )
     return f"{where}: {result['status']}. {result.get('reason', '')}".strip()
 
 
@@ -90,127 +126,82 @@ def handle_validate(args: argparse.Namespace) -> int:
         args.repo_root.resolve() if args.repo_root else None,
         args.require_reviewed,
     )
-    if errors:
-        print("\n".join(f"ERROR: {error}" for error in errors))
-        return 1
-    print("Registry is valid.")
-    return 0
+    return report_errors(errors, "Registry is valid.")
 
 
 def handle_lookup(args: argparse.Namespace) -> int:
-    print(
-        json.dumps(
-            lookup(args.registry_root.resolve(), args.asset, args.query),
-            indent=2,
-            ensure_ascii=False,
-        )
-    )
+    print_json(lookup(args.registry_root.resolve(), args.asset, args.query))
     return 0
 
 
 def handle_migrate_registry(args: argparse.Namespace) -> int:
-    print(
-        json.dumps(
-            {"created": migrate_registry(args.registry_root.resolve())},
-            ensure_ascii=False,
-        )
-    )
+    print_json({"created": migrate_registry(args.registry_root.resolve())}, indent=None)
     return 0
 
 
 def handle_demote_local_reviews(args: argparse.Namespace) -> int:
-    try:
-        demote_local_reviews(args.registry_root.resolve(), args.repo_root.resolve())
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
+    demote_local_reviews(args.registry_root.resolve(), args.repo_root.resolve())
     print("Local reviewed records were demoted to Working Memory candidates.")
     return 0
 
 
 def handle_resolve_terms(args: argparse.Namespace) -> int:
-    print(
-        json.dumps(
-            resolve_terms(args.registry_root.resolve(), args.query, args.context),
-            indent=2,
-            ensure_ascii=False,
-        )
-    )
+    print_json(resolve_terms(args.registry_root.resolve(), args.query, args.context))
     return 0
 
 
 def handle_get_context(args: argparse.Namespace) -> int:
     result = context_model(args.registry_root.resolve(), args.id)
     if result is None:
-        print(f"ERROR: context not found: {args.id}")
-        return 1
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+        raise ValueError(f"context not found: {args.id}")
+    print_json(result)
     return 0
 
 
 def handle_get_record(args: argparse.Namespace) -> int:
     result = record_by_id(args.registry_root.resolve(), args.asset, args.id)
     if result is None:
-        print(f"ERROR: {args.asset} record not found: {args.id}")
-        return 1
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+        raise ValueError(f"{args.asset} record not found: {args.id}")
+    print_json(result)
     return 0
 
 
 def handle_analyze_boundary(args: argparse.Namespace) -> int:
-    print(
-        json.dumps(
-            boundary_analysis(
-                args.registry_root.resolve(),
-                args.source_context,
-                args.target_context,
-            ),
-            indent=2,
-            ensure_ascii=False,
+    print_json(
+        boundary_analysis(
+            args.registry_root.resolve(), args.source_context, args.target_context
         )
     )
     return 0
 
 
 def handle_cite(args: argparse.Namespace) -> int:
-    try:
-        reference = citation(args.repo_root.resolve(), args.path, args.start, args.end)
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
+    reference = citation(args.repo_root.resolve(), args.path, args.start, args.end)
     if args.registry_root:
         reference = classified(reference, source_map_for(args.registry_root.resolve()))
-    print(json.dumps(reference, indent=2, ensure_ascii=False))
+    print_json(reference)
     return 0
 
 
 def handle_retract_candidate(args: argparse.Namespace) -> int:
-    try:
-        retract_candidate(
-            args.registry_root.resolve(),
-            args.repo_root.resolve(),
-            args.asset,
-            args.id,
-            args.reason,
-        )
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
+    retract_candidate(
+        args.registry_root.resolve(),
+        args.repo_root.resolve(),
+        args.asset,
+        args.id,
+        args.reason,
+    )
     print("Candidate record retracted.")
     return 0
 
 
 def handle_upsert_candidate(args: argparse.Namespace) -> int:
-    try:
-        outside = upsert_candidate(
-            args.registry_root.resolve(),
-            args.repo_root.resolve(),
-            args.asset,
-            args.record_file.resolve(),
-        )
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
+    outside = upsert_candidate(
+        args.registry_root.resolve(),
+        args.repo_root.resolve(),
+        args.asset,
+        args.record_file.resolve(),
+    )
     print("Candidate record updated.")
     if outside:
         print(
@@ -224,15 +215,11 @@ def handle_upsert_candidate(args: argparse.Namespace) -> int:
 
 
 def handle_apply_approved_updates(args: argparse.Namespace) -> int:
-    try:
-        apply_approved_updates(
-            args.package_root.resolve(),
-            args.registry_root.resolve(),
-            args.repo_root.resolve(),
-        )
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
+    apply_approved_updates(
+        args.package_root.resolve(),
+        args.registry_root.resolve(),
+        args.repo_root.resolve(),
+    )
     print("Approved registry updates applied.")
     return 0
 
@@ -241,7 +228,7 @@ def handle_discover_sources(args: argparse.Namespace) -> int:
     source_map = discover_sources(args.repo_root.resolve())
     if args.output:
         write_source_map(args.output.resolve(), source_map)
-    print(json.dumps(source_map, indent=2, ensure_ascii=False))
+    print_json(source_map)
     return 0
 
 
@@ -250,7 +237,7 @@ def handle_verify_sources(args: argparse.Namespace) -> int:
     result = verify_source_map(
         args.repo_root.resolve(), args.source_map.resolve(), policy
     )
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    print_json(result)
     return 0 if result["status"] == "current" else 1
 
 
@@ -266,46 +253,25 @@ def handle_probe(args: argparse.Namespace) -> int:
 
 
 def handle_readiness(args: argparse.Namespace) -> int:
-    print(
-        json.dumps(
-            assess_readiness(args.repo_root, args.registry_root),
-            indent=2,
-            ensure_ascii=False,
-        )
-    )
+    print_json(assess_readiness(args.repo_root, args.registry_root))
     return 0
 
 
 def handle_verify_evidence(args: argparse.Namespace) -> int:
     result = verify_evidence(args.registry_root.resolve(), args.repo_root.resolve())
-    print(json.dumps(result, indent=2, ensure_ascii=False))
-    return (
-        0
-        if not any(
-            result["summary"][status] for status in ("stale", "missing", "invalid")
-        )
-        else 1
-    )
+    print_json(result)
+    summary = result["summary"]
+    return int(any(summary[status] for status in ("stale", "missing", "invalid")))
 
 
 def handle_migrate_evidence(args: argparse.Namespace) -> int:
-    try:
-        migrated = migrate_evidence(
-            args.registry_root.resolve(), args.repo_root.resolve()
-        )
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
-    print(json.dumps({"migrated": migrated}, ensure_ascii=False))
+    migrated = migrate_evidence(args.registry_root.resolve(), args.repo_root.resolve())
+    print_json({"migrated": migrated}, indent=None)
     return 0
 
 
 def handle_recover_registry_update(args: argparse.Namespace) -> int:
-    try:
-        recover_interrupted_update(args.registry_root.resolve(), args.force)
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
+    recover_interrupted_update(args.registry_root.resolve(), args.force)
     print("Interrupted Registry update recovered.")
     return 0
 
@@ -314,32 +280,22 @@ def handle_init_domain_memory(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
     output = args.output.resolve()
     if args.review_mode == "scm-verified" and not args.review_verifier:
-        print("ERROR: scm-verified Domain Memory requires --review-verifier")
-        return 1
-    if args.review_verifier == "git-signed-commit" and not args.authorized_signer:
-        print("ERROR: git-signed-commit requires at least one --authorized-signer")
-        return 1
-    if args.review_verifier == "git-signed-commit" and args.review_trigger != "git-push":
-        print("ERROR: git-signed-commit requires --review-trigger git-push")
-        return 1
-    try:
-        output.relative_to(repo_root)
-    except ValueError:
-        print("ERROR: output must be inside the repository")
-        return 1
-    selected = [
-        path if path.is_absolute() else repo_root / path for path in args.source
-    ]
-    try:
-        preliminary = selected_source_map(repo_root, selected)
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
+        raise ValueError("scm-verified Domain Memory requires --review-verifier")
+    if args.review_verifier == "git-signed-commit":
+        if not args.authorized_signer:
+            raise ValueError(
+                "git-signed-commit requires at least one --authorized-signer"
+            )
+        if args.review_trigger != "git-push":
+            raise ValueError("git-signed-commit requires --review-trigger git-push")
+    if not output.is_relative_to(repo_root):
+        raise ValueError("output must be inside the repository")
+    selected = sources_under(repo_root, args.source)
+    preliminary = selected_source_map(repo_root, selected)
     try:
         init_registry(output)
     except FileExistsError as error:
-        print(f"ERROR: {error}")
-        return 1
+        raise ValueError(error) from error
     write_policy(
         output,
         preliminary,
@@ -360,10 +316,9 @@ def handle_init_domain_memory(args: argparse.Namespace) -> int:
         source_map = selected_source_map(
             repo_root, selected, load_json(policy_path(output))
         )
-    except ValueError as error:
+    except ValueError:
         shutil.rmtree(output)
-        print(f"ERROR: {error}")
-        return 1
+        raise
     write_source_map(output / "source-map.json", source_map)
     print(
         "Domain Memory initialized. The sources are agent-asserted: you selected them, the developer has not "
@@ -376,17 +331,12 @@ def handle_init_domain_memory(args: argparse.Namespace) -> int:
 
 def handle_confirm_sources(args: argparse.Namespace) -> int:
     registry_root = args.registry_root.resolve()
-    policy = policy_path(registry_root)
-    try:
-        source_map = confirm_sources(
-            registry_root,
-            args.repo_root.resolve(),
-            args.confirmed_by,
-            load_json(policy) if policy.is_file() else None,
-        )
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
+    source_map = confirm_sources(
+        registry_root,
+        args.repo_root.resolve(),
+        args.confirmed_by,
+        existing_policy(registry_root),
+    )
     print(
         f"Sources confirmed by {args.confirmed_by}: "
         + ", ".join(source_map["selected_paths"])
@@ -396,26 +346,29 @@ def handle_confirm_sources(args: argparse.Namespace) -> int:
 
 def handle_refresh_sources(args: argparse.Namespace) -> int:
     registry_root = args.registry_root.resolve()
-    policy = policy_path(registry_root)
-    try:
-        source_map = refresh_sources(registry_root, args.repo_root.resolve(), load_json(policy) if policy.is_file() else None)
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
-    print("Sources refreshed and require developer confirmation: " + ", ".join(source_map["selected_paths"]))
+    source_map = refresh_sources(
+        registry_root, args.repo_root.resolve(), existing_policy(registry_root)
+    )
+    print(
+        "Sources refreshed and require developer confirmation: "
+        + ", ".join(source_map["selected_paths"])
+    )
     return 0
 
 
 def handle_refine_sources(args: argparse.Namespace) -> int:
     registry_root = args.registry_root.resolve()
-    policy = load_json(policy_path(registry_root))
-    selected = [path if path.is_absolute() else args.repo_root.resolve() / path for path in args.source]
-    try:
-        source_map = refine_sources(registry_root, args.repo_root.resolve(), selected, policy)
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
-    print("Focused sources selected and require developer confirmation: " + ", ".join(source_map["selected_paths"]))
+    repo_root = args.repo_root.resolve()
+    source_map = refine_sources(
+        registry_root,
+        repo_root,
+        sources_under(repo_root, args.source),
+        load_json(policy_path(registry_root)),
+    )
+    print(
+        "Focused sources selected and require developer confirmation: "
+        + ", ".join(source_map["selected_paths"])
+    )
     return 0
 
 
@@ -448,16 +401,12 @@ def handle_init_signing_key(args: argparse.Namespace) -> int:
 
 def handle_validate_policy(args: argparse.Namespace) -> int:
     errors = validate_policy(load_json(args.policy.resolve()))
-    if errors:
-        print("\n".join(f"ERROR: {error}" for error in errors))
-        return 1
-    print("Domain Memory policy is valid.")
-    return 0
+    return report_errors(errors, "Domain Memory policy is valid.")
 
 
 def handle_scan_secrets(args: argparse.Namespace) -> int:
     report = scan_report(args.repo_root.resolve())
-    print(json.dumps(report, ensure_ascii=False))
+    print_json(report, indent=None)
     if report["findings"]:
         return 1
     return 2 if report["status"] == "incomplete" else 0
@@ -465,77 +414,65 @@ def handle_scan_secrets(args: argparse.Namespace) -> int:
 
 def handle_validate_contract(args: argparse.Namespace) -> int:
     result = validate_schema(args.schema.resolve())
-    print(json.dumps(result, ensure_ascii=False))
+    print_json(result, indent=None)
     return 0 if result["status"] == "valid" else 1
 
 
 def handle_verify_scm_attestation(args: argparse.Namespace) -> int:
     proposal = load_json(args.package_root.resolve() / "domain-change-proposal.json")
     errors = verify_scm(args.attestation.resolve(), proposal)
-    if errors:
-        print("\n".join(f"ERROR: {error}" for error in errors))
-        return 1
-    print("SCM attestation is valid.")
-    return 0
+    return report_errors(errors, "SCM attestation is valid.")
 
 
 def handle_verify_git_governance(args: argparse.Namespace) -> int:
-    errors = verify_git_governance(args.registry_root.resolve(), args.repo_root.resolve(), args.commit)
-    if errors:
-        print("\n".join(f"ERROR: {error}" for error in errors))
-        return 1
-    print("Git governance is valid.")
-    return 0
+    errors = verify_git_governance(
+        args.registry_root.resolve(), args.repo_root.resolve(), args.commit
+    )
+    return report_errors(errors, "Git governance is valid.")
 
 
 def handle_install_git_hitl_hook(args: argparse.Namespace) -> int:
-    try:
-        hook = install_pre_push_hook(args.registry_root.resolve(), args.repo_root.resolve(), Path(__file__).parents[1] / "registry_tools.py")
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
+    hook = install_pre_push_hook(
+        args.registry_root.resolve(),
+        args.repo_root.resolve(),
+        Path(__file__).parents[1] / "registry_tools.py",
+    )
     print(f"Installed Git HITL pre-push hook: {hook}")
     return 0
 
 
 def handle_governance_readiness(args: argparse.Namespace) -> int:
-    result = governance_readiness(args.registry_root.resolve(), args.repo_root.resolve())
-    print(json.dumps(result, ensure_ascii=False))
+    result = governance_readiness(
+        args.registry_root.resolve(), args.repo_root.resolve()
+    )
+    print_json(result, indent=None)
     return 0 if result["status"] in {"ready", "working-memory"} else 1
 
 
 def handle_verify_audit(args: argparse.Namespace) -> int:
     result = verify_audit(args.registry_root.resolve())
-    print(json.dumps(result, ensure_ascii=False))
+    print_json(result, indent=None)
     return 0 if result["status"] == "valid" else 1
 
 
 def handle_submit_proposal(args: argparse.Namespace) -> int:
-    try:
-        submit_proposal(
-            args.package_root.resolve(),
-            args.registry_root.resolve(),
-            args.repo_root.resolve(),
-        )
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
+    submit_proposal(
+        args.package_root.resolve(),
+        args.registry_root.resolve(),
+        args.repo_root.resolve(),
+    )
     print("Proposal submitted for human review.")
     return 0
 
 
 def handle_record_approval(args: argparse.Namespace) -> int:
-    try:
-        record_approval(
-            args.package_root.resolve(),
-            args.role,
-            args.reviewer,
-            args.scope,
-            args.approved_at,
-        )
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
+    record_approval(
+        args.package_root.resolve(),
+        args.role,
+        args.reviewer,
+        args.scope,
+        args.approved_at,
+    )
     print("Human approval recorded.")
     return 0
 
@@ -549,33 +486,24 @@ def handle_supersede_proposal(args: argparse.Namespace) -> int:
 
 
 def handle_verify_proposal(args: argparse.Namespace) -> int:
-    try:
-        verify_proposal(
-            args.package_root.resolve(),
-            args.registry_root.resolve(),
-            args.repo_root.resolve(),
-        )
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
+    verify_proposal(
+        args.package_root.resolve(),
+        args.registry_root.resolve(),
+        args.repo_root.resolve(),
+    )
     print("Proposal test evidence verified.")
     return 0
 
 
 def handle_finalize_proposal(args: argparse.Namespace) -> int:
     if args.registry_root is None or args.repo_root is None:
-        print("ERROR: finalize-proposal requires --registry-root and --repo-root")
-        return 1
-    try:
-        finalize_proposal(
-            args.package_root.resolve(),
-            args.registry_root.resolve(),
-            args.repo_root.resolve(),
-            args.verification_token_env,
-        )
-    except ValueError as error:
-        print(f"ERROR: {error}")
-        return 1
+        raise ValueError("finalize-proposal requires --registry-root and --repo-root")
+    finalize_proposal(
+        args.package_root.resolve(),
+        args.registry_root.resolve(),
+        args.repo_root.resolve(),
+        args.verification_token_env,
+    )
     print("Proposal approved.")
     return 0
 
@@ -585,26 +513,17 @@ def handle_validate_change_package(args: argparse.Namespace) -> int:
         args.package_root.resolve(),
         args.registry_root.resolve() if args.registry_root else None,
     )
-    if errors:
-        print("\n".join(f"ERROR: {error}" for error in errors))
-        return 1
-    print("Change package is valid.")
-    return 0
+    return report_errors(errors, "Change package is valid.")
 
 
 def handle_coverage(args: argparse.Namespace) -> int:
-    print(
-        json.dumps(coverage(args.registry_root.resolve()), indent=2, ensure_ascii=False)
-    )
+    print_json(coverage(args.registry_root.resolve()))
     return 0
 
 
 def handle_quality_gates(args: argparse.Namespace) -> int:
-    print(json.dumps(quality_gates(args.repo_root), indent=2, ensure_ascii=False))
+    print_json(quality_gates(args.repo_root))
     return 0
-
-
-COUNTERFACTUAL_EXIT_CODES = {"killed": 0, "survived": 1, "inconclusive": 2}
 
 
 def handle_counterfactual(args: argparse.Namespace) -> int:
@@ -614,7 +533,7 @@ def handle_counterfactual(args: argparse.Namespace) -> int:
         args.test_command,
         args.timeout,
     )
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    print_json(result)
     return COUNTERFACTUAL_EXIT_CODES[result["verdict"]]
 
 

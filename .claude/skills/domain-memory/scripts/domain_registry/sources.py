@@ -2,8 +2,9 @@ import fnmatch
 import hashlib
 import json
 import subprocess
+from collections.abc import Iterable
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .common import (
@@ -25,6 +26,8 @@ EXCLUDED_DIRECTORIES = {
     "build",
     "generated",
 }
+
+IMPLEMENTATION_ROOTS = ("apps", "src", "services", "packages")
 
 CI_MARKERS = {
     ".github/workflows": "github-actions",
@@ -67,35 +70,44 @@ def relative(root: Path, path: Path) -> str:
     return path.relative_to(root).as_posix()
 
 
+def in_excluded_directory(path: Path) -> bool:
+    return any(part in EXCLUDED_DIRECTORIES for part in path.parts)
+
+
 def existing_directories(root: Path, candidates: tuple[str, ...]) -> list[str]:
     return [candidate for candidate in candidates if (root / candidate).is_dir()]
 
 
+def in_nested_checkout(root: Path, entry: str) -> bool:
+    return any(
+        (root / parent / ".git").exists()
+        for parent in PurePosixPath(entry).parents[:-1]
+    )
+
+
 def without_ignored(root: Path, relatives: list[str]) -> list[str]:
-    ignored = git_ignored(root, [root / entry for entry in relatives])
-    return [entry for entry in relatives if (root / entry) not in ignored]
+    kept = [entry for entry in relatives if not in_nested_checkout(root, entry)]
+    ignored = git_ignored(root, [root / entry for entry in kept])
+    return [entry for entry in kept if (root / entry) not in ignored]
 
 
 def instruction_files(root: Path) -> list[str]:
-    files = []
-    for path in root.rglob("AGENTS.md"):
-        if not any(part in EXCLUDED_DIRECTORIES for part in path.parts):
-            files.append(relative(root, path))
-    for path in root.rglob("CLAUDE.md"):
-        if not any(part in EXCLUDED_DIRECTORIES for part in path.parts):
-            files.append(relative(root, path))
-    return without_ignored(root, sorted(set(files)))
+    files = {
+        relative(root, path)
+        for name in ("AGENTS.md", "CLAUDE.md")
+        for path in root.rglob(name)
+        if not in_excluded_directory(path)
+    }
+    return without_ignored(root, sorted(files))
 
 
 def boundary_files(root: Path) -> list[str]:
-    files = []
-    for base in ("apps", "src", "services", "packages"):
-        directory = root / base
-        if not directory.is_dir():
-            continue
-        for path in directory.rglob("doc.go"):
-            if not any(part in EXCLUDED_DIRECTORIES for part in path.parts):
-                files.append(relative(root, path))
+    files = [
+        relative(root, path)
+        for base in existing_directories(root, IMPLEMENTATION_ROOTS)
+        for path in (root / base).rglob("doc.go")
+        if not in_excluded_directory(path)
+    ]
     return without_ignored(root, sorted(files))
 
 
@@ -109,34 +121,28 @@ def is_test_file(name: str) -> bool:
 
 
 def test_locations(root: Path) -> list[str]:
-    locations = set()
-    candidates = [root]
-    candidates.extend(
-        root / name
-        for name in (
-            "tests",
-            "test",
-            "e2e",
-            "integration",
-            "apps",
-            "packages",
-            "src",
-            "services",
-        )
-    )
-    for directory in candidates:
-        if not directory.is_dir():
-            continue
-        for path in directory.rglob("*"):
-            if any(part in EXCLUDED_DIRECTORIES for part in path.parts):
-                continue
-            if path.is_file() and is_test_file(path.name):
-                locations.add(relative(root, path))
+    candidates = [
+        root,
+        *(
+            root / name
+            for name in ("tests", "test", "e2e", "integration", *IMPLEMENTATION_ROOTS)
+        ),
+    ]
+    locations = {
+        relative(root, path)
+        for directory in candidates
+        if directory.is_dir()
+        for path in directory.rglob("*")
+        if not in_excluded_directory(path)
+        and path.is_file()
+        and is_test_file(path.name)
+    }
     return without_ignored(root, sorted(locations))
 
 
 def discover_sources(root: Path) -> dict[str, Any]:
     root = root.resolve()
+    ci_tools = discover_ci_tools(root)
     groups = [
         {
             "kind": "repository_instructions",
@@ -150,18 +156,6 @@ def discover_sources(root: Path) -> dict[str, Any]:
             "paths": existing_directories(
                 root, ("docs/adr", "adr", "docs/architecture", "architecture")
             ),
-        },
-        {
-            "kind": "architecture_guidance",
-            "authority": "current boundary and convergence guidance; corroborate behavior with implementation",
-            "paths": [
-                path
-                for path in (
-                    "docs/development/platform-context-map.md",
-                    "docs/development/platform-ddd-convergence.md",
-                )
-                if (root / path).is_file()
-            ],
         },
         {
             "kind": "requirements",
@@ -190,9 +184,7 @@ def discover_sources(root: Path) -> dict[str, Any]:
         {
             "kind": "implementation",
             "authority": "current executable behavior",
-            "paths": existing_directories(
-                root, ("apps", "src", "services", "packages")
-            ),
+            "paths": existing_directories(root, IMPLEMENTATION_ROOTS),
         },
         {
             "kind": "tests",
@@ -208,9 +200,9 @@ def discover_sources(root: Path) -> dict[str, Any]:
         "missing_groups": [group["kind"] for group in groups if not group["paths"]],
         "selection_status": "discovered",
         "governance_candidates": {
-            "ci_tools": discover_ci_tools(root),
-            "recommended_verifier": "github-pr" if discover_ci_tools(root) else "git-signed-commit",
-            "recommended_trigger": "external-scm" if discover_ci_tools(root) else "git-push",
+            "ci_tools": ci_tools,
+            "recommended_verifier": "github-pr" if ci_tools else "git-signed-commit",
+            "recommended_trigger": "external-scm" if ci_tools else "git-push",
         },
         "note": "The map locates candidate sources. It does not establish a domain fact or source authority by itself.",
     }
@@ -227,10 +219,9 @@ def policy_matches(path: str, include: list[str], exclude: list[str]) -> bool:
 def source_files(
     root: Path, selected_paths: list[Path], policy: dict[str, Any] | None = None
 ) -> list[Path]:
-    include = (
-        policy.get("source_policy", {}).get("include", ["**"]) if policy else ["**"]
-    )
-    exclude = policy.get("source_policy", {}).get("exclude", []) if policy else []
+    source_policy = policy.get("source_policy", {}) if policy else {}
+    include = source_policy.get("include", ["**"])
+    exclude = source_policy.get("exclude", [])
     files: set[Path] = set()
     roots = []
     for selected in selected_paths:
@@ -248,7 +239,7 @@ def source_files(
             if (
                 candidate.is_file()
                 and not candidate.is_symlink()
-                and not any(part in EXCLUDED_DIRECTORIES for part in candidate.parts)
+                and not in_excluded_directory(candidate)
             ):
                 relative_path = relative(root, candidate)
                 if policy_matches(relative_path, include, exclude):
@@ -261,11 +252,12 @@ def source_policy_report(
 ) -> dict[str, Any]:
     files = source_files(root, selected_paths, policy)
     limits = policy["limits"]
-    total_bytes = sum(path.stat().st_size for path in files)
+    sizes = {path: path.stat().st_size for path in files}
+    total_bytes = sum(sizes.values())
     oversized = [
         relative(root, path)
-        for path in files
-        if path.stat().st_size > limits["max_file_bytes"]
+        for path, size in sizes.items()
+        if size > limits["max_file_bytes"]
     ]
     errors = []
     if len(files) > limits["max_file_count"]:
@@ -294,7 +286,6 @@ def owned_source_files(
     root: Path, selected: list[str], policy: dict[str, Any] | None = None
 ) -> dict[str, list[Path]]:
     files = source_files(root, [root / path for path in selected], policy)
-    by_source = {path: [] for path in selected}
     owner = {}
     for file in files:
         for path in selected:
@@ -304,11 +295,8 @@ def owned_source_files(
                 or (selected_path.is_dir() and selected_path in file.parents)
             ) and len(path) > len(owner.get(file, "")):
                 owner[file] = path
-    for file, path in owner.items():
-        by_source[path].append(file)
     return {
-        path: [file for file in files if owner[file] == path]
-        for path, files in by_source.items()
+        path: [file for file in files if owner[file] == path] for path in selected
     }
 
 
@@ -332,12 +320,10 @@ def source_snapshot(root: Path, path: str, files: list[Path]) -> dict[str, Any]:
 
 
 def selection_moved(recorded: dict[str, Any], current: dict[str, Any]) -> bool:
-    if recorded.get("file_count") != current.get("file_count"):
-        return True
     listing = recorded.get("listing_sha256")
-    if not isinstance(listing, str):
-        return False
-    return listing != current.get("listing_sha256")
+    return recorded.get("file_count") != current.get("file_count") or (
+        isinstance(listing, str) and listing != current.get("listing_sha256")
+    )
 
 
 def source_snapshots(
@@ -348,35 +334,41 @@ def source_snapshots(
 
 
 def source_kinds(source_map: dict[str, Any]) -> dict[str, str]:
-    kind_of = {}
-    for group in source_map.get("source_groups", []):
-        for path in group["paths"]:
-            kind_of[path] = group["kind"]
+    kind_of = {
+        path: group["kind"]
+        for group in source_map.get("source_groups", [])
+        for path in group["paths"]
+    }
     return {
         path: kind_of.get(path, "unclassified")
         for path in source_map.get("selected_paths", [])
     }
 
 
+def longest_source_containing(paths: Iterable[str], cited_path: str) -> str:
+    return max(
+        (
+            path
+            for path in paths
+            if cited_path == path or cited_path.startswith(path + "/")
+        ),
+        key=len,
+        default="",
+    )
+
+
 def source_kind_for(source_map: dict[str, Any], cited_path: str) -> str:
     kinds = source_map.get("source_kinds") or source_kinds(source_map)
-    owner = ""
-    for path in kinds:
-        if (cited_path == path or cited_path.startswith(path + "/")) and len(
-            path
-        ) > len(owner):
-            owner = path
+    owner = longest_source_containing(kinds, cited_path)
     if owner and kinds[owner] != "unclassified":
         return kinds[owner]
     owner = ""
     kind = "unclassified"
     for group in source_map.get("source_groups", []):
-        for path in group.get("paths", []):
-            if (cited_path == path or cited_path.startswith(path + "/")) and len(
-                path
-            ) > len(owner):
-                owner = path
-                kind = group.get("kind", "unclassified")
+        group_owner = longest_source_containing(group.get("paths", []), cited_path)
+        if len(group_owner) > len(owner):
+            owner = group_owner
+            kind = group.get("kind", "unclassified")
     return kind if isinstance(kind, str) else "unclassified"
 
 
@@ -450,11 +442,9 @@ def confirm_sources(
         datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     )
     with writer_lock(root):
-        write_source_map(path, source_map)
-        from .audit import append_locked
-
-        append_locked(
+        write_and_audit(
             root,
+            source_map,
             {
                 "operation": "confirm-sources",
                 "confirmed_by": confirmed_by,
@@ -464,18 +454,32 @@ def confirm_sources(
     return source_map
 
 
-def refresh_sources(root: Path, repo_root: Path, policy: dict[str, Any] | None = None) -> dict[str, Any]:
+def refresh_sources(
+    root: Path, repo_root: Path, policy: dict[str, Any] | None = None
+) -> dict[str, Any]:
     path = root / "source-map.json"
     if not path.is_file():
-        raise ValueError(f"no source map at {path}: initialize the Domain Memory before refreshing it")
+        raise ValueError(
+            f"no source map at {path}: "
+            "initialize the Domain Memory before refreshing it"
+        )
     selected = load_json(path).get("selected_paths")
-    if not isinstance(selected, list) or not all(isinstance(item, str) and item.strip() for item in selected):
+    if not isinstance(selected, list) or not all(
+        isinstance(item, str) and item.strip() for item in selected
+    ):
         raise ValueError("source map has no valid selected paths to refresh")
-    source_map = selected_source_map(repo_root, [repo_root / item for item in selected], policy)
+    source_map = selected_source_map(
+        repo_root, [repo_root / item for item in selected], policy
+    )
     with writer_lock(root):
-        write_source_map(path, source_map)
-        from .audit import append_locked
-        append_locked(root, {"operation": "refresh-sources", "selected_paths": source_map["selected_paths"]})
+        write_and_audit(
+            root,
+            source_map,
+            {
+                "operation": "refresh-sources",
+                "selected_paths": source_map["selected_paths"],
+            },
+        )
     return source_map
 
 
@@ -490,10 +494,19 @@ def refine_sources(
         (root / "domain-memory-policy.json").write_text(
             json.dumps(policy, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
-        write_source_map(root / "source-map.json", source_map)
-        from .audit import append_locked
-        append_locked(root, {"operation": "refine-sources", "selected_paths": source_map["selected_paths"]})
+        write_and_audit(
+            root,
+            source_map,
+            {
+                "operation": "refine-sources",
+                "selected_paths": source_map["selected_paths"],
+            },
+        )
     return source_map
+
+
+def source_verdict(status: str, selection_status: str, reason: str) -> dict[str, str]:
+    return {"status": status, "selection_status": selection_status, "reason": reason}
 
 
 def verify_source_map(
@@ -504,20 +517,16 @@ def verify_source_map(
     snapshots = source_map.get("source_snapshots")
     selection_status = source_map.get("selection_status", "agent-asserted")
     if not isinstance(snapshots, list):
-        return {
-            "status": "unverified",
-            "selection_status": selection_status,
-            "reason": "source map has no snapshots",
-        }
+        return source_verdict(
+            "unverified", selection_status, "source map has no snapshots"
+        )
     if not all(
         isinstance(snapshot, dict) and isinstance(snapshot.get("path"), str)
         for snapshot in snapshots
     ):
-        return {
-            "status": "unverified",
-            "selection_status": selection_status,
-            "reason": "source map has an invalid snapshot",
-        }
+        return source_verdict(
+            "unverified", selection_status, "source map has an invalid snapshot"
+        )
     recorded_paths = [snapshot["path"] for snapshot in snapshots]
     selected_paths = source_map.get("selected_paths")
     if (
@@ -526,30 +535,30 @@ def verify_source_map(
         or len(selected_paths) != len(set(selected_paths))
         or set(selected_paths) != set(recorded_paths)
     ):
-        return {
-            "status": "unverified",
-            "selection_status": selection_status,
-            "reason": "source map snapshots do not match selected_paths",
-        }
+        return source_verdict(
+            "unverified",
+            selection_status,
+            "source map snapshots do not match selected_paths",
+        )
     for selected_path in recorded_paths:
         try:
             (root / selected_path).resolve().relative_to(root)
         except ValueError:
-            return {
-                "status": "invalid",
-                "selection_status": selection_status,
-                "reason": f"source path escapes repository: {selected_path}",
-            }
+            return source_verdict(
+                "invalid",
+                selection_status,
+                f"source path escapes repository: {selected_path}",
+            )
     if policy is not None:
         policy_paths = policy.get("source_policy", {}).get("selected_paths")
         if isinstance(policy_paths, list) and sorted(policy_paths) != sorted(
             selected_paths
         ):
-            return {
-                "status": "invalid",
-                "selection_status": selection_status,
-                "reason": "policy selected_paths do not match the source map",
-            }
+            return source_verdict(
+                "invalid",
+                selection_status,
+                "policy selected_paths do not match the source map",
+            )
     actual = {
         snapshot["path"]: snapshot
         for snapshot in source_snapshots(root, recorded_paths, policy)
@@ -573,17 +582,14 @@ def verify_source_map(
             drifted.append({"path": snapshot["path"], "status": "content-changed"})
     if policy:
         report = source_policy_report(
-            root, [root / path for path in source_map.get("selected_paths", [])], policy
+            root, [root / path for path in selected_paths], policy
         )
         if report["errors"]:
-            return {
-                "status": "invalid",
-                "selection_status": selection_status,
-                "reason": "; ".join(report["errors"]),
-                "source_policy_report": report,
-            }
+            return source_verdict(
+                "invalid", selection_status, "; ".join(report["errors"])
+            ) | {"source_policy_report": report}
     return {
-        "status": "current" if not changed else "stale",
+        "status": "stale" if changed else "current",
         "selection_status": selection_status,
         "changed_sources": changed,
         "content_changed": drifted,
@@ -597,26 +603,31 @@ def write_source_map(path: Path, source_map: dict[str, Any]) -> None:
     )
 
 
+def write_and_audit(
+    root: Path, source_map: dict[str, Any], event: dict[str, Any]
+) -> None:
+    from .audit import append_locked
+
+    write_source_map(root / "source-map.json", source_map)
+    append_locked(root, event)
+
+
+def run_git(root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(root), *arguments],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=GIT_COMMAND_TIMEOUT_SECONDS,
+    )
+
+
 def git_state(root: Path, selected_paths: list[str]) -> dict[str, Any]:
     if not selected_paths or not (root / ".git").exists():
         return {}
     try:
-        trees = subprocess.run(
-            ["git", "-C", str(root), "rev-parse"]
-            + [f"HEAD:{path}" for path in selected_paths],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=GIT_COMMAND_TIMEOUT_SECONDS,
-        )
-        dirty = subprocess.run(
-            ["git", "-C", str(root), "status", "--porcelain", "-z", "--"]
-            + list(selected_paths),
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=GIT_COMMAND_TIMEOUT_SECONDS,
-        )
+        trees = run_git(root, "rev-parse", *(f"HEAD:{path}" for path in selected_paths))
+        dirty = run_git(root, "status", "--porcelain", "-z", "--", *selected_paths)
     except (OSError, subprocess.TimeoutExpired):
         return {}
     if trees.returncode != 0 or dirty.returncode != 0:
@@ -637,48 +648,30 @@ def probe_sources(
         return {"status": "absent", "reason": f"no source map at {source_map_path}"}
     source_map = load_json(source_map_path)
     recorded = source_map.get("git_state")
+    selection_status = source_map.get("selection_status", "agent-asserted")
     if policy is not None:
         from .policy import validate_policy
 
         errors = validate_policy(policy)
         if errors:
-            return {
-                "status": "invalid",
-                "selection_status": source_map.get(
-                    "selection_status", "agent-asserted"
-                ),
-                "reason": "; ".join(errors),
-            }
+            return source_verdict("invalid", selection_status, "; ".join(errors))
         policy_paths = policy["source_policy"]["selected_paths"]
         if sorted(policy_paths) != sorted(source_map.get("selected_paths", [])):
-            return {
-                "status": "invalid",
-                "selection_status": source_map.get(
-                    "selection_status", "agent-asserted"
-                ),
-                "reason": "policy selected_paths do not match the source map",
-            }
+            return source_verdict(
+                "invalid",
+                selection_status,
+                "policy selected_paths do not match the source map",
+            )
         try:
             report = source_policy_report(
                 root, [root / path for path in policy_paths], policy
             )
         except (OSError, ValueError) as error:
-            return {
-                "status": "invalid",
-                "selection_status": source_map.get(
-                    "selection_status", "agent-asserted"
-                ),
-                "reason": str(error),
-            }
+            return source_verdict("invalid", selection_status, str(error))
         if report["errors"]:
-            return {
-                "status": "invalid",
-                "selection_status": source_map.get(
-                    "selection_status", "agent-asserted"
-                ),
-                "reason": "; ".join(report["errors"]),
-                "source_policy_report": report,
-            }
+            return source_verdict(
+                "invalid", selection_status, "; ".join(report["errors"])
+            ) | {"source_policy_report": report}
     if (
         isinstance(recorded, dict)
         and recorded.get("tracked_objects")
@@ -690,9 +683,7 @@ def probe_sources(
         ):
             return {
                 "status": "current",
-                "selection_status": source_map.get(
-                    "selection_status", "agent-asserted"
-                ),
+                "selection_status": selection_status,
                 "changed_sources": [],
                 "checked": "git",
             }

@@ -18,6 +18,46 @@ PRODUCT_GROUPS = (
 UNUSABLE_REGISTRY_STATUSES = {"invalid", "unverified", "stale"}
 
 
+def registry_condition(
+    repo_root: Path, registry_path: Path
+) -> tuple[str, int, list[str]]:
+    if not registry_path.exists():
+        return "absent", 0, []
+    source_map = registry_path / "source-map.json"
+    if not source_map.is_file():
+        return "unverified", 0, ["Domain Memory exists without a source map."]
+    policy_path = registry_path / "domain-memory-policy.json"
+    try:
+        policy = load_json(policy_path) if policy_path.is_file() else None
+        source_result = verify_source_map(repo_root, source_map, policy)
+    except ValueError as error:
+        return "invalid", 0, [f"Domain Memory source map cannot be read: {error}"]
+    if source_result["status"] != "current":
+        return (
+            source_result["status"],
+            0,
+            [
+                "Domain Memory sources require review "
+                "before they can guide implementation."
+            ],
+        )
+    errors = validate(registry_path, repo_root, False)
+    if errors:
+        return (
+            "invalid",
+            0,
+            ["Domain Memory Registry is invalid: " + "; ".join(errors[:3])],
+        )
+    report = coverage(registry_path)
+    records = sum(
+        report[key]
+        for key in ("contexts", "vocabulary_terms", "aggregates", "rules", "contracts")
+    )
+    manifest = load_json(registry_path / "registry" / "manifest.json")
+    reviewed_empty = records == 0 and manifest.get("status") == "reviewed"
+    return ("reviewed-empty" if reviewed_empty else "current"), records, []
+
+
 def assess_readiness(
     repo_root: Path, registry_root: Path | None = None
 ) -> dict[str, Any]:
@@ -34,53 +74,12 @@ def assess_readiness(
     registry_status = "absent"
     registry_records = 0
     if registry_root:
-        registry_path = registry_root.resolve()
-        source_map = registry_path / "source-map.json"
-        policy_path = registry_path / "domain-memory-policy.json"
-        if not registry_path.exists():
-            registry_status = "absent"
-        elif not source_map.is_file():
-            registry_status = "unverified"
-            blocks.append("Domain Memory exists without a source map.")
-        else:
-            try:
-                policy = load_json(policy_path) if policy_path.is_file() else None
-                source_result = verify_source_map(repo_root, source_map, policy)
-            except ValueError as error:
-                registry_status = "invalid"
-                blocks.append(f"Domain Memory source map cannot be read: {error}")
-            else:
-                registry_status = source_result["status"]
-                if registry_status != "current":
-                    blocks.append(
-                        "Domain Memory sources require review before they can guide implementation."
-                    )
-            if registry_status == "current":
-                errors = validate(registry_path, repo_root, False)
-                if errors:
-                    registry_status = "invalid"
-                    blocks.append(
-                        "Domain Memory Registry is invalid: " + "; ".join(errors[:3])
-                    )
-                else:
-                    report = coverage(registry_path)
-                    registry_records = sum(
-                        report[key]
-                        for key in (
-                            "contexts",
-                            "vocabulary_terms",
-                            "aggregates",
-                            "rules",
-                            "contracts",
-                        )
-                    )
-                    manifest = load_json(registry_path / "registry" / "manifest.json")
-                    if registry_records == 0 and manifest.get("status") == "reviewed":
-                        registry_status = "reviewed-empty"
+        registry_status, registry_records, blocks = registry_condition(
+            repo_root, registry_root.resolve()
+        )
         signals.append({"kind": "registry", "status": registry_status})
         signals.append({"kind": "registry_records", "count": registry_records})
 
-    implementation = present["implementation"]
     dead = (
         bool(registry_root)
         and not product_sources
@@ -90,7 +89,7 @@ def assess_readiness(
         state, next_capability = "dead", "recover-or-reconfirm"
     elif not product_sources and registry_records == 0:
         state, next_capability = "empty", "discover"
-    elif not implementation:
+    elif not present["implementation"]:
         state, next_capability = "greenfield", "design"
     else:
         state, next_capability = "brownfield", "read-and-maintain"
@@ -99,7 +98,7 @@ def assess_readiness(
     return {
         "format": "domain-memory-readiness/v1",
         "state": state,
-        "confidence": "high" if state != "dead" else "medium",
+        "confidence": "medium" if dead else "high",
         "signals": signals,
         "governance_candidates": discovered["governance_candidates"],
         "blocks": blocks,
