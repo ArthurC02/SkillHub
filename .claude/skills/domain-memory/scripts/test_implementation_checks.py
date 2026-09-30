@@ -123,6 +123,23 @@ class QualityGatesTest(RepositoryCase):
         self.write("node_modules/pkg/.eslintrc.json", "")
         self.assertEqual(self.gates(), [])
 
+    def test_a_fixture_directory_is_not_searched(self) -> None:
+        for fixture in ("fixtures", "__fixtures__", "testdata"):
+            self.write(f"evals/{fixture}/sample/ruff.toml", "")
+        self.assertEqual(self.gates(), [])
+
+    def test_a_directory_named_like_a_fixture_is_still_searched(self) -> None:
+        self.write("src/fixtures_loader/ruff.toml", "")
+        self.assertEqual(
+            self.gates(),
+            [{"kind": "lint", "tool": "ruff", "path": "src/fixtures_loader/ruff.toml"}],
+        )
+
+    def test_tests_inside_a_fixture_are_not_counted(self) -> None:
+        self.write("tests/test_app.py", "")
+        self.write("tests/fixtures/sample/test_sample.py", "")
+        self.assertEqual(quality_gates(self.repo)["test_files"], 1)
+
     def test_a_nested_checkout_is_not_searched(self) -> None:
         self.write("checkouts/copy/.git", "gitdir: elsewhere\n")
         self.write("checkouts/copy/ruff.toml", "")

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .sources import (
@@ -95,19 +95,26 @@ def package_gates(path: Path, shown: str) -> list[dict[str, str]]:
     ]
 
 
+FIXTURE_DIRECTORIES = {"fixtures", "__fixtures__", "testdata"}
+NOT_THIS_REPOSITORYS_GATES = EXCLUDED_DIRECTORIES | FIXTURE_DIRECTORIES
+
 CONTENT_READERS = {"pyproject.toml": pyproject_gates, "package.json": package_gates}
 
 
 def candidate_files(root: Path) -> list[str]:
     found = []
     for directory, children, files in os.walk(root):
-        children[:] = [name for name in children if name not in EXCLUDED_DIRECTORIES]
+        children[:] = [name for name in children if name not in NOT_THIS_REPOSITORYS_GATES]
         found.extend(
             relative(root, Path(directory) / name)
             for name in files
             if marker_for(name) or name in CONTENT_READERS
         )
     return without_ignored(root, sorted(found))
+
+
+def in_fixture(entry: str) -> bool:
+    return any(part in FIXTURE_DIRECTORIES for part in PurePosixPath(entry).parts)
 
 
 def configured_gates(root: Path) -> list[dict[str, str]]:
@@ -134,6 +141,6 @@ def quality_gates(repo_root: Path) -> dict[str, Any]:
         "gates": gates,
         "kinds_present": present,
         "kinds_missing": [kind for kind in KINDS if kind not in present],
-        "test_files": len(test_locations(root)),
+        "test_files": sum(not in_fixture(entry) for entry in test_locations(root)),
         "standard": "configured" if STANDARD_KINDS & set(present) else "none",
     }
