@@ -424,5 +424,18 @@
     "public_contract"
   ],
   "open_questions": [],
-  "approvals": []
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-30T08:04:15.207181Z",
+      "scope": "Query-only Workspace Activity Context; five owner-produced fact-reader contracts for Run, Evaluation, Creation, Packaging and Publishing; GET /me/activity; backend projection; frontend workbench; required proof obligations; and confirmation of the Activity product-model and Publishing owner evidence in the developer-confirmed source corpus.",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "74b2752b4396b2f0973b7d740e2a5b6976f3c936",
+        "registry_digest": "sha256:9fb2cf89d1dab47e3999989f41c567d844e53aeebe1a683bdd10ef3e40cf8909"
+      }
+    }
+  ]
 }
