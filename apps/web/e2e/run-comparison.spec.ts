@@ -3,7 +3,9 @@ import {
   COMPARISON,
   OTHER_RUN,
   RUN,
+  RUNS,
   SKILL,
+  SKILL_VERSIONS,
   TEST_CASE,
   VERSION,
   comparisonSide,
@@ -57,6 +59,55 @@ test("populated Run results keep the output and task verdict visible", async ({ 
   await expect(page.getByRole("heading", { name: "任務判定", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "與另一個 Run 比較" }).click();
   await expect(page.getByRole("heading", { name: "Run 比較", exact: true })).toBeVisible();
+});
+
+test("candidate Runs expose their immutable Versions before comparison on a phone", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  const older = SKILL_VERSIONS.versions[1];
+  await page.route("**/runs?*", (route) =>
+    route.fulfill({
+      json: {
+        runs: [
+          RUNS.runs[0],
+          { ...RUNS.runs[1], skill_version_id: older.version_id },
+          {
+            ...RUNS.runs[1],
+            run_id: "44444444-4444-4444-8444-444444444444",
+            skill_version_id: VERSION,
+          },
+        ],
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto(`/runs/${RUN}/compare`);
+
+  await expect(page.getByRole("link", { name: "v1", exact: true })).toHaveAttribute(
+    "href",
+    `/skills/${SKILL}/versions/${older.version_id}`,
+  );
+  await expect(page.getByRole("link", { name: "v2", exact: true })).toHaveAttribute(
+    "href",
+    `/skills/${SKILL}/versions/${VERSION}`,
+  );
+  const olderRun = page.getByRole("button", {
+    name: new RegExp(`^以 v1、.+Run ID ${OTHER_RUN}$`),
+  });
+  await olderRun.focus();
+  await expect(olderRun).toBeFocused();
+  const width = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(width.scroll).toBeLessThanOrEqual(width.client);
+  await page.screenshot({
+    path: testInfo.outputPath("compare-candidates-phone.png"),
+    fullPage: true,
+  });
+  await olderRun.click();
+  await expect(page).toHaveURL(new RegExp(`against=${OTHER_RUN}$`));
 });
 
 test("comparison aligns distinct outputs, verdicts, costs and version links", async ({ page }) => {

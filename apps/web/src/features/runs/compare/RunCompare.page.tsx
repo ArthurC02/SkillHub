@@ -9,7 +9,7 @@ import { useRun, useRuns } from "../runs.service";
 import { ComparisonLead } from "./components/ComparisonLead";
 import { ComparisonTables } from "./components/ComparisonTables";
 import { CompareCandidatesPicker } from "./components/CompareCandidatesPicker";
-import { SkillWorkspaceNav } from "../../skill";
+import { SkillWorkspaceNav, useSkillVersions } from "../../skill";
 
 export function RunCompare() {
   const { runId } = useParams({ from: "/runs/$runId/compare" });
@@ -28,6 +28,7 @@ export function RunCompare() {
   const self = useRun(runId);
   const testCaseId = self.data?.test_case_id;
   const siblings = useRuns({ testCaseId, enabled: Boolean(testCaseId) });
+  const versions = useSkillVersions(self.data?.skill_id ?? "");
   const candidates = testCaseId
     ? (siblings.data?.pages.flatMap((p) => p.runs) ?? []).filter((r) => r.run_id !== runId)
     : [];
@@ -43,6 +44,9 @@ export function RunCompare() {
       siblingsPending={siblings.isPending}
       siblingsError={siblings.error}
       candidates={candidates}
+      versionsPending={versions.isPending}
+      versionsError={versions.error}
+      versions={versions.data?.versions ?? []}
       draft={draft}
       onDraftChange={setDraft}
       onPick={pick}

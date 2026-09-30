@@ -1,5 +1,8 @@
+import { Link } from "@tanstack/react-router";
+import type { SkillVersionSummary } from "../../../../core/api/types";
 import { Loading } from "../../../../shared/ui/Loading";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
+import { formatAt } from "../../../../shared/ui/Timestamp.model";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import type { RunListItem } from "../../runs.service";
 import { RunVerdict } from "../../components/RunVerdict";
@@ -12,6 +15,9 @@ function CandidateList({
   siblingsPending,
   siblingsError,
   candidates,
+  versionsPending,
+  versionsError,
+  versions,
   onPick,
 }: {
   selfPending: boolean;
@@ -20,6 +26,9 @@ function CandidateList({
   siblingsPending: boolean;
   siblingsError: Error | null;
   candidates: RunListItem[];
+  versionsPending: boolean;
+  versionsError: Error | null;
+  versions: SkillVersionSummary[];
   onPick: (id: string) => void;
 }) {
   if (selfPending) return <Loading what="目前這次 Run" />;
@@ -34,24 +43,55 @@ function CandidateList({
   }
 
   return (
-    <ul className="download-list">
-      {candidates.map((r) => (
-        <li key={r.run_id} className="download-item">
-          <p className="badge-row">
-            <RunVerdict verdict={r.evaluation} />
-          </p>
-          <p className="badge-row">
-            <span className="badge">執行狀態：{runStatusLabel(r.status)}</span>
-          </p>
-          {r.status_reason && <p className="note">{r.status_reason}</p>}
-          <p>
-            <button type="button" onClick={() => onPick(r.run_id)}>
-              與這一次比較（建立於 <Timestamp at={r.created_at} />）
-            </button>
-          </p>
-        </li>
-      ))}
-    </ul>
+    <>
+      {versionsPending && <Loading what="候選 Run 的 Version 編號" />}
+      <ReadFailure error={versionsError} what="候選 Run 的 Version 編號" />
+      <ul className="download-list">
+        {candidates.map((run) => {
+          const version = versions.find(
+            (candidate) => candidate.version_id === run.skill_version_id,
+          );
+          const versionLabel = version ? `v${version.version_number}` : undefined;
+          const accessibleVersion = versionLabel ?? `Version ID ${run.skill_version_id}`;
+
+          return (
+            <li key={run.run_id} className="download-item">
+              <p>
+                Version：
+                <Link
+                  to="/skills/$skillId/versions/$versionId"
+                  params={{ skillId: run.skill_id, versionId: run.skill_version_id }}
+                >
+                  {versionLabel ?? (versionsPending ? "編號載入中" : "編號未知")}
+                </Link>
+              </p>
+              {!version && !versionsPending && (
+                <details>
+                  <summary>Version ID</summary>
+                  <code>{run.skill_version_id}</code>
+                </details>
+              )}
+              <p className="badge-row">
+                <RunVerdict verdict={run.evaluation} />
+              </p>
+              <p className="badge-row">
+                <span className="badge">執行狀態：{runStatusLabel(run.status)}</span>
+              </p>
+              {run.status_reason && <p className="note">{run.status_reason}</p>}
+              <p>
+                <button
+                  type="button"
+                  aria-label={`以 ${accessibleVersion}、建立於 ${formatAt(run.created_at)} 的 Run 比較，Run ID ${run.run_id}`}
+                  onClick={() => onPick(run.run_id)}
+                >
+                  與這一次比較（建立於 <Timestamp at={run.created_at} />）
+                </button>
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 
@@ -62,6 +102,9 @@ export function CompareCandidatesPicker({
   siblingsPending,
   siblingsError,
   candidates,
+  versionsPending,
+  versionsError,
+  versions,
   draft,
   onDraftChange,
   onPick,
@@ -72,6 +115,9 @@ export function CompareCandidatesPicker({
   siblingsPending: boolean;
   siblingsError: Error | null;
   candidates: RunListItem[];
+  versionsPending: boolean;
+  versionsError: Error | null;
+  versions: SkillVersionSummary[];
   draft: string;
   onDraftChange: (value: string) => void;
   onPick: (id: string) => void;
@@ -85,6 +131,9 @@ export function CompareCandidatesPicker({
         siblingsPending={siblingsPending}
         siblingsError={siblingsError}
         candidates={candidates}
+        versionsPending={versionsPending}
+        versionsError={versionsError}
+        versions={versions}
         onPick={onPick}
       />
       <form
