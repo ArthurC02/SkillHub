@@ -73,7 +73,9 @@ export function SkillVersion() {
         <h1>
           {skill.data.name} v{selected.version_number}
         </h1>
-        <p>{skill.data.summary}</p>
+        <p data-role="skill-current-summary">
+          <strong>Skill 目前說明：</strong> {skill.data.summary}
+        </p>
         <SkillWorkspaceNav skillId={skillId} versionId={versionId} />
       </header>
 

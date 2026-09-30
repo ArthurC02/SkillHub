@@ -234,6 +234,16 @@ test("an owned immutable version becomes one shareable context for validation, p
   expect(text()).not.toContain("Studio 歷程");
 });
 
+test("a historical version labels the current Skill summary without presenting it as version content", async () => {
+  routeVersion = SKILL_VERSIONS.versions[1].version_id;
+  stubVersions();
+  await render(() => text().includes("v1，歷史版本"));
+
+  const summary = container.querySelector('[data-role="skill-current-summary"]');
+  expect(summary?.textContent).toContain("Skill 目前說明");
+  expect(summary?.textContent).toContain("把 PDF 整理成摘要");
+});
+
 test("a version from another Skill cannot expose publish, upload or package actions", async () => {
   routeVersion = "99999999-9999-4999-8999-999999999999";
   const calls = stubVersions();
