@@ -45,7 +45,7 @@
     "本 package 尚未取得 developer approval、測試 attestation、counterfactual evidence 或 SCM attestation。",
     "Run activity_updated_at 是待審的新持久時間語意，核准前不得實作；Packaging 暫用 created_at，因現行標準完成流程在同一交易內完成，未來若改為可觀察的非同步掃描須另提 successor proposal。",
     "Workspace Activity query Context 與五條 owner fact-reader contracts/interactions 都是待審的 Registry updates，核准前不得視為 reviewed boundary。",
-    "Activity Context、interaction mechanism 與 Publishing owner 的部分 Registry evidence 尚未全部納入 developer-confirmed source corpus；apply 前必須由開發者確認來源選擇，不得由 Agent 自行背書。",
+    "Activity Context 與 Publishing owner 的部分 Registry evidence 尚未納入 developer-confirmed source corpus；apply 前必須由開發者確認來源選擇，不得由 Agent 自行背書。",
     "Run item 需要同時讀取 Run 與 Evaluation owner facts；任一來源失敗都必須使完整 Activity fail closed。",
     "Publishing 首版刻意不因 Catalog exposure、散布可得性或 Bundle Publication 變化改分類或排序。",
     "未知 item kind 的 client fallback 只保留摘要與不支援提示，不能提供猜測出的續作動作。"

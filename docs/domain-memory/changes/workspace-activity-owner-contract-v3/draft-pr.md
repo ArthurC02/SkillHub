@@ -40,4 +40,4 @@ Proposal `workspace-activity-owner-contract-v3` 是 material draft，需要 deve
 
 ## Residual risks
 
-Run 的新時間欄位、Workspace Activity Context 與五條 internal reader contracts/interactions 仍待 developer approval；Activity Context、interaction mechanism 與 Publishing owner 的部分 Registry evidence 也須在 apply 前由開發者確認納入 source corpus。五個 readers、公開 contract、後端投影、UI 與所有 proof obligations 尚未實作。Packaging 目前依賴標準流程原子完成的 `created_at`；若日後引入可觀察的非同步掃描，必須以 successor proposal 重審分類與時間。本提案刻意不把 Bundle、Catalog exposure、散布可得性、Artifact expiry、Trace 或 cleanup 擴張成首版 Activity 來源。
+Run 的新時間欄位、Workspace Activity Context 與五條 internal reader contracts/interactions 仍待 developer approval；Activity Context 與 Publishing owner 的部分 Registry evidence 也須在 apply 前由開發者確認納入 source corpus。五個 readers、公開 contract、後端投影、UI 與所有 proof obligations 尚未實作。Packaging 目前依賴標準流程原子完成的 `created_at`；若日後引入可觀察的非同步掃描，必須以 successor proposal 重審分類與時間。本提案刻意不把 Bundle、Catalog exposure、散布可得性、Artifact expiry、Trace 或 cleanup 擴張成首版 Activity 來源。
