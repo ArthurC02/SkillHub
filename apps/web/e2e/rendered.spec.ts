@@ -194,6 +194,11 @@ async function verifyVersionLinksOnPhone(page: Page, testInfo: TestInfo) {
     "href",
     `/skills/${SKILL}/versions/${VERSION}`,
   );
+  const compareLinks = page.locator('[data-role="evidence"]').getByRole("link", {
+    name: /Run 開始比較/,
+  });
+  await expect(compareLinks).toHaveCount(2);
+  await expect(compareLinks.first()).toHaveAttribute("href", `/runs/${RUN}/compare`);
   const pageWidth = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,
     scroll: document.documentElement.scrollWidth,
@@ -607,7 +612,7 @@ test.describe("QA-008 real layout", () => {
     await verifyRunWorkbench(page, testInfo);
   });
 
-  test("test case history keeps each Run's immutable Version in reach on a phone", async ({
+  test("test case history keeps each Run's Version and comparison in reach on a phone", async ({
     page,
   }, testInfo) => {
     await verifyVersionLinksOnPhone(page, testInfo);

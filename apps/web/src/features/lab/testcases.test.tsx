@@ -629,6 +629,19 @@ test("執行歷史 links each run to the exact immutable version that produced i
     { skillId: SKILL, versionId: OTHER_VERSION },
   ]);
   expect(versionLinks.every((link) => link.textContent?.includes("查看這次的版本"))).toBe(true);
+  const compareLinks = Array.from(
+    container.querySelectorAll<HTMLAnchorElement>(
+      'ul[data-role="evidence"] a[data-to="/runs/$runId/compare"]',
+    ),
+  );
+  expect(compareLinks.map((link) => JSON.parse(link.dataset.params ?? "{}"))).toEqual([
+    { runId: RUN.run_id },
+    { runId: "88888888-8888-8888-8888-888888888888" },
+  ]);
+  expect(compareLinks.every((link) => link.dataset.search === undefined)).toBe(true);
+  expect(compareLinks.every((link) => link.textContent?.includes("以這次 Run 開始比較"))).toBe(
+    true,
+  );
   expect(container.textContent).toContain("執行完成");
   expect(container.textContent).toContain("任務判定：符合");
   const t = container.textContent ?? "";

@@ -349,8 +349,9 @@ const runCompareRoute = createRoute({
     () => import("../features/runs/compare/RunCompare.page"),
     "RunCompare",
   ),
-  validateSearch: (search: Record<string, unknown>) => ({
-    against: typeof search.against === "string" ? search.against : "",
+  validateSearch: (search: Record<string, unknown>): { against?: string } => ({
+    against:
+      typeof search.against === "string" && search.against.length > 0 ? search.against : undefined,
   }),
 });
 

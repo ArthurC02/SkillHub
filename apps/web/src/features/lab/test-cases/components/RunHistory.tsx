@@ -1,5 +1,6 @@
 import { Loading } from "../../../../shared/ui/Loading";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
+import { formatAt } from "../../../../shared/ui/Timestamp.model";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Link } from "@tanstack/react-router";
 import { useRuns, type RunListItem } from "../../../runs";
@@ -67,6 +68,14 @@ export function RunHistory({
                     params={{ skillId: run.skill_id, versionId: run.skill_version_id }}
                   >
                     查看這次的版本
+                  </Link>{" "}
+                  ·{" "}
+                  <Link
+                    to="/runs/$runId/compare"
+                    params={{ runId: run.run_id }}
+                    aria-label={`以建立於 ${formatAt(run.created_at)} 的 Run 開始比較`}
+                  >
+                    以這次 Run 開始比較
                   </Link>
                 </p>
                 <details>

@@ -174,7 +174,7 @@ WorkspaceSkills ► /skills/$id, /skills/$id/files, /skills/$id/package,
 WorkspaceRuns ──► /runs/$id, /skills/$id, /skills/$id/versions/$id,
                   /lab/test-cases/$id, /lab/test-cases, /workspace
 TestCases ──────► /lab/test-cases/$id, /lab/test-cases/$id/datasets, /skills/$id/test-cases/$id/runs/new, /runs/$id,
-                  /skills/$id, /skills/$id/files
+                  /runs/$id/compare, /skills/$id, /skills/$id/files
 DatasetUpload ──► /lab/test-cases/$id, /skills/$id, /skills/$id/files,
                   /skills/$id/versions/$id
 RunPreflight ───► /lab/test-cases, /runs/$id, /skills/$id, /skills/$id/files
@@ -227,8 +227,8 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 | 入邊 | 位址 | R3 |
 | ---: | --- | --- |
 | **0** | （無） | ✅ 沒有孤兒頁 |
-| **1** | `/compare`、`/lab/test-cases/$testCaseId/datasets`、`/runs/$runId/compare` | ✅ 三項都是 R3 的「具名」那一支（IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7 |
-| 2 | `/workspace`、`/workspace/account`、`/workspace/creations`、`/policy`、`/admin`、`/admin/accounts`、`/admin/dispatch`、`/admin/rosters`、`/admin/model-budgets`、`/admin/cost-statistics` | ✅ |
+| **1** | `/compare`、`/lab/test-cases/$testCaseId/datasets` | ✅ 兩項都是 R3 的「具名」那一支（IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7 |
+| 2 | `/workspace`、`/workspace/account`、`/workspace/creations`、`/policy`、`/runs/$runId/compare`、`/admin`、`/admin/accounts`、`/admin/dispatch`、`/admin/rosters`、`/admin/model-budgets`、`/admin/cost-statistics` | ✅ |
 | 3 | `/skills/$skillId/files`、`/skills/$skillId/package`、`/p/$publisher/$name`、`/workspace/runs`、`/admin/skills`、`/admin/audit-log`、`/admin/trends`、`/admin/exposure` | ✅ |
 | 4 | `/workspace/import`、`/skills/$skillId/test-cases/$testCaseId/runs/new` | ✅ |
 | 5 | `/lab/test-cases/$testCaseId` | ✅ |
@@ -411,15 +411,16 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 - 登入之後要不要回到原本那一頁（deep-link 還原）**不在本裁定內**：本裁定只要求抵達誠實，不要求記住去向。要做的話它是一項新工作，不是這一項的殘留。
 - **寫入路徑不在那 21 處裡**（沿試跑主線量到）：裁定與 `session.test.tsx` 守的都是**讀取**的匯流點與抵達那一刻。Run 頁的取消、刪除產出與評估回饋三個 mutation 的 `onError` 直印 `err.message`，抵達之後才過期的 session 在按下取消時又把 `not authenticated` 印回畫面，`assertHonestArrival` 跑在抵達時所以看不到。**修法照 `ReadFailure` 的形狀給寫入一個匯流點，不另開裁定**——裁定本身沒有錯，是它的「21 處」數的只有一半。**同日落地**：Run 頁的取消／刪除產出、評估頁的回饋／決定／套用、Preflight 的開始 Run，六個 mutation 改存 error 物件、經 `ReadFailure` 渲染；`a11y.test.tsx` 另守一條「live region 裡沒有任何中文字即 FAIL」，這一條不分讀取與寫入，是 `assertHonestArrival` 只守一個字串的那個缺口的通用版。**同日深夜，其餘六條線的全部 mutation 也走了匯流**：探索、詳情、匯入、Test Lab、打包、帳號——寫入路徑現在與讀取同一個形狀。
 
-### IA-7 ✅ 已裁定：三個都是 R3 的「具名」那一支，不補第二條
+### IA-7 ✅ 已裁定：兩個仍是 R3 的「具名」那一支；Run 比較已有第二條入邊
 
-`/compare`、`/lab/test-cases/$testCaseId/datasets`、`/runs/$runId/compare` 各只有一條入邊（§2.3）。其中 `/runs/$runId/compare` 的唯一入口 `RunTrace` 本身就是 IA-3 那個名字不對的頁（已於 08-23 改名）。
+`/compare` 與 `/lab/test-cases/$testCaseId/datasets` 各只有一條入邊（§2.3）。`/runs/$runId/compare` 已同時可從 Run 本身與 Test Case 的執行歷史進入，不再需要這項例外。
 
-**R3 從一開始就有兩條出路——「補第二條」或「寫進 §2.3 並說明為什麼它只該有一條」。這三頁走第二條，逐項理由：**
+**R3 從一開始就有兩條出路——「補第二條」或「寫進 §2.3 並說明為什麼它只該有一條」。仍在單入口清單的兩頁走第二條，逐項理由：**
 
 - **`/compare`**：要一組**已選取的 ≥2 個 Skill**。選取只在搜尋結果上發生，所以第二條入邊得先發明第二個「使用者已經選好了幾個」的地方。**沒有選取的 `/compare` 是空的**，畫一條通往空畫面的路不是可達性。
-- **`/runs/$runId/compare`**：要一個**基準 Run**。同型——`$runId` 就是那個脈絡，而拿得到它的地方就是那個 Run 自己的頁。
 - **`/lab/test-cases/$testCaseId/datasets`**：要一個 **Test Case**，而且這是**資料模型的形狀不是 UI 的選擇**——API 是 `/test-cases/{id}/datasets`（`features/lab/lab.service.ts`、`features/lab/testcases.service.ts`），**平台沒有工作區層級的 dataset 清單**。canonical 位址現在如實把它放在 Test Case 之下；舊 `/lab/datasets` 只保留為相容導向，不再渲染第二個畫面。
+
+Run 比較仍要求一個基準 Run，但這個脈絡不只由 Run 頁產生：Test Case 的執行歷史也持有每筆永久 `run_id`，可以把使用者送進同一個比較頁，再由該頁選擇對照 Run。兩個入口共用同一條 canonical URL，不新增第二份比較流程。
 
 **這條裁定不會讓下一個孤兒混進來**：`ia.test.ts` 仍然雙向比對 §2.3 的 0 與 1 兩列，新的單入口頁一樣 FAIL，差別只在「修好」現在有兩種合法答案，而兩種都要在這張表上留字。
 
@@ -453,7 +454,7 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 
 > **§2.2 是這一節唯一會無聲過期的一格**：§2.1、§2.3、§2.4 都有機器，夾在中間的它沒有。它不過期靠的是有人記得，不是有東西會紅。
 
-**為什麼不能走 R3 的「具名」那一支**：那一支的判準是「這一頁要求的脈絡**是不是只有一個地方產得出來**」。`/compare` 要一組已選取的 Skill、`/runs/$runId/compare` 要一個基準 Run、`/lab/test-cases/$testCaseId/datasets` 要一個 Test Case——三個脈絡各自只有一個地方產得出來（IA-7）。**匯入不要求任何脈絡**：任何「我想加一個 Skill」的時刻都是它的入口。所以它欠的是第二條邊，不是一段說明。
+**為什麼不能走 R3 的「具名」那一支**：那一支的判準是「這一頁要求的脈絡**是不是只有一個地方產得出來**」。`/compare` 要一組已選取的 Skill、`/lab/test-cases/$testCaseId/datasets` 要一個 Test Case——兩個脈絡各自只有一個地方產得出來（IA-7）。**匯入不要求任何脈絡**：任何「我想加一個 Skill」的時刻都是它的入口。所以它欠的是第二條邊，不是一段說明。
 
 **方向**：R3 是 §0 的規則，規則走在程式前面——**要改的是程式，不是這條規則**。並且確實是程式改了：規則一個字沒動。
 

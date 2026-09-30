@@ -70,7 +70,7 @@ function RunWorkspaceRail({ runId, status }: { runId: string; status?: string })
           </ul>
         </nav>
         <p>
-          <Link to="/runs/$runId/compare" params={{ runId }} search={{ against: "" }}>
+          <Link to="/runs/$runId/compare" params={{ runId }}>
             與另一個 Run 比較
           </Link>
         </p>
