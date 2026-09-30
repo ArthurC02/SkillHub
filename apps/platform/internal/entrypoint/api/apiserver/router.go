@@ -34,6 +34,7 @@ type Deps struct {
 	Eval            *eval.Handler
 	Packaging       *packaging.Handler
 	Publishing      *publishing.Handler
+	Activity        *activityHandler
 
 	Credits *creditsHandler
 
@@ -74,6 +75,7 @@ func NewRouter(d Deps) http.Handler {
 	mountRunRoutes(mux, d)
 	mountEvaluationRoutes(mux, d)
 	mountPackagingRoutes(mux, d)
+	mux.HandleFunc("GET /me/activity", d.Auth.RequireSession(d.Activity.List))
 
 	mux.HandleFunc("POST /feedback", d.Auth.RequireSession(d.Analytics.Feedback))
 	mux.HandleFunc("GET /policy/data-retention", d.Analytics.DataRetention)

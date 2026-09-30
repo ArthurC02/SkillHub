@@ -653,6 +653,16 @@ import {
     UploadResultFromJSON,
     UploadResultToJSON,
 } from '../models/UploadResult';
+import {
+    type WorkspaceActivityPage,
+    WorkspaceActivityPageFromJSON,
+    WorkspaceActivityPageToJSON,
+} from '../models/WorkspaceActivityPage';
+import {
+    type WorkspaceActivityUnavailable,
+    WorkspaceActivityUnavailableFromJSON,
+    WorkspaceActivityUnavailableToJSON,
+} from '../models/WorkspaceActivityUnavailable';
 
 export interface AcquirePublicationRequest {
     /**
@@ -1317,6 +1327,17 @@ export interface ListTestCasesRequest {
      * 
      */
     offset?: number;
+}
+
+export interface ListWorkspaceActivityRequest {
+    /**
+     * An opaque `next_cursor` returned by a previous page. Malformed values are refused.
+     */
+    cursor?: string;
+    /**
+     * Number of activity items to return. Defaults to 50.
+     */
+    limit?: number;
 }
 
 export interface LookupAccountRequest {
@@ -3867,6 +3888,32 @@ export interface DefaultApiInterface {
      * List the caller\'s test cases (WS-004)
      */
     listTestCases(requestParameters: ListTestCasesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTestCases200Response>;
+
+    /**
+     * Creates request options for listWorkspaceActivity without sending the request
+     * @param {string} [cursor] An opaque &#x60;next_cursor&#x60; returned by a previous page. Malformed values are refused.
+     * @param {number} [limit] Number of activity items to return. Defaults to 50.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listWorkspaceActivityRequestOpts(requestParameters: ListWorkspaceActivityRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * A query-only view over Run, Evaluation, Creation, Packaging and Publishing facts. Each owning domain supplies its classification, authoritative activity time, stable identity and continuation target; this endpoint only combines and orders those facts.  The cursor is opaque and belongs only to this endpoint. A page is returned only when every source was read successfully. If any source is unavailable, the response names it and contains no partial items or continuation cursor. 
+     * @summary A complete, owner-classified activity page for the caller\'s Workspace
+     * @param {string} [cursor] An opaque &#x60;next_cursor&#x60; returned by a previous page. Malformed values are refused.
+     * @param {number} [limit] Number of activity items to return. Defaults to 50.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listWorkspaceActivityRaw(requestParameters: ListWorkspaceActivityRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<WorkspaceActivityPage>>;
+
+    /**
+     * A query-only view over Run, Evaluation, Creation, Packaging and Publishing facts. Each owning domain supplies its classification, authoritative activity time, stable identity and continuation target; this endpoint only combines and orders those facts.  The cursor is opaque and belongs only to this endpoint. A page is returned only when every source was read successfully. If any source is unavailable, the response names it and contains no partial items or continuation cursor. 
+     * A complete, owner-classified activity page for the caller\'s Workspace
+     */
+    listWorkspaceActivity(requestParameters: ListWorkspaceActivityRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<WorkspaceActivityPage>;
 
     /**
      * Creates request options for logout without sending the request
@@ -8887,6 +8934,53 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async listTestCases(requestParameters: ListTestCasesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTestCases200Response> {
         const response = await this.listTestCasesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listWorkspaceActivity without sending the request
+     */
+    async listWorkspaceActivityRequestOpts(requestParameters: ListWorkspaceActivityRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['cursor'] != null) {
+            queryParameters['cursor'] = requestParameters['cursor'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/me/activity`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * A query-only view over Run, Evaluation, Creation, Packaging and Publishing facts. Each owning domain supplies its classification, authoritative activity time, stable identity and continuation target; this endpoint only combines and orders those facts.  The cursor is opaque and belongs only to this endpoint. A page is returned only when every source was read successfully. If any source is unavailable, the response names it and contains no partial items or continuation cursor. 
+     * A complete, owner-classified activity page for the caller\'s Workspace
+     */
+    async listWorkspaceActivityRaw(requestParameters: ListWorkspaceActivityRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<WorkspaceActivityPage>> {
+        const requestOptions = await this.listWorkspaceActivityRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => WorkspaceActivityPageFromJSON(jsonValue));
+    }
+
+    /**
+     * A query-only view over Run, Evaluation, Creation, Packaging and Publishing facts. Each owning domain supplies its classification, authoritative activity time, stable identity and continuation target; this endpoint only combines and orders those facts.  The cursor is opaque and belongs only to this endpoint. A page is returned only when every source was read successfully. If any source is unavailable, the response names it and contains no partial items or continuation cursor. 
+     * A complete, owner-classified activity page for the caller\'s Workspace
+     */
+    async listWorkspaceActivity(requestParameters: ListWorkspaceActivityRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<WorkspaceActivityPage> {
+        const response = await this.listWorkspaceActivityRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

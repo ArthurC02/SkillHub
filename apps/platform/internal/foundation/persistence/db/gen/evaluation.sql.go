@@ -506,6 +506,47 @@ func (q *Queries) ListCurrentEvaluations(ctx context.Context, arg ListCurrentEva
 	return items, nil
 }
 
+const listEvaluationActivityFacts = `-- name: ListEvaluationActivityFacts :many
+SELECT run_id, status, overall, created_at, evaluated_at
+FROM evaluations
+WHERE workspace_id = $1 AND superseded_at IS NULL
+ORDER BY created_at DESC, id
+`
+
+type ListEvaluationActivityFactsRow struct {
+	RunID       pgtype.UUID
+	Status      string
+	Overall     string
+	CreatedAt   pgtype.Timestamptz
+	EvaluatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListEvaluationActivityFacts(ctx context.Context, workspaceID pgtype.UUID) ([]ListEvaluationActivityFactsRow, error) {
+	rows, err := q.db.Query(ctx, listEvaluationActivityFacts, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEvaluationActivityFactsRow
+	for rows.Next() {
+		var i ListEvaluationActivityFactsRow
+		if err := rows.Scan(
+			&i.RunID,
+			&i.Status,
+			&i.Overall,
+			&i.CreatedAt,
+			&i.EvaluatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEvaluationRevisions = `-- name: ListEvaluationRevisions :many
 SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at FROM evaluations
 WHERE run_id = $1 AND workspace_id = $2

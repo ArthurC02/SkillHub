@@ -12,6 +12,12 @@ SELECT * FROM creation_sessions WHERE id=$1 AND workspace_id=$2 FOR UPDATE;
 SELECT * FROM creation_sessions WHERE workspace_id = @workspace_id AND expires_at > now()
 ORDER BY updated_at DESC LIMIT @page_size;
 
+-- name: ListCreationActivityFacts :many
+SELECT id, state, snapshot, updated_at
+FROM creation_sessions
+WHERE workspace_id = @workspace_id AND expires_at > now()
+ORDER BY updated_at DESC, id;
+
 -- name: ListCreationSessionsForVersion :many
 SELECT * FROM creation_sessions
 WHERE workspace_id = @workspace_id

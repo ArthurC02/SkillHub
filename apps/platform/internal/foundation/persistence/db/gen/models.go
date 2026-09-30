@@ -574,6 +574,7 @@ type Run struct {
 	SupervisionCheckedAt pgtype.Timestamptz
 	CleanupAttemptedAt   pgtype.Timestamptz
 	ArtifactsTruncated   bool
+	ActivityUpdatedAt    pgtype.Timestamptz
 }
 
 type RunArtifactUploadIntent struct {

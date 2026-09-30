@@ -627,6 +627,11 @@ func TestCancelRecordsIntentAndStopsAQueuedRun(t *testing.T) {
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-cancel")
 	created := f.start(t)
+	ctx := context.Background()
+	q := gen.New(pool)
+	workspaceID, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+	past := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	setRunActivityTime(t, pool, runID, past)
 
 	code, view := f.postJSON(t, "/runs/"+created.RunID+"/cancel", "")
 	if code != http.StatusAccepted {
@@ -639,19 +644,69 @@ func TestCancelRecordsIntentAndStopsAQueuedRun(t *testing.T) {
 	if view.Status != string(gen.RunStatusQueued) {
 		t.Errorf("status right after cancel = %q, want queued (the workload is not down yet)", view.Status)
 	}
+	firstCancel := getRunForTest(t, q, ctx, workspaceID, runID)
+	requireActivityAfter(t, firstCancel.ActivityUpdatedAt.Time, past)
 
 	if code, _ := f.postJSON(t, "/runs/"+created.RunID+"/cancel", ""); code != http.StatusAccepted {
 		t.Errorf("second cancel: got %d, want 202", code)
 	}
+	duplicateCancel := getRunForTest(t, q, ctx, workspaceID, runID)
+	requireActivityEqual(t, duplicateCancel.ActivityUpdatedAt.Time, firstCancel.ActivityUpdatedAt.Time)
 
 	startWorker(t, a)
 	final := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusCancelled))
 	if len(final.Attempts) != 0 {
 		t.Errorf("a run cancelled before dispatch created %d attempts, want 0", len(final.Attempts))
 	}
+	terminal := getRunForTest(t, q, ctx, workspaceID, runID)
+	requireActivityNotBefore(t, terminal.ActivityUpdatedAt.Time, firstCancel.ActivityUpdatedAt.Time)
+	if err := a.runs.CleanRun(ctx, workspaceID, runID); err != nil {
+		t.Fatal(err)
+	}
+	afterCleanup := getRunForTest(t, q, ctx, workspaceID, runID)
+	requireActivityEqual(t, afterCleanup.ActivityUpdatedAt.Time, terminal.ActivityUpdatedAt.Time)
 
 	if code, _ := f.postJSON(t, "/runs/"+created.RunID+"/cancel", ""); code != http.StatusConflict {
 		t.Errorf("cancel of a finished run: got %d, want 409", code)
+	}
+}
+
+func setRunActivityTime(t *testing.T, pool *pgxpool.Pool, runID pgtype.UUID, activityAt time.Time) {
+	t.Helper()
+	if _, err := pool.Exec(context.Background(), "UPDATE runs SET activity_updated_at = $1 WHERE id = $2", activityAt, runID); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func getRunForTest(
+	t *testing.T, queries *gen.Queries, ctx context.Context, workspaceID, runID pgtype.UUID,
+) gen.Run {
+	t.Helper()
+	result, err := queries.GetRun(ctx, gen.GetRunParams{ID: runID, WorkspaceID: workspaceID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
+}
+
+func requireActivityAfter(t *testing.T, got, earlier time.Time) {
+	t.Helper()
+	if !got.After(earlier) {
+		t.Fatalf("activity time = %s, want after %s", got, earlier)
+	}
+}
+
+func requireActivityNotBefore(t *testing.T, got, earlier time.Time) {
+	t.Helper()
+	if got.Before(earlier) {
+		t.Errorf("activity time moved backwards from %s to %s", earlier, got)
+	}
+}
+
+func requireActivityEqual(t *testing.T, got, want time.Time) {
+	t.Helper()
+	if !got.Equal(want) {
+		t.Errorf("activity time = %s, want %s", got, want)
 	}
 }
 

@@ -1,0 +1,214 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "workspace-activity-owner-contract-v4",
+  "proposal_id": "workspace-activity-owner-contract-v4",
+  "obligations": [
+    {
+      "id": "workspace-isolation",
+      "source_type": "acceptance-criterion",
+      "source_id": "workspace-scoped",
+      "expected_outcome": "A Session sees Activity facts only from its resolved Workspace; foreign source IDs yield no items or existence leak.",
+      "level": "integration",
+      "status": "executed",
+      "check": "platform Activity integration test with two Workspaces and every contracted owner reader"
+    },
+    {
+      "id": "owner-facts-only",
+      "source_type": "acceptance-criterion",
+      "source_id": "owner-facts-only",
+      "expected_outcome": "Every owner maps its supported states to classification and time while the Activity Context owns only coverage, completeness, ordering, cursor and continuation composition, with no raw owner-status switch or cross-context query.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "owner decision-table tests plus composition and dependency inspection"
+    },
+    {
+      "id": "activity-owner-reader-boundaries",
+      "source_type": "acceptance-criterion",
+      "source_id": "owner-facts-only",
+      "expected_outcome": "The Registry records Run, Evaluation, Creation, Packaging and Publishing as producers of versioned Activity fact-reader contracts consumed by the Activity Context; Evaluation classification and time remain in Evaluation and are not moved into Run or Activity composition.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "Registry contract and interaction validation plus depguard and composition-root wiring inspection"
+    },
+    {
+      "id": "run-activity-facts-contract",
+      "source_type": "contract",
+      "source_id": "run-activity-facts-v1",
+      "expected_outcome": "Run produces only Workspace-scoped Run Activity facts with owner classification, activity_updated_at, stable run_id and exact continuation identifiers.",
+      "level": "contract",
+      "status": "executed",
+      "check": "Run fact-reader contract and serialization tests"
+    },
+    {
+      "id": "eval-activity-facts-contract",
+      "source_type": "contract",
+      "source_id": "eval-activity-facts-v1",
+      "expected_outcome": "Evaluation produces only current-revision Activity facts with owner classification and the status-specific authoritative time, keyed by platform run_id.",
+      "level": "contract",
+      "status": "executed",
+      "check": "Evaluation fact-reader contract tests for absent, pending, failed, completed and superseded revisions"
+    },
+    {
+      "id": "creation-activity-facts-contract",
+      "source_type": "contract",
+      "source_id": "creation-activity-facts-v1",
+      "expected_outcome": "Creation produces Workspace-scoped Session Activity facts with owner classification, updated_at, stable session identity and exact continuation identifiers.",
+      "level": "contract",
+      "status": "executed",
+      "check": "Creation fact-reader contract and serialization tests"
+    },
+    {
+      "id": "packaging-activity-facts-contract",
+      "source_type": "contract",
+      "source_id": "packaging-activity-facts-v1",
+      "expected_outcome": "Packaging produces Workspace-scoped Artifact Activity facts with defensive status classification, created_at, stable Artifact UUID and exact continuation identifiers without clock-derived reclassification.",
+      "level": "contract",
+      "status": "executed",
+      "check": "Packaging fact-reader contract and serialization tests"
+    },
+    {
+      "id": "publishing-activity-facts-contract",
+      "source_type": "contract",
+      "source_id": "publishing-activity-facts-v1",
+      "expected_outcome": "Publishing produces Workspace-scoped Skill Publication Activity facts with owner classification, status/Release time selection, stable publication_id and exact continuation identifiers.",
+      "level": "contract",
+      "status": "executed",
+      "check": "Publishing fact-reader contract and serialization tests"
+    },
+    {
+      "id": "run-evaluation-classification",
+      "source_type": "acceptance-criterion",
+      "source_id": "run-and-evaluation-matrix",
+      "expected_outcome": "Every Run state and every Evaluation status/overall combination produces the approved owner classification; absent Evaluation is neutral, unknown or invalid Evaluation combinations are safe needs_attention/unsupported, and mechanical priority yields needs_attention before in_progress before recent before neutral.",
+      "level": "unit",
+      "status": "executed",
+      "check": "Run state table and Evaluation decision table covering absent current row, pending, failed, completed with every overall, unknown values and invalid combinations"
+    },
+    {
+      "id": "run-evaluation-time",
+      "source_type": "acceptance-criterion",
+      "source_id": "run-activity-time",
+      "expected_outcome": "Run creation, persisted accepted transitions and accepted cancellation requests move activity_updated_at; rejected or duplicate no-op cancellation, Trace and cleanup do not. Pending Evaluation uses current created_at, completed or failed Evaluation uses current evaluated_at, a new current revision supersedes the old time, and old-revision feedback or suggestion changes do not move Activity.",
+      "level": "integration",
+      "status": "executed",
+      "check": "Run transition and cancellation decision table plus current-Evaluation revision timestamp integration tests with non-Activity writes"
+    },
+    {
+      "id": "creation-classification-time",
+      "source_type": "acceptance-criterion",
+      "source_id": "creation-matrix-and-time",
+      "expected_outcome": "All Creation states map to the approved classification, updated_at is preserved as activity_at, and pending_action changes presentation without client-side reclassification.",
+      "level": "unit",
+      "status": "executed",
+      "check": "Creation state and pending-action decision table"
+    },
+    {
+      "id": "packaging-classification-time",
+      "source_type": "acceptance-criterion",
+      "source_id": "packaging-matrix-and-time",
+      "expected_outcome": "Available maps to recent; defensive quarantined and rejected map to needs_attention; created_at remains activity_at; expiry, purge and object loss do not reclassify or move time; deleted Artifacts are absent.",
+      "level": "integration",
+      "status": "executed",
+      "check": "Packaging available and defensive-state table with expiry, purge, object-loss and deletion cases"
+    },
+    {
+      "id": "publishing-classification-time",
+      "source_type": "acceptance-criterion",
+      "source_id": "publishing-matrix-and-time",
+      "expected_outcome": "Publication status and latest Release produce the approved classification; with a Release the later status_changed_at or released_at wins, without a Release status_changed_at is the explicit fallback; exposure, availability and Bundle changes do not move the Skill Publication item.",
+      "level": "integration",
+      "status": "executed",
+      "check": "Publishing status, release and excluded-axis decision table"
+    },
+    {
+      "id": "minimal-item-contract",
+      "source_type": "acceptance-criterion",
+      "source_id": "actionable-minimum",
+      "expected_outcome": "Every item carries only stable identity, summary, owner classification and status, authoritative time, necessary context and one continuation; sensitive and bulky content is absent.",
+      "level": "contract",
+      "status": "executed",
+      "check": "OpenAPI schema and representative serialization tests"
+    },
+    {
+      "id": "global-cursor",
+      "source_type": "acceptance-criterion",
+      "source_id": "stable-global-pagination",
+      "expected_outcome": "An unchanged dataset orders needs_attention, in_progress, recent and neutral first, then activity_at descending, kind ascending and canonical source_id ascending; equal-time, cross-kind, cross-ID and page boundaries return every item exactly once.",
+      "level": "integration",
+      "status": "executed",
+      "check": "five-reader keyset boundary-value integration test"
+    },
+    {
+      "id": "source-failure-visible",
+      "source_type": "acceptance-criterion",
+      "source_id": "incomplete-is-visible",
+      "expected_outcome": "Fault injection for each of five contracted readers returns HTTP 503, complete=false and that unavailable source, with no items or cursor.",
+      "level": "integration",
+      "status": "executed",
+      "check": "owner-reader failure decision-table integration test"
+    },
+    {
+      "id": "openapi-additive",
+      "source_type": "acceptance-criterion",
+      "source_id": "openapi-first-compatible",
+      "expected_outcome": "OpenAPI generation and compatibility checks accept the additive contract, generated types match it and existing clients remain valid.",
+      "level": "contract",
+      "status": "executed",
+      "check": "task gen:check and public contract compatibility gate"
+    },
+    {
+      "id": "first-source-scope",
+      "source_type": "acceptance-criterion",
+      "source_id": "first-source-scope-is-explicit",
+      "expected_outcome": "Fixtures cover exactly four item kinds and five owner readers; Bundle Publication and Catalog exposure are absent from classification and recency.",
+      "level": "contract",
+      "status": "executed",
+      "check": "OpenAPI item-kind and source-coverage fixture test"
+    },
+    {
+      "id": "typed-continuations",
+      "source_type": "acceptance-criterion",
+      "source_id": "continuations-resolve-existing-context",
+      "expected_outcome": "Each known continuation opens its exact existing context, and a missing source reports absence without pretending a list fallback is exact.",
+      "level": "system",
+      "status": "executed",
+      "check": "web route tests for run, session, artifact, publication and missing targets"
+    },
+    {
+      "id": "source-coverage-gate",
+      "source_type": "acceptance-criterion",
+      "source_id": "all-contracted-sources-before-activity",
+      "expected_outcome": "The UI keeps the trial-only label and disclosure until all five owner readers and their proof obligations pass.",
+      "level": "system",
+      "status": "executed",
+      "check": "web route and rendered source-coverage gate tests"
+    },
+    {
+      "id": "client-no-inference",
+      "source_type": "acceptance-criterion",
+      "source_id": "client-does-not-infer",
+      "expected_outcome": "Known items render server facts directly; an unknown kind shows its summary and unsupported state without a guessed group, label or action.",
+      "level": "unit",
+      "status": "executed",
+      "check": "web Activity item decision table and architecture guard"
+    },
+    {
+      "id": "run-terminal-rule",
+      "source_type": "rule",
+      "source_id": "run-terminal-status-is-final",
+      "expected_outcome": "Activity reads never imply or cause a lifecycle transition after a Run reaches a terminal status.",
+      "level": "aggregate",
+      "status": "executed",
+      "check": "Run owner mapping table with terminal-state transition tests"
+    },
+    {
+      "id": "creation-inversion-rule",
+      "source_type": "rule",
+      "source_id": "creation-reaches-its-collaborators-through-inversion",
+      "expected_outcome": "Creation exposes its facts through composition-root injection without importing another lifecycle Context or being imported by one.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "platform depguard and composition wiring test"
+    }
+  ]
+}

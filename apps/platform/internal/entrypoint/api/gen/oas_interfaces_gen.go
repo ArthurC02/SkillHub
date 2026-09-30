@@ -349,6 +349,10 @@ type ListTestCasesRes interface {
 	listTestCasesRes()
 }
 
+type ListWorkspaceActivityRes interface {
+	listWorkspaceActivityRes()
+}
+
 type LookupAccountRes interface {
 	lookupAccountRes()
 }

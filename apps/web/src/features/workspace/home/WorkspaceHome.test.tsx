@@ -140,10 +140,10 @@ test("workspace home separates decisions, active work, and owned assets from ser
   expect(section("需要留意").textContent).not.toContain("Cancelled");
   expect(section("執行中").textContent).toContain("Still running");
   expect(section("執行中").textContent).not.toContain("Needs review");
-  const allTrials = Array.from(section("執行中").querySelectorAll("a")).find(
-    (link) => link.textContent === "查看全部試跑",
+  const allActivity = Array.from(section("執行中").querySelectorAll("a")).find(
+    (link) => link.textContent === "查看全部活動",
   );
-  expect(allTrials?.getAttribute("href")).toBe("/workspace/runs");
+  expect(allActivity?.getAttribute("href")).toBe("/activity");
   expect(container.textContent).not.toContain("Already good");
   expect(section("發佈成果").textContent).toContain("目前沒有發佈成果。");
   expect(section("你的資產").textContent).toContain("PDF Summariser");

@@ -188,7 +188,7 @@ INSERT INTO runs (
     workspace_id, skill_version_id, test_case_snapshot_id, provider,
     runtime_snapshot, policy_snapshot, status
 ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated, activity_updated_at
 `
 
 type CreateRunParams struct {
@@ -232,6 +232,7 @@ func (q *Queries) CreateRun(ctx context.Context, arg CreateRunParams) (Run, erro
 		&i.SupervisionCheckedAt,
 		&i.CleanupAttemptedAt,
 		&i.ArtifactsTruncated,
+		&i.ActivityUpdatedAt,
 	)
 	return i, err
 }
@@ -382,7 +383,7 @@ func (q *Queries) ForgetClearedOrphans(ctx context.Context, arg ForgetClearedOrp
 }
 
 const getRun = `-- name: GetRun :one
-SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated FROM runs WHERE id = $1 AND workspace_id = $2
+SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated, activity_updated_at FROM runs WHERE id = $1 AND workspace_id = $2
 `
 
 type GetRunParams struct {
@@ -413,6 +414,7 @@ func (q *Queries) GetRun(ctx context.Context, arg GetRunParams) (Run, error) {
 		&i.SupervisionCheckedAt,
 		&i.CleanupAttemptedAt,
 		&i.ArtifactsTruncated,
+		&i.ActivityUpdatedAt,
 	)
 	return i, err
 }
@@ -620,7 +622,7 @@ WITH candidates AS (
 )
 UPDATE runs r SET supervision_checked_at = now()
 FROM candidates c WHERE r.id = c.id
-RETURNING r.id, r.workspace_id, r.skill_version_id, r.test_case_snapshot_id, r.status, r.status_reason, r.provider, r.runtime_snapshot, r.policy_snapshot, r.cleanup_status, r.cleanup_at, r.created_at, r.started_at, r.finished_at, r.cancel_requested_at, r.failure_class, r.supervision_checked_at, r.cleanup_attempted_at, r.artifacts_truncated
+RETURNING r.id, r.workspace_id, r.skill_version_id, r.test_case_snapshot_id, r.status, r.status_reason, r.provider, r.runtime_snapshot, r.policy_snapshot, r.cleanup_status, r.cleanup_at, r.created_at, r.started_at, r.finished_at, r.cancel_requested_at, r.failure_class, r.supervision_checked_at, r.cleanup_attempted_at, r.artifacts_truncated, r.activity_updated_at
 `
 
 type ListActiveRunsParams struct {
@@ -657,6 +659,7 @@ func (q *Queries) ListActiveRuns(ctx context.Context, arg ListActiveRunsParams) 
 			&i.SupervisionCheckedAt,
 			&i.CleanupAttemptedAt,
 			&i.ArtifactsTruncated,
+			&i.ActivityUpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -749,6 +752,48 @@ func (q *Queries) ListOutboxEventsByTypeSince(ctx context.Context, arg ListOutbo
 			&i.PublishedAt,
 			&i.DeliveryAttempts,
 			&i.DeadLetteredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRunActivityFacts = `-- name: ListRunActivityFacts :many
+SELECT r.id, r.status, r.skill_version_id, r.test_case_snapshot_id,
+       r.activity_updated_at
+FROM runs r
+WHERE r.workspace_id = $1
+ORDER BY r.activity_updated_at DESC, r.id
+`
+
+type ListRunActivityFactsRow struct {
+	ID                 pgtype.UUID
+	Status             RunStatus
+	SkillVersionID     pgtype.UUID
+	TestCaseSnapshotID pgtype.UUID
+	ActivityUpdatedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) ListRunActivityFacts(ctx context.Context, workspaceID pgtype.UUID) ([]ListRunActivityFactsRow, error) {
+	rows, err := q.db.Query(ctx, listRunActivityFacts, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRunActivityFactsRow
+	for rows.Next() {
+		var i ListRunActivityFactsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Status,
+			&i.SkillVersionID,
+			&i.TestCaseSnapshotID,
+			&i.ActivityUpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1028,7 +1073,7 @@ WITH candidates AS (
 )
 UPDATE runs r SET cleanup_attempted_at = now()
 FROM candidates c WHERE r.id = c.id
-RETURNING r.id, r.workspace_id, r.skill_version_id, r.test_case_snapshot_id, r.status, r.status_reason, r.provider, r.runtime_snapshot, r.policy_snapshot, r.cleanup_status, r.cleanup_at, r.created_at, r.started_at, r.finished_at, r.cancel_requested_at, r.failure_class, r.supervision_checked_at, r.cleanup_attempted_at, r.artifacts_truncated
+RETURNING r.id, r.workspace_id, r.skill_version_id, r.test_case_snapshot_id, r.status, r.status_reason, r.provider, r.runtime_snapshot, r.policy_snapshot, r.cleanup_status, r.cleanup_at, r.created_at, r.started_at, r.finished_at, r.cancel_requested_at, r.failure_class, r.supervision_checked_at, r.cleanup_attempted_at, r.artifacts_truncated, r.activity_updated_at
 `
 
 type ListRunsNeedingCleanupParams struct {
@@ -1066,6 +1111,7 @@ func (q *Queries) ListRunsNeedingCleanup(ctx context.Context, arg ListRunsNeedin
 			&i.SupervisionCheckedAt,
 			&i.CleanupAttemptedAt,
 			&i.ArtifactsTruncated,
+			&i.ActivityUpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1102,7 +1148,7 @@ func (q *Queries) ListSkillVersionsInRuns(ctx context.Context, versionIds []pgty
 }
 
 const listUnfinishedRuns = `-- name: ListUnfinishedRuns :many
-SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated FROM runs
+SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated, activity_updated_at FROM runs
 WHERE finished_at IS NULL
 ORDER BY created_at, id
 LIMIT $1
@@ -1137,6 +1183,7 @@ func (q *Queries) ListUnfinishedRuns(ctx context.Context, batchSize int32) ([]Ru
 			&i.SupervisionCheckedAt,
 			&i.CleanupAttemptedAt,
 			&i.ArtifactsTruncated,
+			&i.ActivityUpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1192,7 +1239,8 @@ func (q *Queries) ListUnpublishedOutboxEvents(ctx context.Context, limit int32) 
 const listWorkspaceRuns = `-- name: ListWorkspaceRuns :many
 SELECT r.id, r.status, r.status_reason, r.provider, r.failure_class,
        r.cleanup_status, r.skill_version_id, r.test_case_snapshot_id,
-       r.cancel_requested_at, r.created_at, r.started_at, r.finished_at
+       r.cancel_requested_at, r.created_at, r.started_at, r.finished_at,
+       r.activity_updated_at
 FROM runs r
 WHERE r.workspace_id = $1
   AND ($2::uuid IS NULL OR r.skill_version_id = $2::uuid)
@@ -1222,6 +1270,7 @@ type ListWorkspaceRunsRow struct {
 	CreatedAt          pgtype.Timestamptz
 	StartedAt          pgtype.Timestamptz
 	FinishedAt         pgtype.Timestamptz
+	ActivityUpdatedAt  pgtype.Timestamptz
 }
 
 func (q *Queries) ListWorkspaceRuns(ctx context.Context, arg ListWorkspaceRunsParams) ([]ListWorkspaceRunsRow, error) {
@@ -1252,6 +1301,7 @@ func (q *Queries) ListWorkspaceRuns(ctx context.Context, arg ListWorkspaceRunsPa
 			&i.CreatedAt,
 			&i.StartedAt,
 			&i.FinishedAt,
+			&i.ActivityUpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1264,7 +1314,7 @@ func (q *Queries) ListWorkspaceRuns(ctx context.Context, arg ListWorkspaceRunsPa
 }
 
 const lockRun = `-- name: LockRun :one
-SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated FROM runs WHERE id = $1 AND workspace_id = $2 FOR UPDATE
+SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated, activity_updated_at FROM runs WHERE id = $1 AND workspace_id = $2 FOR UPDATE
 `
 
 type LockRunParams struct {
@@ -1295,6 +1345,7 @@ func (q *Queries) LockRun(ctx context.Context, arg LockRunParams) (Run, error) {
 		&i.SupervisionCheckedAt,
 		&i.CleanupAttemptedAt,
 		&i.ArtifactsTruncated,
+		&i.ActivityUpdatedAt,
 	)
 	return i, err
 }
@@ -1455,9 +1506,10 @@ func (q *Queries) RememberRunArtifactUploadIntent(ctx context.Context, arg Remem
 
 const requestRunCancel = `-- name: RequestRunCancel :one
 UPDATE runs
-SET cancel_requested_at = $1
+SET cancel_requested_at = $1,
+    activity_updated_at = $1
 WHERE id = $2 AND workspace_id = $3 AND status = $4
-RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated, activity_updated_at
 `
 
 type RequestRunCancelParams struct {
@@ -1495,6 +1547,7 @@ func (q *Queries) RequestRunCancel(ctx context.Context, arg RequestRunCancelPara
 		&i.SupervisionCheckedAt,
 		&i.CleanupAttemptedAt,
 		&i.ArtifactsTruncated,
+		&i.ActivityUpdatedAt,
 	)
 	return i, err
 }
@@ -1570,7 +1623,7 @@ UPDATE runs SET
     cleanup_status = $1,
     cleanup_at = coalesce($2, cleanup_at)
 WHERE id = $3 AND workspace_id = $4
-RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated, activity_updated_at
 `
 
 type SetRunCleanupStatusParams struct {
@@ -1608,6 +1661,7 @@ func (q *Queries) SetRunCleanupStatus(ctx context.Context, arg SetRunCleanupStat
 		&i.SupervisionCheckedAt,
 		&i.CleanupAttemptedAt,
 		&i.ArtifactsTruncated,
+		&i.ActivityUpdatedAt,
 	)
 	return i, err
 }
@@ -1615,7 +1669,7 @@ func (q *Queries) SetRunCleanupStatus(ctx context.Context, arg SetRunCleanupStat
 const setRunProvider = `-- name: SetRunProvider :one
 UPDATE runs SET provider = $1, runtime_snapshot = $2
 WHERE id = $3 AND workspace_id = $4 AND status = $5
-RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated, activity_updated_at
 `
 
 type SetRunProviderParams struct {
@@ -1655,6 +1709,7 @@ func (q *Queries) SetRunProvider(ctx context.Context, arg SetRunProviderParams) 
 		&i.SupervisionCheckedAt,
 		&i.CleanupAttemptedAt,
 		&i.ArtifactsTruncated,
+		&i.ActivityUpdatedAt,
 	)
 	return i, err
 }
@@ -1691,9 +1746,10 @@ UPDATE runs SET
     status_reason = $2,
     failure_class = $3,
     started_at = $4,
-    finished_at = $5
+    finished_at = $5,
+    activity_updated_at = now()
 WHERE id = $6 AND workspace_id = $7 AND status = $8
-RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated, activity_updated_at
 `
 
 type TransitionRunParams struct {
@@ -1739,6 +1795,7 @@ func (q *Queries) TransitionRun(ctx context.Context, arg TransitionRunParams) (R
 		&i.SupervisionCheckedAt,
 		&i.CleanupAttemptedAt,
 		&i.ArtifactsTruncated,
+		&i.ActivityUpdatedAt,
 	)
 	return i, err
 }

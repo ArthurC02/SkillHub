@@ -23,7 +23,8 @@ export function WorkspaceRuns() {
     <section>
       <h1>試跑活動</h1>
       <p className="note" data-role="teaching">
-        僅收錄試跑；創作、打包、發佈各自保留
+        僅收錄試跑；創作、打包、發佈各自保留原物件，可在 <Link to="/activity">活動</Link>
+        一起查看。
       </p>
 
       {runs.isPending && <Loading what="試跑活動" />}
@@ -77,7 +78,7 @@ export function WorkspaceRuns() {
         </button>
       )}
       <p className="note">
-        <Link to="/workspace">回到工作區首頁</Link>
+        <Link to="/workspace">回到工作區首頁</Link>｜<Link to="/activity">查看跨來源活動</Link>
       </p>
     </section>
   );

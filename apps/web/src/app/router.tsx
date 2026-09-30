@@ -228,6 +228,12 @@ const workspaceRunsRoute = createRoute({
   ),
 });
 
+const activityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/activity",
+  component: lazyRouteComponent(() => import("../features/activity/Activity.page"), "Activity"),
+});
+
 const compareRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/compare",
@@ -497,6 +503,7 @@ const routeTree = rootRoute.addChildren([
   legacyWorkspaceSkillsRoute,
   importSkillRoute,
   createSkillRoute,
+  activityRoute,
   workspaceRunsRoute,
   workspaceAccountRoute,
   dataPolicyRoute,

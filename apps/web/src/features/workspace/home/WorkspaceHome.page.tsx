@@ -118,7 +118,7 @@ function WorkspaceHomeContent({
               </ul>
             ))}
           <p className="workspace-home-more">
-            <Link to="/workspace/runs">查看全部試跑</Link>
+            <Link to="/activity">查看全部活動</Link>
           </p>
         </section>
       </div>

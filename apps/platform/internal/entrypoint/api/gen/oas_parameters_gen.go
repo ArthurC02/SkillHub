@@ -377,6 +377,14 @@ type ListTestCasesParams struct {
 	Offset  OptInt  `json:",omitempty,omitzero"`
 }
 
+// ListWorkspaceActivityParams is parameters of listWorkspaceActivity operation.
+type ListWorkspaceActivityParams struct {
+	// An opaque `next_cursor` returned by a previous page. Malformed values are refused.
+	Cursor OptString `json:",omitempty,omitzero"`
+	// Number of activity items to return. Defaults to 50.
+	Limit OptInt `json:",omitempty,omitzero"`
+}
+
 // LookupAccountParams is parameters of lookupAccount operation.
 type LookupAccountParams struct {
 	Email string

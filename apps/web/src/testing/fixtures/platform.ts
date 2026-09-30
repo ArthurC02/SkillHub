@@ -30,6 +30,7 @@ import type {
   PublicPublication,
 } from "../../features/publishing/publishing.service";
 import type { DownloadArtifact } from "../../features/packaging/packaging.service";
+import type { ActivityPage } from "../../features/activity/activity.service";
 
 export const SKILL = "11111111-1111-1111-1111-111111111111";
 export const SKILL_B = "aaaaaaaa-2222-2222-2222-222222222222";
@@ -413,6 +414,57 @@ export const RUNS = {
     },
   ],
 };
+
+export const ACTIVITY = {
+  complete: true,
+  sources: ["run", "evaluation", "creation", "packaging", "publishing"],
+  items: [
+    {
+      kind: "run",
+      source_id: OTHER_RUN,
+      summary: "PDF Summariser 的試跑",
+      classification: "needs_attention",
+      status: { value: "not_met", label: "未符合驗收標準", note: "依驗收條件判定。" },
+      activity_at: "2026-09-30T08:00:00Z",
+      context: {
+        skill_id: SKILL,
+        skill_name: "PDF Summariser",
+        skill_version_id: VERSION,
+        test_case_id: TEST_CASE,
+      },
+      continuation: { kind: "run", run_id: OTHER_RUN },
+    },
+    {
+      kind: "packaging_artifact",
+      source_id: ARTIFACT,
+      summary: "pdf-summariser.zip",
+      classification: "recent",
+      status: { value: "available", label: "套件可下載", note: "" },
+      activity_at: "2026-09-29T08:00:00Z",
+      context: { skill_version_id: VERSION, artifact_name: "pdf-summariser.zip" },
+      continuation: { kind: "packaging_artifact", artifact_id: ARTIFACT },
+    },
+    {
+      kind: "skill_publication",
+      source_id: "55555555-5555-4555-8555-555555555555",
+      summary: `${PUBLISHER}/${PUBLICATION}`,
+      classification: "recent",
+      status: { value: "published", label: "已發佈", note: "" },
+      activity_at: "2026-09-28T08:00:00Z",
+      context: {
+        skill_id: SKILL,
+        skill_version_id: VERSION,
+        publisher: PUBLISHER,
+        publication_name: PUBLICATION,
+      },
+      continuation: {
+        kind: "skill_publication",
+        publisher: PUBLISHER,
+        publication_name: PUBLICATION,
+      },
+    },
+  ],
+} satisfies ActivityPage;
 
 export const RUN_ARTIFACTS = {
   truncated: false,
@@ -1230,6 +1282,7 @@ const ROUTES: RouteMatcher[] = [
         } satisfies Me)
       : undefined,
   (path) => (path === "/me/credits" ? ok({ balance_credits: 120 }) : undefined),
+  (path) => (path === "/me/activity" ? ok(ACTIVITY) : undefined),
   (path) =>
     path === "/me/credits/entries"
       ? ok({ entries: [], note: "目前沒有點數進出紀錄。" })

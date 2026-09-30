@@ -16,6 +16,7 @@ export const queryKeys = {
   me: ["me"],
   credits: ["credits"],
   creditStatement: ["credits", "statement"],
+  activity: ["activity"],
   dataRetentionPolicy: ["policy", "data-retention"],
   skills: {
     correctedSearch: (query: string, filters: SearchFilters, correction: string) => [

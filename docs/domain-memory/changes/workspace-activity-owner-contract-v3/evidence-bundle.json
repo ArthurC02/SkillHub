@@ -8,7 +8,13 @@
   },
   "approvals": [],
   "scm_attestation": null,
-  "counterfactual_check": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "source-failure-visible",
+    "mutated_protection": "the fail-closed guard that refuses a page when any owner reader is unavailable",
+    "failure_evidence": "Changing the unavailable-source guard so it could never fire made TestListFailsClosedAndNamesEveryUnavailableSource fail with error = <nil>; the counterfactual tool restored the file byte-for-byte and the focused test passed afterward.",
+    "restored": true
+  },
   "sources": [
     "docs/design/platform-experience.md",
     "docs/design/information-architecture.md",
@@ -37,17 +43,222 @@
     "db/queries/packaging.sql",
     "db/queries/publishing.sql"
   ],
-  "test_results": [],
+  "test_results": [
+    {
+      "obligation_id": "workspace-isolation",
+      "status": "passed",
+      "evidence": "DB-backed TestWorkspaceActivityScopesEveryOwnerReaderToTheSessionWorkspace passed with two Sessions and all five readers",
+      "command_profile": "db-go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:c90683706b5e02e274560c40058b12159a45b9d6264fe2d784c65fd64d99c70b"
+    },
+    {
+      "obligation_id": "owner-facts-only",
+      "status": "passed",
+      "evidence": "seven Activity and owner packages: 1155 passed",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:8b58e5f73c6508c95a45ec8588127a1a3f2f86f3decc33fc0d470440745ba27c"
+    },
+    {
+      "obligation_id": "activity-owner-reader-boundaries",
+      "status": "passed",
+      "evidence": "golangci-lint depguard and composition wiring: 0 issues",
+      "command_profile": "architecture",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:3f2da8554e7a98dd47b97d0f4513c38c694493555b86af96a16d601ff6c11cbf"
+    },
+    {
+      "obligation_id": "run-activity-facts-contract",
+      "status": "passed",
+      "evidence": "Run Activity fact and lifecycle suite included in 1155 passing tests",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:8b58e5f73c6508c95a45ec8588127a1a3f2f86f3decc33fc0d470440745ba27c"
+    },
+    {
+      "obligation_id": "eval-activity-facts-contract",
+      "status": "passed",
+      "evidence": "Evaluation Activity decision and authoritative-time suite included in 1155 passing tests",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:8b58e5f73c6508c95a45ec8588127a1a3f2f86f3decc33fc0d470440745ba27c"
+    },
+    {
+      "obligation_id": "creation-activity-facts-contract",
+      "status": "passed",
+      "evidence": "Creation Activity state and pending-action suite included in 1155 passing tests",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:8b58e5f73c6508c95a45ec8588127a1a3f2f86f3decc33fc0d470440745ba27c"
+    },
+    {
+      "obligation_id": "packaging-activity-facts-contract",
+      "status": "passed",
+      "evidence": "Packaging Activity plus existing expiry, purge, loss and deletion suite included in 1155 passing tests",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:8b58e5f73c6508c95a45ec8588127a1a3f2f86f3decc33fc0d470440745ba27c"
+    },
+    {
+      "obligation_id": "publishing-activity-facts-contract",
+      "status": "passed",
+      "evidence": "Publishing Activity status, Release time and fallback suite included in 1155 passing tests",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:8b58e5f73c6508c95a45ec8588127a1a3f2f86f3decc33fc0d470440745ba27c"
+    },
+    {
+      "obligation_id": "run-evaluation-classification",
+      "status": "passed",
+      "evidence": "Run and Evaluation owner decision tables included in 1155 passing tests",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:8b58e5f73c6508c95a45ec8588127a1a3f2f86f3decc33fc0d470440745ba27c"
+    },
+    {
+      "obligation_id": "run-evaluation-time",
+      "status": "passed",
+      "evidence": "DB-backed Run cancellation timestamp test and Evaluation owner-time table passed",
+      "command_profile": "db-go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:4411faa63de65d8cf97aa2b462221425398050be5b63387592f7526aa5731fe1"
+    },
+    {
+      "obligation_id": "creation-classification-time",
+      "status": "passed",
+      "evidence": "Creation state and pending-action decision tables included in 1155 passing tests",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:8b58e5f73c6508c95a45ec8588127a1a3f2f86f3decc33fc0d470440745ba27c"
+    },
+    {
+      "obligation_id": "packaging-classification-time",
+      "status": "passed",
+      "evidence": "Packaging defensive scan-state and existing availability-boundary suite included in 1155 passing tests",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:8b58e5f73c6508c95a45ec8588127a1a3f2f86f3decc33fc0d470440745ba27c"
+    },
+    {
+      "obligation_id": "publishing-classification-time",
+      "status": "passed",
+      "evidence": "Publishing decision and max-time fallback tables included in 1155 passing tests",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:8b58e5f73c6508c95a45ec8588127a1a3f2f86f3decc33fc0d470440745ba27c"
+    },
+    {
+      "obligation_id": "minimal-item-contract",
+      "status": "passed",
+      "evidence": "OpenAPI Go, TypeScript and Python generated outputs are current",
+      "command_profile": "generated",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:c98bd032fab1c26f427eec44d6d378f7bb420fcb3ab022e2a3313e4dd802ebc9"
+    },
+    {
+      "obligation_id": "global-cursor",
+      "status": "passed",
+      "evidence": "Activity total-order and cross-page cursor suite included in 1155 passing tests",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:8b58e5f73c6508c95a45ec8588127a1a3f2f86f3decc33fc0d470440745ba27c"
+    },
+    {
+      "obligation_id": "source-failure-visible",
+      "status": "passed",
+      "evidence": "DB-backed 503 no-partial-result test passed; counterfactual killed the focused unit test",
+      "command_profile": "db-go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:c90683706b5e02e274560c40058b12159a45b9d6264fe2d784c65fd64d99c70b"
+    },
+    {
+      "obligation_id": "openapi-additive",
+      "status": "passed",
+      "evidence": "task gen:check reports SQL and all three OpenAPI outputs current",
+      "command_profile": "generated",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:c98bd032fab1c26f427eec44d6d378f7bb420fcb3ab022e2a3313e4dd802ebc9"
+    },
+    {
+      "obligation_id": "first-source-scope",
+      "status": "passed",
+      "evidence": "64 web test files and 1039 assertions passed",
+      "command_profile": "web-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:5974283089924f7fa277bfad5e158b69196a5909049c3f763f03eecf55fe4d38"
+    },
+    {
+      "obligation_id": "typed-continuations",
+      "status": "passed",
+      "evidence": "Activity continuation tests and two Chromium layout and target tests passed",
+      "command_profile": "browser-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:2b137ef32a60ea2fce8f40f533d9d4e80951e78141e1ceb3359d2c94f7f6166b"
+    },
+    {
+      "obligation_id": "source-coverage-gate",
+      "status": "passed",
+      "evidence": "DB Activity coverage tests and web incomplete-source tests passed",
+      "command_profile": "db-go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:c90683706b5e02e274560c40058b12159a45b9d6264fe2d784c65fd64d99c70b"
+    },
+    {
+      "obligation_id": "client-no-inference",
+      "status": "passed",
+      "evidence": "64 web test files and 1039 assertions passed, including unknown-kind and flag gates",
+      "command_profile": "web-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:5974283089924f7fa277bfad5e158b69196a5909049c3f763f03eecf55fe4d38"
+    },
+    {
+      "obligation_id": "run-terminal-rule",
+      "status": "passed",
+      "evidence": "DB-backed cancellation, terminal transition and cleanup activity-time test passed",
+      "command_profile": "db-go-test",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:4411faa63de65d8cf97aa2b462221425398050be5b63387592f7526aa5731fe1"
+    },
+    {
+      "obligation_id": "creation-inversion-rule",
+      "status": "passed",
+      "evidence": "golangci-lint depguard and composition wiring: 0 issues",
+      "command_profile": "architecture",
+      "exit_code": 0,
+      "finished_at": "2026-09-30T09:37:30Z",
+      "output_sha256": "sha256:3f2da8554e7a98dd47b97d0f4513c38c694493555b86af96a16d601ff6c11cbf"
+    }
+  ],
   "contract_checks": [],
   "architecture_checks": [],
   "security_checks": [],
   "residual_risks": [
-    "本 package 尚未取得 developer approval、測試 attestation、counterfactual evidence 或 SCM attestation。",
-    "Run activity_updated_at 是待審的新持久時間語意，核准前不得實作；Packaging 暫用 created_at，因現行標準完成流程在同一交易內完成，未來若改為可觀察的非同步掃描須另提 successor proposal。",
-    "Workspace Activity query Context 與五條 owner fact-reader contracts/interactions 都是待審的 Registry updates，核准前不得視為 reviewed boundary。",
-    "Activity Context 與 Publishing owner 的部分 Registry evidence 尚未納入 developer-confirmed source corpus；apply 前必須由開發者確認來源選擇，不得由 Agent 自行背書。",
-    "Run item 需要同時讀取 Run 與 Evaluation owner facts；任一來源失敗都必須使完整 Activity fail closed。",
-    "Publishing 首版刻意不因 Catalog exposure、散布可得性或 Bundle Publication 變化改分類或排序。",
-    "未知 item kind 的 client fallback 只保留摘要與不支援提示，不能提供猜測出的續作動作。"
+    "SCM attestation will be added after the signed implementation commit exists.",
+    "Pagination is stable only while the source dataset is unchanged; the contract deliberately does not claim a cross-request snapshot.",
+    "A future observable asynchronous Packaging scan requires a successor proposal and a new owner timestamp rather than reinterpreting created_at.",
+    "Publishing Activity deliberately excludes Catalog exposure, distribution availability and Bundle Publication from first-version classification and ordering."
   ]
 }

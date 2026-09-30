@@ -3,7 +3,7 @@
   "proposal_id": "workspace-activity-owner-contract-v3",
   "proposer": "codex",
   "requirement_id": "workspace-activity-owner-contract-v3",
-  "status": "submitted",
+  "status": "superseded",
   "change_classification": "material",
   "submitted_at": "2026-09-30T06:46:27.378326Z",
   "verified_at": null,
@@ -15,7 +15,6 @@
     "registry_digest": "sha256:9fb2cf89d1dab47e3999989f41c567d844e53aeebe1a683bdd10ef3e40cf8909"
   },
   "affected_contexts": [
-    "activity",
     "identity",
     "run",
     "eval",
@@ -27,13 +26,7 @@
     "run-terminal-status-is-final",
     "creation-reaches-its-collaborators-through-inversion"
   ],
-  "contract_ids": [
-    "run-activity-facts-v1",
-    "eval-activity-facts-v1",
-    "creation-activity-facts-v1",
-    "packaging-activity-facts-v1",
-    "publishing-activity-facts-v1"
-  ],
+  "contract_ids": [],
   "ownership_decision": {
     "owner_context": "activity",
     "invariant": "Workspace Activity owns only contracted source coverage, completeness, global ordering, cursor semantics and typed continuation composition. Identity resolves only the authenticated Session's Workspace. Run, Evaluation, Creation, Packaging and Publishing remain authoritative for their own Activity classifications, timestamps, stable source identities and continuation identifiers. Activity may merge owner-produced facts with the fixed priority needs_attention before in_progress before recent before neutral, but it never interprets an owner's raw status or becomes a lifecycle owner.",
@@ -149,6 +142,9 @@
         "id": "activity",
         "name": "Workspace Activity",
         "responsibility": "Owns the Workspace-scoped cross-source activity query: contracted source coverage, completeness, global ordering, cursor semantics and typed continuation composition, but no source lifecycle state.",
+        "subdomain": "supporting",
+        "implementation_path": "product/activity",
+        "requirement_prefixes": [],
         "evidence": [
           {
             "path": "docs/design/platform-experience.md",
@@ -156,8 +152,8 @@
               "start": 268,
               "end": 278
             },
-            "content_sha256": "sha256:7cff0ef594795f5edbb416bea4e1d54f0fdf33acdc6d1e6be3758736f5e5b38d",
-            "excerpt_sha256": "sha256:fff405b377cce8cac4e3cd43babd2c35a5386a7eed2493577b533e53b204fb19",
+            "content_sha256": "sha256:1c97db135b5fd6dd0f421d32cc57b5324e5e5997b18f4536502cd4bf43e3148b",
+            "excerpt_sha256": "sha256:33f1fa58fe8dc5d556bc90c626b30f8c4e2bb28bd4c85c8c8bb92bbcd698cae9",
             "source_kind": "unclassified"
           }
         ]
@@ -437,5 +433,9 @@
         "registry_digest": "sha256:9fb2cf89d1dab47e3999989f41c567d844e53aeebe1a683bdd10ef3e40cf8909"
       }
     }
-  ]
+  ],
+  "superseded_from_status": "submitted",
+  "superseded_at": "2026-09-30T09:39:48.526222Z",
+  "superseded_reason": "The approved source confirmation changed the Registry digest after submission; replace with an unchanged design rebased to the confirmed source corpus.",
+  "superseded_by": "workspace-activity-owner-contract-v4"
 }

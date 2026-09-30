@@ -1,21 +1,32 @@
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { useFeatureAvailability } from "../shared/featureAvailability";
 import { RootLayout } from "./RootLayout";
 
-const mocks = vi.hoisted(() => ({ generateExposed: false, pathname: "/workspace" }));
+function FeatureAvailabilityProbe() {
+  const availability = useFeatureAvailability();
+  return <div data-creation-available={availability.creation} />;
+}
+
+const mocks = vi.hoisted(() => ({
+  creationExposed: false,
+  generateExposed: false,
+  pathname: "/workspace",
+}));
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ to, children }: { to: string; children: unknown }) => (
     <a href={to}>{children as never}</a>
   ),
-  Outlet: () => <div />,
+  Outlet: () => <FeatureAvailabilityProbe />,
   useNavigate: () => () => Promise.resolve(),
   useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => string }) =>
     select({ location: { pathname: mocks.pathname } }),
 }));
 
 vi.mock("../features/creation", () => ({
+  useCreationEntryPoint: () => mocks.creationExposed,
   useGenerateEntryPoint: () => mocks.generateExposed,
 }));
 
@@ -44,6 +55,7 @@ let root: Root;
 
 beforeEach(() => {
   mocks.generateExposed = false;
+  mocks.creationExposed = false;
   mocks.pathname = "/workspace";
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   container = document.createElement("div");
@@ -78,10 +90,10 @@ test("the platform shell exposes stable places and hides Studio until generation
   expect(nav.textContent).toContain("Catalog");
   expect(nav.textContent).toContain("資產庫");
   expect(nav.querySelector('a[href="/library"]')).not.toBeNull();
-  const trialActivity = Array.from(nav.querySelectorAll("a")).find(
-    (link) => link.textContent === "試跑活動",
+  const activity = Array.from(nav.querySelectorAll("a")).find(
+    (link) => link.textContent === "活動",
   );
-  expect(trialActivity?.getAttribute("href")).toBe("/workspace/runs");
+  expect(activity?.getAttribute("href")).toBe("/activity");
   expect(nav.textContent).toContain("發佈");
   expect(nav.textContent).not.toContain("Studio");
   expect(nav.textContent).not.toContain("匯入 Skill");
@@ -97,6 +109,16 @@ test("the platform shell exposes Studio when generation is enabled", async () =>
     (link) => link.textContent === "Studio",
   );
   expect(studio?.getAttribute("href")).toBe("/workspace/creations");
+});
+
+test("the platform shell keeps creation continuations closed until both gates are open", async () => {
+  mocks.generateExposed = true;
+  mocks.creationExposed = false;
+  await renderShell();
+
+  expect(
+    container.querySelector("[data-creation-available]")?.getAttribute("data-creation-available"),
+  ).toBe("false");
 });
 
 test("Catalog owns its search instead of receiving a duplicate shell form", async () => {

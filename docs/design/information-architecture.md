@@ -4,7 +4,7 @@
 
 **與 [設計系統](./system.md) 的分工**：那份管**一頁之內**長什麼樣（字級、間距、狀態語彙、停用要說原因）；這份管**一頁與一頁之間**。兩份都遵守 system.md §0 的優先序——牴觸時安全與不誤導在前，一致與美觀在後。
 
-**平台化目標與遷移順序見 [平台體驗模型](./platform-experience.md)。** 本檔仍只記已落地的規則與現況；`/library` 已落地，目標模型裡尚未實作的 `/activity`、`/releases` 等位址不進 §1～§4，直到同一批程式、測試與本檔一起落地。
+**平台化目標與遷移順序見 [平台體驗模型](./platform-experience.md)。** 本檔仍只記已落地的規則與現況；`/library` 與 `/activity` 已落地，目標模型裡尚未實作的 `/releases` 等位址不進 §1～§4，直到同一批程式、測試與本檔一起落地。
 
 **方向：§0 的規則走在程式前面，§1～§4 的表跟在程式後面。** 這兩半的權威方向相反，混在一起就沒有一半是真的：
 
@@ -101,6 +101,7 @@
 | `/library` | `WorkspaceSkills` | 02:WS-002 第 1 條／WS-004 | Skill 生命週期／**資產庫**〔擁有的 Skill 與新增入口；每個 Skill 續接版本、驗證、打包與發佈工作〕 |
 | `/workspace/skills` | 相容導向 | 02:WS-002 第 1 條／WS-004 | 舊資產清單位址；保留 hash 後導向 `/library` |
 | `/workspace/creations` | `CreateSkill` | 02:GEN-001（旗標 `generate_skill`）／[互動創作](../adr/README.md#互動創作)（旗標 `creation_skill`） | 創作者空間／**Skill 創作**〔負責人指示；旗標關著時這一頁只回一句「這一頁現在不存在」，⛔ `01` §10 邊界 1〕 |
+| `/activity` | `Activity` | 02:WS-002／WS-004 | 創作者空間／**跨物件活動與續作**〔Run、Evaluation、Creation、Packaging、Publishing 五個 owner 全部成功才呈現；不完整時不顯示部分清單〕 |
 | `/workspace/runs` | `WorkspaceRuns` | 02:WS-002 第 1 條／WS-004 | 創作者空間／**試跑活動**〔目前只投影 Run owner 清單；不冒充跨物件 Activity〕 |
 | `/workspace/downloads` | `PublishingWorkspace` | 02:WS-002／WS-004、PACK-003～006 | Skill 生命週期／**發佈與交付**〔沿用舊網址；發佈者身分、跨 Skill Publication／最新 Release、精確版本 Bundle 與下載紀錄共用一個平台空間〕 |
 | `/workspace/account` | `WorkspaceAccount` | CORE-007／02:SEC-006 | 創作者空間／創作者帳戶與工作區 |
@@ -144,7 +145,7 @@
 | --- | --- | --- |
 | 標題 | `Skill Hub` | 已登入到 `/workspace`；匿名到 `/` |
 | 全域搜尋 | 離開 Catalog 後顯示「搜尋小工具或描述任務」；`/` 由 Catalog 頁自己的完整搜尋取代，不重複兩份表單 | `/` 加 `q` |
-| 主要導覽（`<nav aria-label="主要導覽">`） | 首頁、Catalog、資產庫、Studio（旗標）、試跑活動、發佈 | `/workspace`、`/`、`/library`、`/workspace/creations`、`/workspace/runs`、`/workspace/downloads` |
+| 主要導覽（`<nav aria-label="主要導覽">`） | 首頁、Catalog、資產庫、Studio（旗標）、活動、發佈 | `/workspace`、`/`、`/library`、`/workspace/creations`、`/activity`、`/workspace/downloads` |
 | 頁尾 | 回報問題（面板，非路由）、資料保存政策、帳號與刪除、**Build 識別碼**（`<details>`，非路由；IA-11） | `/policy`、`/workspace/account` |
 | 右上 | `AuthControls`（未登入時是「使用 GitHub 登入」）；**`GET /me` 的 `operator` 為真時多一個「後台」**（`02:OPS-001`） | 外部 `/auth/github/login`；`/admin` |
 
@@ -156,8 +157,8 @@
 
 ```
 Home ───────────► /compare, /skills/$id, /workspace/import, /library#create
-WorkspaceHome ──► /, /skills/$id, /skills/$id/versions/$id, /lab/test-cases/$id,
-                  /runs/$id, /workspace/creations, /workspace/import, /workspace/runs,
+WorkspaceHome ──► /, /activity, /skills/$id, /skills/$id/versions/$id, /lab/test-cases/$id,
+                  /runs/$id, /workspace/creations, /workspace/import,
                   /library
 Compare ────────► /, /skills/$id
 SkillDetail ────► /skills/$id/files, /skills/$id/versions/$id, /lab/test-cases
@@ -171,7 +172,8 @@ PublishingWorkspace ► /p/$publisher/$name, /skills/$id, /library
 WorkspaceSkills ► /skills/$id, /skills/$id/files, /skills/$id/package,
                   /lab/test-cases, /workspace/runs, /workspace/downloads,
                   /workspace/account, /workspace, /policy
-WorkspaceRuns ──► /runs/$id, /skills/$id, /skills/$id/versions/$id,
+Activity ────────► /runs/$id, /workspace/creations, /workspace/downloads, /library
+WorkspaceRuns ──► /activity, /runs/$id, /skills/$id, /skills/$id/versions/$id,
                   /lab/test-cases/$id, /lab/test-cases, /workspace
 TestCases ──────► /lab/test-cases/$id, /lab/test-cases/$id/datasets, /skills/$id/test-cases/$id/runs/new, /runs/$id,
                   /runs/$id/compare, /skills/$id, /skills/$id/files
@@ -209,7 +211,7 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 | 旗標 | 來源 | 出現在 | 不出現在 |
 | --- | --- | --- | --- |
 | `generate_skill` | `GET /me` 的 `features`（[`useGenerateEntryPoint`](../../apps/web/src/features/creation/generate.service.ts)） | 搜尋的 `no_results` 空狀態、`/library` 新增區、全域 Studio 空間；與 `creation_skill` 同時開啟時，首頁可返回已存在且仍可操作的會話 | **搜尋框旁邊的等重動作**——Catalog 仍先搜尋；首頁不提供開始新創作的入口，沒有可續作會話時也不渲染空卡 |
-| `creation_skill` | `GET /me` 的 `features`；`WorkspaceSkills` 與 `WorkspaceHome` 讀取 | `/library#create` 內的互動創作入口，以及首頁的既有會話續作；兩處仍須 `generate_skill` 同時開啟，三種素材共用會話 | 未啟用部署與封測曝光限制中的使用者；預設關閉；首頁不把最近 50 筆清單冒充完整 Activity |
+| `creation_skill` | `GET /me` 的 `features`；`WorkspaceSkills`、`WorkspaceHome` 與全域殼層讀取 | `/library#create` 內的互動創作入口、首頁的既有會話續作，以及全域殼層授權後由 Activity 顯示的既有 Creation Session 續作連結；三處仍須 `generate_skill` 同時開啟，三種素材共用會話 | 未啟用部署與封測曝光限制中的使用者；預設關閉；首頁不把最近 50 筆清單冒充完整 Activity；Activity 可顯示 owner 狀態，但殼層未授權時不提供 Studio 入口 |
 | `clean_mode` | `GET /me` 的 `features`（[`useCleanMode`](../../apps/web/src/core/session/me.service.ts)） | 每一頁 `<main>` 的第一個元素（[`CleanModeNotice`](../../apps/web/src/app/shell/CleanModeNotice.tsx)，掛在 `router.tsx` 的 `RootLayout`） | 匿名訪客的畫面——`GET /me` 要求 session，`/` 與 `/skills/$id` 未登入可見，PORT-003 今天只對已登入者成立（[淨測試模式](../adr/README.md#淨測試模式) 待決策 1 待敲定） |
 
 **`clean_mode` 這一列是揭露不是入口**：它不帶使用者去任何新地方，只是在已經看得到的畫面上多說一句「這個部署沒有什麼」——上面 `generate_skill` 那一列的「出現在／不出現在」欄位問的是「使用者能不能從這裡走到一個新功能」，這一列的欄位問的是「使用者能不能看到這句話」，兩者是不同的問題，讀這張表時不要用入口的規矩讀這一列。
@@ -254,7 +256,7 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 | 概念 | 受控中文名 | UI 用什麼 | 合規 |
 | --- | --- | --- | --- |
 | 一次 Run | 試跑 | `Run 結果`／`Run 比較` | ✅ `Run` 是保留術語，兩個標題都說出了自己回答什麼 |
-| 跨物件工作投影 | 活動 | `試跑活動` | ✅ 完整 Activity 尚未成立；目前只收錄 owner 回傳的 Run，入口與畫面都明示範圍，不自行推演其他事件 |
+| 跨物件工作投影 | 活動 | `活動`；Run-only 保存檢視為 `試跑活動` | ✅ `/activity` 只合併五個 owner 已分類的 facts；任何來源失敗都不呈現部分結果，來源物件的完整證據仍留在自己的頁面 |
 | Trace | 執行證據 | `執行紀錄`（`/runs/$id` 的 h2） | ✅ 是那一頁的一個區塊，不是一個位址 |
 | Evaluation | 成果判定 | `任務判定`（同頁 h2，排在最前） | ✅ 同上 |
 | 不可變內容快照 | Skill 版本 | 版本選單、`?version=` | ✅ |

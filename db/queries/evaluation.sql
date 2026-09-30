@@ -160,3 +160,9 @@ SELECT run_id, status, overall
 FROM evaluations
 WHERE workspace_id = $1 AND run_id = ANY(sqlc.arg(run_ids)::uuid[])
   AND superseded_at IS NULL;
+
+-- name: ListEvaluationActivityFacts :many
+SELECT run_id, status, overall, created_at, evaluated_at
+FROM evaluations
+WHERE workspace_id = @workspace_id AND superseded_at IS NULL
+ORDER BY created_at DESC, id;

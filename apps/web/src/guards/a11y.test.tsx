@@ -322,6 +322,7 @@ const SCANNED_ROUTES = [
   "/lab/test-cases/$testCaseId/datasets",
   "/runs/$runId",
   "/runs/$runId/compare",
+  "/activity",
   "/workspace",
   "/workspace/account",
   "/workspace/creations",

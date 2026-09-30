@@ -14,7 +14,8 @@ SELECT * FROM runs WHERE id = $1 AND workspace_id = $2 FOR UPDATE;
 -- name: ListWorkspaceRuns :many
 SELECT r.id, r.status, r.status_reason, r.provider, r.failure_class,
        r.cleanup_status, r.skill_version_id, r.test_case_snapshot_id,
-       r.cancel_requested_at, r.created_at, r.started_at, r.finished_at
+       r.cancel_requested_at, r.created_at, r.started_at, r.finished_at,
+       r.activity_updated_at
 FROM runs r
 WHERE r.workspace_id = @workspace_id
   AND (sqlc.narg(skill_version_id)::uuid IS NULL OR r.skill_version_id = sqlc.narg(skill_version_id)::uuid)
@@ -50,15 +51,24 @@ UPDATE runs SET
     status_reason = @reason,
     failure_class = @failure_class,
     started_at = @started_at,
-    finished_at = @finished_at
+    finished_at = @finished_at,
+    activity_updated_at = now()
 WHERE id = @run_id AND workspace_id = @workspace_id AND status = @from_status
 RETURNING *;
 
 -- name: RequestRunCancel :one
 UPDATE runs
-SET cancel_requested_at = @cancel_requested_at
+SET cancel_requested_at = @cancel_requested_at,
+    activity_updated_at = @cancel_requested_at
 WHERE id = @id AND workspace_id = @workspace_id AND status = @status
 RETURNING *;
+
+-- name: ListRunActivityFacts :many
+SELECT r.id, r.status, r.skill_version_id, r.test_case_snapshot_id,
+       r.activity_updated_at
+FROM runs r
+WHERE r.workspace_id = @workspace_id
+ORDER BY r.activity_updated_at DESC, r.id;
 
 -- name: SetRunProvider :one
 UPDATE runs SET provider = @provider, runtime_snapshot = @runtime_snapshot

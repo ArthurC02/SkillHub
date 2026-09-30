@@ -21,6 +21,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/activity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
@@ -97,6 +98,7 @@ type App struct {
 	Versions     *ingest.Service
 	CreationSvc  *creation.Service
 	TraceSvc     *trace.Service
+	ActivitySvc  *activity.Service
 }
 
 func NewApp(cfg Config) (*App, error) {
@@ -162,7 +164,7 @@ func NewApp(cfg Config) (*App, error) {
 
 	publishingSvc := newPublishingService(cfg, registrySvc, packagingSvc)
 	wireExposure(catalogSvc, publishingSvc)
-
+	activitySvc := newActivityService(runSvc, evalSvc, creationSvc, packagingSvc, publishingSvc)
 	app := &App{
 		Auth:         auth,
 		RunSvc:       runSvc,
@@ -171,6 +173,7 @@ func NewApp(cfg Config) (*App, error) {
 		Versions:     versions,
 		CreationSvc:  creationSvc,
 		TraceSvc:     traceSvc,
+		ActivitySvc:  activitySvc,
 	}
 	app.Deps = newDeps(cfg, app, creditSvc, funnel)
 	app.Deps.Search = &catalog.Handler{Svc: catalogSvc, Identity: auth.Service}
@@ -344,6 +347,7 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 		Trace:           &trace.Handler{Svc: app.TraceSvc, Identity: auth.Service},
 		Eval:            &eval.Handler{Svc: evalSvc, Identity: auth.Service},
 		Packaging:       &packaging.Handler{Svc: app.PackagingSvc, Identity: auth.Service},
+		Activity:        &activityHandler{Svc: app.ActivitySvc, Identity: identitySvc},
 		Credits: &creditsHandler{
 			Ledger:          &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
 			Identity:        identitySvc,

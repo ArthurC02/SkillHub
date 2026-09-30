@@ -57,6 +57,48 @@ linters:
         - name: flag-parameter
     depguard:
       rules:
+        activity:
+          files:
+            - "**/internal/product/activity/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
+              desc: "activity consumes facts through readers injected by the composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "activity consumes facts through readers injected by the composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
+              desc: "activity accepts a workspace identity value without importing its owner"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
+              desc: "activity consumes facts through readers injected by the composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
+              desc: "activity consumes facts through readers injected by the composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
+              desc: "activity consumes facts through readers injected by the composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
+              desc: "activity consumes facts through readers injected by the composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
+              desc: "activity consumes facts through readers injected by the composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
+              desc: "activity consumes facts through readers injected by the composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing
+              desc: "activity consumes facts through readers injected by the composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
+              desc: "activity consumes facts through readers injected by the composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
+              desc: "activity consumes facts through readers injected by the composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
+              desc: "activity consumes facts through readers injected by the composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
+              desc: "activity consumes facts through readers injected by the composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
+              desc: "activity must not import its composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
+              desc: "activity must not import a process composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
+              desc: "activity must not import its composition root"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
+              desc: "activity consumes owner facts rather than generic storage workers"
+
         creation:
           files:
             - "**/internal/creator/creation/**"

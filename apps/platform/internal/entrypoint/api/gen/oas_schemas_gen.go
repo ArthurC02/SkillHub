@@ -12177,6 +12177,14 @@ type ListTestCasesUnauthorized Error
 
 func (*ListTestCasesUnauthorized) listTestCasesRes() {}
 
+type ListWorkspaceActivityBadRequest Error
+
+func (*ListWorkspaceActivityBadRequest) listWorkspaceActivityRes() {}
+
+type ListWorkspaceActivityUnauthorized Error
+
+func (*ListWorkspaceActivityUnauthorized) listWorkspaceActivityRes() {}
+
 // LogoutNoContent is response for Logout operation.
 type LogoutNoContent struct{}
 
@@ -16889,6 +16897,52 @@ func (o OptUUID) Get() (v uuid.UUID, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptUUID) Or(d uuid.UUID) uuid.UUID {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptWorkspaceActivityContext returns new OptWorkspaceActivityContext with value set to v.
+func NewOptWorkspaceActivityContext(v WorkspaceActivityContext) OptWorkspaceActivityContext {
+	return OptWorkspaceActivityContext{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptWorkspaceActivityContext is optional WorkspaceActivityContext.
+type OptWorkspaceActivityContext struct {
+	Value WorkspaceActivityContext
+	Set   bool
+}
+
+// IsSet returns true if OptWorkspaceActivityContext was set.
+func (o OptWorkspaceActivityContext) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptWorkspaceActivityContext) Reset() {
+	var v WorkspaceActivityContext
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptWorkspaceActivityContext) SetTo(v WorkspaceActivityContext) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptWorkspaceActivityContext) Get() (v WorkspaceActivityContext, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptWorkspaceActivityContext) Or(d WorkspaceActivityContext) WorkspaceActivityContext {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -29507,3 +29561,792 @@ func (*UploadSkillPackageUnauthorized) uploadSkillPackageRes() {}
 type UploadSkillPackageUnprocessableEntity ImportResult
 
 func (*UploadSkillPackageUnprocessableEntity) uploadSkillPackageRes() {}
+
+// Ref: #/components/schemas/WorkspaceActivityArtifactContinuation
+type WorkspaceActivityArtifactContinuation struct {
+	Kind       WorkspaceActivityArtifactContinuationKind `json:"kind"`
+	ArtifactID uuid.UUID                                 `json:"artifact_id"`
+}
+
+// GetKind returns the value of Kind.
+func (s *WorkspaceActivityArtifactContinuation) GetKind() WorkspaceActivityArtifactContinuationKind {
+	return s.Kind
+}
+
+// GetArtifactID returns the value of ArtifactID.
+func (s *WorkspaceActivityArtifactContinuation) GetArtifactID() uuid.UUID {
+	return s.ArtifactID
+}
+
+// SetKind sets the value of Kind.
+func (s *WorkspaceActivityArtifactContinuation) SetKind(val WorkspaceActivityArtifactContinuationKind) {
+	s.Kind = val
+}
+
+// SetArtifactID sets the value of ArtifactID.
+func (s *WorkspaceActivityArtifactContinuation) SetArtifactID(val uuid.UUID) {
+	s.ArtifactID = val
+}
+
+type WorkspaceActivityArtifactContinuationKind string
+
+const (
+	WorkspaceActivityArtifactContinuationKindPackagingArtifact WorkspaceActivityArtifactContinuationKind = "packaging_artifact"
+)
+
+// AllValues returns all WorkspaceActivityArtifactContinuationKind values.
+func (WorkspaceActivityArtifactContinuationKind) AllValues() []WorkspaceActivityArtifactContinuationKind {
+	return []WorkspaceActivityArtifactContinuationKind{
+		WorkspaceActivityArtifactContinuationKindPackagingArtifact,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s WorkspaceActivityArtifactContinuationKind) MarshalText() ([]byte, error) {
+	switch s {
+	case WorkspaceActivityArtifactContinuationKindPackagingArtifact:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *WorkspaceActivityArtifactContinuationKind) UnmarshalText(data []byte) error {
+	switch WorkspaceActivityArtifactContinuationKind(data) {
+	case WorkspaceActivityArtifactContinuationKindPackagingArtifact:
+		*s = WorkspaceActivityArtifactContinuationKindPackagingArtifact
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/WorkspaceActivityClassification
+type WorkspaceActivityClassification string
+
+const (
+	WorkspaceActivityClassificationNeedsAttention WorkspaceActivityClassification = "needs_attention"
+	WorkspaceActivityClassificationInProgress     WorkspaceActivityClassification = "in_progress"
+	WorkspaceActivityClassificationRecent         WorkspaceActivityClassification = "recent"
+	WorkspaceActivityClassificationNeutral        WorkspaceActivityClassification = "neutral"
+)
+
+// AllValues returns all WorkspaceActivityClassification values.
+func (WorkspaceActivityClassification) AllValues() []WorkspaceActivityClassification {
+	return []WorkspaceActivityClassification{
+		WorkspaceActivityClassificationNeedsAttention,
+		WorkspaceActivityClassificationInProgress,
+		WorkspaceActivityClassificationRecent,
+		WorkspaceActivityClassificationNeutral,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s WorkspaceActivityClassification) MarshalText() ([]byte, error) {
+	switch s {
+	case WorkspaceActivityClassificationNeedsAttention:
+		return []byte(s), nil
+	case WorkspaceActivityClassificationInProgress:
+		return []byte(s), nil
+	case WorkspaceActivityClassificationRecent:
+		return []byte(s), nil
+	case WorkspaceActivityClassificationNeutral:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *WorkspaceActivityClassification) UnmarshalText(data []byte) error {
+	switch WorkspaceActivityClassification(data) {
+	case WorkspaceActivityClassificationNeedsAttention:
+		*s = WorkspaceActivityClassificationNeedsAttention
+		return nil
+	case WorkspaceActivityClassificationInProgress:
+		*s = WorkspaceActivityClassificationInProgress
+		return nil
+	case WorkspaceActivityClassificationRecent:
+		*s = WorkspaceActivityClassificationRecent
+		return nil
+	case WorkspaceActivityClassificationNeutral:
+		*s = WorkspaceActivityClassificationNeutral
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/WorkspaceActivityContext
+type WorkspaceActivityContext struct {
+	SkillID         OptUUID   `json:"skill_id"`
+	SkillName       OptString `json:"skill_name"`
+	SkillVersionID  OptUUID   `json:"skill_version_id"`
+	TestCaseID      OptUUID   `json:"test_case_id"`
+	ArtifactName    OptString `json:"artifact_name"`
+	Publisher       OptString `json:"publisher"`
+	PublicationName OptString `json:"publication_name"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *WorkspaceActivityContext) GetSkillID() OptUUID {
+	return s.SkillID
+}
+
+// GetSkillName returns the value of SkillName.
+func (s *WorkspaceActivityContext) GetSkillName() OptString {
+	return s.SkillName
+}
+
+// GetSkillVersionID returns the value of SkillVersionID.
+func (s *WorkspaceActivityContext) GetSkillVersionID() OptUUID {
+	return s.SkillVersionID
+}
+
+// GetTestCaseID returns the value of TestCaseID.
+func (s *WorkspaceActivityContext) GetTestCaseID() OptUUID {
+	return s.TestCaseID
+}
+
+// GetArtifactName returns the value of ArtifactName.
+func (s *WorkspaceActivityContext) GetArtifactName() OptString {
+	return s.ArtifactName
+}
+
+// GetPublisher returns the value of Publisher.
+func (s *WorkspaceActivityContext) GetPublisher() OptString {
+	return s.Publisher
+}
+
+// GetPublicationName returns the value of PublicationName.
+func (s *WorkspaceActivityContext) GetPublicationName() OptString {
+	return s.PublicationName
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *WorkspaceActivityContext) SetSkillID(val OptUUID) {
+	s.SkillID = val
+}
+
+// SetSkillName sets the value of SkillName.
+func (s *WorkspaceActivityContext) SetSkillName(val OptString) {
+	s.SkillName = val
+}
+
+// SetSkillVersionID sets the value of SkillVersionID.
+func (s *WorkspaceActivityContext) SetSkillVersionID(val OptUUID) {
+	s.SkillVersionID = val
+}
+
+// SetTestCaseID sets the value of TestCaseID.
+func (s *WorkspaceActivityContext) SetTestCaseID(val OptUUID) {
+	s.TestCaseID = val
+}
+
+// SetArtifactName sets the value of ArtifactName.
+func (s *WorkspaceActivityContext) SetArtifactName(val OptString) {
+	s.ArtifactName = val
+}
+
+// SetPublisher sets the value of Publisher.
+func (s *WorkspaceActivityContext) SetPublisher(val OptString) {
+	s.Publisher = val
+}
+
+// SetPublicationName sets the value of PublicationName.
+func (s *WorkspaceActivityContext) SetPublicationName(val OptString) {
+	s.PublicationName = val
+}
+
+// Ref: #/components/schemas/WorkspaceActivityContinuation
+// WorkspaceActivityContinuation represents sum type.
+type WorkspaceActivityContinuation struct {
+	// Type selects the active sum variant, switch on this field.
+	Type                                     WorkspaceActivityContinuationType
+	WorkspaceActivityRunContinuation         WorkspaceActivityRunContinuation
+	WorkspaceActivityCreationContinuation    WorkspaceActivityCreationContinuation
+	WorkspaceActivityArtifactContinuation    WorkspaceActivityArtifactContinuation
+	WorkspaceActivityPublicationContinuation WorkspaceActivityPublicationContinuation
+}
+
+// WorkspaceActivityContinuationType is oneOf type of WorkspaceActivityContinuation.
+type WorkspaceActivityContinuationType string
+
+// Possible values for WorkspaceActivityContinuationType.
+const (
+	WorkspaceActivityRunContinuationWorkspaceActivityContinuation         WorkspaceActivityContinuationType = "run"
+	WorkspaceActivityCreationContinuationWorkspaceActivityContinuation    WorkspaceActivityContinuationType = "creation_session"
+	WorkspaceActivityArtifactContinuationWorkspaceActivityContinuation    WorkspaceActivityContinuationType = "packaging_artifact"
+	WorkspaceActivityPublicationContinuationWorkspaceActivityContinuation WorkspaceActivityContinuationType = "skill_publication"
+)
+
+// IsWorkspaceActivityRunContinuation reports whether WorkspaceActivityContinuation is WorkspaceActivityRunContinuation.
+func (s WorkspaceActivityContinuation) IsWorkspaceActivityRunContinuation() bool {
+	return s.Type == WorkspaceActivityRunContinuationWorkspaceActivityContinuation
+}
+
+// IsWorkspaceActivityCreationContinuation reports whether WorkspaceActivityContinuation is WorkspaceActivityCreationContinuation.
+func (s WorkspaceActivityContinuation) IsWorkspaceActivityCreationContinuation() bool {
+	return s.Type == WorkspaceActivityCreationContinuationWorkspaceActivityContinuation
+}
+
+// IsWorkspaceActivityArtifactContinuation reports whether WorkspaceActivityContinuation is WorkspaceActivityArtifactContinuation.
+func (s WorkspaceActivityContinuation) IsWorkspaceActivityArtifactContinuation() bool {
+	return s.Type == WorkspaceActivityArtifactContinuationWorkspaceActivityContinuation
+}
+
+// IsWorkspaceActivityPublicationContinuation reports whether WorkspaceActivityContinuation is WorkspaceActivityPublicationContinuation.
+func (s WorkspaceActivityContinuation) IsWorkspaceActivityPublicationContinuation() bool {
+	return s.Type == WorkspaceActivityPublicationContinuationWorkspaceActivityContinuation
+}
+
+// SetWorkspaceActivityRunContinuation sets WorkspaceActivityContinuation to WorkspaceActivityRunContinuation.
+func (s *WorkspaceActivityContinuation) SetWorkspaceActivityRunContinuation(v WorkspaceActivityRunContinuation) {
+	s.Type = WorkspaceActivityRunContinuationWorkspaceActivityContinuation
+	s.WorkspaceActivityRunContinuation = v
+}
+
+// GetWorkspaceActivityRunContinuation returns WorkspaceActivityRunContinuation and true boolean if WorkspaceActivityContinuation is WorkspaceActivityRunContinuation.
+func (s WorkspaceActivityContinuation) GetWorkspaceActivityRunContinuation() (v WorkspaceActivityRunContinuation, ok bool) {
+	if !s.IsWorkspaceActivityRunContinuation() {
+		return v, false
+	}
+	return s.WorkspaceActivityRunContinuation, true
+}
+
+// NewWorkspaceActivityRunContinuationWorkspaceActivityContinuation returns new WorkspaceActivityContinuation from WorkspaceActivityRunContinuation.
+func NewWorkspaceActivityRunContinuationWorkspaceActivityContinuation(v WorkspaceActivityRunContinuation) WorkspaceActivityContinuation {
+	var s WorkspaceActivityContinuation
+	s.SetWorkspaceActivityRunContinuation(v)
+	return s
+}
+
+// SetWorkspaceActivityCreationContinuation sets WorkspaceActivityContinuation to WorkspaceActivityCreationContinuation.
+func (s *WorkspaceActivityContinuation) SetWorkspaceActivityCreationContinuation(v WorkspaceActivityCreationContinuation) {
+	s.Type = WorkspaceActivityCreationContinuationWorkspaceActivityContinuation
+	s.WorkspaceActivityCreationContinuation = v
+}
+
+// GetWorkspaceActivityCreationContinuation returns WorkspaceActivityCreationContinuation and true boolean if WorkspaceActivityContinuation is WorkspaceActivityCreationContinuation.
+func (s WorkspaceActivityContinuation) GetWorkspaceActivityCreationContinuation() (v WorkspaceActivityCreationContinuation, ok bool) {
+	if !s.IsWorkspaceActivityCreationContinuation() {
+		return v, false
+	}
+	return s.WorkspaceActivityCreationContinuation, true
+}
+
+// NewWorkspaceActivityCreationContinuationWorkspaceActivityContinuation returns new WorkspaceActivityContinuation from WorkspaceActivityCreationContinuation.
+func NewWorkspaceActivityCreationContinuationWorkspaceActivityContinuation(v WorkspaceActivityCreationContinuation) WorkspaceActivityContinuation {
+	var s WorkspaceActivityContinuation
+	s.SetWorkspaceActivityCreationContinuation(v)
+	return s
+}
+
+// SetWorkspaceActivityArtifactContinuation sets WorkspaceActivityContinuation to WorkspaceActivityArtifactContinuation.
+func (s *WorkspaceActivityContinuation) SetWorkspaceActivityArtifactContinuation(v WorkspaceActivityArtifactContinuation) {
+	s.Type = WorkspaceActivityArtifactContinuationWorkspaceActivityContinuation
+	s.WorkspaceActivityArtifactContinuation = v
+}
+
+// GetWorkspaceActivityArtifactContinuation returns WorkspaceActivityArtifactContinuation and true boolean if WorkspaceActivityContinuation is WorkspaceActivityArtifactContinuation.
+func (s WorkspaceActivityContinuation) GetWorkspaceActivityArtifactContinuation() (v WorkspaceActivityArtifactContinuation, ok bool) {
+	if !s.IsWorkspaceActivityArtifactContinuation() {
+		return v, false
+	}
+	return s.WorkspaceActivityArtifactContinuation, true
+}
+
+// NewWorkspaceActivityArtifactContinuationWorkspaceActivityContinuation returns new WorkspaceActivityContinuation from WorkspaceActivityArtifactContinuation.
+func NewWorkspaceActivityArtifactContinuationWorkspaceActivityContinuation(v WorkspaceActivityArtifactContinuation) WorkspaceActivityContinuation {
+	var s WorkspaceActivityContinuation
+	s.SetWorkspaceActivityArtifactContinuation(v)
+	return s
+}
+
+// SetWorkspaceActivityPublicationContinuation sets WorkspaceActivityContinuation to WorkspaceActivityPublicationContinuation.
+func (s *WorkspaceActivityContinuation) SetWorkspaceActivityPublicationContinuation(v WorkspaceActivityPublicationContinuation) {
+	s.Type = WorkspaceActivityPublicationContinuationWorkspaceActivityContinuation
+	s.WorkspaceActivityPublicationContinuation = v
+}
+
+// GetWorkspaceActivityPublicationContinuation returns WorkspaceActivityPublicationContinuation and true boolean if WorkspaceActivityContinuation is WorkspaceActivityPublicationContinuation.
+func (s WorkspaceActivityContinuation) GetWorkspaceActivityPublicationContinuation() (v WorkspaceActivityPublicationContinuation, ok bool) {
+	if !s.IsWorkspaceActivityPublicationContinuation() {
+		return v, false
+	}
+	return s.WorkspaceActivityPublicationContinuation, true
+}
+
+// NewWorkspaceActivityPublicationContinuationWorkspaceActivityContinuation returns new WorkspaceActivityContinuation from WorkspaceActivityPublicationContinuation.
+func NewWorkspaceActivityPublicationContinuationWorkspaceActivityContinuation(v WorkspaceActivityPublicationContinuation) WorkspaceActivityContinuation {
+	var s WorkspaceActivityContinuation
+	s.SetWorkspaceActivityPublicationContinuation(v)
+	return s
+}
+
+// Ref: #/components/schemas/WorkspaceActivityCreationContinuation
+type WorkspaceActivityCreationContinuation struct {
+	Kind      WorkspaceActivityCreationContinuationKind `json:"kind"`
+	SessionID uuid.UUID                                 `json:"session_id"`
+}
+
+// GetKind returns the value of Kind.
+func (s *WorkspaceActivityCreationContinuation) GetKind() WorkspaceActivityCreationContinuationKind {
+	return s.Kind
+}
+
+// GetSessionID returns the value of SessionID.
+func (s *WorkspaceActivityCreationContinuation) GetSessionID() uuid.UUID {
+	return s.SessionID
+}
+
+// SetKind sets the value of Kind.
+func (s *WorkspaceActivityCreationContinuation) SetKind(val WorkspaceActivityCreationContinuationKind) {
+	s.Kind = val
+}
+
+// SetSessionID sets the value of SessionID.
+func (s *WorkspaceActivityCreationContinuation) SetSessionID(val uuid.UUID) {
+	s.SessionID = val
+}
+
+type WorkspaceActivityCreationContinuationKind string
+
+const (
+	WorkspaceActivityCreationContinuationKindCreationSession WorkspaceActivityCreationContinuationKind = "creation_session"
+)
+
+// AllValues returns all WorkspaceActivityCreationContinuationKind values.
+func (WorkspaceActivityCreationContinuationKind) AllValues() []WorkspaceActivityCreationContinuationKind {
+	return []WorkspaceActivityCreationContinuationKind{
+		WorkspaceActivityCreationContinuationKindCreationSession,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s WorkspaceActivityCreationContinuationKind) MarshalText() ([]byte, error) {
+	switch s {
+	case WorkspaceActivityCreationContinuationKindCreationSession:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *WorkspaceActivityCreationContinuationKind) UnmarshalText(data []byte) error {
+	switch WorkspaceActivityCreationContinuationKind(data) {
+	case WorkspaceActivityCreationContinuationKindCreationSession:
+		*s = WorkspaceActivityCreationContinuationKindCreationSession
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/WorkspaceActivityItem
+type WorkspaceActivityItem struct {
+	// `run`, `creation_session`, `packaging_artifact` or `skill_publication`. Not an enum so a newer
+	// server can add a kind without making an older client discard an otherwise readable item.
+	Kind string `json:"kind"`
+	// Stable canonical identity within the item's owning domain.
+	SourceID       string                          `json:"source_id"`
+	Summary        string                          `json:"summary"`
+	Classification WorkspaceActivityClassification `json:"classification"`
+	Status         Labelled                        `json:"status"`
+	ActivityAt     time.Time                       `json:"activity_at"`
+	Context        OptWorkspaceActivityContext     `json:"context"`
+	Continuation   WorkspaceActivityContinuation   `json:"continuation"`
+}
+
+// GetKind returns the value of Kind.
+func (s *WorkspaceActivityItem) GetKind() string {
+	return s.Kind
+}
+
+// GetSourceID returns the value of SourceID.
+func (s *WorkspaceActivityItem) GetSourceID() string {
+	return s.SourceID
+}
+
+// GetSummary returns the value of Summary.
+func (s *WorkspaceActivityItem) GetSummary() string {
+	return s.Summary
+}
+
+// GetClassification returns the value of Classification.
+func (s *WorkspaceActivityItem) GetClassification() WorkspaceActivityClassification {
+	return s.Classification
+}
+
+// GetStatus returns the value of Status.
+func (s *WorkspaceActivityItem) GetStatus() Labelled {
+	return s.Status
+}
+
+// GetActivityAt returns the value of ActivityAt.
+func (s *WorkspaceActivityItem) GetActivityAt() time.Time {
+	return s.ActivityAt
+}
+
+// GetContext returns the value of Context.
+func (s *WorkspaceActivityItem) GetContext() OptWorkspaceActivityContext {
+	return s.Context
+}
+
+// GetContinuation returns the value of Continuation.
+func (s *WorkspaceActivityItem) GetContinuation() WorkspaceActivityContinuation {
+	return s.Continuation
+}
+
+// SetKind sets the value of Kind.
+func (s *WorkspaceActivityItem) SetKind(val string) {
+	s.Kind = val
+}
+
+// SetSourceID sets the value of SourceID.
+func (s *WorkspaceActivityItem) SetSourceID(val string) {
+	s.SourceID = val
+}
+
+// SetSummary sets the value of Summary.
+func (s *WorkspaceActivityItem) SetSummary(val string) {
+	s.Summary = val
+}
+
+// SetClassification sets the value of Classification.
+func (s *WorkspaceActivityItem) SetClassification(val WorkspaceActivityClassification) {
+	s.Classification = val
+}
+
+// SetStatus sets the value of Status.
+func (s *WorkspaceActivityItem) SetStatus(val Labelled) {
+	s.Status = val
+}
+
+// SetActivityAt sets the value of ActivityAt.
+func (s *WorkspaceActivityItem) SetActivityAt(val time.Time) {
+	s.ActivityAt = val
+}
+
+// SetContext sets the value of Context.
+func (s *WorkspaceActivityItem) SetContext(val OptWorkspaceActivityContext) {
+	s.Context = val
+}
+
+// SetContinuation sets the value of Continuation.
+func (s *WorkspaceActivityItem) SetContinuation(val WorkspaceActivityContinuation) {
+	s.Continuation = val
+}
+
+// Ref: #/components/schemas/WorkspaceActivityPage
+type WorkspaceActivityPage struct {
+	Complete WorkspaceActivityPageComplete `json:"complete"`
+	Sources  []WorkspaceActivitySource     `json:"sources"`
+	Items    []WorkspaceActivityItem       `json:"items"`
+	// Pass as `cursor` for the next page. Absent on the last page.
+	NextCursor OptString `json:"next_cursor"`
+}
+
+// GetComplete returns the value of Complete.
+func (s *WorkspaceActivityPage) GetComplete() WorkspaceActivityPageComplete {
+	return s.Complete
+}
+
+// GetSources returns the value of Sources.
+func (s *WorkspaceActivityPage) GetSources() []WorkspaceActivitySource {
+	return s.Sources
+}
+
+// GetItems returns the value of Items.
+func (s *WorkspaceActivityPage) GetItems() []WorkspaceActivityItem {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *WorkspaceActivityPage) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// SetComplete sets the value of Complete.
+func (s *WorkspaceActivityPage) SetComplete(val WorkspaceActivityPageComplete) {
+	s.Complete = val
+}
+
+// SetSources sets the value of Sources.
+func (s *WorkspaceActivityPage) SetSources(val []WorkspaceActivitySource) {
+	s.Sources = val
+}
+
+// SetItems sets the value of Items.
+func (s *WorkspaceActivityPage) SetItems(val []WorkspaceActivityItem) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *WorkspaceActivityPage) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+func (*WorkspaceActivityPage) listWorkspaceActivityRes() {}
+
+type WorkspaceActivityPageComplete bool
+
+const (
+	WorkspaceActivityPageCompleteTrue WorkspaceActivityPageComplete = true
+)
+
+// AllValues returns all WorkspaceActivityPageComplete values.
+func (WorkspaceActivityPageComplete) AllValues() []WorkspaceActivityPageComplete {
+	return []WorkspaceActivityPageComplete{
+		WorkspaceActivityPageCompleteTrue,
+	}
+}
+
+// Ref: #/components/schemas/WorkspaceActivityPublicationContinuation
+type WorkspaceActivityPublicationContinuation struct {
+	Kind            WorkspaceActivityPublicationContinuationKind `json:"kind"`
+	Publisher       string                                       `json:"publisher"`
+	PublicationName string                                       `json:"publication_name"`
+}
+
+// GetKind returns the value of Kind.
+func (s *WorkspaceActivityPublicationContinuation) GetKind() WorkspaceActivityPublicationContinuationKind {
+	return s.Kind
+}
+
+// GetPublisher returns the value of Publisher.
+func (s *WorkspaceActivityPublicationContinuation) GetPublisher() string {
+	return s.Publisher
+}
+
+// GetPublicationName returns the value of PublicationName.
+func (s *WorkspaceActivityPublicationContinuation) GetPublicationName() string {
+	return s.PublicationName
+}
+
+// SetKind sets the value of Kind.
+func (s *WorkspaceActivityPublicationContinuation) SetKind(val WorkspaceActivityPublicationContinuationKind) {
+	s.Kind = val
+}
+
+// SetPublisher sets the value of Publisher.
+func (s *WorkspaceActivityPublicationContinuation) SetPublisher(val string) {
+	s.Publisher = val
+}
+
+// SetPublicationName sets the value of PublicationName.
+func (s *WorkspaceActivityPublicationContinuation) SetPublicationName(val string) {
+	s.PublicationName = val
+}
+
+type WorkspaceActivityPublicationContinuationKind string
+
+const (
+	WorkspaceActivityPublicationContinuationKindSkillPublication WorkspaceActivityPublicationContinuationKind = "skill_publication"
+)
+
+// AllValues returns all WorkspaceActivityPublicationContinuationKind values.
+func (WorkspaceActivityPublicationContinuationKind) AllValues() []WorkspaceActivityPublicationContinuationKind {
+	return []WorkspaceActivityPublicationContinuationKind{
+		WorkspaceActivityPublicationContinuationKindSkillPublication,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s WorkspaceActivityPublicationContinuationKind) MarshalText() ([]byte, error) {
+	switch s {
+	case WorkspaceActivityPublicationContinuationKindSkillPublication:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *WorkspaceActivityPublicationContinuationKind) UnmarshalText(data []byte) error {
+	switch WorkspaceActivityPublicationContinuationKind(data) {
+	case WorkspaceActivityPublicationContinuationKindSkillPublication:
+		*s = WorkspaceActivityPublicationContinuationKindSkillPublication
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/WorkspaceActivityRunContinuation
+type WorkspaceActivityRunContinuation struct {
+	Kind  WorkspaceActivityRunContinuationKind `json:"kind"`
+	RunID uuid.UUID                            `json:"run_id"`
+}
+
+// GetKind returns the value of Kind.
+func (s *WorkspaceActivityRunContinuation) GetKind() WorkspaceActivityRunContinuationKind {
+	return s.Kind
+}
+
+// GetRunID returns the value of RunID.
+func (s *WorkspaceActivityRunContinuation) GetRunID() uuid.UUID {
+	return s.RunID
+}
+
+// SetKind sets the value of Kind.
+func (s *WorkspaceActivityRunContinuation) SetKind(val WorkspaceActivityRunContinuationKind) {
+	s.Kind = val
+}
+
+// SetRunID sets the value of RunID.
+func (s *WorkspaceActivityRunContinuation) SetRunID(val uuid.UUID) {
+	s.RunID = val
+}
+
+type WorkspaceActivityRunContinuationKind string
+
+const (
+	WorkspaceActivityRunContinuationKindRun WorkspaceActivityRunContinuationKind = "run"
+)
+
+// AllValues returns all WorkspaceActivityRunContinuationKind values.
+func (WorkspaceActivityRunContinuationKind) AllValues() []WorkspaceActivityRunContinuationKind {
+	return []WorkspaceActivityRunContinuationKind{
+		WorkspaceActivityRunContinuationKindRun,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s WorkspaceActivityRunContinuationKind) MarshalText() ([]byte, error) {
+	switch s {
+	case WorkspaceActivityRunContinuationKindRun:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *WorkspaceActivityRunContinuationKind) UnmarshalText(data []byte) error {
+	switch WorkspaceActivityRunContinuationKind(data) {
+	case WorkspaceActivityRunContinuationKindRun:
+		*s = WorkspaceActivityRunContinuationKindRun
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/WorkspaceActivitySource
+type WorkspaceActivitySource string
+
+const (
+	WorkspaceActivitySourceRun        WorkspaceActivitySource = "run"
+	WorkspaceActivitySourceEvaluation WorkspaceActivitySource = "evaluation"
+	WorkspaceActivitySourceCreation   WorkspaceActivitySource = "creation"
+	WorkspaceActivitySourcePackaging  WorkspaceActivitySource = "packaging"
+	WorkspaceActivitySourcePublishing WorkspaceActivitySource = "publishing"
+)
+
+// AllValues returns all WorkspaceActivitySource values.
+func (WorkspaceActivitySource) AllValues() []WorkspaceActivitySource {
+	return []WorkspaceActivitySource{
+		WorkspaceActivitySourceRun,
+		WorkspaceActivitySourceEvaluation,
+		WorkspaceActivitySourceCreation,
+		WorkspaceActivitySourcePackaging,
+		WorkspaceActivitySourcePublishing,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s WorkspaceActivitySource) MarshalText() ([]byte, error) {
+	switch s {
+	case WorkspaceActivitySourceRun:
+		return []byte(s), nil
+	case WorkspaceActivitySourceEvaluation:
+		return []byte(s), nil
+	case WorkspaceActivitySourceCreation:
+		return []byte(s), nil
+	case WorkspaceActivitySourcePackaging:
+		return []byte(s), nil
+	case WorkspaceActivitySourcePublishing:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *WorkspaceActivitySource) UnmarshalText(data []byte) error {
+	switch WorkspaceActivitySource(data) {
+	case WorkspaceActivitySourceRun:
+		*s = WorkspaceActivitySourceRun
+		return nil
+	case WorkspaceActivitySourceEvaluation:
+		*s = WorkspaceActivitySourceEvaluation
+		return nil
+	case WorkspaceActivitySourceCreation:
+		*s = WorkspaceActivitySourceCreation
+		return nil
+	case WorkspaceActivitySourcePackaging:
+		*s = WorkspaceActivitySourcePackaging
+		return nil
+	case WorkspaceActivitySourcePublishing:
+		*s = WorkspaceActivitySourcePublishing
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/WorkspaceActivityUnavailable
+type WorkspaceActivityUnavailable struct {
+	Complete           WorkspaceActivityUnavailableComplete `json:"complete"`
+	UnavailableSources []WorkspaceActivitySource            `json:"unavailable_sources"`
+	// A safe explanation that the complete activity view is temporarily unavailable.
+	Error string `json:"error"`
+}
+
+// GetComplete returns the value of Complete.
+func (s *WorkspaceActivityUnavailable) GetComplete() WorkspaceActivityUnavailableComplete {
+	return s.Complete
+}
+
+// GetUnavailableSources returns the value of UnavailableSources.
+func (s *WorkspaceActivityUnavailable) GetUnavailableSources() []WorkspaceActivitySource {
+	return s.UnavailableSources
+}
+
+// GetError returns the value of Error.
+func (s *WorkspaceActivityUnavailable) GetError() string {
+	return s.Error
+}
+
+// SetComplete sets the value of Complete.
+func (s *WorkspaceActivityUnavailable) SetComplete(val WorkspaceActivityUnavailableComplete) {
+	s.Complete = val
+}
+
+// SetUnavailableSources sets the value of UnavailableSources.
+func (s *WorkspaceActivityUnavailable) SetUnavailableSources(val []WorkspaceActivitySource) {
+	s.UnavailableSources = val
+}
+
+// SetError sets the value of Error.
+func (s *WorkspaceActivityUnavailable) SetError(val string) {
+	s.Error = val
+}
+
+func (*WorkspaceActivityUnavailable) listWorkspaceActivityRes() {}
+
+type WorkspaceActivityUnavailableComplete bool
+
+const (
+	WorkspaceActivityUnavailableCompleteFalse WorkspaceActivityUnavailableComplete = false
+)
+
+// AllValues returns all WorkspaceActivityUnavailableComplete values.
+func (WorkspaceActivityUnavailableComplete) AllValues() []WorkspaceActivityUnavailableComplete {
+	return []WorkspaceActivityUnavailableComplete{
+		WorkspaceActivityUnavailableCompleteFalse,
+	}
+}

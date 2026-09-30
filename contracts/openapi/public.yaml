@@ -378,6 +378,56 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /me/activity:
+    get:
+      operationId: listWorkspaceActivity
+      summary: A complete, owner-classified activity page for the caller's Workspace
+      description: |
+        A query-only view over Run, Evaluation, Creation, Packaging and
+        Publishing facts. Each owning domain supplies its classification,
+        authoritative activity time, stable identity and continuation target;
+        this endpoint only combines and orders those facts.
+
+        The cursor is opaque and belongs only to this endpoint. A page is
+        returned only when every source was read successfully. If any source
+        is unavailable, the response names it and contains no partial items or
+        continuation cursor.
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          description: An opaque `next_cursor` returned by a previous page. Malformed values are refused.
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          description: Number of activity items to return. Defaults to 50.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: A complete, globally ordered page from all five sources.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceActivityPage" }
+        "400":
+          description: The cursor or limit is invalid.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: At least one source could not provide its facts; no partial page is returned.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceActivityUnavailable" }
   /policy/data-retention:
     get:
       operationId: getDataRetentionPolicy
@@ -10545,6 +10595,119 @@ components:
           type: string
           format: uuid
           description: Present only when the Run still exists in the caller's Workspace.
+    WorkspaceActivityPage:
+      type: object
+      required: [complete, sources, items]
+      properties:
+        complete:
+          type: boolean
+          enum: [true]
+        sources:
+          type: array
+          minItems: 5
+          maxItems: 5
+          items: { $ref: "#/components/schemas/WorkspaceActivitySource" }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/WorkspaceActivityItem" }
+        next_cursor:
+          type: string
+          description: Pass as `cursor` for the next page. Absent on the last page.
+    WorkspaceActivityUnavailable:
+      type: object
+      required: [complete, unavailable_sources, error]
+      properties:
+        complete:
+          type: boolean
+          enum: [false]
+        unavailable_sources:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/WorkspaceActivitySource" }
+        error:
+          type: string
+          description: A safe explanation that the complete activity view is temporarily unavailable.
+    WorkspaceActivitySource:
+      type: string
+      enum: [run, evaluation, creation, packaging, publishing]
+    WorkspaceActivityClassification:
+      type: string
+      enum: [needs_attention, in_progress, recent, neutral]
+    WorkspaceActivityItem:
+      type: object
+      required:
+        [kind, source_id, summary, classification, status, activity_at, continuation]
+      properties:
+        kind:
+          type: string
+          description: |
+            `run`, `creation_session`, `packaging_artifact` or
+            `skill_publication`. Not an enum so a newer server can add a kind
+            without making an older client discard an otherwise readable item.
+        source_id:
+          type: string
+          description: Stable canonical identity within the item's owning domain.
+        summary:
+          type: string
+        classification:
+          $ref: "#/components/schemas/WorkspaceActivityClassification"
+        status:
+          $ref: "#/components/schemas/Labelled"
+        activity_at:
+          type: string
+          format: date-time
+        context:
+          $ref: "#/components/schemas/WorkspaceActivityContext"
+        continuation:
+          $ref: "#/components/schemas/WorkspaceActivityContinuation"
+    WorkspaceActivityContext:
+      type: object
+      properties:
+        skill_id: { type: string, format: uuid }
+        skill_name: { type: string }
+        skill_version_id: { type: string, format: uuid }
+        test_case_id: { type: string, format: uuid }
+        artifact_name: { type: string }
+        publisher: { type: string }
+        publication_name: { type: string }
+    WorkspaceActivityContinuation:
+      oneOf:
+        - $ref: "#/components/schemas/WorkspaceActivityRunContinuation"
+        - $ref: "#/components/schemas/WorkspaceActivityCreationContinuation"
+        - $ref: "#/components/schemas/WorkspaceActivityArtifactContinuation"
+        - $ref: "#/components/schemas/WorkspaceActivityPublicationContinuation"
+      discriminator:
+        propertyName: kind
+        mapping:
+          run: "#/components/schemas/WorkspaceActivityRunContinuation"
+          creation_session: "#/components/schemas/WorkspaceActivityCreationContinuation"
+          packaging_artifact: "#/components/schemas/WorkspaceActivityArtifactContinuation"
+          skill_publication: "#/components/schemas/WorkspaceActivityPublicationContinuation"
+    WorkspaceActivityRunContinuation:
+      type: object
+      required: [kind, run_id]
+      properties:
+        kind: { type: string, enum: [run] }
+        run_id: { type: string, format: uuid }
+    WorkspaceActivityCreationContinuation:
+      type: object
+      required: [kind, session_id]
+      properties:
+        kind: { type: string, enum: [creation_session] }
+        session_id: { type: string, format: uuid }
+    WorkspaceActivityArtifactContinuation:
+      type: object
+      required: [kind, artifact_id]
+      properties:
+        kind: { type: string, enum: [packaging_artifact] }
+        artifact_id: { type: string, format: uuid }
+    WorkspaceActivityPublicationContinuation:
+      type: object
+      required: [kind, publisher, publication_name]
+      properties:
+        kind: { type: string, enum: [skill_publication] }
+        publisher: { type: string }
+        publication_name: { type: string }
     CreditBalance:
       description: |
         One account's Credit standing (CRED-001). No field here is

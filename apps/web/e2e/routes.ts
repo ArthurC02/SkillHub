@@ -28,6 +28,7 @@ export const ROUTES: [name: string, url: string][] = [
   ["run-trace", `/runs/${RUN}`],
   ["run-compare", `/runs/${RUN}/compare?against=${OTHER_RUN}`],
   ["workspace-home", "/workspace"],
+  ["activity", "/activity"],
   ["workspace-account", "/workspace/account"],
   ["workspace-downloads", "/workspace/downloads"],
   ["workspace-creations", "/workspace/creations"],
