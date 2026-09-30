@@ -5,7 +5,12 @@ import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
-import { PACKAGING_BLOCKED_LABEL, packagingGate } from "../../packaging";
+import {
+  PACKAGING_BLOCKED_LABEL,
+  packagingGate,
+  useDownloads,
+  type DownloadArtifact,
+} from "../../packaging";
 import { PublishPanel } from "../../publishing";
 import { creationStateLabel, useCreationSessionsForVersion } from "../../creation";
 import {
@@ -81,6 +86,7 @@ export function SkillVersion() {
             versionId={versionId}
             versionNumber={selected.version_number}
           />
+          <VersionDeliverables skillId={skillId} versionId={versionId} />
           <VersionActions
             skillId={skillId}
             versionId={versionId}
@@ -101,6 +107,55 @@ export function SkillVersion() {
         <VersionRail skillId={skillId} versionId={versionId} versions={list} />
       </div>
     </article>
+  );
+}
+
+function VersionDeliverables({ skillId, versionId }: { skillId: string; versionId: string }) {
+  const downloads = useDownloads();
+  const artifacts =
+    downloads.data?.downloads.filter(
+      (artifact) => artifact.skill_id === skillId && artifact.skill_version_id === versionId,
+    ) ?? [];
+
+  return (
+    <section aria-labelledby="version-deliverables-title">
+      <p className="note">打包後的保存結果</p>
+      <h2 id="version-deliverables-title">這一版的交付套件</h2>
+      {downloads.isPending && <Loading what="這一版的交付套件" />}
+      <ReadFailure error={downloads.error} what="這一版的交付套件">
+        <p role="alert">暫時無法讀取這一版的交付套件。</p>
+      </ReadFailure>
+      {downloads.data &&
+        (artifacts.length === 0 ? (
+          <p>這一版還沒有交付套件。完成打包後，套件與保留狀態會留在這裡。</p>
+        ) : (
+          <ul className="download-list" data-role="evidence">
+            {artifacts.map((artifact) => (
+              <VersionDeliverable key={artifact.artifact_id} artifact={artifact} />
+            ))}
+          </ul>
+        ))}
+    </section>
+  );
+}
+
+function VersionDeliverable({ artifact }: { artifact: DownloadArtifact }) {
+  return (
+    <li className="download-item" data-version-deliverable>
+      <p>
+        <strong>{artifact.file_name}</strong> <span className="badge">{artifact.target}</span>{" "}
+        <span className="badge">{artifact.serve_state.label}</span>
+      </p>
+      <p className="note">
+        建立於 <Timestamp at={artifact.created_at} /> · 到期時間{" "}
+        <Timestamp at={artifact.expires_at} />
+      </p>
+      <p>
+        <Link to="/workspace/downloads" search={{ artifact: artifact.artifact_id }}>
+          查看交付紀錄
+        </Link>
+      </p>
+    </li>
   );
 }
 

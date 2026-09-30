@@ -90,10 +90,35 @@ function runItem(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function downloadArtifact(overrides: Record<string, unknown> = {}) {
+  return {
+    artifact_id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    skill_id: SKILL,
+    skill_version_id: VERSION,
+    target: "standard",
+    file_name: "pdf-summariser-v2.zip",
+    size_bytes: 2048,
+    content_hash: "content-hash",
+    manifest_hash: "manifest-hash",
+    status: "available",
+    servable: true,
+    serve_state: { value: "available", label: "可下載", note: "" },
+    version_number: 2,
+    latest_version_number: 2,
+    version_state: { value: "current", label: "目前版本", note: "" },
+    expires_at: "2026-10-28T10:00:00Z",
+    created_at: "2026-09-28T10:00:00Z",
+    download_count: 0,
+    includes_test_cases: true,
+    ...overrides,
+  };
+}
+
 function stubVersions(
   versions = SKILL_VERSIONS,
   runs: { body?: unknown; status?: number } = { body: { runs: [] } },
   creation?: { enabled?: boolean; body?: unknown; status?: number },
+  downloads: { body?: unknown; status?: number } = { body: { downloads: [] } },
 ) {
   const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string) => {
@@ -113,6 +138,9 @@ function stubVersions(
     if (path === "/me/publications") return json(OWN_PUBLICATIONS);
     if (path === `/skills/${SKILL}/diff`) return json(VERSION_DIFF);
     if (path === "/runs") return json(runs.body ?? { error: "unavailable" }, runs.status ?? 200);
+    if (path === "/downloads") {
+      return json(downloads.body ?? { error: "unavailable" }, downloads.status ?? 200);
+    }
     return json({ error: "not found" }, 404);
   });
   return calls;
@@ -208,6 +236,60 @@ test("a version from another Skill cannot expose publish, upload or package acti
   expect(calls).not.toContain("/me/publisher");
   expect(calls).not.toContain(`/skills/${SKILL}/publication`);
   expect(calls.some((call) => call.startsWith("/runs?"))).toBe(false);
+  expect(calls).not.toContain("/downloads");
+});
+
+test("a version keeps only its exact Skill delivery artifacts and preserves owner state", async () => {
+  const artifact = downloadArtifact({
+    servable: false,
+    serve_state: { value: "expired", label: "已過期", note: "檔案已刪除。" },
+  });
+  stubVersions(SKILL_VERSIONS, { body: { runs: [] } }, undefined, {
+    body: {
+      downloads: [
+        artifact,
+        downloadArtifact({
+          artifact_id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+          skill_id: "11111111-1111-4111-8111-111111111111",
+        }),
+        downloadArtifact({
+          artifact_id: "22222222-2222-4222-8222-222222222222",
+          skill_version_id: "33333333-3333-4333-8333-333333333333",
+        }),
+        downloadArtifact({
+          artifact_id: "44444444-4444-4444-8444-444444444444",
+          skill_id: undefined,
+          skill_version_id: undefined,
+          plugin: { name: "review-kit", version: "1.0.0", members: [] },
+          file_name: "review-kit.zip",
+        }),
+      ],
+    },
+  });
+  await render(() => text().includes("pdf-summariser-v2.zip"));
+
+  expect(text()).toContain("這一版的交付套件");
+  expect(text()).toContain("已過期");
+  expect(text()).not.toContain("review-kit.zip");
+  expect(container.querySelectorAll("[data-version-deliverable]")).toHaveLength(1);
+  expect(
+    container.querySelector(`a[href="/workspace/downloads?artifact=${artifact.artifact_id}"]`),
+  ).not.toBeNull();
+});
+
+test("a delivery history read failure is not presented as no package for the version", async () => {
+  stubVersions(SKILL_VERSIONS, { body: { runs: [] } }, undefined, { status: 503 });
+  await render(() => Boolean(container.querySelector('[role="alert"]')));
+
+  expect(text()).toContain("暫時無法讀取這一版的交付套件");
+  expect(text()).not.toContain("這一版還沒有交付套件");
+});
+
+test("a version with no delivery artifacts states bounded absence", async () => {
+  stubVersions();
+  await render(() => text().includes("這一版還沒有交付套件"));
+
+  expect(text()).toContain("完成打包後，套件與保留狀態會留在這裡");
 });
 
 test("an immutable version shows exact run evidence without collapsing execution and verdict", async () => {

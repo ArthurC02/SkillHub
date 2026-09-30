@@ -232,6 +232,16 @@ async function verifyVersionEvidenceOnPhone(page: Page, testInfo: TestInfo) {
   await testCaseLink.focus();
   await expect(testCaseLink).toBeFocused();
 
+  const deliverables = page.getByRole("heading", { name: "這一版的交付套件" }).locator("..");
+  await expect(deliverables.locator(".download-item")).toHaveCount(2);
+  await expect(deliverables).toContainText("可下載");
+  await expect(deliverables).toContainText("已過期,不再提供下載");
+  const artifactLink = deliverables.getByRole("link", { name: "查看交付紀錄" }).first();
+  await expect(artifactLink).toHaveAttribute("href", `/workspace/downloads?artifact=${ARTIFACT}`);
+  await artifactLink.focus();
+  await expect(artifactLink).toBeFocused();
+  await expect(artifactLink).toBeInViewport();
+
   const pageWidth = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,
     scroll: document.documentElement.scrollWidth,
