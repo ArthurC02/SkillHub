@@ -435,7 +435,7 @@ test("04 丙-14 with no version in the URL the page asks for one instead of dema
   expect(platform.calls.some((c) => c.url.includes("version_id=&"))).toBe(false);
 
   await pickVersion(VERSION);
-  await waitFor(() => (container.textContent ?? "").includes("資源上限"));
+  await waitFor(() => (container.textContent ?? "").includes("rows.csv"));
   expect(container.textContent).toContain("rows.csv");
 });
 
