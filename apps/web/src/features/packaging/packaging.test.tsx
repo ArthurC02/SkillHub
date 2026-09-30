@@ -1110,6 +1110,24 @@ test("丙-150 部署沒有設定打包目標時，503 說沒有預覽而不是�
   expect(text()).not.toContain("no packaging targets are configured");
 });
 
+test("打包預覽發生未分類讀取錯誤時，不顯示伺服器原始訊息", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.endsWith("/versions")) return json(VERSIONS);
+    if (url.includes("/packaging/targets")) return json(targets);
+    if (url.includes("/packaging/preview")) {
+      return json({ error: "database connection details" }, 500);
+    }
+    if (url.includes(`/api/skills/${SKILL}`)) return json(skill);
+    return json({ error: "not found" }, 404);
+  });
+  await render(<Packaging />, () => text().includes("標準 Agent Skill 套件"));
+  await waitFor(() => text().includes("暫時無法讀取打包預覽"));
+
+  expect(text()).toContain("請重新整理，或稍後再試");
+  expect(text()).not.toContain("database connection details");
+});
+
 test("丙-155⑦ purged 印 serve_state.note，不印到期時間或到期後檔案刪除", async () => {
   vi.stubGlobal("fetch", () =>
     json({

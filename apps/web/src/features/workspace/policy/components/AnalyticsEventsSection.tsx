@@ -1,4 +1,5 @@
 import { Loading } from "../../../../shared/ui/Loading";
+import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import type { DataRetentionPolicy } from "../../../../core/api/types";
 
 export function AnalyticsEventsSection({
@@ -13,12 +14,12 @@ export function AnalyticsEventsSection({
   return (
     <>
       {isPending && <Loading what="分析事件政策" />}
-      {error && (
+      <ReadFailure error={error} what="分析事件政策">
         <p role="alert">
-          無法讀取分析事件政策：{error.message}
-          。讀不到不等於沒有收集，這一頁不會替伺服器回答這個問題。
+          暫時無法讀取分析事件政策。請重新整理，或稍後再試。讀不到不等於沒有收集，
+          這一頁不會替伺服器回答這個問題。
         </p>
-      )}
+      </ReadFailure>
 
       {data && (
         <>

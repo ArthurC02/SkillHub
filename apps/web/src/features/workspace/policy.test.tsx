@@ -117,6 +117,7 @@ test("O11Y-004 a failed read is a failed read, never an implied 'nothing is coll
 
   expect(text()).toContain("讀不到不等於沒有收集");
   expect(text()).not.toContain("目前不收集");
+  expect(text()).not.toContain("boom");
 });
 
 test("丙-154② the feedback data class is disclosed with the server's own sentences", async () => {

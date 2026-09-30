@@ -11,12 +11,7 @@ function PreviewErrorReason({ error }: { error: unknown }) {
   if (error instanceof ApiError && error.status === 503) {
     return <p role="alert">這個部署沒有設定任何打包目標，所以沒有預覽。</p>;
   }
-  return (
-    <p role="alert">
-      無法讀取打包預覽：
-      {error instanceof Error ? error.message : String(error)}
-    </p>
-  );
+  return <p role="alert">暫時無法讀取打包預覽。請重新整理，或稍後再試。</p>;
 }
 
 export function PackagingPreviewSection({

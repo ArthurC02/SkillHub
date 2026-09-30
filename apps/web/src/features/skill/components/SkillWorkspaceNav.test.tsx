@@ -89,5 +89,7 @@ test("the workbench keeps version context visible but inert until a version is k
   const disabled = nav.querySelector("button[disabled]");
   const reasonId = disabled?.getAttribute("aria-describedby");
   expect(reasonId).toBeTruthy();
-  expect(document.getElementById(reasonId!)?.textContent).toContain("先選定一個版本");
+  const reason = document.getElementById(reasonId!);
+  expect(reason?.textContent).toContain("先選定一個版本");
+  expect(reason?.hidden).toBe(false);
 });
