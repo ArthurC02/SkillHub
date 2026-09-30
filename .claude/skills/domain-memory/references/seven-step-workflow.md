@@ -1,20 +1,12 @@
 # Seven-step domain change workflow
 
-Start with `readiness --repo-root <repo>`. Use the result only to choose the
-smallest next action: discover sources for an empty repository, design for a
-greenfield repository, read and maintain for a brownfield repository, and
-recover or ask the developer for new sources when the result is dead. The
-command is a read-only filesystem observation; it never selects sources or
-changes the Registry.
+Start with `readiness --repo-root <repo>` and use the result only to choose the smallest next action, as [readiness](readiness.md) describes. It is a read-only filesystem observation; it never selects sources or changes the Registry.
 
 Use this workflow for a change that affects a domain model, crosses a Bounded Context, changes a public or event contract, or changes a material business rule. A routine implementation contained within one approved owner does not need the full workflow, but it still reads the Registry before coding and checks whether the implementation changed the domain documents afterward.
 
-For a brownfield refactoring that preserves the reviewed model, use the
-[brownfield refactoring fast path](brownfield-refactoring.md). It requires
-evidence that the model was preserved and escalates back here whenever an
-owner, invariant, collaboration surface, or contract changes.
+A brownfield refactoring that preserves the reviewed model takes the [brownfield refactoring fast path](brownfield-refactoring.md), which escalates back here.
 
-The workflow is continuous: the Registry is the input to implementation and the implementation is evidence for the next Registry revision. Do not treat a completed code change as complete while it leaves a changed owner, term, invariant, boundary, event, contract, or capability undocumented.
+The workflow is continuous: the Registry is the input to implementation and the implementation is evidence for the next Registry revision. A code change that leaves a changed owner, term, invariant, boundary, event, contract, or capability undocumented is not complete.
 
 ## Before Step 0: Map repository sources
 

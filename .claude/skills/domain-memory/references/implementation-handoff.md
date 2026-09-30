@@ -1,6 +1,6 @@
 # Implementation handoff
 
-The handoff is the small bridge between reviewed Domain Memory and the Agent that changes source code. It is a decision record, not a code-generation prompt. Keep it short enough to pass between agents without losing the facts that make the design safe.
+The handoff is the small bridge between reviewed Domain Memory and the Agent that changes source code. It is a decision record, not a code-generation prompt, and short enough to pass between agents without losing the facts that make the design safe.
 
 ## Handoff contents
 
@@ -39,10 +39,10 @@ Do not fill a missing fact with a likely value. Mark it unknown and stop only wh
 - **Maintain** compares the resulting behavior with the handoff and turns any changed fact into a candidate or new Change Package.
 - **Review** checks that every proof obligation has observable evidence and that the implementation did not silently replace an unknown with an assumption.
 
-The handoff may contain a pattern name, but a pattern name alone is never an approval or proof. Use [pattern verification](pattern-verification.md) to define the evidence. The evidence is the preserved invariant, boundary behavior, and failure behavior.
+A pattern name alone is never an approval or proof. [Pattern verification](pattern-verification.md) defines the evidence: the preserved invariant, boundary behavior, and failure behavior.
 
 Material Change Packages declare `change_classification: "material"` and include an `implementation_design`. Its `proof_obligations` are IDs from `test-obligations.json`; the validator rejects an unknown ID. Before a material proposal becomes verified, approved, or applied, its evidence bundle records a passed `counterfactual_check` with the mutated protection, failing evidence, linked obligation, and restoration result.
 
 ## When a handoff is unnecessary
 
-Do not create a tactical handoff for a purely mechanical rename, formatting change, isolated mapping, or implementation contained by an already reviewed boundary. Read the Registry as usual and record the normal verification result. More ceremony is not more DDD.
+Do not create a tactical handoff for a purely mechanical rename, formatting change, isolated mapping, or implementation contained by an already reviewed boundary. Read the Registry as usual and record the normal verification result.

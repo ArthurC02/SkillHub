@@ -2,7 +2,7 @@
 
 Domain Memory records the business facts that implementation must preserve. It does not prescribe a class hierarchy, directory layout, framework, or language-specific DDD template. The Agent already knows common tactical patterns; use the Registry to decide which problem the implementation must solve, then choose the smallest idiomatic design that solves it.
 
-DDD tactical design is selective. A read-only projection, a mechanical adapter, and a simple mapping may need no domain object at all. Do not introduce an Aggregate, Entity, Value Object, Domain Service, Repository, or Event only because its name sounds architectural. A deliberate choice to keep a change as orchestration, a transaction script, or an adapter is valid when the reviewed model has no invariant or domain decision there.
+DDD tactical design is selective. A read-only projection, a mechanical adapter, and a simple mapping may need no domain object at all. Do not introduce an Aggregate, Entity, Value Object, Domain Service, Repository, or Event only because its name sounds architectural. Keeping a change as orchestration, a transaction script, or an adapter is a valid choice when the reviewed model has no invariant or domain decision there.
 
 ## Questions before coding
 
@@ -14,12 +14,10 @@ Answer these from reviewed records and the requirement:
 4. Which operation is a domain decision, which is orchestration, and which is persistence or transport?
 5. Which Context owns each fact, and what is the narrowest interaction with another Context?
 6. What must remain true after failure, retry, duplicate delivery, or partial completion?
-
 7. Is a tactical pattern needed here, or would one add indirection without protecting a domain rule?
-
 8. Does the change reach a system outside the process? Settle that boundary with [ports and adapters](ports-and-adapters.md).
 
-The answers may lead to an Aggregate, Entity, Value Object, Domain Service, Repository port, Domain Event, Policy, or another design. They may also justify no tactical pattern. Name a pattern only when it clarifies the decision; the name is not proof that the implementation is correct.
+The answers may lead to an Aggregate, Entity, Value Object, Domain Service, Repository port, Domain Event, Policy, or another design, or to no tactical pattern. Name a pattern only when it clarifies the decision; the name is not proof that the implementation is correct.
 
 ## Decision ladder
 
@@ -33,14 +31,7 @@ Use the smallest reasoning loop that fits the change:
 
 ## Implementation handoff
 
-For a material change, record a short implementation design in the Change Package and emit the [implementation handoff](implementation-handoff.md). Define its evidence with [pattern verification](pattern-verification.md):
-
-- the domain behavior being protected and the forces that make the choice non-trivial;
-- the selected approach, which may explicitly be "no tactical pattern";
-- the invariant, ownership, consistency, retry, and failure behavior it preserves;
-- the rejected simpler or competing approach and the behavior it could not guarantee;
-- the tests or architecture checks that would expose a boundary violation.
-- the counterfactual mutation that should make the focused proof fail.
+For a material change, record the decision in the Change Package and pass the [implementation handoff](implementation-handoff.md), which carries the protected behavior, the selected approach (which may be "no tactical pattern"), the rejected simpler option and what it could not guarantee, and the proof obligations. [Pattern verification](pattern-verification.md) defines that proof.
 
 Mention a language-native construct only when choosing another construct would change the domain behavior. Do not record fixed filenames, package names, inheritance trees, framework recipes, or generated code as Domain Memory unless the repository has independently made them part of an architectural contract. A language may express the same model with different native constructs; review the behavior and dependencies, not superficial shape.
 

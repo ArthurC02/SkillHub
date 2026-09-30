@@ -36,6 +36,7 @@
         "Extracted names are the domain's terms for the rules.",
         "The rules stated once for every Service are written once.",
         "The code is not split into functions that only forward to another function.",
+        "No extracted function returns its result by changing an argument.",
         "The report states how preserved behaviour was shown, and names any rule that had no test before the change.",
         "The report shows that a test was seen to fail when a rule was broken."
       ]
@@ -55,6 +56,36 @@
       "judged": [
         "No design record, handoff or Registry change is produced.",
         "The report is proportionate to the change."
+      ]
+    },
+    {
+      "id": "loan-terms",
+      "situation": "A lint check forbids flag arguments, and the flag selects a set of values that is a domain concept.",
+      "judged": [
+        "What the flag selected is named from the domain's terms, and the functions read that concept instead of asking yes or no.",
+        "No value is wrapped in a new type, or in an enum, that is still only asked yes or no.",
+        "No flag survives as a keyword argument or a default.",
+        "A third kind of Borrower could be added without touching the functions that compute a Loan Quote."
+      ]
+    },
+    {
+      "id": "delivery-price",
+      "situation": "A lint check limits the number of arguments, and some of the arguments form a domain concept.",
+      "judged": [
+        "Any new type is a concept named in the domain's terms, and its fields are read where they are used.",
+        "The Address rules are stated once, on something named Address, so that pricing a return can reuse them.",
+        "No object exists only to carry arguments into one function.",
+        "No function only forwards to another.",
+        "The check's configuration is unchanged."
+      ]
+    },
+    {
+      "id": "review-limits",
+      "situation": "A lint check forbids literals in comparisons, and the same limits also appear in messages and slices.",
+      "judged": [
+        "Each limit is named from the domain's terms and stated once, and every place it appears, messages included, uses that name.",
+        "No constant's name repeats its value.",
+        "The report does not claim the change is done because the check passes; it says where else the limits appeared."
       ]
     }
   ]

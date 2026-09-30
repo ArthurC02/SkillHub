@@ -1,6 +1,6 @@
 # Domain Memory
 
-A file-backed Registry of reviewed domain facts, and the commands that read it and change it under review. It exists so the next Agent inherits what this one established about the domain, instead of re-deriving it from the code and guessing where it was wrong.
+A file-backed Registry of reviewed domain facts, and the commands that read it and change it under review. The next Agent inherits what this one established about the domain, instead of re-deriving it from the code and guessing where it was wrong.
 
 Nothing here is specific to one Agent or one host. The durable state is JSON files in the repository, the behavior is Markdown plus Python, and the review boundary is Git.
 
@@ -20,7 +20,7 @@ Treat only `reviewed` records as facts. A `candidate` is handoff material and au
 
 ## Choosing what to do
 
-[SKILL.md](SKILL.md) beside this file is where the work is chosen. In the complete package it routes the four lifecycle capabilities and the hygiene check to a page under `skills/`; in a standalone bundle it is the one capability the bundle carries. Either way it is plain Markdown, so read it whether or not your host has a concept of Skills.
+[SKILL.md](SKILL.md) beside this file is where the work is chosen. In the complete package it routes the four lifecycle capabilities and the hygiene check to a page under `skills/`; in a standalone bundle it is the one capability the bundle carries. It is plain Markdown, so read it whether or not your host has a concept of Skills.
 
 [references/script-api.md](references/script-api.md) is the command surface and what each command guarantees. [references/host-integration.md](references/host-integration.md) is for wiring this into a host that dispatches work to several Agents.
 
@@ -28,9 +28,9 @@ Treat only `reviewed` records as facts. A `candidate` is handoff material and au
 
 The reviewed facts say what must stay true. These six hold for every change to source, and they are stated here because this page is the one every Agent reads:
 
-1. Run `quality-gates --repo-root <repo>`. The checks it lists define done. When `standard` is `none`, say so in your report and claim no standard the repository does not enforce.
-2. Search for what already exists, and use it.
-3. Take names from the reviewed terms. A business number, such as a threshold, a rate, or a limit, gets a named home; it is not a literal inside a condition.
+1. Run `quality-gates --repo-root <repo>`. The checks it lists must pass, and a check met by a change of form alone is not met: when one forces a change, remove the cause it points at. When `standard` is `none`, say so in your report and claim no standard the repository does not enforce.
+2. Search for what already exists, and use it or extend it.
+3. Take names from the reviewed terms. A business number, such as a threshold, a rate, or a limit, gets the domain's name and one home, and every place it appears uses that name.
 4. Every rule you add or move ends with a test in the repository that fails when the rule is broken. Prove it with `counterfactual`, once for each rule: `survived` means no test protects that rule, so write the test and run it again. A comparison you run once and discard does not count. Report each rule that survived before you wrote its test.
 5. An external system goes behind a Port named in the domain's terms and declared where a decision can reach it without loading the provider. Address, credentials, and status codes stay in the Adapter. A failure the domain survives is handed to the caller or recorded, never dropped.
 6. A mechanical change gets the change, the tests, and a short report.

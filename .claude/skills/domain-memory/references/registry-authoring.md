@@ -18,6 +18,6 @@ The registry has eleven asset types:
 | Value object | immutable concept and its fields | a JSON payload shape alone |
 | Dependency policy | allowed or prohibited Context collaboration | an import edge alone |
 
-Each entry is `candidate`, `reviewed`, `deprecated`, or `superseded`. A reviewed entry must name an authorized review process or owner. Record version and effective period when the domain asset changes over time. When no owner or date is known, record `unknown`; do not substitute a technical package owner.
+Each entry is `candidate`, `reviewed`, `deprecated`, or `superseded`. A reviewed entry must name an authorized review process or owner. Record version and effective period when the domain asset changes over time; how to record an unknown owner or date is in [registry-schema](registry-schema.md).
 
 Start with the smallest slice that contains a real cross-context behavior: two Contexts, a shared vocabulary term, an invariant, and one interaction. Use the templates as a starting point, not as a claim that every repository needs every asset type.

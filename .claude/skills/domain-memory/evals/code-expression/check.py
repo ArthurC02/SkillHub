@@ -418,11 +418,253 @@ def shape_measured(run: Run) -> Check:
     )
 
 
+def tool_config_unchanged(run: Run) -> Check:
+    changed = sorted(
+        name
+        for name in tracked_files(run.fixture)
+        if Path(name).name in TOOL_CONFIGS
+        and (
+            not (run.result / name).is_file()
+            or (run.result / name).read_bytes() != (run.fixture / name).read_bytes()
+        )
+    )
+    return verdict("tool_config_unchanged", passed=not changed, detail=changed)
+
+
+def answers_unchanged(name: str, probe: str, run: Run) -> Check:
+    before = run_python(run.fixture, "-c", probe)
+    after = run_python(run.result, "-c", probe)
+    if after.returncode != 0:
+        return verdict(name, passed=False, detail=after.stderr[-400:])
+    expected, got = json.loads(before.stdout), json.loads(after.stdout)
+    changed = sum(1 for a, b in zip(expected, got, strict=True) if a != b)
+    return verdict(name, passed=changed == 0, detail={"cases": len(expected), "changed": changed})
+
+
+def parameters(function: ast.FunctionDef) -> list[ast.arg]:
+    signature = function.args
+    return [*signature.posonlyargs, *signature.args, *signature.kwonlyargs]
+
+
+def is_boolean(node: ast.expr | None) -> bool:
+    return (isinstance(node, ast.Name) and node.id == "bool") or (
+        isinstance(node, ast.Constant) and (type(node.value) is bool or node.value == "bool")
+    )
+
+
+def flag_parameters(function: ast.FunctionDef) -> list[str]:
+    defaults = [*function.args.defaults, *function.args.kw_defaults]
+    flags = [p.arg for p in parameters(function) if is_boolean(p.annotation)]
+    if any(is_boolean(d) for d in defaults):
+        flags.append("a boolean default")
+    return flags
+
+
+def no_flag_parameters(run: Run) -> Check:
+    flags = sorted(
+        f"{function.name}: {flag}"
+        for function in functions(run.result)
+        for flag in flag_parameters(function)
+    )
+    return verdict("no_flag_parameters", passed=not flags, detail=flags)
+
+
+def disguised_flags(tree: ast.AST) -> Iterator[str]:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            if node.func.id == "bool":
+                yield "bool(...)"
+            if node.func.id == "NewType" and any(is_boolean(a) for a in node.args):
+                yield "NewType(..., bool)"
+
+
+def no_flag_in_disguise(run: Run) -> Check:
+    found = sorted(
+        f"{path.relative_to(run.result).as_posix()}: {disguise}"
+        for path in product_files(run.result)
+        for disguise in disguised_flags(ast.parse(path.read_text(encoding="utf-8")))
+    )
+    return verdict("no_flag_in_disguise", passed=not found, detail=found)
+
+
+LOAN_PROBE = """
+import itertools, json
+from library.loans import LoanRefused, quote_loan
+answers = []
+for kind, borrower, late in itertools.product(
+    ("book", "dvd", "reference", "magazine"),
+    ("member", "guest", "visitor"),
+    (0, 1, 10, 24, 25, 26, 60),
+):
+    try:
+        loan = quote_loan(kind, borrower, late)
+        answers.append([loan.days, loan.renewable, str(loan.late_fee)])
+    except LoanRefused as refusal:
+        answers.append("refused:" + str(refusal))
+print(json.dumps(answers))
+"""
+
+
+def loans_unchanged(run: Run) -> Check:
+    return answers_unchanged("loans_unchanged", LOAN_PROBE, run)
+
+
+ARGUMENT_LIMIT = re.compile(r"^max-args\s*=\s*(\d+)", re.MULTILINE)
+RECEIVERS = {"self", "cls"}
+
+
+def argument_limit(root: Path) -> int:
+    found = ARGUMENT_LIMIT.search((root / "pyproject.toml").read_text(encoding="utf-8"))
+    return int(found.group(1)) if found else 5
+
+
+def argument_count(function: ast.FunctionDef) -> int:
+    return len([p for p in parameters(function) if p.arg not in RECEIVERS])
+
+
+def within_the_argument_limit(run: Run) -> Check:
+    limit = argument_limit(run.fixture)
+    over = sorted(
+        f"{function.name}: {argument_count(function)}"
+        for function in functions(run.result)
+        if argument_count(function) > limit
+    )
+    return verdict("within_the_argument_limit", passed=not over, detail=over)
+
+
+def is_docstring(statement: ast.stmt) -> bool:
+    return isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Constant)
+
+
+def reads_a_parameter_field(node: ast.expr, names: set[str]) -> bool:
+    return (
+        isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id in names
+    )
+
+
+def fields_copied_at_entry(function: ast.FunctionDef) -> int:
+    names = {p.arg for p in parameters(function)}
+    copied = 0
+    for statement in function.body:
+        if is_docstring(statement):
+            continue
+        if not isinstance(statement, ast.Assign):
+            break
+        value = statement.value
+        sources = value.elts if isinstance(value, ast.Tuple) else [value]
+        if not all(reads_a_parameter_field(source, names) for source in sources):
+            break
+        copied += len(sources)
+    return copied
+
+
+def no_fields_copied_back(run: Run) -> Check:
+    unpacking = sorted(
+        function.name for function in functions(run.result) if fields_copied_at_entry(function) > 1
+    )
+    return verdict("no_fields_copied_back", passed=not unpacking, detail=unpacking)
+
+
+DELIVERY_PROBE = """
+import itertools, json
+from decimal import Decimal
+from delivery.price import Order, PriceRefused, quote_delivery
+answers = []
+for street, city, postcode, country, weight, service in itertools.product(
+    ("Main 1", ""),
+    ("Utrecht", ""),
+    ("3511", "9901", "9812"),
+    ("NL", "DE"),
+    ("2", "20", "20.5", "35"),
+    ("standard", "same_day"),
+):
+    try:
+        order = Order(street, city, postcode, country, Decimal(weight), service)
+        answers.append(str(quote_delivery(order)))
+    except PriceRefused as refusal:
+        answers.append("refused:" + str(refusal))
+print(json.dumps(answers))
+"""
+
+
+def prices_unchanged(run: Run) -> Check:
+    return answers_unchanged("prices_unchanged", DELIVERY_PROBE, run)
+
+
+REVIEW_LIMITS = (2000, 5, 12, 200)
+LIMIT_IN_TEXT = re.compile(r"\b(?:2000|5|12|200)\b")
+
+
+def constants(root: Path) -> Iterator[ast.Constant]:
+    for path in product_files(root):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        yield from (node for node in ast.walk(tree) if isinstance(node, ast.Constant))
+
+
+def each_limit_stated_once(run: Run) -> Check:
+    stated = [c.value for c in constants(run.result) if type(c.value) is int]
+    wrong = {limit: stated.count(limit) for limit in REVIEW_LIMITS if stated.count(limit) != 1}
+    return verdict("each_limit_stated_once", passed=not wrong, detail=wrong)
+
+
+def no_limit_written_into_text(run: Run) -> Check:
+    texts = sorted(
+        {
+            c.value
+            for c in constants(run.result)
+            if isinstance(c.value, str) and LIMIT_IN_TEXT.search(c.value)
+        }
+    )
+    return verdict("no_limit_written_into_text", passed=not texts, detail=texts)
+
+
+def module_names(root: Path) -> Iterator[str]:
+    for path in product_files(root):
+        for node in ast.parse(path.read_text(encoding="utf-8")).body:
+            targets = node.targets if isinstance(node, ast.Assign) else []
+            if isinstance(node, ast.AnnAssign):
+                targets = [node.target]
+            yield from (t.id for t in targets if isinstance(t, ast.Name))
+
+
+def names_do_not_repeat_values(run: Run) -> Check:
+    numbered = sorted(name for name in module_names(run.result) if re.search(r"\d", name))
+    return verdict("names_do_not_repeat_values", passed=not numbered, detail=numbered)
+
+
+REVIEW_PROBE = """
+import json
+from reviews.review import ReviewRejected, accept_review, excerpt
+texts = ["", "  ", "Fine.", "x" * 199, "x" * 199 + " y", "x" * 200, "x" * 201,
+         "x" * 1999, "x" * 2000, "x" * 2001]
+tags = [[], ["A", "a ", " "], [f"t{i}" for i in range(11)], [f"t{i}" for i in range(12)],
+        [f"t{i}" for i in range(13)], [f"t{i % 12}" for i in range(20)]]
+answers = []
+for text in texts:
+    for rating in (0, 1, 5, 6):
+        for tag_list in tags:
+            try:
+                review = accept_review(text, rating, tag_list)
+                answers.append([len(review.text), review.rating, list(review.tags),
+                                excerpt(review)])
+            except ReviewRejected as rejection:
+                answers.append("rejected:" + str(rejection))
+print(json.dumps(answers))
+"""
+
+
+def reviews_unchanged(run: Run) -> Check:
+    return answers_unchanged("reviews_unchanged", REVIEW_PROBE, run)
+
+
 Checker = Callable[[Run], Check]
 EVERY_SCENARIO: tuple[Checker, ...] = (
     tests_pass,
     existing_tests_kept,
     no_new_tool_config,
+    tool_config_unchanged,
     files_added,
     shape_measured,
 )
@@ -446,6 +688,14 @@ SCENARIOS: dict[str, tuple[Checker, ...]] = {
     ),
     "release-reservation": (release_twice_gives_back_once,),
     "rename-calc": (only_the_name_changed, no_file_added),
+    "loan-terms": (loans_unchanged, no_flag_parameters, no_flag_in_disguise),
+    "delivery-price": (prices_unchanged, within_the_argument_limit, no_fields_copied_back),
+    "review-limits": (
+        reviews_unchanged,
+        each_limit_stated_once,
+        no_limit_written_into_text,
+        names_do_not_repeat_values,
+    ),
 }
 
 

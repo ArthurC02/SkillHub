@@ -2,7 +2,7 @@
 
 Domain Memory is portable because its durable state is files in the repository and its behavior is Skills plus scripts. The Plugin manifest does not define `agents` or `subagents`; do not add either field.
 
-A plugin install and a direct Skill read of the Plugin root are different entry points. Whatever a host lists as the installed Plugin's contents is the Skills under `skills/` and nothing else; the Plugin-root `SKILL.md` router is not itself a Skill under a plugin install, so an agent working through the installed plugin never sees the router page, its readiness-first instruction, or this file, which the router alone links to. Each leaf Skill's `description` is sufficient on its own for a host to pick a capability, but the readiness step below is not restated in any leaf Skill. A host must call `readiness` itself before dispatching to a Domain Memory Skill, or route through a direct read of the Plugin-root `SKILL.md` instead of the installed plugin, to keep that step from being silently lost.
+A plugin install and a direct Skill read of the Plugin root are different entry points. A host lists the installed Plugin's contents as the Skills under `skills/` and nothing else: the Plugin-root `SKILL.md` router is not a Skill under a plugin install, so an agent working through the installed plugin never sees the router page, its readiness-first instruction, or this file, which the router alone links to. Each leaf Skill's `description` is sufficient for a host to pick a capability, but no leaf Skill restates the readiness step below. To keep that step from being silently lost, a host must call `readiness` itself before dispatching to a Domain Memory Skill, or route through a direct read of the Plugin-root `SKILL.md` instead of the installed plugin.
 
 The host chooses execution. It may assign the four lifecycle capabilities to separate agents when it supports delegation, or run them in one agent in this order:
 
@@ -14,15 +14,15 @@ The host chooses execution. It may assign the four lifecycle capabilities to sep
 
 `domain-memory-implementation-hygiene` is a companion check on that sequence rather than a sixth step: the host runs it on a code change between Read or Design and the Review handoff. It reads the handoff and produces a routing decision, so a host that cannot delegate still runs it in the implementing context.
 
-Delegated work must use the same repository, Registry, evidence rules, and Git review boundary. A subagent may prepare a proposal or evidence, but it must not treat a candidate as reviewed or bypass the host's write and approval controls.
+Delegated work must use the same repository, Registry, evidence rules, and Git review boundary. A subagent may prepare a proposal or evidence, but must not treat a candidate as reviewed or bypass the host's write and approval controls.
 
 Host-specific role files, model settings, concurrency, and orchestration belong outside the Plugin manifest. A host adapter may map these capability names to its own agent mechanism without changing the Registry format or the Skills.
 
-When delegation is available, pass the implementation handoff from Read or Design to the coding Agent as the task's reviewed context. The receiving Agent may choose different language-native constructs, but it must return evidence for the handoff's proof obligations. If the host cannot carry this handoff between agents, run the capabilities sequentially in one context and label the result unverified when the handoff is lost.
+When delegation is available, pass the implementation handoff from Read or Design to the coding Agent as the task's reviewed context. The receiving Agent may choose different language-native constructs, but must return evidence for the handoff's proof obligations. If the host cannot carry this handoff between agents, run the capabilities sequentially in one context and label the result unverified when the handoff is lost.
 
 A host that carries approvals must also prepare the authority behind them, once per repository and once per machine. `governance-readiness` reports what is still missing, and the API reference's *Preparing the approval authority* section covers both situations and the commands that settle them. Until that is done the Registry holds candidates, which is a legitimate state to work in and not a state to present as reviewed.
 
-The first repository event is readiness routing. Run `readiness --repo-root <repo>` before any capability that expects a Registry. An empty or greenfield repository must go through source discovery and explicit Registry initialization before Read; do not call `probe` as the first command.
+The first repository event is readiness routing: run `readiness --repo-root <repo>` before any capability that expects a Registry. An empty or greenfield repository must go through source discovery and explicit Registry initialization before Read; do not call `probe` as the first command.
 
 The lifecycle adapter should wire these command groups to its own events:
 
@@ -40,7 +40,7 @@ The lifecycle adapter should wire these command groups to its own events:
 | After implementation or source drift | Maintain | `verify-sources`, `verify-evidence`, `verify-audit`, then candidate or Change Package preparation |
 | Before relying on the result | Review | Registry, source, evidence, audit, and Change Package validation |
 
-The two checks on a code change are the host's to run. An Agent told that a command exists seldom runs it unprompted, and the weaker the model the less often, so a host that leaves them to the coding Agent has the instruction without the check.
+The host runs the two checks on a code change. An Agent told that a command exists seldom runs it unprompted, and the weaker the model the less often, so a host that leaves them to the coding Agent has the instruction without the check.
 
 The adapter must report a missing Registry in an empty or greenfield repository as a routing state, and an invalid or stale Registry as a blocking handoff state. It must not silently skip the lifecycle because a host cannot delegate or because a command has no result.
 

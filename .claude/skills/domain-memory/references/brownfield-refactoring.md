@@ -2,7 +2,7 @@
 
 Use this path for a refactoring in an implemented repository when the change
 preserves the reviewed Context owner, invariants, event meaning, and public
-contract. It prevents a mechanical boundary cleanup from becoming a new domain
+contract. It keeps a mechanical boundary cleanup from becoming a new domain
 design exercise.
 
 1. Run `readiness --repo-root <repo> --registry-root <registry>` and stop if it

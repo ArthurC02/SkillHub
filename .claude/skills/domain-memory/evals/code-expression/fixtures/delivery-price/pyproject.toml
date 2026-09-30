@@ -1,0 +1,10 @@
+[project]
+name = "delivery"
+version = "0.1.0"
+requires-python = ">=3.10"
+
+[tool.ruff.lint]
+select = ["PLR0913"]
+
+[tool.ruff.lint.pylint]
+max-args = 5

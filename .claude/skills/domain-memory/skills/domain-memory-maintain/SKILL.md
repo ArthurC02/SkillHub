@@ -7,13 +7,11 @@ description: Keep file-backed Domain Memory current after implementation or sour
 
 Use this after implementation and whenever a selected source moves.
 
-For a brownfield refactoring that preserves the reviewed model, follow the
-[brownfield refactoring fast path](../../references/brownfield-refactoring.md)
-to decide whether a candidate is needed before creating one.
+For a brownfield refactoring that preserves the reviewed model, follow the [brownfield refactoring fast path](../../references/brownfield-refactoring.md) to decide whether a candidate is needed before creating one.
 
 1. Run `verify-sources --repo-root <repo> --source-map <registry>/source-map.json --policy <registry>/domain-memory-policy.json`, `verify-evidence --registry-root <registry> --repo-root <repo>`, and `verify-audit --registry-root <registry>`.
 2. Compare the implemented behavior with the reviewed terms, owner, invariants, boundaries, events, contracts, and capabilities.
-3. Compare the implementation's tactical choice, including an explicit choice of no pattern, with the invariant, ownership, consistency, retry, and failure behavior it claims to preserve. Review behavior and dependencies rather than a fixed language pattern. Use [tactical design reasoning](../../references/tactical-reasoning.md).
+3. Compare the implementation's tactical choice, including an explicit choice of no pattern, with the invariant, ownership, consistency, retry, and failure behavior it claims to preserve. Review behavior and dependencies, not a fixed language pattern. See [tactical design reasoning](../../references/tactical-reasoning.md).
    When deployment configuration affects an immutable record's behavior, verify that the chosen value is captured in that record's snapshot rather than reread during retries.
    For dispatch policy, snapshot every value that changes a compatibility or safety decision, including minimum isolation and any explicitly accepted provider limitation.
    Integration tests must construct adapters through the same composition wiring; do not retain Context-owned environment factories only for tests.

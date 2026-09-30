@@ -1,8 +1,8 @@
 # Domain Memory reliability target architecture
 
-This is the target architecture for a public release. It makes the Registry a reviewable projection, not an authority that can invent domain facts. It separates trusted control, untrusted evidence, and verified state.
+The target architecture for a public release. It makes the Registry a reviewable projection, not an authority that can invent domain facts, and separates trusted control, untrusted evidence, and verified state.
 
-The current local implementation provides policy-controlled source selection and limits, Registry digests, phase-aware journaled local writes with recovery, structured citation verification, test-attestation checks, a tamper-evident local audit chain with a checked head manifest, and SCM-artifact binding checks. It does **not** yet provide a provider API adapter, CI-run retrieval, an immutable remote audit store, a Merkle per-file source manifest, or general contract-diff adapters. Treat the sections below as requirements for those future adapters, never as a claim that they already exist.
+The current local implementation provides policy-controlled source selection and limits, Registry digests, phase-aware journaled local writes with recovery, structured citation verification, test-attestation checks, a tamper-evident local audit chain with a checked head manifest, and SCM-artifact binding checks. It does **not** yet provide a provider API adapter, CI-run retrieval, an immutable remote audit store, a Merkle per-file source manifest, or general contract-diff adapters. The sections below are requirements for those future adapters, never a claim that they exist.
 
 ## Trust boundaries
 
@@ -18,9 +18,9 @@ The Script must not execute text from an evidence source. It must use argument a
 
 ## Durable artifacts
 
-`domain-memory-policy.json` is created during Init from developer choices. It contains the destination, selected source roots, include and exclude patterns, source authority, data classification, owners, storage mode, approved command profiles, review provider, and resource limits. Discovery only suggests values for this policy.
+`domain-memory-policy.json` is created during Init from developer choices: the destination, selected source roots, include and exclude patterns, source authority, data classification, owners, storage mode, approved command profiles, review provider, and resource limits. Discovery only suggests values for it.
 
-The Registry contains records and a canonical manifest. Each Registry revision is a canonical SHA-256 digest of every standard asset. Canonical JSON uses UTF-8, sorted keys, normalized line endings, and an explicit schema version so formatting changes do not invalidate a review.
+The Registry contains records and a canonical manifest. Each Registry revision is a canonical SHA-256 digest of every standard asset. Canonical JSON uses UTF-8, sorted keys, normalized line endings, and an explicit schema version, so formatting changes do not invalidate a review.
 
 Every reviewed evidence citation is an object, not only `path:line`:
 
@@ -35,11 +35,11 @@ Every reviewed evidence citation is an object, not only `path:line`:
 }
 ```
 
-The source manifest is a Merkle-style list of selected files and their digests. It records skipped files and the reason. `verify-evidence` identifies stale records precisely; a changed source root alone does not silently invalidate unrelated evidence.
+The source manifest is a Merkle-style list of selected files and their digests, with skipped files and the reason. `verify-evidence` identifies stale records precisely; a changed source root alone does not silently invalidate unrelated evidence.
 
 ## State model
 
-Record maturity and Change Package workflow are separate:
+Record maturity and Change Package workflow are separate states:
 
 | State | Meaning |
 | --- | --- |
@@ -75,13 +75,13 @@ The journal records `prepared`, `installed`, and `audited` phases. Recovery remo
 
 Normal read, validation, and update operations use only the current worktree, canonical Registry digest, and optional `git rev-parse HEAD`. They never invoke `git log`, ancestry walks, or an unbounded `git diff`.
 
-If a future `history` command is added, it must require an explicit revision range and enforce maximum commits, bytes, duration, and a visited-SHA set. History is an explanatory query only; correctness must not depend on traversing it.
+A future `history` command must require an explicit revision range and enforce maximum commits, bytes, duration, and a visited-SHA set. History is an explanatory query only; correctness must not depend on traversing it.
 
 The HEAD SHA is provenance metadata. It must not by itself invalidate a Proposal when the Registry digest and all cited evidence digests are unchanged; unrelated commits should not force needless reapproval.
 
 ## Approval and test attestations
 
-The default local mode can create drafts and candidate records but cannot establish a reviewed record. Promotion requires a configured verification adapter. A Git hosting adapter verifies the pull request, target commit, required reviewer roles, code-owner requirements, and completed checks through the provider API. It stores references and immutable observed fields, never a claimed reviewer name alone.
+The default local mode can create drafts and candidate records but cannot establish a reviewed record. Promotion requires a configured verification adapter. A Git hosting adapter verifies the pull request, target commit, required reviewer roles, code-owner requirements, and completed checks through the provider API, and stores references and immutable observed fields, never a claimed reviewer name alone.
 
 Test attestations use an allowlisted command profile from the policy. They record command ID, arguments, working directory, environment profile name, input and output digests, exit code, skipped count, duration, commit, and CI run URL when available. Free-text `passed` is never sufficient proof.
 
@@ -91,7 +91,7 @@ Contract adapters validate the declared format and produce structural diffs. A b
 
 All parsers reject unknown schema versions, duplicate identifiers after Unicode normalization, path traversal, malformed journals, oversized JSON, and non-regular files. Recovery journals use fixed operation IDs and paths derived by the Script, never arbitrary paths read from the journal.
 
-Init asks whether Domain Memory is tracked, ignored, or stored externally, plus its sensitivity and retention policy. Source text is not copied by default. Secret scanning runs before persistence, and findings are reported without emitting secret values.
+Init asks whether Domain Memory is tracked, ignored, or stored externally, and its sensitivity and retention policy. Source text is not copied by default. Secret scanning runs before persistence; findings are reported without emitting secret values.
 
 The policy sets limits for file count, file size, total bytes, hash duration, query result count, and history traversal. Exceeding a limit produces a partial, explicitly incomplete result; it never silently omits material.
 
@@ -107,4 +107,4 @@ The policy sets limits for file count, file size, total bytes, hash duration, qu
 
 The Registry digest covers the policy as well as the assets, because the policy decides what the Registry may become: whether a record can ever be reviewed, who the sources answer to, and which command profiles a test attestation may cite. A captured base revision therefore goes stale when the policy changes, however it changed, and approvals taken against it must be sought again.
 
-`amend-policy` changes one governance field, refuses a policy the validator rejects before writing anything, and appends the old value, the new value and a required reason to the audit chain. Selected source paths and limits are not amendable: they are settled at initialization, where a developer confirms them.
+`amend-policy` changes one governance field and audits the change; see [script-api.md](script-api.md). Selected source paths and limits are not amendable: they are settled at initialization, where a developer confirms them.

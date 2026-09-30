@@ -1,6 +1,6 @@
 # Ports and adapters
 
-A Port is a conversation the domain needs to have, stated in the domain's language and owned by the Context that needs it. An Adapter is the one place that knows who is on the other side. Use this page to decide whether a change needs that boundary and to prove that the boundary holds. It prescribes no folder, file name, or language construct; read the neighbouring code for those.
+A Port is a conversation the domain needs to have, stated in the domain's language and owned by the Context that needs it. An Adapter is the one place that knows who is on the other side. This page decides whether a change needs that boundary and proves that it holds. It prescribes no folder, file name, or language construct; read the neighbouring code for those.
 
 ## When a Port is earned
 
@@ -11,7 +11,6 @@ A Port is earned by what is on the other side, not by the pattern's name:
 - a proof obligation that needs the test to decide what the outside answers.
 
 It is not earned by a helper inside the same Context, by a class that has one implementation and nothing external behind it, or by a wish to give every class an interface. Expect few Ports: one for each purposeful conversation, not one for each operation.
-
 ## Questions before coding
 
 1. What does the domain want from this conversation, in its own terms? The answer names the Port. A name that mentions the provider, the protocol, or the transport is the Adapter's name.
@@ -50,4 +49,4 @@ Report what was not run. An Adapter that was never exercised against its real co
 - A business rule placed in the Adapter because the data happened to be there.
 - A Port that repeats the provider's operations one for one.
 - A domain type that carries a wire format's field names or a framework's annotations.
-- An interface added for a collaborator that has one implementation and nothing external behind it.
+- An interface that [is not earned](#when-a-port-is-earned).
