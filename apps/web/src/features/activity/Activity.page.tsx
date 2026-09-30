@@ -62,7 +62,7 @@ export function Activity() {
         {activity.data && <ActivitySummary items={items} />}
       </header>
 
-      <p className="note" data-role="teaching">
+      <p className="note" data-role="caveat">
         這裡合併五個來源，但不取代各物件的完整證據；狀態與時間都由原本的 owner 提供。
       </p>
 

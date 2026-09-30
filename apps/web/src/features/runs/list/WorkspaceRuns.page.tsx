@@ -22,7 +22,7 @@ export function WorkspaceRuns() {
   return (
     <section>
       <h1>試跑活動</h1>
-      <p className="note" data-role="teaching">
+      <p className="note" data-role="caveat">
         僅收錄試跑；創作、打包、發佈各自保留原物件，可在 <Link to="/activity">活動</Link>
         一起查看。
       </p>
