@@ -3,7 +3,7 @@
   "proposal_id": "workspace-activity-owner-contract-v2",
   "proposer": "codex",
   "requirement_id": "workspace-activity-owner-contract-v2",
-  "status": "submitted",
+  "status": "superseded",
   "change_classification": "material",
   "submitted_at": "2026-09-29T12:44:26.537322Z",
   "verified_at": null,
@@ -119,5 +119,9 @@
     "Which Packaging state-change timestamp must be added, and how is clock-derived expiry represented without inventing a stored transition?",
     "What classification and single continuation action does each owner return for every supported state and attached fact?"
   ],
-  "approvals": []
+  "approvals": [],
+  "superseded_from_status": "submitted",
+  "superseded_at": "2026-09-30T06:47:00.188699Z",
+  "superseded_reason": "Replaced by v3, which separates Evaluation ownership, introduces the query-only Activity boundary and versioned owner-reader contracts, and resolves classification, authoritative-time, pagination and Packaging observability gaps found in independent review.",
+  "superseded_by": "workspace-activity-owner-contract-v3"
 }

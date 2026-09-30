@@ -1,0 +1,53 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "workspace-activity-owner-contract-v3",
+  "proposal_id": "workspace-activity-owner-contract-v3",
+  "registry_revision": {
+    "observed_commit": "74b2752b4396b2f0973b7d740e2a5b6976f3c936",
+    "registry_digest": "sha256:9fb2cf89d1dab47e3999989f41c567d844e53aeebe1a683bdd10ef3e40cf8909"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [
+    "docs/design/platform-experience.md",
+    "docs/design/information-architecture.md",
+    "docs/development/platform-ddd-practices.md",
+    "docs/domain-memory/registry/contexts.json",
+    "docs/domain-memory/registry/contracts.json",
+    "docs/domain-memory/registry/interactions.json",
+    "docs/domain-memory/registry/rules.json",
+    "apps/platform/internal/trial/execution/statemachine.go",
+    "apps/platform/internal/trial/execution/http.go",
+    "apps/platform/internal/trial/improvement/verdicts.go",
+    "apps/platform/internal/creator/creation/state.go",
+    "apps/platform/internal/creator/creation/service.go",
+    "apps/platform/internal/skill/delivery/scan.go",
+    "apps/platform/internal/skill/delivery/packaging.go",
+    "apps/platform/internal/skill/publishing/publication.go",
+    "apps/platform/internal/skill/publishing/service.go",
+    "apps/platform/internal/skill/publishing/exposure.go",
+    "apps/web/src/features/runs/runs.model.ts",
+    "apps/web/src/features/publishing/PublishingWorkspace.page.tsx",
+    "apps/web/src/features/packaging/downloads/DownloadsSection.tsx",
+    "contracts/openapi/public.yaml",
+    "db/queries/runs.sql",
+    "db/queries/evaluation.sql",
+    "db/queries/creation.sql",
+    "db/queries/packaging.sql",
+    "db/queries/publishing.sql"
+  ],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "本 package 尚未取得 developer approval、測試 attestation、counterfactual evidence 或 SCM attestation。",
+    "Run activity_updated_at 是待審的新持久時間語意，核准前不得實作；Packaging 暫用 created_at，因現行標準完成流程在同一交易內完成，未來若改為可觀察的非同步掃描須另提 successor proposal。",
+    "Workspace Activity query Context 與五條 owner fact-reader contracts/interactions 都是待審的 Registry updates，核准前不得視為 reviewed boundary。",
+    "Activity Context、interaction mechanism 與 Publishing owner 的部分 Registry evidence 尚未全部納入 developer-confirmed source corpus；apply 前必須由開發者確認來源選擇，不得由 Agent 自行背書。",
+    "Run item 需要同時讀取 Run 與 Evaluation owner facts；任一來源失敗都必須使完整 Activity fail closed。",
+    "Publishing 首版刻意不因 Catalog exposure、散布可得性或 Bundle Publication 變化改分類或排序。",
+    "未知 item kind 的 client fallback 只保留摘要與不支援提示，不能提供猜測出的續作動作。"
+  ]
+}
