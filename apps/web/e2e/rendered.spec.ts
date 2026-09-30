@@ -74,6 +74,11 @@ async function verifyCreationContinuationLayout(page: Page, testInfo: TestInfo) 
       "href",
       `/workspace/downloads?publication=${PUBLISHER}%2F${PUBLICATION}`,
     );
+    await expect(publication.getByText("已列入 Catalog", { exact: true })).toBeVisible();
+    await expect(publication.getByRole("link", { name: "查看全部發佈" })).toHaveAttribute(
+      "href",
+      "/workspace/downloads",
+    );
     await expect(page.locator(".workspace-home-grid .workspace-home-list > li")).toHaveCount(3);
     await expect(page.getByRole("link", { name: "開啟會話" })).toHaveAttribute(
       "href",

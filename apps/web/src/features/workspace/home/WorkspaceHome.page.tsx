@@ -14,7 +14,11 @@ import {
   type CreationSession,
   type CreationState,
 } from "../../creation";
-import { useOwnPublications, type OwnerPublicationSummary } from "../../publishing";
+import {
+  CatalogExposure,
+  useOwnPublications,
+  type OwnerPublicationSummary,
+} from "../../publishing";
 import { useOwnSkills } from "../../skill";
 import {
   RunVerdict,
@@ -184,9 +188,14 @@ function PublicationContinuations() {
 
   return (
     <section className="workspace-home-section">
-      <header>
-        <h2>發佈成果</h2>
-        <p className="note">延續已建立的 Publication，或回到它目前最新的 Release。</p>
+      <header className="workspace-home-section-heading">
+        <div>
+          <h2>發佈成果</h2>
+          <p className="note">延續已建立的 Publication，或回到它目前最新的 Release。</p>
+        </div>
+        <Link className="action-secondary" to="/workspace/downloads">
+          查看全部發佈
+        </Link>
       </header>
       {publications.isPending && <Loading what="發佈成果" />}
       <ReadFailure error={publications.error} what="發佈成果" />
@@ -216,6 +225,7 @@ function PublicationItem({ publication }: { publication: OwnerPublicationSummary
           {publication.publisher}/{publication.name}
         </strong>
         <p className="note">Publication 狀態：{publicationStatusLabel(publication.status)}</p>
+        <CatalogExposure publication={publication} />
         {release ? (
           <p className="note">
             最新 Release：

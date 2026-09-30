@@ -203,7 +203,7 @@ test.each([
   },
 );
 
-test("workspace home resumes exact publication and release contexts without inferring exposure", async () => {
+test("workspace home resumes exact publication, release, and Catalog exposure contexts", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
     if (url.endsWith("/me")) {
@@ -243,7 +243,7 @@ test("workspace home resumes exact publication and release contexts without infe
             address: "skillhub/archived-helper",
             status: "delisted",
             status_changed_at: "2026-09-27T12:00:00Z",
-            catalog_exposure: { state: "revoked" },
+            catalog_exposure: { state: "not_eligible" },
           },
         ],
       });
@@ -258,7 +258,10 @@ test("workspace home resumes exact publication and release contexts without infe
   const publications = section("發佈成果");
   expect(publications.textContent).toContain("Publication 狀態：已發佈");
   expect(publications.textContent).toContain("最新 Release：v7");
+  expect(publications.textContent).toContain("等待 Catalog 審核");
+  expect(publications.textContent).toContain("還不會出現在搜尋與 Catalog");
   expect(publications.textContent).toContain("Publication 狀態：已下架");
+  expect(publications.textContent).toContain("目前不符合曝光條件");
   expect(publications.textContent).toContain("尚未建立 Release");
   expect(
     publications.querySelector('a[href="/skills/skill-1/versions/version-7"]')?.textContent,
@@ -268,9 +271,11 @@ test("workspace home resumes exact publication and release contexts without infe
       'a[href="/workspace/downloads?publication=skillhub%2Fpdf-summariser"]',
     )?.textContent,
   ).toBe("管理發佈");
+  expect(publications.querySelector('a[href="/workspace/downloads"]')?.textContent).toBe(
+    "查看全部發佈",
+  );
   expect(publications.textContent).not.toContain("awaiting_review");
-  expect(publications.textContent).not.toContain("等待審查");
-  expect(publications.textContent).not.toContain("revoked");
+  expect(publications.textContent).not.toContain("not_eligible");
 });
 
 test("workspace home keeps a publication read failure distinct from an empty result", async () => {
