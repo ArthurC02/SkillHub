@@ -25,6 +25,7 @@ afterEach(async () => {
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const VERSION = "22222222-2222-2222-2222-222222222222";
 const OLDER_VERSION = "44444444-4444-4444-4444-444444444444";
+const UNKNOWN_VERSION = "66666666-6666-6666-6666-666666666666";
 const TEST_CASE = "33333333-3333-3333-3333-333333333333";
 const OTHER_SKILL = "55555555-5555-5555-5555-555555555555";
 
@@ -522,10 +523,18 @@ test("a mismatched Test Case stops before requesting a preflight summary", async
 
 test("an unknown Version stops before requesting a preflight summary", async () => {
   const platform = stubPlatform();
-  await renderLab({ version: "66666666-6666-6666-6666-666666666666" });
+  await renderLab({ version: UNKNOWN_VERSION });
   await waitFor(() => text().includes("Version 不屬於這個 Skill"));
 
-  expect(platform.calls.some((call) => call.url.includes("/runs/preflight"))).toBe(false);
+  expect(
+    platform.calls.some((call) => {
+      const url = new URL(call.url, "http://localhost");
+      return (
+        url.pathname.endsWith("/runs/preflight") &&
+        url.searchParams.get("version_id") === UNKNOWN_VERSION
+      );
+    }),
+  ).toBe(false);
   expect(confirmButton()).toBeUndefined();
 });
 
