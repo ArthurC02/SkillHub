@@ -349,12 +349,6 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
   margin-top: 0;
 }
 
-/* 表格是一個資料表面，所以它坐在 `--surface` 上。
-   **這一條同時修掉一個量出來的錯**：表頭原本要用 `--code-bg` 當凹面，而
-   `--code-bg`（#f1f3f7）在**頁面底色** `--bg`（#eef1f6）上量起來是 1.01:1——
-   看不見。三層平面的「凹」是相對於 `--surface` 成立的，不是相對於地。政策頁那張
-   表因此完全沒有反應，而 2026-09-08 早些時候把「這個工作區的其他頁」改成
-   `--code-bg` 面板也踩了同一個坑（外部審查讀成「沒做完的灰板」，那是對的）。 */
 .table-scroll {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -823,37 +817,16 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
   margin-top: auto;
 }
 
-/* The edge light is a conic sweep of the four tones centred on the pointer
-   (--x/--y from spotlight.ts), covered by a --border fade everywhere except
-   near it; the face gets a tint of the card's own --tone. */
 .skill-card,
 .create-cards > li {
-  --x: -999px;
-  --y: -999px;
-  --tone: var(--tile-violet);
-  --tone-deep: var(--tile-violet-deep);
-  border: 1px solid transparent;
+  --tone: var(--tile-indigo);
+  --tone-deep: var(--tile-indigo-deep);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  background:
-    radial-gradient(
-        420px circle at var(--x) var(--y),
-        color-mix(in srgb, var(--tone) 12%, transparent),
-        transparent 60%
-      )
-      padding-box,
-    linear-gradient(var(--surface), var(--surface)) padding-box,
-    radial-gradient(220px circle at var(--x) var(--y), transparent, var(--border) 70%) border-box,
-    conic-gradient(
-        from 0deg at var(--x) var(--y),
-        var(--tile-violet),
-        var(--tile-blue),
-        var(--tile-teal),
-        var(--tile-rose),
-        var(--tile-violet)
-      )
-      border-box;
+  background: var(--surface);
   box-shadow: var(--shadow-rest);
   transition:
+    border-color var(--dur) var(--ease),
     transform var(--dur) var(--ease),
     box-shadow var(--dur) var(--ease);
 }
@@ -864,18 +837,19 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
 }
 
 :is(.skill-card, .create-cards > li)[data-tone="2"] {
-  --tone: var(--tile-teal);
-  --tone-deep: var(--tile-teal-deep);
+  --tone: var(--tile-cyan);
+  --tone-deep: var(--tile-cyan-deep);
 }
 
 :is(.skill-card, .create-cards > li)[data-tone="3"] {
-  --tone: var(--tile-rose);
-  --tone-deep: var(--tile-rose-deep);
+  --tone: var(--tile-teal);
+  --tone-deep: var(--tile-teal-deep);
 }
 
 @media (hover: hover) {
   .skill-card:hover,
   .create-cards > li:hover {
+    border-color: color-mix(in srgb, var(--tone) 55%, var(--border));
     transform: translateY(-4px);
     box-shadow: var(--shadow-lift);
   }

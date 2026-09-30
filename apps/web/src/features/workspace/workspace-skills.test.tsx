@@ -141,7 +141,7 @@ function pointAt(target: Element, type: string, pointerType: string) {
   );
 }
 
-test("the card grid lights up where a mouse points, stays dark for touch, and goes dark on leave", async () => {
+test("the card grid keeps its surface stable across touch and mouse movement", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const path = typeof input === "string" ? input : String(input);
     if (path.endsWith("/me")) return json(ME);
@@ -159,7 +159,7 @@ test("the card grid lights up where a mouse points, stays dark for touch, and go
   expect(glow()).toEqual([" ", " "]);
 
   await act(async () => pointAt(grid.firstElementChild!, "pointermove", "mouse"));
-  expect(glow()).toEqual(["30px 40px", "30px 40px"]);
+  expect(glow()).toEqual([" ", " "]);
 
   await act(async () =>
     grid.dispatchEvent(

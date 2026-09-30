@@ -108,14 +108,7 @@
   height: 112px;
   margin: 0 -20px;
   border-radius: 15px 15px 0 0;
-  background:
-    radial-gradient(
-      circle at 12% 0%,
-      color-mix(in srgb, var(--tone) 40%, var(--surface)),
-      transparent 60%
-    ),
-    radial-gradient(circle at 88% 100%, var(--tone-deep), transparent 70%),
-    linear-gradient(135deg, var(--tone), color-mix(in srgb, var(--tone-deep) 70%, var(--accent)));
+  background: linear-gradient(135deg, var(--tone), var(--tone-deep));
 }
 
 .skill-card-head {

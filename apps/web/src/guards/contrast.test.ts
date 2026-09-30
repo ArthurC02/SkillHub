@@ -55,6 +55,11 @@ const PAIRS: [fg: string, bg: string, min: number, where: string][] = [
   ["border-strong", "surface", 3, "1.4.11 — input/secondary-button edge on a card"],
   ["border-strong", "bg", 3, "1.4.11 — the same edge where a control sits on 地"],
 
+  ["text", "accent-bg", 4.5, ".notice body text on the informational tint"],
+  ["text-h", "accent-bg", 4.5, ".notice heading on the informational tint"],
+  ["link", "accent-bg", 4.5, "a link inside an informational notice"],
+  ["accent", "accent-bg", 3, ".notice leading edge on the informational tint"],
+
   ["text", "surface-hover", 4.5, "a hovered secondary button or row"],
   ["link", "surface-hover", 4.5, "a hovered link-shaped control"],
   ["text", "surface-active", 4.5, "a pressed secondary button or row"],
@@ -69,14 +74,14 @@ const PAIRS: [fg: string, bg: string, min: number, where: string][] = [
   ["chrome-text-h", "chrome-active", 4.5, "current platform navigation label"],
   ["chrome-accent", "chrome-active", 3, "current platform navigation inset marker"],
 
-  ["on-tile", "tile-violet", 4.5, ".skill-mono initial on its tile, light stop"],
-  ["on-tile", "tile-violet-deep", 4.5, ".skill-mono initial on its tile, deep stop"],
+  ["on-tile", "tile-indigo", 4.5, ".skill-mono initial on its tile, light stop"],
+  ["on-tile", "tile-indigo-deep", 4.5, ".skill-mono initial on its tile, deep stop"],
   ["on-tile", "tile-blue", 4.5, ".skill-mono initial on its tile, light stop"],
   ["on-tile", "tile-blue-deep", 4.5, ".skill-mono initial on its tile, deep stop"],
+  ["on-tile", "tile-cyan", 4.5, ".skill-mono initial on its tile, light stop"],
+  ["on-tile", "tile-cyan-deep", 4.5, ".skill-mono initial on its tile, deep stop"],
   ["on-tile", "tile-teal", 4.5, ".skill-mono initial on its tile, light stop"],
   ["on-tile", "tile-teal-deep", 4.5, ".skill-mono initial on its tile, deep stop"],
-  ["on-tile", "tile-rose", 4.5, ".skill-mono initial on its tile, light stop"],
-  ["on-tile", "tile-rose-deep", 4.5, ".skill-mono initial on its tile, deep stop"],
 
   ["danger", "danger-bg", 4.5, ".notice-danger heading and inline emphasis"],
   ["text-h", "danger-bg", 4.5, ".notice-danger's own heading"],

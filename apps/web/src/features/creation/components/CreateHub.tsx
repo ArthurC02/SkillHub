@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { followPointer, releasePointer } from "../../../shared/ui/spotlight";
 import "./CreateHub.css";
 
 export function CreateHub({
@@ -47,7 +46,7 @@ export function CreateHub({
     <section className="create-hub" id="create" aria-labelledby="create-heading">
       <h2 id="create-heading">新增到資產庫</h2>
 
-      <ul className="create-cards" onPointerMove={followPointer} onPointerLeave={releasePointer}>
+      <ul className="create-cards">
         <li className="download-item" data-tone="0">
           <span className="door-mono" aria-hidden="true">
             ↑

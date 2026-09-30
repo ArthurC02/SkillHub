@@ -9,7 +9,6 @@ import { useGenerateEntryPoint } from "../../creation";
 import { useCreationEntryPoint } from "../../creation";
 import { CreateHub } from "../../creation";
 import { StateIcon } from "../../../shared/ui/StateIcon";
-import { followPointer, releasePointer } from "../../../shared/ui/spotlight";
 import type { OwnSkill, Redistribution } from "../../../core/api/types";
 import { REDISTRIBUTION_BADGE } from "./WorkspaceSkills.model";
 import "./WorkspaceSkills.page.css";
@@ -292,12 +291,7 @@ export function WorkspaceSkills() {
       )}
 
       {hasSkills && (
-        <ul
-          data-role="evidence"
-          className="search-results skill-grid"
-          onPointerMove={followPointer}
-          onPointerLeave={releasePointer}
-        >
+        <ul data-role="evidence" className="search-results skill-grid">
           {rows.map((s) => (
             <SkillCard key={s.skill_id} skill={s} remove={remove} onMessage={setMessage} />
           ))}
