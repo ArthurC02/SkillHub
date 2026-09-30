@@ -74,24 +74,26 @@ function ReviewForm({
   exposureCase: ExposureCase;
   publication: string;
 }) {
-  const [decision, setDecision] = useState<ExposureDecision>("approved");
+  const [decision, setDecision] = useState<ExposureDecision>();
   const review = useReviewExposure(publication);
 
   return (
     <ActionForm
       id="admin-exposure-review"
-      submitLabel={`送出${DECISION_LABEL[decision]}`}
+      submitLabel={decision ? `送出${DECISION_LABEL[decision]}` : "送出審核結論"}
       pending={review.isPending}
       error={review.error}
       done={review.isSuccess && "已送出，上面的狀態已更新。"}
-      onSubmit={(reason) =>
+      ready={decision !== undefined}
+      onSubmit={(reason) => {
+        if (!decision) return;
         review.mutate({
           release_id: c.release.release_id,
           expected_sequence: c.sequence,
           decision,
           reason,
-        })
-      }
+        });
+      }}
     >
       <fieldset>
         <legend>結論</legend>
@@ -108,6 +110,20 @@ function ReviewForm({
           </label>
         ))}
       </fieldset>
+      <div className="notice" data-role="evidence">
+        <strong>送出前確認</strong>
+        <p>
+          這次只決定版本 {c.release.version_number}（<code>{c.release.content_hash}</code>）的
+          Catalog 曝光。
+        </p>
+        <p>
+          {decision === "approved"
+            ? "核准後，搜尋與 Catalog 可以顯示這個 Release。"
+            : decision === "revoked"
+              ? "撤銷後，搜尋與 Catalog 會隱藏這個 Release；公開位址不受影響。"
+              : "先選擇核准或撤銷；系統不會預先替你選擇。"}
+        </p>
+      </div>
     </ActionForm>
   );
 }

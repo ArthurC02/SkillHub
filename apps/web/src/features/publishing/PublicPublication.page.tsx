@@ -13,6 +13,7 @@ import {
   type PublicRelease,
 } from "./publishing.service";
 import { actionFailureSentence } from "./publishing.model";
+import { DeliveryAudience } from "./components/DeliveryAudience";
 
 function memberChangeSentence(change: BundleMemberChange): string {
   switch (change.change) {
@@ -134,8 +135,7 @@ export function PublicPublication() {
           </ul>
         </section>
 
-        <p className="note">{data.exposure.note}</p>
-        <p className="note">{data.acquisition.note}</p>
+        <DeliveryAudience publication={data} level={2} />
         {data.acquisition.available && <AcquireAction publisher={publisher} name={name} />}
 
         <section>
@@ -173,8 +173,7 @@ export function PublicPublication() {
         目前版本：v{release.version_number}，發佈於 <Timestamp at={release.released_at} />
       </p>
 
-      <p className="note">{data.exposure.note}</p>
-      <p className="note">{data.acquisition.note}</p>
+      <DeliveryAudience publication={data} level={2} />
       {data.acquisition.available && <AcquireAction publisher={publisher} name={name} />}
 
       <section>

@@ -98,8 +98,17 @@ test("activity groups owner facts and keeps every continuation in its product co
     json({
       complete: true,
       sources: ["run", "evaluation", "creation", "packaging", "publishing"],
+      next_cursor: "next-page",
       items: [
-        item("run", "run-1", "needs_attention", { kind: "run", run_id: "run-1" }),
+        {
+          ...item("run", "run-1", "needs_attention", { kind: "run", run_id: "run-1" }),
+          context: {
+            skill_id: "skill-1",
+            skill_name: "PDF Summariser",
+            skill_version_id: "version-2",
+            test_case_id: "case-1",
+          },
+        },
         item("creation_session", "session-1", "in_progress", {
           kind: "creation_session",
           session_id: "session-1",
@@ -123,6 +132,16 @@ test("activity groups owner facts and keeps every continuation in its product co
   expect(container.textContent).toContain("平台處理中");
   expect(container.textContent).toContain("最近完成");
   expect(container.textContent).toContain("完整來源5 / 5");
+  expect(container.textContent).toContain("本頁需要處理1");
+  expect(container.textContent).toContain("本頁進行中1");
+  expect(container.textContent).toContain("尚有更多活動");
+  expect(container.querySelector('a[href="/skills/skill-1"]')?.textContent).toBe("PDF Summariser");
+  expect(container.querySelector('a[href="/skills/skill-1/versions/version-2"]')?.textContent).toBe(
+    "精確版本",
+  );
+  expect(
+    container.querySelector('a[href="/lab/test-cases/case-1?version=version-2"]')?.textContent,
+  ).toBe("Test Case");
   expect(container.querySelector('a[href="/runs/run-1"]')?.textContent).toBe("查看 Run");
   expect(
     container.querySelector('a[href="/workspace/creations?session=session-1"]')?.textContent,

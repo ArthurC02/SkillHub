@@ -807,6 +807,12 @@ test("PACK-004 available 公開頁：每一個允收欄位都出現", async () =
   expect(text()).toContain("靜態掃描");
   expect(text()).toContain("MIT");
   expect(text()).toContain("可再散布");
+  expect(text()).toContain("公開頁面");
+  expect(text()).toContain("任何人都能閱讀");
+  expect(text()).toContain("套件取得");
+  expect(text()).toContain("目前提供套件");
+  expect(text()).toContain("Catalog 探索");
+  expect(text()).toContain("目前無法從 Catalog 找到");
   expect(text()).toContain("這個發佈物目前不在搜尋與目錄裡");
   expect(text()).toContain("登入後可以下載這一版的標準 Agent Skill 套件");
 });

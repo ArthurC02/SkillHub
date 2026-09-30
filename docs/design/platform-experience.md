@@ -291,6 +291,8 @@ Activity 先依使用者能否採取行動分組，再依時間排序：
 
 每列至少顯示物件、工作種類、狀態、最後更新與一個明確下一步。Activity 不複製 Trace、完整評估或套件內容；點開後回到來源物件的精確脈絡。
 
+摘要數字只描述瀏覽器已載入的 Activity Item，不冒充全量統計；仍有下一頁時必須明說「尚有更多活動」。owner facts 已提供 Skill、Version 或 Test Case 身分時，每列同時提供這些精確脈絡連結，讓使用者既能進入當下工作，也能回到它所屬的產品物件。
+
 `/activity` 是跨物件 Activity 的可信投影：Identity 決定 Workspace，Run、Evaluation、Creation、Packaging 與 Publishing 五個 owner 各自回傳分類、權威活動時間、穩定識別與續作目的地，Activity 只依固定優先序合併 Run 與 Evaluation，再作全域排序和 keyset 續讀。任何 reader 失敗都回覆不完整來源並拒絕部分清單，避免把短暫少一類資料畫成「目前沒有」。每列只保留定位與續作所需的精簡 facts，Trace、完整 Evaluation、Snapshot 與套件內容仍回到來源物件閱讀；Creation 的續作入口也繼續受原本兩個曝光旗標約束。舊 `/workspace/runs` 保留為只看 Run 的保存檢視，並明確連到跨來源活動，不再承擔主要導覽。
 
 ### 5.5 微觀互動契約
@@ -378,7 +380,11 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 
 這個切片依 Garrett 五層作同一條推導：策略層要讓作者管理持續演進的發佈產品，而不是處理散落表單；範圍層只納入 Publishing 已擁有的版本、Release、狀態與交付條件，採用證據維持未量測；結構層把單一 Skill、Bundle 與 Artifact 三條軌道分開，並以 Bundle 為父物件、不可變版本為子物件，最新建立與最新發佈維持兩個事實；骨架層在一般入口先用關係導覽選定軌道，精確續接則優先呈現目標，再以一個 Bundle 一張營運卡，先放公開狀態與交付對象，後列各版本的匯出與發佈操作；表面層用文字、箭頭、徽章與明確時間說明，不以顏色或空白暗示狀態。任何後續採用分析都必須從策略與範圍重新通過，而不是直接在表面層加一個數字。
 
-**階段五：移除舊殼。** 依使用者驗證與路由證據移除重複導覽、孤立表單入口與已無主體的舊頁；保留必要深連結或導向。完成條件是 information-architecture.md 的偏離帳沒有因遷移變長，e2e 涵蓋所有保留路由，舊入口不再是完成關鍵旅程的唯一方法。
+**階段五：跨活動的決策與交接。** 商品牆證明 Shopping 的首要工作不是展示所有欄位，而是讓人快速辨認候選；同一原則延伸到其餘四種活動，但各自使用不同的產品問題。Making 在上傳完成後交接到伺服器回傳的精確不可變 Version，重複內容也回到既有 Version，不讓成功訊息成為旅程終點。Sharing 的公開頁先回答「誰能讀」「目前能否取得」「能否從 Catalog 找到」，分開公開位址、套件條件與曝光，不把登入條件推成任何人可下載。Conducting 的 Activity 明示摘要只計算已載入頁面，仍有下一頁時說明範圍，並用 owner facts 回到 Skill、Version 與 Test Case。Governing 的曝光審核不預選核准或撤銷，提交前重述精確 Release、內容雜湊與決策影響。完成條件是四種交接在載入、空、錯誤、成功與窄螢幕下都不失去來源、範圍或決策後果。
+
+這一批仍由 Garrett 五層從目的推到介面：策略層分別降低作者失去成果、取得者誤判散布、執行者失去脈絡與 operator 誤操作的風險；範圍層只使用既有 Upload、Publishing、Activity 與 Exposure owner facts；結構層把成功結果、公開狀態、工作來源與治理決策接回精確物件；骨架層用結果連結、三問摘要、頁面範圍與送出前確認安排資訊；表面層才使用徽章、邊框、文字層級與狀態語句。參考模式來自 [GitHub Actions 的工作流程監看與步驟證據](https://docs.github.com/en/actions/how-tos/monitor-workflows)、[Hugging Face gated models 對存取條件的分離](https://huggingface.co/docs/hub/models-gated)、[GitHub 組織稽核紀錄的 actor／action／resource／time 結構](https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization)與 [LaunchDarkly 的變更核准流程](https://launchdarkly.com/docs/home/releases/approvals/)；本產品只吸收資訊與決策模式，不複製其功能邊界。
+
+**階段六：移除舊殼。** 依使用者驗證與路由證據移除重複導覽、孤立表單入口與已無主體的舊頁；保留必要深連結或導向。完成條件是 information-architecture.md 的偏離帳沒有因遷移變長，e2e 涵蓋所有保留路由，舊入口不再是完成關鍵旅程的唯一方法。
 
 ---
 

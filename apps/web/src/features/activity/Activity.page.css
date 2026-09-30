@@ -33,6 +33,11 @@
   background: var(--surface);
 }
 
+.activity-page .activity-summary-wrap > .note {
+  margin: 8px 0 0;
+  text-align: right;
+}
+
 .activity-page .activity-summary > div {
   padding: 16px;
 }
@@ -110,6 +115,16 @@
 .activity-page .activity-status {
   margin-top: 4px;
   color: var(--text-h);
+}
+
+.activity-page .activity-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 0;
+  margin: 8px 0 0;
+  list-style: none;
+  font-size: 14px;
 }
 
 .activity-page .activity-empty,

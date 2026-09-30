@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { ApiError } from "../../../../core/api/client";
 import { isCategorizedFindings } from "../../../creation";
 import { Findings } from "../../../../shared/ui/Findings";
@@ -70,11 +71,19 @@ export function VersionUpload({ skillId }: { skillId: string }) {
           </ReadFailure>
         ))}
       {save.isSuccess && (
-        <p role="status">
-          {save.data.duplicate
-            ? `這份內容與現有的 v${save.data.version_number} 完全相同，沒有建立新版本。`
-            : `已存成 v${save.data.version_number}。`}
-        </p>
+        <div role="status">
+          <p>
+            {save.data.duplicate
+              ? `這份內容與現有的 v${save.data.version_number} 完全相同，沒有建立新版本。`
+              : `已存成 v${save.data.version_number}。`}
+          </p>
+          <Link
+            to="/skills/$skillId/versions/$versionId"
+            params={{ skillId: save.data.skill_id, versionId: save.data.version_id }}
+          >
+            開啟 v{save.data.version_number} 並繼續驗證
+          </Link>
+        </div>
       )}
     </section>
   );

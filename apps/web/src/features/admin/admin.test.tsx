@@ -760,12 +760,20 @@ test("DISC-007: the queue lists a waiting release, and reviewing it shows the ex
   expect(has(ADMIN_EXPOSURE_CASE.snapshot.task_examples)()).toBe(true);
   expect(has("pdf、summary")()).toBe(true);
   expect(has("內容符合規範")()).toBe(true);
+  expect(
+    field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]').checked,
+  ).toBe(false);
+  expect(
+    field<HTMLInputElement>('input[name="admin-exposure-decision"][value="revoked"]').checked,
+  ).toBe(false);
+  expect(button("送出審核結論").disabled).toBe(true);
 });
 
 test("DISC-007: submitting a review sends this screen's release_id and sequence as expected_sequence", async () => {
   stub(true);
   await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
   await waitFor(has("審核序號：2"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
   await type("#admin-exposure-review-note", "看過了，符合規範");
   await click(button("送出核准"));
   await waitFor(() => calls.some((c) => c.method === "POST"));
@@ -781,13 +789,14 @@ test("DISC-007: submitting a review sends this screen's release_id and sequence 
   });
 });
 
-test("DISC-007: an empty reason blocks the submit button", async () => {
+test("DISC-007: a decision and reason are both required before submission", async () => {
   stub(true);
   await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
   await waitFor(has("審核這一版"));
-  expect(button("送出核准").disabled).toBe(true);
-  expect(has("「送出核准」要等上面的欄位都填好。")()).toBe(true);
+  expect(button("送出審核結論").disabled).toBe(true);
   await type("#admin-exposure-review-note", "看過了");
+  expect(button("送出審核結論").disabled).toBe(true);
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
   expect(button("送出核准").disabled).toBe(false);
 });
 
@@ -810,6 +819,7 @@ test("DISC-007: a stale review (409) shows the server's own words, not a generic
   );
   await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
   await waitFor(has("審核這一版"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
   await type("#admin-exposure-review-note", "看過了");
   await click(button("送出核准"));
   await waitFor(has(`沒有完成，伺服器說：${staleMessage}`));

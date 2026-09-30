@@ -5,15 +5,22 @@ import "./DeliveryAudience.css";
 
 export function DeliveryAudience({
   publication,
+  level = 3,
 }: {
-  publication: { availability?: Labelled; acquisition?: PublicationNote };
+  publication: {
+    availability?: Labelled;
+    acquisition?: PublicationNote;
+    exposure?: PublicationNote;
+  };
+  level?: 2 | 3;
 }) {
   const titleId = useId();
-  const { availability, acquisition } = publication;
+  const { availability, acquisition, exposure } = publication;
+  const Heading = level === 2 ? "h2" : "h3";
 
   return (
     <section className="delivery-audience" aria-labelledby={titleId}>
-      <h3 id={titleId}>交付對象</h3>
+      <Heading id={titleId}>{exposure ? "公開與取得" : "交付對象"}</Heading>
       <dl className="delivery-audience-grid">
         <div>
           <dt>公開頁面</dt>
@@ -45,6 +52,17 @@ export function DeliveryAudience({
             )}
           </dd>
         </div>
+        {exposure && (
+          <div>
+            <dt>Catalog 探索</dt>
+            <dd>
+              <strong>
+                {exposure.available ? "目前可從 Catalog 找到" : "目前無法從 Catalog 找到"}
+              </strong>
+              <span className="note">{exposure.note}</span>
+            </dd>
+          </div>
+        )}
       </dl>
     </section>
   );

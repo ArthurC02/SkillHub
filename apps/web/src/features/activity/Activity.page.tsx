@@ -59,7 +59,7 @@ export function Activity() {
           <h1>活動</h1>
           <p>把正在執行、等待決定與最近完成的工作放在同一條可信時間線。</p>
         </div>
-        {activity.data && <ActivitySummary items={items} />}
+        {activity.data && <ActivitySummary items={items} hasMore={activity.hasNextPage} />}
       </header>
 
       <p className="note" data-role="caveat">
@@ -131,24 +131,27 @@ export function Activity() {
   );
 }
 
-function ActivitySummary({ items }: { items: ActivityItem[] }) {
+function ActivitySummary({ items, hasMore }: { items: ActivityItem[]; hasMore: boolean }) {
   const count = (classification: ActivityClassification) =>
     items.filter((item) => item.classification === classification).length;
   return (
-    <dl className="activity-summary" aria-label="活動摘要">
-      <div>
-        <dt>完整來源</dt>
-        <dd>5 / 5</dd>
-      </div>
-      <div>
-        <dt>需要處理</dt>
-        <dd>{count("needs_attention")}</dd>
-      </div>
-      <div>
-        <dt>進行中</dt>
-        <dd>{count("in_progress")}</dd>
-      </div>
-    </dl>
+    <div className="activity-summary-wrap">
+      <dl className="activity-summary" aria-label="活動摘要">
+        <div>
+          <dt>完整來源</dt>
+          <dd>5 / 5</dd>
+        </div>
+        <div>
+          <dt>本頁需要處理</dt>
+          <dd>{count("needs_attention")}</dd>
+        </div>
+        <div>
+          <dt>本頁進行中</dt>
+          <dd>{count("in_progress")}</dd>
+        </div>
+      </dl>
+      <p className="note">{hasMore ? "尚有更多活動" : "已載入全部活動"}</p>
+    </div>
   );
 }
 
@@ -171,12 +174,54 @@ function ActivityRow({ item, creationExposed }: { item: ActivityItem; creationEx
         <strong>{item.summary}</strong>
         <p className="activity-status">{item.status.label}</p>
         {item.status.note && <p className="note">{item.status.note}</p>}
+        <ActivityContext context={item.context} />
         <p className="note">
           更新於 <Timestamp at={item.activity_at} relative />
         </p>
       </div>
       <ActivityAction continuation={item.continuation} creationExposed={creationExposed} />
     </li>
+  );
+}
+
+function ActivityContext({ context }: { context: ActivityItem["context"] }) {
+  if (!context) return null;
+  const hasSkill = Boolean(context.skill_id);
+  const hasVersion = Boolean(context.skill_id && context.skill_version_id);
+  const hasTestCase = Boolean(context.test_case_id);
+  if (!hasSkill && !hasVersion && !hasTestCase) return null;
+
+  return (
+    <ul className="activity-context" aria-label="工作脈絡">
+      {context.skill_id && (
+        <li>
+          <Link to="/skills/$skillId" params={{ skillId: context.skill_id }}>
+            {context.skill_name ?? "Skill"}
+          </Link>
+        </li>
+      )}
+      {context.skill_id && context.skill_version_id && (
+        <li>
+          <Link
+            to="/skills/$skillId/versions/$versionId"
+            params={{ skillId: context.skill_id, versionId: context.skill_version_id }}
+          >
+            精確版本
+          </Link>
+        </li>
+      )}
+      {context.test_case_id && (
+        <li>
+          <Link
+            to="/lab/test-cases/$testCaseId"
+            params={{ testCaseId: context.test_case_id }}
+            search={context.skill_version_id ? { version: context.skill_version_id } : {}}
+          >
+            Test Case
+          </Link>
+        </li>
+      )}
+    </ul>
   );
 }
 

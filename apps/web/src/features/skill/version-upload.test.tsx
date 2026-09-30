@@ -7,6 +7,25 @@ import { VersionUpload } from "./version/components/VersionUpload";
 import { SKILL_VERSIONS } from "../../testing/fixtures/platform";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
+const VERSION = "22222222-2222-2222-2222-222222222222";
+
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    to,
+    params,
+    children,
+  }: {
+    to: string;
+    params?: Record<string, string>;
+    children: unknown;
+  }) => {
+    const href = Object.entries(params ?? {}).reduce(
+      (path, [key, value]) => path.replace(`$${key}`, value),
+      to,
+    );
+    return <a href={href}>{children as never}</a>;
+  },
+}));
 
 let container: HTMLDivElement;
 let root: Root;
@@ -123,4 +142,28 @@ test("丙-151: 413 印「檔案超過上限，請縮小套件再上傳。」", a
 
   expect(text()).toContain("檔案超過上限，請縮小套件再上傳。");
   expect(text()).not.toContain("file is larger than");
+});
+
+test.each([
+  [false, "已存成 v3"],
+  [true, "與現有的 v3 完全相同"],
+] as const)("丙-151: 上傳結果 duplicate=%s 能前往精確版本", async (duplicate, message) => {
+  stubOwner(() =>
+    json({
+      skill_id: SKILL,
+      version_id: VERSION,
+      version_number: 3,
+      content_hash: "sha256:version-three",
+      duplicate,
+      findings: { errors: [], warnings: [], infos: [] },
+    }),
+  );
+  await render();
+  await submitUpload();
+  await waitFor(() => text().includes(message));
+
+  const destination = container.querySelector<HTMLAnchorElement>(
+    `a[href="/skills/${SKILL}/versions/${VERSION}"]`,
+  );
+  expect(destination?.textContent).toBe("開啟 v3 並繼續驗證");
 });
