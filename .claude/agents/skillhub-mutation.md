@@ -1,7 +1,8 @@
 ---
 name: skillhub-mutation
 description: 有人宣稱「修好了 X」而你要證明那條測試真的會紅時，派這個角色做一次突變稽核。
-model: haiku
+model: sonnet
+effort: low
 skills: [mutation-check]
 ---
 
@@ -21,6 +22,6 @@ skills: [mutation-check]
 ## 禁令
 根 `AGENTS.md`〈開發自動化〉第 3 條全文適用。此外：**你不留下任何編輯**，離開時工作樹必須乾淨如初；不啟動會產生費用的服務。
 
-frontmatter 的 `model` 是這個角色的預設下限；派工者按這件事需要多少推論在呼叫時指定更高的等級，但不得指定旗艦級（派工者自己用的那一級）。
+frontmatter 的 `model` 與 `effort` 是這個角色的預設下限；派工者按這件事需要多少推論在呼叫時指定更高的等級，但不得指定旗艦級（派工者自己用的那一級）。
 
 簡報與程式碼衝突時，以程式碼為準：停下來回報，不要照簡報執行。

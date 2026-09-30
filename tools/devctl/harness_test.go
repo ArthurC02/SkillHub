@@ -16,7 +16,7 @@ func TestTheRealHarnessKeepsItsOwnRules(t *testing.T) {
 }
 
 const cleanSkill = "---\nname: x\ndescription: generic\n---\n\nRun the one test, watch it go red.\n"
-const cleanAgent = "---\nname: x\ndescription: y\nmodel: opus\n---\n\nBody.\n"
+const cleanAgent = "---\nname: x\ndescription: y\nmodel: opus\neffort: high\n---\n\nBody.\n"
 
 func writeHarnessFixture(t *testing.T, skill, agent, agents string) string {
 	t.Helper()
@@ -63,12 +63,12 @@ func TestHarnessAcceptsASkillThatNamesADocumentationFolder(t *testing.T) {
 func TestHarnessRejectsARoleWithoutAModel(t *testing.T) {
 	t.Parallel()
 	for name, agent := range map[string]string{
-		"absent":  "---\nname: x\ndescription: y\n---\n\nBody.\n",
-		"inherit": "---\nname: x\nmodel: inherit\n---\n\nBody.\n",
-		"fable":   "---\nname: x\nmodel: claude-fable-5-1\n---\n\nBody.\n",
-		"sol":     "---\nname: x\nmodel: sol\n---\n\nBody.\n",
+		"absent":  "---\nname: x\ndescription: y\neffort: low\n---\n\nBody.\n",
+		"inherit": "---\nname: x\nmodel: inherit\neffort: low\n---\n\nBody.\n",
+		"fable":   "---\nname: x\nmodel: claude-fable-5-1\neffort: low\n---\n\nBody.\n",
+		"sol":     "---\nname: x\nmodel: sol\neffort: low\n---\n\nBody.\n",
 
-		"in the body": "---\nname: x\n---\n\nmodel: opus\n",
+		"in the body": "---\nname: x\neffort: low\n---\n\nmodel: opus\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -76,6 +76,38 @@ func TestHarnessRejectsARoleWithoutAModel(t *testing.T) {
 			problems := harnessProblems(root)
 			if len(problems) != 1 || !strings.Contains(problems[0], ".claude/agents/x.md") {
 				t.Fatalf("a role without a usable model was accepted: %v", problems)
+			}
+		})
+	}
+}
+
+func TestHarnessRejectsARoleWithoutAUsableEffort(t *testing.T) {
+	t.Parallel()
+	for name, agent := range map[string]string{
+		"absent":      "---\nname: x\nmodel: sonnet\n---\n\nBody.\n",
+		"unknown":     "---\nname: x\nmodel: sonnet\neffort: extreme\n---\n\nBody.\n",
+		"in the body": "---\nname: x\nmodel: sonnet\n---\n\neffort: low\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			root := writeHarnessFixture(t, cleanSkill, agent, "# 導覽\n")
+			problems := harnessProblems(root)
+			if len(problems) != 1 || !strings.Contains(problems[0], ".claude/agents/x.md") || !strings.Contains(problems[0], "effort") {
+				t.Fatalf("a role without a usable effort was accepted: %v", problems)
+			}
+		})
+	}
+}
+
+func TestHarnessAcceptsEveryEffortLevel(t *testing.T) {
+	t.Parallel()
+	for _, level := range []string{"low", "medium", "high", "xhigh", "max"} {
+		t.Run(level, func(t *testing.T) {
+			t.Parallel()
+			agent := "---\nname: x\nmodel: sonnet\neffort: " + level + "\n---\n\nBody.\n"
+			root := writeHarnessFixture(t, cleanSkill, agent, "# 導覽\n")
+			if problems := harnessProblems(root); len(problems) != 0 {
+				t.Fatalf("effort %s was rejected: %v", level, problems)
 			}
 		})
 	}
@@ -90,7 +122,7 @@ func TestHarnessRejectsARootAgentsDocOverTheCap(t *testing.T) {
 	}
 }
 
-const cleanWorkflow = "export const meta = {\n  name: 'x',\n  description: 'y',\n}\nconst run = (p, o = {}) => agent(p, { ...o, model: o.model ?? 'sonnet' })\nawait run('do it', { label: 'a' })\n"
+const cleanWorkflow = "export const meta = {\n  name: 'x',\n  description: 'y',\n}\nconst run = (p, o = {}) => agent(p, { ...o, model: o.model ?? 'sonnet', effort: o.effort ?? 'medium' })\nawait run('do it', { label: 'a' })\n"
 
 func TestHarnessAcceptsAWorkflowThatNamesItsModels(t *testing.T) {
 	t.Parallel()
@@ -104,12 +136,13 @@ func TestHarnessAcceptsAWorkflowThatNamesItsModels(t *testing.T) {
 func TestHarnessRejectsAWorkflowThatInheritsTheDispatcherModel(t *testing.T) {
 	t.Parallel()
 	for name, script := range map[string]string{
-		"bare agent()":  cleanWorkflow + "await agent('again')\n",
-		"agent split":   cleanWorkflow + "await agent(\n  'again',\n  { model: 'sonnet' },\n)\n",
+		"no model":      cleanWorkflow + "await agent('again', { effort: 'low' })\n",
+		"no effort":     cleanWorkflow + "await agent('again', { model: 'sonnet' })\n",
+		"agent split":   cleanWorkflow + "await agent('again', { effort: 'low',\n  model: 'sonnet' },\n)\n",
 		"fable literal": cleanWorkflow + "await run('again', { model: 'claude-fable-5-1' })\n",
 		"sol literal":   cleanWorkflow + "await run('again', { model: 'sol' })\n",
 		"inherit":       cleanWorkflow + "await run('again', { model: 'inherit' })\n",
-		"no meta":       "const run = (p, o = {}) => agent(p, { ...o, model: 'sonnet' })\n",
+		"no meta":       "const run = (p, o = {}) => agent(p, { ...o, model: 'sonnet', effort: 'low' })\n",
 		"name mismatch": strings.Replace(cleanWorkflow, "name: 'x'", "name: 'y'", 1),
 	} {
 		t.Run(name, func(t *testing.T) {

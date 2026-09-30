@@ -19,6 +19,8 @@ description: Use when about to delegate work to a subagent or teammate, or when 
    - **深度推論**（會停下來判斷）：只有在**跨模組推理、規格含糊要判斷、安全或資料遺失路徑、要對抗性審查**時。brief 裡寫下升級的理由；寫不出理由就不升級。
    - **旗艦**（派工者自己用的那一級）：子代理不用。哪個名字對到哪一級，在角色定義與專案指示裡，不在這裡。
 
+   模型之外也寫明 effort（推論深度）；沒寫，子代理就沿用派工者的 effort。想要少一點推論，先調低 effort，不要先換小一號的模型，也不要在 brief 裡叫它「少想一點」——調 effort 比這兩種做法都可靠。最高的兩級只給實測過確有收穫的工作。
+
 4. **每份 brief 都要逐字包含這句話**：如果 brief 與程式碼不一致，以程式碼為準——停下來回報，不要自行推進。
 
 5. **要求回報時說明「哪些是查證過的、哪些是假設的」。** 一份只回報「完成了」的報告無法區分執行者是驗證了假設還是延續了假設。
@@ -34,6 +36,6 @@ description: Use when about to delegate work to a subagent or teammate, or when 
 
 - brief 裡每一句「現況」陳述都有 `file:line` 了嗎？
 - 路徑許可清單與禁止動作清單都寫了嗎？
-- model 指定了嗎？
+- model 與 effort 都指定了嗎？
 - 那句「以程式碼為準」逐字放進去了嗎？
 - 回報格式要求區分查證與假設了嗎？

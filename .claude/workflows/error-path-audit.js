@@ -10,7 +10,7 @@ export const meta = {
 
 // Every subagent gets an explicit model. Bare agent() would inherit the
 // dispatcher's flagship model, which 根 AGENTS.md〈開發自動化〉第 3 條 forbids.
-const run = (prompt, opts = {}) => agent(prompt, { ...opts, model: opts.model ?? 'sonnet' })
+const run = (prompt, opts = {}) => agent(prompt, { ...opts, model: opts.model ?? 'sonnet', effort: opts.effort ?? 'medium' })
 
 // Feature lines. src/features/creation/generate/ is absent on purpose (01 §10 ⛔ 1). The run
 // line (RunPreflight/RunTrace/RunEvaluation/RunCompare) was walked by hand on

@@ -12,7 +12,7 @@ export const meta = {
 // dispatcher's flagship model, which 根 AGENTS.md〈開發自動化〉第 3 條 forbids.
 // The harness checker counts the `agent(` calls in this file and expects each
 // on a line that also names `model:`.
-const run = (prompt, opts = {}) => agent(prompt, { ...opts, model: opts.model ?? 'sonnet' })
+const run = (prompt, opts = {}) => agent(prompt, { ...opts, model: opts.model ?? 'sonnet', effort: opts.effort ?? 'medium' })
 
 // Page groups: one reader each. src/features/creation/generate/ is deliberately absent — the
 // M5 entry is behind a flag closed-beta users must not see (01 §10 ⛔ 1), and an

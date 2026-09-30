@@ -11,7 +11,7 @@ export const meta = {
 
 // Every subagent gets an explicit model. Bare agent() would inherit the
 // dispatcher's flagship model, which 根 AGENTS.md〈開發自動化〉第 3 條 forbids.
-const run = (prompt, opts = {}) => agent(prompt, { ...opts, model: opts.model ?? 'sonnet' })
+const run = (prompt, opts = {}) => agent(prompt, { ...opts, model: opts.model ?? 'sonnet', effort: opts.effort ?? 'medium' })
 
 // args: {
 //   briefs: [{ key, paths: [...allowlist], brief, test: 'vitest file or pattern',
@@ -160,7 +160,7 @@ const results = await pipeline(
         `Do exactly this: (1) record git diff -- <file> for the file holding that line; (2) remove or neuter that one line with the Edit tool; (3) ${runTest} and capture the head of the failure output; (4) restore the line with Edit; (5) run git diff -- <file> again and confirm it equals step 1 byte for byte.`,
         'If the test stays green after step 2, report went_red=false — that is the finding. went_red=true requires an assertion line in the failure output, and you copy that one line into red_assertion_line (Go: "something_test.go:NN: ..."; vitest: the AssertionError line). A red that is not an assertion — "document is not defined", "no test files found", a module that cannot be resolved — is NOT red: it means the test did not run (wrong directory or wrong path); fix the invocation and run again. Never leave the file mutated. No git writes.',
       ].join('\n'),
-      { label: `mutate:${b.key}`, phase: 'Mutate', schema: MUTATION_RESULT, agentType: 'general-purpose', model: 'haiku', effort: 'low' },
+      { label: `mutate:${b.key}`, phase: 'Mutate', schema: MUTATION_RESULT, agentType: 'general-purpose', model: 'sonnet', effort: 'low' },
     ).then((m) => {
       // Judged here, not by the agent: went_red is true only with an assertion.
       const verified = assertionRed(m)
@@ -178,7 +178,7 @@ const gateResult = landed.length === 0 ? null : await run(
     `Run this from ${gateCwd} (cd there first) and report: ${gate}`,
     `Passing means the exit code is 0 AND you saw this exact line: ${gateSuccess}. Redirect output to a file in the scratchpad and read the file — the terminal output is filtered. Quote the last 15 lines. Do not fix anything, do not edit files.`,
   ].join('\n'),
-  { label: 'gate', phase: 'Gate', schema: GATE_RESULT, agentType: 'general-purpose', model: 'haiku', effort: 'low' },
+  { label: 'gate', phase: 'Gate', schema: GATE_RESULT, agentType: 'general-purpose', model: 'sonnet', effort: 'low' },
 )
 
 return {

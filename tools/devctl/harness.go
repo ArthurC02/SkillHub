@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -23,6 +24,11 @@ var harnessLocalReferences = []*regexp.Regexp{
 
 // Matches "model: opus" inside a frontmatter block.
 var agentModelLine = regexp.MustCompile(`(?m)^model:\s*(\S+)\s*$`)
+
+var (
+	agentEffortLine = regexp.MustCompile(`(?m)^effort:\s*(\S+)\s*$`)
+	effortLevels    = strings.Fields("low medium high xhigh max")
+)
 
 func harnessProblems(root string) []string {
 	var problems []string
@@ -86,8 +92,24 @@ func harnessAgentProblems(root string) []string {
 				"harness: %s sets `model: %s`; subagents must name a model and it must not be fable, sol "+
 					"or inherit", relative, m[1]))
 		}
+		problems = append(problems, roleEffortProblems(relative, frontmatter)...)
 	}
 	return problems
+}
+
+func roleEffortProblems(relative, frontmatter string) []string {
+	m := agentEffortLine.FindStringSubmatch(frontmatter)
+	switch {
+	case m == nil:
+		return []string{fmt.Sprintf(
+			"harness: %s names no `effort:`; a role without one runs at whatever effort the dispatching "+
+				"session uses, so the tier it was chosen for decides nothing (docs/development/automation.md "+
+				"共享工作樹與 SubAgent)", relative)}
+	case !slices.Contains(effortLevels, m[1]):
+		return []string{fmt.Sprintf(
+			"harness: %s sets `effort: %s`; use one of %s", relative, m[1], strings.Join(effortLevels, ", "))}
+	}
+	return nil
 }
 
 func harnessAgentsDocProblems(root string) []string {
@@ -174,6 +196,12 @@ func workflowAgentCallProblems(relative, text string) []string {
 			problems = append(problems, fmt.Sprintf(
 				"harness: %s:%d calls agent() without model: on the same line; a bare agent() inherits "+
 					"the dispatcher's flagship model, which subagents may not use (AGENTS.md 開發自動化 3)",
+				relative, i+1))
+		}
+		if workflowAgentCall.MatchString(line) && !strings.Contains(line, "effort:") {
+			problems = append(problems, fmt.Sprintf(
+				"harness: %s:%d calls agent() without effort: on the same line; the agent then runs at the "+
+					"dispatching session's effort instead of the one its tier calls for",
 				relative, i+1))
 		}
 		for _, m := range workflowModelLiteral.FindAllStringSubmatch(line, -1) {

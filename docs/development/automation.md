@@ -85,13 +85,15 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
   | 等級 | 特性 | 派給它的事 | 現行對應（Claude Code／Codex） |
   | --- | --- | --- | --- |
   | **旗艦** | 主線代理自己用的等級 | **子代理禁用**——它是派工者，不是被派的 | Fable／Sol |
-  | **深度推論** | 善用推論思考，會停下來判斷 | 跨模組推理、規格含糊要判斷、安全或資料遺失路徑、對抗性審查 | Opus／Terra |
-  | **快速執行** | 執行快、推論不多 | 規格與邊界都清楚的多檔實作、照分區卡與現成模式做、驗證回報、文件整理 | Sonnet／Luna |
-  | **機械執行** | 推論極少，正因如此會像機械操作一樣照目標做完 | 規格完全明確、有測試判對錯：改一行跑一條測試、抄表、查值、突變稽核 | Haiku／Luna |
+  | **深度推論** | 善用推論思考，會停下來判斷 | 跨模組推理、規格含糊要判斷、安全或資料遺失路徑、對抗性審查 | Opus，effort `medium`，對抗性審查 `high`／Terra |
+  | **快速執行** | 執行快、推論不多 | 規格與邊界都清楚的多檔實作、照分區卡與現成模式做、驗證回報、文件整理 | Sonnet，effort `medium`／Luna |
+  | **機械執行** | 推論極少，正因如此會像機械操作一樣照目標做完 | 規格完全明確、有測試判對錯：改一行跑一條測試、抄表、查值、突變稽核 | Sonnet，effort `low`／Luna |
 
   Luna 介於快速執行與機械執行之間，Codex 側這兩級都派它。
 
-  Claude Code 的三個角色檔（`.claude/agents/`）以機械執行／快速執行為 frontmatter 預設下限，派工時可指定更高；`automation-check` 的 `harness` 檢查擋角色檔出現旗艦級（名稱寫在檢查器裡，那是唯一需要名字的地方）。可攜角色與 skills 的唯一來源是 `.claude/agents/`、`.claude/skills/`；`task agents:sync` 在本機與 CI 產生 `.agents/skills` 與 `.codex/agents`，兩者是忽略的快取，永不手改、永不提交。新一輪 Agent 工作前由唯一 Writer 同步，已啟動的 Agent 必須重新派送才會讀到新版本。
+  **effort 是第二個旋鈕，而且先轉它**：同一個模型調低 effort，推論、成本與延遲降得比換小一號的模型或在 prompt 裡叫它「少想一點」都可靠；子代理沒寫 effort 就沿用派工那個 session 的 effort，等級表因此失效。`xhigh` 與 `max` 只給實測過確有收穫的工作——在較新的模型上它們會拉長每一輪，還可能自己再開審查子代理。Haiku 只在結果由機器判對錯、而且量大到成本是主要考量時才派：它對文字指示的遵循明顯不穩。
+
+  Claude Code 的三個角色檔（`.claude/agents/`）以機械執行／快速執行為 frontmatter 預設下限（`model` 與 `effort` 都寫），派工時可指定更高；`automation-check` 的 `harness` 檢查擋角色檔出現旗艦級或缺 `effort`（名稱寫在檢查器裡，那是唯一需要名字的地方）。可攜角色與 skills 的唯一來源是 `.claude/agents/`、`.claude/skills/`；`task agents:sync` 在本機與 CI 產生 `.agents/skills` 與 `.codex/agents`，兩者是忽略的快取，永不手改、永不提交。新一輪 Agent 工作前由唯一 Writer 同步，已啟動的 Agent 必須重新派送才會讀到新版本。
 - **Claude Code 另有一層攔阻**（`.claude/settings.json` 的 `permissions.deny` 把 `stash`／`add -A`／`commit -a`／`restore`／`checkout .`／`reset --hard`／`clean`／`push --force`／`commit --amend` 變成真的拒絕，對子代理同樣生效），**但它只是提早發現**：其他 coding agent 不受它管，本節的規則本體與 `automation-check`、測試、CI 才是保證。角色與技能的放置規則見下方〈Harness〉。
 
 ## 修好一個東西之後，把修法弄壞一次：三次前例
@@ -111,14 +113,14 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 - **`.claude/rules/`**：按路徑觸發的指標，內容只有「先讀哪一份、會被哪個檢查擋」。實測會送達子代理，首次命中注入一次。
 - **`.claude/agents/`**：按**風險**切的三個角色——`skillhub-writer`（寫，路徑範圍由簡報給）、`skillhub-verify`（唯讀驗證）、`skillhub-mutation`（證明測試會紅）。**角色不按目錄切、不新增**：某個區域該先讀什麼、哪些檔屬於 coordinator，寫在該區域的 `AGENTS.md`，由 rules 按路徑送達。禁令只有一份（`AGENTS.md` 開發自動化第 3 條），角色檔引用不複述。
 - **`.claude/skills/`**：換一個 repo 還成立的程序。技能不得引用 ADR 編號或需求 ID——引用了就隨那個編號過期。技能本文不是專案產出物，出現 `docs/` 這類路徑字樣不算引用。
-- **`.claude/workflows/`**：**有固定形狀的多代理程序**——哪些事平行、哪一步驗證、由流程決定是否有 gate——寫成一支 `<name>.js`，以 `/<name>` 呼叫；判斷本身仍在子代理，腳本只決定順序與扇出。`ux-text-audit` 與 `error-path-audit` 都是 Read → Refute → Critic 的唯讀稽核；`parallel-page-edit` 才是寫入後 Verify → Mutation → Gate。跨工具契約、無 runtime 時的原生派工映射與完成判定見[開發者指示](./agent-instructions.md)；原生腳本的扇出安全不是跨工具保證。**腳本裡的 `agent()` 不指定模型就繼承派工者的旗艦級**，所以每一個 `agent(` 呼叫都要在同一行寫 `model:`（慣例是一行 wrapper：`const run = (p, o = {}) => agent(p, { ...o, model: o.model ?? 'sonnet' })`），`harness` 檢查逐行看。
+- **`.claude/workflows/`**：**有固定形狀的多代理程序**——哪些事平行、哪一步驗證、由流程決定是否有 gate——寫成一支 `<name>.js`，以 `/<name>` 呼叫；判斷本身仍在子代理，腳本只決定順序與扇出。`ux-text-audit` 與 `error-path-audit` 都是 Read → Refute → Critic 的唯讀稽核；`parallel-page-edit` 才是寫入後 Verify → Mutation → Gate。跨工具契約、無 runtime 時的原生派工映射與完成判定見[開發者指示](./agent-instructions.md)；原生腳本的扇出安全不是跨工具保證。**腳本裡的 `agent()` 不指定模型就繼承派工者的旗艦級**，不指定 effort 就沿用派工者的 effort，所以每一個 `agent(` 呼叫都要在同一行寫 `model:` 與 `effort:`（慣例是一行 wrapper：`const run = (p, o = {}) => agent(p, { ...o, model: o.model ?? 'sonnet', effort: o.effort ?? 'medium' })`），`harness` 檢查逐行看。
 - **`permissions.deny`**（`.claude/settings.json`）：把慣例變成真的拒絕——`stash`、`reset --hard`、`clean`、`checkout -- `、`checkout .`、`restore`、`add -A`／`--all`／`.`、`commit -a`／`--all`、`push --force`／`-f`、`commit --amend`。對子代理同樣生效、不需 workspace trust。**每條加完要親自撞一次**——曾經撞出過一個誤擋 `git add .claude/` 的偽陽性。陷阱：路徑型規則只認 `Edit(...)` 與 `Read(...)`，寫成 `Write(...)`／`Glob(...)` 會被接受但永不被查詢。
 
 **送達與契約**：官方啟動載入規則見 [Agent configuration](https://learn.chatgpt.com/docs/agent-configuration/agents-md)；若有 `AGENTS.override.md` 必須先讀並檢查衝突。派工介面未提供 `cwd` 參數時（例如本次驗證的 `spawn_agent`），代理共享目前工作目錄；工具不保證按檔案自動載入，brief 必須列出 root → 目標父目錄的明確讀取路徑。Codex 指示總量上限 32 KiB（`project_doc_max_bytes`），所以根 `AGENTS.md` 有大小上限。Claude 的額外層是提早發現，真正的保證仍在 `automation-check`、測試與 CI。
 
 **新增一個區域的三步配方**（不新增角色）：①在該目錄放 `AGENTS.md`（指標表：要做的事 → 先讀哪段 → 沒讀會被哪個閘門擋；加一行 `@AGENTS.md` 的 `CLAUDE.md`），遵循[開發者指示](./agent-instructions.md)的分層／派工流程；②在 `.claude/rules/` 加一條 `paths:` 指向它，規則提示改讀該區域 `AGENTS.md`；③在根 `AGENTS.md`〈分區指標與攔阻〉的表加一列。
 
-**守它的機器**：名冊裡的 `harness`（技能不引用本地文件、角色必須指定 `model` 且不得 fable／sol／inherit、根 `AGENTS.md` 不超過上限、workflow 的每個 `agent(` 同一行有 `model:` 且 `meta.name` 等於檔名）與 `apps/platform/internal/shared/skillpkg/repo_skills_test.go`（技能過產品自己的 `skillpkg.Validate`）。
+**守它的機器**：名冊裡的 `harness`（技能不引用本地文件、角色必須指定 `model` 且不得 fable／sol／inherit、角色必須指定 `effort`、根 `AGENTS.md` 不超過上限、workflow 的每個 `agent(` 同一行有 `model:` 與 `effort:` 且 `meta.name` 等於檔名）與 `apps/platform/internal/shared/skillpkg/repo_skills_test.go`（技能過產品自己的 `skillpkg.Validate`）。
 
 ## 常見失敗
 
@@ -181,7 +183,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `doc-prose` | 活文件的句子不得留著移除指標後的洞：控制字元、CJK 之間的連續兩個空白、收尾標點前的空白、連續的標點、開括號後面直接接標點 | `tools/devctl/doc_prose.go` |
 | `adr-citations` | 只有 `docs/adr/` 裡的 ADR 與索引 `docs/adr/README.md` 可以寫 ADR 編號或檔名；其他檔案寫規則本身，需要理由時連索引的主題標題。`docs/adr/` 只放 `ADR-NNN-<slug>.md` 與 `README.md`；每份 ADR 都要列在索引、且所在標題逐字等於該 ADR 的標題（標題就是別人連的錨點）；連到索引的 `README.md#錨點` 必須對得上某個標題。里程碑的機器輸出、量測結果與第三方語料照原樣保存，不受此限（豁免清單連同理由寫在檢查器裡） | `tools/devctl/adr_citations.go` |
 | `dependency-policy` | Dockerfile 的 FROM、compose 與 workflow 的 `image:` 都釘 digest；`uses:` 釘 40 碼 SHA 並寫 `# vX`；每個 npm 專案有 `.npmrc` 的 `ignore-scripts=true`；每個 uv 專案有 `exclude-newer`；每個有 lockfile、Dockerfile、compose 或 composite action 的目錄都列在 `.github/dependabot.yml`；compose 與 workflow、`tools/ci/*.sh` 用到同一個映像時引用完全相同；node、go、python、uv、task、golangci-lint 在每個位置版本一致（見〈依賴的准入、更新與閘門〉） | `tools/devctl/dependency_policy.go` |
-| `harness` | `.claude/skills/` 不得引用 ADR 編號或需求 ID；`.claude/agents/` 每個角色必須指定 `model`（不得 fable／sol／inherit；預設是各角色 frontmatter 的低階模型，簡報依任務難度升級）；根 `AGENTS.md` 不得超過 16 KiB（Codex 讀到 32 KiB 就靜默截斷；上限是棘輪，貼著現況而不是貼著懸崖）；`.claude/workflows/*.js` 以 `export const meta = { name }` 開頭、`name` 等於檔名，且每個 `agent(` 呼叫同一行要有 `model:`、字面值不得 fable／sol／inherit（裸 `agent()` 會繼承派工者的旗艦級）。**技能的 frontmatter 是否合 Agent Skills 規格，由產品自己的驗證器管**：`apps/platform/internal/shared/skillpkg/repo_skills_test.go` 把 `skillpkg.Validate` 跑在 `.claude/skills/` 上 | `tools/devctl/harness.go` |
+| `harness` | `.claude/skills/` 不得引用 ADR 編號或需求 ID；`.claude/agents/` 每個角色必須指定 `model`（不得 fable／sol／inherit；預設是各角色 frontmatter 的低階模型，簡報依任務難度升級）與 `effort`（low／medium／high／xhigh／max）；根 `AGENTS.md` 不得超過 16 KiB（Codex 讀到 32 KiB 就靜默截斷；上限是棘輪，貼著現況而不是貼著懸崖）；`.claude/workflows/*.js` 以 `export const meta = { name }` 開頭、`name` 等於檔名，且每個 `agent(` 呼叫同一行要有 `model:`、字面值不得 fable／sol／inherit（裸 `agent()` 會繼承派工者的旗艦級）。**技能的 frontmatter 是否合 Agent Skills 規格，由產品自己的驗證器管**：`apps/platform/internal/shared/skillpkg/repo_skills_test.go` 把 `skillpkg.Validate` 跑在 `.claude/skills/` 上 | `tools/devctl/harness.go` |
 | `comment-budget` | 手寫程式與設定檔（Go／TS／JS／Python／SQL／YAML／TOML／shell／Dockerfile／`.env.example`，含 `doc.go`；不含 generated 檔與 `go:`／`one-number:`／`-- name:` 等機器標記）的兩種註解：超過 3 行的區塊，以及帶需求／裁定編號、日期或 `§` 的施工日誌。`comment-lint <路徑>` 逐行列出。零容忍、沒有存量清單（全 repo 清理後歸零）。規則本體是根 `AGENTS.md`〈慣例〉 | `tools/devctl/comment_budget.go` |
 | `complexity-exemptions` | 三個 Go module（`apps/platform`、`apps/sandbox`、`tools/devctl`）的 `.golangci.yml` 都啟用 gocognit 且 `min-complexity` 不超過登記的門檻；任何逐函式的 gocognit 豁免都不允許——函式太複雜就拆，不以名字放行 | `tools/devctl/complexity_exemptions.go` |
 
