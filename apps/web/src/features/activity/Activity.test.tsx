@@ -153,6 +153,17 @@ test("activity groups owner facts and keeps every continuation in its product co
     container.querySelector('a[href="/workspace/downloads?publication=arthur%2Fsummariser"]')
       ?.textContent,
   ).toBe("查看發佈");
+  const activityRows = Array.from(container.querySelectorAll(".activity-list > li"));
+  expect(activityRows.map((row) => row.getAttribute("data-classification"))).toEqual([
+    "needs_attention",
+    "in_progress",
+    "recent",
+    "recent",
+  ]);
+  expect(activityRows.every((row) => row.querySelector(".activity-rail") !== null)).toBe(true);
+  expect(
+    activityRows.every((row) => row.querySelector(".activity-rail")?.getAttribute("aria-hidden")),
+  ).toBe(true);
 });
 
 test("activity does not expose a Studio continuation while either creation flag is off", async () => {

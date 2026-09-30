@@ -22,7 +22,7 @@ export function CategoryEditor({ skillId, category }: { skillId: string; categor
 
   return (
     <section>
-      <h3>類別</h3>
+      <h2>類別</h2>
       <p className="field">
         <label htmlFor="skill-category">這個 Skill 是做什麼用的</label>
         <select

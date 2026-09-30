@@ -69,7 +69,12 @@ function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?
             <UploadRulesFacts limits={limits.data} used={used} testCase={testCase.test_case_id} />
           </section>
 
-          <div className="dataset-upload-picker">
+          <section className="dataset-upload-picker" aria-labelledby="dataset-picker-heading">
+            <div className="dataset-upload-picker-copy">
+              <p className="page-eyebrow">Dataset intake</p>
+              <h2 id="dataset-picker-heading">加入測試資料</h2>
+              <p>每次選擇一個檔案；平台會在送出前先檢查目前可用的數量與容量。</p>
+            </div>
             <div className="field">
               <label htmlFor="dataset-file">選擇檔案</label>
               <input id="dataset-file" type="file" ref={fileInput} />
@@ -101,7 +106,7 @@ function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?
             >
               {upload.isPending ? "上傳中…" : "上傳"}
             </button>
-          </div>
+          </section>
         </>
       )}
 

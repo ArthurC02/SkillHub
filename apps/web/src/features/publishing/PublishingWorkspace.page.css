@@ -25,15 +25,15 @@
   padding: 16px;
   color: var(--text);
   text-decoration: none;
-  background: color-mix(in srgb, var(--surface) 82%, transparent);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow-rest);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 12px;
 }
 
 .publishing-workspace-map a:hover {
-  border-color: var(--accent-border);
-  box-shadow: var(--shadow-lift);
+  color: var(--text-h);
+  background: var(--surface-hover);
+  border-color: var(--accent);
 }
 
 .publishing-workspace-map a:focus-visible {
@@ -77,8 +77,13 @@
   padding: 20px;
   background: var(--surface);
   border: 1px solid var(--border);
+  border-top: 3px solid var(--accent-border);
   border-radius: 12px;
   box-shadow: var(--shadow-rest);
+}
+
+.publishing-workspace-rail > section {
+  background: var(--accent-bg);
 }
 
 .publishing-workspace-main > section > h2:first-child,
@@ -133,8 +138,8 @@
 .publishing-workspace .bundle-publication {
   margin-block: 16px;
   padding: 16px;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--code-bg);
+  border: 0;
   border-radius: 10px;
 }
 
@@ -146,7 +151,7 @@
 }
 
 .publishing-workspace .bundle-publication-grid dt {
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 0.875rem;
   font-weight: 700;
 }
@@ -165,9 +170,19 @@
 
 .publishing-workspace .bundle-version-item {
   padding: 16px;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--code-bg);
+  border: 0;
   border-radius: 10px;
+}
+
+.publishing-workspace .download-list {
+  gap: 8px;
+}
+
+.publishing-workspace .download-item {
+  background: var(--code-bg);
+  border: 0;
+  box-shadow: none;
 }
 
 .publishing-workspace .bundle-version-item > div > :first-child {

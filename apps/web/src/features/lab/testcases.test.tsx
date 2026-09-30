@@ -282,6 +282,17 @@ test("the Test Case workbench puts execution after its editable design and befor
   expect(headings.filter((heading) => heading && journey.includes(heading))).toEqual(journey);
 });
 
+test("the Test Case workbench keeps design primary and supporting actions in a rail", async () => {
+  listSearch = { version: VERSION };
+  stubPlatform({ runs: [RUN] });
+  await render();
+
+  const layout = container.querySelector(".test-case-detail-layout");
+  expect(layout).not.toBeNull();
+  expect(layout!.querySelector(":scope > .test-case-design")).not.toBeNull();
+  expect(layout!.querySelector(":scope > .test-case-detail-rail")).not.toBeNull();
+});
+
 test("the Test Case workbench labels a Version inherited from the latest matching Run", async () => {
   stubPlatform({ runs: [RUN] });
   await render();
@@ -707,6 +718,16 @@ test("列表 shows the skill's name, the confirmed count and whether a rubric ex
   expect(container.textContent).toContain("已確認 1/3 條");
   expect(container.textContent).toContain("Rubric 有");
   expect(container.textContent).not.toContain(SKILL);
+});
+
+test("列表 separates the scenario index from the Test Case editor", async () => {
+  stubPlatform({ testCases: [LIST_ROW] });
+  await renderList();
+
+  const workspace = container.querySelector(".test-case-workspace");
+  expect(workspace?.children).toHaveLength(2);
+  expect(workspace?.children[0]?.classList.contains("test-case-index")).toBe(true);
+  expect(workspace?.children[1]?.classList.contains("test-case-editor")).toBe(true);
 });
 
 test("列表 ?skill= narrows the request and says so, with a way back to the full list", async () => {

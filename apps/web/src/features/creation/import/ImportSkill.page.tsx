@@ -12,6 +12,7 @@ import {
   type SkillImportLimits,
 } from "../import.service";
 import type { ImportResult, ImportedSkill, RefusedSkill } from "../../../core/api/types";
+import "./ImportSkill.page.css";
 
 function mb(bytes: number): string {
   return (bytes / (1 << 20)).toFixed(1).replace(/\.0$/, "") + " MB";
@@ -36,73 +37,38 @@ export function ImportSkill() {
   };
 
   return (
-    <section>
-      <h1>匯入 Skill</h1>
-      <p className="note">套件只會做靜態檢查；匯入期間不執行其中的 Script。</p>
+    <section className="import-page">
+      <header className="import-header">
+        <p className="page-eyebrow">Package intake</p>
+        <h1>匯入 Skill</h1>
+        <p>從允許的來源收進套件，先看懂平台會檢查什麼，再選擇取得方式。</p>
+      </header>
 
-      <ImportRules rules={rules} />
-      {unauthenticated(me.error) ? (
-        <LoginRequired what="匯入 Skill" />
-      ) : (
-        <form onSubmit={submit}>
-          <fieldset>
-            <legend>來源</legend>
-            <label>
-              <input
-                type="radio"
-                name="skill-import-source"
-                checked={source === "url"}
-                onChange={() => setSource("url")}
-              />
-              GitHub 或允許的 URL
-            </label>{" "}
-            <label>
-              <input
-                type="radio"
-                name="skill-import-source"
-                checked={source === "upload"}
-                onChange={() => setSource("upload")}
-              />
-              上傳 zip
-            </label>
-          </fieldset>
-          {/* key props: without them React reuses one <input> across branches
-              and warns controlled→uncontrolled on every mode switch. */}
-          {source === "url" ? (
-            <p className="field" key="url">
-              <label htmlFor="skill-import-url">URL</label>
-              <input
-                id="skill-import-url"
-                type="url"
-                required
-                value={url}
-                onChange={(event) => setURL(event.target.value)}
-              />
-            </p>
+      <div className="import-workspace">
+        <section className="import-rules" aria-labelledby="import-rules-title">
+          <p className="page-eyebrow">Static inspection</p>
+          <h2 id="import-rules-title">匯入前檢查</h2>
+          <p>套件只會做靜態檢查；匯入期間不執行其中的 Script。</p>
+          <ImportRules rules={rules} />
+        </section>
+        <section className="import-source" aria-labelledby="import-source-title">
+          <p className="page-eyebrow">Source</p>
+          <h2 id="import-source-title">選擇套件來源</h2>
+          {unauthenticated(me.error) ? (
+            <LoginRequired what="匯入 Skill" />
           ) : (
-            <p className="field" key="file">
-              <label htmlFor="skill-import-file">Skill zip</label>
-              <input
-                id="skill-import-file"
-                type="file"
-                required
-                accept=".zip,application/zip"
-                onChange={(event) => setFile(event.target.files?.[0])}
-              />
-            </p>
+            <ImportSourceForm
+              source={source}
+              onSourceChange={setSource}
+              url={url}
+              onURLChange={setURL}
+              onFileChange={setFile}
+              mutation={mutation}
+              onSubmit={submit}
+            />
           )}
-          <button type="submit" className="action" disabled={mutation.isPending}>
-            {mutation.isPending ? "匯入中…" : "開始匯入"}
-          </button>
-          {mutation.isPending && (
-            <p role="status" className="note">
-              正在取得套件並逐檔用靜態檢查看過它——這一步會自己結束，不需要你再按任何東西。
-              <strong>請先不要關掉這個分頁</strong>：匯入是一個同步請求，關掉等於取消，
-              而取消不會在你的工作區留下半成品版本。
-            </p>
-          )}
-        </form>
-      )}
+        </section>
+      </div>
 
       {mutation.error && !rejected && (
         <ReadFailure error={mutation.error} what="匯入 Skill">
@@ -129,6 +95,83 @@ export function ImportSkill() {
 
       {result && <ImportOutcome result={result} />}
     </section>
+  );
+}
+
+function ImportSourceForm({
+  source,
+  onSourceChange,
+  url,
+  onURLChange,
+  onFileChange,
+  mutation,
+  onSubmit,
+}: {
+  source: "url" | "upload";
+  onSourceChange: (source: "url" | "upload") => void;
+  url: string;
+  onURLChange: (url: string) => void;
+  onFileChange: (file: File | undefined) => void;
+  mutation: ReturnType<typeof useImportSkill>;
+  onSubmit: (event: FormEvent) => void;
+}) {
+  return (
+    <form onSubmit={onSubmit}>
+      <fieldset>
+        <legend>來源</legend>
+        <label>
+          <input
+            type="radio"
+            name="skill-import-source"
+            checked={source === "url"}
+            onChange={() => onSourceChange("url")}
+          />
+          GitHub 或允許的 URL
+        </label>{" "}
+        <label>
+          <input
+            type="radio"
+            name="skill-import-source"
+            checked={source === "upload"}
+            onChange={() => onSourceChange("upload")}
+          />
+          上傳 zip
+        </label>
+      </fieldset>
+      {source === "url" ? (
+        <p className="field" key="url">
+          <label htmlFor="skill-import-url">URL</label>
+          <input
+            id="skill-import-url"
+            type="url"
+            required
+            value={url}
+            onChange={(event) => onURLChange(event.target.value)}
+          />
+        </p>
+      ) : (
+        <p className="field" key="file">
+          <label htmlFor="skill-import-file">Skill zip</label>
+          <input
+            id="skill-import-file"
+            type="file"
+            required
+            accept=".zip,application/zip"
+            onChange={(event) => onFileChange(event.target.files?.[0])}
+          />
+        </p>
+      )}
+      <button type="submit" className="action" disabled={mutation.isPending}>
+        {mutation.isPending ? "匯入中…" : "開始匯入"}
+      </button>
+      {mutation.isPending && (
+        <p role="status" className="note">
+          正在取得套件並逐檔用靜態檢查看過它——這一步會自己結束，不需要你再按任何東西。
+          <strong>請先不要關掉這個分頁</strong>：匯入是一個同步請求，關掉等於取消，
+          而取消不會在你的工作區留下半成品版本。
+        </p>
+      )}
+    </form>
   );
 }
 

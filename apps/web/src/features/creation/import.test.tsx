@@ -69,6 +69,20 @@ const text = () => container.textContent ?? "";
 
 const ME = { user_id: "u-1", email: "a@b.c", display_name: "a", workspace_id: "ws-1" };
 
+test("the import workspace separates source rules from the intake controls", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = String(input);
+    if (path.endsWith("/me")) return json(ME);
+    return json({ error: "not found" }, 404);
+  });
+  await render(<ImportSkill />, () => text().includes("開始匯入"));
+
+  const workspace = container.querySelector(".import-workspace");
+  expect(workspace).not.toBeNull();
+  expect(workspace!.querySelector(":scope > .import-rules")).not.toBeNull();
+  expect(workspace!.querySelector(":scope > .import-source")).not.toBeNull();
+});
+
 async function submitURL(url = "https://github.com/example/skill") {
   await render(<ImportSkill />, () => text().includes("匯入 Skill"));
   const input = container.querySelector<HTMLInputElement>('input[type="url"]')!;

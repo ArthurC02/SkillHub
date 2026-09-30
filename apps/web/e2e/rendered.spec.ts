@@ -105,6 +105,34 @@ async function verifyCreationContinuationLayout(page: Page, testInfo: TestInfo) 
   }
 }
 
+async function verifyReducedMotion(page: Page) {
+  await stubPlatform(page);
+  await page.goto("/");
+  const card = page.locator(".catalog-skill-card").first();
+  await expect(card).toBeVisible();
+
+  const normal = await page.evaluate(() => {
+    const value = getComputedStyle(document.documentElement).getPropertyValue("--dur-fast").trim();
+    return value.endsWith("ms") ? Number.parseFloat(value) : Number.parseFloat(value) * 1000;
+  });
+  expect(normal).toBe(120);
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const reduced = await page.evaluate(() => {
+    const durationMs = (property: string) => {
+      const value = getComputedStyle(document.documentElement).getPropertyValue(property).trim();
+      return value.endsWith("ms") ? Number.parseFloat(value) : Number.parseFloat(value) * 1000;
+    };
+    return { fast: durationMs("--dur-fast"), regular: durationMs("--dur") };
+  });
+  const transitionDurations = await card.evaluate((element) =>
+    getComputedStyle(element).transitionDuration.split(", "),
+  );
+
+  expect(reduced).toEqual({ fast: 0, regular: 0 });
+  expect(transitionDurations.every((duration) => duration === "0s")).toBe(true);
+}
+
 test.describe("QA-008 composite pixels", () => {
   test("the catalogue opens as one scannable product wall", async ({ page }, testInfo) => {
     await stubPlatform(page);
@@ -225,6 +253,10 @@ test.describe("QA-008 composite pixels", () => {
     expect(outline, "six presses of Tab focused nothing in the page").not.toBeNull();
     expect(outline!.style).not.toBe("none");
     expect(parseFloat(outline!.width)).toBeGreaterThan(0);
+  });
+
+  test("reduced motion removes shared interaction transitions", async ({ page }) => {
+    await verifyReducedMotion(page);
   });
 });
 

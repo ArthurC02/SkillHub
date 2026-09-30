@@ -22,14 +22,18 @@ export function PreflightShell({
   children: ReactNode;
 }) {
   return (
-    <section>
-      <h1>執行前權限確認</h1>
+    <section className="preflight-page">
+      <header className="preflight-header">
+        <p className="page-eyebrow">Run safety gate</p>
+        <h1>執行前權限確認</h1>
+        <p>在建立 Run 之前，先核對版本、可接觸的資料、工具與資源上限。</p>
+      </header>
       <SkillWorkspaceNav
         skillId={skill}
         versionId={version || undefined}
         testCaseId={testCaseInfo.data?.test_case_id}
       />
-      <section className="download-item" aria-labelledby="run-context-title">
+      <section className="preflight-context" aria-labelledby="run-context-title">
         <h2 id="run-context-title">這次 Run 的脈絡</h2>
         <p>
           Skill：
@@ -53,7 +57,9 @@ export function PreflightShell({
           這個 Test Case 沒有驗收條件，所以這次 Run 不會產生逐條判定。試跑本身照常執行。
         </p>
       )}
-      {children}
+      <section className="preflight-body" aria-label="這次 Run 的權限與資源摘要">
+        {children}
+      </section>
     </section>
   );
 }

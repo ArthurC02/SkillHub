@@ -1,0 +1,122 @@
+.preflight-page {
+  min-width: 0;
+}
+
+.preflight-header {
+  margin-bottom: 16px;
+}
+
+.preflight-header > h1 {
+  margin-block: 0 8px;
+}
+
+.preflight-header > p:last-child {
+  margin: 0;
+}
+
+.preflight-context,
+.preflight-body {
+  margin-top: 16px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-rest);
+}
+
+.preflight-context {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+  gap: 8px 24px;
+  align-items: end;
+  border-top: 3px solid var(--accent);
+}
+
+.preflight-context > h2,
+.preflight-context > p {
+  grid-column: 1;
+  margin-block: 0;
+}
+
+.preflight-context > .field {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin: 0;
+}
+
+.preflight-body {
+  border-top: 3px solid var(--border-strong);
+}
+
+.preflight-body > :first-child {
+  margin-top: 0;
+}
+
+.preflight-body > :last-child {
+  margin-bottom: 0;
+}
+
+.preflight-facts {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.35fr) minmax(0, 1fr);
+  gap: 0;
+  margin-block: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.preflight-facts > dt,
+.preflight-facts > dd {
+  margin: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.preflight-facts > dt {
+  color: var(--text-h);
+  font-weight: 600;
+  background: var(--code-bg);
+}
+
+.preflight-facts > dt:last-of-type,
+.preflight-facts > dd:last-of-type {
+  border-bottom: 0;
+}
+
+.preflight-facts > dd > :first-child {
+  margin-top: 0;
+}
+
+.preflight-facts > dd > :last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .preflight-context {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .preflight-context > .field {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .preflight-body,
+  .preflight-context {
+    padding: 16px;
+  }
+
+  .preflight-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .preflight-facts > dt {
+    padding-bottom: 4px;
+    border-bottom: 0;
+  }
+
+  .preflight-facts > dd {
+    padding-top: 4px;
+  }
+}

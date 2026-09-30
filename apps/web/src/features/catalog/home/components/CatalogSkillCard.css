@@ -17,7 +17,7 @@
 
 .catalog-skill-card:hover {
   border-color: var(--accent-border);
-  box-shadow: var(--shadow-hover);
+  box-shadow: var(--shadow-lift);
   transform: translateY(-2px);
 }
 

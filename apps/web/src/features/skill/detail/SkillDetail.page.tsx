@@ -34,20 +34,39 @@ export function SkillDetail() {
   if (!skill) return <p role="alert">找不到這個 Skill。</p>;
 
   return (
-    <article>
-      <div className="detail-layout">
-        <div className="detail-main">
-          <header className="detail-answer">
-            <h1>{skill.name}</h1>
-            <p>{skill.summary}</p>
-            <div className="badge-row">
-              <LabelledBadge kind="category" value={skill.category} />
-              <LabelledBadge kind="tier" value={skill.tier} />
-              {skill.source && <LabelledBadge kind="trust" value={skill.source.trust} />}
-            </div>
-            <SkillWorkspaceNav skillId={skillId} versionId={skill.version?.version_id} />
-          </header>
+    <article className="skill-detail">
+      <header className="detail-answer">
+        <h1>{skill.name}</h1>
+        <p>{skill.summary}</p>
+        <div className="badge-row">
+          <LabelledBadge kind="category" value={skill.category} />
+          <LabelledBadge kind="tier" value={skill.tier} />
+          {skill.source && <LabelledBadge kind="trust" value={skill.source.trust} />}
+        </div>
+        <SkillWorkspaceNav skillId={skillId} versionId={skill.version?.version_id} />
+      </header>
 
+      <div className="detail-layout">
+        <aside className="detail-rail" aria-label="這個 Skill 的操作">
+          <TrialEntry skillId={skillId} isLoggedIn={!!me} />
+
+          <section>
+            <h2>Fork 到你的工作區</h2>
+            <ForkAction skillId={skillId} isLoggedIn={!!me} />
+          </section>
+
+          {skill.version && !skill.access_restriction && (
+            <nav>
+              <Link to="/skills/$skillId/files" params={{ skillId }}>
+                查看 SKILL.md 與檔案樹（進階模式）
+              </Link>
+            </nav>
+          )}
+
+          <CategoryEditor skillId={skillId} category={skill.category} />
+        </aside>
+
+        <div className="detail-main">
           {skill.access_restriction && (
             <section className="notice notice-danger" role="status">
               <h2>授權審查中,部分功能已關閉</h2>
@@ -96,25 +115,6 @@ export function SkillDetail() {
 
           <SkillIdentifiers skill={skill} />
         </div>
-
-        <aside className="detail-rail" aria-label="這個 Skill 的操作">
-          <TrialEntry skillId={skillId} isLoggedIn={!!me} />
-
-          <section>
-            <h3>Fork 到你的工作區</h3>
-            <ForkAction skillId={skillId} isLoggedIn={!!me} />
-          </section>
-
-          {skill.version && !skill.access_restriction && (
-            <nav>
-              <Link to="/skills/$skillId/files" params={{ skillId }}>
-                查看 SKILL.md 與檔案樹（進階模式）
-              </Link>
-            </nav>
-          )}
-
-          <CategoryEditor skillId={skillId} category={skill.category} />
-        </aside>
       </div>
     </article>
   );

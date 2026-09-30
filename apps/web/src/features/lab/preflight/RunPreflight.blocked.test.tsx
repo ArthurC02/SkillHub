@@ -100,3 +100,13 @@ test("a pair this deployment can run still offers the button", async () => {
     undefined,
   );
 });
+
+test("the safety gate separates run context from the permission evidence", async () => {
+  platformWithPreflight({});
+  await renderPreflight();
+
+  const page = container.querySelector(".preflight-page");
+  expect(page).not.toBeNull();
+  expect(page!.querySelector(":scope > .preflight-context")).not.toBeNull();
+  expect(page!.querySelector(":scope > .preflight-body [data-role='evidence']")).not.toBeNull();
+});

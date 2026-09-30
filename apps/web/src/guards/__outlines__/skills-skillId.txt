@@ -1,4 +1,7 @@
 h1 PDF Summariser
+h2 試跑
+h2 Fork 到你的工作區
+h2 類別
 h2 風險揭露
 h2 可散布性與打包
 h3 License
@@ -9,6 +12,3 @@ h3 限制
 h2 它從哪裡來
 h3 來源關係
 h2 版本
-h3 試跑
-h3 Fork 到你的工作區
-h3 類別

@@ -13,7 +13,7 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
   if (!isLoggedIn)
     return (
       <section>
-        <h3>試跑</h3>
+        <h2>試跑</h2>
         <div>
           試跑屬於你的工作區。先登入並 Fork 一份，才會有屬於你的版本可以跑。 <SignInAction />
         </div>
@@ -23,14 +23,14 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
   if (versions.isPending)
     return (
       <section>
-        <h3>試跑</h3>
+        <h2>試跑</h2>
         <Loading what="這個 Skill 在你工作區的版本" />
       </section>
     );
   if (versions.error)
     return (
       <section>
-        <h3>試跑</h3>
+        <h2>試跑</h2>
         <ReadFailure error={versions.error} what="這個 Skill 的版本" />
       </section>
     );
@@ -39,7 +39,7 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
 
   return (
     <section>
-      <h3>試跑</h3>
+      <h2>試跑</h2>
       {versionId ? (
         <>
           <p>

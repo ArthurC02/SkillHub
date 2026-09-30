@@ -157,6 +157,10 @@ test("r2: 重排之後，擁有者看到的填色動作仍然只有一個，而�
   const actions = Array.from(container.querySelectorAll(".action"));
   expect(actions.map((a) => a.textContent?.trim())).toEqual(["打包並下載這個版本"]);
   expect(container.querySelector(".detail-rail .action")).toBeNull();
+  expect(container.querySelector("article.skill-detail > .detail-answer")).not.toBeNull();
+  expect(container.querySelector(".detail-layout")?.firstElementChild?.className).toBe(
+    "detail-rail",
+  );
 });
 
 test("r2: 未登入的訪客一個填色動作也沒有——零個是合法的", async () => {
@@ -206,7 +210,7 @@ test("§2.11(c): 標頭的徽章列——類別在前，而且每一顆都帶著
   expect(row.querySelectorAll(".note")).toHaveLength(badges.length);
 });
 
-test("§3 第 9 條: 一個 h1、七個 h2，從屬段落降成 h3", async () => {
+test("§3 第 9 條: 一個 h1、十個 h2，頁面區段不跳級", async () => {
   stubOwner();
   await render(<SkillDetail />, settledAsOwner);
 
@@ -214,6 +218,9 @@ test("§3 第 9 條: 一個 h1、七個 h2，從屬段落降成 h3", async () =>
     "PDF Summariser",
   ]);
   expect(Array.from(container.querySelectorAll("h2")).map((h) => h.textContent)).toEqual([
+    "試跑",
+    "Fork 到你的工作區",
+    "類別",
     "風險揭露",
     "可散布性與打包",
     "相容性",

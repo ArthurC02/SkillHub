@@ -168,7 +168,10 @@ function UnavailableSources({ sources }: { sources: ActivitySource[] }) {
 
 function ActivityRow({ item, creationExposed }: { item: ActivityItem; creationExposed: boolean }) {
   return (
-    <li>
+    <li data-classification={item.classification}>
+      <span className="activity-rail" aria-hidden="true">
+        <span />
+      </span>
       <div className="activity-kind">{KIND_LABELS[item.kind] ?? "其他活動"}</div>
       <div className="activity-body">
         <strong>{item.summary}</strong>

@@ -63,8 +63,9 @@ export function TestCaseDetail() {
   const versionSource = version ? "url" : lastMatchingRun ? "run" : "none";
 
   return (
-    <section key={testCaseId}>
+    <section key={testCaseId} className="test-case-detail-page">
       <header className="test-case-header">
+        <p className="page-eyebrow">Evaluation workbench</p>
         <h1>{testCase.data.name}</h1>
         <p>在同一個 Skill 與 Version 脈絡裡維護驗證設計、試跑與歷史證據。</p>
       </header>
@@ -85,28 +86,45 @@ export function TestCaseDetail() {
         runsPending={runs.isPending}
         runsError={runs.error}
       />
-      <PromptForm testCase={testCase.data} />
-      <CriteriaSection testCase={testCase.data} />
-      <RubricSection testCase={testCase.data} />
-      <DatasetSection testCaseId={testCaseId} versionId={selectedVersion?.version_id} />
-      <section className="test-case-next-step" aria-labelledby="test-case-next-step-title">
-        <h2 id="test-case-next-step-title">下一步：試跑這個驗證設計</h2>
-        <p>
-          <Link
-            className="action"
-            to="/skills/$skillId/test-cases/$testCaseId/runs/new"
-            params={{ skillId, testCaseId }}
-            search={{ version: selectedVersion?.version_id }}
-          >
-            {selectedVersion ? "用這個版本試跑" : "選擇 Version 並確認權限"}
-          </Link>
-        </p>
-        <p className="note" data-role="evidence">
-          開始 Run 前會再次顯示權限摘要並要求確認。
-        </p>
+      <div className="test-case-detail-layout">
+        <div className="test-case-design">
+          <section className="test-case-work-panel" aria-label="任務提示設計">
+            <PromptForm testCase={testCase.data} />
+          </section>
+          <section className="test-case-work-panel" aria-label="驗收與評分設計">
+            <CriteriaSection testCase={testCase.data} />
+            <RubricSection testCase={testCase.data} />
+          </section>
+        </div>
+        <aside className="test-case-detail-rail" aria-label="測試資料與下一步">
+          <section className="test-case-work-panel" aria-label="測試資料">
+            <DatasetSection testCaseId={testCaseId} versionId={selectedVersion?.version_id} />
+          </section>
+          <section className="test-case-next-step" aria-labelledby="test-case-next-step-title">
+            <p className="page-eyebrow">Ready to validate</p>
+            <h2 id="test-case-next-step-title">下一步：試跑這個驗證設計</h2>
+            <p>
+              <Link
+                className="action"
+                to="/skills/$skillId/test-cases/$testCaseId/runs/new"
+                params={{ skillId, testCaseId }}
+                search={{ version: selectedVersion?.version_id }}
+              >
+                {selectedVersion ? "用這個版本試跑" : "選擇 Version 並確認權限"}
+              </Link>
+            </p>
+            <p className="note" data-role="evidence">
+              開始 Run 前會再次顯示權限摘要並要求確認。
+            </p>
+          </section>
+        </aside>
+      </div>
+      <section className="test-case-history-panel" aria-label="執行歷史">
+        <RunHistory runs={runs} history={history} />
       </section>
-      <RunHistory runs={runs} history={history} />
-      <DeleteTestCase testCaseId={testCaseId} onDeleted={setDeleted} />
+      <section className="test-case-danger-panel" aria-label="刪除 Test Case">
+        <DeleteTestCase testCaseId={testCaseId} onDeleted={setDeleted} />
+      </section>
     </section>
   );
 }

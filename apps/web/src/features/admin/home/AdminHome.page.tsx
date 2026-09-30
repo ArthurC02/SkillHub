@@ -4,81 +4,141 @@ import "./AdminHome.page.css";
 
 export function AdminHome() {
   return (
-    <AdminPage heading="營運後台">
-      <ul className="download-list admin-home-grid">
-        <li className="download-item">
-          <p>
+    <AdminPage
+      heading="營運後台"
+      lede="依工作目的進入平台治理與日常營運；每一區都只顯示它能採取的動作。"
+    >
+      <div className="admin-home-sections">
+        <GovernanceSection />
+        <OperationsSection />
+      </div>
+    </AdminPage>
+  );
+}
+
+function GovernanceSection() {
+  return (
+    <section className="admin-home-section">
+      <header>
+        <p className="admin-home-eyebrow">Governing</p>
+        <h2>存取、內容與曝光</h2>
+        <p className="note">處理成員資格、內容限制與公開目錄的准入。</p>
+      </header>
+      <ul className="admin-home-list">
+        <li>
+          <span className="admin-home-index" aria-hidden="true">
+            01
+          </span>
+          <div>
             <Link to="/admin/accounts">
               <strong>帳號與點數</strong>
             </Link>
-          </p>
-          <p className="note">用 email 找帳號，看餘額與分錄，授予點數。</p>
+            <p className="note">用 email 找帳號，看餘額與分錄，授予點數。</p>
+          </div>
         </li>
-        <li className="download-item">
-          <p>
+        <li>
+          <span className="admin-home-index" aria-hidden="true">
+            02
+          </span>
+          <div>
             <Link to="/admin/skills" search={{}}>
               <strong>Skill 治理</strong>
             </Link>
-          </p>
-          <p className="note">找任何工作區的 Skill，設定受限展示、再散布判定或下架。</p>
+            <p className="note">找任何工作區的 Skill，設定受限展示、再散布判定或下架。</p>
+          </div>
         </li>
-        <li className="download-item">
-          <p>
-            <Link to="/admin/dispatch">
-              <strong>派送煞車</strong>
-            </Link>
-          </p>
-          <p className="note">看平台有沒有在派送新的 Run，宣告或解除煞車。</p>
-        </li>
-        <li className="download-item">
-          <p>
+        <li>
+          <span className="admin-home-index" aria-hidden="true">
+            03
+          </span>
+          <div>
             <Link to="/admin/rosters">
               <strong>名冊</strong>
             </Link>
-          </p>
-          <p className="note">目前生效的 operator 名冊與封測名單，唯讀。</p>
+            <p className="note">目前生效的 operator 名冊與封測名單，唯讀。</p>
+          </div>
         </li>
-        <li className="download-item">
-          <p>
-            <Link to="/admin/audit-log">
-              <strong>動作紀錄</strong>
-            </Link>
-          </p>
-          <p className="note">全平台 operator 做過的事，包括每一次查帳號與查點數。</p>
-        </li>
-        <li className="download-item">
-          <p>
-            <Link to="/admin/model-budgets">
-              <strong>模型呼叫逾時</strong>
-            </Link>
-          </p>
-          <p className="note">每一種模型呼叫最多可以跑多久，上限由程式決定。</p>
-        </li>
-        <li className="download-item">
-          <p>
-            <Link to="/admin/cost-statistics">
-              <strong>成本統計</strong>
-            </Link>
-          </p>
-          <p className="note">每一種模型與沙箱呼叫最新的成本分布，不含使用者維度。</p>
-        </li>
-        <li className="download-item">
-          <p>
-            <Link to="/admin/trends" search={{}}>
-              <strong>趨勢</strong>
-            </Link>
-          </p>
-          <p className="note">成本、點數、Run 與 operator 動作的每日走勢，只有彙總。</p>
-        </li>
-        <li className="download-item">
-          <p>
+        <li>
+          <span className="admin-home-index" aria-hidden="true">
+            04
+          </span>
+          <div>
             <Link to="/admin/exposure" search={{}}>
               <strong>曝光審核</strong>
             </Link>
-          </p>
-          <p className="note">審核發佈物的最新 Release，決定要不要讓它出現在搜尋與目錄裡。</p>
+            <p className="note">審核發佈物的最新 Release，決定要不要讓它出現在搜尋與目錄裡。</p>
+          </div>
         </li>
       </ul>
-    </AdminPage>
+    </section>
+  );
+}
+
+function OperationsSection() {
+  return (
+    <section className="admin-home-section">
+      <header>
+        <p className="admin-home-eyebrow">Conducting</p>
+        <h2>派送、稽核與成本</h2>
+        <p className="note">監看平台執行狀態、操作紀錄與資源使用。</p>
+      </header>
+      <ul className="admin-home-list">
+        <li>
+          <span className="admin-home-index" aria-hidden="true">
+            05
+          </span>
+          <div>
+            <Link to="/admin/dispatch">
+              <strong>派送煞車</strong>
+            </Link>
+            <p className="note">看平台有沒有在派送新的 Run，宣告或解除煞車。</p>
+          </div>
+        </li>
+        <li>
+          <span className="admin-home-index" aria-hidden="true">
+            06
+          </span>
+          <div>
+            <Link to="/admin/audit-log">
+              <strong>動作紀錄</strong>
+            </Link>
+            <p className="note">全平台 operator 做過的事，包括每一次查帳號與查點數。</p>
+          </div>
+        </li>
+        <li>
+          <span className="admin-home-index" aria-hidden="true">
+            07
+          </span>
+          <div>
+            <Link to="/admin/model-budgets">
+              <strong>模型呼叫逾時</strong>
+            </Link>
+            <p className="note">每一種模型呼叫最多可以跑多久，上限由程式決定。</p>
+          </div>
+        </li>
+        <li>
+          <span className="admin-home-index" aria-hidden="true">
+            08
+          </span>
+          <div>
+            <Link to="/admin/cost-statistics">
+              <strong>成本統計</strong>
+            </Link>
+            <p className="note">每一種模型與沙箱呼叫最新的成本分布，不含使用者維度。</p>
+          </div>
+        </li>
+        <li>
+          <span className="admin-home-index" aria-hidden="true">
+            09
+          </span>
+          <div>
+            <Link to="/admin/trends" search={{}}>
+              <strong>趨勢</strong>
+            </Link>
+            <p className="note">成本、點數、Run 與 operator 動作的每日走勢，只有彙總。</p>
+          </div>
+        </li>
+      </ul>
+    </section>
   );
 }

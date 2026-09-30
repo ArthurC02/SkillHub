@@ -1,9 +1,23 @@
+.test-case-detail-page {
+  min-width: 0;
+}
+
+.test-case-header > .page-eyebrow {
+  margin-block: 0 4px;
+  color: var(--link);
+}
+
+.test-case-header > h1 {
+  margin-block: 0 8px;
+}
+
 .test-case-header > p {
   max-width: 60ch;
 }
 
 .test-case-context {
   margin-block: 16px 24px;
+  border-top: 3px solid var(--border-strong);
 }
 
 .test-case-context > h2,
@@ -34,7 +48,7 @@
 }
 
 .test-case-next-step {
-  margin-block: 24px 32px;
+  margin: 0;
   padding: 20px;
   border: 1px solid var(--border);
   border-top: 3px solid var(--accent);
@@ -43,6 +57,84 @@
   box-shadow: var(--shadow-rest);
 }
 
-.test-case-next-step > h2 {
+.test-case-next-step > .page-eyebrow {
   margin-top: 0;
+  color: var(--link);
+}
+
+.test-case-next-step > h2 {
+  margin-block: 0 12px;
+}
+
+.test-case-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+.test-case-design,
+.test-case-detail-rail {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.test-case-detail-rail {
+  position: sticky;
+  top: 16px;
+}
+
+.test-case-work-panel,
+.test-case-history-panel,
+.test-case-danger-panel {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-rest);
+}
+
+.test-case-work-panel > h2:first-child,
+.test-case-history-panel > h2:first-child,
+.test-case-danger-panel > h2:first-child {
+  margin-top: 0;
+}
+
+.test-case-work-panel :is(input:not([type="checkbox"]), textarea) {
+  width: 100%;
+}
+
+.test-case-work-panel .criterion {
+  background: var(--code-bg);
+  box-shadow: none;
+}
+
+.test-case-history-panel,
+.test-case-danger-panel {
+  margin-top: 20px;
+}
+
+.test-case-danger-panel {
+  border-color: var(--danger);
+}
+
+@media (max-width: 1024px) {
+  .test-case-detail-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .test-case-detail-rail {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .test-case-work-panel,
+  .test-case-history-panel,
+  .test-case-danger-panel,
+  .test-case-next-step {
+    padding: 16px;
+  }
 }

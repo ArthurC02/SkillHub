@@ -9,6 +9,7 @@ import { useTestCase } from "../testcases.service";
 import { PreflightShell } from "./components/PreflightShell";
 import { PreflightFacts } from "./components/PreflightFacts";
 import { RunStartControl } from "./components/RunStartControl";
+import "./RunPreflight.page.css";
 
 type RunPreflightParams = { skillId?: string; testCaseId?: string };
 type RunPreflightSearch = { version?: string };

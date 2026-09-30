@@ -24,7 +24,7 @@ export function PreflightFacts({
   quota: RunQuota | undefined;
 }) {
   return (
-    <dl data-role="evidence">
+    <dl className="preflight-facts" data-role="evidence">
       <dt>預估點數（估計值）</dt>
       <dd>
         {cost ? (
