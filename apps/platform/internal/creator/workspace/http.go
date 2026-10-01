@@ -179,6 +179,16 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 
 type ctxKey struct{}
 
+type sessionWorkspaceKey struct{}
+
+func (s session) attach(r *http.Request) *http.Request {
+	ctx := context.WithValue(r.Context(), ctxKey{}, s.user)
+	if s.workspace != nil {
+		ctx = context.WithValue(ctx, sessionWorkspaceKey{}, *s.workspace)
+	}
+	return r.WithContext(ctx)
+}
+
 func (h *Handler) RequireSession(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie(sessionCookie)
@@ -186,12 +196,12 @@ func (h *Handler) RequireSession(next http.HandlerFunc) http.HandlerFunc {
 			httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
 			return
 		}
-		user, err := h.Service.UserForToken(r.Context(), c.Value)
+		found, err := h.Service.sessionForToken(r.Context(), c.Value)
 		if err != nil {
 			httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
 			return
 		}
-		next(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, user)))
+		next(w, found.attach(r))
 	}
 }
 
@@ -220,18 +230,18 @@ func (h *Handler) RequireOperator(next http.HandlerFunc) http.HandlerFunc {
 			httpx.WriteError(w, http.StatusNotFound, "not found")
 			return
 		}
-		user, err := h.Service.UserForToken(r.Context(), c.Value)
+		found, err := h.Service.sessionForToken(r.Context(), c.Value)
 		if err != nil {
 
 			httpx.WriteError(w, http.StatusNotFound, "not found")
 			return
 		}
-		if !h.Operators[pgconv.UUIDString(user.ID)] {
-			h.logOperatorRefusal(r, user)
+		if !h.Operators[pgconv.UUIDString(found.user.ID)] {
+			h.logOperatorRefusal(r, found.user)
 			httpx.WriteError(w, http.StatusNotFound, "not found")
 			return
 		}
-		next(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, user)))
+		next(w, found.attach(r))
 	}
 }
 
@@ -400,12 +410,12 @@ func (h *Handler) OptionalSession(next http.HandlerFunc) http.HandlerFunc {
 			next(w, r)
 			return
 		}
-		user, err := h.Service.UserForToken(r.Context(), c.Value)
+		found, err := h.Service.sessionForToken(r.Context(), c.Value)
 		if err != nil {
 			next(w, r)
 			return
 		}
-		next(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, user)))
+		next(w, found.attach(r))
 	}
 }
 

@@ -13,9 +13,12 @@ VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: GetSessionWithUser :one
-SELECT s.expires_at AS session_expires_at, sqlc.embed(u)
+SELECT s.expires_at AS session_expires_at, sqlc.embed(u),
+       w.id AS owned_workspace, w.name AS owned_workspace_name, w.created_at AS owned_workspace_created_at,
+       w.updated_at AS owned_workspace_updated_at, w.is_catalog AS owned_workspace_is_catalog
 FROM sessions s
 JOIN users u ON u.id = s.user_id
+LEFT JOIN workspaces w ON w.owner_user_id = u.id
 WHERE s.token_hash = $1;
 
 -- name: GetWorkspaceOwnerLifecycle :one

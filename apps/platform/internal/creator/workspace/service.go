@@ -246,18 +246,35 @@ func (s *Service) mintSession(ctx context.Context, user gen.User) (string, error
 	return token, tx.Commit(ctx)
 }
 
+type session struct {
+	user      User
+	workspace *Workspace
+}
+
 func (s *Service) UserForToken(ctx context.Context, token string) (User, error) {
+	found, err := s.sessionForToken(ctx, token)
+	return found.user, err
+}
+
+func (s *Service) sessionForToken(ctx context.Context, token string) (session, error) {
 	row, err := s.queries().GetSessionWithUser(ctx, hashToken(token))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, ErrSessionInvalid
+		return session{}, ErrSessionInvalid
 	}
 	if err != nil {
-		return User{}, err
+		return session{}, err
 	}
 	if err := sessionValidity(row.SessionExpiresAt, lifecycleOf(row.User), time.Now()); err != nil {
-		return User{}, err
+		return session{}, err
 	}
-	return userDTO(row.User), nil
+	found := session{user: userDTO(row.User)}
+	if row.OwnedWorkspace.Valid {
+		found.workspace = &Workspace{
+			ID: row.OwnedWorkspace, OwnerUserID: row.User.ID, Name: *row.OwnedWorkspaceName,
+			CreatedAt: row.OwnedWorkspaceCreatedAt, UpdatedAt: row.OwnedWorkspaceUpdatedAt, IsCatalog: *row.OwnedWorkspaceIsCatalog,
+		}
+	}
+	return found, nil
 }
 
 func lifecycleOf(user gen.User) accountLifecycle {
@@ -359,6 +376,9 @@ func (s *Service) CleanupExpiredSessions(ctx context.Context) (int64, error) {
 }
 
 func (s *Service) PersonalWorkspace(ctx context.Context, user User) (Workspace, error) {
+	if ws, ok := ctx.Value(sessionWorkspaceKey{}).(Workspace); ok && ws.OwnerUserID == user.ID {
+		return ws, nil
+	}
 	ws, err := s.queries().ListWorkspacesByOwner(ctx, user.ID)
 	if err != nil {
 		return Workspace{}, err
