@@ -84,12 +84,13 @@ WITH streams AS (
     SELECT attempt, source, count(*)::bigint AS received,
            max(seq)::bigint AS highest_seq,
            (max(seq) - count(*))::bigint AS missing_count,
-           count(*) FILTER (WHERE late)::bigint AS late_events
+           count(*) FILTER (WHERE late)::bigint AS late_events,
+           max(occurred_at)::timestamptz AS last_event_at
     FROM trace_events
     WHERE run_id = @run_id AND workspace_id = @workspace_id
     GROUP BY attempt, source
 )
-SELECT s.attempt, s.source, s.received, s.highest_seq, s.missing_count, s.late_events,
+SELECT s.attempt, s.source, s.received, s.highest_seq, s.missing_count, s.late_events, s.last_event_at,
        coalesce(ARRAY(
            SELECT candidate
            FROM (
@@ -123,11 +124,6 @@ SELECT COALESCE(payload->>'text', '')::text AS text
 FROM trace_events
 WHERE run_id = @run_id AND workspace_id = @workspace_id
   AND source = @source AND attempt = @attempt AND seq = @seq;
-
--- name: GetTraceLastEventAt :one
-SELECT max(occurred_at)::timestamptz AS last_event_at
-FROM trace_events
-WHERE run_id = @run_id AND workspace_id = @workspace_id;
 
 -- name: LockTraceIngestRun :exec
 -- Takes the global trace-writer lock before any per-stream lock; the insert trigger

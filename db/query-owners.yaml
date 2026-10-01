@@ -189,7 +189,6 @@ queries:
   GetTraceStreamHealth: trace
   ListTraceGeneralFacts: trace
   GetTraceEventText: trace
-  GetTraceLastEventAt: trace
   LockTraceIngestRun: trace
   NextTraceSeq: trace
   CountTraceMaskingInWindow: trace

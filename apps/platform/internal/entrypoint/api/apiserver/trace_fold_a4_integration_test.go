@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -91,6 +92,32 @@ func TestEachStreamNamesOnlyItsOwnHoles(t *testing.T) {
 		if stream.MissingCount != int64(len(want[i])) {
 			t.Errorf("stream %d missing_count = %d, want %d", i+1, stream.MissingCount, len(want[i]))
 		}
+	}
+}
+
+func TestTheSummaryNamesTheLatestEventAcrossEveryStream(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "trace-fold-latest")
+	run := seedRun(t, pool, c.workspaceID, seedSkill(t, pool, c.workspaceID, "trace-fold-latest"))
+	latest := time.Now().Add(-10 * time.Minute).UTC().Truncate(time.Second)
+	for attempt, at := range map[int]time.Time{1: latest.Add(-time.Hour), 2: latest, 3: latest.Add(-30 * time.Minute)} {
+		if _, err := pool.Exec(context.Background(), `
+			INSERT INTO trace_events
+			(event_id, workspace_id, run_id, attempt, seq, occurred_at, event_type, source,
+			 schema_version, masked, masked_fields, payload, late)
+			VALUES (gen_random_uuid(), $1, $2, $3, 1, $4, 'script_log', 'sandbox', '1.0', true, '[]', '{}', false)`,
+			c.workspaceID, run, attempt, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	status, view := c.generalTrace(t, run)
+	if status != http.StatusOK {
+		t.Fatalf("general trace: got %d, want 200", status)
+	}
+	if want := latest.Format("2006-01-02T15:04:05Z"); view.LastEventAt != want {
+		t.Errorf("last_event_at = %q, want %q from the second of three streams", view.LastEventAt, want)
 	}
 }
 

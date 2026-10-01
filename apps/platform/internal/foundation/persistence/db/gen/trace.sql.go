@@ -102,35 +102,18 @@ func (q *Queries) GetTraceEventText(ctx context.Context, arg GetTraceEventTextPa
 	return text, err
 }
 
-const getTraceLastEventAt = `-- name: GetTraceLastEventAt :one
-SELECT max(occurred_at)::timestamptz AS last_event_at
-FROM trace_events
-WHERE run_id = $1 AND workspace_id = $2
-`
-
-type GetTraceLastEventAtParams struct {
-	RunID       pgtype.UUID
-	WorkspaceID pgtype.UUID
-}
-
-func (q *Queries) GetTraceLastEventAt(ctx context.Context, arg GetTraceLastEventAtParams) (pgtype.Timestamptz, error) {
-	row := q.db.QueryRow(ctx, getTraceLastEventAt, arg.RunID, arg.WorkspaceID)
-	var last_event_at pgtype.Timestamptz
-	err := row.Scan(&last_event_at)
-	return last_event_at, err
-}
-
 const getTraceStreamHealth = `-- name: GetTraceStreamHealth :many
 WITH streams AS (
     SELECT attempt, source, count(*)::bigint AS received,
            max(seq)::bigint AS highest_seq,
            (max(seq) - count(*))::bigint AS missing_count,
-           count(*) FILTER (WHERE late)::bigint AS late_events
+           count(*) FILTER (WHERE late)::bigint AS late_events,
+           max(occurred_at)::timestamptz AS last_event_at
     FROM trace_events
     WHERE run_id = $1 AND workspace_id = $2
     GROUP BY attempt, source
 )
-SELECT s.attempt, s.source, s.received, s.highest_seq, s.missing_count, s.late_events,
+SELECT s.attempt, s.source, s.received, s.highest_seq, s.missing_count, s.late_events, s.last_event_at,
        coalesce(ARRAY(
            SELECT candidate
            FROM (
@@ -161,6 +144,7 @@ type GetTraceStreamHealthRow struct {
 	HighestSeq   int64
 	MissingCount int64
 	LateEvents   int64
+	LastEventAt  pgtype.Timestamptz
 	MissingSeq   []int64
 }
 
@@ -182,6 +166,7 @@ func (q *Queries) GetTraceStreamHealth(ctx context.Context, arg GetTraceStreamHe
 			&i.HighestSeq,
 			&i.MissingCount,
 			&i.LateEvents,
+			&i.LastEventAt,
 			&i.MissingSeq,
 		); err != nil {
 			return nil, err

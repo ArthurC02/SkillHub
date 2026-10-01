@@ -323,6 +323,8 @@ type StreamHealth struct {
 	MissingCount int64   `json:"missing_count"`
 	MissingSeq   []int64 `json:"missing_seq,omitempty"`
 	LateEvents   int     `json:"late_events"`
+
+	lastEventAt time.Time
 }
 
 type AdvancedView struct {
@@ -597,6 +599,9 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 	if anyStreamMissing(health) {
 		summary.Complete = false
 	}
+	if last := lastEventOf(health); !last.IsZero() {
+		summary.LastEventAt = last.UTC().Format("2006-01-02T15:04:05Z")
+	}
 
 	if nothingWasCollected(run, health) {
 		summary.Complete = false
@@ -618,6 +623,16 @@ func (s *Service) priceInCredits(usage *UsageSummary) {
 			usage.CostCredits = &credits
 		}
 	}
+}
+
+func lastEventOf(health []StreamHealth) time.Time {
+	var last time.Time
+	for _, stream := range health {
+		if stream.lastEventAt.After(last) {
+			last = stream.lastEventAt
+		}
+	}
+	return last
 }
 
 func anyStreamMissing(health []StreamHealth) bool {
@@ -654,13 +669,6 @@ func (s *Service) readGeneralFold(ctx context.Context, workspaceID, runID pgtype
 			return generalFold{}, err
 		}
 	}
-	last, err := q.GetTraceLastEventAt(ctx, gen.GetTraceLastEventAtParams{RunID: runID, WorkspaceID: workspaceID})
-	if err != nil {
-		return generalFold{}, err
-	}
-	if last.Valid {
-		fold.summary.LastEventAt = last.Time.UTC().Format("2006-01-02T15:04:05Z")
-	}
 	return fold, nil
 }
 
@@ -690,7 +698,7 @@ func (s *Service) traceStreamHealth(ctx context.Context, workspaceID, runID pgty
 		out = append(out, StreamHealth{
 			Attempt: int(row.Attempt), EmittedBy: row.Source, Received: int(row.Received),
 			HighestSeq: row.HighestSeq, MissingCount: row.MissingCount,
-			MissingSeq: row.MissingSeq, LateEvents: int(row.LateEvents),
+			MissingSeq: row.MissingSeq, LateEvents: int(row.LateEvents), lastEventAt: row.LastEventAt.Time,
 		})
 	}
 	return out, nil
