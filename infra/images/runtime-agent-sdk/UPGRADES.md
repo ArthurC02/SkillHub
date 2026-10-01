@@ -735,3 +735,32 @@ PROBE_PATH=skills/nope       → 拒絕 provision/invalid_package "…that direc
 
 **沒有做的事**：沒有建置映像、沒有以新 digest 跑 import 檢查、沒有跑供應鏈掃描、沒有任何一次
 真實 Run。這些都要等 CI 發佈 `-14` 的 digest 之後，在那個 digest 上做。
+
+## `2026.08-14` → `2026.08-15`（2026-10-01）— **安全性修補；四項實測尚未跑，預設映像仍留在 `-13`**
+
+> GitHub 對主分支回報 3 個 moderate 等級的依賴漏洞，`npm audit` 在本目錄重現同樣三筆，
+> 全部是 `@anthropic-ai/claude-agent-sdk` → `@modelcontextprotocol/sdk` 帶進來的間接依賴。
+> repo 其他 npm、Python、Go 專案在同一天都是 0 筆。
+
+| 套件 | 舊 → 新 | 公告 | 經由 |
+| --- | --- | --- | --- |
+| `hono` | `4.13.5` → `4.13.9` | GHSA-hxh3-vqpv-xpqv：`hono/jsx` 的 boundary 元件不跳脫字串（XSS） | `@modelcontextprotocol/sdk`、`@hono/node-server` |
+| `fast-uri` | `3.1.7` → `3.1.8` | GHSA-hrr3-gc8f-f4qj：百分比編碼的主機名稱大小寫正規化不一致 | `ajv` |
+| `ip-address` | `10.7.0` → `10.7.2` | GHSA-j6r3-76f7-8jcv：跨位址族比對子網段；GHSA-h3mg-xc3c-68pw：超長輸入讓解析卡住 | `express-rate-limit` |
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `npm audit fix --package-lock-only`：`package-lock.json` 只換這三個套件的版本與雜湊（另有幾處 `libc` 欄位的鍵順序被 npm 重排，內容不變），以及 `ARG IMAGE_VERSION`。`package.json`、`constraints.txt`、`run.mjs`、`Dockerfile` 其餘內容一字未動 |
+| 為什麼是升級而不是整理 | 映像裡的 `node_modules` 變了，image digest 跟著變，依定義就是升級 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| 嚴重度與 I-06 | 三筆都是 moderate，I-06 閘門只擋 fixable Critical／High，所以這一版不是被閘門逼出來的 |
+| 預設映像 | **仍是 `-13`**：四處預設都沒有動 |
+| 四項實測 | **一項都沒跑**，本節不主張任何一項通過；`-14` 的實測也還沒補，兩版要在 CI 發佈 `-15` 的 digest 之後一起在那個 digest 上跑 |
+
+### 本機驗證（2026-10-01，沒有任何模型呼叫，沒有建置映像）
+
+`npm audit` → `found 0 vulnerabilities`；`node --test run.test.mjs` → 115 tests、114 pass、0 fail、1 skipped（與 `-14` 相同）；`npm ls hono fast-uri ip-address --all` → `4.13.9`、`3.1.8`、`10.7.2`。
+
+**沒有做的事**：沒有建置映像、沒有跑供應鏈掃描、沒有任何一次真實 Run。這三個修補在實際被派送的
+`-13` 映像裡仍然存在，直到預設映像移到 `-15`。
