@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
@@ -22,6 +23,16 @@ func New(pool *pgxpool.Pool, cfg *river.Config) (*river.Client[pgx.Tx], error) {
 }
 
 func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+	q := gen.New(conn)
+	if err := q.LockQueueSchema(ctx); err != nil {
+		return err
+	}
+	defer func() { _ = q.UnlockQueueSchema(context.WithoutCancel(ctx)) }()
 	m, err := rivermigrate.New(riverpgxv5.New(pool), nil)
 	if err != nil {
 		return err

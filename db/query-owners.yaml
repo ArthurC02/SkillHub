@@ -11,6 +11,7 @@ files:
   governance.sql:
   packaging.sql: packaging
   publishing.sql: publishing
+  queue.sql: queue
   reconcile.sql:
   run_permissions.sql: run
   runs.sql:
