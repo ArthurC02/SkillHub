@@ -177,7 +177,7 @@ func readObjectBody(r *http.Request) ([]byte, error) {
 	if r.Header.Get("X-Amz-Content-Sha256") == streamingSignAlgorithm {
 		return decodeAWSChunked(r.Body)
 	}
-	return readCapped(r.Body, MaxObjectBytes)
+	return readCapped(r.Body, MaxObjectBytes, r.ContentLength)
 }
 
 // maxChunkBytes bounds a value read straight off an untrusted request header;

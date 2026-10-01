@@ -88,7 +88,11 @@ func (c *Client) GetIfPresent(ctx context.Context, key string) ([]byte, bool, er
 		return nil, false, fmt.Errorf("objstore get %s: %w", key, err)
 	}
 	defer func() { _ = obj.Close() }()
-	data, err := readCapped(obj, MaxObjectBytes)
+	sizeHint := int64(-1)
+	if info, err := obj.Stat(); err == nil {
+		sizeHint = info.Size
+	}
+	data, err := readCapped(obj, MaxObjectBytes, sizeHint)
 	if err != nil {
 		if isNotFound(err) {
 			return nil, false, nil
@@ -122,18 +126,18 @@ func isNotFound(err error) bool {
 	return minio.ToErrorResponse(err).StatusCode == http.StatusNotFound
 }
 
-// readCapped reads one byte past max: io.ReadAll on a plain LimitReader
-// returns a silently short result at the limit, with no error, so the extra
-// byte is what turns "over the ceiling" into a reported error instead.
-func readCapped(r io.Reader, max int) ([]byte, error) {
-	data, err := io.ReadAll(io.LimitReader(r, int64(max)+1))
-	if err != nil {
+// readCapped reads one byte past the ceiling: a plain LimitReader ends
+// silently short at the limit, with no error, so the extra byte is what turns
+// "over the ceiling" into a reported error instead.
+func readCapped(r io.Reader, ceiling int, sizeHint int64) ([]byte, error) {
+	buf := bytes.NewBuffer(make([]byte, 0, int(min(max(sizeHint, 0), int64(ceiling)))+bytes.MinRead))
+	if _, err := buf.ReadFrom(io.LimitReader(r, int64(ceiling)+1)); err != nil {
 		return nil, err
 	}
-	if len(data) > max {
-		return nil, fmt.Errorf("object is larger than the %d byte ceiling", max)
+	if buf.Len() > ceiling {
+		return nil, fmt.Errorf("object is larger than the %d byte ceiling", ceiling)
 	}
-	return data, nil
+	return buf.Bytes(), nil
 }
 
 func (c *Client) Remove(ctx context.Context, key string) error {

@@ -25,7 +25,7 @@ func TestReadCappedRefusesRatherThanTruncates(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			want := bytes.Repeat([]byte{0x7f}, tc.size)
-			got, err := readCapped(bytes.NewReader(want), tc.max)
+			got, err := readCapped(bytes.NewReader(want), tc.max, -1)
 			if tc.wantErr {
 				if err == nil {
 
@@ -43,6 +43,39 @@ func TestReadCappedRefusesRatherThanTruncates(t *testing.T) {
 				t.Errorf("readCapped returned %d bytes, want the whole %d", len(got), tc.size)
 			}
 		})
+	}
+}
+
+func TestReadCappedTrustsTheBytesNotTheAnnouncedSize(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		size    int
+		hint    int64
+		wantErr bool
+	}{
+		{name: "announced exactly", size: 8, hint: 8},
+		{name: "announced smaller", size: 8, hint: 2},
+		{name: "announced larger", size: 3, hint: 8},
+		{name: "announced far past the ceiling", size: 3, hint: 1 << 40},
+		{name: "announced small but over the ceiling", size: 9, hint: 2, wantErr: true},
+	} {
+		want := bytes.Repeat([]byte{0x7f}, tc.size)
+		got, err := readCapped(bytes.NewReader(want), 8, tc.hint)
+		if tc.wantErr != (err != nil) || (!tc.wantErr && !bytes.Equal(got, want)) {
+			t.Errorf("%s: got %d bytes, err %v; want the %d bytes read, refused only past the ceiling", tc.name, len(got), err, tc.size)
+		}
+	}
+}
+
+func TestAnAnnouncedSizeIsReadIntoOneAllocation(t *testing.T) {
+	data := bytes.Repeat([]byte{0x7f}, 1<<20)
+	allocs := testing.AllocsPerRun(5, func() {
+		if _, err := readCapped(bytes.NewReader(data), MaxObjectBytes, int64(len(data))); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if allocs > 3 {
+		t.Errorf("reading a 1 MiB object of announced size took %v allocations, want it read into one buffer", allocs)
 	}
 }
 
