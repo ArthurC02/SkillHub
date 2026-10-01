@@ -91,6 +91,24 @@ code,
   background: var(--danger-bg);
 }
 
+.caution {
+  color: var(--warning);
+  border-color: var(--warning);
+  background: var(--warning-bg);
+}
+
+.caution:hover:not(:disabled) {
+  background: var(--warning-bg);
+  box-shadow: inset 0 -2px var(--warning);
+}
+
+button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  box-shadow: inset 3px 0 var(--accent);
+  font-weight: 600;
+}
+
 .badge-row {
   display: flex;
   flex-wrap: wrap;
@@ -447,6 +465,18 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
   background: var(--danger-bg);
 }
 
+.notice-success {
+  border-color: var(--success);
+  border-left-color: var(--success);
+  background: var(--success-bg);
+}
+
+.notice-warning {
+  border-color: var(--warning);
+  border-left-color: var(--warning);
+  background: var(--warning-bg);
+}
+
 /* The other half: `role="alert"` had no rule at all, in any of its ~30 places —
    the app's loudest ARIA role was visually identical to a paragraph. Same
    treatment as a danger notice, so the two are one vocabulary rather than two.
@@ -518,7 +548,8 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
 }
 
 .badge-differs {
-  border-color: var(--accent-border);
+  border-color: var(--warning);
+  color: var(--warning);
 }
 
 .compare-unknown {
@@ -586,9 +617,20 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
   border-style: dashed;
 }
 
-.badge-criterion-undetermined,
-.badge-severity-warning {
+.badge-criterion-undetermined {
   border-color: var(--accent-border);
+}
+
+.badge-positive,
+.badge-criterion-passed {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.badge-warning,
+.badge-severity-warning {
+  border-color: var(--warning);
+  color: var(--warning);
 }
 
 .verdict {

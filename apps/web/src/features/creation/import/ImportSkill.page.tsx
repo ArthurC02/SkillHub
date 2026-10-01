@@ -204,7 +204,7 @@ function ImportRules({ rules }: { rules: SkillImportLimits | undefined }) {
 function ImportOutcome({ result }: { result: ImportResult }) {
   return (
     <>
-      <div role="status" className="notice">
+      <div role="status" className="notice notice-success">
         <p>
           匯入完成，這個來源帶進 {result.skills.length} 個小工具。
           {result.plugin && (

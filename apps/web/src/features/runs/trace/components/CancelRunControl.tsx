@@ -49,7 +49,12 @@ export function CancelRunControl({ runId, status }: { runId: string; status?: st
   return (
     <div>
       <p className="note">確定要取消？已開始的 Sandbox 仍要等平台完成停止與清理。</p>
-      <button type="button" disabled={cancel.isPending} onClick={confirmCancel}>
+      <button
+        type="button"
+        className="destructive"
+        disabled={cancel.isPending}
+        onClick={confirmCancel}
+      >
         確認取消
       </button>{" "}
       <button type="button" disabled={cancel.isPending} onClick={() => setConfirming(false)}>

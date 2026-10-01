@@ -7,6 +7,7 @@ export function ActionForm({
   pending,
   error,
   done,
+  tone,
   ready = true,
   onSubmit,
   children,
@@ -16,6 +17,7 @@ export function ActionForm({
   pending: boolean;
   error: unknown;
   done?: ReactNode;
+  tone?: "caution";
   ready?: boolean;
   onSubmit: (note: string) => void;
   children?: ReactNode;
@@ -40,6 +42,7 @@ export function ActionForm({
       </div>
       <button
         type="submit"
+        className={tone}
         disabled={blocked || pending}
         aria-describedby={blocked ? `${id}-why` : undefined}
       >
@@ -50,7 +53,11 @@ export function ActionForm({
           「{submitLabel}」要等上面的欄位都填好。
         </p>
       )}
-      {done && <p role="status">{done}</p>}
+      {done && (
+        <p className="notice notice-success" role="status">
+          {done}
+        </p>
+      )}
       <WriteFailure error={error} />
     </form>
   );

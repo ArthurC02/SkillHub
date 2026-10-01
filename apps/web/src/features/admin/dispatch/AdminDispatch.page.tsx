@@ -68,6 +68,7 @@ export function AdminDispatch() {
         pending={declare.isPending}
         error={declare.error}
         done={declare.data?.note}
+        tone="caution"
         onSubmit={(note) => declare.mutate({ note, provider: target })}
       />
       <h3>恢復派送</h3>

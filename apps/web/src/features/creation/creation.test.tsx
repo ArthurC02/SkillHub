@@ -1129,6 +1129,7 @@ test("catalog references can start a session and require confirmation", async ()
   expect(box.textContent).toContain("固定版本");
   expect(box.textContent).toContain("精選");
   expect(box.textContent).toContain("2 個警告");
+  expect(button("直接採用").classList.contains("caution")).toBe(true);
   expect(box.textContent).not.toContain("secret-model");
   expect(box.textContent).not.toContain("secret-prompt");
   const urls = (fetch as unknown as { mock: { calls: [string, RequestInit?][] } }).mock.calls.map(
@@ -1154,6 +1155,8 @@ test("catalog hit on the first message offers adopt, confirm, or decline", async
       description: "整理輸入並輸出摘要",
       compatibility: "需要文字輸入",
       allowed_tools: "Bash",
+      scan_status: "scanned",
+      warnings: 0,
     },
   ];
   vi.stubGlobal(
@@ -1169,6 +1172,7 @@ test("catalog hit on the first message offers adopt, confirm, or decline", async
   await render();
   await resume();
   expect(box.textContent).toContain("目錄裡已有相近的小工具");
+  expect(button("直接採用").classList.contains("caution")).toBe(false);
   await click("直接採用");
   await waitFor(() => posts.length === 1);
   expect(posts[0]).toMatchObject({
@@ -1225,6 +1229,8 @@ test("materialize-time duplicates offer adopt or confirm and hide the private-ca
   expect(box.textContent).toContain("既有摘要小工具");
   expect(box.textContent).toContain("沒有掃描紀錄");
   expect(() => button("建立私人候選版本")).toThrow();
+  expect(button("直接採用").classList.contains("caution")).toBe(true);
+  expect(button("仍然建立").classList.contains("caution")).toBe(true);
   await click("仍然建立");
   await waitFor(() => posts.length === 1);
   expect(posts[0]).toMatchObject({
@@ -1678,6 +1684,11 @@ test("a failed or unevaluated run warns before saving instead of claiming no run
   await resume();
   expect(box.textContent).toContain("試跑未通過或未評估");
   expect(box.textContent).not.toContain("這份草稿尚未試跑");
+  expect(
+    Array.from(box.querySelectorAll(".notice-warning")).some((notice) =>
+      notice.textContent?.includes("試跑未通過或未評估"),
+    ),
+  ).toBe(true);
 });
 test("acceptance criteria render under the brief and the confirm button names both", async () => {
   const v = sample({ state: "waiting_confirmation" });

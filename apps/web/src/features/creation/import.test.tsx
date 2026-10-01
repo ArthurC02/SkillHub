@@ -260,6 +260,9 @@ test("a Plugin import hands every imported 小工具 to its exact immutable vers
   await submitURL();
   await waitFor(() => text().includes("匯入完成"));
 
+  expect(container.querySelector('[role="status"]')?.classList.contains("notice-success")).toBe(
+    true,
+  );
   expect(text()).toContain("skills/tidy-notes");
   expect(text()).toContain("skills/split-csv");
   const links = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href"));

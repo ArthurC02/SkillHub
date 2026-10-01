@@ -650,9 +650,9 @@
 }
 
 .card-tag[data-tone="done"] {
-  border-color: var(--accent-border);
-  background: var(--accent-bg);
-  color: var(--link);
+  border-color: var(--success);
+  background: var(--code-bg);
+  color: var(--success);
 }
 
 .card-tag[data-tone="danger"] {

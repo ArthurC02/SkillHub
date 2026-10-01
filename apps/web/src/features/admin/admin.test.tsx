@@ -460,6 +460,8 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
   await waitFor(has("sandbox escape suspected on node-2"));
   expect(has("P1 事故：只有人能解除")()).toBe(true);
   expect(has("整個叢集")()).toBe(true);
+  expect(button("停止派送").classList.contains("caution")).toBe(true);
+  expect(button("恢復派送").classList.contains("caution")).toBe(false);
   await type("#admin-halt-declare-note", "escape drill");
   await click(button("停止派送"));
   await waitFor(has("整個叢集停止派送。"));

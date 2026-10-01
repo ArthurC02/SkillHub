@@ -42,6 +42,6 @@ export function runAttentionAction(status: string, verdict: string): string {
 export const CLEANUP_BADGE: Record<string, string> = {
   pending: "badge badge-unverified",
   cleaning_up: "badge badge-unverified",
-  cleaned: "badge",
+  cleaned: "badge badge-positive",
   failed: "badge badge-danger",
 };

@@ -360,6 +360,10 @@ test("WS-004 a run whose sandbox was not cleaned up says so on the row", async (
     "a `title=` is back on this page, duplicating text that is already visible",
   ).toEqual([]);
   expect(text()).toContain("已清理");
+  const cleanupBadge = Array.from(container.querySelectorAll(".badge")).find((badge) =>
+    badge.textContent?.includes("已清理"),
+  );
+  expect(cleanupBadge?.classList.contains("badge-positive")).toBe(true);
   expect(container.querySelectorAll(".badge-unverified")).toHaveLength(0);
   expect(container.querySelectorAll(".badge-danger")).toHaveLength(1);
 });

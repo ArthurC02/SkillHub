@@ -86,6 +86,18 @@ const PAIRS: [fg: string, bg: string, min: number, where: string][] = [
   ["danger", "danger-bg", 4.5, ".notice-danger heading and inline emphasis"],
   ["text-h", "danger-bg", 4.5, ".notice-danger's own heading"],
   ["text", "danger-bg", 4.5, ".notice-danger body text"],
+
+  ["success", "code-bg", 4.5, "explicit completed-result badges and tags"],
+  ["success", "success-bg", 4.5, ".notice-success leading edge and status label"],
+  ["text-h", "success-bg", 4.5, ".notice-success heading"],
+  ["text", "success-bg", 4.5, ".notice-success body text"],
+  ["link", "success-bg", 4.5, "a link inside a success notice"],
+
+  ["warning", "surface", 4.5, ".caution control edge where the control sits on a card"],
+  ["warning", "warning-bg", 4.5, ".caution label and .notice-warning leading edge"],
+  ["text-h", "warning-bg", 4.5, ".notice-warning heading"],
+  ["text", "warning-bg", 4.5, ".notice-warning body text"],
+  ["link", "warning-bg", 4.5, "a link inside a warning notice"],
 ];
 
 test("QA-009: every colour token is declared once per theme", () => {

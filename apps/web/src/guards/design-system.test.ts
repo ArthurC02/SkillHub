@@ -641,6 +641,17 @@ test("§NFR-007: the nav says which item is current with more than one channel",
   expect(activeChip, "當前 chip 沒有用字重提供第二個選中訊號").toContain("font-weight: 600");
 });
 
+test("§NFR-007: pressed decision buttons expose selection with colour and shape", () => {
+  const rules = css.split("}");
+  const selected = rules.find((rule) => rule.trimStart().startsWith('button[aria-pressed="true"]'));
+  expect(selected, "找不到共用的 aria-pressed 選取規則").toBeTruthy();
+  expect(selected, "選取後沒有 accent 淡底").toContain("background: var(--accent-bg)");
+  expect(selected, "選取後沒有內側記號，顏色會成為唯一訊號").toContain(
+    "box-shadow: inset 3px 0 var(--accent)",
+  );
+  expect(selected, "選取後沒有字重作第三個訊號").toContain("font-weight: 600");
+});
+
 test("§3 第 16 條: a responsive table row header fills its mobile card", () => {
   const rules = sheets.get("styles/patterns.css")!.split("}");
   const rowHeader = rules.find((rule) => rule.includes('.responsive-table tbody th[scope="row"]'));

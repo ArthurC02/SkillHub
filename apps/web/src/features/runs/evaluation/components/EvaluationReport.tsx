@@ -20,13 +20,13 @@ export function EvaluationReport({
   return (
     <div>
       {evaluation.superseded_at && (
-        <p className="notice">
+        <p className="notice notice-warning">
           你正在看歷史判定，它已於 <Timestamp at={evaluation.superseded_at} /> 被較新的評估取代。
         </p>
       )}
 
       {evaluation.status === "failed" && (
-        <p className="notice">
+        <p className="notice notice-warning">
           <strong>評估未完成</strong>：這次判定沒有跑完（例如模型閘道不可用或證據讀不到）。
           這與「未評估」不同，也不會被當成通過。
         </p>
@@ -40,7 +40,7 @@ export function EvaluationReport({
       {evaluation.summary && <p>{evaluation.summary}</p>}
 
       {!evaluation.evidence_complete && (
-        <p className="notice">
+        <p className="notice notice-warning">
           判定所依據的材料不完整（Trace 有缺漏、Artifact 讀不到，或輸入被截斷）。
           在這個前提下，逐條判定不會記為通過。
         </p>

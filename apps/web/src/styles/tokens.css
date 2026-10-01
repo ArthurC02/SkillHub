@@ -23,6 +23,10 @@
   --accent-bg: #eef2ff;
   --accent-border: #818cf8;
   --link: #3730a3;
+  --success: #147a50;
+  --success-bg: #e8f8ef;
+  --warning: #975100;
+  --warning-bg: #fff4dd;
   --danger: #b42318;
   --danger-bg: #fff1f2;
 
@@ -91,6 +95,10 @@
     --accent-bg: #1e1b4b;
     --accent-border: #6366f1;
     --link: #bac5ff;
+    --success: #56c590;
+    --success-bg: #102a20;
+    --warning: #f4b860;
+    --warning-bg: #33240d;
     --danger: #ff8a80;
     --danger-bg: #341b24;
 

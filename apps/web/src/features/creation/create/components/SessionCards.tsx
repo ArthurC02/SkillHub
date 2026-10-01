@@ -390,7 +390,7 @@ export function DuplicatesCard({
       />
       <div className="card-actions">
         <button
-          className="card-primary"
+          className="caution"
           disabled={locked || !contentHash}
           onClick={() => void perform("confirm_duplicate", { content_hash: contentHash })}
         >

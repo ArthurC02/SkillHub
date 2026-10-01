@@ -486,6 +486,22 @@ test("設計 §3 第 4 條：失敗的試跑紀錄在自己的頁面上要說出
   expect(container.textContent).not.toContain("失敗類別：未記錄");
 });
 
+test("取消試跑只有最後確認使用破壞性語意", async () => {
+  stubTrace({ ...summary, status: "running" }, advanced);
+  await render();
+
+  const ask = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "取消這次試跑",
+  );
+  expect(ask?.classList.contains("destructive"), "第一段入口不該先畫成最終破壞動作").toBe(false);
+  await act(async () => ask?.click());
+
+  const confirm = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "確認取消",
+  );
+  expect(confirm?.classList.contains("destructive"), "最後確認沒有標出取消的後果").toBe(true);
+});
+
 test("R4: the advanced Trace opens on the page its address names, and paging writes it back", async () => {
   const requested: string[] = [];
   setSearch({ events: "1" });

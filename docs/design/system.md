@@ -366,12 +366,12 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 | 表面 | 樣式 | 什麼時候用 | 不要用在 |
 | --- | --- | --- | --- |
 | **卡片** | `border: 1px solid var(--border)` ＋ `border-radius: 12px` ＋ `padding: 16px` ＋ **`background: var(--surface)`** ＋ `--shadow-rest`（§4.6.2：卡片是「面」，頁是「地」） | 見下方判準 | 導覽清單。整份確認裡的條目（判斷單位是整份摘要，不是它的一行） |
-| **notice** | `1px solid var(--accent-border)` ＋ `border-left: 3px solid var(--accent)` ＋ `border-radius: 12px` ＋ `background: var(--accent-bg)` ＋ `padding: 8px 12px`；**阻斷版 `.notice-danger`** 換 `--danger`／`--danger-bg`，`[role="alert"]` 的區塊同款 | **平台對這一頁講的一個持續狀態**：降級、部分索引、未評估、已被取代；**不能打包的理由、授權審查中功能關閉、無法套用建議**三處是阻斷版 | 使用者自己動作的**當下結果**（那是 `role="status"` 的一句話）；**內含按鈕的確認對話**；單純的補充說明（那是 `.note`）。不是「非阻斷」的同義詞 |
+| **notice** | `1px solid var(--accent-border)` ＋ `border-left: 3px solid var(--accent)` ＋ `border-radius: 12px` ＋ `background: var(--accent-bg)` ＋ `padding: 8px 12px`；阻斷版換 danger、完成版換 success、注意版換 warning | **平台對這一頁講的一個持續狀態**：一般 notice 表資訊；`.notice-danger` 表阻斷；`.notice-success` 只表明文的已完成結果；`.notice-warning` 表可繼續但有具體風險的狀態 | **內含按鈕的確認對話**；單純補充說明（那是 `.note`）；沒有明文結果或下一步的裝飾色塊 |
 | **裸區塊** | 無 | 敘述文字、說明段落 | — |
 | **右欄**（`aside.detail-rail`） | 與卡片同一個面、邊與靜止陰影；操作密度較低，所以用 `16px` 圓角與 `20px` padding；≥1024 `sticky` | **一頁的操作與各自的理由**：試跑、以此為起點、檔案樹、上傳新版本。判定不進去（§2.10 的東西留在主欄），主要動作也不進去 | 任何不是操作的東西；第二種卡片樣式（它不是第五種樣式，是卡片配方的另一個用法） |
 | **chip**（`a.chip`） | 次要按鈕的盒（描邊、藥丸）；選中＝凹面＋字重 | **導覽用的分類列**：它是控制項 | 任何主張（那是 badge）；填色（那是 `.action`） |
 | **Catalog 畫廊**（`.catalog-gallery`） | 一座連續的商品格線，桌機以每欄至少 232px 自適應到四欄、手機一欄；`.catalog-skill-card` 是瀏覽專用卡，不把 `.search-result` 表格搬進去。卡上只留名稱、兩行用途，以及來源／類別／規格／試跑／風險／依賴摘要／最近驗證這些首輪決策訊號；欄位值與搜尋結果同源、同詞，但完整揭露與共通但書留在詳情頁及畫廊後方。精選與已收錄是卡片狀態，不拆成兩座書架；排序理由在畫廊前直接顯示 | `/` 的無查詢 Catalog；需要先總覽、再進詳情的商品探索 | 搜尋結果、人氣榜、拿精選冒充安全或推薦、前端自行排序、把全部詳情塞回卡片 |
-| **對話訊息**（`.creation-log > li`；**具名例外**：聊天介面版型，負責人明示） | `--surface` 無框的泡泡，圓角 16px、貼著說話者那一角收成 4px。**誰在說話由位置說**：Agent 靠左並掛一顆 36px 的圓形頭像（`--accent`→`--cta` 漸層，`aria-hidden`），頭像與泡泡間隔 12px；**你說的話填 `--cta`、字 `--on-cta` 並靠右**（本表唯一一個不是動作卻填色的東西——填的是「這是你」，不是「按這裡」）；`工具結果` 置中成一塊 `--surface-active` 的系統訊息。三個名字只留給螢幕閱讀器。**Agent 遞給你的東西**（回合時間線、需求摘要、流程圖理解、連網確認、參考 Skill、相近 Skill、草稿）是它那一側的卡片：無框 `--surface`、圓角 16px、與泡泡同一條左緣；頭一列是標題＋狀態標籤（描邊藥丸，已確認換 `--accent-bg`），尾一列是等寬的按鈕列，**卡片的確認鍵是 `--accent-bg` 的淡填色**，保存仍是這一頁唯一的 `.action`。卡片排在對話之後、`role="log"` 之外（草稿全文不會被當成新訊息念出來） | **互動創作**（見[互動創作](../adr/README.md#互動創作)）**的多輪對話**，`features/creation/create/components/CreationSession.tsx` 一處 | 任何不是對話的清單 |
+| **對話訊息**（`.creation-log > li`；**具名例外**：聊天介面版型，負責人明示） | `--surface` 無框的泡泡，圓角 16px、貼著說話者那一角收成 4px。**誰在說話由位置說**：Agent 靠左並掛一顆 36px 的圓形頭像（`--accent`→`--cta` 漸層，`aria-hidden`），頭像與泡泡間隔 12px；**你說的話填 `--cta`、字 `--on-cta` 並靠右**（本表唯一一個不是動作卻填色的東西——填的是「這是你」，不是「按這裡」）；`工具結果` 置中成一塊 `--surface-active` 的系統訊息。三個名字只留給螢幕閱讀器。**Agent 遞給你的東西**（回合時間線、需求摘要、流程圖理解、連網確認、參考 Skill、相近 Skill、草稿）是它那一側的卡片：無框 `--surface`、圓角 16px、與泡泡同一條左緣；頭一列是標題＋狀態標籤（描邊藥丸，已確認用 success 文字與邊界），尾一列是等寬的按鈕列，卡片確認鍵維持 accent 淡填色，保存仍是這一頁唯一的 `.action`；繞過重複候選或缺少掃描紀錄時，該選擇改用 `.caution`。卡片排在對話之後、`role="log"` 之外（草稿全文不會被當成新訊息念出來） | **互動創作**（見[互動創作](../adr/README.md#互動創作)）**的多輪對話**，`features/creation/create/components/CreationSession.tsx` 一處 | 任何不是對話的清單 |
 | **輸入區**（`.composer`，同上例外） | `--surface` ＋ `1px solid var(--border)`、圓角 24px、`padding: 12px 16px`，坐在地上；文字框沒有自己的框。附加動作（＋ 流程圖、＋ 參考 Skill）是 `--code-bg` 的藥丸；**送出鍵是填 `--cta` 的藥丸**，還沒有東西可送（只有空白、也沒有附件）或停用時退成 `--surface-active` 的灰。預算檔位在輸入區上方排成一列可橫捲的藥丸（原生 radio，選中換 `--accent-bg`），**沒有預設值** | **同一段對話裡的所有素材入口**：文字、流程圖、參考 Skill。曾經它們是三個 radio 切換的互斥欄位，負責人的原話是「不應該是拆開來多個 UI 項目」 | 一般表單（那是 `.field`）。送出鍵不是 `.action`（見 §4.6.3 表的 `/workspace/creations` 列） |
 | **Skill 卡片**（`.skill-card`，**具名例外**，負責人明示做成 Card Gallery 的樣態） | 畫廊卡：三欄格線（每欄至少 300px，窄螢幕一欄）、圓角 16px。**卡片上半部整塊是一個連到 Skill 詳情頁的連結**：一條 112px 的滿版色帶、壓在色帶下緣的 56px 字首方塊、名稱、摘要（最多兩行，全文在詳情頁）。色調是冷靛、藍、青、藍綠四組 `--tile-*` 之一，依 `skill_id` 固定——**顏色只是識別，不承載任何主張**；字色 `--on-tile`，八對都在 `contrast.test.ts` 的 `PAIRS`。卡面維持一層中性表面與細邊界；hover 只把邊界朝自己的冷色調收近、上移 4px 並加深陰影，不追蹤游標或畫四色光。卡上只留會擋住你的事；管理操作收在右上角選單。空資產庫的三張新增卡沿用同一套圓角、邊界與陰影；已有資產時改用凹面入口帶 | `/library` 的 Skill 清單與空資產庫新增中心 | 另外三處 `.search-result`（搜尋結果、Test Case 列、逐版歷史）；任何要用顏色說狀態的地方 |
 
@@ -406,16 +406,18 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 | --- | --- | --- |
 | **badge（永遠帶文字）** | 一個事實的標籤 | `LabelledBadge` 的文案由伺服器給——**但這條規則只對 `LabelledBadge` 的三種 kind 成立**，見下方 |
 | **`--danger` 邊框＋文字** | 這件事不通過／會擋住你 | `.badge-danger`、`.badge-expired`、`.badge-compat-failed`、`.badge-risk`、`.badge-risk-flag`、`.badge-criterion-failed`、`.badge-severity-error`、`.script-tag`；`.criterion-failed` **只有邊框沒有文字色** |
-| **`--accent-border`（僅邊框）** | 這件事未知、未驗證或**未檢查** | `.badge-license-unknown`、`.badge-trust-unknown`、`.badge-compat-unverified`、`.badge-source-model`、`.badge-untested`、`.badge-unverified`、`.badge-criterion-undetermined`、`.badge-severity-warning`、`.criterion-undetermined`、**`.badge-source-unknown`**；`button:hover` 也用它。〔`.badge-source-unknown`（`styles/patterns.css` 與 `.badge-license-unknown` 同一條規則），並移走 `.badge-criterion-unverifiable`——它在 CSS 裡**只有 `border-style: dashed`、沒有 `--accent-border`**，屬於下一列的虛線邊框。這一格的標題自稱「完整」，所以錯一個就是錯的〕 |
+| **`--success` 邊框＋文字** | 一個具名的有利結果已經完成；不是安全或品質背書 | `.badge-positive`、`.badge-criterion-passed`、互動創作的 `data-tone="done"` |
+| **`--warning` 邊框＋文字** | 已知差異、部分符合或非阻斷警告，需要留意但不是失敗 | `.badge-warning`、`.badge-severity-warning`、`.badge-differs` |
+| **`--accent-border`（僅邊框）** | 這件事未知、未驗證或**未檢查** | `.badge-license-unknown`、`.badge-trust-unknown`、`.badge-compat-unverified`、`.badge-source-model`、`.badge-untested`、`.badge-unverified`、`.badge-criterion-undetermined`、`.criterion-undetermined`、**`.badge-source-unknown`**；`button:hover` 也用它。〔`.badge-source-unknown`（`styles/patterns.css` 與 `.badge-license-unknown` 同一條規則），並移走 `.badge-criterion-unverifiable`——它在 CSS 裡**只有 `border-style: dashed`、沒有 `--accent-border`**，屬於下一列的虛線邊框。這一格的標題自稱「完整」，所以錯一個就是錯的〕 |
 | **虛線邊框** | 這個東西**不是完整有效的**：平台自己降級了判定，或控制項現在不能用 | `.criterion-unverifiable`、`button:disabled` 等 |
-| **無修飾的 badge** | 通過／正常。**這是合法的**——§2.3 只要求詞在前面，沒要求每個狀態都有顏色 | `.badge` 本身 |
+| **無修飾的 badge** | 中性事實或正常但不構成完成結果 | `.badge` 本身 |
 
 **四條規則：**
 
 1. **一個檢查產生的徽章，必須是 `通過` / `未通過` / `未執行` 三者之一，而 `未執行` 要說出是哪個檢查沒跑。** 業界的主流失效正是「沒跑的檢查」與「跑過而通過」長得一樣（Hugging Face 的安全標記自陳 best-effort；OpenSSF 空 repo 拿 10 分）。目前 `--accent-border` 同時承載「未驗證」與「未檢查」，**詞分開了、視覺沒分開**——§2.3 允許這樣，但那正是為什麼詞不能省。
 2. **顏色與線型永遠是第二或第三訊號。** `--accent` 是焦點、選取與中性資訊的一眼訊號；長篇可讀的連結文字另用更沉著的 `--link`。兩者都由 `contrast.test.ts` 在實際表面上守對比，但角色不能互換。
 3. **class 名字要命名主張，不要命名某一個領域的理由。** `.badge-expired` 的宣告與 `.badge-severity-error` 完全相同，但名字寫死了「過期」，於是「清理失敗」需要同一個視覺時無處可去。`.badge-danger` 是主張的名字；兩個舊名保留，因為使用它們的頁面命名的是真實的東西。
-4. **`--accent-border` 目前有一個名不副實的用法**：`.badge-differs` 指的是「有差異」，那是一個肯定的發現，不是未知。這一格待裁。
+4. **差異、警告、未知與完成不得共用同一色。** `.badge-differs` 是肯定的發現，走 warning；未知、未驗證與未檢查才走 accent；明文完成結果才走 success。
 
 **§4.4 第 1 列的規則與契約現在是矛盾的，這裡直說。** 全 app 有 **20 個**前端 enum→中文對照表，因為契約在 `tier`／`trust`／`license`／`redistribution` 上送 `{value, label, note}`，在 `status`／`cleanup_status`／compatibility 三軸／risk flags／artifact status 上只送裸 enum。**刪掉對照表會讓 `pending` 直接出現在畫面上，那違反 `02:NFR-007` 第 3 條**（「風險、相容與評估狀態必須同時提供文字」——它剛好點名了風險與相容）。所以：規則對，契約沒跟上，這是**契約缺口不是前端缺陷**。逐項裁定與補法走契約補完那條路。
 
@@ -464,12 +466,14 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 | `--cta`／`--on-cta` | **一頁一個**主要動作的填色與其上的字 | Electric Indigo／白 | 亮 Electric Indigo／墨色 | 任何徽章、任何第二顆按鈕 |
 | `--accent`／`--accent-bg`／`--accent-border` | 焦點、選取與中性資訊的強／淡／邊界三階 | Electric Indigo 系列 | 亮 Electric Indigo 系列 | 危險、成功或品質主張 |
 | `--link` | 可持續閱讀的連結文字 | 比 accent 更沉的藍 | 柔和亮藍 | 焦點環與整塊填色 |
+| `--success`／`--success-bg` | **已經發生**的具體有利結果，例如任務符合、清理完成或寫入成功 | 深綠／淡綠 | 亮綠／暗綠 | 主要動作、尚未完成的承諾、Skill 安全或品質背書 |
+| `--warning`／`--warning-bg` | 有具體風險但仍可繼續的選擇；同處必須寫出風險或出路 | 深琥珀／淡琥珀 | 亮琥珀／暗琥珀 | 未量測、未驗證、進行中或一般提醒 |
 | `--danger`／`--danger-bg` | 阻斷、未通過與毀滅性動作 | 暖紅／淡紅 | 珊瑚紅／暗紅 | 非阻斷降級或一般注意事項 |
 | `--tile-*`／`--on-tile` | Skill 的穩定識別色；冷靛到藍綠，同一色調兩個 stop | 中深冷色／白 | 稍亮冷色／白 | 風險、品質、精選或排序 |
 
 **全部配對由機器計算，不把會過期的比值抄進本節。** 一般文字與連結在實際使用的地、面、凹、hover、active 與 notice 底上都要 ≥4.5:1；控制項邊界、焦點環與 notice 的訊號邊要 ≥3:1。`--on-cta` 與 `--on-tile` 各自在自己的填色上驗證。**沒有進 `PAIRS` 的配對等於沒有被守**——新增用途時先加實際配對，再選值。
 
-> **配色邏輯是 Midnight＋Electric Indigo，不是「科技感漸層」。** 冷中性色佔畫面絕大多數，建立穩定的平台骨架；Electric Indigo 只用於主要動作、焦點、選取與連結，Signal Cyan 只在深色殼層標示目前位置與鍵盤焦點，暖紅只表示阻斷。四組 Skill 識別色也收在冷靛到藍綠的同一光譜，不再混入玫瑰色或四色游標光。這使彩色稀少而有價值，也避免每個產品空間各自發明「部門色」。
+> **配色邏輯是角色，不是裝飾。** 冷中性色建立平台骨架；Electric Indigo 表示主要動作、焦點、選取與資訊；綠色只回答「哪一件有利結果已經完成」，琥珀只回答「哪一個選擇有具體風險但仍可繼續」，暖紅只表示阻斷或最終破壞確認。`primary` 是動作層級，`success` 是結果，兩者不綁在同一色；因此主要動作不因名字含「開始」「保存」就變綠。四組 Skill 識別色仍收在冷靛到藍綠的同一光譜。彩色稀少才有操作價值，也避免各產品空間自行發明「部門色」。
 
 > **亮暗主題共用角色，不共用色碼。** 暗色不是亮色反相：表面往上會變亮，文字與訊號色另外校準；殼層在兩個主題維持相同 Midnight 身分，內容區各自映射地、面、凹與互動態。對比守門讀的是兩份主題 token，缺任一份就失敗。
 
@@ -494,6 +498,9 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
   | `/compare`、`/runs/$id`、`/policy`、**`/library`** | **零個** | 沒有「完成這一頁的工作」的動作時，零個是合法的〔`/library` 自上面移入，理由在該列〕 |
 
 - **毀滅性動作永遠不是主要動作**：`ConfirmDelete` 的確認鈕維持 `--danger` 描邊——§2.8 的兩段式靠的就是它不顯眼。
+- **有風險但允許繼續的選擇用 `.caution`**：琥珀描邊與淡底只作第二個訊號，旁邊仍要有「為何需要注意」的文字。它不是主要動作，也不用於單純未知或未驗證；目前用在繞過重複候選與直接採用缺少掃描紀錄的參考物。
+- **選取是互動狀態，不是結論**：`aria-pressed="true"` 用 accent 淡底、左側內記號與字重；接受與拒絕共用這個選取角色，不分別塗成綠與紅，避免把偏好誤寫成品質判定。
+- **成功綠只呈現結果**：明文的任務符合、清理完成、確認完成與寫入成功可用綠色描邊或 notice；不得用它暗示 Skill 已安全、已驗證或值得推薦。顏色拿掉後，結果文字仍要完整成立。
 - 其餘按鈕＝次要：`--surface` 底、`--border-strong` 邊、hover 換 `--surface-hover`、`:active` 換 `--surface-active`。停用態不變（虛線，§4.4）。
 - **換頁不是動作，也不是主張——它是連結。** 填色配給動作、描邊配給主張，**而換頁哪一格都不站**：一個戴著次要按鈕外框的「下載紀錄」讓人以為按下去會下載什麼東西，而它只是換頁。連結的樣子這個 app 早就有（`--link` ＋ 底線），**這一條要擋的是把它畫成按鈕**。
   **它為什麼會發生**：09-08 早些時候 `.action-secondary` 落地，目的是讓空資產庫三張卡的三個入口同框；資產庫頁尾那四條快速導航剛好也戴著同一個 class，於是連坐變成四顆按鈕。
@@ -510,7 +517,7 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 
 | 頻道 | 留給誰 |
 | --- | --- |
-| 第四個語意色相（attention／in-progress） | §2.12 進行中；評估報告的第二個「未驗證」（§7：「這格要在釘板被塞滿之前先決定」） |
+| 進行中的專用色相 | §2.12 進行中；warning 已給「可繼續但有風險」，不得順便拿來表示排隊或運行中 |
 | 凹面當**整張卡**的底 | 多租戶的所有權軸（「別人的」「唯讀」，§7 第一列） |
 | 填色徽章 | **永遠不給任何主張** |
 | 三種強制者的 notice 變體 | Local Runner／遠端 MCP（§2.2 第三向）；本節只加 `--danger-bg` 一種 |
@@ -519,7 +526,7 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 
 - **不引入 webfont**：外部請求要進同意書的第三方清單、字型載入會跳版、[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)否決的是依賴面。槓桿是**字重**：`h1`／`h2` 600、`.app-title` 700（今天全部 500／600），GOV.UK 與 USWDS 的視覺品質就是這樣來的。
 - favicon 以 inline SVG data URI 寫在 `index.html`（不開 `public/`）；`.app-title` 前一個 `--accent` 方塊記號（`::before`，全 app 第一個 pseudo-element）。<br>今天全域樣式表（`styles/`）有**三個** pseudo-element 站點：`.app-title::before`（方塊記號）、`summary::before`（展開記號，展開時 `rotate(90deg)`）、`details[open] > summary::before`。**pseudo-element 是被配給的，不是自由的**：外部審查提議過在每一顆次要按鈕後面加一個 `›`，那會是第四個站點，而且會讓同一個字形在這個 app 裡同時表示「這裡可以展開」與「這裡會換頁」。不採用。
-- **不做**：裝飾性滿版漸層〔例外：互動創作頁的 Agent 頭像與 `/library` 的識別色帶〕、主題切換按鈕（`prefers-color-scheme` 就是偏好；IA R4）、圖示集〔已由[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)回答：允許至多六個形狀的 inline SVG、一列一個、永遠伴隨文字，規則在 §4.7；「不做圖示**集**」仍成立〕、成功綠、任何「Verified」填色、視覺回歸截圖基準線（§6 已證偽兩次）。
+- **不做**：裝飾性滿版漸層〔例外：互動創作頁的 Agent 頭像與 `/library` 的識別色帶〕、主題切換按鈕（`prefers-color-scheme` 就是偏好；IA R4）、圖示集〔已由[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)回答：允許至多六個形狀的 inline SVG、一列一個、永遠伴隨文字，規則在 §4.7；「不做圖示**集**」仍成立〕、把成功綠當作主動作或安全背書、任何「Verified」填色、視覺回歸截圖基準線（§6 已證偽兩次）。
 
 #### 4.6.7 視覺層的修改不需要任何放行
 
@@ -592,7 +599,7 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 ### 5.3 開放缺口（不是偏離）
 
 - **已關：`.notice-danger`，§4.6.1 的 `--danger-bg`，三處套用（§4.3 表）。**
-- **`.badge-differs` 用 `--accent-border` 表達一個肯定的發現**（§4.4 規則 4）。
+- **已關：`.badge-differs` 改用 warning 描邊與文字，肯定的差異不再借用 selected／unknown 的 accent。**
 - **`.verdict-*` 的 class 插值已移除**：四個判定只有兩個 token 可用，「部分符合」與「無法判斷」必得共用一個，比不上色更糟。`.criterion-passed` 刻意不存在——安靜的預設就是它的視覺。
 
 ---
@@ -603,8 +610,8 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 
 | 規則 | 把關者 | 覆蓋範圍 |
 | --- | --- | --- |
-| 色彩對比（token 層） | [`contrast.test.ts`](../../apps/web/src/guards/contrast.test.ts) | **`PAIRS` 手列的配對，不是全部 token 配對**；值直接讀 `styles/tokens.css`，不留第二份副本。帶 alpha 的 token（`--accent-bg`、`--accent-border`）結構上量不到（下一列補）。**25 對**（§4.6.1 的每一個新底各與四種前景配對，另加 `--border-strong` 兩對 3:1）；**沒進 `PAIRS` 的 token 仍然等於沒有被守** |
-| 色彩對比（合成像素、alpha） | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)（見[Repo 結構、CI 與驗證層](../adr/README.md#repo-結構ci-與驗證層)） | **2 條路由**（`/?q=pdf`、`/policy`），三引擎。理由：`--accent-bg` 是唯一落在文字後面的 alpha token，兩頁都有它 |
+| 色彩對比（token 層） | [`contrast.test.ts`](../../apps/web/src/guards/contrast.test.ts) | **`PAIRS` 手列的配對，不是全部 token 配對**；值直接讀 `styles/tokens.css`，不留第二份副本。**52 對**：一般文字用 4.5:1，承載控制狀態的邊界用 3:1；**沒進 `PAIRS` 的 token 仍然等於沒有被守** |
+| 色彩對比（實際像素） | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)（見[Repo 結構、CI 與驗證層](../adr/README.md#repo-結構ci-與驗證層)） | **2 條路由**（`/?q=pdf`、`/policy`），三引擎；補 token 測試看不到的瀏覽器合成與實際元件配置，不宣稱覆蓋全站所有狀態 |
 | 375px 不橫向溢出 | 同上 | **全部路由**（今天是 36 個位址狀態／35 條路由定義，`/` 出現兩次，另含導向路由）。**棘輪**：`ia.test.ts` 把 `e2e/routes.ts` 當文字讀，與 `router.tsx` 的 `path` **雙向**比對——兩邊都先收斂成 shape（去掉 query，`${SKILL}` 與 `$skillId` 都變 `*`），所以一條路由對多個位址仍然合法，而少一條或多一條都會 FAIL。**守門放在 vitest 而不是 e2e**：Playwright 那層不是每次改動都跑，只在慢套件裡響的棘輪沒有人感覺得到 |
 | 焦點環真的被畫出來 | 同上 | **`/` 一條**，三引擎 |
 | Reduced motion 真的歸零共用轉場 | 同上 | **`/` 一條**，三引擎；先證明一般模式是 `120ms`，再模擬 `prefers-reduced-motion: reduce`，同時斷言兩個時長 token 與商品卡實際 transition 都是零 |

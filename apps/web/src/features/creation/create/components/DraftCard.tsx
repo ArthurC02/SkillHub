@@ -211,7 +211,7 @@ function DraftSaveActions({
 }) {
   return (
     <>
-      <p>
+      <p className={!p.candidate?.run_id || runNotPassing ? "notice notice-warning" : undefined}>
         保存將採用目前顯示的草稿與版本。
         {!p.candidate?.run_id && "這份草稿尚未試跑。"}
         {runNotPassing && "試跑未通過或未評估；保存前請確認。"}

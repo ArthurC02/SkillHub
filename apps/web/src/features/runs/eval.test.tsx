@@ -374,6 +374,22 @@ test("a succeeded run whose task failed reads as 執行完成 plus 未符合, ne
   expect(text).toContain("模型評估");
   expect(text).toContain("規則判定");
   expect(text).toContain("材料不完整");
+  expect(
+    Array.from(container.querySelectorAll(".notice-warning")).some((notice) =>
+      notice.textContent?.includes("材料不完整"),
+    ),
+  ).toBe(true);
+});
+
+test("a passed verdict uses the completed-result role without implying it from run execution", async () => {
+  await act(async () => {
+    root = createRoot(container);
+    root.render(<RunVerdict verdict={{ value: "met", label: "符合", note: "" }} />);
+  });
+
+  const verdict = container.querySelector(".badge");
+  expect(verdict?.textContent).toContain("任務判定：符合");
+  expect(verdict?.classList.contains("badge-positive")).toBe(true);
 });
 
 test("a run with no evaluation says 未評估 and does not imply a pass", async () => {

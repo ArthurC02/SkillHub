@@ -56,7 +56,13 @@ export function ReferenceList({
           </details>
           {adoptable && (
             <div className="ref-adopt">
-              <button disabled={locked || !r.available} onClick={() => onAdopt(r.skill_id)}>
+              <button
+                className={
+                  r.scan_status === "scanned" && (r.warnings ?? 0) === 0 ? undefined : "caution"
+                }
+                disabled={locked || !r.available}
+                onClick={() => onAdopt(r.skill_id)}
+              >
                 直接採用
               </button>
               {r.scan_status !== "scanned" && (
