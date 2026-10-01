@@ -122,3 +122,21 @@ func TestTheLoginRoutesRefuseCleanlyWhenNoProviderIsConfigured(t *testing.T) {
 		})
 	}
 }
+
+func TestDevLoginStopsReadingABodyPastFourKilobytes(t *testing.T) {
+	pool, err := pgxpool.New(context.Background(),
+		"postgres://nobody@127.0.0.1:1/nothing?sslmode=disable&connect_timeout=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	h := &Handler{DevLogin: true, Service: &Service{Pool: pool}}
+	overlongNameBehindPadding := strings.Repeat(" ", 4096) + `{"user":"` + strings.Repeat("a", 65) + `"}`
+	w := httptest.NewRecorder()
+
+	h.devLogin(w, httptest.NewRequest(http.MethodPost, "/auth/dev/login", strings.NewReader(overlongNameBehindPadding)))
+
+	if w.Code != 500 || !strings.Contains(w.Body.String(), "login failed") {
+		t.Fatalf("status = %d body = %q, want the default dev user's login attempt: the name past 4 KiB must never be read", w.Code, w.Body.String())
+	}
+}

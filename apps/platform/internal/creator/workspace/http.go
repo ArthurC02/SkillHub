@@ -55,6 +55,7 @@ func (h *Handler) Mount(mux *http.ServeMux) {
 
 const (
 	maxDevLoginNameBytes    = 64
+	maxDevLoginBodyBytes    = 4096
 	loginStateMaxAgeSeconds = 600
 )
 
@@ -62,7 +63,7 @@ func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		User string `json:"user"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, maxDevLoginBodyBytes)).Decode(&body)
 	name := body.User
 	if name == "" {
 		name = "dev"

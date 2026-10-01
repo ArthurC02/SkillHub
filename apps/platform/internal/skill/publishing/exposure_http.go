@@ -137,7 +137,7 @@ func (h *Handler) ReviewExposure(w http.ResponseWriter, r *http.Request) {
 		Decision         string `json:"decision"`
 		Reason           string `json:"reason"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "the body must be a JSON object")
 		return
 	}

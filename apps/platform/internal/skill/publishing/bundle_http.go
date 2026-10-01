@@ -165,7 +165,7 @@ func (h *Handler) CreateBundleVersion(w http.ResponseWriter, r *http.Request) {
 		Description      string   `json:"description"`
 		MemberVersionIDs []string `json:"member_version_ids"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "the body must be a JSON object")
 		return
 	}
@@ -226,7 +226,7 @@ func (h *Handler) PublishBundle(w http.ResponseWriter, r *http.Request) {
 		Version        string `json:"version"`
 		RightsAttested bool   `json:"rights_attested"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "the body must be a JSON object")
 		return
 	}

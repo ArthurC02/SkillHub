@@ -147,6 +147,8 @@ type publicPublicationView struct {
 	Acquisition   noteView            `json:"acquisition"`
 }
 
+const maxJSONBodyBytes = 64 << 10
+
 const (
 	exposedNote           = "這個發佈物的這一版已經過目錄審核：它會出現在搜尋與目錄裡。"
 	notListedNote         = "這個發佈物目前不在搜尋與目錄裡；只有拿到這個連結的人看得到。"
@@ -271,7 +273,7 @@ func (h *Handler) RegisterPublisher(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name string `json:"name"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "the body must be JSON with a name")
 		return
 	}
@@ -335,7 +337,7 @@ func (h *Handler) Publish(w http.ResponseWriter, r *http.Request) {
 		VersionID      string `json:"version_id"`
 		RightsAttested bool   `json:"rights_attested"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "the body must be a JSON object")
 		return
 	}
