@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
+	"io/fs"
 	"strings"
 	"testing"
 
@@ -25,6 +27,13 @@ func (m memberStore) Get(_ context.Context, key string) ([]byte, error) {
 func (m memberStore) GetIfPresent(_ context.Context, key string) ([]byte, bool, error) {
 	b, ok := m[key]
 	return b, ok, nil
+}
+func (m memberStore) Open(_ context.Context, key string) (io.ReadCloser, int64, error) {
+	b, ok := m[key]
+	if !ok {
+		return nil, 0, fs.ErrNotExist
+	}
+	return io.NopCloser(bytes.NewReader(b)), int64(len(b)), nil
 }
 func (m memberStore) Put(context.Context, string, []byte) error    { return nil }
 func (m memberStore) Remove(context.Context, string) error         { return nil }

@@ -145,7 +145,7 @@ func zipTooManyFilesErr(t *testing.T) error {
 	if err := zw.Close(); err != nil {
 		t.Fatalf("close zip writer: %v", err)
 	}
-	err := inspectZip(buf.Bytes())
+	err := inspectZip(bytes.NewReader(buf.Bytes()))
 	if err == nil {
 		t.Fatal("expected inspectZip to reject an archive over the file-count limit")
 	}

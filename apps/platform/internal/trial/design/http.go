@@ -508,13 +508,7 @@ func (h *Handler) UploadDataset(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = file.Close() }()
 
-	data, err := io.ReadAll(io.LimitReader(file, MaxFileBytes+1))
-	if err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "讀不到上傳的檔案")
-		return
-	}
-
-	ds, err := h.Svc.UploadDataset(r.Context(), ws, id, header.Filename, data)
+	ds, err := h.Svc.UploadDataset(r.Context(), ws, id, header.Filename, io.NewSectionReader(file, 0, header.Size))
 	if err != nil {
 		fail(w, err, "上傳失敗")
 		return

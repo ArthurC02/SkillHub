@@ -77,6 +77,17 @@ func (s *packagingFaultStore) GetIfPresent(ctx context.Context, key string) ([]b
 	return s.base.GetIfPresent(ctx, key)
 }
 
+func (s *packagingRaceStore) Open(ctx context.Context, key string) (io.ReadCloser, int64, error) {
+	return s.base.Open(ctx, key)
+}
+
+func (s *packagingFaultStore) Open(ctx context.Context, key string) (io.ReadCloser, int64, error) {
+	if s.getErr != nil {
+		return nil, 0, s.getErr
+	}
+	return s.base.Open(ctx, key)
+}
+
 func (s *packagingFaultStore) Get(ctx context.Context, key string) ([]byte, error) {
 	if s.getErr != nil {
 		return nil, s.getErr

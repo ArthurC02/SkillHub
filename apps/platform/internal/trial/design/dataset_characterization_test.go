@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"os"
 	"testing"
 
@@ -21,7 +22,7 @@ type recordingStore struct {
 	refusePut bool
 }
 
-func (s *recordingStore) Put(_ context.Context, key string, _ []byte) error {
+func (s *recordingStore) PutFrom(_ context.Context, key string, _ io.Reader, _ int64) error {
 	s.puts = append(s.puts, key)
 	if s.refusePut {
 		return errors.New("simulated object write failure")
@@ -111,7 +112,7 @@ func TestUploadDatasetRefusesAnUnusableFileBeforeAnyStorage(t *testing.T) {
 		"one byte over a file": {"rows.csv", bytes.Repeat([]byte("a"), MaxFileBytes+1), ErrLimitExceeded},
 		"an executable":        {"tool.exe", []byte("MZ\x90\x00rest"), ErrUnsupportedType},
 	} {
-		if _, err := svc.UploadDataset(context.Background(), identity.Workspace{}, pgtype.UUID{}, tc.fileName, tc.data); !errors.Is(err, tc.want) {
+		if _, err := svc.UploadDataset(context.Background(), identity.Workspace{}, pgtype.UUID{}, tc.fileName, bytes.NewReader(tc.data)); !errors.Is(err, tc.want) {
 			t.Errorf("%s: err = %v, want %v", name, err, tc.want)
 		}
 	}
@@ -125,7 +126,7 @@ func TestUploadDatasetOfExactlyTheFileLimitIsStored(t *testing.T) {
 	ws, caseA, _, _ := seedTwoCases(t, pool)
 	store := &recordingStore{}
 
-	ds, err := datasetService(pool, store).UploadDataset(t.Context(), ws, caseA, "big.csv", bytes.Repeat([]byte("a"), MaxFileBytes))
+	ds, err := datasetService(pool, store).UploadDataset(t.Context(), ws, caseA, "big.csv", bytes.NewReader(bytes.Repeat([]byte("a"), MaxFileBytes)))
 	if err != nil || ds.SizeBytes != MaxFileBytes || len(store.puts) != 1 {
 		t.Fatalf("size=%d puts=%d err=%v, want one stored file of exactly the limit", ds.SizeBytes, len(store.puts), err)
 	}
@@ -137,7 +138,7 @@ func TestUploadDatasetToAnotherWorkspacesTestCaseTouchesNoStorage(t *testing.T) 
 	_, foreignCase, _, _ := seedTwoCases(t, pool)
 	store := &recordingStore{}
 
-	if _, err := datasetService(pool, store).UploadDataset(t.Context(), ws, foreignCase, "rows.csv", []byte("id\n1\n")); !errors.Is(err, ErrNotFound) {
+	if _, err := datasetService(pool, store).UploadDataset(t.Context(), ws, foreignCase, "rows.csv", bytes.NewReader([]byte("id\n1\n"))); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("err = %v, want ErrNotFound", err)
 	}
 	if len(store.puts) != 0 || len(store.removed) != 0 {
@@ -152,7 +153,7 @@ func TestUploadDatasetToAWorkspaceThatMayNotStoreObjectsIsNotFoundAndLetsGo(t *t
 	svc := datasetService(pool, store)
 	svc.MayStoreObjects = func(context.Context, gen.DBTX, pgtype.UUID) (bool, error) { return false, nil }
 
-	if _, err := svc.UploadDataset(t.Context(), ws, caseA, "rows.csv", []byte("id\n1\n")); !errors.Is(err, ErrNotFound) {
+	if _, err := svc.UploadDataset(t.Context(), ws, caseA, "rows.csv", bytes.NewReader([]byte("id\n1\n"))); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("err = %v, want ErrNotFound", err)
 	}
 	if len(store.puts) != 0 {
@@ -169,7 +170,7 @@ func TestUploadDatasetWithoutALifecycleReadRefusesAndLetsGo(t *testing.T) {
 	store := &recordingStore{}
 	svc := &Service{Pool: pool, Store: store}
 
-	_, err := svc.UploadDataset(t.Context(), ws, caseA, "rows.csv", []byte("id\n1\n"))
+	_, err := svc.UploadDataset(t.Context(), ws, caseA, "rows.csv", bytes.NewReader([]byte("id\n1\n")))
 	if err == nil || errors.Is(err, ErrNotFound) || len(store.puts) != 0 {
 		t.Fatalf("err=%v puts=%v, want a configuration error before storage", err, store.puts)
 	}
@@ -184,14 +185,14 @@ func TestUploadDatasetAtExactlyTheTestCaseByteLimitIsStoredAndOneByteOverIsNot(t
 
 	atLimit, caseAtLimit, _, _ := seedTwoCases(t, pool)
 	seedDatasetBytes(t, pool, atLimit, caseAtLimit, MaxTestCaseBytes-int64(len(data)))
-	if _, err := datasetService(pool, &recordingStore{}).UploadDataset(t.Context(), atLimit, caseAtLimit, "fits.csv", data); err != nil {
+	if _, err := datasetService(pool, &recordingStore{}).UploadDataset(t.Context(), atLimit, caseAtLimit, "fits.csv", bytes.NewReader(data)); err != nil {
 		t.Errorf("an upload that fills the test case exactly: %v, want success", err)
 	}
 
 	over, caseOver, _, _ := seedTwoCases(t, pool)
 	seedDatasetBytes(t, pool, over, caseOver, MaxTestCaseBytes-int64(len(data))+1)
 	store := &recordingStore{}
-	if _, err := datasetService(pool, store).UploadDataset(t.Context(), over, caseOver, "over.csv", data); !errors.Is(err, ErrLimitExceeded) {
+	if _, err := datasetService(pool, store).UploadDataset(t.Context(), over, caseOver, "over.csv", bytes.NewReader(data)); !errors.Is(err, ErrLimitExceeded) {
 		t.Errorf("one byte over the test case: %v, want ErrLimitExceeded", err)
 	}
 	if len(store.puts) != 1 || len(store.removed) != 1 || store.removed[0] != store.puts[0] {
@@ -205,7 +206,7 @@ func TestACompensatedUploadLeavesNoCleanupIntentAndLetsGo(t *testing.T) {
 	seedDatasetBytes(t, pool, ws, caseA, MaxTestCaseBytes)
 	store := &recordingStore{}
 
-	if _, err := datasetService(pool, store).UploadDataset(t.Context(), ws, caseA, "over.csv", []byte("id\n1\n")); !errors.Is(err, ErrLimitExceeded) {
+	if _, err := datasetService(pool, store).UploadDataset(t.Context(), ws, caseA, "over.csv", bytes.NewReader([]byte("id\n1\n"))); !errors.Is(err, ErrLimitExceeded) {
 		t.Fatalf("err = %v, want ErrLimitExceeded", err)
 	}
 	if len(store.removed) != 1 {
@@ -224,7 +225,7 @@ func TestAnUploadWhoseObjectWriteFailsRemovesWhatItMayHaveWrittenAndItsIntent(t 
 	ws, caseA, _, _ := seedTwoCases(t, pool)
 	store := &recordingStore{refusePut: true}
 
-	_, err := datasetService(pool, store).UploadDataset(t.Context(), ws, caseA, "rows.csv", []byte("id\n1\n"))
+	_, err := datasetService(pool, store).UploadDataset(t.Context(), ws, caseA, "rows.csv", bytes.NewReader([]byte("id\n1\n")))
 	if err == nil || err.Error() != "simulated object write failure" {
 		t.Fatalf("err = %v, want the store's own failure", err)
 	}
@@ -245,7 +246,7 @@ func TestAStoredUploadIsRecordedUnderItsWorkspaceWithTheFileItWasGiven(t *testin
 	store := &recordingStore{}
 	data := []byte("id,name\n1,a\n")
 
-	ds, err := datasetService(pool, store).UploadDataset(t.Context(), ws, caseA, `dir\rows.csv`, data)
+	ds, err := datasetService(pool, store).UploadDataset(t.Context(), ws, caseA, `dir\rows.csv`, bytes.NewReader(data))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,7 +268,7 @@ func TestAnUploadWhoseCommitFailsWithoutAVerdictKeepsItsBytesForTheCleanupIntent
 	refuseCommitOf(t, pool, "refused-at-commit.csv")
 	store := &recordingStore{}
 
-	_, err := datasetService(pool, store).UploadDataset(t.Context(), ws, caseA, "refused-at-commit.csv", []byte("id\n1\n"))
+	_, err := datasetService(pool, store).UploadDataset(t.Context(), ws, caseA, "refused-at-commit.csv", bytes.NewReader([]byte("id\n1\n")))
 	if err == nil || errors.Is(err, pgx.ErrTxCommitRollback) {
 		t.Fatalf("err = %v, want the commit's own error", err)
 	}

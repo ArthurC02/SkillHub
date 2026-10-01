@@ -1,8 +1,11 @@
 package objstoretest
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"io/fs"
 	"net/url"
 	"sync"
 	"time"
@@ -25,6 +28,14 @@ func (s *InMemory) Put(_ context.Context, key string, data []byte) error {
 	return nil
 }
 
+func (s *InMemory) PutFrom(ctx context.Context, key string, content io.Reader, size int64) error {
+	data, err := io.ReadAll(io.LimitReader(content, size))
+	if err != nil {
+		return err
+	}
+	return s.Put(ctx, key, data)
+}
+
 func (s *InMemory) GetIfPresent(_ context.Context, key string) ([]byte, bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -33,6 +44,17 @@ func (s *InMemory) GetIfPresent(_ context.Context, key string) ([]byte, bool, er
 		return nil, false, nil
 	}
 	return append([]byte(nil), data...), true, nil
+}
+
+func (s *InMemory) Open(ctx context.Context, key string) (io.ReadCloser, int64, error) {
+	data, found, err := s.GetIfPresent(ctx, key)
+	if err != nil {
+		return nil, 0, err
+	}
+	if !found {
+		return nil, 0, fmt.Errorf("objstoretest open %s: %w", key, fs.ErrNotExist)
+	}
+	return io.NopCloser(bytes.NewReader(data)), int64(len(data)), nil
 }
 
 func (s *InMemory) Get(ctx context.Context, key string) ([]byte, error) {

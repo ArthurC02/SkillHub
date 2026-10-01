@@ -421,6 +421,9 @@ func assertServesTheStoredZipUnderItsOwnName(t *testing.T, a *api, c *client, ar
 	if int64(len(data)) != art.SizeBytes {
 		t.Errorf("served %d bytes, artifact says %d", len(data), art.SizeBytes)
 	}
+	if resp.ContentLength != int64(len(data)) {
+		t.Errorf("Content-Length %d announced for %d served bytes", resp.ContentLength, len(data))
+	}
 
 	if want := a.packages["downloads/"+c.workspaceID+"/"+art.ContentHash+".zip"]; string(data) != string(want) {
 		t.Error("the served bytes are not the stored object")
@@ -1042,5 +1045,20 @@ func TestAStoreThatCannotBeReadDoesNotTellTheOwnerTheirDownloadIsGone(t *testing
 	}
 	if strings.Contains(string(body), "not answering") {
 		t.Errorf("body = %q, still carries the store's own words", body)
+	}
+}
+
+func TestADownloadWhoseStoredPackageIsGoneAnswersNotFoundAndRecordsNothing(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "downloader-object-gone")
+	art := buildDownload(t, a, pool, c, "object-gone-skill")
+	delete(a.packages, "downloads/"+c.workspaceID+"/"+art.ContentHash+".zip")
+
+	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("GET content of a package the store no longer holds: got %d, want 404", resp.StatusCode)
+	}
+	if n := downloadRecordCount(t, pool, art.ArtifactID); n != 0 {
+		t.Errorf("download_records: got %d rows for a package that was never served, want 0", n)
 	}
 }

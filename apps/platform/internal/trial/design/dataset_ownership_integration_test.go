@@ -1,9 +1,11 @@
 package testlab
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -141,7 +143,7 @@ func requireTestLabDB(t *testing.T) *pgxpool.Pool {
 
 type removedStore struct{ removed []string }
 
-func (s *removedStore) Put(context.Context, string, []byte) error { return nil }
+func (s *removedStore) PutFrom(context.Context, string, io.Reader, int64) error { return nil }
 
 func (s *removedStore) Get(context.Context, string) ([]byte, error) {
 	return nil, errors.New("not used")
@@ -153,7 +155,7 @@ type retryRemovalStore struct {
 	key     string
 }
 
-func (s *retryRemovalStore) Put(_ context.Context, key string, _ []byte) error {
+func (s *retryRemovalStore) PutFrom(_ context.Context, key string, _ io.Reader, _ int64) error {
 	s.key = key
 	return nil
 }
@@ -177,7 +179,7 @@ type blockingPutStore struct {
 	key     string
 }
 
-func (s *blockingPutStore) Put(ctx context.Context, key string, _ []byte) error {
+func (s *blockingPutStore) PutFrom(ctx context.Context, key string, _ io.Reader, _ int64) error {
 	s.key = key
 	close(s.started)
 	select {
@@ -200,7 +202,7 @@ type cancelingPutStore struct {
 	removeCtxErr error
 }
 
-func (s *cancelingPutStore) Put(context.Context, string, []byte) error {
+func (s *cancelingPutStore) PutFrom(context.Context, string, io.Reader, int64) error {
 	s.cancel()
 	return nil
 }
@@ -377,7 +379,7 @@ func TestUploadDatasetDoesNotHoldTheTestCaseLockDuringObjectPut(t *testing.T) {
 	}
 	done := make(chan result, 1)
 	go func() {
-		_, err := svc.UploadDataset(context.Background(), ws, caseA, "rows.csv", []byte("id,name\n1,a\n"))
+		_, err := svc.UploadDataset(context.Background(), ws, caseA, "rows.csv", bytes.NewReader([]byte("id,name\n1,a\n")))
 		done <- result{err: err}
 	}()
 
@@ -439,7 +441,7 @@ func TestUploadDatasetRemovesObjectAfterDefiniteQuotaFailure(t *testing.T) {
 	}
 	store := &removedStore{}
 	svc := datasetService(pool, store)
-	if _, err := svc.UploadDataset(t.Context(), ws, caseA, "overflow.csv", []byte("id,name\n1,a\n")); !errors.Is(err, ErrLimitExceeded) {
+	if _, err := svc.UploadDataset(t.Context(), ws, caseA, "overflow.csv", bytes.NewReader([]byte("id,name\n1,a\n"))); !errors.Is(err, ErrLimitExceeded) {
 		t.Fatalf("upload beyond file quota returned %v, want ErrLimitExceeded", err)
 	}
 	if len(store.removed) != 1 {
@@ -461,7 +463,7 @@ func TestUploadDatasetSucceedsAtExactlyTheFileQuota(t *testing.T) {
 	}
 	store := &removedStore{}
 	svc := datasetService(pool, store)
-	if _, err := svc.UploadDataset(t.Context(), ws, caseA, "atlimit.csv", []byte("id,name\n1,a\n")); err != nil {
+	if _, err := svc.UploadDataset(t.Context(), ws, caseA, "atlimit.csv", bytes.NewReader([]byte("id,name\n1,a\n"))); err != nil {
 		t.Fatalf("upload at the file quota returned %v, want success", err)
 	}
 	var n int
@@ -488,7 +490,7 @@ func TestFailedUploadCompensationLeavesADurableCleanupIntent(t *testing.T) {
 	}
 	store := &retryRemovalStore{err: errors.New("object store unavailable")}
 	svc := datasetService(pool, store)
-	if _, err := svc.UploadDataset(t.Context(), ws, caseA, "overflow.csv", []byte("id,name\n1,a\n")); !errors.Is(err, ErrLimitExceeded) {
+	if _, err := svc.UploadDataset(t.Context(), ws, caseA, "overflow.csv", bytes.NewReader([]byte("id,name\n1,a\n"))); !errors.Is(err, ErrLimitExceeded) {
 		t.Fatalf("upload beyond quota returned %v, want ErrLimitExceeded", err)
 	}
 	var heldForAnHour bool
@@ -544,7 +546,7 @@ func TestCleanupIntentCannotOvertakeALiveDatasetUpload(t *testing.T) {
 	svc := datasetService(pool, putStore)
 	uploadDone := make(chan error, 1)
 	go func() {
-		_, err := svc.UploadDataset(t.Context(), ws, caseA, "slow.csv", []byte("id\n1\n"))
+		_, err := svc.UploadDataset(t.Context(), ws, caseA, "slow.csv", bytes.NewReader([]byte("id\n1\n")))
 		uploadDone <- err
 	}()
 	<-putStore.started
@@ -589,7 +591,7 @@ func TestUploadDatasetCompensatesAfterCallerCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	store := &cancelingPutStore{cancel: cancel}
 	_, err := datasetService(pool, store).UploadDataset(
-		ctx, ws, caseA, "rows.csv", []byte("id,name\n1,a\n"))
+		ctx, ws, caseA, "rows.csv", bytes.NewReader([]byte("id,name\n1,a\n")))
 	if err == nil {
 		t.Fatal("upload unexpectedly succeeded after its caller was cancelled")
 	}
@@ -646,7 +648,7 @@ func TestAnAccountPurgeWaitsForBytesThatAreStillBeingWritten(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		_, err := svc.UploadDataset(context.Background(), ws, caseA, "rows.csv", []byte("id,name\n1,a\n"))
+		_, err := svc.UploadDataset(context.Background(), ws, caseA, "rows.csv", bytes.NewReader([]byte("id,name\n1,a\n")))
 		done <- err
 	}()
 	select {

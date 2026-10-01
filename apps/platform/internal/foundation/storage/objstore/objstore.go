@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"time"
@@ -75,6 +76,26 @@ func (c *Client) GetIfPresent(ctx context.Context, key string) ([]byte, bool, er
 	return data, true, nil
 }
 
+func (c *Client) Open(ctx context.Context, key string) (io.ReadCloser, int64, error) {
+	obj, err := c.mc.GetObject(ctx, c.bucket, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, 0, openFailure(key, err)
+	}
+	info, err := obj.Stat()
+	if err != nil {
+		_ = obj.Close()
+		return nil, 0, openFailure(key, err)
+	}
+	return obj, info.Size, nil
+}
+
+func openFailure(key string, err error) error {
+	if isNotFound(err) {
+		err = fs.ErrNotExist
+	}
+	return fmt.Errorf("objstore open %s: %w", key, err)
+}
+
 func isNotFound(err error) bool {
 	return minio.ToErrorResponse(err).StatusCode == http.StatusNotFound
 }
@@ -126,7 +147,7 @@ func (c *Client) PresignPut(ctx context.Context, key string, ttl time.Duration) 
 	return u.String(), nil
 }
 
-func withinObjectCeiling(size, max int) error {
+func withinObjectCeiling[N int | int64](size, max N) error {
 	if size > max {
 		return fmt.Errorf("object is larger than the %d byte ceiling", max)
 	}
@@ -134,11 +155,14 @@ func withinObjectCeiling(size, max int) error {
 }
 
 func (c *Client) Put(ctx context.Context, key string, data []byte) error {
-	if err := withinObjectCeiling(len(data), MaxObjectBytes); err != nil {
+	return c.PutFrom(ctx, key, bytes.NewReader(data), int64(len(data)))
+}
+
+func (c *Client) PutFrom(ctx context.Context, key string, content io.Reader, size int64) error {
+	if err := withinObjectCeiling(size, MaxObjectBytes); err != nil {
 		return fmt.Errorf("objstore put %s: %w", key, err)
 	}
-	_, err := c.mc.PutObject(ctx, c.bucket, key, bytes.NewReader(data), int64(len(data)),
-		minio.PutObjectOptions{})
+	_, err := c.mc.PutObject(ctx, c.bucket, key, content, size, minio.PutObjectOptions{})
 	if err != nil {
 		return fmt.Errorf("objstore put %s: %w", key, err)
 	}

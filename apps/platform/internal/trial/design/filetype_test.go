@@ -42,7 +42,7 @@ func TestDetectContentTypeAllows(t *testing.T) {
 	}
 	for name, data := range cases {
 		t.Run(name, func(t *testing.T) {
-			got, err := detectContentType(data)
+			got, err := detectContentType(bytes.NewReader(data))
 			if err != nil {
 				t.Fatalf("rejected valid %s content: %v", name, err)
 			}
@@ -67,7 +67,7 @@ func TestDetectContentTypeRejectsDisguisedExecutables(t *testing.T) {
 	}
 	for name, data := range cases {
 		t.Run(name, func(t *testing.T) {
-			if _, err := detectContentType(data); !errors.Is(err, ErrUnsupportedType) {
+			if _, err := detectContentType(bytes.NewReader(data)); !errors.Is(err, ErrUnsupportedType) {
 				t.Fatalf("accepted %s content: err = %v", name, err)
 			}
 		})
@@ -76,7 +76,7 @@ func TestDetectContentTypeRejectsDisguisedExecutables(t *testing.T) {
 
 func TestDetectContentTypeRejectsUnknownBinary(t *testing.T) {
 	data := append([]byte{'O', 'g', 'g', 'S', 0x00}, bytes.Repeat([]byte{0x01, 0x00}, 128)...)
-	if _, err := detectContentType(data); !errors.Is(err, ErrUnsupportedType) {
+	if _, err := detectContentType(bytes.NewReader(data)); !errors.Is(err, ErrUnsupportedType) {
 		t.Fatalf("accepted unknown binary: err = %v", err)
 	}
 }
@@ -91,7 +91,7 @@ func TestInspectZipRejectsUnsafeEntries(t *testing.T) {
 	}
 	for name, data := range cases {
 		t.Run(name, func(t *testing.T) {
-			if _, err := detectContentType(data); !errors.Is(err, ErrUnsupportedType) {
+			if _, err := detectContentType(bytes.NewReader(data)); !errors.Is(err, ErrUnsupportedType) {
 				t.Fatalf("accepted archive with %s: err = %v", name, err)
 			}
 		})
@@ -103,12 +103,12 @@ func TestInspectZipAppliesUnpackBudget(t *testing.T) {
 	for i := range MaxFilesPerTestCase + 1 {
 		entries[string(rune('a'+i%26))+strings.Repeat("x", i)+".txt"] = "row"
 	}
-	if _, err := detectContentType(zipOf(t, entries)); !errors.Is(err, ErrLimitExceeded) {
+	if _, err := detectContentType(bytes.NewReader(zipOf(t, entries))); !errors.Is(err, ErrLimitExceeded) {
 		t.Fatalf("accepted archive of %d files: err = %v", len(entries), err)
 	}
 
 	entries["[Content_Types].xml"] = "<Types/>"
-	if _, err := detectContentType(zipOf(t, entries)); err != nil {
+	if _, err := detectContentType(bytes.NewReader(zipOf(t, entries))); err != nil {
 		t.Fatalf("rejected an OOXML document for its internal part count: %v", err)
 	}
 }
@@ -142,7 +142,7 @@ func TestInspectZipKeepsTheUnpackBudgetForOOXML(t *testing.T) {
 		"[Content_Types].xml":      32,
 		"xl/worksheets/sheet1.xml": uint64(MaxTestCaseBytes) + 1,
 	})
-	if _, err := detectContentType(bomb); !errors.Is(err, ErrLimitExceeded) {
+	if _, err := detectContentType(bytes.NewReader(bomb)); !errors.Is(err, ErrLimitExceeded) {
 		t.Fatalf("accepted an OOXML-named archive declaring more than %s unpacked: err = %v",
 			humanMB(MaxTestCaseBytes), err)
 	}
@@ -151,7 +151,7 @@ func TestInspectZipKeepsTheUnpackBudgetForOOXML(t *testing.T) {
 		"[Content_Types].xml":      32,
 		"xl/worksheets/sheet1.xml": 4096,
 	})
-	if _, err := detectContentType(ok); err != nil {
+	if _, err := detectContentType(bytes.NewReader(ok)); err != nil {
 		t.Fatalf("rejected an ordinary OOXML document: %v", err)
 	}
 }

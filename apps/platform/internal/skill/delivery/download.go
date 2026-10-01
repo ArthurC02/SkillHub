@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -187,9 +189,14 @@ func (s *Service) downloadRow(
 	return downloadArtifact{GetDownloadArtifactRow: row, VersionSummary: summary}, nil
 }
 
+type packageContent struct {
+	io.ReadCloser
+	Size int64
+}
+
 func (s *Service) Download(
 	ctx context.Context, ws identity.Workspace, id pgtype.UUID,
-) (downloadArtifact, []byte, error) {
+) (downloadArtifact, *packageContent, error) {
 	var none downloadArtifact
 	if s.Store == nil {
 		return none, nil, ErrNoStore
@@ -205,21 +212,28 @@ func (s *Service) Download(
 		return none, nil, ErrGone
 	}
 
-	data, found, err := s.Store.GetIfPresent(ctx, row.ObjectKey)
+	content, size, err := s.Store.Open(ctx, row.ObjectKey)
+	if errors.Is(err, fs.ErrNotExist) {
+		slog.Warn("download artifact object is gone",
+			"artifact_id", pgconv.UUIDString(row.ArtifactID))
+		return none, nil, ErrGone
+	}
 	if err != nil {
 		slog.Error("the package store could not be read",
 			"artifact_id", pgconv.UUIDString(row.ArtifactID), "error", err)
 		return none, nil, ErrStoreUnreadable
 	}
-	if !found {
-		slog.Warn("download artifact object is gone",
-			"artifact_id", pgconv.UUIDString(row.ArtifactID))
-		return none, nil, ErrGone
+	if err := s.recordDownload(ctx, ws, row); err != nil {
+		_ = content.Close()
+		return none, nil, err
 	}
+	return row, &packageContent{ReadCloser: content, Size: size}, nil
+}
 
+func (s *Service) recordDownload(ctx context.Context, ws identity.Workspace, row downloadArtifact) error {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return none, nil, err
+		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
@@ -227,7 +241,7 @@ func (s *Service) Download(
 	if err := q.InsertDownloadRecord(ctx, gen.InsertDownloadRecordParams{
 		WorkspaceID: ws.ID, ArtifactID: row.ArtifactID, ActorUserID: ws.OwnerUserID,
 	}); err != nil {
-		return none, nil, err
+		return err
 	}
 
 	if err := audit.Log(ctx, tx, audit.Event{
@@ -240,12 +254,9 @@ func (s *Service) Download(
 			"content_hash":     row.ContentHash,
 		},
 	}); err != nil {
-		return none, nil, err
+		return err
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return none, nil, err
-	}
-	return row, data, nil
+	return tx.Commit(ctx)
 }
 
 func (s *Service) DeleteDownload(ctx context.Context, ws identity.Workspace, id pgtype.UUID) error {
@@ -402,7 +413,7 @@ func (h *Handler) DownloadContent(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	row, data, err := h.Svc.Download(r.Context(), ws, id)
+	row, content, err := h.Svc.Download(r.Context(), ws, id)
 	switch {
 	case err == nil:
 	case errors.Is(err, ErrNotFound), errors.Is(err, ErrGone):
@@ -423,8 +434,9 @@ func (h *Handler) DownloadContent(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", "attachment; filename="+strconv.Quote(sanitizeHeaderValue(row.FileName)))
-	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
-	if _, err := w.Write(data); err != nil {
+	defer func() { _ = content.Close() }()
+	w.Header().Set("Content-Length", strconv.FormatInt(content.Size, 10))
+	if _, err := io.Copy(w, content); err != nil {
 
 		slog.Warn("download response truncated", "artifact_id", pgconv.UUIDString(row.ArtifactID), "error", err)
 	}

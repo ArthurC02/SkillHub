@@ -3,6 +3,9 @@ package objstore
 import (
 	"bytes"
 	"context"
+	"errors"
+	"io"
+	"io/fs"
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore/objstoretest"
@@ -12,6 +15,7 @@ type storeUnderTest interface {
 	Put(ctx context.Context, key string, data []byte) error
 	Get(ctx context.Context, key string) ([]byte, error)
 	GetIfPresent(ctx context.Context, key string) ([]byte, bool, error)
+	Open(ctx context.Context, key string) (io.ReadCloser, int64, error)
 	Exists(ctx context.Context, key string) (bool, error)
 	Remove(ctx context.Context, key string) error
 }
@@ -68,6 +72,10 @@ func TestEveryStoreReportsAnAbsentObjectAsAbsenceNotFailure(t *testing.T) {
 			t.Error("Get on a key nobody wrote succeeded; a caller that demands an object would " +
 				"carry on with nothing")
 		}
+
+		if content, _, err := store.Open(ctx, key); !errors.Is(err, fs.ErrNotExist) || content != nil {
+			t.Errorf("Open on a key never written = %v, want fs.ErrNotExist and no reader", err)
+		}
 	})
 }
 
@@ -94,6 +102,16 @@ func TestEveryStoreReadsBackExactlyWhatWasWritten(t *testing.T) {
 		exists, err := store.Exists(ctx, key)
 		if err != nil || !exists {
 			t.Errorf("Exists = %v err=%v after a write, want true", exists, err)
+		}
+
+		content, size, err := store.Open(ctx, key)
+		if err != nil {
+			t.Fatalf("Open = %v after a write, want the object", err)
+		}
+		defer func() { _ = content.Close() }()
+		streamed, err := io.ReadAll(content)
+		if err != nil || !bytes.Equal(streamed, want) || size != int64(len(want)) {
+			t.Errorf("Open streamed %q of declared size %d (err %v), want %q of size %d", streamed, size, err, want, len(want))
 		}
 	})
 }

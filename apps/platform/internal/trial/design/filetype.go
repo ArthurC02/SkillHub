@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"path"
@@ -39,10 +40,10 @@ var allowedSniffed = map[string]bool{
 	"image/webp":      true,
 }
 
-func detectContentType(data []byte) (string, error) {
-	head := data
-	if len(head) > sniffLen {
-		head = head[:sniffLen]
+func detectContentType(content DatasetContent) (string, error) {
+	head := make([]byte, min(content.Size(), sniffLen))
+	if _, err := content.ReadAt(head, 0); err != nil && !errors.Is(err, io.EOF) {
+		return "", ErrUnsupportedType
 	}
 	for _, magic := range deniedMagic {
 		if bytes.HasPrefix(head, magic) {
@@ -61,7 +62,7 @@ func detectContentType(data []byte) (string, error) {
 		return "", ErrUnsupportedType
 	}
 	if base == "application/zip" {
-		if err := inspectZip(data); err != nil {
+		if err := inspectZip(content); err != nil {
 			return "", err
 		}
 	}
@@ -73,8 +74,8 @@ var archiveExts = map[string]bool{
 	".xz": true, ".7z": true, ".rar": true, ".zst": true,
 }
 
-func inspectZip(data []byte) error {
-	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+func inspectZip(content DatasetContent) error {
+	zr, err := zip.NewReader(content, content.Size())
 	if err != nil {
 		return ErrUnsupportedType
 	}

@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"io/fs"
 	"net/http"
 	"testing"
 	"time"
@@ -30,6 +32,22 @@ func (s packageStore) Get(_ context.Context, key string) ([]byte, error) {
 func (s packageStore) GetIfPresent(_ context.Context, key string) ([]byte, bool, error) {
 	data, ok := s[key]
 	return data, ok, nil
+}
+
+func (s packageStore) Open(_ context.Context, key string) (io.ReadCloser, int64, error) {
+	data, ok := s[key]
+	if !ok {
+		return nil, 0, fs.ErrNotExist
+	}
+	return io.NopCloser(bytes.NewReader(data)), int64(len(data)), nil
+}
+
+func (s packageStore) PutFrom(ctx context.Context, key string, content io.Reader, size int64) error {
+	data, err := io.ReadAll(io.LimitReader(content, size))
+	if err != nil {
+		return err
+	}
+	return s.Put(ctx, key, data)
 }
 
 func (s packageStore) PresignGet(_ context.Context, key string, _ time.Duration) (string, error) {

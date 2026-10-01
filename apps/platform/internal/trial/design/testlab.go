@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 	"time"
@@ -58,7 +59,7 @@ type SkillFacts struct {
 }
 
 type ObjectStore interface {
-	Put(ctx context.Context, key string, data []byte) error
+	PutFrom(ctx context.Context, key string, content io.Reader, size int64) error
 
 	Get(ctx context.Context, key string) ([]byte, error)
 	Remove(ctx context.Context, key string) error

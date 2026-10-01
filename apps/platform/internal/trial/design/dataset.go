@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"path"
 	"strings"
@@ -22,8 +23,13 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
-func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, testCaseID pgtype.UUID, fileName string, data []byte) (Dataset, error) {
-	file, err := acceptDatasetFile(fileName, data)
+type DatasetContent interface {
+	io.ReaderAt
+	Size() int64
+}
+
+func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, testCaseID pgtype.UUID, fileName string, content DatasetContent) (Dataset, error) {
+	file, err := acceptDatasetFile(fileName, content)
 	if err != nil {
 		return Dataset{}, err
 	}
@@ -48,27 +54,37 @@ type datasetFile struct {
 	name        string
 	contentType string
 	hash        string
-	data        []byte
+	content     DatasetContent
 	id          pgtype.UUID
 }
 
-func acceptDatasetFile(fileName string, data []byte) (datasetFile, error) {
+func (f datasetFile) open() *io.SectionReader {
+	return io.NewSectionReader(f.content, 0, f.content.Size())
+}
+
+func acceptDatasetFile(fileName string, content DatasetContent) (datasetFile, error) {
 	name := sanitizeFileName(fileName)
 	if name == "" {
 		return datasetFile{}, fmt.Errorf("%w: 檔案需要有檔名", ErrInvalid)
 	}
-	if len(data) == 0 {
+	size := content.Size()
+	if size == 0 {
 		return datasetFile{}, fmt.Errorf("%w: 檔案是空的", ErrInvalid)
 	}
-	if len(data) > MaxFileBytes {
+	if size > MaxFileBytes {
 		return datasetFile{}, fmt.Errorf("%w: 檔案超過 %s", ErrLimitExceeded, humanMB(MaxFileBytes))
 	}
-	contentType, err := detectContentType(data)
+	contentType, err := detectContentType(content)
 	if err != nil {
 		return datasetFile{}, err
 	}
-	sum := sha256.Sum256(data)
-	return datasetFile{name: name, contentType: contentType, hash: hex.EncodeToString(sum[:]), data: data, id: newUUID()}, nil
+	file := datasetFile{name: name, contentType: contentType, content: content, id: newUUID()}
+	sum := sha256.New()
+	if _, err := io.Copy(sum, file.open()); err != nil {
+		return datasetFile{}, fmt.Errorf("%w: 讀不到上傳的檔案", ErrInvalid)
+	}
+	file.hash = hex.EncodeToString(sum.Sum(nil))
+	return file, nil
 }
 
 func (f datasetFile) key(workspaceID pgtype.UUID) string {
@@ -159,7 +175,7 @@ func (s *Service) writeDataset(
 			s.compensateDatasetObject(ctx, conn, workspaceID, key, intentID)
 		}
 	}()
-	if err := s.Store.Put(ctx, key, file.data); err != nil {
+	if err := s.Store.PutFrom(ctx, key, file.open(), file.content.Size()); err != nil {
 		return Dataset{}, err
 	}
 	ds, commitAttempted, err := recordDataset(ctx, locks, testCaseID, file, intentID)
@@ -199,7 +215,7 @@ func recordDataset(
 	if err != nil {
 		return gen.Dataset{}, false, err
 	}
-	if err := checkTestCaseRoom(ctx, q, workspaceID, tc.ID, len(file.data)); err != nil {
+	if err := checkTestCaseRoom(ctx, q, workspaceID, tc.ID, int(file.content.Size())); err != nil {
 		return gen.Dataset{}, false, err
 	}
 	ds, err := q.CreateDataset(ctx, gen.CreateDatasetParams{
@@ -207,7 +223,7 @@ func recordDataset(
 		TestCaseID:  tc.ID,
 		FileName:    file.name,
 		ContentType: file.contentType,
-		SizeBytes:   int64(len(file.data)),
+		SizeBytes:   file.content.Size(),
 		ContentHash: file.hash,
 		ObjectKey:   key,
 		ExpiresAt:   pgtype.Timestamptz{Time: time.Now().Add(DatasetRetention), Valid: true},

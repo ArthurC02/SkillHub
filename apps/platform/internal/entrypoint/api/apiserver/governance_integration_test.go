@@ -1,6 +1,7 @@
 package apiserver_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -359,7 +360,7 @@ func TestAccountPurgeFencesAConcurrentDatasetUpload(t *testing.T) {
 	go func() {
 		_, err := (&testlab.Service{Pool: pool, Store: store, MayStoreObjects: a.auth.Service.MayStoreObjects}).UploadDataset(ctx, identity.Workspace{
 			ID: workspaceID, OwnerUserID: userID,
-		}, testCaseID, "late.txt", []byte("late upload"))
+		}, testCaseID, "late.txt", bytes.NewReader([]byte("late upload")))
 		uploadDone <- err
 	}()
 	select {

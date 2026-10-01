@@ -3,11 +3,15 @@ package apiserver_test
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"mime/multipart"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -425,10 +429,18 @@ func TestDatasetUploadEnforcesPerFileSizeLimit(t *testing.T) {
 	alice := a.login(t, "alice-size-limit")
 	_, id := newTestCase(t, pool, a, alice, "size")
 
-	if code, body := alice.upload(t, "/test-cases/"+id+"/datasets", "big.csv", csvBytes(testlab.MaxFileBytes)); code != http.StatusCreated {
+	atCap := csvBytes(testlab.MaxFileBytes)
+	code, body := alice.upload(t, "/test-cases/"+id+"/datasets", "big.csv", atCap)
+	if code != http.StatusCreated {
 		t.Fatalf("a file exactly at the cap was refused: got %d, body %v", code, body)
 	}
-	code, body := alice.upload(t, "/test-cases/"+id+"/datasets", "toobig.csv", csvBytes(testlab.MaxFileBytes+1))
+	if sum := sha256.Sum256(atCap); body["content_hash"] != hex.EncodeToString(sum[:]) {
+		t.Errorf("content_hash %v is not the hash of the uploaded file", body["content_hash"])
+	}
+	if !slices.ContainsFunc(slices.Collect(maps.Values(a.packages)), func(stored []byte) bool { return bytes.Equal(stored, atCap) }) {
+		t.Error("no stored object holds exactly the uploaded file")
+	}
+	code, body = alice.upload(t, "/test-cases/"+id+"/datasets", "toobig.csv", csvBytes(testlab.MaxFileBytes+1))
 	if code != http.StatusRequestEntityTooLarge {
 		t.Fatalf("a file over the cap: got %d, body %v", code, body)
 	}
