@@ -52,6 +52,8 @@ func (s *Service) checkAccount(ctx context.Context, db DBTX, userID pgtype.UUID)
 	return nil
 }
 
+const costRecordingWait = 10 * time.Second
+
 func (s *Service) RecordCost(ctx context.Context, tx DBTX, e CostEvent) (id string, existed bool, err error) {
 	if s.Store == nil {
 		return "", false, ErrUnavailable
@@ -59,7 +61,9 @@ func (s *Service) RecordCost(ctx context.Context, tx DBTX, e CostEvent) (id stri
 	if e.Kind == "" || e.IdempotencyKey == "" {
 		return "", false, ErrInvalid
 	}
-	return s.Store.RecordCostEvent(ctx, tx, e)
+	recordCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), costRecordingWait)
+	defer cancel()
+	return s.Store.RecordCostEvent(recordCtx, tx, e)
 }
 
 func (s *Service) CostRecorded(ctx context.Context, idempotencyKey string) (bool, error) {

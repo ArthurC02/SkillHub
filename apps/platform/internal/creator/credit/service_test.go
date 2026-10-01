@@ -591,3 +591,37 @@ func (f *fakeStore) DailyCost(context.Context, time.Time) ([]DailyAmount, error)
 func (f *fakeStore) DailyCredits(context.Context, time.Time) ([]DailyAmount, error) { return nil, nil }
 
 func (f *fakeStore) BalanceTotal(context.Context) (int64, error) { return 0, nil }
+
+type contextCheckingStore struct {
+	*fakeStore
+	deadlineIn time.Duration
+}
+
+func (c *contextCheckingStore) RecordCostEvent(ctx context.Context, tx DBTX, e CostEvent) (string, bool, error) {
+	if err := ctx.Err(); err != nil {
+		return "", false, err
+	}
+	if deadline, ok := ctx.Deadline(); ok {
+		c.deadlineIn = time.Until(deadline)
+	}
+	return c.fakeStore.RecordCostEvent(ctx, tx, e)
+}
+
+func TestASpendIsRecordedEvenWhenTheRequestThatMadeItWasCancelled(t *testing.T) {
+	store := &contextCheckingStore{fakeStore: newFakeStore()}
+	s := &Service{Store: store, Config: testConfig()}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if _, _, err := s.RecordCost(ctx, nil, CostEvent{
+		Kind: KindIndexEnrich, UsdMicros: 10, IdempotencyKey: "enrich-after-disconnect",
+	}); err != nil {
+		t.Fatalf("recording a spend after the caller went away: %v", err)
+	}
+	if _, ok := store.events["enrich-after-disconnect"]; !ok {
+		t.Fatal("the spend was not recorded")
+	}
+	if store.deadlineIn <= 0 || store.deadlineIn > 10*time.Second {
+		t.Errorf("the recording had %v left, want its own deadline of at most 10s", store.deadlineIn)
+	}
+}
