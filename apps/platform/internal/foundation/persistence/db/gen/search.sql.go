@@ -20,7 +20,31 @@ SELECT s.skill_id, s.name,
        s.curated,
        s.category,
        s.category_source,
-       count(*) OVER ()::bigint AS total_matches
+       (SELECT count(*) FROM search_documents c
+        WHERE (c.workspace_id = ANY($1::uuid[])
+                OR c.skill_id::text || ':' || coalesce(c.latest_version_id::text, '') || ':' || c.exposure_digest
+                   = ANY($2::text[]))
+          AND c.listable
+          AND (
+            $3::bool IS NULL
+            OR c.has_script = $3::bool
+          )
+          AND (
+            $4::bool IS NULL
+            OR (c.verified_at IS NOT NULL) = $4::bool
+          )
+          AND (
+            $5::text IS NULL
+            OR c.agent_runtime = $5::text
+          )
+          AND (
+            $6::bool IS NULL
+            OR c.curated = $6::bool
+          )
+          AND (
+            $7::text IS NULL
+            OR c.category = $7::text
+          ))::bigint AS total_matches
 FROM search_documents s
 WHERE (s.workspace_id = ANY($1::uuid[])
         OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest

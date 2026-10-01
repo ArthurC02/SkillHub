@@ -108,7 +108,31 @@ SELECT s.skill_id, s.name,
        s.curated,
        s.category,
        s.category_source,
-       count(*) OVER ()::bigint AS total_matches
+       (SELECT count(*) FROM search_documents c
+        WHERE (c.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+                OR c.skill_id::text || ':' || coalesce(c.latest_version_id::text, '') || ':' || c.exposure_digest
+                   = ANY(sqlc.arg(exposed_keys)::text[]))
+          AND c.listable
+          AND (
+            sqlc.narg(has_script)::bool IS NULL
+            OR c.has_script = sqlc.narg(has_script)::bool
+          )
+          AND (
+            sqlc.narg(spec_validated)::bool IS NULL
+            OR (c.verified_at IS NOT NULL) = sqlc.narg(spec_validated)::bool
+          )
+          AND (
+            sqlc.narg(agent_runtime)::text IS NULL
+            OR c.agent_runtime = sqlc.narg(agent_runtime)::text
+          )
+          AND (
+            sqlc.narg(curated)::bool IS NULL
+            OR c.curated = sqlc.narg(curated)::bool
+          )
+          AND (
+            sqlc.narg(category)::text IS NULL
+            OR c.category = sqlc.narg(category)::text
+          ))::bigint AS total_matches
 FROM search_documents s
 WHERE (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
         OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest

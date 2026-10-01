@@ -215,6 +215,7 @@ func TestBrowseCatalogScopeOrderFiltersShapeAndNoModelCall(t *testing.T) {
 	assertOwnFilter := func(query, want string, reject ...string) {
 		t.Helper()
 		assertCatalogFilterKeepsOnly(t, anon, query, want, reject...)
+		assertFilteredTotalCountsOnlyTheFilteredRows(t, anon, query, page.Total)
 	}
 	assertOwnFilter("script=no", plainID, curatedID, otherRuntimeID)
 	assertOwnFilter("validation=unverified", noVersionID, curatedID, plainID, otherRuntimeID)
@@ -287,6 +288,17 @@ func catalogPositionsWithout(t *testing.T, page searchBody, privateID string) ma
 		}
 	}
 	return positions
+}
+
+func assertFilteredTotalCountsOnlyTheFilteredRows(t *testing.T, anon *client, query string, unfilteredTotal int) {
+	t.Helper()
+	cut := anon.search(t, "/api/skills/catalog?limit=1&"+query)
+	if cut.Total >= unfilteredTotal {
+		t.Errorf("catalog %q reports total %d, the same as the unfiltered %d: the count ignored the filter", query, cut.Total, unfilteredTotal)
+	}
+	if cut.Total < len(cut.Results) {
+		t.Errorf("catalog %q reports total %d for %d rows", query, cut.Total, len(cut.Results))
+	}
 }
 
 func assertCatalogFilterKeepsOnly(t *testing.T, anon *client, query, want string, reject ...string) {
@@ -1115,7 +1127,9 @@ func TestCategoryFiltersTheCatalogAndNamesTheAbsence(t *testing.T) {
 	anon := &client{Client: http.DefaultClient, base: a.URL}
 
 	assertOnlyTheDataShelfIsFilled(t, anon, shelved)
-	assertUnclassifiedRowNamesItsAbsence(t, anon.search(t, "/api/skills/catalog"), unclassified)
+	unfiltered := anon.search(t, "/api/skills/catalog")
+	assertUnclassifiedRowNamesItsAbsence(t, unfiltered, unclassified)
+	assertFilteredTotalCountsOnlyTheFilteredRows(t, anon, "category=data", unfiltered.Total)
 
 	var shelvedDetail, plainDetail detail
 	if code := getJSON(t, http.DefaultClient, a.URL+"/api/skills/"+shelved, &shelvedDetail); code != http.StatusOK {
