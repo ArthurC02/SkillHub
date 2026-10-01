@@ -337,7 +337,7 @@ const (
 )
 
 func openPool(ctx context.Context, mode deployment) *pgxpool.Pool {
-	poolCfg, err := wiring.DatabasePoolConfig(os.Getenv("DATABASE_URL"), wiring.APIPoolMaxConns)
+	poolCfg, err := wiring.DatabasePoolConfig(os.Getenv("DATABASE_URL"), wiring.APIPoolMaxConns, wiring.APIPoolAcquireWait)
 	exitOn(err, "database pool: DATABASE_URL is not a valid connection string")
 	applyCleanModePool(poolCfg, mode)
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)

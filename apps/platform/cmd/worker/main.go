@@ -57,7 +57,7 @@ func runWorker() int {
 		return 1
 	}
 
-	poolCfg, err := wiring.DatabasePoolConfig(os.Getenv("DATABASE_URL"), wiring.WorkerPoolMaxConns)
+	poolCfg, err := wiring.DatabasePoolConfig(os.Getenv("DATABASE_URL"), wiring.WorkerPoolMaxConns, wiring.WorkerPoolAcquireWait)
 	if err != nil {
 		slog.Error("database pool", "error", err)
 		return 1
