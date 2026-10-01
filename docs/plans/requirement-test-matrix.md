@@ -152,6 +152,7 @@
 | NFR-005 | 部分 | `TestEveryMeasurementTheObservabilityRequirementNamesReachesAScrape`、`TestStatusClassSplitsEveryRangeTheProviderRecorderActsOn`、`TestObserveSinceMeasuresTheElapsedTimeNotTheWallClock`、`TestTheBacklogObserverPublishesEachBacklogsAgeAndReportsTheOnesItCouldNotRead` | 第 2 條的七項量測都有測試證明它們以對的名稱與標籤抓得到；還沒有測試斷言它們在對的呼叫點被寫入（`skill/discovery/service.go:152`、`trial/execution/statemachine.go:250`／`259`／`261`、`trial/execution/provider.go:302`） |
 | NFR-006 | 有測試 | `TestProviderContract`、`TestProviderRefusalIsClassifiedAndNotRetried` | |
 | NFR-007 | 有測試 | `NFR-007: 搜尋 → 詳情 → 打包，全程鍵盤可達`、`NFR-007: 沒選檔案就按上傳，說的是下一步而不是錯誤碼`、`NFR-007: 空白的回報被擋下來時說得出要補什麼` | |
+| NFR-008 | 待真機 | | 負載測試工具與第一次實測尚未完成（`03` §26）；可用性與自動恢復要等部署拓撲裁定（`05` R-100） |
 
 ## 安全
 
