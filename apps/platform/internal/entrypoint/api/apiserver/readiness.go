@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"os"
-	"slices"
 	"sync"
 	"time"
 
@@ -21,10 +20,11 @@ type readinessResponse struct {
 const readinessReuse = 2 * time.Second
 
 type sharedReadiness struct {
-	reg   *envx.Registry
-	mu    sync.Mutex
-	rows  []envx.Status
-	taken time.Time
+	reg        *envx.Registry
+	showsWhyNo bool
+	mu         sync.Mutex
+	rows       []envx.Status
+	taken      time.Time
 }
 
 func (s *sharedReadiness) report(ctx context.Context) []envx.Status {
@@ -32,13 +32,21 @@ func (s *sharedReadiness) report(ctx context.Context) []envx.Status {
 	defer s.mu.Unlock()
 	if s.rows == nil || time.Since(s.taken) >= readinessReuse {
 		s.rows, s.taken = s.reg.Report(ctx, os.Getenv), time.Now()
+		if !s.showsWhyNo {
+			for i := range s.rows {
+				s.rows[i].Missing = nil
+				s.rows[i].Detail = ""
+				s.rows[i].Without = ""
+				s.rows[i].Fix = ""
+			}
+		}
 	}
-	return slices.Clone(s.rows)
+	return s.rows
 }
 
 func readinessHandler(d Deps) http.HandlerFunc {
 	reg := d.Readiness
-	shared := &sharedReadiness{reg: reg}
+	shared := &sharedReadiness{reg: reg, showsWhyNo: d.CleanMode}
 	return func(w http.ResponseWriter, r *http.Request) {
 		if reg == nil {
 
@@ -52,14 +60,6 @@ func readinessHandler(d Deps) http.HandlerFunc {
 		defer cancel()
 
 		rows := shared.report(ctx)
-		if !d.CleanMode {
-			for i := range rows {
-				rows[i].Missing = nil
-				rows[i].Detail = ""
-				rows[i].Without = ""
-				rows[i].Fix = ""
-			}
-		}
 		httpx.WriteJSON(w, http.StatusOK, readinessResponse{
 			Ready: envx.AllReady(rows), Capabilities: rows,
 		})
