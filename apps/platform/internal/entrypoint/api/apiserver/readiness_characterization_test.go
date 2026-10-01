@@ -5,7 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -64,5 +68,43 @@ func TestReadinessNamesWhatIsMissingInCleanMode(t *testing.T) {
 	}
 	if row.Without != "nothing works" || row.Fix != "set it" {
 		t.Errorf("clean mode dropped the explanation: %+v", row)
+	}
+}
+
+func TestABurstOfReadinessChecksProbesTheDependenciesOnce(t *testing.T) {
+	pool, err := pgxpool.New(context.Background(), "postgres://skillhub@127.0.0.1:1/skillhub")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	var probes atomic.Int32
+	reg := envx.NewRegistry([]envx.Capability{{
+		ID: "counted", Name: "counted dependency",
+		Probe: func(context.Context) error {
+			probes.Add(1)
+			time.Sleep(50 * time.Millisecond)
+			return nil
+		},
+	}})
+	app, err := apiserver.NewApp(apiserver.Config{Pool: pool, Secure: true, Readiness: reg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := app.Handler()
+	var wg sync.WaitGroup
+	for range 20 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+			if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"ready":true`) {
+				t.Errorf("GET /readyz = %d %s, want 200 and ready", rec.Code, rec.Body.String())
+			}
+		}()
+	}
+	wg.Wait()
+	if got := probes.Load(); got != 1 {
+		t.Errorf("20 readiness checks probed the dependency %d times, want 1", got)
 	}
 }

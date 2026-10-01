@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"slices"
+	"sync"
 	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
@@ -16,8 +18,27 @@ type readinessResponse struct {
 	Detail       string        `json:"detail,omitempty"`
 }
 
+const readinessReuse = 2 * time.Second
+
+type sharedReadiness struct {
+	reg   *envx.Registry
+	mu    sync.Mutex
+	rows  []envx.Status
+	taken time.Time
+}
+
+func (s *sharedReadiness) report(ctx context.Context) []envx.Status {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.rows == nil || time.Since(s.taken) >= readinessReuse {
+		s.rows, s.taken = s.reg.Report(ctx, os.Getenv), time.Now()
+	}
+	return slices.Clone(s.rows)
+}
+
 func readinessHandler(d Deps) http.HandlerFunc {
 	reg := d.Readiness
+	shared := &sharedReadiness{reg: reg}
 	return func(w http.ResponseWriter, r *http.Request) {
 		if reg == nil {
 
@@ -30,7 +51,7 @@ func readinessHandler(d Deps) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 		defer cancel()
 
-		rows := reg.Report(ctx, os.Getenv)
+		rows := shared.report(ctx)
 		if !d.CleanMode {
 			for i := range rows {
 				rows[i].Missing = nil
