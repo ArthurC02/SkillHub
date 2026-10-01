@@ -13,7 +13,7 @@ import {
 import { stubPlatform } from "./stub";
 
 for (const width of [1280, 375]) {
-  test(`long Run outputs stay within their own comparison cells at ${width}px`, async ({
+  test(`long run outputs stay within their own comparison cells at ${width}px`, async ({
     page,
   }) => {
     await stubPlatform(page);
@@ -32,7 +32,7 @@ for (const width of [1280, 375]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/runs/${RUN}/compare?against=${OTHER_RUN}`);
     const output = page
-      .getByRole("table", { name: "Run 任務判定與執行狀態對比" })
+      .getByRole("table", { name: "試跑紀錄任務判定與執行狀態對比" })
       .getByRole("row")
       .filter({ hasText: "最終輸出" })
       .locator("pre");
@@ -51,16 +51,16 @@ for (const width of [1280, 375]) {
   });
 }
 
-test("populated Run results keep identity, sources, output and task verdict visible", async ({
+test("populated run results keep identity, sources, output and task verdict visible", async ({
   page,
 }, testInfo) => {
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto(`/runs/${RUN}`);
-  await expect(page.getByRole("heading", { name: "Run 結果", exact: true })).toBeVisible();
-  await expect(page.getByText(`Run ID：${RUN}`, { exact: true })).toBeVisible();
-  const source = page.getByRole("navigation", { name: "這次 Run 的來源" });
-  await expect(source.getByRole("link", { name: "來源 Skill" })).toHaveAttribute(
+  await expect(page.getByRole("heading", { name: "試跑結果", exact: true })).toBeVisible();
+  await expect(page.getByText(`試跑紀錄 ID：${RUN}`, { exact: true })).toBeVisible();
+  const source = page.getByRole("navigation", { name: "這次試跑的來源" });
+  await expect(source.getByRole("link", { name: "來源小工具" })).toHaveAttribute(
     "href",
     `/skills/${SKILL}`,
   );
@@ -68,7 +68,7 @@ test("populated Run results keep identity, sources, output and task verdict visi
     "href",
     `/skills/${SKILL}/versions/${VERSION}`,
   );
-  await expect(source.getByRole("link", { name: "來源 Test Case" })).toHaveAttribute(
+  await expect(source.getByRole("link", { name: "來源測試題" })).toHaveAttribute(
     "href",
     `/lab/test-cases/${TEST_CASE}?version=${VERSION}`,
   );
@@ -80,11 +80,11 @@ test("populated Run results keep identity, sources, output and task verdict visi
   }));
   expect(width.scroll).toBeLessThanOrEqual(width.client);
   await page.screenshot({ path: testInfo.outputPath("run-identity-phone.png"), fullPage: true });
-  await page.getByRole("link", { name: "與另一個 Run 比較" }).click();
-  await expect(page.getByRole("heading", { name: "Run 比較", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "與另一個試跑比較" }).click();
+  await expect(page.getByRole("heading", { name: "試跑比較", exact: true })).toBeVisible();
 });
 
-test("candidate Runs expose their immutable Versions before comparison on a phone", async ({
+test("candidate runs expose their immutable Versions before comparison on a phone", async ({
   page,
 }, testInfo) => {
   await stubPlatform(page);
@@ -116,7 +116,7 @@ test("candidate Runs expose their immutable Versions before comparison on a phon
     `/skills/${SKILL}/versions/${VERSION}`,
   );
   const olderRun = page.getByRole("button", {
-    name: new RegExp(`^以 v1、.+Run ID ${OTHER_RUN}$`),
+    name: new RegExp(`^以 v1、.+試跑紀錄 ID ${OTHER_RUN}$`),
   });
   await olderRun.focus();
   await expect(olderRun).toBeFocused();
@@ -171,7 +171,7 @@ test("comparison aligns distinct outputs, verdicts, costs and version links", as
     }),
   );
   await page.goto(`/runs/${RUN}/compare?against=${OTHER_RUN}`);
-  const table = page.getByRole("table", { name: "Run 任務判定與執行狀態對比" });
+  const table = page.getByRole("table", { name: "試跑紀錄任務判定與執行狀態對比" });
   const cells = (name: string) =>
     table
       .getByRole("row")
@@ -181,7 +181,7 @@ test("comparison aligns distinct outputs, verdicts, costs and version links", as
   await expect(cells("最終輸出")).toHaveText(["ALPHA", "BETA"]);
   await expect(cells("延遲")).toHaveText(["12000 毫秒", "15000 毫秒"]);
   await expect(
-    table.getByRole("row").filter({ hasText: "Run 用掉的點數" }).getByRole("cell"),
+    table.getByRole("row").filter({ hasText: "試跑用掉的點數" }).getByRole("cell"),
   ).toHaveText(["169 點", "0 點"]);
   await expect(
     table.getByRole("row").filter({ hasText: "評估用掉的點數" }).getByRole("cell"),
@@ -190,7 +190,7 @@ test("comparison aligns distinct outputs, verdicts, costs and version links", as
     page.getByRole("table", { name: "驗收條件判定矩陣對比" }).getByRole("cell"),
   ).toHaveText(["未通過模型評估", "通過模型評估"]);
   await expect(page.getByText("@@ -1 +1 @@\n-old\n+new", { exact: true })).toBeVisible();
-  const links = table.getByRole("link", { name: "以相同的 Test Case 與版本重新試跑" });
+  const links = table.getByRole("link", { name: "以相同的測試題與版本重新試跑" });
   await expect(links.nth(0)).toHaveAttribute(
     "href",
     `/skills/${SKILL}/test-cases/${TEST_CASE}/runs/new?version=${VERSION}`,
@@ -221,10 +221,10 @@ test("missing evaluation and unknown cost never become pass or zero", async ({ p
     }),
   );
   await page.goto(`/runs/${RUN}/compare?against=${OTHER_RUN}`);
-  const table = page.getByRole("table", { name: "Run 任務判定與執行狀態對比" });
+  const table = page.getByRole("table", { name: "試跑紀錄任務判定與執行狀態對比" });
   await expect(table.getByRole("cell", { name: "未評估（不是通過）", exact: true })).toBeVisible();
   await expect(
-    table.getByRole("row").filter({ hasText: "Run 用掉的點數" }).getByRole("cell"),
+    table.getByRole("row").filter({ hasText: "試跑用掉的點數" }).getByRole("cell"),
   ).toHaveText(["169 點", "未測量"]);
   await expect(table.getByRole("cell", { name: "未開始執行", exact: true })).toBeVisible();
   await expect(
@@ -233,9 +233,7 @@ test("missing evaluation and unknown cost never become pass or zero", async ({ p
       exact: true,
     }),
   ).toBeVisible();
-  await expect(table.getByRole("link", { name: "以相同的 Test Case 與版本重新試跑" })).toHaveCount(
-    1,
-  );
+  await expect(table.getByRole("link", { name: "以相同的測試題與版本重新試跑" })).toHaveCount(1);
   await expect(
     page.getByRole("table", { name: "驗收條件判定矩陣對比" }).getByRole("cell").last(),
   ).toHaveText("未評估");

@@ -13,7 +13,7 @@ test("Activity presents owner-backed work as a dense platform timeline", async (
   await expect(page.getByRole("definition").filter({ hasText: "5 / 5" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "需要你處理" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "最近完成" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "查看 Run" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "查看試跑紀錄" })).toHaveAttribute(
     "href",
     `/runs/${OTHER_RUN}`,
   );

@@ -274,7 +274,7 @@ async function verifyVersionLinksOnPhone(page: Page, testInfo: TestInfo) {
     `/skills/${SKILL}/versions/${VERSION}`,
   );
   const compareLinks = page.locator('[data-role="evidence"]').getByRole("link", {
-    name: /Run 開始比較/,
+    name: /試跑紀錄開始比較/,
   });
   await expect(compareLinks).toHaveCount(2);
   await expect(compareLinks.first()).toHaveAttribute("href", `/runs/${RUN}/compare`);
@@ -337,8 +337,8 @@ async function verifyVersionEvidenceOnPhone(page: Page, testInfo: TestInfo) {
   await expect(creationLink).toBeFocused();
   await expect(creationLink).toBeInViewport();
 
-  const runLink = evidence.getByRole("link", { name: "查看 Run 結果" }).first();
-  const testCaseLink = evidence.getByRole("link", { name: "開啟這次的 Test Case" }).first();
+  const runLink = evidence.getByRole("link", { name: "查看試跑結果" }).first();
+  const testCaseLink = evidence.getByRole("link", { name: "開啟這次的測試題" }).first();
   await expect(runLink).toHaveAttribute("href", `/runs/${RUN}`);
   await expect(testCaseLink).toHaveAttribute(
     "href",
@@ -457,7 +457,7 @@ async function verifyPublishingWorkspaceMapOnPhone(page: Page, testInfo: TestInf
 
   const map = page.getByRole("navigation", { name: "發佈工作區導覽" });
   await expect(map.getByRole("link")).toHaveCount(3);
-  await expect(map.getByRole("link", { name: /單一 Skill/ })).toHaveAttribute(
+  await expect(map.getByRole("link", { name: /單一小工具/ })).toHaveAttribute(
     "href",
     "#skill-publications",
   );
@@ -553,7 +553,7 @@ async function verifyCreationDecisionOnPhone(page: Page, testInfo: TestInfo) {
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto(`/workspace/creations?session=${sessionID}`);
 
-  await expect(page.getByRole("heading", { name: "和 Agent 一起創作 Skill" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "和 Agent 一起創作小工具" })).toBeVisible();
   await verifyCreationWorklistOnPhone(page, testInfo, sessionID, session.updated_at);
 
   const workbench = page.locator(".creation-workbench");
@@ -639,9 +639,9 @@ async function verifyRunWorkbench(page: Page, testInfo: TestInfo) {
   await page.goto(`/runs/${RUN}`);
 
   const decision = page.locator("#run-decision");
-  const rail = page.getByRole("complementary", { name: "Run 操作與區段導覽" });
+  const rail = page.getByRole("complementary", { name: "試跑紀錄操作與區段導覽" });
   await expect(decision.getByRole("heading", { name: "任務判定" })).toBeVisible();
-  await expect(rail.getByRole("navigation", { name: "Run 結果導覽" })).toBeVisible();
+  await expect(rail.getByRole("navigation", { name: "試跑結果導覽" })).toBeVisible();
 
   const layout = await page.evaluate(() => {
     const box = (selector: string) => {
@@ -950,7 +950,7 @@ test("Library cards surface owner verification and the exact validation journey 
   const card = page.locator(".skill-card").first();
   await expect(card.getByText("工作區驗證：", { exact: true })).toBeVisible();
   await expect(card.getByText("已掃描", { exact: true })).toBeVisible();
-  const validation = card.getByRole("link", { name: "Test Case 與試跑" });
+  const validation = card.getByRole("link", { name: "測試題與試跑" });
   await expect(validation).toHaveAttribute("href", `/lab/test-cases?skill=${SKILL}`);
   await validation.focus();
   await expect(validation).toBeFocused();
@@ -983,7 +983,7 @@ test("the validation journey keeps the same Skill workbench in reach", async ({ 
 
   for (const url of urls) {
     await page.goto(url);
-    const nav = page.getByRole("navigation", { name: "這個 Skill 的工作台" });
+    const nav = page.getByRole("navigation", { name: "這個小工具的工作台" });
     await expect(nav, url).toBeVisible();
     await expect(nav.locator("a, button"), url).toHaveCount(4);
     await expect(nav.getByRole("link", { name: "總覽" }), url).toHaveAttribute(
@@ -1243,7 +1243,7 @@ test.describe("QA-008 real layout: 選中狀態與資料完整性", () => {
     await expect(page.getByText("目前餘額 120 點")).toBeVisible();
     await expect(page.getByText("還沒有任何點數進出。這裡是空的代表沒有發生過")).toBeVisible();
     await expect(
-      page.getByText("帳號、Skill、版本、Run、Trace、評估與打包下載會刪除"),
+      page.getByText("帳號、小工具、版本、試跑紀錄、Trace、評估與打包下載會刪除"),
     ).toBeVisible();
     await expect(page.locator('main [role="alert"]')).toHaveCount(0);
     await expect(page.locator("main")).not.toContainText("not found");
