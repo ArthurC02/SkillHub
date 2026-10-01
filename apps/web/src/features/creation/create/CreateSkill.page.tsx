@@ -31,7 +31,11 @@ export function CreateSkill() {
   return (
     <>
       {creationExposed ? (
-        <CreationSession sessionId={session} onSessionChange={selectSession} />
+        <CreationSession
+          key={session ?? "new"}
+          sessionId={session}
+          onSessionChange={selectSession}
+        />
       ) : (
         <>
           <nav>

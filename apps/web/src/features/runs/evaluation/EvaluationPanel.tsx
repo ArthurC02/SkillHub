@@ -45,6 +45,8 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
 
       {!evaluation.data && runStatus && <ExecutionState runStatus={runStatus} />}
 
+      <ReadFailure error={revisions.error} what="歷史評估版本" />
+
       {revisions.data && revisions.data.revisions.length > 1 && (
         <RevisionPicker
           revisions={revisions.data.revisions}

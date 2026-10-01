@@ -725,6 +725,32 @@ test("EVAL-002 a re-evaluation landing while the page is open brings the revisio
   expect(container.textContent).toContain("已被取代");
 });
 
+test("evaluation reports a revision history read failure instead of silently hiding it", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/evaluation/revisions")) {
+      return json({ error: "service unavailable" }, 503);
+    }
+    if (url.includes("/evaluation")) return json(evaluation);
+    return json({ error: "not found" }, 404);
+  });
+
+  await act(async () => {
+    root = createRoot(container);
+    root.render(
+      <QueryClientProvider client={queryClient}>
+        <EvaluationPanel runId={RUN} runStatus="succeeded" />
+      </QueryClientProvider>,
+    );
+  });
+
+  await waitFor(() => (container.textContent ?? "").includes("暫時無法讀取歷史評估版本"));
+
+  expect(container.textContent).toContain(evaluation.summary);
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("歷史評估版本");
+  expect(container.querySelector("#evaluation-revision")).toBeNull();
+});
+
 function revisionOf(source: Evaluation, supersededAt: string | null) {
   return {
     evaluation_id: source.evaluation_id,

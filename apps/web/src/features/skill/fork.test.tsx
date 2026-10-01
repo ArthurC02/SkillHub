@@ -157,6 +157,33 @@ test("丙-150: Fork 500 等其他狀態印通用的重試句", async () => {
   expect(text()).toContain("Fork 沒有成功，可以再按一次。");
 });
 
+test("a successful Fork hands off to the exact created version and cannot be submitted twice", async () => {
+  stubOwner(() =>
+    json(
+      {
+        ...detailBody(),
+        skill_id: "fork-1",
+        name: "PDF Summariser Fork",
+        version_id: "fork-version-1",
+        version_number: 1,
+      },
+      201,
+    ),
+  );
+  await render(<SkillDetail />, settledAsOwner);
+  await clickFork();
+  await waitFor(() => text().includes("已建立 Fork"));
+
+  const next = Array.from(container.querySelectorAll("a")).find((link) =>
+    link.textContent?.includes("開啟 PDF Summariser Fork v1"),
+  );
+  expect(next?.getAttribute("href")).toBe("/skills/fork-1/versions/fork-version-1");
+  const completed = Array.from(container.querySelectorAll("button")).find(
+    (item) => item.textContent === "已建立自己的版本",
+  );
+  expect(completed?.disabled).toBe(true);
+});
+
 test("丙-149/150: SkillFiles 讀取 503 印「儲存的套件目前讀不到，稍後再試一次。」", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");

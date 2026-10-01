@@ -153,6 +153,17 @@ test("OPS-001: the account menu offers nothing to a member", async () => {
   expect(container.querySelector('a[href="/admin"]')).toBeNull();
 });
 
+test("the admin home keeps decisions and operations inside Governing", async () => {
+  stub(true);
+  await mountAt("/admin");
+  await waitFor(has("營運後台"));
+
+  expect(
+    Array.from(container.querySelectorAll(".admin-home-eyebrow"), (item) => item.textContent),
+  ).toEqual(["Governing · Decisions", "Governing · Operations"]);
+  expect(has("Conducting")()).toBe(false);
+});
+
 test("OPS-001: the admin page stays loading while the operator check is pending", async () => {
   vi.stubGlobal("fetch", () => new Promise<Response>(() => {}));
   await mountAt("/admin");

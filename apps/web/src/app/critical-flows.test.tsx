@@ -103,7 +103,7 @@ test("signed-in users can end the session and clear cached workspace data", asyn
   expect(queryClient.getQueryData(["private", "sentinel"])).toBeUndefined();
 });
 
-test("URL import sends the source and links the imported skill", async () => {
+test("URL import sends the source and links the imported version", async () => {
   const fetchMock = vi.fn((_url: string | URL | Request, init?: RequestInit) =>
     json(
       {
@@ -146,7 +146,7 @@ test("URL import sends the source and links the imported skill", async () => {
   const [, init] = fetchMock.mock.calls.at(-1)!;
   expect(init?.method).toBe("POST");
   expect(init?.body).toBe(JSON.stringify({ url: "https://github.com/example/skill" }));
-  expect(container.querySelector('a[href="/skills/skill-1"]')).not.toBeNull();
+  expect(container.querySelector('a[href="/skills/skill-1/versions/version-1"]')).not.toBeNull();
 });
 
 test("a running Run requires confirmation before cancellation", async () => {

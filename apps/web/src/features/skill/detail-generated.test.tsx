@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { SkillDetail } from "./detail/SkillDetail.page";
-import { skillDetail } from "../../testing/fixtures/platform";
+import { skillDetail, VERSION } from "../../testing/fixtures/platform";
 import type { SkillDetail as SkillDetailModel, SkillSource } from "../../core/api/types";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
@@ -28,21 +28,28 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({
     to,
     params,
+    search,
     className,
     children,
   }: {
     to: string;
     params?: Record<string, string>;
+    search?: Record<string, string | undefined>;
     className?: string;
     children?: unknown;
-  }) => (
-    <a
-      className={className}
-      href={Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)}
-    >
-      {children as never}
-    </a>
-  ),
+  }) => {
+    const path = Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to);
+    const query = new URLSearchParams(
+      Object.entries(search ?? {}).filter(
+        (entry): entry is [string, string] => entry[1] !== undefined,
+      ),
+    ).toString();
+    return (
+      <a className={className} href={query ? `${path}?${query}` : path}>
+        {children as never}
+      </a>
+    );
+  },
   useParams: () => ({ skillId: SKILL }),
   useSearch: () => ({}),
   useNavigate: () => () => Promise.resolve(),
@@ -112,6 +119,19 @@ test("GEN-002: task_description 非空時顯示逐字的任務描述句", async 
   await render(<SkillDetail />, settledAsVisitor);
 
   expect(text()).toContain("來源：由平台依你的任務描述生成");
+});
+
+test("a generated Skill keeps its current Version when continuing to Test Cases", async () => {
+  stubVisitor(generatedDetail({ task_description: "把 PDF 轉成摘要" }));
+  await render(<SkillDetail />, settledAsVisitor);
+
+  const next = Array.from(container.querySelectorAll("a")).find((link) =>
+    link.textContent?.includes("先建立 Test Case 再試跑"),
+  );
+  const url = new URL(next!.href);
+  expect(url.pathname).toBe("/lab/test-cases");
+  expect(url.searchParams.get("skill")).toBe(SKILL);
+  expect(url.searchParams.get("version")).toBe(VERSION);
 });
 
 test("GEN-005: task_description 為空、只有流程圖時顯示流程圖句，且不是任務描述句", async () => {

@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 
-export function GeneratedNotice({ skillId }: { skillId?: string }) {
+export function GeneratedNotice({ skillId, versionId }: { skillId?: string; versionId?: string }) {
   return (
     <>
       <p className="badge badge-unverified">沒有經過任何人工檢視，沒有任何試跑證據</p>
@@ -10,7 +10,7 @@ export function GeneratedNotice({ skillId }: { skillId?: string }) {
         {skillId ? (
           <>
             {" "}
-            <Link to="/lab/test-cases" search={{ skill: skillId, version: undefined }}>
+            <Link to="/lab/test-cases" search={{ skill: skillId, version: versionId }}>
               先建立 Test Case 再試跑
             </Link>
             ，才會有第一份證據。

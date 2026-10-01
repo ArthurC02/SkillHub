@@ -33,9 +33,13 @@ export function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedI
         type="button"
         className={cannotPackage ? "action" : undefined}
         onClick={() => fork.mutate(skillId)}
-        disabled={fork.isPending}
+        disabled={fork.isPending || fork.isSuccess}
       >
-        {fork.isPending ? "建立中…" : "以這個 Skill 為起點建立我自己的"}
+        {fork.isPending
+          ? "建立中…"
+          : fork.isSuccess
+            ? "已建立自己的版本"
+            : "以這個 Skill 為起點建立我自己的"}
       </button>
       {fork.isError && (
         <ReadFailure error={fork.error} what="Fork 這個 Skill">
@@ -43,10 +47,13 @@ export function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedI
         </ReadFailure>
       )}
       {fork.isSuccess && (
-        <p>
+        <p role="status">
           已建立 Fork：
-          <Link to="/skills/$skillId" params={{ skillId: fork.data.skill_id }}>
-            {fork.data.name}
+          <Link
+            to="/skills/$skillId/versions/$versionId"
+            params={{ skillId: fork.data.skill_id, versionId: fork.data.version_id }}
+          >
+            開啟 {fork.data.name} v{fork.data.version_number} 並繼續驗證
           </Link>
         </p>
       )}

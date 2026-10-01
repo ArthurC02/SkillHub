@@ -44,6 +44,9 @@ export function RunCompare() {
       siblingsPending={siblings.isPending}
       siblingsError={siblings.error}
       candidates={candidates}
+      hasMoreCandidates={siblings.hasNextPage}
+      loadingMoreCandidates={siblings.isFetchingNextPage}
+      onLoadMoreCandidates={() => void siblings.fetchNextPage()}
       versionsPending={versions.isPending}
       versionsError={versions.error}
       versions={versions.data?.versions ?? []}

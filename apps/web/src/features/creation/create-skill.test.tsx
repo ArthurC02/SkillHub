@@ -12,6 +12,7 @@ let root: Root;
 let router: ReturnType<typeof createAppRouter>;
 
 const SESSION_ID = "11111111-1111-4111-8111-111111111111";
+const SECOND_SESSION_ID = "22222222-2222-4222-8222-222222222222";
 const SESSION = {
   id: SESSION_ID,
   revision: 7,
@@ -36,6 +37,14 @@ const SESSION = {
   updated_at: "2026-09-28T01:00:00Z",
   expires_at: "2026-10-05T00:00:00Z",
   deadline: "2026-09-28T02:00:00Z",
+};
+const SECOND_SESSION = {
+  ...SESSION,
+  id: SECOND_SESSION_ID,
+  snapshot: {
+    ...SESSION.snapshot,
+    brief: "整理另一個完全不同的任務",
+  },
 };
 const LIMITS = {
   min_budget_credits: 130,
@@ -101,6 +110,7 @@ function creationRoute(seen: string[], sessions = [SESSION]) {
       return json(init?.method === "POST" ? SESSION : sessions);
     }
     if (path === `/creation-sessions/${SESSION_ID}`) return json(SESSION);
+    if (path === `/creation-sessions/${SECOND_SESSION_ID}`) return json(SECOND_SESSION);
   };
 }
 
@@ -223,6 +233,40 @@ test("choosing a saved conversation sets its URL and starting new clears it", as
 
   expect(router.state.location.search.session).toBeUndefined();
   expect(text()).toContain("說出任務，一步步做成你的 Skill");
+});
+
+test("changing the session address clears unsent composer input from the previous session", async () => {
+  stubMe(
+    { generate_skill: true, creation_skill: true },
+    creationRoute([], [SESSION, SECOND_SESSION]),
+  );
+  await visit(
+    () => text().includes("把每週報告整理成摘要"),
+    `/workspace/creations?session=${SESSION_ID}`,
+  );
+  const firstComposer = container.querySelector<HTMLTextAreaElement>(
+    'textarea[aria-label="想完成的任務"]',
+  )!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
+      firstComposer,
+      "只屬於第一場會話的未送出內容",
+    );
+    firstComposer.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(firstComposer.value).toBe("只屬於第一場會話的未送出內容");
+
+  await act(async () => {
+    await router.navigate({
+      to: "/workspace/creations",
+      search: { session: SECOND_SESSION_ID },
+    });
+  });
+  await waitFor(() => text().includes("整理另一個完全不同的任務"));
+
+  expect(
+    container.querySelector<HTMLTextAreaElement>('textarea[aria-label="想完成的任務"]')!.value,
+  ).toBe("");
 });
 
 test("creating a session makes the returned session addressable", async () => {

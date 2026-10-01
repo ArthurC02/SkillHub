@@ -20,7 +20,7 @@ function GovernanceSection() {
   return (
     <section className="admin-home-section">
       <header>
-        <p className="admin-home-eyebrow">Governing</p>
+        <p className="admin-home-eyebrow">Governing · Decisions</p>
         <h2>存取、內容與曝光</h2>
         <p className="note">處理成員資格、內容限制與公開目錄的准入。</p>
       </header>
@@ -78,7 +78,7 @@ function OperationsSection() {
   return (
     <section className="admin-home-section">
       <header>
-        <p className="admin-home-eyebrow">Conducting</p>
+        <p className="admin-home-eyebrow">Governing · Operations</p>
         <h2>派送、稽核與成本</h2>
         <p className="note">監看平台執行狀態、操作紀錄與資源使用。</p>
       </header>

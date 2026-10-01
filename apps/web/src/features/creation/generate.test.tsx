@@ -392,7 +392,11 @@ test("GEN-008: a successful generation does not re-run the search behind it", as
     failures: [],
     generateResult: {
       skill_id: "sk-1",
+      version_id: "ver-1",
       version_number: 1,
+      content_hash: "hash-1",
+      duplicate: false,
+      findings: { errors: [], warnings: [], infos: [] },
       attempts: 1,
       generator_model: "stub",
       generator_prompt_version: "stub/v1",
@@ -410,6 +414,17 @@ test("GEN-008: a successful generation does not re-run the search behind it", as
   await waitFor(() => (container.textContent ?? "").includes("已經產生一個 Skill"));
 
   expect(searchGets.length).toBe(before);
+  const versionLink = Array.from(container.querySelectorAll("a")).find((link) =>
+    link.textContent?.includes("開啟 v1 並繼續驗證"),
+  );
+  expect(versionLink?.getAttribute("href")).toBe("/skills/sk-1/versions/ver-1");
+  const testCaseLink = Array.from(container.querySelectorAll("a")).find((link) =>
+    link.textContent?.includes("先建立 Test Case 再試跑"),
+  );
+  const testCaseURL = new URL(testCaseLink!.href);
+  expect(testCaseURL.pathname).toBe("/lab/test-cases");
+  expect(testCaseURL.searchParams.get("skill")).toBe("sk-1");
+  expect(testCaseURL.searchParams.get("version")).toBe("ver-1");
 });
 
 test("設計 §3 第 9 條：生成失敗底下的發現分組是它的內容，不是它的兄弟", async () => {

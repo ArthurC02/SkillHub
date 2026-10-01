@@ -269,8 +269,11 @@ function SkillOutcome({ skill }: { skill: ImportedSkill }) {
         )}
         {skill.duplicate ? "相同內容已存在，沿用既有版本。" : "新版本已建立。"}版本 #
         {skill.version_number}{" "}
-        <Link to="/skills/$skillId" params={{ skillId: skill.skill_id }}>
-          查看 Skill
+        <Link
+          to="/skills/$skillId/versions/$versionId"
+          params={{ skillId: skill.skill_id, versionId: skill.version_id }}
+        >
+          開啟 v{skill.version_number} 並繼續驗證
         </Link>
       </p>
       <details>

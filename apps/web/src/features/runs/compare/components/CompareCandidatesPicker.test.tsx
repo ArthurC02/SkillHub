@@ -49,6 +49,9 @@ const BASE = {
   siblingsPending: false,
   siblingsError: null,
   candidates: [] as RunListItem[],
+  hasMoreCandidates: false,
+  loadingMoreCandidates: false,
+  onLoadMoreCandidates: () => {},
   versionsPending: false,
   versionsError: null as Error | null,
   versions: [] as SkillVersionSummary[],
@@ -178,6 +181,34 @@ test("keeps candidate Runs visible while Version numbers are loading", async () 
   expect(text()).toContain("載入候選 Run 的 Version 編號");
   expect(text()).toContain("Version：編號載入中");
   expect(text()).not.toContain("Version IDversion-1");
+});
+
+test("offers older Runs when the current Test Case has another page", async () => {
+  const onLoadMoreCandidates = vi.fn();
+  await mount({
+    candidates: [candidate()],
+    hasMoreCandidates: true,
+    onLoadMoreCandidates,
+  });
+
+  const loadMore = Array.from(container.querySelectorAll("button")).find(
+    (item) => item.textContent === "載入更早的 Run",
+  )!;
+  await act(async () => loadMore.click());
+  expect(onLoadMoreCandidates).toHaveBeenCalledOnce();
+});
+
+test("keeps the older-Run control disabled while its next page is loading", async () => {
+  await mount({
+    candidates: [candidate()],
+    hasMoreCandidates: true,
+    loadingMoreCandidates: true,
+  });
+
+  const loadMore = Array.from(container.querySelectorAll("button")).find(
+    (item) => item.textContent === "載入中…",
+  );
+  expect(loadMore?.disabled).toBe(true);
 });
 
 test("a Version read failure is not presented as a resolved or absent Version", async () => {

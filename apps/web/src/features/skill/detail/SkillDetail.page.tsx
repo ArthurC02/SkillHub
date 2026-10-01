@@ -103,7 +103,7 @@ export function SkillDetail() {
           </section>
 
           {skill.redistribution?.value === "generated" && (
-            <GeneratedNotice skillId={skill.skill_id} />
+            <GeneratedNotice skillId={skill.skill_id} versionId={skill.version?.version_id} />
           )}
 
           <section>

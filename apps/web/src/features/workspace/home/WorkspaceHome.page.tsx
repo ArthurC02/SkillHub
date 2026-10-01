@@ -80,7 +80,7 @@ function WorkspaceHomeContent({
         <ReadFailure error={runs.error} what="需要處理的試跑" />
         {runs.data &&
           (attention.length === 0 ? (
-            <p>目前沒有需要你留意的試跑。</p>
+            <RunEmptyState kind="attention" hasMore={runs.hasNextPage} />
           ) : (
             <ul className="workspace-home-list" data-role="evidence">
               {attention.slice(0, 3).map((run) => (
@@ -109,7 +109,7 @@ function WorkspaceHomeContent({
           />
           {runs.data &&
             (active.length === 0 ? (
-              <p>目前沒有正在執行的試跑。</p>
+              <RunEmptyState kind="active" hasMore={runs.hasNextPage} />
             ) : (
               <ul className="workspace-home-list">
                 {active.slice(0, 3).map((run) => (
@@ -169,6 +169,17 @@ function WorkspaceHomeContent({
           ))}
       </section>
     </section>
+  );
+}
+
+function RunEmptyState({ kind, hasMore }: { kind: "attention" | "active"; hasMore: boolean }) {
+  const state = kind === "attention" ? "需要你留意" : "正在執行";
+  if (!hasMore) return <p>目前沒有{state}的試跑。</p>;
+  return (
+    <p>
+      最近 50 筆沒有{state}的試跑；更早的狀態請到
+      <Link to="/activity">全部活動</Link>查看。
+    </p>
   );
 }
 

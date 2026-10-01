@@ -203,6 +203,42 @@ test.each([
   },
 );
 
+test("workspace home does not claim complete Run coverage when older pages exist", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.endsWith("/me")) {
+      return json({
+        user_id: "u-1",
+        email: "tester@example.com",
+        display_name: "tester",
+        workspace_id: "ws-1",
+        operator: false,
+      });
+    }
+    if (url.includes("/runs?")) {
+      return json({
+        runs: Array.from({ length: 51 }, (_, index) =>
+          run(`run-${index}`, `Completed ${index}`, "succeeded", "met"),
+        ),
+      });
+    }
+    if (url.endsWith("/skills")) {
+      return json({ skills: [], total: 0, limit: 100, truncated: false });
+    }
+    if (url.endsWith("/me/publications")) return json({ publications: [] });
+    return json({ error: "not found" }, 404);
+  });
+
+  await render(<WorkspaceHome />, () =>
+    (container.textContent ?? "").includes("最近 50 筆沒有需要你留意的試跑"),
+  );
+
+  expect(section("需要留意").textContent).not.toContain("目前沒有需要你留意的試跑");
+  expect(section("執行中").textContent).toContain("最近 50 筆沒有正在執行的試跑");
+  expect(section("需要留意").querySelector('a[href="/activity"]')).not.toBeNull();
+  expect(section("執行中").querySelector('a[href="/activity"]')).not.toBeNull();
+});
+
 test("workspace home resumes exact publication, release, and Catalog exposure contexts", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);

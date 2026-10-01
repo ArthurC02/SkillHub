@@ -15,6 +15,9 @@ function CandidateList({
   siblingsPending,
   siblingsError,
   candidates,
+  hasMoreCandidates,
+  loadingMoreCandidates,
+  onLoadMoreCandidates,
   versionsPending,
   versionsError,
   versions,
@@ -26,6 +29,9 @@ function CandidateList({
   siblingsPending: boolean;
   siblingsError: Error | null;
   candidates: RunListItem[];
+  hasMoreCandidates: boolean;
+  loadingMoreCandidates: boolean;
+  onLoadMoreCandidates: () => void;
   versionsPending: boolean;
   versionsError: Error | null;
   versions: SkillVersionSummary[];
@@ -91,6 +97,11 @@ function CandidateList({
           );
         })}
       </ul>
+      {hasMoreCandidates && (
+        <button type="button" disabled={loadingMoreCandidates} onClick={onLoadMoreCandidates}>
+          {loadingMoreCandidates ? "載入中…" : "載入更早的 Run"}
+        </button>
+      )}
     </>
   );
 }
@@ -102,6 +113,9 @@ export function CompareCandidatesPicker({
   siblingsPending,
   siblingsError,
   candidates,
+  hasMoreCandidates,
+  loadingMoreCandidates,
+  onLoadMoreCandidates,
   versionsPending,
   versionsError,
   versions,
@@ -115,6 +129,9 @@ export function CompareCandidatesPicker({
   siblingsPending: boolean;
   siblingsError: Error | null;
   candidates: RunListItem[];
+  hasMoreCandidates: boolean;
+  loadingMoreCandidates: boolean;
+  onLoadMoreCandidates: () => void;
   versionsPending: boolean;
   versionsError: Error | null;
   versions: SkillVersionSummary[];
@@ -131,6 +148,9 @@ export function CompareCandidatesPicker({
         siblingsPending={siblingsPending}
         siblingsError={siblingsError}
         candidates={candidates}
+        hasMoreCandidates={hasMoreCandidates}
+        loadingMoreCandidates={loadingMoreCandidates}
+        onLoadMoreCandidates={onLoadMoreCandidates}
         versionsPending={versionsPending}
         versionsError={versionsError}
         versions={versions}

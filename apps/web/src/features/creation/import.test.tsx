@@ -254,7 +254,7 @@ function stubImport(body: unknown) {
   });
 }
 
-test("a Plugin import lists every Skill it brought in, each with its own link", async () => {
+test("a Plugin import hands every imported Skill to its exact immutable version", async () => {
   stubImport(PLUGIN_IMPORT);
 
   await submitURL();
@@ -263,8 +263,8 @@ test("a Plugin import lists every Skill it brought in, each with its own link", 
   expect(text()).toContain("skills/tidy-notes");
   expect(text()).toContain("skills/split-csv");
   const links = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href"));
-  expect(links, "每個 Skill 都要有自己的連結，只列第一個等於把另一半藏起來").toEqual(
-    expect.arrayContaining(["/skills/s-1", "/skills/s-2"]),
+  expect(links, "每個 Skill 都要連到剛匯入的精確版本，不能退回可能已改變的 Skill 總覽").toEqual(
+    expect.arrayContaining(["/skills/s-1/versions/v-1", "/skills/s-2/versions/v-2"]),
   );
 });
 
