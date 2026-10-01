@@ -84,7 +84,7 @@ function Preflight({ skill, linkedVersion, testCase }: PreflightProps) {
     );
   if (!contextMatches)
     return (
-      <PreflightShell {...shellProps}>
+      <PreflightShell {...shellProps} showVersionPicker={false}>
         <ContextMismatch testCaseId={testCase} skillId={testCaseInfo.data.skill_id} />
       </PreflightShell>
     );

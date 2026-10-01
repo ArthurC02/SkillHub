@@ -519,6 +519,8 @@ test("a mismatched 測試題 stops before requesting a preflight summary", async
   expect(platform.calls.some((call) => call.url.includes("/runs/preflight"))).toBe(false);
   expect(confirmButton()).toBeUndefined();
   expect(text()).toContain("平台沒有讀取權限摘要，也不會開始試跑");
+  expect(container.querySelector('select[id^="skill-version-"]')).toBeNull();
+  expect(text()).not.toContain("小工具 Version");
 });
 
 test("an unknown Version stops before requesting a preflight summary", async () => {

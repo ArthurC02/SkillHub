@@ -11,6 +11,7 @@ export function PreflightShell({
   testCaseInfo,
   criteria,
   onPick,
+  showVersionPicker = true,
   children,
 }: {
   skill: string;
@@ -19,6 +20,7 @@ export function PreflightShell({
   testCaseInfo: ReturnType<typeof useTestCase>;
   criteria: number | undefined;
   onPick: (id: string) => void;
+  showVersionPicker?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -48,7 +50,9 @@ export function PreflightShell({
               (testCaseInfo.isPending ? "讀取中…" : testCaseInfo.error ? "讀取失敗" : "讀不到名稱")}
           </strong>
         </p>
-        <SkillVersionPicker skillId={skill} value={version} onPick={onPick} />
+        {showVersionPicker && (
+          <SkillVersionPicker skillId={skill} value={version} onPick={onPick} />
+        )}
       </section>
       {skillInfo.error && <ReadFailure error={skillInfo.error} what="這個小工具" />}
       {testCaseInfo.error && <ReadFailure error={testCaseInfo.error} what="測試題" />}
