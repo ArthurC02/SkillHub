@@ -973,6 +973,8 @@ test("CORE-007 requesting account deletion starts a grace period and shows the s
 
   await act(async () => button("刪除我的帳號")?.click());
   expect(text()).toContain("不會立刻刪掉任何東西");
+  expect(text()).toContain("寬限期內可以提出取消");
+  expect(text()).not.toContain("隨時可以取消");
   expect(calls.some(([, m]) => m === "DELETE")).toBe(false);
 
   await act(async () => button("確認開始刪除")?.click());
@@ -1054,7 +1056,8 @@ test("CORE-007 a pending deletion is a state with a date and a way out, not a re
   await render(<WorkspaceAccount />, () => text().includes("刪除申請中"));
 
   expect(container.querySelector('time[datetime="2026-09-17T00:00:00Z"]')).not.toBeNull();
-  expect(text()).toContain("再按一次刪除不會提早");
+  expect(text()).toContain("能否取消，以伺服器收到操作時的狀態為準");
+  expect(text()).not.toContain("隨時可以取消");
   expect(text()).toContain(DELETION_SCOPE);
 
   await act(async () => button("取消刪除申請")?.click());

@@ -1,5 +1,6 @@
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { RunErrorDetails } from "../../components/RunErrorDetails";
 import { useTrace } from "../../trace.service";
 import type { TraceSummary } from "../../trace.service";
 import { runStatusLabel } from "../../runs.model";
@@ -29,7 +30,6 @@ export function GeneralMode({ runId }: { runId: string }) {
       ) : null}
       <p role="status">
         執行狀態：<strong>{runStatusLabel(trace.status)}</strong>（<code>{trace.status}</code>）
-        {trace.status_reason ? `（${trace.status_reason}）` : null}
       </p>
       <FailureClass runId={runId} status={trace.status} />
       <RunCleanupStatus runId={runId} />
@@ -39,7 +39,6 @@ export function GeneralMode({ runId }: { runId: string }) {
         {trace.steps.map((step, i) => (
           <li key={`${i}-${step.status}`}>
             <strong>{runStatusLabel(step.status)}</strong>
-            {step.reason ? `：${step.reason}` : null}
           </li>
         ))}
       </ol>
@@ -73,13 +72,7 @@ export function GeneralMode({ runId }: { runId: string }) {
       {trace.errors.length > 0 ? (
         <>
           <h3>錯誤</h3>
-          <ul>
-            {trace.errors.map((err, i) => (
-              <li key={`${err.code}-${i}`}>
-                [{err.category}/{err.code}] {err.message}
-              </li>
-            ))}
-          </ul>
+          <RunErrorDetails errors={trace.errors} />
         </>
       ) : null}
 

@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ComparisonSide } from "../../evaluation.service";
+import { RunErrorDetails } from "../../components/RunErrorDetails";
 import { runStatusLabel } from "../../runs.model";
 import { verdictCell } from "./ComparisonLead.model";
 import { RerunCell } from "./RerunCell";
@@ -84,13 +85,7 @@ export function RunStatusTable({ sides }: { sides: ComparisonSide[] }) {
             {sides.map((s) => (
               <td key={s.run_id}>
                 {s.errors && s.errors.length > 0 ? (
-                  <ul>
-                    {s.errors.map((e, i) => (
-                      <li key={`${e.code ?? ""}-${i}`}>
-                        [{e.category ?? "?"}/{e.code ?? "?"}] {e.message}
-                      </li>
-                    ))}
-                  </ul>
+                  <RunErrorDetails errors={s.errors} />
                 ) : (
                   "沒有錯誤紀錄"
                 )}

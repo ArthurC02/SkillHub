@@ -216,6 +216,21 @@ test("the general mode says the trace is incomplete and never shows an unreporte
   expect(text).toContain("failed");
 });
 
+test("the general mode keeps provider wording behind a technical-details disclosure", async () => {
+  stubTrace(summary, advanced);
+  await render();
+
+  expect(container.textContent).not.toContain("the provider could not carry the attempt");
+  const details = Array.from(container.querySelectorAll("details")).find(
+    (item) => item.querySelector("summary")?.textContent === "查看技術細節",
+  );
+  expect(details, "the raw run error has no technical-details disclosure").toBeTruthy();
+  expect(details?.hasAttribute("open")).toBe(false);
+  expect(details?.textContent).toContain("provision/provider_error");
+  expect(details?.textContent).toContain("no slot");
+  expect(details?.parentElement?.textContent).toContain("這次試跑留有錯誤紀錄");
+});
+
 test("a 試跑紀錄 with an owner 測試題 returns to that exact case and version", async () => {
   stubTrace(summary, advanced, {
     run_id: summary.run_id,
@@ -603,16 +618,13 @@ test("04 丙-145: cleanup_status renders on the run's own page", async () => {
   expect(container.textContent ?? "").toContain("清理失敗");
 });
 
-test("丙-115 進度 writes the status in this app's own words and relays the reason untouched", async () => {
+test("丙-115 general mode writes progress in this app's own words without provider reasons", async () => {
   stubTrace(summary, advanced);
   await render();
   const steps = Array.from(container.querySelectorAll("ol li")).map((li) => li.textContent ?? "");
-  const progress = steps.filter((t) => t.includes("已收到") || t.includes("could not carry"));
 
-  expect(progress).toEqual([
-    "排隊中：已收到這次試跑的請求",
-    "執行失敗：the provider could not carry the attempt",
-  ]);
-  expect(progress.join("")).not.toContain("queued");
-  expect(progress.join("")).not.toContain("failed:");
+  expect(steps).toEqual(["排隊中", "執行失敗"]);
+  expect(steps.join("")).not.toContain("queued");
+  expect(steps.join("")).not.toContain("failed:");
+  expect(steps.join("")).not.toContain("the provider could not carry the attempt");
 });

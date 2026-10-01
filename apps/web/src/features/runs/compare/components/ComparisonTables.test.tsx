@@ -116,6 +116,31 @@ test("RunStatusTable distinguishes an absent output from an error-free run", asy
   );
 });
 
+test("RunStatusTable keeps untrusted provider wording behind technical details", async () => {
+  const sides = [
+    {
+      ...sideWithoutRerunLink("run-a", true),
+      errors: [{ category: "provision", code: "provider_error", message: "no slot" }],
+    },
+    {
+      ...sideWithoutRerunLink("run-b", false),
+      errors: [{ message: "opaque provider response" }],
+    },
+  ];
+  await mount(<RunStatusTable sides={sides} />);
+
+  const errorRow = Array.from(container.querySelectorAll("tbody tr")).find((row) =>
+    row.querySelector("th")?.textContent?.includes("錯誤"),
+  );
+  const disclosures = Array.from(errorRow?.querySelectorAll("details") ?? []);
+  expect(disclosures).toHaveLength(2);
+  expect(disclosures.every((item) => !item.hasAttribute("open"))).toBe(true);
+  expect(disclosures[0]?.textContent).toContain("provision/provider_error");
+  expect(disclosures[0]?.textContent).toContain("no slot");
+  expect(disclosures[1]?.textContent).toContain("未提供錯誤代碼");
+  expect(errorRow?.textContent).toContain("這次試跑留有錯誤紀錄");
+});
+
 test("CriterionMatrixTable says there is nothing to compare when the matrix is empty", async () => {
   await mount(<CriterionMatrixTable criterionMatrix={[]} sides={COMPARISON_SIDES} />);
 
