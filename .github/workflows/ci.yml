@@ -271,6 +271,13 @@ jobs:
           docker run --rm --network host -v "$GITHUB_WORKSPACE:/workspace:ro" \
             docker.io/pgvector/pgvector:pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a psql "$SKILLHUB_TEST_DATABASE_URL" \
             -v ON_ERROR_STOP=1 --single-transaction -f /workspace/db/tests/immutability_test.sql
+      - name: Apply new migrations to a database that already holds data
+        env:
+          PSQL: docker run --rm -i --network host docker.io/pgvector/pgvector:pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a psql
+        run: |
+          $PSQL postgres://postgres:postgres@localhost:5432/postgres -c 'CREATE DATABASE skillhub_upgrade'
+          bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Upgrade with data' \
+            bash "$GITHUB_WORKSPACE/db/tests/upgrade_with_data.sh" 'postgres://postgres:postgres@localhost:5432/skillhub_upgrade?sslmode=disable'
       - name: Platform tests
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Platform tests' go test -count=1 ./...
       - name: Platform tests (race detector, database-free packages)
