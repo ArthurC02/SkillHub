@@ -114,8 +114,9 @@ export function Home() {
   }
 
   return (
-    <section className="home">
+    <section className={browsing ? "home" : "home home-searching"}>
       <SearchHeroForm
+        compact={!browsing}
         draft={draft}
         queryError={queryError}
         onDraftChange={(value) => {

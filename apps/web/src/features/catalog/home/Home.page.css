@@ -60,3 +60,28 @@
   margin-top: 20px;
   max-width: 760px;
 }
+
+.home-searching .hero {
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.home-searching .hero h1 {
+  font-size: 24px;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+}
+
+.home-searching .hero :is(.hero-kicker, .hero-lede) {
+  display: none;
+}
+
+.home-searching .hero form {
+  margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+  .home-searching .hero {
+    padding: 16px 12px;
+  }
+}

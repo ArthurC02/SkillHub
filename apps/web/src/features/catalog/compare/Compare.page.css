@@ -4,3 +4,20 @@
 .compare-differs th {
   background: var(--accent-bg);
 }
+
+@media (max-width: 640px) {
+  .compare-page .compare-table :is(thead th:first-child, tbody th[scope="row"]) {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--surface);
+  }
+
+  .compare-page .compare-table thead th:first-child {
+    z-index: 2;
+  }
+
+  .compare-page .compare-table .compare-differs th[scope="row"] {
+    background: var(--accent-bg);
+  }
+}

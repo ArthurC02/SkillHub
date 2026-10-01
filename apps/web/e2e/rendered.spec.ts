@@ -8,6 +8,7 @@ import {
   PUBLISHER,
   RUN,
   RUNS,
+  SEARCH,
   SKILL,
   SKILL_B,
   SKILL_VERSIONS,
@@ -1119,6 +1120,22 @@ test.describe("QA-008 real layout: 表格與段落寬度", () => {
     expect(scroller.scrollWidth, "nothing to scroll — the table squeezed instead").toBeGreaterThan(
       scroller.clientWidth,
     );
+
+    const stickyRowHeader = await page
+      .locator(".table-scroll")
+      .first()
+      .evaluate((element) => {
+        element.scrollLeft = element.scrollWidth;
+        const rowHeader = element.querySelector('tbody th[scope="row"]');
+        return {
+          scrollerLeft: element.getBoundingClientRect().left,
+          rowHeaderLeft: rowHeader?.getBoundingClientRect().left ?? Number.NaN,
+        };
+      });
+    expect(
+      Math.abs(stickyRowHeader.rowHeaderLeft - stickyRowHeader.scrollerLeft),
+      "the row label left the viewport while comparing later products",
+    ).toBeLessThanOrEqual(2);
   });
 
   for (const [name, url] of [
@@ -1549,6 +1566,41 @@ test.describe("the text budget and the fourth disclosure, in a real engine", () 
 
     expect(bad, `§2.13 D＋F ≤ A＋B＋C: ${bad.join(" / ")}`).toEqual([]);
   });
+});
+
+test.describe("catalog search product visibility", () => {
+  for (const viewport of [
+    { name: "desktop", width: 1280, height: 900 },
+    { name: "phone", width: 375, height: 900 },
+  ] as const) {
+    test(`search results put the first product in the ${viewport.name} viewport`, async ({
+      page,
+    }) => {
+      await stubPlatform(page);
+      await page.route("**/api/skills/search?*", (route) =>
+        route.fulfill({
+          json: { ...SEARCH, degraded: false, degraded_reason: undefined, partial_index: false },
+        }),
+      );
+      await page.setViewportSize(viewport);
+      await page.goto("/?q=pdf+%E6%91%98%E8%A6%81");
+
+      const firstResultHeader = page.locator(".search-results > li .result-card-head").first();
+      await expect(firstResultHeader).toBeVisible();
+      const position = await firstResultHeader.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return { top: rect.top, bottom: rect.bottom, viewportHeight: window.innerHeight };
+      });
+      expect(
+        position.top,
+        "the first product header starts above the viewport",
+      ).toBeGreaterThanOrEqual(0);
+      expect(
+        position.bottom,
+        `the first product header ends at ${position.bottom}px in a ${position.viewportHeight}px viewport`,
+      ).toBeLessThanOrEqual(position.viewportHeight);
+    });
+  }
 });
 
 test.describe("the fourth disclosure: a Tip in a real engine", () => {

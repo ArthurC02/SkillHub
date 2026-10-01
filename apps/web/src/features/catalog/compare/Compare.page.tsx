@@ -286,7 +286,7 @@ export function Compare() {
   const firstError = results.find((result) => result.error)?.error;
 
   return (
-    <section>
+    <section className="compare-page">
       <h1>小工具比較</h1>
       <p className="note">
         以下全部來自靜態資料（匯入時記錄與掃描結果），沒有任何一項是試跑出來的。
