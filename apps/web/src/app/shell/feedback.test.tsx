@@ -70,7 +70,7 @@ const FEEDBACK_400_BODY = "message 不能空白，且最多 2000 字";
 const FEEDBACK_500_BODY = "回報沒有記錄成功，可以再送一次";
 const NOT_AUTHENTICATED_BODY = "not authenticated";
 
-function stubPlatform(status = 204) {
+function stubPlatform(status = 204, hold?: Promise<void>) {
   const calls: Array<{ url: string; body: unknown }> = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     if (String(input).endsWith("/me")) {
@@ -87,7 +87,10 @@ function stubPlatform(status = 204) {
       );
     }
     calls.push({ url: String(input), body: JSON.parse(String(init?.body ?? "null")) });
-    if (status === 204) return Promise.resolve(new Response(null, { status: 204 }));
+    if (status === 204)
+      return hold
+        ? hold.then(() => new Response(null, { status: 204 }))
+        : Promise.resolve(new Response(null, { status: 204 }));
     const message =
       status === 401
         ? NOT_AUTHENTICATED_BODY
@@ -164,6 +167,46 @@ test("BETA-003 a report carries only what the reporter can see on screen", async
   expect(text()).toContain("沒有回覆機制");
 });
 
+test("the reply limitation is visible before sending, and success does not ask for a past edit", async () => {
+  stubPlatform();
+  await render(<FeedbackEntry pathname="/" />);
+
+  expect(container.querySelector("form")?.textContent).toContain("送出前");
+  expect(container.querySelector("form")?.textContent).toContain("沒有回覆機制");
+
+  await type("有一個操作問題");
+  await submit();
+  await waitFor(() => container.querySelector('[role="status"]') !== null);
+
+  expect(container.querySelector('[role="status"]')?.textContent).toContain("已收到");
+  expect(container.querySelector('[role="status"]')?.textContent).not.toContain("留下聯絡方式");
+
+  await type("另一份尚未送出的內容");
+  expect(container.querySelector('[role="status"]')).toBeNull();
+});
+
+test("an in-flight report never clears a newer draft when the earlier request finishes", async () => {
+  let complete!: () => void;
+  const hold = new Promise<void>((resolve) => {
+    complete = resolve;
+  });
+  const calls = stubPlatform(204, hold);
+  await render(<FeedbackEntry pathname="/" />);
+
+  await type("第一份回報");
+  await submit();
+  await waitFor(() => calls.length === 1);
+  await type("第二份尚未送出的回報");
+  await act(async () => complete());
+  await waitFor(() => container.querySelector('[role="status"]') !== null);
+
+  expect((container.querySelector("textarea") as HTMLTextAreaElement).value).toBe(
+    "第二份尚未送出的回報",
+  );
+  expect(container.querySelector('[role="status"]')?.textContent).toContain("上一份");
+  expect(container.querySelector('[role="status"]')?.textContent).toContain("尚未送出");
+});
+
 test("NFR-007 a blank report is refused with a sentence, not with a dead button", async () => {
   const calls = stubPlatform();
   await render(<FeedbackEntry pathname="/" />);
@@ -223,6 +266,9 @@ test("BETA-004 a failed submit keeps the words and says what to do next", async 
   expect(text()).toContain("目前沒有第二條回報管道");
   expect(text()).not.toContain("寫信");
   expect(text()).not.toContain("已收到");
+
+  await type("修改後的新內容");
+  expect(container.querySelector('[role="alert"]')).toBeNull();
 });
 
 test("丙-150 a session that expires mid-typing shows 需要登入, not the server's raw body", async () => {

@@ -5,11 +5,13 @@ export function RubricCriterionItem({
   criterionText,
   item,
   onUpdate,
+  pending,
 }: {
   criterionId: string;
   criterionText: string;
   item: RubricItem | undefined;
   onUpdate: (patch: Partial<RubricItem>) => void;
+  pending: boolean;
 }) {
   return (
     <li className="criterion">
@@ -25,6 +27,7 @@ export function RubricCriterionItem({
         maxLength={2000}
         value={item?.text ?? ""}
         onChange={(e) => onUpdate({ text: e.target.value })}
+        readOnly={pending}
       />
       <p>
         <label htmlFor={`rubric-weight-${criterionId}`}>權重</label>{" "}
@@ -35,6 +38,7 @@ export function RubricCriterionItem({
           step={1}
           size={4}
           value={item?.weight ?? ""}
+          readOnly={pending}
           onChange={(e) =>
             onUpdate({
               weight: e.target.value === "" ? undefined : Number(e.target.value),
@@ -46,6 +50,7 @@ export function RubricCriterionItem({
             id={`rubric-evidence-${criterionId}`}
             type="checkbox"
             checked={item?.evidence_required ?? false}
+            disabled={pending}
             onChange={(e) => onUpdate({ evidence_required: e.target.checked })}
           />{" "}
           要求引出原文

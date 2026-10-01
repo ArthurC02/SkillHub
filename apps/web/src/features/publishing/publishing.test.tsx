@@ -210,13 +210,19 @@ test("an exact Version continuation preselects that immutable Bundle member inst
   const olderVersion = SKILL_VERSIONS.versions[1];
   publishingSearch = { bundleVersion: olderVersion.version_id };
   let created: Record<string, unknown> | undefined;
+  let complete!: () => void;
+  const hold = new Promise<void>((resolve) => {
+    complete = resolve;
+  });
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = String(input)
       .replace(/^https?:\/\/[^/]+/, "")
       .split("?")[0];
     if (path === "/me/bundles" && init?.method === "POST") {
       created = JSON.parse(String(init.body)) as Record<string, unknown>;
-      return json(OWN_BUNDLE, 201);
+      return hold.then(
+        () => new Response(JSON.stringify({ ...OWN_BUNDLE, version: "1.0.0" }), { status: 201 }),
+      );
     }
     const routes: Record<string, { body: unknown; status?: number }> = {
       "/me/publisher": { body: OWN_PUBLISHER },
@@ -266,8 +272,29 @@ test("an exact Version continuation preselects that immutable Bundle member inst
   });
   await act(async () => button("建立")?.click());
   await waitFor(() => created !== undefined);
+  await waitFor(() => button("建立中")?.disabled === true);
 
   expect(created).toMatchObject({ member_version_ids: [olderVersion.version_id] });
+  expect(
+    Array.from(
+      container.querySelectorAll(
+        "form.bundle-form input, form.bundle-form textarea, form.bundle-form select",
+      ),
+    ).every((field) => (field as HTMLInputElement).disabled),
+  ).toBe(true);
+
+  await act(async () => complete());
+  await waitFor(() => text().includes("已建立 pdf-toolkit v1.0.0"));
+  expect(
+    Array.from(container.querySelectorAll('form.bundle-form [role="status"]')).some((node) =>
+      node.textContent?.includes("已建立 pdf-toolkit v1.0.0"),
+    ),
+  ).toBe(true);
+  await act(async () => {
+    setInput.call(fields[0], "下一個 Bundle");
+    fields[0].dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(text()).not.toContain("已建立 pdf-toolkit v1.0.0");
 });
 
 test("a Bundle member version read failure stays unknown and blocks creation", async () => {

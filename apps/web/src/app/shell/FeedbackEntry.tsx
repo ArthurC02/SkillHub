@@ -74,6 +74,44 @@ function FeedbackMessageField({
   );
 }
 
+function FeedbackResult({
+  invalid,
+  send,
+  message,
+  submittedMessage,
+}: {
+  invalid: string;
+  send: ReturnType<typeof useSubmitFeedback>;
+  message: string;
+  submittedMessage: string;
+}) {
+  return (
+    <>
+      {invalid && (
+        <p role="alert" id="feedback-message-error">
+          {invalid}
+        </p>
+      )}
+      {send.error && (
+        <ReadFailure error={send.error} what="回報">
+          <p role="alert">
+            {message === submittedMessage
+              ? "送不出去。這份內容還留在上面，可以稍後再按一次送出；目前沒有第二條回報管道。"
+              : "上一份回報未送出；目前內容也尚未送出。請確認內容後再試一次。"}
+          </p>
+        </ReadFailure>
+      )}
+      {send.isSuccess && (
+        <p role="status">
+          {message && message !== submittedMessage
+            ? "上一份回報已收到；目前內容尚未送出。平台沒有回覆機制或查詢頁面。"
+            : "已收到回報。平台沒有回覆機制或查詢頁面。"}
+        </p>
+      )}
+    </>
+  );
+}
+
 export function FeedbackEntry({
   pathname,
   embedded = false,
@@ -85,6 +123,7 @@ export function FeedbackEntry({
   const [kind, setKind] = useState<FeedbackKind>("blocking_issue");
   const [message, setMessage] = useState("");
   const [invalid, setInvalid] = useState("");
+  const [submittedMessage, setSubmittedMessage] = useState("");
   const messageInput = useRef<HTMLTextAreaElement>(null);
 
   const pagePath = feedbackPagePath(pathname);
@@ -108,9 +147,10 @@ export function FeedbackEntry({
       return;
     }
     setInvalid("");
+    setSubmittedMessage(trimmed);
     send.mutate(
       { kind, message: trimmed, page_path: pagePath, run_id: runID, build_id: BUILD_ID },
-      { onSuccess: () => setMessage("") },
+      { onSuccess: () => setMessage((current) => (current === message ? "" : current)) },
     );
   }
 
@@ -135,7 +175,10 @@ export function FeedbackEntry({
                     name="feedback-kind"
                     value={k}
                     checked={kind === k}
-                    onChange={() => setKind(k)}
+                    onChange={() => {
+                      setKind(k);
+                      if (!send.isPending) send.reset();
+                    }}
                   />{" "}
                   {KIND_LABEL[k]}
                 </label>{" "}
@@ -153,8 +196,13 @@ export function FeedbackEntry({
             onChange={(value) => {
               setMessage(value);
               setInvalid("");
+              if (!send.isPending) send.reset();
             }}
           />
+
+          <p className="note">
+            平台沒有回覆機制或查詢頁面；若希望有人聯絡，請在送出前於內容中留下聯絡方式。
+          </p>
 
           <p>
             <button type="submit" disabled={send.isPending}>
@@ -164,23 +212,12 @@ export function FeedbackEntry({
         </form>
       )}
 
-      {invalid && (
-        <p role="alert" id="feedback-message-error">
-          {invalid}
-        </p>
-      )}
-      {send.error && (
-        <ReadFailure error={send.error} what="回報">
-          <p role="alert">
-            送不出去。這份內容還留在上面，可以稍後再按一次送出；目前沒有第二條回報管道。
-          </p>
-        </ReadFailure>
-      )}
-      {send.isSuccess && (
-        <p role="status">
-          已收到，謝謝。這裡沒有回覆機制，也沒有查詢頁面——需要回覆的話，請在內容裡留下聯絡方式。
-        </p>
-      )}
+      <FeedbackResult
+        invalid={invalid}
+        send={send}
+        message={message}
+        submittedMessage={submittedMessage}
+      />
     </>
   );
 
