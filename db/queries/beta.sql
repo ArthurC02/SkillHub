@@ -2,10 +2,11 @@
 SELECT
     count(DISTINCT r.id)::bigint AS used,
     min(t.occurred_at)::timestamptz AS oldest
-FROM runs r
-JOIN run_status_transitions t ON t.run_id = r.id AND t.to_status = @counted_from_status
-WHERE r.workspace_id = @workspace_id
+FROM run_status_transitions t
+JOIN runs r ON r.id = t.run_id
+WHERE t.workspace_id = @workspace_id AND t.to_status = @counted_from_status
   AND t.occurred_at > @since
+  AND r.workspace_id = @workspace_id
   AND (r.failure_class IS NULL OR r.failure_class <> ALL(@exempt_failure_classes::text[]));
 
 -- name: GetWorkspaceCreatedAt :one

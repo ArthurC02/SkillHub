@@ -64,16 +64,17 @@ const countQuotaRuns = `-- name: CountQuotaRuns :one
 SELECT
     count(DISTINCT r.id)::bigint AS used,
     min(t.occurred_at)::timestamptz AS oldest
-FROM runs r
-JOIN run_status_transitions t ON t.run_id = r.id AND t.to_status = $1
-WHERE r.workspace_id = $2
+FROM run_status_transitions t
+JOIN runs r ON r.id = t.run_id
+WHERE t.workspace_id = $1 AND t.to_status = $2
   AND t.occurred_at > $3
+  AND r.workspace_id = $1
   AND (r.failure_class IS NULL OR r.failure_class <> ALL($4::text[]))
 `
 
 type CountQuotaRunsParams struct {
-	CountedFromStatus    RunStatus
 	WorkspaceID          pgtype.UUID
+	CountedFromStatus    RunStatus
 	Since                pgtype.Timestamptz
 	ExemptFailureClasses []string
 }
@@ -85,8 +86,8 @@ type CountQuotaRunsRow struct {
 
 func (q *Queries) CountQuotaRuns(ctx context.Context, arg CountQuotaRunsParams) (CountQuotaRunsRow, error) {
 	row := q.db.QueryRow(ctx, countQuotaRuns,
-		arg.CountedFromStatus,
 		arg.WorkspaceID,
+		arg.CountedFromStatus,
 		arg.Since,
 		arg.ExemptFailureClasses,
 	)
