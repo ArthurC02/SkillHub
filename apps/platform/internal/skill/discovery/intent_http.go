@@ -51,7 +51,9 @@ func (h *Handler) CorrectedSearch(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "limit must be between 1 and 100")
 		return
 	}
-	out, err := h.Svc.searchInterpreted(r.Context(), body.Query, limit, interpretation, searchByPerson)
+	out, err := h.Svc.searchInterpreted(r.Context(), interpretedSearch{
+		original: body.Query, limit: limit, interpretation: interpretation, purpose: searchByPerson,
+	})
 	h.writeSearchResult(w, body.Query, limit, out, err)
 }
 

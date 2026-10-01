@@ -8,8 +8,10 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -204,6 +206,55 @@ func TestModelKeywordsDoNotReplaceTaskEmbeddingOrGrantCoveragePriority(t *testin
 	}
 	if len(body.Interpretation.Keywords) != 1 || body.Interpretation.Keywords[0] != "spreadsheet" {
 		t.Fatalf("model proposal disappeared: %+v", body.Interpretation)
+	}
+}
+
+func TestSearchEmbedsTheQueryWhileTheIntentIsStillBeingAnalysed(t *testing.T) {
+	pool := requireDB(t)
+	embedArrived := make(chan struct{})
+	var once sync.Once
+	var embeddings atomic.Int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /v1/analyze-intent", func(w http.ResponseWriter, r *http.Request) {
+		overlapped := false
+		select {
+		case <-embedArrived:
+			overlapped = true
+		case <-time.After(5 * time.Second):
+		}
+		writeJSON(w, map[string]any{
+			"valid": overlapped, "model": "intent-test", "prompt_version": "search-intent/v2",
+			"intent":   map[string]any{"input": nil, "output": nil, "tools": nil, "data": nil, "environment": nil},
+			"keywords": []string{}, "filters": map[string]string{},
+		})
+	})
+	mux.HandleFunc("POST /embed", func(w http.ResponseWriter, r *http.Request) {
+		embeddings.Add(1)
+		once.Do(func() { close(embedArrived) })
+		writeJSON(w, map[string]any{"embeddings": [][]float32{unitVector(1494)}, "model": "test-embedding", "dimensions": embedDims})
+	})
+	model := httptest.NewServer(mux)
+	t.Cleanup(model.Close)
+	a := newAPIWithLLM(t, pool, model.URL)
+
+	res, err := http.Get(a.URL + "/api/skills/search?q=" + url.QueryEscape(uniqueWorklistLabel("overlap")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var body struct {
+		Degraded       bool                         `json:"degraded"`
+		Interpretation catalog.SearchInterpretation `json:"interpretation"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != http.StatusOK || body.Degraded || body.Interpretation.Status != "analyzed" {
+		t.Fatalf("status=%d degraded=%v interpretation=%q: the embedding must be requested before the intent analysis answers",
+			res.StatusCode, body.Degraded, body.Interpretation.Status)
+	}
+	if n := embeddings.Load(); n != 1 {
+		t.Errorf("the query was embedded %d times, want once", n)
 	}
 }
 

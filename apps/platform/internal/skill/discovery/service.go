@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -165,11 +166,44 @@ const (
 )
 
 func (s *Service) Search(ctx context.Context, query string, limit int32, filters searchFilters, purpose searchPurpose) (searchOutcome, error) {
+	embedOriginal := s.embedAhead(ctx, query)
 	interpretation := s.interpret(ctx, query, filters, purpose)
-	return s.searchInterpreted(ctx, query, limit, interpretation, purpose)
+	return s.searchInterpreted(ctx, interpretedSearch{
+		original: query, limit: limit, interpretation: interpretation, purpose: purpose, embedOriginal: embedOriginal,
+	})
 }
 
-func (s *Service) searchInterpreted(ctx context.Context, original string, limit int32, interpretation SearchInterpretation, purpose searchPurpose) (searchOutcome, error) {
+type interpretedSearch struct {
+	original       string
+	limit          int32
+	interpretation SearchInterpretation
+	purpose        searchPurpose
+	embedOriginal  embedding
+}
+
+type embedding func() (*pgvector.Vector, error)
+
+func (s *Service) embedAhead(ctx context.Context, query string) embedding {
+	if s.LLM == nil {
+		return nil
+	}
+	type answer struct {
+		vec *pgvector.Vector
+		err error
+	}
+	ready := make(chan answer, 1)
+	go func() {
+		vec, err := s.embedQuery(ctx, query)
+		ready <- answer{vec, err}
+	}()
+	return sync.OnceValues(func() (*pgvector.Vector, error) {
+		a := <-ready
+		return a.vec, a.err
+	})
+}
+
+func (s *Service) searchInterpreted(ctx context.Context, req interpretedSearch) (searchOutcome, error) {
+	original, limit, interpretation, purpose := req.original, req.limit, req.interpretation, req.purpose
 	filters, err := parseFilterValues(interpretation.Filters)
 	if err != nil {
 		return searchOutcome{}, err
@@ -190,7 +224,7 @@ func (s *Service) searchInterpreted(ctx context.Context, original string, limit 
 		metrics.ObserveSince(metrics.SearchDuration.WithLabelValues(searchMode), searchStart)
 	}()
 
-	embedding := s.searchHybridFirst(ctx, queries, hybridRequest{
+	queryVector := s.searchHybridFirst(ctx, queries, s.embeddingOf(ctx, semanticQuery, req), hybridRequest{
 		query: semanticQuery, keywords: query, limit: limit + 1, filters: filters, maxDistance: MaxCosineDistance,
 	}, &out)
 
@@ -217,7 +251,7 @@ func (s *Service) searchInterpreted(ctx context.Context, original string, limit 
 
 	if len(out.Hits) == 0 && filters.active() {
 		filteredOut, err := s.matchesWithoutFilters(ctx, queries, hybridRequest{
-			query: semanticQuery, keywords: query, embedding: embedding, limit: limit, maxDistance: MaxCosineDistance,
+			query: semanticQuery, keywords: query, embedding: queryVector, limit: limit, maxDistance: MaxCosineDistance,
 		})
 		if err != nil {
 			slog.Error("unfiltered search probe failed", "error", err)
@@ -242,12 +276,19 @@ func (s *Service) searchInterpreted(ctx context.Context, original string, limit 
 	return out, nil
 }
 
-func (s *Service) searchHybridFirst(ctx context.Context, queries *gen.Queries, req hybridRequest, out *searchOutcome) *pgvector.Vector {
+func (s *Service) embeddingOf(ctx context.Context, semanticQuery string, req interpretedSearch) embedding {
+	if req.embedOriginal != nil && semanticQuery == req.original {
+		return req.embedOriginal
+	}
+	return func() (*pgvector.Vector, error) { return s.embedQuery(ctx, semanticQuery) }
+}
+
+func (s *Service) searchHybridFirst(ctx context.Context, queries *gen.Queries, embed embedding, req hybridRequest, out *searchOutcome) *pgvector.Vector {
 	if s.LLM == nil {
 		out.DegradedReason = "embedding service not configured; lexical search only"
 		return nil
 	}
-	vec, err := s.embedQuery(ctx, req.query)
+	vec, err := embed()
 	if err != nil {
 		slog.Warn("query embedding failed, falling back to FTS", "error", err)
 		out.DegradedReason = "embedding unavailable; lexical search only"
