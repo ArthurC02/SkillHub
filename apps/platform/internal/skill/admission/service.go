@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -66,8 +65,6 @@ type Service struct {
 	CreditCanStart func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
 
 	GenerateQuota policy.QuotaLimits
-
-	generating sync.Map
 
 	References ReferenceReader
 

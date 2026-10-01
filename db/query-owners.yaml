@@ -372,6 +372,7 @@ tables:
   skill_runtime_compatibility: registry
   object_collection_queue: registry
   skill_sources: ingest
+  generation_leases: ingest
   search_documents: catalog
   test_cases: testlab
   test_case_snapshots: testlab

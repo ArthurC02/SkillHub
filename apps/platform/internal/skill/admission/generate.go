@@ -168,15 +168,18 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, in G
 		return GenerateResult{}, fmt.Errorf("ingest: generation_inputs: %w", err)
 	}
 
-	if !s.holdGenerateSlot(ws.ID) {
-		return GenerateResult{}, ErrGenerateInFlight
-	}
-	defer s.releaseGenerateSlot(ws.ID)
-
 	job := generation{ws: ws, task: task, in: in, references: references, inputsJSON: generationInputsJSON}
 	if err := s.admitGeneration(ctx, job); err != nil {
 		return GenerateResult{}, err
 	}
+	held, err := s.holdGenerateSlot(ctx, ws.ID)
+	if err != nil {
+		return GenerateResult{}, err
+	}
+	if !held {
+		return GenerateResult{}, ErrGenerateInFlight
+	}
+	defer s.releaseGenerateSlot(ctx, ws.ID)
 
 	var out GenerateResult
 	defer logGenerateUsage(&out)
@@ -614,11 +617,25 @@ func generateUsageReader(tx pgx.Tx) policy.UsageReader {
 	}
 }
 
-func (s *Service) holdGenerateSlot(workspaceID pgtype.UUID) bool {
-	_, busy := s.generating.LoadOrStore(workspaceID, struct{}{})
-	return !busy
+const (
+	generateSlotLease          = generateMaxAttempts*generateTimeout + time.Minute
+	generateSlotReleaseTimeout = 5 * time.Second
+)
+
+func (s *Service) holdGenerateSlot(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+	_, err := gen.New(s.Pool).AcquireGenerationLease(ctx, gen.AcquireGenerationLeaseParams{
+		WorkspaceID: workspaceID, Lease: pgconv.Interval(generateSlotLease),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
-func (s *Service) releaseGenerateSlot(workspaceID pgtype.UUID) {
-	s.generating.Delete(workspaceID)
+func (s *Service) releaseGenerateSlot(ctx context.Context, workspaceID pgtype.UUID) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), generateSlotReleaseTimeout)
+	defer cancel()
+	if err := gen.New(s.Pool).ReleaseGenerationLease(ctx, workspaceID); err != nil {
+		slog.Warn("generate: the workspace's generation lease stays until it expires", "error", err)
+	}
 }

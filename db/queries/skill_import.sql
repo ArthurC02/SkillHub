@@ -28,3 +28,13 @@ WHERE workspace_id = @workspace_id
 -- name: OldestSourceCheck :one
 SELECT min(coalesce(last_checked_at, created_at))::timestamptz FROM skill_sources
 WHERE source_type = sqlc.arg(source_type)::text;
+
+-- name: AcquireGenerationLease :one
+INSERT INTO generation_leases (workspace_id, expires_at)
+VALUES (@workspace_id, now() + @lease::interval)
+ON CONFLICT (workspace_id) DO UPDATE SET expires_at = EXCLUDED.expires_at
+WHERE generation_leases.expires_at <= now()
+RETURNING workspace_id;
+
+-- name: ReleaseGenerationLease :exec
+DELETE FROM generation_leases WHERE workspace_id = @workspace_id;
