@@ -2,7 +2,6 @@ package wiring
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"time"
 
@@ -21,6 +20,6 @@ func CreationTransientFromEnv(limits creation.Limits) func(context.Context, crea
 	timeout := limits.CallTimeout + transientCallSlack
 	return creation.TransientClientWithHTTP(
 		os.Getenv("CREATION_WORKER_INTERNAL_URL"), os.Getenv("CREATION_WORKER_INTERNAL_TOKEN"), timeout,
-		&http.Client{Timeout: timeout},
+		internalHTTPClient(timeout),
 	)
 }

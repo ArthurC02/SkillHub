@@ -1,7 +1,6 @@
 package wiring
 
 import (
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -21,7 +20,7 @@ func GatewayFromEnv() *run.Gateway {
 	return run.NewGateway(run.GatewayConfig{
 		AdminBaseURL: strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_ADMIN_URL"), "/"),
 		AdminKey:     os.Getenv("SKILLHUB_MODEL_GATEWAY_KEY"), SandboxBaseURL: strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_URL"), "/"),
-		Model: os.Getenv("SKILLHUB_RUN_MODEL"), MaxBudgetUSD: budget, TPMLimit: tpm, HTTP: &http.Client{Timeout: gatewayAdminTimeout},
+		Model: os.Getenv("SKILLHUB_RUN_MODEL"), MaxBudgetUSD: budget, TPMLimit: tpm, HTTP: internalHTTPClient(gatewayAdminTimeout),
 	})
 }
 
@@ -46,7 +45,7 @@ func NewRunRegistryFromEnv() *run.Registry {
 			continue
 		}
 		providers = append(providers, run.NewProviderWithClient(
-			name, baseURL, os.Getenv("SKILLHUB_SANDBOX_TOKEN_"+strings.ToUpper(name)), &http.Client{Timeout: sandboxProviderTimeout}))
+			name, baseURL, os.Getenv("SKILLHUB_SANDBOX_TOKEN_"+strings.ToUpper(name)), internalHTTPClient(sandboxProviderTimeout)))
 	}
 	return run.NewRegistry(providers...)
 }
