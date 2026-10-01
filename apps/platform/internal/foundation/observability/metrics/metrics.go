@@ -4,6 +4,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/http/pprof"
+	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -229,12 +231,22 @@ func Serve(addr string) {
 		slog.Info("metrics endpoint disabled (METRICS_ADDR unset)")
 		return
 	}
-	mux := http.NewServeMux()
-	mux.Handle("GET /metrics", promhttp.Handler())
-	srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: metricsReadHeaderTimeout}
+	srv := &http.Server{Addr: addr, Handler: listenerRoutes(os.Getenv), ReadHeaderTimeout: metricsReadHeaderTimeout}
 	slog.Info("metrics listening", "addr", addr)
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 
 		slog.Error("metrics listener stopped", "error", err)
 	}
+}
+
+func listenerRoutes(lookup func(string) string) http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("GET /metrics", promhttp.Handler())
+	if lookup("METRICS_PROFILING") == "1" {
+		mux.HandleFunc("GET /debug/pprof/", pprof.Index)
+		mux.HandleFunc("GET /debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("GET /debug/pprof/trace", pprof.Trace)
+		slog.Warn("profiling endpoints are open on the metrics listener")
+	}
+	return mux
 }
