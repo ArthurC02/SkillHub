@@ -207,6 +207,8 @@ type navigationCatcher struct {
 	wrote     bool
 }
 
+func (c *navigationCatcher) Unwrap() http.ResponseWriter { return c.ResponseWriter }
+
 func (c *navigationCatcher) WriteHeader(code int) {
 	if c.wrote {
 		return
@@ -325,12 +327,16 @@ func runAPI() (failed bool) {
 
 const (
 	apiReadHeaderTimeout = 5 * time.Second
+	apiReadTimeout       = 2 * time.Minute
+	apiWriteTimeout      = 150 * time.Second
+	apiIdleTimeout       = 2 * time.Minute
+	apiMaxHeaderBytes    = 64 << 10
 	apiShutdownGrace     = 10 * time.Second
 	githubOAuthTimeout   = 15 * time.Second
 )
 
 func openPool(ctx context.Context, mode deployment) *pgxpool.Pool {
-	poolCfg, err := pgxpool.ParseConfig(os.Getenv("DATABASE_URL"))
+	poolCfg, err := wiring.DatabasePoolConfig(os.Getenv("DATABASE_URL"), wiring.APIPoolMaxConns)
 	exitOn(err, "database pool: DATABASE_URL is not a valid connection string")
 	applyCleanModePool(poolCfg, mode)
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
@@ -398,6 +404,10 @@ func newAPIServer(handler http.Handler, posture envx.Posture) *http.Server {
 		Addr:              envx.Or(os.Getenv("API_ADDR"), ":8080"),
 		Handler:           httpx.DevCORS(handler, posture.DevCORSOrigin),
 		ReadHeaderTimeout: apiReadHeaderTimeout,
+		ReadTimeout:       apiReadTimeout,
+		WriteTimeout:      apiWriteTimeout,
+		IdleTimeout:       apiIdleTimeout,
+		MaxHeaderBytes:    apiMaxHeaderBytes,
 	}
 }
 

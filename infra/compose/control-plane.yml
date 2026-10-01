@@ -92,6 +92,10 @@ services:
       - archive_command=wal-g wal-push %p
       - -c
       - archive_timeout=60
+      - -c
+      - max_connections=${SKILLHUB_POSTGRES_MAX_CONNECTIONS:-200}
+      - -c
+      - shared_buffers=${SKILLHUB_POSTGRES_SHARED_BUFFERS:-512MB}
     env_file:
       - ${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/postgres.env
     ports:

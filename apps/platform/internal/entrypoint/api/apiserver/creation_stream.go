@@ -35,6 +35,7 @@ func (h *creationHandler) Stream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	holdOpenForStreaming(w)
 	stream := &creationStream{h: h, w: w, flusher: flusher, cursor: lastEventCursor(r)}
 	first, changed, err := h.Svc.Changed(r.Context(), ws, id, stream.cursor)
 	if err != nil {
@@ -50,6 +51,10 @@ func (h *creationHandler) Stream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	stream.follow(r.Context(), ws, id)
+}
+
+func holdOpenForStreaming(w http.ResponseWriter) {
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Time{})
 }
 
 func lastEventCursor(r *http.Request) creation.StreamCursor {

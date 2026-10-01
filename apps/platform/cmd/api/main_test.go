@@ -13,8 +13,10 @@ import (
 	"regexp"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -24,7 +26,9 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
@@ -958,5 +962,65 @@ func TestTrustedProxiesThatDoNotParseRefuseTheLimiterUnlessItIsOff(t *testing.T)
 	}
 	if code := fromProxy("198.51.100.2"); code != http.StatusOK {
 		t.Fatalf("a second client behind the proxy got %d once the first was limited; the env's proxies never reached the limiter", code)
+	}
+}
+
+func TestNginxAcceptsTheLargestBodyTheAPIAccepts(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("no source path for this test file")
+	}
+	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..")
+	raw, err := os.ReadFile(filepath.Join(repoRoot, "infra", "images", "web", "nginx.conf"))
+	if err != nil {
+		t.Fatalf("read nginx.conf: %v", err)
+	}
+	match := regexp.MustCompile(`(?m)^\s*client_max_body_size\s+(\d+)m;`).FindStringSubmatch(string(raw))
+	if match == nil {
+		t.Fatal("nginx.conf sets no client_max_body_size, so its 1 MiB default refuses uploads the API accepts")
+	}
+	mebibytes, _ := strconv.ParseInt(match[1], 10, 64)
+	largestUpload := max(int64(testlab.MaxFileBytes)+1<<20, int64(skillpkg.MaxZipBytes))
+	if mebibytes<<20 < largestUpload {
+		t.Fatalf("client_max_body_size is %d MiB, below the %d bytes a dataset upload with its form envelope may take", mebibytes, largestUpload)
+	}
+}
+
+func TestTheAPIServerBoundsEveryPhaseOfAConnection(t *testing.T) {
+	srv := newAPIServer(http.NotFoundHandler(), envx.Posture{})
+	if srv.ReadHeaderTimeout <= 0 || srv.ReadTimeout <= 0 || srv.WriteTimeout <= 0 || srv.IdleTimeout <= 0 || srv.MaxHeaderBytes <= 0 {
+		t.Fatalf("server = header %v read %v write %v idle %v max header %d; every one must be bounded",
+			srv.ReadHeaderTimeout, srv.ReadTimeout, srv.WriteTimeout, srv.IdleTimeout, srv.MaxHeaderBytes)
+	}
+	for _, endpoint := range wiring.NewModelBudgets(nil).Endpoints {
+		if endpoint.Deadline >= srv.WriteTimeout {
+			t.Errorf("model call %s may run %v inside a request, past the %v write timeout that would cut its answer",
+				endpoint.Kind, endpoint.Deadline, srv.WriteTimeout)
+		}
+	}
+}
+
+func TestNginxWaitsForTheLongestModelCallARequestMayMake(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("no source path for this test file")
+	}
+	raw, err := os.ReadFile(filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "infra", "images", "web", "nginx.conf"))
+	if err != nil {
+		t.Fatalf("read nginx.conf: %v", err)
+	}
+	block := regexp.MustCompile(`(?s)location @api \{(.*?)\}`).FindStringSubmatch(string(raw))
+	if block == nil {
+		t.Fatal("nginx.conf has no @api location")
+	}
+	match := regexp.MustCompile(`proxy_read_timeout\s+(\d+)s;`).FindStringSubmatch(block[1])
+	if match == nil {
+		t.Fatal("the @api location sets no proxy_read_timeout, so nginx's 60s default cuts a request still waiting on a model")
+	}
+	seconds, _ := strconv.Atoi(match[1])
+	for _, endpoint := range wiring.NewModelBudgets(nil).Endpoints {
+		if time.Duration(seconds)*time.Second <= endpoint.Deadline {
+			t.Errorf("@api proxy_read_timeout is %ds, not past model call %s's %v", seconds, endpoint.Kind, endpoint.Deadline)
+		}
 	}
 }

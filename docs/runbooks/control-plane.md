@@ -51,6 +51,8 @@ EOF
 | `postgres-exporter.env` | `DATA_SOURCE_NAME=postgresql://<user>:<password>@postgres:5432/skillhub?sslmode=disable` |
 | `smtp-password` | SMTP 密碼，單獨一行 |
 
+資料庫容量：API 預設最多 32 條連線、Worker 16 條，`DATABASE_URL` 加 `pool_max_conns=<n>` 會覆蓋兩者；PostgreSQL 的連線上限（預設 200）與 `shared_buffers`（預設 512MB，建議機器記憶體的四分之一）在 `release.env` 以 `SKILLHUB_POSTGRES_MAX_CONNECTIONS`、`SKILLHUB_POSTGRES_SHARED_BUFFERS` 調整。每份 API／Worker 的連線上限加總要低於資料庫的連線上限。
+
 **備份 bucket 與應用程式的物件儲存分開**，金鑰也分開：應用程式的金鑰被拿走時，備份不能跟著被刪。這套設定沒有做用戶端加密，bucket 必須私有並開供應商端加密。
 
 驗：`sudo /opt/skillhub/infra/deploy/control-plane/bin/skillhub-preflight` 沒有輸出、exit 0（要先 `set -a; . /etc/skillhub/release.env; set +a`）。

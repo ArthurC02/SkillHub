@@ -57,7 +57,12 @@ func runWorker() int {
 		return 1
 	}
 
-	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	poolCfg, err := wiring.DatabasePoolConfig(os.Getenv("DATABASE_URL"), wiring.WorkerPoolMaxConns)
+	if err != nil {
+		slog.Error("database pool", "error", err)
+		return 1
+	}
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		slog.Error("database pool", "error", err)
 		return 1
