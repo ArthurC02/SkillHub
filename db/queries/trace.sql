@@ -54,29 +54,28 @@ ORDER BY trace_events.occurred_at, trace_events.source, trace_events.attempt, tr
 -- name: GetTraceStreamHealth :many
 -- Computes stream health in the database: only the first missing ordinals up to the
 -- reported cap come back, while missing_count stays exact.
-WITH scoped AS (
-    SELECT attempt, source, seq, late,
-           lag(seq, 1, 0) OVER (PARTITION BY attempt, source ORDER BY seq) AS previous_seq
-    FROM trace_events
-    WHERE run_id = @run_id AND workspace_id = @workspace_id
-),
-streams AS (
+WITH streams AS (
     SELECT attempt, source, count(*)::bigint AS received,
            max(seq)::bigint AS highest_seq,
            (max(seq) - count(*))::bigint AS missing_count,
            count(*) FILTER (WHERE late)::bigint AS late_events
-    FROM scoped
+    FROM trace_events
+    WHERE run_id = @run_id AND workspace_id = @workspace_id
     GROUP BY attempt, source
 )
 SELECT s.attempt, s.source, s.received, s.highest_seq, s.missing_count, s.late_events,
-       coalesce(ARRAY(
+       CASE WHEN s.missing_count = 0 THEN ARRAY[]::bigint[] ELSE coalesce(ARRAY(
            SELECT candidate
-           FROM scoped e
-           CROSS JOIN LATERAL generate_series(e.previous_seq + 1, e.seq - 1) AS candidate
-           WHERE e.attempt = s.attempt AND e.source = s.source
+           FROM (
+               SELECT e.seq, lag(e.seq, 1, 0) OVER (ORDER BY e.seq) AS previous_seq
+               FROM trace_events e
+               WHERE e.run_id = @run_id AND e.workspace_id = @workspace_id
+                 AND e.attempt = s.attempt AND e.source = s.source
+           ) stream
+           CROSS JOIN LATERAL generate_series(stream.previous_seq + 1, stream.seq - 1) AS candidate
            ORDER BY candidate
            LIMIT @missing_seq_reported::int
-       ), ARRAY[]::bigint[])::bigint[] AS missing_seq
+       ), ARRAY[]::bigint[]) END::bigint[] AS missing_seq
 FROM streams s
 ORDER BY s.attempt, s.source;
 

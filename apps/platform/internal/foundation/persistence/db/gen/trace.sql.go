@@ -121,37 +121,36 @@ func (q *Queries) GetTraceLastEventAt(ctx context.Context, arg GetTraceLastEvent
 }
 
 const getTraceStreamHealth = `-- name: GetTraceStreamHealth :many
-WITH scoped AS (
-    SELECT attempt, source, seq, late,
-           lag(seq, 1, 0) OVER (PARTITION BY attempt, source ORDER BY seq) AS previous_seq
-    FROM trace_events
-    WHERE run_id = $2 AND workspace_id = $3
-),
-streams AS (
+WITH streams AS (
     SELECT attempt, source, count(*)::bigint AS received,
            max(seq)::bigint AS highest_seq,
            (max(seq) - count(*))::bigint AS missing_count,
            count(*) FILTER (WHERE late)::bigint AS late_events
-    FROM scoped
+    FROM trace_events
+    WHERE run_id = $1 AND workspace_id = $2
     GROUP BY attempt, source
 )
 SELECT s.attempt, s.source, s.received, s.highest_seq, s.missing_count, s.late_events,
-       coalesce(ARRAY(
+       CASE WHEN s.missing_count = 0 THEN ARRAY[]::bigint[] ELSE coalesce(ARRAY(
            SELECT candidate
-           FROM scoped e
-           CROSS JOIN LATERAL generate_series(e.previous_seq + 1, e.seq - 1) AS candidate
-           WHERE e.attempt = s.attempt AND e.source = s.source
+           FROM (
+               SELECT e.seq, lag(e.seq, 1, 0) OVER (ORDER BY e.seq) AS previous_seq
+               FROM trace_events e
+               WHERE e.run_id = $1 AND e.workspace_id = $2
+                 AND e.attempt = s.attempt AND e.source = s.source
+           ) stream
+           CROSS JOIN LATERAL generate_series(stream.previous_seq + 1, stream.seq - 1) AS candidate
            ORDER BY candidate
-           LIMIT $1::int
-       ), ARRAY[]::bigint[])::bigint[] AS missing_seq
+           LIMIT $3::int
+       ), ARRAY[]::bigint[]) END::bigint[] AS missing_seq
 FROM streams s
 ORDER BY s.attempt, s.source
 `
 
 type GetTraceStreamHealthParams struct {
-	MissingSeqReported int32
 	RunID              pgtype.UUID
 	WorkspaceID        pgtype.UUID
+	MissingSeqReported int32
 }
 
 type GetTraceStreamHealthRow struct {
@@ -167,7 +166,7 @@ type GetTraceStreamHealthRow struct {
 // Computes stream health in the database: only the first missing ordinals up to the
 // reported cap come back, while missing_count stays exact.
 func (q *Queries) GetTraceStreamHealth(ctx context.Context, arg GetTraceStreamHealthParams) ([]GetTraceStreamHealthRow, error) {
-	rows, err := q.db.Query(ctx, getTraceStreamHealth, arg.MissingSeqReported, arg.RunID, arg.WorkspaceID)
+	rows, err := q.db.Query(ctx, getTraceStreamHealth, arg.RunID, arg.WorkspaceID, arg.MissingSeqReported)
 	if err != nil {
 		return nil, err
 	}

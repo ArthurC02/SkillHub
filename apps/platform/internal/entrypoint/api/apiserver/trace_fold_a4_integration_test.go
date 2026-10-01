@@ -66,6 +66,34 @@ func TestTraceStreamHealthCountsEveryHoleAndBoundsTheSample(t *testing.T) {
 	}
 }
 
+func TestEachStreamNamesOnlyItsOwnHoles(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "trace-fold-streams")
+
+	run := seedRun(t, pool, c.workspaceID, seedSkill(t, pool, c.workspaceID, "trace-fold-streams"))
+	insertTraceEvents(t, pool, c.workspaceID, run, 1, []int64{1, 3}, "script_log", `{}`)
+	insertTraceEvents(t, pool, c.workspaceID, run, 2, []int64{2, 3}, "script_log", `{}`)
+	insertTraceEvents(t, pool, c.workspaceID, run, 3, []int64{1, 2}, "script_log", `{}`)
+
+	status, raw := c.advancedTraceRaw(t, run)
+	if status != 200 {
+		t.Fatalf("advanced trace: got %d, want 200", status)
+	}
+	if len(raw.Streams) != 3 {
+		t.Fatalf("got %d streams, want 3: %+v", len(raw.Streams), raw.Streams)
+	}
+	want := [][]int64{{2}, {1}, {}}
+	for i, stream := range raw.Streams {
+		if fmt.Sprint(stream.MissingSeq) != fmt.Sprint(want[i]) {
+			t.Errorf("stream %d missing_seq = %v, want %v", i+1, stream.MissingSeq, want[i])
+		}
+		if stream.MissingCount != int64(len(want[i])) {
+			t.Errorf("stream %d missing_count = %d, want %d", i+1, stream.MissingCount, len(want[i]))
+		}
+	}
+}
+
 func TestTraceGeneralFoldReadsUsageTheWayTheContractDoes(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
