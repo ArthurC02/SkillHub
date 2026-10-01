@@ -28,6 +28,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 	}
 	s.Mask = (&trace.Masker{}).MaskString
 	s.ResolveReference = referenceResolver(versions, search)
+	s.ReadReferenceContent = referenceContentReader(versions)
 	s.SearchReferences = func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, error) {
 		ids, err := search.CreationReferenceIDs(ctx, query)
 		if err != nil {
@@ -75,6 +76,17 @@ func referenceResolver(versions *ingest.Service, search *catalog.Service) func(c
 		ref := creation.Reference{SkillID: creation.UUID(fixed.SkillID), VersionID: creation.UUID(fixed.VersionID), Name: fixed.Name, Available: err == nil, Description: fixed.Description, Compatibility: fixed.Compatibility, AllowedTools: fixed.AllowedTools}
 		addCatalogFacts(ctx, search, &ref)
 		return ref, creation.ReferenceSkill{Name: content.Name, SkillMD: content.SkillMD}, err
+	}
+}
+
+func referenceContentReader(versions *ingest.Service) func(context.Context, identity.Workspace, string, string) (creation.ReferenceSkill, error) {
+	return func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.ReferenceSkill, error) {
+		sid, vid, err := parseReferenceIDs(skillID, versionID)
+		if err != nil {
+			return creation.ReferenceSkill{}, err
+		}
+		content, err := versions.ReadCreationReferenceContent(ctx, ws, sid, vid)
+		return creation.ReferenceSkill{Name: content.Name, SkillMD: content.SkillMD}, err
 	}
 }
 

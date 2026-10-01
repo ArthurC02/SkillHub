@@ -148,3 +148,26 @@ func assertMalformedReferenceIDsRefused(t *testing.T, svc *creation.Service, she
 		}
 	}
 }
+
+func TestWorkerReferenceContentIsTheFullReferencesContentAndRefusesAMissingPackage(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	word := uniqueReferenceWord("knowledgecontent")
+	shelf := shelveReferences(t, a, pool, word, referenceAxisElsewhere, 1, 1)
+	svc := knowledgeWorkers(t, a, pool, word, referenceAxisElsewhere)
+
+	_, full, err := svc.ResolveReference(context.Background(), shelf.ws, shelf.skills[0], shelf.versions[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := svc.ReadReferenceContent(context.Background(), shelf.ws, shelf.skills[0], shelf.versions[0])
+	if err != nil || content != full || !strings.Contains(content.SkillMD, "Just prose.") {
+		t.Errorf("content = %+v err=%v, want the full reference's %+v", content, err, full)
+	}
+	if _, err := svc.ReadReferenceContent(context.Background(), shelf.ws, shelf.skills[1], ""); err == nil {
+		t.Error("a reference whose package is missing was read")
+	}
+	if _, err := svc.ReadReferenceContent(context.Background(), shelf.ws, "not-a-uuid", ""); !errors.Is(err, creation.ErrInvalidCommand) {
+		t.Errorf("malformed id: err=%v, want ErrInvalidCommand", err)
+	}
+}

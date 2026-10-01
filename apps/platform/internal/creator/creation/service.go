@@ -253,13 +253,14 @@ type Provenance struct {
 	Inputs                                       []byte
 }
 type Service struct {
-	Pool             *pgxpool.Pool
-	Limits           Limits
-	Streams          *RevisionWatch
-	LLM              StepModel
-	Insert           func(context.Context, pgx.Tx, JobArgs) error
-	ResolveReference func(context.Context, identity.Workspace, string, string) (Reference, ReferenceSkill, error)
-	SearchReferences func(context.Context, identity.Workspace, string) ([]Reference, error)
+	Pool                 *pgxpool.Pool
+	Limits               Limits
+	Streams              *RevisionWatch
+	LLM                  StepModel
+	Insert               func(context.Context, pgx.Tx, JobArgs) error
+	ResolveReference     func(context.Context, identity.Workspace, string, string) (Reference, ReferenceSkill, error)
+	ReadReferenceContent func(context.Context, identity.Workspace, string, string) (ReferenceSkill, error)
+	SearchReferences     func(context.Context, identity.Workspace, string) ([]Reference, error)
 
 	Fetch func(context.Context, string) (Fetch, string)
 

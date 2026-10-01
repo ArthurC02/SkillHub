@@ -345,10 +345,10 @@ func (s *Service) callModel(ctx context.Context, a JobArgs, e envelope, req Step
 func (s *Service) referencedContent(ctx context.Context, ws identity.Workspace, refs []Reference) ([]ReferenceSkill, error) {
 	var contents []ReferenceSkill
 	for _, ref := range refs {
-		if !ref.Confirmed || s.ResolveReference == nil {
+		if !ref.Confirmed || s.ReadReferenceContent == nil {
 			return nil, ErrNotFound
 		}
-		_, content, err := s.ResolveReference(ctx, ws, ref.SkillID, ref.VersionID)
+		content, err := s.ReadReferenceContent(ctx, ws, ref.SkillID, ref.VersionID)
 		if err != nil {
 			return nil, ErrNotFound
 		}

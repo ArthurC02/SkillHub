@@ -97,19 +97,45 @@ type FixedCreationReference struct {
 	AllowedTools  string
 }
 
+type creationReference struct {
+	skillID, versionID pgtype.UUID
+	tree               fs.FS
+	content            ReferenceSkill
+}
+
 func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspace, skillID, versionID pgtype.UUID) (FixedCreationReference, ReferenceSkill, error) {
+	found, err := s.findCreationReference(ctx, ws, skillID, versionID)
+	if err != nil {
+		return FixedCreationReference{}, ReferenceSkill{}, err
+	}
+	fixed := FixedCreationReference{SkillID: found.skillID, VersionID: found.versionID, Name: found.content.Name}
+	report := skillpkg.Validate(found.tree)
+	if report.Manifest != nil {
+		fixed.Description = report.Manifest.Description
+		fixed.Compatibility = report.Manifest.Compatibility
+		fixed.AllowedTools = strings.Join(report.Manifest.AllowedTools, " ")
+	}
+	return fixed, found.content, nil
+}
+
+func (s *Service) ReadCreationReferenceContent(ctx context.Context, ws identity.Workspace, skillID, versionID pgtype.UUID) (ReferenceSkill, error) {
+	found, err := s.findCreationReference(ctx, ws, skillID, versionID)
+	return found.content, err
+}
+
+func (s *Service) findCreationReference(ctx context.Context, ws identity.Workspace, skillID, versionID pgtype.UUID) (creationReference, error) {
 	if s.References == nil || s.Store == nil {
-		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
+		return creationReference{}, ErrReferenceUnavailable
 	}
 	skill, found, err := s.References.WorkspaceSkill(ctx, ws.ID, skillID)
 	if err != nil {
-		return FixedCreationReference{}, ReferenceSkill{}, err
+		return creationReference{}, err
 	}
 	if !found {
 		skill, found, err = s.References.CatalogSkill(ctx, skillID)
 	}
 	if err != nil || !found || !referenceable(skill) {
-		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
+		return creationReference{}, ErrReferenceUnavailable
 	}
 	var version registry.Version
 	if versionID.Valid {
@@ -118,24 +144,20 @@ func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspa
 		version, found, err = s.References.LatestVersion(ctx, skill.WorkspaceID, skill.ID)
 	}
 	if err != nil || !found || version.SkillID != skill.ID {
-		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
+		return creationReference{}, ErrReferenceUnavailable
 	}
 	tree, md, err := s.openReferencePackage(ctx, version)
 	if err != nil {
-		return FixedCreationReference{}, ReferenceSkill{}, err
+		return creationReference{}, err
 	}
 	text, truncated := cutRunes(strings.ToValidUTF8(string(md), ""), generateMaxReferenceChars-utf8.RuneCountInString(referenceTruncationMarker))
 	if truncated {
 		text += referenceTruncationMarker
 	}
-	fixed := FixedCreationReference{SkillID: skill.ID, VersionID: version.ID, Name: skill.Name}
-	report := skillpkg.Validate(tree)
-	if report.Manifest != nil {
-		fixed.Description = report.Manifest.Description
-		fixed.Compatibility = report.Manifest.Compatibility
-		fixed.AllowedTools = strings.Join(report.Manifest.AllowedTools, " ")
-	}
-	return fixed, ReferenceSkill{Name: skill.Name, SkillMD: text}, nil
+	return creationReference{
+		skillID: skill.ID, versionID: version.ID, tree: tree,
+		content: ReferenceSkill{Name: skill.Name, SkillMD: text},
+	}, nil
 }
 
 func (s *Service) openReferencePackage(ctx context.Context, version registry.Version) (fs.FS, []byte, error) {

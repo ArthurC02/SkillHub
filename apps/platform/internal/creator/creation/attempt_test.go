@@ -177,11 +177,11 @@ func callerFor(t *testing.T, calls *int) *Service {
 			return &StepResult{Outcome: "clarification", Usage: &ModelUsage{CostUSD: &cost}}, nil
 		}),
 		IssueKey: func(context.Context, string, string, float64, time.Duration) (string, error) { return "key", nil },
-		ResolveReference: func(_ context.Context, _ identity.Workspace, id, _ string) (Reference, ReferenceSkill, error) {
+		ReadReferenceContent: func(_ context.Context, _ identity.Workspace, id, _ string) (ReferenceSkill, error) {
 			if id == "gone" {
-				return Reference{}, ReferenceSkill{}, errors.New("gone")
+				return ReferenceSkill{}, errors.New("gone")
 			}
-			return Reference{}, ReferenceSkill{Name: id}, nil
+			return ReferenceSkill{Name: id}, nil
 		},
 	}
 }
@@ -214,7 +214,7 @@ func TestAModelCallThatNeverStartsSettlesAsAKnownZero(t *testing.T) {
 	}{
 		{"an unconfirmed reference", []Reference{{SkillID: "a"}}, func(*Service) {}, time.Minute, ErrNotFound},
 		{"a reference that no longer resolves", []Reference{{SkillID: "gone", Confirmed: true}}, func(*Service) {}, time.Minute, ErrNotFound},
-		{"no resolver for a reference", []Reference{{SkillID: "a", Confirmed: true}}, func(s *Service) { s.ResolveReference = nil }, time.Minute, ErrNotFound},
+		{"no resolver for a reference", []Reference{{SkillID: "a", Confirmed: true}}, func(s *Service) { s.ReadReferenceContent = nil }, time.Minute, ErrNotFound},
 		{"the balance is at the floor", nil, func(s *Service) {
 			s.Billing = BillingHooks{ReserveFunc: func(context.Context, pgtype.UUID, float64) (bool, error) { return false, nil }}
 		}, time.Minute, ErrCreditFloor},

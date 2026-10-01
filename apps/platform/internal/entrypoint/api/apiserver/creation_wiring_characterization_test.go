@@ -304,3 +304,21 @@ func TestCreationCatalogChecksThatCannotRunReportWhy(t *testing.T) {
 		}
 	}
 }
+
+func TestCreationReferenceContentIsTheFullReferencesContentAndRefusesAMissingPackage(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	shelf := shelveReferences(t, a, pool, uniqueReferenceWord("ref-content"), referenceAxisElsewhere, 1, 1)
+
+	_, full, err := a.app.CreationSvc.ResolveReference(context.Background(), shelf.ws, shelf.skills[0], "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := a.app.CreationSvc.ReadReferenceContent(context.Background(), shelf.ws, shelf.skills[0], "")
+	if err != nil || content != full || content.SkillMD == "" {
+		t.Errorf("content = %+v err=%v, want the full reference's %+v", content, err, full)
+	}
+	if _, err := a.app.CreationSvc.ReadReferenceContent(context.Background(), shelf.ws, shelf.skills[1], ""); err == nil {
+		t.Error("a reference whose package is missing was read")
+	}
+}
