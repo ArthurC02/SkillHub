@@ -2,7 +2,6 @@ package creation
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -29,14 +28,10 @@ func (s *Service) ActivityFacts(ctx context.Context, ws identity.Workspace) ([]A
 	}
 	facts := make([]ActivityFact, len(rows))
 	for i, row := range rows {
-		var value envelope
-		if err := json.Unmarshal(row.Snapshot, &value); err != nil {
-			return nil, err
-		}
 		classification, label := classifyCreationActivity(State(row.State))
 		facts[i] = ActivityFact{
 			SessionID: row.ID, Classification: classification, Status: row.State,
-			StatusLabel: label, Summary: creationActivitySummary(value.Snapshot.PendingAction),
+			StatusLabel: label, Summary: creationActivitySummary(PendingAction(row.PendingAction)),
 			ActivityAt: row.UpdatedAt.Time,
 		}
 	}

@@ -31,6 +31,26 @@ func TestWorkspaceActivityReturnsACompleteEmptyPage(t *testing.T) {
 	}
 }
 
+func TestACreationWaitingOnThePersonIsSummarisedByWhatItAwaits(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, "activity-creation-pending")
+	mustExec(t, pool, `
+		INSERT INTO creation_sessions (id, workspace_id, state, revision, snapshot, expires_at)
+		VALUES (gen_random_uuid(), $1, 'waiting_confirmation', 1,
+		        '{"snapshot":{"pending_action":"confirm_brief","messages":[{"role":"user","content":"整理收支"}]}}',
+		        now() + interval '1 day')`, mustUUID(t, alice.workspaceID))
+
+	code, body := alice.doJSON(t, http.MethodGet, "/me/activity", "")
+	items, _ := body["items"].([]any)
+	if code != http.StatusOK || len(items) != 1 {
+		t.Fatalf("status = %d, items = %#v", code, body["items"])
+	}
+	if summary := items[0].(map[string]any)["summary"]; summary != "確認 Skill 需求" {
+		t.Errorf("summary = %v, want the brief confirmation it is waiting on", summary)
+	}
+}
+
 func TestWorkspaceActivityScopesEveryOwnerReaderToTheSessionWorkspace(t *testing.T) {
 	a := newAPI(t, requireDB(t))
 	alice := a.login(t, "activity-scope-alice")

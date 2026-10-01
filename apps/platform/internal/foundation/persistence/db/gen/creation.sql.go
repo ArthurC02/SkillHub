@@ -336,17 +336,17 @@ func (q *Queries) InsertCreationReceipt(ctx context.Context, arg InsertCreationR
 }
 
 const listCreationActivityFacts = `-- name: ListCreationActivityFacts :many
-SELECT id, state, snapshot, updated_at
+SELECT id, state, coalesce(snapshot->'snapshot'->>'pending_action', '')::text AS pending_action, updated_at
 FROM creation_sessions
 WHERE workspace_id = $1 AND expires_at > now()
 ORDER BY updated_at DESC, id
 `
 
 type ListCreationActivityFactsRow struct {
-	ID        pgtype.UUID
-	State     string
-	Snapshot  []byte
-	UpdatedAt pgtype.Timestamptz
+	ID            pgtype.UUID
+	State         string
+	PendingAction string
+	UpdatedAt     pgtype.Timestamptz
 }
 
 func (q *Queries) ListCreationActivityFacts(ctx context.Context, workspaceID pgtype.UUID) ([]ListCreationActivityFactsRow, error) {
@@ -361,7 +361,7 @@ func (q *Queries) ListCreationActivityFacts(ctx context.Context, workspaceID pgt
 		if err := rows.Scan(
 			&i.ID,
 			&i.State,
-			&i.Snapshot,
+			&i.PendingAction,
 			&i.UpdatedAt,
 		); err != nil {
 			return nil, err

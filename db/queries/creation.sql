@@ -16,7 +16,7 @@ SELECT * FROM creation_sessions WHERE workspace_id = @workspace_id AND expires_a
 ORDER BY updated_at DESC LIMIT @page_size;
 
 -- name: ListCreationActivityFacts :many
-SELECT id, state, snapshot, updated_at
+SELECT id, state, coalesce(snapshot->'snapshot'->>'pending_action', '')::text AS pending_action, updated_at
 FROM creation_sessions
 WHERE workspace_id = @workspace_id AND expires_at > now()
 ORDER BY updated_at DESC, id;
