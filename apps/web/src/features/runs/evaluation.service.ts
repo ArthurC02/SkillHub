@@ -208,12 +208,12 @@ function useRevisionsFollowCurrent(runId: string, currentId: string | undefined)
   }, [client, runId, currentId]);
 }
 
-export function useEvaluationRevisions(runId: string) {
+export function useEvaluationRevisions(runId: string, evaluated: boolean) {
   return useQuery({
     queryKey: queryKeys.evaluation.revisions(runId),
     queryFn: () =>
       apiFetch<{ revisions: EvaluationRevision[] }>(`/runs/${runId}/evaluation/revisions`),
-    enabled: runId.length > 0,
+    enabled: runId.length > 0 && evaluated,
   });
 }
 

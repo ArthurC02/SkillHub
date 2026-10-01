@@ -16,7 +16,7 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
   const navigate = useNavigate();
   const awaiting = runStatus === "succeeded" || runStatus === "failed";
   const evaluation = useEvaluation(runId, revision, awaiting);
-  const revisions = useEvaluationRevisions(runId);
+  const revisions = useEvaluationRevisions(runId, evaluation.data !== undefined);
   const { notEvaluated, stoppedAsking, evaluating } = evaluationPanelState({
     runStatus,
     revision,

@@ -975,3 +975,22 @@ test("04 丙-143(e) a suggestion already built into a version cannot be rejected
   expect(reject?.disabled).toBe(true);
   expect(container.textContent).toContain("已建成版本的建議不能撤回");
 });
+
+test.each([
+  { label: "a run without an evaluation", evaluated: false, asks: 0 },
+  { label: "an evaluated run", evaluated: true, asks: 1 },
+])("$label asks for its evaluation history $asks times", async ({ evaluated, asks }) => {
+  stubPlatform({ evaluated });
+  const platform = globalThis.fetch;
+  let historyAsks = 0;
+  vi.stubGlobal("fetch", (input: string) => {
+    if (String(input).includes("/evaluation/revisions")) historyAsks += 1;
+    return platform(input);
+  });
+  await render(evaluated ? "succeeded" : "running");
+  await waitFor(() => historyAsks >= asks);
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  });
+  expect(historyAsks).toBe(asks);
+});
