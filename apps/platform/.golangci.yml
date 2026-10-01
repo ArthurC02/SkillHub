@@ -734,6 +734,7 @@ linters:
             - "**/internal/foundation/persistence/pgconv/**"
             - "**/internal/foundation/runtime/envx/**"
             - "**/internal/foundation/runtime/httpx/**"
+            - "**/internal/foundation/runtime/literalgate/**"
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity

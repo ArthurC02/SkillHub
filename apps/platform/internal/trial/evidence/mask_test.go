@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/literalgate"
 )
 
 var scannerShapes = []struct {
@@ -225,30 +226,6 @@ func allPatterns() []*regexp.Regexp {
 	return append(out, urlUserInfo)
 }
 
-func TestAPatternIsSkippedOnlyWhenTheTextLacksALiteralEveryMatchNeeds(t *testing.T) {
-	for _, c := range []struct {
-		name, pattern, text string
-		canMatch            bool
-	}{
-		{"a case-insensitive literal whose letters fold elsewhere", `(?i)token=x`, "toKen=x", true},
-		{"a literal without case under (?i)", `(?i)\d+=\d+`, "1=2", true},
-		{"either side of an alternation", `a|b`, "b", true},
-		{"an optional part", `x?yz`, "yz", true},
-		{"a repeated part", `a*b`, "b", true},
-		{"literals inside a group", `(ab)c`, "abc", true},
-		{"a missing required literal", `abc`, "xyz", false},
-		{"a required literal after a group", `(ab)c`, "abd", false},
-	} {
-		re := regexp.MustCompile(c.pattern)
-		if got := canMatch(re, c.text); got != c.canMatch {
-			t.Errorf("%s: canMatch(%s, %q) = %v, want %v", c.name, c.pattern, c.text, got, c.canMatch)
-		}
-		if c.canMatch && !re.MatchString(c.text) {
-			t.Errorf("%s: the case itself is wrong, %s does not match %q", c.name, c.pattern, c.text)
-		}
-	}
-}
-
 func TestNoSecretPatternIsSkippedForTextItWouldRedact(t *testing.T) {
 	texts := []string{
 		"Authorization: Bearer abcdefghijklmnopqrstuvwxyz012345", "baſic abcdefghijklmnopqrstu", "toKen abcdefghijklmnopqrstu",
@@ -260,7 +237,7 @@ func TestNoSecretPatternIsSkippedForTextItWouldRedact(t *testing.T) {
 	}
 	for _, re := range allPatterns() {
 		for _, text := range texts {
-			if re.MatchString(text) && !canMatch(re, text) {
+			if re.MatchString(text) && !literalgate.CanMatch(re, text) {
 				t.Errorf("%s matches %q but would be skipped", re, text)
 			}
 		}

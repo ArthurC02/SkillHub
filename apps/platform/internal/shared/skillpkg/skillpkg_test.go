@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/literalgate"
 )
 
 func pkg(skillMD string, extra map[string]string) fstest.MapFS {
@@ -920,6 +922,22 @@ func TestFindingMessagesAreTraditionalChinese(t *testing.T) {
 	for _, f := range all {
 		if !cjkRune.MatchString(f.Message) {
 			t.Errorf("%s: message has no Traditional Chinese sentence, got %q", f.Code, f.Message)
+		}
+	}
+}
+
+func TestNoSecretPatternIsSkippedForContentItWouldFlag(t *testing.T) {
+	texts := []string{
+		"key: AKIA" + strings.Repeat("Q", 16), "gh" + "p_" + strings.Repeat("0", 36), "sk-" + strings.Repeat("a", 32),
+		"xox" + "b-0000000000", "-----BEGIN RSA PRIVATE KEY-----",
+		"AWS_SECRET_ACCESS_KEY = " + strings.Repeat("x", 20), "aws_ſecret_access_Key=" + strings.Repeat("x", 20),
+		"Run the dedupe script and check the totals per region.",
+	}
+	for _, re := range secretPatterns {
+		for _, text := range texts {
+			if re.MatchString(text) && !literalgate.CanMatchBytes(re, []byte(text)) {
+				t.Errorf("%s matches %q but would be skipped", re, text)
+			}
 		}
 	}
 }

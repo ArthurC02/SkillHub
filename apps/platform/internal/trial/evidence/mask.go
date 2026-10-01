@@ -6,15 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"regexp/syntax"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
-	"unicode"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/literalgate"
 )
 
 const Placeholder = "[REDACTED]"
@@ -111,66 +109,14 @@ func (m *Masker) redact(s string) string {
 		s = strings.ReplaceAll(s, known, Placeholder)
 	}
 	for _, re := range secretPatterns {
-		if canMatch(re, s) {
+		if literalgate.CanMatch(re, s) {
 			s = re.ReplaceAllString(s, Placeholder)
 		}
 	}
-	if !canMatch(urlUserInfo, s) {
+	if !literalgate.CanMatch(urlUserInfo, s) {
 		return s
 	}
 	return urlUserInfo.ReplaceAllString(s, "${1}"+Placeholder+"@")
-}
-
-var requiredLiterals sync.Map
-
-func canMatch(re *regexp.Regexp, s string) bool {
-	literals, ok := requiredLiterals.Load(re)
-	if !ok {
-		literals, _ = requiredLiterals.LoadOrStore(re, literalsEveryMatchContains(re))
-	}
-	for _, literal := range literals.([]string) {
-		if !strings.Contains(s, literal) {
-			return false
-		}
-	}
-	return true
-}
-
-// literalsEveryMatchContains walks the pattern's top-level concatenation (and
-// the groups inside it) for literals no match can avoid; a case-insensitive
-// literal counts only when none of its runes has another case.
-func literalsEveryMatchContains(re *regexp.Regexp) []string {
-	parsed, err := syntax.Parse(re.String(), syntax.Perl)
-	if err != nil {
-		return nil
-	}
-	var out []string
-	var collect func(*syntax.Regexp)
-	collect = func(node *syntax.Regexp) {
-		switch node.Op {
-		case syntax.OpLiteral:
-			if node.Flags&syntax.FoldCase == 0 || !anyRuneFolds(node.Rune) {
-				out = append(out, string(node.Rune))
-			}
-		case syntax.OpConcat:
-			for _, sub := range node.Sub {
-				collect(sub)
-			}
-		case syntax.OpCapture:
-			collect(node.Sub[0])
-		}
-	}
-	collect(parsed)
-	return out
-}
-
-func anyRuneFolds(runes []rune) bool {
-	for _, r := range runes {
-		if unicode.SimpleFold(r) != r {
-			return true
-		}
-	}
-	return false
 }
 
 func (m *Masker) MaskString(s string) string {

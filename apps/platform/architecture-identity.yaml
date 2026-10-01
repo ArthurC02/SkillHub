@@ -41,6 +41,9 @@ packages:
   - id: httpx
     kind: Generic
     path: foundation/runtime/httpx
+  - id: literalgate
+    kind: Generic
+    path: foundation/runtime/literalgate
   - id: platform
     kind: Generic
     path: foundation/persistence/db/gen

@@ -11,6 +11,8 @@ import (
 	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/literalgate"
 )
 
 type Severity string
@@ -922,7 +924,7 @@ func urlHost(raw string) string {
 
 func (r *Report) scanSecrets(path string, data []byte) {
 	for _, pat := range secretPatterns {
-		if pat.Match(data) {
+		if literalgate.CanMatchBytes(pat, data) && pat.Match(data) {
 			r.add(SeverityError, CodePossibleSecret, path,
 				"內容符合已知的憑證格式；請在匯入前移除它")
 			return
