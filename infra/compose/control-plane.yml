@@ -40,6 +40,8 @@ services:
 
   platform-api:
     image: ${SKILLHUB_PLATFORM_IMAGE:?set SKILLHUB_PLATFORM_IMAGE in release.env}
+    deploy:
+      replicas: ${SKILLHUB_API_REPLICAS:-1}
     cpus: ${SKILLHUB_API_CPUS:-2}
     mem_limit: ${SKILLHUB_API_MEMORY:-2g}
     command: ["api"]
@@ -54,6 +56,8 @@ services:
 
   platform-worker:
     image: ${SKILLHUB_PLATFORM_IMAGE:?set SKILLHUB_PLATFORM_IMAGE in release.env}
+    deploy:
+      replicas: ${SKILLHUB_WORKER_REPLICAS:-1}
     cpus: ${SKILLHUB_WORKER_CPUS:-2}
     mem_limit: ${SKILLHUB_WORKER_MEMORY:-2g}
     command: ["worker"]
@@ -89,6 +93,8 @@ services:
 
   llm:
     image: ${SKILLHUB_LLM_IMAGE:?set SKILLHUB_LLM_IMAGE in release.env}
+    deploy:
+      replicas: ${SKILLHUB_LLM_REPLICAS:-1}
     cpus: ${SKILLHUB_LLM_CPUS:-1}
     mem_limit: ${SKILLHUB_LLM_MEMORY:-1g}
     restart: unless-stopped

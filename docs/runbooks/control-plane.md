@@ -55,6 +55,8 @@ EOF
 
 容器資源上限：除了 PostgreSQL，每個服務都有 CPU 與記憶體上限，一個服務吃光資源時被限制的是它自己，不是同機的資料庫。API、Worker、能力服務預設各 2／2／1 顆 CPU 與 2g／2g／1g 記憶體，在 `release.env` 以 `SKILLHUB_API_CPUS`、`SKILLHUB_API_MEMORY`、`SKILLHUB_WORKER_CPUS`、`SKILLHUB_WORKER_MEMORY`、`SKILLHUB_LLM_CPUS`、`SKILLHUB_LLM_MEMORY` 調整；模型閘道節點用 `SKILLHUB_GATEWAY_CPUS`、`SKILLHUB_GATEWAY_MEMORY`。新增服務沒有寫上限，部署設定檢查會擋。
 
+多開行程：API、Worker、能力服務的份數在 `release.env` 以 `SKILLHUB_API_REPLICAS`、`SKILLHUB_WORKER_REPLICAS`、`SKILLHUB_LLM_REPLICAS` 設定（預設各 1）。多份時限流、登入狀態、串流與排程的行為與 1 份相同，CI 的整套煙霧測試每種都開 2 份驗證；Prometheus 以 DNS 找出每一份分別抓指標。上限與份數相乘才是這台機器要留給它的資源，加份數前先確認 API 與 Worker 的資料庫連線上限加總仍低於資料庫的連線上限。本機用 `docker compose --profile app up --scale platform-api=2` 時，先設 `PLATFORM_API_PORTS=8090-8091`，讓兩份 API 各自對外有一個埠。
+
 **備份 bucket 與應用程式的物件儲存分開**，金鑰也分開：應用程式的金鑰被拿走時，備份不能跟著被刪。這套設定沒有做用戶端加密，bucket 必須私有並開供應商端加密。
 
 驗：`sudo /opt/skillhub/infra/deploy/control-plane/bin/skillhub-preflight` 沒有輸出、exit 0（要先 `set -a; . /etc/skillhub/release.env; set +a`）。

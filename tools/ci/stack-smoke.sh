@@ -27,7 +27,7 @@ else
 	HOST_ROOT="$REPO_ROOT"
 fi
 
-names=(smoke-web smoke-llm smoke-worker smoke-api smoke-s3 smoke-pg)
+names=(smoke-web smoke-llm smoke-llm-2 smoke-worker smoke-worker-2 smoke-api smoke-api-2 smoke-s3 smoke-pg)
 
 # The browser scripts buffer their results and print them in one go, which the
 # container logs then bury; keep a copy so cleanup can quote the failed ones.
@@ -127,13 +127,24 @@ api_env=(
 	-e DOWNLOAD_ARTIFACT_RETENTION=1h
 )
 
-echo "--- platform-api"
-docker run -d --name smoke-api --network "$NET" --network-alias platform-api \
-	"${api_env[@]}" "$PLATFORM_IMAGE" api >/dev/null
-wait_for "platform-api" 90 hget -fs -o /dev/null http://platform-api:8080/healthz
+# Two of each process, as production may run them: both API containers answer
+# to the `platform-api` alias, so nginx spreads the browser passes across them.
+start_apis() { # start_apis [extra docker run args...]
+	for api in smoke-api smoke-api-2; do
+		docker run -d --name "$api" --network "$NET" --network-alias platform-api \
+			"${api_env[@]}" "$@" "$PLATFORM_IMAGE" api >/dev/null
+	done
+}
 
-echo "--- platform-worker"
-docker run -d --name smoke-worker --network "$NET" "${api_env[@]}" "$PLATFORM_IMAGE" worker >/dev/null
+echo "--- platform-api x2"
+start_apis
+wait_for "platform-api" 90 hget -fs -o /dev/null http://smoke-api:8080/healthz
+wait_for "platform-api-2" 90 hget -fs -o /dev/null http://smoke-api-2:8080/healthz
+
+echo "--- platform-worker x2"
+for worker in smoke-worker smoke-worker-2; do
+	docker run -d --name "$worker" --network "$NET" "${api_env[@]}" "$PLATFORM_IMAGE" worker >/dev/null
+done
 
 echo "--- web"
 # nginx.conf routes on the Accept header: without text/html a request is
@@ -143,10 +154,12 @@ wait_for "web" 60 hget -fs -o /dev/null -H "Accept: text/html" http://smoke-web/
 
 # Started with no gateway on purpose: a missing LiteLLM must be a request-time
 # error, never a startup failure.
-echo "--- llm"
-docker run -d --name smoke-llm --network "$NET" "$LLM_IMAGE" >/dev/null
-wait_for "llm" 60 docker exec smoke-llm python -c \
-	"import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz').read()"
+echo "--- llm x2"
+for llm in smoke-llm smoke-llm-2; do
+	docker run -d --name "$llm" --network "$NET" --network-alias llm "$LLM_IMAGE" >/dev/null
+	wait_for "$llm" 60 docker exec "$llm" python -c \
+		"import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz').read()"
+done
 
 fail=0
 failures=()
@@ -194,12 +207,39 @@ if (typeof j.total !== "number" || typeof j.truncated !== "boolean") {
 ' "$catalog" && rc=0 || rc=1
 check "catalogue answers through nginx with a contract-shaped body" "$rc"
 
-sleep 5
-running="$(docker inspect -f '{{.State.Running}}' smoke-worker)"
-[ "$running" = "true" ] && rc=0 || rc=1
-check "platform-worker is still running" "$rc"
+# 4. One rate-limit bucket across both API copies: 40 catalogue requests from
+#    one address, alternating instances, overdraw a shared burst of 30 but would
+#    fit two separate ones.
+statuses="$(docker run --rm --network "$NET" --entrypoint sh "$CURL_IMAGE" -c '
+	for i in $(seq 20); do
+		for api in smoke-api smoke-api-2; do
+			curl -s -o /dev/null -w "%{http_code}\n" "http://$api:8080/api/skills/catalog"
+		done
+	done')" || statuses=""
+refused="$(printf '%s\n' "$statuses" | grep -c '^429$' || true)"
+answered="$(printf '%s\n' "$statuses" | grep -c '^200$' || true)"
+echo "rate limit across instances: $answered answered, $refused refused"
+[ "$refused" -gt 0 ] && [ "$answered" -ge 30 ] && rc=0 || rc=1
+check "both API copies draw on one rate-limit bucket" "$rc"
 
-# 5. `npm i` fetches only the JS package; the Playwright image already
+# 5. A session made on one API copy is honoured by the other.
+me="$(docker run --rm --network "$NET" --entrypoint sh "$CURL_IMAGE" -c '
+	session="$(curl -s -D - -o /dev/null -X POST -H "content-type: application/json" \
+		-d "{\"user\":\"smoke-two-instances\"}" http://smoke-api:8080/auth/dev/login |
+		sed -n "s/^[Ss]et-[Cc]ookie: \(sh_session=[^;]*\).*/\1/p")" &&
+	[ -n "$session" ] &&
+	curl -s -H "Cookie: $session" -o /dev/null -w "%{http_code}" http://smoke-api-2:8080/me')" || me=""
+[ "$me" = 200 ] && rc=0 || rc=1
+check "a session from one API copy is accepted by the other (got ${me:-nothing})" "$rc"
+
+sleep 5
+for worker in smoke-worker smoke-worker-2; do
+	running="$(docker inspect -f '{{.State.Running}}' "$worker")"
+	[ "$running" = "true" ] && rc=0 || rc=1
+	check "$worker is still running" "$rc"
+done
+
+# 6. `npm i` fetches only the JS package; the Playwright image already
 #    supplies the browser binaries.
 echo "--- browser"
 docker run --rm --network "$NET" \
@@ -210,7 +250,15 @@ docker run --rm --network "$NET" \
 	       cp /work/tools/ci/stack-browser.mjs /work/tools/ci/stack-seed.mjs /tmp/ && node /tmp/stack-browser.mjs' 2>&1 | tee -a "$nodelog" && rc=0 || rc=1
 check "public routes render in a browser against the real API" "$rc"
 
-# 6. Credit on the real images: refused at 0, an operator grant, then allowed.
+# A short run of the load test through nginx, spread over both API copies:
+# no 5xx and no slow reads. The catalogue's rate limit refuses most of this
+# one address's requests, which the report counts apart from errors.
+echo "--- load"
+docker run --rm --network "$NET" -v "$HOST_ROOT:/work:ro" "$PLAYWRIGHT_IMAGE" \
+	node /work/tools/ci/load.mjs --base http://smoke-web --rps 40 --seconds 15 2>&1 | tee -a "$nodelog" && rc=0 || rc=1
+check "a short load run through both API copies has no server errors or slow reads" "$rc"
+
+# 7. Credit on the real images: refused at 0, an operator grant, then allowed.
 #    Operator ids and the creation entry are read at startup, so the API restarts
 #    with them; nginx restarts too so it dials the new container.
 echo "--- credit"
@@ -224,15 +272,14 @@ catalogued="$(docker exec -e PGPASSWORD=skillhub smoke-pg psql -h 127.0.0.1 -U s
 	"update workspaces set is_catalog = true where owner_user_id = (select id from users where email = 'smoke-fork-source@dev.local')")" || catalogued=""
 limits="$(grep '^CREATION_LIMITS_JSON=' "$REPO_ROOT/.env.example" | cut -d= -f2-)"
 if [ "$login" = 204 ] && [ "$fork_source_login" = 204 ] && [ "$catalogued" = UPDATE\ 1 ] && [ -n "$operator" ] && [ -n "$limits" ]; then
-	docker rm -f smoke-api >/dev/null
-	docker run -d --name smoke-api --network "$NET" --network-alias platform-api \
-		"${api_env[@]}" \
+	docker rm -f smoke-api smoke-api-2 >/dev/null
+	start_apis \
 		-e "OPERATOR_USER_IDS=$operator" -e CREATION_EXPOSED=on -e GENERATE_SKILL_EXPOSED=on \
 		-e "CREATION_LIMITS_JSON=$limits" -e CREATION_WORKER_INTERNAL_ADDR=:8091 \
-		-e CREATION_WORKER_INTERNAL_URL=http://smoke-worker:8091 -e CREATION_WORKER_INTERNAL_TOKEN=smoke-only \
-		"$PLATFORM_IMAGE" api >/dev/null
+		-e CREATION_WORKER_INTERNAL_URL=http://smoke-worker:8091 -e CREATION_WORKER_INTERNAL_TOKEN=smoke-only
 	docker restart smoke-web >/dev/null
-	if wait_for "platform-api (credit)" 90 hget -fs -o /dev/null http://platform-api:8080/healthz &&
+	if wait_for "platform-api (credit)" 90 hget -fs -o /dev/null http://smoke-api:8080/healthz &&
+		wait_for "platform-api-2 (credit)" 90 hget -fs -o /dev/null http://smoke-api-2:8080/healthz &&
 		wait_for "web (credit)" 60 hget -fs -o /dev/null -H "Accept: text/html" http://smoke-web/ &&
 		docker run --rm --network "$NET" -v "$HOST_ROOT:/work:ro" -w /work -e BASE_URL=http://smoke-web \
 			"$PLAYWRIGHT_IMAGE" \

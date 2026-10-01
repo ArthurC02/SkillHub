@@ -107,7 +107,7 @@ services:
       FEEDBACK_RETENTION: ${FEEDBACK_RETENTION:-}
       ANALYTICS_RETENTION: ${ANALYTICS_RETENTION:-}
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${PLATFORM_API_PORTS:-8080}:8080"
 
   platform-worker:
     profiles: ["app"]
