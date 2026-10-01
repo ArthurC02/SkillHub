@@ -464,6 +464,11 @@ test("the curated review explanation follows the unified product gallery", async
   await browseCatalogue();
 
   const gallery = container.querySelector(".catalog-gallery")!;
+  const warning = container.querySelector(".catalog-curation-warning")!;
+  expect(warning.textContent?.replace(/\s+/g, "")).toContain("不代表安全或推薦");
+  expect(warning.compareDocumentPosition(gallery) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+    Node.DOCUMENT_POSITION_FOLLOWING,
+  );
   const noteElement = container.querySelector(".catalog-curation-note")!;
   const note = noteElement.textContent!.replace(/\s+/g, "");
   expect(note).toContain("這一版由我們逐份讀過");

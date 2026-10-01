@@ -11,7 +11,7 @@ import {
   type PackagingPreview,
   type PackagingTargetId,
 } from "../packaging.service";
-import { SkillWorkspaceNav, useEmbeddedSkillDetail } from "../../skill";
+import { SkillWorkspaceNav, useEmbeddedSkillDetail, useSkillVersions } from "../../skill";
 import { packagingGate } from "../packaging.model";
 import { matchingBuiltArtifact, resolveTarget } from "./build.model";
 import { LabelledBadge } from "../../../shared/ui/LabelledBadge";
@@ -28,6 +28,30 @@ import { BuildControl } from "./components/BuildControl";
 import { BuiltResultNotice } from "./components/BuiltResultNotice";
 
 type PackagingSearch = { version?: string };
+
+function PackagingVersionLabel({
+  skillId,
+  versionId,
+  latestVersionId,
+  latestVersionNumber,
+}: {
+  skillId: string;
+  versionId: string;
+  latestVersionId?: string;
+  latestVersionNumber?: number;
+}) {
+  const versions = useSkillVersions(skillId);
+  const selected = versions.data?.versions.find((item) => item.version_id === versionId);
+  const versionNumber =
+    selected?.version_number ?? (versionId === latestVersionId ? latestVersionNumber : undefined);
+
+  return (
+    <strong>
+      正在打包 {versionNumber === undefined ? "所選版本" : `v${versionNumber}`}
+      {versionId === latestVersionId ? "（最新版本）" : ""}
+    </strong>
+  );
+}
 
 function buildButtonReason({
   pending,
@@ -98,9 +122,17 @@ export function Packaging() {
         <Link to="/skills/$skillId" params={{ skillId }}>
           {skill.data.name}
         </Link>
-        {skill.data.version && versionId === skill.data.version.version_id
-          ? `（v${skill.data.version.version_number}，最新版本）`
-          : ""}
+        {versionId && (
+          <>
+            {" · "}
+            <PackagingVersionLabel
+              skillId={skillId}
+              versionId={versionId}
+              latestVersionId={skill.data.version?.version_id}
+              latestVersionNumber={skill.data.version?.version_number}
+            />
+          </>
+        )}
       </p>
       <p className="badge-row">
         <LabelledBadge kind="redistribution" value={skill.data.redistribution} />

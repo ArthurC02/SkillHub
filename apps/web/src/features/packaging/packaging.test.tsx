@@ -925,6 +925,7 @@ test("04 丙-14 the packaging page picks the version from a list, and ?version= 
 
   const select = container.querySelector<HTMLSelectElement>("select")!;
   expect(select.value).toBe(VERSION);
+  expect(text()).toContain("正在打包 v2（最新版本）");
   expect(text()).toContain("v2（最新）");
   expect(text()).toContain("v1");
 
@@ -937,6 +938,7 @@ test("04 丙-14 the packaging page picks the version from a list, and ?version= 
     calls.some((u) => u.includes(`/versions/${OLDER_VERSION}/packaging/preview`)),
   );
   expect(text()).toContain(OLDER_VERSION);
+  expect(text()).toContain("正在打包 v1");
   expect(text()).not.toContain("最新版本）");
 });
 

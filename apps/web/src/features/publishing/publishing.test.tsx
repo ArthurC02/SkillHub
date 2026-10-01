@@ -817,6 +817,28 @@ test("PACK-004 available 公開頁：每一個允收欄位都出現", async () =
   expect(text()).toContain("登入後可以下載這一版的標準 Agent 小工具套件");
 });
 
+test("a public release with findings still states the limits of static scanning", async () => {
+  stub({
+    [PUB_ADDRESS]: {
+      body: {
+        ...PUBLIC_PUBLICATION,
+        release: {
+          ...PUBLIC_PUBLICATION.release,
+          findings: {
+            errors: [],
+            warnings: [{ code: "SCRIPT_FOUND", message: "套件含有 Script。" }],
+            infos: [],
+          },
+        },
+      },
+    },
+  });
+  await render(<PublicPublication />, () => text().includes("SCRIPT_FOUND"));
+
+  expect(text()).toContain("平台沒有執行套件 Script");
+  expect(text()).toContain("不代表安全保證");
+});
+
 test("PACK-004 公開頁先交代信任證據，再提供主要取得動作", async () => {
   stub({ [PUB_ADDRESS]: { body: PUBLIC_PUBLICATION } });
   await render(<PublicPublication />, () => text().includes("PDF Summariser"));

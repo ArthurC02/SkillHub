@@ -26,6 +26,11 @@
   font-size: 14px;
 }
 
+.catalog-curation-warning {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .catalog-heading-meta {
   display: grid;
   justify-items: end;

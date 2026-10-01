@@ -27,6 +27,7 @@ export function Findings({
 
   return (
     <div>
+      <p className="note">這份清單來自靜態檢查；平台沒有執行套件 Script，也不代表安全保證。</p>
       {groups.map(([label, items]) =>
         items.length ? (
           <section key={label}>

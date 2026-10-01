@@ -14,10 +14,12 @@ function CatalogHeader({
   results,
   total,
   truncated,
+  hasCurated,
 }: {
   results: PublicSearchResult[];
   total: number;
   truncated: boolean;
+  hasCurated: boolean;
 }) {
   return (
     <div className="catalog-heading-row">
@@ -28,6 +30,9 @@ function CatalogHeader({
       {results.length > 0 && (
         <div className="catalog-heading-meta">
           <p role="status" className="catalog-total">
+            {hasCurated && (
+              <span className="catalog-curation-warning">精選不代表安全或推薦 · </span>
+            )}
             {truncated ? `共 ${total} 個，顯示前 ${results.length} 個` : `共 ${total} 個小工具`}
           </p>
           <p className="catalog-order">{results[0]?.rank_note ?? "未提供目錄排序說明。"}</p>
@@ -80,6 +85,7 @@ export function Catalog({
   if (!query.data) return null;
 
   const { results, total, truncated } = query.data;
+  const hasCurated = results.some((hit) => hit.tier.value === "curated");
 
   const card = (hit: PublicSearchResult) => (
     <CatalogSkillCard
@@ -93,7 +99,12 @@ export function Catalog({
 
   return (
     <section className="catalog-showcase" aria-labelledby="catalog-heading">
-      <CatalogHeader results={results} total={total} truncated={truncated} />
+      <CatalogHeader
+        results={results}
+        total={total}
+        truncated={truncated}
+        hasCurated={hasCurated}
+      />
       {results.length === 0 ? (
         <CatalogEmptyState narrowing={narrowing} />
       ) : (
@@ -109,7 +120,7 @@ export function Catalog({
             {results.map(card)}
           </ul>
           <div className="catalog-supporting-notes">
-            {!tierFiltered && results.some((hit) => hit.tier.value === "curated") && (
+            {!tierFiltered && hasCurated && (
               <p className="note catalog-curation-note">
                 「精選」表示這一版由我們逐份讀過，通過九項人工檢視：來源可追溯、License 實查、
                 規格驗證、Script 逐行審閱、無疑似 Secret、白話摘要、至少一次平台基準試跑符合。
