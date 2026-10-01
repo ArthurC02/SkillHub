@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatAt } from "./Timestamp.model";
 
 const RELATIVE = new Intl.RelativeTimeFormat("zh-TW", { numeric: "always" });
@@ -25,10 +25,33 @@ function ago(from: Date, now: number): string {
   return RELATIVE.format(-Math.floor(value), "year");
 }
 
+function refreshDelay(from: number, now: number): number {
+  const elapsed = now - from;
+  if (elapsed < 0) return Math.min(-elapsed, 60_000);
+  if (elapsed < 60_000) return 1_000 - (elapsed % 1_000);
+  if (elapsed < 3_600_000) return 60_000 - (elapsed % 60_000);
+  if (elapsed < 86_400_000) return 3_600_000 - (elapsed % 3_600_000);
+  return 86_400_000 - (elapsed % 86_400_000);
+}
+
 export function Timestamp({ at, relative = false }: { at: string; relative?: boolean }) {
-  const [now] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const date = new Date(at);
-  if (Number.isNaN(date.getTime())) {
+  const dateTime = date.getTime();
+
+  useEffect(() => {
+    if (!relative || Number.isNaN(dateTime)) return;
+    let timer = 0;
+    const update = () => {
+      const current = Date.now();
+      setNow(current);
+      timer = window.setTimeout(update, refreshDelay(dateTime, current));
+    };
+    timer = window.setTimeout(update, 0);
+    return () => window.clearTimeout(timer);
+  }, [dateTime, relative]);
+
+  if (Number.isNaN(dateTime)) {
     return <time dateTime={at}>{formatAt(at)}</time>;
   }
 

@@ -561,6 +561,29 @@ test("an applied suggestion is marked from the apply answer before the evaluatio
   expect(container.textContent).toContain("（已套用於新版本）");
 });
 
+test("a suggestion decision names the pending action before the server answers", async () => {
+  stubPlatform({ evaluated: true });
+  const settledFetch = globalThis.fetch;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).includes("/suggestions/s1/decision")) {
+      return new Promise<Response>(() => undefined);
+    }
+    return settledFetch(input, init);
+  });
+  await render("succeeded");
+  await waitFor(() => (container.textContent ?? "").includes("接受"));
+
+  const accept = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "接受",
+  );
+  await act(async () => accept?.click());
+  await waitFor(() => accept?.textContent === "接受中…");
+
+  expect(accept?.textContent).toBe("接受中…");
+  expect(accept?.disabled).toBe(true);
+  expect(container.querySelector('[role="status"]')?.textContent).toContain("正在接受");
+});
+
 test("丙-10 a verdict downgraded for unverifiable evidence is not shown as a judge who does not know", async () => {
   stubPlatform({ evaluated: true });
   await render("succeeded");

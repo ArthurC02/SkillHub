@@ -16,6 +16,7 @@ export function SuggestionItem({
   const [showDiff, setShowDiff] = useState(false);
   const decide = useDecideSuggestion(runId);
   const error = decide.error;
+  const pendingDecision = decide.isPending ? decide.variables?.decision : undefined;
   const choose = (decision: "accepted" | "rejected") =>
     decide.mutate({ suggestionId: suggestion.suggestion_id, decision });
 
@@ -39,7 +40,7 @@ export function SuggestionItem({
           disabled={decide.isPending}
           onClick={() => choose("accepted")}
         >
-          接受
+          {pendingDecision === "accepted" ? "接受中…" : "接受"}
         </button>{" "}
         <button
           type="button"
@@ -52,15 +53,18 @@ export function SuggestionItem({
           }
           onClick={() => choose("rejected")}
         >
-          拒絕
+          {pendingDecision === "rejected" ? "拒絕中…" : "拒絕"}
         </button>{" "}
-        <span className="note">
-          目前：
-          {suggestion.decision === "accepted"
-            ? "已接受"
-            : suggestion.decision === "rejected"
-              ? "已拒絕"
-              : "尚未決定"}
+        <span className="note" role={pendingDecision ? "status" : undefined}>
+          {pendingDecision
+            ? `處理中：正在${pendingDecision === "accepted" ? "接受" : "拒絕"}…`
+            : `目前：${
+                suggestion.decision === "accepted"
+                  ? "已接受"
+                  : suggestion.decision === "rejected"
+                    ? "已拒絕"
+                    : "尚未決定"
+              }`}
           {suggestion.applied_skill_version_id ? "（已套用於新版本）" : ""}
         </span>
         {suggestion.applied_skill_version_id && (

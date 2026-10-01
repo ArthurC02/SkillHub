@@ -87,7 +87,7 @@ export function VersionCatalogExposure({
     );
   }
 
-  if (overview.isPending || overview.isFetching) {
+  if (overview.isPending) {
     return (
       <ExposureSection>
         <Loading what="Catalog 曝光狀態" />

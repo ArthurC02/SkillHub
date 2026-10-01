@@ -52,13 +52,17 @@ test.each([
   expect(await relativeTextAfter(elapsedMs)).toBe(expected);
 });
 
-test("the elapsed time stays the one read when the timestamp appeared", async () => {
-  expect(await relativeTextAfter(59_000)).toBe("（59 秒前）");
+test("the elapsed time advances while the timestamp stays mounted", async () => {
+  vi.useFakeTimers();
+  const at = "2026-09-05T08:30:00Z";
+  vi.setSystemTime(new Date(at).getTime() + 59_000);
+  await act(async () => root.render(<Timestamp at={at} relative />));
+  expect(box.querySelector("time")!.textContent).toMatch(/（59 秒前）$/);
 
   vi.setSystemTime(new Date("2026-09-05T09:30:00Z"));
-  await act(async () => root.render(<Timestamp at="2026-09-05T08:30:00Z" relative />));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
 
-  expect(box.querySelector("time")!.textContent).toMatch(/（59 秒前）$/);
+  expect(box.querySelector("time")!.textContent).toMatch(/（1 小時前）$/);
 });
 
 test("the component shows an unreadable timestamp the same way formatAt does", async () => {

@@ -1204,6 +1204,33 @@ test("PublishPanel：已發佈時顯示公開位址、狀態與最新 Release", 
   expect(text()).toContain("任何人都能從搜尋與 Catalog 找到這個 Release");
 });
 
+test("PublishPanel：重新整理 Catalog 曝光時保留目前狀態與操作位置", async () => {
+  let blockOverview = false;
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me/publisher") return json(OWN_PUBLISHER);
+    if (path === `/skills/${SKILL}/publication`) return json(OWN_PUBLICATION);
+    if (path === "/me/publications") {
+      return blockOverview ? new Promise<Response>(() => undefined) : json(OWN_PUBLICATIONS);
+    }
+    return json({ error: "not found" }, 404);
+  });
+
+  await render(<PublishPanel skill={detail()} isLoggedIn={true} isOwner={true} />, () =>
+    text().includes("已列入 Catalog"),
+  );
+
+  blockOverview = true;
+  await act(async () => button("重新整理 Catalog 曝光狀態")?.click());
+  await waitFor(() => text().includes("重新整理中…"));
+
+  expect(text()).toContain("已列入 Catalog");
+  expect(text()).toContain("任何人都能從搜尋與 Catalog 找到這個 Release");
+  expect(text()).not.toContain("載入Catalog 曝光狀態中…");
+});
+
 test("PublishPanel：歷史 Release 不借用最新 Release 的 Catalog 曝光", async () => {
   const older = SKILL_VERSIONS.versions[1];
   const publication = {
