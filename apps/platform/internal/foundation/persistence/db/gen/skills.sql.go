@@ -559,6 +559,54 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListS
 	return items, nil
 }
 
+const listSkillsByIDs = `-- name: ListSkillsByIDs :many
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source FROM skills
+WHERE id = ANY($1::uuid[]) AND workspace_id = ANY($2::uuid[]) AND deleted_at IS NULL
+`
+
+type ListSkillsByIDsParams struct {
+	Ids          []pgtype.UUID
+	WorkspaceIds []pgtype.UUID
+}
+
+func (q *Queries) ListSkillsByIDs(ctx context.Context, arg ListSkillsByIDsParams) ([]Skill, error) {
+	rows, err := q.db.Query(ctx, listSkillsByIDs, arg.Ids, arg.WorkspaceIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Skill
+	for rows.Next() {
+		var i Skill
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.Summary,
+			&i.ForkedFromSkillID,
+			&i.ForkedFromVersionID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.TakedownAt,
+			&i.TakedownReason,
+			&i.AccessRestriction,
+			&i.Redistribution,
+			&i.CurationTier,
+			&i.CuratedVersionID,
+			&i.Category,
+			&i.CategorySource,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockSkill = `-- name: LockSkill :one
 SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL

@@ -49,12 +49,18 @@ type PackageStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)
 }
 
+type SkillRef struct {
+	WorkspaceID pgtype.UUID
+	SkillID     pgtype.UUID
+}
+
 type Service struct {
 	Pool  *pgxpool.Pool
 	Store PackageStore
 
 	LockSkillForRelease func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
 	ReadSkill           func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
+	ReadSkills          func(ctx context.Context, refs []SkillRef) (map[SkillRef]SkillFacts, error)
 	ReadSearchSnapshot  func(ctx context.Context, skillID pgtype.UUID) (SearchSnapshot, bool, error)
 	ReadVersion         func(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error)
 	LatestVersion       func(ctx context.Context, workspaceID, skillID pgtype.UUID) (VersionFacts, bool, error)

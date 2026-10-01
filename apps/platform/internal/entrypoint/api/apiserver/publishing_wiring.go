@@ -27,6 +27,7 @@ func newPublishingService(cfg Config, registrySvc *registry.Service, packagingSv
 		skill, found, err := registrySvc.WorkspaceSkill(ctx, workspaceID, skillID)
 		return publishingSkillFacts(skill), found, err
 	}
+	svc.ReadSkills = publishingSkillsReader(registrySvc)
 	svc.ReadVersion = func(ctx context.Context, workspaceID, versionID pgtype.UUID) (publishing.VersionFacts, bool, error) {
 		version, found, err := registrySvc.WorkspaceVersion(ctx, workspaceID, versionID)
 		return publishingVersionFacts(version), found, err
@@ -134,6 +135,24 @@ func wireExposure(catalogSvc *catalog.Service, publishingSvc *publishing.Service
 			out = append(out, catalog.ExposedSkill{
 				SkillID: e.SkillID, VersionID: e.VersionID, SnapshotDigest: e.SnapshotDigest, OwnerWorkspaceID: e.OwnerWorkspaceID,
 			})
+		}
+		return out, nil
+	}
+}
+
+func publishingSkillsReader(registrySvc *registry.Service) func(context.Context, []publishing.SkillRef) (map[publishing.SkillRef]publishing.SkillFacts, error) {
+	return func(ctx context.Context, refs []publishing.SkillRef) (map[publishing.SkillRef]publishing.SkillFacts, error) {
+		asked := make([]registry.SkillRef, len(refs))
+		for i, ref := range refs {
+			asked[i] = registry.SkillRef{WorkspaceID: ref.WorkspaceID, SkillID: ref.SkillID}
+		}
+		skills, err := registrySvc.WorkspaceSkills(ctx, asked)
+		if err != nil {
+			return nil, err
+		}
+		out := make(map[publishing.SkillRef]publishing.SkillFacts, len(skills))
+		for ref, skill := range skills {
+			out[publishing.SkillRef{WorkspaceID: ref.WorkspaceID, SkillID: ref.SkillID}] = publishingSkillFacts(skill)
 		}
 		return out, nil
 	}

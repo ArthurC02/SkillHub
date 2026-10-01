@@ -9,6 +9,10 @@ RETURNING *;
 SELECT * FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL;
 
+-- name: ListSkillsByIDs :many
+SELECT * FROM skills
+WHERE id = ANY(@ids::uuid[]) AND workspace_id = ANY(@workspace_ids::uuid[]) AND deleted_at IS NULL;
+
 -- name: LockSkill :one
 SELECT * FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL

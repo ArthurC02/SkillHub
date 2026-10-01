@@ -224,6 +224,33 @@ func (s *Service) WorkspaceSkill(ctx context.Context, workspaceID, skillID pgtyp
 	return skillDTO(row), true, nil
 }
 
+type SkillRef struct {
+	WorkspaceID pgtype.UUID
+	SkillID     pgtype.UUID
+}
+
+func (s *Service) WorkspaceSkills(ctx context.Context, refs []SkillRef) (map[SkillRef]Skill, error) {
+	wanted := make(map[SkillRef]bool, len(refs))
+	ids := make([]pgtype.UUID, 0, len(refs))
+	workspaces := make([]pgtype.UUID, 0, len(refs))
+	for _, ref := range refs {
+		wanted[ref] = true
+		ids = append(ids, ref.SkillID)
+		workspaces = append(workspaces, ref.WorkspaceID)
+	}
+	rows, err := gen.New(s.Pool).ListSkillsByIDs(ctx, gen.ListSkillsByIDsParams{Ids: ids, WorkspaceIds: workspaces})
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[SkillRef]Skill, len(rows))
+	for _, row := range rows {
+		if ref := (SkillRef{WorkspaceID: row.WorkspaceID, SkillID: row.ID}); wanted[ref] {
+			out[ref] = skillDTO(row)
+		}
+	}
+	return out, nil
+}
+
 func (s *Service) LockLiveWorkspaceSkill(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (Skill, bool, error) {
 	root, err := LoadSkill(ctx, tx, workspaceID, skillID)
 	if errors.Is(err, ErrNotFound) {

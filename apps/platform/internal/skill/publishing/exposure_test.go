@@ -39,3 +39,54 @@ func TestANonListableSnapshotIsNotExposed(t *testing.T) {
 		t.Fatalf("owner state = %q, want %q", projection.State, CatalogSearchNotReady)
 	}
 }
+
+func TestTheCatalogueScopeReadsEveryCandidateSkillInOneCall(t *testing.T) {
+	ws := pgtype.UUID{Bytes: [16]byte{9}, Valid: true}
+	skill := func(n byte) pgtype.UUID { return pgtype.UUID{Bytes: [16]byte{n}, Valid: true} }
+	state := func(n byte, status Status, approved bool) ExposureState {
+		return ExposureState{Status: status, SkillID: skill(n), OwnerWorkspaceID: ws, VersionID: skill(n + 100), Approved: approved}
+	}
+	states := []ExposureState{
+		state(1, StatusPublished, true),
+		state(2, StatusPublished, false),
+		state(3, StatusDelisted, true),
+		state(4, StatusPublished, true),
+		state(5, StatusPublished, true),
+		state(6, StatusPublished, true),
+	}
+	var calls int
+	var asked []SkillRef
+	svc := Service{ReadSkills: func(_ context.Context, refs []SkillRef) (map[SkillRef]SkillFacts, error) {
+		calls++
+		asked = refs
+		return map[SkillRef]SkillFacts{
+			{WorkspaceID: ws, SkillID: skill(1)}: {ID: skill(1), Redistribution: redistributionAllowed},
+			{WorkspaceID: ws, SkillID: skill(5)}: {ID: skill(5), Redistribution: redistributionAllowed, TakenDown: true},
+			{WorkspaceID: ws, SkillID: skill(6)}: {ID: skill(6), Redistribution: redistributionSelfSupplied},
+		}, nil
+	}}
+
+	exposed, err := svc.exposedAmong(context.Background(), states)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 {
+		t.Fatalf("the skills were read in %d calls, want one batch", calls)
+	}
+	if len(asked) != 4 {
+		t.Fatalf("asked about %d skills, want only the 4 approved published ones", len(asked))
+	}
+	if len(exposed) != 1 || exposed[0].SkillID != skill(1) {
+		t.Fatalf("exposed %+v, want only the available redistributable skill 1 (2 unapproved, 3 delisted, 4 gone, 5 taken down, 6 self-supplied, not cleared for the catalogue)", exposed)
+	}
+}
+
+func TestNoCandidateMeansNoSkillRead(t *testing.T) {
+	svc := Service{ReadSkills: func(context.Context, []SkillRef) (map[SkillRef]SkillFacts, error) {
+		t.Fatal("read skills with no approved published publication")
+		return nil, nil
+	}}
+	if exposed, err := svc.exposedAmong(context.Background(), []ExposureState{{Status: StatusPublished}}); err != nil || exposed != nil {
+		t.Fatalf("got %v, %v", exposed, err)
+	}
+}

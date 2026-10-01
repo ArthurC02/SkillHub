@@ -198,7 +198,11 @@ func (s *Service) exposureEligible(ctx context.Context, state ExposureState) (bo
 	if err != nil {
 		return false, err
 	}
-	return availabilityOf(state.Status, skill, found) == AvailabilityAvailable && skill.Redistribution == redistributionAllowed, nil
+	return exposable(state.Status, skill, found), nil
+}
+
+func exposable(status Status, skill SkillFacts, found bool) bool {
+	return availabilityOf(status, skill, found) == AvailabilityAvailable && skill.Redistribution == redistributionAllowed
 }
 
 func (s *Service) eligible(ctx context.Context, state ExposureState) (bool, error) {
@@ -246,13 +250,29 @@ func (s *Service) ExposedSkills(ctx context.Context) ([]Exposure, error) {
 	if err != nil {
 		return nil, err
 	}
-	var out []Exposure
+	return s.exposedAmong(ctx, states)
+}
+
+func (s *Service) exposedAmong(ctx context.Context, states []ExposureState) ([]Exposure, error) {
+	candidates := make([]ExposureState, 0, len(states))
+	refs := make([]SkillRef, 0, len(states))
 	for _, state := range states {
-		ok, err := s.eligible(ctx, state)
-		if err != nil {
-			return nil, err
+		if state.Approved && state.Status == StatusPublished {
+			candidates = append(candidates, state)
+			refs = append(refs, SkillRef{WorkspaceID: state.OwnerWorkspaceID, SkillID: state.SkillID})
 		}
-		if ok {
+	}
+	if len(candidates) == 0 {
+		return nil, nil
+	}
+	skills, err := s.ReadSkills(ctx, refs)
+	if err != nil {
+		return nil, err
+	}
+	var out []Exposure
+	for i, state := range candidates {
+		skill, found := skills[refs[i]]
+		if exposable(state.Status, skill, found) {
 			out = append(out, Exposure{
 				SkillID: state.SkillID, VersionID: state.VersionID,
 				SnapshotDigest: state.ReviewedDigest, OwnerWorkspaceID: state.OwnerWorkspaceID,
