@@ -153,6 +153,9 @@ func (h *creationHandler) creationError(w http.ResponseWriter, err error) {
 	case errors.Is(err, creation.ErrInvalidCommand):
 		code = 422
 		text = "請確認目前步驟需要的輸入與草稿。"
+	case errors.Is(err, creation.ErrTooManyStreams):
+		code = 429
+		text = "即時更新的連線已滿，畫面會改為定時更新。"
 	case errors.Is(err, creation.ErrLimit):
 		code = 422
 		text = "已達這次核准的創作限制。"

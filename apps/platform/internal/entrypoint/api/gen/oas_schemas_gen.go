@@ -27525,6 +27525,10 @@ type StreamCreationSessionServiceUnavailable Error
 
 func (*StreamCreationSessionServiceUnavailable) streamCreationSessionRes() {}
 
+type StreamCreationSessionTooManyRequests Error
+
+func (*StreamCreationSessionTooManyRequests) streamCreationSessionRes() {}
+
 type StreamCreationSessionUnauthorized Error
 
 func (*StreamCreationSessionUnauthorized) streamCreationSessionRes() {}

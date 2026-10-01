@@ -56734,6 +56734,44 @@ func (s *StreamCreationSessionServiceUnavailable) UnmarshalJSON(data []byte) err
 	return s.Decode(d)
 }
 
+// Encode encodes StreamCreationSessionTooManyRequests as json.
+func (s *StreamCreationSessionTooManyRequests) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes StreamCreationSessionTooManyRequests from json.
+func (s *StreamCreationSessionTooManyRequests) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode StreamCreationSessionTooManyRequests to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = StreamCreationSessionTooManyRequests(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *StreamCreationSessionTooManyRequests) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *StreamCreationSessionTooManyRequests) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes StreamCreationSessionUnauthorized as json.
 func (s *StreamCreationSessionUnauthorized) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)

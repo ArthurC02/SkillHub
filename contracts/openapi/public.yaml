@@ -6080,6 +6080,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        429:
+          description: "This workspace or this server already holds as many open streams as it serves; the client keeps up by reading the session instead"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         503:
           description: "Rejected; no implicit confirmation or missing-capability fallback"
           content:

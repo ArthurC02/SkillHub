@@ -13,10 +13,7 @@ import (
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
 
-const (
-	streamTick      = 250 * time.Millisecond
-	streamKeepAlive = 20 * time.Second
-)
+const streamKeepAlive = 20 * time.Second
 
 func (h *creationHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.scope(w, r)
@@ -43,14 +40,23 @@ func (h *creationHandler) Stream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if changed && creation.StreamDone(first) {
+		stream.open()
+		stream.send(first)
+		return
+	}
+	changes, stop, err := h.Svc.Streams.Subscribe(ws.ID, id)
+	if err != nil {
+		h.creationError(w, err)
+		return
+	}
+	defer stop()
+
 	stream.open()
 	if changed && !stream.send(first) {
 		return
 	}
-	if changed && creation.StreamDone(first) {
-		return
-	}
-	stream.follow(r.Context(), ws, id)
+	stream.follow(r.Context(), ws, id, changes)
 }
 
 func holdOpenForStreaming(w http.ResponseWriter) {
@@ -104,9 +110,7 @@ func (s *creationStream) keepAlive() bool {
 	return true
 }
 
-func (s *creationStream) follow(ctx context.Context, ws identity.Workspace, id pgtype.UUID) {
-	tick := time.NewTicker(streamTick)
-	defer tick.Stop()
+func (s *creationStream) follow(ctx context.Context, ws identity.Workspace, id pgtype.UUID, changes <-chan struct{}) {
 	keepAlive := time.NewTicker(streamKeepAlive)
 	defer keepAlive.Stop()
 	for {
@@ -114,10 +118,10 @@ func (s *creationStream) follow(ctx context.Context, ws identity.Workspace, id p
 		case <-ctx.Done():
 			return
 		case <-keepAlive.C:
-			if !s.keepAlive() {
+			if !s.keepAlive() || !s.relayChange(ctx, ws, id) {
 				return
 			}
-		case <-tick.C:
+		case <-changes:
 			if !s.relayChange(ctx, ws, id) {
 				return
 			}

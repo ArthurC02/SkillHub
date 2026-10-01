@@ -255,6 +255,7 @@ type Provenance struct {
 type Service struct {
 	Pool             *pgxpool.Pool
 	Limits           Limits
+	Streams          *RevisionWatch
 	LLM              StepModel
 	Insert           func(context.Context, pgx.Tx, JobArgs) error
 	ResolveReference func(context.Context, identity.Workspace, string, string) (Reference, ReferenceSkill, error)

@@ -144,7 +144,7 @@ func NewApp(cfg Config) (*App, error) {
 	versions.Budgets, testlabSvc.Budgets, catalogSvc.Budgets, evalSvc.Budgets = budgets, budgets, budgets, budgets
 	wireCatalogIndexing(catalogSvc, versions, registrySvc)
 
-	creationSvc := &creation.Service{Pool: cfg.Pool, Limits: cfg.CreationLimits}
+	creationSvc := &creation.Service{Pool: cfg.Pool, Limits: cfg.CreationLimits, Streams: creation.NewRevisionWatch(cfg.Pool)}
 	creationSvc.Insert = wiring.NewCreationQueue(jobs)
 	wireCreationReads(creationSvc, versions, catalogSvc)
 	wireCreationWrites(creationSvc, versions, runSvc, evalSvc)

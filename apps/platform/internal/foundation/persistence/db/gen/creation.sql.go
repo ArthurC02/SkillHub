@@ -137,6 +137,43 @@ func (q *Queries) CreateCreationSession(ctx context.Context, arg CreateCreationS
 	return i, err
 }
 
+const creationSessionRevisions = `-- name: CreationSessionRevisions :many
+SELECT id, workspace_id, revision
+FROM creation_sessions
+WHERE id = ANY($1::uuid[]) AND workspace_id = ANY($2::uuid[])
+`
+
+type CreationSessionRevisionsParams struct {
+	SessionIds   []pgtype.UUID
+	WorkspaceIds []pgtype.UUID
+}
+
+type CreationSessionRevisionsRow struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	Revision    int64
+}
+
+func (q *Queries) CreationSessionRevisions(ctx context.Context, arg CreationSessionRevisionsParams) ([]CreationSessionRevisionsRow, error) {
+	rows, err := q.db.Query(ctx, creationSessionRevisions, arg.SessionIds, arg.WorkspaceIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CreationSessionRevisionsRow
+	for rows.Next() {
+		var i CreationSessionRevisionsRow
+		if err := rows.Scan(&i.ID, &i.WorkspaceID, &i.Revision); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteExpiredCreationSessions = `-- name: DeleteExpiredCreationSessions :execrows
 DELETE FROM creation_sessions WHERE expires_at <= now()
 `
