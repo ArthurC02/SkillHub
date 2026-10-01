@@ -76,12 +76,32 @@ func scanFactsFrom(r skillpkg.Report) []byte {
 	return b
 }
 
-func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspaceID pgtype.UUID) enrichment {
-	e := enrichment{
+const importEnrichmentWindow = enrichTimeout + embedTimeout
+
+func (s *Service) enrichWithin(ctx context.Context, window time.Duration, admitted []plannedSkill, workspaceID pgtype.UUID) []enrichment {
+	windowCtx, cancel := context.WithTimeout(ctx, window)
+	defer cancel()
+	out := make([]enrichment, len(admitted))
+	for i, planned := range admitted {
+		if windowCtx.Err() != nil {
+			out[i] = pendingEnrichment(planned.pkg)
+			continue
+		}
+		out[i] = s.enrichPackage(windowCtx, planned.pkg, workspaceID)
+	}
+	return out
+}
+
+func pendingEnrichment(p preparedPackage) enrichment {
+	return enrichment{
 		summary: p.report.Manifest.Description,
 		scan:    scanFactsFrom(p.report),
 		status:  enrichmentPending,
 	}
+}
+
+func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspaceID pgtype.UUID) enrichment {
+	e := pendingEnrichment(p)
 	if s.LLM == nil || p.skillMD == "" {
 		return e
 	}

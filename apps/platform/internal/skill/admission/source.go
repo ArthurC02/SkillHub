@@ -208,10 +208,7 @@ func (s *Service) importSource(ctx context.Context, ws identity.Workspace, data 
 		return out, nil
 	}
 
-	enriched := make([]enrichment, len(plan.admitted))
-	for i, planned := range plan.admitted {
-		enriched[i] = s.enrichPackage(ctx, planned.pkg, ws.ID)
-	}
+	enriched := s.enrichWithin(ctx, importEnrichmentWindow, plan.admitted, ws.ID)
 
 	tx, release, err := s.beginPackageWrite(ctx, ws, plan.objectKey, data)
 	if err != nil {
