@@ -199,7 +199,7 @@ try {
       typeof imported.skill_id === "string" &&
       typeof imported.version_id === "string" &&
       (await importLink.getAttribute("href")) ===
-        `/skills/${imported.skill_id}` &&
+        `/skills/${imported.skill_id}/versions/${imported.version_id}` &&
       versions.versions?.length === 1 &&
       versions.versions[0]?.version_id === imported.version_id &&
       versions.versions[0]?.version_number === imported.version_number,
