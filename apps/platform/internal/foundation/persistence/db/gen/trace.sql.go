@@ -479,16 +479,19 @@ func (q *Queries) ListTraceEventsAfter(ctx context.Context, arg ListTraceEventsA
 }
 
 const listTraceGeneralFacts = `-- name: ListTraceGeneralFacts :many
-SELECT event_type, source, attempt, seq,
-       COALESCE(payload->>'skill_name', '')::text AS skill_name, COALESCE(payload->>'decision', '')::text AS decision, COALESCE(payload->>'reason', '')::text AS reason,
-       COALESCE(payload->>'category', '')::text AS category, COALESCE(payload->>'code', '')::text AS code, COALESCE(payload->>'message', '')::text AS message,
-       COALESCE(payload->>'tool_name', '')::text AS tool_name, COALESCE(payload->>'outcome', '')::text AS outcome, COALESCE(payload->>'duration_ms', '')::text AS duration_ms,
-       COALESCE(payload->>'kind', '')::text AS kind, COALESCE(payload->>'scope', '')::text AS scope, COALESCE(payload->>'model', '')::text AS model,
-       COALESCE(payload->>'input_tokens', '')::text AS input_tokens, COALESCE(payload->>'output_tokens', '')::text AS output_tokens,
-       COALESCE(payload->>'cost_usd', '')::text AS cost_usd, COALESCE(payload->>'cost_source', '')::text AS cost_source
-FROM trace_events
-WHERE run_id = $1 AND workspace_id = $2 AND event_type = ANY($3::text[])
-ORDER BY occurred_at, source, attempt, seq
+SELECT e.event_type, e.source, e.attempt, e.seq,
+       COALESCE(p.skill_name, '')::text AS skill_name, COALESCE(p.decision, '')::text AS decision, COALESCE(p.reason, '')::text AS reason,
+       COALESCE(p.category, '')::text AS category, COALESCE(p.code, '')::text AS code, COALESCE(p.message, '')::text AS message,
+       COALESCE(p.tool_name, '')::text AS tool_name, COALESCE(p.outcome, '')::text AS outcome, COALESCE(p.duration_ms, '')::text AS duration_ms,
+       COALESCE(p.kind, '')::text AS kind, COALESCE(p.scope, '')::text AS scope, COALESCE(p.model, '')::text AS model,
+       COALESCE(p.input_tokens, '')::text AS input_tokens, COALESCE(p.output_tokens, '')::text AS output_tokens,
+       COALESCE(p.cost_usd, '')::text AS cost_usd, COALESCE(p.cost_source, '')::text AS cost_source
+FROM trace_events e
+CROSS JOIN LATERAL jsonb_to_record(COALESCE(jsonb_path_query_first(e.payload, 'strict $ ? (@.type() == "object")'), '{}')) AS p(
+       skill_name text, decision text, reason text, category text, code text, message text, tool_name text, outcome text,
+       duration_ms text, kind text, scope text, model text, input_tokens text, output_tokens text, cost_usd text, cost_source text)
+WHERE e.run_id = $1 AND e.workspace_id = $2 AND e.event_type = ANY($3::text[])
+ORDER BY e.occurred_at, e.source, e.attempt, e.seq
 `
 
 type ListTraceGeneralFactsParams struct {

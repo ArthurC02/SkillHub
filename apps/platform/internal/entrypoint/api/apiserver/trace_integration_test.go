@@ -932,3 +932,28 @@ func readsTransitionsFrom(runs *run.Service) func(context.Context, pgtype.UUID, 
 		return out, nil
 	}
 }
+
+func TestGeneralModeCountsAnEventWhosePayloadIsNotAnObjectWithoutFailing(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "trace-summary-shapeless")
+	skillID := seedSkill(t, pool, owner.workspaceID, "trace-summary-shapeless-skill")
+	runID := seedRun(t, pool, owner.workspaceID, skillID)
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO trace_events
+		(event_id, workspace_id, run_id, attempt, seq, occurred_at, event_type, source,
+		 schema_version, masked, masked_fields, payload, late)
+		VALUES (gen_random_uuid(), $1, $2, 1, 1, now(), 'tool_call', 'sandbox', '1.0', true, '[]', '["not","an","object"]', false),
+		       (gen_random_uuid(), $1, $2, 1, 2, now(), 'tool_call', 'sandbox', '1.0', true, '[]', '{"tool_name":"bash","outcome":"succeeded","duration_ms":5}', false)`,
+		owner.workspaceID, runID); err != nil {
+		t.Fatal(err)
+	}
+
+	status, view := owner.generalTrace(t, runID)
+	if status != http.StatusOK {
+		t.Fatalf("GET trace: got %d, want the summary despite one shapeless payload", status)
+	}
+	if view.ToolCalls.Total != 2 || view.ToolCalls.Succeeded != 1 || view.ToolCalls.TotalMS != 5 {
+		t.Errorf("tool call summary = %+v, want both calls counted and only the readable one's outcome and duration", view.ToolCalls)
+	}
+}
