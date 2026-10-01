@@ -3,11 +3,15 @@ package apiserver_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -242,6 +246,38 @@ func liftHoldAndAssertItReopens(t *testing.T, a *api, anon, operator *client, he
 	before, after, _, n := auditNote(t, operator, "skill.access_unrestrict", held)
 	if n != 1 || deref(before) != "license-review" || after != nil {
 		t.Errorf("lift audit = %s -> %s (%d events), want license-review -> <null>, 1", deref(before), deref(after), n)
+	}
+}
+
+func TestARosterAuditThatMeetsABriefOutageIsRetriedAndKeepsItsRosters(t *testing.T) {
+	cfg := requireDB(t).Config()
+	twoFailuresBeforeEachRoster := map[int32]bool{1: true, 2: true, 4: true, 5: true}
+	var acquires atomic.Int32
+	cfg.PrepareConn = func(context.Context, *pgx.Conn) (bool, error) {
+		if twoFailuresBeforeEachRoster[acquires.Add(1)] {
+			return false, errors.New("database briefly unreachable")
+		}
+		return true, nil
+	}
+	flaky, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(flaky.Close)
+	app, err := apiserver.NewApp(apiserver.Config{Pool: flaky, Secure: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.Auth.Operators = map[string]bool{"roster-retry-operator": true}
+	app.Auth.Invited = map[string]bool{"roster-retry-invitee": true}
+
+	app.AuditRosters(context.Background())
+
+	if !app.Auth.Operators["roster-retry-operator"] {
+		t.Errorf("operators after a retried audit = %v, want the configured operator kept", app.Auth.Operators)
+	}
+	if !app.Auth.Invited["roster-retry-invitee"] {
+		t.Errorf("invitees after a retried audit = %v, want the configured invitee kept", app.Auth.Invited)
 	}
 }
 

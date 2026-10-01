@@ -535,12 +535,30 @@ func packagingSuggestions(ctx context.Context, svc *eval.Service, workspaceID, v
 
 func (a *App) Handler() http.Handler { return NewRouter(a.Deps) }
 
+const (
+	rosterAuditAttempts = 4
+	rosterAuditBackoff  = 500 * time.Millisecond
+)
+
+func untilRecorded(ctx context.Context, record func(context.Context) error) error {
+	err := record(ctx)
+	for attempt := 1; err != nil && attempt < rosterAuditAttempts; attempt++ {
+		select {
+		case <-ctx.Done():
+			return err
+		case <-time.After(rosterAuditBackoff << (attempt - 1)):
+		}
+		err = record(ctx)
+	}
+	return err
+}
+
 func (a *App) AuditRosters(ctx context.Context) {
-	if err := a.Auth.LogOperatorRoster(ctx); err != nil {
+	if err := untilRecorded(ctx, a.Auth.LogOperatorRoster); err != nil {
 		slog.Error("operator roster not audited; no operator will be recognised", "error", err)
 		a.Auth.Operators = nil
 	}
-	if err := a.Auth.LogInviteRoster(ctx); err != nil {
+	if err := untilRecorded(ctx, a.Auth.LogInviteRoster); err != nil {
 		slog.Error("beta roster not audited; the closed beta gate admits nobody", "error", err)
 		a.Auth.Invited = BetaGateClosed()
 	}
