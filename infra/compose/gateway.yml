@@ -4,6 +4,8 @@ services:
   litellm:
     image: ghcr.io/berriai/litellm:main-stable@sha256:a3715fa7ad8387941ab697259bd2881d68931657247a41984f90fae6d11c62bf
     restart: unless-stopped
+    cpus: ${SKILLHUB_GATEWAY_CPUS:-2}
+    mem_limit: ${SKILLHUB_GATEWAY_MEMORY:-2g}
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     env_file:
       - ${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/litellm.env

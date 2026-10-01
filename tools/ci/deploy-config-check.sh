@@ -131,6 +131,18 @@ echo "SKILLHUB_SECRETS_DIR=$WORK_HOST/secrets" >>"$WORK/gateway-release.env"
 echo "X=1" >"$WORK/secrets/litellm.env"
 docker compose --env-file "$WORK_HOST/gateway-release.env" -f "$ROOT/infra/compose/gateway.yml" config -q
 
+step "every service but the database has a CPU and memory ceiling"
+unbounded="$(
+  {
+    docker compose --env-file "$WORK_HOST/control-plane-release.env" -f "$ROOT/infra/compose/control-plane.yml" --profile jobs config --format json
+    docker compose --env-file "$WORK_HOST/gateway-release.env" -f "$ROOT/infra/compose/gateway.yml" config --format json
+  } | jq -r '.services | to_entries[] | select(.key != "postgres" and (.value.cpus == null or .value.mem_limit == null)) | .key'
+)"
+if [ -n "$unbounded" ]; then
+  echo "services without cpus and mem_limit: $unbounded" >&2
+  exit 1
+fi
+
 step "Caddyfile"
 docker run --rm -e SKILLHUB_DOMAIN=skillhub.example -e SKILLHUB_ACME_EMAIL=owner@skillhub.example \
   -v "$CP/Caddyfile:/etc/caddy/Caddyfile:ro" "$CADDY" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile

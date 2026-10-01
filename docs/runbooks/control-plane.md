@@ -53,6 +53,8 @@ EOF
 
 資料庫容量：API 預設最多 32 條連線、Worker 16 條，`DATABASE_URL` 加 `pool_max_conns=<n>` 會覆蓋兩者；PostgreSQL 的連線上限（預設 200）與 `shared_buffers`（預設 512MB，建議機器記憶體的四分之一）在 `release.env` 以 `SKILLHUB_POSTGRES_MAX_CONNECTIONS`、`SKILLHUB_POSTGRES_SHARED_BUFFERS` 調整。每份 API／Worker 的連線上限加總要低於資料庫的連線上限。
 
+容器資源上限：除了 PostgreSQL，每個服務都有 CPU 與記憶體上限，一個服務吃光資源時被限制的是它自己，不是同機的資料庫。API、Worker、能力服務預設各 2／2／1 顆 CPU 與 2g／2g／1g 記憶體，在 `release.env` 以 `SKILLHUB_API_CPUS`、`SKILLHUB_API_MEMORY`、`SKILLHUB_WORKER_CPUS`、`SKILLHUB_WORKER_MEMORY`、`SKILLHUB_LLM_CPUS`、`SKILLHUB_LLM_MEMORY` 調整；模型閘道節點用 `SKILLHUB_GATEWAY_CPUS`、`SKILLHUB_GATEWAY_MEMORY`。新增服務沒有寫上限，部署設定檢查會擋。
+
 **備份 bucket 與應用程式的物件儲存分開**，金鑰也分開：應用程式的金鑰被拿走時，備份不能跟著被刪。這套設定沒有做用戶端加密，bucket 必須私有並開供應商端加密。
 
 驗：`sudo /opt/skillhub/infra/deploy/control-plane/bin/skillhub-preflight` 沒有輸出、exit 0（要先 `set -a; . /etc/skillhub/release.env; set +a`）。
