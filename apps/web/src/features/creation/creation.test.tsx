@@ -2294,6 +2294,66 @@ test("the poll stands down while the stream delivers, and comes back when it dro
   expect(fetched(), "串流斷了，輪詢沒有接回去——畫面會就這樣停住").toBeGreaterThan(whileStreaming);
 });
 
+test.each([
+  ["saved", true],
+  ["cancelled", true],
+  ["failed", false],
+  ["waiting_input", false],
+] as const)("a stream that delivers a %s session closes itself: %s", async (state, closes) => {
+  const es = stubEventSource();
+  const v = sample({ state: "working" });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  const source = es.open[0];
+
+  await act(async () => {
+    source.onopen?.();
+    source.onmessage?.({ data: JSON.stringify(sample({ state, revision: 9 })) });
+  });
+  expect(source.closed).toBe(closes);
+});
+
+test("the poll stops once the session can no longer be read", async () => {
+  const es = stubEventSource();
+  const v = sample({ state: "working" });
+  const calls: string[] = [];
+  let gone = false;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      calls.push(String(url));
+      if (gone && String(url).endsWith("/creation-sessions/s1")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ error: "not found" }), {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+      return routeGet(url, [v], v);
+    }),
+  );
+  const fetched = () => calls.filter((u) => u.endsWith("/creation-sessions/s1")).length;
+  await render();
+  await resume();
+  const source = es.open[0];
+
+  gone = true;
+  await act(async () => source.onerror?.());
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 1300));
+  });
+  const afterRefusal = fetched();
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 2300));
+  });
+  expect(fetched(), "讀不到的會話還在每秒輪詢").toBe(afterRefusal);
+});
+
 test("a resumed session leads with one current decision linked to its evidence", async () => {
   const v = sample({ state: "waiting_confirmation" });
   v.snapshot.brief = "把每週客服紀錄整理成可追蹤摘要";

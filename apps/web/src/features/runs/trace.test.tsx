@@ -572,6 +572,7 @@ test("04 丙-145: a run that fails to load says so on its own page, and 失敗�
     );
   });
   await render();
+  await waitFor(() => (container.textContent ?? "").includes("無法讀取這次試跑"));
 
   const text = container.textContent ?? "";
   expect(text).toContain("無法讀取這次試跑");
@@ -613,6 +614,7 @@ test("04 丙-145: a run read that needs login says so, on its own page", async (
     );
   });
   await render();
+  await waitFor(() => (container.textContent ?? "").includes("需要登入"));
 
   expect(container.textContent ?? "").toContain("需要登入");
 });
@@ -694,6 +696,77 @@ test("no trace polling happens while the tab is hidden", async () => {
     expect(await openAdvancedAndCountPolls("running", true)).toBe(0);
   } finally {
     focusManager.setFocused(undefined);
+    vi.useRealTimers();
+  }
+});
+
+async function countGeneralPollsAnswering(status: number) {
+  let generalFetches = 0;
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    const general = url.includes("/trace") && !url.includes("mode=advanced");
+    if (general) generalFetches += 1;
+    return Promise.resolve(
+      new Response(JSON.stringify({ error: general ? "trace unavailable" : "not found" }), {
+        status: general ? status : 404,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await render();
+  await waitFor(() => generalFetches > 0);
+  const before = generalFetches;
+  for (let tick = 0; tick < 3; tick += 1) {
+    await act(async () => {
+      vi.advanceTimersByTime(3100);
+    });
+    await waitFor(() => true);
+  }
+  return generalFetches - before;
+}
+
+test.each([401, 403, 404])(
+  "the general trace stops asking once the server answers %i",
+  async (status) => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    try {
+      expect(await countGeneralPollsAnswering(status)).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  },
+);
+
+test("the general trace keeps asking through a server error that may pass", async () => {
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+  try {
+    expect(await countGeneralPollsAnswering(500)).toBeGreaterThan(0);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("returning to the general view does not ask for the trace again", async () => {
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+  try {
+    let generalFetches = 0;
+    stubTrace({ ...summary, status: "running" }, () => advanced);
+    const counted = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: string) => {
+      const url = String(input);
+      if (url.includes("/trace") && !url.includes("mode=advanced")) generalFetches += 1;
+      return counted(input);
+    });
+    await render();
+    const button = (label: string) =>
+      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === label);
+    await act(async () => button("進階模式")?.click());
+    await waitFor(() => container.querySelector("table") !== null);
+    const before = generalFetches;
+    await act(async () => button("一般模式")?.click());
+    await waitFor(() => true);
+    expect(generalFetches - before).toBe(0);
+  } finally {
     vi.useRealTimers();
   }
 });

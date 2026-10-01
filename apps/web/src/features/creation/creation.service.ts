@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { API_BASE_URL, apiFetch } from "../../core/api/client";
+import { API_BASE_URL, apiFetch, isLastingReadFailure } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
 export type CreationState =
@@ -222,7 +222,11 @@ export function useLiveCreationSession(id: string) {
     queryFn: () => getCreationSession(id),
     enabled: !!id,
     refetchInterval: (q) =>
-      !streaming && ["queued", "working"].includes(q.state.data?.state ?? "") ? 1000 : false,
+      !streaming &&
+      !isLastingReadFailure(q.state.error) &&
+      ["queued", "working"].includes(q.state.data?.state ?? "")
+        ? 1000
+        : false,
   });
   useEffect(() => {
     if (!id) return;
@@ -253,6 +257,8 @@ export function useCreationEntryPoint(): boolean {
   return me.data?.features?.creation_skill === true;
 }
 
+const endedStates = new Set<string>(["saved", "cancelled"]);
+
 export function streamCreationSession(
   id: string,
   onSession: (s: CreationSession) => void,
@@ -268,7 +274,9 @@ export function streamCreationSession(
   source.onopen = () => onOpen(true);
   source.onmessage = (e) => {
     try {
-      onSession(JSON.parse(e.data) as CreationSession);
+      const session = JSON.parse(e.data) as CreationSession;
+      onSession(session);
+      if (endedStates.has(session.state)) source.close();
     } catch {
       // Ignore a half-written frame; the poll underneath will catch up.
     }

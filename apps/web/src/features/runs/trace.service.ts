@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "../../core/api/client";
+import { apiFetch, isLastingReadFailure } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 
 export type TraceMode = "general" | "advanced";
@@ -107,7 +107,7 @@ export function useTrace<M extends TraceMode>(runId: string, mode: M, active?: b
       ) as Promise<M extends "advanced" ? TraceAdvanced : TraceSummary>;
     },
     refetchInterval: (query) => {
-      if (active === false) return false;
+      if (active === false || isLastingReadFailure(query.state.error)) return false;
       if (mode === "general") {
         const data = query.state.data as TraceSummary | undefined;
         if (data?.status && TERMINAL_RUN_STATUSES.has(data.status)) return false;

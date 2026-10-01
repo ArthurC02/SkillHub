@@ -22,6 +22,12 @@ export class ApiError extends Error {
   }
 }
 
+const lastingReadFailures = new Set([401, 403, 404]);
+
+export function isLastingReadFailure(error: unknown): boolean {
+  return error instanceof ApiError && lastingReadFailures.has(error.status);
+}
+
 function errorMessageFromBody(body: unknown, fallback: string): string {
   if (typeof body !== "object" || body === null || !("error" in body)) return fallback;
   const error = (body as { error?: unknown }).error;

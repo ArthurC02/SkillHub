@@ -1,15 +1,21 @@
+import type { UseQueryResult } from "@tanstack/react-query";
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { RunErrorDetails } from "../../components/RunErrorDetails";
-import { useTrace } from "../../trace.service";
 import type { TraceSummary } from "../../trace.service";
 import { runStatusLabel } from "../../runs.model";
 import { IncompleteNotice } from "./IncompleteNotice";
 import { FailureClass } from "./FailureClass";
 import { RunCleanupStatus } from "./RunCleanupStatus";
 
-export function GeneralMode({ runId }: { runId: string }) {
-  const { data, isPending, error } = useTrace(runId, "general");
+export function GeneralMode({
+  runId,
+  general,
+}: {
+  runId: string;
+  general: UseQueryResult<TraceSummary>;
+}) {
+  const { data, isPending, error } = general;
   if (isPending) return <Loading what="執行紀錄" />;
   if (error)
     return (

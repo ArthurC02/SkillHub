@@ -146,7 +146,7 @@ export function RunTrace() {
               </button>
             </div>
             {mode === "general" ? (
-              <GeneralMode runId={runId} />
+              <GeneralMode runId={runId} general={general} />
             ) : (
               <AdvancedMode
                 key={runId}
