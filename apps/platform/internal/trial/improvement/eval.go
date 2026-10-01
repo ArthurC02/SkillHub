@@ -113,6 +113,8 @@ const judgeTimeout = 135 * time.Second // budget-over: evaluate.LLM_TIMEOUT_SECO
 // JudgeBudget names this call for an operator and bounds what they may set.
 var JudgeBudget = modelbudget.Endpoint{Kind: "judge-run", Deadline: judgeTimeout}
 
+const EvaluationJobTimeout = judgeTimeout + suggestTimeout + time.Minute
+
 type Service struct {
 	Pool *pgxpool.Pool
 

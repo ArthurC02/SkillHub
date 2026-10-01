@@ -7,6 +7,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 func TestACreationStepJobIsAbandonedAfterThreeMinutes(t *testing.T) {
@@ -18,6 +19,19 @@ func TestACreationStepJobIsAbandonedAfterThreeMinutes(t *testing.T) {
 func TestARunExecutionJobIsAbandonedAfterFifteenMinutes(t *testing.T) {
 	if got := (&RunExecuteWorker{}).Timeout(nil); got != 15*time.Minute {
 		t.Errorf("run execution timeout = %v, want 15m", got)
+	}
+}
+
+func TestAnEvaluationJobOutlastsItsJudgeAndSuggestionCalls(t *testing.T) {
+	calls := eval.JudgeBudget.Deadline + eval.SuggestImprovementsBudget.Deadline
+	if got := (&EvaluationExecuteWorker{}).Timeout(nil); got <= calls {
+		t.Errorf("evaluation job timeout = %v, want more than the %v its two model calls may take", got, calls)
+	}
+}
+
+func TestAnEnrichmentBackfillJobOutlastsRiversOneMinuteDefault(t *testing.T) {
+	if got := (&EnrichmentBackfillWorker{}).Timeout(nil); got != 15*time.Minute {
+		t.Errorf("enrichment backfill timeout = %v, want 15m", got)
 	}
 }
 

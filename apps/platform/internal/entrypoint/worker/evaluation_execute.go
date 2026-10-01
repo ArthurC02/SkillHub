@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
@@ -26,4 +27,8 @@ func (w *EvaluationExecuteWorker) Work(ctx context.Context, job *river.Job[eval.
 		return w.Svc.RedeliverEvaluation(ctx, workspaceID, runID)
 	}
 	return w.Svc.Evaluate(ctx, workspaceID, runID)
+}
+
+func (*EvaluationExecuteWorker) Timeout(*river.Job[eval.JobArgs]) time.Duration {
+	return eval.EvaluationJobTimeout
 }

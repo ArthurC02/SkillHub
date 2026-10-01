@@ -89,7 +89,10 @@ func backlogAge(oldest pgtype.Timestamptz, now time.Time) float64 {
 
 const EnrichmentBackfillInterval = time.Hour
 
-const enrichmentBackfillBatch = 50
+const (
+	enrichmentBackfillBatch   = 50
+	enrichmentBackfillTimeout = 15 * time.Minute
+)
 
 type EnrichmentBackfillArgs struct{}
 
@@ -98,6 +101,10 @@ func (EnrichmentBackfillArgs) Kind() string { return "enrichment_backfill" }
 type EnrichmentBackfillWorker struct {
 	river.WorkerDefaults[EnrichmentBackfillArgs]
 	Svc *ingest.Service
+}
+
+func (*EnrichmentBackfillWorker) Timeout(*river.Job[EnrichmentBackfillArgs]) time.Duration {
+	return enrichmentBackfillTimeout
 }
 
 func (w *EnrichmentBackfillWorker) Work(ctx context.Context, _ *river.Job[EnrichmentBackfillArgs]) error {
