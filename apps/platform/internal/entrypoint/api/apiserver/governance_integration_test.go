@@ -152,7 +152,7 @@ func TestAccountDeletionGraceIsCancellable(t *testing.T) {
 		t.Fatalf("DELETE /me: got %d", status)
 	}
 
-	if scope, _ := body["scope"].(string); !strings.Contains(scope, "Fork 過") {
+	if scope, _ := body["scope"].(string); !strings.Contains(scope, "被其他使用者複製過") {
 		t.Fatalf("DELETE /me did not state the deletion scope: %v", body["scope"])
 	}
 	if body["purge_after"] == "" || body["purge_after"] == nil {

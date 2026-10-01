@@ -748,7 +748,7 @@ try {
       waitUntil: "networkidle",
     });
     const deleteTestCaseSection = page
-      .getByRole("heading", { name: /Test Case/ })
+      .getByRole("heading", { name: /測試題/ })
       .last()
       .locator("xpath=following-sibling::p[1]");
     await deleteTestCaseSection.locator('button[type="button"]').click();
@@ -765,7 +765,7 @@ try {
     const deletedTestCase = await deleteTestCaseResponse
       .json()
       .catch(() => ({}));
-    const deletedHeading = page.locator("h1").filter({ hasText: /Test Case/ });
+    const deletedHeading = page.locator("h1").filter({ hasText: /測試題/ });
     await deletedHeading.waitFor({ state: "visible" });
     const deletedScreen = await deletedHeading.textContent();
     await page.waitForTimeout(100);
@@ -781,7 +781,7 @@ try {
       deleteTestCaseResponse.status() === 200 &&
         deletedTestCase.deleted === true &&
         deletedTestCase.datasets_deleted === 0 &&
-        /Test Case/.test(deletedScreen ?? "") &&
+        /測試題/.test(deletedScreen ?? "") &&
         deletedReadBack.status() === 404 &&
         !testCasesAfterDelete.test_cases?.some(
           (testCase) => testCase.test_case_id === createdTestCase.test_case_id,
