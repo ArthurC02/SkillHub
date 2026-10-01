@@ -90,3 +90,32 @@ func TestNoCandidateMeansNoSkillRead(t *testing.T) {
 		t.Fatalf("got %v, %v", exposed, err)
 	}
 }
+
+func TestACurrentListableSnapshotIsExposedOnlyForAnApprovedRedistributableSkill(t *testing.T) {
+	versionID := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
+	svc := Service{
+		ReadSearchSnapshot: func(context.Context, pgtype.UUID) (SearchSnapshot, bool, error) {
+			return SearchSnapshot{VersionID: versionID, Digest: "reviewed", Listable: true}, true, nil
+		},
+	}
+	for name, c := range map[string]struct {
+		approved bool
+		skill    SkillFacts
+		exposed  bool
+	}{
+		"approved and redistributable":         {true, SkillFacts{Redistribution: redistributionAllowed}, true},
+		"not approved":                         {false, SkillFacts{Redistribution: redistributionAllowed}, false},
+		"approved but supplied by its creator": {true, SkillFacts{Redistribution: redistributionSelfSupplied}, false},
+		"approved but generated":               {true, SkillFacts{Redistribution: redistributionGenerated}, false},
+		"approved but taken down":              {true, SkillFacts{Redistribution: redistributionAllowed, TakenDown: true}, false},
+	} {
+		state := ExposureState{Status: StatusPublished, VersionID: versionID, Approved: c.approved, Concluded: true, ReviewedDigest: "reviewed"}
+		exposed, _, err := svc.exposedFor(context.Background(), state, c.skill, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if exposed != c.exposed {
+			t.Errorf("%s: exposed = %v, want %v", name, exposed, c.exposed)
+		}
+	}
+}

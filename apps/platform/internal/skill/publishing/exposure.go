@@ -205,13 +205,6 @@ func exposable(status Status, skill SkillFacts, found bool) bool {
 	return availabilityOf(status, skill, found) == AvailabilityAvailable && skill.Redistribution == redistributionAllowed
 }
 
-func (s *Service) eligible(ctx context.Context, state ExposureState) (bool, error) {
-	if !state.Approved {
-		return false, nil
-	}
-	return s.exposureEligible(ctx, state)
-}
-
 func (s *Service) catalogExposure(ctx context.Context, state ExposureState) (CatalogExposure, error) {
 	eligible, err := s.exposureEligible(ctx, state)
 	if err != nil {
@@ -283,6 +276,18 @@ func (s *Service) exposedAmong(ctx context.Context, states []ExposureState) ([]E
 }
 
 func (s *Service) exposedNow(ctx context.Context, state ExposureState) (bool, *SearchSnapshot, error) {
+	var skill SkillFacts
+	found := false
+	if state.Approved && state.Status == StatusPublished {
+		var err error
+		if skill, found, err = s.ReadSkill(ctx, state.OwnerWorkspaceID, state.SkillID); err != nil {
+			return false, nil, err
+		}
+	}
+	return s.exposedFor(ctx, state, skill, found)
+}
+
+func (s *Service) exposedFor(ctx context.Context, state ExposureState, skill SkillFacts, skillFound bool) (bool, *SearchSnapshot, error) {
 	if err := s.requireSnapshotRead(); err != nil {
 		return false, nil, err
 	}
@@ -290,12 +295,8 @@ func (s *Service) exposedNow(ctx context.Context, state ExposureState) (bool, *S
 	if err != nil || !found {
 		return false, nil, err
 	}
-	ok, err := s.eligible(ctx, state)
-	if err != nil {
-		return false, nil, err
-	}
 	current := snapshot.Listable && snapshot.VersionID == state.VersionID && snapshot.Digest == state.ReviewedDigest
-	return ok && current, &snapshot, nil
+	return state.Approved && exposable(state.Status, skill, skillFound) && current, &snapshot, nil
 }
 
 func (s *Service) ExposureQueue(ctx context.Context) ([]ExposureState, error) {

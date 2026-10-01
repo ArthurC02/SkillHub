@@ -544,7 +544,7 @@ func (s *Service) PublicPublication(ctx context.Context, publisherName, name str
 	if err != nil || len(states) == 0 {
 		return out, err == nil, err
 	}
-	out.Exposed, _, err = s.exposedNow(ctx, states[0])
+	out.Exposed, _, err = s.exposedFor(ctx, states[0], out.Skill, true)
 	return out, err == nil, err
 }
 
