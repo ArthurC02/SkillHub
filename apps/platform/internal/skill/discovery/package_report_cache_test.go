@@ -7,6 +7,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -78,5 +80,24 @@ func TestAPackageThatCouldNotBeReadIsTriedAgainOnTheNextView(t *testing.T) {
 	report, ok := s.scanPackage(context.Background(), stored)
 	if !ok || report.Manifest == nil || report.Manifest.Name != "gamma" || store.reads != 2 {
 		t.Fatalf("after the store recovered: ok %v, manifest %+v, reads %d; want gamma read afresh", ok, report.Manifest, store.reads)
+	}
+}
+
+func TestTheFilesViewAndTheScanShareOneReportOfAPackage(t *testing.T) {
+	store := &countingStore{data: zippedSkills(t, map[string]string{
+		"alpha/SKILL.md": "---\nname: alpha\ndescription: first\n---\nbody\n",
+		"beta/SKILL.md":  "---\nname: beta\ndescription: second\n---\nbody\n",
+	})}
+	version := VersionFacts{PackageObjectKey: "packages/one.zip", SourcePath: "alpha"}
+	s := &Service{Store: store, ReadLatestVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error) {
+		return version, true, nil
+	}}
+
+	if _, err := s.SkillFiles(context.Background(), SkillFacts{}); err != nil {
+		t.Fatal(err)
+	}
+	report, ok := s.scanPackage(context.Background(), storedSkill(version))
+	if !ok || report.Manifest == nil || report.Manifest.Name != "alpha" || store.reads != 1 {
+		t.Fatalf("scan after the files view: ok %v, manifest %+v, reads %d; want alpha from the files view's single read", ok, report.Manifest, store.reads)
 	}
 }

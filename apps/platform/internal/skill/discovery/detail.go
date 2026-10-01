@@ -489,7 +489,7 @@ func (s *Service) SkillFiles(ctx context.Context, skill SkillFacts) (skillFiles,
 		out.SkillMD = strings.ToValidUTF8(string(md), "")
 	}
 
-	for _, f := range skillpkg.Validate(fsys).Findings {
+	for _, f := range s.reportOf(storedSkill(ver), fsys).Findings {
 		if f.Code == "embedded-script" {
 			msg := f.Message
 			out.EmbeddedScript = &msg
@@ -618,8 +618,7 @@ func storedSkill(ver VersionFacts) skillpkg.StoredSkill {
 }
 
 func (s *Service) scanPackage(ctx context.Context, stored skillpkg.StoredSkill) (skillpkg.Report, bool) {
-	key := stored.ObjectKey + "\x00" + stored.SourcePath
-	if report, ok := s.packageReports.get(key); ok {
+	if report, ok := s.packageReports.get(packageReportKey(stored)); ok {
 		return report, true
 	}
 	data, err := s.storeGet(ctx, stored.ObjectKey)
@@ -630,9 +629,21 @@ func (s *Service) scanPackage(ctx context.Context, stored skillpkg.StoredSkill) 
 	if err != nil {
 		return skillpkg.Report{}, false
 	}
+	return s.reportOf(stored, fsys), true
+}
+
+func (s *Service) reportOf(stored skillpkg.StoredSkill, fsys fs.FS) skillpkg.Report {
+	key := packageReportKey(stored)
+	if report, ok := s.packageReports.get(key); ok {
+		return report
+	}
 	report := skillpkg.Validate(fsys)
 	s.packageReports.put(key, report)
-	return report, true
+	return report
+}
+
+func packageReportKey(stored skillpkg.StoredSkill) string {
+	return stored.ObjectKey + "\x00" + stored.SourcePath
 }
 
 func tierLabel(t Tier) labelled {
