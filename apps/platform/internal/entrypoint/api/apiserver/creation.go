@@ -37,69 +37,62 @@ var errNoCreditRate = errors.New("creation: credit conversion unavailable")
 
 const maxCreationRequestBytes = 8 << 20
 
-type snapshotCreditField struct {
-	Internal string
-	Public   string
+type withheld struct{}
+
+type publicCreationSnapshot struct {
+	creation.Snapshot
+	BudgetUSD   *withheld `json:"budget_usd,omitempty"`
+	ReservedUSD *withheld `json:"reserved_usd,omitempty"`
+	SpentUSD    *withheld `json:"spent_usd,omitempty"`
+
+	BudgetCredits   int64  `json:"budget_credits"`
+	ReservedCredits int64  `json:"reserved_credits"`
+	SpentCredits    *int64 `json:"spent_credits,omitempty"`
 }
 
-var snapshotCreditFields = []snapshotCreditField{
-	{Internal: "budget_usd", Public: "budget_credits"},
-	{Internal: "reserved_usd", Public: "reserved_credits"},
-	{Internal: "spent_usd", Public: "spent_credits"},
-}
-
-type creationSnapshotProjection struct {
-	Snapshot      creation.Snapshot
-	CreditsForUSD func(float64) (int64, bool)
-}
-
-func (p creationSnapshotProjection) MarshalJSON() ([]byte, error) {
-	raw, err := json.Marshal(p.Snapshot)
-	if err != nil {
-		return nil, err
+func publicSnapshot(snapshot creation.Snapshot, creditsForUSD func(float64) (int64, bool)) (publicCreationSnapshot, error) {
+	inCredits := func(usd float64) (int64, error) {
+		if usd <= 0 {
+			return 0, nil
+		}
+		credits, ok := creditsForUSD(usd)
+		if !ok {
+			return 0, errNoCreditRate
+		}
+		return credits, nil
 	}
-	fields := map[string]json.RawMessage{}
-	if err := json.Unmarshal(raw, &fields); err != nil {
-		return nil, err
+	out := publicCreationSnapshot{Snapshot: snapshot}
+	var err error
+	if out.BudgetCredits, err = inCredits(snapshot.BudgetUSD); err != nil {
+		return publicCreationSnapshot{}, err
 	}
-	for _, field := range snapshotCreditFields {
-		usd, present := fields[field.Internal]
-		delete(fields, field.Internal)
-		if !present {
-			continue
-		}
-		var amount float64
-		if err := json.Unmarshal(usd, &amount); err != nil {
-			return nil, err
-		}
-		credits := int64(0)
-		if amount > 0 {
-			var ok bool
-			if credits, ok = p.CreditsForUSD(amount); !ok {
-				return nil, errNoCreditRate
-			}
-		}
-		fields[field.Public], err = json.Marshal(credits)
+	if out.ReservedCredits, err = inCredits(snapshot.ReservedUSD); err != nil {
+		return publicCreationSnapshot{}, err
+	}
+	if snapshot.SpentUSD != nil {
+		spent, err := inCredits(*snapshot.SpentUSD)
 		if err != nil {
-			return nil, err
+			return publicCreationSnapshot{}, err
 		}
+		out.SpentCredits = &spent
 	}
-	return json.Marshal(fields)
+	return out, nil
 }
 
 type creationSessionResponse struct {
 	creation.View
-	Snapshot creationSnapshotProjection `json:"snapshot"`
+	Snapshot publicCreationSnapshot `json:"snapshot"`
 }
 
 func (h *creationHandler) present(v creation.View) (creationSessionResponse, error) {
 	if h.Credit == nil {
 		return creationSessionResponse{}, errNoCreditRate
 	}
-	return creationSessionResponse{
-		View:     v,
-		Snapshot: creationSnapshotProjection{Snapshot: v.Snapshot, CreditsForUSD: h.Credit.CreditsForUSD},
-	}, nil
+	snapshot, err := publicSnapshot(v.Snapshot, h.Credit.CreditsForUSD)
+	if err != nil {
+		return creationSessionResponse{}, err
+	}
+	return creationSessionResponse{View: v, Snapshot: snapshot}, nil
 }
 
 func (h *creationHandler) writeView(w http.ResponseWriter, v creation.View) {
