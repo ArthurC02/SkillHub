@@ -479,6 +479,27 @@ func (q *Queries) GetRunAttemptForReconcile(ctx context.Context, id pgtype.UUID)
 	return i, err
 }
 
+const getRunCancellation = `-- name: GetRunCancellation :one
+SELECT status, cancel_requested_at FROM runs WHERE id = $1 AND workspace_id = $2
+`
+
+type GetRunCancellationParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+type GetRunCancellationRow struct {
+	Status            RunStatus
+	CancelRequestedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetRunCancellation(ctx context.Context, arg GetRunCancellationParams) (GetRunCancellationRow, error) {
+	row := q.db.QueryRow(ctx, getRunCancellation, arg.ID, arg.WorkspaceID)
+	var i GetRunCancellationRow
+	err := row.Scan(&i.Status, &i.CancelRequestedAt)
+	return i, err
+}
+
 const getRunLinkage = `-- name: GetRunLinkage :one
 SELECT skill_version_id, test_case_snapshot_id
 FROM runs

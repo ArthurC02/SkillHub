@@ -137,6 +137,7 @@ queries:
   CreateRun: run
   AccountPurgeReady: run
   GetRun: run
+  GetRunCancellation: run
   ListWorkspaceRuns: run
   ListRunActivityFacts: run
   CountRunsByDay: run

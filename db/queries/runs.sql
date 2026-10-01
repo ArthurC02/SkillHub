@@ -8,6 +8,9 @@ RETURNING *;
 -- name: GetRun :one
 SELECT * FROM runs WHERE id = $1 AND workspace_id = $2;
 
+-- name: GetRunCancellation :one
+SELECT status, cancel_requested_at FROM runs WHERE id = $1 AND workspace_id = $2;
+
 -- name: LockRun :one
 SELECT * FROM runs WHERE id = $1 AND workspace_id = $2 FOR UPDATE;
 

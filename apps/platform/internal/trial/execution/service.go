@@ -524,6 +524,14 @@ func (s *Service) load(ctx context.Context, workspaceID, runID pgtype.UUID) (gen
 	return run, err
 }
 
+func (s *Service) cancellation(ctx context.Context, workspaceID, runID pgtype.UUID) (gen.GetRunCancellationRow, error) {
+	run, err := s.queries().GetRunCancellation(ctx, gen.GetRunCancellationParams{ID: runID, WorkspaceID: workspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.GetRunCancellationRow{}, ErrNotFound
+	}
+	return run, err
+}
+
 func runView(row gen.Run) RunView {
 	return RunView{
 		ID:                 row.ID,

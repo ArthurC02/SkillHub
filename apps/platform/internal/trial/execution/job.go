@@ -74,7 +74,7 @@ func (s *Service) Drive(ctx context.Context, workspaceID, runID pgtype.UUID) err
 	if err != nil {
 		return err
 	}
-	err = (&driver{svc: s, cur: current, clock: clockFor(current, attempts)}).execute(ctx)
+	err = (&driver{svc: s, cur: current, clock: clockFor(current, attempts)}).execute(ctx, attempts)
 	if errors.Is(err, errSuperseded) {
 		slog.Info("run driver superseded", "run_id", pgconv.UUIDString(runID))
 		return nil
@@ -89,7 +89,7 @@ type driver struct {
 	clock    runClock
 }
 
-func (d *driver) execute(ctx context.Context) error {
+func (d *driver) execute(ctx context.Context, attempts []gen.RunAttempt) error {
 
 	if d.cur.CancelRequestedAt.Valid && d.cur.Status == gen.RunStatusQueued {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusCancelled, failureCancelled, "派送之前就被取消")
@@ -98,10 +98,6 @@ func (d *driver) execute(ctx context.Context) error {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 	}
 
-	attempts, err := d.svc.attempts(ctx, d.cur.WorkspaceID, d.cur.ID)
-	if err != nil {
-		return err
-	}
 	switch live := liveAttempt(attempts); {
 	case live != nil:
 
@@ -112,17 +108,13 @@ func (d *driver) execute(ctx context.Context) error {
 		return d.dispatch(ctx)
 	case d.cur.Status == gen.RunStatusEvaluating:
 
-		return d.resumeEvaluating(ctx)
+		return d.resumeEvaluating(ctx, attempts)
 	default:
 		return d.terminateUnresumable(ctx)
 	}
 }
 
-func (d *driver) resumeEvaluating(ctx context.Context) error {
-	attempts, err := d.svc.attempts(ctx, d.cur.WorkspaceID, d.cur.ID)
-	if err != nil {
-		return err
-	}
+func (d *driver) resumeEvaluating(ctx context.Context, attempts []gen.RunAttempt) error {
 	if len(attempts) == 0 || attempts[len(attempts)-1].ErrorClass != nil {
 		return d.terminateUnresumable(ctx)
 	}
@@ -867,7 +859,7 @@ func liveAttempt(attempts []gen.RunAttempt) *gen.RunAttempt {
 }
 
 func (d *driver) cancelRequested(ctx context.Context) (bool, error) {
-	fresh, err := d.svc.load(ctx, d.cur.WorkspaceID, d.cur.ID)
+	fresh, err := d.svc.cancellation(ctx, d.cur.WorkspaceID, d.cur.ID)
 	if err != nil {
 		return false, err
 	}
