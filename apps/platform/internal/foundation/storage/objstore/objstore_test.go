@@ -2,8 +2,13 @@ package objstore
 
 import (
 	"bytes"
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestReadCappedRefusesRatherThanTruncates(t *testing.T) {
@@ -38,5 +43,43 @@ func TestReadCappedRefusesRatherThanTruncates(t *testing.T) {
 				t.Errorf("readCapped returned %d bytes, want the whole %d", len(got), tc.size)
 			}
 		})
+	}
+}
+
+func TestAStoreThatKeepsFailingIsTriedThreeTimesAndNoMore(t *testing.T) {
+	var attempts atomic.Int32
+	store := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Has("location") {
+			_, _ = w.Write([]byte(`<LocationConstraint xmlns="http://s3.amazonaws.com/doc/2006-03-01/">us-east-1</LocationConstraint>`))
+			return
+		}
+		if r.URL.Path == "/bucket/key" {
+			attempts.Add(1)
+		}
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(store.Close)
+	c, err := New(strings.TrimPrefix(store.URL, "http://"), "key", "secret", "bucket", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Put(context.Background(), "key", []byte("x")); err == nil {
+		t.Fatal("a store answering 503 accepted the write")
+	}
+	if got := attempts.Load(); got != 3 {
+		t.Errorf("the write was attempted %d times, want 3", got)
+	}
+}
+
+func TestAStoreThatStopsAnsweringIsGivenUpOnAfterTwentySeconds(t *testing.T) {
+	transport, err := storeTransport(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if transport.ResponseHeaderTimeout != 20*time.Second {
+		t.Errorf("response header wait = %v, want 20s", transport.ResponseHeaderTimeout)
+	}
+	if transport.MaxIdleConnsPerHost != 64 {
+		t.Errorf("idle connections kept per host = %d, want 64", transport.MaxIdleConnsPerHost)
 	}
 }

@@ -19,10 +19,32 @@ type Client struct {
 	bucket string
 }
 
+const (
+	storeAnswerWait       = 20 * time.Second
+	storeAttempts         = 3
+	storeIdleConnsPerHost = 64
+)
+
+func storeTransport(useSSL bool) (*http.Transport, error) {
+	transport, err := minio.DefaultTransport(useSSL)
+	if err != nil {
+		return nil, err
+	}
+	transport.ResponseHeaderTimeout = storeAnswerWait
+	transport.MaxIdleConnsPerHost = storeIdleConnsPerHost
+	return transport, nil
+}
+
 func New(endpoint, accessKey, secretKey, bucket string, useSSL bool) (*Client, error) {
+	transport, err := storeTransport(useSSL)
+	if err != nil {
+		return nil, fmt.Errorf("objstore transport: %w", err)
+	}
 	mc, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
-		Secure: useSSL,
+		Creds:      credentials.NewStaticV4(accessKey, secretKey, ""),
+		Secure:     useSSL,
+		Transport:  transport,
+		MaxRetries: storeAttempts,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("objstore client: %w", err)
