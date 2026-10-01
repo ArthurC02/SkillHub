@@ -1351,6 +1351,11 @@ func TestOrphanSightingsCountConsecutiveRoundsNotTotalFailures(t *testing.T) {
 		t.Fatalf("after one round the count is %d, want 0 — one sighting is not two", got)
 	}
 	scan()
+	if got := persistentOrphans(t, pool, fake.Name); got != 0 {
+		t.Fatalf("a scan right after the first raised the count to %d, want 0 — it is the same round", got)
+	}
+	letAScanIntervalPass(t, pool)
+	scan()
 	if got := persistentOrphans(t, pool, fake.Name); got != 1 {
 		t.Fatalf("after two consecutive rounds on the same handle the count is %d, want 1", got)
 	}
@@ -1360,6 +1365,7 @@ func TestOrphanSightingsCountConsecutiveRoundsNotTotalFailures(t *testing.T) {
 
 	fake.Seed("00000000-0000-4000-8000-000000000013",
 		"00000000-0000-4000-8000-000000000014", time.Now().Add(-time.Hour))
+	letAScanIntervalPass(t, pool)
 	scan()
 	if got := persistentOrphans(t, pool, fake.Name); got != 1 {
 		t.Errorf("a second, freshly-seen leak raised the count to %d, want 1", got)

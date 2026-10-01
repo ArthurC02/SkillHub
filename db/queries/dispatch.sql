@@ -32,6 +32,7 @@ RETURNING *;
 
 -- name: SetDispatchHaltClearRounds :one
 UPDATE dispatch_halts
-SET clear_rounds = clear_rounds + 1
+SET clear_rounds = clear_rounds + 1, last_clear_round_at = now()
 WHERE provider = @provider AND lifted_at IS NULL AND source = ANY(@sources::text[])
+  AND (last_clear_round_at IS NULL OR last_clear_round_at <= now() - make_interval(secs => @min_round_gap_seconds::float8))
 RETURNING clear_rounds;

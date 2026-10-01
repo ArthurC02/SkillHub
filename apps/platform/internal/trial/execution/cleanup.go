@@ -21,6 +21,8 @@ const orphanGrace = 5 * time.Minute
 
 const OrphanScanInterval = 5 * time.Minute
 
+const minRoundGap = OrphanScanInterval / 2
+
 const OrphanScanJobKind = "run_orphan_scan"
 
 func (s *Service) CleanRun(ctx context.Context, workspaceID, runID pgtype.UUID) error {
@@ -232,9 +234,9 @@ func (s *Service) scanProvider(ctx context.Context, provider SandboxProvider) er
 		}
 		stillPresent = append(stillPresent, entry.ProviderRunID)
 		rounds, err := s.queries().RecordOrphanSighting(ctx, gen.RecordOrphanSightingParams{
-			Provider: provider.Name(), ProviderRunID: entry.ProviderRunID,
+			Provider: provider.Name(), ProviderRunID: entry.ProviderRunID, MinRoundGapSeconds: minRoundGap.Seconds(),
 		})
-		if err != nil {
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 
 			slog.Error("recording orphan sighting failed", "provider", provider.Name(), "error", err)
 		}

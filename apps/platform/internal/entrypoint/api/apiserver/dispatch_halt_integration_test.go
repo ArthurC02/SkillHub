@@ -51,6 +51,18 @@ func runOrphanScan(t *testing.T, svc *run.Service) {
 	}
 }
 
+func letAScanIntervalPass(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	for _, stmt := range []string{
+		"UPDATE reconciler_orphan_sightings SET last_seen_at = last_seen_at - interval '1 hour'",
+		"UPDATE dispatch_halts SET last_clear_round_at = last_clear_round_at - interval '1 hour' WHERE lifted_at IS NULL",
+	} {
+		if _, err := pool.Exec(context.Background(), stmt); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func TestDispatchHaltRoutesAreInvisibleWithoutTheOperatorRole(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -278,6 +290,12 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 	}
 
 	runOrphanScan(t, svc)
+	if dispatching, _ := dispatchStatus(t, operator); !dispatching {
+		t.Fatal("a scan right after the first counted a second round and halted dispatch")
+	}
+
+	letAScanIntervalPass(t, pool)
+	runOrphanScan(t, svc)
 	dispatching, halts := dispatchStatus(t, operator)
 	if dispatching {
 		t.Fatal("the X-04 threshold was crossed and dispatch was not halted")
@@ -297,11 +315,15 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 	}
 
 	fake.DestroyStatus = 0
+	letAScanIntervalPass(t, pool)
+	runOrphanScan(t, svc)
+	letAScanIntervalPass(t, pool)
 	runOrphanScan(t, svc)
 	runOrphanScan(t, svc)
 	if dispatching, _ := dispatchStatus(t, operator); dispatching {
-		t.Fatal("dispatch resumed after a single clear round")
+		t.Fatal("dispatch resumed after a single clear round and a scan right behind it")
 	}
+	letAScanIntervalPass(t, pool)
 	runOrphanScan(t, svc)
 	if dispatching, halts := dispatchStatus(t, operator); !dispatching || len(halts) != 0 {
 		t.Fatalf("after two clear rounds: dispatching=%v, halts=%v", dispatching, halts)

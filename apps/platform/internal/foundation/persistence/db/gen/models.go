@@ -339,16 +339,17 @@ type DatasetObjectCleanupIntent struct {
 
 // Active rows stop new Runs being dispatched (03:SEC-012 P1 first action, X-04 drain/suspend). provider = ” is the whole pool. Shared by both triggers on purpose: one state, one release path. See 0030.
 type DispatchHalt struct {
-	ID          pgtype.UUID
-	Provider    string
-	Source      string
-	Reason      string
-	DeclaredBy  pgtype.UUID
-	DeclaredAt  pgtype.Timestamptz
-	ClearRounds int32
-	LiftedAt    pgtype.Timestamptz
-	LiftedBy    pgtype.UUID
-	LiftReason  *string
+	ID               pgtype.UUID
+	Provider         string
+	Source           string
+	Reason           string
+	DeclaredBy       pgtype.UUID
+	DeclaredAt       pgtype.Timestamptz
+	ClearRounds      int32
+	LiftedAt         pgtype.Timestamptz
+	LiftedBy         pgtype.UUID
+	LiftReason       *string
+	LastClearRoundAt pgtype.Timestamptz
 }
 
 type DownloadArtifact struct {

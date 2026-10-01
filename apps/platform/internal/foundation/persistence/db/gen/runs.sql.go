@@ -1452,16 +1452,18 @@ INSERT INTO reconciler_orphan_sightings (provider, provider_run_id)
 VALUES ($1, $2)
 ON CONFLICT (provider, provider_run_id) DO UPDATE
 SET rounds = reconciler_orphan_sightings.rounds + 1, last_seen_at = now()
+WHERE reconciler_orphan_sightings.last_seen_at <= now() - make_interval(secs => $3::float8)
 RETURNING rounds
 `
 
 type RecordOrphanSightingParams struct {
-	Provider      string
-	ProviderRunID string
+	Provider           string
+	ProviderRunID      string
+	MinRoundGapSeconds float64
 }
 
 func (q *Queries) RecordOrphanSighting(ctx context.Context, arg RecordOrphanSightingParams) (int32, error) {
-	row := q.db.QueryRow(ctx, recordOrphanSighting, arg.Provider, arg.ProviderRunID)
+	row := q.db.QueryRow(ctx, recordOrphanSighting, arg.Provider, arg.ProviderRunID, arg.MinRoundGapSeconds)
 	var rounds int32
 	err := row.Scan(&rounds)
 	return rounds, err

@@ -256,6 +256,7 @@ INSERT INTO reconciler_orphan_sightings (provider, provider_run_id)
 VALUES (@provider, @provider_run_id)
 ON CONFLICT (provider, provider_run_id) DO UPDATE
 SET rounds = reconciler_orphan_sightings.rounds + 1, last_seen_at = now()
+WHERE reconciler_orphan_sightings.last_seen_at <= now() - make_interval(secs => @min_round_gap_seconds::float8)
 RETURNING rounds;
 
 -- name: ForgetClearedOrphans :exec

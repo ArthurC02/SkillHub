@@ -344,7 +344,7 @@ func (s *Service) declareThresholdHalt(ctx context.Context, provider, reason str
 
 func (s *Service) countThresholdClearRound(ctx context.Context, provider string) {
 	rounds, err := s.queries().SetDispatchHaltClearRounds(ctx, gen.SetDispatchHaltClearRoundsParams{
-		Provider: provider, Sources: sourceValues(automaticallyRecoveringSources()),
+		Provider: provider, Sources: sourceValues(automaticallyRecoveringSources()), MinRoundGapSeconds: minRoundGap.Seconds(),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 
