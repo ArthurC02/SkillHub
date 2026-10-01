@@ -519,7 +519,7 @@ hello in-process s3
 
 - [x] HARDEN-001 限流器的每個用戶端計量桶要會過期：閒置滿一個補滿週期的桶（已回到滿額、與從沒見過的用戶端無異）在下一次掃描時被移除，匿名端點以 IP 為鍵也不會讓 API 行程記憶體無上限成長。（`02:NFR-001` 第 5 條）
 - [x] HARDEN-002 正式環境姿態（`APP_URL` 為 https）下 `RATE_LIMIT=off` 拒絕啟動，與既有的啟動拒絕清單同一處；本機開發仍只發警告。（`02:NFR-001` 第 5 條）
-- [ ] HARDEN-003 稽核事件「權限確認」「刪除 Test Case」「刪除 Dataset」各補一條會在寫入被拿掉時變紅的測試；三個常數目前全 repo 沒有任何測試引用（寫入處 `trial/execution/preflight.go`、`trial/design/testlab.go`、`dataset.go`）。（`02:NFR-001` 第 4 條）
+- [x] HARDEN-003 稽核事件「權限確認」「刪除 Test Case」「刪除 Dataset」各有一條會在寫入被拿掉時變紅的測試，斷言事件的行為者、Workspace 與附帶資料（寫入處 `trial/execution/preflight.go`、`trial/design/testlab.go`、`dataset.go`）。（`02:NFR-001` 第 4 條）
 - [x] HARDEN-004 Go 呼叫 Python 能力服務的每一次請求都有期限：呼叫端沒給期限時，`llmclient` 自己套上保底期限；呼叫端給了就沿用，不被保底取代，也不和 HTTP client 的逾時競爭。（`02:NFR-003`）
 - [ ] HARDEN-005 平台的 log 改為結構化，並在出口套用與 Trace 同一個遮罩器；`apps/platform` 與 `sandboxd` 目前都沒有任何 log 遮罩層，「Secrets 不進 Log」只靠不寫的紀律。（`02:NFR-002` 第 4 條、`02:NFR-005` 第 3 條）
 - [ ] HARDEN-006 前端根層錯誤邊界：任何頁面元件拋出例外時顯示「重新整理／回目錄」，不是整頁空白；現況路由只設了 404 元件。（`02:NFR-007` 第 2 條）

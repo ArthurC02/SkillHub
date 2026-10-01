@@ -670,3 +670,41 @@ func TestAnAccountPurgeWaitsForBytesThatAreStillBeingWritten(t *testing.T) {
 		t.Error("the finished upload never gave the workspace back")
 	}
 }
+
+func deletionAudit(t *testing.T, pool *pgxpool.Pool, action string, resourceID pgtype.UUID) (actor, workspace pgtype.UUID, metadata map[string]any) {
+	t.Helper()
+	if err := pool.QueryRow(t.Context(), `
+		SELECT actor_user_id, workspace_id, metadata FROM audit_events WHERE action = $1 AND resource_id = $2`,
+		action, resourceID).Scan(&actor, &workspace, &metadata); err != nil {
+		t.Fatalf("no %s audit row for the deleted resource: %v", action, err)
+	}
+	return actor, workspace, metadata
+}
+
+func TestDeletingATestCaseIsAuditedWithTheDatasetsItTookAlong(t *testing.T) {
+	pool := requireTestLabDB(t)
+	ws, _, caseB, _ := seedTwoCases(t, pool)
+
+	if _, err := datasetService(pool, &removedStore{}).DeleteTestCase(t.Context(), ws, caseB); err != nil {
+		t.Fatal(err)
+	}
+	actor, workspace, metadata := deletionAudit(t, pool, "test_case.delete", caseB)
+	if actor != ws.OwnerUserID || workspace != ws.ID || metadata["datasets_deleted"] != float64(1) {
+		t.Fatalf("audit row = actor %v workspace %v metadata %v, want the owner, the workspace and one dataset",
+			actor, workspace, metadata)
+	}
+}
+
+func TestDeletingADatasetIsAuditedUnderItsTestCase(t *testing.T) {
+	pool := requireTestLabDB(t)
+	ws, _, caseB, datasetB := seedTwoCases(t, pool)
+
+	if _, err := datasetService(pool, &removedStore{}).DeleteDataset(t.Context(), ws, caseB, datasetB); err != nil {
+		t.Fatal(err)
+	}
+	actor, workspace, metadata := deletionAudit(t, pool, "dataset.delete", datasetB)
+	if actor != ws.OwnerUserID || workspace != ws.ID || metadata["test_case_id"] != pgconv.UUIDString(caseB) {
+		t.Fatalf("audit row = actor %v workspace %v metadata %v, want the owner, the workspace and test case %s",
+			actor, workspace, metadata, pgconv.UUIDString(caseB))
+	}
+}

@@ -487,3 +487,33 @@ func TestASourceThatCannotBeRefetchedIsNotRecordedAsChanged(t *testing.T) {
 			"so writing it on a failure is permanent", *at)
 	}
 }
+
+func TestConfirmingRunPermissionsIsAuditedOnTheTestCase(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-permissions-audit")
+	ws, actor := mustUUID(t, f.workspaceID), mustUUID(t, f.userID)
+	skill, version, testCase := mustUUID(t, f.skillID), mustUUID(t, f.versionID), mustUUID(t, f.testCaseID)
+
+	summary, err := a.runs.PermissionSummaryFor(context.Background(), ws, skill, version, testCase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.runs.ConfirmPermissions(context.Background(), ws, run.ConfirmPermissionsParams{
+		Actor: actor, SkillID: skill, VersionID: version, TestCaseID: testCase, SummaryHash: summary.Hash,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	var actorID, workspaceID, hash string
+	if err := pool.QueryRow(context.Background(), `
+		SELECT actor_user_id::text, workspace_id::text, metadata->>'summary_hash' FROM audit_events
+		WHERE action = 'run.permissions_confirmed' AND resource_type = 'test_case' AND resource_id = $1`,
+		testCase).Scan(&actorID, &workspaceID, &hash); err != nil {
+		t.Fatalf("no permissions-confirmed audit row for the test case: %v", err)
+	}
+	if actorID != f.userID || workspaceID != f.workspaceID || hash != summary.Hash {
+		t.Fatalf("audit row = actor %s workspace %s hash %s, want %s %s %s",
+			actorID, workspaceID, hash, f.userID, f.workspaceID, summary.Hash)
+	}
+}
