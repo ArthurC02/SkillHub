@@ -1,11 +1,12 @@
 package worker
 
 import (
-	"runtime"
 	"testing"
 	"time"
 
 	"github.com/riverqueue/river"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 )
 
 func TestACreationStepJobIsAbandonedAfterThreeMinutes(t *testing.T) {
@@ -20,9 +21,32 @@ func TestARunExecutionJobIsAbandonedAfterFifteenMinutes(t *testing.T) {
 	}
 }
 
-func TestTheDefaultQueueRunsAtMostFourJobsAtOnce(t *testing.T) {
-	want := min(runtime.NumCPU(), 4)
-	if got := riverConfig(river.NewWorkers(), nil, false).Queues[river.QueueDefault].MaxWorkers; got != want {
-		t.Errorf("default queue workers = %d, want %d", got, want)
+func TestTheWorkerServesEveryDeclaredQueueAndEveryPeriodicJobsQueue(t *testing.T) {
+	queues := riverConfig(river.NewWorkers(), nil, false).Queues
+	for name := range wiring.Queues {
+		if queues[name].MaxWorkers < 1 {
+			t.Errorf("queue %q is declared but the worker runs no job from it", name)
+		}
+	}
+	for kind, queue := range periodicQueue {
+		if queues[queue].MaxWorkers < 1 {
+			t.Errorf("periodic job %s goes to queue %q, which the worker does not serve", kind, queue)
+		}
+	}
+	if periodicQueue[RunSuperviseArgs{}.Kind()] != wiring.QueueRuns {
+		t.Error("run supervision does not run on the run queue, so model jobs can delay it")
+	}
+}
+
+func TestPeriodicRunAndEnrichmentJobsAreInsertedOnTheirOwnQueues(t *testing.T) {
+	for args, want := range map[river.JobArgs]string{
+		RunSuperviseArgs{}:       wiring.QueueRuns,
+		RunOrphanScanArgs{}:      wiring.QueueRuns,
+		EnrichmentBackfillArgs{}: wiring.QueueModel,
+		PartitionCreateArgs{}:    "",
+	} {
+		if got := periodicInsert(args).Queue; got != want {
+			t.Errorf("periodic %s is inserted on queue %q, want %q", args.Kind(), got, want)
+		}
 	}
 }

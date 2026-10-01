@@ -17,6 +17,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
@@ -241,7 +242,7 @@ func TestCleanModeCanAdvanceCreationOnOneConnection(t *testing.T) {
 	river.AddWorker(workers, &worker.CreationStepWorker{Svc: set.Creation})
 	consumer, err := queue.New(pool, &river.Config{
 		Workers: workers,
-		Queues:  map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 1}},
+		Queues:  map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 1}, wiring.QueueModel: {MaxWorkers: 1}},
 	})
 	if err != nil {
 		t.Fatalf("create creation queue: %v", err)

@@ -41,7 +41,11 @@ func NewCreationQueue(client *river.Client[pgx.Tx]) func(context.Context, pgx.Tx
 		return nil
 	}
 	return func(ctx context.Context, tx pgx.Tx, command creation.JobArgs) error {
-		_, err := client.InsertTx(ctx, tx, NewCreationStepArgs(command), &river.InsertOpts{MaxAttempts: 1})
+		_, err := client.InsertTx(ctx, tx, NewCreationStepArgs(command), creationStepOptions())
 		return err
 	}
+}
+
+func creationStepOptions() *river.InsertOpts {
+	return &river.InsertOpts{MaxAttempts: 1, Queue: QueueModel}
 }

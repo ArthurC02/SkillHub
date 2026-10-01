@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
@@ -258,8 +257,9 @@ func periodicJobs(set *Set, deps Deps, outboxWorker *outbox.Worker) []*river.Per
 		if runOnStart {
 			opts = &river.PeriodicJobOpts{RunOnStart: true}
 		}
+		insert := periodicInsert(args)
 		periodic = append(periodic, river.NewPeriodicJob(river.PeriodicInterval(every),
-			func() (river.JobArgs, *river.InsertOpts) { return args, nil }, opts))
+			func() (river.JobArgs, *river.InsertOpts) { return args, insert }, opts))
 	}
 	schedule(EvaluationRecoveryArgs{}, eval.RecoveryInterval, true)
 	schedule(RunSuperviseArgs{}, run.SuperviseInterval, true)
@@ -292,15 +292,20 @@ func connectQueue(set *Set, client *river.Client[pgx.Tx]) {
 	set.SkillVersions.Enqueue = wiring.NewSuggestionsAppliedEnqueue(client)
 }
 
-const defaultQueueMaxWorkers = 4
+var periodicQueue = map[string]string{
+	RunSuperviseArgs{}.Kind():       wiring.QueueRuns,
+	RunOrphanScanArgs{}.Kind():      wiring.QueueRuns,
+	EnrichmentBackfillArgs{}.Kind(): wiring.QueueModel,
+}
+
+func periodicInsert(args river.JobArgs) *river.InsertOpts {
+	return &river.InsertOpts{Queue: periodicQueue[args.Kind()]}
+}
 
 func riverConfig(workers *river.Workers, periodic []*river.PeriodicJob, pollOnly bool) *river.Config {
 	return &river.Config{
-		Workers: workers,
-		Queues: map[string]river.QueueConfig{
-
-			river.QueueDefault: {MaxWorkers: min(runtime.NumCPU(), defaultQueueMaxWorkers)},
-		},
+		Workers:      workers,
+		Queues:       wiring.Queues,
 		PeriodicJobs: periodic,
 		PollOnly:     pollOnly,
 	}

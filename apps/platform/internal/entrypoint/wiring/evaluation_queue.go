@@ -20,9 +20,13 @@ func NewEvaluationEnqueue(client *river.Client[pgx.Tx]) func(context.Context, ev
 		return nil
 	}
 	return func(ctx context.Context, args eval.JobArgs) error {
-		_, err := client.Insert(ctx, args, &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveEvaluationJobStates}, MaxAttempts: 2})
+		_, err := client.Insert(ctx, args, evaluationOptions())
 		return err
 	}
+}
+
+func evaluationOptions() *river.InsertOpts {
+	return &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveEvaluationJobStates}, MaxAttempts: 2, Queue: QueueModel}
 }
 
 func NewSuggestionsAppliedEnqueue(client *river.Client[pgx.Tx]) func(context.Context, eval.SuggestionsAppliedArgs) error {

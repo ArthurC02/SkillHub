@@ -71,8 +71,8 @@ func cleanupJob(work run.RunWork) cleanupJobArgs {
 	return cleanupJobArgs{RunID: pgconv.UUIDString(work.RunID), WorkspaceID: pgconv.UUIDString(work.WorkspaceID)}
 }
 func executeOptions() *river.InsertOpts {
-	return &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveRunJobStates}, MaxAttempts: runExecuteMaxAttempts}
+	return &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveRunJobStates}, MaxAttempts: runExecuteMaxAttempts, Queue: QueueRuns}
 }
 func cleanupOptions() *river.InsertOpts {
-	return &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveRunJobStates}, MaxAttempts: runCleanupMaxAttempts}
+	return &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveRunJobStates}, MaxAttempts: runCleanupMaxAttempts, Queue: QueueRuns}
 }
