@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -76,19 +77,29 @@ func scanFactsFrom(r skillpkg.Report) []byte {
 	return b
 }
 
-const importEnrichmentWindow = enrichTimeout + embedTimeout
+const (
+	importEnrichmentWindow      = enrichTimeout + embedTimeout
+	importEnrichmentConcurrency = 4
+)
 
 func (s *Service) enrichWithin(ctx context.Context, window time.Duration, admitted []plannedSkill, workspaceID pgtype.UUID) []enrichment {
 	windowCtx, cancel := context.WithTimeout(ctx, window)
 	defer cancel()
 	out := make([]enrichment, len(admitted))
+	slots := make(chan struct{}, importEnrichmentConcurrency)
+	var calls sync.WaitGroup
 	for i, planned := range admitted {
-		if windowCtx.Err() != nil {
-			out[i] = pendingEnrichment(planned.pkg)
-			continue
-		}
-		out[i] = s.enrichPackage(windowCtx, planned.pkg, workspaceID)
+		slots <- struct{}{}
+		calls.Go(func() {
+			defer func() { <-slots }()
+			if windowCtx.Err() != nil {
+				out[i] = pendingEnrichment(planned.pkg)
+				return
+			}
+			out[i] = s.enrichPackage(windowCtx, planned.pkg, workspaceID)
+		})
 	}
+	calls.Wait()
 	return out
 }
 
