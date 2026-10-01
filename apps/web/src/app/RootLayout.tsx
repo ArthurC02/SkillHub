@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { FeedbackLauncher } from "./shell/FeedbackLauncher";
 import { AuthControls } from "./shell/AuthControls";
@@ -17,6 +17,19 @@ export function RootLayout() {
   const creationExposed = useCreationEntryPoint();
   const [query, setQuery] = useState("");
 
+  useEffect(() => {
+    const main = document.querySelector("#main-content");
+    if (!main) return;
+    const updateTitle = () => {
+      const heading = main.querySelector("h1")?.textContent?.trim();
+      document.title = heading ? `${heading} · Skill Hub` : "Skill Hub";
+    };
+    updateTitle();
+    const observer = new MutationObserver(updateTitle);
+    observer.observe(main, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+  }, [pathname]);
+
   const search = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const q = query.trim();
@@ -29,6 +42,9 @@ export function RootLayout() {
         className="app-shell platform-shell"
         data-chat={pathname === "/workspace/creations" || undefined}
       >
+        <a className="skip-link" href="#main-content">
+          跳到主要內容
+        </a>
         <header className="app-header">
           <Link to="/" className="app-title">
             Skill Hub
@@ -70,7 +86,7 @@ export function RootLayout() {
             </nav>
           </aside>
           <div className="app-content">
-            <main>
+            <main id="main-content" tabIndex={-1}>
               <CleanModeNotice admin={pathname === "/admin" || pathname.startsWith("/admin/")} />
               <Outlet />
             </main>

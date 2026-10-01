@@ -146,6 +146,10 @@ test("丙-150: 複製一份 409（同名）印「你的工作區已經有同名�
 
   expect(text()).toContain("你的工作區已經有同名的小工具。");
   expect(text()).not.toContain("already exists in your workspace");
+  const recovery = Array.from(container.querySelectorAll("a")).find(
+    (link) => link.textContent === "前往資產庫找出同名小工具",
+  );
+  expect(recovery?.getAttribute("href")).toBe("/library");
 });
 
 test("丙-150: 複製一份 500 等其他狀態印通用的重試句", async () => {

@@ -17,6 +17,7 @@ export function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedI
   const fork = useForkSkill();
   const versions = useSkillVersions(skillId);
   const cannotPackage = versions.isSuccess && versions.data.versions.length === 0;
+  const nameConflict = fork.error instanceof ApiError && fork.error.status === 409;
 
   if (!isLoggedIn) {
     return (
@@ -44,6 +45,7 @@ export function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedI
       {fork.isError && (
         <ReadFailure error={fork.error} what="複製小工具">
           <p role="alert">{forkErrorMessage(fork.error)}</p>
+          {nameConflict && <Link to="/library">前往資產庫找出同名小工具</Link>}
         </ReadFailure>
       )}
       {fork.isSuccess && (

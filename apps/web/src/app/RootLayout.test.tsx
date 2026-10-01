@@ -12,6 +12,7 @@ function FeatureAvailabilityProbe() {
 const mocks = vi.hoisted(() => ({
   creationExposed: false,
   generateExposed: false,
+  outletTitle: "工作台",
   pathname: "/workspace",
 }));
 
@@ -19,7 +20,12 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ to, children }: { to: string; children: unknown }) => (
     <a href={to}>{children as never}</a>
   ),
-  Outlet: () => <FeatureAvailabilityProbe />,
+  Outlet: () => (
+    <>
+      <h1>{mocks.outletTitle}</h1>
+      <FeatureAvailabilityProbe />
+    </>
+  ),
   useNavigate: () => () => Promise.resolve(),
   useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => string }) =>
     select({ location: { pathname: mocks.pathname } }),
@@ -56,7 +62,9 @@ let root: Root;
 beforeEach(() => {
   mocks.generateExposed = false;
   mocks.creationExposed = false;
+  mocks.outletTitle = "工作台";
   mocks.pathname = "/workspace";
+  document.title = "Skill Hub";
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -100,6 +108,16 @@ test("the platform shell exposes stable places and hides Studio until generation
   expect(nav.textContent).not.toContain("匯入小工具");
   expect(nav.textContent).not.toContain("測試題");
   expect(container.querySelector('form[role="search"]')).not.toBeNull();
+});
+
+test("keyboard users can skip repeated navigation and the browser tab names the current page", async () => {
+  await renderShell();
+
+  const skip = container.querySelector<HTMLAnchorElement>('a[href="#main-content"]');
+  const main = container.querySelector<HTMLElement>("main#main-content");
+  expect(skip?.textContent).toBe("跳到主要內容");
+  expect(main?.tabIndex).toBe(-1);
+  expect(document.title).toBe("工作台 · Skill Hub");
 });
 
 test("the platform shell exposes Studio when generation is enabled", async () => {

@@ -44,7 +44,6 @@ export function CategoryNav({
                 ...filters,
                 correction,
                 category: value,
-                compare: undefined,
               })}
               replace
               activeOptions={{ explicitUndefined: true }}

@@ -20,15 +20,32 @@ import {
 } from "./Home.model";
 import "./Home.page.css";
 
+function updatedSearch(
+  previous: HomeSearch,
+  next: Partial<HomeSearch>,
+  preserveComparison: boolean,
+) {
+  return {
+    ...previous,
+    compare: preserveComparison ? previous.compare : undefined,
+    ...next,
+  };
+}
+
+function useSearchDraft(query: string | undefined) {
+  const [draft, setDraft] = useState(query ?? "");
+  const [trackedQuery, setTrackedQuery] = useState(query);
+  if (query !== trackedQuery) {
+    setTrackedQuery(query);
+    setDraft(query ?? "");
+  }
+  return [draft, setDraft] as const;
+}
+
 export function Home() {
   const search = useSearch({ from: "/" });
   const navigate = useNavigate({ from: "/" });
-  const [draft, setDraft] = useState(search.q ?? "");
-  const [trackedQ, setTrackedQ] = useState(search.q);
-  if (search.q !== trackedQ) {
-    setTrackedQ(search.q);
-    setDraft(search.q ?? "");
-  }
+  const [draft, setDraft] = useSearchDraft(search.q);
   const [queryError, setQueryError] = useState("");
   const selected = parseSelection(search.compare);
   const generateExposed = useGenerateEntryPoint();
@@ -49,9 +66,9 @@ export function Home() {
   const browsing = search.q === undefined;
   const catalog = useCatalog(filters, browsing);
 
-  function submitSearch(next: Partial<typeof search>) {
+  function submitSearch(next: Partial<HomeSearch>, preserveComparison = false) {
     void navigate({
-      search: (prev) => ({ ...prev, compare: undefined, ...next }),
+      search: (prev: HomeSearch) => updatedSearch(prev, next, preserveComparison),
       replace: true,
     });
   }
@@ -61,14 +78,20 @@ export function Home() {
       applyCorrection(currentCorrection, true);
       return;
     }
-    void navigate({ search: { q: search.q }, replace: true });
+    void navigate({
+      search: (prev: HomeSearch) => ({ q: search.q, compare: prev.compare }),
+      replace: true,
+    });
   }
 
   function applyCorrection(correction: SearchCorrection, clear = false) {
-    submitSearch({
-      ...(clear ? clearedFilterFields() : effectiveFilters),
-      correction: JSON.stringify(correction),
-    });
+    submitSearch(
+      {
+        ...(clear ? clearedFilterFields() : effectiveFilters),
+        correction: JSON.stringify(correction),
+      },
+      true,
+    );
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -111,11 +134,14 @@ export function Home() {
       <FilterBar
         filters={effectiveFilters}
         onChange={(next) =>
-          submitSearch({
-            ...effectiveFilters,
-            ...next,
-            correction: currentCorrection ? JSON.stringify(currentCorrection) : search.correction,
-          })
+          submitSearch(
+            {
+              ...effectiveFilters,
+              ...next,
+              correction: currentCorrection ? JSON.stringify(currentCorrection) : search.correction,
+            },
+            true,
+          )
         }
       />
 

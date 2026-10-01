@@ -1129,6 +1129,26 @@ test("DISC-009: 用表單換一個問題，勾選要跟著走掉（合併路徑�
   );
 });
 
+test("DISC-009: narrowing the same results keeps the comparison candidates", async () => {
+  stubSearch(TWO_HITS);
+  await render(<App />);
+  await submitSearch("pdf");
+  await pick(0);
+  await pick(1);
+
+  await chooseFilter("來源層級", "curated");
+  await waitFor(() => new URLSearchParams(window.location.search).get("tier") === "curated");
+
+  const params = new URLSearchParams(window.location.search);
+  expect(params.get("compare")).toBe(
+    "aaaaaaaa-0000-0000-0000-000000000001,aaaaaaaa-0000-0000-0000-000000000002",
+  );
+  expect(compareLink()).not.toBeNull();
+  const boxes = container.querySelectorAll<HTMLInputElement>(".compare-pick input");
+  expect(boxes[0].checked).toBe(true);
+  expect(boxes[1].checked).toBe(true);
+});
+
 test("DISC-009: direct URL navigation clears selections from the previous result state", async () => {
   stubSearch(TWO_HITS);
   await render(<App />);
