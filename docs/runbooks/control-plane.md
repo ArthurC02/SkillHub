@@ -53,6 +53,8 @@ EOF
 
 資料庫容量：API 預設最多 32 條連線、Worker 16 條，`DATABASE_URL` 加 `pool_max_conns=<n>` 會覆蓋兩者；PostgreSQL 的連線上限（預設 200）與 `shared_buffers`（預設 512MB，建議機器記憶體的四分之一）在 `release.env` 以 `SKILLHUB_POSTGRES_MAX_CONNECTIONS`、`SKILLHUB_POSTGRES_SHARED_BUFFERS` 調整。每份 API／Worker 的連線上限加總要低於資料庫的連線上限。
 
+查慢查詢：執行超過 500ms 的語句寫進 PostgreSQL 的容器 log（`docker compose logs postgres`），門檻在 `release.env` 以 `SKILLHUB_POSTGRES_SLOW_QUERY` 調整（例如 `200ms`；`-1` 關閉）。資料庫已預載 `pg_stat_statements`；第一次要看累計排名時，以資料庫擁有者執行一次 `CREATE EXTENSION IF NOT EXISTS pg_stat_statements;`，之後以 `SELECT calls, round(total_exec_time) AS total_ms, round(mean_exec_time::numeric, 2) AS mean_ms, left(query, 120) FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 20;` 找出總耗時最多的語句。
+
 容器資源上限：除了 PostgreSQL，每個服務都有 CPU 與記憶體上限，一個服務吃光資源時被限制的是它自己，不是同機的資料庫。API、Worker、能力服務預設各 2／2／1 顆 CPU 與 2g／2g／1g 記憶體，在 `release.env` 以 `SKILLHUB_API_CPUS`、`SKILLHUB_API_MEMORY`、`SKILLHUB_WORKER_CPUS`、`SKILLHUB_WORKER_MEMORY`、`SKILLHUB_LLM_CPUS`、`SKILLHUB_LLM_MEMORY` 調整；模型閘道節點用 `SKILLHUB_GATEWAY_CPUS`、`SKILLHUB_GATEWAY_MEMORY`。新增服務沒有寫上限，部署設定檢查會擋。
 
 多開行程：API、Worker、能力服務的份數在 `release.env` 以 `SKILLHUB_API_REPLICAS`、`SKILLHUB_WORKER_REPLICAS`、`SKILLHUB_LLM_REPLICAS` 設定（預設各 1）。多份時限流、登入狀態、串流與排程的行為與 1 份相同，CI 的整套煙霧測試每種都開 2 份驗證；Prometheus 以 DNS 找出每一份分別抓指標。上限與份數相乘才是這台機器要留給它的資源，加份數前先確認 API 與 Worker 的資料庫連線上限加總仍低於資料庫的連線上限。本機用 `docker compose --profile app up --scale platform-api=2` 時，先設 `PLATFORM_API_PORTS=8090-8091`，讓兩份 API 各自對外有一個埠。
