@@ -38,13 +38,13 @@ export function AppliedResult({
             params={{ skillId: result.skill_id, testCaseId }}
             search={{ version: result.version_id }}
           >
-            以新版本重跑這個 Test Case
+            以新版本重跑這個測試題
           </Link>
-          ：連過去的是執行前權限確認畫面，仍須在那裡確認一次才會開始 Run。
+          ：連過去的是執行前權限確認畫面，仍須在那裡確認一次才會開始試跑。
         </p>
       ) : (
         <p className="note">
-          這個 Run 的 Test Case 草稿已不存在，無法從這裡以相同輸入重跑新版本；新版本本身不受影響。
+          這次試跑的測試題草稿已不存在，無法從這裡以相同輸入重跑新版本；新版本本身不受影響。
         </p>
       )}
       <p>

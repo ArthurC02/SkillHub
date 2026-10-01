@@ -17,7 +17,7 @@ export function GovernanceRow({ skill, single }: { skill: SkillGovernance; singl
         <strong>{skill.name}</strong>
       </p>
       <p className="note">
-        Skill <code>{skill.skill_id}</code>｜工作區 <code>{skill.workspace_id}</code>
+        小工具 <code>{skill.skill_id}</code>｜工作區 <code>{skill.workspace_id}</code>
       </p>
       <p className="badge-row">
         <span className={skill.access_restriction ? "badge badge-unverified" : "badge"}>

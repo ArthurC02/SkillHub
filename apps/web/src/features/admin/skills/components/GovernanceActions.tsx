@@ -18,7 +18,7 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
     <>
       <h2>對「{skill.name}」的動作</h2>
       <h3>{skill.access_restriction ? "解除受限展示" : "設定受限展示"}</h3>
-      <p className="note">受限展示關掉全文與試跑，Skill 仍在搜尋裡。可以用同一個地方改回來。</p>
+      <p className="note">受限展示關掉全文與試跑，小工具仍在搜尋裡。可以用同一個地方改回來。</p>
       <ActionForm
         id="admin-restriction"
         submitLabel={skill.access_restriction ? "解除受限" : "設定受限"}
@@ -108,7 +108,7 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
       ) : (
         <ConfirmDelete
           scopeId="admin-takedown-scope"
-          scope="下架後這個 Skill 從目錄與搜尋消失，不能再下載或試跑；既有的 Run 仍可追溯。下架沒有恢復的路。"
+          scope="下架後這個小工具從目錄與搜尋消失，不能再下載或試跑；既有的試跑紀錄仍可追溯。下架沒有恢復的路。"
           pending={takedown.isPending}
           label="下架"
           confirmLabel="確認下架"

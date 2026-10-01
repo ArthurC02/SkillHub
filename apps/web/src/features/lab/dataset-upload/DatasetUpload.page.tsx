@@ -22,11 +22,11 @@ export function DatasetUpload() {
   const { version } = useSearch({ strict: false }) as UploadSearch;
   const testCase = useTestCase(testCaseId);
 
-  if (testCase.isPending) return <Loading what="Test Case" />;
+  if (testCase.isPending) return <Loading what="測試題" />;
   if (testCase.error instanceof ApiError && testCase.error.status === 404) {
-    return <p role="alert">找不到這個 Test Case。</p>;
+    return <p role="alert">找不到這個測試題。</p>;
   }
-  if (testCase.error) return <ReadFailure error={testCase.error} what="Test Case" />;
+  if (testCase.error) return <ReadFailure error={testCase.error} what="測試題" />;
 
   return <DatasetUploadForm key={testCaseId} testCase={testCase.data} version={version} />;
 }
@@ -58,7 +58,7 @@ function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?
           params={{ testCaseId: testCase.test_case_id }}
           search={{ version }}
         >
-          回到這個 Test Case
+          回到這個測試題
         </Link>
       </p>
 

@@ -38,7 +38,7 @@ export function SessionEmptyState({
           <AgentAvatar />
           <span className="creation-who">Agent</span>
           <span className="creation-text">
-            想做一個什麼樣的 Skill？說說它要完成什麼，也可以附上流程圖。
+            想做一個什麼樣的小工具？說說它要完成什麼，也可以附上流程圖。
           </span>
         </li>
       </ol>

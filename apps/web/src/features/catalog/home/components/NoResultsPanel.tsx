@@ -17,7 +17,7 @@ export function NoResultsPanel({
 }) {
   return (
     <div>
-      <p>沒有夠接近的 Skill。</p>
+      <p>沒有夠接近的小工具。</p>
       {degraded ? (
         <p>
           而且這次搜尋只用了關鍵字比對，語意相近與跨語言的結果找不出來——現在找不到不代表
@@ -30,17 +30,17 @@ export function NoResultsPanel({
         <Link to="/" search={{}}>
           看看目錄裡有什麼
         </Link>
-        ——不帶任何查詢，列出這個部署收錄的全部 Skill。
+        ——不帶任何查詢，列出這個部署收錄的全部小工具。
       </p>
       <div className="note">
         {loggedIn ? (
           <>
-            手上已經有一個 Skill 套件的話，也可以
+            手上已經有一個小工具套件的話，也可以
             <Link to="/workspace/import">直接匯入它</Link>。
           </>
         ) : (
           <>
-            手上已經有一個 Skill 套件的話，登入後可以把它匯入你自己的工作區。 <SignInAction />
+            手上已經有一個小工具套件的話，登入後可以把它匯入你自己的工作區。 <SignInAction />
           </>
         )}
       </div>

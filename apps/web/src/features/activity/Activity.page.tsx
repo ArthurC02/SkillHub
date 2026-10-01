@@ -30,7 +30,7 @@ const GROUPS: Array<{
 ];
 
 const SOURCE_LABELS: Record<ActivitySource, string> = {
-  run: "Run",
+  run: "試跑紀錄",
   evaluation: "Evaluation",
   creation: "Creation",
   packaging: "Packaging",
@@ -41,7 +41,7 @@ const KIND_LABELS: Record<string, string> = {
   run: "試跑與評估",
   creation_session: "Studio 創作",
   packaging_artifact: "交付套件",
-  skill_publication: "Skill 發佈",
+  skill_publication: "小工具發佈",
 };
 
 export function Activity() {
@@ -199,7 +199,7 @@ function ActivityContext({ context }: { context: ActivityItem["context"] }) {
       {context.skill_id && (
         <li>
           <Link to="/skills/$skillId" params={{ skillId: context.skill_id }}>
-            {context.skill_name ?? "Skill"}
+            {context.skill_name ?? "小工具"}
           </Link>
         </li>
       )}
@@ -220,7 +220,7 @@ function ActivityContext({ context }: { context: ActivityItem["context"] }) {
             params={{ testCaseId: context.test_case_id }}
             search={context.skill_version_id ? { version: context.skill_version_id } : {}}
           >
-            Test Case
+            測試題
           </Link>
         </li>
       )}
@@ -238,7 +238,7 @@ function ActivityAction({
   if (continuation.kind === "run" && continuation.run_id) {
     return (
       <Link className="action-secondary" to="/runs/$runId" params={{ runId: continuation.run_id }}>
-        查看 Run
+        查看試跑紀錄
       </Link>
     );
   }

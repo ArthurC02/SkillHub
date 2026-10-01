@@ -80,7 +80,7 @@ export function SessionHeader({
       </nav>
       <AgentAvatar />
       <div className="bar-title">
-        <h1>和 Agent 一起創作 Skill</h1>
+        <h1>和 Agent 一起創作小工具</h1>
         <span className="creation-state">
           {session ? (
             <>
@@ -88,7 +88,7 @@ export function SessionHeader({
               {p && limits && ` · ${p.steps}／${limits.max_steps} 步`}
             </>
           ) : (
-            "說出任務，一步步做成你的 Skill"
+            "說出任務，一步步做成你的小工具"
           )}
         </span>
       </div>

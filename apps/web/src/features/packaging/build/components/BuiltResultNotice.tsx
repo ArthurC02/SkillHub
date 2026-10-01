@@ -17,7 +17,7 @@ export function BuiltResultNotice({
     <div>
       <p role="status">
         {built.duplicate
-          ? "已有相同套件：同一個版本、同一個目標、同一個 Test Case 選項先前就打過，這就是那一份，不是第二份。"
+          ? "已有相同套件：同一個版本、同一個目標、同一個測試題選項先前就打過，這就是那一份，不是第二份。"
           : "套件已建立。"}
       </p>
       <DownloadArtifactFacts artifact={built} />

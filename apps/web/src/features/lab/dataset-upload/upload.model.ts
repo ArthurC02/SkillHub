@@ -30,11 +30,11 @@ export function uploadRefusal(
     )}，沒有送出。`;
   }
   if (used.fileCount + 1 > limits.max_files_per_test_case) {
-    return `這個 Test Case 已經有 ${used.fileCount} 個檔案，達到上限 ${limits.max_files_per_test_case} 個，沒有送出。請先刪掉一個再上傳。`;
+    return `這個測試題已經有 ${used.fileCount} 個檔案，達到上限 ${limits.max_files_per_test_case} 個，沒有送出。請先刪掉一個再上傳。`;
   }
   const remaining = limits.max_test_case_bytes - used.totalBytes;
   if (file.size > remaining) {
-    return `這個 Test Case 還剩 ${roundedBytes(remaining)} 可用，${file.name} 是 ${roundedBytes(
+    return `這個測試題還剩 ${roundedBytes(remaining)} 可用，${file.name} 是 ${roundedBytes(
       file.size,
     )}，沒有送出。請先刪掉一些檔案再上傳。`;
   }

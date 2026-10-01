@@ -75,7 +75,7 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
           </button>{" "}
           <span className="note">
             {used === 0
-              ? "目前沒有任何一條有內容，儲存等於移除這個 Test Case 的 rubric。"
+              ? "目前沒有任何一條有內容，儲存等於移除這個測試題的 rubric。"
               : `目前 ${used} 條有內容。`}
           </span>
           {used > 0 && version.trim() === "" && (

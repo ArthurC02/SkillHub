@@ -334,9 +334,9 @@ export function ReferencesCard({
       id={pendingAction === "confirm_references" ? "creation-references-decision" : undefined}
       tabIndex={pendingAction === "confirm_references" ? -1 : undefined}
     >
-      <h4>參考 Skill</h4>
+      <h4>參考小工具</h4>
       {pendingAction === "confirm_references" && catalogChecked && (
-        <p>目錄裡已有相近的 Skill；你可以直接採用其中一個、以它們為參考，或從頭寫。</p>
+        <p>目錄裡已有相近的小工具；你可以直接採用其中一個、以它們為參考，或從頭寫。</p>
       )}
       <ReferenceList
         items={references}
@@ -376,7 +376,7 @@ export function DuplicatesCard({
 }) {
   return (
     <section id="creation-duplicate-decision" tabIndex={-1}>
-      <h4>目錄已有相近的 Skill</h4>
+      <h4>目錄已有相近的小工具</h4>
       <p>
         保存前 Go
         查了一次目錄：下面這些和你的草稿很接近。你可以直接採用其中一個，或仍然建立自己的版本。

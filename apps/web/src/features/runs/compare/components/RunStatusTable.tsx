@@ -13,7 +13,7 @@ function RunStatusHeader({ sides }: { sides: ComparisonSide[] }) {
         {sides.map((side, index) => (
           <th key={side.run_id} scope="col">
             <Link to="/runs/$runId" params={{ runId: side.run_id }}>
-              {SIDE_LABEL[index]} Run
+              {SIDE_LABEL[index]} 試跑紀錄
             </Link>
           </th>
         ))}
@@ -29,11 +29,11 @@ export function RunStatusTable({ sides }: { sides: ComparisonSide[] }) {
     <div
       className="table-scroll"
       role="region"
-      aria-label="Run 狀態比較表，可左右捲動"
+      aria-label="試跑狀態比較表，可左右捲動"
       tabIndex={0}
     >
       <table className="compare-table">
-        <caption>Run 任務判定與執行狀態對比</caption>
+        <caption>試跑紀錄任務判定與執行狀態對比</caption>
         <RunStatusHeader sides={sides} />
         <tbody>
           <tr>
@@ -51,7 +51,7 @@ export function RunStatusTable({ sides }: { sides: ComparisonSide[] }) {
             ))}
           </tr>
           <tr>
-            <th scope="row">Skill 版本</th>
+            <th scope="row">小工具版本</th>
             {sides.map((s) => (
               <td key={s.run_id}>
                 <Link
@@ -107,7 +107,7 @@ export function RunStatusTable({ sides }: { sides: ComparisonSide[] }) {
           </tr>
           <tr>
             <th scope="row">
-              Run 用掉的點數（下界）
+              試跑用掉的點數（下界）
               {sharedCostNote && <p className="note">{sharedCostNote}</p>}
             </th>
             {sides.map((s) => (

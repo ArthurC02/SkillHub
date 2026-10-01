@@ -12,9 +12,7 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
     <>
       <p>
         <strong>{artifact.file_name}</strong> <span className="badge">{artifact.target}</span>{" "}
-        <span className="badge">
-          {artifact.includes_test_cases ? "含 Test Case" : "不含 Test Case"}
-        </span>{" "}
+        <span className="badge">{artifact.includes_test_cases ? "含測試題" : "不含測試題"}</span>{" "}
         {(expired || lost || purged) && (
           <span className="badge badge-expired">
             {lost ? "檔案遺失" : purged ? "檔案不存在" : "已過期"}
@@ -79,7 +77,7 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
             </li>
           ) : (
             <li>
-              Skill Version ID：<code>{artifact.skill_version_id}</code>（v
+              小工具 Version ID：<code>{artifact.skill_version_id}</code>（v
               {artifact.version_number}）
             </li>
           )}

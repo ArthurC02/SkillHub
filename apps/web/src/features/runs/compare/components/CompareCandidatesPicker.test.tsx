@@ -79,7 +79,7 @@ function candidate(runId = "run-2", versionId = "version-1"): RunListItem {
     status: "succeeded",
     evaluation: { value: "met", label: "符合", note: "" },
     skill_id: "skill-1",
-    skill_name: "Skill",
+    skill_name: "小工具",
     skill_version_id: versionId,
     provider: "sandbox",
     cleanup_status: { value: "done", label: "已清理", note: "" },
@@ -89,17 +89,17 @@ function candidate(runId = "run-2", versionId = "version-1"): RunListItem {
 
 test("shows loading for the current run before its own load settles", async () => {
   await mount({ selfPending: true });
-  expect(text()).toContain("載入目前這次 Run");
+  expect(text()).toContain("載入目前這次試跑");
 });
 
 test("says the test case can no longer be resolved when the current run has none", async () => {
   await mount({ testCaseId: undefined });
-  expect(text()).toContain("這次 Run 的 Test Case 已無法解析");
+  expect(text()).toContain("這次試跑的測試題已無法解析");
 });
 
 test("says there is nothing to compare when the test case has no other runs", async () => {
   await mount({ candidates: [] });
-  expect(text()).toContain("這個 Test Case 目前只有這一次 Run");
+  expect(text()).toContain("這個測試題目前只有這一次試跑紀錄");
 });
 
 test("distinguishes candidate runs by immutable Version before choosing one", async () => {
@@ -160,8 +160,8 @@ test("gives runs from the same Version distinct accessible comparison names", as
   );
   expect(labels).toHaveLength(2);
   expect(new Set(labels)).toHaveProperty("size", 2);
-  expect(labels[0]).toContain("Run ID run-2");
-  expect(labels[1]).toContain("Run ID run-3");
+  expect(labels[0]).toContain("試跑紀錄 ID run-2");
+  expect(labels[1]).toContain("試跑紀錄 ID run-3");
 });
 
 test("keeps an unresolved owner Version ID without guessing a version number", async () => {
@@ -178,12 +178,12 @@ test("keeps an unresolved owner Version ID without guessing a version number", a
 test("keeps candidate Runs visible while Version numbers are loading", async () => {
   await mount({ candidates: [candidate()], versionsPending: true });
 
-  expect(text()).toContain("載入候選 Run 的 Version 編號");
+  expect(text()).toContain("載入候選試跑紀錄的 Version 編號");
   expect(text()).toContain("Version：編號載入中");
   expect(text()).not.toContain("Version IDversion-1");
 });
 
-test("offers older Runs when the current Test Case has another page", async () => {
+test("offers older Runs when the current 測試題 has another page", async () => {
   const onLoadMoreCandidates = vi.fn();
   await mount({
     candidates: [candidate()],
@@ -192,13 +192,13 @@ test("offers older Runs when the current Test Case has another page", async () =
   });
 
   const loadMore = Array.from(container.querySelectorAll("button")).find(
-    (item) => item.textContent === "載入更早的 Run",
+    (item) => item.textContent === "載入更早的試跑紀錄",
   )!;
   await act(async () => loadMore.click());
   expect(onLoadMoreCandidates).toHaveBeenCalledOnce();
 });
 
-test("keeps the older-Run control disabled while its next page is loading", async () => {
+test("keeps the older-試跑紀錄 control disabled while its next page is loading", async () => {
   await mount({
     candidates: [candidate()],
     hasMoreCandidates: true,
@@ -218,7 +218,7 @@ test("a Version read failure is not presented as a resolved or absent Version", 
   });
 
   expect(container.querySelector('[role="alert"]')?.textContent).toContain(
-    "候選 Run 的 Version 編號",
+    "候選試跑紀錄的 Version 編號",
   );
   expect(text()).toContain("Version：編號未知");
   expect(text()).toContain("version-1");

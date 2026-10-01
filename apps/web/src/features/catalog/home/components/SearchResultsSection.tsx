@@ -42,19 +42,19 @@ export function SearchResultsSection({
       )}
       {data.partial_index && (
         <p className="notice" role="status">
-          部分 Skill 尚未建立語意索引，只能靠關鍵字命中，沒有相似度可顯示，並排在最後。
+          部分小工具尚未建立語意索引，只能靠關鍵字命中，沒有相似度可顯示，並排在最後。
         </p>
       )}
       {data.truncated && (
         <p className="notice" role="status">
-          符合的 Skill 共 {data.total} 個，這裡只列出最接近的 {data.results.length} 個。
+          符合的小工具共 {data.total} 個，這裡只列出最接近的 {data.results.length} 個。
           目前沒有翻頁；縮小任務描述或加上篩選條件會讓排序更貼近你要的。
         </p>
       )}
 
       {data.filtered_out && (
         <div>
-          <p>有符合這個任務的 Skill，但全部被目前的篩選條件排除了。</p>
+          <p>有符合這個任務的小工具，但全部被目前的篩選條件排除了。</p>
           <p>放寬或清除下方的篩選條件即可看到它們。</p>
           <button type="button" onClick={onClearFilters}>
             清除所有篩選

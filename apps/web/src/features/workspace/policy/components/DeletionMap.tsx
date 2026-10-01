@@ -5,7 +5,7 @@ export function DeletionMap() {
     <ul className="risk-list">
       <li>
         <Link to="/library">資產庫</Link>
-        ：刪掉一個 Skill。版本快照會凍結保留，不隨這次刪除消失，誤刪還有救；別人 Fork
+        ：刪掉一個小工具。版本快照會凍結保留，不隨這次刪除消失，誤刪還有救；別人複製一份
         過的版本不受影響。
       </li>
       <li>
@@ -13,7 +13,7 @@ export function DeletionMap() {
         ：刪掉打包好的檔案。「你下載過幾次」的紀錄會留著，因為那件事發生過。
       </li>
       <li>
-        <Link to="/workspace/runs">Run 歷史</Link>：進到某一次 Run
+        <Link to="/workspace/runs">試跑紀錄</Link>：進到某一次試跑紀錄
         可以刪掉它的產出檔案。執行紀錄與評估判定保留，引用過該檔案的評估會顯示證據已不存在。
       </li>
       <li>

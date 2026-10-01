@@ -15,7 +15,7 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
       <section>
         <h2>試跑</h2>
         <div>
-          試跑屬於你的工作區。先登入並 Fork 一份，才會有屬於你的版本可以跑。 <SignInAction />
+          試跑屬於你的工作區。先登入並複製一份，才會有屬於你的版本可以跑。 <SignInAction />
         </div>
       </section>
     );
@@ -24,14 +24,14 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
     return (
       <section>
         <h2>試跑</h2>
-        <Loading what="這個 Skill 在你工作區的版本" />
+        <Loading what="這個小工具在你工作區的版本" />
       </section>
     );
   if (versions.error)
     return (
       <section>
         <h2>試跑</h2>
-        <ReadFailure error={versions.error} what="這個 Skill 的版本" />
+        <ReadFailure error={versions.error} what="這個小工具的版本" />
       </section>
     );
 
@@ -44,19 +44,18 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
         <>
           <p>
             <Link to="/lab/test-cases" search={{ skill: skillId, version: versionId }}>
-              此 Skill 的 Test Case
+              此小工具的測試題
             </Link>
           </p>
           <p className="note" data-role="teaching">
-            Test Case 是試跑用的草稿：User Prompt、測試資料與驗收條件。
+            測試題是試跑用的草稿：User Prompt、測試資料與驗收條件。
           </p>
         </>
       ) : (
         <p>
-          這個 Skill 不在你的工作區。Test Case 屬於工作區，所以 Test Case 清單裡看不到它、建立表單的
-          Skill 選單也選不到它——
-          <strong>要先 Fork 一份</strong>，才會有屬於你的版本可以試跑。下方的「Fork
-          到你的工作區」就是那一步。
+          這個小工具不在你的工作區。測試題屬於工作區，所以測試題清單裡看不到它、建立表單的小工具選單也選不到它——
+          <strong>要先複製一份</strong>
+          ，才會有屬於你的版本可以試跑。下方的「複製一份到你的工作區」就是那一步。
         </p>
       )}
     </section>

@@ -35,7 +35,7 @@ export function GenerateHistory() {
       <p className="note">
         這些是沒有建立任何版本的那幾次，最多列最近 {GENERATE_FAILURE_LIMIT} 次。
         <strong>這裡沒有記下你當時輸入的任務描述</strong>
-        ——那份文字跟著它產生的 Skill 走，刪掉 Skill 就跟著刪掉；這份紀錄保存得更久，
+        ——那份文字跟著它產生的小工具走，刪掉小工具就跟著刪掉；這份紀錄保存得更久，
         兩邊各留一份等於一個沒有人做過的保存承諾。
       </p>
     </details>

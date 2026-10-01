@@ -17,9 +17,9 @@ export function PreviewReport({ preview }: { preview: PackagingPreview }) {
       <Findings validation={preview.validation} />
       <Dependencies preview={preview} />
 
-      <h3>會一起打包的 Test Case</h3>
+      <h3>會一起打包的測試題</h3>
       {preview.included_test_cases.length === 0 ? (
-        <p className="note">沒有 Test Case 會進包。這不代表這個 Skill 沒有 Test Case。</p>
+        <p className="note">沒有測試題會進包。這不代表這個小工具沒有測試題。</p>
       ) : (
         <ul className="risk-list">
           {preview.included_test_cases.map((tc) => (
@@ -44,7 +44,7 @@ export function PreviewReport({ preview }: { preview: PackagingPreview }) {
         </ul>
       )}
 
-      <h3>不會進包的 Test Case</h3>
+      <h3>不會進包的測試題</h3>
       {preview.excluded_test_cases.length === 0 ? (
         <p className="note">沒有被排除的項目。</p>
       ) : (

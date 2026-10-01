@@ -105,7 +105,7 @@ export type CreationFocus = {
 const CREATION_FOCUS_BY_ACTION: Partial<Record<string, CreationFocus>> = {
   confirm_brief: {
     title: "確認任務與成功條件",
-    description: "核對 Skill 要完成的任務、驗收條件與範例輸入，再讓 Agent 繼續建構。",
+    description: "核對小工具要完成的任務、驗收條件與範例輸入，再讓 Agent 繼續建構。",
     target: "creation-brief-decision",
   },
   confirm_diagram: {
@@ -115,7 +115,7 @@ const CREATION_FOCUS_BY_ACTION: Partial<Record<string, CreationFocus>> = {
   },
   answer_diagram_uncertainties: {
     title: "釐清流程中的不確定處",
-    description: "回答圖片裡仍不明確的條件，讓 Agent 能依真實流程建構 Skill。",
+    description: "回答圖片裡仍不明確的條件，讓 Agent 能依真實流程建構小工具。",
     target: "creation-diagram-decision",
   },
   confirm_diagram_interpretation: {
@@ -129,13 +129,13 @@ const CREATION_FOCUS_BY_ACTION: Partial<Record<string, CreationFocus>> = {
     target: "creation-fetch-decision",
   },
   confirm_references: {
-    title: "確認參考 Skill",
+    title: "確認參考小工具",
     description: "檢查 Agent 找到的參考內容，決定哪些可以作為這次創作的依據。",
     target: "creation-references-decision",
   },
   confirm_duplicate: {
-    title: "處理可能重複的 Skill",
-    description: "比較現有 Skill 與目前草稿，再決定沿用、調整或繼續建立。",
+    title: "處理可能重複的小工具",
+    description: "比較現有小工具與目前草稿，再決定沿用、調整或繼續建立。",
     target: "creation-duplicate-decision",
   },
 };
@@ -332,11 +332,11 @@ export function compositionMode(file: File | undefined, referenceCount: number):
 
 export function compositionProblem(note: string, hasFile: boolean, referenceCount: number) {
   if (!hasFile && referenceCount === 0 && !note)
-    return "還沒有要送出的內容：寫一句話，或附上流程圖、挑一個參考 Skill。";
+    return "還沒有要送出的內容：寫一句話，或附上流程圖、挑一個參考小工具。";
   if ([...note].length > MAX_MESSAGE_RUNES)
     return `文字說明最多 ${MAX_MESSAGE_RUNES} 字，目前 ${[...note].length} 字，請先剪短。`;
   if (hasFile && referenceCount > 0)
-    return "流程圖和參考 Skill 一次只能送一種。先送其中一種，Agent 讀完之後再送另一種；文字說明可以跟著任一種一起送。";
+    return "流程圖和參考小工具一次只能送一種。先送其中一種，Agent 讀完之後再送另一種；文字說明可以跟著任一種一起送。";
   return undefined;
 }
 

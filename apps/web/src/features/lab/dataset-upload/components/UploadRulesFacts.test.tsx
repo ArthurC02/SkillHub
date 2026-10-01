@@ -60,7 +60,7 @@ test("shows the retention window the server reported", async () => {
 test("says it is still reading usage when the usage query has not settled", async () => {
   await mount(<UploadRulesFacts limits={LIMITS} used={undefined} testCase="tc-1" />);
 
-  expect(text()).toContain("正在讀這個 Test Case 已經用掉多少");
+  expect(text()).toContain("正在讀這個測試題已經用掉多少");
 });
 
 test("shows remaining budget, computed from the limit minus what is already used", async () => {
@@ -91,5 +91,5 @@ test("names no test case link when none is chosen yet", async () => {
   );
 
   expect(container.querySelector("a")).toBeNull();
-  expect(text()).toContain("Test Case 頁的「測試資料」那一節");
+  expect(text()).toContain("測試題頁的「測試資料」那一節");
 });

@@ -124,8 +124,8 @@ test("IA-6 `unauthenticated` is true for a 401 and for nothing else", () => {
 });
 
 test("IA-6 the 401 state says it in 繁體中文 and carries the login action", async () => {
-  await render(<LoginRequired what="你的 Skill 清單" />, () => text().includes("需要登入"));
-  expect(text()).toContain("你的 Skill 清單需要登入。");
+  await render(<LoginRequired what="你的小工具清單" />, () => text().includes("需要登入"));
+  expect(text()).toContain("你的小工具清單需要登入。");
   assertHonestArrival();
   expect(container.querySelector("[role=status]")).not.toBeNull();
   expect(container.querySelector("[role=alert]")).toBeNull();
@@ -181,8 +181,8 @@ test("IA-6 /library — a nav destination stops printing the server's English", 
 test("IA-6 /lab/test-cases — both reads on the page answer, not just the first", async () => {
   loggedOutPlatform();
   await render(<TestCaseList />, () => settled());
-  expect(text()).toContain(" Test Case需要登入。");
-  expect(text()).toContain("你的 Skill 清單需要登入。");
+  expect(text()).toContain("測試題需要登入。");
+  expect(text()).toContain("你的小工具清單需要登入。");
   assertHonestArrival();
 });
 
@@ -191,7 +191,7 @@ test("IA-6 /workspace/import says it BEFORE the file picker, not after (設計 �
   await render(<ImportSkill />, () =>
     settled(() => container.querySelector("form") !== null || text().includes("需要登入")),
   );
-  expect(text()).toContain("匯入 Skill需要登入。");
+  expect(text()).toContain("匯入小工具需要登入。");
   expect(container.querySelector("form")).toBeNull();
   expect(container.querySelector("input[type=file]")).toBeNull();
   assertHonestArrival();
@@ -202,13 +202,13 @@ test("IA-6 /runs/$runId/compare says it before an id is typed in", async () => {
   await render(<RunCompare />, () =>
     settled(() => container.querySelector("#against") !== null || text().includes("需要登入")),
   );
-  expect(text()).toContain("Run 比較需要登入。");
+  expect(text()).toContain("試跑比較需要登入。");
   expect(container.querySelector("#against")).toBeNull();
-  expect(text()).not.toContain("輸入另一個 Run 的 ID 後開始比較");
+  expect(text()).not.toContain("輸入另一筆試跑紀錄的 ID 後開始比較");
   assertHonestArrival();
 });
 
-test("IA-6 the Run preflight asks a logged-out visitor to sign in before loading context", async () => {
+test("IA-6 the 試跑紀錄 preflight asks a logged-out visitor to sign in before loading context", async () => {
   loggedOutPlatform();
   await render(<RunPreflight />, () =>
     settled(() => text().includes("兩個 ID") || text().includes("需要登入")),
@@ -272,13 +272,13 @@ test("SEC/§2.2 the import screen states the rules it is enforced by, before the
   );
 });
 
-test("IA-6 precedent: ForkAction tells a visitor what logging in buys (SkillDetail)", async () => {
+test("IA-6 precedent: 複製一份Action tells a visitor what logging in buys (小工具Detail)", async () => {
   loggedOutPlatform();
-  await render(<SkillDetail />, () => text().includes("Fork"));
-  expect(text()).toContain("登入後即可 Fork 這個 Skill 到你的工作區。");
+  await render(<SkillDetail />, () => text().includes("複製一份"));
+  expect(text()).toContain("登入後即可把這個小工具複製到你的工作區。");
   expect(
     Array.from(container.querySelectorAll("button")).some((b) =>
-      (b.textContent ?? "").includes("以這個 Skill 為起點"),
+      (b.textContent ?? "").includes("以這個小工具為起點"),
     ),
   ).toBe(false);
   expect(text()).not.toContain("not authenticated");

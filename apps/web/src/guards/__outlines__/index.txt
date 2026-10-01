@@ -1,2 +1,2 @@
-h1 探索能直接採用的 Agent Skill
-h2 符合「pdf 摘要」的 Skill
+h1 探索能直接採用的 Agent 小工具
+h2 符合「pdf 摘要」的小工具

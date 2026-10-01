@@ -24,7 +24,7 @@ async function mount() {
         <p>
           可以關掉這一頁（平台在跑，不是你的瀏覽器）。
           <Tip anchor="為什麼可以關掉這一頁">
-            Run 是資料庫裡的一個工作，由平台的 worker 消費；瀏覽器不在那條路徑上。
+            試跑紀錄是資料庫裡的一個工作，由平台的 worker 消費；瀏覽器不在那條路徑上。
           </Tip>
         </p>
       </StrictMode>,

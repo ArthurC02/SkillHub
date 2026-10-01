@@ -25,7 +25,7 @@ import type { DataRetentionPolicy } from "../../core/api/types";
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const TEST_CASE = "55555555-5555-5555-5555-555555555555";
 const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
-const CANCEL_NOTE = "已送出取消要求；在工作負載真的停下來之前，這個 Run 會維持目前的狀態。";
+const CANCEL_NOTE = "已送出取消要求；在工作負載真的停下來之前，這次試跑會維持目前的狀態。";
 const ARTIFACT = "33333333-3333-3333-3333-333333333333";
 
 let container: HTMLDivElement;
@@ -126,7 +126,7 @@ const RUN_ROW = {
   evaluation: {
     value: "met",
     label: "符合",
-    note: "依這個 Run 當時的驗收條件判定為符合。",
+    note: "依這次試跑當時的驗收條件判定為符合。",
   },
   created_at: "2026-08-17T00:00:00Z",
   finished_at: "2026-08-17T00:04:00Z",
@@ -144,7 +144,7 @@ test("WS-004 an activity row words `succeeded` as execution, never as a pass", a
   expect(text()).not.toContain("成功");
 });
 
-test("an activity row returns directly to its owner-backed Skill, Version and Test Case", async () => {
+test("an activity row returns directly to its owner-backed 小工具, Version and 測試題", async () => {
   vi.stubGlobal("fetch", () => json({ runs: [{ ...RUN_ROW, test_case_id: TEST_CASE }] }));
   await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
 
@@ -154,18 +154,16 @@ test("an activity row returns directly to its owner-backed Skill, Version and Te
     row.querySelector(`a[href="/skills/${SKILL}/versions/${RUN_ROW.skill_version_id}"]`)
       ?.textContent,
   ).toBe("這次的版本");
-  expect(row.querySelector(`a[href="/lab/test-cases/${TEST_CASE}"]`)?.textContent).toBe(
-    "Test Case",
-  );
+  expect(row.querySelector(`a[href="/lab/test-cases/${TEST_CASE}"]`)?.textContent).toBe("測試題");
   expect(row.querySelector(`a[href="/runs/${RUN}"]`)?.textContent).toBe("查看結果");
 });
 
-test("a historic activity row without a Test Case id does not invent a Test Case link", async () => {
+test("a historic activity row without a 測試題 id does not invent a 測試題 link", async () => {
   vi.stubGlobal("fetch", () => json({ runs: [RUN_ROW] }));
   await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
 
   const row = container.querySelector(".download-item")!;
-  expect(row.textContent).not.toContain("Test Case");
+  expect(row.textContent).not.toContain("測試題");
   expect(row.querySelector(`a[href="/skills/${SKILL}"]`)).not.toBeNull();
   expect(
     row.querySelector(`a[href="/skills/${SKILL}/versions/${RUN_ROW.skill_version_id}"]`),
@@ -179,13 +177,13 @@ test("WS-004 activity groups every run by the decision its server facts support"
         {
           ...RUN_ROW,
           run_id: "run-decision",
-          skill_name: "需要判斷的 Skill",
+          skill_name: "需要判斷的小工具",
           evaluation: { value: "partially_met", label: "部分符合", note: "仍需判斷。" },
         },
         {
           ...RUN_ROW,
           run_id: "run-active",
-          skill_name: "執行中的 Skill",
+          skill_name: "執行中的小工具",
           status: "running",
           finished_at: undefined,
           evaluation: { value: "not_evaluated", label: "未評估", note: "還在跑。" },
@@ -193,14 +191,14 @@ test("WS-004 activity groups every run by the decision its server facts support"
         {
           ...RUN_ROW,
           run_id: "run-failed",
-          skill_name: "執行失敗的 Skill",
+          skill_name: "執行失敗的小工具",
           status: "failed",
           evaluation: { value: "not_evaluated", label: "未評估", note: "沒有判定。" },
         },
         {
           ...RUN_ROW,
           run_id: "run-evaluation-failed",
-          skill_name: "評估失敗的 Skill",
+          skill_name: "評估失敗的小工具",
           evaluation: {
             value: "evaluation_failed",
             label: "評估失敗",
@@ -210,31 +208,31 @@ test("WS-004 activity groups every run by the decision its server facts support"
         {
           ...RUN_ROW,
           run_id: "run-cancelled",
-          skill_name: "已取消的 Skill",
+          skill_name: "已取消的小工具",
           status: "cancelled",
           evaluation: { value: "not_evaluated", label: "未評估", note: "沒有判定。" },
         },
-        { ...RUN_ROW, run_id: "run-recent", skill_name: "最近完成的 Skill" },
+        { ...RUN_ROW, run_id: "run-recent", skill_name: "最近完成的小工具" },
       ],
     }),
   );
-  await render(<WorkspaceRuns />, () => text().includes("最近完成的 Skill"));
+  await render(<WorkspaceRuns />, () => text().includes("最近完成的小工具"));
 
   const sectionText = (heading: string) =>
     Array.from(container.querySelectorAll("h2"))
       .find((node) => node.textContent === heading)
       ?.closest("section")?.textContent ?? "";
 
-  expect(sectionText("需要留意")).toContain("需要判斷的 Skill");
-  expect(sectionText("需要留意")).toContain("執行失敗的 Skill");
-  expect(sectionText("需要留意")).toContain("評估失敗的 Skill");
+  expect(sectionText("需要留意")).toContain("需要判斷的小工具");
+  expect(sectionText("需要留意")).toContain("執行失敗的小工具");
+  expect(sectionText("需要留意")).toContain("評估失敗的小工具");
   expect(sectionText("需要留意")).toContain("檢視證據");
   expect(sectionText("需要留意")).toContain("查看原因");
   expect(sectionText("需要留意")).toContain("查看評估狀態");
-  expect(sectionText("執行中")).toContain("執行中的 Skill");
+  expect(sectionText("執行中")).toContain("執行中的小工具");
   expect(sectionText("執行中")).toContain("查看進度");
-  expect(sectionText("最近結束")).toContain("最近完成的 Skill");
-  expect(sectionText("最近結束")).toContain("已取消的 Skill");
+  expect(sectionText("最近結束")).toContain("最近完成的小工具");
+  expect(sectionText("最近結束")).toContain("已取消的小工具");
   expect(sectionText("最近結束")).toContain("查看結果");
   expect(container.querySelectorAll(".download-item")).toHaveLength(6);
 });
@@ -264,7 +262,7 @@ test("O11Y-004 the policy event table keeps its accessible columns in mobile car
       free_text: "Participant written feedback",
       kind: [],
       page_path: "The current route",
-      run_id: "The current Run",
+      run_id: "The current 試跑紀錄",
       on_account_deletion: "Feedback is retained",
       retention_days: null,
     },
@@ -315,7 +313,7 @@ test("WS-004 an unevaluated run says 未評估, which is not a blank and not a p
           evaluation: {
             value: "not_evaluated",
             label: "未評估",
-            note: "這個 Run 還沒有任務判定。執行狀態說的是工作負載跑完了沒有,不是任務有沒有做到。",
+            note: "這次試跑還沒有任務判定。執行狀態說的是工作負載跑完了沒有,不是任務有沒有做到。",
           },
         },
         {
@@ -397,7 +395,7 @@ test("WS-004 a cleanup state the client does not recognise is still rendered as 
 
 test("WS-002 empty activity says nothing ran, not that records were cleared", async () => {
   vi.stubGlobal("fetch", () => json({ runs: [] }));
-  await render(<WorkspaceRuns />, () => text().includes("還沒有跑過任何 Run"));
+  await render(<WorkspaceRuns />, () => text().includes("還沒有做過任何試跑"));
 
   expect(text()).toContain("不是紀錄被清掉了");
 });
@@ -410,12 +408,12 @@ const SCANNED = {
     disclosures: [
       { code: "script-file", label: "含可執行 Script 檔案", note: "平台不曾執行它們。" },
     ],
-    note: "來自匯入時的靜態掃描,不執行套件內任何程式碼;開啟 Skill 可看逐項結果。",
+    note: "來自匯入時的靜態掃描,不執行套件內任何程式碼;開啟小工具可看逐項結果。",
   },
   verification: {
     value: "scanned",
     label: "已掃描",
-    note: "匯入這個版本時做過靜態掃描,不執行套件內任何程式碼;逐項結果在 Skill 頁面。",
+    note: "匯入這個版本時做過靜態掃描,不執行套件內任何程式碼;逐項結果在小工具頁面。",
     scanned_at: "2026-08-01T10:00:00Z",
   },
 } as const;
@@ -431,7 +429,7 @@ const FORKED = {
   verification: {
     value: "not_measured",
     label: "未測量",
-    note: "這個版本是 Fork 進來的複本,靜態掃描是在來源工作區做的,平台沒有在你的工作區重跑。",
+    note: "這個版本是複製一份進來的複本,靜態掃描是在來源工作區做的,平台沒有在你的工作區重跑。",
     scanned_at: null,
   },
 } as const;
@@ -466,8 +464,8 @@ test("WS-004 a gallery card flags only what stops the skill being taken away", a
         },
         {
           skill_id: "s-2",
-          name: "Fork 來的",
-          summary: "從目錄 Fork 的。",
+          name: "複製而來",
+          summary: "從目錄複製一份的。",
           redistribution: "allowed",
           access_restriction: null,
           forked_from_skill_id: "s-origin",
@@ -489,7 +487,7 @@ test("WS-004 a gallery card flags only what stops the skill being taken away", a
   expect(flags("平台生成的")).toContain("平台生成，未經人工檢視");
   expect(flags("自己匯入的")).not.toContain("可下載");
   expect(text(), "a card that can be taken away still says so").not.toContain("可打包下載");
-  expect(text()).toContain("已顯示 4 / 137 個 Skill");
+  expect(text()).toContain("已顯示 4 / 137 個小工具");
   expect(button("載入更多")).toBeDefined();
 
   expect(text(), "清單有列的時候，那句『公開目錄的不在』才是它在做的事").toContain(
@@ -503,8 +501,8 @@ test("WS-004 a forked card reaches its source from the manage menu, and claims n
       skills: [
         {
           skill_id: SKILL,
-          name: "Fork 來的",
-          summary: "從目錄 Fork 的。",
+          name: "複製而來",
+          summary: "從目錄複製一份的。",
           redistribution: "allowed",
           access_restriction: null,
           forked_from_skill_id: "s-origin",
@@ -515,7 +513,7 @@ test("WS-004 a forked card reaches its source from the manage menu, and claims n
       truncated: false,
     }),
   );
-  await render(<WorkspaceSkills />, () => text().includes("從目錄 Fork 的"));
+  await render(<WorkspaceSkills />, () => text().includes("從目錄複製一份的"));
 
   const menu = container.querySelector(".skill-menu")!;
   expect(Array.from(menu.querySelectorAll("a"), (a) => a.getAttribute("href"))).toContain(
@@ -580,7 +578,7 @@ test("WS-004 the own-skills list links each row on to its files and packaging", 
 
 test("IA-9 the empty own-skills list offers importing as a link, not as prose", async () => {
   vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false }));
-  await render(<WorkspaceSkills />, () => text().includes("還沒有任何 Skill"));
+  await render(<WorkspaceSkills />, () => text().includes("還沒有任何小工具"));
 
   const hrefs = Array.from(container.querySelectorAll("a")).map(
     (a) => a.getAttribute("href") ?? "",
@@ -594,7 +592,7 @@ test("IA-9 the empty own-skills list offers importing as a link, not as prose", 
 
 test("空清單先說它是哪一種空，三張建立卡才是它的動作（§3 checklist 第 1 條）", async () => {
   vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false }));
-  await render(<WorkspaceSkills />, () => text().includes("還沒有任何 Skill"));
+  await render(<WorkspaceSkills />, () => text().includes("還沒有任何小工具"));
 
   const absence = Array.from(container.querySelectorAll("p")).find((p) =>
     p.textContent?.includes("不是讀取失敗"),
@@ -604,7 +602,7 @@ test("空清單先說它是哪一種空，三張建立卡才是它的動作（§
   expect(hub, "建立中心不見了").toBeTruthy();
   expect(
     Boolean(absence!.compareDocumentPosition(hub!) & Node.DOCUMENT_POSITION_FOLLOWING),
-    "「還沒有任何 Skill」必須排在「新增到資產庫」之前：答案先出來，動作在後面",
+    "「還沒有任何小工具」必須排在「新增到資產庫」之前：答案先出來，動作在後面",
   ).toBe(true);
 });
 
@@ -731,13 +729,13 @@ test("資產庫新增入口 states the invite requirement beside the Catalog pat
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
 
   const card = Array.from(hub()!.querySelectorAll("li")).find((li) =>
-    (li.textContent ?? "").includes("從 Catalog Fork"),
+    (li.textContent ?? "").includes("從 Catalog 複製一份"),
   );
   expect(card, "the from-catalogue card is missing").toBeTruthy();
   const copy = (card!.textContent ?? "").replace(/\s+/g, "");
-  expect(copy).toContain("平台目前只讓有封測邀請的帳號Fork。");
+  expect(copy).toContain("平台目前只讓有封測邀請的帳號複製一份。");
   expect(copy.indexOf("平台"), "這一句沒有以強制者開頭").toBe(
-    copy.indexOf("平台目前只讓有封測邀請的帳號Fork。"),
+    copy.indexOf("平台目前只讓有封測邀請的帳號複製一份。"),
   );
   expect(Array.from(card!.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toContain("/");
 });
@@ -747,7 +745,7 @@ test("資產庫新增入口 ⛔ with the flag off, the hub has no generation pat
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
 
   expect(hubText()).toContain("匯入套件");
-  expect(hubText()).toContain("從CatalogFork");
+  expect(hubText()).toContain("從Catalog複製一份");
 
   expect(hub()!.querySelector("#generate-task")).toBeNull();
   expect(hubText()).not.toContain("生成");
@@ -756,7 +754,7 @@ test("資產庫新增入口 ⛔ with the flag off, the hub has no generation pat
 
 test("空資產庫 uses the full cards to teach each intake path", async () => {
   vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false }));
-  await render(<WorkspaceSkills />, () => text().includes("還沒有任何 Skill"));
+  await render(<WorkspaceSkills />, () => text().includes("還沒有任何小工具"));
 
   expect(hub()!.querySelectorAll('[data-role="teaching"]').length).toBe(2);
 });
@@ -769,7 +767,7 @@ test("有內容的資產庫 keeps every compact intake path and the invite rule"
   expect(hub()!.querySelectorAll("a").length).toBe(3);
   expect(hub()!.querySelector(".create-links")).not.toBeNull();
   expect(hub()!.querySelector(".create-cards")).toBeNull();
-  expect(hubText()).toContain("平台目前只讓有封測邀請的帳號Fork。");
+  expect(hubText()).toContain("平台目前只讓有封測邀請的帳號複製一份。");
 });
 
 test("資產庫 with the flag on, the Studio entry appears exactly once on the page", async () => {
@@ -793,7 +791,7 @@ test("WS-005 deleting a skill says what survives it before anything is destroyed
       return json({
         deleted: true,
         versions_retained: 2,
-        note: "已從你的工作區、清單與搜尋移除；版本快照維持凍結，這次刪除不會移除它們；Fork 引用的共用套件物件不受影響",
+        note: "已從你的工作區、清單與搜尋移除；版本快照維持凍結，這次刪除不會移除它們；複製一份引用的共用套件物件不受影響",
       });
     }
     return json({
@@ -805,7 +803,7 @@ test("WS-005 deleting a skill says what survives it before anything is destroyed
   await act(async () => button("刪除")?.click());
   expect(text()).toContain("版本快照會凍結保留");
   expect(text()).not.toContain("再清除");
-  expect(text()).toContain("別人 Fork 過的版本");
+  expect(text()).toContain("別人 複製過的版本");
   expect(calls.some(([, method]) => method === "DELETE")).toBe(false);
 
   await act(async () => button("確認刪除")?.click());
@@ -826,7 +824,7 @@ const ME = {
 };
 
 const DELETION_SCOPE =
-  "寬限期結束前，你的帳號照常可用。到期後，你上傳的資料集、Run 產出，以及沒有任何人 Fork 或執行過的 Skill 會連同檔案永久刪除。被其他使用者 Fork 過、或歷史 Run 使用過的 Skill 版本會保留（它們的內容是別人的來源鏈），但你的身分會從上面移除，顯示為已刪除的使用者所有。";
+  "寬限期結束前，你的帳號照常可用。到期後，你上傳的資料集、試跑產出，以及沒有任何人複製一份或執行過的小工具會連同檔案永久刪除。被其他使用者 複製過、或歷史試跑紀錄使用過的小工具版本會保留（它們的內容是別人的來源鏈），但你的身分會從上面移除，顯示為已刪除的使用者所有。";
 
 const BALANCE = {
   balance_credits: 120,
@@ -1080,8 +1078,8 @@ const ARTIFACT_ROW = {
   latest_version_number: 5,
   version_state: {
     value: "superseded",
-    label: "v2（這個 Skill 已經到 v5）",
-    note: "這一份是 v2 的內容,而且不會改變——版本是不可變的。要拿 v5 的內容,回到該 Skill 對 v5 重新打包一次。",
+    label: "v2（這個小工具已經到 v5）",
+    note: "這一份是 v2 的內容,而且不會改變——版本是不可變的。要拿 v5 的內容,回到該小工具對 v5 重新打包一次。",
   },
   expires_at: "2099-01-01T00:00:00Z",
   created_at: "2026-08-17T00:00:00Z",
@@ -1093,7 +1091,7 @@ test("WS-004 a download row says which version it is and whether a newer one exi
   vi.stubGlobal("fetch", () => json({ downloads: [ARTIFACT_ROW] }));
   await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
 
-  expect(text()).toContain("v2（這個 Skill 已經到 v5）");
+  expect(text()).toContain("v2（這個小工具已經到 v5）");
   expect(text()).toContain("重新打包");
   expect(text()).toContain("可下載");
   expect(container.querySelector('a[href*="/content"]')).not.toBeNull();
@@ -1198,8 +1196,8 @@ test("RUN-002 says when the sandbox had to drop some output files", async () => 
   await render(<RunTrace />, () => text().includes("有些產出未被收集"));
 
   expect(text()).toContain("清單只保留成功收集的檔案");
-  expect(text()).toContain("無法據此判定這次 Run 沒有產生檔案");
-  expect(text()).not.toContain("這次 Run 沒有留下任何檔案產出");
+  expect(text()).toContain("無法據此判定這次試跑沒有產生檔案");
+  expect(text()).not.toContain("這次試跑沒有留下任何檔案產出");
 });
 
 test("WS-004 a package nobody downloaded says so instead of loading an empty list", async () => {
@@ -1262,7 +1260,7 @@ test("SKILL-002 an import invalidates the Library, and does not re-run the searc
   queryClient.setQueryData(["own-skills"], { skills: [] });
   queryClient.setQueryData(["skills", "search", "pdf"], { results: [] });
 
-  await render(<ImportSkill />, () => text().includes("匯入 Skill"));
+  await render(<ImportSkill />, () => text().includes("匯入小工具"));
   const input = container.querySelector<HTMLInputElement>('input[type="url"]')!;
   await act(async () => {
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.bind(
@@ -1296,9 +1294,9 @@ test("RUN-005 cancelling a run invalidates its trace and its row, not every trac
 
   await render(
     <CancelRunControl runId={RUN} status="running" />,
-    () => button("取消這個 Run") !== undefined,
+    () => button("取消這次試跑") !== undefined,
   );
-  await act(async () => button("取消這個 Run")?.click());
+  await act(async () => button("取消這次試跑")?.click());
   await act(async () => button("確認取消")?.click());
   await waitFor(() => text().includes(CANCEL_NOTE));
 
@@ -1319,9 +1317,9 @@ test("04 丙-143(c): cancelling a run that needs login says so, not the raw serv
 
   await render(
     <CancelRunControl runId={RUN} status="running" />,
-    () => button("取消這個 Run") !== undefined,
+    () => button("取消這次試跑") !== undefined,
   );
-  await act(async () => button("取消這個 Run")?.click());
+  await act(async () => button("取消這次試跑")?.click());
   await act(async () => button("確認取消")?.click());
   await waitFor(() => text().includes("需要登入"));
 
@@ -1338,9 +1336,9 @@ test("04 丙-143(c): cancelling a run that already ended says so (409)", async (
 
   await render(
     <CancelRunControl runId={RUN} status="running" />,
-    () => button("取消這個 Run") !== undefined,
+    () => button("取消這次試跑") !== undefined,
   );
-  await act(async () => button("取消這個 Run")?.click());
+  await act(async () => button("取消這次試跑")?.click());
   await act(async () => button("確認取消")?.click());
   await waitFor(() => text().includes("已經結束"));
 });
@@ -1348,7 +1346,7 @@ test("04 丙-143(c): cancelling a run that already ended says so (409)", async (
 test("a run in a terminal status shows no cancel button and no confirm dialog", async () => {
   await render(<CancelRunControl runId={RUN} status="succeeded" />, () => true);
 
-  expect(button("取消這個 Run")).toBeUndefined();
+  expect(button("取消這次試跑")).toBeUndefined();
   expect(text()).not.toContain("確定要取消？");
 });
 
@@ -1392,14 +1390,14 @@ function stubDetailAsSignedIn(versions: unknown) {
 }
 
 const trialSectionAnswered = () =>
-  text().includes("此 Skill 的 Test Case") || text().includes("這個 Skill 不在你的工作區");
+  text().includes("此小工具的測試題") || text().includes("這個小工具不在你的工作區");
 
-test("丙-116 試跑 on a skill in your own workspace still links to its Test Cases", async () => {
+test("丙-116 試跑 on a skill in your own workspace still links to its 測試題", async () => {
   stubDetailAsSignedIn(SKILL_VERSIONS);
   await render(<SkillDetail />, trialSectionAnswered);
 
-  expect(text()).toContain("此 Skill 的 Test Case");
-  expect(text()).not.toContain("這個 Skill 不在你的工作區");
+  expect(text()).toContain("此小工具的測試題");
+  expect(text()).not.toContain("這個小工具不在你的工作區");
 });
 
 test("丙-116 試跑 on somebody else's skill says so BEFORE the corridor, not after it", async () => {
@@ -1410,10 +1408,10 @@ test("丙-116 試跑 on somebody else's skill says so BEFORE the corridor, not a
   // with one space, so where the break lands decides whether a full-width
   // comma grows an extra space after it.
   expect(text()).toContain(
-    "這個 Skill 不在你的工作區。Test Case 屬於工作區，所以 Test Case 清單裡看不到它、建立表單的 Skill 選單也選不到它——要先 Fork 一份，才會有屬於你的版本可以試跑。下方的「Fork 到你的工作區」就是那一步。",
+    "這個小工具不在你的工作區。測試題屬於工作區，所以測試題清單裡看不到它、建立表單的小工具選單也選不到它——要先複製一份，才會有屬於你的版本可以試跑。下方的「複製一份到你的工作區」就是那一步。",
   );
   expect(text()).toContain("選單也選不到它");
-  expect(text()).not.toContain("此 Skill 的 Test Case");
+  expect(text()).not.toContain("此小工具的測試題");
 });
 
 test("丙-116 the one action that does work is a named section, not a bare button", async () => {
@@ -1421,8 +1419,8 @@ test("丙-116 the one action that does work is a named section, not a bare butto
   await render(<SkillDetail />, trialSectionAnswered);
 
   const headings = Array.from(container.querySelectorAll("h2,h3")).map((h) => h.textContent);
-  expect(headings).toContain("Fork 到你的工作區");
-  expect(button("以這個 Skill 為起點建立我自己的")).not.toBeUndefined();
+  expect(headings).toContain("複製一份到你的工作區");
+  expect(button("以這個小工具為起點建立我自己的")).not.toBeUndefined();
 });
 
 test("§2.12 第 6 條 activity with a run still going says how old it is and can be refreshed", async () => {
@@ -1640,7 +1638,7 @@ test("PACK-018 匯出為 Plugin 成功後顯示下載連結，且揭露句在按
   });
   await render(<BundleSection />, () => text().includes("pdf-toolkit-export"));
 
-  expect(text()).toContain("Plugin 只含 Agent Skill，不含 MCP 設定或宿主專屬元件。");
+  expect(text()).toContain("Plugin 只含 Agent 小工具，不含 MCP 設定或宿主專屬元件。");
 
   await act(async () => button("匯出 v1.0.0 Plugin")?.click());
   await waitFor(() => text().includes("pdf-toolkit-1.0.0-plugin.zip"));

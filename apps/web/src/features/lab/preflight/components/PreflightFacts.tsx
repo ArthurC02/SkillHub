@@ -33,7 +33,7 @@ export function PreflightFacts({
             <p>{cost.basis}</p>
           </>
         ) : (
-          <>未測量——這個伺服器版本沒有回報預估點數，不代表這次 Run 不用點。</>
+          <>未測量——這個伺服器版本沒有回報預估點數，不代表這次試跑不用點。</>
         )}
       </dd>
       {quota && (
@@ -44,8 +44,8 @@ export function PreflightFacts({
             額度下一次增加不會早於 <Timestamp at={quota.window_resets_at} />。
             <p className="note">
               上限：每日 {quota.limits.daily} 次、每 {quota.limits.window_days} 天{" "}
-              {quota.limits.window} 次、同時進行 {quota.limits.concurrent} 個。 這些數字就是建立 Run
-              時擋你的那一份計數，不是另外顯示的估計。
+              {quota.limits.window} 次、同時進行 {quota.limits.concurrent} 個。
+              這些數字就是開始試跑時採用的計數，不是另外顯示的估計。
             </p>
           </dd>
         </>
@@ -100,7 +100,7 @@ export function PreflightFacts({
         ) : (
           <>
             {summary.injected_secrets.join("、")}
-            <p>只顯示名稱;實際值為每個 Run 專屬的短效憑證,不會顯示於任何畫面。</p>
+            <p>只顯示名稱;實際值為每個試跑紀錄專屬的短效憑證,不會顯示於任何畫面。</p>
           </>
         )}
       </dd>

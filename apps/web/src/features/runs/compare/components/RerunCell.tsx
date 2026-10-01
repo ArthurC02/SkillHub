@@ -6,7 +6,7 @@ export function RerunCell({ side }: { side: ComparisonSide }) {
     return <>已刪除或已過期，無法以相同輸入重跑；比較內容本身不受影響。</>;
   }
   if (!side.test_case_id) {
-    return <>仍在。可用同一個 Test Case 重新試跑，仍須通過執行前權限確認。</>;
+    return <>仍在。可用同一個測試題重新試跑，仍須通過執行前權限確認。</>;
   }
   return (
     <>
@@ -16,7 +16,7 @@ export function RerunCell({ side }: { side: ComparisonSide }) {
         params={{ skillId: side.skill_id, testCaseId: side.test_case_id }}
         search={{ version: side.skill_version_id }}
       >
-        以相同的 Test Case 與版本重新試跑
+        以相同的測試題與版本重新試跑
       </Link>
       （會先經過權限確認）
     </>

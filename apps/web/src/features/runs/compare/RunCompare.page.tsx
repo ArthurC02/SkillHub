@@ -58,7 +58,7 @@ export function RunCompare() {
 
   return (
     <section>
-      <h1>Run 比較</h1>
+      <h1>試跑比較</h1>
       {self.data && (
         <SkillWorkspaceNav
           skillId={self.data.skill_id}
@@ -70,7 +70,7 @@ export function RunCompare() {
       {comparison.data && <ComparisonLead data={comparison.data} />}
 
       <details>
-        <summary>進階資訊（Run 識別碼）</summary>
+        <summary>進階資訊（試跑紀錄識別碼）</summary>
         <ul>
           <li>
             這一邊：<code>{runId}</code>
@@ -80,10 +80,10 @@ export function RunCompare() {
       </details>
 
       {loggedOut ? (
-        <LoginRequired what="Run 比較" />
+        <LoginRequired what="試跑比較" />
       ) : comparison.data ? (
         <details>
-          <summary>換一個要比較的 Run</summary>
+          <summary>換一個要比較的試跑紀錄</summary>
           {pickForm}
         </details>
       ) : (
@@ -98,7 +98,7 @@ export function RunCompare() {
 
       <p className="note">
         <Link to="/runs/$runId" params={{ runId }}>
-          回到這個 Run 的詳情
+          回到這次試跑的詳情
         </Link>
       </p>
     </section>

@@ -12,7 +12,7 @@ export function SkillProvenanceSection({ skill }: { skill: SkillDetail }) {
       {skill.derivation.is_fork && skill.derivation.forked_from_skill_id && (
         <p>
           <Link to="/skills/$skillId" params={{ skillId: skill.derivation.forked_from_skill_id }}>
-            查看原始 Skill
+            查看原始小工具
           </Link>
         </p>
       )}

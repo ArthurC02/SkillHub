@@ -32,7 +32,7 @@ export function TargetOption({
       <p className="note">
         安裝位置：
         {target.install_location ??
-          "不指定——這個目標不指名任何 Agent，也就不假裝知道你的 Agent 把 Skill 放哪。"}
+          "不指定——這個目標不指名任何 Agent，也就不假裝知道你的 Agent 把小工具放哪。"}
       </p>
       <EnvVars target={target} />
       {target.notes.length > 0 && (

@@ -7,10 +7,10 @@ import { SignInAction } from "../../../../shared/ui/SignIn";
 function forkErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 403)
-      return "這個帳號還沒有封測邀請，所以 Fork 沒有成功。想試的話，用頁尾的「回報問題」選「我想要的東西，這裡沒有」告訴我們你想做什麼。";
-    if (error.status === 409) return "你的工作區已經有同名的 Skill。";
+      return "這個帳號還沒有封測邀請，所以複製沒有成功。想試的話，用頁尾的「回報問題」選「我想要的東西，這裡沒有」告訴我們你想做什麼。";
+    if (error.status === 409) return "你的工作區已經有同名的小工具。";
   }
-  return "Fork 沒有成功，可以再按一次。";
+  return "複製沒有成功，可以再按一次。";
 }
 
 export function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: boolean }) {
@@ -21,14 +21,14 @@ export function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedI
   if (!isLoggedIn) {
     return (
       <div>
-        登入後即可 Fork 這個 Skill 到你的工作區。 <SignInAction />
+        登入後即可把這個小工具複製到你的工作區。 <SignInAction />
       </div>
     );
   }
 
   return (
     <div>
-      <p className="note">平台目前只讓有封測邀請的帳號 Fork。</p>
+      <p className="note">平台目前只讓有封測邀請的帳號複製小工具。</p>
       <button
         type="button"
         className={cannotPackage ? "action" : undefined}
@@ -39,16 +39,16 @@ export function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedI
           ? "建立中…"
           : fork.isSuccess
             ? "已建立自己的版本"
-            : "以這個 Skill 為起點建立我自己的"}
+            : "以這個小工具為起點建立我自己的"}
       </button>
       {fork.isError && (
-        <ReadFailure error={fork.error} what="Fork 這個 Skill">
+        <ReadFailure error={fork.error} what="複製小工具">
           <p role="alert">{forkErrorMessage(fork.error)}</p>
         </ReadFailure>
       )}
       {fork.isSuccess && (
         <p role="status">
-          已建立 Fork：
+          已複製到你的工作區：
           <Link
             to="/skills/$skillId/versions/$versionId"
             params={{ skillId: fork.data.skill_id, versionId: fork.data.version_id }}

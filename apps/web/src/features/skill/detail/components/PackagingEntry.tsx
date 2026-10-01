@@ -17,17 +17,17 @@ export function PackagingEntry({
   if (!isLoggedIn)
     return (
       <div className="note">
-        打包與下載需要登入，而且只打包得了你自己工作區裡的版本——別人的 Skill 要先 Fork 一份。{" "}
+        打包與下載需要登入，而且只打包得了你自己工作區裡的版本——別人的小工具要先複製一份。{" "}
         <SignInAction />
       </div>
     );
-  if (versions.isPending) return <Loading what="這個 Skill 在你工作區的版本" />;
-  if (versions.error) return <ReadFailure error={versions.error} what="這個 Skill 的版本" />;
+  if (versions.isPending) return <Loading what="這個小工具在你工作區的版本" />;
+  if (versions.error) return <ReadFailure error={versions.error} what="這個小工具的版本" />;
   if ((versions.data?.versions.length ?? 0) === 0)
     return (
       <p className="note">
-        這個 Skill 不在你的工作區，所以沒有屬於你的版本可以打包。
-        <strong>要先 Fork 一份</strong>——旁邊的「Fork 到你的工作區」就是那一步。
+        這個小工具不在你的工作區，所以沒有屬於你的版本可以打包。
+        <strong>要先複製一份</strong>——旁邊的「複製一份到你的工作區」就是那一步。
       </p>
     );
 

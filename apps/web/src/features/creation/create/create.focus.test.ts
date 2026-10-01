@@ -59,7 +59,7 @@ test("a reviewable draft points to the draft while terminal and unknown states i
     revision: 1,
     content_hash: "hash",
     skill: {
-      name: "Skill",
+      name: "小工具",
       description: "Description",
       compatibility: "",
       allowed_tools: "",
@@ -97,7 +97,7 @@ test.each([
         revision: 1,
         content_hash: "hash",
         skill: {
-          name: "Skill",
+          name: "小工具",
           description: "Description",
           compatibility: "",
           allowed_tools: "",
@@ -118,7 +118,7 @@ test.each([
         revision: 1,
         content_hash: "hash",
         skill: {
-          name: "Skill",
+          name: "小工具",
           description: "Description",
           compatibility: "",
           allowed_tools: "",

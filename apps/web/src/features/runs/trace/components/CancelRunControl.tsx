@@ -8,8 +8,8 @@ export const CANCELLABLE = IN_FLIGHT_RUN_STATUSES;
 
 function cancelFailureSentence(error: unknown): string {
   if (error instanceof ApiError && error.status === 409)
-    return "這個 Run 已經結束，沒有東西可以取消。";
-  if (error instanceof ApiError && error.status === 404) return "找不到這個 Run。";
+    return "這次試跑已經結束，沒有東西可以取消。";
+  if (error instanceof ApiError && error.status === 404) return "找不到這次試跑。";
   return "取消要求沒有送出，可以再按一次。";
 }
 
@@ -23,7 +23,7 @@ export function CancelRunControl({ runId, status }: { runId: string; status?: st
       onSettled: () => setConfirming(false),
     });
   const failure = cancel.error ? (
-    <ReadFailure error={cancel.error} what="取消這個 Run">
+    <ReadFailure error={cancel.error} what="取消這次試跑">
       <p role="alert">{cancelFailureSentence(cancel.error)}</p>
     </ReadFailure>
   ) : null;
@@ -39,7 +39,7 @@ export function CancelRunControl({ runId, status }: { runId: string; status?: st
     return (
       <p>
         <button type="button" onClick={() => setConfirming(true)}>
-          取消這個 Run
+          取消這次試跑
         </button>
         {message && <span role="status"> {message}</span>}
         {failure}

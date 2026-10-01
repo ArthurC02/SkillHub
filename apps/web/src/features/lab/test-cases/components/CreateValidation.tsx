@@ -8,7 +8,7 @@ export function CreateValidation({
   prompt: string;
 }) {
   const missing = [
-    skillId === "" ? "選一個 Skill" : "",
+    skillId === "" ? "選一個小工具" : "",
     name === "" ? "填名稱" : "",
     prompt.trim() === "" ? "寫 User Prompt" : "",
   ].filter((s) => s !== "");

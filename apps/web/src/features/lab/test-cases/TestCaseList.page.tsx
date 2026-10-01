@@ -25,12 +25,12 @@ export function TestCaseList() {
     <section className="test-case-list-page">
       <header className="test-case-list-header">
         <p className="page-eyebrow">Evaluation workspace</p>
-        <h1>Test Case</h1>
+        <h1>測試題</h1>
         <p className="note" data-role="teaching">
           把任務提示、測試資料與驗收條件組成可反覆驗證的情境。
         </p>
         <a className="action-secondary test-case-create-jump" href="#new-test-case">
-          建立 Test Case
+          建立測試題
         </a>
       </header>
       {filter && <SkillWorkspaceNav skillId={filter} versionId={version} />}
@@ -38,7 +38,7 @@ export function TestCaseList() {
       <div className="test-case-workspace">
         <section className="test-case-index" aria-labelledby="existing-test-cases-heading">
           <p className="page-eyebrow">Scenario library · {rows.length}</p>
-          <h2 id="existing-test-cases-heading">既有的 Test Case</h2>
+          <h2 id="existing-test-cases-heading">既有的測試題</h2>
           <ExistingTestCasesSection
             filter={filter}
             version={version}
@@ -59,8 +59,8 @@ export function TestCaseList() {
           aria-labelledby="create-test-case-heading"
         >
           <p className="page-eyebrow">New scenario</p>
-          <h2 id="create-test-case-heading">建立新的 Test Case</h2>
-          <p>先定義要驗證的 Skill 與任務；建立後再補資料集、驗收條件與 Rubric。</p>
+          <h2 id="create-test-case-heading">建立新的測試題</h2>
+          <p>先定義要驗證的小工具與任務；建立後再補資料集、驗收條件與 Rubric。</p>
           <CreateTestCaseForm
             skills={skills.data}
             skillsError={skills.error}

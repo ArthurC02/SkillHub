@@ -192,7 +192,7 @@ test("GEN-008: the generate entry point is absent until /me says the flag is on"
   await render();
   await submitSearch("沒有人做過的事");
 
-  expect(container.textContent).toContain("沒有夠接近的 Skill");
+  expect(container.textContent).toContain("沒有夠接近的小工具");
   expect(container.textContent).not.toContain("讓平台依你的描述做一個");
   expect(container.querySelector("#generate-task")).toBeNull();
 });
@@ -408,10 +408,10 @@ test("GEN-008: a successful generation does not re-run the search behind it", as
 
   await act(async () => {
     container.querySelectorAll("button").forEach((b) => {
-      if (b.textContent === "生成一個 Skill") b.click();
+      if (b.textContent === "生成一個小工具") b.click();
     });
   });
-  await waitFor(() => (container.textContent ?? "").includes("已經產生一個 Skill"));
+  await waitFor(() => (container.textContent ?? "").includes("已經產生一個小工具"));
 
   expect(searchGets.length).toBe(before);
   const versionLink = Array.from(container.querySelectorAll("a")).find((link) =>
@@ -419,7 +419,7 @@ test("GEN-008: a successful generation does not re-run the search behind it", as
   );
   expect(versionLink?.getAttribute("href")).toBe("/skills/sk-1/versions/ver-1");
   const testCaseLink = Array.from(container.querySelectorAll("a")).find((link) =>
-    link.textContent?.includes("先建立 Test Case 再試跑"),
+    link.textContent?.includes("先建立測試題再試跑"),
   );
   const testCaseURL = new URL(testCaseLink!.href);
   expect(testCaseURL.pathname).toBe("/lab/test-cases");
@@ -449,7 +449,7 @@ test("設計 §3 第 9 條：生成失敗底下的發現分組是它的內容，
   });
   await act(async () => {
     container.querySelectorAll("button").forEach((b) => {
-      if (b.textContent === "生成一個 Skill") b.click();
+      if (b.textContent === "生成一個小工具") b.click();
     });
   });
   await waitFor(() => (container.textContent ?? "").includes("阻擋錯誤"));
@@ -501,7 +501,7 @@ test("GEN-005: a diagram file with no text enables submit and posts the diagram,
   await waitFor(() => (container.textContent ?? "").includes("flow.png"));
 
   const submitBtn = Array.from(container.querySelectorAll("button")).find(
-    (b) => b.textContent === "生成一個 Skill",
+    (b) => b.textContent === "生成一個小工具",
   )!;
   expect(submitBtn.disabled).toBe(false);
 
@@ -549,7 +549,7 @@ test("GEN-005: a diagram file at exactly the size ceiling is accepted", async ()
 
   expect(container.querySelector('[role="alert"]')).toBeNull();
   const submitBtn = Array.from(container.querySelectorAll("button")).find(
-    (b) => b.textContent === "生成一個 Skill",
+    (b) => b.textContent === "生成一個小工具",
   )!;
   expect(submitBtn.disabled).toBe(false);
 
@@ -592,14 +592,14 @@ test("GEN-001: typing past the rune ceiling warns that the server will enforce i
   expect(count.textContent).toContain("4,001 / 4,000 字");
   expect(count.textContent).toContain("——超過了，送出會被伺服器擋下");
   const submitBtn = Array.from(container.querySelectorAll("button")).find(
-    (b) => b.textContent === "生成一個 Skill",
+    (b) => b.textContent === "生成一個小工具",
   )!;
   expect(submitBtn.disabled).toBe(false);
 });
 
 const REFERENCE_HIT = (n: number) => ({
   skill_id: `ref-${n}`,
-  name: `參考 Skill ${n}`,
+  name: `參考小工具 ${n}`,
   summary: `摘要 ${n}`,
   summary_source: "package",
 });
@@ -638,17 +638,17 @@ test("GEN-006: searching lists a result, and ticking it sends reference_skill_id
     setter.call(refInput, "分析報表");
     refInput.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  await waitFor(() => (container.textContent ?? "").includes("參考 Skill 1"));
+  await waitFor(() => (container.textContent ?? "").includes("參考小工具 1"));
 
   const checkbox = Array.from(
     container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
-  ).find((c) => c.closest("li")?.textContent?.includes("參考 Skill 1"))!;
+  ).find((c) => c.closest("li")?.textContent?.includes("參考小工具 1"))!;
   await act(async () => {
     checkbox.click();
   });
 
   const submitBtn = Array.from(container.querySelectorAll("button")).find(
-    (b) => b.textContent === "生成一個 Skill",
+    (b) => b.textContent === "生成一個小工具",
   )!;
   await act(async () => {
     submitBtn.click();
@@ -687,7 +687,7 @@ test("GEN-006: a fourth reference selection is not possible", async () => {
     setter.call(refInput, "分析報表");
     refInput.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  await waitFor(() => (container.textContent ?? "").includes("參考 Skill 4"));
+  await waitFor(() => (container.textContent ?? "").includes("參考小工具 4"));
 
   function checkboxFor(name: string) {
     return Array.from(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')).find(
@@ -696,11 +696,11 @@ test("GEN-006: a fourth reference selection is not possible", async () => {
   }
   for (const n of [1, 2, 3]) {
     await act(async () => {
-      checkboxFor(`參考 Skill ${n}`).click();
+      checkboxFor(`參考小工具 ${n}`).click();
     });
   }
 
-  const fourth = checkboxFor("參考 Skill 4");
+  const fourth = checkboxFor("參考小工具 4");
   expect(fourth.disabled).toBe(true);
   await act(async () => {
     fourth.click();
@@ -733,7 +733,7 @@ test("GEN-005: a FileReader error is shown as an alert and nothing is posted whi
   });
 
   const submitBtn = Array.from(container.querySelectorAll("button")).find(
-    (b) => b.textContent === "生成一個 Skill",
+    (b) => b.textContent === "生成一個小工具",
   )!;
   expect(submitBtn.disabled).toBe(true);
   expect(fileInput.disabled).toBe(true);
@@ -814,7 +814,7 @@ test("GEN-006: an empty reference search is stated instead of rendering unexplai
     setter.call(input, "沒有這個項目");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  await waitFor(() => (container.textContent ?? "").includes("目錄裡沒有符合的 Skill"));
+  await waitFor(() => (container.textContent ?? "").includes("目錄裡沒有符合的小工具"));
 
   expect(container.textContent).toContain("資產庫裡沒有符合項目");
 });
@@ -835,9 +835,9 @@ test("GEN-006: reference search and owned-skill failures are not presented as em
     setter.call(input, "分析報表");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  await waitFor(() => (container.textContent ?? "").includes("暫時無法讀取參考 Skill 的搜尋結果"));
+  await waitFor(() => (container.textContent ?? "").includes("暫時無法讀取參考小工具的搜尋結果"));
 
-  expect(container.textContent).toContain("暫時無法讀取資產庫中的 Skill");
+  expect(container.textContent).toContain("暫時無法讀取資產庫中的小工具");
   expect(container.textContent).not.toContain("search backend unavailable");
   expect(container.textContent).not.toContain("workspace backend unavailable");
 });
@@ -899,7 +899,7 @@ test("GEN-006: a reference-unusable 422 renders verbatim and keeps the selected 
   stubSession({
     features: { generate_skill: true },
     failures: [],
-    generateRejection: { error: "其中一個參考的 Skill 無法使用，請換一個再試一次。" },
+    generateRejection: { error: "其中一個參考的小工具無法使用，請換一個再試一次。" },
     referenceSearch: {
       query: "分析報表",
       result: {
@@ -924,16 +924,16 @@ test("GEN-006: a reference-unusable 422 renders verbatim and keeps the selected 
     setter.call(refInput, "分析報表");
     refInput.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  await waitFor(() => (container.textContent ?? "").includes("參考 Skill 1"));
+  await waitFor(() => (container.textContent ?? "").includes("參考小工具 1"));
 
   await act(async () => {
     Array.from(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'))
-      .find((c) => c.closest("li")?.textContent?.includes("參考 Skill 1"))!
+      .find((c) => c.closest("li")?.textContent?.includes("參考小工具 1"))!
       .click();
   });
 
   const submitBtn = Array.from(container.querySelectorAll("button")).find(
-    (b) => b.textContent === "生成一個 Skill",
+    (b) => b.textContent === "生成一個小工具",
   )!;
   await act(async () => {
     submitBtn.click();
@@ -941,8 +941,8 @@ test("GEN-006: a reference-unusable 422 renders verbatim and keeps the selected 
   await waitFor(() => container.querySelector('[role="alert"]') !== null);
 
   const alert = container.querySelector('[role="alert"]');
-  expect(alert?.textContent).toContain("其中一個參考的 Skill 無法使用，請換一個再試一次。");
-  expect(container.textContent).toContain("參考 Skill 1 ✕");
+  expect(alert?.textContent).toContain("其中一個參考的小工具無法使用，請換一個再試一次。");
+  expect(container.textContent).toContain("參考小工具 1 ✕");
 });
 
 test("GEN-006: the reference picker's search carries purpose=reference, Home's does not", async () => {
@@ -975,7 +975,7 @@ test("GEN-006: the reference picker's search carries purpose=reference, Home's d
     setter.call(refInput, "分析報表");
     refInput.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  await waitFor(() => (container.textContent ?? "").includes("參考 Skill 1"));
+  await waitFor(() => (container.textContent ?? "").includes("參考小工具 1"));
 
   const refSearchUrl = searchGets.find((u) => u.includes("purpose=reference"));
   expect(refSearchUrl).toBeDefined();
@@ -1015,16 +1015,16 @@ test("GEN-006: a reference tick with no text and no diagram keeps submit disable
     setter.call(refInput, "分析報表");
     refInput.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  await waitFor(() => (container.textContent ?? "").includes("參考 Skill 1"));
+  await waitFor(() => (container.textContent ?? "").includes("參考小工具 1"));
 
   await act(async () => {
     Array.from(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'))
-      .find((c) => c.closest("li")?.textContent?.includes("參考 Skill 1"))!
+      .find((c) => c.closest("li")?.textContent?.includes("參考小工具 1"))!
       .click();
   });
 
   const submitBtn = Array.from(container.querySelectorAll("button")).find(
-    (b) => b.textContent === "生成一個 Skill",
+    (b) => b.textContent === "生成一個小工具",
   )!;
   expect(submitBtn.disabled).toBe(true);
 

@@ -45,13 +45,13 @@ afterEach(async () => {
   container.remove();
 });
 
-test("the workbench keeps every stable view on the same Skill and exact version", async () => {
+test("the workbench keeps every stable view on the same 小工具 and exact version", async () => {
   await act(async () => {
     root = createRoot(container);
     root.render(<SkillWorkspaceNav skillId="skill-1" versionId="version-2" />);
   });
 
-  const nav = container.querySelector('nav[aria-label="這個 Skill 的工作台"]');
+  const nav = container.querySelector('nav[aria-label="這個小工具的工作台"]');
   expect(nav).not.toBeNull();
   expect(
     Array.from(nav!.querySelectorAll("a")).map((link) => [
@@ -66,7 +66,7 @@ test("the workbench keeps every stable view on the same Skill and exact version"
   ]);
 });
 
-test("the workbench returns to the exact Test Case when its owner id is known", async () => {
+test("the workbench returns to the exact 測試題 when its owner id is known", async () => {
   await act(async () => {
     root = createRoot(container);
     root.render(<SkillWorkspaceNav skillId="skill-1" versionId="version-2" testCaseId="case-3" />);
@@ -84,7 +84,7 @@ test("the workbench keeps version context visible but inert until a version is k
     root.render(<SkillWorkspaceNav skillId="skill-1" />);
   });
 
-  const nav = container.querySelector('nav[aria-label="這個 Skill 的工作台"]')!;
+  const nav = container.querySelector('nav[aria-label="這個小工具的工作台"]')!;
   expect(nav.querySelector('a[href*="/versions/"]')).toBeNull();
   const disabled = nav.querySelector("button[disabled]");
   const reasonId = disabled?.getAttribute("aria-describedby");

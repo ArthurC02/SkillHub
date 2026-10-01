@@ -12,7 +12,7 @@ export function CreateHub({
   explain?: boolean;
   compact?: boolean;
 }) {
-  const doorway = creationExposed ? "和 Agent 一起創作 Skill" : "讓平台依你的描述做一個";
+  const doorway = creationExposed ? "和 Agent 一起創作小工具" : "讓平台依你的描述做一個";
 
   if (compact) {
     return (
@@ -28,9 +28,9 @@ export function CreateHub({
           </li>
           <li>
             <Link to="/" search={{}}>
-              從 Catalog Fork
+              從 Catalog 複製一份
             </Link>
-            <span className="note">平台目前只讓有封測邀請的帳號 Fork。</span>
+            <span className="note">平台目前只讓有封測邀請的帳號複製一份。</span>
           </li>
           {generateExposed && (
             <li>
@@ -59,7 +59,7 @@ export function CreateHub({
           )}
           <p>
             <Link className="action-secondary" to="/workspace/import">
-              匯入 Skill
+              匯入小工具
             </Link>
           </p>
         </li>
@@ -73,7 +73,7 @@ export function CreateHub({
             {explain && (
               <span data-role="teaching">從目錄複製一份到你的工作區，再上傳改過的版本。</span>
             )}
-            平台目前只讓有封測邀請的帳號 Fork。
+            平台目前只讓有封測邀請的帳號複製一份。
           </p>
           <p>
             <Link className="action-secondary" to="/" search={{}}>
@@ -90,7 +90,7 @@ export function CreateHub({
             <h3>{doorway}</h3>
             {explain && (
               <p className="note" data-role="teaching">
-                描述你要完成的事，平台產生一個只屬於你的工作區的 Skill。
+                描述你要完成的事，平台產生一個只屬於你的工作區的小工具。
               </p>
             )}
             <p>

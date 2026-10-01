@@ -96,10 +96,10 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
 }
 
 const text = () => container.textContent ?? "";
-const settledAsVisitor = () => text().includes("登入後即可 Fork");
+const settledAsVisitor = () => text().includes("登入後即可把這個小工具複製");
 
 function generatedDetail(overrides: Partial<SkillSource>): SkillDetailModel {
-  const base = skillDetail(SKILL, "生成的 Skill");
+  const base = skillDetail(SKILL, "生成的小工具");
   return {
     ...base,
     redistribution: { value: "generated", label: "平台生成", note: "" },
@@ -121,12 +121,12 @@ test("GEN-002: task_description 非空時顯示逐字的任務描述句", async 
   expect(text()).toContain("來源：由平台依你的任務描述生成");
 });
 
-test("a generated Skill keeps its current Version when continuing to Test Cases", async () => {
+test("a generated 小工具 keeps its current Version when continuing to 測試題", async () => {
   stubVisitor(generatedDetail({ task_description: "把 PDF 轉成摘要" }));
   await render(<SkillDetail />, settledAsVisitor);
 
   const next = Array.from(container.querySelectorAll("a")).find((link) =>
-    link.textContent?.includes("先建立 Test Case 再試跑"),
+    link.textContent?.includes("先建立測試題再試跑"),
   );
   const url = new URL(next!.href);
   expect(url.pathname).toBe("/lab/test-cases");
@@ -167,8 +167,8 @@ test("GEN-006: 參考的 Skill 名稱各是一個連到 /skills/<id> 的連結",
       task_description: "把 PDF 轉成摘要",
       generation_inputs: {
         references: [
-          { skill_id: "ref-1", version_id: "v-ref-1", name: "參考 Skill 甲" },
-          { skill_id: "ref-2", version_id: "v-ref-2", name: "參考 Skill 乙" },
+          { skill_id: "ref-1", version_id: "v-ref-1", name: "參考小工具甲" },
+          { skill_id: "ref-2", version_id: "v-ref-2", name: "參考小工具乙" },
         ],
       },
     }),
@@ -176,8 +176,8 @@ test("GEN-006: 參考的 Skill 名稱各是一個連到 /skills/<id> 的連結",
   await render(<SkillDetail />, settledAsVisitor);
 
   const body = text();
-  expect(body).toContain("參考 Skill 甲");
-  expect(body).toContain("參考 Skill 乙");
-  expect(container.querySelector('a[href="/skills/ref-1"]')?.textContent).toBe("參考 Skill 甲");
-  expect(container.querySelector('a[href="/skills/ref-2"]')?.textContent).toBe("參考 Skill 乙");
+  expect(body).toContain("參考小工具甲");
+  expect(body).toContain("參考小工具乙");
+  expect(container.querySelector('a[href="/skills/ref-1"]')?.textContent).toBe("參考小工具甲");
+  expect(container.querySelector('a[href="/skills/ref-2"]')?.textContent).toBe("參考小工具乙");
 });

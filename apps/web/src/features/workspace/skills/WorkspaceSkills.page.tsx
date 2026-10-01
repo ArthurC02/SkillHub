@@ -135,7 +135,7 @@ function SkillCard({
           to="/lab/test-cases"
           search={{ skill: skill.skill_id }}
         >
-          Test Case 與試跑 <span aria-hidden="true">→</span>
+          測試題與試跑 <span aria-hidden="true">→</span>
         </Link>
       </div>
       <details className="skill-menu" name="skill-menu">
@@ -171,7 +171,7 @@ function SkillCard({
               to="/lab/test-cases"
               search={{ skill: skill.skill_id }}
             >
-              <MenuItem glyph="✓" label="Test Case" hint="設計測試並試跑" />
+              <MenuItem glyph="✓" label="測試題" hint="設計測試並試跑" />
             </Link>
           </li>
           {skill.forked_from_skill_id && (
@@ -181,7 +181,7 @@ function SkillCard({
                 to="/skills/$skillId"
                 params={{ skillId: skill.forked_from_skill_id }}
               >
-                <MenuItem glyph="↗" label="Fork 來源 Skill" hint="打開被 Fork 的原版" />
+                <MenuItem glyph="↗" label="複製來源小工具" hint="打開被複製 的原版" />
               </Link>
             </li>
           )}
@@ -200,10 +200,10 @@ function SkillCard({
               }
               scope={
                 <>
-                  刪除的是這個 Skill
+                  刪除的是這個小工具
                   在你工作區裡的存在：它會離開這份清單與搜尋結果，也不能再拿來試跑或打包。
-                  版本快照會凍結保留，不隨這次刪除消失，所以誤刪還有救； 別人 Fork 過的版本與歷史
-                  Run 引用的內容不受影響——那是他們的溯源鏈，不是你的。
+                  版本快照會凍結保留，不隨這次刪除消失，所以誤刪還有救； 別人 複製過的版本與歷史
+                  試跑紀錄引用的內容不受影響——那是他們的溯源鏈，不是你的。
                   已經打包好的下載檔案要另外刪，在下載紀錄那一頁。
                 </>
               }
@@ -231,7 +231,7 @@ function SkillListProgress({
   return (
     <div className="skill-list-progress">
       <p className="note" role="status" aria-live="polite">
-        已顯示 {shown} / {total} 個 Skill
+        已顯示 {shown} / {total} 個小工具
       </p>
       {hasNextPage && (
         <button type="button" disabled={isFetchingNextPage} onClick={onFetchNextPage}>
@@ -263,15 +263,15 @@ export function WorkspaceSkills() {
       <h1>資產庫</h1>
       {hasSkills && (
         <p className="note" data-role="teaching">
-          Fork 與匯入的都在這裡；公開目錄的不在。
+          複製與匯入的都在這裡；公開目錄的不在。
         </p>
       )}
 
       {isEmpty && (
         <>
-          <p>資產庫還沒有任何 Skill——這是一份空清單，不是讀取失敗。</p>
+          <p>資產庫還沒有任何小工具——這是一份空清單，不是讀取失敗。</p>
           <p className="note" data-role="teaching">
-            匯入現成套件、從 Catalog Fork，或在開放時從 Studio 開始創作。
+            匯入現成套件、從 Catalog 複製一份，或在開放時從 Studio 開始創作。
           </p>
         </>
       )}
@@ -281,10 +281,10 @@ export function WorkspaceSkills() {
       {!hasSkills && <ReadFailure error={skills.error} what="資產庫內容" />}
       {message && <p role="status">{message}</p>}
       {remove.error && (
-        <ReadFailure error={remove.error} what="刪除 Skill">
+        <ReadFailure error={remove.error} what="刪除小工具">
           <p role="alert">
             {remove.error instanceof ApiError && remove.error.status === 404
-              ? "這個 Skill 已經不在了。"
+              ? "這個小工具已經不在了。"
               : "沒有刪成，可以再按一次。"}
           </p>
         </ReadFailure>

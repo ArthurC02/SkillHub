@@ -70,7 +70,7 @@ export function FilterControls({
           <option value="indexed">已索引</option>
         </select>
         <span id="filter-why-tier" className="note">
-          「精選」是這一版通過九項人工審查的 Skill；「已索引」是目前這一版沒有帶著人工審查結論——
+          「精選」是這一版通過九項人工審查的小工具；「已索引」是目前這一版沒有帶著人工審查結論——
           包含出了新版本、審查還沒跟上的那些，不等於從沒被審過。
         </span>
       </label>
@@ -90,7 +90,7 @@ export function FilterControls({
           <option value="data">資料</option>
         </select>
         <span id="filter-why-category" className="note">
-          三個類別來自策展判定。使用者自己匯入的 Skill 目前還沒有類別，選這三個值都不會列出它們。
+          三個類別來自策展判定。使用者自己匯入的小工具目前還沒有類別，選這三個值都不會列出它們。
         </span>
       </label>
 

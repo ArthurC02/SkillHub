@@ -56,7 +56,7 @@ function FeedbackMessageField({
         會跟著送出的只有這些：目前頁面 <code>{pagePath}</code>
         {runID ? (
           <>
-            、你正在看的 Run <code>{runID}</code>
+            、你正在看的試跑紀錄 <code>{runID}</code>
           </>
         ) : (
           ""

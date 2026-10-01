@@ -15,7 +15,7 @@ export function SkillWorkspaceNav({
 
   return (
     <>
-      <nav aria-label="這個 Skill 的工作台" className="category-nav">
+      <nav aria-label="這個小工具的工作台" className="category-nav">
         <Link
           to="/skills/$skillId"
           params={{ skillId }}

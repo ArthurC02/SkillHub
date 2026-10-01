@@ -22,9 +22,9 @@ export function SearchResultsList({
   return (
     <>
       <CompareBar selected={selected} />
-      <h2 id="results-heading">符合「{query}」的 Skill</h2>
+      <h2 id="results-heading">符合「{query}」的小工具</h2>
       <p role="status" className="note">
-        找到 {results.length} 個 Skill。
+        找到 {results.length} 個小工具。
       </p>
       <MarkerWarning />
       <SearchFacetNotes hits={results} />

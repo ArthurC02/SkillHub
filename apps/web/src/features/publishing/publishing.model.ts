@@ -19,13 +19,13 @@ export const PUBLISHING_REFUSAL_LABEL: Record<PublishingRefusalReason, string> =
   no_publisher: "這個帳號還沒有註冊發佈者名稱，要先到帳號頁註冊一個才能發佈。",
   already_registered: "這個帳號已經有一個發佈者名稱了，一個帳號只能有一個，不能再註冊第二個。",
   name_taken: "這個名稱已經被別人取走了，換一個名稱再試一次。",
-  name_is_permanent: "這個 Skill 已經用另一個名稱發佈過，名稱一經建立就不能更改。",
+  name_is_permanent: "這個小工具已經用另一個名稱發佈過，名稱一經建立就不能更改。",
   name_shape:
     "名稱格式不對：1～64 字元，只能是小寫英文字母、數字與連字號，開頭與結尾要是英數字，不能有連續兩個連字號。",
   name_reserved: "這個名稱是保留字，用來避免冒充平台或上游供應商，換一個名稱再試一次。",
-  license_hold: "這個 Skill 的內容因授權問題尚未釐清而被保留，所以不能發佈。",
-  not_redistributable: "這個 Skill 的授權不允許再散布，所以不能發佈。",
-  license_unknown: "沒有人確認過這個 Skill 可不可以再散布，未確認的授權視同不允許，所以不能發佈。",
+  license_hold: "這個小工具的內容因授權問題尚未釐清而被保留，所以不能發佈。",
+  not_redistributable: "這個小工具的授權不允許再散布，所以不能發佈。",
+  license_unknown: "沒有人確認過這個小工具可不可以再散布，未確認的授權視同不允許，所以不能發佈。",
   validation_blocked: "這一版的套件沒有通過規格驗證，所以不能發佈。",
   rights_not_attested:
     "這份內容是你自己帶進來的，或是平台依你的描述寫出來的；發佈之前要先聲明你有權散布它。",

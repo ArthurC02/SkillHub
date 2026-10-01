@@ -11,7 +11,7 @@ export function GeneratedNotice({ skillId, versionId }: { skillId?: string; vers
           <>
             {" "}
             <Link to="/lab/test-cases" search={{ skill: skillId, version: versionId }}>
-              先建立 Test Case 再試跑
+              先建立測試題再試跑
             </Link>
             ，才會有第一份證據。
           </>

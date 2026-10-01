@@ -1,5 +1,5 @@
 h1 發佈與交付
-h2 Skill 發佈
+h2 小工具發佈
 h3 交付對象
 h3 Catalog 探索
 h2 Bundle

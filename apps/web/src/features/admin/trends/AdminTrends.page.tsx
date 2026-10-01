@@ -69,7 +69,7 @@ export function AdminTrends() {
         {credits.data && <p>全平台目前餘額總和：{credits.data.balance_total} 點。</p>}
       </TrendSection>
       <TrendSection
-        heading="每天建立的 Run（依目前狀態）"
+        heading="每天建立的試跑紀錄（依目前狀態）"
         query={runs}
         value={countOf}
         format={String}

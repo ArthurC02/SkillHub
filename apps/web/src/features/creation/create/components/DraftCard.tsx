@@ -29,7 +29,7 @@ export function DraftCard({
   return (
     <section id="creation-draft-decision" tabIndex={-1}>
       <header className="card-header">
-        <h4>Skill 草稿：{draft.skill.name}</h4>
+        <h4>小工具草稿：{draft.skill.name}</h4>
         <span className="card-tag" data-tone={draft.blocked ? "danger" : "done"}>
           {draft.blocked ? "靜態檢查阻擋保存" : "已完成靜態檢查"}
         </span>
@@ -111,7 +111,7 @@ function DraftCandidate({
 }) {
   return (
     <>
-      {adopted && <p>已直接採用現有 Skill；這個候選版本是它的複本，沒有生成任何內容。</p>}
+      {adopted && <p>已直接採用現有小工具；這個候選版本是它的複本，沒有生成任何內容。</p>}
       <p>
         <Link
           to="/skills/$skillId/versions/$versionId"
@@ -134,15 +134,15 @@ function DraftCandidate({
             to="/lab/test-cases"
             search={{ skill: candidate.skill_id, version: candidate.version_id }}
           >
-            先建立 Test Case 再試跑此版本
+            先建立測試題再試跑此版本
           </Link>
         )}
       </p>
-      {candidate.test_case_id && <p>已依確認的驗收條件建立 Test Case</p>}
+      {candidate.test_case_id && <p>已依確認的驗收條件建立測試題</p>}
       {candidate.run_id ? (
         <>
           <Link to="/runs/$runId" params={{ runId: candidate.run_id }}>
-            查看這次 Run 結果
+            查看這次試跑結果
           </Link>
           {run && (
             <p>

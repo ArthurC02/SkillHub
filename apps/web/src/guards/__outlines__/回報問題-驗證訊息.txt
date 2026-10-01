@@ -1,5 +1,5 @@
-h1 探索能直接採用的 Agent Skill
-h2 Skill 探索畫廊
+h1 探索能直接採用的 Agent 小工具
+h2 小工具探索畫廊
 h3 PDF Summariser
 h3 Doc Splitter
 h3 CSV Cleaner

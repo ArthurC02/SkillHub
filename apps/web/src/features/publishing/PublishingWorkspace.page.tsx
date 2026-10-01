@@ -36,7 +36,7 @@ export function PublishingWorkspace() {
           </p>
         )}
         <Link className="action" to="/library">
-          選擇要發佈的 Skill
+          選擇要發佈的小工具
         </Link>
         {showWorkspaceMap && <PublishingWorkspaceMap />}
       </header>
@@ -52,7 +52,7 @@ export function PublishingWorkspace() {
           <section>
             <h2>從單一版本發佈</h2>
             <p>
-              到資產庫打開 Skill 的「版本與發佈」，選定不可變版本後再建立
+              到資產庫打開小工具的「版本與發佈」，選定不可變版本後再建立
               Release；平台不會替你改成最新版本。
             </p>
           </section>
@@ -66,7 +66,8 @@ function PublishingWorkspaceMap() {
   return (
     <nav className="publishing-workspace-map" aria-label="發佈工作區導覽">
       <a href="#skill-publications">
-        <strong>單一 Skill</strong> <span>不可變版本 → Publication → Release</span>
+        <strong>單一小工具</strong>
+        <span>不可變版本 → Publication → Release</span>
       </a>
       <a href="#bundle-workspace">
         <strong>Bundle</strong> <span>成員版本 → Bundle Version → Release</span>
@@ -89,17 +90,17 @@ function PublicationOverview({ selectedPublication }: { selectedPublication?: st
 
   return (
     <section id="skill-publications" aria-labelledby="publication-overview-title">
-      <h2 id="publication-overview-title">Skill 發佈</h2>
+      <h2 id="publication-overview-title">小工具發佈</h2>
       <p className="note">
         每筆 Publication 都指向一個不可變 Release；Catalog 是否曝光仍由營運者另行審核。
         公開頁會說明目前誰有資格取得；取得者身分與下載次數尚未提供。
       </p>
 
-      {overview.isPending && <Loading what="Skill 發佈清單" />}
-      <ReadFailure error={overview.error} what="Skill 發佈清單" />
+      {overview.isPending && <Loading what="小工具發佈清單" />}
+      <ReadFailure error={overview.error} what="小工具發佈清單" />
       {overview.data && selectedPublication && !selected && (
         <p role="status" className="note">
-          這個工作區目前找不到這筆 Skill 發佈。它可能已不存在，或目前帳號無法檢視。{" "}
+          這個工作區目前找不到這筆小工具發佈。它可能已不存在，或目前帳號無法檢視。{" "}
           <Link to="/workspace/downloads" search={{}}>
             顯示完整清單
           </Link>
@@ -109,7 +110,7 @@ function PublicationOverview({ selectedPublication }: { selectedPublication?: st
       {overview.data &&
         (publications.length === 0 ? (
           <p>
-            還沒有任何 Skill Publication。先到 <Link to="/library">資產庫</Link>{" "}
+            還沒有任何小工具 Publication。先到 <Link to="/library">資產庫</Link>{" "}
             選一個精確版本開始。
           </p>
         ) : (

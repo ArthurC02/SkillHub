@@ -84,7 +84,7 @@ test("the import workspace separates source rules from the intake controls", asy
 });
 
 async function submitURL(url = "https://github.com/example/skill") {
-  await render(<ImportSkill />, () => text().includes("匯入 Skill"));
+  await render(<ImportSkill />, () => text().includes("匯入小工具"));
   const input = container.querySelector<HTMLInputElement>('input[type="url"]')!;
   await act(async () => {
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.bind(
@@ -254,7 +254,7 @@ function stubImport(body: unknown) {
   });
 }
 
-test("a Plugin import hands every imported Skill to its exact immutable version", async () => {
+test("a Plugin import hands every imported 小工具 to its exact immutable version", async () => {
   stubImport(PLUGIN_IMPORT);
 
   await submitURL();
@@ -263,22 +263,22 @@ test("a Plugin import hands every imported Skill to its exact immutable version"
   expect(text()).toContain("skills/tidy-notes");
   expect(text()).toContain("skills/split-csv");
   const links = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href"));
-  expect(links, "每個 Skill 都要連到剛匯入的精確版本，不能退回可能已改變的 Skill 總覽").toEqual(
+  expect(links, "每個小工具都要連到剛匯入的精確版本，不能退回可能已改變的小工具總覽").toEqual(
     expect.arrayContaining(["/skills/s-1/versions/v-1", "/skills/s-2/versions/v-2"]),
   );
 });
 
-test("a Plugin import says what a download of one Skill actually hands over", async () => {
+test("a Plugin import says what a download of one 小工具 actually hands over", async () => {
   stubImport(PLUGIN_IMPORT);
 
   await submitURL();
   await waitFor(() => text().includes("匯入完成"));
 
   const compact = text().replace(/\s+/g, "");
-  expect(compact).toContain("只安裝該Skill自己的目錄");
+  expect(compact).toContain("只安裝該小工具自己的目錄");
   expect(
     compact,
-    "平台從不交出儲存的那一份套件：試跑只安裝該 Skill 的目錄，下載只有單一 Skill 的可攜套件",
+    "平台從不交出儲存的那一份套件：試跑只安裝該小工具的目錄，下載只有單一小工具的可攜套件",
   ).not.toContain("拿到的是整個Plugin");
 });
 
@@ -292,7 +292,7 @@ test("a Plugin import discloses the components it did not import", async () => {
   expect(text()).toContain("plugin-component");
 });
 
-test("one refused folder does not hide the Skills that did come in", async () => {
+test("one refused folder does not hide the 小工具s that did come in", async () => {
   stubImport({
     ...PLUGIN_IMPORT,
     skills: [PLUGIN_IMPORT.skills[0]],

@@ -43,13 +43,12 @@ export function PublishPanel({
   if (!isLoggedIn) {
     return (
       <div className="note">
-        發佈需要登入，而且只能發佈你自己工作區裡的版本——別人的 Skill 要先 Fork 一份。{" "}
-        <SignInAction />
+        發佈需要登入，而且只能發佈你自己工作區裡的版本——別人的小工具要先複製一份。 <SignInAction />
       </div>
     );
   }
   if (!isOwner) return null;
-  if (!version) return <p role="status">這個 Skill 還沒有可發佈的版本。</p>;
+  if (!version) return <p role="status">這個小工具還沒有可發佈的版本。</p>;
 
   const noPublisherYet = publisher.error instanceof ApiError && publisher.error.status === 404;
   const notPublishedYet = publication.error instanceof ApiError && publication.error.status === 404;

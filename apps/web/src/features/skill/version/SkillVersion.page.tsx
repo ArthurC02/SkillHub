@@ -33,12 +33,12 @@ export function SkillVersion() {
   const skill = useSkillDetail(skillId);
   const versions = useSkillVersions(skillId);
 
-  if (skill.isPending) return <Loading what="這個 Skill" />;
+  if (skill.isPending) return <Loading what="這個小工具" />;
   if (skill.error instanceof ApiError && skill.error.status === 410) {
-    return <p role="alert">這個 Skill 已從目錄下架，內容不再提供。</p>;
+    return <p role="alert">這個小工具已從目錄下架，內容不再提供。</p>;
   }
-  if (skill.error) return <ReadFailure error={skill.error} what="這個 Skill" />;
-  if (!skill.data) return <p role="alert">找不到這個 Skill。</p>;
+  if (skill.error) return <ReadFailure error={skill.error} what="這個小工具" />;
+  if (!skill.data) return <p role="alert">找不到這個小工具。</p>;
 
   if (versions.isPending) return <Loading what="版本脈絡" />;
   if (versions.error) return <ReadFailure error={versions.error} what="版本脈絡" />;
@@ -53,11 +53,11 @@ export function SkillVersion() {
         <h1>無法開啟這個版本</h1>
         <p role="alert">
           {list.length === 0
-            ? "無權檢視——這個工作區看不到這個 Skill 的版本內容；這不代表它沒有版本。"
-            : "這個版本不屬於目前的 Skill，或已不在這個工作區可見的版本清單中。"}
+            ? "無權檢視——這個工作區看不到這個小工具的版本內容；這不代表它沒有版本。"
+            : "這個版本不屬於目前的小工具，或已不在這個工作區可見的版本清單中。"}
         </p>
         <Link to="/skills/$skillId" params={{ skillId }}>
-          回到 Skill 總覽
+          回到小工具總覽
         </Link>
       </section>
     );
@@ -74,7 +74,7 @@ export function SkillVersion() {
           {skill.data.name} v{selected.version_number}
         </h1>
         <p data-role="skill-current-summary">
-          <strong>Skill 目前說明：</strong> {skill.data.summary}
+          <strong>小工具目前說明：</strong> {skill.data.summary}
         </p>
         <SkillWorkspaceNav skillId={skillId} versionId={versionId} />
       </header>
@@ -208,9 +208,9 @@ function VersionEvidence({
     <section aria-labelledby="version-evidence-title">
       <p className="note">這一版留下的結果</p>
       <h2 id="version-evidence-title">驗證證據</h2>
-      {runs.isPending && <Loading what="這個版本的 Run 證據" />}
-      <ReadFailure error={runs.error} what="這個版本的 Run 證據">
-        <p role="alert">暫時無法讀取這個版本的 Run 證據。</p>
+      {runs.isPending && <Loading what="這個版本的試跑證據" />}
+      <ReadFailure error={runs.error} what="這個版本的試跑證據">
+        <p role="alert">暫時無法讀取這個版本的試跑證據。</p>
       </ReadFailure>
       {runs.data && (
         <ListFreshness
@@ -223,7 +223,7 @@ function VersionEvidence({
       {runs.data &&
         (rows.length === 0 ? (
           <p>
-            這個版本還沒有 Run。從{" "}
+            這個版本還沒有試跑紀錄。從{" "}
             <Link to="/lab/test-cases" search={{ skill: skillId, version: versionId }}>
               驗證 v{versionNumber}
             </Link>
@@ -254,7 +254,7 @@ function VersionRunRow({ run }: { run: RunListItem }) {
     <li className="download-item">
       <p>
         <Link to="/runs/$runId" params={{ runId: run.run_id }}>
-          查看 Run 結果
+          查看試跑結果
         </Link>
         {run.test_case_id && (
           <>
@@ -264,7 +264,7 @@ function VersionRunRow({ run }: { run: RunListItem }) {
               params={{ testCaseId: run.test_case_id }}
               search={{ version: run.skill_version_id }}
             >
-              開啟這次的 Test Case
+              開啟這次的測試題
             </Link>
           </>
         )}
@@ -318,7 +318,7 @@ function VersionFacts({ version, isLatest }: { version: SkillVersionSummary; isL
         </div>
       </dl>
       <p className="note">
-        這一版不會被覆寫。驗證、Run、套件與 Release 都以這個版本識別碼連回同一份內容。
+        這一版不會被覆寫。驗證、試跑紀錄、套件與 Release 都以這個版本識別碼連回同一份內容。
       </p>
     </section>
   );

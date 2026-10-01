@@ -125,7 +125,7 @@ test("the walk sees every zone and every role, so an empty scan cannot pass", ()
   ]);
 });
 
-test("the Skill workflow keeps its object navigation through every validation step", () => {
+test("the 小工具 workflow keeps its object navigation through every validation step", () => {
   const hosts = [
     "features/skill/detail/SkillDetail.page.tsx",
     "features/skill/files/SkillFiles.page.tsx",
@@ -140,7 +140,7 @@ test("the Skill workflow keeps its object navigation through every validation st
   for (const path of hosts) {
     const source = sources.find((candidate) => candidate.path === path);
     expect(source, `${path} is missing from the architecture scan`).toBeDefined();
-    expect(source!.body, `${path} drops the reader out of the current Skill`).toContain(
+    expect(source!.body, `${path} drops the reader out of the current 小工具`).toContain(
       "<SkillWorkspaceNav",
     );
   }

@@ -91,19 +91,19 @@ const ME = { user_id: "u-1", email: "a@b.c", display_name: "a", workspace_id: "w
 
 const SKILL: OwnSkill = {
   skill_id: "s-1",
-  name: "範例 Skill",
+  name: "範例小工具",
   summary: "一個測試用的摘要",
   redistribution: "allowed",
   risk: { scan_status: "scanned", level: "none", warnings: 0, disclosures: [], note: "" },
   verification: { value: "not_measured", label: "未測量", note: "" },
 };
 
-const SECOND: OwnSkill = { ...SKILL, skill_id: "s-2", name: "第二個 Skill" };
+const SECOND: OwnSkill = { ...SKILL, skill_id: "s-2", name: "第二個小工具" };
 
 const FIRST_PAGE = Array.from({ length: 24 }, (_, index) => ({
   ...SKILL,
   skill_id: `page-skill-${index + 1}`,
-  name: `分頁 Skill ${index + 1}`,
+  name: `分頁小工具 ${index + 1}`,
 }));
 
 test("each Library card exposes its owner verification label and validation journey", async () => {
@@ -121,7 +121,7 @@ test("each Library card exposes its owner verification label and validation jour
     return json({ skills: [SKILL, inherited], limit: 100, truncated: false, total: 2 });
   });
 
-  await render(<WorkspaceSkills />, () => text().includes("第二個 Skill"));
+  await render(<WorkspaceSkills />, () => text().includes("第二個小工具"));
 
   const cards = Array.from(container.querySelectorAll(".skill-card"));
   expect(cards[0].textContent).toContain("工作區驗證：未測量");
@@ -147,7 +147,7 @@ test("the card grid keeps its surface stable across touch and mouse movement", a
     if (path.endsWith("/me")) return json(ME);
     return json({ skills: [SKILL, SECOND], limit: 100, truncated: false, total: 2 });
   });
-  await render(<WorkspaceSkills />, () => text().includes("第二個 Skill"));
+  await render(<WorkspaceSkills />, () => text().includes("第二個小工具"));
   const grid = container.querySelector(".skill-grid")!;
   const glow = () =>
     Array.from(
@@ -181,16 +181,16 @@ test("the library loads every owner skill page without duplicating the existing 
     return json({ skills: FIRST_PAGE, limit: 24, truncated: true, total: 25 });
   });
 
-  await render(<WorkspaceSkills />, () => text().includes("已顯示 24 / 25 個 Skill"));
+  await render(<WorkspaceSkills />, () => text().includes("已顯示 24 / 25 個小工具"));
   expect(calls).toContain("/skills?limit=24&offset=0");
 
   await act(async () => button("載入更多")?.click());
-  await waitFor(() => text().includes("已顯示 25 / 25 個 Skill"));
+  await waitFor(() => text().includes("已顯示 25 / 25 個小工具"));
 
   expect(calls).toContain("/skills?limit=24&offset=24");
   expect(container.querySelectorAll(".skill-card")).toHaveLength(25);
-  expect(text()).toContain("分頁 Skill 1");
-  expect(text()).toContain("第二個 Skill");
+  expect(text()).toContain("分頁小工具 1");
+  expect(text()).toContain("第二個小工具");
   expect(button("載入更多")).toBeUndefined();
 });
 
@@ -202,7 +202,7 @@ test("a later library page failure keeps the loaded skills and offers the same a
     return json({ skills: FIRST_PAGE, limit: 24, truncated: true, total: 25 });
   });
 
-  await render(<WorkspaceSkills />, () => text().includes("已顯示 24 / 25 個 Skill"));
+  await render(<WorkspaceSkills />, () => text().includes("已顯示 24 / 25 個小工具"));
   await act(async () => button("載入更多")?.click());
   await waitFor(() => text().includes("沒有載入更多"));
 
@@ -218,7 +218,7 @@ test("a manage menu stays open for a click inside it, and closes on a click outs
     if (path.endsWith("/me")) return json(ME);
     return json({ skills: [SKILL, SECOND], limit: 100, truncated: false, total: 2 });
   });
-  await render(<WorkspaceSkills />, () => text().includes("第二個 Skill"));
+  await render(<WorkspaceSkills />, () => text().includes("第二個小工具"));
   const [first, second] = Array.from(container.querySelectorAll<HTMLDetailsElement>(".skill-menu"));
   const press = (target: EventTarget) =>
     act(async () => {
@@ -245,10 +245,10 @@ test("a manage menu stays open for a click inside it, and closes on a click outs
 });
 
 const DELETION_NOTE =
-  "已從你的工作區、清單與搜尋移除；版本快照維持凍結，這次刪除不會移除它們；Fork 引用的共用套件物件不受影響";
+  "已從你的工作區、清單與搜尋移除；版本快照維持凍結，這次刪除不會移除它們；複製一份引用的共用套件物件不受影響";
 
 async function openConfirm() {
-  await render(<WorkspaceSkills />, () => text().includes("範例 Skill"));
+  await render(<WorkspaceSkills />, () => text().includes("範例小工具"));
   await act(async () => button("刪除")?.click());
   await act(async () => button("確認刪除")?.click());
 }
@@ -292,10 +292,10 @@ test("04 丙-150(b): a 404 delete (skill already gone) gets the page's own sente
   });
 
   await openConfirm();
-  await waitFor(() => text().includes("這個 Skill 已經不在了。"));
+  await waitFor(() => text().includes("這個小工具已經不在了。"));
 
   const alert = container.querySelector('[role="alert"]');
-  expect(alert?.textContent).toContain("這個 Skill 已經不在了。");
+  expect(alert?.textContent).toContain("這個小工具已經不在了。");
   const status = container.querySelector('[role="status"]');
-  expect(status?.textContent ?? "").not.toContain("這個 Skill 已經不在了。");
+  expect(status?.textContent ?? "").not.toContain("這個小工具已經不在了。");
 });

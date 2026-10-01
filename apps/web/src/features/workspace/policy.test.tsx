@@ -68,7 +68,7 @@ const FEEDBACK = {
   free_text:
     "message 是參與者自己寫的自由文字，最多 2000 字。它是這個部署唯一的自由文字欄位，不遮罩、不摘要、不截斷",
   page_path: "他當時所在的路由，從不是完整網址：查詢字串可能帶個資，這個管道不收",
-  run_id: "他當時看的 Run（若有），而且只在確認是他自己的 Run 之後",
+  run_id: "他當時看的試跑紀錄（若有），而且只在確認是他自己的試跑紀錄之後",
   on_account_deletion:
     "去識別而不是刪除：workspace_id 與 user_id 設為 NULL，文字保留（產品分析與稽核邊界的範圍複審建立在人們說了什麼之上，帳號刪除不能悄悄撤回已被計入的回報）",
   retention_days: null,

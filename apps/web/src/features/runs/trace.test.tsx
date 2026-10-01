@@ -168,7 +168,7 @@ const summary: TraceSummary = {
   final_output: "Removed 17 duplicate rows.",
   usage: { model: "gpt-5-mini", input_tokens: 27042, output_tokens: 1180, cost_credits: null },
   steps: [
-    { status: "queued", reason: "已收到這次 Run 的請求" },
+    { status: "queued", reason: "已收到這次試跑的請求" },
     { status: "failed", reason: "the provider could not carry the attempt" },
   ],
 };
@@ -216,7 +216,7 @@ test("the general mode says the trace is incomplete and never shows an unreporte
   expect(text).toContain("failed");
 });
 
-test("a Run with an owner Test Case returns to that exact case and version", async () => {
+test("a 試跑紀錄 with an owner 測試題 returns to that exact case and version", async () => {
   stubTrace(summary, advanced, {
     run_id: summary.run_id,
     skill_id: "skill-1",
@@ -227,16 +227,16 @@ test("a Run with an owner Test Case returns to that exact case and version", asy
   await render();
 
   const text = container.textContent ?? "";
-  expect(text).toContain(`Run ID：${summary.run_id}`);
-  const source = container.querySelector('[aria-label="這次 Run 的來源"]');
+  expect(text).toContain(`試跑紀錄 ID：${summary.run_id}`);
+  const source = container.querySelector('[aria-label="這次試跑的來源"]');
   const sourceLinks = Array.from(source?.querySelectorAll("a") ?? [], (link) => [
     link.textContent,
     link.getAttribute("href"),
   ]);
   expect(sourceLinks).toEqual([
-    ["來源 Skill", "/skills/skill-1"],
+    ["來源小工具", "/skills/skill-1"],
     ["來源 Version", "/skills/skill-1/versions/version-2"],
-    ["來源 Test Case", "/lab/test-cases/case-4?version=version-2"],
+    ["來源測試題", "/lab/test-cases/case-4?version=version-2"],
   ]);
   const validation = Array.from(container.querySelectorAll("a")).find(
     (link) => link.textContent === "驗證",
@@ -452,7 +452,7 @@ test("§2.12: the banner is gone once the run is terminal", async () => {
   expect(container.textContent ?? "").not.toContain("會自己跑到結束");
 });
 
-test("設計 §3 第 4 條：失敗的 Run 在自己的頁面上要說出失敗類別，不能比清單頁說得少", async () => {
+test("設計 §3 第 4 條：失敗的試跑紀錄在自己的頁面上要說出失敗類別，不能比清單頁說得少", async () => {
   stubTrace(summary, advanced, {
     run_id: "r-1",
     skill_id: "s-1",
@@ -461,13 +461,13 @@ test("設計 §3 第 4 條：失敗的 Run 在自己的頁面上要說出失敗�
     failure_class: {
       value: "capability_mismatch",
       label: "能力不符",
-      note: "平台在跑之前就拒絕了這次 Run，不是 Skill 執行到一半失敗。",
+      note: "平台在跑之前就拒絕了這次試跑，不是小工具執行到一半失敗。",
     },
   });
   await render();
 
   expect(container.textContent).toContain("能力不符");
-  expect(container.textContent).toContain("平台在跑之前就拒絕了這次 Run");
+  expect(container.textContent).toContain("平台在跑之前就拒絕了這次試跑");
   expect(container.textContent).not.toContain("失敗類別：未記錄");
 });
 
@@ -543,7 +543,7 @@ test("04 丙-145: a run that fails to load says so on its own page, and 失敗�
   await render();
 
   const text = container.textContent ?? "";
-  expect(text).toContain("無法讀取這個 Run");
+  expect(text).toContain("無法讀取這次試跑");
   expect(text).not.toContain("未記錄");
 });
 
@@ -610,7 +610,7 @@ test("丙-115 進度 writes the status in this app's own words and relays the re
   const progress = steps.filter((t) => t.includes("已收到") || t.includes("could not carry"));
 
   expect(progress).toEqual([
-    "排隊中：已收到這次 Run 的請求",
+    "排隊中：已收到這次試跑的請求",
     "執行失敗：the provider could not carry the attempt",
   ]);
   expect(progress.join("")).not.toContain("queued");

@@ -208,7 +208,7 @@ test("an invalid session value stays on the session list and never requests a de
 
   expect(router.state.location.search.session).toBeUndefined();
   expect(seen).not.toContain("/creation-sessions/not-a-uuid");
-  expect(text()).toContain("說出任務，一步步做成你的 Skill");
+  expect(text()).toContain("說出任務，一步步做成你的小工具");
 });
 
 test("choosing a saved conversation sets its URL and starting new clears it", async () => {
@@ -232,7 +232,7 @@ test("choosing a saved conversation sets its URL and starting new clears it", as
   await waitFor(() => router.state.location.search.session === undefined);
 
   expect(router.state.location.search.session).toBeUndefined();
-  expect(text()).toContain("說出任務，一步步做成你的 Skill");
+  expect(text()).toContain("說出任務，一步步做成你的小工具");
 });
 
 test("changing the session address clears unsent composer input from the previous session", async () => {

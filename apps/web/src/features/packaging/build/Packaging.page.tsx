@@ -76,11 +76,11 @@ export function Packaging() {
       { onError: () => void preview.refetch() },
     );
 
-  if (skill.isLoading) return <Loading what="這個 Skill" />;
+  if (skill.isLoading) return <Loading what="這個小工具" />;
   if (skill.error instanceof ApiError && skill.error.status === 410)
-    return <p role="alert">這個 Skill 已從目錄下架，內容不再提供。</p>;
-  if (skill.error) return <ReadFailure error={skill.error} what="這個 Skill" />;
-  if (!skill.data) return <p role="alert">找不到這個 Skill。</p>;
+    return <p role="alert">這個小工具已從目錄下架，內容不再提供。</p>;
+  if (skill.error) return <ReadFailure error={skill.error} what="這個小工具" />;
+  if (!skill.data) return <p role="alert">找不到這個小工具。</p>;
 
   const gate = packagingGate(skill.data);
   const deadReason = buildButtonReason({
@@ -92,7 +92,7 @@ export function Packaging() {
 
   return (
     <section>
-      <h1>Skill 套件</h1>
+      <h1>小工具套件</h1>
       <SkillWorkspaceNav skillId={skillId} versionId={versionId || undefined} />
       <p>
         <Link to="/skills/$skillId" params={{ skillId }}>
@@ -114,7 +114,7 @@ export function Packaging() {
       </details>
       {versionId === "" ? (
         <p role="alert">
-          無權檢視——這個工作區看不到這個 Skill 的版本內容。別人的 Skill 要 Fork
+          無權檢視——這個工作區看不到這個小工具的版本內容。別人的小工具要複製一份
           之後才會有屬於你的版本；這不代表它沒有版本。沒有版本內容就沒有東西可以打包。
         </p>
       ) : (

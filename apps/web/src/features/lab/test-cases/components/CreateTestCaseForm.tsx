@@ -32,7 +32,7 @@ export function CreateTestCaseForm({
 
   return (
     <>
-      <ReadFailure error={skillsError} what="你的 Skill 清單" />
+      <ReadFailure error={skillsError} what="你的小工具清單" />
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -44,7 +44,7 @@ export function CreateTestCaseForm({
         }}
       >
         <p className="field">
-          <label htmlFor="tc-skill">Skill</label>
+          <label htmlFor="tc-skill">小工具</label>
           <select id="tc-skill" value={chosenSkill} onChange={(e) => onSkillChange(e.target.value)}>
             <option value="">請選擇</option>
             {skills?.skills.map((s) => (
@@ -105,7 +105,7 @@ export function CreateTestCaseForm({
       </form>
       <MutationError
         error={create.error}
-        what="Test Case"
+        what="測試題"
         fallback="建立沒有成功，可以再按一次。"
         serverSaysStatuses={[400]}
       />

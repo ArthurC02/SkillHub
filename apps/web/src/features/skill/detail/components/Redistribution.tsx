@@ -23,7 +23,7 @@ export function Redistribution({
           </p>
         </>
       ) : (
-        <p className="note">平台沒有回報這個 Skill 的可散布性判定。</p>
+        <p className="note">平台沒有回報這個小工具的可散布性判定。</p>
       )}
 
       {blocked ? (
@@ -41,7 +41,7 @@ export function Redistribution({
         <PackagingEntry skill={skill} isLoggedIn={isLoggedIn} />
       ) : (
         <p className="note">
-          無權檢視——這個工作區看不到這個 Skill
+          無權檢視——這個工作區看不到這個小工具
           的版本內容，所以沒有東西可以打包（原因見下面的〈版本〉）。
         </p>
       )}

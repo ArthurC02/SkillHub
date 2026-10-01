@@ -212,12 +212,12 @@ test("BETA-004 a failed submit keeps the words and says what to do next", async 
   stubPlatform(400);
   await render(<FeedbackEntry pathname="/" />);
 
-  await type("Fork 之後找不到我 Fork 出來的東西。");
+  await type("複製一份之後找不到我 複製出來的東西。");
   await submit();
   await waitFor(() => text().includes("送不出去"));
 
   expect((container.querySelector("textarea") as HTMLTextAreaElement).value).toBe(
-    "Fork 之後找不到我 Fork 出來的東西。",
+    "複製一份之後找不到我 複製出來的東西。",
   );
   expect(text()).toContain("可以稍後再按一次");
   expect(text()).toContain("目前沒有第二條回報管道");
@@ -229,7 +229,7 @@ test("丙-150 a session that expires mid-typing shows 需要登入, not the serv
   stubPlatform(401);
   await render(<FeedbackEntry pathname="/" />);
 
-  await type("Fork 之後找不到我 Fork 出來的東西。");
+  await type("複製一份之後找不到我 複製出來的東西。");
   await submit();
   await waitFor(() => text().includes("需要登入"));
 

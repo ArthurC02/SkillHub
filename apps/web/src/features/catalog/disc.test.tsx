@@ -185,7 +185,7 @@ test("DISC-006: catalog serializes filters and explains one truncated result lis
   await waitFor(() => container.textContent?.includes("Catalog One") ?? false);
 
   expect(calls.some((url) => url.includes("/api/skills/catalog?limit=100&script=no"))).toBe(true);
-  expect(container.textContent).toContain("目錄共 3 個 Skill，這裡列出 1 個");
+  expect(container.textContent).toContain("目錄共 3 個小工具，這裡列出 1 個");
   expect(container.textContent?.split(rankNote).length - 1).toBe(1);
   expect(container.textContent).not.toContain("未計算語意相似度");
 });
@@ -202,7 +202,7 @@ const CATALOG_ROW = {
   match_reason_source: "template" as const,
 };
 
-test("DISC-006: 把搜尋框清空再按搜尋，回到目錄而不是「沒有夠接近的 Skill」", async () => {
+test("DISC-006: 把搜尋框清空再按搜尋，回到目錄而不是「沒有夠接近的小工具」", async () => {
   const calls = stubCatalog({ results: [CATALOG_ROW], limit: 20, total: 1, truncated: false });
   await render(<App />);
   await act(async () => {
@@ -212,7 +212,7 @@ test("DISC-006: 把搜尋框清空再按搜尋，回到目錄而不是「沒有�
   await waitFor(() => container.textContent?.includes("Catalog One") ?? false);
 
   expect(calls.some((url) => url.includes("/api/skills/catalog"))).toBe(true);
-  expect(container.textContent).not.toContain("沒有夠接近的 Skill");
+  expect(container.textContent).not.toContain("沒有夠接近的小工具");
 });
 
 test("DISC-006: 目錄那一半也要有來源標記的但書，不只搜尋那一半", async () => {
@@ -300,14 +300,14 @@ async function browseCatalogue() {
   await waitFor(() => !chips().some((c) => c.includes("…")));
 }
 
-test("Catalog landing leads with the Skill gallery and keeps creation outside the hero", async () => {
+test("Catalog landing leads with the 小工具 gallery and keeps creation outside the hero", async () => {
   stubCategoryCatalog(SHELF_ROWS);
   await browseCatalogue();
 
   const hero = container.querySelector(".hero")!;
-  expect(hero.querySelector("h1")?.textContent).toBe("探索能直接採用的 Agent Skill");
-  expect(hero.textContent).not.toContain("自己做一個 Skill");
-  expect(container.querySelector("#catalog-heading")?.textContent).toBe("Skill 探索畫廊");
+  expect(hero.querySelector("h1")?.textContent).toBe("探索能直接採用的 Agent 小工具");
+  expect(hero.textContent).not.toContain("自己做一個小工具");
+  expect(container.querySelector("#catalog-heading")?.textContent).toBe("小工具探索畫廊");
   expect(container.querySelectorAll(".catalog-gallery .catalog-skill-card")).toHaveLength(
     SHELF_ROWS.length,
   );
@@ -438,7 +438,7 @@ test("the catalogue presents every product in one compact scan surface", async (
   expect(galleries).toHaveLength(1);
   expect(cards).toHaveLength(SHELF_ROWS.length);
   expect(container.querySelector(".catalog-total")?.textContent).toContain(
-    `共 ${SHELF_ROWS.length} 個 Skill`,
+    `共 ${SHELF_ROWS.length} 個小工具`,
   );
   expect(container.querySelector(".curated-shelf")).toBeNull();
   expect(container.querySelector("#rest-heading")).toBeNull();
@@ -638,7 +638,7 @@ test("DISC-006: an empty catalog is distinct from a failed catalog read", async 
   await waitFor(() => container.textContent?.includes("目錄裡還沒有任何東西") ?? false);
   expect(container.textContent).toContain("這不是讀取失敗");
   expect(container.textContent).toContain("也不是你沒有權限");
-  expect(container.textContent).toContain("還沒有匯入過任何 Skill");
+  expect(container.textContent).toContain("還沒有匯入過任何小工具");
   expect(container.textContent).not.toContain("清掉篩選條件");
   await act(async () => root.unmount());
   queryClient.clear();
@@ -655,9 +655,9 @@ test("DISC-006: an empty filtered catalog explains how to recover", async () => 
   await act(async () => {
     await router.navigate({ to: "/", search: { tier: "curated" } });
   });
-  await waitFor(() => container.textContent?.includes("沒有 Skill 符合目前的篩選條件") ?? false);
+  await waitFor(() => container.textContent?.includes("沒有小工具符合目前的篩選條件") ?? false);
   expect(container.textContent).toContain("清掉篩選條件");
-  expect(container.textContent).not.toContain("還沒有匯入過任何 Skill");
+  expect(container.textContent).not.toContain("還沒有匯入過任何小工具");
 });
 
 test("returning to browse does not render a cached search beside the catalog", async () => {
@@ -754,7 +754,7 @@ test("DISC-002: each candidate shows its match reason, labelled by provenance", 
         summary: "把 PDF 轉成摘要",
         summary_source: "model",
         rank: 0.82,
-        match_reason: "這個 Skill 直接處理 PDF 並輸出摘要。",
+        match_reason: "這個小工具直接處理 PDF 並輸出摘要。",
         match_reason_source: "model",
       },
       {
@@ -773,7 +773,7 @@ test("DISC-002: each candidate shows its match reason, labelled by provenance", 
   await submitSearch("pdf");
 
   const text = container.textContent ?? "";
-  expect(text).toContain("這個 Skill 直接處理 PDF 並輸出摘要。");
+  expect(text).toContain("這個小工具直接處理 PDF 並輸出摘要。");
   expect(text).toContain("查詢與文件共同出現：pdf");
   expect(container.querySelectorAll(".match-reason .badge-source-model")).toHaveLength(1);
   expect(container.querySelectorAll(".match-reason .badge-source-template")).toHaveLength(1);
@@ -1004,7 +1004,7 @@ test("搜尋：標題、計數、必要警語與 facet 說明先於首卡，排�
   const cards = [...container.querySelectorAll(".search-result")];
   expect(cards).toHaveLength(TWO_HITS.results.length);
   expect(precedes(container.querySelector("#results-heading")!, cards[0])).toBe(true);
-  expect(precedes(noteElement(container, "找到 4 個 Skill。"), cards[0])).toBe(true);
+  expect(precedes(noteElement(container, "找到 4 個小工具。"), cards[0])).toBe(true);
   expect(precedes(noteElement(container, "未經人工核對"), cards[0])).toBe(true);
   expect(
     precedes(noteElement(container, "你的 Agent 讀的是套件自己的 description"), cards[0]),
@@ -1032,7 +1032,7 @@ test("DISC-004: the ranking rule is explained on demand and matches the pipeline
   expect(text).toContain("只能用關鍵字比對時");
   expect(text).toContain("還沒建立語意索引");
   expect(text).not.toContain("目前只用關鍵字比對搜尋");
-  expect(text).not.toContain("部分 Skill 尚未建立語意索引");
+  expect(text).not.toContain("部分小工具尚未建立語意索引");
 });
 
 test("DISC-004: 降級自述在 details 外面平鋪，不在裡面當徽章", async () => {
@@ -1073,7 +1073,7 @@ test("DISC-009: comparison needs two candidates and accepts at most three", asyn
 
   await pick(0);
   expect(compareLink()).toBeNull();
-  expect(container.textContent).toContain("再選 1 個 Skill");
+  expect(container.textContent).toContain("再選 1 個小工具");
 
   await pick(1);
   expect(compareLink()?.getAttribute("href")).toContain(
@@ -1158,9 +1158,9 @@ function detailFixture(overrides: Partial<SkillDetail>): SkillDetail {
     redistribution: {
       value: "unknown",
       label: "可散布性未確認",
-      note: "沒有人確認過這個 Skill 可不可以再散布。",
+      note: "沒有人確認過這個小工具可不可以再散布。",
     },
-    derivation: { is_fork: false, label: "來源關係", note: "非 Fork。" },
+    derivation: { is_fork: false, label: "來源關係", note: "不是複製品。" },
     risk: {
       scan_status: "scanned",
       counts: { errors: 0, warnings: 0, infos: 0 },
@@ -1242,7 +1242,7 @@ function compareRow(label: string) {
 test("DISC-009: the table highlights differing rows and never invents a missing one", async () => {
   const left = detailFixture({
     skill_id: "id-left",
-    name: "左邊的 Skill",
+    name: "左邊的小工具",
     enrichment: {
       status: "enriched",
       summary: "把 PDF 轉成摘要。",
@@ -1261,14 +1261,14 @@ test("DISC-009: the table highlights differing rows and never invents a missing 
       created_at: "2026-08-01T00:00:00Z",
     },
   });
-  const right = detailFixture({ skill_id: "id-right", name: "右邊的 Skill" });
+  const right = detailFixture({ skill_id: "id-right", name: "右邊的小工具" });
   const calls = stubSearchAndDetails(
     {
       ...EMPTY,
       query: "pdf",
       results: [
-        { ...HIT_FACETS, skill_id: "id-left", name: "左邊的 Skill", summary: "甲", rank: 0.7 },
-        { ...HIT_FACETS, skill_id: "id-right", name: "右邊的 Skill", summary: "乙", rank: 0.6 },
+        { ...HIT_FACETS, skill_id: "id-left", name: "左邊的小工具", summary: "甲", rank: 0.7 },
+        { ...HIT_FACETS, skill_id: "id-right", name: "右邊的小工具", summary: "乙", rank: 0.6 },
       ],
     },
     { "id-left": left, "id-right": right },
@@ -1281,8 +1281,8 @@ test("DISC-009: the table highlights differing rows and never invents a missing 
   await act(async () => compareLink()!.click());
   await waitFor(() => container.querySelector("table.compare-table") !== null);
 
-  expect(container.textContent).toContain("左邊的 Skill");
-  expect(container.textContent).toContain("右邊的 Skill");
+  expect(container.textContent).toContain("左邊的小工具");
+  expect(container.textContent).toContain("右邊的小工具");
 
   const tier = compareRow("來源層級");
   expect(tier.className).not.toContain("compare-differs");
@@ -1319,7 +1319,7 @@ test("DISC-009: the table highlights differing rows and never invents a missing 
 });
 
 test("DISC-009: a repeated URL id is still only one comparison candidate", async () => {
-  const skill = detailFixture({ skill_id: "id-left", name: "Only Skill" });
+  const skill = detailFixture({ skill_id: "id-left", name: "Only 小工具" });
   const calls = stubSearchAndDetails(EMPTY, { "id-left": skill });
   await render(<App />);
   await act(async () => {
@@ -1327,7 +1327,7 @@ test("DISC-009: a repeated URL id is still only one comparison candidate", async
   });
   await waitFor(() => calls.some((url) => url.includes("/api/skills/id-left?")));
 
-  expect(container.textContent).toContain("請從首頁的搜尋結果或目錄選擇 2 到 3 個 Skill");
+  expect(container.textContent).toContain("請從首頁的搜尋結果或目錄選擇 2 到 3 個小工具");
   expect(container.querySelector("table.compare-table")).toBeNull();
 });
 
@@ -1344,14 +1344,14 @@ test("DISC-009: a failed read on /compare says so at once, not after seven secon
               {
                 ...HIT_FACETS,
                 skill_id: "id-left",
-                name: "左邊的 Skill",
+                name: "左邊的小工具",
                 summary: "甲",
                 rank: 0.7,
               },
               {
                 ...HIT_FACETS,
                 skill_id: "id-right",
-                name: "右邊的 Skill",
+                name: "右邊的小工具",
                 summary: "乙",
                 rank: 0.6,
               },
@@ -1371,7 +1371,7 @@ test("DISC-009: a failed read on /compare says so at once, not after seven secon
   await act(async () => compareLink()!.click());
 
   await waitFor(() => (container.textContent ?? "").includes("讀取失敗"), 300);
-  expect(container.textContent).toContain("有 2 個 Skill 讀取失敗");
+  expect(container.textContent).toContain("有 2 個小工具讀取失敗");
 });
 
 test("DISC-004: a risk level of unknown reads as 未掃描, not as a clean row", async () => {
@@ -1680,7 +1680,7 @@ test("DISC-003: filtered-to-empty and the no-results refusal never share copy", 
 
   let text = container.textContent ?? "";
   expect(text).toContain("全部被目前的篩選條件排除");
-  expect(text).not.toContain("沒有夠接近的 Skill");
+  expect(text).not.toContain("沒有夠接近的小工具");
 
   await act(async () => root.unmount());
   queryClient.clear();
@@ -1695,7 +1695,7 @@ test("DISC-003: filtered-to-empty and the no-results refusal never share copy", 
   await submitSearch("pdf");
 
   text = container.textContent ?? "";
-  expect(text).toContain("沒有夠接近的 Skill");
+  expect(text).toContain("沒有夠接近的小工具");
   expect(text).toContain("Try naming the file format you have.");
   expect(text).not.toContain("全部被目前的篩選條件排除");
 });
@@ -1726,7 +1726,7 @@ test("DISC-002: a result row carries all seven columns, and infers none of them"
       {
         ...HIT_FACETS,
         skill_id: "66666666-6666-6666-6666-666666666666",
-        name: "Unscanned Skill",
+        name: "Unscanned 小工具",
         summary: "沒有掃描紀錄",
         rank: 0.3,
         risk: {
@@ -1824,19 +1824,19 @@ test("DISC-006: the general detail view answers all nine required facts", async 
 test("DISC-006: an unenriched skill reads as unknown, never as 'needs nothing'", async () => {
   const skill = detailFixture({
     skill_id: "dddddddd-0000-0000-0000-000000000002",
-    name: "Bare Skill",
+    name: "Bare 小工具",
   });
   stubSearchAndDetails(EMPTY, { [skill.skill_id]: skill });
   await render(<App />);
   await act(async () => {
     await router.navigate({ to: "/skills/$skillId", params: { skillId: skill.skill_id } });
   });
-  await waitFor(() => (container.textContent ?? "").includes("Bare Skill"));
+  await waitFor(() => (container.textContent ?? "").includes("Bare 小工具"));
 
   const text = container.textContent ?? "";
   expect(text).toContain("依賴：");
   expect(text).toContain("未知");
-  expect(text).toContain("不代表這個 Skill 沒有限制");
+  expect(text).toContain("不代表這個小工具沒有限制");
 });
 
 test("SEC-007: the redistribution verdict shows all three states and only `allowed` opens packaging", async () => {
@@ -1900,10 +1900,10 @@ test("SEC-007: the redistribution verdict shows all three states and only `allow
   }
 });
 
-test("SEC-007: 目錄裡別人的 Skill 不給打包 CTA，而是說要先 Fork", async () => {
+test("SEC-007: 目錄裡別人的小工具不給打包 CTA，而是說要先複製一份", async () => {
   const skill = detailFixture({
     skill_id: "dddddddd-0000-0000-0000-000000000009",
-    name: "別人的 Skill",
+    name: "別人的小工具",
     redistribution: { value: "allowed", label: "可再散布", note: "可再散布。" },
     version: {
       version_id: "v1",
@@ -1965,7 +1965,7 @@ test("DISC-007: advanced mode shows SKILL.md in full and marks every script", as
   expect(marked).toHaveLength(1);
   expect(marked[0].textContent).toContain("scripts/run.py");
   expect(
-    [...container.querySelectorAll('nav[aria-label="這個 Skill 的工作台"] a')]
+    [...container.querySelectorAll('nav[aria-label="這個小工具的工作台"] a')]
       .find((link) => link.textContent === "總覽")
       ?.getAttribute("href"),
   ).toBe(`/skills/${skillId}`);
@@ -2016,7 +2016,7 @@ test("a licensing hold explains itself and takes the advanced link with it", asy
     },
     access_restriction: {
       reason: "license-review",
-      note: "此 Skill 的來源授權正在審查中:不提供 SKILL.md 全文與檔案樹。",
+      note: "此小工具的來源授權正在審查中:不提供 SKILL.md 全文與檔案樹。",
     },
   });
   stubSearchAndDetails(EMPTY, { [held.skill_id]: held });

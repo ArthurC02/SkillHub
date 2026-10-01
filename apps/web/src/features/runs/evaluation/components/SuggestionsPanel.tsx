@@ -45,8 +45,8 @@ export function SuggestionsPanel({ runId }: { runId: string }) {
       {suggestions.data.suggestions.length > 0 && (
         <div>
           <p className="note">
-            採納建議會建立一個<strong>新的 Skill Version</strong>
-            ，不會覆寫已經跑過的版本；新版本的套件內容不同，開始 Run 前必須重新確認權限摘要。
+            採納建議會建立一個<strong>新的小工具 Version</strong>
+            ，不會覆寫已經跑過的版本；新版本的套件內容不同，開始試跑前必須重新確認權限摘要。
           </p>
           <button
             type="button"
@@ -61,7 +61,7 @@ export function SuggestionsPanel({ runId }: { runId: string }) {
           >
             以已接受的 {accepted.length} 項建議建立新版本
           </button>
-          {!skillId && <p className="note">正在讀取這個 Run 屬於哪個 Skill…</p>}
+          {!skillId && <p className="note">正在讀取這次試跑屬於哪個小工具…</p>}
         </div>
       )}
 

@@ -77,7 +77,7 @@ describe("publishing workspace search", () => {
   });
 });
 
-describe("legacy Run preflight links", () => {
+describe("legacy 試跑紀錄 preflight links", () => {
   test.each([
     [
       "complete object context",
@@ -89,7 +89,7 @@ describe("legacy Run preflight links", () => {
       },
     ],
     [
-      "a Test Case without its Skill",
+      "a 測試題 without its 小工具",
       { version: "version-1", test_case: "test-case-1" },
       {
         to: "/lab/test-cases/$testCaseId",
@@ -98,7 +98,7 @@ describe("legacy Run preflight links", () => {
       },
     ],
     [
-      "no Test Case",
+      "no 測試題",
       { skill: "skill-1", version: "version-1" },
       {
         to: "/lab/test-cases",
@@ -113,7 +113,7 @@ describe("legacy Run preflight links", () => {
 describe("legacy Dataset links", () => {
   test.each([
     [
-      "a Test Case and version",
+      "a 測試題 and version",
       { test_case: "test-case-1", version: "version-1" },
       {
         to: "/lab/test-cases/$testCaseId/datasets",
@@ -121,7 +121,7 @@ describe("legacy Dataset links", () => {
         search: { version: "version-1" },
       },
     ],
-    ["no Test Case", {}, { to: "/lab/test-cases", search: {} }],
+    ["no 測試題", {}, { to: "/lab/test-cases", search: {} }],
   ])("sends %s to the nearest durable context", (_name, search, expected) => {
     expect(legacyDatasetDestination(search)).toEqual(expected);
   });

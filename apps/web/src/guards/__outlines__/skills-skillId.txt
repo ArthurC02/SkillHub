@@ -1,6 +1,6 @@
 h1 PDF Summariser
 h2 試跑
-h2 Fork 到你的工作區
+h2 複製一份到你的工作區
 h2 類別
 h2 風險揭露
 h2 可散布性與打包

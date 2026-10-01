@@ -11,7 +11,7 @@ export function AdminNav() {
         帳號與點數
       </Link>
       <Link to="/admin/skills" search={{}} className="chip">
-        Skill 治理
+        小工具治理
       </Link>
       <Link to="/admin/dispatch" className="chip">
         派送煞車

@@ -20,7 +20,7 @@ export function SkillIdentifiers({ skill }: { skill: SkillDetail }) {
           </li>
         </ul>
       ) : (
-        <p>無權檢視——這個工作區看不到這個 Skill 的版本內容（原因見上面的〈版本〉）。</p>
+        <p>無權檢視——這個工作區看不到這個小工具的版本內容（原因見上面的〈版本〉）。</p>
       )}
       {skill.derivation.forked_from_version_id && (
         <p>

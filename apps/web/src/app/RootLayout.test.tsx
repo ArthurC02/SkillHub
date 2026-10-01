@@ -97,8 +97,8 @@ test("the platform shell exposes stable places and hides Studio until generation
   expect(activity?.getAttribute("href")).toBe("/activity");
   expect(nav.textContent).toContain("發佈");
   expect(nav.textContent).not.toContain("Studio");
-  expect(nav.textContent).not.toContain("匯入 Skill");
-  expect(nav.textContent).not.toContain("Test Case");
+  expect(nav.textContent).not.toContain("匯入小工具");
+  expect(nav.textContent).not.toContain("測試題");
   expect(container.querySelector('form[role="search"]')).not.toBeNull();
 });
 

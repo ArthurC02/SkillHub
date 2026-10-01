@@ -31,7 +31,7 @@ export function RunHistory({
       )}
       {runs.data &&
         (history.length === 0 ? (
-          <p>尚無執行。這個 Test Case 還沒有跑過任何 Run。</p>
+          <p>尚無執行。這個測試題還沒有做過任何試跑。</p>
         ) : (
           <ul className="download-list" data-role="evidence">
             {history.map((run) => (
@@ -73,13 +73,13 @@ export function RunHistory({
                   <Link
                     to="/runs/$runId/compare"
                     params={{ runId: run.run_id }}
-                    aria-label={`以建立於 ${formatAt(run.created_at)} 的 Run 開始比較`}
+                    aria-label={`以建立於 ${formatAt(run.created_at)} 的試跑紀錄開始比較`}
                   >
-                    以這次 Run 開始比較
+                    以這次試跑開始比較
                   </Link>
                 </p>
                 <details>
-                  <summary>Skill Version</summary>
+                  <summary>小工具 Version</summary>
                   <code>{run.skill_version_id}</code>
                 </details>
               </li>

@@ -8,9 +8,7 @@ export function Limitations({ limitations }: { limitations: SkillLimitation[] })
     <>
       <h3>限制</h3>
       {limitations.length === 0 ? (
-        <p className="note">
-          沒有任何來源指出限制——這代表沒有人說明過，不代表這個 Skill 沒有限制。
-        </p>
+        <p className="note">沒有任何來源指出限制——這代表沒有人說明過，不代表這個小工具沒有限制。</p>
       ) : (
         <ul className="risk-list">
           {limitations.map((limitation) => (

@@ -53,7 +53,7 @@ export function EvaluationReport({
         <CriterionSection results={evaluation.criterion_results} />
       )}
 
-      <h3>這個 Run 的問題（六類）</h3>
+      <h3>這次試跑的問題（六類）</h3>
       {evaluation.deterministic_findings.length === 0 ? (
         <p>沒有列出問題。這不等於一切正常，只表示這些檢查沒有產生發現。</p>
       ) : (
@@ -84,7 +84,7 @@ export function EvaluationReport({
       </p>
       <p className="note">
         {evaluation.cost.note}
-        {" 這是平台判定用掉的點數，與 Run 自己用掉的分開列，不相加。"}
+        {" 這是平台判定用掉的點數，與試跑紀錄自己用掉的分開列，不相加。"}
       </p>
 
       <details>

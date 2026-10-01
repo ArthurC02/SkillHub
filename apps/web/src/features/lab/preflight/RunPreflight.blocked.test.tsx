@@ -79,7 +79,7 @@ async function renderPreflight() {
 
 const startButton = () =>
   Array.from(container.querySelectorAll("button")).find((b) =>
-    (b.textContent ?? "").includes("開始 Run"),
+    (b.textContent ?? "").includes("開始試跑"),
   );
 
 test("a pair this deployment cannot run offers no button to start it", async () => {

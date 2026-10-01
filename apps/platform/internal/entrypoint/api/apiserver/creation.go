@@ -158,7 +158,7 @@ func (h *creationHandler) creationError(w http.ResponseWriter, err error) {
 		text = "已達這次核准的創作限制。"
 	case errors.Is(err, ingest.ErrGeneratedNameCollision):
 		code = 422
-		text = "你的工作區已經有一個同名的 Skill。請先刪除或改名它，或在對話中請 Agent 把草稿改名後再保存。"
+		text = "你的工作區已經有一個同名的小工具。請先刪除或改名它，或在對話中請 Agent 把草稿改名後再保存。"
 	case errors.Is(err, creation.ErrDeadline):
 		code = 422
 		minutes := int64(h.Svc.Limits.SessionTimeout / time.Minute)

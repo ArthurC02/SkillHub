@@ -41,8 +41,8 @@ export function WorkspaceRuns() {
       {runs.data &&
         (rows.length === 0 ? (
           <p>
-            還沒有跑過任何 Run。這裡是空的代表沒有發生過，不是紀錄被清掉了—— 要開始，請從{" "}
-            <Link to="/lab/test-cases">Test Case</Link> 建立一個再試跑。
+            還沒有做過任何試跑。這裡是空的代表沒有發生過，不是紀錄被清掉了—— 要開始，請從{" "}
+            <Link to="/lab/test-cases">測試題</Link> 建立一個再試跑。
           </p>
         ) : (
           <>

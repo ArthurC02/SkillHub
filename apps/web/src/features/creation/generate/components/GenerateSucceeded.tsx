@@ -8,7 +8,7 @@ export function GenerateSucceeded({
 }) {
   return (
     <section role="status">
-      <h3>已經產生一個 Skill，放在你的工作區</h3>
+      <h3>已經產生一個小工具，放在你的工作區</h3>
       <GeneratedNotice skillId={result.skill_id} versionId={result.version_id} />
       {result.attempts > 1 && (
         <p className="note">這一次生成試了 {result.attempts} 趟才通過驗證。</p>

@@ -31,7 +31,7 @@ export function ExistingTestCasesSection({
     <>
       {filter && (
         <p className="note" role="status">
-          只顯示 <strong>{rows[0]?.skill_name || ownedSkillName || "某一個 Skill"}</strong> 的 Test
+          只顯示 <strong>{rows[0]?.skill_name || ownedSkillName || "某一個小工具"}</strong> 的 Test
           Case。{" "}
           <Link to="/lab/test-cases" search={{ skill: undefined, version: undefined }}>
             顯示全部
@@ -40,21 +40,20 @@ export function ExistingTestCasesSection({
       )}
       {notMine && (
         <p className="notice" role="status">
-          這個 Skill 不在你的工作區。Test Case 屬於工作區，所以這裡看不到它，建立表單的 Skill
-          選單也選不到它——
+          這個小工具不在你的工作區。測試題屬於工作區，所以這裡看不到它，建立表單的小工具選單也選不到它——
           <Link to="/skills/$skillId" params={{ skillId: filter as string }}>
-            先把它 Fork 一份
+            先把它複製一份
           </Link>
-          ，才會有屬於你的版本可以建立 Test Case。
+          ，才會有屬於你的版本可以建立測試題。
         </p>
       )}
-      {isPending && <Loading what=" Test Case 清單" />}
-      <ReadFailure error={error} what=" Test Case" />
+      {isPending && <Loading what="測試題清單" />}
+      <ReadFailure error={error} what="測試題" />
       {!isPending &&
         !error &&
         (rows.length === 0 ? (
           notMine ? null : (
-            <p>{filter ? "這個 Skill 還沒有 Test Case。" : "還沒有 Test Case。"}</p>
+            <p>{filter ? "這個小工具還沒有測試題。" : "還沒有測試題。"}</p>
           )
         ) : (
           <ul className="search-results" data-role="evidence">
@@ -68,9 +67,9 @@ export function ExistingTestCasesSection({
                   {tc.name}
                 </Link>
                 <p className="note">
-                  Skill：
+                  小工具：
                   {tc.skill_name === ""
-                    ? "這個 Skill 已經不在你的清單裡（已刪除，或已下架）"
+                    ? "這個小工具已經不在你的清單裡（已刪除，或已下架）"
                     : tc.skill_name}
                 </p>
                 <p className="note">

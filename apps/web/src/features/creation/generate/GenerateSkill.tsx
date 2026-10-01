@@ -124,7 +124,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
     <section>
       <h2>讓平台依你的描述做一個</h2>
       <p className="note">
-        平台會依你寫的任務描述產生一個 Skill 套件，放進你自己的工作區。 它
+        平台會依你寫的任務描述產生一個小工具套件，放進你自己的工作區。 它
         <strong>不會進入公開目錄，也不會出現在搜尋結果裡</strong>——包括你自己搜尋的時候。
       </p>
 
@@ -146,7 +146,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
       </div>
 
       <details>
-        <summary>附一張流程圖，或指定要參考的 Skill（都是選填）</summary>
+        <summary>附一張流程圖，或指定要參考的小工具（都是選填）</summary>
 
         <div className="field">
           <label htmlFor="generate-diagram-file">流程圖或架構圖（選填）</label>
@@ -203,7 +203,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
         }
         disabled={mutation.isPending || reading || nothingToSend}
       >
-        {mutation.isPending ? "生成中…" : "生成一個 Skill"}
+        {mutation.isPending ? "生成中…" : "生成一個小工具"}
       </button>
 
       <GenerateOutcome mutation={mutation} rejected={rejected} onRetry={submit} />
@@ -233,7 +233,7 @@ function GenerateOutcome({
     <>
       {mutation.isPending && <GenerateInFlight />}
       {mutation.error && !rejected && (
-        <ReadFailure error={mutation.error} what="生成 Skill">
+        <ReadFailure error={mutation.error} what="生成小工具">
           <p role="alert">{failure}</p>
         </ReadFailure>
       )}
@@ -311,7 +311,7 @@ export function ReferencePicker({
   return (
     <div>
       <div className="field">
-        <label htmlFor="generate-reference-query">搜尋要參考的 Skill</label>
+        <label htmlFor="generate-reference-query">搜尋要參考的小工具</label>
         <input
           id="generate-reference-query"
           type="text"
@@ -322,12 +322,12 @@ export function ReferencePicker({
         />
       </div>
       <p className="note">
-        模型會讀你選的 Skill 的說明檔（SKILL.md）當範例，最多 {GENERATE_MAX_REFERENCES} 個；
-        產出仍是你工作區裡一個全新的 Skill。 有授權暫扣或禁止再散布的目錄 Skill 無法被選為參考。
+        模型會讀你選的小工具的說明檔（SKILL.md）當範例，最多 {GENERATE_MAX_REFERENCES} 個；
+        產出仍是你工作區裡一個全新的小工具。 有授權暫扣或禁止再散布的目錄小工具無法被選為參考。
       </p>
 
       {references.length > 0 && (
-        <ul className="badge-row" aria-label="已選的參考 Skill">
+        <ul className="badge-row" aria-label="已選的參考小工具">
           {references.map((r) => (
             <li key={r.id}>
               <button type="button" onClick={() => onToggle(r.id, r.name)} disabled={disabled}>
@@ -347,9 +347,9 @@ export function ReferencePicker({
         <>
           <h3>搜尋結果</h3>
           {search.isFetching && <p role="status">搜尋中…</p>}
-          <ReadFailure error={search.error} what="參考 Skill 的搜尋結果" />
+          <ReadFailure error={search.error} what="參考小工具的搜尋結果" />
           {!search.isFetching && !search.error && search.data?.results.length === 0 && (
-            <p role="status">目錄裡沒有符合的 Skill。</p>
+            <p role="status">目錄裡沒有符合的小工具。</p>
           )}
           <ul className="search-results">
             {(search.data?.results ?? []).map((hit) => (
@@ -365,9 +365,9 @@ export function ReferencePicker({
               />
             ))}
           </ul>
-          <h3>資產庫中的 Skill</h3>
-          {ownSkills.isPending && <p role="status">載入資產庫中的 Skill…</p>}
-          <ReadFailure error={ownSkills.error} what="資產庫中的 Skill" />
+          <h3>資產庫中的小工具</h3>
+          {ownSkills.isPending && <p role="status">載入資產庫中的小工具…</p>}
+          <ReadFailure error={ownSkills.error} what="資產庫中的小工具" />
           {!ownSkills.isPending &&
             !ownSkills.error &&
             ownSkills.data &&

@@ -141,8 +141,8 @@ test("activity groups owner facts and keeps every continuation in its product co
   );
   expect(
     container.querySelector('a[href="/lab/test-cases/case-1?version=version-2"]')?.textContent,
-  ).toBe("Test Case");
-  expect(container.querySelector('a[href="/runs/run-1"]')?.textContent).toBe("查看 Run");
+  ).toBe("測試題");
+  expect(container.querySelector('a[href="/runs/run-1"]')?.textContent).toBe("查看試跑紀錄");
   expect(
     container.querySelector('a[href="/workspace/creations?session=session-1"]')?.textContent,
   ).toBe("繼續創作");

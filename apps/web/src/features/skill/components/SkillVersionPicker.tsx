@@ -20,7 +20,7 @@ export function SkillVersionPicker({
   return (
     // div, not p: Loading/ReadFailure below can render block elements, which <p> can't contain.
     <div>
-      <label htmlFor={id}>Skill Version</label>{" "}
+      <label htmlFor={id}>小工具 Version</label>{" "}
       <select id={id} value={value} onChange={(e) => onPick(e.target.value)}>
         {value === "" && <option value="">請選擇版本…</option>}
         {unknown && <option value={value}>{value}（不在下面的清單裡）</option>}
@@ -35,7 +35,7 @@ export function SkillVersionPicker({
       <ReadFailure error={versions.error} what="版本清單" />
       {!versions.isPending && !versions.error && list.length === 0 && (
         <span className="note">
-          這個工作區沒有這個 Skill 的任何版本可選——不代表這個 Skill 沒有版本，Fork
+          這個工作區沒有這個小工具的任何版本可選——不代表這個小工具沒有版本，複製一份
           之後才會有屬於你的版本。
         </span>
       )}

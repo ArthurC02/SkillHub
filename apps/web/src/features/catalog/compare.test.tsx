@@ -19,7 +19,7 @@ import {
 const FOREIGN_RUN = {
   ...RUNS.runs[1],
   run_id: "0f0f0f0f-1111-4222-8333-444455556666",
-  status_reason: "這是別的 Test Case 的 Run。",
+  status_reason: "這是別的測試題的試跑紀錄。",
   created_at: "2026-01-01T00:00:00Z",
 };
 
@@ -74,7 +74,7 @@ function stubPlatform(calls?: string[]) {
   });
 }
 
-test("EVAL-003 waits for the Test Case before loading candidate runs", async () => {
+test("EVAL-003 waits for the 測試題 before loading candidate runs", async () => {
   const calls: string[] = [];
   stubPlatform(calls);
   await render(<RunCompare />);
@@ -227,7 +227,7 @@ test("DISC-009 §2.9 每一列的缺席各自說出自己的型別", async () =>
   expect(cellOf("版本與時間", 0)).toBe("不適用");
 });
 
-test("DISC-009 最小匯入的 Skill：不印表外詞「未提供」", async () => {
+test("DISC-009 最小匯入的小工具：不印表外詞「未提供」", async () => {
   const minimal = skillDetail("m", "M");
   minimal.summary = "";
   minimal.allowed_tools = undefined;
@@ -256,7 +256,7 @@ test("DISC-009 生成的套件：來源網址是不適用，不是未測量", as
   expect(text()).toContain("來源網址：未測量");
 });
 
-test("DISC-009 相容性不同的兩個 Skill,那一列要說有差異", async () => {
+test("DISC-009 相容性不同的兩個小工具,那一列要說有差異", async () => {
   const runs = skillDetail("a", "A");
   const doesNot = skillDetail("b", "B");
   doesNot.compatibility = {
@@ -274,7 +274,7 @@ test("DISC-009 相容性不同的兩個 Skill,那一列要說有差異", async (
   expect(row!.className).toContain("compare-differs");
 });
 
-test("EVAL-003 到站時就有同一個 Test Case 的候選,而且認得出它的不是 uuid", async () => {
+test("EVAL-003 到站時就有同一個測試題的候選,而且認得出它的不是 uuid", async () => {
   stubPlatform();
   await render(<RunCompare />);
   await waitFor(() => candidateButtons().length > 0);
@@ -284,13 +284,13 @@ test("EVAL-003 到站時就有同一個 Test Case 的候選,而且認得出它�
     candidateButtons()[0].querySelector('time[datetime="2026-08-16T00:00:00Z"]'),
   ).not.toBeNull();
 
-  expect(text()).not.toContain("這是別的 Test Case 的 Run。");
+  expect(text()).not.toContain("這是別的測試題的試跑紀錄。");
 
   const list = container.querySelector("ul.download-list");
   expect(list?.textContent ?? "").not.toContain(OTHER_RUN);
 
   expect(container.querySelector("#against")).not.toBeNull();
-  expect(text()).not.toContain("這個 Test Case 目前只有這一次 Run");
+  expect(text()).not.toContain("這個測試題目前只有這一次試跑紀錄");
 });
 
 test("EVAL-003 自己不在候選裡:自比自伺服器會回 400", async () => {
@@ -314,7 +314,7 @@ test("EVAL-003 選了候選就寫進網址,比較仍然可以被連結分享", a
   expect(navigations[0].search?.against).toBe(OTHER_RUN);
 });
 
-test("EVAL-003 只跑過一次的 Test Case:說原因,不是把控制項拿掉(設計 §2.4)", async () => {
+test("EVAL-003 只跑過一次的測試題:說原因,不是把控制項拿掉(設計 §2.4)", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
     if (pathOf(url) === "/runs") return json({ runs: [RUNS.runs[0]] });
@@ -322,14 +322,14 @@ test("EVAL-003 只跑過一次的 Test Case:說原因,不是把控制項拿掉(�
     return json(body, status);
   });
   await render(<RunCompare />);
-  await waitFor(() => text().includes("這個 Test Case 目前只有這一次 Run"));
+  await waitFor(() => text().includes("這個測試題目前只有這一次試跑紀錄"));
 
   expect(candidateButtons().length).toBe(0);
   expect(container.querySelector("#against")).not.toBeNull();
-  expect(text()).toContain("輸入另一個 Run 的 ID 後開始比較。");
+  expect(text()).toContain("輸入另一筆試跑紀錄的 ID 後開始比較。");
 });
 
-test("EVAL-003 目前 Run 讀取失敗不會冒充沒有其他 Run", async () => {
+test("EVAL-003 目前試跑紀錄讀取失敗不會冒充沒有其他試跑紀錄", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
     if (pathOf(url) === `/runs/${RUN}`) return json({ error: "boom" }, 500);
@@ -337,10 +337,10 @@ test("EVAL-003 目前 Run 讀取失敗不會冒充沒有其他 Run", async () =>
     return json(body, status);
   });
   await render(<RunCompare />);
-  await waitFor(() => text().includes("無法讀取目前這次 Run"));
+  await waitFor(() => text().includes("無法讀取目前這次試跑"));
 
-  expect(text()).toContain("無法讀取目前這次 Run");
-  expect(text()).not.toContain("這個 Test Case 目前只有這一次 Run");
+  expect(text()).toContain("無法讀取目前這次試跑");
+  expect(text()).not.toContain("這個測試題目前只有這一次試跑紀錄");
 });
 
 test("EVAL-003 候選歷史讀取失敗不會冒充空歷史", async () => {
@@ -351,22 +351,22 @@ test("EVAL-003 候選歷史讀取失敗不會冒充空歷史", async () => {
     return json(body, status);
   });
   await render(<RunCompare />);
-  await waitFor(() => text().includes("無法讀取可比較的 Run"));
+  await waitFor(() => text().includes("無法讀取可比較的試跑紀錄"));
 
-  expect(text()).toContain("無法讀取可比較的 Run");
-  expect(text()).not.toContain("這個 Test Case 目前只有這一次 Run");
+  expect(text()).toContain("無法讀取可比較的試跑紀錄");
+  expect(text()).not.toContain("這個測試題目前只有這一次試跑紀錄");
 });
 
 const occurrences = (needle: string) => text().split(needle).length - 1;
 
-const RUN_COST_AUTHORITY = "模型閘道對這個 Run 的 per-key 實付";
+const RUN_COST_AUTHORITY = "模型閘道對這次試跑的 per-key 實付";
 const COST_NOTE = `這是下界，不是總額。權威來源：${RUN_COST_AUTHORITY}`;
 
 test("§2.13 去重 1：兩側相同的成本但書印在列首，一次", async () => {
   stubPlatform();
   search = { against: OTHER_RUN };
   await render(<RunCompare />);
-  await waitFor(() => text().includes("Run 用掉的點數"));
+  await waitFor(() => text().includes("試跑用掉的點數"));
 
   expect(occurrences(COST_NOTE), "同一句但書在左右兩格各印了一次").toBe(1);
   expect(occurrences("與上一列分開列，不相加。")).toBe(1);
@@ -396,7 +396,7 @@ test("§2.13 去重 1：兩側的權威來源不同時，每一格各自留著�
   });
   search = { against: OTHER_RUN };
   await render(<RunCompare />);
-  await waitFor(() => text().includes("Run 用掉的點數"));
+  await waitFor(() => text().includes("試跑用掉的點數"));
 
   expect(text()).toContain(`權威來源：${RUN_COST_AUTHORITY}`);
   expect(text()).toContain("權威來源：另一個閘道的帳單");
@@ -410,14 +410,14 @@ test("§2.13：回答沒有人問的問題那一句刪了；重跑的但書縮�
   stubPlatform();
   search = { against: OTHER_RUN };
   await render(<RunCompare />);
-  await waitFor(() => text().includes("Run 用掉的點數"));
+  await waitFor(() => text().includes("試跑用掉的點數"));
 
   expect(text()).not.toContain("比較只是讀取");
-  expect(text()).not.toContain("仍須在那裡確認一次才會開始 Run");
+  expect(text()).not.toContain("仍須在那裡確認一次才會開始試跑");
   expect(text()).toContain("（會先經過權限確認）");
 });
 
-test("§3 第 14 條：挑另一個 Run 的說明在同一屏上只有一段", async () => {
+test("§3 第 14 條：挑另一個試跑紀錄的說明在同一屏上只有一段", async () => {
   stubPlatform();
   await render(<RunCompare />);
   await waitFor(() => candidateButtons().length > 0);

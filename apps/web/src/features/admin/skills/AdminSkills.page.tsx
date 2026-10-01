@@ -16,7 +16,7 @@ export function AdminSkills() {
 
   return (
     <AdminPage
-      heading="Skill 治理"
+      heading="小工具治理"
       lede="範圍是所有工作區，含私人的與已下架的；只顯示治理狀態，不顯示內容。"
     >
       <form
@@ -26,7 +26,7 @@ export function AdminSkills() {
         }}
       >
         <div className="field">
-          <label htmlFor="admin-skill-q">Skill id 或名稱</label>
+          <label htmlFor="admin-skill-q">小工具 ID 或名稱</label>
           <input
             id="admin-skill-q"
             value={draft}
@@ -37,11 +37,11 @@ export function AdminSkills() {
           查詢
         </button>
       </form>
-      {q !== "" && skills.isPending && <Loading what=" Skill" />}
-      <ReadFailure error={skills.error} what=" Skill" />
+      {q !== "" && skills.isPending && <Loading what="小工具" />}
+      <ReadFailure error={skills.error} what="小工具" />
       {skills.data &&
         (found.length === 0 ? (
-          <p>沒有符合「{q}」的 Skill：0 筆。已刪除的 Skill 不會出現。</p>
+          <p>沒有符合「{q}」的小工具：0 筆。已刪除的小工具不會出現。</p>
         ) : (
           <ul className="download-list">
             {found.map((skill) => (

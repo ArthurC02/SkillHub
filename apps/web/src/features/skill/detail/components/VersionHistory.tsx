@@ -21,8 +21,7 @@ export function VersionHistory({ skillId }: { skillId: string }) {
       {versions.data &&
         (list.length === 0 ? (
           <p>
-            無權檢視——這個工作區看不到這個 Skill 的版本內容。別人的 Skill 要 Fork
-            之後才會有屬於你的版本；這不代表它沒有版本。
+            無權檢視——這個工作區看不到這個小工具的版本內容。別人的小工具要複製一份之後才會有屬於你的版本；這不代表它沒有版本。
           </p>
         ) : (
           <>

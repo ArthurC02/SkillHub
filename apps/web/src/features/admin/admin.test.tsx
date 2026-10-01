@@ -667,7 +667,7 @@ test("OPS-008: the trends page asks each owner for 30 days by default and draws 
       "授予點數",
       "開始試跑",
       "搜尋",
-      "看 Skill 詳情",
+      "看小工具詳情",
     ].map((name) => `${name}：每日長條圖，逐日數字在下方的表`),
   );
 });
@@ -701,7 +701,7 @@ test("OPS-008: the funnel says what one count means at every stage, from the ser
   ]);
   expect(grains).toEqual([
     ["搜尋", "每個瀏覽工作階段一天算一次，這一段系統性偏高。"],
-    ["看 Skill 詳情", "粒度同搜尋。"],
+    ["看小工具詳情", "粒度同搜尋。"],
     ["開始試跑", "每個工作區一天算一次，不能相除成轉換率。"],
     ["按下下載", "每個工作區一天算一次；打包仍可能被拒。"],
   ]);

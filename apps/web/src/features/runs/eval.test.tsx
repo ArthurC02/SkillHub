@@ -209,7 +209,7 @@ const evaluation: Evaluation = {
     {
       category: "activation",
       severity: "warning",
-      message: "沒有出現 Skill 啟用事件。",
+      message: "沒有出現小工具啟用事件。",
       evidence: [
         {
           kind: "trace_event",
@@ -249,7 +249,7 @@ const suggestion2: ImprovementSuggestion = {
   problem: "宣告的 runtime 版本與實際不符。",
   evidence: [],
   target_path: "SKILL.md",
-  expected_impact: "Agent 會在正確的 runtime 上啟用這個 Skill。",
+  expected_impact: "Agent 會在正確的 runtime 上啟用這個小工具。",
   decision: "pending",
 };
 
@@ -537,7 +537,7 @@ test("EVAL-011 the rerun link keeps object context in the path and the new versi
   expect(versionLink?.textContent).toContain("開啟剛建立的版本");
 
   const text = container.textContent ?? "";
-  expect(text).toContain("以新版本重跑這個 Test Case");
+  expect(text).toContain("以新版本重跑這個測試題");
   expect(text).toContain("執行前權限確認畫面");
 });
 

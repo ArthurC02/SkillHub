@@ -54,7 +54,7 @@ export const CATEGORIES = {
   unassigned: {
     value: "unassigned",
     label: "尚未定值",
-    note: "平台還沒有給這個 Skill 類別；這不是「不屬於任何類別」。",
+    note: "平台還沒有給這個小工具類別；這不是「不屬於任何類別」。",
   },
 } satisfies Record<string, PublicSearchResult["category"]>;
 
@@ -139,7 +139,7 @@ export const SEARCH = {
       summary: "把 PDF 整理成摘要",
       summary_source: "model",
       rank: 0.82,
-      match_reason: "這個 Skill 直接處理 PDF 並輸出摘要。",
+      match_reason: "這個小工具直接處理 PDF 並輸出摘要。",
       match_reason_source: "model",
     },
     {
@@ -203,7 +203,7 @@ export function skillDetail(id: string, name: string): SkillDetail {
       status: { value: "declared", label: "License 已宣告", note: "尚未經人工核對。" },
     },
     redistribution: { value: "allowed", label: "可再散布", note: "MIT，可再散布。" },
-    derivation: { is_fork: false, label: "來源關係", note: "非 Fork。" },
+    derivation: { is_fork: false, label: "來源關係", note: "不是複製品。" },
     version: {
       version_id: VERSION,
       version_number: 2,
@@ -266,7 +266,7 @@ export const TARGETS = {
       id: "standard",
       kind: "standard_package",
       version: "1.0.0",
-      display_name: "標準 Agent Skill 套件",
+      display_name: "標準 Agent 小工具套件",
       support_status: "unverified",
       verification_steps: [
         "解壓縮套件。SKILL.md 必須位於壓縮檔的根層。（原文：Unzip the package. SKILL.md must be at the root of the archive.）",
@@ -380,12 +380,12 @@ export const RUNS = {
       cleanup_status: {
         value: "failed",
         label: "清理失敗",
-        note: "沙箱沒有被成功拆除,平台會重試。這不代表這次 Run 失敗。",
+        note: "沙箱沒有被成功拆除,平台會重試。這不代表這次試跑失敗。",
       },
       evaluation: {
         value: "met",
         label: "符合",
-        note: "依這個 Run 當時的驗收條件判定為符合。",
+        note: "依這次試跑當時的驗收條件判定為符合。",
       },
       created_at: "2026-08-17T00:00:00Z",
       finished_at: "2026-08-17T00:04:00Z",
@@ -407,7 +407,7 @@ export const RUNS = {
       evaluation: {
         value: "not_met",
         label: "不符合",
-        note: "依這個 Run 當時的驗收條件判定為不符合。",
+        note: "依這次試跑當時的驗收條件判定為不符合。",
       },
       created_at: "2026-08-16T00:00:00Z",
       finished_at: "2026-08-16T00:02:00Z",
@@ -557,7 +557,7 @@ export const LIMITS = {
     "文字檔（.txt .md .csv .tsv .json .jsonl .xml .yaml .yml）",
     "文件（.pdf .docx .xlsx .pptx）",
   ],
-  note: "檔案類型看內容判斷，不看副檔名；上傳的檔案只有這個 Test Case 的 Run 讀得到，到保存期限或你刪除時就會刪掉。",
+  note: "檔案類型看內容判斷，不看副檔名；上傳的檔案只有這個測試題的試跑讀得到，到保存期限或你刪除時就會刪掉。",
 };
 
 export const RETENTION_POLICY = {
@@ -569,7 +569,7 @@ export const RETENTION_POLICY = {
     free_text:
       "message 是參與者自己寫的自由文字，最多 2000 字。它是這個部署唯一的自由文字欄位，不遮罩、不摘要、不截斷",
     page_path: "他當時所在的路由，從不是完整網址：查詢字串可能帶個資，這個管道不收",
-    run_id: "他當時看的 Run（若有），而且只在確認是他自己的 Run 之後",
+    run_id: "他當時看的試跑紀錄（若有），而且只在確認是他自己的試跑紀錄之後",
     on_account_deletion:
       "去識別而不是刪除：workspace_id 與 user_id 設為 NULL，文字保留（產品分析範圍複審建立在人們說了什麼之上，帳號刪除不能悄悄撤回已被計入的回報）",
     retention_days: 90,
@@ -610,7 +610,7 @@ export const TRACE_GENERAL = {
   final_output: "Removed 17 duplicate rows.",
   usage: { model: "gpt-5-mini", input_tokens: 27042, output_tokens: 1180, cost_credits: null },
   steps: [
-    { status: "queued", reason: "已收到這次 Run 的請求" },
+    { status: "queued", reason: "已收到這次試跑的請求" },
     { status: "failed", reason: "the provider could not carry the attempt" },
   ],
 };
@@ -683,7 +683,7 @@ export const EVALUATION = {
     {
       category: "activation",
       severity: "warning",
-      message: "沒有出現 Skill 啟用事件。",
+      message: "沒有出現小工具啟用事件。",
       evidence: [],
     },
   ],
@@ -756,7 +756,7 @@ export function comparisonSide(runId: string, evaluated: boolean) {
     cost: {
       credits: 169,
       is_lower_bound: true,
-      authoritative_source: "模型閘道對這個 Run 的 per-key 實付",
+      authoritative_source: "模型閘道對這次試跑的 per-key 實付",
     },
     inputs_available: evaluated,
   };
@@ -800,10 +800,10 @@ export const OWN_PUBLISHER = {
 } satisfies Publisher;
 
 const DOWNLOAD_NOTE =
-  "登入後可以下載這一版的標準 Agent Skill 套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。";
+  "登入後可以下載這一版的標準 Agent 小工具套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。";
 
 const BUNDLE_DOWNLOAD_NOTE =
-  "登入後可以下載這一版的 Agent Plugin：只含成員的 Agent Skill，不含 MCP 設定或宿主專屬元件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。";
+  "登入後可以下載這一版的 Agent Plugin：只含成員的 Agent 小工具，不含 MCP 設定或宿主專屬元件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。";
 
 export const OWN_PUBLICATION = {
   kind: "skill",
@@ -878,7 +878,7 @@ export const PUBLIC_BUNDLE_PUBLICATION = {
   availability: { value: "available", label: "提供中", note: "" },
   bundle: {
     version: "1.1.0",
-    description: "一組跟 PDF 有關的 Skill。",
+    description: "一組跟 PDF 有關的小工具。",
     members: [
       { name: "summariser", version_number: 3, content_hash: "sha256:cc" },
       { name: "splitter", version_number: 1, content_hash: "sha256:dd" },
@@ -916,7 +916,7 @@ export const PUBLIC_BUNDLE_PUBLICATION = {
 export const OWN_BUNDLE = {
   bundle: "pdf-toolkit",
   version: "1.1.0",
-  description: "一組跟 PDF 有關的 Skill。",
+  description: "一組跟 PDF 有關的小工具。",
   content_hash: "sha256:bundle-2",
   created_at: "2026-09-10T00:00:00Z",
   members: [
@@ -963,7 +963,7 @@ export const PLUGIN_DOWNLOAD_ARTIFACT = {
   version_state: {
     value: "plugin",
     label: "Plugin pdf-toolkit 1.1.0",
-    note: "這一份是一組 Skill 打成的 Agent Plugin，成員各自釘住一個版本，內容不會改變；只含 Agent Skill，不含 MCP 設定或宿主專屬元件。",
+    note: "這一份是一組小工具打成的 Agent Plugin，成員各自釘住一個版本，內容不會改變；只含 Agent 小工具，不含 MCP 設定或宿主專屬元件。",
   },
   expires_at: "2099-01-01T00:00:00Z",
   created_at: "2026-09-10T00:00:00Z",
@@ -1163,7 +1163,7 @@ export const ADMIN_TREND_FUNNEL = {
       label: "搜尋",
       grain: "每個瀏覽工作階段一天算一次，這一段系統性偏高。",
     },
-    { key: "skill_detail_viewed", label: "看 Skill 詳情", grain: "粒度同搜尋。" },
+    { key: "skill_detail_viewed", label: "看小工具詳情", grain: "粒度同搜尋。" },
     { key: "run_started", label: "開始試跑", grain: "每個工作區一天算一次，不能相除成轉換率。" },
     { key: "download_started", label: "按下下載", grain: "每個工作區一天算一次；打包仍可能被拒。" },
   ],
@@ -1278,7 +1278,7 @@ const ROUTES: RouteMatcher[] = [
           deletion_requested_at: "2026-08-17T00:00:00Z",
           purge_after: "2026-09-16T00:00:00Z",
           deletion_scope:
-            "帳號、Skill、版本、Run、Trace、評估與打包下載會刪除；刪除動作本身的稽核紀錄會保留。",
+            "帳號、小工具、版本、試跑紀錄、Trace、評估與打包下載會刪除；刪除動作本身的稽核紀錄會保留。",
         } satisfies Me)
       : undefined,
   (path) => (path === "/me/credits" ? ok({ balance_credits: 120 }) : undefined),
@@ -1356,12 +1356,12 @@ const ROUTES: RouteMatcher[] = [
                     note: "平台不曾執行它們——這是靜態掃描的結果,不是行為分析。",
                   },
                 ],
-                note: "來自匯入時的靜態掃描,不執行套件內任何程式碼;開啟 Skill 可看逐項結果。",
+                note: "來自匯入時的靜態掃描,不執行套件內任何程式碼;開啟小工具可看逐項結果。",
               },
               verification: {
                 value: "scanned",
                 label: "已掃描",
-                note: "匯入這個版本時做過靜態掃描,不執行套件內任何程式碼;逐項結果在 Skill 頁面。",
+                note: "匯入這個版本時做過靜態掃描,不執行套件內任何程式碼;逐項結果在小工具頁面。",
                 scanned_at: "2026-08-01T10:00:00Z",
               },
             },

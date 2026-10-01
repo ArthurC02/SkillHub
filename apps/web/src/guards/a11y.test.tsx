@@ -397,7 +397,7 @@ test("QA-009: 後台 /admin/exposure（待審清單與一筆案例）", async ()
   await scan("/admin/exposure");
 }, 30000);
 
-test("QA-009: Skill import", async () => {
+test("QA-009: 小工具 import", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
@@ -440,7 +440,7 @@ test("QA-009: 首頁的目錄狀態（02:DISC-006）", async () => {
   await act(async () => {
     await router.navigate({ to: "/" });
   });
-  await waitFor(has("Skill 探索畫廊"));
+  await waitFor(has("小工具探索畫廊"));
   await scan("/ 目錄");
 }, 30000);
 
@@ -458,10 +458,10 @@ test("NFR-007: 搜尋結果的即時區是筆數，不是整份清單", async ()
   const count = Array.from(container.querySelectorAll('[role="status"]')).find((el) =>
     (el.textContent ?? "").includes("找到"),
   );
-  expect(count?.textContent).toContain(`找到 ${SEARCH.results.length} 個 Skill`);
+  expect(count?.textContent).toContain(`找到 ${SEARCH.results.length} 個小工具`);
 }, 30000);
 
-test("QA-009: Skill 詳情", async () => {
+test("QA-009: 小工具詳情", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
@@ -471,7 +471,7 @@ test("QA-009: Skill 詳情", async () => {
   await scan("/skills/$skillId");
 }, 30000);
 
-test("QA-009: Skill 精確版本", async () => {
+test("QA-009: 小工具精確版本", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
@@ -497,7 +497,7 @@ test("QA-009: 公開發佈頁", async () => {
   await scan("/p/$publisher/$name");
 }, 30000);
 
-test("QA-009: Skill 檔案（進階模式）", async () => {
+test("QA-009: 小工具檔案（進階模式）", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
@@ -507,7 +507,7 @@ test("QA-009: Skill 檔案（進階模式）", async () => {
   await scan("/skills/$skillId/files");
 }, 30000);
 
-test("QA-009: Skill 套件", async () => {
+test("QA-009: 小工具套件", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
@@ -539,7 +539,7 @@ test("QA-009: 下載紀錄", async () => {
   await scan("/workspace/downloads（確認刪除）");
 }, 30000);
 
-test("QA-009: Skill 比較", async () => {
+test("QA-009: 小工具比較", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
@@ -577,7 +577,7 @@ test("QA-009: Dataset 上傳", async () => {
   await scan("/lab/test-cases/$testCaseId/datasets");
 }, 30000);
 
-test("QA-009: Run 結果（一般與進階模式）", async () => {
+test("QA-009: 試跑結果（一般與進階模式）", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
@@ -595,7 +595,7 @@ test("QA-009: Run 結果（一般與進階模式）", async () => {
   await scan("/runs/$runId（進階模式）");
 }, 30000);
 
-test("QA-009: Run 比較", async () => {
+test("QA-009: 試跑比較", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
@@ -609,17 +609,17 @@ test("QA-009: Run 比較", async () => {
   await scan("/runs/$runId/compare");
 }, 30000);
 
-test("QA-009: Test Case 列表", async () => {
+test("QA-009: 測試題列表", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
     await router.navigate({ to: "/lab/test-cases" });
   });
-  await waitFor(has("建立新的 Test Case"));
+  await waitFor(has("建立新的測試題"));
   await scan("/lab/test-cases");
 }, 30000);
 
-test("QA-009: Test Case 詳情", async () => {
+test("QA-009: 測試題詳情", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
@@ -696,10 +696,10 @@ test("NFR-007: 搜尋 → 詳情 → 打包，全程鍵盤可達", async () => {
   await waitFor(has("打包並下載這個版本"));
 
   await keyboardActivate("打包入口", byText("打包並下載這個版本"));
-  await waitFor(has("標準 Agent Skill 套件"));
+  await waitFor(has("標準 Agent 小工具套件"));
 
   await keyboardActivate("打包目標選項", (el) => el.getAttribute("name") === "packaging-target");
-  await keyboardActivate("Test Case 選項", (el) => el.getAttribute("type") === "checkbox");
+  await keyboardActivate("測試題選項", (el) => el.getAttribute("type") === "checkbox");
   await waitFor(has("這些設定可以打包"));
 
   const build = tabbables().find(byText("建立下載套件"));
@@ -749,13 +749,13 @@ test("NFR-007: 空白的回報被擋下來時說得出要補什麼", async () =>
   await scan("/（回報問題，驗證訊息）");
 }, 30000);
 
-test("NFR-007: 不能建立的 Test Case 表單說得出還缺哪幾項", async () => {
+test("NFR-007: 不能建立的測試題表單說得出還缺哪幾項", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
     await router.navigate({ to: "/lab/test-cases" });
   });
-  await waitFor(has("建立新的 Test Case"));
+  await waitFor(has("建立新的測試題"));
 
   const submit = Array.from(container.querySelectorAll("button")).find(
     (b) => b.textContent === "建立",
@@ -764,7 +764,7 @@ test("NFR-007: 不能建立的 Test Case 表單說得出還缺哪幾項", async 
   const status = Array.from(container.querySelectorAll('[role="status"]')).find((el) =>
     (el.textContent ?? "").includes("還不能建立"),
   );
-  expect(status?.textContent).toContain("選一個 Skill");
+  expect(status?.textContent).toContain("選一個小工具");
   expect(status?.textContent).toContain("填名稱");
   expect(status?.textContent).toContain("寫 User Prompt");
 }, 30000);

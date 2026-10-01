@@ -1,9 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { compositionProblem, raiseBudgetProblem } from "./create.model";
 
-const EMPTY = "還沒有要送出的內容：寫一句話，或附上流程圖、挑一個參考 Skill。";
+const EMPTY = "還沒有要送出的內容：寫一句話，或附上流程圖、挑一個參考小工具。";
 const BOTH =
-  "流程圖和參考 Skill 一次只能送一種。先送其中一種，Agent 讀完之後再送另一種；文字說明可以跟著任一種一起送。";
+  "流程圖和參考小工具一次只能送一種。先送其中一種，Agent 讀完之後再送另一種；文字說明可以跟著任一種一起送。";
 
 type CompositionCase = [
   string,

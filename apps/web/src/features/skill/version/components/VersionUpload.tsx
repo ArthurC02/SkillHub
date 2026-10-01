@@ -11,7 +11,7 @@ import "./VersionUpload.css";
 function versionUploadErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 413) return "檔案超過上限，請縮小套件再上傳。";
-    if (error.status === 404) return "找不到這個 Skill，它可能已被刪除。";
+    if (error.status === 404) return "找不到這個小工具，它可能已被刪除。";
   }
   return "上傳沒有成功，可以再按一次。";
 }
@@ -27,7 +27,7 @@ export function VersionUpload({ skillId }: { skillId: string }) {
     <section>
       <h3>上傳新版本</h3>
       <p className="note" data-role="teaching">
-        把你改過的套件上傳成這個 Skill 的新版本；舊版本原封不動留著。
+        把你改過的套件上傳成這個小工具的新版本；舊版本原封不動留著。
       </p>
       <ul className="note">
         <li>
@@ -47,7 +47,7 @@ export function VersionUpload({ skillId }: { skillId: string }) {
           if (file) save.mutate(file);
         }}
       >
-        <label htmlFor="skill-version-file">Skill zip</label>
+        <label htmlFor="skill-version-file">小工具 zip</label>
         <input
           id="skill-version-file"
           type="file"

@@ -250,7 +250,7 @@ func (h *Handler) logOperatorRefusal(r *http.Request, user User) {
 	}
 }
 
-const betaNotInvited = "Skill Hub 還在封測:瀏覽與 Skill 詳情對所有人開放,但 Fork、試跑與下載只開放給受邀的測試者。" +
+const betaNotInvited = "Skill Hub 還在封測:瀏覽與小工具詳情對所有人開放,但複製一份、試跑與下載只開放給受邀的測試者。" +
 	"用頁尾的「回報問題」告訴我們你想做什麼,它會直接進入範圍檢討。"
 
 func (h *Handler) RequireInvited(next http.HandlerFunc) http.HandlerFunc {
@@ -279,7 +279,7 @@ func (h *Handler) RequireInvited(next http.HandlerFunc) http.HandlerFunc {
 }
 
 const notInvitedHTML = `<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>需要封測邀請</title>` +
-	`<p>Skill Hub 還在封測：瀏覽與 Skill 詳情對所有人開放，但 Fork、試跑與下載只開放給受邀的測試者。` +
+	`<p>Skill Hub 還在封測：瀏覽與小工具詳情對所有人開放，但複製一份、試跑與下載只開放給受邀的測試者。` +
 	`回到上一頁，用頁尾的「回報問題」告訴我們你想做什麼。</p>`
 
 func writeNotInvited(w http.ResponseWriter, r *http.Request) {
@@ -489,9 +489,9 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
-const deletionScope = "寬限期結束前，你的帳號照常可用。到期後，你上傳的資料集、Run 產出，" +
-	"以及沒有任何人 Fork 或執行過的 Skill 會連同檔案永久刪除。被其他使用者 Fork 過、" +
-	"或歷史 Run 使用過的 Skill 版本會保留（它們的內容是別人的來源鏈），" +
+const deletionScope = "寬限期結束前，你的帳號照常可用。到期後，你上傳的資料集、試跑產出，" +
+	"以及沒有任何人複製或試跑過的小工具會連同檔案永久刪除。被其他使用者複製過、" +
+	"或歷史試跑使用過的小工具版本會保留（它們的內容是別人的來源鏈），" +
 	"但你的身分會從上面移除，顯示為已刪除的使用者所有。"
 
 func (h *Handler) requestDeletion(w http.ResponseWriter, r *http.Request) {

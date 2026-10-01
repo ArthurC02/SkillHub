@@ -21,7 +21,7 @@ function tagsOf(tags: unknown): string {
 
 function SnapshotSection({ exposureCase: c }: { exposureCase: ExposureCase }) {
   if (!c.snapshot) {
-    return <p>尚未進索引：搜尋與目錄目前沒有這個 Skill 可以顯示的內容。</p>;
+    return <p>尚未進索引：搜尋與目錄目前沒有這個小工具可以顯示的內容。</p>;
   }
   const snapshot = c.snapshot;
   return (

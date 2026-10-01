@@ -56,7 +56,7 @@ export function ResultFacets({
         {hit.verified_at ? (
           <Timestamp at={hit.verified_at} />
         ) : (
-          <span className="note">未測量——這個 Skill 還沒有匯入內容可以驗證。</span>
+          <span className="note">未測量——這個小工具還沒有匯入內容可以驗證。</span>
         )}
       </dd>
     </dl>

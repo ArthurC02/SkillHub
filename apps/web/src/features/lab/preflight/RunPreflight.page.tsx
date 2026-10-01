@@ -73,13 +73,13 @@ function Preflight({ skill, linkedVersion, testCase }: PreflightProps) {
   if (testCaseInfo.isPending)
     return (
       <PreflightShell {...shellProps}>
-        <Loading what="Test Case 脈絡" />
+        <Loading what="測試題脈絡" />
       </PreflightShell>
     );
   if (testCaseInfo.error)
     return (
       <PreflightShell {...shellProps}>
-        <p className="note">Test Case 可讀取後，才會顯示這次 Run 的權限摘要。</p>
+        <p className="note">測試題可讀取後，才會顯示這次試跑的權限摘要。</p>
       </PreflightShell>
     );
   if (!contextMatches)
@@ -91,13 +91,13 @@ function Preflight({ skill, linkedVersion, testCase }: PreflightProps) {
   if (version === "")
     return (
       <PreflightShell {...shellProps}>
-        <p>請先在上面選一個 Skill Version，才有權限摘要可以看。</p>
+        <p>請先在上面選一個小工具 Version，才有權限摘要可以看。</p>
       </PreflightShell>
     );
   if (versions.isPending)
     return (
       <PreflightShell {...shellProps}>
-        <p className="note">正在確認這個 Version 是否屬於目前的 Skill。</p>
+        <p className="note">正在確認這個 Version 是否屬於目前的小工具。</p>
       </PreflightShell>
     );
   if (versions.error)
@@ -110,7 +110,7 @@ function Preflight({ skill, linkedVersion, testCase }: PreflightProps) {
     return (
       <PreflightShell {...shellProps}>
         <p className="notice notice-danger" role="alert">
-          這個 Version 不屬於這個 Skill。請從上面的清單改選；平台沒有讀取權限摘要，也不會開始 Run。
+          這個 Version 不屬於這個小工具。請從上面的清單改選；平台沒有讀取權限摘要，也不會開始試跑。
         </p>
       </PreflightShell>
     );
@@ -139,7 +139,7 @@ function Preflight({ skill, linkedVersion, testCase }: PreflightProps) {
 
   return (
     <PreflightShell {...shellProps}>
-      <p>以下是這次 Run 可以接觸的範圍。確認後才會開始執行。</p>
+      <p>以下是這次試跑可以接觸的範圍。確認後才會開始執行。</p>
 
       <PreflightFacts summary={summary} cost={cost} quota={quota} />
 
@@ -157,15 +157,15 @@ function Preflight({ skill, linkedVersion, testCase }: PreflightProps) {
 function ContextMismatch({ testCaseId, skillId }: { testCaseId: string; skillId: string }) {
   return (
     <section className="notice notice-danger" role="alert">
-      <h2>Skill 與 Test Case 不相符</h2>
-      <p>平台沒有讀取權限摘要，也不會開始 Run。</p>
+      <h2>小工具與測試題不相符</h2>
+      <p>平台沒有讀取權限摘要，也不會開始試跑。</p>
       <p>
         <Link
           to="/skills/$skillId/test-cases/$testCaseId/runs/new"
           params={{ skillId, testCaseId }}
           search={{ version: undefined }}
         >
-          回到這個 Test Case 所屬的 Skill，再選擇 Version
+          回到這個測試題所屬的小工具，再選擇 Version
         </Link>
       </p>
     </section>

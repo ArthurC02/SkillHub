@@ -1,4 +1,4 @@
-h1 Skill 治理
+h1 小工具治理
 h2 對「PDF Summariser」的動作
 h3 設定受限展示
 h3 再散布判定

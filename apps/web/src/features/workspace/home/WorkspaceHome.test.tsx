@@ -203,7 +203,7 @@ test.each([
   },
 );
 
-test("workspace home does not claim complete Run coverage when older pages exist", async () => {
+test("workspace home does not claim complete 試跑紀錄 coverage when older pages exist", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
     if (url.endsWith("/me")) {

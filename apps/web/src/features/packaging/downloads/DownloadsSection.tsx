@@ -188,7 +188,7 @@ function DownloadActions({
         <>
           {" ｜ "}
           <Link to="/skills/$skillId" params={{ skillId: artifact.skill_id }}>
-            來源 Skill
+            來源小工具
           </Link>
         </>
       ) : null}

@@ -46,7 +46,7 @@ const LIMITS = {
     "文字檔（.txt .md .csv .tsv .json .jsonl .xml .yaml .yml）",
     "文件（.pdf .docx .xlsx .pptx）",
   ],
-  note: "檔案類型看內容判斷，不看副檔名；上傳的檔案只有這個 Test Case 的 Run 讀得到，到保存期限或你刪除時就會刪掉。",
+  note: "檔案類型看內容判斷，不看副檔名；上傳的檔案只有這個測試題的試跑讀得到，到保存期限或你刪除時就會刪掉。",
 };
 
 function stubPlatform(limitsStatus = 200) {
@@ -107,7 +107,7 @@ async function renderUpload() {
   );
 }
 
-test("the Dataset workspace keeps its Test Case, Skill and immutable Version context", async () => {
+test("the Dataset workspace keeps its 測試題, 小工具 and immutable Version context", async () => {
   stubPlatform();
   await renderUpload();
 
@@ -121,7 +121,7 @@ test("the Dataset workspace keeps its Test Case, Skill and immutable Version con
       container.querySelectorAll(`a[href="/lab/test-cases/${TEST_CASE}?version=${VERSION}"]`),
       (link) => link.textContent,
     ),
-  ).toContain("回到這個 Test Case");
+  ).toContain("回到這個測試題");
 });
 
 test("02:TEST-002 the upload rules are on screen before anything is uploaded", async () => {
@@ -246,7 +246,7 @@ test("丙-150(e) a 500 upload failure falls back to the generic retry sentence",
   expect(container.textContent).not.toContain("internal error, do not show this");
 });
 
-test("02:TEST-002 changing the Test Case clears what was uploaded to the previous one", async () => {
+test("02:TEST-002 changing the 測試題 clears what was uploaded to the previous one", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
     if (url.includes("/test-cases/limits")) {

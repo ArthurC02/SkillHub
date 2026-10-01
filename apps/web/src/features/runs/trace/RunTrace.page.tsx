@@ -22,12 +22,12 @@ function RunSourceContext({
   testCaseId?: string;
 }) {
   return (
-    <nav className="download-item run-source-context" aria-label="這次 Run 的來源">
-      <strong>這次 Run 的來源</strong>
+    <nav className="download-item run-source-context" aria-label="這次試跑的來源">
+      <strong>這次試跑的來源</strong>
       <ul className="chip-row">
         <li>
           <Link to="/skills/$skillId" params={{ skillId }}>
-            來源 Skill
+            來源小工具
           </Link>
         </li>
         <li>
@@ -42,7 +42,7 @@ function RunSourceContext({
               params={{ testCaseId }}
               search={{ version: versionId }}
             >
-              來源 Test Case
+              來源測試題
             </Link>
           </li>
         )}
@@ -53,10 +53,10 @@ function RunSourceContext({
 
 function RunWorkspaceRail({ runId, status }: { runId: string; status?: string }) {
   return (
-    <aside className="run-workspace-rail" aria-label="Run 操作與區段導覽">
+    <aside className="run-workspace-rail" aria-label="試跑紀錄操作與區段導覽">
       <section>
-        <h2>這次 Run</h2>
-        <nav aria-label="Run 結果導覽">
+        <h2>這次試跑</h2>
+        <nav aria-label="試跑結果導覽">
           <ul className="run-section-nav">
             <li>
               <a href="#run-decision">任務判定</a>
@@ -71,7 +71,7 @@ function RunWorkspaceRail({ runId, status }: { runId: string; status?: string })
         </nav>
         <p>
           <Link to="/runs/$runId/compare" params={{ runId }}>
-            與另一個 Run 比較
+            與另一個試跑比較
           </Link>
         </p>
         <CancelRunControl runId={runId} status={status} />
@@ -91,12 +91,12 @@ export function RunTrace() {
     <article className="run-workspace">
       <header className="run-workspace-header">
         <p className="run-eyebrow">驗證與執行</p>
-        <h1>Run 結果</h1>
+        <h1>試跑結果</h1>
         <p className="run-identity" data-role="evidence">
-          <strong>Run ID：</strong>
+          <strong>試跑紀錄 ID：</strong>
           <code>{runId}</code>
         </p>
-        <ReadFailure error={run.error} what="這個 Run" />
+        <ReadFailure error={run.error} what="這次試跑" />
         {run.data && (
           <>
             <SkillWorkspaceNav
@@ -126,7 +126,7 @@ export function RunTrace() {
             <p className="run-eyebrow">執行證據</p>
             <h2>執行紀錄</h2>
             <p className="note" data-role="teaching">
-              一般模式是摘要，進階模式是這次 Run 的原始事件（已遮罩）——同一份紀錄的兩種詳細度，
+              一般模式是摘要，進階模式是這次試跑的原始事件（已遮罩）——同一份紀錄的兩種詳細度，
               只影響下面這一節。
             </p>
             <div className="run-mode-switch" role="group" aria-label="執行紀錄的詳細度">

@@ -19,17 +19,17 @@ export function RunStartControl({
 
   return (
     <>
-      {unauthenticated(start.error) && <ReadFailure error={start.error} what="Run" />}
+      {unauthenticated(start.error) && <ReadFailure error={start.error} what="試跑紀錄" />}
       {message && <p role="alert">{message}</p>}
 
       {runId ? (
         <p>
-          已開始 Run。{" "}
+          已開始試跑。{" "}
           <Link to="/runs/$runId" params={{ runId }}>
-            查看這次 Run 的結果
+            查看這次試跑的結果
           </Link>
           <span className="note">
-            Run ID：<code>{runId}</code>
+            試跑紀錄 ID：<code>{runId}</code>
           </span>
         </p>
       ) : blocked ? (
@@ -38,18 +38,18 @@ export function RunStartControl({
         </p>
       ) : (
         <>
-          <p className="note">平台目前只讓有封測邀請的帳號開始 Run。</p>
+          <p className="note">平台目前只讓有封測邀請的帳號開始試跑。</p>
           <button
             type="button"
             className="action"
             disabled={start.isPending}
             onClick={() => start.mutate(hash)}
           >
-            {start.isPending ? "開始中…" : "我確認以上權限,開始 Run"}
+            {start.isPending ? "開始中…" : "我確認以上權限,開始試跑"}
           </button>
         </>
       )}
-      <p>不同意就不要按下按鈕:未確認的 Run 不會被建立。</p>
+      <p>不同意就不要按下按鈕:未確認的試跑紀錄不會被建立。</p>
     </>
   );
 }

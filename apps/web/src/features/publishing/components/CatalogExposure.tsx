@@ -34,7 +34,7 @@ const catalogExposureCopy: Record<
   },
   not_eligible: {
     label: "目前不符合曝光條件",
-    note: "Publication 已撤回，或 Skill 的可用性或散布條件不允許曝光。",
+    note: "Publication 已撤回，或小工具的可用性或散布條件不允許曝光。",
     caution: true,
   },
   search_not_ready: {

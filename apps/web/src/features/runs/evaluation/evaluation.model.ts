@@ -73,7 +73,7 @@ export const SEVERITY_LABEL: Record<DeterministicFinding["severity"], string> = 
 };
 
 export const SUGGESTION_CATEGORY_LABEL: Record<ImprovementSuggestion["category"], string> = {
-  skill: "Skill 內容問題",
+  skill: "小工具內容問題",
   runtime: "Runtime 問題",
   mcp: "MCP 問題",
   tool: "工具問題",
@@ -84,7 +84,7 @@ export const BLOCKED_REASON_LABEL: Record<SuggestionBlockedReason, string> = {
   path_out_of_bounds: "建議的目標路徑指到套件外面，不能套用。",
   target_changed: "目標檔案已經和建議產生當時不同，這項建議是針對舊內容寫的，不能套用。",
   validation_blocked: "套用後套件會出現阻擋級的規格問題，不能套用。",
-  access_restricted: "這個 Skill 目前處於授權受限狀態，平台不重現其套件內容，不能套用。",
+  access_restricted: "這個小工具目前處於授權受限狀態，平台不重現其套件內容，不能套用。",
   diff_unavailable: "算不出差異。看不到會改什麼就不提供套用。",
 };
 
@@ -106,7 +106,7 @@ export const MATCH_NOTE: Record<MatchKey, string> = {
   exact: "引文已逐字回驗。",
   normalized:
     "引文已回驗——需要正規化後才比對得上（全形半形、空白、頭尾標點）。原文與引用有細微差異，內容相同。",
-  not_found: "這段引文在本次 Run 的可回驗來源裡找不到，因此不作為證據。",
+  not_found: "這段引文在本次試跑的可回驗來源裡找不到，因此不作為證據。",
   not_checked:
     "只證明這個檔案存在（路徑、大小、雜湊都在 manifest 上），沒有回驗任何引文——平台不會打開產物內容。",
   unrecorded: "這份報告產生時還沒有記錄引文回驗結果，無法判斷這段引文是否被回驗過。",

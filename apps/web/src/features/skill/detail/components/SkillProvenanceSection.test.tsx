@@ -43,7 +43,7 @@ async function mount(node: React.ReactElement) {
 const text = () => container.textContent ?? "";
 
 test("says there is no source record when the skill has none", async () => {
-  const skill = skillDetail("s-1", "無來源 Skill");
+  const skill = skillDetail("s-1", "無來源小工具");
   skill.source = undefined;
   await mount(<SkillProvenanceSection skill={skill} />);
 
@@ -51,37 +51,37 @@ test("says there is no source record when the skill has none", async () => {
 });
 
 test("links to the original skill when this one is a fork", async () => {
-  const skill = skillDetail("s-2", "分岔的 Skill");
+  const skill = skillDetail("s-2", "分岔的小工具");
   skill.source = undefined;
   skill.derivation = {
     is_fork: true,
-    label: "分岔自另一個 Skill",
-    note: "這是 Fork。",
+    label: "分岔自另一個小工具",
+    note: "這是複製品。",
     forked_from_skill_id: "s-1",
   };
   await mount(<SkillProvenanceSection skill={skill} />);
 
-  expect(text()).toContain("查看原始 Skill");
+  expect(text()).toContain("查看原始小工具");
   const link = container.querySelector("a")!;
   expect(link.getAttribute("href")).toBe("/skills/s-1");
 });
 
 test("does not link to an original skill when this one is not a fork", async () => {
-  const skill = skillDetail("s-3", "原生 Skill");
+  const skill = skillDetail("s-3", "原生小工具");
   skill.source = undefined;
-  skill.derivation = { is_fork: false, label: "來源關係", note: "非 Fork。" };
+  skill.derivation = { is_fork: false, label: "來源關係", note: "不是複製品。" };
   await mount(<SkillProvenanceSection skill={skill} />);
 
   expect(container.querySelector("a")).toBeNull();
 });
 
 test("does not link when forked_from_skill_id is set but is_fork is false", async () => {
-  const skill = skillDetail("s-4", "資料不一致的 Skill");
+  const skill = skillDetail("s-4", "資料不一致的小工具");
   skill.source = undefined;
   skill.derivation = {
     is_fork: false,
     label: "來源關係",
-    note: "非 Fork。",
+    note: "不是複製品。",
     forked_from_skill_id: "s-1",
   };
   await mount(<SkillProvenanceSection skill={skill} />);

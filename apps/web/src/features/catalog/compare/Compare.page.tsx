@@ -216,11 +216,11 @@ export function CompareTable({ skills }: { skills: SkillDetail[] }) {
       <div
         className="table-scroll"
         role="region"
-        aria-label="Skill 比較表，可左右捲動"
+        aria-label="小工具比較表，可左右捲動"
         tabIndex={0}
       >
         <table className="compare-table">
-          <caption>並排比較 {skills.length} 個 Skill 的靜態資料（匯入時記錄與掃描結果）</caption>
+          <caption>並排比較 {skills.length} 個小工具的靜態資料（匯入時記錄與掃描結果）</caption>
           <thead>
             <tr>
               <th scope="col">比較項目</th>
@@ -287,13 +287,13 @@ export function Compare() {
 
   return (
     <section>
-      <h1>Skill 比較</h1>
+      <h1>小工具比較</h1>
       <p className="note">
         以下全部來自靜態資料（匯入時記錄與掃描結果），沒有任何一項是試跑出來的。
       </p>
 
       {skillIds.length < 2 && (
-        <p role="status">請從首頁的搜尋結果或目錄選擇 2 到 3 個 Skill 再進行比較。</p>
+        <p role="status">請從首頁的搜尋結果或目錄選擇 2 到 3 個小工具再進行比較。</p>
       )}
       {results.some((result) => result.isLoading) && (
         <p role="status">
@@ -302,8 +302,8 @@ export function Compare() {
       )}
       {failed > 0 && (
         <>
-          <p role="alert">有 {failed} 個 Skill 讀取失敗，未列入下表。</p>
-          <ReadFailure error={firstError} what="這些 Skill" />
+          <p role="alert">有 {failed} 個小工具讀取失敗，未列入下表。</p>
+          <ReadFailure error={firstError} what="這些小工具" />
         </>
       )}
 

@@ -37,21 +37,21 @@ function CandidateList({
   versions: SkillVersionSummary[];
   onPick: (id: string) => void;
 }) {
-  if (selfPending) return <Loading what="目前這次 Run" />;
-  if (selfError) return <ReadFailure error={selfError} what="目前這次 Run" />;
+  if (selfPending) return <Loading what="目前這次試跑" />;
+  if (selfError) return <ReadFailure error={selfError} what="目前這次試跑" />;
   if (!testCaseId) {
-    return <p>這次 Run 的 Test Case 已無法解析，因此無法列出同一個 Test Case 的其他 Run。</p>;
+    return <p>這次試跑的測試題已無法解析，因此無法列出同一個測試題的其他試跑紀錄。</p>;
   }
-  if (siblingsPending) return <Loading what="可比較的 Run" />;
-  if (siblingsError) return <ReadFailure error={siblingsError} what="可比較的 Run" />;
+  if (siblingsPending) return <Loading what="可比較的試跑紀錄" />;
+  if (siblingsError) return <ReadFailure error={siblingsError} what="可比較的試跑紀錄" />;
   if (candidates.length === 0) {
-    return <p>這個 Test Case 目前只有這一次 Run，沒有同一個 Test Case 的其他 Run 可選。</p>;
+    return <p>這個測試題目前只有這一次試跑紀錄，沒有同一個測試題的其他試跑紀錄可選。</p>;
   }
 
   return (
     <>
-      {versionsPending && <Loading what="候選 Run 的 Version 編號" />}
-      <ReadFailure error={versionsError} what="候選 Run 的 Version 編號" />
+      {versionsPending && <Loading what="候選試跑紀錄的 Version 編號" />}
+      <ReadFailure error={versionsError} what="候選試跑紀錄的 Version 編號" />
       <ul className="download-list">
         {candidates.map((run) => {
           const version = versions.find(
@@ -87,7 +87,7 @@ function CandidateList({
               <p>
                 <button
                   type="button"
-                  aria-label={`以 ${accessibleVersion}、建立於 ${formatAt(run.created_at)} 的 Run 比較，Run ID ${run.run_id}`}
+                  aria-label={`以 ${accessibleVersion}、建立於 ${formatAt(run.created_at)} 的試跑比較，試跑紀錄 ID ${run.run_id}`}
                   onClick={() => onPick(run.run_id)}
                 >
                   與這一次比較（建立於 <Timestamp at={run.created_at} />）
@@ -99,7 +99,7 @@ function CandidateList({
       </ul>
       {hasMoreCandidates && (
         <button type="button" disabled={loadingMoreCandidates} onClick={onLoadMoreCandidates}>
-          {loadingMoreCandidates ? "載入中…" : "載入更早的 Run"}
+          {loadingMoreCandidates ? "載入中…" : "載入更早的試跑紀錄"}
         </button>
       )}
     </>
@@ -162,18 +162,18 @@ export function CompareCandidatesPicker({
           onPick(draft);
         }}
       >
-        <label htmlFor="against">要比較的另一個 Run ID</label>{" "}
+        <label htmlFor="against">要比較的另一個試跑紀錄 ID</label>{" "}
         <input
           id="against"
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
           size={40}
-          placeholder="另一個 Run 的平台 run_id"
+          placeholder="另一個試跑紀錄的平台 run_id"
         />{" "}
         <button type="submit">比較</button>
         <p className="note">
-          {(candidates.length > 0 ? "從上面選一個同一個 Test Case 的 Run，或" : "") +
-            "輸入另一個 Run 的 ID 後開始比較。別的 Test Case 或別的 Skill 的 Run 也可以。"}
+          {(candidates.length > 0 ? "從上面選一個同一個測試題的試跑紀錄，或" : "") +
+            "輸入另一筆試跑紀錄的 ID 後開始比較。別的測試題或別的小工具的試跑紀錄也可以。"}
         </p>
       </form>
     </>

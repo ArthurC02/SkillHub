@@ -22,7 +22,7 @@ import {
 import { actionFailureSentence } from "../publishing.model";
 import { DeliveryAudience } from "./DeliveryAudience";
 
-const PLUGIN_SCOPE_NOTE = "Plugin 只含 Agent Skill，不含 MCP 設定或宿主專屬元件。";
+const PLUGIN_SCOPE_NOTE = "Plugin 只含 Agent 小工具，不含 MCP 設定或宿主專屬元件。";
 
 interface MemberChoice {
   skillId: string;
@@ -115,7 +115,7 @@ export function BundleSection({ selectedVersion }: { selectedVersion?: string })
 
       {bundles.data &&
         (groupedBundles.length === 0 ? (
-          <p>目前還沒有 Bundle。先把一組可一起交付的 Skill 版本固定成第一個 Bundle Version。</p>
+          <p>目前還沒有 Bundle。先把一組可一起交付的小工具版本固定成第一個 Bundle Version。</p>
         ) : (
           <ul className="download-list" data-role="evidence">
             {groupedBundles.map(({ bundle, versions }) => (
@@ -581,7 +581,7 @@ function CreateBundleForm({
       </p>
       {selected.size === 0 && (
         <p className="note" id={noMembersId}>
-          先選擇至少一個要放入 Bundle 的 Skill 版本。
+          先選擇至少一個要放入 Bundle 的小工具版本。
         </p>
       )}
       {create.isError && (
@@ -664,7 +664,7 @@ function BundleMemberChoices({
   return (
     <fieldset>
       <legend>成員版本</legend>
-      <p className="note">每個 Skill 明確選一個不可變版本；平台不會替你改成最新版本。</p>
+      <p className="note">每個小工具明確選一個不可變版本；平台不會替你改成最新版本。</p>
       {choicesPending && <Loading what="可加入 Bundle 的版本" />}
       <ReadFailure error={choicesError} what="可加入 Bundle 的版本">
         <p role="alert">暫時無法讀取可加入 Bundle 的版本。</p>
@@ -680,7 +680,7 @@ function BundleMemberChoices({
         </p>
       )}
       {choicesReady && choices.length === 0 && (
-        <p className="note">還沒有可以選的 Skill——先建立至少一個有版本的 Skill。</p>
+        <p className="note">還沒有可以選的小工具——先建立至少一個有版本的小工具。</p>
       )}
       {choices.map((choice) => (
         <div className="field bundle-member" key={choice.skillId}>

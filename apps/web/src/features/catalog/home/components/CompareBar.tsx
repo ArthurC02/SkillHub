@@ -9,10 +9,10 @@ export function CompareBar({ selected }: { selected: string[] }) {
     <div className="compare-bar">
       {selected.length >= 2 ? (
         <Link to="/compare" search={{ ids: selected.join(",") }}>
-          並排比較這 {selected.length} 個 Skill
+          並排比較這 {selected.length} 個小工具
         </Link>
       ) : (
-        <p className="note">再選 1 個 Skill，即可並排比較靜態資料。</p>
+        <p className="note">再選 1 個小工具，即可並排比較靜態資料。</p>
       )}
       {selected.length >= MAX_COMPARE && (
         <p className="note" id="compare-limit">

@@ -58,7 +58,7 @@ async function type(value: string) {
   });
 }
 
-test("the Run ID field starts from the run already named in the address", async () => {
+test("the 試跑紀錄 ID field starts from the run already named in the address", async () => {
   search = { against: OTHER_RUN };
   await act(async () => {
     root = createRoot(container);

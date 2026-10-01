@@ -8,8 +8,8 @@ import { ActionForm } from "../components/ActionForm";
 
 const CALL_NAMES: Record<string, string> = {
   "match-reasons": "搜尋結果的推薦理由",
-  "enrich-skill": "匯入時的 Skill 摘要增強",
-  "generate-skill": "從描述生成 Skill",
+  "enrich-skill": "匯入時的小工具摘要增強",
+  "generate-skill": "從描述生成小工具",
   "suggest-criteria": "建議驗收條件",
   "judge-run": "評估判定",
   "suggest-improvements": "建議改善",

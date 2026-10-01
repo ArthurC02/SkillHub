@@ -53,7 +53,7 @@ function summary(hash: string, files: string[]): PreflightResponse {
       low_credits: 13,
       typical_credits: 78,
       high_credits: 390,
-      basis: "估計值,非報價。來源:M2 基準試跑 45 個 Skill 的閘道實付分布。",
+      basis: "估計值,非報價。來源:M2 基準試跑 45 個小工具的閘道實付分布。",
     },
     notes: ["以上任何一項變更都會產生新的摘要,必須重新確認。"],
     summary: {
@@ -174,7 +174,7 @@ function stubPlatform(
   };
 }
 
-test("TEST-009 執行前確認要說出你正要跑的是哪一個 Skill、哪一段題目", async () => {
+test("TEST-009 執行前確認要說出你正要跑的是哪一個小工具、哪一段題目", async () => {
   stubPlatform();
   await renderLab();
   await waitFor(() => text().includes("去重複列"));
@@ -184,7 +184,7 @@ test("TEST-009 執行前確認要說出你正要跑的是哪一個 Skill、哪�
   expect(text()).not.toContain("不會產生逐條判定");
 });
 
-test("TEST-009 沒有驗收條件的 Run 會白跑，而這件事要在按下去之前說", async () => {
+test("TEST-009 沒有驗收條件的試跑紀錄會白跑，而這件事要在按下去之前說", async () => {
   stubPlatform(summary("hash-one", ["rows.csv"]), []);
   await renderLab();
   await waitFor(() => text().includes("去重複列"));
@@ -246,7 +246,7 @@ async function pickVersion(versionId: string) {
 
 function confirmButton(): HTMLButtonElement | undefined {
   return Array.from(container.querySelectorAll("button")).find((b) =>
-    b.textContent?.includes("開始 Run"),
+    b.textContent?.includes("開始試跑"),
   );
 }
 
@@ -365,7 +365,7 @@ test("02:TEST-005 a permission change forces a fresh confirmation instead of reu
   platform.changePermissions();
 
   await clickConfirm();
-  await waitFor(() => text().includes("這次 Run 沒有開始"));
+  await waitFor(() => text().includes("這次試跑沒有開始"));
   expect(container.textContent).toContain("summary_hash does not match");
   expect(platform.calls.some((c) => c.url.endsWith("/runs"))).toBe(false);
   expect(container.textContent).toContain("extra.csv");
@@ -395,7 +395,7 @@ test("04 丙-14 the version comes from a picker, and a ?version= link is what it
   expect(versionSelect().value).toBe(OLDER_VERSION);
 });
 
-test("the preflight workbench returns to the exact Test Case and selected version", async () => {
+test("the preflight workbench returns to the exact 測試題 and selected version", async () => {
   stubPlatform();
   await renderLab();
   const expected = `/lab/test-cases/${TEST_CASE}?version=${encodeURIComponent(VERSION)}`;
@@ -431,7 +431,7 @@ test("04 丙-14 with no version in the URL the page asks for one instead of dema
   const platform = stubPlatform();
   await renderLab({ version: undefined });
 
-  await waitFor(() => (container.textContent ?? "").includes("請先在上面選一個 Skill Version"));
+  await waitFor(() => (container.textContent ?? "").includes("請先在上面選一個小工具 Version"));
   expect(platform.calls.some((c) => c.url.includes("version_id=&"))).toBe(false);
 
   await pickVersion(VERSION);
@@ -476,7 +476,7 @@ test("SEC-002 gate B: an exhausted allowance is not reported as a permission cha
 
   await clickConfirm();
 
-  await waitFor(() => text().includes("這次 Run 沒有開始"));
+  await waitFor(() => text().includes("這次試跑沒有開始"));
   expect(container.textContent).toContain("resets 24 hours after");
   expect(container.textContent).not.toContain("權限內容已變更");
 });
@@ -492,17 +492,17 @@ test("02:RUN-003 the token ceiling says what it depends on, not just a number", 
   expect(text).toContain("15 輪");
 });
 
-test("04 丙-148 exact Skill read failure says so instead of claiming the Skill is absent", async () => {
+test("04 丙-148 exact 小工具 read failure says so instead of claiming the 小工具 is absent", async () => {
   const platform = stubPlatform();
   platform.failSkill(500);
   await renderLab();
 
   await waitFor(() => text().includes("讀取失敗"));
-  expect(text()).toContain("暫時無法讀取這個 Skill");
+  expect(text()).toContain("暫時無法讀取這個小工具");
   expect(text()).not.toContain("不在你的清單裡");
 });
 
-test("04 丙-148 exact Skill read failure on 401 says login, not a raw message", async () => {
+test("04 丙-148 exact 小工具 read failure on 401 says login, not a raw message", async () => {
   const platform = stubPlatform();
   platform.failSkill(401);
   await renderLab();
@@ -510,21 +510,21 @@ test("04 丙-148 exact Skill read failure on 401 says login, not a raw message",
   await waitFor(() => text().includes("需要登入"));
 });
 
-test("a mismatched Test Case stops before requesting a preflight summary", async () => {
+test("a mismatched 測試題 stops before requesting a preflight summary", async () => {
   const platform = stubPlatform();
   platform.moveTestCaseTo(OTHER_SKILL);
   await renderLab();
-  await waitFor(() => text().includes("Skill 與 Test Case 不相符"));
+  await waitFor(() => text().includes("小工具與測試題不相符"));
 
   expect(platform.calls.some((call) => call.url.includes("/runs/preflight"))).toBe(false);
   expect(confirmButton()).toBeUndefined();
-  expect(text()).toContain("平台沒有讀取權限摘要，也不會開始 Run");
+  expect(text()).toContain("平台沒有讀取權限摘要，也不會開始試跑");
 });
 
 test("an unknown Version stops before requesting a preflight summary", async () => {
   const platform = stubPlatform();
   await renderLab({ version: UNKNOWN_VERSION });
-  await waitFor(() => text().includes("Version 不屬於這個 Skill"));
+  await waitFor(() => text().includes("Version 不屬於這個小工具"));
 
   expect(
     platform.calls.some((call) => {
@@ -544,7 +544,7 @@ test("04 丙-148 testCase read failure says so, not 讀不到名稱", async () =
   await renderLab();
 
   await waitFor(() => text().includes("讀取失敗"));
-  expect(text()).toContain("無法讀取Test Case");
+  expect(text()).toContain("無法讀取測試題");
   expect(text()).not.toContain("讀不到名稱");
 });
 
@@ -553,7 +553,7 @@ test("04 丙-144 the invite requirement is stated before the confirm button", as
   await renderLab();
 
   await waitFor(() => confirmButton() !== undefined);
-  expect(text()).toContain("平台目前只讓有封測邀請的帳號開始 Run。");
+  expect(text()).toContain("平台目前只讓有封測邀請的帳號開始試跑。");
 });
 
 test("04 丙-144 a 403 on run-start says no invite, not the raw server message", async () => {

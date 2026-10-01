@@ -234,22 +234,22 @@ test("an owned immutable version becomes one shareable context for validation, p
   expect(text()).not.toContain("Studio 歷程");
 });
 
-test("a historical version labels the current Skill summary without presenting it as version content", async () => {
+test("a historical version labels the current 小工具 summary without presenting it as version content", async () => {
   routeVersion = SKILL_VERSIONS.versions[1].version_id;
   stubVersions();
   await render(() => text().includes("v1，歷史版本"));
 
   const summary = container.querySelector('[data-role="skill-current-summary"]');
-  expect(summary?.textContent).toContain("Skill 目前說明");
+  expect(summary?.textContent).toContain("小工具目前說明");
   expect(summary?.textContent).toContain("把 PDF 整理成摘要");
 });
 
-test("a version from another Skill cannot expose publish, upload or package actions", async () => {
+test("a version from another 小工具 cannot expose publish, upload or package actions", async () => {
   routeVersion = "99999999-9999-4999-8999-999999999999";
   const calls = stubVersions();
   await render(() => text().includes("無法開啟這個版本"));
 
-  expect(text()).toContain("這個版本不屬於目前的 Skill");
+  expect(text()).toContain("這個版本不屬於目前的小工具");
   expect(container.querySelector("#skill-version-file")).toBeNull();
   expect(container.querySelector('a[href*="/package"]')).toBeNull();
   expect(calls).not.toContain("/me/publisher");
@@ -258,7 +258,7 @@ test("a version from another Skill cannot expose publish, upload or package acti
   expect(calls).not.toContain("/downloads");
 });
 
-test("a version keeps only its exact Skill delivery artifacts and preserves owner state", async () => {
+test("a version keeps only its exact 小工具 delivery artifacts and preserves owner state", async () => {
   const artifact = downloadArtifact({
     servable: false,
     serve_state: { value: "expired", label: "已過期", note: "檔案已刪除。" },
@@ -343,9 +343,9 @@ test("an immutable version shows exact run evidence without collapsing execution
 
 test("a version with no runs states exact absence and keeps the validation exit", async () => {
   stubVersions();
-  await render(() => text().includes("這個版本還沒有 Run"));
+  await render(() => text().includes("這個版本還沒有試跑紀錄"));
 
-  expect(text()).toContain("這個版本還沒有 Run");
+  expect(text()).toContain("這個版本還沒有試跑紀錄");
   expect(
     container.querySelector(`a[href="/lab/test-cases?skill=${SKILL}&version=${VERSION}"]`),
   ).not.toBeNull();
@@ -353,16 +353,16 @@ test("a version with no runs states exact absence and keeps the validation exit"
 
 test("a run evidence read failure is not presented as an empty history", async () => {
   stubVersions(SKILL_VERSIONS, { status: 503 });
-  await render(() => text().includes("暫時無法讀取這個版本的 Run 證據"));
+  await render(() => text().includes("暫時無法讀取這個版本的試跑證據"));
 
-  expect(text()).not.toContain("這個版本還沒有 Run");
+  expect(text()).not.toContain("這個版本還沒有試跑紀錄");
 });
 
 test("an in-flight version run exposes freshness and refresh", async () => {
   stubVersions(SKILL_VERSIONS, {
     body: { runs: [runItem({ status: "running", finished_at: undefined })] },
   });
-  await render(() => text().includes("有 Run 還在進行中"));
+  await render(() => text().includes("有試跑還在進行中"));
 
   expect(container.querySelector("button")?.textContent).toContain("重新整理");
 });

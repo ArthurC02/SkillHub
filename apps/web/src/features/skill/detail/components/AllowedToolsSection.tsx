@@ -28,7 +28,7 @@ export function AllowedToolsSection({
   }
   return (
     <p className="note">
-      不適用——套件沒有宣告 allowed-tools。在 Agent Skills 的格式裡那代表
+      不適用——套件沒有宣告 allowed-tools。在 Agent 小工具的格式裡那代表
       <strong>不設限</strong>，不代表它不用工具。
     </p>
   );

@@ -6,7 +6,7 @@ import { RetentionNotice } from "./RetentionNotice";
 
 function PreviewErrorReason({ error }: { error: unknown }) {
   if (error instanceof ApiError && error.status === 404) {
-    return <p role="alert">這個版本讀不到，可能已經不屬於這個 Skill。回上一步重新挑一次版本。</p>;
+    return <p role="alert">這個版本讀不到，可能已經不屬於這個小工具。回上一步重新挑一次版本。</p>;
   }
   if (error instanceof ApiError && error.status === 503) {
     return <p role="alert">這個部署沒有設定任何打包目標，所以沒有預覽。</p>;

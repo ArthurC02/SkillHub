@@ -40,7 +40,7 @@ export function ImportSkill() {
     <section className="import-page">
       <header className="import-header">
         <p className="page-eyebrow">Package intake</p>
-        <h1>匯入 Skill</h1>
+        <h1>匯入小工具</h1>
         <p>從允許的來源收進套件，先看懂平台會檢查什麼，再選擇取得方式。</p>
       </header>
 
@@ -55,7 +55,7 @@ export function ImportSkill() {
           <p className="page-eyebrow">Source</p>
           <h2 id="import-source-title">選擇套件來源</h2>
           {unauthenticated(me.error) ? (
-            <LoginRequired what="匯入 Skill" />
+            <LoginRequired what="匯入小工具" />
           ) : (
             <ImportSourceForm
               source={source}
@@ -71,7 +71,7 @@ export function ImportSkill() {
       </div>
 
       {mutation.error && !rejected && (
-        <ReadFailure error={mutation.error} what="匯入 Skill">
+        <ReadFailure error={mutation.error} what="匯入小工具">
           <p role="alert">
             {mutation.error instanceof ApiError && mutation.error.status === 400
               ? "這個檔案不是可用的 zip 套件，或網址抓不到內容。"
@@ -84,9 +84,9 @@ export function ImportSkill() {
 
       {rejected && (
         <section role="alert">
-          <h2>匯入失敗：這個來源沒有一個 Skill 進得來</h2>
+          <h2>匯入失敗：這個來源沒有一個小工具進得來</h2>
           <p>
-            這個工作區沒有新增任何 Skill，也沒有建立新版本。
+            這個工作區沒有新增任何小工具，也沒有建立新版本。
             下面每一則阻擋錯誤都要在來源裡修掉，再重新匯入一次；警告與資訊不擋匯入，一併列在後面。
           </p>
           <RefusedList refused={rejected.refused} />
@@ -151,7 +151,7 @@ function ImportSourceForm({
         </p>
       ) : (
         <p className="field" key="file">
-          <label htmlFor="skill-import-file">Skill zip</label>
+          <label htmlFor="skill-import-file">小工具 zip</label>
           <input
             id="skill-import-file"
             type="file"
@@ -206,7 +206,7 @@ function ImportOutcome({ result }: { result: ImportResult }) {
     <>
       <div role="status" className="notice">
         <p>
-          匯入完成，這個來源帶進 {result.skills.length} 個 Skill。
+          匯入完成，這個來源帶進 {result.skills.length} 個小工具。
           {result.plugin && (
             <>
               {" "}
@@ -217,16 +217,16 @@ function ImportOutcome({ result }: { result: ImportResult }) {
         </p>
         {result.plugin && (
           <p className="note">
-            整個 Plugin 以原樣存成一份套件，Plugin 裡的每個 Skill 都指向它，但
-            <strong>試跑時只安裝該 Skill 自己的目錄</strong>
-            ，下載得到的也只有那一個 Skill 的可攜套件。 平台不把整套還給你——要整套，回到原本的
-            Plugin 來源。
+            整個 Plugin 以原樣存成一份套件，Plugin 裡的每個小工具都指向它，但
+            <strong>試跑時只安裝該小工具自己的目錄</strong>
+            ，下載得到的也只有那一個小工具的可攜套件。 平台不把整套還給你——要整套，回到原本的 Plugin
+            來源。
           </p>
         )}
       </div>
 
       <section>
-        <h2>進來的 Skill（{result.skills.length}）</h2>
+        <h2>進來的小工具（{result.skills.length}）</h2>
         <ul>
           {result.skills.map((skill) => (
             <li key={skill.version_id}>
@@ -238,10 +238,10 @@ function ImportOutcome({ result }: { result: ImportResult }) {
 
       {result.refused.length > 0 && (
         <section role="alert">
-          <h2>沒進來的 Skill（{result.refused.length}）</h2>
+          <h2>沒進來的小工具（{result.refused.length}）</h2>
           <p>
             這幾個資料夾沒有建立
-            Skill，其餘的照樣進來了。每一則阻擋錯誤都要在來源裡修掉，再重新匯入一次。
+            小工具，其餘的照樣進來了。每一則阻擋錯誤都要在來源裡修掉，再重新匯入一次。
           </p>
           <RefusedList refused={result.refused} />
         </section>
@@ -250,7 +250,7 @@ function ImportOutcome({ result }: { result: ImportResult }) {
       {result.excluded_components.length > 0 && (
         <section>
           <h2>沒有匯入的部分（{result.excluded_components.length}）</h2>
-          <p>這些是 Plugin 裡不是 Agent Skill 的部分。平台只把它們列出來，不匯入也不執行。</p>
+          <p>這些是 Plugin 裡不是 Agent 小工具的部分。平台只把它們列出來，不匯入也不執行。</p>
           <Findings findings={{ errors: [], warnings: [], infos: result.excluded_components }} />
         </section>
       )}

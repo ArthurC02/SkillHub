@@ -152,7 +152,7 @@ export function Composer({
       </div>
       <span id="composer-limits">
         Enter 送出，Shift＋Enter 換行。流程圖可以貼上或拖進來：PNG、JPEG、WebP，最多 4,000,000
-        位元組（約 3.8 MB）；參考 Skill 最多三個。
+        位元組（約 3.8 MB）；參考小工具最多三個。
       </span>
     </div>
   );
@@ -286,7 +286,7 @@ function ComposerTools({
         disabled={disabled}
         onClick={() => onPicking((v) => !v)}
       >
-        ＋ 參考 Skill{refCount > 0 && `（${refCount}）`}
+        ＋ 參考小工具{refCount > 0 && `（${refCount}）`}
       </button>
       <span className="note field-count" id="composer-count">
         {[...message].length.toLocaleString("zh-TW")} / {MAX_MESSAGE_RUNES.toLocaleString("zh-TW")}{" "}
@@ -379,7 +379,7 @@ function ReferenceChooser({
         references={refs}
         onToggle={(skillID, name) => {
           if (refs.some((r) => r.id === skillID)) onRefs(refs.filter((r) => r.id !== skillID));
-          else if (refs.length >= 3) onError(new Error("參考 Skill 最多三個；先移除一個再加。"));
+          else if (refs.length >= 3) onError(new Error("參考小工具最多三個；先移除一個再加。"));
           else onRefs([...refs, { id: skillID, name }]);
         }}
       />

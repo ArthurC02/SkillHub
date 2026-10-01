@@ -43,7 +43,7 @@ export const FAILURE_SENTENCE: Record<
 export function failureSentence(f: GenerationFailure): string {
   if (f.truncated) return "模型的輸出超過一次生成的上限，已經停下。把任務拆小一點再試會有幫助。";
   if (f.collision)
-    return "工作區已經有一個同名的 Skill。刪掉它（或改掉它的名字）再生成一次——同一段描述通常會讓模型取到同一個名字。";
+    return "工作區已經有一個同名的小工具。刪掉它（或改掉它的名字）再生成一次——同一段描述通常會讓模型取到同一個名字。";
   // hasOwnProperty, not a bare lookup: a wire value like "constructor" would
   // otherwise resolve to Object.prototype's own method instead of falling through.
   const sentence = Object.prototype.hasOwnProperty.call(FAILURE_SENTENCE, f.failure)

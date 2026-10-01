@@ -24,15 +24,15 @@ export function SkillFiles() {
 
       {isLoading && <Loading what="套件檔案清單" />}
       {error instanceof ApiError && error.status === 410 && (
-        <p role="alert">這個 Skill 已從目錄下架，內容不再提供。</p>
+        <p role="alert">這個小工具已從目錄下架，內容不再提供。</p>
       )}
       {error instanceof ApiError && error.status === 403 && (
-        <p role="status">這份套件的檔案目前尚未開放查看，可以先回到 Skill 總覽。</p>
+        <p role="status">這份套件的檔案目前尚未開放查看，可以先回到小工具總覽。</p>
       )}
       {!(error instanceof ApiError && (error.status === 410 || error.status === 403)) && (
         <ReadFailure error={error} what="套件檔案清單">
           {error instanceof ApiError && error.status === 404 ? (
-            <p role="alert">找不到這個 Skill 的檔案清單，它可能還沒有保存的版本。</p>
+            <p role="alert">找不到這個小工具的檔案清單，它可能還沒有保存的版本。</p>
           ) : error instanceof ApiError && error.status === 503 ? (
             <p role="alert">儲存的套件目前讀不到，稍後再試一次。</p>
           ) : undefined}
@@ -58,7 +58,7 @@ export function SkillFiles() {
                   版本 ID：<code>{data.version_id}</code>
                 </li>
                 <li>
-                  Skill ID：<code>{data.skill_id}</code>
+                  小工具 ID：<code>{data.skill_id}</code>
                 </li>
               </ul>
               <p className="note">這一頁顯示的內容屬於上面這一個不可變版本。</p>

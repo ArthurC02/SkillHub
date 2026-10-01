@@ -23,7 +23,7 @@ export function GeneralMode({ runId }: { runId: string }) {
       <IncompleteNotice complete={trace.complete} />
       {trace.summary_truncated ? (
         <p className="notice">
-          重複事件僅顯示前 100 筆（Skill {trace.skills.length}/{trace.skills_total}；錯誤{" "}
+          重複事件僅顯示前 100 筆（小工具 {trace.skills.length}/{trace.skills_total}；錯誤{" "}
           {trace.errors.length}/{trace.errors_total}）。完整事件仍可在進階模式分頁查看。
         </p>
       ) : null}
@@ -44,9 +44,9 @@ export function GeneralMode({ runId }: { runId: string }) {
         ))}
       </ol>
 
-      <h3>使用的 Skill</h3>
+      <h3>使用的小工具</h3>
       {trace.skills.length === 0 ? (
-        <p>Skill 啟用事件 0 筆。</p>
+        <p>小工具啟用事件 0 筆。</p>
       ) : (
         <ul>
           {trace.skills.map((skill, i) => (
@@ -103,7 +103,7 @@ export function GeneralMode({ runId }: { runId: string }) {
           </li>
           <li className="note">
             這是<strong>下界</strong>，不是總額：合計自 Trace 的用量事件， 權威來源是模型閘道對這個
-            Run 的 per-key 實付。
+            試跑紀錄的 per-key 實付。
           </li>
         </ul>
       ) : (

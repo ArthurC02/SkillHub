@@ -139,8 +139,8 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
 }
 
 const text = () => container.textContent ?? "";
-const settledAsOwner = () => text().includes("此 Skill 的 Test Case");
-const settledAsVisitor = () => text().includes("登入後即可 Fork");
+const settledAsOwner = () => text().includes("此小工具的測試題");
+const settledAsVisitor = () => text().includes("登入後即可把這個小工具複製");
 
 function elementSaying(needle: string): Element {
   const found = Array.from(container.querySelectorAll("h1,h2,h3,p,li,span,code,strong,a")).find(
@@ -219,7 +219,7 @@ test("§3 第 9 條: 一個 h1、十個 h2，頁面區段不跳級", async () =>
   ]);
   expect(Array.from(container.querySelectorAll("h2")).map((h) => h.textContent)).toEqual([
     "試跑",
-    "Fork 到你的工作區",
+    "複製一份到你的工作區",
     "類別",
     "風險揭露",
     "可散布性與打包",
@@ -278,7 +278,7 @@ const PLUGIN_SOURCE = {
     name: "desk-tools",
     version: "1.4.0",
     repository: "https://github.com/example/desk-tools",
-    note: "只有這個 Skill 自己的目錄會被安裝。",
+    note: "只有這個小工具自己的目錄會被安裝。",
   },
   siblings: [
     { skill_id: "s-2", name: "Split CSV", path: "skills/split-csv" },
@@ -286,7 +286,7 @@ const PLUGIN_SOURCE = {
   ],
 };
 
-test("一個來自 Plugin 的 Skill 說出 Plugin 是哪一個、自己在裡面的哪個目錄", async () => {
+test("一個來自 Plugin 的小工具說出 Plugin 是哪一個、自己在裡面的哪個目錄", async () => {
   stubOwner({ source: PLUGIN_SOURCE });
   await render(<SkillDetail />, settledAsOwner);
 
@@ -294,18 +294,18 @@ test("一個來自 Plugin 的 Skill 說出 Plugin 是哪一個、自己在裡面
   expect(text()).toContain("1.4.0");
   expect(text(), "沒有路徑，讀者回不到上游的那個目錄").toContain("skills/tidy-notes");
   expect(text(), "只說「來自一個 Plugin」而不說那代表什麼，等於沒說").toContain(
-    "只有這個 Skill 自己的目錄會被安裝。",
+    "只有這個小工具自己的目錄會被安裝。",
   );
 });
 
-test("同一份來源帶進來的其他 Skill 各自有連結，而且不含自己", async () => {
+test("同一份來源帶進來的其他小工具各自有連結，而且不含自己", async () => {
   stubOwner({ source: PLUGIN_SOURCE });
   await render(<SkillDetail />, settledAsOwner);
 
-  const heading = elementSaying("同一個來源帶進來的其他 Skill（2）");
+  const heading = elementSaying("同一個來源帶進來的其他小工具（2）");
   const list = heading.nextElementSibling?.nextElementSibling;
   const links = Array.from(list?.querySelectorAll("a") ?? []).map((a) => a.getAttribute("href"));
-  expect(links, "一套進來的 Skill 之間走不過去，使用者就看不出它們是一套").toEqual(
+  expect(links, "一套進來的小工具之間走不過去，使用者就看不出它們是一套").toEqual(
     expect.arrayContaining(["/skills/s-2", "/skills/s-3"]),
   );
   expect(links, "自己不是自己的同伴").not.toContain(`/skills/${SKILL}`);
@@ -316,8 +316,8 @@ test("來源不是 Plugin 時，不編造一個 Plugin 也不編造同伴", asyn
   await render(<SkillDetail />, settledAsOwner);
 
   expect(text(), "來源沒有 Plugin 事實").not.toContain("來自 Agent Plugin");
-  expect(text(), "一個來源只帶進一個 Skill 時，空的同伴清單是噪音").not.toContain(
-    "同一個來源帶進來的其他 Skill",
+  expect(text(), "一個來源只帶進一個小工具時，空的同伴清單是噪音").not.toContain(
+    "同一個來源帶進來的其他小工具",
   );
 });
 
@@ -366,7 +366,7 @@ test("§2.13: 「無權檢視」三處都在，但那段解釋只講一次", asy
     if (path.startsWith("/api/skills/")) return json({ ...detailBody(), version: undefined });
     return json({ error: "not found" }, 404);
   });
-  await render(<SkillDetail />, () => text().includes("這個 Skill 不在你的工作區"));
+  await render(<SkillDetail />, () => text().includes("這個小工具不在你的工作區"));
 
   const count = (needle: string) => text().split(needle).length - 1;
   expect(count("無權檢視"), "型別詞是封閉清單上的東西，三處一處都不能少").toBe(3);
@@ -374,10 +374,10 @@ test("§2.13: 「無權檢視」三處都在，但那段解釋只講一次", asy
   expect(text()).toContain("沒有東西可以打包");
 });
 
-test("r4 B2: Fork 那顆按鈕說得出它產生什麼", async () => {
+test("r4 B2: 複製一份那顆按鈕說得出它產生什麼", async () => {
   stubVisitor();
   await render(<SkillDetail />, settledAsVisitor);
-  expect(text()).toContain("登入後即可 Fork 這個 Skill 到你的工作區。");
+  expect(text()).toContain("登入後即可把這個小工具複製到你的工作區。");
 
   vi.unstubAllGlobals();
   queryClient.clear();
@@ -389,9 +389,9 @@ test("r4 B2: Fork 那顆按鈕說得出它產生什麼", async () => {
   stubOwner();
   await render(<SkillDetail />, settledAsOwner);
   const fork = Array.from(container.querySelectorAll("button")).find((b) =>
-    (b.textContent ?? "").includes("以這個 Skill 為起點"),
+    (b.textContent ?? "").includes("以這個小工具為起點"),
   );
-  expect(fork?.textContent).toBe("以這個 Skill 為起點建立我自己的");
+  expect(fork?.textContent).toBe("以這個小工具為起點建立我自己的");
 });
 
 test("the overview sends version work to the exact immutable version context", async () => {

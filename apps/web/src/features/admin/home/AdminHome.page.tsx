@@ -42,9 +42,9 @@ function GovernanceSection() {
           </span>
           <div>
             <Link to="/admin/skills" search={{}}>
-              <strong>Skill 治理</strong>
+              <strong>小工具治理</strong>
             </Link>
-            <p className="note">找任何工作區的 Skill，設定受限展示、再散布判定或下架。</p>
+            <p className="note">找任何工作區的小工具，設定受限展示、再散布判定或下架。</p>
           </div>
         </li>
         <li>
@@ -91,7 +91,7 @@ function OperationsSection() {
             <Link to="/admin/dispatch">
               <strong>派送煞車</strong>
             </Link>
-            <p className="note">看平台有沒有在派送新的 Run，宣告或解除煞車。</p>
+            <p className="note">看平台有沒有在派送新的試跑紀錄，宣告或解除煞車。</p>
           </div>
         </li>
         <li>
@@ -135,7 +135,7 @@ function OperationsSection() {
             <Link to="/admin/trends" search={{}}>
               <strong>趨勢</strong>
             </Link>
-            <p className="note">成本、點數、Run 與 operator 動作的每日走勢，只有彙總。</p>
+            <p className="note">成本、點數、試跑紀錄與 operator 動作的每日走勢，只有彙總。</p>
           </div>
         </li>
       </ul>

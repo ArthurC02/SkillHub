@@ -140,7 +140,7 @@ const targets = {
       id: "standard",
       kind: "standard_package",
       version: "1.0.0",
-      display_name: "標準 Agent Skill 套件",
+      display_name: "標準 Agent 小工具套件",
       support_status: "unverified",
       verification_steps: [
         "解壓縮套件。SKILL.md 必須位於壓縮檔的根層。（原文：Unzip the package. SKILL.md must be at the root of the archive.）",
@@ -193,7 +193,7 @@ const EXCLUDED_TEST_CASE = {
   name: "我上傳的資料",
   reason: "user_uploaded_dataset",
   label: "含你上傳的資料集",
-  note: "你上傳的資料不能隨套件散布（授權未定），這個 Test Case 因此不打包。",
+  note: "你上傳的資料不能隨套件散布（授權未定），這個測試題因此不打包。",
 };
 
 const artifact: DownloadArtifact = {
@@ -260,7 +260,7 @@ function stubPlatform(
               target: "standard",
               allowed: false,
               blocked_reason: "license_unknown",
-              blocked_message: "沒有人確認過這個 Skill 可不可以再散布，未確認的授權視同不允許",
+              blocked_message: "沒有人確認過這個小工具可不可以再散布，未確認的授權視同不允許",
               validation: emptyValidation,
               dependencies: [],
               included_test_cases: [],
@@ -375,28 +375,28 @@ test("the workbench links back to the exact version context", async () => {
   await render(<Packaging />, () =>
     Boolean(
       container.querySelector(
-        'nav[aria-label="這個 Skill 的工作台"] a[href*="/skills/11111111-1111-1111-1111-111111111111/versions/22222222-2222-2222-2222-222222222222"]',
+        'nav[aria-label="這個小工具的工作台"] a[href*="/skills/11111111-1111-1111-1111-111111111111/versions/22222222-2222-2222-2222-222222222222"]',
       ),
     ),
   );
 
   expect(
-    container.querySelector('nav[aria-label="這個 Skill 的工作台"] button[disabled]'),
+    container.querySelector('nav[aria-label="這個小工具的工作台"] button[disabled]'),
   ).toBeNull();
 });
 
 test("the package screen never turns its version context back into a package tab", async () => {
   stubPlatform({ versions: { versions: [] } });
-  await render(<Packaging />, () => text().includes("Skill 套件"));
+  await render(<Packaging />, () => text().includes("小工具套件"));
 
-  const nav = container.querySelector('nav[aria-label="這個 Skill 的工作台"]')!;
+  const nav = container.querySelector('nav[aria-label="這個小工具的工作台"]')!;
   expect(nav.querySelector('a[href*="/package"]')).toBeNull();
   expect(nav.querySelector('a[href*="/versions/"]')?.textContent).toBe("版本與發佈");
 });
 
 test("PACK-002 the post-install check is on the page, not only inside the package", async () => {
   stubPlatform();
-  await render(<Packaging />, () => text().includes("標準 Agent Skill 套件"));
+  await render(<Packaging />, () => text().includes("標準 Agent 小工具套件"));
 
   expect(text()).toContain("SKILL.md must be at the root of the archive");
   expect(text()).toContain("List the skills you can use.");
@@ -406,7 +406,7 @@ test("PACK-002 the post-install check is on the page, not only inside the packag
 
 test("PACK-002 an unverified target says so and does not promise the package installs", async () => {
   stubPlatform();
-  await render(<Packaging />, () => text().includes("標準 Agent Skill 套件"));
+  await render(<Packaging />, () => text().includes("標準 Agent 小工具套件"));
 
   expect(text()).toContain("未驗證");
   expect(text()).toContain("沒有把套件裝進這個目標跑過");
@@ -418,7 +418,7 @@ test("PACK-001 a blocked preview names which lock closed and refuses to offer th
   await render(<Packaging />, () => text().includes("不能打包："));
 
   expect(text()).toContain("license_unknown");
-  expect(text()).toContain("沒有人確認過這個 Skill 可不可以再散布，未確認的授權視同不允許");
+  expect(text()).toContain("沒有人確認過這個小工具可不可以再散布，未確認的授權視同不允許");
   expect(text()).toContain("授權未知一律當成不可散布處理");
   expect(button("建立下載套件")?.disabled).toBe(true);
   expect(text()).toContain("我上傳的資料");
@@ -433,7 +433,7 @@ test("丙-154① 不會進包的 Test Case 印 label/note，不印機器碼 reas
         name: "我的 CSV 清理測試",
         reason: "not_curated",
         label: "未經策展",
-        note: "只有平台策展的 Test Case 會隨套件散布，你自己的 Test Case 留在工作區。",
+        note: "只有平台策展的測試題會隨套件散布，你自己的測試題留在工作區。",
       },
     ],
   });
@@ -532,7 +532,7 @@ const SKILL_WITH_DETAILS = {
 
 test("04 R-42(c)③ 風險與 License：判定行與最高嚴重度留在外面，逐項細節折進 <details>", async () => {
   stubPlatform({ skill: SKILL_WITH_DETAILS });
-  await render(<Packaging />, () => text().includes("Skill 套件"));
+  await render(<Packaging />, () => text().includes("小工具套件"));
 
   for (const verdict of ["有 8 項風險，最高為錯誤。", "可再散布", "已宣告"]) {
     expect(
@@ -560,7 +560,7 @@ test("風險判定行：只有警告時說最高為警告，只有提示時說�
       risk: { ...skill.risk, counts: { errors: 0, warnings: 2, infos: 0 } },
     },
   });
-  await render(<Packaging />, () => text().includes("Skill 套件"));
+  await render(<Packaging />, () => text().includes("小工具套件"));
 
   expect(text()).toContain("有 2 項風險，最高為警告。");
 });
@@ -572,14 +572,14 @@ test("風險判定行：只有提示時說最高為提示", async () => {
       risk: { ...skill.risk, counts: { errors: 0, warnings: 0, infos: 3 } },
     },
   });
-  await render(<Packaging />, () => text().includes("Skill 套件"));
+  await render(<Packaging />, () => text().includes("小工具套件"));
 
   expect(text()).toContain("有 3 項風險，最高為提示。");
 });
 
 test("乾淨掃描時，判定行帶「這不等於安全」的但書，且全頁只出現這一句", async () => {
   stubPlatform();
-  await render(<Packaging />, () => text().includes("Skill 套件"));
+  await render(<Packaging />, () => text().includes("小工具套件"));
 
   expect(occurrences("這不等於安全")).toBe(1);
   expect(elementSaying("這不等於安全").closest("details")).toBeNull();
@@ -592,7 +592,7 @@ test("有風險時，判定行只說風險數與最高嚴重度，不帶乾淨�
       risk: { ...skill.risk, counts: { errors: 0, warnings: 2, infos: 0 } },
     },
   });
-  await render(<Packaging />, () => text().includes("Skill 套件"));
+  await render(<Packaging />, () => text().includes("小工具套件"));
 
   expect(elementSaying("有 2 項風險，最高為警告。").textContent).not.toContain("這不等於安全");
 });
@@ -626,7 +626,7 @@ test("04 R-42(c)③ 相容性：三軸的驗證狀態留在外面，逐軸備註
 
 test("PACK-002 環境變數需求 is on the target, and 「不需要」 is stated rather than left blank", async () => {
   stubPlatform();
-  await render(<Packaging />, () => text().includes("標準 Agent Skill 套件"));
+  await render(<Packaging />, () => text().includes("標準 Agent 小工具套件"));
 
   expect(text()).toContain("這個目標不需要任何環境變數");
   expect(text()).toContain("ANTHROPIC_API_KEY");
@@ -663,7 +663,7 @@ test("PACK-002 打包器拿掉的檔案要說出來，空與非空是兩個答�
 
 test("PACK-001 放行的時候也要說出授權判定，不是只在拒絕時才談", async () => {
   stubPlatform();
-  await render(<Packaging />, () => text().includes("Skill 套件"));
+  await render(<Packaging />, () => text().includes("小工具套件"));
 
   expect(text()).toContain("可再散布");
   expect(text()).toContain("已宣告");
@@ -864,7 +864,7 @@ const pluginArtifact: DownloadArtifact = {
   version_state: {
     value: "plugin",
     label: "Plugin pdf-toolkit 1.1.0",
-    note: "這一份是一組 Skill 打成的 Agent Plugin，成員各自釘住一個版本，內容不會改變；只含 Agent Skill，不含 MCP 設定或宿主專屬元件。",
+    note: "這一份是一組小工具打成的 Agent Plugin，成員各自釘住一個版本，內容不會改變；只含 Agent 小工具，不含 MCP 設定或宿主專屬元件。",
   },
   expires_at: "2099-01-01T00:00:00Z",
   created_at: "2026-09-10T00:00:00Z",
@@ -879,8 +879,8 @@ test("PACK-018 a Plugin download row shows the plugin's name, version and member
   expect(text()).toContain("Plugin pdf-toolkit 1.1.0");
   expect(text()).toContain("summariser");
   expect(text()).toContain("splitter");
-  expect(text()).not.toContain("Skill Version ID");
-  expect(text()).not.toContain("來源 Skill");
+  expect(text()).not.toContain("小工具 Version ID");
+  expect(text()).not.toContain("來源小工具");
 
   const hrefs = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
   expect(hrefs).toContain(`/skills/${SKILL}/versions/${VERSION}`);
@@ -889,7 +889,7 @@ test("PACK-018 a Plugin download row shows the plugin's name, version and member
 
 test.each([
   [artifact, `/skills/${SKILL}/versions/${VERSION}`, "來源版本"],
-  [{ ...artifact, skill_version_id: undefined }, `/skills/${SKILL}`, "來源 Skill"],
+  [{ ...artifact, skill_version_id: undefined }, `/skills/${SKILL}`, "來源小工具"],
 ])("a saved artifact links to its most precise available source", async (saved, href, label) => {
   vi.stubGlobal("fetch", () => json({ downloads: [saved] }));
   await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
@@ -1086,7 +1086,7 @@ test("丙-150 打包預覽讀不到這個版本時，說回上一步重新挑一
     if (url.includes(`/api/skills/${SKILL}`)) return json(skill);
     return json({ error: "not found" }, 404);
   });
-  await render(<Packaging />, () => text().includes("標準 Agent Skill 套件"));
+  await render(<Packaging />, () => text().includes("標準 Agent 小工具套件"));
   await waitFor(() => text().includes("這個版本讀不到"));
 
   expect(text()).toContain("回上一步重新挑一次版本");
@@ -1104,7 +1104,7 @@ test("丙-150 部署沒有設定打包目標時，503 說沒有預覽而不是�
     if (url.includes(`/api/skills/${SKILL}`)) return json(skill);
     return json({ error: "not found" }, 404);
   });
-  await render(<Packaging />, () => text().includes("標準 Agent Skill 套件"));
+  await render(<Packaging />, () => text().includes("標準 Agent 小工具套件"));
   await waitFor(() => text().includes("這個部署沒有設定任何打包目標，所以沒有預覽。"));
 
   expect(text()).not.toContain("no packaging targets are configured");
@@ -1121,7 +1121,7 @@ test("打包預覽發生未分類讀取錯誤時，不顯示伺服器原始訊�
     if (url.includes(`/api/skills/${SKILL}`)) return json(skill);
     return json({ error: "not found" }, 404);
   });
-  await render(<Packaging />, () => text().includes("標準 Agent Skill 套件"));
+  await render(<Packaging />, () => text().includes("標準 Agent 小工具套件"));
   await waitFor(() => text().includes("暫時無法讀取打包預覽"));
 
   expect(text()).toContain("請重新整理，或稍後再試");

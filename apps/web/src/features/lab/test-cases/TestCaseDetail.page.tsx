@@ -28,28 +28,29 @@ export function TestCaseDetail() {
   if (deleted) {
     return (
       <section>
-        <h1>已刪除這個 Test Case</h1>
+        <h1>已刪除這個測試題</h1>
         <p role="status">
           草稿與它的 {deleted.datasets_deleted} 個上傳檔案都已刪除，檔案本體也已移除。
         </p>
         <p className="note">
-          <strong>快照與歷史 Run 不受影響</strong>
-          ：已經跑過的 Run 仍保留當時凍結的 Prompt、驗收條件，以及每個檔案的名稱與內容雜湊，所以那些
-          Run 仍可追溯，只是不再可重現。
+          <strong>快照與歷史試跑紀錄不受影響</strong>
+          ：已經跑過的試跑紀錄仍保留當時凍結的
+          Prompt、驗收條件，以及每個檔案的名稱與內容雜湊，所以那些
+          試跑紀錄仍可追溯，只是不再可重現。
         </p>
         <p>
-          <Link to="/lab/test-cases">回到 Test Case 列表</Link>
+          <Link to="/lab/test-cases">回到測試題列表</Link>
         </p>
       </section>
     );
   }
 
-  if (testCase.isPending) return <Loading what=" Test Case " />;
+  if (testCase.isPending) return <Loading what="測試題" />;
   if (testCase.error) {
     if (testCase.error instanceof ApiError && testCase.error.status === 404) {
-      return <p role="alert">找不到這個 Test Case。</p>;
+      return <p role="alert">找不到這個測試題。</p>;
     }
-    return <ReadFailure error={testCase.error} what=" Test Case" />;
+    return <ReadFailure error={testCase.error} what="測試題" />;
   }
 
   const history = runs.data?.pages.flatMap((page) => page.runs) ?? [];
@@ -67,7 +68,7 @@ export function TestCaseDetail() {
       <header className="test-case-header">
         <p className="page-eyebrow">Evaluation workbench</p>
         <h1>{testCase.data.name}</h1>
-        <p>在同一個 Skill 與 Version 脈絡裡維護驗證設計、試跑與歷史證據。</p>
+        <p>在同一個小工具與 Version 脈絡裡維護驗證設計、試跑與歷史證據。</p>
       </header>
       <SkillWorkspaceNav
         skillId={skillId}
@@ -114,7 +115,7 @@ export function TestCaseDetail() {
               </Link>
             </p>
             <p className="note" data-role="evidence">
-              開始 Run 前會再次顯示權限摘要並要求確認。
+              開始試跑前會再次顯示權限摘要並要求確認。
             </p>
           </section>
         </aside>
@@ -122,7 +123,7 @@ export function TestCaseDetail() {
       <section className="test-case-history-panel" aria-label="執行歷史">
         <RunHistory runs={runs} history={history} />
       </section>
-      <section className="test-case-danger-panel" aria-label="刪除 Test Case">
+      <section className="test-case-danger-panel" aria-label="刪除測試題">
         <DeleteTestCase testCaseId={testCaseId} onDeleted={setDeleted} />
       </section>
     </section>
@@ -160,7 +161,7 @@ function TestCaseContext({
     }
     if (versions.isPending) return "正在確認這個 Version…";
     if (versions.error) return "Version 資訊讀取失敗";
-    if (!selectedVersion) return "這個 Version 不屬於目前的 Skill";
+    if (!selectedVersion) return "這個 Version 不屬於目前的小工具";
     return null;
   })();
 
@@ -173,11 +174,11 @@ function TestCaseContext({
       <h2 id="test-case-context-title">目前驗證脈絡</h2>
       <dl className="test-case-context-facts">
         <div>
-          <dt>Skill</dt>
+          <dt>小工具</dt>
           <dd>
             <Link to="/skills/$skillId" params={{ skillId }}>
               {skill.data?.name ??
-                (skill.isPending ? "讀取中…" : skill.error ? "名稱讀取失敗" : "這個 Skill")}
+                (skill.isPending ? "讀取中…" : skill.error ? "名稱讀取失敗" : "這個小工具")}
             </Link>
           </dd>
         </div>
@@ -193,7 +194,7 @@ function TestCaseContext({
                   v{selectedVersion.version_number}
                 </Link>{" "}
                 <span className="badge">
-                  {versionSource === "url" ? "由這個網址選定" : "沿用最近一次 Run"}
+                  {versionSource === "url" ? "由這個網址選定" : "沿用最近一次試跑紀錄"}
                 </span>
               </>
             ) : (
@@ -208,7 +209,7 @@ function TestCaseContext({
           </dd>
         </div>
         <div>
-          <dt>Test Case</dt>
+          <dt>測試題</dt>
           <dd>
             <Link
               to="/lab/test-cases/$testCaseId"
@@ -221,14 +222,14 @@ function TestCaseContext({
           </dd>
         </div>
       </dl>
-      <ReadFailure error={skill.error} what="這個 Skill" />
+      <ReadFailure error={skill.error} what="這個小工具" />
       <ReadFailure error={versions.error} what="Version 清單" />
       <p className="test-case-context-return">
         <Link
           to="/lab/test-cases"
           search={{ skill: skillId, version: selectedVersion?.version_id }}
         >
-          回到這個 Skill 的 Test Case 列表
+          回到這個小工具的測試題列表
         </Link>
       </p>
     </section>

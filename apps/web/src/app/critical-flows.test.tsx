@@ -149,7 +149,7 @@ test("URL import sends the source and links the imported version", async () => {
   expect(container.querySelector('a[href="/skills/skill-1/versions/version-1"]')).not.toBeNull();
 });
 
-test("a running Run requires confirmation before cancellation", async () => {
+test("a running 試跑紀錄 requires confirmation before cancellation", async () => {
   const fetchMock = vi.fn((_url: string | URL | Request, _init?: RequestInit) =>
     json(
       {
@@ -157,7 +157,7 @@ test("a running Run requires confirmation before cancellation", async () => {
         skill_id: "skill-1",
         skill_version_id: "version-1",
         test_case_snapshot_id: "snapshot-1",
-        note: "已送出取消要求；在工作負載真的停下來之前，這個 Run 會維持目前的狀態。",
+        note: "已送出取消要求；在工作負載真的停下來之前，這次試跑會維持目前的狀態。",
       },
       202,
     ),

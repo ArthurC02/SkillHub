@@ -60,7 +60,7 @@ export function FeedbackForm({
       <ReadFailure error={error} what="回饋">
         <p role="alert">
           {error instanceof ApiError && error.status === 404
-            ? "這個 Run 目前沒有可以附回饋的判定。"
+            ? "這次試跑目前沒有可以附回饋的判定。"
             : "回饋沒有送出，可以再按一次。"}
         </p>
       </ReadFailure>

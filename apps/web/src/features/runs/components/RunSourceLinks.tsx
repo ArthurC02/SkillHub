@@ -22,7 +22,7 @@ export function RunSourceLinks({ run }: { run: RunListItem }) {
             params={{ testCaseId: run.test_case_id }}
             search={{ version: run.skill_version_id }}
           >
-            Test Case
+            測試題
           </Link>
         </>
       )}

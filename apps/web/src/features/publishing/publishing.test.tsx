@@ -172,7 +172,7 @@ test("the publishing space brings identity, Bundles, and delivery records into o
       link.textContent?.replace(/\s+/g, " ").trim(),
     ]),
   ).toEqual([
-    ["#skill-publications", "單一 Skill 不可變版本 → Publication → Release"],
+    ["#skill-publications", "單一小工具不可變版本 → Publication → Release"],
     ["#bundle-workspace", "Bundle 成員版本 → Bundle Version → Release"],
     ["#delivery-history", "交付 Artifact → 可得條件 → 下載紀錄"],
   ]);
@@ -180,12 +180,12 @@ test("the publishing space brings identity, Bundles, and delivery records into o
     (heading) => heading.textContent,
   );
   expect(sections).toEqual(
-    expect.arrayContaining(["Skill 發佈", "Bundle", "交付紀錄", "發佈者名稱", "從單一版本發佈"]),
+    expect.arrayContaining(["小工具發佈", "Bundle", "交付紀錄", "發佈者名稱", "從單一版本發佈"]),
   );
   expect(text()).toContain("公開位址不等於 Catalog 曝光");
   expect(text()).toContain("取得者身分與下載次數尚未提供");
   expect(container.querySelector('a[href="/library"]')?.textContent).toContain(
-    "選擇要發佈的 Skill",
+    "選擇要發佈的小工具",
   );
 });
 
@@ -290,7 +290,7 @@ test("a Bundle member version read failure stays unknown and blocks creation", a
 
   await render(<PublishingWorkspace />, () => text().includes("暫時無法讀取可加入 Bundle 的版本"));
 
-  expect(text()).not.toContain("還沒有可加入的 Skill");
+  expect(text()).not.toContain("還沒有可加入的小工具");
   expect(text()).not.toContain("version backend unavailable");
   expect(button("建立")?.disabled).toBe(true);
 });
@@ -470,7 +470,7 @@ test("the publishing overview keeps public identity and the exact latest release
 
 test("the publishing overview separates public reach, package eligibility, and Catalog discovery", async () => {
   const acquisitionNote =
-    "登入後可以下載這一版的標準 Agent Skill 套件；這個部署目前只開放受邀者下載。";
+    "登入後可以下載這一版的標準 Agent 小工具套件；這個部署目前只開放受邀者下載。";
   stub({
     "/me/publisher": { body: OWN_PUBLISHER },
     "/me/publications": {
@@ -585,7 +585,7 @@ test("the owner view preserves an unavailable reason instead of calling it an em
           availability: {
             value: "held",
             label: "已不提供",
-            note: "這個 Skill 的內容因授權問題被保留，釐清之前不提供。",
+            note: "這個小工具的內容因授權問題被保留，釐清之前不提供。",
           },
           acquisition: {
             available: false,
@@ -692,7 +692,7 @@ test("a delayed continuation result does not take focus after the user starts el
     return json(body[path] ?? { error: "not found" }, path in body ? 200 : 404);
   });
 
-  await render(<PublishingWorkspace />, () => text().includes("載入Skill 發佈清單中"));
+  await render(<PublishingWorkspace />, () => text().includes("載入小工具發佈清單中"));
   const userControl = document.createElement("button");
   document.body.appendChild(userControl);
   userControl.focus();
@@ -789,9 +789,9 @@ test("the publishing overview reports a failed read instead of claiming the coll
   await render(<PublishingWorkspace />, () => container.querySelector('[role="alert"]') !== null);
 
   expect(container.querySelector('[role="alert"]')?.textContent).toContain(
-    "暫時無法讀取Skill 發佈清單",
+    "暫時無法讀取小工具發佈清單",
   );
-  expect(text()).not.toContain("還沒有任何 Skill Publication");
+  expect(text()).not.toContain("還沒有任何小工具 Publication");
   expect(text()).not.toContain("database unavailable");
 });
 
@@ -814,7 +814,7 @@ test("PACK-004 available 公開頁：每一個允收欄位都出現", async () =
   expect(text()).toContain("Catalog 探索");
   expect(text()).toContain("目前無法從 Catalog 找到");
   expect(text()).toContain("這個發佈物目前不在搜尋與目錄裡");
-  expect(text()).toContain("登入後可以下載這一版的標準 Agent Skill 套件");
+  expect(text()).toContain("登入後可以下載這一版的標準 Agent 小工具套件");
 });
 
 test("PACK-004 公開頁先交代信任證據，再提供主要取得動作", async () => {
@@ -851,23 +851,23 @@ describe("PACK-004 不可用狀態", () => {
     {
       value: "withdrawn",
       label: "已不提供",
-      note: "這個發佈物指向的 Skill 已經被作者刪除。",
+      note: "這個發佈物指向的小工具已經被作者刪除。",
     },
-    { value: "taken_down", label: "已不提供", note: "這個 Skill 已被平台下架。" },
+    { value: "taken_down", label: "已不提供", note: "這個小工具已被平台下架。" },
     {
       value: "held",
       label: "已不提供",
-      note: "這個 Skill 的內容因授權問題被保留，釐清之前不提供。",
+      note: "這個小工具的內容因授權問題被保留，釐清之前不提供。",
     },
     {
       value: "not_redistributable",
       label: "已不提供",
-      note: "這個 Skill 目前的授權判定不允許再散布。",
+      note: "這個小工具目前的授權判定不允許再散布。",
     },
   ];
 
   for (const testCase of CASES) {
-    test(`availability=${testCase.value} 只顯示理由，不顯示 Skill 內容`, async () => {
+    test(`availability=${testCase.value} 只顯示理由，不顯示小工具內容`, async () => {
       stub({
         [PUB_ADDRESS]: {
           body: {
@@ -970,7 +970,7 @@ test("PACK-006 401：未登入按下下載，交給既有登入元件說一次",
 
 test("PACK-006 403：未受邀，顯示伺服器的中文說明", async () => {
   const NOT_INVITED =
-    "Skill Hub 還在封測：瀏覽與 Skill 詳情對所有人開放，但 Fork、試跑與下載只開放給受邀的測試者。";
+    "Skill Hub 還在封測：瀏覽與小工具詳情對所有人開放，但複製一份、試跑與下載只開放給受邀的測試者。";
   stubAcquire(() => ({ body: { error: NOT_INVITED }, status: 403 }));
   await render(<PublicPublication />, () => text().includes("PDF Summariser"));
 
@@ -994,7 +994,7 @@ test("PACK-006 409：理由是 availability，訊息就是伺服器的字串", a
 test("PACK-006 422：打包器拒絕，訊息就是伺服器的字串", async () => {
   stubAcquire(() => ({
     body: {
-      error: "這個 Skill 的內容因授權問題尚未釐清而被保留，所以不能發佈",
+      error: "這個小工具的內容因授權問題尚未釐清而被保留，所以不能發佈",
       reason: "license_hold",
     },
     status: 422,
@@ -1007,7 +1007,7 @@ test("PACK-006 422：打包器拒絕，訊息就是伺服器的字串", async ()
 
 test("PACK-018 Bundle 公開頁列出成員，且每一次 Release 逐項說出誰升級、誰加入、誰移除", async () => {
   stub({ [PUB_ADDRESS]: { body: PUBLIC_BUNDLE_PUBLICATION } });
-  await render(<PublicPublication />, () => text().includes("一組跟 PDF 有關的 Skill"));
+  await render(<PublicPublication />, () => text().includes("一組跟 PDF 有關的小工具"));
 
   expect(text()).toContain("summariser · v3");
   expect(text()).toContain("splitter · v1");
@@ -1145,7 +1145,7 @@ test("PublishPanel：還沒有發佈者時，在精確版本脈絡內提供註�
   expect(container.querySelector('a[href="/workspace/account"]')).toBeNull();
 });
 
-test("PublishPanel：尚未發佈時，名稱欄預設為 Skill 名稱", async () => {
+test("PublishPanel：尚未發佈時，名稱欄預設為小工具名稱", async () => {
   stub({
     "/me/publisher": { body: OWN_PUBLISHER },
     [`/skills/${SKILL}/publication`]: { body: { error: "not published" }, status: 404 },

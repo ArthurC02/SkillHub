@@ -86,7 +86,7 @@ const RUN = {
   evaluation: {
     value: "met",
     label: "符合",
-    note: "依這個 Run 當時的驗收條件判定為符合。",
+    note: "依這次試跑當時的驗收條件判定為符合。",
   },
   created_at: "2026-08-18T00:00:00Z",
   finished_at: "2026-08-18T00:04:00Z",
@@ -170,12 +170,12 @@ function platformHandlers(over: Overrides, removedRef: { removed: boolean }) {
       return json({
         deleted: true,
         datasets_deleted: 2,
-        note: "Test Case 與它上傳的檔案已移除，檔案本身也刪了；過去 Run 的快照仍保留 Prompt、驗收條件，以及每個檔案的檔名與內容雜湊。",
+        note: "測試題與它上傳的檔案已移除，檔案本身也刪了；過去試跑紀錄的快照仍保留 Prompt、驗收條件，以及每個檔案的檔名與內容雜湊。",
       });
     },
     (req: PlatformRequest) =>
       removedRef.removed && req.path === `/test-cases/${TEST_CASE}`
-        ? json({ error: "找不到這個 Test Case" }, 404)
+        ? json({ error: "找不到這個測試題" }, 404)
         : undefined,
   ];
 }
@@ -235,7 +235,7 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
 
 const text = () => container.textContent ?? "";
 
-test("the Test Case Dataset entry preserves the exact Test Case and Version", async () => {
+test("the 測試題 Dataset entry preserves the exact 測試題 and Version", async () => {
   listSearch = { version: VERSION };
   stubPlatform();
   await render();
@@ -245,7 +245,7 @@ test("the Test Case Dataset entry preserves the exact Test Case and Version", as
   expect(link?.getAttribute("data-search")).toBe(JSON.stringify({ version: VERSION }));
 });
 
-test("the Test Case workbench names the URL-selected Skill, Version and Test Case", async () => {
+test("the 測試題 workbench names the URL-selected 小工具, Version and 測試題", async () => {
   listSearch = { version: OTHER_VERSION };
   stubPlatform({ runs: [RUN] });
   await render();
@@ -262,7 +262,7 @@ test("the Test Case workbench names the URL-selected Skill, Version and Test Cas
   expect(runLink?.getAttribute("data-search")).toBe(JSON.stringify({ version: OTHER_VERSION }));
 });
 
-test("the Test Case workbench puts execution after its editable design and before history", async () => {
+test("the 測試題 workbench puts execution after its editable design and before history", async () => {
   listSearch = { version: VERSION };
   stubPlatform({ runs: [RUN] });
   await render();
@@ -282,7 +282,7 @@ test("the Test Case workbench puts execution after its editable design and befor
   expect(headings.filter((heading) => heading && journey.includes(heading))).toEqual(journey);
 });
 
-test("the Test Case workbench keeps design primary and supporting actions in a rail", async () => {
+test("the 測試題 workbench keeps design primary and supporting actions in a rail", async () => {
   listSearch = { version: VERSION };
   stubPlatform({ runs: [RUN] });
   await render();
@@ -293,10 +293,10 @@ test("the Test Case workbench keeps design primary and supporting actions in a r
   expect(layout!.querySelector(":scope > .test-case-detail-rail")).not.toBeNull();
 });
 
-test("the Test Case workbench labels a Version inherited from the latest matching Run", async () => {
+test("the 測試題 workbench labels a Version inherited from the latest matching 試跑紀錄", async () => {
   stubPlatform({ runs: [RUN] });
   await render();
-  await waitFor(() => text().includes("沿用最近一次 Run"));
+  await waitFor(() => text().includes("沿用最近一次試跑紀錄"));
 
   const context = container.querySelector("[data-role='test-case-context']")!;
   expect(context.textContent).toContain("v2");
@@ -306,7 +306,7 @@ test("the Test Case workbench labels a Version inherited from the latest matchin
   expect(runLink?.getAttribute("data-search")).toBe(JSON.stringify({ version: VERSION }));
 });
 
-test("the Test Case workbench asks for a Version when no matching Run can supply one", async () => {
+test("the 測試題 workbench asks for a Version when no matching 試跑紀錄 can supply one", async () => {
   stubPlatform({ runs: [{ ...RUN, skill_id: OTHER_SKILL }] });
   await render();
   await waitFor(() => text().includes("尚未選擇 Version"));
@@ -318,11 +318,11 @@ test("the Test Case workbench asks for a Version when no matching Run can supply
   expect(runLink?.getAttribute("data-search")).toBe(JSON.stringify({ version: undefined }));
 });
 
-test("the Test Case workbench refuses an URL Version outside the owner-scoped list", async () => {
+test("the 測試題 workbench refuses an URL Version outside the owner-scoped list", async () => {
   listSearch = { version: "66666666-6666-6666-6666-666666666666" };
   stubPlatform({ runs: [RUN] });
   await render();
-  await waitFor(() => text().includes("Version 不屬於目前的 Skill"));
+  await waitFor(() => text().includes("Version 不屬於目前的小工具"));
 
   expect(text()).toContain("選擇 Version 並確認權限");
   const runLink = container.querySelector<HTMLAnchorElement>(
@@ -424,7 +424,7 @@ test("CONTENT-007 clearing every line removes the rubric rather than storing an 
   const calls = stubPlatform();
   await render();
 
-  expect(container.textContent).toContain("儲存等於移除這個 Test Case 的 rubric");
+  expect(container.textContent).toContain("儲存等於移除這個測試題的 rubric");
   await act(async () => button("儲存 Rubric").click());
   const saved = calls.find((c) => c.method === "PATCH" && c.body?.includes("rubric"));
   expect(saved?.body).toContain('"rubric":null');
@@ -622,9 +622,9 @@ test("執行歷史 links each run to the exact immutable version that produced i
   expect(container.querySelector('time[datetime="2026-08-18T00:00:00Z"]')).not.toBeNull();
   expect(container.textContent).toContain(VERSION);
   const fold = Array.from(container.querySelectorAll("details")).find((d) =>
-    (d.querySelector("summary")?.textContent ?? "").includes("Skill Version"),
+    (d.querySelector("summary")?.textContent ?? "").includes("小工具 Version"),
   );
-  expect(fold, "the Skill Version id is not behind a disclosure").toBeTruthy();
+  expect(fold, "the 小工具 Version id is not behind a disclosure").toBeTruthy();
   expect(fold!.textContent).toContain(VERSION);
   const flat = Array.from(container.querySelectorAll(".download-item p"))
     .map((p) => p.textContent ?? "")
@@ -650,9 +650,7 @@ test("執行歷史 links each run to the exact immutable version that produced i
     { runId: "88888888-8888-8888-8888-888888888888" },
   ]);
   expect(compareLinks.every((link) => link.dataset.search === undefined)).toBe(true);
-  expect(compareLinks.every((link) => link.textContent?.includes("以這次 Run 開始比較"))).toBe(
-    true,
-  );
+  expect(compareLinks.every((link) => link.textContent?.includes("以這次試跑開始比較"))).toBe(true);
   expect(container.textContent).toContain("執行完成");
   expect(container.textContent).toContain("任務判定：符合");
   const t = container.textContent ?? "";
@@ -665,7 +663,7 @@ test("執行歷史 with no runs says 尚無執行 rather than rendering a zero",
   await waitFor(() => (container.textContent ?? "").includes("執行歷史"));
 
   expect(container.textContent).toContain("尚無執行");
-  expect(container.textContent).toContain("開始 Run 前會再次顯示權限摘要並要求確認");
+  expect(container.textContent).toContain("開始試跑前會再次顯示權限摘要並要求確認");
   expect(container.textContent).not.toContain("還需要填入");
 });
 
@@ -673,18 +671,18 @@ test("02:WS-002 deleting states its scope before it runs and its actual reach af
   const calls = stubPlatform({ runs: [] });
   await render();
 
-  await act(async () => button("刪除整個 Test Case").click());
-  expect(container.textContent).toContain("已經跑過的 Run 及其快照不受影響");
+  await act(async () => button("刪除整個測試題").click());
+  expect(container.textContent).toContain("已經跑過的試跑紀錄及其快照不受影響");
   expect(calls.some((c) => c.method === "DELETE")).toBe(false);
 
-  await act(async () => button("確認刪除整個 Test Case").click());
-  await waitFor(() => (container.textContent ?? "").includes("已刪除這個 Test Case"));
+  await act(async () => button("確認刪除整個測試題").click());
+  await waitFor(() => (container.textContent ?? "").includes("已刪除這個測試題"));
   const sent = calls.find((c) => c.method === "DELETE");
   expect(sent?.url).toContain(`/test-cases/${TEST_CASE}`);
 
   expect(container.textContent).toContain("2 個上傳檔案");
-  expect(container.textContent).toContain("快照與歷史 Run 不受影響");
-  expect(container.textContent).toContain("回到 Test Case 列表");
+  expect(container.textContent).toContain("快照與歷史試跑紀錄不受影響");
+  expect(container.textContent).toContain("回到測試題列表");
 });
 
 test("02:WS-002 deleting a test case does not ask the server for it again", async () => {
@@ -694,12 +692,12 @@ test("02:WS-002 deleting a test case does not ask the server for it again", asyn
     calls.filter((c) => c.method === "GET" && c.url === `/test-cases/${TEST_CASE}`).length;
   const before = fetched();
 
-  await act(async () => button("刪除整個 Test Case").click());
-  await act(async () => button("確認刪除整個 Test Case").click());
-  await waitFor(() => (container.textContent ?? "").includes("已刪除這個 Test Case"));
+  await act(async () => button("刪除整個測試題").click());
+  await act(async () => button("確認刪除整個測試題").click());
+  await waitFor(() => (container.textContent ?? "").includes("已刪除這個測試題"));
 
   expect(fetched()).toBe(before);
-  expect(container.textContent).not.toContain("找不到這個 Test Case");
+  expect(container.textContent).not.toContain("找不到這個測試題");
 });
 
 const LIST_ROW = {
@@ -720,7 +718,7 @@ test("列表 shows the skill's name, the confirmed count and whether a rubric ex
   expect(container.textContent).not.toContain(SKILL);
 });
 
-test("列表 separates the scenario index from the Test Case editor", async () => {
+test("列表 separates the scenario index from the 測試題 editor", async () => {
   stubPlatform({ testCases: [LIST_ROW] });
   await renderList();
 
@@ -752,17 +750,17 @@ test("列表 ?skill= narrows the request and says so, with a way back to the ful
   expect(container.textContent).toContain("顯示全部");
 });
 
-test("列表 ?skill= 指名的 Skill 要預先填進建立表單，不要再問一次", async () => {
+test("列表 ?skill= 指名的小工具要預先填進建立表單，不要再問一次", async () => {
   listSearch = { skill: SKILL };
   stubPlatform({ testCases: [LIST_ROW] });
   await renderList();
   await waitFor(() => container.querySelector<HTMLSelectElement>("#tc-skill")?.value === SKILL);
 
   expect(container.querySelector<HTMLSelectElement>("#tc-skill")!.value).toBe(SKILL);
-  expect(container.textContent).not.toContain("還不能建立，因為：選一個 Skill");
+  expect(container.textContent).not.toContain("還不能建立，因為：選一個小工具");
 });
 
-test("creating a Test Case for the current Skill keeps the selected version", async () => {
+test("creating a 測試題 for the current 小工具 keeps the selected version", async () => {
   listSearch = { skill: SKILL, version: VERSION };
   stubPlatform();
   await renderList();
@@ -776,7 +774,7 @@ test("creating a Test Case for the current Skill keeps the selected version", as
   });
 });
 
-test("creating a Test Case for another Skill drops the previous Skill's version", async () => {
+test("creating a 測試題 for another 小工具 drops the previous 小工具's version", async () => {
   listSearch = { skill: SKILL, version: VERSION };
   const calls = stubPlatform({
     skills: [
@@ -854,11 +852,11 @@ test("丙-116 a list filtered to a skill outside the workspace says so, and stop
   // the wrapped lines with a single space, so a break placed after a
   // full-width comma would render as an extra space nobody typed.
   expect(text).toContain(
-    "這個 Skill 不在你的工作區。Test Case 屬於工作區，所以這裡看不到它，建立表單的 Skill 選單也選不到它——先把它 Fork 一份，才會有屬於你的版本可以建立 Test Case。",
+    "這個小工具不在你的工作區。測試題屬於工作區，所以這裡看不到它，建立表單的小工具選單也選不到它——先把它複製一份，才會有屬於你的版本可以建立測試題。",
   );
   expect(text).toContain("選單也選不到它");
-  expect(text).not.toContain("這一個 Skill");
-  expect(text).not.toContain("還沒有 Test Case");
+  expect(text).not.toContain("這一個小工具");
+  expect(text).not.toContain("還沒有測試題");
 });
 
 test("丙-116 a list filtered to your OWN empty skill keeps the invitation, and can now name it", async () => {
@@ -867,8 +865,8 @@ test("丙-116 a list filtered to your OWN empty skill keeps the invitation, and 
   await renderList();
 
   const text = container.textContent ?? "";
-  expect(text).not.toContain("這個 Skill 不在你的工作區");
-  expect(text).toContain("這個 Skill 還沒有 Test Case");
+  expect(text).not.toContain("這個小工具不在你的工作區");
+  expect(text).toContain("這個小工具還沒有測試題");
   expect(text).toContain("去重複工具");
 });
 
@@ -878,7 +876,7 @@ test("丙-121 a test case whose skill is gone says it is gone, not that you may 
   await renderList();
 
   const text = container.textContent ?? "";
-  expect(text).toContain("這個 Skill 已經不在你的清單裡");
+  expect(text).toContain("這個小工具已經不在你的清單裡");
   expect(text).toContain("已刪除");
   expect(text).toContain("已下架");
   expect(text).not.toContain("無權檢視");

@@ -63,7 +63,7 @@ test("RunStatusTable prints one shared cost note when both sides cite the same s
   await mount(<RunStatusTable sides={sides} />);
 
   const notes = [...container.querySelectorAll(".note")].filter((el) =>
-    el.textContent?.includes("模型閘道對這個 Run 的 per-key 實付"),
+    el.textContent?.includes("模型閘道對這次試跑的 per-key 實付"),
   );
   expect(notes).toHaveLength(1);
 });
@@ -84,7 +84,7 @@ test("RunStatusTable prints a note per side when the sides cite different source
   expect(notes).toHaveLength(2);
 });
 
-test("RunStatusTable keeps each side connected to its own Run and immutable version", async () => {
+test("RunStatusTable keeps each side connected to its own 試跑紀錄 and immutable version", async () => {
   const sides = [
     { ...sideWithoutRerunLink("run-a", true), skill_id: "skill-a", skill_version_id: "version-a" },
     { ...sideWithoutRerunLink("run-b", false), skill_id: "skill-b", skill_version_id: "version-b" },

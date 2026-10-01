@@ -12,7 +12,7 @@ export function RunArtifacts({ runId }: { runId: string }) {
 
   return (
     <>
-      <h2>這次 Run 的產出</h2>
+      <h2>這次試跑的產出</h2>
       {artifacts.isPending && <Loading what="產出清單" />}
       <ReadFailure error={artifacts.error} what="產出清單" />
       <ReadFailure error={remove.error} what="刪除這個產出">
@@ -29,15 +29,15 @@ export function RunArtifacts({ runId }: { runId: string }) {
         (artifacts.data.artifacts.length === 0 ? (
           <p>
             {artifacts.data.truncated
-              ? "收集結果為空，無法據此判定這次 Run 沒有產生檔案。"
-              : "這次 Run 沒有留下任何檔案產出。"}
+              ? "收集結果為空，無法據此判定這次試跑沒有產生檔案。"
+              : "這次試跑沒有留下任何檔案產出。"}
           </p>
         ) : (
           <>
             <p className="note">
               這些檔案平台都不提供下載連結：每一個都是沙箱的產出，控制平面不打開它。
               {artifacts.data.artifacts.some((a) => !a.expires_at) &&
-                "「尚未定值」是平台還沒有為 Run 產出定下保存期限，這不表示它會永久保留。"}
+                "「尚未定值」是平台還沒有為試跑產出定下保存期限，這不表示它會永久保留。"}
             </p>
             <ul className="download-list">
               {artifacts.data.artifacts.map((artifact) => (
@@ -56,7 +56,7 @@ export function RunArtifacts({ runId }: { runId: string }) {
                       }
                       scope={
                         <>
-                          刪除的是這個檔案本身，這個 Run
+                          刪除的是這個檔案本身，這次試跑
                           的執行紀錄與評估判定都會保留。沒有回收桶也沒有保留期，這一頁沒有還原的地方，
                           刪了就取不回這個檔案。引用過這個檔案的評估不會被改寫，
                           它會顯示證據已不存在——那是當時真的看過的東西，判定不因為檔案被刪就變得不成立。

@@ -34,11 +34,11 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
     <>
       <h2>驗收條件</h2>
       <p className="note" data-role="evidence">
-        每條驗收條件各自判定。開始 Run 時會凍結成快照；修改只影響<strong>下一次</strong> Run。
+        每條驗收條件各自判定。開始試跑時會凍結成快照；修改只影響<strong>下一次</strong>試跑。
       </p>
 
       {testCase.acceptance_criteria.length === 0 ? (
-        <p>還沒有驗收條件。沒有驗收條件的 Run 沒有可逐條判定的依據。</p>
+        <p>還沒有驗收條件。沒有驗收條件的試跑沒有可逐條判定的依據。</p>
       ) : (
         <ul className="criterion-list" data-role="evidence">
           {testCase.acceptance_criteria.map((c) => (
@@ -47,7 +47,7 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
         </ul>
       )}
 
-      <p className="note">一個 Test Case 最多 {MAX_CRITERIA} 條驗收條件。</p>
+      <p className="note">一個測試題最多 {MAX_CRITERIA} 條驗收條件。</p>
       <p>
         <label htmlFor="new-criterion">新增驗收條件</label>{" "}
         <input
@@ -93,7 +93,7 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
         <>
           <h3>系統的建議（尚未加入）</h3>
           <p className="note">
-            以下只是建議，還沒有寫進這個 Test Case。按「採納」才會加成一條驗收條件，並且會標成
+            以下只是建議，還沒有寫進這個測試題。按「採納」才會加成一條驗收條件，並且會標成
             系統建議、維持未確認——要不要算數還是你決定。不想要就按「忽略」，什麼都不會發生。
           </p>
           <ul className="criterion-list">

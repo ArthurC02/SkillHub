@@ -24,7 +24,7 @@ export function CategoryEditor({ skillId, category }: { skillId: string; categor
     <section>
       <h2>類別</h2>
       <p className="field">
-        <label htmlFor="skill-category">這個 Skill 是做什麼用的</label>
+        <label htmlFor="skill-category">這個小工具是做什麼用的</label>
         <select
           id="skill-category"
           value={choice}

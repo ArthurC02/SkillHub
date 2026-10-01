@@ -178,23 +178,23 @@ const LABEL_TABLES: Array<{
     table: async () => (await import("../features/creation/generate.model")).FAILURE_SENTENCE,
   },
   {
-    what: "Skill.redistribution → 打包閘門 (Packaging)",
+    what: "小工具.redistribution → 打包閘門 (Packaging)",
     values: generated.SkillRedistributionEnum,
     table: async () => (await import("../features/packaging/packaging.model")).REDISTRIBUTION_GATE,
   },
   {
-    what: "OwnSkill.redistribution → 資產庫的徽章",
+    what: "Own小工具.redistribution → 資產庫的徽章",
     values: generated.OwnSkillRedistributionEnum,
     table: async () =>
       (await import("../features/workspace/skills/WorkspaceSkills.model")).REDISTRIBUTION_BADGE,
   },
   {
-    what: "RunPermissionSummary.blocked → 為什麼這一對開不了 Run (05 R-37 (a))",
+    what: "RunPermissionSummary.blocked → 為什麼這一對開不了試跑紀錄 (05 R-37 (a))",
     values: generated.RunPermissionSummaryBlockedEnum,
     table: async () => (await import("../features/lab/preflight/preflight.model")).BLOCKED_SENTENCE,
   },
   {
-    what: "Run.status → 執行狀態措辭",
+    what: "試跑紀錄.status → 執行狀態措辭",
     values: generated.RunStatusEnum,
     table: async () => (await import("../features/runs/runs.model")).RUN_STATUS_LABEL,
   },
@@ -248,7 +248,7 @@ const LABEL_TABLES: Array<{
     table: async () => (await import("../features/lab/preflight/preflight.model")).SCRIPT_LABEL,
   },
   {
-    what: "SkillLicense.source → License 出處",
+    what: "小工具License.source → License 出處",
     values: generated.SkillLicenseSourceEnum,
     table: async () => (await import("../shared/ui/LicenseBadge.model")).SOURCE_LABELS,
   },
@@ -297,7 +297,7 @@ const FALLBACK_TABLES: Array<{
     table: async () => (await import("../shared/ui/CompatibilityStatus.model")).BADGE_TINT,
   },
   {
-    what: "Run.cleanup_status → 清理狀態的色調 (runStatus)",
+    what: "試跑紀錄.cleanup_status → 清理狀態的色調 (runStatus)",
     values: ["pending", "cleaning_up", "cleaned", "failed"],
     table: async () => (await import("../features/runs/runs.model")).CLEANUP_BADGE,
   },

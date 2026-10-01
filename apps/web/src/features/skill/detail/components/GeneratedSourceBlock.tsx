@@ -32,7 +32,7 @@ export function GeneratedSourceBlock({ source }: { source: SkillSource }) {
           )}
           {references && references.length > 0 && (
             <>
-              <p>參考的 Skill：</p>
+              <p>參考的小工具：</p>
               <ul>
                 {references.map((r) => (
                   <li key={r.version_id}>

@@ -35,10 +35,10 @@ vi.mock("./generate/GenerateSkill", () => ({
   GenerateSkill: () => <div>舊生成入口</div>,
   ReferencePicker: ({ onToggle }: { onToggle: (id: string, name: string) => void }) => (
     <>
-      <button onClick={() => onToggle("ref-1", "摘要 Skill")}>選擇摘要參考</button>
-      <button onClick={() => onToggle("ref-2", "參考 Skill 2")}>選擇參考 Skill 2</button>
-      <button onClick={() => onToggle("ref-3", "參考 Skill 3")}>選擇參考 Skill 3</button>
-      <button onClick={() => onToggle("ref-4", "參考 Skill 4")}>選擇參考 Skill 4</button>
+      <button onClick={() => onToggle("ref-1", "摘要小工具")}>選擇摘要參考</button>
+      <button onClick={() => onToggle("ref-2", "參考小工具 2")}>選擇參考小工具 2</button>
+      <button onClick={() => onToggle("ref-3", "參考小工具 3")}>選擇參考小工具 3</button>
+      <button onClick={() => onToggle("ref-4", "參考小工具 4")}>選擇參考小工具 4</button>
     </>
   ),
 }));
@@ -165,7 +165,7 @@ async function pickBudget(value = "500") {
   await act(async () => box.querySelector<HTMLInputElement>(pick)!.click());
 }
 async function openReferencePicker() {
-  await click("＋ 參考 Skill");
+  await click("＋ 參考小工具");
 }
 async function resume() {
   const pick = '.creation-sessions button[data-session="s1"]';
@@ -187,10 +187,10 @@ test("natural language creates one budgeted session", async () => {
   );
   await render();
   await pickBudget();
-  await input("想完成的任務", "建立摘要 Skill");
+  await input("想完成的任務", "建立摘要小工具");
   await click(START);
   await waitFor(() => posts.length === 1);
-  expect(posts[0]).toMatchObject({ message: "建立摘要 Skill", budget_credits: 500 });
+  expect(posts[0]).toMatchObject({ message: "建立摘要小工具", budget_credits: 500 });
   expect(posts[0].id).toBeTruthy();
 });
 const creditsResponse = (patch: Record<string, unknown> = {}) => ({
@@ -272,7 +272,7 @@ async function attachDiagram(name = "flow.png", body = "diagram") {
   });
   return el;
 }
-test("a diagram and reference Skills at once are refused before anything is sent", async () => {
+test("a diagram and reference 小工具s at once are refused before anything is sent", async () => {
   const posts: Record<string, unknown>[] = [];
   vi.stubGlobal(
     "fetch",
@@ -308,14 +308,14 @@ test("a diagram carries the sentence that came with it, in one action", async ()
   );
   await render();
   await pickBudget();
-  await input("想完成的任務", "這是我的流程，我想把它變成待辦清單 Skill。");
+  await input("想完成的任務", "這是我的流程，我想把它變成待辦清單小工具。");
   await attachDiagram();
   await click(START);
   await waitFor(() => posts.length === 2);
   expect(posts[0].message, "會話本身不帶那句話，它跟著素材走").toBe("");
   expect(posts[1]).toMatchObject({
     kind: "diagram",
-    message: "這是我的流程，我想把它變成待辦清單 Skill。",
+    message: "這是我的流程，我想把它變成待辦清單小工具。",
     diagram: { media_type: "image/png", data: btoa("diagram") },
   });
 });
@@ -350,13 +350,13 @@ test("Enter sends, Shift+Enter does not, and neither does Enter while choosing c
   );
   await render();
   await pickBudget();
-  await input("想完成的任務", "建立摘要 Skill");
+  await input("想完成的任務", "建立摘要小工具");
   await pressKey("Enter", { shiftKey: true });
   await pressKey("Enter", { isComposing: true });
   expect(posts, "換行或選字被當成送出").toHaveLength(0);
   await pressKey("Enter");
   await waitFor(() => posts.length > 0);
-  expect(posts[0]).toMatchObject({ message: "建立摘要 Skill" });
+  expect(posts[0]).toMatchObject({ message: "建立摘要小工具" });
 });
 test("an image pasted into the composer becomes the attachment", async () => {
   vi.stubGlobal(
@@ -697,7 +697,7 @@ function conversationGrowing(
 test("a resumed conversation opens on its newest message, not on the bottom of the cards below it", async () => {
   const v = sample();
   v.snapshot.messages = [
-    { role: "user", content: "做一個摘要 Skill。" },
+    { role: "user", content: "做一個摘要小工具。" },
     { role: "assistant", content: "請確認下面的需求摘要。" },
   ];
   vi.stubGlobal(
@@ -804,7 +804,7 @@ test("the counter counts what the server counts, and nothing truncates silently"
 });
 test("a picture and the words it came with are one turn in the conversation", async () => {
   const sent = sample({ revision: 2 });
-  sent.snapshot.messages = [{ role: "user", content: "這是我的流程，幫我做成 Skill。" }];
+  sent.snapshot.messages = [{ role: "user", content: "這是我的流程，幫我做成小工具。" }];
   sent.snapshot.attachments = [
     { message_index: 0, media_type: "image/png", bytes: 7, sha256: "digest-1" },
   ];
@@ -821,14 +821,14 @@ test("a picture and the words it came with are one turn in the conversation", as
   );
   await render();
   await pickBudget();
-  await input("想完成的任務", "這是我的流程，幫我做成 Skill。");
+  await input("想完成的任務", "這是我的流程，幫我做成小工具。");
   await attachDiagram();
   expect(box.querySelector("img.chip-thumb"), "輸入區裡沒有預覽").not.toBe(null);
   await click(START);
   await waitFor(() => !!box.querySelector('[role="log"] li[data-role="user"]'));
   const mine = [...box.querySelectorAll('[role="log"] .creation-log > li[data-role="user"]')];
   expect(mine).toHaveLength(1);
-  expect(mine[0].textContent).toContain("這是我的流程，幫我做成 Skill。");
+  expect(mine[0].textContent).toContain("這是我的流程，幫我做成小工具。");
   expect(mine[0].querySelector("img"), "圖沒有和它的文字在同一則訊息裡").not.toBe(null);
 });
 test("a second picture does not erase the first, and a wordless one is its own turn", async () => {
@@ -910,10 +910,10 @@ test("a fourth reference is refused; the cap stays at three", async () => {
   await pickBudget();
   await openReferencePicker();
   await click("選擇摘要參考");
-  await click("選擇參考 Skill 2");
-  await click("選擇參考 Skill 3");
-  await click("選擇參考 Skill 4");
-  expect(box.textContent).toContain("參考 Skill 最多三個；先移除一個再加。");
+  await click("選擇參考小工具 2");
+  await click("選擇參考小工具 3");
+  await click("選擇參考小工具 4");
+  expect(box.textContent).toContain("參考小工具最多三個；先移除一個再加。");
   expect([...box.querySelectorAll(".chip-row li")], "第四個還是被加進去了").toHaveLength(3);
 });
 test("the two attachment controls name themselves and carry their limits", async () => {
@@ -927,7 +927,7 @@ test("the two attachment controls name themselves and carry their limits", async
   expect(fileEl.getAttribute("aria-label"), "它會蓋掉看得見的那五個字").toBe(null);
   expect(fileEl.closest("label")!.textContent).toContain("＋ 流程圖");
   expect(fileEl.getAttribute("aria-describedby")).toBe("composer-limits");
-  const picker = button("＋ 參考 Skill");
+  const picker = button("＋ 參考小工具");
   expect(picker.getAttribute("aria-controls")).toBe("composer-references");
   expect(picker.getAttribute("aria-describedby")).toBe("composer-limits");
   const limits = box.querySelector("#composer-limits")!;
@@ -1092,7 +1092,7 @@ test("catalog references can start a session and require confirmation", async ()
     {
       skill_id: "ref-1",
       version_id: "v1",
-      name: "摘要 Skill",
+      name: "摘要小工具",
       available: true,
       confirmed: false,
       description: "整理輸入並輸出摘要",
@@ -1148,7 +1148,7 @@ test("catalog hit on the first message offers adopt, confirm, or decline", async
     {
       skill_id: "ref-1",
       version_id: "v1",
-      name: "摘要 Skill",
+      name: "摘要小工具",
       available: true,
       confirmed: false,
       description: "整理輸入並輸出摘要",
@@ -1168,7 +1168,7 @@ test("catalog hit on the first message offers adopt, confirm, or decline", async
   );
   await render();
   await resume();
-  expect(box.textContent).toContain("目錄裡已有相近的 Skill");
+  expect(box.textContent).toContain("目錄裡已有相近的小工具");
   await click("直接採用");
   await waitFor(() => posts.length === 1);
   expect(posts[0]).toMatchObject({
@@ -1202,7 +1202,7 @@ test("materialize-time duplicates offer adopt or confirm and hide the private-ca
     {
       skill_id: "dup-1",
       version_id: "v1",
-      name: "既有摘要 Skill",
+      name: "既有摘要小工具",
       available: true,
       confirmed: false,
       description: "整理輸入並輸出摘要",
@@ -1221,8 +1221,8 @@ test("materialize-time duplicates offer adopt or confirm and hide the private-ca
   );
   await render();
   await resume();
-  expect(box.textContent).toContain("目錄已有相近的 Skill");
-  expect(box.textContent).toContain("既有摘要 Skill");
+  expect(box.textContent).toContain("目錄已有相近的小工具");
+  expect(box.textContent).toContain("既有摘要小工具");
   expect(box.textContent).toContain("沒有掃描紀錄");
   expect(() => button("建立私人候選版本")).toThrow();
   await click("仍然建立");
@@ -1375,7 +1375,7 @@ test("開場建立 session 的請求網路失敗，按重試沿用同一個 sess
   );
   await render();
   await pickBudget();
-  await input("想完成的任務", "建立摘要 Skill");
+  await input("想完成的任務", "建立摘要小工具");
   await click(START);
   await waitFor(() => !!box.querySelector('[role="alert"]'));
   expect(box.querySelector('[role="alert"]')!.textContent).toContain("網路連線失敗");
@@ -1400,7 +1400,7 @@ test("重試前改了輸入內容，重新送出換成新的 session 編號", as
   );
   await render();
   await pickBudget();
-  await input("想完成的任務", "建立摘要 Skill");
+  await input("想完成的任務", "建立摘要小工具");
   await click(START);
   await waitFor(() => !!box.querySelector('[role="alert"]'));
   await input("想完成的任務", "改成別的任務內容");
@@ -1438,7 +1438,7 @@ test("no budget, no conversation: the composer is frozen until a step inside the
   await pickBudget("2000");
   expect(textarea.disabled).toBe(false);
   expect(button(START).disabled).toBe(false);
-  await input("想完成的任務", "建立摘要 Skill");
+  await input("想完成的任務", "建立摘要小工具");
   await click(START);
   await waitFor(() => posts.length === 1);
   expect(posts[0]).toMatchObject({ budget_credits: 2000 });
@@ -1569,7 +1569,7 @@ test("the send key goes quiet while there is nothing to send", async () => {
   expect(composer.hasAttribute("data-empty"), "空的時候送出鍵沒有退下").toBe(true);
   await input("想完成的任務", "   ");
   expect(composer.hasAttribute("data-empty"), "只有空白也被當成有東西可送").toBe(true);
-  await input("想完成的任務", "建立摘要 Skill");
+  await input("想完成的任務", "建立摘要小工具");
   expect(composer.hasAttribute("data-empty")).toBe(false);
   await input("想完成的任務", "");
   await attachDiagram();
@@ -1757,7 +1757,7 @@ test("a failed session shows the raise form, refuses an out-of-band amount local
   await waitFor(() => posts.length === 1);
   expect(posts[0]).toMatchObject({ kind: "raise_budget", budget_credits: 2000 });
 });
-test("a candidate with a test_case_id renders the Test Case sentence and the run link carries it", async () => {
+test("a candidate with a test_case_id renders the 測試題 sentence and the run link carries it", async () => {
   const v = sample({ state: "candidate_ready" });
   v.snapshot.draft = {
     revision: 1,
@@ -1780,7 +1780,7 @@ test("a candidate with a test_case_id renders the Test Case sentence and the run
   );
   await render();
   await resume();
-  expect(box.textContent).toContain("已依確認的驗收條件建立 Test Case");
+  expect(box.textContent).toContain("已依確認的驗收條件建立測試題");
   expect(box.textContent).toContain("這份草稿尚未試跑");
   const versionLink = [...box.querySelectorAll("a")].find((a) => a.textContent === "開啟候選版本");
   expect(versionLink?.getAttribute("href")).toBe("/skills/sk-1/versions/v1");
@@ -1790,7 +1790,7 @@ test("a candidate with a test_case_id renders the Test Case sentence and the run
   expect(link?.getAttribute("href")).toBe("/skills/sk-1/test-cases/tc-1/runs/new");
   expect(JSON.parse(link?.getAttribute("data-search") ?? "{}")).toEqual({ version: "v1" });
 });
-test("a saved session opens the exact immutable version instead of the Skill overview", async () => {
+test("a saved session opens the exact immutable version instead of the 小工具 overview", async () => {
   const v = sample({ state: "saved" });
   v.snapshot.draft = DRAFT;
   v.snapshot.candidate = {
@@ -1861,7 +1861,7 @@ test("a differing latest run offers to bring it into the session, and posts atta
   await waitFor(() => posts.length > 0);
   expect(posts[0]).toMatchObject({ kind: "attach_run", run_id: "run-new" });
 });
-test("a failed exact-version Run lookup stays unknown instead of claiming no Run came back", async () => {
+test("a failed exact-version 試跑紀錄 lookup stays unknown instead of claiming no 試跑紀錄 came back", async () => {
   const v = sample({ state: "candidate_ready" });
   v.snapshot.draft = DRAFT;
   v.snapshot.candidate = draftCandidate();
@@ -1955,7 +1955,7 @@ test("flag off never mounts creation or fetches its private sessions", async () 
   const fetch = vi.fn(() => response([]));
   vi.stubGlobal("fetch", fetch);
   await render(<CreateHub generateExposed={false} creationExposed={true} />);
-  expect(box.textContent).not.toContain("和 Agent 一起創作 Skill");
+  expect(box.textContent).not.toContain("和 Agent 一起創作小工具");
   expect(fetch).not.toHaveBeenCalled();
 });
 

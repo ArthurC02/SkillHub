@@ -26,12 +26,12 @@ export function SkillDetail() {
   const { data: skill, isLoading, error } = useSkillDetail(skillId);
   const { data: me } = useMe();
 
-  if (isLoading) return <Loading what="這個 Skill" />;
+  if (isLoading) return <Loading what="這個小工具" />;
   if (error instanceof ApiError && error.status === 410) {
-    return <p role="alert">這個 Skill 已從目錄下架，內容不再提供。</p>;
+    return <p role="alert">這個小工具已從目錄下架，內容不再提供。</p>;
   }
-  if (error) return <ReadFailure error={error} what="這個 Skill" />;
-  if (!skill) return <p role="alert">找不到這個 Skill。</p>;
+  if (error) return <ReadFailure error={error} what="這個小工具" />;
+  if (!skill) return <p role="alert">找不到這個小工具。</p>;
 
   return (
     <article className="skill-detail">
@@ -47,11 +47,11 @@ export function SkillDetail() {
       </header>
 
       <div className="detail-layout">
-        <aside className="detail-rail" aria-label="這個 Skill 的操作">
+        <aside className="detail-rail" aria-label="這個小工具的操作">
           <TrialEntry skillId={skillId} isLoggedIn={!!me} />
 
           <section>
-            <h2>Fork 到你的工作區</h2>
+            <h2>複製一份到你的工作區</h2>
             <ForkAction skillId={skillId} isLoggedIn={!!me} />
           </section>
 
