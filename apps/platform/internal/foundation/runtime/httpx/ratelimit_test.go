@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -161,8 +162,10 @@ func TestClientKeySurvivesAMalformedRemoteAddress(t *testing.T) {
 	}
 }
 
+var refusalRuns atomic.Int32
+
 func TestARefusalIsCountedOnTheMetricsSurface(t *testing.T) {
-	const route = "test_route"
+	route := "test_route_" + strconv.Itoa(int(refusalRuns.Add(1)))
 
 	l, _ := testLimiter(60, 1)
 	h := l.Limit(route, func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
@@ -174,7 +177,7 @@ func TestARefusalIsCountedOnTheMetricsSurface(t *testing.T) {
 		t.Fatalf("an allowed request already published %q; only a 429 may count", got)
 	}
 	h(httptest.NewRecorder(), req)
-	if got := scrape(t, route); got != `skillhub_rate_limited_total{route="test_route"} 1` {
+	if got, want := scrape(t, route), `skillhub_rate_limited_total{route="`+route+`"} 1`; got != want {
 		t.Errorf("after one 429 /metrics has %q, want the route's counter at 1", got)
 	}
 }
