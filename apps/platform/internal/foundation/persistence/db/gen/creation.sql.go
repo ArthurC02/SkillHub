@@ -270,6 +270,27 @@ func (q *Queries) GetCreationSession(ctx context.Context, arg GetCreationSession
 	return i, err
 }
 
+const getCreationSessionLiveness = `-- name: GetCreationSessionLiveness :one
+SELECT state, expires_at FROM creation_sessions WHERE id=$1 AND workspace_id=$2
+`
+
+type GetCreationSessionLivenessParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+type GetCreationSessionLivenessRow struct {
+	State     string
+	ExpiresAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetCreationSessionLiveness(ctx context.Context, arg GetCreationSessionLivenessParams) (GetCreationSessionLivenessRow, error) {
+	row := q.db.QueryRow(ctx, getCreationSessionLiveness, arg.ID, arg.WorkspaceID)
+	var i GetCreationSessionLivenessRow
+	err := row.Scan(&i.State, &i.ExpiresAt)
+	return i, err
+}
+
 const insertCreationReceipt = `-- name: InsertCreationReceipt :one
 INSERT INTO creation_receipts(id,session_id,workspace_id,kind,status,expected_revision,request_hash,result)
 VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, session_id, workspace_id, kind, status, expected_revision, request_hash, result, usage, created_at, finished_at

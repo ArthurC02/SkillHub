@@ -272,7 +272,7 @@ func (s *Service) cancelWhenSessionMoves(ctx context.Context, cancel context.Can
 			case <-ctx.Done():
 				return
 			case <-tick.C:
-				current, err := gen.New(s.Pool).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: a.SessionID, WorkspaceID: a.WorkspaceID})
+				current, err := gen.New(s.Pool).GetCreationSessionLiveness(ctx, gen.GetCreationSessionLivenessParams{ID: a.SessionID, WorkspaceID: a.WorkspaceID})
 				if sessionMoved(current, err) {
 					cancel()
 					return
@@ -283,11 +283,11 @@ func (s *Service) cancelWhenSessionMoves(ctx context.Context, cancel context.Can
 	return stopped
 }
 
-func sessionMoved(current gen.CreationSession, err error) bool {
+func sessionMoved(current gen.GetCreationSessionLivenessRow, err error) bool {
 	if err != nil {
 		return errors.Is(err, pgx.ErrNoRows)
 	}
-	return State(current.State) != StateWorking || !live(current)
+	return State(current.State) != StateWorking || !current.ExpiresAt.Time.After(time.Now())
 }
 
 func (s *Service) stepRequest(a JobArgs, revision int64, e envelope, diagram *Diagram) StepRequest {

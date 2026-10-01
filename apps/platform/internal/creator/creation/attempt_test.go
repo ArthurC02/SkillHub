@@ -345,18 +345,18 @@ func TestAnAttemptThatCannotBeJudgedFailsAndHandsTheTurnBack(t *testing.T) {
 }
 
 func TestOnlyASessionThatReallyMovedStopsTheModelCall(t *testing.T) {
-	session := func(state State, expires time.Duration) gen.CreationSession {
-		return gen.CreationSession{State: string(state), ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(expires), Valid: true}}
+	session := func(state State, expires time.Duration) gen.GetCreationSessionLivenessRow {
+		return gen.GetCreationSessionLivenessRow{State: string(state), ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(expires), Valid: true}}
 	}
 	for _, c := range []struct {
 		name    string
-		current gen.CreationSession
+		current gen.GetCreationSessionLivenessRow
 		err     error
 		want    bool
 	}{
 		{"still working", session(StateWorking, time.Hour), nil, false},
-		{"a read that failed", gen.CreationSession{}, errors.New("connection reset"), false},
-		{"the session is gone", gen.CreationSession{}, pgx.ErrNoRows, true},
+		{"a read that failed", gen.GetCreationSessionLivenessRow{}, errors.New("connection reset"), false},
+		{"the session is gone", gen.GetCreationSessionLivenessRow{}, pgx.ErrNoRows, true},
 		{"cancelled", session(StateCancelled, time.Hour), nil, true},
 		{"expired", session(StateWorking, -time.Second), nil, true},
 	} {
