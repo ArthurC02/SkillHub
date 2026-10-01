@@ -286,6 +286,8 @@ test("OPS-003: a grant waits for a non-zero whole amount and a reason, then post
     reason: "beta reward",
   });
   await waitFor(() => ledgerReads() > before);
+  await type("#admin-grant-amount", "75");
+  expect(has("已授予 50 點，餘額現在是 170 點。")()).toBe(false);
 });
 
 test("OPS-003: a refused grant says so with the server's words", async () => {
@@ -300,6 +302,8 @@ test("OPS-003: a refused grant says so with the server's words", async () => {
   await type("#admin-grant-note", "r");
   await click(button("授予"));
   await waitFor(has("沒有完成，伺服器說：amount_credits must not be zero"));
+  await type("#admin-grant-note", "修改後的理由");
+  expect(has("沒有完成，伺服器說：amount_credits must not be zero")()).toBe(false);
 });
 
 test("OPS-004: takedown of the one skill found takes a reason and a second click", async () => {
@@ -326,7 +330,11 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
 });
 
 test("OPS-004: releasing a skill needs licence evidence; blocking it does not", async () => {
-  stub(true);
+  stub(true, (path, method) =>
+    path === `/admin/skills/${SKILL}/redistribution` && method === "PUT"
+      ? { body: {}, status: 200 }
+      : undefined,
+  );
   await mountAt("/admin/skills", { q: SKILL });
   await waitFor(has("再散布判定"));
   await type("#admin-redistribution-note", "legal cleared");
@@ -350,6 +358,27 @@ test("OPS-004: releasing a skill needs licence evidence; blocking it does not", 
       license_source: "package-license-file",
     },
   });
+  await waitFor(has("已送出，上面的狀態已更新。"));
+  await type("#admin-license-expression", "Apache-2.0");
+  expect(has("已送出，上面的狀態已更新。")()).toBe(false);
+});
+
+test("a revised model timeout does not inherit the previous success notice", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/model-budgets/judge-run" && method === "PUT"
+      ? { body: {}, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+
+  await type("#admin-budget-judge-run-seconds", "100");
+  await type("#admin-budget-judge-run-note", "調整等待時間");
+  await click(button("改 評估判定 的秒數"));
+  await waitFor(has("已套用，下一次呼叫就用這個秒數。"));
+
+  await type("#admin-budget-judge-run-seconds", "101");
+  expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(false);
 });
 
 test("OPS-004: a restriction is set with the known reason code and lifted by the same form", async () => {
@@ -468,6 +497,7 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
   expect(calls.find((c) => c.method === "PUT")?.body).toEqual({ note: "escape drill" });
 
   await type("#admin-halt-provider", "node-2");
+  expect(has("整個叢集停止派送。")()).toBe(false);
   await type("#admin-halt-lift-note", "cleared");
   await click(button("恢復派送"));
   await waitFor(() => calls.some((c) => c.method === "DELETE"));
@@ -800,6 +830,23 @@ test("DISC-007: submitting a review sends this screen's release_id and sequence 
       reason: "看過了，符合規範",
     },
   });
+});
+
+test("a completed exposure decision does not describe the next decision", async () => {
+  stub(true, (path, method) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && method === "POST"
+      ? { body: ADMIN_EXPOSURE_CASE, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核這一版"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
+  await type("#admin-exposure-review-note", "看過了，符合規範");
+  await click(button("送出核准"));
+  await waitFor(has("已送出，上面的狀態已更新。"));
+
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="revoked"]'));
+  expect(has("已送出，上面的狀態已更新。")()).toBe(false);
 });
 
 test("DISC-007: a decision and reason are both required before submission", async () => {

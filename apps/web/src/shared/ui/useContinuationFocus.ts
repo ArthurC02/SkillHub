@@ -6,6 +6,17 @@ export function useContinuationFocus(
   element: RefObject<HTMLElement | null>,
 ) {
   const focused = useRef<string | undefined>(undefined);
+  const focusMoved = useRef(false);
+
+  useEffect(() => {
+    focusMoved.current = false;
+    const owner = element.current?.ownerDocument ?? document;
+    const onFocus = () => {
+      focusMoved.current = true;
+    };
+    owner.addEventListener("focusin", onFocus);
+    return () => owner.removeEventListener("focusin", onFocus);
+  }, [element, target]);
 
   useEffect(() => {
     if (!target) {
@@ -14,9 +25,6 @@ export function useContinuationFocus(
     }
     if (!available || focused.current === target || !element.current) return;
     focused.current = target;
-    const active = element.current.ownerDocument.activeElement;
-    if (active && active !== element.current.ownerDocument.body && active !== element.current)
-      return;
-    element.current.focus();
+    if (!focusMoved.current) element.current.focus();
   }, [available, element, target]);
 }

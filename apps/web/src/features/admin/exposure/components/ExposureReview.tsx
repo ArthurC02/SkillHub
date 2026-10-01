@@ -84,6 +84,7 @@ function ReviewForm({
       pending={review.isPending}
       error={review.error}
       done={review.isSuccess && "已送出，上面的狀態已更新。"}
+      contextKey={`${publication}:${c.release.release_id}:${decision ?? "none"}`}
       ready={decision !== undefined}
       onSubmit={(reason) => {
         if (!decision) return;
@@ -104,7 +105,11 @@ function ReviewForm({
               name="admin-exposure-decision"
               value={value}
               checked={decision === value}
-              onChange={() => setDecision(value)}
+              onChange={() => {
+                setDecision(value);
+                review.reset();
+              }}
+              disabled={review.isPending}
             />
             {DECISION_LABEL[value]}
           </label>

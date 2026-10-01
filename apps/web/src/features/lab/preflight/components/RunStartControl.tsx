@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../../../shared/ui/LoginRequired.model";
@@ -16,6 +17,11 @@ export function RunStartControl({
 }) {
   const runId = start.data?.run_id ?? "";
   const message = startFailureSentence(start.error);
+  const resultLink = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (runId) resultLink.current?.focus();
+  }, [runId]);
 
   return (
     <>
@@ -23,15 +29,17 @@ export function RunStartControl({
       {message && <p role="alert">{message}</p>}
 
       {runId ? (
-        <p>
-          已開始試跑。{" "}
-          <Link to="/runs/$runId" params={{ runId }}>
-            查看這次試跑的結果
-          </Link>
-          <span className="note">
-            試跑紀錄 ID：<code>{runId}</code>
-          </span>
-        </p>
+        <>
+          <p role="status">已開始試跑。</p>
+          <p>
+            <Link ref={resultLink} to="/runs/$runId" params={{ runId }}>
+              查看這次試跑的結果
+            </Link>
+            <span className="note">
+              試跑紀錄 ID：<code>{runId}</code>
+            </span>
+          </p>
+        </>
       ) : blocked ? (
         <p role="alert" className="notice">
           {BLOCKED_SENTENCE[blocked]}

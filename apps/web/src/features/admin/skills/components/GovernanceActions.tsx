@@ -7,11 +7,9 @@ import { ActionForm } from "../../components/ActionForm";
 export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
   const restriction = useGovernanceAction(skill.skill_id, "restriction");
   const redistribution = useGovernanceAction(skill.skill_id, "redistribution");
-  const takedown = useGovernanceAction(skill.skill_id, "takedown");
   const [verdict, setVerdict] = useState("blocked");
   const [licenseExpression, setLicenseExpression] = useState("");
   const [licenseSource, setLicenseSource] = useState("");
-  const [takedownReason, setTakedownReason] = useState("");
   const releasing = verdict === "allowed";
 
   return (
@@ -25,6 +23,7 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
         pending={restriction.isPending}
         error={restriction.error}
         done={restriction.isSuccess && "已送出，上面的狀態已更新。"}
+        contextKey={`${skill.skill_id}:${skill.access_restriction ?? "none"}`}
         onSubmit={(note) =>
           skill.access_restriction
             ? restriction.mutate({ method: "DELETE", body: { note } })
@@ -40,6 +39,7 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
         error={redistribution.error}
         ready={!releasing || (licenseExpression.trim() !== "" && licenseSource !== "")}
         done={redistribution.isSuccess && "已送出，上面的狀態已更新。"}
+        contextKey={`${skill.skill_id}:${verdict}:${licenseExpression.trim()}:${licenseSource}`}
         onSubmit={(note) =>
           redistribution.mutate({
             method: "PUT",
@@ -59,7 +59,11 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
           <select
             id="admin-redistribution-value"
             value={verdict}
-            onChange={(event) => setVerdict(event.target.value)}
+            onChange={(event) => {
+              setVerdict(event.target.value);
+              redistribution.reset();
+            }}
+            disabled={redistribution.isPending}
           >
             <option value="blocked">禁止再散布</option>
             <option value="unknown">尚未判定</option>
@@ -73,7 +77,11 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
               <input
                 id="admin-license-expression"
                 value={licenseExpression}
-                onChange={(event) => setLicenseExpression(event.target.value)}
+                onChange={(event) => {
+                  setLicenseExpression(event.target.value);
+                  redistribution.reset();
+                }}
+                readOnly={redistribution.isPending}
               />
             </div>
             <div className="field">
@@ -81,7 +89,11 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
               <select
                 id="admin-license-source"
                 value={licenseSource}
-                onChange={(event) => setLicenseSource(event.target.value)}
+                onChange={(event) => {
+                  setLicenseSource(event.target.value);
+                  redistribution.reset();
+                }}
+                disabled={redistribution.isPending}
               >
                 <option value="">選一個</option>
                 <option value="manifest">SKILL.md 的宣告</option>
@@ -94,6 +106,17 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
         )}
       </ActionForm>
 
+      <TakedownAction skillId={skill.skill_id} />
+    </>
+  );
+}
+
+function TakedownAction({ skillId }: { skillId: string }) {
+  const takedown = useGovernanceAction(skillId, "takedown");
+  const [takedownReason, setTakedownReason] = useState("");
+
+  return (
+    <>
       <h3>下架</h3>
       <div className="field">
         <label htmlFor="admin-takedown-reason">下架理由（必填，會寫進動作紀錄）</label>

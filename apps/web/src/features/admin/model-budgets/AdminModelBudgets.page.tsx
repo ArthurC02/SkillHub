@@ -51,6 +51,7 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
         error={set.error}
         ready={inRange}
         done={set.isSuccess && "已套用，下一次呼叫就用這個秒數。"}
+        contextKey={`${budget.kind}:${seconds}`}
         onSubmit={(reason) => set.mutate({ kind: budget.kind, seconds: wanted, reason })}
       >
         <div className="field">
@@ -61,7 +62,11 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
             id={`admin-budget-${budget.kind}-seconds`}
             inputMode="numeric"
             value={seconds}
-            onChange={(event) => setSeconds(event.target.value)}
+            onChange={(event) => {
+              setSeconds(event.target.value);
+              set.reset();
+            }}
+            readOnly={set.isPending}
             aria-describedby={inRange ? undefined : `admin-budget-${budget.kind}-range`}
           />
           {!inRange && (

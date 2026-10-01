@@ -20,6 +20,7 @@ export function GrantForm({ workspaceId }: { workspaceId: string }) {
           grant.data &&
           `已授予 ${grant.data.amount_credits} 點，餘額現在是 ${grant.data.balance_credits} 點。`
         }
+        contextKey={`${workspaceId}:${amount}`}
         onSubmit={(reason) => grant.mutate({ amount_credits: credits, reason })}
       >
         <div className="field">
@@ -29,7 +30,11 @@ export function GrantForm({ workspaceId }: { workspaceId: string }) {
             type="number"
             step={1}
             value={amount}
-            onChange={(event) => setAmount(event.target.value)}
+            onChange={(event) => {
+              setAmount(event.target.value);
+              grant.reset();
+            }}
+            readOnly={grant.isPending}
           />
         </div>
       </ActionForm>

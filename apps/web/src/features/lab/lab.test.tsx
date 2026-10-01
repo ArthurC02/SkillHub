@@ -356,6 +356,15 @@ test("02:TEST-005 confirming sends the hash that was shown, then starts the run"
   expect(confirm?.body).toContain("hash-one");
   const started = platform.calls.find((c) => c.url.endsWith("/runs"));
   expect(started?.body).toContain("hash-one");
+  const result = Array.from(container.querySelectorAll('[role="status"]')).find((node) =>
+    node.textContent?.includes("已開始試跑"),
+  );
+  const resultLink = Array.from(container.querySelectorAll("a")).find((link) =>
+    link.textContent?.includes("查看這次試跑的結果"),
+  );
+  expect(result?.textContent).toContain("已開始試跑");
+  expect(resultLink?.getAttribute("href")).toBe("/runs/run-1");
+  expect(document.activeElement).toBe(resultLink);
 });
 
 test("02:TEST-005 a permission change forces a fresh confirmation instead of reusing the old one", async () => {
