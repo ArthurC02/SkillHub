@@ -74,6 +74,23 @@
   min-width: 96px;
 }
 
+.dataset-upload-success {
+  margin-top: 20px;
+  padding: 16px 20px;
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  border-radius: 12px;
+}
+
+.dataset-upload-success > h2 {
+  margin-top: 0;
+  font-size: 18px;
+}
+
+.dataset-upload-success > ul {
+  margin-bottom: 0;
+}
+
 @media (max-width: 640px) {
   .dataset-upload-guide {
     padding: 16px;

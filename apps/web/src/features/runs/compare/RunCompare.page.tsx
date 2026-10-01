@@ -89,7 +89,7 @@ export function RunCompare() {
 
       {comparison.isPending && against !== "" && <Loading what="比較" />}
       <ReadFailure error={comparison.error} what="比較結果">
-        <p role="alert">無法比較：{comparison.error?.message}</p>
+        <p role="alert">比較結果暫時讀不到，請稍後再試一次。</p>
       </ReadFailure>
       {comparison.data && <ComparisonTables data={comparison.data} />}
 

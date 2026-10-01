@@ -152,6 +152,7 @@ test("02:TEST-002 without the rules there is no upload control at all", async ()
   await renderUpload();
 
   expect(container.textContent).toContain("無法讀取上傳規則");
+  expect(container.textContent).not.toContain("nope");
   expect(container.querySelector("input[type=file]")).toBeNull();
 });
 

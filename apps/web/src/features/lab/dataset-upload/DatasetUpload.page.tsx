@@ -5,7 +5,12 @@ import { useRef, useState } from "react";
 import { ApiError } from "../../../core/api/client";
 import { useDatasetLimits, useUploadDataset, type Dataset } from "../lab.service";
 import { useTestCase, useTestCaseDatasets, type TestCase } from "../testcases.service";
-import { roundedBytes, uploadRefusal, type TestCaseUsage } from "./upload.model";
+import {
+  roundedBytes,
+  uploadErrorSentence,
+  uploadRefusal,
+  type TestCaseUsage,
+} from "./upload.model";
 import { UploadRulesFacts } from "./components/UploadRulesFacts";
 import { SkillWorkspaceNav } from "../../skill";
 import "./DatasetUpload.page.css";
@@ -59,7 +64,7 @@ function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?
 
       {limits.isPending && <Loading what="上傳規則" />}
       <ReadFailure error={limits.error} what="上傳規則">
-        <p role="alert">無法讀取上傳規則,因此暫時不能上傳:{limits.error?.message}</p>
+        <p role="alert">暫時無法讀取上傳規則，請稍後重新整理；規則恢復前不會送出檔案。</p>
       </ReadFailure>
 
       {limits.data && (
@@ -113,20 +118,23 @@ function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?
       {message && <p role="alert">{message}</p>}
       <ReadFailure error={uploadError} what="上傳">
         <p role="alert">
-          {uploadError instanceof ApiError && [400, 413, 415].includes(uploadError.status)
-            ? uploadError.message
-            : "上傳沒有成功，可以再按一次。"}
+          {uploadError instanceof ApiError
+            ? uploadErrorSentence(uploadError.status, uploadError.message)
+            : "上傳沒有成功，請檢查檔案類型與大小後再試一次。"}
         </p>
       </ReadFailure>
 
       {uploaded.length > 0 && (
-        <ul>
-          {uploaded.map((d) => (
-            <li key={d.dataset_id}>
-              已上傳 {d.file_name}（{roundedBytes(d.size_bytes)}）
-            </li>
-          ))}
-        </ul>
+        <section className="dataset-upload-success" role="status" aria-label="上傳完成">
+          <h2>已加入的測試資料</h2>
+          <ul>
+            {uploaded.map((d) => (
+              <li key={d.dataset_id}>
+                已上傳 {d.file_name}（{roundedBytes(d.size_bytes)}）
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </section>
   );

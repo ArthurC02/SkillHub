@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { uploadRefusal } from "./upload.model";
+import { uploadErrorSentence, uploadRefusal } from "./upload.model";
 import type { DatasetLimits } from "../lab.service";
 
 const LIMITS: DatasetLimits = {
@@ -46,5 +46,15 @@ test("a file one byte past the remaining total names what is left", () => {
 test("the per-file limit is answered before the count, so the reason names the real cause", () => {
   expect(uploadRefusal(file(2000), LIMITS, { fileCount: 3, totalBytes: 4999 })).toContain(
     "超過單一檔案上限",
+  );
+});
+
+test("a localised upload refusal keeps the actionable server sentence", () => {
+  expect(uploadErrorSentence(415, "不支援這種檔案類型")).toBe("不支援這種檔案類型");
+});
+
+test("an English upload refusal is replaced with a local retry sentence", () => {
+  expect(uploadErrorSentence(415, "unsupported media type")).toBe(
+    "上傳沒有成功，請檢查檔案類型與大小後再試一次。",
   );
 });

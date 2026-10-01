@@ -817,6 +817,20 @@ test("PACK-004 available 公開頁：每一個允收欄位都出現", async () =
   expect(text()).toContain("登入後可以下載這一版的標準 Agent Skill 套件");
 });
 
+test("PACK-004 公開頁先交代信任證據，再提供主要取得動作", async () => {
+  stub({ [PUB_ADDRESS]: { body: PUBLIC_PUBLICATION } });
+  await render(<PublicPublication />, () => text().includes("PDF Summariser"));
+
+  const trust = container.querySelector('[data-role="publication-trust"]');
+  const acquire = container.querySelector('[data-role="publication-acquire"]');
+  expect(trust).not.toBeNull();
+  expect(acquire).not.toBeNull();
+  expect(trust!.compareDocumentPosition(acquire!) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+    Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+  expect(acquire?.querySelector("button")?.classList.contains("action")).toBe(true);
+});
+
 // T3 等價類: 未登入（不呼叫 /me）也能讀到公開頁
 test("PACK-004 公開頁不需要登入：從不呼叫 /me 也能顯示內容", async () => {
   const calls = stub({ [PUB_ADDRESS]: { body: PUBLIC_PUBLICATION } });

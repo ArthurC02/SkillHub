@@ -14,15 +14,21 @@ export function SkillFiles() {
   const skillMdBytes = data?.tree.find((entry) => entry.path === "SKILL.md")?.size;
 
   return (
-    <article>
-      <h1>SKILL.md 與檔案樹</h1>
+    <article className="skill-files-page">
+      <header className="skill-files-hero">
+        <p className="page-eyebrow">Package inspector</p>
+        <h1>SKILL.md 與檔案樹</h1>
+        <p>在同一個工作區比對套件說明、檔案結構與 Script 風險。</p>
+      </header>
       <SkillWorkspaceNav skillId={skillId} versionId={data?.version_id} />
 
       {isLoading && <Loading what="套件檔案清單" />}
       {error instanceof ApiError && error.status === 410 && (
         <p role="alert">這個 Skill 已從目錄下架，內容不再提供。</p>
       )}
-      {error instanceof ApiError && error.status === 403 && <p role="status">{error.message}</p>}
+      {error instanceof ApiError && error.status === 403 && (
+        <p role="status">這份套件的檔案目前尚未開放查看，可以先回到 Skill 總覽。</p>
+      )}
       {!(error instanceof ApiError && (error.status === 410 || error.status === 403)) && (
         <ReadFailure error={error} what="套件檔案清單">
           {error instanceof ApiError && error.status === 404 ? (
@@ -35,47 +41,50 @@ export function SkillFiles() {
 
       {data && (
         <>
-          <p className="note">
-            版本 v{data.version_number}
-            {data.embedded_script_note ? (
-              <span className="badge badge-risk">{data.embedded_script_note}</span>
-            ) : (
-              <span className="note">靜態掃描沒有在 SKILL.md 裡找到內嵌的程式碼。</span>
-            )}
-          </p>
-
-          <details>
-            <summary>進階資訊（版本與識別碼）</summary>
-            <ul className="note">
-              <li>版本編號：v{data.version_number}</li>
-              <li>
-                版本 ID：<code>{data.version_id}</code>
-              </li>
-              <li>
-                Skill ID：<code>{data.skill_id}</code>
-              </li>
-            </ul>
-            <p className="note">這一頁顯示的內容屬於上面這一個不可變版本。</p>
-          </details>
-
-          <section>
-            <h2>SKILL.md</h2>
-            {data.skill_md_truncated && (
-              <p className="notice" role="status">
-                {skillMdBytes === undefined
-                  ? "內容過長，以下只顯示前 1 MiB。"
-                  : `共 ${skillMdBytes} bytes，這裡只顯示前 1 MiB，因為這個端點的單次上限是 1 MiB。`}
-              </p>
-            )}
-            <pre className="skill-md">
-              <Reveal text={data.skill_md} />
-            </pre>
+          <section className="skill-files-context" aria-label="版本與掃描摘要">
+            <p className="note">
+              版本 v{data.version_number}
+              {data.embedded_script_note ? (
+                <span className="badge badge-risk">{data.embedded_script_note}</span>
+              ) : (
+                <span className="note">靜態掃描沒有在 SKILL.md 裡找到內嵌的程式碼。</span>
+              )}
+            </p>
+            <details>
+              <summary>進階資訊（版本與識別碼）</summary>
+              <ul className="note">
+                <li>版本編號：v{data.version_number}</li>
+                <li>
+                  版本 ID：<code>{data.version_id}</code>
+                </li>
+                <li>
+                  Skill ID：<code>{data.skill_id}</code>
+                </li>
+              </ul>
+              <p className="note">這一頁顯示的內容屬於上面這一個不可變版本。</p>
+            </details>
           </section>
 
-          <section>
-            <h2>檔案樹</h2>
-            <FileTree entries={data.tree} />
-          </section>
+          <div className="skill-files-workspace">
+            <section className="skill-files-panel skill-files-preview">
+              <h2>SKILL.md</h2>
+              {data.skill_md_truncated && (
+                <p className="notice" role="status">
+                  {skillMdBytes === undefined
+                    ? "內容過長，以下只顯示前 1 MiB。"
+                    : `共 ${skillMdBytes} bytes，這裡只顯示前 1 MiB，因為這個端點的單次上限是 1 MiB。`}
+                </p>
+              )}
+              <pre className="skill-md">
+                <Reveal text={data.skill_md} />
+              </pre>
+            </section>
+
+            <section className="skill-files-panel">
+              <h2>檔案樹</h2>
+              <FileTree entries={data.tree} />
+            </section>
+          </div>
         </>
       )}
     </article>

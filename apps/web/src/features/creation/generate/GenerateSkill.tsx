@@ -222,12 +222,19 @@ function GenerateOutcome({
   rejected?: GenerateRejected;
   onRetry: () => void;
 }) {
+  const failure =
+    mutation.error instanceof ApiError &&
+    mutation.error.status === 422 &&
+    /[\u3400-\u9fff]/u.test(mutation.error.message)
+      ? mutation.error.message
+      : "生成沒有成功，請檢查連線後再試一次。";
+
   return (
     <>
       {mutation.isPending && <GenerateInFlight />}
       {mutation.error && !rejected && (
         <ReadFailure error={mutation.error} what="生成 Skill">
-          <p role="alert">生成失敗：{mutation.error.message}</p>
+          <p role="alert">{failure}</p>
         </ReadFailure>
       )}
       {rejected && <GenerateFailed rejected={rejected} onRetry={onRetry} />}

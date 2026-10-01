@@ -59,6 +59,13 @@ function platform(totalBytes: number, fileCount: number) {
         updated_at: "2026-08-01T00:00:00Z",
       });
     }
+    if (path === `/test-cases/${TEST_CASE}/datasets` && init?.method === "POST") {
+      return json({
+        dataset_id: "uploaded-dataset",
+        file_name: "rows.csv",
+        size_bytes: 400,
+      });
+    }
     if (path === `/test-cases/${TEST_CASE}/datasets`) {
       return json({
         datasets: Array.from({ length: fileCount }, (_, i) => ({
@@ -138,6 +145,16 @@ test("a file that fits is still sent", async () => {
   expect(calls.filter((c) => c.startsWith("POST"))).toEqual([
     `POST /test-cases/${TEST_CASE}/datasets`,
   ]);
+});
+
+test("a successful upload is announced as a named status", async () => {
+  platform(0, 0);
+  await renderPage();
+
+  await chooseAndUpload(400);
+
+  const status = container.querySelector('[role="status"][aria-label="上傳完成"]');
+  expect(status?.textContent).toContain("已上傳 rows.csv");
 });
 
 test("the page shows what is left before anything is chosen", async () => {

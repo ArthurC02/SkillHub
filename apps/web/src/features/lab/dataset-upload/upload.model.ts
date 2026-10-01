@@ -11,6 +11,14 @@ export interface TestCaseUsage {
   totalBytes: number;
 }
 
+export function uploadErrorSentence(status: number, message: string): string {
+  if ([400, 413, 415].includes(status) && /[\u3400-\u9fff]/u.test(message)) return message;
+  if ([400, 413, 415].includes(status)) {
+    return "上傳沒有成功，請檢查檔案類型與大小後再試一次。";
+  }
+  return "上傳沒有成功，可以再按一次。";
+}
+
 export function uploadRefusal(
   file: { name: string; size: number },
   limits: DatasetLimits,

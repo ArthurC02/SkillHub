@@ -169,3 +169,17 @@ test("丙-149/150: SkillFiles 讀取 503 印「儲存的套件目前讀不到，
   expect(text()).toContain("儲存的套件目前讀不到，稍後再試一次。");
   expect(text()).not.toContain("stored package is not readable");
 });
+
+test("SkillFiles 403 說明尚未開放，不顯示伺服器原文", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input).replace(/^https?:\/\/[^/]+/, "");
+    if (url.startsWith("/api/skills/") && url.endsWith("/files")) {
+      return json({ error: "closed beta access denied" }, 403);
+    }
+    return json({ error: "not found" }, 404);
+  });
+  await render(<SkillFiles />, () => text().includes("尚未開放"));
+
+  expect(text()).toContain("這份套件的檔案目前尚未開放查看");
+  expect(text()).not.toContain("closed beta access denied");
+});

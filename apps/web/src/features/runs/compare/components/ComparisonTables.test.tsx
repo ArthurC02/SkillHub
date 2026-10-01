@@ -101,6 +101,21 @@ test("RunStatusTable keeps each side connected to its own Run and immutable vers
   ]);
 });
 
+test("RunStatusTable distinguishes an absent output from an error-free run", async () => {
+  const sides = [sideWithoutRerunLink("run-a", true), sideWithoutRerunLink("run-b", false)].map(
+    (side) => ({ ...side, final_output: undefined, errors: [] }),
+  );
+  await mount(<RunStatusTable sides={sides} />);
+
+  const rows = Array.from(container.querySelectorAll("tbody tr"));
+  expect(rows.find((row) => row.textContent?.includes("最終輸出"))?.textContent).toContain(
+    "未產生",
+  );
+  expect(rows.find((row) => row.textContent?.includes("錯誤"))?.textContent).toContain(
+    "沒有錯誤紀錄",
+  );
+});
+
 test("CriterionMatrixTable says there is nothing to compare when the matrix is empty", async () => {
   await mount(<CriterionMatrixTable criterionMatrix={[]} sides={COMPARISON_SIDES} />);
 

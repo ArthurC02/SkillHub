@@ -74,7 +74,7 @@ export function RunStatusTable({ sides }: { sides: ComparisonSide[] }) {
                 {s.final_output ? (
                   <pre className="run-comparison-output">{s.final_output}</pre>
                 ) : (
-                  "無"
+                  "未產生"
                 )}
               </td>
             ))}
@@ -92,7 +92,7 @@ export function RunStatusTable({ sides }: { sides: ComparisonSide[] }) {
                     ))}
                   </ul>
                 ) : (
-                  "無"
+                  "沒有錯誤紀錄"
                 )}
               </td>
             ))}

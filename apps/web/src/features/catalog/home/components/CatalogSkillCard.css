@@ -15,7 +15,7 @@
     transform var(--dur-fast) var(--ease);
 }
 
-.catalog-skill-card:hover {
+.catalog-skill-card:focus-within {
   border-color: var(--accent-border);
   box-shadow: var(--shadow-lift);
   transform: translateY(-2px);
@@ -36,7 +36,6 @@
 .catalog-card-facts .badge,
 .catalog-card-signals .badge {
   padding: 4px 8px;
-  font-size: 12px;
 }
 
 .catalog-card-title {
@@ -66,7 +65,6 @@
 
 .catalog-card-summary .badge {
   padding: 0 8px;
-  font-size: 12px;
 }
 
 .catalog-card-signals {

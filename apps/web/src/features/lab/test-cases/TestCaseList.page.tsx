@@ -29,6 +29,9 @@ export function TestCaseList() {
         <p className="note" data-role="teaching">
           把任務提示、測試資料與驗收條件組成可反覆驗證的情境。
         </p>
+        <a className="action-secondary test-case-create-jump" href="#new-test-case">
+          建立 Test Case
+        </a>
       </header>
       {filter && <SkillWorkspaceNav skillId={filter} versionId={version} />}
 
@@ -50,7 +53,11 @@ export function TestCaseList() {
           />
         </section>
 
-        <section className="test-case-editor" aria-labelledby="create-test-case-heading">
+        <section
+          className="test-case-editor"
+          id="new-test-case"
+          aria-labelledby="create-test-case-heading"
+        >
           <p className="page-eyebrow">New scenario</p>
           <h2 id="create-test-case-heading">建立新的 Test Case</h2>
           <p>先定義要驗證的 Skill 與任務；建立後再補資料集、驗收條件與 Rubric。</p>

@@ -730,6 +730,16 @@ test("列表 separates the scenario index from the Test Case editor", async () =
   expect(workspace?.children[1]?.classList.contains("test-case-editor")).toBe(true);
 });
 
+test("列表在長清單前提供直達新情境編輯器的連結", async () => {
+  stubPlatform({ testCases: [LIST_ROW] });
+  await renderList();
+
+  expect(container.querySelector(".test-case-create-jump")?.getAttribute("href")).toBe(
+    "#new-test-case",
+  );
+  expect(container.querySelector(".test-case-editor")?.id).toBe("new-test-case");
+});
+
 test("列表 ?skill= narrows the request and says so, with a way back to the full list", async () => {
   listSearch = { skill: SKILL };
   const calls = stubPlatform({ testCases: [LIST_ROW] });
