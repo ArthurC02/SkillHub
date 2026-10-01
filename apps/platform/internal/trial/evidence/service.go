@@ -86,64 +86,137 @@ func (s *Service) Ingest(ctx context.Context, grant Grant, token string, events 
 	masker := &Masker{Known: []string{token}}
 
 	report := IngestReport{Received: len(events)}
+	accepted := make([]gen.InsertTraceEventParams, 0, len(events))
 	for i := range events {
 		event := &events[i]
-		if err := s.ingestOne(ctx, run, grant, masker, event); err != nil {
-			switch {
-			case errors.Is(err, ErrInvalid):
-				report.Rejected++
-				report.Reasons = append(report.Reasons, err.Error())
-				metrics.TraceEvents.WithLabelValues(sourceLabel(event.EmittedBy), "rejected").Inc()
-			case errors.Is(err, errDuplicate):
-				report.Duplicate++
-				metrics.TraceEvents.WithLabelValues(sourceLabel(event.EmittedBy), "duplicate").Inc()
-			default:
-				return report, err
-			}
+		stored, err := prepareEvent(run, grant, masker, event)
+		if errors.Is(err, ErrInvalid) {
+			report.countRejected(event.EmittedBy, err)
 			continue
 		}
-		report.Stored++
-		metrics.TraceEvents.WithLabelValues(sourceLabel(event.EmittedBy), "stored").Inc()
+		if err != nil {
+			return report, err
+		}
+		accepted = append(accepted, stored)
 	}
-	return report, nil
+	if s.storeTogether(ctx, &report, accepted) {
+		return report, nil
+	}
+	return report, s.storeOneByOne(ctx, &report, accepted)
+}
+
+func (r *IngestReport) countRejected(source string, err error) {
+	r.Rejected++
+	r.Reasons = append(r.Reasons, err.Error())
+	metrics.TraceEvents.WithLabelValues(sourceLabel(source), "rejected").Inc()
+}
+
+func (r *IngestReport) countDuplicate(source string) {
+	r.Duplicate++
+	metrics.TraceEvents.WithLabelValues(sourceLabel(source), "duplicate").Inc()
+}
+
+func (r *IngestReport) countStored(source string) {
+	r.Stored++
+	metrics.TraceEvents.WithLabelValues(sourceLabel(source), "stored").Inc()
+}
+
+// storeTogether inserts every event in one statement, so one refused event
+// keeps all of them out and it reports false. An event whose id is already
+// stored, or repeats an earlier one in the batch, is skipped by the database.
+func (s *Service) storeTogether(ctx context.Context, report *IngestReport, accepted []gen.InsertTraceEventParams) bool {
+	if len(accepted) == 0 {
+		return true
+	}
+	storedIDs, err := s.queries().InsertTraceEvents(ctx, columnsOf(accepted))
+	if err != nil {
+		return false
+	}
+	unclaimed := make(map[pgtype.UUID]int, len(storedIDs))
+	for _, id := range storedIDs {
+		unclaimed[id]++
+	}
+	for _, e := range accepted {
+		if unclaimed[e.EventID] > 0 {
+			unclaimed[e.EventID]--
+			report.countStored(e.Source)
+		} else {
+			report.countDuplicate(e.Source)
+		}
+	}
+	return true
+}
+
+func columnsOf(events []gen.InsertTraceEventParams) gen.InsertTraceEventsParams {
+	n := len(events)
+	c := gen.InsertTraceEventsParams{
+		EventIds: make([]pgtype.UUID, n), WorkspaceIds: make([]pgtype.UUID, n), RunIds: make([]pgtype.UUID, n),
+		Attempts: make([]int32, n), Seqs: make([]int64, n), OccurredAts: make([]pgtype.Timestamptz, n),
+		EventTypes: make([]string, n), Sources: make([]string, n), Statuses: make([]string, n),
+		SchemaVersions: make([]string, n), Masked: make([]bool, n), MaskedFields: make([][]byte, n), Payloads: make([][]byte, n),
+	}
+	for i, e := range events {
+		c.EventIds[i], c.WorkspaceIds[i], c.RunIds[i] = e.EventID, e.WorkspaceID, e.RunID
+		c.Attempts[i], c.Seqs[i], c.OccurredAts[i] = e.Attempt, e.Seq, e.OccurredAt
+		c.EventTypes[i], c.Sources[i], c.SchemaVersions[i] = e.EventType, e.Source, e.SchemaVersion
+		c.Masked[i], c.MaskedFields[i], c.Payloads[i] = e.Masked, e.MaskedFields, e.Payload
+		if e.Status != nil {
+			c.Statuses[i] = *e.Status
+		}
+	}
+	return c
+}
+
+func (s *Service) storeOneByOne(ctx context.Context, report *IngestReport, accepted []gen.InsertTraceEventParams) error {
+	for _, e := range accepted {
+		err := s.storeOne(ctx, e)
+		switch {
+		case err == nil:
+			report.countStored(e.Source)
+		case errors.Is(err, ErrInvalid):
+			report.countRejected(e.Source, err)
+		case errors.Is(err, errDuplicate):
+			report.countDuplicate(e.Source)
+		default:
+			return err
+		}
+	}
+	return nil
 }
 
 var errDuplicate = errors.New("event already stored")
 
-func (s *Service) ingestOne(
-	ctx context.Context, run IngestRunState, grant Grant,
-	masker *Masker, event *Event,
-) error {
+func prepareEvent(run IngestRunState, grant Grant, masker *Masker, event *Event) (gen.InsertTraceEventParams, error) {
 	if err := event.Validate(); err != nil {
-		return err
+		return gen.InsertTraceEventParams{}, err
 	}
 
 	if event.EmittedBy != SourceSandbox {
-		return fmt.Errorf("%w: ingestion token only permits sandbox events", ErrInvalid)
+		return gen.InsertTraceEventParams{}, fmt.Errorf("%w: ingestion token only permits sandbox events", ErrInvalid)
 	}
 
 	if event.RunID != pgconv.UUIDString(grant.RunID) {
-		return fmt.Errorf("%w: run_id does not match the ingestion token", ErrInvalid)
+		return gen.InsertTraceEventParams{}, fmt.Errorf("%w: run_id does not match the ingestion token", ErrInvalid)
 	}
 	if event.Attempt != grant.Attempt {
-		return fmt.Errorf("%w: attempt does not match the ingestion token", ErrInvalid)
+		return gen.InsertTraceEventParams{}, fmt.Errorf("%w: attempt does not match the ingestion token", ErrInvalid)
 	}
 
 	masked, err := masker.Mask(event.Payload)
 	if err != nil {
-		return fmt.Errorf("%w: payload is not a JSON object", ErrInvalid)
+		return gen.InsertTraceEventParams{}, fmt.Errorf("%w: payload is not a JSON object", ErrInvalid)
 	}
 
 	var eventID pgtype.UUID
 	if err := eventID.Scan(event.EventID); err != nil {
-		return fmt.Errorf("%w: event_id must be a UUID", ErrInvalid)
+		return gen.InsertTraceEventParams{}, fmt.Errorf("%w: event_id must be a UUID", ErrInvalid)
 	}
 
 	lag := time.Since(event.OccurredAt)
 	lag = min(max(lag, 0), DefaultTTL)
 	metrics.TraceIngestLag.Observe(lag.Seconds())
 
-	stored, err := masked.stored(gen.InsertTraceEventParams{
+	return masked.stored(gen.InsertTraceEventParams{
 		EventID:     eventID,
 		WorkspaceID: run.WorkspaceID,
 		RunID:       run.ID,
@@ -156,15 +229,15 @@ func (s *Service) ingestOne(
 
 		SchemaVersion: event.SchemaVersion,
 	})
-	if err != nil {
-		return err
-	}
-	rows, err := s.queries().InsertTraceEvent(ctx, stored)
+}
+
+func (s *Service) storeOne(ctx context.Context, e gen.InsertTraceEventParams) error {
+	rows, err := s.queries().InsertTraceEvent(ctx, e)
 	if err != nil {
 
 		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
 			return fmt.Errorf("%w: event_id %s conflicts with an event already stored at seq %d of this stream",
-				ErrInvalid, event.EventID, event.Seq)
+				ErrInvalid, pgconv.UUIDString(e.EventID), e.Seq)
 		}
 		return err
 	}

@@ -240,6 +240,83 @@ func (q *Queries) InsertTraceEvent(ctx context.Context, arg InsertTraceEventPara
 	return result.RowsAffected(), nil
 }
 
+const insertTraceEvents = `-- name: InsertTraceEvents :many
+INSERT INTO trace_events (
+    event_id, workspace_id, run_id, attempt, seq, occurred_at,
+    event_type, source, status, schema_version, masked, masked_fields, payload
+)
+SELECT e.event_id, e.workspace_id, e.run_id, e.attempt, e.seq, e.occurred_at,
+       e.event_type, e.source, nullif(e.status, ''), e.schema_version, e.masked, e.masked_fields, e.payload
+FROM (
+    SELECT generate_series(1, cardinality($1::uuid[])) AS position,
+           unnest($1::uuid[]) AS event_id,
+           unnest($2::uuid[]) AS workspace_id,
+           unnest($3::uuid[]) AS run_id,
+           unnest($4::int[]) AS attempt,
+           unnest($5::bigint[]) AS seq,
+           unnest($6::timestamptz[]) AS occurred_at,
+           unnest($7::text[]) AS event_type,
+           unnest($8::text[]) AS source,
+           unnest($9::text[]) AS status,
+           unnest($10::text[]) AS schema_version,
+           unnest($11::bool[]) AS masked,
+           unnest($12::jsonb[]) AS masked_fields,
+           unnest($13::jsonb[]) AS payload
+) e
+ORDER BY e.position
+RETURNING event_id
+`
+
+type InsertTraceEventsParams struct {
+	EventIds       []pgtype.UUID
+	WorkspaceIds   []pgtype.UUID
+	RunIds         []pgtype.UUID
+	Attempts       []int32
+	Seqs           []int64
+	OccurredAts    []pgtype.Timestamptz
+	EventTypes     []string
+	Sources        []string
+	Statuses       []string
+	SchemaVersions []string
+	Masked         []bool
+	MaskedFields   [][]byte
+	Payloads       [][]byte
+}
+
+func (q *Queries) InsertTraceEvents(ctx context.Context, arg InsertTraceEventsParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, insertTraceEvents,
+		arg.EventIds,
+		arg.WorkspaceIds,
+		arg.RunIds,
+		arg.Attempts,
+		arg.Seqs,
+		arg.OccurredAts,
+		arg.EventTypes,
+		arg.Sources,
+		arg.Statuses,
+		arg.SchemaVersions,
+		arg.Masked,
+		arg.MaskedFields,
+		arg.Payloads,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var event_id pgtype.UUID
+		if err := rows.Scan(&event_id); err != nil {
+			return nil, err
+		}
+		items = append(items, event_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEvaluationTraceEvents = `-- name: ListEvaluationTraceEvents :many
 WITH tail AS (
     SELECT ingest_seq, occurred_at, source, attempt, seq FROM trace_events

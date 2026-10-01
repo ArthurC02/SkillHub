@@ -5,6 +5,32 @@ INSERT INTO trace_events (
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);
 
+-- name: InsertTraceEvents :many
+INSERT INTO trace_events (
+    event_id, workspace_id, run_id, attempt, seq, occurred_at,
+    event_type, source, status, schema_version, masked, masked_fields, payload
+)
+SELECT e.event_id, e.workspace_id, e.run_id, e.attempt, e.seq, e.occurred_at,
+       e.event_type, e.source, nullif(e.status, ''), e.schema_version, e.masked, e.masked_fields, e.payload
+FROM (
+    SELECT generate_series(1, cardinality(@event_ids::uuid[])) AS position,
+           unnest(@event_ids::uuid[]) AS event_id,
+           unnest(@workspace_ids::uuid[]) AS workspace_id,
+           unnest(@run_ids::uuid[]) AS run_id,
+           unnest(@attempts::int[]) AS attempt,
+           unnest(@seqs::bigint[]) AS seq,
+           unnest(@occurred_ats::timestamptz[]) AS occurred_at,
+           unnest(@event_types::text[]) AS event_type,
+           unnest(@sources::text[]) AS source,
+           unnest(@statuses::text[]) AS status,
+           unnest(@schema_versions::text[]) AS schema_version,
+           unnest(@masked::bool[]) AS masked,
+           unnest(@masked_fields::jsonb[]) AS masked_fields,
+           unnest(@payloads::jsonb[]) AS payload
+) e
+ORDER BY e.position
+RETURNING event_id;
+
 -- name: ListTraceEventsAfter :many
 SELECT * FROM trace_events
 WHERE run_id = @run_id AND workspace_id = @workspace_id

@@ -183,6 +183,7 @@ queries:
   CountPersistentOrphans: run
 
   InsertTraceEvent: trace
+  InsertTraceEvents: trace
   ListTraceEventsAfter: trace
   ListEvaluationTraceEvents: trace
   GetTraceStreamHealth: trace

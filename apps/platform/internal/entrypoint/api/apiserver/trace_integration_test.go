@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -670,6 +671,36 @@ func TestOneRefusedEventStillDeliversTheRestAndLetsTheResendConverge(t *testing.
 		t.Fatalf("resend: got %d %+v, want 202 with 0 stored, 2 duplicate and 1 rejected", code, report)
 	}
 	assertCollisionTrace(t, owner, runID, "after the resend")
+}
+
+func TestABatchRepeatingAnEventStoresItOnceAndKeepsTheSendersOrder(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "trace-batch-order-owner")
+	runID := seedRun(t, pool, owner.workspaceID, seedSkill(t, pool, owner.workspaceID, "trace-batch-order-skill"))
+
+	output := `{"kind":"final","text":"seq %d","truncated":false}`
+	three, one, two := event(runID, 1, 3, "agent_output", fmt.Sprintf(output, 3)),
+		event(runID, 1, 1, "agent_output", fmt.Sprintf(output, 1)),
+		event(runID, 1, 2, "agent_output", fmt.Sprintf(output, 2))
+
+	code, report := a.ingest(t, runID, 1, three, one, three, two)
+	if code != http.StatusAccepted || report.Stored != 3 || report.Duplicate != 1 || report.Rejected != 0 {
+		t.Fatalf("got %d %+v, want 202 with 3 stored and the repeat counted as 1 duplicate", code, report)
+	}
+
+	rows, err := pool.Query(context.Background(),
+		`SELECT seq FROM trace_events WHERE run_id = $1 ORDER BY ingest_seq`, runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	arrival, err := pgx.CollectRows(rows, pgx.RowTo[int64])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprint(arrival) != "[3 1 2]" {
+		t.Errorf("events took cursor positions in seq order %v, want the order they were sent: [3 1 2]", arrival)
+	}
 }
 
 func assertCollisionTrace(t *testing.T, owner *client, runID, stage string) {
