@@ -3,6 +3,7 @@ package apiserver_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -323,7 +324,7 @@ func TestCorrectedSearchRequestBoundariesPrecedeModelCalls(t *testing.T) {
 	t.Cleanup(model.Close)
 	a := newAPIWithLLM(t, pool, model.URL)
 	const base = `{"query":"CSV","intent":{"input":null,"output":null,"tools":null,"data":null,"environment":null},"keywords":[],"filters":{}`
-	for _, tc := range []struct {
+	for i, tc := range []struct {
 		name   string
 		body   string
 		status int
@@ -342,7 +343,8 @@ func TestCorrectedSearchRequestBoundariesPrecedeModelCalls(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			before := embeddings.Load()
-			response, err := http.Post(a.URL+"/api/skills/search", "application/json", strings.NewReader(tc.body))
+			sameSizeUniqueQuery := strings.Replace(tc.body, `"query":"CSV"`, fmt.Sprintf(`"query":"C%02d"`, i), 1)
+			response, err := http.Post(a.URL+"/api/skills/search", "application/json", strings.NewReader(sameSizeUniqueQuery))
 			if err != nil {
 				t.Fatal(err)
 			}

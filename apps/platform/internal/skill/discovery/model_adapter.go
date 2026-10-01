@@ -13,7 +13,7 @@ func IntentAnalyzerOrNone(c *llmclient.Client) IntentAnalyzer {
 	if c == nil {
 		return nil
 	}
-	return modelOverHTTP{client: c}
+	return &cachedIntentAnalyzer{IntentAnalyzer: modelOverHTTP{client: c}}
 }
 
 func (a modelOverHTTP) AnalyzeIntent(ctx context.Context, query string, within time.Duration) (*IntentAnalysis, error) {
@@ -34,7 +34,7 @@ func ModelOrNone(c *llmclient.Client) Model {
 	if c == nil {
 		return nil
 	}
-	return modelOverHTTP{client: c}
+	return &cachedModel{Model: modelOverHTTP{client: c}}
 }
 
 func (a modelOverHTTP) Embed(ctx context.Context, texts []string, within time.Duration) (*Embeddings, error) {
