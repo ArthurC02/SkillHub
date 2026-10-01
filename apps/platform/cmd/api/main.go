@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -297,7 +298,7 @@ func runAPI() (failed bool) {
 	cfg := apiConfigFromEnv(posture)
 	cfg.Pool, cfg.Readiness, cfg.Store, cfg.LLM, cfg.TraceSigner = pool, capabilities, store, llm, traceSigner
 	cfg.Profiles, cfg.AnalyticsRetention, cfg.Providers, cfg.RunDeployment = profiles, analyticsRetention, providers, runDeployment
-	cfg.CreationLimits, cfg.CreationTransient, cfg.RateLimits, cfg.CleanMode = creationLimits, creationTransient, rateLimits, clean
+	cfg.CreationLimits, cfg.CreationTransient, cfg.RateLimits, cfg.CleanMode = creationLimits, creationTransient, sharedAcrossInstances(rateLimits, pool, mode), clean
 	app, err := apiserver.NewApp(cfg)
 	exitOn(err, "api composition")
 	for _, task := range startupTasks(app) {
@@ -610,7 +611,34 @@ func rateLimitsFromEnv() (*httpx.RateLimiter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return httpx.NewRateLimiter(rateLimitPerMinute, rateLimitBurst).TrustProxies(trusted), nil
+	perMinute, err := positiveIntFromEnv("RATE_LIMIT_PER_MINUTE", rateLimitPerMinute)
+	if err != nil {
+		return nil, err
+	}
+	burst, err := positiveIntFromEnv("RATE_LIMIT_BURST", rateLimitBurst)
+	if err != nil {
+		return nil, err
+	}
+	return httpx.NewRateLimiter(perMinute, burst).TrustProxies(trusted), nil
+}
+
+func sharedAcrossInstances(limits *httpx.RateLimiter, pool *pgxpool.Pool, d deployment) *httpx.RateLimiter {
+	if limits == nil || d == cleanModeDeployment {
+		return limits
+	}
+	return limits.ShareThrough(pool)
+}
+
+func positiveIntFromEnv(name string, fallback int) (int, error) {
+	raw := os.Getenv(name)
+	if raw == "" {
+		return fallback, nil
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("%s=%q is not a positive whole number", name, raw)
+	}
+	return n, nil
 }
 
 const (

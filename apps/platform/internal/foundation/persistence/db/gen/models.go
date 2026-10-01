@@ -551,6 +551,13 @@ type Publisher struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+type RateLimitBucket struct {
+	Key     string
+	Tokens  float64
+	At      pgtype.Timestamptz
+	Allowed bool
+}
+
 type ReconcilerOrphanSighting struct {
 	Provider      string
 	ProviderRunID string

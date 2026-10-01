@@ -1024,3 +1024,24 @@ func TestNginxWaitsForTheLongestModelCallARequestMayMake(t *testing.T) {
 		}
 	}
 }
+
+func TestTheRateLimitIsSetFromTheEnvironmentAndRefusesNonsense(t *testing.T) {
+	setenv(t, "TRUSTED_PROXIES", "", true)
+	setenv(t, "RATE_LIMIT", "", true)
+	for _, tc := range []struct {
+		perMinute, burst string
+		refused          bool
+	}{
+		{"", "", false}, {"120", "40", false}, {"1", "1", false},
+		{"0", "", true}, {"-5", "", true}, {"lots", "", true}, {"", "0", true},
+	} {
+		setenv(t, "RATE_LIMIT_PER_MINUTE", tc.perMinute, tc.perMinute == "")
+		setenv(t, "RATE_LIMIT_BURST", tc.burst, tc.burst == "")
+		limiter, err := rateLimitsFromEnv()
+		if tc.refused != (err != nil) || (err == nil) == (limiter == nil) {
+			t.Errorf("per minute %q burst %q: limiter %v err %v, want refused=%v", tc.perMinute, tc.burst, limiter, err, tc.refused)
+		}
+	}
+	setenv(t, "RATE_LIMIT_PER_MINUTE", "", true)
+	setenv(t, "RATE_LIMIT_BURST", "", true)
+}

@@ -6,6 +6,7 @@ files:
   beta.sql:
   dispatch.sql: run
   model_budget.sql: modelbudget
+  rate_limit.sql: httpx
   evaluation.sql: eval
   governance.sql:
   packaging.sql: packaging
@@ -192,6 +193,8 @@ queries:
   CountTraceMaskingInWindow: trace
 
 scope:
+  TakeRateLimitToken: platform-wide
+  SweepRateLimitBuckets: platform-wide
   AdjustCreditBalance: user
   LockAccountLifecycle: user
   CreateIdentity: user
@@ -416,3 +419,4 @@ tables:
   feedback_reports: analytics
   audit_events: audit
   outbox_events: outbox
+  rate_limit_buckets: httpx

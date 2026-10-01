@@ -1,14 +1,20 @@
 package httpx
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/netip"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 type RateLimiter struct {
@@ -21,8 +27,20 @@ type RateLimiter struct {
 
 	trustedProxies []netip.Prefix
 
+	shared func(ctx context.Context, key string) (bool, time.Duration, error)
+	sweep  func(ctx context.Context) error
+
+	nextSharedSweep time.Time
+
 	now func() time.Time
 }
+
+const (
+	sharedTakeTimeout   = time.Second
+	sharedSweepEvery    = 10 * time.Minute
+	sharedSweepIdle     = time.Hour
+	sharedSweepDeadline = 30 * time.Second
+)
 
 type bucket struct {
 	tokens float64
@@ -83,9 +101,73 @@ func (l *RateLimiter) allow(key string) (bool, time.Duration) {
 	return true, 0
 }
 
+func (l *RateLimiter) ShareThrough(pool *pgxpool.Pool) *RateLimiter {
+	q := gen.New(pool)
+	l.shared = func(ctx context.Context, key string) (bool, time.Duration, error) {
+		row, err := q.TakeRateLimitToken(ctx, gen.TakeRateLimitTokenParams{Key: key, Burst: l.burst, Rate: l.rate})
+		if err != nil || row.Allowed {
+			return row.Allowed, 0, err
+		}
+		return false, time.Duration((1 - row.Tokens) / l.rate * float64(time.Second)), nil
+	}
+	l.sweep = func(ctx context.Context) error {
+		_, err := q.SweepRateLimitBuckets(ctx, pgconv.Interval(sharedSweepIdle))
+		return err
+	}
+	return l
+}
+
+func (l *RateLimiter) subject(r *http.Request, account func(*http.Request) string) string {
+	if account != nil {
+		if id := account(r); id != "" {
+			return "account:" + id
+		}
+	}
+	return "addr:" + clientKey(l.clientAddress(r))
+}
+
+func (l *RateLimiter) take(ctx context.Context, key string) (bool, time.Duration) {
+	if l.shared == nil {
+		return l.allow(key)
+	}
+	l.sweepSharedWhenDue()
+	ctx, cancel := context.WithTimeout(ctx, sharedTakeTimeout)
+	defer cancel()
+	ok, wait, err := l.shared(ctx, key)
+	if err != nil {
+		slog.Warn("rate limit: shared buckets unreachable; this process counts on its own", "error", err)
+		return l.allow(key)
+	}
+	return ok, wait
+}
+
+func (l *RateLimiter) sweepSharedWhenDue() {
+	l.mu.Lock()
+	now := l.now()
+	due := !now.Before(l.nextSharedSweep)
+	if due {
+		l.nextSharedSweep = now.Add(sharedSweepEvery)
+	}
+	l.mu.Unlock()
+	if !due {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), sharedSweepDeadline)
+		defer cancel()
+		if err := l.sweep(ctx); err != nil {
+			slog.Warn("rate limit: idle shared buckets not swept", "error", err)
+		}
+	}()
+}
+
 func (l *RateLimiter) Limit(route string, next http.HandlerFunc) http.HandlerFunc {
+	return l.LimitBy(route, nil, next)
+}
+
+func (l *RateLimiter) LimitBy(route string, account func(*http.Request) string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ok, wait := l.allow(clientKey(l.clientAddress(r)))
+		ok, wait := l.take(r.Context(), route+"|"+l.subject(r, account))
 		if !ok {
 			metrics.RateLimited.WithLabelValues(route).Inc()
 			secs := int(wait.Seconds()) + 1

@@ -5,6 +5,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
@@ -88,12 +89,12 @@ func mountAdmissionRoutes(mux *http.ServeMux, d Deps) {
 	auth := d.Auth
 
 	mux.HandleFunc("GET /skills/import/limits", auth.RequireSession(d.Importer.Limits))
-	mux.HandleFunc("POST /skills/import/upload", limited(d, metrics.RouteImportUpload, auth.RequireSession(d.Importer.Upload)))
-	mux.HandleFunc("POST /skills/import/url", limited(d, metrics.RouteImportURL, auth.RequireSession(d.Importer.ImportURL)))
+	mux.HandleFunc("POST /skills/import/upload", auth.RequireSession(limited(d, metrics.RouteImportUpload, d.Importer.Upload)))
+	mux.HandleFunc("POST /skills/import/url", auth.RequireSession(limited(d, metrics.RouteImportURL, d.Importer.ImportURL)))
 
 	if d.GenerateExposed {
 
-		mux.HandleFunc("POST /skills/generate", limited(d, metrics.RouteGenerate, auth.RequireSession(auth.RequireInvited(d.Importer.Generate))))
+		mux.HandleFunc("POST /skills/generate", auth.RequireSession(limited(d, metrics.RouteGenerate, auth.RequireInvited(d.Importer.Generate))))
 
 		mux.HandleFunc("GET /skills/generate/failures",
 			auth.RequireSession(auth.RequireInvited(d.Importer.GenerateFailures)))
@@ -105,11 +106,11 @@ func mountCreationRoutes(mux *http.ServeMux, d Deps) {
 
 	if d.GenerateExposed && d.CreationExposed && d.Creation != nil {
 		mux.HandleFunc("GET /creation-sessions", auth.RequireSession(auth.RequireInvited(d.Creation.List)))
-		mux.HandleFunc("POST /creation-sessions", limited(d, metrics.RouteGenerate, auth.RequireSession(auth.RequireInvited(d.Creation.Create))))
+		mux.HandleFunc("POST /creation-sessions", auth.RequireSession(limited(d, metrics.RouteGenerate, auth.RequireInvited(d.Creation.Create))))
 		mux.HandleFunc("GET /creation-sessions/{session_id}", auth.RequireSession(auth.RequireInvited(d.Creation.Get)))
 
 		mux.HandleFunc("GET /creation-sessions/{session_id}/events", auth.RequireSession(auth.RequireInvited(d.Creation.Stream)))
-		mux.HandleFunc("POST /creation-sessions/{session_id}/actions", limited(d, metrics.RouteGenerate, auth.RequireSession(auth.RequireInvited(d.Creation.Act))))
+		mux.HandleFunc("POST /creation-sessions/{session_id}/actions", auth.RequireSession(limited(d, metrics.RouteGenerate, auth.RequireInvited(d.Creation.Act))))
 		mux.HandleFunc("GET /creation-sessions/limits", auth.RequireSession(auth.RequireInvited(d.Creation.Limits)))
 	}
 }
@@ -117,10 +118,10 @@ func mountCreationRoutes(mux *http.ServeMux, d Deps) {
 func mountCatalogRoutes(mux *http.ServeMux, d Deps) {
 	auth := d.Auth
 
-	mux.HandleFunc("GET /api/skills/search", limited(d, metrics.RoutePublicSearch, d.Search.PublicSearch))
-	mux.HandleFunc("POST /api/skills/search", limited(d, metrics.RoutePublicSearch, d.Search.CorrectedSearch))
+	mux.HandleFunc("GET /api/skills/search", auth.OptionalSession(limited(d, metrics.RoutePublicSearch, d.Search.PublicSearch)))
+	mux.HandleFunc("POST /api/skills/search", auth.OptionalSession(limited(d, metrics.RoutePublicSearch, d.Search.CorrectedSearch)))
 
-	mux.HandleFunc("GET /api/skills/catalog", limited(d, metrics.RouteCatalog, d.Search.BrowseCatalog))
+	mux.HandleFunc("GET /api/skills/catalog", auth.OptionalSession(limited(d, metrics.RouteCatalog, d.Search.BrowseCatalog)))
 
 	mux.HandleFunc("GET /api/skills/{id}", auth.OptionalSession(d.Search.SkillDetail))
 	mux.HandleFunc("GET /api/skills/{id}/files", auth.OptionalSession(d.Search.SkillFiles))
@@ -292,11 +293,19 @@ func mountPackagingRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("DELETE /downloads/{artifactId}", auth.RequireSession(d.Packaging.DeleteDownload))
 }
 
+func sessionAccount(r *http.Request) string {
+	user, ok := identity.SessionUser(r.Context())
+	if !ok || !user.ID.Valid {
+		return ""
+	}
+	return pgconv.UUIDString(user.ID)
+}
+
 func limited(d Deps, route string, next http.HandlerFunc) http.HandlerFunc {
 	if d.Limits == nil {
 		return next
 	}
-	return d.Limits.Limit(route, next)
+	return d.Limits.LimitBy(route, sessionAccount, next)
 }
 
 func publicationDownloadGate(d Deps, next http.HandlerFunc) http.HandlerFunc {

@@ -1,6 +1,8 @@
 package httpx
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -308,5 +310,76 @@ func TestParseTrustedProxies(t *testing.T) {
 				t.Errorf("prefixes = %v, want %v", names, tc.want)
 			}
 		})
+	}
+}
+
+func limitedStatus(h http.HandlerFunc, addr, account string) int {
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	req.RemoteAddr = addr
+	if account != "" {
+		req.Header.Set("X-Test-Account", account)
+	}
+	rec := httptest.NewRecorder()
+	h(rec, req)
+	return rec.Code
+}
+
+func okRoute(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }
+
+func testAccount(r *http.Request) string { return r.Header.Get("X-Test-Account") }
+
+func TestEachRouteCountsSeparately(t *testing.T) {
+	l, _ := testLimiter(60, 1)
+	search, imports := l.Limit("public_search", okRoute), l.Limit("import_upload", okRoute)
+	if limitedStatus(search, "9.9.9.9:1", "") != http.StatusOK || limitedStatus(search, "9.9.9.9:1", "") != http.StatusTooManyRequests {
+		t.Fatal("search did not spend its own burst of one")
+	}
+	if limitedStatus(imports, "9.9.9.9:1", "") != http.StatusOK {
+		t.Fatal("searching used up the same caller's allowance on another route")
+	}
+}
+
+func TestASignedInCallerIsCountedByAccountNotByAddress(t *testing.T) {
+	l, _ := testLimiter(60, 1)
+	h := l.LimitBy("public_search", testAccount, okRoute)
+	if limitedStatus(h, "203.0.113.1:1", "alice") != http.StatusOK || limitedStatus(h, "203.0.113.1:2", "bob") != http.StatusOK {
+		t.Fatal("two accounts behind one office address shared a bucket")
+	}
+	if limitedStatus(h, "198.51.100.7:1", "alice") != http.StatusTooManyRequests {
+		t.Fatal("an account escaped its bucket by changing address")
+	}
+	if limitedStatus(h, "203.0.113.1:3", "") != http.StatusOK {
+		t.Fatal("an anonymous caller at the office address paid for the signed-in accounts")
+	}
+}
+
+func TestTheSharedBucketDecidesWhileItIsReachable(t *testing.T) {
+	l, _ := testLimiter(60, 30)
+	l.sweep = func(context.Context) error { return nil }
+	var keys []string
+	l.shared = func(_ context.Context, key string) (bool, time.Duration, error) {
+		keys = append(keys, key)
+		return false, 2 * time.Second, nil
+	}
+	if limitedStatus(l.Limit("public_search", okRoute), "9.9.9.9:1", "") != http.StatusTooManyRequests {
+		t.Fatal("a refusal from the shared bucket was overruled by this process's full bucket")
+	}
+	if len(keys) != 1 || keys[0] != "public_search|addr:9.9.9.9" {
+		t.Fatalf("shared bucket asked for %q, want the route and the caller", keys)
+	}
+}
+
+func TestAnUnreachableSharedBucketFallsBackToThisProcess(t *testing.T) {
+	l, _ := testLimiter(60, 1)
+	l.sweep = func(context.Context) error { return nil }
+	l.shared = func(context.Context, string) (bool, time.Duration, error) {
+		return false, 0, errors.New("database unreachable")
+	}
+	h := l.Limit("public_search", okRoute)
+	if limitedStatus(h, "9.9.9.9:1", "") != http.StatusOK {
+		t.Fatal("a database outage refused traffic it should have counted locally")
+	}
+	if limitedStatus(h, "9.9.9.9:1", "") != http.StatusTooManyRequests {
+		t.Fatal("a database outage switched rate limiting off")
 	}
 }
