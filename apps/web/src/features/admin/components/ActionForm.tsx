@@ -7,6 +7,7 @@ export function ActionForm({
   pending,
   error,
   done,
+  contextKey = "",
   tone,
   ready = true,
   onSubmit,
@@ -17,18 +18,25 @@ export function ActionForm({
   pending: boolean;
   error: unknown;
   done?: ReactNode;
+  contextKey?: string;
   tone?: "caution";
   ready?: boolean;
   onSubmit: (note: string) => void;
   children?: ReactNode;
 }) {
   const [note, setNote] = useState("");
+  const [submitted, setSubmitted] = useState<{ note: string; contextKey: string } | null>(null);
   const blocked = note.trim() === "" || !ready;
+  const resultMatches = submitted?.note === note.trim() && submitted.contextKey === contextKey;
+
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        if (!blocked) onSubmit(note.trim());
+        if (!blocked && !pending) {
+          setSubmitted({ note: note.trim(), contextKey });
+          onSubmit(note.trim());
+        }
       }}
     >
       {children}
@@ -37,7 +45,11 @@ export function ActionForm({
         <textarea
           id={`${id}-note`}
           value={note}
-          onChange={(event) => setNote(event.target.value)}
+          onChange={(event) => {
+            setNote(event.target.value);
+            setSubmitted(null);
+          }}
+          readOnly={pending}
         />
       </div>
       <button
@@ -53,12 +65,12 @@ export function ActionForm({
           「{submitLabel}」要等上面的欄位都填好。
         </p>
       )}
-      {done && (
+      {done && resultMatches && (
         <p className="notice notice-success" role="status">
           {done}
         </p>
       )}
-      <WriteFailure error={error} />
+      <WriteFailure error={resultMatches && !pending ? error : undefined} />
     </form>
   );
 }

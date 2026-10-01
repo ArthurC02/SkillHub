@@ -420,6 +420,32 @@ test("CONTENT-007 a rubric line is written against a criterion and saved with it
   expect(saved?.body).toContain('"evidence_required":true');
 });
 
+test("a changed prompt is not labelled as saved by the previous request", async () => {
+  stubPlatform();
+  await render();
+
+  await act(async () => button("儲存").click());
+  await waitFor(() => text().includes("已儲存。"));
+  await act(async () =>
+    setValue(container.querySelector<HTMLInputElement>("#edit-name")!, "新的名稱"),
+  );
+
+  expect(text()).not.toContain("已儲存。");
+});
+
+test("a changed rubric is not labelled as saved by the previous request", async () => {
+  stubPlatform();
+  await render();
+
+  await act(async () => button("儲存 Rubric").click());
+  await waitFor(() => text().includes("已儲存。"));
+  await act(async () =>
+    setValue(container.querySelector<HTMLTextAreaElement>("#rubric-c1")!, "新的判定文字"),
+  );
+
+  expect(text()).not.toContain("已儲存。");
+});
+
 test("CONTENT-007 clearing every line removes the rubric rather than storing an empty one", async () => {
   const calls = stubPlatform();
   await render();

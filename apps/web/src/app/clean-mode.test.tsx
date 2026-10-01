@@ -88,6 +88,7 @@ test("PORT-003: with clean_mode on, the notice states its five absences", async 
   expect(text).toContain("只有一條連線");
   expect(text).toContain("物件儲存只在記憶體裡，行程結束即消失。");
   expect(text).toContain("試跑前那份「可連往哪裡」的清單，在這個模式下不被強制");
+  expect(container.querySelector("summary")?.textContent).toContain("網路允許清單不生效");
   expect(text).not.toContain("完整");
   expect(text).not.toContain("等同");
   expect(text).not.toContain("與正式環境一致");

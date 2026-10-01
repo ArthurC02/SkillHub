@@ -58,7 +58,12 @@ export function AdminDispatch() {
         <input
           id="admin-halt-provider"
           value={provider}
-          onChange={(event) => setProvider(event.target.value)}
+          onChange={(event) => {
+            setProvider(event.target.value);
+            declare.reset();
+            lift.reset();
+          }}
+          readOnly={declare.isPending || lift.isPending}
         />
       </div>
       <h3>停止派送</h3>
@@ -68,6 +73,7 @@ export function AdminDispatch() {
         pending={declare.isPending}
         error={declare.error}
         done={declare.data?.note}
+        contextKey={target ?? "pool"}
         tone="caution"
         onSubmit={(note) => declare.mutate({ note, provider: target })}
       />
@@ -78,6 +84,7 @@ export function AdminDispatch() {
         pending={lift.isPending}
         error={lift.error}
         done={lift.isSuccess && "已解除，上面的狀態已更新。"}
+        contextKey={target ?? "pool"}
         onSubmit={(note) => lift.mutate({ note, provider: target })}
       />
     </AdminPage>

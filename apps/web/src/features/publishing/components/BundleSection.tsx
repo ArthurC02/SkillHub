@@ -36,6 +36,12 @@ interface ContinuationChoice {
   memberVersion: SkillVersionSummary;
 }
 
+function continuationFor(choices: MemberChoice[], selectedVersion?: string) {
+  return choices
+    .flatMap((choice) => choice.versions.map((memberVersion) => ({ choice, memberVersion })))
+    .find(({ memberVersion }) => memberVersion.version_id === selectedVersion);
+}
+
 function useMemberChoices(): {
   choices: MemberChoice[];
   isPending: boolean;
@@ -491,30 +497,32 @@ function CreateBundleForm({
   const descriptionId = useId();
   const noMembersId = useId();
   const continuation = useMemo(
-    () =>
-      choices
-        .flatMap((choice) => choice.versions.map((memberVersion) => ({ choice, memberVersion })))
-        .find(({ memberVersion }) => memberVersion.version_id === selectedVersion) as
-        ContinuationChoice | undefined,
+    () => continuationFor(choices, selectedVersion),
     [choices, selectedVersion],
   );
   const choicesReady = !choicesPending && !choicesError;
+
+  function clearResult() {
+    if (!create.isPending && (create.isSuccess || create.isError)) create.reset();
+  }
 
   useEffect(() => {
     if (
       !selectedVersion ||
       !continuation ||
       !choicesReady ||
+      create.isPending ||
       appliedVersion.current === selectedVersion
     )
       return;
     appliedVersion.current = selectedVersion;
     setSelected(new Map([[continuation.choice.skillId, selectedVersion]]));
-  }, [choicesReady, continuation, selectedVersion]);
+  }, [choicesReady, continuation, create.isPending, selectedVersion]);
 
   useContinuationFocus(selectedVersion, Boolean(continuation && choicesReady), continuationSelect);
 
   function selectVersion(skillId: string, memberVersionId: string) {
+    clearResult();
     setSelected((current) => {
       const next = new Map(current);
       if (memberVersionId) next.set(skillId, memberVersionId);
@@ -528,6 +536,7 @@ function CreateBundleForm({
       className="bundle-form"
       onSubmit={(event) => {
         event.preventDefault();
+        if (create.isPending) return;
         const memberVersionIds = Array.from(selected.values());
         create.mutate(
           {
@@ -551,13 +560,23 @@ function CreateBundleForm({
       <BundleIdentityFields
         nameId={nameId}
         name={name}
-        onName={setName}
+        onName={(value) => {
+          clearResult();
+          setName(value);
+        }}
         versionId={versionId}
         version={version}
-        onVersion={setVersion}
+        onVersion={(value) => {
+          clearResult();
+          setVersion(value);
+        }}
         descriptionId={descriptionId}
         description={description}
-        onDescription={setDescription}
+        onDescription={(value) => {
+          clearResult();
+          setDescription(value);
+        }}
+        pending={create.isPending}
       />
       <BundleMemberChoices
         choices={choices}
@@ -569,17 +588,41 @@ function CreateBundleForm({
         continuationSelect={continuationSelect}
         selected={selected}
         onSelect={selectVersion}
+        pending={create.isPending}
       />
+      <BundleCreationAction
+        create={create}
+        choicesReady={choicesReady}
+        selectedCount={selected.size}
+        noMembersId={noMembersId}
+      />
+    </form>
+  );
+}
+
+function BundleCreationAction({
+  create,
+  choicesReady,
+  selectedCount,
+  noMembersId,
+}: {
+  create: ReturnType<typeof useCreateBundleVersion>;
+  choicesReady: boolean;
+  selectedCount: number;
+  noMembersId: string;
+}) {
+  return (
+    <>
       <p>
         <button
           type="submit"
-          disabled={create.isPending || !choicesReady || selected.size === 0}
-          aria-describedby={selected.size === 0 ? noMembersId : undefined}
+          disabled={create.isPending || !choicesReady || selectedCount === 0}
+          aria-describedby={selectedCount === 0 ? noMembersId : undefined}
         >
           {create.isPending ? "建立中…" : "建立"}
         </button>
       </p>
-      {selected.size === 0 && (
+      {selectedCount === 0 && (
         <p className="note" id={noMembersId}>
           先選擇至少一個要放入 Bundle 的小工具版本。
         </p>
@@ -587,7 +630,12 @@ function CreateBundleForm({
       {create.isError && (
         <p role="alert">{actionFailureSentence(create.error, "建立沒有成功，可以再試一次。")}</p>
       )}
-    </form>
+      {create.isSuccess && (
+        <p role="status">
+          已建立 {create.data.bundle} v{create.data.version}。
+        </p>
+      )}
+    </>
   );
 }
 
@@ -601,6 +649,7 @@ function BundleIdentityFields({
   descriptionId,
   description,
   onDescription,
+  pending,
 }: {
   nameId: string;
   name: string;
@@ -611,12 +660,19 @@ function BundleIdentityFields({
   descriptionId: string;
   description: string;
   onDescription: (value: string) => void;
+  pending: boolean;
 }) {
   return (
     <>
       <div className="field">
         <label htmlFor={nameId}>名稱</label>
-        <input id={nameId} value={name} onChange={(event) => onName(event.target.value)} required />
+        <input
+          id={nameId}
+          value={name}
+          onChange={(event) => onName(event.target.value)}
+          required
+          disabled={pending}
+        />
       </div>
       <div className="field">
         <label htmlFor={versionId}>版本（semver，例如 1.0.0）</label>
@@ -625,6 +681,7 @@ function BundleIdentityFields({
           value={version}
           onChange={(event) => onVersion(event.target.value)}
           required
+          disabled={pending}
         />
       </div>
       <div className="field">
@@ -634,6 +691,7 @@ function BundleIdentityFields({
           value={description}
           onChange={(event) => onDescription(event.target.value)}
           required
+          disabled={pending}
         />
       </div>
     </>
@@ -650,6 +708,7 @@ function BundleMemberChoices({
   continuationSelect,
   selected,
   onSelect,
+  pending,
 }: {
   choices: MemberChoice[];
   choicesPending: boolean;
@@ -660,6 +719,7 @@ function BundleMemberChoices({
   continuationSelect: RefObject<HTMLSelectElement | null>;
   selected: Map<string, string>;
   onSelect: (skillId: string, versionId: string) => void;
+  pending: boolean;
 }) {
   return (
     <fieldset>
@@ -690,7 +750,7 @@ function BundleMemberChoices({
             ref={continuation?.choice.skillId === choice.skillId ? continuationSelect : undefined}
             value={selected.get(choice.skillId) ?? ""}
             onChange={(event) => onSelect(choice.skillId, event.target.value)}
-            disabled={!choicesReady}
+            disabled={!choicesReady || pending}
             data-bundle-version={
               continuation?.choice.skillId === choice.skillId ? selectedVersion : undefined
             }

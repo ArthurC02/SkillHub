@@ -18,7 +18,11 @@ export function PromptForm({ testCase }: { testCase: TestCase }) {
         <input
           id="edit-name"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            save.reset();
+            setName(e.target.value);
+          }}
+          readOnly={save.isPending}
           size={40}
         />{" "}
         <span className="note">名稱最多 {MAX_NAME_BYTES} bytes。</span>
@@ -30,7 +34,11 @@ export function PromptForm({ testCase }: { testCase: TestCase }) {
           rows={5}
           cols={60}
           value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
+          onChange={(e) => {
+            save.reset();
+            setPrompt(e.target.value);
+          }}
+          readOnly={save.isPending}
         />
         <br />
         <span className="note">User Prompt 最多 {MAX_PROMPT_BYTES} bytes。</span>

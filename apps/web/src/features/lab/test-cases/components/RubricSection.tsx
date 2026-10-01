@@ -19,11 +19,13 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
     save.mutate({ rubric: list.length === 0 ? null : { version: version.trim(), items: list } });
   };
 
-  const update = (id: string, patch: Partial<RubricItem>) =>
+  const update = (id: string, patch: Partial<RubricItem>) => {
+    save.reset();
     setItems((prev) => ({
       ...prev,
       [id]: { ...(prev[id] ?? { id, text: "", evidence_required: false }), ...patch },
     }));
+  };
 
   const used = testCase.acceptance_criteria.filter((c) => items[c.id]?.text.trim()).length;
 
@@ -42,7 +44,11 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
             <input
               id="rubric-version"
               value={version}
-              onChange={(e) => setVersion(e.target.value)}
+              onChange={(e) => {
+                save.reset();
+                setVersion(e.target.value);
+              }}
+              readOnly={save.isPending}
               size={40}
               maxLength={200}
               placeholder="例如 content-007/writing/v1"
@@ -60,6 +66,7 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
                 criterionText={c.text}
                 item={items[c.id]}
                 onUpdate={(patch) => update(c.id, patch)}
+                pending={save.isPending}
               />
             ))}
           </ul>

@@ -14,7 +14,7 @@ export function CleanModeNotice({ admin = false }: { admin?: boolean }) {
       )}
       <details className="clean-mode-notice">
         <summary className="notice">
-          淨測試模式：5 項在這個模式下不成立（沒有隔離、不驗簽章、只有一條連線）
+          淨測試模式：沙箱沒有隔離、網路允許清單不生效，另有 3 項限制
         </summary>
         <p className="note">
           沙箱沒有隔離——不是比較弱的隔離，是沒有邊界。這個模式只跑策展過的展示素材。
