@@ -121,10 +121,10 @@ func mountCatalogRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /api/skills/search", auth.OptionalSession(limited(d, metrics.RoutePublicSearch, d.Search.PublicSearch)))
 	mux.HandleFunc("POST /api/skills/search", auth.OptionalSession(limited(d, metrics.RoutePublicSearch, d.Search.CorrectedSearch)))
 
-	mux.HandleFunc("GET /api/skills/catalog", auth.OptionalSession(limited(d, metrics.RouteCatalog, d.Search.BrowseCatalog)))
+	mux.HandleFunc("GET /api/skills/catalog", auth.OptionalSession(limited(d, metrics.RouteCatalog, httpx.Revalidated(httpx.SharedBriefly, d.Search.BrowseCatalog))))
 
-	mux.HandleFunc("GET /api/skills/{id}", auth.OptionalSession(d.Search.SkillDetail))
-	mux.HandleFunc("GET /api/skills/{id}/files", auth.OptionalSession(d.Search.SkillFiles))
+	mux.HandleFunc("GET /api/skills/{id}", auth.OptionalSession(httpx.Revalidated(httpx.PrivateFresh, d.Search.SkillDetail)))
+	mux.HandleFunc("GET /api/skills/{id}/files", auth.OptionalSession(httpx.Revalidated(httpx.PrivateFresh, d.Search.SkillFiles)))
 
 	mux.HandleFunc("GET /skills/search", auth.RequireSession(d.Search.Search))
 }
@@ -158,7 +158,7 @@ func mountPublishingRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /me/bundles/{name}/publication", auth.RequireSession(d.Publishing.OwnBundlePublication))
 	mux.HandleFunc("POST /me/bundles/{name}/publication", auth.RequireSession(d.Publishing.PublishBundle))
 	mux.HandleFunc("DELETE /me/bundles/{name}/publication", auth.RequireSession(d.Publishing.DelistBundle))
-	mux.HandleFunc("GET /publications/{publisher}/{name}", auth.OptionalSession(d.Publishing.PublicPublication))
+	mux.HandleFunc("GET /publications/{publisher}/{name}", auth.OptionalSession(httpx.Revalidated(httpx.PrivateFresh, d.Publishing.PublicPublication)))
 	mux.HandleFunc("POST /publications/{publisher}/{name}/acquisitions",
 		auth.RequireSession(publicationDownloadGate(d, d.Publishing.Acquire)))
 }

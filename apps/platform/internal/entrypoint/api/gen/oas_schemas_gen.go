@@ -1589,7 +1589,44 @@ func (s *CatalogResponse) SetTruncated(val bool) {
 	s.Truncated = val
 }
 
-func (*CatalogResponse) browseCatalogRes() {}
+// CatalogResponseHeaders wraps CatalogResponse with response headers.
+type CatalogResponseHeaders struct {
+	CacheControl OptString
+	ETag         OptString
+	Response     CatalogResponse
+}
+
+// GetCacheControl returns the value of CacheControl.
+func (s *CatalogResponseHeaders) GetCacheControl() OptString {
+	return s.CacheControl
+}
+
+// GetETag returns the value of ETag.
+func (s *CatalogResponseHeaders) GetETag() OptString {
+	return s.ETag
+}
+
+// GetResponse returns the value of Response.
+func (s *CatalogResponseHeaders) GetResponse() CatalogResponse {
+	return s.Response
+}
+
+// SetCacheControl sets the value of CacheControl.
+func (s *CatalogResponseHeaders) SetCacheControl(val OptString) {
+	s.CacheControl = val
+}
+
+// SetETag sets the value of ETag.
+func (s *CatalogResponseHeaders) SetETag(val OptString) {
+	s.ETag = val
+}
+
+// SetResponse sets the value of Response.
+func (s *CatalogResponseHeaders) SetResponse(val CatalogResponse) {
+	s.Response = val
+}
+
+func (*CatalogResponseHeaders) browseCatalogRes() {}
 
 // Validation findings grouped by severity (INGEST-008/SKILL-002): blocking errors, non-blocking
 // warnings, and informational notes are separate lists rather than one undifferentiated feed.
@@ -12745,6 +12782,37 @@ func (o NilUUID) Or(d uuid.UUID) uuid.UUID {
 	return d
 }
 
+// Ref: #/components/responses/NotModified
+type NotModified struct {
+	CacheControl OptString
+	ETag         OptString
+}
+
+// GetCacheControl returns the value of CacheControl.
+func (s *NotModified) GetCacheControl() OptString {
+	return s.CacheControl
+}
+
+// GetETag returns the value of ETag.
+func (s *NotModified) GetETag() OptString {
+	return s.ETag
+}
+
+// SetCacheControl sets the value of CacheControl.
+func (s *NotModified) SetCacheControl(val OptString) {
+	s.CacheControl = val
+}
+
+// SetETag sets the value of ETag.
+func (s *NotModified) SetETag(val OptString) {
+	s.ETag = val
+}
+
+func (*NotModified) browseCatalogRes()        {}
+func (*NotModified) getPublicPublicationRes() {}
+func (*NotModified) getSkillDetailRes()       {}
+func (*NotModified) getSkillFilesRes()        {}
+
 // Ref: #/components/schemas/OperatorAuditEvent
 type OperatorAuditEvent struct {
 	ActorUserID  NilUUID                    `json:"actor_user_id"`
@@ -18834,8 +18902,6 @@ func (s *PublicPublication) SetAcquisition(val PublicationNote) {
 	s.Acquisition = val
 }
 
-func (*PublicPublication) getPublicPublicationRes() {}
-
 type PublicPublicationBundle struct {
 	Version     string                               `json:"version"`
 	Description string                               `json:"description"`
@@ -18978,6 +19044,45 @@ func (s *PublicPublicationBundleRelease) SetChanges(val []BundleMemberChange) {
 func (s *PublicPublicationBundleRelease) SetFindings(val CategorizedFindings) {
 	s.Findings = val
 }
+
+// PublicPublicationHeaders wraps PublicPublication with response headers.
+type PublicPublicationHeaders struct {
+	CacheControl OptString
+	ETag         OptString
+	Response     PublicPublication
+}
+
+// GetCacheControl returns the value of CacheControl.
+func (s *PublicPublicationHeaders) GetCacheControl() OptString {
+	return s.CacheControl
+}
+
+// GetETag returns the value of ETag.
+func (s *PublicPublicationHeaders) GetETag() OptString {
+	return s.ETag
+}
+
+// GetResponse returns the value of Response.
+func (s *PublicPublicationHeaders) GetResponse() PublicPublication {
+	return s.Response
+}
+
+// SetCacheControl sets the value of CacheControl.
+func (s *PublicPublicationHeaders) SetCacheControl(val OptString) {
+	s.CacheControl = val
+}
+
+// SetETag sets the value of ETag.
+func (s *PublicPublicationHeaders) SetETag(val OptString) {
+	s.ETag = val
+}
+
+// SetResponse sets the value of Response.
+func (s *PublicPublicationHeaders) SetResponse(val PublicPublication) {
+	s.Response = val
+}
+
+func (*PublicPublicationHeaders) getPublicPublicationRes() {}
 
 // Merged schema.
 type PublicPublicationRelease struct {
@@ -25949,8 +26054,6 @@ func (s *SkillDetail) SetAccessRestriction(val OptSkillAccessRestriction) {
 	s.AccessRestriction = val
 }
 
-func (*SkillDetail) getSkillDetailRes() {}
-
 // Fork lineage (DISC-003, WS-001). A fork resolves to both the parent skill and the parent version it
 // diverged from: versions are immutable, so the parent's current version can have moved on.
 type SkillDetailDerivation struct {
@@ -26010,6 +26113,45 @@ func (s *SkillDetailDerivation) SetLabel(val string) {
 func (s *SkillDetailDerivation) SetNote(val string) {
 	s.Note = val
 }
+
+// SkillDetailHeaders wraps SkillDetail with response headers.
+type SkillDetailHeaders struct {
+	CacheControl OptString
+	ETag         OptString
+	Response     SkillDetail
+}
+
+// GetCacheControl returns the value of CacheControl.
+func (s *SkillDetailHeaders) GetCacheControl() OptString {
+	return s.CacheControl
+}
+
+// GetETag returns the value of ETag.
+func (s *SkillDetailHeaders) GetETag() OptString {
+	return s.ETag
+}
+
+// GetResponse returns the value of Response.
+func (s *SkillDetailHeaders) GetResponse() SkillDetail {
+	return s.Response
+}
+
+// SetCacheControl sets the value of CacheControl.
+func (s *SkillDetailHeaders) SetCacheControl(val OptString) {
+	s.CacheControl = val
+}
+
+// SetETag sets the value of ETag.
+func (s *SkillDetailHeaders) SetETag(val OptString) {
+	s.ETag = val
+}
+
+// SetResponse sets the value of Response.
+func (s *SkillDetailHeaders) SetResponse(val SkillDetail) {
+	s.Response = val
+}
+
+func (*SkillDetailHeaders) getSkillDetailRes() {}
 
 // Which read answered — the public catalog, or the caller's own workspace.
 type SkillDetailScope string
@@ -26415,7 +26557,44 @@ func (s *SkillFiles) SetNote(val string) {
 	s.Note = val
 }
 
-func (*SkillFiles) getSkillFilesRes() {}
+// SkillFilesHeaders wraps SkillFiles with response headers.
+type SkillFilesHeaders struct {
+	CacheControl OptString
+	ETag         OptString
+	Response     SkillFiles
+}
+
+// GetCacheControl returns the value of CacheControl.
+func (s *SkillFilesHeaders) GetCacheControl() OptString {
+	return s.CacheControl
+}
+
+// GetETag returns the value of ETag.
+func (s *SkillFilesHeaders) GetETag() OptString {
+	return s.ETag
+}
+
+// GetResponse returns the value of Response.
+func (s *SkillFilesHeaders) GetResponse() SkillFiles {
+	return s.Response
+}
+
+// SetCacheControl sets the value of CacheControl.
+func (s *SkillFilesHeaders) SetCacheControl(val OptString) {
+	s.CacheControl = val
+}
+
+// SetETag sets the value of ETag.
+func (s *SkillFilesHeaders) SetETag(val OptString) {
+	s.ETag = val
+}
+
+// SetResponse sets the value of Response.
+func (s *SkillFilesHeaders) SetResponse(val SkillFiles) {
+	s.Response = val
+}
+
+func (*SkillFilesHeaders) getSkillFilesRes() {}
 
 // Ref: #/components/schemas/SkillGovernance
 type SkillGovernance struct {

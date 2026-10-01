@@ -1211,10 +1211,14 @@ paths:
       responses:
         "200":
           description: A page of the catalogue, or an empty list when it is empty.
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+            Cache-Control: { $ref: "#/components/headers/CacheControl" }
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CatalogResponse"
+        "304": { $ref: "#/components/responses/NotModified" }
         "429":
           description: |
             Too many requests from this address, with `Retry-After` in seconds.
@@ -1285,10 +1289,14 @@ paths:
       responses:
         "200":
           description: The skill as visible in the caller's widest scope.
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+            Cache-Control: { $ref: "#/components/headers/CacheControl" }
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/SkillDetail"
+        "304": { $ref: "#/components/responses/NotModified" }
         "404":
           description: Skill not visible to the caller.
           content:
@@ -1339,10 +1347,14 @@ paths:
       responses:
         "200":
           description: SKILL.md text and the file tree of the latest version.
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+            Cache-Control: { $ref: "#/components/headers/CacheControl" }
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/SkillFiles"
+        "304": { $ref: "#/components/responses/NotModified" }
         "403":
           description: |
             A licensing hold is in force (SEC-011, 0023): the full text and the
@@ -2019,9 +2031,13 @@ paths:
       responses:
         "200":
           description: The publication as anyone sees it.
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+            Cache-Control: { $ref: "#/components/headers/CacheControl" }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PublicPublication" }
+        "304": { $ref: "#/components/responses/NotModified" }
         "404":
           description: No publication has this address.
           content:
@@ -6161,6 +6177,21 @@ paths:
               $ref: "#/components/schemas/CreationAction"
 
 components:
+  headers:
+    ETag:
+      description: A tag for this exact body; sent back as `If-None-Match` it turns an unchanged answer into a 304.
+      schema: { type: string }
+    CacheControl:
+      description: |
+        `public, max-age=30` on the catalogue, which is the same for every caller; `private, no-cache`
+        where the answer can be the caller's own skill, so it is revalidated on every view.
+      schema: { type: string }
+  responses:
+    NotModified:
+      description: The request carried `If-None-Match` with the current ETag; the cached body is still the answer.
+      headers:
+        ETag: { $ref: "#/components/headers/ETag" }
+        Cache-Control: { $ref: "#/components/headers/CacheControl" }
   securitySchemes:
     sessionCookie:
       type: apiKey
