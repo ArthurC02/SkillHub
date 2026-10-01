@@ -6,18 +6,33 @@ import (
 	"encoding/base64"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 const (
 	SharedBriefly = "public, max-age=30"
 	PrivateFresh  = "private, no-cache"
 	etagBytes     = 16
+
+	largestPooledBody = 256 << 10
 )
+
+var responseBodies = sync.Pool{New: func() any { return new(bytes.Buffer) }}
+
+func borrowBody() *bytes.Buffer { return responseBodies.Get().(*bytes.Buffer) }
+
+func returnBody(b *bytes.Buffer) {
+	if b.Cap() > largestPooledBody {
+		return
+	}
+	b.Reset()
+	responseBodies.Put(b)
+}
 
 type bufferedResponse struct {
 	header http.Header
 	status int
-	body   bytes.Buffer
+	body   *bytes.Buffer
 }
 
 func (b *bufferedResponse) Header() http.Header { return b.header }
@@ -35,7 +50,8 @@ func (b *bufferedResponse) Write(p []byte) (int, error) {
 
 func Revalidated(cacheControl string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		buffered := &bufferedResponse{header: w.Header()}
+		buffered := &bufferedResponse{header: w.Header(), body: borrowBody()}
+		defer returnBody(buffered.body)
 		next(buffered, r)
 		if buffered.status == 0 {
 			buffered.status = http.StatusOK

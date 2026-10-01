@@ -93,3 +93,14 @@ func TestAHandlerThatWritesNothingIsAnEmptyOK(t *testing.T) {
 		t.Fatalf("got %d with %d body bytes, want an empty 200", w.Code, w.Body.Len())
 	}
 }
+
+func TestAnAnswerNeverCarriesWhatAnEarlierAnswerWrote(t *testing.T) {
+	long := Revalidated(PrivateFresh, answering(http.StatusOK, `{"owner":"alice","secret":"not for bob"}`))
+	short := Revalidated(PrivateFresh, answering(http.StatusOK, `{"owner":"bob"}`))
+	for range 50 {
+		serve(long, "")
+		if w := serve(short, ""); w.Body.String() != `{"owner":"bob"}` {
+			t.Fatalf("got %q, want only the second handler's body", w.Body.String())
+		}
+	}
+}
