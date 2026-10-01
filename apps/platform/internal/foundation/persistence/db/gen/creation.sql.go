@@ -271,7 +271,7 @@ func (q *Queries) GetCreationSession(ctx context.Context, arg GetCreationSession
 }
 
 const getCreationSessionLiveness = `-- name: GetCreationSessionLiveness :one
-SELECT state, expires_at FROM creation_sessions WHERE id=$1 AND workspace_id=$2
+SELECT state, expires_at, revision FROM creation_sessions WHERE id=$1 AND workspace_id=$2
 `
 
 type GetCreationSessionLivenessParams struct {
@@ -282,12 +282,13 @@ type GetCreationSessionLivenessParams struct {
 type GetCreationSessionLivenessRow struct {
 	State     string
 	ExpiresAt pgtype.Timestamptz
+	Revision  int64
 }
 
 func (q *Queries) GetCreationSessionLiveness(ctx context.Context, arg GetCreationSessionLivenessParams) (GetCreationSessionLivenessRow, error) {
 	row := q.db.QueryRow(ctx, getCreationSessionLiveness, arg.ID, arg.WorkspaceID)
 	var i GetCreationSessionLivenessRow
-	err := row.Scan(&i.State, &i.ExpiresAt)
+	err := row.Scan(&i.State, &i.ExpiresAt, &i.Revision)
 	return i, err
 }
 

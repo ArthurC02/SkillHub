@@ -6,7 +6,7 @@ VALUES($1,$2,$3,1,$4,$5) RETURNING *;
 SELECT * FROM creation_sessions WHERE id=$1 AND workspace_id=$2;
 
 -- name: GetCreationSessionLiveness :one
-SELECT state, expires_at FROM creation_sessions WHERE id=$1 AND workspace_id=$2;
+SELECT state, expires_at, revision FROM creation_sessions WHERE id=$1 AND workspace_id=$2;
 
 -- name: LockCreationSession :one
 SELECT * FROM creation_sessions WHERE id=$1 AND workspace_id=$2 FOR UPDATE;

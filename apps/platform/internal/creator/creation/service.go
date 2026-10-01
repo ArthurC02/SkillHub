@@ -396,17 +396,17 @@ func PurgeWorkspace(ctx context.Context, tx pgx.Tx, ws pgtype.UUID) error {
 type StreamCursor int64
 
 func (s *Service) Changed(ctx context.Context, ws identity.Workspace, id pgtype.UUID, at StreamCursor) (View, bool, error) {
-	row, err := gen.New(s.Pool).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: id, WorkspaceID: ws.ID})
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !live(row)) {
+	current, err := gen.New(s.Pool).GetCreationSessionLiveness(ctx, gen.GetCreationSessionLivenessParams{ID: id, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !current.ExpiresAt.Time.After(time.Now())) {
 		return View{}, false, ErrNotFound
 	}
 	if err != nil {
 		return View{}, false, err
 	}
-	if row.Revision <= int64(at) {
+	if current.Revision <= int64(at) {
 		return View{}, false, nil
 	}
-	v, err := view(row)
+	v, err := s.Get(ctx, ws, id)
 	return v, err == nil, err
 }
 
