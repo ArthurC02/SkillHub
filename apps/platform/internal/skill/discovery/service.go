@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"errors"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"log/slog"
 	"time"
 
@@ -54,6 +55,8 @@ type Service struct {
 	Store ObjectStore
 
 	Analytics *analytics.Service
+
+	packageReports queryCache[skillpkg.Report]
 }
 
 type ListingFacts struct {

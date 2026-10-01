@@ -618,6 +618,10 @@ func storedSkill(ver VersionFacts) skillpkg.StoredSkill {
 }
 
 func (s *Service) scanPackage(ctx context.Context, stored skillpkg.StoredSkill) (skillpkg.Report, bool) {
+	key := stored.ObjectKey + "\x00" + stored.SourcePath
+	if report, ok := s.packageReports.get(key); ok {
+		return report, true
+	}
 	data, err := s.storeGet(ctx, stored.ObjectKey)
 	if err != nil {
 		return skillpkg.Report{}, false
@@ -626,7 +630,9 @@ func (s *Service) scanPackage(ctx context.Context, stored skillpkg.StoredSkill) 
 	if err != nil {
 		return skillpkg.Report{}, false
 	}
-	return skillpkg.Validate(fsys), true
+	report := skillpkg.Validate(fsys)
+	s.packageReports.put(key, report)
+	return report, true
 }
 
 func tierLabel(t Tier) labelled {
