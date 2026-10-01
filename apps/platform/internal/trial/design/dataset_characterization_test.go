@@ -30,8 +30,8 @@ func (s *recordingStore) PutFrom(_ context.Context, key string, _ io.Reader, _ i
 	return nil
 }
 
-func (*recordingStore) Get(context.Context, string) ([]byte, error) {
-	return nil, errors.New("not used")
+func (*recordingStore) Open(context.Context, string) (io.ReadCloser, int64, error) {
+	return nil, 0, errors.New("not used")
 }
 
 func (s *recordingStore) Remove(_ context.Context, key string) error {

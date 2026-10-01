@@ -108,19 +108,27 @@ func (s *Service) outlineDatasets(ctx context.Context, rows []gen.Dataset) []Dat
 	for _, d := range rows {
 		outline := DatasetOutline{FileName: d.FileName, ContentType: d.ContentType}
 		if s.Store != nil && strings.HasPrefix(d.ContentType, "text/") {
-			if data, err := s.Store.Get(ctx, d.ObjectKey); err == nil {
-				outline.Fields = inferFields(data)
-			}
+			outline.Fields = s.fieldsInHeadOf(ctx, d.ObjectKey)
 		}
 		out = append(out, outline)
 	}
 	return out
 }
 
-func inferFields(data []byte) []DatasetField {
-	if len(data) > datasetHeadBytes {
-		data = data[:datasetHeadBytes]
+func (s *Service) fieldsInHeadOf(ctx context.Context, key string) []DatasetField {
+	body, _, err := s.Store.Open(ctx, key)
+	if err != nil {
+		return nil
 	}
+	defer body.Close()
+	head, err := io.ReadAll(io.LimitReader(body, datasetHeadBytes))
+	if err != nil {
+		return nil
+	}
+	return inferFields(head)
+}
+
+func inferFields(data []byte) []DatasetField {
 	text := string(data)
 	firstLine, _, _ := strings.Cut(text, "\n")
 	if firstLine == "" {

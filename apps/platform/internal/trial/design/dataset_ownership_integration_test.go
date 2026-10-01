@@ -145,8 +145,8 @@ type removedStore struct{ removed []string }
 
 func (s *removedStore) PutFrom(context.Context, string, io.Reader, int64) error { return nil }
 
-func (s *removedStore) Get(context.Context, string) ([]byte, error) {
-	return nil, errors.New("not used")
+func (s *removedStore) Open(context.Context, string) (io.ReadCloser, int64, error) {
+	return nil, 0, errors.New("not used")
 }
 
 type retryRemovalStore struct {
@@ -159,8 +159,8 @@ func (s *retryRemovalStore) PutFrom(_ context.Context, key string, _ io.Reader, 
 	s.key = key
 	return nil
 }
-func (*retryRemovalStore) Get(context.Context, string) ([]byte, error) {
-	return nil, errors.New("not used")
+func (*retryRemovalStore) Open(context.Context, string) (io.ReadCloser, int64, error) {
+	return nil, 0, errors.New("not used")
 }
 func (*retryRemovalStore) Exists(context.Context, string) (bool, error) { return true, nil }
 func (s *retryRemovalStore) Remove(context.Context, string) error {
@@ -190,8 +190,8 @@ func (s *blockingPutStore) PutFrom(ctx context.Context, key string, _ io.Reader,
 	}
 }
 
-func (*blockingPutStore) Get(context.Context, string) ([]byte, error) {
-	return nil, errors.New("not used")
+func (*blockingPutStore) Open(context.Context, string) (io.ReadCloser, int64, error) {
+	return nil, 0, errors.New("not used")
 }
 
 func (*blockingPutStore) Remove(context.Context, string) error { return nil }
@@ -207,8 +207,8 @@ func (s *cancelingPutStore) PutFrom(context.Context, string, io.Reader, int64) e
 	return nil
 }
 
-func (*cancelingPutStore) Get(context.Context, string) ([]byte, error) {
-	return nil, errors.New("not used")
+func (*cancelingPutStore) Open(context.Context, string) (io.ReadCloser, int64, error) {
+	return nil, 0, errors.New("not used")
 }
 
 func (s *cancelingPutStore) Remove(ctx context.Context, _ string) error {

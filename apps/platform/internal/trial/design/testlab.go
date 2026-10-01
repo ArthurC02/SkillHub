@@ -61,7 +61,7 @@ type SkillFacts struct {
 type ObjectStore interface {
 	PutFrom(ctx context.Context, key string, content io.Reader, size int64) error
 
-	Get(ctx context.Context, key string) ([]byte, error)
+	Open(ctx context.Context, key string) (io.ReadCloser, int64, error)
 	Remove(ctx context.Context, key string) error
 }
 
