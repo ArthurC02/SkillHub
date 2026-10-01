@@ -64,7 +64,7 @@ WITH streams AS (
     GROUP BY attempt, source
 )
 SELECT s.attempt, s.source, s.received, s.highest_seq, s.missing_count, s.late_events,
-       CASE WHEN s.missing_count = 0 THEN ARRAY[]::bigint[] ELSE coalesce(ARRAY(
+       coalesce(ARRAY(
            SELECT candidate
            FROM (
                SELECT e.seq, lag(e.seq, 1, 0) OVER (ORDER BY e.seq) AS previous_seq
@@ -73,9 +73,10 @@ SELECT s.attempt, s.source, s.received, s.highest_seq, s.missing_count, s.late_e
                  AND e.attempt = s.attempt AND e.source = s.source
            ) stream
            CROSS JOIN LATERAL generate_series(stream.previous_seq + 1, stream.seq - 1) AS candidate
+           WHERE s.missing_count > 0
            ORDER BY candidate
            LIMIT @missing_seq_reported::int
-       ), ARRAY[]::bigint[]) END::bigint[] AS missing_seq
+       ), ARRAY[]::bigint[])::bigint[] AS missing_seq
 FROM streams s
 ORDER BY s.attempt, s.source;
 
