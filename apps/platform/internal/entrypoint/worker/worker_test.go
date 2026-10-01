@@ -238,7 +238,6 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 		PartitionCreateArgs{}.Kind():        true,
 		EnrichmentBackfillArgs{}.Kind():     false,
 		wiring.CreditRecomputeArgs{}.Kind(): false,
-		BacklogObserveArgs{}.Kind():         true,
 	}
 	if !maps.Equal(set.Scheduled, want) {
 		t.Errorf("scheduled periodic jobs (kind -> RunOnStart) are %v, want %v", set.Scheduled, want)
@@ -339,5 +338,34 @@ func TestABacklogItemFromTheFutureIsNotNegativelyOld(t *testing.T) {
 	past := pgtype.Timestamptz{Time: now.Add(-90 * time.Second), Valid: true}
 	if got := backlogAge(past, now); got != 90 {
 		t.Fatalf("age = %v, want 90", got)
+	}
+}
+
+func TestAGaugeThatFailsToRefreshDoesNotStopTheOthersAndTheLoopEndsWithItsContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var refreshed []string
+	publishers := []func(context.Context) error{
+		func(context.Context) error {
+			refreshed = append(refreshed, "unreadable")
+			return errors.New("the database went away")
+		},
+		func(context.Context) error {
+			refreshed = append(refreshed, "readable")
+			cancel()
+			return nil
+		},
+	}
+	done := make(chan struct{})
+	go func() {
+		RefreshGauges(ctx, publishers)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the refresh loop kept running after its context ended")
+	}
+	if strings.Join(refreshed, ",") != "unreadable,readable" {
+		t.Errorf("refreshed %v, want both gauges attempted once", refreshed)
 	}
 }

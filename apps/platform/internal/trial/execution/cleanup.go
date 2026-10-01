@@ -261,13 +261,8 @@ func (s *Service) scanProvider(ctx context.Context, provider SandboxProvider) er
 	}); err != nil {
 		slog.Error("pruning orphan sightings failed", "provider", provider.Name(), "error", err)
 	}
-	persistent, err := s.queries().CountPersistentOrphans(ctx, gen.CountPersistentOrphansParams{
-		Provider: provider.Name(), PersistentAfterRounds: OrphanPersistsAfterRounds,
-	})
-	if err != nil {
+	if err := s.publishPersistentOrphans(ctx, provider.Name()); err != nil {
 		slog.Error("counting persistent orphans failed", "provider", provider.Name(), "error", err)
-	} else {
-		metrics.OrphanPersistent.WithLabelValues(provider.Name()).Set(float64(persistent))
 	}
 
 	if len(failures) > 0 {
@@ -310,4 +305,15 @@ func (s *Service) orphanByAge(entry ProviderRun, observed time.Time, why string)
 		return false, ""
 	}
 	return true, why
+}
+
+func (s *Service) publishPersistentOrphans(ctx context.Context, provider string) error {
+	persistent, err := s.queries().CountPersistentOrphans(ctx, gen.CountPersistentOrphansParams{
+		Provider: provider, PersistentAfterRounds: OrphanPersistsAfterRounds,
+	})
+	if err != nil {
+		return err
+	}
+	metrics.OrphanPersistent.WithLabelValues(provider).Set(float64(persistent))
+	return nil
 }

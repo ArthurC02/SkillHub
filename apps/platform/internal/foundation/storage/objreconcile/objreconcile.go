@@ -100,7 +100,7 @@ func (s *Service) Sweep(ctx context.Context) error {
 	if err := s.checkDatasets(ctx); err != nil {
 		return err
 	}
-	return s.publishGauge(ctx)
+	return s.PublishGauge(ctx)
 }
 
 func (s *Service) purgeExpired(ctx context.Context) error {
@@ -364,7 +364,7 @@ func (s *Service) markLost(
 	return nil
 }
 
-func (s *Service) publishGauge(ctx context.Context) error {
+func (s *Service) PublishGauge(ctx context.Context) error {
 	rows, err := gen.New(s.Pool).CountPersistentObjectSightings(ctx, actAfterRounds)
 	if err != nil {
 		return err

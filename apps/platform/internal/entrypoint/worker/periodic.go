@@ -51,8 +51,6 @@ func (w *PartitionCreateWorker) Work(ctx context.Context, _ *river.Job[Partition
 	return errors.Join(failures...)
 }
 
-const BacklogObserveInterval = 15 * time.Minute
-
 type BacklogObserveArgs struct{}
 
 func (BacklogObserveArgs) Kind() string { return "backlog_observe" }
@@ -65,6 +63,10 @@ type BacklogObserveWorker struct {
 }
 
 func (w *BacklogObserveWorker) Work(ctx context.Context, _ *river.Job[BacklogObserveArgs]) error {
+	return w.Observe(ctx)
+}
+
+func (w *BacklogObserveWorker) Observe(ctx context.Context) error {
 	now := time.Now()
 	var failures []error
 	for name, oldest := range w.Backlogs {
@@ -145,5 +147,26 @@ func newBackfillService(pool *pgxpool.Pool, deps Deps) *ingest.Service {
 			}
 			return out, nil
 		},
+	}
+}
+
+const GaugeRefreshInterval = time.Minute
+
+func RefreshGauges(ctx context.Context, publishers []func(context.Context) error) {
+	ticker := time.NewTicker(GaugeRefreshInterval)
+	defer ticker.Stop()
+	for {
+		round, cancel := context.WithTimeout(ctx, GaugeRefreshInterval/2)
+		for _, publish := range publishers {
+			if err := publish(round); err != nil && ctx.Err() == nil {
+				slog.Warn("a gauge kept its last value; refreshing it failed", "error", err)
+			}
+		}
+		cancel()
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
 	}
 }

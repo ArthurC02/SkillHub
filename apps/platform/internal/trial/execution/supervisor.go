@@ -45,9 +45,7 @@ func (s *Service) Supervise(ctx context.Context) error {
 		}
 	}
 
-	if backlog, err := s.queries().CountRunsNeedingCleanup(ctx); err == nil {
-		metrics.CleanupBacklog.Set(float64(backlog))
-	}
+	_ = s.publishCleanupBacklog(ctx)
 
 	stale, err := s.queries().ListRunsNeedingCleanup(ctx, CleanupClaim(superviseBatch))
 	if err != nil {
@@ -104,5 +102,23 @@ func (s *Service) superviseRun(ctx context.Context, run gen.Run) error {
 	if added {
 		slog.Info("re-enqueued a run with no live job", "run_id", pgconv.UUIDString(run.ID), "status", run.Status)
 	}
+	return nil
+}
+
+func (s *Service) PublishGauges(ctx context.Context) error {
+	errs := []error{s.publishCleanupBacklog(ctx)}
+	for _, provider := range s.providers().Providers {
+		errs = append(errs, s.publishPersistentOrphans(ctx, provider.Name()))
+	}
+	s.publishHaltMetrics(ctx)
+	return errors.Join(errs...)
+}
+
+func (s *Service) publishCleanupBacklog(ctx context.Context) error {
+	backlog, err := s.queries().CountRunsNeedingCleanup(ctx)
+	if err != nil {
+		return err
+	}
+	metrics.CleanupBacklog.Set(float64(backlog))
 	return nil
 }

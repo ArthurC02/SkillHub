@@ -118,6 +118,7 @@ func runWorker() int {
 		defer shutdownCreationListener(server)
 	}
 	go metrics.Serve(os.Getenv("METRICS_ADDR"))
+	go worker.RefreshGauges(ctx, set.Gauges)
 	slog.Info("worker started")
 
 	<-ctx.Done()

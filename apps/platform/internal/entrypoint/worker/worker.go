@@ -59,6 +59,7 @@ type Set struct {
 
 	WorkerKinds map[string]bool
 	Scheduled   map[string]bool
+	Gauges      []func(context.Context) error
 }
 
 func packagingCandidates(list func(context.Context, int32) ([]packaging.ReconcileCandidate, error)) objreconcile.ListFunc {
@@ -146,11 +147,11 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 
 	addWorker(set, workers, &PartitionCreateWorker{Pool: pool})
 	addWorker(set, workers, &EnrichmentBackfillWorker{Svc: backfillSvc})
-	addWorker(set, workers, &BacklogObserveWorker{Backlogs: map[string]backlogOldest{
+	addGaugePublishers(set, workers, outboxWorker, map[string]backlogOldest{
 		metrics.BacklogOrphanObjects: registrySvc.OldestCollectableObject,
 		metrics.BacklogSourceChecks:  creationVersions.OldestSourceCheck,
 		metrics.BacklogEnrichment:    set.CreationSearch.OldestPendingEnrichment,
-	}})
+	})
 
 	addWorker(set, workers, &CreditRecomputeWorker{Svc: creditSvc})
 
@@ -279,8 +280,13 @@ func periodicJobs(set *Set, deps Deps, outboxWorker *outbox.Worker) []*river.Per
 	schedule(PartitionCreateArgs{}, PartitionCreateInterval, true)
 
 	schedule(EnrichmentBackfillArgs{}, EnrichmentBackfillInterval, false)
-	schedule(BacklogObserveArgs{}, BacklogObserveInterval, true)
 	return periodic
+}
+
+func addGaugePublishers(set *Set, workers *river.Workers, outboxWorker *outbox.Worker, backlogs map[string]backlogOldest) {
+	observer := &BacklogObserveWorker{Backlogs: backlogs}
+	addWorker(set, workers, observer)
+	set.Gauges = []func(context.Context) error{set.Runs.PublishGauges, outboxWorker.PublishGauge, set.Objects.PublishGauge, observer.Observe}
 }
 
 func connectQueue(set *Set, client *river.Client[pgx.Tx]) {

@@ -125,10 +125,8 @@ func (w *Worker) claim(ctx context.Context) ([]gen.OutboxEvent, error) {
 
 	q := gen.New(conn)
 
-	if n, err := q.CountDeadLetteredOutboxEvents(ctx); err != nil {
+	if err := publishDeadLettered(ctx, q); err != nil {
 		slog.Warn("outbox: dead-letter count unavailable; the gauge keeps its last value", "error", err)
-	} else {
-		metrics.OutboxDeadLetteredCurrent.Set(float64(n))
 	}
 
 	cutoff := pgtype.Timestamptz{Time: time.Now().Add(-w.retention()), Valid: true}
@@ -219,5 +217,18 @@ func logDelivery(_ context.Context, event Event) error {
 		"aggregate_id", pgconv.UUIDString(event.AggregateID),
 		"payload", string(event.Payload),
 	)
+	return nil
+}
+
+func (w *Worker) PublishGauge(ctx context.Context) error {
+	return publishDeadLettered(ctx, gen.New(w.Pool))
+}
+
+func publishDeadLettered(ctx context.Context, q *gen.Queries) error {
+	n, err := q.CountDeadLetteredOutboxEvents(ctx)
+	if err != nil {
+		return err
+	}
+	metrics.OutboxDeadLetteredCurrent.Set(float64(n))
 	return nil
 }
