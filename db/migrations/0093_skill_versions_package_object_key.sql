@@ -1,0 +1,1 @@
+CREATE INDEX skill_versions_package_object_key_idx ON skill_versions (package_object_key);
