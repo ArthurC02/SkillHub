@@ -272,3 +272,43 @@ func TestOnlyACostTheGatewayReportedIsAReportedCost(t *testing.T) {
 		})
 	}
 }
+
+func deadlineSeenBy(t *testing.T, ctx context.Context, call func(context.Context, *Client)) (time.Time, bool) {
+	t.Helper()
+	var deadline time.Time
+	var ok bool
+	c := &Client{BaseURL: "http://llm.test", HTTPClient: &http.Client{Transport: testRoundTripper(func(r *http.Request) (*http.Response, error) {
+		deadline, ok = r.Context().Deadline()
+		return nil, errors.New("stop")
+	})}}
+	call(ctx, c)
+	return deadline, ok
+}
+
+func TestACallWithoutACallerDeadlineGetsTheFallbackDeadline(t *testing.T) {
+	for name, call := range map[string]func(context.Context, *Client){
+		"post":          func(ctx context.Context, c *Client) { _, _ = c.Embed(ctx, []string{"x"}) },
+		"creation step": func(ctx context.Context, c *Client) { _, _ = c.CreationStep(ctx, CreationStepRequest{GatewayKey: "k"}) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			before := time.Now()
+			deadline, ok := deadlineSeenBy(t, context.Background(), call)
+			if !ok {
+				t.Fatal("the request went out with no deadline; a hung capability service would hold the caller forever")
+			}
+			if got := deadline.Sub(before); got < FallbackCallDeadline || got > FallbackCallDeadline+time.Minute {
+				t.Fatalf("deadline %v after the call, want the fallback %v", got, FallbackCallDeadline)
+			}
+		})
+	}
+}
+
+func TestACallerDeadlineIsNotReplacedByTheFallback(t *testing.T) {
+	want := time.Now().Add(time.Hour)
+	ctx, cancel := context.WithDeadline(context.Background(), want)
+	defer cancel()
+	deadline, ok := deadlineSeenBy(t, ctx, func(ctx context.Context, c *Client) { _, _ = c.Embed(ctx, []string{"x"}) })
+	if !ok || !deadline.Equal(want) {
+		t.Fatalf("deadline = %v (set %v), want the caller's %v", deadline, ok, want)
+	}
+}

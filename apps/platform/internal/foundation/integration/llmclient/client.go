@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type Client struct {
@@ -24,7 +25,18 @@ func (c *Client) httpClient() *http.Client {
 	return http.DefaultClient
 }
 
+const FallbackCallDeadline = 10 * time.Minute
+
+func withFallbackDeadline(ctx context.Context) (context.Context, context.CancelFunc) {
+	if _, ok := ctx.Deadline(); ok {
+		return ctx, func() {}
+	}
+	return context.WithTimeout(ctx, FallbackCallDeadline)
+}
+
 func post[Req, Resp any](ctx context.Context, c *Client, path string, reqBody Req) (*Resp, error) {
+	ctx, cancel := withFallbackDeadline(ctx)
+	defer cancel()
 	body, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("llmclient: marshal %s request: %w", path, err)

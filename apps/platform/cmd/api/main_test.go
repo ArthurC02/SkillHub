@@ -22,6 +22,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -900,14 +901,25 @@ func TestNginxDoesNotBufferTheEventStream(t *testing.T) {
 }
 
 func TestTheAPIRefusesToStartWithItsPostureRefusalsATokenlessProviderAndBadTrustedProxies(t *testing.T) {
-	refusals := startupRefusals(envx.Posture{SecureCookies: true}, run.NewRegistry(run.NewProvider("tokenless", "http://tokenless", "")),
+	refusals := startupRefusals(envx.Posture{SecureCookies: true}, run.NewRegistry(run.NewProvider("tokenless", "http://tokenless", "")), nil,
 		errors.New("TRUSTED_PROXIES entry \"caddy\" is neither an address nor a CIDR prefix"))
 	if len(refusals) != 3 || !strings.Contains(refusals[0], "APP_URL") || !strings.Contains(refusals[1], "tokenless") ||
 		!strings.Contains(refusals[2], "TRUSTED_PROXIES") {
 		t.Fatalf("refusals = %q, want the missing origin, the tokenless provider, then the trusted proxies", refusals)
 	}
-	if refusals := startupRefusals(envx.Posture{AppURL: "https://skillhub.example", SecureCookies: true}, run.NewRegistry(), nil); len(refusals) != 0 {
+	if refusals := startupRefusals(envx.Posture{AppURL: "https://skillhub.example", SecureCookies: true}, run.NewRegistry(),
+		httpx.NewRateLimiter(60, 30), nil); len(refusals) != 0 {
 		t.Fatalf("a clean public deployment was refused: %q", refusals)
+	}
+}
+
+func TestAPublicDeploymentRefusesToStartWithTheRateLimitOff(t *testing.T) {
+	refusals := startupRefusals(envx.Posture{AppURL: "https://skillhub.example", SecureCookies: true}, run.NewRegistry(), nil, nil)
+	if len(refusals) != 1 || !strings.Contains(refusals[0], "RATE_LIMIT=off") {
+		t.Fatalf("refusals = %q, want the rate limit refusal alone", refusals)
+	}
+	if refusals := startupRefusals(envx.Posture{AppURL: "http://localhost:5173"}, run.NewRegistry(), nil, nil); len(refusals) != 0 {
+		t.Fatalf("local development with the rate limit off was refused: %q", refusals)
 	}
 }
 

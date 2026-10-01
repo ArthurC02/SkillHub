@@ -12,10 +12,12 @@ import (
 )
 
 type RateLimiter struct {
-	rate  float64
-	burst float64
-	mu    sync.Mutex
-	last  map[string]bucket
+	rate      float64
+	burst     float64
+	refill    time.Duration
+	mu        sync.Mutex
+	last      map[string]bucket
+	nextSweep time.Time
 
 	trustedProxies []netip.Prefix
 
@@ -35,18 +37,33 @@ func NewRateLimiter(perMinute int, burst int) *RateLimiter {
 	if burst <= 0 {
 		burst = 1
 	}
+	rate := float64(perMinute) / time.Minute.Seconds()
 	return &RateLimiter{
-		rate:  float64(perMinute) / time.Minute.Seconds(),
-		burst: float64(burst),
-		last:  map[string]bucket{},
-		now:   time.Now,
+		rate:   rate,
+		burst:  float64(burst),
+		refill: time.Duration(float64(burst) / rate * float64(time.Second)),
+		last:   map[string]bucket{},
+		now:    time.Now,
 	}
+}
+
+func (l *RateLimiter) forgetFullBuckets(now time.Time) {
+	if now.Before(l.nextSweep) {
+		return
+	}
+	for key, b := range l.last {
+		if now.Sub(b.at) >= l.refill {
+			delete(l.last, key)
+		}
+	}
+	l.nextSweep = now.Add(l.refill)
 }
 
 func (l *RateLimiter) allow(key string) (bool, time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	now := l.now()
+	l.forgetFullBuckets(now)
 	b, ok := l.last[key]
 	if !ok {
 		b = bucket{tokens: l.burst, at: now}

@@ -88,6 +88,8 @@ func (c *Client) CreationStep(ctx context.Context, in CreationStepRequest) (*Cre
 	if in.GatewayKey == "" {
 		return nil, fmt.Errorf("llmclient: creation gateway key is required")
 	}
+	ctx, cancel := withFallbackDeadline(ctx)
+	defer cancel()
 
 	body, err := json.Marshal(withEmptyListsForNil(in))
 	if err != nil {

@@ -231,10 +231,14 @@ func (c *navigationCatcher) Write(b []byte) (int, error) {
 	return c.ResponseWriter.Write(b)
 }
 
-func startupRefusals(posture envx.Posture, providers *run.Registry, rateLimitErr error) []string {
+func startupRefusals(posture envx.Posture, providers *run.Registry, rateLimits *httpx.RateLimiter, rateLimitErr error) []string {
 	refusals := append(posture.APIRefusals(), providers.UnauthenticatedProviderRefusals()...)
-	if rateLimitErr != nil {
+	switch {
+	case rateLimitErr != nil:
 		refusals = append(refusals, rateLimitErr.Error())
+	case rateLimits == nil && posture.Public():
+		refusals = append(refusals, "RATE_LIMIT=off on a deployment whose APP_URL is https: anonymous search and the "+
+			"import endpoints would take unlimited traffic. Unset RATE_LIMIT.")
 	}
 	return refusals
 }
@@ -279,7 +283,7 @@ func runAPI() (failed bool) {
 
 	posture := wiring.PostureFromEnv()
 	rateLimits, rateLimitErr := rateLimitsFromEnv()
-	refuseToStartOn(startupRefusals(posture, providers, rateLimitErr))
+	refuseToStartOn(startupRefusals(posture, providers, rateLimits, rateLimitErr))
 	warnWhenDevLoginOpen(posture)
 
 	capabilities := capabilityTableFor(mode, pool, len(profiles))

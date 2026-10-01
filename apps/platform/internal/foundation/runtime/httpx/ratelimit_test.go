@@ -48,6 +48,37 @@ func TestTimeRestoresService(t *testing.T) {
 	}
 }
 
+func TestBucketsIdleForAFullRefillAreForgotten(t *testing.T) {
+	l, now := testLimiter(60, 2)
+	for i := 0; i < 1000; i++ {
+		l.allow(strconv.Itoa(i))
+	}
+	*now = now.Add(2 * time.Second)
+	l.allow("late")
+	if len(l.last) != 1 {
+		t.Fatalf("%d buckets kept after every caller went idle for a full refill; want only the new caller's", len(l.last))
+	}
+}
+
+func TestABucketJustShortOfAFullRefillIsKept(t *testing.T) {
+	l, now := testLimiter(60, 2)
+	l.allow("first")
+	*now = now.Add(time.Millisecond)
+	l.allow("a")
+	l.allow("a")
+	*now = now.Add(1999 * time.Millisecond)
+	l.allow("b")
+	if _, kept := l.last["first"]; kept {
+		t.Fatal("the sweep did not run, so this case proves nothing")
+	}
+	if ok, _ := l.allow("a"); !ok {
+		t.Fatal("a caller nearly refilled was refused")
+	}
+	if ok, _ := l.allow("a"); ok {
+		t.Fatal("a caller still short of a full refill got a fresh burst; its bucket was forgotten too early")
+	}
+}
+
 func TestOneAbuserDoesNotStarveANeighbour(t *testing.T) {
 	l, _ := testLimiter(60, 2)
 	l.allow("abuser")
