@@ -17,12 +17,3 @@ func (q *Queries) LockQueueSchema(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, lockQueueSchema)
 	return err
 }
-
-const unlockQueueSchema = `-- name: UnlockQueueSchema :exec
-SELECT pg_advisory_unlock(hashtextextended('skillhub:queue-schema', 0))
-`
-
-func (q *Queries) UnlockQueueSchema(ctx context.Context) error {
-	_, err := q.db.Exec(ctx, unlockQueueSchema)
-	return err
-}

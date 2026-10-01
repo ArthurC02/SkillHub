@@ -42,6 +42,7 @@ func poolInFreshSchema(t *testing.T) *pgxpool.Pool {
 		t.Fatal(err)
 	}
 	cfg.ConnConfig.RuntimeParams["search_path"] = schema
+	cfg.MaxConns = 2
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -50,7 +51,7 @@ func poolInFreshSchema(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
-func TestProcessesStartingTogetherAllFindTheQueueSchemaReady(t *testing.T) {
+func TestProcessesStartingTogetherOnASmallPoolAllFindTheQueueSchemaReady(t *testing.T) {
 	pool := poolInFreshSchema(t)
 	const processes = 6
 	errs := make([]error, processes)
@@ -61,7 +62,9 @@ func TestProcessesStartingTogetherAllFindTheQueueSchemaReady(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
-			errs[i] = EnsureSchema(context.Background(), pool)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			errs[i] = EnsureSchema(ctx, pool)
 		}()
 	}
 	close(start)
