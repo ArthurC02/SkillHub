@@ -1,6 +1,6 @@
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, focusManager } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { RunTrace } from "./trace/RunTrace.page";
@@ -627,4 +627,57 @@ test("丙-115 general mode writes progress in this app's own words without provi
   expect(steps.join("")).not.toContain("queued");
   expect(steps.join("")).not.toContain("failed:");
   expect(steps.join("")).not.toContain("the provider could not carry the attempt");
+});
+
+async function openAdvancedAndCountPolls(status: string, hidden = false) {
+  let advancedFetches = 0;
+  stubTrace({ ...summary, status }, (url) => {
+    if (url.includes("mode=advanced")) advancedFetches += 1;
+    return advanced;
+  });
+  await render();
+  const advancedButton = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "進階模式",
+  );
+  await act(async () => {
+    advancedButton?.click();
+  });
+  await waitFor(() => container.querySelector("table") !== null);
+  if (hidden) focusManager.setFocused(false);
+  const before = advancedFetches;
+  for (let tick = 0; tick < 3; tick += 1) {
+    await act(async () => {
+      vi.advanceTimersByTime(3100);
+    });
+    await waitFor(() => true);
+  }
+  return advancedFetches - before;
+}
+
+test("the advanced trace keeps polling a run that is still going", async () => {
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+  try {
+    expect(await openAdvancedAndCountPolls("running")).toBeGreaterThan(0);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("the advanced trace stops polling once the run has ended", async () => {
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+  try {
+    expect(await openAdvancedAndCountPolls("succeeded")).toBe(0);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("no trace polling happens while the tab is hidden", async () => {
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+  try {
+    expect(await openAdvancedAndCountPolls("running", true)).toBe(0);
+  } finally {
+    focusManager.setFocused(undefined);
+    vi.useRealTimers();
+  }
 });
