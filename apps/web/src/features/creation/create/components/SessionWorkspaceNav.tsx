@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Loading } from "../../../../shared/ui/Loading";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
@@ -12,14 +13,24 @@ export function SessionWorkspaceNav({
   currentId,
   busy,
   onPickSession,
+  pendingSwitch,
+  onConfirmSwitch,
+  onCancelSwitch,
 }: {
   sessionList: CreationSession[] | undefined;
   error: unknown;
   currentId: string;
   busy: boolean;
   onPickSession: (id: string) => void;
+  pendingSwitch: string | null;
+  onConfirmSwitch: () => void;
+  onCancelSwitch: () => void;
 }) {
   const visible = sessionList?.slice(0, MAX_VISIBLE_SESSIONS);
+  const confirmButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (pendingSwitch !== null) confirmButton.current?.focus();
+  }, [pendingSwitch]);
   return (
     <aside
       className="creation-sessions studio-session-rail"
@@ -42,6 +53,19 @@ export function SessionWorkspaceNav({
       >
         ＋ 開始新的創作
       </button>
+      {pendingSwitch !== null && (
+        <div className="notice creation-switch-confirm" role="alert">
+          <p>目前有未送出的內容。切換創作會捨棄它。</p>
+          <div>
+            <button type="button" ref={confirmButton} onClick={onCancelSwitch}>
+              繼續編輯
+            </button>
+            <button type="button" className="destructive" onClick={onConfirmSwitch}>
+              捨棄並切換
+            </button>
+          </div>
+        </div>
+      )}
       <ReadFailure error={error} what="近期創作" />
       {!error && !sessionList && <Loading what="近期創作" />}
       {visible?.length === 0 && <p className="creation-session-empty">還沒有可續作的創作。</p>}

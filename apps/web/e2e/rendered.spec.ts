@@ -479,6 +479,25 @@ async function verifyPublishingWorkspaceMapOnPhone(page: Page, testInfo: TestInf
   });
 }
 
+async function verifyDraftSwitchOnPhone(
+  page: Page,
+  testInfo: TestInfo,
+  sessionID: string,
+  otherSessionID: string,
+) {
+  const message = page.locator("#creation-message");
+  await message.fill("尚未送出的草稿");
+  await page.getByRole("button", { name: "創作清單 · 2" }).click();
+  await page.locator(`[data-session="${otherSessionID}"]`).click();
+  await expect(page.getByRole("alert").filter({ hasText: "未送出的內容" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "繼續編輯" })).toBeFocused();
+  await expect(page).toHaveURL(new RegExp(`session=${sessionID}$`));
+  await page.screenshot({ path: testInfo.outputPath("creation-draft-confirm-phone.png") });
+  await page.getByRole("button", { name: "繼續編輯" }).click();
+  await expect(message).toHaveValue("尚未送出的草稿");
+  await message.fill("");
+}
+
 async function verifyCreationDecisionOnPhone(page: Page, testInfo: TestInfo) {
   const sessionID = "44444444-4444-4444-8444-444444444444";
   const session = {
@@ -557,12 +576,19 @@ async function verifyCreationDecisionOnPhone(page: Page, testInfo: TestInfo) {
   await expect(page.getByRole("heading", { name: "和 Agent 一起創作小工具" })).toBeVisible();
   await verifyCreationWorklistOnPhone(page, testInfo, sessionID, session.updated_at);
 
+  await verifyDraftSwitchOnPhone(page, testInfo, sessionID, otherSession.id);
+
   const workbench = page.locator(".creation-workbench");
   await expect(workbench).toBeInViewport();
   await expect(workbench.getByText("目前待決定")).toBeVisible();
   await expect(workbench.getByText("確認任務與成功條件")).toBeVisible();
   await expect(workbench.locator('[aria-current="step"]')).toHaveCount(1);
   await expect(page.locator("#creation-message")).toBeInViewport();
+  const phoneHeights = await page.evaluate(() => ({
+    progress: document.querySelector(".creation-workbench")?.getBoundingClientRect().height ?? 0,
+    conversation: document.querySelector(".creation-stream")?.getBoundingClientRect().height ?? 0,
+  }));
+  expect(phoneHeights.conversation).toBeGreaterThan(phoneHeights.progress);
 
   const target = page.locator("#creation-brief-decision");
   await workbench.getByRole("link", { name: "前往這一步" }).click();
@@ -588,6 +614,11 @@ async function verifyCreationDecisionOnPhone(page: Page, testInfo: TestInfo) {
   await verifyCreationWorklistOnDesktop(page);
   await expect(page.locator(".creation-workbench")).toBeInViewport();
   await expect(page.locator(".creation-journey > li")).toHaveCount(4);
+  const desktopHeights = await page.evaluate(() => ({
+    progress: document.querySelector(".creation-workbench")?.getBoundingClientRect().height ?? 0,
+    conversation: document.querySelector(".creation-stream")?.getBoundingClientRect().height ?? 0,
+  }));
+  expect(desktopHeights.conversation).toBeGreaterThan(desktopHeights.progress);
   await page.screenshot({
     path: testInfo.outputPath("creation-decision-desktop.png"),
     fullPage: true,

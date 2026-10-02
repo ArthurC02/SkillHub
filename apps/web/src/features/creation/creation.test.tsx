@@ -1515,6 +1515,57 @@ test("choosing recent work closes the mobile list and focuses the current worksp
   ).toBe("s1");
 });
 
+test("switching sessions asks before discarding an unsent chat draft", async () => {
+  const current = sample();
+  const other = sample({ id: "s2" });
+  const onSessionChange = vi.fn();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [current, other], current)),
+  );
+
+  await render(<CreationSession sessionId="s1" onSessionChange={onSessionChange} />);
+  await waitFor(() => !!box.querySelector('.creation-session-item[data-session="s2"]'));
+  await input("想完成的任務", "尚未送出的草稿");
+  await act(async () =>
+    box.querySelector<HTMLButtonElement>('.creation-session-item[data-session="s2"]')!.click(),
+  );
+  expect(onSessionChange).not.toHaveBeenCalled();
+  expect(box.textContent).toContain("未送出的內容");
+  expect(document.activeElement?.textContent).toBe("繼續編輯");
+  expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe("尚未送出的草稿");
+
+  await click("繼續編輯");
+  expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe("尚未送出的草稿");
+  await act(async () =>
+    box.querySelector<HTMLButtonElement>('.creation-session-item[data-session="s2"]')!.click(),
+  );
+  await click("捨棄並切換");
+  expect(onSessionChange).toHaveBeenCalledOnce();
+  expect(onSessionChange).toHaveBeenCalledWith("s2");
+});
+
+test("an attachment-only draft is protected when switching sessions", async () => {
+  const current = sample();
+  const other = sample({ id: "s2" });
+  const onSessionChange = vi.fn();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [current, other], current)),
+  );
+
+  await render(<CreationSession sessionId="s1" onSessionChange={onSessionChange} />);
+  await waitFor(() => !!box.querySelector('.creation-session-item[data-session="s2"]'));
+  await attachDiagram();
+  expect(box.textContent).toContain("移除流程圖：flow.png");
+  await act(async () =>
+    box.querySelector<HTMLButtonElement>('.creation-session-item[data-session="s2"]')!.click(),
+  );
+  expect(onSessionChange).not.toHaveBeenCalled();
+  expect(box.textContent).toContain("未送出的內容");
+  expect(box.textContent).toContain("移除流程圖：flow.png");
+});
+
 test("a failed session list stays in its rail while the exact current session remains usable", async () => {
   const current = sample();
   vi.stubGlobal(

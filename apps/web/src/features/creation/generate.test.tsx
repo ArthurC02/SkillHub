@@ -5,6 +5,7 @@ import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
 import { router } from "../../app/router";
 import { GenerationFailureFailureEnum } from "@skillhub/api-client-ts";
+import { GenerateInFlight } from "./generate/components/GenerateInFlight";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -186,6 +187,26 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
   }
   throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
 }
+
+test("a one-shot generation wait shows elapsed time without pretending to know progress", async () => {
+  vi.useFakeTimers();
+  try {
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<GenerateInFlight />);
+    });
+    expect(container.textContent).toContain("正在產生並驗證小工具");
+    expect(container.textContent).toContain("請保持分頁開啟");
+    expect(container.textContent).not.toContain("已等待");
+    await act(async () => vi.advanceTimersByTime(9_999));
+    expect(container.textContent).not.toContain("已等待");
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(container.textContent).toContain("已等待 10 秒");
+    expect(container.textContent).toContain("無法提供完成百分比");
+  } finally {
+    vi.useRealTimers();
+  }
+});
 
 test("GEN-008: the generate entry point is absent until /me says the flag is on", async () => {
   stubSession();
