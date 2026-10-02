@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
@@ -147,5 +148,50 @@ func TestMatchReasonsRecordOneCostEventOfTheirOwnKind(t *testing.T) {
 	}
 	if e.Model != "gpt-6-luna" || e.PromptTokens != 300 || e.CompletionTokens != 40 {
 		t.Errorf("model = %q tokens = %d/%d", e.Model, e.PromptTokens, e.CompletionTokens)
+	}
+}
+
+func TestARepeatedSearchRecordsCostOnlyForTheCallsThatReachedTheModel(t *testing.T) {
+	cost := 0.00001
+	usage := &llmclient.GatewayUsage{PromptTokens: 7, CostUSD: &cost, CostSource: "gateway"}
+	analyses := 0
+	analyzer := &cachedIntentAnalyzer{IntentAnalyzer: intentAnalyzerFunc(func(context.Context, string, time.Duration) (*IntentAnalysis, error) {
+		analyses++
+		return &IntentAnalysis{Valid: true, Interpretation: validInterpretation()}, nil
+	})}
+	for _, tc := range []struct {
+		name   string
+		kind   credit.CostKind
+		search func(s *Service)
+		model  func(t *testing.T) Model
+	}{
+		{"embedding", credit.KindSearchEmbedding, func(s *Service) { _, _ = s.embedQuery(context.Background(), "invoice to table") },
+			func(t *testing.T) Model { return embedServer(t, usage) }},
+		{"match reasons", credit.KindMatchReasons, func(s *Service) {
+			s.matchReasons(context.Background(), "invoice to table", []searchResult{{SkillID: "s1", Name: "invoice-parser"}})
+		}, func(t *testing.T) Model { return matchReasonsServer(t, usage) }},
+		{"intent", credit.KindSearchIntent, func(s *Service) {
+			s.interpret(context.Background(), "CSV", searchFilters{}, searchByPerson)
+		}, func(*testing.T) Model { return nil }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ledger := &fakeLedger{}
+			s := &Service{LLM: tc.model(t), IntentAnalyzer: analyzer, Credit: ledger}
+			tc.search(s)
+			tc.search(s)
+			kinds := 0
+			for _, e := range ledger.events {
+				if e.Kind == tc.kind {
+					kinds++
+				}
+			}
+			if kinds != 1 {
+				t.Errorf("%d %s cost events for the same search twice, want 1: a cache hit costs nothing and "+
+					"was recorded as a model call whose cost went unreported", kinds, tc.kind)
+			}
+		})
+	}
+	if analyses != 1 {
+		t.Errorf("the intent model was asked %d times, want 1", analyses)
 	}
 }

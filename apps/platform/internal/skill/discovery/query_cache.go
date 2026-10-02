@@ -84,7 +84,7 @@ func (m *cachedModel) Embed(ctx context.Context, texts []string, within time.Dur
 		return m.Model.Embed(ctx, texts, within)
 	}
 	if hit, ok := m.embeddings.get(texts[0]); ok {
-		hit.Vectors, hit.Usage = slices.Clone(hit.Vectors), nil
+		hit.Vectors, hit.Usage, hit.Cached = slices.Clone(hit.Vectors), nil, true
 		return &hit, nil
 	}
 	answer, err := m.Model.Embed(ctx, texts, within)
@@ -97,7 +97,7 @@ func (m *cachedModel) Embed(ctx context.Context, texts []string, within time.Dur
 func (m *cachedModel) MatchReasons(ctx context.Context, query string, candidates []SkillCandidate, within time.Duration) (*MatchReasons, error) {
 	key := reasonsKey(query, candidates)
 	if hit, ok := m.reasons.get(key); ok {
-		hit.Reasons, hit.Usage = slices.Clone(hit.Reasons), nil
+		hit.Reasons, hit.Usage, hit.Cached = slices.Clone(hit.Reasons), nil, true
 		return &hit, nil
 	}
 	answer, err := m.Model.MatchReasons(ctx, query, candidates, within)
@@ -125,7 +125,7 @@ func reasonsKey(query string, candidates []SkillCandidate) string {
 func (a *cachedIntentAnalyzer) AnalyzeIntent(ctx context.Context, query string, within time.Duration) (*IntentAnalysis, error) {
 	if hit, ok := a.analyses.get(query); ok {
 		hit.Interpretation = hit.Interpretation.clone()
-		hit.Usage = nil
+		hit.Usage, hit.Cached = nil, true
 		return &hit, nil
 	}
 	answer, err := a.IntentAnalyzer.AnalyzeIntent(ctx, query, within)

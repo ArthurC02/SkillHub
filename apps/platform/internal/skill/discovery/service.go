@@ -540,7 +540,9 @@ func (s *Service) matchReasons(ctx context.Context, query string, hits []searchR
 		slog.Warn("match-reasons call failed, using template fallback", "error", err)
 		return nil
 	}
-	s.recordCallCost(ctx, credit.KindMatchReasons, resp.Model, resp.Usage)
+	if !resp.Cached {
+		s.recordCallCost(ctx, credit.KindMatchReasons, resp.Model, resp.Usage)
+	}
 	return resp.Reasons
 }
 

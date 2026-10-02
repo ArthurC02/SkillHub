@@ -14,7 +14,7 @@ type CostRecorder interface {
 }
 
 func (s *Service) recordSearchCost(ctx context.Context, resp *Embeddings) {
-	if resp == nil {
+	if resp == nil || resp.Cached {
 		return
 	}
 	s.recordCallCost(ctx, credit.KindSearchEmbedding, resp.Model, resp.Usage)

@@ -29,6 +29,7 @@ type IntentAnalysis struct {
 	Valid          bool
 	Interpretation SearchInterpretation
 	Usage          *ModelUsage
+	Cached         bool
 }
 
 type SearchInterpretation struct {
@@ -173,7 +174,9 @@ func (s *Service) interpret(ctx context.Context, query string, filters searchFil
 		return out
 	}
 	out.Model, out.PromptVersion = analysis.Interpretation.Model, analysis.Interpretation.PromptVersion
-	s.recordVersionedCallCost(ctx, credit.KindSearchIntent, out.Model, out.PromptVersion, analysis.Usage)
+	if !analysis.Cached {
+		s.recordVersionedCallCost(ctx, credit.KindSearchIntent, out.Model, out.PromptVersion, analysis.Usage)
+	}
 	if err := analysis.Interpretation.validate(query, extractedByModel); err != nil || !analysis.Valid ||
 		out.Model == "" || out.PromptVersion == "" {
 		out.FallbackReason = fallbackInvalidResponse
