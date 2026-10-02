@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"slices"
@@ -265,6 +266,10 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out, err := h.Svc.SkillDetail(r.Context(), skill)
+	if errors.Is(err, errPackageUnreadable) {
+		httpx.WriteError(w, http.StatusServiceUnavailable, errPackageUnreadable.Error())
+		return
+	}
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "skill detail failed")
 		return
@@ -335,7 +340,11 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetai
 		return skillDetail{}, err
 	}
 
-	if report, ok := s.scanPackage(ctx, storedSkill(ver)); ok {
+	report, scanned, err := s.scanPackage(ctx, storedSkill(ver))
+	if err != nil {
+		return skillDetail{}, err
+	}
+	if scanned {
 		out.Risk = summarizeRisk(report)
 		out.Compat.SpecValidation = axis(specWords, specValidation(report))
 		out.Limitations = append(out.Limitations, scanDerivedLimitations(report)...)
@@ -618,19 +627,27 @@ func storedSkill(ver VersionFacts) skillpkg.StoredSkill {
 	return skillpkg.StoredSkill{ObjectKey: ver.PackageObjectKey, SourcePath: ver.SourcePath}
 }
 
-func (s *Service) scanPackage(ctx context.Context, stored skillpkg.StoredSkill) (skillpkg.Report, bool) {
+func (s *Service) scanPackage(ctx context.Context, stored skillpkg.StoredSkill) (skillpkg.Report, bool, error) {
 	if report, ok := s.packageReports.get(packageReportKey(stored)); ok {
-		return report, true
+		return report, true, nil
 	}
 	data, err := s.storeGet(ctx, stored.ObjectKey)
-	if err != nil {
-		return skillpkg.Report{}, false
+	if errors.Is(err, fs.ErrNotExist) {
+		return skillpkg.Report{}, false, nil
 	}
+	if err != nil {
+		return skillpkg.Report{}, false, fmt.Errorf("%w: %w", errPackageUnreadable, err)
+	}
+	fsys, readable := openPackage(stored, data)
+	if !readable {
+		return skillpkg.Report{}, false, nil
+	}
+	return s.reportOf(stored, fsys), true, nil
+}
+
+func openPackage(stored skillpkg.StoredSkill, data []byte) (fs.FS, bool) {
 	fsys, err := stored.Open(data)
-	if err != nil {
-		return skillpkg.Report{}, false
-	}
-	return s.reportOf(stored, fsys), true
+	return fsys, err == nil
 }
 
 func (s *Service) reportOf(stored skillpkg.StoredSkill, fsys fs.FS) skillpkg.Report {
