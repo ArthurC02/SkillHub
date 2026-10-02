@@ -256,7 +256,6 @@ func (d *Driver) Stop(ctx context.Context, id string, grace time.Duration) error
 }
 
 func (d *Driver) Remove(ctx context.Context, id string) error {
-	d.recordAddressReleased(id)
 	_, err := d.cli.ContainerRemove(ctx, name(id), client.ContainerRemoveOptions{
 		Force:         true,
 		RemoveVolumes: true,
@@ -264,6 +263,7 @@ func (d *Driver) Remove(ctx context.Context, id string) error {
 	if err != nil && !cerrdefs.IsNotFound(err) {
 		return err
 	}
+	d.recordAddressReleased(id)
 	return nil
 }
 

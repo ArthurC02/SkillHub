@@ -560,3 +560,25 @@ func TestARunWithoutANetworkRecordsNoAddressAndIsNotTreatedAsAFault(t *testing.T
 		t.Errorf("a run that was never given a network was reported as one whose address could not be read: %s", logs.String())
 	}
 }
+
+func TestAFailedRemovalKeepsTheAddressAttributedToItsRun(t *testing.T) {
+	req := testRequest("sleep 30")
+	req.Egress.Allow = []sandbox.EgressAllowEntry{{Purpose: "model_gateway", URL: "http://10.9.9.9:4000"}}
+	_, d, id, logs := startLogged(t, "bridge", req)
+	abandoned, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if err := d.Remove(abandoned, id); err == nil {
+		t.Fatal("a removal whose context had ended reported success")
+	}
+	if records := addressRecords(logs); len(records) != 1 {
+		t.Fatalf("run address records = %v, want only the assignment: the container still holds the address", records)
+	}
+
+	if err := d.Remove(context.Background(), id); err != nil {
+		t.Fatalf("retried remove: %v", err)
+	}
+	if records := addressRecords(logs); len(records) != 2 || records[1]["state"] != "released" {
+		t.Errorf("run address records = %v, want the release once the container is gone", records)
+	}
+}
