@@ -202,7 +202,7 @@ func (s *Service) Recover(ctx context.Context) error {
 	}
 	rows, err := gen.New(s.Pool).ListStalledCreationSessions(ctx, gen.ListStalledCreationSessionsParams{
 		States:        statesAwaitingTheModel(),
-		StalledBefore: pgtype.Timestamptz{Time: time.Now().Add(-s.Limits.CallTimeout - 15*time.Second), Valid: true},
+		StalledBefore: pgtype.Timestamptz{Time: time.Now().Add(-s.Limits.CallTimeout - 15*time.Second - attemptWrapUp), Valid: true},
 		BatchSize:     stalledSessionBatch,
 	})
 	if err != nil {

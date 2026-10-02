@@ -140,6 +140,7 @@ const (
 	settleTimeout    = 20 * time.Second
 	settleRetryDelay = time.Second
 	keyRevokeTimeout = 20 * time.Second
+	attemptWrapUp    = keyRevokeTimeout + searchAheadTimeout + settleTimeout
 )
 
 func (s *Service) settle(a JobArgs, call stepCall) error {
