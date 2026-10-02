@@ -279,6 +279,7 @@ export function useReviewExposure(publication: string) {
     mutationFn: (body: {
       release_id: string;
       expected_sequence: number;
+      expected_snapshot_digest: string;
       decision: ExposureDecision;
       reason: string;
     }) => apiFetch<ExposureCase>(`/admin/publications/${publication}/exposure`, send("POST", body)),

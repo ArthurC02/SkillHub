@@ -4138,7 +4138,7 @@ export interface DefaultApiInterface {
     reviewExposureRequestOpts(requestParameters: ReviewExposureOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * The request names the release and the review sequence the reviewer looked at; either being stale answers 409 and nothing is written. Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
+     * The request names the release, the review sequence and the search snapshot digest the reviewer looked at; any of them being stale answers 409 and nothing is written (a revocation is not held to the digest). Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
      * @summary Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
      * @param {string} publisher 
      * @param {string} name 
@@ -4150,7 +4150,7 @@ export interface DefaultApiInterface {
     reviewExposureRaw(requestParameters: ReviewExposureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ExposureCase>>;
 
     /**
-     * The request names the release and the review sequence the reviewer looked at; either being stale answers 409 and nothing is written. Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
+     * The request names the release, the review sequence and the search snapshot digest the reviewer looked at; any of them being stale answers 409 and nothing is written (a revocation is not held to the digest). Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
      * Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
      */
     reviewExposure(requestParameters: ReviewExposureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExposureCase>;
@@ -9468,7 +9468,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * The request names the release and the review sequence the reviewer looked at; either being stale answers 409 and nothing is written. Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
+     * The request names the release, the review sequence and the search snapshot digest the reviewer looked at; any of them being stale answers 409 and nothing is written (a revocation is not held to the digest). Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
      * Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
      */
     async reviewExposureRaw(requestParameters: ReviewExposureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ExposureCase>> {
@@ -9479,7 +9479,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * The request names the release and the review sequence the reviewer looked at; either being stale answers 409 and nothing is written. Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
+     * The request names the release, the review sequence and the search snapshot digest the reviewer looked at; any of them being stale answers 409 and nothing is written (a revocation is not held to the digest). Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
      * Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
      */
     async reviewExposure(requestParameters: ReviewExposureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExposureCase> {

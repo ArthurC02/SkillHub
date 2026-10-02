@@ -38,6 +38,10 @@ export interface ReviewExposureRequest {
     /**
      * 
      */
+    expectedSnapshotDigest: string;
+    /**
+     * 
+     */
     decision: ExposureDecision;
     /**
      * 
@@ -53,6 +57,7 @@ export interface ReviewExposureRequest {
 export function instanceOfReviewExposureRequest(value: object): value is ReviewExposureRequest {
     if ((!('releaseId' in (value as Record<string, any>)) && !('release_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['releaseId'] === undefined && (value as Record<string, any>)['release_id'] === undefined)) return false;
     if ((!('expectedSequence' in (value as Record<string, any>)) && !('expected_sequence' in (value as Record<string, any>))) || ((value as Record<string, any>)['expectedSequence'] === undefined && (value as Record<string, any>)['expected_sequence'] === undefined)) return false;
+    if ((!('expectedSnapshotDigest' in (value as Record<string, any>)) && !('expected_snapshot_digest' in (value as Record<string, any>))) || ((value as Record<string, any>)['expectedSnapshotDigest'] === undefined && (value as Record<string, any>)['expected_snapshot_digest'] === undefined)) return false;
     if (!('decision' in value) || value['decision'] === undefined) return false;
     if (!('reason' in value) || value['reason'] === undefined) return false;
     return true;
@@ -70,6 +75,7 @@ export function ReviewExposureRequestFromJSONTyped(json: any, ignoreDiscriminato
         
         'releaseId': json['release_id'],
         'expectedSequence': json['expected_sequence'],
+        'expectedSnapshotDigest': json['expected_snapshot_digest'],
         'decision': ExposureDecisionFromJSON(json['decision']),
         'reason': json['reason'],
     };
@@ -88,6 +94,7 @@ export function ReviewExposureRequestToJSONTyped(value?: ReviewExposureRequest |
         
         'release_id': value['releaseId'],
         'expected_sequence': value['expectedSequence'],
+        'expected_snapshot_digest': value['expectedSnapshotDigest'],
         'decision': ExposureDecisionToJSON(value['decision']),
         'reason': value['reason'],
     };

@@ -43017,6 +43017,10 @@ func (s *ReviewExposureReq) encodeFields(e *jx.Encoder) {
 		e.Int(s.ExpectedSequence)
 	}
 	{
+		e.FieldStart("expected_snapshot_digest")
+		e.Str(s.ExpectedSnapshotDigest)
+	}
+	{
 		e.FieldStart("decision")
 		s.Decision.Encode(e)
 	}
@@ -43026,11 +43030,12 @@ func (s *ReviewExposureReq) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfReviewExposureReq = [4]string{
+var jsonFieldsNameOfReviewExposureReq = [5]string{
 	0: "release_id",
 	1: "expected_sequence",
-	2: "decision",
-	3: "reason",
+	2: "expected_snapshot_digest",
+	3: "decision",
+	4: "reason",
 }
 
 // Decode decodes ReviewExposureReq from json.
@@ -43066,8 +43071,20 @@ func (s *ReviewExposureReq) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"expected_sequence\"")
 			}
-		case "decision":
+		case "expected_snapshot_digest":
 			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.ExpectedSnapshotDigest = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"expected_snapshot_digest\"")
+			}
+		case "decision":
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				if err := s.Decision.Decode(d); err != nil {
 					return err
@@ -43077,7 +43094,7 @@ func (s *ReviewExposureReq) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"decision\"")
 			}
 		case "reason":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				v, err := d.Str()
 				s.Reason = string(v)
@@ -43098,7 +43115,7 @@ func (s *ReviewExposureReq) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00001111,
+		0b00011111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

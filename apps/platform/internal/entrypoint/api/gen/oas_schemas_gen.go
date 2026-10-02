@@ -20862,10 +20862,11 @@ type ReviewExposureNotFound Error
 func (*ReviewExposureNotFound) reviewExposureRes() {}
 
 type ReviewExposureReq struct {
-	ReleaseID        uuid.UUID        `json:"release_id"`
-	ExpectedSequence int              `json:"expected_sequence"`
-	Decision         ExposureDecision `json:"decision"`
-	Reason           string           `json:"reason"`
+	ReleaseID              uuid.UUID        `json:"release_id"`
+	ExpectedSequence       int              `json:"expected_sequence"`
+	ExpectedSnapshotDigest string           `json:"expected_snapshot_digest"`
+	Decision               ExposureDecision `json:"decision"`
+	Reason                 string           `json:"reason"`
 }
 
 // GetReleaseID returns the value of ReleaseID.
@@ -20876,6 +20877,11 @@ func (s *ReviewExposureReq) GetReleaseID() uuid.UUID {
 // GetExpectedSequence returns the value of ExpectedSequence.
 func (s *ReviewExposureReq) GetExpectedSequence() int {
 	return s.ExpectedSequence
+}
+
+// GetExpectedSnapshotDigest returns the value of ExpectedSnapshotDigest.
+func (s *ReviewExposureReq) GetExpectedSnapshotDigest() string {
+	return s.ExpectedSnapshotDigest
 }
 
 // GetDecision returns the value of Decision.
@@ -20896,6 +20902,11 @@ func (s *ReviewExposureReq) SetReleaseID(val uuid.UUID) {
 // SetExpectedSequence sets the value of ExpectedSequence.
 func (s *ReviewExposureReq) SetExpectedSequence(val int) {
 	s.ExpectedSequence = val
+}
+
+// SetExpectedSnapshotDigest sets the value of ExpectedSnapshotDigest.
+func (s *ReviewExposureReq) SetExpectedSnapshotDigest(val string) {
+	s.ExpectedSnapshotDigest = val
 }
 
 // SetDecision sets the value of Decision.

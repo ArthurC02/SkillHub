@@ -2762,8 +2762,9 @@ paths:
       operationId: reviewExposure
       summary: Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
       description: |
-        The request names the release and the review sequence the reviewer
-        looked at; either being stale answers 409 and nothing is written.
+        The request names the release, the review sequence and the search
+        snapshot digest the reviewer looked at; any of them being stale answers
+        409 and nothing is written (a revocation is not held to the digest).
         Approval also needs the Skill available, its redistribution verdict
         `allowed`, and search holding this release's finished text. The review
         and its audit event share one transaction.
@@ -2773,10 +2774,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [release_id, expected_sequence, decision, reason]
+              required: [release_id, expected_sequence, expected_snapshot_digest, decision, reason]
               properties:
                 release_id: { type: string, format: uuid }
                 expected_sequence: { type: integer }
+                expected_snapshot_digest: { type: string }
                 decision: { $ref: "#/components/schemas/ExposureDecision" }
                 reason: { type: string }
       responses:

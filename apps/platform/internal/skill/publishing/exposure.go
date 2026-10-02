@@ -102,6 +102,7 @@ type ExposureCase struct {
 type ExposureInput struct {
 	ReleaseID        pgtype.UUID
 	ExpectedSequence int32
+	ExpectedDigest   string
 	Decision         ExposureDecision
 	Reason           string
 }
@@ -384,11 +385,6 @@ func (s *Service) ReviewExposure(
 	if reviewed.ReleaseID != in.ReleaseID || reviewed.Sequence != in.ExpectedSequence {
 		return ExposureCase{}, &ExposureError{ExposureStale}
 	}
-	digest, err := s.approvalDigest(ctx, reviewed, in.Decision)
-	if err != nil {
-		return ExposureCase{}, err
-	}
-
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return ExposureCase{}, err
@@ -401,6 +397,10 @@ func (s *Service) ReviewExposure(
 	}
 	if !state.sameReleaseAs(reviewed) {
 		return ExposureCase{}, &ExposureError{ExposureStale}
+	}
+	digest, err := s.approvalDigest(ctx, state, in)
+	if err != nil {
+		return ExposureCase{}, err
 	}
 	review, err := q.InsertExposureReview(ctx, gen.InsertExposureReviewParams{
 		PublicationID: publicationID, Sequence: state.Sequence + 1, ReleaseID: state.ReleaseID,
@@ -469,12 +469,12 @@ func lockCurrentExposure(ctx context.Context, q *gen.Queries, publisher, name st
 	return publicationID, states[0], nil
 }
 
-func (s *Service) approvalDigest(ctx context.Context, state ExposureState, decision ExposureDecision) (string, error) {
+func (s *Service) approvalDigest(ctx context.Context, state ExposureState, in ExposureInput) (string, error) {
 	snapshot, found, err := s.ReadSearchSnapshot(ctx, state.SkillID)
 	if err != nil {
 		return "", err
 	}
-	if decision == ExposureRevoked {
+	if in.Decision == ExposureRevoked {
 		return snapshot.Digest, nil
 	}
 	if state.Status != StatusPublished {
@@ -495,6 +495,9 @@ func (s *Service) approvalDigest(ctx context.Context, state ExposureState, decis
 	}
 	if !snapshot.Enriched {
 		return "", &ExposureError{ExposureSnapshotPending}
+	}
+	if snapshot.Digest != in.ExpectedDigest {
+		return "", &ExposureError{ExposureStale}
 	}
 	return snapshot.Digest, nil
 }

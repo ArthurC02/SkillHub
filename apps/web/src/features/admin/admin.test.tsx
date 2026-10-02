@@ -839,7 +839,7 @@ test("DISC-007: the queue lists a waiting release, and reviewing it shows the ex
   expect(button("送出審核結論").disabled).toBe(true);
 });
 
-test("DISC-007: submitting a review sends this screen's release_id and sequence as expected_sequence", async () => {
+test("DISC-007: submitting a review sends this screen's release_id, sequence and snapshot digest", async () => {
   stub(true);
   await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
   await waitFor(has("審核序號：2"));
@@ -853,6 +853,7 @@ test("DISC-007: submitting a review sends this screen's release_id and sequence 
     body: {
       release_id: ADMIN_EXPOSURE_CASE.release.release_id,
       expected_sequence: ADMIN_EXPOSURE_CASE.sequence,
+      expected_snapshot_digest: ADMIN_EXPOSURE_CASE.snapshot.digest,
       decision: "approved",
       reason: "看過了，符合規範",
     },

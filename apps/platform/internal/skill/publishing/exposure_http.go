@@ -134,6 +134,7 @@ func (h *Handler) ReviewExposure(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		ReleaseID        string `json:"release_id"`
 		ExpectedSequence int32  `json:"expected_sequence"`
+		ExpectedDigest   string `json:"expected_snapshot_digest"`
 		Decision         string `json:"decision"`
 		Reason           string `json:"reason"`
 	}
@@ -147,7 +148,7 @@ func (h *Handler) ReviewExposure(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c, err := h.Svc.ReviewExposure(r.Context(), reviewer, r.PathValue("publisher"), r.PathValue("name"), ExposureInput{
-		ReleaseID: releaseID, ExpectedSequence: req.ExpectedSequence,
+		ReleaseID: releaseID, ExpectedSequence: req.ExpectedSequence, ExpectedDigest: req.ExpectedDigest,
 		Decision: ExposureDecision(req.Decision), Reason: req.Reason,
 	})
 	var problem *ExposureError
