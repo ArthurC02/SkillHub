@@ -25,6 +25,11 @@ const (
 
 	DefaultMaxDeliveryAttempts = 10
 
+	retryBackoffBase = 5 * time.Second
+	retryBackoffCap  = 10 * time.Minute
+
+	retryBackoffMaxDoublings = 20
+
 	publishBatch = 200
 )
 
@@ -81,16 +86,20 @@ func (w *Worker) Publish(ctx context.Context) (int, error) {
 	for _, event := range events {
 		owned := eventFromRow(event)
 		if err := deliver(ctx, owned); err != nil {
-			if isolateErr := w.recordFailure(ctx, q, owned, err); isolateErr != nil {
-
-				failure = isolateErr
-				break
+			if recordErr := w.recordFailure(ctx, q, owned, err); recordErr != nil {
+				return w.markPublished(ctx, q, ids, recordErr)
 			}
-			failure = fmt.Errorf("deliver %s (%s): %w", pgconv.UUIDString(event.EventID), event.EventType, err)
-			break
+			if failure == nil {
+				failure = fmt.Errorf("deliver %s (%s): %w", pgconv.UUIDString(event.EventID), event.EventType, err)
+			}
+			continue
 		}
 		ids = append(ids, event.EventID)
 	}
+	return w.markPublished(ctx, q, ids, failure)
+}
+
+func (w *Worker) markPublished(ctx context.Context, q *gen.Queries, ids []pgtype.UUID, failure error) (int, error) {
 	if len(ids) == 0 {
 		return 0, failure
 	}
@@ -161,8 +170,15 @@ func (w *Worker) maxAttempts() int32 {
 	return DefaultMaxDeliveryAttempts
 }
 
+func retryDelay(failuresSoFar int32) time.Duration {
+	return min(retryBackoffBase<<min(failuresSoFar, retryBackoffMaxDoublings), retryBackoffCap)
+}
+
 func (w *Worker) recordFailure(ctx context.Context, q *gen.Queries, event Event, cause error) error {
-	attempts, err := q.RecordOutboxDeliveryFailure(ctx, event.EventID)
+	attempts, err := q.RecordOutboxDeliveryFailure(ctx, gen.RecordOutboxDeliveryFailureParams{
+		EventID:    event.EventID,
+		RetryDelay: pgconv.Interval(retryDelay(event.DeliveryAttempts)),
+	})
 	if err != nil {
 		return fmt.Errorf("record delivery failure for %s: %w", pgconv.UUIDString(event.EventID), err)
 	}

@@ -499,6 +499,7 @@ func TestAnUndeliverableEventIsIsolatedAndReleasesTheBacklog(t *testing.T) {
 	}
 
 	for range 5 {
+		releaseOutboxBackoff(t, pool)
 		if _, err := w.Publish(context.Background()); err == nil && attempts >= 2 {
 			break
 		}

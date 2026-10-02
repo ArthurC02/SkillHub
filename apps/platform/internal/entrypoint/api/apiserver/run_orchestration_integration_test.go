@@ -1415,10 +1415,15 @@ func TestOutboxPublisherIsAtLeastOnceAndIdempotent(t *testing.T) {
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("failed delivery returned %v, want the delivery error", err)
 	}
-	if after := unpublishedCount(t, pool); after != backlog {
-		t.Errorf("a failed delivery changed the backlog from %d to %d", backlog, after)
+	if after := countRow(t, pool,
+		"SELECT count(*) FROM outbox_events WHERE published_at IS NULL AND dead_lettered_at IS NULL"); after < backlog {
+		t.Errorf("a failed delivery dropped the backlog from %d to %d", backlog, after)
+	}
+	if deferred := unpublishedCount(t, pool); deferred != 0 {
+		t.Errorf("%d events are claimable right after failing, want 0 (each waits out its backoff)", deferred)
 	}
 
+	releaseOutboxBackoff(t, pool)
 	var delivered []string
 	publisher := &outbox.Worker{Pool: pool, Deliver: func(_ context.Context, e outbox.Event) error {
 		delivered = append(delivered, e.EventType)

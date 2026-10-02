@@ -519,6 +519,7 @@ type OutboxEvent struct {
 	PublishedAt      pgtype.Timestamptz
 	DeliveryAttempts int32
 	DeadLetteredAt   pgtype.Timestamptz
+	NextDeliveryAt   pgtype.Timestamptz
 }
 
 type Publication struct {
