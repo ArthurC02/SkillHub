@@ -1,5 +1,4 @@
-code,
-.counter {
+code {
   font-family: var(--mono);
   display: inline-flex;
   border-radius: 4px;
@@ -272,6 +271,54 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
     color var(--dur-fast) var(--ease);
 }
 
+.tone-card {
+  --tone: var(--tile-indigo);
+  --tone-deep: var(--tile-indigo-deep);
+  border-radius: 16px;
+  transition:
+    border-color var(--dur) var(--ease),
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+.tone-card[data-tone="1"] {
+  --tone: var(--tile-blue);
+  --tone-deep: var(--tile-blue-deep);
+}
+
+.tone-card[data-tone="2"] {
+  --tone: var(--tile-cyan);
+  --tone-deep: var(--tile-cyan-deep);
+}
+
+.tone-card[data-tone="3"] {
+  --tone: var(--tile-teal);
+  --tone-deep: var(--tile-teal-deep);
+}
+
+@media (hover: hover) {
+  .tone-card:hover {
+    border-color: color-mix(in srgb, var(--tone) 55%, var(--border));
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lift);
+  }
+}
+
+.tone-mark {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--tone), var(--tone-deep));
+  color: var(--on-tile);
+}
+
 .search-result p {
   margin: 4px 0;
 }
@@ -527,21 +574,11 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
   font-weight: 600;
 }
 
-.badge-tier-curated {
-  font-weight: 600;
-}
-
 .page-eyebrow {
   font-size: 14px;
   color: var(--text);
   letter-spacing: 0.04em;
   margin-bottom: 4px;
-}
-
-@media (min-width: 1024px) {
-  .facet-wide {
-    grid-column: 1 / -1;
-  }
 }
 
 .chip-row {
@@ -551,118 +588,6 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.skill-actions {
-  margin-top: 8px;
-  align-items: center;
-  column-gap: 24px;
-}
-
-.skill-actions > :last-child {
-  margin-left: auto;
-}
-
-.create-cards {
-  list-style: none;
-  padding: 0;
-  margin: 12px 0 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
-}
-
-.create-workspace {
-  grid-column: 1 / -1;
-}
-
-.create-cards > li {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 20px;
-}
-
-.create-cards > li > :is(h3, p) {
-  margin: 0;
-}
-
-.create-cards > li > h3 {
-  font-weight: 600;
-}
-
-.create-cards > li > p:last-child {
-  margin-top: auto;
-}
-
-.skill-card,
-.create-cards > li {
-  --tone: var(--tile-indigo);
-  --tone-deep: var(--tile-indigo-deep);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: var(--shadow-rest);
-  transition:
-    border-color var(--dur) var(--ease),
-    transform var(--dur) var(--ease),
-    box-shadow var(--dur) var(--ease);
-}
-
-:is(.skill-card, .create-cards > li)[data-tone="1"] {
-  --tone: var(--tile-blue);
-  --tone-deep: var(--tile-blue-deep);
-}
-
-:is(.skill-card, .create-cards > li)[data-tone="2"] {
-  --tone: var(--tile-cyan);
-  --tone-deep: var(--tile-cyan-deep);
-}
-
-:is(.skill-card, .create-cards > li)[data-tone="3"] {
-  --tone: var(--tile-teal);
-  --tone-deep: var(--tile-teal-deep);
-}
-
-@media (hover: hover) {
-  .skill-card:hover,
-  .create-cards > li:hover {
-    border-color: color-mix(in srgb, var(--tone) 55%, var(--border));
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lift);
-  }
-}
-
-.skill-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 0 20px 20px;
-}
-
-.skill-mono,
-.door-mono {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1;
-  background: linear-gradient(135deg, var(--tone), var(--tone-deep));
-  color: var(--on-tile);
-}
-
-.skill-mono {
-  width: 56px;
-  height: 56px;
-  border: 3px solid var(--surface);
-  border-radius: 16px;
-  font-size: 24px;
 }
 
 @media (max-width: 640px) {

@@ -266,9 +266,6 @@ const APP_FRAME =
 const CONTROL_LAYER =
   "wears the base control rule beside `button`, so it has the same box as the button next to it";
 const EVALUATION_LIST = "shares the evaluation list recipe with .criterion-list and .finding-list";
-const DOOR_CARD =
-  "the door-card recipe .skill-card (/library) and .create-cards (the empty Library hub) share";
-
 const GLOBAL_BY_RECIPE: Record<string, string> = {
   "app-header": APP_FRAME,
   "app-nav": APP_FRAME,
@@ -288,10 +285,6 @@ const GLOBAL_BY_RECIPE: Record<string, string> = {
   "evaluation-feedback": "its textarea shares the full-width rule with .diff",
   "packaging-targets": "the target list reuses the download list recipe (.download-list)",
   "packaging-target": "each target reuses the download row recipe (.download-item)",
-  "create-cards": DOOR_CARD,
-  "door-mono": DOOR_CARD,
-  "skill-card": DOOR_CARD,
-  "skill-mono": DOOR_CARD,
 };
 
 function classesNamedIn(sheet: string): string[] {
@@ -311,6 +304,15 @@ function singleFolderClasses(): Set<string> {
   return single;
 }
 
+test("every global class has an application user", () => {
+  const globalClasses = [...new Set(GLOBAL_LAYERS.flatMap(classesNamedIn))];
+  expect(globalClasses.length, "the global class scan found nothing").toBeGreaterThan(40);
+  expect(
+    globalClasses.filter((name) => usersOf(name).size === 0).sort(),
+    "a class with no application user does not belong in a global stylesheet",
+  ).toEqual([]);
+});
+
 test("a class only one folder uses lives beside that folder's component, unless it shares a global recipe", () => {
   const single = singleFolderClasses();
   expect(
@@ -327,7 +329,7 @@ test("a class only one folder uses lives beside that folder's component, unless 
   expect(
     Object.keys(GLOBAL_BY_RECIPE).length,
     "the list may only get shorter; a class of one component belongs beside it",
-  ).toBeLessThanOrEqual(22);
+  ).toBeLessThanOrEqual(18);
 });
 
 const UNSTYLED: Record<string, string> = {

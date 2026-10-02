@@ -47,8 +47,8 @@ export function CreateHub({
       <h2 id="create-heading">新增到資產庫</h2>
 
       <ul className="create-cards">
-        <li className="surface-card" data-tone="0">
-          <span className="door-mono" aria-hidden="true">
+        <li className="surface-card tone-card" data-tone="0">
+          <span className="tone-mark" aria-hidden="true">
             ↑
           </span>
           <h3>匯入現成的套件</h3>
@@ -64,8 +64,8 @@ export function CreateHub({
           </p>
         </li>
 
-        <li className="surface-card" data-tone="1">
-          <span className="door-mono" aria-hidden="true">
+        <li className="surface-card tone-card" data-tone="1">
+          <span className="tone-mark" aria-hidden="true">
             ✎
           </span>
           <h3>從目錄挑一個來改</h3>
@@ -83,8 +83,8 @@ export function CreateHub({
         </li>
 
         {generateExposed && (
-          <li className="surface-card" data-tone="2">
-            <span className="door-mono" aria-hidden="true">
+          <li className="surface-card tone-card" data-tone="2">
+            <span className="tone-mark" aria-hidden="true">
               ✦
             </span>
             <h3>{doorway}</h3>
