@@ -91,10 +91,10 @@ func TestTheFinalOutputIsTheLastFinalOneAndNotALaterIntermediateOne(t *testing.T
 
 func TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest(t *testing.T) {
 	attempt := func(model, in, out, cost string) factRow {
-		return factRow{EventType: TypeUsage, Scope: "attempt", Model: model, InputTokens: in, OutputTokens: out, CostUsd: cost, CostSource: "gateway"}
+		return factRow{EventType: TypeUsage, Scope: "call", Model: model, InputTokens: in, OutputTokens: out, CostUsd: cost, CostSource: "gateway"}
 	}
 	runTotal := func(in, out, cost string) factRow {
-		return factRow{EventType: TypeUsage, Scope: usageScopeRunTotal, Model: "run-model", InputTokens: in, OutputTokens: out, CostUsd: cost, CostSource: "harness"}
+		return factRow{EventType: TypeUsage, Scope: usageScopeRunTotal, Model: "run-model", InputTokens: in, OutputTokens: out, CostUsd: cost, CostSource: "estimated"}
 	}
 	sum := []factRow{attempt("a", "1000", "100", "0.1"), attempt("b", "200", "x", "0.2")}
 	for _, tc := range []struct {
@@ -105,10 +105,10 @@ func TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest(t *testing.T) {
 		model, costFrom string
 	}{
 		{"attempts are summed and the last one names the model", sum, 1200, 100, ptr(0.3), "b", "gateway"},
-		{"a valid run total replaces the sums", append(sum, runTotal("27042", "1180", "0.9")), 27042, 1180, ptr(0.9), "run-model", "harness"},
-		{"an unreadable run total falls back to the sums field by field", append(sum, runTotal("lots", "7", "")), 1200, 7, ptr(0.3), "run-model", "harness"},
-		{"an earlier run total never enters the fallback sums", append(append([]factRow{}, sum...), runTotal("500", "60", "0.4"), runTotal("lots", "x", "")), 1200, 100, ptr(0.3), "run-model", "harness"},
-		{"no readable cost anywhere is no cost", []factRow{attempt("a", "1", "1", ""), runTotal("1", "1", "0.1234567890123")}, 1, 1, nil, "run-model", "harness"},
+		{"a valid run total replaces the sums", append(sum, runTotal("27042", "1180", "0.9")), 27042, 1180, ptr(0.9), "run-model", "estimated"},
+		{"an unreadable run total falls back to the sums field by field", append(sum, runTotal("lots", "7", "")), 1200, 7, ptr(0.3), "run-model", "estimated"},
+		{"an earlier run total never enters the fallback sums", append(append([]factRow{}, sum...), runTotal("500", "60", "0.4"), runTotal("lots", "x", "")), 1200, 100, ptr(0.3), "run-model", "estimated"},
+		{"no readable cost anywhere is no cost", []factRow{attempt("a", "1", "1", ""), runTotal("1", "1", "0.1234567890123")}, 1, 1, nil, "run-model", "estimated"},
 		{"thirteen integer digits are not a cost", []factRow{attempt("a", "1", "1", "1000000000000")}, 1, 1, nil, "a", "gateway"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
