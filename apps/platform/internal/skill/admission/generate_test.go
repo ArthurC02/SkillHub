@@ -917,3 +917,10 @@ func TestValidateCreationDraftReportsWhyThePackageCouldNotBeBuilt(t *testing.T) 
 		t.Fatalf("the report does not say what to change: %s", report)
 	}
 }
+
+func TestTheGenerationLeaseOutlastsEveryAttemptPlusTheImportThatFollowsTheLast(t *testing.T) {
+	longestRun := generateMaxAttempts*generateTimeout + importEnrichmentWindow
+	if generateSlotLease <= longestRun {
+		t.Fatalf("lease %v ends before the longest generation %v; a second paid generation could take the slot", generateSlotLease, longestRun)
+	}
+}
