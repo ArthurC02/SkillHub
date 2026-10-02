@@ -33,9 +33,9 @@ export function RunHistory({
         (history.length === 0 ? (
           <p>尚無執行。這個測試題還沒有做過任何試跑。</p>
         ) : (
-          <ul className="download-list" data-role="evidence">
+          <ul className="card-list" data-role="evidence">
             {history.map((run) => (
-              <li key={run.run_id} className="download-item">
+              <li key={run.run_id} className="surface-card">
                 <p>
                   <Link to="/runs/$runId" params={{ runId: run.run_id }}>
                     <Timestamp at={run.created_at} />

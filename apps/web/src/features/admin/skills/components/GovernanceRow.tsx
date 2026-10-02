@@ -12,7 +12,7 @@ const REDISTRIBUTION: Record<string, string> = {
 
 export function GovernanceRow({ skill, single }: { skill: SkillGovernance; single: boolean }) {
   return (
-    <li className="download-item">
+    <li className="surface-card">
       <p>
         <strong>{skill.name}</strong>
       </p>

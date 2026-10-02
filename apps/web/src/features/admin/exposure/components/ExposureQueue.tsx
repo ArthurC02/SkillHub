@@ -5,9 +5,9 @@ import { Timestamp } from "../../../../shared/ui/Timestamp";
 export function ExposureQueue({ entries }: { entries: ExposureQueueEntry[] }) {
   if (entries.length === 0) return <p>沒有等待審核的發佈物：0 筆。</p>;
   return (
-    <ul className="download-list">
+    <ul className="card-list">
       {entries.map((entry) => (
-        <li className="download-item" key={entry.address}>
+        <li className="surface-card" key={entry.address}>
           <p>
             <strong>
               {entry.publisher}/{entry.name}

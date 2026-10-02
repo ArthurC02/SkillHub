@@ -652,7 +652,10 @@ test("執行歷史 links each run to the exact immutable version that produced i
   );
   expect(fold, "the 小工具 Version id is not behind a disclosure").toBeTruthy();
   expect(fold!.textContent).toContain(VERSION);
-  const flat = Array.from(container.querySelectorAll(".download-item p"))
+  const rows = container.querySelectorAll("ul.card-list > .surface-card");
+  expect(rows).toHaveLength(2);
+  const flat = Array.from(rows)
+    .flatMap((row) => Array.from(row.querySelectorAll("p")))
     .map((p) => p.textContent ?? "")
     .join("");
   expect(flat, "the version id is flat on the row again").not.toContain(VERSION);

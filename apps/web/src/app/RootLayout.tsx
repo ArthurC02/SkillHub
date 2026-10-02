@@ -40,7 +40,9 @@ export function RootLayout() {
     <FeatureAvailabilityProvider creation={generateExposed && creationExposed}>
       <div
         className="app-shell platform-shell"
-        data-chat={pathname === "/workspace/creations" || undefined}
+        data-chat={
+          (pathname === "/workspace/creations" && generateExposed && creationExposed) || undefined
+        }
       >
         <a className="skip-link" href="#main-content">
           跳到主要內容

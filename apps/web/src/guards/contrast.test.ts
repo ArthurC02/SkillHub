@@ -40,7 +40,7 @@ const PAIRS: [fg: string, bg: string, min: number, where: string][] = [
   ["text", "bg", 4.5, "body and .note/.rank/.file-size on the page"],
   ["text", "code-bg", 4.5, ".skill-md and .diff body text"],
   ["text-h", "bg", 4.5, "h1/h2, summary, .app-title, .verdict"],
-  ["text-h", "code-bg", 4.5, "code, .counter, .badge"],
+  ["text-h", "code-bg", 4.5, "code, .badge"],
   ["danger", "bg", 4.5, ".file-script .script-tag"],
   ["danger", "code-bg", 4.5, ".badge-compat-failed/.badge-risk/.badge-expired text"],
   ["accent", "bg", 3, ".notice border-left — 1.4.11 non-text, never used as text"],

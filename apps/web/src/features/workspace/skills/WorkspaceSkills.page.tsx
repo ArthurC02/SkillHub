@@ -113,11 +113,11 @@ function SkillCard({
   onMessage: (message: string) => void;
 }) {
   return (
-    <li className="search-result skill-card" data-tone={toneOf(skill.skill_id)}>
+    <li className="surface-card tone-card skill-card" data-tone={toneOf(skill.skill_id)}>
       <Link className="skill-card-link" to="/skills/$skillId" params={{ skillId: skill.skill_id }}>
         <span className="skill-cover" aria-hidden="true" />
         <span className="skill-card-head">
-          <span className="skill-mono" aria-hidden="true">
+          <span className="tone-mark skill-mono" aria-hidden="true">
             {initialOf(skill.name)}
           </span>
           <strong className="skill-card-name">{skill.name}</strong>

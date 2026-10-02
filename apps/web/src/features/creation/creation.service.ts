@@ -106,6 +106,7 @@ export interface CreationSnapshot {
   blocked_repeats?: number;
   search_rounds?: number;
   pending_fetch_url?: string;
+  approved_fetch_url?: string;
   fetches?: CreationFetch[];
   draft?: {
     revision: number;

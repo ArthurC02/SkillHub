@@ -148,7 +148,7 @@ test("an activity row returns directly to its owner-backed 小工具, Version an
   vi.stubGlobal("fetch", () => json({ runs: [{ ...RUN_ROW, test_case_id: TEST_CASE }] }));
   await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
 
-  const row = container.querySelector(".download-item")!;
+  const row = container.querySelector("ul.card-list > .surface-card")!;
   expect(row.querySelector(`a[href="/skills/${SKILL}"]`)?.textContent).toContain("CSV 清理");
   expect(
     row.querySelector(`a[href="/skills/${SKILL}/versions/${RUN_ROW.skill_version_id}"]`)
@@ -162,7 +162,7 @@ test("a historic activity row without a 測試題 id does not invent a 測試題
   vi.stubGlobal("fetch", () => json({ runs: [RUN_ROW] }));
   await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
 
-  const row = container.querySelector(".download-item")!;
+  const row = container.querySelector("ul.card-list > .surface-card")!;
   expect(row.textContent).not.toContain("測試題");
   expect(row.querySelector(`a[href="/skills/${SKILL}"]`)).not.toBeNull();
   expect(
@@ -234,7 +234,7 @@ test("WS-004 activity groups every run by the decision its server facts support"
   expect(sectionText("最近結束")).toContain("最近完成的小工具");
   expect(sectionText("最近結束")).toContain("已取消的小工具");
   expect(sectionText("最近結束")).toContain("查看結果");
-  expect(container.querySelectorAll(".download-item")).toHaveLength(6);
+  expect(container.querySelectorAll("ul.card-list > .surface-card")).toHaveLength(6);
 });
 
 test("O11Y-004 the policy event table keeps its accessible columns in mobile cards", async () => {

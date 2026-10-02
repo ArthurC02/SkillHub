@@ -163,6 +163,37 @@
   height: 100dvh;
 }
 
+.platform-shell[data-chat] .app-header {
+  grid-template-areas: "title auth";
+  grid-template-columns: 256px minmax(0, 1fr);
+  min-height: 56px;
+  border-bottom: 1px solid var(--border);
+}
+
+.platform-shell[data-chat] .app-title {
+  color: var(--text-h);
+  background: var(--bg);
+  border-right-color: var(--border);
+}
+
+.platform-shell[data-chat] .app-title::before {
+  background: var(--accent);
+}
+
+.platform-shell[data-chat] .app-search,
+.platform-shell[data-chat] .app-sidebar {
+  display: none;
+}
+
+.platform-shell[data-chat] .app-header > [data-auth-controls],
+.platform-shell[data-chat] .app-header > [data-auth-controls] a {
+  color: var(--text-h);
+}
+
+.platform-shell[data-chat] .app-frame {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .platform-shell[data-chat] .app-frame,
 .platform-shell[data-chat] .app-content,
 .platform-shell[data-chat] main {
@@ -181,12 +212,17 @@
 
 .platform-shell[data-chat] .app-content {
   overflow: hidden;
+  background: var(--surface);
 }
 
 .platform-shell[data-chat] main {
   display: flex;
   flex: 1;
   flex-direction: column;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 
 .platform-shell[data-chat] .app-footer {
@@ -286,5 +322,27 @@
 
   .platform-shell .app-content {
     min-height: 0;
+  }
+
+  .platform-shell[data-chat] .app-header {
+    grid-template-areas: "title auth";
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 48px;
+    padding: 4px 12px;
+    background: var(--surface);
+  }
+
+  .platform-shell[data-chat] .app-title {
+    color: var(--text-h);
+    background: transparent;
+    border-right: 0;
+  }
+
+  .platform-shell[data-chat] .app-frame {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .platform-shell[data-chat] .app-sidebar {
+    display: none;
   }
 }

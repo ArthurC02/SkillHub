@@ -175,11 +175,11 @@
   border-radius: 10px;
 }
 
-.publishing-workspace .download-list {
+.publishing-workspace .card-list {
   gap: 8px;
 }
 
-.publishing-workspace .download-item {
+.publishing-workspace .surface-card {
   background: var(--code-bg);
   border: 0;
   box-shadow: none;
@@ -199,7 +199,7 @@
   gap: 8px;
 }
 
-.publishing-workspace .download-item[aria-current="location"] {
+.publishing-workspace .surface-card[aria-current="location"] {
   border-color: var(--accent-border);
   box-shadow: 0 0 0 2px var(--accent-bg);
   scroll-margin-block: 24px;

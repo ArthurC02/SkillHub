@@ -142,7 +142,9 @@ async function render(node: ReactNode = <CreationSession />) {
   await act(async () => new Promise((r) => setTimeout(r, 20)));
 }
 function button(text: string) {
-  const found = [...box.querySelectorAll("button")].find((b) => b.textContent === text);
+  const found = [...box.querySelectorAll("button")].find(
+    (b) => b.getAttribute("aria-label") === text || b.textContent === text,
+  );
   if (!found) throw Error("button missing " + text);
   return found;
 }
@@ -260,6 +262,24 @@ test("a blocked balance keeps the budget choices but drops the balance-and-estim
   expect(box.querySelector(".budget-picker")).not.toBeNull();
   expect(box.querySelector(".budget-picker .creation-fact")).toBeNull();
   expect(box.textContent).not.toContain("30–65 點");
+});
+
+test("a blocked balance without a reason still explains why the composer cannot start", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      if (url.endsWith("/me/credits")) {
+        return response(creditsResponse({ can_start: false, block_reason: "" }));
+      }
+      return routeGet(url, [], sample());
+    }),
+  );
+  await render();
+  await waitFor(() => box.textContent!.includes("目前無法開始創作"));
+  expect(box.querySelector("#composer-why")?.textContent).toBe(
+    "目前無法開始創作，請確認點數額度。",
+  );
+  expect(button(START).disabled).toBe(true);
 });
 async function attachDiagram(name = "flow.png", body = "diagram") {
   const el = box.querySelector('input[type="file"]') as HTMLInputElement;
@@ -1513,6 +1533,57 @@ test("choosing recent work closes the mobile list and focuses the current worksp
   expect(
     box.querySelector('.creation-session-item[aria-current="page"]')?.getAttribute("data-session"),
   ).toBe("s1");
+});
+
+test("switching sessions asks before discarding an unsent chat draft", async () => {
+  const current = sample();
+  const other = sample({ id: "s2" });
+  const onSessionChange = vi.fn();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [current, other], current)),
+  );
+
+  await render(<CreationSession sessionId="s1" onSessionChange={onSessionChange} />);
+  await waitFor(() => !!box.querySelector('.creation-session-item[data-session="s2"]'));
+  await input("想完成的任務", "尚未送出的草稿");
+  await act(async () =>
+    box.querySelector<HTMLButtonElement>('.creation-session-item[data-session="s2"]')!.click(),
+  );
+  expect(onSessionChange).not.toHaveBeenCalled();
+  expect(box.textContent).toContain("未送出的內容");
+  expect(document.activeElement?.textContent).toBe("繼續編輯");
+  expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe("尚未送出的草稿");
+
+  await click("繼續編輯");
+  expect(box.querySelector<HTMLTextAreaElement>("#creation-message")?.value).toBe("尚未送出的草稿");
+  await act(async () =>
+    box.querySelector<HTMLButtonElement>('.creation-session-item[data-session="s2"]')!.click(),
+  );
+  await click("捨棄並切換");
+  expect(onSessionChange).toHaveBeenCalledOnce();
+  expect(onSessionChange).toHaveBeenCalledWith("s2");
+});
+
+test("an attachment-only draft is protected when switching sessions", async () => {
+  const current = sample();
+  const other = sample({ id: "s2" });
+  const onSessionChange = vi.fn();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [current, other], current)),
+  );
+
+  await render(<CreationSession sessionId="s1" onSessionChange={onSessionChange} />);
+  await waitFor(() => !!box.querySelector('.creation-session-item[data-session="s2"]'));
+  await attachDiagram();
+  expect(box.textContent).toContain("移除流程圖：flow.png");
+  await act(async () =>
+    box.querySelector<HTMLButtonElement>('.creation-session-item[data-session="s2"]')!.click(),
+  );
+  expect(onSessionChange).not.toHaveBeenCalled();
+  expect(box.textContent).toContain("未送出的內容");
+  expect(box.textContent).toContain("移除流程圖：flow.png");
 });
 
 test("a failed session list stays in its rail while the exact current session remains usable", async () => {

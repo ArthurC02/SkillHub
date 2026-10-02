@@ -140,6 +140,23 @@ test("the platform shell keeps creation continuations closed until both gates ar
   ).toBe("false");
 });
 
+test("Studio uses a focused chat shell only when both creation gates are open", async () => {
+  mocks.pathname = "/workspace/creations";
+  mocks.generateExposed = true;
+  mocks.creationExposed = true;
+  await renderShell();
+
+  expect(container.querySelector(".platform-shell")?.hasAttribute("data-chat")).toBe(true);
+});
+
+test("an unavailable Studio route keeps the platform navigation", async () => {
+  mocks.pathname = "/workspace/creations";
+  mocks.generateExposed = true;
+  await renderShell();
+
+  expect(container.querySelector(".platform-shell")?.hasAttribute("data-chat")).toBe(false);
+});
+
 test("Catalog owns its search instead of receiving a duplicate shell form", async () => {
   mocks.pathname = "/";
   await renderShell();

@@ -286,9 +286,7 @@ test("creating a session makes the returned session addressable", async () => {
     task.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await act(async () => {
-    [...container.querySelectorAll("button")]
-      .find((button) => button.textContent === "開始創作")!
-      .click();
+    container.querySelector<HTMLButtonElement>('button[aria-label="開始創作"]')!.click();
   });
   await waitFor(() => router.state.location.search.session === SESSION_ID);
 
