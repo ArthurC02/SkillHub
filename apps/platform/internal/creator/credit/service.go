@@ -360,12 +360,15 @@ func (s *Service) Grant(ctx context.Context, tx DBTX, in GrantInput) (int64, err
 		return 0, err
 	}
 
-	balance, err := s.Store.ApplyGrant(ctx, tx, GrantEntry{
+	balance, applied, err := s.Store.ApplyGrant(ctx, tx, GrantEntry{
 		UserID: in.UserID, EntryKind: in.EntryKind, Credits: in.Credits,
 		Reason: in.Reason, OperatorID: in.OperatorID, IdempotencyKey: in.IdempotencyKey,
 	})
 	if err != nil {
 		return 0, err
+	}
+	if !applied {
+		return balance, nil
 	}
 	if err := audit.Log(ctx, tx, audit.Event{
 		Actor: in.OperatorID, Workspace: in.WorkspaceID, Action: audit.ActionCreditGrant,

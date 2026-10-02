@@ -26647,11 +26647,18 @@ func (s *GrantCreditsReq) encodeFields(e *jx.Encoder) {
 		e.FieldStart("reason")
 		e.Str(s.Reason)
 	}
+	{
+		if s.IdempotencyKey.Set {
+			e.FieldStart("idempotency_key")
+			s.IdempotencyKey.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfGrantCreditsReq = [2]string{
+var jsonFieldsNameOfGrantCreditsReq = [3]string{
 	0: "amount_credits",
 	1: "reason",
+	2: "idempotency_key",
 }
 
 // Decode decodes GrantCreditsReq from json.
@@ -26686,6 +26693,16 @@ func (s *GrantCreditsReq) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"reason\"")
+			}
+		case "idempotency_key":
+			if err := func() error {
+				s.IdempotencyKey.Reset()
+				if err := s.IdempotencyKey.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"idempotency_key\"")
 			}
 		default:
 			return d.Skip()

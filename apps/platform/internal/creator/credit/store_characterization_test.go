@@ -15,7 +15,7 @@ type preSplitStoreA interface {
 	RecordCostEvent(ctx context.Context, tx DBTX, e CostEvent) (id string, existed bool, err error)
 	CostEventExists(ctx context.Context, tx DBTX, idempotencyKey string) (bool, error)
 	ApplyDebit(ctx context.Context, tx DBTX, d DebitEntry) (balanceAfter int64, existed bool, err error)
-	ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (balanceAfter int64, err error)
+	ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (balanceAfter int64, applied bool, err error)
 	RecentStatistics(ctx context.Context, kind CostKind) (Statistics, error)
 	RecomputeStatistics(ctx context.Context, kind CostKind, windowStart, windowEnd time.Time) (Statistics, error)
 	SummarizeSession(ctx context.Context, tx DBTX, sessionID pgtype.UUID) error

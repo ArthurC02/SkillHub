@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	testlab "github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
@@ -50,7 +51,7 @@ func (l *creditLedger) SessionEstimate(ctx context.Context) (CreditSessionEstima
 	}, nil
 }
 
-func (l *creditLedger) Grant(ctx context.Context, workspaceID pgtype.UUID, amountCredits int64, reason string, actorUserID pgtype.UUID) (int64, error) {
+func (l *creditLedger) Grant(ctx context.Context, workspaceID pgtype.UUID, grant CreditGrant) (int64, error) {
 	userID, err := l.owner(ctx, workspaceID)
 	if err != nil {
 		return 0, err
@@ -61,14 +62,18 @@ func (l *creditLedger) Grant(ctx context.Context, workspaceID pgtype.UUID, amoun
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	idempotencyKey := "grant:" + uuid.NewString()
+	if grant.ClientKey != "" {
+		idempotencyKey = "grant:" + pgconv.UUIDString(userID) + ":" + grant.ClientKey
+	}
 	balance, err := l.svc.Grant(ctx, tx, credit.GrantInput{
 		UserID:         userID,
 		WorkspaceID:    workspaceID,
-		EntryKind:      credit.OperatorEntryKind(amountCredits),
-		Credits:        amountCredits,
-		Reason:         reason,
-		OperatorID:     actorUserID,
-		IdempotencyKey: "grant:" + uuid.NewString(),
+		EntryKind:      credit.OperatorEntryKind(grant.AmountCredits),
+		Credits:        grant.AmountCredits,
+		Reason:         grant.Reason,
+		OperatorID:     grant.ActorUserID,
+		IdempotencyKey: idempotencyKey,
 	})
 	if err != nil {
 		return 0, err

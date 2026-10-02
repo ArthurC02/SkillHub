@@ -2509,9 +2509,10 @@ paths:
         mechanism in the other direction — but never zero, which would write an
         entry that changes nothing while claiming an operator did something.
 
-        Not idempotent: nothing in this request identifies a retry, so two
-        identical calls are two grants. Deliberate for MVP, where a grant is a
-        deliberate act and each one is audited.
+        Idempotent only when the request carries `idempotency_key`: a replay of
+        the same key for the same account writes no second entry and no second
+        audit event, and answers with the balance as it stands. Without a key
+        nothing identifies a retry, so two identical calls are two grants.
       requestBody:
         required: true
         content:
@@ -2531,6 +2532,13 @@ paths:
                   description: |
                     Why. Required, non-empty after trimming, and recorded in the
                     audit event.
+                idempotency_key:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                  description: |
+                    Optional. Chosen by the caller once per submission and sent
+                    again unchanged when that submission is retried.
       responses:
         "200":
           description: The entry was written and the balance moved.
@@ -2547,7 +2555,7 @@ paths:
                     description: The balance after this grant.
                   amount_credits: { type: integer, format: int64 }
         "400":
-          description: Zero amount, or a missing reason.
+          description: Zero amount, a missing reason, or an `idempotency_key` outside 1 to 128 characters.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

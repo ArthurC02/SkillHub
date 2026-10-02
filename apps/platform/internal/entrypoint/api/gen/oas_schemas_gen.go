@@ -10989,6 +10989,9 @@ type GrantCreditsReq struct {
 	AmountCredits int64 `json:"amount_credits"`
 	// Why. Required, non-empty after trimming, and recorded in the audit event.
 	Reason string `json:"reason"`
+	// Optional. Chosen by the caller once per submission and sent again unchanged when that submission is
+	// retried.
+	IdempotencyKey OptString `json:"idempotency_key"`
 }
 
 // GetAmountCredits returns the value of AmountCredits.
@@ -11001,6 +11004,11 @@ func (s *GrantCreditsReq) GetReason() string {
 	return s.Reason
 }
 
+// GetIdempotencyKey returns the value of IdempotencyKey.
+func (s *GrantCreditsReq) GetIdempotencyKey() OptString {
+	return s.IdempotencyKey
+}
+
 // SetAmountCredits sets the value of AmountCredits.
 func (s *GrantCreditsReq) SetAmountCredits(val int64) {
 	s.AmountCredits = val
@@ -11009,6 +11017,11 @@ func (s *GrantCreditsReq) SetAmountCredits(val int64) {
 // SetReason sets the value of Reason.
 func (s *GrantCreditsReq) SetReason(val string) {
 	s.Reason = val
+}
+
+// SetIdempotencyKey sets the value of IdempotencyKey.
+func (s *GrantCreditsReq) SetIdempotencyKey(val OptString) {
+	s.IdempotencyKey = val
 }
 
 // Ref: #/components/schemas/Health

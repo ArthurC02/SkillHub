@@ -129,10 +129,10 @@ func (s *PostgresStore) ApplyDebit(ctx context.Context, tx DBTX, d DebitEntry) (
 	return balance, false, nil
 }
 
-func (s *PostgresStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (int64, error) {
+func (s *PostgresStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (int64, bool, error) {
 	q := s.q(tx)
 	if err := q.EnsureCreditAccount(ctx, g.UserID); err != nil {
-		return 0, fmt.Errorf("credit: ensure account: %w", err)
+		return 0, false, fmt.Errorf("credit: ensure account: %w", err)
 	}
 	_, err := q.InsertCreditEntry(ctx, gen.InsertCreditEntryParams{
 		UserID:         g.UserID,
@@ -143,18 +143,19 @@ func (s *PostgresStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (
 	})
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) && !pgconv.IsUniqueViolation(err) {
-			return 0, fmt.Errorf("credit: insert grant: %w", err)
+			return 0, false, fmt.Errorf("credit: insert grant: %w", err)
 		}
-		return s.balanceIn(ctx, q, g.UserID)
+		balance, readErr := s.balanceIn(ctx, q, g.UserID)
+		return balance, false, readErr
 	}
 	balance, err := q.AdjustCreditBalance(ctx, gen.AdjustCreditBalanceParams{
 		DeltaCredits: g.Credits,
 		UserID:       g.UserID,
 	})
 	if err != nil {
-		return 0, fmt.Errorf("credit: apply grant to balance: %w", err)
+		return 0, false, fmt.Errorf("credit: apply grant to balance: %w", err)
 	}
-	return balance, nil
+	return balance, true, nil
 }
 
 func (s *PostgresStore) balanceIn(ctx context.Context, q *gen.Queries, userID pgtype.UUID) (int64, error) {

@@ -49,9 +49,9 @@ func (f *fakeCreditLedger) SessionEstimate(context.Context) (CreditSessionEstima
 	return f.estimate, nil
 }
 
-func (f *fakeCreditLedger) Grant(_ context.Context, workspaceID pgtype.UUID, amount int64, _ string, _ pgtype.UUID) (int64, error) {
+func (f *fakeCreditLedger) Grant(_ context.Context, workspaceID pgtype.UUID, grant CreditGrant) (int64, error) {
 	key := pgconv.UUIDString(workspaceID)
-	f.balances[key] += amount
+	f.balances[key] += grant.AmountCredits
 	return f.balances[key], nil
 }
 

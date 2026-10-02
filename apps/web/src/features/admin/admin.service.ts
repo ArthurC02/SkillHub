@@ -163,7 +163,7 @@ export function useCreditLedger(workspaceId: string) {
 export function useGrantCredits(workspaceId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { amount_credits: number; reason: string }) =>
+    mutationFn: (body: { amount_credits: number; reason: string; idempotency_key: string }) =>
       apiFetch<{ balance_credits: number; amount_credits: number }>(
         `/admin/credits/${workspaceId}/grants`,
         send("POST", body),

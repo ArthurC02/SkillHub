@@ -284,10 +284,37 @@ test("OPS-003: a grant waits for a non-zero whole amount and a reason, then post
   expect(calls.find((c) => c.method === "POST")?.body).toEqual({
     amount_credits: 50,
     reason: "beta reward",
+    idempotency_key: expect.stringMatching(/^[0-9a-f-]{36}$/),
   });
   await waitFor(() => ledgerReads() > before);
   await type("#admin-grant-amount", "75");
   expect(has("已授予 50 點，餘額現在是 170 點。")()).toBe(false);
+});
+
+test("OPS-003: a failed grant is retried under the same key, and the next grant gets a fresh one", async () => {
+  let attempt = 0;
+  stub(true, (path, method) => {
+    if (method !== "POST" || !path.endsWith("/grants")) return undefined;
+    attempt += 1;
+    return attempt === 1
+      ? { body: { error: "grant failed" }, status: 500 }
+      : { body: { workspace_id: "ws-2", balance_credits: 60, amount_credits: 10 }, status: 200 };
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-amount", "10");
+  await type("#admin-grant-note", "r");
+  await click(button("授予"));
+  await waitFor(has("沒有完成，伺服器說：grant failed"));
+  await click(button("授予"));
+  await waitFor(has("已授予 10 點，餘額現在是 60 點。"));
+  await click(button("授予"));
+  await waitFor(() => calls.filter((c) => c.method === "POST").length === 3);
+  const keys = calls
+    .filter((c) => c.method === "POST")
+    .map((c) => (c.body as { idempotency_key: string }).idempotency_key);
+  expect(keys[1]).toBe(keys[0]);
+  expect(keys[2]).not.toBe(keys[0]);
 });
 
 test("OPS-003: a refused grant says so with the server's words", async () => {

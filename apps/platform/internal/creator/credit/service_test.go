@@ -73,10 +73,14 @@ func (f *fakeStore) ApplyDebit(ctx context.Context, tx DBTX, d DebitEntry) (int6
 	return f.balances[key], false, nil
 }
 
-func (f *fakeStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (int64, error) {
+func (f *fakeStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (int64, bool, error) {
 	key := idKey(g.UserID)
+	if f.applied[g.IdempotencyKey] {
+		return f.balances[key], false, nil
+	}
+	f.applied[g.IdempotencyKey] = true
 	f.balances[key] += g.Credits
-	return f.balances[key], nil
+	return f.balances[key], true, nil
 }
 
 func (f *fakeStore) RecentStatistics(ctx context.Context, kind CostKind) (Statistics, error) {
@@ -390,6 +394,59 @@ func TestGrantAppliesToBalance(t *testing.T) {
 	}
 	if balance != 50 {
 		t.Fatalf("balance after a 50-credit grant = %d, want 50", balance)
+	}
+}
+
+type execCountingTx struct {
+	fakeTx
+	execs int
+}
+
+func (c *execCountingTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	c.execs++
+	return c.fakeTx.Exec(ctx, sql, args...)
+}
+
+func TestReplayingAGrantKeyGrantsAndAuditsOnce(t *testing.T) {
+	s := &Service{Store: newFakeStore(), Config: testConfig()}
+	tx := &execCountingTx{}
+	in := GrantInput{
+		UserID: testUser(30), EntryKind: EntryGrant, Credits: 50, Reason: "beta reward",
+		OperatorID: testUser(99), IdempotencyKey: "grant:replayed",
+	}
+	first, err := s.Grant(context.Background(), tx, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := s.Grant(context.Background(), tx, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first != 50 || second != 50 {
+		t.Fatalf("balances after the grant and its replay = %d and %d, want 50 and 50", first, second)
+	}
+	if tx.execs != 1 {
+		t.Fatalf("audit writes after the grant and its replay = %d, want 1", tx.execs)
+	}
+}
+
+func TestDistinctGrantKeysEachGrantAndAudit(t *testing.T) {
+	s := &Service{Store: newFakeStore(), Config: testConfig()}
+	tx := &execCountingTx{}
+	in := GrantInput{
+		UserID: testUser(31), EntryKind: EntryGrant, Credits: 50, Reason: "beta reward",
+		OperatorID: testUser(99), IdempotencyKey: "grant:one",
+	}
+	if _, err := s.Grant(context.Background(), tx, in); err != nil {
+		t.Fatal(err)
+	}
+	in.IdempotencyKey = "grant:two"
+	balance, err := s.Grant(context.Background(), tx, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if balance != 100 || tx.execs != 2 {
+		t.Fatalf("after two keys: balance %d, audit writes %d; want 100 and 2", balance, tx.execs)
 	}
 }
 

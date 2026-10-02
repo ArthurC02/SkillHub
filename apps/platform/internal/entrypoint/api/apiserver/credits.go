@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -29,12 +30,19 @@ type CreditSessionEstimate struct {
 	Estimated bool
 }
 
+type CreditGrant struct {
+	AmountCredits int64
+	Reason        string
+	ActorUserID   pgtype.UUID
+	ClientKey     string
+}
+
 type CreditLedger interface {
 	Standing(ctx context.Context, workspaceID pgtype.UUID) (balance int64, canStart bool, err error)
 
 	SessionEstimate(ctx context.Context) (CreditSessionEstimate, error)
 
-	Grant(ctx context.Context, workspaceID pgtype.UUID, amountCredits int64, reason string, actorUserID pgtype.UUID) (newBalance int64, err error)
+	Grant(ctx context.Context, workspaceID pgtype.UUID, grant CreditGrant) (newBalance int64, err error)
 
 	Ledger(ctx context.Context, workspaceID, operatorID pgtype.UUID) (credit.Ledger, error)
 
@@ -259,7 +267,11 @@ const maxCreditGrantRequestBytes = 4096
 type creditGrantRequest struct {
 	AmountCredits int64  `json:"amount_credits"`
 	Reason        string `json:"reason"`
+
+	IdempotencyKey *string `json:"idempotency_key"`
 }
+
+const maxGrantIdempotencyKeyRunes = 128
 
 type creditGrantResponse struct {
 	WorkspaceID    string `json:"workspace_id"`
@@ -284,7 +296,15 @@ func (h *creditsHandler) Grant(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	balance, err := h.Ledger.Grant(r.Context(), workspaceID, body.AmountCredits, body.Reason, actor.ID)
+	clientKey := ""
+	if body.IdempotencyKey != nil {
+		clientKey = *body.IdempotencyKey
+		if n := utf8.RuneCountInString(clientKey); n < 1 || n > maxGrantIdempotencyKeyRunes {
+			httpx.WriteError(w, http.StatusBadRequest, "idempotency_key must be 1 to 128 characters")
+			return
+		}
+	}
+	balance, err := h.Ledger.Grant(r.Context(), workspaceID, CreditGrant{AmountCredits: body.AmountCredits, Reason: body.Reason, ActorUserID: actor.ID, ClientKey: clientKey})
 	switch {
 	case errors.Is(err, identity.ErrWorkspaceNotFound):
 		httpx.WriteError(w, http.StatusNotFound, "not found")
