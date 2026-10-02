@@ -178,6 +178,28 @@ func TestInspectZipKeepsTheUnpackBudgetForOOXML(t *testing.T) {
 	}
 }
 
+func TestInspectZipUnpackBudgetIsExactAndSurvivesSizeWraparound(t *testing.T) {
+	budget := uint64(MaxTestCaseBytes)
+	for _, tc := range []struct {
+		name    string
+		entries map[string]uint64
+		wantErr error
+	}{
+		{"one entry exactly at the budget", map[string]uint64{"a.xml": budget}, nil},
+		{"two entries summing exactly to the budget", map[string]uint64{"a.xml": budget - 1, "b.xml": 1}, nil},
+		{"two entries one byte over the budget", map[string]uint64{"a.xml": budget, "b.xml": 1}, ErrLimitExceeded},
+		{"two entries whose declared sizes wrap to zero", map[string]uint64{"a.xml": 1 << 63, "b.xml": 1 << 63}, ErrLimitExceeded},
+		{"two entries whose declared sizes wrap to a small sum", map[string]uint64{"a.xml": 1<<64 - 1, "b.xml": 11}, ErrLimitExceeded},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := detectContentType(bytes.NewReader(zipDeclaring(t, tc.entries)))
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("err = %v, want %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestSanitizeFileName(t *testing.T) {
 	cases := map[string]string{
 		"data.csv":               "data.csv",
