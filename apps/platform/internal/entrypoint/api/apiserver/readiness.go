@@ -17,7 +17,10 @@ type readinessResponse struct {
 	Detail       string        `json:"detail,omitempty"`
 }
 
-const readinessReuse = 2 * time.Second
+const (
+	readinessReuse     = 2 * time.Second
+	readinessProbeWait = 3 * time.Second
+)
 
 type sharedReadiness struct {
 	reg        *envx.Registry
@@ -31,7 +34,9 @@ func (s *sharedReadiness) report(ctx context.Context) []envx.Status {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.rows == nil || time.Since(s.taken) >= readinessReuse {
-		s.rows, s.taken = s.reg.Report(ctx, os.Getenv), time.Now()
+		probeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), readinessProbeWait)
+		defer cancel()
+		s.rows, s.taken = s.reg.Report(probeCtx, os.Getenv), time.Now()
 		if !s.showsWhyNo {
 			for i := range s.rows {
 				s.rows[i].Missing = nil
@@ -56,10 +61,7 @@ func readinessHandler(d Deps) http.HandlerFunc {
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-		defer cancel()
-
-		rows := shared.report(ctx)
+		rows := shared.report(r.Context())
 		httpx.WriteJSON(w, http.StatusOK, readinessResponse{
 			Ready: envx.AllReady(rows), Capabilities: rows,
 		})
