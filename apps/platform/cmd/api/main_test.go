@@ -509,6 +509,12 @@ func cleanModeFallbackStubRun(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte(`{"run":"real-id"}`))
 }
 
+func cleanModeFallbackStubSignedOut(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	_, _ = w.Write([]byte(`{"error":"sign in first"}`))
+}
+
 func cleanModeFallbackStubDownload(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/zip")
 	w.WriteHeader(http.StatusOK)
@@ -537,6 +543,7 @@ func newCleanModeFallbackStubAPI() http.Handler {
 	mux.HandleFunc("/auth/github/callback", cleanModeFallbackStubOAuthCallback)
 	mux.HandleFunc("/auth/github/callback/fail", cleanModeFallbackStubOAuthFailure)
 	mux.HandleFunc("/runs/real-id", cleanModeFallbackStubRun)
+	mux.HandleFunc("/runs/guarded-id", cleanModeFallbackStubSignedOut)
 	mux.HandleFunc("/downloads/pkg", cleanModeFallbackStubDownload)
 	mux.HandleFunc("/skills/abc-123", cleanModeFallbackStubSkillDetail)
 	mux.HandleFunc("/", cleanModeFallbackStubNotFound)
@@ -564,6 +571,16 @@ func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
 			name: "refreshing a page whose address is also an API resource", method: http.MethodGet,
 			path: "/runs/real-id", accept: "text/html,application/xhtml+xml",
 			wantCode: http.StatusOK, wantHTML: true,
+		},
+		{
+			name: "reloading a guarded page while signed out loads the app", method: http.MethodGet,
+			path: "/runs/guarded-id", accept: "text/html,application/xhtml+xml",
+			wantCode: http.StatusOK, wantHTML: true,
+		},
+		{
+			name: "a fetch for a guarded resource while signed out still gets 401", method: http.MethodGet,
+			path: "/runs/guarded-id", accept: "application/json",
+			wantCode: http.StatusUnauthorized,
 		},
 		{
 			name: "the OAuth callback still reaches the API", method: http.MethodGet,
