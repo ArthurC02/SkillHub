@@ -82,11 +82,9 @@ func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
 		Login:          name,
 	})
 	if err != nil {
-		if errors.Is(err, ErrAccountPurging) {
-			httpx.WriteError(w, http.StatusConflict, "account deletion is in progress")
-			return
+		if !writeRefusedLogin(w, err) {
+			httpx.WriteError(w, http.StatusInternalServerError, "login failed")
 		}
-		httpx.WriteError(w, http.StatusInternalServerError, "login failed")
 		return
 	}
 	h.setSessionCookie(w, token)
@@ -142,12 +140,7 @@ func (h *Handler) finishLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	token, err := h.Service.LoginOrSignup(ctx, external)
 	if err != nil {
-		if errors.Is(err, ErrAccountPurging) {
-			httpx.WriteError(w, http.StatusConflict, "account deletion is in progress")
-			return
-		}
-		if errors.Is(err, ErrEmailTaken) {
-			httpx.WriteError(w, http.StatusConflict, "這個 email 已經被另一個帳號使用，無法用這個 GitHub 帳號登入")
+		if writeRefusedLogin(w, err) {
 			return
 		}
 		slog.Error("login failed", "error", err)
@@ -590,4 +583,16 @@ func writeGitHubFailure(w http.ResponseWriter, err error, refusal string) {
 		return
 	}
 	httpx.WriteError(w, http.StatusUnauthorized, refusal)
+}
+
+func writeRefusedLogin(w http.ResponseWriter, err error) bool {
+	switch {
+	case errors.Is(err, ErrAccountPurging):
+		httpx.WriteError(w, http.StatusConflict, "account deletion is in progress")
+	case errors.Is(err, ErrEmailTaken):
+		httpx.WriteError(w, http.StatusConflict, "這個 email 已經被另一個帳號使用，無法用這個帳號登入")
+	default:
+		return false
+	}
+	return true
 }

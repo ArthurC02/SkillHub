@@ -116,3 +116,17 @@ func TestTheCallbackAnswersAnEmailTakenSignupWith409AndAPlainMessage(t *testing.
 		}
 	}
 }
+
+func TestADevLoginWhoseEmailBelongsToAnotherAccountAnswers409(t *testing.T) {
+	pool := signupPool(t)
+	name := "dev-" + uuid.NewString()[:8]
+	seedUser(t, pool, name+"@dev.local", false)
+	h := &Handler{Service: &Service{Pool: pool}}
+	w := httptest.NewRecorder()
+
+	h.devLogin(w, httptest.NewRequest(http.MethodPost, "/auth/dev-login", strings.NewReader(`{"user":"`+strings.ToUpper(name)+`"}`)))
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("dev login = %d (%s), want 409", w.Code, w.Body.String())
+	}
+}
