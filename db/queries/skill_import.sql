@@ -34,7 +34,7 @@ INSERT INTO generation_leases (workspace_id, expires_at)
 VALUES (@workspace_id, now() + @lease::interval)
 ON CONFLICT (workspace_id) DO UPDATE SET expires_at = EXCLUDED.expires_at
 WHERE generation_leases.expires_at <= now()
-RETURNING workspace_id;
+RETURNING expires_at;
 
 -- name: ReleaseGenerationLease :exec
-DELETE FROM generation_leases WHERE workspace_id = @workspace_id;
+DELETE FROM generation_leases WHERE workspace_id = @workspace_id AND expires_at = @held_until;

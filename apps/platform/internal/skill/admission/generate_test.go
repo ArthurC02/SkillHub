@@ -212,13 +212,13 @@ func TestExactlyTheDescriptionLengthBoundsAreAccepted(t *testing.T) {
 	}
 }
 
-func mustHold(t *testing.T, svc *Service, ws pgtype.UUID) bool {
+func mustHold(t *testing.T, svc *Service, ws pgtype.UUID) (pgtype.Timestamptz, bool) {
 	t.Helper()
-	held, err := svc.holdGenerateSlot(t.Context(), ws)
+	lease, held, err := svc.holdGenerateSlot(t.Context(), ws)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return held
+	return lease, held
 }
 
 func TestOneGenerationPerWorkspaceAtATimeAcrossAPIInstances(t *testing.T) {
@@ -228,25 +228,53 @@ func TestOneGenerationPerWorkspaceAtATimeAcrossAPIInstances(t *testing.T) {
 	first := &Service{Pool: pool}
 	second := &Service{Pool: pool, LLM: ModelOrNone(&llmclient.Client{})}
 
-	if !mustHold(t, first, ws.ID) {
+	firstLease, held := mustHold(t, first, ws.ID)
+	if !held {
 		t.Fatal("the first hold on a fresh workspace failed")
 	}
-	if mustHold(t, second, ws.ID) {
+	if _, held := mustHold(t, second, ws.ID); held {
 		t.Fatal("a second API instance took the slot the first one holds")
 	}
 	if _, err := second.GenerateSkill(t.Context(), ws, GenerateInput{TaskDescription: "把掃描的單據整理成表格。"}); !errors.Is(err, ErrGenerateInFlight) {
 		t.Fatalf("err = %v, want ErrGenerateInFlight", err)
 	}
-	if !mustHold(t, second, other.ID) {
+	otherLease, held := mustHold(t, second, other.ID)
+	if !held {
 		t.Error("a second workspace was blocked by the first workspace's slot")
 	}
-	second.releaseGenerateSlot(t.Context(), other.ID)
+	second.releaseGenerateSlot(t.Context(), other.ID, otherLease)
 
-	first.releaseGenerateSlot(t.Context(), ws.ID)
-	if !mustHold(t, second, ws.ID) {
+	first.releaseGenerateSlot(t.Context(), ws.ID, firstLease)
+	secondLease, held := mustHold(t, second, ws.ID)
+	if !held {
 		t.Error("the slot was not released")
 	}
-	second.releaseGenerateSlot(t.Context(), ws.ID)
+	second.releaseGenerateSlot(t.Context(), ws.ID, secondLease)
+}
+
+func TestAGenerationWaitingOnTheSlotIsNotJudgedAgainstTheAllowanceBeforeItHoldsIt(t *testing.T) {
+	pool := requireCreationDB(t)
+	ws := seedCreationWorkspace(t, pool, "generate-admitted-under-the-slot")
+	running := &Service{Pool: pool}
+	creditAsked := false
+	waiting := &Service{Pool: pool, LLM: ModelOrNone(&llmclient.Client{}),
+		CreditCanStart: func(context.Context, pgtype.UUID) (bool, error) {
+			creditAsked = true
+			return false, nil
+		}}
+
+	lease, held := mustHold(t, running, ws.ID)
+	if !held {
+		t.Fatal("the first hold failed")
+	}
+	defer running.releaseGenerateSlot(t.Context(), ws.ID, lease)
+
+	_, err := waiting.GenerateSkill(t.Context(), ws, GenerateInput{TaskDescription: "把掃描的單據整理成表格。"})
+	if !errors.Is(err, ErrGenerateInFlight) || creditAsked {
+		t.Errorf("err = %v, credit asked = %v; want ErrGenerateInFlight before any credit or allowance read: "+
+			"a check made while another generation is still spending reads a balance that generation has not "+
+			"yet charged, so the waiting one could start after it on a stale admission", err, creditAsked)
+	}
 }
 
 func TestAnExpiredGenerationLeaseIsTakenOver(t *testing.T) {
@@ -254,16 +282,45 @@ func TestAnExpiredGenerationLeaseIsTakenOver(t *testing.T) {
 	ws := seedCreationWorkspace(t, pool, "generate-lease-expired")
 	crashed, next := &Service{Pool: pool}, &Service{Pool: pool}
 
-	if !mustHold(t, crashed, ws.ID) {
+	if _, held := mustHold(t, crashed, ws.ID); !held {
 		t.Fatal("the first hold failed")
 	}
-	if _, err := pool.Exec(t.Context(), `UPDATE generation_leases SET expires_at = now() - interval '1 second' WHERE workspace_id = $1`, ws.ID); err != nil {
-		t.Fatal(err)
-	}
-	if !mustHold(t, next, ws.ID) {
+	expireLease(t, pool, ws.ID)
+	lease, held := mustHold(t, next, ws.ID)
+	if !held {
 		t.Fatal("a lease left by an instance that died was never taken over")
 	}
-	next.releaseGenerateSlot(t.Context(), ws.ID)
+	next.releaseGenerateSlot(t.Context(), ws.ID, lease)
+}
+
+func TestAHolderThatOutlivedItsLeaseDoesNotReleaseTheNextHolders(t *testing.T) {
+	pool := requireCreationDB(t)
+	ws := seedCreationWorkspace(t, pool, "generate-lease-outlived")
+	slow, next, third := &Service{Pool: pool}, &Service{Pool: pool}, &Service{Pool: pool}
+
+	slowLease, held := mustHold(t, slow, ws.ID)
+	if !held {
+		t.Fatal("the first hold failed")
+	}
+	expireLease(t, pool, ws.ID)
+	nextLease, held := mustHold(t, next, ws.ID)
+	if !held {
+		t.Fatal("the expired lease was not taken over")
+	}
+	defer next.releaseGenerateSlot(t.Context(), ws.ID, nextLease)
+
+	slow.releaseGenerateSlot(t.Context(), ws.ID, slowLease)
+	if _, held := mustHold(t, third, ws.ID); held {
+		t.Error("a holder that ran past its lease released the lease another request now holds, " +
+			"so a third generation started beside the second")
+	}
+}
+
+func expireLease(t *testing.T, pool *pgxpool.Pool, workspaceID pgtype.UUID) {
+	t.Helper()
+	if _, err := pool.Exec(t.Context(), `UPDATE generation_leases SET expires_at = now() - interval '1 second' WHERE workspace_id = $1`, workspaceID); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestAGenerationSlotIsReleasedEvenWhenTheRequestWasCancelled(t *testing.T) {
@@ -271,16 +328,18 @@ func TestAGenerationSlotIsReleasedEvenWhenTheRequestWasCancelled(t *testing.T) {
 	ws := seedCreationWorkspace(t, pool, "generate-lease-cancelled")
 	svc := &Service{Pool: pool}
 
-	if !mustHold(t, svc, ws.ID) {
+	lease, held := mustHold(t, svc, ws.ID)
+	if !held {
 		t.Fatal("the first hold failed")
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	svc.releaseGenerateSlot(ctx, ws.ID)
-	if !mustHold(t, svc, ws.ID) {
+	svc.releaseGenerateSlot(ctx, ws.ID, lease)
+	again, held := mustHold(t, svc, ws.ID)
+	if !held {
 		t.Fatal("a client that disconnected left its workspace unable to generate until the lease expires")
 	}
-	svc.releaseGenerateSlot(t.Context(), ws.ID)
+	svc.releaseGenerateSlot(t.Context(), ws.ID, again)
 }
 
 func mustUUIDForTest(t *testing.T, s string) pgtype.UUID {

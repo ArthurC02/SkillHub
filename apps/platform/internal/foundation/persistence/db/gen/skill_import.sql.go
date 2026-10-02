@@ -16,7 +16,7 @@ INSERT INTO generation_leases (workspace_id, expires_at)
 VALUES ($1, now() + $2::interval)
 ON CONFLICT (workspace_id) DO UPDATE SET expires_at = EXCLUDED.expires_at
 WHERE generation_leases.expires_at <= now()
-RETURNING workspace_id
+RETURNING expires_at
 `
 
 type AcquireGenerationLeaseParams struct {
@@ -24,11 +24,11 @@ type AcquireGenerationLeaseParams struct {
 	Lease       pgtype.Interval
 }
 
-func (q *Queries) AcquireGenerationLease(ctx context.Context, arg AcquireGenerationLeaseParams) (pgtype.UUID, error) {
+func (q *Queries) AcquireGenerationLease(ctx context.Context, arg AcquireGenerationLeaseParams) (pgtype.Timestamptz, error) {
 	row := q.db.QueryRow(ctx, acquireGenerationLease, arg.WorkspaceID, arg.Lease)
-	var workspace_id pgtype.UUID
-	err := row.Scan(&workspace_id)
-	return workspace_id, err
+	var expires_at pgtype.Timestamptz
+	err := row.Scan(&expires_at)
+	return expires_at, err
 }
 
 const countGeneratedSkills = `-- name: CountGeneratedSkills :one
@@ -207,10 +207,15 @@ func (q *Queries) OldestSourceCheck(ctx context.Context, sourceType string) (pgt
 }
 
 const releaseGenerationLease = `-- name: ReleaseGenerationLease :exec
-DELETE FROM generation_leases WHERE workspace_id = $1
+DELETE FROM generation_leases WHERE workspace_id = $1 AND expires_at = $2
 `
 
-func (q *Queries) ReleaseGenerationLease(ctx context.Context, workspaceID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, releaseGenerationLease, workspaceID)
+type ReleaseGenerationLeaseParams struct {
+	WorkspaceID pgtype.UUID
+	HeldUntil   pgtype.Timestamptz
+}
+
+func (q *Queries) ReleaseGenerationLease(ctx context.Context, arg ReleaseGenerationLeaseParams) error {
+	_, err := q.db.Exec(ctx, releaseGenerationLease, arg.WorkspaceID, arg.HeldUntil)
 	return err
 }

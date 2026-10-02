@@ -413,6 +413,9 @@ func generateRefusal(err error) (status int, message string, refused bool) {
 	case errors.Is(err, ErrGenerateTooLong):
 		return http.StatusUnprocessableEntity,
 			"這段任務描述超過一次生成能吃下的長度。請留下要做什麼、輸入是什麼、預期產出是什麼，其餘可以省略。", true
+	case errors.Is(err, ErrGenerateSlotUnavailable):
+		return http.StatusServiceUnavailable,
+			"目前無法確認這個工作區是否已有生成在進行，所以沒有呼叫模型、也沒有花錢。稍後再試。", true
 	case errors.Is(err, ErrGenerateInFlight):
 
 		return http.StatusConflict,
