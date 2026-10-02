@@ -1,0 +1,118 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-preflight-facts-follow-the-held-facts",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "run-preflight-facts-citation-follows-the-held-facts",
+  "status": "applied",
+  "change_classification": "material",
+  "submitted_at": "2026-10-02T08:47:58.175924Z",
+  "verified_at": "2026-10-02T08:48:08.421423Z",
+  "finalized_at": "2026-10-02T08:48:09.085364Z",
+  "applied_at": "2026-10-02T08:48:09.570364Z",
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "b38c98d658122921ed859162d1b456fc83417480",
+    "registry_digest": "sha256:d75493e27760f5054a1ffa592bf40193d910cb0bf71cae4ce535add36d14e15b"
+  },
+  "affected_contexts": [
+    "registry",
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [
+    "registry-run-facts-v1"
+  ],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Registry owns Skill and Version facts; Run reads them and never writes them.",
+    "evidence": [
+      "apps/platform/internal/trial/execution/preflight.go:196-219"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Run reads Registry-owned Skill and Version facts through a reader the composition root injects; Run never reaches into Registry storage.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "run -> registry persistence"
+    ],
+    "evidence": [
+      "apps/platform/internal/trial/execution/preflight.go:196-219"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Run creation now reads the package scan and the provider answers before its transaction and hands them to preflight with the rows it already holds, so the struct that carries them and the code around it changed the cited lines.",
+      "The Version read moved out of the summary into its own function beside the public entry, so the refusal without a reader and the read through it sit in one range.",
+      "What the lines establish is unchanged: the Version is read through the injected Registry reader, and a missing reader is refused before anything is read."
+    ],
+    "decision": "Cite the public entry through the function that reads the Version, the lines that now carry both the refusal and the read.",
+    "invariants_preserved": [
+      "Registry owns Skill and Version facts; Run reads them and never writes them."
+    ],
+    "rejected_alternatives": [
+      "Leave the Version read inline in the summary: the summary exceeds the length limit, and the citation would have to span the held-facts types that have nothing to do with Registry.",
+      "Cite only the line that calls the reader: the refusal when no reader is injected is part of what makes the collaboration safe, and it would fall outside the citation."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "refreshed-citation-current",
+      "old-citation-no-longer-verifies",
+      "fact-reader-contract-holds",
+      "preflight-refuses-without-a-reader",
+      "run-creation-reads-no-package-under-lock",
+      "audit-chain-intact"
+    ],
+    "counterfactual_check": "old-citation-no-longer-verifies"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "registry-run-preflight-facts",
+        "producer_context": "registry",
+        "consumer_context": "run",
+        "contract_id": "registry-run-facts-v1",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/preflight.go",
+            "lines": {
+              "start": 196,
+              "end": 219
+            },
+            "content_sha256": "sha256:e10576bc8f08b51ca9a9d096400675b65dfcac3ae091b58a6277477caf639308",
+            "excerpt_sha256": "sha256:0e7d275dfffb71434b32074faa03d716223531b42e45026afe560096c33f5f0b",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "open_questions": [],
+  "supersedes": "run-preflight-facts-follow-their-lines",
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-02T08:47:59.068189Z",
+      "scope": "The citation of the interaction registry-run-preflight-facts, moved to the lines where preflight now refuses without a Registry reader and reads Version facts through it; the interaction itself is unchanged",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "b38c98d658122921ed859162d1b456fc83417480",
+        "registry_digest": "sha256:d75493e27760f5054a1ffa592bf40193d910cb0bf71cae4ce535add36d14e15b"
+      }
+    }
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "b38c98d658122921ed859162d1b456fc83417480",
+    "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+  }
+}

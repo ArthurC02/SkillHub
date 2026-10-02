@@ -14,27 +14,27 @@
           "path": "apps/platform/internal/trial/execution/preflight.go",
           "lines": {
             "start": 196,
-            "end": 242
+            "end": 219
           },
-          "content_sha256": "sha256:79b6fb00b206a94a8852f9cc05488ca2e560eed4c4327d80c61678a1ef07df14",
-          "excerpt_sha256": "sha256:6c12e5701b5402dda739cc0d2c4ef588d366a2cb4ebd931086f83344e85b93f2",
+          "content_sha256": "sha256:e10576bc8f08b51ca9a9d096400675b65dfcac3ae091b58a6277477caf639308",
+          "excerpt_sha256": "sha256:0e7d275dfffb71434b32074faa03d716223531b42e45026afe560096c33f5f0b",
           "source_kind": "implementation"
         }
       ],
       "review": {
-        "proposal_id": "run-preflight-facts-follow-their-lines",
+        "proposal_id": "run-preflight-facts-follow-the-held-facts",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-28T01:58:48.396739Z",
-            "scope": "The citation of the interaction registry-run-preflight-facts, moved to the lines where preflight now reads Registry-owned Version facts; the interaction itself is unchanged",
+            "approved_at": "2026-10-02T08:47:59.068189Z",
+            "scope": "The citation of the interaction registry-run-preflight-facts, moved to the lines where preflight now refuses without a Registry reader and reads Version facts through it; the interaction itself is unchanged",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "2d30c5ff8750ac085af83f0c22678cdb5dacce88",
-              "registry_digest": "sha256:ab33e10f330bd8481455437a66edd2a549c98875344d37c8ad713aea91e4bc77"
+              "observed_commit": "b38c98d658122921ed859162d1b456fc83417480",
+              "registry_digest": "sha256:d75493e27760f5054a1ffa592bf40193d910cb0bf71cae4ce535add36d14e15b"
             }
           }
         ]
