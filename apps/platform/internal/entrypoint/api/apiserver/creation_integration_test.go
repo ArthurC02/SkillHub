@@ -602,7 +602,7 @@ func TestAnInterruptedAttemptWithAnUnreadDiagramAsksForItAgain(t *testing.T) {
 	job := creationJob(t, v.ID)
 	ctx := context.Background()
 
-	if _, err := testPool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-interval '1 minute',
+	if _, err := testPool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-interval '5 minutes',
 	 snapshot=jsonb_set(jsonb_set(snapshot, '{snapshot,diagram_fingerprint}', '"fp"'), '{active_deadline}', to_jsonb(now()-interval '1 minute')) WHERE id=$1`, job.SessionID); err != nil {
 		t.Fatal(err)
 	}
