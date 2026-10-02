@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+const MinBalanceCredits = -1_000_000
+
 type Config struct {
 	SessionIdle time.Duration
 
@@ -37,6 +39,9 @@ func NewConfig(usdPerCredit float64, markupBps, floor, fallback int64) (Config, 
 
 	if floor > 0 {
 		return Config{}, errors.New("credit: CREDIT_DEBT_FLOOR must be <= 0")
+	}
+	if floor < MinBalanceCredits {
+		return Config{}, fmt.Errorf("credit: CREDIT_DEBT_FLOOR must be >= %d, the lowest balance the ledger stores", MinBalanceCredits)
 	}
 
 	if fallback < 0 {

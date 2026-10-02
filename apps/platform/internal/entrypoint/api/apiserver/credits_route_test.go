@@ -329,6 +329,32 @@ func TestAnOperatorGrantCompletesOnOneConnection(t *testing.T) {
 	}
 }
 
+func TestACorrectionBelowTheLowestStoredBalanceIsRefusedAsABadRequest(t *testing.T) {
+	pool := creditsTestPool(t)
+	app, srv := realCreditsServer(t, pool)
+	member := creditsLogin(t, srv, "credits-member-below-floor")
+	operator := creditsLogin(t, srv, "credits-operator-below-floor")
+	app.Auth.Operators = map[string]bool{operator.userID: true}
+
+	code, body := operator.postJSON(t, "/admin/credits/"+member.workspaceID+"/grants",
+		`{"amount_credits":-1000001,"reason":"corrects an over-grant"}`)
+
+	if code != http.StatusBadRequest {
+		t.Fatalf("a correction past the lowest stored balance: got %d (%v), want 400", code, body)
+	}
+	if msg, _ := body["error"].(string); msg != "the balance cannot go below -1000000; no credits were changed" {
+		t.Errorf("error = %q, want the plain explanation", msg)
+	}
+	var entries int
+	if err := pool.QueryRow(context.Background(),
+		`SELECT count(*) FROM credit_entries WHERE user_id = $1`, mustParseUUID(t, member.userID)).Scan(&entries); err != nil {
+		t.Fatal(err)
+	}
+	if entries != 0 {
+		t.Errorf("a refused correction wrote %d ledger entries", entries)
+	}
+}
+
 func TestAnOperatorCorrectionLowersTheBalance(t *testing.T) {
 	pool := creditsTestPool(t)
 	app, srv := realCreditsServer(t, pool)

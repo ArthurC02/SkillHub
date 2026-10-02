@@ -315,6 +315,9 @@ func (h *creditsHandler) Grant(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, credit.ErrReasonRequired):
 		httpx.WriteError(w, http.StatusBadRequest, "reason is required")
 		return
+	case errors.Is(err, credit.ErrBalanceOutOfRange):
+		httpx.WriteError(w, http.StatusBadRequest, fmt.Sprintf("the balance cannot go below %d; no credits were changed", credit.MinBalanceCredits))
+		return
 	case errors.Is(err, credit.ErrAccountGone):
 		httpx.WriteError(w, http.StatusConflict, "this account is being deleted; no credits were granted")
 		return

@@ -24,6 +24,8 @@ var (
 	ErrReasonRequired     = fmt.Errorf("%w: reason is required", ErrInvalid)
 	ErrGrantLowersBalance = fmt.Errorf("%w: only an adjustment may lower a balance", ErrInvalid)
 
+	ErrBalanceOutOfRange = fmt.Errorf("%w: balance would fall below %d", ErrInvalid, MinBalanceCredits)
+
 	ErrAccountGone = errors.New("credit: account not eligible")
 )
 

@@ -2555,7 +2555,10 @@ paths:
                     description: The balance after this grant.
                   amount_credits: { type: integer, format: int64 }
         "400":
-          description: Zero amount, a missing reason, or an `idempotency_key` outside 1 to 128 characters.
+          description: |
+            Zero amount, a missing reason, an `idempotency_key` outside 1 to
+            128 characters, or an adjustment that would take the balance below
+            -1000000.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

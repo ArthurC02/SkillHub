@@ -155,10 +155,20 @@ func (s *PostgresStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (
 		DeltaCredits: g.Credits,
 		UserID:       g.UserID,
 	})
+	if isBalanceCheckViolation(err) {
+		return 0, false, ErrBalanceOutOfRange
+	}
 	if err != nil {
 		return 0, false, fmt.Errorf("credit: apply grant to balance: %w", err)
 	}
 	return balance, true, nil
+}
+
+const checkViolationCode = "23514"
+
+func isBalanceCheckViolation(err error) bool {
+	pgErr, ok := errors.AsType[*pgconn.PgError](err)
+	return ok && pgErr.Code == checkViolationCode && pgErr.TableName == "credit_accounts"
 }
 
 func (s *PostgresStore) balanceIn(ctx context.Context, q *gen.Queries, userID pgtype.UUID) (int64, error) {

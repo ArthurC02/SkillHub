@@ -2,6 +2,7 @@ package credit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -55,6 +56,49 @@ func (s savepointTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.
 		return tag, err
 	}
 	return tag, sp.Commit(ctx)
+}
+
+func TestAnAdjustmentIsRefusedExactlyWhenItWouldPassTheLowestStoredBalance(t *testing.T) {
+	pool := integrationPool(t)
+	for _, tc := range []struct {
+		name        string
+		credits     int64
+		wantApplied bool
+		wantBalance int64
+	}{
+		{"down to the lowest stored balance is applied", MinBalanceCredits, true, MinBalanceCredits},
+		{"one credit past the lowest stored balance is refused", MinBalanceCredits - 1, false, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			tx, err := pool.Begin(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = tx.Rollback(ctx) }()
+			var user pgtype.UUID
+			if err := tx.QueryRow(ctx, `
+				INSERT INTO users (email, display_name) VALUES ($1, 'fixture') RETURNING id`,
+				uuid.NewString()+"@example.test").Scan(&user); err != nil {
+				t.Fatal(err)
+			}
+
+			balance, applied, err := NewPostgresStore(pool).ApplyGrant(ctx, tx, GrantEntry{
+				UserID: user, EntryKind: EntryAdjustment, Credits: tc.credits,
+				Reason: "fixture", IdempotencyKey: uuid.NewString(),
+			})
+
+			if tc.wantApplied && err != nil {
+				t.Fatalf("ApplyGrant(%d) = %v, want it applied", tc.credits, err)
+			}
+			if !tc.wantApplied && !errors.Is(err, ErrBalanceOutOfRange) {
+				t.Fatalf("ApplyGrant(%d) error = %v, want ErrBalanceOutOfRange", tc.credits, err)
+			}
+			if applied != tc.wantApplied || balance != tc.wantBalance {
+				t.Fatalf("ApplyGrant(%d) = (balance %d, applied %v), want (%d, %v)", tc.credits, balance, applied, tc.wantBalance, tc.wantApplied)
+			}
+		})
+	}
 }
 
 func seedSessionStep(t *testing.T, ctx context.Context, tx pgx.Tx, user, session pgtype.UUID, usdMicros int64) {
