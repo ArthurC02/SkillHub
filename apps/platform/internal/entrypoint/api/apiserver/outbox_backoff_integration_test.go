@@ -268,7 +268,7 @@ func TestASuccessfulDeliveryResetsTheRunOfFailures(t *testing.T) {
 
 	var deliveries int
 	failAllButOne := func(_ context.Context, e outbox.Event) error {
-		if e.EventID == healthy {
+		if e.AggregateID != agg || e.EventID == healthy {
 			return nil
 		}
 		deliveries++
