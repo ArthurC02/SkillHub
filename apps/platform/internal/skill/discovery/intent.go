@@ -100,6 +100,9 @@ func (i SearchInterpretation) validate(query string, source interpretationSource
 	if !extracted && utf8.RuneCountInString(i.retrievalQuery(query)) > maxQueryRunes {
 		return errors.New("combined intent and keywords must not exceed 2000 characters")
 	}
+	if !extracted && (!isComprehensible(query) || !isComprehensible(i.retrievalQuery(query))) {
+		return errors.New("query, intent and keywords must not contain control characters")
+	}
 	_, err := parseFilterValues(i.Filters)
 	return err
 }

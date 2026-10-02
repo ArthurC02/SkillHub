@@ -178,7 +178,9 @@ func TestReferencePickerDoesNotAnalyzeIntent(t *testing.T) {
 
 func TestCorrectedSearchRejectsMalformedRequestsBeforeRetrieval(t *testing.T) {
 	valid := `"query":"CSV","intent":{"input":null,"output":null,"tools":null,"data":null,"environment":null},"keywords":[],"filters":{}`
-	for _, body := range []string{"{}", "null", "{" + valid + `,"limit":0}`, "{" + valid + `,"limit":101}`, "{" + valid + `,"workspace_id":"private"}`, "{" + valid + "} {}"} {
+	withNUL := `"query":"CSV\u0000","intent":{"input":null,"output":null,"tools":null,"data":null,"environment":null},"keywords":[],"filters":{}`
+	keywordNUL := `"query":"CSV","intent":{"input":null,"output":null,"tools":null,"data":null,"environment":null},"keywords":["報表\u0000"],"filters":{}`
+	for _, body := range []string{"{}", "null", "{" + valid + `,"limit":0}`, "{" + valid + `,"limit":101}`, "{" + valid + `,"workspace_id":"private"}`, "{" + valid + "} {}", "{" + withNUL + "}", "{" + keywordNUL + "}"} {
 		t.Run(body, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			(&Handler{Svc: &Service{}}).CorrectedSearch(w, httptest.NewRequest(http.MethodPost, "/api/skills/search", strings.NewReader(body)))
