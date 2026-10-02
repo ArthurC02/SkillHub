@@ -173,6 +173,11 @@ WITH vec AS (
             OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
                = ANY(sqlc.arg(exposed_keys)::text[]))
       AND s.embedding IS NOT NULL
+      AND (sqlc.narg(has_script)::bool IS NULL OR s.has_script = sqlc.narg(has_script)::bool)
+      AND (sqlc.narg(spec_validated)::bool IS NULL OR (s.verified_at IS NOT NULL) = sqlc.narg(spec_validated)::bool)
+      AND (sqlc.narg(agent_runtime)::text IS NULL OR s.agent_runtime = sqlc.narg(agent_runtime)::text)
+      AND (sqlc.narg(curated)::bool IS NULL OR s.curated = sqlc.narg(curated)::bool)
+      AND (sqlc.narg(category)::text IS NULL OR s.category = sqlc.narg(category)::text)
     ORDER BY s.embedding <=> sqlc.arg(query_embedding)::vector ASC
     LIMIT sqlc.arg(vector_candidates)::int
 ),
@@ -185,6 +190,11 @@ fts AS (
                = ANY(sqlc.arg(exposed_keys)::text[]))
       AND s.listable
       AND s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
+      AND (sqlc.narg(has_script)::bool IS NULL OR s.has_script = sqlc.narg(has_script)::bool)
+      AND (sqlc.narg(spec_validated)::bool IS NULL OR (s.verified_at IS NOT NULL) = sqlc.narg(spec_validated)::bool)
+      AND (sqlc.narg(agent_runtime)::text IS NULL OR s.agent_runtime = sqlc.narg(agent_runtime)::text)
+      AND (sqlc.narg(curated)::bool IS NULL OR s.curated = sqlc.narg(curated)::bool)
+      AND (sqlc.narg(category)::text IS NULL OR s.category = sqlc.narg(category)::text)
     ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
     LIMIT sqlc.arg(fulltext_candidates)::int
 ),
@@ -197,6 +207,11 @@ lex AS (
                = ANY(sqlc.arg(exposed_keys)::text[]))
       AND s.listable
       AND s.bigram @@ to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, ''))
+      AND (sqlc.narg(has_script)::bool IS NULL OR s.has_script = sqlc.narg(has_script)::bool)
+      AND (sqlc.narg(spec_validated)::bool IS NULL OR (s.verified_at IS NOT NULL) = sqlc.narg(spec_validated)::bool)
+      AND (sqlc.narg(agent_runtime)::text IS NULL OR s.agent_runtime = sqlc.narg(agent_runtime)::text)
+      AND (sqlc.narg(curated)::bool IS NULL OR s.curated = sqlc.narg(curated)::bool)
+      AND (sqlc.narg(category)::text IS NULL OR s.category = sqlc.narg(category)::text)
     ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, ''))) DESC
     LIMIT sqlc.arg(lexical_candidates)::int
 )

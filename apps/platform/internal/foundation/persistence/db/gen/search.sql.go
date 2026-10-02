@@ -369,8 +369,13 @@ WITH vec AS (
             OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
                = ANY($3::text[]))
       AND s.embedding IS NOT NULL
+      AND ($4::bool IS NULL OR s.has_script = $4::bool)
+      AND ($5::bool IS NULL OR (s.verified_at IS NOT NULL) = $5::bool)
+      AND ($6::text IS NULL OR s.agent_runtime = $6::text)
+      AND ($7::bool IS NULL OR s.curated = $7::bool)
+      AND ($8::text IS NULL OR s.category = $8::text)
     ORDER BY s.embedding <=> $1::vector ASC
-    LIMIT $4::int
+    LIMIT $9::int
 ),
 fts AS (
     SELECT s.skill_id, (s.embedding IS NULL)::bool AS unembedded,
@@ -380,9 +385,14 @@ fts AS (
             OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
                = ANY($3::text[]))
       AND s.listable
-      AND s.tsv @@ websearch_to_tsquery('english', $5::text)
-    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $5::text)) DESC
-    LIMIT $6::int
+      AND s.tsv @@ websearch_to_tsquery('english', $10::text)
+      AND ($4::bool IS NULL OR s.has_script = $4::bool)
+      AND ($5::bool IS NULL OR (s.verified_at IS NOT NULL) = $5::bool)
+      AND ($6::text IS NULL OR s.agent_runtime = $6::text)
+      AND ($7::bool IS NULL OR s.curated = $7::bool)
+      AND ($8::text IS NULL OR s.category = $8::text)
+    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $10::text)) DESC
+    LIMIT $11::int
 ),
 lex AS (
     SELECT s.skill_id, (s.embedding IS NULL)::bool AS unembedded,
@@ -392,9 +402,14 @@ lex AS (
             OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
                = ANY($3::text[]))
       AND s.listable
-      AND s.bigram @@ to_tsquery('simple', nullif($7::text, ''))
-    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', nullif($7::text, ''))) DESC
-    LIMIT $8::int
+      AND s.bigram @@ to_tsquery('simple', nullif($12::text, ''))
+      AND ($4::bool IS NULL OR s.has_script = $4::bool)
+      AND ($5::bool IS NULL OR (s.verified_at IS NOT NULL) = $5::bool)
+      AND ($6::text IS NULL OR s.agent_runtime = $6::text)
+      AND ($7::bool IS NULL OR s.curated = $7::bool)
+      AND ($8::text IS NULL OR s.category = $8::text)
+    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', nullif($12::text, ''))) DESC
+    LIMIT $13::int
 )
 SELECT skill_id, unembedded, distance, false AS lexical FROM vec
 UNION ALL
@@ -407,6 +422,11 @@ type ListHybridSearchCandidatesParams struct {
 	QueryEmbedding      *pgvector.Vector
 	CatalogWorkspaceIds []pgtype.UUID
 	ExposedKeys         []string
+	HasScript           *bool
+	SpecValidated       *bool
+	AgentRuntime        *string
+	Curated             *bool
+	Category            *string
 	VectorCandidates    int32
 	Query               string
 	FulltextCandidates  int32
@@ -426,6 +446,11 @@ func (q *Queries) ListHybridSearchCandidates(ctx context.Context, arg ListHybrid
 		arg.QueryEmbedding,
 		arg.CatalogWorkspaceIds,
 		arg.ExposedKeys,
+		arg.HasScript,
+		arg.SpecValidated,
+		arg.AgentRuntime,
+		arg.Curated,
+		arg.Category,
 		arg.VectorCandidates,
 		arg.Query,
 		arg.FulltextCandidates,
