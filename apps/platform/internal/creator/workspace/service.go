@@ -27,6 +27,10 @@ var ErrAccountPurging = errors.New("account deletion is already in progress")
 
 var ErrWorkspaceNotFound = errors.New("workspace not found")
 
+var ErrEmailTaken = errors.New("identity: email belongs to another account")
+
+const liveEmailIndex = "users_email_key"
+
 type IdentityProvider interface {
 	AuthURL(state string) string
 	Exchange(ctx context.Context, code string) (accessToken string, err error)
@@ -189,6 +193,9 @@ func (s *Service) signup(ctx context.Context, id ExternalIdentity) (gen.User, er
 		Email:       normalizedEmail(id.Email),
 		DisplayName: id.Name,
 	})
+	if constraint, violated := pgconv.UniqueViolation(err); violated && constraint == liveEmailIndex {
+		return gen.User{}, ErrEmailTaken
+	}
 	if err != nil {
 		return gen.User{}, err
 	}

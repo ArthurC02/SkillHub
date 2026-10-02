@@ -146,6 +146,10 @@ func (h *Handler) finishLogin(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, http.StatusConflict, "account deletion is in progress")
 			return
 		}
+		if errors.Is(err, ErrEmailTaken) {
+			httpx.WriteError(w, http.StatusConflict, "這個 email 已經被另一個帳號使用，無法用這個 GitHub 帳號登入")
+			return
+		}
 		slog.Error("login failed", "error", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "login failed")
 		return
