@@ -18,7 +18,6 @@ const sniffLen = 512
 
 var deniedMagic = [][]byte{
 	{0x7f, 'E', 'L', 'F'},        // ELF
-	{'M', 'Z'},                   // PE / DOS executable
 	{0xfe, 0xed, 0xfa, 0xce},     // Mach-O 32-bit BE
 	{0xce, 0xfa, 0xed, 0xfe},     // Mach-O 32-bit LE
 	{0xfe, 0xed, 0xfa, 0xcf},     // Mach-O 64-bit BE
@@ -26,10 +25,14 @@ var deniedMagic = [][]byte{
 	{0xca, 0xfe, 0xba, 0xbe},     // Mach-O universal binary
 	{'#', '!'},                   // script shebang
 	{0x1f, 0x8b},                 // gzip
-	{'B', 'Z', 'h'},              // bzip2
 	{0xfd, '7', 'z', 'X', 'Z'},   // xz
 	{'7', 'z', 0xbc, 0xaf, 0x27}, // 7z
 	{'R', 'a', 'r', '!'},         // rar
+}
+
+var deniedMagicUnlessText = [][]byte{
+	{'M', 'Z'},      // PE / DOS executable
+	{'B', 'Z', 'h'}, // bzip2
 }
 
 var allowedSniffed = map[string]bool{
@@ -57,6 +60,11 @@ func detectContentType(content DatasetContent) (string, error) {
 
 	if strings.HasPrefix(base, "text/") {
 		return base, nil
+	}
+	for _, magic := range deniedMagicUnlessText {
+		if bytes.HasPrefix(head, magic) {
+			return "", ErrUnsupportedType
+		}
 	}
 	if !allowedSniffed[base] {
 		return "", ErrUnsupportedType

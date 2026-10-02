@@ -81,6 +81,28 @@ func TestDetectContentTypeRejectsUnknownBinary(t *testing.T) {
 	}
 }
 
+func TestDetectContentTypeKeepsTextThatOnlyStartsLikeABinaryMagic(t *testing.T) {
+	for name, data := range map[string][]byte{
+		"csv starting with MZ":    []byte("MZN,1\n"),
+		"exactly MZ":              []byte("MZ"),
+		"csv starting with BZh":   []byte("BZh,1\n"),
+		"csv header with a comma": []byte("MZ,name\n1,a\n"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := detectContentType(bytes.NewReader(data)); err != nil {
+				t.Fatalf("rejected ordinary text: %v", err)
+			}
+		})
+	}
+}
+
+func TestDetectContentTypeRejectsBzip2WithBinaryBody(t *testing.T) {
+	data := append([]byte("BZh9"), 0x31, 0x41, 0x59, 0x26, 0x53, 0x59, 0x00, 0x01, 0x02, 0x03)
+	if _, err := detectContentType(bytes.NewReader(data)); !errors.Is(err, ErrUnsupportedType) {
+		t.Fatalf("accepted bzip2 content: err = %v", err)
+	}
+}
+
 func TestInspectZipRejectsUnsafeEntries(t *testing.T) {
 	cases := map[string][]byte{
 		"traversal":        zipOf(t, map[string]string{"../escape.txt": "x"}),
