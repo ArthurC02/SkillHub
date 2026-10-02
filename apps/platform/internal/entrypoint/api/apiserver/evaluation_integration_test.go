@@ -1164,3 +1164,36 @@ func TestARunWhoseRecorderNeverSpokeCannotBeJudgedAPass(t *testing.T) {
 		t.Error("a pass was recorded on a run whose trace is entirely absent")
 	}
 }
+
+func TestARecoveredEvaluationDoesNotClaimEvidenceWhoseOutputIsGone(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-recover-absent")
+	skillID := seedSkill(t, pool, c.workspaceID, "eval-recover-absent")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+	seedFinalOutput(t, pool, c.workspaceID, runID, "done")
+	if tag, err := pool.Exec(context.Background(),
+		`UPDATE artifacts SET deleted_at = now() WHERE run_id = $1 AND kind = 'run_output'`, mustUUID(t, runID)); err != nil || tag.RowsAffected() == 0 {
+		t.Fatalf("delete an output: rows=%d err=%v", tag.RowsAffected(), err)
+	}
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO evaluations (workspace_id, run_id, status, overall, evidence_complete, created_at)
+		VALUES ($1, $2, 'pending', 'undetermined', false, now() - interval '20 minutes')`,
+		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.evaluations.RecoverPending(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	var complete bool
+	if err := pool.QueryRow(context.Background(),
+		"SELECT evidence_complete FROM evaluations WHERE run_id = $1 AND superseded_at IS NULL",
+		mustUUID(t, runID)).Scan(&complete); err != nil {
+		t.Fatal(err)
+	}
+	if complete {
+		t.Error("the recovered evaluation claims complete evidence although the run's output was deleted")
+	}
+}

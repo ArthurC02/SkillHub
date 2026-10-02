@@ -341,7 +341,7 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 
 	findings := s.deterministicFindings(m)
 
-	evidenceComplete := m.advanced.Complete && !m.absent.Any()
+	evidenceComplete := m.evidenceComplete()
 
 	if len(m.criteria) == 0 {
 
@@ -410,7 +410,7 @@ func (s *Service) recoverEvaluation(
 		return err
 	}
 	findings := s.deterministicFindings(m)
-	return s.fail(ctx, m, current, gatheredEvidence{findings: findings, complete: m.advanced.Complete},
+	return s.fail(ctx, m, current, gatheredEvidence{findings: findings, complete: m.evidenceComplete()},
 		errors.New("the previous evaluation attempt was interrupted before its verdict committed"))
 }
 
@@ -749,3 +749,5 @@ func costSource(cost *float64) *string {
 	source := string(credit.CostSourceGateway)
 	return &source
 }
+
+func (m material) evidenceComplete() bool { return m.advanced.Complete && !m.absent.Any() }
