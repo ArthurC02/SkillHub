@@ -122,9 +122,13 @@ type limitWriter struct {
 	n     int64
 }
 
+var errArtifactArchiveFull = errors.New("artifact archive exceeds the read bound")
+
 func (l *limitWriter) Write(p []byte) (int, error) {
-	if l.n+int64(len(p)) > l.limit {
-		return 0, errors.New("artifact archive exceeds the read bound")
+	if room := l.limit - l.n; int64(len(p)) > room {
+		n, _ := l.w.Write(p[:room])
+		l.n += int64(n)
+		return n, errArtifactArchiveFull
 	}
 	n, err := l.w.Write(p)
 	l.n += int64(n)
@@ -140,15 +144,21 @@ func (d *Driver) ReadArtifacts(ctx context.Context, id string) ([]byte, error) {
 	if !existingDirectory(dir) {
 		return nil, nil
 	}
+	return archiveWithin(dir, artifactReadLimit)
+}
 
+func archiveWithin(dir string, limit int64) ([]byte, error) {
 	var buf bytes.Buffer
-	tw := tar.NewWriter(&limitWriter{w: &buf, limit: artifactReadLimit})
+	tw := tar.NewWriter(&limitWriter{w: &buf, limit: limit})
 	walkErr := filepath.WalkDir(dir, func(path string, de fs.DirEntry, err error) error {
 		if err != nil || path == dir {
 			return err
 		}
 		return archiveEntry(tw, dir, path, de)
 	})
+	if errors.Is(walkErr, errArtifactArchiveFull) {
+		return buf.Bytes(), nil
+	}
 	if walkErr != nil {
 		return nil, walkErr
 	}
