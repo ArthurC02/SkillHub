@@ -1,11 +1,13 @@
 package trace
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"regexp"
 	"sort"
 	"strconv"
@@ -52,7 +54,16 @@ type Result struct {
 
 func (m *Masker) Mask(payload json.RawMessage) (Result, error) {
 	var decoded any
-	if err := json.Unmarshal(payload, &decoded); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(payload))
+	dec.UseNumber()
+	if err := dec.Decode(&decoded); err != nil {
+		return Result{}, err
+	}
+	if _, err := dec.Token(); err != io.EOF {
+		return Result{}, errors.New("payload holds data after the first JSON value")
+	}
+	decoded, err := settleNumbers(decoded)
+	if err != nil {
 		return Result{}, err
 	}
 	if holdsNUL(decoded) {
@@ -67,6 +78,29 @@ func (m *Masker) Mask(payload json.RawMessage) (Result, error) {
 
 	sort.Strings(fields)
 	return Result{Payload: encoded, Fields: fields}, nil
+}
+
+func settleNumbers(node any) (any, error) {
+	var err error
+	switch v := node.(type) {
+	case json.Number:
+		if strings.ContainsAny(string(v), ".eE") {
+			return v.Float64()
+		}
+	case map[string]any:
+		for key, child := range v {
+			if v[key], err = settleNumbers(child); err != nil {
+				return nil, err
+			}
+		}
+	case []any:
+		for i, child := range v {
+			if v[i], err = settleNumbers(child); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return node, nil
 }
 
 var errPayloadHoldsNUL = errors.New("payload holds a NUL character, which the trace store cannot keep")
