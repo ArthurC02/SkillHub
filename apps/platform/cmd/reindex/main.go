@@ -4,12 +4,12 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 )
@@ -106,8 +106,5 @@ func requeueCatalogueForReenrichment(ctx context.Context, pool *pgxpool.Pool, ke
 }
 
 func batchSize() int32 {
-	if n, err := strconv.Atoi(os.Getenv("REINDEX_BATCH")); err == nil && n > 0 {
-		return int32(n)
-	}
-	return defaultEnrichmentBatch
+	return envx.PositiveInt32("REINDEX_BATCH", defaultEnrichmentBatch)
 }

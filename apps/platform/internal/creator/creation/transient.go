@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -109,12 +110,12 @@ func TransientClientWithHTTP(baseURL, token string, timeout time.Duration, clien
 		req.Header.Set("Content-Type", "application/json")
 		res, err := client.Do(req)
 		if err != nil {
-			return ErrUnavailable
+			return fmt.Errorf("%w: %w", ErrUnavailable, err)
 		}
 		defer res.Body.Close()
 		_, _ = io.Copy(io.Discard, io.LimitReader(res.Body, 1024))
 		if res.StatusCode != http.StatusOK {
-			return ErrUnavailable
+			return fmt.Errorf("%w: the worker answered %s", ErrUnavailable, res.Status)
 		}
 		return nil
 	}
@@ -130,6 +131,7 @@ func (s *Service) HandOffStep(ctx context.Context, a JobArgs, d *Diagram) {
 	if err == nil {
 		return
 	}
+	slog.Warn("creation: a step could not be handed off and is interrupted", "session_id", UUID(a.SessionID), "error", err)
 	interruptCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), interruptTimeout)
 	defer cancel()
 	if interruptErr := s.InterruptedTransient(interruptCtx, a); interruptErr != nil {

@@ -291,6 +291,11 @@ func (h *Handler) BetaGateActive() bool {
 	return h.betaGateClosed || len(h.Invited) > 0
 }
 
+func writeInviteCheckUnavailable(w http.ResponseWriter, err error) {
+	slog.Error("invite could not be checked", "error", err)
+	httpx.WriteError(w, http.StatusServiceUnavailable, "invite check unavailable")
+}
+
 func (h *Handler) RequireInvited(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !h.BetaGateActive() {
@@ -304,8 +309,7 @@ func (h *Handler) RequireInvited(next http.HandlerFunc) http.HandlerFunc {
 		}
 		invited, err := h.invited(r.Context(), user)
 		if err != nil {
-
-			httpx.WriteError(w, http.StatusServiceUnavailable, "invite check unavailable")
+			writeInviteCheckUnavailable(w, err)
 			return
 		}
 		if !invited {
@@ -513,7 +517,12 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		merged[name] = on
 	}
 	if len(h.Features) > 0 {
-		if invited, err := h.invited(r.Context(), user); err == nil && invited {
+		invited, err := h.invited(r.Context(), user)
+		if err != nil {
+			writeInviteCheckUnavailable(w, err)
+			return
+		}
+		if invited {
 			for name, on := range h.Features {
 				merged[name] = on
 			}

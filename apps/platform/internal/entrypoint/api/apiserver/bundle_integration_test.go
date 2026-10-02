@@ -274,6 +274,29 @@ func TestTheBundleOverviewKeepsTheNewestVersionSeparateFromTheNewestRelease(t *t
 	assertOwnerDeliveryProjection(t, publication, "available", true)
 }
 
+func TestDelistingAPublishedBundleWithdrawsItFromItsAddress(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("bundle-delist-alice"))
+	registerPublisher(t, alice, freshName("bundle-delist"))
+	bundle, skillIDs, _ := bundleOfTwo(t, alice, "bundle-delist")
+	address := publishTheFirstBundleRelease(t, a, alice, bundle, skillIDs[1])
+
+	code, own := alice.doJSON(t, http.MethodDelete, "/me/bundles/"+bundle+"/publication", "")
+	if code != http.StatusOK || own["status"] != "delisted" {
+		t.Fatalf("delist %s: %d %v, want 200 delisted", bundle, code, own)
+	}
+	_, public := publicRead(t, a, address)
+	availability, _ := public["availability"].(map[string]any)
+	acquisition, _ := public["acquisition"].(map[string]any)
+	if availability["value"] != "delisted" || acquisition["available"] != false {
+		t.Errorf("the delisted bundle's address = %v, want it marked delisted with nothing to acquire", public)
+	}
+	if code, body := alice.doJSON(t, http.MethodDelete, "/me/bundles/"+freshName("bundle-delist-none")+"/publication", ""); code != http.StatusNotFound {
+		t.Errorf("delisting a bundle that does not exist: %d %v, want 404", code, body)
+	}
+}
+
 func publishTheFirstBundleRelease(t *testing.T, a *api, author *client, bundle, memberSkillID string) (address string) {
 	t.Helper()
 	code, own := postJSON(t, author, "/me/bundles/"+bundle+"/publication", `{"rights_attested":true}`)

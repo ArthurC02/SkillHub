@@ -554,14 +554,11 @@ func bundlePublicationToRelease(ctx context.Context, q *gen.Queries, ws identity
 }
 
 func (s *Service) DelistBundle(ctx context.Context, ws identity.Workspace, bundleName string) (Publication, error) {
-	bundle, err := gen.New(s.Pool).LockBundle(ctx, gen.LockBundleParams{WorkspaceID: ws.ID, Name: bundleName})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Publication{}, ErrNotFound
-	}
-	if err != nil {
-		return Publication{}, err
-	}
-	err = s.delist(ctx, ws, func(q *gen.Queries) (gen.Publication, error) {
+	err := s.delist(ctx, ws, func(q *gen.Queries) (gen.Publication, error) {
+		bundle, err := q.LockBundle(ctx, gen.LockBundleParams{WorkspaceID: ws.ID, Name: bundleName})
+		if err != nil {
+			return gen.Publication{}, err
+		}
 		return q.LockPublicationForBundle(ctx, gen.LockPublicationForBundleParams{WorkspaceID: ws.ID, BundleID: bundle.ID})
 	}, map[string]any{"bundle": bundleName})
 	if err != nil {

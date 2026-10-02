@@ -1,11 +1,13 @@
 package apiserver_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -830,6 +832,7 @@ func TestAStepThatCannotBeHandedOffEndsTheAttemptEvenOnceTheRequestIsGone(t *tes
 		{"nowhere to hand off", nil, "needs_reupload"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			logged := captureLogs(t)
 			pool := requireDB(t)
 			ws := newCreationWorkspace(t, pool)
 			svc := &creation.Service{Pool: pool, Limits: creationLimits(), LLM: failLLM(t), IssueKey: failIssueKey(t), RevokeKey: failRevokeKey(t), HandOff: tc.handOff}
@@ -855,6 +858,27 @@ func TestAStepThatCannotBeHandedOffEndsTheAttemptEvenOnceTheRequestIsGone(t *tes
 			if final.State != tc.wantState {
 				t.Errorf("state = %q, want %q", final.State, tc.wantState)
 			}
+			interrupted := tc.wantState == "needs_reupload"
+			assertHandOffFailureLogged(t, logged.String(), interrupted, interrupted && tc.handOff != nil, refused)
 		})
+	}
+}
+
+func captureLogs(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var logged bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	return &logged
+}
+
+func assertHandOffFailureLogged(t *testing.T, logged string, interrupted, withCause bool, cause error) {
+	t.Helper()
+	if strings.Contains(logged, "could not be handed off") != interrupted {
+		t.Errorf("log = %q, want a failed hand-off logged exactly when the attempt was interrupted", logged)
+	}
+	if withCause && !strings.Contains(logged, cause.Error()) {
+		t.Errorf("log = %q, want the hand-off's cause", logged)
 	}
 }

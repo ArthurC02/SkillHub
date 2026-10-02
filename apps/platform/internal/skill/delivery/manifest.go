@@ -220,7 +220,10 @@ func (s *Service) originOf(
 	}
 
 	if !version.SourceID.Valid && skill.ForkedFromVersionID.Valid {
-		chain, root := s.walkLineage(ctx, skill.ForkedFromVersionID)
+		chain, root, err := s.walkLineage(ctx, skill.ForkedFromVersionID)
+		if err != nil {
+			return nil, err
+		}
 		return forkOrigin{
 			Kind:                   "fork",
 			UpstreamSkillID:        pgconv.UUIDString(skill.ForkedFromSkillID),
@@ -268,23 +271,29 @@ func (s *Service) improvementOriginOf(
 	case err != nil:
 		return nil, err
 	}
+	root, err := s.rootSourceOf(ctx, version.ID)
+	if err != nil {
+		return nil, err
+	}
 	return improvementOrigin{
 		Kind:         "improvement",
 		EvaluationID: pgconv.UUIDString(sugs[0].EvaluationID),
 		Suggestions:  refs,
 		Base:         base,
-		RootSource:   s.rootSourceOf(ctx, version.ID),
+		RootSource:   root,
 	}, nil
 }
 
-func (s *Service) walkLineage(ctx context.Context, from pgtype.UUID) (chain []any, root any) {
+func (s *Service) walkLineage(ctx context.Context, from pgtype.UUID) (chain []any, root any, err error) {
 	chain = []any{}
 	cur := from
 	for i := 0; i < maxLineageHops; i++ {
 		row, found, err := s.ReadLineage(ctx, cur)
-		if err != nil || !found {
-
-			return append(chain, unavailable), unavailable
+		if err != nil {
+			return nil, nil, err
+		}
+		if !found {
+			return append(chain, unavailable), unavailable, nil
 		}
 		chain = append(chain, lineageHop{
 			SkillID:        pgconv.UUIDString(row.SkillID),
@@ -292,40 +301,41 @@ func (s *Service) walkLineage(ctx context.Context, from pgtype.UUID) (chain []an
 			VersionNumber:  row.VersionNumber,
 		})
 		if !row.ForkedFromVersionID.Valid {
-			return chain, s.rootSourceOf(ctx, cur)
+			root, err := s.rootSourceOf(ctx, cur)
+			return chain, root, err
 		}
 		cur = row.ForkedFromVersionID
 	}
-	return append(chain, unavailable), unavailable
+	return append(chain, unavailable), unavailable, nil
 }
 
-func (s *Service) rootSourceOf(ctx context.Context, versionID pgtype.UUID) any {
+func (s *Service) rootSourceOf(ctx context.Context, versionID pgtype.UUID) (any, error) {
 	cur := versionID
 	for i := 0; i < maxLineageHops; i++ {
 		lineage, found, err := s.ReadLineage(ctx, cur)
 		if err != nil || !found {
-			return unavailable
+			return unavailable, err
 		}
 		oldest, found, err := s.ReadOldest(ctx, lineage.SkillID)
 		if err != nil || !found {
-			return unavailable
+			return unavailable, err
 		}
 		if oldest.SourceID.Valid {
 			src, err := s.SourceLineage(ctx, oldest.SourceID)
 			if err != nil {
-				return unavailable
+				return nil, err
 			}
 			return rootSource{
 				SourceType: src.SourceType, SourceURL: src.SourceURL,
 				SourceRef: src.SourceRef, FetchedAt: rfc3339(src.FetchedAt),
-			}
+			}, nil
 		}
 		if !lineage.ForkedFromVersionID.Valid {
-			return unavailable
+			return unavailable, nil
 		}
 		cur = lineage.ForkedFromVersionID
 	}
-	return unavailable
+	return unavailable, nil
 }
 
 func rfc3339(ts pgtype.Timestamptz) string {
