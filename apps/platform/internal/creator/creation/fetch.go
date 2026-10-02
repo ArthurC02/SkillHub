@@ -177,6 +177,9 @@ func (f *Fetcher) once(ctx context.Context, rawURL string) fetchAttempt {
 	if err != nil {
 		return fetchWorthRetrying()
 	}
+	if len(body) == MaxFetchBytes {
+		body = withoutCutRune(body)
+	}
 	if !utf8.Valid(body) {
 		return fetchEndedWith("unsupported")
 	}
@@ -225,6 +228,18 @@ func htmlToText(s string) string {
 		}
 	}
 	return strings.Join(strings.Fields(b.String()), " ")
+}
+
+func withoutCutRune(b []byte) []byte {
+	for back := 1; back < utf8.UTFMax && back <= len(b); back++ {
+		if start := len(b) - back; utf8.RuneStart(b[start]) {
+			if utf8.FullRune(b[start:]) {
+				return b
+			}
+			return b[:start]
+		}
+	}
+	return b
 }
 
 func truncateRunes(s string, n int) string {

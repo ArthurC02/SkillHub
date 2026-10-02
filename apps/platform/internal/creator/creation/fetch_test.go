@@ -3,10 +3,12 @@ package creation
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestValidateFetchURLRefusesWhatMustNeverBeAsked(t *testing.T) {
@@ -72,6 +74,33 @@ func TestFetcherReadsTextAndReportsBlocksWithoutRetry(t *testing.T) {
 
 	if rec, _ := NewFetcher().Fetch(ctx, srv.URL+"/page"); rec.Status != "blocked" {
 		t.Fatalf("loopback must be blocked outside tests: %+v", rec)
+	}
+}
+
+func TestAPageLongerThanTheReadLimitIsReadUpToItsLastWholeCharacter(t *testing.T) {
+	long := strings.Repeat("退", MaxFetchBytes/3+1)
+	for _, tc := range []struct {
+		name, body, want string
+	}{
+		{"cut inside a character", long, "ok"},
+		{"broken before the limit", "\xff" + long, "unsupported"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+				_, _ = io.WriteString(w, tc.body)
+			}))
+			defer srv.Close()
+
+			rec, text := newLoopbackFetcher().Fetch(context.Background(), srv.URL)
+
+			if rec.Status != tc.want {
+				t.Fatalf("status = %q, want %q", rec.Status, tc.want)
+			}
+			if tc.want == "ok" && (!utf8.ValidString(text) || !strings.HasPrefix(text, "退退退")) {
+				t.Fatalf("text starts %q, want the page's own characters", text[:min(len(text), 12)])
+			}
+		})
 	}
 }
 
