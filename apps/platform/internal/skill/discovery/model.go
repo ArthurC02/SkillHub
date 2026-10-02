@@ -11,6 +11,7 @@ type ModelUsage struct {
 
 	CostUSD      *float64
 	CostReported bool
+	Reused       bool
 }
 
 func (u *ModelUsage) reportedCostUSD() *float64 {
@@ -24,7 +25,6 @@ type Embeddings struct {
 	Vectors [][]float32
 	Model   string
 	Usage   *ModelUsage
-	Cached  bool
 }
 
 type SkillCandidate struct {
@@ -42,7 +42,6 @@ type MatchReasons struct {
 	Reasons []MatchReason
 	Model   string
 	Usage   *ModelUsage
-	Cached  bool
 }
 
 type Model interface {

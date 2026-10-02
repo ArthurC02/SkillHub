@@ -250,7 +250,7 @@ func (s *Service) exposedAmong(ctx context.Context, states []ExposureState) ([]E
 	candidates := make([]ExposureState, 0, len(states))
 	refs := make([]SkillRef, 0, len(states))
 	for _, state := range states {
-		if state.Approved && state.Status == StatusPublished {
+		if state.mayBeExposed() {
 			candidates = append(candidates, state)
 			refs = append(refs, SkillRef{WorkspaceID: state.OwnerWorkspaceID, SkillID: state.SkillID})
 		}
@@ -275,10 +275,14 @@ func (s *Service) exposedAmong(ctx context.Context, states []ExposureState) ([]E
 	return out, nil
 }
 
+func (state ExposureState) mayBeExposed() bool {
+	return state.Approved && state.Status == StatusPublished
+}
+
 func (s *Service) exposedNow(ctx context.Context, state ExposureState) (bool, *SearchSnapshot, error) {
 	var skill SkillFacts
 	found := false
-	if state.Approved && state.Status == StatusPublished {
+	if state.mayBeExposed() {
 		var err error
 		if skill, found, err = s.ReadSkill(ctx, state.OwnerWorkspaceID, state.SkillID); err != nil {
 			return false, nil, err

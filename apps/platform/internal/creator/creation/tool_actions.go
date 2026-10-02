@@ -26,7 +26,7 @@ func (s *Service) toolFor(ctx context.Context, ws identity.Workspace, revision i
 	}
 	p := &e.Snapshot
 	switch r.ToolIntent.Kind {
-	case "search_catalog", "search_knowledge":
+	case searchCatalogTool, searchKnowledgeTool:
 		return func() (State, bool, error) { return s.searchCatalog(ctx, ws, p, r.ToolIntent) }
 	case "fetch_url":
 		return func() (State, bool, error) { return s.holdFetch(p, r.ToolIntent.Query) }
@@ -37,7 +37,7 @@ func (s *Service) toolFor(ctx context.Context, ws identity.Workspace, revision i
 }
 
 func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *Snapshot, intent *ToolIntent) (State, bool, error) {
-	if s.SearchKnowledge == nil && s.SearchReferences == nil {
+	if !s.canSearch() {
 		return "", false, ErrUnavailable
 	}
 	if strings.TrimSpace(intent.Query) == "" {
@@ -48,7 +48,7 @@ func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *S
 		p.appendMessage("tool", "目錄已搜過兩回都沒有相近的 Skill；請直接依需求起草。")
 		return StateQueued, true, nil
 	}
-	refs, err := s.search(ctx, ws, p, searchQueries(intent))
+	refs, err := s.search(ctx, ws, p, intent)
 	if err != nil {
 		return "", false, err
 	}
@@ -74,15 +74,49 @@ func searchQueries(intent *ToolIntent) []string {
 	return queries
 }
 
-func (s *Service) search(ctx context.Context, ws identity.Workspace, p *Snapshot, queries []string) ([]Reference, error) {
+const (
+	searchCatalogTool   = "search_catalog"
+	searchKnowledgeTool = "search_knowledge"
+)
+
+type searchAnswer struct {
+	refs []Reference
+	cost float64
+	err  error
+}
+
+func (s *Service) searchAhead(ctx context.Context, ws identity.Workspace, r *StepResult) {
+	if r == nil || r.Outcome != outcomeToolIntent || r.ToolIntent == nil || !s.canSearch() {
+		return
+	}
+	intent := r.ToolIntent
+	if (intent.Kind == searchCatalogTool || intent.Kind == searchKnowledgeTool) && strings.TrimSpace(intent.Query) != "" {
+		intent.answer = s.lookUp(ctx, ws, searchQueries(intent))
+	}
+}
+
+func (s *Service) canSearch() bool {
+	return s.SearchKnowledge != nil || s.SearchReferences != nil
+}
+
+func (s *Service) search(ctx context.Context, ws identity.Workspace, p *Snapshot, intent *ToolIntent) ([]Reference, error) {
+	answer := intent.answer
+	if answer == nil {
+		answer = s.lookUp(ctx, ws, searchQueries(intent))
+	}
+	if answer.err == nil {
+		addSpend(p, answer.cost)
+	}
+	return answer.refs, answer.err
+}
+
+func (s *Service) lookUp(ctx context.Context, ws identity.Workspace, queries []string) *searchAnswer {
 	if s.SearchKnowledge == nil {
-		return s.SearchReferences(ctx, ws, queries[0])
+		refs, err := s.SearchReferences(ctx, ws, queries[0])
+		return &searchAnswer{refs: refs, err: err}
 	}
 	refs, cost, err := s.SearchKnowledge(ctx, ws, queries)
-	if err == nil {
-		addSpend(p, cost)
-	}
-	return refs, err
+	return &searchAnswer{refs: refs, cost: cost, err: err}
 }
 
 func emptySearchNote(round int) string {

@@ -45,7 +45,7 @@ func (h *creationHandler) Stream(w http.ResponseWriter, r *http.Request) {
 		stream.send(first)
 		return
 	}
-	changes, stop, err := h.Svc.Streams.Subscribe(ws.ID, id)
+	changes, stop, err := h.Svc.WatchChanges(ws, id)
 	if err != nil {
 		h.creationError(w, err)
 		return

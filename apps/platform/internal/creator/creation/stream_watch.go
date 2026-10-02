@@ -3,12 +3,14 @@ package creation
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
@@ -19,6 +21,16 @@ const (
 )
 
 var ErrTooManyStreams = errors.New("creation: too many open streams")
+
+const pollWaitTicks = 4
+
+type SessionChanges interface {
+	Subscribe(workspace, session pgtype.UUID) (<-chan struct{}, func(), error)
+}
+
+func (s *Service) WatchChanges(ws identity.Workspace, session pgtype.UUID) (<-chan struct{}, func(), error) {
+	return s.Streams.Subscribe(ws.ID, session)
+}
 
 type watchKey struct {
 	workspace [16]byte
@@ -37,6 +49,7 @@ type RevisionWatch struct {
 	total        int
 	seen         map[watchKey]int64
 	running      bool
+	failing      bool
 }
 
 func NewRevisionWatch(pool *pgxpool.Pool) *RevisionWatch {
@@ -107,7 +120,7 @@ func (w *RevisionWatch) poll() bool {
 	if !ok {
 		return false
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 4*w.tick)
+	ctx, cancel := context.WithTimeout(context.Background(), pollWaitTicks*w.tick)
 	defer cancel()
 	workspaces, sessions := make([]pgtype.UUID, len(keys)), make([]pgtype.UUID, len(keys))
 	for i, key := range keys {
@@ -115,6 +128,7 @@ func (w *RevisionWatch) poll() bool {
 		sessions[i] = pgtype.UUID{Bytes: key.session, Valid: true}
 	}
 	rows, err := w.read(ctx, workspaces, sessions)
+	w.noteReadOutcome(err)
 	if err != nil {
 		return true
 	}
@@ -161,4 +175,14 @@ func (w *RevisionWatch) notifyChanged(current map[watchKey]int64) {
 			}
 		}
 	}
+}
+
+func (w *RevisionWatch) noteReadOutcome(err error) {
+	switch {
+	case err != nil && !w.failing:
+		slog.Warn("creation streams: the revision poll failed; open streams wait for it to recover", "error", err)
+	case err == nil && w.failing:
+		slog.Info("creation streams: the revision poll recovered")
+	}
+	w.failing = err != nil
 }

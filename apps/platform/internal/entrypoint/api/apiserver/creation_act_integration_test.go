@@ -384,7 +384,7 @@ func TestActAdoptReferenceWhenAdoptErrorsIsNotFound(t *testing.T) {
 	v, id := newActSession(t, svc, ws)
 	setCreationSnapshotField(t, pool, id, "pending_action", "confirm_references")
 	setCreationSnapshotField(t, pool, id, "references", []creation.Reference{{SkillID: "adopt-fail-skill"}})
-	svc.Adopt = func(context.Context, identity.Workspace, string) (creation.Candidate, error) {
+	svc.Adopt = func(context.Context, pgx.Tx, identity.Workspace, string) (creation.Candidate, error) {
 		return creation.Candidate{}, errors.New("adopt boom")
 	}
 	_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "adopt_reference", ReferenceSkillIDs: []string{"adopt-fail-skill"}})
@@ -777,5 +777,28 @@ func TestActWhenInsertFailsTheSessionIsUnchanged(t *testing.T) {
 	}
 	if state != v.State || revision != v.Revision {
 		t.Fatalf("session moved to state=%q revision=%d, want unchanged from state=%q revision=%d", state, revision, v.State, v.Revision)
+	}
+}
+
+func TestAdoptingAReferenceWritesInsideTheSessionsOwnTransaction(t *testing.T) {
+	pool := singleConnectionPool(t, requireDB(t))
+	ws := newCreationWorkspace(t, pool)
+	svc := newCreateService(pool, &jobRecorder{})
+	v, id := newActSession(t, svc, ws)
+	setCreationSnapshotField(t, pool, id, "pending_action", "confirm_references")
+	setCreationSnapshotField(t, pool, id, "references", []creation.Reference{{SkillID: "adopt-in-tx-skill"}})
+	svc.Adopt = func(ctx context.Context, tx pgx.Tx, _ identity.Workspace, skillID string) (creation.Candidate, error) {
+		if tx == nil {
+			return creation.Candidate{}, errors.New("no transaction to write the copy in")
+		}
+		if _, err := tx.Exec(ctx, "SELECT 1"); err != nil {
+			return creation.Candidate{}, err
+		}
+		return creation.Candidate{SkillID: skillID, VersionID: "v1"}, nil
+	}
+	got, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "adopt_reference", ReferenceSkillIDs: []string{"adopt-in-tx-skill"}})
+	if err != nil || got.State != string(creation.StateSaved) {
+		t.Fatalf("state %q err %v: on a one-connection pool the copy must be written through the session's transaction, "+
+			"not a second connection the session is holding up", got.State, err)
 	}
 }

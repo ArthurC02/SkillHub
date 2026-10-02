@@ -59,8 +59,8 @@ func TestARepeatedSearchQueryIsAnsweredWithoutAnotherModelCallOrCharge(t *testin
 	if inner.embeds != 1 {
 		t.Fatalf("the same query was embedded %d times", inner.embeds)
 	}
-	if first.Usage == nil || again.Usage != nil {
-		t.Fatalf("usage first %v again %v; only the call that cost money may carry usage", first.Usage, again.Usage)
+	if first.Usage == nil || first.Usage.Reused || again.Usage == nil || !again.Usage.Reused {
+		t.Fatalf("usage first %+v again %+v; only the answer that cost money may count as a model call", first.Usage, again.Usage)
 	}
 	if again.Vectors[0][0] != first.Vectors[0][0] {
 		t.Fatal("the cached vector differs from the one the model returned")
@@ -115,7 +115,7 @@ func TestMatchReasonsAreReusedOnlyForTheSameQueryAndCandidates(t *testing.T) {
 	candidates := []SkillCandidate{{SkillID: "1", Name: "pdf", Summary: "reads pdfs"}}
 	_, _ = m.MatchReasons(t.Context(), "pdf", candidates, time.Second)
 	hit, _ := m.MatchReasons(t.Context(), "pdf", candidates, time.Second)
-	if inner.reasons != 1 || hit.Usage != nil || len(hit.Reasons) != 1 {
+	if inner.reasons != 1 || hit.Usage == nil || !hit.Usage.Reused || len(hit.Reasons) != 1 {
 		t.Fatalf("calls %d usage %v reasons %v; want one call and a free cached answer", inner.reasons, hit.Usage, hit.Reasons)
 	}
 	edited := []SkillCandidate{{SkillID: "1", Name: "pdf", Summary: "reads and fills pdfs"}}
@@ -149,7 +149,7 @@ func TestOnlyAValidIntentAnalysisIsCachedAndAHitCannotCorruptIt(t *testing.T) {
 	hit, _ := a.AnalyzeIntent(t.Context(), "q", time.Second)
 	hit.Interpretation.Filters["category"] = "docs"
 	again, _ := a.AnalyzeIntent(t.Context(), "q", time.Second)
-	if valid.calls != 1 || again.Usage != nil {
+	if valid.calls != 1 || again.Usage == nil || !again.Usage.Reused {
 		t.Fatalf("calls %d usage %v; want one paid call", valid.calls, again.Usage)
 	}
 	if len(again.Interpretation.Filters) != 1 {
@@ -159,9 +159,9 @@ func TestOnlyAValidIntentAnalysisIsCachedAndAHitCannotCorruptIt(t *testing.T) {
 
 func TestACachedAnswerExpires(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
-	c := &queryCache[int]{now: func() time.Time { return now }}
+	c := &ttlCache[int]{now: func() time.Time { return now }}
 	c.put("q", 1)
-	now = now.Add(queryCacheTTL - time.Second)
+	now = now.Add(cacheTTL - time.Second)
 	if _, ok := c.get("q"); !ok {
 		t.Fatal("an answer was dropped before its time")
 	}
@@ -172,14 +172,14 @@ func TestACachedAnswerExpires(t *testing.T) {
 }
 
 func TestTheCacheHoldsAtMostItsCapacity(t *testing.T) {
-	c := &queryCache[int]{}
-	for i := range queryCacheEntries + 50 {
+	c := &ttlCache[int]{}
+	for i := range cacheEntries + 50 {
 		c.put(strconv.Itoa(i), i)
 	}
-	if n := len(c.entries); n > queryCacheEntries {
-		t.Fatalf("the cache grew to %d entries, past its %d", n, queryCacheEntries)
+	if n := len(c.entries); n > cacheEntries {
+		t.Fatalf("the cache grew to %d entries, past its %d", n, cacheEntries)
 	}
-	if _, ok := c.get(strconv.Itoa(queryCacheEntries + 49)); !ok {
+	if _, ok := c.get(strconv.Itoa(cacheEntries + 49)); !ok {
 		t.Fatal("the newest answer was evicted to make room for itself")
 	}
 }

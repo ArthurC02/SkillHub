@@ -324,7 +324,7 @@ func (s *Service) apply(ctx context.Context, tx pgx.Tx, ws identity.Workspace, r
 	case commandSelectReferences:
 		return s.selectReferences(ctx, ws, p, c)
 	case commandAdoptReference:
-		return s.adoptReference(ctx, ws, e, c.ReferenceSkillIDs)
+		return s.adoptReference(ctx, tx, ws, e, c.ReferenceSkillIDs)
 	case commandDeclineReferences:
 		return declineReferences(p)
 	case commandConfirmReferences:

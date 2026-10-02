@@ -704,3 +704,53 @@ func TestFinishWhenTheModelAsksForAnotherStepButTheSessionCannotSpendWaitsForInp
 		t.Fatalf("insert calls = %d, want 1 (no follow-up enqueued)", len(rec.calls))
 	}
 }
+
+func singleConnectionPool(t *testing.T, pool *pgxpool.Pool) *pgxpool.Pool {
+	t.Helper()
+	cfg := pool.Config().Copy()
+	cfg.MaxConns, cfg.MinConns = 1, 0
+	one, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(one.Close)
+	return one
+}
+
+func TestACatalogSearchTheModelAskedForRunsWithoutHoldingTheSessionsConnection(t *testing.T) {
+	pool := singleConnectionPool(t, requireDB(t))
+	ws := newCreationWorkspace(t, pool)
+	rec := &jobRecorder{}
+	var searchErr error
+	searched := 0
+	svc := &creation.Service{
+		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
+		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
+		LLM: creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+			return &creation.StepResult{Outcome: "tool_intent", Message: "先查目錄", ToolIntent: &creation.ToolIntent{Kind: "search_knowledge", Query: "invoice"}}, nil
+		}),
+		SearchKnowledge: func(ctx context.Context, _ identity.Workspace, _ []string) ([]creation.Reference, float64, error) {
+			searched++
+			wait, cancel := context.WithTimeout(ctx, time.Second)
+			defer cancel()
+			conn, err := pool.Acquire(wait)
+			if err != nil {
+				searchErr = err
+				return nil, 0, err
+			}
+			conn.Release()
+			return nil, 0, nil
+		},
+	}
+	id := creationID(t)
+	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Step(context.Background(), rec.calls[0], nil); err != nil {
+		t.Fatal(err)
+	}
+	if searched != 1 || searchErr != nil {
+		t.Fatalf("searched %d times, acquire err %v: the search waited on the connection the step's own transaction held, "+
+			"so a full pool of steps waits on itself forever", searched, searchErr)
+	}
+}

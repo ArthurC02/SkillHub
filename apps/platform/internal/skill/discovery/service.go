@@ -57,7 +57,7 @@ type Service struct {
 
 	Analytics *analytics.Service
 
-	packageReports queryCache[skillpkg.Report]
+	packageReports ttlCache[skillpkg.Report]
 }
 
 type ListingFacts struct {
@@ -540,9 +540,7 @@ func (s *Service) matchReasons(ctx context.Context, query string, hits []searchR
 		slog.Warn("match-reasons call failed, using template fallback", "error", err)
 		return nil
 	}
-	if !resp.Cached {
-		s.recordCallCost(ctx, credit.KindMatchReasons, resp.Model, resp.Usage)
-	}
+	s.recordCallCost(ctx, credit.KindMatchReasons, resp.Model, resp.Usage)
 	return resp.Reasons
 }
 

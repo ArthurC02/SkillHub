@@ -253,11 +253,11 @@ func TestSelectingReferencesRefusesWhatItCannotResolve(t *testing.T) {
 }
 
 func TestAdoptingAListedSkillSavesTheSessionAsThatSkill(t *testing.T) {
-	s := &Service{Adopt: func(_ context.Context, _ identity.Workspace, id string) (Candidate, error) {
+	s := &Service{Adopt: func(_ context.Context, _ pgx.Tx, _ identity.Workspace, id string) (Candidate, error) {
 		return Candidate{SkillID: id, VersionID: "v1"}, nil
 	}}
 	e := &envelope{Snapshot: Snapshot{PendingAction: "confirm_duplicate", PendingMaterialize: "finalize", Duplicates: []Reference{{SkillID: "dup"}}}}
-	got, err := s.adoptReference(context.Background(), identity.Workspace{}, e, []string{"dup"})
+	got, err := s.adoptReference(context.Background(), nil, identity.Workspace{}, e, []string{"dup"})
 	p := e.Snapshot
 	if err != nil || got.state != StateSaved || got.queueStep {
 		t.Fatalf("outcome = %+v, err = %v", got, err)
@@ -268,7 +268,7 @@ func TestAdoptingAListedSkillSavesTheSessionAsThatSkill(t *testing.T) {
 }
 
 func TestAdoptingNeedsOneListedSkillAndAnAdopter(t *testing.T) {
-	adopt := func(_ context.Context, _ identity.Workspace, id string) (Candidate, error) {
+	adopt := func(_ context.Context, _ pgx.Tx, _ identity.Workspace, id string) (Candidate, error) {
 		if id == "gone" {
 			return Candidate{}, errors.New("no such skill")
 		}
@@ -277,7 +277,7 @@ func TestAdoptingNeedsOneListedSkillAndAnAdopter(t *testing.T) {
 	listed := Snapshot{PendingAction: "confirm_references", References: []Reference{{SkillID: "a"}, {SkillID: "gone"}}}
 	for _, c := range []struct {
 		name    string
-		adopt   func(context.Context, identity.Workspace, string) (Candidate, error)
+		adopt   func(context.Context, pgx.Tx, identity.Workspace, string) (Candidate, error)
 		pending PendingAction
 		ids     []string
 		want    error
@@ -291,7 +291,7 @@ func TestAdoptingNeedsOneListedSkillAndAnAdopter(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			e := &envelope{Snapshot: listed}
 			e.Snapshot.PendingAction = c.pending
-			if _, err := (&Service{Adopt: c.adopt}).adoptReference(context.Background(), identity.Workspace{}, e, c.ids); !errors.Is(err, c.want) {
+			if _, err := (&Service{Adopt: c.adopt}).adoptReference(context.Background(), nil, identity.Workspace{}, e, c.ids); !errors.Is(err, c.want) {
 				t.Fatalf("err = %v, want %v", err, c.want)
 			}
 		})

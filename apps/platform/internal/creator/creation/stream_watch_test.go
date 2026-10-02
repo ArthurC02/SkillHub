@@ -1,8 +1,11 @@
 package creation
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -228,5 +231,26 @@ func TestTheWatchStopsQueryingOnceNoStreamIsOpen(t *testing.T) {
 	time.Sleep(20 * time.Millisecond)
 	if n := len(fake.polled); n != 0 {
 		t.Fatalf("%d queries ran with no stream open", n)
+	}
+}
+
+func TestAFailingRevisionPollIsReportedOnceAndItsRecoveryOnce(t *testing.T) {
+	var logged bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	w := newRevisionWatch(newFakeRevisions().read, time.Hour)
+
+	w.noteReadOutcome(errors.New("pool exhausted"))
+	w.noteReadOutcome(errors.New("pool exhausted"))
+	w.noteReadOutcome(nil)
+	w.noteReadOutcome(nil)
+
+	out := logged.String()
+	if n := strings.Count(out, "revision poll failed"); n != 1 || !strings.Contains(out, "pool exhausted") {
+		t.Errorf("a lasting poll failure was logged %d times (want once, with its cause):\n%s", n, out)
+	}
+	if n := strings.Count(out, "revision poll recovered"); n != 1 {
+		t.Errorf("the recovery was logged %d times, want once:\n%s", n, out)
 	}
 }

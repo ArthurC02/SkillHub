@@ -29,6 +29,14 @@ func (p Posture) APIRefusals() []string {
 	return append(refusals, p.publicDevelopmentRefusals()...)
 }
 
+func (p Posture) RateLimitRefusals(limits *httpx.RateLimiter) []string {
+	if limits != nil || !p.Public() {
+		return nil
+	}
+	return []string{"RATE_LIMIT=off on a deployment whose APP_URL is https: anonymous search and the " +
+		"import endpoints would take unlimited traffic. Unset RATE_LIMIT."}
+}
+
 func (p Posture) WorkerRefusals() []string {
 	return append(p.devLoginRefusals(), p.publicDevelopmentRefusals()...)
 }

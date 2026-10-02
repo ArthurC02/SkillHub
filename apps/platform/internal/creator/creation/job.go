@@ -287,7 +287,7 @@ func sessionMoved(current gen.GetCreationSessionLivenessRow, err error) bool {
 	if err != nil {
 		return errors.Is(err, pgx.ErrNoRows)
 	}
-	return State(current.State) != StateWorking || !current.ExpiresAt.Time.After(time.Now())
+	return State(current.State) != StateWorking || expired(current.ExpiresAt)
 }
 
 func (s *Service) stepRequest(a JobArgs, revision int64, e envelope, diagram *Diagram) StepRequest {
@@ -393,6 +393,9 @@ func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSes
 }
 func (s *Service) finish(ctx context.Context, a JobArgs, call stepCall) error {
 	usage := call.usage
+	if call.callErr == nil {
+		s.searchAhead(ctx, identity.Workspace{ID: a.WorkspaceID}, call.reply)
+	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return err

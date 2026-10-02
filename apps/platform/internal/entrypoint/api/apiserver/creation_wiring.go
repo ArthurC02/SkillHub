@@ -4,12 +4,11 @@ import (
 	"context"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"encoding/json"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -18,23 +17,9 @@ import (
 )
 
 func wireCreationReads(s *creation.Service, versions *ingest.Service, search *catalog.Service) {
-	s.ValidateDraft = func(ctx context.Context, draft creation.GeneratedSkill) (string, string, bool, error) {
-		check, err := versions.ValidateCreationDraft(ctx, generatedSkillForIngest(draft))
-		return check.ContentHash, check.Report, check.Blocked, err
-	}
-
-	s.Mask = (&trace.Masker{}).MaskString
+	wiring.WireCreationReferenceReads(s, versions, search)
 	s.CatalogCheck = nearestReferences(s, search, catalog.CreationMaxDistance)
 	s.DuplicateCheck = nearestReferences(s, search, catalog.CreationDuplicateDistance)
-	s.ResolveReference = referenceResolver(versions, search)
-	s.ReadReferenceContent = referenceContentReader(versions)
-	s.SearchReferences = func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, error) {
-		ids, err := search.CreationReferenceIDs(ctx, query)
-		if err != nil {
-			return nil, err
-		}
-		return firstResolvedReferences(ctx, s, ws, ids), nil
-	}
 }
 
 func nearestReferences(s *creation.Service, search *catalog.Service, maxDistance float64) func(context.Context, identity.Workspace, string) ([]creation.Reference, float64, error) {
@@ -43,68 +28,7 @@ func nearestReferences(s *creation.Service, search *catalog.Service, maxDistance
 		if err != nil || knowledge.Degraded {
 			return nil, knowledge.CostUSD, err
 		}
-		return firstResolvedReferences(ctx, s, ws, knowledge.IDs), knowledge.CostUSD, nil
-	}
-}
-
-func firstResolvedReferences(ctx context.Context, s *creation.Service, ws identity.Workspace, ids []string) []creation.Reference {
-	refs := []creation.Reference{}
-	for _, id := range ids {
-		r, _, err := s.ResolveReference(ctx, ws, id, "")
-		if err == nil {
-			refs = append(refs, r)
-		}
-		if len(refs) == creation.MaxReferences {
-			break
-		}
-	}
-	return refs
-}
-
-func referenceResolver(versions *ingest.Service, search *catalog.Service) func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
-	return func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.Reference, creation.ReferenceSkill, error) {
-		sid, vid, err := parseReferenceIDs(skillID, versionID)
-		if err != nil {
-			return creation.Reference{}, creation.ReferenceSkill{}, err
-		}
-		fixed, content, err := versions.ReadCreationReference(ctx, ws, sid, vid)
-		ref := creation.Reference{SkillID: creation.UUID(fixed.SkillID), VersionID: creation.UUID(fixed.VersionID), Name: fixed.Name, Available: err == nil, Description: fixed.Description, Compatibility: fixed.Compatibility, AllowedTools: fixed.AllowedTools}
-		addCatalogFacts(ctx, search, &ref)
-		return ref, creation.ReferenceSkill{Name: content.Name, SkillMD: content.SkillMD}, err
-	}
-}
-
-func referenceContentReader(versions *ingest.Service) func(context.Context, identity.Workspace, string, string) (creation.ReferenceSkill, error) {
-	return func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.ReferenceSkill, error) {
-		sid, vid, err := parseReferenceIDs(skillID, versionID)
-		if err != nil {
-			return creation.ReferenceSkill{}, err
-		}
-		content, err := versions.ReadCreationReferenceContent(ctx, ws, sid, vid)
-		return creation.ReferenceSkill{Name: content.Name, SkillMD: content.SkillMD}, err
-	}
-}
-
-func parseReferenceIDs(skillID, versionID string) (pgtype.UUID, pgtype.UUID, error) {
-	var vid pgtype.UUID
-	sid, err := creation.ParseID(skillID)
-	if err != nil {
-		return sid, vid, err
-	}
-	if versionID != "" {
-		vid, err = creation.ParseID(versionID)
-	}
-	return sid, vid, err
-}
-
-func addCatalogFacts(ctx context.Context, search *catalog.Service, ref *creation.Reference) {
-	facts, err := search.CatalogReferenceFacts(ctx, ref.SkillID, ref.VersionID)
-	if err != nil {
-		return
-	}
-	ref.Tier, ref.ScanStatus = facts.Tier, facts.ScanStatus
-	if facts.ScanStatus == "scanned" {
-		ref.Warnings = &facts.Warnings
+		return wiring.FirstResolvedReferences(ctx, s, ws, knowledge.IDs), knowledge.CostUSD, nil
 	}
 }
 
@@ -118,7 +42,7 @@ func wireCreationWrites(s *creation.Service, versions *ingest.Service, runs *run
 			}
 			provenance.ExistingSkillID = &id
 		}
-		result, err := versions.MaterializeGeneratedCandidate(ctx, ws, generatedSkillForIngest(draft), provenance, func(ctx context.Context, tx pgx.Tx, r ingest.Result) error {
+		result, err := versions.MaterializeGeneratedCandidate(ctx, ws, wiring.GeneratedSkillForIngest(draft), provenance, func(ctx context.Context, tx pgx.Tx, r ingest.Result) error {
 			return after(ctx, tx, creation.Candidate{SkillID: creation.UUID(r.Skill.ID), VersionID: creation.UUID(r.Version.ID)})
 		})
 		if err == nil && result.Report.Blocked {
@@ -148,12 +72,12 @@ func wireCreationWrites(s *creation.Service, versions *ingest.Service, runs *run
 }
 
 func wireCreationAdopt(s *creation.Service, forks *registry.Service) {
-	s.Adopt = func(ctx context.Context, ws identity.Workspace, skillID string) (creation.Candidate, error) {
+	s.Adopt = func(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID string) (creation.Candidate, error) {
 		id, err := creation.ParseID(skillID)
 		if err != nil {
 			return creation.Candidate{}, err
 		}
-		sk, ver, err := forks.Fork(ctx, ws, id)
+		sk, ver, err := forks.ForkIn(ctx, tx, ws, id)
 		if err != nil {
 			return creation.Candidate{}, err
 		}
@@ -173,15 +97,4 @@ func wireCreationTestCases(s *creation.Service, lab *testlab.Service) {
 		}
 		return creation.UUID(tc.ID), nil
 	}
-}
-
-func generatedSkillForIngest(g creation.GeneratedSkill) ingest.GeneratedSkill {
-	out := ingest.GeneratedSkill{
-		Name: g.Name, Description: g.Description, Compatibility: g.Compatibility,
-		AllowedTools: g.AllowedTools, Body: g.Body,
-	}
-	for _, f := range g.Files {
-		out.Files = append(out.Files, ingest.GeneratedFile{Path: f.Path, Content: f.Content})
-	}
-	return out
 }

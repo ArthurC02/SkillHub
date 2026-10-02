@@ -3,6 +3,8 @@ package creation
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
+
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
 
@@ -48,12 +50,12 @@ func (s *Service) selectReferences(ctx context.Context, ws identity.Workspace, p
 	return settledIn(StateWaitingConfirmation), nil
 }
 
-func (s *Service) adoptReference(ctx context.Context, ws identity.Workspace, e *envelope, skillIDs []string) (commandOutcome, error) {
+func (s *Service) adoptReference(ctx context.Context, tx pgx.Tx, ws identity.Workspace, e *envelope, skillIDs []string) (commandOutcome, error) {
 	p := &e.Snapshot
 	if s.Adopt == nil || len(skillIDs) != 1 || (p.PendingAction != PendingReferenceChoice && p.PendingAction != PendingDuplicateAcknowledgement) || !listedReference(p, skillIDs[0]) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
-	candidate, err := s.Adopt(ctx, ws, skillIDs[0])
+	candidate, err := s.Adopt(ctx, tx, ws, skillIDs[0])
 	if err != nil {
 		return commandOutcome{}, ErrNotFound
 	}

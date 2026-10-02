@@ -114,6 +114,20 @@ func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtyp
 		return Skill{}, Version{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	fork, version, err := s.ForkIn(ctx, tx, ws, skillID)
+	if err != nil {
+		return Skill{}, Version{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Skill{}, Version{}, err
+	}
+	return fork, version, nil
+}
+
+func (s *Service) ForkIn(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID pgtype.UUID) (Skill, Version, error) {
+	if err := s.requireProjection(); err != nil {
+		return Skill{}, Version{}, err
+	}
 	src, srcVer, err := s.forkSource(ctx, tx, ws, skillID)
 	if err != nil {
 		return Skill{}, Version{}, err
@@ -154,9 +168,6 @@ func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtyp
 			"source_version_id": pgconv.UUIDString(srcVer.ID),
 		},
 	}); err != nil {
-		return Skill{}, Version{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
 		return Skill{}, Version{}, err
 	}
 	return root.Skill(), root.AddedVersion(), nil

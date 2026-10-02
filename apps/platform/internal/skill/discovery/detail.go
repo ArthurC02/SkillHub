@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io/fs"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -339,7 +340,7 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetai
 		out.Compat.SpecValidation = axis(specWords, specValidation(report))
 		out.Limitations = append(out.Limitations, scanDerivedLimitations(report)...)
 		if report.Manifest != nil {
-			out.AllowedTools = report.Manifest.AllowedTools
+			out.AllowedTools = slices.Clone(report.Manifest.AllowedTools)
 		}
 	}
 	return out, nil
