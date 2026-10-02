@@ -5,12 +5,15 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
@@ -717,6 +720,51 @@ func TestTheCleanModeRefusalArrivesBeforeTheUserSpendsThreeStepsOnIt(t *testing.
 	if blocked.Hash != before.Hash {
 		t.Errorf("the hash changed when the deployment mode did; a refusal is a state and must stay " +
 			"outside the hash, or every outstanding confirmation is revoked by it")
+	}
+}
+
+type unreadableRunRegistry struct {
+	run.RegistryReader
+	skillDown, sourceDown bool
+}
+
+var errRegistryDown = errors.New("registry unreachable")
+
+func (r unreadableRunRegistry) Skill(ctx context.Context, workspaceID, skillID pgtype.UUID) (run.SkillFacts, bool, error) {
+	if r.skillDown {
+		return run.SkillFacts{}, false, errRegistryDown
+	}
+	return r.RegistryReader.Skill(ctx, workspaceID, skillID)
+}
+
+func (r unreadableRunRegistry) ContentSource(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.ContentSource, bool, error) {
+	if r.sourceDown {
+		return run.ContentSource{}, false, errRegistryDown
+	}
+	return r.RegistryReader.ContentSource(ctx, workspaceID, versionID)
+}
+
+func TestASummaryWhoseGatesCannotBeReadIsAnErrorNotAVerdict(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-summary-gates-unreadable")
+	a.runs.Deployment = testRunDeployment(true)
+	readable := a.runs.Registry
+
+	for _, tc := range []struct {
+		name     string
+		registry unreadableRunRegistry
+	}{
+		{"skill unreadable", unreadableRunRegistry{RegistryReader: readable, skillDown: true}},
+		{"content source unreadable", unreadableRunRegistry{RegistryReader: readable, sourceDown: true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a.runs.Registry = tc.registry
+			t.Cleanup(func() { a.runs.Registry = readable })
+			if code, summary := f.preflight(t); code < http.StatusInternalServerError {
+				t.Errorf("GET preflight with a gate unreadable: %d blocked=%q, want a server error rather than a verdict", code, summary.Blocked)
+			}
+		})
 	}
 }
 

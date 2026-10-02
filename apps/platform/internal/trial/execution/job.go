@@ -144,9 +144,11 @@ func (d *driver) dispatch(ctx context.Context) error {
 		return nil
 	}
 
-	if err := d.svc.requireCuratedContent(ctx, d.cur); err != nil {
+	if err := d.svc.requireCuratedContent(ctx, d.cur); errors.Is(err, ErrContentNotCurated) {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failurePolicy,
 			d.reasonFor(failurePolicy, err))
+	} else if err != nil {
+		return err
 	}
 
 	if err := d.svc.requireModelGateway(); err != nil {

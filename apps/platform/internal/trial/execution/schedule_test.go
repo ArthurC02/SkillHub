@@ -662,6 +662,7 @@ type curatedContentCase struct {
 	what     string
 	read     func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error)
 	wantPass bool
+	outage   bool
 	wantSaid []string
 }
 
@@ -682,8 +683,8 @@ func assertCuratedContentCase(t *testing.T, tc curatedContentCase) {
 	if err == nil {
 		t.Fatal("uncurated material was handed to a driver with no isolation boundary")
 	}
-	if !errors.Is(err, ErrContentNotCurated) {
-		t.Errorf("error = %v, want it to wrap ErrContentNotCurated so the caller can classify it", err)
+	if errors.Is(err, ErrContentNotCurated) == tc.outage {
+		t.Errorf("error = %v, want ErrContentNotCurated exactly when the material is known not to be curated (outage %v)", err, tc.outage)
 	}
 	for _, want := range tc.wantSaid {
 		if !strings.Contains(err.Error(), want) {
@@ -723,6 +724,7 @@ func TestTheCleanTestModeOnlyRunsCuratedMaterial(t *testing.T) {
 		{
 			what:     "a read that failed",
 			read:     stubContentSource(ContentSource{}, false, errors.New("connection refused")),
+			outage:   true,
 			wantSaid: []string{"could not be read", "connection refused"},
 		},
 		{

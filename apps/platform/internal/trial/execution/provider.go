@@ -346,7 +346,7 @@ func (p *httpProvider) call(ctx context.Context, req providerRequest, out any) (
 		ResponseLimit: providerResponseLimit,
 	}).Do(ctx, req.method, strings.TrimSuffix(p.baseURL, "/")+req.path, payload)
 	if err != nil {
-		return transportFailure(req, status, err)
+		return transportFailure(ctx, req, status, err)
 	}
 	if req.wanted(status) {
 		if out != nil && len(raw) > 0 {
@@ -359,8 +359,8 @@ func (p *httpProvider) call(ctx context.Context, req providerRequest, out any) (
 	return status, refusalFrom(status, raw)
 }
 
-func transportFailure(req providerRequest, status int, err error) (int, error) {
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+func transportFailure(ctx context.Context, req providerRequest, status int, err error) (int, error) {
+	if ctx.Err() != nil {
 		return 0, err
 	}
 	if status != 0 {

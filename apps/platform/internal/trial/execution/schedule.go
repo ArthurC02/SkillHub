@@ -74,8 +74,7 @@ func (s *Service) curatedContentRefusal(
 	}
 	source, found, readErr := s.Registry.ContentSource(ctx, workspaceID, skillVersionID)
 	if readErr != nil {
-		return "", fmt.Errorf("%w, and where this material came from could not be read: %w",
-			ErrContentNotCurated, readErr)
+		return "", fmt.Errorf("where this material came from could not be read: %w", readErr)
 	}
 	if !found {
 		return "", fmt.Errorf("%w, and this version's skill could not be found to check", ErrContentNotCurated)

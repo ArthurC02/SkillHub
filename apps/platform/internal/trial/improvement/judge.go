@@ -414,9 +414,8 @@ func checkTraceEventCitation(ref Citation, digest map[string]trace.EventView) ci
 		}
 		return unsettledCitation(fmt.Sprintf("cited trace event %q was not in the digest", id))
 	case ref.Quote == "":
-
 		out := traceRef(event, event.Type)
-		out.Match = MatchExact
+		out.Match = MatchNotChecked
 		return settledCitation(out, "")
 	default:
 		if match, _, ok := locate(traceSearchText(event.Payload), ref.Quote); ok {

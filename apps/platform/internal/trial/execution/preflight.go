@@ -102,28 +102,28 @@ type PermissionSummary struct {
 
 const blockedContentNotCurated = "content_not_curated"
 
-// blockingReason is what would refuse this pair right now, asked of the very
-// gates create() enforces so the two can never answer differently.
 func (s *Service) blockingReason(
 	ctx context.Context, workspaceID pgtype.UUID, version VersionFacts, snap policySnapshot, scan packageScan,
-) string {
+) (string, error) {
 	if s.Registry != nil {
-		if skill, found, err := s.Registry.Skill(ctx, workspaceID, version.SkillID); err == nil && found {
-			if reason, err := accessVerdict(skill); err != nil {
-				return reason
-			}
+		skill, found, err := s.Registry.Skill(ctx, workspaceID, version.SkillID)
+		if err != nil {
+			return "", err
+		}
+		if reason := refusalReason(accessVerdict(skill)); found && reason != "" {
+			return reason, nil
 		}
 	}
-	if reason, err := s.schedulableRefusal(ctx, snap); err != nil {
-		return reason
+	if reason := refusalReason(s.schedulableRefusal(ctx, snap)); reason != "" {
+		return reason, nil
 	}
-	if reason, err := scanVerdict(scan); err != nil {
-		return reason
+	if reason := refusalReason(scanVerdict(scan)); reason != "" {
+		return reason, nil
 	}
-	if _, err := s.curatedContentRefusal(ctx, workspaceID, version.ID); err != nil {
-		return blockedContentNotCurated
+	if _, err := s.curatedContentRefusal(ctx, workspaceID, version.ID); !errors.Is(err, ErrContentNotCurated) {
+		return "", err
 	}
-	return ""
+	return blockedContentNotCurated, nil
 }
 
 type CostEstimate struct {
@@ -296,7 +296,9 @@ func (s *Service) permissionSummaryFor(
 	// Skipped here: a second pool read would deadlock a caller already
 	// inside a transaction on a single-connection pool.
 	if held == nil {
-		blocked = s.blockingReason(ctx, workspaceID, version, snap, scan)
+		if blocked, err = s.blockingReason(ctx, workspaceID, version, snap, scan); err != nil {
+			return PermissionSummary{}, err
+		}
 		quota = s.enforcedQuotaView(ctx, workspaceID)
 		notes = s.summaryNotes(ctx, snap)
 	}
@@ -591,4 +593,11 @@ func preflightIDs(w http.ResponseWriter, r *http.Request, version, testCase stri
 		return target, false
 	}
 	return target, true
+}
+
+func refusalReason(reason string, refused error) string {
+	if refused == nil {
+		return ""
+	}
+	return reason
 }

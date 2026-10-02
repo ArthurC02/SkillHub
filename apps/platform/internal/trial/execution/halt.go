@@ -286,6 +286,7 @@ func (s *Service) EvaluateOrphanThresholds(ctx context.Context) {
 			Provider: provider.Name(), PersistentAfterRounds: OrphanPersistsAfterRounds,
 		})
 		if err != nil {
+			poolKnown = false
 			slog.Error("counting persistent orphans for the X-04 threshold failed",
 				"provider", provider.Name(), "error", err)
 			continue
