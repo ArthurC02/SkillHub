@@ -16,14 +16,15 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
   const navigate = useNavigate();
   const awaiting = runStatus === "succeeded" || runStatus === "failed";
   const evaluation = useEvaluation(runId, revision, awaiting);
-  const revisions = useEvaluationRevisions(runId, evaluation.data !== undefined);
-  const { notEvaluated, stoppedAsking, evaluating } = evaluationPanelState({
+  const { notEvaluated, stoppedAsking, evaluating, asksHistory } = evaluationPanelState({
     runStatus,
     revision,
     error: evaluation.error,
     errorUpdateCount: evaluation.errorUpdateCount,
     dataStatus: evaluation.data?.status,
+    pending: evaluation.isPending,
   });
+  const revisions = useEvaluationRevisions(runId, asksHistory);
 
   return (
     <section>

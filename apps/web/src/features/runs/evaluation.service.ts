@@ -184,7 +184,10 @@ export function useEvaluation(runId: string, revision?: string, awaitCurrent = f
       return query.state.errorUpdateCount < EVALUATION_POLL_MAX_404 ? 3000 : false;
     },
   });
-  useRevisionsFollowCurrent(runId, revision ? undefined : query.data?.evaluation_id);
+  useRevisionsFollowCurrent(
+    runId,
+    revision || !query.data ? undefined : `${query.data.evaluation_id}:${query.data.status}`,
+  );
   const pendingPollStopped =
     !revision &&
     awaitCurrent &&
@@ -193,19 +196,19 @@ export function useEvaluation(runId: string, revision?: string, awaitCurrent = f
   return { ...query, pendingPollStopped };
 }
 
-function useRevisionsFollowCurrent(runId: string, currentId: string | undefined) {
+function useRevisionsFollowCurrent(runId: string, current: string | undefined) {
   const client = useQueryClient();
-  const seen = useRef<{ runId: string; evaluationId: string } | undefined>(undefined);
-  // Only a changed id for the same run invalidates, so StrictMode's second
-  // effect run (same id) and a switch to another run are both no-ops.
+  const seen = useRef<{ runId: string; current: string } | undefined>(undefined);
+  // Only a changed evaluation or status for the same run invalidates, so
+  // StrictMode's second effect run and a switch to another run are no-ops.
   useEffect(() => {
-    if (!currentId) return;
+    if (!current) return;
     const last = seen.current;
-    if (last && last.runId === runId && last.evaluationId !== currentId) {
+    if (last && last.runId === runId && last.current !== current) {
       void client.invalidateQueries({ queryKey: queryKeys.evaluation.revisions(runId) });
     }
-    seen.current = { runId, evaluationId: currentId };
-  }, [client, runId, currentId]);
+    seen.current = { runId, current };
+  }, [client, runId, current]);
 }
 
 export function useEvaluationRevisions(runId: string, evaluated: boolean) {

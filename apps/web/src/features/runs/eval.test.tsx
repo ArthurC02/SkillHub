@@ -790,6 +790,79 @@ test("evaluation reports a revision history read failure instead of silently hid
   expect(container.querySelector("#evaluation-revision")).toBeNull();
 });
 
+test("an evaluation address that no longer reads still offers the history to switch back", async () => {
+  const current = { ...evaluation, evaluation_id: "eval-2", summary: "重評之後的判定。" };
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/evaluation/revisions")) {
+      return json({
+        revisions: [revisionOf(current, null), revisionOf(evaluation, "2026-08-25T00:00:00Z")],
+      });
+    }
+    if (url.includes("revision=eval-gone")) return json({ error: "not found" }, 404);
+    if (url.includes("/evaluation")) return json(current);
+    return json({ error: "not found" }, 404);
+  });
+
+  setSearch({ evaluation: "eval-gone" });
+  await render("succeeded");
+
+  await waitFor(() => container.querySelector("#evaluation-revision") !== null);
+  expect(container.querySelector("#evaluation-revision")?.querySelectorAll("option")).toHaveLength(
+    3,
+  );
+});
+
+test("a pending evaluation that completes refreshes the verdict its history lists", async () => {
+  vi.useFakeTimers();
+  let evaluations = 0;
+  const older = { ...evaluation, evaluation_id: "eval-0" };
+  const pending = {
+    ...evaluation,
+    evaluation_id: "eval-1",
+    status: "pending",
+    overall: "undetermined",
+  } as const;
+  const completed = { ...evaluation, evaluation_id: "eval-1", overall: "met" } as const;
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/evaluation/revisions")) {
+      return json({
+        revisions: [
+          revisionOf(evaluations >= 2 ? completed : pending, null),
+          revisionOf(older, "2026-08-25T00:00:00Z"),
+        ],
+      });
+    }
+    if (url.includes("/evaluation")) {
+      evaluations++;
+      return json(evaluations === 1 ? pending : completed);
+    }
+    return json({ error: "not found" }, 404);
+  });
+
+  await act(async () => {
+    root = createRoot(container);
+    root.render(
+      <QueryClientProvider client={queryClient}>
+        <EvaluationPanel runId={RUN} runStatus="succeeded" />
+      </QueryClientProvider>,
+    );
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  const picker = () => container.querySelector("#evaluation-revision")?.textContent ?? "";
+  for (let i = 0; i < 5 && picker() === ""; i++) {
+    await act(async () => vi.advanceTimersByTimeAsync(10));
+  }
+  expect(picker()).toContain("無法判斷");
+
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  await act(async () => vi.advanceTimersByTimeAsync(0));
+
+  expect(picker()).toContain("符合");
+  expect(picker()).not.toContain("無法判斷");
+});
+
 function revisionOf(source: Evaluation, supersededAt: string | null) {
   return {
     evaluation_id: source.evaluation_id,

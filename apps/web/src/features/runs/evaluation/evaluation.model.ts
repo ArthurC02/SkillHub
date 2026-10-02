@@ -16,6 +16,7 @@ export type EvaluationPanelState = {
   notEvaluated: boolean;
   stoppedAsking: boolean;
   evaluating: boolean;
+  asksHistory: boolean;
 };
 
 export function evaluationPanelState(query: {
@@ -24,12 +25,14 @@ export function evaluationPanelState(query: {
   error: unknown;
   errorUpdateCount: number;
   dataStatus: Evaluation["status"] | undefined;
+  pending: boolean;
 }): EvaluationPanelState {
   const awaiting = query.runStatus === "succeeded" || query.runStatus === "failed";
   const notEvaluated = query.error instanceof ApiError && query.error.status === 404;
   const stoppedAsking = notEvaluated && query.errorUpdateCount >= EVALUATION_POLL_MAX_404;
   const evaluating = !query.revision && query.dataStatus === "pending";
-  return { awaiting, notEvaluated, stoppedAsking, evaluating };
+  const asksHistory = !query.pending && !(notEvaluated && !query.revision);
+  return { awaiting, notEvaluated, stoppedAsking, evaluating, asksHistory };
 }
 
 export const OVERALL_LABEL: Record<Evaluation["overall"], string> = {
