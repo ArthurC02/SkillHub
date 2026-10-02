@@ -142,16 +142,12 @@ func blockingCodes(report skillpkg.Report) []string {
 	return codes
 }
 
-func (s *Service) requireScanNotBlocking(ctx context.Context, stored skillpkg.StoredSkill) error {
-	reason, err := s.scanRefusal(ctx, stored)
+func requireScanNotBlocking(scan packageScan) error {
+	reason, err := scanVerdict(scan)
 	if err != nil {
 		return refused(reason, err)
 	}
 	return nil
-}
-
-func (s *Service) scanRefusal(ctx context.Context, stored skillpkg.StoredSkill) (string, error) {
-	return scanVerdict(s.packageReport(ctx, stored))
 }
 
 func runSlotVerdict(active int64) error {

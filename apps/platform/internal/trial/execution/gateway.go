@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -72,8 +73,12 @@ type Deployment struct {
 }
 
 func (d Deployment) Budget() float64 {
-	if d.BudgetUSD > 0 {
-		return d.BudgetUSD
+	return budgetOrDefault(d.BudgetUSD)
+}
+
+func budgetOrDefault(usd float64) float64 {
+	if usd > 0 && !math.IsInf(usd, 1) {
+		return usd
 	}
 	return defaultKeyBudgetUSD
 }
@@ -92,9 +97,7 @@ func NewGateway(c GatewayConfig) *Gateway {
 	if c.AdminBaseURL == "" {
 		c.AdminBaseURL = c.SandboxBaseURL
 	}
-	if c.MaxBudgetUSD <= 0 {
-		c.MaxBudgetUSD = defaultKeyBudgetUSD
-	}
+	c.MaxBudgetUSD = budgetOrDefault(c.MaxBudgetUSD)
 	if c.TPMLimit <= 0 {
 		c.TPMLimit = defaultKeyTPMLimit
 	}

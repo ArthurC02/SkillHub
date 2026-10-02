@@ -289,12 +289,6 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	current, err := h.Svc.GetTestCase(r.Context(), ws, id)
-	if err != nil {
-		fail(w, err, "讀取失敗")
-		return
-	}
-
 	body := struct {
 		Name       *string         `json:"name"`
 		UserPrompt *string         `json:"user_prompt"`
@@ -303,41 +297,18 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &body) {
 		return
 	}
-	name, prompt := current.Name, current.UserPrompt
-	if body.Name != nil {
-		name = *body.Name
-	}
-	if body.UserPrompt != nil {
-		prompt = *body.UserPrompt
-	}
-
-	var rubric *Rubric
-	if len(body.Rubric) > 0 && strings.TrimSpace(string(body.Rubric)) != "null" {
-		rubric = &Rubric{}
-		if err := json.Unmarshal(body.Rubric, rubric); err != nil {
+	edit := TestCaseEdit{Name: body.Name, Prompt: body.UserPrompt, ReplaceRubric: len(body.Rubric) > 0}
+	if edit.ReplaceRubric && strings.TrimSpace(string(body.Rubric)) != "null" {
+		edit.Rubric = &Rubric{}
+		if err := json.Unmarshal(body.Rubric, edit.Rubric); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, "rubric 必須是含 version 與 items 的物件")
 			return
 		}
-		criteria, err := DecodeCriteria(current.AcceptanceCriteria)
-		if err != nil {
-			fail(w, err, "讀取失敗")
-			return
-		}
-		if _, err := validateRubric(*rubric, criteria); err != nil {
-			fail(w, err, "更新 rubric 失敗")
-			return
-		}
 	}
-	tc, err := h.Svc.UpdateTestCase(r.Context(), ws, id, name, prompt)
+	tc, err := h.Svc.EditTestCase(r.Context(), ws, id, edit)
 	if err != nil {
 		fail(w, err, "更新失敗")
 		return
-	}
-	if len(body.Rubric) > 0 {
-		if tc, err = h.Svc.SetRubric(r.Context(), ws, id, rubric); err != nil {
-			fail(w, err, "更新 rubric 失敗")
-			return
-		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, toTestCaseResponse(tc))
 }

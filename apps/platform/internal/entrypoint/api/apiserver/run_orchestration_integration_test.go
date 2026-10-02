@@ -1791,3 +1791,62 @@ func TestARunWhoseCostCouldNotBeChargedIsNotReportedAsCleanedUp(t *testing.T) {
 		t.Errorf("cleanup_status = %q once the charge went through, want cleaned", got)
 	}
 }
+
+type lockProbingStore struct {
+	run.ObjectStore
+	pool          *pgxpool.Pool
+	testCaseID    string
+	reads         atomic.Int32
+	readUnderLock atomic.Bool
+}
+
+func (s *lockProbingStore) Get(ctx context.Context, key string) ([]byte, error) {
+	s.reads.Add(1)
+	tx, err := s.pool.Begin(ctx)
+	if err == nil {
+		if _, err := tx.Exec(ctx, "SELECT 1 FROM test_cases WHERE id = $1 FOR UPDATE NOWAIT", s.testCaseID); err != nil {
+			s.readUnderLock.Store(true)
+		}
+		_ = tx.Rollback(ctx)
+	}
+	return s.ObjectStore.Get(ctx, key)
+}
+
+func TestARunIsCreatedWithoutReadingThePackageWhileTheTestCaseIsLocked(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-create-unlocked-read")
+	fake, _ := withProvider(t, a, pool, providertest.Plan{})
+
+	probe := &lockProbingStore{ObjectStore: a.packages, pool: pool, testCaseID: f.testCaseID}
+	svc := *a.runs
+	svc.Providers = run.NewRegistry(fake.Provider())
+	svc.Store = probe
+	svc.Queue = nil
+	ws, actor := mustUUID(t, f.workspaceID), mustUUID(t, f.userID)
+	skill, version, testCase := mustUUID(t, f.skillID), mustUUID(t, f.versionID), mustUUID(t, f.testCaseID)
+	summary, err := svc.PermissionSummaryFor(context.Background(), ws, skill, version, testCase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.ConfirmPermissions(context.Background(), ws, run.ConfirmPermissionsParams{
+		Actor: actor, SkillID: skill, VersionID: version, TestCaseID: testCase, SummaryHash: summary.Hash,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	probe.reads.Store(0)
+
+	if _, err := svc.Create(context.Background(), run.CreateParams{
+		WorkspaceID: ws, Actor: actor, SkillID: skill, VersionID: version, TestCaseID: testCase,
+		ConfirmedSummaryHash: summary.Hash,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := probe.reads.Load(); got != 1 {
+		t.Errorf("package reads while creating the run = %d, want 1", got)
+	}
+	if probe.readUnderLock.Load() {
+		t.Error("the package was read from storage while the run's transaction held the test case locked")
+	}
+}

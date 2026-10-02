@@ -1,6 +1,7 @@
 package wiring
 
 import (
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -15,7 +16,7 @@ const (
 )
 
 func GatewayFromEnv() *run.Gateway {
-	budget, _ := strconv.ParseFloat(os.Getenv("SKILLHUB_RUN_MAX_BUDGET_USD"), 64)
+	budget := runBudgetFromEnv()
 	tpm, _ := strconv.Atoi(os.Getenv("SKILLHUB_RUN_TPM_LIMIT"))
 	return run.NewGateway(run.GatewayConfig{
 		AdminBaseURL: strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_ADMIN_URL"), "/"),
@@ -25,7 +26,7 @@ func GatewayFromEnv() *run.Gateway {
 }
 
 func RunDeploymentFromEnv() run.Deployment {
-	budget, _ := strconv.ParseFloat(os.Getenv("SKILLHUB_RUN_MAX_BUDGET_USD"), 64)
+	budget := runBudgetFromEnv()
 	cleanMode := os.Getenv("SKILLHUB_CLEAN_MODE") == "1"
 	minimumIsolation := run.StrongIsolation
 	if cleanMode {
@@ -34,6 +35,17 @@ func RunDeploymentFromEnv() run.Deployment {
 		minimumIsolation = run.WeakIsolation
 	}
 	return run.Deployment{Model: os.Getenv("SKILLHUB_RUN_MODEL"), GatewayURL: strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_URL"), "/"), BudgetUSD: budget, MinimumIsolation: minimumIsolation, CleanMode: cleanMode, CleanModeReleases: os.Getenv("SKILLHUB_CLEAN_MODE_RELEASES")}
+}
+
+const runBudgetVariable = "SKILLHUB_RUN_MAX_BUDGET_USD"
+
+func runBudgetFromEnv() float64 {
+	raw := os.Getenv(runBudgetVariable)
+	budget, err := strconv.ParseFloat(raw, 64)
+	if raw != "" && (err != nil || run.Deployment{BudgetUSD: budget}.Budget() != budget) {
+		slog.Warn(runBudgetVariable+" is set but unusable; the default run budget applies", "value", raw)
+	}
+	return budget
 }
 
 func NewRunRegistryFromEnv() *run.Registry {

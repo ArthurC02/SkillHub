@@ -241,3 +241,27 @@ func TestAProviderLackingACapabilityIsClassedAsAMismatch(t *testing.T) {
 		t.Error("a capability mismatch stopped counting as a refusal")
 	}
 }
+
+func TestOnlyAPositiveFiniteRunBudgetOverridesTheDefault(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		budget float64
+		want   float64
+	}{
+		{"configured", 0.75, 0.75},
+		{"unset", 0, defaultKeyBudgetUSD},
+		{"negative", -1, defaultKeyBudgetUSD},
+		{"not a number", math.NaN(), defaultKeyBudgetUSD},
+		{"unbounded", math.Inf(1), defaultKeyBudgetUSD},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := (Deployment{BudgetUSD: tc.budget}).Budget(); got != tc.want {
+				t.Errorf("deployment budget = %v, want %v", got, tc.want)
+			}
+			g := NewGateway(GatewayConfig{SandboxBaseURL: "http://gateway", AdminKey: "k", MaxBudgetUSD: tc.budget})
+			if g.maxBudgetUSD != tc.want {
+				t.Errorf("gateway key budget = %v, want %v", g.maxBudgetUSD, tc.want)
+			}
+		})
+	}
+}

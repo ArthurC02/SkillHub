@@ -207,36 +207,48 @@ func (s *Service) PermissionSummaryFor(
 	}, nil)
 }
 
-// heldInputs carries rows a caller already read on its own transaction, so this
-// function can skip taking a second pool connection while that transaction
-// still holds one.
+func (s *Service) versionFor(ctx context.Context, workspaceID, versionID pgtype.UUID, held *heldInputs) (VersionFacts, error) {
+	if held != nil {
+		return held.version, nil
+	}
+	version, found, err := s.Registry.Version(ctx, workspaceID, versionID)
+	if !found && err == nil {
+		return VersionFacts{}, ErrPreflightTargetNotFound
+	}
+	return version, err
+}
+
+// heldInputs carries what a caller already read: rows from its own transaction,
+// so no second pool connection is taken, and the package scan and provider
+// answers, so no network call is made while that transaction holds its locks.
 type heldInputs struct {
 	draft   testlab.Draft
 	version VersionFacts
+	live    liveFacts
+}
+
+type liveFacts struct {
+	scan            packageScan
+	injectedSecrets []string
+	provider        ProviderSummary
+}
+
+func (s *Service) liveFactsFor(ctx context.Context, version VersionFacts, snap policySnapshot) liveFacts {
+	return liveFacts{
+		scan:            s.packageReport(ctx, version.stored()),
+		injectedSecrets: s.injectedSecretsFor(ctx, snap),
+		provider:        s.providerSummary(ctx, snap),
+	}
 }
 
 func (s *Service) permissionSummaryFor(
 	ctx context.Context, workspaceID pgtype.UUID, target preflightTarget, held *heldInputs,
 ) (PermissionSummary, error) {
 	skillID, versionID, testCaseID := target.skillID, target.versionID, target.testCaseID
-	var version VersionFacts
-	if held != nil {
-		version = held.version
-	} else {
-		var (
-			found bool
-			err   error
-		)
-		version, found, err = s.Registry.Version(ctx, workspaceID, versionID)
-		if !found && err == nil {
-
-			return PermissionSummary{}, ErrPreflightTargetNotFound
-		}
-		if err != nil {
-			return PermissionSummary{}, err
-		}
+	version, err := s.versionFor(ctx, workspaceID, versionID, held)
+	if err != nil {
+		return PermissionSummary{}, err
 	}
-
 	if skillID.Valid && version.SkillID != skillID {
 		return PermissionSummary{}, ErrNotFound
 	}
@@ -247,7 +259,13 @@ func (s *Service) permissionSummaryFor(
 	}
 
 	snap := defaultPolicy(s.Deployment)
-	scan := s.packageReport(ctx, version.stored())
+	var live liveFacts
+	if held != nil {
+		live = held.live
+	} else {
+		live = s.liveFactsFor(ctx, version, snap)
+	}
+	scan := live.scan
 
 	content := PermissionSummaryContent{
 		SkillVersionID:    pgconv.UUIDString(version.ID),
@@ -261,8 +279,8 @@ func (s *Service) permissionSummaryFor(
 
 		MCPServers:      []string{},
 		Network:         NetworkSummary{Mode: snap.Egress.Mode, Allow: egressAllowLines(snap.Egress.Allow)},
-		InjectedSecrets: s.injectedSecretsFor(ctx, snap),
-		Provider:        s.providerSummary(ctx, snap),
+		InjectedSecrets: live.injectedSecrets,
+		Provider:        live.provider,
 		ResourceLimits:  snap.ResourceLimits,
 	}
 
@@ -274,11 +292,13 @@ func (s *Service) permissionSummaryFor(
 
 	blocked := ""
 	var quota *policy.QuotaView
+	var notes []string
 	// Skipped here: a second pool read would deadlock a caller already
 	// inside a transaction on a single-connection pool.
 	if held == nil {
 		blocked = s.blockingReason(ctx, workspaceID, version, snap, scan)
 		quota = s.enforcedQuotaView(ctx, workspaceID)
+		notes = s.summaryNotes(ctx, snap)
 	}
 
 	if s.Ledger == nil {
@@ -295,7 +315,7 @@ func (s *Service) permissionSummaryFor(
 		EstimatedCost: estimate,
 		Quota:         quota,
 		Blocked:       blocked,
-		Notes:         s.summaryNotes(ctx, snap),
+		Notes:         notes,
 	}, nil
 }
 
@@ -472,10 +492,10 @@ func permissionConfirmation(row gen.RunPermissionConfirmation) PermissionConfirm
 	return PermissionConfirmation{SummaryHash: row.SummaryHash, ConfirmedAt: timePointer(row.ConfirmedAt)}
 }
 
-func (s *Service) requirePermissionConfirmation(ctx context.Context, q *gen.Queries, p CreateParams, draft testlab.Draft, version VersionFacts) error {
+func (s *Service) requirePermissionConfirmation(ctx context.Context, q *gen.Queries, p CreateParams, held heldInputs) error {
 	summary, err := s.permissionSummaryFor(ctx, p.WorkspaceID,
 		preflightTarget{skillID: p.SkillID, versionID: p.VersionID, testCaseID: p.TestCaseID},
-		&heldInputs{draft: draft, version: version})
+		&held)
 	if err != nil {
 		return err
 	}
