@@ -1543,4 +1543,22 @@ func TestAForkInheritsTheScanOnlyWhileItsSourceIsInTheCatalog(t *testing.T) {
 	if got := verification(); got != "not_measured" {
 		t.Errorf("a fork whose source left the catalog: verification %q, want not_measured", got)
 	}
+
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE workspaces SET is_catalog = true WHERE id = $1", mustUUID(t, curator.workspaceID)); err != nil {
+		t.Fatal(err)
+	}
+	if got := verification(); got != "scanned" {
+		t.Fatalf("the source back in the catalog: verification %q, want scanned; the rest proves nothing", got)
+	}
+	if _, err := gen.New(pool).CreateSkillVersion(context.Background(), gen.CreateSkillVersionParams{
+		WorkspaceID: mustUUID(t, curator.workspaceID), SkillID: mustUUID(t, published),
+		VersionNumber: nextVersionNumber(t, pool, published), ContentHash: "sha256:newer-" + published,
+		PackageObjectKey: "packages/newer-" + published + ".tar", Manifest: []byte(`{}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := verification(); got != "not_measured" {
+		t.Errorf("a fork whose source moved on to a newer version: verification %q, want not_measured; the catalogue's scan is the newer version's", got)
+	}
 }

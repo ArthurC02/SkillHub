@@ -55,7 +55,9 @@ LIMIT @row_limit::int OFFSET @row_offset::int;
 
 -- name: ListForkedFromVersions :many
 SELECT v.id AS version_id, v.content_hash, v.created_at,
-       anc.id AS skill_id, anc.workspace_id, anc.name, anc.deleted_at, anc.takedown_at
+       anc.id AS skill_id, anc.workspace_id, anc.name, anc.deleted_at, anc.takedown_at,
+       (NOT EXISTS (SELECT 1 FROM skill_versions later
+                    WHERE later.skill_id = anc.id AND later.version_number > v.version_number))::bool AS still_newest
 FROM skill_versions v
 JOIN skills anc ON anc.id = v.skill_id
 WHERE v.id = ANY(@version_ids::uuid[]);

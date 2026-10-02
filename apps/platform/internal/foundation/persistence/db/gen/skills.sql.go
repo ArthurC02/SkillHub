@@ -345,7 +345,9 @@ func (q *Queries) GetSkillSource(ctx context.Context, arg GetSkillSourceParams) 
 
 const listForkedFromVersions = `-- name: ListForkedFromVersions :many
 SELECT v.id AS version_id, v.content_hash, v.created_at,
-       anc.id AS skill_id, anc.workspace_id, anc.name, anc.deleted_at, anc.takedown_at
+       anc.id AS skill_id, anc.workspace_id, anc.name, anc.deleted_at, anc.takedown_at,
+       (NOT EXISTS (SELECT 1 FROM skill_versions later
+                    WHERE later.skill_id = anc.id AND later.version_number > v.version_number))::bool AS still_newest
 FROM skill_versions v
 JOIN skills anc ON anc.id = v.skill_id
 WHERE v.id = ANY($1::uuid[])
@@ -360,6 +362,7 @@ type ListForkedFromVersionsRow struct {
 	Name        string
 	DeletedAt   pgtype.Timestamptz
 	TakedownAt  pgtype.Timestamptz
+	StillNewest bool
 }
 
 func (q *Queries) ListForkedFromVersions(ctx context.Context, versionIds []pgtype.UUID) ([]ListForkedFromVersionsRow, error) {
@@ -380,6 +383,7 @@ func (q *Queries) ListForkedFromVersions(ctx context.Context, versionIds []pgtyp
 			&i.Name,
 			&i.DeletedAt,
 			&i.TakedownAt,
+			&i.StillNewest,
 		); err != nil {
 			return nil, err
 		}
