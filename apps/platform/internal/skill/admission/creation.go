@@ -168,16 +168,19 @@ func (s *Service) findCreationReference(ctx context.Context, ws identity.Workspa
 
 func (s *Service) openReferencePackage(ctx context.Context, version registry.Version) (fs.FS, []byte, error) {
 	data, err := s.Store.Get(ctx, version.PackageObjectKey)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil, fmt.Errorf("%w: %w", ErrReferenceUnavailable, err)
+	}
 	if err != nil {
-		return nil, nil, ErrReferenceUnavailable
+		return nil, nil, err
 	}
 	tree, err := skillpkg.SkillFS(data, version.SourcePath)
 	if err != nil {
-		return nil, nil, ErrReferenceUnavailable
+		return nil, nil, fmt.Errorf("%w: %w", ErrReferenceUnavailable, err)
 	}
 	md, err := fs.ReadFile(tree, "SKILL.md")
 	if err != nil {
-		return nil, nil, ErrReferenceUnavailable
+		return nil, nil, fmt.Errorf("%w: %w", ErrReferenceUnavailable, err)
 	}
 	return tree, md, nil
 }

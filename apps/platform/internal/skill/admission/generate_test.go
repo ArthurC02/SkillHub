@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -689,7 +690,7 @@ func (f fakeObjectStore) Put(_ context.Context, key string, data []byte) error {
 func (f fakeObjectStore) Get(_ context.Context, key string) ([]byte, error) {
 	data, ok := f[key]
 	if !ok {
-		return nil, fmt.Errorf("fakeObjectStore: no object %q", key)
+		return nil, fmt.Errorf("fakeObjectStore: no object %q: %w", key, fs.ErrNotExist)
 	}
 	return data, nil
 }

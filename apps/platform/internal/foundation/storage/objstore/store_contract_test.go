@@ -68,9 +68,9 @@ func TestEveryStoreReportsAnAbsentObjectAsAbsenceNotFailure(t *testing.T) {
 			t.Errorf("GetIfPresent returned %q found=%v for a key nobody wrote", data, found)
 		}
 
-		if _, err := store.Get(ctx, key); err == nil {
-			t.Error("Get on a key nobody wrote succeeded; a caller that demands an object would " +
-				"carry on with nothing")
+		if _, err := store.Get(ctx, key); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("Get on a key nobody wrote = %v, want fs.ErrNotExist; a caller that demands an object "+
+				"must neither carry on with nothing nor mistake the absence for an outage", err)
 		}
 
 		if content, _, err := store.Open(ctx, key); !errors.Is(err, fs.ErrNotExist) || content != nil {

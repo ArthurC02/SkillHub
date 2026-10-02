@@ -10,13 +10,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"log/slog"
 	"path"
 	"slices"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -391,48 +389,11 @@ func referenceable(skill registry.Skill) bool {
 func (s *Service) resolveReference(
 	ctx context.Context, ws identity.Workspace, id pgtype.UUID,
 ) (ReferenceSkill, referenceProvenance, error) {
-	skill, found, err := s.References.WorkspaceSkill(ctx, ws.ID, id)
+	found, err := s.findCreationReference(ctx, ws, id, pgtype.UUID{})
 	if err != nil {
 		return ReferenceSkill{}, referenceProvenance{}, err
 	}
-	if !found {
-		skill, found, err = s.References.CatalogSkill(ctx, id)
-		if err != nil {
-			return ReferenceSkill{}, referenceProvenance{}, err
-		}
-	}
-	if !found || !referenceable(skill) {
-		return ReferenceSkill{}, referenceProvenance{}, ErrReferenceUnavailable
-	}
-
-	version, found, err := s.References.LatestVersion(ctx, skill.WorkspaceID, skill.ID)
-	if err != nil {
-		return ReferenceSkill{}, referenceProvenance{}, err
-	}
-	if !found {
-		return ReferenceSkill{}, referenceProvenance{}, ErrReferenceUnavailable
-	}
-
-	data, err := s.Store.Get(ctx, version.PackageObjectKey)
-	if err != nil {
-		return ReferenceSkill{}, referenceProvenance{}, fmt.Errorf("%w: %w", ErrReferenceUnavailable, err)
-	}
-	fsys, err := skillpkg.SkillFS(data, version.SourcePath)
-	if err != nil {
-		return ReferenceSkill{}, referenceProvenance{}, fmt.Errorf("%w: %w", ErrReferenceUnavailable, err)
-	}
-	md, err := fs.ReadFile(fsys, "SKILL.md")
-	if err != nil {
-		return ReferenceSkill{}, referenceProvenance{}, fmt.Errorf("%w: %w", ErrReferenceUnavailable, err)
-	}
-
-	content, truncated := cutRunes(strings.ToValidUTF8(string(md), ""),
-		generateMaxReferenceChars-utf8.RuneCountInString(referenceTruncationMarker))
-	if truncated {
-		content += referenceTruncationMarker
-	}
-	return ReferenceSkill{Name: skill.Name, SkillMD: content},
-		referenceProvenance{SkillID: skill.ID, VersionID: version.ID, Name: skill.Name}, nil
+	return found.content, referenceProvenance{SkillID: found.skillID, VersionID: found.versionID, Name: found.content.Name}, nil
 }
 
 func cutRunes(s string, limit int) (string, bool) {
