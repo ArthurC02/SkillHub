@@ -242,7 +242,7 @@ func TestPatchingKeepsThePackageRootAndEveryUntouchedFile(t *testing.T) {
 		"scripts/run.py": "print('hello')\n",
 	})
 
-	patched, err := patchArchive(original, map[string]string{
+	patched, err := patchArchive(original, "", map[string]string{
 		"SKILL.md":    skillMD + "\nNew paragraph.\n",
 		"docs/new.md": "added by a suggestion\n",
 	})
@@ -277,11 +277,11 @@ func TestPatchingKeepsThePackageRootAndEveryUntouchedFile(t *testing.T) {
 func TestPatchingIsDeterministicForTheSameInput(t *testing.T) {
 	original := zipWithRoot(t, "", map[string]string{"SKILL.md": "a\n", "b.md": "b\n"})
 	patches := map[string]string{"SKILL.md": "changed\n", "z.md": "z\n", "a.md": "a\n"}
-	first, err := patchArchive(original, patches)
+	first, err := patchArchive(original, "", patches)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := patchArchive(original, patches)
+	second, err := patchArchive(original, "", patches)
 	if err != nil {
 		t.Fatal(err)
 	}

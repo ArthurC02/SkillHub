@@ -273,7 +273,7 @@ func (s *Service) SuggestionDiff(ctx context.Context, workspaceID, id pgtype.UUI
 }
 
 func validatePatched(sc suggestionCtx, patches map[string]string, ids []string) *Blocked {
-	patched, err := patchArchive(sc.latestZip, patches)
+	patched, err := patchArchive(sc.latestZip, sc.latest.SourcePath, patches)
 	if err != nil {
 		return &Blocked{SuggestionID: first(ids), Reason: BlockedDiffUnavailable,
 			Message: "the stored package could not be rewritten with this change: " + err.Error()}
@@ -311,27 +311,41 @@ func first(ids []string) string {
 	return ids[0]
 }
 
-func patchArchive(data []byte, patches map[string]string) ([]byte, error) {
+func patchArchive(data []byte, sourcePath string, patches map[string]string) ([]byte, error) {
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
 		return nil, fmt.Errorf("stored package unreadable: %w", err)
 	}
-	root := skillpkg.PackageRoot(zr)
+	skillRoot := skillpkg.PackageRoot(zr)
+	outPrefix := skillRoot
+	standalone := sourcePath != ""
+	if standalone {
+		skillRoot += strings.Trim(sourcePath, "/") + "/"
+		outPrefix = ""
+	}
 
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	written := map[string]bool{}
 	for _, f := range zr.File {
-		patched, err := rewriteArchiveEntry(zw, f, root, patches)
+		rel, inSkill := strings.CutPrefix(f.Name, skillRoot)
+		if !inSkill || (standalone && rel == "") {
+			continue
+		}
+		var patch *string
+		if content, ok := patches[rel]; ok {
+			patch = &content
+		}
+		patched, err := rewriteArchiveEntry(zw, f, outPrefix+rel, patch)
 		if err != nil {
 			return nil, err
 		}
 		if patched {
-			written[strings.TrimPrefix(f.Name, root)] = true
+			written[rel] = true
 		}
 	}
 
-	if err := addNewArchiveEntries(zw, root, patches, written); err != nil {
+	if err := addNewArchiveEntries(zw, outPrefix, patches, written); err != nil {
 		return nil, err
 	}
 	if err := zw.Close(); err != nil {
@@ -340,8 +354,8 @@ func patchArchive(data []byte, patches map[string]string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func rewriteArchiveEntry(zw *zip.Writer, f *zip.File, root string, patches map[string]string) (patched bool, err error) {
-	header := &zip.FileHeader{Name: f.Name, Method: zip.Deflate, Modified: f.Modified}
+func rewriteArchiveEntry(zw *zip.Writer, f *zip.File, name string, patch *string) (patched bool, err error) {
+	header := &zip.FileHeader{Name: name, Method: zip.Deflate, Modified: f.Modified}
 	if strings.HasSuffix(f.Name, "/") {
 		header.Method = zip.Store
 	}
@@ -349,9 +363,8 @@ func rewriteArchiveEntry(zw *zip.Writer, f *zip.File, root string, patches map[s
 	if err != nil {
 		return false, err
 	}
-	if content, replaced := patches[strings.TrimPrefix(f.Name, root)]; replaced &&
-		!strings.HasSuffix(f.Name, "/") {
-		if _, err := io.WriteString(w, content); err != nil {
+	if patch != nil && !strings.HasSuffix(f.Name, "/") {
+		if _, err := io.WriteString(w, *patch); err != nil {
 			return true, err
 		}
 		return true, nil
@@ -545,7 +558,7 @@ func (s *Service) buildImprovedVersion(
 	ctx context.Context, target evaluatedSkillRef, base suggestionCtx, plan patchPlan, out ApplyResult,
 ) (ApplyResult, error) {
 	ws, skillID, evaluationID := target.ws, target.skillID, target.evaluationID
-	patched, err := patchArchive(base.latestZip, plan.patches)
+	patched, err := patchArchive(base.latestZip, base.latest.SourcePath, plan.patches)
 	if err != nil {
 		return out, err
 	}
