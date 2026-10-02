@@ -147,9 +147,8 @@ func (m *Masker) walk(node any, pointer string, fields *[]string) any {
 		out := make(map[string]any, len(v))
 		for key, child := range v {
 			childPointer := pointer + "/" + escapePointer(key)
-			if text, isText := child.(string); isText && text != "" && text != Placeholder && namesASecret(key) {
-				out[key] = Placeholder
-				*fields = append(*fields, childPointer)
+			if namesASecret(key) {
+				out[key] = concealed(child, childPointer, fields)
 				continue
 			}
 			out[key] = m.walk(child, childPointer, fields)
@@ -164,6 +163,32 @@ func (m *Masker) walk(node any, pointer string, fields *[]string) any {
 	default:
 		return node
 	}
+}
+
+func concealed(node any, pointer string, fields *[]string) any {
+	switch v := node.(type) {
+	case string:
+		if v == "" || v == Placeholder {
+			return v
+		}
+	case json.Number, float64:
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for key, child := range v {
+			out[key] = concealed(child, pointer+"/"+escapePointer(key), fields)
+		}
+		return out
+	case []any:
+		out := make([]any, len(v))
+		for i, child := range v {
+			out[i] = concealed(child, pointer+"/"+strconv.Itoa(i), fields)
+		}
+		return out
+	default:
+		return node
+	}
+	*fields = append(*fields, pointer)
+	return Placeholder
 }
 
 func (m *Masker) redact(s string) string {

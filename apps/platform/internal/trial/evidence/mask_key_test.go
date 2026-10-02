@@ -40,8 +40,8 @@ func TestMaskKeepsValuesWhoseKeyOnlyResemblesASecretName(t *testing.T) {
 	}
 }
 
-func TestMaskLeavesNonStringAndEmptyValuesUnderASecretKey(t *testing.T) {
-	in := `{"password":12345,"token":true,"secret":null,"cookie":"","session":"[REDACTED]"}`
+func TestMaskLeavesValuesThatCarryNoSecretUnderASecretKey(t *testing.T) {
+	in := `{"token":true,"secret":null,"cookie":"","session":"[REDACTED]"}`
 	result, err := (&Masker{}).Mask(json.RawMessage(in))
 	if err != nil {
 		t.Fatal(err)
@@ -58,4 +58,19 @@ func canonicalJSON(t *testing.T, raw string) any {
 		t.Fatal(err)
 	}
 	return v
+}
+
+func TestMaskConcealsEveryNumberAndStringNestedUnderASecretKey(t *testing.T) {
+	in := `{"password":12345,"credentials":{"user":"ann","pin":4321,"enabled":true},"api_key":["k-1","k-2"],"note":"plain"}`
+	result, err := (&Masker{}).Mask(json.RawMessage(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"password":"[REDACTED]","credentials":{"user":"[REDACTED]","pin":"[REDACTED]","enabled":true},"api_key":["[REDACTED]","[REDACTED]"],"note":"plain"}`
+	if got := string(result.Payload); !reflect.DeepEqual(canonicalJSON(t, got), canonicalJSON(t, want)) {
+		t.Fatalf("payload = %s, want %s", got, want)
+	}
+	if len(result.Fields) != 5 {
+		t.Errorf("masked_fields = %v, want the five concealed values", result.Fields)
+	}
 }
