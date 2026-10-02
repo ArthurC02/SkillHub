@@ -27,10 +27,14 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 func nearestReferences(s *creation.Service, search *catalog.Service, maxDistance float64) func(context.Context, identity.Workspace, string) ([]creation.Reference, float64, error) {
 	return func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, float64, error) {
 		knowledge, err := search.CreationKnowledgeIDs(ctx, query, maxDistance)
-		if err != nil || knowledge.Degraded {
+		if err != nil {
 			return nil, knowledge.CostUSD, err
 		}
-		return s.FirstResolvedReferences(ctx, ws, knowledge.IDs), knowledge.CostUSD, nil
+		if knowledge.Degraded {
+			return nil, knowledge.CostUSD, fmt.Errorf("%w: the catalogue could only be searched by keyword", creation.ErrUnavailable)
+		}
+		refs, err := s.FirstResolvedReferences(ctx, ws, knowledge.IDs)
+		return refs, knowledge.CostUSD, err
 	}
 }
 

@@ -2,6 +2,7 @@ package creation
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 
@@ -92,15 +93,20 @@ func (s *Service) confirmReferences(ctx context.Context, ws identity.Workspace, 
 	return stepQueued(), nil
 }
 
-func (s *Service) FirstResolvedReferences(ctx context.Context, ws identity.Workspace, ids []string) []Reference {
+func (s *Service) FirstResolvedReferences(ctx context.Context, ws identity.Workspace, ids []string) ([]Reference, error) {
 	refs := []Reference{}
 	for _, id := range ids {
 		if len(refs) == MaxReferences {
 			break
 		}
-		if r, _, err := s.ResolveReference(ctx, ws, id, ""); err == nil {
-			refs = append(refs, r)
+		r, _, err := s.ResolveReference(ctx, ws, id, "")
+		if errors.Is(err, ErrNotFound) {
+			continue
 		}
+		if err != nil {
+			return nil, err
+		}
+		refs = append(refs, r)
 	}
-	return refs
+	return refs, nil
 }

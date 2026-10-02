@@ -14,12 +14,15 @@ func TestOnlyTheFirstResolvableReferencesUpToTheCapAreKept(t *testing.T) {
 	s := &Service{ResolveReference: func(_ context.Context, _ identity.Workspace, id, _ string) (Reference, ReferenceSkill, error) {
 		asked = append(asked, id)
 		if id == "gone" {
-			return Reference{}, ReferenceSkill{}, errors.New("not readable")
+			return Reference{}, ReferenceSkill{}, fmt.Errorf("%w: unpublished", ErrNotFound)
 		}
 		return Reference{SkillID: id}, ReferenceSkill{}, nil
 	}}
 
-	refs := s.FirstResolvedReferences(context.Background(), identity.Workspace{}, []string{"a", "gone", "b", "c", "d"})
+	refs, err := s.FirstResolvedReferences(context.Background(), identity.Workspace{}, []string{"a", "gone", "b", "c", "d"})
+	if err != nil {
+		t.Fatalf("a reference that is gone is skipped, not an error: %v", err)
+	}
 
 	var got []string
 	for _, r := range refs {
@@ -30,6 +33,22 @@ func TestOnlyTheFirstResolvableReferencesUpToTheCapAreKept(t *testing.T) {
 	}
 	if len(asked) != 4 {
 		t.Errorf("resolved %v, want resolution to stop once the cap is reached", asked)
+	}
+}
+
+func TestReferencesThatCannotBeReadAreAnOutageNotAShorterShortlist(t *testing.T) {
+	outage := errors.New("connection reset")
+	s := &Service{ResolveReference: func(_ context.Context, _ identity.Workspace, id, _ string) (Reference, ReferenceSkill, error) {
+		if id == "unreadable" {
+			return Reference{}, ReferenceSkill{}, outage
+		}
+		return Reference{SkillID: id}, ReferenceSkill{}, nil
+	}}
+
+	refs, err := s.FirstResolvedReferences(context.Background(), identity.Workspace{}, []string{"a", "unreadable", "b"})
+
+	if !errors.Is(err, outage) || refs != nil {
+		t.Errorf("refs = %v, err = %v, want the outage and no shortlist that silently leaves a reference out", refs, err)
 	}
 }
 

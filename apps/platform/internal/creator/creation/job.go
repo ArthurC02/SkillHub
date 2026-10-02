@@ -298,11 +298,12 @@ func (s *Service) fetchAhead(ctx context.Context, a JobArgs) (*fetchedPage, erro
 	if err != nil {
 		return nil, err
 	}
-	if !sessionAwaitsAttempt(row, e, a) || e.Snapshot.PendingFetchURL == "" {
+	approved := e.Snapshot.approvedFetch()
+	if !sessionAwaitsAttempt(row, e, a) || approved == "" {
 		return nil, nil
 	}
-	record, text := s.Fetch(ctx, e.Snapshot.PendingFetchURL)
-	return &fetchedPage{url: e.Snapshot.PendingFetchURL, record: record, text: text}, nil
+	record, text := s.Fetch(ctx, approved)
+	return &fetchedPage{url: approved, record: record, text: text}, nil
 }
 
 func (s *Service) fetchedFor(p Snapshot, fetched *fetchedPage) bool {
@@ -310,16 +311,16 @@ func (s *Service) fetchedFor(p Snapshot, fetched *fetchedPage) bool {
 		return true
 	}
 	if fetched == nil {
-		return p.PendingFetchURL == ""
+		return p.approvedFetch() == ""
 	}
-	return fetched.url == p.PendingFetchURL
+	return fetched.url == p.approvedFetch()
 }
 
 func (s *Service) attachFetched(p *Snapshot, fetched *fetchedPage) {
 	if s.Fetch == nil || fetched == nil {
 		return
 	}
-	p.PendingFetchURL = ""
+	p.PendingFetchURL, p.ApprovedFetchURL = "", ""
 	p.Fetches = append(p.Fetches, fetched.record)
 	p.appendMessage("tool", fetchObservation(fetched.record, s.masked(fetched.text)))
 }

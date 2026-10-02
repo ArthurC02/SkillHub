@@ -140,7 +140,7 @@ func (s *Service) holdFetch(p *Snapshot, query string) (State, bool, error) {
 		p.appendMessage("tool", "這個網址不符合規則（只接受公開的 http／https 網址，不含帳號密碼）；這次沒有連網。")
 		return StateQueued, true, nil
 	}
-	p.PendingFetchURL = clean
+	p.PendingFetchURL, p.ApprovedFetchURL = clean, ""
 	p.PendingAction = PendingFetchPermission
 	return StateWaitingConfirmation, false, nil
 }

@@ -286,23 +286,26 @@ func TestWithoutAFetcherAPendingFetchWaits(t *testing.T) {
 	}
 }
 
-func TestAPageFetchedBeforeTheLockCountsOnlyForTheURLStillPending(t *testing.T) {
+func TestAPageFetchedBeforeTheLockCountsOnlyForTheApprovedURLStillPending(t *testing.T) {
 	s := &Service{Fetch: func(context.Context, string) (Fetch, string) { return Fetch{}, "" }}
 	page := &fetchedPage{url: "https://example.com/a"}
 	for _, c := range []struct {
-		name    string
-		pending string
-		fetched *fetchedPage
-		want    bool
+		name     string
+		pending  string
+		approved string
+		fetched  *fetchedPage
+		want     bool
 	}{
-		{"nothing pending, nothing fetched", "", nil, true},
-		{"the pending page was fetched", "https://example.com/a", page, true},
-		{"a pending page was not fetched", "https://example.com/a", nil, false},
-		{"another page is pending now", "https://example.com/b", page, false},
-		{"the page fetched is no longer pending", "", page, false},
+		{"nothing pending, nothing fetched", "", "", nil, true},
+		{"the approved page was fetched", "https://example.com/a", "https://example.com/a", page, true},
+		{"an approved page was not fetched", "https://example.com/a", "https://example.com/a", nil, false},
+		{"a page nobody approved is not fetched and needs no fetch", "https://example.com/a", "", nil, true},
+		{"a page nobody approved was fetched anyway", "https://example.com/a", "", page, false},
+		{"another page is pending now", "https://example.com/b", "https://example.com/b", page, false},
+		{"the page fetched is no longer pending", "", "", page, false},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			if got := s.fetchedFor(Snapshot{PendingFetchURL: c.pending}, c.fetched); got != c.want {
+			if got := s.fetchedFor(Snapshot{PendingFetchURL: c.pending, ApprovedFetchURL: c.approved}, c.fetched); got != c.want {
 				t.Errorf("fetchedFor = %v, want %v", got, c.want)
 			}
 		})
@@ -385,5 +388,19 @@ func TestOnlyASessionThatReallyMovedStopsTheModelCall(t *testing.T) {
 		if got := sessionMoved(c.current, c.err); got != c.want {
 			t.Errorf("%s: moved = %v, want %v", c.name, got, c.want)
 		}
+	}
+}
+
+func TestANewFetchRequestStartsWithoutAnEarlierApproval(t *testing.T) {
+	s := &Service{Fetch: func(context.Context, string) (Fetch, string) { return Fetch{}, "" }}
+	p := &Snapshot{PendingFetchURL: "https://example.com/a", ApprovedFetchURL: "https://example.com/a"}
+
+	state, _, err := s.holdFetch(p, "https://example.com/a")
+
+	if err != nil || state != StateWaitingConfirmation || p.PendingAction != PendingFetchPermission {
+		t.Fatalf("state = %q, pending = %q, err = %v, want the request held for the person", state, p.PendingAction, err)
+	}
+	if p.approvedFetch() != "" {
+		t.Errorf("approved = %q, want a fresh request to need a fresh confirmation", p.ApprovedFetchURL)
 	}
 }

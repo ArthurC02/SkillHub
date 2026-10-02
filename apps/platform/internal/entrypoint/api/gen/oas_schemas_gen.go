@@ -4279,6 +4279,9 @@ type CreationSnapshot struct {
 	// The URL the model asked to read; set while pending_action is confirm_fetch. Nothing is fetched until
 	// the person confirms (05 R-47).
 	PendingFetchURL OptString `json:"pending_fetch_url"`
+	// The pending URL the person confirmed. Only a pending URL equal to this one is fetched; any other
+	// answer while the fetch awaits confirmation drops the request instead.
+	ApprovedFetchURL OptString `json:"approved_fetch_url"`
 	// Pages Go fetched for this session after the person's consent: URL, sha256 and size of the text kept,
 	// and how it ended. Content is not stored here.
 	Fetches          []CreationFetch  `json:"fetches"`
@@ -4457,6 +4460,11 @@ func (s *CreationSnapshot) GetAdopted() OptBool {
 // GetPendingFetchURL returns the value of PendingFetchURL.
 func (s *CreationSnapshot) GetPendingFetchURL() OptString {
 	return s.PendingFetchURL
+}
+
+// GetApprovedFetchURL returns the value of ApprovedFetchURL.
+func (s *CreationSnapshot) GetApprovedFetchURL() OptString {
+	return s.ApprovedFetchURL
 }
 
 // GetFetches returns the value of Fetches.
@@ -4657,6 +4665,11 @@ func (s *CreationSnapshot) SetAdopted(val OptBool) {
 // SetPendingFetchURL sets the value of PendingFetchURL.
 func (s *CreationSnapshot) SetPendingFetchURL(val OptString) {
 	s.PendingFetchURL = val
+}
+
+// SetApprovedFetchURL sets the value of ApprovedFetchURL.
+func (s *CreationSnapshot) SetApprovedFetchURL(val OptString) {
+	s.ApprovedFetchURL = val
 }
 
 // SetFetches sets the value of Fetches.

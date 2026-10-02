@@ -35,8 +35,22 @@ func confirmFetch(p *Snapshot) (commandOutcome, error) {
 	if !awaitsFetchConfirmation(p) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
+	p.ApprovedFetchURL = p.PendingFetchURL
 	p.PendingAction = NothingPending
 	return stepQueued(), nil
+}
+
+func (p *Snapshot) dropUnapprovedFetch() {
+	if p.PendingAction != PendingFetchPermission && p.approvedFetch() == "" {
+		p.PendingFetchURL = ""
+	}
+}
+
+func (p Snapshot) approvedFetch() string {
+	if p.PendingFetchURL != "" && p.PendingFetchURL == p.ApprovedFetchURL {
+		return p.PendingFetchURL
+	}
+	return ""
 }
 
 func declineFetch(p *Snapshot) (commandOutcome, error) {

@@ -213,6 +213,10 @@ export interface CreationSnapshot {
      */
     pendingFetchUrl?: string;
     /**
+     * The pending URL the person confirmed. Only a pending URL equal to this one is fetched; any other answer while the fetch awaits confirmation drops the request instead.
+     */
+    approvedFetchUrl?: string;
+    /**
      * Pages Go fetched for this session after the person's consent: URL, sha256 and size of the text kept, and how it ended. Content is not stored here.
      */
     fetches?: Array<CreationFetch>;
@@ -302,6 +306,7 @@ export function CreationSnapshotFromJSONTyped(json: any, ignoreDiscriminator: bo
         'duplicateAcknowledged': json['duplicate_acknowledged'] == null ? undefined : json['duplicate_acknowledged'],
         'adopted': json['adopted'] == null ? undefined : json['adopted'],
         'pendingFetchUrl': json['pending_fetch_url'] == null ? undefined : json['pending_fetch_url'],
+        'approvedFetchUrl': json['approved_fetch_url'] == null ? undefined : json['approved_fetch_url'],
         'fetches': json['fetches'] == null ? undefined : ((json['fetches'] as Array<any>).map(CreationFetchFromJSON)),
         'model': json['model'] == null ? undefined : json['model'],
         'promptVersion': json['prompt_version'] == null ? undefined : json['prompt_version'],
@@ -356,6 +361,7 @@ export function CreationSnapshotToJSONTyped(value?: CreationSnapshot | null, ign
         'duplicate_acknowledged': value['duplicateAcknowledged'],
         'adopted': value['adopted'],
         'pending_fetch_url': value['pendingFetchUrl'],
+        'approved_fetch_url': value['approvedFetchUrl'],
         'fetches': value['fetches'] == null ? undefined : ((value['fetches'] as Array<any>).map(CreationFetchToJSON)),
         'model': value['model'],
         'prompt_version': value['promptVersion'],

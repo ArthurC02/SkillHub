@@ -210,6 +210,53 @@ func TestStepNeedsReuploadWhenDiagramUnderstandingIsMissing(t *testing.T) {
 	}
 }
 
+func TestOnlyAPageThePersonApprovedIsFetched(t *testing.T) {
+	const url = "https://example.test/doc"
+	for _, tc := range []struct {
+		name      string
+		command   creation.Command
+		wantFetch bool
+	}{
+		{"confirmed", creation.Command{Kind: "confirm_fetch"}, true},
+		{"answered with a message instead", creation.Command{Kind: "message", Message: "不要連網，用我貼的資料"}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pool := requireDB(t)
+			ws := newCreationWorkspace(t, pool)
+			var fetched []string
+			rec := &jobRecorder{}
+			svc := newCreateService(pool, rec)
+			svc.Fetch = func(_ context.Context, u string) (creation.Fetch, string) {
+				fetched = append(fetched, u)
+				return creation.Fetch{URL: u, Status: "ok"}, "頁面內容"
+			}
+			svc.IssueKey, svc.RevokeKey = okIssueKey, okRevokeKey
+			svc.LLM = creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+				return &creation.StepResult{Outcome: "clarification", Message: "好的"}, nil
+			})
+			v, id := newActSession(t, svc, ws)
+			setCreationSnapshotField(t, pool, id, "pending_action", "confirm_fetch")
+			setCreationSnapshotField(t, pool, id, "pending_fetch_url", url)
+
+			tc.command.ID, tc.command.ExpectedRevision = creationID(t), v.Revision
+			queued := len(rec.calls)
+			acted, _, err := svc.Act(context.Background(), ws, id, tc.command)
+			if err != nil || len(rec.calls) != queued+1 {
+				t.Fatalf("%s: err = %v, %d steps queued, want one", tc.command.Kind, err, len(rec.calls)-queued)
+			}
+			if pending := acted.Snapshot.PendingFetchURL != ""; pending != tc.wantFetch {
+				t.Errorf("pending fetch url = %q after %s, want it kept only for a page the person approved", acted.Snapshot.PendingFetchURL, tc.command.Kind)
+			}
+			if err := svc.Step(context.Background(), rec.calls[queued], nil); err != nil {
+				t.Fatal(err)
+			}
+			if got := len(fetched) == 1 && fetched[0] == url; got != tc.wantFetch || len(fetched) > 1 {
+				t.Errorf("fetched = %v, want a fetch of %s only if the person confirmed it (%v)", fetched, url, tc.wantFetch)
+			}
+		})
+	}
+}
+
 func TestStepFetchesThePendingURLBeforeCallingTheModel(t *testing.T) {
 	pool := requireDB(t)
 	ws := newCreationWorkspace(t, pool)
@@ -234,7 +281,7 @@ func TestStepFetchesThePendingURLBeforeCallingTheModel(t *testing.T) {
 		t.Fatal(err)
 	}
 	job := rec.calls[0]
-	mustExec(t, pool, `UPDATE creation_sessions SET snapshot = jsonb_set(snapshot, '{snapshot,pending_fetch_url}', to_jsonb($2::text)) WHERE id=$1`, id, url)
+	mustExec(t, pool, `UPDATE creation_sessions SET snapshot = jsonb_set(jsonb_set(snapshot, '{snapshot,pending_fetch_url}', to_jsonb($2::text)), '{snapshot,approved_fetch_url}', to_jsonb($2::text)) WHERE id=$1`, id, url)
 	if err := svc.Step(context.Background(), job, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -796,9 +843,11 @@ func TestAPendingPageIsFetchedWithoutHoldingTheSessionLocked(t *testing.T) {
 	rec := &jobRecorder{}
 	id := creationID(t)
 	var lockErr error
+	fetchedPage := false
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		Fetch: func(ctx context.Context, u string) (creation.Fetch, string) {
+			fetchedPage = true
 			_, lockErr = pool.Exec(ctx, "SELECT 1 FROM creation_sessions WHERE id = $1 FOR UPDATE NOWAIT", id)
 			return creation.Fetch{URL: u, Status: "ok"}, "頁面內容"
 		},
@@ -810,9 +859,12 @@ func TestAPendingPageIsFetchedWithoutHoldingTheSessionLocked(t *testing.T) {
 	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {
 		t.Fatal(err)
 	}
-	mustExec(t, pool, `UPDATE creation_sessions SET snapshot = jsonb_set(snapshot, '{snapshot,pending_fetch_url}', to_jsonb($2::text)) WHERE id=$1`, id, "https://example.test/doc")
+	mustExec(t, pool, `UPDATE creation_sessions SET snapshot = jsonb_set(jsonb_set(snapshot, '{snapshot,pending_fetch_url}', to_jsonb($2::text)), '{snapshot,approved_fetch_url}', to_jsonb($2::text)) WHERE id=$1`, id, "https://example.test/doc")
 	if err := svc.Step(context.Background(), rec.calls[0], nil); err != nil {
 		t.Fatal(err)
+	}
+	if !fetchedPage {
+		t.Fatal("the approved page was never fetched, so the lock was never probed")
 	}
 	if lockErr != nil {
 		t.Fatalf("the session row was locked while the page was fetched (%v): a slow site would hold "+

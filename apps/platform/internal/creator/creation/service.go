@@ -202,8 +202,9 @@ type Snapshot struct {
 
 	SearchRounds int `json:"search_rounds,omitempty"`
 
-	PendingFetchURL string  `json:"pending_fetch_url,omitempty"`
-	Fetches         []Fetch `json:"fetches,omitempty"`
+	PendingFetchURL  string  `json:"pending_fetch_url,omitempty"`
+	ApprovedFetchURL string  `json:"approved_fetch_url,omitempty"`
+	Fetches          []Fetch `json:"fetches,omitempty"`
 
 	CatalogChecked bool `json:"catalog_checked,omitempty"`
 
@@ -373,6 +374,7 @@ func (s *Service) advance(ctx context.Context, tx pgx.Tx, row gen.CreationSessio
 	if !CanTransition(from, state) {
 		return row, fmt.Errorf("%w: %s to %s", ErrIllegalTransition, from, state)
 	}
+	e.Snapshot.dropUnapprovedFetch()
 	b, err := json.Marshal(e)
 	if err != nil {
 		return row, err

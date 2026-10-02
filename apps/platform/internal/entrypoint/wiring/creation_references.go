@@ -29,7 +29,7 @@ func WireCreationReferenceReads(s *creation.Service, versions *ingest.Service, s
 		if err != nil {
 			return nil, err
 		}
-		return s.FirstResolvedReferences(ctx, ws, ids), nil
+		return s.FirstResolvedReferences(ctx, ws, ids)
 	}
 }
 
