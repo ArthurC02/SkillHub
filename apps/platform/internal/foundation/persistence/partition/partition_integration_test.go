@@ -113,7 +113,7 @@ func TestAttachingAMonthTheDefaultAlreadyHoldsFailsWithTheDrainInstructions(t *t
 			t.Errorf("error does not mention %q: %v", want, err)
 		}
 	}
-	assertNames(t, "created", report.Created)
+	assertNames(t, "created", report.Created, "analytics_events_2027_06", "analytics_events_2027_07")
 
 	if countAnalyticsEvents(t, pool, "stranded-in-default") != 1 {
 		t.Error("the row in the default partition did not survive the failed attach")

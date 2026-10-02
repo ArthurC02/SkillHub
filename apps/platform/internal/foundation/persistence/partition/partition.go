@@ -80,17 +80,19 @@ func createUpcoming(
 		present[name] = true
 	}
 	var created []string
+	var failures []error
 	for _, start := range upcomingMonths(now) {
 		name := monthName(table, start)
 		if present[name] {
 			continue
 		}
 		if err := createMonth(ctx, pool, table, name, start); err != nil {
-			return created, err
+			failures = append(failures, err)
+			continue
 		}
 		created = append(created, name)
 	}
-	return created, nil
+	return created, errors.Join(failures...)
 }
 
 func childPartitions(ctx context.Context, pool *pgxpool.Pool, table string) ([]string, error) {
