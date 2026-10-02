@@ -164,20 +164,31 @@ func declaredEgress(kind string, cleanMode cleanNode, log *slog.Logger) ([]strin
 
 func serveUntilSignalled(srv *http.Server, drv sandbox.NodeCapabilities, log *slog.Logger) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-
-		_ = srv.Shutdown(shutdownCtx)
-	}()
-
 	log.Info("sandbox provider listening", "addr", srv.Addr, "isolation", drv.Isolation())
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	err := serveUntil(ctx, srv, srv.ListenAndServe)
+	stop()
+	if err != nil {
 		log.Error("server stopped", "err", err)
 		os.Exit(1)
 	}
-	stop()
+}
+
+const shutdownGrace = 15 * time.Second
+
+func serveUntil(ctx context.Context, srv *http.Server, serve func() error) error {
+	drained := make(chan struct{})
+	go func() {
+		defer close(drained)
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
+		defer cancel()
+		_ = srv.Shutdown(shutdownCtx)
+	}()
+	if err := serve(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	<-drained
+	return nil
 }
 
 type openedDriver struct {
