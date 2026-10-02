@@ -45,7 +45,7 @@ function useSessionPicker({
   hasDraft: boolean;
   onLeave: () => void;
 }) {
-  const [sessionsOpen, setSessionsOpen] = useState(!id);
+  const [sessionsOpen, setSessionsOpen] = useState(false);
   const [pendingSwitch, setPendingSwitch] = useState<string | null>(null);
   const workspace = useRef<HTMLDivElement>(null);
   const closeList = () => {

@@ -50,6 +50,72 @@ async function stubCreationContinuations(page: Page) {
   });
 }
 
+async function verifyCreationConversationLayout(page: Page, testInfo: TestInfo) {
+  await stubCreationContinuations(page);
+  await page.route("**/me/credits", (route) =>
+    route.fulfill({
+      json: {
+        balance_credits: 500,
+        debt_floor_credits: -50,
+        estimated_session: { low_credits: 30, high_credits: 65, sample_size: 40, estimated: false },
+        can_start: true,
+      },
+    }),
+  );
+  await page.route("**/creation-sessions/limits", (route) =>
+    route.fulfill({
+      json: {
+        min_budget_credits: 130,
+        max_budget_credits: 6500,
+        max_steps: 20,
+        max_tool_calls: 10,
+        call_timeout_seconds: 120,
+        session_timeout_seconds: 3600,
+        retention_seconds: 604800,
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/workspace/creations");
+
+  await expect(page.locator(".creation-shell")).toBeVisible();
+  await expect(page.locator(".app-search")).toBeHidden();
+  await expect(page.locator(".app-sidebar")).toBeHidden();
+  await expect(page.locator(".studio-session-rail")).toBeVisible();
+  await expect(page.locator(".composer")).toBeInViewport();
+  await expect(page.locator(".composer-dock .notice.danger")).toHaveCount(0);
+  const desktop = await page.evaluate(() => ({
+    railX: document.querySelector(".studio-session-rail")?.getBoundingClientRect().x ?? -1,
+    threadHeight: document.querySelector(".creation-stream")?.getBoundingClientRect().height ?? 0,
+  }));
+  expect(desktop.railX).toBeLessThan(4);
+  expect(desktop.threadHeight).toBeGreaterThan(400);
+  await page.screenshot({ path: testInfo.outputPath("creation-empty-desktop.png") });
+
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto("/workspace/creations");
+  await expect(page.locator(".app-search")).toBeHidden();
+  await expect(page.locator(".app-sidebar")).toBeHidden();
+  await expect(page.locator(".creation-current")).toBeVisible();
+  await expect(page.locator(".studio-session-rail")).toBeHidden();
+  await expect(page.locator("#creation-message")).toBeInViewport();
+  await expect(page.getByRole("button", { name: "開始創作" })).toBeVisible();
+  const budget = page.locator(".budget-picker");
+  await expect(budget.locator("summary")).toContainText("請選擇");
+  await budget.locator("summary").click();
+  await budget
+    .locator(".quick-replies > label")
+    .filter({ hasText: /^500 點$/ })
+    .click();
+  await expect(budget.locator("summary")).toContainText("500 點");
+  await expect(page.locator("#creation-message")).toHaveAttribute(
+    "placeholder",
+    "描述任務或回覆 Agent",
+  );
+  await budget.locator("summary").click();
+  await page.screenshot({ path: testInfo.outputPath("creation-empty-phone.png") });
+}
+
 async function verifyCreationContinuationLayout(page: Page, testInfo: TestInfo) {
   for (const [name, width] of [
     ["desktop", 1280],
@@ -768,6 +834,10 @@ test.describe("QA-008 real layout", () => {
     page,
   }, testInfo) => {
     await verifyCreationDecisionOnPhone(page, testInfo);
+  });
+
+  test("Studio opens into the conversation with one thread rail", async ({ page }, testInfo) => {
+    await verifyCreationConversationLayout(page, testInfo);
   });
 
   for (const [name, url] of PHONE_ROUTES) {

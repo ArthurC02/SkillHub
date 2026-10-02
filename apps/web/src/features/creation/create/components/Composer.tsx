@@ -82,7 +82,9 @@ export function Composer({
       )}
       {startBlocked && (
         <p className="notice notice-danger" id="composer-why">
-          {creditsBlocked ? credits?.block_reason : "讀不到這次可用的預算範圍，暫時不能開始。"}
+          {creditsBlocked
+            ? credits?.block_reason || "目前無法開始創作，請確認點數額度。"
+            : "讀不到這次可用的預算範圍，暫時不能開始。"}
         </p>
       )}
       {!hasSession && choices.length > 0 && (
@@ -172,31 +174,36 @@ function BudgetPicker({
   credits: CreditBalance | undefined;
 }) {
   return (
-    <fieldset className="budget-picker">
-      <legend>這次預算上限</legend>
-      <div className="quick-replies">
-        {choices.map((v) => (
-          <label key={v}>
-            <input
-              type="radio"
-              name="creation-budget"
-              value={v}
-              checked={budget === String(v)}
-              disabled={busy}
-              onChange={(e) => onBudget(e.target.value)}
-            />
-            {points(v)}
-          </label>
-        ))}
-      </div>
-      {credits && (
-        <span className="creation-fact">
-          餘額 {credits.balance_credits} 點 · 這場約 {credits.estimated_session.low_credits}–
-          {credits.estimated_session.high_credits} 點
-          {credits.estimated_session.estimated && "（估計）"}
-        </span>
-      )}
-    </fieldset>
+    <details className="budget-picker">
+      <summary>
+        預算上限：{budget ? points(Number(budget)) : "請選擇"}
+        {credits && <span>餘額 {credits.balance_credits} 點</span>}
+      </summary>
+      <fieldset>
+        <legend>這次預算上限</legend>
+        <div className="quick-replies">
+          {choices.map((v) => (
+            <label key={v}>
+              <input
+                type="radio"
+                name="creation-budget"
+                value={v}
+                checked={budget === String(v)}
+                disabled={busy}
+                onChange={(e) => onBudget(e.target.value)}
+              />
+              {points(v)}
+            </label>
+          ))}
+        </div>
+        {credits && (
+          <span className="creation-fact">
+            這場約 {credits.estimated_session.low_credits}–{credits.estimated_session.high_credits}{" "}
+            點{credits.estimated_session.estimated && "（估計）"}
+          </span>
+        )}
+      </fieldset>
+    </details>
   );
 }
 
@@ -296,10 +303,14 @@ function ComposerTools({
         type="button"
         className="composer-send"
         disabled={disabled}
+        aria-label={busy ? "送出中…" : hasSession ? "送出" : "開始創作"}
         aria-describedby={sendWhy}
         onClick={() => void onSubmit()}
       >
-        {busy ? "送出中…" : hasSession ? "送出" : "開始創作"}
+        <span aria-hidden="true">{busy ? "…" : "↑"}</span>
+        <span className="composer-send-label">
+          {busy ? "送出中…" : hasSession ? "送出" : "開始創作"}
+        </span>
       </button>
     </div>
   );
