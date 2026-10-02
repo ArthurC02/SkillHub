@@ -522,6 +522,9 @@ func (r *Registry) Capability(ctx context.Context, p SandboxProvider) (ProviderC
 		return entry.capability, entry.err
 	}
 	capability, err := p.Capability(ctx)
+	if ctx.Err() != nil {
+		return capability, err
+	}
 
 	switch {
 	case err != nil:
