@@ -122,6 +122,7 @@ const (
 	RouteGenerate     = "skills_generate"
 	RoutePublicSearch = "public_search"
 	RouteCatalog      = "catalog_browse"
+	RouteSuggest      = "criteria_suggest"
 )
 
 var RateLimited = promauto.NewCounterVec(prometheus.CounterOpts{
