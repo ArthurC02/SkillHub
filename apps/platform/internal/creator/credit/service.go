@@ -282,12 +282,8 @@ func (s *Service) Estimate(ctx context.Context, statKind CostKind) (Estimate, er
 }
 
 func (s *Service) CreditsForUSD(usd float64) (credits int64, ok bool) {
-	if math.IsNaN(usd) || math.IsInf(usd, 0) || usd <= 0 {
-		return 0, false
-	}
-	micros := ceilMicros(usd * microsPerUSD)
-	if micros > MaxBillableMicros {
-
+	micros, billable := BillableMicros(usd)
+	if !billable {
 		return 0, false
 	}
 	billed, err := BilledMicros(micros, s.Config.MarkupBps)

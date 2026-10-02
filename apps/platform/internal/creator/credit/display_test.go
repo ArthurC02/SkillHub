@@ -43,6 +43,8 @@ func TestCreditsForUSDRefusesRatherThanReturningZero(t *testing.T) {
 		{"NaN", math.NaN()},
 		{"infinite", math.Inf(1)},
 		{"past the billable ceiling", float64(MaxBillableMicros)/1_000_000 + 1},
+		{"past int64 once scaled to micros", 1e13},
+		{"largest float", math.MaxFloat64},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got, ok := s.CreditsForUSD(tc.usd); ok {
