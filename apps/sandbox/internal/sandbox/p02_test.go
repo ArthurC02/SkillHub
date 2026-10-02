@@ -1,9 +1,13 @@
 package sandbox
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
@@ -374,6 +378,20 @@ func TestAnUnknownP02ReadingRefusesNewWork(t *testing.T) {
 	}
 	if strings.Contains(re.Message, "db.internal") || strings.Contains(re.Message, "secret") {
 		t.Fatalf("refusal exposed probe detail: %q", re.Message)
+	}
+}
+
+func TestANodeRefusingWorkAnswersCreateWith503SoThePlatformRetries(t *testing.T) {
+	m := p02Manager(newP02Driver())
+	m.p02 = &P02Probe{result: P02Result{State: P02Fail}}
+	h := (&Server{M: m}).Routes()
+	body, _ := json.Marshal(p02Request())
+	rec := httptest.NewRecorder()
+
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/runs", bytes.NewReader(body)))
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("create on a node refusing work = %d, want 503 (a 422 is never retried)", rec.Code)
 	}
 }
 

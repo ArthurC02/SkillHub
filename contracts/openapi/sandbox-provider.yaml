@@ -149,6 +149,15 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: |
+            This node is refusing new work for now (its isolation check has not
+            passed). Answered as a RunError with retryable true; retrying later
+            or choosing another provider is the correct response. No sandbox
+            exists, so there is nothing to destroy.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunError" }
     get:
       operationId: listProviderRuns
       summary: List the runs still alive on this provider (RUN-007)

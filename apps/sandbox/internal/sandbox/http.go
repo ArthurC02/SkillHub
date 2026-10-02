@@ -69,6 +69,9 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request) {
 	run, created, err := s.M.Create(r.Context(), req)
 	capErr, isCapErr := errors.AsType[*RunError](err)
 	switch {
+	case isCapErr && capErr.Retryable:
+		writeJSON(w, http.StatusServiceUnavailable, capErr)
+		return
 	case isCapErr:
 		writeJSON(w, http.StatusUnprocessableEntity, capErr)
 		return
