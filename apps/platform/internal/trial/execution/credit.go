@@ -62,10 +62,10 @@ func (s *Service) reportedSpend(ctx context.Context, run gen.Run, attempts []gen
 		usage, err := s.Gateway.Usage(ctx, pgconv.UUIDString(attempt.ID), attemptUsageSince(attempt))
 		if err != nil {
 			metrics.RunTokenUsageUnreadable.Inc()
-			slog.Warn("could not read this attempt's spend; it will not be charged",
+			slog.Warn("could not read this attempt's spend; the run is settled once every attempt's spend can be read",
 				"run_id", pgconv.UUIDString(run.ID),
 				"run_attempt_id", pgconv.UUIDString(attempt.ID), "error", err)
-			continue
+			return nil
 		}
 		if usage.Incomplete {
 			metrics.RunTokenUsageUnreadable.Inc()

@@ -1850,3 +1850,33 @@ func TestARunIsCreatedWithoutReadingThePackageWhileTheTestCaseIsLocked(t *testin
 		t.Error("the package was read from storage while the run's transaction held the test case locked")
 	}
 }
+
+type versionSummariesDown struct{ run.RegistryReader }
+
+func (versionSummariesDown) VersionSummaries(context.Context, pgtype.UUID, []pgtype.UUID) (map[pgtype.UUID]run.VersionSummary, error) {
+	return nil, errors.New("registry read timed out")
+}
+
+func TestARunAnswersForItsCreationAndRefusesACancelItCouldNotDescribe(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-links-down")
+	a.runs.Registry = versionSummariesDown{RegistryReader: a.runs.Registry}
+
+	status, created := f.startNoFatal(t)
+	if status != http.StatusCreated || created.SkillID != f.skillID || created.TestCaseID != f.testCaseID {
+		t.Fatalf("create = %d %+v: a committed run must be answered with its ids, not a failure the client retries", status, created)
+	}
+
+	status, _ = f.postJSON(t, "/runs/"+created.RunID+"/cancel", "")
+	if status != http.StatusInternalServerError {
+		t.Fatalf("cancel = %d, want 500 when the run cannot be described", status)
+	}
+	var cancelRequested pgtype.Timestamptz
+	if err := pool.QueryRow(context.Background(), "SELECT cancel_requested_at FROM runs WHERE id = $1", created.RunID).Scan(&cancelRequested); err != nil {
+		t.Fatal(err)
+	}
+	if cancelRequested.Valid {
+		t.Error("the cancel was recorded although the client was told it failed")
+	}
+}

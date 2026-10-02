@@ -97,3 +97,30 @@ func TestAClosedBetaGateRefusesEveryoneWithoutAskingTheDatabase(t *testing.T) {
 		t.Error("a user once on the list still counts as allowlisted behind a closed gate")
 	}
 }
+
+func TestASessionThatCannotBeCheckedIsUnavailableRatherThanSignedOut(t *testing.T) {
+	pool, err := pgxpool.New(context.Background(),
+		"postgres://nobody@127.0.0.1:1/nothing?sslmode=disable&connect_timeout=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	h := &Handler{Service: &Service{Pool: pool}}
+
+	for name, guard := range map[string]func(http.HandlerFunc) http.HandlerFunc{
+		"required": h.RequireSession, "operator": h.RequireOperator, "optional": h.OptionalSession,
+	} {
+		t.Run(name, func(t *testing.T) {
+			reached := false
+			r := httptest.NewRequest(http.MethodGet, "/me", nil)
+			r.AddCookie(&http.Cookie{Name: sessionCookie, Value: "a-session-token"})
+			w := httptest.NewRecorder()
+
+			guard(func(http.ResponseWriter, *http.Request) { reached = true })(w, r)
+
+			if reached || w.Code != http.StatusServiceUnavailable {
+				t.Errorf("reached = %v status = %d, want 503: an outage is not a signed-out user", reached, w.Code)
+			}
+		})
+	}
+}

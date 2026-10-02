@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
@@ -192,5 +193,43 @@ func TestASweepThatFailedPartWayIsNotLoggedAsComplete(t *testing.T) {
 	logSweep("account purge", nil, "accounts_purged", 3)
 	if out := logged.String(); !strings.Contains(out, "account purge complete") {
 		t.Errorf("a clean sweep logged %q", out)
+	}
+}
+
+func TestAccountsArePurgedNoSoonerThanTheGraceTheyWerePromised(t *testing.T) {
+	for _, tc := range []struct {
+		raw  string
+		want time.Duration
+		ok   bool
+	}{
+		{"", identity.AccountDeletionGrace, true},
+		{identity.AccountDeletionGrace.String(), identity.AccountDeletionGrace, true},
+		{(identity.AccountDeletionGrace + time.Hour).String(), identity.AccountDeletionGrace + time.Hour, true},
+		{(identity.AccountDeletionGrace - time.Hour).String(), 0, false},
+		{"168h", 0, false},
+		{"30d", 0, false},
+	} {
+		t.Run(tc.raw, func(t *testing.T) {
+			t.Setenv("PURGE_GRACE", tc.raw)
+			got, err := accountPurgeGrace()
+			if (err == nil) != tc.ok || got != tc.want {
+				t.Errorf("grace = %s, err = %v; want %s, accepted %v", got, err, tc.want, tc.ok)
+			}
+		})
+	}
+}
+
+func TestTracePartitionsRotateWhenAnalyticsIsNotCollected(t *testing.T) {
+	pool, err := pgxpool.New(context.Background(), "postgres://nobody@127.0.0.1:1/none?connect_timeout=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	t.Setenv("TRACE_RETENTION", "2160h")
+	t.Setenv("ANALYTICS_RETENTION", "")
+
+	err = rotatePartitions(context.Background(), pool)
+	if err == nil || strings.Contains(err.Error(), "ANALYTICS_RETENTION") {
+		t.Fatalf("rotate-partitions = %v, want only the trace rotation attempted and failing on the unreachable database", err)
 	}
 }

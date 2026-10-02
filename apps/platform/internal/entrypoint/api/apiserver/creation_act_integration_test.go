@@ -380,17 +380,18 @@ func TestActSelectReferences(t *testing.T) {
 	})
 }
 
-func TestActAdoptReferenceWhenAdoptErrorsIsNotFound(t *testing.T) {
+func TestActAdoptReferenceWhoseForkFailsReportsTheOutage(t *testing.T) {
 	pool, ws, svc := newActFixture(t)
 	v, id := newActSession(t, svc, ws)
 	setCreationSnapshotField(t, pool, id, "pending_action", "confirm_references")
 	setCreationSnapshotField(t, pool, id, "references", []creation.Reference{{SkillID: "adopt-fail-skill"}})
+	outage := errors.New("adopt boom")
 	svc.Adopt = func(context.Context, pgx.Tx, identity.Workspace, string) (creation.Candidate, error) {
-		return creation.Candidate{}, errors.New("adopt boom")
+		return creation.Candidate{}, outage
 	}
 	_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "adopt_reference", ReferenceSkillIDs: []string{"adopt-fail-skill"}})
-	if !errors.Is(err, creation.ErrNotFound) {
-		t.Fatalf("got %v, want ErrNotFound", err)
+	if !errors.Is(err, outage) || errors.Is(err, creation.ErrNotFound) {
+		t.Fatalf("got %v, want the fork outage itself rather than ErrNotFound", err)
 	}
 	assertRevisionUnchanged(t, pool, id, v.Revision)
 }

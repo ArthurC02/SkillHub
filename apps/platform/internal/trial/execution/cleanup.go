@@ -139,6 +139,11 @@ func (s *Service) releaseAttempt(ctx context.Context, attempt gen.RunAttempt, ha
 	return failures, false
 }
 
+var cleanupEvents = map[gen.RunCleanupStatus]string{
+	gen.RunCleanupStatusCleaned: outbox.RunCleanupCleaned,
+	gen.RunCleanupStatusFailed:  outbox.RunCleanupFailed,
+}
+
 func cleanupSettledAt(status gen.RunCleanupStatus) pgtype.Timestamptz {
 	if status == gen.RunCleanupStatusCleaned || status == gen.RunCleanupStatusFailed {
 		return stampNow()
@@ -171,9 +176,9 @@ func (s *Service) recordCleanup(ctx context.Context, run gen.Run, status gen.Run
 	}
 	changed := outbox.RunCleanupChanged{CleanupStatus: string(status), FailureCount: len(failures)}
 
-	eventType, err := outbox.CleanupEvent(string(status))
-	if err != nil {
-		return err
+	eventType, ok := cleanupEvents[status]
+	if !ok {
+		return fmt.Errorf("no domain event for cleanup status %q", status)
 	}
 	if err := outbox.Insert(ctx, tx, outbox.NewEvent{
 		EventType: eventType, EventVersion: outbox.EventVersion1,

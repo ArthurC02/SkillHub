@@ -119,29 +119,28 @@ func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 func rotatePartitions(ctx context.Context, pool *pgxpool.Pool) error {
-	traceRetention, err := positiveDuration("TRACE_RETENTION")
-	if err != nil {
-		return err
-	}
-	analyticsRetention, err := positiveDuration("ANALYTICS_RETENTION")
-	if err != nil {
-		return err
-	}
-
 	now := time.Now().UTC()
-
-	traceReport, traceErr := trace.MaintainPartitions(ctx, pool, now, traceRetention)
-	logRotation(trace.PartitionedTable, traceReport)
-
-	analyticsReport, analyticsErr := analytics.MaintainPartitions(ctx, pool, now, analyticsRetention)
-	logRotation(analytics.PartitionedTable, analyticsReport)
-
+	traceErr := rotateWithin("TRACE_RETENTION", trace.PartitionedTable, func(retention time.Duration) (partition.Report, error) {
+		return trace.MaintainPartitions(ctx, pool, now, retention)
+	})
+	if os.Getenv("ANALYTICS_RETENTION") == "" {
+		slog.Info("ANALYTICS_RETENTION not set; no funnel events are collected and existing analytics partitions are kept until it is set")
+		return traceErr
+	}
+	analyticsErr := rotateWithin("ANALYTICS_RETENTION", analytics.PartitionedTable, func(retention time.Duration) (partition.Report, error) {
+		return analytics.MaintainPartitions(ctx, pool, now, retention)
+	})
 	return errors.Join(traceErr, analyticsErr)
 }
 
-func logRotation(table string, report partition.Report) {
-	slog.Info("partitions rotated", "table", table,
-		"created", report.Created, "dropped", report.Dropped)
+func rotateWithin(retentionKey, table string, maintain func(time.Duration) (partition.Report, error)) error {
+	retention, err := positiveDuration(retentionKey)
+	if err != nil {
+		return err
+	}
+	report, err := maintain(retention)
+	logSweep(table+" partition rotation", err, "created", report.Created, "dropped", report.Dropped)
+	return err
 }
 
 func purgeAudit(ctx context.Context, pool *pgxpool.Pool) error {
@@ -191,8 +190,9 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 		Mark: svc.MarkArtifactUploadIntentPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
 	}, batch())
 
-	slog.Info("run artifact purge complete", "artifacts_purged", n, "upload_intents_purged", intentN)
-	return errors.Join(err, intentErr)
+	err = errors.Join(err, intentErr)
+	logSweep("run artifact purge", err, "artifacts_purged", n, "upload_intents_purged", intentN)
+	return err
 }
 
 func purgeDeletedSkills(ctx context.Context, pool *pgxpool.Pool) error {
@@ -238,8 +238,12 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return err
 	}
+	grace, err := accountPurgeGrace()
+	if err != nil {
+		return err
+	}
 	svc := purgeService(pool)
-	n, purgeErr := svc.PurgeExpiredAccounts(ctx, store, grace(), batch())
+	n, purgeErr := svc.PurgeExpiredAccounts(ctx, store, grace, batch())
 
 	logSweep("account purge", purgeErr, "accounts_purged", n)
 
@@ -309,11 +313,16 @@ func positiveDuration(key string) (time.Duration, error) {
 	return d, nil
 }
 
-func grace() time.Duration {
-	if d, err := time.ParseDuration(os.Getenv("PURGE_GRACE")); err == nil && d > 0 {
-		return d
+func accountPurgeGrace() (time.Duration, error) {
+	raw := os.Getenv("PURGE_GRACE")
+	if raw == "" {
+		return identity.AccountDeletionGrace, nil
 	}
-	return identity.AccountDeletionGrace
+	d, err := time.ParseDuration(raw)
+	if err != nil || d < identity.AccountDeletionGrace {
+		return 0, fmt.Errorf("PURGE_GRACE must be a Go duration of at least %s, the grace a deleting account is promised", identity.AccountDeletionGrace)
+	}
+	return d, nil
 }
 
 func purgeDatabaseURL() string {

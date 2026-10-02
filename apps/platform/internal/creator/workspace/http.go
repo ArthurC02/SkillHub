@@ -192,6 +192,15 @@ func (s session) attach(r *http.Request) *http.Request {
 	return r.WithContext(ctx)
 }
 
+func signedOut(err error) bool {
+	return errors.Is(err, ErrSessionInvalid) || errors.Is(err, ErrAccountGone) || errors.Is(err, ErrAccountPurging)
+}
+
+func writeSessionUnavailable(w http.ResponseWriter, err error) {
+	slog.Error("session could not be checked", "error", err)
+	httpx.WriteError(w, http.StatusServiceUnavailable, "session check unavailable")
+}
+
 func (h *Handler) RequireSession(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie(sessionCookie)
@@ -200,8 +209,12 @@ func (h *Handler) RequireSession(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		found, err := h.Service.sessionForToken(r.Context(), c.Value)
-		if err != nil {
+		if signedOut(err) {
 			httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
+			return
+		}
+		if err != nil {
+			writeSessionUnavailable(w, err)
 			return
 		}
 		next(w, found.attach(r))
@@ -234,9 +247,12 @@ func (h *Handler) RequireOperator(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		found, err := h.Service.sessionForToken(r.Context(), c.Value)
-		if err != nil {
-
+		if signedOut(err) {
 			httpx.WriteError(w, http.StatusNotFound, "not found")
+			return
+		}
+		if err != nil {
+			writeSessionUnavailable(w, err)
 			return
 		}
 		if !h.Operators[pgconv.UUIDString(found.user.ID)] {
@@ -426,8 +442,12 @@ func (h *Handler) OptionalSession(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		found, err := h.Service.sessionForToken(r.Context(), c.Value)
-		if err != nil {
+		if signedOut(err) {
 			next(w, r)
+			return
+		}
+		if err != nil {
+			writeSessionUnavailable(w, err)
 			return
 		}
 		next(w, found.attach(r))

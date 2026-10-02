@@ -12,7 +12,7 @@ func (s *Service) attachRun(ctx context.Context, ws identity.Workspace, p *Snaps
 	}
 	observation, err := s.ReadRun(ctx, ws, runID, *p.Candidate)
 	if err != nil {
-		return commandOutcome{}, ErrNotFound
+		return commandOutcome{}, err
 	}
 	p.Candidate.RunID = runID
 	p.RunUnmet = runUnmet(observation)

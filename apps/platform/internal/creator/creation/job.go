@@ -111,7 +111,11 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *Diagram) error {
 	if s.LLM == nil || s.IssueKey == nil || s.RevokeKey == nil {
 		return ErrUnavailable
 	}
-	started, err := s.startAttempt(ctx, a, diagram, s.fetchAhead(ctx, a))
+	fetched, err := s.fetchAhead(ctx, a)
+	if err != nil {
+		return err
+	}
+	started, err := s.startAttempt(ctx, a, diagram, fetched)
 	if err != nil || started == nil {
 		return err
 	}
@@ -279,20 +283,26 @@ type fetchedPage struct {
 	text   string
 }
 
-func (s *Service) fetchAhead(ctx context.Context, a JobArgs) *fetchedPage {
+func (s *Service) fetchAhead(ctx context.Context, a JobArgs) (*fetchedPage, error) {
 	if s.Fetch == nil {
-		return nil
+		return nil, nil
 	}
 	row, err := gen.New(s.Pool).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: a.SessionID, WorkspaceID: a.WorkspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	e, err := decode(row)
-	if err != nil || !sessionAwaitsAttempt(row, e, a) || e.Snapshot.PendingFetchURL == "" {
-		return nil
+	if err != nil {
+		return nil, err
+	}
+	if !sessionAwaitsAttempt(row, e, a) || e.Snapshot.PendingFetchURL == "" {
+		return nil, nil
 	}
 	record, text := s.Fetch(ctx, e.Snapshot.PendingFetchURL)
-	return &fetchedPage{url: e.Snapshot.PendingFetchURL, record: record, text: text}
+	return &fetchedPage{url: e.Snapshot.PendingFetchURL, record: record, text: text}, nil
 }
 
 func (s *Service) fetchedFor(p Snapshot, fetched *fetchedPage) bool {
@@ -538,7 +548,7 @@ func (s *Service) concludeAttempt(ctx context.Context, a JobArgs, row gen.Creati
 	if err == nil {
 		return state, next
 	}
-	s.logStepFailure(a, call.callErr)
+	s.logStepFailure(a, errors.Join(call.callErr, err))
 	return failedAttempt(&e.Snapshot, err, call), false
 }
 

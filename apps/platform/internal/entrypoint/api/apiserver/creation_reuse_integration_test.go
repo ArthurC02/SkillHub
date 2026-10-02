@@ -240,3 +240,18 @@ func TestCreationRefusesADraftThatEscapesItsPackage(t *testing.T) {
 		t.Fatalf("an escaping draft became a version: %d", versions)
 	}
 }
+
+func TestAdoptingAListedReferenceThatIsGoneOrUnaddressableIsNotFound(t *testing.T) {
+	a, _, _ := creationFixture(t)
+	c := a.login(t, "creation-reuse-gone")
+	gone := "22222222-2222-4222-8222-222222222222"
+	a.app.CreationSvc.CatalogCheck = func(context.Context, identity.Workspace, string) ([]creation.Reference, float64, error) {
+		return []creation.Reference{{SkillID: gone, VersionID: gone, Name: "gone", Available: true, Confirmed: true}, {SkillID: "not-a-skill", Name: "unaddressable"}}, 0, nil
+	}
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "幫我整理輸入資料並輸出摘要", "budget_credits": 650}, 200)
+	if v.Snapshot.PendingAction != "confirm_references" {
+		t.Fatalf("the listed reference was not offered: %+v", v.Snapshot)
+	}
+	creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "adopt_reference", "reference_skill_ids": []string{gone}}, 404)
+	creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "adopt_reference", "reference_skill_ids": []string{"not-a-skill"}}, 404)
+}

@@ -17,7 +17,7 @@ const (
 
 func GatewayFromEnv() *run.Gateway {
 	budget := runBudgetFromEnv()
-	tpm, _ := strconv.Atoi(os.Getenv("SKILLHUB_RUN_TPM_LIMIT"))
+	tpm := runTPMLimitFromEnv()
 	return run.NewGateway(run.GatewayConfig{
 		AdminBaseURL: strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_ADMIN_URL"), "/"),
 		AdminKey:     os.Getenv("SKILLHUB_MODEL_GATEWAY_KEY"), SandboxBaseURL: strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_URL"), "/"),
@@ -46,6 +46,18 @@ func runBudgetFromEnv() float64 {
 		slog.Warn(runBudgetVariable+" is set but unusable; the default run budget applies", "value", raw)
 	}
 	return budget
+}
+
+const runTPMLimitVariable = "SKILLHUB_RUN_TPM_LIMIT"
+
+func runTPMLimitFromEnv() int {
+	raw := os.Getenv(runTPMLimitVariable)
+	tpm, err := strconv.Atoi(raw)
+	if raw != "" && (err != nil || tpm <= 0) {
+		slog.Warn(runTPMLimitVariable+" is set but unusable; the default tokens-per-minute limit applies", "value", raw)
+		return 0
+	}
+	return tpm
 }
 
 func NewRunRegistryFromEnv() *run.Registry {

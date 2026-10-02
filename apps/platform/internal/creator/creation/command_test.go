@@ -268,14 +268,19 @@ func TestAdoptingAListedSkillSavesTheSessionAsThatSkill(t *testing.T) {
 	}
 }
 
+var errAdoptOutage = errors.New("connection reset")
+
 func TestAdoptingNeedsOneListedSkillAndAnAdopter(t *testing.T) {
 	adopt := func(_ context.Context, _ pgx.Tx, _ identity.Workspace, id string) (Candidate, error) {
-		if id == "gone" {
-			return Candidate{}, errors.New("no such skill")
+		switch id {
+		case "gone":
+			return Candidate{}, fmt.Errorf("%w: no such skill", ErrNotFound)
+		case "outage":
+			return Candidate{}, errAdoptOutage
 		}
 		return Candidate{SkillID: id}, nil
 	}
-	listed := Snapshot{PendingAction: "confirm_references", References: []Reference{{SkillID: "a"}, {SkillID: "gone"}}}
+	listed := Snapshot{PendingAction: "confirm_references", References: []Reference{{SkillID: "a"}, {SkillID: "gone"}, {SkillID: "outage"}}}
 	for _, c := range []struct {
 		name    string
 		adopt   func(context.Context, pgx.Tx, identity.Workspace, string) (Candidate, error)
@@ -287,7 +292,8 @@ func TestAdoptingNeedsOneListedSkillAndAnAdopter(t *testing.T) {
 		{"two skills", adopt, "confirm_references", []string{"a", "gone"}, ErrInvalidCommand},
 		{"nobody asked", adopt, "", []string{"a"}, ErrInvalidCommand},
 		{"not listed", adopt, "confirm_references", []string{"elsewhere"}, ErrInvalidCommand},
-		{"adoption fails", adopt, "confirm_references", []string{"gone"}, ErrNotFound},
+		{"the skill is gone", adopt, "confirm_references", []string{"gone"}, ErrNotFound},
+		{"the adopter is down", adopt, "confirm_references", []string{"outage"}, errAdoptOutage},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			e := &envelope{Snapshot: listed}
@@ -441,8 +447,11 @@ func TestWhetherARunWasMetIsReadBeforeMaskingAndTheQuestionsAfter(t *testing.T) 
 
 func TestAttachingARunNeedsACandidateAReaderARunAndRoom(t *testing.T) {
 	read := func(_ context.Context, _ identity.Workspace, id string, _ Candidate) (string, error) {
-		if id == "gone" {
-			return "", errors.New("no such run")
+		switch id {
+		case "gone":
+			return "", fmt.Errorf("%w: no such run", ErrNotFound)
+		case "outage":
+			return "", errAdoptOutage
 		}
 		return unmetRun, nil
 	}
@@ -457,7 +466,8 @@ func TestAttachingARunNeedsACandidateAReaderARunAndRoom(t *testing.T) {
 		{"no reader", nil, Snapshot{Candidate: &Candidate{}}, "run-1", ErrInvalidCommand},
 		{"no run", read, Snapshot{Candidate: &Candidate{}}, "", ErrInvalidCommand},
 		{"at the message ceiling", read, Snapshot{Candidate: &Candidate{}, Messages: make([]Message, MaxMessages)}, "run-1", ErrInvalidCommand},
-		{"the run cannot be read", read, Snapshot{Candidate: &Candidate{}}, "gone", ErrNotFound},
+		{"the run is gone", read, Snapshot{Candidate: &Candidate{}}, "gone", ErrNotFound},
+		{"the run reader is down", read, Snapshot{Candidate: &Candidate{}}, "outage", errAdoptOutage},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			if _, err := (&Service{ReadRun: c.read}).attachRun(context.Background(), identity.Workspace{}, &c.p, c.run); !errors.Is(err, c.want) {

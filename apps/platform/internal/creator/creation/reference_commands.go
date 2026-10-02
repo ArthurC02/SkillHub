@@ -57,7 +57,7 @@ func (s *Service) adoptReference(ctx context.Context, tx pgx.Tx, ws identity.Wor
 	}
 	candidate, err := s.Adopt(ctx, tx, ws, skillIDs[0])
 	if err != nil {
-		return commandOutcome{}, ErrNotFound
+		return commandOutcome{}, err
 	}
 	p.Candidate = &candidate
 	p.Adopted = true

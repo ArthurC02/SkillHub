@@ -2,6 +2,8 @@ package apiserver
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
@@ -53,10 +55,13 @@ func wireCreationWrites(s *creation.Service, versions *ingest.Service, runs *run
 	s.ReadRun = func(ctx context.Context, ws identity.Workspace, runID string, candidate creation.Candidate) (string, error) {
 		id, err := creation.ParseID(runID)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("%w: %w", creation.ErrNotFound, err)
 		}
 		r, found, err := runs.EvaluationRun(ctx, ws.ID, id)
-		if err != nil || !found || creation.UUID(r.SkillVersionID) != candidate.VersionID {
+		if err != nil {
+			return "", err
+		}
+		if !found || creation.UUID(r.SkillVersionID) != candidate.VersionID {
 			return "", creation.ErrNotFound
 		}
 		if !r.Terminal {
@@ -75,9 +80,15 @@ func wireCreationAdopt(s *creation.Service, forks *registry.Service) {
 	s.Adopt = func(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID string) (creation.Candidate, error) {
 		id, err := creation.ParseID(skillID)
 		if err != nil {
-			return creation.Candidate{}, err
+			return creation.Candidate{}, fmt.Errorf("%w: %w", creation.ErrNotFound, err)
 		}
 		sk, ver, err := forks.ForkIn(ctx, tx, ws, id)
+		if errors.Is(err, registry.ErrNotFound) {
+			return creation.Candidate{}, fmt.Errorf("%w: %w", creation.ErrNotFound, err)
+		}
+		if errors.Is(err, registry.ErrNameTaken) {
+			return creation.Candidate{}, fmt.Errorf("%w: %w", creation.ErrConflict, err)
+		}
 		if err != nil {
 			return creation.Candidate{}, err
 		}

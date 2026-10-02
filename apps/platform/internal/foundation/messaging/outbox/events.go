@@ -156,40 +156,6 @@ var EventTypes = []string{
 	SkillCurationSet,
 }
 
-func StatusEvent(status string) (string, error) {
-	switch status {
-	case "queued":
-		return RunQueued, nil
-	case "provisioning":
-		return RunProvisioning, nil
-	case "preparing":
-		return RunPreparing, nil
-	case "running":
-		return RunRunning, nil
-	case "evaluating":
-		return RunEvaluating, nil
-	case "succeeded":
-		return RunSucceeded, nil
-	case "failed":
-		return RunFailed, nil
-	case "cancelled":
-		return RunCancelled, nil
-	case "timed_out":
-		return RunTimedOut, nil
-	}
-	return "", fmt.Errorf("no domain event for run status %q", status)
-}
-
-func CleanupEvent(status string) (string, error) {
-	switch status {
-	case "cleaned":
-		return RunCleanupCleaned, nil
-	case "failed":
-		return RunCleanupFailed, nil
-	}
-	return "", fmt.Errorf("no domain event for cleanup status %q", status)
-}
-
 var ErrUnknownEventType = errors.New("outbox: event type is not in the closed set")
 
 func Insert(ctx context.Context, tx pgx.Tx, event NewEvent) error {

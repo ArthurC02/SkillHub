@@ -168,3 +168,35 @@ func TestTheSweepPassesOverAVersionThatCameFromNoSuggestion(t *testing.T) {
 		t.Errorf("%d applications for a version nobody improved, want 0", got)
 	}
 }
+
+func TestAStaleEvaluationThatCannotBeRecoveredDoesNotStarveTheProvenanceSweep(t *testing.T) {
+	s := &Service{Pool: requireEvalDB(t)}
+	s.ReadEventsOfType = readsEventsFrom(s.Pool)
+	var stuck gen.Evaluation
+	t.Run("stuck", func(t *testing.T) {
+		var err error
+		if stuck, err = s.begin(context.Background(), seedRun(t, s.Pool)); err != nil {
+			t.Fatal(err)
+		}
+	})
+	t.Cleanup(func() {
+		_, _ = s.Pool.Exec(context.Background(), "DELETE FROM evaluations WHERE id = $1", stuck.ID)
+	})
+	if _, err := s.Pool.Exec(context.Background(), "UPDATE evaluations SET created_at = $2 WHERE id = $1",
+		stuck.ID, time.Now().Add(-RecoveryStaleAfter-time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	m := seedRun(t, s.Pool)
+	evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
+	suggestion := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
+	version := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-improved")
+	publishVersionAdded(t, s, m, version, evaluation.ID, []pgtype.UUID{suggestion.ID},
+		time.Now().Add(-RecoveryStaleAfter-time.Minute))
+
+	if err := s.RecoverPending(context.Background()); err == nil {
+		t.Error("recovery reported success although a stale evaluation could not be recovered")
+	}
+	if got := appliedSuggestionCount(t, s, m.run.WorkspaceID, version); got != 1 {
+		t.Errorf("%d applications after the sweep, want 1: one stuck evaluation kept the provenance sweep from running", got)
+	}
+}

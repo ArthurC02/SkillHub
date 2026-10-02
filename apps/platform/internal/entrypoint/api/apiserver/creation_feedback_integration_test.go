@@ -52,6 +52,7 @@ func TestCreationRevisionReceivesVerifiedRunEvidence(t *testing.T) {
 	}
 	creationPost(t, c, path, action(wrongVersionRun), 404)
 	creationPost(t, other, path, action(runID), 404)
+	creationPost(t, c, path, action("not-a-run"), 404)
 	var runningID string
 	if err := testPool.QueryRow(ctx, `INSERT INTO runs
 		(workspace_id, skill_version_id, test_case_snapshot_id, provider, runtime_snapshot, policy_snapshot, status)
@@ -59,7 +60,7 @@ func TestCreationRevisionReceivesVerifiedRunEvidence(t *testing.T) {
 		FROM runs WHERE id=$1 RETURNING id::text`, mustUUID(t, runID)).Scan(&runningID); err != nil {
 		t.Fatal(err)
 	}
-	creationPost(t, c, path, action(runningID), 404)
+	creationPost(t, c, path, action(runningID), 422)
 	evidence := &revisionEvidence{
 		runID: runID, priorHash: oldHash,
 		mustMention: []string{reason, excerpt, `"evaluation_available":true`, `"available":true`, `"result":"failed"`, candidate.VersionID},
