@@ -365,11 +365,18 @@ func transportFailure(ctx context.Context, req providerRequest, status int, err 
 	}
 	if status != 0 {
 		if req.wanted(status) {
-			return status, err
+			return status, answerCutShort(err)
 		}
 		return status, &providerError{Status: status, Message: err.Error()}
 	}
 	return 0, fmt.Errorf("%w: %w", ErrProviderUnavailable, err)
+}
+
+func answerCutShort(err error) error {
+	if errors.Is(err, httpx.ErrResponseTooLarge) {
+		return err
+	}
+	return fmt.Errorf("%w: %w", ErrProviderUnavailable, err)
 }
 
 func refusalFrom(status int, raw []byte) error {
