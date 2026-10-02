@@ -1186,8 +1186,12 @@ try {
     (await page.getByText(/餘額 13,?000 點/).count()) > 0,
   );
 
-  const budget = page.locator('input[name="creation-budget"][value="500"]');
-  await budget.click({ force: true });
+  const budgetPicker = page.locator(".budget-picker");
+  await budgetPicker.locator("summary").click();
+  const budget = budgetPicker.locator(
+    'input[name="creation-budget"][value="500"]',
+  );
+  await budgetPicker.locator("label").filter({ has: budget }).click();
   check("the browser selects a creation budget", await budget.isChecked());
   await page.getByLabel("想完成的任務").fill("用真瀏覽器送出這次創作");
   const start = page.locator("button.composer-send");
