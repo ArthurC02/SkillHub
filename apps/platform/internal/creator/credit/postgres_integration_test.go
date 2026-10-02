@@ -27,6 +27,17 @@ func integrationPool(t *testing.T) *pgxpool.Pool {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
+	conn, err := pool.Acquire(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Exec(context.Background(), "SELECT pg_advisory_lock(hashtextextended('skillhub:test-schema', 0))"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = conn.Exec(context.Background(), "SELECT pg_advisory_unlock(hashtextextended('skillhub:test-schema', 0))")
+		conn.Release()
+	})
 	return pool
 }
 
