@@ -26,6 +26,7 @@ export interface PackagingEnvVar {
 }
 
 export type PackagingBlockedReason =
+  | "taken_down"
   | "license_hold"
   | "not_redistributable"
   | "license_unknown"

@@ -17794,8 +17794,10 @@ func (s *PackageValidation) SetBlocked(val bool) {
 // they cannot argue with, the fourth is a package they can fix, and the fifth is one this platform
 // broke itself.
 //
-// `license_hold` — the skill carries a 0023 access restriction (SEC-011). An unrecognised reason
-// code still blocks: a code nobody recognises must never be the way content unlocks.
+// `taken_down` — the platform took the skill down. Taking down changes visibility and
+// downloadability only: versions and runs stay, but no package is built from it, its own workspace
+// included. `license_hold` — the skill carries a 0023 access restriction (SEC-011). An unrecognised
+// reason code still blocks: a code nobody recognises must never be the way content unlocks.
 // `not_redistributable` — the skill's `redistribution` is `blocked`. A source-available licence
 // reaches this even when the licence itself was manually confirmed: 02:CONTENT-002
 // 已人工確認不等於可再散布, so `confirmed` is never a release condition. `license_unknown`
@@ -17815,6 +17817,7 @@ func (s *PackageValidation) SetBlocked(val bool) {
 type PackagingBlockedReason string
 
 const (
+	PackagingBlockedReasonTakenDown             PackagingBlockedReason = "taken_down"
 	PackagingBlockedReasonLicenseHold           PackagingBlockedReason = "license_hold"
 	PackagingBlockedReasonNotRedistributable    PackagingBlockedReason = "not_redistributable"
 	PackagingBlockedReasonLicenseUnknown        PackagingBlockedReason = "license_unknown"
@@ -17825,6 +17828,7 @@ const (
 // AllValues returns all PackagingBlockedReason values.
 func (PackagingBlockedReason) AllValues() []PackagingBlockedReason {
 	return []PackagingBlockedReason{
+		PackagingBlockedReasonTakenDown,
 		PackagingBlockedReasonLicenseHold,
 		PackagingBlockedReasonNotRedistributable,
 		PackagingBlockedReasonLicenseUnknown,
@@ -17836,6 +17840,8 @@ func (PackagingBlockedReason) AllValues() []PackagingBlockedReason {
 // MarshalText implements encoding.TextMarshaler.
 func (s PackagingBlockedReason) MarshalText() ([]byte, error) {
 	switch s {
+	case PackagingBlockedReasonTakenDown:
+		return []byte(s), nil
 	case PackagingBlockedReasonLicenseHold:
 		return []byte(s), nil
 	case PackagingBlockedReasonNotRedistributable:
@@ -17854,6 +17860,9 @@ func (s PackagingBlockedReason) MarshalText() ([]byte, error) {
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (s *PackagingBlockedReason) UnmarshalText(data []byte) error {
 	switch PackagingBlockedReason(data) {
+	case PackagingBlockedReasonTakenDown:
+		*s = PackagingBlockedReasonTakenDown
+		return nil
 	case PackagingBlockedReasonLicenseHold:
 		*s = PackagingBlockedReasonLicenseHold
 		return nil

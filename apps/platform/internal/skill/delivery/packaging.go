@@ -30,6 +30,7 @@ const objectCleanupTimeout = 5 * time.Second
 const downloadCleanupHold = time.Hour
 
 const (
+	BlockedTakenDown          = "taken_down"
 	BlockedLicenseHold        = "license_hold"
 	BlockedNotRedistributable = "not_redistributable"
 	BlockedLicenseUnknown     = "license_unknown"
@@ -112,6 +113,7 @@ type SkillFacts struct {
 	ForkedFromSkillID   pgtype.UUID
 	ForkedFromVersionID pgtype.UUID
 	AccessRestricted    bool
+	TakenDown           bool
 	Redistribution      string
 }
 
@@ -300,6 +302,10 @@ func (s *Service) readRequestedVersion(ctx context.Context, ws identity.Workspac
 }
 
 func gate(skill SkillFacts) (reason, message string) {
+	if skill.TakenDown {
+		return BlockedTakenDown,
+			"這個 Skill 已被平台下架，所以無法再產出或下載套件"
+	}
 	if skill.AccessRestricted {
 		return BlockedLicenseHold,
 			"這個 Skill 的內容因授權問題尚未釐清而被保留，所以無法從中產出套件"

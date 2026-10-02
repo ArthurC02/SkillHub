@@ -498,6 +498,7 @@ func packagingSkillFacts(skill registry.Skill) packaging.SkillFacts {
 		ID: skill.ID, Name: skill.Name, ForkedFromSkillID: skill.ForkedFromSkillID,
 		ForkedFromVersionID: skill.ForkedFromVersionID,
 		AccessRestricted:    skill.Restriction().InEffect(), Redistribution: skill.Redistribution,
+		TakenDown: skill.TakenDown(),
 	}
 }
 

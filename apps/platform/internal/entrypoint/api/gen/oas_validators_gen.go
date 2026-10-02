@@ -5714,6 +5714,8 @@ func (s *PackageValidation) Validate() error {
 
 func (s PackagingBlockedReason) Validate() error {
 	switch s {
+	case "taken_down":
+		return nil
 	case "license_hold":
 		return nil
 	case "not_redistributable":

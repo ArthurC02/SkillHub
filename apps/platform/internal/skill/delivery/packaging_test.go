@@ -607,6 +607,29 @@ func TestAccessRestrictionStillOutranksGenerated(t *testing.T) {
 	}
 }
 
+func TestATakenDownSkillIsRefusedWhateverElseIsTrueOfIt(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		facts SkillFacts
+		want  string
+	}{
+		{"taken down and otherwise free to redistribute", SkillFacts{TakenDown: true, Redistribution: string(RedistributionAllowed)}, BlockedTakenDown},
+		{"taken down and held", SkillFacts{TakenDown: true, AccessRestricted: true, Redistribution: string(RedistributionAllowed)}, BlockedTakenDown},
+		{"taken down and not redistributable", SkillFacts{TakenDown: true, Redistribution: string(RedistributionBlocked)}, BlockedTakenDown},
+		{"not taken down and free to redistribute", SkillFacts{Redistribution: string(RedistributionAllowed)}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reason, message := gate(tc.facts)
+			if reason != tc.want {
+				t.Errorf("gate(%+v) reason = %q, want %q", tc.facts, reason, tc.want)
+			}
+			if (message == "") != (tc.want == "") {
+				t.Errorf("gate(%+v) message = %q: a refusal needs a message and a release needs none", tc.facts, message)
+			}
+		})
+	}
+}
+
 func TestADatasetNameThatCannotBeWrittenExcludesTheCase(t *testing.T) {
 	for _, name := range []string{
 		"", "   ", ".", "..",

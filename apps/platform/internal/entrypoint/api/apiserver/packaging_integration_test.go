@@ -542,6 +542,16 @@ func TestEachGateRefusesAPackageAndSaysWhich(t *testing.T) {
 			setup:      "UPDATE skills SET redistribution='unknown' WHERE id=$1",
 			wantReason: "license_unknown",
 		},
+		{
+			name:       "a skill the platform took down",
+			setup:      "UPDATE skills SET redistribution='allowed', takedown_at=now(), takedown_reason='fixture' WHERE id=$1",
+			wantReason: "taken_down",
+		},
+		{
+			name:       "a taken down skill that also carries a hold",
+			setup:      "UPDATE skills SET redistribution='allowed', access_restriction='license-review', takedown_at=now(), takedown_reason='fixture' WHERE id=$1",
+			wantReason: "taken_down",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			skillID, versionID := packagedSkill(t, a, pool, c, "gated-"+strings.ReplaceAll(tc.name, " ", "-"))

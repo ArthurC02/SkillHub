@@ -36889,6 +36889,8 @@ func (s *PackagingBlockedReason) Decode(d *jx.Decoder) error {
 	}
 	// Try to use constant string.
 	switch PackagingBlockedReason(v) {
+	case PackagingBlockedReasonTakenDown:
+		*s = PackagingBlockedReasonTakenDown
 	case PackagingBlockedReasonLicenseHold:
 		*s = PackagingBlockedReasonLicenseHold
 	case PackagingBlockedReasonNotRedistributable:
