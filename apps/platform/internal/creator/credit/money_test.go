@@ -86,6 +86,21 @@ func TestAFigureTooLargeToScaleIsCappedNotWrapped(t *testing.T) {
 	}
 }
 
+func TestADollarFigureIsBilledInTheMicrosItNamesNotOneMore(t *testing.T) {
+	for _, tc := range []struct {
+		usd  float64
+		want int64
+	}{
+		{0.000123, 123},
+		{2.007, 2_007_000},
+		{0.0001231, 124},
+	} {
+		if got, _ := BillableMicros(tc.usd); got != tc.want {
+			t.Errorf("BillableMicros(%v) = %d, want %d", tc.usd, got, tc.want)
+		}
+	}
+}
+
 func TestUsageCostBillsOnlyAPositiveFiniteFigure(t *testing.T) {
 	usd := func(f float64) *float64 { return &f }
 	for _, tc := range []struct {

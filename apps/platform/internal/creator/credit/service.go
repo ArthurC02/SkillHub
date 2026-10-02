@@ -278,14 +278,11 @@ func (s *Service) Estimate(ctx context.Context, statKind CostKind) (Estimate, er
 	return est, nil
 }
 
-const floatNoiseMicros = 1e-6
-
 func (s *Service) CreditsForUSD(usd float64) (credits int64, ok bool) {
 	if math.IsNaN(usd) || math.IsInf(usd, 0) || usd <= 0 {
 		return 0, false
 	}
-	// The epsilon absorbs float noise from usd*1e6; a real fraction of a micro still rounds up.
-	micros := int64(math.Ceil(usd*microsPerUSD - floatNoiseMicros))
+	micros := ceilMicros(usd * microsPerUSD)
 	if micros > MaxBillableMicros {
 
 		return 0, false

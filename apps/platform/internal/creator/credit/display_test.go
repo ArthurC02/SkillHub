@@ -52,8 +52,7 @@ func TestCreditsForUSDRefusesRatherThanReturningZero(t *testing.T) {
 	}
 
 	if got, ok := s.CreditsForUSD(0); ok || got != 0 {
-
-		t.Logf("CreditsForUSD(0) = %d, ok=%v — an exact zero is treated as no number", got, ok)
+		t.Errorf("CreditsForUSD(0) = %d, ok=%v; want a refusal, an exact zero is treated as no number", got, ok)
 	}
 }
 
