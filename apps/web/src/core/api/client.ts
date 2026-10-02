@@ -22,7 +22,7 @@ export class ApiError extends Error {
   }
 }
 
-const lastingReadFailures = new Set([401, 403, 404]);
+const lastingReadFailures = new Set([403, 404]);
 
 export function isLastingReadFailure(error: unknown): boolean {
   return error instanceof ApiError && lastingReadFailures.has(error.status);
