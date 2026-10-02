@@ -456,3 +456,54 @@ func TestExposureReviewsAreForOperatorsOnly(t *testing.T) {
 		t.Errorf("a member approving their own publication: %d, want 404", code)
 	}
 }
+
+func TestAnExposedSkillsDetailNamesNoPrivateSkillFromTheSamePackage(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	author := a.login(t, freshName("exposed-siblings-author"))
+	operator := a.login(t, freshName("exposed-siblings-operator"))
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	sharedName, privateName := freshName("exposed-siblings-shared"), freshName("exposed-siblings-private")
+	res := importSource(t, a, pool, author, map[string]string{
+		"plugin.json":             conformingPlugin("exposed-siblings"),
+		"skills/shared/SKILL.md":  skillNamed(sharedName),
+		"skills/private/SKILL.md": skillNamed(privateName),
+	}, nil)
+	shared := uuidText(importedAt(t, res, "skills/shared").Skill.ID)
+	registerPublisher(t, author, freshName("exposed-siblings"))
+	code, body := publish(t, author, shared, `{"rights_attested":true}`)
+	if code != http.StatusOK {
+		t.Fatalf("publishing %s: %d %v", sharedName, code, body)
+	}
+	w := exposureWorld{a: a, pool: pool, author: author, operator: operator,
+		skillID: shared, name: sharedName, address: body["address"].(string)}
+	w.enrich(t)
+	if !siblingNamed(t, author, a.URL+"/api/skills/"+shared, privateName) {
+		t.Fatal("the owner does not see the skill that shares the package; the rest proves nothing")
+	}
+
+	w.allowRedistribution(t)
+	w.approveAndAssertExposedToAnyone(t)
+
+	stranger := a.login(t, freshName("exposed-siblings-stranger"))
+	if siblingNamed(t, stranger, a.URL+"/api/skills/"+shared, privateName) {
+		t.Errorf("a stranger reading the exposed skill sees %q, a private skill of its author", privateName)
+	}
+}
+
+func siblingNamed(t *testing.T, c *client, path, name string) bool {
+	t.Helper()
+	var got detail
+	if code := getJSON(t, c.Client, path, &got); code != http.StatusOK {
+		t.Fatalf("GET %s: %d", path, code)
+	}
+	if got.Source == nil {
+		t.Fatalf("GET %s carries no source", path)
+	}
+	for _, sibling := range got.Source.Siblings {
+		if sibling.Name == name {
+			return true
+		}
+	}
+	return false
+}

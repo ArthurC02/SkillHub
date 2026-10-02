@@ -407,7 +407,7 @@ func (s *Service) attachSource(ctx context.Context, skill SkillFacts, ver Versio
 	}
 	out.Source = sourceFrom(src)
 	out.Source.Path = ver.SourcePath
-	siblings, err := s.sourceSiblings(ctx, ver.WorkspaceID, ver.PackageObjectKey, skill.ID)
+	siblings, err := s.sourceSiblings(ctx, skill, ver)
 	if err != nil {
 		return err
 	}
@@ -811,23 +811,43 @@ func pluginFrom(s SourceFacts) *pluginInfo {
 	return out
 }
 
-func (s *Service) sourceSiblings(
-	ctx context.Context, workspaceID pgtype.UUID, packageObjectKey string, skillID pgtype.UUID,
-) ([]sourceSibling, error) {
+func (s *Service) sourceSiblings(ctx context.Context, skill SkillFacts, ver VersionFacts) ([]sourceSibling, error) {
 	if s.ReadSourceSiblings == nil {
 		return nil, errOwnerReadNotConfigured
 	}
-	facts, err := s.ReadSourceSiblings(ctx, workspaceID, packageObjectKey, skillID)
+	facts, err := s.ReadSourceSiblings(ctx, ver.WorkspaceID, ver.PackageObjectKey, skill.ID)
+	if err != nil {
+		return nil, err
+	}
+	shown, err := s.siblingsShownBeside(ctx, skill)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]sourceSibling, 0, len(facts))
 	for _, f := range facts {
+		if !shown(f.SkillID) {
+			continue
+		}
 		out = append(out, sourceSibling{
 			SkillID: pgconv.UUIDString(f.SkillID), Name: f.Name, Path: f.SourcePath,
 		})
 	}
 	return out, nil
+}
+
+func (s *Service) siblingsShownBeside(ctx context.Context, skill SkillFacts) (func(pgtype.UUID) bool, error) {
+	scope, err := s.publicScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	_, exposed := scope.exposed[skill.ID]
+	if !exposed || slices.Contains(scope.catalogs, skill.WorkspaceID) {
+		return func(pgtype.UUID) bool { return true }, nil
+	}
+	return func(id pgtype.UUID) bool {
+		_, ok := scope.exposed[id]
+		return ok
+	}, nil
 }
 
 func sourceFrom(s SourceFacts) *sourceInfo {
