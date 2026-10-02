@@ -589,6 +589,7 @@ func failedAttempt(p *Snapshot, err error, call stepCall) State {
 	p.PendingAction = NothingPending
 	p.appendMessage("assistant", stepFailureMessage(err, callErr))
 	if errors.Is(callErr, ErrNotFound) {
+		p.Steps--
 		state = StateWaitingConfirmation
 		p.PendingAction = PendingReferenceChoice
 		for i := range p.References {
@@ -598,6 +599,7 @@ func failedAttempt(p *Snapshot, err error, call stepCall) State {
 		p.appendMessage("assistant", "參考內容目前不可用，請換選後再確認。")
 	}
 	if errors.Is(callErr, ErrCreditFloor) {
+		p.Steps--
 		state = StateWaitingInput
 		p.PendingAction = NothingPending
 		p.appendMessage("assistant", "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。")

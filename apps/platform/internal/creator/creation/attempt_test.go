@@ -85,18 +85,22 @@ func TestAFailedAttemptLandsWhereThePersonCanActOnIt(t *testing.T) {
 		want          State
 		pending       PendingAction
 		last          string
+		steps         int
 	}{
-		{"the reply broke the rules", "", false, ErrInvalidCommand, nil, StateFailed, "", "模型的回覆不符合會話規則"},
-		{"a diagram step that was never read", "", true, ErrInvalidCommand, nil, StateNeedsReupload, "", "模型的回覆不符合會話規則"},
-		{"a diagram step that was read", understoodDiagram, true, ErrUnavailable, errors.New("timeout"), StateFailed, "", "平台這一側沒能完成這次模型呼叫"},
-		{"a reference went away", "", false, ErrUnavailable, fmt.Errorf("resolve: %w", ErrNotFound), StateWaitingConfirmation, "confirm_references", "參考內容目前不可用，請換選後再確認。"},
-		{"the balance hit the floor", "", false, ErrUnavailable, ErrCreditFloor, StateWaitingInput, "", "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。"},
+		{"the reply broke the rules", "", false, ErrInvalidCommand, nil, StateFailed, "", "模型的回覆不符合會話規則", 3},
+		{"a diagram step that was never read", "", true, ErrInvalidCommand, nil, StateNeedsReupload, "", "模型的回覆不符合會話規則", 3},
+		{"a diagram step that was read", understoodDiagram, true, ErrUnavailable, errors.New("timeout"), StateFailed, "", "平台這一側沒能完成這次模型呼叫", 3},
+		{"a reference went away", "", false, ErrUnavailable, fmt.Errorf("resolve: %w", ErrNotFound), StateWaitingConfirmation, "confirm_references", "參考內容目前不可用，請換選後再確認。", 2},
+		{"the balance hit the floor", "", false, ErrUnavailable, ErrCreditFloor, StateWaitingInput, "", "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。", 2},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			p := &Snapshot{DiagramUnderstanding: c.understanding, PendingAction: "confirm_brief", References: []Reference{{SkillID: "a", Confirmed: true, Available: true}}}
+			p := &Snapshot{Steps: 3, DiagramUnderstanding: c.understanding, PendingAction: "confirm_brief", References: []Reference{{SkillID: "a", Confirmed: true, Available: true}}}
 			got := failedAttempt(p, c.err, stepCall{carriedDiagram: c.hadDiagram, callErr: c.callErr})
 			if got != c.want || p.PendingAction != c.pending || !strings.Contains(p.Messages[len(p.Messages)-1].Content, c.last) {
 				t.Fatalf("state = %s, pending = %q, messages = %+v", got, p.PendingAction, p.Messages)
+			}
+			if p.Steps != c.steps {
+				t.Errorf("steps = %d, want %d: only a step whose model call went out counts against the session", p.Steps, c.steps)
 			}
 			refused := errors.Is(c.callErr, ErrNotFound)
 			if r := p.References[0]; refused == (r.Confirmed || r.Available) {
