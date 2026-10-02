@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -152,5 +153,48 @@ func TestAProviderRefusalThatWaitingCannotFixEndsTheRunAfterOneAttempt(t *testin
 	}
 	if len(final.Attempts) != 1 {
 		t.Errorf("attempts = %d, want 1: a refusal that is not about load is not retried", len(final.Attempts))
+	}
+}
+
+func TestARunWhoseModelGatewayIsNotAnsweringWaitsInTheQueueInsteadOfFailing(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-gateway-down")
+	ctx := context.Background()
+	created := f.start(t)
+
+	var down atomic.Bool
+	down.Store(true)
+	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if down.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = w.Write([]byte(`{"key":"sk-test"}`))
+	}))
+	t.Cleanup(gateway.Close)
+	fake := providertest.New("fake_sandbox", "test-token")
+	t.Cleanup(fake.Close)
+	svc := *a.runs
+	svc.Providers = run.NewRegistry(fake.Provider())
+	svc.Store = a.packages
+	svc.Gateway = run.NewGateway(run.GatewayConfig{SandboxBaseURL: gateway.URL, AdminKey: "test-admin-key"})
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+
+	if err := svc.Drive(ctx, ws, runID); !errors.Is(err, run.ErrTryAgainLater) {
+		t.Fatalf("driving with the gateway down returned %v, want the run to wait", err)
+	}
+	if _, view := f.getRun(t, created.RunID); view.Status != string(gen.RunStatusQueued) || len(view.Attempts) != 1 {
+		t.Fatalf("run is %q with %d attempts, want queued with the one attempt that could not get a key",
+			view.Status, len(view.Attempts))
+	}
+	if fake.Dispatches() != 0 {
+		t.Errorf("dispatches = %d, want none: the attempt had no key to give the sandbox", fake.Dispatches())
+	}
+
+	down.Store(false)
+	_ = svc.Drive(ctx, ws, runID)
+	if fake.Dispatches() != 1 {
+		t.Errorf("dispatches = %d after the gateway answered again, want 1", fake.Dispatches())
 	}
 }

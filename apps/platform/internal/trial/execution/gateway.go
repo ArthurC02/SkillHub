@@ -40,6 +40,8 @@ const modelGatewayPurpose = "model_gateway"
 
 var ErrNoModelGateway = errors.New("this deployment has no model gateway, so a run has no way to reach a model")
 
+var ErrModelGatewayUnavailable = errors.New("the model gateway is not answering right now")
+
 func (s *Service) requireModelGateway() error {
 	if s.Gateway == nil {
 		return ErrNoModelGateway
@@ -181,6 +183,9 @@ func (g *Gateway) issue(ctx context.Context, terms virtualKeyTerms) (*ModelGatew
 		Key string `json:"key"`
 	}
 	if err := g.post(ctx, "/key/generate", body, &out); err != nil {
+		if notAnswering(err) {
+			return nil, fmt.Errorf("mint virtual key: %w: %w", ErrModelGatewayUnavailable, err)
+		}
 		return nil, fmt.Errorf("mint virtual key: %w", err)
 	}
 	if out.Key == "" {
@@ -290,6 +295,11 @@ func (e *gatewayError) notFound() bool {
 	lower := strings.ToLower(e.Message)
 	return e.Status == http.StatusBadRequest &&
 		(strings.Contains(lower, "not found") || strings.Contains(lower, "does not exist"))
+}
+
+func notAnswering(err error) bool {
+	ge, answered := errors.AsType[*gatewayError](err)
+	return !answered || ge.Status == http.StatusTooManyRequests || ge.Status >= http.StatusInternalServerError
 }
 
 func (g *Gateway) post(ctx context.Context, path string, body, out any) error {

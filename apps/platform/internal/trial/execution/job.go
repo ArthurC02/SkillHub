@@ -262,7 +262,9 @@ func (d *driver) tryPlacement(ctx context.Context, round *dispatchRound) (attemp
 	request, err := d.svc.buildRunRequest(ctx, d.cur, attempt, attemptTerms{
 		profile: placement.Profile, policy: round.policy, budgetUSD: round.budget,
 	})
-	if err != nil {
+	if errors.Is(err, ErrModelGatewayUnavailable) {
+		return attemptSettled, d.waitForGateway(ctx, attempt, err)
+	} else if err != nil {
 		return attemptSettled, d.abandonUnbuiltAttempt(ctx, attempt, err)
 	}
 	pr, err := provider.Start(ctx, request)
@@ -272,10 +274,24 @@ func (d *driver) tryPlacement(ctx context.Context, round *dispatchRound) (attemp
 	return d.startAccepted(ctx, round, placement, attempt, pr)
 }
 
-func (d *driver) abandonUnbuiltAttempt(ctx context.Context, attempt gen.RunAttempt, err error) error {
+func (d *driver) closeUnbuiltGrants(ctx context.Context, attempt gen.RunAttempt) {
 	if expiryErr := d.svc.recordObjectGrantExpiry(ctx, attempt, objectGrantsExpiredOnArrival()); expiryErr != nil {
 		slog.Error("could not close undispatched attempt object grants", "run_id", pgconv.UUIDString(d.cur.ID), "error", expiryErr)
 	}
+}
+
+func (d *driver) waitForGateway(ctx context.Context, attempt gen.RunAttempt, err error) error {
+	d.closeUnbuiltGrants(ctx, attempt)
+	slog.Warn("the model gateway could not give this attempt a key; the run keeps its place in the queue",
+		"run_id", pgconv.UUIDString(d.cur.ID), "error", err)
+	if err := d.finishAttempt(ctx, attempt, errClassProvision, "模型閘道暫時沒有回應，稍後自動重試"); err != nil {
+		return err
+	}
+	return tryAgainIn(d.svc.slotWaitInterval())
+}
+
+func (d *driver) abandonUnbuiltAttempt(ctx context.Context, attempt gen.RunAttempt, err error) error {
+	d.closeUnbuiltGrants(ctx, attempt)
 	reason := d.reasonFor(failurePlatform, err)
 	return d.finishAttemptAndRun(ctx, attempt, errClassProvision, string(reason), runEnding{to: gen.RunStatusFailed, failure: failurePlatform, reason: reason})
 }
