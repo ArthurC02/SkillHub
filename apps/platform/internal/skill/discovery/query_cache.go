@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"maps"
 	"slices"
@@ -108,12 +109,15 @@ func (m *cachedModel) MatchReasons(ctx context.Context, query string, candidates
 
 func reasonsKey(query string, candidates []SkillCandidate) string {
 	h := sha256.New()
-	h.Write([]byte(query))
+	writeField := func(field string) {
+		h.Write(binary.AppendUvarint(nil, uint64(len(field))))
+		h.Write([]byte(field))
+	}
+	writeField(query)
 	for _, c := range candidates {
-		for _, field := range []string{c.SkillID, c.Name, c.Summary} {
-			h.Write([]byte{0})
-			h.Write([]byte(field))
-		}
+		writeField(c.SkillID)
+		writeField(c.Name)
+		writeField(c.Summary)
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }

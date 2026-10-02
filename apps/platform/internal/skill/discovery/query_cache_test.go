@@ -124,6 +124,15 @@ func TestMatchReasonsAreReusedOnlyForTheSameQueryAndCandidates(t *testing.T) {
 	}
 }
 
+func TestAQueryCannotSpellAnotherQuerysCandidatesIntoItsCacheKey(t *testing.T) {
+	inner := &countingModel{}
+	m := &cachedModel{Model: inner}
+	_, _ = m.MatchReasons(t.Context(), "pdf", []SkillCandidate{{SkillID: "1"}}, time.Second)
+	if _, _ = m.MatchReasons(t.Context(), "pdf\x001\x00\x00", nil, time.Second); inner.reasons != 2 {
+		t.Fatal("a query ending in the candidate fields' bytes was answered with another search's reasons")
+	}
+}
+
 func TestOnlyAValidIntentAnalysisIsCachedAndAHitCannotCorruptIt(t *testing.T) {
 	invalid := &countingAnalyzer{}
 	a := &cachedIntentAnalyzer{IntentAnalyzer: invalid}
