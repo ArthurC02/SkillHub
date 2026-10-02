@@ -62,6 +62,7 @@ func (w *RevisionWatch) Subscribe(workspace, session pgtype.UUID) (<-chan struct
 		return nil, nil, ErrTooManyStreams
 	}
 	changed := make(chan struct{}, 1)
+	changed <- struct{}{}
 	if w.subscribers[key] == nil {
 		w.subscribers[key] = map[chan struct{}]struct{}{}
 	}

@@ -156,6 +156,26 @@ func TestADeletedSessionIsNotifiedSoItsStreamCanClose(t *testing.T) {
 	}
 }
 
+func TestAStreamJoiningASessionAlreadyWatchedLooksOnceRightAway(t *testing.T) {
+	fake := newFakeRevisions()
+	w := newRevisionWatch(fake.read, time.Millisecond)
+	session := uuidN(1)
+	fake.set(session, 1)
+	_, stopFirst, _ := w.Subscribe(workspaceN(1), session)
+	defer stopFirst()
+	fake.awaitPolls(t, 2)
+
+	joined, stopJoined, err := w.Subscribe(workspaceN(1), session)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stopJoined()
+	if !notified(joined) {
+		t.Fatal("a stream that joined a session the watch had already seen was not told to look: a change " +
+			"between its first read and its subscription stays unsent until the next revision or keep-alive")
+	}
+}
+
 func TestAWorkspaceOpensAtMostItsShareOfStreams(t *testing.T) {
 	w := newRevisionWatch(newFakeRevisions().read, time.Hour)
 	ws := workspaceN(1)
