@@ -350,7 +350,7 @@ func (s *Service) applyDiagramCommand(p *Snapshot, c Command) (commandOutcome, e
 	case commandConfirmDiagram:
 		return confirmDiagramDescription(p)
 	case commandAnswerDiagramUncertainty:
-		return answerDiagramUncertainty(p, c.DiagramUncertaintyID, c.DiagramAnswer)
+		return answerDiagramUncertainty(p, c.DiagramUncertaintyID, s.masked(c.DiagramAnswer))
 	case commandConfirmDiagramInterpretation:
 		return confirmDiagramInterpretation(p)
 	}
