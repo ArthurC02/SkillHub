@@ -48,8 +48,8 @@ func (q *Queries) CreateBundlePublication(ctx context.Context, arg CreateBundleP
 }
 
 const createBundleVersion = `-- name: CreateBundleVersion :one
-INSERT INTO bundle_versions (bundle_id, version, description, content_hash, created_by)
-SELECT b.id, $1, $2, $3, $4
+INSERT INTO bundle_versions (bundle_id, version, description, content_hash, created_by, created_at)
+SELECT b.id, $1, $2, $3, $4, clock_timestamp()
 FROM bundles b
 WHERE b.id = $5 AND b.workspace_id = $6
 RETURNING id, bundle_id, version, description, content_hash, created_by, created_at
@@ -419,8 +419,8 @@ func (q *Queries) InsertBundleMember(ctx context.Context, arg InsertBundleMember
 
 const insertBundleRelease = `-- name: InsertBundleRelease :one
 INSERT INTO publication_releases (publication_id, bundle_version_id, content_hash,
-                                  findings, rights_attested, released_by)
-SELECT p.id, $1, $2, $3, $4, $5
+                                  findings, rights_attested, released_by, released_at)
+SELECT p.id, $1, $2, $3, $4, $5, clock_timestamp()
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE p.id = $6 AND pb.workspace_id = $7
@@ -511,8 +511,8 @@ func (q *Queries) InsertExposureReview(ctx context.Context, arg InsertExposureRe
 
 const insertPublicationRelease = `-- name: InsertPublicationRelease :one
 INSERT INTO publication_releases (publication_id, skill_version_id, version_number, content_hash,
-                                  findings, rights_attested, released_by)
-SELECT p.id, $1, $2, $3, $4, $5, $6
+                                  findings, rights_attested, released_by, released_at)
+SELECT p.id, $1, $2, $3, $4, $5, $6, clock_timestamp()
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE p.id = $7 AND pb.workspace_id = $8
