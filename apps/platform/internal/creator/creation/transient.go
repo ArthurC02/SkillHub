@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -187,22 +188,32 @@ func (s *Service) Recover(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	var failed []error
 	for _, row := range rows {
-		e, err := decode(row)
-		if err != nil {
-			return err
+		if err := s.recoverStalled(ctx, row); err != nil {
+			slog.Warn("creation: a stalled session was not recovered; the rest of the batch still is",
+				"session_id", UUID(row.ID), "error", err)
+			failed = append(failed, err)
 		}
-		// A queued row can just be a healthy backlog, not a stalled attempt;
-		// only fail it once its own deadline has passed.
-		if State(row.State) == StateQueued && e.Deadline.After(time.Now()) {
-			continue
-		}
-		if err = s.recoverAttempt(ctx, JobArgs{row.ID, row.WorkspaceID, row.Revision, e.ActiveReceipt}, stillWithinCallDeadline); err != nil {
-			return err
-		}
-		if s.RevokeKey != nil && e.ActiveReceipt.Valid {
-			_ = s.RevokeKey(ctx, UUID(e.ActiveReceipt))
-		}
+	}
+	return errors.Join(failed...)
+}
+
+func (s *Service) recoverStalled(ctx context.Context, row gen.CreationSession) error {
+	e, err := decode(row)
+	if err != nil {
+		return err
+	}
+	// A queued row can just be a healthy backlog, not a stalled attempt;
+	// only fail it once its own deadline has passed.
+	if State(row.State) == StateQueued && e.Deadline.After(time.Now()) {
+		return nil
+	}
+	if err = s.recoverAttempt(ctx, JobArgs{row.ID, row.WorkspaceID, row.Revision, e.ActiveReceipt}, stillWithinCallDeadline); err != nil {
+		return err
+	}
+	if s.RevokeKey != nil && e.ActiveReceipt.Valid {
+		s.revokeAttemptKey(e.ActiveReceipt)
 	}
 	return nil
 }

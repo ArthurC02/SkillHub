@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
 
-func (s *Service) useTool(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *StepResult) (State, bool, error) {
-	run := s.toolFor(ctx, ws, revision, e, r)
+func (s *Service) useTool(ctx context.Context, revision int64, e *envelope, r *StepResult, found *searchAnswer) (State, bool, error) {
+	run := s.toolFor(ctx, revision, e, r, found)
 	if run == nil {
 		return "", false, ErrInvalidCommand
 	}
@@ -20,14 +21,14 @@ func (s *Service) useTool(ctx context.Context, ws identity.Workspace, revision i
 	return run()
 }
 
-func (s *Service) toolFor(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *StepResult) func() (State, bool, error) {
+func (s *Service) toolFor(ctx context.Context, revision int64, e *envelope, r *StepResult, found *searchAnswer) func() (State, bool, error) {
 	if r.ToolIntent == nil {
 		return nil
 	}
 	p := &e.Snapshot
 	switch r.ToolIntent.Kind {
 	case searchCatalogTool, searchKnowledgeTool:
-		return func() (State, bool, error) { return s.searchCatalog(ctx, ws, p, r.ToolIntent) }
+		return func() (State, bool, error) { return s.searchCatalog(p, r.ToolIntent, found) }
 	case "fetch_url":
 		return func() (State, bool, error) { return s.holdFetch(p, r.ToolIntent.Query) }
 	case "validate_draft":
@@ -36,7 +37,7 @@ func (s *Service) toolFor(ctx context.Context, ws identity.Workspace, revision i
 	return nil
 }
 
-func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *Snapshot, intent *ToolIntent) (State, bool, error) {
+func (s *Service) searchCatalog(p *Snapshot, intent *ToolIntent, found *searchAnswer) (State, bool, error) {
 	if !s.canSearch() {
 		return "", false, ErrUnavailable
 	}
@@ -48,7 +49,7 @@ func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *S
 		p.appendMessage("tool", "目錄已搜過兩回都沒有相近的 Skill；請直接依需求起草。")
 		return StateQueued, true, nil
 	}
-	refs, err := s.search(ctx, ws, p, intent)
+	refs, err := spendOn(p, found)
 	if err != nil {
 		return "", false, err
 	}
@@ -85,24 +86,28 @@ type searchAnswer struct {
 	err  error
 }
 
-func (s *Service) searchAhead(ctx context.Context, ws identity.Workspace, r *StepResult) {
+const searchAheadTimeout = 20 * time.Second
+
+func (s *Service) searchAhead(ctx context.Context, ws identity.Workspace, r *StepResult) *searchAnswer {
 	if r == nil || r.Outcome != outcomeToolIntent || r.ToolIntent == nil || !s.canSearch() {
-		return
+		return nil
 	}
 	intent := r.ToolIntent
-	if (intent.Kind == searchCatalogTool || intent.Kind == searchKnowledgeTool) && strings.TrimSpace(intent.Query) != "" {
-		intent.answer = s.lookUp(ctx, ws, searchQueries(intent))
+	if (intent.Kind != searchCatalogTool && intent.Kind != searchKnowledgeTool) || strings.TrimSpace(intent.Query) == "" {
+		return nil
 	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), searchAheadTimeout)
+	defer cancel()
+	return s.lookUp(ctx, ws, searchQueries(intent))
 }
 
 func (s *Service) canSearch() bool {
 	return s.SearchKnowledge != nil || s.SearchReferences != nil
 }
 
-func (s *Service) search(ctx context.Context, ws identity.Workspace, p *Snapshot, intent *ToolIntent) ([]Reference, error) {
-	answer := intent.answer
+func spendOn(p *Snapshot, answer *searchAnswer) ([]Reference, error) {
 	if answer == nil {
-		answer = s.lookUp(ctx, ws, searchQueries(intent))
+		return nil, ErrUnavailable
 	}
 	if answer.err == nil {
 		addSpend(p, answer.cost)

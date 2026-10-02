@@ -413,3 +413,23 @@ func TestAnIncidentTakesOverACapacityPauseAndIsNeverDowngraded(t *testing.T) {
 }
 
 func nil2uuid() pgtype.UUID { return pgtype.UUID{} }
+
+func TestALeakOnAProviderWhoseSlotsAreUnreadableDoesNotDrainIt(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	fake, svc := haltHarness(t, a, pool)
+	operator := a.login(t, "operator-x04-unreadable")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+
+	fake.DestroyStatus = http.StatusInternalServerError
+	fake.CapabilityStatus = http.StatusServiceUnavailable
+	fake.Seed("00000000-0000-0000-0000-0000000000c1", "", time.Now().Add(-time.Hour))
+
+	runOrphanScan(t, svc)
+	letAScanIntervalPass(t, pool)
+	runOrphanScan(t, svc)
+	if dispatching, halts := dispatchStatus(t, operator); !dispatching || len(halts) != 0 {
+		t.Fatalf("dispatching=%v halts=%v: one leak drained a node whose slots could not be read, "+
+			"as if it declared none", dispatching, halts)
+	}
+}

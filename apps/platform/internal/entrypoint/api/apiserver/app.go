@@ -312,15 +312,7 @@ func newCatalogService(cfg Config, identitySvc *identity.Service, funnel *analyt
 }
 
 func wireCatalogIndexing(catalogSvc *catalog.Service, versions *ingest.Service, registrySvc *registry.Service) {
-	versions.IndexSkill = func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
-		return catalogSvc.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
-			SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
-			EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
-			Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,
-			EnrichmentStatus: p.EnrichmentStatus, EnrichmentModel: p.EnrichmentModel,
-			EnrichmentPromptVersion: p.EnrichmentPromptVersion,
-		})
-	}
+	versions.IndexSkill = wiring.EnrichedIndexer(catalogSvc)
 	registrySvc.IndexSkill = func(ctx context.Context, tx pgx.Tx, p registry.SkillProjection) error {
 		return catalogSvc.IndexSkill(ctx, tx, catalog.SkillProjection{
 			SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,

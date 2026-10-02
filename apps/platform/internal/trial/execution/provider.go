@@ -253,6 +253,8 @@ var (
 	ErrProviderUnavailable = errors.New("the provider is not answering right now")
 
 	ErrProviderRefused = errors.New("the provider refused this request")
+
+	ErrProviderLacksCapability = fmt.Errorf("%w: it lacks a capability this run needs", ErrProviderRefused)
 )
 
 type httpProvider struct {
@@ -286,6 +288,8 @@ func (e *providerError) Unwrap() error {
 		return ErrAttemptUnknown
 	case e.Status >= http.StatusInternalServerError:
 		return ErrProviderUnavailable
+	case e.Status == http.StatusUnprocessableEntity:
+		return ErrProviderLacksCapability
 	default:
 		return ErrProviderRefused
 	}

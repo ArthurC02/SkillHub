@@ -754,3 +754,36 @@ func TestACatalogSearchTheModelAskedForRunsWithoutHoldingTheSessionsConnection(t
 			"so a full pool of steps waits on itself forever", searched, searchErr)
 	}
 }
+
+func TestTheStepsSettlementDoesNotInheritTheTimeTheSearchSpent(t *testing.T) {
+	pool := requireDB(t)
+	ws := newCreationWorkspace(t, pool)
+	rec := &jobRecorder{}
+	var searchDeadline, settleDeadline time.Time
+	svc := &creation.Service{
+		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
+		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
+		LLM: creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+			return &creation.StepResult{Outcome: "tool_intent", Message: "先查目錄", ToolIntent: &creation.ToolIntent{Kind: "search_knowledge", Query: "invoice"}}, nil
+		}),
+		SearchKnowledge: func(ctx context.Context, _ identity.Workspace, _ []string) ([]creation.Reference, float64, error) {
+			searchDeadline, _ = ctx.Deadline()
+			time.Sleep(20 * time.Millisecond)
+			return nil, 0, nil
+		},
+		Billing: creation.BillingHooks{SettleFunc: func(ctx context.Context, _ pgx.Tx, _ creation.StepSettlement) error {
+			settleDeadline, _ = ctx.Deadline()
+			return nil
+		}},
+	}
+	if _, err := svc.Create(context.Background(), ws, creationID(t), "開始創作", .5); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Step(context.Background(), rec.calls[0], nil); err != nil {
+		t.Fatal(err)
+	}
+	if searchDeadline.IsZero() || !settleDeadline.After(searchDeadline) {
+		t.Fatalf("search deadline %v, settlement deadline %v: the settlement shares the search's clock, "+
+			"so a slow search leaves the step's cost unsettled", searchDeadline, settleDeadline)
+	}
+}

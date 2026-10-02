@@ -792,3 +792,20 @@ func TestADeploymentWithNoSandboxSaysSoBeforeTheRunIsQueued(t *testing.T) {
 		t.Errorf("runs recorded = %d, want 0: a refusal that still costs a slot is not a refusal", queued)
 	}
 }
+
+func TestNoCriteriaAreSuggestedForATestCaseWhoseSkillIsGone(t *testing.T) {
+	pool := requireDB(t)
+	stub := newSuggestStub(t, `{"criteria":[{"text":"ok"}]}`)
+	a := newAPIWithLLM(t, pool, stub.URL)
+	alice := a.login(t, "alice-suggest-skill-gone")
+	skillID, id := newTestCase(t, pool, a, alice, "suggest-skill-gone")
+	if _, err := pool.Exec(context.Background(), "UPDATE skills SET deleted_at = now() WHERE id = $1", mustUUID(t, skillID)); err != nil {
+		t.Fatal(err)
+	}
+
+	code, body := alice.doJSON(t, http.MethodPost, "/test-cases/"+id+"/criteria/suggest", "")
+	if code != http.StatusNotFound || stub.lastBody != "" {
+		t.Fatalf("got %d (%v) and the model was asked %q: a paid call was made for a skill that no longer exists",
+			code, body, stub.lastBody)
+	}
+}

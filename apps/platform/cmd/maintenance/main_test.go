@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -173,5 +175,22 @@ func TestAccountPurgeAsksRegistryWhichImportSourcesAreStillUsed(t *testing.T) {
 	err := purgeService(nil).PurgeImportSources(context.Background(), queryFailingTx{}, pgtype.UUID{})
 	if !errors.Is(err, errNoDatabaseHere) {
 		t.Errorf("the ingest purge step stopped before reading its sources: %v", err)
+	}
+}
+
+func TestASweepThatFailedPartWayIsNotLoggedAsComplete(t *testing.T) {
+	var logged bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	logSweep("account purge", errors.New("store unreachable"), "accounts_purged", 3)
+	if out := logged.String(); strings.Contains(out, "complete") || !strings.Contains(out, "stopped early") || !strings.Contains(out, "accounts_purged=3") {
+		t.Errorf("a failed sweep logged %q", out)
+	}
+	logged.Reset()
+	logSweep("account purge", nil, "accounts_purged", 3)
+	if out := logged.String(); !strings.Contains(out, "account purge complete") {
+		t.Errorf("a clean sweep logged %q", out)
 	}
 }

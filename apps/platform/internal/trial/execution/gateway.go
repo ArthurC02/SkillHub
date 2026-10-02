@@ -209,6 +209,7 @@ type AttemptUsage struct {
 	ModelCostUSD float64
 
 	CostReported bool
+	Incomplete   bool
 }
 
 const (
@@ -237,7 +238,7 @@ func (g *Gateway) Usage(ctx context.Context, runAttemptID string, since time.Tim
 	q.Set("sort_order", "asc")
 
 	var total AttemptUsage
-	for page := 1; page <= maxUsagePages; page++ {
+	for page := 1; ; page++ {
 		q.Set("page", strconv.Itoa(page))
 		var out struct {
 			Data []struct {
@@ -259,10 +260,13 @@ func (g *Gateway) Usage(ctx context.Context, runAttemptID string, since time.Tim
 			}
 		}
 		if len(out.Data) == 0 || page >= out.TotalPages {
-			break
+			return total, nil
+		}
+		if page == maxUsagePages {
+			total.Incomplete = true
+			return total, nil
 		}
 	}
-	return total, nil
 }
 
 type gatewayError struct {

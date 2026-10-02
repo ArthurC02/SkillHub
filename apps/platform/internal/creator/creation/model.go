@@ -60,8 +60,6 @@ type ToolIntent struct {
 	Kind    string
 	Query   string
 	Queries []string
-
-	answer *searchAnswer
 }
 
 type StepRequest struct {

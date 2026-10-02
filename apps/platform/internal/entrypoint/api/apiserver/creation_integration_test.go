@@ -710,3 +710,34 @@ func TestCreationDeadlineIsNotTheBudgetSentence(t *testing.T) {
 		t.Fatalf("deadline: got %d %s", status, body)
 	}
 }
+
+func TestAStalledSessionThatCannotBeReadDoesNotStrandTheOnesBehindIt(t *testing.T) {
+	a, s, _ := creationFixture(t)
+	c := a.login(t, "creation-recover-past-a-bad-row")
+	ctx := context.Background()
+	stall := func(age, snapshot string) creation.JobArgs {
+		v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_credits": 650}, 200)
+		job := creationJob(t, v.ID)
+		if _, err := testPool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-$2::interval,
+		 snapshot=`+snapshot+` WHERE id=$1`, job.SessionID, age); err != nil {
+			t.Fatal(err)
+		}
+		return job
+	}
+	unreadable := stall("1 hour", `'"unreadable"'::jsonb`)
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(context.Background(), "DELETE FROM creation_sessions WHERE id = $1", unreadable.SessionID)
+	})
+	healthy := stall("1 minute", `jsonb_set(jsonb_set(snapshot, '{snapshot,diagram_fingerprint}', '"fp"'), '{active_deadline}', to_jsonb(now()-interval '1 minute'))`)
+
+	if err := s.Recover(ctx); err == nil {
+		t.Error("the unreadable session was skipped without reporting it")
+	}
+	final, err := s.Get(ctx, identity.Workspace{ID: healthy.WorkspaceID}, healthy.SessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if final.State != "needs_reupload" {
+		t.Fatalf("state = %q, want needs_reupload: one unreadable row stopped recovery for every session after it", final.State)
+	}
+}

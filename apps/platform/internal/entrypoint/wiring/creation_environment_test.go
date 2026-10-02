@@ -1,6 +1,11 @@
 package wiring
 
-import "testing"
+import (
+	"bytes"
+	"log/slog"
+	"strings"
+	"testing"
+)
 
 func TestCreationEnvironmentFailsClosedAndExposesOnlyWhenEnabled(t *testing.T) {
 	t.Setenv("CREATION_LIMITS_JSON", "{}")
@@ -20,5 +25,23 @@ func TestCreationEnvironmentFailsClosedAndExposesOnlyWhenEnabled(t *testing.T) {
 	t.Setenv("CREATION_EXPOSED", "on")
 	if !CreationExposedFromEnv() {
 		t.Fatal("creation hidden despite its explicit setting")
+	}
+}
+
+func TestOnlyCreationLimitsThatAreSetButUnusableAreReported(t *testing.T) {
+	var logged bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	t.Setenv("CREATION_LIMITS_JSON", "")
+	_, _ = CreationLimitsFromEnv()
+	if strings.Contains(logged.String(), "CREATION_LIMITS_JSON") {
+		t.Errorf("an unset value was reported as broken:\n%s", logged.String())
+	}
+	t.Setenv("CREATION_LIMITS_JSON", `{"max_cost_usd":`)
+	_, _ = CreationLimitsFromEnv()
+	if !strings.Contains(logged.String(), "CREATION_LIMITS_JSON is set but unusable") {
+		t.Errorf("a malformed value turned creation off without a word:\n%s", logged.String())
 	}
 }

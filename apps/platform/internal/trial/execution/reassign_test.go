@@ -164,3 +164,25 @@ func TestSpendThatCannotBeReadStopsTheRunFromStartingAnotherAttempt(t *testing.T
 		t.Errorf("budgetLeft error = %v, want it to refuse because the spend is unreadable", err)
 	}
 }
+
+func TestSpendReadOnlyInPartStopsTheRunFromStartingAnotherAttempt(t *testing.T) {
+	partial := gatewaySpending(0.10)
+	partial.perAttempt.Incomplete = true
+	svc := &Service{Gateway: partial}
+
+	_, err := svc.budgetLeft(context.Background(), []gen.RunAttempt{attemptOn("alpha", errClassProviderLost)})
+	if !errors.Is(err, errSpendUnreadable) {
+		t.Errorf("budgetLeft error = %v, want a refusal: a spend log read only in part overstates what is left", err)
+	}
+}
+
+func TestTheUnreadableSpendRefusalKeepsTheGatewaysReason(t *testing.T) {
+	unreadable := gatewaySpending(0.10)
+	unreadable.err = errors.New("the gateway is not answering")
+	svc := &Service{Gateway: unreadable}
+
+	_, err := svc.budgetLeft(context.Background(), []gen.RunAttempt{attemptOn("alpha", errClassProviderLost)})
+	if !errors.Is(err, unreadable.err) {
+		t.Errorf("budgetLeft error = %v, want it to carry the gateway's own error", err)
+	}
+}

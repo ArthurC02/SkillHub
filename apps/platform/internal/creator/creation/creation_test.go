@@ -48,7 +48,7 @@ func TestChangedConfirmedBriefCannotProduceDraft(t *testing.T) {
 		return "hash", "ok", false, nil
 	}}
 	e := envelope{Snapshot: Snapshot{Brief: "confirmed", BriefConfirmed: true}, Limits: testLimits()}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &StepResult{Outcome: "draft", Message: "proposal", Brief: "different", Draft: &GeneratedSkill{Body: "body"}})
+	state, next, err := s.proposal(context.Background(), 3, &e, &StepResult{Outcome: "draft", Message: "proposal", Brief: "different", Draft: &GeneratedSkill{Body: "body"}}, nil)
 	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.Draft != nil || calls != 0 {
 		t.Fatalf("confirmation bypass: %s %+v", state, e)
 	}
@@ -56,7 +56,7 @@ func TestChangedConfirmedBriefCannotProduceDraft(t *testing.T) {
 func TestUnavailableReferenceBlocksDraft(t *testing.T) {
 	e := envelope{Snapshot: Snapshot{Brief: "task", BriefConfirmed: true, References: []Reference{{Confirmed: true, Available: false}}}}
 	s := Service{}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &StepResult{Outcome: "draft", Message: "draft", Draft: &GeneratedSkill{}})
+	_, _, err := s.proposal(context.Background(), 3, &e, &StepResult{Outcome: "draft", Message: "draft", Draft: &GeneratedSkill{}}, nil)
 	if err == nil {
 		t.Fatal("unavailable reference accepted")
 	}
@@ -117,10 +117,10 @@ func TestValidateToolKeepsNewDraftAndRequiresConfirmation(t *testing.T) {
 			return "new-hash", "actual finding", true, nil
 		}}
 		e := envelope{Snapshot: Snapshot{Brief: "task", BriefConfirmed: confirmedBrief}, Limits: testLimits()}
-		state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &StepResult{
+		state, next, err := s.proposal(context.Background(), 3, &e, &StepResult{
 			Outcome: "tool_intent", Message: "validate", Brief: "task", ToolIntent: &ToolIntent{Kind: "validate_draft"},
 			Draft: &GeneratedSkill{Body: "newly proposed body"},
-		})
+		}, nil)
 		if !confirmedBrief {
 			if err == nil || calls != 0 {
 				t.Fatal("tool bypassed confirmation")
@@ -222,7 +222,7 @@ func TestCriteriaValidationRejectsTooManyOrTooLong(t *testing.T) {
 func TestProposalReplacesTheMessageFromTheReasonTable(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, &StepResult{Outcome: "clarification", Message: "tool unavailable", Reason: "tool_unavailable"})
+	state, next, err := s.proposal(context.Background(), 2, &e, &StepResult{Outcome: "clarification", Message: "tool unavailable", Reason: "tool_unavailable"}, nil)
 	if err != nil || next || state != "waiting_input" {
 		t.Fatalf("clarification with a reason: state=%q next=%v err=%v", state, next, err)
 	}
@@ -230,7 +230,7 @@ func TestProposalReplacesTheMessageFromTheReasonTable(t *testing.T) {
 	if last.Role != "assistant" || last.Content != reasonSentences["tool_unavailable"] {
 		t.Fatalf("Go did not own the sentence: %+v", last)
 	}
-	if _, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, &StepResult{Outcome: "clarification", Message: "x", Reason: "made_up"}); err == nil {
+	if _, _, err := s.proposal(context.Background(), 2, &e, &StepResult{Outcome: "clarification", Message: "x", Reason: "made_up"}, nil); err == nil {
 		t.Fatal("an unknown reason code was accepted")
 	}
 }
@@ -242,7 +242,7 @@ func testLimitsForProposal() Limits {
 func TestProposalKeepsAConfirmedBriefWhenTheModelMerelyRestatesIt(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "整理輸入資料，依指定格式輸出摘要。", BriefConfirmed: true, AcceptanceCriteria: []string{"輸出含摘要"}}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &StepResult{Outcome: "confirm_brief", Message: "請再確認一次。", Brief: e.Snapshot.Brief, AcceptanceCriteria: []string{"輸出含摘要"}})
+	state, next, err := s.proposal(context.Background(), 3, &e, &StepResult{Outcome: "confirm_brief", Message: "請再確認一次。", Brief: e.Snapshot.Brief, AcceptanceCriteria: []string{"輸出含摘要"}}, nil)
 	if err != nil || next || state != "waiting_input" {
 		t.Fatalf("restated brief: state=%q next=%v err=%v", state, next, err)
 	}
@@ -256,11 +256,11 @@ func TestProposalRetriesOnceWhenTheDraftIsMissing(t *testing.T) {
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &StepResult{Outcome: "clarification", Message: "draft missing", Reason: "draft_missing"}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || !next || state != "queued" || e.Snapshot.DraftRetries != 1 {
 		t.Fatalf("first draft_missing should requeue once: state=%q next=%v retries=%d err=%v", state, next, e.Snapshot.DraftRetries, err)
 	}
-	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	state, next, err = s.proposal(context.Background(), 3, &e, r, nil)
 	if err != nil || next || state != "waiting_input" || e.Snapshot.DraftRetries != 1 {
 		t.Fatalf("second draft_missing should hand the turn back: state=%q next=%v retries=%d err=%v", state, next, e.Snapshot.DraftRetries, err)
 	}
@@ -275,13 +275,13 @@ func TestProposalTreatsAChangedSampleInputAsAChangedBrief(t *testing.T) {
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", AcceptanceCriteria: []string{"c"}, SampleInput: "old", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &StepResult{Outcome: "confirm_brief", Message: "again", Brief: "b", AcceptanceCriteria: []string{"c"}, SampleInput: "new"}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.SampleInput != "new" || e.Snapshot.PendingAction != "confirm_brief" {
 		t.Fatalf("changed sample_input did not reopen the confirmation: state=%q next=%v snap=%+v err=%v", state, next, e.Snapshot, err)
 	}
 	r.SampleInput = ""
 	e.Snapshot.BriefConfirmed = true
-	state, _, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	state, _, err = s.proposal(context.Background(), 3, &e, r, nil)
 	if err != nil || state != "waiting_input" || !e.Snapshot.BriefConfirmed {
 		t.Fatalf("an empty sample_input must mean unchanged: state=%q confirmed=%v err=%v", state, e.Snapshot.BriefConfirmed, err)
 	}
@@ -289,7 +289,7 @@ func TestProposalTreatsAChangedSampleInputAsAChangedBrief(t *testing.T) {
 
 func assertNudgeQueuesAnotherAttempt(t *testing.T, s *Service, e *envelope, r *StepResult, ran *Draft, i int) {
 	t.Helper()
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, int64(3+i), e, r)
+	state, next, err := s.proposal(context.Background(), int64(3+i), e, r, nil)
 	if err != nil || !next || state != "queued" || e.Snapshot.Nudges != i || e.Snapshot.Draft != ran {
 		t.Fatalf("nudge %d: state=%q next=%v nudges=%d err=%v", i, state, next, e.Snapshot.Nudges, err)
 	}
@@ -300,7 +300,7 @@ func assertNudgeQueuesAnotherAttempt(t *testing.T, s *Service, e *envelope, r *S
 
 func assertNudgesExhaustedStoresTheDraft(t *testing.T, s *Service, e *envelope, r *StepResult) {
 	t.Helper()
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, e, r)
+	state, next, err := s.proposal(context.Background(), 9, e, r, nil)
 	if err != nil || next || state != "draft_ready" || e.Snapshot.Nudges != MaxNudges {
 		t.Fatalf("after MaxNudges the draft must be stored: state=%q next=%v nudges=%d err=%v", state, next, e.Snapshot.Nudges, err)
 	}
@@ -326,7 +326,7 @@ func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
 		return "new-hash", "{}", false, nil
 	}
 	e.Snapshot.Nudges = 0
-	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 10, &e, r)
+	state, _, err := s.proposal(context.Background(), 10, &e, r, nil)
 	if err != nil || state != "draft_ready" || e.Snapshot.RunUnmet || e.Snapshot.Nudges != 0 {
 		t.Fatalf("a changed draft is progress: state=%q unmet=%v nudges=%d err=%v", state, e.Snapshot.RunUnmet, e.Snapshot.Nudges, err)
 	}
@@ -339,7 +339,7 @@ func TestProposalNudgesADraftThatSkipsDiagramNodes(t *testing.T) {
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, DiagramDescription: "報帳流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramFingerprint: "fp", DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"收到報帳申請", "送經理簽核", "寄出付款通知"}}, BudgetUSD: 1, SpentUSD: &zero}}
 	half := &StepResult{Outcome: "draft", Message: "草稿", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "1. 收到報帳申請\n2. 送經理簽核"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, half)
+	state, next, err := s.proposal(context.Background(), 2, &e, half, nil)
 	if err != nil || !next || state != "queued" || e.Snapshot.Draft != nil {
 		t.Fatalf("half a flow was accepted: state=%q next=%v err=%v", state, next, err)
 	}
@@ -347,7 +347,7 @@ func TestProposalNudgesADraftThatSkipsDiagramNodes(t *testing.T) {
 		t.Fatalf("the missing node was not named, or a present one was: %+v", last)
 	}
 	full := &StepResult{Outcome: "draft", Message: "草稿", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "1. 收到報帳申請。\n2. 送經理簽核。\n3. 寄出「付款通知」。"}}
-	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, full)
+	state, next, err = s.proposal(context.Background(), 3, &e, full, nil)
 	if err != nil || next || state != "draft_ready" || e.Snapshot.Draft == nil {
 		t.Fatalf("a full walk was refused: state=%q next=%v err=%v", state, next, err)
 	}
@@ -372,7 +372,7 @@ func TestRunUnmetReadsOnlyAFinishedEvaluation(t *testing.T) {
 func assertBlockedValidationIsCounted(t *testing.T, s *Service, e *envelope, i int, body string) {
 	t.Helper()
 	r := &StepResult{Outcome: "draft", Message: "fixed", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: body}}
-	state, _, err := s.proposal(context.Background(), identity.Workspace{}, int64(2+i), e, r)
+	state, _, err := s.proposal(context.Background(), int64(2+i), e, r, nil)
 	if err != nil || state != "draft_ready" || e.Snapshot.BlockedRepeats != i {
 		t.Fatalf("attempt %d: state=%q repeats=%d err=%v", i+1, state, e.Snapshot.BlockedRepeats, err)
 	}
@@ -388,7 +388,7 @@ func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
 		assertBlockedValidationIsCounted(t, s, &e, i, body)
 	}
 	r := &StepResult{Outcome: "draft", Message: "fixed again", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "three"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
+	state, next, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil || next || state != "waiting_input" || e.Snapshot.BlockedRepeats != MaxBlockedRepeats || e.Snapshot.Draft == nil || !e.Snapshot.Draft.Blocked {
 		t.Fatalf("third identical verdict must hand the turn back with the draft kept: state=%q next=%v repeats=%d err=%v", state, next, e.Snapshot.BlockedRepeats, err)
 	}
@@ -399,7 +399,7 @@ func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
 	s.ValidateDraft = func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "another", true, nil
 	}
-	state, _, err = s.proposal(context.Background(), identity.Workspace{}, 5, &e, r)
+	state, _, err = s.proposal(context.Background(), 5, &e, r, nil)
 	if err != nil || state != "draft_ready" || e.Snapshot.BlockedRepeats != 0 {
 		t.Fatalf("a new report is a new problem: state=%q repeats=%d err=%v", state, e.Snapshot.BlockedRepeats, err)
 	}
@@ -410,7 +410,7 @@ func TestProposalIgnoresADiagramInterpretationWhenNoDiagramWasUploaded(t *testin
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &StepResult{Outcome: "clarification", Message: "請先確認流程圖的理解。", Brief: "b", DiagramUnderstanding: `{"nodes":["invented"],"conditions":[],"branches":[],"uncertainties":[]}`}
-	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, _, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || state != "waiting_input" || e.Snapshot.DiagramUnderstanding != "" || e.Snapshot.PendingAction == "confirm_diagram" {
 		t.Fatalf("an invented diagram became a confirmation: state=%q snap=%+v err=%v", state, e.Snapshot, err)
 	}
@@ -423,11 +423,11 @@ func TestProposalDoesNotRevalidateTheSameAcceptedDraft(t *testing.T) {
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &StepResult{Outcome: "tool_intent", Message: "validate", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "x", Body: "same"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || !next || state != "queued" {
 		t.Fatalf("first validation must queue the model: state=%q next=%v err=%v", state, next, err)
 	}
-	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	state, next, err = s.proposal(context.Background(), 3, &e, r, nil)
 	if err != nil || next || state != "draft_ready" || e.Snapshot.ToolCalls != 2 {
 		t.Fatalf("second validation of the same draft must hand back draft_ready: state=%q next=%v tools=%d err=%v", state, next, e.Snapshot.ToolCalls, err)
 	}
@@ -458,7 +458,7 @@ func TestARevisionAfterAnUnmetRunStopsForThePersonOnceItValidates(t *testing.T) 
 			zero := 0.0
 			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: tc.ranDraft, RunUnmet: tc.runUnmet}}
 			r := &StepResult{Outcome: "tool_intent", Message: "依評估改了 body。", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "x", Body: "revised"}}
-			state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
+			state, next, err := s.proposal(context.Background(), 4, &e, r, nil)
 			if err != nil || state != tc.wantState || next != tc.wantNext {
 				t.Fatalf("state=%q next=%v err=%v, want %q next=%v", state, next, err, tc.wantState, tc.wantNext)
 			}
@@ -476,7 +476,7 @@ func TestProposalAcceptsADraftWithAnEmptyMessage(t *testing.T) {
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &StepResult{Outcome: "draft", Message: "", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
-	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, _, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || state != "draft_ready" || e.Snapshot.Draft == nil {
 		t.Fatalf("an empty message beside a draft must not fail the step: state=%q err=%v", state, err)
 	}
@@ -493,13 +493,13 @@ func TestProposalHoldsAFetchUntilThePersonConfirms(t *testing.T) {
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &StepResult{Outcome: "tool_intent", Message: "查一下", ToolIntent: &ToolIntent{Kind: "fetch_url", Query: " https://example.com/docs#top "}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.PendingAction != "confirm_fetch" || e.Snapshot.PendingFetchURL != "https://example.com/docs" {
 		t.Fatalf("state=%q next=%v pending=%q url=%q err=%v", state, next, e.Snapshot.PendingAction, e.Snapshot.PendingFetchURL, err)
 	}
 
 	r.ToolIntent.Query = "http://10.0.0.1/admin"
-	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	state, next, err = s.proposal(context.Background(), 3, &e, r, nil)
 	if err != nil || !next || state != "queued" {
 		t.Fatalf("a refused URL must go back to the model: state=%q next=%v err=%v", state, next, err)
 	}
@@ -543,7 +543,7 @@ func TestProposalRoutesSearchKnowledgeToTheSemanticSearch(t *testing.T) {
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, BudgetUSD: 1, SpentUSD: &zero}}
 
 	r := &StepResult{Outcome: "tool_intent", Message: "找相近的", ToolIntent: &ToolIntent{Kind: "search_catalog", Query: "把會議逐字稿整理成待辦", Queries: []string{"逐字稿 待辦", "把會議逐字稿整理成待辦", "action items"}}}
-	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, _, err := s.proposal(context.Background(), 2, &e, r, s.searchAhead(context.Background(), identity.Workspace{}, r))
 	if err != nil || state != "waiting_confirmation" || e.Snapshot.PendingAction != "confirm_references" || semantic != 1 || len(e.Snapshot.References) != 1 {
 		t.Fatalf("state=%q pending=%q semantic=%d refs=%d err=%v", state, e.Snapshot.PendingAction, semantic, len(e.Snapshot.References), err)
 	}
@@ -566,7 +566,7 @@ func TestAllowedToolsOffersSearchKnowledgeOnlyWhenWiredAndWithinRounds(t *testin
 
 func assertFirstEmptySearchRoundQueuesAnotherAttempt(t *testing.T, s *Service, e *envelope, r *StepResult) {
 	t.Helper()
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, e, r)
+	state, next, err := s.proposal(context.Background(), 2, e, r, s.searchAhead(context.Background(), identity.Workspace{}, r))
 	if err != nil || !next || state != "queued" || e.Snapshot.SearchRounds != 1 || !strings.Contains(e.Snapshot.Messages[len(e.Snapshot.Messages)-1].Content, "第 1／2 回") {
 		t.Fatalf("first empty round: state=%q rounds=%d err=%v last=%+v", state, e.Snapshot.SearchRounds, err, e.Snapshot.Messages[len(e.Snapshot.Messages)-1])
 	}
@@ -574,7 +574,7 @@ func assertFirstEmptySearchRoundQueuesAnotherAttempt(t *testing.T, s *Service, e
 
 func assertSecondEmptySearchRoundSaysNotFound(t *testing.T, s *Service, e *envelope, r *StepResult) {
 	t.Helper()
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, e, r)
+	state, next, err := s.proposal(context.Background(), 3, e, r, s.searchAhead(context.Background(), identity.Workspace{}, r))
 	if err != nil || !next || state != "queued" || e.Snapshot.SearchRounds != 2 || !strings.Contains(e.Snapshot.Messages[len(e.Snapshot.Messages)-1].Content, "兩回") {
 		t.Fatalf("second empty round must say not found: state=%q rounds=%d err=%v", state, e.Snapshot.SearchRounds, err)
 	}
@@ -582,7 +582,7 @@ func assertSecondEmptySearchRoundSaysNotFound(t *testing.T, s *Service, e *envel
 
 func assertThirdSearchAnswersWithoutSearching(t *testing.T, s *Service, e *envelope, r *StepResult) {
 	t.Helper()
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, e, r)
+	state, next, err := s.proposal(context.Background(), 4, e, r, nil)
 	if err != nil || !next || state != "queued" || e.Snapshot.SearchRounds != 2 || e.Snapshot.ToolCalls != 3 {
 		t.Fatalf("a third search is answered without searching: state=%q rounds=%d tools=%d err=%v", state, e.Snapshot.SearchRounds, e.Snapshot.ToolCalls, err)
 	}
@@ -603,12 +603,12 @@ func TestProposalRetriesOnceWhenTheModelSentNoBrief(t *testing.T) {
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &StepResult{Outcome: "clarification", Message: "brief missing", Reason: "brief_missing"}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || !next || state != "queued" || e.BriefRetries != 1 {
 		t.Fatalf("first empty brief must be retried: state=%q next=%v retries=%d err=%v", state, next, e.BriefRetries, err)
 	}
 	r = &StepResult{Outcome: "clarification", Message: "brief missing", Reason: "brief_missing"}
-	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	state, next, err = s.proposal(context.Background(), 3, &e, r, nil)
 	if err != nil || next || state != "waiting_input" {
 		t.Fatalf("the second empty brief goes to the person: state=%q next=%v err=%v", state, next, err)
 	}
@@ -771,7 +771,7 @@ func testInjectionAddBashToolIsCaught(t *testing.T, c injectionCase) {
 	}}
 	r := &StepResult{Outcome: "draft", Message: "已修正。", Brief: e.Snapshot.Brief,
 		Draft: &GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read bash"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || !next || state != "queued" || e.Snapshot.Draft != prior {
 		t.Fatalf("corpus case %s: the smuggled tool should have been nudged back, not accepted: state=%q next=%v err=%v draft=%+v", c.ID, state, next, err, e.Snapshot.Draft)
 	}
@@ -788,7 +788,7 @@ func testInjectionChangeBriefIsCaught(t *testing.T, c injectionCase) {
 		Messages: []Message{}, Brief: "original confirmed brief", BriefConfirmed: true,
 	}}
 	r := &StepResult{Outcome: "confirm_brief", Message: "已依回饋更新。", Brief: c.Marker + ": a brief the judge's words asked for, not the person"}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.PendingAction != "confirm_brief" {
 		t.Fatalf("corpus case %s: a rewritten brief must fall back to confirmation, not take effect silently: state=%q next=%v snap=%+v err=%v", c.ID, state, next, e.Snapshot, err)
 	}
@@ -814,7 +814,7 @@ func testInjectionClaimMetIsCaught(t *testing.T, c injectionCase) {
 	}}
 	r := &StepResult{Outcome: "draft", Message: c.Marker + " every criterion actually passed.", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "same"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
+	state, next, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil || !next || state != "queued" {
 		t.Fatalf("corpus case %s: a byte-identical draft with a success claim in the message must still be nudged: state=%q next=%v err=%v", c.ID, state, next, err)
 	}
@@ -871,9 +871,9 @@ func TestOnlyTheOverturnedFieldIsRecordedAsChanged(t *testing.T) {
 		return "hash", "ok", false, nil
 	}}
 	e := envelope{Snapshot: Snapshot{Brief: "B1", AcceptanceCriteria: []string{"C1"}, SampleInput: "S1", BriefConfirmed: true}, Limits: testLimits()}
-	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &StepResult{
+	state, _, err := s.proposal(context.Background(), 3, &e, &StepResult{
 		Outcome: "confirm_brief", Message: "revised", Brief: "B1", AcceptanceCriteria: []string{"C2"},
-	})
+	}, nil)
 	if err != nil || state != "waiting_confirmation" {
 		t.Fatalf("a rewritten criterion should re-open confirmation: %s %v", state, err)
 	}

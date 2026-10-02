@@ -280,6 +280,7 @@ func haltThreshold(slots int, denominator, floor int64) int64 {
 func (s *Service) EvaluateOrphanThresholds(ctx context.Context) {
 	registry := s.providers()
 	var poolOrphans, poolSlots int64
+	poolKnown := true
 	for _, provider := range registry.Providers {
 		persistent, err := s.queries().CountPersistentOrphans(ctx, gen.CountPersistentOrphansParams{
 			Provider: provider.Name(), PersistentAfterRounds: OrphanPersistsAfterRounds,
@@ -289,10 +290,14 @@ func (s *Service) EvaluateOrphanThresholds(ctx context.Context) {
 				"provider", provider.Name(), "error", err)
 			continue
 		}
-		slots := 0
-		if capability, err := registry.Capability(ctx, provider); err == nil {
-			slots = capability.Availability.ConcurrentRunSlots
+		capability, err := registry.Capability(ctx, provider)
+		if err != nil {
+			poolKnown = false
+			slog.Warn("a provider's slots are unreadable; its leak threshold keeps its last verdict this round",
+				"provider", provider.Name(), "error", err)
+			continue
 		}
+		slots := capability.Availability.ConcurrentRunSlots
 		poolOrphans += persistent
 		poolSlots += int64(slots)
 
@@ -305,7 +310,7 @@ func (s *Service) EvaluateOrphanThresholds(ctx context.Context) {
 		})
 	}
 
-	if len(registry.Providers) > 0 {
+	if len(registry.Providers) > 0 && poolKnown {
 		threshold := haltThreshold(int(poolSlots), poolSuspendSlotDivisor, poolSuspendFloor)
 		s.reconcileThresholdHalt(ctx, haltPool, orphanCount{
 			persistent: poolOrphans, threshold: threshold,

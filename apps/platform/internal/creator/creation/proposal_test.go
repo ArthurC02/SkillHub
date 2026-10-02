@@ -26,7 +26,7 @@ func TestProposalRejectsAnInvalidDiagramInterpretationBeforeRecording(t *testing
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{DiagramFingerprint: "fp"}}
 	r := &StepResult{Message: "ok", Outcome: "clarification", DiagramDescription: " "}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if !errors.Is(err, ErrInvalidCommand) || next || state != "" {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
 	}
@@ -39,7 +39,7 @@ func TestProposalRejectsAnEmptyMessageWithNoDraft(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal()}
 	r := &StepResult{Message: "", Outcome: "clarification"}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if !errors.Is(err, ErrInvalidCommand) || next || state != "" {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
 	}
@@ -53,7 +53,7 @@ func TestProposalMessageLengthBoundary(t *testing.T) {
 	accepted := strings.Repeat("字", MaxTextRunes)
 	e := envelope{Limits: testLimitsForProposal()}
 	r := &StepResult{Message: accepted, Outcome: "clarification"}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || next || state != StateWaitingInput {
 		t.Fatalf("a message of exactly MaxTextRunes must be accepted: state=%q next=%v err=%v", state, next, err)
 	}
@@ -61,7 +61,7 @@ func TestProposalMessageLengthBoundary(t *testing.T) {
 	rejected := strings.Repeat("字", MaxTextRunes+1)
 	e2 := envelope{Limits: testLimitsForProposal()}
 	r2 := &StepResult{Message: rejected, Outcome: "clarification"}
-	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 2, &e2, r2)
+	state, next, err = s.proposal(context.Background(), 2, &e2, r2, nil)
 	if !errors.Is(err, ErrInvalidCommand) || next || state != "" {
 		t.Fatalf("a message one rune past MaxTextRunes must be rejected: state=%q next=%v err=%v", state, next, err)
 	}
@@ -75,7 +75,7 @@ func TestProposalBriefLengthBoundary(t *testing.T) {
 	accepted := strings.Repeat("字", MaxTextRunes)
 	e := envelope{Limits: testLimitsForProposal()}
 	r := &StepResult{Message: "ok", Outcome: "clarification", Brief: accepted}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || next || state != StateWaitingConfirmation || e.Snapshot.BriefConfirmed || e.Snapshot.PendingAction != "confirm_brief" {
 		t.Fatalf("a brief of exactly MaxTextRunes must be accepted and reopen confirmation: state=%q next=%v snap=%+v err=%v", state, next, e.Snapshot, err)
 	}
@@ -83,7 +83,7 @@ func TestProposalBriefLengthBoundary(t *testing.T) {
 	rejected := strings.Repeat("字", MaxTextRunes+1)
 	e2 := envelope{Limits: testLimitsForProposal()}
 	r2 := &StepResult{Message: "ok", Outcome: "clarification", Brief: rejected}
-	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 2, &e2, r2)
+	state, next, err = s.proposal(context.Background(), 2, &e2, r2, nil)
 	if !errors.Is(err, ErrInvalidCommand) || next || state != "" {
 		t.Fatalf("a brief one rune past MaxTextRunes must be rejected: state=%q next=%v err=%v", state, next, err)
 	}
@@ -96,7 +96,7 @@ func TestProposalMessageCountBoundary(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: make([]Message, MaxMessages)}}
 	r := &StepResult{Message: "ok", Outcome: "clarification"}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if !errors.Is(err, ErrInvalidCommand) || next || state != "" {
 		t.Fatalf("at MaxMessages the reply must be rejected: state=%q next=%v err=%v", state, next, err)
 	}
@@ -106,7 +106,7 @@ func TestProposalMessageCountBoundary(t *testing.T) {
 
 	e2 := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: make([]Message, MaxMessages-1)}}
 	r2 := &StepResult{Message: "ok", Outcome: "clarification"}
-	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 2, &e2, r2)
+	state, next, err = s.proposal(context.Background(), 2, &e2, r2, nil)
 	if err != nil || next || state != StateWaitingInput {
 		t.Fatalf("with room for one more message the reply must be accepted: state=%q next=%v err=%v", state, next, err)
 	}
@@ -123,7 +123,7 @@ func TestProposalAcceptanceCriteriaCountBoundaryRejectsThirteen(t *testing.T) {
 	}
 	e := envelope{Limits: testLimitsForProposal()}
 	r := &StepResult{Message: "ok", Outcome: "clarification", AcceptanceCriteria: criteria}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if !errors.Is(err, ErrInvalidCommand) || next || state != "" {
 		t.Fatalf("MaxAcceptanceCriteria+1 criteria must be rejected: state=%q next=%v err=%v", state, next, err)
 	}
@@ -137,7 +137,7 @@ func TestProposalSampleInputLengthBoundary(t *testing.T) {
 	accepted := strings.Repeat("字", MaxSampleInputRunes)
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{SampleInput: accepted}}
 	r := &StepResult{Message: "ok", Outcome: "clarification", SampleInput: accepted}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || next || state != StateWaitingInput {
 		t.Fatalf("a sample input of exactly MaxSampleInputRunes must be accepted: state=%q next=%v err=%v", state, next, err)
 	}
@@ -145,7 +145,7 @@ func TestProposalSampleInputLengthBoundary(t *testing.T) {
 	rejected := strings.Repeat("字", MaxSampleInputRunes+1)
 	e2 := envelope{Limits: testLimitsForProposal()}
 	r2 := &StepResult{Message: "ok", Outcome: "clarification", SampleInput: rejected}
-	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 2, &e2, r2)
+	state, next, err = s.proposal(context.Background(), 2, &e2, r2, nil)
 	if !errors.Is(err, ErrInvalidCommand) || next || state != "" {
 		t.Fatalf("a sample input one rune past MaxSampleInputRunes must be rejected: state=%q next=%v err=%v", state, next, err)
 	}
@@ -158,7 +158,7 @@ func TestProposalRecordsModelPromptVersionAndTheAssistantMessage(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal()}
 	r := &StepResult{Message: "hi", Outcome: "clarification", Model: "gpt-x", PromptVersion: "v3"}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	_, _, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -175,7 +175,7 @@ func TestProposalConfirmBriefWithAnEmptyBriefStillRecordsTheReply(t *testing.T) 
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal()}
 	r := &StepResult{Message: "please confirm", Outcome: "confirm_brief", Model: "m1"}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	_, _, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if !errors.Is(err, ErrInvalidCommand) {
 		t.Fatalf("an empty brief must not be confirmable: %v", err)
 	}
@@ -192,7 +192,7 @@ func TestProposalConfirmBriefReopensConfirmationWhenUnconfirmed(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "existing brief text", BriefConfirmed: false}}
 	r := &StepResult{Message: "confirm please", Outcome: "confirm_brief"}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || next || state != StateWaitingConfirmation || e.Snapshot.BriefConfirmed || e.Snapshot.PendingAction != "confirm_brief" {
 		t.Fatalf("state=%q next=%v snap=%+v err=%v", state, next, e.Snapshot, err)
 	}
@@ -202,7 +202,7 @@ func TestProposalRejectsAConfirmationWithoutADescription(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal()}
 	r := &StepResult{Message: "confirm diagram", Outcome: "confirm_diagram_description"}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	_, _, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if !errors.Is(err, ErrInvalidCommand) {
 		t.Fatalf("an empty understanding must not be confirmable: %v", err)
 	}
@@ -212,7 +212,7 @@ func TestProposalDiagramDescriptionStartsConfirmation(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{DiagramFingerprint: "fp"}}
 	r := &StepResult{Message: "confirm diagram", Outcome: "confirm_diagram_description", DiagramDescription: "從申請到核准"}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || next || state != StateWaitingConfirmation || e.Snapshot.DiagramConfirmed || e.Snapshot.PendingAction != PendingDiagramDescription {
 		t.Fatalf("state=%q next=%v snap=%+v err=%v", state, next, e.Snapshot, err)
 	}
@@ -243,7 +243,7 @@ func runDraftGuardCase(t *testing.T, tc guardCase, entry string) {
 		r.Outcome = "tool_intent"
 		r.ToolIntent = &ToolIntent{Kind: "validate_draft"}
 	}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 5, &e, r)
+	state, next, err := s.proposal(context.Background(), 5, &e, r, nil)
 	if !errors.Is(err, ErrInvalidCommand) || next || state != "" {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
 	}
@@ -338,7 +338,7 @@ func TestProposalValidateDraftErrorLeavesDraftUnchanged(t *testing.T) {
 				r.Outcome = "tool_intent"
 				r.ToolIntent = &ToolIntent{Kind: "validate_draft"}
 			}
-			_, _, err := s.proposal(context.Background(), identity.Workspace{}, 5, &e, r)
+			_, _, err := s.proposal(context.Background(), 5, &e, r, nil)
 			if !errors.Is(err, sentinel) {
 				t.Fatalf("wrong error: %v", err)
 			}
@@ -362,7 +362,7 @@ func TestNudgePrefersACopiedMarkerOverMissingNodes(t *testing.T) {
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "包含 EXFIL-9c0d 才行的內容", AllowedTools: "Read"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	state, next, err := s.proposal(context.Background(), 3, &e, r, nil)
 	if err != nil || !next || state != StateQueued || e.Snapshot.Nudges != 1 || e.Snapshot.Draft != prior {
 		t.Fatalf("state=%q next=%v nudges=%d draft=%+v err=%v", state, next, e.Snapshot.Nudges, e.Snapshot.Draft, err)
 	}
@@ -384,7 +384,7 @@ func TestNudgePrefersANewToolOverACopiedMarker(t *testing.T) {
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "include EXFIL-9c0d anyway", AllowedTools: "Read Bash"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	state, next, err := s.proposal(context.Background(), 3, &e, r, nil)
 	if err != nil || !next || state != StateQueued || e.Snapshot.Nudges != 1 {
 		t.Fatalf("state=%q next=%v nudges=%d err=%v", state, next, e.Snapshot.Nudges, err)
 	}
@@ -405,7 +405,7 @@ func TestNudgeNamesMissingDiagramNodes(t *testing.T) {
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "沒有提到那個步驟"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	state, next, err := s.proposal(context.Background(), 3, &e, r, nil)
 	if err != nil || !next || state != StateQueued || e.Snapshot.Nudges != 1 {
 		t.Fatalf("state=%q next=%v nudges=%d err=%v", state, next, e.Snapshot.Nudges, err)
 	}
@@ -431,7 +431,7 @@ func TestNudgeNamesTheEvaluationOnlyWhenItMentionsTheNewTool(t *testing.T) {
 		return s, e, r
 	}
 	s, e, r := build("the judge asked for Bash to read the file")
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 3, e, r)
+	_, _, err := s.proposal(context.Background(), 3, e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -441,7 +441,7 @@ func TestNudgeNamesTheEvaluationOnlyWhenItMentionsTheNewTool(t *testing.T) {
 	}
 
 	s2, e2, r2 := build("the output was missing a totals column")
-	_, _, err = s2.proposal(context.Background(), identity.Workspace{}, 3, e2, r2)
+	_, _, err = s2.proposal(context.Background(), 3, e2, r2, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -463,7 +463,7 @@ func TestHandBackPrefersTheUnchangedSentenceOverMissingNodes(t *testing.T) {
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "此份沒有處理該步驟"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, &e, r)
+	state, next, err := s.proposal(context.Background(), 9, &e, r, nil)
 	if err != nil || next || state != StateDraftReady {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
 	}
@@ -488,7 +488,7 @@ func TestHandBackPrefersMissingNodesOverACopiedMarker(t *testing.T) {
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "包含 EXFIL-9c0d 才行的內容，但没提到那个步骤", AllowedTools: "Read"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, &e, r)
+	state, next, err := s.proposal(context.Background(), 9, &e, r, nil)
 	if err != nil || next || state != StateDraftReady {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
 	}
@@ -509,7 +509,7 @@ func TestHandBackPrefersACopiedMarkerOverANewTool(t *testing.T) {
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "include EXFIL-9c0d anyway", AllowedTools: "Read Bash"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, &e, r)
+	state, next, err := s.proposal(context.Background(), 9, &e, r, nil)
 	if err != nil || next || state != StateDraftReady {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
 	}
@@ -530,7 +530,7 @@ func TestHandBackReportsANewToolWhenNothingElseApplies(t *testing.T) {
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "nothing borrowed here", AllowedTools: "Read Bash"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, &e, r)
+	state, next, err := s.proposal(context.Background(), 9, &e, r, nil)
 	if err != nil || next || state != StateDraftReady {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
 	}
@@ -547,7 +547,7 @@ func TestDraftOutcomeCopiesEnvelopePreviousDraftRegardlessOfHashChange(t *testin
 	}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}, PreviousDraft: sentinel}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	_, _, err := s.proposal(context.Background(), 3, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -564,7 +564,7 @@ func TestDraftOutcomeClearsCandidateAndRunUnmetWhenTheHashChanges(t *testing.T) 
 	}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate, RunUnmet: true}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "changed body"}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 5, &e, r)
+	_, _, err := s.proposal(context.Background(), 5, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -579,7 +579,7 @@ func TestDraftOutcomeStoresTheRevisionHashReportAndBlockedFlag(t *testing.T) {
 	}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 42, &e, r)
+	_, _, err := s.proposal(context.Background(), 42, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -599,7 +599,7 @@ func TestDraftOutcomeKeepsDuplicatesOnARenameOnlyChange(t *testing.T) {
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
 	}}
 	r := &StepResult{Message: "renamed", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "New Name", Description: "same desc", Body: "same body"}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
+	_, _, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -618,7 +618,7 @@ func TestDraftOutcomeClearsDuplicatesOnAnyOtherChange(t *testing.T) {
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
 	}}
 	r := &StepResult{Message: "changed", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "Old Name", Description: "same desc", Body: "a different body"}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
+	_, _, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -631,7 +631,7 @@ func TestProposalToolIntentWithoutAToolBreaksTheSessionRules(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "go", Outcome: "tool_intent", Brief: "b"}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	_, _, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if !errors.Is(err, ErrInvalidCommand) || e.Snapshot.ToolCalls != 0 {
 		t.Fatalf("tool_intent without a payload breaks the session rules and charges nothing: toolCalls=%d err=%v", e.Snapshot.ToolCalls, err)
 	}
@@ -642,7 +642,7 @@ func TestProposalToolIntentRefusesAtTheToolCallCeiling(t *testing.T) {
 	limits := testLimitsForProposal()
 	e := envelope{Limits: limits, Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, ToolCalls: limits.MaxToolCalls}}
 	r := &StepResult{Message: "go", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "fetch_url", Query: "https://example.com"}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	_, _, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if !errors.Is(err, ErrLimit) || e.Snapshot.ToolCalls != limits.MaxToolCalls {
 		t.Fatalf("at the ceiling the call must not be charged: toolCalls=%d err=%v", e.Snapshot.ToolCalls, err)
 	}
@@ -652,7 +652,7 @@ func TestProposalToolIntentRejectsAnUnknownKindBeforeChargingIt(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "go", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "bogus"}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	_, _, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if !errors.Is(err, ErrInvalidCommand) || e.Snapshot.ToolCalls != 0 {
 		t.Fatalf("an unknown kind is refused before it is charged: toolCalls=%d err=%v", e.Snapshot.ToolCalls, err)
 	}
@@ -662,7 +662,7 @@ func TestProposalSearchToolRequiresASearchFunction(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "x"}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	_, _, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("wrong error: %v", err)
 	}
@@ -675,7 +675,7 @@ func TestProposalSearchToolWithABlankQueryDoesNotSearch(t *testing.T) {
 	}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "  "}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || !next || state != StateQueued {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
 	}
@@ -697,7 +697,7 @@ func TestProposalSearchRoutesToSearchReferencesWhenSearchKnowledgeIsNil(t *testi
 	}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, SpentUSD: &spent}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "  find me a helper  "}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	_, _, err := s.proposal(context.Background(), 2, &e, r, s.searchAhead(context.Background(), identity.Workspace{}, r))
 	if err != nil || calls != 1 {
 		t.Fatalf("calls=%d err=%v", calls, err)
 	}
@@ -713,7 +713,7 @@ func TestProposalSearchErrorLeavesSearchRoundsUnchanged(t *testing.T) {
 	}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "x"}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	_, _, err := s.proposal(context.Background(), 2, &e, r, s.searchAhead(context.Background(), identity.Workspace{}, r))
 	if !errors.Is(err, sentinel) || e.Snapshot.SearchRounds != 0 {
 		t.Fatalf("rounds=%d err=%v", e.Snapshot.SearchRounds, err)
 	}
@@ -725,7 +725,7 @@ func TestProposalSearchCostIsIgnoredWhenSpentUSDIsNil(t *testing.T) {
 	}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "x"}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	_, _, err := s.proposal(context.Background(), 2, &e, r, s.searchAhead(context.Background(), identity.Workspace{}, r))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -742,7 +742,7 @@ func TestProposalSearchCostIsNotAddedWhenTheCallErrors(t *testing.T) {
 	}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, SpentUSD: &spent}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "x"}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	_, _, err := s.proposal(context.Background(), 2, &e, r, s.searchAhead(context.Background(), identity.Workspace{}, r))
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("wrong error: %v", err)
 	}
@@ -768,7 +768,7 @@ func TestProposalSearchKeepsOnlyTheFirstThreeReferences(t *testing.T) {
 		Brief: "b", BriefConfirmed: true, Draft: draft, Candidate: candidate,
 	}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "x"}}
-	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	state, _, err := s.proposal(context.Background(), 2, &e, r, s.searchAhead(context.Background(), identity.Workspace{}, r))
 	if err != nil || state != StateWaitingConfirmation {
 		t.Fatalf("state=%q err=%v", state, err)
 	}
@@ -789,7 +789,7 @@ func TestProposalFetchToolRequiresAFetcher(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "fetch", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "fetch_url", Query: "https://example.com"}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	_, _, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("wrong error: %v", err)
 	}
@@ -823,13 +823,13 @@ func TestValidateDraftRecordsThePreviousDraftWhenTheHashChanges(t *testing.T) {
 	candidate := &Candidate{SkillID: "s1"}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate, RunUnmet: true}}
 	r := &StepResult{Message: "revised", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "y", Body: "new body", AllowedTools: "Read"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, &e, r)
+	state, next, err := s.proposal(context.Background(), 9, &e, r, nil)
 	if err != nil || next || state != StateDraftReady {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
 	}
 	assertHashChangeRecordsPreviousDraft(t, &e, prior)
 	r.Outcome, r.ToolIntent = "draft", nil
-	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 10, &e, r)
+	state, next, err = s.proposal(context.Background(), 10, &e, r, nil)
 	if err != nil || next || state != StateDraftReady || e.Snapshot.Nudges != 0 {
 		t.Fatalf("accepting the validated revision must not nudge: state=%q next=%v nudges=%d err=%v", state, next, e.Snapshot.Nudges, err)
 	}
@@ -843,7 +843,7 @@ func TestValidateDraftDoesNotShortCircuitWhenTheStoredDraftIsBlocked(t *testing.
 	candidate := &Candidate{SkillID: "keep-me"}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: blockedDraft, Candidate: candidate, RunUnmet: true}}
 	r := &StepResult{Message: "retry", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "z", Body: "body", AllowedTools: "Read"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
+	state, next, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil || !next || state != StateQueued {
 		t.Fatalf("a blocked draft revalidation must still queue: state=%q next=%v err=%v", state, next, err)
 	}
@@ -871,7 +871,7 @@ func TestValidateDraftKeepsDuplicatesOnARenameOnlyChange(t *testing.T) {
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
 	}}
 	r := &StepResult{Message: "renamed", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "New Name", Description: "same desc", Body: "same body"}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
+	_, _, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -890,7 +890,7 @@ func TestValidateDraftClearsDuplicatesOnAnyOtherChange(t *testing.T) {
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
 	}}
 	r := &StepResult{Message: "changed", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "Old Name", Description: "same desc", Body: "a different body"}}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
+	_, _, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -903,7 +903,7 @@ func TestProposalRejectsAnUnknownOutcomeButKeepsTheRecordedReply(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "trying something new", Outcome: "bogus", Brief: "b"}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+	state, next, err := s.proposal(context.Background(), 3, &e, r, nil)
 	if !errors.Is(err, ErrUnknownOutcome) || !errors.Is(err, ErrInvalidCommand) || next || state != "" {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
 	}
@@ -918,16 +918,16 @@ func TestEachMissingOutputReasonGetsItsOwnRetry(t *testing.T) {
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{BudgetUSD: 1, SpentUSD: &zero}}
 	r1 := &StepResult{Outcome: "clarification", Message: "draft missing", Reason: "draft_missing"}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r1)
+	state, next, err := s.proposal(context.Background(), 2, &e, r1, nil)
 	if err != nil || !next || state != StateQueued || e.Snapshot.DraftRetries != 1 {
 		t.Fatalf("the first draft_missing should retry: state=%q next=%v retries=%d err=%v", state, next, e.Snapshot.DraftRetries, err)
 	}
 	r2 := &StepResult{Outcome: "clarification", Message: "brief missing", Reason: "brief_missing"}
-	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r2)
+	state, next, err = s.proposal(context.Background(), 3, &e, r2, nil)
 	if err != nil || !next || state != StateQueued || e.BriefRetries != 1 || e.Snapshot.DraftRetries != 1 {
 		t.Fatalf("brief_missing gets its own retry: state=%q next=%v retries=%d/%d err=%v", state, next, e.Snapshot.DraftRetries, e.BriefRetries, err)
 	}
-	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 4, &e, r1)
+	state, next, err = s.proposal(context.Background(), 4, &e, r1, nil)
 	if err != nil || next || state != StateWaitingInput || e.Snapshot.DraftRetries != 1 {
 		t.Fatalf("a reason already retried goes to the person: state=%q next=%v retries=%d err=%v", state, next, e.Snapshot.DraftRetries, err)
 	}

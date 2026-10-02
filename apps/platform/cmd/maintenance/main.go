@@ -113,8 +113,9 @@ func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 		Mark: svc.MarkDatasetCleanupIntentPurged, Guard: svc.GuardDatasetObjectRemoval,
 	}, batch())
 
-	slog.Info("dataset purge complete", "datasets_purged", n, "upload_intents_purged", intentN)
-	return errors.Join(err, intentErr)
+	err = errors.Join(err, intentErr)
+	logSweep("dataset purge", err, "datasets_purged", n, "upload_intents_purged", intentN)
+	return err
 }
 
 func rotatePartitions(ctx context.Context, pool *pgxpool.Pool) error {
@@ -215,7 +216,7 @@ func collectObjects(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	c, err := (&registry.Service{Pool: pool}).CollectOrphanObjects(ctx, store, batch())
 
-	slog.Info("orphan object collection complete",
+	logSweep("orphan object collection", err,
 		"objects_collected", c.Collected, "entries_dropped", c.Dropped, "queue_depth", c.Depth)
 	return err
 }
@@ -240,13 +241,21 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 	svc := purgeService(pool)
 	n, purgeErr := svc.PurgeExpiredAccounts(ctx, store, grace(), batch())
 
-	slog.Info("account purge complete", "accounts_purged", n)
+	logSweep("account purge", purgeErr, "accounts_purged", n)
 
 	sessions, sessionsErr := svc.CleanupExpiredSessions(ctx)
 	if sessionsErr == nil {
 		slog.Info("expired sessions removed", "sessions", sessions)
 	}
 	return errors.Join(purgeErr, sessionsErr)
+}
+
+func logSweep(sweep string, err error, counts ...any) {
+	if err != nil {
+		slog.Error(sweep+" stopped early; the counts are what it finished", append(counts, "error", err)...)
+		return
+	}
+	slog.Info(sweep+" complete", counts...)
 }
 
 func registryPurger(pool *pgxpool.Pool) *registry.Service {
@@ -283,7 +292,7 @@ func purgeService(pool *pgxpool.Pool) *identity.Service {
 }
 
 func checkSources(ctx context.Context, pool *pgxpool.Pool) error {
-	svc := &ingest.Service{Pool: pool, Fetcher: &ingest.URLFetcher{Allowed: ingest.DefaultAllowedHosts()}}
+	svc := &ingest.Service{Pool: pool, Fetcher: wiring.ImportFetcher(wiring.PostureFromEnv())}
 	sweep, err := svc.CheckSources(ctx, batch())
 	if err != nil {
 		return err

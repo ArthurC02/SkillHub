@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -172,7 +171,7 @@ func (s *Service) RegisterPublisher(ctx context.Context, ws identity.Workspace, 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	row, err := gen.New(tx).CreatePublisher(ctx, gen.CreatePublisherParams{WorkspaceID: ws.ID, Name: name})
-	if violated, constraint := uniqueViolation(err); violated {
+	if constraint, violated := pgconv.UniqueViolation(err); violated {
 		if constraint == "publishers_workspace_id_key" {
 			return Publisher{}, ErrPublisherExists
 		}
@@ -338,7 +337,7 @@ func publicationToRelease(
 	created, err := q.CreatePublication(ctx, gen.CreatePublicationParams{
 		Name: name, SkillID: skill.ID, Status: string(StatusPublished), WorkspaceID: ws.ID,
 	})
-	if violated, _ := uniqueViolation(err); violated {
+	if pgconv.IsUniqueViolation(err) {
 		return gen.Publication{}, ErrNameTaken
 	}
 	return created, err
@@ -616,12 +615,4 @@ func releasesOf(ctx context.Context, q *gen.Queries, publicationID pgtype.UUID) 
 		}
 	}
 	return releases, nil
-}
-
-func uniqueViolation(err error) (bool, string) {
-	pgErr, ok := errors.AsType[*pgconn.PgError](err)
-	if !ok || pgErr.Code != "23505" {
-		return false, ""
-	}
-	return true, pgErr.ConstraintName
 }

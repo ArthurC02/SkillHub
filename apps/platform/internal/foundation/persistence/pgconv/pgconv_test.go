@@ -1,9 +1,12 @@
 package pgconv
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -32,5 +35,26 @@ func TestTimestamptz(t *testing.T) {
 	got := Timestamptz(now)
 	if !got.Valid || !got.Time.Equal(now) {
 		t.Errorf("Timestamptz(%v) = %+v, want valid and equal", now, got)
+	}
+}
+
+func TestOnlyAUniqueViolationIsReportedWithItsConstraint(t *testing.T) {
+	for _, c := range []struct {
+		name           string
+		err            error
+		wantConstraint string
+		wantViolated   bool
+	}{
+		{"a unique violation", fmt.Errorf("insert: %w", &pgconn.PgError{Code: "23505", ConstraintName: "skills_name_key"}), "skills_name_key", true},
+		{"another constraint", &pgconn.PgError{Code: "23503", ConstraintName: "skills_workspace_fk"}, "", false},
+		{"not a database error", errors.New("pool exhausted"), "", false},
+		{"no error", nil, "", false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			constraint, violated := UniqueViolation(c.err)
+			if constraint != c.wantConstraint || violated != c.wantViolated || IsUniqueViolation(c.err) != c.wantViolated {
+				t.Errorf("got (%q, %v), want (%q, %v)", constraint, violated, c.wantConstraint, c.wantViolated)
+			}
+		})
 	}
 }

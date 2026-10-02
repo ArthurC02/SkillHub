@@ -461,3 +461,19 @@ func TestRostersShowWhatIsInForce(t *testing.T) {
 		t.Errorf("beta_allowlist %v, want [alpha zeta]", got)
 	}
 }
+
+func TestAGrantToAnAccountBeingDeletedIsRefusedAsAConflict(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	member := a.login(t, "bo-grant-departing")
+	operator := a.login(t, "bo-grant-operator")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	if _, err := pool.Exec(context.Background(), "UPDATE users SET deleted_at = now() WHERE id = $1", mustUUID(t, member.userID)); err != nil {
+		t.Fatal(err)
+	}
+
+	code, out := postJSON(t, operator, "/admin/credits/"+member.workspaceID+"/grants", `{"amount_credits":30,"reason":"beta reward"}`)
+	if code != http.StatusConflict {
+		t.Fatalf("grant to a departing account: got %d (%v), want 409 rather than a server failure", code, out)
+	}
+}

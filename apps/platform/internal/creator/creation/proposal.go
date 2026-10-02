@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"unicode/utf8"
-
-	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
 
 var reasonSentences = map[string]string{
@@ -53,7 +51,7 @@ func equalStrings(a, b []string) bool {
 	return true
 }
 
-func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *StepResult) (State, bool, error) {
+func (s *Service) proposal(ctx context.Context, revision int64, e *envelope, r *StepResult, found *searchAnswer) (State, bool, error) {
 	p := &e.Snapshot
 	if r.Reason != "" {
 		sentence, err := reasonSentence(r.Reason)
@@ -93,7 +91,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 	case outcomeDraft:
 		return s.acceptDraft(ctx, revision, e, r)
 	case outcomeToolIntent:
-		return s.useTool(ctx, ws, revision, e, r)
+		return s.useTool(ctx, revision, e, r, found)
 	}
 	return "", false, ErrUnknownOutcome
 }

@@ -260,7 +260,7 @@ func TestCreateCatalogCheckCostIsKeptEvenWhenTheCheckErrors(t *testing.T) {
 	}
 }
 
-func TestCreateWithAWorkspaceThatDoesNotExistIsAConflict(t *testing.T) {
+func TestCreateWithAWorkspaceThatDoesNotExistIsNotMistakenForAConcurrentStart(t *testing.T) {
 	pool := requireDB(t)
 	svc := newCreateService(pool, &jobRecorder{})
 	var ghost pgtype.UUID
@@ -269,8 +269,8 @@ func TestCreateWithAWorkspaceThatDoesNotExistIsAConflict(t *testing.T) {
 	}
 	id := creationID(t)
 	_, err := svc.Create(context.Background(), identity.Workspace{ID: ghost}, id, "", .5)
-	if !errors.Is(err, creation.ErrConflict) {
-		t.Fatalf("got %v, want ErrConflict", err)
+	if err == nil || errors.Is(err, creation.ErrConflict) {
+		t.Fatalf("got %v: a session the database refused was reported as one another request already started", err)
 	}
 	var rows int
 	if err := pool.QueryRow(context.Background(), "SELECT count(*) FROM creation_sessions WHERE id=$1", id).Scan(&rows); err != nil {

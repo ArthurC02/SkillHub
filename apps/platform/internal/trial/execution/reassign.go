@@ -111,11 +111,7 @@ func (d *driver) budgetForNextAttempt(ctx context.Context, attempts []gen.RunAtt
 func (s *Service) usageOf(ctx context.Context, attempts []gen.RunAttempt) (AttemptUsage, error) {
 	var total AttemptUsage
 	for _, a := range attempts {
-		since := time.Now().UTC().Add(-time.Hour)
-		if a.CreatedAt.Valid {
-			since = a.CreatedAt.Time.UTC()
-		}
-		used, err := s.Gateway.Usage(ctx, pgconv.UUIDString(a.ID), since)
+		used, err := s.Gateway.Usage(ctx, pgconv.UUIDString(a.ID), attemptUsageSince(a))
 		if err != nil {
 			return AttemptUsage{}, err
 		}
@@ -123,6 +119,7 @@ func (s *Service) usageOf(ctx context.Context, attempts []gen.RunAttempt) (Attem
 		total.OutputTokens += used.OutputTokens
 		total.ModelCostUSD += used.ModelCostUSD
 		total.CostReported = total.CostReported || used.CostReported
+		total.Incomplete = total.Incomplete || used.Incomplete
 	}
 	return total, nil
 }
@@ -133,6 +130,9 @@ var errSpendUnreadable = errors.New("the model spend of this run's earlier attem
 func (s *Service) budgetLeft(ctx context.Context, attempts []gen.RunAttempt) (float64, error) {
 	used, err := s.usageOf(ctx, attempts)
 	if err != nil {
+		return 0, fmt.Errorf("%w: %w", errSpendUnreadable, err)
+	}
+	if used.Incomplete {
 		return 0, errSpendUnreadable
 	}
 	return s.Gateway.BudgetCeilingUSD() - used.ModelCostUSD, nil

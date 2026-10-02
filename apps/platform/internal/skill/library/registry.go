@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -138,7 +137,7 @@ func (s *Service) ForkIn(ctx context.Context, tx pgx.Tx, ws identity.Workspace, 
 		return Skill{}, Version{}, err
 	}
 	root := forkOf(ws.ID, name, src, srcVer)
-	if err := SaveSkill(ctx, tx, root); isUniqueViolation(err) {
+	if err := SaveSkill(ctx, tx, root); pgconv.IsUniqueViolation(err) {
 		return Skill{}, Version{}, ErrNameTaken
 	} else if err != nil {
 		return Skill{}, Version{}, err
@@ -257,11 +256,6 @@ func (s *Service) Takedown(ctx context.Context, ws identity.Workspace, skillID p
 		return Skill{}, err
 	}
 	return root.Skill(), nil
-}
-
-func isUniqueViolation(err error) bool {
-	pgErr, ok := errors.AsType[*pgconn.PgError](err)
-	return ok && pgErr.Code == "23505"
 }
 
 const maxForkAttempts = 10
