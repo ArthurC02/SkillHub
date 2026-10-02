@@ -191,6 +191,8 @@ func (s *SkillRoot) Redistribution() Redistribution { return Redistribution(s.ro
 
 func (s *SkillRoot) NewestLicense() LicenseClaim { return s.newest.license }
 
+func (s *SkillRoot) NewestVersionID() pgtype.UUID { return s.newest.id }
+
 func (s *SkillRoot) Refusal() (Refused, bool) {
 	for _, event := range s.events {
 		if refused, ok := event.(Refused); ok {
