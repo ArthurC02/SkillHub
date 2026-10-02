@@ -27,6 +27,9 @@ func storesUnderTest(t *testing.T) map[string]storeUnderTest {
 		t.Fatalf("NewInProcess: %v", err)
 	}
 	t.Cleanup(stop)
+	if err := inProcess.EnsureBucket(context.Background()); err != nil {
+		t.Fatalf("EnsureBucket: %v", err)
+	}
 
 	stores := map[string]storeUnderTest{
 		"in-memory fake": objstoretest.New(),

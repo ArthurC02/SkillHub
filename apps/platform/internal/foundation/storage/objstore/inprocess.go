@@ -67,7 +67,10 @@ func (b *inProcessBackend) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	parts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/"), "/", 2)
 	if len(parts) == 0 || parts[0] != b.bucket {
+		w.Header().Set("Content-Type", "application/xml")
 		w.WriteHeader(http.StatusNotFound)
+		_, _ = io.WriteString(w, `<?xml version="1.0" encoding="UTF-8"?><Error><Code>NoSuchBucket</Code>`+
+			`<Message>The specified bucket does not exist</Message></Error>`)
 		return
 	}
 	if len(parts) == 1 || parts[1] == "" {
