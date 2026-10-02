@@ -622,18 +622,22 @@ func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
 			if rec.Code != tc.wantCode {
 				t.Fatalf("%s %s -> %d, want %d", tc.method, tc.path, rec.Code, tc.wantCode)
 			}
-			isHTML := strings.Contains(rec.Header().Get("Content-Type"), "text/html")
-			if isHTML != tc.wantHTML {
-				t.Errorf("%s %s answered Content-Type %q; want HTML=%v",
-					tc.method, tc.path, rec.Header().Get("Content-Type"), tc.wantHTML)
-			}
-			if tc.wantHTML && !strings.Contains(rec.Body.String(), "index for /") {
-				t.Errorf("the fallback served %q, want index.html", rec.Body.String())
-			}
-			if !tc.wantHTML && strings.Contains(rec.Body.String(), "<html>") {
-				t.Errorf("a non-browser caller was handed a page: %q", rec.Body.String())
-			}
+			assertAnsweredWithThePageOnlyWhenWanted(t, rec, tc.wantHTML)
 		})
+	}
+}
+
+func assertAnsweredWithThePageOnlyWhenWanted(t *testing.T, rec *httptest.ResponseRecorder, wantHTML bool) {
+	t.Helper()
+	isHTML := strings.Contains(rec.Header().Get("Content-Type"), "text/html")
+	if isHTML != wantHTML {
+		t.Errorf("answered Content-Type %q; want HTML=%v", rec.Header().Get("Content-Type"), wantHTML)
+	}
+	if wantHTML && !strings.Contains(rec.Body.String(), "index for /") {
+		t.Errorf("the fallback served %q, want index.html", rec.Body.String())
+	}
+	if !wantHTML && strings.Contains(rec.Body.String(), "<html>") {
+		t.Errorf("a non-browser caller was handed a page: %q", rec.Body.String())
 	}
 }
 
