@@ -123,9 +123,9 @@ export function BundleSection({ selectedVersion }: { selectedVersion?: string })
         (groupedBundles.length === 0 ? (
           <p>目前還沒有 Bundle。先把一組可一起交付的小工具版本固定成第一個 Bundle Version。</p>
         ) : (
-          <ul className="download-list" data-role="evidence">
+          <ul className="card-list" data-role="evidence">
             {groupedBundles.map(({ bundle, versions }) => (
-              <li key={bundle} className="download-item">
+              <li key={bundle} className="surface-card">
                 <BundleOverviewCard
                   bundle={bundle}
                   versions={versions}

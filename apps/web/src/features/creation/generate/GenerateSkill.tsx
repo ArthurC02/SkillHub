@@ -379,7 +379,7 @@ export function ReferencePicker({
                 skillId={s.skill_id}
                 name={s.name}
                 summary={s.summary}
-                className="download-item"
+                className="surface-card"
                 checked={selectedIds.has(s.skill_id)}
                 disabled={disabled || (!selectedIds.has(s.skill_id) && atLimit)}
                 onToggle={() => onToggle(s.skill_id, s.name)}

@@ -114,13 +114,13 @@ function PublicationOverview({ selectedPublication }: { selectedPublication?: st
             選一個精確版本開始。
           </p>
         ) : (
-          <ul className="download-list" data-role="evidence">
+          <ul className="card-list" data-role="evidence">
             {publications.map((publication) => {
               const current = publication === selected;
               return (
                 <li
                   key={publication.skill_id}
-                  className="download-item"
+                  className="surface-card"
                   ref={current ? selectedElement : undefined}
                   tabIndex={current ? -1 : undefined}
                   aria-current={current ? "location" : undefined}

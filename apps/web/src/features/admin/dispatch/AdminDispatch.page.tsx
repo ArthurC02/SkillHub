@@ -32,9 +32,9 @@ export function AdminDispatch() {
           {status.data.halts.length === 0 ? (
             <p>煞車：0 個。</p>
           ) : (
-            <ul className="download-list">
+            <ul className="card-list">
               {status.data.halts.map((halt) => (
-                <li className="download-item" key={`${halt.target}-${halt.source}`}>
+                <li className="surface-card" key={`${halt.target}-${halt.source}`}>
                   <p>
                     <strong>{halt.target === "pool" ? "整個叢集" : `節點 ${halt.target}`}</strong>
                   </p>

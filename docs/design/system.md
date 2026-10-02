@@ -405,7 +405,8 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 | `.search-result` | 搜尋結果、Test Case 列、Workspace Skill 列（另加 `.skill-card`，見上表）、**Skill 詳情的逐版歷史**（**四處**） |
 | `.criterion` / `.suggestion` | 驗收條件、改善建議、**匯入與打包的驗證發現**（`.finding-list`） |
 | `.packaging-target` | 打包目標 |
-| `.download-item` | **這是全 app 的通用卡片，不是「下載紀錄」**——**八個呼叫點裡七個不是下載**：Run 產出、Activity 的 Run 清單、Test Case 執行歷史、Run 比較、以及建立中心的三張卡 |
+| `.surface-card`／`.card-list` | 跨功能的通用卡片與卡片清單：Run 產出、Activity、Test Case 歷史、比較候選、建立中心、治理與 Publication 都用同一配方，不借用下載名稱 |
+| `.download-item`／`.download-list` | 真正的交付套件與下載紀錄；視覺配方與通用卡片相同，名稱保留給下載情境 |
 
 **修法一律是套用既有的卡片族，不是發明第五種樣式。**
 

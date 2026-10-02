@@ -22,7 +22,7 @@ function RunSourceContext({
   testCaseId?: string;
 }) {
   return (
-    <nav className="download-item run-source-context" aria-label="這次試跑的來源">
+    <nav className="surface-card run-source-context" aria-label="這次試跑的來源">
       <strong>這次試跑的來源</strong>
       <ul className="chip-row">
         <li>

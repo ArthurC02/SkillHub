@@ -33,7 +33,7 @@ export function CreditStatement() {
         (entries.length === 0 ? (
           <p>還沒有任何點數進出。這裡是空的代表沒有發生過，不是紀錄被清掉了。</p>
         ) : (
-          <ul className="download-list" data-role="evidence">
+          <ul className="card-list" data-role="evidence">
             {entries.map((entry) => (
               <StatementRow key={entry.id} entry={entry} />
             ))}
@@ -55,7 +55,7 @@ export function CreditStatement() {
 
 function StatementRow({ entry }: { entry: CreditStatementEntry }) {
   return (
-    <li className="download-item">
+    <li className="surface-card">
       <p>
         {entry.run_id ? (
           <Link to="/runs/$runId" params={{ runId: entry.run_id }}>

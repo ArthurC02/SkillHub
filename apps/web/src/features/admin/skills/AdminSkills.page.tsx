@@ -43,7 +43,7 @@ export function AdminSkills() {
         (found.length === 0 ? (
           <p>沒有符合「{q}」的小工具：0 筆。已刪除的小工具不會出現。</p>
         ) : (
-          <ul className="download-list">
+          <ul className="card-list">
             {found.map((skill) => (
               <GovernanceRow key={skill.skill_id} skill={skill} single={found.length === 1} />
             ))}

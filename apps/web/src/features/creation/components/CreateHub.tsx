@@ -47,7 +47,7 @@ export function CreateHub({
       <h2 id="create-heading">新增到資產庫</h2>
 
       <ul className="create-cards">
-        <li className="download-item" data-tone="0">
+        <li className="surface-card" data-tone="0">
           <span className="door-mono" aria-hidden="true">
             ↑
           </span>
@@ -64,7 +64,7 @@ export function CreateHub({
           </p>
         </li>
 
-        <li className="download-item" data-tone="1">
+        <li className="surface-card" data-tone="1">
           <span className="door-mono" aria-hidden="true">
             ✎
           </span>
@@ -83,7 +83,7 @@ export function CreateHub({
         </li>
 
         {generateExposed && (
-          <li className="download-item" data-tone="2">
+          <li className="surface-card" data-tone="2">
             <span className="door-mono" aria-hidden="true">
               ✦
             </span>

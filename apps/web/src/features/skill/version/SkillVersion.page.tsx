@@ -230,7 +230,7 @@ function VersionEvidence({
             開始留下第一筆證據。
           </p>
         ) : (
-          <ul className="download-list" data-role="evidence">
+          <ul className="card-list" data-role="evidence">
             {rows.map((run) => (
               <VersionRunRow key={run.run_id} run={run} />
             ))}
@@ -251,7 +251,7 @@ function VersionEvidence({
 
 function VersionRunRow({ run }: { run: RunListItem }) {
   return (
-    <li className="download-item">
+    <li className="surface-card">
       <p>
         <Link to="/runs/$runId" params={{ runId: run.run_id }}>
           查看試跑結果

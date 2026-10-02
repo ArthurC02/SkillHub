@@ -39,9 +39,9 @@ export function RunArtifacts({ runId }: { runId: string }) {
               {artifacts.data.artifacts.some((a) => !a.expires_at) &&
                 "「尚未定值」是平台還沒有為試跑產出定下保存期限，這不表示它會永久保留。"}
             </p>
-            <ul className="download-list">
+            <ul className="card-list">
               {artifacts.data.artifacts.map((artifact) => (
-                <li key={artifact.artifact_id} className="download-item">
+                <li key={artifact.artifact_id} className="surface-card">
                   <RunArtifactFacts artifact={artifact} />
                   <p>
                     <ConfirmDelete

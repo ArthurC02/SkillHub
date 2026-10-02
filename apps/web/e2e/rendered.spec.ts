@@ -391,7 +391,7 @@ async function verifyVersionEvidenceOnPhone(page: Page, testInfo: TestInfo) {
   await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
 
   const evidence = page.getByRole("heading", { name: "驗證證據" }).locator("..");
-  await expect(evidence.locator(".download-item")).toHaveCount(2);
+  await expect(evidence.locator(".surface-card")).toHaveCount(2);
   expect(requestedVersion).toBe(VERSION);
 
   const creation = page.getByRole("heading", { name: "Studio 歷程" }).locator("..");
