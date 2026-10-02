@@ -302,10 +302,11 @@ func (s *Service) CreditsWithinUSD(usd float64) (credits int64, ok bool) {
 	if math.IsNaN(usd) || math.IsInf(usd, 0) || usd < 0 || s.Config.MicrosPerCredit <= 0 {
 		return 0, false
 	}
-	micros := int64(math.Floor(usd * microsPerUSD))
-	if micros > MaxBillableMicros {
+	scaled := math.Floor(usd * microsPerUSD)
+	if scaled > float64(MaxBillableMicros) {
 		return 0, false
 	}
+	micros := int64(scaled)
 	return micros * s.Config.MarkupBps / basisPointsPerUnit / s.Config.MicrosPerCredit, true
 }
 

@@ -67,6 +67,29 @@ func TestCreditsForUSDFollowsTheDeploymentsOwnRate(t *testing.T) {
 	}
 }
 
+func TestCreditsWithinUSDRefusesAnAmountPastTheBillableRangeWithoutWrapping(t *testing.T) {
+	s := &Service{Config: Config{MicrosPerCredit: 1000, MarkupBps: 13000}}
+	for _, tc := range []struct {
+		name        string
+		usd         float64
+		wantCredits int64
+		wantOK      bool
+	}{
+		{"the largest billable amount is accepted", 1000, 1_300_000, true},
+		{"just past the largest billable amount is refused", 1000.00001, 0, false},
+		{"an amount past what int64 micros can hold is refused", 1e13, 0, false},
+		{"the largest float is refused", math.MaxFloat64, 0, false},
+		{"zero is accepted and worth nothing", 0, 0, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := s.CreditsWithinUSD(tc.usd)
+			if got != tc.wantCredits || ok != tc.wantOK {
+				t.Fatalf("CreditsWithinUSD(%v) = (%d, %v), want (%d, %v)", tc.usd, got, ok, tc.wantCredits, tc.wantOK)
+			}
+		})
+	}
+}
+
 func TestABudgetEnteredInCreditsComesBackAsTheSameCredits(t *testing.T) {
 	s := &Service{Config: Config{MicrosPerCredit: 1000, MarkupBps: 13000}}
 	for credits := int64(1); credits <= 20000; credits++ {
