@@ -146,7 +146,13 @@ func (m *Masker) walk(node any, pointer string, fields *[]string) any {
 	case map[string]any:
 		out := make(map[string]any, len(v))
 		for key, child := range v {
-			out[key] = m.walk(child, pointer+"/"+escapePointer(key), fields)
+			childPointer := pointer + "/" + escapePointer(key)
+			if text, isText := child.(string); isText && text != "" && text != Placeholder && namesASecret(key) {
+				out[key] = Placeholder
+				*fields = append(*fields, childPointer)
+				continue
+			}
+			out[key] = m.walk(child, childPointer, fields)
 		}
 		return out
 	case []any:
@@ -181,6 +187,23 @@ func (m *Masker) redact(s string) string {
 
 func (m *Masker) MaskString(s string) string {
 	return m.redact(s)
+}
+
+var secretKeyNames = []string{
+	"password", "passwd", "secret", "token", "apikey", "accesskey", "privatekey",
+	"authorization", "credential", "credentials", "cookie", "session",
+}
+
+var keySeparators = strings.NewReplacer("-", "", "_", "")
+
+func namesASecret(key string) bool {
+	normalized := strings.ToLower(keySeparators.Replace(key))
+	for _, name := range secretKeyNames {
+		if strings.HasSuffix(normalized, name) {
+			return true
+		}
+	}
+	return false
 }
 
 func escapePointer(key string) string {
@@ -226,9 +249,9 @@ func MaskerCanary() []string {
 	probes = append(probes, struct{ name, sample string }{canaryKnownName, known})
 
 	payload := make(map[string]string, len(probes))
-	for _, probe := range probes {
+	for i, probe := range probes {
 
-		payload[probe.name] = "canary " + probe.sample + " canary"
+		payload[probeKey(i)] = "canary " + probe.sample + " canary"
 	}
 	encoded, err := json.Marshal(payload)
 	if err != nil {
@@ -244,8 +267,8 @@ func MaskerCanary() []string {
 	}
 
 	survived := make([]string, 0)
-	for _, probe := range probes {
-		if strings.Contains(masked[probe.name], probe.sample) {
+	for i, probe := range probes {
+		if strings.Contains(masked[probeKey(i)], probe.sample) {
 			survived = append(survived, probe.name)
 		}
 	}
@@ -257,6 +280,8 @@ func MaskerCanary() []string {
 	}
 	return survived
 }
+
+func probeKey(i int) string { return "probe" + strconv.Itoa(i) }
 
 func canaryKnownValue() (string, error) {
 	var buf [16]byte
