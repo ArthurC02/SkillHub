@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -228,7 +229,7 @@ func TestSelectingReferencesResolvesEachAndAsksForConfirmation(t *testing.T) {
 func TestSelectingReferencesRefusesWhatItCannotResolve(t *testing.T) {
 	resolve := func(_ context.Context, _ identity.Workspace, id, _ string) (Reference, ReferenceSkill, error) {
 		if id == "gone" {
-			return Reference{}, ReferenceSkill{}, errors.New("no such skill")
+			return Reference{}, ReferenceSkill{}, fmt.Errorf("%w: no such skill", ErrNotFound)
 		}
 		return Reference{SkillID: id}, ReferenceSkill{}, nil
 	}
@@ -334,7 +335,7 @@ func TestConfirmingReferencesMarksEveryOneThatStillResolves(t *testing.T) {
 
 func TestConfirmingReferencesRefusesWithoutTheQuestionAResolverOrAResolvableSkill(t *testing.T) {
 	failing := func(context.Context, identity.Workspace, string, string) (Reference, ReferenceSkill, error) {
-		return Reference{}, ReferenceSkill{}, errors.New("gone")
+		return Reference{}, ReferenceSkill{}, fmt.Errorf("%w: gone", ErrNotFound)
 	}
 	refs := []Reference{{SkillID: "a"}}
 	for _, c := range []struct {
@@ -574,7 +575,7 @@ func TestSavingNeedsEveryReferenceToStillResolve(t *testing.T) {
 		t.Fatalf("no resolver: err = %v, want ErrUnavailable", err)
 	}
 	s := &Service{Materialize: materializer(), ResolveReference: func(context.Context, identity.Workspace, string, string) (Reference, ReferenceSkill, error) {
-		return Reference{}, ReferenceSkill{}, errors.New("gone")
+		return Reference{}, ReferenceSkill{}, fmt.Errorf("%w: gone", ErrNotFound)
 	}}
 	if _, err := s.save(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("a reference that no longer resolves: err = %v, want ErrNotFound", err)

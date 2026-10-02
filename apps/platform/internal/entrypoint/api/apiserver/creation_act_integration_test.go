@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -322,7 +323,7 @@ func TestActSelectReferences(t *testing.T) {
 		return creation.Reference{}, creation.ReferenceSkill{}, nil
 	}
 	failResolve := func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
-		return creation.Reference{}, creation.ReferenceSkill{}, errors.New("not found upstream")
+		return creation.Reference{}, creation.ReferenceSkill{}, fmt.Errorf("%w: not found upstream", creation.ErrNotFound)
 	}
 
 	t.Run("more than three ids", func(t *testing.T) {
@@ -352,7 +353,7 @@ func TestActSelectReferences(t *testing.T) {
 		}
 		assertRevisionUnchanged(t, pool, id, v.Revision)
 	})
-	t.Run("ResolveReference errors", func(t *testing.T) {
+	t.Run("ResolveReference finds nothing", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		svc.ResolveReference = failResolve
 		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "select_references", ReferenceSkillIDs: []string{"a"}})
@@ -439,12 +440,12 @@ func TestActConfirmReferences(t *testing.T) {
 		}
 		assertRevisionUnchanged(t, pool, id, v.Revision)
 	})
-	t.Run("ResolveReference errors", func(t *testing.T) {
+	t.Run("ResolveReference finds nothing", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		setCreationSnapshotField(t, pool, id, "pending_action", "confirm_references")
 		setCreationSnapshotField(t, pool, id, "references", []creation.Reference{{SkillID: "r1"}})
 		svc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
-			return creation.Reference{}, creation.ReferenceSkill{}, errors.New("resolve boom")
+			return creation.Reference{}, creation.ReferenceSkill{}, fmt.Errorf("%w: resolve boom", creation.ErrNotFound)
 		}
 		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "confirm_references"})
 		if !errors.Is(err, creation.ErrNotFound) {
@@ -709,13 +710,13 @@ func TestActMaterializeGroupPreconditions(t *testing.T) {
 		svc.ResolveReference = nil
 		s.assertMaterializeRefused(t, v, id, unavailable)
 	})
-	t.Run("ResolveReference errors", func(t *testing.T) {
+	t.Run("ResolveReference finds nothing", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		confirmedBase(t, id)
 		setCreationSnapshotField(t, pool, id, "draft", draft("h1", false))
 		setCreationSnapshotField(t, pool, id, "references", []creation.Reference{{SkillID: "r1", Confirmed: true, Available: true}})
 		svc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
-			return creation.Reference{}, creation.ReferenceSkill{}, errors.New("resolve boom")
+			return creation.Reference{}, creation.ReferenceSkill{}, fmt.Errorf("%w: resolve boom", creation.ErrNotFound)
 		}
 		s.assertMaterializeRefused(t, v, id, materializeRefusal{hash: "h1", want: creation.ErrNotFound, wantName: "ErrNotFound"})
 	})

@@ -120,7 +120,7 @@ func (s *Service) referencesResolve(ctx context.Context, ws identity.Workspace, 
 	}
 	for _, ref := range refs {
 		if _, _, err := s.ResolveReference(ctx, ws, ref.SkillID, ref.VersionID); err != nil {
-			return ErrNotFound
+			return err
 		}
 	}
 	return nil

@@ -89,12 +89,6 @@ func TestPackagingSeesTheOwnersRestrictionVerdict(t *testing.T) {
 	}
 }
 
-func TestBetaGateClosedIsNotEmpty(t *testing.T) {
-	if len(BetaGateClosed()) == 0 {
-		t.Fatal("BetaGateClosed() is empty; an empty invite list admits every signed-in user")
-	}
-}
-
 func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 
 	pool, err := pgxpool.New(context.Background(), "postgres://skillhub@127.0.0.1:1/skillhub")

@@ -38,7 +38,7 @@ func (s *Service) selectReferences(ctx context.Context, ws identity.Workspace, p
 		seen[sid] = true
 		r, _, err := s.ResolveReference(ctx, ws, sid, "")
 		if err != nil {
-			return commandOutcome{}, ErrNotFound
+			return commandOutcome{}, err
 		}
 		r.Confirmed = false
 		refs = append(refs, r)
@@ -83,11 +83,24 @@ func (s *Service) confirmReferences(ctx context.Context, ws identity.Workspace, 
 	}
 	for i, r := range p.References {
 		if _, _, err := s.ResolveReference(ctx, ws, r.SkillID, r.VersionID); err != nil {
-			return commandOutcome{}, ErrNotFound
+			return commandOutcome{}, err
 		}
 		p.References[i].Confirmed = true
 		p.References[i].Available = true
 	}
 	p.PendingAction = NothingPending
 	return stepQueued(), nil
+}
+
+func (s *Service) FirstResolvedReferences(ctx context.Context, ws identity.Workspace, ids []string) []Reference {
+	refs := []Reference{}
+	for _, id := range ids {
+		if len(refs) == MaxReferences {
+			break
+		}
+		if r, _, err := s.ResolveReference(ctx, ws, id, ""); err == nil {
+			refs = append(refs, r)
+		}
+	}
+	return refs
 }

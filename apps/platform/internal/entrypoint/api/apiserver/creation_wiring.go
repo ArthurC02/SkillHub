@@ -28,7 +28,7 @@ func nearestReferences(s *creation.Service, search *catalog.Service, maxDistance
 		if err != nil || knowledge.Degraded {
 			return nil, knowledge.CostUSD, err
 		}
-		return wiring.FirstResolvedReferences(ctx, s, ws, knowledge.IDs), knowledge.CostUSD, nil
+		return s.FirstResolvedReferences(ctx, ws, knowledge.IDs), knowledge.CostUSD, nil
 	}
 }
 

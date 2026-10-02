@@ -179,7 +179,7 @@ func callerFor(t *testing.T, calls *int) *Service {
 		IssueKey: func(context.Context, string, string, float64, time.Duration) (string, error) { return "key", nil },
 		ReadReferenceContent: func(_ context.Context, _ identity.Workspace, id, _ string) (ReferenceSkill, error) {
 			if id == "gone" {
-				return ReferenceSkill{}, errors.New("gone")
+				return ReferenceSkill{}, fmt.Errorf("%w: gone", ErrNotFound)
 			}
 			return ReferenceSkill{Name: id}, nil
 		},
@@ -259,20 +259,15 @@ func TestAModelCallThatBringsBackNothingSettlesAsUnknownCost(t *testing.T) {
 	}
 }
 
-func TestAPendingFetchIsCarriedOutOnceAndReported(t *testing.T) {
-	var fetched []string
+func TestAFetchedPageIsAttachedAndReportedMasked(t *testing.T) {
 	s := &Service{
-		Fetch: func(_ context.Context, url string) (Fetch, string) {
-			fetched = append(fetched, url)
-			return Fetch{URL: url, Status: "fetched"}, "secret page"
-		},
-		Mask: func(v string) string { return strings.ReplaceAll(v, "secret", "***") },
+		Fetch: func(context.Context, string) (Fetch, string) { return Fetch{}, "" },
+		Mask:  func(v string) string { return strings.ReplaceAll(v, "secret", "***") },
 	}
 	p := &Snapshot{PendingFetchURL: "https://example.com/a"}
-	s.fetchPending(context.Background(), p)
-	s.fetchPending(context.Background(), p)
-	if strings.Join(fetched, ",") != "https://example.com/a" || p.PendingFetchURL != "" || len(p.Fetches) != 1 {
-		t.Fatalf("fetched = %v, snapshot = %+v", fetched, p)
+	s.attachFetched(p, &fetchedPage{url: "https://example.com/a", record: Fetch{URL: "https://example.com/a", Status: "fetched"}, text: "secret page"})
+	if p.PendingFetchURL != "" || len(p.Fetches) != 1 {
+		t.Fatalf("snapshot = %+v", p)
 	}
 	if want := fetchObservation(p.Fetches[0], "*** page"); len(p.Messages) != 1 || p.Messages[0].Role != "tool" || p.Messages[0].Content != want {
 		t.Fatalf("messages = %+v", p.Messages)
@@ -281,9 +276,36 @@ func TestAPendingFetchIsCarriedOutOnceAndReported(t *testing.T) {
 
 func TestWithoutAFetcherAPendingFetchWaits(t *testing.T) {
 	p := &Snapshot{PendingFetchURL: "https://example.com/a"}
-	(&Service{}).fetchPending(context.Background(), p)
+	s := &Service{}
+	if !s.fetchedFor(*p, nil) {
+		t.Fatal("an attempt without a fetcher was treated as stale")
+	}
+	s.attachFetched(p, &fetchedPage{url: "https://example.com/a"})
 	if p.PendingFetchURL != "https://example.com/a" || len(p.Messages) != 0 {
 		t.Fatalf("snapshot = %+v", p)
+	}
+}
+
+func TestAPageFetchedBeforeTheLockCountsOnlyForTheURLStillPending(t *testing.T) {
+	s := &Service{Fetch: func(context.Context, string) (Fetch, string) { return Fetch{}, "" }}
+	page := &fetchedPage{url: "https://example.com/a"}
+	for _, c := range []struct {
+		name    string
+		pending string
+		fetched *fetchedPage
+		want    bool
+	}{
+		{"nothing pending, nothing fetched", "", nil, true},
+		{"the pending page was fetched", "https://example.com/a", page, true},
+		{"a pending page was not fetched", "https://example.com/a", nil, false},
+		{"another page is pending now", "https://example.com/b", page, false},
+		{"the page fetched is no longer pending", "", page, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := s.fetchedFor(Snapshot{PendingFetchURL: c.pending}, c.fetched); got != c.want {
+				t.Errorf("fetchedFor = %v, want %v", got, c.want)
+			}
+		})
 	}
 }
 

@@ -36,6 +36,8 @@ type Handler struct {
 
 	Invited map[string]bool
 
+	betaGateClosed bool
+
 	Features map[string]bool
 
 	Disclosures map[string]bool
@@ -264,9 +266,18 @@ func (h *Handler) logOperatorRefusal(r *http.Request, user User) {
 const betaNotInvited = "Skill Hub 還在封測:瀏覽與小工具詳情對所有人開放,但複製一份、試跑與下載只開放給受邀的測試者。" +
 	"用頁尾的「回報問題」告訴我們你想做什麼,它會直接進入範圍檢討。"
 
+func (h *Handler) CloseBetaGate() {
+	h.Invited = nil
+	h.betaGateClosed = true
+}
+
+func (h *Handler) BetaGateActive() bool {
+	return h.betaGateClosed || len(h.Invited) > 0
+}
+
 func (h *Handler) RequireInvited(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if len(h.Invited) == 0 {
+		if !h.BetaGateActive() {
 			next(w, r)
 			return
 		}
@@ -304,8 +315,11 @@ func writeNotInvited(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) invited(ctx context.Context, user User) (bool, error) {
-	if len(h.Invited) == 0 {
+	if !h.BetaGateActive() {
 		return true, nil
+	}
+	if h.betaGateClosed {
+		return false, nil
 	}
 	rows, err := h.Service.queries().GetIdentityProviderIDs(ctx, user.ID)
 	if err != nil {
@@ -319,7 +333,7 @@ func (h *Handler) invited(ctx context.Context, user User) (bool, error) {
 }
 
 func (h *Handler) allowlisted(providerUserIDs []string) bool {
-	if len(h.Invited) == 0 {
+	if !h.BetaGateActive() {
 		return true
 	}
 	return slices.ContainsFunc(providerUserIDs, func(id string) bool { return h.Invited[id] })

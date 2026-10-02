@@ -2,7 +2,11 @@ package wiring
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"log/slog"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
@@ -25,34 +29,22 @@ func WireCreationReferenceReads(s *creation.Service, versions *ingest.Service, s
 		if err != nil {
 			return nil, err
 		}
-		return FirstResolvedReferences(ctx, s, ws, ids), nil
+		return s.FirstResolvedReferences(ctx, ws, ids), nil
 	}
-}
-
-func FirstResolvedReferences(ctx context.Context, s *creation.Service, ws identity.Workspace, ids []string) []creation.Reference {
-	refs := []creation.Reference{}
-	for _, id := range ids {
-		r, _, err := s.ResolveReference(ctx, ws, id, "")
-		if err == nil {
-			refs = append(refs, r)
-		}
-		if len(refs) == creation.MaxReferences {
-			break
-		}
-	}
-	return refs
 }
 
 func referenceResolver(versions *ingest.Service, search *catalog.Service) func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
 	return func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.Reference, creation.ReferenceSkill, error) {
 		sid, vid, err := parseReferenceIDs(skillID, versionID)
 		if err != nil {
-			return creation.Reference{}, creation.ReferenceSkill{}, err
+			return creation.Reference{}, creation.ReferenceSkill{}, referenceReadError(err)
 		}
 		fixed, content, err := versions.ReadCreationReference(ctx, ws, sid, vid)
 		ref := creation.Reference{SkillID: creation.UUID(fixed.SkillID), VersionID: creation.UUID(fixed.VersionID), Name: fixed.Name, Available: err == nil, Description: fixed.Description, Compatibility: fixed.Compatibility, AllowedTools: fixed.AllowedTools}
-		addCatalogFacts(ctx, search, &ref)
-		return ref, creation.ReferenceSkill{Name: content.Name, SkillMD: content.SkillMD}, err
+		if err == nil {
+			addCatalogFacts(ctx, search, &ref)
+		}
+		return ref, creation.ReferenceSkill{Name: content.Name, SkillMD: content.SkillMD}, referenceReadError(err)
 	}
 }
 
@@ -60,11 +52,18 @@ func referenceContentReader(versions *ingest.Service) func(context.Context, iden
 	return func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.ReferenceSkill, error) {
 		sid, vid, err := parseReferenceIDs(skillID, versionID)
 		if err != nil {
-			return creation.ReferenceSkill{}, err
+			return creation.ReferenceSkill{}, referenceReadError(err)
 		}
 		content, err := versions.ReadCreationReferenceContent(ctx, ws, sid, vid)
-		return creation.ReferenceSkill{Name: content.Name, SkillMD: content.SkillMD}, err
+		return creation.ReferenceSkill{Name: content.Name, SkillMD: content.SkillMD}, referenceReadError(err)
 	}
+}
+
+func referenceReadError(err error) error {
+	if errors.Is(err, ingest.ErrReferenceUnavailable) || errors.Is(err, creation.ErrInvalidCommand) {
+		return fmt.Errorf("%w: %w", creation.ErrNotFound, err)
+	}
+	return err
 }
 
 func parseReferenceIDs(skillID, versionID string) (pgtype.UUID, pgtype.UUID, error) {
@@ -81,8 +80,12 @@ func parseReferenceIDs(skillID, versionID string) (pgtype.UUID, pgtype.UUID, err
 
 func addCatalogFacts(ctx context.Context, search *catalog.Service, ref *creation.Reference) {
 	facts, err := search.CatalogReferenceFacts(ctx, ref.SkillID, ref.VersionID)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return
+	}
+	if err != nil {
+		slog.Warn("creation: a reference's catalog facts could not be read; it is shown as unknown",
+			"skill_id", ref.SkillID, "error", err)
 	}
 	ref.Tier, ref.ScanStatus = facts.Tier, facts.ScanStatus
 	if facts.ScanStatus == "scanned" {

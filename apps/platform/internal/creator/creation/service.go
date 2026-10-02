@@ -281,6 +281,8 @@ type Service struct {
 	IssueKey                 func(context.Context, string, string, float64, time.Duration) (string, error)
 	RevokeKey                func(context.Context, string) error
 
+	HandOff func(context.Context, JobArgs, *Diagram) error
+
 	Billing CreationBilling
 }
 

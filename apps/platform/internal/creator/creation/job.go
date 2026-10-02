@@ -111,7 +111,7 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *Diagram) error {
 	if s.LLM == nil || s.IssueKey == nil || s.RevokeKey == nil {
 		return ErrUnavailable
 	}
-	started, err := s.startAttempt(ctx, a, diagram)
+	started, err := s.startAttempt(ctx, a, diagram, s.fetchAhead(ctx, a))
 	if err != nil || started == nil {
 		return err
 	}
@@ -156,7 +156,7 @@ type stepCall struct {
 	found          *searchAnswer
 }
 
-func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram) (*attempt, error) {
+func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram, fetched *fetchedPage) (*attempt, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -187,13 +187,16 @@ func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram)
 	if diagram != nil && !diagramMatches(e.Snapshot, diagram) {
 		return nil, ErrInvalidCommand
 	}
+	if !s.fetchedFor(e.Snapshot, fetched) {
+		return nil, staleAttempt(diagram)
+	}
 	if refusal := refuseAttempt(e, diagram != nil); refusal != "" {
 		return nil, s.failQueued(ctx, tx, row, refusal.withdrawn(e), a)
 	}
 	if _, err = q.ClaimCreationReceipt(ctx, gen.ClaimCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID}); err != nil {
 		return nil, err
 	}
-	s.fetchPending(ctx, &e.Snapshot)
+	s.attachFetched(&e.Snapshot, fetched)
 	e.Snapshot.Steps++
 	e.Snapshot.ReservedUSD += e.Limits.MaxCallCostUSD
 	e.ActiveDeadline = time.Now().Add(e.Limits.CallTimeout + 10*time.Second)
@@ -270,15 +273,45 @@ func abandonedState(p Snapshot) State {
 	return StateFailed
 }
 
-func (s *Service) fetchPending(ctx context.Context, p *Snapshot) {
-	url := p.PendingFetchURL
-	if url == "" || s.Fetch == nil {
+type fetchedPage struct {
+	url    string
+	record Fetch
+	text   string
+}
+
+func (s *Service) fetchAhead(ctx context.Context, a JobArgs) *fetchedPage {
+	if s.Fetch == nil {
+		return nil
+	}
+	row, err := gen.New(s.Pool).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: a.SessionID, WorkspaceID: a.WorkspaceID})
+	if err != nil {
+		return nil
+	}
+	e, err := decode(row)
+	if err != nil || !sessionAwaitsAttempt(row, e, a) || e.Snapshot.PendingFetchURL == "" {
+		return nil
+	}
+	record, text := s.Fetch(ctx, e.Snapshot.PendingFetchURL)
+	return &fetchedPage{url: e.Snapshot.PendingFetchURL, record: record, text: text}
+}
+
+func (s *Service) fetchedFor(p Snapshot, fetched *fetchedPage) bool {
+	if s.Fetch == nil {
+		return true
+	}
+	if fetched == nil {
+		return p.PendingFetchURL == ""
+	}
+	return fetched.url == p.PendingFetchURL
+}
+
+func (s *Service) attachFetched(p *Snapshot, fetched *fetchedPage) {
+	if s.Fetch == nil || fetched == nil {
 		return
 	}
-	rec, text := s.Fetch(ctx, url)
 	p.PendingFetchURL = ""
-	p.Fetches = append(p.Fetches, rec)
-	p.appendMessage("tool", fetchObservation(rec, s.masked(text)))
+	p.Fetches = append(p.Fetches, fetched.record)
+	p.appendMessage("tool", fetchObservation(fetched.record, s.masked(fetched.text)))
 }
 
 func (s *Service) cancelWhenSessionMoves(ctx context.Context, cancel context.CancelFunc, a JobArgs) <-chan struct{} {
@@ -370,7 +403,7 @@ func (s *Service) referencedContent(ctx context.Context, ws identity.Workspace, 
 		}
 		content, err := s.ReadReferenceContent(ctx, ws, ref.SkillID, ref.VersionID)
 		if err != nil {
-			return nil, ErrNotFound
+			return nil, err
 		}
 		contents = append(contents, content)
 	}

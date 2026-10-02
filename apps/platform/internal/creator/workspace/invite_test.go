@@ -64,3 +64,36 @@ func TestAnUnreadableInviteListIsAnErrorAndNotAnAdmission(t *testing.T) {
 		t.Fatal("a lookup that never answered returned true")
 	}
 }
+
+func TestAClosedBetaGateRefusesEveryoneWithoutAskingTheDatabase(t *testing.T) {
+	pool, err := pgxpool.New(context.Background(),
+		"postgres://nobody@127.0.0.1:1/nothing?sslmode=disable&connect_timeout=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	h := &Handler{
+		Service: &Service{Pool: pool},
+		Invited: map[string]bool{"github-user-on-the-list": true},
+	}
+	h.CloseBetaGate()
+
+	admitted := false
+	guarded := h.RequireInvited(func(http.ResponseWriter, *http.Request) { admitted = true })
+	r := httptest.NewRequest(http.MethodGet, "/api/skills", nil)
+	r = r.WithContext(context.WithValue(r.Context(), ctxKey{},
+		User{ID: pgtype.UUID{Bytes: [16]byte{9}, Valid: true}, Email: "someone@example.com"}))
+	w := httptest.NewRecorder()
+	guarded(w, r)
+
+	if admitted || w.Code != http.StatusForbidden {
+		t.Errorf("admitted = %v status = %d, want a 403 refusal from a closed gate", admitted, w.Code)
+	}
+	if !h.BetaGateActive() {
+		t.Error("a closed gate reported itself inactive, so the invite-only surfaces open to everyone")
+	}
+	if h.allowlisted([]string{"github-user-on-the-list"}) {
+		t.Error("a user once on the list still counts as allowlisted behind a closed gate")
+	}
+}

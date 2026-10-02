@@ -82,7 +82,7 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /policy/data-retention", d.Analytics.DataRetention)
 	mux.HandleFunc("POST "+trace.IngestPath+"{token}", d.Trace.Ingest)
 
-	return d.Analytics.Svc.Sessions(httpx.SameOriginWrites(mux, d.AppURL))
+	return httpx.LogServerErrors(d.Analytics.Svc.Sessions(httpx.SameOriginWrites(mux, d.AppURL)))
 }
 
 func mountAdmissionRoutes(mux *http.ServeMux, d Deps) {

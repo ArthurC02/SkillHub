@@ -787,3 +787,74 @@ func TestTheStepsSettlementDoesNotInheritTheTimeTheSearchSpent(t *testing.T) {
 			"so a slow search leaves the step's cost unsettled", searchDeadline, settleDeadline)
 	}
 }
+
+func TestAPendingPageIsFetchedWithoutHoldingTheSessionLocked(t *testing.T) {
+	pool := requireDB(t)
+	ws := newCreationWorkspace(t, pool)
+	rec := &jobRecorder{}
+	id := creationID(t)
+	var lockErr error
+	svc := &creation.Service{
+		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
+		Fetch: func(ctx context.Context, u string) (creation.Fetch, string) {
+			_, lockErr = pool.Exec(ctx, "SELECT 1 FROM creation_sessions WHERE id = $1 FOR UPDATE NOWAIT", id)
+			return creation.Fetch{URL: u, Status: "ok"}, "頁面內容"
+		},
+		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
+		LLM: creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+			return &creation.StepResult{Outcome: "clarification", Message: "好的"}, nil
+		}),
+	}
+	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, pool, `UPDATE creation_sessions SET snapshot = jsonb_set(snapshot, '{snapshot,pending_fetch_url}', to_jsonb($2::text)) WHERE id=$1`, id, "https://example.test/doc")
+	if err := svc.Step(context.Background(), rec.calls[0], nil); err != nil {
+		t.Fatal(err)
+	}
+	if lockErr != nil {
+		t.Fatalf("the session row was locked while the page was fetched (%v): a slow site would hold "+
+			"the person's own actions on this session until it answered", lockErr)
+	}
+}
+
+func TestAStepThatCannotBeHandedOffEndsTheAttemptEvenOnceTheRequestIsGone(t *testing.T) {
+	refused := errors.New("the worker is not answering")
+	for _, tc := range []struct {
+		name      string
+		handOff   func(context.Context, creation.JobArgs, *creation.Diagram) error
+		wantState string
+	}{
+		{"handed off", func(context.Context, creation.JobArgs, *creation.Diagram) error { return nil }, "queued"},
+		{"refused", func(context.Context, creation.JobArgs, *creation.Diagram) error { return refused }, "needs_reupload"},
+		{"nowhere to hand off", nil, "needs_reupload"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pool := requireDB(t)
+			ws := newCreationWorkspace(t, pool)
+			svc := &creation.Service{Pool: pool, Limits: creationLimits(), LLM: failLLM(t), IssueKey: failIssueKey(t), RevokeKey: failRevokeKey(t), HandOff: tc.handOff}
+			id := creationID(t)
+			v, err := svc.Create(context.Background(), ws, id, "", .5)
+			if err != nil {
+				t.Fatal(err)
+			}
+			diagram := &creation.Diagram{MediaType: "image/png", Data: base64.StdEncoding.EncodeToString([]byte("diagram-bytes"))}
+			_, job, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram", Diagram: diagram})
+			if err != nil || job == nil {
+				t.Fatalf("diagram command: job = %v, err = %v", job, err)
+			}
+			requestGone, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			svc.HandOffStep(requestGone, *job, diagram)
+
+			final, err := svc.Get(context.Background(), ws, id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if final.State != tc.wantState {
+				t.Errorf("state = %q, want %q", final.State, tc.wantState)
+			}
+		})
+	}
+}

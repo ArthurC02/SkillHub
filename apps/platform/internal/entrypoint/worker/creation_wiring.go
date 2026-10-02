@@ -19,7 +19,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 		if err != nil {
 			return nil, cost, err
 		}
-		return wiring.FirstResolvedReferences(ctx, s, ws, catalog.FuseRanked(rankings)), cost, nil
+		return s.FirstResolvedReferences(ctx, ws, catalog.FuseRanked(rankings)), cost, nil
 	}
 	wiring.WireCreationReferenceReads(s, versions, search)
 }

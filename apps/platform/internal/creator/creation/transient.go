@@ -120,6 +120,24 @@ func TransientClientWithHTTP(baseURL, token string, timeout time.Duration, clien
 	}
 }
 
+const interruptTimeout = 10 * time.Second
+
+func (s *Service) HandOffStep(ctx context.Context, a JobArgs, d *Diagram) {
+	err := ErrUnavailable
+	if s.HandOff != nil {
+		err = s.HandOff(ctx, a, d)
+	}
+	if err == nil {
+		return
+	}
+	interruptCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), interruptTimeout)
+	defer cancel()
+	if interruptErr := s.InterruptedTransient(interruptCtx, a); interruptErr != nil {
+		slog.Error("creation: a step that could not be handed off was not interrupted; the stalled-session sweep will end it",
+			"session_id", UUID(a.SessionID), "hand_off_error", err, "error", interruptErr)
+	}
+}
+
 func (s *Service) InterruptedTransient(ctx context.Context, a JobArgs) error {
 	return s.recoverAttempt(ctx, a, nothingSpared)
 }

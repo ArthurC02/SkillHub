@@ -377,6 +377,18 @@ func (s *Service) ReviewExposure(
 		return ExposureCase{}, &ExposureError{ExposureReasonMissing}
 	}
 
+	reviewed, err := currentExposure(ctx, gen.New(s.Pool), publisher, name)
+	if err != nil {
+		return ExposureCase{}, err
+	}
+	if reviewed.ReleaseID != in.ReleaseID || reviewed.Sequence != in.ExpectedSequence {
+		return ExposureCase{}, &ExposureError{ExposureStale}
+	}
+	digest, err := s.approvalDigest(ctx, reviewed, in.Decision)
+	if err != nil {
+		return ExposureCase{}, err
+	}
+
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return ExposureCase{}, err
@@ -387,12 +399,8 @@ func (s *Service) ReviewExposure(
 	if err != nil {
 		return ExposureCase{}, err
 	}
-	if state.ReleaseID != in.ReleaseID || state.Sequence != in.ExpectedSequence {
+	if !state.sameReleaseAs(reviewed) {
 		return ExposureCase{}, &ExposureError{ExposureStale}
-	}
-	digest, err := s.approvalDigest(ctx, state, in.Decision)
-	if err != nil {
-		return ExposureCase{}, err
 	}
 	review, err := q.InsertExposureReview(ctx, gen.InsertExposureReviewParams{
 		PublicationID: publicationID, Sequence: state.Sequence + 1, ReleaseID: state.ReleaseID,
@@ -418,6 +426,29 @@ func (s *Service) ReviewExposure(
 	}
 	out, _, err := s.ExposureCase(ctx, publisher, name)
 	return out, err
+}
+
+func currentExposure(ctx context.Context, q *gen.Queries, publisher, name string) (ExposureState, error) {
+	row, err := q.GetPublicPublication(ctx, gen.GetPublicPublicationParams{PublisherName: publisher, Name: name})
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !row.SkillID.Valid) {
+		return ExposureState{}, ErrNotFound
+	}
+	if err != nil {
+		return ExposureState{}, err
+	}
+	states, err := exposureStates(ctx, q, row.ID)
+	if err != nil {
+		return ExposureState{}, err
+	}
+	if len(states) == 0 {
+		return ExposureState{}, ErrNotFound
+	}
+	return states[0], nil
+}
+
+func (state ExposureState) sameReleaseAs(other ExposureState) bool {
+	return state.ReleaseID == other.ReleaseID && state.Sequence == other.Sequence && state.Status == other.Status &&
+		state.SkillID == other.SkillID && state.OwnerWorkspaceID == other.OwnerWorkspaceID && state.VersionID == other.VersionID
 }
 
 func lockCurrentExposure(ctx context.Context, q *gen.Queries, publisher, name string) (pgtype.UUID, ExposureState, error) {

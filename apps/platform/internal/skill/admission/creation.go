@@ -133,8 +133,11 @@ func (s *Service) findCreationReference(ctx context.Context, ws identity.Workspa
 	}
 	if !found {
 		skill, found, err = s.References.CatalogSkill(ctx, skillID)
+		if err != nil {
+			return creationReference{}, err
+		}
 	}
-	if err != nil || !found || !referenceable(skill) {
+	if !found || !referenceable(skill) {
 		return creationReference{}, ErrReferenceUnavailable
 	}
 	var version registry.Version
@@ -143,7 +146,10 @@ func (s *Service) findCreationReference(ctx context.Context, ws identity.Workspa
 	} else {
 		version, found, err = s.References.LatestVersion(ctx, skill.WorkspaceID, skill.ID)
 	}
-	if err != nil || !found || version.SkillID != skill.ID {
+	if err != nil {
+		return creationReference{}, err
+	}
+	if !found || version.SkillID != skill.ID {
 		return creationReference{}, ErrReferenceUnavailable
 	}
 	tree, md, err := s.openReferencePackage(ctx, version)

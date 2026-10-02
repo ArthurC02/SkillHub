@@ -1180,8 +1180,8 @@ func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T
 	}
 
 	settled := fake.Destroys()
-	job := &river.Job[worker.RunCleanupArgs]{
-		Args: worker.RunCleanupArgs{RunID: created.RunID, WorkspaceID: f.workspaceID},
+	job := &river.Job[wiring.RunCleanupArgs]{
+		Args: wiring.RunCleanupArgs{RunID: created.RunID, WorkspaceID: f.workspaceID},
 	}
 	if err := (&worker.RunCleanupWorker{Runs: &svc}).Work(context.Background(), job); err != nil {
 		t.Fatalf("a cleanup job for an already-cleaned run: %v", err)
