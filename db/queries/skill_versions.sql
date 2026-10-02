@@ -74,5 +74,11 @@ SELECT NOT EXISTS (
 -- name: ListSkillSourcesInVersions :many
 SELECT DISTINCT source_id FROM skill_versions WHERE source_id = ANY(@source_ids::uuid[]);
 
+-- name: ListSourcePaths :many
+SELECT DISTINCT ON (source_id) source_id, source_path
+FROM skill_versions
+WHERE source_id = ANY(@source_ids::uuid[])
+ORDER BY source_id, version_number DESC;
+
 -- name: OldestCollectableObjectEnqueuedAt :one
 SELECT min(enqueued_at)::timestamptz FROM object_collection_queue;

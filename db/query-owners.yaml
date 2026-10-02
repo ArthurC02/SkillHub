@@ -324,6 +324,7 @@ scope:
   GetLatestCostStatistics: user
   OldestPendingEnrichment: worker
   OldestSourceCheck: worker
+  ListSourcePaths: worker
   ListOutboxEventsByTypeAfter: worker
 
 allow:

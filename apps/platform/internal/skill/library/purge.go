@@ -113,6 +113,18 @@ func SourcesInVersions(ctx context.Context, db gen.DBTX, sourceIDs []pgtype.UUID
 	return gen.New(db).ListSkillSourcesInVersions(ctx, sourceIDs)
 }
 
+func SourcePaths(ctx context.Context, db gen.DBTX, sourceIDs []pgtype.UUID) (map[pgtype.UUID]string, error) {
+	rows, err := gen.New(db).ListSourcePaths(ctx, sourceIDs)
+	if err != nil {
+		return nil, err
+	}
+	paths := make(map[pgtype.UUID]string, len(rows))
+	for _, r := range rows {
+		paths[r.SourceID] = r.SourcePath
+	}
+	return paths, nil
+}
+
 type DeletionSweep struct {
 	Purged  int64
 	Waiting int64

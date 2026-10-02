@@ -226,6 +226,38 @@ func (q *Queries) ListSkillVersions(ctx context.Context, arg ListSkillVersionsPa
 	return items, nil
 }
 
+const listSourcePaths = `-- name: ListSourcePaths :many
+SELECT DISTINCT ON (source_id) source_id, source_path
+FROM skill_versions
+WHERE source_id = ANY($1::uuid[])
+ORDER BY source_id, version_number DESC
+`
+
+type ListSourcePathsRow struct {
+	SourceID   pgtype.UUID
+	SourcePath string
+}
+
+func (q *Queries) ListSourcePaths(ctx context.Context, sourceIds []pgtype.UUID) ([]ListSourcePathsRow, error) {
+	rows, err := q.db.Query(ctx, listSourcePaths, sourceIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSourcePathsRow
+	for rows.Next() {
+		var i ListSourcePathsRow
+		if err := rows.Scan(&i.SourceID, &i.SourcePath); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listVersionSummaries = `-- name: ListVersionSummaries :many
 SELECT sv.id, sv.skill_id, sv.version_number, sk.name AS skill_name,
        sk.access_restriction, sk.redistribution,

@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
@@ -468,5 +470,65 @@ func TestAStandaloneUploadOnEitherSideKeepsAttachingAsANewVersion(t *testing.T) 
 				t.Errorf("workspace holds %d skills, want 1; a standalone upload has no source to conflict with", n)
 			}
 		})
+	}
+}
+
+func TestASkillImportedFromInsideAPluginIsChangedOnlyWhenItsOwnFilesChange(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "plugin-source-change")
+	plugin := func(tidy, split string) []byte {
+		return zipOf(t, map[string]string{
+			"plugin.json":                conformingPlugin("desk-tools"),
+			"skills/tidy-notes/SKILL.md": tidy,
+			"skills/split-csv/SKILL.md":  split,
+		})
+	}
+	served := plugin(skillNamed("tidy-notes"), skillNamed("split-csv"))
+	if code, body := postSource(t, owner, served); code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201; body = %v", code, body)
+	}
+
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			return
+		}
+		_, _ = w.Write(served)
+	}))
+	t.Cleanup(upstream.Close)
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE skill_sources SET source_type = 'git', source_url = $2 WHERE workspace_id = $1",
+		mustUUID(t, owner.workspaceID), upstream.URL); err != nil {
+		t.Fatal(err)
+	}
+	svc := &ingest.Service{Pool: pool, Fetcher: &ingest.URLFetcher{
+		Allowed: map[string]bool{mustHost(t, upstream.URL): true}, AllowInsecure: true,
+	}}
+	changedPaths := func(t *testing.T) []string {
+		t.Helper()
+		if _, err := svc.CheckSources(context.Background(), 200); err != nil {
+			t.Fatal(err)
+		}
+		rows, err := pool.Query(context.Background(), `
+			SELECT sv.source_path FROM skill_versions sv JOIN skill_sources ss ON ss.id = sv.source_id
+			WHERE ss.workspace_id = $1 AND ss.content_changed_at IS NOT NULL ORDER BY sv.source_path`,
+			mustUUID(t, owner.workspaceID))
+		if err != nil {
+			t.Fatal(err)
+		}
+		paths, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
+			t.Fatal(err)
+		}
+		return paths
+	}
+
+	served = plugin(skillNamed("tidy-notes"), skillNamed("split-csv"))
+	if got := changedPaths(t); len(got) != 0 {
+		t.Fatalf("changed = %v after re-serving the same files; a rebuilt archive is not new content", got)
+	}
+	served = plugin(skillNamed("tidy-notes")+"\nAnd tidy the margins.\n", skillNamed("split-csv"))
+	if got := strings.Join(changedPaths(t), ","); got != "skills/tidy-notes" {
+		t.Fatalf("changed = %q, want only skills/tidy-notes; its sibling's files are untouched", got)
 	}
 }
