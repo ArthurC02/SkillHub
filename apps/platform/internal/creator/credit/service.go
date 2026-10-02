@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"strings"
 	"time"
@@ -385,12 +386,17 @@ func (s *Service) RecomputeStatistics(ctx context.Context, statKind CostKind, wi
 		return Statistics{}, ErrUnavailable
 	}
 	now := time.Now()
+	var sweepErr error
 	if statKind == KindCreationSession && s.Config.SessionIdle > 0 {
-		if _, err := s.Store.SweepSessionSummaries(ctx, now.Add(-window), now.Add(-s.Config.SessionIdle)); err != nil {
-			return Statistics{}, err
+		if _, sweepErr = s.Store.SweepSessionSummaries(ctx, now.Add(-window), now.Add(-s.Config.SessionIdle)); sweepErr != nil {
+			slog.Warn("credit: session summary sweep failed; recomputing from the summaries that exist", "error", sweepErr)
 		}
 	}
-	return s.Store.RecomputeStatistics(ctx, statKind, now.Add(-window), now)
+	stats, err := s.Store.RecomputeStatistics(ctx, statKind, now.Add(-window), now)
+	if err != nil {
+		return Statistics{}, errors.Join(sweepErr, err)
+	}
+	return stats, sweepErr
 }
 
 // SummarizeSession runs in a savepoint so a failed summary cannot abort the caller's transaction.

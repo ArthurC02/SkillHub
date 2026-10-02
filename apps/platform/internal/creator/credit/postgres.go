@@ -1,9 +1,12 @@
 package credit
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -255,14 +258,20 @@ func (s *PostgresStore) summarizeSessions(ctx context.Context, q *gen.Queries, s
 	if err != nil {
 		return 0, err
 	}
+	bySession := sessionStepsByID(rows)
+	ordered := slices.SortedFunc(maps.Keys(bySession), func(a, b pgtype.UUID) int {
+		return bytes.Compare(a.Bytes[:], b.Bytes[:])
+	})
 	var written int64
-	for sessionID, steps := range sessionStepsByID(rows) {
-		if err := q.UpsertSessionCostSummary(ctx, summarizeSession(sessionID, steps).upsert()); err != nil {
-			return written, err
+	var failures error
+	for _, sessionID := range ordered {
+		if err := q.UpsertSessionCostSummary(ctx, summarizeSession(sessionID, bySession[sessionID]).upsert()); err != nil {
+			failures = errors.Join(failures, fmt.Errorf("credit: summarize session %s: %w", pgconv.UUIDString(sessionID), err))
+			continue
 		}
 		written++
 	}
-	return written, nil
+	return written, failures
 }
 
 func nullString(s string) *string {

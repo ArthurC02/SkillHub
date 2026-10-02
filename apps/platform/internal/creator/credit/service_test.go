@@ -30,6 +30,7 @@ type fakeStore struct {
 	windows  map[CostKind][]int64
 	nextID   int
 	swept    int
+	sweepErr error
 }
 
 func newFakeStore() *fakeStore {
@@ -550,6 +551,48 @@ func TestRecomputeStatisticsSweepsSessionSummariesOnlyForTheSessionKind(t *testi
 	}
 }
 
+func TestRecomputeStatisticsStillRunsWhenTheSweepFails(t *testing.T) {
+	store := newFakeStore()
+	store.sweepErr = errors.New("one session could not be summarized")
+	store.windows[KindCreationSession] = []int64{10, 20, 30}
+	config := testConfig()
+	config.SessionIdle = time.Hour
+	s := &Service{Store: store, Config: config}
+
+	got, err := s.RecomputeStatistics(context.Background(), KindCreationSession, 24*time.Hour)
+
+	if !errors.Is(err, store.sweepErr) {
+		t.Fatalf("error = %v, want it to carry the sweep failure so the job is retried", err)
+	}
+	if got.SampleCount != 3 || store.stats[KindCreationSession].SampleCount != 3 {
+		t.Fatalf("statistics after a failed sweep = %+v (stored %+v), want the 3 samples that exist", got, store.stats[KindCreationSession])
+	}
+}
+
+func TestRecomputeStatisticsReportsBothFailuresWhenSweepAndRecomputeFail(t *testing.T) {
+	store := newFakeStore()
+	store.sweepErr = errors.New("sweep failed")
+	recomputeErr := errors.New("recompute failed")
+	config := testConfig()
+	config.SessionIdle = time.Hour
+	s := &Service{Store: &recomputeFailingStore{fakeStore: store, err: recomputeErr}, Config: config}
+
+	_, err := s.RecomputeStatistics(context.Background(), KindCreationSession, 24*time.Hour)
+
+	if !errors.Is(err, store.sweepErr) || !errors.Is(err, recomputeErr) {
+		t.Fatalf("error = %v, want both the sweep and the recompute failure", err)
+	}
+}
+
+type recomputeFailingStore struct {
+	*fakeStore
+	err error
+}
+
+func (r *recomputeFailingStore) RecomputeStatistics(context.Context, CostKind, time.Time, time.Time) (Statistics, error) {
+	return Statistics{}, r.err
+}
+
 func TestServiceMethodsFailClosedWithoutAStore(t *testing.T) {
 	s := &Service{}
 	if _, err := s.Charge(context.Background(), nil, ChargeInput{}); !errors.Is(err, ErrUnavailable) {
@@ -573,7 +616,7 @@ func (f *fakeStore) SummarizeSession(context.Context, DBTX, pgtype.UUID) error {
 
 func (f *fakeStore) SweepSessionSummaries(context.Context, time.Time, time.Time) (int64, error) {
 	f.swept++
-	return 0, nil
+	return 0, f.sweepErr
 }
 
 func TestAccountChecksReadThroughTheCallersTransaction(t *testing.T) {
