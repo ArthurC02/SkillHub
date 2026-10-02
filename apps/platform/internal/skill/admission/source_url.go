@@ -12,13 +12,23 @@ type sourcePolicy struct {
 }
 
 func (p sourcePolicy) check(u *url.URL) error {
+	if err := p.checkHop(u); err != nil {
+		return err
+	}
+	if u.RawQuery != "" || u.Fragment != "" {
+		return fmt.Errorf("%w: 來源網址不得帶帳號密碼、查詢字串或錨點。", ErrFetch)
+	}
+	return nil
+}
+
+func (p sourcePolicy) checkHop(u *url.URL) error {
 	if u.Scheme != "https" && (!p.allowInsecure || u.Scheme != "http") {
 		return fmt.Errorf("%w: 來源網址必須是 https。", ErrFetch)
 	}
 	if !p.allowedHosts[strings.ToLower(u.Host)] {
 		return fmt.Errorf("%w: 來源網域 %q 不在允許清單內。", ErrFetch, u.Host)
 	}
-	if u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+	if u.User != nil {
 		return fmt.Errorf("%w: 來源網址不得帶帳號密碼、查詢字串或錨點。", ErrFetch)
 	}
 	return nil

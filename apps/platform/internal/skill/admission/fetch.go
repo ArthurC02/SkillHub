@@ -135,7 +135,7 @@ func (f *URLFetcher) do(req *http.Request) (*http.Response, error) {
 		if len(via) > maxRedirects {
 			return errTooManyRedirects
 		}
-		return f.checkURL(req.URL)
+		return f.policy().checkHop(req.URL)
 	}
 	resp, err := client.Do(req)
 
