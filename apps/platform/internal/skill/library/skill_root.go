@@ -313,6 +313,9 @@ func (s *SkillRoot) AddVersion(content VersionContent) {
 
 func (s *SkillRoot) AdoptNewestSummary() {
 	summary := s.pending.summary
+	if s.row.Summary != nil && *s.row.Summary == summary {
+		return
+	}
 	s.row.Summary = &summary
 	s.record(SkillDescribed{})
 }

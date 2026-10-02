@@ -414,12 +414,6 @@ func (s *Service) saveVersion(ctx context.Context, ws identity.Workspace, skillI
 	if err != nil {
 		return Result{}, err
 	}
-	if !res.Duplicate {
-		root.AdoptNewestSummary()
-		if err := registry.SaveSkill(ctx, tx, root); err != nil {
-			return Result{}, err
-		}
-	}
 	if err := auditVersion(ctx, tx, ws, res, versionAudit{audit.ActionSkillVersionCreate, map[string]any{
 		"version_number": res.Version.VersionNumber,
 	}}); err != nil {
@@ -495,6 +489,7 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 		content = content.ImprovedBy(*src.ImprovedBy)
 	}
 	root.AddVersion(content)
+	root.AdoptNewestSummary()
 	if err := registry.SaveSkill(ctx, tx, root); err != nil {
 		return registry.Version{}, false, err
 	}

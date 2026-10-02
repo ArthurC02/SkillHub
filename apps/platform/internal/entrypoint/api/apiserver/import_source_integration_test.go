@@ -532,3 +532,29 @@ func TestASkillImportedFromInsideAPluginIsChangedOnlyWhenItsOwnFilesChange(t *te
 		t.Fatalf("changed = %q, want only skills/tidy-notes; its sibling's files are untouched", got)
 	}
 }
+
+func TestImportingANewVersionOfASkillByNameUpdatesItsSummary(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "reimport-summary")
+	described := func(description string) []byte {
+		return zipOf(t, map[string]string{"SKILL.md": "---\nname: tidy-notes\ndescription: " + description +
+			"\nlicense: MIT\n---\n# tidy-notes\n\nDo the thing.\n"})
+	}
+
+	for _, description := range []string{"Tidy meeting notes into bullet points.", "Tidy meeting notes and list who owns each action."} {
+		if code, body := postSource(t, owner, described(description)); code != http.StatusCreated {
+			t.Fatalf("status = %d, want 201; body = %v", code, body)
+		}
+	}
+
+	var summary string
+	if err := pool.QueryRow(context.Background(),
+		"SELECT coalesce(summary, '') FROM skills WHERE workspace_id = $1 AND name = 'tidy-notes'",
+		mustUUID(t, owner.workspaceID)).Scan(&summary); err != nil {
+		t.Fatal(err)
+	}
+	if summary != "Tidy meeting notes and list who owns each action." {
+		t.Fatalf("summary = %q, want the newest version's description", summary)
+	}
+}

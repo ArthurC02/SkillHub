@@ -403,6 +403,17 @@ func TestASavedVersionLendsTheSkillItsSummary(t *testing.T) {
 	assertSkillEvents(t, s, SkillVersionAdded{VersionNumber: 1, ContentHash: "h"}, SkillDescribed{})
 }
 
+func TestAVersionCarryingTheSameSummaryDoesNotDescribeTheSkillAgain(t *testing.T) {
+	s := skillMarked(RedistributionUnknown, newestVersion{})
+	content := packageContent(t, "h", false)
+	s.row.Summary = &content.summary
+
+	s.AddVersion(content)
+	s.AdoptNewestSummary()
+
+	assertSkillEvents(t, s, SkillVersionAdded{VersionNumber: 1, ContentHash: "h"})
+}
+
 func TestANewVersionTakesTheNumberAfterTheNewestAndBecomesTheNewest(t *testing.T) {
 	s := skillMarked(RedistributionUnknown, newestVersion{exists: true, number: 4, license: LicenseClaim{Expression: "MIT", Source: "LICENSE"}})
 	content := packageContent(t, "h", false)
