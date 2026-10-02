@@ -854,6 +854,14 @@ func TestARefusedToolIsNotAToolTheyAskedFor(t *testing.T) {
 	if len(both) != 0 {
 		t.Fatalf("a later unnegated request should count: %v", both)
 	}
+	stressed := toolsNotRequested("Read", "Read Bash", "", "", "", "這一步特別需要 bash")
+	if len(stressed) != 0 {
+		t.Fatalf("a word that merely ends in 別 was read as a refusal: %v", stressed)
+	}
+	plain := toolsNotRequested("Read", "Read Bash", "", "", "", "這一步別 bash 了")
+	if len(plain) != 1 {
+		t.Fatalf("a bare 別 before the tool is still a refusal: %v", plain)
+	}
 }
 
 func TestTheNudgeOnlyBlamesTheEvaluationWhenItNamesTheTool(t *testing.T) {
