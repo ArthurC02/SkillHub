@@ -39,9 +39,15 @@ func (h *Handler) Ingest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBatchBytes))
-	if err != nil {
+	var tooLarge *http.MaxBytesError
+	switch {
+	case errors.As(err, &tooLarge):
 		metrics.TraceIngestRejected.WithLabelValues("too_large").Inc()
 		httpx.WriteError(w, http.StatusRequestEntityTooLarge, "trace batch is too large")
+		return
+	case err != nil:
+		metrics.TraceIngestRejected.WithLabelValues("unreadable").Inc()
+		httpx.WriteError(w, http.StatusBadRequest, "could not read the trace batch")
 		return
 	}
 	var events []Event
