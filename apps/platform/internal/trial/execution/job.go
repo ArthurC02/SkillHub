@@ -89,17 +89,19 @@ type driver struct {
 }
 
 func (d *driver) execute(ctx context.Context, attempts []gen.RunAttempt) error {
-
-	if d.cur.CancelRequestedAt.Valid && d.cur.Status == gen.RunStatusQueued {
+	live := liveAttempt(attempts)
+	if d.cur.CancelRequestedAt.Valid && d.cur.Status == gen.RunStatusQueued && live == nil {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusCancelled, failureCancelled, "派送之前就被取消")
 	}
 	if d.expired() {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 	}
 
-	switch live := liveAttempt(attempts); {
+	switch {
 	case live != nil:
-
+		if err := d.leaveQueue(ctx, live.Provider); err != nil {
+			return err
+		}
 		return d.follow(ctx, attempts, *live)
 	case d.cur.Status == gen.RunStatusQueued || d.cur.Status == gen.RunStatusProvisioning:
 		return d.dispatch(ctx)
@@ -111,6 +113,13 @@ func (d *driver) execute(ctx context.Context, attempts []gen.RunAttempt) error {
 	default:
 		return d.terminateUnresumable(ctx)
 	}
+}
+
+func (d *driver) leaveQueue(ctx context.Context, provider string) error {
+	if d.cur.Status != gen.RunStatusQueued {
+		return nil
+	}
+	return d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+statusReason(provider))
 }
 
 func (d *driver) resumeEvaluating(ctx context.Context, attempts []gen.RunAttempt) error {
@@ -340,10 +349,8 @@ func (d *driver) startAccepted(
 	attempt = dispatched.Attempt(attempt.ID)
 	d.cur = dispatched.Row()
 	d.clock = d.clock.dispatchedAt(attempt.StartedAt.Time)
-	if d.cur.Status == gen.RunStatusQueued {
-		if err := d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+statusReason(provider.Name())); err != nil {
-			return attemptSettled, err
-		}
+	if err := d.leaveQueue(ctx, provider.Name()); err != nil {
+		return attemptSettled, err
 	}
 
 	if pr.State == ProviderStateFailed {

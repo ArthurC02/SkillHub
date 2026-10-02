@@ -264,3 +264,69 @@ func TestARunWhoseVersionIsGoneAtDispatchFails(t *testing.T) {
 		t.Errorf("dispatches = %d, want none", fake.Dispatches())
 	}
 }
+
+type queuedButDispatched struct {
+	f       fixture
+	svc     run.Service
+	fake    *providertest.Fake
+	ws, run pgtype.UUID
+	runID   string
+}
+
+func newQueuedButDispatched(t *testing.T, name string) queuedButDispatched {
+	t.Helper()
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, name)
+	created := f.start(t)
+	fake := providertest.New("fake_sandbox", "test-token")
+	t.Cleanup(fake.Close)
+	fake.Plan = providertest.Plan{StuckRunning: true}
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+	var attemptID pgtype.UUID
+	if err := pool.QueryRow(context.Background(), "SELECT gen_random_uuid()").Scan(&attemptID); err != nil {
+		t.Fatal(err)
+	}
+	handle := fake.Seed(created.RunID, uuidText(attemptID), time.Now())
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO run_attempts (id, run_id, workspace_id, attempt_number, provider, provider_run_id, started_at)
+		VALUES ($1, $2, $3, 1, 'fake_sandbox', $4, now())`, attemptID, runID, ws, handle); err != nil {
+		t.Fatal(err)
+	}
+	svc := *a.runs
+	svc.Providers = run.NewRegistry(fake.Provider())
+	svc.Store = a.packages
+	return queuedButDispatched{f: f, svc: svc, fake: fake, ws: ws, run: runID, runID: created.RunID}
+}
+
+func (s queuedButDispatched) driveBriefly() {
+	following, stop := context.WithTimeout(context.Background(), 2*time.Second)
+	defer stop()
+	_ = s.svc.Drive(following, s.ws, s.run)
+}
+
+func TestARunLeftQueuedWithADispatchedAttemptMovesOnWithoutASecondDispatch(t *testing.T) {
+	s := newQueuedButDispatched(t, "alice-queued-but-dispatched")
+
+	s.driveBriefly()
+
+	if _, view := s.f.getRun(t, s.runID); view.Status == string(gen.RunStatusQueued) {
+		t.Errorf("run is still queued (%s) although its attempt is at a provider", view.StatusReason)
+	}
+	if s.fake.Dispatches() != 0 {
+		t.Errorf("dispatches = %d, want 0: the attempt already at the provider is followed, not sent again", s.fake.Dispatches())
+	}
+}
+
+func TestACancelOfARunLeftQueuedWithADispatchedAttemptReachesItsSandbox(t *testing.T) {
+	s := newQueuedButDispatched(t, "alice-queued-dispatched-cancel")
+	if code := s.f.status(t, http.MethodPost, "/runs/"+s.runID+"/cancel"); code != http.StatusAccepted {
+		t.Fatalf("cancel = %d, want 202", code)
+	}
+
+	s.driveBriefly()
+
+	if _, view := s.f.getRun(t, s.runID); view.StatusReason == "派送之前就被取消" {
+		t.Errorf("run is %q (%s): its sandbox was running, so it was not cancelled before dispatch", view.Status, view.StatusReason)
+	}
+}
