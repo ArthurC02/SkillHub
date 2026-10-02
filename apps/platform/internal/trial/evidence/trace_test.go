@@ -199,6 +199,10 @@ func TestValidateRejectsMalformedEnvelopes(t *testing.T) {
 		"non-object payload":  func(e *Event) { e.Payload = json.RawMessage(`[]`) },
 		"oversized payload":   func(e *Event) { e.Payload = json.RawMessage(strings.Repeat("x", maxPayloadBytes+1)) },
 		"no occurrence time":  func(e *Event) { e.OccurredAt = time.Time{} },
+		"years ahead":         func(e *Event) { e.OccurredAt = time.Now().AddDate(4, 0, 0) },
+		"just past the skew":  func(e *Event) { e.OccurredAt = time.Now().Add(maxOccurrenceSkew + time.Minute) },
+		"before the grant":    func(e *Event) { e.OccurredAt = time.Now().Add(-DefaultTTL - maxOccurrenceSkew - time.Minute) },
+		"the epoch":           func(e *Event) { e.OccurredAt = time.Unix(0, 0) },
 	}
 	for name, mutate := range cases {
 		event := base()
@@ -221,6 +225,8 @@ func TestValidateAcceptsTheSeqAndAttemptCeilingsThemselves(t *testing.T) {
 	cases := map[string]func(*Event){
 		"seq at the ceiling":     func(e *Event) { e.Seq = maxTraceSeq },
 		"attempt at the ceiling": func(e *Event) { e.Attempt = maxTraceAttempt },
+		"a clock slightly ahead": func(e *Event) { e.OccurredAt = time.Now().Add(maxOccurrenceSkew - time.Minute) },
+		"early in a long grant":  func(e *Event) { e.OccurredAt = time.Now().Add(-DefaultTTL + time.Minute) },
 	}
 	for name, mutate := range cases {
 		event := base()

@@ -85,6 +85,9 @@ func (e *Event) Validate() error {
 	if err := e.validateEnvelope(); err != nil {
 		return err
 	}
+	if err := e.validateOccurrence(time.Now()); err != nil {
+		return err
+	}
 	if err := e.validateOrigin(); err != nil {
 		return err
 	}
@@ -112,6 +115,15 @@ func (e *Event) validateEnvelope() error {
 		return fmt.Errorf("%w: seq must not exceed %d", ErrInvalid, maxTraceSeq)
 	case e.OccurredAt.IsZero():
 		return fmt.Errorf("%w: occurred_at is required", ErrInvalid)
+	}
+	return nil
+}
+
+const maxOccurrenceSkew = 5 * time.Minute
+
+func (e *Event) validateOccurrence(now time.Time) error {
+	if e.OccurredAt.After(now.Add(maxOccurrenceSkew)) || e.OccurredAt.Before(now.Add(-DefaultTTL-maxOccurrenceSkew)) {
+		return fmt.Errorf("%w: occurred_at must fall within this attempt's ingestion window", ErrInvalid)
 	}
 	return nil
 }
