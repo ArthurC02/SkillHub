@@ -1191,7 +1191,10 @@ try {
   const budget = budgetPicker.locator(
     'input[name="creation-budget"][value="500"]',
   );
-  await budgetPicker.locator("label").filter({ has: budget }).click();
+  await budgetPicker
+    .locator(".quick-replies > label")
+    .filter({ hasText: /^500 點$/ })
+    .click();
   check("the browser selects a creation budget", await budget.isChecked());
   await page.getByLabel("想完成的任務").fill("用真瀏覽器送出這次創作");
   const start = page.locator("button.composer-send");
@@ -1240,7 +1243,7 @@ try {
   );
   check("no uncaught page errors", problems.length === 0, problems.join(" / "));
 } catch (err) {
-  check("the credit pass ran to the end", false, err.message);
+  check("the credit pass ran to the end", false, err.stack ?? err.message);
 }
 
 await browser.close();
