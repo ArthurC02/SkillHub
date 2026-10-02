@@ -240,6 +240,25 @@ func (q *Queries) GetCatalogReferenceFacts(ctx context.Context, arg GetCatalogRe
 	return i, err
 }
 
+const getSearchDocumentEnrichedText = `-- name: GetSearchDocumentEnrichedText :one
+SELECT enriched_summary, task_examples, tags
+FROM search_documents
+WHERE skill_id = $1
+`
+
+type GetSearchDocumentEnrichedTextRow struct {
+	EnrichedSummary string
+	TaskExamples    string
+	Tags            []byte
+}
+
+func (q *Queries) GetSearchDocumentEnrichedText(ctx context.Context, skillID pgtype.UUID) (GetSearchDocumentEnrichedTextRow, error) {
+	row := q.db.QueryRow(ctx, getSearchDocumentEnrichedText, skillID)
+	var i GetSearchDocumentEnrichedTextRow
+	err := row.Scan(&i.EnrichedSummary, &i.TaskExamples, &i.Tags)
+	return i, err
+}
+
 const getSearchSnapshot = `-- name: GetSearchSnapshot :one
 SELECT skill_id, latest_version_id, name, summary, enriched_summary, task_examples, tags, limitations,
        enrichment_status, listable, exposure_digest

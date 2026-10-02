@@ -318,6 +318,11 @@ UPDATE search_documents
 SET bigram = to_tsvector('simple', sqlc.arg(bigram_text)::text)
 WHERE skill_id = $1;
 
+-- name: GetSearchDocumentEnrichedText :one
+SELECT enriched_summary, task_examples, tags
+FROM search_documents
+WHERE skill_id = $1;
+
 -- name: ListCatalogueDocumentsEnrichedBefore :many
 SELECT sd.skill_id, (sd.embedding IS NOT NULL)::bool AS has_embedding
 FROM search_documents sd

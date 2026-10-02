@@ -276,6 +276,7 @@ scope:
   ListOutboxEventsByAggregate: user
   ListRunsNeedingCleanup: user
   ListSearchDocumentsMissingBigram: user
+  GetSearchDocumentEnrichedText: user
   ListSkillSourcesInVersions: user
   ListSkillVersionsInDownloads: user
   ListSkillVersionsInRuns: user

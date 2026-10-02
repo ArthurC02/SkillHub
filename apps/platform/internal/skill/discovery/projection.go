@@ -77,10 +77,14 @@ type EnrichedSkillProjection struct {
 
 func (s *Service) IndexSkill(ctx context.Context, tx pgx.Tx, projection SkillProjection) error {
 	return s.indexLive(ctx, tx, projection.SkillID, func(q *gen.Queries) error {
+		stored, err := q.GetSearchDocumentEnrichedText(ctx, projection.SkillID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
 		return q.UpsertSearchDocument(ctx, gen.UpsertSearchDocumentParams{
 			SkillID: projection.SkillID, WorkspaceID: projection.WorkspaceID,
 			Name: projection.Name, Summary: projection.Summary,
-			BigramText: LexicalIndexText(projection.Name, projection.Summary),
+			BigramText: LexicalIndexText(projection.Name, projection.Summary, stored.EnrichedSummary, stored.TaskExamples, jsonStrings(stored.Tags)),
 		})
 	})
 }
