@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -201,12 +202,16 @@ func (s *Service) RebuildIndex(ctx context.Context) (indexed, pruned int64, err 
 	if pruned, err = s.pruneRetired(ctx, q, s.Pool); err != nil {
 		return indexed, 0, err
 	}
+	var failures []error
 	for _, sk := range skills {
 		if err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error { return s.RefreshListing(ctx, tx, sk.ID) }); err != nil {
-			return indexed, pruned, err
+			failures = append(failures, fmt.Errorf("refresh listing of skill %s: %w", pgconv.UUIDString(sk.ID), err))
+			if ctx.Err() != nil {
+				break
+			}
 		}
 	}
-	return indexed, pruned, nil
+	return indexed, pruned, errors.Join(failures...)
 }
 
 func (s *Service) pruneRetired(ctx context.Context, q *gen.Queries, db gen.DBTX) (int64, error) {
