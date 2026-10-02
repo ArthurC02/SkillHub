@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"gopkg.in/yaml.v3"
 )
 
@@ -72,7 +71,7 @@ func TestEveryOutcomeTheContractDeclaresReachesABranch(t *testing.T) {
 			s := &Service{}
 			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 			r := &StepResult{Message: "m", Outcome: outcome, Brief: "b"}
-			_, _, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
+			_, _, err := s.proposal(context.Background(), 3, &e, r, nil)
 			if errors.Is(err, ErrUnknownOutcome) {
 				t.Fatalf("the service may send %q and this build has no branch for it, so the "+
 					"session ends on an invalid command instead of advancing", outcome)
@@ -87,7 +86,7 @@ func TestEveryToolTheContractDeclaresHasSomethingToRun(t *testing.T) {
 			s := &Service{}
 			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 			r := &StepResult{Message: "m", Outcome: "tool_intent", ToolIntent: &ToolIntent{Kind: kind, Query: "q"}}
-			if s.toolFor(context.Background(), identity.Workspace{}, 3, &e, r) == nil {
+			if s.toolFor(context.Background(), 3, &e, r, nil) == nil {
 				t.Fatalf("the service may ask for %q and this build has nothing to run for it, so the "+
 					"request is refused as an invalid command", kind)
 			}

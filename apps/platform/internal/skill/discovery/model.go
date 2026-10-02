@@ -11,6 +11,7 @@ type ModelUsage struct {
 
 	CostUSD      *float64
 	CostReported bool
+	Reused       bool
 }
 
 func (u *ModelUsage) reportedCostUSD() *float64 {

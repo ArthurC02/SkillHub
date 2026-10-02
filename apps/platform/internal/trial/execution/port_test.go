@@ -64,6 +64,20 @@ func TestAProviderThatCannotBeReachedIsUnavailableRatherThanRefusing(t *testing.
 	}
 }
 
+func TestAProviderThatOutlastsTheRequestTimeoutIsSilentRatherThanRefusing(t *testing.T) {
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { <-release }))
+	t.Cleanup(srv.Close)
+	t.Cleanup(func() { close(release) })
+	p := NewProviderWithClient("test", srv.URL, "", &http.Client{Timeout: 50 * time.Millisecond})
+
+	_, err := p.Observe(context.Background(), "sbx-1")
+	if !errors.Is(err, ErrProviderUnavailable) || !retryable(err) {
+		t.Errorf("a provider that did not answer in time gave %v (retryable %v), want a silent provider worth another poll",
+			err, retryable(err))
+	}
+}
+
 func TestACancelledCallIsNotBlamedOnTheProvider(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

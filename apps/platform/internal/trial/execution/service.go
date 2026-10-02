@@ -370,7 +370,7 @@ func (s *Service) auditRefusal(ctx context.Context, p CreateParams, err error) {
 }
 
 func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
-	version, policy, err := s.admitRun(ctx, p)
+	admitted, err := s.admitRun(ctx, p)
 	if err != nil {
 		return gen.Run{}, err
 	}
@@ -385,19 +385,19 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		return gen.Run{}, err
 	}
 
-	snapshotID, err := s.snapshotConfirmedTestCase(ctx, tx, q, p, version)
+	snapshotID, err := s.snapshotConfirmedTestCase(ctx, tx, q, p, admitted)
 	if err != nil {
 		return gen.Run{}, err
 	}
 
 	requested := startRun(gen.Run{
 		WorkspaceID:        p.WorkspaceID,
-		SkillVersionID:     version.ID,
+		SkillVersionID:     admitted.version.ID,
 		TestCaseSnapshotID: snapshotID,
 		Provider:           providerUnassigned,
 
 		RuntimeSnapshot: []byte("{}"),
-		PolicySnapshot:  policy,
+		PolicySnapshot:  admitted.policy,
 	})
 	if err := s.saveRun(ctx, tx, requested, p.Actor); err != nil {
 		return gen.Run{}, err
@@ -416,49 +416,56 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	return run, nil
 }
 
-func (s *Service) admitRun(ctx context.Context, p CreateParams) (VersionFacts, []byte, error) {
+type admittedRun struct {
+	version VersionFacts
+	policy  []byte
+	live    liveFacts
+}
+
+func (s *Service) admitRun(ctx context.Context, p CreateParams) (admittedRun, error) {
 	if s.Registry == nil {
-		return VersionFacts{}, nil, errRegistryReadNotConfigured
+		return admittedRun{}, errRegistryReadNotConfigured
 	}
 
 	if err := s.requireDispatchable(ctx); err != nil {
-		return VersionFacts{}, nil, err
+		return admittedRun{}, err
 	}
 
 	version, found, err := s.Registry.Version(ctx, p.WorkspaceID, p.VersionID)
 	if !found && err == nil {
 
-		return VersionFacts{}, nil, ErrPreflightTargetNotFound
+		return admittedRun{}, ErrPreflightTargetNotFound
 	}
 	if err != nil {
-		return VersionFacts{}, nil, err
+		return admittedRun{}, err
 	}
 
 	if version.SkillID != p.SkillID {
-		return VersionFacts{}, nil, ErrNotFound
+		return admittedRun{}, ErrNotFound
 	}
 
 	if err := s.requireRunnableSkill(ctx, p); err != nil {
-		return VersionFacts{}, nil, err
+		return admittedRun{}, err
 	}
 
 	policy, err := defaultPolicySnapshot(s.Deployment)
 	if err != nil {
-		return VersionFacts{}, nil, err
+		return admittedRun{}, err
 	}
 
 	var decoded policySnapshot
 	if err := json.Unmarshal(policy, &decoded); err != nil {
-		return VersionFacts{}, nil, err
+		return admittedRun{}, err
 	}
 	if err := s.checkSchedulable(ctx, decoded); err != nil {
-		return VersionFacts{}, nil, err
+		return admittedRun{}, err
 	}
 
-	if err := s.requireScanNotBlocking(ctx, version.stored()); err != nil {
-		return VersionFacts{}, nil, err
+	live := s.liveFactsFor(ctx, version, decoded)
+	if err := requireScanNotBlocking(live.scan); err != nil {
+		return admittedRun{}, err
 	}
-	return version, policy, nil
+	return admittedRun{version: version, policy: policy, live: live}, nil
 }
 
 func (s *Service) requireRunnableSkill(ctx context.Context, p CreateParams) error {
@@ -485,7 +492,7 @@ func (s *Service) reserveRunCapacity(ctx context.Context, tx pgx.Tx, q *gen.Quer
 }
 
 func (s *Service) snapshotConfirmedTestCase(
-	ctx context.Context, tx pgx.Tx, q *gen.Queries, p CreateParams, version VersionFacts,
+	ctx context.Context, tx pgx.Tx, q *gen.Queries, p CreateParams, admitted admittedRun,
 ) (pgtype.UUID, error) {
 	testCase, err := testlab.LockDraft(ctx, tx, p.WorkspaceID, p.TestCaseID)
 	if errors.Is(err, testlab.ErrNotFound) {
@@ -497,7 +504,7 @@ func (s *Service) snapshotConfirmedTestCase(
 	if testCase.SkillID != p.SkillID {
 		return pgtype.UUID{}, ErrNotFound
 	}
-	if err := s.requirePermissionConfirmation(ctx, q, p, testCase, version); err != nil {
+	if err := s.requirePermissionConfirmation(ctx, q, p, heldInputs{draft: testCase, version: admitted.version, live: admitted.live}); err != nil {
 		return pgtype.UUID{}, err
 	}
 

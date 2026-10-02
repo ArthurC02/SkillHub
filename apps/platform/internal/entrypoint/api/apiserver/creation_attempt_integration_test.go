@@ -1,11 +1,13 @@
 package apiserver_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -208,6 +210,53 @@ func TestStepNeedsReuploadWhenDiagramUnderstandingIsMissing(t *testing.T) {
 	}
 }
 
+func TestOnlyAPageThePersonApprovedIsFetched(t *testing.T) {
+	const url = "https://example.test/doc"
+	for _, tc := range []struct {
+		name      string
+		command   creation.Command
+		wantFetch bool
+	}{
+		{"confirmed", creation.Command{Kind: "confirm_fetch"}, true},
+		{"answered with a message instead", creation.Command{Kind: "message", Message: "不要連網，用我貼的資料"}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pool := requireDB(t)
+			ws := newCreationWorkspace(t, pool)
+			var fetched []string
+			rec := &jobRecorder{}
+			svc := newCreateService(pool, rec)
+			svc.Fetch = func(_ context.Context, u string) (creation.Fetch, string) {
+				fetched = append(fetched, u)
+				return creation.Fetch{URL: u, Status: "ok"}, "頁面內容"
+			}
+			svc.IssueKey, svc.RevokeKey = okIssueKey, okRevokeKey
+			svc.LLM = creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+				return &creation.StepResult{Outcome: "clarification", Message: "好的"}, nil
+			})
+			v, id := newActSession(t, svc, ws)
+			setCreationSnapshotField(t, pool, id, "pending_action", "confirm_fetch")
+			setCreationSnapshotField(t, pool, id, "pending_fetch_url", url)
+
+			tc.command.ID, tc.command.ExpectedRevision = creationID(t), v.Revision
+			queued := len(rec.calls)
+			acted, _, err := svc.Act(context.Background(), ws, id, tc.command)
+			if err != nil || len(rec.calls) != queued+1 {
+				t.Fatalf("%s: err = %v, %d steps queued, want one", tc.command.Kind, err, len(rec.calls)-queued)
+			}
+			if pending := acted.Snapshot.PendingFetchURL != ""; pending != tc.wantFetch {
+				t.Errorf("pending fetch url = %q after %s, want it kept only for a page the person approved", acted.Snapshot.PendingFetchURL, tc.command.Kind)
+			}
+			if err := svc.Step(context.Background(), rec.calls[queued], nil); err != nil {
+				t.Fatal(err)
+			}
+			if got := len(fetched) == 1 && fetched[0] == url; got != tc.wantFetch || len(fetched) > 1 {
+				t.Errorf("fetched = %v, want a fetch of %s only if the person confirmed it (%v)", fetched, url, tc.wantFetch)
+			}
+		})
+	}
+}
+
 func TestStepFetchesThePendingURLBeforeCallingTheModel(t *testing.T) {
 	pool := requireDB(t)
 	ws := newCreationWorkspace(t, pool)
@@ -232,7 +281,7 @@ func TestStepFetchesThePendingURLBeforeCallingTheModel(t *testing.T) {
 		t.Fatal(err)
 	}
 	job := rec.calls[0]
-	mustExec(t, pool, `UPDATE creation_sessions SET snapshot = jsonb_set(snapshot, '{snapshot,pending_fetch_url}', to_jsonb($2::text)) WHERE id=$1`, id, url)
+	mustExec(t, pool, `UPDATE creation_sessions SET snapshot = jsonb_set(jsonb_set(snapshot, '{snapshot,pending_fetch_url}', to_jsonb($2::text)), '{snapshot,approved_fetch_url}', to_jsonb($2::text)) WHERE id=$1`, id, url)
 	if err := svc.Step(context.Background(), job, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -702,5 +751,186 @@ func TestFinishWhenTheModelAsksForAnotherStepButTheSessionCannotSpendWaitsForInp
 	}
 	if len(rec.calls) != 1 {
 		t.Fatalf("insert calls = %d, want 1 (no follow-up enqueued)", len(rec.calls))
+	}
+}
+
+func singleConnectionPool(t *testing.T, pool *pgxpool.Pool) *pgxpool.Pool {
+	t.Helper()
+	cfg := pool.Config().Copy()
+	cfg.MaxConns, cfg.MinConns = 1, 0
+	one, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(one.Close)
+	return one
+}
+
+func TestACatalogSearchTheModelAskedForRunsWithoutHoldingTheSessionsConnection(t *testing.T) {
+	pool := singleConnectionPool(t, requireDB(t))
+	ws := newCreationWorkspace(t, pool)
+	rec := &jobRecorder{}
+	var searchErr error
+	searched := 0
+	svc := &creation.Service{
+		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
+		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
+		LLM: creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+			return &creation.StepResult{Outcome: "tool_intent", Message: "先查目錄", ToolIntent: &creation.ToolIntent{Kind: "search_knowledge", Query: "invoice"}}, nil
+		}),
+		SearchKnowledge: func(ctx context.Context, _ identity.Workspace, _ []string) ([]creation.Reference, float64, error) {
+			searched++
+			wait, cancel := context.WithTimeout(ctx, time.Second)
+			defer cancel()
+			conn, err := pool.Acquire(wait)
+			if err != nil {
+				searchErr = err
+				return nil, 0, err
+			}
+			conn.Release()
+			return nil, 0, nil
+		},
+	}
+	id := creationID(t)
+	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Step(context.Background(), rec.calls[0], nil); err != nil {
+		t.Fatal(err)
+	}
+	if searched != 1 || searchErr != nil {
+		t.Fatalf("searched %d times, acquire err %v: the search waited on the connection the step's own transaction held, "+
+			"so a full pool of steps waits on itself forever", searched, searchErr)
+	}
+}
+
+func TestTheStepsSettlementDoesNotInheritTheTimeTheSearchSpent(t *testing.T) {
+	pool := requireDB(t)
+	ws := newCreationWorkspace(t, pool)
+	rec := &jobRecorder{}
+	var searchDeadline, settleDeadline time.Time
+	svc := &creation.Service{
+		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
+		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
+		LLM: creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+			return &creation.StepResult{Outcome: "tool_intent", Message: "先查目錄", ToolIntent: &creation.ToolIntent{Kind: "search_knowledge", Query: "invoice"}}, nil
+		}),
+		SearchKnowledge: func(ctx context.Context, _ identity.Workspace, _ []string) ([]creation.Reference, float64, error) {
+			searchDeadline, _ = ctx.Deadline()
+			time.Sleep(20 * time.Millisecond)
+			return nil, 0, nil
+		},
+		Billing: creation.BillingHooks{SettleFunc: func(ctx context.Context, _ pgx.Tx, _ creation.StepSettlement) error {
+			settleDeadline, _ = ctx.Deadline()
+			return nil
+		}},
+	}
+	if _, err := svc.Create(context.Background(), ws, creationID(t), "開始創作", .5); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Step(context.Background(), rec.calls[0], nil); err != nil {
+		t.Fatal(err)
+	}
+	if searchDeadline.IsZero() || !settleDeadline.After(searchDeadline) {
+		t.Fatalf("search deadline %v, settlement deadline %v: the settlement shares the search's clock, "+
+			"so a slow search leaves the step's cost unsettled", searchDeadline, settleDeadline)
+	}
+}
+
+func TestAPendingPageIsFetchedWithoutHoldingTheSessionLocked(t *testing.T) {
+	pool := requireDB(t)
+	ws := newCreationWorkspace(t, pool)
+	rec := &jobRecorder{}
+	id := creationID(t)
+	var lockErr error
+	fetchedPage := false
+	svc := &creation.Service{
+		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
+		Fetch: func(ctx context.Context, u string) (creation.Fetch, string) {
+			fetchedPage = true
+			_, lockErr = pool.Exec(ctx, "SELECT 1 FROM creation_sessions WHERE id = $1 FOR UPDATE NOWAIT", id)
+			return creation.Fetch{URL: u, Status: "ok"}, "頁面內容"
+		},
+		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
+		LLM: creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+			return &creation.StepResult{Outcome: "clarification", Message: "好的"}, nil
+		}),
+	}
+	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, pool, `UPDATE creation_sessions SET snapshot = jsonb_set(jsonb_set(snapshot, '{snapshot,pending_fetch_url}', to_jsonb($2::text)), '{snapshot,approved_fetch_url}', to_jsonb($2::text)) WHERE id=$1`, id, "https://example.test/doc")
+	if err := svc.Step(context.Background(), rec.calls[0], nil); err != nil {
+		t.Fatal(err)
+	}
+	if !fetchedPage {
+		t.Fatal("the approved page was never fetched, so the lock was never probed")
+	}
+	if lockErr != nil {
+		t.Fatalf("the session row was locked while the page was fetched (%v): a slow site would hold "+
+			"the person's own actions on this session until it answered", lockErr)
+	}
+}
+
+func TestAStepThatCannotBeHandedOffEndsTheAttemptEvenOnceTheRequestIsGone(t *testing.T) {
+	refused := errors.New("the worker is not answering")
+	for _, tc := range []struct {
+		name      string
+		handOff   func(context.Context, creation.JobArgs, *creation.Diagram) error
+		wantState string
+	}{
+		{"handed off", func(context.Context, creation.JobArgs, *creation.Diagram) error { return nil }, "queued"},
+		{"refused", func(context.Context, creation.JobArgs, *creation.Diagram) error { return refused }, "needs_reupload"},
+		{"nowhere to hand off", nil, "needs_reupload"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			logged := captureLogs(t)
+			pool := requireDB(t)
+			ws := newCreationWorkspace(t, pool)
+			svc := &creation.Service{Pool: pool, Limits: creationLimits(), LLM: failLLM(t), IssueKey: failIssueKey(t), RevokeKey: failRevokeKey(t), HandOff: tc.handOff}
+			id := creationID(t)
+			v, err := svc.Create(context.Background(), ws, id, "", .5)
+			if err != nil {
+				t.Fatal(err)
+			}
+			diagram := &creation.Diagram{MediaType: "image/png", Data: base64.StdEncoding.EncodeToString([]byte("diagram-bytes"))}
+			_, job, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram", Diagram: diagram})
+			if err != nil || job == nil {
+				t.Fatalf("diagram command: job = %v, err = %v", job, err)
+			}
+			requestGone, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			svc.HandOffStep(requestGone, *job, diagram)
+
+			final, err := svc.Get(context.Background(), ws, id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if final.State != tc.wantState {
+				t.Errorf("state = %q, want %q", final.State, tc.wantState)
+			}
+			interrupted := tc.wantState == "needs_reupload"
+			assertHandOffFailureLogged(t, logged.String(), interrupted, interrupted && tc.handOff != nil, refused)
+		})
+	}
+}
+
+func captureLogs(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var logged bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	return &logged
+}
+
+func assertHandOffFailureLogged(t *testing.T, logged string, interrupted, withCause bool, cause error) {
+	t.Helper()
+	if strings.Contains(logged, "could not be handed off") != interrupted {
+		t.Errorf("log = %q, want a failed hand-off logged exactly when the attempt was interrupted", logged)
+	}
+	if withCause && !strings.Contains(logged, cause.Error()) {
+		t.Errorf("log = %q, want the hand-off's cause", logged)
 	}
 }

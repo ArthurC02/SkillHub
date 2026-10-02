@@ -18,6 +18,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -233,7 +234,7 @@ func TestIdenticalContentDoesNotBecomeASecondVersion(t *testing.T) {
 	if _, err := commitVersion(t, pool, ws.ID, skillID, v); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := commitVersion(t, pool, ws.ID, skillID, v); !isUniqueViolation(err) {
+	if _, err := commitVersion(t, pool, ws.ID, skillID, v); !pgconv.IsUniqueViolation(err) {
 		t.Fatalf("second insert of identical content: err = %v, want a unique violation", err)
 	}
 }

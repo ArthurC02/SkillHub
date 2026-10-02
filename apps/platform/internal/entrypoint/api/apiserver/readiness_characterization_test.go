@@ -71,6 +71,34 @@ func TestReadinessNamesWhatIsMissingInCleanMode(t *testing.T) {
 	}
 }
 
+func TestAReadinessCallerThatLeavesMidProbeDoesNotMarkTheDependencyBrokenForOthers(t *testing.T) {
+	pool, err := pgxpool.New(context.Background(), "postgres://skillhub@127.0.0.1:1/skillhub")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	reg := envx.NewRegistry([]envx.Capability{{
+		ID: "healthy", Name: "healthy dependency",
+		Probe: func(ctx context.Context) error { return ctx.Err() },
+	}})
+	app, err := apiserver.NewApp(apiserver.Config{Pool: pool, Secure: true, Readiness: reg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := app.Handler()
+	gone, leave := context.WithCancel(context.Background())
+	leave()
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/readyz", nil).WithContext(gone))
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+	if !strings.Contains(rec.Body.String(), `"ready":true`) {
+		t.Errorf("GET /readyz after a caller left = %s, want ready: the shared probe ran on the caller's "+
+			"cancelled request and every check in the reuse window reported a healthy dependency as broken",
+			rec.Body.String())
+	}
+}
+
 func TestABurstOfReadinessChecksProbesTheDependenciesOnce(t *testing.T) {
 	pool, err := pgxpool.New(context.Background(), "postgres://skillhub@127.0.0.1:1/skillhub")
 	if err != nil {

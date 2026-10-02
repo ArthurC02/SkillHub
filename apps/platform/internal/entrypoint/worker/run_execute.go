@@ -7,28 +7,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
-type RunExecuteArgs struct {
-	RunID       string `json:"run_id"`
-	WorkspaceID string `json:"workspace_id"`
-}
-
-func (RunExecuteArgs) Kind() string { return "run_execute" }
-
 type RunExecuteWorker struct {
-	river.WorkerDefaults[RunExecuteArgs]
+	river.WorkerDefaults[wiring.RunExecuteArgs]
 	Runs *run.Service
 }
 
 const runExecuteTimeout = 15 * time.Minute
 
-func (w *RunExecuteWorker) Timeout(*river.Job[RunExecuteArgs]) time.Duration {
+func (w *RunExecuteWorker) Timeout(*river.Job[wiring.RunExecuteArgs]) time.Duration {
 	return runExecuteTimeout
 }
 
-func (w *RunExecuteWorker) Work(ctx context.Context, job *river.Job[RunExecuteArgs]) error {
+func (w *RunExecuteWorker) Work(ctx context.Context, job *river.Job[wiring.RunExecuteArgs]) error {
 	var runID, workspaceID pgtype.UUID
 	if err := runID.Scan(job.Args.RunID); err != nil {
 		return err

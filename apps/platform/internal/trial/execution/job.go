@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log/slog"
 	"mime"
-	"net/http"
 	"path"
 	"slices"
 	"strings"
@@ -145,9 +144,11 @@ func (d *driver) dispatch(ctx context.Context) error {
 		return nil
 	}
 
-	if err := d.svc.requireCuratedContent(ctx, d.cur); err != nil {
+	if err := d.svc.requireCuratedContent(ctx, d.cur); errors.Is(err, ErrContentNotCurated) {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failurePolicy,
 			d.reasonFor(failurePolicy, err))
+	} else if err != nil {
+		return err
 	}
 
 	if err := d.svc.requireModelGateway(); err != nil {
@@ -568,13 +569,11 @@ func (d *driver) reasonFor(class FailureClass, err error) statusReason {
 }
 
 func dispatchErrorClass(err error) string {
-	if pe, ok := errors.AsType[*providerError](err); ok {
-		if pe.Class != "" {
-			return pe.Class
-		}
-		if pe.Status == http.StatusUnprocessableEntity {
-			return errClassCapabilityMismatch
-		}
+	if pe, ok := errors.AsType[*providerError](err); ok && pe.Class != "" {
+		return pe.Class
+	}
+	if errors.Is(err, ErrProviderLacksCapability) {
+		return errClassCapabilityMismatch
 	}
 	return errClassProvision
 }
@@ -965,6 +964,11 @@ func (d *driver) tokenCeilingBreach(ctx context.Context, attempts []gen.RunAttem
 		slog.Warn("could not read this run's token usage; the token ceiling is not being enforced for it",
 			"run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 		return ""
+	}
+	if used.Incomplete {
+		metrics.RunTokenUsageUnreadable.Inc()
+		slog.Warn("this run's token usage runs past what is read; the ceiling is checked against the calls read",
+			"run_id", pgconv.UUIDString(d.cur.ID))
 	}
 	switch {
 	case limits.MaxInputTokens > 0 && used.InputTokens > limits.MaxInputTokens:

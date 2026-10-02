@@ -42,6 +42,7 @@ func TestEachGenerateRefusalHasItsOwnStatusAndMessage(t *testing.T) {
 		{"allowance unknown", policy.ErrAllowanceUnavailable, http.StatusServiceUnavailable, "算不出"},
 		{"truncated generation", ErrGenerationTruncated, http.StatusUnprocessableEntity, "拆小一點"},
 		{"task too long", ErrGenerateTooLong, http.StatusUnprocessableEntity, "其餘可以省略"},
+		{"slot unreadable", ErrGenerateSlotUnavailable, http.StatusServiceUnavailable, "沒有花錢"},
 		{"generation in flight", ErrGenerateInFlight, http.StatusConflict, "付兩次錢"},
 		{"credit below threshold", ErrCreditThreshold, http.StatusUnprocessableEntity, "點數不足"},
 		{"catalogue workspace", ErrGenerateNotForCatalogue, http.StatusUnprocessableEntity, "公開目錄不生成"},

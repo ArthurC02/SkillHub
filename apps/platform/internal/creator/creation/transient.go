@@ -9,10 +9,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -108,14 +110,33 @@ func TransientClientWithHTTP(baseURL, token string, timeout time.Duration, clien
 		req.Header.Set("Content-Type", "application/json")
 		res, err := client.Do(req)
 		if err != nil {
-			return ErrUnavailable
+			return fmt.Errorf("%w: %w", ErrUnavailable, err)
 		}
 		defer res.Body.Close()
 		_, _ = io.Copy(io.Discard, io.LimitReader(res.Body, 1024))
 		if res.StatusCode != http.StatusOK {
-			return ErrUnavailable
+			return fmt.Errorf("%w: the worker answered %s", ErrUnavailable, res.Status)
 		}
 		return nil
+	}
+}
+
+const interruptTimeout = 10 * time.Second
+
+func (s *Service) HandOffStep(ctx context.Context, a JobArgs, d *Diagram) {
+	err := ErrUnavailable
+	if s.HandOff != nil {
+		err = s.HandOff(ctx, a, d)
+	}
+	if err == nil {
+		return
+	}
+	slog.Warn("creation: a step could not be handed off and is interrupted", "session_id", UUID(a.SessionID), "error", err)
+	interruptCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), interruptTimeout)
+	defer cancel()
+	if interruptErr := s.InterruptedTransient(interruptCtx, a); interruptErr != nil {
+		slog.Error("creation: a step that could not be handed off was not interrupted; the stalled-session sweep will end it",
+			"session_id", UUID(a.SessionID), "hand_off_error", err, "error", interruptErr)
 	}
 }
 
@@ -187,22 +208,32 @@ func (s *Service) Recover(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	var failed []error
 	for _, row := range rows {
-		e, err := decode(row)
-		if err != nil {
-			return err
+		if err := s.recoverStalled(ctx, row); err != nil {
+			slog.Warn("creation: a stalled session was not recovered; the rest of the batch still is",
+				"session_id", UUID(row.ID), "error", err)
+			failed = append(failed, err)
 		}
-		// A queued row can just be a healthy backlog, not a stalled attempt;
-		// only fail it once its own deadline has passed.
-		if State(row.State) == StateQueued && e.Deadline.After(time.Now()) {
-			continue
-		}
-		if err = s.recoverAttempt(ctx, JobArgs{row.ID, row.WorkspaceID, row.Revision, e.ActiveReceipt}, stillWithinCallDeadline); err != nil {
-			return err
-		}
-		if s.RevokeKey != nil && e.ActiveReceipt.Valid {
-			_ = s.RevokeKey(ctx, UUID(e.ActiveReceipt))
-		}
+	}
+	return errors.Join(failed...)
+}
+
+func (s *Service) recoverStalled(ctx context.Context, row gen.CreationSession) error {
+	e, err := decode(row)
+	if err != nil {
+		return err
+	}
+	// A queued row can just be a healthy backlog, not a stalled attempt;
+	// only fail it once its own deadline has passed.
+	if State(row.State) == StateQueued && e.Deadline.After(time.Now()) {
+		return nil
+	}
+	if err = s.recoverAttempt(ctx, JobArgs{row.ID, row.WorkspaceID, row.Revision, e.ActiveReceipt}, stillWithinCallDeadline); err != nil {
+		return err
+	}
+	if s.RevokeKey != nil && e.ActiveReceipt.Valid {
+		s.revokeAttemptKey(e.ActiveReceipt)
 	}
 	return nil
 }

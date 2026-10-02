@@ -74,7 +74,7 @@ func (c *Client) Get(ctx context.Context, key string) ([]byte, error) {
 		return nil, err
 	}
 	if !found {
-		return nil, fmt.Errorf("objstore get %s: no object with that key", key)
+		return nil, fmt.Errorf("objstore get %s: no object with that key: %w", key, fs.ErrNotExist)
 	}
 	return data, nil
 }

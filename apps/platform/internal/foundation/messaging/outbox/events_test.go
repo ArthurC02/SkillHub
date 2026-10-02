@@ -8,8 +8,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 const (
@@ -35,46 +33,6 @@ func TestAnEventOutsideTheClosedSetIsNeverWritten(t *testing.T) {
 
 func TestEventTypesMatchTheCatalogue(t *testing.T) {
 	assertSameSet(t, "contracts/events/domain-events.md §3", EventTypes, catalogueEventTypes(t))
-}
-
-func TestEveryRunStatusMapsIntoTheClosedSet(t *testing.T) {
-	statuses := []gen.RunStatus{
-		gen.RunStatusQueued, gen.RunStatusProvisioning, gen.RunStatusPreparing,
-		gen.RunStatusRunning, gen.RunStatusEvaluating, gen.RunStatusSucceeded,
-		gen.RunStatusFailed, gen.RunStatusCancelled, gen.RunStatusTimedOut,
-	}
-	for _, status := range statuses {
-		event, err := StatusEvent(string(status))
-		if err != nil {
-			t.Errorf("run status %q has no domain event: %v", status, err)
-			continue
-		}
-		if !slices.Contains(EventTypes, event) {
-			t.Errorf("run status %q maps to %q, which is not in the closed set", status, event)
-		}
-	}
-	for _, status := range []gen.RunCleanupStatus{gen.RunCleanupStatusCleaned, gen.RunCleanupStatusFailed} {
-		event, err := CleanupEvent(string(status))
-		if err != nil {
-			t.Errorf("cleanup status %q has no domain event: %v", status, err)
-			continue
-		}
-		if !slices.Contains(EventTypes, event) {
-			t.Errorf("cleanup status %q maps to %q, which is not in the closed set", status, event)
-		}
-	}
-}
-
-func TestUnmappedStatusesAreRefused(t *testing.T) {
-	if event, err := StatusEvent("teleporting"); err == nil {
-		t.Errorf("an unknown run status produced %q, want an error", event)
-	}
-
-	for _, status := range []gen.RunCleanupStatus{gen.RunCleanupStatusPending, gen.RunCleanupStatusCleaningUp} {
-		if event, err := CleanupEvent(string(status)); err == nil {
-			t.Errorf("cleanup status %q produced %q, want an error", status, event)
-		}
-	}
 }
 
 func TestInsertRefusesWithoutTransaction(t *testing.T) {

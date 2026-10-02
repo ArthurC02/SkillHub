@@ -4,14 +4,12 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"strconv"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 )
@@ -64,27 +62,16 @@ func runReindex() int {
 
 	svc := &ingest.Service{
 		Pool: pool, Store: store,
-		LLM: ingest.ModelOrNone(wiring.LLMClient(llmURL, llmToken)),
-		IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
-			return catalogSvc.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
-				SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
-				EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
-				Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,
-				EnrichmentStatus: p.EnrichmentStatus, EnrichmentModel: p.EnrichmentModel,
-				EnrichmentPromptVersion: p.EnrichmentPromptVersion,
-			})
-		},
-		PendingEnrichments: func(ctx context.Context, limit int32) ([]ingest.PendingEnrichment, error) {
-			return pendingEnrichments(ctx, catalogSvc, limit)
-		},
+		LLM:                ingest.ModelOrNone(wiring.LLMClient(llmURL, llmToken)),
+		Budgets:            wiring.NewModelBudgets(pool),
+		IndexSkill:         wiring.EnrichedIndexer(catalogSvc),
+		PendingEnrichments: wiring.PendingEnrichments(catalogSvc),
 	}
 
-	creditCfg, err := wiring.CreditConfigFromEnv()
-	if err != nil {
+	if svc.Credit, err = wiring.NewCreditService(pool); err != nil {
 		slog.Error("credit config", "error", err)
 		return 1
 	}
-	svc.Credit = &credit.Service{Store: credit.NewPostgresStore(pool), Config: creditCfg}
 
 	if keep := os.Getenv("REINDEX_REENRICH"); keep != "" && requeueCatalogueForReenrichment(ctx, pool, keep) != nil {
 		return 1
@@ -118,27 +105,6 @@ func requeueCatalogueForReenrichment(ctx context.Context, pool *pgxpool.Pool, ke
 	return nil
 }
 
-func pendingEnrichments(ctx context.Context, svc *catalog.Service, limit int32) ([]ingest.PendingEnrichment, error) {
-	rows, err := svc.PendingEnrichments(ctx, limit)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]ingest.PendingEnrichment, len(rows))
-	for i, row := range rows {
-		result[i] = ingest.PendingEnrichment{
-			VersionID:        row.VersionID,
-			SkillID:          row.SkillID,
-			WorkspaceID:      row.WorkspaceID,
-			Name:             row.Name,
-			PackageObjectKey: row.PackageObjectKey,
-		}
-	}
-	return result, nil
-}
-
 func batchSize() int32 {
-	if n, err := strconv.Atoi(os.Getenv("REINDEX_BATCH")); err == nil && n > 0 {
-		return int32(n)
-	}
-	return defaultEnrichmentBatch
+	return envx.PositiveInt32("REINDEX_BATCH", defaultEnrichmentBatch)
 }

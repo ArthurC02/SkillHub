@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
@@ -60,5 +62,56 @@ func TestAGeneratedFileNameTheZipCannotHoldIsUnpackageableAndSaysWhy(t *testing.
 	if !strings.HasPrefix(err.Error(), ErrGeneratedPackageInvalid.Error()+`: entry "aaaa`) ||
 		!strings.HasSuffix(err.Error(), ": zip: FileHeader.Name too long") {
 		t.Fatalf("err = %q, want the entry named and the zip writer's reason", err)
+	}
+}
+
+type failingReferenceReader struct {
+	fakeReferenceReader
+	catalogErr, versionErr error
+}
+
+func (f failingReferenceReader) CatalogSkill(ctx context.Context, skillID pgtype.UUID) (registry.Skill, bool, error) {
+	if f.catalogErr != nil {
+		return registry.Skill{}, false, f.catalogErr
+	}
+	return f.fakeReferenceReader.CatalogSkill(ctx, skillID)
+}
+
+func (f failingReferenceReader) LatestVersion(ctx context.Context, workspaceID, skillID pgtype.UUID) (registry.Version, bool, error) {
+	if f.versionErr != nil {
+		return registry.Version{}, false, f.versionErr
+	}
+	return f.fakeReferenceReader.LatestVersion(ctx, workspaceID, skillID)
+}
+
+func TestACreationReferenceThatCannotBeLookedUpIsNotCalledUnavailable(t *testing.T) {
+	ws := identity.Workspace{ID: mustUUIDForTest(t, "10000000-0000-0000-0000-000000000001")}
+	skillID := mustUUIDForTest(t, "20000000-0000-0000-0000-000000000002")
+	listed := fakeReferenceReader{catalog: map[string]registry.Skill{
+		pgconv.UUIDString(skillID): {ID: skillID, WorkspaceID: ws.ID, Name: "reference-skill", Redistribution: "self_supplied"},
+	}}
+	outage := errors.New("connection reset")
+	for _, tc := range []struct {
+		name    string
+		reader  failingReferenceReader
+		wantErr error
+	}{
+		{"the catalog lookup fails", failingReferenceReader{catalogErr: outage}, outage},
+		{"the version lookup fails", failingReferenceReader{fakeReferenceReader: listed, versionErr: outage}, outage},
+		{"the skill is in neither", failingReferenceReader{}, ErrReferenceUnavailable},
+		{"the skill has no version", failingReferenceReader{fakeReferenceReader: listed}, ErrReferenceUnavailable},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := &Service{Store: fakeObjectStore{}, References: tc.reader}
+
+			_, _, err := svc.ReadCreationReference(context.Background(), ws, skillID, pgtype.UUID{})
+
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("err = %v, want %v", err, tc.wantErr)
+			}
+			if errors.Is(tc.wantErr, outage) && errors.Is(err, ErrReferenceUnavailable) {
+				t.Fatalf("err = %v: an outage was reported as the reference being unusable", err)
+			}
+		})
 	}
 }

@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -37,6 +38,51 @@ func TestASourceCheckKeepsWhenItFirstWentAwayAndWhenItFirstChanged(t *testing.T)
 			if got.UnavailableSince != tc.wantUnavailable || got.ContentChangedAt != tc.wantChg {
 				t.Fatalf("unavailable since %v changed at %v, want %v and %v",
 					got.UnavailableSince, got.ContentChangedAt, tc.wantUnavailable, tc.wantChg)
+			}
+		})
+	}
+}
+
+type servedArchive struct{ data []byte }
+
+func (s *servedArchive) Normalize(rawURL string) (string, error) { return rawURL, nil }
+
+func (s *servedArchive) Fetch(context.Context, string) ([]byte, string, error) {
+	return s.data, "", nil
+}
+
+func (s *servedArchive) Probe(context.Context, string) error { return nil }
+
+func TestASkillInsideALargerSourceIsComparedByItsOwnFiles(t *testing.T) {
+	plugin := func(alpha, beta string) map[string]string {
+		return map[string]string{
+			"plugin.json":           pluginManifest("my-plugin"),
+			"skills/alpha/SKILL.md": alpha,
+			"skills/beta/SKILL.md":  beta,
+		}
+	}
+	plan := planOf(t, plugin(namedSkillMD("alpha"), namedSkillMD("beta")))
+	alpha := plan.admitted[0]
+	if alpha.path != "skills/alpha" {
+		t.Fatalf("first admitted = %q, want skills/alpha", alpha.path)
+	}
+	url := "https://example.invalid/r"
+	row := gen.ListSourcesToCheckRow{SourceUrl: &url, ContentHash: alpha.pkg.contentHash}
+
+	cases := []struct {
+		name     string
+		upstream map[string]string
+		want     bool
+	}{
+		{"nothing changed", plugin(namedSkillMD("alpha"), namedSkillMD("beta")), false},
+		{"only a sibling skill changed", plugin(namedSkillMD("alpha"), namedSkillMD("beta")+"more\n"), false},
+		{"its own files changed", plugin(namedSkillMD("alpha")+"more\n", namedSkillMD("beta")), true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := &Service{Fetcher: &servedArchive{data: zipBytes(t, tc.upstream)}}
+			if got := svc.contentDiffers(context.Background(), row, alpha.path); got != tc.want {
+				t.Fatalf("contentDiffers = %v, want %v", got, tc.want)
 			}
 		})
 	}

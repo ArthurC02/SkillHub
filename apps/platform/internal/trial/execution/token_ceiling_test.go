@@ -3,6 +3,8 @@ package run
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -202,4 +204,64 @@ func containsAll(s string, parts ...string) bool {
 		}
 	}
 	return true
+}
+
+func TestASpendLogLongerThanWhatIsReadIsMarkedIncomplete(t *testing.T) {
+	for _, c := range []struct {
+		name           string
+		calls          int
+		wantIncomplete bool
+	}{
+		{"exactly the pages read", usagePageSize * maxUsagePages, false},
+		{"one call past the pages read", usagePageSize*maxUsagePages + 1, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			calls := make([][2]int, c.calls)
+			for i := range calls {
+				calls[i] = [2]int{10, 1}
+			}
+			stub := &spendLogStub{calls: calls}
+			used, err := stub.start(t).Usage(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if used.Incomplete != c.wantIncomplete || stub.requests != maxUsagePages {
+				t.Errorf("incomplete = %v after %d reads, want %v after %d", used.Incomplete, stub.requests, c.wantIncomplete, maxUsagePages)
+			}
+		})
+	}
+}
+
+func TestAProviderLackingACapabilityIsClassedAsAMismatch(t *testing.T) {
+	err := fmt.Errorf("dispatch: %w", &providerError{Status: http.StatusUnprocessableEntity, Message: "no gpu"})
+	if got := dispatchErrorClass(err); got != errClassCapabilityMismatch {
+		t.Errorf("class = %q, want %q", got, errClassCapabilityMismatch)
+	}
+	if !errors.Is(err, ErrProviderRefused) {
+		t.Error("a capability mismatch stopped counting as a refusal")
+	}
+}
+
+func TestOnlyAPositiveFiniteRunBudgetOverridesTheDefault(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		budget float64
+		want   float64
+	}{
+		{"configured", 0.75, 0.75},
+		{"unset", 0, defaultKeyBudgetUSD},
+		{"negative", -1, defaultKeyBudgetUSD},
+		{"not a number", math.NaN(), defaultKeyBudgetUSD},
+		{"unbounded", math.Inf(1), defaultKeyBudgetUSD},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := (Deployment{BudgetUSD: tc.budget}).Budget(); got != tc.want {
+				t.Errorf("deployment budget = %v, want %v", got, tc.want)
+			}
+			g := NewGateway(GatewayConfig{SandboxBaseURL: "http://gateway", AdminKey: "k", MaxBudgetUSD: tc.budget})
+			if g.maxBudgetUSD != tc.want {
+				t.Errorf("gateway key budget = %v, want %v", g.maxBudgetUSD, tc.want)
+			}
+		})
+	}
 }

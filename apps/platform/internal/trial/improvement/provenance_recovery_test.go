@@ -13,9 +13,9 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
-func readsEventsFrom(pool *pgxpool.Pool) func(context.Context, string, time.Time, int32) ([]outbox.Event, error) {
-	return func(ctx context.Context, eventType string, since time.Time, limit int32) ([]outbox.Event, error) {
-		return outbox.EventsOfTypeSince(ctx, pool, eventType, since, limit)
+func readsEventsFrom(pool *pgxpool.Pool) func(context.Context, outbox.EventPage) ([]outbox.Event, error) {
+	return func(ctx context.Context, page outbox.EventPage) ([]outbox.Event, error) {
+		return outbox.EventsOfType(ctx, pool, page)
 	}
 }
 
@@ -107,6 +107,30 @@ func TestProvenanceThatRanOutOfDeliveryTriesIsStillRecordedByTheSweep(t *testing
 	}
 }
 
+func TestTheSweepReachesALostDeliveryBehindAFullPageOfOlderVersions(t *testing.T) {
+	s := &Service{Pool: requireEvalDB(t)}
+	s.ReadEventsOfType = readsEventsFrom(s.Pool)
+	m := seedRun(t, s.Pool)
+	evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
+	suggestion := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
+	version := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-improved")
+
+	lostAt := time.Now().Add(-RecoveryStaleAfter - time.Minute)
+	for i := range provenanceRecoveryBatch {
+		publishVersionAdded(t, s, m, pgtype.UUID{Bytes: [16]byte{15: byte(i), 14: byte(i >> 8)}, Valid: true},
+			pgtype.UUID{}, nil, lostAt.Add(-time.Hour-time.Duration(i)*time.Second))
+	}
+	publishVersionAdded(t, s, m, version, evaluation.ID, []pgtype.UUID{suggestion.ID}, lostAt)
+
+	if _, err := s.RecoverLostSuggestionProvenance(context.Background()); err != nil {
+		t.Fatalf("recovery sweep: %v", err)
+	}
+	if got := appliedSuggestionCount(t, s, m.run.WorkspaceID, version); got != 1 {
+		t.Errorf("%d applications after the sweep, want 1: a full page of older versions hid the lost "+
+			"delivery, so the sweep only reaches it once those versions leave the window", got)
+	}
+}
+
 func TestTheSweepLeavesADeliveryThatStillHasTimeAlone(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	s.ReadEventsOfType = readsEventsFrom(s.Pool)
@@ -142,5 +166,37 @@ func TestTheSweepPassesOverAVersionThatCameFromNoSuggestion(t *testing.T) {
 	}
 	if got := appliedSuggestionCount(t, s, m.run.WorkspaceID, version); got != 0 {
 		t.Errorf("%d applications for a version nobody improved, want 0", got)
+	}
+}
+
+func TestAStaleEvaluationThatCannotBeRecoveredDoesNotStarveTheProvenanceSweep(t *testing.T) {
+	s := &Service{Pool: requireEvalDB(t)}
+	s.ReadEventsOfType = readsEventsFrom(s.Pool)
+	var stuck gen.Evaluation
+	t.Run("stuck", func(t *testing.T) {
+		var err error
+		if stuck, err = s.begin(context.Background(), seedRun(t, s.Pool)); err != nil {
+			t.Fatal(err)
+		}
+	})
+	t.Cleanup(func() {
+		_, _ = s.Pool.Exec(context.Background(), "DELETE FROM evaluations WHERE id = $1", stuck.ID)
+	})
+	if _, err := s.Pool.Exec(context.Background(), "UPDATE evaluations SET created_at = $2 WHERE id = $1",
+		stuck.ID, time.Now().Add(-RecoveryStaleAfter-time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	m := seedRun(t, s.Pool)
+	evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
+	suggestion := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
+	version := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-improved")
+	publishVersionAdded(t, s, m, version, evaluation.ID, []pgtype.UUID{suggestion.ID},
+		time.Now().Add(-RecoveryStaleAfter-time.Minute))
+
+	if err := s.RecoverPending(context.Background()); err == nil {
+		t.Error("recovery reported success although a stale evaluation could not be recovered")
+	}
+	if got := appliedSuggestionCount(t, s, m.run.WorkspaceID, version); got != 1 {
+		t.Errorf("%d applications after the sweep, want 1: one stuck evaluation kept the provenance sweep from running", got)
 	}
 }

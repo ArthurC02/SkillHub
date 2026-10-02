@@ -119,3 +119,34 @@ func TestACurrentListableSnapshotIsExposedOnlyForAnApprovedRedistributableSkill(
 		}
 	}
 }
+
+func TestAReviewIsStaleOnceAnythingItJudgedHasMoved(t *testing.T) {
+	seen := ExposureState{
+		ReleaseID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}, Sequence: 2, Status: StatusPublished,
+		SkillID: pgtype.UUID{Bytes: [16]byte{2}, Valid: true}, OwnerWorkspaceID: pgtype.UUID{Bytes: [16]byte{3}, Valid: true},
+		VersionID: pgtype.UUID{Bytes: [16]byte{4}, Valid: true}, ReviewedDigest: "old",
+	}
+	other := pgtype.UUID{Bytes: [16]byte{9}, Valid: true}
+	for _, c := range []struct {
+		name  string
+		move  func(*ExposureState)
+		stale bool
+	}{
+		{"nothing moved", func(*ExposureState) {}, false},
+		{"only its last verdict's digest", func(s *ExposureState) { s.ReviewedDigest = "new" }, false},
+		{"a newer release", func(s *ExposureState) { s.ReleaseID = other }, true},
+		{"another review landed", func(s *ExposureState) { s.Sequence++ }, true},
+		{"it was withdrawn", func(s *ExposureState) { s.Status = "withdrawn" }, true},
+		{"it points at another skill", func(s *ExposureState) { s.SkillID = other }, true},
+		{"its owner changed", func(s *ExposureState) { s.OwnerWorkspaceID = other }, true},
+		{"its version changed", func(s *ExposureState) { s.VersionID = other }, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			now := seen
+			c.move(&now)
+			if got := !now.sameReleaseAs(seen); got != c.stale {
+				t.Errorf("stale = %v, want %v", got, c.stale)
+			}
+		})
+	}
+}

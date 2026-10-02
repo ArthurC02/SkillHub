@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
@@ -17,7 +16,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
@@ -128,32 +126,9 @@ func newBackfillService(pool *pgxpool.Pool, deps Deps) *ingest.Service {
 	catalogSvc := wiring.NewCatalogService(pool)
 	return &ingest.Service{
 		Pool: pool, Store: deps.Store, LLM: ingest.ModelOrNone(deps.LLM),
-		Budgets: wiring.NewModelBudgets(pool),
-		IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
-			return catalogSvc.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
-				SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
-				EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
-				Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,
-				EnrichmentStatus: p.EnrichmentStatus, EnrichmentModel: p.EnrichmentModel,
-				EnrichmentPromptVersion: p.EnrichmentPromptVersion,
-			})
-		},
-		PendingEnrichments: func(ctx context.Context, limit int32) ([]ingest.PendingEnrichment, error) {
-			rows, err := catalogSvc.PendingEnrichments(ctx, limit)
-			if err != nil {
-				return nil, err
-			}
-			out := make([]ingest.PendingEnrichment, len(rows))
-			for i, row := range rows {
-				out[i] = ingest.PendingEnrichment{
-					VersionID: row.VersionID,
-					SkillID:   row.SkillID, WorkspaceID: row.WorkspaceID,
-					Name: row.Name, PackageObjectKey: row.PackageObjectKey,
-					SourcePath: row.SourcePath,
-				}
-			}
-			return out, nil
-		},
+		Budgets:            wiring.NewModelBudgets(pool),
+		IndexSkill:         wiring.EnrichedIndexer(catalogSvc),
+		PendingEnrichments: wiring.PendingEnrichments(catalogSvc),
 	}
 }
 

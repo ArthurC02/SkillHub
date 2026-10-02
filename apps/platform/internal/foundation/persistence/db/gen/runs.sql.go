@@ -737,21 +737,32 @@ func (q *Queries) ListOutboxEventsByAggregate(ctx context.Context, arg ListOutbo
 	return items, nil
 }
 
-const listOutboxEventsByTypeSince = `-- name: ListOutboxEventsByTypeSince :many
+const listOutboxEventsByTypeAfter = `-- name: ListOutboxEventsByTypeAfter :many
 SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at FROM outbox_events
-WHERE event_type = $1 AND occurred_at >= $2::timestamptz
+WHERE event_type = $1
+  AND occurred_at >= $2::timestamptz
+  AND (occurred_at, event_id) > ($2::timestamptz, $3::uuid)
+  AND occurred_at <= $4::timestamptz
 ORDER BY occurred_at, event_id
-LIMIT $3
+LIMIT $5
 `
 
-type ListOutboxEventsByTypeSinceParams struct {
-	EventType   string
-	Since       pgtype.Timestamptz
-	ResultLimit int32
+type ListOutboxEventsByTypeAfterParams struct {
+	EventType       string
+	AfterOccurredAt pgtype.Timestamptz
+	AfterEventID    pgtype.UUID
+	Until           pgtype.Timestamptz
+	ResultLimit     int32
 }
 
-func (q *Queries) ListOutboxEventsByTypeSince(ctx context.Context, arg ListOutboxEventsByTypeSinceParams) ([]OutboxEvent, error) {
-	rows, err := q.db.Query(ctx, listOutboxEventsByTypeSince, arg.EventType, arg.Since, arg.ResultLimit)
+func (q *Queries) ListOutboxEventsByTypeAfter(ctx context.Context, arg ListOutboxEventsByTypeAfterParams) ([]OutboxEvent, error) {
+	rows, err := q.db.Query(ctx, listOutboxEventsByTypeAfter,
+		arg.EventType,
+		arg.AfterOccurredAt,
+		arg.AfterEventID,
+		arg.Until,
+		arg.ResultLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

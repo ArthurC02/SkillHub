@@ -44,14 +44,14 @@ func cleanSkillArchive(t *testing.T) []byte {
 
 func TestAPackageThatWasReadAndScannedCleanIsNotRefused(t *testing.T) {
 	s := &Service{Store: packageShelf{data: cleanSkillArchive(t)}}
-	if err := s.requireScanNotBlocking(context.Background(), skillpkg.StoredSkill{ObjectKey: "skills/tidy.zip"}); err != nil {
+	if err := requireScanNotBlocking(s.packageReport(context.Background(), skillpkg.StoredSkill{ObjectKey: "skills/tidy.zip"})); err != nil {
 		t.Fatalf("a readable, clean package was refused: %v", err)
 	}
 }
 
 func TestAPackageThatCouldNotBeReadIsRefusedAsUnscanned(t *testing.T) {
 	s := &Service{Store: packageShelf{err: errors.New("object missing")}}
-	err := s.requireScanNotBlocking(context.Background(), skillpkg.StoredSkill{ObjectKey: "skills/tidy.zip"})
+	err := requireScanNotBlocking(s.packageReport(context.Background(), skillpkg.StoredSkill{ObjectKey: "skills/tidy.zip"}))
 	if !errors.Is(err, ErrScanBlocked) {
 		t.Fatalf("err = %v, want the scan sentinel for an unreadable package", err)
 	}

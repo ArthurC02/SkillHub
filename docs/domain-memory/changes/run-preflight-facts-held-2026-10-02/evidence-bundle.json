@@ -1,0 +1,108 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-preflight-facts-citation-follows-the-held-facts",
+  "proposal_id": "run-preflight-facts-follow-the-held-facts",
+  "registry_revision": {
+    "observed_commit": "b38c98d658122921ed859162d1b456fc83417480",
+    "registry_digest": "sha256:d75493e27760f5054a1ffa592bf40193d910cb0bf71cae4ce535add36d14e15b"
+  },
+  "approvals": [],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "980600689994f9b3cade68c82b2652731a4aa7f1",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "b38c98d658122921ed859162d1b456fc83417480",
+      "registry_digest": "sha256:d75493e27760f5054a1ffa592bf40193d910cb0bf71cae4ce535add36d14e15b"
+    }
+  },
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "old-citation-no-longer-verifies",
+    "mutated_protection": "the lines the preflight interaction cites",
+    "failure_evidence": "With the citation left at lines 196-242, verify-evidence exited 1 and reported it stale; rebuilt over lines 196-219 on a staged copy it reported 62 current and 0 stale. The staged copy was discarded and the tracked Registry is unchanged until this proposal applies.",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/trial/execution/preflight.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "registry_tools.py validate on a staged copy holding the refreshed interaction reported the Registry valid",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:eb9efcdfd94e49e427f5da2056f49c54431bbdfe62005f100e94dd7971087a05",
+      "finished_at": "2026-10-02T08:47:47Z"
+    },
+    {
+      "obligation_id": "refreshed-citation-current",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-evidence on that staged copy reported 62 of 62 citations current and none stale",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:03e95267ae2f5d1df546f95cc69ab3ded6d7e8841187aa7bb1bd6e9448b6894e",
+      "finished_at": "2026-10-02T08:47:47Z"
+    },
+    {
+      "obligation_id": "old-citation-no-longer-verifies",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-evidence on the current Registry exited 1 and reported the preflight citation stale",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:bc5fc2c236744984d9f51a37dd0041b335439c19c90c3da5f914e794a69e16a5",
+      "finished_at": "2026-10-02T08:47:47Z"
+    },
+    {
+      "obligation_id": "fact-reader-contract-holds",
+      "status": "passed",
+      "evidence": "registry_tools.py analyze-boundary --source-context registry --target-context run resolved registry-run-facts-v1",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:9004626035e997c5e5051fc07e6490b07b3a6f36825ee0c4b1d892d3bc1ec2c0",
+      "finished_at": "2026-10-02T08:47:47Z"
+    },
+    {
+      "obligation_id": "preflight-refuses-without-a-reader",
+      "status": "passed",
+      "evidence": "go test ./internal/trial/execution/ -count=1 -run TestPermissionSummaryRefusesWithoutRegistryRead -v",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:06388cde41c4a68e2ecc239e2a49c52215ba01d0488c3668db4c7505623042cf",
+      "finished_at": "2026-10-02T08:47:47Z"
+    },
+    {
+      "obligation_id": "run-creation-reads-no-package-under-lock",
+      "status": "passed",
+      "evidence": "go test ./internal/entrypoint/api/apiserver/ -count=1 -run TestARunIsCreatedWithoutReadingThePackageWhileTheTestCaseIsLocked -v",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:308769775fd11bb2827397c2c83c78fe29b85869ed96b9f2f6fe3d082d32544d",
+      "finished_at": "2026-10-02T08:47:47Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-audit reported status valid over 63 events",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:0933abe843c89f7e2f6b45861e131412d32ce41be48e2ed98f6c88f8e31d526f",
+      "finished_at": "2026-10-02T08:47:47Z"
+    }
+  ],
+  "contract_checks": [
+    {
+      "contract_id": "registry-run-facts-v1",
+      "status": "passed",
+      "evidence": "The reader's shape is untouched; the Version read moved into its own function beside the public entry and the summary receives the facts run creation already read."
+    }
+  ],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "The unit test covers the refusal without a reader; that the reader is the only path to Version facts rests on the cited code and on the import guard, not on a test of its own.",
+    "A citation is line-addressed, so the next edit above or inside these lines needs the same correction."
+  ]
+}

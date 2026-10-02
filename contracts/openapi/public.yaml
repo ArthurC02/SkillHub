@@ -11137,6 +11137,9 @@ components:
         pending_fetch_url:
           type: "string"
           description: "The URL the model asked to read; set while pending_action is confirm_fetch. Nothing is fetched until the person confirms (05 R-47)."
+        approved_fetch_url:
+          type: "string"
+          description: "The pending URL the person confirmed. Only a pending URL equal to this one is fetched; any other answer while the fetch awaits confirmation drops the request instead."
         fetches:
           type: "array"
           description: "Pages Go fetched for this session after the person's consent: URL, sha256 and size of the text kept, and how it ended. Content is not stored here."

@@ -354,6 +354,31 @@ func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 	}
 }
 
+func TestATraceCitationWithoutAQuoteDoesNotPassAnItemRequiringOne(t *testing.T) {
+	m, digest := fixtureMaterial(true)
+	bare := Citation{Kind: KindTraceEvent, TraceEventID: strp(eventID)}
+	m.rubric = &testlab.Rubric{Version: "v1", Items: []testlab.RubricItem{
+		{ID: "c1", Text: "quote the command that removed them", EvidenceRequired: true},
+		{ID: "c2", Text: "a tool ran", EvidenceRequired: false},
+	}}
+	results := (&Service{}).merge(m, &Judgement{
+		Criteria: []CriterionVerdict{
+			{CriterionID: "c1", Result: ResultPassed, Reason: "bash ran", Citations: []Citation{bare}},
+			{CriterionID: "c2", Result: ResultPassed, Reason: "bash ran", Citations: []Citation{bare}},
+		},
+	}, digest, evidenceCuts{})
+
+	if results[0].Result != ResultUndetermined || !strings.HasPrefix(results[0].Reason, "evidence_unverifiable:") {
+		t.Errorf("an event's existence passed an item that requires a quote: %+v", results[0])
+	}
+	if len(results[0].Evidence) != 1 || results[0].Evidence[0].Match != MatchNotChecked {
+		t.Errorf("evidence = %+v, want the event kept and marked not_checked: nothing was quoted to compare", results[0].Evidence)
+	}
+	if results[1].Result != ResultPassed {
+		t.Errorf("an item that never asked for a quote is not downgraded for lacking one: %+v", results[1])
+	}
+}
+
 func TestAShortQuoteIsNotHandedTheLoosenedComparison(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	short := `"Removed 17"`

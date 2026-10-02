@@ -25,7 +25,7 @@ func (s *Service) recordCallCost(ctx context.Context, kind credit.CostKind, mode
 }
 
 func (s *Service) recordVersionedCallCost(ctx context.Context, kind credit.CostKind, model, promptVersion string, u *ModelUsage) {
-	if s.Credit == nil {
+	if s.Credit == nil || (u != nil && u.Reused) {
 		return
 	}
 	e := credit.CostEvent{

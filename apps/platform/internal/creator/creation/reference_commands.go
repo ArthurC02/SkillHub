@@ -2,6 +2,9 @@ package creation
 
 import (
 	"context"
+	"errors"
+
+	"github.com/jackc/pgx/v5"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
@@ -36,7 +39,7 @@ func (s *Service) selectReferences(ctx context.Context, ws identity.Workspace, p
 		seen[sid] = true
 		r, _, err := s.ResolveReference(ctx, ws, sid, "")
 		if err != nil {
-			return commandOutcome{}, ErrNotFound
+			return commandOutcome{}, err
 		}
 		r.Confirmed = false
 		refs = append(refs, r)
@@ -48,14 +51,14 @@ func (s *Service) selectReferences(ctx context.Context, ws identity.Workspace, p
 	return settledIn(StateWaitingConfirmation), nil
 }
 
-func (s *Service) adoptReference(ctx context.Context, ws identity.Workspace, e *envelope, skillIDs []string) (commandOutcome, error) {
+func (s *Service) adoptReference(ctx context.Context, tx pgx.Tx, ws identity.Workspace, e *envelope, skillIDs []string) (commandOutcome, error) {
 	p := &e.Snapshot
 	if s.Adopt == nil || len(skillIDs) != 1 || (p.PendingAction != PendingReferenceChoice && p.PendingAction != PendingDuplicateAcknowledgement) || !listedReference(p, skillIDs[0]) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
-	candidate, err := s.Adopt(ctx, ws, skillIDs[0])
+	candidate, err := s.Adopt(ctx, tx, ws, skillIDs[0])
 	if err != nil {
-		return commandOutcome{}, ErrNotFound
+		return commandOutcome{}, err
 	}
 	p.Candidate = &candidate
 	p.Adopted = true
@@ -81,11 +84,29 @@ func (s *Service) confirmReferences(ctx context.Context, ws identity.Workspace, 
 	}
 	for i, r := range p.References {
 		if _, _, err := s.ResolveReference(ctx, ws, r.SkillID, r.VersionID); err != nil {
-			return commandOutcome{}, ErrNotFound
+			return commandOutcome{}, err
 		}
 		p.References[i].Confirmed = true
 		p.References[i].Available = true
 	}
 	p.PendingAction = NothingPending
 	return stepQueued(), nil
+}
+
+func (s *Service) FirstResolvedReferences(ctx context.Context, ws identity.Workspace, ids []string) ([]Reference, error) {
+	refs := []Reference{}
+	for _, id := range ids {
+		if len(refs) == MaxReferences {
+			break
+		}
+		r, _, err := s.ResolveReference(ctx, ws, id, "")
+		if errors.Is(err, ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		refs = append(refs, r)
+	}
+	return refs, nil
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -72,8 +73,12 @@ type Deployment struct {
 }
 
 func (d Deployment) Budget() float64 {
-	if d.BudgetUSD > 0 {
-		return d.BudgetUSD
+	return budgetOrDefault(d.BudgetUSD)
+}
+
+func budgetOrDefault(usd float64) float64 {
+	if usd > 0 && !math.IsInf(usd, 1) {
+		return usd
 	}
 	return defaultKeyBudgetUSD
 }
@@ -92,9 +97,7 @@ func NewGateway(c GatewayConfig) *Gateway {
 	if c.AdminBaseURL == "" {
 		c.AdminBaseURL = c.SandboxBaseURL
 	}
-	if c.MaxBudgetUSD <= 0 {
-		c.MaxBudgetUSD = defaultKeyBudgetUSD
-	}
+	c.MaxBudgetUSD = budgetOrDefault(c.MaxBudgetUSD)
 	if c.TPMLimit <= 0 {
 		c.TPMLimit = defaultKeyTPMLimit
 	}
@@ -209,6 +212,7 @@ type AttemptUsage struct {
 	ModelCostUSD float64
 
 	CostReported bool
+	Incomplete   bool
 }
 
 const (
@@ -237,7 +241,7 @@ func (g *Gateway) Usage(ctx context.Context, runAttemptID string, since time.Tim
 	q.Set("sort_order", "asc")
 
 	var total AttemptUsage
-	for page := 1; page <= maxUsagePages; page++ {
+	for page := 1; ; page++ {
 		q.Set("page", strconv.Itoa(page))
 		var out struct {
 			Data []struct {
@@ -259,10 +263,13 @@ func (g *Gateway) Usage(ctx context.Context, runAttemptID string, since time.Tim
 			}
 		}
 		if len(out.Data) == 0 || page >= out.TotalPages {
-			break
+			return total, nil
+		}
+		if page == maxUsagePages {
+			total.Incomplete = true
+			return total, nil
 		}
 	}
-	return total, nil
 }
 
 type gatewayError struct {

@@ -549,7 +549,14 @@ func (s *Service) buildImprovedVersion(
 	if err != nil {
 		return out, err
 	}
-	res, err := s.Versions.SaveImprovedVersion(ctx, ws, skillID, patched, ingest.Improvement{EvaluationID: evaluationID, SuggestionIDs: plan.applied})
+	res, err := s.Versions.SaveImprovedVersion(ctx, ws, skillID, patched, ingest.Improvement{
+		EvaluationID: evaluationID, SuggestionIDs: plan.applied, BaseVersionID: base.latest.ID,
+	})
+	if errors.Is(err, ingest.ErrBaseVersionMoved) {
+		out.rejectApplied(BlockedTargetChanged, "a newer version of this skill was saved while these changes were being applied, "+
+			"so they were made to an older package; open the newest version and apply them again")
+		return out, nil
+	}
 	if err != nil {
 		return out, err
 	}

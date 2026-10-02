@@ -36,33 +36,7 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 
 		return nil
 	}
-	var spent float64
-	reported := false
-	if s.Gateway != nil {
-		for _, attempt := range attempts {
-			since := time.Now().UTC().Add(-time.Hour)
-			if attempt.CreatedAt.Valid {
-				since = attempt.CreatedAt.Time.UTC()
-			}
-			usage, err := s.Gateway.Usage(ctx, pgconv.UUIDString(attempt.ID), since)
-			if err != nil {
-
-				metrics.RunTokenUsageUnreadable.Inc()
-				slog.Warn("could not read this attempt's spend; it will not be charged",
-					"run_id", pgconv.UUIDString(run.ID),
-					"run_attempt_id", pgconv.UUIDString(attempt.ID), "error", err)
-				continue
-			}
-			if usage.CostReported {
-				spent += usage.ModelCostUSD
-				reported = true
-			}
-		}
-	}
-	var costUSD *float64
-	if reported {
-		costUSD = &spent
-	}
+	costUSD := s.reportedSpend(ctx, run, attempts)
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("start settlement: %w", err)
@@ -76,4 +50,44 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 		return fmt.Errorf("commit settlement: %w", err)
 	}
 	return nil
+}
+
+func (s *Service) reportedSpend(ctx context.Context, run gen.Run, attempts []gen.RunAttempt) *float64 {
+	if s.Gateway == nil {
+		return nil
+	}
+	var spent float64
+	reported := false
+	for _, attempt := range attempts {
+		usage, err := s.Gateway.Usage(ctx, pgconv.UUIDString(attempt.ID), attemptUsageSince(attempt))
+		if err != nil {
+			metrics.RunTokenUsageUnreadable.Inc()
+			slog.Warn("could not read this attempt's spend; the run is settled once every attempt's spend can be read",
+				"run_id", pgconv.UUIDString(run.ID),
+				"run_attempt_id", pgconv.UUIDString(attempt.ID), "error", err)
+			return nil
+		}
+		if usage.Incomplete {
+			metrics.RunTokenUsageUnreadable.Inc()
+			slog.Warn("this attempt's spend log runs past what is read; it is charged only for the calls read",
+				"run_id", pgconv.UUIDString(run.ID), "run_attempt_id", pgconv.UUIDString(attempt.ID))
+		}
+		if usage.CostReported {
+			spent += usage.ModelCostUSD
+			reported = true
+		}
+	}
+	if !reported {
+		return nil
+	}
+	return &spent
+}
+
+const unrecordedAttemptLookback = time.Hour
+
+func attemptUsageSince(attempt gen.RunAttempt) time.Time {
+	if attempt.CreatedAt.Valid {
+		return attempt.CreatedAt.Time.UTC()
+	}
+	return time.Now().UTC().Add(-unrecordedAttemptLookback)
 }

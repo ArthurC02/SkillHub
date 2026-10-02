@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
 
@@ -30,7 +31,7 @@ func TestTheCreationDraftCheckReachesTheSessionHashReportAndVerdictInPlace(t *te
 			s := &creation.Service{}
 			wireCreationReads(s, versions, nil)
 
-			want, wantErr := versions.ValidateCreationDraft(context.Background(), generatedSkillForIngest(c.draft))
+			want, wantErr := versions.ValidateCreationDraft(context.Background(), wiring.GeneratedSkillForIngest(c.draft))
 			hash, report, blocked, err := s.ValidateDraft(context.Background(), c.draft)
 			if err != nil || wantErr != nil {
 				t.Fatalf("err = %v, admission err = %v; want neither", err, wantErr)

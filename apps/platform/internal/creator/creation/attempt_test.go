@@ -179,7 +179,7 @@ func callerFor(t *testing.T, calls *int) *Service {
 		IssueKey: func(context.Context, string, string, float64, time.Duration) (string, error) { return "key", nil },
 		ReadReferenceContent: func(_ context.Context, _ identity.Workspace, id, _ string) (ReferenceSkill, error) {
 			if id == "gone" {
-				return ReferenceSkill{}, errors.New("gone")
+				return ReferenceSkill{}, fmt.Errorf("%w: gone", ErrNotFound)
 			}
 			return ReferenceSkill{Name: id}, nil
 		},
@@ -259,20 +259,15 @@ func TestAModelCallThatBringsBackNothingSettlesAsUnknownCost(t *testing.T) {
 	}
 }
 
-func TestAPendingFetchIsCarriedOutOnceAndReported(t *testing.T) {
-	var fetched []string
+func TestAFetchedPageIsAttachedAndReportedMasked(t *testing.T) {
 	s := &Service{
-		Fetch: func(_ context.Context, url string) (Fetch, string) {
-			fetched = append(fetched, url)
-			return Fetch{URL: url, Status: "fetched"}, "secret page"
-		},
-		Mask: func(v string) string { return strings.ReplaceAll(v, "secret", "***") },
+		Fetch: func(context.Context, string) (Fetch, string) { return Fetch{}, "" },
+		Mask:  func(v string) string { return strings.ReplaceAll(v, "secret", "***") },
 	}
 	p := &Snapshot{PendingFetchURL: "https://example.com/a"}
-	s.fetchPending(context.Background(), p)
-	s.fetchPending(context.Background(), p)
-	if strings.Join(fetched, ",") != "https://example.com/a" || p.PendingFetchURL != "" || len(p.Fetches) != 1 {
-		t.Fatalf("fetched = %v, snapshot = %+v", fetched, p)
+	s.attachFetched(p, &fetchedPage{url: "https://example.com/a", record: Fetch{URL: "https://example.com/a", Status: "fetched"}, text: "secret page"})
+	if p.PendingFetchURL != "" || len(p.Fetches) != 1 {
+		t.Fatalf("snapshot = %+v", p)
 	}
 	if want := fetchObservation(p.Fetches[0], "*** page"); len(p.Messages) != 1 || p.Messages[0].Role != "tool" || p.Messages[0].Content != want {
 		t.Fatalf("messages = %+v", p.Messages)
@@ -281,9 +276,39 @@ func TestAPendingFetchIsCarriedOutOnceAndReported(t *testing.T) {
 
 func TestWithoutAFetcherAPendingFetchWaits(t *testing.T) {
 	p := &Snapshot{PendingFetchURL: "https://example.com/a"}
-	(&Service{}).fetchPending(context.Background(), p)
+	s := &Service{}
+	if !s.fetchedFor(*p, nil) {
+		t.Fatal("an attempt without a fetcher was treated as stale")
+	}
+	s.attachFetched(p, &fetchedPage{url: "https://example.com/a"})
 	if p.PendingFetchURL != "https://example.com/a" || len(p.Messages) != 0 {
 		t.Fatalf("snapshot = %+v", p)
+	}
+}
+
+func TestAPageFetchedBeforeTheLockCountsOnlyForTheApprovedURLStillPending(t *testing.T) {
+	s := &Service{Fetch: func(context.Context, string) (Fetch, string) { return Fetch{}, "" }}
+	page := &fetchedPage{url: "https://example.com/a"}
+	for _, c := range []struct {
+		name     string
+		pending  string
+		approved string
+		fetched  *fetchedPage
+		want     bool
+	}{
+		{"nothing pending, nothing fetched", "", "", nil, true},
+		{"the approved page was fetched", "https://example.com/a", "https://example.com/a", page, true},
+		{"an approved page was not fetched", "https://example.com/a", "https://example.com/a", nil, false},
+		{"a page nobody approved is not fetched and needs no fetch", "https://example.com/a", "", nil, true},
+		{"a page nobody approved was fetched anyway", "https://example.com/a", "", page, false},
+		{"another page is pending now", "https://example.com/b", "https://example.com/b", page, false},
+		{"the page fetched is no longer pending", "", "", page, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := s.fetchedFor(Snapshot{PendingFetchURL: c.pending, ApprovedFetchURL: c.approved}, c.fetched); got != c.want {
+				t.Errorf("fetchedFor = %v, want %v", got, c.want)
+			}
+		})
 	}
 }
 
@@ -309,7 +334,7 @@ func TestAnAttemptWithoutAUsableResponseIsUnavailable(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			e := &envelope{Deadline: c.deadline, Limits: testLimits(), Snapshot: Snapshot{Messages: []Message{}}}
-			if _, _, err := (&Service{}).attemptOutcome(context.Background(), JobArgs{}, c.row, e, stepCall{reply: c.response, callErr: c.callErr}); !errors.Is(err, ErrUnavailable) {
+			if _, _, err := (&Service{}).attemptOutcome(context.Background(), c.row, e, stepCall{reply: c.response, callErr: c.callErr}); !errors.Is(err, ErrUnavailable) {
 				t.Fatalf("err = %v, want ErrUnavailable", err)
 			}
 		})
@@ -319,7 +344,7 @@ func TestAnAttemptWithoutAUsableResponseIsUnavailable(t *testing.T) {
 func TestADiagramAttemptMustComeBackWithAnUnderstanding(t *testing.T) {
 	e := &envelope{Deadline: time.Now().Add(time.Hour), Limits: testLimits()}
 	response := &StepResult{Outcome: "clarification", Message: "?"}
-	if _, _, err := (&Service{}).attemptOutcome(context.Background(), JobArgs{}, liveRow(2), e, stepCall{carriedDiagram: true, reply: response}); !errors.Is(err, ErrInvalidCommand) {
+	if _, _, err := (&Service{}).attemptOutcome(context.Background(), liveRow(2), e, stepCall{carriedDiagram: true, reply: response}); !errors.Is(err, ErrInvalidCommand) {
 		t.Fatalf("err = %v, want ErrInvalidCommand", err)
 	}
 }
@@ -330,7 +355,7 @@ func TestAUsableResponseIsJudgedAtTheNextRevision(t *testing.T) {
 	}}
 	e := &envelope{Deadline: time.Now().Add(time.Hour), Limits: testLimits(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1}}
 	response := &StepResult{Outcome: "draft", Message: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
-	state, next, err := s.attemptOutcome(context.Background(), JobArgs{}, liveRow(6), e, stepCall{reply: response})
+	state, next, err := s.attemptOutcome(context.Background(), liveRow(6), e, stepCall{reply: response})
 	if err != nil || state != StateDraftReady || next || e.Snapshot.Draft == nil || e.Snapshot.Draft.Revision != 7 {
 		t.Fatalf("state = %s, next = %v, draft = %+v, err = %v", state, next, e.Snapshot.Draft, err)
 	}
@@ -363,5 +388,19 @@ func TestOnlyASessionThatReallyMovedStopsTheModelCall(t *testing.T) {
 		if got := sessionMoved(c.current, c.err); got != c.want {
 			t.Errorf("%s: moved = %v, want %v", c.name, got, c.want)
 		}
+	}
+}
+
+func TestANewFetchRequestStartsWithoutAnEarlierApproval(t *testing.T) {
+	s := &Service{Fetch: func(context.Context, string) (Fetch, string) { return Fetch{}, "" }}
+	p := &Snapshot{PendingFetchURL: "https://example.com/a", ApprovedFetchURL: "https://example.com/a"}
+
+	state, _, err := s.holdFetch(p, "https://example.com/a")
+
+	if err != nil || state != StateWaitingConfirmation || p.PendingAction != PendingFetchPermission {
+		t.Fatalf("state = %q, pending = %q, err = %v, want the request held for the person", state, p.PendingAction, err)
+	}
+	if p.approvedFetch() != "" {
+		t.Errorf("approved = %q, want a fresh request to need a fresh confirmation", p.ApprovedFetchURL)
 	}
 }

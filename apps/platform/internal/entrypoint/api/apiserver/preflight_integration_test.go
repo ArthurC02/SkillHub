@@ -5,12 +5,15 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
@@ -720,6 +723,51 @@ func TestTheCleanModeRefusalArrivesBeforeTheUserSpendsThreeStepsOnIt(t *testing.
 	}
 }
 
+type unreadableRunRegistry struct {
+	run.RegistryReader
+	skillDown, sourceDown bool
+}
+
+var errRegistryDown = errors.New("registry unreachable")
+
+func (r unreadableRunRegistry) Skill(ctx context.Context, workspaceID, skillID pgtype.UUID) (run.SkillFacts, bool, error) {
+	if r.skillDown {
+		return run.SkillFacts{}, false, errRegistryDown
+	}
+	return r.RegistryReader.Skill(ctx, workspaceID, skillID)
+}
+
+func (r unreadableRunRegistry) ContentSource(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.ContentSource, bool, error) {
+	if r.sourceDown {
+		return run.ContentSource{}, false, errRegistryDown
+	}
+	return r.RegistryReader.ContentSource(ctx, workspaceID, versionID)
+}
+
+func TestASummaryWhoseGatesCannotBeReadIsAnErrorNotAVerdict(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-summary-gates-unreadable")
+	a.runs.Deployment = testRunDeployment(true)
+	readable := a.runs.Registry
+
+	for _, tc := range []struct {
+		name     string
+		registry unreadableRunRegistry
+	}{
+		{"skill unreadable", unreadableRunRegistry{RegistryReader: readable, skillDown: true}},
+		{"content source unreadable", unreadableRunRegistry{RegistryReader: readable, sourceDown: true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a.runs.Registry = tc.registry
+			t.Cleanup(func() { a.runs.Registry = readable })
+			if code, summary := f.preflight(t); code < http.StatusInternalServerError {
+				t.Errorf("GET preflight with a gate unreadable: %d blocked=%q, want a server error rather than a verdict", code, summary.Blocked)
+			}
+		})
+	}
+}
+
 func TestASkillUnderALicenceHoldSaysSoInTheSummaryNotAfterTheConfirmation(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -790,5 +838,22 @@ func TestADeploymentWithNoSandboxSaysSoBeforeTheRunIsQueued(t *testing.T) {
 	}
 	if queued != 0 {
 		t.Errorf("runs recorded = %d, want 0: a refusal that still costs a slot is not a refusal", queued)
+	}
+}
+
+func TestNoCriteriaAreSuggestedForATestCaseWhoseSkillIsGone(t *testing.T) {
+	pool := requireDB(t)
+	stub := newSuggestStub(t, `{"criteria":[{"text":"ok"}]}`)
+	a := newAPIWithLLM(t, pool, stub.URL)
+	alice := a.login(t, "alice-suggest-skill-gone")
+	skillID, id := newTestCase(t, pool, a, alice, "suggest-skill-gone")
+	if _, err := pool.Exec(context.Background(), "UPDATE skills SET deleted_at = now() WHERE id = $1", mustUUID(t, skillID)); err != nil {
+		t.Fatal(err)
+	}
+
+	code, body := alice.doJSON(t, http.MethodPost, "/test-cases/"+id+"/criteria/suggest", "")
+	if code != http.StatusNotFound || stub.lastBody != "" {
+		t.Fatalf("got %d (%v) and the model was asked %q: a paid call was made for a skill that no longer exists",
+			code, body, stub.lastBody)
 	}
 }

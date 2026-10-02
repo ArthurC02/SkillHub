@@ -2,14 +2,14 @@ package eval
 
 import "testing"
 
-func TestACitedTraceEventWithoutAQuoteIsAnExactMatchOnThatEvent(t *testing.T) {
+func TestACitedTraceEventWithoutAQuoteResolvesButIsNotACheckedQuote(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	got, why := verify(Citation{Kind: KindTraceEvent, TraceEventID: strp(eventID)}, m, digest)
 	if why != "" {
 		t.Fatalf("a cited event that is in the digest resolves: %q", why)
 	}
-	if got.Match != MatchExact || got.TraceEventID != eventID || got.ReattributedFrom != "" {
-		t.Errorf("got %+v, want an exact, unreattributed reference to %s", got, eventID)
+	if got.Match != MatchNotChecked || got.TraceEventID != eventID || got.ReattributedFrom != "" {
+		t.Errorf("got %+v, want an unreattributed reference to %s marked not_checked: no quote was compared", got, eventID)
 	}
 }
 

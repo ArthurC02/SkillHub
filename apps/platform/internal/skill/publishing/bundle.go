@@ -177,7 +177,7 @@ func (s *Service) CreateBundleVersion(ctx context.Context, ws identity.Workspace
 		Version: out.Version, Description: out.Description, ContentHash: out.ContentHash,
 		CreatedBy: ws.OwnerUserID, BundleID: bundle.ID, WorkspaceID: ws.ID,
 	})
-	if violated, _ := uniqueViolation(err); violated {
+	if pgconv.IsUniqueViolation(err) {
 		return BundleVersion{}, &BundleError{Problem: BundleVersionExists}
 	}
 	if err != nil {
@@ -547,21 +547,18 @@ func bundlePublicationToRelease(ctx context.Context, q *gen.Queries, ws identity
 	created, err := q.CreateBundlePublication(ctx, gen.CreateBundlePublicationParams{
 		Name: name, BundleID: bundle.ID, Status: string(StatusPublished), WorkspaceID: ws.ID,
 	})
-	if violated, _ := uniqueViolation(err); violated {
+	if pgconv.IsUniqueViolation(err) {
 		return gen.Publication{}, ErrNameTaken
 	}
 	return created, err
 }
 
 func (s *Service) DelistBundle(ctx context.Context, ws identity.Workspace, bundleName string) (Publication, error) {
-	bundle, err := gen.New(s.Pool).LockBundle(ctx, gen.LockBundleParams{WorkspaceID: ws.ID, Name: bundleName})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Publication{}, ErrNotFound
-	}
-	if err != nil {
-		return Publication{}, err
-	}
-	err = s.delist(ctx, ws, func(q *gen.Queries) (gen.Publication, error) {
+	err := s.delist(ctx, ws, func(q *gen.Queries) (gen.Publication, error) {
+		bundle, err := q.LockBundle(ctx, gen.LockBundleParams{WorkspaceID: ws.ID, Name: bundleName})
+		if err != nil {
+			return gen.Publication{}, err
+		}
 		return q.LockPublicationForBundle(ctx, gen.LockPublicationForBundleParams{WorkspaceID: ws.ID, BundleID: bundle.ID})
 	}, map[string]any{"bundle": bundleName})
 	if err != nil {

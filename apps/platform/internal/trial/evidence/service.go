@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -235,7 +234,7 @@ func (s *Service) storeOne(ctx context.Context, e gen.InsertTraceEventParams) er
 	rows, err := s.queries().InsertTraceEvent(ctx, e)
 	if err != nil {
 
-		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
+		if pgconv.IsUniqueViolation(err) {
 			return fmt.Errorf("%w: event_id %s conflicts with an event already stored at seq %d of this stream",
 				ErrInvalid, pgconv.UUIDString(e.EventID), e.Seq)
 		}

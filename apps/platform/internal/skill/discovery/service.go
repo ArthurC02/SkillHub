@@ -57,7 +57,7 @@ type Service struct {
 
 	Analytics *analytics.Service
 
-	packageReports queryCache[skillpkg.Report]
+	packageReports ttlCache[skillpkg.Report]
 }
 
 type ListingFacts struct {

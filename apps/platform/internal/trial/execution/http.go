@@ -324,9 +324,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := toRunResponse(run)
-	if !h.fillLinkage(w, r, ws.ID, run.ID, &resp) {
-		return
-	}
+	resp.SkillID, resp.TestCaseID = pgconv.UUIDString(skillID), pgconv.UUIDString(testCaseID)
 	httpx.WriteJSON(w, http.StatusCreated, resp)
 }
 
@@ -603,6 +601,16 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	link, err := h.Svc.Linkage(r.Context(), ws.ID, runID)
+	switch {
+	case errors.Is(err, ErrNotFound):
+		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
+		return
+	case err != nil:
+		slog.Error("run cancel: linkage read failed; nothing was cancelled", "error", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "cancel failed")
+		return
+	}
 	run, err := h.Svc.RequestCancel(r.Context(), ws.ID, runID, user.ID)
 	switch {
 	case errors.Is(err, ErrNotFound):
@@ -617,9 +625,7 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body := toRunResponse(run)
-	if !h.fillLinkage(w, r, ws.ID, runID, &body) {
-		return
-	}
+	body.SkillID, body.TestCaseID = pgconv.UUIDString(link.SkillID), pgconv.UUIDString(link.TestCaseID)
 	resp := runCancellationResponse{
 		runResponse: body,
 		Note:        "已送出取消要求；在工作負載真的停下來之前，這個 Run 會維持目前的狀態。",

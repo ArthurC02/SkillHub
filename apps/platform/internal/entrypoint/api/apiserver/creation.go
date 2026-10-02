@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
@@ -17,10 +16,9 @@ import (
 )
 
 type creationHandler struct {
-	Svc       *creation.Service
-	Identity  *identity.Service
-	Transient func(context.Context, creation.JobArgs, *creation.Diagram) error
-	Credit    *credit.Service
+	Svc      *creation.Service
+	Identity *identity.Service
+	Credit   *credit.Service
 }
 
 type creationLimitsResponse struct {
@@ -294,16 +292,7 @@ func (h *creationHandler) Act(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if job != nil {
-		if h.Transient == nil {
-			err = creation.ErrUnavailable
-		} else {
-			err = h.Transient(r.Context(), *job, in.Diagram)
-		}
-		if err != nil {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			_ = h.Svc.InterruptedTransient(ctx, *job)
-			cancel()
-		}
+		h.Svc.HandOffStep(r.Context(), *job, in.Diagram)
 		v, err = h.Svc.Get(r.Context(), ws, id)
 		if err != nil {
 			h.creationError(w, err)

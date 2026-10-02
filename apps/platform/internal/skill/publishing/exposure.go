@@ -250,7 +250,7 @@ func (s *Service) exposedAmong(ctx context.Context, states []ExposureState) ([]E
 	candidates := make([]ExposureState, 0, len(states))
 	refs := make([]SkillRef, 0, len(states))
 	for _, state := range states {
-		if state.Approved && state.Status == StatusPublished {
+		if state.mayBeExposed() {
 			candidates = append(candidates, state)
 			refs = append(refs, SkillRef{WorkspaceID: state.OwnerWorkspaceID, SkillID: state.SkillID})
 		}
@@ -275,10 +275,14 @@ func (s *Service) exposedAmong(ctx context.Context, states []ExposureState) ([]E
 	return out, nil
 }
 
+func (state ExposureState) mayBeExposed() bool {
+	return state.Approved && state.Status == StatusPublished
+}
+
 func (s *Service) exposedNow(ctx context.Context, state ExposureState) (bool, *SearchSnapshot, error) {
 	var skill SkillFacts
 	found := false
-	if state.Approved && state.Status == StatusPublished {
+	if state.mayBeExposed() {
 		var err error
 		if skill, found, err = s.ReadSkill(ctx, state.OwnerWorkspaceID, state.SkillID); err != nil {
 			return false, nil, err
@@ -373,6 +377,18 @@ func (s *Service) ReviewExposure(
 		return ExposureCase{}, &ExposureError{ExposureReasonMissing}
 	}
 
+	reviewed, err := currentExposure(ctx, gen.New(s.Pool), publisher, name)
+	if err != nil {
+		return ExposureCase{}, err
+	}
+	if reviewed.ReleaseID != in.ReleaseID || reviewed.Sequence != in.ExpectedSequence {
+		return ExposureCase{}, &ExposureError{ExposureStale}
+	}
+	digest, err := s.approvalDigest(ctx, reviewed, in.Decision)
+	if err != nil {
+		return ExposureCase{}, err
+	}
+
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return ExposureCase{}, err
@@ -383,12 +399,8 @@ func (s *Service) ReviewExposure(
 	if err != nil {
 		return ExposureCase{}, err
 	}
-	if state.ReleaseID != in.ReleaseID || state.Sequence != in.ExpectedSequence {
+	if !state.sameReleaseAs(reviewed) {
 		return ExposureCase{}, &ExposureError{ExposureStale}
-	}
-	digest, err := s.approvalDigest(ctx, state, in.Decision)
-	if err != nil {
-		return ExposureCase{}, err
 	}
 	review, err := q.InsertExposureReview(ctx, gen.InsertExposureReviewParams{
 		PublicationID: publicationID, Sequence: state.Sequence + 1, ReleaseID: state.ReleaseID,
@@ -414,6 +426,29 @@ func (s *Service) ReviewExposure(
 	}
 	out, _, err := s.ExposureCase(ctx, publisher, name)
 	return out, err
+}
+
+func currentExposure(ctx context.Context, q *gen.Queries, publisher, name string) (ExposureState, error) {
+	row, err := q.GetPublicPublication(ctx, gen.GetPublicPublicationParams{PublisherName: publisher, Name: name})
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !row.SkillID.Valid) {
+		return ExposureState{}, ErrNotFound
+	}
+	if err != nil {
+		return ExposureState{}, err
+	}
+	states, err := exposureStates(ctx, q, row.ID)
+	if err != nil {
+		return ExposureState{}, err
+	}
+	if len(states) == 0 {
+		return ExposureState{}, ErrNotFound
+	}
+	return states[0], nil
+}
+
+func (state ExposureState) sameReleaseAs(other ExposureState) bool {
+	return state.ReleaseID == other.ReleaseID && state.Sequence == other.Sequence && state.Status == other.Status &&
+		state.SkillID == other.SkillID && state.OwnerWorkspaceID == other.OwnerWorkspaceID && state.VersionID == other.VersionID
 }
 
 func lockCurrentExposure(ctx context.Context, q *gen.Queries, publisher, name string) (pgtype.UUID, ExposureState, error) {

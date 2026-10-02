@@ -2,6 +2,7 @@ package wiring
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"time"
 
@@ -9,7 +10,12 @@ import (
 )
 
 func CreationLimitsFromEnv() (creation.Limits, error) {
-	return creation.LimitsFromJSON(os.Getenv("CREATION_LIMITS_JSON"))
+	raw := os.Getenv("CREATION_LIMITS_JSON")
+	limits, err := creation.LimitsFromJSON(raw)
+	if err != nil && raw != "" {
+		slog.Warn("CREATION_LIMITS_JSON is set but unusable; interactive creation stays off", "error", err)
+	}
+	return limits, err
 }
 
 func CreationExposedFromEnv() bool { return os.Getenv("CREATION_EXPOSED") == "on" }

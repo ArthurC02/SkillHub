@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -110,11 +111,11 @@ func runWorker() int {
 		return 1
 	}
 
-	if err := set.Queue.Start(ctx); err != nil {
-		slog.Error("queue start", "error", err)
+	server, started := startServing(ctx, set, creationLimits)
+	if !started {
 		return 1
 	}
-	if server := startCreationListener(set, creationLimits); server != nil {
+	if server != nil {
 		defer shutdownCreationListener(server)
 	}
 	go metrics.Serve(os.Getenv("METRICS_ADDR"))
@@ -180,18 +181,38 @@ const (
 	creationListenerIdleTimeout       = 30 * time.Second
 )
 
-func startCreationListener(set *worker.Set, creationLimits creation.Limits) *http.Server {
+func startServing(ctx context.Context, set *worker.Set, creationLimits creation.Limits) (*http.Server, bool) {
+	server, err := startCreationListener(set, creationLimits)
+	if err != nil {
+		slog.Error("creation internal listener could not start", "error", err)
+		return nil, false
+	}
+	if err := set.Queue.Start(ctx); err != nil {
+		slog.Error("queue start", "error", err)
+		if server != nil {
+			shutdownCreationListener(server)
+		}
+		return nil, false
+	}
+	return server, true
+}
+
+func startCreationListener(set *worker.Set, creationLimits creation.Limits) (*http.Server, error) {
 	addr, token := os.Getenv("CREATION_WORKER_INTERNAL_ADDR"), os.Getenv("CREATION_WORKER_INTERNAL_TOKEN")
 	if addr == "" || token == "" || !creationLimits.Valid() {
-		return nil
+		return nil, nil
+	}
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, err
 	}
 	server := &http.Server{Addr: addr, Handler: set.Creation.TransientHandler(token), ReadHeaderTimeout: creationListenerReadHeaderTimeout, ReadTimeout: 10 * time.Second, IdleTimeout: creationListenerIdleTimeout}
 	go func() {
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("creation internal listener failed")
+		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("creation internal listener failed", "addr", addr, "error", err)
 		}
 	}()
-	return server
+	return server, nil
 }
 
 func shutdownCreationListener(server *http.Server) {

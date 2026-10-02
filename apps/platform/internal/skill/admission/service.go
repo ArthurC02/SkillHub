@@ -147,7 +147,8 @@ type sourceMeta struct {
 
 	Plugin *skillpkg.PluginFacts
 
-	ImprovedBy *registry.Improvement
+	ImprovedBy   *registry.Improvement
+	ImprovedFrom pgtype.UUID
 }
 
 func pluginFact(facts *skillpkg.PluginFacts, read func(skillpkg.PluginFacts) string) *string {
@@ -372,13 +373,17 @@ func (s *Service) SaveVersion(ctx context.Context, ws identity.Workspace, skillI
 type Improvement struct {
 	EvaluationID  pgtype.UUID
 	SuggestionIDs []pgtype.UUID
+	BaseVersionID pgtype.UUID
 }
+
+var ErrBaseVersionMoved = errors.New("the skill has a newer version than the one these changes were made to")
 
 func (s *Service) SaveImprovedVersion(
 	ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, data []byte, by Improvement,
 ) (Result, error) {
 	return s.saveVersion(ctx, ws, skillID, data, sourceMeta{
 		Type: SourceUpload, ImprovedBy: &registry.Improvement{EvaluationID: by.EvaluationID, SuggestionIDs: by.SuggestionIDs},
+		ImprovedFrom: by.BaseVersionID,
 	})
 }
 
@@ -408,12 +413,6 @@ func (s *Service) saveVersion(ctx context.Context, ws identity.Workspace, skillI
 	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, root, incomingVersion{pkg: p, source: src, enrichment: e})
 	if err != nil {
 		return Result{}, err
-	}
-	if !res.Duplicate {
-		root.AdoptNewestSummary()
-		if err := registry.SaveSkill(ctx, tx, root); err != nil {
-			return Result{}, err
-		}
 	}
 	if err := auditVersion(ctx, tx, ws, res, versionAudit{audit.ActionSkillVersionCreate, map[string]any{
 		"version_number": res.Version.VersionNumber,
@@ -448,6 +447,9 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 	} else if found {
 
 		return existing, true, nil
+	}
+	if src.ImprovedFrom.Valid && root.NewestVersionID() != src.ImprovedFrom {
+		return registry.Version{}, false, ErrBaseVersionMoved
 	}
 
 	source, err := q.CreateSkillSource(ctx, gen.CreateSkillSourceParams{
@@ -487,6 +489,7 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 		content = content.ImprovedBy(*src.ImprovedBy)
 	}
 	root.AddVersion(content)
+	root.AdoptNewestSummary()
 	if err := registry.SaveSkill(ctx, tx, root); err != nil {
 		return registry.Version{}, false, err
 	}

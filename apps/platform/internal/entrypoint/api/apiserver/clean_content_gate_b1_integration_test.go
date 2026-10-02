@@ -2,6 +2,7 @@ package apiserver_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -119,5 +120,27 @@ func TestTheCleanTestModeRefusesUncuratedMaterialBeforeItReachesAnySandbox(t *te
 	}
 	if fake.Dispatches() != 1 {
 		t.Errorf("dispatches = %d, want 1: curated material never reached the fleet", fake.Dispatches())
+	}
+}
+
+func TestACleanModeRunWhoseContentSourceCannotBeReadWaitsInsteadOfFailing(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	fake, svc := haltHarness(t, a, pool)
+	svc.Deployment = testRunDeployment(true)
+	f := newFixture(t, a, pool, "b1-clean-source-down")
+	ws := mustUUID(t, f.workspaceID)
+
+	waiting := f.start(t)
+	svc.Registry = unreadableRunRegistry{RegistryReader: svc.Registry, sourceDown: true}
+
+	if err := svc.Drive(context.Background(), ws, mustUUID(t, waiting.RunID)); !errors.Is(err, errRegistryDown) {
+		t.Fatalf("drive = %v, want the outage returned so the job is tried again", err)
+	}
+	if _, view := f.getRun(t, waiting.RunID); view.Status != string(gen.RunStatusQueued) {
+		t.Errorf("status = %q (%s), want queued: an unreadable content source is not a policy refusal", view.Status, view.StatusReason)
+	}
+	if fake.Dispatches() != 0 {
+		t.Errorf("dispatches = %d; material whose curation could not be read reached the fleet", fake.Dispatches())
 	}
 }

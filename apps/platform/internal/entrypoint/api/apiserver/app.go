@@ -144,7 +144,7 @@ func NewApp(cfg Config) (*App, error) {
 	versions.Budgets, testlabSvc.Budgets, catalogSvc.Budgets, evalSvc.Budgets = budgets, budgets, budgets, budgets
 	wireCatalogIndexing(catalogSvc, versions, registrySvc)
 
-	creationSvc := &creation.Service{Pool: cfg.Pool, Limits: cfg.CreationLimits, Streams: creation.NewRevisionWatch(cfg.Pool)}
+	creationSvc := &creation.Service{Pool: cfg.Pool, Limits: cfg.CreationLimits, Streams: creation.NewRevisionWatch(cfg.Pool), HandOff: cfg.CreationTransient}
 	creationSvc.Insert = wiring.NewCreationQueue(jobs)
 	wireCreationReads(creationSvc, versions, catalogSvc)
 	wireCreationWrites(creationSvc, versions, runSvc, evalSvc)
@@ -312,15 +312,7 @@ func newCatalogService(cfg Config, identitySvc *identity.Service, funnel *analyt
 }
 
 func wireCatalogIndexing(catalogSvc *catalog.Service, versions *ingest.Service, registrySvc *registry.Service) {
-	versions.IndexSkill = func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
-		return catalogSvc.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
-			SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
-			EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
-			Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,
-			EnrichmentStatus: p.EnrichmentStatus, EnrichmentModel: p.EnrichmentModel,
-			EnrichmentPromptVersion: p.EnrichmentPromptVersion,
-		})
-	}
+	versions.IndexSkill = wiring.EnrichedIndexer(catalogSvc)
 	registrySvc.IndexSkill = func(ctx context.Context, tx pgx.Tx, p registry.SkillProjection) error {
 		return catalogSvc.IndexSkill(ctx, tx, catalog.SkillProjection{
 			SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
@@ -338,7 +330,7 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 	auth, identitySvc, runSvc, evalSvc := app.Auth, app.Auth.Service, app.RunSvc, app.EvalSvc
 	return Deps{
 		Auth:            auth,
-		Creation:        &creationHandler{Svc: app.CreationSvc, Identity: identitySvc, Transient: cfg.CreationTransient, Credit: creditSvc},
+		Creation:        &creationHandler{Svc: app.CreationSvc, Identity: identitySvc, Credit: creditSvc},
 		CreationExposed: creationEnabled(cfg),
 		Readiness:       cfg.Readiness,
 		CleanMode:       cfg.CleanMode,
@@ -375,7 +367,7 @@ func newPublishingHandler(cfg Config, publishingSvc *publishing.Service, auth *i
 	return &publishing.Handler{
 		Svc: publishingSvc, Identity: auth.Service, DescribeRedistribution: describeRedistribution,
 		DownloadsOpenToUninvited: cfg.PublicationDownloadsOpen,
-		InviteRosterConfigured:   func() bool { return len(auth.Invited) > 0 },
+		InviteRosterConfigured:   auth.BetaGateActive,
 	}
 }
 
@@ -560,7 +552,7 @@ func (a *App) AuditRosters(ctx context.Context) {
 	}
 	if err := untilRecorded(ctx, a.Auth.LogInviteRoster); err != nil {
 		slog.Error("beta roster not audited; the closed beta gate admits nobody", "error", err)
-		a.Auth.Invited = BetaGateClosed()
+		a.Auth.CloseBetaGate()
 	}
 	if err := a.logFeatureFlags(ctx); err != nil {
 
@@ -588,10 +580,6 @@ func (a *App) logFeatureFlags(ctx context.Context) error {
 			"source":  "environment",
 		},
 	})
-}
-
-func BetaGateClosed() map[string]bool {
-	return map[string]bool{"\x00 roster was not recorded": true}
 }
 
 func creationEnabled(cfg Config) bool {

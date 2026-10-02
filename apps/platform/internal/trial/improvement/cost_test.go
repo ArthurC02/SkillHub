@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -20,16 +21,74 @@ func (f *fakeLedger) RecordCost(_ context.Context, _ credit.DBTX, e credit.CostE
 	return "id", false, f.err
 }
 
+func beginAndSettleJudgement(t *testing.T, s *Service, m material, v verdict) gen.Evaluation {
+	t.Helper()
+	ev, err := s.begin(context.Background(), m)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	if err := s.settleJudgement(context.Background(), m, ev, v); err != nil {
+		t.Fatalf("settle the judgement: %v", err)
+	}
+	return ev
+}
+
+func paidJudgement(summary string) verdict {
+	cost := 0.0031
+	v := aVerdict(summary, OverallMet)
+	v.usage = &ModelUsage{PromptTokens: 4000, CompletionTokens: 600, CostUSD: &cost, CostReported: true}
+	return v
+}
+
+func reviewEvents(ledger *fakeLedger) []credit.CostEvent {
+	var out []credit.CostEvent
+	for _, e := range ledger.events {
+		if e.Kind == credit.KindReview {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+func TestAPaidJudgementIsRecordedEvenWhenItsEvaluationWasSettledFirst(t *testing.T) {
+	ledger := &fakeLedger{}
+	s := &Service{Pool: requireEvalDB(t), Credit: ledger}
+	m := seedRun(t, s.Pool)
+	ev, err := s.begin(context.Background(), m)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	if err := s.complete(context.Background(), m, ev, aVerdict("settled elsewhere", OverallMet)); err != nil {
+		t.Fatalf("settle elsewhere: %v", err)
+	}
+
+	if err := s.settleJudgement(context.Background(), m, ev, paidJudgement("late")); err != nil {
+		t.Fatalf("settle the late judgement: %v", err)
+	}
+	if got := reviewEvents(ledger); len(got) != 1 || got[0].UsdMicros != 3100 {
+		t.Errorf("review cost events = %+v, want the one paid call: the judge was paid for, and the "+
+			"evaluation already being settled does not undo that spend", got)
+	}
+}
+
+func TestAnEvaluationThatNeverCalledTheJudgeRecordsNoReviewCost(t *testing.T) {
+	ledger := &fakeLedger{}
+	s := &Service{Pool: requireEvalDB(t), Credit: ledger}
+	m := seedRun(t, s.Pool)
+
+	beginAndComplete(t, s, m, aVerdict("no acceptance criteria", OverallUndetermined))
+
+	if got := reviewEvents(ledger); len(got) != 0 {
+		t.Errorf("review cost events = %+v, want none: no judge was called", got)
+	}
+}
+
 func TestJudgingRecordsExactlyOneReviewCostEvent(t *testing.T) {
 	ledger := &fakeLedger{}
 	s := &Service{Pool: requireEvalDB(t), Credit: ledger}
 	m := seedRun(t, s.Pool)
 
-	cost := 0.0031
-	v := aVerdict("the criteria were met", OverallMet)
-	v.usage = &ModelUsage{
-		PromptTokens: 4000, CompletionTokens: 600, CostUSD: &cost, CostReported: true}
-	ev := beginAndComplete(t, s, m, v)
+	ev := beginAndSettleJudgement(t, s, m, paidJudgement("the criteria were met"))
 
 	if len(ledger.events) != 1 {
 		t.Fatalf("cost events = %d, want exactly 1", len(ledger.events))
@@ -60,7 +119,7 @@ func TestReviewCostEventCarriesNoVerdictText(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t), Credit: ledger}
 	m := seedRun(t, s.Pool)
 
-	beginAndComplete(t, s, m, aVerdict(secret, OverallMet))
+	beginAndSettleJudgement(t, s, m, paidJudgement(secret))
 
 	blob, err := json.Marshal(ledger.events)
 	if err != nil {

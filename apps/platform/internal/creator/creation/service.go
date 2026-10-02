@@ -202,8 +202,9 @@ type Snapshot struct {
 
 	SearchRounds int `json:"search_rounds,omitempty"`
 
-	PendingFetchURL string  `json:"pending_fetch_url,omitempty"`
-	Fetches         []Fetch `json:"fetches,omitempty"`
+	PendingFetchURL  string  `json:"pending_fetch_url,omitempty"`
+	ApprovedFetchURL string  `json:"approved_fetch_url,omitempty"`
+	Fetches          []Fetch `json:"fetches,omitempty"`
 
 	CatalogChecked bool `json:"catalog_checked,omitempty"`
 
@@ -255,7 +256,7 @@ type Provenance struct {
 type Service struct {
 	Pool                 *pgxpool.Pool
 	Limits               Limits
-	Streams              *RevisionWatch
+	Streams              SessionChanges
 	LLM                  StepModel
 	Insert               func(context.Context, pgx.Tx, JobArgs) error
 	ResolveReference     func(context.Context, identity.Workspace, string, string) (Reference, ReferenceSkill, error)
@@ -270,7 +271,7 @@ type Service struct {
 
 	DuplicateCheck func(context.Context, identity.Workspace, string) ([]Reference, float64, error)
 
-	Adopt func(context.Context, identity.Workspace, string) (Candidate, error)
+	Adopt func(context.Context, pgx.Tx, identity.Workspace, string) (Candidate, error)
 
 	Mask          func(string) string
 	ValidateDraft func(context.Context, GeneratedSkill) (string, string, bool, error)
@@ -280,6 +281,8 @@ type Service struct {
 	CreateAcceptanceTestCase func(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID, name, prompt string, criteria []string) (string, error)
 	IssueKey                 func(context.Context, string, string, float64, time.Duration) (string, error)
 	RevokeKey                func(context.Context, string) error
+
+	HandOff func(context.Context, JobArgs, *Diagram) error
 
 	Billing CreationBilling
 }
@@ -312,7 +315,8 @@ func view(row gen.CreationSession) (View, error) {
 	e, err := decode(row)
 	return View{UUID(row.ID), row.Revision, row.State, e.Snapshot, row.CreatedAt.Time, row.UpdatedAt.Time, row.ExpiresAt.Time, e.Deadline}, err
 }
-func live(row gen.CreationSession) bool { return row.ExpiresAt.Time.After(time.Now()) }
+func expired(at pgtype.Timestamptz) bool { return !at.Time.After(time.Now()) }
+func live(row gen.CreationSession) bool  { return !expired(row.ExpiresAt) }
 func (s *Service) Get(ctx context.Context, ws identity.Workspace, id pgtype.UUID) (View, error) {
 	row, err := gen.New(s.Pool).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: id, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !live(row)) {
@@ -370,6 +374,7 @@ func (s *Service) advance(ctx context.Context, tx pgx.Tx, row gen.CreationSessio
 	if !CanTransition(from, state) {
 		return row, fmt.Errorf("%w: %s to %s", ErrIllegalTransition, from, state)
 	}
+	e.Snapshot.dropUnapprovedFetch()
 	b, err := json.Marshal(e)
 	if err != nil {
 		return row, err
@@ -398,7 +403,7 @@ type StreamCursor int64
 
 func (s *Service) Changed(ctx context.Context, ws identity.Workspace, id pgtype.UUID, at StreamCursor) (View, bool, error) {
 	current, err := gen.New(s.Pool).GetCreationSessionLiveness(ctx, gen.GetCreationSessionLivenessParams{ID: id, WorkspaceID: ws.ID})
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !current.ExpiresAt.Time.After(time.Now())) {
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && expired(current.ExpiresAt)) {
 		return View{}, false, ErrNotFound
 	}
 	if err != nil {

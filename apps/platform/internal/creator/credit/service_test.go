@@ -621,7 +621,7 @@ func TestASpendIsRecordedEvenWhenTheRequestThatMadeItWasCancelled(t *testing.T) 
 	if _, ok := store.events["enrich-after-disconnect"]; !ok {
 		t.Fatal("the spend was not recorded")
 	}
-	if store.deadlineIn <= 0 || store.deadlineIn > 10*time.Second {
+	if store.deadlineIn <= 0 || store.deadlineIn > costRecordingWait {
 		t.Errorf("the recording had %v left, want its own deadline of at most 10s", store.deadlineIn)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -228,7 +229,7 @@ func TestSelectingReferencesResolvesEachAndAsksForConfirmation(t *testing.T) {
 func TestSelectingReferencesRefusesWhatItCannotResolve(t *testing.T) {
 	resolve := func(_ context.Context, _ identity.Workspace, id, _ string) (Reference, ReferenceSkill, error) {
 		if id == "gone" {
-			return Reference{}, ReferenceSkill{}, errors.New("no such skill")
+			return Reference{}, ReferenceSkill{}, fmt.Errorf("%w: no such skill", ErrNotFound)
 		}
 		return Reference{SkillID: id}, ReferenceSkill{}, nil
 	}
@@ -253,11 +254,11 @@ func TestSelectingReferencesRefusesWhatItCannotResolve(t *testing.T) {
 }
 
 func TestAdoptingAListedSkillSavesTheSessionAsThatSkill(t *testing.T) {
-	s := &Service{Adopt: func(_ context.Context, _ identity.Workspace, id string) (Candidate, error) {
+	s := &Service{Adopt: func(_ context.Context, _ pgx.Tx, _ identity.Workspace, id string) (Candidate, error) {
 		return Candidate{SkillID: id, VersionID: "v1"}, nil
 	}}
 	e := &envelope{Snapshot: Snapshot{PendingAction: "confirm_duplicate", PendingMaterialize: "finalize", Duplicates: []Reference{{SkillID: "dup"}}}}
-	got, err := s.adoptReference(context.Background(), identity.Workspace{}, e, []string{"dup"})
+	got, err := s.adoptReference(context.Background(), nil, identity.Workspace{}, e, []string{"dup"})
 	p := e.Snapshot
 	if err != nil || got.state != StateSaved || got.queueStep {
 		t.Fatalf("outcome = %+v, err = %v", got, err)
@@ -267,17 +268,22 @@ func TestAdoptingAListedSkillSavesTheSessionAsThatSkill(t *testing.T) {
 	}
 }
 
+var errAdoptOutage = errors.New("connection reset")
+
 func TestAdoptingNeedsOneListedSkillAndAnAdopter(t *testing.T) {
-	adopt := func(_ context.Context, _ identity.Workspace, id string) (Candidate, error) {
-		if id == "gone" {
-			return Candidate{}, errors.New("no such skill")
+	adopt := func(_ context.Context, _ pgx.Tx, _ identity.Workspace, id string) (Candidate, error) {
+		switch id {
+		case "gone":
+			return Candidate{}, fmt.Errorf("%w: no such skill", ErrNotFound)
+		case "outage":
+			return Candidate{}, errAdoptOutage
 		}
 		return Candidate{SkillID: id}, nil
 	}
-	listed := Snapshot{PendingAction: "confirm_references", References: []Reference{{SkillID: "a"}, {SkillID: "gone"}}}
+	listed := Snapshot{PendingAction: "confirm_references", References: []Reference{{SkillID: "a"}, {SkillID: "gone"}, {SkillID: "outage"}}}
 	for _, c := range []struct {
 		name    string
-		adopt   func(context.Context, identity.Workspace, string) (Candidate, error)
+		adopt   func(context.Context, pgx.Tx, identity.Workspace, string) (Candidate, error)
 		pending PendingAction
 		ids     []string
 		want    error
@@ -286,12 +292,13 @@ func TestAdoptingNeedsOneListedSkillAndAnAdopter(t *testing.T) {
 		{"two skills", adopt, "confirm_references", []string{"a", "gone"}, ErrInvalidCommand},
 		{"nobody asked", adopt, "", []string{"a"}, ErrInvalidCommand},
 		{"not listed", adopt, "confirm_references", []string{"elsewhere"}, ErrInvalidCommand},
-		{"adoption fails", adopt, "confirm_references", []string{"gone"}, ErrNotFound},
+		{"the skill is gone", adopt, "confirm_references", []string{"gone"}, ErrNotFound},
+		{"the adopter is down", adopt, "confirm_references", []string{"outage"}, errAdoptOutage},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			e := &envelope{Snapshot: listed}
 			e.Snapshot.PendingAction = c.pending
-			if _, err := (&Service{Adopt: c.adopt}).adoptReference(context.Background(), identity.Workspace{}, e, c.ids); !errors.Is(err, c.want) {
+			if _, err := (&Service{Adopt: c.adopt}).adoptReference(context.Background(), nil, identity.Workspace{}, e, c.ids); !errors.Is(err, c.want) {
 				t.Fatalf("err = %v, want %v", err, c.want)
 			}
 		})
@@ -334,7 +341,7 @@ func TestConfirmingReferencesMarksEveryOneThatStillResolves(t *testing.T) {
 
 func TestConfirmingReferencesRefusesWithoutTheQuestionAResolverOrAResolvableSkill(t *testing.T) {
 	failing := func(context.Context, identity.Workspace, string, string) (Reference, ReferenceSkill, error) {
-		return Reference{}, ReferenceSkill{}, errors.New("gone")
+		return Reference{}, ReferenceSkill{}, fmt.Errorf("%w: gone", ErrNotFound)
 	}
 	refs := []Reference{{SkillID: "a"}}
 	for _, c := range []struct {
@@ -440,8 +447,11 @@ func TestWhetherARunWasMetIsReadBeforeMaskingAndTheQuestionsAfter(t *testing.T) 
 
 func TestAttachingARunNeedsACandidateAReaderARunAndRoom(t *testing.T) {
 	read := func(_ context.Context, _ identity.Workspace, id string, _ Candidate) (string, error) {
-		if id == "gone" {
-			return "", errors.New("no such run")
+		switch id {
+		case "gone":
+			return "", fmt.Errorf("%w: no such run", ErrNotFound)
+		case "outage":
+			return "", errAdoptOutage
 		}
 		return unmetRun, nil
 	}
@@ -456,7 +466,8 @@ func TestAttachingARunNeedsACandidateAReaderARunAndRoom(t *testing.T) {
 		{"no reader", nil, Snapshot{Candidate: &Candidate{}}, "run-1", ErrInvalidCommand},
 		{"no run", read, Snapshot{Candidate: &Candidate{}}, "", ErrInvalidCommand},
 		{"at the message ceiling", read, Snapshot{Candidate: &Candidate{}, Messages: make([]Message, MaxMessages)}, "run-1", ErrInvalidCommand},
-		{"the run cannot be read", read, Snapshot{Candidate: &Candidate{}}, "gone", ErrNotFound},
+		{"the run is gone", read, Snapshot{Candidate: &Candidate{}}, "gone", ErrNotFound},
+		{"the run reader is down", read, Snapshot{Candidate: &Candidate{}}, "outage", errAdoptOutage},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			if _, err := (&Service{ReadRun: c.read}).attachRun(context.Background(), identity.Workspace{}, &c.p, c.run); !errors.Is(err, c.want) {
@@ -574,7 +585,7 @@ func TestSavingNeedsEveryReferenceToStillResolve(t *testing.T) {
 		t.Fatalf("no resolver: err = %v, want ErrUnavailable", err)
 	}
 	s := &Service{Materialize: materializer(), ResolveReference: func(context.Context, identity.Workspace, string, string) (Reference, ReferenceSkill, error) {
-		return Reference{}, ReferenceSkill{}, errors.New("gone")
+		return Reference{}, ReferenceSkill{}, fmt.Errorf("%w: gone", ErrNotFound)
 	}}
 	if _, err := s.save(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("a reference that no longer resolves: err = %v, want ErrNotFound", err)

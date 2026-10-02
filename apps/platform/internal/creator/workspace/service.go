@@ -284,7 +284,7 @@ func lifecycleOf(user gen.User) accountLifecycle {
 func (s *Service) Logout(ctx context.Context, token string) error {
 	hash := hashToken(token)
 	user, err := s.UserForToken(ctx, token)
-	if errors.Is(err, ErrSessionInvalid) || errors.Is(err, ErrAccountGone) || errors.Is(err, ErrAccountPurging) {
+	if signedOut(err) {
 		return s.queries().DeleteSession(ctx, hash)
 	}
 	if err != nil {

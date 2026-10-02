@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -114,6 +113,20 @@ func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtyp
 		return Skill{}, Version{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	fork, version, err := s.ForkIn(ctx, tx, ws, skillID)
+	if err != nil {
+		return Skill{}, Version{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Skill{}, Version{}, err
+	}
+	return fork, version, nil
+}
+
+func (s *Service) ForkIn(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID pgtype.UUID) (Skill, Version, error) {
+	if err := s.requireProjection(); err != nil {
+		return Skill{}, Version{}, err
+	}
 	src, srcVer, err := s.forkSource(ctx, tx, ws, skillID)
 	if err != nil {
 		return Skill{}, Version{}, err
@@ -124,7 +137,7 @@ func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtyp
 		return Skill{}, Version{}, err
 	}
 	root := forkOf(ws.ID, name, src, srcVer)
-	if err := SaveSkill(ctx, tx, root); isUniqueViolation(err) {
+	if err := SaveSkill(ctx, tx, root); pgconv.IsUniqueViolation(err) {
 		return Skill{}, Version{}, ErrNameTaken
 	} else if err != nil {
 		return Skill{}, Version{}, err
@@ -154,9 +167,6 @@ func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtyp
 			"source_version_id": pgconv.UUIDString(srcVer.ID),
 		},
 	}); err != nil {
-		return Skill{}, Version{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
 		return Skill{}, Version{}, err
 	}
 	return root.Skill(), root.AddedVersion(), nil
@@ -246,11 +256,6 @@ func (s *Service) Takedown(ctx context.Context, ws identity.Workspace, skillID p
 		return Skill{}, err
 	}
 	return root.Skill(), nil
-}
-
-func isUniqueViolation(err error) bool {
-	pgErr, ok := errors.AsType[*pgconn.PgError](err)
-	return ok && pgErr.Code == "23505"
 }
 
 const maxForkAttempts = 10

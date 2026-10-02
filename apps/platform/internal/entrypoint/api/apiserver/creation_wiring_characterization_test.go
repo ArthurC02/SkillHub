@@ -235,7 +235,7 @@ func TestCreationReferenceSearchThatCannotRunReportsWhy(t *testing.T) {
 	}
 }
 
-func TestCreationCatalogChecksWithoutAnEmbeddingModelOfferNothing(t *testing.T) {
+func TestCreationCatalogChecksWithoutAnEmbeddingModelOfferNothingAndSaySo(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	word := uniqueReferenceWord("refdegraded")
@@ -256,8 +256,8 @@ func TestCreationCatalogChecksWithoutAnEmbeddingModelOfferNothing(t *testing.T) 
 		"duplicate check": a.app.CreationSvc.DuplicateCheck,
 	} {
 		refs, cost, err := check(ctx, shelf.ws, word)
-		if err != nil || len(refs) != 0 || cost != 0 {
-			t.Errorf("%s: refs=%v cost=%v err=%v, want nothing offered", name, referenceIDs(refs), cost, err)
+		if !errors.Is(err, creation.ErrUnavailable) || len(refs) != 0 || cost != 0 {
+			t.Errorf("%s: refs=%v cost=%v err=%v, want nothing offered and the check reported as not done", name, referenceIDs(refs), cost, err)
 		}
 	}
 }

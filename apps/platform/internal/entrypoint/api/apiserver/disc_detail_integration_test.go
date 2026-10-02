@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
@@ -24,7 +24,7 @@ type packageStore map[string][]byte
 func (s packageStore) Get(_ context.Context, key string) ([]byte, error) {
 	data, ok := s[key]
 	if !ok {
-		return nil, errors.New("no such object: " + key)
+		return nil, fmt.Errorf("no such object: %s: %w", key, fs.ErrNotExist)
 	}
 	return data, nil
 }

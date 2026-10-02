@@ -52,7 +52,8 @@ type Fake struct {
 
 	Plan Plan
 
-	DestroyStatus int
+	DestroyStatus    int
+	CapabilityStatus int
 }
 
 type fakeRun struct {
@@ -147,6 +148,12 @@ func (f *Fake) auth(next http.HandlerFunc) http.HandlerFunc {
 
 func (f *Fake) capability(w http.ResponseWriter, _ *http.Request) {
 	f.mu.Lock()
+	if f.CapabilityStatus >= http.StatusBadRequest {
+		status := f.CapabilityStatus
+		f.mu.Unlock()
+		writeError(w, status, "this provider cannot report its capability")
+		return
+	}
 	c := DefaultCapability(f.Name)
 	if f.Capability != nil {
 		c = *f.Capability

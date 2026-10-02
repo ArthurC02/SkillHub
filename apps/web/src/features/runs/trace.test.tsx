@@ -725,7 +725,7 @@ async function countGeneralPollsAnswering(status: number) {
   return generalFetches - before;
 }
 
-test.each([401, 403, 404])(
+test.each([403, 404])(
   "the general trace stops asking once the server answers %i",
   async (status) => {
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
@@ -737,10 +737,13 @@ test.each([401, 403, 404])(
   },
 );
 
-test("the general trace keeps asking through a server error that may pass", async () => {
+test.each([
+  { status: 500, why: "a server error that may pass" },
+  { status: 401, why: "a sign-out the person can undo in another tab" },
+])("the general trace keeps asking through $why", async ({ status }) => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
   try {
-    expect(await countGeneralPollsAnswering(500)).toBeGreaterThan(0);
+    expect(await countGeneralPollsAnswering(status)).toBeGreaterThan(0);
   } finally {
     vi.useRealTimers();
   }

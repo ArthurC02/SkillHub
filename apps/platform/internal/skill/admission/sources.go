@@ -16,6 +16,8 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 type SourceType string
@@ -115,13 +117,21 @@ func (s *Service) CheckSources(ctx context.Context, limit int32) (SourceSweep, e
 	if err != nil {
 		return sweep, err
 	}
+	sourceIDs := make([]pgtype.UUID, len(rows))
+	for i, row := range rows {
+		sourceIDs[i] = row.ID
+	}
+	skillPaths, err := registry.SourcePaths(ctx, s.Pool, sourceIDs)
+	if err != nil {
+		return sweep, err
+	}
 	for _, row := range rows {
 		probe := sourceUnchanged
 		if err := s.Fetcher.Probe(ctx, *row.SourceUrl); err != nil {
 			slog.Info("import source unavailable", "url", *row.SourceUrl, "error", err)
 			probe = sourceUnavailable
 			sweep.Unavailable++
-		} else if s.contentDiffers(ctx, row) {
+		} else if s.contentDiffers(ctx, row, skillPaths[row.ID]) {
 			probe = sourceContentChanged
 			sweep.Changed++
 		}
@@ -138,7 +148,7 @@ func (s *Service) CheckSources(ctx context.Context, limit int32) (SourceSweep, e
 	return sweep, nil
 }
 
-func (s *Service) contentDiffers(ctx context.Context, row gen.ListSourcesToCheckRow) bool {
+func (s *Service) contentDiffers(ctx context.Context, row gen.ListSourcesToCheckRow, skillPath string) bool {
 	if row.ContentChangedAt.Valid || row.ContentHash == "" {
 		return false
 	}
@@ -147,8 +157,24 @@ func (s *Service) contentDiffers(ctx context.Context, row gen.ListSourcesToCheck
 		slog.Info("import source could not be re-fetched for comparison", "url", *row.SourceUrl, "error", err)
 		return false
 	}
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:]) != row.ContentHash
+	hash, err := importedContentHash(data, skillPath)
+	if err != nil {
+		slog.Info("re-fetched import source could not be read as a package", "url", *row.SourceUrl, "error", err)
+		return true
+	}
+	return hash != row.ContentHash
+}
+
+func importedContentHash(data []byte, sourcePath string) (string, error) {
+	if sourcePath == "" {
+		sum := sha256.Sum256(data)
+		return hex.EncodeToString(sum[:]), nil
+	}
+	sub, err := skillpkg.SkillFS(data, sourcePath)
+	if err != nil {
+		return "", err
+	}
+	return skillpkg.SubtreeHash(sub)
 }
 
 type sourceProbe int

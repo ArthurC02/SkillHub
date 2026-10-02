@@ -10,6 +10,7 @@ import (
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -97,9 +98,12 @@ func (s *Service) insertSession(ctx context.Context, ws identity.Workspace, id p
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 	row, err := q.CreateCreationSession(ctx, gen.CreateCreationSessionParams{ID: id, WorkspaceID: ws.ID, State: string(state), Snapshot: b, ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(s.Limits.Retention), Valid: true}})
-	if err != nil {
+	if pgconv.IsUniqueViolation(err) {
 		_ = tx.Rollback(ctx)
 		return s.startedConcurrently(ctx, ws, id, e.StartHash)
+	}
+	if err != nil {
+		return View{}, err
 	}
 	if err = q.AppendCreationEvent(ctx, gen.AppendCreationEventParams{SessionID: id, WorkspaceID: ws.ID, Revision: 1, EventType: "created", Snapshot: b}); err != nil {
 		return View{}, err

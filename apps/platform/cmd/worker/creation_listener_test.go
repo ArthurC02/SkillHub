@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net"
 	"testing"
 	"time"
 
@@ -32,7 +33,10 @@ func TestTheCreationListenerStartsOnlyWithAnAddressATokenAndValidLimits(t *testi
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("CREATION_WORKER_INTERNAL_ADDR", tc.addr)
 			t.Setenv("CREATION_WORKER_INTERNAL_TOKEN", tc.token)
-			server := startCreationListener(set, tc.limits)
+			server, err := startCreationListener(set, tc.limits)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if server != nil {
 				t.Cleanup(func() { shutdownCreationListener(server) })
 			}
@@ -43,5 +47,24 @@ func TestTheCreationListenerStartsOnlyWithAnAddressATokenAndValidLimits(t *testi
 				t.Errorf("listener address = %q, want %q", server.Addr, tc.addr)
 			}
 		})
+	}
+}
+
+func TestACreationListenerThatCannotBindStopsTheWorker(t *testing.T) {
+	taken, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = taken.Close() })
+	t.Setenv("CREATION_WORKER_INTERNAL_ADDR", taken.Addr().String())
+	t.Setenv("CREATION_WORKER_INTERNAL_TOKEN", "internal-token")
+
+	server, err := startCreationListener(&worker.Set{Creation: &creation.Service{}}, validCreationLimits())
+
+	if err == nil || server != nil {
+		if server != nil {
+			shutdownCreationListener(server)
+		}
+		t.Fatalf("server = %v, err = %v: a worker whose hand-off address is taken started anyway", server, err)
 	}
 }

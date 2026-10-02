@@ -10596,6 +10596,12 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.ApprovedFetchURL.Set {
+			e.FieldStart("approved_fetch_url")
+			s.ApprovedFetchURL.Encode(e)
+		}
+	}
+	{
 		if s.Fetches != nil {
 			e.FieldStart("fetches")
 			e.ArrStart()
@@ -10637,7 +10643,7 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreationSnapshot = [40]string{
+var jsonFieldsNameOfCreationSnapshot = [41]string{
 	0:  "messages",
 	1:  "brief",
 	2:  "acceptance_criteria",
@@ -10672,12 +10678,13 @@ var jsonFieldsNameOfCreationSnapshot = [40]string{
 	31: "duplicate_acknowledged",
 	32: "adopted",
 	33: "pending_fetch_url",
-	34: "fetches",
-	35: "model",
-	36: "prompt_version",
-	37: "diagram_media_type",
-	38: "diagram_bytes",
-	39: "previous_draft",
+	34: "approved_fetch_url",
+	35: "fetches",
+	36: "model",
+	37: "prompt_version",
+	38: "diagram_media_type",
+	39: "diagram_bytes",
+	40: "previous_draft",
 }
 
 // Decode decodes CreationSnapshot from json.
@@ -10685,7 +10692,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode CreationSnapshot to nil")
 	}
-	var requiredBitSet [5]uint8
+	var requiredBitSet [6]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -11089,6 +11096,16 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"pending_fetch_url\"")
 			}
+		case "approved_fetch_url":
+			if err := func() error {
+				s.ApprovedFetchURL.Reset()
+				if err := s.ApprovedFetchURL.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"approved_fetch_url\"")
+			}
 		case "fetches":
 			if err := func() error {
 				s.Fetches = make([]CreationFetch, 0)
@@ -11165,10 +11182,11 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [5]uint8{
+	for i, mask := range [6]uint8{
 		0b01010111,
 		0b00100100,
 		0b01110111,
+		0b00000000,
 		0b00000000,
 		0b00000000,
 	} {

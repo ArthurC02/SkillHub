@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
 
-func (s *Service) useTool(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *StepResult) (State, bool, error) {
-	run := s.toolFor(ctx, ws, revision, e, r)
+func (s *Service) useTool(ctx context.Context, revision int64, e *envelope, r *StepResult, found *searchAnswer) (State, bool, error) {
+	run := s.toolFor(ctx, revision, e, r, found)
 	if run == nil {
 		return "", false, ErrInvalidCommand
 	}
@@ -20,14 +21,14 @@ func (s *Service) useTool(ctx context.Context, ws identity.Workspace, revision i
 	return run()
 }
 
-func (s *Service) toolFor(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *StepResult) func() (State, bool, error) {
+func (s *Service) toolFor(ctx context.Context, revision int64, e *envelope, r *StepResult, found *searchAnswer) func() (State, bool, error) {
 	if r.ToolIntent == nil {
 		return nil
 	}
 	p := &e.Snapshot
 	switch r.ToolIntent.Kind {
-	case "search_catalog", "search_knowledge":
-		return func() (State, bool, error) { return s.searchCatalog(ctx, ws, p, r.ToolIntent) }
+	case searchCatalogTool, searchKnowledgeTool:
+		return func() (State, bool, error) { return s.searchCatalog(p, r.ToolIntent, found) }
 	case "fetch_url":
 		return func() (State, bool, error) { return s.holdFetch(p, r.ToolIntent.Query) }
 	case "validate_draft":
@@ -36,8 +37,8 @@ func (s *Service) toolFor(ctx context.Context, ws identity.Workspace, revision i
 	return nil
 }
 
-func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *Snapshot, intent *ToolIntent) (State, bool, error) {
-	if s.SearchKnowledge == nil && s.SearchReferences == nil {
+func (s *Service) searchCatalog(p *Snapshot, intent *ToolIntent, found *searchAnswer) (State, bool, error) {
+	if !s.canSearch() {
 		return "", false, ErrUnavailable
 	}
 	if strings.TrimSpace(intent.Query) == "" {
@@ -48,7 +49,7 @@ func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *S
 		p.appendMessage("tool", "目錄已搜過兩回都沒有相近的 Skill；請直接依需求起草。")
 		return StateQueued, true, nil
 	}
-	refs, err := s.search(ctx, ws, p, searchQueries(intent))
+	refs, err := spendOn(p, found)
 	if err != nil {
 		return "", false, err
 	}
@@ -74,15 +75,53 @@ func searchQueries(intent *ToolIntent) []string {
 	return queries
 }
 
-func (s *Service) search(ctx context.Context, ws identity.Workspace, p *Snapshot, queries []string) ([]Reference, error) {
+const (
+	searchCatalogTool   = "search_catalog"
+	searchKnowledgeTool = "search_knowledge"
+)
+
+type searchAnswer struct {
+	refs []Reference
+	cost float64
+	err  error
+}
+
+const searchAheadTimeout = 20 * time.Second
+
+func (s *Service) searchAhead(ctx context.Context, ws identity.Workspace, r *StepResult) *searchAnswer {
+	if r == nil || r.Outcome != outcomeToolIntent || r.ToolIntent == nil || !s.canSearch() {
+		return nil
+	}
+	intent := r.ToolIntent
+	if (intent.Kind != searchCatalogTool && intent.Kind != searchKnowledgeTool) || strings.TrimSpace(intent.Query) == "" {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), searchAheadTimeout)
+	defer cancel()
+	return s.lookUp(ctx, ws, searchQueries(intent))
+}
+
+func (s *Service) canSearch() bool {
+	return s.SearchKnowledge != nil || s.SearchReferences != nil
+}
+
+func spendOn(p *Snapshot, answer *searchAnswer) ([]Reference, error) {
+	if answer == nil {
+		return nil, ErrUnavailable
+	}
+	if answer.err == nil {
+		addSpend(p, answer.cost)
+	}
+	return answer.refs, answer.err
+}
+
+func (s *Service) lookUp(ctx context.Context, ws identity.Workspace, queries []string) *searchAnswer {
 	if s.SearchKnowledge == nil {
-		return s.SearchReferences(ctx, ws, queries[0])
+		refs, err := s.SearchReferences(ctx, ws, queries[0])
+		return &searchAnswer{refs: refs, err: err}
 	}
 	refs, cost, err := s.SearchKnowledge(ctx, ws, queries)
-	if err == nil {
-		addSpend(p, cost)
-	}
-	return refs, err
+	return &searchAnswer{refs: refs, cost: cost, err: err}
 }
 
 func emptySearchNote(round int) string {
@@ -101,7 +140,7 @@ func (s *Service) holdFetch(p *Snapshot, query string) (State, bool, error) {
 		p.appendMessage("tool", "這個網址不符合規則（只接受公開的 http／https 網址，不含帳號密碼）；這次沒有連網。")
 		return StateQueued, true, nil
 	}
-	p.PendingFetchURL = clean
+	p.PendingFetchURL, p.ApprovedFetchURL = clean, ""
 	p.PendingAction = PendingFetchPermission
 	return StateWaitingConfirmation, false, nil
 }

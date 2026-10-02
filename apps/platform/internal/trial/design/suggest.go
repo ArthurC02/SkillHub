@@ -53,9 +53,12 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws identity.Workspace, id
 	if err != nil {
 		return nil, err
 	}
-	skill, _, err := s.ReadSkill(ctx, ws.ID, tc.SkillID)
+	skill, found, err := s.ReadSkill(ctx, ws.ID, tc.SkillID)
 	if err != nil {
 		return nil, err
+	}
+	if !found {
+		return nil, ErrNotFound
 	}
 
 	datasets, err := q.ListDatasets(ctx, gen.ListDatasetsParams{TestCaseID: tc.ID, WorkspaceID: ws.ID})

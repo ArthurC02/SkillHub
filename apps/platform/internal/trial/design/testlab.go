@@ -136,7 +136,13 @@ const MaxRubricItems = 50
 
 const MaxRubricVersionBytes = 200
 
-func (s *Service) SetRubric(ctx context.Context, ws identity.Workspace, id pgtype.UUID, r *Rubric) (TestCase, error) {
+type TestCaseEdit struct {
+	Name, Prompt  *string
+	ReplaceRubric bool
+	Rubric        *Rubric
+}
+
+func (s *Service) EditTestCase(ctx context.Context, ws identity.Workspace, id pgtype.UUID, edit TestCaseEdit) (TestCase, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return TestCase{}, err
@@ -151,28 +157,48 @@ func (s *Service) SetRubric(ctx context.Context, ws identity.Workspace, id pgtyp
 	if err != nil {
 		return TestCase{}, err
 	}
-	criteria, err := DecodeCriteria(tc.AcceptanceCriteria)
+	name, prompt, err := validateDraft(valueOr(edit.Name, tc.Name), valueOr(edit.Prompt, tc.UserPrompt))
 	if err != nil {
 		return TestCase{}, err
 	}
-
-	var encoded []byte
-	if r != nil {
-		clean, err := validateRubric(*r, criteria)
-		if err != nil {
-			return TestCase{}, err
-		}
-		if encoded, err = json.Marshal(clean); err != nil {
+	var rubric []byte
+	if edit.ReplaceRubric {
+		if rubric, err = encodedRubric(edit.Rubric, tc.AcceptanceCriteria); err != nil {
 			return TestCase{}, err
 		}
 	}
-	updated, err := q.UpdateTestCaseRubric(ctx, gen.UpdateTestCaseRubricParams{
-		ID: tc.ID, WorkspaceID: ws.ID, Rubric: encoded,
-	})
+	updated, err := q.UpdateTestCase(ctx, gen.UpdateTestCaseParams{ID: tc.ID, WorkspaceID: ws.ID, Name: name, UserPrompt: prompt})
 	if err != nil {
 		return TestCase{}, err
+	}
+	if edit.ReplaceRubric {
+		if updated, err = q.UpdateTestCaseRubric(ctx, gen.UpdateTestCaseRubricParams{ID: tc.ID, WorkspaceID: ws.ID, Rubric: rubric}); err != nil {
+			return TestCase{}, err
+		}
 	}
 	return testCaseOf(updated), tx.Commit(ctx)
+}
+
+func valueOr(v *string, current string) string {
+	if v == nil {
+		return current
+	}
+	return *v
+}
+
+func encodedRubric(r *Rubric, storedCriteria []byte) ([]byte, error) {
+	if r == nil {
+		return nil, nil
+	}
+	criteria, err := DecodeCriteria(storedCriteria)
+	if err != nil {
+		return nil, err
+	}
+	clean, err := validateRubric(*r, criteria)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(clean)
 }
 
 func validateRubric(r Rubric, criteria []Criterion) (Rubric, error) {
@@ -477,20 +503,6 @@ func draftFromRow(ctx context.Context, q *gen.Queries, workspaceID pgtype.UUID, 
 		draft.DatasetTotalBytes += d.SizeBytes
 	}
 	return draft, nil
-}
-
-func (s *Service) UpdateTestCase(ctx context.Context, ws identity.Workspace, id pgtype.UUID, name, prompt string) (TestCase, error) {
-	name, prompt, err := validateDraft(name, prompt)
-	if err != nil {
-		return TestCase{}, err
-	}
-	tc, err := gen.New(s.Pool).UpdateTestCase(ctx, gen.UpdateTestCaseParams{
-		ID: id, WorkspaceID: ws.ID, Name: name, UserPrompt: prompt,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return TestCase{}, ErrNotFound
-	}
-	return testCaseOf(tc), err
 }
 
 func validateDraft(name, prompt string) (string, string, error) {

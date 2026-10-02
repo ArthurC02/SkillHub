@@ -7,7 +7,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"log/slog"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -16,6 +15,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
@@ -113,34 +113,34 @@ func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 		Mark: svc.MarkDatasetCleanupIntentPurged, Guard: svc.GuardDatasetObjectRemoval,
 	}, batch())
 
-	slog.Info("dataset purge complete", "datasets_purged", n, "upload_intents_purged", intentN)
-	return errors.Join(err, intentErr)
+	err = errors.Join(err, intentErr)
+	logSweep("dataset purge", err, "datasets_purged", n, "upload_intents_purged", intentN)
+	return err
 }
 
 func rotatePartitions(ctx context.Context, pool *pgxpool.Pool) error {
-	traceRetention, err := positiveDuration("TRACE_RETENTION")
-	if err != nil {
-		return err
-	}
-	analyticsRetention, err := positiveDuration("ANALYTICS_RETENTION")
-	if err != nil {
-		return err
-	}
-
 	now := time.Now().UTC()
-
-	traceReport, traceErr := trace.MaintainPartitions(ctx, pool, now, traceRetention)
-	logRotation(trace.PartitionedTable, traceReport)
-
-	analyticsReport, analyticsErr := analytics.MaintainPartitions(ctx, pool, now, analyticsRetention)
-	logRotation(analytics.PartitionedTable, analyticsReport)
-
+	traceErr := rotateWithin("TRACE_RETENTION", trace.PartitionedTable, func(retention time.Duration) (partition.Report, error) {
+		return trace.MaintainPartitions(ctx, pool, now, retention)
+	})
+	if os.Getenv("ANALYTICS_RETENTION") == "" {
+		slog.Info("ANALYTICS_RETENTION not set; no funnel events are collected and existing analytics partitions are kept until it is set")
+		return traceErr
+	}
+	analyticsErr := rotateWithin("ANALYTICS_RETENTION", analytics.PartitionedTable, func(retention time.Duration) (partition.Report, error) {
+		return analytics.MaintainPartitions(ctx, pool, now, retention)
+	})
 	return errors.Join(traceErr, analyticsErr)
 }
 
-func logRotation(table string, report partition.Report) {
-	slog.Info("partitions rotated", "table", table,
-		"created", report.Created, "dropped", report.Dropped)
+func rotateWithin(retentionKey, table string, maintain func(time.Duration) (partition.Report, error)) error {
+	retention, err := positiveDuration(retentionKey)
+	if err != nil {
+		return err
+	}
+	report, err := maintain(retention)
+	logSweep(table+" partition rotation", err, "created", report.Created, "dropped", report.Dropped)
+	return err
 }
 
 func purgeAudit(ctx context.Context, pool *pgxpool.Pool) error {
@@ -190,8 +190,9 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 		Mark: svc.MarkArtifactUploadIntentPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
 	}, batch())
 
-	slog.Info("run artifact purge complete", "artifacts_purged", n, "upload_intents_purged", intentN)
-	return errors.Join(err, intentErr)
+	err = errors.Join(err, intentErr)
+	logSweep("run artifact purge", err, "artifacts_purged", n, "upload_intents_purged", intentN)
+	return err
 }
 
 func purgeDeletedSkills(ctx context.Context, pool *pgxpool.Pool) error {
@@ -215,7 +216,7 @@ func collectObjects(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	c, err := (&registry.Service{Pool: pool}).CollectOrphanObjects(ctx, store, batch())
 
-	slog.Info("orphan object collection complete",
+	logSweep("orphan object collection", err,
 		"objects_collected", c.Collected, "entries_dropped", c.Dropped, "queue_depth", c.Depth)
 	return err
 }
@@ -237,16 +238,28 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return err
 	}
+	grace, err := accountPurgeGrace()
+	if err != nil {
+		return err
+	}
 	svc := purgeService(pool)
-	n, purgeErr := svc.PurgeExpiredAccounts(ctx, store, grace(), batch())
+	n, purgeErr := svc.PurgeExpiredAccounts(ctx, store, grace, batch())
 
-	slog.Info("account purge complete", "accounts_purged", n)
+	logSweep("account purge", purgeErr, "accounts_purged", n)
 
 	sessions, sessionsErr := svc.CleanupExpiredSessions(ctx)
 	if sessionsErr == nil {
 		slog.Info("expired sessions removed", "sessions", sessions)
 	}
 	return errors.Join(purgeErr, sessionsErr)
+}
+
+func logSweep(sweep string, err error, counts ...any) {
+	if err != nil {
+		slog.Error(sweep+" stopped early; the counts are what it finished", append(counts, "error", err)...)
+		return
+	}
+	slog.Info(sweep+" complete", counts...)
 }
 
 func registryPurger(pool *pgxpool.Pool) *registry.Service {
@@ -283,7 +296,7 @@ func purgeService(pool *pgxpool.Pool) *identity.Service {
 }
 
 func checkSources(ctx context.Context, pool *pgxpool.Pool) error {
-	svc := &ingest.Service{Pool: pool, Fetcher: &ingest.URLFetcher{Allowed: ingest.DefaultAllowedHosts()}}
+	svc := &ingest.Service{Pool: pool, Fetcher: wiring.ImportFetcher(wiring.PostureFromEnv())}
 	sweep, err := svc.CheckSources(ctx, batch())
 	if err != nil {
 		return err
@@ -300,11 +313,16 @@ func positiveDuration(key string) (time.Duration, error) {
 	return d, nil
 }
 
-func grace() time.Duration {
-	if d, err := time.ParseDuration(os.Getenv("PURGE_GRACE")); err == nil && d > 0 {
-		return d
+func accountPurgeGrace() (time.Duration, error) {
+	raw := os.Getenv("PURGE_GRACE")
+	if raw == "" {
+		return identity.AccountDeletionGrace, nil
 	}
-	return identity.AccountDeletionGrace
+	d, err := time.ParseDuration(raw)
+	if err != nil || d < identity.AccountDeletionGrace {
+		return 0, fmt.Errorf("PURGE_GRACE must be a Go duration of at least %s, the grace a deleting account is promised", identity.AccountDeletionGrace)
+	}
+	return d, nil
 }
 
 func purgeDatabaseURL() string {
@@ -316,8 +334,5 @@ func purgeDatabaseURL() string {
 }
 
 func batch() int32 {
-	if n, err := strconv.Atoi(os.Getenv("MAINTENANCE_BATCH")); err == nil && n > 0 {
-		return int32(n)
-	}
-	return 100
+	return envx.PositiveInt32("MAINTENANCE_BATCH", 100)
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -110,7 +111,11 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *Diagram) error {
 	if s.LLM == nil || s.IssueKey == nil || s.RevokeKey == nil {
 		return ErrUnavailable
 	}
-	started, err := s.startAttempt(ctx, a, diagram)
+	fetched, err := s.fetchAhead(ctx, a)
+	if err != nil {
+		return err
+	}
+	started, err := s.startAttempt(ctx, a, diagram, fetched)
 	if err != nil || started == nil {
 		return err
 	}
@@ -123,10 +128,28 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *Diagram) error {
 	response, usage, callErr := s.callModel(callCtx, a, e, req, callDeadline)
 	cancel()
 	<-watching
-	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cleanupCancel()
-	_ = s.RevokeKey(cleanupCtx, UUID(a.ReceiptID))
-	return s.finish(cleanupCtx, a, stepCall{carriedDiagram: diagram != nil, reply: response, usage: usage, callErr: callErr})
+	s.revokeAttemptKey(a.ReceiptID)
+	call := stepCall{carriedDiagram: diagram != nil, reply: response, usage: usage, callErr: callErr}
+	if callErr == nil {
+		call.found = s.searchAhead(ctx, identity.Workspace{ID: a.WorkspaceID}, response)
+	}
+	settleCtx, settleCancel := context.WithTimeout(context.Background(), settleTimeout)
+	defer settleCancel()
+	return s.finish(settleCtx, a, call)
+}
+
+const (
+	settleTimeout    = 20 * time.Second
+	keyRevokeTimeout = 20 * time.Second
+)
+
+func (s *Service) revokeAttemptKey(receipt pgtype.UUID) {
+	ctx, cancel := context.WithTimeout(context.Background(), keyRevokeTimeout)
+	defer cancel()
+	if err := s.RevokeKey(ctx, UUID(receipt)); err != nil {
+		metrics.GatewayRevokeFailed.Inc()
+		slog.Warn("creation: the attempt's gateway key stays usable until it expires", "receipt_id", UUID(receipt), "error", err)
+	}
 }
 
 type stepCall struct {
@@ -134,9 +157,10 @@ type stepCall struct {
 	reply          *StepResult
 	usage          *ModelUsage
 	callErr        error
+	found          *searchAnswer
 }
 
-func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram) (*attempt, error) {
+func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram, fetched *fetchedPage) (*attempt, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -167,13 +191,16 @@ func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram)
 	if diagram != nil && !diagramMatches(e.Snapshot, diagram) {
 		return nil, ErrInvalidCommand
 	}
+	if !s.fetchedFor(e.Snapshot, fetched) {
+		return nil, staleAttempt(diagram)
+	}
 	if refusal := refuseAttempt(e, diagram != nil); refusal != "" {
 		return nil, s.failQueued(ctx, tx, row, refusal.withdrawn(e), a)
 	}
 	if _, err = q.ClaimCreationReceipt(ctx, gen.ClaimCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID}); err != nil {
 		return nil, err
 	}
-	s.fetchPending(ctx, &e.Snapshot)
+	s.attachFetched(&e.Snapshot, fetched)
 	e.Snapshot.Steps++
 	e.Snapshot.ReservedUSD += e.Limits.MaxCallCostUSD
 	e.ActiveDeadline = time.Now().Add(e.Limits.CallTimeout + 10*time.Second)
@@ -250,15 +277,52 @@ func abandonedState(p Snapshot) State {
 	return StateFailed
 }
 
-func (s *Service) fetchPending(ctx context.Context, p *Snapshot) {
-	url := p.PendingFetchURL
-	if url == "" || s.Fetch == nil {
+type fetchedPage struct {
+	url    string
+	record Fetch
+	text   string
+}
+
+func (s *Service) fetchAhead(ctx context.Context, a JobArgs) (*fetchedPage, error) {
+	if s.Fetch == nil {
+		return nil, nil
+	}
+	row, err := gen.New(s.Pool).GetCreationSession(ctx, gen.GetCreationSessionParams{ID: a.SessionID, WorkspaceID: a.WorkspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	e, err := decode(row)
+	if err != nil {
+		return nil, err
+	}
+	approved := e.Snapshot.approvedFetch()
+	if !sessionAwaitsAttempt(row, e, a) || approved == "" {
+		return nil, nil
+	}
+	record, text := s.Fetch(ctx, approved)
+	return &fetchedPage{url: approved, record: record, text: text}, nil
+}
+
+func (s *Service) fetchedFor(p Snapshot, fetched *fetchedPage) bool {
+	if s.Fetch == nil {
+		return true
+	}
+	if fetched == nil {
+		return p.approvedFetch() == ""
+	}
+	return fetched.url == p.approvedFetch()
+}
+
+func (s *Service) attachFetched(p *Snapshot, fetched *fetchedPage) {
+	if s.Fetch == nil || fetched == nil {
 		return
 	}
-	rec, text := s.Fetch(ctx, url)
-	p.PendingFetchURL = ""
-	p.Fetches = append(p.Fetches, rec)
-	p.appendMessage("tool", fetchObservation(rec, s.masked(text)))
+	p.PendingFetchURL, p.ApprovedFetchURL = "", ""
+	p.Fetches = append(p.Fetches, fetched.record)
+	p.appendMessage("tool", fetchObservation(fetched.record, s.masked(fetched.text)))
 }
 
 func (s *Service) cancelWhenSessionMoves(ctx context.Context, cancel context.CancelFunc, a JobArgs) <-chan struct{} {
@@ -287,7 +351,7 @@ func sessionMoved(current gen.GetCreationSessionLivenessRow, err error) bool {
 	if err != nil {
 		return errors.Is(err, pgx.ErrNoRows)
 	}
-	return State(current.State) != StateWorking || !current.ExpiresAt.Time.After(time.Now())
+	return State(current.State) != StateWorking || expired(current.ExpiresAt)
 }
 
 func (s *Service) stepRequest(a JobArgs, revision int64, e envelope, diagram *Diagram) StepRequest {
@@ -350,7 +414,7 @@ func (s *Service) referencedContent(ctx context.Context, ws identity.Workspace, 
 		}
 		content, err := s.ReadReferenceContent(ctx, ws, ref.SkillID, ref.VersionID)
 		if err != nil {
-			return nil, ErrNotFound
+			return nil, err
 		}
 		contents = append(contents, content)
 	}
@@ -481,22 +545,22 @@ func (s *Service) settleCredit(ctx context.Context, tx pgx.Tx, a JobArgs, l Limi
 }
 
 func (s *Service) concludeAttempt(ctx context.Context, a JobArgs, row gen.CreationSession, e *envelope, call stepCall) (State, bool) {
-	state, next, err := s.attemptOutcome(ctx, a, row, e, call)
+	state, next, err := s.attemptOutcome(ctx, row, e, call)
 	if err == nil {
 		return state, next
 	}
-	s.logStepFailure(a, call.callErr)
+	s.logStepFailure(a, errors.Join(call.callErr, err))
 	return failedAttempt(&e.Snapshot, err, call), false
 }
 
-func (s *Service) attemptOutcome(ctx context.Context, a JobArgs, row gen.CreationSession, e *envelope, call stepCall) (State, bool, error) {
+func (s *Service) attemptOutcome(ctx context.Context, row gen.CreationSession, e *envelope, call stepCall) (State, bool, error) {
 	if call.callErr != nil || call.reply == nil || !live(row) || !e.Deadline.After(time.Now()) {
 		return "", false, ErrUnavailable
 	}
 	if call.carriedDiagram && !validDiagramDescription(call.reply.DiagramDescription) {
 		return "", false, ErrInvalidCommand
 	}
-	return s.proposal(ctx, identity.Workspace{ID: a.WorkspaceID}, row.Revision+1, e, call.reply)
+	return s.proposal(ctx, row.Revision+1, e, call.reply, call.found)
 }
 
 func failedAttempt(p *Snapshot, err error, call stepCall) State {

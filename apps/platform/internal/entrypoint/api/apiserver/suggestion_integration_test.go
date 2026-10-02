@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
@@ -777,5 +778,77 @@ func TestSuggestionsAreInvisibleAcrossWorkspaces(t *testing.T) {
 	_, after, _ := owner.listSuggestions(t, seed.runID)
 	if after[0].Decision != "pending" {
 		t.Errorf("a stranger's request changed the decision to %q", after[0].Decision)
+	}
+}
+
+func TestSuggestionsAppliedToAVersionThatIsNoLongerTheNewestAreRefused(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "sugg-stale-base")
+	const name = "sugg-stale-base-skill"
+	seed := evaluateWithSuggestions(t, a, pool, c, name, []llmclient.ImprovementProposal{
+		{Category: "skill", Problem: "no mention of deduplication", Evidence: suggestionQuote,
+			TargetPath: "SKILL.md", ProposedContent: packagedSkillMD(name) + "\nIt deduplicates rows.\n",
+			ExpectedImpact: "better activation"},
+	})
+	_, suggestions, evaluationID := c.listSuggestions(t, seed.runID)
+	if len(suggestions) != 1 {
+		t.Fatalf("want one storable suggestion, got %d", len(suggestions))
+	}
+	if code, _ := c.decide(t, suggestions[0].SuggestionID, "accepted"); code != http.StatusOK {
+		t.Fatalf("accept: got %d", code)
+	}
+
+	planned, found, err := a.evaluations.ReadLatestVersion(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, seed.skillID))
+	if err != nil || !found {
+		t.Fatalf("read the newest version: found=%v err=%v", found, err)
+	}
+	resp, err := c.Post(c.base+"/skills/"+seed.skillID+"/versions", "application/zip", bytes.NewReader(namedPackage(t, name, true)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		t.Fatalf("upload a newer version: %d", resp.StatusCode)
+	}
+	live := a.evaluations.ReadLatestVersion
+	readAs := func(v eval.VersionFacts) {
+		a.evaluations.ReadLatestVersion = func(context.Context, pgtype.UUID, pgtype.UUID) (eval.VersionFacts, bool, error) {
+			return v, true, nil
+		}
+	}
+	readAs(planned)
+
+	code, applied := c.applySuggestions(t, seed.skillID, evaluationID, suggestions[0].SuggestionID)
+	if code != http.StatusUnprocessableEntity || len(applied.AppliedSuggestionIDs) != 0 ||
+		len(applied.RejectedSuggestions) != 1 || applied.RejectedSuggestions[0].BlockedReason != "target_changed" {
+		t.Fatalf("apply against a superseded version: %d %+v, want 422 with the suggestion refused as target_changed", code, applied)
+	}
+	var versions int
+	if err := pool.QueryRow(context.Background(), `SELECT count(*) FROM skill_versions WHERE skill_id = $1`,
+		mustUUID(t, seed.skillID)).Scan(&versions); err != nil {
+		t.Fatal(err)
+	}
+	if versions != 2 {
+		t.Errorf("versions = %d, want the original and the upload only; nothing may be built on the superseded one", versions)
+	}
+	assertReappliedOnTheNewestThenRecognisedAsTheSame(t, c, seed.skillID, evaluationID, suggestions[0].SuggestionID, live, readAs)
+}
+
+func assertReappliedOnTheNewestThenRecognisedAsTheSame(
+	t *testing.T, c *client, skillID, evaluationID, suggestionID string,
+	live func(context.Context, pgtype.UUID, pgtype.UUID) (eval.VersionFacts, bool, error), readAs func(eval.VersionFacts),
+) {
+	t.Helper()
+	uploaded, _, err := live(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, skillID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	readAs(uploaded)
+	if code, applied := c.applySuggestions(t, skillID, evaluationID, suggestionID); code != http.StatusCreated || applied.Duplicate {
+		t.Fatalf("applying again on the newest version: %d %+v, want a new version", code, applied)
+	}
+	if code, applied := c.applySuggestions(t, skillID, evaluationID, suggestionID); code != http.StatusCreated || !applied.Duplicate {
+		t.Fatalf("the same change planned on the version just superseded by it: %d %+v, want the existing version recognised", code, applied)
 	}
 }

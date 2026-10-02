@@ -236,14 +236,10 @@ func (c *navigationCatcher) Write(b []byte) (int, error) {
 
 func startupRefusals(posture envx.Posture, providers *run.Registry, rateLimits *httpx.RateLimiter, rateLimitErr error) []string {
 	refusals := append(posture.APIRefusals(), providers.UnauthenticatedProviderRefusals()...)
-	switch {
-	case rateLimitErr != nil:
-		refusals = append(refusals, rateLimitErr.Error())
-	case rateLimits == nil && posture.Public():
-		refusals = append(refusals, "RATE_LIMIT=off on a deployment whose APP_URL is https: anonymous search and the "+
-			"import endpoints would take unlimited traffic. Unset RATE_LIMIT.")
+	if rateLimitErr != nil {
+		return append(refusals, rateLimitErr.Error())
 	}
-	return refusals
+	return append(refusals, posture.RateLimitRefusals(rateLimits)...)
 }
 
 func main() {

@@ -56,9 +56,20 @@ type StatusChanged struct {
 	closedGrants []pgtype.UUID
 }
 
+var statusEvents = map[Status]string{
+	StatusQueued:       outbox.RunQueued,
+	StatusProvisioning: outbox.RunProvisioning,
+	StatusPreparing:    outbox.RunPreparing,
+	StatusRunning:      outbox.RunRunning,
+	StatusEvaluating:   outbox.RunEvaluating,
+	StatusSucceeded:    outbox.RunSucceeded,
+	StatusFailed:       outbox.RunFailed,
+	StatusCancelled:    outbox.RunCancelled,
+	StatusTimedOut:     outbox.RunTimedOut,
+}
+
 func (e StatusChanged) eventType() string {
-	eventType, _ := outbox.StatusEvent(e.ToStatus)
-	return eventType
+	return statusEvents[Status(e.ToStatus)]
 }
 
 type CancelRequested struct{}

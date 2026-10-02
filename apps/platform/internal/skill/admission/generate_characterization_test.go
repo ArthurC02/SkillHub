@@ -15,9 +15,11 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 )
 
-var errFirstAcquireRefused = errors.New("the first connection of this pool is refused")
+var errAllowanceAcquireRefused = errors.New("the connection that reads the allowance is refused")
 
-func poolRefusingItsFirstConnection(t *testing.T) *pgxpool.Pool {
+const allowanceAcquire = 2
+
+func poolRefusingTheAllowanceConnection(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	cfg, err := pgxpool.ParseConfig(os.Getenv(creationDBURLEnv))
 	if err != nil {
@@ -25,8 +27,8 @@ func poolRefusingItsFirstConnection(t *testing.T) *pgxpool.Pool {
 	}
 	var acquired atomic.Int32
 	cfg.PrepareConn = func(context.Context, *pgx.Conn) (bool, error) {
-		if acquired.Add(1) == 1 {
-			return true, errFirstAcquireRefused
+		if acquired.Add(1) == allowanceAcquire {
+			return true, errAllowanceAcquireRefused
 		}
 		return true, nil
 	}
@@ -42,13 +44,13 @@ func TestAGenerationWhoseAllowanceCannotBeCountedIsRefusedAndRecordedAsUnavailab
 	requireCreationDB(t)
 	ws := seedCreationWorkspace(t, creationPool, "generate-allowance-unreadable")
 	svc := &Service{
-		Pool:          poolRefusingItsFirstConnection(t),
+		Pool:          poolRefusingTheAllowanceConnection(t),
 		LLM:           ModelOrNone(&llmclient.Client{BaseURL: "http://127.0.0.1:1"}),
 		GenerateQuota: policy.DefaultGenerateQuotaLimits(),
 	}
 
 	out, err := svc.GenerateSkill(context.Background(), ws, GenerateInput{TaskDescription: "把掃描的單據整理成表格。"})
-	if !errors.Is(err, policy.ErrAllowanceUnavailable) || !errors.Is(err, errFirstAcquireRefused) || out.Attempts != 0 {
+	if !errors.Is(err, policy.ErrAllowanceUnavailable) || !errors.Is(err, errAllowanceAcquireRefused) || out.Attempts != 0 {
 		t.Fatalf("attempts=%d err=%v, want no attempt and ErrAllowanceUnavailable wrapping the refused connection", out.Attempts, err)
 	}
 

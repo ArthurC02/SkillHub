@@ -10,13 +10,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"log/slog"
 	"path"
 	"slices"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -43,6 +41,8 @@ var ErrGenerateTooLong = errors.New("ingest: task description is too long")
 var ErrCreditThreshold = errors.New("ingest: credit balance below the start threshold")
 
 var ErrGenerateInFlight = errors.New("ingest: a generation is already running for this workspace")
+
+var ErrGenerateSlotUnavailable = errors.New("ingest: whether a generation is already running cannot be read")
 
 const (
 	minTaskDescriptionRunes = 8
@@ -168,18 +168,19 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, in G
 		return GenerateResult{}, fmt.Errorf("ingest: generation_inputs: %w", err)
 	}
 
-	job := generation{ws: ws, task: task, in: in, references: references, inputsJSON: generationInputsJSON}
-	if err := s.admitGeneration(ctx, job); err != nil {
-		return GenerateResult{}, err
-	}
-	held, err := s.holdGenerateSlot(ctx, ws.ID)
+	lease, held, err := s.holdGenerateSlot(ctx, ws.ID)
 	if err != nil {
-		return GenerateResult{}, err
+		return GenerateResult{}, fmt.Errorf("%w: %w", ErrGenerateSlotUnavailable, err)
 	}
 	if !held {
 		return GenerateResult{}, ErrGenerateInFlight
 	}
-	defer s.releaseGenerateSlot(ctx, ws.ID)
+	defer s.releaseGenerateSlot(ctx, ws.ID, lease)
+
+	job := generation{ws: ws, task: task, in: in, references: references, inputsJSON: generationInputsJSON}
+	if err := s.admitGeneration(ctx, job); err != nil {
+		return GenerateResult{}, err
+	}
 
 	var out GenerateResult
 	defer logGenerateUsage(&out)
@@ -388,48 +389,11 @@ func referenceable(skill registry.Skill) bool {
 func (s *Service) resolveReference(
 	ctx context.Context, ws identity.Workspace, id pgtype.UUID,
 ) (ReferenceSkill, referenceProvenance, error) {
-	skill, found, err := s.References.WorkspaceSkill(ctx, ws.ID, id)
+	found, err := s.findCreationReference(ctx, ws, id, pgtype.UUID{})
 	if err != nil {
 		return ReferenceSkill{}, referenceProvenance{}, err
 	}
-	if !found {
-		skill, found, err = s.References.CatalogSkill(ctx, id)
-		if err != nil {
-			return ReferenceSkill{}, referenceProvenance{}, err
-		}
-	}
-	if !found || !referenceable(skill) {
-		return ReferenceSkill{}, referenceProvenance{}, ErrReferenceUnavailable
-	}
-
-	version, found, err := s.References.LatestVersion(ctx, skill.WorkspaceID, skill.ID)
-	if err != nil {
-		return ReferenceSkill{}, referenceProvenance{}, err
-	}
-	if !found {
-		return ReferenceSkill{}, referenceProvenance{}, ErrReferenceUnavailable
-	}
-
-	data, err := s.Store.Get(ctx, version.PackageObjectKey)
-	if err != nil {
-		return ReferenceSkill{}, referenceProvenance{}, fmt.Errorf("%w: %w", ErrReferenceUnavailable, err)
-	}
-	fsys, err := skillpkg.SkillFS(data, version.SourcePath)
-	if err != nil {
-		return ReferenceSkill{}, referenceProvenance{}, fmt.Errorf("%w: %w", ErrReferenceUnavailable, err)
-	}
-	md, err := fs.ReadFile(fsys, "SKILL.md")
-	if err != nil {
-		return ReferenceSkill{}, referenceProvenance{}, fmt.Errorf("%w: %w", ErrReferenceUnavailable, err)
-	}
-
-	content, truncated := cutRunes(strings.ToValidUTF8(string(md), ""),
-		generateMaxReferenceChars-utf8.RuneCountInString(referenceTruncationMarker))
-	if truncated {
-		content += referenceTruncationMarker
-	}
-	return ReferenceSkill{Name: skill.Name, SkillMD: content},
-		referenceProvenance{SkillID: skill.ID, VersionID: version.ID, Name: skill.Name}, nil
+	return found.content, referenceProvenance{SkillID: found.skillID, VersionID: found.versionID, Name: found.content.Name}, nil
 }
 
 func cutRunes(s string, limit int) (string, bool) {
@@ -622,20 +586,22 @@ const (
 	generateSlotReleaseTimeout = 5 * time.Second
 )
 
-func (s *Service) holdGenerateSlot(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
-	_, err := gen.New(s.Pool).AcquireGenerationLease(ctx, gen.AcquireGenerationLeaseParams{
+func (s *Service) holdGenerateSlot(ctx context.Context, workspaceID pgtype.UUID) (pgtype.Timestamptz, bool, error) {
+	heldUntil, err := gen.New(s.Pool).AcquireGenerationLease(ctx, gen.AcquireGenerationLeaseParams{
 		WorkspaceID: workspaceID, Lease: pgconv.Interval(generateSlotLease),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
+		return pgtype.Timestamptz{}, false, nil
 	}
-	return err == nil, err
+	return heldUntil, err == nil, err
 }
 
-func (s *Service) releaseGenerateSlot(ctx context.Context, workspaceID pgtype.UUID) {
+func (s *Service) releaseGenerateSlot(ctx context.Context, workspaceID pgtype.UUID, heldUntil pgtype.Timestamptz) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), generateSlotReleaseTimeout)
 	defer cancel()
-	if err := gen.New(s.Pool).ReleaseGenerationLease(ctx, workspaceID); err != nil {
+	if err := gen.New(s.Pool).ReleaseGenerationLease(ctx, gen.ReleaseGenerationLeaseParams{
+		WorkspaceID: workspaceID, HeldUntil: heldUntil,
+	}); err != nil {
 		slog.Warn("generate: the workspace's generation lease stays until it expires", "error", err)
 	}
 }

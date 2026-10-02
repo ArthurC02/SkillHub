@@ -69,4 +69,5 @@ ORDER BY updated_at LIMIT @batch_size;
 -- name: CreationSessionRevisions :many
 SELECT id, workspace_id, revision
 FROM creation_sessions
-WHERE id = ANY(@session_ids::uuid[]) AND workspace_id = ANY(@workspace_ids::uuid[]);
+WHERE id = ANY(@session_ids::uuid[]) AND workspace_id = ANY(@workspace_ids::uuid[])
+  AND expires_at > now();

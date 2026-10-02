@@ -141,6 +141,7 @@ const creationSessionRevisions = `-- name: CreationSessionRevisions :many
 SELECT id, workspace_id, revision
 FROM creation_sessions
 WHERE id = ANY($1::uuid[]) AND workspace_id = ANY($2::uuid[])
+  AND expires_at > now()
 `
 
 type CreationSessionRevisionsParams struct {

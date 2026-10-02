@@ -102,28 +102,28 @@ type PermissionSummary struct {
 
 const blockedContentNotCurated = "content_not_curated"
 
-// blockingReason is what would refuse this pair right now, asked of the very
-// gates create() enforces so the two can never answer differently.
 func (s *Service) blockingReason(
 	ctx context.Context, workspaceID pgtype.UUID, version VersionFacts, snap policySnapshot, scan packageScan,
-) string {
+) (string, error) {
 	if s.Registry != nil {
-		if skill, found, err := s.Registry.Skill(ctx, workspaceID, version.SkillID); err == nil && found {
-			if reason, err := accessVerdict(skill); err != nil {
-				return reason
-			}
+		skill, found, err := s.Registry.Skill(ctx, workspaceID, version.SkillID)
+		if err != nil {
+			return "", err
+		}
+		if reason := refusalReason(accessVerdict(skill)); found && reason != "" {
+			return reason, nil
 		}
 	}
-	if reason, err := s.schedulableRefusal(ctx, snap); err != nil {
-		return reason
+	if reason := refusalReason(s.schedulableRefusal(ctx, snap)); reason != "" {
+		return reason, nil
 	}
-	if reason, err := scanVerdict(scan); err != nil {
-		return reason
+	if reason := refusalReason(scanVerdict(scan)); reason != "" {
+		return reason, nil
 	}
-	if _, err := s.curatedContentRefusal(ctx, workspaceID, version.ID); err != nil {
-		return blockedContentNotCurated
+	if _, err := s.curatedContentRefusal(ctx, workspaceID, version.ID); !errors.Is(err, ErrContentNotCurated) {
+		return "", err
 	}
-	return ""
+	return blockedContentNotCurated, nil
 }
 
 type CostEstimate struct {
@@ -207,36 +207,48 @@ func (s *Service) PermissionSummaryFor(
 	}, nil)
 }
 
-// heldInputs carries rows a caller already read on its own transaction, so this
-// function can skip taking a second pool connection while that transaction
-// still holds one.
+func (s *Service) versionFor(ctx context.Context, workspaceID, versionID pgtype.UUID, held *heldInputs) (VersionFacts, error) {
+	if held != nil {
+		return held.version, nil
+	}
+	version, found, err := s.Registry.Version(ctx, workspaceID, versionID)
+	if !found && err == nil {
+		return VersionFacts{}, ErrPreflightTargetNotFound
+	}
+	return version, err
+}
+
+// heldInputs carries what a caller already read: rows from its own transaction,
+// so no second pool connection is taken, and the package scan and provider
+// answers, so no network call is made while that transaction holds its locks.
 type heldInputs struct {
 	draft   testlab.Draft
 	version VersionFacts
+	live    liveFacts
+}
+
+type liveFacts struct {
+	scan            packageScan
+	injectedSecrets []string
+	provider        ProviderSummary
+}
+
+func (s *Service) liveFactsFor(ctx context.Context, version VersionFacts, snap policySnapshot) liveFacts {
+	return liveFacts{
+		scan:            s.packageReport(ctx, version.stored()),
+		injectedSecrets: s.injectedSecretsFor(ctx, snap),
+		provider:        s.providerSummary(ctx, snap),
+	}
 }
 
 func (s *Service) permissionSummaryFor(
 	ctx context.Context, workspaceID pgtype.UUID, target preflightTarget, held *heldInputs,
 ) (PermissionSummary, error) {
 	skillID, versionID, testCaseID := target.skillID, target.versionID, target.testCaseID
-	var version VersionFacts
-	if held != nil {
-		version = held.version
-	} else {
-		var (
-			found bool
-			err   error
-		)
-		version, found, err = s.Registry.Version(ctx, workspaceID, versionID)
-		if !found && err == nil {
-
-			return PermissionSummary{}, ErrPreflightTargetNotFound
-		}
-		if err != nil {
-			return PermissionSummary{}, err
-		}
+	version, err := s.versionFor(ctx, workspaceID, versionID, held)
+	if err != nil {
+		return PermissionSummary{}, err
 	}
-
 	if skillID.Valid && version.SkillID != skillID {
 		return PermissionSummary{}, ErrNotFound
 	}
@@ -247,7 +259,13 @@ func (s *Service) permissionSummaryFor(
 	}
 
 	snap := defaultPolicy(s.Deployment)
-	scan := s.packageReport(ctx, version.stored())
+	var live liveFacts
+	if held != nil {
+		live = held.live
+	} else {
+		live = s.liveFactsFor(ctx, version, snap)
+	}
+	scan := live.scan
 
 	content := PermissionSummaryContent{
 		SkillVersionID:    pgconv.UUIDString(version.ID),
@@ -261,8 +279,8 @@ func (s *Service) permissionSummaryFor(
 
 		MCPServers:      []string{},
 		Network:         NetworkSummary{Mode: snap.Egress.Mode, Allow: egressAllowLines(snap.Egress.Allow)},
-		InjectedSecrets: s.injectedSecretsFor(ctx, snap),
-		Provider:        s.providerSummary(ctx, snap),
+		InjectedSecrets: live.injectedSecrets,
+		Provider:        live.provider,
 		ResourceLimits:  snap.ResourceLimits,
 	}
 
@@ -274,11 +292,15 @@ func (s *Service) permissionSummaryFor(
 
 	blocked := ""
 	var quota *policy.QuotaView
+	var notes []string
 	// Skipped here: a second pool read would deadlock a caller already
 	// inside a transaction on a single-connection pool.
 	if held == nil {
-		blocked = s.blockingReason(ctx, workspaceID, version, snap, scan)
+		if blocked, err = s.blockingReason(ctx, workspaceID, version, snap, scan); err != nil {
+			return PermissionSummary{}, err
+		}
 		quota = s.enforcedQuotaView(ctx, workspaceID)
+		notes = s.summaryNotes(ctx, snap)
 	}
 
 	if s.Ledger == nil {
@@ -295,7 +317,7 @@ func (s *Service) permissionSummaryFor(
 		EstimatedCost: estimate,
 		Quota:         quota,
 		Blocked:       blocked,
-		Notes:         s.summaryNotes(ctx, snap),
+		Notes:         notes,
 	}, nil
 }
 
@@ -472,10 +494,10 @@ func permissionConfirmation(row gen.RunPermissionConfirmation) PermissionConfirm
 	return PermissionConfirmation{SummaryHash: row.SummaryHash, ConfirmedAt: timePointer(row.ConfirmedAt)}
 }
 
-func (s *Service) requirePermissionConfirmation(ctx context.Context, q *gen.Queries, p CreateParams, draft testlab.Draft, version VersionFacts) error {
+func (s *Service) requirePermissionConfirmation(ctx context.Context, q *gen.Queries, p CreateParams, held heldInputs) error {
 	summary, err := s.permissionSummaryFor(ctx, p.WorkspaceID,
 		preflightTarget{skillID: p.SkillID, versionID: p.VersionID, testCaseID: p.TestCaseID},
-		&heldInputs{draft: draft, version: version})
+		&held)
 	if err != nil {
 		return err
 	}
@@ -571,4 +593,11 @@ func preflightIDs(w http.ResponseWriter, r *http.Request, version, testCase stri
 		return target, false
 	}
 	return target, true
+}
+
+func refusalReason(reason string, refused error) string {
+	if refused == nil {
+		return ""
+	}
+	return reason
 }

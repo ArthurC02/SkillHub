@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -322,7 +323,7 @@ func TestActSelectReferences(t *testing.T) {
 		return creation.Reference{}, creation.ReferenceSkill{}, nil
 	}
 	failResolve := func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
-		return creation.Reference{}, creation.ReferenceSkill{}, errors.New("not found upstream")
+		return creation.Reference{}, creation.ReferenceSkill{}, fmt.Errorf("%w: not found upstream", creation.ErrNotFound)
 	}
 
 	t.Run("more than three ids", func(t *testing.T) {
@@ -352,7 +353,7 @@ func TestActSelectReferences(t *testing.T) {
 		}
 		assertRevisionUnchanged(t, pool, id, v.Revision)
 	})
-	t.Run("ResolveReference errors", func(t *testing.T) {
+	t.Run("ResolveReference finds nothing", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		svc.ResolveReference = failResolve
 		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "select_references", ReferenceSkillIDs: []string{"a"}})
@@ -379,17 +380,18 @@ func TestActSelectReferences(t *testing.T) {
 	})
 }
 
-func TestActAdoptReferenceWhenAdoptErrorsIsNotFound(t *testing.T) {
+func TestActAdoptReferenceWhoseForkFailsReportsTheOutage(t *testing.T) {
 	pool, ws, svc := newActFixture(t)
 	v, id := newActSession(t, svc, ws)
 	setCreationSnapshotField(t, pool, id, "pending_action", "confirm_references")
 	setCreationSnapshotField(t, pool, id, "references", []creation.Reference{{SkillID: "adopt-fail-skill"}})
-	svc.Adopt = func(context.Context, identity.Workspace, string) (creation.Candidate, error) {
-		return creation.Candidate{}, errors.New("adopt boom")
+	outage := errors.New("adopt boom")
+	svc.Adopt = func(context.Context, pgx.Tx, identity.Workspace, string) (creation.Candidate, error) {
+		return creation.Candidate{}, outage
 	}
 	_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "adopt_reference", ReferenceSkillIDs: []string{"adopt-fail-skill"}})
-	if !errors.Is(err, creation.ErrNotFound) {
-		t.Fatalf("got %v, want ErrNotFound", err)
+	if !errors.Is(err, outage) || errors.Is(err, creation.ErrNotFound) {
+		t.Fatalf("got %v, want the fork outage itself rather than ErrNotFound", err)
 	}
 	assertRevisionUnchanged(t, pool, id, v.Revision)
 }
@@ -439,12 +441,12 @@ func TestActConfirmReferences(t *testing.T) {
 		}
 		assertRevisionUnchanged(t, pool, id, v.Revision)
 	})
-	t.Run("ResolveReference errors", func(t *testing.T) {
+	t.Run("ResolveReference finds nothing", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		setCreationSnapshotField(t, pool, id, "pending_action", "confirm_references")
 		setCreationSnapshotField(t, pool, id, "references", []creation.Reference{{SkillID: "r1"}})
 		svc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
-			return creation.Reference{}, creation.ReferenceSkill{}, errors.New("resolve boom")
+			return creation.Reference{}, creation.ReferenceSkill{}, fmt.Errorf("%w: resolve boom", creation.ErrNotFound)
 		}
 		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "confirm_references"})
 		if !errors.Is(err, creation.ErrNotFound) {
@@ -709,13 +711,13 @@ func TestActMaterializeGroupPreconditions(t *testing.T) {
 		svc.ResolveReference = nil
 		s.assertMaterializeRefused(t, v, id, unavailable)
 	})
-	t.Run("ResolveReference errors", func(t *testing.T) {
+	t.Run("ResolveReference finds nothing", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		confirmedBase(t, id)
 		setCreationSnapshotField(t, pool, id, "draft", draft("h1", false))
 		setCreationSnapshotField(t, pool, id, "references", []creation.Reference{{SkillID: "r1", Confirmed: true, Available: true}})
 		svc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
-			return creation.Reference{}, creation.ReferenceSkill{}, errors.New("resolve boom")
+			return creation.Reference{}, creation.ReferenceSkill{}, fmt.Errorf("%w: resolve boom", creation.ErrNotFound)
 		}
 		s.assertMaterializeRefused(t, v, id, materializeRefusal{hash: "h1", want: creation.ErrNotFound, wantName: "ErrNotFound"})
 	})
@@ -777,5 +779,28 @@ func TestActWhenInsertFailsTheSessionIsUnchanged(t *testing.T) {
 	}
 	if state != v.State || revision != v.Revision {
 		t.Fatalf("session moved to state=%q revision=%d, want unchanged from state=%q revision=%d", state, revision, v.State, v.Revision)
+	}
+}
+
+func TestAdoptingAReferenceWritesInsideTheSessionsOwnTransaction(t *testing.T) {
+	pool := singleConnectionPool(t, requireDB(t))
+	ws := newCreationWorkspace(t, pool)
+	svc := newCreateService(pool, &jobRecorder{})
+	v, id := newActSession(t, svc, ws)
+	setCreationSnapshotField(t, pool, id, "pending_action", "confirm_references")
+	setCreationSnapshotField(t, pool, id, "references", []creation.Reference{{SkillID: "adopt-in-tx-skill"}})
+	svc.Adopt = func(ctx context.Context, tx pgx.Tx, _ identity.Workspace, skillID string) (creation.Candidate, error) {
+		if tx == nil {
+			return creation.Candidate{}, errors.New("no transaction to write the copy in")
+		}
+		if _, err := tx.Exec(ctx, "SELECT 1"); err != nil {
+			return creation.Candidate{}, err
+		}
+		return creation.Candidate{SkillID: skillID, VersionID: "v1"}, nil
+	}
+	got, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "adopt_reference", ReferenceSkillIDs: []string{"adopt-in-tx-skill"}})
+	if err != nil || got.State != string(creation.StateSaved) {
+		t.Fatalf("state %q err %v: on a one-connection pool the copy must be written through the session's transaction, "+
+			"not a second connection the session is holding up", got.State, err)
 	}
 }

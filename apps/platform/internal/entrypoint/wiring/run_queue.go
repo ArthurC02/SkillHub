@@ -13,19 +13,19 @@ import (
 
 type runQueue struct{ client *river.Client[pgx.Tx] }
 
-type runJobArgs struct {
+type RunExecuteArgs struct {
 	RunID       string `json:"run_id"`
 	WorkspaceID string `json:"workspace_id"`
 }
 
-func (runJobArgs) Kind() string { return "run_execute" }
+func (RunExecuteArgs) Kind() string { return "run_execute" }
 
-type cleanupJobArgs struct {
+type RunCleanupArgs struct {
 	RunID       string `json:"run_id"`
 	WorkspaceID string `json:"workspace_id"`
 }
 
-func (cleanupJobArgs) Kind() string { return "run_cleanup" }
+func (RunCleanupArgs) Kind() string { return "run_cleanup" }
 
 const (
 	runExecuteMaxAttempts = 3
@@ -64,11 +64,11 @@ func (q *runQueue) CleanInTx(ctx context.Context, tx pgx.Tx, work run.RunWork) e
 	return err
 }
 
-func runJob(work run.RunWork) runJobArgs {
-	return runJobArgs{RunID: pgconv.UUIDString(work.RunID), WorkspaceID: pgconv.UUIDString(work.WorkspaceID)}
+func runJob(work run.RunWork) RunExecuteArgs {
+	return RunExecuteArgs{RunID: pgconv.UUIDString(work.RunID), WorkspaceID: pgconv.UUIDString(work.WorkspaceID)}
 }
-func cleanupJob(work run.RunWork) cleanupJobArgs {
-	return cleanupJobArgs{RunID: pgconv.UUIDString(work.RunID), WorkspaceID: pgconv.UUIDString(work.WorkspaceID)}
+func cleanupJob(work run.RunWork) RunCleanupArgs {
+	return RunCleanupArgs{RunID: pgconv.UUIDString(work.RunID), WorkspaceID: pgconv.UUIDString(work.WorkspaceID)}
 }
 func executeOptions() *river.InsertOpts {
 	return &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveRunJobStates}, MaxAttempts: runExecuteMaxAttempts, Queue: QueueRuns}

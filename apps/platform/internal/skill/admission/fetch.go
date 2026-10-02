@@ -42,6 +42,10 @@ var (
 	errTooManyRedirects   = errors.New("too many redirects")
 )
 
+type nothingAtAddress struct{ error }
+
+func (n nothingAtAddress) Unwrap() error { return n.error }
+
 var alwaysBlocked = []netip.Prefix{
 	netip.MustParsePrefix("100.64.0.0/10"),
 	netip.MustParsePrefix("0.0.0.0/8"),
@@ -188,6 +192,9 @@ func (f *URLFetcher) Fetch(ctx context.Context, rawURL string) (data []byte, ref
 			return data, ref, nil
 		}
 		lastErr = err
+		if !errors.As(err, new(nothingAtAddress)) {
+			break
+		}
 	}
 	return nil, "", lastErr
 }
@@ -241,7 +248,11 @@ func (f *URLFetcher) download(ctx context.Context, rawURL string) ([]byte, error
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, refusedBodyDrainBytes))
-		return nil, fmt.Errorf("%w: 來源回應 HTTP %d，沒有取得檔案。", ErrFetch, resp.StatusCode)
+		refused := fmt.Errorf("%w: 來源回應 HTTP %d，沒有取得檔案。", ErrFetch, resp.StatusCode)
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, nothingAtAddress{refused}
+		}
+		return nil, refused
 	}
 
 	data, err := io.ReadAll(io.LimitReader(resp.Body, skillpkg.MaxZipBytes+1))

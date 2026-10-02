@@ -136,7 +136,7 @@ type Service struct {
 
 	Versions *ingest.Service
 
-	ReadEventsOfType func(ctx context.Context, eventType string, since time.Time, limit int32) ([]outbox.Event, error)
+	ReadEventsOfType func(ctx context.Context, page outbox.EventPage) ([]outbox.Event, error)
 
 	ReadRunFacts        func(ctx context.Context, workspaceID, runID pgtype.UUID) (RunFacts, bool, error)
 	ReadEvaluationInput func(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationInput, bool, error)
@@ -362,6 +362,12 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	}
 	v.findings = append(findings, v.findings...)
 	v.evidenceComplete = evidenceComplete && v.evidenceComplete
+	return s.settleJudgement(ctx, m, ev, v)
+}
+
+func (s *Service) settleJudgement(ctx context.Context, m material, ev gen.Evaluation, v verdict) error {
+	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.run.ID}
+	s.recordEvalCost(ctx, s.Pool, credit.KindReview, ref, modelCall{model: v.model, promptVersion: v.promptVersion, usage: v.usage})
 	return s.completeAndSuggest(ctx, m, ev, v)
 }
 
@@ -568,8 +574,6 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 	if err := s.recordModelUsage(ctx, q, ref, "judge", call); err != nil {
 		return err
 	}
-
-	s.recordEvalCost(ctx, tx, credit.KindReview, ref, call)
 
 	passed, failed, undetermined := tally(v.results)
 	if err := trace.RecordOrchestratorEvent(ctx, tx, trace.OrchestratorEvent{

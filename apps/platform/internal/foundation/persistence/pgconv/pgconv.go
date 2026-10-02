@@ -1,10 +1,27 @@
 package pgconv
 
 import (
+	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const uniqueViolationCode = "23505"
+
+func UniqueViolation(err error) (constraint string, violated bool) {
+	pgErr, ok := errors.AsType[*pgconn.PgError](err)
+	if !ok || pgErr.Code != uniqueViolationCode {
+		return "", false
+	}
+	return pgErr.ConstraintName, true
+}
+
+func IsUniqueViolation(err error) bool {
+	_, violated := UniqueViolation(err)
+	return violated
+}
 
 func UUIDString(u pgtype.UUID) string {
 	v, _ := u.Value()

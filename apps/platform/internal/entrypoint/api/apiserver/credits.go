@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -232,7 +233,7 @@ func (h *creditsHandler) readableRuns(
 ) (map[pgtype.UUID]bool, error) {
 	var runIDs []pgtype.UUID
 	for _, e := range entries {
-		if e.RefType != nil && *e.RefType == "run" && e.RefID.Valid {
+		if e.RefType != nil && *e.RefType == credit.RefRun && e.RefID.Valid {
 			runIDs = append(runIDs, e.RefID)
 		}
 	}
@@ -294,7 +295,11 @@ func (h *creditsHandler) Grant(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, credit.ErrReasonRequired):
 		httpx.WriteError(w, http.StatusBadRequest, "reason is required")
 		return
+	case errors.Is(err, credit.ErrAccountGone):
+		httpx.WriteError(w, http.StatusConflict, "this account is being deleted; no credits were granted")
+		return
 	case err != nil:
+		slog.Error("credit grant failed", "workspace_id", pgconv.UUIDString(workspaceID), "error", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "grant failed")
 		return
 	}

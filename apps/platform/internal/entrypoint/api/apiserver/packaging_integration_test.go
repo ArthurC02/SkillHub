@@ -133,7 +133,7 @@ func (s *packagingRaceStore) Get(ctx context.Context, key string) ([]byte, error
 	bothRead := s.bothRead
 	s.mu.Unlock()
 	if !ok {
-		return nil, errors.New("no such object: " + key)
+		return nil, fmt.Errorf("no such object: %s: %w", key, fs.ErrNotExist)
 	}
 	select {
 	case <-bothRead:

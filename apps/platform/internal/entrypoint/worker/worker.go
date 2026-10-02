@@ -176,10 +176,8 @@ func newRunService(pool *pgxpool.Pool, deps Deps, testlabSvc *testlab.Service) *
 }
 
 func wireEvaluationModelAndEvents(evaluations *eval.Service, pool *pgxpool.Pool, llm *llmclient.Client) {
-	evaluations.ReadEventsOfType = func(
-		ctx context.Context, eventType string, since time.Time, limit int32,
-	) ([]outbox.Event, error) {
-		return outbox.EventsOfTypeSince(ctx, pool, eventType, since, limit)
+	evaluations.ReadEventsOfType = func(ctx context.Context, page outbox.EventPage) ([]outbox.Event, error) {
+		return outbox.EventsOfType(ctx, pool, page)
 	}
 	evaluations.Judge = eval.JudgeOrNone(llm)
 	evaluations.Suggester = eval.SuggesterOrNone(llm)

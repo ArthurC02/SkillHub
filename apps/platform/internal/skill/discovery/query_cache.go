@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"maps"
 	"slices"
@@ -11,8 +12,8 @@ import (
 )
 
 const (
-	queryCacheTTL     = time.Hour
-	queryCacheEntries = 10000
+	cacheTTL     = time.Hour
+	cacheEntries = 10000
 )
 
 type cachedAnswer[V any] struct {
@@ -20,20 +21,20 @@ type cachedAnswer[V any] struct {
 	expires time.Time
 }
 
-type queryCache[V any] struct {
+type ttlCache[V any] struct {
 	mu      sync.Mutex
 	entries map[string]cachedAnswer[V]
 	now     func() time.Time
 }
 
-func (c *queryCache[V]) clock() time.Time {
+func (c *ttlCache[V]) clock() time.Time {
 	if c.now == nil {
 		return time.Now()
 	}
 	return c.now()
 }
 
-func (c *queryCache[V]) get(key string) (V, bool) {
+func (c *ttlCache[V]) get(key string) (V, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	entry, ok := c.entries[key]
@@ -44,14 +45,14 @@ func (c *queryCache[V]) get(key string) (V, bool) {
 	return entry.value, true
 }
 
-func (c *queryCache[V]) put(key string, value V) {
+func (c *ttlCache[V]) put(key string, value V) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	now := c.clock()
 	if c.entries == nil {
 		c.entries = map[string]cachedAnswer[V]{}
 	}
-	if len(c.entries) >= queryCacheEntries {
+	if len(c.entries) >= cacheEntries {
 		for k, entry := range c.entries {
 			if !now.Before(entry.expires) {
 				delete(c.entries, k)
@@ -59,23 +60,23 @@ func (c *queryCache[V]) put(key string, value V) {
 		}
 	}
 	for k := range c.entries {
-		if len(c.entries) < queryCacheEntries {
+		if len(c.entries) < cacheEntries {
 			break
 		}
 		delete(c.entries, k)
 	}
-	c.entries[key] = cachedAnswer[V]{value: value, expires: now.Add(queryCacheTTL)}
+	c.entries[key] = cachedAnswer[V]{value: value, expires: now.Add(cacheTTL)}
 }
 
 type cachedModel struct {
 	Model
-	embeddings queryCache[Embeddings]
-	reasons    queryCache[MatchReasons]
+	embeddings ttlCache[Embeddings]
+	reasons    ttlCache[MatchReasons]
 }
 
 type cachedIntentAnalyzer struct {
 	IntentAnalyzer
-	analyses queryCache[IntentAnalysis]
+	analyses ttlCache[IntentAnalysis]
 }
 
 func (m *cachedModel) Embed(ctx context.Context, texts []string, within time.Duration) (*Embeddings, error) {
@@ -83,7 +84,7 @@ func (m *cachedModel) Embed(ctx context.Context, texts []string, within time.Dur
 		return m.Model.Embed(ctx, texts, within)
 	}
 	if hit, ok := m.embeddings.get(texts[0]); ok {
-		hit.Vectors, hit.Usage = slices.Clone(hit.Vectors), nil
+		hit.Vectors, hit.Usage = slices.Clone(hit.Vectors), reusedAnswer()
 		return &hit, nil
 	}
 	answer, err := m.Model.Embed(ctx, texts, within)
@@ -96,7 +97,7 @@ func (m *cachedModel) Embed(ctx context.Context, texts []string, within time.Dur
 func (m *cachedModel) MatchReasons(ctx context.Context, query string, candidates []SkillCandidate, within time.Duration) (*MatchReasons, error) {
 	key := reasonsKey(query, candidates)
 	if hit, ok := m.reasons.get(key); ok {
-		hit.Reasons, hit.Usage = slices.Clone(hit.Reasons), nil
+		hit.Reasons, hit.Usage = slices.Clone(hit.Reasons), reusedAnswer()
 		return &hit, nil
 	}
 	answer, err := m.Model.MatchReasons(ctx, query, candidates, within)
@@ -106,14 +107,19 @@ func (m *cachedModel) MatchReasons(ctx context.Context, query string, candidates
 	return answer, err
 }
 
+func reusedAnswer() *ModelUsage { return &ModelUsage{Reused: true} }
+
 func reasonsKey(query string, candidates []SkillCandidate) string {
 	h := sha256.New()
-	h.Write([]byte(query))
+	writeField := func(field string) {
+		h.Write(binary.AppendUvarint(nil, uint64(len(field))))
+		h.Write([]byte(field))
+	}
+	writeField(query)
 	for _, c := range candidates {
-		for _, field := range []string{c.SkillID, c.Name, c.Summary} {
-			h.Write([]byte{0})
-			h.Write([]byte(field))
-		}
+		writeField(c.SkillID)
+		writeField(c.Name)
+		writeField(c.Summary)
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }
@@ -121,7 +127,7 @@ func reasonsKey(query string, candidates []SkillCandidate) string {
 func (a *cachedIntentAnalyzer) AnalyzeIntent(ctx context.Context, query string, within time.Duration) (*IntentAnalysis, error) {
 	if hit, ok := a.analyses.get(query); ok {
 		hit.Interpretation = hit.Interpretation.clone()
-		hit.Usage = nil
+		hit.Usage = reusedAnswer()
 		return &hit, nil
 	}
 	answer, err := a.IntentAnalyzer.AnalyzeIntent(ctx, query, within)
