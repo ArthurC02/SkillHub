@@ -673,6 +673,27 @@ func TestOneRefusedEventStillDeliversTheRestAndLetsTheResendConverge(t *testing.
 	assertCollisionTrace(t, owner, runID, "after the resend")
 }
 
+func TestAnEventCarryingANULIsRefusedAloneRatherThanFailingItsBatch(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "trace-nul-owner")
+	skillID := seedSkill(t, pool, owner.workspaceID, "trace-nul-skill")
+	runID := seedRun(t, pool, owner.workspaceID, skillID)
+	output := `{"kind":"final","text":"%s","truncated":false}`
+	batch := []string{
+		event(runID, 1, 1, "agent_output", fmt.Sprintf(output, "before the binary output")),
+		event(runID, 1, 2, "agent_output", fmt.Sprintf(output, `PK\u0003\u0004\u0000\u0000`)),
+		event(runID, 1, 3, "agent_output", fmt.Sprintf(output, "after the binary output")),
+	}
+
+	for _, pass := range []string{"first delivery", "resend"} {
+		code, report := a.ingest(t, runID, 1, batch...)
+		if code != http.StatusAccepted || report.Rejected != 1 || report.Stored+report.Duplicate != 2 {
+			t.Fatalf("%s: got %d %+v, want 202 with the NUL event rejected and the other two kept", pass, code, report)
+		}
+	}
+}
+
 func TestABatchRepeatingAnEventStoresItOnceAndKeepsTheSendersOrder(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -54,6 +55,9 @@ func (m *Masker) Mask(payload json.RawMessage) (Result, error) {
 	if err := json.Unmarshal(payload, &decoded); err != nil {
 		return Result{}, err
 	}
+	if holdsNUL(decoded) {
+		return Result{}, errPayloadHoldsNUL
+	}
 	fields := make([]string, 0)
 	walked := m.walk(decoded, "", &fields)
 	encoded, err := json.Marshal(walked)
@@ -63,6 +67,28 @@ func (m *Masker) Mask(payload json.RawMessage) (Result, error) {
 
 	sort.Strings(fields)
 	return Result{Payload: encoded, Fields: fields}, nil
+}
+
+var errPayloadHoldsNUL = errors.New("payload holds a NUL character, which the trace store cannot keep")
+
+func holdsNUL(node any) bool {
+	switch v := node.(type) {
+	case string:
+		return strings.ContainsRune(v, 0)
+	case map[string]any:
+		for key, child := range v {
+			if strings.ContainsRune(key, 0) || holdsNUL(child) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range v {
+			if holdsNUL(child) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (r Result) stored(event gen.InsertTraceEventParams) (gen.InsertTraceEventParams, error) {
