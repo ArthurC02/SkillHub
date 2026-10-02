@@ -131,13 +131,13 @@ func (h *Handler) finishLogin(w http.ResponseWriter, r *http.Request) {
 	accessToken, err := h.Service.OAuth.Exchange(ctx, r.URL.Query().Get("code"))
 	if err != nil {
 		slog.Warn("github code exchange failed", "error", err)
-		httpx.WriteError(w, http.StatusUnauthorized, "code exchange failed")
+		writeGitHubFailure(w, err, "code exchange failed")
 		return
 	}
 	external, err := h.Service.OAuth.Identify(ctx, accessToken)
 	if err != nil {
 		slog.Warn("github user fetch failed", "error", err)
-		httpx.WriteError(w, http.StatusUnauthorized, "user fetch failed")
+		writeGitHubFailure(w, err, "user fetch failed")
 		return
 	}
 	token, err := h.Service.LoginOrSignup(ctx, external)
@@ -578,4 +578,12 @@ func (h *Handler) cancelDeletion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, accountDeletionCancellationResponse{})
+}
+
+func writeGitHubFailure(w http.ResponseWriter, err error, refusal string) {
+	if errors.Is(err, ErrGitHubUnavailable) {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "GitHub 暫時沒有回應，請稍後再登入一次")
+		return
+	}
+	httpx.WriteError(w, http.StatusUnauthorized, refusal)
 }

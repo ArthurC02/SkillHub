@@ -3,6 +3,7 @@ package identity
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -155,16 +156,22 @@ func (g *GitHubOAuth) getAPI(ctx context.Context, token, path string, out any) e
 	return g.doJSON(req, out)
 }
 
+var ErrGitHubUnavailable = errors.New("github is not answering right now")
+
 func (g *GitHubOAuth) doJSON(req *http.Request, out any) error {
 	resp, err := g.client().Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", ErrGitHubUnavailable, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxGitHubResponseBytes))
-		return fmt.Errorf("github %s: status %d: %s", req.URL.Path, resp.StatusCode, b)
+		refused := fmt.Errorf("github %s: status %d: %s", req.URL.Path, resp.StatusCode, b)
+		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= http.StatusInternalServerError {
+			return fmt.Errorf("%w: %w", ErrGitHubUnavailable, refused)
+		}
+		return refused
 	}
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxGitHubResponseBytes+1))
 	if err != nil {
