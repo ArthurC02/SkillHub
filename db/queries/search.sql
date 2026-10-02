@@ -55,8 +55,11 @@ SELECT s.skill_id, s.workspace_id, s.name, s.summary
 FROM search_documents s
 WHERE s.workspace_id = $1
   AND NOT s.generated
-  AND s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
-ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
+  AND (s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
+       OR s.bigram @@ to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, '')))
+ORDER BY GREATEST(
+    ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)),
+    ts_rank_cd(s.bigram, to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, '')))) DESC
 LIMIT $2;
 
 -- name: PublicSearchSkills :many

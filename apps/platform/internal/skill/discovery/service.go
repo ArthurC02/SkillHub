@@ -559,6 +559,7 @@ func (s *Service) SearchWorkspace(ctx context.Context, workspaceID pgtype.UUID, 
 	rows, err := gen.New(s.Pool).SearchSkills(ctx, gen.SearchSkillsParams{
 		WorkspaceID: workspaceID,
 		Query:       query,
+		BigramQuery: lexicalQuery(query, "&"),
 		Limit:       limit,
 	})
 	if err != nil {

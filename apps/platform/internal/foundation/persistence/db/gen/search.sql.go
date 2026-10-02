@@ -954,8 +954,11 @@ SELECT s.skill_id, s.workspace_id, s.name, s.summary
 FROM search_documents s
 WHERE s.workspace_id = $1
   AND NOT s.generated
-  AND s.tsv @@ websearch_to_tsquery('english', $3::text)
-ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $3::text)) DESC
+  AND (s.tsv @@ websearch_to_tsquery('english', $3::text)
+       OR s.bigram @@ to_tsquery('simple', nullif($4::text, '')))
+ORDER BY GREATEST(
+    ts_rank_cd(s.tsv, websearch_to_tsquery('english', $3::text)),
+    ts_rank_cd(s.bigram, to_tsquery('simple', nullif($4::text, '')))) DESC
 LIMIT $2
 `
 
@@ -963,6 +966,7 @@ type SearchSkillsParams struct {
 	WorkspaceID pgtype.UUID
 	Limit       int32
 	Query       string
+	BigramQuery string
 }
 
 type SearchSkillsRow struct {
@@ -973,7 +977,12 @@ type SearchSkillsRow struct {
 }
 
 func (q *Queries) SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]SearchSkillsRow, error) {
-	rows, err := q.db.Query(ctx, searchSkills, arg.WorkspaceID, arg.Limit, arg.Query)
+	rows, err := q.db.Query(ctx, searchSkills,
+		arg.WorkspaceID,
+		arg.Limit,
+		arg.Query,
+		arg.BigramQuery,
+	)
 	if err != nil {
 		return nil, err
 	}
