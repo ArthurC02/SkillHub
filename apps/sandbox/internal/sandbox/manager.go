@@ -398,7 +398,7 @@ func (m *Manager) enterRunning(id string, limits ResourceLimits) (ProviderRun, b
 	hard := time.Duration(limits.WallClockHardSeconds) * time.Second
 	m.watch(id, soft, hard)
 	if cancelled {
-		m.stopCancelledStart(id)
+		m.stopWorkload(id)
 	}
 	return running, true, nil
 }
@@ -408,6 +408,7 @@ func (m *Manager) startFailed(id string, err error) (ProviderRun, bool, error) {
 		_ = m.destroyBounded(id)
 		return ProviderRun{}, false, refusal
 	}
+	m.stopWorkload(id)
 	m.finish(id, Outcome{}, &RunError{
 		Class:     ClassProvision,
 		Message:   "sandbox could not be created",
@@ -424,11 +425,11 @@ func (m *Manager) startFailed(id string, err error) (ProviderRun, bool, error) {
 	return run, true, nil
 }
 
-func (m *Manager) stopCancelledStart(id string) {
+func (m *Manager) stopWorkload(id string) {
 	stopCtx, stopCancel := context.WithTimeout(context.Background(), m.cfg.CancelGrace+time.Second)
 	defer stopCancel()
 	if err := m.drv.Stop(stopCtx, id, m.cfg.CancelGrace); err != nil {
-		m.log.Error("post-start cancel stop failed", "provider_run_id", id, "err", err)
+		m.log.Error("workload stop failed", "provider_run_id", id, "err", err)
 	}
 }
 

@@ -34,6 +34,7 @@ type p02Driver struct {
 	stopHadDeadline   bool
 	probeReached      []string
 	probeErr          error
+	startErr          error
 }
 
 func (d *p02Driver) ProbeEgress(context.Context, []string) ([]string, error) {
@@ -65,7 +66,7 @@ func (d *p02Driver) Start(ctx context.Context, _ string, _ RunRequest) error {
 	if d.startHook != nil {
 		d.startHook()
 	}
-	return nil
+	return d.startErr
 }
 func (d *p02Driver) Wait(ctx context.Context, _ string) (Outcome, error) {
 	select {
@@ -680,5 +681,23 @@ func TestWithP02RunsThePeriodicCheckAndBreachTeardown(t *testing.T) {
 	}
 	if probe.Result().State != P02Fail {
 		t.Errorf("probe result = %+v, want the periodic Check to have stored a fail reading", probe.Result())
+	}
+}
+
+func TestAStartThatFailsAfterTheWorkloadIsUpStopsTheWorkload(t *testing.T) {
+	drv := newP02Driver()
+	drv.startErr = errors.New("push inputs: grant fetch failed")
+	m := p02Manager(drv)
+
+	run, _, err := m.Create(context.Background(), p02Request())
+
+	if err != nil || run.State != StateFailed {
+		t.Fatalf("create = %+v, %v; want the run reported failed", run, err)
+	}
+	drv.mu.Lock()
+	stops := drv.stopCalls
+	drv.mu.Unlock()
+	if stops != 1 {
+		t.Errorf("driver stops = %d, want 1: a workload left running holds its model key until reclaimed", stops)
 	}
 }
