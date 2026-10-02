@@ -3,6 +3,7 @@ package apiserver_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -225,5 +226,61 @@ func TestAnEventIsDeadLetteredOnlyAfterTheMaximumNumberOfFailedDeliveries(t *tes
 	_, _ = w.Publish(context.Background())
 	if deliveries != 3 {
 		t.Errorf("event delivered %d times, want 3 (a dead-lettered event is never delivered again)", deliveries)
+	}
+}
+
+func insertPendingOutboxEvents(t *testing.T, pool *pgxpool.Pool, workspace, aggregate pgtype.UUID, count int) []pgtype.UUID {
+	t.Helper()
+	ids := make([]pgtype.UUID, count)
+	for i := range ids {
+		ids[i] = insertPendingOutboxEvent(t, pool, workspace, aggregate, fmt.Sprintf("1990-01-01T00:00:%02dZ", i))
+	}
+	return ids
+}
+
+func TestAPassStopsAfterTooManyFailuresInARowAndLeavesTheRestUntried(t *testing.T) {
+	pool := requireDB(t)
+	f := newFixture(t, newAPI(t, pool), pool, "alice-outbox-breaker")
+	agg := newAggregateID(t, pool)
+	events := insertPendingOutboxEvents(t, pool, mustUUID(t, f.workspaceID), agg, outbox.MaxConsecutiveFailuresPerPass+1)
+
+	var deliveries int
+	w := &outbox.Worker{Pool: pool, Deliver: failingFor(agg, &deliveries)}
+	if _, err := w.Publish(context.Background()); !errors.Is(err, errConsumerDown) {
+		t.Fatalf("Publish returned %v, want the delivery failure", err)
+	}
+
+	if deliveries != outbox.MaxConsecutiveFailuresPerPass {
+		t.Errorf("deliveries in one pass = %d, want %d", deliveries, outbox.MaxConsecutiveFailuresPerPass)
+	}
+	if attempts, _, _, _ := outboxState(t, pool, events[len(events)-1]); attempts != 0 {
+		t.Errorf("the event after the run of failures has %d attempts, want 0 so it keeps its full retry budget", attempts)
+	}
+}
+
+func TestASuccessfulDeliveryResetsTheRunOfFailures(t *testing.T) {
+	pool := requireDB(t)
+	f := newFixture(t, newAPI(t, pool), pool, "alice-outbox-breaker-reset")
+	agg := newAggregateID(t, pool)
+	run := outbox.MaxConsecutiveFailuresPerPass - 1
+	events := insertPendingOutboxEvents(t, pool, mustUUID(t, f.workspaceID), agg, 2*run+1)
+	healthy := events[run]
+
+	var deliveries int
+	failAllButOne := func(_ context.Context, e outbox.Event) error {
+		if e.EventID == healthy {
+			return nil
+		}
+		deliveries++
+		return errConsumerDown
+	}
+	w := &outbox.Worker{Pool: pool, Deliver: failAllButOne}
+	_, _ = w.Publish(context.Background())
+
+	if deliveries != 2*run {
+		t.Errorf("failed deliveries in one pass = %d, want %d: a success between two short runs must not stop the pass", deliveries, 2*run)
+	}
+	if _, published, _, _ := outboxState(t, pool, healthy); !published {
+		t.Error("the healthy event between the failures was not published")
 	}
 }

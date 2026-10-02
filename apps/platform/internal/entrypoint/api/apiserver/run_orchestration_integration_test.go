@@ -1419,8 +1419,9 @@ func TestOutboxPublisherIsAtLeastOnceAndIdempotent(t *testing.T) {
 		"SELECT count(*) FROM outbox_events WHERE published_at IS NULL AND dead_lettered_at IS NULL"); after < backlog {
 		t.Errorf("a failed delivery dropped the backlog from %d to %d", backlog, after)
 	}
-	if deferred := unpublishedCount(t, pool); deferred != 0 {
-		t.Errorf("%d events are claimable right after failing, want 0 (each waits out its backoff)", deferred)
+	untried := backlog - min(backlog, outbox.MaxConsecutiveFailuresPerPass)
+	if claimable := unpublishedCount(t, pool); claimable != untried {
+		t.Errorf("%d events are claimable right after failing, want %d: the attempted ones wait out their backoff, the rest stay untried", claimable, untried)
 	}
 
 	releaseOutboxBackoff(t, pool)

@@ -30,6 +30,8 @@ const (
 
 	retryBackoffMaxDoublings = 20
 
+	MaxConsecutiveFailuresPerPass = 5
+
 	publishBatch = 200
 )
 
@@ -82,6 +84,7 @@ func (w *Worker) Publish(ctx context.Context) (int, error) {
 	q := gen.New(w.Pool)
 
 	var failure error
+	consecutiveFailures := 0
 	ids := make([]pgtype.UUID, 0, len(events))
 	for _, event := range events {
 		owned := eventFromRow(event)
@@ -92,8 +95,13 @@ func (w *Worker) Publish(ctx context.Context) (int, error) {
 			if failure == nil {
 				failure = fmt.Errorf("deliver %s (%s): %w", pgconv.UUIDString(event.EventID), event.EventType, err)
 			}
+			consecutiveFailures++
+			if consecutiveFailures >= MaxConsecutiveFailuresPerPass {
+				break
+			}
 			continue
 		}
+		consecutiveFailures = 0
 		ids = append(ids, event.EventID)
 	}
 	return w.markPublished(ctx, q, ids, failure)
