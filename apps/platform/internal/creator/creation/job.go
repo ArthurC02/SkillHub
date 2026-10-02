@@ -133,15 +133,32 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *Diagram) error {
 	if callErr == nil {
 		call.found = s.searchAhead(ctx, identity.Workspace{ID: a.WorkspaceID}, response)
 	}
-	settleCtx, settleCancel := context.WithTimeout(context.Background(), settleTimeout)
-	defer settleCancel()
-	return s.finish(settleCtx, a, call)
+	return s.settle(a, call)
 }
 
 const (
 	settleTimeout    = 20 * time.Second
+	settleRetryDelay = time.Second
 	keyRevokeTimeout = 20 * time.Second
 )
+
+func (s *Service) settle(a JobArgs, call stepCall) error {
+	ctx, cancel := context.WithTimeout(context.Background(), settleTimeout)
+	defer cancel()
+	for {
+		err := s.finish(ctx, a, call)
+		if err == nil {
+			return nil
+		}
+		slog.Warn("creation: a finished model call could not be settled yet; trying again",
+			"receipt_id", UUID(a.ReceiptID), "error", err)
+		select {
+		case <-ctx.Done():
+			return err
+		case <-time.After(settleRetryDelay):
+		}
+	}
+}
 
 func (s *Service) revokeAttemptKey(receipt pgtype.UUID) {
 	ctx, cancel := context.WithTimeout(context.Background(), keyRevokeTimeout)

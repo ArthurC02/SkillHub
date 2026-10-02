@@ -427,6 +427,48 @@ func TestFinishWhenTheReceiptWasAlreadyMarkedFailedIsANoop(t *testing.T) {
 	}
 }
 
+func TestAModelReplyWhoseSettlementBrieflyFailsIsSettledRatherThanDiscarded(t *testing.T) {
+	pool := requireDB(t)
+	ws := newCreationWorkspace(t, pool)
+	rec := &jobRecorder{}
+	var settleCalls int
+	svc := &creation.Service{
+		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
+		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
+		Billing: creation.BillingHooks{SettleFunc: func(context.Context, pgx.Tx, creation.StepSettlement) error {
+			settleCalls++
+			if settleCalls == 1 {
+				return errors.New("the ledger did not answer this time")
+			}
+			return nil
+		}},
+		LLM: creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+			return &creation.StepResult{Outcome: "clarification", Message: "好的"}, nil
+		}),
+	}
+	id := creationID(t)
+	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {
+		t.Fatal(err)
+	}
+	job := rec.calls[0]
+
+	if err := svc.Step(context.Background(), job, nil); err != nil {
+		t.Fatalf("step = %v, want the reply settled on the second try", err)
+	}
+
+	var status, eventType string
+	if err := pool.QueryRow(context.Background(), "SELECT status FROM creation_receipts WHERE id=$1", job.ReceiptID).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(context.Background(), "SELECT event_type FROM creation_session_events WHERE session_id=$1 ORDER BY revision DESC LIMIT 1", id).Scan(&eventType); err != nil {
+		t.Fatal(err)
+	}
+	if settleCalls != 2 || status != "finished" || eventType != "attempt_settled" {
+		t.Fatalf("settle calls = %d, receipt = %q, last event = %q; want 2, finished, attempt_settled",
+			settleCalls, status, eventType)
+	}
+}
+
 func TestFinishWhenTheReceiptWasRecoveredAsUnknownStillSettlesTheKnownCost(t *testing.T) {
 	pool := requireDB(t)
 	ws := newCreationWorkspace(t, pool)
