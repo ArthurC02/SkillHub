@@ -691,6 +691,7 @@ func TestALicensingHoldAppliedAfterPackagingStopsTheDownload(t *testing.T) {
 	}{
 		{"access_restriction", "UPDATE skills SET access_restriction = 'license-review' WHERE id = $1"},
 		{"redistribution", "UPDATE skills SET redistribution = 'blocked' WHERE id = $1"},
+		{"takedown", "UPDATE skills SET takedown_at = now(), takedown_reason = 'withdrawn' WHERE id = $1"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := pool.Exec(context.Background(), tc.sql, mustUUID(t, art.SkillID)); err != nil {
@@ -701,7 +702,7 @@ func TestALicensingHoldAppliedAfterPackagingStopsTheDownload(t *testing.T) {
 				t.Fatalf("content under a %s hold: got %d, want 404", tc.name, resp.StatusCode)
 			}
 			if _, err := pool.Exec(context.Background(),
-				"UPDATE skills SET access_restriction = NULL, redistribution = 'allowed' WHERE id = $1",
+				"UPDATE skills SET access_restriction = NULL, redistribution = 'allowed', takedown_at = NULL, takedown_reason = NULL WHERE id = $1",
 				mustUUID(t, art.SkillID)); err != nil {
 				t.Fatal(err)
 			}

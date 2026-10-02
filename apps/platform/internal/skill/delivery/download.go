@@ -208,7 +208,7 @@ func (s *Service) Download(
 	if !servableAt(ScanStatus(row.ScanStatus), pgtype.Timestamptz{}, row.PurgedAt, row.ExpiresAt, time.Now()) {
 		return none, nil, ErrGone
 	}
-	if reason, _ := gate(SkillFacts{AccessRestricted: row.AccessRestricted, Redistribution: row.Redistribution}); reason != "" {
+	if reason, _ := gate(SkillFacts{AccessRestricted: row.AccessRestricted, TakenDown: row.TakenDown, Redistribution: row.Redistribution}); reason != "" {
 		return none, nil, ErrGone
 	}
 
@@ -498,6 +498,7 @@ func pluginSummary(
 			return VersionSummary{}, nil, false
 		}
 		combined.AccessRestricted = combined.AccessRestricted || summary.AccessRestricted
+		combined.TakenDown = combined.TakenDown || summary.TakenDown
 		if reason, _ := redistributionGate(Redistribution(summary.Redistribution)); reason != "" &&
 			combined.Redistribution == string(RedistributionAllowed) {
 			combined.Redistribution = summary.Redistribution

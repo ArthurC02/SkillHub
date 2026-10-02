@@ -507,6 +507,7 @@ func packagingVersionSummary(summary registry.VersionSummary) packaging.VersionS
 		SkillID: summary.SkillID, SkillName: summary.SkillName, VersionNumber: summary.VersionNumber,
 		LatestVersionNumber: summary.LatestVersionNumber,
 		AccessRestricted:    summary.Restriction().InEffect(), Redistribution: summary.Redistribution,
+		TakenDown: summary.TakenDown,
 	}
 }
 

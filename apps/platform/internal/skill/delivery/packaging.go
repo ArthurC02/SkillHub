@@ -105,6 +105,7 @@ type VersionSummary struct {
 	LatestVersionNumber int32
 	AccessRestricted    bool
 	Redistribution      string
+	TakenDown           bool
 }
 
 type SkillFacts struct {

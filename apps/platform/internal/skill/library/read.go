@@ -310,6 +310,7 @@ type VersionSummary struct {
 	LatestVersionNumber int32
 	AccessRestriction   *string
 	Redistribution      string
+	TakenDown           bool
 }
 
 func (s *Service) VersionSummaries(
@@ -330,6 +331,7 @@ func (s *Service) VersionSummaries(
 			ID: row.ID, SkillID: row.SkillID, SkillName: row.SkillName,
 			VersionNumber: row.VersionNumber, LatestVersionNumber: row.LatestVersionNumber,
 			AccessRestriction: row.AccessRestriction, Redistribution: row.Redistribution,
+			TakenDown: row.TakenDown,
 		}
 	}
 	return summaries, nil
@@ -349,6 +351,7 @@ func (s *Service) VersionSummariesByID(ctx context.Context, versionIDs []pgtype.
 			ID: row.ID, SkillID: row.SkillID, SkillName: row.SkillName,
 			VersionNumber: row.VersionNumber, LatestVersionNumber: row.LatestVersionNumber,
 			AccessRestriction: row.AccessRestriction, Redistribution: row.Redistribution,
+			TakenDown: row.TakenDown,
 		}
 	}
 	return summaries, nil
