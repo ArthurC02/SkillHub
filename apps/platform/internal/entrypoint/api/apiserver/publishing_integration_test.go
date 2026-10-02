@@ -569,3 +569,23 @@ func TestUninvitedAccountsAcquireOnlyWhenTheDeploymentOpensDownloads(t *testing.
 		})
 	}
 }
+
+func TestPublishingTheSameVersionAgainKeepsItsOneRelease(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("republish-same-alice"))
+	registerPublisher(t, alice, freshName("republish-same"))
+	skillID := uploadedSkill(t, alice, freshName("steady"), "Only way.")
+	if code, body := publish(t, alice, skillID, `{"rights_attested":true}`); code != http.StatusOK {
+		t.Fatalf("first publish: %d %v", code, body)
+	}
+
+	code, body := publish(t, alice, skillID, `{"rights_attested":true}`)
+
+	if code != http.StatusOK {
+		t.Fatalf("publishing the same version again: %d %v, want 200", code, body)
+	}
+	if releases := objects(t, body["releases"]); len(releases) != 1 {
+		t.Errorf("releases = %v, want the one release kept: a repeated publish must not reset its exposure review", releases)
+	}
+}
