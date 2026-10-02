@@ -13,12 +13,14 @@ import (
 )
 
 type fakeLedger struct {
-	events []credit.CostEvent
-	err    error
+	events  []credit.CostEvent
+	err     error
+	ctxErrs []error
 }
 
-func (f *fakeLedger) RecordCost(_ context.Context, _ credit.DBTX, e credit.CostEvent) (string, bool, error) {
+func (f *fakeLedger) RecordCost(ctx context.Context, _ credit.DBTX, e credit.CostEvent) (string, bool, error) {
 	f.events = append(f.events, e)
+	f.ctxErrs = append(f.ctxErrs, ctx.Err())
 	return "id", false, f.err
 }
 
@@ -28,6 +30,22 @@ func (f *fakeLedger) kinds() []credit.CostKind {
 		out[i] = e.Kind
 	}
 	return out
+}
+
+func TestAPaidCallIsRecordedEvenAfterTheCallerGaveUp(t *testing.T) {
+	ledger := &fakeLedger{}
+	s := &Service{Credit: ledger}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	s.recordCost(ctx, credit.KindGenerate, pgtype.UUID{}, modelCall{model: "gpt-6-luna"})
+
+	if len(ledger.ctxErrs) != 1 {
+		t.Fatalf("cost events = %d, want 1", len(ledger.ctxErrs))
+	}
+	if err := ledger.ctxErrs[0]; err != nil {
+		t.Errorf("the ledger was handed a context already done (%v); the paid call would go unrecorded", err)
+	}
 }
 
 func TestEnrichmentRecordsOneCostEventPerPaidCall(t *testing.T) {
