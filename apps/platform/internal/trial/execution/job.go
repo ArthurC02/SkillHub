@@ -262,10 +262,13 @@ func (d *driver) tryPlacement(ctx context.Context, round *dispatchRound) (attemp
 	request, err := d.svc.buildRunRequest(ctx, d.cur, attempt, attemptTerms{
 		profile: placement.Profile, policy: round.policy, budgetUSD: round.budget,
 	})
-	if errors.Is(err, ErrModelGatewayUnavailable) {
-		return attemptSettled, d.waitForGateway(ctx, attempt, err)
-	} else if err != nil {
+	switch {
+	case errors.Is(err, ErrModelGatewayUnavailable):
+		return attemptSettled, d.setAsideUnbuiltAttempt(ctx, attempt, err, "模型閘道暫時沒有回應，稍後自動重試")
+	case errors.Is(err, errRunRequestUnbuildable):
 		return attemptSettled, d.abandonUnbuiltAttempt(ctx, attempt, err)
+	case err != nil:
+		return attemptSettled, d.setAsideUnbuiltAttempt(ctx, attempt, err, "暫時無法準備這次執行，稍後自動重試")
 	}
 	pr, err := provider.Start(ctx, request)
 	if err != nil {
@@ -280,11 +283,11 @@ func (d *driver) closeUnbuiltGrants(ctx context.Context, attempt gen.RunAttempt)
 	}
 }
 
-func (d *driver) waitForGateway(ctx context.Context, attempt gen.RunAttempt, err error) error {
+func (d *driver) setAsideUnbuiltAttempt(ctx context.Context, attempt gen.RunAttempt, err error, reason string) error {
 	d.closeUnbuiltGrants(ctx, attempt)
-	slog.Warn("the model gateway could not give this attempt a key; the run keeps its place in the queue",
+	slog.Warn("this attempt's request could not be built right now; the run keeps its place in the queue",
 		"run_id", pgconv.UUIDString(d.cur.ID), "error", err)
-	if err := d.finishAttempt(ctx, attempt, errClassProvision, "模型閘道暫時沒有回應，稍後自動重試"); err != nil {
+	if err := d.finishAttempt(ctx, attempt, errClassProvision, reason); err != nil {
 		return err
 	}
 	return tryAgainIn(d.svc.slotWaitInterval())
