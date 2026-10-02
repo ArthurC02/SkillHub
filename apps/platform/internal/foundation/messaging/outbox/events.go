@@ -212,14 +212,32 @@ func Insert(ctx context.Context, tx pgx.Tx, event NewEvent) error {
 	return err
 }
 
-func EventsOfTypeSince(ctx context.Context, db gen.DBTX, eventType string, since time.Time, limit int32) ([]Event, error) {
-	if !slices.Contains(EventTypes, eventType) {
-		return nil, fmt.Errorf("%w: %q", ErrUnknownEventType, eventType)
+type EventCursor struct {
+	OccurredAt time.Time
+	EventID    [16]byte
+}
+
+func (e Event) Cursor() EventCursor {
+	return EventCursor{OccurredAt: e.OccurredAt.Time, EventID: e.EventID.Bytes}
+}
+
+type EventPage struct {
+	EventType string
+	After     EventCursor
+	Until     time.Time
+	Limit     int32
+}
+
+func EventsOfType(ctx context.Context, db gen.DBTX, page EventPage) ([]Event, error) {
+	if !slices.Contains(EventTypes, page.EventType) {
+		return nil, fmt.Errorf("%w: %q", ErrUnknownEventType, page.EventType)
 	}
-	rows, err := gen.New(db).ListOutboxEventsByTypeSince(ctx, gen.ListOutboxEventsByTypeSinceParams{
-		EventType:   eventType,
-		Since:       pgtype.Timestamptz{Time: since, Valid: true},
-		ResultLimit: limit,
+	rows, err := gen.New(db).ListOutboxEventsByTypeAfter(ctx, gen.ListOutboxEventsByTypeAfterParams{
+		EventType:       page.EventType,
+		AfterOccurredAt: pgtype.Timestamptz{Time: page.After.OccurredAt, Valid: true},
+		AfterEventID:    pgtype.UUID{Bytes: page.After.EventID, Valid: true},
+		Until:           pgtype.Timestamptz{Time: page.Until, Valid: true},
+		ResultLimit:     page.Limit,
 	})
 	if err != nil {
 		return nil, err

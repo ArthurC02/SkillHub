@@ -136,7 +136,7 @@ type Service struct {
 
 	Versions *ingest.Service
 
-	ReadEventsOfType func(ctx context.Context, eventType string, since time.Time, limit int32) ([]outbox.Event, error)
+	ReadEventsOfType func(ctx context.Context, page outbox.EventPage) ([]outbox.Event, error)
 
 	ReadRunFacts        func(ctx context.Context, workspaceID, runID pgtype.UUID) (RunFacts, bool, error)
 	ReadEvaluationInput func(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationInput, bool, error)

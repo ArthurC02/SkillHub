@@ -22,46 +22,53 @@ func (s *Service) RecoverLostSuggestionProvenance(ctx context.Context) (recovere
 		return 0, nil
 	}
 	now := time.Now()
-	events, err := s.ReadEventsOfType(ctx, outbox.SkillVersionAdded,
-		now.Add(-provenanceRecoveryWindow), provenanceRecoveryBatch)
-	if err != nil {
-		return 0, err
+	page := outbox.EventPage{
+		EventType: outbox.SkillVersionAdded,
+		After:     outbox.EventCursor{OccurredAt: now.Add(-provenanceRecoveryWindow)},
+		Until:     now.Add(-RecoveryStaleAfter),
+		Limit:     provenanceRecoveryBatch,
 	}
-	settled := now.Add(-RecoveryStaleAfter)
 
 	var errs []error
-	for _, event := range events {
-		if event.OccurredAt.Time.After(settled) {
-			continue
-		}
-		args, improved, err := suggestionsApplied(event)
+	for {
+		events, err := s.ReadEventsOfType(ctx, page)
 		if err != nil {
-			errs = append(errs, err)
-			continue
+			return recovered, errors.Join(append(errs, err)...)
 		}
-		if !improved {
-			continue
+		for _, event := range events {
+			ok, err := s.recoverProvenanceOf(ctx, event)
+			if err != nil {
+				errs = append(errs, err)
+			}
+			if ok {
+				recovered++
+			}
 		}
-		recorded, err := s.queries().ListSuggestionsAppliedToVersion(ctx, gen.ListSuggestionsAppliedToVersionParams{
-			AppliedSkillVersionID: args.SkillVersionID, WorkspaceID: args.WorkspaceID,
-		})
-		if err != nil {
-			errs = append(errs, err)
-			continue
+		if len(events) < provenanceRecoveryBatch {
+			return recovered, errors.Join(errs...)
 		}
-		if len(recorded) > 0 {
-			continue
-		}
-		if err := s.ConsumeSuggestionsApplied(ctx, args); err != nil {
-			errs = append(errs, err)
-			continue
-		}
-		recovered++
-		slog.Warn("a version's suggestion provenance was recorded by the recovery sweep, not by its delivery",
-			"skill_version_id", pgconv.UUIDString(args.SkillVersionID),
-			"evaluation_id", pgconv.UUIDString(args.EvaluationID))
+		page.After = events[len(events)-1].Cursor()
 	}
-	return recovered, errors.Join(errs...)
+}
+
+func (s *Service) recoverProvenanceOf(ctx context.Context, event outbox.Event) (bool, error) {
+	args, improved, err := suggestionsApplied(event)
+	if err != nil || !improved {
+		return false, err
+	}
+	recorded, err := s.queries().ListSuggestionsAppliedToVersion(ctx, gen.ListSuggestionsAppliedToVersionParams{
+		AppliedSkillVersionID: args.SkillVersionID, WorkspaceID: args.WorkspaceID,
+	})
+	if err != nil || len(recorded) > 0 {
+		return false, err
+	}
+	if err := s.ConsumeSuggestionsApplied(ctx, args); err != nil {
+		return false, err
+	}
+	slog.Warn("a version's suggestion provenance was recorded by the recovery sweep, not by its delivery",
+		"skill_version_id", pgconv.UUIDString(args.SkillVersionID),
+		"evaluation_id", pgconv.UUIDString(args.EvaluationID))
+	return true, nil
 }
 
 func suggestionsApplied(event outbox.Event) (SuggestionsAppliedArgs, bool, error) {
