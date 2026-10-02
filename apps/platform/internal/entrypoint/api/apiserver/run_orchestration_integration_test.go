@@ -1063,21 +1063,25 @@ func TestEndingARunClosesOnlyTheGrantsItsAttemptsNeverIssued(t *testing.T) {
 	}
 }
 
-func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
+func TestARunInterruptedAfterItsAttemptSucceededResumesWithoutASecondDispatch(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	ctx := context.Background()
 
 	for _, tc := range []struct {
 		name        string
+		leftAt      run.Status
 		errorClass  *string
 		wantStatus  gen.RunStatus
 		wantFailure string
 	}{
-		{name: "alice-resume-evaluating", errorClass: nil,
+		{name: "alice-resume-provisioning", leftAt: run.StatusProvisioning, errorClass: nil,
 			wantStatus: gen.RunStatusSucceeded, wantFailure: ""},
-
-		{name: "alice-resume-refused", errorClass: strptr("execution_error"),
+		{name: "alice-resume-running", leftAt: run.StatusRunning, errorClass: nil,
+			wantStatus: gen.RunStatusSucceeded, wantFailure: ""},
+		{name: "alice-resume-evaluating", leftAt: run.StatusEvaluating, errorClass: nil,
+			wantStatus: gen.RunStatusSucceeded, wantFailure: ""},
+		{name: "alice-resume-refused", leftAt: run.StatusEvaluating, errorClass: strptr("execution_error"),
 			wantStatus: gen.RunStatusFailed, wantFailure: "platform_error"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1094,18 +1098,7 @@ func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
 				runID, ws, tc.errorClass); err != nil {
 				t.Fatal(err)
 			}
-			for _, step := range []struct{ from, to run.Status }{
-				{run.StatusQueued, run.StatusProvisioning},
-				{run.StatusProvisioning, run.StatusPreparing},
-				{run.StatusPreparing, run.StatusRunning},
-				{run.StatusRunning, run.StatusEvaluating},
-			} {
-				if _, err := svc.Transition(ctx, run.TransitionCommand{
-					WorkspaceID: ws, RunID: runID, From: step.from, To: step.to, Reason: "by hand",
-				}); err != nil {
-					t.Fatal(err)
-				}
-			}
+			leaveRunAt(t, svc, ws, runID, tc.leftAt)
 
 			if err := driveThroughPolls(ctx, svc.Drive, ws, runID); err != nil {
 				t.Fatal(err)
@@ -1118,7 +1111,33 @@ func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
 			if view.FailureClass.Value != tc.wantFailure {
 				t.Errorf("failure_class = %q, want %q", view.FailureClass.Value, tc.wantFailure)
 			}
+			var attempts int
+			if err := pool.QueryRow(ctx, `SELECT count(*) FROM run_attempts WHERE run_id = $1`, runID).Scan(&attempts); err != nil {
+				t.Fatal(err)
+			}
+			if attempts != 1 {
+				t.Errorf("attempts = %d, want 1: a run whose attempt already succeeded must not be dispatched again", attempts)
+			}
 		})
+	}
+}
+
+func leaveRunAt(t *testing.T, svc *run.Service, ws, runID pgtype.UUID, leftAt run.Status) {
+	t.Helper()
+	for _, step := range []struct{ from, to run.Status }{
+		{run.StatusQueued, run.StatusProvisioning},
+		{run.StatusProvisioning, run.StatusPreparing},
+		{run.StatusPreparing, run.StatusRunning},
+		{run.StatusRunning, run.StatusEvaluating},
+	} {
+		if _, err := svc.Transition(context.Background(), run.TransitionCommand{
+			WorkspaceID: ws, RunID: runID, From: step.from, To: step.to, Reason: "by hand",
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if step.to == leftAt {
+			return
+		}
 	}
 }
 

@@ -103,16 +103,23 @@ func (d *driver) execute(ctx context.Context, attempts []gen.RunAttempt) error {
 			return err
 		}
 		return d.follow(ctx, attempts, *live)
+	case succeeded(attempts):
+		return d.walkHappyPath(ctx, attempts[len(attempts)-1].ID)
 	case d.cur.Status == gen.RunStatusQueued || d.cur.Status == gen.RunStatusProvisioning:
 		return d.dispatch(ctx)
 	case reassignableAfter(attempts):
 		return d.dispatch(ctx)
-	case d.cur.Status == gen.RunStatusEvaluating:
-
-		return d.resumeEvaluating(ctx, attempts)
 	default:
 		return d.terminateUnresumable(ctx)
 	}
+}
+
+func succeeded(attempts []gen.RunAttempt) bool {
+	if len(attempts) == 0 {
+		return false
+	}
+	last := attempts[len(attempts)-1]
+	return last.FinishedAt.Valid && last.ErrorClass == nil
 }
 
 func (d *driver) leaveQueue(ctx context.Context, provider string) error {
@@ -120,13 +127,6 @@ func (d *driver) leaveQueue(ctx context.Context, provider string) error {
 		return nil
 	}
 	return d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+statusReason(provider))
-}
-
-func (d *driver) resumeEvaluating(ctx context.Context, attempts []gen.RunAttempt) error {
-	if len(attempts) == 0 || attempts[len(attempts)-1].ErrorClass != nil {
-		return d.terminateUnresumable(ctx)
-	}
-	return d.walkHappyPath(ctx, attempts[len(attempts)-1].ID)
 }
 
 func (d *driver) terminateUnresumable(ctx context.Context) error {
