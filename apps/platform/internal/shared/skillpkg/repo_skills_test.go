@@ -15,7 +15,7 @@ func TestTheRepoOwnSkillsPassItsOwnValidator(t *testing.T) {
 	}
 	seen := 0
 	for _, e := range entries {
-		if !e.IsDir() {
+		if !e.IsDir() || isClaudeOnlyPlugin(filepath.Join(skills, e.Name())) {
 			continue
 		}
 		seen++
@@ -27,6 +27,12 @@ func TestTheRepoOwnSkillsPassItsOwnValidator(t *testing.T) {
 	if seen == 0 {
 		t.Fatal("no skill directories found; the test has lost its subject")
 	}
+}
+
+func isClaudeOnlyPlugin(dir string) bool {
+	_, manifestErr := os.Stat(filepath.Join(dir, ".claude-plugin", "plugin.json"))
+	_, skillErr := os.Stat(filepath.Join(dir, "SKILL.md"))
+	return manifestErr == nil && os.IsNotExist(skillErr)
 }
 
 func repoRoot(t *testing.T) string {
