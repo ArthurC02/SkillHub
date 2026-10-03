@@ -72,7 +72,7 @@ func (s *Service) openingEnvelope(ctx context.Context, ws identity.Workspace, me
 		return e, StateWaitingInput
 	}
 	e.Snapshot.appendMessage("user", s.masked(message))
-	if s.CatalogCheck == nil {
+	if s.CatalogCheck == nil || !s.Limits.affordsCatalogCheck(budget) {
 		return e, StateQueued
 	}
 	refs, cost, err := s.CatalogCheck(ctx, ws, message)
@@ -128,4 +128,10 @@ func (s *Service) startedConcurrently(ctx context.Context, ws identity.Workspace
 		return View{}, ErrConflict
 	}
 	return resumeStart(r, key)
+}
+
+const catalogCheckCeilingUSD = 0.01
+
+func (l Limits) affordsCatalogCheck(budget float64) bool {
+	return budget+1e-10 >= l.MaxCallCostUSD+catalogCheckCeilingUSD
 }
