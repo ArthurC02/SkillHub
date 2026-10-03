@@ -235,28 +235,37 @@ test("GEN-008: a session that expires while generating says 需要登入, not th
   expect(container.textContent).not.toContain("not authenticated");
 });
 
-test("GEN-008: a failed generation gives a local next step instead of the server error", async () => {
-  stubSession({
-    features: { generate_skill: true },
-    generateError: { status: 500, error: "provider unavailable" },
-  });
-  await render();
-  await act(async () => {
-    await router.navigate({ to: "/", search: { q: "寫一個摘要器" } });
-  });
-  await waitFor(() => container.querySelector("#generate-task") !== null);
+test.each([
+  [500, "請檢查連線後再試一次"],
+  [409, "已經有一個生成在進行，等它完成後再試一次"],
+  [429, "送出太頻繁了，請稍等一下再試"],
+  [502, "模型服務這次沒有回應，沒有建立任何東西"],
+  [503, "暫時無法確認生成額度，這次沒有扣用任何額度"],
+])(
+  "GEN-008: a generation failing with %i says %s instead of the server error",
+  async (status, said) => {
+    stubSession({
+      features: { generate_skill: true },
+      generateError: { status, error: "provider unavailable" },
+    });
+    await render();
+    await act(async () => {
+      await router.navigate({ to: "/", search: { q: "寫一個摘要器" } });
+    });
+    await waitFor(() => container.querySelector("#generate-task") !== null);
 
-  await act(async () => {
-    container
-      .querySelector<HTMLTextAreaElement>("#generate-task")!
-      .closest("section")!
-      .querySelector<HTMLButtonElement>('button[type="button"]')!
-      .click();
-  });
-  await waitFor(() => (container.textContent ?? "").includes("請檢查連線後再試一次"));
+    await act(async () => {
+      container
+        .querySelector<HTMLTextAreaElement>("#generate-task")!
+        .closest("section")!
+        .querySelector<HTMLButtonElement>('button[type="button"]')!
+        .click();
+    });
+    await waitFor(() => (container.textContent ?? "").includes(said));
 
-  expect(container.textContent).not.toContain("provider unavailable");
-});
+    expect(container.textContent).not.toContain("provider unavailable");
+  },
+);
 
 test("GEN-008: an expired session while reading failures says 需要登入, not the server error", async () => {
   stubSession({
