@@ -380,11 +380,13 @@ func TestAnUnknownP02ReadingRefusesNewWork(t *testing.T) {
 func TestANodeRefusingWorkAnswersCreateWith503SoThePlatformRetries(t *testing.T) {
 	m := p02Manager(newP02Driver())
 	m.p02 = &P02Probe{result: P02Result{State: P02Fail}}
-	h := (&Server{M: m}).Routes()
+	h := (&Server{M: m, Token: "provider-token"}).Routes()
 	body, _ := json.Marshal(p02Request())
 	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/runs", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer provider-token")
 
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/runs", bytes.NewReader(body)))
+	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("create on a node refusing work = %d, want 503 (a 422 is never retried)", rec.Code)

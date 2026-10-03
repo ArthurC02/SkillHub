@@ -460,6 +460,21 @@ func TestEveryRouteRefusesWithoutTheProviderToken(t *testing.T) {
 	}
 }
 
+func TestAServerGivenNoTokenRefusesEveryRequest(t *testing.T) {
+	h := (&sandbox.Server{M: newManager(newFakeDriver())}).Routes()
+	for _, header := range []string{"", "Bearer ", "Bearer x"} {
+		req := httptest.NewRequest(http.MethodGet, "/capability", nil)
+		if header != "" {
+			req.Header.Set("Authorization", header)
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("Authorization %q against a server with no token: got %d, want 401", header, rec.Code)
+		}
+	}
+}
+
 func TestCreateRefusesLimitsItCannotEnforce(t *testing.T) {
 	_, h := newServer(t)
 	req := runRequest()

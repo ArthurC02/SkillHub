@@ -42,7 +42,7 @@ func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
 		token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 		// Constant-time compare so a mismatch takes the same time regardless
 		// of where the first differing byte falls.
-		if subtle.ConstantTimeCompare([]byte(token), []byte(s.Token)) != 1 {
+		if s.Token == "" || subtle.ConstantTimeCompare([]byte(token), []byte(s.Token)) != 1 {
 			writeError(w, http.StatusUnauthorized, "missing or invalid provider token")
 			return
 		}
