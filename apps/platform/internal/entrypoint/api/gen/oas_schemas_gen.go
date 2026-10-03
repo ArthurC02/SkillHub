@@ -27262,9 +27262,10 @@ type SkillSource struct {
 	Type SkillSourceType `json:"type"`
 	// Source URL for a git import.
 	URL OptString `json:"url"`
-	// The user's own words that produced a generated package (GEN-002). Present only for `generated`. It
-	// is the whole provenance record for a package with no upstream, which is why the source of a
-	// generated skill is never reported as unknown — it is known, it just is not a URL.
+	// The user's own words that produced a generated package (GEN-002). Present only for `generated`, and
+	// left out (together with `generation_inputs`) when the detail is served to anyone because the skill
+	// was published. It is the whole provenance record for a package with no upstream, which is why the
+	// source of a generated skill is never reported as unknown — it is known, it just is not a URL.
 	TaskDescription OptString `json:"task_description"`
 	// Model id that wrote a generated package. Present only for `generated`.
 	GeneratorModel OptString `json:"generator_model"`

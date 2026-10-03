@@ -489,6 +489,9 @@ func TestAnExposedSkillsDetailNamesNoPrivateSkillFromTheSamePackage(t *testing.T
 	if siblingNamed(t, stranger, a.URL+"/api/skills/"+shared, privateName) {
 		t.Errorf("a stranger reading the exposed skill sees %q, a private skill of its author", privateName)
 	}
+	if !siblingNamed(t, author, a.URL+"/api/skills/"+shared, privateName) {
+		t.Errorf("the author no longer sees %q beside their own exposed skill", privateName)
+	}
 }
 
 func siblingNamed(t *testing.T, c *client, path, name string) bool {
@@ -506,4 +509,49 @@ func siblingNamed(t *testing.T, c *client, path, name string) bool {
 		}
 	}
 	return false
+}
+
+func TestAnExposedGeneratedSkillKeepsItsAuthorsPromptToItsAuthor(t *testing.T) {
+	w := newExposureWorld(t, "exposed-prompt")
+	if _, err := w.pool.Exec(context.Background(), `
+		UPDATE skill_sources SET source_type = 'generated', task_description = 'my private brief',
+		       generator_model = 'fixture-model', generator_prompt_version = 'fixture-prompt',
+		       generation_inputs = '{"reference_skills":[]}'::jsonb
+		WHERE id = (SELECT source_id FROM skill_versions WHERE skill_id = $1 ORDER BY version_number DESC LIMIT 1)`,
+		mustUUID(t, w.skillID)); err != nil {
+		t.Fatal(err)
+	}
+	source := func(c *client) map[string]any {
+		var body struct {
+			Source map[string]any `json:"source"`
+		}
+		if code := getJSON(t, c.Client, w.a.URL+"/api/skills/"+w.skillID, &body); code != http.StatusOK {
+			t.Fatalf("GET detail: %d", code)
+		}
+		return body.Source
+	}
+	if got := source(w.author); got["task_description"] != "my private brief" {
+		t.Fatalf("the author's own detail = %v, want the brief; the rest proves nothing", got)
+	}
+
+	w.allowRedistribution(t)
+	w.approveAndAssertExposedToAnyone(t)
+
+	stranger := w.a.login(t, freshName("exposed-prompt-stranger"))
+	got := source(stranger)
+	if _, ok := got["task_description"]; ok {
+		t.Errorf("a stranger reads the author's brief: %v", got["task_description"])
+	}
+	if _, ok := got["generation_inputs"]; ok {
+		t.Errorf("a stranger reads the author's generation inputs: %v", got["generation_inputs"])
+	}
+	if got["type"] != "generated" {
+		t.Errorf("source type = %v, want generated still said", got["type"])
+	}
+	if trust, _ := got["trust"].(map[string]any); trust["label"] != "由平台生成" {
+		t.Errorf("a stranger is told %v; the brief was the author's, not theirs", trust["label"])
+	}
+	if got := source(w.author); got["task_description"] != "my private brief" {
+		t.Errorf("the author's own detail after exposure = %v, want the brief still there", got)
+	}
 }

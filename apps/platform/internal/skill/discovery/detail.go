@@ -265,7 +265,7 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	out, err := h.Svc.SkillDetail(r.Context(), skill)
+	out, err := h.Svc.SkillDetail(r.Context(), skill, h.viewerWorkspace(r))
 	if errors.Is(err, errPackageUnreadable) {
 		httpx.WriteError(w, http.StatusServiceUnavailable, errPackageUnreadable.Error())
 		return
@@ -280,7 +280,7 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
-func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetail, error) {
+func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts, viewer pgtype.UUID) (skillDetail, error) {
 	q := gen.New(s.Pool)
 
 	out := skillDetail{
@@ -336,7 +336,7 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetai
 	if err := s.attachMeasuredCompat(ctx, ver, &out); err != nil {
 		return skillDetail{}, err
 	}
-	if err := s.attachSource(ctx, skill, ver, &out); err != nil {
+	if err := s.attachSource(ctx, skill, ver, viewer, &out); err != nil {
 		return skillDetail{}, err
 	}
 
@@ -391,7 +391,7 @@ func (s *Service) attachMeasuredCompat(ctx context.Context, ver VersionFacts, ou
 	return nil
 }
 
-func (s *Service) attachSource(ctx context.Context, skill SkillFacts, ver VersionFacts, out *skillDetail) error {
+func (s *Service) attachSource(ctx context.Context, skill SkillFacts, ver VersionFacts, viewer pgtype.UUID, out *skillDetail) error {
 	if !ver.SourceID.Valid {
 		return nil
 	}
@@ -405,9 +405,14 @@ func (s *Service) attachSource(ctx context.Context, skill SkillFacts, ver Versio
 	if !found {
 		return nil
 	}
+	audience, err := s.sourceAudienceOf(ctx, skill, viewer)
+	if err != nil {
+		return err
+	}
 	out.Source = sourceFrom(src)
+	audience.redact(out.Source)
 	out.Source.Path = ver.SourcePath
-	siblings, err := s.sourceSiblings(ctx, skill, ver)
+	siblings, err := s.sourceSiblings(ctx, skill, ver, audience)
 	if err != nil {
 		return err
 	}
@@ -423,14 +428,8 @@ func (h *Handler) recordDetailView(r *http.Request, skillID pgtype.UUID) {
 	if r.URL.Query().Get("view") == "embedded" {
 		return
 	}
-	var workspace pgtype.UUID
-	if user, ok := identity.SessionUser(r.Context()); ok {
-		if ws, err := h.Identity.PersonalWorkspace(r.Context(), user); err == nil {
-			workspace = ws.ID
-		}
-	}
 
-	h.Svc.Analytics.SkillDetailViewed(r.Context(), workspace, skillID)
+	h.Svc.Analytics.SkillDetailViewed(r.Context(), h.viewerWorkspace(r), skillID)
 }
 
 func (h *Handler) SkillFiles(w http.ResponseWriter, r *http.Request) {
@@ -811,7 +810,7 @@ func pluginFrom(s SourceFacts) *pluginInfo {
 	return out
 }
 
-func (s *Service) sourceSiblings(ctx context.Context, skill SkillFacts, ver VersionFacts) ([]sourceSibling, error) {
+func (s *Service) sourceSiblings(ctx context.Context, skill SkillFacts, ver VersionFacts, audience sourceAudience) ([]sourceSibling, error) {
 	if s.ReadSourceSiblings == nil {
 		return nil, errOwnerReadNotConfigured
 	}
@@ -819,13 +818,9 @@ func (s *Service) sourceSiblings(ctx context.Context, skill SkillFacts, ver Vers
 	if err != nil {
 		return nil, err
 	}
-	shown, err := s.siblingsShownBeside(ctx, skill)
-	if err != nil {
-		return nil, err
-	}
 	out := make([]sourceSibling, 0, len(facts))
 	for _, f := range facts {
-		if !shown(f.SkillID) {
+		if !audience.shows(f.SkillID) {
 			continue
 		}
 		out = append(out, sourceSibling{
@@ -835,19 +830,27 @@ func (s *Service) sourceSiblings(ctx context.Context, skill SkillFacts, ver Vers
 	return out, nil
 }
 
-func (s *Service) siblingsShownBeside(ctx context.Context, skill SkillFacts) (func(pgtype.UUID) bool, error) {
+type sourceAudience struct {
+	scope     publicScope
+	strangers bool
+}
+
+func (s *Service) sourceAudienceOf(ctx context.Context, skill SkillFacts, viewer pgtype.UUID) (sourceAudience, error) {
 	scope, err := s.publicScope(ctx)
 	if err != nil {
-		return nil, err
+		return sourceAudience{}, err
 	}
 	_, exposed := scope.exposed[skill.ID]
-	if !exposed || slices.Contains(scope.catalogs, skill.WorkspaceID) {
-		return func(pgtype.UUID) bool { return true }, nil
+	owner := viewer.Valid && viewer == skill.WorkspaceID
+	return sourceAudience{scope: scope, strangers: exposed && !owner && !slices.Contains(scope.catalogs, skill.WorkspaceID)}, nil
+}
+
+func (a sourceAudience) shows(skillID pgtype.UUID) bool {
+	if !a.strangers {
+		return true
 	}
-	return func(id pgtype.UUID) bool {
-		_, ok := scope.exposed[id]
-		return ok
-	}, nil
+	_, ok := a.scope.exposed[skillID]
+	return ok
 }
 
 func sourceFrom(s SourceFacts) *sourceInfo {
@@ -941,4 +944,26 @@ func timeString(t pgtype.Timestamptz) string {
 		return ""
 	}
 	return t.Time.UTC().Format("2006-01-02T15:04:05Z")
+}
+
+func (h *Handler) viewerWorkspace(r *http.Request) pgtype.UUID {
+	user, ok := identity.SessionUser(r.Context())
+	if !ok {
+		return pgtype.UUID{}
+	}
+	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
+	if err != nil {
+		return pgtype.UUID{}
+	}
+	return ws.ID
+}
+
+func (a sourceAudience) redact(src *sourceInfo) {
+	if !a.strangers {
+		return
+	}
+	src.TaskDescription, src.GenerationInputs = "", nil
+	if src.Trust.Value == string(SourceTrustGenerated) {
+		src.Trust.Label, src.Trust.Note = generatedTrustForReaders.Label, generatedTrustForReaders.Note
+	}
 }
