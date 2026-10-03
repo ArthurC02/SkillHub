@@ -26,8 +26,8 @@ func TestAWorkspaceThatMayNotStoreObjectsGetsNoPackage(t *testing.T) {
 	if n := downloadIntentsIn(t, pool, c.workspaceID); n != 0 {
 		t.Errorf("%d cleanup intents recorded, want 0", n)
 	}
-	if !workspaceObjectsLockIsFree(t, pool, c.workspaceID) {
-		t.Error("the refused packaging kept the workspace object lock")
+	if n := advisoryLocksHeldByTheProduct(t, pool); n != 0 {
+		t.Errorf("the refused packaging kept the workspace object lock: %d advisory locks held", n)
 	}
 }
 
@@ -44,7 +44,7 @@ func TestPackagingWithoutALifecycleReadIsRefusedBeforeAnyObject(t *testing.T) {
 	if keys := workspaceDownloadObjects(a, c.workspaceID); len(keys) != 0 {
 		t.Errorf("objects %v were written without asking whether the workspace may store them", keys)
 	}
-	if !workspaceObjectsLockIsFree(t, pool, c.workspaceID) {
-		t.Error("the refused packaging kept the workspace object lock")
+	if n := advisoryLocksHeldByTheProduct(t, pool); n != 0 {
+		t.Errorf("the refused packaging kept the workspace object lock: %d advisory locks held", n)
 	}
 }

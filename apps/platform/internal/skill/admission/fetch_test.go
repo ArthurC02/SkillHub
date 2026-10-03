@@ -107,7 +107,7 @@ func TestFetchSizeCap(t *testing.T) {
 		t.Fatalf("want ErrFetch for oversized package, got %v", err)
 	}
 
-	if !strings.Contains(err.Error(), skillpkg.HumanMB(skillpkg.MaxZipBytes)) {
+	if !strings.Contains(err.Error(), "10.0 MB") {
 		t.Errorf("the refusal does not name the import ceiling: %v", err)
 	}
 	if got := refusalCount(t, metrics.CeilingURL) - before; got != 1 {

@@ -100,7 +100,7 @@ func refusalCount(t *testing.T, ceiling string) float64 {
 func TestInstallInstructionsNameTheImportCeilingSoTheRoundTripIsNotAssumed(t *testing.T) {
 	for _, p := range loadRealProfiles(t).Ordered() {
 		out := renderInstall(p, "demo-skill", nil)
-		if !strings.Contains(out, skillpkg.HumanMB(skillpkg.MaxZipBytes)) {
+		if !strings.Contains(out, "10.0 MB") {
 			t.Errorf("%s: INSTALL.md does not name the import ceiling:\n%s", p.ID, out)
 		}
 		if !strings.Contains(out, "Skill Hub will not take it back") {

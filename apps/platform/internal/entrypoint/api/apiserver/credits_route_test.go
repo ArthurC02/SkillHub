@@ -25,6 +25,7 @@ import (
 
 type fakeCreditLedger struct {
 	balances    map[string]int64
+	canStartAt  map[int64]bool
 	estimate    CreditSessionEstimate
 	balanceErr  error
 	estimateErr error
@@ -39,7 +40,7 @@ func (f *fakeCreditLedger) Standing(_ context.Context, workspaceID pgtype.UUID) 
 		return 0, false, f.balanceErr
 	}
 	balance := f.balances[pgconv.UUIDString(workspaceID)]
-	return balance, balance >= f.estimate.ThresholdCredits, nil
+	return balance, f.canStartAt[balance], nil
 }
 
 func (f *fakeCreditLedger) SessionEstimate(context.Context) (CreditSessionEstimate, error) {
@@ -213,6 +214,7 @@ func TestOperatorGrantUnblocksANewSession(t *testing.T) {
 		LowCredits: 30, HighCredits: testSessionThreshold,
 		ThresholdCredits: testSessionThreshold, SampleSize: 2, Estimated: true,
 	})
+	ledger.canStartAt = map[int64]bool{0: false, 100: true}
 	app, srv := creditsTestServer(t, pool, ledger)
 	member := creditsLogin(t, srv, "credits-member-grant")
 	operator := creditsLogin(t, srv, "credits-operator-grant")

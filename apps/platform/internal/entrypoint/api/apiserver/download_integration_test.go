@@ -713,6 +713,16 @@ func TestALicensingHoldAppliedAfterPackagingStopsTheDownload(t *testing.T) {
 	}
 }
 
+func storedObjectKey(t *testing.T, pool *pgxpool.Pool, artifactID string) string {
+	t.Helper()
+	var key string
+	if err := pool.QueryRow(context.Background(), `SELECT object_key FROM artifacts WHERE id = $1`,
+		mustUUID(t, artifactID)).Scan(&key); err != nil {
+		t.Fatal(err)
+	}
+	return key
+}
+
 func TestDeletingADownloadIsIdempotentAndKeepsTheRecord(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -722,7 +732,10 @@ func TestDeletingADownloadIsIdempotentAndKeepsTheRecord(t *testing.T) {
 	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusOK {
 		t.Fatal("the artifact was not downloadable before the delete")
 	}
-	objectKey := "downloads/" + c.workspaceID + "/" + art.ContentHash + ".zip"
+	objectKey := storedObjectKey(t, pool, art.ArtifactID)
+	if _, ok := a.packages[objectKey]; !ok {
+		t.Fatalf("precondition: no stored object at the recorded key %q", objectKey)
+	}
 	seedSighting(t, pool, "artifact", art.ArtifactID)
 
 	for i := range 2 {
@@ -760,7 +773,10 @@ func TestAnExpiredArtifactIsNotServedAndItsBytesAreSweptAway(t *testing.T) {
 	a := newAPI(t, pool)
 	c := a.login(t, "expirer")
 	art := buildDownload(t, a, pool, c, "expiring-skill")
-	objectKey := "downloads/" + c.workspaceID + "/" + art.ContentHash + ".zip"
+	objectKey := storedObjectKey(t, pool, art.ArtifactID)
+	if _, ok := a.packages[objectKey]; !ok {
+		t.Fatalf("precondition: no stored object at the recorded key %q", objectKey)
+	}
 
 	if _, err := pool.Exec(context.Background(),
 		"UPDATE artifacts SET expires_at = now() - interval '1 day' WHERE id = $1",

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -69,22 +68,6 @@ func downloadIntentsIn(t *testing.T, pool *pgxpool.Pool, workspaceID string) int
 		mustUUID(t, workspaceID))
 }
 
-func downloadObjectLockIsFree(t *testing.T, pool *pgxpool.Pool, objectKey string) bool {
-	t.Helper()
-	ctx := context.Background()
-	probe, err := pgx.ConnectConfig(ctx, pool.Config().ConnConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer probe.Close(ctx)
-	var free bool
-	if err := probe.QueryRow(ctx, `SELECT pg_try_advisory_lock(hashtextextended('artifact-object:' || $1::text, 0))`,
-		objectKey).Scan(&free); err != nil {
-		t.Fatal(err)
-	}
-	return free
-}
-
 func TestABuiltPackageLeavesNoCleanupIntentAndHoldsNoLock(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -98,11 +81,8 @@ func TestABuiltPackageLeavesNoCleanupIntentAndHoldsNoLock(t *testing.T) {
 	if n := downloadIntentsIn(t, pool, c.workspaceID); n != 0 {
 		t.Errorf("%d cleanup intents outlived a committed package, want 0", n)
 	}
-	if !workspaceObjectsLockIsFree(t, pool, c.workspaceID) {
-		t.Error("the workspace object lock is still held after packaging returned")
-	}
-	if !downloadObjectLockIsFree(t, pool, key) {
-		t.Error("the download object lock is still held after packaging returned")
+	if n := advisoryLocksHeldByTheProduct(t, pool); n != 0 {
+		t.Errorf("packaging returned with %d advisory locks still held", n)
 	}
 }
 
@@ -122,8 +102,8 @@ func TestAPackageWhoseRowIsRefusedRemovesTheObjectItWroteAndItsIntent(t *testing
 	if n := downloadIntentsIn(t, pool, c.workspaceID); n != 0 {
 		t.Errorf("%d cleanup intents remain after compensation, want 0", n)
 	}
-	if !workspaceObjectsLockIsFree(t, pool, c.workspaceID) {
-		t.Error("the workspace object lock is still held after the failure")
+	if n := advisoryLocksHeldByTheProduct(t, pool); n != 0 {
+		t.Errorf("the workspace object lock is still held after the failure: %d advisory locks held", n)
 	}
 }
 

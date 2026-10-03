@@ -79,10 +79,10 @@ func TestADetailShowsARestrictionOnlyWhileOneIsInEffect(t *testing.T) {
 	if got := restrictionOf(SkillFacts{AccessRestriction: &blank}); got != nil {
 		t.Errorf("a blank hold: %+v", got)
 	}
-	if got := restrictionOf(SkillFacts{AccessRestriction: &known}); got == nil || got.Reason != known || got.Note != restrictionNotes[known] {
+	if got := restrictionOf(SkillFacts{AccessRestriction: &known}); got == nil || got.Reason != known || !strings.Contains(got.Note, "來源授權正在審查中") {
 		t.Errorf("a known hold: %+v", got)
 	}
-	if got := restrictionOf(SkillFacts{AccessRestriction: &unknown}); got == nil || got.Reason != unknown || got.Note != restrictionNoteDefault {
+	if got := restrictionOf(SkillFacts{AccessRestriction: &unknown}); got == nil || got.Reason != unknown || !strings.Contains(got.Note, "目前因授權因素受限") {
 		t.Errorf("a hold with no note of its own: %+v", got)
 	}
 }

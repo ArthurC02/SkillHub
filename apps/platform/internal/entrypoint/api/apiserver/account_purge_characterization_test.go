@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -63,26 +62,22 @@ func accountEmail(t *testing.T, pool *pgxpool.Pool, userID string) string {
 	return email
 }
 
-func workspaceObjectsLockIsFree(t *testing.T, pool *pgxpool.Pool, workspaceID string) bool {
+func advisoryLocksHeldByTheProduct(t *testing.T, pool *pgxpool.Pool) int64 {
 	t.Helper()
 	ctx := context.Background()
-	probe, err := pgx.ConnectConfig(ctx, pool.Config().ConnConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer probe.Close(ctx)
-	var free bool
-	if err := probe.QueryRow(ctx, `SELECT pg_try_advisory_lock(hashtextextended('workspace-objects:' || $1::uuid::text, 0))`,
-		mustUUID(t, workspaceID)).Scan(&free); err != nil {
-		t.Fatal(err)
-	}
-	if free {
-		if _, err := probe.Exec(ctx, `SELECT pg_advisory_unlock(hashtextextended('workspace-objects:' || $1::uuid::text, 0))`,
-			mustUUID(t, workspaceID)); err != nil {
+	idle := pool.AcquireAllIdle(ctx)
+	pids := make([]int32, 0, len(idle))
+	for _, conn := range idle {
+		var pid int32
+		err := conn.QueryRow(ctx, "SELECT pg_backend_pid()").Scan(&pid)
+		conn.Release()
+		if err != nil {
 			t.Fatal(err)
 		}
+		pids = append(pids, pid)
 	}
-	return free
+	return countRows(t, pool,
+		`SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND granted AND pid = ANY($1)`, pids)
 }
 
 func TestAPurgedAccountKeepsNoSessionAndLeavesItsWorkspaceUnlocked(t *testing.T) {
@@ -101,8 +96,8 @@ func TestAPurgedAccountKeepsNoSessionAndLeavesItsWorkspaceUnlocked(t *testing.T)
 	if got := countRow(t, pool, "SELECT count(*) FROM sessions WHERE user_id = $1", mustUUID(t, alice.userID)); got != 0 {
 		t.Errorf("%d sessions survived the purge, want 0", got)
 	}
-	if !workspaceObjectsLockIsFree(t, pool, alice.workspaceID) {
-		t.Error("the workspace object lock is still held after the purge returned")
+	if n := advisoryLocksHeldByTheProduct(t, pool); n != 0 {
+		t.Errorf("the workspace object lock is still held after the purge returned: %d advisory locks held", n)
 	}
 }
 
@@ -129,8 +124,8 @@ func TestAPurgeWhoseObjectCannotBeRemovedStopsBeforeAnyRowChanges(t *testing.T) 
 	if got := countRow(t, pool, "SELECT count(*) FROM datasets WHERE object_key = $1", key); got != 1 {
 		t.Errorf("%d dataset rows left, want the row kept", got)
 	}
-	if !workspaceObjectsLockIsFree(t, pool, alice.workspaceID) {
-		t.Error("the workspace object lock is still held after the purge gave up")
+	if n := advisoryLocksHeldByTheProduct(t, pool); n != 0 {
+		t.Errorf("the workspace object lock is still held after the purge gave up: %d advisory locks held", n)
 	}
 }
 
