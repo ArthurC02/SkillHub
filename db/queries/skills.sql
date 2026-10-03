@@ -127,11 +127,11 @@ WHERE deleted_at IS NULL
 ORDER BY created_at DESC, id
 LIMIT @result_limit;
 
--- name: ListForkedSkills :many
-SELECT f.forked_from_skill_id::uuid AS skill_id FROM skills f
+-- name: ListSkillForks :many
+SELECT f.forked_from_skill_id::uuid AS source_id, f.id AS fork_id FROM skills f
 WHERE f.forked_from_skill_id = ANY(@skill_ids::uuid[])
 UNION
-SELECT v.skill_id FROM skills f
+SELECT v.skill_id AS source_id, f.id AS fork_id FROM skills f
 JOIN skill_versions v ON v.id = f.forked_from_version_id
 WHERE v.skill_id = ANY(@skill_ids::uuid[]);
 

@@ -31,10 +31,6 @@ func (h purgeHolds) keep(c purgeCandidate) bool {
 	return h.skills[c.skillID] || slices.ContainsFunc(c.versionIDs, func(id pgtype.UUID) bool { return h.versions[id] })
 }
 
-func forkedSkills(ctx context.Context, db gen.DBTX, skillIDs []pgtype.UUID) ([]pgtype.UUID, error) {
-	return gen.New(db).ListForkedSkills(ctx, skillIDs)
-}
-
 func (s *Service) requirePurgeReads() error {
 	if s.VersionsInRuns == nil || s.VersionsInDownloads == nil || s.VersionsInBundles == nil || s.SkillsWithTestCases == nil {
 		return errPurgeReadsNotInjected
@@ -75,7 +71,6 @@ func (s *Service) purgeHolds(ctx context.Context, db gen.DBTX, candidates []purg
 		ids  []pgtype.UUID
 		held map[pgtype.UUID]bool
 	}{
-		{forkedSkills, skillIDs, holds.skills},
 		{s.SkillsWithTestCases, skillIDs, holds.skills},
 		{s.VersionsInRuns, versionIDs, holds.versions},
 		{s.VersionsInDownloads, versionIDs, holds.versions},
@@ -97,10 +92,15 @@ func (s *Service) unreferenced(ctx context.Context, db gen.DBTX, candidates []pu
 	if err != nil {
 		return nil, 0, err
 	}
+	forks, err := gen.New(db).ListSkillForks(ctx, candidateIDs(candidates))
+	if err != nil {
+		return nil, 0, err
+	}
+	retained := retainedSkills(candidates, holds, forks)
 	var purgeable []pgtype.UUID
 	var kept int64
 	for _, c := range candidates {
-		if holds.keep(c) {
+		if retained[c.skillID] {
 			kept++
 			continue
 		}
@@ -268,4 +268,32 @@ func (s *Service) collectPackageObject(ctx context.Context, store ObjectRemover,
 		return false, err
 	}
 	return true, q.DeleteObjectCollectionEntry(ctx, key)
+}
+
+func candidateIDs(candidates []purgeCandidate) []pgtype.UUID {
+	ids := make([]pgtype.UUID, len(candidates))
+	for i, c := range candidates {
+		ids[i] = c.skillID
+	}
+	return ids
+}
+
+func retainedSkills(candidates []purgeCandidate, holds purgeHolds, forks []gen.ListSkillForksRow) map[pgtype.UUID]bool {
+	candidate := make(map[pgtype.UUID]bool, len(candidates))
+	retained := map[pgtype.UUID]bool{}
+	for _, c := range candidates {
+		candidate[c.skillID] = true
+		if holds.keep(c) {
+			retained[c.skillID] = true
+		}
+	}
+	for changed := true; changed; {
+		changed = false
+		for _, f := range forks {
+			if !retained[f.SourceID] && (retained[f.ForkID] || !candidate[f.ForkID]) {
+				retained[f.SourceID], changed = true, true
+			}
+		}
+	}
+	return retained
 }

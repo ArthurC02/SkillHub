@@ -684,6 +684,34 @@ func TestAccountPurgeCompletesWhenAPermissionConfirmationWasNeverRun(t *testing.
 	}
 }
 
+func TestAccountPurgeErasesASkillWhoseOnlyForkIsTheAccountsOwn(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	a := newAPI(t, pool)
+	dana := a.login(t, freshName("dana-self-fork"))
+
+	sourceID := seedSkill(t, pool, dana.workspaceID, freshName("dana-source"))
+	seedVersion(t, pool, dana.workspaceID, sourceID, "hash-"+sourceID)
+	forkID := seedSkill(t, pool, dana.workspaceID, freshName("dana-fork"))
+	mustExec(t, pool, `UPDATE skills SET forked_from_skill_id = $1 WHERE id = $2`,
+		mustUUID(t, sourceID), mustUUID(t, forkID))
+
+	if status, _ := deleteJSON(t, dana, "/me"); status != http.StatusOK {
+		t.Fatalf("DELETE /me: got %d", status)
+	}
+	if _, err := a.auth.Service.PurgeExpiredAccounts(ctx, &recordingStore{}, 0, 100); err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+	var left int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM skills WHERE workspace_id = $1`,
+		mustUUID(t, dana.workspaceID)).Scan(&left); err != nil {
+		t.Fatal(err)
+	}
+	if left != 0 {
+		t.Errorf("skills left in the purged workspace = %d, want 0: a fork inside it holds nobody else's provenance", left)
+	}
+}
+
 type purgeWorld struct {
 	private, shared                string
 	sharedVer                      gen.SkillVersion

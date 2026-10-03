@@ -275,7 +275,7 @@ scope:
   ListUnfinishedRuns: user
   ListCollectableObjects: user
   ListLiveSkillIDs: user
-  ListForkedSkills: user
+  ListSkillForks: user
   ListOutboxEventsByAggregate: user
   ListRunsNeedingCleanup: user
   ListSearchDocumentsMissingBigram: user

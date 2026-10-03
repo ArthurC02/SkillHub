@@ -395,35 +395,6 @@ func (q *Queries) ListForkedFromVersions(ctx context.Context, versionIds []pgtyp
 	return items, nil
 }
 
-const listForkedSkills = `-- name: ListForkedSkills :many
-SELECT f.forked_from_skill_id::uuid AS skill_id FROM skills f
-WHERE f.forked_from_skill_id = ANY($1::uuid[])
-UNION
-SELECT v.skill_id FROM skills f
-JOIN skill_versions v ON v.id = f.forked_from_version_id
-WHERE v.skill_id = ANY($1::uuid[])
-`
-
-func (q *Queries) ListForkedSkills(ctx context.Context, skillIds []pgtype.UUID) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, listForkedSkills, skillIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []pgtype.UUID
-	for rows.Next() {
-		var skill_id pgtype.UUID
-		if err := rows.Scan(&skill_id); err != nil {
-			return nil, err
-		}
-		items = append(items, skill_id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listLiveSkillIDs = `-- name: ListLiveSkillIDs :many
 SELECT id FROM skills
 WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL AND takedown_at IS NULL
@@ -480,6 +451,40 @@ func (q *Queries) ListLiveSkillsForIndex(ctx context.Context) ([]ListLiveSkillsF
 			&i.Summary,
 			&i.Redistribution,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSkillForks = `-- name: ListSkillForks :many
+SELECT f.forked_from_skill_id::uuid AS source_id, f.id AS fork_id FROM skills f
+WHERE f.forked_from_skill_id = ANY($1::uuid[])
+UNION
+SELECT v.skill_id AS source_id, f.id AS fork_id FROM skills f
+JOIN skill_versions v ON v.id = f.forked_from_version_id
+WHERE v.skill_id = ANY($1::uuid[])
+`
+
+type ListSkillForksRow struct {
+	SourceID pgtype.UUID
+	ForkID   pgtype.UUID
+}
+
+func (q *Queries) ListSkillForks(ctx context.Context, skillIds []pgtype.UUID) ([]ListSkillForksRow, error) {
+	rows, err := q.db.Query(ctx, listSkillForks, skillIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSkillForksRow
+	for rows.Next() {
+		var i ListSkillForksRow
+		if err := rows.Scan(&i.SourceID, &i.ForkID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
