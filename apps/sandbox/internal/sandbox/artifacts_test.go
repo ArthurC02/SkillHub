@@ -218,6 +218,68 @@ func TestCollectionHappensBeforeTheWorkloadIsReleased(t *testing.T) {
 	}
 }
 
+func uploadStore(t *testing.T, failures int) *httptest.Server {
+	t.Helper()
+	store := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if failures != 0 {
+			failures--
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(store.Close)
+	return store
+}
+
+func collectingEntry(storeURL string) *entry {
+	return &entry{
+		limits:        DefaultLimits,
+		artifactGrant: &ObjectGrant{Purpose: "artifact_upload", Access: "write", ObjectKey: "k", URL: storeURL + "/k"},
+	}
+}
+
+func TestAFailedArtifactUploadKeepsTheWorkloadUntilARetryUploadsIt(t *testing.T) {
+	store := uploadStore(t, 1)
+	drv := &collectDriver{artifacts: tarOf(t, map[string][]byte{"artifacts/out.txt": []byte("result")})}
+	m := NewManager(drv, Config{Provider: "test", Slots: 1}, slog.New(slog.DiscardHandler))
+	e := collectingEntry(store.URL)
+	m.runs["run-upload"] = e
+
+	if m.collect(context.Background(), "run-upload", "") {
+		t.Fatal("collection finished although the artifact upload failed")
+	}
+	if drv.releaseAttempts != 0 {
+		t.Fatalf("release attempts after a failed upload = %d, want 0", drv.releaseAttempts)
+	}
+	if !m.collect(context.Background(), "run-upload", "") {
+		t.Fatal("the retry did not finish collection")
+	}
+	if len(e.artifacts) != 1 || e.artifacts[0].FileName != "out.txt" {
+		t.Fatalf("manifest after the retried upload = %#v, want out.txt", e.artifacts)
+	}
+}
+
+func TestAnArtifactUploadThatKeepsFailingReleasesTheWorkloadOnTheThirdAttempt(t *testing.T) {
+	store := uploadStore(t, -1)
+	drv := &collectDriver{artifacts: tarOf(t, map[string][]byte{"artifacts/out.txt": []byte("result")})}
+	m := NewManager(drv, Config{Provider: "test", Slots: 1}, slog.New(slog.DiscardHandler))
+	e := collectingEntry(store.URL)
+	m.runs["run-upload"] = e
+
+	for attempt := 1; attempt <= 2; attempt++ {
+		if m.collect(context.Background(), "run-upload", "") {
+			t.Fatalf("collection finished on failed attempt %d, want a retry", attempt)
+		}
+	}
+	if !m.collect(context.Background(), "run-upload", "") {
+		t.Fatal("the third failed attempt still held the workload")
+	}
+	if drv.releaseAttempts != 1 || len(e.artifacts) != 0 {
+		t.Fatalf("release attempts = %d, manifest = %#v; want 1 and none", drv.releaseAttempts, e.artifacts)
+	}
+}
+
 func TestCollectionRetryKeepsAnAlreadyUploadedManifest(t *testing.T) {
 	store := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

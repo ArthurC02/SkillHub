@@ -119,8 +119,9 @@ type entry struct {
 
 	startCancel context.CancelFunc
 
-	artifacts          []Artifact
-	artifactsTruncated bool
+	artifacts               []Artifact
+	artifactsTruncated      bool
+	artifactCollectFailures int
 }
 
 type Manager struct {
