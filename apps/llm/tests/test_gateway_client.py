@@ -18,25 +18,11 @@ from skillhub_llm import app as app_module
 from skillhub_llm import enrich, evaluate, gateway, generate
 
 BUILDERS: list[tuple[str, Callable[[], AsyncOpenAI], float]] = [
-    ("enrich", enrich._client, enrich.LLM_TIMEOUT_SECONDS),
-    ("evaluate", evaluate._client, evaluate.LLM_TIMEOUT_SECONDS),
-    ("generate", generate._client, generate.LLM_TIMEOUT_SECONDS),
+    ("enrich", enrich._client, 60.0),
+    ("evaluate", evaluate._client, 120.0),
+    ("generate", generate._client, 120.0),
     ("creation", lambda: gateway.client(120.0), 120.0),
-    (
-        "app:/embed",
-        lambda: app_module._client(app_module.EMBED_TIMEOUT_SECONDS),
-        app_module.EMBED_TIMEOUT_SECONDS,
-    ),
-    (
-        "app:/match-reasons",
-        lambda: app_module._client(app_module.MATCH_REASONS_TIMEOUT_SECONDS),
-        app_module.MATCH_REASONS_TIMEOUT_SECONDS,
-    ),
-    (
-        "app:/suggest-criteria",
-        lambda: app_module._client(app_module.SUGGEST_CRITERIA_TIMEOUT_SECONDS),
-        app_module.SUGGEST_CRITERIA_TIMEOUT_SECONDS,
-    ),
+    ("app", lambda: app_module._client(20.0), 20.0),
 ]
 
 

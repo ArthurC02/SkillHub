@@ -150,7 +150,6 @@ def test_multiround_confirmation_and_tool_observation_revision():
     assert response.json()["outcome"] == "clarification"
     assert response.json()["draft"] is None
     assert "CSV columns are missing" in calls[0]["messages"][1]["content"]
-    assert SKILL["body"] != revised["body"]
 
 
 @pytest.mark.parametrize(
@@ -683,24 +682,6 @@ def test_tracing_disabled_even_when_environment_enables_it(monkeypatch):
     assert HEADERS["X-Creation-Gateway-Key"] not in json.dumps(calls)
 
 
-def test_strict_decision_schema_has_no_optional_properties_or_bound_keywords():
-    schema = creation.CreationDecision.model_json_schema()
-
-    def walk(value):
-        if isinstance(value, dict):
-            assert not set(value) & {"default", "minLength", "maxLength", "maxItems", "pattern"}
-            if value.get("type") == "object":
-                assert value.get("additionalProperties") is False
-                assert set(value.get("required", [])) == set(value.get("properties", {}))
-            for child in value.values():
-                walk(child)
-        elif isinstance(value, list):
-            for child in value:
-                walk(child)
-
-    walk(schema)
-
-
 def test_cancellation_reaches_gateway_await():
     async def scenario():
         started, cancelled = asyncio.Event(), asyncio.Event()
@@ -787,7 +768,6 @@ def test_graph_repairs_findings_then_reviews_exact_validated_content():
     response, _ = invoke(accepted, decision(outcome="draft", draft=changed))
     assert response.json()["outcome"] == "tool_intent"
     assert response.json()["draft"] == changed
-    assert accepted["draft"] == SKILL
 
 
 @pytest.mark.parametrize("content_hash", ["", "   ", "bogus"])

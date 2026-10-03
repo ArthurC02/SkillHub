@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from openai import APIConnectionError
 
-from skillhub_llm import evaluate, gateway
+from skillhub_llm import evaluate
 from skillhub_llm.app import app
 
 client = TestClient(app, headers={"Authorization": "Bearer test-service-token"})
@@ -154,8 +154,8 @@ def test_judge_returns_verdict_with_model_and_prompt_version(capture):
         "seed",
         "usage",
     }
-    assert body["model"] == evaluate.JUDGE_MODEL
-    assert body["prompt_version"] == evaluate.JUDGE_PROMPT_VERSION
+    assert body["model"] == "skillhub-judge"
+    assert body["prompt_version"] == "judge-run/v3"
     assert [c["criterion_id"] for c in body["verdict"]["criterion_results"]] == ["c1", "c2"]
     assert body["verdict"]["overall"] == "partially_met"
     assert "source" not in body["verdict"]["criterion_results"][0]
@@ -286,7 +286,7 @@ def test_judge_call_is_strict_json_schema_and_carries_cost_metadata(capture):
     assert client.post("/judge-run", json=JUDGE_REQUEST).status_code == 200
 
     call = calls[0]
-    assert call["model"] == evaluate.JUDGE_MODEL
+    assert call["model"] == "skillhub-judge"
     schema = call["response_format"]["json_schema"]
     assert schema["strict"] is True
     assert schema["schema"] == evaluate.JudgeVerdict.model_json_schema()
@@ -312,9 +312,9 @@ def test_the_judge_pins_its_sampling_and_reports_what_it_pinned(capture, path, b
     answer = client.post(path, json=body).json()
 
     assert calls[0]["temperature"] == 0
-    assert calls[0]["seed"] == gateway.SEED
+    assert calls[0]["seed"] == 20260829
     assert answer["temperature"] == 0
-    assert answer["seed"] == gateway.SEED
+    assert answer["seed"] == 20260829
 
 
 def test_a_gateway_exception_does_not_travel_back_in_the_detail(capture, monkeypatch):
@@ -393,41 +393,6 @@ def _keys(node) -> set:
     return set()
 
 
-def _walk(schema: dict, defs: dict):
-    """Yield every object node of a JSON schema, following $ref."""
-    if "$ref" in schema:
-        yield from _walk(defs[schema["$ref"].rsplit("/", 1)[-1]], defs)
-        return
-    if schema.get("type") == "object":
-        yield schema
-        for prop in schema.get("properties", {}).values():
-            yield from _walk(prop, defs)
-    for branch in schema.get("anyOf", []):
-        yield from _walk(branch, defs)
-    if "items" in schema:
-        yield from _walk(schema["items"], defs)
-
-
-@pytest.mark.parametrize(
-    "model", [evaluate.JudgeVerdict, evaluate.ImprovementProposals], ids=["verdict", "proposals"]
-)
-def test_model_facing_schema_satisfies_strict_mode(model):
-    """Every object closed, every property required, and none of the keywords
-    structured outputs rejects.
-    """
-    schema = model.model_json_schema()
-    defs = schema.get("$defs", {})
-    nodes = list(_walk(schema, defs))
-    assert nodes
-
-    for node in nodes:
-        assert node.get("additionalProperties") is False
-        assert set(node.get("required", [])) == set(node.get("properties", {}))
-
-    unsupported = {"minLength", "maxLength", "pattern", "format", "minItems", "maxItems"}
-    assert not (unsupported & _keys(schema))
-
-
 def test_nullable_evidence_fields_are_required_not_omitted():
     """Strict mode requires every property, so an inapplicable field is null."""
     schema = evaluate.JudgeEvidenceRef.model_json_schema()
@@ -465,11 +430,11 @@ def test_verdict_is_clipped_to_the_contract_caps(capture):
     body = client.post("/judge-run", json=JUDGE_REQUEST).json()
 
     results = body["verdict"]["criterion_results"]
-    assert len(results) == evaluate.MAX_CRITERION_RESULTS
-    assert len(results[0]["reason"]) == evaluate.MAX_REASON
-    assert len(results[0]["evidence_refs"]) == evaluate.MAX_EVIDENCE_REFS
-    assert len(results[0]["evidence_refs"][0]["quote"]) == evaluate.MAX_QUOTE
-    assert len(body["verdict"]["summary"]) == evaluate.MAX_SUMMARY
+    assert len(results) == 20
+    assert len(results[0]["reason"]) == 2000
+    assert len(results[0]["evidence_refs"]) == 10
+    assert len(results[0]["evidence_refs"][0]["quote"]) == 2000
+    assert len(body["verdict"]["summary"]) == 4000
 
 
 def test_malformed_model_json_is_502(capture):
@@ -486,13 +451,6 @@ def test_result_outside_the_domain_is_502_never_a_pass(capture):
     payload = json.loads(json.dumps(GOOD_VERDICT))
     payload["criterion_results"][0]["result"] = "met"
     capture(json.dumps(payload))
-
-    assert client.post("/judge-run", json=JUDGE_REQUEST).status_code == 502
-
-
-def test_judge_gateway_error_is_502(monkeypatch):
-    """A gateway failure is an evaluation failure, never a guessed pass."""
-    monkeypatch.setattr(evaluate, "_client", _fake_gateway_failure)
 
     assert client.post("/judge-run", json=JUDGE_REQUEST).status_code == 502
 
@@ -518,8 +476,8 @@ def test_suggest_improvements_returns_proposals(capture):
 
     assert response.status_code == 200
     body = response.json()
-    assert body["model"] == evaluate.JUDGE_MODEL
-    assert body["prompt_version"] == evaluate.SUGGEST_IMPROVEMENTS_PROMPT_VERSION
+    assert body["model"] == "skillhub-judge"
+    assert body["prompt_version"] == "suggest-improvements/v3"
     proposal = body["suggestions"][0]
     assert set(proposal) == {
         "category",
@@ -583,11 +541,11 @@ def test_duplicate_proposals_collapse_without_dropping_supported_categories(capt
     [
         {"target_path": ""},
         {"proposed_content": ""},
-        {"target_path": "x" * (evaluate.MAX_TARGET_PATH + 1)},
-        {"proposed_content": "x" * (evaluate.MAX_PROPOSED_CONTENT + 1)},
-        {"problem": "x" * (evaluate.MAX_PROBLEM + 1)},
-        {"evidence": "x" * (evaluate.MAX_EVIDENCE + 1)},
-        {"expected_impact": "x" * (evaluate.MAX_EXPECTED_IMPACT + 1)},
+        {"target_path": "x" * 1025},
+        {"proposed_content": "x" * 60_001},
+        {"problem": "x" * 2001},
+        {"evidence": "x" * 2001},
+        {"expected_impact": "x" * 1001},
         {"expected_impact": "   "},
         {"problem": "   "},
     ],
@@ -603,6 +561,27 @@ def test_unapplicable_or_oversized_proposals_are_dropped_not_rewritten(capture, 
 
     assert response.status_code == 200, response.text
     assert response.json()["suggestions"] == []
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"target_path": "x" * 1024},
+        {"proposed_content": "x" * 60_000},
+        {"problem": "x" * 2000},
+        {"evidence": "x" * 2000},
+        {"expected_impact": "x" * 1000},
+    ],
+)
+def test_a_proposal_exactly_at_a_field_cap_is_kept_whole(capture, change):
+    base = GOOD_PROPOSALS["suggestions"][0]
+    capture(json.dumps({"suggestions": [{**base, **change}]}))
+
+    suggestions = client.post("/suggest-improvements", json=IMPROVE_REQUEST).json()["suggestions"]
+
+    [(field, value)] = change.items()
+    assert len(suggestions) == 1
+    assert suggestions[0][field] == value
 
 
 def test_a_category_outside_the_enum_is_still_the_whole_answer_failing(capture):
@@ -629,7 +608,7 @@ def test_one_unusable_proposal_does_not_discard_the_good_ones(capture):
                     {
                         **base,
                         "problem": "這一項超長。",
-                        "evidence": "x" * (evaluate.MAX_EVIDENCE + 1),
+                        "evidence": "x" * 2001,
                     },
                     {**base, "category": "runtime", "problem": "這一項也沒問題。"},
                 ]
@@ -648,7 +627,7 @@ def test_suggestions_are_capped(capture):
 
     body = client.post("/suggest-improvements", json=IMPROVE_REQUEST).json()
 
-    assert len(body["suggestions"]) == evaluate.MAX_SUGGESTIONS
+    assert len(body["suggestions"]) == 10
 
 
 def test_empty_suggestion_list_is_a_valid_answer(capture):

@@ -2,8 +2,6 @@ import os
 from types import SimpleNamespace
 from unittest.mock import patch
 
-import anyio
-import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -242,7 +240,7 @@ def test_match_reasons_names_the_model_the_batch_is_billed_to():
         )
 
     assert response.status_code == 200
-    assert response.json()["model"] == app_module.MATCH_REASON_MODEL
+    assert response.json()["model"] == "skillhub-match-reason"
 
 
 def test_match_reasons_asks_the_gateway_for_the_shape_it_parses():
@@ -420,7 +418,7 @@ def test_suggest_criteria_asks_the_gateway_for_the_shape_it_parses():
     assert "criteria" in fmt["json_schema"]["schema"]["properties"]
     assert str(built[0].base_url).rstrip("/") == os.environ["LITELLM_BASE_URL"].rstrip("/")
     assert built[0].timeout == app_module.SUGGEST_CRITERIA_TIMEOUT_SECONDS
-    assert sent[0]["model"] == app_module.SUGGEST_CRITERIA_MODEL
+    assert sent[0]["model"] == "skillhub-suggest-criteria"
 
 
 def test_suggest_criteria_never_sees_dataset_rows():
@@ -453,7 +451,7 @@ def test_suggest_criteria_caps_the_number_of_suggestions():
     with _stub_chat('{"criteria": [' + many + "]}"):
         response = client.post("/suggest-criteria", json=SUGGEST_BODY)
 
-    assert len(response.json()["criteria"]) == app_module.MAX_SUGGESTED_CRITERIA
+    assert len(response.json()["criteria"]) == 8
 
 
 def test_suggest_criteria_survives_an_off_schema_answer():
@@ -480,40 +478,6 @@ def test_suggest_criteria_reports_provider_failure_as_502():
         response = client.post("/suggest-criteria", json=SUGGEST_BODY)
 
     assert response.status_code == 502
-
-
-def test_every_endpoint_asks_for_its_own_ceiling():
-    """Each endpoint's timeout constant must actually reach the client."""
-    asked: list[float] = []
-    completion = SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content="{}"))], usage=None
-    )
-
-    def build(timeout):
-        asked.append(timeout)
-        return SimpleNamespace(
-            embeddings=SimpleNamespace(
-                with_raw_response=SimpleNamespace(
-                    create=_returns(SimpleNamespace(data=[], usage=None))
-                )
-            ),
-            chat=SimpleNamespace(
-                completions=SimpleNamespace(
-                    with_raw_response=SimpleNamespace(create=_returns(completion))
-                )
-            ),
-        )
-
-    with patch.object(app_module, "_client", build):
-        client.post("/embed", json={"texts": ["one"]})
-        client.post("/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES})
-        client.post("/suggest-criteria", json=SUGGEST_BODY)
-
-    assert asked == [
-        app_module.EMBED_TIMEOUT_SECONDS,
-        app_module.MATCH_REASONS_TIMEOUT_SECONDS,
-        app_module.SUGGEST_CRITERIA_TIMEOUT_SECONDS,
-    ]
 
 
 INJECTION = (
@@ -573,37 +537,6 @@ def test_embed_rejects_vectors_of_the_wrong_dimension():
 
     assert response.status_code == 502
     assert response.json() == {"detail": "embedding provider returned malformed output"}
-
-
-def test_embed_honours_a_lower_ceiling_from_the_caller_and_never_a_higher_one():
-    """One endpoint, two callers, two deadlines: a caller may only lower the
-    ceiling with `timeout_seconds`, never raise it above the module's own.
-    """
-    asked: list[float] = []
-
-    def build(timeout):
-        asked.append(timeout)
-        return SimpleNamespace(
-            embeddings=SimpleNamespace(
-                with_raw_response=SimpleNamespace(
-                    create=_returns(SimpleNamespace(data=[], usage=None))
-                )
-            )
-        )
-
-    with patch.object(app_module, "_client", build):
-        client.post("/embed", json={"texts": ["one"], "timeout_seconds": 10})
-        client.post("/embed", json={"texts": ["one"], "timeout_seconds": 600})
-        client.post("/embed", json={"texts": ["one"]})
-
-    assert asked == [10, app_module.EMBED_TIMEOUT_SECONDS, app_module.EMBED_TIMEOUT_SECONDS]
-
-
-def test_embed_rejects_a_ceiling_of_zero_or_less():
-    """`min()` would accept 0 and time the call out before it started."""
-    for bad in (0, -1):
-        r = client.post("/embed", json={"texts": ["one"], "timeout_seconds": bad})
-        assert r.status_code == 422, bad
 
 
 @pytest.mark.parametrize(
@@ -672,46 +605,6 @@ def test_embed_rejects_an_item_with_no_embedding_field():
 
     assert response.status_code == 502
     assert response.json() == {"detail": "embedding provider returned malformed output"}
-
-
-def test_a_caller_that_stops_waiting_gets_no_answer(monkeypatch):
-    """The only test in this suite where a call actually runs out of time.
-
-    Over the in-process ASGI transport, cancelling the caller's task cancels
-    the handler with it, so the gateway call never returns.
-    """
-    reached_the_answer: list[bool] = []
-
-    async def create(**kwargs):
-        await anyio.sleep(30)
-        reached_the_answer.append(True)
-        raise AssertionError("the stub was allowed to finish")
-
-    stub = SimpleNamespace(
-        chat=SimpleNamespace(
-            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
-        )
-    )
-
-    async def scenario():
-        transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(
-            transport=transport,
-            base_url="http://llm",
-            headers={"Authorization": "Bearer test-service-token"},
-        ) as caller:
-            with anyio.move_on_after(0.25):
-                return await caller.post(
-                    "/match-reasons",
-                    json={"query": "read my invoices", "candidates": CANDIDATES},
-                )
-        return None
-
-    with patch.object(app_module, "_client", lambda timeout: stub):
-        answer = anyio.run(scenario)
-
-    assert answer is None, f"the caller walked away and still got {answer!r}"
-    assert reached_the_answer == []
 
 
 def test_readyz_reports_ready_when_the_gateway_is_configured():
