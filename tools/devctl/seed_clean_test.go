@@ -161,16 +161,15 @@ func TestSeedCleanDryRunSendsNoRequests(t *testing.T) {
 	if got := atomic.LoadInt32(&requests); got != 0 {
 		t.Fatalf("--dry-run sent %d request(s); want 0", got)
 	}
-	want := fmt.Sprintf("%d skill(s)", seedExpectedUploads())
-	if !strings.Contains(out.String(), want) {
+	if !strings.Contains(out.String(), "50 skill(s)") {
 		t.Fatalf("dry-run output does not report the count: %q", out.String())
 	}
 
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
-	if len(lines) != 1+seedExpectedUploads()+2*len(seedExclusions) {
-		t.Fatalf("got %d output lines; want a header, one per entry and two per exclusion", len(lines))
+	if len(lines) != 53 {
+		t.Fatalf("got %d output lines; want 53: a header, 50 entries and two for the one exclusion", len(lines))
 	}
-	for _, l := range lines[1 : 1+seedExpectedUploads()] {
+	for _, l := range lines[1:51] {
 		if !strings.Contains(l, "source=") {
 			t.Fatalf("line missing source= provenance marker: %q", l)
 		}
@@ -195,9 +194,8 @@ func TestSeedCleanUploadsEveryEntry(t *testing.T) {
 	if got := atomic.LoadInt32(&logins); got != 1 {
 		t.Fatalf("dev login called %d time(s); want 1", got)
 	}
-	want := int32(seedExpectedUploads())
-	if got := atomic.LoadInt32(&uploads); got != want {
-		t.Fatalf("uploads = %d; want %d", got, want)
+	if got := atomic.LoadInt32(&uploads); got != 50 {
+		t.Fatalf("uploads = %d; want 50", got)
 	}
 }
 
@@ -246,8 +244,8 @@ func TestSeedCleanFailsWhenTheCatalogSearchFindsNothing(t *testing.T) {
 	if !strings.Contains(err.Error(), "is_catalog") {
 		t.Fatalf("error does not name the flag that decides visibility: %v", err)
 	}
-	if got := atomic.LoadInt32(&uploads); got != int32(seedExpectedUploads()) {
-		t.Fatalf("uploads = %d; want %d — the check must run after a full upload, not instead of one", got, seedExpectedUploads())
+	if got := atomic.LoadInt32(&uploads); got != 50 {
+		t.Fatalf("uploads = %d; want 50 — the check must run after a full upload, not instead of one", got)
 	}
 }
 
@@ -265,14 +263,15 @@ func TestSeedCleanExcludesTheUnvalidatablePackageAndSaysWhy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(excluded) != len(seedExclusions) {
-		t.Fatalf("excluded %d entries; want %d", len(excluded), len(seedExclusions))
+	const excludedPath = "tools/goldenset/corpus/documents/minimax-docx.md"
+	if len(excluded) != 1 || excluded[0].provenance != excludedPath {
+		t.Fatalf("excluded = %v; want exactly %s", excluded, excludedPath)
 	}
-	if len(upload)+len(excluded) != len(all) {
-		t.Fatalf("partition lost entries: %d + %d != %d", len(upload), len(excluded), len(all))
+	if len(upload) != 50 || len(upload)+len(excluded) != len(all) {
+		t.Fatalf("upload = %d, excluded = %d, all = %d; want 50 uploads and no entry lost", len(upload), len(excluded), len(all))
 	}
 	for _, e := range upload {
-		if _, ok := seedExclusions[e.provenance]; ok {
+		if e.provenance == excludedPath {
 			t.Fatalf("%s is excluded but still in the upload set", e.provenance)
 		}
 	}
@@ -281,13 +280,11 @@ func TestSeedCleanExcludesTheUnvalidatablePackageAndSaysWhy(t *testing.T) {
 	if err := seedClean(root, []string{"--dry-run"}, &out); err != nil {
 		t.Fatal(err)
 	}
-	for path, reason := range seedExclusions {
-		if !strings.Contains(out.String(), path) {
-			t.Fatalf("output never names the excluded file %s: %q", path, out.String())
-		}
-		if !strings.Contains(out.String(), reason) {
-			t.Fatalf("output never gives the reason %s is excluded", path)
-		}
+	if !strings.Contains(out.String(), "excluded: "+excludedPath+"\n") {
+		t.Fatalf("output never names the excluded file %s: %q", excludedPath, out.String())
+	}
+	if !strings.Contains(out.String(), "frontmatter declares `triggers`") {
+		t.Fatalf("output never gives the reason %s is excluded: %q", excludedPath, out.String())
 	}
 }
 

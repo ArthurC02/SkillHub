@@ -841,7 +841,11 @@ func TestTheReconcilerNeedsTwoRoundsBeforeItMarksAMissingObject(t *testing.T) {
 	a := newAPI(t, pool)
 	c := a.login(t, "reconciled")
 	art := buildDownload(t, a, pool, c, "vanishing-skill")
-	delete(a.packages, "downloads/"+c.workspaceID+"/"+art.ContentHash+".zip")
+	objectKey := storedObjectKey(t, pool, art.ArtifactID)
+	if _, ok := a.packages[objectKey]; !ok {
+		t.Fatalf("precondition: no stored object at the recorded key %q", objectKey)
+	}
+	delete(a.packages, objectKey)
 
 	sweep := newSweep(pool, a.packages)
 	if err := sweep.Sweep(context.Background()); err != nil {
@@ -886,8 +890,11 @@ func TestAReturningObjectResetsTheSightingCount(t *testing.T) {
 	a := newAPI(t, pool)
 	c := a.login(t, "flapping")
 	art := buildDownload(t, a, pool, c, "flapping-skill")
-	key := "downloads/" + c.workspaceID + "/" + art.ContentHash + ".zip"
-	bytes := a.packages[key]
+	key := storedObjectKey(t, pool, art.ArtifactID)
+	bytes, ok := a.packages[key]
+	if !ok {
+		t.Fatalf("precondition: no stored object at the recorded key %q", key)
+	}
 
 	sweep := newSweep(pool, a.packages)
 	delete(a.packages, key)
@@ -1098,7 +1105,11 @@ func TestADownloadWhoseStoredPackageIsGoneAnswersNotFoundAndRecordsNothing(t *te
 	a := newAPI(t, pool)
 	c := a.login(t, "downloader-object-gone")
 	art := buildDownload(t, a, pool, c, "object-gone-skill")
-	delete(a.packages, "downloads/"+c.workspaceID+"/"+art.ContentHash+".zip")
+	objectKey := storedObjectKey(t, pool, art.ArtifactID)
+	if _, ok := a.packages[objectKey]; !ok {
+		t.Fatalf("precondition: no stored object at the recorded key %q", objectKey)
+	}
+	delete(a.packages, objectKey)
 
 	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("GET content of a package the store no longer holds: got %d, want 404", resp.StatusCode)

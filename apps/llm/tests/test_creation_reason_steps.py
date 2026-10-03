@@ -52,9 +52,13 @@ def test_a_diagnosis_with_no_edits_skips_the_rewrite_and_adds_no_guidance():
         "review_diagnosis",
         "creation_decision",
     ]
-    assert system_of(calls[1]) == system_of(calls[0]).removeprefix(
-        creation.DIAGNOSIS_INSTRUCTIONS + "\n\n"
+    diagnosis_system, decision_system = system_of(calls[0]), system_of(calls[1])
+    assert diagnosis_system != decision_system
+    assert diagnosis_system.endswith(decision_system)
+    assert "A trial run of the draft Skill was judged against its acceptance criteria" in (
+        diagnosis_system.removesuffix(decision_system)
     )
+    assert "A trial run of the draft Skill was judged" not in decision_system
     assert response.json()["usage"]["cost_usd"] == 0.002
     assert response.json()["usage"]["cost_source"] == "gateway"
 

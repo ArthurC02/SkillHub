@@ -41,7 +41,8 @@ def test_a_small_run_builds_an_uncut_request_where_the_last_final_output_wins():
         event("n1", "not_citable", {"x": 1}, 2),
         event(EV_B, "agent_output", {"kind": "final", "text": None}, 3),
         event("n2", "agent_output", None, 4),
-        event("n3", "agent_output", {"kind": "final", "text": "last"}, 5),
+        event("zh1", "agent_output", {"kind": "progress", "text": "完成"}, 5),
+        event("n3", "agent_output", {"kind": "final", "text": "last"}, 6),
     ]
     request, digest, final = jr.build_request(row("s", "r1"), events, [{"path": "a"}], "ev-1")
     assert final == "last"
@@ -52,12 +53,19 @@ def test_a_small_run_builds_an_uncut_request_where_the_last_final_output_wins():
                      {"id": "c2", "text": ARTIFACT, "evidence_excerpt": None}],
         "final_output": "last", "artifacts": [{"path": "a"}],
         "trace_digest": {"complete": True, "entries": [
-            {"trace_event_id": e["event_id"], "occurred_at": e["occurred_at"], "type": "agent_output",
-             "excerpt": json.dumps(e["payload"], ensure_ascii=False)}
-            for e in events if e["event_type"] == "agent_output"]},
+            {"trace_event_id": EV_A, "occurred_at": "2026-08-01T00:00:01Z", "type": "agent_output",
+             "excerpt": '{"kind": "final", "text": "first"}'},
+            {"trace_event_id": EV_B, "occurred_at": "2026-08-01T00:00:03Z", "type": "agent_output",
+             "excerpt": '{"kind": "final", "text": null}'},
+            {"trace_event_id": "n2", "occurred_at": "2026-08-01T00:00:04Z", "type": "agent_output",
+             "excerpt": "null"},
+            {"trace_event_id": "zh1", "occurred_at": "2026-08-01T00:00:05Z", "type": "agent_output",
+             "excerpt": '{"kind": "progress", "text": "完成"}'},
+            {"trace_event_id": "n3", "occurred_at": "2026-08-01T00:00:06Z", "type": "agent_output",
+             "excerpt": '{"kind": "final", "text": "last"}'}]},
         "truncation": [],
     }, request
-    assert list(digest) == [EV_A, EV_B, "n2", "n3"]
+    assert list(digest) == [EV_A, EV_B, "n2", "zh1", "n3"]
 
 
 def test_every_budget_cut_is_named_in_order_and_the_digest_keeps_the_tail():
