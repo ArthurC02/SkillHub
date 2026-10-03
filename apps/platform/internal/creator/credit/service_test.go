@@ -23,23 +23,23 @@ func (fakeTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, err
 func (fakeTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row { return nil }
 
 type fakeStore struct {
-	balances map[string]int64
-	events   map[string]string
-	applied  map[string]bool
-	stats    map[CostKind]Statistics
-	windows  map[CostKind][]int64
-	nextID   int
-	swept    int
-	sweepErr error
+	balances   map[string]int64
+	events     map[string]string
+	applied    map[string]bool
+	stats      map[CostKind]Statistics
+	recomputed map[CostKind]Statistics
+	nextID     int
+	swept      int
+	sweepErr   error
 }
 
 func newFakeStore() *fakeStore {
 	return &fakeStore{
-		balances: map[string]int64{},
-		events:   map[string]string{},
-		applied:  map[string]bool{},
-		stats:    map[CostKind]Statistics{},
-		windows:  map[CostKind][]int64{},
+		balances:   map[string]int64{},
+		events:     map[string]string{},
+		applied:    map[string]bool{},
+		stats:      map[CostKind]Statistics{},
+		recomputed: map[CostKind]Statistics{},
 	}
 }
 
@@ -93,16 +93,7 @@ func (f *fakeStore) RecentStatistics(ctx context.Context, kind CostKind) (Statis
 }
 
 func (f *fakeStore) RecomputeStatistics(ctx context.Context, kind CostKind, windowStart, windowEnd time.Time) (Statistics, error) {
-	samples := f.windows[kind]
-	var max int64
-	for _, v := range samples {
-		if v > max {
-			max = v
-		}
-	}
-	stats := Statistics{SampleCount: len(samples), MaxUsdMicros: max}
-	f.stats[kind] = stats
-	return stats, nil
+	return f.recomputed[kind], nil
 }
 
 func testConfig() Config {
@@ -505,9 +496,9 @@ func TestFactsBlockPurgedAccountOnCharge(t *testing.T) {
 	}
 }
 
-func TestRecomputeStatisticsWritesAndReturnsTheResult(t *testing.T) {
+func TestRecomputeStatisticsReturnsWhatTheStoreComputed(t *testing.T) {
 	store := newFakeStore()
-	store.windows[KindCreationStep] = []int64{10, 20, 30, 40, 50}
+	store.recomputed[KindCreationStep] = Statistics{SampleCount: 5, MaxUsdMicros: 50}
 	s := &Service{Store: store, Config: testConfig()}
 	got, err := s.RecomputeStatistics(context.Background(), KindCreationStep, 24*time.Hour)
 	if err != nil {
@@ -515,9 +506,6 @@ func TestRecomputeStatisticsWritesAndReturnsTheResult(t *testing.T) {
 	}
 	if got.SampleCount != 5 || got.MaxUsdMicros != 50 {
 		t.Fatalf("RecomputeStatistics = %+v, want SampleCount=5 MaxUsdMicros=50", got)
-	}
-	if stored := store.stats[KindCreationStep]; stored != got {
-		t.Fatalf("the computed statistics were not written back: %+v", stored)
 	}
 }
 
@@ -550,7 +538,7 @@ func TestRecomputeStatisticsSweepsSessionSummariesOnlyForTheSessionKind(t *testi
 func TestRecomputeStatisticsStillRunsWhenTheSweepFails(t *testing.T) {
 	store := newFakeStore()
 	store.sweepErr = errors.New("one session could not be summarized")
-	store.windows[KindCreationSession] = []int64{10, 20, 30}
+	store.recomputed[KindCreationSession] = Statistics{SampleCount: 3, MaxUsdMicros: 30}
 	config := testConfig()
 	config.SessionIdle = time.Hour
 	s := &Service{Store: store, Config: config}
@@ -560,8 +548,8 @@ func TestRecomputeStatisticsStillRunsWhenTheSweepFails(t *testing.T) {
 	if !errors.Is(err, store.sweepErr) {
 		t.Fatalf("error = %v, want it to carry the sweep failure so the job is retried", err)
 	}
-	if got.SampleCount != 3 || store.stats[KindCreationSession].SampleCount != 3 {
-		t.Fatalf("statistics after a failed sweep = %+v (stored %+v), want the 3 samples that exist", got, store.stats[KindCreationSession])
+	if got.SampleCount != 3 || got.MaxUsdMicros != 30 {
+		t.Fatalf("statistics after a failed sweep = %+v, want the 3 samples that exist", got)
 	}
 }
 

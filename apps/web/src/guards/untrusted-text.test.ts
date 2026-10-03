@@ -16,13 +16,13 @@ function tsxFiles(at: string): Array<[string, string]> {
   return out;
 }
 
-const UNTRUSTED_PRE = /<pre className="(?:skill-md|diff)"[^>]*>\s*([^\s])/g;
+const UNTRUSTED_PRE = /<pre className="(?:skill-md|diff)"[^>]*>\s*(<Reveal\b|[^\s])/g;
 
 test("every <pre> that shows somebody else's text goes through Reveal (04 丙-210)", () => {
   const offenders: string[] = [];
   for (const [path, source] of tsxFiles(dir)) {
     for (const m of source.matchAll(UNTRUSTED_PRE)) {
-      if (m[1] !== "<") {
+      if (m[1] !== "<Reveal") {
         offenders.push(path + ": " + m[0].replace(/\s+/g, " "));
       }
     }

@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 
@@ -163,19 +163,31 @@ test("IA §2.4: every feature-flagged entry point is documented", () => {
   }
 });
 
-const FLAG_OFF_ASSERTED: Record<string, string> = {
-  "app/RootLayout.tsx":
-    "app/RootLayout.test.tsx — 「the platform shell hides Studio until generate_skill is enabled」",
-  "features/catalog/home/Home.page.tsx":
-    "generate.test.tsx — 「the generate entry point is absent until /me says the flag is on」",
-  "features/workspace/skills/WorkspaceSkills.page.tsx":
-    "workspace.test.tsx — 「⛔ with the flag off, /library has no generation entry point」",
-  "app/shell/CleanModeNotice.tsx":
-    "clean-mode.test.tsx — 「without the flag, the notice renders nothing」",
-  "features/creation/create/CreateSkill.page.tsx":
-    "create-skill.test.tsx — 「⛔ with the flag off, /workspace/creations is not a workbench and says so」",
-  "features/workspace/home/WorkspaceHome.page.tsx":
-    "WorkspaceHome.test.tsx — 「workspace home does not request creation sessions when one creation flag is off」",
+const FLAG_OFF_ASSERTED: Record<string, { test: string; title: string }> = {
+  "app/RootLayout.tsx": {
+    test: "app/RootLayout.test.tsx",
+    title: "the platform shell exposes stable places and hides Studio until generation is enabled",
+  },
+  "features/catalog/home/Home.page.tsx": {
+    test: "features/creation/generate.test.tsx",
+    title: "the generate entry point is absent until /me says the flag is on",
+  },
+  "features/workspace/skills/WorkspaceSkills.page.tsx": {
+    test: "features/workspace/workspace.test.tsx",
+    title: "⛔ with the flag off, /library has no generation entry point",
+  },
+  "app/shell/CleanModeNotice.tsx": {
+    test: "app/clean-mode.test.tsx",
+    title: "without the flag, the notice renders nothing",
+  },
+  "features/creation/create/CreateSkill.page.tsx": {
+    test: "features/creation/create-skill.test.tsx",
+    title: "⛔ with the flag off, /workspace/creations is not a workbench and says so",
+  },
+  "features/workspace/home/WorkspaceHome.page.tsx": {
+    test: "features/workspace/home/WorkspaceHome.test.tsx",
+    title: "workspace home does not request creation sessions when one creation flag is off",
+  },
 };
 
 function flagHooks(): Set<string> {
@@ -215,6 +227,16 @@ test("IA §2.4: every flagged mount is on the roster of ones tested with the fla
       .filter((f) => !sites.includes(f))
       .sort(),
     "a roster entry that is no longer a flagged mount — delete the line",
+  ).toEqual([]);
+
+  expect(
+    Object.values(FLAG_OFF_ASSERTED)
+      .filter(({ test: file, title }) => {
+        const path = join(src, file);
+        return !existsSync(path) || !readFileSync(path, "utf8").includes(title);
+      })
+      .map(({ test: file, title }) => `${file} — 「${title}」`),
+    "a roster line names a flag-off test that is not there — renamed or deleted, the mount is untested",
   ).toEqual([]);
 
   expect(

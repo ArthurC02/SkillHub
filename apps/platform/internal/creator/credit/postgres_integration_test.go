@@ -101,6 +101,57 @@ func TestAnAdjustmentIsRefusedExactlyWhenItWouldPassTheLowestStoredBalance(t *te
 	}
 }
 
+func TestAReplayedChargeKeyRecordsAndDebitsOnce(t *testing.T) {
+	pool := integrationPool(t)
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var user pgtype.UUID
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (email, display_name) VALUES ($1, 'fixture') RETURNING id`,
+		uuid.NewString()+"@example.test").Scan(&user); err != nil {
+		t.Fatal(err)
+	}
+	s := &Service{Store: NewPostgresStore(pool), Config: testConfig()}
+	usd := int64(10_000)
+	key := "creation:" + uuid.NewString() + ":1"
+	in := ChargeInput{
+		Kind: KindCreationStep, UserID: user, RefType: RefCreationSession, RefID: user,
+		IdempotencyKey: key, UsdMicros: &usd, ReservedUsdMicros: usd,
+	}
+
+	first, err := s.Charge(ctx, tx, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replay, err := s.Charge(ctx, tx, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if first.Existed || first.Credits != 13 || first.NewBalance != -13 {
+		t.Fatalf("first charge = %+v, want a new 13-credit debit leaving -13", first)
+	}
+	if !replay.Existed || replay.NewBalance != -13 {
+		t.Fatalf("replayed charge = %+v, want it reported as existing with the balance still -13", replay)
+	}
+	var events, debits int
+	var balance int64
+	if err := tx.QueryRow(ctx, `
+		SELECT (SELECT count(*) FROM cost_events WHERE idempotency_key = $1),
+		       (SELECT count(*) FROM credit_entries WHERE idempotency_key = $1),
+		       (SELECT balance_credits FROM credit_accounts WHERE user_id = $2)`,
+		key, user).Scan(&events, &debits, &balance); err != nil {
+		t.Fatal(err)
+	}
+	if events != 1 || debits != 1 || balance != -13 {
+		t.Fatalf("after a replay: %d cost events, %d ledger entries, balance %d; want 1, 1, -13", events, debits, balance)
+	}
+}
+
 func seedSessionStep(t *testing.T, ctx context.Context, tx pgx.Tx, user, session pgtype.UUID, usdMicros int64) {
 	t.Helper()
 	if _, err := tx.Exec(ctx, `
