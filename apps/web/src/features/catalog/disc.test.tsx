@@ -227,19 +227,20 @@ test("DISC-006: 目錄那一半也要有來源標記的但書，不只搜尋那�
   expect(container.textContent).toContain("「作者原文」是套件的 frontmatter description");
 });
 
-function stubCategoryCatalog(rows: PublicSearchResult[]) {
+type CategoryPage = { results: PublicSearchResult[]; total: number };
+
+function stubCategoryCatalog(pages: Record<string, CategoryPage>) {
   const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
     calls.push(url);
     if (url.includes("/api/skills/catalog")) {
-      const category = new URLSearchParams(url.split("?")[1] ?? "").get("category");
-      const results = category ? rows.filter((r) => r.category.value === category) : rows;
+      const category = new URLSearchParams(url.split("?")[1] ?? "").get("category") ?? "";
+      const { results, total } = pages[category];
       return Promise.resolve(
-        new Response(
-          JSON.stringify({ results, limit: 100, total: results.length, truncated: false }),
-          { status: 200 },
-        ),
+        new Response(JSON.stringify({ results, limit: 100, total, truncated: false }), {
+          status: 200,
+        }),
       );
     }
     return Promise.resolve(
@@ -279,6 +280,13 @@ const SHELF_ROWS: PublicSearchResult[] = [
   },
 ];
 
+const SHELF_PAGES: Record<string, CategoryPage> = {
+  "": { results: SHELF_ROWS, total: 40 },
+  documents: { results: SHELF_ROWS.slice(0, 2), total: 12 },
+  writing: { results: SHELF_ROWS.slice(2, 3), total: 7 },
+  data: { results: SHELF_ROWS.slice(3, 4), total: 21 },
+};
+
 function chips(): string[] {
   return [...container.querySelectorAll(".category-nav .chip")].map((a) =>
     (a.textContent ?? "").replace(/\s+/g, ""),
@@ -301,7 +309,7 @@ async function browseCatalogue() {
 }
 
 test("Catalog landing leads with the 小工具 gallery and keeps creation outside the hero", async () => {
-  stubCategoryCatalog(SHELF_ROWS);
+  stubCategoryCatalog(SHELF_PAGES);
   await browseCatalogue();
 
   const hero = container.querySelector(".hero")!;
@@ -327,27 +335,17 @@ test("Catalog landing leads with the 小工具 gallery and keeps creation outsid
 });
 
 test("DISC-002 類別: each chip carries the count the server gives for that category", async () => {
-  const counts = new Map<string, number>();
-  for (const row of SHELF_ROWS) {
-    counts.set(row.category.label, (counts.get(row.category.label) ?? 0) + 1);
-  }
-
-  stubCategoryCatalog(SHELF_ROWS);
+  stubCategoryCatalog(SHELF_PAGES);
   await browseCatalogue();
 
-  expect(chips()).toEqual([
-    `全部（${SHELF_ROWS.length}）`,
-    `文件（${counts.get("文件")}）`,
-    `寫作（${counts.get("寫作")}）`,
-    `資料（${counts.get("資料")}）`,
-  ]);
+  expect(chips()).toEqual(["全部（40）", "文件（12）", "寫作（7）", "資料（21）"]);
   expect(currentChips()).toEqual(["全部"]);
   const nav = container.querySelector(".category-nav")!.textContent ?? "";
   expect(nav).not.toMatch(/下載|星|使用人數|熱門/);
 });
 
 test("DISC-002 類別: a chip narrows the catalogue through the URL, and 全部 clears it", async () => {
-  const calls = stubCategoryCatalog(SHELF_ROWS);
+  const calls = stubCategoryCatalog(SHELF_PAGES);
   await browseCatalogue();
 
   const writing = [...container.querySelectorAll<HTMLAnchorElement>(".category-nav .chip")].find(
@@ -371,7 +369,7 @@ test("DISC-002 類別: a chip narrows the catalogue through the URL, and 全部 
 });
 
 test("DISC-002 類別: the chip row and the filter select write the same URL param", async () => {
-  stubCategoryCatalog(SHELF_ROWS);
+  stubCategoryCatalog(SHELF_PAGES);
   await browseCatalogue();
 
   await chooseFilter("類別", "data");
@@ -429,7 +427,7 @@ test("DISC-001 搜尋文字超過 2000 字：送出前擋下並說明，不打�
 });
 
 test("the catalogue presents every product in one compact scan surface", async () => {
-  stubCategoryCatalog(SHELF_ROWS);
+  stubCategoryCatalog(SHELF_PAGES);
   await browseCatalogue();
 
   const galleries = container.querySelectorAll(".catalog-gallery");
@@ -437,9 +435,7 @@ test("the catalogue presents every product in one compact scan surface", async (
 
   expect(galleries).toHaveLength(1);
   expect(cards).toHaveLength(SHELF_ROWS.length);
-  expect(container.querySelector(".catalog-total")?.textContent).toContain(
-    `共 ${SHELF_ROWS.length} 個小工具`,
-  );
+  expect(container.querySelector(".catalog-total")?.textContent).toContain("共 40 個小工具");
   expect(container.querySelector(".curated-shelf")).toBeNull();
   expect(container.querySelector("#rest-heading")).toBeNull();
 
@@ -460,7 +456,7 @@ test("the catalogue presents every product in one compact scan surface", async (
 });
 
 test("the curated review explanation follows the unified product gallery", async () => {
-  stubCategoryCatalog(SHELF_ROWS);
+  stubCategoryCatalog(SHELF_PAGES);
   await browseCatalogue();
 
   const gallery = container.querySelector(".catalog-gallery")!;
@@ -510,7 +506,7 @@ function noteElement(scope: Element, text: string): Element {
 }
 
 test("目錄：先顯示卡片，必要警語、facet 與詞彙說明緊接在畫廊之後", async () => {
-  stubCategoryCatalog(SHELF_ROWS);
+  stubCategoryCatalog(SHELF_PAGES);
   await browseCatalogue();
 
   const cards = [...container.querySelectorAll(".catalog-skill-card")];
@@ -525,7 +521,7 @@ test("目錄：先顯示卡片，必要警語、facet 與詞彙說明緊接在�
 });
 
 test("設計 §0: the catalogue lands with the filter bar shut, at every width", async () => {
-  stubCategoryCatalog(SHELF_ROWS);
+  stubCategoryCatalog(SHELF_PAGES);
   await browseCatalogue();
   expect(
     container.querySelector<HTMLDetailsElement>(".filter-disclosure")!.open,
@@ -538,7 +534,7 @@ function noteTexts(): string[] {
 }
 
 test("設計 §2.13: 逐位元相同的 note 提到清單層級，會分辨列的留在列上", async () => {
-  stubCategoryCatalog(SHELF_ROWS);
+  stubCategoryCatalog(SHELF_PAGES);
   await browseCatalogue();
 
   const distinct = (pick: (r: PublicSearchResult) => string | undefined) =>
