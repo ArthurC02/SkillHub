@@ -500,7 +500,7 @@ func (s *Service) finish(ctx context.Context, a JobArgs, call stepCall) error {
 		return err
 	}
 	if receipt.Status == receiptUnknown {
-		return s.settleAbandonedAttempt(ctx, tx, a, e.Limits, usage)
+		return s.settleAbandonedAttempt(ctx, tx, a, row, usage)
 	}
 	settleCost(&e.Snapshot, e.Limits.MaxCallCostUSD, usage)
 	if err = s.settleCredit(ctx, tx, a, e.Limits, usage); err != nil {
@@ -533,12 +533,19 @@ func attemptStillCurrent(state State, e envelope, a JobArgs, receipt gen.Creatio
 	return state == StateWorking && e.ActiveReceipt == a.ReceiptID && receipt.Status == receiptRunning
 }
 
-func (s *Service) settleAbandonedAttempt(ctx context.Context, tx pgx.Tx, a JobArgs, l Limits, usage *ModelUsage) error {
+func (s *Service) settleAbandonedAttempt(ctx context.Context, tx pgx.Tx, a JobArgs, row gen.CreationSession, usage *ModelUsage) error {
+	e, err := decode(row)
+	if err != nil {
+		return err
+	}
 	if err := finishAttemptReceipt(ctx, tx, a, usage); err != nil {
 		return err
 	}
-	if err := s.settleCredit(ctx, tx, a, l, usage); err != nil {
+	if err := s.settleCredit(ctx, tx, a, e.Limits, usage); err != nil {
 		return err
+	}
+	if State(row.State).HasEnded() {
+		s.summarizeSession(ctx, tx, a.SessionID)
 	}
 	return tx.Commit(ctx)
 }
