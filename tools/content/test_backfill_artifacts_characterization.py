@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import contextlib
-import hashlib
 import io
 import sys
 import tarfile
@@ -57,13 +56,26 @@ def run_main(argv, runs=RUNS, apply_result=None):
     return code, out.getvalue(), err.getvalue(), applied
 
 
+INSERT_TEXT = (
+    "INSERT INTO artifacts (workspace_id, run_id, kind, file_name, "
+    "content_type, size_bytes, content_hash, object_key, expires_at)\n"
+    "SELECT '33333333-3333-4333-8333-333333333333'::uuid, "
+    "'11111111-1111-4111-8111-111111111111'::uuid, "
+    "'run_output', '%(name)s', 'application/octet-stream', %(size)d, '%(digest)s', "
+    "'run-artifacts/11111111-1111-4111-8111-111111111111/a1/artifacts.tar', "
+    "'2026-08-01 10:00:00+00'::timestamptz + interval '30 days'\n"
+    "WHERE NOT EXISTS (SELECT 1 FROM artifacts WHERE run_id = "
+    "'11111111-1111-4111-8111-111111111111'::uuid AND kind = 'run_output' AND file_name = "
+    "'%(name)s');"
+)
+REPORT_DIGEST = "f1e08744499eea1390fb33c5cebf61eb9a43aeab92bb864d6c65545062267d00"
+DATA_DIGEST = "5be08c9684a1d25efcee09318204824278b08bbfb4aef973ffefd0b9d7478313"
+
+
 def expected_sql():
-    key = "run-artifacts/" + FRESH + "/a1/artifacts.tar"
     return "\n".join([
-        backfill.statement(FRESH, WORKSPACE, CREATED, backfill.ArtifactManifestEntry(
-            key, "report.md", 8, hashlib.sha256(b"# report").hexdigest())),
-        backfill.statement(FRESH, WORKSPACE, CREATED, backfill.ArtifactManifestEntry(
-            key, "data.csv", 4, hashlib.sha256(b"a,b\n").hexdigest())),
+        INSERT_TEXT % {"name": "report.md", "size": 8, "digest": REPORT_DIGEST},
+        INSERT_TEXT % {"name": "data.csv", "size": 4, "digest": DATA_DIGEST},
     ])
 
 
