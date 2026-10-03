@@ -44,7 +44,9 @@ def require_service_token(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="LLM service authentication is not configured",
         )
-    if credentials is None or not secrets.compare_digest(credentials.credentials, expected):
+    if credentials is None or not secrets.compare_digest(
+        credentials.credentials.encode(), expected.encode()
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="invalid service credential",

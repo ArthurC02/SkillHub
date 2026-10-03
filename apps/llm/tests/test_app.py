@@ -27,6 +27,15 @@ def test_capabilities_reject_missing_or_wrong_service_token():
     )
 
 
+def test_a_service_token_with_non_ascii_bytes_is_rejected_as_unauthenticated():
+    response = TestClient(app).post(
+        "/embed",
+        headers={"Authorization": b"Bearer t\xc3\xa9st-service-token"},
+        json={"texts": ["secret"]},
+    )
+    assert response.status_code == 401
+
+
 def test_service_fails_closed_when_authentication_is_not_configured():
     with patch.dict("os.environ", {}, clear=True):
         response = TestClient(app).post(
