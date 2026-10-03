@@ -1734,6 +1734,34 @@ test("a confirm_brief screen with no model_changed never says 原本是", async 
   expect(box.textContent).not.toContain("原本是");
   expect(box.textContent).toContain("確認需求摘要與驗收條件");
 });
+test("resending the last message of a failed session keeps what is typed in the composer", async () => {
+  const posts: Record<string, unknown>[] = [];
+  const v = sample({ state: "failed" });
+  v.snapshot.messages = [
+    { role: "user", content: "做一個摘要小工具。" },
+    { role: "assistant", content: "這一步沒有完成。" },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return response(v);
+      }
+      return routeGet(url, [v], v);
+    }),
+  );
+  await render();
+  await resume();
+  await waitFor(() => box.textContent!.includes("再送一次上一句"));
+  await input("想完成的任務", "改成英文摘要");
+  await click("再送一次上一句");
+  await waitFor(() => posts.length === 1);
+  expect(posts[0]).toMatchObject({ kind: "message", message: "做一個摘要小工具。" });
+  expect(box.querySelector<HTMLTextAreaElement>('[aria-label="想完成的任務"]')!.value).toBe(
+    "改成英文摘要",
+  );
+});
 test("a failed session shows the raise form, refuses an out-of-band amount locally, and posts a valid one", async () => {
   const posts: Record<string, unknown>[] = [];
   const v = sample({ state: "failed" });
@@ -1928,6 +1956,38 @@ test("no completed run at all just says a run has not come back yet", async () =
     "fetch",
     vi.fn((url: string) => {
       if (url.startsWith("/runs?")) return response({ runs: [] });
+      return routeGet(url, [v], v);
+    }),
+  );
+  await render();
+  await resume();
+  await waitFor(() =>
+    box.textContent!.includes("試跑完成後，這裡會出現「把最新試跑結果帶回來改善」。"),
+  );
+  expect(() => button("把最新試跑結果帶回來改善")).toThrow();
+});
+test("an older finished run is not offered as the latest while a newer run is still going", async () => {
+  const v = sample({ state: "candidate_ready" });
+  v.snapshot.draft = DRAFT;
+  v.snapshot.candidate = draftCandidate();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      if (url.startsWith("/runs?"))
+        return response({
+          runs: [
+            {
+              run_id: "run-new",
+              status: "running",
+              evaluation: { value: "", label: "", note: "" },
+            },
+            {
+              run_id: "run-old",
+              status: "succeeded",
+              evaluation: { value: "met", label: "符合", note: "" },
+            },
+          ],
+        });
       return routeGet(url, [v], v);
     }),
   );

@@ -294,3 +294,39 @@ test("creating a session makes the returned session addressable", async () => {
 
   expect(router.state.location.search.session).toBe(SESSION_ID);
 });
+
+test("a first diagram that the new session refuses keeps the diagram and shows why", async () => {
+  const seen: string[] = [];
+  const sessions = creationRoute(seen, []);
+  stubMe(
+    { generate_skill: true, creation_skill: true },
+    (path, init) =>
+      sessions(path, init) ??
+      (path === `/creation-sessions/${SESSION_ID}/actions`
+        ? json({ error: "看不懂這張流程圖" }, 422)
+        : undefined),
+  );
+  await visit(() => container.querySelector('input[name="creation-budget"]') !== null);
+
+  await act(async () => {
+    container
+      .querySelector<HTMLInputElement>('input[name="creation-budget"][value="500"]')!
+      .click();
+    const picker = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    Object.defineProperty(picker, "files", {
+      configurable: true,
+      value: [new File(["diagram"], "flow.png", { type: "image/png" })],
+    });
+    picker.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await act(async () => {
+    [...container.querySelectorAll("button")]
+      .find((button) => button.textContent === "開始創作")!
+      .click();
+  });
+  await waitFor(() => text().includes("看不懂這張流程圖"));
+
+  expect(seen).toContain(`/creation-sessions/${SESSION_ID}/actions`);
+  expect(router.state.location.search.session).toBe(SESSION_ID);
+  expect(text()).toContain("移除流程圖：flow.png");
+});

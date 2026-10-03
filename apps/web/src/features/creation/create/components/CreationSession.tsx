@@ -25,6 +25,7 @@ import "./CreationSession.css";
 type CreationSessionProps = {
   sessionId?: string;
   onSessionChange?: (id: string) => void;
+  onSessionCreated?: (id: string) => void;
 };
 
 function useSessionSelection({ sessionId, onSessionChange }: CreationSessionProps) {
@@ -40,7 +41,8 @@ function useCandidateRun(testCaseID?: string, versionID?: string) {
     skillVersionId: versionID,
     enabled: Boolean(testCaseID && versionID),
   });
-  const latest = runs.data?.pages[0]?.runs.find((run) => TERMINAL_RUN_STATUSES.has(run.status));
+  const newest = runs.data?.pages[0]?.runs[0];
+  const latest = newest && TERMINAL_RUN_STATUSES.has(newest.status) ? newest : undefined;
   return {
     latest: testCaseID && versionID && (runs.isPending || runs.error) ? null : latest,
     pending: Boolean(testCaseID && versionID && runs.isPending),
@@ -64,7 +66,7 @@ export function CreationSession(props: CreationSessionProps) {
     [diagramAnswers, setDiagramAnswers] = useState<Record<string, string>>({});
   const { error, setError, busy, lastAttempt, attempt } = useCreationAttempt();
   const composer = useComposer(budget, setError);
-  const commands = useCreationCommands(setID);
+  const commands = useCreationCommands(props.onSessionCreated ?? setID);
   const sessions = useCreationSessions();
   const limits = useCreationLimits();
   const current = useLiveCreationSession(id);
@@ -79,7 +81,6 @@ export function CreationSession(props: CreationSessionProps) {
     if (!session) return;
     await attempt([kind, extra], async () => {
       await commands.send(session, kind, extra);
-      if (kind === "message") composer.setMessage("");
     });
   };
   const messages = p?.messages ?? [];
