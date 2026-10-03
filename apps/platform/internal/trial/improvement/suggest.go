@@ -36,7 +36,7 @@ var SuggestImprovementsBudget = modelbudget.Endpoint{
 }
 
 func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v verdict) {
-	if s.Suggester == nil || !worthSuggesting(v) {
+	if s.Suggester == nil || m.skill.AccessRestricted || !worthSuggesting(v) {
 		return
 	}
 
