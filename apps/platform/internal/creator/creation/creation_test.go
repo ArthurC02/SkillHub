@@ -192,7 +192,7 @@ func TestNoCallIsMadeWhenOnlyTheBufferIsLeft(t *testing.T) {
 
 func TestReasonSentenceReplacesMessage(t *testing.T) {
 	sentence, err := reasonSentence("confirm_brief_first")
-	if err != nil || sentence != reasonSentences["confirm_brief_first"] {
+	if err != nil || sentence != "請先確認這份需求與驗收條件，再建立草稿。" {
 		t.Fatalf("known reason not resolved: %q %v", sentence, err)
 	}
 	if _, err := reasonSentence("not_a_real_reason"); err == nil {
@@ -227,7 +227,7 @@ func TestProposalReplacesTheMessageFromTheReasonTable(t *testing.T) {
 		t.Fatalf("clarification with a reason: state=%q next=%v err=%v", state, next, err)
 	}
 	last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]
-	if last.Role != "assistant" || last.Content != reasonSentences["tool_unavailable"] {
+	if last.Role != "assistant" || last.Content != "目前無法使用這項工具，請補充需求或選擇可用的參考。" {
 		t.Fatalf("Go did not own the sentence: %+v", last)
 	}
 	if _, _, err := s.proposal(context.Background(), 2, &e, &StepResult{Outcome: "clarification", Message: "x", Reason: "made_up"}, nil); err == nil {
@@ -265,7 +265,7 @@ func TestProposalRetriesOnceWhenTheDraftIsMissing(t *testing.T) {
 		t.Fatalf("second draft_missing should hand the turn back: state=%q next=%v retries=%d err=%v", state, next, e.Snapshot.DraftRetries, err)
 	}
 	last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]
-	if last.Content != reasonSentences["draft_missing"] {
+	if last.Content != "模型這一步說要交草稿卻沒有交出來；請補一句需求，或直接請它再試一次。" {
 		t.Fatalf("the person did not get Go's sentence: %+v", last)
 	}
 }

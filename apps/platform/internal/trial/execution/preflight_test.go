@@ -123,8 +123,6 @@ func TestAProviderThatCannotBeAskedClaimsNoSecrets(t *testing.T) {
 }
 
 func TestASandboxThatMayComeBackQueuesTheRunInsteadOfRefusingIt(t *testing.T) {
-	t.Setenv("DEV_LOGIN", "")
-	t.Setenv("SKILLHUB_CLEAN_MODE", "")
 	recovering := &Service{Providers: registryWithCapabilities(unhealthy("sick"))}
 
 	if reason, err := recovering.schedulableRefusal(context.Background(), withGatewayGrant()); err != nil {
@@ -141,8 +139,6 @@ func TestASandboxThatMayComeBackQueuesTheRunInsteadOfRefusingIt(t *testing.T) {
 }
 
 func TestTheSummarySaysTheSandboxesAreDownAndThatTheRunWillWait(t *testing.T) {
-	t.Setenv("DEV_LOGIN", "")
-	t.Setenv("SKILLHUB_CLEAN_MODE", "")
 	down := &Service{Providers: registryWithCapabilities(unhealthy("sick"))}
 	notes := down.summaryNotes(context.Background(), withGatewayGrant())
 	if !slices.Contains(notes, sandboxUnavailableNote) {

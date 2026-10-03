@@ -23,6 +23,38 @@ func TestNewRunRegistryFromEnvNamesOnlyProvidersWithoutTokens(t *testing.T) {
 	}
 }
 
+func TestRunDeploymentFromEnvPicksTheIsolationFloorFromTheDeploymentMode(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		cleanMode    string
+		devLogin     string
+		wantIsolated string
+		wantClean    bool
+	}{
+		{"production", "", "", "strong", false},
+		{"dev login", "", "1", "weak", false},
+		{"clean mode", "1", "", "none", true},
+		{"clean mode wins over dev login", "1", "1", "none", true},
+		{"clean mode flag other than 1 is off", "true", "", "strong", false},
+		{"dev login flag other than 1 is off", "", "true", "strong", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("SKILLHUB_CLEAN_MODE", tc.cleanMode)
+			t.Setenv("DEV_LOGIN", tc.devLogin)
+			t.Setenv("SKILLHUB_CLEAN_MODE_RELEASES", "/tmp/releases.txt")
+
+			got := RunDeploymentFromEnv()
+
+			if string(got.MinimumIsolation) != tc.wantIsolated || got.CleanMode != tc.wantClean {
+				t.Errorf("isolation=%q clean=%v, want %q and %v", got.MinimumIsolation, got.CleanMode, tc.wantIsolated, tc.wantClean)
+			}
+			if got.CleanModeReleases != "/tmp/releases.txt" {
+				t.Errorf("CleanModeReleases = %q, want the path from SKILLHUB_CLEAN_MODE_RELEASES", got.CleanModeReleases)
+			}
+		})
+	}
+}
+
 func TestOnlyARunBudgetThatIsSetButUnusableIsReported(t *testing.T) {
 	for _, tc := range []struct {
 		raw      string

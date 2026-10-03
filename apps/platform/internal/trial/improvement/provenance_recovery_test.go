@@ -11,6 +11,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 func readsEventsFrom(pool *pgxpool.Pool) func(context.Context, outbox.EventPage) ([]outbox.Event, error) {
@@ -23,10 +24,10 @@ func publishVersionAdded(t *testing.T, s *Service, m material, versionID, evalua
 	suggestionIDs []pgtype.UUID, occurredAt time.Time,
 ) {
 	t.Helper()
-	payload := map[string]any{"version_id": pgconvString(versionID)}
+	payload := map[string]any{"version_id": pgconv.UUIDString(versionID)}
 	if evaluationID.Valid {
 		payload["improved_by"] = map[string]any{
-			"evaluation_id":  pgconvString(evaluationID),
+			"evaluation_id":  pgconv.UUIDString(evaluationID),
 			"suggestion_ids": stringsOf(suggestionIDs),
 		}
 	}
@@ -45,18 +46,10 @@ func publishVersionAdded(t *testing.T, s *Service, m material, versionID, evalua
 	}
 }
 
-func pgconvString(id pgtype.UUID) string {
-	text, err := id.MarshalJSON()
-	if err != nil {
-		return ""
-	}
-	return string(text[1 : len(text)-1])
-}
-
 func stringsOf(ids []pgtype.UUID) []string {
 	out := make([]string, 0, len(ids))
 	for _, id := range ids {
-		out = append(out, pgconvString(id))
+		out = append(out, pgconv.UUIDString(id))
 	}
 	return out
 }

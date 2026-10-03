@@ -275,13 +275,9 @@ func TestCanStartUsesP95WithMarkupWhenEnoughSamples(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	billed, err := BilledMicros(30_000_000, 13000)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := CreditsForMicros(billed, 1000)
+	const want = 39_000
 	if check.Threshold != want {
-		t.Fatalf("Threshold = %d, want %d", check.Threshold, want)
+		t.Fatalf("Threshold = %d, want %d (30 USD p95 at 130%% markup, 1000 micros per credit)", check.Threshold, want)
 	}
 	if check.Estimated {
 		t.Fatal("a threshold derived from MinStatSamples or more samples must not be marked Estimated")

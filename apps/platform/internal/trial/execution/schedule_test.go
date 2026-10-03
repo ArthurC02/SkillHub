@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -33,19 +32,22 @@ func compatible() ProviderCapability {
 	return c
 }
 
-func defaultRequirements() Requirements {
+func requirementsWithIsolation(isolation IsolationStrength, cleanMode bool) Requirements {
 	return requirementsFromPolicy(policySnapshot{
 		ResourceLimits:   DefaultResourceLimits(),
 		Egress:           EgressPolicy{Mode: "default_deny"},
-		MinimumIsolation: deploymentFromTestEnv().RequiredIsolation(),
-		CleanMode:        deploymentFromTestEnv().CleanMode,
+		MinimumIsolation: isolation,
+		CleanMode:        cleanMode,
 	})
 }
 
-func TestRequirementsRetainTheRunSnapshotDeploymentPolicy(t *testing.T) {
-	t.Setenv("DEV_LOGIN", "")
-	t.Setenv("SKILLHUB_CLEAN_MODE", "")
+func defaultRequirements() Requirements { return requirementsWithIsolation(strongIsolation, false) }
 
+func developmentRequirements() Requirements { return requirementsWithIsolation(weakIsolation, false) }
+
+func cleanRequirements() Requirements { return requirementsWithIsolation(noIsolation, true) }
+
+func TestRequirementsRetainTheRunSnapshotDeploymentPolicy(t *testing.T) {
 	requirements := requirementsFromPolicy(policySnapshot{
 		ResourceLimits:   DefaultResourceLimits(),
 		Egress:           EgressPolicy{Mode: "default_deny"},
@@ -58,15 +60,12 @@ func TestRequirementsRetainTheRunSnapshotDeploymentPolicy(t *testing.T) {
 	}
 }
 
-func deploymentFromTestEnv() Deployment {
-	cleanMode := os.Getenv("SKILLHUB_CLEAN_MODE") == "1"
-	minimumIsolation := strongIsolation
-	if cleanMode {
-		minimumIsolation = noIsolation
-	} else if os.Getenv("DEV_LOGIN") == "1" {
-		minimumIsolation = weakIsolation
-	}
-	return Deployment{MinimumIsolation: minimumIsolation, CleanMode: cleanMode, CleanModeReleases: os.Getenv(cleanModeReleaseFile)}
+func weakDeployment() Deployment {
+	return Deployment{MinimumIsolation: weakIsolation}
+}
+
+func cleanModeDeployment(releasesFile string) Deployment {
+	return Deployment{MinimumIsolation: noIsolation, CleanMode: true, CleanModeReleases: releasesFile}
 }
 
 func TestMatchAcceptsACompatibleProviderAndResolvesTheRuntimeVersion(t *testing.T) {
@@ -157,7 +156,6 @@ func TestMatchRefusesHostKernelIsolationUnlessTheDeploymentIsADevelopmentOne(t *
 	c := compatible()
 	c.Isolation.Strength = "weak"
 
-	t.Setenv("DEV_LOGIN", "")
 	_, err := Match(c, defaultRequirements())
 	if err == nil {
 		t.Fatal("a host-kernel provider was accepted by a deployment that never opted in")
@@ -170,15 +168,14 @@ func TestMatchRefusesHostKernelIsolationUnlessTheDeploymentIsADevelopmentOne(t *
 		t.Errorf("reason = %q, want it to say the deployment is what refuses this provider", err)
 	}
 
-	t.Setenv("DEV_LOGIN", "1")
-	if _, err := Match(c, defaultRequirements()); err != nil {
+	if _, err := Match(c, developmentRequirements()); err != nil {
 		t.Errorf("a development deployment could not run its own sandbox: %v", err)
 	}
 
 	for _, strength := range []IsolationStrength{"process", ""} {
 		bare := compatible()
 		bare.Isolation.Strength = strength
-		if _, err := Match(bare, defaultRequirements()); err == nil {
+		if _, err := Match(bare, developmentRequirements()); err == nil {
 			t.Errorf("isolation %q was accepted by a development deployment", strength)
 		}
 	}
@@ -401,7 +398,6 @@ func TestPlaceOffersOnlyProvidersWithAFreeSlotMostFreeFirst(t *testing.T) {
 }
 
 func TestPlaceTellsAFullFleetApartFromOneThatCannotRunTheRequest(t *testing.T) {
-	t.Setenv("DEV_LOGIN", "")
 	incompatible := withSlots("weak", 4)
 	incompatible.Isolation.Strength = "weak"
 	drained := withSlots("drained", 4)
@@ -440,8 +436,6 @@ func neverFits(name string) ProviderCapability {
 }
 
 func TestAPoolThatMayRecoverIsToldApartFromOneThatCouldNeverRunTheRequest(t *testing.T) {
-	t.Setenv("DEV_LOGIN", "")
-	t.Setenv("SKILLHUB_CLEAN_MODE", "")
 	unreachable := &Registry{
 		Providers: []SandboxProvider{NewProvider("gone", "http://127.0.0.1:1", "")},
 		cached:    map[string]cachedCapability{},
@@ -483,8 +477,6 @@ func TestAPoolThatMayRecoverIsToldApartFromOneThatCouldNeverRunTheRequest(t *tes
 }
 
 func TestMatchIsAnAllowListSoAnUnnamedIsolationStrengthIsRefused(t *testing.T) {
-	t.Setenv("DEV_LOGIN", "")
-	t.Setenv("SKILLHUB_CLEAN_MODE", "")
 	for _, strength := range []IsolationStrength{"gvisor", "banana", "strongest", "STRONG", "strong "} {
 		c := compatible()
 		c.Isolation.Strength = strength
@@ -504,42 +496,34 @@ func TestMatchAcceptsCleanOnlyUnderItsOwnOptIn(t *testing.T) {
 	c := compatible()
 	c.Isolation.Strength = "none"
 
-	t.Setenv("DEV_LOGIN", "")
-	t.Setenv("SKILLHUB_CLEAN_MODE", "")
 	if _, err := Match(c, defaultRequirements()); err == nil {
 		t.Fatal("a provider with no isolation was accepted by a deployment that never opted in")
 	}
 
-	t.Setenv("DEV_LOGIN", "1")
-	if _, err := Match(c, defaultRequirements()); err == nil {
+	if _, err := Match(c, developmentRequirements()); err == nil {
 		t.Error("DEV_LOGIN alone accepted a provider that does not isolate at all")
 	}
 
-	t.Setenv("DEV_LOGIN", "")
-	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
-	if _, err := Match(c, defaultRequirements()); err != nil {
+	if _, err := Match(c, cleanRequirements()); err != nil {
 		t.Errorf("the clean test mode could not dispatch to its own driver: %v", err)
 	}
 
 	for _, strength := range []IsolationStrength{"process", ""} {
 		bare := compatible()
 		bare.Isolation.Strength = strength
-		if _, err := Match(bare, defaultRequirements()); err == nil {
+		if _, err := Match(bare, cleanRequirements()); err == nil {
 			t.Errorf("isolation %q was accepted by a clean-test deployment", strength)
 		}
 	}
 
 	stronger := compatible()
 	stronger.Isolation.Strength = strongIsolation
-	if _, err := Match(stronger, defaultRequirements()); err != nil {
+	if _, err := Match(stronger, cleanRequirements()); err != nil {
 		t.Errorf("the clean test mode refused a provider that isolates more strongly than it asks for: %v", err)
 	}
 }
 
 func TestMatchRefusesAProviderThatDoesNotEnforceWhatItDeclares(t *testing.T) {
-	t.Setenv("DEV_LOGIN", "")
-	t.Setenv("SKILLHUB_CLEAN_MODE", "")
-
 	c := compatible()
 	c.MaxResourcesUnenforced = []string{"vcpu", "disk_bytes"}
 	_, err := Match(c, defaultRequirements())
@@ -553,19 +537,15 @@ func TestMatchRefusesAProviderThatDoesNotEnforceWhatItDeclares(t *testing.T) {
 		}
 	}
 
-	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
 	clean := compatible()
 	clean.Isolation.Strength = "none"
 	clean.MaxResourcesUnenforced = []string{"vcpu"}
-	if _, err := Match(clean, defaultRequirements()); err != nil {
+	if _, err := Match(clean, cleanRequirements()); err != nil {
 		t.Errorf("the clean test mode could not dispatch to its own driver: %v", err)
 	}
 }
 
 func TestMatchRefusesAProviderThatDeclaresEgressItDoesNotEnforce(t *testing.T) {
-	t.Setenv("DEV_LOGIN", "")
-	t.Setenv("SKILLHUB_CLEAN_MODE", "")
-
 	c := compatible()
 	c.Network.EgressUnenforced = true
 	_, err := Match(c, defaultRequirements())
@@ -579,11 +559,10 @@ func TestMatchRefusesAProviderThatDeclaresEgressItDoesNotEnforce(t *testing.T) {
 		}
 	}
 
-	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
 	clean := compatible()
 	clean.Isolation.Strength = "none"
 	clean.Network.EgressUnenforced = true
-	req := defaultRequirements()
+	req := cleanRequirements()
 	req.EgressMode, req.EgressAllowed = "default_deny", 1
 	if _, err := Match(clean, req); err != nil {
 		t.Errorf("the clean test mode could not take a run that names a destination: %v", err)
@@ -591,14 +570,11 @@ func TestMatchRefusesAProviderThatDeclaresEgressItDoesNotEnforce(t *testing.T) {
 }
 
 func TestAProviderThatCannotReapDetachedDescendantsRunsButSaysSo(t *testing.T) {
-	t.Setenv("DEV_LOGIN", "")
-	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
-
 	no, yes := false, true
 	c := compatible()
 	c.Isolation.Strength = "none"
 	c.Isolation.ReapsDetachedDescendants = &no
-	if _, err := Match(c, defaultRequirements()); err != nil {
+	if _, err := Match(c, cleanRequirements()); err != nil {
 		t.Fatalf("a clean provider was refused for a disclosure-shaped fact: %v", err)
 	}
 
@@ -638,11 +614,8 @@ func curatedSource() ContentSource {
 }
 
 func TestTheContentSourceGateDoesNothingOutsideTheCleanTestMode(t *testing.T) {
-	t.Setenv("DEV_LOGIN", "1")
-	t.Setenv("SKILLHUB_CLEAN_MODE", "")
-
 	called := false
-	svc := &Service{Deployment: deploymentFromTestEnv(), Registry: registryReaderFuncs{contentSource: func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error) {
+	svc := &Service{Deployment: weakDeployment(), Registry: registryReaderFuncs{contentSource: func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error) {
 		called = true
 		return ContentSource{CurationTier: "indexed"}, true, nil
 	}}}
@@ -668,8 +641,7 @@ type curatedContentCase struct {
 
 func assertCuratedContentCase(t *testing.T, tc curatedContentCase) {
 	t.Helper()
-	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
-	svc := &Service{Deployment: deploymentFromTestEnv()}
+	svc := &Service{Deployment: cleanModeDeployment("")}
 	if tc.read != nil {
 		svc.Registry = registryReaderFuncs{contentSource: tc.read}
 	}
@@ -740,11 +712,10 @@ func TestTheCleanTestModeOnlyRunsCuratedMaterial(t *testing.T) {
 }
 
 func TestTheContentSourceGateAsksAboutThisRunsOwnVersion(t *testing.T) {
-	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
 	run := contentSourceRun()
 
 	var gotWorkspace, gotVersion pgtype.UUID
-	svc := &Service{Deployment: deploymentFromTestEnv(), Registry: registryReaderFuncs{contentSource: func(_ context.Context, workspaceID, versionID pgtype.UUID) (ContentSource, bool, error) {
+	svc := &Service{Deployment: cleanModeDeployment(""), Registry: registryReaderFuncs{contentSource: func(_ context.Context, workspaceID, versionID pgtype.UUID) (ContentSource, bool, error) {
 		gotWorkspace, gotVersion = workspaceID, versionID
 		return curatedSource(), true, nil
 	}}}

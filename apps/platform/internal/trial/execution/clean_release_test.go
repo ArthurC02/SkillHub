@@ -31,17 +31,16 @@ type releaseCase struct {
 
 func assertOperatorReleaseCase(t *testing.T, tc releaseCase) {
 	t.Helper()
-	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
+	var releasesFile string
 	switch {
 	case tc.unset:
-		t.Setenv(cleanModeReleaseFile, "")
 	case tc.file == "":
-		t.Setenv(cleanModeReleaseFile, filepath.Join(t.TempDir(), "absent.txt"))
+		releasesFile = filepath.Join(t.TempDir(), "absent.txt")
 	default:
-		t.Setenv(cleanModeReleaseFile, writeReleases(t, tc.file))
+		releasesFile = writeReleases(t, tc.file)
 	}
 
-	svc := &Service{Deployment: deploymentFromTestEnv(), Registry: registryReaderFuncs{contentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}}
+	svc := &Service{Deployment: cleanModeDeployment(releasesFile), Registry: registryReaderFuncs{contentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}}
 	err := svc.requireCuratedContent(t.Context(), contentSourceRun())
 	if tc.wantPass {
 		if err != nil {
@@ -122,15 +121,14 @@ func TestAnOperatorReleaseRunsExactlyTheVersionItNames(t *testing.T) {
 }
 
 func TestUsingAReleaseSaysSoWithTheReasonTheOperatorGave(t *testing.T) {
-	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
-	t.Setenv(cleanModeReleaseFile, writeReleases(t, releasedVersion+" reviewed for the 09-02 demo\n"))
+	releasesFile := writeReleases(t, releasedVersion+" reviewed for the 09-02 demo\n")
 
 	var logged bytes.Buffer
 	previous := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, &slog.HandlerOptions{Level: slog.LevelWarn})))
 	t.Cleanup(func() { slog.SetDefault(previous) })
 
-	svc := &Service{Deployment: deploymentFromTestEnv(), Registry: registryReaderFuncs{contentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}}
+	svc := &Service{Deployment: cleanModeDeployment(releasesFile), Registry: registryReaderFuncs{contentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}}
 	if err := svc.requireCuratedContent(t.Context(), contentSourceRun()); err != nil {
 		t.Fatalf("a released version was refused: %v", err)
 	}
@@ -159,9 +157,6 @@ func TestTheLauncherFillsInTheVariableThisPackageReads(t *testing.T) {
 }
 
 func TestTheReleaseListIsNeverEvenReadOutsideTheCleanTestMode(t *testing.T) {
-	t.Setenv("SKILLHUB_CLEAN_MODE", "")
-	t.Setenv("DEV_LOGIN", "1")
-
 	path := t.TempDir()
 
 	var logged bytes.Buffer
@@ -199,9 +194,7 @@ func TestTheReleaseSurvivesTheWayPeopleActuallyTypeIt(t *testing.T) {
 		{"the id in upper case", strings.ToUpper(releasedVersion) + " demo", "UUID 依 RFC 4122 不分大小寫"},
 	} {
 		t.Run(tc.what, func(t *testing.T) {
-			t.Setenv("SKILLHUB_CLEAN_MODE", "1")
-			t.Setenv(cleanModeReleaseFile, writeReleases(t, tc.line))
-			svc := &Service{Deployment: deploymentFromTestEnv(), Registry: registryReaderFuncs{contentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}}
+			svc := &Service{Deployment: cleanModeDeployment(writeReleases(t, tc.line)), Registry: registryReaderFuncs{contentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}}
 			if err := svc.requireCuratedContent(t.Context(), contentSourceRun()); err != nil {
 				t.Fatalf("a release written this way was ignored (%s): %v", tc.why, err)
 			}
@@ -210,7 +203,6 @@ func TestTheReleaseSurvivesTheWayPeopleActuallyTypeIt(t *testing.T) {
 }
 
 func TestALineThatLooksLikeAReleaseAndIsNotSaysSo(t *testing.T) {
-	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
 	path := writeReleases(t, "release "+releasedVersion+" for the demo\n")
 
 	var logged bytes.Buffer

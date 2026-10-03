@@ -21,9 +21,32 @@ func TestMaskRedactsAStringValueWhoseKeyNamesASecret(t *testing.T) {
 			if strings.Contains(string(result.Payload), "opaque-value-123") {
 				t.Fatalf("value under %q survived: %s", key, result.Payload)
 			}
-			want := []string{"/arguments/" + escapePointer(key)}
+			want := []string{"/arguments/" + key}
 			if !reflect.DeepEqual(result.Fields, want) {
 				t.Fatalf("masked_fields = %v, want %v", result.Fields, want)
+			}
+		})
+	}
+}
+
+func TestMaskReportsAKeyWithSlashOrTildeAsAnEscapedJSONPointer(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"slash in a secret key", `{"arguments":{"auth/token":"opaque-value-123"}}`, "/arguments/auth~1token"},
+		{"tilde in a secret key", `{"arguments":{"my~token":"opaque-value-123"}}`, "/arguments/my~0token"},
+		{"tilde then slash in a secret key", `{"arguments":{"a~/token":"opaque-value-123"}}`, "/arguments/a~0~1token"},
+		{"slash and tilde under a secret parent", `{"arguments":{"token":{"a/b~c":"opaque-value-123"}}}`, "/arguments/token/a~1b~0c"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := (&Masker{}).Mask(json.RawMessage(tc.in))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(result.Fields, []string{tc.want}) {
+				t.Fatalf("masked_fields = %v, want [%s]", result.Fields, tc.want)
 			}
 		})
 	}

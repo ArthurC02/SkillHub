@@ -9,11 +9,25 @@ import (
 )
 
 func TestEvaluationRunCarriesTheTerminalVerdict(t *testing.T) {
-	for _, status := range AllStatuses {
+	want := map[gen.RunStatus]bool{
+		gen.RunStatusQueued:       false,
+		gen.RunStatusProvisioning: false,
+		gen.RunStatusPreparing:    false,
+		gen.RunStatusRunning:      false,
+		gen.RunStatusEvaluating:   false,
+		gen.RunStatusSucceeded:    true,
+		gen.RunStatusFailed:       true,
+		gen.RunStatusCancelled:    true,
+		gen.RunStatusTimedOut:     true,
+	}
+	if len(want) != len(AllStatuses) {
+		t.Fatalf("the table covers %d statuses, the product has %d; a new status needs a verdict here", len(want), len(AllStatuses))
+	}
+	for status, terminal := range want {
 		t.Run(string(status), func(t *testing.T) {
 			facts := evaluationRun(gen.Run{Status: status})
-			if facts.Status != string(status) || facts.Terminal != IsTerminal(status) {
-				t.Fatalf("status %s: got status %q, terminal %v; want terminal %v", status, facts.Status, facts.Terminal, IsTerminal(status))
+			if facts.Status != string(status) || facts.Terminal != terminal {
+				t.Fatalf("status %s: got status %q, terminal %v; want terminal %v", status, facts.Status, facts.Terminal, terminal)
 			}
 		})
 	}
