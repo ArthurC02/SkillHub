@@ -18,6 +18,11 @@ SELECT * FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 FOR UPDATE;
 
+-- name: LockSkillForFork :one
+SELECT * FROM skills
+WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+FOR SHARE;
+
 -- name: GetCatalogSkill :one
 SELECT * FROM skills
 WHERE id = @id AND workspace_id = ANY(@catalog_workspace_ids::uuid[]) AND deleted_at IS NULL;
