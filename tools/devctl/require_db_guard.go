@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	dbURLLiteral    = "SKILLHUB_TEST_DATABASE_URL"
-	requireDBSwitch = `os.Getenv("SKILLHUB_REQUIRE_DB")`
-	requireDBName   = "SKILLHUB_REQUIRE_DB"
-	testMainExit    = "os.Exit(m.Run())"
+	dbURLLiteral   = "SKILLHUB_TEST_DATABASE_URL"
+	dbURLToken     = `"` + dbURLLiteral + `"`
+	requireDBName  = "SKILLHUB_REQUIRE_DB"
+	requireDBToken = `"` + requireDBName + `"`
 )
 
 func withoutComments(path string, src []byte) string {
@@ -34,12 +34,11 @@ func withoutComments(path string, src []byte) string {
 	return buf.String()
 }
 
-func unguardedDBTestMains(root string) ([]string, error) {
-	base := filepath.Join(root, "apps", "platform", "internal")
+func unguardedDBTestPackages(root string) ([]string, error) {
+	base := filepath.Join(root, "apps", "platform")
 
-	dbPackages := map[string]bool{}
-	type candidate struct{ dir, path, body string }
-	var candidates []candidate
+	readsDB := map[string]bool{}
+	honoursSwitch := map[string]bool{}
 
 	err := filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -54,11 +53,11 @@ func unguardedDBTestMains(root string) ([]string, error) {
 		}
 		body := withoutComments(path, b)
 		dir := filepath.Dir(path)
-		if strings.Contains(body, dbURLLiteral) {
-			dbPackages[dir] = true
+		if strings.Contains(body, dbURLToken) {
+			readsDB[dir] = true
 		}
-		if strings.Contains(body, testMainExit) {
-			candidates = append(candidates, candidate{dir, path, body})
+		if strings.Contains(body, requireDBToken) {
+			honoursSwitch[dir] = true
 		}
 		return nil
 	})
@@ -67,13 +66,13 @@ func unguardedDBTestMains(root string) ([]string, error) {
 	}
 
 	var missing []string
-	for _, c := range candidates {
-		if !dbPackages[c.dir] || strings.Contains(c.body, requireDBSwitch) {
+	for dir := range readsDB {
+		if honoursSwitch[dir] {
 			continue
 		}
-		rel, err := filepath.Rel(root, c.path)
+		rel, err := filepath.Rel(root, dir)
 		if err != nil {
-			rel = c.path
+			rel = dir
 		}
 		missing = append(missing, filepath.ToSlash(rel))
 	}
@@ -82,7 +81,7 @@ func unguardedDBTestMains(root string) ([]string, error) {
 }
 
 func requireDBGuardCheck(root string) error {
-	missing, err := unguardedDBTestMains(root)
+	missing, err := unguardedDBTestPackages(root)
 	if err != nil {
 		return err
 	}
@@ -90,7 +89,7 @@ func requireDBGuardCheck(root string) error {
 		return nil
 	}
 	return fmt.Errorf(
-		"these test packages skip every database test when %s is unset but ignore %s=1, "+
+		"these test packages skip their database tests when %s is unset but ignore %s=1, "+
 			"so a database that never came up reports success (02:PORT-004): %s",
 		dbURLLiteral, requireDBName, strings.Join(missing, ", "))
 }

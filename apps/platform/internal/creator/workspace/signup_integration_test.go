@@ -25,6 +25,9 @@ func signupPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
 	if dsn == "" {
+		if os.Getenv("SKILLHUB_REQUIRE_DB") == "1" {
+			t.Fatal("SKILLHUB_REQUIRE_DB=1 but SKILLHUB_TEST_DATABASE_URL is unset")
+		}
 		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping sign-up integration test")
 	}
 	pool, err := pgxpool.New(context.Background(), dsn)

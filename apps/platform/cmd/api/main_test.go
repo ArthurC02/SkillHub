@@ -660,11 +660,20 @@ func TestTheTwoWaysPackagingHasNoTargetsAreToldApart(t *testing.T) {
 	}
 }
 
-func TestCleanModeEmptiesTheSessionItInheritsOnConnect(t *testing.T) {
+func testDatabaseURL(t *testing.T) string {
+	t.Helper()
 	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
 	if dsn == "" {
+		if os.Getenv("SKILLHUB_REQUIRE_DB") == "1" {
+			t.Fatal("SKILLHUB_REQUIRE_DB=1 but SKILLHUB_TEST_DATABASE_URL is unset")
+		}
 		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping the database-backed half")
 	}
+	return dsn
+}
+
+func TestCleanModeEmptiesTheSessionItInheritsOnConnect(t *testing.T) {
+	dsn := testDatabaseURL(t)
 	ctx := context.Background()
 
 	cfg, err := pgxpool.ParseConfig(dsn)
@@ -717,10 +726,7 @@ func TestCleanModeEmptiesTheSessionItInheritsOnConnect(t *testing.T) {
 }
 
 func TestCleanModeSurvivesAQueryErrorInsteadOfDyingOfOne(t *testing.T) {
-	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping the database-backed half")
-	}
+	dsn := testDatabaseURL(t)
 	ctx := context.Background()
 	cfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
