@@ -76,10 +76,6 @@ func (s *Service) cleanup(ctx context.Context, run gen.Run) error {
 	}
 
 	var failures []string
-	if err := s.settleCredit(ctx, run, attempts); err != nil {
-		failures = append(failures, "this run's cost was never charged: "+err.Error())
-	}
-
 	preserved := 0
 	for _, attempt := range attempts {
 		attemptFailures, held := s.releaseAttempt(ctx, attempt, halts)
@@ -87,6 +83,9 @@ func (s *Service) cleanup(ctx context.Context, run gen.Run) error {
 		if held {
 			preserved++
 		}
+	}
+	if err := s.settleCredit(ctx, run, attempts); err != nil {
+		failures = append(failures, "this run's cost was never charged: "+err.Error())
 	}
 
 	if preserved > 0 {
