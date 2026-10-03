@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -172,10 +173,12 @@ type fakeProber struct {
 	reached []string
 	err     error
 	calls   int
+	dialled []string
 }
 
-func (f *fakeProber) ProbeEgress(context.Context, []string) ([]string, error) {
+func (f *fakeProber) ProbeEgress(_ context.Context, targets []string) ([]string, error) {
 	f.calls++
+	f.dialled = targets
 	return f.reached, f.err
 }
 
@@ -204,6 +207,68 @@ func TestP02ProbeDistinguishesAHoleFromTheAbsenceOfEvidence(t *testing.T) {
 			}
 			if !got.CheckedAt.Equal(probeAt) {
 				t.Errorf("checked_at = %v, want %v", got.CheckedAt, probeAt)
+			}
+		})
+	}
+}
+
+func TestAP02TargetThatIsNotHostPortIsSkippedAndNamed(t *testing.T) {
+	p := NewP02Probe([]string{"db.internal:5432", "db.internal", "cache.internal:0", " "}, 0, 0)
+	prober := &fakeProber{}
+
+	got := p.Check(context.Background(), prober, probeAt)
+
+	if !slices.Equal(prober.dialled, []string{"db.internal:5432"}) {
+		t.Errorf("dialled %v, want only db.internal:5432", prober.dialled)
+	}
+	if got.State != P02Pass {
+		t.Fatalf("state = %q, want pass for the one target that was dialled (detail %q)", got.State, got.Detail)
+	}
+	if want := "1 destination(s) unreachable; not checked, not host:port: cache.internal:0, db.internal"; got.Detail != want {
+		t.Errorf("detail = %q, want %q", got.Detail, want)
+	}
+}
+
+func TestAP02ListWithNothingToDialIsNeverAPass(t *testing.T) {
+	p := NewP02Probe([]string{"db.internal", "db.internal:65536"}, 0, 0)
+	if !p.Configured() {
+		t.Fatal("a node given only unusable targets reports itself not configured, which a runsc node is allowed to start as")
+	}
+	want := "no target is host:port, so nothing was dialled: db.internal, db.internal:65536"
+	if got := p.Result(); got.State != P02Unknown || got.Detail != want {
+		t.Fatalf("before any reading: %+v, want unknown with %q", got, want)
+	}
+	prober := &fakeProber{}
+	if got := p.Check(context.Background(), prober, probeAt); got.State != P02Unknown || got.Detail != want || !got.CheckedAt.Equal(probeAt) {
+		t.Fatalf("after a reading: %+v, want unknown with %q at %v", got, want, probeAt)
+	}
+	if prober.calls != 0 {
+		t.Errorf("the prober ran %d time(s) with nothing to dial", prober.calls)
+	}
+}
+
+func TestSplitP02TargetAcceptsOnlyADialableHostAndPort(t *testing.T) {
+	for _, tc := range []struct {
+		target string
+		host   string
+		port   int
+		ok     bool
+	}{
+		{"db.internal:5432", "db.internal", 5432, true},
+		{"db.internal:1", "db.internal", 1, true},
+		{"db.internal:65535", "db.internal", 65535, true},
+		{"::1:5432", "::1", 5432, true},
+		{"db.internal", "", 0, false},
+		{":5432", "", 0, false},
+		{"db.internal:", "", 0, false},
+		{"db.internal:0", "", 0, false},
+		{"db.internal:65536", "", 0, false},
+		{"db.internal:pg", "", 0, false},
+	} {
+		t.Run(tc.target, func(t *testing.T) {
+			host, port, ok := SplitP02Target(tc.target)
+			if host != tc.host || port != tc.port || ok != tc.ok {
+				t.Fatalf("SplitP02Target(%q) = %q, %d, %v; want %q, %d, %v", tc.target, host, port, ok, tc.host, tc.port, tc.ok)
 			}
 		})
 	}

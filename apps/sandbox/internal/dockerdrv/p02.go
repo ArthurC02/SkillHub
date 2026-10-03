@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 	"time"
 
@@ -119,16 +118,11 @@ func probeScript(targets []string) (string, error) {
 	}
 	var list []target
 	for _, t := range targets {
-		// LastIndex, so an IPv6 host keeps its own colons and only the port splits off.
-		i := strings.LastIndex(t, ":")
-		if i <= 0 {
+		host, port, ok := sandbox.SplitP02Target(t)
+		if !ok {
 			return "", fmt.Errorf("p02 target %q is not host:port", t)
 		}
-		port, err := strconv.Atoi(t[i+1:])
-		if err != nil || port <= 0 || port > 65535 {
-			return "", fmt.Errorf("p02 target %q has no port a probe can dial", t)
-		}
-		list = append(list, target{Label: t, Host: t[:i], Port: port})
+		list = append(list, target{Label: t, Host: host, Port: port})
 	}
 	encoded, err := json.Marshal(list)
 	if err != nil {

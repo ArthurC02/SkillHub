@@ -30,32 +30,13 @@ func TestParseProbeOutputWithNoReachedLineReturnsNone(t *testing.T) {
 	}
 }
 
-func TestATargetTheProbeCannotDialIsAnErrorNotASkippedLine(t *testing.T) {
+func TestTheDockerProbeRefusesAListWithATargetItCannotDial(t *testing.T) {
 	d := &Driver{cfg: Config{Network: "none"}}
-	for _, tc := range []struct {
-		target string
-		dials  bool
-	}{
-		{"db.internal:5432", true},
-		{"db.internal:1", true},
-		{"db.internal:65535", true},
-		{"::1:5432", true},
-		{"db.internal", false},
-		{":5432", false},
-		{"db.internal:", false},
-		{"db.internal:0", false},
-		{"db.internal:65536", false},
-		{"db.internal:pg", false},
-	} {
-		t.Run(tc.target, func(t *testing.T) {
-			_, err := d.ProbeEgress(context.Background(), []string{"api.internal:8080", tc.target})
-			if tc.dials && err != nil {
-				t.Fatalf("ProbeEgress refused %q: %v", tc.target, err)
-			}
-			if !tc.dials && (err == nil || !strings.Contains(err.Error(), strconv.Quote(tc.target))) {
-				t.Fatalf("ProbeEgress with %q = %v, want an error naming it: a skipped target "+
-					"is reported as unreachable", tc.target, err)
-			}
-		})
+	if _, err := d.ProbeEgress(context.Background(), []string{"db.internal:5432"}); err != nil {
+		t.Fatalf("ProbeEgress refused a dialable target: %v", err)
+	}
+	_, err := d.ProbeEgress(context.Background(), []string{"db.internal:5432", "db.internal"})
+	if err == nil || !strings.Contains(err.Error(), strconv.Quote("db.internal")) {
+		t.Fatalf("ProbeEgress with db.internal = %v, want an error naming it", err)
 	}
 }
