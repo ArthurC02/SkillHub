@@ -8,31 +8,20 @@ import (
 
 func TestTheRepoOwnSkillsPassItsOwnValidator(t *testing.T) {
 	t.Parallel()
-	skills := filepath.Join(repoRoot(t), ".claude", "skills")
-	entries, err := os.ReadDir(skills)
+	manifests, err := filepath.Glob(filepath.Join(repoRoot(t), ".claude", "skills", "*", "SKILL.md"))
 	if err != nil {
-		t.Fatalf("no .claude/skills at the repo root: %v", err)
+		t.Fatal(err)
 	}
-	seen := 0
-	for _, e := range entries {
-		if !e.IsDir() || isClaudeOnlyPlugin(filepath.Join(skills, e.Name())) {
-			continue
-		}
-		seen++
-		errs := Validate(os.DirFS(filepath.Join(skills, e.Name()))).Categorize().Errors
+	if len(manifests) == 0 {
+		t.Fatal("no .claude/skills/*/SKILL.md found; the test has lost its subject")
+	}
+	for _, manifest := range manifests {
+		dir := filepath.Dir(manifest)
+		errs := Validate(os.DirFS(dir)).Categorize().Errors
 		for _, f := range errs {
-			t.Errorf(".claude/skills/%s: %s %s: %s", e.Name(), f.Code, f.Path, f.Message)
+			t.Errorf(".claude/skills/%s: %s %s: %s", filepath.Base(dir), f.Code, f.Path, f.Message)
 		}
 	}
-	if seen == 0 {
-		t.Fatal("no skill directories found; the test has lost its subject")
-	}
-}
-
-func isClaudeOnlyPlugin(dir string) bool {
-	_, manifestErr := os.Stat(filepath.Join(dir, ".claude-plugin", "plugin.json"))
-	_, skillErr := os.Stat(filepath.Join(dir, "SKILL.md"))
-	return manifestErr == nil && os.IsNotExist(skillErr)
 }
 
 func repoRoot(t *testing.T) string {

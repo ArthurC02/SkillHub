@@ -52,6 +52,25 @@ func TestHarnessRejectsASkillBoundToThisRepo(t *testing.T) {
 	}
 }
 
+func TestHarnessRejectsASkillDirectoryWithNeitherSkillNorPlugin(t *testing.T) {
+	t.Parallel()
+	root := writeHarnessFixture(t, cleanSkill, cleanAgent, "# 導覽\n")
+	writeAt(t, root, harnessSkillsDir+"/stray/README.md", "notes\n")
+	problems := harnessProblems(root)
+	if len(problems) != 1 || !strings.Contains(problems[0], ".claude/skills/stray has neither SKILL.md") {
+		t.Fatalf("a skill directory with neither SKILL.md nor a plugin manifest was accepted: %v", problems)
+	}
+}
+
+func TestHarnessAcceptsAClaudeOnlyPluginBesideTheSkills(t *testing.T) {
+	t.Parallel()
+	root := writeHarnessFixture(t, cleanSkill, cleanAgent, "# 導覽\n")
+	writeAt(t, root, harnessSkillsDir+"/guards/.claude-plugin/plugin.json", "{\"name\":\"guards\"}\n")
+	if problems := harnessProblems(root); len(problems) != 0 {
+		t.Fatalf("a plugin directory under .claude/skills was rejected: %v", problems)
+	}
+}
+
 func TestHarnessAcceptsASkillThatNamesADocumentationFolder(t *testing.T) {
 	t.Parallel()
 	root := writeHarnessFixture(t, cleanSkill+"Do not default to `docs/` or any other location.\n", cleanAgent, "# 導覽\n")
