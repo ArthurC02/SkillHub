@@ -164,23 +164,19 @@ func TestUnenforcedCeilingsMirrorsDetection(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		enf  localdrv.ResourceEnforcement
+		want []string
 	}{
-		{name: "windows job object holds memory and pids only", enf: localdrv.ResourceEnforcement{Memory: true, Processes: true}},
-		{name: "unprivileged linux holds nothing", enf: localdrv.ResourceEnforcement{}},
+		{name: "windows job object holds memory and pids only", enf: localdrv.ResourceEnforcement{Memory: true, Processes: true},
+			want: []string{"vcpu", "disk_bytes", "max_open_files"}},
+		{name: "unprivileged linux holds nothing", enf: localdrv.ResourceEnforcement{},
+			want: []string{"vcpu", "memory_bytes", "disk_bytes", "max_pids", "max_open_files"}},
 		{name: "a platform that held every ceiling", enf: localdrv.ResourceEnforcement{
 			Memory: true, Processes: true, CPU: true, Disk: true, OpenFiles: true,
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			held := osCeilings(tc.enf)
-			var want []string
-			for _, name := range names {
-				if !heldElsewhere[name] && !held[name] {
-					want = append(want, name)
-				}
-			}
-			if got := unenforcedCeilings(tc.enf); !slices.Equal(got, want) {
-				t.Fatalf("unenforcedCeilings(%+v) = %v, want %v", tc.enf, got, want)
+			if got := unenforcedCeilings(tc.enf); !slices.Equal(got, tc.want) {
+				t.Fatalf("unenforcedCeilings(%+v) = %v, want %v", tc.enf, got, tc.want)
 			}
 		})
 	}

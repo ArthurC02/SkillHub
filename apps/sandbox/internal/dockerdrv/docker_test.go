@@ -228,8 +228,11 @@ func assertResourceCeilings(t *testing.T, hc *container.HostConfig, lim sandbox.
 	if hc.MemorySwap != lim.MemoryBytes {
 		t.Errorf("MemorySwap = %d, want the memory limit: swap would lift the ceiling", hc.MemorySwap)
 	}
-	if hc.NanoCPUs != int64(lim.VCPU*1e9) {
-		t.Errorf("NanoCPUs = %d, want %d", hc.NanoCPUs, int64(lim.VCPU*1e9))
+	if lim.VCPU != 1 {
+		t.Fatalf("testRequest VCPU = %v, the NanoCPUs expectation below assumes 1", lim.VCPU)
+	}
+	if hc.NanoCPUs != 1_000_000_000 {
+		t.Errorf("NanoCPUs = %d, want 1000000000 for one vCPU", hc.NanoCPUs)
 	}
 	if hc.PidsLimit == nil || *hc.PidsLimit != lim.MaxPIDs {
 		t.Errorf("PidsLimit = %v, want %d", hc.PidsLimit, lim.MaxPIDs)
