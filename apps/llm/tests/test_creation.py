@@ -1299,6 +1299,10 @@ def test_a_shipped_reference_the_body_never_links_gets_a_references_section():
         ("最多 3 句，且不超過 2 句", ["--max-sentences 2"]),
         ("at most 4 sentences", ["--max-sentences 4"]),
         ("寫一封信給客戶", []),
+        ("每項說明不超過 30 字", []),
+        ("列出最多 5 項，每項不超過 30 字", ["--max-items 5"]),
+        ("at most 2 sentences per bullet", []),
+        ("每段最多 2 句\n整封信不超過 6 句", ["--max-sentences 6"]),
     ],
 )
 def test_output_caps_are_read_from_the_brief_and_criteria(text, flags):

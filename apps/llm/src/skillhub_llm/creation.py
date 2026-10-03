@@ -8,7 +8,7 @@ import json
 import logging
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Literal, TypedDict
 
@@ -74,6 +74,8 @@ OUTPUT_CAPS = {
         r"|(?:no more than|at most|within)\s*(\d+)\s*(?:items|bullets|points)"
     ),
 }
+CLAUSE_BREAK = re.compile(r"[。；;，,\n]")
+PER_UNIT = re.compile(r"每|各|\b(?:each|per|every)\b", re.IGNORECASE)
 SHIPPED_FILES_RULE = (
     "- `files`: every script the body runs, each with its full path under scripts/ and "
     "its complete content; a body that runs a script the files do not ship is incomplete."
@@ -412,10 +414,12 @@ def _add_usage(a: GatewayUsage | None, b: GatewayUsage | None) -> GatewayUsage |
     if a is None or b is None:
         return None
     cost = None if a.cost_usd is None or b.cost_usd is None else a.cost_usd + b.cost_usd
+    reported = cost is not None and a.cost_source == b.cost_source == "gateway"
     return GatewayUsage(
         prompt_tokens=a.prompt_tokens + b.prompt_tokens,
         completion_tokens=a.completion_tokens + b.completion_tokens,
         cost_usd=cost,
+        cost_source="gateway" if reported else None,
     )
 
 
@@ -661,7 +665,7 @@ class _ReviewRevision:
     guidance: str = ""
     body: str = ""
     files: list[GeneratedFile] | None = None
-    usage: GatewayUsage | None = None
+    usages: list[GatewayUsage | None] = field(default_factory=list)
 
 
 def _edit_lines(edits: list[ReviewEdit]) -> str:
@@ -703,8 +707,8 @@ async def _diagnose(
         ),
     )
     completion = raw.parse()
+    revision.usages.append(_usage(completion, raw.headers))
     diagnosis = ReviewDiagnosis.model_validate_json(completion.choices[0].message.content or "")
-    revision.usage = _usage(completion, raw.headers)
     if not diagnosis.edits:
         return
     if any(e.target not in ("body", "files") for e in diagnosis.edits):
@@ -749,7 +753,7 @@ async def _rewrite(
         ),
     )
     rewrite = raw.parse()
-    revision.usage = _add_usage(revision.usage, _usage(rewrite, raw.headers))
+    revision.usages.append(_usage(rewrite, raw.headers))
     candidate = ReviewRewrite.model_validate_json(rewrite.choices[0].message.content or "")
     body_changed = bool(req.draft) and (candidate.body.strip() != req.draft.body.strip())
     files_changed = bool(req.draft) and candidate.files != req.draft.files
@@ -927,8 +931,8 @@ async def _decide(
         _trim_search_rewrites(decision)
         _apply_rewrite(decision, revision)
         usage = _usage(completion, raw.headers)
-        if revision.usage is not None:
-            usage = _add_usage(usage, revision.usage)
+        for spent in revision.usages:
+            usage = _add_usage(usage, spent)
         return {
             "decision": decision,
             "usage": usage,
@@ -1104,10 +1108,23 @@ def _bind_shipped_files(draft: GeneratedSkill | None) -> GeneratedSkill | None:
     return draft
 
 
+def _caps_one_unit(text: str, cap: re.Match) -> bool:
+    start = max((b.end() for b in CLAUSE_BREAK.finditer(text, 0, cap.start())), default=0)
+    following = CLAUSE_BREAK.search(text, cap.end())
+    clause = text[start : following.start() if following else len(text)]
+    return PER_UNIT.search(clause) is not None
+
+
 def _output_caps(text: str) -> list[str]:
     flags = []
     for flag, pattern in OUTPUT_CAPS.items():
-        values = [int(g) for m in pattern.finditer(text) for g in m.groups() if g]
+        values = [
+            int(g)
+            for m in pattern.finditer(text)
+            if not _caps_one_unit(text, m)
+            for g in m.groups()
+            if g
+        ]
         if values:
             flags.append(f"{flag} {min(values)}")
     return flags
