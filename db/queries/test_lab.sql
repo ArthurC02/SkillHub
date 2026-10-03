@@ -62,18 +62,18 @@ WHERE id = $1 AND workspace_id = $2;
 
 -- name: GetDataset :one
 SELECT * FROM datasets
-WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL;
+WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL AND expires_at > now();
 
 -- name: ListDatasets :many
 SELECT * FROM datasets
-WHERE test_case_id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+WHERE test_case_id = $1 AND workspace_id = $2 AND deleted_at IS NULL AND expires_at > now()
 ORDER BY created_at;
 
 -- name: SumDatasetUsage :one
 SELECT count(*)::bigint AS file_count,
        coalesce(sum(size_bytes), 0)::bigint AS total_bytes
 FROM datasets
-WHERE test_case_id = $1 AND workspace_id = $2 AND deleted_at IS NULL;
+WHERE test_case_id = $1 AND workspace_id = $2 AND deleted_at IS NULL AND expires_at > now();
 
 -- name: SoftDeleteDataset :one
 UPDATE datasets SET deleted_at = now()

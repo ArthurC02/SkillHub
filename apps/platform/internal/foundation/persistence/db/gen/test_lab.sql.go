@@ -184,7 +184,7 @@ func (q *Queries) DeleteDatasetCleanupIntent(ctx context.Context, arg DeleteData
 
 const getDataset = `-- name: GetDataset :one
 SELECT id, workspace_id, test_case_id, file_name, content_type, size_bytes, content_hash, object_key, created_at, expires_at, deleted_at, reconcile_checked_at, retention_attempted_at, purged_at FROM datasets
-WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL AND expires_at > now()
 `
 
 type GetDatasetParams struct {
@@ -331,7 +331,7 @@ func (q *Queries) ListDatasetLifetimes(ctx context.Context, arg ListDatasetLifet
 
 const listDatasets = `-- name: ListDatasets :many
 SELECT id, workspace_id, test_case_id, file_name, content_type, size_bytes, content_hash, object_key, created_at, expires_at, deleted_at, reconcile_checked_at, retention_attempted_at, purged_at FROM datasets
-WHERE test_case_id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+WHERE test_case_id = $1 AND workspace_id = $2 AND deleted_at IS NULL AND expires_at > now()
 ORDER BY created_at
 `
 
@@ -715,7 +715,7 @@ const sumDatasetUsage = `-- name: SumDatasetUsage :one
 SELECT count(*)::bigint AS file_count,
        coalesce(sum(size_bytes), 0)::bigint AS total_bytes
 FROM datasets
-WHERE test_case_id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+WHERE test_case_id = $1 AND workspace_id = $2 AND deleted_at IS NULL AND expires_at > now()
 `
 
 type SumDatasetUsageParams struct {

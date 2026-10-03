@@ -2,6 +2,8 @@ package apiserver_test
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -86,5 +88,36 @@ func TestTheDatasetRetentionSweepTakesTheExpiredFileAndOnlyThatOne(t *testing.T)
 
 	if n := purgeDatasets(t, pool, a.packages); n != 0 {
 		t.Errorf("a second pass found %d rows; the first pass did not finish what it started", n)
+	}
+}
+
+func TestADatasetPastItsRetentionIsGoneBeforeTheSweepRemovesIt(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "dataset-expired-unswept")
+	_, testCaseID := newTestCase(t, pool, a, c, "expired-unswept")
+	ids := make([]string, 0, testlab.MaxFilesPerTestCase)
+	for range testlab.MaxFilesPerTestCase {
+		id, _ := seedDataset(t, pool, a, c, testCaseID)
+		ids = append(ids, id)
+	}
+	expired := ids[0]
+	expireDataset(t, pool, expired)
+	svc := &testlab.Service{Pool: pool}
+	ws, tc := mustUUID(t, c.workspaceID), mustUUID(t, testCaseID)
+
+	if _, err := svc.ReadDataset(context.Background(), ws, mustUUID(t, expired)); !errors.Is(err, testlab.ErrNotFound) {
+		t.Errorf("reading the expired dataset: err = %v, want ErrNotFound; a run could still be granted it", err)
+	}
+	listed, err := svc.CaseDatasets(context.Background(), ws, tc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(listed) != testlab.MaxFilesPerTestCase-1 {
+		t.Errorf("listed %d datasets, want %d; the expired one would be frozen into the next snapshot",
+			len(listed), testlab.MaxFilesPerTestCase-1)
+	}
+	if code, out := c.upload(t, "/test-cases/"+testCaseID+"/datasets", "more.txt", []byte("more\n")); code != http.StatusCreated {
+		t.Errorf("uploading in place of the expired file: %d %v, want 201; the expired file still held its slot", code, out)
 	}
 }
