@@ -289,7 +289,7 @@ func mountPackagingRoutes(mux *http.ServeMux, d Deps) {
 		auth.RequireSession(d.Packaging.DownloadRecords))
 
 	mux.HandleFunc("GET /downloads/{artifactId}/content",
-		auth.RequireSession(publicationDownloadGate(d, d.Analytics.DownloadStartedOn(d.Packaging.DownloadContent))))
+		auth.RequireSession(refuseHead(publicationDownloadGate(d, d.Analytics.DownloadStartedOn(d.Packaging.DownloadContent)))))
 	mux.HandleFunc("DELETE /downloads/{artifactId}", auth.RequireSession(d.Packaging.DeleteDownload))
 }
 
@@ -313,4 +313,15 @@ func publicationDownloadGate(d Deps, next http.HandlerFunc) http.HandlerFunc {
 		return next
 	}
 	return d.Auth.RequireInvited(next)
+}
+
+func refuseHead(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("Allow", http.MethodGet)
+			httpx.WriteError(w, http.StatusMethodNotAllowed, "this download is fetched with GET")
+			return
+		}
+		next(w, r)
+	}
 }

@@ -269,6 +269,35 @@ func auditCount(t *testing.T, pool *pgxpool.Pool, action, resourceID string) int
 		action, mustUUID(t, resourceID))
 }
 
+func TestAHeadRequestForADownloadIsNotCountedAsADownload(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "downloader-head")
+	art := buildDownload(t, a, pool, c, "head-skill")
+
+	resp, err := c.Head(c.base + "/downloads/" + art.ArtifactID + "/content")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusMethodNotAllowed || resp.Header.Get("Allow") != http.MethodGet {
+		t.Errorf("HEAD content: got %d Allow=%q, want 405 Allow=GET", resp.StatusCode, resp.Header.Get("Allow"))
+	}
+	if n := downloadRecordCount(t, pool, art.ArtifactID); n != 0 {
+		t.Errorf("download_records after HEAD: got %d, want 0", n)
+	}
+	if n := auditCount(t, pool, "artifact.download", art.ArtifactID); n != 0 {
+		t.Errorf("audit_events after HEAD: got %d, want 0", n)
+	}
+
+	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET content after HEAD: got %d, want 200", resp.StatusCode)
+	}
+	if n := downloadRecordCount(t, pool, art.ArtifactID); n != 1 {
+		t.Errorf("download_records after one GET: got %d, want 1", n)
+	}
+}
+
 func TestADownloadRefusedAtCommitLeavesNoAuditEventBehind(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
