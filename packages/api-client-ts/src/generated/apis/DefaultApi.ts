@@ -4165,7 +4165,7 @@ export interface DefaultApiInterface {
     saveSkillVersionRequestOpts(requestParameters: SaveSkillVersionRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Same static validation as import. The skills row keeps its name; the manifest inside the version is the snapshot\'s truth. Identical content returns the existing version with duplicate=true. 
+     * Same static validation as import. The package\'s SKILL.md `name` must be the skill\'s name; a different name is refused with a `version-name-mismatch` finding, and a taken-down skill takes no new version (`skill-taken-down`), both as 422. Identical content returns the existing version with duplicate=true. 
      * @summary Save a zip as the next immutable version of a skill (WS-002)
      * @param {string} id 
      * @param {Blob} body 
@@ -4176,7 +4176,7 @@ export interface DefaultApiInterface {
     saveSkillVersionRaw(requestParameters: SaveSkillVersionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UploadResult>>;
 
     /**
-     * Same static validation as import. The skills row keeps its name; the manifest inside the version is the snapshot\'s truth. Identical content returns the existing version with duplicate=true. 
+     * Same static validation as import. The package\'s SKILL.md `name` must be the skill\'s name; a different name is refused with a `version-name-mismatch` finding, and a taken-down skill takes no new version (`skill-taken-down`), both as 422. Identical content returns the existing version with duplicate=true. 
      * Save a zip as the next immutable version of a skill (WS-002)
      */
     saveSkillVersion(requestParameters: SaveSkillVersionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UploadResult>;
@@ -9525,7 +9525,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Same static validation as import. The skills row keeps its name; the manifest inside the version is the snapshot\'s truth. Identical content returns the existing version with duplicate=true. 
+     * Same static validation as import. The package\'s SKILL.md `name` must be the skill\'s name; a different name is refused with a `version-name-mismatch` finding, and a taken-down skill takes no new version (`skill-taken-down`), both as 422. Identical content returns the existing version with duplicate=true. 
      * Save a zip as the next immutable version of a skill (WS-002)
      */
     async saveSkillVersionRaw(requestParameters: SaveSkillVersionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UploadResult>> {
@@ -9536,7 +9536,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Same static validation as import. The skills row keeps its name; the manifest inside the version is the snapshot\'s truth. Identical content returns the existing version with duplicate=true. 
+     * Same static validation as import. The package\'s SKILL.md `name` must be the skill\'s name; a different name is refused with a `version-name-mismatch` finding, and a taken-down skill takes no new version (`skill-taken-down`), both as 422. Identical content returns the existing version with duplicate=true. 
      * Save a zip as the next immutable version of a skill (WS-002)
      */
     async saveSkillVersion(requestParameters: SaveSkillVersionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UploadResult> {

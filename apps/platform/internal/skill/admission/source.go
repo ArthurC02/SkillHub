@@ -226,6 +226,10 @@ func (s *Service) importSource(ctx context.Context, ws identity.Workspace, data 
 			continue
 		}
 		res, err := s.importOne(ctx, tx, ws, incomingVersion{pkg: planned.pkg, source: src, enrichment: enriched[i]})
+		if report, refused := refusedReport(planned.pkg.report, err); refused {
+			out.Refused = append(out.Refused, Refusal{Path: planned.pkg.sourcePath, Report: report})
+			continue
+		}
 		if err != nil {
 			return SourceResult{}, err
 		}

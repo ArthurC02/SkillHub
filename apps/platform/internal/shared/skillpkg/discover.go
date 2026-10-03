@@ -26,6 +26,8 @@ const (
 	CodeDuplicateSkillName = "duplicate-skill-name"
 
 	CodeNameHeldByAnotherSource = "name-held-by-another-source"
+	CodeVersionNameMismatch     = "version-name-mismatch"
+	CodeSkillTakenDown          = "skill-taken-down"
 )
 
 type SourceShape string

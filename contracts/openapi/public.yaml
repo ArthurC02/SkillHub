@@ -2207,9 +2207,11 @@ paths:
       operationId: saveSkillVersion
       summary: Save a zip as the next immutable version of a skill (WS-002)
       description: |
-        Same static validation as import. The skills row keeps its name; the
-        manifest inside the version is the snapshot's truth. Identical content
-        returns the existing version with duplicate=true.
+        Same static validation as import. The package's SKILL.md `name` must be
+        the skill's name; a different name is refused with a
+        `version-name-mismatch` finding, and a taken-down skill takes no new
+        version (`skill-taken-down`), both as 422. Identical content returns
+        the existing version with duplicate=true.
       parameters:
         - name: id
           in: path
@@ -2250,7 +2252,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "422":
-          description: Package failed spec or static validation.
+          description: Package failed spec or static validation, names a different skill, or the skill was taken down.
           content:
             application/json:
               schema:

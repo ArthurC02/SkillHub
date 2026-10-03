@@ -137,6 +137,7 @@
 - [x] INGEST-019 plugin manifest 的驗證與來源事實：宣告別份規格者為 info 並改走整棵樹、宣告公規卻 `name` 不合才是阻擋錯誤並指名是哪一項、`extensions` 連值都不驗、其餘未知欄位為 info；每個 Skill Version 記下 plugin `name`／`version`／`repository` 與相對路徑；一個 Plugin 只存一份套件物件（整包），各 Skill Version 共用它、內容雜湊取各自子目錄；單次匯入超過 50 個 Skill 即整批拒絕並說出兩個數字（`02:SKILL-006`）。
 - [x] INGEST-020 來源事實的讀取面：Skill 詳情頁揭露它來自哪個 Plugin（`name`／`version`／`repository`）、它在已存套件內的路徑，以及同一份已存套件帶進來的其他 Skill（可連過去，已刪除與已下架者不列），並說出「屬於一個 Plugin」在這裡代表什麼（只安裝自己的目錄、其他元件不匯入不執行、下載只有單一 Skill）；同批修掉匯入頁與契約裡那句「下載其中任一 Skill 拿到的是整包 Plugin」——平台從不交出已存套件物件（`02:SKILL-006`）。同伴的判準是**同一份已存套件物件**，不是 `skill_sources` 的列：一次匯入為每個 Skill 各建一列來源，共用的是那一份物件。
 - [x] INGEST-021 跨來源同名不併版本：工作區裡同名 Skill 的最新版本來自另一個來源（Plugin 名稱或來源網址不同）時，匯入逐個拒絕（`name-held-by-another-source`），說出占用它的來源與兩條出路，其餘 Skill 照常匯入；同一來源重新匯入與單獨上傳的 zip 行為不變（`02:SKILL-006`）。
+- [x] INGEST-022 新版本不換名、下架不收新版：既有 Skill 的新版本必須帶同一個 `name`（否則 `version-name-mismatch`），已下架的 Skill 不接受新版本（`skill-taken-down`），重新匯入只拒絕那一個；互動創作在既有 Skill 上建版沿用原名（`02:SKILL-006`）。
 
 ## 7. Skill Explorer（M1，結束時通過驗證閘門才進 M2）
 
