@@ -49,6 +49,9 @@ func TestSuggestionEvidenceIsReAnsweredAtReadTime(t *testing.T) {
 	if len(suggestions) != 1 {
 		t.Fatalf("got %d suggestions after the trace went away, want 1 — the suggestion outlives its evidence", len(suggestions))
 	}
+	if got := len(suggestions[0].Evidence); got != len(cited) {
+		t.Fatalf("%d evidence citations after the trace went away, want the %d it had", got, len(cited))
+	}
 	for _, e := range suggestions[0].Evidence {
 		if e.Available {
 			t.Errorf("evidence %q still claims to be available after the trace event was removed", e.Excerpt)

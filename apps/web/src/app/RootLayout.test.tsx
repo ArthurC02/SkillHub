@@ -140,6 +140,16 @@ test("the platform shell keeps creation continuations closed until both gates ar
   ).toBe("false");
 });
 
+test("the platform shell opens creation continuations once both gates are open", async () => {
+  mocks.generateExposed = true;
+  mocks.creationExposed = true;
+  await renderShell();
+
+  expect(
+    container.querySelector("[data-creation-available]")?.getAttribute("data-creation-available"),
+  ).toBe("true");
+});
+
 test("Catalog owns its search instead of receiving a duplicate shell form", async () => {
   mocks.pathname = "/";
   await renderShell();

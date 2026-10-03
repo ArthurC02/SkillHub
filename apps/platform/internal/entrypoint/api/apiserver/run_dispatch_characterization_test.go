@@ -271,6 +271,7 @@ type queuedButDispatched struct {
 	fake    *providertest.Fake
 	ws, run pgtype.UUID
 	runID   string
+	handle  string
 }
 
 func newQueuedButDispatched(t *testing.T, name string) queuedButDispatched {
@@ -296,7 +297,7 @@ func newQueuedButDispatched(t *testing.T, name string) queuedButDispatched {
 	svc := *a.runs
 	svc.Providers = run.NewRegistry(fake.Provider())
 	svc.Store = a.packages
-	return queuedButDispatched{f: f, svc: svc, fake: fake, ws: ws, run: runID, runID: created.RunID}
+	return queuedButDispatched{f: f, svc: svc, fake: fake, ws: ws, run: runID, runID: created.RunID, handle: handle}
 }
 
 func (s queuedButDispatched) driveBriefly() {
@@ -326,7 +327,17 @@ func TestACancelOfARunLeftQueuedWithADispatchedAttemptReachesItsSandbox(t *testi
 
 	s.driveBriefly()
 
-	if _, view := s.f.getRun(t, s.runID); view.StatusReason == "派送之前就被取消" {
-		t.Errorf("run is %q (%s): its sandbox was running, so it was not cancelled before dispatch", view.Status, view.StatusReason)
+	atProvider, err := s.fake.Provider().Observe(context.Background(), s.handle)
+	if err != nil {
+		t.Fatalf("observe the sandbox: %v", err)
+	}
+	if atProvider.CancelRequestedAt == nil || atProvider.State != run.ProviderStateCancelled {
+		t.Errorf("the sandbox is %q with cancel requested = %v, want the cancel to have reached it", atProvider.State, atProvider.CancelRequestedAt)
+	}
+
+	s.driveBriefly()
+
+	if _, view := s.f.getRun(t, s.runID); view.Status != string(gen.RunStatusCancelled) || view.StatusReason == "派送之前就被取消" {
+		t.Errorf("run is %q (%s): its sandbox was running, so it ends cancelled by the sandbox, not before dispatch", view.Status, view.StatusReason)
 	}
 }

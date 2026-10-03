@@ -94,6 +94,13 @@ def test_every_endpoint_that_can_fail_on_the_gateway_declares_both_ways_it_can()
     assert missing == [], f"declare a 503 for: {missing}"
 
 
+def test_the_gateway_checks_reach_the_endpoints_that_call_the_gateway():
+    gateway_endpoints = {name for name, responses in _operations() if "502" in responses}
+    assert {"POST /v1/creation/step", "POST /judge-run", "POST /embed"} <= gateway_endpoints, (
+        f"the 502/503 checks above only cover {sorted(gateway_endpoints)}"
+    )
+
+
 def test_the_503_says_both_of_the_things_it_can_mean():
     """The 503 description must name both causes: missing workload token and
     unconfigured gateway.

@@ -160,10 +160,9 @@ test("activity groups owner facts and keeps every continuation in its product co
     "recent",
     "recent",
   ]);
-  expect(activityRows.every((row) => row.querySelector(".activity-rail") !== null)).toBe(true);
   expect(
-    activityRows.every((row) => row.querySelector(".activity-rail")?.getAttribute("aria-hidden")),
-  ).toBe(true);
+    activityRows.map((row) => row.querySelector(".activity-rail")?.getAttribute("aria-hidden")),
+  ).toEqual(["true", "true", "true", "true"]);
 });
 
 test("activity does not expose a Studio continuation while either creation flag is off", async () => {

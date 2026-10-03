@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -250,7 +251,14 @@ func liftHoldAndAssertItReopens(t *testing.T, a *api, anon, operator *client, he
 }
 
 func TestARosterAuditThatMeetsABriefOutageIsRetriedAndKeepsItsRosters(t *testing.T) {
-	cfg := requireDB(t).Config()
+	pool := requireDB(t)
+	cfg := pool.Config()
+	rosterAudits := func(action, field, id string) int {
+		t.Helper()
+		return countRow(t, pool, `SELECT count(*) FROM audit_events WHERE action = $1 AND metadata->($2::text) ? $3::text`, action, field, id)
+	}
+	operatorsBefore := rosterAudits(audit.ActionOperatorRoster, "user_ids", "roster-retry-operator")
+	inviteesBefore := rosterAudits(audit.ActionBetaRoster, "provider_user_ids", "roster-retry-invitee")
 	twoFailuresBeforeEachRoster := map[int32]bool{1: true, 2: true, 4: true, 5: true}
 	var acquires atomic.Int32
 	cfg.PrepareConn = func(context.Context, *pgx.Conn) (bool, error) {
@@ -273,6 +281,15 @@ func TestARosterAuditThatMeetsABriefOutageIsRetriedAndKeepsItsRosters(t *testing
 
 	app.AuditRosters(context.Background())
 
+	if got := acquires.Load(); got < 6 {
+		t.Errorf("%d connection acquisitions, want at least 6: both rosters must outlast their two failures", got)
+	}
+	if got := rosterAudits(audit.ActionOperatorRoster, "user_ids", "roster-retry-operator") - operatorsBefore; got != 1 {
+		t.Errorf("%d operator roster audit rows written, want 1", got)
+	}
+	if got := rosterAudits(audit.ActionBetaRoster, "provider_user_ids", "roster-retry-invitee") - inviteesBefore; got != 1 {
+		t.Errorf("%d beta roster audit rows written, want 1", got)
+	}
 	if !app.Auth.Operators["roster-retry-operator"] {
 		t.Errorf("operators after a retried audit = %v, want the configured operator kept", app.Auth.Operators)
 	}

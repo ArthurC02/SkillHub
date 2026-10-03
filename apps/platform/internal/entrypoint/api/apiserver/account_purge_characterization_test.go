@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -62,10 +63,21 @@ func accountEmail(t *testing.T, pool *pgxpool.Pool, userID string) string {
 	return email
 }
 
+const testSchemaLockConnections = 1
+
 func advisoryLocksHeldByTheProduct(t *testing.T, pool *pgxpool.Pool) int64 {
 	t.Helper()
 	ctx := context.Background()
+	for deadline := time.Now().Add(2 * time.Second); pool.Stat().AcquiredConns() > testSchemaLockConnections && time.Now().Before(deadline); {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if leaked := pool.Stat().AcquiredConns() - testSchemaLockConnections; leaked != 0 {
+		t.Fatalf("%d connections are still checked out of the pool; their advisory locks cannot be observed", leaked)
+	}
 	idle := pool.AcquireAllIdle(ctx)
+	if len(idle) == 0 {
+		t.Fatal("the pool holds no idle connection, so no advisory lock could have been observed")
+	}
 	pids := make([]int32, 0, len(idle))
 	for _, conn := range idle {
 		var pid int32
@@ -165,7 +177,12 @@ func TestAnAccountWhoseDeletionIsWithdrawnMidSweepIsLeftAlone(t *testing.T) {
 	before := accountEmail(t, pool, alice.userID)
 	svc := a.auth.Service
 	quiescent := svc.WorkspaceQuiescent
+	aliceWorkspace := mustUUID(t, alice.workspaceID)
+	readinessChecks := 0
 	svc.WorkspaceQuiescent = func(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (bool, error) {
+		if workspaceID == aliceWorkspace {
+			readinessChecks++
+		}
 		if _, err := pool.Exec(ctx, "UPDATE users SET deletion_requested_at = NULL WHERE id = $1",
 			mustUUID(t, alice.userID)); err != nil {
 			return false, err
@@ -177,6 +194,9 @@ func TestAnAccountWhoseDeletionIsWithdrawnMidSweepIsLeftAlone(t *testing.T) {
 	n, err := svc.PurgeExpiredAccounts(context.Background(), store, 0, 1)
 	if err != nil || n != 0 {
 		t.Fatalf("purged %d (err %v), want 0 and no error", n, err)
+	}
+	if readinessChecks != 1 {
+		t.Fatalf("the sweep checked the withdrawn account's workspace %d times, want 1: the withdrawal was never exercised", readinessChecks)
 	}
 	if len(store.removed) != 0 {
 		t.Errorf("removed %v from an account that is no longer being deleted", store.removed)
