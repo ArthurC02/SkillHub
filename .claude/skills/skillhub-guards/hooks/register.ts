@@ -1,4 +1,9 @@
 import type { EngineInterface, Register } from 'claude-code'
+import {
+  CI_GIVE_UP_MS, CI_POLL_MS, DOCUMENTED_TEST_DSN, MUTATION_TIMEOUT_MS, MUTATION_TOOL, MUTATION_TOOL_SPEC,
+  TEST_DATABASE_NOTE, ciMessage, ciVerdict, dsnFromEnvFile, mutationVerdict, replaceOnce, withTestDatabase,
+  type MutationInput,
+} from './assist'
 
 const ROLES = ['skillhub-writer', 'skillhub-verify', 'skillhub-mutation']
 const FAMILIES = ['fable', 'opus', 'sonnet', 'haiku']
@@ -139,12 +144,45 @@ async function readHeader($: EngineInterface, path: string): Promise<string> {
   }
 }
 
+async function testDsn($: EngineInterface, root: string): Promise<string> {
+  try {
+    return dsnFromEnvFile(await $.fs.read(`${root}/.env`)) ?? DOCUMENTED_TEST_DSN
+  } catch {
+    return DOCUMENTED_TEST_DSN
+  }
+}
+
+async function pollCI($: EngineInterface) {
+  const watch = (await $.state.get({ plugin: 'skillhub-guards', key: 'ciWatch' })).value
+  if (!watch) return
+  if (Date.now() - watch.since > CI_GIVE_UP_MS) {
+    $.ui.status(`CI ${watch.sha.slice(0, 8)}: still not finished after an hour`)
+    await $.state.set({ plugin: 'skillhub-guards', key: 'ciWatch' }, null)
+    return
+  }
+  const root = await $.session.root()
+  const run = await $.process.run(['go', '-C', `${root}/tools/devctl`, 'run', '.', 'ci-status', watch.sha],
+    { timeoutMs: 120_000 })
+  const output = `${run.stdout}\n${run.stderr}`
+  const verdict = ciVerdict(output)
+  if (verdict === undefined || verdict === 'pending') {
+    $.ui.status(`CI ${watch.sha.slice(0, 8)}: running`)
+    return
+  }
+  await $.state.set({ plugin: 'skillhub-guards', key: 'ciWatch' }, null)
+  const text = ciMessage(watch.sha, verdict, output)
+  $.ui.status(text)
+  $.ui.toast(text, { timeoutMs: 15_000 })
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'guard-allow',
       description: 'Let the action skillhub-guards last refused through, once',
     })
+    await $.tool.register(MUTATION_TOOL_SPEC)
+    $.clock.every(CI_POLL_MS, () => { void pollCI($) })
     return next(e)
   })
 
@@ -191,14 +229,51 @@ export const register: Register = on => {
       }
     }
 
-    if (TEST_RUN.test(e.command)) return next(e)
-    const before = await status($, root)
+    const rewritten = withTestDatabase(e.command, await testDsn($, root))
+    if (rewritten !== undefined) {
+      const result = await next({ ...e, command: rewritten })
+      const shell = result.result as { stdout?: unknown } | undefined
+      if (result.deny !== undefined || typeof shell?.stdout !== 'string') return result
+      return { ...result, result: { ...shell, stdout: TEST_DATABASE_NOTE + shell.stdout } }
+    }
+
+    const watched = TEST_RUN.test(e.command) ? undefined : await status($, root)
     const result = await next(e)
-    const after = before === undefined ? undefined : await status($, root)
-    if (before !== undefined && after !== undefined) {
-      await remember($, attributedToCommand(before, after).map(path => `${root}/${path}`))
+    const after = watched === undefined ? undefined : await status($, root)
+    if (watched !== undefined && after !== undefined) {
+      await remember($, attributedToCommand(watched, after).map(path => `${root}/${path}`))
+    }
+    if (e.agentId === undefined && GIT_PUSH.test(e.command) && result.deny === undefined && result.isError !== true) {
+      const sha = (await $.process.run(['git', '-C', root, 'rev-parse', 'HEAD'])).stdout.trim()
+      await $.state.set({ plugin: 'skillhub-guards', key: 'ciWatch' }, { sha, since: Date.now() })
+      $.ui.status(`CI ${sha.slice(0, 8)}: waiting`)
     }
     return result
+  })
+
+  on('tool.call', { tool: `mcp__skillhub-guards__${MUTATION_TOOL}` }, async ($, e) => {
+    const input = e.input as MutationInput
+    const root = await $.session.root()
+    const path = /^([a-zA-Z]:|\/)/.test(input.file) ? input.file : `${root}/${input.file}`
+    const original = await $.fs.read(path)
+    const mutated = replaceOnce(original, input.find, input.replace)
+    if (typeof mutated !== 'string') return { result: mutated.problem, isError: true as const }
+
+    await $.fs.write(path, mutated)
+    let run
+    try {
+      run = await $.process.run(input.argv, {
+        cwd: input.cwd ? `${root}/${input.cwd}` : root, env: input.env, timeoutMs: MUTATION_TIMEOUT_MS,
+      })
+    } finally {
+      await $.fs.write(path, original)
+    }
+    const restored = (await $.fs.read(path)) === original
+    const { verdict, summary } = mutationVerdict(run.exitCode, `${run.stdout}\n${run.stderr}`)
+    if (!restored) {
+      return { result: `RESTORE FAILED: ${path} differs from before; fix it now\n${verdict}\n\n${summary}`, isError: true as const }
+    }
+    return { result: `${verdict}\nfile restored byte for byte\n\n${summary}` }
   })
 
   on('tool.call', { tool: ['Edit', 'Write'] }, async ($, e, next) => {

@@ -1,6 +1,6 @@
 {
   "name": "skillhub-guards",
-  "version": "0.2.0",
-  "description": "Stops flagship or fork subagents, subagent Git writes, installs, formatters and paid stacks, hand edits to generated files and agent caches, unsigned domain-memory commits, unasked runtime image publishes, and edits to other sessions' uncommitted files",
+  "version": "0.3.0",
+  "description": "Guards the repository's red lines at the moment of action, runs platform tests against the test database, watches CI after a push, and gives the model a mutation probe that always restores the file",
   "types": "./types/index.d.ts"
 }
