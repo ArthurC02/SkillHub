@@ -49,6 +49,29 @@ func TestAReplayedGrantKeyGrantsAndAuditsOnce(t *testing.T) {
 	}
 }
 
+func TestAGrantKeyReusedForADifferentAmountIsRefusedAndChangesNothing(t *testing.T) {
+	app, srv := realCreditsServer(t, creditsTestPool(t))
+	member := creditsLogin(t, srv, "credits-grant-reuse-member")
+	operator := creditsLogin(t, srv, "credits-grant-reuse-operator")
+	app.Auth.Operators = map[string]bool{operator.userID: true}
+	grants := "/admin/credits/" + member.workspaceID + "/grants"
+
+	if code, out := operator.postJSON(t, grants, `{"amount_credits":40,"reason":"beta reward","idempotency_key":"submission-1"}`); code != http.StatusOK {
+		t.Fatalf("first grant: got %d (%v)", code, out)
+	}
+	code, reused := operator.postJSON(t, grants, `{"amount_credits":500,"reason":"beta reward","idempotency_key":"submission-1"}`)
+	if code != http.StatusConflict {
+		t.Fatalf("reused key with another amount: got %d (%v), want 409", code, reused)
+	}
+	code, replay := operator.postJSON(t, grants, `{"amount_credits":40,"reason":"beta reward","idempotency_key":"submission-1"}`)
+	if code != http.StatusOK || replay["balance_credits"] != float64(40) {
+		t.Errorf("replay after the refusal: got %d (%v), want 200 with balance 40", code, replay)
+	}
+	if entries, audits := grantCounts(t, member, operator); entries != 1 || audits != 1 {
+		t.Errorf("ledger entries %d and audit events %d, want 1 and 1", entries, audits)
+	}
+}
+
 func TestGrantsWithoutAKeyOrWithDistinctKeysEachApply(t *testing.T) {
 	app, srv := realCreditsServer(t, creditsTestPool(t))
 	member := creditsLogin(t, srv, "credits-grant-nokey-member")

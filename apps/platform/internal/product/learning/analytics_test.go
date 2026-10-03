@@ -115,3 +115,40 @@ func TestAFreshlyMintedSessionIdIsOfferedNotUsed(t *testing.T) {
 		t.Error("the first confirmed request of the day did not start a visit")
 	}
 }
+
+func TestASessionCookieThatIsNotAMintedIdIsReplacedNotRecorded(t *testing.T) {
+	pool, err := pgxpool.New(context.Background(),
+		"postgres://nobody@127.0.0.1:1/nothing?sslmode=disable&connect_timeout=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	svc := &Service{Pool: pool, Retention: 180 * 24 * time.Hour}
+
+	for _, forged := range []string{
+		"my-email-is-someone@example.com!",
+		"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+	} {
+		seen := "unset"
+		next := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			seen = SessionID(r.Context())
+		})
+		req := httptest.NewRequest(http.MethodGet, "/api/skills/search?q=x", nil)
+		req.AddCookie(&http.Cookie{Name: sessionCookie, Value: forged})
+		rec := httptest.NewRecorder()
+		svc.Sessions(next).ServeHTTP(rec, req)
+
+		if seen != "" {
+			t.Errorf("cookie %q was used as session id %q", forged, seen)
+		}
+		reminted := false
+		for _, c := range rec.Result().Cookies() {
+			if c.Name == sessionCookie && c.Value != forged && len(c.Value) == 32 {
+				reminted = true
+			}
+		}
+		if !reminted {
+			t.Errorf("cookie %q was not replaced with a minted id", forged)
+		}
+	}
+}

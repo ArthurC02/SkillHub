@@ -51,6 +51,28 @@ func (q *Queries) GetCreditBalance(ctx context.Context, userID pgtype.UUID) (Cre
 	return i, err
 }
 
+const getCreditEntryByIdempotencyKey = `-- name: GetCreditEntryByIdempotencyKey :one
+SELECT kind, delta_credits FROM credit_entries
+WHERE user_id = $1 AND idempotency_key = $2
+`
+
+type GetCreditEntryByIdempotencyKeyParams struct {
+	UserID         pgtype.UUID
+	IdempotencyKey string
+}
+
+type GetCreditEntryByIdempotencyKeyRow struct {
+	Kind         string
+	DeltaCredits int64
+}
+
+func (q *Queries) GetCreditEntryByIdempotencyKey(ctx context.Context, arg GetCreditEntryByIdempotencyKeyParams) (GetCreditEntryByIdempotencyKeyRow, error) {
+	row := q.db.QueryRow(ctx, getCreditEntryByIdempotencyKey, arg.UserID, arg.IdempotencyKey)
+	var i GetCreditEntryByIdempotencyKeyRow
+	err := row.Scan(&i.Kind, &i.DeltaCredits)
+	return i, err
+}
+
 const insertCreditEntry = `-- name: InsertCreditEntry :one
 INSERT INTO credit_entries (
     user_id, kind, delta_credits, usd_micros, markup_bps, model, prompt_version,

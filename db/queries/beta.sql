@@ -41,6 +41,9 @@ SELECT EXISTS (SELECT 1 FROM runs WHERE id = $1 AND workspace_id = $2);
 
 -- name: GetIdentityProviderIDs :many
 SELECT provider, provider_user_id FROM user_identities WHERE user_id = $1;
+-- name: DeleteAnalyticsEventsBefore :execrows
+DELETE FROM analytics_events WHERE occurred_at < $1;
+
 -- name: DeleteExpiredFeedbackReports :execrows
 DELETE FROM feedback_reports WHERE created_at < $1;
 

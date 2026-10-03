@@ -321,6 +321,9 @@ func (h *creditsHandler) Grant(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, credit.ErrAccountGone):
 		httpx.WriteError(w, http.StatusConflict, "this account is being deleted; no credits were granted")
 		return
+	case errors.Is(err, credit.ErrGrantKeyReused):
+		httpx.WriteError(w, http.StatusConflict, "this idempotency_key was already used for a different grant; no credits were changed")
+		return
 	case err != nil:
 		slog.Error("credit grant failed", "workspace_id", pgconv.UUIDString(workspaceID), "error", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "grant failed")

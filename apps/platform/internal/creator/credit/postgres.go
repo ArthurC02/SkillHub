@@ -148,8 +148,7 @@ func (s *PostgresStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (
 		if !errors.Is(err, pgx.ErrNoRows) && !pgconv.IsUniqueViolation(err) {
 			return 0, false, fmt.Errorf("credit: insert grant: %w", err)
 		}
-		balance, readErr := s.balanceIn(ctx, q, g.UserID)
-		return balance, false, readErr
+		return s.replayedGrant(ctx, q, g)
 	}
 	balance, err := q.AdjustCreditBalance(ctx, gen.AdjustCreditBalanceParams{
 		DeltaCredits: g.Credits,
@@ -162,6 +161,20 @@ func (s *PostgresStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (
 		return 0, false, fmt.Errorf("credit: apply grant to balance: %w", err)
 	}
 	return balance, true, nil
+}
+
+func (s *PostgresStore) replayedGrant(ctx context.Context, q *gen.Queries, g GrantEntry) (int64, bool, error) {
+	earlier, err := q.GetCreditEntryByIdempotencyKey(ctx, gen.GetCreditEntryByIdempotencyKeyParams{
+		UserID: g.UserID, IdempotencyKey: g.IdempotencyKey,
+	})
+	if err != nil {
+		return 0, false, fmt.Errorf("credit: read replayed grant: %w", err)
+	}
+	if earlier.Kind != string(g.EntryKind) || earlier.DeltaCredits != g.Credits {
+		return 0, false, ErrGrantKeyReused
+	}
+	balance, err := s.balanceIn(ctx, q, g.UserID)
+	return balance, false, err
 }
 
 const checkViolationCode = "23514"

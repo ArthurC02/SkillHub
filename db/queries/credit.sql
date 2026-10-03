@@ -23,6 +23,10 @@ INSERT INTO credit_entries (
 ON CONFLICT ON CONSTRAINT credit_entries_idempotency_key_key DO NOTHING
 RETURNING *;
 
+-- name: GetCreditEntryByIdempotencyKey :one
+SELECT kind, delta_credits FROM credit_entries
+WHERE user_id = sqlc.arg(user_id) AND idempotency_key = sqlc.arg(idempotency_key);
+
 -- name: ListRecentCreditEntries :many
 SELECT * FROM credit_entries
 WHERE user_id = $1

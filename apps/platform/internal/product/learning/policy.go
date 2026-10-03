@@ -57,7 +57,7 @@ func (h *Handler) DataRetention(w http.ResponseWriter, _ *http.Request) {
 	feedback := feedbackDisclosure{
 		What:              "由已登入的參與者在 POST /feedback 送出的回報（BETA-003/004/005）",
 		Collected:         []string{"kind", "message", "page_path", "run_id", "build_id", "workspace_id", "user_id"},
-		FreeText:          "message 是參與者自己寫的自由文字，最多 2000 字。它是這個部署唯一的自由文字欄位，不遮罩、不摘要、不截斷",
+		FreeText:          "message 是參與者自己寫的自由文字，最多 2000 字，不遮罩、不摘要、不截斷。page_path（最多 512 字元，只收路由、不收查詢字串）與 build_id（最多 64 字元）由網頁自動帶上，但伺服器只檢查格式與長度，所以同樣可能存下任意文字，帳號刪除後也一樣保留",
 		Kind:              AllFeedbackKinds(),
 		PagePath:          "他當時所在的路由，從不是完整網址：查詢字串可能帶個資，這個管道不收",
 		RunID:             "他當時看的 Run（若有），而且只在確認是他自己的 Run 之後",

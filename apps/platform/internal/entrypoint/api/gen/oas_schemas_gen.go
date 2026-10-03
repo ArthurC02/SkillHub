@@ -5510,9 +5510,9 @@ type DataRetentionPolicy struct {
 	Events []DataRetentionPolicyEventsItem `json:"events"`
 	Note   string                          `json:"note"`
 	// The one other collected class this deployment holds: reports submitted at POST /feedback
-	// (BETA-003/004/005). Their `message` is the only free-text column anywhere, so the disclosure names
-	// it separately from the four events above. Served since the endpoint existed, and declared here so a
-	// page can render it.
+	// (BETA-003/004/005). Their `message` is free text, and `page_path` and `build_id` are client-supplied
+	// text checked only for shape and length, so the disclosure names them separately from the four events
+	// above. Served since the endpoint existed, and declared here so a page can render it.
 	Feedback DataRetentionPolicyFeedback `json:"feedback"`
 }
 
@@ -5672,9 +5672,9 @@ func (s *DataRetentionPolicyEventsItemName) UnmarshalText(data []byte) error {
 }
 
 // The one other collected class this deployment holds: reports submitted at POST /feedback
-// (BETA-003/004/005). Their `message` is the only free-text column anywhere, so the disclosure names
-// it separately from the four events above. Served since the endpoint existed, and declared here so a
-// page can render it.
+// (BETA-003/004/005). Their `message` is free text, and `page_path` and `build_id` are client-supplied
+// text checked only for shape and length, so the disclosure names them separately from the four events
+// above. Served since the endpoint existed, and declared here so a page can render it.
 type DataRetentionPolicyFeedback struct {
 	What string `json:"what"`
 	// The columns a report writes, one entry each.
@@ -10940,6 +10940,10 @@ func (*GetTestCaseUnauthorized) getTestCaseRes() {}
 type GrantCreditsBadRequest Error
 
 func (*GrantCreditsBadRequest) grantCreditsRes() {}
+
+type GrantCreditsConflict Error
+
+func (*GrantCreditsConflict) grantCreditsRes() {}
 
 type GrantCreditsNotFound Error
 

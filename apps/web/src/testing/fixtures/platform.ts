@@ -567,7 +567,7 @@ export const RETENTION_POLICY = {
     what: "由已登入的參與者在 POST /feedback 送出的回報（BETA-003/004/005）",
     collected: ["kind", "message", "page_path", "run_id", "build_id", "workspace_id", "user_id"],
     free_text:
-      "message 是參與者自己寫的自由文字，最多 2000 字。它是這個部署唯一的自由文字欄位，不遮罩、不摘要、不截斷",
+      "message 是參與者自己寫的自由文字，最多 2000 字，不遮罩、不摘要、不截斷。page_path（最多 512 字元，只收路由、不收查詢字串）與 build_id（最多 64 字元）由網頁自動帶上，但伺服器只檢查格式與長度，所以同樣可能存下任意文字，帳號刪除後也一樣保留",
     page_path: "他當時所在的路由，從不是完整網址：查詢字串可能帶個資，這個管道不收",
     run_id: "他當時看的試跑紀錄（若有），而且只在確認是他自己的試跑紀錄之後",
     on_account_deletion:

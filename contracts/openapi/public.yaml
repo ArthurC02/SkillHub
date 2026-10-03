@@ -2514,7 +2514,9 @@ paths:
         Idempotent only when the request carries `idempotency_key`: a replay of
         the same key for the same account writes no second entry and no second
         audit event, and answers with the balance as it stands. Without a key
-        nothing identifies a retry, so two identical calls are two grants.
+        nothing identifies a retry, so two identical calls are two grants. A
+        key already used on this account for a different amount is a 409, not
+        a replay: answering 200 would report a grant that was never applied.
       requestBody:
         required: true
         content:
@@ -2561,6 +2563,14 @@ paths:
             Zero amount, a missing reason, an `idempotency_key` outside 1 to
             128 characters, or an adjustment that would take the balance below
             -1000000.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: |
+            Nothing was changed: the account is being deleted, or the
+            `idempotency_key` was already used on this account for a grant of a
+            different amount.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -8910,7 +8920,8 @@ components:
           description: |
             The one other collected class this deployment holds: reports
             submitted at POST /feedback (BETA-003/004/005). Their `message` is
-            the only free-text column anywhere, so the disclosure names it
+            free text, and `page_path` and `build_id` are client-supplied text
+            checked only for shape and length, so the disclosure names them
             separately from the four events above. Served since the endpoint
             existed, and declared here so a page can render it.
           required: [what, collected, free_text, kind, page_path, run_id, on_account_deletion, retention_days]

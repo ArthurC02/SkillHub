@@ -27,6 +27,8 @@ var (
 	ErrBalanceOutOfRange = fmt.Errorf("%w: balance would fall below %d", ErrInvalid, MinBalanceCredits)
 
 	ErrAccountGone = errors.New("credit: account not eligible")
+
+	ErrGrantKeyReused = errors.New("credit: idempotency key already used for a different grant")
 )
 
 type AccountFacts struct {
