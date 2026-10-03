@@ -166,6 +166,9 @@ func (d *driver) dispatch(ctx context.Context) error {
 	}
 
 	budget, err := d.budgetForNextAttempt(ctx, attempts)
+	if errors.Is(err, errSpendUnreadable) {
+		return d.waitForSpend(err)
+	}
 	if err != nil {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureProvider,
 			d.reasonFor(failureProvider, err))
@@ -967,6 +970,12 @@ func (d *driver) waitForSandbox(err error) error {
 	slog.Warn("no sandbox provider is available right now; the run keeps its place in the queue "+
 		"instead of failing, because waiting can fix this",
 		"run_id", pgconv.UUIDString(d.cur.ID), "status", d.cur.Status, "error", err)
+	return tryAgainIn(d.svc.slotWaitInterval())
+}
+
+func (d *driver) waitForSpend(err error) error {
+	slog.Warn("the earlier attempts' model spend cannot be read yet; the run waits instead of failing or running past its budget",
+		"run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 	return tryAgainIn(d.svc.slotWaitInterval())
 }
 

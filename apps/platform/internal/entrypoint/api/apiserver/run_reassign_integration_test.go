@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -250,8 +251,9 @@ func TestARunReassignedAfterARestartIsDispatchedAgainInsteadOfTerminated(t *test
 }
 
 type keyMint struct {
-	mu      sync.Mutex
-	budgets []float64
+	mu              sync.Mutex
+	budgets         []float64
+	spendUnreadable atomic.Bool
 }
 
 func (m *keyMint) gateway(t *testing.T, spendPerAttempt float64) *run.Gateway {
@@ -268,6 +270,10 @@ func (m *keyMint) gateway(t *testing.T, spendPerAttempt float64) *run.Gateway {
 		_ = json.NewEncoder(w).Encode(map[string]string{"key": "sk-test"})
 	})
 	mux.HandleFunc("GET /spend/logs/v2", func(w http.ResponseWriter, _ *http.Request) {
+		if m.spendUnreadable.Load() {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"data":        []any{map[string]any{"prompt_tokens": 1, "completion_tokens": 1, "spend": spendPerAttempt}},
 			"total_pages": 1,
@@ -301,17 +307,10 @@ func TestAReassignedAttemptOnlyGetsWhatIsLeftOfTheRunBudget(t *testing.T) {
 	}
 }
 
-func TestARunWhoseSpendCannotBeReadIsNotReassigned(t *testing.T) {
-	broken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/key/generate" {
-			_ = json.NewEncoder(w).Encode(map[string]string{"key": "sk-test"})
-			return
-		}
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	t.Cleanup(broken.Close)
-	s := newLossSceneWithGateway(t, "alice-unreadable-spend",
-		run.NewGateway(run.GatewayConfig{AdminBaseURL: broken.URL, AdminKey: "test", SandboxBaseURL: broken.URL, MaxBudgetUSD: 0.50, HTTP: broken.Client()}))
+func TestARunWhoseSpendCannotBeReadWaitsAndIsReassignedOnceItCanBe(t *testing.T) {
+	mint := &keyMint{}
+	s := newLossSceneWithGateway(t, "alice-unreadable-spend", mint.gateway(t, 0.12))
+	mint.spendUnreadable.Store(true)
 	s.alpha.SetPollStatus(http.StatusNotFound)
 
 	s.drive(t, "the run whose spend cannot be read")
@@ -319,8 +318,20 @@ func TestARunWhoseSpendCannotBeReadIsNotReassigned(t *testing.T) {
 	if got := len(s.attempts(t)); got != 1 {
 		t.Fatalf("attempts = %d, want 1: without a readable spend the budget cannot be honoured", got)
 	}
-	_, view := s.f.getRun(t, uuidText(s.runID))
-	if view.Status != string(gen.RunStatusFailed) {
-		t.Errorf("run = %q (%s), want failed", view.Status, view.StatusReason)
+	if _, view := s.f.getRun(t, uuidText(s.runID)); view.Status == string(gen.RunStatusFailed) {
+		t.Fatalf("run failed (%s); an unreadable spend is worth waiting out", view.StatusReason)
+	}
+
+	mint.spendUnreadable.Store(false)
+	s.drive(t, "the run once its spend reads again")
+
+	attempts := s.attempts(t)
+	if len(attempts) != 2 || attempts[1].Provider != "beta_sandbox" {
+		t.Fatalf("attempts = %d, want a second one on beta_sandbox once the spend could be read", len(attempts))
+	}
+	mint.mu.Lock()
+	defer mint.mu.Unlock()
+	if last := mint.budgets[len(mint.budgets)-1]; last < 0.379999 || last > 0.380001 {
+		t.Errorf("the second attempt got %v, want 0.38: what is left after the first spent 0.12", last)
 	}
 }
