@@ -6561,6 +6561,10 @@ type DiffSkillVersionsBadRequest Error
 
 func (*DiffSkillVersionsBadRequest) diffSkillVersionsRes() {}
 
+type DiffSkillVersionsForbidden Error
+
+func (*DiffSkillVersionsForbidden) diffSkillVersionsRes() {}
+
 type DiffSkillVersionsNotFound Error
 
 func (*DiffSkillVersionsNotFound) diffSkillVersionsRes() {}

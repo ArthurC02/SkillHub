@@ -298,6 +298,10 @@ func (h *Handler) Diff(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
+	if errors.Is(err, ErrContentWithheld) {
+		httpx.WriteError(w, http.StatusForbidden, err.Error())
+		return
+	}
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "diff failed")
 		return

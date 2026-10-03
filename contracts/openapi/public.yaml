@@ -2419,6 +2419,11 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: The skill is under an access restriction, so its versions are not compared.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Skill or versions not visible to the caller.
           content:
