@@ -121,3 +121,14 @@ func TestADatasetPastItsRetentionIsGoneBeforeTheSweepRemovesIt(t *testing.T) {
 		t.Errorf("uploading in place of the expired file: %d %v, want 201; the expired file still held its slot", code, out)
 	}
 }
+
+func TestAskingWhetherAnUnknownSnapshotsInputsRemainAnswersNotFound(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "snapshot-inputs-unknown")
+	svc := &testlab.Service{Pool: pool}
+	_, err := svc.SnapshotInputsAvailable(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, "00000000-0000-4000-8000-000000000001"))
+	if !errors.Is(err, testlab.ErrNotFound) {
+		t.Errorf("err = %v, want ErrNotFound", err)
+	}
+}

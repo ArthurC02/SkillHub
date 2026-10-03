@@ -125,6 +125,9 @@ func (s *Service) SnapshotInputsAvailable(ctx context.Context, workspaceID, snap
 	}
 	q := gen.New(s.Pool)
 	inputs, err := q.GetSnapshotInputs(ctx, gen.GetSnapshotInputsParams{SnapshotID: snapshotID, WorkspaceID: workspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, ErrNotFound
+	}
 	if err != nil {
 		return false, err
 	}
