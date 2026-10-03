@@ -6,7 +6,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import httpx
+import openai
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from skillhub_llm import creation, generate
@@ -718,6 +721,98 @@ def test_cancellation_reaches_gateway_await():
             assert cancelled.is_set()
 
     asyncio.run(scenario())
+
+
+def _never_answering_gateway(started: asyncio.Event, cancelled: asyncio.Event):
+    async def create(**_):
+        started.set()
+        try:
+            await asyncio.Future()
+        finally:
+            cancelled.set()
+
+    value = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
+        )
+    )
+    value.with_options = lambda **_: value
+    return value
+
+
+@pytest.mark.parametrize(
+    "disconnected, status, detail",
+    [(False, 502, "creation step timed out"), (True, 499, "creation request disconnected")],
+    ids=["timed-out", "caller-left"],
+)
+def test_a_step_that_cannot_finish_answers_and_cancels_the_gateway_call(
+    disconnected, status, detail
+):
+    async def scenario():
+        started, cancelled = asyncio.Event(), asyncio.Event()
+
+        async def is_disconnected():
+            return disconnected and started.is_set()
+
+        with patch.object(
+            creation, "client", lambda _: _never_answering_gateway(started, cancelled)
+        ):
+            with pytest.raises(HTTPException) as excinfo:
+                await asyncio.wait_for(
+                    creation.creation_step(
+                        creation.CreationStepRequest(**request(timeout_seconds=1)),
+                        SimpleNamespace(is_disconnected=is_disconnected),
+                        "sk-step",
+                    ),
+                    5,
+                )
+        assert (excinfo.value.status_code, excinfo.value.detail) == (status, detail)
+        assert cancelled.is_set()
+
+    asyncio.run(scenario())
+
+
+def test_a_gateway_failure_is_502_with_a_fixed_detail():
+    async def create(**_):
+        raise openai.APIConnectionError(request=httpx.Request("POST", "http://gateway"))
+
+    value = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
+        )
+    )
+    value.with_options = lambda **_: value
+    with patch.object(creation, "client", lambda _: value):
+        response = client.post("/v1/creation/step", headers=HEADERS, json=request())
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "creation model returned unusable output"}
+
+
+@pytest.mark.parametrize(
+    "changes, status",
+    [
+        ({"timeout_seconds": 1}, 200),
+        ({"timeout_seconds": 120}, 200),
+        ({"timeout_seconds": 0}, 422),
+        ({"timeout_seconds": 121}, 422),
+        ({"max_output_tokens": 1}, 200),
+        ({"max_output_tokens": 16000}, 200),
+        ({"max_output_tokens": 0}, 422),
+        ({"max_output_tokens": 16001}, 422),
+        ({"revision": 0}, 200),
+        ({"revision": -1}, 422),
+        ({"session_id": ""}, 422),
+        ({"messages": [{"role": "user", "content": "m"}] * 100}, 200),
+        ({"messages": [{"role": "user", "content": "m"}] * 101}, 422),
+        ({"references": [{"name": "r", "skill_md": "x"}] * 3}, 200),
+        ({"references": [{"name": "r", "skill_md": "x"}] * 4}, 422),
+    ],
+)
+def test_a_creation_request_is_bounded(changes, status):
+    response, calls = invoke(request(**changes), decision())
+    assert response.status_code == status, response.text
+    assert bool(calls) == (status == 200)
 
 
 def test_service_and_scoped_key_required(monkeypatch):

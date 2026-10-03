@@ -370,7 +370,14 @@ def test_unreported_usage_is_omitted_never_zero(capture, stub, expected):
         (SimpleNamespace(completion_tokens=1), {}),
         (SimpleNamespace(prompt_tokens=1), {}),
         (SimpleNamespace(prompt_tokens=-1, completion_tokens=1), {}),
+        (SimpleNamespace(prompt_tokens=True, completion_tokens=1), {}),
+        (SimpleNamespace(prompt_tokens=1, completion_tokens=False), {}),
         (SimpleNamespace(prompt_tokens=1, completion_tokens=1), {"x-litellm-response-cost": "NaN"}),
+        (
+            SimpleNamespace(prompt_tokens=1, completion_tokens=1),
+            {"x-litellm-response-cost": "-0.5"},
+        ),
+        (SimpleNamespace(prompt_tokens=1, completion_tokens=1), {"x-litellm-response-cost": "inf"}),
     ],
 )
 def test_malformed_gateway_usage_never_turns_a_successful_call_into_500(capture, usage, headers):

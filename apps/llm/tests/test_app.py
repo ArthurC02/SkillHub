@@ -12,17 +12,36 @@ from skillhub_llm.app import app
 client = TestClient(app, headers={"Authorization": "Bearer test-service-token"})
 
 
-def test_capabilities_reject_missing_or_wrong_service_token():
-    unauthenticated = TestClient(app)
-    assert unauthenticated.post("/embed", json={"texts": ["secret"]}).status_code == 401
-    assert (
-        unauthenticated.post(
-            "/embed",
-            headers={"Authorization": "Bearer wrong"},
-            json={"texts": ["secret"]},
-        ).status_code
-        == 401
-    )
+PUBLIC_ROUTES = {"/healthz"}
+GUARDED = sorted(
+    (path, method.upper())
+    for path, operations in app.openapi()["paths"].items()
+    if path not in PUBLIC_ROUTES
+    for method in operations
+)
+
+
+def test_every_capability_route_is_guarded():
+    assert GUARDED == [
+        ("/embed", "POST"),
+        ("/judge-run", "POST"),
+        ("/match-reasons", "POST"),
+        ("/readyz", "GET"),
+        ("/suggest-criteria", "POST"),
+        ("/suggest-improvements", "POST"),
+        ("/v1/analyze-intent", "POST"),
+        ("/v1/creation/step", "POST"),
+        ("/v1/enrich-skill", "POST"),
+        ("/v1/generate-skill", "POST"),
+    ]
+
+
+@pytest.mark.parametrize("path, method", GUARDED, ids=[f"{m} {p}" for p, m in GUARDED])
+@pytest.mark.parametrize("authorization", [None, "Bearer wrong", "Bearer "])
+def test_a_capability_route_refuses_a_missing_or_wrong_service_token(path, method, authorization):
+    headers = {"Authorization": authorization} if authorization else {}
+    response = TestClient(app).request(method, path, headers=headers, json={})
+    assert response.status_code == 401
 
 
 def test_a_service_token_with_non_ascii_bytes_is_rejected_as_unauthenticated():
@@ -528,6 +547,31 @@ def test_embed_success():
     assert body["model"] == "text-embedding-3-small"
     assert body["dimensions"] == 1536  # one-number: embeddingDimensions
     assert len(body["embeddings"]) == 2
+
+
+def test_embed_returns_each_vector_in_the_order_the_gateway_gave_them():
+    with _stub_embeddings([_embedding([0.1] * 1536), _embedding([0.2] * 1536)]):
+        body = client.post("/embed", json={"texts": ["hello", "world"]}).json()
+
+    assert body["embeddings"] == [[0.1] * 1536, [0.2] * 1536]
+
+
+def test_an_embedding_call_the_gateway_failed_is_502_without_the_texts():
+    with _stub_embeddings([], error=RuntimeError("400 on input: 'my private note'")):
+        response = client.post("/embed", json={"texts": ["my private note"]})
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "gateway error"}
+
+
+@pytest.mark.parametrize("count, status", [(64, 200), (65, 422)])
+def test_embed_takes_at_most_sixty_four_texts(count, status):
+    sent: list = []
+    with _stub_embeddings([_embedding([0.0] * 1536)] * count, capture=sent):
+        response = client.post("/embed", json={"texts": ["t"] * count})
+
+    assert response.status_code == status
+    assert len(sent) == (1 if status == 200 else 0)
 
 
 def test_embed_rejects_vectors_of_the_wrong_dimension():
