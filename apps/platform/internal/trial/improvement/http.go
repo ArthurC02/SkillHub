@@ -47,7 +47,7 @@ type evaluationView struct {
 	EvidenceComplete      bool              `json:"evidence_complete"`
 	Cost                  costView          `json:"cost"`
 	Feedback              *feedbackView     `json:"feedback,omitempty"`
-	EvaluatedAt           string            `json:"evaluated_at"`
+	EvaluatedAt           *string           `json:"evaluated_at"`
 	SupersededAt          *string           `json:"superseded_at"`
 }
 
@@ -68,7 +68,7 @@ type revisionView struct {
 	JudgePromptVersion string  `json:"judge_prompt_version"`
 	RubricVersion      string  `json:"rubric_version,omitempty"`
 	Overall            string  `json:"overall"`
-	EvaluatedAt        string  `json:"evaluated_at"`
+	EvaluatedAt        *string `json:"evaluated_at"`
 	SupersededAt       *string `json:"superseded_at"`
 }
 
@@ -139,7 +139,7 @@ func (h *Handler) Revisions(w http.ResponseWriter, r *http.Request) {
 			JudgePromptVersion: derefString(ev.JudgePromptVersion),
 			RubricVersion:      derefString(ev.RubricVersion),
 			Overall:            ev.Overall,
-			EvaluatedAt:        pgconv.RFC3339(ev.EvaluatedAt),
+			EvaluatedAt:        optionalTime(ev.EvaluatedAt),
 			SupersededAt:       optionalTime(ev.SupersededAt),
 		})
 	}
@@ -237,7 +237,7 @@ func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev Evaluati
 		RubricVersion:         derefString(ev.RubricVersion),
 		EvidenceComplete:      ev.EvidenceComplete,
 		Cost:                  costViewOf(ev, s.Credits),
-		EvaluatedAt:           pgconv.RFC3339(ev.EvaluatedAt),
+		EvaluatedAt:           optionalTime(ev.EvaluatedAt),
 		SupersededAt:          optionalTime(ev.SupersededAt),
 	}
 	if ev.FeedbackHelpful != nil {

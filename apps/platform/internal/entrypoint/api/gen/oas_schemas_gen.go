@@ -7182,8 +7182,9 @@ type Evaluation struct {
 	Cost             EvaluationCost `json:"cost"`
 	// The user's own answer about this judgement (EVAL-001 第 4 條). Absent means nobody answered, which
 	// is not the same as "not helpful".
-	Feedback    OptEvaluationFeedback `json:"feedback"`
-	EvaluatedAt time.Time             `json:"evaluated_at"`
+	Feedback OptEvaluationFeedback `json:"feedback"`
+	// Null while the evaluation is still pending.
+	EvaluatedAt NilDateTime `json:"evaluated_at"`
 	// Set when a later re-evaluation replaced this one; null on the current revision. Returned so that
 	// reading an old revision through `?revision=` cannot be mistaken for reading the standing verdict.
 	SupersededAt OptNilDateTime `json:"superseded_at"`
@@ -7255,7 +7256,7 @@ func (s *Evaluation) GetFeedback() OptEvaluationFeedback {
 }
 
 // GetEvaluatedAt returns the value of EvaluatedAt.
-func (s *Evaluation) GetEvaluatedAt() time.Time {
+func (s *Evaluation) GetEvaluatedAt() NilDateTime {
 	return s.EvaluatedAt
 }
 
@@ -7330,7 +7331,7 @@ func (s *Evaluation) SetFeedback(val OptEvaluationFeedback) {
 }
 
 // SetEvaluatedAt sets the value of EvaluatedAt.
-func (s *Evaluation) SetEvaluatedAt(val time.Time) {
+func (s *Evaluation) SetEvaluatedAt(val NilDateTime) {
 	s.EvaluatedAt = val
 }
 
@@ -7552,7 +7553,8 @@ type EvaluationRevision struct {
 	// Absent when the skill's category has no rubric.
 	RubricVersion OptString                 `json:"rubric_version"`
 	Overall       EvaluationRevisionOverall `json:"overall"`
-	EvaluatedAt   time.Time                 `json:"evaluated_at"`
+	// Null while the evaluation is still pending.
+	EvaluatedAt NilDateTime `json:"evaluated_at"`
 	// When a later re-evaluation replaced this one. Null on the current revision, and exactly one revision
 	// has it null.
 	SupersededAt NilDateTime `json:"superseded_at"`
@@ -7579,7 +7581,7 @@ func (s *EvaluationRevision) GetOverall() EvaluationRevisionOverall {
 }
 
 // GetEvaluatedAt returns the value of EvaluatedAt.
-func (s *EvaluationRevision) GetEvaluatedAt() time.Time {
+func (s *EvaluationRevision) GetEvaluatedAt() NilDateTime {
 	return s.EvaluatedAt
 }
 
@@ -7609,7 +7611,7 @@ func (s *EvaluationRevision) SetOverall(val EvaluationRevisionOverall) {
 }
 
 // SetEvaluatedAt sets the value of EvaluatedAt.
-func (s *EvaluationRevision) SetEvaluatedAt(val time.Time) {
+func (s *EvaluationRevision) SetEvaluatedAt(val NilDateTime) {
 	s.EvaluatedAt = val
 }
 

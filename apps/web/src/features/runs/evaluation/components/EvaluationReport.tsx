@@ -104,7 +104,7 @@ export function EvaluationReport({
           <li>Rubric 版本：{evaluation.rubric_version ?? "無 rubric（不是採用預設 rubric）"}</li>
           <li>
             評估時間：
-            <Timestamp at={evaluation.evaluated_at} />
+            {evaluation.evaluated_at ? <Timestamp at={evaluation.evaluated_at} /> : "尚未完成"}
           </li>
         </ul>
       </details>

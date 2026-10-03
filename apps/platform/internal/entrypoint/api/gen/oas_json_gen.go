@@ -16986,7 +16986,7 @@ func (s *Evaluation) encodeFields(e *jx.Encoder) {
 	}
 	{
 		e.FieldStart("evaluated_at")
-		json.EncodeDateTime(e, s.EvaluatedAt)
+		s.EvaluatedAt.Encode(e, json.EncodeDateTime)
 	}
 	{
 		if s.SupersededAt.Set {
@@ -17182,9 +17182,7 @@ func (s *Evaluation) Decode(d *jx.Decoder) error {
 		case "evaluated_at":
 			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
-				v, err := json.DecodeDateTime(d)
-				s.EvaluatedAt = v
-				if err != nil {
+				if err := s.EvaluatedAt.Decode(d, json.DecodeDateTime); err != nil {
 					return err
 				}
 				return nil
@@ -17629,7 +17627,7 @@ func (s *EvaluationRevision) encodeFields(e *jx.Encoder) {
 	}
 	{
 		e.FieldStart("evaluated_at")
-		json.EncodeDateTime(e, s.EvaluatedAt)
+		s.EvaluatedAt.Encode(e, json.EncodeDateTime)
 	}
 	{
 		e.FieldStart("superseded_at")
@@ -17702,9 +17700,7 @@ func (s *EvaluationRevision) Decode(d *jx.Decoder) error {
 		case "evaluated_at":
 			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
-				v, err := json.DecodeDateTime(d)
-				s.EvaluatedAt = v
-				if err != nil {
+				if err := s.EvaluatedAt.Decode(d, json.DecodeDateTime); err != nil {
 					return err
 				}
 				return nil

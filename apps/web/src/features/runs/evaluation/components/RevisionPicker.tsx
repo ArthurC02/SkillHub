@@ -22,7 +22,8 @@ export function RevisionPicker({
         <option value="">目前的判定</option>
         {revisions.map((r) => (
           <option key={r.evaluation_id} value={r.evaluation_id}>
-            {formatAt(r.evaluated_at)}｜{OVERALL_LABEL[r.overall]}｜prompt {r.judge_prompt_version}
+            {r.evaluated_at ? formatAt(r.evaluated_at) : "評估中"}｜{OVERALL_LABEL[r.overall]}
+            ｜prompt {r.judge_prompt_version}
             {r.rubric_version ? `｜rubric ${r.rubric_version}` : ""}
             {r.superseded_at ? "（已被取代）" : ""}
           </option>

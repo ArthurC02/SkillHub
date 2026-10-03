@@ -301,7 +301,7 @@ function stubPlatform(options: {
     if (url.includes("/evaluation"))
       return json(
         options.pending
-          ? { ...evaluation, status: "pending", overall: "undetermined" }
+          ? { ...evaluation, status: "pending", overall: "undetermined", evaluated_at: null }
           : evaluation,
       );
     if (url.includes("/suggestions/s1/diff")) return json(blockedDiff);
@@ -820,6 +820,7 @@ test("a pending evaluation that completes refreshes the verdict its history list
     evaluation_id: "eval-1",
     status: "pending",
     overall: "undetermined",
+    evaluated_at: null,
   } as const;
   const completed = { ...evaluation, evaluation_id: "eval-1", overall: "met" } as const;
   vi.stubGlobal("fetch", (input: string) => {
@@ -852,7 +853,8 @@ test("a pending evaluation that completes refreshes the verdict its history list
   for (let i = 0; i < 5 && picker() === ""; i++) {
     await act(async () => vi.advanceTimersByTimeAsync(10));
   }
-  expect(picker()).toContain("無法判斷");
+  expect(picker()).toContain("評估中｜無法判斷");
+  expect(picker()).not.toContain("無法解讀的時間格式");
 
   await act(async () => vi.advanceTimersByTimeAsync(3000));
   await act(async () => vi.advanceTimersByTimeAsync(0));

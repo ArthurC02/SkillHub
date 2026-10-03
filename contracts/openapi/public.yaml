@@ -9590,7 +9590,10 @@ components:
             helpful: { type: boolean }
             comment: { type: string, maxLength: 2000 }
             submitted_at: { type: string, format: date-time }
-        evaluated_at: { type: string, format: date-time }
+        evaluated_at:
+          type: [string, "null"]
+          format: date-time
+          description: Null while the evaluation is still pending.
         superseded_at:
           type: [string, "null"]
           format: date-time
@@ -9832,7 +9835,10 @@ components:
         overall:
           type: string
           enum: [met, partially_met, not_met, undetermined]
-        evaluated_at: { type: string, format: date-time }
+        evaluated_at:
+          type: [string, "null"]
+          format: date-time
+          description: Null while the evaluation is still pending.
         superseded_at:
           type: [string, "null"]
           format: date-time

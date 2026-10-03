@@ -141,9 +141,9 @@ export interface Evaluation {
      */
     feedback?: EvaluationFeedback;
     /**
-     * 
+     * Null while the evaluation is still pending.
      */
-    evaluatedAt: Date;
+    evaluatedAt: Date | null;
     /**
      * Set when a later re-evaluation replaced this one; null on the
      * current revision. Returned so that reading an old revision through
@@ -217,7 +217,7 @@ export function EvaluationFromJSONTyped(json: any, ignoreDiscriminator: boolean)
         'evidenceComplete': json['evidence_complete'],
         'cost': EvaluationCostFromJSON(json['cost']),
         'feedback': json['feedback'] == null ? undefined : EvaluationFeedbackFromJSON(json['feedback']),
-        'evaluatedAt': (json['evaluated_at'] == null ? json['evaluated_at'] : parseDateTime(json['evaluated_at'])),
+        'evaluatedAt': (json['evaluated_at'] == null ? null : parseDateTime(json['evaluated_at'])),
         'supersededAt': json['superseded_at'] === undefined ? undefined : json['superseded_at'] === null ? null : (parseDateTime(json['superseded_at'])),
     };
 }

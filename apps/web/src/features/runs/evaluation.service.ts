@@ -59,7 +59,7 @@ export type Evaluation = {
   evidence_complete: boolean;
   cost: EvaluationCost;
   feedback?: { helpful: boolean; comment?: string; submitted_at: string };
-  evaluated_at: string;
+  evaluated_at: string | null;
   superseded_at?: string | null;
 };
 
@@ -68,7 +68,7 @@ export type EvaluationRevision = {
   judge_prompt_version: string;
   rubric_version?: string;
   overall: EvaluationVerdict;
-  evaluated_at: string;
+  evaluated_at: string | null;
   superseded_at: string | null;
 };
 

@@ -232,6 +232,36 @@ func TestStalePendingEvaluationIsReconciledWithoutJudge(t *testing.T) {
 	}
 }
 
+func TestAPendingEvaluationHasNoEvaluationTimeYet(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-pending-time")
+	skillID := seedSkill(t, pool, c.workspaceID, "eval-pending-time")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO evaluations (workspace_id, run_id, status, overall, evidence_complete)
+		VALUES ($1, $2, 'pending', 'undetermined', false)`,
+		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatal(err)
+	}
+
+	status, current := c.doJSON(t, http.MethodGet, "/runs/"+runID+"/evaluation", "")
+	if status != http.StatusOK {
+		t.Fatalf("evaluation status = %d, want 200", status)
+	}
+	if at, present := current["evaluated_at"]; !present || at != nil {
+		t.Errorf("pending evaluation evaluated_at = %#v (present %v), want null", at, present)
+	}
+	status, history := c.doJSON(t, http.MethodGet, "/runs/"+runID+"/evaluation/revisions", "")
+	revisions, _ := history["revisions"].([]any)
+	if status != http.StatusOK || len(revisions) != 1 {
+		t.Fatalf("revisions status = %d count = %d, want 200 and 1", status, len(revisions))
+	}
+	if at, present := revisions[0].(map[string]any)["evaluated_at"]; !present || at != nil {
+		t.Errorf("pending revision evaluated_at = %#v (present %v), want null", at, present)
+	}
+}
+
 func TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
