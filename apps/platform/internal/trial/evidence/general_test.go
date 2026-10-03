@@ -108,7 +108,9 @@ func TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest(t *testing.T) {
 		{"a valid run total replaces the sums", append(sum, runTotal("27042", "1180", "0.9")), 27042, 1180, ptr(0.9), "run-model", "estimated"},
 		{"an unreadable run total falls back to the sums field by field", append(sum, runTotal("lots", "7", "")), 1200, 7, ptr(0.3), "run-model", "estimated"},
 		{"an earlier run total never enters the fallback sums", append(append([]factRow{}, sum...), runTotal("500", "60", "0.4"), runTotal("lots", "x", "")), 1200, 100, ptr(0.3), "run-model", "estimated"},
-		{"no readable cost anywhere is no cost", []factRow{attempt("a", "1", "1", ""), runTotal("1", "1", "0.1234567890123")}, 1, 1, nil, "run-model", "estimated"},
+		{"no readable cost anywhere is no cost", []factRow{attempt("a", "1", "1", ""), runTotal("1", "1", "0.1234567890123456789012345")}, 1, 1, nil, "run-model", "estimated"},
+		{"a float sum printed to its last digit is still a cost", []factRow{runTotal("1", "1", "0.022510349999999998")}, 1, 1, ptr(0.022510349999999998), "run-model", "estimated"},
+		{"twenty-four decimal places are still a cost", []factRow{runTotal("1", "1", "0.000000000000000000000001")}, 1, 1, ptr(1e-24), "run-model", "estimated"},
 		{"thirteen integer digits are not a cost", []factRow{attempt("a", "1", "1", "1000000000000")}, 1, 1, nil, "a", "gateway"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
