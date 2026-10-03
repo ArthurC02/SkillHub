@@ -365,6 +365,7 @@ func TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources(t *testing.T
 	world, alice := newAliceWorld(t, a, pool)
 	bob := a.login(t, "matrix-bob")
 
+	waitForCleanup(t, alice, world.runID)
 	before := ownersRows(t, pool, world)
 	probed := 0
 	for _, tc := range strangerRoutes {
