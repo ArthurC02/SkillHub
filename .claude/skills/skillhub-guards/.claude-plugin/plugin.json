@@ -1,6 +1,6 @@
 {
   "name": "skillhub-guards",
-  "version": "0.1.0",
-  "description": "Stops subagents on the flagship model, unasked runtime image publishes, edits to other sessions' uncommitted files, and paid model stacks started by subagents",
+  "version": "0.2.0",
+  "description": "Stops flagship or fork subagents, subagent Git writes, installs, formatters and paid stacks, hand edits to generated files and agent caches, unsigned domain-memory commits, unasked runtime image publishes, and edits to other sessions' uncommitted files",
   "types": "./types/index.d.ts"
 }
