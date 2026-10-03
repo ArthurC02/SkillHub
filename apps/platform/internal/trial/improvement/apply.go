@@ -355,7 +355,10 @@ func patchArchive(data []byte, sourcePath string, patches map[string]string) ([]
 }
 
 func rewriteArchiveEntry(zw *zip.Writer, f *zip.File, name string, patch *string) (patched bool, err error) {
-	header := &zip.FileHeader{Name: name, Method: zip.Deflate, Modified: f.Modified}
+	header := &zip.FileHeader{
+		Name: name, Method: zip.Deflate, Modified: f.Modified,
+		CreatorVersion: f.CreatorVersion, ExternalAttrs: f.ExternalAttrs,
+	}
 	if strings.HasSuffix(f.Name, "/") {
 		header.Method = zip.Store
 	}
