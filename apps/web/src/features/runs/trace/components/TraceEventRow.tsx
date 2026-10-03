@@ -1,5 +1,6 @@
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import type { TraceEvent } from "../../trace.service";
+import { Reveal } from "../../../../shared/ui/Reveal";
 
 export function TraceEventRow({ event }: { event: TraceEvent }) {
   return (
@@ -13,8 +14,9 @@ export function TraceEventRow({ event }: { event: TraceEvent }) {
           ? ` · 已遮罩 ${event.masked_fields.length} 個欄位`
           : null}
       </p>
-      {/* payload is untrusted sandbox output; stringify + <pre> renders it as inert text, never HTML */}
-      <pre>{JSON.stringify(event.payload, null, 2)}</pre>
+      <pre>
+        <Reveal text={JSON.stringify(event.payload, null, 2)} />
+      </pre>
     </li>
   );
 }

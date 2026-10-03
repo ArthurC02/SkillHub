@@ -5,6 +5,7 @@ import { runStatusLabel } from "../../runs.model";
 import { verdictCell } from "./ComparisonLead.model";
 import { RerunCell } from "./RerunCell";
 import { SIDE_LABEL, costNote, credits } from "./ComparisonTables.model";
+import { Reveal } from "../../../../shared/ui/Reveal";
 
 function RunStatusHeader({ sides }: { sides: ComparisonSide[] }) {
   return (
@@ -73,7 +74,9 @@ export function RunStatusTable({ sides }: { sides: ComparisonSide[] }) {
             {sides.map((s) => (
               <td key={s.run_id}>
                 {s.final_output ? (
-                  <pre className="run-comparison-output">{s.final_output}</pre>
+                  <pre className="run-comparison-output">
+                    <Reveal text={s.final_output} />
+                  </pre>
                 ) : (
                   "未產生"
                 )}

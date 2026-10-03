@@ -16,7 +16,7 @@ function tsxFiles(at: string): Array<[string, string]> {
   return out;
 }
 
-const UNTRUSTED_PRE = /<pre className="(?:skill-md|diff)"[^>]*>\s*(<Reveal\b|[^\s])/g;
+const UNTRUSTED_PRE = /<pre\b[^>]*>\s*(<Reveal\b|[^\s])/g;
 
 test("every <pre> that shows somebody else's text goes through Reveal (04 丙-210)", () => {
   const offenders: string[] = [];

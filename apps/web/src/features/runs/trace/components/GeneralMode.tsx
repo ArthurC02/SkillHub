@@ -7,6 +7,7 @@ import { runStatusLabel } from "../../runs.model";
 import { IncompleteNotice } from "./IncompleteNotice";
 import { FailureClass } from "./FailureClass";
 import { RunCleanupStatus } from "./RunCleanupStatus";
+import { Reveal } from "../../../../shared/ui/Reveal";
 
 export function GeneralMode({
   runId,
@@ -83,7 +84,13 @@ export function GeneralMode({
       ) : null}
 
       <h3>最終輸出</h3>
-      {trace.final_output ? <pre>{trace.final_output}</pre> : <p>尚無最終輸出。</p>}
+      {trace.final_output ? (
+        <pre>
+          <Reveal text={trace.final_output} />
+        </pre>
+      ) : (
+        <p>尚無最終輸出。</p>
+      )}
 
       <h3>用量</h3>
       {trace.usage ? (
