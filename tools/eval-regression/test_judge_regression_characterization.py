@@ -79,16 +79,16 @@ def test_every_budget_cut_is_named_in_order_and_the_digest_keeps_the_tail():
     request, digest, final = jr.build_request(row("s", "r1", criteria), events, artifacts, "ev", rubric)
     assert request["truncation"] == ["final_output", "criteria", "artifacts", "trace_digest.entries",
                                      "trace_digest.entries[].excerpt"], request["truncation"]
-    assert len(final) == jr.MAX_FINAL_OUTPUT and request["final_output"] == final
-    assert [c["id"] for c in request["criteria"]] == [f"c{i}" for i in range(jr.MAX_CRITERIA)]
-    assert len(request["artifacts"]) == jr.MAX_ARTIFACT_ROWS
+    assert len(final) == 40000 and request["final_output"] == final
+    assert [c["id"] for c in request["criteria"]] == [f"c{i}" for i in range(20)]
+    assert len(request["artifacts"]) == 500
     entries = request["trace_digest"]["entries"]
-    assert len(entries) == jr.MAX_DIGEST_COUNT and entries[0]["trace_event_id"] == "e8"
+    assert len(entries) == 100 and entries[0]["trace_event_id"] == "e8"
     assert [e["trace_event_id"] for e in entries[-3:]] == ["big", "fin", "tail"]
-    assert len(entries[-3]["excerpt"]) == jr.MAX_DIGEST_ENTRY
+    assert len(entries[-3]["excerpt"]) == 8000
     assert request["rubric"] == {"items": [{"id": "r1"}]}
     assert request["trace_digest"]["complete"] is False
-    assert len(digest) == jr.MAX_DIGEST_COUNT
+    assert len(digest) == 100
 
 
 def test_a_rubric_within_budget_adds_its_criteria_without_a_cut():

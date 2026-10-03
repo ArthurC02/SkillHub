@@ -15,9 +15,10 @@ def _entry(**over):
     return e
 
 
-def _rejects(reason, **over):
+def _rejects(reason, message, **over):
     errors, _ = chk.check([_entry(**over)])
     assert errors, f"{reason} was accepted: {over}"
+    assert any(message in e for e in errors), (reason, message, errors)
     return errors
 
 
@@ -28,35 +29,35 @@ def test_valid_entry_passes():
 
 def test_cidr_pin_is_rejected():
     for cidr in ("0.0.0.0/0", "10.0.0.0/8", "10.1.2.3/32"):
-        _rejects("a CIDR pinned_ip", pinned_ip=cidr)
+        _rejects("a CIDR pinned_ip", "pinned_ip must be a single host address", pinned_ip=cidr)
 
 
 def test_hostname_pin_is_rejected():
-    _rejects("a hostname pinned_ip", pinned_ip="litellm.internal")
+    _rejects("a hostname pinned_ip", "pinned_ip must be a single host address", pinned_ip="litellm.internal")
 
 
 def test_missing_port_is_rejected():
     e = _entry()
     del e["port"]
     errors, _ = chk.check([e])
-    assert errors, "a sandbox entry with no port was accepted"
-    _rejects("a non-numeric port", port="4000")
-    _rejects("an out-of-range port", port=70000)
-    _rejects("a boolean port", port=True)
+    assert any("port must be an integer 1-65535, got None" in e for e in errors), errors
+    _rejects("a non-numeric port", "port must be an integer 1-65535", port="4000")
+    _rejects("an out-of-range port", "port must be an integer 1-65535", port=70000)
+    _rejects("a boolean port", "port must be an integer 1-65535", port=True)
 
 
 def test_ipv6_pin_is_rejected():
-    _rejects("an IPv6 pinned_ip", pinned_ip="2001:db8::1")
+    _rejects("an IPv6 pinned_ip", "is IPv6", pinned_ip="2001:db8::1")
 
 
 def test_loopback_pin_is_rejected():
-    _rejects("a loopback pinned_ip", pinned_ip="127.0.0.1")
-    _rejects("the unspecified address as pinned_ip", pinned_ip="0.0.0.0")
-    _rejects("a multicast pinned_ip", pinned_ip="224.0.0.1")
+    _rejects("a loopback pinned_ip", "is not a reachable unicast destination", pinned_ip="127.0.0.1")
+    _rejects("the unspecified address as pinned_ip", "is not a reachable unicast destination", pinned_ip="0.0.0.0")
+    _rejects("a multicast pinned_ip", "is not a reachable unicast destination", pinned_ip="224.0.0.1")
 
 
 def test_provider_domain_fqdn_is_rejected():
-    errors = _rejects("a model provider fqdn", fqdn="api.openai.com")
+    errors = _rejects("a model provider fqdn", "is a model provider domain", fqdn="api.openai.com")
     assert any("api.openai.com" in e and "model provider domain" in e for e in errors), errors
 
 

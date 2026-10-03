@@ -52,6 +52,8 @@ def test_the_self_check_passes_offline():
     lines = out.getvalue().splitlines()
     assert lines[-1].startswith("self-check: "), lines[-1]
     assert "FAIL" not in out.getvalue(), out.getvalue()
+    assert sum(1 for line in lines if line.endswith(" ok")) == 18, out.getvalue()
+    assert lines[-1] == "self-check: 18/18", lines[-1]
 
 
 def test_addr_rejects_an_ipv6_address():

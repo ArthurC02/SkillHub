@@ -52,7 +52,8 @@ def test_a_glob_reference_needs_only_its_directory_to_hold_a_file():
 def test_the_template_is_read_with_the_role_substituted():
     files = tree(**{"infra/deploy/node/bin/skillhub-bootstrap": None})
     assert problems_for(files) == [
-        "%s names infra/deploy/node/bin/skillhub-bootstrap, which the node checkout does not carry" % checkout.TEMPLATE]
+        "infra/deploy/cloud-init.yaml.tmpl names infra/deploy/node/bin/skillhub-bootstrap, "
+        "which the node checkout does not carry"]
 
 
 def test_an_entry_selecting_no_file_is_stale():

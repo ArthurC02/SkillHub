@@ -14,7 +14,6 @@ from judge_regression import (  # noqa: E402
     MATCH_EXACT,
     MATCH_NORMALIZED,
     MATCH_NOT_CHECKED,
-    MAX_DIGEST_ENTRY,
     MIN_NORMALIZED_QUOTE,
     RegressionRun,
     record,
@@ -61,8 +60,16 @@ def test_a_quote_with_a_trailing_structural_fragment_still_resolves():
     assert stored["match"] == MATCH_NORMALIZED, stored
 
 
-def test_whitespace_and_nfc_differences_do_not_lose_a_quote():
-    payload = {"text": "the quarterly figures\nwere restated in full"}
+def test_a_precomposed_quote_matches_a_decomposed_source_as_normalized():
+    composed_quote = "café au lait on the menu"
+    decomposed_source = "the café au lait on the menu today"
+    assert composed_quote not in decomposed_source
+    stored, why = verify({"kind": "agent_output", "quote": composed_quote}, {}, [], decomposed_source)
+    assert why == "", why
+    assert stored["match"] == MATCH_NORMALIZED, stored
+
+
+def test_whitespace_differences_do_not_lose_a_quote():
     ref = {"kind": "agent_output", "quote": "the quarterly figures were restated"}
     stored, why = verify(ref, {}, [], "the quarterly figures\nwere restated in full")
     assert why == "", why
@@ -188,25 +195,25 @@ def test_model_uncertainty_is_not_scored_as_a_wrong_answer():
 
 
 EXCERPT_CUT_DECISIONS = [
-    ("at the limit, whole trace_event pass stays passed", MAX_DIGEST_ENTRY, "trace_event", False, "passed"),
-    ("at the limit, whole agent_output pass stays passed", MAX_DIGEST_ENTRY, "agent_output", False, "passed"),
-    ("at the limit, whole artifact pass stays passed", MAX_DIGEST_ENTRY, "artifact", False, "passed"),
-    ("at the limit, batch cut downgrades trace_event pass", MAX_DIGEST_ENTRY, "trace_event", True, "undetermined"),
-    ("at the limit, batch cut downgrades agent_output pass", MAX_DIGEST_ENTRY, "agent_output", True, "undetermined"),
-    ("at the limit, batch cut downgrades artifact pass", MAX_DIGEST_ENTRY, "artifact", True, "undetermined"),
-    ("past the limit, trimmed trace_event pass is downgraded", MAX_DIGEST_ENTRY + 1, "trace_event", False, "undetermined"),
-    ("past the limit, agent_output pass is not about the trimmed source", MAX_DIGEST_ENTRY + 1, "agent_output", False, "passed"),
-    ("past the limit, artifact pass is not about the trimmed source", MAX_DIGEST_ENTRY + 1, "artifact", False, "passed"),
-    ("past the limit with batch cut, trace_event pass is downgraded", MAX_DIGEST_ENTRY + 1, "trace_event", True, "undetermined"),
-    ("past the limit with batch cut, agent_output pass is downgraded", MAX_DIGEST_ENTRY + 1, "agent_output", True, "undetermined"),
-    ("past the limit with batch cut, artifact pass is downgraded", MAX_DIGEST_ENTRY + 1, "artifact", True, "undetermined"),
+    ("at the limit, whole trace_event pass stays passed", 8000, "trace_event", False, "passed"),
+    ("at the limit, whole agent_output pass stays passed", 8000, "agent_output", False, "passed"),
+    ("at the limit, whole artifact pass stays passed", 8000, "artifact", False, "passed"),
+    ("at the limit, batch cut downgrades trace_event pass", 8000, "trace_event", True, "undetermined"),
+    ("at the limit, batch cut downgrades agent_output pass", 8000, "agent_output", True, "undetermined"),
+    ("at the limit, batch cut downgrades artifact pass", 8000, "artifact", True, "undetermined"),
+    ("past the limit, trimmed trace_event pass is downgraded", 8001, "trace_event", False, "undetermined"),
+    ("past the limit, agent_output pass is not about the trimmed source", 8001, "agent_output", False, "passed"),
+    ("past the limit, artifact pass is not about the trimmed source", 8001, "artifact", False, "passed"),
+    ("past the limit with batch cut, trace_event pass is downgraded", 8001, "trace_event", True, "undetermined"),
+    ("past the limit with batch cut, agent_output pass is downgraded", 8001, "agent_output", True, "undetermined"),
+    ("past the limit with batch cut, artifact pass is downgraded", 8001, "artifact", True, "undetermined"),
 ]
 
 
 def stored_result_after_cut(size, kind, model_result, batch_cut):
     payload = {"text": "x" * (size - len(json.dumps({"text": ""})))}
     assert len(json.dumps(payload, ensure_ascii=False)) == size
-    cuts = ["trace_digest.entries[].excerpt"] if size > MAX_DIGEST_ENTRY else []
+    cuts = ["trace_digest.entries[].excerpt"] if size > 8000 else []
     if batch_cut:
         cuts.append("trace_digest.entries")
     request = request_of(criteria=[("r1", "produces a report")], truncation=cuts)

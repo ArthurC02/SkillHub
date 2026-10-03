@@ -4,7 +4,9 @@ import os
 import pathlib
 import subprocess
 import sys
+import shutil
 import tempfile
+import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 BIN = ROOT / "infra" / "deploy" / "sandbox" / "bin"
@@ -20,7 +22,10 @@ def fake(directory, name, body):
 
 class Node:
     def __init__(self):
-        self.root = pathlib.Path(tempfile.mkdtemp())
+        if os.name != "posix" or shutil.which("sh") is None:
+            raise unittest.SkipTest("the node scripts under test are POSIX sh and need POSIX file modes and an sh on PATH")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self._tmp.name)
         self.bin = self.root / "bin"
         self.bin.mkdir()
         self.secrets = self.root / "secrets"
@@ -128,11 +133,12 @@ def mark_serving(isolation):
     env = dict(node.env, SKILLHUB_NODE_FACTS=str(facts), SKILLHUB_SANDBOX_CONFIG=str(config),
                FAKE_CURL_CONFIG=str(node.root / "curl-config"), FAKE_CURL_ARGS=str(node.root / "curl-args"))
     result = subprocess.run(["sh", str(BIN / "skillhub-mark-serving")], env=env, capture_output=True, text=True)
-    return result, json.loads(facts.read_text()), node.root
+    return result, json.loads(facts.read_text()), node
 
 
 def test_a_node_isolating_strongly_is_marked_serving_and_the_token_never_reaches_argv():
-    result, facts, root = mark_serving("strong")
+    result, facts, node = mark_serving("strong")
+    root = node.root
     assert result.returncode == 0, result.stderr
     assert facts == {"node_id": "n1", "role": "sandbox-exec", "build_phase": "serving"}, facts
     assert (root / "curl-config").read_text() == 'header = "Authorization: Bearer %s"\n' % TOKEN
@@ -153,6 +159,8 @@ if __name__ == "__main__":
             try:
                 test()
                 print("ok   %s" % name)
+            except unittest.SkipTest as skipped:
+                print("skip %s: %s" % (name, skipped))
             except AssertionError as error:
                 failures += 1
                 print("FAIL %s: %s" % (name, error))
