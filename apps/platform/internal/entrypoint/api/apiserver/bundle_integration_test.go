@@ -242,6 +242,26 @@ func TestAPublishedBundleShowsItsMembersAndWhatChangedSinceTheLastRelease(t *tes
 	}
 }
 
+func TestPublishingTheSameBundleVersionAgainKeepsItsOneRelease(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("rebundle-alice"))
+	registerPublisher(t, alice, freshName("rebundle"))
+	bundle, _, _ := bundleOfTwo(t, alice, "rebundle")
+	if code, body := postJSON(t, alice, "/me/bundles/"+bundle+"/publication", `{"rights_attested":true}`); code != http.StatusOK {
+		t.Fatalf("first publish: %d %v", code, body)
+	}
+
+	code, body := postJSON(t, alice, "/me/bundles/"+bundle+"/publication", `{"rights_attested":true}`)
+
+	if code != http.StatusOK {
+		t.Fatalf("publishing the same bundle version again: %d %v, want 200", code, body)
+	}
+	if releases := objects(t, body["releases"]); len(releases) != 1 {
+		t.Errorf("releases = %v, want the one release kept: a repeated publish must not reset its exposure review", releases)
+	}
+}
+
 func TestTheBundleOverviewKeepsTheNewestVersionSeparateFromTheNewestRelease(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

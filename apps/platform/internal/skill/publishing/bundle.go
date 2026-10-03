@@ -398,6 +398,13 @@ func (s *Service) bundleVersion(ctx context.Context, q *gen.Queries, ws identity
 	}, nil
 }
 
+type bundleRelease struct {
+	name     string
+	version  BundleVersion
+	findings []byte
+	in       BundlePublishInput
+}
+
 func (s *Service) PublishBundle(ctx context.Context, ws identity.Workspace, bundleName string, in BundlePublishInput) (Publication, error) {
 	bundleVersion, err := s.bundleVersion(ctx, gen.New(s.Pool), ws, bundleName, in.Version)
 	if err != nil {
@@ -411,61 +418,78 @@ func (s *Service) PublishBundle(ctx context.Context, ws identity.Workspace, bund
 	if err != nil {
 		return Publication{}, err
 	}
-
-	tx, err := s.Pool.Begin(ctx)
-	if err != nil {
-		return Publication{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	q := gen.New(tx)
-	if err := lockPublisher(ctx, q, ws); err != nil {
-		return Publication{}, err
-	}
-	bundle, err := q.LockBundle(ctx, gen.LockBundleParams{WorkspaceID: ws.ID, Name: bundleName})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Publication{}, ErrNotFound
-	}
-	if err != nil {
-		return Publication{}, err
-	}
-	if refused, err := s.memberGate(ctx, tx, ws, bundleVersion.Members, in.attestation()); err != nil || refused != nil {
-		if refused != nil {
-			return Publication{}, refused
-		}
-		return Publication{}, err
-	}
-	publication, err := bundlePublicationToRelease(ctx, q, ws, bundle, in.Name)
-	if err != nil {
-		return Publication{}, err
-	}
-	release, err := q.InsertBundleRelease(ctx, gen.InsertBundleReleaseParams{
-		BundleVersionID: bundleVersion.ID, ContentHash: bundleVersion.ContentHash, Findings: encodedFindings,
-		RightsAttested: in.RightsAttested, ReleasedBy: ws.OwnerUserID,
-		PublicationID: publication.ID, WorkspaceID: ws.ID,
-	})
-	if err != nil {
-		return Publication{}, err
-	}
-	if err := audit.Log(ctx, tx, audit.Event{
-		Actor: ws.OwnerUserID, Workspace: ws.ID,
-		Action: audit.ActionPublicationRelease, ResourceType: audit.ResourcePublication, ResourceID: publication.ID,
-		Metadata: map[string]any{
-			auditKeyName:        publication.Name,
-			"bundle":            bundleName,
-			"bundle_version_id": pgconv.UUIDString(bundleVersion.ID),
-			"version":           bundleVersion.Version,
-			auditKeyContentHash: bundleVersion.ContentHash,
-			"rights_attested":   in.RightsAttested,
-			auditKeyReleaseID:   pgconv.UUIDString(release.ID),
-		},
+	if err := s.releaseBundle(ctx, ws, bundleRelease{
+		name: bundleName, version: bundleVersion, findings: encodedFindings, in: in,
 	}); err != nil {
-		return Publication{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
 		return Publication{}, err
 	}
 	own, _, err := s.OwnBundlePublication(ctx, ws, bundleName)
 	return own, err
+}
+
+func (s *Service) releaseBundle(ctx context.Context, ws identity.Workspace, r bundleRelease) error {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := gen.New(tx)
+	if err := lockPublisher(ctx, q, ws); err != nil {
+		return err
+	}
+	bundle, err := q.LockBundle(ctx, gen.LockBundleParams{WorkspaceID: ws.ID, Name: r.name})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if refused, err := s.memberGate(ctx, tx, ws, r.version.Members, r.in.attestation()); err != nil || refused != nil {
+		if refused != nil {
+			return refused
+		}
+		return err
+	}
+	publication, err := bundlePublicationToRelease(ctx, q, ws, bundle, r.in.Name)
+	if err != nil {
+		return err
+	}
+	released, err := latestReleaseIs(ctx, q, publication, func(latest gen.PublicationRelease) bool {
+		return latest.BundleVersionID == r.version.ID && latest.ContentHash == r.version.ContentHash
+	})
+	if err != nil {
+		return err
+	}
+	if !released {
+		if err := recordBundleRelease(ctx, tx, ws, publication, r); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+func recordBundleRelease(ctx context.Context, tx pgx.Tx, ws identity.Workspace, publication gen.Publication, r bundleRelease) error {
+	release, err := gen.New(tx).InsertBundleRelease(ctx, gen.InsertBundleReleaseParams{
+		BundleVersionID: r.version.ID, ContentHash: r.version.ContentHash, Findings: r.findings,
+		RightsAttested: r.in.RightsAttested, ReleasedBy: ws.OwnerUserID,
+		PublicationID: publication.ID, WorkspaceID: ws.ID,
+	})
+	if err != nil {
+		return err
+	}
+	return audit.Log(ctx, tx, audit.Event{
+		Actor: ws.OwnerUserID, Workspace: ws.ID,
+		Action: audit.ActionPublicationRelease, ResourceType: audit.ResourcePublication, ResourceID: publication.ID,
+		Metadata: map[string]any{
+			auditKeyName:        publication.Name,
+			"bundle":            r.name,
+			"bundle_version_id": pgconv.UUIDString(r.version.ID),
+			"version":           r.version.Version,
+			auditKeyContentHash: r.version.ContentHash,
+			"rights_attested":   r.in.RightsAttested,
+			auditKeyReleaseID:   pgconv.UUIDString(release.ID),
+		},
+	})
 }
 
 func (s *Service) scanMembers(ctx context.Context, ws identity.Workspace, members []BundleMember) (skillpkg.CategorizedFindings, error) {

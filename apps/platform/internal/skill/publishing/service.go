@@ -635,6 +635,14 @@ func releasesOf(ctx context.Context, q *gen.Queries, publicationID pgtype.UUID) 
 }
 
 func alreadyReleased(ctx context.Context, q *gen.Queries, publication gen.Publication, version VersionFacts) (bool, error) {
+	return latestReleaseIs(ctx, q, publication, func(latest gen.PublicationRelease) bool {
+		return latest.SkillVersionID == version.ID && latest.ContentHash == version.ContentHash
+	})
+}
+
+func latestReleaseIs(
+	ctx context.Context, q *gen.Queries, publication gen.Publication, same func(gen.PublicationRelease) bool,
+) (bool, error) {
 	if publication.Status != string(StatusPublished) {
 		return false, nil
 	}
@@ -642,6 +650,5 @@ func alreadyReleased(ctx context.Context, q *gen.Queries, publication gen.Public
 	if err != nil || len(releases) == 0 {
 		return false, err
 	}
-	latest := releases[0]
-	return latest.SkillVersionID == version.ID && latest.ContentHash == version.ContentHash, nil
+	return same(releases[0]), nil
 }
