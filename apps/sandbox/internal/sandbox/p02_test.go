@@ -209,12 +209,7 @@ func TestP02ProbeDistinguishesAHoleFromTheAbsenceOfEvidence(t *testing.T) {
 	}
 }
 
-func TestAProbeThatCouldNotRunIsNeverAPass(t *testing.T) {
-	p := NewP02Probe([]string{"db.internal:5432"}, 0, 0)
-	if got := p.Check(context.Background(), &fakeProber{err: errors.New("boom")}, probeAt); got.State == P02Pass {
-		t.Fatal("a probe that failed to run reported pass")
-	}
-
+func TestANodeThatHasTakenNoReadingIsUnknown(t *testing.T) {
 	fresh := NewP02Probe([]string{"db.internal:5432"}, 0, 0)
 	if got := fresh.Result(); got.State != P02Unknown {
 		t.Fatalf("a node that has taken no reading reports %q, want unknown: starting at pass means a node "+

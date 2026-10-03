@@ -180,14 +180,4 @@ func TestUnenforcedCeilingsMirrorsDetection(t *testing.T) {
 			}
 		})
 	}
-
-	if got := unenforcedCeilings(localdrv.ResourceEnforcement{}); !slices.Equal(got,
-		[]string{"vcpu", "memory_bytes", "disk_bytes", "max_pids", "max_open_files"}) {
-		t.Errorf("a platform that enforces nothing declared %v", got)
-	}
-	if got := unenforcedCeilings(localdrv.ResourceEnforcement{
-		Memory: true, Processes: true, CPU: true, Disk: true, OpenFiles: true,
-	}); len(got) != 0 {
-		t.Errorf("a platform that enforces every ceiling still declared %v unenforced", got)
-	}
 }

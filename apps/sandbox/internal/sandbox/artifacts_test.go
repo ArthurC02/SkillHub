@@ -113,20 +113,44 @@ func TestArtifactUploadAcceptsOnlyFinalSuccessStatuses(t *testing.T) {
 	}
 }
 
-func TestFilterArchiveBoundsTheNumberOfManifestEntries(t *testing.T) {
+func emptyArtifacts(n int) map[string][]byte {
 	files := map[string][]byte{}
-	for i := range artifactMaxEntries + 5 {
+	for i := range n {
 		files[fmt.Sprintf("artifacts/f%04d.txt", i)] = nil
 	}
-	manifest, _, _, err := unpackFiltered(filterArchive(tarOf(t, files), DefaultLimits))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(manifest) != artifactMaxEntries {
-		t.Fatalf("manifest holds %d entries, want the %d ceiling", len(manifest), artifactMaxEntries)
-	}
-	if !manifest[0].Truncated {
-		t.Error("entries were dropped but the collection is not marked truncated")
+	return files
+}
+
+func TestFilterArchiveKeepsEachCeilingInclusive(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		limits        ResourceLimits
+		files         map[string][]byte
+		wantKept      int
+		wantTruncated bool
+	}{
+		{"a file exactly at the per-file ceiling", ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 1 << 20},
+			map[string][]byte{"artifacts/a": bytes.Repeat([]byte("a"), 16)}, 1, false},
+		{"a file one byte over it", ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 1 << 20},
+			map[string][]byte{"artifacts/a": bytes.Repeat([]byte("a"), 17)}, 0, true},
+		{"files filling the run ceiling exactly", ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 12},
+			map[string][]byte{"artifacts/a": bytes.Repeat([]byte("a"), 6), "artifacts/b": bytes.Repeat([]byte("b"), 6)}, 2, false},
+		{"files one byte over it", ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 12},
+			map[string][]byte{"artifacts/a": bytes.Repeat([]byte("a"), 6), "artifacts/b": bytes.Repeat([]byte("b"), 7)}, 1, true},
+		{"a thousand entries", DefaultLimits, emptyArtifacts(1000), 1000, false},
+		{"a thousand and one entries", DefaultLimits, emptyArtifacts(1001), 1000, true},
+		{"unset ceilings fall back to the defaults", ResourceLimits{},
+			map[string][]byte{"artifacts/a": bytes.Repeat([]byte("a"), 1<<20)}, 1, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			manifest, _, truncated, err := unpackFiltered(filterArchive(tarOf(t, tc.files), tc.limits))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(manifest) != tc.wantKept || truncated != tc.wantTruncated {
+				t.Fatalf("kept %d truncated %v, want %d and %v", len(manifest), truncated, tc.wantKept, tc.wantTruncated)
+			}
+		})
 	}
 }
 
