@@ -105,12 +105,14 @@ func (d *Driver) Close() error { return d.cli.Close() }
 
 var errAddressUnreadable = errors.New("no address on the run network")
 
+func workShare(diskBytes int64) int64 { return diskBytes * workDirDiskShares / totalDiskShares }
+
 func name(providerRunID string) string { return "skillhub-run-" + providerRunID }
 
 func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) error {
 	lim := req.ResourceLimits
 
-	workBytes := lim.DiskBytes * workDirDiskShares / totalDiskShares
+	workBytes := workShare(lim.DiskBytes)
 	outBytes := lim.DiskBytes - workBytes
 	mount := func(size int64, extra string) string {
 		return fmt.Sprintf("rw,nosuid,nodev,size=%d,uid=%d,gid=%d,mode=0700%s", size, d.cfg.UID, d.cfg.GID, extra)
