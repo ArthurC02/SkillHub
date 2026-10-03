@@ -24,6 +24,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 )
 
@@ -285,11 +286,8 @@ func (c *goldenCorpus) indexFile(t *testing.T, file string) {
 		EnrichmentStatus: "enriched", EnrichmentModel: &enriched.Model, EnrichmentPromptVersion: &enriched.Version,
 	}
 	if c.hybrid {
-		var tags map[string][]string
-		if err := json.Unmarshal(enriched.Tags, &tags); err != nil {
-			t.Fatal(err)
-		}
-		vector := pgvector.NewVector(c.vectors.lookup(goldenEmbeddingText(front.Name, enriched.Summary, examples, tags)))
+		text := ingest.EmbeddingText(front.Name, front.Description, enriched.Summary, projection.TaskExamples, enriched.Tags)
+		vector := pgvector.NewVector(c.vectors.lookup(text))
 		projection.Embedding = &vector
 	}
 	err = c.svc.IndexSkillEnriched(c.ctx, tx, projection)
@@ -348,21 +346,6 @@ func goldenTaskExamples(examples []goldenTaskExample) []string {
 		}
 	}
 	return texts
-}
-
-func goldenEmbeddingText(name, summary string, examples []string, tags map[string][]string) string {
-	parts := []string{name + ": " + summary}
-	if len(examples) > 0 {
-		parts = append(parts, strings.Join(examples, "\n"))
-	}
-	var flat []string
-	for _, bucket := range []string{"inputs", "outputs", "tools", "dependencies"} {
-		flat = append(flat, tags[bucket]...)
-	}
-	if len(flat) > 0 {
-		parts = append(parts, strings.Join(flat, " "))
-	}
-	return strings.Join(parts, "\n")
 }
 
 func (c *goldenCorpus) requireIndexed(t *testing.T, files int) int {

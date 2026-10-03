@@ -10,6 +10,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 )
 
@@ -59,20 +60,6 @@ func anchorFrontInputs() []string {
 
 func anchorExamples() []goldenTaskExample {
 	return []goldenTaskExample{{Zh: " 中文 ", En: "en"}, {Zh: "", En: "  "}, {Zh: "zh2", En: ""}}
-}
-
-type anchorEmbedCase struct {
-	name, summary string
-	examples      []string
-	tags          map[string][]string
-}
-
-func anchorEmbedCases() []anchorEmbedCase {
-	return []anchorEmbedCase{
-		{"n", "s", []string{"e1", "e2"}, map[string][]string{"inputs": {"i"}, "tools": {"t1", "t2"}, "other": {"x"}}},
-		{"n", "s", nil, nil},
-		{"n", "s", nil, map[string][]string{"dependencies": {"d"}, "outputs": {"o"}}},
-	}
 }
 
 func anchorIntentRequests(t *testing.T) map[string]intentGatewayRequest {
@@ -344,12 +331,21 @@ func TestGoldenTaskExamplesKeepTrimmedNonBlankTextInOrder(t *testing.T) {
 	}
 }
 
-func TestTheGoldenEmbeddingTextJoinsSummaryExamplesAndFourTagBuckets(t *testing.T) {
-	want := []string{"n: s\ne1\ne2\ni t1 t2", "n: s", "n: s\no d"}
-	for i, c := range anchorEmbedCases() {
-		if got := goldenEmbeddingText(c.name, c.summary, c.examples, c.tags); got != want[i] {
-			t.Errorf("case %d: goldenEmbeddingText = %q, want %q", i, got, want[i])
-		}
+func TestTheEmbeddingTextJoinsSummaryExamplesAndFourTagBuckets(t *testing.T) {
+	for _, c := range []struct {
+		name, summary, enriched, examples, tags, want string
+	}{
+		{"examples and tags", "s", "e", "e1\ne2", `{"inputs":["i"],"tools":["t1","t2"],"other":["x"]}`, "n: e\ne1\ne2\ni t1 t2"},
+		{"summary only", "s", "e", "", "", "n: e"},
+		{"buckets in fixed order", "s", "e", "", `{"dependencies":["d"],"outputs":["o"]}`, "n: e\no d"},
+		{"no enriched summary falls back", "s", "", "", "", "n: s"},
+		{"unreadable tags are left out", "s", "e", "", `{"inputs":`, "n: e"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := ingest.EmbeddingText("n", c.summary, c.enriched, c.examples, []byte(c.tags)); got != c.want {
+				t.Errorf("EmbeddingText = %q, want %q", got, c.want)
+			}
+		})
 	}
 }
 

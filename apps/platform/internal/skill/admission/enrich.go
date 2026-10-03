@@ -177,6 +177,12 @@ func embeddingText(name string, e enrichment) string {
 	return strings.Join(parts, "\n")
 }
 
+func EmbeddingText(name, summary, enrichedSummary, taskExamples string, tags []byte) string {
+	return embeddingText(name, enrichment{
+		summary: summary, enrichedSummary: enrichedSummary, taskExamples: taskExamples, tags: tags,
+	})
+}
+
 func (e enrichment) flatTags() string {
 	var t SkillTags
 	if len(e.tags) == 0 || json.Unmarshal(e.tags, &t) != nil {
