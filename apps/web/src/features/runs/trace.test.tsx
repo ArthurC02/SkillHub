@@ -690,6 +690,41 @@ test("the advanced trace stops polling once the run has ended", async () => {
   }
 });
 
+test("the advanced trace reads once more when the run ends so its closing events show", async () => {
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+  try {
+    const general = { ...summary, status: "running" };
+    const advancedReadsAfterEnd: string[] = [];
+    stubTrace(general, (url) => {
+      if (url.includes("mode=advanced") && general.status === "succeeded")
+        advancedReadsAfterEnd.push(url);
+      return advanced;
+    });
+    await render();
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+    await act(async () => {
+      Array.from(container.querySelectorAll("button"))
+        .find((b) => b.textContent === "進階模式")
+        ?.click();
+    });
+    await waitFor(() => container.querySelector("table") !== null);
+    general.status = "succeeded";
+    for (let tick = 0; tick < 3; tick += 1) {
+      await act(async () => {
+        vi.advanceTimersByTime(1600);
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 30));
+      });
+    }
+    expect(advancedReadsAfterEnd).toHaveLength(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 test("no trace polling happens while the tab is hidden", async () => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
   try {
