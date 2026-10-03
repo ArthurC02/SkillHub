@@ -27,6 +27,8 @@ type fakeDriver struct {
 	release           map[string]chan sandbox.Outcome
 	startErr          error
 	removeErr         error
+	waitErr           error
+	adoptErr          error
 	startEntered      chan struct{}
 	startRelease      chan struct{}
 	removeDeadlines   []bool
@@ -85,7 +87,11 @@ func (f *fakeDriver) Start(_ context.Context, id string, _ sandbox.RunRequest) e
 func (f *fakeDriver) Wait(ctx context.Context, id string) (sandbox.Outcome, error) {
 	f.mu.Lock()
 	ch := f.release[id]
+	waitErr := f.waitErr
 	f.mu.Unlock()
+	if waitErr != nil {
+		return sandbox.Outcome{}, waitErr
+	}
 	select {
 	case out := <-ch:
 		return out, nil
@@ -166,6 +172,9 @@ func (f *fakeDriver) appendRawTrace(id, raw string) {
 func (f *fakeDriver) Adopt(context.Context) ([]sandbox.Adopted, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.adoptErr != nil {
+		return nil, f.adoptErr
+	}
 
 	for _, a := range f.adopted {
 		f.release[a.ProviderRunID] = make(chan sandbox.Outcome, 1)
@@ -700,6 +709,84 @@ func TestAdoptedRunWithholdsOutputItCannotMask(t *testing.T) {
 	}
 	if !strings.Contains(final.StateReason, "withheld") {
 		t.Errorf("state_reason = %q, want it to say the output was withheld and why", final.StateReason)
+	}
+}
+
+func TestARunTheDriverLostTrackOfFailsAsARetryableExecutionError(t *testing.T) {
+	drv, h := newServer(t)
+	drv.waitErr = errors.New("container inspect failed")
+
+	_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
+	final := waitForTerminal(t, h, run.ProviderRunID)
+
+	if final.State != "failed" || final.StateReason != "sandbox could not be followed to its end" {
+		t.Fatalf("state = %q reason = %q, want failed / sandbox could not be followed to its end", final.State, final.StateReason)
+	}
+	if final.Result == nil || final.Result.Status != "failed" || final.Result.Error == nil ||
+		final.Result.Error.Class != "execution" || !final.Result.Error.Retryable {
+		t.Fatalf("result = %+v, want a failed result with a retryable execution error", final.Result)
+	}
+}
+
+func TestCancelOfAHandleNobodyIssuedIs404(t *testing.T) {
+	_, h := newServer(t)
+	rec, _ := do(t, h, "POST", "/runs/5f0c9e2a7b1d4c3e8a6f2b9d0e1c7a34/cancel", nil, testToken)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("cancel of an unknown handle: got %d, want 404", rec.Code)
+	}
+}
+
+func adoptedRun(id string, running bool, deadline time.Time) sandbox.Adopted {
+	return sandbox.Adopted{
+		ProviderRunID: id,
+		RunID:         "11111111-1111-1111-1111-111111111111",
+		RunAttemptID:  "22222222-2222-2222-2222-222222222222",
+		Attempt:       1,
+		Running:       running,
+		HardDeadline:  deadline,
+	}
+}
+
+func TestAnAdoptedRunThatHadStoppedFailsRetryably(t *testing.T) {
+	drv := newFakeDriver()
+	const id = "adopted-stopped"
+	drv.adopted = []sandbox.Adopted{adoptedRun(id, false, time.Now().Add(time.Minute))}
+	m := newManager(drv)
+	if err := m.Adopt(context.Background()); err != nil {
+		t.Fatalf("adopt: %v", err)
+	}
+
+	final, err := m.Get(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if final.State != "failed" || final.StateReason != "provider restarted while the attempt was in flight" ||
+		final.Result == nil || final.Result.Error == nil || !final.Result.Error.Retryable {
+		t.Fatalf("adopted stopped run = %+v, want failed, retryable, provider restarted", final)
+	}
+}
+
+func TestAnAdoptedRunPastItsHardDeadlineIsStoppedAsTimedOut(t *testing.T) {
+	drv := newFakeDriver()
+	const id = "adopted-overdue"
+	drv.adopted = []sandbox.Adopted{adoptedRun(id, true, time.Now().Add(-time.Minute))}
+	m := newManager(drv)
+	h := (&sandbox.Server{M: m, Token: testToken}).Routes()
+	if err := m.Adopt(context.Background()); err != nil {
+		t.Fatalf("adopt: %v", err)
+	}
+
+	final := waitForTerminal(t, h, id)
+	if final.State != "failed" || final.Result == nil || final.Result.Status != "timed_out" {
+		t.Fatalf("overdue adopted run = %+v, want failed with a timed_out result", final)
+	}
+}
+
+func TestAnAdoptionTheDriverCouldNotListIsReported(t *testing.T) {
+	drv := newFakeDriver()
+	drv.adoptErr = errors.New("docker is down")
+	if err := newManager(drv).Adopt(context.Background()); !errors.Is(err, drv.adoptErr) {
+		t.Fatalf("adopt = %v, want the driver's error", err)
 	}
 }
 
