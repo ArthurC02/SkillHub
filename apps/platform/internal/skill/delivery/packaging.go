@@ -199,6 +199,7 @@ type Plan struct {
 	Profile Profile
 
 	IncludeTestCases bool
+	forRecipient     bool
 	Allowed          bool
 	BlockedReason    string
 	BlockedMessage   string
@@ -265,7 +266,7 @@ func (s *Service) Plan(ctx context.Context, ws identity.Workspace, req PackageRe
 
 	p := &Plan{
 		Skill: skill, Version: version, Profile: profile,
-		IncludeTestCases: req.IncludeTestCases, Retention: retention,
+		IncludeTestCases: req.IncludeTestCases, Retention: retention, forRecipient: req.forRecipient,
 		LatestVersionNumber: summary.LatestVersionNumber,
 		Validation:          ManifestValidation{Errors: []ManifestFinding{}, Warnings: []ManifestFinding{}, Infos: []ManifestFinding{}},
 		Included:            []IncludedTestCase{}, Excluded: []ExcludedTestCase{},
@@ -334,6 +335,18 @@ func redistributionGate(redistribution Redistribution) (reason, message string) 
 	}
 }
 
+func (s *Service) withTestCases(ctx context.Context, ws identity.Workspace, p *Plan, files []exportFile) ([]exportFile, error) {
+	if p.forRecipient {
+		return files, nil
+	}
+	cases, err := s.selectTestCases(ctx, ws, p.Skill, p.IncludeTestCases)
+	if err != nil {
+		return nil, err
+	}
+	p.Included, p.Excluded = cases.included, cases.excluded
+	return append(files, cases.files...), nil
+}
+
 func (s *Service) build(ctx context.Context, ws identity.Workspace, p *Plan) error {
 	source, err := s.readSource(ctx, p.Version)
 	if err != nil {
@@ -360,12 +373,10 @@ func (s *Service) build(ctx context.Context, ws identity.Workspace, p *Plan) err
 		files[i].data = patched
 	}
 
-	cases, err := s.selectTestCases(ctx, ws, p.Skill, p.IncludeTestCases)
+	files, err = s.withTestCases(ctx, ws, p, files)
 	if err != nil {
 		return err
 	}
-	p.Included, p.Excluded = cases.included, cases.excluded
-	files = append(files, cases.files...)
 
 	report := validate(files)
 	p.Dependencies = dependencyNotes(report)
@@ -607,7 +618,7 @@ func (s *Service) CreateForRecipient(
 	ctx context.Context, recipient identity.Workspace, sourceWorkspaceID, skillID, versionID pgtype.UUID,
 ) (Result, error) {
 	return s.create(ctx, identity.Workspace{ID: sourceWorkspaceID}, recipient, PackageRequest{
-		SkillID: skillID, VersionID: versionID, Target: StandardTargetID,
+		SkillID: skillID, VersionID: versionID, Target: StandardTargetID, forRecipient: true,
 	})
 }
 
@@ -616,6 +627,8 @@ type PackageRequest struct {
 	VersionID        pgtype.UUID
 	Target           string
 	IncludeTestCases bool
+
+	forRecipient bool
 }
 
 func (s *Service) create(ctx context.Context, source, recipient identity.Workspace, req PackageRequest) (Result, error) {

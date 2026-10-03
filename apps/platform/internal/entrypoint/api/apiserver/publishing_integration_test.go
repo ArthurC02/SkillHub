@@ -2,6 +2,7 @@ package apiserver_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -475,6 +476,35 @@ func TestAcquiringAPublicationRecordsADownloadInTheAcquirersOwnWorkspace(t *test
 
 	if code, again := acquire(t, bob, address); code != http.StatusCreated || again["artifact_id"] != artifactID || again["duplicate"] != true {
 		t.Errorf("acquiring the same release again: %d %v, want the kept artifact %s", code, again, artifactID)
+	}
+}
+
+func TestAnAcquiredPackageNamesNoneOfTheAuthorsTestCases(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("acquire-private-alice"))
+	bob := a.login(t, freshName("acquire-private-bob"))
+	skillID, _, address := publishedSkill(t, alice, "acquire-private")
+	seedTestCase(t, pool, alice.workspaceID, skillID)
+
+	code, body := acquire(t, bob, address)
+	if code != http.StatusCreated {
+		t.Fatalf("bob acquiring %s: %d %v", address, code, body)
+	}
+	manifest := map[string]any{}
+	for name, content := range zipEntries(t, a, body["content_hash"].(string)) {
+		if strings.HasSuffix(name, "skillhub-manifest.json") {
+			if err := json.Unmarshal(content, &manifest); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	excluded, present := manifest["excluded_test_cases"].([]any)
+	if !present {
+		t.Fatalf("manifest has no excluded_test_cases list: %v", manifest)
+	}
+	if len(excluded) != 0 {
+		t.Errorf("bob's manifest lists the author's test cases: %v", excluded)
 	}
 }
 
