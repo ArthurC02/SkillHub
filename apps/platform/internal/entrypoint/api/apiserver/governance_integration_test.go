@@ -643,6 +643,47 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	}
 }
 
+func TestAccountPurgeCompletesWhenAPermissionConfirmationWasNeverRun(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	a := newAPI(t, pool)
+	carol := a.login(t, freshName("carol-confirmed-purge"))
+
+	skillID := seedSkill(t, pool, carol.workspaceID, freshName("carol-confirmed"))
+	version := seedVersion(t, pool, carol.workspaceID, skillID, "hash-"+skillID)
+	var testCaseID pgtype.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
+		VALUES ($1, $2, 'tc-confirmed', 'confirmed but never run') RETURNING id`,
+		mustUUID(t, carol.workspaceID), mustUUID(t, skillID)).Scan(&testCaseID); err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, pool, `
+		INSERT INTO run_permission_confirmations (workspace_id, skill_version_id, test_case_id, summary_hash, confirmed_by)
+		VALUES ($1, $2, $3, 'summary', $4)`,
+		mustUUID(t, carol.workspaceID), version.ID, testCaseID, mustUUID(t, carol.userID))
+
+	if status, _ := deleteJSON(t, carol, "/me"); status != http.StatusOK {
+		t.Fatalf("DELETE /me: got %d", status)
+	}
+	if _, err := a.auth.Service.PurgeExpiredAccounts(ctx, &recordingStore{}, 0, 100); err != nil {
+		t.Fatalf("purge with an unrun confirmation: %v", err)
+	}
+	var started bool
+	if err := pool.QueryRow(ctx, `SELECT purge_started_at IS NOT NULL FROM users WHERE id = $1`,
+		mustUUID(t, carol.userID)).Scan(&started); err != nil {
+		t.Fatal(err)
+	}
+	var left int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM run_permission_confirmations WHERE workspace_id = $1`,
+		mustUUID(t, carol.workspaceID)).Scan(&left); err != nil {
+		t.Fatal(err)
+	}
+	if !started || left != 0 {
+		t.Errorf("after purge: purge started %v, confirmations left %d; want true and 0", started, left)
+	}
+}
+
 type purgeWorld struct {
 	private, shared                string
 	sharedVer                      gen.SkillVersion

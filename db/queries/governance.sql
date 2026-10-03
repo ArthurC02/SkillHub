@@ -47,7 +47,7 @@ RETURNING u.id;
 
 -- name: MarkAccountPurgeStarted :execrows
 UPDATE users SET purge_started_at = coalesce(purge_started_at, now()), updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL AND deletion_requested_at IS NOT NULL;
+WHERE id = @id AND deleted_at IS NULL AND deletion_requested_at <= @cutoff;
 
 -- name: ListWorkspaceDatasetObjectKeys :many
 SELECT d.object_key FROM datasets d WHERE d.workspace_id = $1
