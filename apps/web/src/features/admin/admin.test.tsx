@@ -199,8 +199,11 @@ test("OPS-001: a member who types an /admin address gets the missing page and no
   stub(false);
   await mountAt("/");
   for (const path of ADMIN_PATHS) {
+    await go("/");
+    await waitFor(() => !has("這一頁現在不存在")());
     await go(path);
     await waitFor(has("這一頁現在不存在"));
+    expect(window.location.pathname).toBe(path);
     expect(container.querySelector('nav[aria-label="後台"]'), path).toBeNull();
   }
   expect(calls.filter((c) => c.url.startsWith("/admin"))).toEqual([]);
@@ -437,6 +440,9 @@ test("OPS-004: a restriction is set with the known reason code and lifted by the
   await click(button("解除受限"));
   await waitFor(() => calls.some((c) => c.method === "DELETE"));
   expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({ note: "cleared" });
+  await waitFor(has("沒有受限"));
+  expect(has("受限展示：")()).toBe(false);
+  expect(has("設定受限展示")()).toBe(true);
 });
 
 test("OPS-004: a name matching several skills lists a way to pick each and offers no action yet", async () => {
@@ -806,6 +812,29 @@ test("OPS-008: the trends are asked for once, not again when the window regains 
   expect(trendCalls().length).toBe(asked);
 });
 
+test("OPS-008: useTrend itself refuses a focus refetch even when the app default would allow it", async () => {
+  const defaults = queryClient.getDefaultOptions();
+  queryClient.setDefaultOptions({
+    queries: { ...defaults.queries, refetchOnWindowFocus: true, staleTime: 0 },
+  });
+  try {
+    stub(true);
+    await mountAt("/admin/trends");
+    await waitFor(has("全平台目前餘額總和"));
+    const asked = trendCalls().length;
+    expect(asked).toBeGreaterThan(0);
+    await act(async () => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(trendCalls().length).toBe(asked);
+  } finally {
+    focusManager.setFocused(undefined);
+    queryClient.setDefaultOptions(defaults);
+  }
+});
+
 test("OPS-008: a member who types the trends address gets the missing page and no trend request", async () => {
   stub(false);
   await mountAt("/admin/trends");
@@ -886,6 +915,14 @@ test("DISC-007: a decision and reason are both required before submission", asyn
   expect(button("送出審核結論").disabled).toBe(true);
   await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
   expect(button("送出核准").disabled).toBe(false);
+});
+
+test("DISC-007: a decision chosen without a reason keeps submission disabled", async () => {
+  stub(true);
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核這一版"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
+  expect(button("送出核准").disabled).toBe(true);
 });
 
 test("DISC-007: an empty queue is named as a genuine zero, not a blank list", async () => {

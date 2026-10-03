@@ -364,9 +364,11 @@ test("only `allowed` opens the packaging entry, and unknown is refused like bloc
 });
 
 test("every refusal the contract can send has a sentence on this page", () => {
-  for (const value of Object.values(PackagingBlockedReasonEnum)) {
+  const reasons = Object.values(PackagingBlockedReasonEnum);
+  expect(reasons.length).toBeGreaterThanOrEqual(6);
+  for (const value of reasons) {
     const label = PACKAGING_BLOCKED_LABEL[value as PackagingBlockedReason];
-    expect(label, `no sentence for blocked_reason ${value}`).toBeTruthy();
+    expect(label, `no sentence for blocked_reason ${value}`).toMatch(/[一-鿿]/);
   }
 });
 
@@ -491,11 +493,17 @@ test("DESIGN-012 the three compatibility axes are on the packaging page and stay
 });
 
 function elementSaying(needle: string): Element {
-  const found = Array.from(container.querySelectorAll("h1,h2,h3,p,li,span,code,strong,a")).find(
+  const holders = Array.from(container.querySelectorAll("h1,h2,h3,p,li,span,code,strong,a")).filter(
     (el) => (el.textContent ?? "").includes(needle) && el.children.length < 4,
   );
-  expect(found, `找不到「${needle}」——這一句在頁面上消失了，不只是被折起來`).toBeDefined();
-  return found!;
+  const innermost = holders.filter(
+    (el) => !holders.some((other) => other !== el && el.contains(other)),
+  );
+  expect(
+    innermost,
+    `「${needle}」要剛好一個元素在說——0 個是這一句消失了，不只是被折起來；多個是這句話太泛、可能量錯元素`,
+  ).toHaveLength(1);
+  return innermost[0]!;
 }
 
 const SKILL_WITH_DETAILS = {
@@ -601,16 +609,11 @@ test("04 R-42(c)③ 相容性：三軸的驗證狀態留在外面，逐軸備註
   stubPlatform({ skill: SKILL_WITH_DETAILS });
   await render(<Packaging />, () => text().includes("這個版本的相容性"));
 
-  for (const verdict of [
-    "規格驗證：通過",
-    "能力相容：已啟用",
-    "執行環境相容：腳本未執行,由模型轉譯",
-  ]) {
-    expect(
-      elementSaying(verdict).closest("details"),
-      `「${verdict}」是驗證狀態，不准折進 <details>`,
-    ).toBeNull();
-  }
+  const verdict = "規格驗證：通過／能力相容：已啟用／執行環境相容：腳本未執行,由模型轉譯";
+  expect(
+    elementSaying(verdict).closest("details"),
+    `「${verdict}」是驗證狀態，不准折進 <details>`,
+  ).toBeNull();
 
   for (const detail of [
     "套件宣告的 Runtime 這個映像沒有",
@@ -752,7 +755,7 @@ test("WS-004 an expired package stays in the list, says it expired, and offers n
   expect(links).toHaveLength(1);
 });
 
-test("04 丙-91 a lost package is not told the retention story", async () => {
+test("04 丙-91 a lost row shows its own note and none of the expired-row facts", async () => {
   vi.stubGlobal("fetch", () =>
     json({
       downloads: [
@@ -775,7 +778,9 @@ test("04 丙-91 a lost package is not told the retention story", async () => {
   expect(text()).toContain("是平台這一側的問題");
   expect(text()).toContain("請回報");
   const row = container.querySelector(".download-item")!;
-  expect(row.textContent).not.toContain("到期後檔案刪除");
+  expect(row.textContent).toContain("檔案遺失");
+  expect(row.textContent).not.toContain("已過期");
+  expect(row.textContent).not.toContain("檔案已刪除");
   expect(row.textContent).not.toContain("這筆紀錄保留");
   expect(row.textContent).not.toContain("到期時間");
   expect(
@@ -1130,7 +1135,7 @@ test("打包預覽發生未分類讀取錯誤時，不顯示伺服器原始訊�
   expect(text()).not.toContain("database connection details");
 });
 
-test("丙-155⑦ purged 印 serve_state.note，不印到期時間或到期後檔案刪除", async () => {
+test("丙-155⑦ purged 的列印 serve_state.note，不印到期時間或已過期的事實", async () => {
   vi.stubGlobal("fetch", () =>
     json({
       downloads: [
@@ -1152,7 +1157,8 @@ test("丙-155⑦ purged 印 serve_state.note，不印到期時間或到期後檔
 
   expect(text()).toContain("儲存的位元組已經不在了");
   const row = container.querySelector(".download-item")!;
+  expect(row.textContent).toContain("檔案不存在");
+  expect(row.textContent).not.toContain("已過期");
+  expect(row.textContent).not.toContain("檔案已刪除");
   expect(row.textContent).not.toContain("到期時間");
-  expect(row.textContent).not.toContain("到期後檔案刪除");
-  expect(row.textContent).not.toContain("這筆紀錄保留。「已過期");
 });

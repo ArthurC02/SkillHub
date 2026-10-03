@@ -319,6 +319,7 @@ export function useTrend<T extends Trend<DailyCount>>(
     queryKey: queryKeys.admin.trend(path, days),
     queryFn: () => apiFetch<T>(`/admin/trends/${path}?days=${days}`),
     enabled: useOperator(),
+    refetchOnWindowFocus: false,
   });
 }
 

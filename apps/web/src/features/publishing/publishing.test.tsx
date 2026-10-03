@@ -419,6 +419,7 @@ test("an older Bundle row exports and first publishes the immutable version show
     version: "1.0.0",
     rights_attested: false,
   });
+  expect(publicationReads).toBe(0);
 });
 
 test("an older published Bundle row republishes the immutable version shown on that row", async () => {
@@ -1179,6 +1180,7 @@ test("PublishPanel：不是擁有者時整塊不顯示", async () => {
     </div>,
     () => container.querySelector("[data-testid=wrap]") !== null,
   );
+  await waitFor(() => queryClient.isFetching() === 0);
 
   expect(text()).toBe("");
   expect(calls.some((url) => url.includes("/me/publications"))).toBe(false);

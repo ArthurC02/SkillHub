@@ -126,7 +126,7 @@ test("丙-151: 檔案輸入框之前有匯入頁同樣的規則句", async () =>
   await render();
 
   const rule = container.querySelector("ul.note");
-  expect(rule, "找不到規則句的 <ul class=note>").toBeDefined();
+  expect(rule, "找不到規則句的 <ul class=note>").not.toBeNull();
   expect(rule!.textContent).toContain("SKILL.md");
   expect(rule!.textContent).toContain("大小上限見拒絕訊息");
 

@@ -68,11 +68,15 @@ function detailBody() {
 }
 
 function stubOwner(detail: Record<string, unknown> = {}) {
-  const calls: Array<{ url: string; method: string }> = [];
+  const calls: Array<{ url: string; method: string; body?: unknown }> = [];
   let category = CATEGORIES.documents;
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
-    calls.push({ url, method: init?.method ?? "GET" });
+    calls.push({
+      url,
+      method: init?.method ?? "GET",
+      body: init?.body ? JSON.parse(String(init.body)) : undefined,
+    });
     const path = url.split("?")[0];
     if (path === "/me") return json({ user_id: "u-1", workspace_id: "ws-1" });
     if (path.endsWith("/category") && init?.method === "PUT") {
@@ -143,11 +147,17 @@ const settledAsOwner = () => text().includes("此小工具的測試題");
 const settledAsVisitor = () => text().includes("登入後即可把這個小工具複製");
 
 function elementSaying(needle: string): Element {
-  const found = Array.from(container.querySelectorAll("h1,h2,h3,p,li,span,code,strong,a")).find(
+  const holders = Array.from(container.querySelectorAll("h1,h2,h3,p,li,span,code,strong,a")).filter(
     (el) => (el.textContent ?? "").includes(needle) && el.children.length < 4,
   );
-  expect(found, `找不到「${needle}」——這一句在頁面上消失了，不只是被折起來`).toBeDefined();
-  return found!;
+  const innermost = holders.filter(
+    (el) => !holders.some((other) => other !== el && el.contains(other)),
+  );
+  expect(
+    innermost,
+    `「${needle}」要剛好一個元素在說——0 個是這一句消失了，不只是被折起來；多個是這句話太泛、可能量錯元素`,
+  ).toHaveLength(1);
+  return innermost[0]!;
 }
 
 test("r2: 重排之後，擁有者看到的填色動作仍然只有一個，而且是打包", async () => {
@@ -181,7 +191,7 @@ test("§2.10: 十項判斷事實一項都不在 <details> 裡", async () => {
     "已啟用",
     "腳本未執行,由模型轉譯",
     "License 已宣告",
-    "可再散布",
+    "可再散布MIT，可再散布。",
     "套件宣告可用的工具",
     "收錄不等於精選。",
     "未測量（沒有擷取到，不代表沒有）",
@@ -249,23 +259,34 @@ test("§2.13: 「模型寫的、沒有人核對」在這一頁只講一次，而
   stubOwner();
   await render(<SkillDetail />, settledAsOwner);
 
-  expect(text(), "同一句但書在一頁上印了不只一次（§2.13 去重第 1／2 條）").not.toContain(
-    "由模型產生，未經人工核對",
-  );
+  const count = (needle: string) => text().split(needle).length - 1;
+  expect(
+    count("「AI 產生」的項目由模型重述套件內容，未經人工核對。"),
+    "同一句但書在一頁上要剛好印一次（§2.13 去重第 1／2 條）",
+  ).toBe(1);
   expect(
     container.querySelector(".badge-source-model[title], .badge-source-template[title]"),
   ).toBeNull();
   expect(text()).toContain("AI 產生");
-  expect(text()).toContain("「AI 產生」的項目由模型重述套件內容，未經人工核對。");
 });
 
 test("§2.6: 通過的來源可用性探測折進識別碼，降級自述不跟著進去", async () => {
-  stubOwner();
+  stubOwner({
+    source: {
+      ...detailBody().source,
+      last_checked_at: "2026-09-20T10:00:00Z",
+      availability: { value: "lost", label: "來源已失效", note: "連續七天以上抓不到。" },
+    },
+  });
   await render(<SkillDetail />, settledAsOwner);
 
-  const probe = elementSaying("最近一次來源可用性檢查");
-  expect(probe.closest("details"), "這一句以前平鋪在「它從哪裡來」的第一層").not.toBeNull();
-  expect(container.querySelector("details")?.textContent).not.toContain("來源已失效");
+  const folded = elementSaying("最近一次來源可用性檢查").closest("details");
+  expect(folded, "這一句以前平鋪在「它從哪裡來」的第一層").not.toBeNull();
+  expect(folded!.textContent).not.toContain("來源已失效");
+  expect(
+    elementSaying("來源已失效").closest("details"),
+    "降級自述是判斷事實，不准折起來",
+  ).toBeNull();
 });
 
 const PLUGIN_SOURCE = {
@@ -452,7 +473,11 @@ test("05 R-19: 擁有者看得到類別選單，四個選項齊全，送出後�
   );
   await waitFor(() => text().includes("類別已更新。"));
 
-  expect(calls).toContainEqual({ url: `/skills/${SKILL}/category`, method: "PUT" });
+  expect(calls).toContainEqual({
+    url: `/skills/${SKILL}/category`,
+    method: "PUT",
+    body: { category: "writing" },
+  });
   await waitFor(() => container.querySelector("header .badge-row")!.textContent!.includes("寫作"));
 });
 

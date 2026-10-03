@@ -119,6 +119,10 @@ test("GEN-002: task_description 非空時顯示逐字的任務描述句", async 
   await render(<SkillDetail />, settledAsVisitor);
 
   expect(text()).toContain("來源：由平台依你的任務描述生成");
+  const disclosure = Array.from(container.querySelectorAll("details")).find((d) =>
+    d.textContent?.includes("你當時輸入的任務描述"),
+  );
+  expect(disclosure?.querySelector("p")?.textContent).toBe("把 PDF 轉成摘要");
 });
 
 test("a generated 小工具 keeps its current Version when continuing to 測試題", async () => {

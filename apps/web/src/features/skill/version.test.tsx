@@ -3,6 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
+import { queryKeys } from "../../core/api/queryKeys";
 import {
   OWN_PUBLICATION,
   OWN_PUBLICATIONS,
@@ -201,6 +202,14 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
 
 const text = () => container.textContent ?? "";
 
+async function settleReads() {
+  await waitFor(
+    () =>
+      queryClient.getQueryState(queryKeys.me)?.status === "success" && !queryClient.isFetching(),
+  );
+  await act(async () => {});
+}
+
 test("an owned immutable version becomes one shareable context for validation, package and release", async () => {
   stubVersions();
   await render(() => text().includes("已列入 Catalog"));
@@ -230,6 +239,7 @@ test("an owned immutable version becomes one shareable context for validation, p
   expect(
     continuation.compareDocumentPosition(evidence) & Node.DOCUMENT_POSITION_FOLLOWING,
   ).not.toBe(0);
+  await settleReads();
   expect(text()).not.toContain("Activity");
   expect(text()).not.toContain("Studio 歷程");
 });
@@ -400,6 +410,7 @@ test("a retained creation session gives the immutable version a Studio continuat
 test("the immutable version exposes no Studio context while creation is disabled", async () => {
   const calls = stubVersions();
   await render(() => text().includes("PDF Summariser v2"));
+  await settleReads();
 
   expect(text()).not.toContain("Studio 歷程");
   expect(calls.some((call) => call.startsWith("/creation-sessions"))).toBe(false);
