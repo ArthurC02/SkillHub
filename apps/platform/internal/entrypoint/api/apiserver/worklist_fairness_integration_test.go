@@ -293,54 +293,67 @@ func (w *rotationWorld) runCleanupRotates(t *testing.T) (oldFailedRun, untriedRu
 	return oldFailedRun, untriedRun
 }
 
-func (w *rotationWorld) insertRunOutput(t *testing.T, runID, key string, created time.Time) {
+func (w *rotationWorld) insertRunOutput(t *testing.T, runID, key string, created time.Time) string {
 	t.Helper()
-	if _, err := w.pool.Exec(context.Background(), `
+	var id string
+	if err := w.pool.QueryRow(context.Background(), `
 			INSERT INTO artifacts
 			(workspace_id, run_id, kind, file_name, content_type, size_bytes,
 			 content_hash, object_key, scan_status, expires_at, created_at)
 			VALUES ($1, $2, 'run_output', $3, 'application/octet-stream', 1,
-			        $3, $3, 'available', $4, $5)`,
-		mustUUID(t, w.f.workspaceID), mustUUID(t, runID), key, created, created); err != nil {
+			        $3, $3, 'available', $4, $5) RETURNING id::text`,
+		mustUUID(t, w.f.workspaceID), mustUUID(t, runID), key, created, created).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
+	return id
 }
 
 func (w *rotationWorld) runOutputRetentionRotates(t *testing.T, oldFailedRun, untriedRun string) {
-	w.insertRunOutput(t, oldFailedRun, w.tag+"-run-output-old", w.base)
-	w.insertRunOutput(t, untriedRun, w.tag+"-run-output-new", w.base.Add(time.Minute))
+	outputOld := w.insertRunOutput(t, oldFailedRun, w.tag+"-run-output-old", w.base)
+	outputNew := w.insertRunOutput(t, untriedRun, w.tag+"-run-output-new", w.base.Add(time.Minute))
 	first, second := claimTwice(t, "run-output retention claim", func() ([]gen.ListRunOutputsPastRetentionRow, error) {
 		return w.q.ListRunOutputsPastRetention(context.Background(), gen.ListRunOutputsPastRetentionParams{ClaimLease: sweepClaim(), BatchSize: 1})
 	})
 	assertClaimsRotate(t, "run-output retention", uuidText(first.ID), uuidText(second.ID))
-}
-
-func (w *rotationWorld) insertDataset(t *testing.T, key string, expires, created time.Time) {
-	t.Helper()
-	if _, err := w.pool.Exec(context.Background(), `
-			INSERT INTO datasets
-			(workspace_id, test_case_id, file_name, content_type, size_bytes,
-			 content_hash, object_key, expires_at, created_at)
-			VALUES ($1, $2, $3, 'text/plain', 1, $3, $3, $4, $5)`,
-		mustUUID(t, w.f.workspaceID), mustUUID(t, w.f.testCaseID), key, expires, created); err != nil {
-		t.Fatal(err)
+	if uuidText(first.ID) != outputOld || uuidText(second.ID) != outputNew {
+		t.Fatalf("run-output retention claimed %s then %s, want %s then %s", uuidText(first.ID), uuidText(second.ID), outputOld, outputNew)
 	}
 }
 
+func (w *rotationWorld) insertDataset(t *testing.T, key string, expires, created time.Time) string {
+	t.Helper()
+	var id string
+	if err := w.pool.QueryRow(context.Background(), `
+			INSERT INTO datasets
+			(workspace_id, test_case_id, file_name, content_type, size_bytes,
+			 content_hash, object_key, expires_at, created_at)
+			VALUES ($1, $2, $3, 'text/plain', 1, $3, $3, $4, $5) RETURNING id::text`,
+		mustUUID(t, w.f.workspaceID), mustUUID(t, w.f.testCaseID), key, expires, created).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
 func (w *rotationWorld) datasetWorklistsRotate(t *testing.T) {
-	w.insertDataset(t, w.tag+"-dataset-claim-old", w.now.Add(time.Hour), w.base)
-	w.insertDataset(t, w.tag+"-dataset-claim-new", w.now.Add(time.Hour), w.base.Add(time.Minute))
+	claimOld := w.insertDataset(t, w.tag+"-dataset-claim-old", w.now.Add(time.Hour), w.base)
+	claimNew := w.insertDataset(t, w.tag+"-dataset-claim-new", w.now.Add(time.Hour), w.base.Add(time.Minute))
 	claim1, claim2 := claimTwice(t, "dataset claim", func() ([]gen.ListDatasetsClaimingObjectRow, error) {
 		return w.q.ListDatasetsClaimingObject(context.Background(), gen.ListDatasetsClaimingObjectParams{ClaimLease: sweepClaim(), BatchSize: 1})
 	})
 	assertClaimsRotate(t, "dataset reconciliation", uuidText(claim1.ID), uuidText(claim2.ID))
+	if uuidText(claim1.ID) != claimOld || uuidText(claim2.ID) != claimNew {
+		t.Fatalf("dataset reconciliation claimed %s then %s, want %s then %s", uuidText(claim1.ID), uuidText(claim2.ID), claimOld, claimNew)
+	}
 
-	w.insertDataset(t, w.tag+"-dataset-expire-old", w.base, w.base)
-	w.insertDataset(t, w.tag+"-dataset-expire-new", w.base.Add(time.Minute), w.base.Add(time.Minute))
+	expireOld := w.insertDataset(t, w.tag+"-dataset-expire-old", w.base, w.base)
+	expireNew := w.insertDataset(t, w.tag+"-dataset-expire-new", w.base.Add(time.Minute), w.base.Add(time.Minute))
 	expiry1, expiry2 := claimTwice(t, "dataset retention claim", func() ([]gen.ListDatasetsPastRetentionRow, error) {
 		return w.q.ListDatasetsPastRetention(context.Background(), gen.ListDatasetsPastRetentionParams{ClaimLease: sweepClaim(), BatchSize: 1})
 	})
 	assertClaimsRotate(t, "dataset retention", uuidText(expiry1.ID), uuidText(expiry2.ID))
+	if uuidText(expiry1.ID) != expireOld || uuidText(expiry2.ID) != expireNew {
+		t.Fatalf("dataset retention claimed %s then %s, want %s then %s", uuidText(expiry1.ID), uuidText(expiry2.ID), expireOld, expireNew)
+	}
 }
 
 func (w *rotationWorld) insertCleanupIntent(t *testing.T, key string, notBefore time.Time) string {
@@ -379,6 +392,9 @@ func (w *rotationWorld) accountPurgeRotates(t *testing.T, a *api) {
 		})
 	})
 	assertClaimsRotate(t, "account purge", uuidText(account1), uuidText(account2))
+	if uuidText(account1) != older.userID || uuidText(account2) != newer.userID {
+		t.Fatalf("account purge claimed %s then %s, want %s then %s", uuidText(account1), uuidText(account2), older.userID, newer.userID)
+	}
 }
 
 func (w *rotationWorld) enrichmentRotates(t *testing.T) {
@@ -394,6 +410,9 @@ func (w *rotationWorld) enrichmentRotates(t *testing.T) {
 		return w.q.ListPendingEnrichment(context.Background(), gen.ListPendingEnrichmentParams{ClaimLease: sweepClaim(), BatchSize: 1})
 	})
 	assertClaimsRotate(t, "enrichment", uuidText(enrichment1.SkillID), uuidText(enrichment2.SkillID))
+	if uuidText(enrichment1.SkillID) != w.f.skillID || uuidText(enrichment2.SkillID) != secondSkill {
+		t.Fatalf("enrichment claimed %s then %s, want %s then %s", uuidText(enrichment1.SkillID), uuidText(enrichment2.SkillID), w.f.skillID, secondSkill)
+	}
 }
 
 func TestWorklistAttemptsResetOnlyWhenWorkBecomesFreshAgain(t *testing.T) {

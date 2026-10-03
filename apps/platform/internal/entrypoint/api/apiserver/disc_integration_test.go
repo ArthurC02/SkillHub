@@ -1271,9 +1271,7 @@ func TestLicensingHoldClosesTheMaterialsAndKeepsTheListing(t *testing.T) {
 	if rest == nil || rest["reason"] != "license-review" {
 		t.Fatalf("detail did not disclose the hold: %+v", detail["access_restriction"])
 	}
-	if rest["note"] == "" || detail["summary"] == "" {
-		t.Fatalf("hold left the reader with nothing: note=%v summary=%v", rest["note"], detail["summary"])
-	}
+	assertTheHoldLeavesTheReaderAnExplanation(t, rest, detail)
 
 	code, files := anon.doJSON(t, http.MethodGet, "/api/skills/"+held+"/files", "")
 	if code != http.StatusForbidden {
@@ -1289,6 +1287,15 @@ func TestLicensingHoldClosesTheMaterialsAndKeepsTheListing(t *testing.T) {
 	}
 	if code := anon.status(t, http.MethodGet, "/api/skills/"+free+"/files"); code != http.StatusOK {
 		t.Fatalf("GET /files on an unrestricted skill answered %d, want 200", code)
+	}
+}
+
+func assertTheHoldLeavesTheReaderAnExplanation(t *testing.T, restriction, detail map[string]any) {
+	t.Helper()
+	note, noted := restriction["note"].(string)
+	summary, summarised := detail["summary"].(string)
+	if !noted || note == "" || !summarised || summary == "" {
+		t.Fatalf("hold left the reader with nothing: note=%v summary=%v", restriction["note"], detail["summary"])
 	}
 }
 

@@ -164,8 +164,15 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 		t.Errorf("provider on a fleet-less deployment = %q, want unassigned", s.Provider.Name)
 	}
 
-	if s.ResourceLimits != run.DefaultResourceLimits() {
-		t.Errorf("resource limits shown = %+v, want DefaultResourceLimits", s.ResourceLimits)
+	wantLimits := run.ResourceLimits{
+		VCPU: 2, MemoryBytes: 4 << 30, DiskBytes: 8 << 30, MaxPIDs: 256, MaxOpenFiles: 1024,
+		WallClockSoftSeconds: 600, WallClockHardSeconds: 900,
+		ArtifactTotalBytes: 100 << 20, ArtifactFileBytes: 25 << 20,
+	}
+	wantLimits.TokenBudget.MaxInputTokens = 300_000
+	wantLimits.TokenBudget.MaxOutputTokens = 60_000
+	if s.ResourceLimits != wantLimits {
+		t.Errorf("resource limits shown = %+v, want %+v", s.ResourceLimits, wantLimits)
 	}
 	if len(view.Notes) == 0 {
 		t.Error("the summary carries no explanatory notes")

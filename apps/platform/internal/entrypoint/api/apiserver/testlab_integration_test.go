@@ -168,10 +168,20 @@ func assertBlankAndOverLongPromptsRefused(t *testing.T, alice *client, skillID, 
 		}
 	}
 
-	code, _ := alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
+	code, body := alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
+		fmt.Sprintf(`{"user_prompt":%q}`, strings.Repeat("x", testlab.MaxPromptBytes)))
+	if prompt, _ := body["user_prompt"].(string); code != http.StatusOK || len(prompt) != testlab.MaxPromptBytes {
+		t.Errorf("patch with a prompt of exactly the limit: got %d with %d bytes stored, want 200 and the full prompt", code, len(prompt))
+	}
+	code, _ = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
 		fmt.Sprintf(`{"user_prompt":%q}`, strings.Repeat("x", testlab.MaxPromptBytes+1)))
-	if code != http.StatusRequestEntityTooLarge && code != http.StatusBadRequest {
+	if code != http.StatusBadRequest {
 		t.Errorf("patch with an over-long prompt: got %d, want 400", code)
+	}
+	code, _ = alice.doJSON(t, http.MethodPost, "/test-cases",
+		fmt.Sprintf(`{"skill_id":%q,"name":"long","user_prompt":%q}`, skillID, strings.Repeat("x", testlab.MaxPromptBytes+1)))
+	if code != http.StatusBadRequest {
+		t.Errorf("create with an over-long prompt: got %d, want 400", code)
 	}
 }
 
@@ -416,8 +426,9 @@ func TestDatasetUploadStoresAndAssociates(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("GET /test-cases/limits: got %d", code)
 	}
-	if int64(limits["max_file_bytes"].(float64)) != testlab.MaxFileBytes ||
-		int(limits["max_files_per_test_case"].(float64)) != testlab.MaxFilesPerTestCase ||
+	if int64(limits["max_file_bytes"].(float64)) != 25<<20 ||
+		int64(limits["max_test_case_bytes"].(float64)) != 100<<20 ||
+		int(limits["max_files_per_test_case"].(float64)) != 20 ||
 		int(limits["retention_days"].(float64)) != 90 {
 		t.Errorf("published limits disagree with the enforced ones: %v", limits)
 	}
@@ -935,10 +946,12 @@ func addTwoCriteriaConfirmOneAndSetARubric(t *testing.T, alice *client, first st
 
 func assertFirstCaseAggregatesOneOfTwoWithRubric(t *testing.T, rows []map[string]any, first string) {
 	t.Helper()
+	matched := 0
 	for _, row := range rows {
 		if row["test_case_id"] != first {
 			continue
 		}
+		matched++
 		if row["criteria_total"] != float64(2) || row["criteria_confirmed"] != float64(1) {
 			t.Errorf("criteria aggregates = %v/%v, want 1/2",
 				row["criteria_confirmed"], row["criteria_total"])
@@ -946,6 +959,9 @@ func assertFirstCaseAggregatesOneOfTwoWithRubric(t *testing.T, rows []map[string
 		if row["has_rubric"] != true {
 			t.Errorf("has_rubric = %v after a rubric was set", row["has_rubric"])
 		}
+	}
+	if matched != 1 {
+		t.Fatalf("the list holds %d rows for test case %s, want exactly 1", matched, first)
 	}
 }
 

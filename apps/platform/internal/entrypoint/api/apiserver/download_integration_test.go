@@ -404,7 +404,7 @@ func TestDownloadingServesTheBytesAndWritesBothARecordAndAnAuditEvent(t *testing
 	c := a.login(t, "downloader")
 	art := buildDownload(t, a, pool, c, "served-skill")
 
-	assertServesTheStoredZipUnderItsOwnName(t, a, c, art)
+	assertServesTheStoredZipUnderItsOwnName(t, pool, a, c, art)
 
 	if n := downloadRecordCount(t, pool, art.ArtifactID); n != 1 {
 		t.Errorf("download_records: got %d rows, want 1", n)
@@ -434,7 +434,7 @@ func TestDownloadingServesTheBytesAndWritesBothARecordAndAnAuditEvent(t *testing
 	}
 }
 
-func assertServesTheStoredZipUnderItsOwnName(t *testing.T, a *api, c *client, art downloadView) {
+func assertServesTheStoredZipUnderItsOwnName(t *testing.T, pool *pgxpool.Pool, a *api, c *client, art downloadView) {
 	t.Helper()
 	resp, data := c.fetchContent(t, art.ArtifactID)
 	if resp.StatusCode != http.StatusOK {
@@ -454,7 +454,12 @@ func assertServesTheStoredZipUnderItsOwnName(t *testing.T, a *api, c *client, ar
 		t.Errorf("Content-Length %d announced for %d served bytes", resp.ContentLength, len(data))
 	}
 
-	if want := a.packages["downloads/"+c.workspaceID+"/"+art.ContentHash+".zip"]; string(data) != string(want) {
+	key := storedObjectKey(t, pool, art.ArtifactID)
+	want, ok := a.packages[key]
+	if !ok {
+		t.Fatalf("the object store holds nothing under the artifact's recorded key %q", key)
+	}
+	if string(data) != string(want) {
 		t.Error("the served bytes are not the stored object")
 	}
 }
@@ -512,10 +517,14 @@ func TestPackagingWaitsForRetentionOfTheSameSharedObject(t *testing.T) {
 
 	entered := make(chan struct{})
 	release := make(chan struct{})
+	releaseGuard := sync.OnceFunc(func() { close(release) })
+	t.Cleanup(releaseGuard)
+	holder := make(chan uint32, 1)
 	guardDone := make(chan error, 1)
 	go func() {
 		guardDone <- (&packaging.Service{Pool: pool}).GuardArtifactRemoval(ctx, objectKey,
-			func(_ bool, _ pgx.Tx) error {
+			func(_ bool, tx pgx.Tx) error {
+				holder <- tx.Conn().PgConn().PID()
 				close(entered)
 				<-release
 				return nil
@@ -548,13 +557,13 @@ func TestPackagingWaitsForRetentionOfTheSameSharedObject(t *testing.T) {
 		_, _ = io.Copy(io.Discard, resp.Body)
 		result <- response{status: resp.StatusCode}
 	}()
+	waitUntilALockWaiterIsBlockedBy(t, pool, <-holder)
 	select {
 	case got := <-result:
-		close(release)
 		t.Fatalf("packaging crossed an in-flight retention lock: status=%d err=%v", got.status, got.err)
-	case <-time.After(250 * time.Millisecond):
+	default:
 	}
-	close(release)
+	releaseGuard()
 	if err := <-guardDone; err != nil {
 		t.Fatal(err)
 	}
@@ -581,6 +590,8 @@ func TestPackagingWaitsForDeletionOfTheSameSharedObject(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := &blockingRemoveStore{packageStore: a.packages, entered: make(chan struct{}), release: make(chan struct{})}
+	releaseStore := sync.OnceFunc(func() { close(store.release) })
+	t.Cleanup(releaseStore)
 	a.packaging.Store = store
 
 	type response struct {
@@ -610,17 +621,18 @@ func TestPackagingWaitsForDeletionOfTheSameSharedObject(t *testing.T) {
 		t.Fatal("delete did not reach object removal")
 	}
 
+	waitersBefore := advisoryLockWaiters(t, pool)
 	packaged := make(chan response, 1)
 	go func() {
 		packaged <- request(http.MethodPost, packagingPath(skillID, versionID), `{"target":"standard"}`)
 	}()
+	waitUntilMoreAdvisoryLockWaitersThan(t, pool, waitersBefore)
 	select {
 	case got := <-packaged:
-		close(store.release)
 		t.Fatalf("packaging crossed the delete's object lock with status %d, err %v", got.status, got.err)
-	case <-time.After(250 * time.Millisecond):
+	default:
 	}
-	close(store.release)
+	releaseStore()
 	if got := <-deleteDone; got.err != nil || got.status != http.StatusNoContent {
 		t.Fatalf("DELETE status = %d, err %v", got.status, got.err)
 	}
@@ -951,7 +963,7 @@ func TestAReturningObjectResetsTheSightingCount(t *testing.T) {
 		t.Error("the count did not start over, so one round after a flap was enough to mark the row")
 	}
 	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusNotFound {
-		t.Log("note: the object is missing again, so the download correctly fails at fetch time")
+		t.Errorf("the object is missing again, so the download must fail at fetch time with 404, got %d", resp.StatusCode)
 	}
 }
 

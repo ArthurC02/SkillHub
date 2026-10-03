@@ -416,7 +416,7 @@ func TestTraceCursorAssignmentSerializesWithCommitPerRun(t *testing.T) {
 	insert := `INSERT INTO trace_events
 		(event_id, workspace_id, run_id, attempt, seq, occurred_at, event_type, source,
 		 schema_version, masked, masked_fields, payload, late)
-		VALUES (gen_random_uuid(), $1, $2, 1, $3, now(), 'script_log', 'sandbox',
+		VALUES (gen_random_uuid(), $1, $2, $3::int, $3::int, now(), 'script_log', 'sandbox',
 		        '1.0', true, '[]', '{}', false)`
 	if _, err := tx1.Exec(ctx, insert, owner.workspaceID, runID, 1); err != nil {
 		t.Fatal(err)
@@ -432,10 +432,11 @@ func TestTraceCursorAssignmentSerializesWithCommitPerRun(t *testing.T) {
 		_, execErr := tx2.Exec(ctx, insert, owner.workspaceID, runID, 2)
 		second <- execErr
 	}()
+	waitUntilTheSecondInsertWaitsOnALock(t, pool, tx2.Conn().PgConn().PID())
 	select {
 	case err := <-second:
 		t.Fatalf("second insert did not wait for the first commit: %v", err)
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 	if err := tx1.Commit(ctx); err != nil {
 		t.Fatal(err)

@@ -683,19 +683,24 @@ func availableTraceCitationExcerpts(t *testing.T, body evaluationBody) map[strin
 
 func assertStaleTraceCitationsKeepTheirExcerpts(t *testing.T, after evaluationBody, excerpts map[string]string) {
 	t.Helper()
+	stale := 0
 	for _, r := range after.CriterionResults {
 		for _, e := range r.Evidence {
 			if e.Kind != "trace_event" {
 				continue
 			}
+			stale++
 			if e.Available {
 				t.Errorf("criterion %s still claims its citation resolves after the event was dropped", r.CriterionID)
 			}
-			if e.Excerpt != excerpts[r.CriterionID] {
+			if e.Excerpt == "" || e.Excerpt != excerpts[r.CriterionID] {
 				t.Errorf("criterion %s lost its excerpt when the event went; a stale citation keeps it, labelled: %q",
 					r.CriterionID, e.Excerpt)
 			}
 		}
+	}
+	if stale != 2 {
+		t.Fatalf("%d trace_event citations survived the dropped event, want the 2 the judge cited", stale)
 	}
 }
 
@@ -1154,6 +1159,9 @@ func TestAnOutputTheUserDeletedIsAHoleInTheEvidenceAndNotAnEmptyRun(t *testing.T
 			"could not be read: that is the claim 02:EVAL-001 forbids")
 	}
 
+	if len(body.CriterionResults) != 2 {
+		t.Fatalf("got %d criterion results, want the 2 the judge returned", len(body.CriterionResults))
+	}
 	for _, r := range body.CriterionResults {
 		if r.Result == "passed" {
 			t.Errorf("criterion %s passed on incomplete evidence", r.CriterionID)

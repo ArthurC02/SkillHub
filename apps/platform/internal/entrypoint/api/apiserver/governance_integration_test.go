@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -343,6 +344,8 @@ func TestAccountPurgeFencesAConcurrentDatasetUpload(t *testing.T) {
 	}
 
 	store := &blockingRemoveStore{packageStore: a.packages, entered: make(chan struct{}), release: make(chan struct{})}
+	releaseStore := sync.OnceFunc(func() { close(store.release) })
+	t.Cleanup(releaseStore)
 	purgeDone := make(chan error, 1)
 	workspaceID := mustUUID(t, alice.workspaceID)
 	userID := mustUUID(t, alice.userID)
@@ -356,6 +359,7 @@ func TestAccountPurgeFencesAConcurrentDatasetUpload(t *testing.T) {
 		t.Fatal("purge did not reach object removal")
 	}
 
+	waitersBefore := advisoryLockWaiters(t, pool)
 	uploadDone := make(chan error, 1)
 	go func() {
 		_, err := (&testlab.Service{Pool: pool, Store: store, MayStoreObjects: a.auth.Service.MayStoreObjects}).UploadDataset(ctx, identity.Workspace{
@@ -363,13 +367,13 @@ func TestAccountPurgeFencesAConcurrentDatasetUpload(t *testing.T) {
 		}, testCaseID, "late.txt", bytes.NewReader([]byte("late upload")))
 		uploadDone <- err
 	}()
+	waitUntilMoreAdvisoryLockWaitersThan(t, pool, waitersBefore)
 	select {
 	case err := <-uploadDone:
-		close(store.release)
 		t.Fatalf("upload crossed an in-progress account purge: %v", err)
-	case <-time.After(250 * time.Millisecond):
+	default:
 	}
-	close(store.release)
+	releaseStore()
 	if err := <-purgeDone; err != nil {
 		t.Fatal(err)
 	}
@@ -526,10 +530,11 @@ func TestAccountPurgeWaitsForAnInflightWorkspaceWrite(t *testing.T) {
 		n, err := a.auth.Service.PurgeExpiredAccounts(ctx, &recordingStore{}, 0, 1)
 		done <- purgeResult{n: n, err: err}
 	}()
+	waitUntilALockWaiterIsBlockedBy(t, pool, tx.Conn().PgConn().PID())
 	select {
 	case result := <-done:
 		t.Fatalf("purge crossed an uncommitted workspace write: %+v", result)
-	case <-time.After(150 * time.Millisecond):
+	default:
 	}
 	if err := tx.Commit(ctx); err != nil {
 		t.Fatal(err)
@@ -583,10 +588,11 @@ func TestWorkspaceWriteRechecksEligibilityAfterPurgeFenceWins(t *testing.T) {
 			VALUES ($1, $2, 'too-late', 'must be refused')`, workspaceID, mustUUID(t, f.skillID))
 		writeDone <- err
 	}()
+	waitUntilALockWaiterIsBlockedBy(t, pool, conn.Conn().PgConn().PID())
 	select {
 	case err := <-writeDone:
 		t.Fatalf("writer did not wait for the purge fence: %v", err)
-	case <-time.After(150 * time.Millisecond):
+	default:
 	}
 	if _, err := gen.New(conn).UnlockAccountWorkspaceObjects(ctx, workspaceID); err != nil {
 		t.Fatal(err)
@@ -1472,7 +1478,23 @@ func waitUntilALockWaiterIsBlockedBy(t *testing.T, pool *pgxpool.Pool, blockerPI
 			return
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("collector never waited for the uploader's package-object lock")
+			t.Fatalf("no backend ever waited for an advisory lock held by backend %d", blockerPID)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func advisoryLockWaiters(t *testing.T, pool *pgxpool.Pool) int {
+	t.Helper()
+	return countRow(t, pool, `SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted`)
+}
+
+func waitUntilMoreAdvisoryLockWaitersThan(t *testing.T, pool *pgxpool.Pool, baseline int) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for advisoryLockWaiters(t, pool) <= baseline {
+		if time.Now().After(deadline) {
+			t.Fatalf("no new backend waited for an advisory lock; %d waiters before the contender started", baseline)
 		}
 		time.Sleep(10 * time.Millisecond)
 	}

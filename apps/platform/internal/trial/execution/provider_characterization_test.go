@@ -96,18 +96,26 @@ func TestARunKeyIsAttributedToItsRunAndAttempt(t *testing.T) {
 
 func TestAnArtifactContentTypeOf255BytesIsAcceptedAnd256IsNot(t *testing.T) {
 	validHash := strings.Repeat("0", 64)
-	record := func(contentType string) error {
-		d := &driver{cur: gen.Run{ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}}}
-		return d.recordArtifacts(context.Background(), gen.RunAttempt{}, ProviderRun{Result: &RunResult{
-			Artifacts: []RunArtifact{{FileName: "out.txt", ContentHash: validHash, ContentType: contentType}},
-		}})
-	}
 	atLimit := "text/" + strings.Repeat("a", 250)
-	if err := record(atLimit); err == nil || !strings.Contains(err.Error(), "persistence is not configured") {
-		t.Errorf("a 255-byte content type did not reach persistence: %v", err)
-	}
-	if err := record(atLimit + "a"); err == nil || !strings.Contains(err.Error(), "invalid artifact content type") {
-		t.Errorf("a 256-byte content type was not refused: %v", err)
+	for _, tc := range []struct {
+		name        string
+		contentType string
+		wantRefused bool
+	}{
+		{"no content type", "", false},
+		{"255 bytes", atLimit, false},
+		{"256 bytes", atLimit + "a", true},
+		{"slash with no subtype", "text/", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateArtifactContent(RunArtifact{FileName: "out.txt", ContentHash: validHash, ContentType: tc.contentType})
+			if !tc.wantRefused && err != nil {
+				t.Fatalf("content type of %d bytes was refused: %v", len(tc.contentType), err)
+			}
+			if tc.wantRefused && (err == nil || !strings.Contains(err.Error(), "invalid artifact content type")) {
+				t.Fatalf("content type of %d bytes was not refused as a content type: %v", len(tc.contentType), err)
+			}
+		})
 	}
 }
 

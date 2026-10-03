@@ -209,7 +209,12 @@ func TestAGeneratedSkillIsNotFoundBySearchIncludingItsOwnCreator(t *testing.T) {
 		t.Fatalf("the generated skill is missing from its own workspace list: %v", ids)
 	}
 
-	if ids := c.skillIDs(t, "/skills/search?q=zarquon+widget"); contains(ids, id) {
+	control := seedSkill(t, pool, c.workspaceID, "zarquon widget control")
+	ids := c.skillIDs(t, "/skills/search?q=zarquon+widget")
+	if !contains(ids, control) {
+		t.Fatalf("the same query did not find a listable skill of the same workspace, so it proves nothing: %v", ids)
+	}
+	if contains(ids, id) {
 		t.Error("the creator found their own generated skill in search (GEN-007)")
 	}
 
@@ -692,6 +697,10 @@ func TestEveryFailureValueIngestWritesIsInTheContract(t *testing.T) {
 	known := map[string]bool{}
 	for _, v := range apigen.GenerationFailureFailure("").AllValues() {
 		known[string(v)] = true
+	}
+	if len(known) == 0 || len(ingest.FailureVocabulary) == 0 {
+		t.Fatalf("the contract lists %d failure values and ingest writes %d; one side is empty so nothing is compared",
+			len(known), len(ingest.FailureVocabulary))
 	}
 	for _, v := range ingest.FailureVocabulary {
 		if !known[v] {

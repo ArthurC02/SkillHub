@@ -268,6 +268,20 @@ func TestTheReleaseGateRefusesAHoldABlockedAndAnUnknownLicence(t *testing.T) {
 	}
 }
 
+func assertThePublicAddressDisclosesItsReleaseAndNotListing(t *testing.T, body map[string]any) {
+	t.Helper()
+	release, _ := body["release"].(map[string]any)
+	contentHash, hashed := release["content_hash"].(string)
+	if release == nil || !hashed || contentHash == "" || release["redistribution"] == nil {
+		t.Errorf("the public address did not disclose the release: %v", body)
+	}
+	exposure, _ := body["exposure"].(map[string]any)
+	exposureNote, noted := exposure["note"].(string)
+	if exposure["available"] != false || !noted || exposureNote == "" {
+		t.Errorf("exposure = %v, want not listed and a sentence saying so", body["exposure"])
+	}
+}
+
 func TestThePublicAddressIsReadableWithoutSigningInAndFollowsATakedownAtOnce(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -284,13 +298,7 @@ func TestThePublicAddressIsReadableWithoutSigningInAndFollowsATakedownAtOnce(t *
 	if availability, _ := body["availability"].(map[string]any); availability["value"] != "available" {
 		t.Errorf("availability = %v, want available", body["availability"])
 	}
-	release, _ := body["release"].(map[string]any)
-	if release == nil || release["content_hash"] == "" || release["redistribution"] == nil {
-		t.Errorf("the public address did not disclose the release: %v", body)
-	}
-	if exposure, _ := body["exposure"].(map[string]any); exposure["available"] != false || exposure["note"] == "" {
-		t.Errorf("exposure = %v, want not listed and a sentence saying so", body["exposure"])
-	}
+	assertThePublicAddressDisclosesItsReleaseAndNotListing(t, body)
 
 	setSkill(t, pool, skillID, "takedown_at = now(), takedown_reason = 'fixture'")
 	code, body = publicRead(t, a, address)
