@@ -4,9 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { EvaluationPanel } from "./evaluation/EvaluationPanel";
-import { MATCH_NOTE } from "./evaluation/evaluation.model";
 import { RunVerdict } from "./components/RunVerdict";
-import { EVALUATION_POLL_MAX_404, EVALUATION_POLL_MAX_PENDING } from "./evaluation.service";
 import type { Evaluation, ImprovementSuggestion, SuggestionDiff } from "./evaluation.service";
 
 let container: HTMLDivElement;
@@ -476,7 +474,7 @@ test("§2.13 引文回驗結果是徽章，解釋在清單層級只印一次", a
     "ul.note + ul.finding-list",
   )!.previousElementSibling;
   expect(Array.from(findingLegend!.querySelectorAll("li")).map((li) => li.textContent)).toEqual([
-    `找不到 ${MATCH_NOTE.not_found}`,
+    "找不到 這段引文在本次試跑的可回驗來源裡找不到，因此不作為證據。",
   ]);
 });
 
@@ -657,15 +655,15 @@ test("EVAL-001 an old run with no evaluation stops being asked about, and says s
   expect(calls).toBe(1);
   expect(container.textContent).toContain("結果會自己出現在這裡");
 
-  await act(async () => vi.advanceTimersByTimeAsync(3000 * (EVALUATION_POLL_MAX_404 - 2)));
-  expect(calls).toBe(EVALUATION_POLL_MAX_404 - 1);
+  await act(async () => vi.advanceTimersByTimeAsync(3000 * 18));
+  expect(calls).toBe(19);
   expect(container.textContent).toContain("結果會自己出現在這裡");
 
   await act(async () => vi.advanceTimersByTimeAsync(3000));
-  expect(calls).toBe(EVALUATION_POLL_MAX_404);
+  expect(calls).toBe(20);
 
   await act(async () => vi.advanceTimersByTimeAsync(3000 * 100));
-  expect(calls).toBe(EVALUATION_POLL_MAX_404);
+  expect(calls).toBe(20);
 
   expect(container.textContent).toContain("未評估");
   expect(container.textContent).toContain("已經停止再查");
@@ -698,15 +696,15 @@ test("EVAL-001 a judge that never finishes stops being polled, and the promise s
   expect(calls).toBe(1);
   expect(container.textContent).toContain("每 3 秒自己查一次");
 
-  await act(async () => vi.advanceTimersByTimeAsync(3000 * (EVALUATION_POLL_MAX_PENDING - 2)));
-  expect(calls).toBe(EVALUATION_POLL_MAX_PENDING - 1);
+  await act(async () => vi.advanceTimersByTimeAsync(3000 * 98));
+  expect(calls).toBe(99);
   expect(container.textContent).toContain("每 3 秒自己查一次");
 
   await act(async () => vi.advanceTimersByTimeAsync(3000));
-  expect(calls).toBe(EVALUATION_POLL_MAX_PENDING);
+  expect(calls).toBe(100);
 
   await act(async () => vi.advanceTimersByTimeAsync(3000 * 200));
-  expect(calls).toBe(EVALUATION_POLL_MAX_PENDING);
+  expect(calls).toBe(100);
 
   expect(container.textContent).toContain("評估進行中");
   expect(container.textContent).toContain("已經停止再查");

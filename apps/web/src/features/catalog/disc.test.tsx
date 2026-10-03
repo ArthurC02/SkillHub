@@ -549,14 +549,11 @@ test("設計 §2.13: 逐位元相同的 note 提到清單層級，會分辨列�
   const rowNotes = (row: Element) =>
     [...row.querySelectorAll(".catalog-card-facts .note")].map((n) => (n.textContent ?? "").trim());
 
-  for (const [label, pick] of [
-    ["類別", (r: PublicSearchResult) => r.category.note],
-    ["相容狀態", (r: PublicSearchResult) => r.compatibility.note],
-    ["風險提示", (r: PublicSearchResult) => r.risk.note],
+  for (const [line, sentence] of [
+    ["類別：由策展判定。", "由策展判定。"],
+    ["相容狀態：尚未試跑。", "尚未試跑。"],
+    ["風險提示：以上為靜態掃描結果。", "以上為靜態掃描結果。"],
   ] as const) {
-    expect(distinct(pick).size, `${label} must be byte-identical across the fixture`).toBe(1);
-    const sentence = pick(SHELF_ROWS[0])!;
-    const line = `${label}：${sentence}`;
     expect(
       noteTexts().filter((n) => n === line),
       `「${line}」 is not stated exactly once for the whole list`,
@@ -566,9 +563,10 @@ test("設計 §2.13: 逐位元相同的 note 提到清單層級，會分辨列�
     }
   }
 
-  for (const tier of new Set(SHELF_ROWS.map((r) => r.tier.label))) {
-    const note = SHELF_ROWS.find((r) => r.tier.label === tier)!.tier.note;
-    const line = `來源層級「${tier}」：${note}`;
+  for (const line of [
+    "來源層級「精選」：已完成人工檢視，不代表安全保證。",
+    "來源層級「已收錄」：收錄不等於精選。",
+  ]) {
     expect(
       noteTexts().filter((n) => n === line),
       `「${line}」 is not stated once`,

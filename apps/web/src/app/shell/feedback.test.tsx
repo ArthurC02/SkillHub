@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
-import { FEEDBACK_MAX_MESSAGE, feedbackPagePath, feedbackRunID } from "./feedback.service";
+import { feedbackPagePath, feedbackRunID } from "./feedback.service";
 import { FeedbackEntry } from "./FeedbackEntry";
 import { FeedbackLauncher } from "./FeedbackLauncher";
 
@@ -231,20 +231,18 @@ test("BETA-003 an over-long report says how long it is instead of being cut in h
   const calls = stubPlatform();
   await render(<FeedbackEntry pathname="/" />);
 
-  await type("字".repeat(FEEDBACK_MAX_MESSAGE + 5));
+  await type("字".repeat(2001));
   await submit();
 
   expect(calls).toHaveLength(0);
-  expect(container.querySelector('[role="alert"]')?.textContent).toContain(
-    String(FEEDBACK_MAX_MESSAGE + 5),
-  );
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("目前 2001 字");
 });
 
 test("a report at exactly the length ceiling is accepted, not refused", async () => {
   const calls = stubPlatform();
   await render(<FeedbackEntry pathname="/" />);
 
-  await type("字".repeat(FEEDBACK_MAX_MESSAGE));
+  await type("字".repeat(2000));
   await submit();
   await waitFor(() => calls.length > 0);
 
@@ -309,7 +307,7 @@ test("BETA-003 the counter counts what the server counts, so an emoji report is 
 
   const emoji = "🙂".repeat(1500);
   await type(emoji);
-  expect(text()).toContain(`1500／${FEEDBACK_MAX_MESSAGE} 字`);
+  expect(text()).toContain("1500／2000 字");
 
   await submit();
   await waitFor(() => calls.length > 0);

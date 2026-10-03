@@ -4,7 +4,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../../core/api/queryClient";
 import { RunPreflight } from "./RunPreflight.page";
-import { BLOCKED_SENTENCE } from "./preflight.model";
 import {
   SKILL,
   RUN,
@@ -89,7 +88,9 @@ test("a pair this deployment cannot run offers no button to start it", async () 
   expect(startButton(), "the refusal is known before the click, so the click must not exist").toBe(
     undefined,
   );
-  expect(shown).toContain(BLOCKED_SENTENCE.content_not_curated);
+  expect(shown).toContain(
+    "這個部署只跑目錄裡的小工具。這一版不在公開目錄、也不是被策展的那一版,所以按了也不會開始——要跑自己的小工具,請用有真正沙箱的部署。",
+  );
 });
 
 test("a pair this deployment can run still offers the button", async () => {

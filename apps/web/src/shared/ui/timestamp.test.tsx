@@ -1,6 +1,11 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+
+vi.hoisted(() => {
+  process.env.TZ = "Asia/Taipei";
+});
+
 import { Timestamp } from "./Timestamp";
 import { formatAt } from "./Timestamp.model";
 
@@ -28,7 +33,7 @@ test("the component prints the same absolute time an <option> label gets", async
 
   const time = box.querySelector("time")!;
   expect(time.getAttribute("datetime")).toBe(at);
-  expect(time.textContent).toBe(formatAt(at));
+  expect(time.textContent).toBe("2026/09/05 16:30");
   expect(time.textContent).toMatch(/2026/);
 });
 
@@ -37,7 +42,7 @@ async function relativeTextAfter(elapsedMs: number): Promise<string> {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(at).getTime() + elapsedMs);
   await act(async () => root.render(<Timestamp at={at} relative />));
-  return box.querySelector("time")!.textContent!.slice(formatAt(at).length);
+  return box.querySelector("time")!.textContent!.replace("2026/09/05 16:30", "");
 }
 
 test.each([
