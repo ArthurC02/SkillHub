@@ -156,9 +156,6 @@ func (p *P02Probe) store(r P02Result) P02Result {
 func (p *P02Probe) Run(ctx context.Context, prober EgressProber, onBreach func(P02Result), log *slog.Logger) {
 	tick := time.NewTicker(p.Interval)
 	defer tick.Stop()
-	if log != nil && len(p.Skipped) > 0 {
-		log.Warn("P-02 targets that are not host:port are not probed", "skipped", strings.Join(p.Skipped, ", "))
-	}
 	for {
 		r := p.Check(ctx, prober, time.Now().UTC())
 		switch r.State {

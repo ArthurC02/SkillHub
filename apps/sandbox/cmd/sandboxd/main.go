@@ -76,7 +76,7 @@ func main() {
 	m := newRunManager(node, kind, cleanMode, log)
 
 	probe := residentP02Probe()
-	if err := refuseUnprobedProduction(runtime, probe); err != nil {
+	if err := errors.Join(refuseUndialableTargets(probe), refuseUnprobedProduction(runtime, probe)); err != nil {
 		log.Error(err.Error())
 		os.Exit(1)
 	}
@@ -281,6 +281,14 @@ func refuseDevSettings(runtime, image string, allowDevCmd, cleanMode bool) error
 		return errors.New("SKILLHUB_SANDBOX_DEV_CMD must not be set with runsc: a caller-chosen entrypoint replaces the harness, and with it the run's token ceiling and its trace")
 	}
 	return nil
+}
+
+func refuseUndialableTargets(probe *sandbox.P02Probe) error {
+	if len(probe.Skipped) == 0 {
+		return nil
+	}
+	return fmt.Errorf("SKILLHUB_SANDBOX_P02_TARGETS has entries that are not host:port (%s): "+
+		"a target the probe cannot dial is a check that never runs", strings.Join(probe.Skipped, ", "))
 }
 
 func refuseUnprobedProduction(runtime string, probe *sandbox.P02Probe) error {

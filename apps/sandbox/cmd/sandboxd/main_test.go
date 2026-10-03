@@ -79,6 +79,37 @@ func TestRefuseUnprobedProductionGatesRunscOnAConfiguredProbe(t *testing.T) {
 	}
 }
 
+func TestANodeRefusesToStartWithAP02TargetItCannotDial(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		targets []string
+		refused bool
+	}{
+		{"no targets", nil, false},
+		{"every target dialable", []string{"db.internal:5432", "cache.internal:6379"}, false},
+		{"one target without a port", []string{"db.internal:5432", "cache.internal"}, true},
+		{"only an undialable target", []string{"db.internal:0"}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := refuseUndialableTargets(sandbox.NewP02Probe(tc.targets, 0, 0))
+			if !tc.refused {
+				if err != nil {
+					t.Fatalf("refused %v: %v", tc.targets, err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("started with %v", tc.targets)
+			}
+			for _, want := range []string{"SKILLHUB_SANDBOX_P02_TARGETS", tc.targets[len(tc.targets)-1]} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("refusal %q does not name %q", err, want)
+				}
+			}
+		})
+	}
+}
+
 func TestDriverKindDefaultsToDocker(t *testing.T) {
 	if got := driverKind(false); got != "docker" {
 		t.Errorf("driverKind(false) = %q, want docker: clean mode unset must not change the driver", got)
