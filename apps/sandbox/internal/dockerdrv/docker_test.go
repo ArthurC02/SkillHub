@@ -310,7 +310,8 @@ func TestScratchQuotaRefusesAWriteWithoutKillingTheRun(t *testing.T) {
 	}
 
 	req.Extensions = map[string]any{"dev_cmd": []any{"sh", "-c",
-		`dd if=/dev/zero of=/work/fill bs=1M count=128 2>/dev/null; echo "fill rc=$?"; echo "size=$(wc -c < /work/fill)"`}}
+		`while [ ! -f /work/.skillhub/ready ]; do sleep 0.05; done; ` +
+			`dd if=/dev/zero of=/work/fill bs=1M count=128 2>/dev/null; echo "fill rc=$?"; echo "size=$(wc -c < /work/fill)"`}}
 	_, out := startProbe(t, d, req)
 	if strings.Contains(out.Output, "fill rc=0") {
 		t.Errorf("a 128 MiB write into a %d MiB scratch space reported success: the quota is not "+

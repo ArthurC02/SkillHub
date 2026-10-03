@@ -73,7 +73,7 @@ type Config struct {
 }
 
 type Driver struct {
-	cli  *client.Client
+	cli  engine
 	cfg  Config
 	held sync.Map
 }
@@ -102,6 +102,8 @@ func New(cfg Config) (*Driver, error) {
 }
 
 func (d *Driver) Close() error { return d.cli.Close() }
+
+var errAddressUnreadable = errors.New("no address on the run network")
 
 func name(providerRunID string) string { return "skillhub-run-" + providerRunID }
 
@@ -178,14 +180,15 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 
 		return fmt.Errorf("start sandbox: %w", err)
 	}
-	d.recordAddressAssigned(ctx, created.ID, id, network, req)
-
+	if err := d.recordAddressAssigned(ctx, created.ID, id, network, req); err != nil {
+		return err
+	}
 	return d.pushInputs(ctx, id, req)
 }
 
-func (d *Driver) recordAddressAssigned(ctx context.Context, containerID, id, network string, req sandbox.RunRequest) {
+func (d *Driver) recordAddressAssigned(ctx context.Context, containerID, id, network string, req sandbox.RunRequest) error {
 	if d.cfg.Log == nil || network == networktypes.NetworkNone {
-		return
+		return nil
 	}
 	insp, err := d.cli.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
 	var endpoint *networktypes.EndpointSettings
@@ -193,13 +196,13 @@ func (d *Driver) recordAddressAssigned(ctx context.Context, containerID, id, net
 		endpoint = insp.Container.NetworkSettings.Networks[network]
 	}
 	if endpoint == nil || !endpoint.IPAddress.IsValid() {
-		d.cfg.Log.Warn("run network address unreadable; its egress flows cannot be attributed to it",
-			"run_id", req.RunID, "attempt", req.Attempt, "network", network, "err", err)
-		return
+		return fmt.Errorf("read the sandbox's address on %s, without which its egress cannot be attributed to the run: %w",
+			network, errors.Join(err, errAddressUnreadable))
 	}
 	address := endpoint.IPAddress.String()
 	d.held.Store(id, heldAddress{runID: req.RunID, attempt: req.Attempt, address: address})
 	d.cfg.Log.Info(egress.Message, egress.AddressAssigned(req.RunID, req.Attempt, address, time.Now())...)
+	return nil
 }
 
 func (d *Driver) recordAddressReleased(id string) {

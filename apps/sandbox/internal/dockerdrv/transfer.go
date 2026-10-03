@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"path"
 	"strings"
@@ -83,9 +82,10 @@ func (d *Driver) pushInputs(ctx context.Context, id string, req sandbox.RunReque
 	}
 
 	if err := d.exec(ctx, id, writeFileCommand(ReadyPath), []byte("ready\n")); err != nil {
-
-		slog.Warn("could not signal the sandbox that its inputs are ready",
-			"provider_run_id", id, "err", err)
+		if errors.Is(err, errGone) {
+			return nil
+		}
+		return fmt.Errorf("signal the sandbox that its inputs are ready: %w", err)
 	}
 	return nil
 }
