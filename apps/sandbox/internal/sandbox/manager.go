@@ -608,6 +608,9 @@ func (m *Manager) Cancel(ctx context.Context, id string) (ProviderRun, error) {
 }
 
 func (m *Manager) Destroy(ctx context.Context, id string) error {
+	if !issuedHandle(id) {
+		return nil
+	}
 	m.mu.Lock()
 	if e := m.runs[id]; e != nil && e.startCancel != nil {
 		e.startCancel()
@@ -915,4 +918,9 @@ func mask(s string, secrets []string) string {
 		s = strings.ReplaceAll(s, sec, "***")
 	}
 	return s
+}
+
+func issuedHandle(id string) bool {
+	raw, err := hex.DecodeString(id)
+	return err == nil && len(raw) == 16 && id == strings.ToLower(id)
 }

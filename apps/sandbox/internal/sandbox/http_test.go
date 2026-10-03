@@ -360,6 +360,27 @@ func TestDestroyIsIdempotentAndHasNo404(t *testing.T) {
 	}
 }
 
+func TestDestroyOfAHandleThisProviderCouldNotHaveIssuedNeverReachesTheRuntime(t *testing.T) {
+	drv, h := newServer(t)
+	for _, path := range []string{
+		"/runs/x%2F..%2Fvictim",
+		"/runs/..%2F..%2Fnetworks%2Fskillhub_egress",
+		"/runs/never-existed",
+		"/runs/" + strings.Repeat("A", 32),
+		"/runs/" + strings.Repeat("a", 31),
+	} {
+		rec, _ := do(t, h, "DELETE", path, nil, testToken)
+		if rec.Code != http.StatusNoContent {
+			t.Errorf("DELETE %s: got %d, want 204", path, rec.Code)
+		}
+	}
+	drv.mu.Lock()
+	defer drv.mu.Unlock()
+	if len(drv.removes) != 0 {
+		t.Errorf("the runtime was asked to remove %v", drv.removes)
+	}
+}
+
 func TestDestroyReports500WhenResourcesAreStillHeld(t *testing.T) {
 	drv, h := newServer(t)
 	_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
