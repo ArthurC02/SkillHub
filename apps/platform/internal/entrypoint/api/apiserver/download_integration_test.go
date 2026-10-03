@@ -701,6 +701,7 @@ func TestALicensingHoldAppliedAfterPackagingStopsTheDownload(t *testing.T) {
 			if resp.StatusCode != http.StatusNotFound {
 				t.Fatalf("content under a %s hold: got %d, want 404", tc.name, resp.StatusCode)
 			}
+			assertDownloadWithheld(t, c, art.ArtifactID)
 			if _, err := pool.Exec(context.Background(),
 				"UPDATE skills SET access_restriction = NULL, redistribution = 'allowed', takedown_at = NULL, takedown_reason = NULL WHERE id = $1",
 				mustUUID(t, art.SkillID)); err != nil {
@@ -721,6 +722,33 @@ func storedObjectKey(t *testing.T, pool *pgxpool.Pool, artifactID string) string
 		t.Fatal(err)
 	}
 	return key
+}
+
+func assertDownloadWithheld(t *testing.T, c *client, artifactID string) {
+	t.Helper()
+	type serveFacts struct {
+		ArtifactID string `json:"artifact_id"`
+		Servable   bool   `json:"servable"`
+		ServeState struct {
+			Value string `json:"value"`
+		} `json:"serve_state"`
+	}
+	var one serveFacts
+	if code := getJSON(t, c.Client, c.base+"/downloads/"+artifactID, &one); code != http.StatusOK {
+		t.Fatalf("GET /downloads/%s: got %d", artifactID, code)
+	}
+	var list struct {
+		Downloads []serveFacts `json:"downloads"`
+	}
+	if code := getJSON(t, c.Client, c.base+"/downloads", &list); code != http.StatusOK || len(list.Downloads) != 1 {
+		t.Fatalf("GET /downloads: got %d with %d rows, want one", code, len(list.Downloads))
+	}
+	for where, got := range map[string]serveFacts{"the download": one, "the list": list.Downloads[0]} {
+		if got.Servable || got.ServeState.Value != "withheld" {
+			t.Errorf("%s says servable=%v state=%q while its content is refused; want false and withheld",
+				where, got.Servable, got.ServeState.Value)
+		}
+	}
 }
 
 func TestDeletingADownloadIsIdempotentAndKeepsTheRecord(t *testing.T) {

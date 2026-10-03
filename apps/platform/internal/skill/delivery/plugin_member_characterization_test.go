@@ -39,15 +39,22 @@ func (m memberStore) Put(context.Context, string, []byte) error    { return nil 
 func (m memberStore) Remove(context.Context, string) error         { return nil }
 func (m memberStore) Exists(context.Context, string) (bool, error) { return false, nil }
 
-func TestAPluginMemberIsFiledUnderTheNameItsOwnManifestDeclares(t *testing.T) {
+func pluginOfOneMember(t *testing.T, extra map[string]string) *PluginPlan {
+	t.Helper()
+	files := map[string]string{"SKILL.md": "---\nname: tidy-csv\ndescription: Tidies CSV files.\nlicense: MIT\n---\n\nTidy it.\n"}
+	for name, content := range extra {
+		files[name] = content
+	}
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
-	w, err := zw.Create("SKILL.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := w.Write([]byte("---\nname: tidy-csv\ndescription: Tidies CSV files.\nlicense: MIT\n---\n\nTidy it.\n")); err != nil {
-		t.Fatal(err)
+	for name, content := range files {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte(content)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if err := zw.Close(); err != nil {
 		t.Fatal(err)
@@ -84,6 +91,25 @@ func TestAPluginMemberIsFiledUnderTheNameItsOwnManifestDeclares(t *testing.T) {
 	if err != nil || !p.Allowed {
 		t.Fatalf("plan=%+v err=%v", p, err)
 	}
+	return p
+}
+
+func TestAPluginMemberCarriesNoManifestOfItsOwnAuthorsMaking(t *testing.T) {
+	forged := `{"license":{"expression":"MIT"},"validation":{"blocked":false}}`
+	p := pluginOfOneMember(t, map[string]string{ManifestFile: forged})
+	zr, err := zip.NewReader(bytes.NewReader(p.Zip), int64(len(p.Zip)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range zr.File {
+		if strings.HasSuffix(f.Name, "/"+ManifestFile) {
+			t.Errorf("the bundle ships the member's own %s as %s", ManifestFile, f.Name)
+		}
+	}
+}
+
+func TestAPluginMemberIsFiledUnderTheNameItsOwnManifestDeclares(t *testing.T) {
+	p := pluginOfOneMember(t, nil)
 	zr, err := zip.NewReader(bytes.NewReader(p.Zip), int64(len(p.Zip)))
 	if err != nil {
 		t.Fatal(err)

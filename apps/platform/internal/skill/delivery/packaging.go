@@ -993,3 +993,18 @@ func (s *Service) readSource(ctx context.Context, version VersionFacts) (sourceF
 	}
 	return out, nil
 }
+
+func (a Artifact) withheld(facts VersionSummary) Artifact {
+	if !a.Servable {
+		return a
+	}
+	reason, message := gate(SkillFacts{
+		AccessRestricted: facts.AccessRestricted, TakenDown: facts.TakenDown, Redistribution: facts.Redistribution,
+	})
+	if reason == "" {
+		return a
+	}
+	a.Servable = false
+	a.ServeState = labelled{"withheld", "不再提供下載", message}
+	return a
+}
