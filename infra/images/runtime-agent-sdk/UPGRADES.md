@@ -764,3 +764,30 @@ PROBE_PATH=skills/nope       → 拒絕 provision/invalid_package "…that direc
 
 **沒有做的事**：沒有建置映像、沒有跑供應鏈掃描、沒有任何一次真實 Run。這三個修補在實際被派送的
 `-13` 映像裡仍然存在，直到預設映像移到 `-15`。
+
+## `2026.08-15` → `2026.08-16`（2026-10-04）— **`run.mjs` 修正套件根目錄的判定；四項實測尚未跑，預設映像仍留在 `-13`**
+
+> 平台匯入時，zip 只有一個頂層目錄、根目錄又沒有 `SKILL.md`，就一律剝掉那層，再把每個 Skill
+> 的目錄記成相對於剝完之後的路徑（例如 `skills/tidy-notes`）。`run.mjs` 卻只在那層底下直接有
+> `SKILL.md` 時才剝，而且用平台記下的路徑**取代**根目錄而不是接在根目錄後面。GitHub 下載的
+> zip 永遠多一層 `<repo>-<branch>/`，所以從 GitHub 匯入的 Plugin 能匯入，試跑卻一定以
+> `invalid_package ... holds no SKILL.md` 失敗。這不是洩漏：其他元件沒有被安裝。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | 只有 `run.mjs` 與 `ARG IMAGE_VERSION`（`run.test.mjs` 同批改測試，不進映像）。`Dockerfile` 的其餘內容、`constraints.txt`、`package.json`、`package-lock.json` 一字未動 |
+| `packageRoot` | 根目錄沒有 `SKILL.md`、頂層恰好一個目錄時剝掉它，不再要求那層底下有 `SKILL.md`。與平台 `PackageRoot` 相同 |
+| 宣告的 Skill 目錄 | 接在剝出的根目錄後面（`root + declared`），不再取代它。沒有外層目錄的套件結果不變 |
+| 兩邊對齊的依據 | `contracts/packaging/package-root-cases.json`：平台的 Go 測試與 `run.test.mjs` 讀同一份案例，任一邊改了規則另一邊就紅 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| 預設映像 | **仍是 `-13`**：四處預設都沒有動。這個修正要等預設移到 `-16` 才會到達實際的 Run |
+| 四項實測 | **一項都沒跑**，本節不主張任何一項通過；`-14`、`-15` 的實測也還沒補 |
+
+### 本機驗證（2026-10-04，沒有任何模型呼叫，沒有建置映像）
+
+`node --test run.test.mjs` → 123 tests、122 pass、0 fail、1 skipped（跳過的仍是只在非 Windows
+主機上跑的權限位元測試）。新增的三條先在未修改的 `run.mjs` 上跑過、三條都失敗：兩個外層目錄案例的
+`packageRoot`，以及外層目錄裡的 Plugin 安裝。只把「接在根目錄後面」那一行還原，安裝那條仍然失敗。
+
+**沒有做的事**：沒有建置映像、沒有跑供應鏈掃描、沒有任何一次真實 Run。

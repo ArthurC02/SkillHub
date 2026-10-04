@@ -449,7 +449,7 @@ export function packageRoot(entries) {
   );
   if (roots.size !== 1) return "";
   const [root] = roots;
-  return entries.some((entry) => entry.name === `${root}/SKILL.md`)
+  return entries.some((entry) => entry.name.startsWith(`${root}/`))
     ? `${root}/`
     : "";
 }
@@ -552,7 +552,7 @@ export function installSkillFromArchive(
     return undefined;
   }
   const root = provisionPackage(archivePath, staging, onFailure);
-  const chosen = declaredRoot || root;
+  const chosen = (root ?? "") + declaredRoot;
   const packageDir = chosen ? join(staging, chosen.slice(0, -1)) : staging;
   if (!existsSync(join(packageDir, "SKILL.md"))) {
     onFailure(
