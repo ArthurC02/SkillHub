@@ -844,3 +844,7 @@ exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities 
 **套件位元組核對（不在四項清單上，同批驗證）**：平台把 `package_sha256` 送到 sandbox，sandbox 核對抓到的位元組。`TestEndToEndRunRefusesAPackageWhoseStoredBytesAreNotTheAdmittedOnes` 在套件的內容定址鍵底下放另一份合法套件 → Run `failed` / `provider_error`，sandboxd 記 `the delivered bytes are not the ones the request names`，沒有呼叫模型。突變證明：讓平台不送這個欄位，同一支 FAIL，被換掉的套件照樣跑完並回報 `succeeded`（$0.0162966）。
 
 **預設映像仍是 `-13`**：四項已在 `-17` 的 digest 上通過，移動預設由負責人決定。
+
+### 預設映像從 `-13` 移到 `-17`
+
+四項在 `-17` 的 digest 上通過之後，經負責人同意移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，以及 `apps/sandbox/README.md` 的環境變數表與建置範例。`-14`、`-15`、`-16` 沒有成為過預設；它們的變更都包含在 `-17` 裡。
