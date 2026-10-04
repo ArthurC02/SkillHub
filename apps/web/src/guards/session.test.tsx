@@ -252,6 +252,8 @@ test("SEC/§2.2 the import screen states the rules it is enforced by, before the
     ["the per-file ceiling", "單一檔案最大 4 MB"],
     ["the path depth", "路徑最深 5 層"],
     ["the number of Skills one import may create", "一次匯入最多建立 37 個 Skill"],
+    ["that a plugin is a source shape", "一個 Agent Plugin（有 plugin.json"],
+    ["that a tree of skills is a source shape", "一棵含多個 Skill 資料夾的目錄"],
   ]) {
     expect(text(), `${what} is not on screen, so it is learned by being refused`).toContain(
       sentence,

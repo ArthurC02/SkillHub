@@ -199,9 +199,13 @@ function ImportRules({ rules }: { rules: SkillImportLimits | undefined }) {
         <li>正在讀這個部署的大小上限…</li>
       )}
       <li>
-        zip 的最上層（或單一頂層資料夾）要有 <code>SKILL.md</code>，而且它的 frontmatter 要有{" "}
-        <code>name</code> 與 <code>description</code>——名稱、描述與 License 都從那裡讀，
-        不必在這一頁手打。
+        zip 的最上層（或單一頂層資料夾）可以是一個 Skill（有 <code>SKILL.md</code>）、一個 Agent
+        Plugin（有 <code>plugin.json</code>，Skill 放在 <code>skills/</code> 底下），或一棵含多個
+        Skill 資料夾的目錄。
+      </li>
+      <li>
+        每個 <code>SKILL.md</code> 的 frontmatter 都要有 <code>name</code> 與{" "}
+        <code>description</code>——名稱、描述與 License 都從那裡讀，不必在這一頁手打。
       </li>
     </ul>
   );
