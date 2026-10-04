@@ -11237,6 +11237,10 @@ func (s *ImportSkillFromURLReq) SetURL(val url.URL) {
 	s.URL = val
 }
 
+type ImportSkillFromURLRequestEntityTooLarge Error
+
+func (*ImportSkillFromURLRequestEntityTooLarge) importSkillFromURLRes() {}
+
 type ImportSkillFromURLUnauthorized Error
 
 func (*ImportSkillFromURLUnauthorized) importSkillFromURLRes() {}

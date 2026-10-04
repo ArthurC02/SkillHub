@@ -222,10 +222,10 @@ func (h *Handler) ImportURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) respondSource(w http.ResponseWriter, res SourceResult, err error) {
-	if errors.Is(err, ErrTooManySkills) {
+	if tooMany, ok := errors.AsType[*TooManySkillsError](err); ok {
 		httpx.WriteError(w, http.StatusRequestEntityTooLarge,
-			"這個來源裡的 Skill 超過一次匯入的上限 "+strconv.Itoa(MaxSkillsPerImport)+
-				" 個。請改成一個一個匯入，或先把來源拆小。")
+			"這個來源有 "+strconv.Itoa(tooMany.Admitted)+" 個 Skill 可以匯入，超過一次匯入的上限 "+
+				strconv.Itoa(MaxSkillsPerImport)+" 個。請改成一個一個匯入，或先把來源拆小。")
 		return
 	}
 	if h.writeImportError(w, err) {

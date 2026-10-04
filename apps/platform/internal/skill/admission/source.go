@@ -20,6 +20,14 @@ const MaxSkillsPerImport = 50
 
 var ErrTooManySkills = errors.New("ingest: source holds more skills than one import may create")
 
+type TooManySkillsError struct{ Admitted int }
+
+func (e *TooManySkillsError) Error() string {
+	return fmt.Sprintf("%v: %d would be created, %d allowed", ErrTooManySkills, e.Admitted, MaxSkillsPerImport)
+}
+
+func (e *TooManySkillsError) Is(target error) bool { return target == ErrTooManySkills }
+
 type plannedSkill struct {
 	path string
 	pkg  preparedPackage
@@ -49,11 +57,6 @@ func planImport(data []byte) (importPlan, error) {
 			report: skillpkg.Report{Findings: d.Findings, Blocked: true}}}}
 		return plan, nil
 	}
-	if len(d.Skills) > MaxSkillsPerImport {
-		return importPlan{}, fmt.Errorf("%w: %d found, %d allowed",
-			ErrTooManySkills, len(d.Skills), MaxSkillsPerImport)
-	}
-
 	objectKey, packageHash := skillpkg.PackageObjectKey(data)
 	plan.objectKey = objectKey
 
@@ -70,6 +73,9 @@ func planImport(data []byte) (importPlan, error) {
 		plan.admitted = append(plan.admitted, planned)
 	}
 	plan.refuseRepeatedNames()
+	if len(plan.admitted) > MaxSkillsPerImport {
+		return importPlan{}, &TooManySkillsError{Admitted: len(plan.admitted)}
+	}
 	return plan, nil
 }
 

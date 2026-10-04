@@ -627,7 +627,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "413":
-          description: Archive exceeds the upload size limit.
+          description: |
+            Archive exceeds the upload size limit, or the source holds more
+            Skills that would be created than one import may create. A Skill
+            refused by validation or by a repeated name does not count. The
+            message names the ceiling and the number that would be created.
           content:
             application/json:
               schema:
@@ -894,6 +898,16 @@ paths:
                 $ref: "#/components/schemas/Error"
         "401":
           description: No valid session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: |
+            The source holds more Skills that would be created than one import
+            may create. A Skill refused by validation or by a repeated name does
+            not count. The message names the ceiling and the number that would
+            be created.
           content:
             application/json:
               schema:
