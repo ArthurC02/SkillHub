@@ -821,3 +821,26 @@ PROBE_PATH=skills/nope       → 拒絕 provision/invalid_package "…that direc
 exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities found`、exit 0。同一個 `-17` 映像、
 無網路：`import pypdf, pdfplumber` 成功，`pypdf.__version__` → `6.19.0`、Python `3.11.2`。
 `devctl image-gate` → `runtime image source gates passed`。
+
+### 2026-10-04：四項測項，全部跑在 CI 發佈的 digest 上
+
+| 欄位 | 值 |
+| --- | --- |
+| 映像 digest | `sha256:344502fb9b4393fd69800b78e5d3cfe606e1f1cb4c5a29eaf05d2f8cf98e0f3a`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-17`，[Runtime Image #37185347701](https://github.com/ArthurC02/SkillHub/actions/runs/37185347701) 於 commit `12481ef3` 發佈；以 tag `docker pull`，`RepoDigests` 對得上） |
+| 環境 | 本機 LiteLLM（`skillhub-litellm-1`）＋ `skillhub_egress`；`sandboxd` 以 HEAD 交叉編譯、在 `debian:12-slim` 容器跑，`SKILLHUB_SANDBOX_IMAGE` **直接指上面那個 digest**；測試二進位交叉編譯後在容器裡跑，共用一次性測試資料庫容器的網路；允許清單沿用 dev 那份，committed 的那份一字未動 |
+| 費用 | 合計 **$0.12617715**（`gpt-5.4-mini`，31 次呼叫，以閘道 `/spend/logs/v2` 逐列加總）：端到端四次 Run（單一 Skill $0.02358735、Plugin 內的 Skill $0.02276685、外層目錄裡的 Plugin $0.0230301 與為取 trace 重跑的一次 $0.02324535）、harness 兩支 $0.0172509、下面那次突變證明 $0.0162966；撤銷探測、反證、被換掉的套件三者 $0 |
+| 見證 | GHCR 上該 digest 有兩份 attestation：`https://spdx.dev/Document/v2.3` 與 `https://in-toto.io/attestation/vulns/v0.1`，以 `/repos/.../attestations/<digest>` 匿名取回確認 |
+| 映像層 | 同一個 digest、無網路：`node --version` → `v22.23.2`、17 個 Python 套件 `OK 17/17 3.11.2`、`pypdf` → `6.19.0`、`id -u` → `65532`、`command -v nc` → 無、`command -v npm` → 無、`/etc/debian_version` → `12.15`、`.Size` → 1,323,729,247 bytes、version label → `2026.08-17` |
+
+| 項次 | 狀態 | 實測輸出 / 判定 |
+| --- | --- | --- |
+| **1. Skill 載入條件** | ✅ **通過，三種形狀各跑一次** | 單一 Skill 的套件：`TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS（25.37s）。Plugin 內的 Skill：`TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone` PASS（21.19s）。**外層目錄裡的 Plugin**（zip 多一層 `desk-tools-main/`，`source_path=skills/run-marker`）：`TestEndToEndRunOfAPluginInsideARepositoryDirectoryInstallsItsSkill` PASS（21.18s），trace `skill_activation {"skill_name":"run-marker","decision":"activated"}` → `tool_call` `Bash` `cd /work/.claude/skills/run-marker && python3 scripts/check.py` → `script_log`：`SKILL-FILES=SKILL.md,scripts`、`SKILLS-INSTALLED=run-marker` |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | 四次 Run 的模型呼叫在閘道各留 6 列，`api_key` 是那次 Run 自己的 Virtual Key。撤銷：新開一把限 `gpt-5.4-mini`、0.5 USD、6 小時的 Virtual Key 打 `/v1/models` → **200**，`/key/delete` → 200，同一把再打 → **401** |
+| **3. Prompt caching 計費欄位與對帳** | ✅ **通過** | `cache_read_input_tokens` → `71168`，`cache_write_input_tokens` 仍為 `null`。四次 Run 的 trace `usage.cost_usd` 與閘道該金鑰的列合計逐位一致（例：外層目錄那次 trace `0.02324535`、閘道 `0.02324535`、平台 `cost_events` `23246` µUSD）。`-13` 那節記下的「trace 少了最後一次呼叫」這次四次都沒有出現；那是輪詢時序，這一版沒有修它，不主張它已消失 |
+| **4. `usage` 事件的發出條件** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（16.74s，`in=2029 out=30 token_source=result`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（15.76s，撞上限仍回報 `in=17901 out=49`，provider 錯誤指向 `token_budget_exceeded`）。harness 以 master key 當 grant，所以 `cost_usd` 為 `null`，與 `-13` 相同 |
+
+**外層目錄那條會紅的反證**：把 `sandboxd` 指回 `-13` 的 digest、其他一切不動，同一支測試 FAIL：`provision/invalid_package` `the run named skills/run-marker/ as this skill's directory inside its package, and that directory holds no SKILL.md`，沒有呼叫模型。改回 `-17` 之後 PASS。
+
+**套件位元組核對（不在四項清單上，同批驗證）**：平台把 `package_sha256` 送到 sandbox，sandbox 核對抓到的位元組。`TestEndToEndRunRefusesAPackageWhoseStoredBytesAreNotTheAdmittedOnes` 在套件的內容定址鍵底下放另一份合法套件 → Run `failed` / `provider_error`，sandboxd 記 `the delivered bytes are not the ones the request names`，沒有呼叫模型。突變證明：讓平台不送這個欄位，同一支 FAIL，被換掉的套件照樣跑完並回報 `succeeded`（$0.0162966）。
+
+**預設映像仍是 `-13`**：四項已在 `-17` 的 digest 上通過，移動預設由負責人決定。
