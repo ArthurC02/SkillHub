@@ -742,7 +742,7 @@ func TestTheProviderIsToldWhichDirectoryOfTheStoredPackageTheSkillIs(t *testing.
 		ID:               versionID,
 		SkillID:          pgtype.UUID{Bytes: [16]byte{15: 8}, Valid: true},
 		ContentHash:      "subtree-hash",
-		PackageObjectKey: "packages/whole-plugin.zip",
+		PackageObjectKey: "packages/2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824.zip",
 		SourcePath:       "skills/tidy-notes",
 	}
 
@@ -751,7 +751,8 @@ func TestTheProviderIsToldWhichDirectoryOfTheStoredPackageTheSkillIs(t *testing.
 	want := PackageRef{
 		SkillVersionID: pgconv.UUIDString(versionID),
 		ContentHash:    "subtree-hash",
-		ObjectKey:      "packages/whole-plugin.zip",
+		PackageSHA256:  "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+		ObjectKey:      "packages/2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824.zip",
 		SourcePath:     "skills/tidy-notes",
 	}
 	if got != want {

@@ -554,7 +554,19 @@ components:
         skill_version_id: { type: string, format: uuid }
         content_hash:
           type: string
-          description: sha256 of the package archive; the provider verifies before unpacking.
+          description: |
+            The Skill Version's content identity, for tracing only. For a Skill
+            that is its whole archive it equals the archive's sha256; for a Skill
+            inside a larger archive (`source_path` set) it is a hash over that
+            directory's files, so it is never compared with the bytes delivered.
+        package_sha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: |
+            Lowercase hex sha256 of the whole archive `object_key` names. The
+            provider hashes the bytes it fetched and refuses to place or unpack
+            them when they differ. Absent when the platform cannot name it, and
+            then nothing is checked.
         object_key:
           type: string
           description: Object storage key, readable only through the matching ObjectGrant.
@@ -590,7 +602,12 @@ components:
             properties:
               dataset_id: { type: string, format: uuid }
               file_name: { type: string }
-              content_hash: { type: string }
+              content_hash:
+                type: string
+                description: |
+                  Lowercase hex sha256 of the file. The provider hashes the bytes
+                  it fetched for the grant with this `object_key` and refuses to
+                  place them when they differ.
               object_key: { type: string }
 
     RuntimeProfile:

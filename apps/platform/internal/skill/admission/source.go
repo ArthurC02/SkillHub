@@ -2,8 +2,6 @@ package ingest
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -56,9 +54,8 @@ func planImport(data []byte) (importPlan, error) {
 			ErrTooManySkills, len(d.Skills), MaxSkillsPerImport)
 	}
 
-	sum := sha256.Sum256(data)
-	packageHash := hex.EncodeToString(sum[:])
-	plan.objectKey = "packages/" + packageHash + ".zip"
+	objectKey, packageHash := skillpkg.PackageObjectKey(data)
+	plan.objectKey = objectKey
 
 	for _, dir := range d.Skills {
 		pkg, err := prepareSkillAt(fsys, dir, plan.objectKey, packageHash, d.Findings)

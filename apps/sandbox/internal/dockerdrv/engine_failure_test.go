@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/moby/moby/client"
@@ -20,16 +21,28 @@ type faultyEngine struct {
 	noAddress bool
 	noReady   bool
 	goneFirst bool
+	dyingLate *sync.Once
 }
 
 func (f faultyEngine) ContainerInspect(ctx context.Context, containerID string, options client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
 	if f.noAddress && !strings.HasPrefix(containerID, "skillhub-run-") {
 		return client.ContainerInspectResult{}, nil
 	}
-	return f.Engine.ContainerInspect(ctx, containerID, options)
+	result, err := f.Engine.ContainerInspect(ctx, containerID, options)
+	if f.dyingLate != nil && strings.HasPrefix(containerID, "skillhub-run-") {
+		f.dyingLate.Do(func() {
+			go func() {
+				_, _ = f.ContainerStop(context.WithoutCancel(ctx), containerID, client.ContainerStopOptions{Signal: "SIGKILL"})
+			}()
+		})
+	}
+	return result, err
 }
 
 func (f faultyEngine) ExecCreate(ctx context.Context, containerID string, options client.ExecCreateOptions) (client.ExecCreateResult, error) {
+	if f.dyingLate != nil && slices.Contains(options.Cmd, "of="+dockerdrv.ReadyPath) {
+		return client.ExecCreateResult{}, errors.New("exec refused")
+	}
 	if f.noReady && slices.Contains(options.Cmd, "of="+dockerdrv.ReadyPath) {
 		if f.goneFirst {
 			if _, err := f.ContainerStop(ctx, containerID, client.ContainerStopOptions{}); err != nil {
@@ -88,5 +101,11 @@ func TestARunTheDriverCannotTellItsInputsAreReadyDoesNotStart(t *testing.T) {
 func TestASandboxThatEndedBeforeItsReadySignalIsNotAProvisionFailure(t *testing.T) {
 	if err := startFaulty(t, "none", faultyEngine{noReady: true, goneFirst: true}); err != nil {
 		t.Fatalf("Start = %v, want nil: the run has already ended and its own outcome says why", err)
+	}
+}
+
+func TestASandboxThatIsStillStoppingWhenItsReadySignalFailsIsNotAProvisionFailure(t *testing.T) {
+	if err := startFaulty(t, "none", faultyEngine{dyingLate: &sync.Once{}}); err != nil {
+		t.Fatalf("Start = %v, want nil: the container was on its way out, and the run's own outcome says why", err)
 	}
 }

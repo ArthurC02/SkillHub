@@ -17,6 +17,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
@@ -496,6 +497,7 @@ func packageRefFor(version VersionFacts) PackageRef {
 	return PackageRef{
 		SkillVersionID: pgconv.UUIDString(version.ID),
 		ContentHash:    version.ContentHash,
+		PackageSHA256:  skillpkg.PackageDigest(version.PackageObjectKey),
 		ObjectKey:      version.PackageObjectKey,
 		SourcePath:     version.SourcePath,
 	}

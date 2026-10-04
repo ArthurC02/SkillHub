@@ -65,11 +65,16 @@ func (d *Driver) pushInputs(ctx context.Context, r *run, req sandbox.RunRequest)
 
 			return fmt.Errorf("fetch %s %s: %w", g.Purpose, g.ObjectKey, err)
 		}
+		if err := req.VerifyInput(g, body); err != nil {
+			return err
+		}
 		if err := os.WriteFile(target, body, 0o600); err != nil {
 			return fmt.Errorf("place %s in the run directory: %w", g.Purpose, err)
 		}
 	}
-	_ = os.WriteFile(filepath.Join(inputDir(r.workDir), readyName), []byte("ready\n"), 0o600)
+	if err := os.WriteFile(filepath.Join(inputDir(r.workDir), readyName), []byte("ready\n"), 0o600); err != nil {
+		return fmt.Errorf("signal the run that its inputs are ready: %w", err)
+	}
 	return nil
 }
 

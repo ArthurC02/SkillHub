@@ -2,6 +2,7 @@ package drivertest
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -22,6 +23,44 @@ func RunContract(t *testing.T, subject Subject) {
 	t.Run("a granted object that cannot be fetched fails the dispatch", func(t *testing.T) {
 		grantThatCannotBeFetchedFailsTheDispatch(t, subject)
 	})
+	t.Run("a skill package whose bytes are not the ones named fails the dispatch", func(t *testing.T) {
+		if err := startWithPackage(t, subject, otherPackageSHA256); !errors.Is(err, sandbox.ErrInputDigestMismatch) {
+			t.Fatalf("Start = %v, want ErrInputDigestMismatch: the sandbox would run a package nobody admitted", err)
+		}
+	})
+	t.Run("a skill package whose bytes are the ones named is delivered", func(t *testing.T) {
+		if err := startWithPackage(t, subject, servedPackageSHA256); err != nil {
+			t.Fatalf("Start = %v, want nil", err)
+		}
+	})
+}
+
+const (
+	servedPackage       = "hello"
+	servedPackageSHA256 = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+	otherPackageSHA256  = "0000000000000000000000000000000000000000000000000000000000000000"
+)
+
+func startWithPackage(t *testing.T, subject Subject, packageSHA256 string) error {
+	t.Helper()
+	driver := subject.New(t)
+	served := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(servedPackage))
+	}))
+	t.Cleanup(served.Close)
+
+	req := subject.Request(t)
+	req.SkillVersion.PackageSHA256 = packageSHA256
+	req.ObjectGrants = []sandbox.ObjectGrant{{
+		Purpose:   "skill_package",
+		ObjectKey: "packages/test.zip",
+		Access:    "read",
+		URL:       served.URL + "/packages/test.zip",
+		ExpiresAt: time.Now().Add(time.Hour),
+	}}
+	id := subject.Handle(t)
+	t.Cleanup(func() { _ = driver.Remove(context.Background(), id) })
+	return driver.Start(context.Background(), id, req)
 }
 
 func grantThatCannotBeFetchedFailsTheDispatch(t *testing.T, subject Subject) {

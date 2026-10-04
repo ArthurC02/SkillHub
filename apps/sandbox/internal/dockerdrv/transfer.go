@@ -13,6 +13,7 @@ import (
 
 	cerrdefs "github.com/containerd/errdefs"
 	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
@@ -39,6 +40,8 @@ const (
 	artifactReadLimit = 128 << 20
 
 	execStreamDrainLimit = 1 << 20
+
+	execSettleWait = 2 * time.Second
 )
 
 var errGone = errors.New("sandbox is no longer running")
@@ -54,30 +57,16 @@ func (d *Driver) pushInputs(ctx context.Context, id string, req sandbox.RunReque
 
 	names := datasetNames(req)
 	for _, g := range req.InputGrants() {
-		var target string
-		switch g.Purpose {
-		case "skill_package":
-			target = SkillArchivePath
-		case "dataset":
-			name := names[g.ObjectKey]
-			if name == "" {
-
-				continue
-			}
-			target = DatasetDir + "/" + name
-		default:
+		target, ok := inputTarget(g, names)
+		if !ok {
 			continue
 		}
-		body, err := fetch(ctx, g.URL)
-		if err != nil {
-
-			return fmt.Errorf("fetch %s %s: %w", g.Purpose, g.ObjectKey, err)
+		err := d.placeInput(ctx, id, req, g, target)
+		if errors.Is(err, errGone) {
+			return nil
 		}
-		if err := d.exec(ctx, id, writeFileCommand(target), body); err != nil {
-			if errors.Is(err, errGone) {
-				return nil
-			}
-			return fmt.Errorf("place %s in the sandbox: %w", g.Purpose, err)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -86,6 +75,34 @@ func (d *Driver) pushInputs(ctx context.Context, id string, req sandbox.RunReque
 			return nil
 		}
 		return fmt.Errorf("signal the sandbox that its inputs are ready: %w", err)
+	}
+	return nil
+}
+
+func inputTarget(g sandbox.ObjectGrant, datasetNames map[string]string) (string, bool) {
+	switch g.Purpose {
+	case "skill_package":
+		return SkillArchivePath, true
+	case "dataset":
+		name := datasetNames[g.ObjectKey]
+		return DatasetDir + "/" + name, name != ""
+	}
+	return "", false
+}
+
+func (d *Driver) placeInput(ctx context.Context, id string, req sandbox.RunRequest, g sandbox.ObjectGrant, target string) error {
+	body, err := fetch(ctx, g.URL)
+	if err != nil {
+		return fmt.Errorf("fetch %s %s: %w", g.Purpose, g.ObjectKey, err)
+	}
+	if err := req.VerifyInput(g, body); err != nil {
+		return err
+	}
+	if err := d.exec(ctx, id, writeFileCommand(target), body); err != nil {
+		if errors.Is(err, errGone) {
+			return err
+		}
+		return fmt.Errorf("place %s in the sandbox: %w", g.Purpose, err)
 	}
 	return nil
 }
@@ -169,10 +186,25 @@ func fetchWithLimit(ctx context.Context, url string, limit int64) ([]byte, error
 
 func (d *Driver) exec(ctx context.Context, id string, cmd []string, stdin []byte) error {
 	err := d.execOnce(ctx, id, cmd, stdin)
-	if err != nil && !d.isRunning(ctx, id) {
+	if err != nil && d.stopsWithin(ctx, id, execSettleWait) {
 		return errGone
 	}
 	return err
+}
+
+func (d *Driver) stopsWithin(ctx context.Context, id string, wait time.Duration) bool {
+	if !d.isRunning(ctx, id) {
+		return true
+	}
+	waitCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), wait)
+	defer cancel()
+	stopped := d.cli.ContainerWait(waitCtx, name(id), client.ContainerWaitOptions{Condition: container.WaitConditionNotRunning})
+	select {
+	case <-stopped.Result:
+		return true
+	case <-stopped.Error:
+		return false
+	}
 }
 
 func (d *Driver) isRunning(ctx context.Context, id string) bool {

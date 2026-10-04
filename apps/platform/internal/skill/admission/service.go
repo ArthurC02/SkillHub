@@ -2,8 +2,6 @@ package ingest
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -256,9 +254,7 @@ func (s *Service) prepare(data []byte) (preparedPackage, error) {
 		return p, err
 	}
 
-	sum := sha256.Sum256(data)
-	p.contentHash = hex.EncodeToString(sum[:])
-	p.objectKey = "packages/" + p.contentHash + ".zip"
+	p.objectKey, p.contentHash = skillpkg.PackageObjectKey(data)
 	return p, nil
 }
 
