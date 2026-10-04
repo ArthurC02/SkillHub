@@ -2,11 +2,14 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider, createMemoryHistory } from "@tanstack/react-router";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
 import { createAppRouter } from "../../app/router";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { preloadEveryPage } from "../../testing/pages";
+
+beforeAll(preloadEveryPage);
 
 let container: HTMLDivElement;
 let root: Root;

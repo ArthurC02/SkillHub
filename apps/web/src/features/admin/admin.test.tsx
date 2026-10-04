@@ -1,7 +1,6 @@
 import { StrictMode, act } from "react";
-import "../catalog/home/Home.page";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { focusManager } from "@tanstack/react-query";
 import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
@@ -17,6 +16,9 @@ import {
   platformResponse,
 } from "../../testing/fixtures/platform";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { preloadEveryPage } from "../../testing/pages";
+
+beforeAll(preloadEveryPage);
 
 type Call = { method: string; url: string; body?: Record<string, unknown> };
 type Reply = { body: unknown; status: number } | undefined;

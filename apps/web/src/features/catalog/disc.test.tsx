@@ -1,10 +1,8 @@
 import { readFileSync } from "node:fs";
-import "./home/Home.page";
-import "./compare/Compare.page";
 import { join } from "node:path";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
 import { router } from "../../app/router";
@@ -20,6 +18,9 @@ import type {
   SkillRisk,
 } from "../../core/api/types";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { preloadEveryPage } from "../../testing/pages";
+
+beforeAll(preloadEveryPage);
 
 let container: HTMLDivElement;
 let root: Root;

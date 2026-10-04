@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import {
   correctedSearchText,
   emptySearchIntent,
@@ -11,6 +11,9 @@ import { IntentInterpretation } from "./home/components/IntentInterpretation";
 import App from "../../app/App";
 import { router } from "../../app/router";
 import { queryClient } from "../../core/api/queryClient";
+import { preloadEveryPage } from "../../testing/pages";
+
+beforeAll(preloadEveryPage);
 
 let container: HTMLDivElement;
 let root: Root;

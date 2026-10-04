@@ -23,5 +23,6 @@ export default defineConfig({
     // those specs too and fail at import time under the wrong runner.
     exclude: ["**/node_modules/**", "**/dist/**", "e2e/**"],
     testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 });

@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import axe from "axe-core";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import App from "../app/App";
 import { queryClient } from "../core/api/queryClient";
 import { router } from "../app/router";
@@ -20,6 +20,9 @@ import {
   platformResponse,
 } from "../testing/fixtures/platform";
 import { DEFAULT_WAIT_MS, pollUntil } from "../testing/poll";
+import { preloadEveryPage } from "../testing/pages";
+
+beforeAll(preloadEveryPage);
 
 let container: HTMLDivElement;
 let root: Root;

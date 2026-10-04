@@ -1,10 +1,12 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { act } from "react";
-import { expect, test } from "vitest";
+import { beforeAll, expect, test } from "vitest";
 import App from "./App";
-import "../features/catalog/home/Home.page";
 import { DEFAULT_WAIT_MS, pollUntil } from "../testing/poll";
+import { preloadEveryPage } from "../testing/pages";
+
+beforeAll(preloadEveryPage);
 
 function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
   return pollUntil(done, () => document.body.textContent, timeoutMs);
