@@ -3,12 +3,19 @@ package apiserver_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"sort"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
 func newestVersionID(t *testing.T, c *client, skillID string) string {
@@ -78,7 +85,7 @@ func TestABundleExportsAsAPluginThatImportsBackAsTheSameSkills(t *testing.T) {
 	a := newAPI(t, pool)
 	alice := a.login(t, freshName("bundle-alice"))
 	bob := a.login(t, freshName("bundle-bob"))
-	bundle, _, skillNames := bundleOfTwo(t, alice, "bundle")
+	bundle, skillIDs, skillNames := bundleOfTwo(t, alice, "bundle")
 
 	code, body := postJSON(t, alice, "/me/bundles/"+bundle+"/export", `{}`)
 	if code != http.StatusCreated {
@@ -105,6 +112,15 @@ func TestABundleExportsAsAPluginThatImportsBackAsTheSameSkills(t *testing.T) {
 	}
 	if got := namesOf(skillsOf(t, imported), "path"); strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Errorf("the re-imported plugin carries %v, want the bundle's %v", got, skillNames)
+	}
+	for i, name := range skillNames {
+		original := storedSkillMD(t, a, pool, skillIDs[i])
+		if !strings.Contains(string(original), "carefully.") {
+			t.Fatalf("the source SKILL.md of %s = %q, want the uploaded body", name, original)
+		}
+		if back := storedSkillMD(t, a, pool, importedSkillID(t, imported, "skills/"+name)); string(back) != string(original) {
+			t.Errorf("the re-imported %s SKILL.md = %q, want the source %q", name, back, original)
+		}
 	}
 
 	if code, again := postJSON(t, alice, "/me/bundles/"+bundle+"/export", `{}`); code != http.StatusCreated || again["artifact_id"] != artifactID || again["duplicate"] != true {
@@ -389,5 +405,141 @@ func TestABundleVersionHoldsItsMembersAgainstThePurgeOfADeletedSkill(t *testing.
 	}
 	if n := countRow(t, pool, `SELECT count(*) FROM skill_versions WHERE id = $1`, mustUUID(t, versionID)); n != 1 {
 		t.Errorf("the purge removed a version a bundle pins (%d rows)", n)
+	}
+}
+
+func importedSkillID(t *testing.T, imported map[string]any, path string) string {
+	t.Helper()
+	for _, s := range skillsOf(t, imported) {
+		if s["path"] == path {
+			id, _ := s["skill_id"].(string)
+			return id
+		}
+	}
+	t.Fatalf("the import reply has no skill at %s: %v", path, imported)
+	return ""
+}
+
+func storedSkillMD(t *testing.T, a *api, pool *pgxpool.Pool, skillID string) []byte {
+	t.Helper()
+	var key, sourcePath string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT package_object_key, source_path FROM skill_versions WHERE skill_id = $1 ORDER BY version_number DESC LIMIT 1`,
+		mustUUID(t, skillID)).Scan(&key, &sourcePath); err != nil {
+		t.Fatal(err)
+	}
+	fsys, err := skillpkg.SkillFS(a.packages[key], sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	md, err := fs.ReadFile(fsys, "SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return md
+}
+
+func TestABundleVersionAndItsMembersRefuseEveryUpdateAndDelete(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("immutable-alice"))
+	bundle, _, skillNames := bundleOfTwo(t, alice, "immutable")
+	bundleID := mustUUID(t, queryText(t, pool,
+		`SELECT bv.id::text FROM bundle_versions bv JOIN bundles b ON b.id = bv.bundle_id WHERE b.workspace_id = $1 AND b.name = $2`,
+		mustUUID(t, alice.workspaceID), bundle))
+
+	for _, tc := range []struct{ name, sql, wantMessage string }{
+		{"updating the version", `UPDATE bundle_versions SET description = 'changed' WHERE id = $1`, "is immutable and cannot be updated"},
+		{"deleting the version", `DELETE FROM bundle_versions WHERE id = $1`, "is immutable and cannot be deleted"},
+		{"updating a member", `UPDATE bundle_members SET manifest_name = 'changed' WHERE bundle_version_id = $1`, "is immutable and cannot be updated"},
+		{"deleting a member", `DELETE FROM bundle_members WHERE bundle_version_id = $1`, "is immutable and cannot be deleted"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := pool.Exec(context.Background(), tc.sql, bundleID)
+
+			var pgErr *pgconn.PgError
+			if !errors.As(err, &pgErr) || pgErr.Code != "23001" || !strings.Contains(pgErr.Message, tc.wantMessage) {
+				t.Errorf("%s: got %v, want restrict_violation (23001) saying %q", tc.name, err, tc.wantMessage)
+			}
+		})
+	}
+
+	if got := queryText(t, pool, `SELECT description FROM bundle_versions WHERE id = $1`, bundleID); got != "Tools that work on one desk." {
+		t.Errorf("the bundle version description = %q after the refused writes, want it unchanged", got)
+	}
+	if got := queryText(t, pool, `SELECT string_agg(manifest_name, ',' ORDER BY position) FROM bundle_members WHERE bundle_version_id = $1`, bundleID); got != strings.Join(skillNames, ",") {
+		t.Errorf("the bundle members = %q after the refused writes, want %q in order", got, strings.Join(skillNames, ","))
+	}
+}
+
+func queryText(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) string {
+	t.Helper()
+	var out string
+	if err := pool.QueryRow(context.Background(), sql, args...).Scan(&out); err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+func TestABundleRefusesTwoSkillsThatDeclareTheSameManifestName(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("dupname-alice"))
+	shared := freshName("dupname-shared")
+	first := uploadedSkill(t, alice, shared, "One way.")
+	second := uploadedSkill(t, alice, freshName("dupname-other"), "Another way.")
+	a.packages[packageKeyOf(t, pool, second)] = a.packages[packageKeyOf(t, pool, first)]
+	bundle := freshName("dupname")
+
+	code, body := createBundle(t, alice, bundle, "1.0.0", newestVersionID(t, alice, first), newestVersionID(t, alice, second))
+
+	message, _ := body["error"].(string)
+	if code != http.StatusUnprocessableEntity || body["reason"] != "duplicate_manifest_name" || !strings.Contains(message, "（"+shared+"）") {
+		t.Errorf("two members declaring %s: %d %v, want 422 duplicate_manifest_name naming it", shared, code, body)
+	}
+	if n := countRow(t, pool, `SELECT count(*) FROM bundle_versions bv JOIN bundles b ON b.id = bv.bundle_id WHERE b.workspace_id = $1`,
+		mustUUID(t, alice.workspaceID)); n != 0 {
+		t.Errorf("the refused request left %d bundle versions, want none", n)
+	}
+}
+
+func packageKeyOf(t *testing.T, pool *pgxpool.Pool, skillID string) string {
+	t.Helper()
+	return queryText(t, pool, `SELECT package_object_key FROM skill_versions WHERE skill_id = $1 ORDER BY version_number DESC LIMIT 1`, mustUUID(t, skillID))
+}
+
+func TestABundleWithAMemberWhoseLicenseCannotBeRedistributedIsRefusedAndNamesIt(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	for _, tc := range []struct {
+		redistribution, wantReason string
+	}{
+		{"blocked", "not_redistributable"},
+		{"unknown", "license_unknown"},
+	} {
+		t.Run(tc.redistribution, func(t *testing.T) {
+			alice := a.login(t, freshName("trust-alice"))
+			registerPublisher(t, alice, freshName("trust"))
+			bundle, skillIDs, skillNames := bundleOfTwo(t, alice, "trust")
+			setSkill(t, pool, skillIDs[1], "redistribution = '"+tc.redistribution+"'")
+
+			for _, path := range []struct{ name, method, url, body string }{
+				{"export", http.MethodPost, "/me/bundles/" + bundle + "/export", `{}`},
+				{"publish", http.MethodPost, "/me/bundles/" + bundle + "/publication", `{"rights_attested":true}`},
+			} {
+				code, body := alice.doJSON(t, path.method, path.url, path.body)
+				message, _ := body["error"].(string)
+				if code != http.StatusUnprocessableEntity || body["reason"] != tc.wantReason || !strings.HasPrefix(message, "成員 "+skillNames[1]+"：") {
+					t.Errorf("%s with a %s member: %d %v, want 422 %s naming %s", path.name, tc.redistribution, code, body, tc.wantReason, skillNames[1])
+				}
+			}
+			if downloads := rawDownloads(t, alice); len(downloads) != 0 {
+				t.Errorf("a refused export left %d downloads", len(downloads))
+			}
+			if n := countRow(t, pool, `SELECT count(*) FROM publication_releases r JOIN publications p ON p.id = r.publication_id JOIN bundles b ON b.id = p.bundle_id WHERE b.workspace_id = $1`,
+				mustUUID(t, alice.workspaceID)); n != 0 {
+				t.Errorf("a refused publish left %d releases", n)
+			}
+		})
 	}
 }

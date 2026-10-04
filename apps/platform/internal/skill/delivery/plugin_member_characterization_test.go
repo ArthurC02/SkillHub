@@ -41,6 +41,11 @@ func (m memberStore) Exists(context.Context, string) (bool, error) { return fals
 
 func pluginOfOneMember(t *testing.T, extra map[string]string) *PluginPlan {
 	t.Helper()
+	return pluginOfOneMemberDescribed(t, extra, "")
+}
+
+func pluginOfOneMemberDescribed(t *testing.T, extra map[string]string, description string) *PluginPlan {
+	t.Helper()
 	files := map[string]string{"SKILL.md": "---\nname: tidy-csv\ndescription: Tidies CSV files.\nlicense: MIT\n---\n\nTidy it.\n"}
 	for name, content := range extra {
 		files[name] = content
@@ -85,7 +90,7 @@ func pluginOfOneMember(t *testing.T, extra map[string]string) *PluginPlan {
 	s.ReadVersionSummaries = func(context.Context, []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error) { return nil, nil }
 
 	p, err := s.PlanPlugin(context.Background(), identity.Workspace{}, PluginSpec{
-		Name: "csv-kit", Version: "1.0.0", Members: []PluginMember{{SkillID: skillID, VersionID: versionID}},
+		Name: "csv-kit", Version: "1.0.0", Description: description, Members: []PluginMember{{SkillID: skillID, VersionID: versionID}},
 	})
 
 	if err != nil || !p.Allowed {
