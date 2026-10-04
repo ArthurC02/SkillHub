@@ -81,3 +81,13 @@ export const ciMessage = (sha: string, verdict: 'green' | 'red', output: string)
   const failed = output.split('\n').filter(line => /^\s+failure /.test(line)).map(line => line.trim())
   return verdict === 'green' ? `CI ${sha.slice(0, 8)}: green` : `CI ${sha.slice(0, 8)}: red — ${failed.join('; ') || 'see ci-status'}`
 }
+
+const CODE_FILE = String.raw`["']?[^\s"'|;&<>]+\.(?:mjs|cjs|js|jsx|ts|tsx|go|py|sh|ps1|sql|ya?ml|toml|json)["']?`
+const HEREDOC_INTO_CODE = new RegExp(
+  String.raw`(?:(?:>>?|\btee\s+(?:-a\s+)?)\s*${CODE_FILE}[^\n]*<<-?\s*['"]?\w+|<<-?\s*['"]?\w+['"]?[^\n]*(?:>>?|\btee\s+(?:-a\s+)?)\s*${CODE_FILE})`)
+
+export const heredocWritesCodeWithBackslash = (command: string): boolean => {
+  const header = command.indexOf('\n')
+  return header >= 0 && HEREDOC_INTO_CODE.test(command.slice(0, header)) && command.slice(header).includes('\\')
+}
+

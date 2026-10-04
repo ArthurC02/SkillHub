@@ -1,7 +1,8 @@
 import type { EngineInterface, Register } from 'claude-code'
 import {
   CI_GIVE_UP_MS, CI_POLL_MS, DOCUMENTED_TEST_DSN, MUTATION_TIMEOUT_MS, MUTATION_TOOL, MUTATION_TOOL_SPEC,
-  TEST_DATABASE_NOTE, ciMessage, ciVerdict, dsnFromEnvFile, mutationVerdict, replaceOnce, withTestDatabase,
+  TEST_DATABASE_NOTE, ciMessage, ciVerdict, dsnFromEnvFile, heredocWritesCodeWithBackslash, mutationVerdict,
+  replaceOnce, withTestDatabase,
   type MutationInput,
 } from './assist'
 
@@ -144,6 +145,18 @@ async function readHeader($: EngineInterface, path: string): Promise<string> {
   }
 }
 
+async function unallowedRuntimeImagePush($: EngineInterface, root: string) {
+  const head = (await $.process.run(['git', '-C', root, 'rev-parse', 'HEAD'])).stdout.trim()
+  const upstream = await $.process.run(['git', '-C', root, 'rev-parse', '--verify', '--quiet', '@{u}'])
+  const base = upstream.exitCode === 0 ? '@{u}' : 'origin/main'
+  const changed = await $.process.run(['git', '-C', root, 'diff', '--name-only', `${base}..HEAD`, '--', RUNTIME_IMAGE])
+  const action = `push of ${head.slice(0, 8)} touching ${RUNTIME_IMAGE}`
+  if (changed.stdout.trim() === '' || await consumeAllowance($, action)) return undefined
+  return refuse($, action,
+    'this push publishes a new runtime image tag, which cannot be withdrawn; ask the owner first ' +
+    '(.claude/rules/tests.md).')
+}
+
 async function testDsn($: EngineInterface, root: string): Promise<string> {
   try {
     return dsnFromEnvFile(await $.fs.read(`${root}/.env`)) ?? DOCUMENTED_TEST_DSN
@@ -207,16 +220,13 @@ export const register: Register = on => {
     const root = await $.session.root()
 
     if (GIT_PUSH.test(e.command)) {
-      const head = (await $.process.run(['git', '-C', root, 'rev-parse', 'HEAD'])).stdout.trim()
-      const upstream = await $.process.run(['git', '-C', root, 'rev-parse', '--verify', '--quiet', '@{u}'])
-      const base = upstream.exitCode === 0 ? '@{u}' : 'origin/main'
-      const changed = await $.process.run(['git', '-C', root, 'diff', '--name-only', `${base}..HEAD`, '--', RUNTIME_IMAGE])
-      const action = `push of ${head.slice(0, 8)} touching ${RUNTIME_IMAGE}`
-      if (changed.stdout.trim() !== '' && !(await consumeAllowance($, action))) {
-        return refuse($, action,
-          'this push publishes a new runtime image tag, which cannot be withdrawn; ask the owner first ' +
-          '(.claude/rules/tests.md).')
-      }
+      const refusal = await unallowedRuntimeImagePush($, root)
+      if (refusal) return refusal
+    }
+
+    if (heredocWritesCodeWithBackslash(e.command)) {
+      return { deny: 'skillhub-guards: this heredoc writes a code file whose body holds backslashes, and the shell ' +
+        'layer has halved them before; write the file with the Write tool instead.' }
     }
 
     if (needsSignature(e.command)) {

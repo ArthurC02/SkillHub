@@ -1,6 +1,6 @@
 import type { On } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
-import { ciMessage, ciVerdict, dsnFromEnvFile, mutationVerdict, replaceOnce, withTestDatabase } from '../hooks/assist'
+import { ciMessage, ciVerdict, dsnFromEnvFile, heredocWritesCodeWithBackslash, mutationVerdict, replaceOnce, withTestDatabase } from '../hooks/assist'
 
 const DSN = 'postgres://u:p@localhost:5432/x_test'
 const ENV = `SKILLHUB_TEST_DATABASE_URL='${DSN}' SKILLHUB_REQUIRE_DB=1`
@@ -48,6 +48,20 @@ test('a red CI message names each failing job, a green one only the commit', () 
     '    failure platform: Platform tests\n    failure web: Web tests\n    did not run: llm\n'
   expect(ciMessage('25147931a393fd8de', 'red', red)).toBe('CI 25147931: red — failure platform: Platform tests; failure web: Web tests')
   expect(ciMessage('aff79dc4700b014f', 'green', 'aff79dc (aff79dc4700b014f): green')).toBe('CI aff79dc4: green')
+})
+
+test('a heredoc that writes a code file with a backslash in its body is caught, either redirect order', () => {
+  expect(heredocWritesCodeWithBackslash("cat > /tmp/m.mjs <<'EOF'\nconst r = /\\d+/\nEOF")).toBe(true)
+  expect(heredocWritesCodeWithBackslash("cat <<'EOF' > scratch/fake.sh\necho \"a\\nb\"\nEOF")).toBe(true)
+  expect(heredocWritesCodeWithBackslash("tee -a x.go <<EOF\ns := \"\\t\"\nEOF")).toBe(true)
+})
+
+test('a heredoc without a backslash, into a non-code file, or feeding a command is left alone', () => {
+  expect(heredocWritesCodeWithBackslash("cat > /tmp/m.mjs <<'EOF'\nconst a = 1\nEOF")).toBe(false)
+  expect(heredocWritesCodeWithBackslash("cat > notes.txt <<'EOF'\na\\b\nEOF")).toBe(false)
+  expect(heredocWritesCodeWithBackslash("git commit -q -F - <<'EOF'\nfix: keep \\n in messages\nEOF")).toBe(false)
+  expect(heredocWritesCodeWithBackslash("git commit -F - <<'EOF'\ndocs: cat > a.ts <<X used to halve \\\\ here\nEOF")).toBe(false)
+  expect(heredocWritesCodeWithBackslash('echo "a\\b" > x.ts')).toBe(false)
 })
 
 test('a snippet that occurs exactly once is replaced', () => {
