@@ -91,3 +91,35 @@ export const heredocWritesCodeWithBackslash = (command: string): boolean => {
   return header >= 0 && HEREDOC_INTO_CODE.test(command.slice(0, header)) && command.slice(header).includes('\\')
 }
 
+export const repoRelative = (root: string, path: string): string => {
+  const unify = (p: string) => p.replace(/\\/g, '/')
+  const base = unify(root).replace(/\/$/, '') + '/'
+  const target = unify(path)
+  return target.toLowerCase().startsWith(base.toLowerCase()) ? target.slice(base.length) : target
+}
+
+export const shipPathProblem = (paths: string[]): string | undefined => {
+  if (paths.length === 0) return 'name the files to commit'
+  const loose = paths.find(path => /^(?:\.|-.*|.*[*?[].*|.*\/)$/.test(path) || path.includes('..'))
+  return loose === undefined ? undefined : `"${loose}" is not one explicit file; name each file`
+}
+
+export const SHIP_TOOL = 'ship'
+export const SHIP_TOOL_SPEC = {
+  name: SHIP_TOOL,
+  description: 'Commit and push named files the way this repository requires: comment-lint them, stage each by ' +
+    'explicit path, sign when docs/domain-memory is staged, refuse a non-fast-forward push and a runtime ' +
+    'image publish the owner has not allowed, push, then watch CI. Use it instead of hand-written git commands.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      paths: { type: 'array', items: { type: 'string' }, description: 'each file to commit, one path per entry' },
+      message: { type: 'string', description: 'the full commit message, attribution lines included' },
+      sign: { type: 'boolean', description: 'sign the commit even when no domain-memory file is staged' },
+    },
+    required: ['paths', 'message'],
+  },
+}
+
+export type ShipInput = { paths: string[]; message: string; sign?: boolean }
+

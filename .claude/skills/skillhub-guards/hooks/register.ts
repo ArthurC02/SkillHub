@@ -1,9 +1,9 @@
 import type { EngineInterface, Register } from 'claude-code'
 import {
   CI_GIVE_UP_MS, CI_POLL_MS, DOCUMENTED_TEST_DSN, MUTATION_TIMEOUT_MS, MUTATION_TOOL, MUTATION_TOOL_SPEC,
-  TEST_DATABASE_NOTE, ciMessage, ciVerdict, dsnFromEnvFile, heredocWritesCodeWithBackslash, mutationVerdict,
-  replaceOnce, withTestDatabase,
-  type MutationInput,
+  SHIP_TOOL, SHIP_TOOL_SPEC, TEST_DATABASE_NOTE, ciMessage, ciVerdict, dsnFromEnvFile,
+  heredocWritesCodeWithBackslash, mutationVerdict, replaceOnce, repoRelative, shipPathProblem, withTestDatabase,
+  type MutationInput, type ShipInput,
 } from './assist'
 
 const ROLES = ['skillhub-writer', 'skillhub-verify', 'skillhub-mutation']
@@ -157,6 +157,26 @@ async function unallowedRuntimeImagePush($: EngineInterface, root: string) {
     '(.claude/rules/tests.md).')
 }
 
+async function git($: EngineInterface, root: string, args: string[], stdin?: string) {
+  const run = await $.process.run(['git', '-C', root, ...args], stdin === undefined ? undefined : { stdin })
+  return { ok: run.exitCode === 0, out: `${run.stdout}${run.stderr}`.trim() }
+}
+
+async function isDirectory($: EngineInterface, path: string): Promise<boolean> {
+  try {
+    return (await $.fs.stat(path)).kind === 'dir'
+  } catch {
+    return false
+  }
+}
+
+async function watchCI($: EngineInterface, root: string): Promise<string> {
+  const sha = (await $.process.run(['git', '-C', root, 'rev-parse', 'HEAD'])).stdout.trim()
+  await $.state.set({ plugin: 'skillhub-guards', key: 'ciWatch' }, { sha, since: Date.now() })
+  $.ui.status(`CI ${sha.slice(0, 8)}: waiting`)
+  return sha
+}
+
 async function testDsn($: EngineInterface, root: string): Promise<string> {
   try {
     return dsnFromEnvFile(await $.fs.read(`${root}/.env`)) ?? DOCUMENTED_TEST_DSN
@@ -195,6 +215,7 @@ export const register: Register = on => {
       description: 'Let the action skillhub-guards last refused through, once',
     })
     await $.tool.register(MUTATION_TOOL_SPEC)
+    await $.tool.register(SHIP_TOOL_SPEC)
     $.clock.every(CI_POLL_MS, () => { void pollCI($) })
     return next(e)
   })
@@ -254,11 +275,45 @@ export const register: Register = on => {
       await remember($, attributedToCommand(watched, after).map(path => `${root}/${path}`))
     }
     if (e.agentId === undefined && GIT_PUSH.test(e.command) && result.deny === undefined && result.isError !== true) {
-      const sha = (await $.process.run(['git', '-C', root, 'rev-parse', 'HEAD'])).stdout.trim()
-      await $.state.set({ plugin: 'skillhub-guards', key: 'ciWatch' }, { sha, since: Date.now() })
-      $.ui.status(`CI ${sha.slice(0, 8)}: waiting`)
+      await watchCI($, root)
     }
     return result
+  })
+
+  on('tool.call', { tool: `mcp__skillhub-guards__${SHIP_TOOL}` }, async ($, e) => {
+    if (e.agentId !== undefined) return { deny: 'skillhub-guards: a subagent may not commit or push (AGENTS.md 開發自動化 3).' }
+    const input = e.input as ShipInput
+    const root = await $.session.root()
+    const paths = input.paths.map(path => repoRelative(root, path))
+    const loose = shipPathProblem(paths)
+    if (loose) return { result: loose, isError: true as const }
+    for (const path of paths) {
+      if (await isDirectory($, `${root}/${path}`)) return { result: `"${path}" is a directory; name each file`, isError: true as const }
+    }
+
+    const lint = await $.process.run(['go', '-C', `${root}/tools/devctl`, 'run', '.', 'comment-lint', ...paths],
+      { timeoutMs: 300_000 })
+    if (lint.exitCode !== 0) return { result: `comment-lint refused:\n${lint.stdout}${lint.stderr}`, isError: true as const }
+
+    const staged = await git($, root, ['add', '--', ...paths])
+    if (!staged.ok) return { result: `git add failed:\n${staged.out}`, isError: true as const }
+    const memory = await git($, root, ['diff', '--cached', '--name-only', '--', DOMAIN_MEMORY])
+    const sign = input.sign === true || memory.out !== ''
+    const commit = await git($, root, ['commit', ...(sign ? ['-S'] : []), '-F', '-'], input.message)
+    if (!commit.ok) return { result: `git commit failed:\n${commit.out}`, isError: true as const }
+
+    await git($, root, ['fetch', '--quiet'])
+    const fastForward = await git($, root, ['merge-base', '--is-ancestor', 'origin/main', 'HEAD'])
+    if (!fastForward.ok) {
+      return { result: 'committed, not pushed: origin/main has commits this branch lacks; run git pull --rebase, ' +
+        'then git push (the push is still watched).', isError: true as const }
+    }
+    const refusal = await unallowedRuntimeImagePush($, root)
+    if (refusal) return refusal
+    const push = await git($, root, ['push', '--quiet'])
+    if (!push.ok) return { result: `committed, push failed:\n${push.out}`, isError: true as const }
+    const sha = await watchCI($, root)
+    return { result: `pushed ${sha.slice(0, 8)}${sign ? ' (signed)' : ''}; CI is being watched\n${push.out}`.trim() }
   })
 
   on('tool.call', { tool: `mcp__skillhub-guards__${MUTATION_TOOL}` }, async ($, e) => {
