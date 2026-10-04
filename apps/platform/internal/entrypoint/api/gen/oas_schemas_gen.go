@@ -26750,6 +26750,9 @@ type SkillImportLimits struct {
 	MaxFileBytes int64 `json:"max_file_bytes"`
 	// Deepest directory nesting a path inside the archive may have.
 	MaxPathDepth int `json:"max_path_depth"`
+	// Most Skills one import may create. Counted after validation, so a Skill refused as malformed or for
+	// repeating a name does not count; a source over it is refused whole with 413.
+	MaxSkillsPerImport int `json:"max_skills_per_import"`
 	// Hosts this deployment will fetch an import from; anything else is refused before a request is made.
 	AllowedHosts []string `json:"allowed_hosts"`
 	Note         string   `json:"note"`
@@ -26778,6 +26781,11 @@ func (s *SkillImportLimits) GetMaxFileBytes() int64 {
 // GetMaxPathDepth returns the value of MaxPathDepth.
 func (s *SkillImportLimits) GetMaxPathDepth() int {
 	return s.MaxPathDepth
+}
+
+// GetMaxSkillsPerImport returns the value of MaxSkillsPerImport.
+func (s *SkillImportLimits) GetMaxSkillsPerImport() int {
+	return s.MaxSkillsPerImport
 }
 
 // GetAllowedHosts returns the value of AllowedHosts.
@@ -26813,6 +26821,11 @@ func (s *SkillImportLimits) SetMaxFileBytes(val int64) {
 // SetMaxPathDepth sets the value of MaxPathDepth.
 func (s *SkillImportLimits) SetMaxPathDepth(val int) {
 	s.MaxPathDepth = val
+}
+
+// SetMaxSkillsPerImport sets the value of MaxSkillsPerImport.
+func (s *SkillImportLimits) SetMaxSkillsPerImport(val int) {
+	s.MaxSkillsPerImport = val
 }
 
 // SetAllowedHosts sets the value of AllowedHosts.

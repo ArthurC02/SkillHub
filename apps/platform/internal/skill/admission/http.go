@@ -59,6 +59,7 @@ type importLimitsResponse struct {
 	MaxFiles         int      `json:"max_files"`
 	MaxFileBytes     int64    `json:"max_file_bytes"`
 	MaxPathDepth     int      `json:"max_path_depth"`
+	MaxSkills        int      `json:"max_skills_per_import"`
 	AllowedHosts     []string `json:"allowed_hosts"`
 	Note             string   `json:"note"`
 }
@@ -113,6 +114,7 @@ func (h *Handler) Limits(w http.ResponseWriter, _ *http.Request) {
 		MaxFiles:         limits.Entries,
 		MaxFileBytes:     limits.EntryBytes,
 		MaxPathDepth:     limits.EntryDepth,
+		MaxSkills:        MaxSkillsPerImport,
 		AllowedHosts:     hosts,
 		Note:             importLimitsNote,
 	})

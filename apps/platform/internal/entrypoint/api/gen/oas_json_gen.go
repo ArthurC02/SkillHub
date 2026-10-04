@@ -54576,6 +54576,10 @@ func (s *SkillImportLimits) encodeFields(e *jx.Encoder) {
 		e.Int(s.MaxPathDepth)
 	}
 	{
+		e.FieldStart("max_skills_per_import")
+		e.Int(s.MaxSkillsPerImport)
+	}
+	{
 		e.FieldStart("allowed_hosts")
 		e.ArrStart()
 		for _, elem := range s.AllowedHosts {
@@ -54589,14 +54593,15 @@ func (s *SkillImportLimits) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfSkillImportLimits = [7]string{
+var jsonFieldsNameOfSkillImportLimits = [8]string{
 	0: "max_zip_bytes",
 	1: "max_unpacked_bytes",
 	2: "max_files",
 	3: "max_file_bytes",
 	4: "max_path_depth",
-	5: "allowed_hosts",
-	6: "note",
+	5: "max_skills_per_import",
+	6: "allowed_hosts",
+	7: "note",
 }
 
 // Decode decodes SkillImportLimits from json.
@@ -54668,8 +54673,20 @@ func (s *SkillImportLimits) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"max_path_depth\"")
 			}
-		case "allowed_hosts":
+		case "max_skills_per_import":
 			requiredBitSet[0] |= 1 << 5
+			if err := func() error {
+				v, err := d.Int()
+				s.MaxSkillsPerImport = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"max_skills_per_import\"")
+			}
+		case "allowed_hosts":
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				s.AllowedHosts = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -54689,7 +54706,7 @@ func (s *SkillImportLimits) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"allowed_hosts\"")
 			}
 		case "note":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := d.Str()
 				s.Note = string(v)
@@ -54710,7 +54727,7 @@ func (s *SkillImportLimits) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b01111111,
+		0b11111111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

@@ -240,6 +240,7 @@ test("SEC/§2.2 the import screen states the rules it is enforced by, before the
           max_files: 813,
           max_file_bytes: 4 << 20,
           max_path_depth: 5,
+          max_skills_per_import: 37,
           allowed_hosts: ["example.test", "sources.example.test"],
           note: "",
         })
@@ -256,6 +257,7 @@ test("SEC/§2.2 the import screen states the rules it is enforced by, before the
     ["the file count", "最多 813 個檔案"],
     ["the per-file ceiling", "單一檔案最大 4 MB"],
     ["the path depth", "路徑最深 5 層"],
+    ["the number of Skills one import may create", "一次匯入最多建立 37 個 Skill"],
   ]) {
     expect(text(), `${what} is not on screen, so it is learned by being refused`).toContain(
       sentence,

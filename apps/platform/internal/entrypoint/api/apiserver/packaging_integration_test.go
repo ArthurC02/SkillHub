@@ -1755,6 +1755,7 @@ func TestTheImportLimitsPublishedAreTheOnesTheArchiveReaderEnforces(t *testing.T
 		{"max_files", 2000, int64(enforced.Entries)},
 		{"max_file_bytes", 10 << 20, enforced.EntryBytes},
 		{"max_path_depth", 10, int64(enforced.EntryDepth)},
+		{"max_skills_per_import", 50, int64(ingest.MaxSkillsPerImport)},
 	} {
 		got, ok := published[c.field].(float64)
 		if !ok {

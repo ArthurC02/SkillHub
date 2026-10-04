@@ -184,11 +184,17 @@ function ImportRules({ rules }: { rules: SkillImportLimits | undefined }) {
       </li>
       <li>網址必須是 https，而且不得帶帳號密碼、查詢字串或錨點。</li>
       {rules ? (
-        <li>
-          zip 最大 {mb(rules.max_zip_bytes)}，解壓後總量最大 {mb(rules.max_unpacked_bytes)}；最多{" "}
-          {rules.max_files} 個檔案、 單一檔案最大 {mb(rules.max_file_bytes)}、路徑最深{" "}
-          {rules.max_path_depth} 層。
-        </li>
+        <>
+          <li>
+            zip 最大 {mb(rules.max_zip_bytes)}，解壓後總量最大 {mb(rules.max_unpacked_bytes)}；最多{" "}
+            {rules.max_files} 個檔案、 單一檔案最大 {mb(rules.max_file_bytes)}、路徑最深{" "}
+            {rules.max_path_depth} 層。
+          </li>
+          <li>
+            一次匯入最多建立 {rules.max_skills_per_import} 個
+            Skill（被拒的不算），超過就整批不匯入。
+          </li>
+        </>
       ) : (
         <li>正在讀這個部署的大小上限…</li>
       )}

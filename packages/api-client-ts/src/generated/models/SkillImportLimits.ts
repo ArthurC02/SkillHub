@@ -40,6 +40,13 @@ export interface SkillImportLimits {
      */
     maxPathDepth: number;
     /**
+     * Most Skills one import may create. Counted after validation, so a
+     * Skill refused as malformed or for repeating a name does not count;
+     * a source over it is refused whole with 413.
+     * 
+     */
+    maxSkillsPerImport: number;
+    /**
      * Hosts this deployment will fetch an import from; anything else is refused before a request is made.
      */
     allowedHosts: Array<string>;
@@ -58,6 +65,7 @@ export function instanceOfSkillImportLimits(value: object): value is SkillImport
     if ((!('maxFiles' in (value as Record<string, any>)) && !('max_files' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxFiles'] === undefined && (value as Record<string, any>)['max_files'] === undefined)) return false;
     if ((!('maxFileBytes' in (value as Record<string, any>)) && !('max_file_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxFileBytes'] === undefined && (value as Record<string, any>)['max_file_bytes'] === undefined)) return false;
     if ((!('maxPathDepth' in (value as Record<string, any>)) && !('max_path_depth' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxPathDepth'] === undefined && (value as Record<string, any>)['max_path_depth'] === undefined)) return false;
+    if ((!('maxSkillsPerImport' in (value as Record<string, any>)) && !('max_skills_per_import' in (value as Record<string, any>))) || ((value as Record<string, any>)['maxSkillsPerImport'] === undefined && (value as Record<string, any>)['max_skills_per_import'] === undefined)) return false;
     if ((!('allowedHosts' in (value as Record<string, any>)) && !('allowed_hosts' in (value as Record<string, any>))) || ((value as Record<string, any>)['allowedHosts'] === undefined && (value as Record<string, any>)['allowed_hosts'] === undefined)) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;
@@ -78,6 +86,7 @@ export function SkillImportLimitsFromJSONTyped(json: any, ignoreDiscriminator: b
         'maxFiles': json['max_files'],
         'maxFileBytes': json['max_file_bytes'],
         'maxPathDepth': json['max_path_depth'],
+        'maxSkillsPerImport': json['max_skills_per_import'],
         'allowedHosts': json['allowed_hosts'],
         'note': json['note'],
     };
@@ -99,6 +108,7 @@ export function SkillImportLimitsToJSONTyped(value?: SkillImportLimits | null, i
         'max_files': value['maxFiles'],
         'max_file_bytes': value['maxFileBytes'],
         'max_path_depth': value['maxPathDepth'],
+        'max_skills_per_import': value['maxSkillsPerImport'],
         'allowed_hosts': value['allowedHosts'],
         'note': value['note'],
     };

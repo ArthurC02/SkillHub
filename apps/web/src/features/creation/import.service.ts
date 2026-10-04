@@ -51,6 +51,7 @@ export interface SkillImportLimits {
   max_files: number;
   max_file_bytes: number;
   max_path_depth: number;
+  max_skills_per_import: number;
   allowed_hosts: string[];
   note: string;
 }
