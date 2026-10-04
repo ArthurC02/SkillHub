@@ -2,7 +2,7 @@ FROM node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3e
 
 ARG CLAUDE_AGENT_SDK_VERSION=0.3.233
 
-ARG IMAGE_VERSION=2026.08-16
+ARG IMAGE_VERSION=2026.08-17
 
 # Non-root from the image on up: the provider also passes --user, but an image
 # whose only account is root is one bad flag away from running as root.
@@ -33,7 +33,7 @@ RUN pip3 install --break-system-packages --no-cache-dir -c /tmp/constraints.txt 
       python-dateutil==2.9.0.post0 \
       python-docx==1.2.0 \
       python-pptx==1.0.2 \
-      pypdf==6.16.1 \
+      pypdf==6.19.0 \
       pdfplumber==0.11.10 \
       pycountry==26.2.16 \
       chardet==7.6.0 \

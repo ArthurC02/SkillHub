@@ -791,3 +791,33 @@ PROBE_PATH=skills/nope       → 拒絕 provision/invalid_package "…that direc
 `packageRoot`，以及外層目錄裡的 Plugin 安裝。只把「接在根目錄後面」那一行還原，安裝那條仍然失敗。
 
 **沒有做的事**：沒有建置映像、沒有跑供應鏈掃描、沒有任何一次真實 Run。
+
+## `2026.08-16` → `2026.08-17`（2026-10-04）— **安全性修補：`pypdf` 升版；四項實測隨後補入本節**
+
+> `2026.08-16` 從未發佈：Runtime Image 工作流程在 I-06 閘門失敗。`-15` 在 2026-10-01 以完全
+> 相同的依賴通過同一道閘門，`-16` 只改了 `run.mjs`，所以擋下它的是這三天之間新公布的公告。
+> 以同一組釘住的 syft／grype 在本機重現，結果與 CI 一致：`pypdf 6.16.1` 有 8 筆 High。
+
+| 公告 | 修正版本 |
+| --- | --- |
+| GHSA-qv6h-rv94-w285 | 6.17.0 |
+| GHSA-5jq2-8x83-x246 | 6.18.0 |
+| GHSA-fp3h-c4fm-7vvf、GHSA-jw7q-gvrg-4vj3、GHSA-g9cg-prrw-2r8q | 6.18.1 |
+| GHSA-php9-fj8v-98fj、GHSA-v247-6f48-mgcj、GHSA-w23x-9jrw-r45c | 6.19.0 |
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `pypdf` `6.16.1` → `6.19.0`（`Dockerfile` 的安裝清單與 `constraints.txt` 兩處），以及 `ARG IMAGE_VERSION`。`run.mjs`、`package.json`、`package-lock.json` 一字未動 |
+| 新增的依賴 | 無：`6.19.0` 只在 Python 3.11 以下才需要 `typing_extensions`，映像是 3.11.2 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| 這一版同時帶著 | `-16` 的套件根目錄修正（上一節）。`-16` 沒有發佈過，所以那個修正第一次出現在發佈的映像裡是這一版 |
+| 預設映像 | 本節第一批推送時仍是 `-13`；四項在 CI 發佈的 digest 上跑過之後才移動 |
+
+### 本機驗證（2026-10-04，沒有任何模型呼叫）
+
+以 CI 釘住的同一組 `anchore/syft:v1.51.0@sha256:678bfa56…` 與 `anchore/grype:v0.117.0@sha256:ddf9e9f2…`，
+對本機建置經 `docker save` 轉成的 tar 掃描，`--only-fixed --fail-on high`：`2026.08-16` → 上表 8 筆 High、
+exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities found`、exit 0。同一個 `-17` 映像、
+無網路：`import pypdf, pdfplumber` 成功，`pypdf.__version__` → `6.19.0`、Python `3.11.2`。
+`devctl image-gate` → `runtime image source gates passed`。

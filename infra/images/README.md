@@ -104,9 +104,9 @@ parser 正是隔離層在補償的那個記憶體不安全面。為了滿足一�
 拒收它會讓沙箱**更不安全**而不是更安全。它在 `2026.08-2` 缺席了整整一個版本，而三個
 Skill 的基準都判「符合」——因為 Agent 繞過了那條驗證路徑。
 
-既有 9 個（`2026.08-2` 起，版本不變）：`pandas` 3.0.5、`numpy` 2.4.6、`openpyxl` 3.1.5、
+既有 9 個（`2026.08-2` 起；`pypdf` 於 `2026.08-17` 升版）：`pandas` 3.0.5、`numpy` 2.4.6、`openpyxl` 3.1.5、
 `lxml` 6.1.1、`python-dateutil` 2.9.0.post0、`python-docx` 1.2.0、`python-pptx` 1.0.2、
-`pypdf` 6.16.1、`pdfplumber` 0.11.10。另有兩個**傳遞依賴**恰好滿足宣告：`pillow` 12.3.0
+`pypdf` 6.19.0、`pdfplumber` 0.11.10。另有兩個**傳遞依賴**恰好滿足宣告：`pillow` 12.3.0
 （`pptx`、`pdf` 宣告）與 `charset-normalizer` 3.5.1（`unicode-consistency` 宣告），
 依「間接依賴不釘」原則不另行釘版，其存在由 SBOM 佐證。
 
