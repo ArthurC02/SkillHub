@@ -6,6 +6,7 @@ import { queryClient } from "../../core/api/queryClient";
 import { EvaluationPanel } from "./evaluation/EvaluationPanel";
 import { RunVerdict } from "./components/RunVerdict";
 import type { Evaluation, ImprovementSuggestion, SuggestionDiff } from "./evaluation.service";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -348,15 +349,8 @@ async function render(runStatus: string) {
   await waitFor(() => container.querySelector("[data-loading]") === null);
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs);
 }
 
 test("a succeeded run whose task failed reads as 執行完成 plus 未符合, never as a pass", async () => {

@@ -15,6 +15,7 @@ import {
   platformResponse,
   skillDetail,
 } from "../../testing/fixtures/platform";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 const FOREIGN_RUN = {
   ...RUNS.runs[1],
@@ -117,15 +118,8 @@ async function render(node: ReactNode) {
   await waitFor(() => queryClient.isFetching() === 0 && (container.textContent ?? "").length > 0);
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 4000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-    if (done()) return;
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs, { flushBeforeFirstCheck: true });
 }
 
 const text = () => container.textContent ?? "";

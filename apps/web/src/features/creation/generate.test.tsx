@@ -5,6 +5,7 @@ import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
 import { router } from "../../app/router";
 import { GenerationFailureFailureEnum } from "@skillhub/api-client-ts";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -176,15 +177,8 @@ async function submitSearch(text: string) {
   await waitFor(() => !container.textContent?.includes("搜尋中…"));
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-    if (done()) return;
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs, { flushBeforeFirstCheck: true });
 }
 
 test("GEN-008: the generate entry point is absent until /me says the flag is on", async () => {

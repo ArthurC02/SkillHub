@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import "./home/Home.page";
+import "./compare/Compare.page";
 import { join } from "node:path";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -18,6 +19,7 @@ import type {
   SkillLicense,
   SkillRisk,
 } from "../../core/api/types";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -112,15 +114,8 @@ test("DISC-001 keeps the search draft in sync with URL navigation", async () => 
   );
 });
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-    if (done()) return;
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs, { flushBeforeFirstCheck: true });
 }
 
 const HIT_FACETS = {

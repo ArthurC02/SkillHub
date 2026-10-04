@@ -6,6 +6,7 @@ import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
 import { router } from "../../app/router";
 import type { PreflightResponse } from "./lab.service";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -218,15 +219,8 @@ async function renderLab(search: { version: string | undefined } = { version: VE
 
 const text = () => container.textContent ?? "";
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs);
 }
 
 function versionSelect(): HTMLSelectElement {

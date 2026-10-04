@@ -4,16 +4,10 @@ import { act } from "react";
 import { expect, test } from "vitest";
 import App from "./App";
 import "../features/catalog/home/Home.page";
+import { DEFAULT_WAIT_MS, pollUntil } from "../testing/poll";
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error("waitFor timed out");
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => document.body.textContent, timeoutMs);
 }
 
 test("renders the app shell", async () => {

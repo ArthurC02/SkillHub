@@ -6,6 +6,7 @@ import { queryClient } from "../../core/api/queryClient";
 import { feedbackPagePath, feedbackRunID } from "./feedback.service";
 import { FeedbackEntry } from "./FeedbackEntry";
 import { FeedbackLauncher } from "./FeedbackLauncher";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
 
@@ -35,15 +36,8 @@ async function render(node: ReactNode) {
   });
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs);
 }
 
 function setValue(input: HTMLTextAreaElement, value: string) {

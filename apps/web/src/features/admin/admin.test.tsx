@@ -16,6 +16,7 @@ import {
   SKILL,
   platformResponse,
 } from "../../testing/fixtures/platform";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 type Call = { method: string; url: string; body?: Record<string, unknown> };
 type Reply = { body: unknown; status: number } | undefined;
@@ -79,15 +80,8 @@ async function go(to: string, search?: Record<string, string>) {
   });
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 4000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs);
 }
 
 const has = (needle: string) => () => (container.textContent ?? "").includes(needle);
