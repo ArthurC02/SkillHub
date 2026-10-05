@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -131,6 +132,7 @@ func seedRun(t *testing.T, pool *pgxpool.Pool) material {
 
 func seedNamedRun(t *testing.T, pool *pgxpool.Pool, tag string) material {
 	t.Helper()
+	tag += "-" + uuid.NewString()
 	ctx := context.Background()
 
 	var run RunFacts

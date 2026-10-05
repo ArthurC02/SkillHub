@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -124,12 +125,13 @@ func requireCreationDB(t *testing.T) *pgxpool.Pool {
 
 func seedCreationWorkspace(t *testing.T, pool *pgxpool.Pool, name string) identity.Workspace {
 	t.Helper()
+	email := name + "-" + uuid.NewString() + "@example.test"
 	ctx := context.Background()
 	var ws identity.Workspace
 	var userID pgtype.UUID
 	if err := pool.QueryRow(ctx,
 		`INSERT INTO users (email, display_name) VALUES ($1, $1) RETURNING id`,
-		name+"@example.test").Scan(&userID); err != nil {
+		email).Scan(&userID); err != nil {
 		t.Fatal(err)
 	}
 	if err := pool.QueryRow(ctx,

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -156,11 +157,12 @@ func requireRegistryDB(t *testing.T) *pgxpool.Pool {
 
 func seedSkill(t *testing.T, pool *pgxpool.Pool, name string) (ws gen.Workspace, skillID pgtype.UUID) {
 	t.Helper()
+	unique := name + "-" + uuid.NewString()
 	ctx := context.Background()
 	var userID pgtype.UUID
 	if err := pool.QueryRow(ctx,
 		`INSERT INTO users (email, display_name) VALUES ($1, $1) RETURNING id`,
-		name+"@example.test").Scan(&userID); err != nil {
+		unique+"@example.test").Scan(&userID); err != nil {
 		t.Fatal(err)
 	}
 	if err := pool.QueryRow(ctx,

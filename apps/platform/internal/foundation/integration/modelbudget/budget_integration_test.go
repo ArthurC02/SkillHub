@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -130,7 +131,7 @@ func requireBudgetDB(t *testing.T) (*Service, Endpoint) {
 	if budgetPool == nil {
 		t.Skipf("%s not set; skipping model budget database test", budgetDBURLEnv)
 	}
-	e := Endpoint{Kind: t.Name(), Deadline: judge.Deadline}
+	e := Endpoint{Kind: t.Name() + "-" + uuid.NewString(), Deadline: judge.Deadline}
 	if _, err := budgetPool.Exec(context.Background(),
 		"DELETE FROM model_call_budgets WHERE kind = $1", e.Kind); err != nil {
 		t.Fatalf("clearing budgets: %v", err)
