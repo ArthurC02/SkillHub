@@ -103,7 +103,6 @@ func testRequest(script string) sandbox.RunRequest {
 	lim := sandbox.DefaultLimits
 	lim.MemoryBytes = 256 << 20
 	lim.DiskBytes = 64 << 20
-	lim.MaxPIDs = 32
 	lim.VCPU = 1
 	lim.WallClockSoftSeconds = 30
 	lim.WallClockHardSeconds = 60
