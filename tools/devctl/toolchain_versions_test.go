@@ -83,7 +83,7 @@ func TestNodeTypesMajorMustMatchNode(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			content := map[string]string{
-				".node-version":       "26.10.0\n",
+				".node-version":         "26.10.0\n",
 				"apps/web/package.json": `{"devDependencies":{"@types/node":"^` + c.typesVersion + `"}}`,
 			}
 			problems := versionAgreementProblems([]versionGroup{group}, func(file string) (string, error) {
