@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -58,7 +59,7 @@ func (d *Driver) ProbeEgress(ctx context.Context, targets []string) ([]string, e
 		AutoRemove:     false,
 		Resources: container.Resources{
 			Memory:    probeMemoryBytes,
-			PidsLimit: ptr(int64(probeMaxPIDs)),
+			PidsLimit: ptr(sandbox.DefaultLimits.MaxPIDs),
 		},
 		LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "1m", "max-file": "1"}},
 	}
@@ -80,19 +81,41 @@ func (d *Driver) ProbeEgress(ctx context.Context, targets []string) ([]string, e
 		return nil, fmt.Errorf("start p02 probe: %w", err)
 	}
 
+	var exitCode int64
 	wait := d.cli.ContainerWait(ctx, created.ID, client.ContainerWaitOptions{Condition: container.WaitConditionNotRunning})
 	select {
 	case err := <-wait.Error:
 		return nil, fmt.Errorf("p02 probe did not finish: %w", err)
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-wait.Result:
+	case result := <-wait.Result:
+		exitCode = result.StatusCode
 	}
 
 	out, err := d.probeLogs(ctx, created.ID)
 	if err != nil {
 
 		return nil, fmt.Errorf("read p02 probe output: %w", err)
+	}
+	return probeVerdict(exitCode, out, targets)
+}
+
+const probeDoneMarker = "P02-DONE "
+
+func probeVerdict(exitCode int64, out string, targets []string) ([]string, error) {
+	if exitCode != 0 {
+		return nil, fmt.Errorf("p02 probe did not finish: container exited with code %d", exitCode)
+	}
+	done := -1
+	for _, line := range strings.Split(out, "\n") {
+		if rest, ok := strings.CutPrefix(strings.TrimSpace(line), probeDoneMarker); ok {
+			if n, err := strconv.Atoi(rest); err == nil {
+				done = n
+			}
+		}
+	}
+	if done != len(targets) {
+		return nil, fmt.Errorf("p02 probe did not finish: completion marker reports %d of %d targets", done, len(targets))
 	}
 	return parseProbeOutput(out, targets), nil
 }
@@ -136,7 +159,6 @@ const probeDialTimeoutMS = 2000
 
 const (
 	probeMemoryBytes = 64 << 20
-	probeMaxPIDs     = 32
 	probeLogLimit    = 64 << 10
 )
 
@@ -144,8 +166,9 @@ const probeSource = `
 const net = require("node:net");
 const targets = %s;
 let pending = targets.length;
-const finish = () => { if (--pending <= 0) process.exit(0); };
-if (pending === 0) process.exit(0);
+const complete = () => { process.stdout.write("P02-DONE " + targets.length + "\n"); process.exit(0); };
+const finish = () => { if (--pending <= 0) complete(); };
+if (pending === 0) complete();
 for (const t of targets) {
   let settled = false;
   const done = () => { if (!settled) { settled = true; finish(); } };
