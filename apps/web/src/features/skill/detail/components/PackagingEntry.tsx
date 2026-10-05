@@ -1,5 +1,6 @@
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { unauthenticated } from "../../../../shared/ui/LoginRequired.model";
 import { Link } from "@tanstack/react-router";
 import { useSkillVersions } from "../../skills.service";
 import type { SkillDetail as SkillDetailModel } from "../../../../core/api/types";
@@ -21,6 +22,12 @@ export function PackagingEntry({
       </div>
     );
   if (versions.isPending) return <Loading what="這個小工具在你工作區的版本" />;
+  if (unauthenticated(versions.error))
+    return (
+      <div className="note" role="status">
+        打包與下載需要你工作區裡的版本。<a href="#fork-entry">前往上方重新登入</a>。
+      </div>
+    );
   if (versions.error) return <ReadFailure error={versions.error} what="這個小工具的版本" />;
   if ((versions.data?.versions.length ?? 0) === 0)
     return (

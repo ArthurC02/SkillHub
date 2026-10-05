@@ -177,10 +177,13 @@ test("r2: 未登入的訪客一個填色動作也沒有——零個是合法的"
 test.each([
   { mode: "GitHub", offline: false },
   { mode: "離線", offline: true },
-])("$mode 訪客只在複製區看到一個登入入口，試跑與打包仍指向它", async ({ offline }) => {
+])("$mode 訪客只在複製區看到一個登入入口，試跑、打包與版本仍指向它", async ({ offline }) => {
   vi.stubGlobal("__SKILLHUB_DEV_LOGIN__", offline);
   stubVisitor();
   await render(<SkillDetail />, settledAsVisitor);
+  await waitFor(
+    () => text().includes("版本歷史需要登入") || text().includes("版本歷史只顯示你工作區裡的版本"),
+  );
 
   const loginActions = container.querySelectorAll(
     offline ? 'button[type="submit"]' : 'a[href$="/auth/github/login"]',
@@ -190,7 +193,33 @@ test.each([
     "複製一份到你的工作區",
   );
   expect(text()).toContain("試跑需要你工作區裡的版本");
-  expect(container.querySelectorAll('a[href="#fork-entry"]')).toHaveLength(1);
+  expect(container.querySelectorAll('a[href="#fork-entry"]')).toHaveLength(2);
+  const versionHeading = Array.from(container.querySelectorAll("h2")).find(
+    (heading) => heading.textContent === "版本",
+  );
+  expect(versionHeading?.parentElement?.querySelector('[role="status"]')?.textContent).toContain(
+    "版本歷史只顯示你工作區裡的版本",
+  );
+});
+
+test("版本歷史讀取非 401 失敗仍顯示可重試的錯誤", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me") return json({ error: "not authenticated" }, 401);
+    if (path.endsWith("/versions")) return json({ error: "temporarily unavailable" }, 503);
+    if (path.startsWith("/api/skills/")) return json(detailBody());
+    return json({ error: "not found" }, 404);
+  });
+  await render(
+    <SkillDetail />,
+    () =>
+      text().includes("暫時無法讀取版本歷史") || text().includes("版本歷史只顯示你工作區裡的版本"),
+  );
+
+  expect(text()).toContain("暫時無法讀取版本歷史。請重新整理，或稍後再試。");
+  expect(text()).not.toContain("版本歷史只顯示你工作區裡的版本");
 });
 
 test("§2.10: 十項判斷事實一項都不在 <details> 裡", async () => {

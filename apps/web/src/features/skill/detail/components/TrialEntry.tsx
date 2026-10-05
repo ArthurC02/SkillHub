@@ -1,5 +1,6 @@
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { unauthenticated } from "../../../../shared/ui/LoginRequired.model";
 import { Link } from "@tanstack/react-router";
 import { useSkillVersions } from "../../skills.service";
 
@@ -22,6 +23,13 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
       <section>
         <h2>試跑</h2>
         <Loading what="這個小工具在你工作區的版本" />
+      </section>
+    );
+  if (unauthenticated(versions.error))
+    return (
+      <section>
+        <h2>試跑</h2>
+        <p role="status">試跑需要登入。請從下方的「複製一份到你的工作區」重新登入。</p>
       </section>
     );
   if (versions.error)
