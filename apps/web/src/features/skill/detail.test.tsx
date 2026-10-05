@@ -174,6 +174,25 @@ test("r2: 未登入的訪客一個填色動作也沒有——零個是合法的"
   expect(container.querySelectorAll(".action")).toHaveLength(0);
 });
 
+test.each([
+  { mode: "GitHub", offline: false },
+  { mode: "離線", offline: true },
+])("$mode 訪客只在複製區看到一個登入入口，試跑與打包仍指向它", async ({ offline }) => {
+  vi.stubGlobal("__SKILLHUB_DEV_LOGIN__", offline);
+  stubVisitor();
+  await render(<SkillDetail />, settledAsVisitor);
+
+  const loginActions = container.querySelectorAll(
+    offline ? 'button[type="submit"]' : 'a[href$="/auth/github/login"]',
+  );
+  expect(loginActions).toHaveLength(1);
+  expect(loginActions[0].closest(".detail-rail section")?.querySelector("h2")?.textContent).toBe(
+    "複製一份到你的工作區",
+  );
+  expect(text()).toContain("試跑需要你工作區裡的版本");
+  expect(container.querySelectorAll('a[href="#fork-entry"]')).toHaveLength(1);
+});
+
 test("§2.10: 十項判斷事實一項都不在 <details> 裡", async () => {
   stubOwner();
   await render(<SkillDetail />, settledAsOwner);

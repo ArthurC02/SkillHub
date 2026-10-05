@@ -106,6 +106,7 @@
 .catalog-card-compare {
   display: inline-flex;
   align-items: center;
+  min-height: 32px;
   margin-left: auto;
   gap: 8px;
   font-size: 14px;

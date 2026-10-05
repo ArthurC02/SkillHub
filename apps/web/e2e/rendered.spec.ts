@@ -225,6 +225,24 @@ test("catalogue card lift follows the detail link, not the compare checkbox", as
   await expect.poll(lift).toBe(-2);
 });
 
+test("mobile comparison targets stay easy to tap in gallery and search", async ({ page }) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+
+  for (const [url, selector] of [
+    ["/", ".catalog-card-compare"],
+    ["/?q=pdf+%E6%91%98%E8%A6%81", ".compare-pick"],
+  ]) {
+    await page.goto(url);
+    const target = page.locator(selector).first();
+    await expect(target).toBeVisible();
+    const box = await target.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThanOrEqual(24);
+    expect(box!.height).toBeGreaterThanOrEqual(32);
+  }
+});
+
 test.describe("QA-008 composite pixels", () => {
   test("the catalogue opens as one scannable product wall", async ({ page }, testInfo) => {
     await stubPlatform(page);
