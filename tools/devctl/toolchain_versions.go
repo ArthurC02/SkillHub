@@ -40,6 +40,10 @@ var versionsThatMoveTogether = []versionGroup{
 		{"infra/images/web/Dockerfile", regexp.MustCompile(`(?m)^FROM node:(\d+\.\d+\.\d+)-`)},
 		{devtoolsDockerfile, regexp.MustCompile(`(?m)^ARG NODE_VERSION=(\S+)`)},
 	}},
+	{"node-types", []versionSite{
+		{".node-version", regexp.MustCompile(`^(\d+)\.`)},
+		{"apps/web/package.json", regexp.MustCompile(`"@types/node"\s*:\s*"[~^]?(\d+)\.`)},
+	}},
 	{"go", []versionSite{
 		{"apps/platform/go.mod", goDirective},
 		{"apps/sandbox/go.mod", goDirective},

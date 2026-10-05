@@ -656,7 +656,7 @@ digest 由 `docker pull` 後 `docker inspect --format '{{index .RepoDigests 0}}'
 | `golang:1.27.1-bookworm` | 沿用 `devtools/Dockerfile` 已經釘的那個（同一個工具鏈版本） |
 | `gcr.io/distroless/static-debian12:nonroot` | `sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab`（2026-09-04 `docker pull` 當下） |
 | `python:3.14-slim-bookworm` | `sha256:9ab8d9c8514b44f90cf0029dd42fdd7e9e211e639c8b995304cc04568dee900f`（同上） |
-| `node:24.21.0-bookworm-slim` | `sha256:2fe369e969550cde8e867afc3fe370b260140cab4a23d467074295b42163d553`（同上） |
+| `node:26.10.0-bookworm-slim` | `sha256:662933cf47f013bc8e4beb31a6116448427a82057ba7c42c97e4c5ba766504c2`（2026-10-05 `docker buildx imagetools inspect`，同日完成 Web 映像建置） |
 | `nginx:1.31-alpine-slim` | `sha256:3b171d7224b669faa3cc2137fea0a65301791df1ec1f271ebd2a2b7461f7fade`（同上） |
 
 映像大小（`docker images`，本機建置）：`skillhub/platform:local` 124 MB、
