@@ -9,10 +9,16 @@ import { GovernanceActions } from "./components/GovernanceActions";
 
 export function AdminSkills() {
   const { q = "" } = useSearch({ from: "/admin/skills" });
+  return <SkillSearch key={q} q={q} />;
+}
+
+function SkillSearch({ q }: { q: string }) {
   const navigate = useNavigate();
   const [draft, setDraft] = useState(q);
   const skills = useGovernance(q);
   const found = skills.data?.skills ?? [];
+  const queryMatches = draft.trim() === q;
+  const showResult = queryMatches && !skills.error;
 
   return (
     <AdminPage
@@ -37,9 +43,11 @@ export function AdminSkills() {
           查詢
         </button>
       </form>
-      {q !== "" && skills.isPending && <Loading what="小工具" />}
-      <ReadFailure error={skills.error} what="小工具" />
-      {skills.data &&
+      {!queryMatches && q !== "" && <p role="status">查詢條件已變更；按「查詢」顯示新結果。</p>}
+      {queryMatches && q !== "" && skills.isPending && <Loading what="小工具" />}
+      {queryMatches && <ReadFailure error={skills.error} what="小工具" />}
+      {showResult &&
+        skills.data &&
         (found.length === 0 ? (
           <p>沒有符合「{q}」的小工具：0 筆。已刪除的小工具不會出現。</p>
         ) : (
@@ -49,7 +57,7 @@ export function AdminSkills() {
             ))}
           </ul>
         ))}
-      {found.length === 1 && found[0].takedown_at === null && (
+      {showResult && found.length === 1 && found[0].takedown_at === null && (
         <GovernanceActions skill={found[0]} />
       )}
     </AdminPage>

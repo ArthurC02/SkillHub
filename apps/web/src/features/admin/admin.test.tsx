@@ -362,6 +362,8 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
   await type("#admin-takedown-reason", " DMCA notice ");
   await click(button("下架"));
   expect(has("下架沒有恢復的路")()).toBe(true);
+  expect(has(`PDF Summariser（${SKILL}，工作區 ws-2）`)()).toBe(true);
+  expect(has("理由：DMCA notice")()).toBe(true);
   expect(calls.some((c) => c.method === "PUT")).toBe(false);
   await click(button("確認下架"));
   await waitFor(() => calls.some((c) => c.method === "PUT"));
@@ -370,6 +372,43 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
     url: `/admin/skills/${SKILL}/takedown`,
     body: { reason: "DMCA notice" },
   });
+});
+
+test("OPS-004: editing the skill search hides the old result and actions until submitted", async () => {
+  stub(true);
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+
+  await type("#admin-skill-q", "another skill");
+  expect(has("查詢條件已變更")()).toBe(true);
+  expect(has("PDF Summariser")()).toBe(false);
+  expect(has("的動作")()).toBe(false);
+  expect(calls.some((call) => call.url === "/admin/skills?q=another%20skill")).toBe(false);
+
+  await submit("#admin-skill-q");
+  await waitFor(() => calls.some((call) => call.url === "/admin/skills?q=another%20skill"));
+  expect(field<HTMLInputElement>("#admin-skill-q").value).toBe("another skill");
+  await go("/admin/skills", { q: SKILL });
+  expect(field<HTMLInputElement>("#admin-skill-q").value).toBe(SKILL);
+});
+
+test("OPS-004: a failed skill refresh cannot leave cached governance actions available", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/skills" && unavailable
+      ? { body: { error: "search unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.skillSearch(SKILL) });
+  });
+  await waitFor(has("暫時無法讀取小工具"));
+  expect(has("PDF Summariser")()).toBe(false);
+  expect(has("的動作")()).toBe(false);
 });
 
 test("OPS-004: releasing a skill needs licence evidence; blocking it does not", async () => {

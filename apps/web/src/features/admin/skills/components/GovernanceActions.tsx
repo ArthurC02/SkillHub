@@ -106,13 +106,13 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
         )}
       </ActionForm>
 
-      <TakedownAction skillId={skill.skill_id} />
+      <TakedownAction skill={skill} />
     </>
   );
 }
 
-function TakedownAction({ skillId }: { skillId: string }) {
-  const takedown = useGovernanceAction(skillId, "takedown");
+function TakedownAction({ skill }: { skill: SkillGovernance }) {
+  const takedown = useGovernanceAction(skill.skill_id, "takedown");
   const [takedownReason, setTakedownReason] = useState("");
 
   return (
@@ -131,7 +131,15 @@ function TakedownAction({ skillId }: { skillId: string }) {
       ) : (
         <ConfirmDelete
           scopeId="admin-takedown-scope"
-          scope="下架後這個小工具從目錄與搜尋消失，不能再下載或試跑；既有的試跑紀錄仍可追溯。下架沒有恢復的路。"
+          scope={
+            <>
+              下架 {skill.name}（<code>{skill.skill_id}</code>，工作區{" "}
+              <code>{skill.workspace_id}</code>
+              ），理由：{takedownReason.trim()}
+              。下架後從目錄與搜尋消失，不能再下載或試跑；沒有恢復期。
+              既有的試跑紀錄仍可追溯，不會因這次下架刪除；其他資料若需處理，必須另行處理。下架沒有恢復的路。
+            </>
+          }
           pending={takedown.isPending}
           label="下架"
           confirmLabel="確認下架"
