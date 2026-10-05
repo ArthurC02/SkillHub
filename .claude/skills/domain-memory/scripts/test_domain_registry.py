@@ -816,6 +816,73 @@ class DomainRegistryTest(unittest.TestCase):
         )
         self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
 
+    def push_fixture(self) -> tuple[Path, str]:
+        amend_policy(self.repo / "memory", "authorized_signers", "SHA256:NOBODY", "A key.")
+        amend_policy(self.repo / "memory", "review_trigger", "git-push", "On push.")
+        amend_policy(
+            self.repo / "memory", "review_verifier", "git-signed-commit", "The maintainer signs."
+        )
+        self.git("add", "memory")
+        self.git("commit", "-qm", "unsigned policy change")
+        remote = self.repo / "remote.git"
+        self.git("init", "-q", "--bare", str(remote))
+        self.git("remote", "add", "origin", str(remote))
+        self.git("push", "-q", "origin", "HEAD:refs/heads/main")
+        self.git("fetch", "-q", "origin")
+        hooks = self.repo / ".git" / "hooks"
+        hooks.mkdir(parents=True, exist_ok=True)
+        hook = install_pre_push_hook(
+            self.repo / "memory",
+            self.repo,
+            Path(__file__).resolve().parent / "registry_tools.py",
+        )
+        return hook, self.git("rev-parse", "HEAD")
+
+    def git(self, *args: str) -> str:
+        return subprocess.run(
+            ["git", "-c", "user.name=T", "-c", "user.email=t@example.com", *args],
+            cwd=self.repo, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+
+    def commit_file(self, relative: str) -> str:
+        path = self.repo / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(relative, encoding="utf-8")
+        self.git("add", relative)
+        self.git("commit", "-qm", f"add {relative}")
+        return self.git("rev-parse", "HEAD")
+
+    def run_pre_push(self, hook: Path, refs: str) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            ["sh", str(hook), "origin", "unused"],
+            cwd=self.repo, input=refs, capture_output=True, text=True, check=False,
+        )
+
+    def test_a_new_branch_skips_commits_the_remote_already_has(self) -> None:
+        hook, _ = self.push_fixture()
+        head = self.commit_file("elsewhere/readme.txt")
+        result = self.run_pre_push(
+            hook, f"refs/heads/feature {head} refs/heads/feature {'0' * 40}\n"
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_a_new_branch_still_verifies_its_own_unsigned_memory_commit(self) -> None:
+        hook, _ = self.push_fixture()
+        head = self.commit_file("memory/registry/extra.json")
+        result = self.run_pre_push(
+            hook, f"refs/heads/feature {head} refs/heads/feature {'0' * 40}\n"
+        )
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Git commit signature is invalid", result.stdout + result.stderr)
+
+    def test_an_existing_branch_checks_only_the_range_after_the_remote_tip(self) -> None:
+        hook, remote_tip = self.push_fixture()
+        head = self.commit_file("elsewhere/readme.txt")
+        result = self.run_pre_push(
+            hook, f"refs/heads/main {head} refs/heads/main {remote_tip}\n"
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_local_working_memory_needs_no_governance_setup(self) -> None:
         amend_policy(self.repo / "memory", "review_mode", "local-draft-only", "Drafting only.")
         self.assertEqual(

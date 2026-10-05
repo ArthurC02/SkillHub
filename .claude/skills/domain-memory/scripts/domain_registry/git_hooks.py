@@ -79,7 +79,7 @@ def install_pre_push_hook(registry_root: Path, repo_root: Path, script: Path) ->
         "printf '%s\\n' \"$refs\" | while read local_ref local_sha remote_ref remote_sha; do\n"
         "  test -n \"$local_sha\" || continue\n"
         f"  test \"$local_sha\" = \"{EMPTY_SHA}\" && continue\n"
-        "  range=$local_sha\n"
+        "  range=\"$local_sha --not --remotes\"\n"
         f"  test \"$remote_sha\" = \"{EMPTY_SHA}\" || range=$remote_sha..$local_sha\n"
         "  for commit in $(git rev-list $range -- \"$memory\"); do\n"
         "    python \"$tool\" verify-git-governance --registry-root \"$memory\" --repo-root . --commit \"$commit\" || exit 1\n"
