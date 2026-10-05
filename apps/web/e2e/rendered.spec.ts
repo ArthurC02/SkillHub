@@ -204,6 +204,27 @@ async function verifyReducedMotion(page: Page) {
   expect(transitionDurations.every((duration) => duration === "0s")).toBe(true);
 }
 
+test("catalogue card lift follows the detail link, not the compare checkbox", async ({ page }) => {
+  await stubPlatform(page);
+  await page.goto("/");
+
+  const card = page.locator(".catalog-skill-card").first();
+  const compare = card.getByRole("checkbox", { name: "比較" });
+  const detail = card.locator(".catalog-card-title");
+  const lift = () =>
+    card.evaluate((element) => new DOMMatrixReadOnly(getComputedStyle(element).transform).m42);
+
+  await detail.focus();
+  await page.keyboard.press("Shift+Tab");
+  await expect(compare).toBeFocused();
+  await expect(compare).toHaveCSS("outline-style", "solid");
+  await expect.poll(lift).toBe(0);
+
+  await page.keyboard.press("Tab");
+  await expect(detail).toBeFocused();
+  await expect.poll(lift).toBe(-2);
+});
+
 test.describe("QA-008 composite pixels", () => {
   test("the catalogue opens as one scannable product wall", async ({ page }, testInfo) => {
     await stubPlatform(page);

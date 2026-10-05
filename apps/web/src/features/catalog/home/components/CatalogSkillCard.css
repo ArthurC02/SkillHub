@@ -15,7 +15,7 @@
     transform var(--dur-fast) var(--ease);
 }
 
-.catalog-skill-card:focus-within {
+.catalog-skill-card:has(> .catalog-card-title:focus-visible) {
   border-color: var(--accent-border);
   box-shadow: var(--shadow-lift);
   transform: translateY(-2px);
