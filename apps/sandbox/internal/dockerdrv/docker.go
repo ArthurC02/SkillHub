@@ -135,7 +135,7 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 		cfg.Cmd = cmd
 	}
 
-	pids := lim.MaxPIDs
+	pids := hostPidsLimit(d.cfg.Runtime, lim.MaxPIDs)
 	hc := &container.HostConfig{
 
 		ReadonlyRootfs: true,
@@ -449,6 +449,18 @@ func devCmd(req sandbox.RunRequest) ([]string, bool) {
 }
 
 const UserSpaceKernelRuntime = "runsc"
+
+const (
+	runscHostTasksPerGuestProcess = 2
+	runscSentryTaskHeadroom       = 64
+)
+
+func hostPidsLimit(runtime string, maxPIDs int64) int64 {
+	if runtime == UserSpaceKernelRuntime {
+		return maxPIDs*runscHostTasksPerGuestProcess + runscSentryTaskHeadroom
+	}
+	return maxPIDs
+}
 
 func (d *Driver) Rootless() bool { return d.cfg.UID != 0 && d.cfg.GID != 0 }
 

@@ -48,7 +48,7 @@ License 辨識規則與其對打包的阻擋效果屬[打包、授權溯源與�
 
 Sandbox 由一個獨立部署在專屬執行區域的 Provider（`SelfHostedProvider`）提供，疊加以下最低基線；後續決策（gVisor、拓撲、Egress）是在這個基線之上加強，不是取代。基線是對任何 Provider Adapter 的要求，不是對某一種技術的要求：換成 MicroVM 或受管沙箱服務時，同一份基線照樣要成立。
 
-**計算隔離**：每次 Run 獨立環境與暫存工作區；非 root、非特權身分；不允許 privileged mode 與 Host PID／IPC／Network namespace；不掛載 Docker 或容器管理 Socket；基礎檔案系統唯讀，只開放明確暫存與輸出路徑；套用系統呼叫／capabilities 最小權限；限制 CPU、記憶體、磁碟、程序數、檔案描述符與最大執行時間；不支援 GPU、特權程序、巢狀容器或長時間背景服務。
+**計算隔離**：每次 Run 獨立環境與暫存工作區；非 root、非特權身分；不允許 privileged mode 與 Host PID／IPC／Network namespace；不掛載 Docker 或容器管理 Socket；基礎檔案系統唯讀，只開放明確暫存與輸出路徑；套用系統呼叫／capabilities 最小權限；限制 CPU、記憶體、磁碟、程序數、檔案描述符與最大執行時間；程序數上限指工作負載可用的行程數，執行環境自身佔用由驅動另外吸收；不支援 GPU、特權程序、巢狀容器或長時間背景服務。
 
 **網路隔離**：預設拒絕所有非必要出站；允許的外部服務經受控 Egress；阻擋 Loopback、Link-local、Metadata Service、RFC1918／內部網路及控制平面位址；記錄目的地、協定、決策與資料量，不記錄內容；不接受網際網路主動入站。
 

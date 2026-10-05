@@ -59,7 +59,7 @@ func (d *Driver) ProbeEgress(ctx context.Context, targets []string) ([]string, e
 		AutoRemove:     false,
 		Resources: container.Resources{
 			Memory:    probeMemoryBytes,
-			PidsLimit: ptr(sandbox.DefaultLimits.MaxPIDs),
+			PidsLimit: ptr(hostPidsLimit(d.cfg.Runtime, sandbox.DefaultLimits.MaxPIDs)),
 		},
 		LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "1m", "max-file": "1"}},
 	}

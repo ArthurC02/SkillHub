@@ -90,7 +90,7 @@ sandboxd 拒絕啟動的組合：不認得的值；`mxc` 搭配 `SKILLHUB_SANDBO
 | 可寫路徑 | tmpfs `/work`（disk 的 3/4）、`/out`（1/4）、`/tmp` 64 MiB `noexec`；皆 `nosuid,nodev`、`mode=0700`、屬 65532 | C-01、C-12 |
 | `NanoCPUs` | `vcpu × 1e9` | C-10 |
 | `Memory`／`MemorySwap` | 皆＝`memory_bytes`（不給 swap，天花板就是天花板） | C-11 |
-| `PidsLimit` | `max_pids` | C-13 |
+| `PidsLimit` | runc：`max_pids`；runsc：`max_pids × 2 + 64`（Docker 的上限算 host task，每個 guest 行程佔 2 個，另加 Sentry 自身餘裕，讓工作負載實際可開的行程數等於 `max_pids`） | C-13 |
 | `Ulimits` | `nofile` soft＝hard＝`max_open_files`；`core` 0 | C-14、C-16 |
 | Wall clock | soft 到 → 送停止訊號、寬限期＝hard−soft；hard 到 → 強制 kill。結果為 `state=failed` ＋ `result.status=timed_out` | C-15、RUN-004 |
 | `LogConfig` | `json-file`，16 MB 上限、不輪替 | 避免工作負載灌爆節點磁碟 |

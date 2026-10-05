@@ -233,8 +233,15 @@ func assertResourceCeilings(t *testing.T, hc *container.HostConfig, lim sandbox.
 	if hc.NanoCPUs != 1_000_000_000 {
 		t.Errorf("NanoCPUs = %d, want 1000000000 for one vCPU", hc.NanoCPUs)
 	}
-	if hc.PidsLimit == nil || *hc.PidsLimit != lim.MaxPIDs {
-		t.Errorf("PidsLimit = %v, want %d", hc.PidsLimit, lim.MaxPIDs)
+	if lim.MaxPIDs != 256 {
+		t.Fatalf("testRequest MaxPIDs = %d, the PidsLimit expectation below assumes 256", lim.MaxPIDs)
+	}
+	wantPids := int64(256)
+	if testRuntime() == "runsc" {
+		wantPids = 576
+	}
+	if hc.PidsLimit == nil || *hc.PidsLimit != wantPids {
+		t.Errorf("PidsLimit = %v, want %d (C-13)", hc.PidsLimit, wantPids)
 	}
 	var nofile bool
 	for _, u := range hc.Ulimits {
@@ -272,6 +279,24 @@ func TestPidsLimitStopsAForkBomb(t *testing.T) {
 			"(exit %d), and a trivial workload ran under the same ceiling: the limit is not "+
 			"reaching guest tasks on this runtime. output:\n%s",
 			spawnAttempts, pidCeiling, out.ExitCode, out.Output)
+	}
+}
+
+func TestRunscLetsAWorkloadOpenAsManyProcessesAsMaxPids(t *testing.T) {
+	if testRuntime() != "runsc" {
+		t.Skip("host task accounting differs only under runsc")
+	}
+	d, _ := newDriver(t)
+	const maxPids = 64
+
+	req := testRequest(fmt.Sprintf(
+		`i=0; while [ $i -lt %d ]; do sleep 30 & i=$((i+1)); done; sleep 2; echo survived`, maxPids))
+	req.ResourceLimits.MaxPIDs = maxPids
+
+	_, out := startProbe(t, d, req)
+	if out.ExitCode != 0 || !strings.Contains(out.Output, "survived") {
+		t.Errorf("a workload opening %d processes under max_pids %d did not survive (exit %d). output:\n%s",
+			maxPids, maxPids, out.ExitCode, out.Output)
 	}
 }
 
