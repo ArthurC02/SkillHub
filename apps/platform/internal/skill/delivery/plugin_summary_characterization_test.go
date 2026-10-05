@@ -43,3 +43,18 @@ func TestAPluginDownloadOfReleasingMembersStaysAllowed(t *testing.T) {
 		t.Fatalf("ok=%v combined=%+v, want %q", ok, combined, RedistributionAllowed)
 	}
 }
+
+func TestAPluginDownloadIsTakenDownWhenAnyMemberIs(t *testing.T) {
+	kept := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
+	removed := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}
+	summaries := map[pgtype.UUID]VersionSummary{
+		kept:    {SkillName: "a", Redistribution: string(RedistributionAllowed)},
+		removed: {SkillName: "b", Redistribution: string(RedistributionAllowed), TakenDown: true},
+	}
+
+	combined, _, ok := pluginSummary("p", "1.0.0", []pgtype.UUID{kept, removed}, summaries)
+
+	if !ok || !combined.TakenDown {
+		t.Fatalf("ok=%v combined=%+v, want the plugin taken down with its member", ok, combined)
+	}
+}

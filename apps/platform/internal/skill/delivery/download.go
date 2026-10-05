@@ -53,7 +53,7 @@ func (s *Service) ListDownloads(ctx context.Context, ws identity.Workspace) ([]A
 	out := make([]Artifact, 0, len(rows))
 	for _, r := range rows {
 		if r.PluginName != nil {
-			_, view, found := pluginSummary(*r.PluginName, *r.PluginVersion, r.MemberVersionIds, summaries)
+			combined, view, found := pluginSummary(*r.PluginName, *r.PluginVersion, r.MemberVersionIds, summaries)
 			if !found {
 				return nil, fmt.Errorf("%w: artifact %s", errVersionSummaryMissing, pgconv.UUIDString(r.ArtifactID))
 			}
@@ -63,7 +63,7 @@ func (s *Service) ListDownloads(ctx context.Context, ws identity.Workspace) ([]A
 				ContentHash: r.ContentHash, ManifestHash: r.ManifestHash,
 				Status: r.ScanStatus, ExpiresAt: rfc3339(r.ExpiresAt), CreatedAt: rfc3339(r.CreatedAt),
 				DownloadCount: r.DownloadCount, PackagerVersion: r.PackagerVersion, ProfileVersion: r.ProfileVersion,
-			}, view).withServeState(r.ExpiresAt.Time, r.PurgedAt.Time))
+			}, view).withServeState(r.ExpiresAt.Time, r.PurgedAt.Time).withheld(combined))
 			continue
 		}
 		summary, found := summaries[r.SkillVersionID]
@@ -79,7 +79,7 @@ func (s *Service) ListDownloads(ctx context.Context, ws identity.Workspace) ([]A
 			DownloadCount: r.DownloadCount, IncludesTestCases: r.IncludesTestCases,
 			PackagerVersion: r.PackagerVersion, ProfileVersion: r.ProfileVersion,
 			VersionNumber: summary.VersionNumber, LatestVersionNumber: summary.LatestVersionNumber,
-		}.withVersionState().withServeState(r.ExpiresAt.Time, r.PurgedAt.Time))
+		}.withVersionState().withServeState(r.ExpiresAt.Time, r.PurgedAt.Time).withheld(summary))
 	}
 	return out, nil
 }
@@ -142,7 +142,7 @@ func (s *Service) GetDownload(ctx context.Context, ws identity.Workspace, id pgt
 			ContentHash: row.ContentHash, ManifestHash: row.ManifestHash,
 			Status: row.ScanStatus, ExpiresAt: rfc3339(row.ExpiresAt), CreatedAt: rfc3339(row.CreatedAt),
 			DownloadCount: row.DownloadCount, PackagerVersion: row.PackagerVersion, ProfileVersion: row.ProfileVersion,
-		}, row.Plugin).withServeState(row.ExpiresAt.Time, row.PurgedAt.Time), nil
+		}, row.Plugin).withServeState(row.ExpiresAt.Time, row.PurgedAt.Time).withheld(row.VersionSummary), nil
 	}
 	return Artifact{
 		ArtifactID: pgconv.UUIDString(row.ArtifactID), SkillID: pgconv.UUIDString(row.SkillID),
@@ -153,7 +153,7 @@ func (s *Service) GetDownload(ctx context.Context, ws identity.Workspace, id pgt
 		DownloadCount: row.DownloadCount, IncludesTestCases: row.IncludesTestCases,
 		PackagerVersion: row.PackagerVersion, ProfileVersion: row.ProfileVersion,
 		VersionNumber: row.VersionNumber, LatestVersionNumber: row.LatestVersionNumber,
-	}.withVersionState().withServeState(row.ExpiresAt.Time, row.PurgedAt.Time), nil
+	}.withVersionState().withServeState(row.ExpiresAt.Time, row.PurgedAt.Time).withheld(row.VersionSummary), nil
 }
 
 func (s *Service) downloadRow(
@@ -208,7 +208,7 @@ func (s *Service) Download(
 	if !servableAt(ScanStatus(row.ScanStatus), pgtype.Timestamptz{}, row.PurgedAt, row.ExpiresAt, time.Now()) {
 		return none, nil, ErrGone
 	}
-	if reason, _ := gate(SkillFacts{AccessRestricted: row.AccessRestricted, Redistribution: row.Redistribution}); reason != "" {
+	if reason, _ := gate(SkillFacts{AccessRestricted: row.AccessRestricted, TakenDown: row.TakenDown, Redistribution: row.Redistribution}); reason != "" {
 		return none, nil, ErrGone
 	}
 
@@ -498,6 +498,7 @@ func pluginSummary(
 			return VersionSummary{}, nil, false
 		}
 		combined.AccessRestricted = combined.AccessRestricted || summary.AccessRestricted
+		combined.TakenDown = combined.TakenDown || summary.TakenDown
 		if reason, _ := redistributionGate(Redistribution(summary.Redistribution)); reason != "" &&
 			combined.Redistribution == string(RedistributionAllowed) {
 			combined.Redistribution = summary.Redistribution

@@ -81,6 +81,28 @@ func TestDetectContentTypeRejectsUnknownBinary(t *testing.T) {
 	}
 }
 
+func TestDetectContentTypeKeepsTextThatOnlyStartsLikeABinaryMagic(t *testing.T) {
+	for name, data := range map[string][]byte{
+		"csv starting with MZ":    []byte("MZN,1\n"),
+		"exactly MZ":              []byte("MZ"),
+		"csv starting with BZh":   []byte("BZh,1\n"),
+		"csv header with a comma": []byte("MZ,name\n1,a\n"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := detectContentType(bytes.NewReader(data)); err != nil {
+				t.Fatalf("rejected ordinary text: %v", err)
+			}
+		})
+	}
+}
+
+func TestDetectContentTypeRejectsBzip2WithBinaryBody(t *testing.T) {
+	data := append([]byte("BZh9"), 0x31, 0x41, 0x59, 0x26, 0x53, 0x59, 0x00, 0x01, 0x02, 0x03)
+	if _, err := detectContentType(bytes.NewReader(data)); !errors.Is(err, ErrUnsupportedType) {
+		t.Fatalf("accepted bzip2 content: err = %v", err)
+	}
+}
+
 func TestInspectZipRejectsUnsafeEntries(t *testing.T) {
 	cases := map[string][]byte{
 		"traversal":        zipOf(t, map[string]string{"../escape.txt": "x"}),
@@ -153,6 +175,28 @@ func TestInspectZipKeepsTheUnpackBudgetForOOXML(t *testing.T) {
 	})
 	if _, err := detectContentType(bytes.NewReader(ok)); err != nil {
 		t.Fatalf("rejected an ordinary OOXML document: %v", err)
+	}
+}
+
+func TestInspectZipUnpackBudgetIsExactAndSurvivesSizeWraparound(t *testing.T) {
+	budget := uint64(MaxTestCaseBytes)
+	for _, tc := range []struct {
+		name    string
+		entries map[string]uint64
+		wantErr error
+	}{
+		{"one entry exactly at the budget", map[string]uint64{"a.xml": budget}, nil},
+		{"two entries summing exactly to the budget", map[string]uint64{"a.xml": budget - 1, "b.xml": 1}, nil},
+		{"two entries one byte over the budget", map[string]uint64{"a.xml": budget, "b.xml": 1}, ErrLimitExceeded},
+		{"two entries whose declared sizes wrap to zero", map[string]uint64{"a.xml": 1 << 63, "b.xml": 1 << 63}, ErrLimitExceeded},
+		{"two entries whose declared sizes wrap to a small sum", map[string]uint64{"a.xml": 1<<64 - 1, "b.xml": 11}, ErrLimitExceeded},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := detectContentType(bytes.NewReader(zipDeclaring(t, tc.entries)))
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("err = %v, want %v", err, tc.wantErr)
+			}
+		})
 	}
 }
 

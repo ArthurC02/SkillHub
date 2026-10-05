@@ -20,7 +20,7 @@ const (
 
 var (
 	reportedCount = regexp.MustCompile(`^[0-9]{1,18}$`)
-	reportedUSD   = regexp.MustCompile(`^[0-9]{1,12}(\.[0-9]{1,12})?$`)
+	reportedUSD   = regexp.MustCompile(`^[0-9]{1,12}(\.[0-9]{1,24})?$`)
 )
 
 func generalEventTypes() []string {

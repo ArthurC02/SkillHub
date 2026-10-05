@@ -26,6 +26,8 @@ type FileDiff struct {
 
 const maxDiffFileBytes = 1 << 20
 
+var ErrContentWithheld = errors.New("此 Skill 的來源授權正在審查中：審查結論出來前，平台不提供它的版本內容與差異")
+
 type VersionRange struct {
 	From pgtype.UUID
 	To   pgtype.UUID
@@ -33,6 +35,16 @@ type VersionRange struct {
 
 func (s *Service) DiffVersions(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, versions VersionRange) ([]FileDiff, error) {
 	q := gen.New(s.Pool)
+	skill, err := q.GetSkill(ctx, gen.GetSkillParams{ID: skillID, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if RestrictionFrom(skill.AccessRestriction).InEffect() {
+		return nil, ErrContentWithheld
+	}
 	load := func(versionID pgtype.UUID) (fs.FS, error) {
 		v, err := q.GetSkillVersion(ctx, gen.GetSkillVersionParams{ID: versionID, WorkspaceID: ws.ID})
 		if errors.Is(err, pgx.ErrNoRows) || (err == nil && v.SkillID != skillID) {

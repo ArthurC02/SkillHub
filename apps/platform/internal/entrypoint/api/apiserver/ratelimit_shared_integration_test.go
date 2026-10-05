@@ -67,3 +67,26 @@ func TestSignedInSearchersBehindOneAddressAreCountedApart(t *testing.T) {
 		t.Fatal("a signed-in searcher was not limited by account")
 	}
 }
+
+func TestAskingTheModelToSuggestCriteriaIsLimitedPerAccount(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
+		d.Limits = httpx.NewRateLimiter(60, 1)
+	})
+	alice := a.login(t, "ratelimit-suggest-alice")
+	suggest := func() int {
+		resp, err := alice.Post(alice.base+"/test-cases/00000000-0000-0000-0000-000000000001/criteria/suggest", "application/json", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp.StatusCode
+	}
+
+	if first := suggest(); first == http.StatusTooManyRequests {
+		t.Fatal("the first suggestion request was already refused")
+	}
+	if second := suggest(); second != http.StatusTooManyRequests {
+		t.Fatalf("second suggestion request = %d, want 429", second)
+	}
+}

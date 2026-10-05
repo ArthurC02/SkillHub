@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"strings"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
@@ -29,11 +31,11 @@ func TestAReferenceWhosePackageCannotBeReadIsUnavailableAndKeepsTheCause(t *test
 	for _, tc := range []struct {
 		name      string
 		store     fakeObjectStore
-		wantCause string
+		wantCause error
 	}{
-		{"the package is missing from the store", fakeObjectStore{}, `fakeObjectStore: no object "packages/reference.zip"`},
-		{"the stored bytes are not a package", fakeObjectStore{objectKey: []byte("not a zip")}, "bad archive: not a zip archive"},
-		{"the package holds no SKILL.md", fakeObjectStore{objectKey: zipBytes(t, map[string]string{"README.md": "hello"})}, "SKILL.md"},
+		{"the package is missing from the store", fakeObjectStore{}, fs.ErrNotExist},
+		{"the stored bytes are not a package", fakeObjectStore{objectKey: []byte("not a zip")}, skillpkg.ErrBadArchive},
+		{"the package holds no SKILL.md", fakeObjectStore{objectKey: zipBytes(t, map[string]string{"README.md": "hello"})}, fs.ErrNotExist},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := &Service{Store: tc.store, References: references}
@@ -43,8 +45,8 @@ func TestAReferenceWhosePackageCannotBeReadIsUnavailableAndKeepsTheCause(t *test
 			if !errors.Is(err, ErrReferenceUnavailable) {
 				t.Fatalf("err = %v, want ErrReferenceUnavailable", err)
 			}
-			if !strings.HasPrefix(err.Error(), ErrReferenceUnavailable.Error()+": ") || !strings.Contains(err.Error(), tc.wantCause) {
-				t.Fatalf("err = %q, want the refusal followed by the cause %q", err, tc.wantCause)
+			if !errors.Is(err, tc.wantCause) {
+				t.Fatalf("err = %v, want it to still carry the cause %v", err, tc.wantCause)
 			}
 		})
 	}
@@ -59,9 +61,9 @@ func TestAGeneratedFileNameTheZipCannotHoldIsUnpackageableAndSaysWhy(t *testing.
 	if !errors.Is(err, ErrGeneratedPackageInvalid) {
 		t.Fatalf("err = %v, want ErrGeneratedPackageInvalid", err)
 	}
-	if !strings.HasPrefix(err.Error(), ErrGeneratedPackageInvalid.Error()+`: entry "aaaa`) ||
-		!strings.HasSuffix(err.Error(), ": zip: FileHeader.Name too long") {
-		t.Fatalf("err = %q, want the entry named and the zip writer's reason", err)
+	named := ErrGeneratedPackageInvalid.Error() + `: entry "` + g.Files[0].Path + `": `
+	if reason, ok := strings.CutPrefix(err.Error(), named); !ok || reason == "" {
+		t.Fatalf("err = %q, want the entry named and the zip writer's reason after it", err)
 	}
 }
 

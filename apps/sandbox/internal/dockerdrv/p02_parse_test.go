@@ -1,7 +1,10 @@
 package dockerdrv
 
 import (
+	"context"
 	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -24,5 +27,16 @@ func TestParseProbeOutputWithNoReachedLineReturnsNone(t *testing.T) {
 	got := parseProbeOutput("garbage\n", []string{"db.internal:5432"})
 	if len(got) != 0 {
 		t.Fatalf("parseProbeOutput = %v, want none reached", got)
+	}
+}
+
+func TestTheDockerProbeRefusesAListWithATargetItCannotDial(t *testing.T) {
+	d := &Driver{cfg: Config{Network: "none"}}
+	if _, err := d.ProbeEgress(context.Background(), []string{"db.internal:5432"}); err != nil {
+		t.Fatalf("ProbeEgress refused a dialable target: %v", err)
+	}
+	_, err := d.ProbeEgress(context.Background(), []string{"db.internal:5432", "db.internal"})
+	if err == nil || !strings.Contains(err.Error(), strconv.Quote("db.internal")) {
+		t.Fatalf("ProbeEgress with db.internal = %v, want an error naming it", err)
 	}
 }

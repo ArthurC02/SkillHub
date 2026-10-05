@@ -18,25 +18,11 @@ from skillhub_llm import app as app_module
 from skillhub_llm import enrich, evaluate, gateway, generate
 
 BUILDERS: list[tuple[str, Callable[[], AsyncOpenAI], float]] = [
-    ("enrich", enrich._client, enrich.LLM_TIMEOUT_SECONDS),
-    ("evaluate", evaluate._client, evaluate.LLM_TIMEOUT_SECONDS),
-    ("generate", generate._client, generate.LLM_TIMEOUT_SECONDS),
+    ("enrich", enrich._client, 60.0),
+    ("evaluate", evaluate._client, 120.0),
+    ("generate", generate._client, 120.0),
     ("creation", lambda: gateway.client(120.0), 120.0),
-    (
-        "app:/embed",
-        lambda: app_module._client(app_module.EMBED_TIMEOUT_SECONDS),
-        app_module.EMBED_TIMEOUT_SECONDS,
-    ),
-    (
-        "app:/match-reasons",
-        lambda: app_module._client(app_module.MATCH_REASONS_TIMEOUT_SECONDS),
-        app_module.MATCH_REASONS_TIMEOUT_SECONDS,
-    ),
-    (
-        "app:/suggest-criteria",
-        lambda: app_module._client(app_module.SUGGEST_CRITERIA_TIMEOUT_SECONDS),
-        app_module.SUGGEST_CRITERIA_TIMEOUT_SECONDS,
-    ),
+    ("app", lambda: app_module._client(20.0), 20.0),
 ]
 
 
@@ -135,3 +121,27 @@ def test_shutdown_closes_and_clears_the_shared_transport() -> None:
     asyncio.run(gateway.close_client())
 
     assert gateway._shared_client.cache_info().currsize == 0
+
+
+@pytest.mark.parametrize(
+    "base_url, api_key",
+    [("", "sk-test"), ("http://127.0.0.1:9", ""), ("", "")],
+    ids=["no-base-url", "no-key", "neither"],
+)
+def test_a_gateway_missing_its_url_or_key_is_unavailable(monkeypatch, base_url, api_key) -> None:
+    monkeypatch.setenv("LITELLM_BASE_URL", base_url)
+    monkeypatch.setenv("LITELLM_API_KEY", api_key)
+
+    with pytest.raises(HTTPException) as excinfo:
+        gateway.gateway()
+
+    assert excinfo.value.status_code == 503
+    assert "LITELLM_BASE_URL" in excinfo.value.detail
+
+
+def test_a_gateway_with_its_url_and_key_is_returned_as_configured(monkeypatch) -> None:
+    monkeypatch.setenv("LITELLM_BASE_URL", "http://gateway:4000")
+    monkeypatch.setenv("LITELLM_API_KEY", "sk-virtual")
+    monkeypatch.delenv("LITELLM_MASTER_KEY", raising=False)
+
+    assert gateway.gateway() == ("http://gateway:4000", "sk-virtual")

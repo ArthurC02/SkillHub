@@ -3,9 +3,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
-import { FEEDBACK_MAX_MESSAGE, feedbackPagePath, feedbackRunID } from "./feedback.service";
+import { feedbackPagePath, feedbackRunID } from "./feedback.service";
 import { FeedbackEntry } from "./FeedbackEntry";
 import { FeedbackLauncher } from "./FeedbackLauncher";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
 
@@ -35,15 +36,8 @@ async function render(node: ReactNode) {
   });
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs);
 }
 
 function setValue(input: HTMLTextAreaElement, value: string) {
@@ -231,20 +225,18 @@ test("BETA-003 an over-long report says how long it is instead of being cut in h
   const calls = stubPlatform();
   await render(<FeedbackEntry pathname="/" />);
 
-  await type("字".repeat(FEEDBACK_MAX_MESSAGE + 5));
+  await type("字".repeat(2001));
   await submit();
 
   expect(calls).toHaveLength(0);
-  expect(container.querySelector('[role="alert"]')?.textContent).toContain(
-    String(FEEDBACK_MAX_MESSAGE + 5),
-  );
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("目前 2001 字");
 });
 
 test("a report at exactly the length ceiling is accepted, not refused", async () => {
   const calls = stubPlatform();
   await render(<FeedbackEntry pathname="/" />);
 
-  await type("字".repeat(FEEDBACK_MAX_MESSAGE));
+  await type("字".repeat(2000));
   await submit();
   await waitFor(() => calls.length > 0);
 
@@ -309,7 +301,7 @@ test("BETA-003 the counter counts what the server counts, so an emoji report is 
 
   const emoji = "🙂".repeat(1500);
   await type(emoji);
-  expect(text()).toContain(`1500／${FEEDBACK_MAX_MESSAGE} 字`);
+  expect(text()).toContain("1500／2000 字");
 
   await submit();
   await waitFor(() => calls.length > 0);

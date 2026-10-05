@@ -11,13 +11,14 @@
 
 理由是消費者名單裡有一個在 repo 外——拿到 zip 的使用者和他的工具要能讀 manifest、驗 hash、照 `INSTALL.md` 安裝。OpenAPI 表達不了「這是一個檔案的形狀」，而把它寫成 Go struct 的註解，等於讓 repo 外的人沒有契約可讀。
 
-三份分別是：
+各檔分別是：
 
 | 檔案 | 描述什麼 | 誰讀 |
 | --- | --- | --- |
 | `download-manifest.schema.json` | 套件根的 `skillhub-manifest.json`：來源版本、溯源、License、重驗結果、三層相容性、規範化 hash | Go（產生）、`apps/web`（顯示）、**使用者與其工具**（驗證） |
 | `packaging-profile.schema.json` | 一個打包目標的**版本化設定**（安裝位置、additive frontmatter、環境變數、驗證 Prompt、已知限制）。**不描述 Adapter 程式**，也不定義 plugin 機制 | Go（讀設定）；三個內建目標各一份實體 |
 | `portable-test-case.schema.json` | `test-cases/<slug>/case.json` | **兩個方向**：打包器匯出、`tools/content/` 的種入腳本匯入（`04` 丙-12） |
+| `package-root-cases.json` | 已存套件的根目錄在哪：平台把 Skill 目錄記成相對於這個根的路徑，沙箱從同一個根安裝 | Go `skillpkg` 的測試與 runtime image 的 `run.test.mjs`，兩邊讀同一份案例 |
 
 ## 2. 敏感欄位規約（鐵律 11、NFR-002）
 

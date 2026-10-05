@@ -764,3 +764,87 @@ PROBE_PATH=skills/nope       → 拒絕 provision/invalid_package "…that direc
 
 **沒有做的事**：沒有建置映像、沒有跑供應鏈掃描、沒有任何一次真實 Run。這三個修補在實際被派送的
 `-13` 映像裡仍然存在，直到預設映像移到 `-15`。
+
+## `2026.08-15` → `2026.08-16`（2026-10-04）— **`run.mjs` 修正套件根目錄的判定；四項實測尚未跑，預設映像仍留在 `-13`**
+
+> 平台匯入時，zip 只有一個頂層目錄、根目錄又沒有 `SKILL.md`，就一律剝掉那層，再把每個 Skill
+> 的目錄記成相對於剝完之後的路徑（例如 `skills/tidy-notes`）。`run.mjs` 卻只在那層底下直接有
+> `SKILL.md` 時才剝，而且用平台記下的路徑**取代**根目錄而不是接在根目錄後面。GitHub 下載的
+> zip 永遠多一層 `<repo>-<branch>/`，所以從 GitHub 匯入的 Plugin 能匯入，試跑卻一定以
+> `invalid_package ... holds no SKILL.md` 失敗。這不是洩漏：其他元件沒有被安裝。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | 只有 `run.mjs` 與 `ARG IMAGE_VERSION`（`run.test.mjs` 同批改測試，不進映像）。`Dockerfile` 的其餘內容、`constraints.txt`、`package.json`、`package-lock.json` 一字未動 |
+| `packageRoot` | 根目錄沒有 `SKILL.md`、頂層恰好一個目錄時剝掉它，不再要求那層底下有 `SKILL.md`。與平台 `PackageRoot` 相同 |
+| 宣告的 Skill 目錄 | 接在剝出的根目錄後面（`root + declared`），不再取代它。沒有外層目錄的套件結果不變 |
+| 兩邊對齊的依據 | `contracts/packaging/package-root-cases.json`：平台的 Go 測試與 `run.test.mjs` 讀同一份案例，任一邊改了規則另一邊就紅 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| 預設映像 | **仍是 `-13`**：四處預設都沒有動。這個修正要等預設移到 `-16` 才會到達實際的 Run |
+| 四項實測 | **一項都沒跑**，本節不主張任何一項通過；`-14`、`-15` 的實測也還沒補 |
+
+### 本機驗證（2026-10-04，沒有任何模型呼叫，沒有建置映像）
+
+`node --test run.test.mjs` → 123 tests、122 pass、0 fail、1 skipped（跳過的仍是只在非 Windows
+主機上跑的權限位元測試）。新增的三條先在未修改的 `run.mjs` 上跑過、三條都失敗：兩個外層目錄案例的
+`packageRoot`，以及外層目錄裡的 Plugin 安裝。只把「接在根目錄後面」那一行還原，安裝那條仍然失敗。
+
+**沒有做的事**：沒有建置映像、沒有跑供應鏈掃描、沒有任何一次真實 Run。
+
+## `2026.08-16` → `2026.08-17`（2026-10-04）— **安全性修補：`pypdf` 升版；四項實測隨後補入本節**
+
+> `2026.08-16` 從未發佈：Runtime Image 工作流程在 I-06 閘門失敗。`-15` 在 2026-10-01 以完全
+> 相同的依賴通過同一道閘門，`-16` 只改了 `run.mjs`，所以擋下它的是這三天之間新公布的公告。
+> 以同一組釘住的 syft／grype 在本機重現，結果與 CI 一致：`pypdf 6.16.1` 有 8 筆 High。
+
+| 公告 | 修正版本 |
+| --- | --- |
+| GHSA-qv6h-rv94-w285 | 6.17.0 |
+| GHSA-5jq2-8x83-x246 | 6.18.0 |
+| GHSA-fp3h-c4fm-7vvf、GHSA-jw7q-gvrg-4vj3、GHSA-g9cg-prrw-2r8q | 6.18.1 |
+| GHSA-php9-fj8v-98fj、GHSA-v247-6f48-mgcj、GHSA-w23x-9jrw-r45c | 6.19.0 |
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `pypdf` `6.16.1` → `6.19.0`（`Dockerfile` 的安裝清單與 `constraints.txt` 兩處），以及 `ARG IMAGE_VERSION`。`run.mjs`、`package.json`、`package-lock.json` 一字未動 |
+| 新增的依賴 | 無：`6.19.0` 只在 Python 3.11 以下才需要 `typing_extensions`，映像是 3.11.2 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| 這一版同時帶著 | `-16` 的套件根目錄修正（上一節）。`-16` 沒有發佈過，所以那個修正第一次出現在發佈的映像裡是這一版 |
+| 預設映像 | 本節第一批推送時仍是 `-13`；四項在 CI 發佈的 digest 上跑過之後才移動 |
+
+### 本機驗證（2026-10-04，沒有任何模型呼叫）
+
+以 CI 釘住的同一組 `anchore/syft:v1.51.0@sha256:678bfa56…` 與 `anchore/grype:v0.117.0@sha256:ddf9e9f2…`，
+對本機建置經 `docker save` 轉成的 tar 掃描，`--only-fixed --fail-on high`：`2026.08-16` → 上表 8 筆 High、
+exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities found`、exit 0。同一個 `-17` 映像、
+無網路：`import pypdf, pdfplumber` 成功，`pypdf.__version__` → `6.19.0`、Python `3.11.2`。
+`devctl image-gate` → `runtime image source gates passed`。
+
+### 2026-10-04：四項測項，全部跑在 CI 發佈的 digest 上
+
+| 欄位 | 值 |
+| --- | --- |
+| 映像 digest | `sha256:344502fb9b4393fd69800b78e5d3cfe606e1f1cb4c5a29eaf05d2f8cf98e0f3a`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-17`，[Runtime Image #37185347701](https://github.com/ArthurC02/SkillHub/actions/runs/37185347701) 於 commit `12481ef3` 發佈；以 tag `docker pull`，`RepoDigests` 對得上） |
+| 環境 | 本機 LiteLLM（`skillhub-litellm-1`）＋ `skillhub_egress`；`sandboxd` 以 HEAD 交叉編譯、在 `debian:12-slim` 容器跑，`SKILLHUB_SANDBOX_IMAGE` **直接指上面那個 digest**；測試二進位交叉編譯後在容器裡跑，共用一次性測試資料庫容器的網路；允許清單沿用 dev 那份，committed 的那份一字未動 |
+| 費用 | 合計 **$0.12617715**（`gpt-5.4-mini`，31 次呼叫，以閘道 `/spend/logs/v2` 逐列加總）：端到端四次 Run（單一 Skill $0.02358735、Plugin 內的 Skill $0.02276685、外層目錄裡的 Plugin $0.0230301 與為取 trace 重跑的一次 $0.02324535）、harness 兩支 $0.0172509、下面那次突變證明 $0.0162966；撤銷探測、反證、被換掉的套件三者 $0 |
+| 見證 | GHCR 上該 digest 有兩份 attestation：`https://spdx.dev/Document/v2.3` 與 `https://in-toto.io/attestation/vulns/v0.1`，以 `/repos/.../attestations/<digest>` 匿名取回確認 |
+| 映像層 | 同一個 digest、無網路：`node --version` → `v22.23.2`、17 個 Python 套件 `OK 17/17 3.11.2`、`pypdf` → `6.19.0`、`id -u` → `65532`、`command -v nc` → 無、`command -v npm` → 無、`/etc/debian_version` → `12.15`、`.Size` → 1,323,729,247 bytes、version label → `2026.08-17` |
+
+| 項次 | 狀態 | 實測輸出 / 判定 |
+| --- | --- | --- |
+| **1. Skill 載入條件** | ✅ **通過，三種形狀各跑一次** | 單一 Skill 的套件：`TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS（25.37s）。Plugin 內的 Skill：`TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone` PASS（21.19s）。**外層目錄裡的 Plugin**（zip 多一層 `desk-tools-main/`，`source_path=skills/run-marker`）：`TestEndToEndRunOfAPluginInsideARepositoryDirectoryInstallsItsSkill` PASS（21.18s），trace `skill_activation {"skill_name":"run-marker","decision":"activated"}` → `tool_call` `Bash` `cd /work/.claude/skills/run-marker && python3 scripts/check.py` → `script_log`：`SKILL-FILES=SKILL.md,scripts`、`SKILLS-INSTALLED=run-marker` |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | 四次 Run 的模型呼叫在閘道各留 6 列，`api_key` 是那次 Run 自己的 Virtual Key。撤銷：新開一把限 `gpt-5.4-mini`、0.5 USD、6 小時的 Virtual Key 打 `/v1/models` → **200**，`/key/delete` → 200，同一把再打 → **401** |
+| **3. Prompt caching 計費欄位與對帳** | ✅ **通過** | `cache_read_input_tokens` → `71168`，`cache_write_input_tokens` 仍為 `null`。四次 Run 的 trace `usage.cost_usd` 與閘道該金鑰的列合計逐位一致（例：外層目錄那次 trace `0.02324535`、閘道 `0.02324535`、平台 `cost_events` `23246` µUSD）。`-13` 那節記下的「trace 少了最後一次呼叫」這次四次都沒有出現；那是輪詢時序，這一版沒有修它，不主張它已消失 |
+| **4. `usage` 事件的發出條件** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（16.74s，`in=2029 out=30 token_source=result`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（15.76s，撞上限仍回報 `in=17901 out=49`，provider 錯誤指向 `token_budget_exceeded`）。harness 以 master key 當 grant，所以 `cost_usd` 為 `null`，與 `-13` 相同 |
+
+**外層目錄那條會紅的反證**：把 `sandboxd` 指回 `-13` 的 digest、其他一切不動，同一支測試 FAIL：`provision/invalid_package` `the run named skills/run-marker/ as this skill's directory inside its package, and that directory holds no SKILL.md`，沒有呼叫模型。改回 `-17` 之後 PASS。
+
+**套件位元組核對（不在四項清單上，同批驗證）**：平台把 `package_sha256` 送到 sandbox，sandbox 核對抓到的位元組。`TestEndToEndRunRefusesAPackageWhoseStoredBytesAreNotTheAdmittedOnes` 在套件的內容定址鍵底下放另一份合法套件 → Run `failed` / `provider_error`，sandboxd 記 `the delivered bytes are not the ones the request names`，沒有呼叫模型。突變證明：讓平台不送這個欄位，同一支 FAIL，被換掉的套件照樣跑完並回報 `succeeded`（$0.0162966）。
+
+**預設映像仍是 `-13`**：四項已在 `-17` 的 digest 上通過，移動預設由負責人決定。
+
+### 預設映像從 `-13` 移到 `-17`
+
+四項在 `-17` 的 digest 上通過之後，經負責人同意移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，以及 `apps/sandbox/README.md` 的環境變數表與建置範例。`-14`、`-15`、`-16` 沒有成為過預設；它們的變更都包含在 `-17` 裡。

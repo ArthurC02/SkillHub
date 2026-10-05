@@ -269,6 +269,35 @@ func auditCount(t *testing.T, pool *pgxpool.Pool, action, resourceID string) int
 		action, mustUUID(t, resourceID))
 }
 
+func TestAHeadRequestForADownloadIsNotCountedAsADownload(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "downloader-head")
+	art := buildDownload(t, a, pool, c, "head-skill")
+
+	resp, err := c.Head(c.base + "/downloads/" + art.ArtifactID + "/content")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusMethodNotAllowed || resp.Header.Get("Allow") != http.MethodGet {
+		t.Errorf("HEAD content: got %d Allow=%q, want 405 Allow=GET", resp.StatusCode, resp.Header.Get("Allow"))
+	}
+	if n := downloadRecordCount(t, pool, art.ArtifactID); n != 0 {
+		t.Errorf("download_records after HEAD: got %d, want 0", n)
+	}
+	if n := auditCount(t, pool, "artifact.download", art.ArtifactID); n != 0 {
+		t.Errorf("audit_events after HEAD: got %d, want 0", n)
+	}
+
+	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET content after HEAD: got %d, want 200", resp.StatusCode)
+	}
+	if n := downloadRecordCount(t, pool, art.ArtifactID); n != 1 {
+		t.Errorf("download_records after one GET: got %d, want 1", n)
+	}
+}
+
 func TestADownloadRefusedAtCommitLeavesNoAuditEventBehind(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -375,7 +404,7 @@ func TestDownloadingServesTheBytesAndWritesBothARecordAndAnAuditEvent(t *testing
 	c := a.login(t, "downloader")
 	art := buildDownload(t, a, pool, c, "served-skill")
 
-	assertServesTheStoredZipUnderItsOwnName(t, a, c, art)
+	assertServesTheStoredZipUnderItsOwnName(t, pool, a, c, art)
 
 	if n := downloadRecordCount(t, pool, art.ArtifactID); n != 1 {
 		t.Errorf("download_records: got %d rows, want 1", n)
@@ -405,7 +434,7 @@ func TestDownloadingServesTheBytesAndWritesBothARecordAndAnAuditEvent(t *testing
 	}
 }
 
-func assertServesTheStoredZipUnderItsOwnName(t *testing.T, a *api, c *client, art downloadView) {
+func assertServesTheStoredZipUnderItsOwnName(t *testing.T, pool *pgxpool.Pool, a *api, c *client, art downloadView) {
 	t.Helper()
 	resp, data := c.fetchContent(t, art.ArtifactID)
 	if resp.StatusCode != http.StatusOK {
@@ -425,7 +454,12 @@ func assertServesTheStoredZipUnderItsOwnName(t *testing.T, a *api, c *client, ar
 		t.Errorf("Content-Length %d announced for %d served bytes", resp.ContentLength, len(data))
 	}
 
-	if want := a.packages["downloads/"+c.workspaceID+"/"+art.ContentHash+".zip"]; string(data) != string(want) {
+	key := storedObjectKey(t, pool, art.ArtifactID)
+	want, ok := a.packages[key]
+	if !ok {
+		t.Fatalf("the object store holds nothing under the artifact's recorded key %q", key)
+	}
+	if string(data) != string(want) {
 		t.Error("the served bytes are not the stored object")
 	}
 }
@@ -483,10 +517,14 @@ func TestPackagingWaitsForRetentionOfTheSameSharedObject(t *testing.T) {
 
 	entered := make(chan struct{})
 	release := make(chan struct{})
+	releaseGuard := sync.OnceFunc(func() { close(release) })
+	t.Cleanup(releaseGuard)
+	holder := make(chan uint32, 1)
 	guardDone := make(chan error, 1)
 	go func() {
 		guardDone <- (&packaging.Service{Pool: pool}).GuardArtifactRemoval(ctx, objectKey,
-			func(_ bool, _ pgx.Tx) error {
+			func(_ bool, tx pgx.Tx) error {
+				holder <- tx.Conn().PgConn().PID()
 				close(entered)
 				<-release
 				return nil
@@ -519,13 +557,13 @@ func TestPackagingWaitsForRetentionOfTheSameSharedObject(t *testing.T) {
 		_, _ = io.Copy(io.Discard, resp.Body)
 		result <- response{status: resp.StatusCode}
 	}()
+	waitUntilALockWaiterIsBlockedBy(t, pool, <-holder)
 	select {
 	case got := <-result:
-		close(release)
 		t.Fatalf("packaging crossed an in-flight retention lock: status=%d err=%v", got.status, got.err)
-	case <-time.After(250 * time.Millisecond):
+	default:
 	}
-	close(release)
+	releaseGuard()
 	if err := <-guardDone; err != nil {
 		t.Fatal(err)
 	}
@@ -552,6 +590,8 @@ func TestPackagingWaitsForDeletionOfTheSameSharedObject(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := &blockingRemoveStore{packageStore: a.packages, entered: make(chan struct{}), release: make(chan struct{})}
+	releaseStore := sync.OnceFunc(func() { close(store.release) })
+	t.Cleanup(releaseStore)
 	a.packaging.Store = store
 
 	type response struct {
@@ -581,17 +621,18 @@ func TestPackagingWaitsForDeletionOfTheSameSharedObject(t *testing.T) {
 		t.Fatal("delete did not reach object removal")
 	}
 
+	waitersBefore := advisoryLockWaiters(t, pool)
 	packaged := make(chan response, 1)
 	go func() {
 		packaged <- request(http.MethodPost, packagingPath(skillID, versionID), `{"target":"standard"}`)
 	}()
+	waitUntilMoreAdvisoryLockWaitersThan(t, pool, waitersBefore)
 	select {
 	case got := <-packaged:
-		close(store.release)
 		t.Fatalf("packaging crossed the delete's object lock with status %d, err %v", got.status, got.err)
-	case <-time.After(250 * time.Millisecond):
+	default:
 	}
-	close(store.release)
+	releaseStore()
 	if got := <-deleteDone; got.err != nil || got.status != http.StatusNoContent {
 		t.Fatalf("DELETE status = %d, err %v", got.status, got.err)
 	}
@@ -691,6 +732,7 @@ func TestALicensingHoldAppliedAfterPackagingStopsTheDownload(t *testing.T) {
 	}{
 		{"access_restriction", "UPDATE skills SET access_restriction = 'license-review' WHERE id = $1"},
 		{"redistribution", "UPDATE skills SET redistribution = 'blocked' WHERE id = $1"},
+		{"takedown", "UPDATE skills SET takedown_at = now(), takedown_reason = 'withdrawn' WHERE id = $1"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := pool.Exec(context.Background(), tc.sql, mustUUID(t, art.SkillID)); err != nil {
@@ -700,8 +742,9 @@ func TestALicensingHoldAppliedAfterPackagingStopsTheDownload(t *testing.T) {
 			if resp.StatusCode != http.StatusNotFound {
 				t.Fatalf("content under a %s hold: got %d, want 404", tc.name, resp.StatusCode)
 			}
+			assertDownloadWithheld(t, c, art.ArtifactID)
 			if _, err := pool.Exec(context.Background(),
-				"UPDATE skills SET access_restriction = NULL, redistribution = 'allowed' WHERE id = $1",
+				"UPDATE skills SET access_restriction = NULL, redistribution = 'allowed', takedown_at = NULL, takedown_reason = NULL WHERE id = $1",
 				mustUUID(t, art.SkillID)); err != nil {
 				t.Fatal(err)
 			}
@@ -709,6 +752,43 @@ func TestALicensingHoldAppliedAfterPackagingStopsTheDownload(t *testing.T) {
 	}
 	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusOK {
 		t.Error("lifting both locks did not restore the download")
+	}
+}
+
+func storedObjectKey(t *testing.T, pool *pgxpool.Pool, artifactID string) string {
+	t.Helper()
+	var key string
+	if err := pool.QueryRow(context.Background(), `SELECT object_key FROM artifacts WHERE id = $1`,
+		mustUUID(t, artifactID)).Scan(&key); err != nil {
+		t.Fatal(err)
+	}
+	return key
+}
+
+func assertDownloadWithheld(t *testing.T, c *client, artifactID string) {
+	t.Helper()
+	type serveFacts struct {
+		ArtifactID string `json:"artifact_id"`
+		Servable   bool   `json:"servable"`
+		ServeState struct {
+			Value string `json:"value"`
+		} `json:"serve_state"`
+	}
+	var one serveFacts
+	if code := getJSON(t, c.Client, c.base+"/downloads/"+artifactID, &one); code != http.StatusOK {
+		t.Fatalf("GET /downloads/%s: got %d", artifactID, code)
+	}
+	var list struct {
+		Downloads []serveFacts `json:"downloads"`
+	}
+	if code := getJSON(t, c.Client, c.base+"/downloads", &list); code != http.StatusOK || len(list.Downloads) != 1 {
+		t.Fatalf("GET /downloads: got %d with %d rows, want one", code, len(list.Downloads))
+	}
+	for where, got := range map[string]serveFacts{"the download": one, "the list": list.Downloads[0]} {
+		if got.Servable || got.ServeState.Value != "withheld" {
+			t.Errorf("%s says servable=%v state=%q while its content is refused; want false and withheld",
+				where, got.Servable, got.ServeState.Value)
+		}
 	}
 }
 
@@ -721,7 +801,10 @@ func TestDeletingADownloadIsIdempotentAndKeepsTheRecord(t *testing.T) {
 	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusOK {
 		t.Fatal("the artifact was not downloadable before the delete")
 	}
-	objectKey := "downloads/" + c.workspaceID + "/" + art.ContentHash + ".zip"
+	objectKey := storedObjectKey(t, pool, art.ArtifactID)
+	if _, ok := a.packages[objectKey]; !ok {
+		t.Fatalf("precondition: no stored object at the recorded key %q", objectKey)
+	}
 	seedSighting(t, pool, "artifact", art.ArtifactID)
 
 	for i := range 2 {
@@ -759,7 +842,10 @@ func TestAnExpiredArtifactIsNotServedAndItsBytesAreSweptAway(t *testing.T) {
 	a := newAPI(t, pool)
 	c := a.login(t, "expirer")
 	art := buildDownload(t, a, pool, c, "expiring-skill")
-	objectKey := "downloads/" + c.workspaceID + "/" + art.ContentHash + ".zip"
+	objectKey := storedObjectKey(t, pool, art.ArtifactID)
+	if _, ok := a.packages[objectKey]; !ok {
+		t.Fatalf("precondition: no stored object at the recorded key %q", objectKey)
+	}
 
 	if _, err := pool.Exec(context.Background(),
 		"UPDATE artifacts SET expires_at = now() - interval '1 day' WHERE id = $1",
@@ -796,7 +882,11 @@ func TestTheReconcilerNeedsTwoRoundsBeforeItMarksAMissingObject(t *testing.T) {
 	a := newAPI(t, pool)
 	c := a.login(t, "reconciled")
 	art := buildDownload(t, a, pool, c, "vanishing-skill")
-	delete(a.packages, "downloads/"+c.workspaceID+"/"+art.ContentHash+".zip")
+	objectKey := storedObjectKey(t, pool, art.ArtifactID)
+	if _, ok := a.packages[objectKey]; !ok {
+		t.Fatalf("precondition: no stored object at the recorded key %q", objectKey)
+	}
+	delete(a.packages, objectKey)
 
 	sweep := newSweep(pool, a.packages)
 	if err := sweep.Sweep(context.Background()); err != nil {
@@ -841,8 +931,11 @@ func TestAReturningObjectResetsTheSightingCount(t *testing.T) {
 	a := newAPI(t, pool)
 	c := a.login(t, "flapping")
 	art := buildDownload(t, a, pool, c, "flapping-skill")
-	key := "downloads/" + c.workspaceID + "/" + art.ContentHash + ".zip"
-	bytes := a.packages[key]
+	key := storedObjectKey(t, pool, art.ArtifactID)
+	bytes, ok := a.packages[key]
+	if !ok {
+		t.Fatalf("precondition: no stored object at the recorded key %q", key)
+	}
 
 	sweep := newSweep(pool, a.packages)
 	delete(a.packages, key)
@@ -870,7 +963,7 @@ func TestAReturningObjectResetsTheSightingCount(t *testing.T) {
 		t.Error("the count did not start over, so one round after a flap was enough to mark the row")
 	}
 	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusNotFound {
-		t.Log("note: the object is missing again, so the download correctly fails at fetch time")
+		t.Errorf("the object is missing again, so the download must fail at fetch time with 404, got %d", resp.StatusCode)
 	}
 }
 
@@ -1053,7 +1146,11 @@ func TestADownloadWhoseStoredPackageIsGoneAnswersNotFoundAndRecordsNothing(t *te
 	a := newAPI(t, pool)
 	c := a.login(t, "downloader-object-gone")
 	art := buildDownload(t, a, pool, c, "object-gone-skill")
-	delete(a.packages, "downloads/"+c.workspaceID+"/"+art.ContentHash+".zip")
+	objectKey := storedObjectKey(t, pool, art.ArtifactID)
+	if _, ok := a.packages[objectKey]; !ok {
+		t.Fatalf("precondition: no stored object at the recorded key %q", objectKey)
+	}
+	delete(a.packages, objectKey)
 
 	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("GET content of a package the store no longer holds: got %d, want 404", resp.StatusCode)

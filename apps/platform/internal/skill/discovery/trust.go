@@ -55,6 +55,8 @@ var sourceTrustDisplays = map[SourceTrust]TrustDisplay{
 	SourceTrustGenerated:         {Label: "平台依你的任務描述生成", Note: "沒有上游來源。平台保存了你當時輸入的任務描述、生成時間、提示詞版本與模型識別,那就是它的來源紀錄。這不是品質或安全的結論——沒有任何人看過它,也沒有任何試跑證據。"},
 }
 
+var generatedTrustForReaders = TrustDisplay{Label: "由平台生成", Note: "沒有上游來源。作者生成它時輸入的內容只留給作者本人。這不是品質或安全的結論——沒有任何人看過它,也沒有任何試跑證據。"}
+
 var licenseStatusDisplays = map[LicenseStatus]TrustDisplay{
 	LicenseStatusUnknown:   {Label: "License 未知", Note: "未宣告 License,依規則不可下載。"},
 	LicenseStatusDeclared:  {Label: "License 已宣告", Note: "套件內宣告了 License,尚未經人工核對。"},

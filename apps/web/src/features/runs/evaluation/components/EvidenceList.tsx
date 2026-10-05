@@ -1,6 +1,7 @@
 import { StateIcon } from "../../../../shared/ui/StateIcon";
 import type { EvidenceRef } from "../../evaluation.service";
 import { MATCH_WORD, MATCH_BADGE, MATCH_ICON, matchKey, KIND_WORD } from "../evaluation.model";
+import { Reveal } from "../../../../shared/ui/Reveal";
 
 export function EvidenceList({ evidence }: { evidence: EvidenceRef[] }) {
   if (evidence.length === 0) return <p className="note">沒有附上證據引用。</p>;
@@ -42,7 +43,9 @@ export function EvidenceList({ evidence }: { evidence: EvidenceRef[] }) {
           {!e.available && (
             <p className="note">原始資料已過期或已刪除，以下是評估當時保存的摘要。</p>
           )}
-          <pre>{e.excerpt}</pre>
+          <pre>
+            <Reveal text={e.excerpt} />
+          </pre>
           {e.excerpt_truncated && <p className="note">（摘要已截斷，不是全文）</p>}
         </li>
       ))}

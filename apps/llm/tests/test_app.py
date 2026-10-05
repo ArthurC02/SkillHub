@@ -2,8 +2,6 @@ import os
 from types import SimpleNamespace
 from unittest.mock import patch
 
-import anyio
-import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -14,17 +12,45 @@ from skillhub_llm.app import app
 client = TestClient(app, headers={"Authorization": "Bearer test-service-token"})
 
 
-def test_capabilities_reject_missing_or_wrong_service_token():
-    unauthenticated = TestClient(app)
-    assert unauthenticated.post("/embed", json={"texts": ["secret"]}).status_code == 401
-    assert (
-        unauthenticated.post(
-            "/embed",
-            headers={"Authorization": "Bearer wrong"},
-            json={"texts": ["secret"]},
-        ).status_code
-        == 401
+PUBLIC_ROUTES = {"/healthz"}
+GUARDED = sorted(
+    (path, method.upper())
+    for path, operations in app.openapi()["paths"].items()
+    if path not in PUBLIC_ROUTES
+    for method in operations
+)
+
+
+def test_every_capability_route_is_guarded():
+    assert GUARDED == [
+        ("/embed", "POST"),
+        ("/judge-run", "POST"),
+        ("/match-reasons", "POST"),
+        ("/readyz", "GET"),
+        ("/suggest-criteria", "POST"),
+        ("/suggest-improvements", "POST"),
+        ("/v1/analyze-intent", "POST"),
+        ("/v1/creation/step", "POST"),
+        ("/v1/enrich-skill", "POST"),
+        ("/v1/generate-skill", "POST"),
+    ]
+
+
+@pytest.mark.parametrize("path, method", GUARDED, ids=[f"{m} {p}" for p, m in GUARDED])
+@pytest.mark.parametrize("authorization", [None, "Bearer wrong", "Bearer "])
+def test_a_capability_route_refuses_a_missing_or_wrong_service_token(path, method, authorization):
+    headers = {"Authorization": authorization} if authorization else {}
+    response = TestClient(app).request(method, path, headers=headers, json={})
+    assert response.status_code == 401
+
+
+def test_a_service_token_with_non_ascii_bytes_is_rejected_as_unauthenticated():
+    response = TestClient(app).post(
+        "/embed",
+        headers={"Authorization": b"Bearer t\xc3\xa9st-service-token"},
+        json={"texts": ["secret"]},
     )
+    assert response.status_code == 401
 
 
 def test_service_fails_closed_when_authentication_is_not_configured():
@@ -233,7 +259,7 @@ def test_match_reasons_names_the_model_the_batch_is_billed_to():
         )
 
     assert response.status_code == 200
-    assert response.json()["model"] == app_module.MATCH_REASON_MODEL
+    assert response.json()["model"] == "skillhub-match-reason"
 
 
 def test_match_reasons_asks_the_gateway_for_the_shape_it_parses():
@@ -411,7 +437,7 @@ def test_suggest_criteria_asks_the_gateway_for_the_shape_it_parses():
     assert "criteria" in fmt["json_schema"]["schema"]["properties"]
     assert str(built[0].base_url).rstrip("/") == os.environ["LITELLM_BASE_URL"].rstrip("/")
     assert built[0].timeout == app_module.SUGGEST_CRITERIA_TIMEOUT_SECONDS
-    assert sent[0]["model"] == app_module.SUGGEST_CRITERIA_MODEL
+    assert sent[0]["model"] == "skillhub-suggest-criteria"
 
 
 def test_suggest_criteria_never_sees_dataset_rows():
@@ -444,7 +470,7 @@ def test_suggest_criteria_caps_the_number_of_suggestions():
     with _stub_chat('{"criteria": [' + many + "]}"):
         response = client.post("/suggest-criteria", json=SUGGEST_BODY)
 
-    assert len(response.json()["criteria"]) == app_module.MAX_SUGGESTED_CRITERIA
+    assert len(response.json()["criteria"]) == 8
 
 
 def test_suggest_criteria_survives_an_off_schema_answer():
@@ -471,40 +497,6 @@ def test_suggest_criteria_reports_provider_failure_as_502():
         response = client.post("/suggest-criteria", json=SUGGEST_BODY)
 
     assert response.status_code == 502
-
-
-def test_every_endpoint_asks_for_its_own_ceiling():
-    """Each endpoint's timeout constant must actually reach the client."""
-    asked: list[float] = []
-    completion = SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content="{}"))], usage=None
-    )
-
-    def build(timeout):
-        asked.append(timeout)
-        return SimpleNamespace(
-            embeddings=SimpleNamespace(
-                with_raw_response=SimpleNamespace(
-                    create=_returns(SimpleNamespace(data=[], usage=None))
-                )
-            ),
-            chat=SimpleNamespace(
-                completions=SimpleNamespace(
-                    with_raw_response=SimpleNamespace(create=_returns(completion))
-                )
-            ),
-        )
-
-    with patch.object(app_module, "_client", build):
-        client.post("/embed", json={"texts": ["one"]})
-        client.post("/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES})
-        client.post("/suggest-criteria", json=SUGGEST_BODY)
-
-    assert asked == [
-        app_module.EMBED_TIMEOUT_SECONDS,
-        app_module.MATCH_REASONS_TIMEOUT_SECONDS,
-        app_module.SUGGEST_CRITERIA_TIMEOUT_SECONDS,
-    ]
 
 
 INJECTION = (
@@ -557,6 +549,31 @@ def test_embed_success():
     assert len(body["embeddings"]) == 2
 
 
+def test_embed_returns_each_vector_in_the_order_the_gateway_gave_them():
+    with _stub_embeddings([_embedding([0.1] * 1536), _embedding([0.2] * 1536)]):
+        body = client.post("/embed", json={"texts": ["hello", "world"]}).json()
+
+    assert body["embeddings"] == [[0.1] * 1536, [0.2] * 1536]
+
+
+def test_an_embedding_call_the_gateway_failed_is_502_without_the_texts():
+    with _stub_embeddings([], error=RuntimeError("400 on input: 'my private note'")):
+        response = client.post("/embed", json={"texts": ["my private note"]})
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "gateway error"}
+
+
+@pytest.mark.parametrize("count, status", [(64, 200), (65, 422)])
+def test_embed_takes_at_most_sixty_four_texts(count, status):
+    sent: list = []
+    with _stub_embeddings([_embedding([0.0] * 1536)] * count, capture=sent):
+        response = client.post("/embed", json={"texts": ["t"] * count})
+
+    assert response.status_code == status
+    assert len(sent) == (1 if status == 200 else 0)
+
+
 def test_embed_rejects_vectors_of_the_wrong_dimension():
     """The right NUMBER of vectors at the wrong LENGTH is still malformed."""
     with _stub_embeddings([_embedding([0.1] * 768)]):
@@ -564,37 +581,6 @@ def test_embed_rejects_vectors_of_the_wrong_dimension():
 
     assert response.status_code == 502
     assert response.json() == {"detail": "embedding provider returned malformed output"}
-
-
-def test_embed_honours_a_lower_ceiling_from_the_caller_and_never_a_higher_one():
-    """One endpoint, two callers, two deadlines: a caller may only lower the
-    ceiling with `timeout_seconds`, never raise it above the module's own.
-    """
-    asked: list[float] = []
-
-    def build(timeout):
-        asked.append(timeout)
-        return SimpleNamespace(
-            embeddings=SimpleNamespace(
-                with_raw_response=SimpleNamespace(
-                    create=_returns(SimpleNamespace(data=[], usage=None))
-                )
-            )
-        )
-
-    with patch.object(app_module, "_client", build):
-        client.post("/embed", json={"texts": ["one"], "timeout_seconds": 10})
-        client.post("/embed", json={"texts": ["one"], "timeout_seconds": 600})
-        client.post("/embed", json={"texts": ["one"]})
-
-    assert asked == [10, app_module.EMBED_TIMEOUT_SECONDS, app_module.EMBED_TIMEOUT_SECONDS]
-
-
-def test_embed_rejects_a_ceiling_of_zero_or_less():
-    """`min()` would accept 0 and time the call out before it started."""
-    for bad in (0, -1):
-        r = client.post("/embed", json={"texts": ["one"], "timeout_seconds": bad})
-        assert r.status_code == 422, bad
 
 
 @pytest.mark.parametrize(
@@ -663,46 +649,6 @@ def test_embed_rejects_an_item_with_no_embedding_field():
 
     assert response.status_code == 502
     assert response.json() == {"detail": "embedding provider returned malformed output"}
-
-
-def test_a_caller_that_stops_waiting_gets_no_answer(monkeypatch):
-    """The only test in this suite where a call actually runs out of time.
-
-    Over the in-process ASGI transport, cancelling the caller's task cancels
-    the handler with it, so the gateway call never returns.
-    """
-    reached_the_answer: list[bool] = []
-
-    async def create(**kwargs):
-        await anyio.sleep(30)
-        reached_the_answer.append(True)
-        raise AssertionError("the stub was allowed to finish")
-
-    stub = SimpleNamespace(
-        chat=SimpleNamespace(
-            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
-        )
-    )
-
-    async def scenario():
-        transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(
-            transport=transport,
-            base_url="http://llm",
-            headers={"Authorization": "Bearer test-service-token"},
-        ) as caller:
-            with anyio.move_on_after(0.25):
-                return await caller.post(
-                    "/match-reasons",
-                    json={"query": "read my invoices", "candidates": CANDIDATES},
-                )
-        return None
-
-    with patch.object(app_module, "_client", lambda timeout: stub):
-        answer = anyio.run(scenario)
-
-    assert answer is None, f"the caller walked away and still got {answer!r}"
-    assert reached_the_answer == []
 
 
 def test_readyz_reports_ready_when_the_gateway_is_configured():

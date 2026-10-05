@@ -60,7 +60,7 @@ def test_analysis_is_one_bounded_call_with_explicit_absences(gateway, timeout, e
     assert response.status_code == 200
     assert response.json() == {
         "valid": True,
-        "model": intent.INTENT_MODEL,
+        "model": "skillhub-intent",
         "prompt_version": "search-intent/v2",
         "intent": PROPOSAL["intent"],
         "keywords": ["CSV", "報告"],

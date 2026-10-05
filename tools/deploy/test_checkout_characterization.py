@@ -36,7 +36,8 @@ def test_a_reference_the_checkout_carries_names_no_problem():
     }
     assert problems == [
         "checkout-paths entry 'infra/deploy/agent/nonexistent-dir/' selects no file",
-        f"{co.TEMPLATE} names infra/deploy/agent/absent.sh, which the agent checkout does not carry",
+        "infra/deploy/cloud-init.yaml.tmpl names infra/deploy/agent/absent.sh, "
+        "which the agent checkout does not carry",
         "infra/compose/agent.yml names infra/deploy/agent/compose-only-ref.sh, "
         "which the agent checkout does not carry",
     ], problems
@@ -46,10 +47,15 @@ def test_every_source_that_names_an_uncarried_reference_is_reported_once_each():
     sources = dict(SOURCES)
     sources["infra/deploy/agent/run.mjs"] = "/opt/skillhub/infra/deploy/agent/also-absent.sh"
     problems, _ = co.gaps("agent", FILES, lambda source: sources[source])
-    assert (
+    assert problems == [
+        "checkout-paths entry 'infra/deploy/agent/nonexistent-dir/' selects no file",
+        "infra/deploy/cloud-init.yaml.tmpl names infra/deploy/agent/absent.sh, "
+        "which the agent checkout does not carry",
+        "infra/compose/agent.yml names infra/deploy/agent/compose-only-ref.sh, "
+        "which the agent checkout does not carry",
         "infra/deploy/agent/run.mjs names infra/deploy/agent/also-absent.sh, "
-        "which the agent checkout does not carry"
-    ) in problems
+        "which the agent checkout does not carry",
+    ], problems
 
 
 if __name__ == "__main__":

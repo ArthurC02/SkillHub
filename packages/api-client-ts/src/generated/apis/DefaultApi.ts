@@ -3348,7 +3348,7 @@ export interface DefaultApiInterface {
     grantCreditsRequestOpts(requestParameters: GrantCreditsOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Not idempotent: nothing in this request identifies a retry, so two identical calls are two grants. Deliberate for MVP, where a grant is a deliberate act and each one is audited. 
+     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Idempotent only when the request carries `idempotency_key`: a replay of the same key for the same account writes no second entry and no second audit event, and answers with the balance as it stands. Without a key nothing identifies a retry, so two identical calls are two grants. A key already used on this account for a different amount is a 409, not a replay: answering 200 would report a grant that was never applied. 
      * @summary Put Credit into an account (CRED-007)
      * @param {string} workspaceId 
      * @param {GrantCreditsRequest} grantCreditsRequest 
@@ -3359,7 +3359,7 @@ export interface DefaultApiInterface {
     grantCreditsRaw(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GrantCredits200Response>>;
 
     /**
-     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Not idempotent: nothing in this request identifies a retry, so two identical calls are two grants. Deliberate for MVP, where a grant is a deliberate act and each one is audited. 
+     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Idempotent only when the request carries `idempotency_key`: a replay of the same key for the same account writes no second entry and no second audit event, and answers with the balance as it stands. Without a key nothing identifies a retry, so two identical calls are two grants. A key already used on this account for a different amount is a 409, not a replay: answering 200 would report a grant that was never applied. 
      * Put Credit into an account (CRED-007)
      */
     grantCredits(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GrantCredits200Response>;
@@ -4138,7 +4138,7 @@ export interface DefaultApiInterface {
     reviewExposureRequestOpts(requestParameters: ReviewExposureOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * The request names the release and the review sequence the reviewer looked at; either being stale answers 409 and nothing is written. Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
+     * The request names the release, the review sequence and the search snapshot digest the reviewer looked at; any of them being stale answers 409 and nothing is written (a revocation is not held to the digest). Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
      * @summary Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
      * @param {string} publisher 
      * @param {string} name 
@@ -4150,7 +4150,7 @@ export interface DefaultApiInterface {
     reviewExposureRaw(requestParameters: ReviewExposureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ExposureCase>>;
 
     /**
-     * The request names the release and the review sequence the reviewer looked at; either being stale answers 409 and nothing is written. Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
+     * The request names the release, the review sequence and the search snapshot digest the reviewer looked at; any of them being stale answers 409 and nothing is written (a revocation is not held to the digest). Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
      * Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
      */
     reviewExposure(requestParameters: ReviewExposureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExposureCase>;
@@ -4165,7 +4165,7 @@ export interface DefaultApiInterface {
     saveSkillVersionRequestOpts(requestParameters: SaveSkillVersionRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Same static validation as import. The skills row keeps its name; the manifest inside the version is the snapshot\'s truth. Identical content returns the existing version with duplicate=true. 
+     * Same static validation as import. The package\'s SKILL.md `name` must be the skill\'s name; a different name is refused with a `version-name-mismatch` finding, and a taken-down skill takes no new version (`skill-taken-down`), both as 422. Identical content returns the existing version with duplicate=true. 
      * @summary Save a zip as the next immutable version of a skill (WS-002)
      * @param {string} id 
      * @param {Blob} body 
@@ -4176,7 +4176,7 @@ export interface DefaultApiInterface {
     saveSkillVersionRaw(requestParameters: SaveSkillVersionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UploadResult>>;
 
     /**
-     * Same static validation as import. The skills row keeps its name; the manifest inside the version is the snapshot\'s truth. Identical content returns the existing version with duplicate=true. 
+     * Same static validation as import. The package\'s SKILL.md `name` must be the skill\'s name; a different name is refused with a `version-name-mismatch` finding, and a taken-down skill takes no new version (`skill-taken-down`), both as 422. Identical content returns the existing version with duplicate=true. 
      * Save a zip as the next immutable version of a skill (WS-002)
      */
     saveSkillVersion(requestParameters: SaveSkillVersionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UploadResult>;
@@ -7933,7 +7933,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Not idempotent: nothing in this request identifies a retry, so two identical calls are two grants. Deliberate for MVP, where a grant is a deliberate act and each one is audited. 
+     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Idempotent only when the request carries `idempotency_key`: a replay of the same key for the same account writes no second entry and no second audit event, and answers with the balance as it stands. Without a key nothing identifies a retry, so two identical calls are two grants. A key already used on this account for a different amount is a 409, not a replay: answering 200 would report a grant that was never applied. 
      * Put Credit into an account (CRED-007)
      */
     async grantCreditsRaw(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GrantCredits200Response>> {
@@ -7944,7 +7944,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Not idempotent: nothing in this request identifies a retry, so two identical calls are two grants. Deliberate for MVP, where a grant is a deliberate act and each one is audited. 
+     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Idempotent only when the request carries `idempotency_key`: a replay of the same key for the same account writes no second entry and no second audit event, and answers with the balance as it stands. Without a key nothing identifies a retry, so two identical calls are two grants. A key already used on this account for a different amount is a 409, not a replay: answering 200 would report a grant that was never applied. 
      * Put Credit into an account (CRED-007)
      */
     async grantCredits(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GrantCredits200Response> {
@@ -9468,7 +9468,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * The request names the release and the review sequence the reviewer looked at; either being stale answers 409 and nothing is written. Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
+     * The request names the release, the review sequence and the search snapshot digest the reviewer looked at; any of them being stale answers 409 and nothing is written (a revocation is not held to the digest). Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
      * Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
      */
     async reviewExposureRaw(requestParameters: ReviewExposureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ExposureCase>> {
@@ -9479,7 +9479,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * The request names the release and the review sequence the reviewer looked at; either being stale answers 409 and nothing is written. Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
+     * The request names the release, the review sequence and the search snapshot digest the reviewer looked at; any of them being stale answers 409 and nothing is written (a revocation is not held to the digest). Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
      * Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
      */
     async reviewExposure(requestParameters: ReviewExposureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExposureCase> {
@@ -9525,7 +9525,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Same static validation as import. The skills row keeps its name; the manifest inside the version is the snapshot\'s truth. Identical content returns the existing version with duplicate=true. 
+     * Same static validation as import. The package\'s SKILL.md `name` must be the skill\'s name; a different name is refused with a `version-name-mismatch` finding, and a taken-down skill takes no new version (`skill-taken-down`), both as 422. Identical content returns the existing version with duplicate=true. 
      * Save a zip as the next immutable version of a skill (WS-002)
      */
     async saveSkillVersionRaw(requestParameters: SaveSkillVersionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UploadResult>> {
@@ -9536,7 +9536,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Same static validation as import. The skills row keeps its name; the manifest inside the version is the snapshot\'s truth. Identical content returns the existing version with duplicate=true. 
+     * Same static validation as import. The package\'s SKILL.md `name` must be the skill\'s name; a different name is refused with a `version-name-mismatch` finding, and a taken-down skill takes no new version (`skill-taken-down`), both as 422. Identical content returns the existing version with duplicate=true. 
      * Save a zip as the next immutable version of a skill (WS-002)
      */
     async saveSkillVersion(requestParameters: SaveSkillVersionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UploadResult> {

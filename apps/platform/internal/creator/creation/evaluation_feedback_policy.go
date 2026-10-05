@@ -54,6 +54,10 @@ func toolsNotRequested(prevTools, curTools string, theirs ...string) []string {
 var negations = []string{"不要", "不用", "不需要", "不能", "別用", "別", "禁止", "勿", "無需", "沒有要",
 	"don't", "do not", "dont", "no ", "not ", "never", "without", "avoid", "except"}
 
+var wordsEndingInBie = strings.NewReplacer(
+	"特別", " ", "分別", " ", "個別", " ", "區別", " ", "類別", " ", "級別", " ",
+	"差別", " ", "識別", " ", "辨別", " ", "告別", " ", "性別", " ", "鑑別", " ")
+
 const negationWindow = 16
 
 func asked(tool string, theirs []string) bool {
@@ -84,7 +88,7 @@ func negated(hay string, i int) bool {
 		_, size := utf8.DecodeLastRuneInString(hay[:start])
 		start -= size
 	}
-	before := hay[start:i]
+	before := wordsEndingInBie.Replace(hay[start:i])
 	for _, n := range negations {
 		if strings.Contains(before, n) {
 			return true

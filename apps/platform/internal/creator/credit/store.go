@@ -130,7 +130,7 @@ type LedgerStore interface {
 
 	ApplyDebit(ctx context.Context, tx DBTX, d DebitEntry) (balanceAfter int64, existed bool, err error)
 
-	ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (balanceAfter int64, err error)
+	ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (balanceAfter int64, applied bool, err error)
 
 	RecentEntries(ctx context.Context, tx DBTX, userID pgtype.UUID, limit int32) ([]LedgerEntry, error)
 

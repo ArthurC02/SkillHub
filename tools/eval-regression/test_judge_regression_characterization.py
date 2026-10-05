@@ -41,7 +41,8 @@ def test_a_small_run_builds_an_uncut_request_where_the_last_final_output_wins():
         event("n1", "not_citable", {"x": 1}, 2),
         event(EV_B, "agent_output", {"kind": "final", "text": None}, 3),
         event("n2", "agent_output", None, 4),
-        event("n3", "agent_output", {"kind": "final", "text": "last"}, 5),
+        event("zh1", "agent_output", {"kind": "progress", "text": "完成"}, 5),
+        event("n3", "agent_output", {"kind": "final", "text": "last"}, 6),
     ]
     request, digest, final = jr.build_request(row("s", "r1"), events, [{"path": "a"}], "ev-1")
     assert final == "last"
@@ -52,12 +53,19 @@ def test_a_small_run_builds_an_uncut_request_where_the_last_final_output_wins():
                      {"id": "c2", "text": ARTIFACT, "evidence_excerpt": None}],
         "final_output": "last", "artifacts": [{"path": "a"}],
         "trace_digest": {"complete": True, "entries": [
-            {"trace_event_id": e["event_id"], "occurred_at": e["occurred_at"], "type": "agent_output",
-             "excerpt": json.dumps(e["payload"], ensure_ascii=False)}
-            for e in events if e["event_type"] == "agent_output"]},
+            {"trace_event_id": EV_A, "occurred_at": "2026-08-01T00:00:01Z", "type": "agent_output",
+             "excerpt": '{"kind": "final", "text": "first"}'},
+            {"trace_event_id": EV_B, "occurred_at": "2026-08-01T00:00:03Z", "type": "agent_output",
+             "excerpt": '{"kind": "final", "text": null}'},
+            {"trace_event_id": "n2", "occurred_at": "2026-08-01T00:00:04Z", "type": "agent_output",
+             "excerpt": "null"},
+            {"trace_event_id": "zh1", "occurred_at": "2026-08-01T00:00:05Z", "type": "agent_output",
+             "excerpt": '{"kind": "progress", "text": "完成"}'},
+            {"trace_event_id": "n3", "occurred_at": "2026-08-01T00:00:06Z", "type": "agent_output",
+             "excerpt": '{"kind": "final", "text": "last"}'}]},
         "truncation": [],
     }, request
-    assert list(digest) == [EV_A, EV_B, "n2", "n3"]
+    assert list(digest) == [EV_A, EV_B, "n2", "zh1", "n3"]
 
 
 def test_every_budget_cut_is_named_in_order_and_the_digest_keeps_the_tail():
@@ -71,16 +79,16 @@ def test_every_budget_cut_is_named_in_order_and_the_digest_keeps_the_tail():
     request, digest, final = jr.build_request(row("s", "r1", criteria), events, artifacts, "ev", rubric)
     assert request["truncation"] == ["final_output", "criteria", "artifacts", "trace_digest.entries",
                                      "trace_digest.entries[].excerpt"], request["truncation"]
-    assert len(final) == jr.MAX_FINAL_OUTPUT and request["final_output"] == final
-    assert [c["id"] for c in request["criteria"]] == [f"c{i}" for i in range(jr.MAX_CRITERIA)]
-    assert len(request["artifacts"]) == jr.MAX_ARTIFACT_ROWS
+    assert len(final) == 40000 and request["final_output"] == final
+    assert [c["id"] for c in request["criteria"]] == [f"c{i}" for i in range(20)]
+    assert len(request["artifacts"]) == 500
     entries = request["trace_digest"]["entries"]
-    assert len(entries) == jr.MAX_DIGEST_COUNT and entries[0]["trace_event_id"] == "e8"
+    assert len(entries) == 100 and entries[0]["trace_event_id"] == "e8"
     assert [e["trace_event_id"] for e in entries[-3:]] == ["big", "fin", "tail"]
-    assert len(entries[-3]["excerpt"]) == jr.MAX_DIGEST_ENTRY
+    assert len(entries[-3]["excerpt"]) == 8000
     assert request["rubric"] == {"items": [{"id": "r1"}]}
     assert request["trace_digest"]["complete"] is False
-    assert len(digest) == jr.MAX_DIGEST_COUNT
+    assert len(digest) == 100
 
 
 def test_a_rubric_within_budget_adds_its_criteria_without_a_cut():

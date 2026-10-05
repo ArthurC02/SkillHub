@@ -133,15 +133,33 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *Diagram) error {
 	if callErr == nil {
 		call.found = s.searchAhead(ctx, identity.Workspace{ID: a.WorkspaceID}, response)
 	}
-	settleCtx, settleCancel := context.WithTimeout(context.Background(), settleTimeout)
-	defer settleCancel()
-	return s.finish(settleCtx, a, call)
+	return s.settle(a, call)
 }
 
 const (
 	settleTimeout    = 20 * time.Second
+	settleRetryDelay = time.Second
 	keyRevokeTimeout = 20 * time.Second
+	attemptWrapUp    = keyRevokeTimeout + searchAheadTimeout + settleTimeout
 )
+
+func (s *Service) settle(a JobArgs, call stepCall) error {
+	ctx, cancel := context.WithTimeout(context.Background(), settleTimeout)
+	defer cancel()
+	for {
+		err := s.finish(ctx, a, call)
+		if err == nil {
+			return nil
+		}
+		slog.Warn("creation: a finished model call could not be settled yet; trying again",
+			"receipt_id", UUID(a.ReceiptID), "error", err)
+		select {
+		case <-ctx.Done():
+			return err
+		case <-time.After(settleRetryDelay):
+		}
+	}
+}
 
 func (s *Service) revokeAttemptKey(receipt pgtype.UUID) {
 	ctx, cancel := context.WithTimeout(context.Background(), keyRevokeTimeout)
@@ -482,7 +500,7 @@ func (s *Service) finish(ctx context.Context, a JobArgs, call stepCall) error {
 		return err
 	}
 	if receipt.Status == receiptUnknown {
-		return s.settleAbandonedAttempt(ctx, tx, a, e.Limits, usage)
+		return s.settleAbandonedAttempt(ctx, tx, a, row, usage)
 	}
 	settleCost(&e.Snapshot, e.Limits.MaxCallCostUSD, usage)
 	if err = s.settleCredit(ctx, tx, a, e.Limits, usage); err != nil {
@@ -515,12 +533,19 @@ func attemptStillCurrent(state State, e envelope, a JobArgs, receipt gen.Creatio
 	return state == StateWorking && e.ActiveReceipt == a.ReceiptID && receipt.Status == receiptRunning
 }
 
-func (s *Service) settleAbandonedAttempt(ctx context.Context, tx pgx.Tx, a JobArgs, l Limits, usage *ModelUsage) error {
+func (s *Service) settleAbandonedAttempt(ctx context.Context, tx pgx.Tx, a JobArgs, row gen.CreationSession, usage *ModelUsage) error {
+	e, err := decode(row)
+	if err != nil {
+		return err
+	}
 	if err := finishAttemptReceipt(ctx, tx, a, usage); err != nil {
 		return err
 	}
-	if err := s.settleCredit(ctx, tx, a, l, usage); err != nil {
+	if err := s.settleCredit(ctx, tx, a, e.Limits, usage); err != nil {
 		return err
+	}
+	if State(row.State).HasEnded() {
+		s.summarizeSession(ctx, tx, a.SessionID)
 	}
 	return tx.Commit(ctx)
 }
@@ -572,6 +597,7 @@ func failedAttempt(p *Snapshot, err error, call stepCall) State {
 	p.PendingAction = NothingPending
 	p.appendMessage("assistant", stepFailureMessage(err, callErr))
 	if errors.Is(callErr, ErrNotFound) {
+		p.Steps--
 		state = StateWaitingConfirmation
 		p.PendingAction = PendingReferenceChoice
 		for i := range p.References {
@@ -581,6 +607,7 @@ func failedAttempt(p *Snapshot, err error, call stepCall) State {
 		p.appendMessage("assistant", "參考內容目前不可用，請換選後再確認。")
 	}
 	if errors.Is(callErr, ErrCreditFloor) {
+		p.Steps--
 		state = StateWaitingInput
 		p.PendingAction = NothingPending
 		p.appendMessage("assistant", "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。")

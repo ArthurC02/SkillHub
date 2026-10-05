@@ -5510,9 +5510,9 @@ type DataRetentionPolicy struct {
 	Events []DataRetentionPolicyEventsItem `json:"events"`
 	Note   string                          `json:"note"`
 	// The one other collected class this deployment holds: reports submitted at POST /feedback
-	// (BETA-003/004/005). Their `message` is the only free-text column anywhere, so the disclosure names
-	// it separately from the four events above. Served since the endpoint existed, and declared here so a
-	// page can render it.
+	// (BETA-003/004/005). Their `message` is free text, and `page_path` and `build_id` are client-supplied
+	// text checked only for shape and length, so the disclosure names them separately from the four events
+	// above. Served since the endpoint existed, and declared here so a page can render it.
 	Feedback DataRetentionPolicyFeedback `json:"feedback"`
 }
 
@@ -5672,9 +5672,9 @@ func (s *DataRetentionPolicyEventsItemName) UnmarshalText(data []byte) error {
 }
 
 // The one other collected class this deployment holds: reports submitted at POST /feedback
-// (BETA-003/004/005). Their `message` is the only free-text column anywhere, so the disclosure names
-// it separately from the four events above. Served since the endpoint existed, and declared here so a
-// page can render it.
+// (BETA-003/004/005). Their `message` is free text, and `page_path` and `build_id` are client-supplied
+// text checked only for shape and length, so the disclosure names them separately from the four events
+// above. Served since the endpoint existed, and declared here so a page can render it.
 type DataRetentionPolicyFeedback struct {
 	What string `json:"what"`
 	// The columns a report writes, one entry each.
@@ -6561,6 +6561,10 @@ type DiffSkillVersionsBadRequest Error
 
 func (*DiffSkillVersionsBadRequest) diffSkillVersionsRes() {}
 
+type DiffSkillVersionsForbidden Error
+
+func (*DiffSkillVersionsForbidden) diffSkillVersionsRes() {}
+
 type DiffSkillVersionsNotFound Error
 
 func (*DiffSkillVersionsNotFound) diffSkillVersionsRes() {}
@@ -7182,8 +7186,9 @@ type Evaluation struct {
 	Cost             EvaluationCost `json:"cost"`
 	// The user's own answer about this judgement (EVAL-001 第 4 條). Absent means nobody answered, which
 	// is not the same as "not helpful".
-	Feedback    OptEvaluationFeedback `json:"feedback"`
-	EvaluatedAt time.Time             `json:"evaluated_at"`
+	Feedback OptEvaluationFeedback `json:"feedback"`
+	// Null while the evaluation is still pending.
+	EvaluatedAt NilDateTime `json:"evaluated_at"`
 	// Set when a later re-evaluation replaced this one; null on the current revision. Returned so that
 	// reading an old revision through `?revision=` cannot be mistaken for reading the standing verdict.
 	SupersededAt OptNilDateTime `json:"superseded_at"`
@@ -7255,7 +7260,7 @@ func (s *Evaluation) GetFeedback() OptEvaluationFeedback {
 }
 
 // GetEvaluatedAt returns the value of EvaluatedAt.
-func (s *Evaluation) GetEvaluatedAt() time.Time {
+func (s *Evaluation) GetEvaluatedAt() NilDateTime {
 	return s.EvaluatedAt
 }
 
@@ -7330,7 +7335,7 @@ func (s *Evaluation) SetFeedback(val OptEvaluationFeedback) {
 }
 
 // SetEvaluatedAt sets the value of EvaluatedAt.
-func (s *Evaluation) SetEvaluatedAt(val time.Time) {
+func (s *Evaluation) SetEvaluatedAt(val NilDateTime) {
 	s.EvaluatedAt = val
 }
 
@@ -7552,7 +7557,8 @@ type EvaluationRevision struct {
 	// Absent when the skill's category has no rubric.
 	RubricVersion OptString                 `json:"rubric_version"`
 	Overall       EvaluationRevisionOverall `json:"overall"`
-	EvaluatedAt   time.Time                 `json:"evaluated_at"`
+	// Null while the evaluation is still pending.
+	EvaluatedAt NilDateTime `json:"evaluated_at"`
 	// When a later re-evaluation replaced this one. Null on the current revision, and exactly one revision
 	// has it null.
 	SupersededAt NilDateTime `json:"superseded_at"`
@@ -7579,7 +7585,7 @@ func (s *EvaluationRevision) GetOverall() EvaluationRevisionOverall {
 }
 
 // GetEvaluatedAt returns the value of EvaluatedAt.
-func (s *EvaluationRevision) GetEvaluatedAt() time.Time {
+func (s *EvaluationRevision) GetEvaluatedAt() NilDateTime {
 	return s.EvaluatedAt
 }
 
@@ -7609,7 +7615,7 @@ func (s *EvaluationRevision) SetOverall(val EvaluationRevisionOverall) {
 }
 
 // SetEvaluatedAt sets the value of EvaluatedAt.
-func (s *EvaluationRevision) SetEvaluatedAt(val time.Time) {
+func (s *EvaluationRevision) SetEvaluatedAt(val NilDateTime) {
 	s.EvaluatedAt = val
 }
 
@@ -10941,6 +10947,10 @@ type GrantCreditsBadRequest Error
 
 func (*GrantCreditsBadRequest) grantCreditsRes() {}
 
+type GrantCreditsConflict Error
+
+func (*GrantCreditsConflict) grantCreditsRes() {}
+
 type GrantCreditsNotFound Error
 
 func (*GrantCreditsNotFound) grantCreditsRes() {}
@@ -10989,6 +10999,9 @@ type GrantCreditsReq struct {
 	AmountCredits int64 `json:"amount_credits"`
 	// Why. Required, non-empty after trimming, and recorded in the audit event.
 	Reason string `json:"reason"`
+	// Optional. Chosen by the caller once per submission and sent again unchanged when that submission is
+	// retried.
+	IdempotencyKey OptString `json:"idempotency_key"`
 }
 
 // GetAmountCredits returns the value of AmountCredits.
@@ -11001,6 +11014,11 @@ func (s *GrantCreditsReq) GetReason() string {
 	return s.Reason
 }
 
+// GetIdempotencyKey returns the value of IdempotencyKey.
+func (s *GrantCreditsReq) GetIdempotencyKey() OptString {
+	return s.IdempotencyKey
+}
+
 // SetAmountCredits sets the value of AmountCredits.
 func (s *GrantCreditsReq) SetAmountCredits(val int64) {
 	s.AmountCredits = val
@@ -11009,6 +11027,11 @@ func (s *GrantCreditsReq) SetAmountCredits(val int64) {
 // SetReason sets the value of Reason.
 func (s *GrantCreditsReq) SetReason(val string) {
 	s.Reason = val
+}
+
+// SetIdempotencyKey sets the value of IdempotencyKey.
+func (s *GrantCreditsReq) SetIdempotencyKey(val OptString) {
+	s.IdempotencyKey = val
 }
 
 // Ref: #/components/schemas/Health
@@ -11213,6 +11236,10 @@ func (s *ImportSkillFromURLReq) GetURL() url.URL {
 func (s *ImportSkillFromURLReq) SetURL(val url.URL) {
 	s.URL = val
 }
+
+type ImportSkillFromURLRequestEntityTooLarge Error
+
+func (*ImportSkillFromURLRequestEntityTooLarge) importSkillFromURLRes() {}
 
 type ImportSkillFromURLUnauthorized Error
 
@@ -17781,8 +17808,10 @@ func (s *PackageValidation) SetBlocked(val bool) {
 // they cannot argue with, the fourth is a package they can fix, and the fifth is one this platform
 // broke itself.
 //
-// `license_hold` — the skill carries a 0023 access restriction (SEC-011). An unrecognised reason
-// code still blocks: a code nobody recognises must never be the way content unlocks.
+// `taken_down` — the platform took the skill down. Taking down changes visibility and
+// downloadability only: versions and runs stay, but no package is built from it, its own workspace
+// included. `license_hold` — the skill carries a 0023 access restriction (SEC-011). An unrecognised
+// reason code still blocks: a code nobody recognises must never be the way content unlocks.
 // `not_redistributable` — the skill's `redistribution` is `blocked`. A source-available licence
 // reaches this even when the licence itself was manually confirmed: 02:CONTENT-002
 // 已人工確認不等於可再散布, so `confirmed` is never a release condition. `license_unknown`
@@ -17802,6 +17831,7 @@ func (s *PackageValidation) SetBlocked(val bool) {
 type PackagingBlockedReason string
 
 const (
+	PackagingBlockedReasonTakenDown             PackagingBlockedReason = "taken_down"
 	PackagingBlockedReasonLicenseHold           PackagingBlockedReason = "license_hold"
 	PackagingBlockedReasonNotRedistributable    PackagingBlockedReason = "not_redistributable"
 	PackagingBlockedReasonLicenseUnknown        PackagingBlockedReason = "license_unknown"
@@ -17812,6 +17842,7 @@ const (
 // AllValues returns all PackagingBlockedReason values.
 func (PackagingBlockedReason) AllValues() []PackagingBlockedReason {
 	return []PackagingBlockedReason{
+		PackagingBlockedReasonTakenDown,
 		PackagingBlockedReasonLicenseHold,
 		PackagingBlockedReasonNotRedistributable,
 		PackagingBlockedReasonLicenseUnknown,
@@ -17823,6 +17854,8 @@ func (PackagingBlockedReason) AllValues() []PackagingBlockedReason {
 // MarshalText implements encoding.TextMarshaler.
 func (s PackagingBlockedReason) MarshalText() ([]byte, error) {
 	switch s {
+	case PackagingBlockedReasonTakenDown:
+		return []byte(s), nil
 	case PackagingBlockedReasonLicenseHold:
 		return []byte(s), nil
 	case PackagingBlockedReasonNotRedistributable:
@@ -17841,6 +17874,9 @@ func (s PackagingBlockedReason) MarshalText() ([]byte, error) {
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (s *PackagingBlockedReason) UnmarshalText(data []byte) error {
 	switch PackagingBlockedReason(data) {
+	case PackagingBlockedReasonTakenDown:
+		*s = PackagingBlockedReasonTakenDown
+		return nil
 	case PackagingBlockedReasonLicenseHold:
 		*s = PackagingBlockedReasonLicenseHold
 		return nil
@@ -20840,10 +20876,11 @@ type ReviewExposureNotFound Error
 func (*ReviewExposureNotFound) reviewExposureRes() {}
 
 type ReviewExposureReq struct {
-	ReleaseID        uuid.UUID        `json:"release_id"`
-	ExpectedSequence int              `json:"expected_sequence"`
-	Decision         ExposureDecision `json:"decision"`
-	Reason           string           `json:"reason"`
+	ReleaseID              uuid.UUID        `json:"release_id"`
+	ExpectedSequence       int              `json:"expected_sequence"`
+	ExpectedSnapshotDigest string           `json:"expected_snapshot_digest"`
+	Decision               ExposureDecision `json:"decision"`
+	Reason                 string           `json:"reason"`
 }
 
 // GetReleaseID returns the value of ReleaseID.
@@ -20854,6 +20891,11 @@ func (s *ReviewExposureReq) GetReleaseID() uuid.UUID {
 // GetExpectedSequence returns the value of ExpectedSequence.
 func (s *ReviewExposureReq) GetExpectedSequence() int {
 	return s.ExpectedSequence
+}
+
+// GetExpectedSnapshotDigest returns the value of ExpectedSnapshotDigest.
+func (s *ReviewExposureReq) GetExpectedSnapshotDigest() string {
+	return s.ExpectedSnapshotDigest
 }
 
 // GetDecision returns the value of Decision.
@@ -20874,6 +20916,11 @@ func (s *ReviewExposureReq) SetReleaseID(val uuid.UUID) {
 // SetExpectedSequence sets the value of ExpectedSequence.
 func (s *ReviewExposureReq) SetExpectedSequence(val int) {
 	s.ExpectedSequence = val
+}
+
+// SetExpectedSnapshotDigest sets the value of ExpectedSnapshotDigest.
+func (s *ReviewExposureReq) SetExpectedSnapshotDigest(val string) {
+	s.ExpectedSnapshotDigest = val
 }
 
 // SetDecision sets the value of Decision.
@@ -26703,6 +26750,9 @@ type SkillImportLimits struct {
 	MaxFileBytes int64 `json:"max_file_bytes"`
 	// Deepest directory nesting a path inside the archive may have.
 	MaxPathDepth int `json:"max_path_depth"`
+	// Most Skills one import may create. Counted after validation, so a Skill refused as malformed or for
+	// repeating a name does not count; a source over it is refused whole with 413.
+	MaxSkillsPerImport int `json:"max_skills_per_import"`
 	// Hosts this deployment will fetch an import from; anything else is refused before a request is made.
 	AllowedHosts []string `json:"allowed_hosts"`
 	Note         string   `json:"note"`
@@ -26731,6 +26781,11 @@ func (s *SkillImportLimits) GetMaxFileBytes() int64 {
 // GetMaxPathDepth returns the value of MaxPathDepth.
 func (s *SkillImportLimits) GetMaxPathDepth() int {
 	return s.MaxPathDepth
+}
+
+// GetMaxSkillsPerImport returns the value of MaxSkillsPerImport.
+func (s *SkillImportLimits) GetMaxSkillsPerImport() int {
+	return s.MaxSkillsPerImport
 }
 
 // GetAllowedHosts returns the value of AllowedHosts.
@@ -26766,6 +26821,11 @@ func (s *SkillImportLimits) SetMaxFileBytes(val int64) {
 // SetMaxPathDepth sets the value of MaxPathDepth.
 func (s *SkillImportLimits) SetMaxPathDepth(val int) {
 	s.MaxPathDepth = val
+}
+
+// SetMaxSkillsPerImport sets the value of MaxSkillsPerImport.
+func (s *SkillImportLimits) SetMaxSkillsPerImport(val int) {
+	s.MaxSkillsPerImport = val
 }
 
 // SetAllowedHosts sets the value of AllowedHosts.
@@ -27229,9 +27289,10 @@ type SkillSource struct {
 	Type SkillSourceType `json:"type"`
 	// Source URL for a git import.
 	URL OptString `json:"url"`
-	// The user's own words that produced a generated package (GEN-002). Present only for `generated`. It
-	// is the whole provenance record for a package with no upstream, which is why the source of a
-	// generated skill is never reported as unknown — it is known, it just is not a URL.
+	// The user's own words that produced a generated package (GEN-002). Present only for `generated`, and
+	// left out (together with `generation_inputs`) when the detail is served to anyone because the skill
+	// was published. It is the whole provenance record for a package with no upstream, which is why the
+	// source of a generated skill is never reported as unknown — it is known, it just is not a URL.
 	TaskDescription OptString `json:"task_description"`
 	// Model id that wrote a generated package. Present only for `generated`.
 	GeneratorModel OptString `json:"generator_model"`

@@ -2,6 +2,7 @@ import type { PackagingBlockedReason } from "./packaging.service";
 import type { Redistribution, SkillDetail } from "../../core/api/types";
 
 export const PACKAGING_BLOCKED_LABEL: Record<PackagingBlockedReason, string> = {
+  taken_down: "這個 Skill 已被平台下架，所以無法再產出或下載套件。它的版本與歷史執行紀錄都還在。",
   license_hold:
     "這個小工具正在授權審查中（人工暫時保留）。審查期間平台不產出任何套件，標準套件也不例外。",
   not_redistributable:

@@ -202,21 +202,9 @@ func TestDocIdentifierAcceptsATreeThatIsNotThere(t *testing.T) {
 
 func TestDocIdentifierDoesNotDeclareItsOwnExamples(t *testing.T) {
 	t.Parallel()
-	root := writeDocScope(t, "見 `GenerateQuotaFor`。\n", nil)
-	source, err := os.ReadFile("doc_identifiers.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(source), "GenerateQuotaFor") {
-		t.Skip("the rationale comment no longer names its examples; nothing to exclude")
-	}
-	copied := filepath.Join(root, "tools", "devctl", "doc_identifiers.go")
-	if err := os.MkdirAll(filepath.Dir(copied), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(copied, source, 0o600); err != nil {
-		t.Fatal(err)
-	}
+	root := writeDocScope(t, "見 `GenerateQuotaFor`。\n", map[string]string{
+		"tools/devctl/doc_identifiers.go": "package main\n\nfunc GenerateQuotaFor() {}\n",
+	})
 	if problems := docIdentifierProblems(root); len(problems) != 1 {
 		t.Fatalf("doc_identifiers.go whitelisted its own examples: %v", problems)
 	}

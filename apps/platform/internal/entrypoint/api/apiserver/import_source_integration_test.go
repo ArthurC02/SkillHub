@@ -212,8 +212,8 @@ func TestASourceOverTheSkillCeilingIsRefusedAndSaysTheCeiling(t *testing.T) {
 	if code != http.StatusRequestEntityTooLarge {
 		t.Fatalf("status = %d, want 413; body = %v", code, body)
 	}
-	if got := fmt.Sprint(body["error"]); !strings.Contains(got, fmt.Sprint(ingest.MaxSkillsPerImport)) {
-		t.Errorf("the refusal does not say the ceiling %d: %q", ingest.MaxSkillsPerImport, got)
+	if got := fmt.Sprint(body["error"]); !strings.Contains(got, "50") {
+		t.Errorf("the refusal does not say the ceiling 50: %q", got)
 	}
 }
 

@@ -509,6 +509,12 @@ func cleanModeFallbackStubRun(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte(`{"run":"real-id"}`))
 }
 
+func cleanModeFallbackStubSignedOut(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	_, _ = w.Write([]byte(`{"error":"sign in first"}`))
+}
+
 func cleanModeFallbackStubDownload(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/zip")
 	w.WriteHeader(http.StatusOK)
@@ -537,6 +543,7 @@ func newCleanModeFallbackStubAPI() http.Handler {
 	mux.HandleFunc("/auth/github/callback", cleanModeFallbackStubOAuthCallback)
 	mux.HandleFunc("/auth/github/callback/fail", cleanModeFallbackStubOAuthFailure)
 	mux.HandleFunc("/runs/real-id", cleanModeFallbackStubRun)
+	mux.HandleFunc("/runs/guarded-id", cleanModeFallbackStubSignedOut)
 	mux.HandleFunc("/downloads/pkg", cleanModeFallbackStubDownload)
 	mux.HandleFunc("/skills/abc-123", cleanModeFallbackStubSkillDetail)
 	mux.HandleFunc("/", cleanModeFallbackStubNotFound)
@@ -564,6 +571,16 @@ func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
 			name: "refreshing a page whose address is also an API resource", method: http.MethodGet,
 			path: "/runs/real-id", accept: "text/html,application/xhtml+xml",
 			wantCode: http.StatusOK, wantHTML: true,
+		},
+		{
+			name: "reloading a guarded page while signed out loads the app", method: http.MethodGet,
+			path: "/runs/guarded-id", accept: "text/html,application/xhtml+xml",
+			wantCode: http.StatusOK, wantHTML: true,
+		},
+		{
+			name: "a fetch for a guarded resource while signed out still gets 401", method: http.MethodGet,
+			path: "/runs/guarded-id", accept: "application/json",
+			wantCode: http.StatusUnauthorized,
 		},
 		{
 			name: "the OAuth callback still reaches the API", method: http.MethodGet,
@@ -605,18 +622,22 @@ func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
 			if rec.Code != tc.wantCode {
 				t.Fatalf("%s %s -> %d, want %d", tc.method, tc.path, rec.Code, tc.wantCode)
 			}
-			isHTML := strings.Contains(rec.Header().Get("Content-Type"), "text/html")
-			if isHTML != tc.wantHTML {
-				t.Errorf("%s %s answered Content-Type %q; want HTML=%v",
-					tc.method, tc.path, rec.Header().Get("Content-Type"), tc.wantHTML)
-			}
-			if tc.wantHTML && !strings.Contains(rec.Body.String(), "index for /") {
-				t.Errorf("the fallback served %q, want index.html", rec.Body.String())
-			}
-			if !tc.wantHTML && strings.Contains(rec.Body.String(), "<html>") {
-				t.Errorf("a non-browser caller was handed a page: %q", rec.Body.String())
-			}
+			assertAnsweredWithThePageOnlyWhenWanted(t, rec, tc.wantHTML)
 		})
+	}
+}
+
+func assertAnsweredWithThePageOnlyWhenWanted(t *testing.T, rec *httptest.ResponseRecorder, wantHTML bool) {
+	t.Helper()
+	isHTML := strings.Contains(rec.Header().Get("Content-Type"), "text/html")
+	if isHTML != wantHTML {
+		t.Errorf("answered Content-Type %q; want HTML=%v", rec.Header().Get("Content-Type"), wantHTML)
+	}
+	if wantHTML && !strings.Contains(rec.Body.String(), "index for /") {
+		t.Errorf("the fallback served %q, want index.html", rec.Body.String())
+	}
+	if !wantHTML && strings.Contains(rec.Body.String(), "<html>") {
+		t.Errorf("a non-browser caller was handed a page: %q", rec.Body.String())
 	}
 }
 
@@ -639,11 +660,20 @@ func TestTheTwoWaysPackagingHasNoTargetsAreToldApart(t *testing.T) {
 	}
 }
 
-func TestCleanModeEmptiesTheSessionItInheritsOnConnect(t *testing.T) {
+func testDatabaseURL(t *testing.T) string {
+	t.Helper()
 	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
 	if dsn == "" {
+		if os.Getenv("SKILLHUB_REQUIRE_DB") == "1" {
+			t.Fatal("SKILLHUB_REQUIRE_DB=1 but SKILLHUB_TEST_DATABASE_URL is unset")
+		}
 		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping the database-backed half")
 	}
+	return dsn
+}
+
+func TestCleanModeEmptiesTheSessionItInheritsOnConnect(t *testing.T) {
+	dsn := testDatabaseURL(t)
 	ctx := context.Background()
 
 	cfg, err := pgxpool.ParseConfig(dsn)
@@ -696,10 +726,7 @@ func TestCleanModeEmptiesTheSessionItInheritsOnConnect(t *testing.T) {
 }
 
 func TestCleanModeSurvivesAQueryErrorInsteadOfDyingOfOne(t *testing.T) {
-	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping the database-backed half")
-	}
+	dsn := testDatabaseURL(t)
 	ctx := context.Background()
 	cfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {

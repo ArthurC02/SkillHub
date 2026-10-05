@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"slices"
@@ -264,7 +265,11 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	out, err := h.Svc.SkillDetail(r.Context(), skill)
+	out, err := h.Svc.SkillDetail(r.Context(), skill, h.viewerWorkspace(r))
+	if errors.Is(err, errPackageUnreadable) {
+		httpx.WriteError(w, http.StatusServiceUnavailable, errPackageUnreadable.Error())
+		return
+	}
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "skill detail failed")
 		return
@@ -275,7 +280,7 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
-func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetail, error) {
+func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts, viewer pgtype.UUID) (skillDetail, error) {
 	q := gen.New(s.Pool)
 
 	out := skillDetail{
@@ -331,11 +336,15 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetai
 	if err := s.attachMeasuredCompat(ctx, ver, &out); err != nil {
 		return skillDetail{}, err
 	}
-	if err := s.attachSource(ctx, skill, ver, &out); err != nil {
+	if err := s.attachSource(ctx, skill, ver, viewer, &out); err != nil {
 		return skillDetail{}, err
 	}
 
-	if report, ok := s.scanPackage(ctx, storedSkill(ver)); ok {
+	report, scanned, err := s.scanPackage(ctx, storedSkill(ver))
+	if err != nil {
+		return skillDetail{}, err
+	}
+	if scanned {
 		out.Risk = summarizeRisk(report)
 		out.Compat.SpecValidation = axis(specWords, specValidation(report))
 		out.Limitations = append(out.Limitations, scanDerivedLimitations(report)...)
@@ -382,7 +391,7 @@ func (s *Service) attachMeasuredCompat(ctx context.Context, ver VersionFacts, ou
 	return nil
 }
 
-func (s *Service) attachSource(ctx context.Context, skill SkillFacts, ver VersionFacts, out *skillDetail) error {
+func (s *Service) attachSource(ctx context.Context, skill SkillFacts, ver VersionFacts, viewer pgtype.UUID, out *skillDetail) error {
 	if !ver.SourceID.Valid {
 		return nil
 	}
@@ -396,9 +405,14 @@ func (s *Service) attachSource(ctx context.Context, skill SkillFacts, ver Versio
 	if !found {
 		return nil
 	}
+	audience, err := s.sourceAudienceOf(ctx, skill, viewer)
+	if err != nil {
+		return err
+	}
 	out.Source = sourceFrom(src)
+	audience.redact(out.Source)
 	out.Source.Path = ver.SourcePath
-	siblings, err := s.sourceSiblings(ctx, ver.WorkspaceID, ver.PackageObjectKey, skill.ID)
+	siblings, err := s.sourceSiblings(ctx, skill, ver, audience)
 	if err != nil {
 		return err
 	}
@@ -414,14 +428,8 @@ func (h *Handler) recordDetailView(r *http.Request, skillID pgtype.UUID) {
 	if r.URL.Query().Get("view") == "embedded" {
 		return
 	}
-	var workspace pgtype.UUID
-	if user, ok := identity.SessionUser(r.Context()); ok {
-		if ws, err := h.Identity.PersonalWorkspace(r.Context(), user); err == nil {
-			workspace = ws.ID
-		}
-	}
 
-	h.Svc.Analytics.SkillDetailViewed(r.Context(), workspace, skillID)
+	h.Svc.Analytics.SkillDetailViewed(r.Context(), h.viewerWorkspace(r), skillID)
 }
 
 func (h *Handler) SkillFiles(w http.ResponseWriter, r *http.Request) {
@@ -618,19 +626,27 @@ func storedSkill(ver VersionFacts) skillpkg.StoredSkill {
 	return skillpkg.StoredSkill{ObjectKey: ver.PackageObjectKey, SourcePath: ver.SourcePath}
 }
 
-func (s *Service) scanPackage(ctx context.Context, stored skillpkg.StoredSkill) (skillpkg.Report, bool) {
+func (s *Service) scanPackage(ctx context.Context, stored skillpkg.StoredSkill) (skillpkg.Report, bool, error) {
 	if report, ok := s.packageReports.get(packageReportKey(stored)); ok {
-		return report, true
+		return report, true, nil
 	}
 	data, err := s.storeGet(ctx, stored.ObjectKey)
-	if err != nil {
-		return skillpkg.Report{}, false
+	if errors.Is(err, fs.ErrNotExist) {
+		return skillpkg.Report{}, false, nil
 	}
+	if err != nil {
+		return skillpkg.Report{}, false, fmt.Errorf("%w: %w", errPackageUnreadable, err)
+	}
+	fsys, readable := openPackage(stored, data)
+	if !readable {
+		return skillpkg.Report{}, false, nil
+	}
+	return s.reportOf(stored, fsys), true, nil
+}
+
+func openPackage(stored skillpkg.StoredSkill, data []byte) (fs.FS, bool) {
 	fsys, err := stored.Open(data)
-	if err != nil {
-		return skillpkg.Report{}, false
-	}
-	return s.reportOf(stored, fsys), true
+	return fsys, err == nil
 }
 
 func (s *Service) reportOf(stored skillpkg.StoredSkill, fsys fs.FS) skillpkg.Report {
@@ -794,23 +810,47 @@ func pluginFrom(s SourceFacts) *pluginInfo {
 	return out
 }
 
-func (s *Service) sourceSiblings(
-	ctx context.Context, workspaceID pgtype.UUID, packageObjectKey string, skillID pgtype.UUID,
-) ([]sourceSibling, error) {
+func (s *Service) sourceSiblings(ctx context.Context, skill SkillFacts, ver VersionFacts, audience sourceAudience) ([]sourceSibling, error) {
 	if s.ReadSourceSiblings == nil {
 		return nil, errOwnerReadNotConfigured
 	}
-	facts, err := s.ReadSourceSiblings(ctx, workspaceID, packageObjectKey, skillID)
+	facts, err := s.ReadSourceSiblings(ctx, ver.WorkspaceID, ver.PackageObjectKey, skill.ID)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]sourceSibling, 0, len(facts))
 	for _, f := range facts {
+		if !audience.shows(f.SkillID) {
+			continue
+		}
 		out = append(out, sourceSibling{
 			SkillID: pgconv.UUIDString(f.SkillID), Name: f.Name, Path: f.SourcePath,
 		})
 	}
 	return out, nil
+}
+
+type sourceAudience struct {
+	scope     publicScope
+	strangers bool
+}
+
+func (s *Service) sourceAudienceOf(ctx context.Context, skill SkillFacts, viewer pgtype.UUID) (sourceAudience, error) {
+	scope, err := s.publicScope(ctx)
+	if err != nil {
+		return sourceAudience{}, err
+	}
+	_, exposed := scope.exposed[skill.ID]
+	owner := viewer.Valid && viewer == skill.WorkspaceID
+	return sourceAudience{scope: scope, strangers: exposed && !owner && !slices.Contains(scope.catalogs, skill.WorkspaceID)}, nil
+}
+
+func (a sourceAudience) shows(skillID pgtype.UUID) bool {
+	if !a.strangers {
+		return true
+	}
+	_, ok := a.scope.exposed[skillID]
+	return ok
 }
 
 func sourceFrom(s SourceFacts) *sourceInfo {
@@ -904,4 +944,26 @@ func timeString(t pgtype.Timestamptz) string {
 		return ""
 	}
 	return t.Time.UTC().Format("2006-01-02T15:04:05Z")
+}
+
+func (h *Handler) viewerWorkspace(r *http.Request) pgtype.UUID {
+	user, ok := identity.SessionUser(r.Context())
+	if !ok {
+		return pgtype.UUID{}
+	}
+	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
+	if err != nil {
+		return pgtype.UUID{}
+	}
+	return ws.ID
+}
+
+func (a sourceAudience) redact(src *sourceInfo) {
+	if !a.strangers {
+		return
+	}
+	src.TaskDescription, src.GenerationInputs = "", nil
+	if src.Trust.Value == string(SourceTrustGenerated) {
+		src.Trust.Label, src.Trust.Note = generatedTrustForReaders.Label, generatedTrustForReaders.Note
+	}
 }

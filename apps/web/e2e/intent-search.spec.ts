@@ -102,6 +102,7 @@ test("corrections survive reload and separate result caches while preserving the
   expect(
     requests.some((request) => request.method === "POST" && request.body.intent.output === "PDF"),
   ).toBe(true);
+  expect(new URL(page.url()).searchParams.get("category")).toBe("documents");
   await interpretation.getByRole("button", { name: "捨棄理解與篩選，以原句搜尋" }).click();
   await expect(page.getByText("本次輸出需求：未提及", { exact: true })).toBeVisible();
   expect(requests.at(-1)).toEqual({

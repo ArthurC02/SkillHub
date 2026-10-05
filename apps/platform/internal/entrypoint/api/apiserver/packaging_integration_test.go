@@ -542,6 +542,16 @@ func TestEachGateRefusesAPackageAndSaysWhich(t *testing.T) {
 			setup:      "UPDATE skills SET redistribution='unknown' WHERE id=$1",
 			wantReason: "license_unknown",
 		},
+		{
+			name:       "a skill the platform took down",
+			setup:      "UPDATE skills SET redistribution='allowed', takedown_at=now(), takedown_reason='fixture' WHERE id=$1",
+			wantReason: "taken_down",
+		},
+		{
+			name:       "a taken down skill that also carries a hold",
+			setup:      "UPDATE skills SET redistribution='allowed', access_restriction='license-review', takedown_at=now(), takedown_reason='fixture' WHERE id=$1",
+			wantReason: "taken_down",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			skillID, versionID := packagedSkill(t, a, pool, c, "gated-"+strings.ReplaceAll(tc.name, " ", "-"))
@@ -730,6 +740,14 @@ func TestConcurrentPackagingCreatesOneArtifact(t *testing.T) {
 	}
 	start := make(chan struct{})
 	out := make(chan outcome, 2)
+	waitersBefore := advisoryLockWaiters(t, pool)
+	t.Cleanup(func() {
+		select {
+		case <-store.releasePut:
+		default:
+			close(store.releasePut)
+		}
+	})
 	skillUUID, versionUUID := mustUUID(t, skillID), mustUUID(t, versionID)
 	for range 2 {
 		go func() {
@@ -745,10 +763,11 @@ func TestConcurrentPackagingCreatesOneArtifact(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("neither request reached the object write")
 	}
+	waitUntilMoreAdvisoryLockWaitersThan(t, pool, waitersBefore)
 	select {
 	case <-store.secondPut:
 		t.Fatal("both requests reached object storage; the idempotency lock did not serialize them")
-	case <-time.After(250 * time.Millisecond):
+	default:
 		close(store.releasePut)
 	}
 	first, second := <-out, <-out
@@ -1000,9 +1019,24 @@ func assertACuratedPortableCaseWithoutRunData(t *testing.T, entries map[string][
 	if portable["origin"] != "curated" {
 		t.Errorf("origin = %v, want curated", portable["origin"])
 	}
-	for _, banned := range []string{"run_id", "evaluation", "trace", "verdict"} {
-		if _, present := portable[banned]; present {
-			t.Errorf("the portable test case carries %q, which is Run data", banned)
+	allowed := map[string]bool{
+		"schema_version": true, "slug": true, "name": true, "origin": true,
+		"user_prompt": true, "criteria": true, "rubric": true, "datasets": true,
+	}
+	for key := range portable {
+		if !allowed[key] {
+			t.Errorf("the portable test case carries %q, which is not a field of a curated case", key)
+		}
+	}
+	criteria, _ := portable["criteria"].([]any)
+	if len(criteria) == 0 {
+		t.Fatalf("the curated case lost its criteria, so the field check below would compare nothing: %v", portable)
+	}
+	for _, c := range criteria {
+		for key := range c.(map[string]any) {
+			if key != "id" && key != "text" {
+				t.Errorf("a portable criterion carries %q, which is not part of the criterion", key)
+			}
 		}
 	}
 }
@@ -1369,10 +1403,79 @@ func TestTheManifestKeepsTheBoundariesItsContractDraws(t *testing.T) {
 		t.Fatalf("no origin: %v", src)
 	}
 
-	for _, banned := range []string{"problem", "expected_impact", "proposed_content", "excerpt"} {
-		if bytes.Contains(raw, []byte(`"`+banned+`"`)) {
-			t.Errorf("the manifest carries %q", banned)
+	assertManifestHoldsOnlyItsDocumentedFields(t, m)
+	assertAMeasuredVersionNamesItsRuntimeImage(t, pool, a, c, skillID, versionID)
+}
+
+func assertAMeasuredVersionNamesItsRuntimeImage(
+	t *testing.T, pool *pgxpool.Pool, a *api, c *client, skillID, versionID string,
+) {
+	t.Helper()
+	const image = "ghcr.io/example/runtime@sha256:1111"
+	if _, err := pool.Exec(context.Background(), `INSERT INTO skill_runtime_compatibility
+		(skill_version_id, runtime_image, capability, runtime) VALUES ($1, $2, 'activated', 'native')`,
+		mustUUID(t, versionID), image); err != nil {
+		t.Fatal(err)
+	}
+	code, body := postJSON(t, c, packagingPath(skillID, versionID), `{"target":"standard"}`)
+	if code != http.StatusCreated {
+		t.Fatalf("POST packaging after a measurement: got %d, body %v", code, body)
+	}
+	hash, _ := body["content_hash"].(string)
+	var m map[string]any
+	if err := json.Unmarshal(zipEntries(t, a, hash)["skillhub-manifest.json"], &m); err != nil {
+		t.Fatal(err)
+	}
+	compat, _ := m["compatibility"].(map[string]any)
+	if compat["runtime_image"] != image || compat["capability"] != "activated" || compat["behaviour"] != "native" {
+		t.Errorf("a measured version's compatibility = %v, want activated/native on %s", compat, image)
+	}
+	assertRuntimeImageNamedOnlyForAMeasuredAxis(t, compat)
+	assertManifestHoldsOnlyItsDocumentedFields(t, m)
+}
+
+func assertManifestHoldsOnlyItsDocumentedFields(t *testing.T, m map[string]any) {
+	t.Helper()
+	documented := map[string]bool{}
+	for _, path := range []string{
+		".compatibility", ".compatibility.behaviour", ".compatibility.capability", ".compatibility.format",
+		".compatibility.runtime_image", ".compatibility.measured_at", ".excluded_files", ".excluded_test_cases",
+		".included_test_cases", ".license", ".license.disclosures", ".license.expression", ".license.source_tier",
+		".manifest_hash", ".packaged_at", ".packager_version", ".profile_id", ".profile_version",
+		".schema_version", ".source", ".source.content_hash", ".source.skill_id", ".source.skill_version_id",
+		".source.version_number", ".source.origin", ".source.origin.content_hash", ".source.origin.fetched_at",
+		".source.origin.kind", ".source.origin.source_ref", ".source.origin.source_type",
+		".source.origin.source_url", ".source_version_created_at", ".validation", ".validation.blocked",
+		".validation.errors", ".validation.warnings", ".validation.infos", ".validation.errors[].code",
+		".validation.errors[].message", ".validation.errors[].path", ".validation.errors[].details",
+		".validation.warnings[].code", ".validation.warnings[].message", ".validation.warnings[].path",
+		".validation.warnings[].details", ".validation.infos[].code", ".validation.infos[].message",
+		".validation.infos[].path", ".validation.infos[].details",
+	} {
+		documented[path] = true
+	}
+	visited := 0
+	var walk func(prefix string, v any)
+	walk = func(prefix string, v any) {
+		switch x := v.(type) {
+		case map[string]any:
+			for key, child := range x {
+				path := prefix + "." + key
+				visited++
+				if !documented[path] {
+					t.Errorf("the manifest carries %q, which its contract does not document", path)
+				}
+				walk(path, child)
+			}
+		case []any:
+			for _, child := range x {
+				walk(prefix+"[]", child)
+			}
 		}
+	}
+	walk("", m)
+	if visited < 20 {
+		t.Fatalf("only %d manifest fields were checked against the documented list", visited)
 	}
 }
 
@@ -1401,14 +1504,10 @@ func assertManifestLicenceKeepsExpressionAndTierTogether(t *testing.T, lic map[s
 
 func assertRuntimeImageNamedOnlyForAMeasuredAxis(t *testing.T, compat map[string]any) {
 	t.Helper()
-	if compat["capability"] != "unverified" || compat["behaviour"] != "unverified" {
-		if _, ok := compat["runtime_image"]; !ok {
-			t.Errorf("a measured axis with no runtime image: %v", compat)
-		}
-	}
-	if _, ok := compat["runtime_image"]; ok &&
-		compat["capability"] == "unverified" && compat["behaviour"] == "unverified" {
-		t.Errorf("an unmeasured version names a runtime image: %v", compat)
+	measured := compat["capability"] != "unverified" || compat["behaviour"] != "unverified"
+	_, named := compat["runtime_image"]
+	if measured != named {
+		t.Errorf("runtime image named = %t but an axis is measured = %t: %v", named, measured, compat)
 	}
 }
 
@@ -1526,10 +1625,27 @@ func TestTheManifestAndTheAPIAgreeOnTheValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	inManifest, onScreen := findingLines(m.Validation), findingLines(plan.Validation)
+	wantCodes := []string{
+		"spec-metadata-not-string-map", "spec-metadata-not-string-map",
+		"dependency-file", "external-url", "external-url", "package-dependencies", "script-file",
+	}
+	if got := manifestFindingCodes(m.Validation); !slices.Equal(got, wantCodes) {
+		t.Fatalf("the manifest carries findings %v, want %v", got, wantCodes)
+	}
 	if !reflect.DeepEqual(inManifest, onScreen) {
 		t.Errorf("the package says one thing and the API says another:\nmanifest: %v\napi:      %v",
 			inManifest, onScreen)
 	}
+}
+
+func manifestFindingCodes(v packaging.ManifestValidation) []string {
+	out := []string{}
+	for _, group := range [][]packaging.ManifestFinding{v.Errors, v.Warnings, v.Infos} {
+		for _, f := range group {
+			out = append(out, f.Code)
+		}
+	}
+	return out
 }
 
 func findingLines(v packaging.ManifestValidation) []string {
@@ -1630,14 +1746,16 @@ func TestTheImportLimitsPublishedAreTheOnesTheArchiveReaderEnforces(t *testing.T
 
 	enforced := skillpkg.Limits()
 	for _, c := range []struct {
-		field string
-		want  int64
+		field    string
+		want     int64
+		enforced int64
 	}{
-		{"max_zip_bytes", enforced.ZipBytes},
-		{"max_unpacked_bytes", enforced.UnpackedBytes},
-		{"max_files", int64(enforced.Entries)},
-		{"max_file_bytes", enforced.EntryBytes},
-		{"max_path_depth", int64(enforced.EntryDepth)},
+		{"max_zip_bytes", 10 << 20, enforced.ZipBytes},
+		{"max_unpacked_bytes", 100 << 20, enforced.UnpackedBytes},
+		{"max_files", 2000, int64(enforced.Entries)},
+		{"max_file_bytes", 10 << 20, enforced.EntryBytes},
+		{"max_path_depth", 10, int64(enforced.EntryDepth)},
+		{"max_skills_per_import", 50, int64(ingest.MaxSkillsPerImport)},
 	} {
 		got, ok := published[c.field].(float64)
 		if !ok {
@@ -1645,7 +1763,10 @@ func TestTheImportLimitsPublishedAreTheOnesTheArchiveReaderEnforces(t *testing.T
 			continue
 		}
 		if int64(got) != c.want {
-			t.Errorf("%s published as %d but enforced as %d", c.field, int64(got), c.want)
+			t.Errorf("%s published as %d, want %d", c.field, int64(got), c.want)
+		}
+		if c.enforced != c.want {
+			t.Errorf("%s is enforced as %d, want %d", c.field, c.enforced, c.want)
 		}
 	}
 

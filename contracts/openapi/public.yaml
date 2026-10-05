@@ -627,7 +627,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "413":
-          description: Archive exceeds the upload size limit.
+          description: |
+            Archive exceeds the upload size limit, or the source holds more
+            Skills that would be created than one import may create. A Skill
+            refused by validation or by a repeated name does not count. The
+            message names the ceiling and the number that would be created.
           content:
             application/json:
               schema:
@@ -894,6 +898,16 @@ paths:
                 $ref: "#/components/schemas/Error"
         "401":
           description: No valid session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: |
+            The source holds more Skills that would be created than one import
+            may create. A Skill refused by validation or by a repeated name does
+            not count. The message names the ceiling and the number that would
+            be created.
           content:
             application/json:
               schema:
@@ -2207,9 +2221,11 @@ paths:
       operationId: saveSkillVersion
       summary: Save a zip as the next immutable version of a skill (WS-002)
       description: |
-        Same static validation as import. The skills row keeps its name; the
-        manifest inside the version is the snapshot's truth. Identical content
-        returns the existing version with duplicate=true.
+        Same static validation as import. The package's SKILL.md `name` must be
+        the skill's name; a different name is refused with a
+        `version-name-mismatch` finding, and a taken-down skill takes no new
+        version (`skill-taken-down`), both as 422. Identical content returns
+        the existing version with duplicate=true.
       parameters:
         - name: id
           in: path
@@ -2250,7 +2266,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "422":
-          description: Package failed spec or static validation.
+          description: Package failed spec or static validation, names a different skill, or the skill was taken down.
           content:
             application/json:
               schema:
@@ -2417,6 +2433,11 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: The skill is under an access restriction, so its versions are not compared.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Skill or versions not visible to the caller.
           content:
@@ -2509,9 +2530,12 @@ paths:
         mechanism in the other direction — but never zero, which would write an
         entry that changes nothing while claiming an operator did something.
 
-        Not idempotent: nothing in this request identifies a retry, so two
-        identical calls are two grants. Deliberate for MVP, where a grant is a
-        deliberate act and each one is audited.
+        Idempotent only when the request carries `idempotency_key`: a replay of
+        the same key for the same account writes no second entry and no second
+        audit event, and answers with the balance as it stands. Without a key
+        nothing identifies a retry, so two identical calls are two grants. A
+        key already used on this account for a different amount is a 409, not
+        a replay: answering 200 would report a grant that was never applied.
       requestBody:
         required: true
         content:
@@ -2531,6 +2555,13 @@ paths:
                   description: |
                     Why. Required, non-empty after trimming, and recorded in the
                     audit event.
+                idempotency_key:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                  description: |
+                    Optional. Chosen by the caller once per submission and sent
+                    again unchanged when that submission is retried.
       responses:
         "200":
           description: The entry was written and the balance moved.
@@ -2547,7 +2578,18 @@ paths:
                     description: The balance after this grant.
                   amount_credits: { type: integer, format: int64 }
         "400":
-          description: Zero amount, or a missing reason.
+          description: |
+            Zero amount, a missing reason, an `idempotency_key` outside 1 to
+            128 characters, or an adjustment that would take the balance below
+            -1000000.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: |
+            Nothing was changed: the account is being deleted, or the
+            `idempotency_key` was already used on this account for a grant of a
+            different amount.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -2751,8 +2793,9 @@ paths:
       operationId: reviewExposure
       summary: Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
       description: |
-        The request names the release and the review sequence the reviewer
-        looked at; either being stale answers 409 and nothing is written.
+        The request names the release, the review sequence and the search
+        snapshot digest the reviewer looked at; any of them being stale answers
+        409 and nothing is written (a revocation is not held to the digest).
         Approval also needs the Skill available, its redistribution verdict
         `allowed`, and search holding this release's finished text. The review
         and its audit event share one transaction.
@@ -2762,10 +2805,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [release_id, expected_sequence, decision, reason]
+              required: [release_id, expected_sequence, expected_snapshot_digest, decision, reason]
               properties:
                 release_id: { type: string, format: uuid }
                 expected_sequence: { type: integer }
+                expected_snapshot_digest: { type: string }
                 decision: { $ref: "#/components/schemas/ExposureDecision" }
                 reason: { type: string }
       responses:
@@ -7765,7 +7809,9 @@ components:
           type: string
           description: |
             The user's own words that produced a generated package (GEN-002).
-            Present only for `generated`. It is the whole provenance record for
+            Present only for `generated`, and left out (together with
+            `generation_inputs`) when the detail is served to anyone because
+            the skill was published. It is the whole provenance record for
             a package with no upstream, which is why the source of a generated
             skill is never reported as unknown — it is known, it just is not a
             URL.
@@ -8807,7 +8853,7 @@ components:
       description: The ceilings and allowed sources an import is held to, read from what enforces them.
       type: object
       required:
-        [max_zip_bytes, max_unpacked_bytes, max_files, max_file_bytes, max_path_depth, allowed_hosts, note]
+        [max_zip_bytes, max_unpacked_bytes, max_files, max_file_bytes, max_path_depth, max_skills_per_import, allowed_hosts, note]
       properties:
         max_zip_bytes:
           type: integer
@@ -8826,6 +8872,13 @@ components:
         max_path_depth:
           type: integer
           description: Deepest directory nesting a path inside the archive may have.
+        max_skills_per_import:
+          type: integer
+          minimum: 1
+          description: |
+            Most Skills one import may create. Counted after validation, so a
+            Skill refused as malformed or for repeating a name does not count;
+            a source over it is refused whole with 413.
         allowed_hosts:
           type: array
           description: Hosts this deployment will fetch an import from; anything else is refused before a request is made.
@@ -8893,7 +8946,8 @@ components:
           description: |
             The one other collected class this deployment holds: reports
             submitted at POST /feedback (BETA-003/004/005). Their `message` is
-            the only free-text column anywhere, so the disclosure names it
+            free text, and `page_path` and `build_id` are client-supplied text
+            checked only for shape and length, so the disclosure names them
             separately from the four events above. Served since the endpoint
             existed, and declared here so a page can render it.
           required: [what, collected, free_text, kind, page_path, run_id, on_account_deletion, retention_days]
@@ -9562,7 +9616,10 @@ components:
             helpful: { type: boolean }
             comment: { type: string, maxLength: 2000 }
             submitted_at: { type: string, format: date-time }
-        evaluated_at: { type: string, format: date-time }
+        evaluated_at:
+          type: [string, "null"]
+          format: date-time
+          description: Null while the evaluation is still pending.
         superseded_at:
           type: [string, "null"]
           format: date-time
@@ -9804,7 +9861,10 @@ components:
         overall:
           type: string
           enum: [met, partially_met, not_met, undetermined]
-        evaluated_at: { type: string, format: date-time }
+        evaluated_at:
+          type: [string, "null"]
+          format: date-time
+          description: Null while the evaluation is still pending.
         superseded_at:
           type: [string, "null"]
           format: date-time
@@ -10230,6 +10290,9 @@ components:
         with, the fourth is a package they can fix, and the fifth is one this
         platform broke itself.
 
+        `taken_down` — the platform took the skill down. Taking down changes
+        visibility and downloadability only: versions and runs stay, but no
+        package is built from it, its own workspace included.
         `license_hold` — the skill carries a 0023 access restriction (SEC-011).
         An unrecognised reason code still blocks: a code nobody recognises must
         never be the way content unlocks.
@@ -10257,7 +10320,7 @@ components:
         stop vendoring `node_modules/`, replace the symlink.
       type: string
       enum:
-        [license_hold, not_redistributable, license_unknown, validation_blocked,
+        [taken_down, license_hold, not_redistributable, license_unknown, validation_blocked,
          file_removed_by_packager]
     PackageValidation:
       description: |

@@ -975,16 +975,12 @@ class DomainRegistryTest(unittest.TestCase):
 
     def test_structured_evidence_detects_source_drift(self) -> None:
         source = self.repo / "evidence.md"
-        source.write_text("one\ntwo\n", encoding="utf-8")
-        content = source.read_bytes()
-        excerpt = "".join(
-            content.decode("utf-8").splitlines(keepends=True)[1:2]
-        ).encode("utf-8")
+        source.write_bytes(b"one\ntwo\n")
         reference = {
             "path": "evidence.md",
             "lines": {"start": 2, "end": 2},
-            "content_sha256": digest(content),
-            "excerpt_sha256": digest(excerpt),
+            "content_sha256": "sha256:c3f9c8c283a2b1f2f1896f27a01cbe3cddc0c9d93f752e4639035a0f5b36f6e8",
+            "excerpt_sha256": "sha256:27dd8ed44a83ff94d557f9fd0412ed5a8cbca69ea04922d88c01184a07300a5a",
         }
         self.assertEqual("current", verify(reference, self.repo)["status"])
         source.write_text("one\nchanged\n", encoding="utf-8")

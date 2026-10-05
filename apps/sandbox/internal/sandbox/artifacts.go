@@ -21,6 +21,8 @@ const (
 
 	artifactCollectTimeout = 5 * time.Minute
 
+	artifactCollectAttempts = 3
+
 	artifactMaxEntries = 1000
 
 	artifactFileMode = 0o600
@@ -43,8 +45,13 @@ func (m *Manager) collect(parent context.Context, id, traceURL string) bool {
 		return true
 	}
 
-	artifacts, truncated := m.collectArtifacts(ctx, id, e)
+	artifacts, truncated, failed := m.collectArtifacts(ctx, id, e)
 	m.mu.Lock()
+	if failed && len(e.artifacts) == 0 && e.artifactCollectFailures < artifactCollectAttempts-1 {
+		e.artifactCollectFailures++
+		m.mu.Unlock()
+		return false
+	}
 
 	if len(artifacts) > 0 || len(e.artifacts) == 0 {
 		e.artifacts = artifacts
@@ -63,35 +70,35 @@ func (m *Manager) collect(parent context.Context, id, traceURL string) bool {
 	return true
 }
 
-func (m *Manager) collectArtifacts(ctx context.Context, id string, e *entry) ([]Artifact, bool) {
+func (m *Manager) collectArtifacts(ctx context.Context, id string, e *entry) (manifest []Artifact, truncated, failed bool) {
 	if e.artifactGrant == nil || e.artifactGrant.URL == "" {
-		return nil, false
+		return nil, false, false
 	}
 	raw, err := m.drv.ReadArtifacts(ctx, id)
 	if err != nil {
 		m.log.Warn("artifact collection failed", "provider_run_id", id, "err", err)
-		return nil, false
+		return nil, false, true
 	}
 	if len(raw) == 0 {
-		return nil, false
+		return nil, false, false
 	}
 
 	filtered, err := filterArchive(raw, e.limits)
 	if err != nil {
 		m.log.Warn("artifact archive could not be read", "provider_run_id", id, "err", err)
-		return nil, true
+		return nil, true, false
 	}
 	if len(filtered.manifest) == 0 {
-		return nil, filtered.truncated
+		return nil, filtered.truncated, false
 	}
 	if err := upload(ctx, e.artifactGrant.URL, filtered.archive); err != nil {
 
 		m.log.Error("artifact upload failed", "provider_run_id", id,
 			"object_key", e.artifactGrant.ObjectKey, "err", err)
-		return nil, filtered.truncated
+		return nil, filtered.truncated, true
 	}
 	m.log.Info("artifacts collected", "provider_run_id", id, "files", len(filtered.manifest))
-	return filtered.manifest, filtered.truncated
+	return filtered.manifest, filtered.truncated, false
 }
 
 type filteredArchive struct {

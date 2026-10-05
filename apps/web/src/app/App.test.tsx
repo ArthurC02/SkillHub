@@ -1,19 +1,15 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { act } from "react";
-import { expect, test } from "vitest";
+import { beforeAll, expect, test } from "vitest";
 import App from "./App";
-import "../features/catalog/home/Home.page";
+import { DEFAULT_WAIT_MS, pollUntil } from "../testing/poll";
+import { preloadEveryPage } from "../testing/pages";
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error("waitFor timed out");
+beforeAll(preloadEveryPage);
+
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => document.body.textContent, timeoutMs);
 }
 
 test("renders the app shell", async () => {
@@ -40,5 +36,5 @@ test("renders the app shell", async () => {
   );
   expect(build, "the footer has no Build 識別碼 disclosure (IA-11)").toBeTruthy();
   expect(build!.open, "the identifier is folded by default (§2.6)").toBe(false);
-  expect(build!.querySelector("code")?.textContent?.trim()).not.toBe("");
+  expect(build!.querySelector("code")?.textContent ?? "").toMatch(/\S/);
 });

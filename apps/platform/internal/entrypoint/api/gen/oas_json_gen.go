@@ -15877,6 +15877,44 @@ func (s *DiffSkillVersionsBadRequest) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes DiffSkillVersionsForbidden as json.
+func (s *DiffSkillVersionsForbidden) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DiffSkillVersionsForbidden from json.
+func (s *DiffSkillVersionsForbidden) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DiffSkillVersionsForbidden to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DiffSkillVersionsForbidden(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DiffSkillVersionsForbidden) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DiffSkillVersionsForbidden) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes DiffSkillVersionsNotFound as json.
 func (s *DiffSkillVersionsNotFound) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -16986,7 +17024,7 @@ func (s *Evaluation) encodeFields(e *jx.Encoder) {
 	}
 	{
 		e.FieldStart("evaluated_at")
-		json.EncodeDateTime(e, s.EvaluatedAt)
+		s.EvaluatedAt.Encode(e, json.EncodeDateTime)
 	}
 	{
 		if s.SupersededAt.Set {
@@ -17182,9 +17220,7 @@ func (s *Evaluation) Decode(d *jx.Decoder) error {
 		case "evaluated_at":
 			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
-				v, err := json.DecodeDateTime(d)
-				s.EvaluatedAt = v
-				if err != nil {
+				if err := s.EvaluatedAt.Decode(d, json.DecodeDateTime); err != nil {
 					return err
 				}
 				return nil
@@ -17629,7 +17665,7 @@ func (s *EvaluationRevision) encodeFields(e *jx.Encoder) {
 	}
 	{
 		e.FieldStart("evaluated_at")
-		json.EncodeDateTime(e, s.EvaluatedAt)
+		s.EvaluatedAt.Encode(e, json.EncodeDateTime)
 	}
 	{
 		e.FieldStart("superseded_at")
@@ -17702,9 +17738,7 @@ func (s *EvaluationRevision) Decode(d *jx.Decoder) error {
 		case "evaluated_at":
 			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
-				v, err := json.DecodeDateTime(d)
-				s.EvaluatedAt = v
-				if err != nil {
+				if err := s.EvaluatedAt.Decode(d, json.DecodeDateTime); err != nil {
 					return err
 				}
 				return nil
@@ -26462,6 +26496,44 @@ func (s *GrantCreditsBadRequest) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes GrantCreditsConflict as json.
+func (s *GrantCreditsConflict) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes GrantCreditsConflict from json.
+func (s *GrantCreditsConflict) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GrantCreditsConflict to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = GrantCreditsConflict(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GrantCreditsConflict) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GrantCreditsConflict) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes GrantCreditsNotFound as json.
 func (s *GrantCreditsNotFound) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -26647,11 +26719,18 @@ func (s *GrantCreditsReq) encodeFields(e *jx.Encoder) {
 		e.FieldStart("reason")
 		e.Str(s.Reason)
 	}
+	{
+		if s.IdempotencyKey.Set {
+			e.FieldStart("idempotency_key")
+			s.IdempotencyKey.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfGrantCreditsReq = [2]string{
+var jsonFieldsNameOfGrantCreditsReq = [3]string{
 	0: "amount_credits",
 	1: "reason",
+	2: "idempotency_key",
 }
 
 // Decode decodes GrantCreditsReq from json.
@@ -26686,6 +26765,16 @@ func (s *GrantCreditsReq) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"reason\"")
+			}
+		case "idempotency_key":
+			if err := func() error {
+				s.IdempotencyKey.Reset()
+				if err := s.IdempotencyKey.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"idempotency_key\"")
 			}
 		default:
 			return d.Skip()
@@ -27277,6 +27366,44 @@ func (s *ImportSkillFromURLReq) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *ImportSkillFromURLReq) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ImportSkillFromURLRequestEntityTooLarge as json.
+func (s *ImportSkillFromURLRequestEntityTooLarge) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes ImportSkillFromURLRequestEntityTooLarge from json.
+func (s *ImportSkillFromURLRequestEntityTooLarge) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ImportSkillFromURLRequestEntityTooLarge to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ImportSkillFromURLRequestEntityTooLarge(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ImportSkillFromURLRequestEntityTooLarge) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ImportSkillFromURLRequestEntityTooLarge) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -36872,6 +36999,8 @@ func (s *PackagingBlockedReason) Decode(d *jx.Decoder) error {
 	}
 	// Try to use constant string.
 	switch PackagingBlockedReason(v) {
+	case PackagingBlockedReasonTakenDown:
+		*s = PackagingBlockedReasonTakenDown
 	case PackagingBlockedReasonLicenseHold:
 		*s = PackagingBlockedReasonLicenseHold
 	case PackagingBlockedReasonNotRedistributable:
@@ -42998,6 +43127,10 @@ func (s *ReviewExposureReq) encodeFields(e *jx.Encoder) {
 		e.Int(s.ExpectedSequence)
 	}
 	{
+		e.FieldStart("expected_snapshot_digest")
+		e.Str(s.ExpectedSnapshotDigest)
+	}
+	{
 		e.FieldStart("decision")
 		s.Decision.Encode(e)
 	}
@@ -43007,11 +43140,12 @@ func (s *ReviewExposureReq) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfReviewExposureReq = [4]string{
+var jsonFieldsNameOfReviewExposureReq = [5]string{
 	0: "release_id",
 	1: "expected_sequence",
-	2: "decision",
-	3: "reason",
+	2: "expected_snapshot_digest",
+	3: "decision",
+	4: "reason",
 }
 
 // Decode decodes ReviewExposureReq from json.
@@ -43047,8 +43181,20 @@ func (s *ReviewExposureReq) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"expected_sequence\"")
 			}
-		case "decision":
+		case "expected_snapshot_digest":
 			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.ExpectedSnapshotDigest = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"expected_snapshot_digest\"")
+			}
+		case "decision":
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				if err := s.Decision.Decode(d); err != nil {
 					return err
@@ -43058,7 +43204,7 @@ func (s *ReviewExposureReq) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"decision\"")
 			}
 		case "reason":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				v, err := d.Str()
 				s.Reason = string(v)
@@ -43079,7 +43225,7 @@ func (s *ReviewExposureReq) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00001111,
+		0b00011111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -54430,6 +54576,10 @@ func (s *SkillImportLimits) encodeFields(e *jx.Encoder) {
 		e.Int(s.MaxPathDepth)
 	}
 	{
+		e.FieldStart("max_skills_per_import")
+		e.Int(s.MaxSkillsPerImport)
+	}
+	{
 		e.FieldStart("allowed_hosts")
 		e.ArrStart()
 		for _, elem := range s.AllowedHosts {
@@ -54443,14 +54593,15 @@ func (s *SkillImportLimits) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfSkillImportLimits = [7]string{
+var jsonFieldsNameOfSkillImportLimits = [8]string{
 	0: "max_zip_bytes",
 	1: "max_unpacked_bytes",
 	2: "max_files",
 	3: "max_file_bytes",
 	4: "max_path_depth",
-	5: "allowed_hosts",
-	6: "note",
+	5: "max_skills_per_import",
+	6: "allowed_hosts",
+	7: "note",
 }
 
 // Decode decodes SkillImportLimits from json.
@@ -54522,8 +54673,20 @@ func (s *SkillImportLimits) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"max_path_depth\"")
 			}
-		case "allowed_hosts":
+		case "max_skills_per_import":
 			requiredBitSet[0] |= 1 << 5
+			if err := func() error {
+				v, err := d.Int()
+				s.MaxSkillsPerImport = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"max_skills_per_import\"")
+			}
+		case "allowed_hosts":
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				s.AllowedHosts = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -54543,7 +54706,7 @@ func (s *SkillImportLimits) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"allowed_hosts\"")
 			}
 		case "note":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := d.Str()
 				s.Note = string(v)
@@ -54564,7 +54727,7 @@ func (s *SkillImportLimits) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b01111111,
+		0b11111111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

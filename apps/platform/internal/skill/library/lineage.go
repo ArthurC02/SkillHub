@@ -42,7 +42,7 @@ func inheritsScan(fork gen.ListSkillsRow, ancestor scanAncestor, catalogues []pg
 		ancestor.SkillID == fork.Skill.ForkedFromSkillID &&
 		ancestor.VersionID == fork.Skill.ForkedFromVersionID &&
 		slices.Contains(catalogues, ancestor.WorkspaceID) &&
-		!ancestor.DeletedAt.Valid && !ancestor.TakedownAt.Valid &&
+		!ancestor.DeletedAt.Valid && !ancestor.TakedownAt.Valid && ancestor.StillNewest &&
 		ancestor.ContentHash == fork.NewestContentHash
 }
 

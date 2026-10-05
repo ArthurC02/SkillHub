@@ -67,6 +67,7 @@ func (r RunRequest) InputGrants() []ObjectGrant {
 type PackageRef struct {
 	SkillVersionID string `json:"skill_version_id"`
 	ContentHash    string `json:"content_hash"`
+	PackageSHA256  string `json:"package_sha256,omitempty"`
 	ObjectKey      string `json:"object_key,omitempty"`
 	SourcePath     string `json:"source_path,omitempty"`
 }

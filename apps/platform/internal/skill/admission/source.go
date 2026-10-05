@@ -2,8 +2,6 @@ package ingest
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -21,6 +19,14 @@ import (
 const MaxSkillsPerImport = 50
 
 var ErrTooManySkills = errors.New("ingest: source holds more skills than one import may create")
+
+type TooManySkillsError struct{ Admitted int }
+
+func (e *TooManySkillsError) Error() string {
+	return fmt.Sprintf("%v: %d would be created, %d allowed", ErrTooManySkills, e.Admitted, MaxSkillsPerImport)
+}
+
+func (e *TooManySkillsError) Is(target error) bool { return target == ErrTooManySkills }
 
 type plannedSkill struct {
 	path string
@@ -51,14 +57,8 @@ func planImport(data []byte) (importPlan, error) {
 			report: skillpkg.Report{Findings: d.Findings, Blocked: true}}}}
 		return plan, nil
 	}
-	if len(d.Skills) > MaxSkillsPerImport {
-		return importPlan{}, fmt.Errorf("%w: %d found, %d allowed",
-			ErrTooManySkills, len(d.Skills), MaxSkillsPerImport)
-	}
-
-	sum := sha256.Sum256(data)
-	packageHash := hex.EncodeToString(sum[:])
-	plan.objectKey = "packages/" + packageHash + ".zip"
+	objectKey, packageHash := skillpkg.PackageObjectKey(data)
+	plan.objectKey = objectKey
 
 	for _, dir := range d.Skills {
 		pkg, err := prepareSkillAt(fsys, dir, plan.objectKey, packageHash, d.Findings)
@@ -73,6 +73,9 @@ func planImport(data []byte) (importPlan, error) {
 		plan.admitted = append(plan.admitted, planned)
 	}
 	plan.refuseRepeatedNames()
+	if len(plan.admitted) > MaxSkillsPerImport {
+		return importPlan{}, &TooManySkillsError{Admitted: len(plan.admitted)}
+	}
 	return plan, nil
 }
 
@@ -226,6 +229,10 @@ func (s *Service) importSource(ctx context.Context, ws identity.Workspace, data 
 			continue
 		}
 		res, err := s.importOne(ctx, tx, ws, incomingVersion{pkg: planned.pkg, source: src, enrichment: enriched[i]})
+		if report, refused := refusedReport(planned.pkg.report, err); refused {
+			out.Refused = append(out.Refused, Refusal{Path: planned.pkg.sourcePath, Report: report})
+			continue
+		}
 		if err != nil {
 			return SourceResult{}, err
 		}

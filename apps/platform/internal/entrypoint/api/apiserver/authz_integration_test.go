@@ -544,6 +544,10 @@ func TestClientSuppliedWorkspaceIDIsIgnored(t *testing.T) {
 	bob := a.login(t, "bob-forgery")
 	secret := seedSkill(t, pool, alice.workspaceID, "alice-forgery-target")
 
+	if ids := alice.skillIDs(t, "/skills/search?q=forgery"); !contains(ids, secret) {
+		t.Fatalf("the owner's own search for the seeded skill came back without it: %v", ids)
+	}
+
 	forged := []string{
 		"/skills?workspace_id=" + alice.workspaceID,
 		"/skills?workspace_id=" + alice.workspaceID + "&owner_user_id=" + alice.userID,

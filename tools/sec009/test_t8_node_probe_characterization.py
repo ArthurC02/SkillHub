@@ -182,6 +182,15 @@ def test_grade_gvisor_passes_when_the_node_is_at_or_above_baseline():
         "runsc version release-20260201.0 (go1.22)", "release-20260101.0"
     )
     assert status == probe.PASS, detail
+    assert detail == "node runsc 20260201.0 vs baseline 20260101.0 (compared as (date, patch))"
+
+
+def test_grade_gvisor_passes_when_the_node_equals_the_baseline():
+    status, detail = probe.grade_gvisor(
+        "runsc version release-20260101.0 (go1.22)", "release-20260101.0"
+    )
+    assert status == probe.PASS, detail
+    assert detail == "node runsc 20260101.0 vs baseline 20260101.0 (compared as (date, patch))"
 
 
 def test_grade_gvisor_fails_when_the_node_is_below_baseline():
@@ -189,20 +198,41 @@ def test_grade_gvisor_fails_when_the_node_is_below_baseline():
         "runsc version release-20260101.0 (go1.22)", "release-20260201.0"
     )
     assert status == probe.FAIL, detail
-    assert "BELOW BASELINE" in detail
+    assert detail == (
+        "node runsc 20260101.0 vs baseline 20260201.0 (compared as (date, patch))"
+        " -- BELOW BASELINE, node must not join the pool"
+    )
 
 
 def test_grade_node_age_reports_the_precondition_before_parsing_a_timestamp():
     now = datetime(2026, 8, 27, tzinfo=timezone.utc)
-    assert probe.grade_node_age(None, now)[0] == probe.UNKNOWN
-    assert probe.grade_node_age("2026-08-20T00:00:00Z", now, "provision")[0] == probe.UNKNOWN
+    status, detail = probe.grade_node_age(None, now)
+    assert status == probe.UNKNOWN
+    assert detail == "node facts carry no `node_created_at`, so the node's age is unknown"
+    status, detail = probe.grade_node_age("2026-08-20T00:00:00Z", now, "provision")
+    assert status == probe.UNKNOWN
+    assert detail == (
+        "`build_phase` is still 'provision', so this node has not finished being built and its "
+        "age is not yet a fact about a serving node"
+    )
 
 
 def test_grade_node_age_passes_for_a_fresh_serving_node():
     now = datetime(2026, 8, 27, tzinfo=timezone.utc)
     created = (now - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    status, _ = probe.grade_node_age(created, now, probe.BUILD_PHASE_SERVING)
+    status, detail = probe.grade_node_age(created, now, probe.BUILD_PHASE_SERVING)
     assert status == probe.PASS
+    assert detail == "built 2026-08-26T00:00:00Z, 1 day(s) old (limit 7)"
+
+
+def test_grade_node_age_passes_at_exactly_the_rebuild_limit_and_fails_one_day_past():
+    now = datetime(2026, 8, 27, tzinfo=timezone.utc)
+    status, detail = probe.grade_node_age("2026-08-20T00:00:00Z", now, probe.BUILD_PHASE_SERVING)
+    assert status == probe.PASS
+    assert detail == "built 2026-08-20T00:00:00Z, 7 day(s) old (limit 7)"
+    status, detail = probe.grade_node_age("2026-08-19T00:00:00Z", now, probe.BUILD_PHASE_SERVING)
+    assert status == probe.FAIL
+    assert detail.startswith("built 2026-08-19T00:00:00Z, 8 day(s) old (limit 7) -- past the rebuild cycle")
 
 
 if __name__ == "__main__":

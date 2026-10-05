@@ -19,24 +19,24 @@ GENERATE_BODY = {"task_description": "把逐字稿整理成決議摘要的 Skill
 ENDPOINTS = [
     (
         "/v1/analyze-intent",
-        {"query": "CSV", "timeout_seconds": intent.TIMEOUT_SECONDS},
+        {"query": "CSV", "timeout_seconds": 8.0},
         intent,
         "client",
-        "TIMEOUT_SECONDS",
+        8.0,
     ),
-    ("/embed", {"texts": ["one"]}, app_module, "_client", "EMBED_TIMEOUT_SECONDS"),
+    ("/embed", {"texts": ["one"]}, app_module, "_client", 20.0),
     (
         "/match-reasons",
         {"query": "read my invoices", "candidates": CANDIDATES},
         app_module,
         "_client",
-        "MATCH_REASONS_TIMEOUT_SECONDS",
+        8.0,
     ),
-    ("/suggest-criteria", SUGGEST_BODY, app_module, "_client", "SUGGEST_CRITERIA_TIMEOUT_SECONDS"),
-    ("/v1/enrich-skill", ENRICH_REQUEST, enrich, "client", "LLM_TIMEOUT_SECONDS"),
-    ("/judge-run", JUDGE_REQUEST, evaluate, "client", "LLM_TIMEOUT_SECONDS"),
-    ("/suggest-improvements", IMPROVE_REQUEST, evaluate, "client", "LLM_TIMEOUT_SECONDS"),
-    ("/v1/generate-skill", GENERATE_BODY, generate, "client", "LLM_TIMEOUT_SECONDS"),
+    ("/suggest-criteria", SUGGEST_BODY, app_module, "_client", 30.0),
+    ("/v1/enrich-skill", ENRICH_REQUEST, enrich, "client", 60.0),
+    ("/judge-run", JUDGE_REQUEST, evaluate, "client", 120.0),
+    ("/suggest-improvements", IMPROVE_REQUEST, evaluate, "client", 120.0),
+    ("/v1/generate-skill", GENERATE_BODY, generate, "client", 120.0),
 ]
 
 IDS = [e[0] for e in ENDPOINTS]
@@ -70,14 +70,13 @@ def _recorder(asked: list[float]):
     return build
 
 
-@pytest.mark.parametrize("path, body, module, attr, ceiling_name", ENDPOINTS, ids=IDS)
+@pytest.mark.parametrize("path, body, module, attr, ceiling", ENDPOINTS, ids=IDS)
 def test_every_endpoint_lets_a_caller_lower_its_ceiling_and_never_raise_it(
-    path: str, body: dict, module, attr: str, ceiling_name: str
+    path: str, body: dict, module, attr: str, ceiling: float
 ):
     """Go owns the deadline, so every endpoint must honour the number Go sends
     when it is the smaller one, and ignore it when it is not.
     """
-    ceiling = getattr(module, ceiling_name)
     asked: list[float] = []
 
     with patch.object(module, attr, _recorder(asked)):
@@ -89,10 +88,10 @@ def test_every_endpoint_lets_a_caller_lower_its_ceiling_and_never_raise_it(
     assert asked == [1, ceiling, ceiling, ceiling]
 
 
-@pytest.mark.parametrize("path, body, module, attr, ceiling_name", ENDPOINTS, ids=IDS)
+@pytest.mark.parametrize("path, body, module, attr, ceiling", ENDPOINTS, ids=IDS)
 @pytest.mark.parametrize("bad", [0, -1])
 def test_every_endpoint_rejects_a_ceiling_of_zero_or_less(
-    bad: float, path: str, body: dict, module, attr: str, ceiling_name: str
+    bad: float, path: str, body: dict, module, attr: str, ceiling: float
 ):
     """`min()` would accept 0 and time the call out before it started."""
     asked: list[float] = []

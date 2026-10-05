@@ -229,9 +229,9 @@ func TestCreationRefusesADraftThatEscapesItsPackage(t *testing.T) {
 		t.Fatalf("the stub did not plant the escaping file: %+v", v.Snapshot.Draft)
 	}
 	if !v.Snapshot.Draft.Blocked {
-
-		creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "materialize", "content_hash": v.Snapshot.Draft.ContentHash}, 422)
+		t.Fatalf("a draft whose file escapes the package was not blocked: %+v", v.Snapshot.Draft)
 	}
+	creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "materialize", "content_hash": v.Snapshot.Draft.ContentHash}, 422)
 	var versions int
 	if err := testPool.QueryRow(context.Background(), "SELECT count(*) FROM skill_versions v JOIN skills sk ON sk.id = v.skill_id WHERE sk.workspace_id = $1", c.workspaceID).Scan(&versions); err != nil {
 		t.Fatal(err)

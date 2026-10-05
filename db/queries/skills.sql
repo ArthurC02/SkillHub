@@ -18,6 +18,11 @@ SELECT * FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 FOR UPDATE;
 
+-- name: LockSkillForFork :one
+SELECT * FROM skills
+WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+FOR SHARE;
+
 -- name: GetCatalogSkill :one
 SELECT * FROM skills
 WHERE id = @id AND workspace_id = ANY(@catalog_workspace_ids::uuid[]) AND deleted_at IS NULL;
@@ -55,7 +60,9 @@ LIMIT @row_limit::int OFFSET @row_offset::int;
 
 -- name: ListForkedFromVersions :many
 SELECT v.id AS version_id, v.content_hash, v.created_at,
-       anc.id AS skill_id, anc.workspace_id, anc.name, anc.deleted_at, anc.takedown_at
+       anc.id AS skill_id, anc.workspace_id, anc.name, anc.deleted_at, anc.takedown_at,
+       (NOT EXISTS (SELECT 1 FROM skill_versions later
+                    WHERE later.skill_id = anc.id AND later.version_number > v.version_number))::bool AS still_newest
 FROM skill_versions v
 JOIN skills anc ON anc.id = v.skill_id
 WHERE v.id = ANY(@version_ids::uuid[]);
@@ -120,11 +127,11 @@ WHERE deleted_at IS NULL
 ORDER BY created_at DESC, id
 LIMIT @result_limit;
 
--- name: ListForkedSkills :many
-SELECT f.forked_from_skill_id::uuid AS skill_id FROM skills f
+-- name: ListSkillForks :many
+SELECT f.forked_from_skill_id::uuid AS source_id, f.id AS fork_id FROM skills f
 WHERE f.forked_from_skill_id = ANY(@skill_ids::uuid[])
 UNION
-SELECT v.skill_id FROM skills f
+SELECT v.skill_id AS source_id, f.id AS fork_id FROM skills f
 JOIN skill_versions v ON v.id = f.forked_from_version_id
 WHERE v.skill_id = ANY(@skill_ids::uuid[]);
 

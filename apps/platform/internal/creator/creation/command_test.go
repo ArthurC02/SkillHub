@@ -695,3 +695,17 @@ func TestConfirmingADuplicateWithNoDraftIsRefused(t *testing.T) {
 		t.Fatalf("err = %v, want ErrInvalidCommand", err)
 	}
 }
+
+func TestADiagramAnswerIsMaskedLikeEveryOtherThingThePersonTypes(t *testing.T) {
+	s := &Service{Mask: func(v string) string { return "masked:" + v }}
+	p := &Snapshot{DiagramFingerprint: "digest", PendingAction: PendingDiagramAnswers, DiagramInterpretation: &DiagramInterpretation{
+		Nodes: []string{"開始"}, Uncertainties: []DiagramUncertainty{{ID: "11111111-1111-4111-8111-111111111111", Question: "誰核准？"}},
+	}}
+	_, err := s.applyDiagramCommand(p, Command{Kind: commandAnswerDiagramUncertainty, DiagramUncertaintyID: "11111111-1111-4111-8111-111111111111", DiagramAnswer: "主管"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := p.DiagramInterpretation.Uncertainties[0].Answer; got != "masked:主管" {
+		t.Errorf("answer = %q, want it masked before it is stored and sent to the model", got)
+	}
+}

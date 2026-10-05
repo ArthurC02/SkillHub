@@ -74,7 +74,8 @@ selected AS (
 )
 SELECT trace_events.*, (SELECT count(*) > sqlc.arg(tail_events)::int FROM tail) AS evaluation_truncated
 FROM selected
-JOIN trace_events USING (ingest_seq)
+JOIN trace_events ON trace_events.ingest_seq = selected.ingest_seq
+    AND trace_events.run_id = @evaluation_run_id AND trace_events.workspace_id = @evaluation_workspace_id
 ORDER BY trace_events.occurred_at, trace_events.source, trace_events.attempt, trace_events.seq;
 
 -- name: GetTraceStreamHealth :many

@@ -232,6 +232,36 @@ func TestStalePendingEvaluationIsReconciledWithoutJudge(t *testing.T) {
 	}
 }
 
+func TestAPendingEvaluationHasNoEvaluationTimeYet(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-pending-time")
+	skillID := seedSkill(t, pool, c.workspaceID, "eval-pending-time")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO evaluations (workspace_id, run_id, status, overall, evidence_complete)
+		VALUES ($1, $2, 'pending', 'undetermined', false)`,
+		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatal(err)
+	}
+
+	status, current := c.doJSON(t, http.MethodGet, "/runs/"+runID+"/evaluation", "")
+	if status != http.StatusOK {
+		t.Fatalf("evaluation status = %d, want 200", status)
+	}
+	if at, present := current["evaluated_at"]; !present || at != nil {
+		t.Errorf("pending evaluation evaluated_at = %#v (present %v), want null", at, present)
+	}
+	status, history := c.doJSON(t, http.MethodGet, "/runs/"+runID+"/evaluation/revisions", "")
+	revisions, _ := history["revisions"].([]any)
+	if status != http.StatusOK || len(revisions) != 1 {
+		t.Fatalf("revisions status = %d count = %d, want 200 and 1", status, len(revisions))
+	}
+	if at, present := revisions[0].(map[string]any)["evaluated_at"]; !present || at != nil {
+		t.Errorf("pending revision evaluated_at = %#v (present %v), want null", at, present)
+	}
+}
+
 func TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -653,19 +683,24 @@ func availableTraceCitationExcerpts(t *testing.T, body evaluationBody) map[strin
 
 func assertStaleTraceCitationsKeepTheirExcerpts(t *testing.T, after evaluationBody, excerpts map[string]string) {
 	t.Helper()
+	stale := 0
 	for _, r := range after.CriterionResults {
 		for _, e := range r.Evidence {
 			if e.Kind != "trace_event" {
 				continue
 			}
+			stale++
 			if e.Available {
 				t.Errorf("criterion %s still claims its citation resolves after the event was dropped", r.CriterionID)
 			}
-			if e.Excerpt != excerpts[r.CriterionID] {
+			if e.Excerpt == "" || e.Excerpt != excerpts[r.CriterionID] {
 				t.Errorf("criterion %s lost its excerpt when the event went; a stale citation keeps it, labelled: %q",
 					r.CriterionID, e.Excerpt)
 			}
 		}
+	}
+	if stale != 2 {
+		t.Fatalf("%d trace_event citations survived the dropped event, want the 2 the judge cited", stale)
 	}
 }
 
@@ -1124,6 +1159,9 @@ func TestAnOutputTheUserDeletedIsAHoleInTheEvidenceAndNotAnEmptyRun(t *testing.T
 			"could not be read: that is the claim 02:EVAL-001 forbids")
 	}
 
+	if len(body.CriterionResults) != 2 {
+		t.Fatalf("got %d criterion results, want the 2 the judge returned", len(body.CriterionResults))
+	}
 	for _, r := range body.CriterionResults {
 		if r.Result == "passed" {
 			t.Errorf("criterion %s passed on incomplete evidence", r.CriterionID)
@@ -1162,5 +1200,38 @@ func TestARunWhoseRecorderNeverSpokeCannotBeJudgedAPass(t *testing.T) {
 	}
 	if body.Overall == "met" {
 		t.Error("a pass was recorded on a run whose trace is entirely absent")
+	}
+}
+
+func TestARecoveredEvaluationDoesNotClaimEvidenceWhoseOutputIsGone(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-recover-absent")
+	skillID := seedSkill(t, pool, c.workspaceID, "eval-recover-absent")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+	seedFinalOutput(t, pool, c.workspaceID, runID, "done")
+	if tag, err := pool.Exec(context.Background(),
+		`UPDATE artifacts SET deleted_at = now() WHERE run_id = $1 AND kind = 'run_output'`, mustUUID(t, runID)); err != nil || tag.RowsAffected() == 0 {
+		t.Fatalf("delete an output: rows=%d err=%v", tag.RowsAffected(), err)
+	}
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO evaluations (workspace_id, run_id, status, overall, evidence_complete, created_at)
+		VALUES ($1, $2, 'pending', 'undetermined', false, now() - interval '20 minutes')`,
+		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.evaluations.RecoverPending(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	var complete bool
+	if err := pool.QueryRow(context.Background(),
+		"SELECT evidence_complete FROM evaluations WHERE run_id = $1 AND superseded_at IS NULL",
+		mustUUID(t, runID)).Scan(&complete); err != nil {
+		t.Fatal(err)
+	}
+	if complete {
+		t.Error("the recovered evaluation claims complete evidence although the run's output was deleted")
 	}
 }

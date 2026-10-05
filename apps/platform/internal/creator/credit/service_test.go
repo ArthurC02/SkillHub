@@ -23,22 +23,23 @@ func (fakeTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, err
 func (fakeTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row { return nil }
 
 type fakeStore struct {
-	balances map[string]int64
-	events   map[string]string
-	applied  map[string]bool
-	stats    map[CostKind]Statistics
-	windows  map[CostKind][]int64
-	nextID   int
-	swept    int
+	balances   map[string]int64
+	events     map[string]string
+	applied    map[string]bool
+	stats      map[CostKind]Statistics
+	recomputed map[CostKind]Statistics
+	nextID     int
+	swept      int
+	sweepErr   error
 }
 
 func newFakeStore() *fakeStore {
 	return &fakeStore{
-		balances: map[string]int64{},
-		events:   map[string]string{},
-		applied:  map[string]bool{},
-		stats:    map[CostKind]Statistics{},
-		windows:  map[CostKind][]int64{},
+		balances:   map[string]int64{},
+		events:     map[string]string{},
+		applied:    map[string]bool{},
+		stats:      map[CostKind]Statistics{},
+		recomputed: map[CostKind]Statistics{},
 	}
 }
 
@@ -73,10 +74,14 @@ func (f *fakeStore) ApplyDebit(ctx context.Context, tx DBTX, d DebitEntry) (int6
 	return f.balances[key], false, nil
 }
 
-func (f *fakeStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (int64, error) {
+func (f *fakeStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (int64, bool, error) {
 	key := idKey(g.UserID)
+	if f.applied[g.IdempotencyKey] {
+		return f.balances[key], false, nil
+	}
+	f.applied[g.IdempotencyKey] = true
 	f.balances[key] += g.Credits
-	return f.balances[key], nil
+	return f.balances[key], true, nil
 }
 
 func (f *fakeStore) RecentStatistics(ctx context.Context, kind CostKind) (Statistics, error) {
@@ -88,16 +93,7 @@ func (f *fakeStore) RecentStatistics(ctx context.Context, kind CostKind) (Statis
 }
 
 func (f *fakeStore) RecomputeStatistics(ctx context.Context, kind CostKind, windowStart, windowEnd time.Time) (Statistics, error) {
-	samples := f.windows[kind]
-	var max int64
-	for _, v := range samples {
-		if v > max {
-			max = v
-		}
-	}
-	stats := Statistics{SampleCount: len(samples), MaxUsdMicros: max}
-	f.stats[kind] = stats
-	return stats, nil
+	return f.recomputed[kind], nil
 }
 
 func testConfig() Config {
@@ -270,13 +266,9 @@ func TestCanStartUsesP95WithMarkupWhenEnoughSamples(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	billed, err := BilledMicros(30_000_000, 13000)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := CreditsForMicros(billed, 1000)
+	const want = 39_000
 	if check.Threshold != want {
-		t.Fatalf("Threshold = %d, want %d", check.Threshold, want)
+		t.Fatalf("Threshold = %d, want %d (30 USD p95 at 130%% markup, 1000 micros per credit)", check.Threshold, want)
 	}
 	if check.Estimated {
 		t.Fatal("a threshold derived from MinStatSamples or more samples must not be marked Estimated")
@@ -393,6 +385,59 @@ func TestGrantAppliesToBalance(t *testing.T) {
 	}
 }
 
+type execCountingTx struct {
+	fakeTx
+	execs int
+}
+
+func (c *execCountingTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	c.execs++
+	return c.fakeTx.Exec(ctx, sql, args...)
+}
+
+func TestReplayingAGrantKeyGrantsAndAuditsOnce(t *testing.T) {
+	s := &Service{Store: newFakeStore(), Config: testConfig()}
+	tx := &execCountingTx{}
+	in := GrantInput{
+		UserID: testUser(30), EntryKind: EntryGrant, Credits: 50, Reason: "beta reward",
+		OperatorID: testUser(99), IdempotencyKey: "grant:replayed",
+	}
+	first, err := s.Grant(context.Background(), tx, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := s.Grant(context.Background(), tx, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first != 50 || second != 50 {
+		t.Fatalf("balances after the grant and its replay = %d and %d, want 50 and 50", first, second)
+	}
+	if tx.execs != 1 {
+		t.Fatalf("audit writes after the grant and its replay = %d, want 1", tx.execs)
+	}
+}
+
+func TestDistinctGrantKeysEachGrantAndAudit(t *testing.T) {
+	s := &Service{Store: newFakeStore(), Config: testConfig()}
+	tx := &execCountingTx{}
+	in := GrantInput{
+		UserID: testUser(31), EntryKind: EntryGrant, Credits: 50, Reason: "beta reward",
+		OperatorID: testUser(99), IdempotencyKey: "grant:one",
+	}
+	if _, err := s.Grant(context.Background(), tx, in); err != nil {
+		t.Fatal(err)
+	}
+	in.IdempotencyKey = "grant:two"
+	balance, err := s.Grant(context.Background(), tx, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if balance != 100 || tx.execs != 2 {
+		t.Fatalf("after two keys: balance %d, audit writes %d; want 100 and 2", balance, tx.execs)
+	}
+}
+
 func TestFactsBlockPurgedAccount(t *testing.T) {
 	store := newFakeStore()
 	user := testUser(11)
@@ -451,9 +496,9 @@ func TestFactsBlockPurgedAccountOnCharge(t *testing.T) {
 	}
 }
 
-func TestRecomputeStatisticsWritesAndReturnsTheResult(t *testing.T) {
+func TestRecomputeStatisticsReturnsWhatTheStoreComputed(t *testing.T) {
 	store := newFakeStore()
-	store.windows[KindCreationStep] = []int64{10, 20, 30, 40, 50}
+	store.recomputed[KindCreationStep] = Statistics{SampleCount: 5, MaxUsdMicros: 50}
 	s := &Service{Store: store, Config: testConfig()}
 	got, err := s.RecomputeStatistics(context.Background(), KindCreationStep, 24*time.Hour)
 	if err != nil {
@@ -461,9 +506,6 @@ func TestRecomputeStatisticsWritesAndReturnsTheResult(t *testing.T) {
 	}
 	if got.SampleCount != 5 || got.MaxUsdMicros != 50 {
 		t.Fatalf("RecomputeStatistics = %+v, want SampleCount=5 MaxUsdMicros=50", got)
-	}
-	if stored := store.stats[KindCreationStep]; stored != got {
-		t.Fatalf("the computed statistics were not written back: %+v", stored)
 	}
 }
 
@@ -493,6 +535,48 @@ func TestRecomputeStatisticsSweepsSessionSummariesOnlyForTheSessionKind(t *testi
 	}
 }
 
+func TestRecomputeStatisticsStillRunsWhenTheSweepFails(t *testing.T) {
+	store := newFakeStore()
+	store.sweepErr = errors.New("one session could not be summarized")
+	store.recomputed[KindCreationSession] = Statistics{SampleCount: 3, MaxUsdMicros: 30}
+	config := testConfig()
+	config.SessionIdle = time.Hour
+	s := &Service{Store: store, Config: config}
+
+	got, err := s.RecomputeStatistics(context.Background(), KindCreationSession, 24*time.Hour)
+
+	if !errors.Is(err, store.sweepErr) {
+		t.Fatalf("error = %v, want it to carry the sweep failure so the job is retried", err)
+	}
+	if got.SampleCount != 3 || got.MaxUsdMicros != 30 {
+		t.Fatalf("statistics after a failed sweep = %+v, want the 3 samples that exist", got)
+	}
+}
+
+func TestRecomputeStatisticsReportsBothFailuresWhenSweepAndRecomputeFail(t *testing.T) {
+	store := newFakeStore()
+	store.sweepErr = errors.New("sweep failed")
+	recomputeErr := errors.New("recompute failed")
+	config := testConfig()
+	config.SessionIdle = time.Hour
+	s := &Service{Store: &recomputeFailingStore{fakeStore: store, err: recomputeErr}, Config: config}
+
+	_, err := s.RecomputeStatistics(context.Background(), KindCreationSession, 24*time.Hour)
+
+	if !errors.Is(err, store.sweepErr) || !errors.Is(err, recomputeErr) {
+		t.Fatalf("error = %v, want both the sweep and the recompute failure", err)
+	}
+}
+
+type recomputeFailingStore struct {
+	*fakeStore
+	err error
+}
+
+func (r *recomputeFailingStore) RecomputeStatistics(context.Context, CostKind, time.Time, time.Time) (Statistics, error) {
+	return Statistics{}, r.err
+}
+
 func TestServiceMethodsFailClosedWithoutAStore(t *testing.T) {
 	s := &Service{}
 	if _, err := s.Charge(context.Background(), nil, ChargeInput{}); !errors.Is(err, ErrUnavailable) {
@@ -516,7 +600,7 @@ func (f *fakeStore) SummarizeSession(context.Context, DBTX, pgtype.UUID) error {
 
 func (f *fakeStore) SweepSessionSummaries(context.Context, time.Time, time.Time) (int64, error) {
 	f.swept++
-	return 0, nil
+	return 0, f.sweepErr
 }
 
 func TestAccountChecksReadThroughTheCallersTransaction(t *testing.T) {

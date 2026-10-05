@@ -34,6 +34,8 @@ func managerAt(t *testing.T, now time.Time) (*Manager, *reclaimDriver) {
 	return m, drv
 }
 
+const staleHandle = "5f0c9e2a7b1d4c3e8a6f2b9d0e1c7a34"
+
 func TestANodeTakesBackASlotNobodyReleased(t *testing.T) {
 	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
 	for _, tc := range []struct {
@@ -51,11 +53,11 @@ func TestANodeTakesBackASlotNobodyReleased(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m, drv := managerAt(t, now)
-			e := &entry{run: ProviderRun{ProviderRunID: "run-1", State: tc.state}}
+			e := &entry{run: ProviderRun{ProviderRunID: staleHandle, State: tc.state}}
 			if tc.state.Terminal() {
 				e.run.FinishedAt = now.Add(-tc.finishedAgo)
 			}
-			m.runs["run-1"] = e
+			m.runs[staleHandle] = e
 
 			m.ReclaimStale()
 
@@ -77,7 +79,7 @@ func TestANodeTakesBackASlotNobodyReleased(t *testing.T) {
 func TestATerminalRunWithNoFinishTimeIsLeftAlone(t *testing.T) {
 	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
 	m, drv := managerAt(t, now)
-	m.runs["run-1"] = &entry{run: ProviderRun{ProviderRunID: "run-1", State: StateCompleted}}
+	m.runs[staleHandle] = &entry{run: ProviderRun{ProviderRunID: staleHandle, State: StateCompleted}}
 
 	m.ReclaimStale()
 

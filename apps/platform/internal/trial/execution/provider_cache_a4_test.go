@@ -78,3 +78,24 @@ func TestCapabilityStillCachesTheAnswerAndTheFailure(t *testing.T) {
 		t.Errorf("probes after Refresh = %d, want 2; the cache outlived the thing that clears it", hits)
 	}
 }
+
+func TestACapabilityReadTheCallerAbandonedIsNotCached(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"provider":"steady","runtimes":[],"max_resources":{},"isolation":{"level":"gvisor"}}`))
+	}))
+	defer srv.Close()
+	p := NewProvider("steady", srv.URL, "")
+	registry := NewRegistry(p)
+	registry.TTL = time.Minute
+	abandoned, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if _, err := registry.Capability(abandoned, p); err == nil {
+		t.Fatal("a read whose caller had gone away reported a capability")
+	}
+
+	if _, err := registry.Capability(context.Background(), p); err != nil {
+		t.Fatalf("the next caller got %v; one abandoned read must not mark the node unreachable", err)
+	}
+}

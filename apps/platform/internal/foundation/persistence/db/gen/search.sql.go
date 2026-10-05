@@ -240,6 +240,25 @@ func (q *Queries) GetCatalogReferenceFacts(ctx context.Context, arg GetCatalogRe
 	return i, err
 }
 
+const getSearchDocumentEnrichedText = `-- name: GetSearchDocumentEnrichedText :one
+SELECT enriched_summary, task_examples, tags
+FROM search_documents
+WHERE skill_id = $1
+`
+
+type GetSearchDocumentEnrichedTextRow struct {
+	EnrichedSummary string
+	TaskExamples    string
+	Tags            []byte
+}
+
+func (q *Queries) GetSearchDocumentEnrichedText(ctx context.Context, skillID pgtype.UUID) (GetSearchDocumentEnrichedTextRow, error) {
+	row := q.db.QueryRow(ctx, getSearchDocumentEnrichedText, skillID)
+	var i GetSearchDocumentEnrichedTextRow
+	err := row.Scan(&i.EnrichedSummary, &i.TaskExamples, &i.Tags)
+	return i, err
+}
+
 const getSearchSnapshot = `-- name: GetSearchSnapshot :one
 SELECT skill_id, latest_version_id, name, summary, enriched_summary, task_examples, tags, limitations,
        enrichment_status, listable, exposure_digest
@@ -369,8 +388,13 @@ WITH vec AS (
             OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
                = ANY($3::text[]))
       AND s.embedding IS NOT NULL
+      AND ($4::bool IS NULL OR s.has_script = $4::bool)
+      AND ($5::bool IS NULL OR (s.verified_at IS NOT NULL) = $5::bool)
+      AND ($6::text IS NULL OR s.agent_runtime = $6::text)
+      AND ($7::bool IS NULL OR s.curated = $7::bool)
+      AND ($8::text IS NULL OR s.category = $8::text)
     ORDER BY s.embedding <=> $1::vector ASC
-    LIMIT $4::int
+    LIMIT $9::int
 ),
 fts AS (
     SELECT s.skill_id, (s.embedding IS NULL)::bool AS unembedded,
@@ -380,9 +404,14 @@ fts AS (
             OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
                = ANY($3::text[]))
       AND s.listable
-      AND s.tsv @@ websearch_to_tsquery('english', $5::text)
-    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $5::text)) DESC
-    LIMIT $6::int
+      AND s.tsv @@ websearch_to_tsquery('english', $10::text)
+      AND ($4::bool IS NULL OR s.has_script = $4::bool)
+      AND ($5::bool IS NULL OR (s.verified_at IS NOT NULL) = $5::bool)
+      AND ($6::text IS NULL OR s.agent_runtime = $6::text)
+      AND ($7::bool IS NULL OR s.curated = $7::bool)
+      AND ($8::text IS NULL OR s.category = $8::text)
+    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $10::text)) DESC
+    LIMIT $11::int
 ),
 lex AS (
     SELECT s.skill_id, (s.embedding IS NULL)::bool AS unembedded,
@@ -392,9 +421,14 @@ lex AS (
             OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
                = ANY($3::text[]))
       AND s.listable
-      AND s.bigram @@ to_tsquery('simple', nullif($7::text, ''))
-    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', nullif($7::text, ''))) DESC
-    LIMIT $8::int
+      AND s.bigram @@ to_tsquery('simple', nullif($12::text, ''))
+      AND ($4::bool IS NULL OR s.has_script = $4::bool)
+      AND ($5::bool IS NULL OR (s.verified_at IS NOT NULL) = $5::bool)
+      AND ($6::text IS NULL OR s.agent_runtime = $6::text)
+      AND ($7::bool IS NULL OR s.curated = $7::bool)
+      AND ($8::text IS NULL OR s.category = $8::text)
+    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', nullif($12::text, ''))) DESC
+    LIMIT $13::int
 )
 SELECT skill_id, unembedded, distance, false AS lexical FROM vec
 UNION ALL
@@ -407,6 +441,11 @@ type ListHybridSearchCandidatesParams struct {
 	QueryEmbedding      *pgvector.Vector
 	CatalogWorkspaceIds []pgtype.UUID
 	ExposedKeys         []string
+	HasScript           *bool
+	SpecValidated       *bool
+	AgentRuntime        *string
+	Curated             *bool
+	Category            *string
 	VectorCandidates    int32
 	Query               string
 	FulltextCandidates  int32
@@ -426,6 +465,11 @@ func (q *Queries) ListHybridSearchCandidates(ctx context.Context, arg ListHybrid
 		arg.QueryEmbedding,
 		arg.CatalogWorkspaceIds,
 		arg.ExposedKeys,
+		arg.HasScript,
+		arg.SpecValidated,
+		arg.AgentRuntime,
+		arg.Curated,
+		arg.Category,
 		arg.VectorCandidates,
 		arg.Query,
 		arg.FulltextCandidates,
@@ -929,8 +973,11 @@ SELECT s.skill_id, s.workspace_id, s.name, s.summary
 FROM search_documents s
 WHERE s.workspace_id = $1
   AND NOT s.generated
-  AND s.tsv @@ websearch_to_tsquery('english', $3::text)
-ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $3::text)) DESC
+  AND (s.tsv @@ websearch_to_tsquery('english', $3::text)
+       OR s.bigram @@ to_tsquery('simple', nullif($4::text, '')))
+ORDER BY GREATEST(
+    ts_rank_cd(s.tsv, websearch_to_tsquery('english', $3::text)),
+    ts_rank_cd(s.bigram, to_tsquery('simple', nullif($4::text, '')))) DESC
 LIMIT $2
 `
 
@@ -938,6 +985,7 @@ type SearchSkillsParams struct {
 	WorkspaceID pgtype.UUID
 	Limit       int32
 	Query       string
+	BigramQuery string
 }
 
 type SearchSkillsRow struct {
@@ -948,7 +996,12 @@ type SearchSkillsRow struct {
 }
 
 func (q *Queries) SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]SearchSkillsRow, error) {
-	rows, err := q.db.Query(ctx, searchSkills, arg.WorkspaceID, arg.Limit, arg.Query)
+	rows, err := q.db.Query(ctx, searchSkills,
+		arg.WorkspaceID,
+		arg.Limit,
+		arg.Query,
+		arg.BigramQuery,
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -36,9 +36,14 @@ def test_a_control_plane_release_pins_every_image_by_tag_and_digest():
     env = render.read_settings(render.release_env("control-plane", RELEASE, SETTINGS, resolve=published))
     assert env["SKILLHUB_ROLE"] == "control-plane"
     assert env["SKILLHUB_RELEASE"] == RELEASE
-    assert env["SKILLHUB_REPOSITORY"] == render.DEFAULT_REPOSITORY
-    for key, repository in render.ROLES["control-plane"]["images"].items():
-        assert env[key] == "ghcr.io/arthurc02/%s:%s@%s" % (repository, RELEASE, DIGEST), env[key]
+    assert env["SKILLHUB_REPOSITORY"] == "https://github.com/ArthurC02/SkillHub"
+    pinned_images = {
+        "SKILLHUB_WEB_IMAGE": "ghcr.io/arthurc02/skillhub-web:%s@%s" % (RELEASE, DIGEST),
+        "SKILLHUB_PLATFORM_IMAGE": "ghcr.io/arthurc02/skillhub-platform:%s@%s" % (RELEASE, DIGEST),
+        "SKILLHUB_LLM_IMAGE": "ghcr.io/arthurc02/skillhub-llm:%s@%s" % (RELEASE, DIGEST),
+        "SKILLHUB_POSTGRES_IMAGE": "ghcr.io/arthurc02/skillhub-postgres:%s@%s" % (RELEASE, DIGEST),
+    }
+    assert {key: env[key] for key in env if key.endswith("_IMAGE")} == pinned_images
     assert env["SKILLHUB_DOMAIN"] == "skillhub.example"
 
 

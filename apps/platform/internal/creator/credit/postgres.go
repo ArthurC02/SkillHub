@@ -1,9 +1,12 @@
 package credit
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -129,10 +132,10 @@ func (s *PostgresStore) ApplyDebit(ctx context.Context, tx DBTX, d DebitEntry) (
 	return balance, false, nil
 }
 
-func (s *PostgresStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (int64, error) {
+func (s *PostgresStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (int64, bool, error) {
 	q := s.q(tx)
 	if err := q.EnsureCreditAccount(ctx, g.UserID); err != nil {
-		return 0, fmt.Errorf("credit: ensure account: %w", err)
+		return 0, false, fmt.Errorf("credit: ensure account: %w", err)
 	}
 	_, err := q.InsertCreditEntry(ctx, gen.InsertCreditEntryParams{
 		UserID:         g.UserID,
@@ -143,18 +146,42 @@ func (s *PostgresStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (
 	})
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) && !pgconv.IsUniqueViolation(err) {
-			return 0, fmt.Errorf("credit: insert grant: %w", err)
+			return 0, false, fmt.Errorf("credit: insert grant: %w", err)
 		}
-		return s.balanceIn(ctx, q, g.UserID)
+		return s.replayedGrant(ctx, q, g)
 	}
 	balance, err := q.AdjustCreditBalance(ctx, gen.AdjustCreditBalanceParams{
 		DeltaCredits: g.Credits,
 		UserID:       g.UserID,
 	})
-	if err != nil {
-		return 0, fmt.Errorf("credit: apply grant to balance: %w", err)
+	if isBalanceCheckViolation(err) {
+		return 0, false, ErrBalanceOutOfRange
 	}
-	return balance, nil
+	if err != nil {
+		return 0, false, fmt.Errorf("credit: apply grant to balance: %w", err)
+	}
+	return balance, true, nil
+}
+
+func (s *PostgresStore) replayedGrant(ctx context.Context, q *gen.Queries, g GrantEntry) (int64, bool, error) {
+	earlier, err := q.GetCreditEntryByIdempotencyKey(ctx, gen.GetCreditEntryByIdempotencyKeyParams{
+		UserID: g.UserID, IdempotencyKey: g.IdempotencyKey,
+	})
+	if err != nil {
+		return 0, false, fmt.Errorf("credit: read replayed grant: %w", err)
+	}
+	if earlier.Kind != string(g.EntryKind) || earlier.DeltaCredits != g.Credits {
+		return 0, false, ErrGrantKeyReused
+	}
+	balance, err := s.balanceIn(ctx, q, g.UserID)
+	return balance, false, err
+}
+
+const checkViolationCode = "23514"
+
+func isBalanceCheckViolation(err error) bool {
+	pgErr, ok := errors.AsType[*pgconn.PgError](err)
+	return ok && pgErr.Code == checkViolationCode && pgErr.TableName == "credit_accounts"
 }
 
 func (s *PostgresStore) balanceIn(ctx context.Context, q *gen.Queries, userID pgtype.UUID) (int64, error) {
@@ -254,14 +281,20 @@ func (s *PostgresStore) summarizeSessions(ctx context.Context, q *gen.Queries, s
 	if err != nil {
 		return 0, err
 	}
+	bySession := sessionStepsByID(rows)
+	ordered := slices.SortedFunc(maps.Keys(bySession), func(a, b pgtype.UUID) int {
+		return bytes.Compare(a.Bytes[:], b.Bytes[:])
+	})
 	var written int64
-	for sessionID, steps := range sessionStepsByID(rows) {
-		if err := q.UpsertSessionCostSummary(ctx, summarizeSession(sessionID, steps).upsert()); err != nil {
-			return written, err
+	var failures error
+	for _, sessionID := range ordered {
+		if err := q.UpsertSessionCostSummary(ctx, summarizeSession(sessionID, bySession[sessionID]).upsert()); err != nil {
+			failures = errors.Join(failures, fmt.Errorf("credit: summarize session %s: %w", pgconv.UUIDString(sessionID), err))
+			continue
 		}
 		written++
 	}
-	return written, nil
+	return written, failures
 }
 
 func nullString(s string) *string {

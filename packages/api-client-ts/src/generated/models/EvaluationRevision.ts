@@ -39,9 +39,9 @@ export interface EvaluationRevision {
      */
     overall: EvaluationRevisionOverallEnum;
     /**
-     * 
+     * Null while the evaluation is still pending.
      */
-    evaluatedAt: Date;
+    evaluatedAt: Date | null;
     /**
      * When a later re-evaluation replaced this one. Null on the current
      * revision, and exactly one revision has it null.
@@ -89,7 +89,7 @@ export function EvaluationRevisionFromJSONTyped(json: any, ignoreDiscriminator: 
         'judgePromptVersion': json['judge_prompt_version'],
         'rubricVersion': json['rubric_version'] == null ? undefined : json['rubric_version'],
         'overall': json['overall'],
-        'evaluatedAt': (json['evaluated_at'] == null ? json['evaluated_at'] : parseDateTime(json['evaluated_at'])),
+        'evaluatedAt': (json['evaluated_at'] == null ? null : parseDateTime(json['evaluated_at'])),
         'supersededAt': (json['superseded_at'] == null ? null : parseDateTime(json['superseded_at'])),
     };
 }

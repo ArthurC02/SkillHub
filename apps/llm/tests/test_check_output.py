@@ -108,6 +108,14 @@ def test_a_missing_file_exits_2_and_names_the_path(capsys, tmp_path):
     assert "does-not-exist.txt" in out
 
 
+def test_a_file_that_is_not_utf8_exits_2_and_says_so(capsys, tmp_path):
+    target = tmp_path / "latin1.txt"
+    target.write_bytes(b"\xff\xfe\x00")
+    code, out = run_main(["--max-chars", "5", str(target)], capsys=capsys)
+    assert code == 2
+    assert out.startswith(f"cannot decode {target} as UTF-8")
+
+
 def test_no_check_flags_at_all_exits_2(capsys, tmp_path):
     target = tmp_path / "draft.txt"
     target.write_text("anything", encoding="utf-8")

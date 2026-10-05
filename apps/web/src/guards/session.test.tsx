@@ -17,6 +17,7 @@ import { WorkspaceSkills } from "../features/workspace/skills/WorkspaceSkills.pa
 import { useSkillVersions } from "../features/skill/skills.service";
 import { useTrace } from "../features/runs/trace.service";
 import { RUN, SKILL, TEST_CASE, platformResponse } from "../testing/fixtures/platform";
+import { DEFAULT_WAIT_MS, pollUntil } from "../testing/poll";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -86,15 +87,8 @@ async function render(node: ReactNode, settled: () => boolean) {
 // Pumps an act() cycle before each check: without IS_REACT_ACT_ENVIRONMENT,
 // a state update delivered during the initial act is not flushed to the DOM
 // until another act runs.
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-    if (done()) return;
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs, { flushBeforeFirstCheck: true });
 }
 
 const text = () => container.textContent ?? "";
@@ -240,6 +234,7 @@ test("SEC/§2.2 the import screen states the rules it is enforced by, before the
           max_files: 813,
           max_file_bytes: 4 << 20,
           max_path_depth: 5,
+          max_skills_per_import: 37,
           allowed_hosts: ["example.test", "sources.example.test"],
           note: "",
         })
@@ -256,6 +251,9 @@ test("SEC/§2.2 the import screen states the rules it is enforced by, before the
     ["the file count", "最多 813 個檔案"],
     ["the per-file ceiling", "單一檔案最大 4 MB"],
     ["the path depth", "路徑最深 5 層"],
+    ["the number of Skills one import may create", "一次匯入最多建立 37 個 Skill"],
+    ["that a plugin is a source shape", "一個 Agent Plugin（有 plugin.json"],
+    ["that a tree of skills is a source shape", "一棵含多個 Skill 資料夾的目錄"],
   ]) {
     expect(text(), `${what} is not on screen, so it is learned by being refused`).toContain(
       sentence,

@@ -55,6 +55,75 @@ func TestAForkCarriesTheLicensingHoldItWasForkedFrom(t *testing.T) {
 	}
 }
 
+func TestAForkRacingAHoldWaitsForItAndCarriesIt(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	ctx := context.Background()
+
+	curator := a.login(t, "hold-race-curator")
+	markCatalog(t, pool, curator.workspaceID)
+	source := importPackage(t, pool, a.packages, curator, "hold-race-writer", true)
+
+	hold, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = hold.Rollback(ctx) }()
+	var holdPID int32
+	if err := hold.QueryRow(ctx, "SELECT pg_backend_pid()").Scan(&holdPID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := hold.Exec(ctx, "UPDATE skills SET access_restriction = 'license-review' WHERE id = $1",
+		mustUUID(t, source)); err != nil {
+		t.Fatal(err)
+	}
+
+	forker := a.login(t, "hold-race-forker")
+	type forked struct {
+		code int
+		body map[string]any
+	}
+	done := make(chan forked, 1)
+	go func() {
+		code, body := forker.doJSON(t, http.MethodPost, "/skills/"+source+"/fork", "{}")
+		done <- forked{code, body}
+	}()
+
+	var result forked
+	observed := false
+	for !observed {
+		select {
+		case result = <-done:
+			observed = true
+		default:
+			var n int
+			if err := pool.QueryRow(ctx,
+				"SELECT count(*) FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid))", holdPID).Scan(&n); err != nil {
+				t.Fatal(err)
+			}
+			observed = n > 0
+		}
+	}
+	if err := hold.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if result.body == nil {
+		result = <-done
+	}
+	if result.code != http.StatusCreated {
+		t.Fatalf("POST fork: got %d, body %v", result.code, result.body)
+	}
+	forkID, _ := result.body["skill_id"].(string)
+	var restriction *string
+	if err := pool.QueryRow(ctx, "SELECT access_restriction FROM skills WHERE id = $1",
+		mustUUID(t, forkID)).Scan(&restriction); err != nil {
+		t.Fatal(err)
+	}
+	if restriction == nil || *restriction != "license-review" {
+		t.Fatalf("a fork that raced the hold has access_restriction %v, want license-review", restriction)
+	}
+}
+
 func TestADeletedSkillStopsAnsweringAboutItsVersions(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

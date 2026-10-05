@@ -820,11 +820,16 @@ func (q *Queries) LockSkillForOperatorWrite(ctx context.Context, id pgtype.UUID)
 
 const markAccountPurgeStarted = `-- name: MarkAccountPurgeStarted :execrows
 UPDATE users SET purge_started_at = coalesce(purge_started_at, now()), updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL AND deletion_requested_at IS NOT NULL
+WHERE id = $1 AND deleted_at IS NULL AND deletion_requested_at <= $2
 `
 
-func (q *Queries) MarkAccountPurgeStarted(ctx context.Context, id pgtype.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, markAccountPurgeStarted, id)
+type MarkAccountPurgeStartedParams struct {
+	ID     pgtype.UUID
+	Cutoff pgtype.Timestamptz
+}
+
+func (q *Queries) MarkAccountPurgeStarted(ctx context.Context, arg MarkAccountPurgeStartedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markAccountPurgeStarted, arg.ID, arg.Cutoff)
 	if err != nil {
 		return 0, err
 	}

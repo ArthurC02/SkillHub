@@ -8,7 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
 )
 
 type exposureWorld struct {
@@ -56,10 +59,17 @@ func (w exposureWorld) exposureCase(t *testing.T) map[string]any {
 	return body
 }
 
-func (w exposureWorld) review(t *testing.T, releaseID string, sequence int, decision, reason string) (int, map[string]any) {
+func (w exposureWorld) review(t *testing.T, releaseID string, sequence int, digest, decision, reason string) (int, map[string]any) {
 	t.Helper()
 	return postJSON(t, w.operator, w.casePath(), fmt.Sprintf(
-		`{"release_id":%q,"expected_sequence":%d,"decision":%q,"reason":%q}`, releaseID, sequence, decision, reason))
+		`{"release_id":%q,"expected_sequence":%d,"expected_snapshot_digest":%q,"decision":%q,"reason":%q}`,
+		releaseID, sequence, digest, decision, reason))
+}
+
+func snapshotDigestOf(c map[string]any) string {
+	snapshot, _ := c["snapshot"].(map[string]any)
+	digest, _ := snapshot["digest"].(string)
+	return digest
 }
 
 func (w exposureWorld) reviewCurrent(t *testing.T, decision, reason string) (int, map[string]any) {
@@ -67,7 +77,7 @@ func (w exposureWorld) reviewCurrent(t *testing.T, decision, reason string) (int
 	c := w.exposureCase(t)
 	release, _ := c["release"].(map[string]any)
 	sequence, _ := c["sequence"].(float64)
-	return w.review(t, release["release_id"].(string), int(sequence), decision, reason)
+	return w.review(t, release["release_id"].(string), int(sequence), snapshotDigestOf(c), decision, reason)
 }
 
 func (w exposureWorld) allowRedistribution(t *testing.T) {
@@ -272,6 +282,7 @@ func TestAReviewThatSawStaleFactsIsRefused(t *testing.T) {
 	w.allowRedistribution(t)
 	c := w.exposureCase(t)
 	releaseID := c["release"].(map[string]any)["release_id"].(string)
+	digest := snapshotDigestOf(c)
 
 	for _, tc := range []struct {
 		name       string
@@ -288,17 +299,109 @@ func TestAReviewThatSawStaleFactsIsRefused(t *testing.T) {
 		{"an unknown decision", releaseID, 0, "maybe", "fine", http.StatusUnprocessableEntity, "decision_unknown"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			code, body := w.review(t, tc.releaseID, tc.sequence, tc.decision, tc.reason)
+			code, body := w.review(t, tc.releaseID, tc.sequence, digest, tc.decision, tc.reason)
 			if code != tc.wantCode || body["reason"] != tc.wantReason {
 				t.Errorf("got %d %v, want %d %s", code, body, tc.wantCode, tc.wantReason)
 			}
 		})
 	}
-	if code, _ := w.review(t, releaseID, 0, "approved", "first look"); code != http.StatusOK {
+	if code, _ := w.review(t, releaseID, 0, digest, "approved", "first look"); code != http.StatusOK {
 		t.Fatalf("the first review at sequence 0: %d", code)
 	}
-	if code, body := w.review(t, releaseID, 0, "revoked", "a second reviewer who did not see the first"); code != http.StatusConflict || body["reason"] != "review_stale" {
+	if code, body := w.review(t, releaseID, 0, digest, "revoked", "a second reviewer who did not see the first"); code != http.StatusConflict || body["reason"] != "review_stale" {
 		t.Errorf("a second review from the same premise: %d %v, want 409 review_stale", code, body)
+	}
+}
+
+func TestAnApprovalNamesTheSnapshotTheReviewerSawAndARevocationNeedsNoSuchProof(t *testing.T) {
+	w := newExposureWorld(t, "digest")
+	w.allowRedistribution(t)
+	c := w.exposureCase(t)
+	releaseID := c["release"].(map[string]any)["release_id"].(string)
+	seen := snapshotDigestOf(c)
+	if seen == "" {
+		t.Fatal("the case carries no snapshot digest; the rest proves nothing")
+	}
+	reviews := func() int {
+		return countRow(t, w.pool, `SELECT count(*) FROM exposure_reviews WHERE publication_id = (SELECT id FROM publications WHERE skill_id = $1)`,
+			mustUUID(t, w.skillID))
+	}
+
+	if _, err := w.pool.Exec(context.Background(),
+		"UPDATE search_documents SET enriched_summary = enriched_summary || 'changed while the reviewer was reading' WHERE skill_id = $1",
+		mustUUID(t, w.skillID)); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ name, digest string }{
+		{"a digest from before the text changed", seen},
+		{"no digest at all", ""},
+	} {
+		if code, body := w.review(t, releaseID, 0, tc.digest, "approved", "fine"); code != http.StatusConflict || body["reason"] != "review_stale" {
+			t.Errorf("approving with %s: %d %v, want 409 review_stale", tc.name, code, body)
+		}
+	}
+	if n := reviews(); n != 0 {
+		t.Fatalf("a stale approval left %d review rows, want 0", n)
+	}
+
+	fresh := snapshotDigestOf(w.exposureCase(t))
+	if fresh == seen {
+		t.Fatal("the text change did not move the digest; the rest proves nothing")
+	}
+	code, body := w.review(t, releaseID, 0, fresh, "approved", "read the changed text")
+	if code != http.StatusOK || body["exposed"] != true {
+		t.Fatalf("approving the digest the reviewer now sees: %d %v", code, body)
+	}
+	history := objects(t, body["history"])
+	if len(history) != 1 || history[0]["snapshot_digest"] != fresh {
+		t.Errorf("history = %v, want the approval recorded against the digest %s", history, fresh)
+	}
+
+	if code, body := w.review(t, releaseID, 1, seen, "revoked", "revoking needs no proof of what was seen"); code != http.StatusOK || body["exposed"] != false {
+		t.Errorf("revoking with an old digest: %d %v, want 200 and not exposed", code, body)
+	}
+}
+
+func TestAnApprovalJudgesTheSkillAndSnapshotOnlyWhileThePublicationIsLocked(t *testing.T) {
+	w := newExposureWorld(t, "locked")
+	w.allowRedistribution(t)
+	svc := w.a.app.Deps.Publishing.Svc
+	readSkill, readSnapshot := svc.ReadSkill, svc.ReadSearchSnapshot
+	var lockedAtRead []bool
+	var armed bool
+	probe := func() {
+		if !armed {
+			return
+		}
+		tx, err := w.pool.Begin(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = tx.Rollback(context.Background()) }()
+		var id string
+		err = tx.QueryRow(context.Background(),
+			"SELECT id::text FROM publications WHERE skill_id = $1 FOR UPDATE NOWAIT", mustUUID(t, w.skillID)).Scan(&id)
+		lockedAtRead = append(lockedAtRead, err != nil)
+	}
+	svc.ReadSkill = func(ctx context.Context, ws, skill pgtype.UUID) (publishing.SkillFacts, bool, error) {
+		probe()
+		return readSkill(ctx, ws, skill)
+	}
+	svc.ReadSearchSnapshot = func(ctx context.Context, skill pgtype.UUID) (publishing.SearchSnapshot, bool, error) {
+		probe()
+		return readSnapshot(ctx, skill)
+	}
+	t.Cleanup(func() { svc.ReadSkill, svc.ReadSearchSnapshot = readSkill, readSnapshot })
+
+	c := w.exposureCase(t)
+	armed = true
+	code, body := w.review(t, c["release"].(map[string]any)["release_id"].(string), 0, snapshotDigestOf(c), "approved", "fine")
+	armed = false
+	if code != http.StatusOK {
+		t.Fatalf("approving: %d %v", code, body)
+	}
+	if len(lockedAtRead) < 2 || !lockedAtRead[0] || !lockedAtRead[1] {
+		t.Errorf("publication locked at each fact read (snapshot, skill, then the case after commit) = %v, want the first two true", lockedAtRead)
 	}
 }
 
@@ -351,5 +454,104 @@ func TestExposureReviewsAreForOperatorsOnly(t *testing.T) {
 	}
 	if code, _ := postJSON(t, w.author, w.casePath(), `{"release_id":"x","expected_sequence":0,"decision":"approved","reason":"mine"}`); code != http.StatusNotFound {
 		t.Errorf("a member approving their own publication: %d, want 404", code)
+	}
+}
+
+func TestAnExposedSkillsDetailNamesNoPrivateSkillFromTheSamePackage(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	author := a.login(t, freshName("exposed-siblings-author"))
+	operator := a.login(t, freshName("exposed-siblings-operator"))
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	sharedName, privateName := freshName("exposed-siblings-shared"), freshName("exposed-siblings-private")
+	res := importSource(t, a, pool, author, map[string]string{
+		"plugin.json":             conformingPlugin("exposed-siblings"),
+		"skills/shared/SKILL.md":  skillNamed(sharedName),
+		"skills/private/SKILL.md": skillNamed(privateName),
+	}, nil)
+	shared := uuidText(importedAt(t, res, "skills/shared").Skill.ID)
+	registerPublisher(t, author, freshName("exposed-siblings"))
+	code, body := publish(t, author, shared, `{"rights_attested":true}`)
+	if code != http.StatusOK {
+		t.Fatalf("publishing %s: %d %v", sharedName, code, body)
+	}
+	w := exposureWorld{a: a, pool: pool, author: author, operator: operator,
+		skillID: shared, name: sharedName, address: body["address"].(string)}
+	w.enrich(t)
+	if !siblingNamed(t, author, a.URL+"/api/skills/"+shared, privateName) {
+		t.Fatal("the owner does not see the skill that shares the package; the rest proves nothing")
+	}
+
+	w.allowRedistribution(t)
+	w.approveAndAssertExposedToAnyone(t)
+
+	stranger := a.login(t, freshName("exposed-siblings-stranger"))
+	if siblingNamed(t, stranger, a.URL+"/api/skills/"+shared, privateName) {
+		t.Errorf("a stranger reading the exposed skill sees %q, a private skill of its author", privateName)
+	}
+	if !siblingNamed(t, author, a.URL+"/api/skills/"+shared, privateName) {
+		t.Errorf("the author no longer sees %q beside their own exposed skill", privateName)
+	}
+}
+
+func siblingNamed(t *testing.T, c *client, path, name string) bool {
+	t.Helper()
+	var got detail
+	if code := getJSON(t, c.Client, path, &got); code != http.StatusOK {
+		t.Fatalf("GET %s: %d", path, code)
+	}
+	if got.Source == nil {
+		t.Fatalf("GET %s carries no source", path)
+	}
+	for _, sibling := range got.Source.Siblings {
+		if sibling.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func TestAnExposedGeneratedSkillKeepsItsAuthorsPromptToItsAuthor(t *testing.T) {
+	w := newExposureWorld(t, "exposed-prompt")
+	if _, err := w.pool.Exec(context.Background(), `
+		UPDATE skill_sources SET source_type = 'generated', task_description = 'my private brief',
+		       generator_model = 'fixture-model', generator_prompt_version = 'fixture-prompt',
+		       generation_inputs = '{"reference_skills":[]}'::jsonb
+		WHERE id = (SELECT source_id FROM skill_versions WHERE skill_id = $1 ORDER BY version_number DESC LIMIT 1)`,
+		mustUUID(t, w.skillID)); err != nil {
+		t.Fatal(err)
+	}
+	source := func(c *client) map[string]any {
+		var body struct {
+			Source map[string]any `json:"source"`
+		}
+		if code := getJSON(t, c.Client, w.a.URL+"/api/skills/"+w.skillID, &body); code != http.StatusOK {
+			t.Fatalf("GET detail: %d", code)
+		}
+		return body.Source
+	}
+	if got := source(w.author); got["task_description"] != "my private brief" {
+		t.Fatalf("the author's own detail = %v, want the brief; the rest proves nothing", got)
+	}
+
+	w.allowRedistribution(t)
+	w.approveAndAssertExposedToAnyone(t)
+
+	stranger := w.a.login(t, freshName("exposed-prompt-stranger"))
+	got := source(stranger)
+	if _, ok := got["task_description"]; ok {
+		t.Errorf("a stranger reads the author's brief: %v", got["task_description"])
+	}
+	if _, ok := got["generation_inputs"]; ok {
+		t.Errorf("a stranger reads the author's generation inputs: %v", got["generation_inputs"])
+	}
+	if got["type"] != "generated" {
+		t.Errorf("source type = %v, want generated still said", got["type"])
+	}
+	if trust, _ := got["trust"].(map[string]any); trust["label"] != "由平台生成" {
+		t.Errorf("a stranger is told %v; the brief was the author's, not theirs", trust["label"])
+	}
+	if got := source(w.author); got["task_description"] != "my private brief" {
+		t.Errorf("the author's own detail after exposure = %v, want the brief still there", got)
 	}
 }

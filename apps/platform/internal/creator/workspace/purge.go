@@ -102,8 +102,9 @@ func (s *Service) PurgeExpiredAccounts(ctx context.Context, store ObjectRemover,
 		return 0, err
 	}
 	q := s.queries()
+	cutoff := pgconv.Timestamptz(time.Now().Add(-grace))
 	ids, err := q.ListAccountsPastGrace(ctx, gen.ListAccountsPastGraceParams{
-		Cutoff:     pgconv.Timestamptz(time.Now().Add(-grace)),
+		Cutoff:     cutoff,
 		ClaimLease: pgconv.Interval(queue.SweepClaimLease),
 		BatchSize:  limit,
 	})
@@ -112,7 +113,7 @@ func (s *Service) PurgeExpiredAccounts(ctx context.Context, store ObjectRemover,
 	}
 	var failures []error
 	for _, id := range ids {
-		if err := s.purgeAccount(ctx, store, id); err != nil {
+		if err := s.purgeAccount(ctx, store, id, cutoff); err != nil {
 			if errors.Is(err, errAccountPurgeDeferred) {
 				continue
 			}
@@ -127,7 +128,7 @@ func (s *Service) PurgeExpiredAccounts(ctx context.Context, store ObjectRemover,
 	return purged, errors.Join(failures...)
 }
 
-func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID pgtype.UUID) error {
+func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID pgtype.UUID, cutoff pgtype.Timestamptz) error {
 	workspaces, err := s.queries().ListWorkspacesByOwner(ctx, userID)
 	if err != nil {
 		return err
@@ -141,7 +142,7 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 	if err := locks.hold(ctx, workspaces); err != nil {
 		return err
 	}
-	if err := s.claimAccountPurge(ctx, conn, userID, workspaces); err != nil {
+	if err := s.claimAccountPurge(ctx, conn, userID, workspaces, cutoff); err != nil {
 		return err
 	}
 	if err := s.removeAccountObjects(ctx, conn, store, workspaces); err != nil {
@@ -187,7 +188,9 @@ func (l *accountWorkspaceLocks) release() {
 	l.conn.Release()
 }
 
-func (s *Service) claimAccountPurge(ctx context.Context, conn *pgxpool.Conn, userID pgtype.UUID, workspaces []gen.Workspace) error {
+func (s *Service) claimAccountPurge(
+	ctx context.Context, conn *pgxpool.Conn, userID pgtype.UUID, workspaces []gen.Workspace, cutoff pgtype.Timestamptz,
+) error {
 	for _, ws := range workspaces {
 		ready, err := s.WorkspaceQuiescent(ctx, conn, ws.ID)
 		if err != nil {
@@ -197,7 +200,7 @@ func (s *Service) claimAccountPurge(ctx context.Context, conn *pgxpool.Conn, use
 			return errAccountPurgeDeferred
 		}
 	}
-	started, err := gen.New(conn).MarkAccountPurgeStarted(ctx, userID)
+	started, err := gen.New(conn).MarkAccountPurgeStarted(ctx, gen.MarkAccountPurgeStartedParams{ID: userID, Cutoff: cutoff})
 	if err != nil {
 		return err
 	}

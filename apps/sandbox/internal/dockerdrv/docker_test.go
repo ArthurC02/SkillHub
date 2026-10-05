@@ -228,8 +228,11 @@ func assertResourceCeilings(t *testing.T, hc *container.HostConfig, lim sandbox.
 	if hc.MemorySwap != lim.MemoryBytes {
 		t.Errorf("MemorySwap = %d, want the memory limit: swap would lift the ceiling", hc.MemorySwap)
 	}
-	if hc.NanoCPUs != int64(lim.VCPU*1e9) {
-		t.Errorf("NanoCPUs = %d, want %d", hc.NanoCPUs, int64(lim.VCPU*1e9))
+	if lim.VCPU != 1 {
+		t.Fatalf("testRequest VCPU = %v, the NanoCPUs expectation below assumes 1", lim.VCPU)
+	}
+	if hc.NanoCPUs != 1_000_000_000 {
+		t.Errorf("NanoCPUs = %d, want 1000000000 for one vCPU", hc.NanoCPUs)
 	}
 	if hc.PidsLimit == nil || *hc.PidsLimit != lim.MaxPIDs {
 		t.Errorf("PidsLimit = %v, want %d", hc.PidsLimit, lim.MaxPIDs)
@@ -307,7 +310,8 @@ func TestScratchQuotaRefusesAWriteWithoutKillingTheRun(t *testing.T) {
 	}
 
 	req.Extensions = map[string]any{"dev_cmd": []any{"sh", "-c",
-		`dd if=/dev/zero of=/work/fill bs=1M count=128 2>/dev/null; echo "fill rc=$?"; echo "size=$(wc -c < /work/fill)"`}}
+		`while [ ! -f /work/.skillhub/ready ]; do sleep 0.05; done; ` +
+			`dd if=/dev/zero of=/work/fill bs=1M count=128 2>/dev/null; echo "fill rc=$?"; echo "size=$(wc -c < /work/fill)"`}}
 	_, out := startProbe(t, d, req)
 	if strings.Contains(out.Output, "fill rc=0") {
 		t.Errorf("a 128 MiB write into a %d MiB scratch space reported success: the quota is not "+
@@ -558,5 +562,27 @@ func TestARunWithoutANetworkRecordsNoAddressAndIsNotTreatedAsAFault(t *testing.T
 	}
 	if strings.Contains(logs.String(), "unreadable") {
 		t.Errorf("a run that was never given a network was reported as one whose address could not be read: %s", logs.String())
+	}
+}
+
+func TestAFailedRemovalKeepsTheAddressAttributedToItsRun(t *testing.T) {
+	req := testRequest("sleep 30")
+	req.Egress.Allow = []sandbox.EgressAllowEntry{{Purpose: "model_gateway", URL: "http://10.9.9.9:4000"}}
+	_, d, id, logs := startLogged(t, "bridge", req)
+	abandoned, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if err := d.Remove(abandoned, id); err == nil {
+		t.Fatal("a removal whose context had ended reported success")
+	}
+	if records := addressRecords(logs); len(records) != 1 {
+		t.Fatalf("run address records = %v, want only the assignment: the container still holds the address", records)
+	}
+
+	if err := d.Remove(context.Background(), id); err != nil {
+		t.Fatalf("retried remove: %v", err)
+	}
+	if records := addressRecords(logs); len(records) != 2 || records[1]["state"] != "released" {
+		t.Errorf("run address records = %v, want the release once the container is gone", records)
 	}
 }

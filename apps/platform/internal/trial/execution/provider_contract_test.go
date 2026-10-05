@@ -168,7 +168,7 @@ func assertDestroyIsRepeatableAndNeverA404(t *testing.T, tg target, ctx context.
 	}
 }
 
-func assertTerminalRunsCarryAResultAndRunningOnesDoNot(t *testing.T, tg target, ctx context.Context) {
+func assertTerminalRunsCarryAResult(t *testing.T, tg target, ctx context.Context) {
 	pr := tg.dispatch(t, tg.request("run to completion"))
 	final := waitForTerminal(t, tg.provider, pr.ProviderRunID)
 	if final.Result == nil {
@@ -257,8 +257,8 @@ func TestProviderContract(t *testing.T) {
 		assertDestroyIsRepeatableAndNeverA404(t, tg, ctx)
 	})
 
-	t.Run("terminal runs carry a result and running ones do not", func(t *testing.T) {
-		assertTerminalRunsCarryAResultAndRunningOnesDoNot(t, tg, ctx)
+	t.Run("terminal runs carry a result", func(t *testing.T) {
+		assertTerminalRunsCarryAResult(t, tg, ctx)
 	})
 
 	t.Run("active listing is served and dated", func(t *testing.T) {

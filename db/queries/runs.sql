@@ -162,11 +162,14 @@ RETURNING *;
 -- name: ListUnpublishedOutboxEvents :many
 SELECT * FROM outbox_events
 WHERE published_at IS NULL AND dead_lettered_at IS NULL
+  AND (next_delivery_at IS NULL OR next_delivery_at <= now())
 ORDER BY occurred_at, event_id
 LIMIT $1;
 
 -- name: RecordOutboxDeliveryFailure :one
-UPDATE outbox_events SET delivery_attempts = delivery_attempts + 1
+UPDATE outbox_events SET
+    delivery_attempts = delivery_attempts + 1,
+    next_delivery_at = now() + @retry_delay::interval
 WHERE event_id = @event_id
 RETURNING delivery_attempts;
 

@@ -70,6 +70,30 @@ func TestFetchRedirectOffAllowListBlocked(t *testing.T) {
 	}
 }
 
+func TestFetchFollowsARedirectToASignedAddressOnTheAllowList(t *testing.T) {
+	assets := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("X-Amz-Signature") == "" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte("release-asset-zip"))
+	}))
+	defer assets.Close()
+	src := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, assets.URL+"/asset.zip?X-Amz-Signature=abc&X-Amz-Expires=300", http.StatusFound)
+	}))
+	defer src.Close()
+
+	f := &URLFetcher{Allowed: map[string]bool{
+		strings.TrimPrefix(src.URL, "http://"): true, strings.TrimPrefix(assets.URL, "http://"): true,
+	}, AllowInsecure: true}
+	data, _, err := f.Fetch(context.Background(), src.URL+"/releases/download/v1/skill.zip")
+
+	if err != nil || string(data) != "release-asset-zip" {
+		t.Fatalf("data=%q err=%v, want the signed asset's bytes", data, err)
+	}
+}
+
 func TestFetchSizeCap(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(make([]byte, skillpkg.MaxZipBytes+1))
@@ -83,7 +107,7 @@ func TestFetchSizeCap(t *testing.T) {
 		t.Fatalf("want ErrFetch for oversized package, got %v", err)
 	}
 
-	if !strings.Contains(err.Error(), skillpkg.HumanMB(skillpkg.MaxZipBytes)) {
+	if !strings.Contains(err.Error(), "10.0 MB") {
 		t.Errorf("the refusal does not name the import ceiling: %v", err)
 	}
 	if got := refusalCount(t, metrics.CeilingURL) - before; got != 1 {

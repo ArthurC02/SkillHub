@@ -83,16 +83,26 @@ func TestHealthy(t *testing.T) {
 	}
 }
 
-func TestAdoptReturnsNothing(t *testing.T) {
-
+func TestNewRemovesResidueWhoseRecordedProcessHasAlreadyExited(t *testing.T) {
 	nodeBin := requireNode(t)
-	d, err := New(Config{NodeBin: nodeBin, RunnerScript: testdataScript(t, "workload.mjs"), BaseDir: t.TempDir()})
-	if err != nil {
+	exited := exec.Command(nodeBin, "-e", "")
+	if err := exited.Run(); err != nil {
 		t.Fatal(err)
 	}
-	got, err := d.Adopt(context.Background())
-	if err != nil || len(got) != 0 {
-		t.Fatalf("Adopt() = %v, %v; want nil, nil", got, err)
+	base := t.TempDir()
+	left := filepath.Join(base, "run-from-before-reboot")
+	if err := os.MkdirAll(left, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(left, ".pid"), []byte(strconv.Itoa(exited.Process.Pid)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := New(Config{NodeBin: nodeBin, RunnerScript: testdataScript(t, "workload.mjs"), BaseDir: base}); err != nil {
+		t.Fatalf("New with residue of a process that is already gone: %v", err)
+	}
+	if _, err := os.Stat(left); !os.IsNotExist(err) {
+		t.Fatalf("residue still exists: %v", err)
 	}
 }
 

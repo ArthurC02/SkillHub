@@ -16,6 +16,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
@@ -69,10 +70,11 @@ func TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey(t *testing.T) {
 }
 
 type realGatewayRunSpec struct {
-	user       string
-	pkg        []byte
-	sourcePath string
-	prompt     string
+	user          string
+	pkg           []byte
+	storedInstead []byte
+	sourcePath    string
+	prompt        string
 }
 
 type realGatewayEnvironment struct {
@@ -132,26 +134,29 @@ type realGatewayRig struct {
 
 func (r realGatewayRig) stagePackage(t *testing.T, f *fixture, spec realGatewayRunSpec) {
 	t.Helper()
-	if err := r.store.Put(r.ctx, "packages/hash-"+spec.user+".zip", spec.pkg); err != nil {
+	key, _ := skillpkg.PackageObjectKey(spec.pkg)
+	stored := spec.pkg
+	if spec.storedInstead != nil {
+		stored = spec.storedInstead
+	}
+	if err := r.store.Put(r.ctx, key, stored); err != nil {
 		t.Fatal(err)
 	}
 
-	if spec.sourcePath != "" {
-		version, err := gen.New(r.pool).CreateSkillVersion(r.ctx, gen.CreateSkillVersionParams{
-			WorkspaceID:      mustUUID(t, f.workspaceID),
-			SkillID:          mustUUID(t, f.skillID),
-			VersionNumber:    nextVersionNumber(t, r.pool, f.skillID),
-			ContentHash:      "hash-" + spec.user + "-at-" + spec.sourcePath,
-			PackageObjectKey: "packages/hash-" + spec.user + ".zip",
-			SourcePath:       spec.sourcePath,
-			Manifest:         []byte(`{}`),
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		refreshListing(t, r.pool, f.skillID)
-		f.versionID = uuidText(version.ID)
+	version, err := gen.New(r.pool).CreateSkillVersion(r.ctx, gen.CreateSkillVersionParams{
+		WorkspaceID:      mustUUID(t, f.workspaceID),
+		SkillID:          mustUUID(t, f.skillID),
+		VersionNumber:    nextVersionNumber(t, r.pool, f.skillID),
+		ContentHash:      "hash-" + spec.user + "-at-" + spec.sourcePath,
+		PackageObjectKey: key,
+		SourcePath:       spec.sourcePath,
+		Manifest:         []byte(`{}`),
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
+	refreshListing(t, r.pool, f.skillID)
+	f.versionID = uuidText(version.ID)
 
 	if _, err := r.pool.Exec(r.ctx,
 		`UPDATE test_cases SET user_prompt = $2 WHERE id = $1`,
@@ -176,7 +181,45 @@ func gatewayUsageFindings(usage map[string]any) (float64, []string) {
 	return cost, problems
 }
 
+type realGatewayOutcome struct {
+	ctx    context.Context
+	store  *objstore.Client
+	client *client
+	runID  string
+	final  runView
+}
+
 func realGatewayRun(t *testing.T, spec realGatewayRunSpec) string {
+	t.Helper()
+	o := finishRealGatewayRun(t, spec)
+	if o.final.Status != "succeeded" {
+		t.Fatalf("run ended %s (%s / %s)", o.final.Status, o.final.FailureClass.Value, o.final.StatusReason)
+	}
+
+	usage := traceUsageEvent(t, o.client, o.runID)
+	cost, problems := gatewayUsageFindings(usage)
+	for _, problem := range problems {
+		t.Error(problem)
+	}
+	t.Logf("gateway-reported cost for this run: $%.6f", cost)
+
+	attempts := o.final.Attempts
+	if len(attempts) == 0 {
+		t.Fatal("the run recorded no attempt")
+	}
+	key := fmt.Sprintf("run-artifacts/%s/%s/artifacts.tar", o.runID, attempts[len(attempts)-1].RunAttemptID)
+	archive, err := o.store.Get(o.ctx, key)
+	if err != nil {
+		t.Fatalf("the artifact archive is not in object storage at %s: %v", key, err)
+	}
+	cleaned := waitForCleanupOutcome(t, o.client, o.runID)
+	if cleaned != "cleaned" {
+		t.Errorf("cleanup_status = %q, want cleaned (which includes revoking the Virtual Key)", cleaned)
+	}
+	return string(archive)
+}
+
+func finishRealGatewayRun(t *testing.T, spec realGatewayRunSpec) realGatewayOutcome {
 	t.Helper()
 	env := realGatewayEnv(t)
 	pool := requireDB(t)
@@ -192,7 +235,7 @@ func realGatewayRun(t *testing.T, spec realGatewayRunSpec) string {
 	// pushes trace events back, so the route table is served again on an
 	// address that is.
 	public, port := startRoutableServer(t, a.handler)
-	defer public.Close()
+	t.Cleanup(public.Close)
 	a.runs.TraceSigner = a.traceSigner
 	a.runs.TraceIngestBaseURL = fmt.Sprintf("http://%s:%d",
 		os.Getenv("SKILLHUB_E2E_PUBLIC_HOST"), port)
@@ -204,31 +247,7 @@ func realGatewayRun(t *testing.T, spec realGatewayRunSpec) string {
 	startWorkerWith(t, a.runs, a.evaluations)
 	view := f.start(t)
 	final := waitForTerminal(t, f.client, view.RunID, 6*time.Minute)
-	if final.Status != "succeeded" {
-		t.Fatalf("run ended %s (%s / %s)", final.Status, final.FailureClass.Value, final.StatusReason)
-	}
-
-	usage := traceUsageEvent(t, f.client, view.RunID)
-	cost, problems := gatewayUsageFindings(usage)
-	for _, problem := range problems {
-		t.Error(problem)
-	}
-	t.Logf("gateway-reported cost for this run: $%.6f", cost)
-
-	attempts := final.Attempts
-	if len(attempts) == 0 {
-		t.Fatal("the run recorded no attempt")
-	}
-	key := fmt.Sprintf("run-artifacts/%s/%s/artifacts.tar", view.RunID, attempts[len(attempts)-1].RunAttemptID)
-	archive, err := store.Get(ctx, key)
-	if err != nil {
-		t.Fatalf("the artifact archive is not in object storage at %s: %v", key, err)
-	}
-	cleaned := waitForCleanupOutcome(t, f.client, view.RunID)
-	if cleaned != "cleaned" {
-		t.Errorf("cleanup_status = %q, want cleaned (which includes revoking the Virtual Key)", cleaned)
-	}
-	return string(archive)
+	return realGatewayOutcome{ctx: ctx, store: store, client: f.client, runID: view.RunID, final: final}
 }
 
 func objstoreBucket() string {
@@ -300,8 +319,12 @@ func traceUsageEvent(t *testing.T, c *client, runID string) map[string]any {
 
 func e2ePluginPackage(t *testing.T) []byte {
 	t.Helper()
+	return zipOf(t, e2ePluginFiles())
+}
+
+func e2ePluginFiles() map[string]string {
 	root := "skills/run-marker/"
-	return zipOf(t, map[string]string{
+	return map[string]string{
 		"plugin.json": `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",` +
 			`"name":"e2e-desk-tools","version":"1.0.0"}`,
 		"mcp.json": `{"mcpServers":{}}`,
@@ -323,7 +346,7 @@ func e2ePluginPackage(t *testing.T) []byte {
 			"print('SKILL-FILES=' + ','.join(sorted(os.listdir(here))))\n" +
 			"print('SKILLS-INSTALLED=' + ','.join(sorted(os.listdir(os.path.dirname(here)))))\n",
 		"skills/split-csv/SKILL.md": "---\nname: split-csv\ndescription: A sibling skill of the same plugin.\n---\n\nProse.\n",
-	})
+	}
 }
 
 func TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone(t *testing.T) {
@@ -333,6 +356,39 @@ func TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone(t *testing.T
 		sourcePath: "skills/run-marker",
 		prompt:     "Use the run-marker skill to produce the run marker.",
 	})
+	assertOnlyThePluginSkillRan(t, archive)
+}
+
+func TestEndToEndRunOfAPluginInsideARepositoryDirectoryInstallsItsSkill(t *testing.T) {
+	wrapped := map[string]string{}
+	for name, body := range e2ePluginFiles() {
+		wrapped["desk-tools-main/"+name] = body
+	}
+	archive := realGatewayRun(t, realGatewayRunSpec{
+		user:       "e2e-wrapped-plugin",
+		pkg:        zipOf(t, wrapped),
+		sourcePath: "skills/run-marker",
+		prompt:     "Use the run-marker skill to produce the run marker.",
+	})
+	assertOnlyThePluginSkillRan(t, archive)
+}
+
+func TestEndToEndRunRefusesAPackageWhoseStoredBytesAreNotTheAdmittedOnes(t *testing.T) {
+	o := finishRealGatewayRun(t, realGatewayRunSpec{
+		user: "e2e-swapped-package",
+		pkg:  e2eSkillPackage(t),
+		storedInstead: zipOf(t, map[string]string{
+			"SKILL.md": "---\nname: run-marker\ndescription: Not the package that was admitted.\nlicense: MIT\n---\n\nReply DONE.\n",
+		}),
+		prompt: "Use the run-marker skill to produce the run marker.",
+	})
+	if o.final.Status != "failed" || o.final.FailureClass.Value != "provider_error" {
+		t.Fatalf("run ended %s (%s / %s), want failed / provider_error before the workload starts", o.final.Status, o.final.FailureClass.Value, o.final.StatusReason)
+	}
+}
+
+func assertOnlyThePluginSkillRan(t *testing.T, archive string) {
+	t.Helper()
 	if !strings.Contains(archive, "SKILLHUB-E2E-OK") {
 		t.Error("the plugin's skill produced no marker: the Agent found no skill to activate")
 	}

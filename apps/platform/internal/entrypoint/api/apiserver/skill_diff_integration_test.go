@@ -74,3 +74,23 @@ func TestSkillDiffReportsAddedRemovedAndModifiedFilesInDirection(t *testing.T) {
 		t.Errorf("diff direction wrong, want from's line removed and to's line added: %q", md.Diff)
 	}
 }
+
+func TestSkillDiffOfASkillUnderAnAccessRestrictionRevealsNoContent(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "diff-held-owner")
+	skillID := seedSkill(t, pool, owner.workspaceID, "diff-held-skill")
+	fromVersion := seedVersion(t, pool, owner.workspaceID, skillID, "diff-held-from")
+	toVersion := seedVersion(t, pool, owner.workspaceID, skillID, "diff-held-to")
+	a.packages[fromVersion.PackageObjectKey] = zipOf(t, map[string]string{"SKILL.md": "---\nname: diff-held-skill\n---\nheld text\n"})
+	a.packages[toVersion.PackageObjectKey] = zipOf(t, map[string]string{"SKILL.md": "---\nname: diff-held-skill\n---\nother\n"})
+	if _, err := pool.Exec(t.Context(), "UPDATE skills SET access_restriction = 'license-review' WHERE id = $1",
+		mustUUID(t, skillID)); err != nil {
+		t.Fatal(err)
+	}
+
+	status, body := owner.skillDiff(t, skillID, uuidText(fromVersion.ID), uuidText(toVersion.ID))
+	if status != http.StatusForbidden || len(body.Files) != 0 {
+		t.Fatalf("GET diff of a held skill: got %d with %d files, want 403 and none", status, len(body.Files))
+	}
+}

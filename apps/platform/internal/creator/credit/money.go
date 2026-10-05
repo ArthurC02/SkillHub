@@ -51,8 +51,13 @@ func BillableMicros(usd float64) (usdMicros int64, exact bool) {
 	if scaled > float64(MaxBillableMicros) {
 		return MaxBillableMicros, false
 	}
-	return int64(math.Ceil(scaled)), true
+	return ceilMicros(scaled), true
 }
+
+const floatNoiseMicros = 1e-6
+
+// The epsilon absorbs float noise from usd*1e6; a real fraction of a micro still rounds up.
+func ceilMicros(scaled float64) int64 { return int64(math.Ceil(scaled - floatNoiseMicros)) }
 
 func UsageCost(costUSD *float64) (usdMicros int64, estimated bool) {
 	if costUSD == nil {

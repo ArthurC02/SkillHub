@@ -345,7 +345,9 @@ func (q *Queries) GetSkillSource(ctx context.Context, arg GetSkillSourceParams) 
 
 const listForkedFromVersions = `-- name: ListForkedFromVersions :many
 SELECT v.id AS version_id, v.content_hash, v.created_at,
-       anc.id AS skill_id, anc.workspace_id, anc.name, anc.deleted_at, anc.takedown_at
+       anc.id AS skill_id, anc.workspace_id, anc.name, anc.deleted_at, anc.takedown_at,
+       (NOT EXISTS (SELECT 1 FROM skill_versions later
+                    WHERE later.skill_id = anc.id AND later.version_number > v.version_number))::bool AS still_newest
 FROM skill_versions v
 JOIN skills anc ON anc.id = v.skill_id
 WHERE v.id = ANY($1::uuid[])
@@ -360,6 +362,7 @@ type ListForkedFromVersionsRow struct {
 	Name        string
 	DeletedAt   pgtype.Timestamptz
 	TakedownAt  pgtype.Timestamptz
+	StillNewest bool
 }
 
 func (q *Queries) ListForkedFromVersions(ctx context.Context, versionIds []pgtype.UUID) ([]ListForkedFromVersionsRow, error) {
@@ -380,39 +383,11 @@ func (q *Queries) ListForkedFromVersions(ctx context.Context, versionIds []pgtyp
 			&i.Name,
 			&i.DeletedAt,
 			&i.TakedownAt,
+			&i.StillNewest,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listForkedSkills = `-- name: ListForkedSkills :many
-SELECT f.forked_from_skill_id::uuid AS skill_id FROM skills f
-WHERE f.forked_from_skill_id = ANY($1::uuid[])
-UNION
-SELECT v.skill_id FROM skills f
-JOIN skill_versions v ON v.id = f.forked_from_version_id
-WHERE v.skill_id = ANY($1::uuid[])
-`
-
-func (q *Queries) ListForkedSkills(ctx context.Context, skillIds []pgtype.UUID) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, listForkedSkills, skillIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []pgtype.UUID
-	for rows.Next() {
-		var skill_id pgtype.UUID
-		if err := rows.Scan(&skill_id); err != nil {
-			return nil, err
-		}
-		items = append(items, skill_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -476,6 +451,40 @@ func (q *Queries) ListLiveSkillsForIndex(ctx context.Context) ([]ListLiveSkillsF
 			&i.Summary,
 			&i.Redistribution,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSkillForks = `-- name: ListSkillForks :many
+SELECT f.forked_from_skill_id::uuid AS source_id, f.id AS fork_id FROM skills f
+WHERE f.forked_from_skill_id = ANY($1::uuid[])
+UNION
+SELECT v.skill_id AS source_id, f.id AS fork_id FROM skills f
+JOIN skill_versions v ON v.id = f.forked_from_version_id
+WHERE v.skill_id = ANY($1::uuid[])
+`
+
+type ListSkillForksRow struct {
+	SourceID pgtype.UUID
+	ForkID   pgtype.UUID
+}
+
+func (q *Queries) ListSkillForks(ctx context.Context, skillIds []pgtype.UUID) ([]ListSkillForksRow, error) {
+	rows, err := q.db.Query(ctx, listSkillForks, skillIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSkillForksRow
+	for rows.Next() {
+		var i ListSkillForksRow
+		if err := rows.Scan(&i.SourceID, &i.ForkID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -620,6 +629,42 @@ type LockSkillParams struct {
 
 func (q *Queries) LockSkill(ctx context.Context, arg LockSkillParams) (Skill, error) {
 	row := q.db.QueryRow(ctx, lockSkill, arg.ID, arg.WorkspaceID)
+	var i Skill
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Summary,
+		&i.ForkedFromSkillID,
+		&i.ForkedFromVersionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.TakedownAt,
+		&i.TakedownReason,
+		&i.AccessRestriction,
+		&i.Redistribution,
+		&i.CurationTier,
+		&i.CuratedVersionID,
+		&i.Category,
+		&i.CategorySource,
+	)
+	return i, err
+}
+
+const lockSkillForFork = `-- name: LockSkillForFork :one
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source FROM skills
+WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+FOR SHARE
+`
+
+type LockSkillForForkParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) LockSkillForFork(ctx context.Context, arg LockSkillForForkParams) (Skill, error) {
+	row := q.db.QueryRow(ctx, lockSkillForFork, arg.ID, arg.WorkspaceID)
 	var i Skill
 	err := row.Scan(
 		&i.ID,

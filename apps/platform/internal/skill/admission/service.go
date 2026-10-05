@@ -2,8 +2,6 @@ package ingest
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -256,9 +254,7 @@ func (s *Service) prepare(data []byte) (preparedPackage, error) {
 		return p, err
 	}
 
-	sum := sha256.Sum256(data)
-	p.contentHash = hex.EncodeToString(sum[:])
-	p.objectKey = "packages/" + p.contentHash + ".zip"
+	p.objectKey, p.contentHash = skillpkg.PackageObjectKey(data)
 	return p, nil
 }
 
@@ -333,6 +329,9 @@ func (s *Service) importZipWithCommit(ctx context.Context, ws identity.Workspace
 	}
 	defer release()
 	res, err := s.importOne(ctx, tx, ws, incomingVersion{pkg: p, source: src, enrichment: e})
+	if report, refused := refusedReport(p.report, err); refused {
+		return Result{Report: report}, nil
+	}
 	if err != nil {
 		return Result{}, err
 	}
@@ -411,6 +410,9 @@ func (s *Service) saveVersion(ctx context.Context, ws identity.Workspace, skillI
 	res.Skill = root.Skill()
 
 	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, root, incomingVersion{pkg: p, source: src, enrichment: e})
+	if report, refused := refusedReport(p.report, err); refused {
+		return Result{Report: report}, nil
+	}
 	if err != nil {
 		return Result{}, err
 	}
@@ -440,6 +442,9 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 	skill, generated := root.Skill(), src.Type == SourceGenerated
 	if !root.AcceptsContent(generated) {
 		return registry.Version{}, false, fmt.Errorf("%w: %q", ErrGeneratedNameCollision, skill.Name)
+	}
+	if refused := refusalOf(root, p); refused != nil {
+		return registry.Version{}, false, refused
 	}
 	q := gen.New(tx)
 	if existing, found, err := registry.VersionByContent(ctx, tx, ws.ID, skill.ID, p.contentHash); err != nil {
@@ -585,4 +590,31 @@ func (s *Service) storeReindexedProjection(ctx context.Context, row PendingEnric
 		return false, err
 	}
 	return true, nil
+}
+
+type refusedVersion struct{ finding skillpkg.Finding }
+
+func (r *refusedVersion) Error() string { return r.finding.Code + ": " + r.finding.Message }
+
+func refusalOf(root *registry.SkillRoot, p preparedPackage) *refusedVersion {
+	name, incoming := root.Skill().Name, p.report.Manifest.Name
+	refuse := func(code, message string) *refusedVersion {
+		return &refusedVersion{skillpkg.Finding{Severity: skillpkg.SeverityError, Code: code, Path: p.sourcePath, Message: message}}
+	}
+	switch {
+	case root.TakenDown():
+		return refuse(skillpkg.CodeSkillTakenDown, "Skill "+name+" 已下架，不再接受新版本。")
+	case incoming != name:
+		return refuse(skillpkg.CodeVersionNameMismatch, "這個套件的 SKILL.md name 是 "+incoming+"，不是這個 Skill 的名稱 "+name+
+			"。要當成這個 Skill 的新版本，請把 name 改回 "+name+"；要另外留一個 Skill，請改用匯入。")
+	}
+	return nil
+}
+
+func refusedReport(r skillpkg.Report, err error) (skillpkg.Report, bool) {
+	refused, ok := errors.AsType[*refusedVersion](err)
+	if !ok {
+		return r, false
+	}
+	return withSourceFindings(r, []skillpkg.Finding{refused.finding}), true
 }

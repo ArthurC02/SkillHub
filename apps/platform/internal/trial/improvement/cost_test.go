@@ -164,6 +164,38 @@ func TestSuggestingRecordsExactlyOneSuggestionCostEvent(t *testing.T) {
 	}
 }
 
+func TestAHeldSkillIsNeitherSentToTheModelNorChargedForSuggestions(t *testing.T) {
+	cost := 0.0022
+	ledger := &fakeLedger{}
+	s := &Service{
+		Pool:   requireEvalDB(t),
+		Credit: ledger,
+		Suggester: stubSuggester{resp: Improvements{
+			Model: "suggest-model", PromptVersion: "suggest/v2",
+			Usage: &ModelUsage{PromptTokens: 3000, CostUSD: &cost, CostReported: true},
+		}},
+	}
+	m := seedRun(t, s.Pool)
+	ev := beginAndComplete(t, s, m, aVerdict("not met", OverallNotMet))
+	ledger.events = nil
+	m.skill.AccessRestricted = true
+
+	s.suggest(context.Background(), m, ev, costTestVerdict())
+
+	if len(ledger.events) != 0 {
+		t.Errorf("cost events = %d, want none for a held skill", len(ledger.events))
+	}
+	var calls int
+	if err := s.Pool.QueryRow(context.Background(),
+		`SELECT count(*) FROM evaluation_model_usage WHERE evaluation_id = $1 AND operation = 'suggest'`,
+		ev.ID).Scan(&calls); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 0 {
+		t.Errorf("suggest model calls recorded = %d, want 0", calls)
+	}
+}
+
 func TestACallTheGatewayDidNotPriceIsRecordedAsEstimatedRatherThanFree(t *testing.T) {
 	cost := 0.0019
 	ledger := &fakeLedger{}

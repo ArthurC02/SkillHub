@@ -16,7 +16,8 @@ import { mapValues } from '../runtime';
 /**
  * The one other collected class this deployment holds: reports
  * submitted at POST /feedback (BETA-003/004/005). Their `message` is
- * the only free-text column anywhere, so the disclosure names it
+ * free text, and `page_path` and `build_id` are client-supplied text
+ * checked only for shape and length, so the disclosure names them
  * separately from the four events above. Served since the endpoint
  * existed, and declared here so a page can render it.
  * 

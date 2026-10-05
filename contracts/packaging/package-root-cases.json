@@ -1,0 +1,40 @@
+{
+  "description": "Where a stored package's root is. The platform records a Skill's directory relative to this root, and the runtime installs from the same root, so both sides read these cases.",
+  "cases": [
+    {
+      "name": "SKILL.md at the archive root",
+      "entries": ["SKILL.md", "scripts/run.sh"],
+      "root": ""
+    },
+    {
+      "name": "one top-level directory holding SKILL.md",
+      "entries": ["repo-main/", "repo-main/SKILL.md", "repo-main/scripts/run.sh"],
+      "root": "repo-main/"
+    },
+    {
+      "name": "one top-level directory holding a plugin",
+      "entries": ["desk-tools-main/", "desk-tools-main/plugin.json", "desk-tools-main/skills/tidy-notes/SKILL.md"],
+      "root": "desk-tools-main/"
+    },
+    {
+      "name": "one top-level directory with no entry of its own",
+      "entries": ["repo-main/skills/tidy-notes/SKILL.md"],
+      "root": "repo-main/"
+    },
+    {
+      "name": "two top-level directories",
+      "entries": ["one/SKILL.md", "two/notes.md"],
+      "root": ""
+    },
+    {
+      "name": "one top-level file and nothing else",
+      "entries": ["notes.md"],
+      "root": ""
+    },
+    {
+      "name": "a top-level directory beside a top-level file",
+      "entries": ["plugin.json", "skills/tidy-notes/SKILL.md"],
+      "root": ""
+    }
+  ]
+}

@@ -113,20 +113,44 @@ func TestArtifactUploadAcceptsOnlyFinalSuccessStatuses(t *testing.T) {
 	}
 }
 
-func TestFilterArchiveBoundsTheNumberOfManifestEntries(t *testing.T) {
+func emptyArtifacts(n int) map[string][]byte {
 	files := map[string][]byte{}
-	for i := range artifactMaxEntries + 5 {
+	for i := range n {
 		files[fmt.Sprintf("artifacts/f%04d.txt", i)] = nil
 	}
-	manifest, _, _, err := unpackFiltered(filterArchive(tarOf(t, files), DefaultLimits))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(manifest) != artifactMaxEntries {
-		t.Fatalf("manifest holds %d entries, want the %d ceiling", len(manifest), artifactMaxEntries)
-	}
-	if !manifest[0].Truncated {
-		t.Error("entries were dropped but the collection is not marked truncated")
+	return files
+}
+
+func TestFilterArchiveKeepsEachCeilingInclusive(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		limits        ResourceLimits
+		files         map[string][]byte
+		wantKept      int
+		wantTruncated bool
+	}{
+		{"a file exactly at the per-file ceiling", ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 1 << 20},
+			map[string][]byte{"artifacts/a": bytes.Repeat([]byte("a"), 16)}, 1, false},
+		{"a file one byte over it", ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 1 << 20},
+			map[string][]byte{"artifacts/a": bytes.Repeat([]byte("a"), 17)}, 0, true},
+		{"files filling the run ceiling exactly", ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 12},
+			map[string][]byte{"artifacts/a": bytes.Repeat([]byte("a"), 6), "artifacts/b": bytes.Repeat([]byte("b"), 6)}, 2, false},
+		{"files one byte over it", ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 12},
+			map[string][]byte{"artifacts/a": bytes.Repeat([]byte("a"), 6), "artifacts/b": bytes.Repeat([]byte("b"), 7)}, 1, true},
+		{"a thousand entries", DefaultLimits, emptyArtifacts(1000), 1000, false},
+		{"a thousand and one entries", DefaultLimits, emptyArtifacts(1001), 1000, true},
+		{"unset ceilings fall back to the defaults", ResourceLimits{},
+			map[string][]byte{"artifacts/a": bytes.Repeat([]byte("a"), 1<<20)}, 1, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			manifest, _, truncated, err := unpackFiltered(filterArchive(tarOf(t, tc.files), tc.limits))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(manifest) != tc.wantKept || truncated != tc.wantTruncated {
+				t.Fatalf("kept %d truncated %v, want %d and %v", len(manifest), truncated, tc.wantKept, tc.wantTruncated)
+			}
+		})
 	}
 }
 
@@ -215,6 +239,68 @@ func TestCollectionHappensBeforeTheWorkloadIsReleased(t *testing.T) {
 	}
 	if drv.releasedAt <= drv.readAt {
 		t.Error("the workload was released before its output was read")
+	}
+}
+
+func uploadStore(t *testing.T, failures int) *httptest.Server {
+	t.Helper()
+	store := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if failures != 0 {
+			failures--
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(store.Close)
+	return store
+}
+
+func collectingEntry(storeURL string) *entry {
+	return &entry{
+		limits:        DefaultLimits,
+		artifactGrant: &ObjectGrant{Purpose: "artifact_upload", Access: "write", ObjectKey: "k", URL: storeURL + "/k"},
+	}
+}
+
+func TestAFailedArtifactUploadKeepsTheWorkloadUntilARetryUploadsIt(t *testing.T) {
+	store := uploadStore(t, 1)
+	drv := &collectDriver{artifacts: tarOf(t, map[string][]byte{"artifacts/out.txt": []byte("result")})}
+	m := NewManager(drv, Config{Provider: "test", Slots: 1}, slog.New(slog.DiscardHandler))
+	e := collectingEntry(store.URL)
+	m.runs["run-upload"] = e
+
+	if m.collect(context.Background(), "run-upload", "") {
+		t.Fatal("collection finished although the artifact upload failed")
+	}
+	if drv.releaseAttempts != 0 {
+		t.Fatalf("release attempts after a failed upload = %d, want 0", drv.releaseAttempts)
+	}
+	if !m.collect(context.Background(), "run-upload", "") {
+		t.Fatal("the retry did not finish collection")
+	}
+	if len(e.artifacts) != 1 || e.artifacts[0].FileName != "out.txt" {
+		t.Fatalf("manifest after the retried upload = %#v, want out.txt", e.artifacts)
+	}
+}
+
+func TestAnArtifactUploadThatKeepsFailingReleasesTheWorkloadOnTheThirdAttempt(t *testing.T) {
+	store := uploadStore(t, -1)
+	drv := &collectDriver{artifacts: tarOf(t, map[string][]byte{"artifacts/out.txt": []byte("result")})}
+	m := NewManager(drv, Config{Provider: "test", Slots: 1}, slog.New(slog.DiscardHandler))
+	e := collectingEntry(store.URL)
+	m.runs["run-upload"] = e
+
+	for attempt := 1; attempt <= 2; attempt++ {
+		if m.collect(context.Background(), "run-upload", "") {
+			t.Fatalf("collection finished on failed attempt %d, want a retry", attempt)
+		}
+	}
+	if !m.collect(context.Background(), "run-upload", "") {
+		t.Fatal("the third failed attempt still held the workload")
+	}
+	if drv.releaseAttempts != 1 || len(e.artifacts) != 0 {
+		t.Fatalf("release attempts = %d, manifest = %#v; want 1 and none", drv.releaseAttempts, e.artifacts)
 	}
 }
 

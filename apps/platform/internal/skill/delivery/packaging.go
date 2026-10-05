@@ -30,6 +30,7 @@ const objectCleanupTimeout = 5 * time.Second
 const downloadCleanupHold = time.Hour
 
 const (
+	BlockedTakenDown          = "taken_down"
 	BlockedLicenseHold        = "license_hold"
 	BlockedNotRedistributable = "not_redistributable"
 	BlockedLicenseUnknown     = "license_unknown"
@@ -104,6 +105,7 @@ type VersionSummary struct {
 	LatestVersionNumber int32
 	AccessRestricted    bool
 	Redistribution      string
+	TakenDown           bool
 }
 
 type SkillFacts struct {
@@ -112,6 +114,7 @@ type SkillFacts struct {
 	ForkedFromSkillID   pgtype.UUID
 	ForkedFromVersionID pgtype.UUID
 	AccessRestricted    bool
+	TakenDown           bool
 	Redistribution      string
 }
 
@@ -196,6 +199,7 @@ type Plan struct {
 	Profile Profile
 
 	IncludeTestCases bool
+	forRecipient     bool
 	Allowed          bool
 	BlockedReason    string
 	BlockedMessage   string
@@ -262,7 +266,7 @@ func (s *Service) Plan(ctx context.Context, ws identity.Workspace, req PackageRe
 
 	p := &Plan{
 		Skill: skill, Version: version, Profile: profile,
-		IncludeTestCases: req.IncludeTestCases, Retention: retention,
+		IncludeTestCases: req.IncludeTestCases, Retention: retention, forRecipient: req.forRecipient,
 		LatestVersionNumber: summary.LatestVersionNumber,
 		Validation:          ManifestValidation{Errors: []ManifestFinding{}, Warnings: []ManifestFinding{}, Infos: []ManifestFinding{}},
 		Included:            []IncludedTestCase{}, Excluded: []ExcludedTestCase{},
@@ -300,6 +304,10 @@ func (s *Service) readRequestedVersion(ctx context.Context, ws identity.Workspac
 }
 
 func gate(skill SkillFacts) (reason, message string) {
+	if skill.TakenDown {
+		return BlockedTakenDown,
+			"這個 Skill 已被平台下架，所以無法再產出或下載套件"
+	}
 	if skill.AccessRestricted {
 		return BlockedLicenseHold,
 			"這個 Skill 的內容因授權問題尚未釐清而被保留，所以無法從中產出套件"
@@ -325,6 +333,18 @@ func redistributionGate(redistribution Redistribution) (reason, message string) 
 		return BlockedLicenseUnknown,
 			"沒有人確認過這個 Skill 可不可以再散布，未確認的授權視同不允許"
 	}
+}
+
+func (s *Service) withTestCases(ctx context.Context, ws identity.Workspace, p *Plan, files []exportFile) ([]exportFile, error) {
+	if p.forRecipient {
+		return files, nil
+	}
+	cases, err := s.selectTestCases(ctx, ws, p.Skill, p.IncludeTestCases)
+	if err != nil {
+		return nil, err
+	}
+	p.Included, p.Excluded = cases.included, cases.excluded
+	return append(files, cases.files...), nil
 }
 
 func (s *Service) build(ctx context.Context, ws identity.Workspace, p *Plan) error {
@@ -353,12 +373,10 @@ func (s *Service) build(ctx context.Context, ws identity.Workspace, p *Plan) err
 		files[i].data = patched
 	}
 
-	cases, err := s.selectTestCases(ctx, ws, p.Skill, p.IncludeTestCases)
+	files, err = s.withTestCases(ctx, ws, p, files)
 	if err != nil {
 		return err
 	}
-	p.Included, p.Excluded = cases.included, cases.excluded
-	files = append(files, cases.files...)
 
 	report := validate(files)
 	p.Dependencies = dependencyNotes(report)
@@ -600,7 +618,7 @@ func (s *Service) CreateForRecipient(
 	ctx context.Context, recipient identity.Workspace, sourceWorkspaceID, skillID, versionID pgtype.UUID,
 ) (Result, error) {
 	return s.create(ctx, identity.Workspace{ID: sourceWorkspaceID}, recipient, PackageRequest{
-		SkillID: skillID, VersionID: versionID, Target: StandardTargetID,
+		SkillID: skillID, VersionID: versionID, Target: StandardTargetID, forRecipient: true,
 	})
 }
 
@@ -609,6 +627,8 @@ type PackageRequest struct {
 	VersionID        pgtype.UUID
 	Target           string
 	IncludeTestCases bool
+
+	forRecipient bool
 }
 
 func (s *Service) create(ctx context.Context, source, recipient identity.Workspace, req PackageRequest) (Result, error) {
@@ -972,4 +992,19 @@ func (s *Service) readSource(ctx context.Context, version VersionFacts) (sourceF
 			"把檔案移出被排除的目錄、或改用實體檔案取代連結之後再打包一次。"
 	}
 	return out, nil
+}
+
+func (a Artifact) withheld(facts VersionSummary) Artifact {
+	if !a.Servable {
+		return a
+	}
+	reason, message := gate(SkillFacts{
+		AccessRestricted: facts.AccessRestricted, TakenDown: facts.TakenDown, Redistribution: facts.Redistribution,
+	})
+	if reason == "" {
+		return a
+	}
+	a.Servable = false
+	a.ServeState = labelled{"withheld", "不再提供下載", message}
+	return a
 }

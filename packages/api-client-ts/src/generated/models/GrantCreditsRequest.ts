@@ -31,6 +31,12 @@ export interface GrantCreditsRequest {
      * 
      */
     reason: string;
+    /**
+     * Optional. Chosen by the caller once per submission and sent
+     * again unchanged when that submission is retried.
+     * 
+     */
+    idempotencyKey?: string;
 }
 
 /**
@@ -54,6 +60,7 @@ export function GrantCreditsRequestFromJSONTyped(json: any, ignoreDiscriminator:
         
         'amountCredits': json['amount_credits'],
         'reason': json['reason'],
+        'idempotencyKey': json['idempotency_key'] == null ? undefined : json['idempotency_key'],
     };
 }
 
@@ -70,6 +77,7 @@ export function GrantCreditsRequestToJSONTyped(value?: GrantCreditsRequest | nul
         
         'amount_credits': value['amountCredits'],
         'reason': value['reason'],
+        'idempotency_key': value['idempotencyKey'],
     };
 }
 

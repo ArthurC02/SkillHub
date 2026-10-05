@@ -91,6 +91,7 @@ function ReviewForm({
         review.mutate({
           release_id: c.release.release_id,
           expected_sequence: c.sequence,
+          expected_snapshot_digest: c.snapshot?.digest ?? "",
           decision,
           reason,
         });

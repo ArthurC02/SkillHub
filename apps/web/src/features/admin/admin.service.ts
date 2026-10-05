@@ -163,7 +163,7 @@ export function useCreditLedger(workspaceId: string) {
 export function useGrantCredits(workspaceId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { amount_credits: number; reason: string }) =>
+    mutationFn: (body: { amount_credits: number; reason: string; idempotency_key: string }) =>
       apiFetch<{ balance_credits: number; amount_credits: number }>(
         `/admin/credits/${workspaceId}/grants`,
         send("POST", body),
@@ -279,6 +279,7 @@ export function useReviewExposure(publication: string) {
     mutationFn: (body: {
       release_id: string;
       expected_sequence: number;
+      expected_snapshot_digest: string;
       decision: ExposureDecision;
       reason: string;
     }) => apiFetch<ExposureCase>(`/admin/publications/${publication}/exposure`, send("POST", body)),
@@ -318,6 +319,7 @@ export function useTrend<T extends Trend<DailyCount>>(
     queryKey: queryKeys.admin.trend(path, days),
     queryFn: () => apiFetch<T>(`/admin/trends/${path}?days=${days}`),
     enabled: useOperator(),
+    refetchOnWindowFocus: false,
   });
 }
 

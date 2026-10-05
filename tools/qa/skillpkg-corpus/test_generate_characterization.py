@@ -11,7 +11,7 @@ def test_the_offline_selftest_passes_and_reports_every_variant():
     with contextlib.redirect_stdout(out):
         code = generate.selftest()
     assert code == 0
-    assert out.getvalue() == f"selftest ok ({len(generate.MUTATIONS)} variants)\n", out.getvalue()
+    assert out.getvalue() == "selftest ok (21 variants)\n", out.getvalue()
 
 
 def test_edit_replaces_only_the_named_entry_and_leaves_others_untouched():

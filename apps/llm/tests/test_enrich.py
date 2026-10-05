@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from openai import APIConnectionError
 
-from skillhub_llm import enrich, gateway
+from skillhub_llm import enrich
 from skillhub_llm.app import app
 
 client = TestClient(app, headers={"Authorization": "Bearer test-service-token"})
@@ -76,8 +76,8 @@ def test_enrich_returns_whitelist_fields(gateway_env, monkeypatch):
     assert body["task_examples"][0]["zh_hant"] and body["task_examples"][0]["en"]
     assert set(body["tags"]) == {"inputs", "outputs", "tools", "dependencies"}
     assert body["limitations"] == GOOD_PAYLOAD["limitations"]
-    assert body["model"] == enrich.ENRICH_MODEL
-    assert body["prompt_version"] == enrich.PROMPT_VERSION
+    assert body["model"] == "skillhub-enrich"
+    assert body["prompt_version"] == "enrich-skill/v7"
     assert set(body) == {
         "summary",
         "task_examples",
@@ -144,9 +144,9 @@ def test_enrich_pins_its_sampling_and_reports_what_it_pinned(gateway_env, monkey
     body = client.post("/v1/enrich-skill", json=REQUEST).json()
 
     assert capture[0]["temperature"] == 0
-    assert capture[0]["seed"] == gateway.SEED
+    assert capture[0]["seed"] == 20260829
     assert body["temperature"] == 0
-    assert body["seed"] == gateway.SEED
+    assert body["seed"] == 20260829
 
 
 def test_enrich_tags_and_reports_its_own_cost(gateway_env, monkeypatch):

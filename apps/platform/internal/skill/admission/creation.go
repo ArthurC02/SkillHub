@@ -25,25 +25,32 @@ type GeneratedCandidateProvenance struct {
 }
 
 func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity.Workspace, skill GeneratedSkill, p GeneratedCandidateProvenance, after func(context.Context, pgx.Tx, Result) error) (Result, error) {
+	desc, model, prompt := p.TaskDescription, p.Model, p.PromptVersion
+	src := sourceMeta{Type: SourceGenerated, TaskDescription: &desc, GeneratorModel: &model, GeneratorPromptVersion: &prompt, GenerationInputs: p.GenerationInputs, Interactive: true}
+	if p.ExistingSkillID == nil {
+		data, err := buildGeneratedPackage(skill)
+		if err != nil {
+			return Result{}, err
+		}
+		return s.importZipWithCommit(ctx, ws, data, src, after)
+	}
+
+	if err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		existing, err := loadGeneratedSkill(ctx, tx, ws.ID, *p.ExistingSkillID)
+		if err == nil {
+			skill.Name = existing.Skill().Name
+		}
+		return err
+	}); err != nil {
+		return Result{}, err
+	}
 	data, err := buildGeneratedPackage(skill)
 	if err != nil {
 		return Result{}, err
 	}
-	desc, model, prompt := p.TaskDescription, p.Model, p.PromptVersion
-	src := sourceMeta{Type: SourceGenerated, TaskDescription: &desc, GeneratorModel: &model, GeneratorPromptVersion: &prompt, GenerationInputs: p.GenerationInputs, Interactive: true}
-	if p.ExistingSkillID == nil {
-		return s.importZipWithCommit(ctx, ws, data, src, after)
-	}
-
 	prepared, err := s.prepare(data)
 	if err != nil || prepared.report.Blocked {
 		return Result{Report: prepared.report}, err
-	}
-	if err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		_, err := loadGeneratedSkill(ctx, tx, ws.ID, *p.ExistingSkillID)
-		return err
-	}); err != nil {
-		return Result{}, err
 	}
 	enriched := s.enrichPackage(ctx, prepared, ws.ID)
 	tx, release, err := s.beginPackageWrite(ctx, ws, prepared.objectKey, data)

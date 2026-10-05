@@ -24,7 +24,7 @@ func TestApplyMatchReasonsLabelsEachCandidateSeparately(t *testing.T) {
 	if hits[1].MatchReasonSource != reasonSourceTemplate {
 		t.Fatalf("empty model reason must fall back to template, got %q", hits[1].MatchReasonSource)
 	}
-	if hits[1].MatchReason != templateMatchReason(hits[1].Name, hits[1].Summary, "extract tables from an invoice pdf") {
+	if hits[1].MatchReason != "沒有共同的關鍵字,這一列是以語意相似度靠近你的任務描述而排進來的,未必真的合用。" {
 		t.Fatalf("fallback must be the platform template, got %q", hits[1].MatchReason)
 	}
 }

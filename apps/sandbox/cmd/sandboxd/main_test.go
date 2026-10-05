@@ -79,6 +79,37 @@ func TestRefuseUnprobedProductionGatesRunscOnAConfiguredProbe(t *testing.T) {
 	}
 }
 
+func TestANodeRefusesToStartWithAP02TargetItCannotDial(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		targets []string
+		refused bool
+	}{
+		{"no targets", nil, false},
+		{"every target dialable", []string{"db.internal:5432", "cache.internal:6379"}, false},
+		{"one target without a port", []string{"db.internal:5432", "cache.internal"}, true},
+		{"only an undialable target", []string{"db.internal:0"}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := refuseUndialableTargets(sandbox.NewP02Probe(tc.targets, 0, 0))
+			if !tc.refused {
+				if err != nil {
+					t.Fatalf("refused %v: %v", tc.targets, err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("started with %v", tc.targets)
+			}
+			for _, want := range []string{"SKILLHUB_SANDBOX_P02_TARGETS", tc.targets[len(tc.targets)-1]} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("refusal %q does not name %q", err, want)
+				}
+			}
+		})
+	}
+}
+
 func TestDriverKindDefaultsToDocker(t *testing.T) {
 	if got := driverKind(false); got != "docker" {
 		t.Errorf("driverKind(false) = %q, want docker: clean mode unset must not change the driver", got)
@@ -164,34 +195,20 @@ func TestUnenforcedCeilingsMirrorsDetection(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		enf  localdrv.ResourceEnforcement
+		want []string
 	}{
-		{name: "windows job object holds memory and pids only", enf: localdrv.ResourceEnforcement{Memory: true, Processes: true}},
-		{name: "unprivileged linux holds nothing", enf: localdrv.ResourceEnforcement{}},
+		{name: "windows job object holds memory and pids only", enf: localdrv.ResourceEnforcement{Memory: true, Processes: true},
+			want: []string{"vcpu", "disk_bytes", "max_open_files"}},
+		{name: "unprivileged linux holds nothing", enf: localdrv.ResourceEnforcement{},
+			want: []string{"vcpu", "memory_bytes", "disk_bytes", "max_pids", "max_open_files"}},
 		{name: "a platform that held every ceiling", enf: localdrv.ResourceEnforcement{
 			Memory: true, Processes: true, CPU: true, Disk: true, OpenFiles: true,
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			held := osCeilings(tc.enf)
-			var want []string
-			for _, name := range names {
-				if !heldElsewhere[name] && !held[name] {
-					want = append(want, name)
-				}
-			}
-			if got := unenforcedCeilings(tc.enf); !slices.Equal(got, want) {
-				t.Fatalf("unenforcedCeilings(%+v) = %v, want %v", tc.enf, got, want)
+			if got := unenforcedCeilings(tc.enf); !slices.Equal(got, tc.want) {
+				t.Fatalf("unenforcedCeilings(%+v) = %v, want %v", tc.enf, got, tc.want)
 			}
 		})
-	}
-
-	if got := unenforcedCeilings(localdrv.ResourceEnforcement{}); !slices.Equal(got,
-		[]string{"vcpu", "memory_bytes", "disk_bytes", "max_pids", "max_open_files"}) {
-		t.Errorf("a platform that enforces nothing declared %v", got)
-	}
-	if got := unenforcedCeilings(localdrv.ResourceEnforcement{
-		Memory: true, Processes: true, CPU: true, Disk: true, OpenFiles: true,
-	}); len(got) != 0 {
-		t.Errorf("a platform that enforces every ceiling still declared %v unenforced", got)
 	}
 }

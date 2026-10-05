@@ -142,3 +142,31 @@ func TestSpendIsAddedOnlyForAPositiveCostOnAKnownTotal(t *testing.T) {
 		t.Errorf("an unknown total became %v", *p.SpentUSD)
 	}
 }
+
+func TestTheCatalogCheckRunsOnlyWhenTheBudgetStillCoversAModelCallAfterIt(t *testing.T) {
+	l := testLimits()
+	for _, c := range []struct {
+		name   string
+		budget float64
+		checks bool
+	}{
+		{"the minimum budget", l.MaxCallCostUSD, false},
+		{"just short of a call plus the check", l.MaxCallCostUSD + catalogCheckCeilingUSD - .001, false},
+		{"exactly a call plus the check", l.MaxCallCostUSD + catalogCheckCeilingUSD, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			asked := false
+			s := &Service{Limits: l, CatalogCheck: func(context.Context, identity.Workspace, string) ([]Reference, float64, error) {
+				asked = true
+				return nil, catalogCheckCeilingUSD, nil
+			}}
+			e, state := s.openingEnvelope(context.Background(), identity.Workspace{}, "summarise", c.budget, "key")
+			if asked != c.checks || state != StateQueued {
+				t.Fatalf("checked = %v, state = %s; want checked = %v and queued", asked, state, c.checks)
+			}
+			if !canSpend(e.Snapshot, l) {
+				t.Errorf("after the opening the first step cannot be paid for: spent %v of %v", *e.Snapshot.SpentUSD, c.budget)
+			}
+		})
+	}
+}

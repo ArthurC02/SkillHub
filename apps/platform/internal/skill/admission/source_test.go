@@ -5,6 +5,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
@@ -122,15 +125,60 @@ func TestPlanImportFindsSkillsByWalkingASourceWithNoManifest(t *testing.T) {
 	}
 }
 
-func TestPlanImportStopsAtTheCeilingAndSaysBothNumbers(t *testing.T) {
-	build := func(count int) map[string]string {
-		files := map[string]string{"plugin.json": pluginManifest("big")}
-		for i := 0; i < count; i++ {
-			name := fmt.Sprintf("skill-%03d", i)
-			files["skills/"+name+"/SKILL.md"] = namedSkillMD(name)
-		}
-		return files
+func sourceOfValidSkills(count int) map[string]string {
+	files := map[string]string{"plugin.json": pluginManifest("big")}
+	for i := 0; i < count; i++ {
+		name := fmt.Sprintf("skill-%03d", i)
+		files["skills/"+name+"/SKILL.md"] = namedSkillMD(name)
 	}
+	return files
+}
+
+func TestTheCeilingCountsTheSkillsAnImportWouldCreateNotTheOnesItFound(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		extra map[string]string
+	}{
+		{"one more is malformed", map[string]string{"skills/broken/SKILL.md": "no frontmatter here at all\n"}},
+		{"one more repeats a name", map[string]string{"skills/again/SKILL.md": namedSkillMD("skill-000")}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files := sourceOfValidSkills(MaxSkillsPerImport)
+			maps.Copy(files, tc.extra)
+			plan := planOf(t, files)
+			if len(plan.admitted) != MaxSkillsPerImport || len(plan.refused) != 1 {
+				t.Fatalf("admitted = %d, refused = %d; want %d and 1", len(plan.admitted), len(plan.refused), MaxSkillsPerImport)
+			}
+		})
+	}
+}
+
+func TestOneSkillOverTheCeilingAfterRefusalsIsStillRefusedWithTheCountToBeCreated(t *testing.T) {
+	files := sourceOfValidSkills(MaxSkillsPerImport + 1)
+	files["skills/broken/SKILL.md"] = "no frontmatter here at all\n"
+
+	_, err := planImport(zipBytes(t, files))
+	tooMany, ok := errors.AsType[*TooManySkillsError](err)
+	if !ok || tooMany.Admitted != MaxSkillsPerImport+1 {
+		t.Fatalf("err = %v, want TooManySkillsError{Admitted: %d}", err, MaxSkillsPerImport+1)
+	}
+}
+
+func TestATooLargeSourceIsAnsweredWithBothNumbers(t *testing.T) {
+	rec := httptest.NewRecorder()
+	(&Handler{}).respondSource(rec, SourceResult{}, &TooManySkillsError{Admitted: 51})
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want 413", rec.Code)
+	}
+	const want = "這個來源有 51 個 Skill 可以匯入，超過一次匯入的上限 50 個。請改成一個一個匯入，或先把來源拆小。"
+	if !strings.Contains(rec.Body.String(), want) {
+		t.Fatalf("body = %s, want the message %q", rec.Body.String(), want)
+	}
+}
+
+func TestPlanImportStopsAtTheCeilingAndSaysBothNumbers(t *testing.T) {
+	build := sourceOfValidSkills
 
 	if plan := planOf(t, build(MaxSkillsPerImport)); len(plan.admitted) != MaxSkillsPerImport {
 		t.Fatalf("exactly the ceiling was refused: %d admitted", len(plan.admitted))

@@ -43,17 +43,17 @@ func MaintainMonthly(ctx context.Context, pool *pgxpool.Pool, table string, now 
 		return report, err
 	}
 
+	created, err := createUpcoming(ctx, pool, table, existing, now)
+	report.Created = created
+	failures := []error{err}
 	for _, name := range expiredMonths(table, existing, now, retention) {
-
 		if _, err := pool.Exec(ctx, fmt.Sprintf(`DROP TABLE IF EXISTS %s`, name)); err != nil {
-			return report, fmt.Errorf("partition: drop %s: %w", name, err)
+			failures = append(failures, fmt.Errorf("partition: drop %s: %w", name, err))
+			continue
 		}
 		report.Dropped = append(report.Dropped, name)
 	}
-
-	created, err := createUpcoming(ctx, pool, table, existing, now)
-	report.Created = created
-	return report, err
+	return report, errors.Join(failures...)
 }
 
 func CreateUpcoming(ctx context.Context, pool *pgxpool.Pool, table string, now time.Time) (Report, error) {
@@ -80,17 +80,19 @@ func createUpcoming(
 		present[name] = true
 	}
 	var created []string
+	var failures []error
 	for _, start := range upcomingMonths(now) {
 		name := monthName(table, start)
 		if present[name] {
 			continue
 		}
 		if err := createMonth(ctx, pool, table, name, start); err != nil {
-			return created, err
+			failures = append(failures, err)
+			continue
 		}
 		created = append(created, name)
 	}
-	return created, nil
+	return created, errors.Join(failures...)
 }
 
 func childPartitions(ctx context.Context, pool *pgxpool.Pool, table string) ([]string, error) {

@@ -9,7 +9,12 @@ import (
 
 func writeTestMain(t *testing.T, root, pkg, body string) string {
 	t.Helper()
-	dir := filepath.Join(root, "apps", "platform", "internal", pkg)
+	return writePlatformTest(t, root, filepath.Join("internal", pkg), body)
+}
+
+func writePlatformTest(t *testing.T, root, pkg, body string) string {
+	t.Helper()
+	dir := filepath.Join(root, "apps", "platform", pkg)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +47,7 @@ func TestRequireDBGuardCatchesAPackageThatIgnoresTheSwitch(t *testing.T) {
 	writeTestMain(t, root, "good", guarded)
 	writeTestMain(t, root, "bad", unguarded)
 
-	missing, err := unguardedDBTestMains(root)
+	missing, err := unguardedDBTestPackages(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,6 +60,45 @@ func TestRequireDBGuardCatchesAPackageThatIgnoresTheSwitch(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "PORT-004") {
 		t.Errorf("the failure should say which requirement it enforces: %v", err)
+	}
+}
+
+const helperSkipsSilently = `package p
+func testPool(t *testing.T) string {
+	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("no database")
+	}
+	return dsn
+}`
+
+func TestRequireDBGuardCatchesAHelperThatSkipsWithoutATestMain(t *testing.T) {
+	for name, pkg := range map[string]string{
+		"an internal package": filepath.Join("internal", "credit"),
+		"a command":           filepath.Join("cmd", "api"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			writePlatformTest(t, root, pkg, helperSkipsSilently)
+
+			missing, err := unguardedDBTestPackages(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := filepath.ToSlash(filepath.Join("apps", "platform", pkg))
+			if len(missing) != 1 || missing[0] != want {
+				t.Fatalf("got %v, want [%s]", missing, want)
+			}
+		})
+	}
+}
+
+func TestRequireDBGuardIgnoresTheVariableNameInsideTestData(t *testing.T) {
+	root := t.TempDir()
+	writePlatformTest(t, root, filepath.Join("internal", "evidence"), `package p
+var leaked = "SKILLHUB_TEST_DATABASE_URL=postgres://skillhub:hunter2@db:5432/skillhub_test"`)
+	if err := requireDBGuardCheck(root); err != nil {
+		t.Errorf("flagged a package that only names the variable inside a fixture string: %v", err)
 	}
 }
 

@@ -46,7 +46,9 @@ export function DraftCard({
             <Reveal text={p.previous_draft.skill.body} />
           </pre>
           {p.previous_draft.skill.files?.map((f) => (
-            <pre key={f.path}>{f.path + "\n" + f.content}</pre>
+            <pre key={f.path}>
+              <Reveal text={f.path + "\n" + f.content} />
+            </pre>
           ))}
         </details>
       )}

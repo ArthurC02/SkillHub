@@ -1,9 +1,14 @@
 package sandbox
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -30,6 +35,7 @@ type p02Driver struct {
 	stopHadDeadline   bool
 	probeReached      []string
 	probeErr          error
+	startErr          error
 }
 
 func (d *p02Driver) ProbeEgress(context.Context, []string) ([]string, error) {
@@ -61,7 +67,7 @@ func (d *p02Driver) Start(ctx context.Context, _ string, _ RunRequest) error {
 	if d.startHook != nil {
 		d.startHook()
 	}
-	return nil
+	return d.startErr
 }
 func (d *p02Driver) Wait(ctx context.Context, _ string) (Outcome, error) {
 	select {
@@ -167,10 +173,12 @@ type fakeProber struct {
 	reached []string
 	err     error
 	calls   int
+	dialled []string
 }
 
-func (f *fakeProber) ProbeEgress(context.Context, []string) ([]string, error) {
+func (f *fakeProber) ProbeEgress(_ context.Context, targets []string) ([]string, error) {
 	f.calls++
+	f.dialled = targets
 	return f.reached, f.err
 }
 
@@ -204,12 +212,69 @@ func TestP02ProbeDistinguishesAHoleFromTheAbsenceOfEvidence(t *testing.T) {
 	}
 }
 
-func TestAProbeThatCouldNotRunIsNeverAPass(t *testing.T) {
-	p := NewP02Probe([]string{"db.internal:5432"}, 0, 0)
-	if got := p.Check(context.Background(), &fakeProber{err: errors.New("boom")}, probeAt); got.State == P02Pass {
-		t.Fatal("a probe that failed to run reported pass")
-	}
+func TestAP02TargetThatIsNotHostPortIsSkippedAndNamed(t *testing.T) {
+	p := NewP02Probe([]string{"db.internal:5432", "db.internal", "cache.internal:0", " "}, 0, 0)
+	prober := &fakeProber{}
 
+	got := p.Check(context.Background(), prober, probeAt)
+
+	if !slices.Equal(prober.dialled, []string{"db.internal:5432"}) {
+		t.Errorf("dialled %v, want only db.internal:5432", prober.dialled)
+	}
+	if got.State != P02Pass {
+		t.Fatalf("state = %q, want pass for the one target that was dialled (detail %q)", got.State, got.Detail)
+	}
+	if want := "1 destination(s) unreachable; not checked, not host:port: cache.internal:0, db.internal"; got.Detail != want {
+		t.Errorf("detail = %q, want %q", got.Detail, want)
+	}
+}
+
+func TestAP02ListWithNothingToDialIsNeverAPass(t *testing.T) {
+	p := NewP02Probe([]string{"db.internal", "db.internal:65536"}, 0, 0)
+	if !p.Configured() {
+		t.Fatal("a node given only unusable targets reports itself not configured, which a runsc node is allowed to start as")
+	}
+	want := "no target is host:port, so nothing was dialled: db.internal, db.internal:65536"
+	if got := p.Result(); got.State != P02Unknown || got.Detail != want {
+		t.Fatalf("before any reading: %+v, want unknown with %q", got, want)
+	}
+	prober := &fakeProber{}
+	if got := p.Check(context.Background(), prober, probeAt); got.State != P02Unknown || got.Detail != want || !got.CheckedAt.Equal(probeAt) {
+		t.Fatalf("after a reading: %+v, want unknown with %q at %v", got, want, probeAt)
+	}
+	if prober.calls != 0 {
+		t.Errorf("the prober ran %d time(s) with nothing to dial", prober.calls)
+	}
+}
+
+func TestSplitP02TargetAcceptsOnlyADialableHostAndPort(t *testing.T) {
+	for _, tc := range []struct {
+		target string
+		host   string
+		port   int
+		ok     bool
+	}{
+		{"db.internal:5432", "db.internal", 5432, true},
+		{"db.internal:1", "db.internal", 1, true},
+		{"db.internal:65535", "db.internal", 65535, true},
+		{"::1:5432", "::1", 5432, true},
+		{"db.internal", "", 0, false},
+		{":5432", "", 0, false},
+		{"db.internal:", "", 0, false},
+		{"db.internal:0", "", 0, false},
+		{"db.internal:65536", "", 0, false},
+		{"db.internal:pg", "", 0, false},
+	} {
+		t.Run(tc.target, func(t *testing.T) {
+			host, port, ok := SplitP02Target(tc.target)
+			if host != tc.host || port != tc.port || ok != tc.ok {
+				t.Fatalf("SplitP02Target(%q) = %q, %d, %v; want %q, %d, %v", tc.target, host, port, ok, tc.host, tc.port, tc.ok)
+			}
+		})
+	}
+}
+
+func TestANodeThatHasTakenNoReadingIsUnknown(t *testing.T) {
 	fresh := NewP02Probe([]string{"db.internal:5432"}, 0, 0)
 	if got := fresh.Result(); got.State != P02Unknown {
 		t.Fatalf("a node that has taken no reading reports %q, want unknown: starting at pass means a node "+
@@ -374,6 +439,22 @@ func TestAnUnknownP02ReadingRefusesNewWork(t *testing.T) {
 	}
 	if strings.Contains(re.Message, "db.internal") || strings.Contains(re.Message, "secret") {
 		t.Fatalf("refusal exposed probe detail: %q", re.Message)
+	}
+}
+
+func TestANodeRefusingWorkAnswersCreateWith503SoThePlatformRetries(t *testing.T) {
+	m := p02Manager(newP02Driver())
+	m.p02 = &P02Probe{result: P02Result{State: P02Fail}}
+	h := (&Server{M: m, Token: "provider-token"}).Routes()
+	body, _ := json.Marshal(p02Request())
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/runs", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer provider-token")
+
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("create on a node refusing work = %d, want 503 (a 422 is never retried)", rec.Code)
 	}
 }
 
@@ -662,5 +743,23 @@ func TestWithP02RunsThePeriodicCheckAndBreachTeardown(t *testing.T) {
 	}
 	if probe.Result().State != P02Fail {
 		t.Errorf("probe result = %+v, want the periodic Check to have stored a fail reading", probe.Result())
+	}
+}
+
+func TestAStartThatFailsAfterTheWorkloadIsUpStopsTheWorkload(t *testing.T) {
+	drv := newP02Driver()
+	drv.startErr = errors.New("push inputs: grant fetch failed")
+	m := p02Manager(drv)
+
+	run, _, err := m.Create(context.Background(), p02Request())
+
+	if err != nil || run.State != StateFailed {
+		t.Fatalf("create = %+v, %v; want the run reported failed", run, err)
+	}
+	drv.mu.Lock()
+	stops := drv.stopCalls
+	drv.mu.Unlock()
+	if stops != 1 {
+		t.Errorf("driver stops = %d, want 1: a workload left running holds its model key until reclaimed", stops)
 	}
 }

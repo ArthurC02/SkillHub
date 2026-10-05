@@ -25,6 +25,7 @@ import (
 
 type fakeCreditLedger struct {
 	balances    map[string]int64
+	canStartAt  map[int64]bool
 	estimate    CreditSessionEstimate
 	balanceErr  error
 	estimateErr error
@@ -39,7 +40,7 @@ func (f *fakeCreditLedger) Standing(_ context.Context, workspaceID pgtype.UUID) 
 		return 0, false, f.balanceErr
 	}
 	balance := f.balances[pgconv.UUIDString(workspaceID)]
-	return balance, balance >= f.estimate.ThresholdCredits, nil
+	return balance, f.canStartAt[balance], nil
 }
 
 func (f *fakeCreditLedger) SessionEstimate(context.Context) (CreditSessionEstimate, error) {
@@ -49,9 +50,9 @@ func (f *fakeCreditLedger) SessionEstimate(context.Context) (CreditSessionEstima
 	return f.estimate, nil
 }
 
-func (f *fakeCreditLedger) Grant(_ context.Context, workspaceID pgtype.UUID, amount int64, _ string, _ pgtype.UUID) (int64, error) {
+func (f *fakeCreditLedger) Grant(_ context.Context, workspaceID pgtype.UUID, grant CreditGrant) (int64, error) {
 	key := pgconv.UUIDString(workspaceID)
-	f.balances[key] += amount
+	f.balances[key] += grant.AmountCredits
 	return f.balances[key], nil
 }
 
@@ -213,6 +214,7 @@ func TestOperatorGrantUnblocksANewSession(t *testing.T) {
 		LowCredits: 30, HighCredits: testSessionThreshold,
 		ThresholdCredits: testSessionThreshold, SampleSize: 2, Estimated: true,
 	})
+	ledger.canStartAt = map[int64]bool{0: false, 100: true}
 	app, srv := creditsTestServer(t, pool, ledger)
 	member := creditsLogin(t, srv, "credits-member-grant")
 	operator := creditsLogin(t, srv, "credits-operator-grant")
@@ -326,6 +328,32 @@ func TestAnOperatorGrantCompletesOnOneConnection(t *testing.T) {
 	code, body := operator.postJSON(t, "/admin/credits/"+member.workspaceID+"/grants", `{"amount_credits":100,"reason":"beta reward"}`)
 	if code != http.StatusOK {
 		t.Fatalf("operator grant on a one-connection pool: got %d, body %v", code, body)
+	}
+}
+
+func TestACorrectionBelowTheLowestStoredBalanceIsRefusedAsABadRequest(t *testing.T) {
+	pool := creditsTestPool(t)
+	app, srv := realCreditsServer(t, pool)
+	member := creditsLogin(t, srv, "credits-member-below-floor")
+	operator := creditsLogin(t, srv, "credits-operator-below-floor")
+	app.Auth.Operators = map[string]bool{operator.userID: true}
+
+	code, body := operator.postJSON(t, "/admin/credits/"+member.workspaceID+"/grants",
+		`{"amount_credits":-1000001,"reason":"corrects an over-grant"}`)
+
+	if code != http.StatusBadRequest {
+		t.Fatalf("a correction past the lowest stored balance: got %d (%v), want 400", code, body)
+	}
+	if msg, _ := body["error"].(string); msg != "the balance cannot go below -1000000; no credits were changed" {
+		t.Errorf("error = %q, want the plain explanation", msg)
+	}
+	var entries int
+	if err := pool.QueryRow(context.Background(),
+		`SELECT count(*) FROM credit_entries WHERE user_id = $1`, mustParseUUID(t, member.userID)).Scan(&entries); err != nil {
+		t.Fatal(err)
+	}
+	if entries != 0 {
+		t.Errorf("a refused correction wrote %d ledger entries", entries)
 	}
 }
 

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { RunTrace } from "./trace/RunTrace.page";
 import type { TraceAdvanced, TraceSummary } from "./trace.service";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -135,15 +136,8 @@ async function render() {
   await waitFor(() => container.querySelector("[data-loading]") === null);
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs);
 }
 
 const summary: TraceSummary = {
@@ -685,6 +679,41 @@ test("the advanced trace stops polling once the run has ended", async () => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
   try {
     expect(await openAdvancedAndCountPolls("succeeded")).toBe(0);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("the advanced trace reads once more when the run ends so its closing events show", async () => {
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+  try {
+    const general = { ...summary, status: "running" };
+    const advancedReadsAfterEnd: string[] = [];
+    stubTrace(general, (url) => {
+      if (url.includes("mode=advanced") && general.status === "succeeded")
+        advancedReadsAfterEnd.push(url);
+      return advanced;
+    });
+    await render();
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+    await act(async () => {
+      Array.from(container.querySelectorAll("button"))
+        .find((b) => b.textContent === "進階模式")
+        ?.click();
+    });
+    await waitFor(() => container.querySelector("table") !== null);
+    general.status = "succeeded";
+    for (let tick = 0; tick < 3; tick += 1) {
+      await act(async () => {
+        vi.advanceTimersByTime(1600);
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 30));
+      });
+    }
+    expect(advancedReadsAfterEnd).toHaveLength(1);
   } finally {
     vi.useRealTimers();
   }

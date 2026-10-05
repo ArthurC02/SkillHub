@@ -25,6 +25,15 @@ func withoutLinks(s string) string {
 	return linkPattern.ReplaceAllString(s, linkPlaceholder)
 }
 
+func evidenceWithoutLinks(refs []EvidenceRef) []EvidenceRef {
+	cleaned := make([]EvidenceRef, len(refs))
+	for i, ref := range refs {
+		ref.Excerpt = withoutLinks(ref.Excerpt)
+		cleaned[i] = ref
+	}
+	return cleaned
+}
+
 type creationFeedbackPayload struct {
 	EvaluationAvailable   bool              `json:"evaluation_available"`
 	EvaluationID          string            `json:"evaluation_id"`
@@ -65,11 +74,13 @@ func cutFeedbackItems(criteria []CriterionResult, findings []Finding) (itemsTrun
 		if criteria[i].Reason, t = cut(withoutLinks(criteria[i].Reason), creationFeedbackMaxItem); t {
 			itemsTruncated = true
 		}
+		criteria[i].Evidence = evidenceWithoutLinks(criteria[i].Evidence)
 	}
 	for i := range findings {
 
 		msg, t := cut(withoutLinks(findings[i].Message), creationFeedbackMaxItem)
 		findings[i].Message = msg
+		findings[i].Evidence = evidenceWithoutLinks(findings[i].Evidence)
 		if t {
 			itemsTruncated = true
 		}

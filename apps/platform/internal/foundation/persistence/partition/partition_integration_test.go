@@ -113,10 +113,37 @@ func TestAttachingAMonthTheDefaultAlreadyHoldsFailsWithTheDrainInstructions(t *t
 			t.Errorf("error does not mention %q: %v", want, err)
 		}
 	}
-	assertNames(t, "created", report.Created)
+	assertNames(t, "created", report.Created, "analytics_events_2027_06", "analytics_events_2027_07")
 
 	if countAnalyticsEvents(t, pool, "stranded-in-default") != 1 {
 		t.Error("the row in the default partition did not survive the failed attach")
+	}
+}
+
+func TestAnExpiredMonthThatCannotBeDroppedHoldsBackNeitherTheOthersNorTheMonthsAhead(t *testing.T) {
+	pool := requirePartitionDB(t)
+	ctx := context.Background()
+	if _, err := MaintainMonthly(ctx, pool, traceTable, date(2027, time.December, 1), 3650*24*time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `CREATE VIEW pinned_trace_month AS SELECT * FROM trace_events_2027_12`); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DROP VIEW IF EXISTS pinned_trace_month`) })
+
+	report, err := MaintainMonthly(ctx, pool, traceTable, date(2028, time.March, 15), 30*24*time.Hour)
+
+	if err == nil || !strings.Contains(err.Error(), "trace_events_2027_12") {
+		t.Fatalf("err = %v, want the pinned month's drop reported", err)
+	}
+	if !contains(report.Dropped, "trace_events_2028_01") || contains(report.Dropped, "trace_events_2027_12") {
+		t.Errorf("dropped = %v, want the month after the pinned one dropped and the pinned one kept", report.Dropped)
+	}
+	names := childPartitionNames(t, pool, traceTable)
+	for _, want := range []string{"trace_events_2028_03", "trace_events_2028_04", "trace_events_2028_05"} {
+		if !contains(names, want) {
+			t.Errorf("partitions = %v, want %s created ahead", names, want)
+		}
 	}
 }
 

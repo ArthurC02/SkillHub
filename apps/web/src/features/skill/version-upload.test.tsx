@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { VersionUpload } from "./version/components/VersionUpload";
 import { SKILL_VERSIONS } from "../../testing/fixtures/platform";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const VERSION = "22222222-2222-2222-2222-222222222222";
@@ -62,15 +63,8 @@ async function render() {
   await waitFor(() => text().includes("上傳新版本"));
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs);
 }
 
 const text = () => container.textContent ?? "";
@@ -126,7 +120,7 @@ test("丙-151: 檔案輸入框之前有匯入頁同樣的規則句", async () =>
   await render();
 
   const rule = container.querySelector("ul.note");
-  expect(rule, "找不到規則句的 <ul class=note>").toBeDefined();
+  expect(rule, "找不到規則句的 <ul class=note>").not.toBeNull();
   expect(rule!.textContent).toContain("SKILL.md");
   expect(rule!.textContent).toContain("大小上限見拒絕訊息");
 

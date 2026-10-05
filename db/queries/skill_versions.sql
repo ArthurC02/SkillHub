@@ -18,7 +18,7 @@ WHERE skill_versions.id = $1 AND skill_versions.workspace_id = $2
 
 -- name: ListVersionSummaries :many
 SELECT sv.id, sv.skill_id, sv.version_number, sk.name AS skill_name,
-       sk.access_restriction, sk.redistribution,
+       sk.access_restriction, sk.redistribution, (sk.takedown_at IS NOT NULL)::bool AS taken_down,
        (SELECT max(v2.version_number) FROM skill_versions v2
          WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number
 FROM skill_versions sv
@@ -27,7 +27,7 @@ WHERE sv.workspace_id = @workspace_id AND sv.id = ANY(@version_ids::uuid[]);
 
 -- name: ListVersionSummariesByID :many
 SELECT sv.id, sv.skill_id, sv.version_number, sk.name AS skill_name,
-       sk.access_restriction, sk.redistribution,
+       sk.access_restriction, sk.redistribution, (sk.takedown_at IS NOT NULL)::bool AS taken_down,
        (SELECT max(v2.version_number) FROM skill_versions v2
          WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number
 FROM skill_versions sv

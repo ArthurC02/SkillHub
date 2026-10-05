@@ -173,7 +173,7 @@ func (f *Fetcher) once(ctx context.Context, rawURL string) fetchAttempt {
 	if !strings.HasPrefix(ct, "text/html") && !strings.HasPrefix(ct, "text/plain") {
 		return fetchEndedWith("unsupported")
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxFetchBytes))
+	body, err := readWithinLimit(resp.Body)
 	if err != nil {
 		return fetchWorthRetrying()
 	}
@@ -225,6 +225,26 @@ func htmlToText(s string) string {
 		}
 	}
 	return strings.Join(strings.Fields(b.String()), " ")
+}
+
+func readWithinLimit(r io.Reader) ([]byte, error) {
+	body, err := io.ReadAll(io.LimitReader(r, MaxFetchBytes))
+	if err != nil || len(body) < MaxFetchBytes {
+		return body, err
+	}
+	return withoutCutRune(body), nil
+}
+
+func withoutCutRune(b []byte) []byte {
+	for back := 1; back < utf8.UTFMax && back <= len(b); back++ {
+		if start := len(b) - back; utf8.RuneStart(b[start]) {
+			if utf8.FullRune(b[start:]) {
+				return b
+			}
+			return b[:start]
+		}
+	}
+	return b
 }
 
 func truncateRunes(s string, n int) string {

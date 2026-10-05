@@ -184,18 +184,28 @@ function ImportRules({ rules }: { rules: SkillImportLimits | undefined }) {
       </li>
       <li>網址必須是 https，而且不得帶帳號密碼、查詢字串或錨點。</li>
       {rules ? (
-        <li>
-          zip 最大 {mb(rules.max_zip_bytes)}，解壓後總量最大 {mb(rules.max_unpacked_bytes)}；最多{" "}
-          {rules.max_files} 個檔案、 單一檔案最大 {mb(rules.max_file_bytes)}、路徑最深{" "}
-          {rules.max_path_depth} 層。
-        </li>
+        <>
+          <li>
+            zip 最大 {mb(rules.max_zip_bytes)}，解壓後總量最大 {mb(rules.max_unpacked_bytes)}；最多{" "}
+            {rules.max_files} 個檔案、 單一檔案最大 {mb(rules.max_file_bytes)}、路徑最深{" "}
+            {rules.max_path_depth} 層。
+          </li>
+          <li>
+            一次匯入最多建立 {rules.max_skills_per_import} 個
+            Skill（被拒的不算），超過就整批不匯入。
+          </li>
+        </>
       ) : (
         <li>正在讀這個部署的大小上限…</li>
       )}
       <li>
-        zip 的最上層（或單一頂層資料夾）要有 <code>SKILL.md</code>，而且它的 frontmatter 要有{" "}
-        <code>name</code> 與 <code>description</code>——名稱、描述與 License 都從那裡讀，
-        不必在這一頁手打。
+        zip 的最上層（或單一頂層資料夾）可以是一個 Skill（有 <code>SKILL.md</code>）、一個 Agent
+        Plugin（有 <code>plugin.json</code>，Skill 放在 <code>skills/</code> 底下），或一棵含多個
+        Skill 資料夾的目錄。
+      </li>
+      <li>
+        每個 <code>SKILL.md</code> 的 frontmatter 都要有 <code>name</code> 與{" "}
+        <code>description</code>——名稱、描述與 License 都從那裡讀，不必在這一頁手打。
       </li>
     </ul>
   );

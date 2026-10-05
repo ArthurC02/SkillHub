@@ -83,7 +83,7 @@ func TestACancelledCallIsNotBlamedOnTheProvider(t *testing.T) {
 	cancel()
 
 	_, err := answering(t, http.StatusOK).Observe(ctx, "sbx-1")
-	if errors.Is(err, ErrProviderUnavailable) || retryable(err) {
+	if !errors.Is(err, context.Canceled) || errors.Is(err, ErrProviderUnavailable) || retryable(err) {
 		t.Errorf("a cancelled call gave %v (retryable %v), want the cancellation itself", err, retryable(err))
 	}
 }

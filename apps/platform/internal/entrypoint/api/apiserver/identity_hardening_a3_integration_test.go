@@ -32,18 +32,19 @@ func TestAnOperatorRefusalIsAudited(t *testing.T) {
 	var rows int
 	if err := pool.QueryRow(ctx, `
 		SELECT count(*) FROM audit_events
-		WHERE action = $1 AND resource_type = $2 AND actor_user_id IS NOT NULL`,
-		audit.ActionOperatorRefused, audit.ResourceOperatorRoute).Scan(&rows); err != nil {
+		WHERE action = $1 AND resource_type = $2 AND actor_user_id = $3`,
+		audit.ActionOperatorRefused, audit.ResourceOperatorRoute, mustUUID(t, client.userID)).Scan(&rows); err != nil {
 		t.Fatalf("count audit events: %v", err)
 	}
-	if rows == 0 {
-		t.Fatal("a signed-in account was refused an operator route and nothing recorded it")
+	if rows != 1 {
+		t.Fatalf("%d audit rows for the one refused operator request, want 1", rows)
 	}
 
 	var metadata []byte
 	if err := pool.QueryRow(ctx, `
-		SELECT metadata FROM audit_events WHERE action = $1 ORDER BY created_at DESC LIMIT 1`,
-		audit.ActionOperatorRefused).Scan(&metadata); err != nil {
+		SELECT metadata FROM audit_events WHERE action = $1 AND actor_user_id = $2
+		ORDER BY created_at DESC LIMIT 1`,
+		audit.ActionOperatorRefused, mustUUID(t, client.userID)).Scan(&metadata); err != nil {
 		t.Fatalf("read metadata: %v", err)
 	}
 	var meta map[string]any

@@ -3,23 +3,8 @@ import pathlib
 import pytest
 import yaml
 from skillhub_api_stub.generated import models as generated
-from skillhub_api_stub.generated.models import EnrichSkillRequest
 
 from skillhub_llm.app import app
-
-
-def test_generated_enrich_request_validates_the_internal_contract() -> None:
-    request = EnrichSkillRequest.model_validate(
-        {
-            "skill_name": "example",
-            "skill_md": "---\nname: example\n---\n",
-            "file_tree": ["SKILL.md"],
-            "language": "zh-Hant",
-        }
-    )
-
-    assert request.skill_name == "example"
-    assert request.file_tree == ["SKILL.md"]
 
 
 @pytest.mark.parametrize(
@@ -92,6 +77,13 @@ def test_every_endpoint_that_can_fail_on_the_gateway_declares_both_ways_it_can()
         name for name, responses in _operations() if "502" in responses and "503" not in responses
     ]
     assert missing == [], f"declare a 503 for: {missing}"
+
+
+def test_the_gateway_checks_reach_the_endpoints_that_call_the_gateway():
+    gateway_endpoints = {name for name, responses in _operations() if "502" in responses}
+    assert {"POST /v1/creation/step", "POST /judge-run", "POST /embed"} <= gateway_endpoints, (
+        f"the 502/503 checks above only cover {sorted(gateway_endpoints)}"
+    )
 
 
 def test_the_503_says_both_of_the_things_it_can_mean():

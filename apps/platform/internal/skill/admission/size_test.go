@@ -24,10 +24,10 @@ func TestAnOversizedUploadIsToldBothNumbers(t *testing.T) {
 		t.Errorf("status %d, want 413", w.Code)
 	}
 	body := w.Body.String()
-	if !strings.Contains(body, skillpkg.HumanMB(skillpkg.MaxZipBytes)) {
+	if !strings.Contains(body, "10.0 MB") {
 		t.Errorf("the refusal does not name the platform's ceiling: %s", body)
 	}
-	if !strings.Contains(body, skillpkg.HumanMB(skillpkg.MaxZipBytes*2)) {
+	if !strings.Contains(body, "20.0 MB") {
 		t.Errorf("the refusal does not name what was actually sent: %s", body)
 	}
 }
@@ -53,7 +53,7 @@ func TestAnOversizedUploadWithNoUsableLengthOnlyClaimsTheCeiling(t *testing.T) {
 		writeTooLarge(w, r)
 
 		body := w.Body.String()
-		if !strings.Contains(body, skillpkg.HumanMB(skillpkg.MaxZipBytes)) {
+		if !strings.Contains(body, "10.0 MB") {
 			t.Errorf("ContentLength=%d: the ceiling is missing: %s", length, body)
 		}
 		if strings.Contains(body, "這一次送出的是") {

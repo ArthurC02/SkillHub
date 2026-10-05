@@ -21,6 +21,7 @@ import { useForkSkill } from "../skill/skills.service";
 import { BundleSection } from "../publishing";
 import { AnalyticsEventsSection } from "./policy/components/AnalyticsEventsSection";
 import type { DataRetentionPolicy } from "../../core/api/types";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const TEST_CASE = "55555555-5555-5555-5555-555555555555";
@@ -86,15 +87,8 @@ async function render(node: ReactNode, settled: () => boolean) {
   await waitFor(settled);
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs);
 }
 
 function button(text: string): HTMLButtonElement | undefined {

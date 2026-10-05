@@ -567,7 +567,7 @@ func TestCreationRestartRecoversUnknownAttemptWithoutReplay(t *testing.T) {
 	job := creationJob(t, v.ID)
 	ctx := context.Background()
 
-	if _, err := testPool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-interval '1 minute',
+	if _, err := testPool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-interval '5 minutes',
 	 snapshot=jsonb_set(jsonb_set(snapshot, '{snapshot,reserved_usd}', '0.1'), '{active_deadline}', to_jsonb(now()-interval '1 minute')) WHERE id=$1`, job.SessionID); err != nil {
 		t.Fatal(err)
 	}
@@ -602,7 +602,7 @@ func TestAnInterruptedAttemptWithAnUnreadDiagramAsksForItAgain(t *testing.T) {
 	job := creationJob(t, v.ID)
 	ctx := context.Background()
 
-	if _, err := testPool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-interval '1 minute',
+	if _, err := testPool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-interval '5 minutes',
 	 snapshot=jsonb_set(jsonb_set(snapshot, '{snapshot,diagram_fingerprint}', '"fp"'), '{active_deadline}', to_jsonb(now()-interval '1 minute')) WHERE id=$1`, job.SessionID); err != nil {
 		t.Fatal(err)
 	}
@@ -728,7 +728,7 @@ func TestAStalledSessionThatCannotBeReadDoesNotStrandTheOnesBehindIt(t *testing.
 	t.Cleanup(func() {
 		_, _ = testPool.Exec(context.Background(), "DELETE FROM creation_sessions WHERE id = $1", unreadable.SessionID)
 	})
-	healthy := stall("1 minute", `jsonb_set(jsonb_set(snapshot, '{snapshot,diagram_fingerprint}', '"fp"'), '{active_deadline}', to_jsonb(now()-interval '1 minute'))`)
+	healthy := stall("5 minutes", `jsonb_set(jsonb_set(snapshot, '{snapshot,diagram_fingerprint}', '"fp"'), '{active_deadline}', to_jsonb(now()-interval '1 minute'))`)
 
 	if err := s.Recover(ctx); err == nil {
 		t.Error("the unreadable session was skipped without reporting it")

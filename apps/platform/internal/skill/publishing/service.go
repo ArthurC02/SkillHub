@@ -209,39 +209,60 @@ func (s *Service) Publish(ctx context.Context, ws identity.Workspace, skillID pg
 	if err != nil {
 		return Publication{}, err
 	}
+	if err := s.release(ctx, ws, skillID, in, releaseCandidate{version: version, findings: encodedFindings}); err != nil {
+		return Publication{}, err
+	}
+	own, _, err := s.OwnPublication(ctx, ws, skillID)
+	return own, err
+}
 
+type releaseCandidate struct {
+	version  VersionFacts
+	findings []byte
+}
+
+func (s *Service) release(
+	ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, in PublishInput, candidate releaseCandidate,
+) error {
+	version := candidate.version
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return Publication{}, err
+		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 
 	if err := lockPublisher(ctx, q, ws); err != nil {
-		return Publication{}, err
+		return err
 	}
 	skill, found, err := s.LockSkillForRelease(ctx, tx, ws.ID, skillID)
 	if err != nil {
-		return Publication{}, err
+		return err
 	}
 	if !found || skill.TakenDown {
-		return Publication{}, ErrNotFound
+		return ErrNotFound
 	}
 	if refused := releaseGate(skill, in.attestation()); refused != nil {
-		return Publication{}, refused
+		return refused
 	}
 
 	publication, err := publicationToRelease(ctx, q, ws, skill, in.Name)
 	if err != nil {
-		return Publication{}, err
+		return err
+	}
+	if released, err := alreadyReleased(ctx, q, publication, version); err != nil || released {
+		if err != nil {
+			return err
+		}
+		return tx.Commit(ctx)
 	}
 	release, err := q.InsertPublicationRelease(ctx, gen.InsertPublicationReleaseParams{
 		PublicationID: publication.ID, WorkspaceID: ws.ID,
 		SkillVersionID: version.ID, VersionNumber: &version.VersionNumber, ContentHash: version.ContentHash,
-		Findings: encodedFindings, RightsAttested: in.RightsAttested, ReleasedBy: ws.OwnerUserID,
+		Findings: candidate.findings, RightsAttested: in.RightsAttested, ReleasedBy: ws.OwnerUserID,
 	})
 	if err != nil {
-		return Publication{}, err
+		return err
 	}
 	if err := audit.Log(ctx, tx, audit.Event{
 		Actor: ws.OwnerUserID, Workspace: ws.ID,
@@ -255,13 +276,9 @@ func (s *Service) Publish(ctx context.Context, ws identity.Workspace, skillID pg
 			auditKeyReleaseID:   pgconv.UUIDString(release.ID),
 		},
 	}); err != nil {
-		return Publication{}, err
+		return err
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return Publication{}, err
-	}
-	own, _, err := s.OwnPublication(ctx, ws, skillID)
-	return own, err
+	return tx.Commit(ctx)
 }
 
 func lockPublisher(ctx context.Context, q *gen.Queries, ws identity.Workspace) error {
@@ -615,4 +632,23 @@ func releasesOf(ctx context.Context, q *gen.Queries, publicationID pgtype.UUID) 
 		}
 	}
 	return releases, nil
+}
+
+func alreadyReleased(ctx context.Context, q *gen.Queries, publication gen.Publication, version VersionFacts) (bool, error) {
+	return latestReleaseIs(ctx, q, publication, func(latest gen.PublicationRelease) bool {
+		return latest.SkillVersionID == version.ID && latest.ContentHash == version.ContentHash
+	})
+}
+
+func latestReleaseIs(
+	ctx context.Context, q *gen.Queries, publication gen.Publication, same func(gen.PublicationRelease) bool,
+) (bool, error) {
+	if publication.Status != string(StatusPublished) {
+		return false, nil
+	}
+	releases, err := q.ListPublicationReleases(ctx, publication.ID)
+	if err != nil || len(releases) == 0 {
+		return false, err
+	}
+	return same(releases[0]), nil
 }

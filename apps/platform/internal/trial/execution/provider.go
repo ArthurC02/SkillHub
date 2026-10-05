@@ -102,6 +102,7 @@ func (c ProviderCapability) P02Breach() (bool, string) {
 type PackageRef struct {
 	SkillVersionID string `json:"skill_version_id"`
 	ContentHash    string `json:"content_hash"`
+	PackageSHA256  string `json:"package_sha256,omitempty"`
 	ObjectKey      string `json:"object_key,omitempty"`
 	SourcePath     string `json:"source_path,omitempty"`
 }
@@ -365,11 +366,18 @@ func transportFailure(ctx context.Context, req providerRequest, status int, err 
 	}
 	if status != 0 {
 		if req.wanted(status) {
-			return status, err
+			return status, answerCutShort(err)
 		}
 		return status, &providerError{Status: status, Message: err.Error()}
 	}
 	return 0, fmt.Errorf("%w: %w", ErrProviderUnavailable, err)
+}
+
+func answerCutShort(err error) error {
+	if errors.Is(err, httpx.ErrResponseTooLarge) {
+		return err
+	}
+	return fmt.Errorf("%w: %w", ErrProviderUnavailable, err)
 }
 
 func refusalFrom(status int, raw []byte) error {
@@ -515,6 +523,9 @@ func (r *Registry) Capability(ctx context.Context, p SandboxProvider) (ProviderC
 		return entry.capability, entry.err
 	}
 	capability, err := p.Capability(ctx)
+	if ctx.Err() != nil {
+		return capability, err
+	}
 
 	switch {
 	case err != nil:

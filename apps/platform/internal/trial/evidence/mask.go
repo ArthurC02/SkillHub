@@ -1,10 +1,13 @@
 package trace
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"regexp"
 	"sort"
 	"strconv"
@@ -51,8 +54,20 @@ type Result struct {
 
 func (m *Masker) Mask(payload json.RawMessage) (Result, error) {
 	var decoded any
-	if err := json.Unmarshal(payload, &decoded); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(payload))
+	dec.UseNumber()
+	if err := dec.Decode(&decoded); err != nil {
 		return Result{}, err
+	}
+	if _, err := dec.Token(); err != io.EOF {
+		return Result{}, errors.New("payload holds data after the first JSON value")
+	}
+	decoded, err := settleNumbers(decoded)
+	if err != nil {
+		return Result{}, err
+	}
+	if holdsNUL(decoded) {
+		return Result{}, errPayloadHoldsNUL
 	}
 	fields := make([]string, 0)
 	walked := m.walk(decoded, "", &fields)
@@ -63,6 +78,51 @@ func (m *Masker) Mask(payload json.RawMessage) (Result, error) {
 
 	sort.Strings(fields)
 	return Result{Payload: encoded, Fields: fields}, nil
+}
+
+func settleNumbers(node any) (any, error) {
+	var err error
+	switch v := node.(type) {
+	case json.Number:
+		if strings.ContainsAny(string(v), ".eE") {
+			return v.Float64()
+		}
+	case map[string]any:
+		for key, child := range v {
+			if v[key], err = settleNumbers(child); err != nil {
+				return nil, err
+			}
+		}
+	case []any:
+		for i, child := range v {
+			if v[i], err = settleNumbers(child); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return node, nil
+}
+
+var errPayloadHoldsNUL = errors.New("payload holds a NUL character, which the trace store cannot keep")
+
+func holdsNUL(node any) bool {
+	switch v := node.(type) {
+	case string:
+		return strings.ContainsRune(v, 0)
+	case map[string]any:
+		for key, child := range v {
+			if strings.ContainsRune(key, 0) || holdsNUL(child) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range v {
+			if holdsNUL(child) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (r Result) stored(event gen.InsertTraceEventParams) (gen.InsertTraceEventParams, error) {
@@ -86,7 +146,12 @@ func (m *Masker) walk(node any, pointer string, fields *[]string) any {
 	case map[string]any:
 		out := make(map[string]any, len(v))
 		for key, child := range v {
-			out[key] = m.walk(child, pointer+"/"+escapePointer(key), fields)
+			childPointer := pointer + "/" + escapePointer(key)
+			if namesASecret(key) {
+				out[key] = concealed(child, childPointer, fields)
+				continue
+			}
+			out[key] = m.walk(child, childPointer, fields)
 		}
 		return out
 	case []any:
@@ -98,6 +163,32 @@ func (m *Masker) walk(node any, pointer string, fields *[]string) any {
 	default:
 		return node
 	}
+}
+
+func concealed(node any, pointer string, fields *[]string) any {
+	switch v := node.(type) {
+	case string:
+		if v == "" || v == Placeholder {
+			return v
+		}
+	case json.Number, float64:
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for key, child := range v {
+			out[key] = concealed(child, pointer+"/"+escapePointer(key), fields)
+		}
+		return out
+	case []any:
+		out := make([]any, len(v))
+		for i, child := range v {
+			out[i] = concealed(child, pointer+"/"+strconv.Itoa(i), fields)
+		}
+		return out
+	default:
+		return node
+	}
+	*fields = append(*fields, pointer)
+	return Placeholder
 }
 
 func (m *Masker) redact(s string) string {
@@ -121,6 +212,23 @@ func (m *Masker) redact(s string) string {
 
 func (m *Masker) MaskString(s string) string {
 	return m.redact(s)
+}
+
+var secretKeyNames = []string{
+	"password", "passwd", "secret", "token", "apikey", "accesskey", "privatekey",
+	"authorization", "credential", "credentials", "cookie", "session",
+}
+
+var keySeparators = strings.NewReplacer("-", "", "_", "")
+
+func namesASecret(key string) bool {
+	normalized := strings.ToLower(keySeparators.Replace(key))
+	for _, name := range secretKeyNames {
+		if strings.HasSuffix(normalized, name) {
+			return true
+		}
+	}
+	return false
 }
 
 func escapePointer(key string) string {
@@ -166,9 +274,9 @@ func MaskerCanary() []string {
 	probes = append(probes, struct{ name, sample string }{canaryKnownName, known})
 
 	payload := make(map[string]string, len(probes))
-	for _, probe := range probes {
+	for i, probe := range probes {
 
-		payload[probe.name] = "canary " + probe.sample + " canary"
+		payload[probeKey(i)] = "canary " + probe.sample + " canary"
 	}
 	encoded, err := json.Marshal(payload)
 	if err != nil {
@@ -184,8 +292,8 @@ func MaskerCanary() []string {
 	}
 
 	survived := make([]string, 0)
-	for _, probe := range probes {
-		if strings.Contains(masked[probe.name], probe.sample) {
+	for i, probe := range probes {
+		if strings.Contains(masked[probeKey(i)], probe.sample) {
 			survived = append(survived, probe.name)
 		}
 	}
@@ -197,6 +305,8 @@ func MaskerCanary() []string {
 	}
 	return survived
 }
+
+func probeKey(i int) string { return "probe" + strconv.Itoa(i) }
 
 func canaryKnownValue() (string, error) {
 	var buf [16]byte

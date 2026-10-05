@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -13,6 +14,8 @@ import (
 type CostRecorder interface {
 	RecordCost(ctx context.Context, tx credit.DBTX, e credit.CostEvent) (id string, existed bool, err error)
 }
+
+const costRecordTimeout = 5 * time.Second
 
 type modelCall struct {
 	model         string
@@ -38,6 +41,8 @@ func (s *Service) recordCost(ctx context.Context, kind credit.CostKind, workspac
 		e.Estimated = true
 	}
 
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), costRecordTimeout)
+	defer cancel()
 	if _, _, err := s.Credit.RecordCost(ctx, s.Pool, e); err != nil {
 		slog.Warn("ingest: model call cost not recorded", "kind", kind, "error", err)
 	}

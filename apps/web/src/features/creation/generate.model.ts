@@ -51,3 +51,18 @@ export function failureSentence(f: GenerationFailure): string {
     : FAILURE_SENTENCE[""];
   return sentence(f);
 }
+
+const GENERATE_FAILURE_BY_STATUS: Record<number, string> = {
+  409: "這個工作區已經有一個生成在進行，等它完成後再試一次。",
+  429: "送出太頻繁了，請稍等一下再試。",
+  502: "模型服務這次沒有回應，沒有建立任何東西，請稍後再試一次。",
+  503: "暫時無法確認生成額度，這次沒有扣用任何額度，請稍後再試。",
+};
+
+export function generateFailureMessage(status: number | undefined, message: string): string {
+  if (status === 422 && /[㐀-鿿]/u.test(message)) return message;
+  return (
+    (status !== undefined && GENERATE_FAILURE_BY_STATUS[status]) ||
+    "生成沒有成功，請檢查連線後再試一次。"
+  );
+}

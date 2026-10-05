@@ -2,6 +2,7 @@ package run
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -36,13 +37,13 @@ func (s *Service) grantsFor(
 ) (grants []ObjectGrant, datasetKeys []string, err error) {
 	version, refs := inputs.version, inputs.datasets
 	if err := s.requireTestLab(); err != nil {
-		return nil, nil, err
+		return nil, nil, unbuildable(err)
 	}
 	store := s.Store
 	datasetKeys = make([]string, len(refs))
 	if store == nil {
 		if version.PackageObjectKey != "" || len(refs) > 0 {
-			return nil, nil, fmt.Errorf("no object store is configured; this run's inputs cannot be granted")
+			return nil, nil, unbuildable(errors.New("no object store is configured; this run's inputs cannot be granted"))
 		}
 		if err := s.recordObjectGrantExpiry(ctx, attempt, objectGrantsExpiredOnArrival()); err != nil {
 			return nil, nil, fmt.Errorf("record empty object grant expiry: %w", err)
@@ -66,12 +67,12 @@ func (s *Service) grantsFor(
 	for i, ref := range refs {
 		var id pgtype.UUID
 		if err := id.Scan(ref.DatasetID); err != nil {
-			return nil, nil, fmt.Errorf("grant dataset %s: %w", ref.FileName, err)
+			return nil, nil, unbuildable(fmt.Errorf("grant dataset %s: %w", ref.FileName, err))
 		}
 
 		dataset, err := s.TestLab.ReadDataset(ctx, run.WorkspaceID, id)
 		if err != nil {
-			return nil, nil, fmt.Errorf("dataset %s is no longer available for this run: %w", ref.FileName, err)
+			return nil, nil, unbuildableWhenGone(fmt.Errorf("dataset %s is no longer available for this run: %w", ref.FileName, err))
 		}
 		url, err := store.PresignGet(ctx, dataset.ObjectKey, ttl)
 		if err != nil {

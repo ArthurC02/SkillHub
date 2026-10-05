@@ -319,15 +319,15 @@ func TestFailedWritesLeaveNoOutboxEvent(t *testing.T) {
 	q := gen.New(pool)
 	ctx := context.Background()
 
-	before := unpublishedCount(t, pool)
-
 	other := newFixture(t, a, pool, "bob-outbox-atomicity")
+	before := outboxEventsOfWorkspaces(t, pool, f.workspaceID, other.workspaceID)
+
 	code, _ := f.postJSON(t, "/skills/"+f.skillID+"/runs",
 		`{"version_id":"`+f.versionID+`","test_case_id":"`+other.testCaseID+`"}`)
 	if code != http.StatusNotFound {
 		t.Fatalf("run with another workspace's test case: got %d, want 404", code)
 	}
-	if after := unpublishedCount(t, pool); after != before {
+	if after := outboxEventsOfWorkspaces(t, pool, f.workspaceID, other.workspaceID); after != before {
 		t.Errorf("rejected run creation leaked %d outbox events", after-before)
 	}
 
@@ -341,13 +341,13 @@ func TestFailedWritesLeaveNoOutboxEvent(t *testing.T) {
 	if _, err := svc.Transition(ctx, move); err != nil {
 		t.Fatal(err)
 	}
-	afterFirst := unpublishedCount(t, pool)
+	afterFirst := len(outboxFor(t, pool, created.RunID))
 
 	move.Reason = "second"
 	if _, err := svc.Transition(ctx, move); err == nil || !strings.Contains(err.Error(), "no longer in the expected status") {
 		t.Fatalf("replayed transition: got %v, want a conflict", err)
 	}
-	if after := unpublishedCount(t, pool); after != afterFirst {
+	if after := len(outboxFor(t, pool, created.RunID)); after != afterFirst {
 		t.Errorf("conflicting transition leaked %d outbox events", after-afterFirst)
 	}
 	history, err := q.ListRunStatusTransitions(ctx, gen.ListRunStatusTransitionsParams{RunID: runID, WorkspaceID: ws})
@@ -499,6 +499,7 @@ func TestAnUndeliverableEventIsIsolatedAndReleasesTheBacklog(t *testing.T) {
 	}
 
 	for range 5 {
+		releaseOutboxBackoff(t, pool)
 		if _, err := w.Publish(context.Background()); err == nil && attempts >= 2 {
 			break
 		}
@@ -565,7 +566,7 @@ func TestIllegalTransitionIsRefusedWithoutWriting(t *testing.T) {
 
 	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
-	before := unpublishedCount(t, pool)
+	before := len(outboxFor(t, pool, created.RunID))
 
 	_, err := svc.Transition(context.Background(), run.TransitionCommand{
 		WorkspaceID: ws, RunID: runID,
@@ -574,7 +575,7 @@ func TestIllegalTransitionIsRefusedWithoutWriting(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "illegal run status transition") {
 		t.Fatalf("queued -> succeeded: got %v, want an illegal-transition error", err)
 	}
-	if after := unpublishedCount(t, pool); after != before {
+	if after := len(outboxFor(t, pool, created.RunID)); after != before {
 		t.Error("a refused transition still wrote to the outbox")
 	}
 	if _, view := f.getRun(t, created.RunID); view.Status != string(gen.RunStatusQueued) {
@@ -786,10 +787,11 @@ func TestAManifestRedeliverySeesTheNamesTheFirstDeliveryRecordedOnlyAfterItCommi
 		done <- err
 	}()
 	<-started
+	waitUntilALockWaiterIsBlockedBy(t, pool, tx1.Conn().PgConn().PID())
 	select {
 	case err := <-done:
 		t.Fatalf("the redelivery read names before the first transaction released its manifest lock: %v", err)
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 	if err := tx1.Commit(ctx); err != nil {
 		t.Fatal(err)
@@ -891,6 +893,15 @@ func outboxRowExists(t *testing.T, pool *pgxpool.Pool, eventID pgtype.UUID) bool
 		t.Fatal(err)
 	}
 	return exists
+}
+
+func outboxEventsOfWorkspaces(t *testing.T, pool *pgxpool.Pool, workspaceIDs ...string) int {
+	t.Helper()
+	ids := make([]pgtype.UUID, len(workspaceIDs))
+	for i, id := range workspaceIDs {
+		ids[i] = mustUUID(t, id)
+	}
+	return countRow(t, pool, `SELECT count(*) FROM outbox_events WHERE workspace_id = ANY($1)`, ids)
 }
 
 func unpublishedCount(t *testing.T, pool *pgxpool.Pool) int {

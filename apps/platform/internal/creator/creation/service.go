@@ -388,13 +388,21 @@ func (s *Service) advance(ctx context.Context, tx pgx.Tx, row gen.CreationSessio
 		return r, err
 	}
 	err = q.AppendCreationEvent(ctx, gen.AppendCreationEventParams{SessionID: r.ID, WorkspaceID: r.WorkspaceID, Revision: r.Revision, EventType: event, Snapshot: b})
-	if err == nil && s.Billing != nil && state.HasEnded() && !from.HasEnded() {
-		if endErr := s.Billing.SessionEnded(ctx, tx, r.ID); endErr != nil {
-			slog.Warn("creation: session cost summary not written", "error", endErr)
-		}
+	if err == nil && state.HasEnded() {
+		s.summarizeSession(ctx, tx, r.ID)
 	}
 	return r, err
 }
+
+func (s *Service) summarizeSession(ctx context.Context, tx pgx.Tx, sessionID pgtype.UUID) {
+	if s.Billing == nil {
+		return
+	}
+	if err := s.Billing.SessionEnded(ctx, tx, sessionID); err != nil {
+		slog.Warn("creation: session cost summary not written", "error", err)
+	}
+}
+
 func PurgeWorkspace(ctx context.Context, tx pgx.Tx, ws pgtype.UUID) error {
 	return gen.New(tx).PurgeCreationWorkspace(ctx, ws)
 }

@@ -1,6 +1,7 @@
 package apiserver_test
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"sort"
@@ -136,6 +137,7 @@ type aliceWorld struct {
 	criterionID   string
 	datasetID     string
 	runID         string
+	liveRunID     string
 	artifactID    string
 	runArtifactID string
 	workspaceID   string
@@ -146,6 +148,8 @@ type aliceWorld struct {
 
 func (w aliceWorld) resolve(path string) string {
 	switch {
+	case strings.HasPrefix(path, "/runs/") && strings.HasSuffix(path, "/cancel"):
+		path = strings.ReplaceAll(path, "{id}", w.liveRunID)
 	case strings.HasPrefix(path, "/runs/"):
 		path = strings.ReplaceAll(path, "{id}", w.runID)
 		path = strings.ReplaceAll(path, "{artifactId}", w.runArtifactID)
@@ -270,6 +274,7 @@ func newAliceWorld(t *testing.T, a *api, pool *pgxpool.Pool) (aliceWorld, *clien
 
 	f := fixture{client: alice, skillID: skillID, versionID: versionID, testCaseID: testCaseID}
 	created := runAndEvaluateAlicesCase(t, a, pool, f, criterionID)
+	liveRunID, _ := seedRunningRunWithOneAttempt(t, pool, f)
 
 	code, built := postJSON(t, alice, packagingPath(skillID, versionID), `{"target":"standard"}`)
 	if code != http.StatusCreated {
@@ -283,7 +288,7 @@ func newAliceWorld(t *testing.T, a *api, pool *pgxpool.Pool) (aliceWorld, *clien
 
 	world := aliceWorld{
 		skillID: skillID, versionID: versionID, testCaseID: testCaseID, criterionID: criterionID,
-		datasetID: datasetID, runID: created.RunID, artifactID: artifactID, runArtifactID: runArtifactID,
+		datasetID: datasetID, runID: created.RunID, liveRunID: liveRunID, artifactID: artifactID, runArtifactID: runArtifactID,
 		workspaceID: alice.workspaceID, bundleName: aliceBundleName,
 		secrets: map[string]string{
 			"the version id":      versionID,
@@ -360,6 +365,8 @@ func TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources(t *testing.T
 	world, alice := newAliceWorld(t, a, pool)
 	bob := a.login(t, "matrix-bob")
 
+	waitForCleanup(t, alice, world.runID)
+	before := ownersRows(t, pool, world)
 	probed := 0
 	for _, tc := range strangerRoutes {
 		if tc.unprobed != "" {
@@ -387,6 +394,7 @@ func TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources(t *testing.T
 			"so entries have been turned into exemptions rather than fixed", probed)
 	}
 
+	assertTheOwnersResourcesAreUntouched(t, pool, alice, world, before)
 	if got := alice.status(t, http.MethodGet, "/runs/"+world.runID); got != http.StatusOK {
 		t.Errorf("after the stranger's sweep the owner gets %d for their own run, want 200", got)
 	}
@@ -401,4 +409,48 @@ func TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources(t *testing.T
 		t.Errorf("after the stranger's sweep the owner lists their run artifacts as %d (%s); "+
 			"a stranger's delete answered 204 and it has to have deleted nothing", status, strings.TrimSpace(listed))
 	}
+}
+
+func assertTheOwnersResourcesAreUntouched(
+	t *testing.T, pool *pgxpool.Pool, alice *client, world aliceWorld, before map[string]string,
+) {
+	t.Helper()
+	after := ownersRows(t, pool, world)
+	for name, was := range before {
+		if after[name] != was {
+			t.Errorf("after the stranger's sweep the owner's %s changed: before %s, after %s", name, was, after[name])
+		}
+	}
+	if ids := alice.skillIDs(t, "/skills"); !contains(ids, world.skillID) {
+		t.Errorf("after the stranger's sweep the owner's skill list no longer holds their skill: %v", ids)
+	}
+}
+
+func ownersRows(t *testing.T, pool *pgxpool.Pool, w aliceWorld) map[string]string {
+	t.Helper()
+	ws := mustUUID(t, w.workspaceID)
+	probes := []struct {
+		name  string
+		query string
+		args  []any
+	}{
+		{"skill row", `SELECT to_jsonb(s) FROM skills s WHERE s.id = $1`, []any{mustUUID(t, w.skillID)}},
+		{"test case row", `SELECT to_jsonb(t) FROM test_cases t WHERE t.id = $1`, []any{mustUUID(t, w.testCaseID)}},
+		{"dataset row", `SELECT to_jsonb(d) FROM datasets d WHERE d.id = $1`, []any{mustUUID(t, w.datasetID)}},
+		{"finished run row", `SELECT to_jsonb(r) FROM runs r WHERE r.id = $1`, []any{mustUUID(t, w.runID)}},
+		{"live run row", `SELECT to_jsonb(r) FROM runs r WHERE r.id = $1`, []any{mustUUID(t, w.liveRunID)}},
+		{"bundle row", `SELECT to_jsonb(b) FROM bundles b WHERE b.workspace_id = $1 AND b.name = $2`, []any{ws, w.bundleName}},
+		{"publications", `SELECT COALESCE(jsonb_agg(to_jsonb(p) ORDER BY p.id), '[]'::jsonb) FROM publications p
+			WHERE p.skill_id = $1 OR p.bundle_id IN (SELECT id FROM bundles WHERE workspace_id = $2 AND name = $3)`,
+			[]any{mustUUID(t, w.skillID), ws, w.bundleName}},
+	}
+	rows := make(map[string]string, len(probes))
+	for _, p := range probes {
+		var js string
+		if err := pool.QueryRow(context.Background(), p.query, p.args...).Scan(&js); err != nil {
+			t.Fatalf("the owner's %s cannot be read: %v", p.name, err)
+		}
+		rows[p.name] = js
+	}
+	return rows
 }

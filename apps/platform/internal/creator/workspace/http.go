@@ -82,11 +82,9 @@ func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
 		Login:          name,
 	})
 	if err != nil {
-		if errors.Is(err, ErrAccountPurging) {
-			httpx.WriteError(w, http.StatusConflict, "account deletion is in progress")
-			return
+		if !writeRefusedLogin(w, err) {
+			httpx.WriteError(w, http.StatusInternalServerError, "login failed")
 		}
-		httpx.WriteError(w, http.StatusInternalServerError, "login failed")
 		return
 	}
 	h.setSessionCookie(w, token)
@@ -131,19 +129,18 @@ func (h *Handler) finishLogin(w http.ResponseWriter, r *http.Request) {
 	accessToken, err := h.Service.OAuth.Exchange(ctx, r.URL.Query().Get("code"))
 	if err != nil {
 		slog.Warn("github code exchange failed", "error", err)
-		httpx.WriteError(w, http.StatusUnauthorized, "code exchange failed")
+		writeGitHubFailure(w, err, "code exchange failed")
 		return
 	}
 	external, err := h.Service.OAuth.Identify(ctx, accessToken)
 	if err != nil {
 		slog.Warn("github user fetch failed", "error", err)
-		httpx.WriteError(w, http.StatusUnauthorized, "user fetch failed")
+		writeGitHubFailure(w, err, "user fetch failed")
 		return
 	}
 	token, err := h.Service.LoginOrSignup(ctx, external)
 	if err != nil {
-		if errors.Is(err, ErrAccountPurging) {
-			httpx.WriteError(w, http.StatusConflict, "account deletion is in progress")
+		if writeRefusedLogin(w, err) {
 			return
 		}
 		slog.Error("login failed", "error", err)
@@ -578,4 +575,24 @@ func (h *Handler) cancelDeletion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, accountDeletionCancellationResponse{})
+}
+
+func writeGitHubFailure(w http.ResponseWriter, err error, refusal string) {
+	if errors.Is(err, ErrGitHubUnavailable) {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "GitHub 暫時沒有回應，請稍後再登入一次")
+		return
+	}
+	httpx.WriteError(w, http.StatusUnauthorized, refusal)
+}
+
+func writeRefusedLogin(w http.ResponseWriter, err error) bool {
+	switch {
+	case errors.Is(err, ErrAccountPurging):
+		httpx.WriteError(w, http.StatusConflict, "account deletion is in progress")
+	case errors.Is(err, ErrEmailTaken):
+		httpx.WriteError(w, http.StatusConflict, "這個 email 已經被另一個帳號使用，無法用這個帳號登入")
+	default:
+		return false
+	}
+	return true
 }

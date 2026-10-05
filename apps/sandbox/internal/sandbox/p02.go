@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +36,8 @@ type EgressProber interface {
 type P02Probe struct {
 	Targets []string
 
+	Skipped []string
+
 	Interval time.Duration
 
 	Timeout time.Duration
@@ -55,16 +58,26 @@ func NewP02Probe(targets []string, interval, timeout time.Duration) *P02Probe {
 	if timeout <= 0 {
 		timeout = defaultP02Timeout
 	}
-	clean := make([]string, 0, len(targets))
+	p := &P02Probe{Interval: interval, Timeout: timeout}
 	for _, t := range targets {
-		if t = strings.TrimSpace(t); t != "" {
-			clean = append(clean, t)
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
+		if _, _, ok := SplitP02Target(t); ok {
+			p.Targets = append(p.Targets, t)
+		} else {
+			p.Skipped = append(p.Skipped, t)
 		}
 	}
-	sort.Strings(clean)
-	p := &P02Probe{Targets: clean, Interval: interval, Timeout: timeout}
-	if len(clean) == 0 {
+	sort.Strings(p.Targets)
+	sort.Strings(p.Skipped)
+	if !p.Configured() {
 		p.result = P02Result{State: P02NotConfigured}
+		return p
+	}
+	if len(p.Targets) == 0 {
+		p.result = p.nothingToDial(time.Time{})
 		return p
 	}
 
@@ -78,11 +91,39 @@ func (p *P02Probe) Result() P02Result {
 	return p.result
 }
 
-func (p *P02Probe) Configured() bool { return len(p.Targets) > 0 }
+func (p *P02Probe) Configured() bool { return len(p.Targets)+len(p.Skipped) > 0 }
+
+func SplitP02Target(target string) (string, int, bool) {
+	// LastIndex, so an IPv6 host keeps its own colons and only the port splits off.
+	i := strings.LastIndex(target, ":")
+	if i <= 0 {
+		return "", 0, false
+	}
+	port, err := strconv.Atoi(target[i+1:])
+	if err != nil || port <= 0 || port > 65535 {
+		return "", 0, false
+	}
+	return target[:i], port, true
+}
+
+func (p *P02Probe) nothingToDial(now time.Time) P02Result {
+	return P02Result{State: P02Unknown, CheckedAt: now,
+		Detail: "no target is host:port, so nothing was dialled: " + strings.Join(p.Skipped, ", ")}
+}
+
+func (p *P02Probe) skippedNote() string {
+	if len(p.Skipped) == 0 {
+		return ""
+	}
+	return "; not checked, not host:port: " + strings.Join(p.Skipped, ", ")
+}
 
 func (p *P02Probe) Check(ctx context.Context, prober EgressProber, now time.Time) P02Result {
 	if !p.Configured() {
 		return p.store(P02Result{State: P02NotConfigured, CheckedAt: now})
+	}
+	if len(p.Targets) == 0 {
+		return p.store(p.nothingToDial(now))
 	}
 	if prober == nil {
 		return p.store(P02Result{State: P02Unknown, CheckedAt: now,
@@ -101,7 +142,7 @@ func (p *P02Probe) Check(ctx context.Context, prober EgressProber, now time.Time
 			Detail: "reachable from a sandbox: " + strings.Join(reached, ", ")})
 	default:
 		return p.store(P02Result{State: P02Pass, CheckedAt: now,
-			Detail: fmt.Sprintf("%d destination(s) unreachable", len(p.Targets))})
+			Detail: fmt.Sprintf("%d destination(s) unreachable", len(p.Targets)) + p.skippedNote()})
 	}
 }
 

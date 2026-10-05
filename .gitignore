@@ -66,3 +66,5 @@ tools/**/embeddings_cache.json
 # Clean test mode's offline dependency bundle (tools/cleanmode/bundle.mjs).
 # It is a populated npm cache, ~9 MB, rebuilt from the lockfile on demand.
 .cleanmode-bundle/
+.claude/skills/*/.claude-plugin/types/
+.claude/skills/skillhub-guards/tsconfig.json

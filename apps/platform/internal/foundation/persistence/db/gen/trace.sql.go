@@ -337,7 +337,8 @@ selected AS (
 )
 SELECT trace_events.id, trace_events.workspace_id, trace_events.run_id, trace_events.seq, trace_events.occurred_at, trace_events.event_type, trace_events.source, trace_events.status, trace_events.payload, trace_events.payload_object_key, trace_events.event_id, trace_events.attempt, trace_events.schema_version, trace_events.masked, trace_events.masked_fields, trace_events.late, trace_events.ingest_seq, (SELECT count(*) > $1::int FROM tail) AS evaluation_truncated
 FROM selected
-JOIN trace_events USING (ingest_seq)
+JOIN trace_events ON trace_events.ingest_seq = selected.ingest_seq
+    AND trace_events.run_id = $2 AND trace_events.workspace_id = $3
 ORDER BY trace_events.occurred_at, trace_events.source, trace_events.attempt, trace_events.seq
 `
 

@@ -2,6 +2,7 @@ package apiserver_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -267,6 +268,20 @@ func TestTheReleaseGateRefusesAHoldABlockedAndAnUnknownLicence(t *testing.T) {
 	}
 }
 
+func assertThePublicAddressDisclosesItsReleaseAndNotListing(t *testing.T, body map[string]any) {
+	t.Helper()
+	release, _ := body["release"].(map[string]any)
+	contentHash, hashed := release["content_hash"].(string)
+	if release == nil || !hashed || contentHash == "" || release["redistribution"] == nil {
+		t.Errorf("the public address did not disclose the release: %v", body)
+	}
+	exposure, _ := body["exposure"].(map[string]any)
+	exposureNote, noted := exposure["note"].(string)
+	if exposure["available"] != false || !noted || exposureNote == "" {
+		t.Errorf("exposure = %v, want not listed and a sentence saying so", body["exposure"])
+	}
+}
+
 func TestThePublicAddressIsReadableWithoutSigningInAndFollowsATakedownAtOnce(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -283,13 +298,7 @@ func TestThePublicAddressIsReadableWithoutSigningInAndFollowsATakedownAtOnce(t *
 	if availability, _ := body["availability"].(map[string]any); availability["value"] != "available" {
 		t.Errorf("availability = %v, want available", body["availability"])
 	}
-	release, _ := body["release"].(map[string]any)
-	if release == nil || release["content_hash"] == "" || release["redistribution"] == nil {
-		t.Errorf("the public address did not disclose the release: %v", body)
-	}
-	if exposure, _ := body["exposure"].(map[string]any); exposure["available"] != false || exposure["note"] == "" {
-		t.Errorf("exposure = %v, want not listed and a sentence saying so", body["exposure"])
-	}
+	assertThePublicAddressDisclosesItsReleaseAndNotListing(t, body)
 
 	setSkill(t, pool, skillID, "takedown_at = now(), takedown_reason = 'fixture'")
 	code, body = publicRead(t, a, address)
@@ -478,6 +487,35 @@ func TestAcquiringAPublicationRecordsADownloadInTheAcquirersOwnWorkspace(t *test
 	}
 }
 
+func TestAnAcquiredPackageNamesNoneOfTheAuthorsTestCases(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("acquire-private-alice"))
+	bob := a.login(t, freshName("acquire-private-bob"))
+	skillID, _, address := publishedSkill(t, alice, "acquire-private")
+	seedTestCase(t, pool, alice.workspaceID, skillID)
+
+	code, body := acquire(t, bob, address)
+	if code != http.StatusCreated {
+		t.Fatalf("bob acquiring %s: %d %v", address, code, body)
+	}
+	manifest := map[string]any{}
+	for name, content := range zipEntries(t, a, body["content_hash"].(string)) {
+		if strings.HasSuffix(name, "skillhub-manifest.json") {
+			if err := json.Unmarshal(content, &manifest); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	excluded, present := manifest["excluded_test_cases"].([]any)
+	if !present {
+		t.Fatalf("manifest has no excluded_test_cases list: %v", manifest)
+	}
+	if len(excluded) != 0 {
+		t.Errorf("bob's manifest lists the author's test cases: %v", excluded)
+	}
+}
+
 func assertOnlyDownloadIsTheStandardPackage(t *testing.T, bob *client, artifactID, skillName string) {
 	t.Helper()
 	downloads := bob.listDownloads(t)
@@ -567,5 +605,25 @@ func TestUninvitedAccountsAcquireOnlyWhenTheDeploymentOpensDownloads(t *testing.
 				t.Errorf("the address says %v, want it to say invite-only = %v before any button", acquisition, tc.saysInvited)
 			}
 		})
+	}
+}
+
+func TestPublishingTheSameVersionAgainKeepsItsOneRelease(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("republish-same-alice"))
+	registerPublisher(t, alice, freshName("republish-same"))
+	skillID := uploadedSkill(t, alice, freshName("steady"), "Only way.")
+	if code, body := publish(t, alice, skillID, `{"rights_attested":true}`); code != http.StatusOK {
+		t.Fatalf("first publish: %d %v", code, body)
+	}
+
+	code, body := publish(t, alice, skillID, `{"rights_attested":true}`)
+
+	if code != http.StatusOK {
+		t.Fatalf("publishing the same version again: %d %v, want 200", code, body)
+	}
+	if releases := objects(t, body["releases"]); len(releases) != 1 {
+		t.Errorf("releases = %v, want the one release kept: a repeated publish must not reset its exposure review", releases)
 	}
 }

@@ -222,7 +222,7 @@ func mountTestLabRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("DELETE /test-cases/{id}", auth.RequireSession(lab.Delete))
 	mux.HandleFunc("POST /test-cases/{id}/criteria", auth.RequireSession(lab.AddCriterion))
 
-	mux.HandleFunc("POST /test-cases/{id}/criteria/suggest", auth.RequireSession(lab.SuggestCriteria))
+	mux.HandleFunc("POST /test-cases/{id}/criteria/suggest", auth.RequireSession(limited(d, metrics.RouteSuggest, lab.SuggestCriteria)))
 	mux.HandleFunc("PATCH /test-cases/{id}/criteria/{criterionId}", auth.RequireSession(lab.UpdateCriterion))
 	mux.HandleFunc("DELETE /test-cases/{id}/criteria/{criterionId}", auth.RequireSession(lab.DeleteCriterion))
 	mux.HandleFunc("POST /test-cases/{id}/datasets", auth.RequireSession(lab.UploadDataset))
@@ -289,7 +289,7 @@ func mountPackagingRoutes(mux *http.ServeMux, d Deps) {
 		auth.RequireSession(d.Packaging.DownloadRecords))
 
 	mux.HandleFunc("GET /downloads/{artifactId}/content",
-		auth.RequireSession(publicationDownloadGate(d, d.Analytics.DownloadStartedOn(d.Packaging.DownloadContent))))
+		auth.RequireSession(refuseHead(publicationDownloadGate(d, d.Analytics.DownloadStartedOn(d.Packaging.DownloadContent)))))
 	mux.HandleFunc("DELETE /downloads/{artifactId}", auth.RequireSession(d.Packaging.DeleteDownload))
 }
 
@@ -313,4 +313,15 @@ func publicationDownloadGate(d Deps, next http.HandlerFunc) http.HandlerFunc {
 		return next
 	}
 	return d.Auth.RequireInvited(next)
+}
+
+func refuseHead(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("Allow", http.MethodGet)
+			httpx.WriteError(w, http.StatusMethodNotAllowed, "this download is fetched with GET")
+			return
+		}
+		next(w, r)
+	}
 }

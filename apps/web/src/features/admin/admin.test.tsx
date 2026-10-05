@@ -1,7 +1,6 @@
 import { StrictMode, act } from "react";
-import "../catalog/home/Home.page";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { focusManager } from "@tanstack/react-query";
 import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
@@ -16,6 +15,10 @@ import {
   SKILL,
   platformResponse,
 } from "../../testing/fixtures/platform";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { preloadEveryPage } from "../../testing/pages";
+
+beforeAll(preloadEveryPage);
 
 type Call = { method: string; url: string; body?: Record<string, unknown> };
 type Reply = { body: unknown; status: number } | undefined;
@@ -79,15 +82,8 @@ async function go(to: string, search?: Record<string, string>) {
   });
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 4000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs);
 }
 
 const has = (needle: string) => () => (container.textContent ?? "").includes(needle);
@@ -199,8 +195,11 @@ test("OPS-001: a member who types an /admin address gets the missing page and no
   stub(false);
   await mountAt("/");
   for (const path of ADMIN_PATHS) {
+    await go("/");
+    await waitFor(() => !has("這一頁現在不存在")());
     await go(path);
     await waitFor(has("這一頁現在不存在"));
+    expect(window.location.pathname).toBe(path);
     expect(container.querySelector('nav[aria-label="後台"]'), path).toBeNull();
   }
   expect(calls.filter((c) => c.url.startsWith("/admin"))).toEqual([]);
@@ -284,10 +283,37 @@ test("OPS-003: a grant waits for a non-zero whole amount and a reason, then post
   expect(calls.find((c) => c.method === "POST")?.body).toEqual({
     amount_credits: 50,
     reason: "beta reward",
+    idempotency_key: expect.stringMatching(/^[0-9a-f-]{36}$/),
   });
   await waitFor(() => ledgerReads() > before);
   await type("#admin-grant-amount", "75");
   expect(has("已授予 50 點，餘額現在是 170 點。")()).toBe(false);
+});
+
+test("OPS-003: a failed grant is retried under the same key, and the next grant gets a fresh one", async () => {
+  let attempt = 0;
+  stub(true, (path, method) => {
+    if (method !== "POST" || !path.endsWith("/grants")) return undefined;
+    attempt += 1;
+    return attempt === 1
+      ? { body: { error: "grant failed" }, status: 500 }
+      : { body: { workspace_id: "ws-2", balance_credits: 60, amount_credits: 10 }, status: 200 };
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-amount", "10");
+  await type("#admin-grant-note", "r");
+  await click(button("授予"));
+  await waitFor(has("沒有完成，伺服器說：grant failed"));
+  await click(button("授予"));
+  await waitFor(has("已授予 10 點，餘額現在是 60 點。"));
+  await click(button("授予"));
+  await waitFor(() => calls.filter((c) => c.method === "POST").length === 3);
+  const keys = calls
+    .filter((c) => c.method === "POST")
+    .map((c) => (c.body as { idempotency_key: string }).idempotency_key);
+  expect(keys[1]).toBe(keys[0]);
+  expect(keys[2]).not.toBe(keys[0]);
 });
 
 test("OPS-003: a refused grant says so with the server's words", async () => {
@@ -410,6 +436,9 @@ test("OPS-004: a restriction is set with the known reason code and lifted by the
   await click(button("解除受限"));
   await waitFor(() => calls.some((c) => c.method === "DELETE"));
   expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({ note: "cleared" });
+  await waitFor(has("沒有受限"));
+  expect(has("受限展示：")()).toBe(false);
+  expect(has("設定受限展示")()).toBe(true);
 });
 
 test("OPS-004: a name matching several skills lists a way to pick each and offers no action yet", async () => {
@@ -779,6 +808,29 @@ test("OPS-008: the trends are asked for once, not again when the window regains 
   expect(trendCalls().length).toBe(asked);
 });
 
+test("OPS-008: useTrend itself refuses a focus refetch even when the app default would allow it", async () => {
+  const defaults = queryClient.getDefaultOptions();
+  queryClient.setDefaultOptions({
+    queries: { ...defaults.queries, refetchOnWindowFocus: true, staleTime: 0 },
+  });
+  try {
+    stub(true);
+    await mountAt("/admin/trends");
+    await waitFor(has("全平台目前餘額總和"));
+    const asked = trendCalls().length;
+    expect(asked).toBeGreaterThan(0);
+    await act(async () => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(trendCalls().length).toBe(asked);
+  } finally {
+    focusManager.setFocused(undefined);
+    queryClient.setDefaultOptions(defaults);
+  }
+});
+
 test("OPS-008: a member who types the trends address gets the missing page and no trend request", async () => {
   stub(false);
   await mountAt("/admin/trends");
@@ -812,7 +864,7 @@ test("DISC-007: the queue lists a waiting release, and reviewing it shows the ex
   expect(button("送出審核結論").disabled).toBe(true);
 });
 
-test("DISC-007: submitting a review sends this screen's release_id and sequence as expected_sequence", async () => {
+test("DISC-007: submitting a review sends this screen's release_id, sequence and snapshot digest", async () => {
   stub(true);
   await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
   await waitFor(has("審核序號：2"));
@@ -826,6 +878,7 @@ test("DISC-007: submitting a review sends this screen's release_id and sequence 
     body: {
       release_id: ADMIN_EXPOSURE_CASE.release.release_id,
       expected_sequence: ADMIN_EXPOSURE_CASE.sequence,
+      expected_snapshot_digest: ADMIN_EXPOSURE_CASE.snapshot.digest,
       decision: "approved",
       reason: "看過了，符合規範",
     },
@@ -858,6 +911,14 @@ test("DISC-007: a decision and reason are both required before submission", asyn
   expect(button("送出審核結論").disabled).toBe(true);
   await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
   expect(button("送出核准").disabled).toBe(false);
+});
+
+test("DISC-007: a decision chosen without a reason keeps submission disabled", async () => {
+  stub(true);
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核這一版"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
+  expect(button("送出核准").disabled).toBe(true);
 });
 
 test("DISC-007: an empty queue is named as a genuine zero, not a blank list", async () => {

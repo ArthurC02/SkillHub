@@ -82,6 +82,12 @@ func TestSandboxdRefusesToStartOnAnInvalidNode(t *testing.T) {
 				"SKILLHUB_SANDBOX_EGRESS_ALLOW=does-not-exist.json"},
 			want: "could not load the rendered egress allow list",
 		},
+		{
+			name: "a P-02 target the probe cannot dial",
+			settings: []string{"SKILLHUB_SANDBOX_TOKEN=t", "SKILLHUB_CLEAN_MODE=1",
+				"SKILLHUB_SANDBOX_P02_TARGETS=db.internal:5432,cache.internal"},
+			want: "SKILLHUB_SANDBOX_P02_TARGETS has entries that are not host:port (cache.internal)",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)

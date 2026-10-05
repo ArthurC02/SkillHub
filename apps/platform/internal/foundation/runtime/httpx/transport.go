@@ -3,10 +3,13 @@ package httpx
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 )
+
+var ErrResponseTooLarge = errors.New("response exceeds its read limit")
 
 type Transport struct {
 	Client        *http.Client
@@ -47,7 +50,7 @@ func (t Transport) Do(ctx context.Context, method, endpoint string, payload []by
 		return resp.StatusCode, nil, err
 	}
 	if t.ResponseLimit > 0 && int64(len(response)) > t.ResponseLimit {
-		return resp.StatusCode, nil, fmt.Errorf("response exceeds %d bytes", t.ResponseLimit)
+		return resp.StatusCode, nil, fmt.Errorf("%w: %d bytes", ErrResponseTooLarge, t.ResponseLimit)
 	}
 	return resp.StatusCode, response, err
 }

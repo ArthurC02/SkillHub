@@ -112,6 +112,26 @@ func TestEveryMeasurementTheObservabilityRequirementNamesReachesAScrape(t *testi
 		family:      "skillhub_provider_capability_total",
 		labels:      []string{`provider="selfhosted"`, `result="unhealthy"`},
 		record:      func() { ProviderCapability.WithLabelValues("selfhosted", "unhealthy").Inc() },
+	}, {
+		measurement: "孤兒掃描結果",
+		family:      "skillhub_orphan_scan_total",
+		labels:      []string{`provider="selfhosted"`, `result="error"`},
+		record:      func() { OrphanScan.WithLabelValues("selfhosted", "error").Inc() },
+	}, {
+		measurement: "持續殘留的 Sandbox",
+		family:      "skillhub_orphan_sandbox_persistent",
+		labels:      []string{`provider="selfhosted"`},
+		record:      func() { OrphanPersistent.WithLabelValues("selfhosted").Set(2) },
+	}, {
+		measurement: "Sandbox 拆除失敗",
+		family:      "skillhub_sandbox_destroy_failed_total",
+		labels:      []string{`provider="selfhosted"`},
+		record:      func() { SandboxDestroyFailed.WithLabelValues("selfhosted").Inc() },
+	}, {
+		measurement: "Trace 事件結果",
+		family:      "skillhub_trace_events_total",
+		labels:      []string{`result="duplicate"`, `source="orchestrator"`},
+		record:      func() { TraceEvents.WithLabelValues("orchestrator", "duplicate").Inc() },
 	}} {
 		t.Run(tc.measurement, func(t *testing.T) {
 			tc.record()

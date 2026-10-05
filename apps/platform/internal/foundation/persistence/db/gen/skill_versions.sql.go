@@ -260,7 +260,7 @@ func (q *Queries) ListSourcePaths(ctx context.Context, sourceIds []pgtype.UUID) 
 
 const listVersionSummaries = `-- name: ListVersionSummaries :many
 SELECT sv.id, sv.skill_id, sv.version_number, sk.name AS skill_name,
-       sk.access_restriction, sk.redistribution,
+       sk.access_restriction, sk.redistribution, (sk.takedown_at IS NOT NULL)::bool AS taken_down,
        (SELECT max(v2.version_number) FROM skill_versions v2
          WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number
 FROM skill_versions sv
@@ -280,6 +280,7 @@ type ListVersionSummariesRow struct {
 	SkillName           string
 	AccessRestriction   *string
 	Redistribution      string
+	TakenDown           bool
 	LatestVersionNumber int32
 }
 
@@ -299,6 +300,7 @@ func (q *Queries) ListVersionSummaries(ctx context.Context, arg ListVersionSumma
 			&i.SkillName,
 			&i.AccessRestriction,
 			&i.Redistribution,
+			&i.TakenDown,
 			&i.LatestVersionNumber,
 		); err != nil {
 			return nil, err
@@ -313,7 +315,7 @@ func (q *Queries) ListVersionSummaries(ctx context.Context, arg ListVersionSumma
 
 const listVersionSummariesByID = `-- name: ListVersionSummariesByID :many
 SELECT sv.id, sv.skill_id, sv.version_number, sk.name AS skill_name,
-       sk.access_restriction, sk.redistribution,
+       sk.access_restriction, sk.redistribution, (sk.takedown_at IS NOT NULL)::bool AS taken_down,
        (SELECT max(v2.version_number) FROM skill_versions v2
          WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number
 FROM skill_versions sv
@@ -328,6 +330,7 @@ type ListVersionSummariesByIDRow struct {
 	SkillName           string
 	AccessRestriction   *string
 	Redistribution      string
+	TakenDown           bool
 	LatestVersionNumber int32
 }
 
@@ -347,6 +350,7 @@ func (q *Queries) ListVersionSummariesByID(ctx context.Context, versionIds []pgt
 			&i.SkillName,
 			&i.AccessRestriction,
 			&i.Redistribution,
+			&i.TakenDown,
 			&i.LatestVersionNumber,
 		); err != nil {
 			return nil, err

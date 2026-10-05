@@ -159,6 +159,9 @@ func (s *Service) exportPluginMember(
 	}
 	files := make([]exportFile, 0, len(src.files))
 	for _, f := range src.files {
+		if f.path == ManifestFile {
+			continue
+		}
 		files = append(files, exportFile{path: pluginSkillsDir + name + "/" + f.path, data: f.data})
 	}
 	p.Members = append(p.Members, PluginMemberView{

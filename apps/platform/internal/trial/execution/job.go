@@ -89,35 +89,44 @@ type driver struct {
 }
 
 func (d *driver) execute(ctx context.Context, attempts []gen.RunAttempt) error {
-
-	if d.cur.CancelRequestedAt.Valid && d.cur.Status == gen.RunStatusQueued {
+	live := liveAttempt(attempts)
+	if d.cur.CancelRequestedAt.Valid && d.cur.Status == gen.RunStatusQueued && live == nil {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusCancelled, failureCancelled, "派送之前就被取消")
 	}
 	if d.expired() {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 	}
 
-	switch live := liveAttempt(attempts); {
+	switch {
 	case live != nil:
-
+		if err := d.leaveQueue(ctx, live.Provider); err != nil {
+			return err
+		}
 		return d.follow(ctx, attempts, *live)
+	case succeeded(attempts):
+		return d.walkHappyPath(ctx, attempts[len(attempts)-1].ID)
 	case d.cur.Status == gen.RunStatusQueued || d.cur.Status == gen.RunStatusProvisioning:
 		return d.dispatch(ctx)
 	case reassignableAfter(attempts):
 		return d.dispatch(ctx)
-	case d.cur.Status == gen.RunStatusEvaluating:
-
-		return d.resumeEvaluating(ctx, attempts)
 	default:
 		return d.terminateUnresumable(ctx)
 	}
 }
 
-func (d *driver) resumeEvaluating(ctx context.Context, attempts []gen.RunAttempt) error {
-	if len(attempts) == 0 || attempts[len(attempts)-1].ErrorClass != nil {
-		return d.terminateUnresumable(ctx)
+func succeeded(attempts []gen.RunAttempt) bool {
+	if len(attempts) == 0 {
+		return false
 	}
-	return d.walkHappyPath(ctx, attempts[len(attempts)-1].ID)
+	last := attempts[len(attempts)-1]
+	return last.FinishedAt.Valid && last.ErrorClass == nil
+}
+
+func (d *driver) leaveQueue(ctx context.Context, provider string) error {
+	if d.cur.Status != gen.RunStatusQueued {
+		return nil
+	}
+	return d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+statusReason(provider))
 }
 
 func (d *driver) terminateUnresumable(ctx context.Context) error {
@@ -157,6 +166,9 @@ func (d *driver) dispatch(ctx context.Context) error {
 	}
 
 	budget, err := d.budgetForNextAttempt(ctx, attempts)
+	if errors.Is(err, errSpendUnreadable) {
+		return d.waitForSpend(err)
+	}
 	if err != nil {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureProvider,
 			d.reasonFor(failureProvider, err))
@@ -262,8 +274,13 @@ func (d *driver) tryPlacement(ctx context.Context, round *dispatchRound) (attemp
 	request, err := d.svc.buildRunRequest(ctx, d.cur, attempt, attemptTerms{
 		profile: placement.Profile, policy: round.policy, budgetUSD: round.budget,
 	})
-	if err != nil {
+	switch {
+	case errors.Is(err, ErrModelGatewayUnavailable):
+		return attemptSettled, d.setAsideUnbuiltAttempt(ctx, attempt, err, "模型閘道暫時沒有回應，稍後自動重試")
+	case errors.Is(err, errRunRequestUnbuildable):
 		return attemptSettled, d.abandonUnbuiltAttempt(ctx, attempt, err)
+	case err != nil:
+		return attemptSettled, d.setAsideUnbuiltAttempt(ctx, attempt, err, "暫時無法準備這次執行，稍後自動重試")
 	}
 	pr, err := provider.Start(ctx, request)
 	if err != nil {
@@ -272,10 +289,24 @@ func (d *driver) tryPlacement(ctx context.Context, round *dispatchRound) (attemp
 	return d.startAccepted(ctx, round, placement, attempt, pr)
 }
 
-func (d *driver) abandonUnbuiltAttempt(ctx context.Context, attempt gen.RunAttempt, err error) error {
+func (d *driver) closeUnbuiltGrants(ctx context.Context, attempt gen.RunAttempt) {
 	if expiryErr := d.svc.recordObjectGrantExpiry(ctx, attempt, objectGrantsExpiredOnArrival()); expiryErr != nil {
 		slog.Error("could not close undispatched attempt object grants", "run_id", pgconv.UUIDString(d.cur.ID), "error", expiryErr)
 	}
+}
+
+func (d *driver) setAsideUnbuiltAttempt(ctx context.Context, attempt gen.RunAttempt, err error, reason string) error {
+	d.closeUnbuiltGrants(ctx, attempt)
+	slog.Warn("this attempt's request could not be built right now; the run keeps its place in the queue",
+		"run_id", pgconv.UUIDString(d.cur.ID), "error", err)
+	if err := d.finishAttempt(ctx, attempt, errClassProvision, reason); err != nil {
+		return err
+	}
+	return tryAgainIn(d.svc.slotWaitInterval())
+}
+
+func (d *driver) abandonUnbuiltAttempt(ctx context.Context, attempt gen.RunAttempt, err error) error {
+	d.closeUnbuiltGrants(ctx, attempt)
 	reason := d.reasonFor(failurePlatform, err)
 	return d.finishAttemptAndRun(ctx, attempt, errClassProvision, string(reason), runEnding{to: gen.RunStatusFailed, failure: failurePlatform, reason: reason})
 }
@@ -321,10 +352,8 @@ func (d *driver) startAccepted(
 	attempt = dispatched.Attempt(attempt.ID)
 	d.cur = dispatched.Row()
 	d.clock = d.clock.dispatchedAt(attempt.StartedAt.Time)
-	if d.cur.Status == gen.RunStatusQueued {
-		if err := d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+statusReason(provider.Name())); err != nil {
-			return attemptSettled, err
-		}
+	if err := d.leaveQueue(ctx, provider.Name()); err != nil {
+		return attemptSettled, err
 	}
 
 	if pr.State == ProviderStateFailed {
@@ -941,6 +970,12 @@ func (d *driver) waitForSandbox(err error) error {
 	slog.Warn("no sandbox provider is available right now; the run keeps its place in the queue "+
 		"instead of failing, because waiting can fix this",
 		"run_id", pgconv.UUIDString(d.cur.ID), "status", d.cur.Status, "error", err)
+	return tryAgainIn(d.svc.slotWaitInterval())
+}
+
+func (d *driver) waitForSpend(err error) error {
+	slog.Warn("the earlier attempts' model spend cannot be read yet; the run waits instead of failing or running past its budget",
+		"run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 	return tryAgainIn(d.svc.slotWaitInterval())
 }
 

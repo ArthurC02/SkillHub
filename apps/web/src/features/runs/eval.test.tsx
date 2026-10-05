@@ -4,10 +4,9 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { EvaluationPanel } from "./evaluation/EvaluationPanel";
-import { MATCH_NOTE } from "./evaluation/evaluation.model";
 import { RunVerdict } from "./components/RunVerdict";
-import { EVALUATION_POLL_MAX_404, EVALUATION_POLL_MAX_PENDING } from "./evaluation.service";
 import type { Evaluation, ImprovementSuggestion, SuggestionDiff } from "./evaluation.service";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -303,7 +302,7 @@ function stubPlatform(options: {
     if (url.includes("/evaluation"))
       return json(
         options.pending
-          ? { ...evaluation, status: "pending", overall: "undetermined" }
+          ? { ...evaluation, status: "pending", overall: "undetermined", evaluated_at: null }
           : evaluation,
       );
     if (url.includes("/suggestions/s1/diff")) return json(blockedDiff);
@@ -350,15 +349,8 @@ async function render(runStatus: string) {
   await waitFor(() => container.querySelector("[data-loading]") === null);
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs);
 }
 
 test("a succeeded run whose task failed reads as 執行完成 plus 未符合, never as a pass", async () => {
@@ -476,7 +468,7 @@ test("§2.13 引文回驗結果是徽章，解釋在清單層級只印一次", a
     "ul.note + ul.finding-list",
   )!.previousElementSibling;
   expect(Array.from(findingLegend!.querySelectorAll("li")).map((li) => li.textContent)).toEqual([
-    `找不到 ${MATCH_NOTE.not_found}`,
+    "找不到 這段引文在本次試跑的可回驗來源裡找不到，因此不作為證據。",
   ]);
 });
 
@@ -657,15 +649,15 @@ test("EVAL-001 an old run with no evaluation stops being asked about, and says s
   expect(calls).toBe(1);
   expect(container.textContent).toContain("結果會自己出現在這裡");
 
-  await act(async () => vi.advanceTimersByTimeAsync(3000 * (EVALUATION_POLL_MAX_404 - 2)));
-  expect(calls).toBe(EVALUATION_POLL_MAX_404 - 1);
+  await act(async () => vi.advanceTimersByTimeAsync(3000 * 18));
+  expect(calls).toBe(19);
   expect(container.textContent).toContain("結果會自己出現在這裡");
 
   await act(async () => vi.advanceTimersByTimeAsync(3000));
-  expect(calls).toBe(EVALUATION_POLL_MAX_404);
+  expect(calls).toBe(20);
 
   await act(async () => vi.advanceTimersByTimeAsync(3000 * 100));
-  expect(calls).toBe(EVALUATION_POLL_MAX_404);
+  expect(calls).toBe(20);
 
   expect(container.textContent).toContain("未評估");
   expect(container.textContent).toContain("已經停止再查");
@@ -698,15 +690,15 @@ test("EVAL-001 a judge that never finishes stops being polled, and the promise s
   expect(calls).toBe(1);
   expect(container.textContent).toContain("每 3 秒自己查一次");
 
-  await act(async () => vi.advanceTimersByTimeAsync(3000 * (EVALUATION_POLL_MAX_PENDING - 2)));
-  expect(calls).toBe(EVALUATION_POLL_MAX_PENDING - 1);
+  await act(async () => vi.advanceTimersByTimeAsync(3000 * 98));
+  expect(calls).toBe(99);
   expect(container.textContent).toContain("每 3 秒自己查一次");
 
   await act(async () => vi.advanceTimersByTimeAsync(3000));
-  expect(calls).toBe(EVALUATION_POLL_MAX_PENDING);
+  expect(calls).toBe(100);
 
   await act(async () => vi.advanceTimersByTimeAsync(3000 * 200));
-  expect(calls).toBe(EVALUATION_POLL_MAX_PENDING);
+  expect(calls).toBe(100);
 
   expect(container.textContent).toContain("評估進行中");
   expect(container.textContent).toContain("已經停止再查");
@@ -822,6 +814,7 @@ test("a pending evaluation that completes refreshes the verdict its history list
     evaluation_id: "eval-1",
     status: "pending",
     overall: "undetermined",
+    evaluated_at: null,
   } as const;
   const completed = { ...evaluation, evaluation_id: "eval-1", overall: "met" } as const;
   vi.stubGlobal("fetch", (input: string) => {
@@ -854,7 +847,8 @@ test("a pending evaluation that completes refreshes the verdict its history list
   for (let i = 0; i < 5 && picker() === ""; i++) {
     await act(async () => vi.advanceTimersByTimeAsync(10));
   }
-  expect(picker()).toContain("無法判斷");
+  expect(picker()).toContain("評估中｜無法判斷");
+  expect(picker()).not.toContain("無法解讀的時間格式");
 
   await act(async () => vi.advanceTimersByTimeAsync(3000));
   await act(async () => vi.advanceTimersByTimeAsync(0));

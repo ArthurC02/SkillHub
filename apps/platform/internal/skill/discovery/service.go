@@ -379,6 +379,11 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, req hy
 		VectorCandidates:    vectorCandidates,
 		FulltextCandidates:  fulltextCandidates,
 		LexicalCandidates:   lexicalCandidates,
+		HasScript:           filters.HasScript,
+		SpecValidated:       filters.SpecValidated,
+		AgentRuntime:        filters.AgentRuntime,
+		Curated:             curatedFilter(filters.CurationTier),
+		Category:            filters.Category,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -554,6 +559,7 @@ func (s *Service) SearchWorkspace(ctx context.Context, workspaceID pgtype.UUID, 
 	rows, err := gen.New(s.Pool).SearchSkills(ctx, gen.SearchSkillsParams{
 		WorkspaceID: workspaceID,
 		Query:       query,
+		BigramQuery: lexicalQuery(query, "&"),
 		Limit:       limit,
 	})
 	if err != nil {

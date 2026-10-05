@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"strings"
 	"time"
@@ -23,7 +24,11 @@ var (
 	ErrReasonRequired     = fmt.Errorf("%w: reason is required", ErrInvalid)
 	ErrGrantLowersBalance = fmt.Errorf("%w: only an adjustment may lower a balance", ErrInvalid)
 
+	ErrBalanceOutOfRange = fmt.Errorf("%w: balance would fall below %d", ErrInvalid, MinBalanceCredits)
+
 	ErrAccountGone = errors.New("credit: account not eligible")
+
+	ErrGrantKeyReused = errors.New("credit: idempotency key already used for a different grant")
 )
 
 type AccountFacts struct {
@@ -278,16 +283,9 @@ func (s *Service) Estimate(ctx context.Context, statKind CostKind) (Estimate, er
 	return est, nil
 }
 
-const floatNoiseMicros = 1e-6
-
 func (s *Service) CreditsForUSD(usd float64) (credits int64, ok bool) {
-	if math.IsNaN(usd) || math.IsInf(usd, 0) || usd <= 0 {
-		return 0, false
-	}
-	// The epsilon absorbs float noise from usd*1e6; a real fraction of a micro still rounds up.
-	micros := int64(math.Ceil(usd*microsPerUSD - floatNoiseMicros))
-	if micros > MaxBillableMicros {
-
+	micros, billable := BillableMicros(usd)
+	if !billable {
 		return 0, false
 	}
 	billed, err := BilledMicros(micros, s.Config.MarkupBps)
@@ -302,10 +300,11 @@ func (s *Service) CreditsWithinUSD(usd float64) (credits int64, ok bool) {
 	if math.IsNaN(usd) || math.IsInf(usd, 0) || usd < 0 || s.Config.MicrosPerCredit <= 0 {
 		return 0, false
 	}
-	micros := int64(math.Floor(usd * microsPerUSD))
-	if micros > MaxBillableMicros {
+	scaled := math.Floor(usd * microsPerUSD)
+	if scaled > float64(MaxBillableMicros) {
 		return 0, false
 	}
+	micros := int64(scaled)
 	return micros * s.Config.MarkupBps / basisPointsPerUnit / s.Config.MicrosPerCredit, true
 }
 
@@ -363,12 +362,15 @@ func (s *Service) Grant(ctx context.Context, tx DBTX, in GrantInput) (int64, err
 		return 0, err
 	}
 
-	balance, err := s.Store.ApplyGrant(ctx, tx, GrantEntry{
+	balance, applied, err := s.Store.ApplyGrant(ctx, tx, GrantEntry{
 		UserID: in.UserID, EntryKind: in.EntryKind, Credits: in.Credits,
 		Reason: in.Reason, OperatorID: in.OperatorID, IdempotencyKey: in.IdempotencyKey,
 	})
 	if err != nil {
 		return 0, err
+	}
+	if !applied {
+		return balance, nil
 	}
 	if err := audit.Log(ctx, tx, audit.Event{
 		Actor: in.OperatorID, Workspace: in.WorkspaceID, Action: audit.ActionCreditGrant,
@@ -385,12 +387,17 @@ func (s *Service) RecomputeStatistics(ctx context.Context, statKind CostKind, wi
 		return Statistics{}, ErrUnavailable
 	}
 	now := time.Now()
+	var sweepErr error
 	if statKind == KindCreationSession && s.Config.SessionIdle > 0 {
-		if _, err := s.Store.SweepSessionSummaries(ctx, now.Add(-window), now.Add(-s.Config.SessionIdle)); err != nil {
-			return Statistics{}, err
+		if _, sweepErr = s.Store.SweepSessionSummaries(ctx, now.Add(-window), now.Add(-s.Config.SessionIdle)); sweepErr != nil {
+			slog.Warn("credit: session summary sweep failed; recomputing from the summaries that exist", "error", sweepErr)
 		}
 	}
-	return s.Store.RecomputeStatistics(ctx, statKind, now.Add(-window), now)
+	stats, err := s.Store.RecomputeStatistics(ctx, statKind, now.Add(-window), now)
+	if err != nil {
+		return Statistics{}, errors.Join(sweepErr, err)
+	}
+	return stats, sweepErr
 }
 
 // SummarizeSession runs in a savepoint so a failed summary cannot abort the caller's transaction.

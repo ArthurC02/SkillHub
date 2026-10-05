@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"io/fs"
 	"log/slog"
 	"strings"
@@ -242,7 +243,7 @@ func TestPatchingKeepsThePackageRootAndEveryUntouchedFile(t *testing.T) {
 		"scripts/run.py": "print('hello')\n",
 	})
 
-	patched, err := patchArchive(original, map[string]string{
+	patched, err := patchArchive(original, "", map[string]string{
 		"SKILL.md":    skillMD + "\nNew paragraph.\n",
 		"docs/new.md": "added by a suggestion\n",
 	})
@@ -274,14 +275,50 @@ func TestPatchingKeepsThePackageRootAndEveryUntouchedFile(t *testing.T) {
 	}
 }
 
-func TestPatchingIsDeterministicForTheSameInput(t *testing.T) {
-	original := zipWithRoot(t, "", map[string]string{"SKILL.md": "a\n", "b.md": "b\n"})
-	patches := map[string]string{"SKILL.md": "changed\n", "z.md": "z\n", "a.md": "a\n"}
-	first, err := patchArchive(original, patches)
+func TestPatchingKeepsTheModeOfEveryFileItRewrites(t *testing.T) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for name, mode := range map[string]fs.FileMode{"SKILL.md": 0o644, "scripts/run.sh": 0o755} {
+		header := &zip.FileHeader{Name: name, Method: zip.Deflate}
+		header.SetMode(mode)
+		w, err := zw.CreateHeader(header)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := io.WriteString(w, "content\n"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	patched, err := patchArchive(buf.Bytes(), "", map[string]string{"SKILL.md": "changed\n"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := patchArchive(original, patches)
+
+	zr, err := zip.NewReader(bytes.NewReader(patched), int64(len(patched)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	modes := map[string]fs.FileMode{}
+	for _, f := range zr.File {
+		modes[f.Name] = f.Mode()
+	}
+	if modes["scripts/run.sh"] != 0o755 || modes["SKILL.md"] != 0o644 {
+		t.Fatalf("modes after patching = %v, want scripts/run.sh 0755 and SKILL.md 0644", modes)
+	}
+}
+
+func TestPatchingIsDeterministicForTheSameInput(t *testing.T) {
+	original := zipWithRoot(t, "", map[string]string{"SKILL.md": "a\n", "b.md": "b\n"})
+	patches := map[string]string{"SKILL.md": "changed\n", "z.md": "z\n", "a.md": "a\n"}
+	first, err := patchArchive(original, "", patches)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := patchArchive(original, "", patches)
 	if err != nil {
 		t.Fatal(err)
 	}

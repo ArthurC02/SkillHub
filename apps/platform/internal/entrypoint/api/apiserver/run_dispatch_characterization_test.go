@@ -12,8 +12,11 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -152,5 +155,189 @@ func TestAProviderRefusalThatWaitingCannotFixEndsTheRunAfterOneAttempt(t *testin
 	}
 	if len(final.Attempts) != 1 {
 		t.Errorf("attempts = %d, want 1: a refusal that is not about load is not retried", len(final.Attempts))
+	}
+}
+
+func TestARunWhoseModelGatewayIsNotAnsweringWaitsInTheQueueInsteadOfFailing(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-gateway-down")
+	ctx := context.Background()
+	created := f.start(t)
+
+	var down atomic.Bool
+	down.Store(true)
+	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if down.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = w.Write([]byte(`{"key":"sk-test"}`))
+	}))
+	t.Cleanup(gateway.Close)
+	fake := providertest.New("fake_sandbox", "test-token")
+	t.Cleanup(fake.Close)
+	svc := *a.runs
+	svc.Providers = run.NewRegistry(fake.Provider())
+	svc.Store = a.packages
+	svc.Gateway = run.NewGateway(run.GatewayConfig{SandboxBaseURL: gateway.URL, AdminKey: "test-admin-key"})
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+
+	if err := svc.Drive(ctx, ws, runID); !errors.Is(err, run.ErrTryAgainLater) {
+		t.Fatalf("driving with the gateway down returned %v, want the run to wait", err)
+	}
+	if _, view := f.getRun(t, created.RunID); view.Status != string(gen.RunStatusQueued) || len(view.Attempts) != 1 {
+		t.Fatalf("run is %q with %d attempts, want queued with the one attempt that could not get a key",
+			view.Status, len(view.Attempts))
+	}
+	if fake.Dispatches() != 0 {
+		t.Errorf("dispatches = %d, want none: the attempt had no key to give the sandbox", fake.Dispatches())
+	}
+
+	down.Store(false)
+	_ = svc.Drive(ctx, ws, runID)
+	if fake.Dispatches() != 1 {
+		t.Errorf("dispatches = %d after the gateway answered again, want 1", fake.Dispatches())
+	}
+}
+
+type versionReadRegistry struct {
+	run.RegistryReader
+	down, gone *atomic.Bool
+}
+
+func (r versionReadRegistry) Version(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.VersionFacts, bool, error) {
+	switch {
+	case r.down.Load():
+		return run.VersionFacts{}, false, errRegistryDown
+	case r.gone.Load():
+		return run.VersionFacts{}, false, nil
+	}
+	return r.RegistryReader.Version(ctx, workspaceID, versionID)
+}
+
+func versionReadScene(t *testing.T, name string) (fixture, run.Service, *providertest.Fake, versionReadRegistry, string) {
+	t.Helper()
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, name)
+	created := f.start(t)
+	fake := providertest.New("fake_sandbox", "test-token")
+	t.Cleanup(fake.Close)
+	reg := versionReadRegistry{RegistryReader: a.runs.Registry, down: &atomic.Bool{}, gone: &atomic.Bool{}}
+	svc := *a.runs
+	svc.Providers = run.NewRegistry(fake.Provider())
+	svc.Store = a.packages
+	svc.Registry = reg
+	return f, svc, fake, reg, created.RunID
+}
+
+func TestARunWhoseVersionCannotBeReadAtDispatchWaitsInsteadOfFailing(t *testing.T) {
+	f, svc, fake, reg, runID := versionReadScene(t, "alice-version-read-down")
+	ws := mustUUID(t, f.workspaceID)
+	reg.down.Store(true)
+
+	if err := svc.Drive(context.Background(), ws, mustUUID(t, runID)); !errors.Is(err, run.ErrTryAgainLater) {
+		t.Fatalf("driving while the version cannot be read returned %v, want the run to wait", err)
+	}
+	if _, view := f.getRun(t, runID); view.Status != string(gen.RunStatusQueued) {
+		t.Fatalf("run is %q (%s), want queued: a read that failed is not a run that can never start", view.Status, view.StatusReason)
+	}
+
+	reg.down.Store(false)
+	_ = svc.Drive(context.Background(), ws, mustUUID(t, runID))
+	if fake.Dispatches() != 1 {
+		t.Errorf("dispatches = %d after the version could be read again, want 1", fake.Dispatches())
+	}
+}
+
+func TestARunWhoseVersionIsGoneAtDispatchFails(t *testing.T) {
+	f, svc, fake, reg, runID := versionReadScene(t, "alice-version-gone")
+	reg.gone.Store(true)
+
+	_ = svc.Drive(context.Background(), mustUUID(t, f.workspaceID), mustUUID(t, runID))
+
+	if _, view := f.getRun(t, runID); view.Status != string(gen.RunStatusFailed) {
+		t.Fatalf("run is %q, want failed: a version that no longer exists can never be dispatched", view.Status)
+	}
+	if fake.Dispatches() != 0 {
+		t.Errorf("dispatches = %d, want none", fake.Dispatches())
+	}
+}
+
+type queuedButDispatched struct {
+	f       fixture
+	svc     run.Service
+	fake    *providertest.Fake
+	ws, run pgtype.UUID
+	runID   string
+	handle  string
+}
+
+func newQueuedButDispatched(t *testing.T, name string) queuedButDispatched {
+	t.Helper()
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, name)
+	created := f.start(t)
+	fake := providertest.New("fake_sandbox", "test-token")
+	t.Cleanup(fake.Close)
+	fake.Plan = providertest.Plan{StuckRunning: true}
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+	var attemptID pgtype.UUID
+	if err := pool.QueryRow(context.Background(), "SELECT gen_random_uuid()").Scan(&attemptID); err != nil {
+		t.Fatal(err)
+	}
+	handle := fake.Seed(created.RunID, uuidText(attemptID), time.Now())
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO run_attempts (id, run_id, workspace_id, attempt_number, provider, provider_run_id, started_at)
+		VALUES ($1, $2, $3, 1, 'fake_sandbox', $4, now())`, attemptID, runID, ws, handle); err != nil {
+		t.Fatal(err)
+	}
+	svc := *a.runs
+	svc.Providers = run.NewRegistry(fake.Provider())
+	svc.Store = a.packages
+	return queuedButDispatched{f: f, svc: svc, fake: fake, ws: ws, run: runID, runID: created.RunID, handle: handle}
+}
+
+func (s queuedButDispatched) driveBriefly() {
+	following, stop := context.WithTimeout(context.Background(), 2*time.Second)
+	defer stop()
+	_ = s.svc.Drive(following, s.ws, s.run)
+}
+
+func TestARunLeftQueuedWithADispatchedAttemptMovesOnWithoutASecondDispatch(t *testing.T) {
+	s := newQueuedButDispatched(t, "alice-queued-but-dispatched")
+
+	s.driveBriefly()
+
+	if _, view := s.f.getRun(t, s.runID); view.Status == string(gen.RunStatusQueued) {
+		t.Errorf("run is still queued (%s) although its attempt is at a provider", view.StatusReason)
+	}
+	if s.fake.Dispatches() != 0 {
+		t.Errorf("dispatches = %d, want 0: the attempt already at the provider is followed, not sent again", s.fake.Dispatches())
+	}
+}
+
+func TestACancelOfARunLeftQueuedWithADispatchedAttemptReachesItsSandbox(t *testing.T) {
+	s := newQueuedButDispatched(t, "alice-queued-dispatched-cancel")
+	if code := s.f.status(t, http.MethodPost, "/runs/"+s.runID+"/cancel"); code != http.StatusAccepted {
+		t.Fatalf("cancel = %d, want 202", code)
+	}
+
+	s.driveBriefly()
+
+	atProvider, err := s.fake.Provider().Observe(context.Background(), s.handle)
+	if err != nil {
+		t.Fatalf("observe the sandbox: %v", err)
+	}
+	if atProvider.CancelRequestedAt == nil || atProvider.State != run.ProviderStateCancelled {
+		t.Errorf("the sandbox is %q with cancel requested = %v, want the cancel to have reached it", atProvider.State, atProvider.CancelRequestedAt)
+	}
+
+	s.driveBriefly()
+
+	if _, view := s.f.getRun(t, s.runID); view.Status != string(gen.RunStatusCancelled) || view.StatusReason == "派送之前就被取消" {
+		t.Errorf("run is %q (%s): its sandbox was running, so it ends cancelled by the sandbox, not before dispatch", view.Status, view.StatusReason)
 	}
 }

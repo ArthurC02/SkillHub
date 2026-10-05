@@ -21,7 +21,7 @@ func workingAttempt(t *testing.T, pool *pgxpool.Pool, svc *creation.Service, rec
 		t.Fatalf("no job was enqueued for the new session")
 	}
 	job := rec.calls[before]
-	if _, err := pool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-interval '1 minute',
+	if _, err := pool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-interval '5 minutes',
 		snapshot=jsonb_set(snapshot, '{active_deadline}', to_jsonb(now()+$2::interval)) WHERE id=$1`, job.SessionID, activeDeadline); err != nil {
 		t.Fatal(err)
 	}
@@ -70,5 +70,25 @@ func TestAnInterruptedTransientStepIsEndedEvenWithinItsCallDeadline(t *testing.T
 	}
 	if got := creationState(t, pool, job); got != "failed" {
 		t.Errorf("state = %s, want failed", got)
+	}
+}
+
+func TestTheRecoverySweepLeavesAnAttemptStillWrappingUpItsFinishedCall(t *testing.T) {
+	pool := requireDB(t)
+	ws := newCreationWorkspace(t, pool)
+	removeCreationWorkspace(t, pool, ws)
+	rec := &jobRecorder{}
+	svc := &creation.Service{Pool: pool, Limits: creationLimits(), Insert: rec.insert}
+	wrappingUp := workingAttempt(t, pool, svc, rec, ws, "-1 minute")
+	if _, err := pool.Exec(context.Background(),
+		`UPDATE creation_sessions SET updated_at = now() - interval '30 seconds' WHERE id = $1`, wrappingUp.SessionID); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.Recover(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if got := creationState(t, pool, wrappingUp); got != "working" {
+		t.Errorf("an attempt 30s past a 2s call, still within revoke, search and settle, was swept to %s; its late result would be charged and thrown away", got)
 	}
 }

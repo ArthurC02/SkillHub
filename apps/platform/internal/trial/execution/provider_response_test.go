@@ -219,3 +219,33 @@ func TestOversizedProviderErrorKeepsItsHTTPRetryClassification(t *testing.T) {
 		})
 	}
 }
+
+func TestAProviderAnswerCutShortMidBodyIsRetryable(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Length", "100")
+		_, _ = io.WriteString(w, `{"state":`)
+	}))
+	defer srv.Close()
+
+	p := NewProvider("test", srv.URL, "").(*httpProvider)
+	var out map[string]any
+	_, err := p.call(context.Background(), providerRequest{method: http.MethodGet, path: "/", want: []int{http.StatusOK}}, &out)
+
+	if err == nil || !retryable(err) {
+		t.Fatalf("error = %v, retryable = %v; want a retryable provider outage", err, retryable(err))
+	}
+}
+
+func TestAProviderAnswerPastTheReadLimitIsNotRetried(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, strings.Repeat(" ", providerResponseLimit+1))
+	}))
+	defer srv.Close()
+
+	p := NewProvider("test", srv.URL, "").(*httpProvider)
+	_, err := p.call(context.Background(), providerRequest{method: http.MethodGet, path: "/", want: []int{http.StatusOK}}, nil)
+
+	if err == nil || retryable(err) {
+		t.Fatalf("error = %v, retryable = %v; want a refusal that is not retried", err, retryable(err))
+	}
+}

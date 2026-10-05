@@ -42,7 +42,7 @@ func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
 		token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 		// Constant-time compare so a mismatch takes the same time regardless
 		// of where the first differing byte falls.
-		if subtle.ConstantTimeCompare([]byte(token), []byte(s.Token)) != 1 {
+		if s.Token == "" || subtle.ConstantTimeCompare([]byte(token), []byte(s.Token)) != 1 {
 			writeError(w, http.StatusUnauthorized, "missing or invalid provider token")
 			return
 		}
@@ -69,6 +69,9 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request) {
 	run, created, err := s.M.Create(r.Context(), req)
 	capErr, isCapErr := errors.AsType[*RunError](err)
 	switch {
+	case isCapErr && capErr.Retryable:
+		writeJSON(w, http.StatusServiceUnavailable, capErr)
+		return
 	case isCapErr:
 		writeJSON(w, http.StatusUnprocessableEntity, capErr)
 		return

@@ -23,7 +23,10 @@ fi
 # An annotation is one line: newlines become %0A, and % is escaped first so
 # that step doesn't eat the %0A just written.
 printf '::error title=%s failed::' "$title"
-tail -c 3000 "$log" |
+{
+    grep -E -A4 -- '^[[:space:]]*--- FAIL|^panic:' "$log" | head -c 2000
+    tail -c 1500 "$log"
+} |
     sed -e 's/%/%25/g' -e 's/\r$//' |
     awk 'BEGIN { ORS = "" } NR > 1 { print "%0A" } { print }'
 printf '\n'

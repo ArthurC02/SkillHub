@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	neturl "net/url"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -162,11 +163,16 @@ func TestPartialTrailingLineIsHeldBackUntilComplete(t *testing.T) {
 
 	drv.writeTrace(run.ProviderRunID, event(1))
 	drv.appendRawTrace(run.ProviderRunID, `{"schema_version":"1.0","ev`)
-	drv.exit(run.ProviderRunID, sandbox.Outcome{ExitCode: 0})
-
 	waitFor(t, func() bool { return len(sink.received()) == 1 })
-	if got := sink.received(); got[0] != event(1) {
-		t.Errorf("pushed %q, want only the complete line", got[0])
+
+	drv.appendRawTrace(run.ProviderRunID, `ent_id":"completed-later"}`+"\n")
+	completed := `{"schema_version":"1.0","event_id":"completed-later"}`
+	waitFor(t, func() bool { return len(sink.received()) == 2 })
+	drv.exit(run.ProviderRunID, sandbox.Outcome{ExitCode: 0})
+	waitForTerminal(t, h, run.ProviderRunID)
+
+	if got := sink.received(); !slices.Equal(got, []string{event(1), completed}) {
+		t.Errorf("pushed %q, want the complete line, then the held-back line once it was finished", got)
 	}
 }
 
@@ -215,8 +221,8 @@ func TestNoIngestionURLCollectsNothing(t *testing.T) {
 	_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
 	drv.writeTrace(run.ProviderRunID, event(1))
 	drv.exit(run.ProviderRunID, sandbox.Outcome{ExitCode: 0})
+	waitForTerminal(t, h, run.ProviderRunID)
 
-	time.Sleep(100 * time.Millisecond)
 	if got := sink.received(); len(got) != 0 {
 		t.Errorf("pushed %d events with no destination configured", len(got))
 	}

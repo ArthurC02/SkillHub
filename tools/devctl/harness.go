@@ -32,10 +32,27 @@ var (
 
 func harnessProblems(root string) []string {
 	var problems []string
+	problems = append(problems, harnessSkillDirectoryProblems(root)...)
 	problems = append(problems, harnessSkillProblems(root)...)
 	problems = append(problems, harnessAgentProblems(root)...)
 	problems = append(problems, harnessAgentsDocProblems(root)...)
 	problems = append(problems, harnessWorkflowProblems(root)...)
+	return problems
+}
+
+func harnessSkillDirectoryProblems(root string) []string {
+	skills := filepath.Join(root, filepath.FromSlash(harnessSkillsDir))
+	entries, _ := os.ReadDir(skills)
+	var problems []string
+	for _, entry := range entries {
+		dir := filepath.Join(skills, entry.Name())
+		if _, err := os.Stat(filepath.Join(dir, "SKILL.md")); !entry.IsDir() || err == nil || isClaudeOnlyPlugin(dir) {
+			continue
+		}
+		problems = append(problems, fmt.Sprintf(
+			"harness: %s has neither SKILL.md nor .claude-plugin/plugin.json; a skill directory holds one of them "+
+				"(docs/development/automation.md Harness)", harnessRelative(root, dir)))
+	}
 	return problems
 }
 

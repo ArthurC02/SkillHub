@@ -122,6 +122,44 @@ func TestIssueFailsWhenTheGatewayAnswersNothing(t *testing.T) {
 	}
 }
 
+func TestAKeyTheGatewayCouldNotIssueIsAnOutageOnlyWhenTheGatewayIsNotAnswering(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		status      int
+		unavailable bool
+	}{
+		{"refused as a bad request", http.StatusBadRequest, false},
+		{"rate limited", http.StatusTooManyRequests, true},
+		{"failing inside", http.StatusInternalServerError, true},
+		{"overloaded", http.StatusServiceUnavailable, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tc.status)
+			}))
+			defer srv.Close()
+			g := &Gateway{adminBaseURL: srv.URL, adminKey: "k", client: srv.Client()}
+
+			_, err := g.Issue(context.Background(), "run-1", "attempt-1", time.Minute, 0)
+
+			if err == nil || errors.Is(err, ErrModelGatewayUnavailable) != tc.unavailable {
+				t.Fatalf("err = %v, want unavailable = %v", err, tc.unavailable)
+			}
+		})
+	}
+	t.Run("unreachable", func(t *testing.T) {
+		srv := httptest.NewServer(http.NotFoundHandler())
+		srv.Close()
+		g := &Gateway{adminBaseURL: srv.URL, adminKey: "k", client: srv.Client()}
+
+		_, err := g.Issue(context.Background(), "run-1", "attempt-1", time.Minute, 0)
+
+		if !errors.Is(err, ErrModelGatewayUnavailable) {
+			t.Fatalf("err = %v, want ErrModelGatewayUnavailable", err)
+		}
+	})
+}
+
 func TestRevokeIsIdempotent(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)

@@ -528,7 +528,7 @@ INSERT INTO outbox_events (
     event_type, event_version, correlation_id, causation_id,
     workspace_id, aggregate_type, aggregate_id, payload
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at
+RETURNING event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at, next_delivery_at
 `
 
 type InsertOutboxEventParams struct {
@@ -568,6 +568,7 @@ func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventPa
 		&i.PublishedAt,
 		&i.DeliveryAttempts,
 		&i.DeadLetteredAt,
+		&i.NextDeliveryAt,
 	)
 	return i, err
 }
@@ -693,7 +694,7 @@ func (q *Queries) ListActiveRuns(ctx context.Context, arg ListActiveRunsParams) 
 }
 
 const listOutboxEventsByAggregate = `-- name: ListOutboxEventsByAggregate :many
-SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at FROM outbox_events
+SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at, next_delivery_at FROM outbox_events
 WHERE aggregate_type = $1 AND aggregate_id = $2
 ORDER BY occurred_at, event_id
 `
@@ -726,6 +727,7 @@ func (q *Queries) ListOutboxEventsByAggregate(ctx context.Context, arg ListOutbo
 			&i.PublishedAt,
 			&i.DeliveryAttempts,
 			&i.DeadLetteredAt,
+			&i.NextDeliveryAt,
 		); err != nil {
 			return nil, err
 		}
@@ -738,7 +740,7 @@ func (q *Queries) ListOutboxEventsByAggregate(ctx context.Context, arg ListOutbo
 }
 
 const listOutboxEventsByTypeAfter = `-- name: ListOutboxEventsByTypeAfter :many
-SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at FROM outbox_events
+SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at, next_delivery_at FROM outbox_events
 WHERE event_type = $1
   AND occurred_at >= $2::timestamptz
   AND (occurred_at, event_id) > ($2::timestamptz, $3::uuid)
@@ -784,6 +786,7 @@ func (q *Queries) ListOutboxEventsByTypeAfter(ctx context.Context, arg ListOutbo
 			&i.PublishedAt,
 			&i.DeliveryAttempts,
 			&i.DeadLetteredAt,
+			&i.NextDeliveryAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1228,8 +1231,9 @@ func (q *Queries) ListUnfinishedRuns(ctx context.Context, batchSize int32) ([]Ru
 }
 
 const listUnpublishedOutboxEvents = `-- name: ListUnpublishedOutboxEvents :many
-SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at FROM outbox_events
+SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at, next_delivery_at FROM outbox_events
 WHERE published_at IS NULL AND dead_lettered_at IS NULL
+  AND (next_delivery_at IS NULL OR next_delivery_at <= now())
 ORDER BY occurred_at, event_id
 LIMIT $1
 `
@@ -1257,6 +1261,7 @@ func (q *Queries) ListUnpublishedOutboxEvents(ctx context.Context, limit int32) 
 			&i.PublishedAt,
 			&i.DeliveryAttempts,
 			&i.DeadLetteredAt,
+			&i.NextDeliveryAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1502,13 +1507,20 @@ func (q *Queries) RecordOrphanSighting(ctx context.Context, arg RecordOrphanSigh
 }
 
 const recordOutboxDeliveryFailure = `-- name: RecordOutboxDeliveryFailure :one
-UPDATE outbox_events SET delivery_attempts = delivery_attempts + 1
-WHERE event_id = $1
+UPDATE outbox_events SET
+    delivery_attempts = delivery_attempts + 1,
+    next_delivery_at = now() + $1::interval
+WHERE event_id = $2
 RETURNING delivery_attempts
 `
 
-func (q *Queries) RecordOutboxDeliveryFailure(ctx context.Context, eventID pgtype.UUID) (int32, error) {
-	row := q.db.QueryRow(ctx, recordOutboxDeliveryFailure, eventID)
+type RecordOutboxDeliveryFailureParams struct {
+	RetryDelay pgtype.Interval
+	EventID    pgtype.UUID
+}
+
+func (q *Queries) RecordOutboxDeliveryFailure(ctx context.Context, arg RecordOutboxDeliveryFailureParams) (int32, error) {
+	row := q.db.QueryRow(ctx, recordOutboxDeliveryFailure, arg.RetryDelay, arg.EventID)
 	var delivery_attempts int32
 	err := row.Scan(&delivery_attempts)
 	return delivery_attempts, err

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 	"time"
 
@@ -22,6 +21,10 @@ func (d *Driver) ProbeEgress(ctx context.Context, targets []string) ([]string, e
 	if len(targets) == 0 {
 		return nil, nil
 	}
+	script, err := probeScript(targets)
+	if err != nil {
+		return nil, err
+	}
 	network := d.cfg.Network
 	if network == "" {
 		network = networktypes.NetworkNone
@@ -31,10 +34,6 @@ func (d *Driver) ProbeEgress(ctx context.Context, targets []string) ([]string, e
 		return nil, nil
 	}
 
-	script, err := probeScript(targets)
-	if err != nil {
-		return nil, err
-	}
 	cfg := &container.Config{
 		Image: d.cfg.Image,
 
@@ -119,16 +118,11 @@ func probeScript(targets []string) (string, error) {
 	}
 	var list []target
 	for _, t := range targets {
-		// LastIndex, so an IPv6 host keeps its own colons and only the port splits off.
-		i := strings.LastIndex(t, ":")
-		if i <= 0 {
-			continue
+		host, port, ok := sandbox.SplitP02Target(t)
+		if !ok {
+			return "", fmt.Errorf("p02 target %q is not host:port", t)
 		}
-		port, err := strconv.Atoi(t[i+1:])
-		if err != nil || port <= 0 || port > 65535 {
-			continue
-		}
-		list = append(list, target{Label: t, Host: t[:i], Port: port})
+		list = append(list, target{Label: t, Host: host, Port: port})
 	}
 	encoded, err := json.Marshal(list)
 	if err != nil {

@@ -202,6 +202,9 @@ func prepareEvent(run IngestRunState, grant Grant, masker *Masker, event *Event)
 	}
 
 	masked, err := masker.Mask(event.Payload)
+	if errors.Is(err, errPayloadHoldsNUL) {
+		return gen.InsertTraceEventParams{}, fmt.Errorf("%w: %w", ErrInvalid, err)
+	}
 	if err != nil {
 		return gen.InsertTraceEventParams{}, fmt.Errorf("%w: payload is not a JSON object", ErrInvalid)
 	}

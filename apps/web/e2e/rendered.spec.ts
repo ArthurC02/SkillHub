@@ -183,6 +183,10 @@ async function verifyReducedMotion(page: Page) {
     return value.endsWith("ms") ? Number.parseFloat(value) : Number.parseFloat(value) * 1000;
   });
   expect(normal).toBe(120);
+  const normalTransitions = await card.evaluate((element) =>
+    getComputedStyle(element).transitionDuration.split(", "),
+  );
+  expect(normalTransitions.some((duration) => duration !== "0s")).toBe(true);
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   const reduced = await page.evaluate(() => {
@@ -846,6 +850,7 @@ test.describe("QA-008 real layout", () => {
       await page.setViewportSize({ width: 375, height: 667 });
       await page.goto(url);
       await expect(page.locator(".app-nav a").first()).toBeVisible();
+      await expect(page.locator("[data-loading]")).toHaveCount(0);
 
       const doc = await page.evaluate(() => {
         const limit = document.documentElement.clientWidth;
@@ -996,25 +1001,36 @@ test("手機橫向導覽只在真的溢位時顯示提示", async ({ page }) => 
   test.slow();
   await stubPlatform(page);
 
-  for (const width of [375, 383, 391, 400, 503, 640]) {
+  const overflowingWidths: number[] = [];
+  const fittingWidths: number[] = [];
+  let scrolledToEnd = false;
+  for (const width of [320, 340, 360, 375, 383, 391, 400, 503, 640]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/library");
     const nav = page.locator(".app-nav");
     const cue = nav.locator(":scope > .nav-scroll-cue");
+    await expect(nav.locator("a").first()).toBeVisible();
+    await expect(page.locator("[data-loading]")).toHaveCount(0);
     const overflows = await nav.evaluate((element) => element.scrollWidth > element.clientWidth);
     if (overflows) {
+      overflowingWidths.push(width);
       await expect(cue, `${width}px 有溢位卻沒提示`).toBeVisible();
-      if (width === 375) {
+      if (!scrolledToEnd) {
         await nav.evaluate((element) => {
           element.scrollLeft = element.scrollWidth;
           element.dispatchEvent(new Event("scroll"));
         });
         await expect(cue, "捲到最右邊後提示沒有消失").toBeHidden();
+        scrolledToEnd = true;
       }
     } else {
+      fittingWidths.push(width);
       await expect(cue, `${width}px 沒有溢位卻仍顯示提示`).toBeHidden();
     }
   }
+  expect(overflowingWidths, "沒有任何寬度溢位，有溢位的那一支從沒跑到").not.toEqual([]);
+  expect(fittingWidths, "沒有任何寬度放得下，沒溢位的那一支從沒跑到").not.toEqual([]);
+  expect(scrolledToEnd, "沒有任何寬度溢位，捲到最右邊的檢查從沒跑到").toBe(true);
 
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto("/admin");
@@ -1408,6 +1424,7 @@ test.describe("QA-008 real layout: 選中狀態與資料完整性", () => {
 
     const fused = await page.evaluate(() => {
       const bad: string[] = [];
+      let checked = 0;
       for (const pill of Array.from(document.querySelectorAll(".badge"))) {
         let note: Element | null = pill.nextElementSibling;
         while (note && !note.classList.contains("note")) {
@@ -1420,10 +1437,12 @@ test.describe("QA-008 real layout: 選中狀態與資料完整性", () => {
         const first = Array.from(range.getClientRects()).find((r) => r.width > 0);
         const box = pill.getBoundingClientRect();
         if (!first) continue;
+        checked++;
         if (Math.min(box.bottom, first.bottom) - Math.max(box.top, first.top) <= 4) continue;
         const gap = first.left - box.right;
         if (gap < 6) bad.push(`${gap.toFixed(1)}px after 「${pill.textContent?.trim()}」`);
       }
+      if (checked === 0) bad.push("no badge on this page had a qualifier laid out beside it");
       return bad;
     });
     expect(fused, `fused to the badge: ${fused.join(" / ")}`).toEqual([]);
@@ -1469,6 +1488,7 @@ test.describe("QA-008 real layout: 全站唯一主要動作", () => {
     for (const [name, url] of ROUTES) {
       await page.goto(url);
       await expect(page.locator(".app-nav a").first()).toBeVisible();
+      await expect(page.locator("[data-loading]")).toHaveCount(0);
 
       const found = await page.evaluate(() => {
         const probe = document.createElement("div");

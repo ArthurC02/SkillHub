@@ -6,6 +6,7 @@ import { queryClient } from "../../core/api/queryClient";
 import { SkillDetail } from "./detail/SkillDetail.page";
 import { skillDetail, VERSION } from "../../testing/fixtures/platform";
 import type { SkillDetail as SkillDetailModel, SkillSource } from "../../core/api/types";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
 
@@ -84,15 +85,8 @@ async function render(node: ReactNode, settled: () => boolean) {
   await waitFor(settled);
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs);
 }
 
 const text = () => container.textContent ?? "";
@@ -119,6 +113,10 @@ test("GEN-002: task_description 非空時顯示逐字的任務描述句", async 
   await render(<SkillDetail />, settledAsVisitor);
 
   expect(text()).toContain("來源：由平台依你的任務描述生成");
+  const disclosure = Array.from(container.querySelectorAll("details")).find((d) =>
+    d.textContent?.includes("你當時輸入的任務描述"),
+  );
+  expect(disclosure?.querySelector("p")?.textContent).toBe("把 PDF 轉成摘要");
 });
 
 test("a generated 小工具 keeps its current Version when continuing to 測試題", async () => {

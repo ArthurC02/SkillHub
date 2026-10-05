@@ -77,6 +77,9 @@ func copyTree(source, target string) error {
 			return err
 		}
 		output := filepath.Join(target, rel)
+		if entry.IsDir() && isClaudeOnlyPlugin(path) {
+			return filepath.SkipDir
+		}
 		if entry.IsDir() {
 			return os.MkdirAll(output, 0o755)
 		}
@@ -89,6 +92,12 @@ func copyTree(source, target string) error {
 		}
 		return os.WriteFile(output, data, 0o644)
 	})
+}
+
+func isClaudeOnlyPlugin(dir string) bool {
+	_, manifestErr := os.Stat(filepath.Join(dir, ".claude-plugin", "plugin.json"))
+	_, skillErr := os.Stat(filepath.Join(dir, "SKILL.md"))
+	return manifestErr == nil && os.IsNotExist(skillErr)
 }
 
 func writeCodexAgents(source, target string) error {

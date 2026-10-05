@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -174,4 +176,48 @@ func balanceOf(t *testing.T, pool *pgxpool.Pool, userID string) int64 {
 		t.Fatal(err)
 	}
 	return balance
+}
+
+func TestCleanupRevokesTheAttemptKeyBeforeReadingWhatTheRunSpent(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	_, svc := haltHarness(t, a, pool)
+	f := newFixture(t, a, pool, "alice-run-revoke-first")
+	ctx := context.Background()
+	finished := f.start(t)
+	if err := driveThroughPolls(ctx, svc.Drive, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
+		t.Fatalf("driving the run: %v", err)
+	}
+
+	var mu sync.Mutex
+	var calls []string
+	note := func(call string) {
+		mu.Lock()
+		defer mu.Unlock()
+		calls = append(calls, call)
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /spend/logs/v2", func(w http.ResponseWriter, _ *http.Request) {
+		note("read spend")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": []any{map[string]any{"prompt_tokens": 1, "completion_tokens": 1, "spend": 0.01}}, "total_pages": 1,
+		})
+	})
+	mux.HandleFunc("POST /key/delete", func(w http.ResponseWriter, _ *http.Request) {
+		note("revoke")
+		_, _ = w.Write([]byte(`{}`))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	svc.Gateway = run.NewGateway(run.GatewayConfig{AdminBaseURL: srv.URL, AdminKey: "test", SandboxBaseURL: srv.URL, HTTP: srv.Client()})
+
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
+		t.Fatalf("cleanup: %v", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	revoked, read := slices.Index(calls, "revoke"), slices.Index(calls, "read spend")
+	if revoked < 0 || read < 0 || revoked > read {
+		t.Errorf("gateway calls = %v, want the key revoked before the spend is read; spend after the read would go uncharged", calls)
+	}
 }

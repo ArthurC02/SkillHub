@@ -5,8 +5,10 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -144,6 +146,62 @@ func TestInProcess(t *testing.T) {
 	assertPresignedGetServesTheObject(t, ctx, client, "greeting.txt", payload)
 	assertPresignedPutWritesTheObject(t, ctx, client, "uploaded.txt", []byte("written through the presigned URL"))
 	assertRemoveIsIdempotent(t, ctx, client, "greeting.txt")
+}
+
+func TestAKeyInABucketThatDoesNotExistIsAnOutageNotAnAbsence(t *testing.T) {
+	client, stop, err := NewInProcess("test-bucket")
+	if err != nil {
+		t.Fatalf("NewInProcess: %v", err)
+	}
+	defer stop()
+	ctx := context.Background()
+	if err := client.EnsureBucket(ctx); err != nil {
+		t.Fatal(err)
+	}
+	endpoint, key := inProcessEndpoint(t, client)
+	elsewhere, err := New(strings.TrimPrefix(endpoint, "http://"), key, key, "no-such-bucket", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if present, err := elsewhere.Exists(ctx, "missing-key"); err == nil {
+		t.Errorf("Exists = %v with no error, want the missing bucket reported", present)
+	}
+	if _, found, err := elsewhere.GetIfPresent(ctx, "missing-key"); err == nil {
+		t.Errorf("GetIfPresent found = %v with no error, want the missing bucket reported", found)
+	}
+	if present, err := client.Exists(ctx, "missing-key"); err != nil || present {
+		t.Errorf("Exists in the real bucket = %v, %v; want an absent key", present, err)
+	}
+}
+
+func TestAKeyAskedForAfterItsBucketVanishedIsAnOutageNotAnAbsence(t *testing.T) {
+	backend := &inProcessBackend{bucket: "vanishing-bucket", objects: make(map[string]storedObject)}
+	var vanished atomic.Bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if vanished.Load() {
+			r.URL.Path = "/elsewhere" + r.URL.Path
+		}
+		backend.ServeHTTP(w, r)
+	}))
+	defer srv.Close()
+	client, err := New(strings.TrimPrefix(srv.URL, "http://"), "k", "k", "vanishing-bucket", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if err := client.EnsureBucket(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if present, err := client.Exists(ctx, "missing-key"); err != nil || present {
+		t.Fatalf("Exists while the bucket stands = %v, %v; want an absent key", present, err)
+	}
+
+	vanished.Store(true)
+
+	if present, err := client.Exists(ctx, "missing-key"); err == nil {
+		t.Errorf("Exists = %v with no error after the bucket vanished, want the missing bucket reported", present)
+	}
 }
 
 func TestInProcessDoesNotAuthorize(t *testing.T) {

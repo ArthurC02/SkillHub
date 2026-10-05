@@ -52,10 +52,15 @@ def test_a_diagnosis_with_no_edits_skips_the_rewrite_and_adds_no_guidance():
         "review_diagnosis",
         "creation_decision",
     ]
-    assert system_of(calls[1]) == system_of(calls[0]).removeprefix(
-        creation.DIAGNOSIS_INSTRUCTIONS + "\n\n"
+    diagnosis_system, decision_system = system_of(calls[0]), system_of(calls[1])
+    assert diagnosis_system != decision_system
+    assert diagnosis_system.endswith(decision_system)
+    assert "A trial run of the draft Skill was judged against its acceptance criteria" in (
+        diagnosis_system.removesuffix(decision_system)
     )
+    assert "A trial run of the draft Skill was judged" not in decision_system
     assert response.json()["usage"]["cost_usd"] == 0.002
+    assert response.json()["usage"]["cost_source"] == "gateway"
 
 
 def test_a_rewrite_that_only_changes_whitespace_keeps_the_draft_and_claims_no_rewrite():
@@ -76,7 +81,7 @@ def test_a_rewrite_that_only_changes_whitespace_keeps_the_draft_and_claims_no_re
     assert response.json()["draft"]["body"] == base.SKILL["body"]
 
 
-def test_an_unusable_diagnosis_is_skipped_and_only_the_decision_is_billed(caplog):
+def test_an_unusable_diagnosis_is_skipped_but_its_call_is_still_billed(caplog):
     with caplog.at_level(logging.WARNING, logger="skillhub_llm.creation"):
         response, calls = post(
             review_request(),
@@ -85,8 +90,31 @@ def test_an_unusable_diagnosis_is_skipped_and_only_the_decision_is_billed(caplog
     assert response.status_code == 200
     assert len(calls) == 2
     assert "Edits you decided on" not in system_of(calls[1])
-    assert response.json()["usage"]["cost_usd"] == 0.001
+    assert response.json()["usage"]["cost_usd"] == 0.002
     assert "creation review diagnosis skipped (ValidationError) session=s1" in caplog.text
+
+
+def test_a_diagnosis_whose_cost_the_gateway_did_not_report_leaves_the_step_cost_unknown():
+    calls = []
+    seq = base.stub_seq(
+        [{"edits": []}, base.decision(outcome="draft", message="ok", draft=base.SKILL)], calls
+    )
+    reported = seq.chat.completions.with_raw_response.create
+
+    async def unreported_diagnosis(**kwargs):
+        raw = await reported(**kwargs)
+        if len(calls) == 1:
+            raw.parse().usage = None
+        return raw
+
+    seq.chat.completions.with_raw_response.create = unreported_diagnosis
+    with patch.object(creation, "client", lambda _: seq):
+        response = base.client.post(
+            "/v1/creation/step", headers=base.HEADERS, json=review_request()
+        )
+    assert response.status_code == 200
+    assert len(calls) == 2
+    assert response.json()["usage"] is None
 
 
 def test_an_unusable_rewrite_keeps_the_draft_but_bills_the_diagnosis_and_the_rewrite():

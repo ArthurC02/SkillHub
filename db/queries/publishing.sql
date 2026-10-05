@@ -69,8 +69,8 @@ WHERE p.id = @id
 
 -- name: InsertPublicationRelease :one
 INSERT INTO publication_releases (publication_id, skill_version_id, version_number, content_hash,
-                                  findings, rights_attested, released_by)
-SELECT p.id, @skill_version_id, @version_number, @content_hash, @findings, @rights_attested, @released_by
+                                  findings, rights_attested, released_by, released_at)
+SELECT p.id, @skill_version_id, @version_number, @content_hash, @findings, @rights_attested, @released_by, clock_timestamp()
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE p.id = @publication_id AND pb.workspace_id = @workspace_id
@@ -101,8 +101,8 @@ ON CONFLICT (workspace_id, name) DO NOTHING;
 SELECT * FROM bundles WHERE workspace_id = @workspace_id AND name = @name FOR UPDATE;
 
 -- name: CreateBundleVersion :one
-INSERT INTO bundle_versions (bundle_id, version, description, content_hash, created_by)
-SELECT b.id, @version, @description, @content_hash, @created_by
+INSERT INTO bundle_versions (bundle_id, version, description, content_hash, created_by, created_at)
+SELECT b.id, @version, @description, @content_hash, @created_by, clock_timestamp()
 FROM bundles b
 WHERE b.id = @bundle_id AND b.workspace_id = @workspace_id
 RETURNING *;
@@ -186,8 +186,8 @@ RETURNING *;
 
 -- name: InsertBundleRelease :one
 INSERT INTO publication_releases (publication_id, bundle_version_id, content_hash,
-                                  findings, rights_attested, released_by)
-SELECT p.id, @bundle_version_id, @content_hash, @findings, @rights_attested, @released_by
+                                  findings, rights_attested, released_by, released_at)
+SELECT p.id, @bundle_version_id, @content_hash, @findings, @rights_attested, @released_by, clock_timestamp()
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE p.id = @publication_id AND pb.workspace_id = @workspace_id

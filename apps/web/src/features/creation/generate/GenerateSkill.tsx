@@ -5,6 +5,7 @@ import { useGenerateSkill } from "../generate.service";
 import {
   GENERATE_MAX_DIAGRAM_BYTES,
   generateDiagramProblem,
+  generateFailureMessage,
   readGenerateDiagram,
 } from "../generate.model";
 import { isCategorizedFindings } from "../import.service";
@@ -223,11 +224,9 @@ function GenerateOutcome({
   onRetry: () => void;
 }) {
   const failure =
-    mutation.error instanceof ApiError &&
-    mutation.error.status === 422 &&
-    /[\u3400-\u9fff]/u.test(mutation.error.message)
-      ? mutation.error.message
-      : "生成沒有成功，請檢查連線後再試一次。";
+    mutation.error instanceof ApiError
+      ? generateFailureMessage(mutation.error.status, mutation.error.message)
+      : generateFailureMessage(undefined, "");
 
   return (
     <>

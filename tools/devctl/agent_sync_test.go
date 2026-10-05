@@ -38,6 +38,24 @@ func TestAgentSyncGeneratesPortableArtifactsAndDetectsDrift(t *testing.T) {
 	}
 }
 
+func TestAgentSyncLeavesAClaudeOnlyPluginOutOfThePortableSkills(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, root, ".claude/agents/writer.md", claudeAgentFixture)
+	writeTestFile(t, root, ".claude/skills/guards/.claude-plugin/plugin.json", "{\"name\":\"guards\"}\n")
+	writeTestFile(t, root, ".claude/skills/hybrid/.claude-plugin/plugin.json", "{\"name\":\"hybrid\"}\n")
+	writeTestFile(t, root, ".claude/skills/hybrid/SKILL.md", "---\nname: hybrid\n---\n\nRoute.\n")
+
+	if err := agentSync(root, nil, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".agents/skills/guards")); !os.IsNotExist(err) {
+		t.Fatalf("a plugin with no SKILL.md reached .agents/skills: stat err = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".agents/skills/hybrid/.claude-plugin/plugin.json")); err != nil {
+		t.Fatalf("a skill that is also a plugin was not copied whole: %v", err)
+	}
+}
+
 func TestParseClaudeAgentRejectsIncompleteFrontmatter(t *testing.T) {
 	if _, err := parseClaudeAgent("---\nname: x\n---\n\nBody.\n"); err == nil {
 		t.Fatal("incomplete frontmatter was accepted")

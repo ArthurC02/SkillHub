@@ -182,6 +182,35 @@ func TestCallbackRejectsStateMismatch(t *testing.T) {
 	}
 }
 
+func TestCallbackTellsAGitHubOutageFromARefusedLogin(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status int
+		want   int
+	}{
+		{"github is down", http.StatusBadGateway, http.StatusServiceUnavailable},
+		{"github is rate limiting", http.StatusTooManyRequests, http.StatusServiceUnavailable},
+		{"github refused the code", http.StatusUnauthorized, http.StatusUnauthorized},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tc.status)
+			}))
+			defer srv.Close()
+			h := &Handler{Service: &Service{OAuth: &GitHubOAuth{AuthBase: srv.URL, APIBase: srv.URL, Client: srv.Client()}}}
+			r := httptest.NewRequest(http.MethodGet, "/auth/github/callback?code=c&state=abc", nil)
+			r.AddCookie(&http.Cookie{Name: stateCookie, Value: "abc"})
+			w := httptest.NewRecorder()
+
+			h.finishLogin(w, r)
+
+			if w.Code != tc.want {
+				t.Fatalf("callback = %d, want %d", w.Code, tc.want)
+			}
+		})
+	}
+}
+
 func TestDevLoginNotMountedByDefault(t *testing.T) {
 
 	h := &Handler{Service: &Service{}}

@@ -59,6 +59,7 @@ type importLimitsResponse struct {
 	MaxFiles         int      `json:"max_files"`
 	MaxFileBytes     int64    `json:"max_file_bytes"`
 	MaxPathDepth     int      `json:"max_path_depth"`
+	MaxSkills        int      `json:"max_skills_per_import"`
 	AllowedHosts     []string `json:"allowed_hosts"`
 	Note             string   `json:"note"`
 }
@@ -113,6 +114,7 @@ func (h *Handler) Limits(w http.ResponseWriter, _ *http.Request) {
 		MaxFiles:         limits.Entries,
 		MaxFileBytes:     limits.EntryBytes,
 		MaxPathDepth:     limits.EntryDepth,
+		MaxSkills:        MaxSkillsPerImport,
 		AllowedHosts:     hosts,
 		Note:             importLimitsNote,
 	})
@@ -222,10 +224,10 @@ func (h *Handler) ImportURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) respondSource(w http.ResponseWriter, res SourceResult, err error) {
-	if errors.Is(err, ErrTooManySkills) {
+	if tooMany, ok := errors.AsType[*TooManySkillsError](err); ok {
 		httpx.WriteError(w, http.StatusRequestEntityTooLarge,
-			"這個來源裡的 Skill 超過一次匯入的上限 "+strconv.Itoa(MaxSkillsPerImport)+
-				" 個。請改成一個一個匯入，或先把來源拆小。")
+			"這個來源有 "+strconv.Itoa(tooMany.Admitted)+" 個 Skill 可以匯入，超過一次匯入的上限 "+
+				strconv.Itoa(MaxSkillsPerImport)+" 個。請改成一個一個匯入，或先把來源拆小。")
 		return
 	}
 	if h.writeImportError(w, err) {

@@ -20,7 +20,7 @@ func TestAForkInheritsItsAncestorsScanOnlyForTheSameBytesOfALiveCatalogueSkill(t
 		NewestContentHash: "sha256:same",
 	}
 	ancestor := scanAncestor{
-		VersionID: ancestorVersion, SkillID: ancestorSkill, WorkspaceID: catalogue, ContentHash: "sha256:same",
+		VersionID: ancestorVersion, SkillID: ancestorSkill, WorkspaceID: catalogue, ContentHash: "sha256:same", StillNewest: true,
 	}
 	for _, tc := range []struct {
 		name     string
@@ -37,6 +37,7 @@ func TestAForkInheritsItsAncestorsScanOnlyForTheSameBytesOfALiveCatalogueSkill(t
 		{"the ancestor left the catalogue", func(*gen.ListSkillsRow) {}, func(a *scanAncestor) { a.WorkspaceID = elsewhere }, false},
 		{"the ancestor was deleted", func(*gen.ListSkillsRow) {}, func(a *scanAncestor) { a.DeletedAt = gone }, false},
 		{"the ancestor was taken down", func(*gen.ListSkillsRow) {}, func(a *scanAncestor) { a.TakedownAt = gone }, false},
+		{"the ancestor moved on to a version the catalogue now scans instead", func(*gen.ListSkillsRow) {}, func(a *scanAncestor) { a.StillNewest = false }, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f, a := fork, ancestor

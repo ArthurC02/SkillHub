@@ -124,6 +124,15 @@ def test_a_field_produces_exactly_the_values_the_contract_declares(
     )
 
 
+def test_the_enum_walk_still_finds_the_closed_sets_this_service_produces() -> None:
+    found = contract_enums()
+    expected = {"CreationStepResponse.outcome", "CriterionVerdict.result", "EnrichCheck.severity"}
+    assert expected <= set(found), (
+        f"the walk found {sorted(found)}; the parametrized tests above run on whatever it finds, "
+        "so a walk that misses these compares nothing and still passes"
+    )
+
+
 def test_the_roster_names_only_schemas_the_contract_still_has() -> None:
     spec = yaml.safe_load(CONTRACT.read_text(encoding="utf-8"))
     missing = sorted(set(MODELS) - set(spec["components"]["schemas"]))

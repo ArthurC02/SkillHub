@@ -32,6 +32,7 @@ var (
 	ErrRunFinished               = errors.New("run has already finished")
 	errRegistryReadNotConfigured = errors.New("run: registry owner read is not configured")
 	errRunLinkMissing            = errors.New("run: its skill version or test case snapshot is gone")
+	errRunRequestUnbuildable     = errors.New("run: this attempt's request can never be built")
 )
 
 type SkillFacts struct {
@@ -849,4 +850,13 @@ func (s *Service) DailyRuns(ctx context.Context, since time.Time) ([]RunsOnDay, 
 		out = append(out, RunsOnDay{Day: r.Day.Time, Status: r.Status, Runs: r.Runs})
 	}
 	return out, nil
+}
+
+func unbuildable(err error) error { return fmt.Errorf("%w: %w", errRunRequestUnbuildable, err) }
+
+func unbuildableWhenGone(err error) error {
+	if errors.Is(err, testlab.ErrNotFound) {
+		return unbuildable(err)
+	}
+	return err
 }

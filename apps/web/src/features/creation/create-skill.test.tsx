@@ -2,10 +2,14 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider, createMemoryHistory } from "@tanstack/react-router";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
 import { createAppRouter } from "../../app/router";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { preloadEveryPage } from "../../testing/pages";
+
+beforeAll(preloadEveryPage);
 
 let container: HTMLDivElement;
 let root: Root;
@@ -127,15 +131,8 @@ async function visit(rendered: () => boolean, entry = "/workspace/creations") {
   await waitFor(() => queryClient.getQueryState(queryKeys.me)?.status === "success" && rendered());
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs);
 }
 
 const text = () => container.textContent ?? "";
@@ -291,4 +288,38 @@ test("creating a session makes the returned session addressable", async () => {
   await waitFor(() => router.state.location.search.session === SESSION_ID);
 
   expect(router.state.location.search.session).toBe(SESSION_ID);
+});
+
+test("a first diagram that the new session refuses keeps the diagram and shows why", async () => {
+  const seen: string[] = [];
+  const sessions = creationRoute(seen, []);
+  stubMe(
+    { generate_skill: true, creation_skill: true },
+    (path, init) =>
+      sessions(path, init) ??
+      (path === `/creation-sessions/${SESSION_ID}/actions`
+        ? json({ error: "看不懂這張流程圖" }, 422)
+        : undefined),
+  );
+  await visit(() => container.querySelector('input[name="creation-budget"]') !== null);
+
+  await act(async () => {
+    container
+      .querySelector<HTMLInputElement>('input[name="creation-budget"][value="500"]')!
+      .click();
+    const picker = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    Object.defineProperty(picker, "files", {
+      configurable: true,
+      value: [new File(["diagram"], "flow.png", { type: "image/png" })],
+    });
+    picker.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await act(async () => {
+    container.querySelector<HTMLButtonElement>('button[aria-label="開始創作"]')!.click();
+  });
+  await waitFor(() => text().includes("看不懂這張流程圖"));
+
+  expect(seen).toContain(`/creation-sessions/${SESSION_ID}/actions`);
+  expect(router.state.location.search.session).toBe(SESSION_ID);
+  expect(text()).toContain("移除流程圖：flow.png");
 });

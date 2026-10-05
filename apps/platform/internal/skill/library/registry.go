@@ -82,6 +82,9 @@ func (s *Service) forkSource(ctx context.Context, tx pgx.Tx, ws identity.Workspa
 	if errors.Is(err, pgx.ErrNoRows) {
 		src, err = s.catalogSkillIn(ctx, tx, skillID)
 	}
+	if err == nil {
+		src, err = q.LockSkillForFork(ctx, gen.LockSkillForForkParams{ID: src.ID, WorkspaceID: src.WorkspaceID})
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return gen.Skill{}, gen.SkillVersion{}, ErrNotFound
 	}

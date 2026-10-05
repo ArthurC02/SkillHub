@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 from openai import APIConnectionError
 
-from skillhub_llm import gateway, generate
+from skillhub_llm import generate
 from skillhub_llm.app import app
 
 client = TestClient(app, headers={"Authorization": "Bearer test-service-token"})
@@ -82,10 +82,10 @@ def test_generates_a_skill_and_reports_its_own_provenance(capture):
     body = r.json()
 
     assert body["skill"]["name"] == "scanned-invoice-table"
-    assert body["model"] == generate.GENERATE_SKILL_MODEL
-    assert body["prompt_version"] == generate.GENERATE_SKILL_PROMPT_VERSION
+    assert body["model"] == "skillhub-generate"
+    assert body["prompt_version"] == "generate-skill/v4"
     assert body["usage"]["cost_usd"] == pytest.approx(0.0055)
-    assert calls[0]["max_tokens"] == generate.MAX_OUTPUT_TOKENS
+    assert calls[0]["max_tokens"] == 16000
 
 
 def test_the_response_names_the_provider_model_from_the_gateway_header_without_its_prefix(capture):
@@ -128,9 +128,9 @@ def test_generation_pins_its_sampling_and_records_what_it_pinned(capture):
     body = client.post("/v1/generate-skill", json={"task_description": TASK}).json()
 
     assert calls[0]["temperature"] == 0
-    assert calls[0]["seed"] == gateway.SEED
+    assert calls[0]["seed"] == 20260829
     assert body["temperature"] == 0
-    assert body["seed"] == gateway.SEED
+    assert body["seed"] == 20260829
 
 
 def test_the_schema_handed_to_the_model_cannot_carry_a_licence(capture):
@@ -204,13 +204,9 @@ def test_an_empty_body_is_refused_not_packaged(capture):
 @pytest.mark.parametrize(
     "patch",
     [
-        {
-            "files": [
-                {"path": f"f{i}.md", "content": "x"} for i in range(generate.MAX_EXTRA_FILES + 1)
-            ]
-        },
-        {"files": [{"path": "p" * (generate.MAX_PATH_CHARS + 1), "content": "x"}]},
-        {"files": [{"path": "big.txt", "content": "x" * (generate.MAX_FILE_CHARS + 1)}]},
+        {"files": [{"path": f"f{i}.md", "content": "x"} for i in range(11)]},
+        {"files": [{"path": "p" * (256), "content": "x"}]},
+        {"files": [{"path": "big.txt", "content": "x" * (100_001)}]},
     ],
     ids=["file-count", "path", "content"],
 )
@@ -289,7 +285,7 @@ def test_neither_task_description_nor_diagram_is_422_without_touching_the_client
 
 def test_a_diagram_over_the_byte_cap_is_422_without_touching_the_client(capture):
     calls = capture(json.dumps(GOOD_SKILL))
-    oversized = base64.b64encode(b"x" * (generate.MAX_DIAGRAM_BYTES + 1)).decode("ascii")
+    oversized = base64.b64encode(b"x" * (4_000_001)).decode("ascii")
     r = client.post(
         "/v1/generate-skill",
         json={"diagram": {"media_type": "image/png", "data": oversized}},
@@ -300,7 +296,7 @@ def test_a_diagram_over_the_byte_cap_is_422_without_touching_the_client(capture)
 
 def test_four_references_is_422(capture):
     calls = capture(json.dumps(GOOD_SKILL))
-    refs = [{"name": f"skill-{i}", "skill_md": "x"} for i in range(generate.MAX_REFERENCES + 1)]
+    refs = [{"name": f"skill-{i}", "skill_md": "x"} for i in range(4)]
     r = client.post(
         "/v1/generate-skill",
         json={"task_description": TASK, "references": refs},

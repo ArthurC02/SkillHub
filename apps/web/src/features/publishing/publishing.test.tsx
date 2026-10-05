@@ -30,6 +30,7 @@ import {
 } from "../../testing/fixtures/platform";
 import type { SkillDetail } from "../../core/api/types";
 import type { BundleVersion, Publication } from "./publishing.service";
+import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -89,15 +90,8 @@ async function render(node: ReactNode, settled: () => boolean) {
   await waitFor(settled);
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 2000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs);
 }
 
 const text = () => container.textContent ?? "";
@@ -419,6 +413,7 @@ test("an older Bundle row exports and first publishes the immutable version show
     version: "1.0.0",
     rights_attested: false,
   });
+  expect(publicationReads).toBe(0);
 });
 
 test("an older published Bundle row republishes the immutable version shown on that row", async () => {
@@ -1179,6 +1174,7 @@ test("PublishPanel：不是擁有者時整塊不顯示", async () => {
     </div>,
     () => container.querySelector("[data-testid=wrap]") !== null,
   );
+  await waitFor(() => queryClient.isFetching() === 0);
 
   expect(text()).toBe("");
   expect(calls.some((url) => url.includes("/me/publications"))).toBe(false);

@@ -66,6 +66,19 @@ func (c *Client) EnsureBucket(ctx context.Context) error {
 	return nil
 }
 
+// A HEAD answer carries no body, so a missing bucket and a missing object are
+// the same 404; only asking for the bucket tells them apart.
+func (c *Client) requireBucket(ctx context.Context) error {
+	ok, err := c.mc.BucketExists(ctx, c.bucket)
+	if err != nil {
+		return fmt.Errorf("objstore bucket check: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("objstore bucket %s does not exist", c.bucket)
+	}
+	return nil
+}
+
 const MaxObjectBytes = 128 << 20
 
 func (c *Client) Get(ctx context.Context, key string) ([]byte, error) {
@@ -123,7 +136,8 @@ func openFailure(key string, err error) error {
 }
 
 func isNotFound(err error) bool {
-	return minio.ToErrorResponse(err).StatusCode == http.StatusNotFound
+	resp := minio.ToErrorResponse(err)
+	return resp.StatusCode == http.StatusNotFound && resp.Code != "NoSuchBucket"
 }
 
 // readCapped reads one byte past the ceiling: a plain LimitReader ends
@@ -150,7 +164,7 @@ func (c *Client) Remove(ctx context.Context, key string) error {
 func (c *Client) Exists(ctx context.Context, key string) (bool, error) {
 	if _, err := c.mc.StatObject(ctx, c.bucket, key, minio.StatObjectOptions{}); err != nil {
 		if isNotFound(err) {
-			return false, nil
+			return false, c.requireBucket(ctx)
 		}
 		return false, fmt.Errorf("objstore stat %s: %w", key, err)
 	}

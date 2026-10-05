@@ -58,7 +58,7 @@ func TestCollectionCarriesTheTruncationMarkToTheRun(t *testing.T) {
 			name:        "one artifact dropped and the upload refused",
 			files:       map[string][]byte{"artifacts/NUL": []byte("no"), "artifacts/keep.txt": []byte("yes")},
 			storeStatus: http.StatusInternalServerError,
-			wantUploads: 1,
+			wantUploads: 3,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -76,8 +76,12 @@ func TestCollectionCarriesTheTruncationMarkToTheRun(t *testing.T) {
 			}
 			m.runs["run-1"] = e
 
-			if !m.collect(context.Background(), "run-1", "") {
-				t.Fatal("collect reported unfinished for a workload that had announced it was done")
+			finished := false
+			for attempt := 0; attempt < 3 && !finished; attempt++ {
+				finished = m.collect(context.Background(), "run-1", "")
+			}
+			if !finished {
+				t.Fatal("collect never finished for a workload that had announced it was done")
 			}
 			if !e.artifactsTruncated {
 				t.Error("a dropped artifact did not mark the run's collection as truncated")

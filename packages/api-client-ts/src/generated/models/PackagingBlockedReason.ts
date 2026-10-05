@@ -20,6 +20,9 @@
  * with, the fourth is a package they can fix, and the fifth is one this
  * platform broke itself.
  * 
+ * `taken_down` — the platform took the skill down. Taking down changes
+ * visibility and downloadability only: versions and runs stay, but no
+ * package is built from it, its own workspace included.
  * `license_hold` — the skill carries a 0023 access restriction (SEC-011).
  * An unrecognised reason code still blocks: a code nobody recognises must
  * never be the way content unlocks.
@@ -49,6 +52,7 @@
  * @export
  */
 export const PackagingBlockedReason = {
+    TakenDown: 'taken_down',
     LicenseHold: 'license_hold',
     NotRedistributable: 'not_redistributable',
     LicenseUnknown: 'license_unknown',

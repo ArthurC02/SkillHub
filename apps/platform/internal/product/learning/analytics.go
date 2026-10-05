@@ -61,7 +61,7 @@ func (s *Service) Sessions(next http.Handler) http.Handler {
 		// this request's context: several requests can arrive cold at once,
 		// each would mint its own id, and only the one the browser echoes back is real.
 		c, err := r.Cookie(sessionCookie)
-		if err != nil || len(c.Value) != 32 {
+		if err != nil || !mintedSessionID(c.Value) {
 			raw := make([]byte, 16)
 			if _, err := rand.Read(raw); err != nil {
 
@@ -92,6 +92,11 @@ func (s *Service) Sessions(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func mintedSessionID(v string) bool {
+	raw, err := hex.DecodeString(v)
+	return err == nil && len(raw) == 16
 }
 
 func (s *Service) now() time.Time {

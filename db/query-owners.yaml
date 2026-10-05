@@ -128,6 +128,7 @@ queries:
   DetachWorkspaceFeedback: analytics
   InsertFeedbackReport: analytics
   DeleteExpiredFeedbackReports: analytics
+  DeleteAnalyticsEventsBefore: analytics
 
   RecordObjectSighting: objreconcile
   ClearObjectSighting: objreconcile
@@ -206,6 +207,7 @@ scope:
   DeleteSession: user
   EnsureCreditAccount: user
   GetCreditBalance: user
+  GetCreditEntryByIdempotencyKey: user
   GetIdentityProviderIDs: user
   GetSessionWithUser: user
   GetUserLifecycle: user
@@ -261,6 +263,7 @@ scope:
   CountTraceMaskingInWindow: user
   DeleteExpiredAuditEvents: user
   DeleteExpiredFeedbackReports: user
+  DeleteAnalyticsEventsBefore: user
   DeleteOutboxEventsPublishedBefore: user
   DeleteRunArtifactUploadIntentByObjectKey: user
   DeleteUserIdentities: user
@@ -272,10 +275,11 @@ scope:
   ListUnfinishedRuns: user
   ListCollectableObjects: user
   ListLiveSkillIDs: user
-  ListForkedSkills: user
+  ListSkillForks: user
   ListOutboxEventsByAggregate: user
   ListRunsNeedingCleanup: user
   ListSearchDocumentsMissingBigram: user
+  GetSearchDocumentEnrichedText: user
   ListSkillSourcesInVersions: user
   ListSkillVersionsInDownloads: user
   ListSkillVersionsInRuns: user

@@ -174,11 +174,18 @@ func TestAFinishedRunIsEvaluatedThroughItsDomainEventExactlyOnce(t *testing.T) {
 	waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded))
 
 	deadline := time.Now().Add(20 * time.Second)
-	for evaluations(t, pool, created.RunID) == 0 && time.Now().Before(deadline) {
+	for !evaluationPipelineHasSettled(t, pool, created.RunID) {
+		if time.Now().After(deadline) {
+			t.Fatal("the run's event was never published and its evaluation job never finished")
+		}
 		time.Sleep(50 * time.Millisecond)
 	}
 	if n := evaluations(t, pool, created.RunID); n != 1 {
 		t.Fatalf("the run's domain event produced %d evaluations, want exactly 1", n)
+	}
+	if n := countRow(t, pool, `SELECT count(*) FROM river_job WHERE kind = 'evaluate_run' AND args->>'run_id' = $1`,
+		created.RunID); n != 1 {
+		t.Fatalf("the run's domain event enqueued %d evaluation jobs, want exactly 1", n)
 	}
 
 	var event outbox.Event
@@ -277,6 +284,20 @@ func TestWorkerDeliversEvaluationThroughGoPythonAndGateway(t *testing.T) {
 		t.Errorf("judge provenance = %q / %q", body.JudgeModel, body.JudgePromptVersion)
 	}
 	assertEvaluationTraceEvents(t, pool, created.RunID, "ok")
+}
+
+func evaluationPipelineHasSettled(t *testing.T, pool *pgxpool.Pool, runID string) bool {
+	t.Helper()
+	var settled bool
+	if err := pool.QueryRow(context.Background(), `SELECT
+		EXISTS (SELECT 1 FROM outbox_events WHERE aggregate_id = $1 AND event_type = 'run.succeeded' AND published_at IS NOT NULL)
+		AND EXISTS (SELECT 1 FROM river_job WHERE kind = 'evaluate_run' AND args->>'run_id' = $1::text)
+		AND NOT EXISTS (SELECT 1 FROM river_job WHERE kind = 'evaluate_run' AND args->>'run_id' = $1::text
+			AND state IN ('available', 'pending', 'retryable', 'running', 'scheduled'))`,
+		runID).Scan(&settled); err != nil {
+		t.Fatal(err)
+	}
+	return settled
 }
 
 func evaluations(t *testing.T, pool *pgxpool.Pool, runID string) int {
@@ -1063,21 +1084,25 @@ func TestEndingARunClosesOnlyTheGrantsItsAttemptsNeverIssued(t *testing.T) {
 	}
 }
 
-func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
+func TestARunInterruptedAfterItsAttemptSucceededResumesWithoutASecondDispatch(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	ctx := context.Background()
 
 	for _, tc := range []struct {
 		name        string
+		leftAt      run.Status
 		errorClass  *string
 		wantStatus  gen.RunStatus
 		wantFailure string
 	}{
-		{name: "alice-resume-evaluating", errorClass: nil,
+		{name: "alice-resume-provisioning", leftAt: run.StatusProvisioning, errorClass: nil,
 			wantStatus: gen.RunStatusSucceeded, wantFailure: ""},
-
-		{name: "alice-resume-refused", errorClass: strptr("execution_error"),
+		{name: "alice-resume-running", leftAt: run.StatusRunning, errorClass: nil,
+			wantStatus: gen.RunStatusSucceeded, wantFailure: ""},
+		{name: "alice-resume-evaluating", leftAt: run.StatusEvaluating, errorClass: nil,
+			wantStatus: gen.RunStatusSucceeded, wantFailure: ""},
+		{name: "alice-resume-refused", leftAt: run.StatusEvaluating, errorClass: strptr("execution_error"),
 			wantStatus: gen.RunStatusFailed, wantFailure: "platform_error"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1094,18 +1119,7 @@ func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
 				runID, ws, tc.errorClass); err != nil {
 				t.Fatal(err)
 			}
-			for _, step := range []struct{ from, to run.Status }{
-				{run.StatusQueued, run.StatusProvisioning},
-				{run.StatusProvisioning, run.StatusPreparing},
-				{run.StatusPreparing, run.StatusRunning},
-				{run.StatusRunning, run.StatusEvaluating},
-			} {
-				if _, err := svc.Transition(ctx, run.TransitionCommand{
-					WorkspaceID: ws, RunID: runID, From: step.from, To: step.to, Reason: "by hand",
-				}); err != nil {
-					t.Fatal(err)
-				}
-			}
+			leaveRunAt(t, svc, ws, runID, tc.leftAt)
 
 			if err := driveThroughPolls(ctx, svc.Drive, ws, runID); err != nil {
 				t.Fatal(err)
@@ -1118,7 +1132,33 @@ func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
 			if view.FailureClass.Value != tc.wantFailure {
 				t.Errorf("failure_class = %q, want %q", view.FailureClass.Value, tc.wantFailure)
 			}
+			var attempts int
+			if err := pool.QueryRow(ctx, `SELECT count(*) FROM run_attempts WHERE run_id = $1`, runID).Scan(&attempts); err != nil {
+				t.Fatal(err)
+			}
+			if attempts != 1 {
+				t.Errorf("attempts = %d, want 1: a run whose attempt already succeeded must not be dispatched again", attempts)
+			}
 		})
+	}
+}
+
+func leaveRunAt(t *testing.T, svc *run.Service, ws, runID pgtype.UUID, leftAt run.Status) {
+	t.Helper()
+	for _, step := range []struct{ from, to run.Status }{
+		{run.StatusQueued, run.StatusProvisioning},
+		{run.StatusProvisioning, run.StatusPreparing},
+		{run.StatusPreparing, run.StatusRunning},
+		{run.StatusRunning, run.StatusEvaluating},
+	} {
+		if _, err := svc.Transition(context.Background(), run.TransitionCommand{
+			WorkspaceID: ws, RunID: runID, From: step.from, To: step.to, Reason: "by hand",
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if step.to == leftAt {
+			return
+		}
 	}
 }
 
@@ -1236,16 +1276,23 @@ func TestOrphanScanDestroysLeakedSandboxesButSparesFreshOnes(t *testing.T) {
 	created := f.start(t)
 	waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded))
 	waitForCleanup(t, f.client, created.RunID)
+	if fake.Live() != 2 {
+		t.Fatalf("%d sandboxes are held before the scan, want the leaked and the fresh one", fake.Live())
+	}
+	destroysBefore := fake.Destroys()
 
 	if err := (&worker.RunOrphanScanWorker{Runs: svc}).Work(context.Background(), nil); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := fake.Provider().Observe(context.Background(), leaked); err == nil {
-		t.Error("the leaked sandbox survived the scan")
+	if _, err := fake.Provider().Observe(context.Background(), leaked); !errors.Is(err, run.ErrAttemptUnknown) {
+		t.Errorf("observing the leaked sandbox after the scan: %v, want it to be unknown to the provider", err)
 	}
 	if _, err := fake.Provider().Observe(context.Background(), fresh); err != nil {
 		t.Errorf("the scan destroyed a sandbox that was too new to judge: %v", err)
+	}
+	if got := fake.Destroys() - destroysBefore; got != 1 || fake.Live() != 1 {
+		t.Errorf("the scan issued %d destroys and left %d sandboxes, want 1 and 1", got, fake.Live())
 	}
 }
 
@@ -1321,15 +1368,22 @@ func TestOrphanScanReclaimsASandboxWhoseHandleWasNeverRecorded(t *testing.T) {
 	leaked := fake.Seed(created.RunID, lost, time.Now().Add(-time.Hour))
 
 	fresh := fake.Seed(created.RunID, inFlight, time.Now())
+	if fake.Live() != 2 {
+		t.Fatalf("%d sandboxes are held before the scan, want the leaked and the in-flight one", fake.Live())
+	}
+	destroysBefore := fake.Destroys()
 
 	if err := (&worker.RunOrphanScanWorker{Runs: svc}).Work(ctx, nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fake.Provider().Observe(ctx, leaked); err == nil {
-		t.Error("a sandbox whose attempt never recorded its handle survived the scan")
+	if _, err := fake.Provider().Observe(ctx, leaked); !errors.Is(err, run.ErrAttemptUnknown) {
+		t.Errorf("observing a sandbox whose attempt never recorded its handle: %v, want it destroyed by the scan", err)
 	}
 	if _, err := fake.Provider().Observe(ctx, fresh); err != nil {
 		t.Errorf("the scan destroyed a dispatch that is still in flight: %v", err)
+	}
+	if got := fake.Destroys() - destroysBefore; got != 1 || fake.Live() != 1 {
+		t.Errorf("the scan issued %d destroys and left %d sandboxes, want 1 and 1", got, fake.Live())
 	}
 }
 
@@ -1382,6 +1436,18 @@ func TestOrphanSightingsCountConsecutiveRoundsNotTotalFailures(t *testing.T) {
 	}
 }
 
+func seedUnpublishedOutboxEvents(t *testing.T, pool *pgxpool.Pool, workspaceID string, n int) {
+	t.Helper()
+	if _, err := pool.Exec(context.Background(), `INSERT INTO outbox_events (
+			event_type, event_version, occurred_at, correlation_id, workspace_id,
+			aggregate_type, aggregate_id, payload)
+		SELECT 'run.cleanup_cleaned', 1, now(), g.id, $1::uuid, 'run', g.id, '{}'::jsonb
+		FROM (SELECT gen_random_uuid() AS id FROM generate_series(1, $2::int)) g`,
+		workspaceID, n); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func persistentOrphans(t *testing.T, pool *pgxpool.Pool, provider string) int {
 	t.Helper()
 	n, err := gen.New(pool).CountPersistentOrphans(context.Background(), gen.CountPersistentOrphansParams{
@@ -1398,10 +1464,11 @@ func TestOutboxPublisherIsAtLeastOnceAndIdempotent(t *testing.T) {
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-outbox-publisher")
 	f.start(t)
+	seedUnpublishedOutboxEvents(t, pool, f.workspaceID, 7)
 
 	ctx := context.Background()
-	if unpublishedCount(t, pool) == 0 {
-		t.Fatal("creating a run published nothing to the outbox")
+	if unpublishedCount(t, pool) < 7 {
+		t.Fatal("the outbox holds fewer unpublished events than the failure limit of a pass")
 	}
 
 	backlog := unpublishedCount(t, pool)
@@ -1415,10 +1482,16 @@ func TestOutboxPublisherIsAtLeastOnceAndIdempotent(t *testing.T) {
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("failed delivery returned %v, want the delivery error", err)
 	}
-	if after := unpublishedCount(t, pool); after != backlog {
-		t.Errorf("a failed delivery changed the backlog from %d to %d", backlog, after)
+	if after := countRow(t, pool,
+		"SELECT count(*) FROM outbox_events WHERE published_at IS NULL AND dead_lettered_at IS NULL"); after < backlog {
+		t.Errorf("a failed delivery dropped the backlog from %d to %d", backlog, after)
+	}
+	untried := backlog - 5
+	if claimable := unpublishedCount(t, pool); claimable != untried {
+		t.Errorf("%d events are claimable right after failing, want %d: the attempted ones wait out their backoff, the rest stay untried", claimable, untried)
 	}
 
+	releaseOutboxBackoff(t, pool)
 	var delivered []string
 	publisher := &outbox.Worker{Pool: pool, Deliver: func(_ context.Context, e outbox.Event) error {
 		delivered = append(delivered, e.EventType)
@@ -1744,6 +1817,15 @@ func TestATraceNoRecorderEverSpokeToIsNotCalledComplete(t *testing.T) {
 	if f.traceIsComplete(t, created.RunID) {
 		t.Error("a run whose recorder never said anything reports complete=true with every count at zero; " +
 			"nothing collected is being shown as nothing happened")
+	}
+
+	output := `{"kind":"intermediate","text":"working","truncated":false}`
+	if code, report := a.ingest(t, created.RunID, 1,
+		event(created.RunID, 1, 1, "agent_output", output)); code != http.StatusAccepted || report.Stored != 1 {
+		t.Fatalf("the recorder's first event: got %d %+v", code, report)
+	}
+	if !f.traceIsComplete(t, created.RunID) {
+		t.Error("once the recorder has spoken and nothing is missing, the same trace is reported complete=false")
 	}
 }
 

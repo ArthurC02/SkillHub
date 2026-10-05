@@ -1271,9 +1271,7 @@ func TestLicensingHoldClosesTheMaterialsAndKeepsTheListing(t *testing.T) {
 	if rest == nil || rest["reason"] != "license-review" {
 		t.Fatalf("detail did not disclose the hold: %+v", detail["access_restriction"])
 	}
-	if rest["note"] == "" || detail["summary"] == "" {
-		t.Fatalf("hold left the reader with nothing: note=%v summary=%v", rest["note"], detail["summary"])
-	}
+	assertTheHoldLeavesTheReaderAnExplanation(t, rest, detail)
 
 	code, files := anon.doJSON(t, http.MethodGet, "/api/skills/"+held+"/files", "")
 	if code != http.StatusForbidden {
@@ -1289,6 +1287,15 @@ func TestLicensingHoldClosesTheMaterialsAndKeepsTheListing(t *testing.T) {
 	}
 	if code := anon.status(t, http.MethodGet, "/api/skills/"+free+"/files"); code != http.StatusOK {
 		t.Fatalf("GET /files on an unrestricted skill answered %d, want 200", code)
+	}
+}
+
+func assertTheHoldLeavesTheReaderAnExplanation(t *testing.T, restriction, detail map[string]any) {
+	t.Helper()
+	note, noted := restriction["note"].(string)
+	summary, summarised := detail["summary"].(string)
+	if !noted || note == "" || !summarised || summary == "" {
+		t.Fatalf("hold left the reader with nothing: note=%v summary=%v", restriction["note"], detail["summary"])
 	}
 }
 
@@ -1542,5 +1549,23 @@ func TestAForkInheritsTheScanOnlyWhileItsSourceIsInTheCatalog(t *testing.T) {
 	}
 	if got := verification(); got != "not_measured" {
 		t.Errorf("a fork whose source left the catalog: verification %q, want not_measured", got)
+	}
+
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE workspaces SET is_catalog = true WHERE id = $1", mustUUID(t, curator.workspaceID)); err != nil {
+		t.Fatal(err)
+	}
+	if got := verification(); got != "scanned" {
+		t.Fatalf("the source back in the catalog: verification %q, want scanned; the rest proves nothing", got)
+	}
+	if _, err := gen.New(pool).CreateSkillVersion(context.Background(), gen.CreateSkillVersionParams{
+		WorkspaceID: mustUUID(t, curator.workspaceID), SkillID: mustUUID(t, published),
+		VersionNumber: nextVersionNumber(t, pool, published), ContentHash: "sha256:newer-" + published,
+		PackageObjectKey: "packages/newer-" + published + ".tar", Manifest: []byte(`{}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := verification(); got != "not_measured" {
+		t.Errorf("a fork whose source moved on to a newer version: verification %q, want not_measured; the catalogue's scan is the newer version's", got)
 	}
 }

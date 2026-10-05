@@ -618,21 +618,22 @@ test("preserves the directory tree and extracts content byte-for-byte", () => {
   }
 });
 
-test("selects the same single top-level package root that admission strips", () => {
-  assert.equal(
-    packageRoot([
-      { name: "repo-main/" },
-      { name: "repo-main/SKILL.md" },
-      { name: "repo-main/scripts/run.sh" },
-    ]),
-    "repo-main/",
-  );
-  assert.equal(packageRoot([{ name: "SKILL.md" }, { name: "notes.md" }]), "");
-  assert.equal(
-    packageRoot([{ name: "one/SKILL.md" }, { name: "two/notes.md" }]),
-    "",
-  );
+const packageRootCases = JSON.parse(
+  readFileSync(
+    fileURLToPath(new URL("../../../contracts/packaging/package-root-cases.json", import.meta.url)),
+    "utf8",
+  ),
+).cases;
+
+test("the package-root cases are there to read", () => {
+  assert.ok(packageRootCases.length > 0);
 });
+
+for (const { name, entries, root } of packageRootCases) {
+  test(`selects the package root admission records Skill paths under: ${name}`, () => {
+    assert.equal(packageRoot(entries.map((entry) => ({ name: entry }))), root);
+  });
+}
 
 assertRejected(
   "a symlink disguised by a directory-shaped name",
@@ -902,6 +903,20 @@ test("a declared directory installs that skill of a plugin and nothing else", ()
       [],
       "the rest of the plugin stayed behind in the input directory, so the sandbox holds bytes the run never asked for",
     );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a declared directory of a plugin inside a repository directory installs that skill and nothing else", () => {
+  const wrapped = pluginEntries().map((entry) => ({ ...entry, name: `desk-tools-main/${entry.name}` }));
+  const { install, inputDir, skillDir, failures, root } = stageInstall(wrapped);
+  try {
+    assert.equal(install("skills/tidy-notes"), "tidy-notes");
+    assert.deepEqual(failures, []);
+    assert.deepEqual(readdirSync(skillDir), ["tidy-notes"]);
+    assert.equal(readFileSync(join(skillDir, "tidy-notes", "SKILL.md"), "utf8"), PLUGIN_SKILL_MD);
+    assert.deepEqual(readdirSync(inputDir), []);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

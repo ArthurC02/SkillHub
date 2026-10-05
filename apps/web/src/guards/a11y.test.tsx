@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import axe from "axe-core";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import App from "../app/App";
 import { queryClient } from "../core/api/queryClient";
 import { router } from "../app/router";
@@ -19,6 +19,10 @@ import {
   VERSION,
   platformResponse,
 } from "../testing/fixtures/platform";
+import { DEFAULT_WAIT_MS, pollUntil } from "../testing/poll";
+import { preloadEveryPage } from "../testing/pages";
+
+beforeAll(preloadEveryPage);
 
 let container: HTMLDivElement;
 let root: Root;
@@ -60,15 +64,8 @@ async function mount() {
   });
 }
 
-async function waitFor(done: () => boolean, timeoutMs = 4000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (done()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+function waitFor(done: () => boolean, timeoutMs = DEFAULT_WAIT_MS) {
+  return pollUntil(done, () => container.textContent, timeoutMs);
 }
 
 const has = (needle: string) => () => (container.textContent ?? "").includes(needle);

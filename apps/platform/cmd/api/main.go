@@ -184,7 +184,8 @@ func cleanModeHandler(api http.Handler, d deployment, static http.Handler) http.
 
 func spaFallback(api, static http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || !strings.Contains(r.Header.Get("Accept"), "text/html") {
+		if r.Method != http.MethodGet || !strings.Contains(r.Header.Get("Accept"), "text/html") ||
+			strings.HasPrefix(r.URL.Path, "/auth/") {
 			api.ServeHTTP(w, r)
 			return
 		}
@@ -215,9 +216,8 @@ func (c *navigationCatcher) WriteHeader(code int) {
 		return
 	}
 	c.wrote = true
-	okJSON := code >= 200 && code < 300 &&
-		strings.Contains(c.Header().Get("Content-Type"), "application/json")
-	if code == http.StatusNotFound || code == http.StatusMethodNotAllowed || okJSON {
+	data := strings.Contains(c.Header().Get("Content-Type"), "application/json")
+	if code == http.StatusNotFound || code == http.StatusMethodNotAllowed || data {
 		c.swallowed = true
 		return
 	}

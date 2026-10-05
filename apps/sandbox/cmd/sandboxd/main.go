@@ -46,7 +46,7 @@ func main() {
 	}
 
 	runtime := os.Getenv("SKILLHUB_SANDBOX_RUNTIME")
-	image := envOr("SKILLHUB_SANDBOX_IMAGE", "skillhub/runtime-agent-sdk:2026.08-13")
+	image := envOr("SKILLHUB_SANDBOX_IMAGE", "skillhub/runtime-agent-sdk:2026.08-17")
 	allowDevCmd := os.Getenv("SKILLHUB_SANDBOX_DEV_CMD") == "1"
 
 	cleanMode := cleanNode(os.Getenv("SKILLHUB_CLEAN_MODE") == "1")
@@ -76,7 +76,7 @@ func main() {
 	m := newRunManager(node, kind, cleanMode, log)
 
 	probe := residentP02Probe()
-	if err := refuseUnprobedProduction(runtime, probe); err != nil {
+	if err := errors.Join(refuseUndialableTargets(probe), refuseUnprobedProduction(runtime, probe)); err != nil {
 		log.Error(err.Error())
 		os.Exit(1)
 	}
@@ -164,20 +164,31 @@ func declaredEgress(kind string, cleanMode cleanNode, log *slog.Logger) ([]strin
 
 func serveUntilSignalled(srv *http.Server, drv sandbox.NodeCapabilities, log *slog.Logger) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-
-		_ = srv.Shutdown(shutdownCtx)
-	}()
-
 	log.Info("sandbox provider listening", "addr", srv.Addr, "isolation", drv.Isolation())
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	err := serveUntil(ctx, srv, srv.ListenAndServe)
+	stop()
+	if err != nil {
 		log.Error("server stopped", "err", err)
 		os.Exit(1)
 	}
-	stop()
+}
+
+const shutdownGrace = 15 * time.Second
+
+func serveUntil(ctx context.Context, srv *http.Server, serve func() error) error {
+	drained := make(chan struct{})
+	go func() {
+		defer close(drained)
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
+		defer cancel()
+		_ = srv.Shutdown(shutdownCtx)
+	}()
+	if err := serve(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	<-drained
+	return nil
 }
 
 type openedDriver struct {
@@ -270,6 +281,14 @@ func refuseDevSettings(runtime, image string, allowDevCmd, cleanMode bool) error
 		return errors.New("SKILLHUB_SANDBOX_DEV_CMD must not be set with runsc: a caller-chosen entrypoint replaces the harness, and with it the run's token ceiling and its trace")
 	}
 	return nil
+}
+
+func refuseUndialableTargets(probe *sandbox.P02Probe) error {
+	if len(probe.Skipped) == 0 {
+		return nil
+	}
+	return fmt.Errorf("SKILLHUB_SANDBOX_P02_TARGETS has entries that are not host:port (%s): "+
+		"a target the probe cannot dial is a check that never runs", strings.Join(probe.Skipped, ", "))
 }
 
 func refuseUnprobedProduction(runtime string, probe *sandbox.P02Probe) error {

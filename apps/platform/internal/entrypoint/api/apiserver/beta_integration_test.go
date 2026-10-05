@@ -161,8 +161,8 @@ func TestFirstWindowUsesTheLowerAllowance(t *testing.T) {
 	if q.Limits.Window != 3 {
 		t.Errorf("first window ceiling: got %d, want the first-window value 3", q.Limits.Window)
 	}
-	if q.Limits.Concurrent != run.MaxConcurrentRunsPerWorkspace {
-		t.Errorf("concurrency limit reported as %d, want %d", q.Limits.Concurrent, run.MaxConcurrentRunsPerWorkspace)
+	if q.Limits.Concurrent != 1 {
+		t.Errorf("concurrency limit reported as %d, want 1", q.Limits.Concurrent)
 	}
 
 	for range 3 {
@@ -544,10 +544,16 @@ func TestAnalyticsSessionIsNotTheSessionToken(t *testing.T) {
 	if strings.Contains(session, funnel) || strings.Contains(funnel, session) {
 		t.Error("the analytics session id and the session token share material")
 	}
+	if code := f.status(t, http.MethodGet, "/api/skills/"+f.skillID); code != http.StatusOK {
+		t.Fatalf("skill detail: got %d", code)
+	}
 	var stored string
 	if err := pool.QueryRow(context.Background(),
-		`SELECT session_id FROM analytics_events ORDER BY occurred_at LIMIT 1`).Scan(&stored); err != nil {
-		t.Fatal(err)
+		`SELECT session_id FROM analytics_events WHERE session_id = $1 LIMIT 1`, funnel).Scan(&stored); err != nil {
+		t.Fatalf("no analytics event was stored for this visitor: %v", err)
+	}
+	if stored != funnel {
+		t.Fatalf("stored analytics session id %q, want the cookie's %q", stored, funnel)
 	}
 	if n := betaCount(t, pool,
 		`SELECT count(*) FROM sessions WHERE encode(token_hash, 'hex') = $1`, stored); n != 0 {
@@ -568,9 +574,20 @@ func TestPurgeDetachesAnalyticsAndFeedbackWithoutDeletingThem(t *testing.T) {
 		t.Fatalf("POST /feedback: got %d, body %v", code, body)
 	}
 	ws := mustUUID(t, f.workspaceID)
+	session := f.analyticsSession(t)
+	if session == "" {
+		t.Fatal("no analytics session cookie was issued")
+	}
 	events := betaCount(t, pool, `SELECT count(*) FROM analytics_events WHERE workspace_id = $1`, ws)
 	if events == 0 {
 		t.Fatal("no workspace-attributed analytics event to detach")
+	}
+	sessionEvents := betaCount(t, pool, `SELECT count(*) FROM analytics_events WHERE session_id = $1`, session)
+	var reportID string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT id::text FROM feedback_reports WHERE user_id = $1 AND workspace_id = $2`,
+		mustUUID(t, f.userID), ws).Scan(&reportID); err != nil {
+		t.Fatalf("no feedback report filed by this user: %v", err)
 	}
 
 	if code := f.status(t, http.MethodDelete, "/me"); code != http.StatusOK {
@@ -583,12 +600,18 @@ func TestPurgeDetachesAnalyticsAndFeedbackWithoutDeletingThem(t *testing.T) {
 	if n := betaCount(t, pool, `SELECT count(*) FROM analytics_events WHERE workspace_id = $1`, ws); n != 0 {
 		t.Errorf("%d analytics events still name the purged workspace", n)
 	}
-	if n := betaCount(t, pool, `SELECT count(*) FROM analytics_events`); n < events {
-		t.Errorf("the purge deleted analytics events instead of de-identifying them")
+	if n := betaCount(t, pool, `SELECT count(*) FROM analytics_events WHERE session_id = $1`, session); n != sessionEvents {
+		t.Errorf("this visitor's analytics events after the purge: %d, want %d kept", n, sessionEvents)
 	}
-	if n := betaCount(t, pool,
-		`SELECT count(*) FROM feedback_reports WHERE workspace_id IS NULL AND user_id IS NULL`); n == 0 {
-		t.Error("the beta feedback was deleted rather than de-identified")
+	var message string
+	var workspace, user *string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT message, workspace_id::text, user_id::text FROM feedback_reports WHERE id = $1`, reportID,
+	).Scan(&message, &workspace, &user); err != nil {
+		t.Fatalf("the beta feedback was deleted rather than de-identified: %v", err)
+	}
+	if message != "I wanted a python profile" || workspace != nil || user != nil {
+		t.Errorf("feedback after purge: message=%q workspace=%v user=%v, want the text kept and both ids null", message, workspace, user)
 	}
 }
 

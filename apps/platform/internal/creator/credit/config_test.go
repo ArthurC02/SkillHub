@@ -19,6 +19,22 @@ func TestNewConfigFailsClosedOnPositiveDebtFloor(t *testing.T) {
 	}
 }
 
+func TestNewConfigAcceptsADebtFloorAtTheLowestStoredBalance(t *testing.T) {
+	cfg, err := NewConfig(0.001, 13000, -1_000_000, 70)
+	if err != nil {
+		t.Fatalf("CREDIT_DEBT_FLOOR=-1000000: %v", err)
+	}
+	if cfg.DebtFloorCredits != -1_000_000 {
+		t.Fatalf("DebtFloorCredits = %d, want -1000000", cfg.DebtFloorCredits)
+	}
+}
+
+func TestNewConfigRefusesADebtFloorBelowWhatTheLedgerCanStore(t *testing.T) {
+	if _, err := NewConfig(0.001, 13000, -1_000_001, 70); err == nil {
+		t.Fatal("CREDIT_DEBT_FLOOR=-1000001 must fail at startup: the database refuses any balance below -1000000")
+	}
+}
+
 func TestNewConfigFailsClosedOnNonPositiveMarkup(t *testing.T) {
 	if _, err := NewConfig(0.001, 0, -50, 70); err == nil {
 		t.Fatal("a zero or negative CREDIT_MARKUP_BPS must fail closed")

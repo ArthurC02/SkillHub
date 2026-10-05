@@ -17,6 +17,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
@@ -496,6 +497,7 @@ func packageRefFor(version VersionFacts) PackageRef {
 	return PackageRef{
 		SkillVersionID: pgconv.UUIDString(version.ID),
 		ContentHash:    version.ContentHash,
+		PackageSHA256:  skillpkg.PackageDigest(version.PackageObjectKey),
 		ObjectKey:      version.PackageObjectKey,
 		SourcePath:     version.SourcePath,
 	}
@@ -510,25 +512,25 @@ type attemptTerms struct {
 func (s *Service) buildRunRequest(ctx context.Context, run gen.Run, attempt gen.RunAttempt, terms attemptTerms) (RunRequest, error) {
 	profile, policy, budgetUSD := terms.profile, terms.policy, terms.budgetUSD
 	if s.Registry == nil {
-		return RunRequest{}, errRegistryReadNotConfigured
+		return RunRequest{}, unbuildable(errRegistryReadNotConfigured)
 	}
 	if err := s.requireTestLab(); err != nil {
-		return RunRequest{}, err
+		return RunRequest{}, unbuildable(err)
 	}
 	version, found, err := s.Registry.Version(ctx, run.WorkspaceID, run.SkillVersionID)
 	if !found && err == nil {
-		return RunRequest{}, ErrNotFound
+		return RunRequest{}, unbuildable(ErrNotFound)
 	}
 	if err != nil {
 		return RunRequest{}, err
 	}
 	snapshot, err := s.TestLab.ReadSnapshot(ctx, run.WorkspaceID, run.TestCaseSnapshotID)
 	if err != nil {
-		return RunRequest{}, err
+		return RunRequest{}, unbuildableWhenGone(err)
 	}
 	refs, err := testlab.DecodeDatasetRefs(snapshot.DatasetRefs)
 	if err != nil {
-		return RunRequest{}, err
+		return RunRequest{}, unbuildable(err)
 	}
 
 	ttl := time.Duration(policy.ResourceLimits.WallClockHardSeconds)*time.Second + grantSlack
@@ -548,7 +550,10 @@ func (s *Service) buildRunRequest(ctx context.Context, run gen.Run, attempt gen.
 	if s.Gateway != nil {
 		gatewayGrant, err = s.Gateway.Issue(ctx, pgconv.UUIDString(run.ID), pgconv.UUIDString(attempt.ID), ttl, budgetUSD)
 		if err != nil {
-			return RunRequest{}, err
+			if errors.Is(err, ErrModelGatewayUnavailable) {
+				return RunRequest{}, err
+			}
+			return RunRequest{}, unbuildable(err)
 		}
 	}
 

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -40,6 +41,11 @@ export function AdvancedMode({ runId, active }: { runId: string; active: boolean
     active,
     cursors[pageIndex],
   );
+  const wasActive = useRef(active);
+  useEffect(() => {
+    if (wasActive.current && !active) void refetch();
+    wasActive.current = active;
+  }, [active, refetch]);
   if (isPending) return <Loading what="原始事件（一頁最多 1,000 筆，資料量大）" />;
   if (error)
     return (
