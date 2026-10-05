@@ -657,7 +657,7 @@ digest 由 `docker pull` 後 `docker inspect --format '{{index .RepoDigests 0}}'
 | `gcr.io/distroless/static-debian12:nonroot` | `sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab`（2026-09-04 `docker pull` 當下） |
 | `python:3.14-slim-bookworm` | `sha256:9ab8d9c8514b44f90cf0029dd42fdd7e9e211e639c8b995304cc04568dee900f`（同上） |
 | `node:26.10.0-bookworm-slim` | `sha256:662933cf47f013bc8e4beb31a6116448427a82057ba7c42c97e4c5ba766504c2`（2026-10-05 `docker buildx imagetools inspect`，同日完成 Web 映像建置） |
-| `nginx:1.31-alpine-slim` | `sha256:3b171d7224b669faa3cc2137fea0a65301791df1ec1f271ebd2a2b7461f7fade`（同上） |
+| `nginx:1.31-alpine-slim` | `sha256:032d437f2945ec236b0d093d0a4865a4b8e39eea52f60a25103645c95ccb4de0`（2026-10-05 Web 映像建置使用；runtime stage 另針對 `pcre2` 升級） |
 
 映像大小（`docker images`，本機建置）：`skillhub/platform:local` 124 MB、
 `skillhub/llm:local` 216 MB、`skillhub/web:local` 21.3 MB。
