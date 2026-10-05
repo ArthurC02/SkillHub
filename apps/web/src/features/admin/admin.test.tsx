@@ -927,7 +927,7 @@ test("DISC-007: an empty queue is named as a genuine zero, not a blank list", as
   );
   await mountAt("/admin/exposure");
   await waitFor(has("沒有等待審核的發佈物：0 筆。"));
-  expect(container.querySelectorAll(".download-item")).toHaveLength(0);
+  expect(container.querySelector(".card-list")).toBeNull();
 });
 
 test("DISC-007: a stale review (409) shows the server's own words, not a generic failure", async () => {

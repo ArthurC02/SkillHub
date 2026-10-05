@@ -167,7 +167,7 @@ function TestCaseContext({
 
   return (
     <section
-      className="download-item test-case-context"
+      className="surface-card test-case-context"
       aria-labelledby="test-case-context-title"
       data-role="test-case-context"
     >

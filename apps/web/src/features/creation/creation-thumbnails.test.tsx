@@ -125,7 +125,7 @@ async function sendDiagram() {
     });
     file.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  const start = [...box.querySelectorAll("button")].find((b) => b.textContent === "開始創作")!;
+  const start = box.querySelector<HTMLButtonElement>('button[aria-label="開始創作"]')!;
   await act(async () => start.click());
   await waitFor(() => !!box.querySelector('[role="log"] li[data-role="user"] img'));
 }

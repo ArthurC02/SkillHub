@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { unauthenticated } from "../../../../shared/ui/LoginRequired.model";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { VersionDiff } from "../../../runs";
 import { useSkillVersions, skillDiffUrl } from "../../skills.service";
@@ -11,6 +12,17 @@ export function VersionHistory({ skillId }: { skillId: string }) {
   const [pair, setPair] = useState<{ from: string; to: string } | null>(null);
 
   const list = versions.data?.versions ?? [];
+
+  if (unauthenticated(versions.error))
+    return (
+      <section>
+        <h2>版本</h2>
+        <p role="status">
+          版本歷史只顯示你工作區裡的版本。<a href="#fork-entry">前往上方的複製區登入</a>
+          ；若尚無自己的版本，再複製一份。
+        </p>
+      </section>
+    );
 
   return (
     <section>

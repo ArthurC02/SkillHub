@@ -167,9 +167,9 @@ export function ExposureReview({
       {c.history.length === 0 ? (
         <p>還沒有審核紀錄：0 筆。</p>
       ) : (
-        <ul className="download-list">
+        <ul className="card-list">
           {c.history.map((record) => (
-            <li className="download-item" key={record.sequence}>
+            <li className="surface-card" key={record.sequence}>
               <p>
                 {DECISION_LABEL[record.decision]}：{record.reason}
               </p>

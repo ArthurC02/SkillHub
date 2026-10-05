@@ -52,7 +52,7 @@ function CandidateList({
     <>
       {versionsPending && <Loading what="候選試跑紀錄的 Version 編號" />}
       <ReadFailure error={versionsError} what="候選試跑紀錄的 Version 編號" />
-      <ul className="download-list">
+      <ul className="card-list">
         {candidates.map((run) => {
           const version = versions.find(
             (candidate) => candidate.version_id === run.skill_version_id,
@@ -61,7 +61,7 @@ function CandidateList({
           const accessibleVersion = versionLabel ?? `Version ID ${run.skill_version_id}`;
 
           return (
-            <li key={run.run_id} className="download-item">
+            <li key={run.run_id} className="surface-card">
               <p>
                 Version：
                 <Link

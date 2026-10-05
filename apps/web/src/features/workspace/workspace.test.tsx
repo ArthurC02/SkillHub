@@ -142,7 +142,7 @@ test("an activity row returns directly to its owner-backed 小工具, Version an
   vi.stubGlobal("fetch", () => json({ runs: [{ ...RUN_ROW, test_case_id: TEST_CASE }] }));
   await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
 
-  const row = container.querySelector(".download-item")!;
+  const row = container.querySelector("ul.card-list > .surface-card")!;
   expect(row.querySelector(`a[href="/skills/${SKILL}"]`)?.textContent).toContain("CSV 清理");
   expect(
     row.querySelector(`a[href="/skills/${SKILL}/versions/${RUN_ROW.skill_version_id}"]`)
@@ -156,7 +156,7 @@ test("a historic activity row without a 測試題 id does not invent a 測試題
   vi.stubGlobal("fetch", () => json({ runs: [RUN_ROW] }));
   await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
 
-  const row = container.querySelector(".download-item")!;
+  const row = container.querySelector("ul.card-list > .surface-card")!;
   expect(row.textContent).not.toContain("測試題");
   expect(row.querySelector(`a[href="/skills/${SKILL}"]`)).not.toBeNull();
   expect(
@@ -228,7 +228,7 @@ test("WS-004 activity groups every run by the decision its server facts support"
   expect(sectionText("最近結束")).toContain("最近完成的小工具");
   expect(sectionText("最近結束")).toContain("已取消的小工具");
   expect(sectionText("最近結束")).toContain("查看結果");
-  expect(container.querySelectorAll(".download-item")).toHaveLength(6);
+  expect(container.querySelectorAll("ul.card-list > .surface-card")).toHaveLength(6);
 });
 
 test("O11Y-004 the policy event table keeps its accessible columns in mobile cards", async () => {
@@ -604,12 +604,17 @@ test("空清單先說它是哪一種空，三張建立卡才是它的動作（§
   ).toBe(true);
 });
 
-function stubSkillDetailPage(versions: unknown = SKILL_VERSIONS, versionsStatus = 200) {
+function stubSkillDetailPage(
+  versions: unknown = SKILL_VERSIONS,
+  versionsStatus = 200,
+  signedIn = false,
+) {
   const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     calls.push(url);
     const path = url.split("?")[0];
+    if (path === "/me" && signedIn) return json({ user_id: "u-1", workspace_id: "ws-1" });
     if (path.endsWith("/versions")) return json(versions, versionsStatus);
     if (path.endsWith("/diff")) return json(VERSION_DIFF);
     if (path.startsWith("/api/skills/")) return json(skillDetail(SKILL, "PDF Summariser"));
@@ -647,12 +652,13 @@ test("WS-001 第 4 條 比較 asks the contract's endpoint for the right two ver
   expect(text()).toContain("（二進位或過大，不顯示差異）");
 });
 
-test("WS-001 a version list that fails to read says so, and 401 says to log in", async () => {
-  stubSkillDetailPage({ error: "not authenticated" }, 401);
-  await render(<SkillDetail />, () => text().includes("版本歷史需要登入"));
-  await waitFor(() => text().includes("版本歷史需要登入"));
+test("WS-001 an expired session offers one login across skill actions", async () => {
+  stubSkillDetailPage({ error: "not authenticated" }, 401, true);
+  await render(<SkillDetail />, () => text().includes("版本歷史只顯示你工作區裡的版本"));
 
-  expect(text()).toContain("版本歷史需要登入");
+  expect(text()).toContain("工作階段已過期，請重新登入後再繼續。");
+  expect(container.querySelectorAll('a[href$="/auth/github/login"]')).toHaveLength(1);
+  expect(container.querySelector('#fork-entry a[href$="/auth/github/login"]')).not.toBeNull();
   expect(text()).not.toContain("not authenticated");
   expect(text()).not.toContain("這是最早的版本");
 });

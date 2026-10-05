@@ -35,6 +35,52 @@ function useSessionSelection({ sessionId, onSessionChange }: CreationSessionProp
   return [id, setID] as const;
 }
 
+function useSessionPicker({
+  id,
+  setID,
+  hasDraft,
+  onLeave,
+}: {
+  id: string;
+  setID: (id: string) => void;
+  hasDraft: boolean;
+  onLeave: () => void;
+}) {
+  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [pendingSwitch, setPendingSwitch] = useState<string | null>(null);
+  const workspace = useRef<HTMLDivElement>(null);
+  const closeList = () => {
+    setSessionsOpen(false);
+    queueMicrotask(() => workspace.current?.focus());
+  };
+  const switchSession = (next: string) => {
+    setID(next);
+    onLeave();
+    setPendingSwitch(null);
+    closeList();
+  };
+  const pickSession = (next: string) => {
+    if (next !== id && hasDraft) {
+      setPendingSwitch(next);
+      return;
+    }
+    if (next === id) closeList();
+    else switchSession(next);
+  };
+  return {
+    sessionsOpen,
+    setSessionsOpen,
+    pendingSwitch,
+    pickSession,
+    confirmSwitch: () => pendingSwitch !== null && switchSession(pendingSwitch),
+    cancelSwitch: () => {
+      setPendingSwitch(null);
+      closeList();
+    },
+    workspace,
+  };
+}
+
 function useCandidateRun(testCaseID?: string, versionID?: string) {
   const runs = useRuns({
     testCaseId: testCaseID,
@@ -61,12 +107,21 @@ function CandidateRunStatus({ pending, error }: { pending: boolean; error: unkno
 
 export function CreationSession(props: CreationSessionProps) {
   const [id, setID] = useSessionSelection(props);
-  const [sessionsOpen, setSessionsOpen] = useState(!props.sessionId);
   const [budget, setBudget] = useState(""),
     [diagramAnswers, setDiagramAnswers] = useState<Record<string, string>>({});
   const { error, setError, busy, lastAttempt, attempt } = useCreationAttempt();
   const composer = useComposer(budget, setError);
   const commands = useCreationCommands(props.onSessionCreated ?? setID);
+  const { workspace, ...picker } = useSessionPicker({
+    id,
+    setID,
+    hasDraft: composer.inputs.hasContent,
+    onLeave: () => {
+      composer.reset();
+      commands.forgetPending();
+      setError(undefined);
+    },
+  });
   const sessions = useCreationSessions();
   const limits = useCreationLimits();
   const current = useLiveCreationSession(id);
@@ -93,15 +148,6 @@ export function CreationSession(props: CreationSessionProps) {
     else if (lastAttempt) void perform(...lastAttempt);
   };
   const failureBox = failureNotice({ error, busy, lastAttempt, onRetry: retry, onError: setError });
-  const workspace = useRef<HTMLDivElement>(null);
-  const pickSession = (next: string) => {
-    setID(next);
-    composer.reset();
-    commands.forgetPending();
-    setError(undefined);
-    setSessionsOpen(false);
-    queueMicrotask(() => workspace.current?.focus());
-  };
   return (
     <div className="creation-shell">
       <SessionHeader
@@ -114,16 +160,19 @@ export function CreationSession(props: CreationSessionProps) {
         perform={perform}
         onError={setError}
         sessionCount={sessions.data?.length}
-        sessionsOpen={sessionsOpen}
-        onToggleSessions={() => setSessionsOpen((open) => !open)}
+        sessionsOpen={picker.sessionsOpen}
+        onToggleSessions={() => picker.setSessionsOpen((open) => !open)}
       />
-      <div className="creation-studio" data-sessions-open={sessionsOpen || undefined}>
+      <div className="creation-studio" data-sessions-open={picker.sessionsOpen || undefined}>
         <SessionWorkspaceNav
           sessionList={sessions.data}
           error={sessions.error}
           currentId={id}
           busy={busy}
-          onPickSession={pickSession}
+          onPickSession={picker.pickSession}
+          pendingSwitch={picker.pendingSwitch}
+          onConfirmSwitch={picker.confirmSwitch}
+          onCancelSwitch={picker.cancelSwitch}
         />
         <div className="creation-current" id="creation-workspace" tabIndex={-1} ref={workspace}>
           <CreationFocusPanel session={session} />

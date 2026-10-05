@@ -50,6 +50,72 @@ async function stubCreationContinuations(page: Page) {
   });
 }
 
+async function verifyCreationConversationLayout(page: Page, testInfo: TestInfo) {
+  await stubCreationContinuations(page);
+  await page.route("**/me/credits", (route) =>
+    route.fulfill({
+      json: {
+        balance_credits: 500,
+        debt_floor_credits: -50,
+        estimated_session: { low_credits: 30, high_credits: 65, sample_size: 40, estimated: false },
+        can_start: true,
+      },
+    }),
+  );
+  await page.route("**/creation-sessions/limits", (route) =>
+    route.fulfill({
+      json: {
+        min_budget_credits: 130,
+        max_budget_credits: 6500,
+        max_steps: 20,
+        max_tool_calls: 10,
+        call_timeout_seconds: 120,
+        session_timeout_seconds: 3600,
+        retention_seconds: 604800,
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/workspace/creations");
+
+  await expect(page.locator(".creation-shell")).toBeVisible();
+  await expect(page.locator(".app-search")).toBeHidden();
+  await expect(page.locator(".app-sidebar")).toBeHidden();
+  await expect(page.locator(".studio-session-rail")).toBeVisible();
+  await expect(page.locator(".composer")).toBeInViewport();
+  await expect(page.locator(".composer-dock .notice.danger")).toHaveCount(0);
+  const desktop = await page.evaluate(() => ({
+    railX: document.querySelector(".studio-session-rail")?.getBoundingClientRect().x ?? -1,
+    threadHeight: document.querySelector(".creation-stream")?.getBoundingClientRect().height ?? 0,
+  }));
+  expect(desktop.railX).toBeLessThan(4);
+  expect(desktop.threadHeight).toBeGreaterThan(400);
+  await page.screenshot({ path: testInfo.outputPath("creation-empty-desktop.png") });
+
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto("/workspace/creations");
+  await expect(page.locator(".app-search")).toBeHidden();
+  await expect(page.locator(".app-sidebar")).toBeHidden();
+  await expect(page.locator(".creation-current")).toBeVisible();
+  await expect(page.locator(".studio-session-rail")).toBeHidden();
+  await expect(page.locator("#creation-message")).toBeInViewport();
+  await expect(page.getByRole("button", { name: "開始創作" })).toBeVisible();
+  const budget = page.locator(".budget-picker");
+  await expect(budget.locator("summary")).toContainText("請選擇");
+  await budget.locator("summary").click();
+  await budget
+    .locator(".quick-replies > label")
+    .filter({ hasText: /^500 點$/ })
+    .click();
+  await expect(budget.locator("summary")).toContainText("500 點");
+  await expect(page.locator("#creation-message")).toHaveAttribute(
+    "placeholder",
+    "描述任務或回覆 Agent",
+  );
+  await budget.locator("summary").click();
+  await page.screenshot({ path: testInfo.outputPath("creation-empty-phone.png") });
+}
+
 async function verifyCreationContinuationLayout(page: Page, testInfo: TestInfo) {
   for (const [name, width] of [
     ["desktop", 1280],
@@ -137,6 +203,45 @@ async function verifyReducedMotion(page: Page) {
   expect(reduced).toEqual({ fast: 0, regular: 0 });
   expect(transitionDurations.every((duration) => duration === "0s")).toBe(true);
 }
+
+test("catalogue card lift follows the detail link, not the compare checkbox", async ({ page }) => {
+  await stubPlatform(page);
+  await page.goto("/");
+
+  const card = page.locator(".catalog-skill-card").first();
+  const compare = card.getByRole("checkbox", { name: "比較" });
+  const detail = card.locator(".catalog-card-title");
+  const lift = () =>
+    card.evaluate((element) => new DOMMatrixReadOnly(getComputedStyle(element).transform).m42);
+
+  await detail.focus();
+  await page.keyboard.press("Shift+Tab");
+  await expect(compare).toBeFocused();
+  await expect(compare).toHaveCSS("outline-style", "solid");
+  await expect.poll(lift).toBe(0);
+
+  await page.keyboard.press("Tab");
+  await expect(detail).toBeFocused();
+  await expect.poll(lift).toBe(-2);
+});
+
+test("mobile comparison targets stay easy to tap in gallery and search", async ({ page }) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+
+  for (const [url, selector] of [
+    ["/", ".catalog-card-compare"],
+    ["/?q=pdf+%E6%91%98%E8%A6%81", ".compare-pick"],
+  ]) {
+    await page.goto(url);
+    const target = page.locator(selector).first();
+    await expect(target).toBeVisible();
+    const box = await target.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThanOrEqual(24);
+    expect(box!.height).toBeGreaterThanOrEqual(32);
+  }
+});
 
 test.describe("QA-008 composite pixels", () => {
   test("the catalogue opens as one scannable product wall", async ({ page }, testInfo) => {
@@ -329,7 +434,7 @@ async function verifyVersionEvidenceOnPhone(page: Page, testInfo: TestInfo) {
   await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
 
   const evidence = page.getByRole("heading", { name: "驗證證據" }).locator("..");
-  await expect(evidence.locator(".download-item")).toHaveCount(2);
+  await expect(evidence.locator(".surface-card")).toHaveCount(2);
   expect(requestedVersion).toBe(VERSION);
 
   const creation = page.getByRole("heading", { name: "Studio 歷程" }).locator("..");
@@ -483,6 +588,25 @@ async function verifyPublishingWorkspaceMapOnPhone(page: Page, testInfo: TestInf
   });
 }
 
+async function verifyDraftSwitchOnPhone(
+  page: Page,
+  testInfo: TestInfo,
+  sessionID: string,
+  otherSessionID: string,
+) {
+  const message = page.locator("#creation-message");
+  await message.fill("尚未送出的草稿");
+  await page.getByRole("button", { name: "創作清單 · 2" }).click();
+  await page.locator(`[data-session="${otherSessionID}"]`).click();
+  await expect(page.getByRole("alert").filter({ hasText: "未送出的內容" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "繼續編輯" })).toBeFocused();
+  await expect(page).toHaveURL(new RegExp(`session=${sessionID}$`));
+  await page.screenshot({ path: testInfo.outputPath("creation-draft-confirm-phone.png") });
+  await page.getByRole("button", { name: "繼續編輯" }).click();
+  await expect(message).toHaveValue("尚未送出的草稿");
+  await message.fill("");
+}
+
 async function verifyCreationDecisionOnPhone(page: Page, testInfo: TestInfo) {
   const sessionID = "44444444-4444-4444-8444-444444444444";
   const session = {
@@ -561,12 +685,19 @@ async function verifyCreationDecisionOnPhone(page: Page, testInfo: TestInfo) {
   await expect(page.getByRole("heading", { name: "和 Agent 一起創作小工具" })).toBeVisible();
   await verifyCreationWorklistOnPhone(page, testInfo, sessionID, session.updated_at);
 
+  await verifyDraftSwitchOnPhone(page, testInfo, sessionID, otherSession.id);
+
   const workbench = page.locator(".creation-workbench");
   await expect(workbench).toBeInViewport();
   await expect(workbench.getByText("目前待決定")).toBeVisible();
   await expect(workbench.getByText("確認任務與成功條件")).toBeVisible();
   await expect(workbench.locator('[aria-current="step"]')).toHaveCount(1);
   await expect(page.locator("#creation-message")).toBeInViewport();
+  const phoneHeights = await page.evaluate(() => ({
+    progress: document.querySelector(".creation-workbench")?.getBoundingClientRect().height ?? 0,
+    conversation: document.querySelector(".creation-stream")?.getBoundingClientRect().height ?? 0,
+  }));
+  expect(phoneHeights.conversation).toBeGreaterThan(phoneHeights.progress);
 
   const target = page.locator("#creation-brief-decision");
   await workbench.getByRole("link", { name: "前往這一步" }).click();
@@ -592,6 +723,11 @@ async function verifyCreationDecisionOnPhone(page: Page, testInfo: TestInfo) {
   await verifyCreationWorklistOnDesktop(page);
   await expect(page.locator(".creation-workbench")).toBeInViewport();
   await expect(page.locator(".creation-journey > li")).toHaveCount(4);
+  const desktopHeights = await page.evaluate(() => ({
+    progress: document.querySelector(".creation-workbench")?.getBoundingClientRect().height ?? 0,
+    conversation: document.querySelector(".creation-stream")?.getBoundingClientRect().height ?? 0,
+  }));
+  expect(desktopHeights.conversation).toBeGreaterThan(desktopHeights.progress);
   await page.screenshot({
     path: testInfo.outputPath("creation-decision-desktop.png"),
     fullPage: true,
@@ -741,6 +877,10 @@ test.describe("QA-008 real layout", () => {
     page,
   }, testInfo) => {
     await verifyCreationDecisionOnPhone(page, testInfo);
+  });
+
+  test("Studio opens into the conversation with one thread rail", async ({ page }, testInfo) => {
+    await verifyCreationConversationLayout(page, testInfo);
   });
 
   for (const [name, url] of PHONE_ROUTES) {
@@ -955,6 +1095,39 @@ test("舊資產清單網址保留建立錨點並導向 Library", async ({ page }
   await expect(page).toHaveURL(/\/library#create$/);
   await expect(page.getByRole("heading", { level: 1, name: "資產庫" })).toBeVisible();
   await expect(page.locator("#create")).toBeVisible();
+});
+
+test("empty Library cards stay still when hovering their non-link surface", async ({ page }) => {
+  await stubPlatform(page);
+  await page.route(/\/skills\?/, (route) =>
+    route.fulfill({ json: { skills: [], total: 0, limit: 24, truncated: false } }),
+  );
+  await page.goto("/library");
+
+  const card = page.locator(".create-cards > li").first();
+  await expect(card).toBeVisible();
+  await card.getByRole("heading", { name: "匯入現成的套件" }).hover();
+  await expect(card).toHaveCSS("transform", "none");
+  await card.getByRole("link", { name: "匯入小工具" }).hover();
+  await expect(card).toHaveCSS("transform", "none");
+});
+
+test("Library card lift follows the detail link instead of the whole card", async ({ page }) => {
+  await stubPlatform(page);
+  await page.goto("/library");
+
+  const card = page.locator(".skill-card").first();
+  await expect(card).toBeVisible();
+  await card.locator(".skill-card-verification").hover();
+  await expect(card).toHaveCSS("transform", "none");
+  await card.locator(".skill-card-link").hover();
+  await expect
+    .poll(() =>
+      card.evaluate((element) => new DOMMatrixReadOnly(getComputedStyle(element).transform).m42),
+    )
+    .toBe(-4);
+  await card.locator(".skill-card-verification").hover();
+  await expect(card).toHaveCSS("transform", "none");
 });
 
 test("Library cards surface owner verification and the exact validation journey on a phone", async ({

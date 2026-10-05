@@ -25,7 +25,7 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
     Number.isInteger(wanted) && wanted >= budget.min_seconds && wanted <= budget.max_seconds;
 
   return (
-    <li className="download-item">
+    <li className="surface-card">
       <p>
         <strong>{name}</strong>
       </p>
@@ -103,7 +103,7 @@ export function AdminModelBudgets() {
       {budgets.isPending && <Loading what="模型呼叫逾時" />}
       <ReadFailure error={budgets.error} what="模型呼叫逾時" />
       {budgets.data && (
-        <ul className="download-list">
+        <ul className="card-list">
           {budgets.data.budgets.map((budget) => (
             <BudgetRow budget={budget} key={budget.kind} />
           ))}

@@ -15,7 +15,7 @@
     transform var(--dur-fast) var(--ease);
 }
 
-.catalog-skill-card:focus-within {
+.catalog-skill-card:has(> .catalog-card-title:focus-visible) {
   border-color: var(--accent-border);
   box-shadow: var(--shadow-lift);
   transform: translateY(-2px);
@@ -106,6 +106,7 @@
 .catalog-card-compare {
   display: inline-flex;
   align-items: center;
+  min-height: 32px;
   margin-left: auto;
   gap: 8px;
   font-size: 14px;

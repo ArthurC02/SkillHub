@@ -33,7 +33,7 @@ test("the component prints the same absolute time an <option> label gets", async
 
   const time = box.querySelector("time")!;
   expect(time.getAttribute("datetime")).toBe(at);
-  expect(time.textContent).toBe("2026/09/05 16:30");
+  expect(time.textContent?.replace(/\s+/gu, " ")).toBe("2026/09/05 16:30");
   expect(time.textContent).toMatch(/2026/);
 });
 
@@ -42,7 +42,7 @@ async function relativeTextAfter(elapsedMs: number): Promise<string> {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(at).getTime() + elapsedMs);
   await act(async () => root.render(<Timestamp at={at} relative />));
-  return box.querySelector("time")!.textContent!.replace("2026/09/05 16:30", "");
+  return box.querySelector("time")!.textContent!.replace(/\s+/gu, " ");
 }
 
 test.each([
@@ -54,7 +54,7 @@ test.each([
   [3_600_000, "（1 小時前）"],
   [86_400_000, "（1 天前）"],
 ])("a timestamp %i ms old reads %s", async (elapsedMs, expected) => {
-  expect(await relativeTextAfter(elapsedMs)).toBe(expected);
+  expect(await relativeTextAfter(elapsedMs)).toBe(`2026/09/05 16:30${expected}`);
 });
 
 test("the elapsed time advances while the timestamp stays mounted", async () => {

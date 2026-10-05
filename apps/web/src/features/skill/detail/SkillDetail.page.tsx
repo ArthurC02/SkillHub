@@ -50,7 +50,7 @@ export function SkillDetail() {
         <aside className="detail-rail" aria-label="這個小工具的操作">
           <TrialEntry skillId={skillId} isLoggedIn={!!me} />
 
-          <section>
+          <section id="fork-entry">
             <h2>複製一份到你的工作區</h2>
             <ForkAction skillId={skillId} isLoggedIn={!!me} />
           </section>

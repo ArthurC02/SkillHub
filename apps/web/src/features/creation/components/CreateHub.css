@@ -2,6 +2,34 @@
   margin: 16px 0 24px;
 }
 
+.create-cards {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.create-cards > li {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+
+.create-cards > li > :is(h3, p) {
+  margin: 0;
+}
+
+.create-cards > li > h3 {
+  font-weight: 600;
+}
+
+.create-cards > li > p:last-child {
+  margin-top: auto;
+}
+
 .create-hub-compact {
   display: flex;
   flex-wrap: wrap;

@@ -36,7 +36,7 @@ export function Findings({
             </GroupHeading>
             <ul className="finding-list">
               {items.map((finding, index) => (
-                <li className="criterion" key={`${finding.code}-${index}`}>
+                <li className="surface-card" key={`${finding.code}-${index}`}>
                   <FindingBody finding={finding} />
                 </li>
               ))}

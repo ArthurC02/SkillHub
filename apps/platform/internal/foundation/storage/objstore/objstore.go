@@ -61,6 +61,9 @@ func (c *Client) EnsureBucket(ctx context.Context) error {
 		return nil
 	}
 	if err := c.mc.MakeBucket(ctx, c.bucket, minio.MakeBucketOptions{}); err != nil {
+		if minio.ToErrorResponse(err).Code == "BucketAlreadyOwnedByYou" {
+			return nil
+		}
 		return fmt.Errorf("objstore make bucket: %w", err)
 	}
 	return nil

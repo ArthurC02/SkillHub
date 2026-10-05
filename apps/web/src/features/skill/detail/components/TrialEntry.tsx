@@ -1,8 +1,8 @@
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { unauthenticated } from "../../../../shared/ui/LoginRequired.model";
 import { Link } from "@tanstack/react-router";
 import { useSkillVersions } from "../../skills.service";
-import { SignInAction } from "../../../../shared/ui/SignIn";
 
 // Ownership signal is the (workspace-scoped) versions list, empty for a non-owner —
 // not skill.version, which is present for every caller including the catalogue.
@@ -14,9 +14,7 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
     return (
       <section>
         <h2>試跑</h2>
-        <div>
-          試跑屬於你的工作區。先登入並複製一份，才會有屬於你的版本可以跑。 <SignInAction />
-        </div>
+        <p>試跑需要你工作區裡的版本。從下方「複製一份到你的工作區」開始。</p>
       </section>
     );
 
@@ -25,6 +23,13 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
       <section>
         <h2>試跑</h2>
         <Loading what="這個小工具在你工作區的版本" />
+      </section>
+    );
+  if (unauthenticated(versions.error))
+    return (
+      <section>
+        <h2>試跑</h2>
+        <p role="status">試跑需要登入。請從下方的「複製一份到你的工作區」重新登入。</p>
       </section>
     );
   if (versions.error)

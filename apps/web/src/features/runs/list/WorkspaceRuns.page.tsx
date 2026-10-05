@@ -57,7 +57,7 @@ export function WorkspaceRuns() {
                   {groupRows.length === 0 ? (
                     <p>{group.empty}</p>
                   ) : (
-                    <ul className="download-list" data-role="evidence">
+                    <ul className="card-list" data-role="evidence">
                       {groupRows.map((run) => (
                         <RunRow key={run.run_id} run={run} action={group.action(run)} />
                       ))}
@@ -118,7 +118,7 @@ const ACTIVITY_GROUPS: Array<{
 
 function RunRow({ run, action }: { run: RunListItem; action: string }) {
   return (
-    <li className="download-item">
+    <li className="surface-card">
       <p>
         <RunSourceLinks run={run} />｜
         <Link to="/runs/$runId" params={{ runId: run.run_id }}>

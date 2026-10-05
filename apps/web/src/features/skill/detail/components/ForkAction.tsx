@@ -1,4 +1,5 @@
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { unauthenticated } from "../../../../shared/ui/LoginRequired.model";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../../../../core/api/client";
 import { useForkSkill, useSkillVersions } from "../../skills.service";
@@ -19,10 +20,13 @@ export function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedI
   const cannotPackage = versions.isSuccess && versions.data.versions.length === 0;
   const nameConflict = fork.error instanceof ApiError && fork.error.status === 409;
 
-  if (!isLoggedIn) {
+  if (!isLoggedIn || unauthenticated(versions.error)) {
     return (
       <div>
-        登入後即可把這個小工具複製到你的工作區。 <SignInAction />
+        {isLoggedIn
+          ? "工作階段已過期，請重新登入後再繼續。"
+          : "登入後即可把這個小工具複製到你的工作區。"}{" "}
+        <SignInAction />
       </div>
     );
   }
