@@ -240,8 +240,10 @@ func assertResourceCeilings(t *testing.T, hc *container.HostConfig, lim sandbox.
 	if testRuntime() == "runsc" {
 		wantPids = 576
 	}
-	if hc.PidsLimit == nil || *hc.PidsLimit != wantPids {
-		t.Errorf("PidsLimit = %v, want %d (C-13)", hc.PidsLimit, wantPids)
+	if hc.PidsLimit == nil {
+		t.Errorf("PidsLimit = nil, want %d (C-13)", wantPids)
+	} else if *hc.PidsLimit != wantPids {
+		t.Errorf("PidsLimit = %d, want %d (C-13)", *hc.PidsLimit, wantPids)
 	}
 	var nofile bool
 	for _, u := range hc.Ulimits {
