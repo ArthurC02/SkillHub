@@ -116,3 +116,58 @@ func TestAStoreThatStopsAnsweringIsGivenUpOnAfterTwentySeconds(t *testing.T) {
 		t.Errorf("idle connections kept per host = %d, want 64", transport.MaxIdleConnsPerHost)
 	}
 }
+
+func TestEnsureBucketAcceptsOnlyAnAlreadyOwnedCreateRace(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		code    string
+		wantErr bool
+	}{
+		{name: "another instance created our bucket", code: "BucketAlreadyOwnedByYou"},
+		{name: "another owner has the bucket", code: "BucketAlreadyExists", wantErr: true},
+		{name: "creation is forbidden", code: "AccessDenied", wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store, creates := bucketCreateRaceStore(t, tc.code)
+			client, err := New(strings.TrimPrefix(store.URL, "http://"), "key", "secret", "bucket", false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = client.EnsureBucket(context.Background())
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("EnsureBucket error = %v, want error %v", err, tc.wantErr)
+			}
+			if got := creates.Load(); got != 1 {
+				t.Fatalf("bucket create calls = %d, want 1", got)
+			}
+		})
+	}
+}
+
+func bucketCreateRaceStore(t *testing.T, code string) (*httptest.Server, *atomic.Int32) {
+	t.Helper()
+	creates := new(atomic.Int32)
+	store := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Has("location") {
+			_, _ = w.Write([]byte(`<LocationConstraint xmlns="http://s3.amazonaws.com/doc/2006-03-01/">us-east-1</LocationConstraint>`))
+			return
+		}
+		if strings.TrimSuffix(r.URL.Path, "/") != "/bucket" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		switch r.Method {
+		case http.MethodHead:
+			w.WriteHeader(http.StatusNotFound)
+		case http.MethodPut:
+			creates.Add(1)
+			w.Header().Set("Content-Type", "application/xml")
+			w.WriteHeader(http.StatusConflict)
+			_, _ = w.Write([]byte("<Error><Code>" + code + "</Code></Error>"))
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	}))
+	t.Cleanup(store.Close)
+	return store, creates
+}
