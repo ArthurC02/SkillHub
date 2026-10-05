@@ -4,10 +4,12 @@ import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { focusManager } from "@tanstack/react-query";
 import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
+import { queryKeys } from "../../core/api/queryKeys";
 import { createAppRouter } from "../../app/router";
 import { daysOf, seriesOf, usd } from "./admin.service";
 import {
   ADMIN_AUDIT_LOG,
+  ADMIN_DISPATCH,
   ADMIN_EXPOSURE_CASE,
   ADMIN_SKILLS,
   PUBLICATION,
@@ -531,24 +533,95 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
   );
   await mountAt("/admin/dispatch");
   await waitFor(has("sandbox escape suspected on node-2"));
+  expect(
+    Array.from(container.querySelectorAll("main h2"), (heading) => heading.textContent),
+  ).toEqual(["停止派送", "恢復派送"]);
   expect(has("P1 事故：只有人能解除")()).toBe(true);
   expect(has("整個叢集")()).toBe(true);
   expect(button("停止派送").classList.contains("caution")).toBe(true);
   expect(button("恢復派送").classList.contains("caution")).toBe(false);
   await type("#admin-halt-declare-note", "escape drill");
+  expect(has("本次停止範圍：整個叢集")()).toBe(true);
   await click(button("停止派送"));
   await waitFor(has("整個叢集停止派送。"));
   expect(calls.find((c) => c.method === "PUT")?.body).toEqual({ note: "escape drill" });
 
+  await type("#admin-halt-recovery-target", "pool");
   await type("#admin-halt-provider", "node-2");
   expect(has("整個叢集停止派送。")()).toBe(false);
+  expect(has("本次停止範圍：節點 node-2")()).toBe(true);
   await type("#admin-halt-lift-note", "cleared");
   await click(button("恢復派送"));
   await waitFor(() => calls.some((c) => c.method === "DELETE"));
+  expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({ note: "cleared" });
+});
+
+test("recovery requires selecting an active halt and sends that target", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/dispatch" && method === "GET"
+      ? {
+          body: {
+            dispatching: false,
+            halts: [
+              ...ADMIN_DISPATCH.halts,
+              { ...ADMIN_DISPATCH.halts[0], target: "node-2", reason: "node investigation" },
+            ],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("node investigation"));
+  await type("#admin-halt-lift-note", "verified node repair");
+  expect(button("恢復派送").disabled).toBe(true);
+  expect(has("先選擇目前清單中的煞車")()).toBe(true);
+  expect(
+    Array.from(
+      field<HTMLSelectElement>("#admin-halt-recovery-target").options,
+      (option) => option.value,
+    ),
+  ).toEqual(["", "pool", "node-2"]);
+
+  await type("#admin-halt-recovery-target", "node-2");
+  expect(button("恢復派送").disabled).toBe(false);
+  await click(button("恢復派送"));
+  await waitFor(() => calls.some((c) => c.method === "DELETE"));
   expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({
-    note: "cleared",
+    note: "verified node repair",
     provider: "node-2",
   });
+});
+
+test("a halt removed by a status refresh cannot be recovered from an old selection", async () => {
+  stub(true);
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-lift-note", "verified repair");
+  expect(button("恢復派送").disabled).toBe(false);
+
+  await act(async () => {
+    queryClient.setQueryData(queryKeys.admin.dispatch, { dispatching: true, halts: [] });
+  });
+  await waitFor(has("煞車：0 個"));
+  expect(button("恢復派送").disabled).toBe(true);
+  await submit("#admin-halt-lift-note");
+  expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+});
+
+test("recovery is unavailable when no halt exists", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/dispatch" && method === "GET"
+      ? { body: { dispatching: true, halts: [] }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("煞車：0 個"));
+  await type("#admin-halt-lift-note", "nothing to lift");
+  expect(button("恢復派送").disabled).toBe(true);
+  expect(has("目前沒有煞車可解除")()).toBe(true);
+  expect(calls.some((c) => c.method === "DELETE")).toBe(false);
 });
 
 test("dispatch status failure preserves emergency stop but blocks recovery", async () => {
@@ -565,6 +638,28 @@ test("dispatch status failure preserves emergency stop but blocks recovery", asy
   expect(button("停止派送").disabled).toBe(false);
   expect(button("恢復派送").disabled).toBe(true);
   expect(has("必須先讀到目前的派送狀態")()).toBe(true);
+  expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+});
+
+test("a failed dispatch refresh does not present cached halts as current", async () => {
+  let fails = false;
+  stub(true, (path, method) =>
+    path === "/admin/dispatch" && method === "GET" && fails
+      ? { body: { error: "unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-lift-note", "verified repair");
+
+  fails = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch });
+  });
+  await waitFor(has("暫時無法讀取派送狀態"));
+  expect(has("sandbox escape suspected on node-2")()).toBe(false);
+  expect(button("恢復派送").disabled).toBe(true);
   expect(calls.some((c) => c.method === "DELETE")).toBe(false);
 });
 

@@ -11,29 +11,45 @@ const HALT_SOURCE: Record<string, string> = {
   orphan_threshold: "孤兒門檻：連續兩輪低於門檻會自動解除",
 };
 
+function recoveryUnavailableReason(status: ReturnType<typeof useDispatchStatus>) {
+  if (!status.isSuccess || status.isFetching) {
+    return "必須先讀到目前的派送狀態，才能恢復派送。";
+  }
+  return status.data.halts.length === 0
+    ? "目前沒有煞車可解除。"
+    : "先選擇目前清單中的煞車，才能恢復派送。";
+}
+
+function visibleStatus(status: ReturnType<typeof useDispatchStatus>) {
+  return status.isSuccess && !status.isFetching ? status.data : undefined;
+}
+
 export function AdminDispatch() {
   const status = useDispatchStatus();
   const declare = useDispatchHalt("PUT");
   const lift = useDispatchHalt("DELETE");
   const [provider, setProvider] = useState("");
+  const [recoveryTarget, setRecoveryTarget] = useState("");
   const target = provider.trim() || undefined;
+  const currentStatus = visibleStatus(status);
+  const selectedHalt = currentStatus?.halts.find((halt) => halt.target === recoveryTarget);
 
   return (
     <AdminPage heading="派送煞車">
-      {status.isPending && <Loading what="派送狀態" />}
+      {status.isFetching && <Loading what="派送狀態" />}
       <ReadFailure error={status.error} what="派送狀態" />
-      {status.data && (
+      {currentStatus && (
         <>
           <p>
-            <span className={status.data.dispatching ? "badge" : "badge badge-danger"}>
-              {status.data.dispatching ? "正在派送" : "停止派送"}
+            <span className={currentStatus.dispatching ? "badge" : "badge badge-danger"}>
+              {currentStatus.dispatching ? "正在派送" : "停止派送"}
             </span>
           </p>
-          {status.data.halts.length === 0 ? (
+          {currentStatus.halts.length === 0 ? (
             <p>煞車：0 個。</p>
           ) : (
             <ul className="download-list">
-              {status.data.halts.map((halt) => (
+              {currentStatus.halts.map((halt) => (
                 <li className="download-item" key={`${halt.target}-${halt.source}`}>
                   <p>
                     <strong>{halt.target === "pool" ? "整個叢集" : `節點 ${halt.target}`}</strong>
@@ -52,21 +68,7 @@ export function AdminDispatch() {
         </>
       )}
 
-      <h2>宣告或解除</h2>
-      <div className="field">
-        <label htmlFor="admin-halt-provider">節點名稱（留空是整個叢集）</label>
-        <input
-          id="admin-halt-provider"
-          value={provider}
-          onChange={(event) => {
-            setProvider(event.target.value);
-            declare.reset();
-            lift.reset();
-          }}
-          readOnly={declare.isPending || lift.isPending}
-        />
-      </div>
-      <h3>停止派送</h3>
+      <h2>停止派送</h2>
       <ActionForm
         id="admin-halt-declare"
         submitLabel="停止派送"
@@ -76,19 +78,61 @@ export function AdminDispatch() {
         contextKey={target ?? "pool"}
         tone="caution"
         onSubmit={(note) => declare.mutate({ note, provider: target })}
-      />
-      <h3>恢復派送</h3>
+      >
+        <div className="field">
+          <label htmlFor="admin-halt-provider">節點名稱（留空是整個叢集）</label>
+          <input
+            id="admin-halt-provider"
+            value={provider}
+            onChange={(event) => {
+              setProvider(event.target.value);
+              declare.reset();
+            }}
+            readOnly={declare.isPending || lift.isPending}
+          />
+        </div>
+        <p className="note">本次停止範圍：{target ? `節點 ${target}` : "整個叢集"}。</p>
+      </ActionForm>
+      <h2>恢復派送</h2>
       <ActionForm
         id="admin-halt-lift"
         submitLabel="恢復派送"
         pending={lift.isPending}
         error={lift.error}
         done={lift.isSuccess && "已解除，上面的狀態已更新。"}
-        contextKey={target ?? "pool"}
-        ready={status.isSuccess && !status.isFetching}
-        unavailableReason="必須先讀到目前的派送狀態，才能恢復派送。"
-        onSubmit={(note) => lift.mutate({ note, provider: target })}
-      />
+        contextKey={recoveryTarget}
+        ready={status.isSuccess && !status.isFetching && selectedHalt !== undefined}
+        unavailableReason={recoveryUnavailableReason(status)}
+        onSubmit={(note) => {
+          if (!selectedHalt) return;
+          lift.mutate({
+            note,
+            provider: selectedHalt.target === "pool" ? undefined : selectedHalt.target,
+          });
+        }}
+      >
+        <div className="field">
+          <label htmlFor="admin-halt-recovery-target">要解除的煞車</label>
+          <select
+            id="admin-halt-recovery-target"
+            value={recoveryTarget}
+            onChange={(event) => {
+              setRecoveryTarget(event.target.value);
+              lift.reset();
+            }}
+            disabled={!status.isSuccess || status.isFetching || lift.isPending}
+          >
+            <option value="">請選擇目前的煞車</option>
+            {currentStatus?.halts.map((halt) => (
+              <option key={halt.target} value={halt.target}>
+                {halt.target === "pool" ? "整個叢集" : `節點 ${halt.target}`} ·{" "}
+                {HALT_SOURCE[halt.source] ?? halt.source}
+              </option>
+            ))}
+          </select>
+        </div>
+        {selectedHalt && <p className="note">將解除的煞車原因：{selectedHalt.reason}</p>}
+      </ActionForm>
     </AdminPage>
   );
 }
