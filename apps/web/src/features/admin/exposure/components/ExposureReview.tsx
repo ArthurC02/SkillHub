@@ -76,6 +76,8 @@ function ReviewForm({
 }) {
   const [decision, setDecision] = useState<ExposureDecision>();
   const review = useReviewExposure(publication);
+  const snapshotReady = c.snapshot?.current === true && c.snapshot.enriched === true;
+  const ready = decision !== undefined && (decision === "revoked" || snapshotReady);
 
   return (
     <ActionForm
@@ -85,7 +87,12 @@ function ReviewForm({
       error={review.error}
       done={review.isSuccess && "已送出，上面的狀態已更新。"}
       contextKey={`${publication}:${c.release.release_id}:${decision ?? "none"}`}
-      ready={decision !== undefined}
+      ready={ready}
+      unavailableReason={
+        decision === "approved" && !snapshotReady
+          ? "必須先看到與這個 Release 相符的完整搜尋內容，才能核准曝光。"
+          : undefined
+      }
       onSubmit={(reason) => {
         if (!decision) return;
         review.mutate({

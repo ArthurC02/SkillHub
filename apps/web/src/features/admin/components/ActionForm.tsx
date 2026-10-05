@@ -10,6 +10,7 @@ export function ActionForm({
   contextKey = "",
   tone,
   ready = true,
+  unavailableReason,
   onSubmit,
   children,
 }: {
@@ -21,6 +22,7 @@ export function ActionForm({
   contextKey?: string;
   tone?: "caution";
   ready?: boolean;
+  unavailableReason?: string;
   onSubmit: (note: string) => void;
   children?: ReactNode;
 }) {
@@ -62,7 +64,9 @@ export function ActionForm({
       </button>
       {blocked && (
         <p id={`${id}-why`} className="note">
-          「{submitLabel}」要等上面的欄位都填好。
+          {!ready && unavailableReason
+            ? unavailableReason
+            : `「${submitLabel}」要等上面的欄位都填好。`}
         </p>
       )}
       {done && resultMatches && (

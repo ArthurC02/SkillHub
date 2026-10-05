@@ -85,6 +85,8 @@ export function AdminDispatch() {
         error={lift.error}
         done={lift.isSuccess && "已解除，上面的狀態已更新。"}
         contextKey={target ?? "pool"}
+        ready={status.isSuccess && !status.isFetching}
+        unavailableReason="必須先讀到目前的派送狀態，才能恢復派送。"
         onSubmit={(note) => lift.mutate({ note, provider: target })}
       />
     </AdminPage>

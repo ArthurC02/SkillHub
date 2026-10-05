@@ -257,6 +257,21 @@ test("OPS-002: an email nobody has is named as such, not reported as a broken re
   expect(container.querySelector('[role="alert"]')).toBeNull();
 });
 
+test("editing a new account query hides the previous account and its grant form", async () => {
+  stub(true);
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-amount", "50");
+  await type("#admin-grant-note", "welcome credit");
+  expect(button("授予").disabled).toBe(false);
+
+  await type("#admin-account-email", "next@example.com");
+  expect(container.querySelector("#admin-grant-amount")).toBeNull();
+  expect(has("封測者甲")()).toBe(false);
+  expect(has("查詢條件已變更")()).toBe(true);
+  expect(calls.some((c) => c.method === "POST")).toBe(false);
+});
+
 test("OPS-003: a grant waits for a non-zero whole amount and a reason, then posts both and reloads the ledger", async () => {
   stub(true, (path, method) =>
     method === "POST" && path === "/admin/credits/ws-2/grants"
@@ -534,6 +549,23 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
     note: "cleared",
     provider: "node-2",
   });
+});
+
+test("dispatch status failure preserves emergency stop but blocks recovery", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/dispatch" && method === "GET"
+      ? { body: { error: "unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("暫時無法讀取派送狀態"));
+  await type("#admin-halt-declare-note", "emergency");
+  await type("#admin-halt-lift-note", "cleared");
+
+  expect(button("停止派送").disabled).toBe(false);
+  expect(button("恢復派送").disabled).toBe(true);
+  expect(has("必須先讀到目前的派送狀態")()).toBe(true);
+  expect(calls.some((c) => c.method === "DELETE")).toBe(false);
 });
 
 test("OPS-005: the rosters page is read-only", async () => {
@@ -955,4 +987,38 @@ test("DISC-007: a release search has not indexed yet says so instead of showing 
   await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
   await waitFor(has("尚未進索引"));
   expect(has(ADMIN_EXPOSURE_CASE.snapshot.enriched_summary)()).toBe(false);
+});
+
+test.each([
+  ["missing", undefined],
+  ["outdated", { ...ADMIN_EXPOSURE_CASE.snapshot, current: false }],
+  ["incomplete", { ...ADMIN_EXPOSURE_CASE.snapshot, enriched: false }],
+])("an %s search snapshot cannot be approved", async (_state, snapshot) => {
+  stub(true, (path) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
+      ? { body: { ...ADMIN_EXPOSURE_CASE, snapshot }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核這一版"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
+  await type("#admin-exposure-review-note", "符合規範");
+
+  expect(button("送出核准").disabled).toBe(true);
+  expect(has("必須先看到與這個 Release 相符的完整搜尋內容")()).toBe(true);
+  expect(calls.some((c) => c.method === "POST")).toBe(false);
+});
+
+test("an absent search snapshot does not prevent revoking exposure", async () => {
+  stub(true, (path) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
+      ? { body: { ...ADMIN_EXPOSURE_CASE, snapshot: undefined }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("尚未進索引"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="revoked"]'));
+  await type("#admin-exposure-review-note", "下架待查");
+
+  expect(button("送出撤銷").disabled).toBe(false);
 });

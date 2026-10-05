@@ -12,6 +12,7 @@ export function AdminAccounts() {
   const [draft, setDraft] = useState("");
   const [email, setEmail] = useState("");
   const account = useAccountLookup(email);
+  const queryMatches = draft.trim() === email;
 
   return (
     <AdminPage
@@ -38,13 +39,17 @@ export function AdminAccounts() {
           查詢
         </button>
       </form>
-      {account.isFetching && <Loading what="帳號" />}
-      {notFound(account.error) ? (
-        <p role="status">沒有 email 是「{email}」的帳號。已刪除的帳號查不到。</p>
-      ) : (
-        <ReadFailure error={account.error} what="帳號" />
+      {!queryMatches && email && <p role="status">查詢條件已變更；按「查詢」顯示新帳號。</p>}
+      {queryMatches && account.isFetching && <Loading what="帳號" />}
+      {queryMatches &&
+        (notFound(account.error) ? (
+          <p role="status">沒有 email 是「{email}」的帳號。已刪除的帳號查不到。</p>
+        ) : (
+          <ReadFailure error={account.error} what="帳號" />
+        ))}
+      {queryMatches && account.data && !account.isFetching && (
+        <AccountCard account={account.data} />
       )}
-      {account.data && !account.isFetching && <AccountCard account={account.data} />}
     </AdminPage>
   );
 }
