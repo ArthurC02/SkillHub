@@ -275,10 +275,6 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
   --tone: var(--tile-indigo);
   --tone-deep: var(--tile-indigo-deep);
   border-radius: 16px;
-  transition:
-    border-color var(--dur) var(--ease),
-    transform var(--dur) var(--ease),
-    box-shadow var(--dur) var(--ease);
 }
 
 .tone-card[data-tone="1"] {
@@ -294,14 +290,6 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
 .tone-card[data-tone="3"] {
   --tone: var(--tile-teal);
   --tone-deep: var(--tile-teal-deep);
-}
-
-@media (hover: hover) {
-  .tone-card:hover {
-    border-color: color-mix(in srgb, var(--tone) 55%, var(--border));
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lift);
-  }
 }
 
 .tone-mark {

@@ -1042,6 +1042,39 @@ test("舊資產清單網址保留建立錨點並導向 Library", async ({ page }
   await expect(page.locator("#create")).toBeVisible();
 });
 
+test("empty Library cards stay still when hovering their non-link surface", async ({ page }) => {
+  await stubPlatform(page);
+  await page.route(/\/skills\?/, (route) =>
+    route.fulfill({ json: { skills: [], total: 0, limit: 24, truncated: false } }),
+  );
+  await page.goto("/library");
+
+  const card = page.locator(".create-cards > li").first();
+  await expect(card).toBeVisible();
+  await card.getByRole("heading", { name: "匯入現成的套件" }).hover();
+  await expect(card).toHaveCSS("transform", "none");
+  await card.getByRole("link", { name: "匯入小工具" }).hover();
+  await expect(card).toHaveCSS("transform", "none");
+});
+
+test("Library card lift follows the detail link instead of the whole card", async ({ page }) => {
+  await stubPlatform(page);
+  await page.goto("/library");
+
+  const card = page.locator(".skill-card").first();
+  await expect(card).toBeVisible();
+  await card.locator(".skill-card-verification").hover();
+  await expect(card).toHaveCSS("transform", "none");
+  await card.locator(".skill-card-link").hover();
+  await expect
+    .poll(() =>
+      card.evaluate((element) => new DOMMatrixReadOnly(getComputedStyle(element).transform).m42),
+    )
+    .toBe(-4);
+  await card.locator(".skill-card-verification").hover();
+  await expect(card).toHaveCSS("transform", "none");
+});
+
 test("Library cards surface owner verification and the exact validation journey on a phone", async ({
   page,
 }, testInfo) => {

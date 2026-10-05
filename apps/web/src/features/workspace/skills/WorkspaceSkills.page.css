@@ -41,6 +41,18 @@
   flex-direction: column;
   gap: 12px;
   padding: 0 20px 20px;
+  transition:
+    border-color var(--dur) var(--ease),
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+@media (hover: hover) {
+  .skill-card:has(> .skill-card-link:hover) {
+    border-color: color-mix(in srgb, var(--tone) 55%, var(--border));
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lift);
+  }
 }
 
 .skill-card p {

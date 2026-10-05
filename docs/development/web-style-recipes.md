@@ -7,7 +7,7 @@
 | 需要什麼 | 先用什麼 | 別混用 |
 | --- | --- | --- |
 | 一組各自可辨認、可操作的物件 | `<ul className="card-list">`，每列 `<li className="surface-card">` | 不因為是卡片就借 `.download-item`、`.criterion` 等別的領域名稱；Catalog 商品畫廊有自己的版型，不套通用卡片清單。 |
-| 資產庫裡需要穩定識別色的卡片 | `.surface-card tone-card` 組成表面、色調與 hover；字首標記用卡片內的 `.tone-mark`，格線及內容由元件 CSS 處理 | 色調只協助辨識資產，不代表驗證、風險或品質；一般卡片不加色調。 |
+| 資產庫裡需要穩定識別色的卡片 | `.surface-card tone-card` 組成表面與色調；字首標記用卡片內的 `.tone-mark`，格線與內容由元件 CSS 處理 | 色調只協助辨識資產，不代表驗證、風險或品質；只有卡內連結可點時，不讓整張卡 hover 得像能點。 |
 | 這一頁唯一的主要動作 | 原生 `<button className="action">` 或導頁的 `<a className="action">` | 不把徽章、刪除或第二個按鈕填成主色；導頁仍用連結。 |
 | 一般按鈕或長得像按鈕的連結 | 原生 `<button>`；連結用 `.action-secondary` | 不為每個按鈕重寫內距、邊框和 hover。 |
 | 需警告的操作 | `.caution`；不可逆操作用 `.destructive` 並保留確認步驟 | 顏色不能代替文字、理由和確認範圍。 |
