@@ -270,7 +270,7 @@ type ResourceLimits struct {
 const (
 	defaultVCPU                 = 2
 	defaultMemoryBytes          = 4 << 30
-	defaultDiskBytes            = 8 << 30
+	defaultDiskBytes            = defaultMemoryBytes
 	defaultMaxPIDs              = 256
 	defaultMaxOpenFiles         = 1024
 	defaultWallClockSoftSeconds = 600

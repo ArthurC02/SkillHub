@@ -165,7 +165,7 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 	}
 
 	wantLimits := run.ResourceLimits{
-		VCPU: 2, MemoryBytes: 4 << 30, DiskBytes: 8 << 30, MaxPIDs: 256, MaxOpenFiles: 1024,
+		VCPU: 2, MemoryBytes: 4 << 30, DiskBytes: 4 << 30, MaxPIDs: 256, MaxOpenFiles: 1024,
 		WallClockSoftSeconds: 600, WallClockHardSeconds: 900,
 		ArtifactTotalBytes: 100 << 20, ArtifactFileBytes: 25 << 20,
 	}

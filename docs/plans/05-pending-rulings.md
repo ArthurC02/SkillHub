@@ -79,11 +79,11 @@
 
 ### R-101 試跑的「磁碟」上限要不要和記憶體分開
 
-- **要決定的是什麼**：使用者看到的「磁碟」上限，要不要成為獨立的上限，而不是記憶體的一部分。撞到上限時怎麼歸類已裁定（見 §4 R-102）。
-- **已經查到的事實**（量測與程式皆已查證）：沙箱的 `/work`、`/out`、`/tmp` 都是 tmpfs，`/work` 與 `/out` 依磁碟上限切成 3：1，`/tmp` 另加 64 MiB（`apps/sandbox/internal/dockerdrv/docker.go`）。gVisor release-20260921.0、systrap、cgroup v2 上量到：寫入 128 MiB 檔案，容器記憶體用量增加約 135 MB，幾乎 1:1；寫超過記憶體上限就以記憶體上限結束。現在使用者會看到「撞到資源上限」，說明寫明這三個路徑的檔案計入記憶體，且不計試跑配額（`apps/platform/internal/trial/execution/http.go`）。但正式預設磁碟 8 GiB 仍大於記憶體 4 GiB（`apps/sandbox/internal/sandbox/contract.go`），試跑前的權限摘要把兩個數字並列顯示（`apps/web/src/features/lab/preflight/components/ResourceLimitsFacts.tsx`），磁碟那個數字在預設值下永遠用不滿。gVisor 的 `--overlay2=root:self,size=N` 或 xfs project quota 可以讓寫滿時回「磁碟已滿」而不是撞記憶體。
-- **建議**：(2)，(3) 列為長期。(1) 維持現狀：說明已經誠實，但畫面上的磁碟數字仍用不滿。(2) 讓預設磁碟不大於記憶體，權限摘要註明「暫存檔計入記憶體」：只動 `DefaultLimits`、既有的上限驗證、權限摘要與相關測試。(3) 改用有大小上限的 overlay 或有配額的 volume：兩個上限才真正獨立，但要改節點的 runsc 參數與隔離驗收，等節點實際上線並有大檔案需求的證據再評估。
-- **不決定的代價**：使用者以為有 8 GiB 可寫，實際上大約 4 GiB 減去程式用量就會撞記憶體上限；不扣配額，但時間與模型花費照付。
-- **決定之後誰動**：主 Agent 改預設值、驗證、權限摘要（`apps/sandbox`、`apps/web`）；選 (3) 需負責人配合節點部署。
+- **要決定的是什麼**：要不要讓試跑的「磁碟」成為獨立於記憶體的上限，寫滿時工作負載收到「磁碟已滿」，而不是撞記憶體上限結束。撞到上限時怎麼歸類已裁定（見 §4 R-102）。
+- **已經查到的事實**（量測與程式皆已查證）：沙箱的 `/work`、`/out`、`/tmp` 都是 tmpfs（`apps/sandbox/internal/dockerdrv/docker.go`）；gVisor release-20260921.0、systrap、cgroup v2 上寫入 128 MiB 檔案，容器記憶體用量增加約 135 MB。現在預設磁碟等於預設記憶體 4 GiB（`apps/sandbox/internal/sandbox/contract.go`、`apps/platform/internal/trial/execution/service.go`），試跑前的資源摘要註明暫存檔計入記憶體上限（`apps/web/src/features/lab/preflight/components/ResourceLimitsFacts.tsx`），撞到時以「撞到資源上限」結束且不計配額——這是記憶體後盾沙箱的常見做法（Cloud Run、E2B 都明說檔案計入記憶體）。要讓兩個上限獨立，做法是 gVisor 的 `--overlay2=root:self,size=N`（節點層級的 runsc 參數，大小不能逐請求設定）或 Docker 的 `--storage-opt size`（需要節點的 overlay2 落在掛了 `pquota` 的 xfs 上）；CI 的 runner 是 ext4，兩者都無法在 CI 驗證。
+- **建議**：(1)，有大檔案需求的證據時再做 (2)。(1) 維持現狀：數字與說明已經一致，代價是可寫入量要和程式記憶體共用。(2) 節點改用 xfs＋`pquota`，driver 以 `--storage-opt size` 給每次 Run 獨立的磁碟上限，暫存路徑改走可寫的根檔案系統：兩個上限真正獨立、寫滿時回「磁碟已滿」，但要改節點部署、隔離驗收與 driver，並另找能驗證 xfs 配額的環境。
+- **不決定的代價**：需要寫大量暫存檔的 Skill，可寫入量被程式的記憶體用量吃掉一部分；不扣配額，但時間與模型花費照付。
+- **決定之後誰動**：選 (2) 由負責人配合節點部署與驗收環境，主 Agent 改 driver、契約與資源摘要。
 
 ## 2. 不是簽名，但在等人的三件事
 

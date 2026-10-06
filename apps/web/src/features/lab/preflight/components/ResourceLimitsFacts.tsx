@@ -17,6 +17,9 @@ export function ResourceLimitsFacts({
         {limit(resourceLimits.wall_clock_hard_seconds, seconds)}、 Token{" "}
         {limit(resourceLimits.token_budget?.max_input_tokens, tokens)} 進 /{" "}
         {limit(resourceLimits.token_budget?.max_output_tokens, tokens)} 出
+        <p className="note" data-role="caveat">
+          暫存檔（/work、/out、/tmp）計入記憶體上限。
+        </p>
         <p className="note" data-role="teaching">
           Token 上限能跑幾輪，取決於每一輪的工具呼叫次數——每次工具結果回填都要重送整個前綴，
           所以同樣的 300K input，工具密集的試跑大約只夠 5 輪，純對話大約夠 15 輪。

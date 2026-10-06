@@ -80,7 +80,7 @@ function summary(hash: string, files: string[]): PreflightResponse {
       resource_limits: {
         vcpu: 2,
         memory_bytes: 4 * 1024 ** 3,
-        disk_bytes: 8 * 1024 ** 3,
+        disk_bytes: 4 * 1024 ** 3,
         max_pids: 256,
         max_open_files: 1024,
         wall_clock_soft_seconds: 600,
@@ -280,6 +280,7 @@ test("02:TEST-005 the summary discloses every required item before the run start
   expect(text).toContain("MCP Server");
   expect(text).toContain("無");
   expect(text).toContain("ANTHROPIC_AUTH_TOKEN");
+  expect(text).toContain("暫存檔（/work、/out、/tmp）計入記憶體上限。");
   expect(text).not.toContain("sk-");
 });
 

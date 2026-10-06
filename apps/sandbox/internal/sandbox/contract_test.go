@@ -36,3 +36,10 @@ func TestOnlyReadableInputsAreFetchedIntoTheSandbox(t *testing.T) {
 		t.Errorf("InputGrants() kept %d of three grants, want the two readable inputs", len(both))
 	}
 }
+
+func TestTheDefaultDiskIsNoLargerThanTheDefaultMemoryItIsBackedBy(t *testing.T) {
+	if DefaultLimits.DiskBytes > DefaultLimits.MemoryBytes {
+		t.Fatalf("default disk %d exceeds default memory %d, but scratch files are counted against memory",
+			DefaultLimits.DiskBytes, DefaultLimits.MemoryBytes)
+	}
+}

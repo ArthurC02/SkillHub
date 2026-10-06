@@ -655,8 +655,8 @@ components:
         memory_bytes: { type: integer, default: 4294967296, description: 4 GiB. }
         disk_bytes:
           type: integer
-          default: 8589934592
-          description: 8 GiB total; PDM-005 splits it /work 6 GiB + /out 2 GiB.
+          default: 4294967296
+          description: 4 GiB total, equal to the default memory_bytes; PDM-005 splits it /work 3 GiB + /out 1 GiB. Scratch files may be backed by memory and then count toward memory_bytes.
         max_pids: { type: integer, default: 256 }
         max_open_files: { type: integer, default: 1024 }
         wall_clock_soft_seconds:
