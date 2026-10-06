@@ -352,6 +352,8 @@ jobs:
           mapfile -t RUNSC_ARGS < <(jq -r '.runtimes.runsc.runtimeArgs[]' infra/deploy/sandbox/daemon.json)
           sudo runsc install -- "${RUNSC_ARGS[@]}"
           sudo systemctl reload docker
+          diff <(jq -c '.runtimes.runsc.runtimeArgs' infra/deploy/sandbox/daemon.json) \
+               <(docker info --format '{{json .Runtimes.runsc.Args}}' | jq -c .)
         working-directory: .
       - name: Sandbox driver tests on gVisor
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox driver tests on gVisor' go test ./internal/dockerdrv/... -count=1
