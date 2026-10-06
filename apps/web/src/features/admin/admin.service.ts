@@ -199,6 +199,10 @@ export function useGovernanceAction(
     mutationFn: ({ method, body }: { method: "PUT" | "DELETE"; body: Record<string, unknown> }) =>
       apiFetch<unknown>(`/admin/skills/${skillId}/${action}`, send(method, body)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.skills }),
+    onError: (error) => {
+      if (isUncertainWriteFailure(error))
+        return queryClient.invalidateQueries({ queryKey: queryKeys.admin.skills });
+    },
   });
 }
 
@@ -240,6 +244,10 @@ export function useModelBudgetChange(method: "PUT" | "DELETE") {
         send(method, body),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.modelBudgets }),
+    onError: (error) => {
+      if (isUncertainWriteFailure(error))
+        return queryClient.invalidateQueries({ queryKey: queryKeys.admin.modelBudgets });
+    },
   });
 }
 
@@ -302,6 +310,14 @@ export function useReviewExposure(publication: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureCase(publication) });
+    },
+    onError: (error) => {
+      if (isUncertainWriteFailure(error)) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue });
+        return queryClient.invalidateQueries({
+          queryKey: queryKeys.admin.exposureCase(publication),
+        });
+      }
     },
   });
 }

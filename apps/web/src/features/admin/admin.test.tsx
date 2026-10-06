@@ -6,12 +6,13 @@ import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
 import { createAppRouter } from "../../app/router";
-import { daysOf, seriesOf, usd, type DispatchStatus } from "./admin.service";
+import { daysOf, seriesOf, usd, type DispatchStatus, type ExposureCase } from "./admin.service";
 import {
   ADMIN_ACCOUNT,
   ADMIN_AUDIT_LOG,
   ADMIN_DISPATCH,
   ADMIN_EXPOSURE_CASE,
+  ADMIN_EXPOSURE_QUEUE,
   ADMIN_MODEL_BUDGETS,
   ADMIN_SKILLS,
   PUBLICATION,
@@ -868,6 +869,34 @@ test("OPS-009: a refreshed model timeout replaces the stale edit value", async (
   expect(has("60 秒")()).toBe(true);
 });
 
+test("an uncertain model timeout write rereads the effective setting", async () => {
+  let current = ADMIN_MODEL_BUDGETS;
+  stub(true, (path, method) => {
+    if (path === "/admin/model-budgets" && method === "GET") return { body: current, status: 200 };
+    if (path === "/admin/model-budgets/judge-run" && method === "PUT") {
+      current = {
+        budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+          budget.kind === "judge-run"
+            ? { ...budget, seconds: 100, reason: "operator update", set_at: "2026-09-20T08:00:00Z" }
+            : budget,
+        ),
+      };
+      return { body: { error: "response lost" }, status: 503 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+  await type("#admin-budget-judge-run-seconds", "100");
+  await type("#admin-budget-judge-run-note", "operator update");
+  await click(button("改 評估判定 的秒數"));
+
+  await waitFor(has("管理員設定 100 秒"));
+  expect(
+    calls.filter((call) => call.method === "GET" && call.url === "/admin/model-budgets").length,
+  ).toBeGreaterThan(1);
+});
+
 test("OPS-009: a pending budget refresh blocks writes based on cached settings", async () => {
   stub(true);
   const fixtureFetch = globalThis.fetch;
@@ -1012,6 +1041,32 @@ test("OPS-004: a restriction is set with the known reason code and lifted by the
   await waitFor(has("沒有受限"));
   expect(has("受限展示：")()).toBe(false);
   expect(has("設定受限展示")()).toBe(true);
+});
+
+test("an uncertain restriction write rereads the skill before another action", async () => {
+  let restricted: string | null = null;
+  stub(true, (path, method) => {
+    if (path === "/admin/skills")
+      return {
+        body: { skills: [{ ...ADMIN_SKILLS.skills[0], access_restriction: restricted }] },
+        status: 200,
+      };
+    if (path === `/admin/skills/${SKILL}/restriction` && method === "PUT") {
+      restricted = "license-review";
+      return { body: { error: "response lost" }, status: 503 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("設定受限展示"));
+  await type("#admin-restriction-note", "terms under review");
+  await click(button("設定受限"));
+
+  await waitFor(has("受限展示：license-review"));
+  expect(has("解除受限展示")()).toBe(true);
+  expect(
+    calls.filter((call) => call.method === "GET" && call.url === `/admin/skills?q=${SKILL}`).length,
+  ).toBeGreaterThan(1);
 });
 
 test("OPS-004: a name matching several skills lists a way to pick each and offers no action yet", async () => {
@@ -1951,6 +2006,42 @@ test("DISC-007: submitting a review sends this screen's release_id, sequence and
       reason: "看過了，符合規範",
     },
   });
+});
+
+test("an uncertain exposure decision rereads the case and waiting queue", async () => {
+  let currentCase: ExposureCase = ADMIN_EXPOSURE_CASE;
+  let waiting = true;
+  stub(true, (path, method) => {
+    if (path === "/admin/exposure-reviews" && method === "GET")
+      return { body: waiting ? ADMIN_EXPOSURE_QUEUE : { publications: [] }, status: 200 };
+    if (path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && method === "GET")
+      return { body: currentCase, status: 200 };
+    if (path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && method === "POST") {
+      currentCase = { ...ADMIN_EXPOSURE_CASE, sequence: 3, exposed: true };
+      waiting = false;
+      return { body: { error: "response lost" }, status: 503 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核序號：2"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
+  await type("#admin-exposure-review-note", "看過了，符合規範");
+  await click(button("送出核准"));
+
+  await waitFor(has("審核序號：3"));
+  expect(has("目前曝光中")()).toBe(true);
+  await waitFor(has("沒有等待審核的發佈物：0 筆。"));
+  expect(
+    calls.filter(
+      (call) =>
+        call.method === "GET" &&
+        call.url === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`,
+    ).length,
+  ).toBeGreaterThan(1);
+  expect(
+    calls.filter((call) => call.method === "GET" && call.url === "/admin/exposure-reviews").length,
+  ).toBeGreaterThan(1);
 });
 
 test("a completed exposure decision does not describe the next decision", async () => {
