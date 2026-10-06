@@ -225,6 +225,29 @@ func TestEveryChangeLeavesOneAuditEventNamingTheReasonAndBothValues(t *testing.T
 	}
 }
 
+func TestReasonLimitCountsCharactersForSettingAndClearing(t *testing.T) {
+	svc, endpoint := requireBudgetDB(t)
+	ctx := context.Background()
+	withinLimit := strings.Repeat("理", 1000)
+	overLimit := strings.Repeat("理", 1001)
+
+	if _, err := svc.Set(ctx, endpoint.Kind, 20, withinLimit, pgtype.UUID{}); err != nil {
+		t.Fatalf("setting with 1000 characters: %v", err)
+	}
+	if err := svc.Clear(ctx, endpoint.Kind, withinLimit, pgtype.UUID{}); err != nil {
+		t.Fatalf("clearing with 1000 characters: %v", err)
+	}
+	if _, err := svc.Set(ctx, endpoint.Kind, 20, overLimit, pgtype.UUID{}); !errors.Is(err, ErrReasonTooLong) {
+		t.Errorf("setting with 1001 characters = %v, want %v", err, ErrReasonTooLong)
+	}
+	if err := svc.Clear(ctx, endpoint.Kind, overLimit, pgtype.UUID{}); !errors.Is(err, ErrReasonTooLong) {
+		t.Errorf("clearing with 1001 characters = %v, want %v", err, ErrReasonTooLong)
+	}
+	if got := len(auditRows(t, endpoint.Kind)); got != 2 {
+		t.Errorf("audit events = %d, want only the accepted setting and clearing", got)
+	}
+}
+
 func TestConcurrentBudgetChangesAuditTheCommittedPreviousValue(t *testing.T) {
 	svc, endpoint := requireBudgetDB(t)
 	ctx := context.Background()

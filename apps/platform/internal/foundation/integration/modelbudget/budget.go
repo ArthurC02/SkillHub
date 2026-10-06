@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -29,6 +30,7 @@ const (
 var (
 	ErrUnknownKind    = errors.New("modelbudget: no such model endpoint")
 	ErrReasonRequired = errors.New("modelbudget: a reason is required")
+	ErrReasonTooLong  = errors.New("modelbudget: reason too long")
 	ErrOutOfRange     = errors.New("modelbudget: seconds outside what the platform allows")
 	ErrNotSet         = errors.New("modelbudget: no operator value is set for this endpoint")
 )
@@ -144,12 +146,9 @@ func (s *Service) Set(ctx context.Context, kind string, seconds int, reason stri
 	if !known {
 		return Setting{}, ErrUnknownKind
 	}
-	reason = strings.TrimSpace(reason)
-	if reason == "" {
-		return Setting{}, ErrReasonRequired
-	}
-	if len(reason) > maxReason {
-		return Setting{}, fmt.Errorf("%w: at most %d bytes", ErrReasonRequired, maxReason)
+	reason, err := acceptedReason(reason)
+	if err != nil {
+		return Setting{}, err
 	}
 	if !e.valid(seconds) {
 		return Setting{}, fmt.Errorf("%w: %s accepts %d to %d seconds",
@@ -191,9 +190,9 @@ func (s *Service) Clear(ctx context.Context, kind, reason string, actor pgtype.U
 	if _, known := s.endpoint(kind); !known {
 		return ErrUnknownKind
 	}
-	reason = strings.TrimSpace(reason)
-	if reason == "" {
-		return ErrReasonRequired
+	reason, err := acceptedReason(reason)
+	if err != nil {
+		return err
 	}
 
 	tx, err := s.Pool.Begin(ctx)
@@ -214,6 +213,17 @@ func (s *Service) Clear(ctx context.Context, kind, reason string, actor pgtype.U
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+func acceptedReason(raw string) (string, error) {
+	reason := strings.TrimSpace(raw)
+	if reason == "" {
+		return "", ErrReasonRequired
+	}
+	if utf8.RuneCountInString(reason) > maxReason {
+		return "", ErrReasonTooLong
+	}
+	return reason, nil
 }
 
 func changeEvent(actor pgtype.UUID, kind, reason string, before, after int) audit.Event {
