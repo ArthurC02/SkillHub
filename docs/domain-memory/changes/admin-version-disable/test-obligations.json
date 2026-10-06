@@ -1,0 +1,88 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "SEC-011-version-disable",
+  "proposal_id": "admin-version-disable",
+  "obligations": [
+    {
+      "id": "disable-authority",
+      "source_type": "acceptance-criterion",
+      "source_id": "version-disable-authority",
+      "expected_outcome": "匿名與 member 得 404；狀態和 audit 無變更；operator 可送出停用。",
+      "level": "security",
+      "status": "planned",
+      "check": "operator 路由授權矩陣與整合測試"
+    },
+    {
+      "id": "disable-admission",
+      "source_type": "acceptance-criterion",
+      "source_id": "version-disable-admission",
+      "expected_outcome": "停用提交後，POST /runs 對該版本具名拒絕且無新 Run；其他版本仍可建立。",
+      "level": "integration",
+      "status": "planned",
+      "check": "Run 建立端點與 Registry 停用狀態的資料庫整合測試"
+    },
+    {
+      "id": "disable-race",
+      "source_type": "rule",
+      "source_id": "version-disabled-for-new-runs",
+      "expected_outcome": "停用與建立並行時僅依交易序列化次序產生結果，停用先提交就沒有新 Run。",
+      "level": "integration",
+      "status": "planned",
+      "check": "以兩個交易及確定性鎖等待重現並行順序"
+    },
+    {
+      "id": "disable-history",
+      "source_type": "acceptance-criterion",
+      "source_id": "version-disable-history",
+      "expected_outcome": "版本內容、已建立 Run、既有佇列任務在停用前後保持相同。",
+      "level": "integration",
+      "status": "planned",
+      "check": "停用前後比對版本快照與既有 Run／任務狀態"
+    },
+    {
+      "id": "disable-audit",
+      "source_type": "acceptance-criterion",
+      "source_id": "version-disable-audit",
+      "expected_outcome": "成功命令留下一筆具名 audit；注入 audit 寫入失敗後狀態仍未停用。",
+      "level": "integration",
+      "status": "planned",
+      "check": "同交易成功與受控 audit 失敗案例"
+    },
+    {
+      "id": "disable-guidance",
+      "source_type": "acceptance-criterion",
+      "source_id": "version-disable-guidance",
+      "expected_outcome": "preflight 與建立 Run 顯示一致的停用原因；operator 可確認目標但看不到套件內容。",
+      "level": "security",
+      "status": "planned",
+      "check": "API 回應與前端管理流程測試；欄位範圍待裁定"
+    },
+    {
+      "id": "disable-owner-boundary",
+      "source_type": "rule",
+      "source_id": "version-disabled-for-new-runs",
+      "expected_outcome": "停用表與 query 由 Registry 擁有，Run 只經 owner 注入介面判定，沒有跨 owner SQL。",
+      "level": "architecture",
+      "status": "planned",
+      "check": "automation-check 的 context-map、query-owners 與 depguard 檢查"
+    },
+    {
+      "id": "disable-contract",
+      "source_type": "contract",
+      "source_id": "operator-version-disable-v1",
+      "expected_outcome": "OpenAPI 路由、權限、輸入驗證、具名拒絕與 generated 客戶端一致。",
+      "level": "integration",
+      "status": "planned",
+      "check": "路由矩陣、契約生成檢查與 API 整合測試"
+    },
+    {
+      "id": "disable-owner-contract",
+      "source_type": "contract",
+      "source_id": "registry-run-admission-v1",
+      "expected_outcome": "Run 建立交易呼叫 Registry 的權威判定；讀取錯誤 fail-closed，不被當成可執行。",
+      "level": "integration",
+      "status": "planned",
+      "check": "owner 讀取失敗與 transaction rollback 整合測試"
+    }
+  ]
+}
