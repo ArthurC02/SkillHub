@@ -39,6 +39,7 @@ const (
 	errClassProviderLost    = "provider_lost"
 	errClassTimeout         = "timeout"
 	errClassCancelled       = "cancelled"
+	errClassResourceLimit   = "resource_limit"
 )
 
 type RuntimeSupport struct {

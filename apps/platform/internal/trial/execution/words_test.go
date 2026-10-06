@@ -140,7 +140,7 @@ func TestAttemptErrorsNeverExposeTheStoredDetail(t *testing.T) {
 	const rawDetail = "provider returned secret detail"
 	for _, class := range []string{
 		"", errClassProvision, errClassExecution, errClassCleanup, errClassCapabilityMismatch,
-		errClassBudgetExhausted, errClassProviderLost, errClassTimeout, errClassCancelled, "provider_specific",
+		errClassBudgetExhausted, errClassProviderLost, errClassTimeout, errClassCancelled, errClassResourceLimit, "provider_specific",
 	} {
 		view := attemptViewOf(Attempt{ErrorClass: class, ErrorMessage: rawDetail})
 		said := view.ErrorMessage
@@ -155,6 +155,22 @@ func TestAttemptErrorsNeverExposeTheStoredDetail(t *testing.T) {
 		}
 		if strings.Contains(said, rawDetail) {
 			t.Errorf("%s exposed a stored provider detail: %q", class, said)
+		}
+	}
+}
+
+func TestAResourceLimitAttemptNamesTheLimitInsteadOfTheGenericFailure(t *testing.T) {
+	said := attemptViewOf(Attempt{ErrorClass: errClassResourceLimit}).ErrorMessage
+	if !strings.Contains(said, "記憶體或行程數上限") {
+		t.Errorf("a resource-limit attempt reads %q, want it to name the memory or process limit", said)
+	}
+}
+
+func TestTheResourceLimitNoteTellsTheUserWhatCountsAndWhatToDo(t *testing.T) {
+	note := failureClassWord(string(failureResourceLimit)).Note
+	for _, want := range []string{"/work、/out、/tmp", "計入記憶體", "不計試跑配額", "請減少用量"} {
+		if !strings.Contains(note, want) {
+			t.Errorf("the resource-limit note %q does not say %q", note, want)
 		}
 	}
 }

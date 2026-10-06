@@ -547,6 +547,9 @@ func classifyResult(pr ProviderRun) (ending runEnding, errClass string) {
 	case pr.Result.Status == "timed_out":
 		return runEnding{gen.RunStatusTimedOut, failureTimeout, orDefault(message, "執行沙箱在它自己的時間上限把工作負載停掉了")},
 			orDefault(errClass, errClassTimeout)
+	case errClass == errClassResourceLimit:
+		return runEnding{gen.RunStatusFailed, failureResourceLimit, orDefault(message, "工作負載撞到了這次申請的資源上限")},
+			errClassResourceLimit
 	case pr.State == ProviderStateCompleted && pr.Result.Status == "succeeded":
 		return runEnding{gen.RunStatusSucceeded, "", ""}, ""
 	case pr.State == ProviderStateCompleted:

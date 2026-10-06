@@ -189,6 +189,7 @@ func TestOnlyPlatformSideFailuresAreRefunded(t *testing.T) {
 		{"provider_error", false},
 		{"platform_error", false},
 		{"capability_mismatch", false},
+		{"resource_limit", false},
 		{"workload_error", true},
 		{"cancelled", true},
 		{"timeout", true},

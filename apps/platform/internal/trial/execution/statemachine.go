@@ -39,19 +39,19 @@ const (
 )
 
 const (
-	failureProvider   FailureClass = "provider_error"
-	failureWorkload   FailureClass = "workload_error"
-	failureTimeout    FailureClass = "timeout"
-	failureCancelled  FailureClass = "cancelled"
-	failureNoProvider FailureClass = "capability_mismatch"
-	failurePolicy     FailureClass = "policy_refused"
-	failurePlatform   FailureClass = "platform_error"
+	failureProvider                       FailureClass = "provider_error"
+	failureWorkload                       FailureClass = "workload_error"
+	failureTimeout                        FailureClass = "timeout"
+	failureCancelled                      FailureClass = "cancelled"
+	failureNoProvider                     FailureClass = "capability_mismatch"
+	failurePolicy                         FailureClass = "policy_refused"
+	failurePlatform, failureResourceLimit FailureClass = "platform_error", "resource_limit"
 )
 
 func AllFailureClasses() []FailureClass {
 	return []FailureClass{
 		failureProvider, failureWorkload, failureTimeout,
-		failureCancelled, failureNoProvider, failurePolicy, failurePlatform,
+		failureCancelled, failureNoProvider, failurePolicy, failurePlatform, failureResourceLimit,
 	}
 }
 

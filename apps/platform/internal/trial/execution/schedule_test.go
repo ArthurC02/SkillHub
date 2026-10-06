@@ -290,6 +290,16 @@ func TestClassifyResultSeparatesWorkloadFailureFromProviderFailure(t *testing.T)
 			gen.RunStatusCancelled, failureCancelled,
 		},
 		{
+			"workload hit a resource limit and the provider completed",
+			ProviderRun{State: ProviderStateCompleted, Result: result("failed", "resource_limit")},
+			gen.RunStatusFailed, failureResourceLimit,
+		},
+		{
+			"workload hit a resource limit and the provider failed",
+			ProviderRun{State: ProviderStateFailed, Result: result("failed", "resource_limit")},
+			gen.RunStatusFailed, failureResourceLimit,
+		},
+		{
 
 			"terminal with no result at all",
 			ProviderRun{State: ProviderStateCompleted},
@@ -310,6 +320,49 @@ func TestClassifyResultSeparatesWorkloadFailureFromProviderFailure(t *testing.T)
 			}
 			if !IsTerminal(status) {
 				t.Errorf("classify produced the non-terminal status %q", status)
+			}
+		})
+	}
+}
+
+func TestClassifyResultRelaysTheResourceLimitTheSandboxNamed(t *testing.T) {
+	const memory = "memory limit reached; files under /work, /out and /tmp count toward it"
+	for _, tc := range []struct {
+		name       string
+		message    string
+		wantReason statusReason
+	}{
+		{"the sandbox named the memory limit", memory, statusReason(memory)},
+		{"the sandbox named nothing", "", "工作負載撞到了這次申請的資源上限"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := ProviderRun{State: ProviderStateCompleted, Result: &RunResult{
+				Status: "failed", Error: &RunError{Class: "resource_limit", Message: tc.message},
+			}}
+			ending, errClass := classifyResult(pr)
+			if ending.reason != tc.wantReason {
+				t.Errorf("reason = %q, want %q", ending.reason, tc.wantReason)
+			}
+			if errClass != "resource_limit" {
+				t.Errorf("attempt error class = %q, want resource_limit", errClass)
+			}
+		})
+	}
+}
+
+func TestAResourceLimitDoesNotOutrankACancellationOrATimeout(t *testing.T) {
+	limit := &RunError{Class: "resource_limit", Message: "process limit reached; the workload may run at most 8 processes"}
+	for _, tc := range []struct {
+		name string
+		in   ProviderRun
+		want FailureClass
+	}{
+		{"timed out", ProviderRun{State: ProviderStateFailed, Result: &RunResult{Status: "timed_out", Error: limit}}, failureTimeout},
+		{"cancelled", ProviderRun{State: ProviderStateCancelled, Result: &RunResult{Status: "cancelled", Error: limit}}, failureCancelled},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if ending, _ := classifyResult(tc.in); ending.failure != tc.want {
+				t.Errorf("failure class = %q, want %q", ending.failure, tc.want)
 			}
 		})
 	}
