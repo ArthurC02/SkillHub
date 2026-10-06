@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { RootLayout } from "./RootLayout";
 import { RouteNotFound } from "../shared/ui/RouteNotFound";
+import { RouteFailure } from "./RouteFailure";
 import type { AgentRuntime, SkillCategory } from "../core/api/types";
 
 const rootRoute = createRootRoute({ component: RootLayout });
@@ -526,7 +527,11 @@ const routeTree = rootRoute.addChildren([
 ]);
 
 export function createAppRouter() {
-  return createRouter({ routeTree, defaultNotFoundComponent: RouteNotFound });
+  return createRouter({
+    routeTree,
+    defaultNotFoundComponent: RouteNotFound,
+    defaultErrorComponent: RouteFailure,
+  });
 }
 
 export const router = createAppRouter();

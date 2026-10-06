@@ -388,7 +388,7 @@ Catalog landing `/` 的 `<h1>` 是名詞化的產品承諾 `探索能直接採�
 - **三處把完整可操作的表單畫給訪客，等他做完事才拒絕**：`/workspace/import` 給出 radio、網址欄、檔案選擇器與可按的「開始匯入」；`/runs/$runId/compare` 在 `against` 為空時不發任何請求；**以及上面那個頁尾回報表單，它比前兩者都廣**。這是本項裡最壞的一格——**它違反的不是資訊架構，是 [設計系統](system.md) §2.2「顯示與強制成對」與 §2.4**：會被拒絕的控制項要在被使用**之前**說，不是之後。
 - **一頁誤導**：`/lab/run` 沒有 `?skill=&test_case=` 時說「這個頁面需要兩個 ID」——它把一個未登入的訪客送去找查詢參數。
 - **沒有任何一頁 `reads as empty`**，而且那不是運氣：每一句空狀態文案都掛在 `xxx.data &&` 之後，而讀取 401 時它不可能為真。所以 **§2.9 的 `無權檢視` 那一格在全 app 沒有發生**——這一項不是缺席呈現的問題，別把已經對的東西「修」壞。
-- **沒有任何一頁會崩**（全 app 沒有 ErrorBoundary，也不需要為這件事加一個），`apiFetch` 對 401 **沒有任何全域行為**（沒有轉址、沒有 toast、沒有清快取），而 `AuthControls.tsx:15` 是**全 app 唯一一處** `error.status === 401` 的判斷（落地後那一行搬進 `shared/ui/LoginRequired.tsx` 的 `unauthenticated()`，`AuthControls` 成為它的呼叫者之一）。
+- **401 本身不會令頁面元件拋例外**，這種可預期的登入狀態不靠 ErrorBoundary 處理；非預期的渲染例外則由路由層錯誤畫面承接。`apiFetch` 對 401 **沒有任何全域行為**（沒有轉址、沒有 toast、沒有清快取），而 `AuthControls.tsx:15` 是**全 app 唯一一處** `error.status === 401` 的判斷（落地後那一行搬進 `shared/ui/LoginRequired.tsx` 的 `unauthenticated()`，`AuthControls` 成為它的呼叫者之一）。
 
 #### 裁定
 
