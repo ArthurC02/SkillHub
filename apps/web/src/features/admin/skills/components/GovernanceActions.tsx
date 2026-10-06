@@ -7,7 +7,7 @@ import { ActionForm } from "../../components/ActionForm";
 export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
   const restriction = useGovernanceAction(skill.skill_id, "restriction");
   const redistribution = useGovernanceAction(skill.skill_id, "redistribution");
-  const [verdict, setVerdict] = useState("blocked");
+  const [verdict, setVerdict] = useState("");
   const [licenseExpression, setLicenseExpression] = useState("");
   const [licenseSource, setLicenseSource] = useState("");
   const releasing = verdict === "allowed";
@@ -37,10 +37,14 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
         submitLabel="送出判定"
         pending={redistribution.isPending}
         error={redistribution.error}
-        ready={!releasing || (licenseExpression.trim() !== "" && licenseSource !== "")}
+        ready={
+          verdict !== "" &&
+          (!releasing || (licenseExpression.trim() !== "" && licenseSource !== ""))
+        }
         done={redistribution.isSuccess && "已送出，上面的狀態已更新。"}
         contextKey={`${skill.skill_id}:${verdict}:${licenseExpression.trim()}:${licenseSource}`}
         onSubmit={(note) =>
+          verdict &&
           redistribution.mutate({
             method: "PUT",
             body: releasing
@@ -65,6 +69,7 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
             }}
             disabled={redistribution.isPending}
           >
+            <option value="">選擇判定</option>
             <option value="blocked">禁止再散布</option>
             <option value="unknown">尚未判定</option>
             <option value="allowed">可以再散布（要附授權證據）</option>

@@ -709,7 +709,7 @@ test("OPS-004: a failed skill refresh cannot leave cached governance actions ava
   expect(has("的動作")()).toBe(false);
 });
 
-test("OPS-004: releasing a skill needs licence evidence; blocking it does not", async () => {
+test("OPS-004: redistribution needs an explicit verdict and releasing needs licence evidence", async () => {
   stub(true, (path, method) =>
     path === `/admin/skills/${SKILL}/redistribution` && method === "PUT"
       ? { body: {}, status: 200 }
@@ -718,6 +718,9 @@ test("OPS-004: releasing a skill needs licence evidence; blocking it does not", 
   await mountAt("/admin/skills", { q: SKILL });
   await waitFor(has("再散布判定"));
   await type("#admin-redistribution-note", "legal cleared");
+  expect(button("送出判定").disabled).toBe(true);
+
+  await type("#admin-redistribution-value", "blocked");
   expect(button("送出判定").disabled).toBe(false);
 
   await type("#admin-redistribution-value", "allowed");
