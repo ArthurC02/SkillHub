@@ -32,6 +32,11 @@ export function TrendSection<B extends DailyCount, T extends Trend<B>>({
         onRetry={() => void query.refetch()}
         retrying={query.isFetching}
       />
+      {query.isFetching && query.data && !query.error && (
+        <p className="note" role="status">
+          正在更新{heading}；圖表仍顯示上次讀取的資料。
+        </p>
+      )}
       {query.data && !query.error && (
         <TrendCharts
           trend={query.data}

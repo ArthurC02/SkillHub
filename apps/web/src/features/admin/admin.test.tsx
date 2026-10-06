@@ -1812,6 +1812,46 @@ test("OPS-007: a failed statistics refresh does not present cached windows as cu
   await waitFor(() => container.querySelectorAll("tbody tr").length > 0);
 });
 
+test("OPS-007: a pending statistics refresh labels the retained table as previous data", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishRead: ((response: Response) => void) | undefined;
+  await mountAt("/admin/cost-statistics");
+  await waitFor(has("搜尋理由"));
+
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).includes("/admin/cost-statistics")) {
+      return new Promise<Response>((resolve) => {
+        finishRead = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await act(async () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.costStatistics });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await pollUntil(
+    () => queryClient.isFetching({ queryKey: queryKeys.admin.costStatistics }) === 1,
+    () => container.textContent,
+    DEFAULT_WAIT_MS,
+    { flushBeforeFirstCheck: true },
+  );
+  expect(has("正在更新成本統計；表格仍顯示上次讀取的資料。")()).toBe(true);
+  expect(container.querySelectorAll("tbody tr")).toHaveLength(2);
+
+  await act(async () => {
+    const { body, status } = platformResponse("/admin/cost-statistics");
+    finishRead!(
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(() => !has("正在更新成本統計；表格仍顯示上次讀取的資料。")());
+});
+
 test("OPS-007: micro-dollars format at four places, and a missing percentile is named", () => {
   expect(usd(null)).toBe("未測量");
   expect(usd(0)).toBe("$0.0000");
@@ -1913,6 +1953,51 @@ test("OPS-008: a failed trend refresh hides that cached chart and balance", asyn
   unavailable = false;
   await click(button("重新讀取每日點數異動（淨額）"));
   await waitFor(has("全平台目前餘額總和：1268 點。"));
+});
+
+test("OPS-008: a pending trend refresh labels its retained chart as previous data", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishRead: ((response: Response) => void) | undefined;
+  await mountAt("/admin/trends");
+  await waitFor(has("全平台目前餘額總和：1268 點。"));
+
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).includes("/admin/trends/credits")) {
+      return new Promise<Response>((resolve) => {
+        finishRead = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await act(async () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.trend("credits", 30) });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await pollUntil(
+    () => queryClient.isFetching({ queryKey: queryKeys.admin.trend("credits", 30) }) === 1,
+    () => container.textContent,
+    DEFAULT_WAIT_MS,
+    { flushBeforeFirstCheck: true },
+  );
+  const credits = Array.from(container.querySelectorAll("h2"))
+    .find((heading) => heading.textContent === "每日點數異動（淨額）")
+    ?.closest("section");
+  expect(credits?.querySelector('[role="status"]')?.textContent).toBe(
+    "正在更新每日點數異動（淨額）；圖表仍顯示上次讀取的資料。",
+  );
+  expect(credits?.querySelectorAll("figure").length).toBeGreaterThan(0);
+
+  await act(async () => {
+    const { body, status } = platformResponse("/admin/trends/credits?days=30");
+    finishRead!(
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(() => credits?.querySelector('[role="status"]') === null);
 });
 
 test("OPS-008: a kind's figure totals its range and its table shows zero on the days it had nothing", async () => {

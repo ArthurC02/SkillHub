@@ -18,6 +18,11 @@ export function AdminCostStatistics() {
         onRetry={() => void stats.refetch()}
         retrying={stats.isFetching}
       />
+      {stats.isFetching && stats.data && !stats.error && (
+        <p className="note" role="status">
+          正在更新成本統計；表格仍顯示上次讀取的資料。
+        </p>
+      )}
       {stats.data &&
         !stats.error &&
         (rows.length === 0 ? (
