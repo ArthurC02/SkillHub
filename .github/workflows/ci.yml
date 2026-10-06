@@ -340,11 +340,17 @@ jobs:
           ARCH="$(uname -m)"
           # Release tags read `release-YYYYMMDD.N`; the download path drops the prefix.
           URL="https://storage.googleapis.com/gvisor/releases/release/${BASELINE#release-}/${ARCH}"
-          wget -q "${URL}/gvisor.tar.zstd" "${URL}/gvisor.tar.zstd.sha512"
-          sha512sum -c gvisor.tar.zstd.sha512
+          EXPECTED=$(awk -v a="$ARCH" '$1 == "sha512" && $2 == a {print $3}' infra/nodes/gvisor-baseline.txt)
+          if [ -z "$EXPECTED" ]; then
+            echo "::error::infra/nodes/gvisor-baseline.txt pins no sha512 for $ARCH"
+            exit 1
+          fi
+          wget -q "${URL}/gvisor.tar.zstd"
+          echo "$EXPECTED  gvisor.tar.zstd" | sha512sum -c -
           sudo tar --zstd -xf gvisor.tar.zstd -C /usr/local/bin
-          rm -f gvisor.tar.zstd gvisor.tar.zstd.sha512
-          sudo runsc install
+          rm -f gvisor.tar.zstd
+          mapfile -t RUNSC_ARGS < <(jq -r '.runtimes.runsc.runtimeArgs[]' infra/deploy/sandbox/daemon.json)
+          sudo runsc install -- "${RUNSC_ARGS[@]}"
           sudo systemctl reload docker
         working-directory: .
       - name: Sandbox driver tests on gVisor

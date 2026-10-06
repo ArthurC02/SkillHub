@@ -44,7 +44,7 @@ cannot set up cgroup for root: configuring cgroup: write /sys/fs/cgroup/cgroup.s
 
 ## 下一步
 
-把[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的 10 個測項逐條寫成腳本，在這裡 dry run。**跑得過的記成「程序可執行」，不記成測項通過**；真的驗收要一台獨立 Linux 節點，而 `infra/nodes/gvisor-baseline.txt` 現在還是 `unset`（＝還沒有任何沙箱節點被開出來）。
+把[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的 10 個測項逐條寫成腳本，在這裡 dry run。**跑得過的記成「程序可執行」，不記成測項通過**；真的驗收要一台獨立 Linux 節點，而 `infra/nodes/gvisor-baseline.txt` 已釘 `release-20260921.0` 與兩個架構的 sha512，但還沒有任何沙箱節點被開出來。
 
 ---
 
@@ -131,7 +131,7 @@ SKILLHUB_SANDBOX_IMAGE=<repo:tag@digest> python tools/sec009/t8-image-audit.py  
 | # | 現況 |
 | --- | --- |
 | ① 映像已發佈至 GHCR 且附 SBOM 與掃描 attestation | **PASS**——本次實測確認，而在此之前它的狀態是「沒人查過」 |
-| ② `infra/nodes/gvisor-baseline.txt` 已填實際版本 | **FAIL**，仍是 `unset` |
+| ② `infra/nodes/gvisor-baseline.txt` 已填實際版本 | PASS，`release-20260921.0` |
 | ③ `infra/egress/allowlist.yaml` 的 `pinned_ip` 已填 | **FAIL**，仍是 `unset` |
 
 **②③ 兩項都要等第一台節點**（②是那台機器上 `runsc --version` 的值，③是閘道的沙箱面位址）。所以這支腳本的結論是一句很具體的話：**SEC-009 目前缺的不是十個測項，是一台機器**——而它同時證明了第①項不在那台機器的等待清單上。

@@ -12,7 +12,7 @@ import (
 func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 	t.Parallel()
 	want := []string{
-		"depguard-deny", "service-construction", "identifier-order", "one-number", "sandbox-node-facts", "query-owner", "query-scope", "sql-logic",
+		"depguard-deny", "service-construction", "identifier-order", "one-number", "sandbox-node-facts", "gvisor-pins", "query-owner", "query-scope", "sql-logic",
 		"context-map", "doc-identifier", "milestone-tally", "backlog-tally",
 		"baseline-tally", "immutability-proof", "requirement-test-matrix", "retention-floor", "sdk-version", "single-data-layer",
 

@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
-baseline="$(awk '!/^#/ && NF { print $1; exit }' /opt/skillhub/infra/nodes/gvisor-baseline.txt)"
+file=/opt/skillhub/infra/nodes/gvisor-baseline.txt
+baseline="$(awk '!/^#/ && NF { print $1; exit }' "$file")"
 case "$baseline" in
     release-*) ;;
     *)
@@ -8,13 +9,17 @@ case "$baseline" in
         exit 1
         ;;
 esac
-url="https://storage.googleapis.com/gvisor/releases/release/${baseline#release-}/$(uname -m)"
+arch="$(uname -m)"
+expected="$(awk -v a="$arch" '$1 == "sha512" && $2 == a { print $3 }' "$file")"
+if [ -z "$expected" ]; then
+    echo "install-gvisor: no sha512 pinned for $arch in $file" >&2
+    exit 1
+fi
+url="https://storage.googleapis.com/gvisor/releases/release/${baseline#release-}/$arch"
 work="$(mktemp -d)"
 cd "$work"
-for file in gvisor.tar.zstd gvisor.tar.zstd.sha512; do
-    curl -fsSL -o "$file" "$url/$file"
-done
-sha512sum -c gvisor.tar.zstd.sha512
+curl -fsSL -o gvisor.tar.zstd "$url/gvisor.tar.zstd"
+echo "$expected  gvisor.tar.zstd" | sha512sum -c -
 tar --zstd -xf gvisor.tar.zstd -C /usr/local/bin
 cd /
 rm -rf "$work"

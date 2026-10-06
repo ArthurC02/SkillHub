@@ -15,4 +15,10 @@
 #
 # CI's Suite 1 installs exactly this version, and P-03 rebuilds the node pool
 # at this version or newer rather than upgrading nodes in place.
+#
+# The `sha512` lines pin gvisor.tar.zstd per architecture. Installers compare
+# the download against these reviewed values, never against a checksum served
+# next to the tarball. Bump both lines together with the release.
 release-20260921.0
+sha512 x86_64 66a5b17354690ec2e4037b54080eeabde55a1503779ceb823d73856283a6836953e105493d7e38fb2dcf85e5c86e0f48c66a9abb0244a78bd612df938702475c
+sha512 aarch64 bac6a20f57b71c66538f9d33fb71e05c025bd1a420ed0c3afef58e0cde14273604a67411b886a1aae468de268dff66021ab7373f977a5715c6ab6f5ab62331fe
