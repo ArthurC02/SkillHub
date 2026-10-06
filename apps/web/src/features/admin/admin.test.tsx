@@ -1178,7 +1178,7 @@ test("recovering dispatch blocks another halt and clears the preceding halt noti
   await act(async () => {
     finishRecovery!(new Response("{}", { status: 200 }));
   });
-  await waitFor(has("已解除，上面的狀態已更新。"));
+  await waitFor(has("解除請求已處理；若狀態讀取失敗，請重新整理確認。"));
   expect(has("整個叢集停止派送。")()).toBe(false);
 });
 
@@ -1308,10 +1308,32 @@ test("an uncertain recovery refreshes dispatch and does not claim the write fail
   await waitFor(has("這個動作的結果尚未確認"));
   await waitFor(has("煞車：0 個"));
   expect(has("這個動作沒有完成")()).toBe(false);
-  expect(has("已解除，上面的狀態已更新。")()).toBe(false);
+  expect(has("解除請求已處理；若狀態讀取失敗，請重新整理確認。")()).toBe(false);
   expect(
     calls.filter((call) => call.url === "/admin/dispatch" && call.method === "GET").length,
   ).toBeGreaterThan(1);
+});
+
+test("a completed recovery does not claim the status refreshed when rereading fails", async () => {
+  let unavailable = false;
+  stub(true, (path, method) => {
+    if (path === "/admin/dispatch" && method === "GET" && unavailable)
+      return { body: { error: "status unavailable" }, status: 503 };
+    if (path === "/admin/dispatch/halt" && method === "DELETE") {
+      unavailable = true;
+      return { body: {}, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-lift-note", "verified repair");
+  await click(button("恢復派送"));
+
+  await waitFor(has("暫時無法讀取派送狀態"));
+  await waitFor(has("解除請求已處理"));
+  expect(has("上面的狀態已更新")()).toBe(false);
 });
 
 test("OPS-005: the rosters page is read-only", async () => {

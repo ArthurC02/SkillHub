@@ -110,7 +110,7 @@ export function AdminDispatch() {
         submitLabel="恢復派送"
         pending={lift.isPending}
         error={lift.error}
-        done={lift.isSuccess && "已解除，上面的狀態已更新。"}
+        done={lift.isSuccess && "解除請求已處理；若狀態讀取失敗，請重新整理確認。"}
         contextKey={recoveryTarget}
         ready={!recoveryBlock}
         unavailableReason={recoveryBlock}
