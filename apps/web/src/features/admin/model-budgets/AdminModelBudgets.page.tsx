@@ -31,9 +31,8 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
         <strong>{name}</strong>
       </p>
       <p className="badge-row">
-        <span className={budget.seconds === null ? "badge" : "badge badge-danger"}>
-          {budget.seconds === null ? `預設 ${budget.default_seconds} 秒` : `${budget.seconds} 秒`}
-        </span>
+        <span className="badge">程式預設 {budget.default_seconds} 秒</span>
+        {budget.seconds !== null && <span className="badge">管理員設定 {budget.seconds} 秒</span>}
       </p>
       {budget.seconds !== null && (
         <>

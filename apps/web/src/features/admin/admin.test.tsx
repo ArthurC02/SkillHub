@@ -553,6 +553,22 @@ test("a revised model timeout does not inherit the previous success notice", asy
   expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(false);
 });
 
+test("OPS-009: a configured timeout keeps its compiled default visible without failure styling", async () => {
+  stub(true);
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+
+  const rows = Array.from(container.querySelectorAll("li.download-item"));
+  const configured = rows.find((row) => row.textContent?.includes("評估判定"));
+  expect(configured?.textContent).toContain("程式預設 130 秒");
+  expect(configured?.textContent).toContain("管理員設定 90 秒");
+  expect(configured?.querySelector(".badge-danger")).toBeNull();
+
+  const unconfigured = rows.find((row) => row.textContent?.includes("搜尋結果的推薦理由"));
+  expect(unconfigured?.textContent).toContain("程式預設 8 秒");
+  expect(unconfigured?.textContent).not.toContain("管理員設定");
+});
+
 test("OPS-009: a refreshed model timeout replaces the stale edit value", async () => {
   let current = ADMIN_MODEL_BUDGETS;
   stub(true, (path) =>
