@@ -706,6 +706,76 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
   expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({ note: "cleared" });
 });
 
+test("a pending dispatch halt prevents recovery from starting", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishHalt: ((response: Response) => void) | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/dispatch/halt") && init?.method === "PUT") {
+      return new Promise<Response>((resolve) => {
+        finishHalt = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-declare-note", "stop for investigation");
+  await type("#admin-halt-lift-note", "resume after investigation");
+  await click(button("停止派送"));
+  await waitFor(() => finishHalt !== undefined);
+
+  expect(button("恢復派送").disabled).toBe(true);
+  expect(has("正在停止派送，完成後才能恢復。")()).toBe(true);
+  await submit("#admin-halt-lift-note");
+  expect(calls.some((call) => call.method === "DELETE")).toBe(false);
+
+  await act(async () => {
+    finishHalt!(new Response(JSON.stringify({ note: "整個叢集停止派送。" }), { status: 200 }));
+  });
+  await waitFor(has("整個叢集停止派送。"));
+});
+
+test("recovering dispatch blocks another halt and clears the preceding halt notice", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/dispatch/halt" && method === "PUT"
+      ? { body: { note: "整個叢集停止派送。" }, status: 200 }
+      : undefined,
+  );
+  const fixtureFetch = globalThis.fetch;
+  let finishRecovery: ((response: Response) => void) | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/dispatch/halt") && init?.method === "DELETE") {
+      return new Promise<Response>((resolve) => {
+        finishRecovery = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-declare-note", "stop for investigation");
+  await type("#admin-halt-lift-note", "resume after investigation");
+  await click(button("停止派送"));
+  await waitFor(has("整個叢集停止派送。"));
+  await click(button("恢復派送"));
+  await waitFor(() => finishRecovery !== undefined);
+
+  expect(button("停止派送").disabled).toBe(true);
+  expect(has("正在恢復派送，完成後才能再次停止。")()).toBe(true);
+  expect(has("整個叢集停止派送。")()).toBe(false);
+  await submit("#admin-halt-declare-note");
+  expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1);
+
+  await act(async () => {
+    finishRecovery!(new Response("{}", { status: 200 }));
+  });
+  await waitFor(has("已解除，上面的狀態已更新。"));
+  expect(has("整個叢集停止派送。")()).toBe(false);
+});
+
 test("recovery requires selecting an active halt and sends that target", async () => {
   stub(true, (path, method) =>
     path === "/admin/dispatch" && method === "GET"
