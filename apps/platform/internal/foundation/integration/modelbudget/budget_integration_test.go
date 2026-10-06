@@ -225,6 +225,135 @@ func TestEveryChangeLeavesOneAuditEventNamingTheReasonAndBothValues(t *testing.T
 	}
 }
 
+func TestConcurrentBudgetChangesAuditTheCommittedPreviousValue(t *testing.T) {
+	svc, endpoint := requireBudgetDB(t)
+	ctx := context.Background()
+	if _, err := svc.Set(ctx, endpoint.Kind, 10, "initial setting", pgtype.UUID{}); err != nil {
+		t.Fatal(err)
+	}
+	locked, err := budgetPool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = locked.Rollback(ctx) }()
+	var seconds int
+	if err := locked.QueryRow(ctx,
+		"SELECT seconds FROM model_call_budgets WHERE kind = $1 FOR UPDATE", endpoint.Kind,
+	).Scan(&seconds); err != nil || seconds != 10 {
+		t.Fatalf("locked setting = %d, %v; want 10", seconds, err)
+	}
+
+	blockedBefore := budgetLockWaiters(t)
+	results := make(chan error, 2)
+	for _, value := range []int{20, 30} {
+		go func() {
+			_, err := svc.Set(ctx, endpoint.Kind, value, "concurrent change", pgtype.UUID{})
+			results <- err
+		}()
+	}
+	blocked := waitForBudgetLockWaiters(t, blockedBefore+2)
+	if err := locked.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := <-results; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !blocked {
+		t.Fatal("both writes did not wait on the held setting")
+	}
+
+	events := auditRows(t, endpoint.Kind)
+	if len(events) != 3 {
+		t.Fatalf("audit events = %d, want initial plus two changes", len(events))
+	}
+	if events[1]["before"] != float64(10) || events[2]["before"] != events[1]["after"] {
+		t.Errorf("concurrent audit chain = %v -> %v -> %v, want each before to equal the committed previous after",
+			events[0]["after"], events[1], events[2])
+	}
+	current, err := svc.Get(ctx, endpoint.Kind)
+	if err != nil || float64(current.Seconds) != events[2]["after"] {
+		t.Errorf("current setting = %d, %v; final audit after = %v", current.Seconds, err, events[2]["after"])
+	}
+}
+
+func TestClearingAndSettingTheSameBudgetAuditInCommitOrder(t *testing.T) {
+	svc, endpoint := requireBudgetDB(t)
+	ctx := context.Background()
+	if _, err := svc.Set(ctx, endpoint.Kind, 10, "initial setting", pgtype.UUID{}); err != nil {
+		t.Fatal(err)
+	}
+	locked, err := budgetPool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = locked.Rollback(ctx) }()
+	var seconds int
+	if err := locked.QueryRow(ctx,
+		"SELECT seconds FROM model_call_budgets WHERE kind = $1 FOR UPDATE", endpoint.Kind,
+	).Scan(&seconds); err != nil || seconds != 10 {
+		t.Fatalf("locked setting = %d, %v; want 10", seconds, err)
+	}
+
+	blockedBefore := budgetLockWaiters(t)
+	cleared := make(chan error, 1)
+	go func() {
+		cleared <- svc.Clear(ctx, endpoint.Kind, "clear before the next setting", pgtype.UUID{})
+	}()
+	firstBlocked := waitForBudgetLockWaiters(t, blockedBefore+1)
+	set := make(chan error, 1)
+	go func() {
+		_, err := svc.Set(ctx, endpoint.Kind, 20, "new setting", pgtype.UUID{})
+		set <- err
+	}()
+	secondBlocked := waitForBudgetLockWaiters(t, blockedBefore+2)
+	if err := locked.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-cleared; err != nil {
+		t.Fatal(err)
+	}
+	if err := <-set; err != nil {
+		t.Fatal(err)
+	}
+	if !firstBlocked || !secondBlocked {
+		t.Fatal("the clear and set did not both wait on the held setting")
+	}
+
+	events := auditRows(t, endpoint.Kind)
+	if len(events) != 3 {
+		t.Fatalf("audit events = %d, want initial, clear, then set", len(events))
+	}
+	if events[1]["before"] != float64(10) || events[1]["after"] != "default" ||
+		events[2]["before"] != "default" || events[2]["after"] != float64(20) {
+		t.Errorf("audit chain = %v -> %v -> %v, want 10 -> default -> 20", events[0], events[1], events[2])
+	}
+}
+
+func waitForBudgetLockWaiters(t *testing.T, want int) bool {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if budgetLockWaiters(t) >= want {
+			return true
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return false
+}
+
+func budgetLockWaiters(t *testing.T) int {
+	t.Helper()
+	var count int
+	if err := budgetPool.QueryRow(context.Background(),
+		"SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'",
+	).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	return count
+}
+
 func TestARefusedChangeLeavesNeitherASettingNorAnEvent(t *testing.T) {
 	svc, judge := requireBudgetDB(t)
 	ctx := context.Background()

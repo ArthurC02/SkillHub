@@ -100,7 +100,11 @@ func (s *Service) Within(ctx context.Context, e Endpoint) time.Duration {
 
 // Get is the operator's value for one endpoint, or ErrNotSet.
 func (s *Service) Get(ctx context.Context, kind string) (Setting, error) {
-	rows, err := s.queries().ListModelCallBudgets(ctx)
+	return get(ctx, s.queries(), kind)
+}
+
+func get(ctx context.Context, q *gen.Queries, kind string) (Setting, error) {
+	rows, err := q.ListModelCallBudgets(ctx)
 	if err != nil {
 		return Setting{}, err
 	}
@@ -152,18 +156,21 @@ func (s *Service) Set(ctx context.Context, kind string, seconds int, reason stri
 			ErrOutOfRange, kind, MinSeconds, e.Ceiling())
 	}
 
-	before, err := s.Get(ctx, kind)
-	if err != nil && !errors.Is(err, ErrNotSet) {
-		return Setting{}, err
-	}
-
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return Setting{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.queries().WithTx(tx)
+	if err := q.LockModelCallBudget(ctx, kind); err != nil {
+		return Setting{}, err
+	}
+	before, err := get(ctx, q, kind)
+	if err != nil && !errors.Is(err, ErrNotSet) {
+		return Setting{}, err
+	}
 
-	row, err := s.queries().WithTx(tx).SetModelCallBudget(ctx, gen.SetModelCallBudgetParams{
+	row, err := q.SetModelCallBudget(ctx, gen.SetModelCallBudgetParams{
 		Kind:    kind,
 		Seconds: int32(seconds),
 		Reason:  reason,
@@ -194,8 +201,12 @@ func (s *Service) Clear(ctx context.Context, kind, reason string, actor pgtype.U
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.queries().WithTx(tx)
+	if err := q.LockModelCallBudget(ctx, kind); err != nil {
+		return err
+	}
 
-	removed, err := s.queries().WithTx(tx).ClearModelCallBudget(ctx, kind)
+	removed, err := q.ClearModelCallBudget(ctx, kind)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return err
 	}

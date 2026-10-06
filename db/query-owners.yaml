@@ -194,6 +194,7 @@ queries:
   GetTraceEventText: trace
   LockTraceIngestRun: trace
   NextTraceSeq: trace
+  LockModelCallBudget: modelbudget
   CountTraceMaskingInWindow: trace
 
 scope:

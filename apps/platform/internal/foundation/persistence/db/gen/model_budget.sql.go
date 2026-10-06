@@ -61,6 +61,15 @@ func (q *Queries) ListModelCallBudgets(ctx context.Context) ([]ModelCallBudget, 
 	return items, nil
 }
 
+const lockModelCallBudget = `-- name: LockModelCallBudget :exec
+SELECT pg_advisory_xact_lock(hashtextextended('model-call-budget:' || $1::text, 0))
+`
+
+func (q *Queries) LockModelCallBudget(ctx context.Context, kind string) error {
+	_, err := q.db.Exec(ctx, lockModelCallBudget, kind)
+	return err
+}
+
 const setModelCallBudget = `-- name: SetModelCallBudget :one
 INSERT INTO model_call_budgets (kind, seconds, reason, set_by)
 VALUES ($1, $2, $3, $4)
