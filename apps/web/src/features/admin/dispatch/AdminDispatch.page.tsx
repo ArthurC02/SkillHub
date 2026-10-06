@@ -28,6 +28,20 @@ function visibleStatus(status: ReturnType<typeof useDispatchStatus>) {
   return status.isSuccess && !status.isFetching ? status.data : undefined;
 }
 
+function StatusFeedback({ status }: { status: ReturnType<typeof useDispatchStatus> }) {
+  return (
+    <>
+      {status.isFetching && <Loading what="派送狀態" />}
+      <ReadFailure error={status.error} what="派送狀態" />
+      {status.error && (
+        <button type="button" disabled={status.isFetching} onClick={() => void status.refetch()}>
+          重新讀取派送狀態
+        </button>
+      )}
+    </>
+  );
+}
+
 export function AdminDispatch() {
   const status = useDispatchStatus();
   const declare = useDispatchHalt("PUT");
@@ -42,8 +56,7 @@ export function AdminDispatch() {
 
   return (
     <AdminPage heading="派送煞車">
-      {status.isFetching && <Loading what="派送狀態" />}
-      <ReadFailure error={status.error} what="派送狀態" />
+      <StatusFeedback status={status} />
       {currentStatus && (
         <>
           <p>

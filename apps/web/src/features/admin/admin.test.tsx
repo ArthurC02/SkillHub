@@ -1305,12 +1305,17 @@ test("recovery is unavailable when no halt exists", async () => {
   expect(calls.some((c) => c.method === "DELETE")).toBe(false);
 });
 
-test("dispatch status failure preserves emergency stop but blocks recovery", async () => {
-  stub(true, (path, method) =>
-    path === "/admin/dispatch" && method === "GET"
-      ? { body: { error: "unavailable" }, status: 503 }
-      : undefined,
-  );
+test("dispatch status failure preserves emergency stop and retry restores recovery controls", async () => {
+  let reads = 0;
+  stub(true, (path, method) => {
+    if (path === "/admin/dispatch" && method === "GET") {
+      reads += 1;
+      return reads === 1
+        ? { body: { error: "unavailable" }, status: 503 }
+        : { body: ADMIN_DISPATCH, status: 200 };
+    }
+    return undefined;
+  });
   await mountAt("/admin/dispatch");
   await waitFor(has("暫時無法讀取派送狀態"));
   await type("#admin-halt-declare-note", "emergency");
@@ -1319,6 +1324,14 @@ test("dispatch status failure preserves emergency stop but blocks recovery", asy
   expect(button("停止派送").disabled).toBe(false);
   expect(button("恢復派送").disabled).toBe(true);
   expect(has("必須先讀到目前的派送狀態")()).toBe(true);
+  expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+
+  await click(button("重新讀取派送狀態"));
+  await waitFor(has("sandbox escape suspected on node-2"));
+  expect(button("恢復派送").disabled).toBe(true);
+  await type("#admin-halt-recovery-target", "pool");
+  expect(button("恢復派送").disabled).toBe(false);
+  expect(reads).toBe(2);
   expect(calls.some((c) => c.method === "DELETE")).toBe(false);
 });
 
