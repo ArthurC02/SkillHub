@@ -7,9 +7,9 @@ export function AdminRosters() {
   const rosters = useRosters();
   return (
     <AdminPage heading="名冊" lede="要改名冊只能改部署設定再重啟，後台不提供編輯。">
-      {rosters.isPending && <Loading what="名冊" />}
+      {rosters.isFetching && <Loading what="名冊" />}
       <ReadFailure error={rosters.error} what="名冊" />
-      {rosters.data && !rosters.error && (
+      {rosters.data && !rosters.error && !rosters.isFetching && (
         <>
           <h2>operator</h2>
           {rosters.data.operator_user_ids.length === 0 ? (

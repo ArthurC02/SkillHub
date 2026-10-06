@@ -1307,6 +1307,40 @@ test("OPS-005: a failed roster refresh hides cached membership", async () => {
   expect(container.querySelectorAll("main code")).toHaveLength(0);
 });
 
+test("OPS-005: a pending roster refresh does not present cached membership as current", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishRead: ((response: Response) => void) | undefined;
+  await mountAt("/admin/rosters");
+  await waitFor(has("u-1"));
+
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/rosters") && (init?.method ?? "GET") === "GET") {
+      return new Promise<Response>((resolve) => {
+        finishRead = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await act(async () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.rosters });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await waitFor(() => !has("u-1")());
+  expect(has("載入名冊中")()).toBe(true);
+
+  await act(async () => {
+    finishRead!(
+      new Response(JSON.stringify({ operator_user_ids: ["u-2"], beta_allowlist: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(has("u-2"));
+  expect(has("u-1")()).toBe(false);
+});
+
 test("OPS-006: the audit log names actions in words and folds the metadata", async () => {
   stub(true);
   await mountAt("/admin/audit-log");
