@@ -71,13 +71,20 @@ func (h *operatorAuditHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	query := r.URL.Query()
+	var workspaceID pgtype.UUID
+	if query.Has("workspace_id") {
+		if err := workspaceID.Scan(query.Get("workspace_id")); err != nil || !workspaceID.Valid {
+			httpx.WriteError(w, http.StatusBadRequest, "workspace_id must be a UUID")
+			return
+		}
+	}
 	beforeAt, beforeID, err := parseAuditCursor(query.Get("before"))
 	if err != nil || (query.Has("before") && (beforeAt.IsZero() || query.Has("offset"))) {
 		httpx.WriteError(w, http.StatusBadRequest, "before must be a cursor this endpoint returned and cannot be combined with offset")
 		return
 	}
 	records, err := audit.ListPlatform(r.Context(), h.DB, operatorActions, audit.PlatformPage{
-		Limit: limit + 1, Offset: offset, BeforeAt: beforeAt, BeforeID: beforeID,
+		Limit: limit + 1, Offset: offset, WorkspaceID: workspaceID, BeforeAt: beforeAt, BeforeID: beforeID,
 	})
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "audit log lookup failed")

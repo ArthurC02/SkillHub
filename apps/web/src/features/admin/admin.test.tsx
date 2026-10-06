@@ -1283,6 +1283,60 @@ test("OPS-006: a full page of 50 stops, the 51st event offers the next page", as
   ).toBe(true);
 });
 
+test("OPS-006: a workspace filter stays on both audit pages and clearing it restores the platform view", async () => {
+  const workspaceID = "00000000-0000-4000-8000-0000000000aa";
+  const event = { ...ADMIN_AUDIT_LOG.events[0], workspace_id: workspaceID };
+  stub(true, (path) => {
+    if (path !== "/admin/audit-log") return undefined;
+    const params = new URLSearchParams(calls.at(-1)?.url.split("?")[1]);
+    if (params.get("workspace_id") !== workspaceID) return undefined;
+    return params.has("before")
+      ? { body: { events: [{ ...event, resource_id: "second-entry" }] }, status: 200 }
+      : { body: { events: [event], next_before: "audit-page-2" }, status: 200 };
+  });
+  await mountAt("/admin/audit-log", { workspace_id: workspaceID });
+  await waitFor(() => container.querySelectorAll("tbody tr").length === 1);
+  expect(calls.at(-1)?.url).toContain(`workspace_id=${workspaceID}`);
+  expect(field<HTMLTableElement>("table").caption?.textContent).toContain(workspaceID);
+  await click(button("載入更多"));
+  await waitFor(() => container.querySelectorAll("tbody tr").length === 2);
+  expect(calls.at(-1)?.url).toContain(`workspace_id=${workspaceID}`);
+  expect(calls.at(-1)?.url).toContain("before=audit-page-2");
+
+  await type("#admin-audit-workspace", "");
+  await submit("#admin-audit-workspace");
+  await waitFor(() => !window.location.search.includes("workspace_id"));
+  await waitFor(
+    () => container.querySelector("table caption")?.textContent === "operator 動作，新的在上面",
+  );
+  expect(calls.at(-1)?.url).toBe("/admin/audit-log?limit=50");
+});
+
+test.each(["not-a-uuid", ""])(
+  "OPS-006: invalid workspace address %j never broadens the audit view",
+  async (workspaceID) => {
+    stub(true);
+    await mountAt("/admin/audit-log", { workspace_id: workspaceID });
+    await waitFor(has(workspaceID ? "Workspace ID 格式不正確" : "網址中的 Workspace ID 為空"));
+    expect(calls.some((call) => call.url.startsWith("/admin/audit-log"))).toBe(false);
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
+    expect(field<HTMLInputElement>("#admin-audit-workspace").getAttribute("aria-describedby")).toBe(
+      "admin-audit-workspace-error",
+    );
+  },
+);
+
+test("OPS-006: an empty workspace address offers an explicit path back to the platform view", async () => {
+  stub(true);
+  await mountAt("/admin/audit-log", { workspace_id: "" });
+  await waitFor(has("網址中的 Workspace ID 為空"));
+  await click(button("顯示全平台"));
+  await waitFor(() => !window.location.search.includes("workspace_id"));
+  await waitFor(
+    () => container.querySelector("table caption")?.textContent === "operator 動作，新的在上面",
+  );
+});
+
 test("OPS-007: cost statistics show window bounds and dollars", async () => {
   stub(true);
   await mountAt("/admin/cost-statistics");

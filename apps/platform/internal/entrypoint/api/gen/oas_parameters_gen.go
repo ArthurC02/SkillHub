@@ -317,9 +317,10 @@ type ListDownloadRecordsParams struct {
 
 // ListOperatorAuditLogParams is parameters of listOperatorAuditLog operation.
 type ListOperatorAuditLogParams struct {
-	Limit  OptInt    `json:",omitempty,omitzero"`
-	Offset OptInt    `json:",omitempty,omitzero"`
-	Before OptString `json:",omitempty,omitzero"`
+	Limit       OptInt    `json:",omitempty,omitzero"`
+	Offset      OptInt    `json:",omitempty,omitzero"`
+	Before      OptString `json:",omitempty,omitzero"`
+	WorkspaceID OptUUID   `json:",omitempty,omitzero"`
 }
 
 // ListRunArtifactsParams is parameters of listRunArtifacts operation.

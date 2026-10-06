@@ -173,10 +173,11 @@ type PlatformFilter struct {
 }
 
 type PlatformPage struct {
-	Limit    int32
-	Offset   int32
-	BeforeAt time.Time
-	BeforeID int64
+	Limit       int32
+	Offset      int32
+	WorkspaceID pgtype.UUID
+	BeforeAt    time.Time
+	BeforeID    int64
 }
 
 func ListForWorkspace(
@@ -203,18 +204,30 @@ func ListPlatform(ctx context.Context, db DBTX, filter PlatformFilter, page Plat
 	if db == nil {
 		return nil, errors.New("audit: database handle is not configured")
 	}
-	params := gen.ListPlatformAuditEventsParams{
-		Actions:       filter.Actions,
-		ScopedActions: filter.ScopedActions,
-		Scope:         filter.Scope,
-		PageLimit:     page.Limit,
-		PageOffset:    page.Offset,
-	}
+	var beforeAt pgtype.Timestamptz
+	var beforeID *int64
 	if !page.BeforeAt.IsZero() {
-		params.BeforeAt = pgtype.Timestamptz{Time: page.BeforeAt, Valid: true}
-		params.BeforeID = &page.BeforeID
+		beforeAt = pgtype.Timestamptz{Time: page.BeforeAt, Valid: true}
+		beforeID = &page.BeforeID
 	}
-	rows, err := gen.New(db).ListPlatformAuditEvents(ctx, params)
+	queries := gen.New(db)
+	if page.WorkspaceID.Valid {
+		rows, err := queries.ListWorkspaceOperatorAuditEvents(ctx, gen.ListWorkspaceOperatorAuditEventsParams{
+			WorkspaceID: page.WorkspaceID, Actions: filter.Actions,
+			ScopedActions: filter.ScopedActions, Scope: filter.Scope,
+			BeforeAt: beforeAt, BeforeID: beforeID,
+			PageLimit: page.Limit, PageOffset: page.Offset,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return records(rows), nil
+	}
+	rows, err := queries.ListPlatformAuditEvents(ctx, gen.ListPlatformAuditEventsParams{
+		Actions: filter.Actions, ScopedActions: filter.ScopedActions, Scope: filter.Scope,
+		BeforeAt: beforeAt, BeforeID: beforeID,
+		PageLimit: page.Limit, PageOffset: page.Offset,
+	})
 	if err != nil {
 		return nil, err
 	}

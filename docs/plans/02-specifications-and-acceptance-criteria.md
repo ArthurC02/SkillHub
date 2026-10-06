@@ -1055,6 +1055,7 @@ Run 至少支援：
 允收準則：
 
 - 全平台、只列 operator 動作，新的在上，一次 50 筆、可以載入更多。每筆含動作者、時間、動作、對象、所屬 workspace 與 metadata（理由、前後狀態）。
+- 可以選填 `workspace_id`（完整 UUID）縮小到一個 Workspace；先篩選再依同一條件翻頁，不帶參數時仍是全平台。格式錯誤或明寫空值時拒絕或明示錯誤，不得默默改查全平台；篩選後不含沒有 Workspace 的全平台動作。
 - **哪些 action 算 operator 動作，由組裝層（`apiserver`）提供**；`audit` 是 Generic，不自己知道。清單包含 `OPS-002`／`OPS-003` 的查詢紀錄。新增一條 operator 端點時，這份清單要一起改，否則那個動作不會出現在這裡。（：`OPS-009` 的 `model_budget.set` 已依這一條加入。）
 - `skill.takedown` 同時由自助下架與 operator 下架寫入，只有 operator 下架在 metadata 帶 `scope = operator`；這份紀錄只列後者。
 

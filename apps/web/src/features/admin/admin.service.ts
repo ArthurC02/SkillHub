@@ -241,16 +241,23 @@ export function useRosters() {
 
 const AUDIT_PAGE = 50;
 
-export function useOperatorAuditLog() {
+export function validAuditWorkspace(workspaceId: string): boolean {
+  return (
+    workspaceId === "" ||
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId)
+  );
+}
+
+export function useOperatorAuditLog(workspaceId: string, emptyAddress: boolean) {
   return useInfiniteQuery({
-    queryKey: queryKeys.admin.auditLog,
+    queryKey: queryKeys.admin.auditLogFor(workspaceId),
     initialPageParam: "",
     queryFn: ({ pageParam }) =>
       apiFetch<{ events: OperatorAuditEvent[]; next_before?: string }>(
-        `/admin/audit-log?limit=${AUDIT_PAGE}${pageParam ? `&before=${encodeURIComponent(pageParam)}` : ""}`,
+        `/admin/audit-log?limit=${AUDIT_PAGE}${workspaceId ? `&workspace_id=${encodeURIComponent(workspaceId)}` : ""}${pageParam ? `&before=${encodeURIComponent(pageParam)}` : ""}`,
       ),
     getNextPageParam: (last) => last.next_before,
-    enabled: useOperator(),
+    enabled: useOperator() && !emptyAddress && validAuditWorkspace(workspaceId),
   });
 }
 

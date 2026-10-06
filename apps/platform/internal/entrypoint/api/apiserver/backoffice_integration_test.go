@@ -453,6 +453,83 @@ func TestOperatorAuditLogRejectsInvalidCursor(t *testing.T) {
 	}
 }
 
+func TestOperatorAuditLogFiltersWorkspaceBeforePaginating(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	first := a.login(t, "bo-log-workspace-first")
+	second := a.login(t, "bo-log-workspace-second")
+	operator := a.login(t, "bo-log-workspace-operator")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	ctx := context.Background()
+	base := time.Now().UTC()
+	for i, entry := range []struct {
+		workspace string
+		marker    string
+	}{
+		{first.workspaceID, "first-older"},
+		{second.workspaceID, "second"},
+		{first.workspaceID, "first-newer"},
+	} {
+		_, err := pool.Exec(ctx, `INSERT INTO audit_events
+			(actor_user_id, workspace_id, action, resource_type, metadata, created_at)
+			VALUES ($1, $2, 'credit.lookup', 'credit_account', jsonb_build_object('marker', $3::text), $4)`,
+			operator.userID, entry.workspace, entry.marker, base.Add(time.Duration(i)*time.Microsecond))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	code, page := getAdmin(t, operator, "/admin/audit-log?limit=100")
+	if code != http.StatusOK {
+		t.Fatalf("platform page: got %d (%v)", code, page)
+	}
+	all := objects(t, page["events"])
+	if len(all) < 3 {
+		t.Fatalf("platform page has %d events, want at least three", len(all))
+	}
+	markers := make([]string, 0, 3)
+	for _, entry := range all[:3] {
+		markers = append(markers, entry["metadata"].(map[string]any)["marker"].(string))
+	}
+	if !slices.Equal(markers, []string{"first-newer", "second", "first-older"}) {
+		t.Errorf("platform page markers = %v, want both workspaces", markers)
+	}
+	firstPath := "/admin/audit-log?limit=1&workspace_id=" + first.workspaceID
+	page = workspaceAuditPage(t, operator, firstPath, first.workspaceID, "first-newer")
+	before, ok := page["next_before"].(string)
+	if !ok || before == "" {
+		t.Fatalf("first workspace page has no cursor: %v", page)
+	}
+	workspaceAuditPage(t, operator, firstPath+"&before="+url.QueryEscape(before), first.workspaceID, "first-older")
+	workspaceAuditPage(t, operator, "/admin/audit-log?workspace_id="+second.workspaceID, second.workspaceID, "second")
+}
+
+func workspaceAuditPage(t *testing.T, operator *client, path, workspaceID, marker string) map[string]any {
+	t.Helper()
+	code, page := getAdmin(t, operator, path)
+	if code != http.StatusOK {
+		t.Fatalf("workspace audit page: got %d (%v)", code, page)
+	}
+	entries := objects(t, page["events"])
+	if len(entries) != 1 || entries[0]["workspace_id"] != workspaceID ||
+		entries[0]["metadata"].(map[string]any)["marker"] != marker {
+		t.Fatalf("workspace audit page = %v, want workspace %s marker %s", entries, workspaceID, marker)
+	}
+	return page
+}
+
+func TestOperatorAuditLogRejectsInvalidWorkspace(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	operator := a.login(t, "bo-log-invalid-workspace")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	for _, workspaceID := range []string{"", "not-a-uuid"} {
+		code, _ := getAdmin(t, operator, "/admin/audit-log?workspace_id="+workspaceID)
+		if code != http.StatusBadRequest {
+			t.Errorf("workspace_id=%q: got %d, want 400", workspaceID, code)
+		}
+	}
+}
+
 func TestCostStatisticsShowTheNewestWindowOfEachKind(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

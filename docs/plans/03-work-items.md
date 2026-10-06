@@ -485,7 +485,7 @@ hello in-process s3
 - [x] OPS-003 點數餘額與分錄的端點（`credit`），同一交易寫 audit；前端帳號頁顯示並授予。（對應 `02:OPS-003`；依 OPS-002）
 - [x] OPS-004 Skill 治理查詢端點（`catalog` 的 handler、`registry` 的 query）；前端治理頁接三個既有動作。（對應 `02:OPS-004`）
 - [x] OPS-005 名冊唯讀端點（`identity`）；前端派送煞車頁與名冊頁。（對應 `02:OPS-005`）
-- [x] OPS-006 operator 動作紀錄端點（`audit` 的 query，action 清單由 `apiserver` 提供）與前端頁。（對應 `02:OPS-006`；第二批）
+- [x] OPS-006 operator 動作紀錄端點（`audit` 的 query，action 清單由 `apiserver` 提供）與前端頁；可依 Workspace 縮小，預設仍看全平台，篩選條件沿游標翻頁保留。（對應 `02:OPS-006`；第二批）
 - [x] OPS-007 成本統計端點（`credit`）與前端頁； 的觀察改看這一頁。（對應 `02:OPS-007`；第二批）
 - [x] OPS-008 每一條新 `/admin/...` 端點列入 `authz_matrix_integration_test.go`；新 query 登記在 `db/query-owners.yaml`，不加 `allow:` 例外。（依[Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map)、[Query 與寫入所有權](../adr/README.md#query-與寫入所有權)；鐵律 7、8）
 - [x] OPS-009 營運趨勢圖：`apps/web` 新增 `chart.js` 依賴（[營運後台](../adr/README.md#營運後台)，§4.8 的具名例外）與 `/admin/trends`；四條每日彙總端點（`credit` 兩條、`run`、`audit`），逐條 `RequireOperator` 並列入 authz 矩陣。（對應 `02:OPS-008`；第三批）

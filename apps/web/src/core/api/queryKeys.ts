@@ -119,6 +119,7 @@ export const queryKeys = {
     dispatch: ["admin", "dispatch"],
     rosters: ["admin", "rosters"],
     auditLog: ["admin", "audit-log"],
+    auditLogFor: (workspaceId: string) => ["admin", "audit-log", workspaceId],
     costStatistics: ["admin", "cost-statistics"],
     modelBudgets: ["admin", "model-budgets"],
     trend: (path: string, days: number) => ["admin", "trends", path, days],

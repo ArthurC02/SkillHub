@@ -1242,6 +1242,10 @@ export interface ListOperatorAuditLogRequest {
      * 
      */
     before?: string;
+    /**
+     * 
+     */
+    workspaceId?: string;
 }
 
 export interface ListRunArtifactsRequest {
@@ -3606,17 +3610,19 @@ export interface DefaultApiInterface {
      * @param {number} [limit] 
      * @param {number} [offset] 
      * @param {string} [before] 
+     * @param {string} [workspaceId] 
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
     listOperatorAuditLogRequestOpts(requestParameters: ListOperatorAuditLogRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_before` as the next request\'s `before` cursor so new events do not move the page boundary. `offset` remains for older clients; it cannot be combined with `before`. 
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_before` as the next request\'s `before` cursor so new events do not move the page boundary. `offset` remains for older clients; it cannot be combined with `before`. An optional `workspace_id` narrows the operator-only view before pagination; without it, the response remains platform-wide. 
      * @summary What operators did, platform-wide (02:OPS-006)
      * @param {number} [limit] 
      * @param {number} [offset] 
      * @param {string} [before] 
+     * @param {string} [workspaceId] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -3624,7 +3630,7 @@ export interface DefaultApiInterface {
     listOperatorAuditLogRaw(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOperatorAuditLog200Response>>;
 
     /**
-     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_before` as the next request\'s `before` cursor so new events do not move the page boundary. `offset` remains for older clients; it cannot be combined with `before`. 
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_before` as the next request\'s `before` cursor so new events do not move the page boundary. `offset` remains for older clients; it cannot be combined with `before`. An optional `workspace_id` narrows the operator-only view before pagination; without it, the response remains platform-wide. 
      * What operators did, platform-wide (02:OPS-006)
      */
     listOperatorAuditLog(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOperatorAuditLog200Response>;
@@ -8421,6 +8427,10 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             queryParameters['before'] = requestParameters['before'];
         }
 
+        if (requestParameters['workspaceId'] != null) {
+            queryParameters['workspace_id'] = requestParameters['workspaceId'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -8435,7 +8445,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_before` as the next request\'s `before` cursor so new events do not move the page boundary. `offset` remains for older clients; it cannot be combined with `before`. 
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_before` as the next request\'s `before` cursor so new events do not move the page boundary. `offset` remains for older clients; it cannot be combined with `before`. An optional `workspace_id` narrows the operator-only view before pagination; without it, the response remains platform-wide. 
      * What operators did, platform-wide (02:OPS-006)
      */
     async listOperatorAuditLogRaw(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOperatorAuditLog200Response>> {
@@ -8446,7 +8456,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_before` as the next request\'s `before` cursor so new events do not move the page boundary. `offset` remains for older clients; it cannot be combined with `before`. 
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_before` as the next request\'s `before` cursor so new events do not move the page boundary. `offset` remains for older clients; it cannot be combined with `before`. An optional `workspace_id` narrows the operator-only view before pagination; without it, the response remains platform-wide. 
      * What operators did, platform-wide (02:OPS-006)
      */
     async listOperatorAuditLog(requestParameters: ListOperatorAuditLogRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOperatorAuditLog200Response> {

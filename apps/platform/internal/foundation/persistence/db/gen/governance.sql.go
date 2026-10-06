@@ -643,6 +643,66 @@ func (q *Queries) ListWorkspaceDownloadArtifactObjectKeys(ctx context.Context, w
 	return items, nil
 }
 
+const listWorkspaceOperatorAuditEvents = `-- name: ListWorkspaceOperatorAuditEvents :many
+SELECT id, actor_user_id, workspace_id, action, resource_type, resource_id, metadata, created_at FROM audit_events
+WHERE workspace_id = $1::uuid
+  AND (action = ANY($2::text[])
+   OR (action = ANY($3::text[]) AND metadata->>'scope' = $4::text))
+  AND ($5::timestamptz IS NULL
+       OR (created_at, id) < ($5::timestamptz, $6::bigint))
+ORDER BY created_at DESC, id DESC
+LIMIT $8 OFFSET $7
+`
+
+type ListWorkspaceOperatorAuditEventsParams struct {
+	WorkspaceID   pgtype.UUID
+	Actions       []string
+	ScopedActions []string
+	Scope         string
+	BeforeAt      pgtype.Timestamptz
+	BeforeID      *int64
+	PageOffset    int32
+	PageLimit     int32
+}
+
+func (q *Queries) ListWorkspaceOperatorAuditEvents(ctx context.Context, arg ListWorkspaceOperatorAuditEventsParams) ([]AuditEvent, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceOperatorAuditEvents,
+		arg.WorkspaceID,
+		arg.Actions,
+		arg.ScopedActions,
+		arg.Scope,
+		arg.BeforeAt,
+		arg.BeforeID,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AuditEvent
+	for rows.Next() {
+		var i AuditEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActorUserID,
+			&i.WorkspaceID,
+			&i.Action,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.Metadata,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkspacePurgeCandidates = `-- name: ListWorkspacePurgeCandidates :many
 SELECT sk.id,
        COALESCE((SELECT array_agg(v.id) FROM skill_versions v WHERE v.skill_id = sk.id),

@@ -38,6 +38,7 @@ queries:
   InsertAuditEvent: audit
   ListWorkspaceAuditEvents: audit
   ListPlatformAuditEvents: audit
+  ListWorkspaceOperatorAuditEvents: audit
   CountPlatformAuditEventsByDay: audit
   ListWorkspaceDatasetObjectKeys: testlab
   ListWorkspaceRunArtifactObjectKeys: run

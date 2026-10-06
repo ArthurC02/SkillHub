@@ -441,6 +441,14 @@ const adminAuditLogRoute = createRoute({
     () => import("../features/admin/audit-log/AdminAuditLog.page"),
     "AdminAuditLog",
   ),
+  validateSearch: (search: Record<string, unknown>): { workspace_id?: string } => ({
+    workspace_id:
+      search.workspace_id !== undefined
+        ? typeof search.workspace_id === "string"
+          ? search.workspace_id.trim()
+          : String(search.workspace_id)
+        : undefined,
+  }),
 });
 
 const adminModelBudgetsRoute = createRoute({
