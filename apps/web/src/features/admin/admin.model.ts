@@ -32,3 +32,9 @@ export const COST_KIND: Record<string, string> = {
   run: "試跑",
   match_reasons: "搜尋理由",
 };
+
+export const OPERATOR_NOTE_MAX_BYTES = 1000;
+
+export function operatorNoteBytes(value: string): number {
+  return new TextEncoder().encode(value.trim()).length;
+}

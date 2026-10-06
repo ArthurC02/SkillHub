@@ -1,5 +1,34 @@
 import { useState, type ReactNode } from "react";
+import { operatorNoteBytes } from "../admin.model";
 import { WriteFailure } from "./WriteFailure";
+
+function noteLimitLabel(maxNoteBytes?: number): string {
+  return maxNoteBytes === undefined ? "" : `，最多 ${maxNoteBytes} 位元組`;
+}
+
+function blockReason({
+  tooLong,
+  noteBytes,
+  maxNoteBytes,
+  ready,
+  unavailableReason,
+  submitLabel,
+}: {
+  tooLong: boolean;
+  noteBytes: number;
+  maxNoteBytes: number | undefined;
+  ready: boolean;
+  unavailableReason: string | undefined;
+  submitLabel: string;
+}): string {
+  if (tooLong) {
+    return `理由太長：目前 ${noteBytes} 位元組，上限 ${maxNoteBytes} 位元組。請縮短後再送出。`;
+  }
+  if (!ready && unavailableReason) {
+    return unavailableReason;
+  }
+  return `「${submitLabel}」要等上面的欄位都填好。`;
+}
 
 export function ActionForm({
   id,
@@ -11,6 +40,7 @@ export function ActionForm({
   tone,
   ready = true,
   readOnly = false,
+  maxNoteBytes,
   unavailableReason,
   onSubmit,
   children,
@@ -24,13 +54,16 @@ export function ActionForm({
   tone?: "caution";
   ready?: boolean;
   readOnly?: boolean;
+  maxNoteBytes?: number;
   unavailableReason?: string;
   onSubmit: (note: string) => void;
   children?: ReactNode;
 }) {
   const [note, setNote] = useState("");
   const [submitted, setSubmitted] = useState<{ note: string; contextKey: string } | null>(null);
-  const blocked = note.trim() === "" || !ready;
+  const noteBytes = operatorNoteBytes(note);
+  const tooLong = maxNoteBytes !== undefined && noteBytes > maxNoteBytes;
+  const blocked = note.trim() === "" || !ready || tooLong;
   const resultMatches = submitted?.note === note.trim() && submitted.contextKey === contextKey;
 
   return (
@@ -45,7 +78,9 @@ export function ActionForm({
     >
       {children}
       <div className="field">
-        <label htmlFor={`${id}-note`}>理由（必填，會寫進動作紀錄）</label>
+        <label htmlFor={`${id}-note`}>
+          理由（必填{noteLimitLabel(maxNoteBytes)}，會寫進動作紀錄）
+        </label>
         <textarea
           id={`${id}-note`}
           value={note}
@@ -54,6 +89,8 @@ export function ActionForm({
             setSubmitted(null);
           }}
           readOnly={pending || readOnly}
+          aria-invalid={tooLong}
+          aria-describedby={tooLong ? `${id}-why` : undefined}
         />
       </div>
       <button
@@ -66,9 +103,7 @@ export function ActionForm({
       </button>
       {blocked && (
         <p id={`${id}-why`} className="note">
-          {!ready && unavailableReason
-            ? unavailableReason
-            : `「${submitLabel}」要等上面的欄位都填好。`}
+          {blockReason({ tooLong, noteBytes, maxNoteBytes, ready, unavailableReason, submitLabel })}
         </p>
       )}
       {done && resultMatches && (

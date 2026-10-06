@@ -5,6 +5,7 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { AdminPage } from "../components/AdminPage";
 import { ActionForm } from "../components/ActionForm";
+import { OPERATOR_NOTE_MAX_BYTES } from "../admin.model";
 
 const HALT_SOURCE: Record<string, string> = {
   p1_incident: "P1 事故：只有人能解除",
@@ -93,6 +94,7 @@ export function AdminDispatch() {
         submitLabel="停止派送"
         pending={declare.isPending}
         error={declare.error}
+        maxNoteBytes={OPERATOR_NOTE_MAX_BYTES}
         done={declare.data?.note}
         contextKey={target ?? "pool"}
         tone="caution"
@@ -123,6 +125,7 @@ export function AdminDispatch() {
         submitLabel="恢復派送"
         pending={lift.isPending}
         error={lift.error}
+        maxNoteBytes={OPERATOR_NOTE_MAX_BYTES}
         done={lift.isSuccess && "解除請求已處理；若狀態讀取失敗，請重新整理確認。"}
         contextKey={recoveryTarget}
         ready={!recoveryBlock}

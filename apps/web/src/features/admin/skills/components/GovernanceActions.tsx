@@ -3,6 +3,7 @@ import { useGovernanceAction, type SkillGovernance } from "../../admin.service";
 import { ConfirmDelete } from "../../../../shared/ui/ConfirmDelete";
 import { WriteFailure } from "../../components/WriteFailure";
 import { ActionForm } from "../../components/ActionForm";
+import { OPERATOR_NOTE_MAX_BYTES, operatorNoteBytes } from "../../admin.model";
 
 export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
   const restriction = useGovernanceAction(skill.skill_id, "restriction");
@@ -22,6 +23,7 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
         submitLabel={skill.access_restriction ? "解除受限" : "設定受限"}
         pending={restriction.isPending}
         error={restriction.error}
+        maxNoteBytes={OPERATOR_NOTE_MAX_BYTES}
         done={restriction.isSuccess && "已送出，上面的狀態已更新。"}
         contextKey={`${skill.skill_id}:${skill.access_restriction ?? "none"}`}
         onSubmit={(note) =>
@@ -37,6 +39,7 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
         submitLabel="送出判定"
         pending={redistribution.isPending}
         error={redistribution.error}
+        maxNoteBytes={OPERATOR_NOTE_MAX_BYTES}
         ready={
           verdict !== "" &&
           (!releasing || (licenseExpression.trim() !== "" && licenseSource !== ""))
@@ -119,21 +122,32 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
 function TakedownAction({ skill }: { skill: SkillGovernance }) {
   const takedown = useGovernanceAction(skill.skill_id, "takedown");
   const [takedownReason, setTakedownReason] = useState("");
+  const reasonBytes = operatorNoteBytes(takedownReason);
+  const tooLong = reasonBytes > OPERATOR_NOTE_MAX_BYTES;
 
   return (
     <>
       <h3>下架</h3>
       <div className="field">
-        <label htmlFor="admin-takedown-reason">下架理由（必填，會寫進動作紀錄）</label>
+        <label htmlFor="admin-takedown-reason">
+          下架理由（必填，最多 {OPERATOR_NOTE_MAX_BYTES} 位元組，會寫進動作紀錄）
+        </label>
         <input
           id="admin-takedown-reason"
           value={takedownReason}
           onChange={(event) => setTakedownReason(event.target.value)}
           readOnly={takedown.isPending}
+          aria-invalid={tooLong}
+          aria-describedby={tooLong ? "admin-takedown-reason-too-long" : undefined}
         />
       </div>
       {takedownReason.trim() === "" ? (
         <p className="note">填了理由才能下架。</p>
+      ) : tooLong ? (
+        <p id="admin-takedown-reason-too-long" className="note">
+          理由太長：目前 {reasonBytes} 位元組，上限 {OPERATOR_NOTE_MAX_BYTES}{" "}
+          位元組。請縮短後再送出。
+        </p>
       ) : (
         <ConfirmDelete
           scopeId="admin-takedown-scope"

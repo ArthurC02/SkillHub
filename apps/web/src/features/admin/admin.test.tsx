@@ -725,6 +725,32 @@ test("OPS-004: a pending takedown locks the reason being confirmed", async () =>
   });
 });
 
+test("OPS-004: takedown refuses a reason beyond the UTF-8 byte limit before confirmation", async () => {
+  stub(true);
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  await type("#admin-takedown-reason", "x".repeat(1000));
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "下架"),
+  ).toBe(true);
+
+  await type("#admin-takedown-reason", "x".repeat(1001));
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "下架"),
+  ).toBe(false);
+  expect(has("上限 1000 位元組")()).toBe(true);
+  expect(calls.some((call) => call.method === "PUT")).toBe(false);
+
+  await type("#admin-takedown-reason", "理".repeat(333));
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "下架"),
+  ).toBe(true);
+  await type("#admin-takedown-reason", "理".repeat(334));
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "下架"),
+  ).toBe(false);
+});
+
 test("OPS-004: editing the skill search hides the old result and actions until submitted", async () => {
   stub(true);
   await mountAt("/admin/skills", { q: SKILL });
@@ -839,6 +865,12 @@ test("OPS-004: redistribution needs an explicit verdict and releasing needs lice
   expect(button("送出判定").disabled).toBe(true);
 
   await type("#admin-redistribution-value", "blocked");
+  expect(button("送出判定").disabled).toBe(false);
+  await type("#admin-redistribution-note", "x".repeat(1001));
+  expect(button("送出判定").disabled).toBe(true);
+  expect(has("上限 1000 位元組")()).toBe(true);
+  expect(calls.some((call) => call.method === "PUT")).toBe(false);
+  await type("#admin-redistribution-note", "legal cleared");
   expect(button("送出判定").disabled).toBe(false);
 
   await type("#admin-redistribution-value", "allowed");
@@ -1106,6 +1138,23 @@ test("OPS-004: a restriction is set with the known reason code and lifted by the
   expect(has("設定受限展示")()).toBe(true);
 });
 
+test("OPS-004: restriction note limits UTF-8 bytes before a write", async () => {
+  stub(true);
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  await type("#admin-restriction-note", "x".repeat(1000));
+  expect(button("設定受限").disabled).toBe(false);
+  await type("#admin-restriction-note", "x".repeat(1001));
+  expect(button("設定受限").disabled).toBe(true);
+  expect(has("上限 1000 位元組")()).toBe(true);
+  expect(calls.some((call) => call.method === "PUT")).toBe(false);
+
+  await type("#admin-restriction-note", "理".repeat(333));
+  expect(button("設定受限").disabled).toBe(false);
+  await type("#admin-restriction-note", "理".repeat(334));
+  expect(button("設定受限").disabled).toBe(true);
+});
+
 test("an uncertain restriction write rereads the skill before another action", async () => {
   let restricted: string | null = null;
   stub(true, (path, method) => {
@@ -1228,6 +1277,24 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
   await click(button("恢復派送"));
   await waitFor(() => calls.some((c) => c.method === "DELETE"));
   expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({ note: "cleared" });
+});
+
+test("OPS-005: halt and recovery notes stop at the server byte limit", async () => {
+  stub(true);
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-declare-note", "x".repeat(1001));
+  expect(button("停止派送").disabled).toBe(true);
+  expect(has("上限 1000 位元組")()).toBe(true);
+  await type("#admin-halt-declare-note", "x".repeat(1000));
+  expect(button("停止派送").disabled).toBe(false);
+
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-lift-note", "x".repeat(1001));
+  expect(button("恢復派送").disabled).toBe(true);
+  await type("#admin-halt-lift-note", "x".repeat(1000));
+  expect(button("恢復派送").disabled).toBe(false);
+  expect(calls.some((call) => call.method === "PUT" || call.method === "DELETE")).toBe(false);
 });
 
 test("a pending dispatch halt prevents recovery from starting", async () => {
