@@ -174,13 +174,22 @@ func TestExposureReviewAppearsInOperatorAuditLog(t *testing.T) {
 		t.Fatalf("review: %d %v", code, body)
 	}
 	events := allAuditEvents(t, w.operator)
-	if !slices.ContainsFunc(events, func(event map[string]any) bool {
+	isReview := func(event map[string]any) bool {
 		metadata, ok := event["metadata"].(map[string]any)
 		return ok && event["action"] == "publication.exposure.review" &&
 			event["actor_user_id"] == w.operator.userID && event["resource_type"] == "publication" &&
-			metadata["reason"] == "reviewed the current release"
-	}) {
+			event["workspace_id"] == w.author.workspaceID && metadata["reason"] == "reviewed the current release"
+	}
+	if !slices.ContainsFunc(events, isReview) {
 		t.Errorf("the operator audit log omitted the completed exposure review: %v", events)
+	}
+	code, filtered := getAdmin(t, w.operator, "/admin/audit-log?workspace_id="+w.author.workspaceID)
+	if code != http.StatusOK || !slices.ContainsFunc(objects(t, filtered["events"]), isReview) {
+		t.Errorf("the owner's filtered audit log omitted the exposure review: %d %v", code, filtered)
+	}
+	code, unrelated := getAdmin(t, w.operator, "/admin/audit-log?workspace_id="+w.operator.workspaceID)
+	if code != http.StatusOK || slices.ContainsFunc(objects(t, unrelated["events"]), isReview) {
+		t.Errorf("an unrelated workspace's audit log included the exposure review: %d %v", code, unrelated)
 	}
 }
 

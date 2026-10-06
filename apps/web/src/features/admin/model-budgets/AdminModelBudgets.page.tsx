@@ -15,7 +15,12 @@ const CALL_NAMES: Record<string, string> = {
   "suggest-improvements": "建議改善",
 };
 
-function BudgetRow({ budget }: { budget: ModelCallBudget }) {
+function unavailableReason(fresh: boolean, otherPending: boolean, pendingReason: string) {
+  if (!fresh) return "正在確認最新設定，完成後才能更改。";
+  return otherPending ? pendingReason : undefined;
+}
+
+function BudgetRow({ budget, fresh }: { budget: ModelCallBudget; fresh: boolean }) {
   const name = CALL_NAMES[budget.kind] ?? budget.kind;
   const [seconds, setSeconds] = useState(String(budget.seconds ?? budget.default_seconds));
   const set = useModelBudgetChange("PUT");
@@ -49,8 +54,12 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
         submitLabel={`改 ${name} 的秒數`}
         pending={set.isPending}
         error={set.error}
-        ready={inRange && !clear.isPending}
-        unavailableReason={clear.isPending ? "此呼叫正在改回預設，完成後才能再次設定。" : undefined}
+        ready={fresh && inRange && !clear.isPending}
+        unavailableReason={unavailableReason(
+          fresh,
+          clear.isPending,
+          "此呼叫正在改回預設，完成後才能再次設定。",
+        )}
         done={set.isSuccess && "已套用，下一次呼叫就用這個秒數。"}
         contextKey={`${budget.kind}:${seconds}`}
         onSubmit={(reason) => {
@@ -70,7 +79,7 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
               setSeconds(event.target.value);
               set.reset();
             }}
-            readOnly={changing}
+            readOnly={changing || !fresh}
             aria-describedby={inRange ? undefined : `admin-budget-${budget.kind}-range`}
           />
           {!inRange && (
@@ -87,8 +96,12 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
           submitLabel={`把 ${name} 改回預設`}
           pending={clear.isPending}
           error={clear.error}
-          ready={!set.isPending}
-          unavailableReason={set.isPending ? "此呼叫正在設定秒數，完成後才能改回預設。" : undefined}
+          ready={fresh && !set.isPending}
+          unavailableReason={unavailableReason(
+            fresh,
+            set.isPending,
+            "此呼叫正在設定秒數，完成後才能改回預設。",
+          )}
           done={clear.isSuccess && "已改回預設。"}
           onSubmit={(reason) => {
             set.reset();
@@ -110,11 +123,16 @@ export function AdminModelBudgets() {
         上限由程式決定，這裡只能在上限以內調整。
       </p>
       {budgets.isPending && <Loading what="模型呼叫逾時" />}
+      {budgets.isFetching && !budgets.isPending && (
+        <p className="note" role="status">
+          正在確認最新設定；完成前不能更改。
+        </p>
+      )}
       <ReadFailure error={budgets.error} what="模型呼叫逾時" />
       {budgets.data && !budgets.error && (
         <ul className="download-list">
           {budgets.data.budgets.map((budget) => (
-            <BudgetRow budget={budget} key={JSON.stringify(budget)} />
+            <BudgetRow budget={budget} fresh={!budgets.isFetching} key={JSON.stringify(budget)} />
           ))}
         </ul>
       )}

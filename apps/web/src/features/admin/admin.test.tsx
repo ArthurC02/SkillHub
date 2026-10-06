@@ -848,6 +848,48 @@ test("OPS-009: a refreshed model timeout replaces the stale edit value", async (
   expect(has("60 秒")()).toBe(true);
 });
 
+test("OPS-009: a pending budget refresh blocks writes based on cached settings", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishRead: ((response: Response) => void) | undefined;
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+  await type("#admin-budget-judge-run-note", "wait longer");
+  await type("#admin-budget-judge-run-clear-note", "return to default");
+  expect(button("改 評估判定 的秒數").disabled).toBe(false);
+  expect(button("把 評估判定 改回預設").disabled).toBe(false);
+
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/model-budgets") && (init?.method ?? "GET") === "GET") {
+      return new Promise<Response>((resolve) => {
+        finishRead = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await act(async () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.modelBudgets });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await waitFor(() => button("改 評估判定 的秒數").disabled);
+  expect(button("把 評估判定 改回預設").disabled).toBe(true);
+  expect(has("正在確認最新設定；完成前不能更改。")()).toBe(true);
+  await click(button("改 評估判定 的秒數"));
+  await click(button("把 評估判定 改回預設"));
+  expect(calls.some((call) => call.method === "PUT" || call.method === "DELETE")).toBe(false);
+
+  await act(async () => {
+    finishRead!(
+      new Response(JSON.stringify(ADMIN_MODEL_BUDGETS), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(() => !button("改 評估判定 的秒數").disabled);
+  expect(button("把 評估判定 改回預設").disabled).toBe(false);
+});
+
 test("OPS-009: a failed budget refresh hides cached settings and actions", async () => {
   let unavailable = false;
   stub(true, (path) =>
