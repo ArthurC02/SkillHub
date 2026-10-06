@@ -129,6 +129,7 @@ function TakedownAction({ skill }: { skill: SkillGovernance }) {
           id="admin-takedown-reason"
           value={takedownReason}
           onChange={(event) => setTakedownReason(event.target.value)}
+          readOnly={takedown.isPending}
         />
       </div>
       {takedownReason.trim() === "" ? (

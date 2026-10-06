@@ -691,6 +691,40 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
   });
 });
 
+test("OPS-004: a pending takedown locks the reason being confirmed", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishTakedown: ((response: Response) => void) | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith(`/admin/skills/${SKILL}/takedown`) && init?.method === "PUT") {
+      return new Promise<Response>((resolve) => {
+        finishTakedown = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  const reason = field<HTMLInputElement>("#admin-takedown-reason");
+  expect(reason.readOnly).toBe(false);
+
+  await type("#admin-takedown-reason", "DMCA notice");
+  await click(button("下架"));
+  await click(button("確認下架"));
+  await waitFor(() => finishTakedown !== undefined);
+  await waitFor(
+    () => container.querySelector<HTMLButtonElement>("button.destructive")?.disabled === true,
+  );
+  expect(reason.readOnly).toBe(true);
+  expect(reason.value).toBe("DMCA notice");
+
+  await act(async () => {
+    finishTakedown!(
+      new Response(JSON.stringify({ skill_id: SKILL, taken_down: true }), { status: 200 }),
+    );
+  });
+});
+
 test("OPS-004: editing the skill search hides the old result and actions until submitted", async () => {
   stub(true);
   await mountAt("/admin/skills", { q: SKILL });
