@@ -11893,6 +11893,8 @@ func (*ListOperatorAuditLogNotFound) listOperatorAuditLogRes() {}
 
 type ListOperatorAuditLogOK struct {
 	Events []OperatorAuditEvent `json:"events"`
+	// Present only when another page exists.
+	NextBefore OptString `json:"next_before"`
 }
 
 // GetEvents returns the value of Events.
@@ -11900,9 +11902,19 @@ func (s *ListOperatorAuditLogOK) GetEvents() []OperatorAuditEvent {
 	return s.Events
 }
 
+// GetNextBefore returns the value of NextBefore.
+func (s *ListOperatorAuditLogOK) GetNextBefore() OptString {
+	return s.NextBefore
+}
+
 // SetEvents sets the value of Events.
 func (s *ListOperatorAuditLogOK) SetEvents(val []OperatorAuditEvent) {
 	s.Events = val
+}
+
+// SetNextBefore sets the value of NextBefore.
+func (s *ListOperatorAuditLogOK) SetNextBefore(val OptString) {
+	s.NextBefore = val
 }
 
 func (*ListOperatorAuditLogOK) listOperatorAuditLogRes() {}

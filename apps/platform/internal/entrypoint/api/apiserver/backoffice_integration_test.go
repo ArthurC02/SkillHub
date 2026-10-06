@@ -396,6 +396,63 @@ func TestOperatorAuditLogListsOnlyOperatorActions(t *testing.T) {
 	}
 }
 
+func TestOperatorAuditLogCursorKeepsTheNextEventWhenANewerOneArrives(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	operator := a.login(t, "bo-log-cursor-operator")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	ctx := context.Background()
+	insert := func(marker string, at time.Time) {
+		t.Helper()
+		_, err := pool.Exec(ctx, `INSERT INTO audit_events
+			(actor_user_id, action, resource_type, metadata, created_at)
+			VALUES ($1, 'credit.lookup', 'credit_account', jsonb_build_object('marker', $2::text), $3)`, operator.userID, marker, at)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	base := time.Now().UTC()
+	insert("older", base)
+	insert("newer", base.Add(time.Microsecond))
+	code, first := getAdmin(t, operator, "/admin/audit-log?limit=1")
+	if code != http.StatusOK {
+		t.Fatalf("first audit page: got %d (%v)", code, first)
+	}
+	firstPage := objects(t, first["events"])
+	if len(firstPage) != 1 || firstPage[0]["metadata"].(map[string]any)["marker"] != "newer" {
+		t.Fatalf("first audit page = %v, want the newer event", firstPage)
+	}
+	before, ok := first["next_before"].(string)
+	if !ok || before == "" {
+		t.Fatalf("first audit page has no next_before cursor: %v", first)
+	}
+	if code, _ := getAdmin(t, operator, "/admin/audit-log?before="+url.QueryEscape(before)+"&offset=0"); code != http.StatusBadRequest {
+		t.Errorf("combining before with offset: got %d, want 400", code)
+	}
+	insert("newest", base.Add(2*time.Microsecond))
+	code, second := getAdmin(t, operator, "/admin/audit-log?limit=1&before="+url.QueryEscape(before))
+	if code != http.StatusOK {
+		t.Fatalf("second audit page: got %d (%v)", code, second)
+	}
+	secondPage := objects(t, second["events"])
+	if len(secondPage) != 1 || secondPage[0]["metadata"].(map[string]any)["marker"] != "older" {
+		t.Fatalf("second audit page = %v, want the older event without a duplicate", secondPage)
+	}
+}
+
+func TestOperatorAuditLogRejectsInvalidCursor(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	operator := a.login(t, "bo-log-invalid-cursor")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	for _, before := range []string{"", "bad", "2026-01-01T00:00:00Z_not-a-number", "2026-01-01T00:00:00Z_0"} {
+		code, _ := getAdmin(t, operator, "/admin/audit-log?before="+url.QueryEscape(before))
+		if code != http.StatusBadRequest {
+			t.Errorf("before=%q: got %d, want 400", before, code)
+		}
+	}
+}
+
 func TestCostStatisticsShowTheNewestWindowOfEachKind(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

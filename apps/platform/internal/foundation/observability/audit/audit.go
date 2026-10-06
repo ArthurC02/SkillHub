@@ -155,6 +155,7 @@ func Log(ctx context.Context, db DBTX, ev Event) error {
 }
 
 type Record struct {
+	ID           int64
 	Actor        pgtype.UUID
 	Workspace    pgtype.UUID
 	Action       string
@@ -169,6 +170,13 @@ type PlatformFilter struct {
 
 	ScopedActions []string
 	Scope         string
+}
+
+type PlatformPage struct {
+	Limit    int32
+	Offset   int32
+	BeforeAt time.Time
+	BeforeID int64
 }
 
 func ListForWorkspace(
@@ -191,17 +199,22 @@ func ListForWorkspace(
 	return records(rows), nil
 }
 
-func ListPlatform(ctx context.Context, db DBTX, filter PlatformFilter, limit, offset int32) ([]Record, error) {
+func ListPlatform(ctx context.Context, db DBTX, filter PlatformFilter, page PlatformPage) ([]Record, error) {
 	if db == nil {
 		return nil, errors.New("audit: database handle is not configured")
 	}
-	rows, err := gen.New(db).ListPlatformAuditEvents(ctx, gen.ListPlatformAuditEventsParams{
+	params := gen.ListPlatformAuditEventsParams{
 		Actions:       filter.Actions,
 		ScopedActions: filter.ScopedActions,
 		Scope:         filter.Scope,
-		PageLimit:     limit,
-		PageOffset:    offset,
-	})
+		PageLimit:     page.Limit,
+		PageOffset:    page.Offset,
+	}
+	if !page.BeforeAt.IsZero() {
+		params.BeforeAt = pgtype.Timestamptz{Time: page.BeforeAt, Valid: true}
+		params.BeforeID = &page.BeforeID
+	}
+	rows, err := gen.New(db).ListPlatformAuditEvents(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -212,6 +225,7 @@ func records(rows []gen.AuditEvent) []Record {
 	out := make([]Record, 0, len(rows))
 	for _, r := range rows {
 		rec := Record{
+			ID:    r.ID,
 			Actor: r.ActorUserID, Workspace: r.WorkspaceID, Action: r.Action,
 			ResourceType: r.ResourceType, ResourceID: r.ResourceID, OccurredAt: r.CreatedAt.Time,
 		}

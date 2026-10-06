@@ -3503,6 +3503,9 @@ paths:
         operator actions; the account and ledger lookups are among them.
         `skill.takedown` is also written by the owner's own takedown, so only
         the events whose metadata carries `scope: operator` are listed.
+        Use `next_before` as the next request's `before` cursor so new events
+        do not move the page boundary. `offset` remains for older clients;
+        it cannot be combined with `before`.
       parameters:
         - name: limit
           in: query
@@ -3512,6 +3515,10 @@ paths:
           in: query
           required: false
           schema: { type: integer, minimum: 0, default: 0 }
+        - name: before
+          in: query
+          required: false
+          schema: { type: string }
       responses:
         "200":
           description: One page of events.
@@ -3524,8 +3531,11 @@ paths:
                   events:
                     type: array
                     items: { $ref: "#/components/schemas/OperatorAuditEvent" }
+                  next_before:
+                    type: string
+                    description: Present only when another page exists.
         "400":
-          description: "`limit` or `offset` is out of range."
+          description: "`limit`, `offset`, or `before` is invalid."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

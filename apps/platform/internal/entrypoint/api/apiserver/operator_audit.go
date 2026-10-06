@@ -1,10 +1,12 @@
 package apiserver
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -53,7 +55,8 @@ type operatorAuditEventView struct {
 }
 
 type operatorAuditResponse struct {
-	Events []operatorAuditEventView `json:"events"`
+	Events     []operatorAuditEventView `json:"events"`
+	NextBefore string                   `json:"next_before,omitempty"`
 }
 
 func (h *operatorAuditHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -67,10 +70,24 @@ func (h *operatorAuditHandler) List(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	records, err := audit.ListPlatform(r.Context(), h.DB, operatorActions, limit, offset)
+	query := r.URL.Query()
+	beforeAt, beforeID, err := parseAuditCursor(query.Get("before"))
+	if err != nil || (query.Has("before") && (beforeAt.IsZero() || query.Has("offset"))) {
+		httpx.WriteError(w, http.StatusBadRequest, "before must be a cursor this endpoint returned and cannot be combined with offset")
+		return
+	}
+	records, err := audit.ListPlatform(r.Context(), h.DB, operatorActions, audit.PlatformPage{
+		Limit: limit + 1, Offset: offset, BeforeAt: beforeAt, BeforeID: beforeID,
+	})
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "audit log lookup failed")
 		return
+	}
+	response := operatorAuditResponse{}
+	if len(records) > int(limit) {
+		records = records[:limit]
+		last := records[len(records)-1]
+		response.NextBefore = auditCursor(last.OccurredAt, last.ID)
 	}
 	events := make([]operatorAuditEventView, 0, len(records))
 	for _, rec := range records {
@@ -80,7 +97,25 @@ func (h *operatorAuditHandler) List(w http.ResponseWriter, r *http.Request) {
 			OccurredAt: rec.OccurredAt.UTC().Format(time.RFC3339), Metadata: rec.Metadata,
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, operatorAuditResponse{Events: events})
+	response.Events = events
+	httpx.WriteJSON(w, http.StatusOK, response)
+}
+
+func parseAuditCursor(raw string) (time.Time, int64, error) {
+	if raw == "" {
+		return time.Time{}, 0, nil
+	}
+	at, rawID, _ := strings.Cut(raw, "_")
+	t, timeErr := time.Parse(time.RFC3339Nano, at)
+	id, idErr := strconv.ParseInt(rawID, 10, 64)
+	if timeErr != nil || idErr != nil || id < 1 {
+		return time.Time{}, 0, errors.New("before must be a cursor this endpoint returned")
+	}
+	return t, id, nil
+}
+
+func auditCursor(at time.Time, id int64) string {
+	return at.UTC().Format(time.RFC3339Nano) + "_" + strconv.FormatInt(id, 10)
 }
 
 func queryInt32(r *http.Request, name string, fallback, low, high int64) (int32, error) {

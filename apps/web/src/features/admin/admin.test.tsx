@@ -1129,15 +1129,18 @@ test("OPS-006: a failed next page marks the audit list partial and can retry", a
   }));
   stub(true, (path) => {
     if (path !== "/admin/audit-log") return undefined;
-    const offset = Number(new URLSearchParams(calls.at(-1)?.url.split("?")[1]).get("offset"));
-    return offset === 50 && nextFails
+    const before = new URLSearchParams(calls.at(-1)?.url.split("?")[1]).get("before");
+    return before === "audit-page-2" && nextFails
       ? { body: { error: "audit unavailable" }, status: 503 }
-      : { body: { events: events.slice(offset, offset + 51) }, status: 200 };
+      : before === "audit-page-2"
+        ? { body: { events: events.slice(50) }, status: 200 }
+        : { body: { events: events.slice(0, 50), next_before: "audit-page-2" }, status: 200 };
   });
   await mountAt("/admin/audit-log");
   await waitFor(() => container.querySelectorAll("tbody tr").length === 50);
   await click(button("載入更多"));
   await waitFor(has("清單不完整"));
+  expect(calls.at(-1)?.url).toContain("before=audit-page-2");
   expect(container.querySelectorAll("tbody tr")).toHaveLength(50);
   expect(button("重試載入更多")).toBeDefined();
 
@@ -1170,7 +1173,13 @@ test("OPS-006: a full page of 50 stops, the 51st event offers the next page", as
   const event = ADMIN_AUDIT_LOG.events[0];
   stub(true, (path) =>
     path === "/admin/audit-log"
-      ? { body: { events: Array.from({ length: total }, () => event) }, status: 200 }
+      ? {
+          body: {
+            events: Array.from({ length: 50 }, () => event),
+            ...(total > 50 ? { next_before: "audit-page-2" } : {}),
+          },
+          status: 200,
+        }
       : undefined,
   );
   await mountAt("/admin/audit-log");
@@ -1188,7 +1197,7 @@ test("OPS-006: a full page of 50 stops, the 51st event offers the next page", as
   expect(
     calls
       .filter((c) => c.url.startsWith("/admin/audit-log"))
-      .every((c) => c.url.includes("limit=51")),
+      .every((c) => c.url.includes("limit=50")),
   ).toBe(true);
 });
 
