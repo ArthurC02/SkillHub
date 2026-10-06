@@ -168,6 +168,10 @@ sudo systemctl start skillhub-alert@test.service
 
 幾分鐘內信箱要收到 `test failed on <主機名>`。**沒收到就等於沒有告警**，先修這個再做別的。
 
+GitHub Actions 的 gVisor 基線檢查與 Runtime Image 掃描有效期檢查會另外建立事件單；前者依上游 advisory／release 識別分開建 `sev/P1` 待判讀事件單，基線漂移與掃描警示則標 `sev/P3`。事件單預設指派給 repository owner；若 repository owner 是組織，先將 repository variable `SKILLHUB_INCIDENT_ASSIGNEE` 設為實際值班帳號。這些排程工作使用自己的 `GITHUB_TOKEN`，不是控制平面上的 GitHub 憑證。
+
+**不要把這兩支 Workflow 當成所有 P1／P2 的通知鏈。** 控制平面的 Runtime 告警目前仍只有 email，並不會自動建立 GitHub issue。收到 P1／P2 後，值班者須依[事故 runbook](p1-dispatch-halt.md)停派送／保存現場，手動建立帶 `sev/P1` 或 `sev/P2` 的事件單，寫入觸發判準、自動動作結果與現場位置；這是暫時處置，不是 `SEC-010` 的自動建單允收。上線前另須實際演練 GitHub issue 指派通知、信箱及非工作時間手機推播；CI 綠燈或事件單建立成功都不能代替送達證據。
+
 ## 6. 重建整台
 
 主機遺失或被入侵時，不修，重建：

@@ -482,6 +482,8 @@ jobs:
       - run: go -C tools/devctl test -race -count=1 ./...
       - name: Agent automation contract
         run: go -C tools/devctl run . automation-check
+      - name: Incident issue workflow tests
+        run: python3 -m unittest tools/ci/test_gvisor_incident_issues.py -v
       - name: Generate portable Agent artifacts from Claude sources
         run: go -C tools/devctl run . agent-sync
 
