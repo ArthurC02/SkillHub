@@ -774,8 +774,8 @@ test("a pending dispatch halt prevents recovery from starting", async () => {
   await click(button("停止派送"));
   await waitFor(() => finishHalt !== undefined);
 
-  expect(button("恢復派送").disabled).toBe(true);
-  expect(has("正在停止派送，完成後才能恢復。")()).toBe(true);
+  await waitFor(() => button("恢復派送").disabled);
+  await waitFor(has("正在停止派送，完成後才能恢復。"));
   await submit("#admin-halt-lift-note");
   expect(calls.some((call) => call.method === "DELETE")).toBe(false);
 
@@ -811,8 +811,8 @@ test("recovering dispatch blocks another halt and clears the preceding halt noti
   await click(button("恢復派送"));
   await waitFor(() => finishRecovery !== undefined);
 
-  expect(button("停止派送").disabled).toBe(true);
-  expect(has("正在恢復派送，完成後才能再次停止。")()).toBe(true);
+  await waitFor(() => button("停止派送").disabled);
+  await waitFor(has("正在恢復派送，完成後才能再次停止。"));
   expect(has("整個叢集停止派送。")()).toBe(false);
   await submit("#admin-halt-declare-note");
   expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1);
@@ -1144,13 +1144,13 @@ test("OPS-006: a full page of 50 stops, the 51st event offers the next page", as
   ).toBe(true);
 });
 
-test("OPS-007: cost statistics show dollars and name a window with no samples", async () => {
+test("OPS-007: cost statistics show window bounds and dollars", async () => {
   stub(true);
   await mountAt("/admin/cost-statistics");
   await waitFor(has("搜尋理由"));
   expect(field<HTMLElement>(".table-scroll").tabIndex).toBe(-1);
   const table = field<HTMLTableElement>("table.responsive-table");
-  const labels = ["種類", "統計窗結束", "樣本數", "p50", "p90", "p95", "最大"];
+  const labels = ["種類", "統計窗開始", "統計窗結束", "樣本數", "p50", "p90", "p95", "最大"];
   expect(Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent)).toEqual(
     labels,
   );
@@ -1162,10 +1162,18 @@ test("OPS-007: cost statistics show dollars and name a window with no samples", 
   expect(
     Array.from(table.querySelectorAll('tbody th[scope="row"]')).map((th) => th.textContent),
   ).toEqual(["搜尋理由", "評審"]);
+  expect(
+    Array.from(table.tBodies[0].rows).map((row) =>
+      Array.from(row.querySelectorAll("td time"), (time) => time.getAttribute("datetime")),
+    ),
+  ).toEqual([
+    ["2026-08-12T00:00:00Z", "2026-09-11T00:00:00Z"],
+    ["2026-08-12T00:00:00Z", "2026-09-11T00:00:00Z"],
+  ]);
   const rows = Array.from(container.querySelectorAll("tbody tr")).map((tr) => [
     tr.querySelector("th")?.textContent,
     ...Array.from(tr.querySelectorAll("td"))
-      .slice(1)
+      .slice(2)
       .map((td) => td.textContent),
   ]);
   expect(rows).toEqual([
