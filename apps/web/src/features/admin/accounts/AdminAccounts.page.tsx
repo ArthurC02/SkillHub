@@ -47,7 +47,7 @@ export function AdminAccounts() {
         ) : (
           <ReadFailure error={account.error} what="帳號" />
         ))}
-      {queryMatches && account.data && !account.isFetching && (
+      {queryMatches && account.data && !account.isFetching && !account.error && (
         <AccountCard account={account.data} />
       )}
     </AdminPage>

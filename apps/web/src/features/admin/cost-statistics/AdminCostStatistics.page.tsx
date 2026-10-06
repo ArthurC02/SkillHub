@@ -14,6 +14,7 @@ export function AdminCostStatistics() {
       {stats.isPending && <Loading what="成本統計" />}
       <ReadFailure error={stats.error} what="成本統計" />
       {stats.data &&
+        !stats.error &&
         (rows.length === 0 ? (
           <p>統計窗：0 個。每日統計跑過之後才會有。</p>
         ) : (

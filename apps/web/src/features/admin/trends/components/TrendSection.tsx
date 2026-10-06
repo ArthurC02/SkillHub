@@ -27,7 +27,7 @@ export function TrendSection<B extends DailyCount, T extends Trend<B>>({
       <h2>{heading}</h2>
       {query.isPending && <Loading what={heading} />}
       <ReadFailure error={query.error} what={heading} />
-      {query.data && (
+      {query.data && !query.error && (
         <TrendCharts
           trend={query.data}
           value={value}
@@ -36,7 +36,7 @@ export function TrendSection<B extends DailyCount, T extends Trend<B>>({
           valueHeading={valueHeading}
         />
       )}
-      {children}
+      {!query.error && children}
     </section>
   );
 }

@@ -20,6 +20,7 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
   const [seconds, setSeconds] = useState(String(budget.seconds ?? budget.default_seconds));
   const set = useModelBudgetChange("PUT");
   const clear = useModelBudgetChange("DELETE");
+  const changing = set.isPending || clear.isPending;
   const wanted = Number(seconds);
   const inRange =
     Number.isInteger(wanted) && wanted >= budget.min_seconds && wanted <= budget.max_seconds;
@@ -49,10 +50,14 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
         submitLabel={`改 ${name} 的秒數`}
         pending={set.isPending}
         error={set.error}
-        ready={inRange}
+        ready={inRange && !clear.isPending}
+        unavailableReason={clear.isPending ? "此呼叫正在改回預設，完成後才能再次設定。" : undefined}
         done={set.isSuccess && "已套用，下一次呼叫就用這個秒數。"}
         contextKey={`${budget.kind}:${seconds}`}
-        onSubmit={(reason) => set.mutate({ kind: budget.kind, seconds: wanted, reason })}
+        onSubmit={(reason) => {
+          clear.reset();
+          set.mutate({ kind: budget.kind, seconds: wanted, reason });
+        }}
       >
         <div className="field">
           <label htmlFor={`admin-budget-${budget.kind}-seconds`}>
@@ -66,7 +71,7 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
               setSeconds(event.target.value);
               set.reset();
             }}
-            readOnly={set.isPending}
+            readOnly={changing}
             aria-describedby={inRange ? undefined : `admin-budget-${budget.kind}-range`}
           />
           {!inRange && (
@@ -83,8 +88,13 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
           submitLabel={`把 ${name} 改回預設`}
           pending={clear.isPending}
           error={clear.error}
+          ready={!set.isPending}
+          unavailableReason={set.isPending ? "此呼叫正在設定秒數，完成後才能改回預設。" : undefined}
           done={clear.isSuccess && "已改回預設。"}
-          onSubmit={(reason) => clear.mutate({ kind: budget.kind, reason })}
+          onSubmit={(reason) => {
+            set.reset();
+            clear.mutate({ kind: budget.kind, reason });
+          }}
         />
       )}
     </li>
@@ -102,7 +112,7 @@ export function AdminModelBudgets() {
       </p>
       {budgets.isPending && <Loading what="模型呼叫逾時" />}
       <ReadFailure error={budgets.error} what="模型呼叫逾時" />
-      {budgets.data && (
+      {budgets.data && !budgets.error && (
         <ul className="download-list">
           {budgets.data.budgets.map((budget) => (
             <BudgetRow budget={budget} key={budget.kind} />

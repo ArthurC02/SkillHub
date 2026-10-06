@@ -250,6 +250,25 @@ test("OPS-002: a lookup keeps the email out of the address and shows the account
   expect(field("strong").textContent).toBe("120");
 });
 
+test("OPS-003: a failed ledger refresh hides the cached balance and entries", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/credits/ws-2" && unavailable
+      ? { body: { error: "ledger unavailable" }, status: 503 }
+      : undefined,
+  );
+  await lookUp("member@example.com");
+  await waitFor(has("目前餘額"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.ledger("ws-2") });
+  });
+  await waitFor(has("暫時無法讀取點數"));
+  expect(has("目前餘額")()).toBe(false);
+  expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
+});
+
 test("OPS-002: an email nobody has is named as such, not reported as a broken read", async () => {
   stub(true, (path) =>
     path === "/admin/accounts" ? { body: { error: "not found" }, status: 404 } : undefined,
@@ -272,6 +291,28 @@ test("editing a new account query hides the previous account and its grant form"
   expect(has("封測者甲")()).toBe(false);
   expect(has("查詢條件已變更")()).toBe(true);
   expect(calls.some((c) => c.method === "POST")).toBe(false);
+});
+
+test("OPS-002: a failed account refresh hides cached identity and its grant form", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/accounts" && unavailable
+      ? { body: { error: "account unavailable" }, status: 503 }
+      : undefined,
+  );
+  await lookUp("member@example.com");
+  await waitFor(has("封測者甲"));
+  await waitFor(has("授予點數"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.admin.account("member@example.com"),
+    });
+  });
+  await waitFor(has("暫時無法讀取帳號"));
+  expect(has("封測者甲")()).toBe(false);
+  expect(container.querySelector("#admin-grant-amount")).toBeNull();
 });
 
 test("OPS-003: a grant waits for a non-zero whole amount and a reason, then posts both and reloads the ledger", async () => {
@@ -460,6 +501,76 @@ test("a revised model timeout does not inherit the previous success notice", asy
   await waitFor(has("已套用，下一次呼叫就用這個秒數。"));
 
   await type("#admin-budget-judge-run-seconds", "101");
+  expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(false);
+});
+
+test("OPS-009: a failed budget refresh hides cached settings and actions", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/model-budgets" && unavailable
+      ? { body: { error: "budgets unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.modelBudgets });
+  });
+  await waitFor(has("暫時無法讀取模型呼叫逾時"));
+  expect(has("評估判定")()).toBe(false);
+  expect(container.querySelector("#admin-budget-judge-run-seconds")).toBeNull();
+});
+
+test("OPS-009: setting a budget locks clearing the same kind until the write finishes", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishWrite: ((response: Response) => void) | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/model-budgets/judge-run") && init?.method === "PUT") {
+      return new Promise<Response>((resolve) => {
+        finishWrite = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+  await type("#admin-budget-judge-run-note", "wait longer");
+  await type("#admin-budget-judge-run-clear-note", "return to default");
+  await click(button("改 評估判定 的秒數"));
+  await waitFor(() => finishWrite !== undefined);
+  const clearButton = field<HTMLTextAreaElement>("#admin-budget-judge-run-clear-note")
+    .closest("form")!
+    .querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  expect(clearButton.disabled).toBe(true);
+  expect(has("此呼叫正在設定秒數，完成後才能改回預設。")()).toBe(true);
+  expect(field<HTMLInputElement>("#admin-budget-judge-run-seconds").readOnly).toBe(true);
+  await click(clearButton);
+  expect(calls.some((call) => call.method === "DELETE")).toBe(false);
+
+  await act(async () => {
+    finishWrite!(new Response("{}", { status: 200 }));
+  });
+  await waitFor(has("已套用，下一次呼叫就用這個秒數。"));
+});
+
+test("OPS-009: clearing a budget removes the preceding set-success message", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/model-budgets/judge-run" && (method === "PUT" || method === "DELETE")
+      ? { body: {}, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+  await type("#admin-budget-judge-run-note", "wait longer");
+  await click(button("改 評估判定 的秒數"));
+  await waitFor(has("已套用，下一次呼叫就用這個秒數。"));
+
+  await type("#admin-budget-judge-run-clear-note", "return to default");
+  await click(button("把 評估判定 改回預設"));
+  await waitFor(has("已改回預設。"));
   expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(false);
 });
 
@@ -710,6 +821,36 @@ test("OPS-005: the rosters page is read-only", async () => {
   expect(container.querySelectorAll("main :is(input, textarea, select, button)")).toHaveLength(0);
 });
 
+test("OPS-005: an empty operator roster is a named zero, not an empty section", async () => {
+  stub(true, (path) =>
+    path === "/admin/rosters"
+      ? { body: { operator_user_ids: [], beta_allowlist: [] }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/rosters");
+  await waitFor(has("封測名單"));
+  expect(has("目前生效的 operator：0 人。")()).toBe(true);
+  expect(container.querySelector("main ul")).toBeNull();
+});
+
+test("OPS-005: a failed roster refresh hides cached membership", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/rosters" && unavailable
+      ? { body: { error: "roster unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/rosters");
+  await waitFor(has("u-1"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.rosters });
+  });
+  await waitFor(has("暫時無法讀取名冊"));
+  expect(container.querySelectorAll("main code")).toHaveLength(0);
+});
+
 test("OPS-006: the audit log names actions in words and folds the metadata", async () => {
   stub(true);
   await mountAt("/admin/audit-log");
@@ -719,7 +860,7 @@ test("OPS-006: the audit log names actions in words and folds the metadata", asy
   expect(has("credit_entry")()).toBe(false);
   expect(field<HTMLElement>(".table-scroll").tabIndex).toBe(-1);
   const table = field<HTMLTableElement>("table.responsive-table");
-  const labels = ["時間", "動作", "operator", "對象", "內容"];
+  const labels = ["時間", "動作", "operator", "對象", "Workspace", "內容"];
   expect(Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent)).toEqual(
     labels,
   );
@@ -731,6 +872,11 @@ test("OPS-006: the audit log names actions in words and folds the metadata", asy
   expect(
     Array.from(table.querySelectorAll('tbody th[scope="row"]')).map((th) => th.textContent),
   ).toEqual(["授予點數", "查詢帳號"]);
+  expect(
+    Array.from(table.querySelectorAll('tbody td[data-label="Workspace"]')).map((cell) =>
+      cell.textContent?.trim(),
+    ),
+  ).toEqual(["ws-2", "ws-2"]);
   expect(field("td details summary").textContent).toBe("3 項");
   expect(field("td details").textContent).toContain("beta reward");
   expect(
@@ -762,7 +908,53 @@ test("OPS-006: a halt the platform declared by itself names the platform as the 
   await mountAt("/admin/audit-log");
   await waitFor(has("停止派送"));
   expect(has("平台自動")()).toBe(true);
+  expect(field<HTMLElement>('tbody td[data-label="Workspace"]').textContent).toBe("不適用");
   expect(has("未測量")()).toBe(false);
+});
+
+test("OPS-006: a failed next page marks the audit list partial and can retry", async () => {
+  let nextFails = true;
+  const event = ADMIN_AUDIT_LOG.events[0];
+  const events = Array.from({ length: 51 }, (_, index) => ({
+    ...event,
+    resource_id: `entry-${index}`,
+  }));
+  stub(true, (path) => {
+    if (path !== "/admin/audit-log") return undefined;
+    const offset = Number(new URLSearchParams(calls.at(-1)?.url.split("?")[1]).get("offset"));
+    return offset === 50 && nextFails
+      ? { body: { error: "audit unavailable" }, status: 503 }
+      : { body: { events: events.slice(offset, offset + 51) }, status: 200 };
+  });
+  await mountAt("/admin/audit-log");
+  await waitFor(() => container.querySelectorAll("tbody tr").length === 50);
+  await click(button("載入更多"));
+  await waitFor(has("清單不完整"));
+  expect(container.querySelectorAll("tbody tr")).toHaveLength(50);
+  expect(button("重試載入更多")).toBeDefined();
+
+  nextFails = false;
+  await click(button("重試載入更多"));
+  await waitFor(() => container.querySelectorAll("tbody tr").length === 51);
+  expect(has("清單不完整")()).toBe(false);
+});
+
+test("OPS-006: a failed audit refresh does not show cached rows as current", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/audit-log" && unavailable
+      ? { body: { error: "audit unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/audit-log");
+  await waitFor(has("授予點數"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.auditLog });
+  });
+  await waitFor(has("暫時無法讀取動作紀錄"));
+  expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
 });
 
 test("OPS-006: a full page of 50 stops, the 51st event offers the next page", async () => {
@@ -820,6 +1012,24 @@ test("OPS-007: cost statistics show dollars and name a window with no samples", 
     ["搜尋理由", "0", "未測量", "未測量", "未測量", "未測量"],
     ["評審", "40", "$0.0012", "$0.0034", "$0.0041", "$0.0090"],
   ]);
+});
+
+test("OPS-007: a failed statistics refresh does not present cached windows as current", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/cost-statistics" && unavailable
+      ? { body: { error: "statistics unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/cost-statistics");
+  await waitFor(has("搜尋理由"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.costStatistics });
+  });
+  await waitFor(has("暫時無法讀取成本統計"));
+  expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
 });
 
 test("OPS-007: micro-dollars format at four places, and a missing percentile is named", () => {
@@ -897,6 +1107,28 @@ test("OPS-008: the trends page asks each owner for 30 days by default and draws 
       "看小工具詳情",
     ].map((name) => `${name}：每日長條圖，逐日數字在下方的表`),
   );
+});
+
+test("OPS-008: a failed trend refresh hides that cached chart and balance", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/trends/credits" && unavailable
+      ? { body: { error: "trend unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/trends");
+  await waitFor(has("全平台目前餘額總和：1268 點。"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.trend("credits", 30) });
+  });
+  await waitFor(has("暫時無法讀取每日點數異動（淨額）"));
+  const credits = Array.from(container.querySelectorAll("h2"))
+    .find((heading) => heading.textContent === "每日點數異動（淨額）")
+    ?.closest("section");
+  expect(credits?.querySelectorAll("figure")).toHaveLength(0);
+  expect(has("全平台目前餘額總和：1268 點。")()).toBe(false);
 });
 
 test("OPS-008: a kind's figure totals its range and its table shows zero on the days it had nothing", async () => {
@@ -1094,6 +1326,45 @@ test("DISC-007: an empty queue is named as a genuine zero, not a blank list", as
   await mountAt("/admin/exposure");
   await waitFor(has("沒有等待審核的發佈物：0 筆。"));
   expect(container.querySelectorAll(".download-item")).toHaveLength(0);
+});
+
+test("DISC-007: a failed exposure queue refresh hides cached waiting releases", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/exposure-reviews" && unavailable
+      ? { body: { error: "queue unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/exposure");
+  await waitFor(has("審這一筆"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue });
+  });
+  await waitFor(has("暫時無法讀取待審清單"));
+  expect(has("審這一筆")()).toBe(false);
+});
+
+test("DISC-007: a failed exposure case refresh hides cached review actions", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && unavailable
+      ? { body: { error: "case unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核這一版"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.admin.exposureCase(EXPOSURE_PUBLICATION),
+    });
+  });
+  await waitFor(has("暫時無法讀取這一筆的曝光審核資料"));
+  expect(has("審核這一版")()).toBe(false);
+  expect(container.querySelector("#admin-exposure-review-note")).toBeNull();
 });
 
 test("DISC-007: a stale review (409) shows the server's own words, not a generic failure", async () => {

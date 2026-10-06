@@ -17,12 +17,18 @@ const RESOURCE_LABEL: Record<string, string> = {
 export function AdminAuditLog() {
   const log = useOperatorAuditLog();
   const rows = log.data?.pages.flatMap((page) => page.events) ?? [];
+  const showRows = log.data && !log.isRefetchError;
 
   return (
     <AdminPage heading="動作紀錄">
       {log.isPending && <Loading what="動作紀錄" />}
-      <ReadFailure error={log.error} what="動作紀錄" />
-      {log.data &&
+      <ReadFailure error={log.isFetchNextPageError ? undefined : log.error} what="動作紀錄" />
+      {log.isFetchNextPageError && (
+        <p role="alert">
+          後續紀錄暫時無法讀取；目前只顯示已載入的 {rows.length} 筆，清單不完整。可以重試載入更多。
+        </p>
+      )}
+      {showRows &&
         (rows.length === 0 ? (
           <p>operator 動作：0 筆。</p>
         ) : (
@@ -35,6 +41,7 @@ export function AdminAuditLog() {
                   <th scope="col">動作</th>
                   <th scope="col">operator</th>
                   <th scope="col">對象</th>
+                  <th scope="col">Workspace</th>
                   <th scope="col">內容</th>
                 </tr>
               </thead>
@@ -54,6 +61,9 @@ export function AdminAuditLog() {
                       {RESOURCE_LABEL[event.resource_type] ?? event.resource_type}{" "}
                       <code>{event.resource_id ?? "不適用"}</code>
                     </td>
+                    <td data-label="Workspace">
+                      {event.workspace_id ? <code>{event.workspace_id}</code> : "不適用"}
+                    </td>
                     <td data-label="內容">
                       <MetadataCell metadata={event.metadata} />
                     </td>
@@ -63,9 +73,13 @@ export function AdminAuditLog() {
             </table>
           </div>
         ))}
-      {log.hasNextPage && (
+      {showRows && log.hasNextPage && (
         <button type="button" disabled={log.isFetchingNextPage} onClick={() => log.fetchNextPage()}>
-          {log.isFetchingNextPage ? "載入中…" : "載入更多"}
+          {log.isFetchingNextPage
+            ? "載入中…"
+            : log.isFetchNextPageError
+              ? "重試載入更多"
+              : "載入更多"}
         </button>
       )}
     </AdminPage>

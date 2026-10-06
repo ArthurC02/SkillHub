@@ -13,7 +13,7 @@ export function CreditPanel({ workspaceId }: { workspaceId: string }) {
       <h2>點數</h2>
       {ledger.isPending && <Loading what="點數" />}
       <ReadFailure error={ledger.error} what="點數" />
-      {ledger.data && (
+      {ledger.data && !ledger.error && (
         <>
           <p>
             目前餘額 <strong>{ledger.data.balance_credits}</strong> 點

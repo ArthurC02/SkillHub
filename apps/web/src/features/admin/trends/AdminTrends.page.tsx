@@ -30,8 +30,10 @@ export function AdminTrends() {
   const runs = useTrend<Trend>("runs", days);
   const actions = useTrend<Trend>("operator-actions", days);
   const funnel = useTrend<FunnelTrend>("funnel", days);
-  const stages = funnel.data?.stages ?? [];
-  const range = [cost, credits, runs, actions, funnel].find((query) => query.data)?.data;
+  const stages = !funnel.error ? (funnel.data?.stages ?? []) : [];
+  const range = [cost, credits, runs, actions, funnel].find(
+    (query) => query.data && !query.error,
+  )?.data;
 
   return (
     <AdminPage
