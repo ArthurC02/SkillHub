@@ -14,7 +14,8 @@ export function GrantForm({
   const [formVersion, setFormVersion] = useState(0);
   const submissionKey = useRef(crypto.randomUUID());
   const credits = Number(amount);
-  const valid = amount.trim() !== "" && Number.isInteger(credits) && credits !== 0;
+  const valid = /^-?\d+$/.test(amount.trim()) && Number.isSafeInteger(credits) && credits !== 0;
+  const invalidAmount = amount.trim() !== "" && !valid;
   const uncertain = grant.isError && isUncertainGrantFailure(grant.error);
   const startNewGrant = () => {
     grant.reset();
@@ -36,9 +37,11 @@ export function GrantForm({
         unavailableReason={
           grant.isSuccess
             ? "這筆授予已完成；要再授予，請開始新的一筆。"
-            : ledgerReady
-              ? undefined
-              : "先讀到目前點數狀態，才能授予。"
+            : !ledgerReady
+              ? "先讀到目前點數狀態，才能授予。"
+              : invalidAmount
+                ? "請輸入非 0 的整數，且點數不可超過 ±9,007,199,254,740,991。"
+                : undefined
         }
         done={
           grant.data &&
@@ -56,6 +59,8 @@ export function GrantForm({
             type="number"
             step={1}
             value={amount}
+            aria-invalid={invalidAmount}
+            aria-describedby={invalidAmount ? "admin-grant-why" : undefined}
             onChange={(event) => {
               setAmount(event.target.value);
               submissionKey.current = crypto.randomUUID();

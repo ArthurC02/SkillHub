@@ -482,6 +482,26 @@ test("OPS-003: a grant waits for a non-zero whole amount and a reason, then post
   expect(has("已授予 50 點，授予時餘額為 170 點。")()).toBe(false);
 });
 
+test("a grant rejects amounts that cannot be represented exactly", async () => {
+  stub(true);
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-note", "precision check");
+
+  for (const amount of ["9007199254740992", "-9007199254740992", "1.0000000000000001"]) {
+    await type("#admin-grant-amount", amount);
+    expect(button("授予").disabled, `amount 「${amount}」`).toBe(true);
+    expect(has("請輸入非 0 的整數，且點數不可超過 ±9,007,199,254,740,991。")()).toBe(true);
+    await submit("#admin-grant-note");
+  }
+  expect(calls.filter((call) => call.method === "POST")).toHaveLength(0);
+
+  for (const amount of ["9007199254740991", "-9007199254740991"]) {
+    await type("#admin-grant-amount", amount);
+    expect(button("授予").disabled, `amount 「${amount}」`).toBe(false);
+  }
+});
+
 test("OPS-003: a failed grant reuses its key and a completed grant needs a new explicit start", async () => {
   let attempt = 0;
   stub(true, (path, method) => {
