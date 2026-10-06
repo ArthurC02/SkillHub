@@ -273,7 +273,7 @@ func TestPidsLimitStopsAForkBomb(t *testing.T) {
 	}
 
 	req := testRequest(fmt.Sprintf(
-		`i=0; while [ $i -lt %d ]; do sleep 20 & i=$((i+1)); done; echo "spawned"`, spawnAttempts))
+		`sleep 1; i=0; while [ $i -lt %d ]; do sleep 20 & i=$((i+1)); done; echo "spawned"`, spawnAttempts))
 	req.ResourceLimits.MaxPIDs = pidCeiling
 
 	_, out := startProbe(t, d, req)
