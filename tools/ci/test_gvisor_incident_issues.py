@@ -22,7 +22,14 @@ if [ "$1 $2" = 'issue list' ]; then
     exit 2
   fi
   if [[ " $* " == *' --state all '* ]]; then
-    cat "$EXISTING_FILE"
+    if [[ " $* " == *' --json title,url '* ]]; then
+      while IFS= read -r title; do
+        title=${title%$'\\r'}
+        printf '%s\\thttps://github.com/owner/SkillHub/issues/7\\n' "$title"
+      done < "$EXISTING_FILE"
+    else
+      cat "$EXISTING_FILE"
+    fi
   elif [[ " $* " == *' --state open '* ]]; then
     cat "$OPEN_FILE"
   else
@@ -43,6 +50,32 @@ if [ "$1 $2" = 'issue create' ]; then
   done
   printf '%s\\t%s\\t%s\\n' "$title" "$label" "$assignee" >> "$CALLS_FILE"
   printf '%s\\n' "$body" >> "$BODIES_FILE"
+  printf 'https://github.com/owner/SkillHub/issues/1\\n'
+  exit 0
+fi
+if [ "$1 $2" = 'issue view' ]; then
+  if [ "${MOCK_VIEW_FAIL:-}" = 1 ]; then
+    exit 2
+  fi
+  if [[ " $* " == *' --json labels '* ]]; then
+    if [ "${MOCK_DROP_LABEL:-}" != 1 ]; then
+      if [ -s "$CALLS_FILE" ]; then
+        awk -F '\\t' 'END {print $2}' "$CALLS_FILE"
+      else
+        printf 'sev/P1\\n'
+      fi
+    fi
+  elif [[ " $* " == *' --json assignees '* ]]; then
+    if [ "${MOCK_DROP_ASSIGNEE:-}" != 1 ]; then
+      if [ -s "$CALLS_FILE" ]; then
+        awk -F '\\t' 'END {print $3}' "$CALLS_FILE"
+      else
+        printf 'operator\\n'
+      fi
+    fi
+  else
+    exit 3
+  fi
   exit 0
 fi
 exit 4
@@ -118,6 +151,8 @@ class GvisorIncidentIssuesTest(IncidentIssueFixture):
         self.assertIn("https://example.test/1", bodies)
         self.assertIn("Automatic action: no dispatch halt", bodies)
         self.assertIn("https://github.com/owner/SkillHub/actions/runs/123", bodies)
+        self.assertIn('curl -X PUT -b "$COOKIE"', bodies)
+        self.assertIn("-d '{\"note\":\"suspected gVisor escape-class advisory, pool not yet patched\"}'", bodies)
 
     def test_closed_incident_is_not_duplicated_on_retry(self):
         (self.root / "advisories.tsv").write_text(
@@ -132,6 +167,20 @@ class GvisorIncidentIssuesTest(IncidentIssueFixture):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.created(), [["gVisor security advisory GHSA-222", "sev/P1", "operator"]])
 
+    def test_existing_p1_issue_without_severity_label_is_not_accepted(self):
+        (self.root / "advisories.tsv").write_text(
+            "GHSA-111\tcritical\tFirst advisory\thttps://example.test/1\n", encoding="utf-8"
+        )
+        (self.root / "existing").write_text(
+            "gVisor security advisory GHSA-111\n", encoding="utf-8"
+        )
+
+        result = self.run_script(ESCAPE="1", MOCK_DROP_LABEL="1")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.created(), [])
+        self.assertIn("sev/P1", result.stderr)
+
     def test_failed_issue_lookup_does_not_create_a_duplicate(self):
         (self.root / "advisories.tsv").write_text(
             "GHSA-111\tcritical\tFirst advisory\thttps://example.test/1\n", encoding="utf-8"
@@ -141,6 +190,39 @@ class GvisorIncidentIssuesTest(IncidentIssueFixture):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.created(), [])
+
+    def test_created_p1_issue_without_confirmed_severity_label_fails(self):
+        (self.root / "advisories.tsv").write_text(
+            "GHSA-111\tcritical\tFirst advisory\thttps://example.test/1\n", encoding="utf-8"
+        )
+
+        result = self.run_script(ESCAPE="1", MOCK_DROP_LABEL="1")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.created(), [["gVisor security advisory GHSA-111", "sev/P1", "operator"]])
+        self.assertIn("sev/P1", result.stderr)
+
+    def test_created_p1_issue_without_confirmed_assignee_fails(self):
+        (self.root / "advisories.tsv").write_text(
+            "GHSA-111\tcritical\tFirst advisory\thttps://example.test/1\n", encoding="utf-8"
+        )
+
+        result = self.run_script(ESCAPE="1", MOCK_DROP_ASSIGNEE="1")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.created(), [["gVisor security advisory GHSA-111", "sev/P1", "operator"]])
+        self.assertIn("operator", result.stderr)
+
+    def test_created_p1_issue_with_unreadable_confirmation_fails(self):
+        (self.root / "advisories.tsv").write_text(
+            "GHSA-111\tcritical\tFirst advisory\thttps://example.test/1\n", encoding="utf-8"
+        )
+
+        result = self.run_script(ESCAPE="1", MOCK_VIEW_FAIL="1")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.created(), [["gVisor security advisory GHSA-111", "sev/P1", "operator"]])
+        self.assertIn("sev/P1", result.stderr)
 
     def test_baseline_drift_is_p3_and_does_not_claim_a_halt(self):
         result = self.run_script(FAIL="baseline is old")
