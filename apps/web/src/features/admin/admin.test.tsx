@@ -2170,6 +2170,45 @@ test("DISC-007: a failed exposure queue refresh hides cached waiting releases", 
   await waitFor(has("審這一筆"));
 });
 
+test("DISC-007: a pending exposure queue refresh does not present old reviews as current", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishRead: ((response: Response) => void) | undefined;
+  await mountAt("/admin/exposure");
+  await waitFor(has("審這一筆"));
+
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).includes("/admin/exposure-reviews") && (init?.method ?? "GET") === "GET") {
+      return new Promise<Response>((resolve) => {
+        finishRead = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await act(async () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await pollUntil(
+    () => queryClient.isFetching({ queryKey: queryKeys.admin.exposureQueue }) === 1,
+    () => container.textContent,
+    DEFAULT_WAIT_MS,
+    { flushBeforeFirstCheck: true },
+  );
+  expect(has("載入待審清單中")()).toBe(true);
+  expect(has("審這一筆")()).toBe(false);
+
+  await act(async () => {
+    finishRead!(
+      new Response(JSON.stringify({ publications: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(has("沒有等待審核的發佈物：0 筆。"));
+});
+
 test("DISC-007: a failed exposure case refresh hides cached review actions", async () => {
   let unavailable = false;
   stub(true, (path) =>

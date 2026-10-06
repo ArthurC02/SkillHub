@@ -43,14 +43,18 @@ export function AdminExposure() {
       lede="發佈物的最新 Release 要先由 operator 核准，才會出現在搜尋與目錄裡。"
     >
       <h2>待審清單</h2>
-      {queue.isPending && <Loading what="待審清單" />}
-      <ReadFailure
-        error={queue.error}
-        what="待審清單"
-        onRetry={() => void queue.refetch()}
-        retrying={queue.isFetching}
-      />
-      {queue.data && !queue.error && <ExposureQueue entries={queue.data.publications} />}
+      {queue.isFetching && <Loading what="待審清單" />}
+      {!queue.isFetching && (
+        <ReadFailure
+          error={queue.error}
+          what="待審清單"
+          onRetry={() => void queue.refetch()}
+          retrying={queue.isFetching}
+        />
+      )}
+      {queue.data && !queue.error && !queue.isFetching && (
+        <ExposureQueue entries={queue.data.publications} />
+      )}
 
       {publication && <ExposureCaseSection publication={publication} />}
     </AdminPage>
