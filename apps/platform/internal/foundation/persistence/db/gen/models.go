@@ -295,20 +295,21 @@ type CreditAccount struct {
 }
 
 type CreditEntry struct {
-	ID             pgtype.UUID
-	UserID         pgtype.UUID
-	Kind           string
-	DeltaCredits   int64
-	UsdMicros      *int64
-	MarkupBps      *int32
-	Model          *string
-	PromptVersion  *string
-	RefType        *string
-	RefID          pgtype.UUID
-	CostEventID    pgtype.UUID
-	Estimated      bool
-	IdempotencyKey string
-	CreatedAt      pgtype.Timestamptz
+	ID                 pgtype.UUID
+	UserID             pgtype.UUID
+	Kind               string
+	DeltaCredits       int64
+	UsdMicros          *int64
+	MarkupBps          *int32
+	Model              *string
+	PromptVersion      *string
+	RefType            *string
+	RefID              pgtype.UUID
+	CostEventID        pgtype.UUID
+	Estimated          bool
+	IdempotencyKey     string
+	CreatedAt          pgtype.Timestamptz
+	RequestFingerprint []byte
 }
 
 type Dataset struct {

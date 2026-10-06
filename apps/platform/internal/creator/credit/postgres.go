@@ -3,6 +3,7 @@ package credit
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"maps"
@@ -138,11 +139,12 @@ func (s *PostgresStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (
 		return 0, false, fmt.Errorf("credit: ensure account: %w", err)
 	}
 	_, err := q.InsertCreditEntry(ctx, gen.InsertCreditEntryParams{
-		UserID:         g.UserID,
-		Kind:           string(g.EntryKind),
-		DeltaCredits:   g.Credits,
-		Estimated:      false,
-		IdempotencyKey: g.IdempotencyKey,
+		UserID:             g.UserID,
+		Kind:               string(g.EntryKind),
+		DeltaCredits:       g.Credits,
+		Estimated:          false,
+		IdempotencyKey:     g.IdempotencyKey,
+		RequestFingerprint: grantRequestFingerprint(g),
 	})
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) && !pgconv.IsUniqueViolation(err) {
@@ -170,11 +172,18 @@ func (s *PostgresStore) replayedGrant(ctx context.Context, q *gen.Queries, g Gra
 	if err != nil {
 		return 0, false, fmt.Errorf("credit: read replayed grant: %w", err)
 	}
-	if earlier.Kind != string(g.EntryKind) || earlier.DeltaCredits != g.Credits {
+	if earlier.Kind != string(g.EntryKind) || earlier.DeltaCredits != g.Credits ||
+		!bytes.Equal(earlier.RequestFingerprint, grantRequestFingerprint(g)) {
 		return 0, false, ErrGrantKeyReused
 	}
 	balance, err := s.balanceIn(ctx, q, g.UserID)
 	return balance, false, err
+}
+
+func grantRequestFingerprint(g GrantEntry) []byte {
+	data := append(append([]byte(nil), g.OperatorID.Bytes[:]...), g.Reason...)
+	sum := sha256.Sum256(data)
+	return sum[:]
 }
 
 const checkViolationCode = "23514"

@@ -2516,7 +2516,7 @@ paths:
     post:
       operationId: grantCredits
       summary: Put Credit into an account (CRED-007)
-      description: |
+      description: |-
         Operator only. MVP connects no payment gateway, so an operator entry is
         the whole of "top up" — and it is also how a beta participant's reward
         is issued, which is why this route exists before any billing does.
@@ -2531,11 +2531,13 @@ paths:
         entry that changes nothing while claiming an operator did something.
 
         Idempotent only when the request carries `idempotency_key`: a replay of
-        the same key for the same account writes no second entry and no second
-        audit event, and answers with the balance as it stands. Without a key
-        nothing identifies a retry, so two identical calls are two grants. A
-        key already used on this account for a different amount is a 409, not
-        a replay: answering 200 would report a grant that was never applied.
+        the same key for the same account, amount, reason and operator writes no
+        second entry or audit event, and answers with the balance as it stands.
+        Without a key nothing identifies a retry, so two identical calls are
+        two grants. Reusing a key with another amount, reason or operator is a
+        409: answering 200 would report a grant that was never applied. A
+        legacy grant without a request fingerprint also returns 409 on replay,
+        because the server cannot verify the original request.
       requestBody:
         required: true
         content:
@@ -2586,10 +2588,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "409":
-          description: |
+          description: |-
             Nothing was changed: the account is being deleted, or the
-            `idempotency_key` was already used on this account for a grant of a
-            different amount.
+            `idempotency_key` was already used on this account for a grant with
+            another amount, reason or operator, or the earlier request cannot
+            be verified.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

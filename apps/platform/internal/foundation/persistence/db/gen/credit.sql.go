@@ -52,7 +52,7 @@ func (q *Queries) GetCreditBalance(ctx context.Context, userID pgtype.UUID) (Cre
 }
 
 const getCreditEntryByIdempotencyKey = `-- name: GetCreditEntryByIdempotencyKey :one
-SELECT kind, delta_credits FROM credit_entries
+SELECT kind, delta_credits, request_fingerprint FROM credit_entries
 WHERE user_id = $1 AND idempotency_key = $2
 `
 
@@ -62,43 +62,46 @@ type GetCreditEntryByIdempotencyKeyParams struct {
 }
 
 type GetCreditEntryByIdempotencyKeyRow struct {
-	Kind         string
-	DeltaCredits int64
+	Kind               string
+	DeltaCredits       int64
+	RequestFingerprint []byte
 }
 
 func (q *Queries) GetCreditEntryByIdempotencyKey(ctx context.Context, arg GetCreditEntryByIdempotencyKeyParams) (GetCreditEntryByIdempotencyKeyRow, error) {
 	row := q.db.QueryRow(ctx, getCreditEntryByIdempotencyKey, arg.UserID, arg.IdempotencyKey)
 	var i GetCreditEntryByIdempotencyKeyRow
-	err := row.Scan(&i.Kind, &i.DeltaCredits)
+	err := row.Scan(&i.Kind, &i.DeltaCredits, &i.RequestFingerprint)
 	return i, err
 }
 
 const insertCreditEntry = `-- name: InsertCreditEntry :one
 INSERT INTO credit_entries (
     user_id, kind, delta_credits, usd_micros, markup_bps, model, prompt_version,
-    ref_type, ref_id, cost_event_id, estimated, idempotency_key
+    ref_type, ref_id, cost_event_id, estimated, idempotency_key, request_fingerprint
 ) VALUES (
     $1, $2, $3, $4,
     $5, $6, $7, $8,
-    $9, $10, $11, $12
+    $9, $10, $11, $12,
+    $13
 )
 ON CONFLICT ON CONSTRAINT credit_entries_idempotency_key_key DO NOTHING
-RETURNING id, user_id, kind, delta_credits, usd_micros, markup_bps, model, prompt_version, ref_type, ref_id, cost_event_id, estimated, idempotency_key, created_at
+RETURNING id, user_id, kind, delta_credits, usd_micros, markup_bps, model, prompt_version, ref_type, ref_id, cost_event_id, estimated, idempotency_key, created_at, request_fingerprint
 `
 
 type InsertCreditEntryParams struct {
-	UserID         pgtype.UUID
-	Kind           string
-	DeltaCredits   int64
-	UsdMicros      *int64
-	MarkupBps      *int32
-	Model          *string
-	PromptVersion  *string
-	RefType        *string
-	RefID          pgtype.UUID
-	CostEventID    pgtype.UUID
-	Estimated      bool
-	IdempotencyKey string
+	UserID             pgtype.UUID
+	Kind               string
+	DeltaCredits       int64
+	UsdMicros          *int64
+	MarkupBps          *int32
+	Model              *string
+	PromptVersion      *string
+	RefType            *string
+	RefID              pgtype.UUID
+	CostEventID        pgtype.UUID
+	Estimated          bool
+	IdempotencyKey     string
+	RequestFingerprint []byte
 }
 
 func (q *Queries) InsertCreditEntry(ctx context.Context, arg InsertCreditEntryParams) (CreditEntry, error) {
@@ -115,6 +118,7 @@ func (q *Queries) InsertCreditEntry(ctx context.Context, arg InsertCreditEntryPa
 		arg.CostEventID,
 		arg.Estimated,
 		arg.IdempotencyKey,
+		arg.RequestFingerprint,
 	)
 	var i CreditEntry
 	err := row.Scan(
@@ -132,6 +136,7 @@ func (q *Queries) InsertCreditEntry(ctx context.Context, arg InsertCreditEntryPa
 		&i.Estimated,
 		&i.IdempotencyKey,
 		&i.CreatedAt,
+		&i.RequestFingerprint,
 	)
 	return i, err
 }
@@ -201,7 +206,7 @@ func (q *Queries) ListOwnCreditEntries(ctx context.Context, arg ListOwnCreditEnt
 }
 
 const listRecentCreditEntries = `-- name: ListRecentCreditEntries :many
-SELECT id, user_id, kind, delta_credits, usd_micros, markup_bps, model, prompt_version, ref_type, ref_id, cost_event_id, estimated, idempotency_key, created_at FROM credit_entries
+SELECT id, user_id, kind, delta_credits, usd_micros, markup_bps, model, prompt_version, ref_type, ref_id, cost_event_id, estimated, idempotency_key, created_at, request_fingerprint FROM credit_entries
 WHERE user_id = $1
 ORDER BY created_at DESC
 LIMIT $2
@@ -236,6 +241,7 @@ func (q *Queries) ListRecentCreditEntries(ctx context.Context, arg ListRecentCre
 			&i.Estimated,
 			&i.IdempotencyKey,
 			&i.CreatedAt,
+			&i.RequestFingerprint,
 		); err != nil {
 			return nil, err
 		}
