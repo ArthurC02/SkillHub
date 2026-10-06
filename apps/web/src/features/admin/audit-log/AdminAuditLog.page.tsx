@@ -110,7 +110,12 @@ function AuditLogResults({
     <>
       {(log.isPending || log.isRefetching) && <Loading what="動作紀錄" />}
       {!log.isRefetching && (
-        <ReadFailure error={log.isFetchNextPageError ? undefined : log.error} what="動作紀錄" />
+        <ReadFailure
+          error={log.isFetchNextPageError ? undefined : log.error}
+          what="動作紀錄"
+          onRetry={() => void log.refetch()}
+          retrying={log.isFetching}
+        />
       )}
       {log.isFetchNextPageError && (
         <p role="alert">

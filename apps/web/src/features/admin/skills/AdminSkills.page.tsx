@@ -47,7 +47,14 @@ function SkillSearch({ q }: { q: string }) {
       </form>
       {!queryMatches && q !== "" && <p role="status">查詢條件已變更；按「查詢」顯示新結果。</p>}
       {queryMatches && q !== "" && skills.isFetching && <Loading what="小工具" />}
-      {queryMatches && !skills.isFetching && <ReadFailure error={skills.error} what="小工具" />}
+      {queryMatches && !skills.isFetching && (
+        <ReadFailure
+          error={skills.error}
+          what="小工具"
+          onRetry={() => void skills.refetch()}
+          retrying={skills.isFetching}
+        />
+      )}
       {showResult &&
         skills.data &&
         (found.length === 0 ? (

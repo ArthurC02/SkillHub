@@ -463,6 +463,11 @@ test("OPS-002: a failed account refresh hides cached identity and its grant form
   await waitFor(has("暫時無法讀取帳號"));
   expect(has("封測者甲")()).toBe(false);
   expect(container.querySelector("#admin-grant-amount")).toBeNull();
+
+  unavailable = false;
+  await click(button("重新讀取帳號"));
+  await waitFor(has("封測者甲"));
+  expect(has("授予點數")()).toBe(true);
 });
 
 test("OPS-003: a grant waits for a non-zero whole amount and a reason, then posts both and reloads the ledger", async () => {
@@ -782,6 +787,10 @@ test("OPS-004: a failed skill refresh cannot leave cached governance actions ava
   await waitFor(has("暫時無法讀取小工具"));
   expect(has("PDF Summariser")()).toBe(false);
   expect(has("的動作")()).toBe(false);
+
+  unavailable = false;
+  await click(button("重新讀取小工具"));
+  await waitFor(has("對「PDF Summariser」的動作"));
 });
 
 test("OPS-004: redistribution needs an explicit verdict and releasing needs licence evidence", async () => {
@@ -1649,6 +1658,11 @@ test("OPS-006: a failed audit refresh does not show cached rows as current", asy
   });
   await waitFor(has("暫時無法讀取動作紀錄"));
   expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
+
+  unavailable = false;
+  await click(button("重新讀取動作紀錄"));
+  await waitFor(has("授予點數"));
+  expect(container.querySelectorAll("tbody tr").length).toBeGreaterThan(0);
 });
 
 test("OPS-006: a full page of 50 stops, the 51st event offers the next page", async () => {

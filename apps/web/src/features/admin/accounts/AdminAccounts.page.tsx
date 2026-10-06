@@ -47,7 +47,12 @@ export function AdminAccounts() {
         (notFound(account.error) ? (
           <p role="status">沒有 email 是「{email}」的帳號。已刪除的帳號查不到。</p>
         ) : (
-          <ReadFailure error={account.error} what="帳號" />
+          <ReadFailure
+            error={account.error}
+            what="帳號"
+            onRetry={() => void account.refetch()}
+            retrying={account.isFetching}
+          />
         ))}
       {queryMatches && account.data && !account.isFetching && !account.error && (
         <AccountCard account={account.data} />
