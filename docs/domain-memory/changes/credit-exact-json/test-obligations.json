@@ -1,0 +1,52 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "CRED-exact-transport",
+  "proposal_id": "credit-exact-json",
+  "obligations": [
+    {
+      "id": "exact-read",
+      "source_type": "acceptance-criterion",
+      "source_id": "exact-read",
+      "expected_outcome": "所有公開 Credit 金額在 JavaScript 安全整數界線及 int64 邊界以十進位字串精確還原。",
+      "level": "integration",
+      "status": "planned",
+      "check": "OpenAPI 與 Go 大額讀取測試"
+    },
+    {
+      "id": "exact-write",
+      "source_type": "acceptance-criterion",
+      "source_id": "exact-write",
+      "expected_outcome": "授點請求與回應精確傳輸，後端保留原有授權、理由、冪等與 int64 範圍驗證。",
+      "level": "integration",
+      "status": "planned",
+      "check": "授點 API 邊界、授權及冪等測試"
+    },
+    {
+      "id": "exact-aggregate",
+      "source_type": "acceptance-criterion",
+      "source_id": "exact-aggregate",
+      "expected_outcome": "每日 Credit 異動與全平台餘額彙總不先失真；超過支援範圍時不能回傳失真的成功數字。",
+      "level": "integration",
+      "status": "planned",
+      "check": "每日與全平台彙總超界測試"
+    },
+    {
+      "id": "exact-consumers",
+      "source_type": "acceptance-criterion",
+      "source_id": "exact-consumers",
+      "expected_outcome": "所有 Web Credit 顯示與運算保留精度，計數與美元微單位不混入 Credit 遷移。",
+      "level": "integration",
+      "status": "planned",
+      "check": "Web Credit 畫面與精確運算測試"
+    },
+    {
+      "id": "compatible-rollout",
+      "source_type": "acceptance-criterion",
+      "source_id": "compatible-rollout",
+      "expected_outcome": "改公開契約前具名決定舊 client 的遷移、版本與回退條件。",
+      "level": "contract",
+      "status": "planned",
+      "check": "批准的舊／新 client 相容檢查"
+    }
+  ]
+}
