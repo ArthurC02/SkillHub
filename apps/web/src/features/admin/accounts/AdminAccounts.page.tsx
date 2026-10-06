@@ -22,7 +22,9 @@ export function AdminAccounts() {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          setEmail(draft.trim());
+          const nextEmail = draft.trim();
+          if (nextEmail === email && nextEmail !== "") void account.refetch();
+          else setEmail(nextEmail);
         }}
       >
         <div className="field">

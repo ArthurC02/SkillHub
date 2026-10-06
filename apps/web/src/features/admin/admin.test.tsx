@@ -8,6 +8,7 @@ import { queryKeys } from "../../core/api/queryKeys";
 import { createAppRouter } from "../../app/router";
 import { daysOf, seriesOf, usd } from "./admin.service";
 import {
+  ADMIN_ACCOUNT,
   ADMIN_AUDIT_LOG,
   ADMIN_DISPATCH,
   ADMIN_EXPOSURE_CASE,
@@ -251,6 +252,26 @@ test("OPS-002: a lookup keeps the email out of the address and shows the account
   expect(field("strong").textContent).toBe("120");
 });
 
+test("OPS-002: submitting the same email again reads the current account", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/accounts") return undefined;
+    reads += 1;
+    return {
+      body: { ...ADMIN_ACCOUNT, display_name: reads === 1 ? "封測者甲" : "封測者乙" },
+      status: 200,
+    };
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("封測者甲"));
+  const initialReads = reads;
+
+  await submit("#admin-account-email");
+  await waitFor(has("封測者乙"));
+  expect(reads).toBe(initialReads + 1);
+  expect(window.location.search).not.toContain("member");
+});
+
 test("OPS-003: a failed ledger refresh hides the cached balance and entries", async () => {
   let unavailable = false;
   stub(true, (path) =>
@@ -482,6 +503,67 @@ test("OPS-004: editing the skill search hides the old result and actions until s
   expect(field<HTMLInputElement>("#admin-skill-q").value).toBe("another skill");
   await go("/admin/skills", { q: SKILL });
   expect(field<HTMLInputElement>("#admin-skill-q").value).toBe(SKILL);
+});
+
+test("OPS-004: submitting the same skill query again reads current governance", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/skills") return undefined;
+    reads += 1;
+    return {
+      body: {
+        skills: ADMIN_SKILLS.skills.map((skill) => ({
+          ...skill,
+          access_restriction: reads === 1 ? null : "license-review",
+        })),
+      },
+      status: 200,
+    };
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("設定受限展示"));
+  const initialReads = reads;
+
+  await submit("#admin-skill-q");
+  await waitFor(has("解除受限展示"));
+  expect(reads).toBe(initialReads + 1);
+});
+
+test("OPS-004: governance actions disappear while a cached result is refreshing", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let reads = 0;
+  let finishRead: ((response: Response) => void) | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).startsWith("/admin/skills?")) {
+      reads += 1;
+      if (reads > 1) {
+        return new Promise<Response>((resolve) => {
+          finishRead = resolve;
+        });
+      }
+    }
+    return fixtureFetch(input, init);
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+
+  await act(async () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.skillSearch(SKILL) });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await waitFor(() => !has("對「PDF Summariser」的動作")());
+  expect(has("載入小工具中")()).toBe(true);
+
+  await act(async () => {
+    finishRead!(
+      new Response(JSON.stringify(ADMIN_SKILLS), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(has("對「PDF Summariser」的動作"));
 });
 
 test("OPS-004: a failed skill refresh cannot leave cached governance actions available", async () => {

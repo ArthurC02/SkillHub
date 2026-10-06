@@ -18,7 +18,7 @@ function SkillSearch({ q }: { q: string }) {
   const skills = useGovernance(q);
   const found = skills.data?.skills ?? [];
   const queryMatches = draft.trim() === q;
-  const showResult = queryMatches && !skills.error;
+  const showResult = queryMatches && !skills.isFetching && !skills.error;
 
   return (
     <AdminPage
@@ -28,7 +28,9 @@ function SkillSearch({ q }: { q: string }) {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          void navigate({ to: "/admin/skills", search: { q: draft.trim() || undefined } });
+          const nextQuery = draft.trim();
+          if (nextQuery === q && nextQuery !== "") void skills.refetch();
+          else void navigate({ to: "/admin/skills", search: { q: nextQuery || undefined } });
         }}
       >
         <div className="field">
@@ -44,8 +46,8 @@ function SkillSearch({ q }: { q: string }) {
         </button>
       </form>
       {!queryMatches && q !== "" && <p role="status">查詢條件已變更；按「查詢」顯示新結果。</p>}
-      {queryMatches && q !== "" && skills.isPending && <Loading what="小工具" />}
-      {queryMatches && <ReadFailure error={skills.error} what="小工具" />}
+      {queryMatches && q !== "" && skills.isFetching && <Loading what="小工具" />}
+      {queryMatches && !skills.isFetching && <ReadFailure error={skills.error} what="小工具" />}
       {showResult &&
         skills.data &&
         (found.length === 0 ? (
