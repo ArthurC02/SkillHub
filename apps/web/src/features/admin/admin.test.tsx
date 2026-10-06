@@ -884,6 +884,48 @@ test("OPS-006: the audit log names actions in words and folds the metadata", asy
   ).toBe(false);
 });
 
+test("the audit log names exposure reviews and model budget changes in plain language", async () => {
+  stub(true, (path) =>
+    path === "/admin/audit-log"
+      ? {
+          body: {
+            events: [
+              {
+                actor_user_id: "u-1",
+                action: "publication.exposure.review",
+                resource_type: "publication",
+                resource_id: "publication-1",
+                workspace_id: null,
+                occurred_at: "2026-10-06T00:00:00Z",
+                metadata: { decision: "approved", reason: "reviewed" },
+              },
+              {
+                actor_user_id: "u-1",
+                action: "model_budget.set",
+                resource_type: "model_budget",
+                resource_id: null,
+                workspace_id: null,
+                occurred_at: "2026-10-06T00:00:00Z",
+                metadata: { reason: "shorten timeout" },
+              },
+            ],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/audit-log");
+  await waitFor(() => container.querySelectorAll('tbody th[scope="row"]').length === 2);
+  expect(
+    Array.from(container.querySelectorAll('tbody th[scope="row"]')).map((row) => row.textContent),
+  ).toEqual(["曝光審核", "設定模型呼叫逾時"]);
+  expect(
+    Array.from(container.querySelectorAll('tbody td[data-label="對象"]')).map((cell) =>
+      cell.textContent?.trim(),
+    ),
+  ).toEqual(["發佈物 publication-1", "模型呼叫逾時 不適用"]);
+});
+
 test("OPS-006: a halt the platform declared by itself names the platform as the actor", async () => {
   stub(true, (path) =>
     path.startsWith("/admin/audit-log")

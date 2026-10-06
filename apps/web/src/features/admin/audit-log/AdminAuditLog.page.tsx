@@ -12,6 +12,8 @@ const RESOURCE_LABEL: Record<string, string> = {
   credit_entry: "點數分錄",
   dispatch: "派送",
   skill: "小工具",
+  publication: "發佈物",
+  model_budget: "模型呼叫逾時",
 };
 
 export function AdminAuditLog() {

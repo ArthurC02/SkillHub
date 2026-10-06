@@ -14,6 +14,8 @@ export const ACTION_LABEL: Record<string, string> = {
   "credit.grant": "授予點數",
   "dispatch.halted": "停止派送",
   "dispatch.resumed": "恢復派送",
+  "model_budget.set": "設定模型呼叫逾時",
+  "publication.exposure.review": "曝光審核",
   "account.lookup": "查詢帳號",
   "credit.lookup": "查詢點數",
 };

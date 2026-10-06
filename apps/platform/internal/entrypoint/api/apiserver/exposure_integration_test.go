@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 
@@ -163,6 +164,23 @@ func (w exposureWorld) approveAndAssertExposedToAnyone(t *testing.T) {
 	if n := countRow(t, w.pool, `SELECT count(*) FROM audit_events WHERE action = 'publication.exposure.review' AND resource_id = (SELECT id FROM publications WHERE skill_id = $1)`,
 		mustUUID(t, w.skillID)); n != 1 {
 		t.Errorf("the review wrote %d audit events, want 1", n)
+	}
+}
+
+func TestExposureReviewAppearsInOperatorAuditLog(t *testing.T) {
+	w := newExposureWorld(t, "exposure-audit")
+	w.allowRedistribution(t)
+	if code, body := w.reviewCurrent(t, "approved", "reviewed the current release"); code != http.StatusOK {
+		t.Fatalf("review: %d %v", code, body)
+	}
+	events := allAuditEvents(t, w.operator)
+	if !slices.ContainsFunc(events, func(event map[string]any) bool {
+		metadata, ok := event["metadata"].(map[string]any)
+		return ok && event["action"] == "publication.exposure.review" &&
+			event["actor_user_id"] == w.operator.userID && event["resource_type"] == "publication" &&
+			metadata["reason"] == "reviewed the current release"
+	}) {
+		t.Errorf("the operator audit log omitted the completed exposure review: %v", events)
 	}
 }
 

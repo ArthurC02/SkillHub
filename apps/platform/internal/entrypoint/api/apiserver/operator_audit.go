@@ -25,6 +25,7 @@ var operatorActions = audit.PlatformFilter{
 		audit.ActionDispatchHalt,
 		audit.ActionDispatchResume,
 		audit.ActionModelBudgetSet,
+		audit.ActionExposureReview,
 		audit.ActionAccountLookup,
 		audit.ActionCreditLookup,
 	},
