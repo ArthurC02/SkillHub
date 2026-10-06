@@ -312,6 +312,11 @@ export function useReviewExposure(publication: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureCase(publication) });
     },
     onError: (error) => {
+      if (error instanceof ApiError && error.status === 409)
+        return queryClient.invalidateQueries({
+          queryKey: queryKeys.admin.exposureQueue,
+          exact: true,
+        });
       if (isUncertainWriteFailure(error)) {
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue });
         return queryClient.invalidateQueries({

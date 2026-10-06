@@ -2171,20 +2171,48 @@ test("a pending exposure case refresh hides the old snapshot and resets its deci
   expect(calls.some((call) => call.method === "POST")).toBe(false);
 });
 
-test("DISC-007: a stale review (409) shows the server's own words, not a generic failure", async () => {
+test("a stale exposure review blocks resubmission until the current case is reloaded", async () => {
   const staleMessage =
     "這份審核的前提已經過期：有新的 Release，或別人已經審過。重新打開這一筆，看過現在的內容再送出";
-  stub(true, (path, method) =>
-    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && method === "POST"
-      ? { body: { error: staleMessage, reason: "review_stale" }, status: 409 }
-      : undefined,
-  );
+  let currentCase: ExposureCase = ADMIN_EXPOSURE_CASE;
+  let queueChanged = false;
+  stub(true, (path, method) => {
+    if (path === "/admin/exposure-reviews")
+      return {
+        body: queueChanged ? { publications: [] } : ADMIN_EXPOSURE_QUEUE,
+        status: 200,
+      };
+    if (path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && method === "GET")
+      return { body: currentCase, status: 200 };
+    if (path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && method === "POST") {
+      queueChanged = true;
+      currentCase = { ...ADMIN_EXPOSURE_CASE, sequence: 3, exposed: true };
+      return { body: { error: staleMessage, reason: "review_stale" }, status: 409 };
+    }
+    return undefined;
+  });
   await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
-  await waitFor(has("審核這一版"));
+  await waitFor(has("審核序號：2"));
   await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
   await type("#admin-exposure-review-note", "看過了");
   await click(button("送出核准"));
   await waitFor(has(staleMessage));
+  await waitFor(has("沒有等待審核的發佈物：0 筆。"));
+  expect(button("送出核准").disabled).toBe(true);
+  expect(has("審核序號：2")()).toBe(true);
+  await click(button("重新讀取審核資料"));
+  await waitFor(has("審核序號：3"));
+  expect(has("目前曝光中")()).toBe(true);
+  expect(button("送出審核結論").disabled).toBe(true);
+  expect(field<HTMLTextAreaElement>("#admin-exposure-review-note").value).toBe("");
+  expect(calls.filter((call) => call.method === "POST")).toHaveLength(1);
+  expect(
+    calls.filter(
+      (call) =>
+        call.method === "GET" &&
+        call.url === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`,
+    ).length,
+  ).toBeGreaterThan(1);
 });
 
 test("DISC-007: a release search has not indexed yet says so instead of showing stale text", async () => {

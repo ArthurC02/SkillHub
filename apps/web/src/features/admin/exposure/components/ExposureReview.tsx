@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ApiError } from "../../../../core/api/client";
 import type { ExposureCase, ExposureDecision } from "../../admin.service";
 import { useReviewExposure } from "../../admin.service";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
@@ -70,83 +71,98 @@ function SnapshotSection({ exposureCase: c }: { exposureCase: ExposureCase }) {
 function ReviewForm({
   exposureCase: c,
   publication,
+  onRefresh,
 }: {
   exposureCase: ExposureCase;
   publication: string;
+  onRefresh: () => void;
 }) {
   const [decision, setDecision] = useState<ExposureDecision>();
   const review = useReviewExposure(publication);
+  const staleReview = review.error instanceof ApiError && review.error.status === 409;
   const snapshotReady = c.snapshot?.current === true && c.snapshot.enriched === true;
   const ready = decision !== undefined && (decision === "revoked" || snapshotReady);
 
   return (
-    <ActionForm
-      id="admin-exposure-review"
-      submitLabel={decision ? `送出${DECISION_LABEL[decision]}` : "送出審核結論"}
-      pending={review.isPending}
-      error={review.error}
-      done={review.isSuccess && "已送出，上面的狀態已更新。"}
-      contextKey={`${publication}:${c.release.release_id}:${decision ?? "none"}`}
-      ready={ready}
-      unavailableReason={
-        decision === "approved" && !snapshotReady
-          ? "必須先看到與這個 Release 相符的完整搜尋內容，才能核准曝光。"
-          : undefined
-      }
-      onSubmit={(reason) => {
-        if (!decision) return;
-        review.mutate({
-          release_id: c.release.release_id,
-          expected_sequence: c.sequence,
-          expected_snapshot_digest: c.snapshot?.digest ?? "",
-          decision,
-          reason,
-        });
-      }}
-    >
-      <fieldset>
-        <legend>結論</legend>
-        {(["approved", "revoked"] as const).map((value) => (
-          <label key={value}>
-            <input
-              type="radio"
-              name="admin-exposure-decision"
-              value={value}
-              checked={decision === value}
-              onChange={() => {
-                setDecision(value);
-                review.reset();
-              }}
-              disabled={review.isPending}
-            />
-            {DECISION_LABEL[value]}
-          </label>
-        ))}
-      </fieldset>
-      <div className="notice" data-role="evidence">
-        <strong>送出前確認</strong>
-        <p>
-          這次只決定版本 {c.release.version_number}（<code>{c.release.content_hash}</code>）的
-          Catalog 曝光。
-        </p>
-        <p>
-          {decision === "approved"
-            ? "核准後，搜尋與 Catalog 可以顯示這個 Release。"
-            : decision === "revoked"
-              ? "撤銷後，搜尋與 Catalog 會隱藏這個 Release；公開位址不受影響。"
-              : "先選擇核准或撤銷；系統不會預先替你選擇。"}
-        </p>
-      </div>
-    </ActionForm>
+    <>
+      <ActionForm
+        id="admin-exposure-review"
+        submitLabel={decision ? `送出${DECISION_LABEL[decision]}` : "送出審核結論"}
+        pending={review.isPending}
+        error={review.error}
+        done={review.isSuccess && "已送出，上面的狀態已更新。"}
+        contextKey={`${publication}:${c.release.release_id}:${decision ?? "none"}`}
+        ready={ready && !staleReview}
+        readOnly={staleReview}
+        unavailableReason={
+          staleReview
+            ? "先重新讀取最新審核資料，才能再次送出。"
+            : decision === "approved" && !snapshotReady
+              ? "必須先看到與這個 Release 相符的完整搜尋內容，才能核准曝光。"
+              : undefined
+        }
+        onSubmit={(reason) => {
+          if (!decision) return;
+          review.mutate({
+            release_id: c.release.release_id,
+            expected_sequence: c.sequence,
+            expected_snapshot_digest: c.snapshot?.digest ?? "",
+            decision,
+            reason,
+          });
+        }}
+      >
+        <fieldset>
+          <legend>結論</legend>
+          {(["approved", "revoked"] as const).map((value) => (
+            <label key={value}>
+              <input
+                type="radio"
+                name="admin-exposure-decision"
+                value={value}
+                checked={decision === value}
+                onChange={() => {
+                  setDecision(value);
+                  review.reset();
+                }}
+                disabled={review.isPending || staleReview}
+              />
+              {DECISION_LABEL[value]}
+            </label>
+          ))}
+        </fieldset>
+        <div className="notice" data-role="evidence">
+          <strong>送出前確認</strong>
+          <p>
+            這次只決定版本 {c.release.version_number}（<code>{c.release.content_hash}</code>）的
+            Catalog 曝光。
+          </p>
+          <p>
+            {decision === "approved"
+              ? "核准後，搜尋與 Catalog 可以顯示這個 Release。"
+              : decision === "revoked"
+                ? "撤銷後，搜尋與 Catalog 會隱藏這個 Release；公開位址不受影響。"
+                : "先選擇核准或撤銷；系統不會預先替你選擇。"}
+          </p>
+        </div>
+      </ActionForm>
+      {staleReview && (
+        <button type="button" onClick={onRefresh}>
+          重新讀取審核資料
+        </button>
+      )}
+    </>
   );
 }
 
 export function ExposureReview({
   exposureCase: c,
   publication,
+  onRefresh,
 }: {
   exposureCase: ExposureCase;
   publication: string;
+  onRefresh: () => void;
 }) {
   return (
     <>
@@ -189,7 +205,12 @@ export function ExposureReview({
       )}
 
       <h2>審核這一版</h2>
-      <ReviewForm exposureCase={c} publication={publication} />
+      <ReviewForm
+        key={`${c.release.release_id}:${c.sequence}:${c.snapshot?.digest ?? ""}`}
+        exposureCase={c}
+        publication={publication}
+        onRefresh={onRefresh}
+      />
     </>
   );
 }

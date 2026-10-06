@@ -16,7 +16,13 @@ function ExposureCaseSection({ publication }: { publication: string }) {
         <ReadFailure error={exposureCase.error} what="這一筆的曝光審核資料" />
       )}
       {exposureCase.data && !exposureCase.error && !exposureCase.isFetching && (
-        <ExposureReview exposureCase={exposureCase.data} publication={publication} />
+        <ExposureReview
+          exposureCase={exposureCase.data}
+          publication={publication}
+          onRefresh={() => {
+            void exposureCase.refetch();
+          }}
+        />
       )}
     </>
   );
