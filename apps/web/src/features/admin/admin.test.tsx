@@ -164,6 +164,69 @@ test("the admin home keeps decisions and operations inside Governing", async () 
   expect(has("Conducting")()).toBe(false);
 });
 
+test("the admin home shows halted dispatch and the pending review count in their entry rows", async () => {
+  stub(true);
+  await mountAt("/admin");
+  await waitFor(has("已停止派送 · 1 個煞車"));
+  const entries = Array.from(container.querySelectorAll(".admin-home-list a"));
+  const dispatch = entries.find((link) => link.textContent === "派送煞車")?.closest("li");
+  const exposure = entries.find((link) => link.textContent === "曝光審核")?.closest("li");
+  expect(dispatch?.querySelector(".badge-danger")?.textContent).toBe("已停止派送 · 1 個煞車");
+  expect(exposure?.textContent).toContain("待審 1 筆");
+  expect(calls.some((call) => call.url === "/admin/dispatch")).toBe(true);
+  expect(calls.some((call) => call.url === "/admin/exposure-reviews")).toBe(true);
+});
+
+test("the admin home distinguishes an empty queue and no halts from missing data", async () => {
+  stub(true, (path) => {
+    if (path === "/admin/dispatch") return { body: { dispatching: true, halts: [] }, status: 200 };
+    if (path === "/admin/exposure-reviews") return { body: { publications: [] }, status: 200 };
+    return undefined;
+  });
+  await mountAt("/admin");
+  await waitFor(has("派送中 · 0 個煞車"));
+  expect(has("待審 0 筆")()).toBe(true);
+  expect(container.querySelector('.admin-home-list [role="alert"]')).toBeNull();
+});
+
+test("the admin home does not call a node halt an all-clear", async () => {
+  stub(true, (path) =>
+    path === "/admin/dispatch"
+      ? {
+          body: { dispatching: true, halts: [{ ...ADMIN_DISPATCH.halts[0], target: "node-2" }] },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin");
+  await waitFor(has("派送中 · 1 個節點煞車"));
+  expect(has("派送中 · 0 個煞車")()).toBe(false);
+});
+
+test("the admin home hides cached operational verdicts when their sources fail", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    unavailable && (path === "/admin/dispatch" || path === "/admin/exposure-reviews")
+      ? { body: { error: "unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin");
+  await waitFor(has("已停止派送 · 1 個煞車"));
+  await waitFor(has("待審 1 筆"));
+
+  unavailable = true;
+  await act(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue }),
+    ]);
+  });
+  await waitFor(has("暫時無法讀取派送狀態"));
+  await waitFor(has("暫時無法讀取曝光待審數"));
+  expect(has("已停止派送 · 1 個煞車")()).toBe(false);
+  expect(has("待審 1 筆")()).toBe(false);
+});
+
 test("OPS-001: the admin page stays loading while the operator check is pending", async () => {
   vi.stubGlobal("fetch", () => new Promise<Response>(() => {}));
   await mountAt("/admin");
