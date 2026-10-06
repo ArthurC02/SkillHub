@@ -55,9 +55,10 @@ type Driver interface {
 }
 
 type Outcome struct {
-	ExitCode  int
-	OOMKilled bool
-	Output    string
+	ExitCode     int
+	OOMKilled    bool
+	PidsLimitHit bool
+	Output       string
 }
 
 type Adopted struct {
@@ -527,8 +528,12 @@ func (m *Manager) finish(id string, out Outcome, re *RunError) {
 		res.Error = re
 		e.run.StateReason = re.Message
 	case out.OOMKilled:
-		e.run.State, res.Status = StateFailed, ResultFailed
-		res.Error = &RunError{Class: ClassExecution, Message: "memory limit enforced against the workload"}
+		e.run.State, res.Status = StateCompleted, ResultFailed
+		res.Error = &RunError{Class: ClassResourceLimit, Message: "memory limit reached; files under /work, /out and /tmp count toward it"}
+		e.run.StateReason = res.Error.Message
+	case out.PidsLimitHit && out.ExitCode != 0:
+		e.run.State, res.Status = StateCompleted, ResultFailed
+		res.Error = &RunError{Class: ClassResourceLimit, Message: fmt.Sprintf("process limit reached; the workload may run at most %d processes", e.limits.MaxPIDs)}
 		e.run.StateReason = res.Error.Message
 	case out.ExitCode == 0:
 

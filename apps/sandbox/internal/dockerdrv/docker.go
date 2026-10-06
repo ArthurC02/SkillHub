@@ -228,6 +228,8 @@ func (d *Driver) networkFor(req sandbox.RunRequest) string {
 }
 
 func (d *Driver) Wait(ctx context.Context, id string) (sandbox.Outcome, error) {
+	watch := d.watchPidsOf(ctx, id)
+	defer watch.Stop()
 	wait := d.cli.ContainerWait(ctx, name(id), client.ContainerWaitOptions{Condition: container.WaitConditionNotRunning})
 	select {
 	case err := <-wait.Error:
@@ -235,7 +237,7 @@ func (d *Driver) Wait(ctx context.Context, id string) (sandbox.Outcome, error) {
 	case <-ctx.Done():
 		return sandbox.Outcome{}, ctx.Err()
 	case st := <-wait.Result:
-		out := sandbox.Outcome{ExitCode: int(st.StatusCode)}
+		out := sandbox.Outcome{ExitCode: int(st.StatusCode), PidsLimitHit: watch.Stop()}
 		if st.Error != nil {
 			return out, errors.New(st.Error.Message)
 		}
@@ -246,6 +248,18 @@ func (d *Driver) Wait(ctx context.Context, id string) (sandbox.Outcome, error) {
 		out.Output = d.tail(context.WithoutCancel(ctx), id)
 		return out, nil
 	}
+}
+
+func (d *Driver) watchPidsOf(ctx context.Context, id string) *pidsWatch {
+	insp, err := d.cli.ContainerInspect(ctx, name(id), client.ContainerInspectOptions{})
+	if err != nil {
+		warn(d.cfg.Log, "cannot inspect the sandbox to watch its pid limit", "provider_run_id", id, "err", err)
+		return nil
+	}
+	if insp.Container.State == nil || insp.Container.State.Pid <= 0 {
+		return nil
+	}
+	return watchPids(insp.Container.State.Pid, insp.Container.ID, id, d.cfg.Log)
 }
 
 func (d *Driver) Stop(ctx context.Context, id string, grace time.Duration) error {

@@ -98,6 +98,8 @@ sandboxd 拒絕啟動的組合：不認得的值；`mxc` 搭配 `SKILLHUB_SANDBO
 
 `/work` 與 `/out` 用 tmpfs 是刻意的：tmpfs 能真的擋住 size，而它的頁面算在 memory cgroup 上，所以想灌滿磁碟的工作負載會先撞到記憶體上限——比磁碟上限更嚴格，不會更鬆。`--storage-opt` 只在檔案系統支援時才是更貼切的作法，因此以開關提供。
 
+工作負載撞到自己宣告的記憶體或行程數上限時，結果是 `completed`／`failed`，`error.class` 為 `resource_limit`，訊息說出是哪個上限（扣不扣試跑配額由平台決定）。記憶體看 Docker 的 `OOMKilled`；行程數由 `Wait` 期間監看容器 cgroup 的 `pids.events`（inotify 加 50 ms 輪詢）：計數大於 0 且 exit code 不為 0 才算，exit 0 照常是成功。找不到或讀不到 cgroup 只記一筆 warn，不影響 `Wait` 的結果。
+
 ### Egress（SBX-007，部分完成）
 
 沙箱接哪個網路是**逐 Run 決定**的：`RunRequest.egress.allow` 含 `model_gateway` 才接上 `SKILLHUB_SANDBOX_NETWORK` 指的出口網路，否則一律 `--network none`。方向只有一個——沒有出口網路的節點只宣告 `egress_modes: ["none"]`，而 `accept()` 會以 422 拒絕帶允許清單的請求；較弱的模式永遠不會頂替較強的請求（契約 `EgressPolicy` 的階序）。

@@ -34,6 +34,7 @@ const (
 	ClassCapabilityMismatch = "capability_mismatch"
 	ClassCancelled          = "cancelled"
 	ClassTimeout            = "timeout"
+	ClassResourceLimit      = "resource_limit"
 )
 
 type RunRequest struct {

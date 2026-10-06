@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -281,6 +282,33 @@ func TestPidsLimitStopsAForkBomb(t *testing.T) {
 			"(exit %d), and a trivial workload ran under the same ceiling: the limit is not "+
 			"reaching guest tasks on this runtime. output:\n%s",
 			spawnAttempts, pidCeiling, out.ExitCode, out.Output)
+	}
+	if runtime.GOOS == "linux" && !out.PidsLimitHit {
+		t.Errorf("a workload asking for %d processes under a %d pid ceiling ended (exit %d) without "+
+			"the driver reporting that the pid limit was hit. output:\n%s",
+			spawnAttempts, pidCeiling, out.ExitCode, out.Output)
+	}
+}
+
+func TestAWorkloadTwoProcessesUnderMaxPidsIsNotReportedAsHittingIt(t *testing.T) {
+	if testRuntime() != "runsc" {
+		t.Skip("runc needs more headroom than two processes under max_pids")
+	}
+	d, _ := newDriver(t)
+	const maxPids = 64
+
+	req := testRequest(fmt.Sprintf(
+		`i=0; while [ $i -lt %d ]; do sleep 30 & i=$((i+1)); done; sleep 2; echo survived`, maxPids-2))
+	req.ResourceLimits.MaxPIDs = maxPids
+
+	_, out := startProbe(t, d, req)
+	if out.ExitCode != 0 || !strings.Contains(out.Output, "survived") {
+		t.Fatalf("a workload opening %d processes under max_pids %d did not survive (exit %d). output:\n%s",
+			maxPids-2, maxPids, out.ExitCode, out.Output)
+	}
+	if out.PidsLimitHit {
+		t.Errorf("a workload opening %d processes under max_pids %d was reported as hitting the pid limit",
+			maxPids-2, maxPids)
 	}
 }
 

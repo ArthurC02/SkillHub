@@ -917,12 +917,15 @@ components:
             - budget_exhausted
             - cancelled
             - timeout
+            - resource_limit
           description: |
             the Run's core failure categories, plus three the platform must be able
             to tell apart without parsing message strings:
             capability_mismatch (rejected before dispatch),
             budget_exhausted (gateway 429, distinct from a model 403 - PDM-003
             spike 6.1) and the two terminal intents.
+            resource_limit: the workload reached a resource ceiling its request
+            declared (memory or process count).
         message:
           type: string
           description: Human-readable, masked, safe to show the user (RUN-004).
