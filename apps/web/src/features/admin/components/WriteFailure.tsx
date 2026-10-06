@@ -1,11 +1,16 @@
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
-
-const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
+import { ApiError } from "../../../core/api/client";
+import { serverSentenceOr } from "../../../shared/format";
 
 export function WriteFailure({ error }: { error: unknown }) {
   return (
     <ReadFailure error={error} what="這個動作的結果">
-      <p role="alert">沒有完成，伺服器說：{messageOf(error)}</p>
+      <p role="alert">
+        {serverSentenceOr(
+          error instanceof ApiError ? error.message : undefined,
+          "這個動作沒有完成，請稍後再試；若持續失敗，請用頁尾回報問題。",
+        )}
+      </p>
     </ReadFailure>
   );
 }

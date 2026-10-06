@@ -1,5 +1,6 @@
 import { ApiError } from "../../core/api/client";
 import type { SkillDetail } from "../../core/api/types";
+import { serverSentenceOr } from "../../shared/format";
 import { packagingGate } from "../packaging";
 
 export type PublishingRefusalReason =
@@ -75,14 +76,11 @@ export function refusalSentence(error: unknown): string | undefined {
 
 const SERVER_WORDED_STATUSES = new Set([403, 409, 422]);
 
-// Bundle and acquisition refusals carry reasons this table does not list
-// (they are already Chinese from the server); a 500 here is not, so only the
-// statuses that are always a deliberate refusal fall back to error.message.
 export function actionFailureSentence(error: unknown, fallback: string): string {
   const sentence = refusalSentence(error);
   if (sentence) return sentence;
-  if (error instanceof ApiError && SERVER_WORDED_STATUSES.has(error.status) && error.message) {
-    return error.message;
+  if (error instanceof ApiError && SERVER_WORDED_STATUSES.has(error.status)) {
+    return serverSentenceOr(error.message, fallback);
   }
   return fallback;
 }

@@ -1365,6 +1365,26 @@ test("a network failure is said beside the composer, and 重試 resends the same
   await waitFor(() => posts.length === 2);
   expect(posts[1]).toEqual(posts[0]);
 });
+test("an English server error in Studio gives a retry action without exposing the raw message", async () => {
+  const session = sample();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) =>
+      init?.method === "POST"
+        ? response({ error: "internal model gateway failure" }, 500)
+        : routeGet(url, [session], session),
+    ),
+  );
+  await render();
+  await resume();
+  await input("想完成的任務", "整理客服紀錄");
+  await click("送出");
+  await waitFor(() => box.querySelector('.composer-dock [role="alert"]') !== null);
+  expect(box.querySelector('.composer-dock [role="alert"]')?.textContent).toContain(
+    "這一步未完成，請重試。",
+  );
+  expect(box.textContent).not.toContain("internal model gateway failure");
+});
 test("開場建立 session 的請求網路失敗，按重試沿用同一個 session 編號與內容", async () => {
   const posts: Record<string, unknown>[] = [];
   vi.stubGlobal(

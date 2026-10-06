@@ -1,5 +1,5 @@
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
-import { bytes } from "../../../shared/format";
+import { bytes, serverSentenceOr } from "../../../shared/format";
 import { ApiError } from "../../../core/api/client";
 import type { PreflightResponse, PreflightSummary } from "../lab.service";
 
@@ -42,9 +42,7 @@ export const BLOCKED_SENTENCE: Record<NonNullable<PreflightResponse["blocked"]>,
 export function startFailureSentence(err: unknown): string {
   if (!err) return "";
   if (err instanceof ApiError && err.status === 422) {
-    return err.message
-      ? `這次試跑沒有開始：${err.message}`
-      : "這次試跑沒有開始。下方摘要已重新讀取,請確認之後再試。";
+    return `這次試跑沒有開始：${serverSentenceOr(err.message, "請確認下方摘要後再試。")}`;
   }
   if (err instanceof ApiError && err.status === 403) {
     return "這個帳號還沒有封測邀請，所以試跑沒有開始。想試的話，用頁尾的「回報問題」選「我想要的東西，這裡沒有」告訴我們你想做什麼。";

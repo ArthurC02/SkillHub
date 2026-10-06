@@ -9,9 +9,11 @@ import { PublishPanel } from "./components/PublishPanel";
 import { PublishingWorkspace } from "./PublishingWorkspace.page";
 import {
   PUBLISHING_REFUSAL_LABEL,
+  actionFailureSentence,
   type PublishingRefusalReason,
   refusalSentence,
 } from "./publishing.model";
+import { ApiError } from "../../core/api/client";
 import {
   OWN_PUBLICATION,
   OWN_PUBLICATIONS,
@@ -1408,4 +1410,12 @@ describe("PublishPanel：勾選框只在 self_supplied／generated 出現", () =
 
 test("refusalSentence: 沒有 reason 欄位時回傳 undefined，不誤植成中文句", () => {
   expect(refusalSentence(new Error("boom"))).toBeUndefined();
+});
+
+test.each([
+  [new ApiError(422, "發佈資料已過期，請重新載入後再試。"), "發佈資料已過期，請重新載入後再試。"],
+  [new ApiError(422, "invalid release state"), "發佈沒有成功，可以再試一次。"],
+  [new ApiError(500, "伺服器內部錯誤"), "發佈沒有成功，可以再試一次。"],
+])("a publishing failure gives a safe next step: %s", (error, expected) => {
+  expect(actionFailureSentence(error, "發佈沒有成功，可以再試一次。")).toBe(expected);
 });

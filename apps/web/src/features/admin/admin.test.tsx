@@ -411,7 +411,8 @@ test("OPS-003: a failed grant is retried under the same key, and the next grant 
   await type("#admin-grant-amount", "10");
   await type("#admin-grant-note", "r");
   await click(button("授予"));
-  await waitFor(has("沒有完成，伺服器說：grant failed"));
+  await waitFor(has("這個動作沒有完成，請稍後再試"));
+  expect(has("grant failed")()).toBe(false);
   await click(button("授予"));
   await waitFor(has("已授予 10 點，授予時餘額為 60 點。"));
   await click(button("授予"));
@@ -423,7 +424,7 @@ test("OPS-003: a failed grant is retried under the same key, and the next grant 
   expect(keys[2]).not.toBe(keys[0]);
 });
 
-test("OPS-003: a refused grant says so with the server's words", async () => {
+test("OPS-003: an English refusal stays internal and editing clears the fallback", async () => {
   stub(true, (path, method) =>
     method === "POST" && path.endsWith("/grants")
       ? { body: { error: "amount_credits must not be zero" }, status: 400 }
@@ -434,9 +435,10 @@ test("OPS-003: a refused grant says so with the server's words", async () => {
   await type("#admin-grant-amount", "5");
   await type("#admin-grant-note", "r");
   await click(button("授予"));
-  await waitFor(has("沒有完成，伺服器說：amount_credits must not be zero"));
+  await waitFor(has("這個動作沒有完成，請稍後再試"));
+  expect(has("amount_credits must not be zero")()).toBe(false);
   await type("#admin-grant-note", "修改後的理由");
-  expect(has("沒有完成，伺服器說：amount_credits must not be zero")()).toBe(false);
+  expect(has("這個動作沒有完成，請稍後再試")()).toBe(false);
 });
 
 test("OPS-004: takedown of the one skill found takes a reason and a second click", async () => {
@@ -638,7 +640,7 @@ test("OPS-009: setting a budget locks clearing the same kind until the write fin
   const clearButton = field<HTMLTextAreaElement>("#admin-budget-judge-run-clear-note")
     .closest("form")!
     .querySelector<HTMLButtonElement>('button[type="submit"]')!;
-  expect(clearButton.disabled).toBe(true);
+  await waitFor(() => clearButton.disabled);
   expect(has("此呼叫正在設定秒數，完成後才能改回預設。")()).toBe(true);
   expect(field<HTMLInputElement>("#admin-budget-judge-run-seconds").readOnly).toBe(true);
   await click(clearButton);
@@ -1594,7 +1596,7 @@ test("DISC-007: a stale review (409) shows the server's own words, not a generic
   await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
   await type("#admin-exposure-review-note", "看過了");
   await click(button("送出核准"));
-  await waitFor(has(`沒有完成，伺服器說：${staleMessage}`));
+  await waitFor(has(staleMessage));
 });
 
 test("DISC-007: a release search has not indexed yet says so instead of showing stale text", async () => {

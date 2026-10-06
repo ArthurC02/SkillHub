@@ -9,6 +9,7 @@ import { useCredits } from "../../../../core/session/credits.service";
 import { useRuns } from "../../../runs";
 import { TERMINAL_RUN_STATUSES } from "../../../runs";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { serverSentenceOr } from "../../../../shared/format";
 import { Loading } from "../../../../shared/ui/Loading";
 import { sessionPhase, startGate } from "../create.model";
 import { useCreationAttempt, useCreationCommands, type Perform } from "../create.commands";
@@ -222,9 +223,10 @@ function FailureToast({
             ? "進度已更新，輸入仍保留。請檢查最新內容後再送出。"
             : error instanceof TypeError
               ? "網路連線失敗，請重試。"
-              : error instanceof Error
-                ? error.message
-                : "這一步未完成，請重試。"}
+              : serverSentenceOr(
+                  error instanceof Error ? error.message : undefined,
+                  "這一步未完成，請重試。",
+                )}
         </p>
       </ReadFailure>
       {canRetry && (
