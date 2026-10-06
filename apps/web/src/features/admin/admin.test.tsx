@@ -482,7 +482,7 @@ test("OPS-003: a grant waits for a non-zero whole amount and a reason, then post
   expect(has("已授予 50 點，授予時餘額為 170 點。")()).toBe(false);
 });
 
-test("OPS-003: a failed grant is retried under the same key, and the next grant gets a fresh one", async () => {
+test("OPS-003: a failed grant reuses its key and a completed grant needs a new explicit start", async () => {
   let attempt = 0;
   stub(true, (path, method) => {
     if (method !== "POST" || !path.endsWith("/grants")) return undefined;
@@ -501,6 +501,15 @@ test("OPS-003: a failed grant is retried under the same key, and the next grant 
   expect(has("grant failed")()).toBe(false);
   await click(button("授予"));
   await waitFor(has("已授予 10 點，授予時餘額為 60 點。"));
+  expect(button("授予").disabled).toBe(true);
+  expect(document.activeElement).toBe(button("開始另一筆授予"));
+  await click(button("授予"));
+  expect(calls.filter((c) => c.method === "POST")).toHaveLength(2);
+  await waitFor(() => !button("開始另一筆授予").disabled);
+  await click(button("開始另一筆授予"));
+  expect(field<HTMLInputElement>("#admin-grant-amount").value).toBe("");
+  await type("#admin-grant-amount", "10");
+  await type("#admin-grant-note", "another grant");
   await click(button("授予"));
   await waitFor(() => calls.filter((c) => c.method === "POST").length === 3);
   const keys = calls
@@ -508,6 +517,36 @@ test("OPS-003: a failed grant is retried under the same key, and the next grant 
     .map((c) => (c.body as { idempotency_key: string }).idempotency_key);
   expect(keys[1]).toBe(keys[0]);
   expect(keys[2]).not.toBe(keys[0]);
+});
+
+test("a completed grant cannot start another while the refreshed ledger is unreadable", async () => {
+  let ledgerUnavailable = false;
+  stub(true, (path, method) => {
+    if (method === "POST" && path === "/admin/credits/ws-2/grants") {
+      ledgerUnavailable = true;
+      return {
+        body: { workspace_id: "ws-2", balance_credits: 130, amount_credits: 10 },
+        status: 200,
+      };
+    }
+    if (path === "/admin/credits/ws-2" && ledgerUnavailable)
+      return { body: { error: "ledger unavailable" }, status: 503 };
+    return undefined;
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-amount", "10");
+  await type("#admin-grant-note", "補點");
+  await click(button("授予"));
+  await waitFor(has("暫時無法讀取點數"));
+  expect(button("授予").disabled).toBe(true);
+  expect(button("開始另一筆授予").disabled).toBe(true);
+  await click(button("開始另一筆授予"));
+  expect(calls.filter((call) => call.method === "POST")).toHaveLength(1);
+
+  ledgerUnavailable = false;
+  await click(button("重新讀取點數"));
+  await waitFor(() => !button("開始另一筆授予").disabled);
 });
 
 test("a failed grant holds its payload until the ledger is reread before starting another", async () => {
