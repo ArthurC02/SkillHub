@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useGrantCredits } from "../../admin.service";
+import { isUncertainGrantFailure, useGrantCredits } from "../../admin.service";
 import { ActionForm } from "../../components/ActionForm";
 
 export function GrantForm({
@@ -11,18 +11,22 @@ export function GrantForm({
 }) {
   const grant = useGrantCredits(workspaceId);
   const [amount, setAmount] = useState("");
+  const [formVersion, setFormVersion] = useState(0);
   const submissionKey = useRef(crypto.randomUUID());
   const credits = Number(amount);
   const valid = amount.trim() !== "" && Number.isInteger(credits) && credits !== 0;
+  const uncertain = grant.isError && isUncertainGrantFailure(grant.error);
   return (
     <>
       <h3>授予點數</h3>
       <ActionForm
+        key={formVersion}
         id="admin-grant"
         submitLabel="授予"
         pending={grant.isPending}
-        error={grant.error}
+        error={uncertain ? undefined : grant.error}
         ready={valid && ledgerReady}
+        readOnly={uncertain}
         unavailableReason={ledgerReady ? undefined : "先讀到目前點數狀態，才能授予。"}
         done={
           grant.data &&
@@ -52,10 +56,29 @@ export function GrantForm({
               submissionKey.current = crypto.randomUUID();
               grant.reset();
             }}
-            readOnly={grant.isPending}
+            readOnly={grant.isPending || uncertain}
           />
         </div>
       </ActionForm>
+      {uncertain && (
+        <div className="notice notice-warning" role="status">
+          <p>
+            這次授予的結果尚未確認。重試原授予會沿用同一筆識別，避免重複入帳；若要改金額或理由，先核對上方重新讀取的餘額與分錄。
+          </p>
+          <button
+            type="button"
+            disabled={!ledgerReady}
+            onClick={() => {
+              grant.reset();
+              setAmount("");
+              submissionKey.current = crypto.randomUUID();
+              setFormVersion((version) => version + 1);
+            }}
+          >
+            已核對分錄，開始新授予
+          </button>
+        </div>
+      )}
     </>
   );
 }

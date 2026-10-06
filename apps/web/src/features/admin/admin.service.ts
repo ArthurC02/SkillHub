@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "../../core/api/client";
+import { ApiError, apiFetch } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
 
@@ -170,7 +170,15 @@ export function useGrantCredits(workspaceId: string) {
       ),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.ledger(workspaceId) }),
+    onError: (error) => {
+      if (isUncertainGrantFailure(error))
+        return queryClient.invalidateQueries({ queryKey: queryKeys.admin.ledger(workspaceId) });
+    },
   });
+}
+
+export function isUncertainGrantFailure(error: unknown): boolean {
+  return !(error instanceof ApiError) || error.status === 408 || error.status >= 500;
 }
 
 export function useGovernance(q: string) {

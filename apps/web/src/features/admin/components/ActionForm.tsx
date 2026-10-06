@@ -10,6 +10,7 @@ export function ActionForm({
   contextKey = "",
   tone,
   ready = true,
+  readOnly = false,
   unavailableReason,
   onSubmit,
   children,
@@ -22,6 +23,7 @@ export function ActionForm({
   contextKey?: string;
   tone?: "caution";
   ready?: boolean;
+  readOnly?: boolean;
   unavailableReason?: string;
   onSubmit: (note: string) => void;
   children?: ReactNode;
@@ -51,7 +53,7 @@ export function ActionForm({
             setNote(event.target.value);
             setSubmitted(null);
           }}
-          readOnly={pending}
+          readOnly={pending || readOnly}
         />
       </div>
       <button

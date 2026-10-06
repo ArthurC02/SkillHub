@@ -388,6 +388,7 @@ test("a pending ledger refresh blocks a grant until the current balance is known
   });
   await waitFor(() => finishRead !== undefined);
   await waitFor(() => button("授予").disabled);
+  expect(has("目前餘額")()).toBe(false);
   await submit("#admin-grant-note");
   expect(calls.some((call) => call.method === "POST")).toBe(false);
 
@@ -495,7 +496,8 @@ test("OPS-003: a failed grant is retried under the same key, and the next grant 
   await type("#admin-grant-amount", "10");
   await type("#admin-grant-note", "r");
   await click(button("授予"));
-  await waitFor(has("這個動作沒有完成，請稍後再試"));
+  await waitFor(has("這次授予的結果尚未確認"));
+  expect(has("這個動作沒有完成")()).toBe(false);
   expect(has("grant failed")()).toBe(false);
   await click(button("授予"));
   await waitFor(has("已授予 10 點，授予時餘額為 60 點。"));
@@ -506,6 +508,64 @@ test("OPS-003: a failed grant is retried under the same key, and the next grant 
     .map((c) => (c.body as { idempotency_key: string }).idempotency_key);
   expect(keys[1]).toBe(keys[0]);
   expect(keys[2]).not.toBe(keys[0]);
+});
+
+test("a failed grant holds its payload until the ledger is reread before starting another", async () => {
+  stub(true, (path, method) =>
+    method === "POST" && path === "/admin/credits/ws-2/grants"
+      ? { body: { error: "response unavailable" }, status: 503 }
+      : undefined,
+  );
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-amount", "10");
+  await type("#admin-grant-note", "首次補點");
+  const ledgerReads = () => calls.filter((call) => call.url === "/admin/credits/ws-2").length;
+  const before = ledgerReads();
+  await click(button("授予"));
+  await waitFor(has("這次授予的結果尚未確認"));
+  expect(has("這個動作沒有完成")()).toBe(false);
+  expect(field<HTMLInputElement>("#admin-grant-amount").readOnly).toBe(true);
+  expect(field<HTMLTextAreaElement>("#admin-grant-note").readOnly).toBe(true);
+  await waitFor(() => ledgerReads() > before);
+  await click(button("已核對分錄，開始新授予"));
+  expect(field<HTMLInputElement>("#admin-grant-amount").value).toBe("");
+  expect(field<HTMLTextAreaElement>("#admin-grant-note").value).toBe("");
+
+  await type("#admin-grant-amount", "10");
+  await type("#admin-grant-note", "改過的理由");
+  await click(button("授予"));
+  await waitFor(() => calls.filter((call) => call.method === "POST").length === 2);
+  const posts = calls.filter((call) => call.method === "POST");
+  expect(posts[0].body?.reason).toBe("首次補點");
+  expect(posts[1].body?.reason).toBe("改過的理由");
+  expect(posts[1].body?.idempotency_key).not.toBe(posts[0].body?.idempotency_key);
+});
+
+test("an unreadable ledger prevents starting a new grant after an uncertain result", async () => {
+  let ledgerUnavailable = false;
+  stub(true, (path, method) => {
+    if (method === "POST" && path === "/admin/credits/ws-2/grants") {
+      ledgerUnavailable = true;
+      return { body: { error: "response unavailable" }, status: 503 };
+    }
+    if (path === "/admin/credits/ws-2" && ledgerUnavailable)
+      return { body: { error: "ledger unavailable" }, status: 503 };
+    return undefined;
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-amount", "10");
+  await type("#admin-grant-note", "補點");
+  await click(button("授予"));
+  await waitFor(has("暫時無法讀取點數"));
+  expect(button("已核對分錄，開始新授予").disabled).toBe(true);
+  expect(button("授予").disabled).toBe(true);
+
+  ledgerUnavailable = false;
+  await click(button("重新讀取點數"));
+  await waitFor(has("目前餘額"));
+  expect(button("已核對分錄，開始新授予").disabled).toBe(false);
 });
 
 test("OPS-003: an English refusal stays internal and editing clears the fallback", async () => {
@@ -521,6 +581,7 @@ test("OPS-003: an English refusal stays internal and editing clears the fallback
   await click(button("授予"));
   await waitFor(has("這個動作沒有完成，請稍後再試"));
   expect(has("amount_credits must not be zero")()).toBe(false);
+  expect(field<HTMLTextAreaElement>("#admin-grant-note").readOnly).toBe(false);
   await type("#admin-grant-note", "修改後的理由");
   expect(has("這個動作沒有完成，請稍後再試")()).toBe(false);
 });
