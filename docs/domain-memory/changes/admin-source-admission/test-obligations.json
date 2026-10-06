@@ -1,0 +1,88 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "SEC-011-source-admission",
+  "proposal_id": "admin-source-admission",
+  "obligations": [
+    {
+      "id": "candidate-key",
+      "source_type": "acceptance-criterion",
+      "source_id": "source-candidate-identity",
+      "expected_outcome": "同 repo 不同 Skill 路徑或授權可作不同決定，受審 commit 可追溯。",
+      "level": "integration",
+      "status": "planned",
+      "check": "候選識別與實際策展資料對照測試"
+    },
+    {
+      "id": "operator-auth",
+      "source_type": "acceptance-criterion",
+      "source_id": "source-operator-authority",
+      "expected_outcome": "匿名與 member 404 且無狀態／audit 變更；operator 仍不能讀私人內容。",
+      "level": "security",
+      "status": "planned",
+      "check": "路由授權矩陣與 Workspace 隔離整合測試"
+    },
+    {
+      "id": "index-gate",
+      "source_type": "acceptance-criterion",
+      "source_id": "source-admission-gate",
+      "expected_outcome": "未准入、否決及已下架候選不能新增公開索引；有效准入可進；個人匯入不誤擋。",
+      "level": "integration",
+      "status": "planned",
+      "check": "所有公開收錄入口的真實資料庫整合測試"
+    },
+    {
+      "id": "decision-history",
+      "source_type": "acceptance-criterion",
+      "source_id": "source-decision-lifecycle",
+      "expected_outcome": "現況唯一、歷史保留；重試或重複決定不重複評估。",
+      "level": "integration",
+      "status": "planned",
+      "check": "決定狀態轉移與重試測試"
+    },
+    {
+      "id": "shared-takedown",
+      "source_type": "acceptance-criterion",
+      "source_id": "source-takedown-consistency",
+      "expected_outcome": "來源下架後目錄、詳情、下載一致遵守既有 Skill 下架，版本／Run 不變。",
+      "level": "integration",
+      "status": "planned",
+      "check": "下架跨入口與歷史保持整合測試"
+    },
+    {
+      "id": "atomic-audit",
+      "source_type": "acceptance-criterion",
+      "source_id": "source-decision-audit",
+      "expected_outcome": "每筆異動含要求欄位；audit 故障則決定回滾。",
+      "level": "integration",
+      "status": "planned",
+      "check": "同交易成功與受控 audit 寫入失敗測試"
+    },
+    {
+      "id": "license-scope",
+      "source_type": "acceptance-criterion",
+      "source_id": "source-license-boundary",
+      "expected_outcome": "同 repo 不同 License 分開判定；未決授權不因准入被放行。",
+      "level": "security",
+      "status": "planned",
+      "check": "混合授權 repo 與受限內容整合測試"
+    },
+    {
+      "id": "owner-boundary",
+      "source_type": "acceptance-criterion",
+      "source_id": "source-admission-gate",
+      "expected_outcome": "候選與決定查詢由 Ingest 擁有，Catalog 只經 owner 接口判定。",
+      "level": "architecture",
+      "status": "planned",
+      "check": "context-map、query-owners 與 depguard 檢查"
+    },
+    {
+      "id": "api-contract",
+      "source_type": "acceptance-criterion",
+      "source_id": "source-operator-authority",
+      "expected_outcome": "OpenAPI、operator middleware、生成客戶端、錯誤回應一致。",
+      "level": "integration",
+      "status": "planned",
+      "check": "契約生成與路由整合測試"
+    }
+  ]
+}

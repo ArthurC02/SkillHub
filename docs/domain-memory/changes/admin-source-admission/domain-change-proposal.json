@@ -1,0 +1,91 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "admin-source-admission",
+  "proposer": "coding-agent",
+  "requirement_id": "SEC-011-source-admission",
+  "status": "draft",
+  "change_classification": "material",
+  "submitted_at": null,
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": null,
+  "affected_contexts": [
+    "ingest",
+    "catalog",
+    "registry"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "ingest",
+    "invariant": "公開目錄的新收錄必須對應有效的原始 Skill 來源准入決定；否決或撤下的來源不得繞過決定進入精選或已索引層。",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "Ingest 擁有候選與准入決定；公開索引入口以窄 owner 判定取得准入事實。既有目錄下架由 Registry 的 Skill 下架能力執行，不為來源下架另建可見性狀態。",
+    "consistency": "准入判定與新公開索引的狀態轉移同步；決定與 audit 同交易。既有項目的下架須在同一受控命令中原子地完成 Registry 下架或明確回報部分失敗，不得宣稱已完成。",
+    "prohibited_dependencies": [
+      "Catalog 不直接讀寫 Ingest 的候選或決定資料表。",
+      "來源白名單不得與 URL 抓取的 SSRF host allowlist 混用。",
+      "operator 不得因審查而取得私人 Workspace 套件內容。",
+      "不得以策展 JSON 或文件流水帳當作唯一線上准入閘門。",
+      "不得新增與既有 Skill takedown_at 並行的公開可見性旗標。"
+    ],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "同一 repo 可含不同授權的 Skill，repo URL 單獨作白名單鍵過寬。",
+      "人工策展紀錄目前沒有可查詢現況，也不能阻止 API 或腳本直接索引。",
+      "來源否決、重試與下架必須可稽核且冪等。",
+      "公開收錄與個人匯入不是同一政策，operator 仍不能讀私人內容。"
+    ],
+    "decision": "先建立 Ingest 擁有的候選決定與窄准入判定；穩定候選鍵暫以原始 repo 加 Skill 路徑為方案，commit 作受審證據，不把 seed source_id 當永久身分。收錄入口在寫入公開索引前查權威決定；下架沿用 Registry 的既有 Skill 可見性處置。具體狀態轉移、公開分享範圍與 Admin 互動待產品裁定後實作。",
+    "invariants_preserved": [
+      "Skill Version 與歷史 Run 不可變。",
+      "公開可見性以既有 Skill 下架事實為準。",
+      "Workspace Scope 不因 operator 身分擴大。",
+      "來源原始性與授權按實際 Skill 範圍判定。",
+      "決定與 audit 同交易。"
+    ],
+    "rejected_alternatives": [
+      "只以 repo URL 放行：同 repo 的不同授權 Skill 會一併通過。",
+      "只維持 JSON／Markdown 清單：不能阻止其他寫入路徑。",
+      "只在 Admin UI 隱藏收錄按鈕：直接 API 與腳本仍可繞過。",
+      "在 Catalog 再建一份可見性欄位：會與既有下架狀態分歧。"
+    ],
+    "proof_obligations": [
+      "candidate-key",
+      "operator-auth",
+      "index-gate",
+      "decision-history",
+      "shared-takedown",
+      "atomic-audit",
+      "license-scope",
+      "owner-boundary",
+      "api-contract"
+    ],
+    "counterfactual_check": "暫時移除公開索引寫入前的 Ingest 准入判定，對未准入及已否決候選執行同一條收錄測試，確認會紅；還原後重跑並確認差異僅屬預期修正。"
+  },
+  "event_change": null,
+  "contract_change": {
+    "description": "預計新增 operator-only 候選決定讀寫與最少量審查狀態 API；公開收錄入口對未准入來源給具名拒絕。既有成功回應不移除欄位。",
+    "breaking": false
+  },
+  "registry_updates": [],
+  "risk_flags": [
+    "cross_context",
+    "public_contract",
+    "sensitive_data",
+    "irreversible_change"
+  ],
+  "open_questions": [
+    "准入對象的穩定識別是否採 canonical repo URL 加 Skill 路徑，而受審 commit 作版本化證據？使用者自行上傳且公開分享時如何分類？",
+    "白名單異動要由 Admin 畫面完成，還是先維持可稽核的 operator API／工具流程？",
+    "下架一個候選應否自動下架它既有的所有平台 Skill，或僅阻止新索引並要求 operator 逐項決定？",
+    "否決後在什麼證據變更條件下允許重新審查？"
+  ],
+  "approvals": []
+}

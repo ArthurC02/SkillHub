@@ -1,0 +1,19 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "SEC-011-source-admission",
+  "proposal_id": "admin-source-admission",
+  "registry_revision": null,
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "產品尚未裁定候選識別、公開分享範圍、Admin 工作流及來源下架擴散語意。",
+    "此包為 draft，未獲核准、未改契約或程式，不能當作白名單閘門已存在的證據。",
+    "monorepo 根授權檔變更是否被來源巡檢偵測，仍需獨立測試確認。"
+  ]
+}
