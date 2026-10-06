@@ -11,9 +11,11 @@ function ExposureCaseSection({ publication }: { publication: string }) {
   return (
     <>
       <h2>審這一筆：{publication}</h2>
-      {exposureCase.isPending && <Loading what="這一筆的曝光審核資料" />}
-      <ReadFailure error={exposureCase.error} what="這一筆的曝光審核資料" />
-      {exposureCase.data && !exposureCase.error && (
+      {exposureCase.isFetching && <Loading what="這一筆的曝光審核資料" />}
+      {!exposureCase.isFetching && (
+        <ReadFailure error={exposureCase.error} what="這一筆的曝光審核資料" />
+      )}
+      {exposureCase.data && !exposureCase.error && !exposureCase.isFetching && (
         <ExposureReview exposureCase={exposureCase.data} publication={publication} />
       )}
     </>

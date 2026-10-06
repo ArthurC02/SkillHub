@@ -1791,6 +1791,49 @@ test("DISC-007: a failed exposure case refresh hides cached review actions", asy
   expect(container.querySelector("#admin-exposure-review-note")).toBeNull();
 });
 
+test("a pending exposure case refresh hides the old snapshot and resets its decision", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishRead: ((response: Response) => void) | undefined;
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核序號：2"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
+  await type("#admin-exposure-review-note", "看過舊版");
+  expect(button("送出核准").disabled).toBe(false);
+
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (
+      String(input).includes(`/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`) &&
+      (init?.method ?? "GET") === "GET"
+    ) {
+      return new Promise<Response>((resolve) => {
+        finishRead = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await act(async () => {
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.admin.exposureCase(EXPOSURE_PUBLICATION),
+    });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await waitFor(() => !has("審核序號：2")());
+  expect(container.querySelector("#admin-exposure-review-note")).toBeNull();
+
+  await act(async () => {
+    finishRead!(
+      new Response(JSON.stringify({ ...ADMIN_EXPOSURE_CASE, sequence: 3 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(has("審核序號：3"));
+  expect(button("送出審核結論").disabled).toBe(true);
+  expect(calls.some((call) => call.method === "POST")).toBe(false);
+});
+
 test("DISC-007: a stale review (409) shows the server's own words, not a generic failure", async () => {
   const staleMessage =
     "這份審核的前提已經過期：有新的 Release，或別人已經審過。重新打開這一筆，看過現在的內容再送出";
