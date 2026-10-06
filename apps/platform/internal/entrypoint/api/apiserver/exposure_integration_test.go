@@ -295,6 +295,40 @@ func TestANewReleaseIsNotExposedUntilReviewedAndTakesTheOldOneDownWithIt(t *test
 	}
 }
 
+func TestCategoryTotalTracksOnlyTheCurrentlyApprovedRelease(t *testing.T) {
+	w := newExposureWorld(t, "category-exposure")
+	setCategory(t, w.pool, w.skillID, "data")
+	w.allowRedistribution(t)
+	anon := &client{Client: http.DefaultClient, base: w.a.URL}
+	categoryTotal := func() int {
+		return anon.search(t, "/api/skills/catalog?category=data").Total
+	}
+	before := categoryTotal()
+
+	if code, body := w.reviewCurrent(t, "approved", "first release reviewed"); code != http.StatusOK {
+		t.Fatalf("approving the first release: %d %v", code, body)
+	}
+	if got := categoryTotal(); got != before+1 {
+		t.Fatalf("approved category total = %d, want %d", got, before+1)
+	}
+
+	uploadedSkill(t, w.author, w.name, "A second, unreviewed way.")
+	w.enrich(t)
+	if code, body := publish(t, w.author, w.skillID, `{"rights_attested":true}`); code != http.StatusOK {
+		t.Fatalf("publishing the second release: %d %v", code, body)
+	}
+	if got := categoryTotal(); got != before {
+		t.Fatalf("unreviewed category total = %d, want %d", got, before)
+	}
+
+	if code, body := w.reviewCurrent(t, "approved", "second release reviewed"); code != http.StatusOK {
+		t.Fatalf("approving the second release: %d %v", code, body)
+	}
+	if got := categoryTotal(); got != before+1 {
+		t.Fatalf("reapproved category total = %d, want %d", got, before+1)
+	}
+}
+
 func TestAReviewThatSawStaleFactsIsRefused(t *testing.T) {
 	w := newExposureWorld(t, "stale")
 	w.allowRedistribution(t)
