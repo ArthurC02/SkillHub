@@ -1,0 +1,70 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "SEC-012-stale-halt-lift",
+  "proposal_id": "dispatch-halt-stale-lift",
+  "obligations": [
+    {
+      "id": "stale-redeclaration",
+      "source_type": "acceptance-criterion",
+      "source_id": "stale-lift-refused",
+      "expected_outcome": "同列 P1 升級與同內容重宣告後，舊前提都得到衝突，新煞車與 audit 不變。",
+      "level": "integration",
+      "status": "planned",
+      "check": "兩個資料庫交易依序讀取、重宣告、舊前提解除的 API 整合測試"
+    },
+    {
+      "id": "stale-replacement",
+      "source_type": "acceptance-criterion",
+      "source_id": "replacement-lift-refused",
+      "expected_outcome": "同一目標的舊列解除並建立新列後，舊前提無法解除新列。",
+      "level": "integration",
+      "status": "planned",
+      "check": "以舊列身分與新列相同初始代次呼叫解除的整合測試"
+    },
+    {
+      "id": "matching-lift",
+      "source_type": "acceptance-criterion",
+      "source_id": "current-lift-and-idempotence",
+      "expected_outcome": "匹配前提只解除指定煞車，並以同一交易留下解除 audit。",
+      "level": "integration",
+      "status": "planned",
+      "check": "解除成功與受控 audit 寫入失敗回滾測試"
+    },
+    {
+      "id": "empty-lift",
+      "source_type": "acceptance-criterion",
+      "source_id": "current-lift-and-idempotence",
+      "expected_outcome": "目標沒有煞車時回 204，不新增解除 audit。",
+      "level": "integration",
+      "status": "planned",
+      "check": "重複解除與空目標 API 整合測試"
+    },
+    {
+      "id": "operator-guidance",
+      "source_type": "acceptance-criterion",
+      "source_id": "stale-lift-guidance",
+      "expected_outcome": "後台送出所見前提，衝突後停用舊表單並提供重讀；重讀後重新選擇與填寫理由。",
+      "level": "integration",
+      "status": "planned",
+      "check": "前端管理流程測試：過期解除、重讀與重新確認"
+    },
+    {
+      "id": "operator-authz",
+      "source_type": "acceptance-criterion",
+      "source_id": "stale-lift-authority",
+      "expected_outcome": "匿名與 member 呼叫解除端點仍回 404，煞車與 audit 均不變。",
+      "level": "security",
+      "status": "planned",
+      "check": "operator 路由授權矩陣與資料庫整合測試"
+    },
+    {
+      "id": "contract-compatibility",
+      "source_type": "acceptance-criterion",
+      "source_id": "stale-lift-guidance",
+      "expected_outcome": "OpenAPI 與實作對必要前提、過期衝突和缺少前提一致；舊呼叫端的遷移結果可驗證。",
+      "level": "integration",
+      "status": "planned",
+      "check": "契約生成檢查、缺少前提的 API 整合測試與部署相容性確認"
+    }
+  ]
+}

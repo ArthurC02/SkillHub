@@ -1,0 +1,45 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "SEC-012-stale-halt-lift",
+  "status": "draft",
+  "intent": "避免 operator 在只核對舊煞車後，誤解除同一目標後來重新宣告的事故煞車。",
+  "actor": "平台 operator",
+  "observable_outcome": "operator 只能解除已核對且未重新宣告的煞車；前提過期時保留現行煞車並要求重讀。",
+  "acceptance_criteria": [
+    {
+      "id": "stale-lift-refused",
+      "statement": "operator 讀到煞車後，若同一目標被重新宣告，不論新來源或理由是否相同，舊解除請求回具名衝突；新煞車與 audit 均不因舊請求改變。"
+    },
+    {
+      "id": "replacement-lift-refused",
+      "statement": "原煞車解除後同一目標出現新煞車時，舊解除請求不得因代次重複而解除新煞車。"
+    },
+    {
+      "id": "current-lift-and-idempotence",
+      "statement": "解除前提與現行煞車相符時，解除與 audit 同交易；目標已沒有煞車時維持 204 的冪等回應。"
+    },
+    {
+      "id": "stale-lift-guidance",
+      "statement": "後台送出所見煞車的前提；收到過期衝突後不能從舊畫面再送解除，須重讀並重新核對。"
+    },
+    {
+      "id": "stale-lift-authority",
+      "statement": "前提檢查不放寬 operator 授權；匿名與一般成員仍得到 404，且不能解除煞車。"
+    }
+  ],
+  "candidate_terms": ["Run", "派送煞車", "重新宣告", "解除前提", "operator"],
+  "open_questions": [
+    "產品負責人是否確認『恢復派送』只解除管理員核對過的那一筆，而不是無條件解除目標當下的任何煞車？",
+    "既有 operator API 呼叫端是否都能與新增必填前提同步更新？若不能，須定義遷移期與舊請求的拒絕方式。"
+  ],
+  "risk_flags": ["public_contract", "irreversible_change"],
+  "required_approval_roles": ["developer"],
+  "sources": [
+    "docs/plans/02-specifications-and-acceptance-criteria.md",
+    "docs/plans/03-work-items.md",
+    "contracts/openapi/public.yaml",
+    "db/queries/dispatch.sql",
+    "apps/platform/internal/trial/execution/halt.go",
+    "apps/web/src/features/admin/dispatch/AdminDispatch.page.tsx"
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "dispatch-halt-stale-lift",
+  "proposer": "coding-agent",
+  "requirement_id": "SEC-012-stale-halt-lift",
+  "status": "draft",
+  "change_classification": "material",
+  "submitted_at": null,
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": null,
+  "affected_contexts": ["run"],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "解除命令只能作用於 operator 核對的同一筆、同一代派送煞車；重新宣告後的煞車不能被舊命令解除。",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "operator 的後台讀取現行煞車與不透明前提，解除時把前提交回 Run Orchestration；判定只由該 owner 在更新交易內完成。",
+    "consistency": "同步、同資料庫交易：解除以目標、煞車身分與重新宣告代次為條件更新；不符時不更新也不寫解除 audit。無現行煞車仍答 204。",
+    "prohibited_dependencies": [
+      "不得只以目標名稱解除當下任何來源的煞車。",
+      "不得由前端比較快取狀態代替交易內的前提檢查。",
+      "不得以同一列的 ID 單獨充當代次，因為重新宣告會更新同一列。",
+      "不得讓自動解除 orphan_threshold 的流程解除 p1_incident。"
+    ],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "同一目標的 orphan_threshold 可在 operator 讀取後升級為 p1_incident。",
+      "重新宣告沿用現行資料列 ID，同一來源與理由也可能重複宣告。",
+      "原煞車解除後，同一目標可建立新列，代次可能從初值重新開始。",
+      "恢復派送可能讓新的 Run 開始執行，因此錯誤解除不能用事後重讀補救。"
+    ],
+    "decision": "維持單一 Run owner、現有交易與 audit 邊界；為每筆煞車提供可比較的身分與重新宣告代次，GET 回傳兩者，解除命令帶回兩者，由同一 UPDATE 的條件拒絕過期前提。無需新增 Aggregate 或跨 Context 協作。",
+    "invariants_preserved": [
+      "P1 煞車只由 operator 手動解除。",
+      "派送與清理共用同一份煞車狀態。",
+      "煞車狀態變更與 audit 同交易。",
+      "無現行煞車時解除命令保持冪等。"
+    ],
+    "rejected_alternatives": [
+      "只比來源或理由：同來源、同理由重新宣告時無法識別過期請求。",
+      "只比資料列 ID：重新宣告會覆寫同一列，仍可誤解新事故。",
+      "先 GET 再以目標 DELETE：兩個請求之間仍有競態。",
+      "只在 UI 重讀後啟用按鈕：後端直接呼叫與重讀後的競態仍存在。"
+    ],
+    "proof_obligations": [
+      "stale-redeclaration",
+      "stale-replacement",
+      "matching-lift",
+      "empty-lift",
+      "operator-guidance",
+      "operator-authz",
+      "contract-compatibility"
+    ],
+    "counterfactual_check": "暫時移除解除 UPDATE 的代次條件，執行同列重新宣告後用舊前提解除的整合測試，確認測試因新煞車被解除而失敗；還原後重跑並確認原檔逐位元組回復。"
+  },
+  "event_change": null,
+  "contract_change": {
+    "description": "GET /admin/dispatch 對每筆煞車回傳身分與重新宣告代次；DELETE /admin/dispatch/halt 要求所見前提，過期時回具名衝突並提示重讀。原本無前提的解除呼叫必須遷移或被拒絕。",
+    "breaking": true
+  },
+  "registry_updates": [],
+  "risk_flags": ["public_contract", "irreversible_change"],
+  "open_questions": [
+    "產品負責人是否採納拒絕過期解除的操作意圖？",
+    "公開管理契約的必填前提如何與已部署呼叫端協調更新？"
+  ],
+  "approvals": []
+}
