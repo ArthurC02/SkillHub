@@ -75,7 +75,7 @@
 - **不決定的代價**：`02:NFR-008` 的可用性那一條永遠無法驗收；1000 人在線時一次資料庫或主機故障，就是全平台停機直到有人醒來處理。
 - **決定之後誰動**：主 Agent 改寫架構決策中單節點與升級條件那兩段、部署組合與 runbook；開機器與付費由負責人。
 
-下面這一項來自在 gVisor（runsc）節點上量測沙箱資源上限。**不擋封測**。
+下面兩項來自在 gVisor（runsc）節點上量測沙箱資源上限，以及對照容器與 gVisor 的強化指引。**都不擋封測**。
 
 ### R-101 試跑的「磁碟」上限要不要和記憶體分開
 
@@ -84,6 +84,14 @@
 - **建議**：(1)，有大檔案需求的證據時再做 (2)。(1) 維持現狀：數字與說明已經一致，代價是可寫入量要和程式記憶體共用。(2) 節點改用 xfs＋`pquota`，driver 以 `--storage-opt size` 給每次 Run 獨立的磁碟上限，暫存路徑改走可寫的根檔案系統：兩個上限真正獨立、寫滿時回「磁碟已滿」，但要改節點部署、隔離驗收與 driver，並另找能驗證 xfs 配額的環境。
 - **不決定的代價**：需要寫大量暫存檔的 Skill，可寫入量被程式的記憶體用量吃掉一部分；不扣配額，但時間與模型花費照付。
 - **決定之後誰動**：選 (2) 由負責人配合節點部署與驗收環境，主 Agent 改 driver、契約與資源摘要。
+
+### R-103 握有 Docker 的 `sandboxd` 等同節點 root，要不要再加一道限制
+
+- **要決定的是什麼**：`sandboxd` 被攻破時的影響範圍。它目前能叫 dockerd 做任何事；要不要讓「它能叫 dockerd 做的事」也只剩它的程式本來就會做的那幾種。
+- **已經查到的事實**（程式皆已查證）：`sandboxd` 以非 root 使用者加入 docker 群組執行（`infra/deploy/sandbox/systemd/skillhub-sandboxd.service` 的 `SupplementaryGroups=docker`），Docker 官方與 OWASP 都把能操作 dockerd 視同主機 root；架構決策已明文接受這個形狀，理由是把 `sandboxd` 放進容器只會變成掛 `docker.sock`，隔離沒有變好。它的入口只接受帶權杖的結構化請求（`apps/sandbox/internal/sandbox/http.go`），容器的安全欄位全部寫死在驅動裡、請求改不到（`apps/sandbox/internal/dockerdrv/docker.go` 的 `HostConfig`），所以要利用這份權限，必須先在 `sandboxd` 本身找到程式漏洞，或偷到平台給它的權杖。節點上沒有 Docker 的授權外掛、socket proxy 或 rootless Docker。
+- **建議**：(1)，節點數變多或 `sandboxd` 的入口變寬時再做 (2)。(1) 維持現狀：已有的縮小入口就是業界對這類服務的首要建議，成本為零。(2) 在 `sandboxd` 與 dockerd 之間放一個只放行固定 API 的 proxy，並檢查建立容器的請求必須符合沙箱基線（`runsc`、非特權、無掛載、丟掉全部 capability）：`sandboxd` 被攻破也開不出特權容器，代價是多一個要維護的元件，且它本身也握有 Docker。(3) 改成 rootless Docker 或直連 containerd：rootless 與 gVisor 的組合官方支援有限，要先實測；直連 containerd 仍需 root 級權限，只是少一層 dockerd。
+- **不決定的代價**：維持現狀的風險已被架構決策接受；不裁定不會讓任何東西變差，只是沒有第二道防線。
+- **決定之後誰動**：選 (2) 或 (3) 由主 Agent 實作並補節點准入檢查，部署由負責人配合。
 
 ## 2. 不是簽名，但在等人的三件事
 
