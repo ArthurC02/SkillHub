@@ -2,7 +2,13 @@ import { useRef, useState } from "react";
 import { useGrantCredits } from "../../admin.service";
 import { ActionForm } from "../../components/ActionForm";
 
-export function GrantForm({ workspaceId }: { workspaceId: string }) {
+export function GrantForm({
+  workspaceId,
+  ledgerReady,
+}: {
+  workspaceId: string;
+  ledgerReady: boolean;
+}) {
   const grant = useGrantCredits(workspaceId);
   const [amount, setAmount] = useState("");
   const submissionKey = useRef(crypto.randomUUID());
@@ -16,10 +22,11 @@ export function GrantForm({ workspaceId }: { workspaceId: string }) {
         submitLabel="授予"
         pending={grant.isPending}
         error={grant.error}
-        ready={valid}
+        ready={valid && ledgerReady}
+        unavailableReason={ledgerReady ? undefined : "先讀到目前點數狀態，才能授予。"}
         done={
           grant.data &&
-          `已授予 ${grant.data.amount_credits} 點，餘額現在是 ${grant.data.balance_credits} 點。`
+          `已授予 ${grant.data.amount_credits} 點，授予時餘額為 ${grant.data.balance_credits} 點。`
         }
         contextKey={`${workspaceId}:${amount}`}
         onSubmit={(reason) =>

@@ -58,7 +58,7 @@ export function CreditPanel({ workspaceId }: { workspaceId: string }) {
           </p>
         </>
       )}
-      <GrantForm workspaceId={workspaceId} />
+      <GrantForm workspaceId={workspaceId} ledgerReady={ledger.isSuccess && !ledger.isFetching} />
     </>
   );
 }

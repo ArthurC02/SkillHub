@@ -259,6 +259,9 @@ test("OPS-003: a failed ledger refresh hides the cached balance and entries", as
   );
   await lookUp("member@example.com");
   await waitFor(has("目前餘額"));
+  await type("#admin-grant-amount", "50");
+  await type("#admin-grant-note", "welcome credit");
+  expect(button("授予").disabled).toBe(false);
 
   unavailable = true;
   await act(async () => {
@@ -267,6 +270,51 @@ test("OPS-003: a failed ledger refresh hides the cached balance and entries", as
   await waitFor(has("暫時無法讀取點數"));
   expect(has("目前餘額")()).toBe(false);
   expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
+  expect(button("授予").disabled).toBe(true);
+  expect(has("先讀到目前點數狀態，才能授予。")()).toBe(true);
+  await submit("#admin-grant-note");
+  expect(calls.some((call) => call.method === "POST")).toBe(false);
+});
+
+test("a pending ledger refresh blocks a grant until the current balance is known", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let reads = 0;
+  let finishRead: ((response: Response) => void) | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/credits/ws-2") && (init?.method ?? "GET") === "GET") {
+      reads += 1;
+      if (reads > 1) {
+        return new Promise<Response>((resolve) => {
+          finishRead = resolve;
+        });
+      }
+    }
+    return fixtureFetch(input, init);
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("目前餘額"));
+  await type("#admin-grant-amount", "50");
+  await type("#admin-grant-note", "welcome credit");
+  expect(button("授予").disabled).toBe(false);
+
+  await act(async () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.ledger("ws-2") });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await waitFor(() => button("授予").disabled);
+  await submit("#admin-grant-note");
+  expect(calls.some((call) => call.method === "POST")).toBe(false);
+
+  await act(async () => {
+    finishRead!(
+      new Response(JSON.stringify(platformResponse("/admin/credits/ws-2").body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(() => !button("授予").disabled);
 });
 
 test("OPS-002: an email nobody has is named as such, not reported as a broken read", async () => {
@@ -337,7 +385,7 @@ test("OPS-003: a grant waits for a non-zero whole amount and a reason, then post
   const ledgerReads = () => calls.filter((c) => c.url === "/admin/credits/ws-2").length;
   const before = ledgerReads();
   await click(grant());
-  await waitFor(has("已授予 50 點，餘額現在是 170 點。"));
+  await waitFor(has("已授予 50 點，授予時餘額為 170 點。"));
   expect(calls.find((c) => c.method === "POST")?.body).toEqual({
     amount_credits: 50,
     reason: "beta reward",
@@ -345,7 +393,7 @@ test("OPS-003: a grant waits for a non-zero whole amount and a reason, then post
   });
   await waitFor(() => ledgerReads() > before);
   await type("#admin-grant-amount", "75");
-  expect(has("已授予 50 點，餘額現在是 170 點。")()).toBe(false);
+  expect(has("已授予 50 點，授予時餘額為 170 點。")()).toBe(false);
 });
 
 test("OPS-003: a failed grant is retried under the same key, and the next grant gets a fresh one", async () => {
@@ -364,7 +412,7 @@ test("OPS-003: a failed grant is retried under the same key, and the next grant 
   await click(button("授予"));
   await waitFor(has("沒有完成，伺服器說：grant failed"));
   await click(button("授予"));
-  await waitFor(has("已授予 10 點，餘額現在是 60 點。"));
+  await waitFor(has("已授予 10 點，授予時餘額為 60 點。"));
   await click(button("授予"));
   await waitFor(() => calls.filter((c) => c.method === "POST").length === 3);
   const keys = calls
