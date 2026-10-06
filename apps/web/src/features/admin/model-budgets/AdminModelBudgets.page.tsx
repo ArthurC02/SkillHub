@@ -115,7 +115,7 @@ export function AdminModelBudgets() {
       {budgets.data && !budgets.error && (
         <ul className="download-list">
           {budgets.data.budgets.map((budget) => (
-            <BudgetRow budget={budget} key={budget.kind} />
+            <BudgetRow budget={budget} key={JSON.stringify(budget)} />
           ))}
         </ul>
       )}

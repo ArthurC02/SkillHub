@@ -11,6 +11,7 @@ import {
   ADMIN_AUDIT_LOG,
   ADMIN_DISPATCH,
   ADMIN_EXPOSURE_CASE,
+  ADMIN_MODEL_BUDGETS,
   ADMIN_SKILLS,
   PUBLICATION,
   PUBLISHER,
@@ -550,6 +551,35 @@ test("a revised model timeout does not inherit the previous success notice", asy
 
   await type("#admin-budget-judge-run-seconds", "101");
   expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(false);
+});
+
+test("OPS-009: a refreshed model timeout replaces the stale edit value", async () => {
+  let current = ADMIN_MODEL_BUDGETS;
+  stub(true, (path) =>
+    path === "/admin/model-budgets" ? { body: current, status: 200 } : undefined,
+  );
+  await mountAt("/admin/model-budgets");
+  await waitFor(
+    () =>
+      container.querySelector<HTMLInputElement>("#admin-budget-judge-run-seconds")?.value === "90",
+  );
+  await type("#admin-budget-judge-run-seconds", "100");
+
+  current = {
+    budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+      budget.kind === "judge-run"
+        ? { ...budget, seconds: 60, reason: "new operator setting", set_at: "2026-09-20T08:00:00Z" }
+        : budget,
+    ),
+  };
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.modelBudgets });
+  });
+  await waitFor(
+    () =>
+      container.querySelector<HTMLInputElement>("#admin-budget-judge-run-seconds")?.value === "60",
+  );
+  expect(has("60 秒")()).toBe(true);
 });
 
 test("OPS-009: a failed budget refresh hides cached settings and actions", async () => {
