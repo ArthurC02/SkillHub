@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { isUncertainGrantFailure, useGrantCredits } from "../../admin.service";
+import { isUncertainWriteFailure, useGrantCredits } from "../../admin.service";
 import { ActionForm } from "../../components/ActionForm";
 
 export function GrantForm({
@@ -16,7 +16,7 @@ export function GrantForm({
   const credits = Number(amount);
   const valid = /^-?\d+$/.test(amount.trim()) && Number.isSafeInteger(credits) && credits !== 0;
   const invalidAmount = amount.trim() !== "" && !valid;
-  const uncertain = grant.isError && isUncertainGrantFailure(grant.error);
+  const uncertain = grant.isError && isUncertainWriteFailure(grant.error);
   const startNewGrant = () => {
     grant.reset();
     setAmount("");

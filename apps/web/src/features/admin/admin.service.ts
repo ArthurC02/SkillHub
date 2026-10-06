@@ -171,13 +171,13 @@ export function useGrantCredits(workspaceId: string) {
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.ledger(workspaceId) }),
     onError: (error) => {
-      if (isUncertainGrantFailure(error))
+      if (isUncertainWriteFailure(error))
         return queryClient.invalidateQueries({ queryKey: queryKeys.admin.ledger(workspaceId) });
     },
   });
 }
 
-export function isUncertainGrantFailure(error: unknown): boolean {
+export function isUncertainWriteFailure(error: unknown): boolean {
   return !(error instanceof ApiError) || error.status === 408 || error.status >= 500;
 }
 
@@ -216,6 +216,10 @@ export function useDispatchHalt(method: "PUT" | "DELETE") {
     mutationFn: (body: { note: string; provider?: string }) =>
       apiFetch<{ note?: string } | undefined>("/admin/dispatch/halt", send(method, body)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch }),
+    onError: (error) => {
+      if (isUncertainWriteFailure(error))
+        return queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch });
+    },
   });
 }
 

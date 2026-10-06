@@ -6,7 +6,7 @@ import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
 import { createAppRouter } from "../../app/router";
-import { daysOf, seriesOf, usd } from "./admin.service";
+import { daysOf, seriesOf, usd, type DispatchStatus } from "./admin.service";
 import {
   ADMIN_ACCOUNT,
   ADMIN_AUDIT_LOG,
@@ -1287,6 +1287,31 @@ test("a failed dispatch refresh does not present cached halts as current", async
   expect(has("sandbox escape suspected on node-2")()).toBe(false);
   expect(button("恢復派送").disabled).toBe(true);
   expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+});
+
+test("an uncertain recovery refreshes dispatch and does not claim the write failed", async () => {
+  let current: DispatchStatus = ADMIN_DISPATCH;
+  stub(true, (path, method) => {
+    if (path === "/admin/dispatch" && method === "GET") return { body: current, status: 200 };
+    if (path === "/admin/dispatch/halt" && method === "DELETE") {
+      current = { dispatching: true, halts: [] };
+      return { body: { error: "temporary failure" }, status: 503 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-lift-note", "verified repair");
+  await click(button("恢復派送"));
+
+  await waitFor(has("這個動作的結果尚未確認"));
+  await waitFor(has("煞車：0 個"));
+  expect(has("這個動作沒有完成")()).toBe(false);
+  expect(has("已解除，上面的狀態已更新。")()).toBe(false);
+  expect(
+    calls.filter((call) => call.url === "/admin/dispatch" && call.method === "GET").length,
+  ).toBeGreaterThan(1);
 });
 
 test("OPS-005: the rosters page is read-only", async () => {
