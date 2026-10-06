@@ -12,11 +12,13 @@ export function CreditPanel({ workspaceId }: { workspaceId: string }) {
     <>
       <h2>點數</h2>
       {ledger.isFetching && <Loading what="點數" />}
-      {!ledger.isFetching && <ReadFailure error={ledger.error} what="點數" />}
-      {ledger.isError && (
-        <button type="button" disabled={ledger.isFetching} onClick={() => void ledger.refetch()}>
-          重新讀取點數
-        </button>
+      {!ledger.isFetching && (
+        <ReadFailure
+          error={ledger.error}
+          what="點數"
+          onRetry={() => void ledger.refetch()}
+          retrying={ledger.isFetching}
+        />
       )}
       {ledger.data && !ledger.error && !ledger.isFetching && (
         <>

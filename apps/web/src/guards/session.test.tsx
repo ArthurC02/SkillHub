@@ -136,6 +136,33 @@ test("IA-6 ReadFailure keeps a 500 actionable without exposing its raw message",
   expect(text()).not.toContain("需要登入");
 });
 
+test("ReadFailure offers a page-owned retry for a temporary read failure", async () => {
+  const retry = vi.fn();
+  await render(
+    <ReadFailure
+      error={new ApiError(503, "temporarily unavailable")}
+      what="派送狀態"
+      onRetry={retry}
+    />,
+    () => text().includes("暫時無法讀取派送狀態"),
+  );
+  const button = Array.from(container.querySelectorAll("button")).find(
+    (candidate) => candidate.textContent === "重新讀取派送狀態",
+  );
+  expect(button).toBeDefined();
+  await act(async () => button!.click());
+  expect(retry).toHaveBeenCalledOnce();
+});
+
+test("ReadFailure does not offer read retry instead of sign-in on 401", async () => {
+  await render(
+    <ReadFailure error={new ApiError(401, "not authenticated")} what="後台" onRetry={vi.fn()} />,
+    () => text().includes("需要登入"),
+  );
+  expect(text()).toContain("後台需要登入。");
+  expect(container.querySelector("button")).toBeNull();
+});
+
 test("IA-6 ReadFailure renders nothing when there is no error", async () => {
   await render(<ReadFailure error={null} what="下載紀錄" />, () => true);
   expect(text()).toBe("");

@@ -32,12 +32,12 @@ function StatusFeedback({ status }: { status: ReturnType<typeof useDispatchStatu
   return (
     <>
       {status.isFetching && <Loading what="派送狀態" />}
-      <ReadFailure error={status.error} what="派送狀態" />
-      {status.error && (
-        <button type="button" disabled={status.isFetching} onClick={() => void status.refetch()}>
-          重新讀取派送狀態
-        </button>
-      )}
+      <ReadFailure
+        error={status.error}
+        what="派送狀態"
+        onRetry={() => void status.refetch()}
+        retrying={status.isFetching}
+      />
     </>
   );
 }

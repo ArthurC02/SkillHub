@@ -12,7 +12,12 @@ export function AdminCostStatistics() {
   return (
     <AdminPage heading="成本統計" lede="與開始前檢查、會話估價讀的是同一組數字；不含使用者維度。">
       {stats.isPending && <Loading what="成本統計" />}
-      <ReadFailure error={stats.error} what="成本統計" />
+      <ReadFailure
+        error={stats.error}
+        what="成本統計"
+        onRetry={() => void stats.refetch()}
+        retrying={stats.isFetching}
+      />
       {stats.data &&
         !stats.error &&
         (rows.length === 0 ? (

@@ -13,7 +13,12 @@ function ExposureCaseSection({ publication }: { publication: string }) {
       <h2>審這一筆：{publication}</h2>
       {exposureCase.isFetching && <Loading what="這一筆的曝光審核資料" />}
       {!exposureCase.isFetching && (
-        <ReadFailure error={exposureCase.error} what="這一筆的曝光審核資料" />
+        <ReadFailure
+          error={exposureCase.error}
+          what="這一筆的曝光審核資料"
+          onRetry={() => void exposureCase.refetch()}
+          retrying={exposureCase.isFetching}
+        />
       )}
       {exposureCase.data && !exposureCase.error && !exposureCase.isFetching && (
         <ExposureReview
@@ -39,7 +44,12 @@ export function AdminExposure() {
     >
       <h2>待審清單</h2>
       {queue.isPending && <Loading what="待審清單" />}
-      <ReadFailure error={queue.error} what="待審清單" />
+      <ReadFailure
+        error={queue.error}
+        what="待審清單"
+        onRetry={() => void queue.refetch()}
+        retrying={queue.isFetching}
+      />
       {queue.data && !queue.error && <ExposureQueue entries={queue.data.publications} />}
 
       {publication && <ExposureCaseSection publication={publication} />}

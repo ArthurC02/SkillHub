@@ -26,7 +26,12 @@ export function TrendSection<B extends DailyCount, T extends Trend<B>>({
     <section>
       <h2>{heading}</h2>
       {query.isPending && <Loading what={heading} />}
-      <ReadFailure error={query.error} what={heading} />
+      <ReadFailure
+        error={query.error}
+        what={heading}
+        onRetry={() => void query.refetch()}
+        retrying={query.isFetching}
+      />
       {query.data && !query.error && (
         <TrendCharts
           trend={query.data}

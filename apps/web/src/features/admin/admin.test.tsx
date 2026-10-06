@@ -226,6 +226,12 @@ test("the admin home hides cached operational verdicts when their sources fail",
   await waitFor(has("暫時無法讀取曝光待審數"));
   expect(has("已停止派送 · 1 個煞車")()).toBe(false);
   expect(has("待審 1 筆")()).toBe(false);
+
+  unavailable = false;
+  await click(button("重新讀取派送狀態"));
+  await click(button("重新讀取曝光待審數"));
+  await waitFor(has("已停止派送 · 1 個煞車"));
+  await waitFor(has("待審 1 筆"));
 });
 
 test("OPS-001: the admin page stays loading while the operator check is pending", async () => {
@@ -235,10 +241,14 @@ test("OPS-001: the admin page stays loading while the operator check is pending"
   expect(container.querySelector("main h1")).toBeNull();
 });
 
-test("OPS-001: a failed operator check names the read failure instead of a missing page", async () => {
-  stub(true, (path) =>
-    path === "/me" ? { body: { error: "service unavailable" }, status: 503 } : undefined,
-  );
+test("OPS-001: a failed operator check offers retry and never masquerades as a missing page", async () => {
+  let reads = 0;
+  let unavailable = true;
+  stub(true, (path) => {
+    if (path !== "/me") return undefined;
+    reads += 1;
+    return unavailable ? { body: { error: "service unavailable" }, status: 503 } : undefined;
+  });
   await mountAt("/admin");
   await waitFor(has("暫時無法讀取後台。請重新整理，或稍後再試。"));
   expect(field<HTMLElement>('main [role="alert"]').textContent).toBe(
@@ -246,6 +256,11 @@ test("OPS-001: a failed operator check names the read failure instead of a missi
   );
   expect(has("service unavailable")()).toBe(false);
   expect(has("這一頁現在不存在")()).toBe(false);
+  const readsBeforeRetry = reads;
+  unavailable = false;
+  await click(button("重新讀取後台"));
+  await waitFor(has("營運後台"));
+  expect(reads).toBeGreaterThan(readsBeforeRetry);
 });
 
 test("OPS-001: an unauthenticated operator check asks for sign-in", async () => {
@@ -956,6 +971,11 @@ test("OPS-009: a failed budget refresh hides cached settings and actions", async
   await waitFor(has("暫時無法讀取模型呼叫逾時"));
   expect(has("評估判定")()).toBe(false);
   expect(container.querySelector("#admin-budget-judge-run-seconds")).toBeNull();
+
+  unavailable = false;
+  await click(button("重新讀取模型呼叫逾時"));
+  await waitFor(() => container.querySelector("#admin-budget-judge-run-seconds") !== null);
+  expect(has("評估判定")()).toBe(true);
 });
 
 test("OPS-009: setting a budget locks clearing the same kind until the write finishes", async () => {
@@ -1440,6 +1460,10 @@ test("OPS-005: a failed roster refresh hides cached membership", async () => {
   });
   await waitFor(has("暫時無法讀取名冊"));
   expect(container.querySelectorAll("main code")).toHaveLength(0);
+
+  unavailable = false;
+  await click(button("重新讀取名冊"));
+  await waitFor(has("u-1"));
 });
 
 test("OPS-005: a pending roster refresh does not present cached membership as current", async () => {
@@ -1768,6 +1792,10 @@ test("OPS-007: a failed statistics refresh does not present cached windows as cu
   });
   await waitFor(has("暫時無法讀取成本統計"));
   expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
+
+  unavailable = false;
+  await click(button("重新讀取成本統計"));
+  await waitFor(() => container.querySelectorAll("tbody tr").length > 0);
 });
 
 test("OPS-007: micro-dollars format at four places, and a missing percentile is named", () => {
@@ -1867,6 +1895,10 @@ test("OPS-008: a failed trend refresh hides that cached chart and balance", asyn
     ?.closest("section");
   expect(credits?.querySelectorAll("figure")).toHaveLength(0);
   expect(has("全平台目前餘額總和：1268 點。")()).toBe(false);
+
+  unavailable = false;
+  await click(button("重新讀取每日點數異動（淨額）"));
+  await waitFor(has("全平台目前餘額總和：1268 點。"));
 });
 
 test("OPS-008: a kind's figure totals its range and its table shows zero on the days it had nothing", async () => {
@@ -2118,6 +2150,10 @@ test("DISC-007: a failed exposure queue refresh hides cached waiting releases", 
   });
   await waitFor(has("暫時無法讀取待審清單"));
   expect(has("審這一筆")()).toBe(false);
+
+  unavailable = false;
+  await click(button("重新讀取待審清單"));
+  await waitFor(has("審這一筆"));
 });
 
 test("DISC-007: a failed exposure case refresh hides cached review actions", async () => {
@@ -2139,6 +2175,11 @@ test("DISC-007: a failed exposure case refresh hides cached review actions", asy
   await waitFor(has("暫時無法讀取這一筆的曝光審核資料"));
   expect(has("審核這一版")()).toBe(false);
   expect(container.querySelector("#admin-exposure-review-note")).toBeNull();
+
+  unavailable = false;
+  await click(button("重新讀取這一筆的曝光審核資料"));
+  await waitFor(has("審核這一版"));
+  expect(button("送出審核結論").disabled).toBe(true);
 });
 
 test("a pending exposure case refresh hides the old snapshot and resets its decision", async () => {

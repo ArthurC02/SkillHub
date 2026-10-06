@@ -128,7 +128,12 @@ export function AdminModelBudgets() {
           正在確認最新設定；完成前不能更改。
         </p>
       )}
-      <ReadFailure error={budgets.error} what="模型呼叫逾時" />
+      <ReadFailure
+        error={budgets.error}
+        what="模型呼叫逾時"
+        onRetry={() => void budgets.refetch()}
+        retrying={budgets.isFetching}
+      />
       {budgets.data && !budgets.error && (
         <ul className="download-list">
           {budgets.data.budgets.map((budget) => (

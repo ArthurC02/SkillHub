@@ -73,7 +73,14 @@ function GovernanceSection() {
             </Link>
             <p className="note">審核發佈物的最新 Release，決定要不要讓它出現在搜尋與目錄裡。</p>
             {queue.isFetching && <p role="status">正在讀取待審數…</p>}
-            {!queue.isFetching && <ReadFailure error={queue.error} what="曝光待審數" />}
+            {!queue.isFetching && (
+              <ReadFailure
+                error={queue.error}
+                what="曝光待審數"
+                onRetry={() => void queue.refetch()}
+                retrying={queue.isFetching}
+              />
+            )}
             {queue.data && !queue.error && !queue.isFetching && (
               <p className="badge-row">
                 <span className={pending > 0 ? "badge badge-warning" : "badge"}>
@@ -111,7 +118,14 @@ function OperationsSection() {
             </Link>
             <p className="note">看平台有沒有在派送新的試跑紀錄，宣告或解除煞車。</p>
             {dispatch.isFetching && <p role="status">正在讀取派送狀態…</p>}
-            {!dispatch.isFetching && <ReadFailure error={dispatch.error} what="派送狀態" />}
+            {!dispatch.isFetching && (
+              <ReadFailure
+                error={dispatch.error}
+                what="派送狀態"
+                onRetry={() => void dispatch.refetch()}
+                retrying={dispatch.isFetching}
+              />
+            )}
             {status && !dispatch.error && !dispatch.isFetching && (
               <p className="badge-row">
                 <span

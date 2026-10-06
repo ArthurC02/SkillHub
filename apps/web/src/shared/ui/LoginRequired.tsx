@@ -16,13 +16,26 @@ export function ReadFailure({
   error,
   what,
   children,
+  onRetry,
+  retrying = false,
 }: {
   error: unknown;
   what: string;
   children?: ReactNode;
+  onRetry?: () => void;
+  retrying?: boolean;
 }) {
   if (!error) return null;
   if (unauthenticated(error)) return <LoginRequired what={what} />;
   if (children) return <>{children}</>;
-  return <p role="alert">暫時無法讀取{what}。請重新整理，或稍後再試。</p>;
+  return (
+    <>
+      <p role="alert">暫時無法讀取{what}。請重新整理，或稍後再試。</p>
+      {onRetry && (
+        <button type="button" disabled={retrying} onClick={onRetry}>
+          重新讀取{what}
+        </button>
+      )}
+    </>
+  );
 }
