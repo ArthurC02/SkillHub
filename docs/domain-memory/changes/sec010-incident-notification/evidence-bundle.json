@@ -1,0 +1,26 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "SEC-010-runtime-incident-notification",
+  "proposal_id": "sec010-incident-notification",
+  "registry_revision": null,
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [
+    "docs/plans/02-specifications-and-acceptance-criteria.md",
+    "docs/plans/03-work-items.md",
+    "infra/deploy/control-plane/alertmanager.yml.tmpl",
+    "infra/observability/alerts.yml",
+    "infra/compose/control-plane.yml"
+  ],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "本包是待審設計，不含接收端、部署憑證或真實送達證據；SEC-010 維持未完成。",
+    "目前 Prometheus 的 critical／warning 不能直接表示 SEC-010 的 P1／P2；部分 P2 判準尚缺精確可觀測訊號。",
+    "GitHub 建單 API 可在權限不足時靜默忽略 label 或 assignee；必須讀回驗證。",
+    "GitHub Mobile 推播受個人通知設定及非工作時間排程影響，單靠 API 成功不能證明送達。"
+  ]
+}
