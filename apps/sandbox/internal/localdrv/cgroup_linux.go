@@ -144,6 +144,18 @@ func (c *cgroup) add(pid int) error {
 	return writeFile(filepath.Join(c.dir, "cgroup.procs"), strconv.Itoa(pid))
 }
 
+func (c *cgroup) hits() limitHits {
+	return limitHits{
+		OOMKilled:    c.eventOccurred("memory.events", "oom_kill"),
+		PidsLimitHit: c.eventOccurred("pids.events", "max"),
+	}
+}
+
+func (c *cgroup) eventOccurred(file, key string) bool {
+	raw, err := os.ReadFile(filepath.Join(c.dir, file))
+	return err == nil && eventOccurred(string(raw), key)
+}
+
 // rmdir only succeeds on an empty cgroup, and a killed process stays a member
 // until the kernel reaps it.
 func (c *cgroup) remove() error {

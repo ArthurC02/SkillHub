@@ -54,6 +54,8 @@
 
 sandboxd 拒絕啟動的組合：不認得的值；`mxc` 搭配 `SKILLHUB_SANDBOX_RUNTIME=runsc`；`mxc` 搭配 `SKILLHUB_CLEAN_MODE=1`；`mxc` 而沒有 `SKILLHUB_SANDBOX_MXC_BIN`；`local` 而沒開 clean mode；`docker` 而開了 clean mode。
 
+`local` 後端撞到上限也回報 `resource_limit`：Linux 在行程結束後、cgroup 移除前讀 `memory.events` 的 `oom_kill` 與 `pids.events` 的 `max`，大於 0 即記下（記憶體算被殺，不看 exit code；行程數需 exit code 不為 0）。Windows 用 Job 物件的完成埠收 `ACTIVE_PROCESS_LIMIT` 與 `JOB_MEMORY_LIMIT` 訊息；Job 的記憶體上限只讓配置失敗、不殺行程，所以記憶體與行程數都要 exit code 不為 0 才算。
+
 `mxc` 後端沿用 `local` 的行程樹、輸入搬運、trace 與 artifact 讀取和殘留清理，只換掉啟動方式：
 
 - 每次執行在該次的根目錄寫一份權限 0600 的政策檔：可寫路徑只有該次的工作目錄與輸出目錄，runner script 所在目錄唯讀，網路 `block`，結束即銷毀。

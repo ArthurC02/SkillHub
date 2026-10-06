@@ -14,4 +14,6 @@ func (c *cgroup) add(int) error { return nil }
 
 func (c *cgroup) remove() error { return nil }
 
+func (c *cgroup) hits() limitHits { return limitHits{} }
+
 func cgroupEnforcement() ResourceEnforcement { return ResourceEnforcement{} }

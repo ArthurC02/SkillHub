@@ -59,6 +59,8 @@ type Outcome struct {
 	OOMKilled    bool
 	PidsLimitHit bool
 	Output       string
+
+	MemoryLimitHit bool
 }
 
 type Adopted struct {
@@ -527,7 +529,7 @@ func (m *Manager) finish(id string, out Outcome, re *RunError) {
 		e.run.State, res.Status = StateFailed, ResultFailed
 		res.Error = re
 		e.run.StateReason = re.Message
-	case out.OOMKilled:
+	case out.hitMemoryCeiling():
 		e.run.State, res.Status = StateCompleted, ResultFailed
 		res.Error = &RunError{Class: ClassResourceLimit, Message: "memory limit reached; files under /work, /out and /tmp count toward it"}
 		e.run.StateReason = res.Error.Message
@@ -929,4 +931,8 @@ func mask(s string, secrets []string) string {
 func issuedHandle(id string) bool {
 	raw, err := hex.DecodeString(id)
 	return err == nil && len(raw) == 16 && id == strings.ToLower(id)
+}
+
+func (o Outcome) hitMemoryCeiling() bool {
+	return o.OOMKilled || (o.MemoryLimitHit && o.ExitCode != 0)
 }

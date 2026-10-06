@@ -178,7 +178,13 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 
 func (d *Driver) reap(r *run) {
 	waitErr := r.cmd.Wait()
-	outcome := sandbox.Outcome{Output: r.tail.String()}
+	hits := r.tree.limitHits()
+	outcome := sandbox.Outcome{
+		Output:         r.tail.String(),
+		OOMKilled:      hits.OOMKilled,
+		MemoryLimitHit: hits.MemoryLimitHit,
+		PidsLimitHit:   hits.PidsLimitHit,
+	}
 	var exitErr *exec.ExitError
 	if errors.As(waitErr, &exitErr) {
 		outcome.ExitCode = exitErr.ExitCode()

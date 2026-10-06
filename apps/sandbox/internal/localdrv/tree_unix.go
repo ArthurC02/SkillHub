@@ -74,6 +74,16 @@ func (t *pgroupTree) release() error {
 	return limit.remove()
 }
 
+func (t *pgroupTree) limitHits() limitHits {
+	t.mu.Lock()
+	limit := t.limit
+	t.mu.Unlock()
+	if limit == nil {
+		return limitHits{}
+	}
+	return limit.hits()
+}
+
 func resourceEnforcement() ResourceEnforcement { return cgroupEnforcement() }
 
 func reaping() Reaping { return Reaping{Descendants: true, Detached: false} }
