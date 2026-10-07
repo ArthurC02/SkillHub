@@ -473,7 +473,7 @@ func TestSuggestionVersionProvenanceMigrationBackfillsLegacyScalarAndKeepsPurgeF
 	for _, statement := range []string{
 		"DROP TABLE evaluation_suggestion_applications",
 		"ALTER TABLE evaluation_suggestions DROP CONSTRAINT evaluation_suggestions_id_workspace_key",
-		"ALTER TABLE skill_versions DROP CONSTRAINT skill_versions_id_workspace_key",
+		"ALTER TABLE skill_versions DROP CONSTRAINT skill_versions_id_workspace_key CASCADE",
 	} {
 		if _, err := tx.Exec(ctx, statement); err != nil {
 			t.Fatalf("prepare legacy migration state: %v", err)
