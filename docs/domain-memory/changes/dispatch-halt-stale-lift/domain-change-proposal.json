@@ -37,7 +37,7 @@
       "原煞車解除後，同一目標可建立新列，代次可能從初值重新開始。",
       "恢復派送可能讓新的 Run 開始執行，因此錯誤解除不能用事後重讀補救。"
     ],
-    "decision": "維持單一 Run owner、現有交易與 audit 邊界；為每筆煞車提供可比較的身分與重新宣告代次，GET 回傳兩者，解除命令帶回兩者，由同一 UPDATE 的條件拒絕過期前提。無需新增 Aggregate 或跨 Context 協作。",
+    "decision": "維持單一 Run owner、現有交易與 audit 邊界；為每筆煞車提供可比較的身分與重新宣告代次，GET 回傳兩者，解除命令帶回兩者，由同一 UPDATE 的條件拒絕過期前提。舊請求缺少前提時 fail-closed 拒絕，不保留無條件解除退路；repo 內呼叫端與 runbook 同批遷移。無需新增 Aggregate 或跨 Context 協作。",
     "invariants_preserved": [
       "P1 煞車只由 operator 手動解除。",
       "派送與清理共用同一份煞車狀態。",
@@ -57,20 +57,18 @@
       "empty-lift",
       "operator-guidance",
       "operator-authz",
-      "contract-compatibility"
+      "contract-compatibility",
+      "missing-precondition"
     ],
     "counterfactual_check": "暫時移除解除 UPDATE 的代次條件，執行同列重新宣告後用舊前提解除的整合測試，確認測試因新煞車被解除而失敗；還原後重跑並確認原檔逐位元組回復。"
   },
   "event_change": null,
   "contract_change": {
-    "description": "GET /admin/dispatch 對每筆煞車回傳身分與重新宣告代次；DELETE /admin/dispatch/halt 要求所見前提，過期時回具名衝突並提示重讀。原本無前提的解除呼叫必須遷移或被拒絕。",
+    "description": "GET /admin/dispatch 對每筆煞車回傳身分與重新宣告代次；DELETE /admin/dispatch/halt 要求所見前提，過期回具名 409 並提示重讀，缺少前提回具名 400。repo 內解除呼叫端同批遷移；repo 外舊請求直接拒絕，不保留無條件解除。",
     "breaking": true
   },
   "registry_updates": [],
   "risk_flags": ["public_contract", "irreversible_change"],
-  "open_questions": [
-    "產品負責人是否採納拒絕過期解除的操作意圖？",
-    "公開管理契約的必填前提如何與已部署呼叫端協調更新？"
-  ],
+  "open_questions": [],
   "approvals": []
 }

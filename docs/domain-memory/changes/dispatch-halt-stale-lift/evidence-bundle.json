@@ -10,15 +10,17 @@
     "contracts/openapi/public.yaml",
     "db/queries/dispatch.sql",
     "apps/platform/internal/trial/execution/halt.go",
-    "apps/web/src/features/admin/dispatch/AdminDispatch.page.tsx"
+    "apps/web/src/features/admin/dispatch/AdminDispatch.page.tsx",
+    "docs/plans/02-specifications-and-acceptance-criteria.md",
+    "docs/runbooks/p1-dispatch-halt.md"
   ],
   "test_results": [],
   "contract_checks": [],
   "architecture_checks": [],
   "security_checks": [],
   "residual_risks": [
-    "產品負責人尚未裁定過期解除應拒絕或解除目標現況。",
-    "必填 API 前提會使尚未更新的 operator 呼叫端需要遷移；部署方式尚未確認。",
+    "產品已裁定拒絕過期解除，但 developer 尚未審查本 Change Package；draft 不授權實作。",
+    "必填 API 前提會拒絕 repo 外尚未更新的 operator 呼叫端；其部署與使用情況未知，須在發佈前通知與確認。",
     "尚未實作或執行反證測試，本草案不代表保護已生效。"
   ]
 }

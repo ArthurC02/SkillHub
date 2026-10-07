@@ -12,11 +12,11 @@ Registry 擁有版本與停用事實，Run 擁有新 Run 的建立與生命週�
 
 方案：版本外的停用狀態、Registry 的窄交易內判定、組裝層注入 Run；不新增 Context，也不改寫 `skill_versions`。前端只使用核對目標所需的最少 metadata。不能以 preflight 舊結果、前端隱藏按鈕或異步投影作為唯一閘門；它們都無法排除停用提交後仍接受新 Run。
 
-待裁定：停用能否恢復，以及 operator 是否可讀 ID／序號／狀態等最少量版本 metadata。兩者會影響公開契約與操作後果，未裁定前不實作。九項測試義務見 `test-obligations.json`；尚無突變結果。
+產品裁定：停用不可恢復，只阻止新 Run；重複停用回已停用並記錄嘗試。operator 只能以精確 ID 查 ID、版本序號與停用狀態，不提供私有內容或跨 Workspace 版本清單。測試義務見 `test-obligations.json`；尚無突變結果。
 
 ## Proposal and approvals
 
-`admin-version-disable` 目前是 draft，未提交審查、未獲 developer 核准，也未升格 Registry 記錄。不得把本文件當成已核准的規則。
+`admin-version-disable` 目前是 draft，未提交審查、未獲 developer 核准，也未升格 Registry 記錄。產品選擇已寫入規格，但本文件不得當成已核准的實作交接。
 
 ## Contract impact
 
@@ -28,4 +28,4 @@ Registry 擁有版本與停用事實，Run 擁有新 Run 的建立與生命週�
 
 ## Residual risks
 
-產品選擇與 developer 審查未完成；OpenAPI、migration、Query owner、Go 與前端均未改動。內容來源白名單是另一項 SEC-011 缺口，不在本包內；正式告警部署也不在本包內。
+Developer 審查未完成；OpenAPI、migration、Query owner、Go 與前端均未改動。內容來源白名單是另一項 SEC-011 缺口，不在本包內；正式告警部署也不在本包內。

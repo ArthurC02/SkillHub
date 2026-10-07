@@ -52,10 +52,19 @@
       "id": "disable-guidance",
       "source_type": "acceptance-criterion",
       "source_id": "version-disable-guidance",
-      "expected_outcome": "preflight 與建立 Run 顯示一致的停用原因；operator 可確認目標但看不到套件內容。",
+      "expected_outcome": "preflight 與建立 Run 顯示一致的停用原因；operator 以精確 ID 查到版本序號與停用狀態，但看不到套件內容或版本清單。",
       "level": "security",
       "status": "planned",
-      "check": "API 回應與前端管理流程測試；欄位範圍待裁定"
+      "check": "API 回應與前端管理流程測試，斷言僅回三項 metadata"
+    },
+    {
+      "id": "disable-repeat",
+      "source_type": "acceptance-criterion",
+      "source_id": "version-disable-repeat",
+      "expected_outcome": "重複停用回已停用、留下一筆嘗試 audit，沒有恢復入口，且版本與既有 Run 不變。",
+      "level": "integration",
+      "status": "planned",
+      "check": "重複停用與不存在恢復路由的整合測試"
     },
     {
       "id": "disable-owner-boundary",

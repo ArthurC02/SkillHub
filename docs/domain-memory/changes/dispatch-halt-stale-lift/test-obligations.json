@@ -61,10 +61,19 @@
       "id": "contract-compatibility",
       "source_type": "acceptance-criterion",
       "source_id": "stale-lift-guidance",
-      "expected_outcome": "OpenAPI 與實作對必要前提、過期衝突和缺少前提一致；舊呼叫端的遷移結果可驗證。",
+      "expected_outcome": "OpenAPI 與實作對必要前提、過期 409 和缺少前提 400 一致；repo 內舊呼叫端的遷移結果可驗證。",
       "level": "integration",
       "status": "planned",
       "check": "契約生成檢查、缺少前提的 API 整合測試與部署相容性確認"
+    },
+    {
+      "id": "missing-precondition",
+      "source_type": "acceptance-criterion",
+      "source_id": "missing-lift-precondition",
+      "expected_outcome": "舊 DELETE 請求缺少任一前提時回 400，現行煞車與 audit 不變；repo 內呼叫端與 runbook 均帶完整前提。",
+      "level": "integration",
+      "status": "planned",
+      "check": "缺前提 API 整合測試、前端呼叫與 runbook 檢查"
     }
   ]
 }

@@ -37,7 +37,7 @@
       "operator 不能因此讀取跨 Workspace 私人套件內容。",
       "重試與重複停用不能產生互相矛盾的狀態。"
     ],
-    "decision": "由 Registry 擁有版本外的停用紀錄與交易內准入判定；沿用現有組裝層注入手法，不新增 Context。Run 建立交易取得同一版本的 owner 鎖並重查停用狀態後才寫入；operator 命令在相同鎖下寫狀態與稽核。前端只取最少量版本 metadata，具體欄位待審。",
+    "decision": "由 Registry 擁有版本外的不可恢復停用紀錄與交易內准入判定；沿用現有組裝層注入手法，不新增 Context。Run 建立交易取得同一版本的 owner 鎖並重查停用狀態後才寫入；operator 命令在相同鎖下寫狀態與稽核。停用只阻止新 Run，不改既有 Run 或版本內容。operator 只能以精確版本 ID 查詢 ID、版本序號與停用狀態；重複停用回已停用並記錄嘗試。",
     "invariants_preserved": [
       "Skill Version 不可變。",
       "Run 擁有自身生命週期且歷史 Run 不被改寫。",
@@ -53,20 +53,17 @@
       "用事件最終一致地更新 Run 側狀態：停用提交後仍有接受新 Run 的時間窗。"
     ],
     "proof_obligations": [
-      "disable-authority", "disable-admission", "disable-race", "disable-history", "disable-audit", "disable-guidance", "disable-owner-boundary", "disable-contract", "disable-owner-contract"
+      "disable-authority", "disable-admission", "disable-race", "disable-history", "disable-audit", "disable-guidance", "disable-repeat", "disable-owner-boundary", "disable-contract", "disable-owner-contract"
     ],
     "counterfactual_check": "暫時移除 Run 建立交易內的 Registry 停用判定，執行停用後建立及並行建立的整合測試，確認斷言失敗；還原後重跑並確認檔案回復原狀。"
   },
   "event_change": null,
   "contract_change": {
-    "description": "新增 operator-only 的版本停用與最少量狀態讀取 API；既有 Run 建立 API 對停用版本回具名拒絕，preflight 也呈現相同原因。既有成功回應不刪欄位。",
+    "description": "新增 operator-only 的版本停用與精確 ID 狀態讀取 API，只回 ID、版本序號與停用狀態；重複停用具名回已停用。既有 Run 建立 API 對停用版本回具名拒絕，preflight 也呈現相同原因。既有成功回應不刪欄位。",
     "breaking": false
   },
   "registry_updates": [],
   "risk_flags": ["cross_context", "public_contract", "sensitive_data", "irreversible_change"],
-  "open_questions": [
-    "停用是否可恢復，以及重複停用的 audit 語意須由產品負責人裁定。",
-    "operator 是否能讀取最少量的私有版本 metadata，以及欄位範圍須由產品負責人裁定。"
-  ],
+  "open_questions": [],
   "approvals": []
 }

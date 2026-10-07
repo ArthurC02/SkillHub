@@ -16,7 +16,7 @@
     },
     {
       "id": "current-lift-and-idempotence",
-      "statement": "解除前提與現行煞車相符時，解除與 audit 同交易；目標已沒有煞車時維持 204 的冪等回應。"
+      "statement": "解除前提與現行煞車相符時，解除與 audit 同交易；請求帶完整前提但目標已沒有煞車時維持 204 的冪等回應。"
     },
     {
       "id": "stale-lift-guidance",
@@ -25,13 +25,14 @@
     {
       "id": "stale-lift-authority",
       "statement": "前提檢查不放寬 operator 授權；匿名與一般成員仍得到 404，且不能解除煞車。"
+    },
+    {
+      "id": "missing-lift-precondition",
+      "statement": "未帶完整煞車身分與重新宣告代次的舊解除請求須被拒絕，不得退回按目標解除；repo 內呼叫端與 runbook 同批遷移。"
     }
   ],
   "candidate_terms": ["Run", "派送煞車", "重新宣告", "解除前提", "operator"],
-  "open_questions": [
-    "產品負責人是否確認『恢復派送』只解除管理員核對過的那一筆，而不是無條件解除目標當下的任何煞車？",
-    "既有 operator API 呼叫端是否都能與新增必填前提同步更新？若不能，須定義遷移期與舊請求的拒絕方式。"
-  ],
+  "open_questions": [],
   "risk_flags": ["public_contract", "irreversible_change"],
   "required_approval_roles": ["developer"],
   "sources": [

@@ -6,14 +6,16 @@
   "approvals": [],
   "scm_attestation": null,
   "counterfactual_check": null,
-  "sources": [],
+  "sources": [
+    "docs/plans/02-specifications-and-acceptance-criteria.md",
+    "docs/plans/05-pending-rulings.md"
+  ],
   "test_results": [],
   "contract_checks": [],
   "architecture_checks": [],
   "security_checks": [],
   "residual_risks": [
-    "產品負責人尚未決定停用是否可恢復；不得以 draft 直接實作不可逆動作。",
-    "operator 可見版本 metadata 的欄位範圍尚未決定；不得藉新增查詢暴露私人套件內容。",
+    "不可恢復與最小 metadata 已裁定，但 developer 尚未審查本 Change Package；draft 不授權實作不可逆動作。",
     "尚無實作與測試結果；本包只供審查，不表示 SEC-011 已完成。"
   ]
 }
