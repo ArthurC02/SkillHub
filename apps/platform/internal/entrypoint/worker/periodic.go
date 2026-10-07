@@ -12,6 +12,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
@@ -32,6 +33,19 @@ type PartitionCreateWorker struct {
 
 func partitionedTables() []string {
 	return []string{analytics.PartitionedTable, trace.PartitionedTable}
+}
+
+type CapacitySampleArgs struct{}
+
+func (CapacitySampleArgs) Kind() string { return "capacity_sample" }
+
+type CapacitySampleWorker struct {
+	river.WorkerDefaults[CapacitySampleArgs]
+	Store capacity.Store
+}
+
+func (w *CapacitySampleWorker) Work(ctx context.Context, _ *river.Job[CapacitySampleArgs]) error {
+	return w.Store.RecordToday(ctx, time.Now())
 }
 
 func (w *PartitionCreateWorker) Work(ctx context.Context, _ *river.Job[PartitionCreateArgs]) error {

@@ -9,6 +9,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/jackc/pgx/v5"
@@ -40,6 +41,8 @@ type Deps struct {
 	TraceIngestBaseURL string
 
 	LLM *llmclient.Client
+
+	RestoreRate capacity.RestoreRate
 
 	PollOnly bool
 }
@@ -152,6 +155,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		metrics.BacklogSourceChecks:  creationVersions.OldestSourceCheck,
 		metrics.BacklogEnrichment:    set.CreationSearch.OldestPendingEnrichment,
 	})
+	addCapacityObserver(set, workers, capacity.Store{Pool: pool, Rate: deps.RestoreRate})
 
 	addWorker(set, workers, &CreditRecomputeWorker{Svc: creditSvc})
 
@@ -276,6 +280,7 @@ func periodicJobs(set *Set, deps Deps, outboxWorker *outbox.Worker) []*river.Per
 	}
 
 	schedule(PartitionCreateArgs{}, PartitionCreateInterval, true)
+	schedule(CapacitySampleArgs{}, capacity.SampleInterval, true)
 
 	schedule(EnrichmentBackfillArgs{}, EnrichmentBackfillInterval, false)
 	return periodic
@@ -285,6 +290,11 @@ func addGaugePublishers(set *Set, workers *river.Workers, outboxWorker *outbox.W
 	observer := &BacklogObserveWorker{Backlogs: backlogs}
 	addWorker(set, workers, observer)
 	set.Gauges = []func(context.Context) error{set.Runs.PublishGauges, outboxWorker.PublishGauge, set.Objects.PublishGauge, observer.Observe}
+}
+
+func addCapacityObserver(set *Set, workers *river.Workers, store capacity.Store) {
+	addWorker(set, workers, &CapacitySampleWorker{Store: store})
+	set.Gauges = append(set.Gauges, store.PublishGauges)
 }
 
 func connectQueue(set *Set, client *river.Client[pgx.Tx]) {

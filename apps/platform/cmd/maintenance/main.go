@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
@@ -14,6 +15,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
@@ -31,7 +33,7 @@ func main() {
 	if len(os.Args) != 2 {
 		slog.Error("usage: maintenance purge-accounts|purge-audit|purge-feedback|" +
 			"purge-run-artifacts|purge-datasets|purge-deleted-skills|" +
-			"collect-objects|check-sources|rotate-partitions")
+			"collect-objects|check-sources|rotate-partitions|report")
 		os.Exit(2)
 	}
 	if code := runJob(os.Args[1]); code != 0 {
@@ -67,6 +69,8 @@ func runJob(job string) int {
 		err = collectObjects(ctx, pool)
 	case "rotate-partitions":
 		err = rotatePartitions(ctx, pool)
+	case "report":
+		err = printCapacityReport(ctx, pool)
 	default:
 		slog.Error("unknown job", "job", job)
 		return 2
@@ -76,6 +80,18 @@ func runJob(job string) int {
 		return 1
 	}
 	return 0
+}
+
+func printCapacityReport(ctx context.Context, pool *pgxpool.Pool) error {
+	rate, err := capacity.ParseRestoreRate(os.Getenv(capacity.RestoreRateEnv))
+	if err != nil {
+		return err
+	}
+	report, err := capacity.Store{Pool: pool, Rate: rate}.Report(ctx, time.Now())
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(report)
 }
 
 func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {

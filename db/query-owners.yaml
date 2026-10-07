@@ -3,6 +3,7 @@ files:
   credit.sql: credit
   cost.sql: credit
   auth.sql: identity
+  capacity.sql: capacity
   beta.sql:
   dispatch.sql: run
   model_budget.sql: modelbudget
@@ -195,6 +196,9 @@ queries:
   GetTraceStreamHealth: trace
   ListTraceGeneralFacts: trace
   DeleteTraceEventsBefore: trace
+
+  RecordDatabaseSize: capacity
+  ListDatabaseSizesSince: capacity
   GetTraceEventText: trace
   LockTraceIngestRun: trace
   NextTraceSeq: trace
@@ -203,6 +207,8 @@ queries:
 scope:
   TakeRateLimitToken: platform-wide
   SweepRateLimitBuckets: platform-wide
+  RecordDatabaseSize: platform-wide
+  ListDatabaseSizesSince: platform-wide
   AdjustCreditBalance: user
   LockAccountLifecycle: user
   CreateIdentity: user
@@ -378,6 +384,7 @@ raw_sql_allow:
   apps/platform/internal/trial/improvement/eval.go@begin: advisory lock serializes supersede-and-create for one run evaluation
   apps/platform/internal/entrypoint/wiring/run_monitor.go@LastOrphanScan: reads River-owned river_job state that is outside SkillHub migrations and sqlc
   apps/platform/internal/foundation/persistence/partition/partition.go@MaintainMonthly: drops validated monthly partition identifiers through PostgreSQL DDL
+  apps/platform/internal/foundation/observability/capacity/capacity.go@tableSizes: reads PostgreSQL size catalogs rather than a domain table
   apps/platform/internal/foundation/persistence/partition/partition.go@childPartitions: reads PostgreSQL partition catalogs rather than a domain table
   apps/platform/internal/foundation/persistence/partition/partition.go@createMonth: creates validated monthly partitions through PostgreSQL DDL
 
@@ -437,6 +444,7 @@ tables:
   audit_events: audit
   outbox_events: outbox
   rate_limit_buckets: httpx
+  database_size_samples: capacity
 
 retention:
   users: keep row stays after account purge so credit records keep their reference
@@ -494,3 +502,4 @@ retention:
   audit_events: expire AUDIT_RETENTION
   outbox_events: expire published events after seven days, dead letters stay
   rate_limit_buckets: transient idle buckets swept by the limiter
+  database_size_samples: keep one row a day

@@ -97,6 +97,19 @@ var (
 		Name: "skillhub_backlog_oldest_seconds",
 		Help: "Age of the oldest item waiting in a background backlog, 0 when the backlog is empty.",
 	}, []string{"backlog"})
+
+	DatabaseBytes = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "skillhub_database_bytes",
+		Help: "Size of the core database at its latest daily sample.",
+	})
+	RestoreBudgetBytes = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "skillhub_restore_budget_bytes",
+		Help: "Largest database that restores from backup within the restore window at the configured restore rate.",
+	})
+	RestoreBudgetDaysLeft = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "skillhub_restore_budget_days_left",
+		Help: "Days until the database outgrows the restore budget at its recent growth, +Inf when it is not growing.",
+	})
 )
 
 const (

@@ -236,6 +236,7 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 		outbox.PublishArgs{}.Kind():         true,
 		objreconcile.Args{}.Kind():          false,
 		PartitionCreateArgs{}.Kind():        true,
+		CapacitySampleArgs{}.Kind():         true,
 		EnrichmentBackfillArgs{}.Kind():     false,
 		wiring.CreditRecomputeArgs{}.Kind(): false,
 	}

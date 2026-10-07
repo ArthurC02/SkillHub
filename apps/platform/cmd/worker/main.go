@@ -18,6 +18,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -38,7 +39,15 @@ func startupRefusals(providers *run.Registry) []string {
 	if reason := cleanModeRefusal(); reason != "" {
 		refusals = append(refusals, reason)
 	}
+	if _, err := capacity.ParseRestoreRate(os.Getenv(capacity.RestoreRateEnv)); err != nil {
+		refusals = append(refusals, err.Error())
+	}
 	return refusals
+}
+
+func restoreRateFromEnv() capacity.RestoreRate {
+	rate, _ := capacity.ParseRestoreRate(os.Getenv(capacity.RestoreRateEnv))
+	return rate
 }
 
 func main() {
@@ -105,6 +114,7 @@ func runWorker() int {
 		TraceSigner:        traceSigner,
 		TraceIngestBaseURL: traceBase,
 		LLM:                llm,
+		RestoreRate:        restoreRateFromEnv(),
 	})
 	if err != nil {
 		slog.Error("worker composition", "error", err)

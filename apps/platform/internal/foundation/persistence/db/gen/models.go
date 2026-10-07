@@ -311,6 +311,12 @@ type CreditEntry struct {
 	CreatedAt      pgtype.Timestamptz
 }
 
+type DatabaseSizeSample struct {
+	SampledOn     pgtype.Date
+	DatabaseBytes int64
+	SampledAt     pgtype.Timestamptz
+}
+
 type Dataset struct {
 	ID                   pgtype.UUID
 	WorkspaceID          pgtype.UUID
