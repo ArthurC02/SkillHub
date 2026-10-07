@@ -20,6 +20,12 @@ export const ACTION_LABEL: Record<string, string> = {
   "platform_agent.disabled": "停用平台 Agent",
   "platform_agent.brake_engaged": "拉下 Agent 煞車",
   "platform_agent.brake_released": "放開 Agent 煞車",
+  "platform_agent_finding.opened": "開了一筆待辦",
+  "platform_agent_finding.reopened": "重新打開待辦",
+  "platform_agent_finding.recovered": "待辦自行恢復",
+  "platform_agent_finding.acknowledged": "接手待辦",
+  "platform_agent_finding.resolved": "解決待辦",
+  "platform_agent_finding.dismissed": "忽略待辦",
 };
 
 export const COST_KIND: Record<string, string> = {

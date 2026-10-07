@@ -75,19 +75,29 @@ func returnedFacts(steps []StepRecord) []any {
 }
 
 func citedInAny(pointer string, facts []any) bool {
-	for _, fact := range facts {
-		if resolves(pointer, fact) {
-			return true
-		}
-	}
-	return false
+	_, ok := citedValue(pointer, facts)
+	return ok
 }
 
-// resolves follows a JSON Pointer (RFC 6901) into a decoded document; the
-// whole document ("") is not a citation, because it names no single fact.
+func citedValue(pointer string, facts []any) (any, bool) {
+	for _, fact := range facts {
+		if value, ok := valueAt(pointer, fact); ok {
+			return value, true
+		}
+	}
+	return nil, false
+}
+
 func resolves(pointer string, node any) bool {
+	_, ok := valueAt(pointer, node)
+	return ok
+}
+
+// valueAt follows a JSON Pointer (RFC 6901) into a decoded document; the
+// whole document ("") is not a citation, because it names no single fact.
+func valueAt(pointer string, node any) (any, bool) {
 	if !strings.HasPrefix(pointer, "/") {
-		return false
+		return nil, false
 	}
 	for _, token := range strings.Split(pointer[1:], "/") {
 		token = strings.NewReplacer("~1", "/", "~0", "~").Replace(token)
@@ -95,18 +105,40 @@ func resolves(pointer string, node any) bool {
 		case map[string]any:
 			next, ok := value[token]
 			if !ok {
-				return false
+				return nil, false
 			}
 			node = next
 		case []any:
 			i, err := strconv.Atoi(token)
 			if err != nil || i < 0 || i >= len(value) || token != strconv.Itoa(i) {
-				return false
+				return nil, false
 			}
 			node = value[i]
 		default:
-			return false
+			return nil, false
 		}
 	}
-	return true
+	return node, true
+}
+
+func DailyReportSightings(result json.RawMessage, steps []StepRecord) []Sighting {
+	var report DailyReportResult
+	if json.Unmarshal(result, &report) != nil {
+		return nil
+	}
+	facts := returnedFacts(steps)
+	var sightings []Sighting
+	for _, item := range report.Items {
+		if item.Status != ReportAttention {
+			continue
+		}
+		evidence := make(map[string]any, len(item.Cites))
+		for _, cite := range item.Cites {
+			if value, ok := citedValue(cite, facts); ok {
+				evidence[cite] = value
+			}
+		}
+		sightings = append(sightings, Sighting{Title: item.Text, Cites: item.Cites, Evidence: evidence})
+	}
+	return sightings
 }

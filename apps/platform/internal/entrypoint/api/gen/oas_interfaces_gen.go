@@ -213,6 +213,10 @@ type GetOwnPublisherRes interface {
 	getOwnPublisherRes()
 }
 
+type GetPlatformAgentFindingRes interface {
+	getPlatformAgentFindingRes()
+}
+
 type GetPublicPublicationRes interface {
 	getPublicPublicationRes()
 }
@@ -325,6 +329,10 @@ type ListPackagingTargetsRes interface {
 	listPackagingTargetsRes()
 }
 
+type ListPlatformAgentFindingsRes interface {
+	listPlatformAgentFindingsRes()
+}
+
 type ListPlatformAgentRunStepsRes interface {
 	listPlatformAgentRunStepsRes()
 }
@@ -371,6 +379,10 @@ type ListWorkspaceActivityRes interface {
 
 type LookupAccountRes interface {
 	lookupAccountRes()
+}
+
+type MovePlatformAgentFindingRes interface {
+	movePlatformAgentFindingRes()
 }
 
 type PreviewPackagingRes interface {

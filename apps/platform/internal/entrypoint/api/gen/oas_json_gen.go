@@ -24984,6 +24984,203 @@ func (s *GetOwnPublisherUnauthorized) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes GetPlatformAgentFindingBadRequest as json.
+func (s *GetPlatformAgentFindingBadRequest) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes GetPlatformAgentFindingBadRequest from json.
+func (s *GetPlatformAgentFindingBadRequest) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GetPlatformAgentFindingBadRequest to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = GetPlatformAgentFindingBadRequest(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GetPlatformAgentFindingBadRequest) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GetPlatformAgentFindingBadRequest) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GetPlatformAgentFindingNotFound as json.
+func (s *GetPlatformAgentFindingNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes GetPlatformAgentFindingNotFound from json.
+func (s *GetPlatformAgentFindingNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GetPlatformAgentFindingNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = GetPlatformAgentFindingNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GetPlatformAgentFindingNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GetPlatformAgentFindingNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *GetPlatformAgentFindingOK) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *GetPlatformAgentFindingOK) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("finding")
+		s.Finding.Encode(e)
+	}
+	{
+		e.FieldStart("events")
+		e.ArrStart()
+		for _, elem := range s.Events {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+}
+
+var jsonFieldsNameOfGetPlatformAgentFindingOK = [2]string{
+	0: "finding",
+	1: "events",
+}
+
+// Decode decodes GetPlatformAgentFindingOK from json.
+func (s *GetPlatformAgentFindingOK) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GetPlatformAgentFindingOK to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "finding":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.Finding.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"finding\"")
+			}
+		case "events":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				s.Events = make([]PlatformAgentFindingEvent, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem PlatformAgentFindingEvent
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Events = append(s.Events, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"events\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode GetPlatformAgentFindingOK")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfGetPlatformAgentFindingOK) {
+					name = jsonFieldsNameOfGetPlatformAgentFindingOK[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GetPlatformAgentFindingOK) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GetPlatformAgentFindingOK) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode implements json.Marshaler.
 func (s *GetReadinessOK) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -30666,6 +30863,367 @@ func (s *ListPackagingTargetsUnauthorized) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes ListPlatformAgentFindingsBadRequest as json.
+func (s *ListPlatformAgentFindingsBadRequest) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes ListPlatformAgentFindingsBadRequest from json.
+func (s *ListPlatformAgentFindingsBadRequest) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ListPlatformAgentFindingsBadRequest to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ListPlatformAgentFindingsBadRequest(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ListPlatformAgentFindingsBadRequest) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ListPlatformAgentFindingsBadRequest) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ListPlatformAgentFindingsNotFound as json.
+func (s *ListPlatformAgentFindingsNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes ListPlatformAgentFindingsNotFound from json.
+func (s *ListPlatformAgentFindingsNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ListPlatformAgentFindingsNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ListPlatformAgentFindingsNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ListPlatformAgentFindingsNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ListPlatformAgentFindingsNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *ListPlatformAgentFindingsOK) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *ListPlatformAgentFindingsOK) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("findings")
+		e.ArrStart()
+		for _, elem := range s.Findings {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+	{
+		e.FieldStart("counts")
+		s.Counts.Encode(e)
+	}
+}
+
+var jsonFieldsNameOfListPlatformAgentFindingsOK = [2]string{
+	0: "findings",
+	1: "counts",
+}
+
+// Decode decodes ListPlatformAgentFindingsOK from json.
+func (s *ListPlatformAgentFindingsOK) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ListPlatformAgentFindingsOK to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "findings":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				s.Findings = make([]PlatformAgentFinding, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem PlatformAgentFinding
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Findings = append(s.Findings, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"findings\"")
+			}
+		case "counts":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				if err := s.Counts.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"counts\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode ListPlatformAgentFindingsOK")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfListPlatformAgentFindingsOK) {
+					name = jsonFieldsNameOfListPlatformAgentFindingsOK[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ListPlatformAgentFindingsOK) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ListPlatformAgentFindingsOK) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *ListPlatformAgentFindingsOKCounts) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *ListPlatformAgentFindingsOKCounts) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("open")
+		e.Int(s.Open)
+	}
+	{
+		e.FieldStart("acknowledged")
+		e.Int(s.Acknowledged)
+	}
+	{
+		e.FieldStart("resolved")
+		e.Int(s.Resolved)
+	}
+	{
+		e.FieldStart("dismissed")
+		e.Int(s.Dismissed)
+	}
+	{
+		e.FieldStart("recovered")
+		e.Int(s.Recovered)
+	}
+}
+
+var jsonFieldsNameOfListPlatformAgentFindingsOKCounts = [5]string{
+	0: "open",
+	1: "acknowledged",
+	2: "resolved",
+	3: "dismissed",
+	4: "recovered",
+}
+
+// Decode decodes ListPlatformAgentFindingsOKCounts from json.
+func (s *ListPlatformAgentFindingsOKCounts) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ListPlatformAgentFindingsOKCounts to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "open":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Int()
+				s.Open = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"open\"")
+			}
+		case "acknowledged":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Int()
+				s.Acknowledged = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"acknowledged\"")
+			}
+		case "resolved":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Int()
+				s.Resolved = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"resolved\"")
+			}
+		case "dismissed":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Int()
+				s.Dismissed = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"dismissed\"")
+			}
+		case "recovered":
+			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				v, err := d.Int()
+				s.Recovered = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"recovered\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode ListPlatformAgentFindingsOKCounts")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00011111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfListPlatformAgentFindingsOKCounts) {
+					name = jsonFieldsNameOfListPlatformAgentFindingsOKCounts[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ListPlatformAgentFindingsOKCounts) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ListPlatformAgentFindingsOKCounts) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes ListPlatformAgentRunStepsBadRequest as json.
 func (s *ListPlatformAgentRunStepsBadRequest) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -33134,6 +33692,275 @@ func (s *ModelCallBudget) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes MovePlatformAgentFindingBadRequest as json.
+func (s *MovePlatformAgentFindingBadRequest) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes MovePlatformAgentFindingBadRequest from json.
+func (s *MovePlatformAgentFindingBadRequest) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode MovePlatformAgentFindingBadRequest to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = MovePlatformAgentFindingBadRequest(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *MovePlatformAgentFindingBadRequest) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *MovePlatformAgentFindingBadRequest) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes MovePlatformAgentFindingConflict as json.
+func (s *MovePlatformAgentFindingConflict) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes MovePlatformAgentFindingConflict from json.
+func (s *MovePlatformAgentFindingConflict) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode MovePlatformAgentFindingConflict to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = MovePlatformAgentFindingConflict(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *MovePlatformAgentFindingConflict) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *MovePlatformAgentFindingConflict) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes MovePlatformAgentFindingNotFound as json.
+func (s *MovePlatformAgentFindingNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes MovePlatformAgentFindingNotFound from json.
+func (s *MovePlatformAgentFindingNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode MovePlatformAgentFindingNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = MovePlatformAgentFindingNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *MovePlatformAgentFindingNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *MovePlatformAgentFindingNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *MovePlatformAgentFindingReq) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *MovePlatformAgentFindingReq) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("status")
+		s.Status.Encode(e)
+	}
+	{
+		e.FieldStart("note")
+		e.Str(s.Note)
+	}
+}
+
+var jsonFieldsNameOfMovePlatformAgentFindingReq = [2]string{
+	0: "status",
+	1: "note",
+}
+
+// Decode decodes MovePlatformAgentFindingReq from json.
+func (s *MovePlatformAgentFindingReq) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode MovePlatformAgentFindingReq to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "status":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.Status.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"status\"")
+			}
+		case "note":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.Note = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"note\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode MovePlatformAgentFindingReq")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfMovePlatformAgentFindingReq) {
+					name = jsonFieldsNameOfMovePlatformAgentFindingReq[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *MovePlatformAgentFindingReq) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *MovePlatformAgentFindingReq) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes MovePlatformAgentFindingReqStatus as json.
+func (s MovePlatformAgentFindingReqStatus) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes MovePlatformAgentFindingReqStatus from json.
+func (s *MovePlatformAgentFindingReqStatus) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode MovePlatformAgentFindingReqStatus to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch MovePlatformAgentFindingReqStatus(v) {
+	case MovePlatformAgentFindingReqStatusOpen:
+		*s = MovePlatformAgentFindingReqStatusOpen
+	case MovePlatformAgentFindingReqStatusAcknowledged:
+		*s = MovePlatformAgentFindingReqStatusAcknowledged
+	case MovePlatformAgentFindingReqStatusResolved:
+		*s = MovePlatformAgentFindingReqStatusResolved
+	case MovePlatformAgentFindingReqStatusDismissed:
+		*s = MovePlatformAgentFindingReqStatusDismissed
+	default:
+		*s = MovePlatformAgentFindingReqStatus(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s MovePlatformAgentFindingReqStatus) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *MovePlatformAgentFindingReqStatus) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes time.Time as json.
 func (o NilDateTime) Encode(e *jx.Encoder, format func(*jx.Encoder, time.Time)) {
 	if o.Null {
@@ -35023,6 +35850,40 @@ func (s OptPlatformAgentBrake) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptPlatformAgentBrake) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PlatformAgentFindingEventEvidence as json.
+func (o OptPlatformAgentFindingEventEvidence) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes PlatformAgentFindingEventEvidence from json.
+func (o *OptPlatformAgentFindingEventEvidence) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptPlatformAgentFindingEventEvidence to nil")
+	}
+	o.Set = true
+	o.Value = make(PlatformAgentFindingEventEvidence)
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptPlatformAgentFindingEventEvidence) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptPlatformAgentFindingEventEvidence) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -39532,6 +40393,633 @@ func (s *PlatformAgentBrake) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *PlatformAgentBrake) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *PlatformAgentFinding) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *PlatformAgentFinding) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("id")
+		json.EncodeUUID(e, s.ID)
+	}
+	{
+		e.FieldStart("agent")
+		e.Str(s.Agent)
+	}
+	{
+		e.FieldStart("status")
+		s.Status.Encode(e)
+	}
+	{
+		e.FieldStart("title")
+		e.Str(s.Title)
+	}
+	{
+		e.FieldStart("cites")
+		e.ArrStart()
+		for _, elem := range s.Cites {
+			e.Str(elem)
+		}
+		e.ArrEnd()
+	}
+	{
+		if s.AssigneeUserID.Set {
+			e.FieldStart("assignee_user_id")
+			s.AssigneeUserID.Encode(e)
+		}
+	}
+	{
+		e.FieldStart("first_seen_at")
+		json.EncodeDateTime(e, s.FirstSeenAt)
+	}
+	{
+		e.FieldStart("last_seen_at")
+		json.EncodeDateTime(e, s.LastSeenAt)
+	}
+	{
+		e.FieldStart("seen_count")
+		e.Int(s.SeenCount)
+	}
+	{
+		e.FieldStart("status_changed_at")
+		json.EncodeDateTime(e, s.StatusChangedAt)
+	}
+}
+
+var jsonFieldsNameOfPlatformAgentFinding = [10]string{
+	0: "id",
+	1: "agent",
+	2: "status",
+	3: "title",
+	4: "cites",
+	5: "assignee_user_id",
+	6: "first_seen_at",
+	7: "last_seen_at",
+	8: "seen_count",
+	9: "status_changed_at",
+}
+
+// Decode decodes PlatformAgentFinding from json.
+func (s *PlatformAgentFinding) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PlatformAgentFinding to nil")
+	}
+	var requiredBitSet [2]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "id":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.ID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"id\"")
+			}
+		case "agent":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.Agent = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"agent\"")
+			}
+		case "status":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				if err := s.Status.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"status\"")
+			}
+		case "title":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Str()
+				s.Title = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"title\"")
+			}
+		case "cites":
+			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				s.Cites = make([]string, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem string
+					v, err := d.Str()
+					elem = string(v)
+					if err != nil {
+						return err
+					}
+					s.Cites = append(s.Cites, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"cites\"")
+			}
+		case "assignee_user_id":
+			if err := func() error {
+				s.AssigneeUserID.Reset()
+				if err := s.AssigneeUserID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"assignee_user_id\"")
+			}
+		case "first_seen_at":
+			requiredBitSet[0] |= 1 << 6
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.FirstSeenAt = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"first_seen_at\"")
+			}
+		case "last_seen_at":
+			requiredBitSet[0] |= 1 << 7
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.LastSeenAt = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"last_seen_at\"")
+			}
+		case "seen_count":
+			requiredBitSet[1] |= 1 << 0
+			if err := func() error {
+				v, err := d.Int()
+				s.SeenCount = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"seen_count\"")
+			}
+		case "status_changed_at":
+			requiredBitSet[1] |= 1 << 1
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.StatusChangedAt = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"status_changed_at\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode PlatformAgentFinding")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [2]uint8{
+		0b11011111,
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfPlatformAgentFinding) {
+					name = jsonFieldsNameOfPlatformAgentFinding[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PlatformAgentFinding) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PlatformAgentFinding) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *PlatformAgentFindingEvent) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *PlatformAgentFindingEvent) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("seq")
+		e.Int(s.Seq)
+	}
+	{
+		e.FieldStart("kind")
+		s.Kind.Encode(e)
+	}
+	{
+		if s.RunID.Set {
+			e.FieldStart("run_id")
+			s.RunID.Encode(e)
+		}
+	}
+	{
+		if s.OperatorUserID.Set {
+			e.FieldStart("operator_user_id")
+			s.OperatorUserID.Encode(e)
+		}
+	}
+	{
+		if s.Text.Set {
+			e.FieldStart("text")
+			s.Text.Encode(e)
+		}
+	}
+	{
+		if s.Evidence.Set {
+			e.FieldStart("evidence")
+			s.Evidence.Encode(e)
+		}
+	}
+	{
+		if s.Note.Set {
+			e.FieldStart("note")
+			s.Note.Encode(e)
+		}
+	}
+	{
+		e.FieldStart("occurred_at")
+		json.EncodeDateTime(e, s.OccurredAt)
+	}
+}
+
+var jsonFieldsNameOfPlatformAgentFindingEvent = [8]string{
+	0: "seq",
+	1: "kind",
+	2: "run_id",
+	3: "operator_user_id",
+	4: "text",
+	5: "evidence",
+	6: "note",
+	7: "occurred_at",
+}
+
+// Decode decodes PlatformAgentFindingEvent from json.
+func (s *PlatformAgentFindingEvent) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PlatformAgentFindingEvent to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "seq":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Int()
+				s.Seq = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"seq\"")
+			}
+		case "kind":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				if err := s.Kind.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"kind\"")
+			}
+		case "run_id":
+			if err := func() error {
+				s.RunID.Reset()
+				if err := s.RunID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"run_id\"")
+			}
+		case "operator_user_id":
+			if err := func() error {
+				s.OperatorUserID.Reset()
+				if err := s.OperatorUserID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"operator_user_id\"")
+			}
+		case "text":
+			if err := func() error {
+				s.Text.Reset()
+				if err := s.Text.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"text\"")
+			}
+		case "evidence":
+			if err := func() error {
+				s.Evidence.Reset()
+				if err := s.Evidence.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"evidence\"")
+			}
+		case "note":
+			if err := func() error {
+				s.Note.Reset()
+				if err := s.Note.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"note\"")
+			}
+		case "occurred_at":
+			requiredBitSet[0] |= 1 << 7
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.OccurredAt = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"occurred_at\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode PlatformAgentFindingEvent")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b10000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfPlatformAgentFindingEvent) {
+					name = jsonFieldsNameOfPlatformAgentFindingEvent[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PlatformAgentFindingEvent) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PlatformAgentFindingEvent) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s PlatformAgentFindingEventEvidence) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields implements json.Marshaler.
+func (s PlatformAgentFindingEventEvidence) encodeFields(e *jx.Encoder) {
+	for k, elem := range s {
+		e.FieldStart(k)
+
+		if len(elem) != 0 {
+			e.Raw(elem)
+		}
+	}
+}
+
+// Decode decodes PlatformAgentFindingEventEvidence from json.
+func (s *PlatformAgentFindingEventEvidence) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PlatformAgentFindingEventEvidence to nil")
+	}
+	m := s.init()
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		var elem jx.Raw
+		if err := func() error {
+			v, err := d.RawAppend(nil)
+			elem = jx.Raw(v)
+			if err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrapf(err, "decode field %q", k)
+		}
+		m[string(k)] = elem
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode PlatformAgentFindingEventEvidence")
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s PlatformAgentFindingEventEvidence) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PlatformAgentFindingEventEvidence) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PlatformAgentFindingEventKind as json.
+func (s PlatformAgentFindingEventKind) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes PlatformAgentFindingEventKind from json.
+func (s *PlatformAgentFindingEventKind) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PlatformAgentFindingEventKind to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch PlatformAgentFindingEventKind(v) {
+	case PlatformAgentFindingEventKindOpened:
+		*s = PlatformAgentFindingEventKindOpened
+	case PlatformAgentFindingEventKindSeen:
+		*s = PlatformAgentFindingEventKindSeen
+	case PlatformAgentFindingEventKindReopened:
+		*s = PlatformAgentFindingEventKindReopened
+	case PlatformAgentFindingEventKindRecovered:
+		*s = PlatformAgentFindingEventKindRecovered
+	case PlatformAgentFindingEventKindAcknowledged:
+		*s = PlatformAgentFindingEventKindAcknowledged
+	case PlatformAgentFindingEventKindResolved:
+		*s = PlatformAgentFindingEventKindResolved
+	case PlatformAgentFindingEventKindDismissed:
+		*s = PlatformAgentFindingEventKindDismissed
+	default:
+		*s = PlatformAgentFindingEventKind(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s PlatformAgentFindingEventKind) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PlatformAgentFindingEventKind) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PlatformAgentFindingStatus as json.
+func (s PlatformAgentFindingStatus) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes PlatformAgentFindingStatus from json.
+func (s *PlatformAgentFindingStatus) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PlatformAgentFindingStatus to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch PlatformAgentFindingStatus(v) {
+	case PlatformAgentFindingStatusOpen:
+		*s = PlatformAgentFindingStatusOpen
+	case PlatformAgentFindingStatusAcknowledged:
+		*s = PlatformAgentFindingStatusAcknowledged
+	case PlatformAgentFindingStatusResolved:
+		*s = PlatformAgentFindingStatusResolved
+	case PlatformAgentFindingStatusDismissed:
+		*s = PlatformAgentFindingStatusDismissed
+	case PlatformAgentFindingStatusRecovered:
+		*s = PlatformAgentFindingStatusRecovered
+	default:
+		*s = PlatformAgentFindingStatus(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s PlatformAgentFindingStatus) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PlatformAgentFindingStatus) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

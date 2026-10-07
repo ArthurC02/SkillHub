@@ -219,6 +219,11 @@ type GetOwnPublicationParams struct {
 	ID uuid.UUID
 }
 
+// GetPlatformAgentFindingParams is parameters of getPlatformAgentFinding operation.
+type GetPlatformAgentFindingParams struct {
+	ID uuid.UUID
+}
+
 // GetPublicPublicationParams is parameters of getPublicPublication operation.
 type GetPublicPublicationParams struct {
 	Publisher string
@@ -321,6 +326,11 @@ type ListOperatorAuditLogParams struct {
 	Offset OptInt `json:",omitempty,omitzero"`
 }
 
+// ListPlatformAgentFindingsParams is parameters of listPlatformAgentFindings operation.
+type ListPlatformAgentFindingsParams struct {
+	Status OptListPlatformAgentFindingsStatus `json:",omitempty,omitzero"`
+}
+
 // ListPlatformAgentRunStepsParams is parameters of listPlatformAgentRunSteps operation.
 type ListPlatformAgentRunStepsParams struct {
 	ID uuid.UUID
@@ -393,6 +403,11 @@ type ListWorkspaceActivityParams struct {
 // LookupAccountParams is parameters of lookupAccount operation.
 type LookupAccountParams struct {
 	Email string
+}
+
+// MovePlatformAgentFindingParams is parameters of movePlatformAgentFinding operation.
+type MovePlatformAgentFindingParams struct {
+	ID uuid.UUID
 }
 
 // PreviewPackagingParams is parameters of previewPackaging operation.

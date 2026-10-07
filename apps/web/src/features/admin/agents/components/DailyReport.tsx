@@ -11,17 +11,19 @@ function reportItems(run: PlatformAgentRun): ReportItem[] {
   return Array.isArray(items) ? (items as ReportItem[]) : [];
 }
 
-export function DailyReport({ runs }: { runs: PlatformAgentRun[] }) {
-  const latest = runs.find((run) => run.agent === DAILY_REPORT_AGENT && run.status === "completed");
-  if (!latest) return <p>還沒有完成的日報：0 份。</p>;
-  const items = reportItems(latest);
+export function DailyReport({ run }: { run: PlatformAgentRun }) {
+  if (run.agent !== DAILY_REPORT_AGENT) return null;
+  const items = reportItems(run);
+  if (items.length === 0) return <p>這次執行沒有交出日報。</p>;
   const attention = items.filter((item) => item.status === "attention");
   const fine = items.filter((item) => item.status === "fine");
   return (
     <>
       <p className="note">
-        <Timestamp at={latest.finished_at ?? latest.started_at} />{" "}
-        完成。每一項都附它根據的事實，平台已核對這些事實都在當天的維運報表裡。
+        <Timestamp at={run.finished_at ?? run.started_at} />{" "}
+        {run.status === "completed"
+          ? "完成。每一項都附它根據的事實，平台已核對這些事實都在當天的維運報表裡。"
+          : "這份日報沒有通過核對，所以沒有進待辦；原因寫在執行紀錄上。"}
       </p>
       {[
         { heading: `需要注意：${attention.length} 項`, list: attention },

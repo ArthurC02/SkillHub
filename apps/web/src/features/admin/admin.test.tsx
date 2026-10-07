@@ -7,9 +7,11 @@ import { queryClient } from "../../core/api/queryClient";
 import { createAppRouter } from "../../app/router";
 import { daysOf, seriesOf, usd } from "./admin.service";
 import {
-  ADMIN_AGENT_RUNS,
+  ADMIN_AGENT_FINDINGS,
   ADMIN_AGENTS,
   ADMIN_AUDIT_LOG,
+  AGENT_FAILED_RUN,
+  AGENT_FINDING,
   AGENT_REPORT_RUN,
   ADMIN_EXPOSURE_CASE,
   ADMIN_SKILLS,
@@ -992,51 +994,120 @@ test("DISC-007: a release search has not indexed yet says so instead of showing 
   expect(has(ADMIN_EXPOSURE_CASE.snapshot.enriched_summary)()).toBe(false);
 });
 
-test("OPS-012: the daily report is the latest completed run, split into attention and fine with its cites", async () => {
+test("OPS-012: the inbox lists live findings with how often they were reported, and counts every status", async () => {
   stub(true);
   await mountAt("/admin/agents");
-  await waitFor(has("需要注意：1 項"));
-  expect(has("分割表輪替從來沒有成功過，已經超過兩個週期。")()).toBe(true);
-  expect(has("/maintenance_jobs/rotate-partitions/overdue_ratio")()).toBe(true);
-  expect(has("正常：1 項")()).toBe(true);
-  expect(has("CPU 使用率偏高。")()).toBe(false);
+  await waitFor(has("分割表輪替從來沒有成功過，已經超過兩個週期。"));
+  expect(has("回報 3 次")()).toBe(true);
+  expect(has("待處理")()).toBe(true);
+  expect(has("待辦：2")()).toBe(true);
+  expect(has("已解決：4")()).toBe(true);
+  expect(has("已自行恢復：2")()).toBe(true);
+  expect(calls.some((c) => c.url === "/admin/agents/findings")).toBe(true);
 });
 
-test("OPS-012: with no completed daily report the page says so", async () => {
+test("OPS-012: a closed status in the address lists that status; any other value falls back to the live list", async () => {
+  stub(true);
+  await mountAt("/admin/agents", { status: "resolved" });
+  await waitFor(() => calls.some((c) => c.url === "/admin/agents/findings?status=resolved"));
+  await go("/admin/agents", { status: "open" });
+  await waitFor(() => calls.some((c) => c.url === "/admin/agents/findings"));
+  expect(calls.some((c) => c.url.includes("status=open"))).toBe(false);
+});
+
+test("OPS-012: an empty view says how many it holds", async () => {
   stub(true, (path) =>
-    path === "/admin/agents/runs"
-      ? { body: { runs: [ADMIN_AGENT_RUNS.runs[0]] }, status: 200 }
+    path === "/admin/agents/findings"
+      ? { body: { ...ADMIN_AGENT_FINDINGS, findings: [] }, status: 200 }
       : undefined,
   );
   await mountAt("/admin/agents");
-  await waitFor(has("還沒有完成的日報：0 份。"));
+  await waitFor(has("待辦：0 件。"));
 });
 
-test("OPS-012: a run lists how it ended, why, and a cost that names the steps nobody priced", async () => {
+test("OPS-012: a finding opens with the values it rests on, its history and only the moves its status allows", async () => {
   stub(true);
-  await mountAt("/admin/agents");
-  await waitFor(has("失敗"));
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("這件事"));
+  await waitFor(has("日報首次回報"));
+  expect(has("/maintenance_jobs/rotate-partitions/overdue_ratio ＝ 3.4")()).toBe(true);
+  expect(has("日報再次回報")()).toBe(true);
+  expect(button("我來處理")).toBeDefined();
+  expect(button("忽略這件事")).toBeDefined();
+  expect(has("重新打開")()).toBe(false);
+  expect(has("打開這件事")()).toBe(false);
+});
+
+test("OPS-012: a resolved finding offers only to reopen it", async () => {
+  const resolved = { ...ADMIN_AGENT_FINDINGS.findings[0], status: "resolved" };
+  stub(true, (path) =>
+    path === `/admin/agents/findings/${AGENT_FINDING}`
+      ? { body: { finding: resolved, events: [] }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("重新打開"));
+  expect(has("我來處理")()).toBe(false);
+  expect(has("標記已解決")()).toBe(false);
+  expect(has("忽略這件事")()).toBe(false);
+});
+
+test("OPS-012: taking on a finding sends the move with the operator's note", async () => {
+  stub(true, (_path, method) => (method === "PUT" ? { body: {}, status: 204 } : undefined));
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("我來處理"));
+  await type("#admin-finding-acknowledged-note", " checking the job ");
+  await submit("#admin-finding-acknowledged-note");
+  await waitFor(() => calls.some((c) => c.method === "PUT"));
+  expect(calls.find((c) => c.method === "PUT")).toEqual({
+    method: "PUT",
+    url: `/admin/agents/findings/${AGENT_FINDING}/status`,
+    body: { status: "acknowledged", note: "checking the job" },
+  });
+});
+
+test("OPS-012: a refused move says so with the server's words", async () => {
+  stub(true, (_path, method) =>
+    method === "PUT"
+      ? {
+          body: { error: "the finding cannot move to that status from where it is now" },
+          status: 409,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("標記已解決"));
+  await type("#admin-finding-resolved-note", "fixed");
+  await submit("#admin-finding-resolved-note");
+  await waitFor(has("the finding cannot move to that status from where it is now"));
+});
+
+test("OPS-012: a run in the address shows its report, then each step's tool, answer, tokens and cost", async () => {
+  stub(true);
+  await mountAt("/admin/agents", { run: AGENT_REPORT_RUN });
+  await waitFor(has("需要注意：1 項"));
+  expect(has("正常：1 項")()).toBe(true);
+  await waitFor(has("呼叫 maintenance_report"));
+  expect(has("交出結果")()).toBe(true);
+  expect(has("輸入 812 tokens、輸出 14 tokens；花費 $0.0012")()).toBe(true);
+});
+
+test("OPS-012: a failed run's report is shown as not checked, and its list row names why and what it cost", async () => {
+  stub(true);
+  await mountAt("/admin/agents", { run: AGENT_FAILED_RUN });
+  await waitFor(has("這份日報沒有通過核對"));
   expect(has("which no tool returned")()).toBe(true);
   expect(has("2 步；花費 $0.0018（另有 1 步沒有回報花費）")()).toBe(true);
   expect(has("2 步；花費 $0.0031看這次的步驟")()).toBe(true);
 });
 
-test("OPS-012: a run in the address shows each step's tool, answer, tokens and cost", async () => {
+test("OPS-012: ids in the address that are not UUIDs are dropped instead of fetched", async () => {
   stub(true);
-  await mountAt("/admin/agents", { run: AGENT_REPORT_RUN });
-  await waitFor(has("這次執行的步驟"));
-  await waitFor(has("呼叫 maintenance_report"));
-  expect(has("交出結果")()).toBe(true);
-  expect(has("輸入 812 tokens、輸出 14 tokens；花費 $0.0012")()).toBe(true);
-  expect(calls.some((c) => c.url === `/admin/agents/runs/${AGENT_REPORT_RUN}/steps`)).toBe(true);
-});
-
-test("OPS-012: a run id that is not a UUID is dropped instead of fetched", async () => {
-  stub(true);
-  await mountAt("/admin/agents", { run: "not-a-run" });
-  await waitFor(has("最近的執行"));
-  expect(has("這次執行的步驟")()).toBe(false);
-  expect(calls.some((c) => c.url.includes("/steps"))).toBe(false);
+  await mountAt("/admin/agents", { run: "not-a-run", finding: "nope" });
+  await waitFor(has("日報與執行紀錄"));
+  await waitFor(has("回報 3 次"));
+  expect(has("這次執行")()).toBe(false);
+  expect(calls.some((c) => c.url.includes("/steps") || c.url.includes("/findings/"))).toBe(false);
 });
 
 test("OPS-011: disabling an agent and engaging the brake each send the operator's note", async () => {

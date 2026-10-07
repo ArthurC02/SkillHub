@@ -309,6 +309,11 @@ import {
     GetOperatorRosters200ResponseToJSON,
 } from '../models/GetOperatorRosters200Response';
 import {
+    type GetPlatformAgentFinding200Response,
+    GetPlatformAgentFinding200ResponseFromJSON,
+    GetPlatformAgentFinding200ResponseToJSON,
+} from '../models/GetPlatformAgentFinding200Response';
+import {
     type GetReadiness200Response,
     GetReadiness200ResponseFromJSON,
     GetReadiness200ResponseToJSON,
@@ -404,6 +409,11 @@ import {
     ListPackagingTargets200ResponseToJSON,
 } from '../models/ListPackagingTargets200Response';
 import {
+    type ListPlatformAgentFindings200Response,
+    ListPlatformAgentFindings200ResponseFromJSON,
+    ListPlatformAgentFindings200ResponseToJSON,
+} from '../models/ListPlatformAgentFindings200Response';
+import {
     type ListPlatformAgentRunSteps200Response,
     ListPlatformAgentRunSteps200ResponseFromJSON,
     ListPlatformAgentRunSteps200ResponseToJSON,
@@ -463,6 +473,11 @@ import {
     ModelCallBudgetFromJSON,
     ModelCallBudgetToJSON,
 } from '../models/ModelCallBudget';
+import {
+    type MovePlatformAgentFindingRequest,
+    MovePlatformAgentFindingRequestFromJSON,
+    MovePlatformAgentFindingRequestToJSON,
+} from '../models/MovePlatformAgentFindingRequest';
 import {
     type PackagingPreview,
     PackagingPreviewFromJSON,
@@ -1110,6 +1125,13 @@ export interface GetOwnPublicationRequest {
     id: string;
 }
 
+export interface GetPlatformAgentFindingRequest {
+    /**
+     * 
+     */
+    id: string;
+}
+
 export interface GetPublicPublicationRequest {
     /**
      * 
@@ -1287,6 +1309,13 @@ export interface ListOperatorAuditLogRequest {
     offset?: number;
 }
 
+export interface ListPlatformAgentFindingsRequest {
+    /**
+     * 
+     */
+    status?: ListPlatformAgentFindingsStatusEnum;
+}
+
 export interface ListPlatformAgentRunStepsRequest {
     /**
      * 
@@ -1399,6 +1428,17 @@ export interface LookupAccountRequest {
      * 
      */
     email: string;
+}
+
+export interface MovePlatformAgentFindingOperationRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    movePlatformAgentFindingRequest: MovePlatformAgentFindingRequest;
 }
 
 export interface PreviewPackagingRequest {
@@ -3116,6 +3156,29 @@ export interface DefaultApiInterface {
     getOwnPublisher(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publisher>;
 
     /**
+     * Creates request options for getPlatformAgentFinding without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getPlatformAgentFindingRequestOpts(requestParameters: GetPlatformAgentFindingRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @summary One finding with every sighting and every status change (02:OPS-012)
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getPlatformAgentFindingRaw(requestParameters: GetPlatformAgentFindingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetPlatformAgentFinding200Response>>;
+
+    /**
+     * One finding with every sighting and every status change (02:OPS-012)
+     */
+    getPlatformAgentFinding(requestParameters: GetPlatformAgentFindingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetPlatformAgentFinding200Response>;
+
+    /**
      * Creates request options for getPublicPublication without sending the request
      * @param {string} publisher 
      * @param {string} name 
@@ -3806,6 +3869,30 @@ export interface DefaultApiInterface {
     listPackagingTargets(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPackagingTargets200Response>;
 
     /**
+     * Creates request options for listPlatformAgentFindings without sending the request
+     * @param {'open' | 'acknowledged' | 'resolved' | 'dismissed' | 'recovered'} [status] 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listPlatformAgentFindingsRequestOpts(requestParameters: ListPlatformAgentFindingsRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. One row per tracked finding, most recently seen first, at most 100. Without `status` the list holds the live ones, open and acknowledged; `counts` always counts every status. A finding a later report repeats folds into the same row; one a later report no longer mentions becomes recovered, and one that comes back after being resolved or recovered reopens. 
+     * @summary The things platform agents reported as needing attention (02:OPS-012)
+     * @param {'open' | 'acknowledged' | 'resolved' | 'dismissed' | 'recovered'} [status] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listPlatformAgentFindingsRaw(requestParameters: ListPlatformAgentFindingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgentFindings200Response>>;
+
+    /**
+     * Operator only. One row per tracked finding, most recently seen first, at most 100. Without `status` the list holds the live ones, open and acknowledged; `counts` always counts every status. A finding a later report repeats folds into the same row; one a later report no longer mentions becomes recovered, and one that comes back after being resolved or recovered reopens. 
+     * The things platform agents reported as needing attention (02:OPS-012)
+     */
+    listPlatformAgentFindings(requestParameters: ListPlatformAgentFindingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentFindings200Response>;
+
+    /**
      * Creates request options for listPlatformAgentRunSteps without sending the request
      * @param {string} id 
      * @throws {RequiredError}
@@ -4124,6 +4211,32 @@ export interface DefaultApiInterface {
      * Find an account by email (02:OPS-002)
      */
     lookupAccount(requestParameters: LookupAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountLookup>;
+
+    /**
+     * Creates request options for movePlatformAgentFinding without sending the request
+     * @param {string} id 
+     * @param {MovePlatformAgentFindingRequest} movePlatformAgentFindingRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    movePlatformAgentFindingRequestOpts(requestParameters: MovePlatformAgentFindingOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Open moves to acknowledged (the caller becomes its assignee), resolved or dismissed; acknowledged to resolved or dismissed; resolved, dismissed and recovered back to open; recovered also to resolved. A dismissed finding stays dismissed when later reports repeat it. Writes the change, its history entry and its audit event in one transaction. 
+     * @summary Take on, resolve, dismiss or reopen a finding (02:OPS-012)
+     * @param {string} id 
+     * @param {MovePlatformAgentFindingRequest} movePlatformAgentFindingRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    movePlatformAgentFindingRaw(requestParameters: MovePlatformAgentFindingOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Operator only. Open moves to acknowledged (the caller becomes its assignee), resolved or dismissed; acknowledged to resolved or dismissed; resolved, dismissed and recovered back to open; recovered also to resolved. A dismissed finding stays dismissed when later reports repeat it. Writes the change, its history entry and its audit event in one transaction. 
+     * Take on, resolve, dismiss or reopen a finding (02:OPS-012)
+     */
+    movePlatformAgentFinding(requestParameters: MovePlatformAgentFindingOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for previewPackaging without sending the request
@@ -7532,6 +7645,51 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for getPlatformAgentFinding without sending the request
+     */
+    async getPlatformAgentFindingRequestOpts(requestParameters: GetPlatformAgentFindingRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getPlatformAgentFinding().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/agents/findings/{id}`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * One finding with every sighting and every status change (02:OPS-012)
+     */
+    async getPlatformAgentFindingRaw(requestParameters: GetPlatformAgentFindingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetPlatformAgentFinding200Response>> {
+        const requestOptions = await this.getPlatformAgentFindingRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => GetPlatformAgentFinding200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * One finding with every sighting and every status change (02:OPS-012)
+     */
+    async getPlatformAgentFinding(requestParameters: GetPlatformAgentFindingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetPlatformAgentFinding200Response> {
+        const response = await this.getPlatformAgentFindingRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getPublicPublication without sending the request
      */
     async getPublicPublicationRequestOpts(requestParameters: GetPublicPublicationRequest): Promise<runtime.RequestOpts> {
@@ -8860,6 +9018,49 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for listPlatformAgentFindings without sending the request
+     */
+    async listPlatformAgentFindingsRequestOpts(requestParameters: ListPlatformAgentFindingsRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/agents/findings`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. One row per tracked finding, most recently seen first, at most 100. Without `status` the list holds the live ones, open and acknowledged; `counts` always counts every status. A finding a later report repeats folds into the same row; one a later report no longer mentions becomes recovered, and one that comes back after being resolved or recovered reopens. 
+     * The things platform agents reported as needing attention (02:OPS-012)
+     */
+    async listPlatformAgentFindingsRaw(requestParameters: ListPlatformAgentFindingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgentFindings200Response>> {
+        const requestOptions = await this.listPlatformAgentFindingsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListPlatformAgentFindings200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. One row per tracked finding, most recently seen first, at most 100. Without `status` the list holds the live ones, open and acknowledged; `counts` always counts every status. A finding a later report repeats folds into the same row; one a later report no longer mentions becomes recovered, and one that comes back after being resolved or recovered reopens. 
+     * The things platform agents reported as needing attention (02:OPS-012)
+     */
+    async listPlatformAgentFindings(requestParameters: ListPlatformAgentFindingsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentFindings200Response> {
+        const response = await this.listPlatformAgentFindingsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listPlatformAgentRunSteps without sending the request
      */
     async listPlatformAgentRunStepsRequestOpts(requestParameters: ListPlatformAgentRunStepsRequest): Promise<runtime.RequestOpts> {
@@ -9458,6 +9659,62 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     async lookupAccount(requestParameters: LookupAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountLookup> {
         const response = await this.lookupAccountRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for movePlatformAgentFinding without sending the request
+     */
+    async movePlatformAgentFindingRequestOpts(requestParameters: MovePlatformAgentFindingOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling movePlatformAgentFinding().'
+            );
+        }
+
+        if (requestParameters['movePlatformAgentFindingRequest'] == null) {
+            throw new runtime.RequiredError(
+                'movePlatformAgentFindingRequest',
+                'Required parameter "movePlatformAgentFindingRequest" was null or undefined when calling movePlatformAgentFinding().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/agents/findings/{id}/status`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: MovePlatformAgentFindingRequestToJSON(requestParameters['movePlatformAgentFindingRequest']),
+        };
+    }
+
+    /**
+     * Operator only. Open moves to acknowledged (the caller becomes its assignee), resolved or dismissed; acknowledged to resolved or dismissed; resolved, dismissed and recovered back to open; recovered also to resolved. A dismissed finding stays dismissed when later reports repeat it. Writes the change, its history entry and its audit event in one transaction. 
+     * Take on, resolve, dismiss or reopen a finding (02:OPS-012)
+     */
+    async movePlatformAgentFindingRaw(requestParameters: MovePlatformAgentFindingOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.movePlatformAgentFindingRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Operator only. Open moves to acknowledged (the caller becomes its assignee), resolved or dismissed; acknowledged to resolved or dismissed; resolved, dismissed and recovered back to open; recovered also to resolved. A dismissed finding stays dismissed when later reports repeat it. Writes the change, its history entry and its audit event in one transaction. 
+     * Take on, resolve, dismiss or reopen a finding (02:OPS-012)
+     */
+    async movePlatformAgentFinding(requestParameters: MovePlatformAgentFindingOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.movePlatformAgentFindingRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -11185,6 +11442,17 @@ export const GetSkillDetailViewEnum = {
     Embedded: 'embedded',
 } as const;
 export type GetSkillDetailViewEnum = typeof GetSkillDetailViewEnum[keyof typeof GetSkillDetailViewEnum];
+/**
+ * @export
+ */
+export const ListPlatformAgentFindingsStatusEnum = {
+    Open: 'open',
+    Acknowledged: 'acknowledged',
+    Resolved: 'resolved',
+    Dismissed: 'dismissed',
+    Recovered: 'recovered',
+} as const;
+export type ListPlatformAgentFindingsStatusEnum = typeof ListPlatformAgentFindingsStatusEnum[keyof typeof ListPlatformAgentFindingsStatusEnum];
 /**
  * @export
  */

@@ -220,6 +220,17 @@ queries:
   FinishPlatformAgentRun: operations
   ListPlatformAgentRuns: operations
   ListPlatformAgentSteps: operations
+  ListMatchableFindings: operations
+  OpenFinding: operations
+  SeeFinding: operations
+  SetFindingStatus: operations
+  GetFindingStatus: operations
+  AppendFindingEvent: operations
+  ListFindings: operations
+  CountFindingsByStatus: operations
+  GetFinding: operations
+  ListFindingEvents: operations
+  GetPlatformAgentRunAgent: operations
   GetTraceEventText: trace
   LockTraceIngestRun: trace
   NextTraceSeq: trace
@@ -243,6 +254,16 @@ scope:
   FinishPlatformAgentRun: platform-wide
   ListPlatformAgentRuns: platform-wide
   ListPlatformAgentSteps: platform-wide
+  ListMatchableFindings: platform-wide
+  OpenFinding: platform-wide
+  SeeFinding: platform-wide
+  SetFindingStatus: platform-wide
+  GetFindingStatus: platform-wide
+  AppendFindingEvent: platform-wide
+  ListFindings: platform-wide
+  GetFinding: platform-wide
+  ListFindingEvents: platform-wide
+  GetPlatformAgentRunAgent: platform-wide
   AdjustCreditBalance: user
   LockAccountLifecycle: user
   CreateIdentity: user
@@ -484,6 +505,8 @@ tables:
   platform_agent_brake: operations
   platform_agent_runs: operations
   platform_agent_steps: operations
+  platform_agent_findings: operations
+  platform_agent_finding_events: operations
 
 retention:
   users: keep row stays after account purge so credit records keep their reference
@@ -547,3 +570,5 @@ retention:
   platform_agent_brake: transient present only while the brake is engaged
   platform_agent_runs: archivable
   platform_agent_steps: archivable
+  platform_agent_findings: archivable
+  platform_agent_finding_events: archivable

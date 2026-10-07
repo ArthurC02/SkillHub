@@ -91,6 +91,13 @@ const (
 	ActionAgentDisable      = "platform_agent.disabled"
 	ActionAgentBrakeEngage  = "platform_agent.brake_engaged"
 	ActionAgentBrakeRelease = "platform_agent.brake_released"
+
+	ActionFindingOpen        = "platform_agent_finding.opened"
+	ActionFindingReopen      = "platform_agent_finding.reopened"
+	ActionFindingRecover     = "platform_agent_finding.recovered"
+	ActionFindingAcknowledge = "platform_agent_finding.acknowledged"
+	ActionFindingResolve     = "platform_agent_finding.resolved"
+	ActionFindingDismiss     = "platform_agent_finding.dismissed"
 )
 
 const ScopeOperator = "operator"
@@ -126,7 +133,8 @@ const (
 
 	ResourceDomainEvent = "domain_event"
 
-	ResourcePlatformAgent = "platform_agent"
+	ResourcePlatformAgent        = "platform_agent"
+	ResourcePlatformAgentFinding = "platform_agent_finding"
 )
 
 type ActorKind string

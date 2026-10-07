@@ -142,10 +142,18 @@ func (r *Runner) finish(ctx context.Context, report RunReport, status RunStatus,
 	report.Status, report.Reason, report.Result = status, reason, result
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), revokeTimeout)
 	defer cancel()
-	if err := r.Svc.finishWithResult(ctx, report.ID, status, reason, result); err != nil {
-		return report, err
+	return report, r.Svc.finishWithResult(ctx, report.ID, runEnding{status: status, reason: reason, result: result})
+}
+
+func (r *Runner) complete(ctx context.Context, report RunReport, def Definition, result json.RawMessage, steps []StepRecord) (RunReport, error) {
+	if def.Sightings == nil {
+		return r.finish(ctx, report, RunCompleted, "", result)
 	}
-	return report, nil
+	report.Status, report.Result = RunCompleted, result
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), revokeTimeout)
+	defer cancel()
+	findings := &trackedFindings{sightings: def.Sightings(result, steps), now: r.Now()}
+	return report, r.Svc.finishWithResult(ctx, report.ID, runEnding{status: RunCompleted, result: result, findings: findings})
 }
 
 func offered(def Definition, tools []Tool) []Tool {
@@ -191,7 +199,7 @@ func (l *runLoop) drive(ctx context.Context, report RunReport) (RunReport, error
 			if err := l.check(decision.Result); err != nil {
 				return l.runner.finish(ctx, report, RunFailed, err.Error(), decision.Result)
 			}
-			return l.runner.finish(ctx, report, RunCompleted, "", decision.Result)
+			return l.runner.complete(ctx, report, l.def, decision.Result, l.steps)
 		}
 		if err := l.call(ctx, seq, *decision.ToolIntent, decision.Call); err != nil {
 			return l.runner.finish(ctx, report, RunFailed, err.Error(), nil)

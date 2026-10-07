@@ -11,6 +11,68 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const appendFindingEvent = `-- name: AppendFindingEvent :exec
+INSERT INTO platform_agent_finding_events (finding_id, seq, kind, run_id, operator_id, text, evidence, note)
+SELECT $1, coalesce(max(seq) + 1, 0), $2, $3, $4,
+    $5, $6, $7
+FROM platform_agent_finding_events
+WHERE finding_id = $1
+`
+
+type AppendFindingEventParams struct {
+	FindingID  pgtype.UUID
+	Kind       string
+	RunID      pgtype.UUID
+	OperatorID pgtype.UUID
+	Text       *string
+	Evidence   []byte
+	Note       *string
+}
+
+func (q *Queries) AppendFindingEvent(ctx context.Context, arg AppendFindingEventParams) error {
+	_, err := q.db.Exec(ctx, appendFindingEvent,
+		arg.FindingID,
+		arg.Kind,
+		arg.RunID,
+		arg.OperatorID,
+		arg.Text,
+		arg.Evidence,
+		arg.Note,
+	)
+	return err
+}
+
+const countFindingsByStatus = `-- name: CountFindingsByStatus :many
+SELECT status, count(*)::integer AS findings
+FROM platform_agent_findings
+GROUP BY status
+`
+
+type CountFindingsByStatusRow struct {
+	Status   string
+	Findings int32
+}
+
+func (q *Queries) CountFindingsByStatus(ctx context.Context) ([]CountFindingsByStatusRow, error) {
+	rows, err := q.db.Query(ctx, countFindingsByStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountFindingsByStatusRow
+	for rows.Next() {
+		var i CountFindingsByStatusRow
+		if err := rows.Scan(&i.Status, &i.Findings); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const engagePlatformAgentBrake = `-- name: EngagePlatformAgentBrake :one
 INSERT INTO platform_agent_brake (engaged_by, reason)
 VALUES ($1, $2)
@@ -61,6 +123,56 @@ func (q *Queries) FinishPlatformAgentRun(ctx context.Context, arg FinishPlatform
 	return result.RowsAffected(), nil
 }
 
+const getFinding = `-- name: GetFinding :one
+SELECT f.id, a.name AS agent, f.status, f.title, f.cites, f.assignee_id,
+    f.first_seen_at, f.last_seen_at, f.seen_count, f.status_changed_at
+FROM platform_agent_findings f
+JOIN platform_agents a ON a.id = f.agent_id
+WHERE f.id = $1
+`
+
+type GetFindingRow struct {
+	ID              pgtype.UUID
+	Agent           string
+	Status          string
+	Title           string
+	Cites           []string
+	AssigneeID      pgtype.UUID
+	FirstSeenAt     pgtype.Timestamptz
+	LastSeenAt      pgtype.Timestamptz
+	SeenCount       int32
+	StatusChangedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetFinding(ctx context.Context, id pgtype.UUID) (GetFindingRow, error) {
+	row := q.db.QueryRow(ctx, getFinding, id)
+	var i GetFindingRow
+	err := row.Scan(
+		&i.ID,
+		&i.Agent,
+		&i.Status,
+		&i.Title,
+		&i.Cites,
+		&i.AssigneeID,
+		&i.FirstSeenAt,
+		&i.LastSeenAt,
+		&i.SeenCount,
+		&i.StatusChangedAt,
+	)
+	return i, err
+}
+
+const getFindingStatus = `-- name: GetFindingStatus :one
+SELECT status FROM platform_agent_findings WHERE id = $1
+`
+
+func (q *Queries) GetFindingStatus(ctx context.Context, id pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getFindingStatus, id)
+	var status string
+	err := row.Scan(&status)
+	return status, err
+}
+
 const getPlatformAgentBrake = `-- name: GetPlatformAgentBrake :one
 SELECT engaged, engaged_by, engaged_at, reason FROM platform_agent_brake
 `
@@ -75,6 +187,17 @@ func (q *Queries) GetPlatformAgentBrake(ctx context.Context) (PlatformAgentBrake
 		&i.Reason,
 	)
 	return i, err
+}
+
+const getPlatformAgentRunAgent = `-- name: GetPlatformAgentRunAgent :one
+SELECT agent_id FROM platform_agent_runs WHERE id = $1
+`
+
+func (q *Queries) GetPlatformAgentRunAgent(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getPlatformAgentRunAgent, id)
+	var agent_id pgtype.UUID
+	err := row.Scan(&agent_id)
+	return agent_id, err
 }
 
 const getPlatformAgentRunGate = `-- name: GetPlatformAgentRunGate :one
@@ -95,6 +218,158 @@ func (q *Queries) GetPlatformAgentRunGate(ctx context.Context, id pgtype.UUID) (
 	var i GetPlatformAgentRunGateRow
 	err := row.Scan(&i.Status, &i.Enabled, &i.Braked)
 	return i, err
+}
+
+const listFindingEvents = `-- name: ListFindingEvents :many
+SELECT seq, kind, run_id, operator_id, text, evidence, note, occurred_at
+FROM platform_agent_finding_events
+WHERE finding_id = $1
+ORDER BY seq
+`
+
+type ListFindingEventsRow struct {
+	Seq        int32
+	Kind       string
+	RunID      pgtype.UUID
+	OperatorID pgtype.UUID
+	Text       *string
+	Evidence   []byte
+	Note       *string
+	OccurredAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListFindingEvents(ctx context.Context, findingID pgtype.UUID) ([]ListFindingEventsRow, error) {
+	rows, err := q.db.Query(ctx, listFindingEvents, findingID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListFindingEventsRow
+	for rows.Next() {
+		var i ListFindingEventsRow
+		if err := rows.Scan(
+			&i.Seq,
+			&i.Kind,
+			&i.RunID,
+			&i.OperatorID,
+			&i.Text,
+			&i.Evidence,
+			&i.Note,
+			&i.OccurredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFindings = `-- name: ListFindings :many
+SELECT f.id, a.name AS agent, f.status, f.title, f.cites, f.assignee_id,
+    f.first_seen_at, f.last_seen_at, f.seen_count, f.status_changed_at
+FROM platform_agent_findings f
+JOIN platform_agents a ON a.id = f.agent_id
+WHERE f.status = ANY ($1::text[])
+ORDER BY f.last_seen_at DESC
+LIMIT $2
+`
+
+type ListFindingsParams struct {
+	Statuses []string
+	RowLimit int32
+}
+
+type ListFindingsRow struct {
+	ID              pgtype.UUID
+	Agent           string
+	Status          string
+	Title           string
+	Cites           []string
+	AssigneeID      pgtype.UUID
+	FirstSeenAt     pgtype.Timestamptz
+	LastSeenAt      pgtype.Timestamptz
+	SeenCount       int32
+	StatusChangedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListFindings(ctx context.Context, arg ListFindingsParams) ([]ListFindingsRow, error) {
+	rows, err := q.db.Query(ctx, listFindings, arg.Statuses, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListFindingsRow
+	for rows.Next() {
+		var i ListFindingsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Agent,
+			&i.Status,
+			&i.Title,
+			&i.Cites,
+			&i.AssigneeID,
+			&i.FirstSeenAt,
+			&i.LastSeenAt,
+			&i.SeenCount,
+			&i.StatusChangedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMatchableFindings = `-- name: ListMatchableFindings :many
+SELECT id, status, cites, assignee_id, last_seen_at
+FROM platform_agent_findings
+WHERE agent_id = $1 AND (status = ANY ($2::text[]) OR last_seen_at >= $3)
+`
+
+type ListMatchableFindingsParams struct {
+	AgentID pgtype.UUID
+	Live    []string
+	Since   pgtype.Timestamptz
+}
+
+type ListMatchableFindingsRow struct {
+	ID         pgtype.UUID
+	Status     string
+	Cites      []string
+	AssigneeID pgtype.UUID
+	LastSeenAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListMatchableFindings(ctx context.Context, arg ListMatchableFindingsParams) ([]ListMatchableFindingsRow, error) {
+	rows, err := q.db.Query(ctx, listMatchableFindings, arg.AgentID, arg.Live, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMatchableFindingsRow
+	for rows.Next() {
+		var i ListMatchableFindingsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Status,
+			&i.Cites,
+			&i.AssigneeID,
+			&i.LastSeenAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listPlatformAgentRuns = `-- name: ListPlatformAgentRuns :many
@@ -238,6 +513,25 @@ func (q *Queries) ListPlatformAgents(ctx context.Context) ([]PlatformAgent, erro
 	return items, nil
 }
 
+const openFinding = `-- name: OpenFinding :one
+INSERT INTO platform_agent_findings (agent_id, title, cites)
+VALUES ($1, $2, $3::text[])
+RETURNING id
+`
+
+type OpenFindingParams struct {
+	AgentID pgtype.UUID
+	Title   string
+	Cites   []string
+}
+
+func (q *Queries) OpenFinding(ctx context.Context, arg OpenFindingParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, openFinding, arg.AgentID, arg.Title, arg.Cites)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const platformAgentSpendSince = `-- name: PlatformAgentSpendSince :one
 SELECT coalesce(sum(s.usd_micros), 0)::bigint
 FROM platform_agent_steps s
@@ -335,6 +629,49 @@ func (q *Queries) ReleasePlatformAgentBrake(ctx context.Context) (int64, error) 
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const seeFinding = `-- name: SeeFinding :exec
+UPDATE platform_agent_findings
+SET title = $1, cites = $2::text[], last_seen_at = now(), seen_count = seen_count + 1
+WHERE id = $3
+`
+
+type SeeFindingParams struct {
+	Title string
+	Cites []string
+	ID    pgtype.UUID
+}
+
+func (q *Queries) SeeFinding(ctx context.Context, arg SeeFindingParams) error {
+	_, err := q.db.Exec(ctx, seeFinding, arg.Title, arg.Cites, arg.ID)
+	return err
+}
+
+const setFindingStatus = `-- name: SetFindingStatus :one
+UPDATE platform_agent_findings
+SET status = $1, assignee_id = coalesce($2, assignee_id), status_changed_at = now()
+WHERE id = $3 AND status = $4
+RETURNING id
+`
+
+type SetFindingStatusParams struct {
+	Status     string
+	AssigneeID pgtype.UUID
+	ID         pgtype.UUID
+	FromStatus string
+}
+
+func (q *Queries) SetFindingStatus(ctx context.Context, arg SetFindingStatusParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, setFindingStatus,
+		arg.Status,
+		arg.AssigneeID,
+		arg.ID,
+		arg.FromStatus,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const setPlatformAgentEnabled = `-- name: SetPlatformAgentEnabled :one

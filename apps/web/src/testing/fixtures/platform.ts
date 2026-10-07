@@ -7,7 +7,10 @@ import type {
   ExposureQueueEntry,
   ExposureRelease,
   OperatorAuditEvent,
+  FindingStatus,
   PlatformAgent,
+  PlatformAgentFinding,
+  PlatformAgentFindingEvent,
   PlatformAgentRun,
   PlatformAgentStep,
   Rosters,
@@ -1328,6 +1331,59 @@ export const ADMIN_AGENT_STEPS = {
   ],
 } satisfies { steps: PlatformAgentStep[] };
 
+export const AGENT_FINDING = "5c1d2e3f-4a5b-4c6d-8e7f-90a1b2c3d4e5";
+
+export const ADMIN_AGENT_FINDINGS = {
+  findings: [
+    {
+      id: AGENT_FINDING,
+      agent: "daily-report",
+      status: "open",
+      title: "分割表輪替從來沒有成功過，已經超過兩個週期。",
+      cites: [
+        "/maintenance_jobs/rotate-partitions/last_succeeded_at",
+        "/maintenance_jobs/rotate-partitions/overdue_ratio",
+      ],
+      first_seen_at: "2026-10-05T02:00:37Z",
+      last_seen_at: "2026-10-07T02:00:41Z",
+      seen_count: 3,
+      status_changed_at: "2026-10-05T02:00:37Z",
+    },
+  ],
+  counts: { open: 1, acknowledged: 1, resolved: 4, dismissed: 0, recovered: 2 },
+} satisfies {
+  findings: PlatformAgentFinding[];
+  counts: Record<FindingStatus, number>;
+};
+
+export const ADMIN_AGENT_FINDING = {
+  finding: ADMIN_AGENT_FINDINGS.findings[0],
+  events: [
+    {
+      seq: 0,
+      kind: "opened",
+      run_id: AGENT_REPORT_RUN,
+      text: "分割表輪替從來沒有成功過，已經超過兩個週期。",
+      evidence: {
+        "/maintenance_jobs/rotate-partitions/last_succeeded_at": null,
+        "/maintenance_jobs/rotate-partitions/overdue_ratio": 2.4,
+      },
+      occurred_at: "2026-10-05T02:00:37Z",
+    },
+    {
+      seq: 1,
+      kind: "seen",
+      run_id: AGENT_REPORT_RUN,
+      text: "分割表輪替從來沒有成功過，已經超過兩個週期。",
+      evidence: {
+        "/maintenance_jobs/rotate-partitions/last_succeeded_at": null,
+        "/maintenance_jobs/rotate-partitions/overdue_ratio": 3.4,
+      },
+      occurred_at: "2026-10-06T02:00:37Z",
+    },
+  ],
+} satisfies { finding: PlatformAgentFinding; events: PlatformAgentFindingEvent[] };
+
 type RouteResult = { body: unknown; status: number };
 
 function ok(body: unknown, status = 200): RouteResult {
@@ -1349,6 +1405,8 @@ const ROUTES: RouteMatcher[] = [
   (path) => (path === "/admin/exposure-reviews" ? ok(ADMIN_EXPOSURE_QUEUE) : undefined),
   (path) => (path === "/admin/agents" ? ok(ADMIN_AGENTS) : undefined),
   (path) => (path === "/admin/agents/runs" ? ok(ADMIN_AGENT_RUNS) : undefined),
+  (path) => (path === "/admin/agents/findings" ? ok(ADMIN_AGENT_FINDINGS) : undefined),
+  (path) => (/^\/admin\/agents\/findings\/[^/]+$/.test(path) ? ok(ADMIN_AGENT_FINDING) : undefined),
   (path) =>
     /^\/admin\/agents\/runs\/[^/]+\/steps$/.test(path) ? ok(ADMIN_AGENT_STEPS) : undefined,
   (path) =>

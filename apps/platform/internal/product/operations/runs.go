@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -68,22 +69,39 @@ func haltReason(enabled, braked bool) string {
 }
 
 func (s *Service) FinishRun(ctx context.Context, run pgtype.UUID, status RunStatus, reason string) error {
-	return s.finishWithResult(ctx, run, status, reason, nil)
+	return s.finishWithResult(ctx, run, runEnding{status: status, reason: reason})
 }
 
-func (s *Service) finishWithResult(ctx context.Context, run pgtype.UUID, status RunStatus, reason string, result []byte) error {
+type trackedFindings struct {
+	sightings []Sighting
+	now       time.Time
+}
+
+type runEnding struct {
+	status   RunStatus
+	reason   string
+	result   []byte
+	findings *trackedFindings
+}
+
+func (s *Service) finishWithResult(ctx context.Context, run pgtype.UUID, end runEnding) error {
 	var why *string
-	if reason != "" {
-		why = &reason
+	if end.reason != "" {
+		why = &end.reason
 	}
-	finished, err := gen.New(s.Pool).FinishPlatformAgentRun(ctx, gen.FinishPlatformAgentRunParams{
-		ID: run, Status: string(status), Reason: why, Result: result,
+	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		finished, err := gen.New(tx).FinishPlatformAgentRun(ctx, gen.FinishPlatformAgentRunParams{
+			ID: run, Status: string(end.status), Reason: why, Result: end.result,
+		})
+		if err != nil {
+			return err
+		}
+		if finished == 0 {
+			return ErrRunFinished
+		}
+		if end.findings == nil {
+			return nil
+		}
+		return s.recordFindings(ctx, tx, run, end.findings.sightings, end.findings.now)
 	})
-	if err != nil {
-		return err
-	}
-	if finished == 0 {
-		return ErrRunFinished
-	}
-	return nil
 }

@@ -22,6 +22,7 @@ type Definition struct {
 	Tools               []string
 	Actions             []string
 	CheckResult         func(result json.RawMessage, steps []StepRecord) error
+	Sightings           func(result json.RawMessage, steps []StepRecord) []Sighting
 }
 
 type Agent struct {

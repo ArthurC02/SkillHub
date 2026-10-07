@@ -386,6 +386,66 @@ export function usePlatformAgentRuns() {
   });
 }
 
+export type FindingStatus = "open" | "acknowledged" | "resolved" | "dismissed" | "recovered";
+
+export type PlatformAgentFinding = {
+  id: string;
+  agent: string;
+  status: FindingStatus;
+  title: string;
+  cites: string[];
+  assignee_user_id?: string;
+  first_seen_at: string;
+  last_seen_at: string;
+  seen_count: number;
+  status_changed_at: string;
+};
+
+export type PlatformAgentFindingEvent = {
+  seq: number;
+  kind: "opened" | "seen" | "reopened" | "recovered" | "acknowledged" | "resolved" | "dismissed";
+  run_id?: string;
+  operator_user_id?: string;
+  text?: string;
+  evidence?: Record<string, unknown>;
+  note?: string;
+  occurred_at: string;
+};
+
+export function usePlatformAgentFindings(status?: FindingStatus) {
+  return useQuery({
+    queryKey: queryKeys.admin.agentFindingList(status ?? "live"),
+    queryFn: () =>
+      apiFetch<{ findings: PlatformAgentFinding[]; counts: Record<FindingStatus, number> }>(
+        status ? `/admin/agents/findings?status=${status}` : "/admin/agents/findings",
+      ),
+    enabled: useOperator(),
+  });
+}
+
+export function usePlatformAgentFinding(id: string) {
+  return useQuery({
+    queryKey: queryKeys.admin.agentFinding(id),
+    queryFn: () =>
+      apiFetch<{ finding: PlatformAgentFinding; events: PlatformAgentFindingEvent[] }>(
+        `/admin/agents/findings/${encodeURIComponent(id)}`,
+      ),
+    enabled: useOperator(),
+  });
+}
+
+export function useMoveFinding() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; status: FindingStatus; note: string }) =>
+      apiFetch<undefined>(
+        `/admin/agents/findings/${encodeURIComponent(id)}/status`,
+        send("PUT", body),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agentFindings }),
+  });
+}
+
 export function usePlatformAgentSteps(run: string) {
   return useQuery({
     queryKey: queryKeys.admin.agentSteps(run),

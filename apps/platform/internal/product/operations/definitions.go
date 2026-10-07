@@ -11,6 +11,7 @@ var DailyReport = Definition{
 	DailySpendCapMicros: dailyReportSpendCapMicros,
 	Tools:               []string{ToolMaintenanceReport},
 	CheckResult:         CitesOnlyReturnedFacts,
+	Sightings:           DailyReportSightings,
 }
 
 func Definitions() []Definition {

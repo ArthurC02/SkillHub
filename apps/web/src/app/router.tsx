@@ -494,12 +494,13 @@ const adminAgentsRoute = createRoute({
     () => import("../features/admin/agents/AdminAgents.page"),
     "AdminAgents",
   ),
-  validateSearch: (search: Record<string, unknown>): { run?: string } => ({
-    run:
-      typeof search.run === "string" &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(search.run)
-        ? search.run
-        : undefined,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { status?: "resolved" | "dismissed" | "recovered"; finding?: string; run?: string } => ({
+    status: (["resolved", "dismissed", "recovered"] as const).find((s) => s === search.status),
+    finding:
+      typeof search.finding === "string" && UUID.test(search.finding) ? search.finding : undefined,
+    run: typeof search.run === "string" && UUID.test(search.run) ? search.run : undefined,
   }),
 });
 

@@ -556,6 +556,31 @@ type PlatformAgentBrake struct {
 	Reason    string
 }
 
+type PlatformAgentFinding struct {
+	ID              pgtype.UUID
+	AgentID         pgtype.UUID
+	Status          string
+	Title           string
+	Cites           []string
+	AssigneeID      pgtype.UUID
+	FirstSeenAt     pgtype.Timestamptz
+	LastSeenAt      pgtype.Timestamptz
+	SeenCount       int32
+	StatusChangedAt pgtype.Timestamptz
+}
+
+type PlatformAgentFindingEvent struct {
+	FindingID  pgtype.UUID
+	Seq        int32
+	Kind       string
+	RunID      pgtype.UUID
+	OperatorID pgtype.UUID
+	Text       *string
+	Evidence   []byte
+	Note       *string
+	OccurredAt pgtype.Timestamptz
+}
+
 type PlatformAgentRun struct {
 	ID         pgtype.UUID
 	AgentID    pgtype.UUID

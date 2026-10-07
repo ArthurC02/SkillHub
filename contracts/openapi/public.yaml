@@ -3553,6 +3553,136 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/agents/findings:
+    get:
+      operationId: listPlatformAgentFindings
+      summary: The things platform agents reported as needing attention (02:OPS-012)
+      description: |
+        Operator only. One row per tracked finding, most recently seen first, at
+        most 100. Without `status` the list holds the live ones, open and
+        acknowledged; `counts` always counts every status. A finding a later
+        report repeats folds into the same row; one a later report no longer
+        mentions becomes recovered, and one that comes back after being resolved
+        or recovered reopens.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, acknowledged, resolved, dismissed, recovered]
+      responses:
+        "200":
+          description: The findings and how many there are in each status.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [findings, counts]
+                properties:
+                  findings:
+                    type: array
+                    items: { $ref: "#/components/schemas/PlatformAgentFinding" }
+                  counts:
+                    type: object
+                    required: [open, acknowledged, resolved, dismissed, recovered]
+                    properties:
+                      open: { type: integer }
+                      acknowledged: { type: integer }
+                      resolved: { type: integer }
+                      dismissed: { type: integer }
+                      recovered: { type: integer }
+        "400":
+          description: "`status` is not one of the five."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/agents/findings/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getPlatformAgentFinding
+      summary: One finding with every sighting and every status change (02:OPS-012)
+      responses:
+        "200":
+          description: The finding and its history, oldest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [finding, events]
+                properties:
+                  finding: { $ref: "#/components/schemas/PlatformAgentFinding" }
+                  events:
+                    type: array
+                    items: { $ref: "#/components/schemas/PlatformAgentFindingEvent" }
+        "400":
+          description: The id is not a UUID.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: No such finding, or the caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/agents/findings/{id}/status:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      operationId: movePlatformAgentFinding
+      summary: Take on, resolve, dismiss or reopen a finding (02:OPS-012)
+      description: |
+        Operator only. Open moves to acknowledged (the caller becomes its
+        assignee), resolved or dismissed; acknowledged to resolved or dismissed;
+        resolved, dismissed and recovered back to open; recovered also to
+        resolved. A dismissed finding stays dismissed when later reports repeat
+        it. Writes the change, its history entry and its audit event in one
+        transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, note]
+              properties:
+                status:
+                  type: string
+                  enum: [open, acknowledged, resolved, dismissed]
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why, in the operator's own words. Whitespace does not satisfy it.
+      responses:
+        "204":
+          description: The finding moved.
+        "400":
+          description: The id is not a UUID, the body is not JSON, `status` is not one of the four, or `note` is blank or over 1000 bytes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: No such finding, or the caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The finding cannot move to that status from the one it is in now.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/accounts:
     get:
       operationId: lookupAccount
@@ -6517,6 +6647,53 @@ components:
         unpriced_steps:
           type: integer
           description: Steps whose cost the gateway did not report; `usd_micros` leaves them out.
+    PlatformAgentFinding:
+      type: object
+      required: [id, agent, status, title, cites, first_seen_at, last_seen_at, seen_count, status_changed_at]
+      properties:
+        id: { type: string, format: uuid }
+        agent: { type: string }
+        status:
+          type: string
+          enum: [open, acknowledged, resolved, dismissed, recovered]
+        title:
+          type: string
+          description: What the latest report said about it.
+        cites:
+          type: array
+          items: { type: string }
+          description: JSON Pointers into the facts the latest report rests on.
+        assignee_user_id:
+          type: string
+          format: uuid
+          description: The operator who took it on; present while it is acknowledged, and kept after.
+        first_seen_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time }
+        seen_count: { type: integer }
+        status_changed_at: { type: string, format: date-time }
+    PlatformAgentFindingEvent:
+      type: object
+      required: [seq, kind, occurred_at]
+      properties:
+        seq: { type: integer }
+        kind:
+          type: string
+          enum: [opened, seen, reopened, recovered, acknowledged, resolved, dismissed]
+        run_id:
+          type: string
+          format: uuid
+          description: The agent run that reported it; absent when an operator moved it.
+        operator_user_id:
+          type: string
+          format: uuid
+          description: The operator who moved it; absent when a run did.
+        text: { type: string }
+        evidence:
+          type: object
+          additionalProperties: true
+          description: Each cite's value in the facts that run read.
+        note: { type: string }
+        occurred_at: { type: string, format: date-time }
     PlatformAgentStep:
       type: object
       required: [seq, tool, arguments, result, model, prompt_tokens, completion_tokens, created_at]
