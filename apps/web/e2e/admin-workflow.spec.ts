@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ADMIN_ACCOUNT, ADMIN_LEDGER } from "../src/testing/fixtures/platform";
+import { ADMIN_ACCOUNT, ADMIN_DISPATCH, ADMIN_LEDGER } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
 test("operator can find an account and verify a credit grant in the refreshed ledger", async ({
@@ -58,4 +58,49 @@ test("operator can find an account and verify a credit grant in the refreshed le
   await expect(page.getByText("目前餘額 145 點")).toBeVisible();
   await expect(page.getByRole("status").filter({ hasText: "已授予 25 點" })).toBeVisible();
   expect(grants).toEqual([{ amount_credits: 25, reason: "封測補點" }]);
+});
+
+test("operator can halt and resume dispatch with the affected scope visible", async ({ page }) => {
+  await stubPlatform(page);
+  let halted = false;
+  const writes: { method: string; body: Record<string, unknown> }[] = [];
+  await page.route("**/admin/dispatch", (route) => {
+    if (route.request().resourceType() === "document") return route.continue();
+    return route.fulfill({
+      json: halted
+        ? { ...ADMIN_DISPATCH, halts: [{ ...ADMIN_DISPATCH.halts[0], reason: "保留事故現場" }] }
+        : { dispatching: true, halts: [] },
+    });
+  });
+  await page.route("**/admin/dispatch/halt", (route) => {
+    const method = route.request().method();
+    writes.push({ method, body: route.request().postDataJSON() as Record<string, unknown> });
+    halted = method === "PUT";
+    return route.fulfill({
+      json:
+        method === "PUT"
+          ? {
+              note: "new runs are refused and nothing is dispatched to this target; cleanup and orphan teardown stand down so the scene is preserved. This halt is never lifted automatically.",
+            }
+          : {},
+    });
+  });
+
+  await page.goto("/admin/dispatch");
+  await expect(page.getByText("正在派送", { exact: true })).toBeVisible();
+  await page.locator("#admin-halt-declare-note").fill("保留事故現場");
+  await page.getByRole("button", { name: "停止派送", exact: true }).click();
+  await expect(page.locator("span.badge-danger").filter({ hasText: "停止派送" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "煞車不會自動解除" })).toBeVisible();
+  await expect(page.getByText("理由：保留事故現場")).toBeVisible();
+
+  await page.getByLabel("要解除的煞車").selectOption("pool");
+  await page.locator("#admin-halt-lift-note").fill("已確認可恢復");
+  await page.getByRole("button", { name: "恢復派送", exact: true }).click();
+  await expect(page.getByText("正在派送", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "解除請求已處理" })).toBeVisible();
+  expect(writes).toEqual([
+    { method: "PUT", body: { note: "保留事故現場" } },
+    { method: "DELETE", body: { note: "已確認可恢復" } },
+  ]);
 });
