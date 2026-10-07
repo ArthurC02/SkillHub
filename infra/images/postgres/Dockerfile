@@ -21,6 +21,7 @@ FROM pgvector/pgvector:pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd36405
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 openssl libssl3 \
+        perl-base perl libperl5.36 perl-modules-5.36 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=wal-g /out/wal-g /out/gosu /usr/local/bin/
