@@ -20,7 +20,16 @@
       }
     }
   ],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "395e34838dd249c6483f5b31f825bcba44cf67cb",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "97a6ea96e3a7108033ce50afbd57e57884321a65",
+      "registry_digest": "sha256:3dc6455445d5ad1428f37fcadbd0fadced01de9d99c758987698201fd1e9af05"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "disable-admission",
@@ -133,7 +142,7 @@
   "architecture_checks": [],
   "security_checks": [],
   "residual_risks": [
-    "十項義務已在本機執行，但新提案仍需對目前 Registry 重新提交、核准、驗證與 SCM attestation；遠端 CI 尚未確認。",
+    "十項義務與簽章 SCM 證明已驗證；本包沒有 Registry 更新，正式 CI 與部署仍未確認。",
     "內容來源白名單、角色授予變更歷史與完整下架恢復語意仍是 SEC-011 的其他缺口。"
   ]
 }

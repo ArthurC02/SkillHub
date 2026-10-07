@@ -16,7 +16,7 @@ Registry 擁有版本與停用事實，Run 擁有新 Run 的建立與生命週�
 
 ## Proposal and approvals
 
-`admin-version-disable-v2` 承接已過時提案的同一實作與十項本機證據；developer `ArthurC` 已就目前 Registry 修訂版重新核准，測試證據已驗證。正式 SCM／CI 驗證尚未完成，不能當成可部署證明。
+`admin-version-disable-v2` 承接已過時提案的同一實作與十項本機證據；developer `ArthurC` 已就目前 Registry 修訂版重新核准，測試與簽章 SCM 證據已驗證。此包沒有 Registry 更新，因此保持已核准而非已套用狀態；遠端 CI 尚未確認，不能當成可部署證明。
 
 ## Contract impact
 
@@ -28,4 +28,4 @@ Registry 擁有版本與停用事實，Run 擁有新 Run 的建立與生命週�
 
 ## Residual risks
 
-OpenAPI、migration、Query owner、Go 與前端均已實作；新提案已通過本機證據驗證，但 SCM 驗證與遠端 CI 尚未完成。內容來源白名單是另一項 SEC-011 缺口，不在本包內；正式告警部署也不在本包內。
+OpenAPI、migration、Query owner、Go 與前端均已實作；新提案已通過本機證據與簽章 SCM 驗證，但遠端 CI 尚未確認。內容來源白名單是另一項 SEC-011 缺口，不在本包內；正式告警部署也不在本包內。

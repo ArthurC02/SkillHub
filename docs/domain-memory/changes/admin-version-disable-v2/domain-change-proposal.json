@@ -3,11 +3,11 @@
   "proposal_id": "admin-version-disable-v2",
   "proposer": "coding-agent",
   "requirement_id": "SEC-011-version-disable",
-  "status": "verified",
+  "status": "approved",
   "change_classification": "material",
   "submitted_at": "2026-10-07T18:44:07.075144Z",
   "verified_at": "2026-10-07T18:44:39.517314Z",
-  "finalized_at": null,
+  "finalized_at": "2026-10-07T18:47:20.767285Z",
   "applied_at": null,
   "proposal_revision": 1,
   "base_registry_revision": {

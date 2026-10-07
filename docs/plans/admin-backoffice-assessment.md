@@ -40,7 +40,7 @@
 
 ## 下一步與停止線
 
-1. [`R-104`](05-pending-rulings.md)的版本停用語意已裁定，契約、交易內准入閘門、API 與 UI 已實作；完成[版本停用提案](../domain-memory/changes/admin-version-disable-v2/draft-pr.md)的 SCM／CI 證明，並持續核對既有 Version 與歷史 Run 未被改寫。
+1. [`R-104`](05-pending-rulings.md)的版本停用語意已裁定，契約、交易內准入閘門、API 與 UI 已實作；完成[版本停用提案](../domain-memory/changes/admin-version-disable-v2/draft-pr.md)的遠端 CI 與部署證明，並持續核對既有 Version 與歷史 Run 未被改寫。
 2. 裁定[`R-105`](05-pending-rulings.md)的來源候選身分鍵、白名單操作介面、來源下架效力與重審條件；再審查[來源准入提案](../domain-memory/changes/admin-source-admission/draft-pr.md)。另裁定[`R-106`](05-pending-rulings.md)的完整下架是否可恢復；未核准前不能把文件清單當作公開收錄閘門，也不能把受限展示的解除當作完整下架的恢復。
 3. 審查[事件通知提案](../domain-memory/changes/sec010-incident-notification/draft-pr.md)，完成控制平面 P1／P2 建單、憑證與非工作時間通知的端到端演練；先把同一資源的連續失敗訊號與 P2 分級證據接正，再把 P1 剩餘訊號與實際節點探針的證據接上，同時維持單一派送煞車狀態。
 4. 在 GitHub CI 核對同一批真實映像旅程的 workflow 與 job 結果；用有模型服務的活躍 Worker 重跑淨測試模式，若逾時再重現才修正；並擴充尚未覆蓋的治理負面路徑。既有 mock E2E 仍不可稱為系統驗收。
