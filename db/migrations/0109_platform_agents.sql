@@ -28,7 +28,7 @@ CREATE TABLE platform_agent_runs (
     finished_at timestamptz,
     reason      text,
     CHECK ((status = 'running') = (finished_at IS NULL)),
-    CHECK (status IN ('running', 'completed') OR btrim(reason) <> '')
+    CHECK (finished_at IS NULL OR status = 'completed' OR btrim(reason) <> '')
 );
 
 CREATE INDEX platform_agent_runs_agent_started_idx ON platform_agent_runs (agent_id, started_at DESC);

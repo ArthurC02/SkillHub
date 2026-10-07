@@ -447,6 +447,8 @@ linters:
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/operations
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
               desc: "presentation layer / composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker

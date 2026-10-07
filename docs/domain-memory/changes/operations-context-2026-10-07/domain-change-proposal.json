@@ -3,12 +3,12 @@
   "proposal_id": "registry-operations-context",
   "proposer": "domain-memory-agent",
   "requirement_id": "operations-owns-platform-agents",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-07T06:11:01.361220Z",
   "verified_at": "2026-10-07T06:11:02.288883Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-07T06:13:04.704657Z",
+  "applied_at": "2026-10-07T06:14:23.075995Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "b468c42c46b2bf42f7164c1e660738322df4b018",
@@ -107,5 +107,9 @@
         "registry_digest": "sha256:fa7ced5fbfacdd6ff86cdbe93d119e9846c1175db72fb9065daac91397daff59"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "615555b7357a861c71858a1429ae1bd22346b86c",
+    "registry_digest": "sha256:afe0c20a28aebe47fb59adbd5353835b1fcc49b86f838f33d02c389536473ce2"
+  }
 }
