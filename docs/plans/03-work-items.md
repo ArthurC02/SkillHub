@@ -585,7 +585,7 @@ hello in-process s3
 **先做：確定性的事實與宣告**
 
 - [x] RETAIN-001 Trace 落在 default 分割、早於最舊保留月份的列在每月輪替時刪除，期限對每一列成立。（`02:NFR-002b` 第 2 條）
-- [ ] RETAIN-002 `db/query-owners.yaml` 為每張表宣告處置（到期刪除、隨擁有者刪除、永久保留、永久保留可封存），`automation-check` 對帳缺漏與多餘。（`02:NFR-002b` 第 1 條）
+- [x] RETAIN-002 `db/query-owners.yaml` 為每張表宣告處置（到期刪除、隨擁有者刪除、永久保留、永久保留可封存、工作暫存），`automation-check` 對帳缺漏與多餘。（`02:NFR-002b` 第 1 條）
 - [ ] OPS-012 `maintenance report`：表大小與成長、還原預算越線預測、排程工作上次成功時間、dead-letter 筆數、分割範圍；越線預測與排程逾時的告警指標。（對應 `02:OPS-010`）
 
 **接著：Agent 基座**

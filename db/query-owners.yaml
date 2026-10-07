@@ -437,3 +437,60 @@ tables:
   audit_events: audit
   outbox_events: outbox
   rate_limit_buckets: httpx
+
+retention:
+  users: keep row stays after account purge so credit records keep their reference
+  user_identities: with_owner deleted by account purge
+  sessions: expire at expires_at, maintenance purge-accounts
+  workspaces: keep anonymized by account purge
+  skills: with_owner deleted after the deletion grace or by account purge
+  skill_versions: with_owner purged with their skill
+  skill_runtime_compatibility: with_owner deleted with its skill
+  object_collection_queue: transient drained by maintenance collect-objects
+  skill_sources: with_owner unreferenced sources deleted by account purge
+  generation_leases: transient released when the generation ends
+  search_documents: with_owner rebuildable projection deleted with its skill
+  test_cases: with_owner deleted by the user or account purge
+  test_case_snapshots: archivable frozen run input
+  datasets: expire objects past retention, maintenance purge-datasets marks the row
+  dataset_object_cleanup_intents: transient deleted once the object is gone
+  runs: keep permanent run identity, its children are archivable
+  run_snapshots: archivable
+  run_attempts: archivable
+  run_status_transitions: archivable
+  run_permission_confirmations: keep
+  run_artifact_upload_intents: transient deleted once the object is settled
+  reconciler_orphan_sightings: transient deleted when the orphan clears
+  dispatch_halts: keep operator declarations
+  model_call_budgets: keep operator configuration
+  artifacts: expire objects past retention, maintenance purge-run-artifacts marks the row
+  download_artifacts: expire objects past DOWNLOAD_ARTIFACT_RETENTION, the row stays
+  download_records: keep
+  publishers: keep
+  publications: keep
+  publication_releases: keep
+  bundles: keep
+  bundle_versions: keep
+  bundle_members: keep
+  exposure_reviews: keep
+  download_artifact_members: keep
+  download_object_cleanup_intents: transient deleted once the object is gone
+  evaluations: archivable
+  evaluation_suggestions: archivable
+  evaluation_suggestion_applications: keep
+  evaluation_model_usage: archivable
+  trace_events: expire TRACE_RETENTION, monthly partition drop and default-partition stragglers
+  object_reconcile_sightings: transient deleted when the sighting clears
+  credit_accounts: keep never deleted, not even by account purge
+  credit_entries: keep never deleted, not even by account purge
+  cost_events: keep never deleted, not even by account purge
+  cost_statistics: keep derived, recomputed daily
+  cost_session_summaries: keep never deleted, not even by account purge
+  creation_sessions: expire at expires_at, creation expiry job
+  creation_session_events: with_owner cascades with its session
+  creation_receipts: with_owner cascades with its session
+  analytics_events: expire ANALYTICS_RETENTION
+  feedback_reports: expire FEEDBACK_RETENTION, purge refuses to start while unset
+  audit_events: expire AUDIT_RETENTION
+  outbox_events: expire published events after seven days, dead letters stay
+  rate_limit_buckets: transient idle buckets swept by the limiter

@@ -800,7 +800,7 @@ const tableOwnerMigration = "CREATE TABLE runs (id int);\nCREATE TABLE skills (i
 func TestTableOwnershipFlagsAQueryThatTouchesAnotherContextsTable(t *testing.T) {
 	t.Parallel()
 	declaration := decl("files:\n  q.sql: run\nqueries:\nallow:\n") +
-		"tables:\n  runs: run\n  skills: registry\n  artifacts: run, registry\n"
+		"tables:\n  runs: run\n  skills: registry\n  artifacts: run, registry\n" + tableOwnerRetention
 	root := writeQueryOwnerFixture(t, declaration, map[string]string{"q.sql": "-- name: OwnRead :many\nSELECT id FROM runs;\n\n" +
 		"-- name: SharedRead :many\nSELECT id FROM artifacts;\n\n" +
 		"-- name: ForeignJoin :many\nSELECT r.id FROM runs r JOIN skills s ON s.id = r.skill_id;\n"}, nil)
@@ -832,6 +832,61 @@ func TestTableOwnershipRequiresEveryTableToHaveAKnownOwner(t *testing.T) {
 	}
 	if strings.Contains(joined, "runs_2026") {
 		t.Errorf("a partition was treated as a table of its own:\n%s", joined)
+	}
+}
+
+const tableOwnerRetention = "retention:\n  runs: keep\n  skills: with_owner\n  artifacts: expire objects past retention\n"
+
+func retentionProblemsFor(t *testing.T, retention string) []string {
+	t.Helper()
+	declaration := decl("files:\n  q.sql: run\nqueries:\nallow:\n") +
+		"tables:\n  runs: run\n  skills: registry\n  artifacts: run, registry\n" + retention
+	root := writeQueryOwnerFixture(t, declaration, map[string]string{"q.sql": "-- name: OwnRead :many\nSELECT id FROM runs;\n"}, nil)
+	writeMigration(t, root, "0001_init.sql", tableOwnerMigration)
+	return queryOwnerProblems(root)
+}
+
+func TestRetentionAcceptsEachDispositionWithOrWithoutADescription(t *testing.T) {
+	t.Parallel()
+	for _, disposition := range retentionDispositions {
+		retention := "retention:\n  runs: " + disposition + "\n  skills: " + disposition + " with a description\n  artifacts: keep\n"
+		if problems := retentionProblemsFor(t, retention); len(problems) != 0 {
+			t.Errorf("disposition %q: want no problems, got %q", disposition, problems)
+		}
+	}
+}
+
+func TestRetentionRequiresTheSectionOnceTablesAreOwned(t *testing.T) {
+	t.Parallel()
+	joined := strings.Join(retentionProblemsFor(t, ""), "\n")
+	if !strings.Contains(joined, `missing section "retention"`) {
+		t.Fatalf("want the missing retention section reported, got:\n%s", joined)
+	}
+}
+
+func TestRetentionFlagsAnUndeclaredTableAStrayEntryAndAnUnknownDisposition(t *testing.T) {
+	t.Parallel()
+	problems := retentionProblemsFor(t, "retention:\n  runs: keep\n  skills: forever\n  ghosts: keep\n")
+	joined := strings.Join(problems, "\n")
+	for _, want := range []string{
+		"tables.artifacts has no retention: disposition",
+		"retention.ghosts is not a table in tables:",
+		`retention.skills = "forever" does not start with one of`,
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("missing %q in:\n%s", want, joined)
+		}
+	}
+	if len(problems) != 3 {
+		t.Errorf("want exactly three problems, got %d:\n%s", len(problems), joined)
+	}
+}
+
+func TestRetentionRejectsADispositionThatOnlyPrefixesAKnownWord(t *testing.T) {
+	t.Parallel()
+	joined := strings.Join(retentionProblemsFor(t, "retention:\n  runs: keeper\n  skills: keep\n  artifacts: keep\n"), "\n")
+	if !strings.Contains(joined, `retention.runs = "keeper" does not start with one of`) {
+		t.Fatalf("want keeper rejected, got:\n%s", joined)
 	}
 }
 
