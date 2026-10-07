@@ -37,18 +37,24 @@ func (q *Queries) EngagePlatformAgentBrake(ctx context.Context, arg EngagePlatfo
 
 const finishPlatformAgentRun = `-- name: FinishPlatformAgentRun :execrows
 UPDATE platform_agent_runs
-SET status = $1, finished_at = now(), reason = $2
-WHERE id = $3 AND status = 'running'
+SET status = $1, finished_at = now(), reason = $2, result = $3
+WHERE id = $4 AND status = 'running'
 `
 
 type FinishPlatformAgentRunParams struct {
 	Status string
 	Reason *string
+	Result []byte
 	ID     pgtype.UUID
 }
 
 func (q *Queries) FinishPlatformAgentRun(ctx context.Context, arg FinishPlatformAgentRunParams) (int64, error) {
-	result, err := q.db.Exec(ctx, finishPlatformAgentRun, arg.Status, arg.Reason, arg.ID)
+	result, err := q.db.Exec(ctx, finishPlatformAgentRun,
+		arg.Status,
+		arg.Reason,
+		arg.Result,
+		arg.ID,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -124,6 +130,61 @@ func (q *Queries) ListPlatformAgents(ctx context.Context) ([]PlatformAgent, erro
 		return nil, err
 	}
 	return items, nil
+}
+
+const platformAgentSpendSince = `-- name: PlatformAgentSpendSince :one
+SELECT coalesce(sum(s.usd_micros), 0)::bigint
+FROM platform_agent_steps s
+JOIN platform_agent_runs r ON r.id = s.run_id
+JOIN platform_agents a ON a.id = r.agent_id
+WHERE a.name = $1 AND s.created_at >= $2
+`
+
+type PlatformAgentSpendSinceParams struct {
+	Name  string
+	Since pgtype.Timestamptz
+}
+
+func (q *Queries) PlatformAgentSpendSince(ctx context.Context, arg PlatformAgentSpendSinceParams) (int64, error) {
+	row := q.db.QueryRow(ctx, platformAgentSpendSince, arg.Name, arg.Since)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const recordPlatformAgentStep = `-- name: RecordPlatformAgentStep :exec
+INSERT INTO platform_agent_steps (
+    run_id, seq, tool, arguments, result, model, prompt_tokens, completion_tokens, usd_micros
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
+)
+`
+
+type RecordPlatformAgentStepParams struct {
+	RunID            pgtype.UUID
+	Seq              int32
+	Tool             string
+	Arguments        string
+	Result           string
+	Model            string
+	PromptTokens     int64
+	CompletionTokens int64
+	UsdMicros        *int64
+}
+
+func (q *Queries) RecordPlatformAgentStep(ctx context.Context, arg RecordPlatformAgentStepParams) error {
+	_, err := q.db.Exec(ctx, recordPlatformAgentStep,
+		arg.RunID,
+		arg.Seq,
+		arg.Tool,
+		arg.Arguments,
+		arg.Result,
+		arg.Model,
+		arg.PromptTokens,
+		arg.CompletionTokens,
+		arg.UsdMicros,
+	)
+	return err
 }
 
 const registerPlatformAgent = `-- name: RegisterPlatformAgent :exec

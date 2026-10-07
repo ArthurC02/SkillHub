@@ -563,6 +563,20 @@ type PlatformAgentRun struct {
 	StartedAt  pgtype.Timestamptz
 	FinishedAt pgtype.Timestamptz
 	Reason     *string
+	Result     []byte
+}
+
+type PlatformAgentStep struct {
+	RunID            pgtype.UUID
+	Seq              int32
+	Tool             string
+	Arguments        string
+	Result           string
+	Model            string
+	PromptTokens     int64
+	CompletionTokens int64
+	UsdMicros        *int64
+	CreatedAt        pgtype.Timestamptz
 }
 
 type Publication struct {

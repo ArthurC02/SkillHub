@@ -34,7 +34,7 @@ func registerTestAgent(t *testing.T, pool *pgxpool.Pool, name string) *operation
 	})
 	if err := svc.Register(ctx, []operations.Definition{{
 		Name: name, Purpose: "test agent", ModelRole: "skillhub-test", DailySpendCapMicros: 1,
-		Tools: []string{"maintenance-report"},
+		Tools: []string{"maintenance_report"},
 	}}); err != nil {
 		t.Fatal(err)
 	}

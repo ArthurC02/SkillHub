@@ -215,6 +215,8 @@ queries:
   ReleasePlatformAgentBrake: operations
   StartPlatformAgentRun: operations
   GetPlatformAgentRunGate: operations
+  RecordPlatformAgentStep: operations
+  PlatformAgentSpendSince: operations
   FinishPlatformAgentRun: operations
   GetTraceEventText: trace
   LockTraceIngestRun: trace
@@ -234,6 +236,8 @@ scope:
   EngagePlatformAgentBrake: platform-wide
   StartPlatformAgentRun: platform-wide
   GetPlatformAgentRunGate: platform-wide
+  RecordPlatformAgentStep: platform-wide
+  PlatformAgentSpendSince: platform-wide
   FinishPlatformAgentRun: platform-wide
   AdjustCreditBalance: user
   LockAccountLifecycle: user
@@ -475,6 +479,7 @@ tables:
   platform_agents: operations
   platform_agent_brake: operations
   platform_agent_runs: operations
+  platform_agent_steps: operations
 
 retention:
   users: keep row stays after account purge so credit records keep their reference
@@ -537,3 +542,4 @@ retention:
   platform_agents: keep one row per agent defined in code
   platform_agent_brake: transient present only while the brake is engaged
   platform_agent_runs: archivable
+  platform_agent_steps: archivable

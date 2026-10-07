@@ -29,6 +29,7 @@ def test_every_capability_route_is_guarded():
         ("/readyz", "GET"),
         ("/suggest-criteria", "POST"),
         ("/suggest-improvements", "POST"),
+        ("/v1/agent/step", "POST"),
         ("/v1/analyze-intent", "POST"),
         ("/v1/creation/step", "POST"),
         ("/v1/enrich-skill", "POST"),

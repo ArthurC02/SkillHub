@@ -68,12 +68,16 @@ func haltReason(enabled, braked bool) string {
 }
 
 func (s *Service) FinishRun(ctx context.Context, run pgtype.UUID, status RunStatus, reason string) error {
+	return s.finishWithResult(ctx, run, status, reason, nil)
+}
+
+func (s *Service) finishWithResult(ctx context.Context, run pgtype.UUID, status RunStatus, reason string, result []byte) error {
 	var why *string
 	if reason != "" {
 		why = &reason
 	}
 	finished, err := gen.New(s.Pool).FinishPlatformAgentRun(ctx, gen.FinishPlatformAgentRunParams{
-		ID: run, Status: string(status), Reason: why,
+		ID: run, Status: string(status), Reason: why, Result: result,
 	})
 	if err != nil {
 		return err

@@ -42,5 +42,19 @@ WHERE r.id = @id;
 
 -- name: FinishPlatformAgentRun :execrows
 UPDATE platform_agent_runs
-SET status = @status, finished_at = now(), reason = sqlc.narg(reason)
+SET status = @status, finished_at = now(), reason = sqlc.narg(reason), result = sqlc.narg(result)
 WHERE id = @id AND status = 'running';
+
+-- name: RecordPlatformAgentStep :exec
+INSERT INTO platform_agent_steps (
+    run_id, seq, tool, arguments, result, model, prompt_tokens, completion_tokens, usd_micros
+) VALUES (
+    @run_id, @seq, @tool, @arguments, @result, @model, @prompt_tokens, @completion_tokens, sqlc.narg(usd_micros)
+);
+
+-- name: PlatformAgentSpendSince :one
+SELECT coalesce(sum(s.usd_micros), 0)::bigint
+FROM platform_agent_steps s
+JOIN platform_agent_runs r ON r.id = s.run_id
+JOIN platform_agents a ON a.id = r.agent_id
+WHERE a.name = @name AND s.created_at >= @since;

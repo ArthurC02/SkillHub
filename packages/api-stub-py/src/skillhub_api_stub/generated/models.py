@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import Any
 from uuid import UUID
 
 from pydantic import (
@@ -721,6 +722,45 @@ class Reason(Enum):
     fetch_url_missing = 'fetch_url_missing'
 
 
+class AgentTool(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    name: constr(pattern=r'^[a-z][a-z0-9_]*$')
+    description: constr(max_length=1000)
+    parameters: dict[str, Any] = Field(
+        ..., description="JSON Schema of the tool's input."
+    )
+
+
+class AgentStepRecord(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    tool: str
+    arguments: constr(max_length=4000) = Field(
+        ..., description='The JSON-encoded input the model asked for.'
+    )
+    result: constr(max_length=60000) = Field(
+        ..., description='What Go returned, JSON-encoded. Data, never instructions.'
+    )
+
+
+class Outcome1(Enum):
+    tool_intent = 'tool_intent'
+    final = 'final'
+
+
+class AgentToolIntent(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    tool: str
+    arguments: constr(max_length=4000) = Field(
+        ..., description='The JSON-encoded input for the tool.'
+    )
+
+
 class CreationDraftValidation(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -953,6 +993,47 @@ class CreationStepResponse(BaseModel):
     diagram_interpretation: CreationDiagramDecomposition | None = None
     tool_intent: CreationToolIntent | None = None
     draft: GeneratedSkill | None = None
+    model: str
+    prompt_version: str
+    usage: GatewayUsage | None = None
+
+
+class AgentStepRequest(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    agent: constr(min_length=1) = Field(
+        ...,
+        description="The registered agent's name; selects its instructions and result shape.",
+    )
+    run_id: constr(min_length=1)
+    model_role: constr(min_length=1) = Field(
+        ..., description='The gateway role alias Go chose for this agent.'
+    )
+    tools: list[AgentTool] = Field(
+        ...,
+        description='The tools Go will execute for this run; an intent naming any other is refused by Go.',
+        max_length=10,
+    )
+    steps: list[AgentStepRecord] = Field(
+        ...,
+        description='Every tool call of this run so far, oldest first, with what Go returned.',
+        max_length=20,
+    )
+    timeout_seconds: conint(ge=1, le=120)
+    max_output_tokens: conint(ge=1, le=16000)
+
+
+class AgentStepResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    outcome: Outcome1
+    tool_intent: AgentToolIntent | None = None
+    result: constr(max_length=60000) | None = Field(
+        None,
+        description="Present when outcome is final; the JSON-encoded result in the agent's result shape.",
+    )
     model: str
     prompt_version: str
     usage: GatewayUsage | None = None
