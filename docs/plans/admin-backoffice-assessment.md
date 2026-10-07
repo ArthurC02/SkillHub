@@ -30,6 +30,8 @@
 
 再對照[事故分級表](02-specifications-and-acceptance-criteria.md#事件嚴重度分級與回應sec-010-1)與 `infra/observability/alerts.yml`：`CredentialRevokeFailing` 把所有短效憑證的失敗合計為 15 分鐘內至少 3 次，不能證明同一筆憑證連續 3 輪撤銷失敗，更不是 Network Rule 撤銷的證據；`CleanupFailing` 用所有 Run 的失敗率，不能證明同一清理對象持續失敗。兩者可以提醒值班者追查，**不能直接當作逐事件 P2 建單的判定證據**。另外 `ProviderCapabilityUnreachable` 雖標 `severity=critical`，規格仍把 Provider 長時間不可用列為 P2；後續分級不得直接把 Prometheus 的 `critical` 映射成 P1。這三點已列在[事件通知提案](../domain-memory/changes/sec010-incident-notification/draft-pr.md)的待審查證據，不宣稱已修復。
 
+供應鏈的 P1 路徑也有明確邊界：`gvisor-baseline.yml` 發現疑似逃逸類公告時，`tools/ci/gvisor-incident-issues.sh` 會建立或核對暫定 P1 issue，但 issue 內直接寫明「尚未自動停派送，須由 operator 立即操作」。因此「已建單」不能作為 P1 第一動作完成的證據；在部署端的停派送授權、事件關聯與實際動作結果尚未接通前，這類公告仍不符合自動止血允收準則。
+
 本分支在 GitHub 尚無可引用的 workflow run：`.github/workflows/ci.yml` 只在指向 `main` 的 PR、`main` push、排程或手動啟動時執行，單純推送本分支不會觸發它。本機測試通過不宣稱 CI 或正式環境通過。正式部署的通知送達、P1 節點探針與值班處置亦無實測證據。
 
 ## 下一步與停止線
