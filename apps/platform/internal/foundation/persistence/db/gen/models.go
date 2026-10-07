@@ -576,8 +576,6 @@ type Run struct {
 	Status               RunStatus
 	StatusReason         *string
 	Provider             string
-	RuntimeSnapshot      []byte
-	PolicySnapshot       []byte
 	CleanupStatus        RunCleanupStatus
 	CleanupAt            pgtype.Timestamptz
 	CreatedAt            pgtype.Timestamptz
@@ -626,6 +624,13 @@ type RunPermissionConfirmation struct {
 	SummaryHash    string
 	ConfirmedBy    pgtype.UUID
 	ConfirmedAt    pgtype.Timestamptz
+}
+
+type RunSnapshot struct {
+	RunID           pgtype.UUID
+	WorkspaceID     pgtype.UUID
+	RuntimeSnapshot []byte
+	PolicySnapshot  []byte
 }
 
 type RunStatusTransition struct {

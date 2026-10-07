@@ -80,10 +80,7 @@ func TestTheWallClockStartsAtTheDispatchThisDriveMade(t *testing.T) {
 	f := newFixture(t, a, pool, "alice-clock-from-dispatch")
 	ctx := context.Background()
 	created := f.start(t)
-	if _, err := pool.Exec(ctx, `UPDATE runs SET policy_snapshot = jsonb_set(policy_snapshot,
-		'{resource_limits,wall_clock_hard_seconds}', '1') WHERE id = $1`, mustUUID(t, created.RunID)); err != nil {
-		t.Fatal(err)
-	}
+	setRunPolicyValue(t, pool, mustUUID(t, created.RunID), "{resource_limits,wall_clock_hard_seconds}", "1")
 	fake := providertest.New("fake_sandbox", "test-token")
 	t.Cleanup(fake.Close)
 	fake.Plan = providertest.Plan{StuckRunning: true}

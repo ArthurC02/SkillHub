@@ -66,17 +66,22 @@ func (s *Service) turnBelongsToAnother(ctx context.Context, current gen.Run, pla
 	for _, p := range placements {
 		free += p.freeSlots()
 	}
+	ahead := lineOf(unfinished).ahead(current)
+	policies, err := s.policiesOf(ctx, ahead)
+	if err != nil {
+		return false, err
+	}
 	contenders := 0
-	for _, other := range lineOf(unfinished).ahead(current) {
-		if s.providers().sharesPlacement(ctx, other, placements, setAside) {
+	for _, other := range ahead {
+		if s.providers().sharesPlacement(ctx, policies[other.ID.Bytes], placements, setAside) {
 			contenders++
 		}
 	}
 	return contenders >= free, nil
 }
 
-func (r *Registry) sharesPlacement(ctx context.Context, other gen.Run, placements []Placement, setAside map[string]SetAsideProvider) bool {
-	req, _, err := requirementsFor(other)
+func (r *Registry) sharesPlacement(ctx context.Context, policy []byte, placements []Placement, setAside map[string]SetAsideProvider) bool {
+	req, _, err := requirementsFor(policy)
 	if err != nil {
 		return false
 	}

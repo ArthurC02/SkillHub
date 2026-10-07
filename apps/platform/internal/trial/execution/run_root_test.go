@@ -22,7 +22,7 @@ var (
 )
 
 func runIn(status gen.RunStatus, attempts ...gen.RunAttempt) *Run {
-	return &Run{row: gen.Run{Status: status, RuntimeSnapshot: []byte("{}")}, attempts: attempts}
+	return &Run{row: gen.Run{Status: status}, snapshots: runSnapshots{runtime: []byte("{}")}, attempts: attempts}
 }
 
 func attemptWith(id pgtype.UUID, grants ObjectGrantState, finished bool) gen.RunAttempt {
@@ -41,7 +41,7 @@ func moved(from, to gen.RunStatus, reason string) outbox.RunStatusChanged {
 }
 
 func TestANewRunStartsQueuedAndSaysItWasRequested(t *testing.T) {
-	r := startRun(gen.Run{Status: gen.RunStatusRunning})
+	r := startRun(gen.Run{Status: gen.RunStatusRunning}, runSnapshots{})
 
 	if r.Status() != gen.RunStatusQueued {
 		t.Fatalf("a new run is %q, want queued", r.Status())
@@ -54,26 +54,21 @@ func TestANewRunStartsQueuedAndSaysItWasRequested(t *testing.T) {
 func assertNewRunKeepsCopiesOfItsInputAndRowSnapshots(t *testing.T) {
 	statusReason, failureClass := "waiting", "initial"
 	runtime, policy := []byte("runtime"), []byte("policy")
-	input := gen.Run{
-		StatusReason:    &statusReason,
-		FailureClass:    &failureClass,
-		RuntimeSnapshot: runtime,
-		PolicySnapshot:  policy,
-	}
-	r := startRun(input)
+	input := gen.Run{StatusReason: &statusReason, FailureClass: &failureClass}
+	r := startRun(input, runSnapshots{runtime: runtime, policy: policy})
 
 	statusReason, failureClass = "changed", "changed"
 	runtime[0], policy[0] = 'R', 'P'
 	first := r.Row()
-	if *first.StatusReason != "waiting" || *first.FailureClass != "initial" || string(first.RuntimeSnapshot) != "runtime" || string(first.PolicySnapshot) != "policy" {
-		t.Fatalf("row after input mutation = %+v, want the original snapshots", first)
+	if *first.StatusReason != "waiting" || *first.FailureClass != "initial" || string(r.RuntimeSnapshot()) != "runtime" || string(r.PolicySnapshot()) != "policy" {
+		t.Fatalf("row after input mutation = %+v %q %q, want the original snapshots", first, r.RuntimeSnapshot(), r.PolicySnapshot())
 	}
 
 	*first.StatusReason, *first.FailureClass = "output", "output"
-	first.RuntimeSnapshot[0], first.PolicySnapshot[0] = 'O', 'O'
+	r.RuntimeSnapshot()[0], r.PolicySnapshot()[0] = 'O', 'O'
 	second := r.Row()
-	if *second.StatusReason != "waiting" || *second.FailureClass != "initial" || string(second.RuntimeSnapshot) != "runtime" || string(second.PolicySnapshot) != "policy" {
-		t.Fatalf("row after output mutation = %+v, want the original snapshots", second)
+	if *second.StatusReason != "waiting" || *second.FailureClass != "initial" || string(r.RuntimeSnapshot()) != "runtime" || string(r.PolicySnapshot()) != "policy" {
+		t.Fatalf("row after output mutation = %+v %q %q, want the original snapshots", second, r.RuntimeSnapshot(), r.PolicySnapshot())
 	}
 }
 
@@ -83,13 +78,13 @@ func assertAssignedRuntimeSnapshotsAreCopiedOnInputAndOutput(t *testing.T) {
 	r.AssignProvider("fake_sandbox", runtime)
 
 	runtime[0] = 'R'
-	first := r.Row()
-	if string(first.RuntimeSnapshot) != "runtime" {
-		t.Fatalf("runtime after input mutation = %q, want runtime", first.RuntimeSnapshot)
+	first := r.RuntimeSnapshot()
+	if string(first) != "runtime" {
+		t.Fatalf("runtime after input mutation = %q, want runtime", first)
 	}
 
-	first.RuntimeSnapshot[0] = 'O'
-	if got := string(r.Row().RuntimeSnapshot); got != "runtime" {
+	first[0] = 'O'
+	if got := string(r.RuntimeSnapshot()); got != "runtime" {
 		t.Fatalf("runtime after output mutation = %q, want runtime", got)
 	}
 }
@@ -314,26 +309,26 @@ func TestAProviderIsAssignedUntilAnotherOneTakesTheRunOver(t *testing.T) {
 		r := runIn(gen.RunStatusQueued)
 		r.AssignProvider("fake_sandbox", []byte(`{"provider":"fake_sandbox"}`))
 		assertRunEvents(t, r, ProviderAssigned{Provider: "fake_sandbox"})
-		if r.Row().Provider != "fake_sandbox" || string(r.Row().RuntimeSnapshot) != `{"provider":"fake_sandbox"}` {
-			t.Fatalf("run = %q %s, want the provider and its snapshot", r.Row().Provider, r.Row().RuntimeSnapshot)
+		if r.Row().Provider != "fake_sandbox" || string(r.RuntimeSnapshot()) != `{"provider":"fake_sandbox"}` {
+			t.Fatalf("run = %q %s, want the provider and its snapshot", r.Row().Provider, r.RuntimeSnapshot())
 		}
 	})
 	t.Run("the same provider dispatching again", func(t *testing.T) {
 		r := runIn(gen.RunStatusProvisioning)
-		r.row.Provider, r.row.RuntimeSnapshot = "first", []byte(`{"provider":"first","attempt":1}`)
+		r.row.Provider, r.snapshots.runtime = "first", []byte(`{"provider":"first","attempt":1}`)
 		r.AssignProvider("first", []byte(`{"provider":"first","attempt":2}`))
 		assertRunEvents(t, r)
-		if string(r.Row().RuntimeSnapshot) != `{"provider":"first","attempt":1}` {
-			t.Fatalf("snapshot = %s, want the runtime the first attempt matched", r.Row().RuntimeSnapshot)
+		if string(r.RuntimeSnapshot()) != `{"provider":"first","attempt":1}` {
+			t.Fatalf("snapshot = %s, want the runtime the first attempt matched", r.RuntimeSnapshot())
 		}
 	})
 	t.Run("a run reassigned to another provider", func(t *testing.T) {
 		r := runIn(gen.RunStatusRunning)
-		r.row.Provider, r.row.RuntimeSnapshot = "first", []byte(`{"provider":"first"}`)
+		r.row.Provider, r.snapshots.runtime = "first", []byte(`{"provider":"first"}`)
 		r.AssignProvider("second", []byte(`{"provider":"second"}`))
 		assertRunEvents(t, r, ProviderAssigned{Provider: "second"})
-		if r.Row().Provider != "second" || string(r.Row().RuntimeSnapshot) != `{"provider":"second"}` {
-			t.Fatalf("run = %q %s, want the provider now carrying it", r.Row().Provider, r.Row().RuntimeSnapshot)
+		if r.Row().Provider != "second" || string(r.RuntimeSnapshot()) != `{"provider":"second"}` {
+			t.Fatalf("run = %q %s, want the provider now carrying it", r.Row().Provider, r.RuntimeSnapshot())
 		}
 	})
 	t.Run("a finished run", func(t *testing.T) {

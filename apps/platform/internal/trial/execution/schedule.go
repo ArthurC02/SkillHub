@@ -172,9 +172,9 @@ type Requirements struct {
 	AcceptUnenforced bool
 }
 
-func requirementsFor(run gen.Run) (Requirements, policySnapshot, error) {
+func requirementsFor(policyJSON []byte) (Requirements, policySnapshot, error) {
 	var policy policySnapshot
-	if err := json.Unmarshal(run.PolicySnapshot, &policy); err != nil {
+	if err := json.Unmarshal(policyJSON, &policy); err != nil {
 		return Requirements{}, policy, fmt.Errorf("decode policy snapshot: %w", err)
 	}
 	return requirementsFromPolicy(policy, policy.Model), policy, nil
@@ -595,9 +595,9 @@ func pinnedRuntime(p SandboxProvider, c ProviderCapability, profile RuntimeProfi
 	})
 }
 
-func alreadyPinned(run gen.Run) bool {
+func alreadyPinned(runtimeSnapshot []byte) bool {
 	var snapshot map[string]json.RawMessage
-	return json.Unmarshal(run.RuntimeSnapshot, &snapshot) == nil && len(snapshot) > 0
+	return json.Unmarshal(runtimeSnapshot, &snapshot) == nil && len(snapshot) > 0
 }
 
 func egressSatisfied(offered []string, req Requirements) bool {

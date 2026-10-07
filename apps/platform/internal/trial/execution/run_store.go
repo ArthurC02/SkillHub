@@ -78,7 +78,14 @@ func loadRun(ctx context.Context, q *gen.Queries, workspaceID, runID pgtype.UUID
 	if err != nil {
 		return nil, err
 	}
-	return &Run{row: row, attempts: attempts}, nil
+	snapshots, err := q.GetRunSnapshots(ctx, gen.GetRunSnapshotsParams{RunID: runID, WorkspaceID: workspaceID})
+	if err != nil {
+		return nil, err
+	}
+	return &Run{
+		row: row, attempts: attempts,
+		snapshots: runSnapshots{runtime: snapshots.RuntimeSnapshot, policy: snapshots.PolicySnapshot},
+	}, nil
 }
 
 func (s *Service) commandRun(
@@ -163,13 +170,18 @@ func writeCancelRequested(ctx context.Context, w runTx, r *Run, event CancelRequ
 
 func writeProviderAssigned(ctx context.Context, w runTx, r *Run, event ProviderAssigned) error {
 	row, err := w.q.SetRunProvider(ctx, gen.SetRunProviderParams{
-		Provider: r.row.Provider, RuntimeSnapshot: r.row.RuntimeSnapshot,
-		ID: r.row.ID, WorkspaceID: r.row.WorkspaceID, Status: r.row.Status,
+		Provider: r.row.Provider,
+		ID:       r.row.ID, WorkspaceID: r.row.WorkspaceID, Status: r.row.Status,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrRunFinished
 	}
 	if err != nil {
+		return err
+	}
+	if err := w.q.SetRunRuntimeSnapshot(ctx, gen.SetRunRuntimeSnapshotParams{
+		RuntimeSnapshot: r.snapshots.runtime, RunID: row.ID, WorkspaceID: row.WorkspaceID,
+	}); err != nil {
 		return err
 	}
 	r.row = row
@@ -234,9 +246,15 @@ func (s *Service) writeCreated(ctx context.Context, w runTx, r *Run, event Statu
 	row, err := q.CreateRun(ctx, gen.CreateRunParams{
 		WorkspaceID: r.row.WorkspaceID, SkillVersionID: r.row.SkillVersionID,
 		TestCaseSnapshotID: r.row.TestCaseSnapshotID, Provider: r.row.Provider,
-		RuntimeSnapshot: r.row.RuntimeSnapshot, PolicySnapshot: r.row.PolicySnapshot, Status: r.row.Status,
+		Status: r.row.Status,
 	})
 	if err != nil {
+		return err
+	}
+	if err := q.InsertRunSnapshots(ctx, gen.InsertRunSnapshotsParams{
+		RunID: row.ID, WorkspaceID: row.WorkspaceID,
+		RuntimeSnapshot: r.snapshots.runtime, PolicySnapshot: r.snapshots.policy,
+	}); err != nil {
 		return err
 	}
 	r.row = row

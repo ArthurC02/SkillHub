@@ -395,7 +395,7 @@ func TestPreflightShowsThePolicyTheRunIsActuallyHeldTo(t *testing.T) {
 
 	var raw []byte
 	if err := pool.QueryRow(context.Background(),
-		"SELECT policy_snapshot FROM runs WHERE id = $1", mustUUID(t, created.RunID),
+		"SELECT policy_snapshot FROM run_snapshots WHERE run_id = $1", mustUUID(t, created.RunID),
 	).Scan(&raw); err != nil {
 		t.Fatal(err)
 	}

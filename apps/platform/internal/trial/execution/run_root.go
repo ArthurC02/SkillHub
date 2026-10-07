@@ -104,17 +104,27 @@ func (AttemptDispatched) eventType() string    { return outbox.RunAttemptDispatc
 func (AttemptFinished) eventType() string      { return outbox.RunAttemptFinished }
 func (ObjectGrantsRecorded) eventType() string { return outbox.RunObjectGrantsRecorded }
 
-type Run struct {
-	row      gen.Run
-	attempts []gen.RunAttempt
-	events   []Event
-	saved    int
+type runSnapshots struct {
+	runtime []byte
+	policy  []byte
 }
 
-func startRun(row gen.Run) *Run {
+func (s runSnapshots) clone() runSnapshots {
+	return runSnapshots{runtime: slices.Clone(s.runtime), policy: slices.Clone(s.policy)}
+}
+
+type Run struct {
+	row       gen.Run
+	snapshots runSnapshots
+	attempts  []gen.RunAttempt
+	events    []Event
+	saved     int
+}
+
+func startRun(row gen.Run, snapshots runSnapshots) *Run {
 	row = cloneRun(row)
 	row.Status = gen.RunStatusQueued
-	r := &Run{row: row}
+	r := &Run{row: row, snapshots: snapshots.clone()}
 	r.record(StatusChanged{RunStatusChanged: outbox.RunStatusChanged{
 		ToStatus: string(row.Status), Reason: requestedReason,
 	}})
@@ -122,6 +132,10 @@ func startRun(row gen.Run) *Run {
 }
 
 func (r *Run) Row() gen.Run { return cloneRun(r.row) }
+
+func (r *Run) RuntimeSnapshot() []byte { return slices.Clone(r.snapshots.runtime) }
+
+func (r *Run) PolicySnapshot() []byte { return slices.Clone(r.snapshots.policy) }
 
 func (r *Run) Status() gen.RunStatus { return r.row.Status }
 
@@ -191,8 +205,8 @@ func (r *Run) AssignProvider(provider string, runtimeSnapshot []byte) {
 	switch {
 	case IsTerminal(r.row.Status):
 		r.refuse(RefusedFinished)
-	case !alreadyPinned(r.row) || r.row.Provider != provider:
-		r.row.Provider, r.row.RuntimeSnapshot = provider, slices.Clone(runtimeSnapshot)
+	case !alreadyPinned(r.snapshots.runtime) || r.row.Provider != provider:
+		r.row.Provider, r.snapshots.runtime = provider, slices.Clone(runtimeSnapshot)
 		r.record(ProviderAssigned{Provider: provider})
 	}
 }
@@ -301,8 +315,6 @@ func (r *Run) record(event Event) { r.events = append(r.events, cloneEvent(event
 
 func cloneRun(row gen.Run) gen.Run {
 	row.StatusReason = pgconv.Clone(row.StatusReason)
-	row.RuntimeSnapshot = slices.Clone(row.RuntimeSnapshot)
-	row.PolicySnapshot = slices.Clone(row.PolicySnapshot)
 	row.FailureClass = pgconv.Clone(row.FailureClass)
 	return row
 }

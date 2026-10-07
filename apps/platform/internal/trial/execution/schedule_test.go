@@ -380,29 +380,29 @@ func TestTheWallClockRunsFromTheFirstDispatchNotFromCreation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	run := gen.Run{CreatedAt: pgtype.Timestamptz{Time: created, Valid: true}, PolicySnapshot: policy}
+	run := gen.Run{CreatedAt: pgtype.Timestamptz{Time: created, Valid: true}}
 	refused := gen.RunAttempt{StartedAt: pgtype.Timestamptz{Time: created.Add(time.Minute), Valid: true}}
 	attempts := []gen.RunAttempt{refused, dispatchedAttempt(second), dispatchedAttempt(first)}
 
-	if got, want := clockFor(run, attempts).deadline(), first.Add(2*time.Minute); !got.Equal(want) {
+	if got, want := clockFor(run, policy, attempts).deadline(), first.Add(2*time.Minute); !got.Equal(want) {
 		t.Errorf("deadline = %s, want the earliest dispatch plus the frozen policy's 2m, %s", got, want)
 	}
 
-	run.PolicySnapshot = []byte(`{}`)
+	noPolicy := []byte(`{}`)
 	want := first.Add(time.Duration(DefaultResourceLimits().WallClockHardSeconds) * time.Second)
-	if got := clockFor(run, attempts).deadline(); !got.Equal(want) {
+	if got := clockFor(run, noPolicy, attempts).deadline(); !got.Equal(want) {
 		t.Errorf("deadline without a policy = %s, want the default counted from dispatch, %s", got, want)
 	}
-	if reason := clockFor(run, attempts).timeoutReason(); !strings.Contains(string(reason), "硬性時間上限") {
+	if reason := clockFor(run, noPolicy, attempts).timeoutReason(); !strings.Contains(string(reason), "硬性時間上限") {
 		t.Errorf("reason = %q, want it to name the wall clock", reason)
 	}
 }
 
 func TestARunNobodyHasAcceptedWaitsForASlotUpToTheWaitLimit(t *testing.T) {
 	created := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
-	run := gen.Run{CreatedAt: pgtype.Timestamptz{Time: created, Valid: true}, PolicySnapshot: []byte(`{}`)}
+	run := gen.Run{CreatedAt: pgtype.Timestamptz{Time: created, Valid: true}}
 	refused := gen.RunAttempt{StartedAt: pgtype.Timestamptz{Time: created, Valid: true}}
-	clock := clockFor(run, []gen.RunAttempt{refused})
+	clock := clockFor(run, []byte(`{}`), []gen.RunAttempt{refused})
 
 	if !clock.waiting() {
 		t.Fatal("a run whose only attempt got no provider handle is not waiting")

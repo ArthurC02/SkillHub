@@ -25,7 +25,7 @@ func TestEvaluationRunCarriesTheTerminalVerdict(t *testing.T) {
 	}
 	for status, terminal := range want {
 		t.Run(string(status), func(t *testing.T) {
-			facts := evaluationRun(gen.Run{Status: status})
+			facts := evaluationRun(gen.Run{Status: status}, nil)
 			if facts.Status != string(status) || facts.Terminal != terminal {
 				t.Fatalf("status %s: got status %q, terminal %v; want terminal %v", status, facts.Status, facts.Terminal, terminal)
 			}

@@ -80,6 +80,14 @@ VALUES ('66666666-6666-6666-6666-666666666666', '22222222-2222-2222-2222-2222222
 INSERT INTO runs (id, workspace_id, skill_version_id, test_case_snapshot_id, provider)
 VALUES ('77777777-7777-7777-7777-777777777777', '22222222-2222-2222-2222-222222222222',
         '44444444-4444-4444-4444-444444444444', '66666666-6666-6666-6666-666666666666', 'self-hosted');
+INSERT INTO run_snapshots (run_id, workspace_id, runtime_snapshot, policy_snapshot)
+VALUES ('77777777-7777-7777-7777-777777777777', '22222222-2222-2222-2222-222222222222',
+        '{"provider":"self-hosted"}'::jsonb, '{"clean_mode":false}'::jsonb);
+UPDATE run_snapshots SET runtime_snapshot = '{"provider":"rebound"}'::jsonb
+WHERE run_id = '77777777-7777-7777-7777-777777777777';
+SELECT must_fail($$UPDATE run_snapshots SET policy_snapshot = '{"clean_mode":true}'::jsonb
+                   WHERE run_id = '77777777-7777-7777-7777-777777777777'$$);
+SELECT must_fail($$DELETE FROM run_snapshots WHERE run_id = '77777777-7777-7777-7777-777777777777'$$);
 
 SELECT must_fail($$UPDATE skill_versions SET content_hash = 'tampered' WHERE content_hash = 'hash-1'$$);
 SELECT must_fail($$DELETE FROM skill_versions WHERE content_hash = 'hash-1'$$);
@@ -165,7 +173,7 @@ WHERE id = '77777777-7777-7777-7777-777777777777';
 UPDATE runs SET status = 'succeeded', finished_at = now()
 WHERE id = '77777777-7777-7777-7777-777777777777';
 SELECT must_fail($$UPDATE runs SET status = 'failed' WHERE id = '77777777-7777-7777-7777-777777777777'$$);
-SELECT must_fail($$UPDATE runs SET runtime_snapshot = '{"model":"swapped"}'::jsonb WHERE id = '77777777-7777-7777-7777-777777777777'$$);
+SELECT must_fail($$UPDATE run_snapshots SET runtime_snapshot = '{"model":"swapped"}'::jsonb WHERE run_id = '77777777-7777-7777-7777-777777777777'$$);
 SELECT must_fail($$DELETE FROM runs WHERE id = '77777777-7777-7777-7777-777777777777'$$);
 UPDATE runs SET cleanup_status = 'cleaned', cleanup_at = now()
 WHERE id = '77777777-7777-7777-7777-777777777777';

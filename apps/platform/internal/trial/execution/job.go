@@ -73,7 +73,13 @@ func (s *Service) Drive(ctx context.Context, workspaceID, runID pgtype.UUID) err
 	if err != nil {
 		return err
 	}
-	err = (&driver{svc: s, cur: current, clock: clockFor(current, attempts)}).execute(ctx, attempts)
+	snapshots, err := s.queries().GetRunSnapshots(ctx, gen.GetRunSnapshotsParams{RunID: current.ID, WorkspaceID: current.WorkspaceID})
+	if err != nil {
+		return err
+	}
+	err = (&driver{
+		svc: s, cur: current, policy: snapshots.PolicySnapshot, clock: clockFor(current, snapshots.PolicySnapshot, attempts),
+	}).execute(ctx, attempts)
 	if errors.Is(err, errSuperseded) {
 		slog.Info("run driver superseded", "run_id", pgconv.UUIDString(runID))
 		return nil
@@ -84,6 +90,7 @@ func (s *Service) Drive(ctx context.Context, workspaceID, runID pgtype.UUID) err
 type driver struct {
 	svc      *Service
 	cur      gen.Run
+	policy   []byte
 	provider SandboxProvider
 	clock    runClock
 }
@@ -135,7 +142,7 @@ func (d *driver) terminateUnresumable(ctx context.Context) error {
 }
 
 func (d *driver) dispatch(ctx context.Context) error {
-	req, policy, err := requirementsFor(d.cur)
+	req, policy, err := requirementsFor(d.policy)
 	if err != nil {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failurePlatform,
 			d.reasonFor(failurePlatform, err))
@@ -654,7 +661,7 @@ func (d *driver) recordArtifacts(ctx context.Context, attempt gen.RunAttempt, pr
 		return nil
 	}
 	archiveKey := artifactObjectKey(pgconv.UUIDString(d.cur.ID), pgconv.UUIDString(attempt.ID))
-	limits := runLimits(d.cur)
+	limits := runLimits(d.policy)
 	truncated := artifactCollectionTruncated(pr.Result)
 	if len(pr.Result.Artifacts) > 1000 {
 		return errors.New("provider returned too many artifact manifest entries")
@@ -907,8 +914,8 @@ type runClock struct {
 	wallClock  time.Duration
 }
 
-func clockFor(run gen.Run, attempts []gen.RunAttempt) runClock {
-	seconds := runLimits(run).WallClockHardSeconds
+func clockFor(run gen.Run, policy []byte, attempts []gen.RunAttempt) runClock {
+	seconds := runLimits(policy).WallClockHardSeconds
 	if seconds <= 0 {
 		seconds = DefaultResourceLimits().WallClockHardSeconds
 	}
@@ -991,7 +998,7 @@ func (d *driver) waitForTurn() error {
 const tokenCeilingRoundsHint = "。此上限可跑的輪數取決於每輪的工具呼叫次數:純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪"
 
 func (d *driver) tokenCeilingBreach(ctx context.Context, attempts []gen.RunAttempt) statusReason {
-	limits := runLimits(d.cur).TokenBudget
+	limits := runLimits(d.policy).TokenBudget
 	if d.svc.Gateway == nil || (limits.MaxInputTokens <= 0 && limits.MaxOutputTokens <= 0) {
 		return ""
 	}
@@ -1021,9 +1028,9 @@ func (d *driver) tokenCeilingBreach(ctx context.Context, attempts []gen.RunAttem
 	return ""
 }
 
-func runLimits(run gen.Run) ResourceLimits {
+func runLimits(policyJSON []byte) ResourceLimits {
 	var policy policySnapshot
-	if err := json.Unmarshal(run.PolicySnapshot, &policy); err != nil {
+	if err := json.Unmarshal(policyJSON, &policy); err != nil {
 		return DefaultResourceLimits()
 	}
 	return policy.ResourceLimits

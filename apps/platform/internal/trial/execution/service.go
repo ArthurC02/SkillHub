@@ -396,10 +396,7 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		SkillVersionID:     admitted.version.ID,
 		TestCaseSnapshotID: snapshotID,
 		Provider:           providerUnassigned,
-
-		RuntimeSnapshot: []byte("{}"),
-		PolicySnapshot:  admitted.policy,
-	})
+	}, runSnapshots{runtime: []byte("{}"), policy: admitted.policy})
 	if err := s.saveRun(ctx, tx, requested, p.Actor); err != nil {
 		return gen.Run{}, err
 	}

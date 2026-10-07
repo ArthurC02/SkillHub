@@ -136,6 +136,9 @@ queries:
   CountPersistentObjectSightings: objreconcile
 
   CreateRun: run
+  InsertRunSnapshots: run
+  GetRunSnapshots: run
+  ListRunPolicies: run
   AccountPurgeReady: run
   GetRun: run
   GetRunCancellation: run
@@ -152,6 +155,7 @@ queries:
   TransitionRun: run
   RequestRunCancel: run
   SetRunProvider: run
+  SetRunRuntimeSnapshot: run
   ListActiveRuns: run
   ListRunsNeedingCleanup: run
   SetRunCleanupStatus: run
@@ -273,6 +277,7 @@ scope:
   ListAccountsPastGrace: user
   ListActiveRuns: user
   ListUnfinishedRuns: user
+  ListRunPolicies: user
   ListCollectableObjects: user
   ListLiveSkillIDs: user
   ListSkillForks: user
@@ -389,6 +394,7 @@ tables:
   datasets: testlab
   dataset_object_cleanup_intents: testlab
   runs: run
+  run_snapshots: run
   run_attempts: run
   run_status_transitions: run
   run_permission_confirmations: run
