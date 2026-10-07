@@ -20,6 +20,8 @@
 
 `GET /admin/dispatch` 擬回傳可核對的身分與代次；`DELETE /admin/dispatch/halt` 擬要求兩者，過期回具名衝突，目標已無煞車仍回 204。這會改變舊 DELETE 請求的相容性，不能在未確認部署呼叫端前宣稱非破壞性。沒有新事件。
 
+Repo 內的 HTTP 解除呼叫端包括後台 `useDispatchHalt`、P1 runbook 的 `curl` 範例，以及 API 整合測試；M4 上線清單也要求演練 DELETE。自動門檻恢復直接呼叫 `LiftHalt` 並限制來源，不經此 HTTP 請求。這些呼叫端與契約測試都須隨 API 一起更新；repo 外已部署的 operator 腳本或整合仍待盤點，不能假設不存在。
+
 ## Verification
 
 本草案已由 `validate-change-package` 檢查結構；程式尚未修改，沒有可聲稱通過的實作測試。通過批准後，每條驗收條件都需留下可觀察的整合或前端斷言，並以移除交易前提檢查的反證測試確認會紅。
