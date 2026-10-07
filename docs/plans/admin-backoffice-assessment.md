@@ -13,7 +13,7 @@
 | 宣告／解除派送煞車、讀名冊 | 既定 OPS 範圍已實作 | `OPS-005`；名冊唯讀，修改仍屬部署設定。煞車 UI 不是 P1 告警送達的證據。 |
 | 追查操作、成本、趨勢與模型逾時 | 既定 OPS 範圍已實作 | `OPS-006`～`011`；趨勢只回彙總，逾時設定受後端上限約束。 |
 | 審核發佈物曝光 | 畫面與後端流程已存在 | 此工作由曝光審核需求管理，不能代替來源白名單或逐版本停用。 |
-| 完成所有跨 Workspace 治理動作 | **未完成** | [`SEC-011` 工作項](03-work-items.md)仍未勾：版本停用、白名單異動無可驅動機制；角色啟動事件只記生效名冊，無法回答誰在何時授予。 |
+| 完成所有跨 Workspace 治理動作 | **未完成** | [`SEC-011` 工作項](03-work-items.md)仍未勾：版本停用、白名單異動無可驅動機制；完整下架的「恢復」與現行不可恢復流程衝突；角色啟動事件只記生效名冊，無法回答誰在何時授予。這些選擇集中在[`04` 乙-240](04-backlog-and-handoffs.md)與[`05` R-104～R-106](05-pending-rulings.md)。 |
 | 收到並處理 P1／P2 事故 | **未完成** | [`SEC-010`／`012` 工作項](03-work-items.md)仍未勾；Alertmanager 設定不是事件單、手機通知及送達實證；五類 P1 判準只有三類自動接上，節點探針尚未在生產節點驗證。 |
 
 ## 驗證證據與沒有驗證的事
@@ -28,8 +28,8 @@
 
 ## 下一步與停止線
 
-1. 先裁定版本停用能否恢復、operator 可見的最少量版本資訊；再審查[版本停用提案](../domain-memory/changes/admin-version-disable/draft-pr.md)，才實作契約、交易內准入閘門、API 與 UI。既有 Version 與歷史 Run 不能被改寫。
-2. 裁定來源候選的身分鍵、白名單操作介面、來源下架對既有項目的效力與重審條件；再審查[來源准入提案](../domain-memory/changes/admin-source-admission/draft-pr.md)。未核准前不能把文件清單當作公開收錄閘門。
+1. 先裁定[`R-104`](05-pending-rulings.md)的版本停用後果與最少可見資訊；再審查[版本停用提案](../domain-memory/changes/admin-version-disable/draft-pr.md)，才實作契約、交易內准入閘門、API 與 UI。既有 Version 與歷史 Run 不能被改寫。
+2. 裁定[`R-105`](05-pending-rulings.md)的來源候選身分鍵、白名單操作介面、來源下架效力與重審條件；再審查[來源准入提案](../domain-memory/changes/admin-source-admission/draft-pr.md)。另裁定[`R-106`](05-pending-rulings.md)的完整下架是否可恢復；未核准前不能把文件清單當作公開收錄閘門，也不能把受限展示的解除當作完整下架的恢復。
 3. 審查[事件通知提案](../domain-memory/changes/sec010-incident-notification/draft-pr.md)，完成控制平面 P1／P2 建單、憑證與非工作時間通知的端到端演練；把 P1 剩餘訊號與實際節點探針的證據接上，同時維持單一派送煞車狀態。
 4. 在 GitHub CI 核對同一批真實映像旅程的 workflow 與 job 結果；另解決淨測試模式的單連線 Worker 競爭，並擴充尚未覆蓋的治理負面路徑。既有 mock E2E 仍不可稱為系統驗收。
 
