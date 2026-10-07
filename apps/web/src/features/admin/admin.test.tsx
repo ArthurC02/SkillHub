@@ -1304,6 +1304,37 @@ test("OPS-004: a capped governance search shows the total and reaches later matc
   expect(calls.some((call) => call.url === "/admin/skills?q=pdf&offset=20")).toBe(true);
 });
 
+test("OPS-004: a failed next governance page keeps confirmed matches and can retry", async () => {
+  let nextFails = true;
+  const matches = Array.from({ length: 21 }, (_, index) => ({
+    ...ADMIN_SKILLS.skills[0],
+    skill_id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+  }));
+  stub(true, (path) => {
+    if (path !== "/admin/skills") return undefined;
+    const offset = new URLSearchParams(calls.at(-1)?.url.split("?")[1]).get("offset");
+    return offset === "20" && nextFails
+      ? { body: { error: "skill lookup failed" }, status: 500 }
+      : offset === "20"
+        ? { body: { skills: matches.slice(20), total: 21 }, status: 200 }
+        : { body: { skills: matches.slice(0, 20), total: 21, next_offset: 20 }, status: 200 };
+  });
+  await mountAt("/admin/skills", { q: "pdf" });
+  await waitFor(has("已顯示 20 / 21 筆"));
+  await click(button("載入更多"));
+  await waitFor(has("清單不完整"));
+  expect(container.querySelectorAll(".download-item")).toHaveLength(20);
+  expect(has("已顯示 20 / 21 筆")()).toBe(true);
+  expect(has("暫時無法讀取小工具")()).toBe(false);
+  expect(button("重試載入更多")).toBeDefined();
+
+  nextFails = false;
+  await click(button("重試載入更多"));
+  await waitFor(has("已顯示 21 / 21 筆"));
+  expect(container.querySelectorAll(".download-item")).toHaveLength(21);
+  expect(has("清單不完整")()).toBe(false);
+});
+
 test("OPS-004: an unreadable governance total never becomes zero or unlocks actions", async () => {
   stub(true, (path) =>
     path === "/admin/skills" ? { body: { skills: ADMIN_SKILLS.skills }, status: 200 } : undefined,

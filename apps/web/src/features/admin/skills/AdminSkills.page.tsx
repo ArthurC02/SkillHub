@@ -18,7 +18,7 @@ function SkillSearch({ q }: { q: string }) {
   const skills = useGovernance(q);
   const queryMatches = draft.trim() === q;
   const refreshing = skills.isFetching && !skills.isFetchingNextPage;
-  const showResult = queryMatches && !refreshing && !skills.error;
+  const showResult = queryMatches && !refreshing && (!skills.error || skills.isFetchNextPageError);
 
   return (
     <AdminPage
@@ -49,7 +49,7 @@ function SkillSearch({ q }: { q: string }) {
       {queryMatches && q !== "" && refreshing && <Loading what="小工具" />}
       {queryMatches && !refreshing && (
         <ReadFailure
-          error={skills.error}
+          error={skills.isFetchNextPageError ? undefined : skills.error}
           what="小工具"
           onRetry={() => void skills.refetch()}
           retrying={skills.isFetching}
@@ -62,6 +62,7 @@ function SkillSearch({ q }: { q: string }) {
           total={skills.data.pages[0]?.total}
           hasNextPage={skills.hasNextPage}
           isFetchingNextPage={skills.isFetchingNextPage}
+          nextPageFailed={skills.isFetchNextPageError}
           onMore={() => void skills.fetchNextPage()}
         />
       )}
@@ -75,6 +76,7 @@ function GovernanceResults({
   total,
   hasNextPage,
   isFetchingNextPage,
+  nextPageFailed,
   onMore,
 }: {
   q: string;
@@ -82,6 +84,7 @@ function GovernanceResults({
   total: number | undefined;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
+  nextPageFailed: boolean;
   onMore: () => void;
 }) {
   if (total === undefined || !Number.isSafeInteger(total) || total < found.length) {
@@ -95,6 +98,12 @@ function GovernanceResults({
       <p role="status">
         已顯示 {found.length} / {total} 筆。
       </p>
+      {nextPageFailed && (
+        <p role="alert">
+          後續小工具暫時無法讀取；目前只顯示已載入的 {found.length}{" "}
+          筆，清單不完整。可以重試載入更多。
+        </p>
+      )}
       <ul className="download-list">
         {found.map((skill) => (
           <GovernanceRow key={skill.skill_id} skill={skill} single={total === 1} />
@@ -102,7 +111,7 @@ function GovernanceResults({
       </ul>
       {hasNextPage && (
         <button type="button" disabled={isFetchingNextPage} onClick={onMore}>
-          {isFetchingNextPage ? "載入中…" : "載入更多"}
+          {isFetchingNextPage ? "載入中…" : nextPageFailed ? "重試載入更多" : "載入更多"}
         </button>
       )}
       {total === 1 && found[0].takedown_at === null && <GovernanceActions skill={found[0]} />}
