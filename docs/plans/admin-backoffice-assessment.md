@@ -14,7 +14,7 @@
 | 追查操作、成本、趨勢與模型逾時 | 既定 OPS 範圍已實作 | `OPS-006`～`011`；趨勢只回彙總，逾時設定受後端上限約束。 |
 | 審核發佈物曝光 | 畫面與後端流程已存在 | 此工作由曝光審核需求管理，不能代替來源白名單或逐版本停用。 |
 | 完成所有跨 Workspace 治理動作 | **未完成** | [`SEC-011` 工作項](03-work-items.md)仍未勾：版本停用、白名單異動無可驅動機制；完整下架的「恢復」與現行不可恢復流程衝突；角色啟動事件只記生效名冊，無法回答誰在何時授予。這些選擇集中在[`04` 乙-240](04-backlog-and-handoffs.md)與[`05` R-104～R-106](05-pending-rulings.md)。 |
-| 收到並處理 P1／P2 事故 | **未完成** | [`SEC-010`／`012` 工作項](03-work-items.md)仍未勾；Alertmanager 設定不是事件單、手機通知及送達實證；五類 P1 判準只有三類自動接上，節點探針尚未在生產節點驗證。 |
+| 收到並處理 P1／P2 事故 | **未完成** | [`SEC-010`／`012` 工作項](03-work-items.md)仍未勾；Alertmanager 設定不是事件單、手機通知及送達實證；五類 P1 判準只有三類自動接上，節點探針尚未在生產節點驗證。現行 P2 告警的彙總量也不能證明同一資源連續失敗。 |
 
 ## 驗證證據與沒有驗證的事
 
@@ -28,13 +28,15 @@
 
 派送狀態原本只在掛載或操作後重查；全站查詢設定關閉視窗焦點與重連刷新，值班者久置後可能看到過期的煞車狀態。現在只有後台派送查詢在前景每 30 秒、重新聚焦或重連時重查；背景核對期間隱藏舊狀態與解除選項，避免將快取誤認為當下事實，重查也不反覆播報載入訊息。測試先在缺少輪詢設定時變紅，將焦點刷新反轉後也因畫面未更新而變紅，還原後回綠。這是畫面資料新鮮度，不是事故推播、P1 自動建單或通知送達。
 
-本分支在 GitHub 尚無可引用的 workflow run；本機測試通過不宣稱 CI 或正式環境通過。正式部署的通知送達、P1 節點探針與值班處置亦無實測證據。
+再對照[事故分級表](02-specifications-and-acceptance-criteria.md#事件嚴重度分級與回應sec-010-1)與 `infra/observability/alerts.yml`：`CredentialRevokeFailing` 把所有短效憑證的失敗合計為 15 分鐘內至少 3 次，不能證明同一筆憑證連續 3 輪撤銷失敗，更不是 Network Rule 撤銷的證據；`CleanupFailing` 用所有 Run 的失敗率，不能證明同一清理對象持續失敗。兩者可以提醒值班者追查，**不能直接當作逐事件 P2 建單的判定證據**。另外 `ProviderCapabilityUnreachable` 雖標 `severity=critical`，規格仍把 Provider 長時間不可用列為 P2；後續分級不得直接把 Prometheus 的 `critical` 映射成 P1。這三點已列在[事件通知提案](../domain-memory/changes/sec010-incident-notification/draft-pr.md)的待審查證據，不宣稱已修復。
+
+本分支在 GitHub 尚無可引用的 workflow run：`.github/workflows/ci.yml` 只在指向 `main` 的 PR、`main` push、排程或手動啟動時執行，單純推送本分支不會觸發它。本機測試通過不宣稱 CI 或正式環境通過。正式部署的通知送達、P1 節點探針與值班處置亦無實測證據。
 
 ## 下一步與停止線
 
 1. 先裁定[`R-104`](05-pending-rulings.md)的版本停用後果與最少可見資訊；再審查[版本停用提案](../domain-memory/changes/admin-version-disable/draft-pr.md)，才實作契約、交易內准入閘門、API 與 UI。既有 Version 與歷史 Run 不能被改寫。
 2. 裁定[`R-105`](05-pending-rulings.md)的來源候選身分鍵、白名單操作介面、來源下架效力與重審條件；再審查[來源准入提案](../domain-memory/changes/admin-source-admission/draft-pr.md)。另裁定[`R-106`](05-pending-rulings.md)的完整下架是否可恢復；未核准前不能把文件清單當作公開收錄閘門，也不能把受限展示的解除當作完整下架的恢復。
-3. 審查[事件通知提案](../domain-memory/changes/sec010-incident-notification/draft-pr.md)，完成控制平面 P1／P2 建單、憑證與非工作時間通知的端到端演練；把 P1 剩餘訊號與實際節點探針的證據接上，同時維持單一派送煞車狀態。
+3. 審查[事件通知提案](../domain-memory/changes/sec010-incident-notification/draft-pr.md)，完成控制平面 P1／P2 建單、憑證與非工作時間通知的端到端演練；先把同一資源的連續失敗訊號與 P2 分級證據接正，再把 P1 剩餘訊號與實際節點探針的證據接上，同時維持單一派送煞車狀態。
 4. 在 GitHub CI 核對同一批真實映像旅程的 workflow 與 job 結果；用有模型服務的活躍 Worker 重跑淨測試模式，若逾時再重現才修正；並擴充尚未覆蓋的治理負面路徑。既有 mock E2E 仍不可稱為系統驗收。
 
 [既定 OPS 規格](02-specifications-and-acceptance-criteria.md#412-營運後台ops)刻意不包含編輯 operator／封測名冊、讀取私有 Workspace 資料、個人排行、濫用案件、下架恢復或精選層寫入 UI。它們是產品範圍邊界，不應為了讓後台看似完整而自行加上。
