@@ -325,6 +325,14 @@ type ListPackagingTargetsRes interface {
 	listPackagingTargetsRes()
 }
 
+type ListPlatformAgentRunStepsRes interface {
+	listPlatformAgentRunStepsRes()
+}
+
+type ListPlatformAgentRunsRes interface {
+	listPlatformAgentRunsRes()
+}
+
 type ListPlatformAgentsRes interface {
 	listPlatformAgentsRes()
 }

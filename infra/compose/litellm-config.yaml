@@ -43,6 +43,11 @@ model_list:
       # Function calling on this route is only served with reasoning off.
       reasoning_effort: none
       additional_drop_params: ["thinking"]
+  - model_name: skillhub-ops-report
+    litellm_params:
+      <<: *luna
+      reasoning_effort: none
+      additional_drop_params: ["thinking"]
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY

@@ -188,6 +188,9 @@ func (l *runLoop) drive(ctx context.Context, report RunReport) (RunReport, error
 			if err := l.record(ctx, seq, ToolCall{Tool: finishTool, Arguments: string(decision.Result)}, "", decision.Call); err != nil {
 				return l.runner.finish(ctx, report, RunFailed, err.Error(), nil)
 			}
+			if err := l.check(decision.Result); err != nil {
+				return l.runner.finish(ctx, report, RunFailed, err.Error(), decision.Result)
+			}
 			return l.runner.finish(ctx, report, RunCompleted, "", decision.Result)
 		}
 		if err := l.call(ctx, seq, *decision.ToolIntent, decision.Call); err != nil {
@@ -215,6 +218,16 @@ func (l *runLoop) ask(ctx context.Context) (StepDecision, error) {
 		return decision, errors.New("operations: the final result is not JSON")
 	}
 	return decision, nil
+}
+
+func (l *runLoop) check(result json.RawMessage) error {
+	if l.def.CheckResult == nil {
+		return nil
+	}
+	if err := l.def.CheckResult(result, l.steps); err != nil {
+		return fmt.Errorf("operations: the result failed its check: %w", err)
+	}
+	return nil
 }
 
 func (l *runLoop) call(ctx context.Context, seq int, intent ToolCall, model ModelCall) error {

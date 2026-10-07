@@ -148,3 +148,12 @@ def test_the_service_token_and_a_scoped_key_are_both_required(monkeypatch):
     monkeypatch.setenv("LITELLM_MASTER_KEY", "master")
     master = {"X-Agent-Gateway-Key": "master"}
     assert client.post("/v1/agent/step", headers=master, json=request()).status_code == 503
+
+
+def test_the_daily_report_finishes_with_cited_items():
+    response, calls = invoke(request(agent="daily-report"), [call("finish", '{"items": []}')])
+    assert response.status_code == 200
+    assert response.json()["prompt_version"] == "daily-report-v1"
+    item = calls[0]["tools"][-1]["function"]["parameters"]["properties"]["items"]["items"]
+    assert item["properties"]["status"]["enum"] == ["fine", "attention"]
+    assert item["properties"]["cites"]["minItems"] == 1

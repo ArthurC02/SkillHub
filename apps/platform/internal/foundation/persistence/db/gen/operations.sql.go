@@ -97,6 +97,112 @@ func (q *Queries) GetPlatformAgentRunGate(ctx context.Context, id pgtype.UUID) (
 	return i, err
 }
 
+const listPlatformAgentRuns = `-- name: ListPlatformAgentRuns :many
+SELECT r.id, a.name AS agent, r.status, r.reason, r.started_at, r.finished_at, r.result,
+    count(s.seq)::integer AS steps,
+    coalesce(sum(s.usd_micros), 0)::bigint AS usd_micros,
+    count(s.seq) FILTER (WHERE s.usd_micros IS NULL)::integer AS unpriced_steps
+FROM platform_agent_runs r
+JOIN platform_agents a ON a.id = r.agent_id
+LEFT JOIN platform_agent_steps s ON s.run_id = r.id
+GROUP BY r.id, a.name
+ORDER BY r.started_at DESC
+LIMIT $1
+`
+
+type ListPlatformAgentRunsRow struct {
+	ID            pgtype.UUID
+	Agent         string
+	Status        string
+	Reason        *string
+	StartedAt     pgtype.Timestamptz
+	FinishedAt    pgtype.Timestamptz
+	Result        []byte
+	Steps         int32
+	UsdMicros     int64
+	UnpricedSteps int32
+}
+
+func (q *Queries) ListPlatformAgentRuns(ctx context.Context, rowLimit int32) ([]ListPlatformAgentRunsRow, error) {
+	rows, err := q.db.Query(ctx, listPlatformAgentRuns, rowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPlatformAgentRunsRow
+	for rows.Next() {
+		var i ListPlatformAgentRunsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Agent,
+			&i.Status,
+			&i.Reason,
+			&i.StartedAt,
+			&i.FinishedAt,
+			&i.Result,
+			&i.Steps,
+			&i.UsdMicros,
+			&i.UnpricedSteps,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlatformAgentSteps = `-- name: ListPlatformAgentSteps :many
+SELECT seq, tool, arguments, result, model, prompt_tokens, completion_tokens, usd_micros, created_at
+FROM platform_agent_steps
+WHERE run_id = $1
+ORDER BY seq
+`
+
+type ListPlatformAgentStepsRow struct {
+	Seq              int32
+	Tool             string
+	Arguments        string
+	Result           string
+	Model            string
+	PromptTokens     int64
+	CompletionTokens int64
+	UsdMicros        *int64
+	CreatedAt        pgtype.Timestamptz
+}
+
+func (q *Queries) ListPlatformAgentSteps(ctx context.Context, runID pgtype.UUID) ([]ListPlatformAgentStepsRow, error) {
+	rows, err := q.db.Query(ctx, listPlatformAgentSteps, runID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPlatformAgentStepsRow
+	for rows.Next() {
+		var i ListPlatformAgentStepsRow
+		if err := rows.Scan(
+			&i.Seq,
+			&i.Tool,
+			&i.Arguments,
+			&i.Result,
+			&i.Model,
+			&i.PromptTokens,
+			&i.CompletionTokens,
+			&i.UsdMicros,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlatformAgents = `-- name: ListPlatformAgents :many
 SELECT id, name, purpose, model_role, daily_spend_cap_micros, tools, actions, enabled, owner_id, registered_at FROM platform_agents ORDER BY name
 `

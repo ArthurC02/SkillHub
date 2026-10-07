@@ -2,6 +2,8 @@ package wiring
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -11,9 +13,47 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
+
+const (
+	agentMaxSteps       = 6
+	agentMaxTokens      = 60_000
+	agentDeadline       = 5 * time.Minute
+	agentStepTimeout    = 90 * time.Second
+	agentMaxOutputToken = 4_000
+)
+
+var AgentLimits = operations.Limits{
+	MaxSteps: agentMaxSteps, MaxTokens: agentMaxTokens, Deadline: agentDeadline,
+	StepTimeout: agentStepTimeout, MaxOutputTokens: agentMaxOutputToken,
+}
+
+func AgentTools(pool *pgxpool.Pool, rate capacity.RestoreRate) []operations.Tool {
+	return []operations.Tool{MaintenanceReportTool(pool, rate, time.Now)}
+}
+
+func NewAgentRuns(
+	pool *pgxpool.Pool, llm *llmclient.Client, gateway *run.Gateway, credits *credit.Service, rate capacity.RestoreRate,
+) func(ctx context.Context, agent string) error {
+	tools := AgentTools(pool, rate)
+	return func(ctx context.Context, agent string) error {
+		def, ok := operations.Lookup(agent)
+		if !ok {
+			return fmt.Errorf("%w: %s", operations.ErrUnknownAgent, agent)
+		}
+		report, err := NewAgentRunner(pool, llm, gateway, credits, def).Run(ctx, def, tools, AgentLimits)
+		if errors.Is(err, operations.ErrAgentHalted) {
+			return nil
+		}
+		if err == nil {
+			slog.Info("platform agent run finished", "agent", agent, "status", report.Status, "reason", report.Reason)
+		}
+		return err
+	}
+}
 
 func NewAgentRunner(
 	pool *pgxpool.Pool, llm *llmclient.Client, gateway *run.Gateway, credits *credit.Service, def operations.Definition,

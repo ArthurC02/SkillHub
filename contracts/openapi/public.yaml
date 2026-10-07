@@ -3492,6 +3492,67 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/agents/runs:
+    get:
+      operationId: listPlatformAgentRuns
+      summary: The platform agents' most recent runs (02:OPS-012)
+      description: |
+        Operator only. The 50 most recent runs of every agent, newest first, each
+        with how it ended, its result and what its model calls cost. A daily
+        report is the result of a completed `daily-report` run.
+      responses:
+        "200":
+          description: The most recent runs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [runs]
+                properties:
+                  runs:
+                    type: array
+                    items: { $ref: "#/components/schemas/PlatformAgentRun" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/agents/runs/{id}/steps:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: listPlatformAgentRunSteps
+      summary: Every step of one agent run (02:OPS-012)
+      description: |
+        Operator only. Each model decision in order: the tool it called with its
+        arguments and the tool's answer, or `finish` with the run's result, and
+        that call's model, tokens and cost. A run that does not exist answers an
+        empty list.
+      responses:
+        "200":
+          description: The run's steps.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [steps]
+                properties:
+                  steps:
+                    type: array
+                    items: { $ref: "#/components/schemas/PlatformAgentStep" }
+        "400":
+          description: The id is not a UUID.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/accounts:
     get:
       operationId: lookupAccount
@@ -6430,6 +6491,50 @@ components:
         reason: { type: string }
         engaged_at: { type: string, format: date-time }
         engaged_by_user_id: { type: string, format: uuid }
+    PlatformAgentRun:
+      type: object
+      required: [id, agent, status, started_at, steps, usd_micros, unpriced_steps]
+      properties:
+        id: { type: string, format: uuid }
+        agent: { type: string }
+        status:
+          type: string
+          enum: [running, completed, incomplete, stopped, failed]
+        reason:
+          type: string
+          description: Why the run ended without completing, or why its result was rejected.
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+        result:
+          type: object
+          additionalProperties: true
+          description: The agent's final answer. Kept on a failed run whose answer did not pass its check, so the operator can see what was rejected.
+        steps: { type: integer }
+        usd_micros:
+          type: integer
+          format: int64
+          description: The summed cost of the steps whose cost the gateway reported.
+        unpriced_steps:
+          type: integer
+          description: Steps whose cost the gateway did not report; `usd_micros` leaves them out.
+    PlatformAgentStep:
+      type: object
+      required: [seq, tool, arguments, result, model, prompt_tokens, completion_tokens, created_at]
+      properties:
+        seq: { type: integer }
+        tool: { type: string }
+        arguments: { type: string }
+        result:
+          type: string
+          description: The tool's answer as the model saw it; empty on `finish`.
+        model: { type: string }
+        prompt_tokens: { type: integer, format: int64 }
+        completion_tokens: { type: integer, format: int64 }
+        usd_micros:
+          type: integer
+          format: int64
+          description: Absent when the gateway reported no cost.
+        created_at: { type: string, format: date-time }
     Error:
       type: object
       required: [error]

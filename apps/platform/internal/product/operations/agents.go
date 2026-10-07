@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -20,6 +21,7 @@ type Definition struct {
 	DailySpendCapMicros int64
 	Tools               []string
 	Actions             []string
+	CheckResult         func(result json.RawMessage, steps []StepRecord) error
 }
 
 type Agent struct {

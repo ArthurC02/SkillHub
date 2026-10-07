@@ -4,13 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 )
 
@@ -93,6 +97,12 @@ var loopLimits = operations.Limits{
 
 func loopAgent(t *testing.T, name string, capMicros int64, tools ...string) (*operations.Service, operations.Definition) {
 	t.Helper()
+	svc, def, _ := loopAgentWithOperator(t, name, capMicros, tools...)
+	return svc, def
+}
+
+func loopAgentWithOperator(t *testing.T, name string, capMicros int64, tools ...string) (*operations.Service, operations.Definition, *client) {
+	t.Helper()
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	svc := registerTestAgent(t, pool, name)
@@ -109,7 +119,7 @@ func loopAgent(t *testing.T, name string, capMicros int64, tools ...string) (*op
 	operator := a.login(t, "operator-"+name)
 	a.auth.Operators = map[string]bool{operator.userID: true}
 	switchAgent(t, operator, name, true, "loop test")
-	return svc, def
+	return svc, def, operator
 }
 
 func stepRows(t *testing.T, run pgtype.UUID) []string {
@@ -319,4 +329,117 @@ func TestAnAgentsModelCallIsACostEventWithNoUserAndNoDebit(t *testing.T) {
 	if userID.Valid || workspaceID.Valid || debits != 0 {
 		t.Errorf("user %v workspace %v debits %d, want none of them", userID.Valid, workspaceID.Valid, debits)
 	}
+}
+
+func TestARunWhoseResultFailsItsCheckFailsAndKeepsTheResultForTheOperator(t *testing.T) {
+	cases := []struct {
+		name   string
+		result string
+		status operations.RunStatus
+	}{
+		{"a cite to a returned fact", `{"items":[{"status":"fine","text":"ok","cites":["/database_bytes"]}]}`, operations.RunCompleted},
+		{"a cite to a fact no tool returned", `{"items":[{"status":"fine","text":"ok","cites":["/cpu_percent"]}]}`, operations.RunFailed},
+	}
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, def := loopAgent(t, fmt.Sprintf("agent-loop-check-%d", i), 1_000_000, "maintenance_report")
+			def.CheckResult = operations.CitesOnlyReturnedFacts
+			s := &loopScript{t: t, answers: answers(intent("maintenance_report"), final(tc.result))}
+			report, err := s.runner(svc).Run(context.Background(), def, s.tools(), loopLimits)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if report.Status != tc.status {
+				t.Fatalf("status %s (%s), want %s", report.Status, report.Reason, tc.status)
+			}
+			var stored, reason string
+			var kept bool
+			if err := testPool.QueryRow(context.Background(),
+				"SELECT status, coalesce(reason, ''), result IS NOT NULL FROM platform_agent_runs WHERE id = $1", report.ID,
+			).Scan(&stored, &reason, &kept); err != nil || stored != string(tc.status) || !kept {
+				t.Fatalf("stored status %q result kept %v (%v), want %s with the result", stored, kept, err, tc.status)
+			}
+			if tc.status == operations.RunFailed && !strings.Contains(reason, `"/cpu_percent"`) {
+				t.Errorf("reason %q does not name the cite no tool returned", reason)
+			}
+			if got := stepRows(t, report.ID); !slices.Equal(got, []string{"maintenance_report", "finish"}) {
+				t.Errorf("recorded steps %v, want the tool call and the finish", got)
+			}
+		})
+	}
+}
+
+func TestOperatorsReadAnAgentRunWithItsStepsAndWhatEachCost(t *testing.T) {
+	svc, def, operator := loopAgentWithOperator(t, "agent-run-records", 1_000_000, "maintenance_report")
+	unpriced := func(context.Context, operations.StepRequest) (operations.StepDecision, error) {
+		return operations.StepDecision{Result: json.RawMessage(`{"summary":"ok"}`), Call: operations.ModelCall{Model: "m"}}, nil
+	}
+	s := &loopScript{t: t, answers: answers(intent("maintenance_report"), unpriced)}
+	report, err := s.runner(svc).Run(context.Background(), def, s.tools(), loopLimits)
+	if err != nil || report.Status != operations.RunCompleted {
+		t.Fatalf("report %+v, err %v", report, err)
+	}
+	id := pgconv.UUIDString(report.ID)
+	assertListedRun(t, operator, id, map[string]any{
+		"agent": def.Name, "status": "completed", "steps": float64(2),
+		"usd_micros": float64(1000), "unpriced_steps": float64(1),
+	})
+	assertRunSteps(t, operator, id)
+}
+
+func assertListedRun(t *testing.T, operator *client, id string, want map[string]any) {
+	t.Helper()
+	code, body := operatorCall(t, operator, http.MethodGet, "/admin/agents/runs", "")
+	if code != http.StatusOK {
+		t.Fatalf("GET runs: %d %v", code, body)
+	}
+	run := findByID(t, body["runs"], id)
+	for key, value := range want {
+		if run[key] != value {
+			t.Errorf("run %s = %v, want %v", key, run[key], value)
+		}
+	}
+	if result, _ := run["result"].(map[string]any); result["summary"] != "ok" || run["finished_at"] == nil {
+		t.Errorf("run result %v finished_at %v, want the final result and a finish time", run["result"], run["finished_at"])
+	}
+}
+
+func assertRunSteps(t *testing.T, operator *client, id string) {
+	t.Helper()
+	code, body := operatorCall(t, operator, http.MethodGet, "/admin/agents/runs/"+id+"/steps", "")
+	steps, _ := body["steps"].([]any)
+	if code != http.StatusOK || len(steps) != 2 {
+		t.Fatalf("GET steps: %d %v, want two steps", code, body)
+	}
+	first, last := steps[0].(map[string]any), steps[1].(map[string]any)
+	if first["tool"] != "maintenance_report" || first["result"] != `{"database_bytes":42}` ||
+		first["usd_micros"] != float64(1000) || first["prompt_tokens"] != float64(100) {
+		t.Errorf("first step %v, want the tool call with its answer, tokens and cost", first)
+	}
+	if _, priced := last["usd_micros"]; last["tool"] != "finish" || last["arguments"] != `{"summary":"ok"}` || priced {
+		t.Errorf("last step %v, want finish carrying the result and no cost", last)
+	}
+}
+
+func TestReadingStepsNeedsARunIDAndAnUnknownRunHasNone(t *testing.T) {
+	_, _, operator := loopAgentWithOperator(t, "agent-run-records-ids", 1_000_000)
+	if code, body := operatorCall(t, operator, http.MethodGet, "/admin/agents/runs/not-a-uuid/steps", ""); code != http.StatusBadRequest {
+		t.Errorf("malformed id: %d %v, want 400", code, body)
+	}
+	code, body := operatorCall(t, operator, http.MethodGet, "/admin/agents/runs/00000000-0000-0000-0000-000000000000/steps", "")
+	if steps, ok := body["steps"].([]any); code != http.StatusOK || !ok || len(steps) != 0 {
+		t.Errorf("unknown run: %d %v, want 200 with an empty list", code, body)
+	}
+}
+
+func findByID(t *testing.T, list any, id string) map[string]any {
+	t.Helper()
+	items, _ := list.([]any)
+	for _, item := range items {
+		if row, _ := item.(map[string]any); row["id"] == id {
+			return row
+		}
+	}
+	t.Fatalf("run %s not in %v", id, list)
+	return nil
 }

@@ -7124,6 +7124,7 @@ func (*Error) listModelCallBudgetsRes()            {}
 func (*Error) listOwnBundleOverviewRes()           {}
 func (*Error) listOwnBundlesRes()                  {}
 func (*Error) listOwnPublicationsRes()             {}
+func (*Error) listPlatformAgentRunsRes()           {}
 func (*Error) listPlatformAgentsRes()              {}
 func (*Error) listSkillVersionsRes()               {}
 func (*Error) publicSearchSkillsRes()              {}
@@ -12003,6 +12004,46 @@ type ListPackagingTargetsUnauthorized Error
 
 func (*ListPackagingTargetsUnauthorized) listPackagingTargetsRes() {}
 
+type ListPlatformAgentRunStepsBadRequest Error
+
+func (*ListPlatformAgentRunStepsBadRequest) listPlatformAgentRunStepsRes() {}
+
+type ListPlatformAgentRunStepsNotFound Error
+
+func (*ListPlatformAgentRunStepsNotFound) listPlatformAgentRunStepsRes() {}
+
+type ListPlatformAgentRunStepsOK struct {
+	Steps []PlatformAgentStep `json:"steps"`
+}
+
+// GetSteps returns the value of Steps.
+func (s *ListPlatformAgentRunStepsOK) GetSteps() []PlatformAgentStep {
+	return s.Steps
+}
+
+// SetSteps sets the value of Steps.
+func (s *ListPlatformAgentRunStepsOK) SetSteps(val []PlatformAgentStep) {
+	s.Steps = val
+}
+
+func (*ListPlatformAgentRunStepsOK) listPlatformAgentRunStepsRes() {}
+
+type ListPlatformAgentRunsOK struct {
+	Runs []PlatformAgentRun `json:"runs"`
+}
+
+// GetRuns returns the value of Runs.
+func (s *ListPlatformAgentRunsOK) GetRuns() []PlatformAgentRun {
+	return s.Runs
+}
+
+// SetRuns sets the value of Runs.
+func (s *ListPlatformAgentRunsOK) SetRuns(val []PlatformAgentRun) {
+	s.Runs = val
+}
+
+func (*ListPlatformAgentRunsOK) listPlatformAgentRunsRes() {}
+
 type ListPlatformAgentsOK struct {
 	Agents []PlatformAgent       `json:"agents"`
 	Brake  OptPlatformAgentBrake `json:"brake"`
@@ -15336,6 +15377,52 @@ func (o OptPlatformAgentBrake) Get() (v PlatformAgentBrake, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptPlatformAgentBrake) Or(d PlatformAgentBrake) PlatformAgentBrake {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPlatformAgentRunResult returns new OptPlatformAgentRunResult with value set to v.
+func NewOptPlatformAgentRunResult(v PlatformAgentRunResult) OptPlatformAgentRunResult {
+	return OptPlatformAgentRunResult{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPlatformAgentRunResult is optional PlatformAgentRunResult.
+type OptPlatformAgentRunResult struct {
+	Value PlatformAgentRunResult
+	Set   bool
+}
+
+// IsSet returns true if OptPlatformAgentRunResult was set.
+func (o OptPlatformAgentRunResult) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPlatformAgentRunResult) Reset() {
+	var v PlatformAgentRunResult
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPlatformAgentRunResult) SetTo(v PlatformAgentRunResult) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPlatformAgentRunResult) Get() (v PlatformAgentRunResult, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPlatformAgentRunResult) Or(d PlatformAgentRunResult) PlatformAgentRunResult {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -19006,6 +19093,305 @@ func (s *PlatformAgentBrake) SetEngagedByUserID(val OptUUID) {
 }
 
 func (*PlatformAgentBrake) engagePlatformAgentBrakeRes() {}
+
+// Ref: #/components/schemas/PlatformAgentRun
+type PlatformAgentRun struct {
+	ID     uuid.UUID              `json:"id"`
+	Agent  string                 `json:"agent"`
+	Status PlatformAgentRunStatus `json:"status"`
+	// Why the run ended without completing, or why its result was rejected.
+	Reason     OptString   `json:"reason"`
+	StartedAt  time.Time   `json:"started_at"`
+	FinishedAt OptDateTime `json:"finished_at"`
+	// The agent's final answer. Kept on a failed run whose answer did not pass its check, so the operator
+	// can see what was rejected.
+	Result OptPlatformAgentRunResult `json:"result"`
+	Steps  int                       `json:"steps"`
+	// The summed cost of the steps whose cost the gateway reported.
+	UsdMicros int64 `json:"usd_micros"`
+	// Steps whose cost the gateway did not report; `usd_micros` leaves them out.
+	UnpricedSteps int `json:"unpriced_steps"`
+}
+
+// GetID returns the value of ID.
+func (s *PlatformAgentRun) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetAgent returns the value of Agent.
+func (s *PlatformAgentRun) GetAgent() string {
+	return s.Agent
+}
+
+// GetStatus returns the value of Status.
+func (s *PlatformAgentRun) GetStatus() PlatformAgentRunStatus {
+	return s.Status
+}
+
+// GetReason returns the value of Reason.
+func (s *PlatformAgentRun) GetReason() OptString {
+	return s.Reason
+}
+
+// GetStartedAt returns the value of StartedAt.
+func (s *PlatformAgentRun) GetStartedAt() time.Time {
+	return s.StartedAt
+}
+
+// GetFinishedAt returns the value of FinishedAt.
+func (s *PlatformAgentRun) GetFinishedAt() OptDateTime {
+	return s.FinishedAt
+}
+
+// GetResult returns the value of Result.
+func (s *PlatformAgentRun) GetResult() OptPlatformAgentRunResult {
+	return s.Result
+}
+
+// GetSteps returns the value of Steps.
+func (s *PlatformAgentRun) GetSteps() int {
+	return s.Steps
+}
+
+// GetUsdMicros returns the value of UsdMicros.
+func (s *PlatformAgentRun) GetUsdMicros() int64 {
+	return s.UsdMicros
+}
+
+// GetUnpricedSteps returns the value of UnpricedSteps.
+func (s *PlatformAgentRun) GetUnpricedSteps() int {
+	return s.UnpricedSteps
+}
+
+// SetID sets the value of ID.
+func (s *PlatformAgentRun) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetAgent sets the value of Agent.
+func (s *PlatformAgentRun) SetAgent(val string) {
+	s.Agent = val
+}
+
+// SetStatus sets the value of Status.
+func (s *PlatformAgentRun) SetStatus(val PlatformAgentRunStatus) {
+	s.Status = val
+}
+
+// SetReason sets the value of Reason.
+func (s *PlatformAgentRun) SetReason(val OptString) {
+	s.Reason = val
+}
+
+// SetStartedAt sets the value of StartedAt.
+func (s *PlatformAgentRun) SetStartedAt(val time.Time) {
+	s.StartedAt = val
+}
+
+// SetFinishedAt sets the value of FinishedAt.
+func (s *PlatformAgentRun) SetFinishedAt(val OptDateTime) {
+	s.FinishedAt = val
+}
+
+// SetResult sets the value of Result.
+func (s *PlatformAgentRun) SetResult(val OptPlatformAgentRunResult) {
+	s.Result = val
+}
+
+// SetSteps sets the value of Steps.
+func (s *PlatformAgentRun) SetSteps(val int) {
+	s.Steps = val
+}
+
+// SetUsdMicros sets the value of UsdMicros.
+func (s *PlatformAgentRun) SetUsdMicros(val int64) {
+	s.UsdMicros = val
+}
+
+// SetUnpricedSteps sets the value of UnpricedSteps.
+func (s *PlatformAgentRun) SetUnpricedSteps(val int) {
+	s.UnpricedSteps = val
+}
+
+// The agent's final answer. Kept on a failed run whose answer did not pass its check, so the operator
+// can see what was rejected.
+type PlatformAgentRunResult map[string]jx.Raw
+
+func (s *PlatformAgentRunResult) init() PlatformAgentRunResult {
+	m := *s
+	if m == nil {
+		m = map[string]jx.Raw{}
+		*s = m
+	}
+	return m
+}
+
+type PlatformAgentRunStatus string
+
+const (
+	PlatformAgentRunStatusRunning    PlatformAgentRunStatus = "running"
+	PlatformAgentRunStatusCompleted  PlatformAgentRunStatus = "completed"
+	PlatformAgentRunStatusIncomplete PlatformAgentRunStatus = "incomplete"
+	PlatformAgentRunStatusStopped    PlatformAgentRunStatus = "stopped"
+	PlatformAgentRunStatusFailed     PlatformAgentRunStatus = "failed"
+)
+
+// AllValues returns all PlatformAgentRunStatus values.
+func (PlatformAgentRunStatus) AllValues() []PlatformAgentRunStatus {
+	return []PlatformAgentRunStatus{
+		PlatformAgentRunStatusRunning,
+		PlatformAgentRunStatusCompleted,
+		PlatformAgentRunStatusIncomplete,
+		PlatformAgentRunStatusStopped,
+		PlatformAgentRunStatusFailed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PlatformAgentRunStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case PlatformAgentRunStatusRunning:
+		return []byte(s), nil
+	case PlatformAgentRunStatusCompleted:
+		return []byte(s), nil
+	case PlatformAgentRunStatusIncomplete:
+		return []byte(s), nil
+	case PlatformAgentRunStatusStopped:
+		return []byte(s), nil
+	case PlatformAgentRunStatusFailed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PlatformAgentRunStatus) UnmarshalText(data []byte) error {
+	switch PlatformAgentRunStatus(data) {
+	case PlatformAgentRunStatusRunning:
+		*s = PlatformAgentRunStatusRunning
+		return nil
+	case PlatformAgentRunStatusCompleted:
+		*s = PlatformAgentRunStatusCompleted
+		return nil
+	case PlatformAgentRunStatusIncomplete:
+		*s = PlatformAgentRunStatusIncomplete
+		return nil
+	case PlatformAgentRunStatusStopped:
+		*s = PlatformAgentRunStatusStopped
+		return nil
+	case PlatformAgentRunStatusFailed:
+		*s = PlatformAgentRunStatusFailed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/PlatformAgentStep
+type PlatformAgentStep struct {
+	Seq       int    `json:"seq"`
+	Tool      string `json:"tool"`
+	Arguments string `json:"arguments"`
+	// The tool's answer as the model saw it; empty on `finish`.
+	Result           string `json:"result"`
+	Model            string `json:"model"`
+	PromptTokens     int64  `json:"prompt_tokens"`
+	CompletionTokens int64  `json:"completion_tokens"`
+	// Absent when the gateway reported no cost.
+	UsdMicros OptInt64  `json:"usd_micros"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// GetSeq returns the value of Seq.
+func (s *PlatformAgentStep) GetSeq() int {
+	return s.Seq
+}
+
+// GetTool returns the value of Tool.
+func (s *PlatformAgentStep) GetTool() string {
+	return s.Tool
+}
+
+// GetArguments returns the value of Arguments.
+func (s *PlatformAgentStep) GetArguments() string {
+	return s.Arguments
+}
+
+// GetResult returns the value of Result.
+func (s *PlatformAgentStep) GetResult() string {
+	return s.Result
+}
+
+// GetModel returns the value of Model.
+func (s *PlatformAgentStep) GetModel() string {
+	return s.Model
+}
+
+// GetPromptTokens returns the value of PromptTokens.
+func (s *PlatformAgentStep) GetPromptTokens() int64 {
+	return s.PromptTokens
+}
+
+// GetCompletionTokens returns the value of CompletionTokens.
+func (s *PlatformAgentStep) GetCompletionTokens() int64 {
+	return s.CompletionTokens
+}
+
+// GetUsdMicros returns the value of UsdMicros.
+func (s *PlatformAgentStep) GetUsdMicros() OptInt64 {
+	return s.UsdMicros
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *PlatformAgentStep) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// SetSeq sets the value of Seq.
+func (s *PlatformAgentStep) SetSeq(val int) {
+	s.Seq = val
+}
+
+// SetTool sets the value of Tool.
+func (s *PlatformAgentStep) SetTool(val string) {
+	s.Tool = val
+}
+
+// SetArguments sets the value of Arguments.
+func (s *PlatformAgentStep) SetArguments(val string) {
+	s.Arguments = val
+}
+
+// SetResult sets the value of Result.
+func (s *PlatformAgentStep) SetResult(val string) {
+	s.Result = val
+}
+
+// SetModel sets the value of Model.
+func (s *PlatformAgentStep) SetModel(val string) {
+	s.Model = val
+}
+
+// SetPromptTokens sets the value of PromptTokens.
+func (s *PlatformAgentStep) SetPromptTokens(val int64) {
+	s.PromptTokens = val
+}
+
+// SetCompletionTokens sets the value of CompletionTokens.
+func (s *PlatformAgentStep) SetCompletionTokens(val int64) {
+	s.CompletionTokens = val
+}
+
+// SetUsdMicros sets the value of UsdMicros.
+func (s *PlatformAgentStep) SetUsdMicros(val OptInt64) {
+	s.UsdMicros = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *PlatformAgentStep) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
 
 // Ref: #/components/schemas/PluginContents
 type PluginContents struct {

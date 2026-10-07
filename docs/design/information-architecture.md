@@ -124,6 +124,7 @@
 | `/admin/cost-statistics` | `AdminCostStatistics` | 02:OPS-007 | 產品營運／**營運後台** |
 | `/admin/trends` | `AdminTrends` | 02:OPS-008 | 產品營運／**營運後台**〔圖表見 [營運後台](../adr/README.md#營運後台)〕 |
 | `/admin/exposure` | `AdminExposure` | 02:DISC-007 | 產品營運／**營運後台**〔發佈物的曝光審核：待審清單與一筆的精確快照〕 |
+| `/admin/agents` | `AdminAgents` | 02:OPS-011／OPS-012 | 產品營運／**營運後台**〔平台 Agent：最近的日報、啟停與全域煞車、執行紀錄與一次執行的步驟〕 |
 
 > **營運後台是組裝層，不是 Bounded Context**（[營運後台](../adr/README.md#營運後台)）——上表 `/admin/*` 那幾列的「價值流／Bounded Context」欄寫的是它服務的價值流。
 >
@@ -302,6 +303,7 @@ Catalog landing `/` 的 `<h1>` 是名詞化的產品承諾 `探索能直接採�
 | `/admin/skills` | `q` | 你在治理哪一個 Skill（`02:OPS-004`）：一個 UUID 就是那一個，其他字串是名稱片段；清單上「處理這一個」把 `q` 換成那個 UUID，所以處理中的那一個可以連結、撐得過重新整理 |
 | `/admin/exposure` | `publication` | 你在審哪一個發佈物（`02:DISC-007`）：`發佈者/名稱` 這一對就是那一筆；清單上「審這一筆」把它放進網址，所以審到一半的那一筆可以連結、撐得過重新整理；不是這個形狀的值丟掉、回到只有清單 |
 | `/admin/trends` | `days` | 你在看哪一段資料（`02:OPS-008`）：7、30 或 90 天，其他值丟掉、回到預設的 30；分享出去的連結重現同一段 |
+| `/admin/agents` | `run`（須為 UUID） | 你在看哪一次執行的步驟（`02:OPS-012`）：執行紀錄上「看這次的步驟」把它放進網址，所以那一次可以連結、撐得過重新整理；不是 UUID 的值丟掉、回到只有清單 |
 
 **其餘十七條路由沒有 `validateSearch`**（33 條路由減去上表的 16 條）（`/skills/$id`、`/skills/$id/files`、`/skills/$id/versions/$versionId`、五條不含網址狀態的 `/workspace` 與 `/workspace/*`、`/policy` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
 

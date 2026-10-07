@@ -45,7 +45,7 @@ Skill 生命週期
 | 試跑與改善 | 成果判定與改善 | `eval`／`trial/improvement` | evaluation、suggestion、採納流程 | `Service`、`Handler`、event consumer |
 | 產品營運 | 創作者使用權益與資料生命週期 | `policy`／`product/entitlements` | quota、retention 與未來計費判定 | `EnforceQuota`、`DownloadRetention` |
 | 產品營運 | 創作者旅程學習 | `analytics`／`product/learning` | funnel event、feedback report、analytics retention | `Service`、`Handler` |
-| 產品營運 | 平台 Agent 營運 | `operations`／`product/operations` | 平台 Agent 登記、全域煞車與執行紀錄 | `Service`、`Handler` |
+| 產品營運 | 平台 Agent 營運 | `operations`／`product/operations` | 平台 Agent 登記、全域煞車、通用迴圈、執行紀錄與維運日報 | `Service`、`Handler`、`Runner` |
 
 各 leaf Context 的 `doc.go` 是該產品領域的本地導覽：先說創作者成果，再列 owner facts、跨界關係、公開面與刻意不擁有的事。
 

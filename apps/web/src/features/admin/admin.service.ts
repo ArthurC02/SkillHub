@@ -304,6 +304,99 @@ export function usd(micros: number | null): string {
   return micros === null ? "未測量" : `$${(micros / 1_000_000).toFixed(4)}`;
 }
 
+export type PlatformAgent = {
+  name: string;
+  purpose: string;
+  model_role: string;
+  daily_spend_cap_usd_micros: number;
+  tools: string[];
+  actions: string[];
+  enabled: boolean;
+  owner_user_id?: string;
+};
+
+export type PlatformAgentBrake = {
+  reason: string;
+  engaged_at: string;
+  engaged_by_user_id?: string;
+};
+
+export type PlatformAgentRunStatus = "running" | "completed" | "incomplete" | "stopped" | "failed";
+
+export type PlatformAgentRun = {
+  id: string;
+  agent: string;
+  status: PlatformAgentRunStatus;
+  reason?: string;
+  started_at: string;
+  finished_at?: string;
+  result?: Record<string, unknown>;
+  steps: number;
+  usd_micros: number;
+  unpriced_steps: number;
+};
+
+export type PlatformAgentStep = {
+  seq: number;
+  tool: string;
+  arguments: string;
+  result: string;
+  model: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  usd_micros?: number;
+  created_at: string;
+};
+
+export function usePlatformAgents() {
+  return useQuery({
+    queryKey: queryKeys.admin.agents,
+    queryFn: () =>
+      apiFetch<{ agents: PlatformAgent[]; brake?: PlatformAgentBrake }>("/admin/agents"),
+    enabled: useOperator(),
+  });
+}
+
+export function usePlatformAgentSwitch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, ...body }: { name: string; enabled: boolean; note: string }) =>
+      apiFetch<PlatformAgent>(
+        `/admin/agents/${encodeURIComponent(name)}/enabled`,
+        send("PUT", body),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agents }),
+  });
+}
+
+export function usePlatformAgentBrake(method: "PUT" | "DELETE") {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { note: string }) =>
+      apiFetch<PlatformAgentBrake | undefined>("/admin/agents/brake", send(method, body)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agents }),
+  });
+}
+
+export function usePlatformAgentRuns() {
+  return useQuery({
+    queryKey: queryKeys.admin.agentRuns,
+    queryFn: () => apiFetch<{ runs: PlatformAgentRun[] }>("/admin/agents/runs"),
+    enabled: useOperator(),
+  });
+}
+
+export function usePlatformAgentSteps(run: string) {
+  return useQuery({
+    queryKey: queryKeys.admin.agentSteps(run),
+    queryFn: () =>
+      apiFetch<{ steps: PlatformAgentStep[] }>(
+        `/admin/agents/runs/${encodeURIComponent(run)}/steps`,
+      ),
+    enabled: useOperator(),
+  });
+}
+
 export type DailyCount = { day: string; key: string; count: number };
 export type DailyAmount = DailyCount & { total: number };
 export type Trend<B extends DailyCount = DailyCount> = { from: string; to: string; buckets: B[] };

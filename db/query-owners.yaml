@@ -218,6 +218,8 @@ queries:
   RecordPlatformAgentStep: operations
   PlatformAgentSpendSince: operations
   FinishPlatformAgentRun: operations
+  ListPlatformAgentRuns: operations
+  ListPlatformAgentSteps: operations
   GetTraceEventText: trace
   LockTraceIngestRun: trace
   NextTraceSeq: trace
@@ -239,6 +241,8 @@ scope:
   RecordPlatformAgentStep: platform-wide
   PlatformAgentSpendSince: platform-wide
   FinishPlatformAgentRun: platform-wide
+  ListPlatformAgentRuns: platform-wide
+  ListPlatformAgentSteps: platform-wide
   AdjustCreditBalance: user
   LockAccountLifecycle: user
   CreateIdentity: user

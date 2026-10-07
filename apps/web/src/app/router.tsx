@@ -487,6 +487,22 @@ const adminExposureRoute = createRoute({
   }),
 });
 
+const adminAgentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/agents",
+  component: lazyRouteComponent(
+    () => import("../features/admin/agents/AdminAgents.page"),
+    "AdminAgents",
+  ),
+  validateSearch: (search: Record<string, unknown>): { run?: string } => ({
+    run:
+      typeof search.run === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(search.run)
+        ? search.run
+        : undefined,
+  }),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   compareRoute,
@@ -523,6 +539,7 @@ const routeTree = rootRoute.addChildren([
   adminCostStatisticsRoute,
   adminTrendsRoute,
   adminExposureRoute,
+  adminAgentsRoute,
 ]);
 
 export function createAppRouter() {

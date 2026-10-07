@@ -321,6 +321,11 @@ type ListOperatorAuditLogParams struct {
 	Offset OptInt `json:",omitempty,omitzero"`
 }
 
+// ListPlatformAgentRunStepsParams is parameters of listPlatformAgentRunSteps operation.
+type ListPlatformAgentRunStepsParams struct {
+	ID uuid.UUID
+}
+
 // ListRunArtifactsParams is parameters of listRunArtifacts operation.
 type ListRunArtifactsParams struct {
 	ID uuid.UUID

@@ -23,6 +23,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
@@ -158,7 +159,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	})
 	addCapacityObserver(set, workers, capacity.Store{Pool: pool, Rate: deps.RestoreRate})
 
-	addWorker(set, workers, &CreditRecomputeWorker{Svc: creditSvc})
+	addCreditConsumers(set, workers, pool, deps, creditSvc)
 
 	client, err := queue.New(pool, riverConfig(workers, periodicJobs(set, deps, outboxWorker), deps.PollOnly))
 	if err != nil {
@@ -255,15 +256,18 @@ func newObjectReconciler(
 
 func periodicJobs(set *Set, deps Deps, outboxWorker *outbox.Worker) []*river.PeriodicJob {
 	var periodic []*river.PeriodicJob
-	schedule := func(args river.JobArgs, every time.Duration, runOnStart bool) {
+	scheduleAt := func(args river.JobArgs, when river.PeriodicSchedule, runOnStart bool) {
 		set.Scheduled[args.Kind()] = runOnStart
 		var opts *river.PeriodicJobOpts
 		if runOnStart {
 			opts = &river.PeriodicJobOpts{RunOnStart: true}
 		}
 		insert := periodicInsert(args)
-		periodic = append(periodic, river.NewPeriodicJob(river.PeriodicInterval(every),
+		periodic = append(periodic, river.NewPeriodicJob(when,
 			func() (river.JobArgs, *river.InsertOpts) { return args, insert }, opts))
+	}
+	schedule := func(args river.JobArgs, every time.Duration, runOnStart bool) {
+		scheduleAt(args, river.PeriodicInterval(every), runOnStart)
 	}
 	schedule(EvaluationRecoveryArgs{}, eval.RecoveryInterval, true)
 	schedule(RunSuperviseArgs{}, run.SuperviseInterval, true)
@@ -284,6 +288,11 @@ func periodicJobs(set *Set, deps Deps, outboxWorker *outbox.Worker) []*river.Per
 	schedule(CapacitySampleArgs{}, capacity.SampleInterval, true)
 
 	schedule(EnrichmentBackfillArgs{}, EnrichmentBackfillInterval, false)
+	if agentRunsAvailable(deps) {
+		for _, def := range operations.Definitions() {
+			scheduleAt(PlatformAgentRunArgs{Agent: def.Name}, dailyAt{hour: platformAgentHourUTC}, false)
+		}
+	}
 	return periodic
 }
 

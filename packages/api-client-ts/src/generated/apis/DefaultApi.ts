@@ -404,6 +404,16 @@ import {
     ListPackagingTargets200ResponseToJSON,
 } from '../models/ListPackagingTargets200Response';
 import {
+    type ListPlatformAgentRunSteps200Response,
+    ListPlatformAgentRunSteps200ResponseFromJSON,
+    ListPlatformAgentRunSteps200ResponseToJSON,
+} from '../models/ListPlatformAgentRunSteps200Response';
+import {
+    type ListPlatformAgentRuns200Response,
+    ListPlatformAgentRuns200ResponseFromJSON,
+    ListPlatformAgentRuns200ResponseToJSON,
+} from '../models/ListPlatformAgentRuns200Response';
+import {
     type ListPlatformAgents200Response,
     ListPlatformAgents200ResponseFromJSON,
     ListPlatformAgents200ResponseToJSON,
@@ -1275,6 +1285,13 @@ export interface ListOperatorAuditLogRequest {
      * 
      */
     offset?: number;
+}
+
+export interface ListPlatformAgentRunStepsRequest {
+    /**
+     * 
+     */
+    id: string;
 }
 
 export interface ListRunArtifactsRequest {
@@ -3787,6 +3804,52 @@ export interface DefaultApiInterface {
      * The packaging targets a download can be built for (PACK-002)
      */
     listPackagingTargets(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPackagingTargets200Response>;
+
+    /**
+     * Creates request options for listPlatformAgentRunSteps without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listPlatformAgentRunStepsRequestOpts(requestParameters: ListPlatformAgentRunStepsRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Each model decision in order: the tool it called with its arguments and the tool\'s answer, or `finish` with the run\'s result, and that call\'s model, tokens and cost. A run that does not exist answers an empty list. 
+     * @summary Every step of one agent run (02:OPS-012)
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listPlatformAgentRunStepsRaw(requestParameters: ListPlatformAgentRunStepsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgentRunSteps200Response>>;
+
+    /**
+     * Operator only. Each model decision in order: the tool it called with its arguments and the tool\'s answer, or `finish` with the run\'s result, and that call\'s model, tokens and cost. A run that does not exist answers an empty list. 
+     * Every step of one agent run (02:OPS-012)
+     */
+    listPlatformAgentRunSteps(requestParameters: ListPlatformAgentRunStepsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentRunSteps200Response>;
+
+    /**
+     * Creates request options for listPlatformAgentRuns without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listPlatformAgentRunsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. The 50 most recent runs of every agent, newest first, each with how it ended, its result and what its model calls cost. A daily report is the result of a completed `daily-report` run. 
+     * @summary The platform agents\' most recent runs (02:OPS-012)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listPlatformAgentRunsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgentRuns200Response>>;
+
+    /**
+     * Operator only. The 50 most recent runs of every agent, newest first, each with how it ended, its result and what its model calls cost. A daily report is the result of a completed `daily-report` run. 
+     * The platform agents\' most recent runs (02:OPS-012)
+     */
+    listPlatformAgentRuns(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentRuns200Response>;
 
     /**
      * Creates request options for listPlatformAgents without sending the request
@@ -8793,6 +8856,92 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async listPackagingTargets(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPackagingTargets200Response> {
         const response = await this.listPackagingTargetsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listPlatformAgentRunSteps without sending the request
+     */
+    async listPlatformAgentRunStepsRequestOpts(requestParameters: ListPlatformAgentRunStepsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listPlatformAgentRunSteps().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/agents/runs/{id}/steps`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. Each model decision in order: the tool it called with its arguments and the tool\'s answer, or `finish` with the run\'s result, and that call\'s model, tokens and cost. A run that does not exist answers an empty list. 
+     * Every step of one agent run (02:OPS-012)
+     */
+    async listPlatformAgentRunStepsRaw(requestParameters: ListPlatformAgentRunStepsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgentRunSteps200Response>> {
+        const requestOptions = await this.listPlatformAgentRunStepsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListPlatformAgentRunSteps200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Each model decision in order: the tool it called with its arguments and the tool\'s answer, or `finish` with the run\'s result, and that call\'s model, tokens and cost. A run that does not exist answers an empty list. 
+     * Every step of one agent run (02:OPS-012)
+     */
+    async listPlatformAgentRunSteps(requestParameters: ListPlatformAgentRunStepsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentRunSteps200Response> {
+        const response = await this.listPlatformAgentRunStepsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listPlatformAgentRuns without sending the request
+     */
+    async listPlatformAgentRunsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/agents/runs`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. The 50 most recent runs of every agent, newest first, each with how it ended, its result and what its model calls cost. A daily report is the result of a completed `daily-report` run. 
+     * The platform agents\' most recent runs (02:OPS-012)
+     */
+    async listPlatformAgentRunsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgentRuns200Response>> {
+        const requestOptions = await this.listPlatformAgentRunsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListPlatformAgentRuns200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. The 50 most recent runs of every agent, newest first, each with how it ended, its result and what its model calls cost. A daily report is the result of a completed `daily-report` run. 
+     * The platform agents\' most recent runs (02:OPS-012)
+     */
+    async listPlatformAgentRuns(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentRuns200Response> {
+        const response = await this.listPlatformAgentRunsRaw(initOverrides);
         return await response.value();
     }
 

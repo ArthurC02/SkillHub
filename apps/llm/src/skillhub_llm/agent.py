@@ -32,7 +32,47 @@ class AgentInstructions:
     prompt_version: str
 
 
-INSTRUCTIONS: dict[str, AgentInstructions] = {}
+DAILY_REPORT = AgentInstructions(
+    system=(
+        "You write the platform's daily maintenance report for its operators. "
+        "Call `maintenance_report` once to read today's facts, then finish with a short report "
+        "in Traditional Chinese, plain words, no jargon. "
+        "Each item is either `fine` or `attention`: attention means a prediction crosses the "
+        "restore budget within 90 days, a scheduled job has gone more than two periods without "
+        "succeeding, or the restore rate is still an unmeasured default. "
+        "Every item cites the facts it rests on as JSON Pointers into the tool's answer, such as "
+        "`/capacity/days_until_budget` or `/maintenance_jobs/purge-audit/overdue_ratio`. "
+        "Cite only facts the answer contains; a report citing anything else is rejected."
+    ),
+    result_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["items"],
+        "properties": {
+            "items": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["status", "text", "cites"],
+                    "properties": {
+                        "status": {"type": "string", "enum": ["fine", "attention"]},
+                        "text": {"type": "string", "minLength": 1},
+                        "cites": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {"type": "string", "pattern": "^/"},
+                        },
+                    },
+                },
+            }
+        },
+    },
+    prompt_version="daily-report-v1",
+)
+
+INSTRUCTIONS: dict[str, AgentInstructions] = {"daily-report": DAILY_REPORT}
 
 
 class AgentTool(BaseModel):

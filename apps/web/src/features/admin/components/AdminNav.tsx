@@ -34,6 +34,9 @@ export function AdminNav() {
       <Link to="/admin/exposure" search={{}} className="chip">
         曝光審核
       </Link>
+      <Link to="/admin/agents" search={{}} className="chip">
+        平台 Agent
+      </Link>
       <NavScrollCue />
     </nav>
   );

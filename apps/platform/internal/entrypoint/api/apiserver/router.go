@@ -212,6 +212,8 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("PUT /admin/agents/{name}/enabled", auth.RequireOperator(d.Agents.SetEnabled))
 	mux.HandleFunc("PUT /admin/agents/brake", auth.RequireOperator(d.Agents.EngageBrake))
 	mux.HandleFunc("DELETE /admin/agents/brake", auth.RequireOperator(d.Agents.ReleaseBrake))
+	mux.HandleFunc("GET /admin/agents/runs", auth.RequireOperator(d.Agents.Runs))
+	mux.HandleFunc("GET /admin/agents/runs/{id}/steps", auth.RequireOperator(d.Agents.Steps))
 	mux.HandleFunc("GET /admin/trends/runs", auth.RequireOperator(d.Trends.Runs))
 	mux.HandleFunc("GET /admin/trends/funnel", auth.RequireOperator(d.Trends.Funnel))
 	mux.HandleFunc("GET /admin/trends/operator-actions", auth.RequireOperator(d.Trends.OperatorActions))

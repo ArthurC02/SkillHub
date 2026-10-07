@@ -67,6 +67,7 @@ var strangerRoutes = []strangerCase{
 	{pattern: "POST /me/bundles/{name}/publication", body: `{"rights_attested":true}`, want: http.StatusNotFound},
 	{pattern: "DELETE /me/bundles/{name}/publication", want: http.StatusNotFound},
 	{pattern: "GET /admin/publications/{publisher}/{name}/exposure", want: http.StatusNotFound},
+	{pattern: "GET /admin/agents/runs/{id}/steps", want: http.StatusNotFound},
 	{pattern: "POST /admin/publications/{publisher}/{name}/exposure",
 		body: `{"release_id":"{versionId}","expected_sequence":0,"decision":"approved","reason":"a stranger"}`,
 		want: http.StatusNotFound},
