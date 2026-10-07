@@ -14,7 +14,7 @@
 
 ## Proposal and approvals
 
-提案 `run-preflight-version-disable-citation` supersede 前次引用調整；developer `ArthurC` 已核准，測試證據已驗證，正式 SCM／CI 驗證尚未完成。
+提案 `run-preflight-version-disable-citation` supersede 前次引用調整；developer `ArthurC` 已核准，測試證據與簽章 SCM 證明已驗證，引用已由受控流程套用。遠端 CI 尚未確認。
 
 ## Contract impact
 
@@ -22,7 +22,7 @@
 
 ## Verification
 
-舊引用由 `verify-evidence` 回報 stale；新引用由 `cite` 算出並在暫存副本驗證，62 項引用全部 current。reader 缺席的拒絕測試也通過。正式更新後仍須重跑完整 Registry 驗證與 audit chain。
+舊引用由 `verify-evidence` 回報 stale；新引用由 `cite` 算出並在暫存副本驗證。正式套用後重跑完整 Registry 與 audit 驗證，62 項引用全部 current；reader 缺席的拒絕測試也通過。
 
 ## Residual risks
 

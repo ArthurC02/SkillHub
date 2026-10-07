@@ -1,22 +1,22 @@
 {
   "format": "domain-evidence-bundle/v1",
   "requirement_id": "SEC-011-version-disable",
-  "proposal_id": "admin-version-disable",
+  "proposal_id": "admin-version-disable-v2",
   "registry_revision": {
-    "observed_commit": "a012c28e28a7754ab7fea74c18ba16ebcdcf048d",
-    "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+    "observed_commit": "97a6ea96e3a7108033ce50afbd57e57884321a65",
+    "registry_digest": "sha256:3dc6455445d5ad1428f37fcadbd0fadced01de9d99c758987698201fd1e9af05"
   },
   "approvals": [
     {
       "role": "developer",
       "reviewer": "ArthurC",
       "decision": "approved",
-      "approved_at": "2026-10-07T17:40:36.487575Z",
-      "scope": "Approve the reviewed irreversible Skill Version disable design and implementation scope: Registry-owned state and audit, serialized Run admission, exact-ID operator metadata, named rejection, and ten proof obligations; no deployment waiver.",
+      "approved_at": "2026-10-07T18:44:13.332972Z",
+      "scope": "Approve the same irreversible Skill Version disable implementation and ten local proof obligations against the refreshed Registry base; no deployment waiver.",
       "proposal_revision": 1,
       "base_registry_revision": {
-        "observed_commit": "a012c28e28a7754ab7fea74c18ba16ebcdcf048d",
-        "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+        "observed_commit": "97a6ea96e3a7108033ce50afbd57e57884321a65",
+        "registry_digest": "sha256:3dc6455445d5ad1428f37fcadbd0fadced01de9d99c758987698201fd1e9af05"
       }
     }
   ],
@@ -133,7 +133,7 @@
   "architecture_checks": [],
   "security_checks": [],
   "residual_risks": [
-    "developer 已核准設計與實作範圍；十項義務已有本機測試與架構檢查證據，SCM 證明與遠端 CI 尚未完成。",
-    "內容來源白名單、角色授予變更歷史與完整下架恢復語意是 SEC-011 的其他缺口，不在本包內；本包不能代表 SEC-011 整項完成。"
+    "十項義務已在本機執行，但新提案仍需對目前 Registry 重新提交、核准、驗證與 SCM attestation；遠端 CI 尚未確認。",
+    "內容來源白名單、角色授予變更歷史與完整下架恢復語意仍是 SEC-011 的其他缺口。"
   ]
 }

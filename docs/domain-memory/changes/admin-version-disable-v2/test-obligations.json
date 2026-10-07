@@ -1,7 +1,7 @@
 {
   "format": "domain-test-obligations/v1",
   "requirement_id": "SEC-011-version-disable",
-  "proposal_id": "admin-version-disable",
+  "proposal_id": "admin-version-disable-v2",
   "obligations": [
     {
       "id": "disable-authority",

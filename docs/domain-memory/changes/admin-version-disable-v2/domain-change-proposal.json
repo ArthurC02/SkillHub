@@ -1,18 +1,18 @@
 {
   "format": "domain-change-proposal/v1",
-  "proposal_id": "admin-version-disable",
+  "proposal_id": "admin-version-disable-v2",
   "proposer": "coding-agent",
   "requirement_id": "SEC-011-version-disable",
-  "status": "superseded",
+  "status": "verified",
   "change_classification": "material",
-  "submitted_at": "2026-10-07T14:18:46.356807Z",
-  "verified_at": null,
+  "submitted_at": "2026-10-07T18:44:07.075144Z",
+  "verified_at": "2026-10-07T18:44:39.517314Z",
   "finalized_at": null,
   "applied_at": null,
   "proposal_revision": 1,
   "base_registry_revision": {
-    "observed_commit": "a012c28e28a7754ab7fea74c18ba16ebcdcf048d",
-    "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+    "observed_commit": "97a6ea96e3a7108033ce50afbd57e57884321a65",
+    "registry_digest": "sha256:3dc6455445d5ad1428f37fcadbd0fadced01de9d99c758987698201fd1e9af05"
   },
   "affected_contexts": [
     "registry",
@@ -90,17 +90,13 @@
       "role": "developer",
       "reviewer": "ArthurC",
       "decision": "approved",
-      "approved_at": "2026-10-07T17:40:36.487575Z",
-      "scope": "Approve the reviewed irreversible Skill Version disable design and implementation scope: Registry-owned state and audit, serialized Run admission, exact-ID operator metadata, named rejection, and ten proof obligations; no deployment waiver.",
+      "approved_at": "2026-10-07T18:44:13.332972Z",
+      "scope": "Approve the same irreversible Skill Version disable implementation and ten local proof obligations against the refreshed Registry base; no deployment waiver.",
       "proposal_revision": 1,
       "base_registry_revision": {
-        "observed_commit": "a012c28e28a7754ab7fea74c18ba16ebcdcf048d",
-        "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+        "observed_commit": "97a6ea96e3a7108033ce50afbd57e57884321a65",
+        "registry_digest": "sha256:3dc6455445d5ad1428f37fcadbd0fadced01de9d99c758987698201fd1e9af05"
       }
     }
-  ],
-  "superseded_from_status": "submitted",
-  "superseded_at": "2026-10-07T18:43:07.169923Z",
-  "superseded_reason": "Registry citation refresh advanced the reviewed base before version-disable verification; evidence is carried into a fresh proposal.",
-  "superseded_by": "admin-version-disable-v2"
+  ]
 }
