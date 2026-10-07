@@ -215,6 +215,9 @@ export function useDispatchStatus() {
     queryKey: queryKeys.admin.dispatch,
     queryFn: () => apiFetch<DispatchStatus>("/admin/dispatch"),
     enabled: useOperator(),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 }
 

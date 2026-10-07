@@ -34,7 +34,10 @@ function visibleStatus(status: ReturnType<typeof useDispatchStatus>) {
 function StatusFeedback({ status }: { status: ReturnType<typeof useDispatchStatus> }) {
   return (
     <>
-      {status.isFetching && <Loading what="派送狀態" />}
+      {status.isPending && status.isFetching && <Loading what="派送狀態" />}
+      {status.data && status.isFetching && (
+        <p className="note">正在確認最新派送狀態；確認期間不可解除煞車。</p>
+      )}
       <ReadFailure
         error={status.error}
         what="派送狀態"

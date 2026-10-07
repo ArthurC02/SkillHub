@@ -206,6 +206,29 @@ test("the admin home does not call a node halt an all-clear", async () => {
   expect(has("派送中 · 0 個煞車")()).toBe(false);
 });
 
+test("OPS-005: an open dispatch view rechecks on focus and keeps polling while active", async () => {
+  let current: DispatchStatus = { dispatching: true, halts: [] };
+  stub(true, (path, method) =>
+    path === "/admin/dispatch" && method === "GET" ? { body: current, status: 200 } : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("煞車：0 個"));
+  const query = queryClient.getQueryCache().find({ queryKey: queryKeys.admin.dispatch });
+  expect(query?.observers[0]?.options.refetchInterval).toBe(30_000);
+  expect(query?.observers[0]?.options.refetchOnReconnect).toBe(true);
+
+  current = ADMIN_DISPATCH;
+  try {
+    await act(async () => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    await waitFor(has("sandbox escape suspected on node-2"));
+  } finally {
+    focusManager.setFocused(undefined);
+  }
+});
+
 test("the admin home hides cached operational verdicts when their sources fail", async () => {
   let unavailable = false;
   stub(true, (path) =>

@@ -117,7 +117,8 @@ function OperationsSection() {
               <strong>派送煞車</strong>
             </Link>
             <p className="note">看平台有沒有在派送新的試跑紀錄，宣告或解除煞車。</p>
-            {dispatch.isFetching && <p role="status">正在讀取派送狀態…</p>}
+            {dispatch.isPending && dispatch.isFetching && <p role="status">正在讀取派送狀態…</p>}
+            {status && dispatch.isFetching && <p className="note">正在確認最新派送狀態…</p>}
             {!dispatch.isFetching && (
               <ReadFailure
                 error={dispatch.error}
