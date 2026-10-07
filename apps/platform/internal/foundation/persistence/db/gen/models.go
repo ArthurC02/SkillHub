@@ -673,11 +673,11 @@ type SearchDocument struct {
 	AgentRuntime            *string
 	AgentRuntimeImage       *string
 	AgentMeasuredAt         pgtype.Timestamptz
-	Curated                 bool
 	Listable                bool
 	HasScript               *bool
 	LatestSourcePath        string
 	ExposureDigest          *string
+	Curated                 bool
 }
 
 type Session struct {

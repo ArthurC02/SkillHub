@@ -147,7 +147,6 @@ func listingOf(skillID pgtype.UUID, facts ListingFacts) gen.SetSearchDocumentLis
 	if facts.CurationTier == string(TierCurated) {
 		listing.CuratedVersionID = facts.CuratedVersionID
 	}
-	listing.Curated = curatedAt(facts.CurationTier, facts.CuratedVersionID, facts.LatestVersionID)
 	capability, runtime, image := compatUnverified, compatUnverified, ""
 	if facts.AgentMeasuredAt.Valid {
 		capability, runtime, image = facts.AgentCapability, facts.AgentRuntime, facts.AgentRuntimeImage

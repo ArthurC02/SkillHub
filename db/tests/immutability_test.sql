@@ -542,5 +542,58 @@ SELECT must_violate_fk($$INSERT INTO exposure_reviews (publication_id, sequence,
     VALUES ('f0000000-0000-4000-8000-000000000099', 1, 'f0000000-0000-4000-8000-000000000003', 'hash-1', 'digest-1',
             'approved', 'r', '11111111-1111-1111-1111-111111111111')$$);
 
+INSERT INTO search_documents (skill_id, workspace_id, name, latest_version_id, latest_package_object_key)
+VALUES ('39999999-9999-4999-8999-999999999999', '29999999-9999-4999-8999-999999999999', 'other-demo',
+        '49999999-9999-4999-8999-999999999999', 'ws/29/skill/39/v1.tar.zst');
+SELECT must_violate_fk($$UPDATE search_documents SET latest_package_object_key = 'ws/29/skill/39/elsewhere.tar.zst'
+                         WHERE skill_id = '39999999-9999-4999-8999-999999999999'$$);
+SELECT must_violate_check($$UPDATE search_documents SET latest_version_id = NULL
+                            WHERE skill_id = '39999999-9999-4999-8999-999999999999'$$);
+SELECT must_violate_fk($$UPDATE search_documents SET latest_version_id = '44444444-4444-4444-4444-444444444444'
+                         WHERE skill_id = '39999999-9999-4999-8999-999999999999'$$);
+SELECT must_violate_fk($$UPDATE search_documents SET curated_version_id = '44444444-4444-4444-4444-444444444444'
+                         WHERE skill_id = '39999999-9999-4999-8999-999999999999'$$);
+SELECT must_violate_fk($$INSERT INTO search_documents (skill_id, workspace_id, name)
+    VALUES ('33333333-3333-3333-3333-333333333333', '29999999-9999-4999-8999-999999999999', 'demo')$$);
+
+UPDATE search_documents SET curated_version_id = '49999999-9999-4999-8999-999999999999'
+WHERE skill_id = '39999999-9999-4999-8999-999999999999';
+DO $$
+BEGIN
+    IF NOT (SELECT curated FROM search_documents WHERE skill_id = '39999999-9999-4999-8999-999999999999') THEN
+        RAISE EXCEPTION 'a document whose newest version is the curated one must read as curated';
+    END IF;
+END;
+$$;
+INSERT INTO skill_versions (id, workspace_id, skill_id, version_number, content_hash, package_object_key)
+VALUES ('49999999-9999-4999-8999-999999999998', '29999999-9999-4999-8999-999999999999',
+        '39999999-9999-4999-8999-999999999999', 2, 'hash-o2', 'ws/29/skill/39/v2.tar.zst');
+UPDATE search_documents SET latest_version_id = '49999999-9999-4999-8999-999999999998',
+    latest_package_object_key = 'ws/29/skill/39/v2.tar.zst'
+WHERE skill_id = '39999999-9999-4999-8999-999999999999';
+DO $$
+BEGIN
+    IF (SELECT curated FROM search_documents WHERE skill_id = '39999999-9999-4999-8999-999999999999') THEN
+        RAISE EXCEPTION 'a document that moved past its curated version must not read as curated';
+    END IF;
+END;
+$$;
+
+SELECT set_config('skillhub.purge', 'on', true);
+DELETE FROM skill_versions WHERE id = '49999999-9999-4999-8999-999999999998';
+SELECT set_config('skillhub.purge', '', true);
+DO $$
+DECLARE
+    doc record;
+BEGIN
+    SELECT skill_id, latest_version_id, latest_package_object_key, curated_version_id INTO doc
+    FROM search_documents WHERE skill_id = '39999999-9999-4999-8999-999999999999';
+    IF doc.skill_id IS NULL OR doc.latest_version_id IS NOT NULL OR doc.latest_package_object_key IS NOT NULL
+       OR doc.curated_version_id IS DISTINCT FROM '49999999-9999-4999-8999-999999999999' THEN
+        RAISE EXCEPTION 'purging a version must clear only the document''s pointer to it: %', doc;
+    END IF;
+END;
+$$;
+
 \echo 'immutability_test: OK'
 ROLLBACK;

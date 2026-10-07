@@ -18,7 +18,10 @@ func TestAFilteredSearchFindsAMatchPastTheUnfilteredCandidateCut(t *testing.T) {
 	}
 	wanted := seedSkill(t, pool, curator.workspaceID, "filter-cut-curated")
 	seedBlendedEmbedding(t, pool, wanted, axis, other, 0.9)
-	if _, err := pool.Exec(ctx, "UPDATE search_documents SET curated = true WHERE skill_id = $1", mustUUID(t, wanted)); err != nil {
+	reviewed := seedSkillVersion(t, pool, curator.workspaceID, wanted)
+	if _, err := pool.Exec(ctx, `UPDATE search_documents sd SET latest_version_id = v.id, latest_package_object_key = v.package_object_key,
+		latest_source_path = v.source_path, curated_version_id = v.id FROM skill_versions v WHERE v.id = $2 AND sd.skill_id = $1`,
+		mustUUID(t, wanted), mustUUID(t, reviewed)); err != nil {
 		t.Fatal(err)
 	}
 	anon := &client{Client: http.DefaultClient, base: newAPIWithLLM(t, pool, stubLLM(t, axis, "because it fits")).URL}

@@ -1073,12 +1073,11 @@ SET generated = $1,
     latest_package_object_key = $6,
     latest_source_path = $7,
     curated_version_id = $8,
-    curated = $9,
-    agent_capability = $10,
-    agent_runtime = $11,
-    agent_runtime_image = $12,
-    agent_measured_at = $13
-WHERE skill_id = $14
+    agent_capability = $9,
+    agent_runtime = $10,
+    agent_runtime_image = $11,
+    agent_measured_at = $12
+WHERE skill_id = $13
 `
 
 type SetSearchDocumentListingParams struct {
@@ -1090,7 +1089,6 @@ type SetSearchDocumentListingParams struct {
 	LatestPackageObjectKey *string
 	LatestSourcePath       string
 	CuratedVersionID       pgtype.UUID
-	Curated                bool
 	AgentCapability        *string
 	AgentRuntime           *string
 	AgentRuntimeImage      *string
@@ -1108,7 +1106,6 @@ func (q *Queries) SetSearchDocumentListing(ctx context.Context, arg SetSearchDoc
 		arg.LatestPackageObjectKey,
 		arg.LatestSourcePath,
 		arg.CuratedVersionID,
-		arg.Curated,
 		arg.AgentCapability,
 		arg.AgentRuntime,
 		arg.AgentRuntimeImage,
