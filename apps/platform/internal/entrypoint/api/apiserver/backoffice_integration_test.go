@@ -277,6 +277,85 @@ func TestGovernanceLookupReachesPrivateAndTakenDownSkillsButNotDeleted(t *testin
 	}
 }
 
+func TestGovernanceLookupPagesEveryMatch(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "bo-gov-page-owner")
+	operator := a.login(t, "bo-gov-page-operator")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+
+	for i := 1; i <= 21; i++ {
+		name := "governance-page-" + strconv.Itoa(i)
+		if _, err := pool.Exec(context.Background(), `INSERT INTO skills (workspace_id, name) VALUES ($1, $2)`, mustUUID(t, owner.workspaceID), name); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	first := governancePage(t, operator, "/admin/skills?q=governance-page", 20, 20)
+	second := governancePage(t, operator, "/admin/skills?q=governance-page&offset=20", 1, -1)
+	seen := map[string]bool{}
+	for _, page := range []map[string]any{first, second} {
+		for _, skill := range objects(t, page["skills"]) {
+			id, _ := skill["skill_id"].(string)
+			if id == "" || seen[id] {
+				t.Fatalf("missing or duplicate skill id: %v", skill)
+			}
+			seen[id] = true
+		}
+	}
+	if len(seen) != 21 {
+		t.Fatalf("paged search covered %d skills, want 21", len(seen))
+	}
+	governancePage(t, operator, "/admin/skills?q=governance-page&offset=21", 0, -1)
+}
+
+func governancePage(t *testing.T, operator *client, path string, wantCount, wantNext int) map[string]any {
+	t.Helper()
+	code, out := getAdmin(t, operator, path)
+	if code != http.StatusOK || out["total"] != float64(21) || len(objects(t, out["skills"])) != wantCount {
+		t.Fatalf("GET %s: code %d, response %v; want %d of 21", path, code, out, wantCount)
+	}
+	next, hasNext := out["next_offset"]
+	if wantNext < 0 && hasNext || wantNext >= 0 && next != float64(wantNext) {
+		t.Errorf("GET %s: next_offset %v (present=%t), want %d", path, next, hasNext, wantNext)
+	}
+	return out
+}
+
+func TestGovernanceLookupExactlyTwentyHasNoNextPage(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "bo-gov-full-owner")
+	operator := a.login(t, "bo-gov-full-operator")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	for i := 1; i <= 20; i++ {
+		name := "full-governance-page-" + strconv.Itoa(i)
+		if _, err := pool.Exec(context.Background(), `INSERT INTO skills (workspace_id, name) VALUES ($1, $2)`, mustUUID(t, owner.workspaceID), name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	code, out := getAdmin(t, operator, "/admin/skills?q=full-governance-page")
+	if code != http.StatusOK || out["total"] != float64(20) || len(objects(t, out["skills"])) != 20 {
+		t.Fatalf("full final page: code %d, response %v", code, out)
+	}
+	if _, ok := out["next_offset"]; ok {
+		t.Fatalf("exactly 20 matches should not offer another page: %v", out)
+	}
+}
+
+func TestGovernanceLookupRejectsInvalidOffsets(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	operator := a.login(t, "bo-gov-offset-operator")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	for _, offset := range []string{"-1", "nope", "", "2147483648"} {
+		code, _ := getAdmin(t, operator, "/admin/skills?q=governance-page&offset="+offset)
+		if code != http.StatusBadRequest {
+			t.Errorf("offset %q: code %d, want 400", offset, code)
+		}
+	}
+}
+
 func adminSkillsByID(t *testing.T, operator *client, q string) map[string]map[string]any {
 	t.Helper()
 	code, out := getAdmin(t, operator, "/admin/skills?q="+url.QueryEscape(q))

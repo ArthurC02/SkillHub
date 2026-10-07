@@ -955,6 +955,10 @@ export interface FindSkillsForGovernanceRequest {
      * 
      */
     q: string;
+    /**
+     * Number of matching skills to skip; defaults to zero.
+     */
+    offset?: number;
 }
 
 export interface FinishGithubLoginRequest {
@@ -2455,6 +2459,7 @@ export interface DefaultApiInterface {
     /**
      * Creates request options for findSkillsForGovernance without sending the request
      * @param {string} q 
+     * @param {number} [offset] Number of matching skills to skip; defaults to zero.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
@@ -2464,6 +2469,7 @@ export interface DefaultApiInterface {
      * Operator only. A `q` that is a UUID matches that skill id; anything else is a case-insensitive substring of the name. Every workspace is searched, private and taken-down skills included, because those are what public search cannot find and what an operator acts on. Deleted skills are never listed. At most 20, newest first.  Each match carries governance state only, never SKILL.md or the file tree, so this is not a personal-data read and writes no audit event. 
      * @summary Find skills to govern, in every workspace (02:OPS-004)
      * @param {string} q 
+     * @param {number} [offset] Number of matching skills to skip; defaults to zero.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -6212,6 +6218,10 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         if (requestParameters['q'] != null) {
             queryParameters['q'] = requestParameters['q'];
+        }
+
+        if (requestParameters['offset'] != null) {
+            queryParameters['offset'] = requestParameters['offset'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};

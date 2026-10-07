@@ -182,10 +182,14 @@ export function isUncertainWriteFailure(error: unknown): boolean {
 }
 
 export function useGovernance(q: string) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: queryKeys.admin.skillSearch(q),
-    queryFn: () =>
-      apiFetch<{ skills: SkillGovernance[] }>(`/admin/skills?q=${encodeURIComponent(q)}`),
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      apiFetch<{ skills: SkillGovernance[]; total: number; next_offset?: number }>(
+        `/admin/skills?q=${encodeURIComponent(q)}${pageParam ? `&offset=${pageParam}` : ""}`,
+      ),
+    getNextPageParam: (last) => last.next_offset,
     enabled: useOperator() && q !== "",
   });
 }

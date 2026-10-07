@@ -8872,6 +8872,10 @@ func (*FindSkillsForGovernanceNotFound) findSkillsForGovernanceRes() {}
 
 type FindSkillsForGovernanceOK struct {
 	Skills []SkillGovernance `json:"skills"`
+	// Total matches before the offset is applied.
+	Total int `json:"total"`
+	// Offset of the next page; absent on the last page.
+	NextOffset OptInt `json:"next_offset"`
 }
 
 // GetSkills returns the value of Skills.
@@ -8879,9 +8883,29 @@ func (s *FindSkillsForGovernanceOK) GetSkills() []SkillGovernance {
 	return s.Skills
 }
 
+// GetTotal returns the value of Total.
+func (s *FindSkillsForGovernanceOK) GetTotal() int {
+	return s.Total
+}
+
+// GetNextOffset returns the value of NextOffset.
+func (s *FindSkillsForGovernanceOK) GetNextOffset() OptInt {
+	return s.NextOffset
+}
+
 // SetSkills sets the value of Skills.
 func (s *FindSkillsForGovernanceOK) SetSkills(val []SkillGovernance) {
 	s.Skills = val
+}
+
+// SetTotal sets the value of Total.
+func (s *FindSkillsForGovernanceOK) SetTotal(val int) {
+	s.Total = val
+}
+
+// SetNextOffset sets the value of NextOffset.
+func (s *FindSkillsForGovernanceOK) SetNextOffset(val OptInt) {
+	s.NextOffset = val
 }
 
 func (*FindSkillsForGovernanceOK) findSkillsForGovernanceRes() {}

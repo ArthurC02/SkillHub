@@ -31,6 +31,14 @@ export interface FindSkillsForGovernance200Response {
      * 
      */
     skills: Array<SkillGovernance>;
+    /**
+     * Total matches before the offset is applied.
+     */
+    total: number;
+    /**
+     * Offset of the next page; absent on the last page.
+     */
+    nextOffset?: number;
 }
 
 /**
@@ -38,6 +46,7 @@ export interface FindSkillsForGovernance200Response {
  */
 export function instanceOfFindSkillsForGovernance200Response(value: object): value is FindSkillsForGovernance200Response {
     if (!('skills' in value) || value['skills'] === undefined) return false;
+    if (!('total' in value) || value['total'] === undefined) return false;
     return true;
 }
 
@@ -52,6 +61,8 @@ export function FindSkillsForGovernance200ResponseFromJSONTyped(json: any, ignor
     return {
         
         'skills': ((json['skills'] as Array<any>).map(SkillGovernanceFromJSON)),
+        'total': json['total'],
+        'nextOffset': json['next_offset'] == null ? undefined : json['next_offset'],
     };
 }
 
@@ -67,6 +78,8 @@ export function FindSkillsForGovernance200ResponseToJSONTyped(value?: FindSkills
     return {
         
         'skills': ((value['skills'] as Array<any>).map(SkillGovernanceToJSON)),
+        'total': value['total'],
+        'next_offset': value['nextOffset'],
     };
 }
 

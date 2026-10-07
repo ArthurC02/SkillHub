@@ -149,6 +149,8 @@ type ExportBundleParams struct {
 // FindSkillsForGovernanceParams is parameters of findSkillsForGovernance operation.
 type FindSkillsForGovernanceParams struct {
 	Q string
+	// Number of matching skills to skip; defaults to zero.
+	Offset OptInt `json:",omitempty,omitzero"`
 }
 
 // FinishGithubLoginParams is parameters of finishGithubLogin operation.

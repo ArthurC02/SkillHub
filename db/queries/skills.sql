@@ -125,7 +125,13 @@ WHERE deleted_at IS NULL
   AND (id = sqlc.narg(skill_id)::uuid
        OR (sqlc.narg(skill_id)::uuid IS NULL AND name ILIKE '%' || @name_part::text || '%'))
 ORDER BY created_at DESC, id
-LIMIT @result_limit;
+LIMIT @result_limit OFFSET @result_offset;
+
+-- name: CountSkillsForGovernance :one
+SELECT count(*) FROM skills
+WHERE deleted_at IS NULL
+  AND (id = sqlc.narg(skill_id)::uuid
+       OR (sqlc.narg(skill_id)::uuid IS NULL AND name ILIKE '%' || @name_part::text || '%'));
 
 -- name: ListSkillForks :many
 SELECT f.forked_from_skill_id::uuid AS source_id, f.id AS fork_id FROM skills f

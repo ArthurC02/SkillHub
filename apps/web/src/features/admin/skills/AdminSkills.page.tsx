@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useGovernance } from "../admin.service";
+import { useGovernance, type SkillGovernance } from "../admin.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { AdminPage } from "../components/AdminPage";
@@ -16,9 +16,9 @@ function SkillSearch({ q }: { q: string }) {
   const navigate = useNavigate();
   const [draft, setDraft] = useState(q);
   const skills = useGovernance(q);
-  const found = skills.data?.skills ?? [];
   const queryMatches = draft.trim() === q;
-  const showResult = queryMatches && !skills.isFetching && !skills.error;
+  const refreshing = skills.isFetching && !skills.isFetchingNextPage;
+  const showResult = queryMatches && !refreshing && !skills.error;
 
   return (
     <AdminPage
@@ -46,8 +46,8 @@ function SkillSearch({ q }: { q: string }) {
         </button>
       </form>
       {!queryMatches && q !== "" && <p role="status">查詢條件已變更；按「查詢」顯示新結果。</p>}
-      {queryMatches && q !== "" && skills.isFetching && <Loading what="小工具" />}
-      {queryMatches && !skills.isFetching && (
+      {queryMatches && q !== "" && refreshing && <Loading what="小工具" />}
+      {queryMatches && !refreshing && (
         <ReadFailure
           error={skills.error}
           what="小工具"
@@ -55,20 +55,57 @@ function SkillSearch({ q }: { q: string }) {
           retrying={skills.isFetching}
         />
       )}
-      {showResult &&
-        skills.data &&
-        (found.length === 0 ? (
-          <p>沒有符合「{q}」的小工具：0 筆。已刪除的小工具不會出現。</p>
-        ) : (
-          <ul className="download-list">
-            {found.map((skill) => (
-              <GovernanceRow key={skill.skill_id} skill={skill} single={found.length === 1} />
-            ))}
-          </ul>
-        ))}
-      {showResult && found.length === 1 && found[0].takedown_at === null && (
-        <GovernanceActions skill={found[0]} />
+      {showResult && skills.data && (
+        <GovernanceResults
+          q={q}
+          found={skills.data.pages.flatMap((page) => page.skills)}
+          total={skills.data.pages[0]?.total}
+          hasNextPage={skills.hasNextPage}
+          isFetchingNextPage={skills.isFetchingNextPage}
+          onMore={() => void skills.fetchNextPage()}
+        />
       )}
     </AdminPage>
+  );
+}
+
+function GovernanceResults({
+  q,
+  found,
+  total,
+  hasNextPage,
+  isFetchingNextPage,
+  onMore,
+}: {
+  q: string;
+  found: SkillGovernance[];
+  total: number | undefined;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  onMore: () => void;
+}) {
+  if (total === undefined || !Number.isSafeInteger(total) || total < found.length) {
+    return <p role="alert">無法確認查詢總數。請重新查詢；確認前不提供治理操作。</p>;
+  }
+  if (found.length === 0) {
+    return <p>沒有符合「{q}」的小工具：0 筆。已刪除的小工具不會出現。</p>;
+  }
+  return (
+    <>
+      <p role="status">
+        已顯示 {found.length} / {total} 筆。
+      </p>
+      <ul className="download-list">
+        {found.map((skill) => (
+          <GovernanceRow key={skill.skill_id} skill={skill} single={total === 1} />
+        ))}
+      </ul>
+      {hasNextPage && (
+        <button type="button" disabled={isFetchingNextPage} onClick={onMore}>
+          {isFetchingNextPage ? "載入中…" : "載入更多"}
+        </button>
+      )}
+      {total === 1 && found[0].takedown_at === null && <GovernanceActions skill={found[0]} />}
+    </>
   );
 }

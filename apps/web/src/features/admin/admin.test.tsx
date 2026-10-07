@@ -776,6 +776,7 @@ test("OPS-004: submitting the same skill query again reads current governance", 
     reads += 1;
     return {
       body: {
+        total: 1,
         skills: ADMIN_SKILLS.skills.map((skill) => ({
           ...skill,
           access_restriction: reads === 1 ? null : "license-review",
@@ -1109,7 +1110,7 @@ test("OPS-004: a restriction is set with the known reason code and lifted by the
   stub(true, (path, method) => {
     if (path === "/admin/skills")
       return {
-        body: { skills: [{ ...ADMIN_SKILLS.skills[0], access_restriction: restricted }] },
+        body: { total: 1, skills: [{ ...ADMIN_SKILLS.skills[0], access_restriction: restricted }] },
         status: 200,
       };
     if (path.endsWith("/restriction")) {
@@ -1160,7 +1161,7 @@ test("an uncertain restriction write rereads the skill before another action", a
   stub(true, (path, method) => {
     if (path === "/admin/skills")
       return {
-        body: { skills: [{ ...ADMIN_SKILLS.skills[0], access_restriction: restricted }] },
+        body: { total: 1, skills: [{ ...ADMIN_SKILLS.skills[0], access_restriction: restricted }] },
         status: 200,
       };
     if (path === `/admin/skills/${SKILL}/restriction` && method === "PUT") {
@@ -1186,6 +1187,7 @@ test("OPS-004: a name matching several skills lists a way to pick each and offer
     path === "/admin/skills"
       ? {
           body: {
+            total: 2,
             skills: [
               ADMIN_SKILLS.skills[0],
               {
@@ -1205,11 +1207,53 @@ test("OPS-004: a name matching several skills lists a way to pick each and offer
   expect(has("的動作")()).toBe(false);
 });
 
+test("OPS-004: a capped governance search shows the total and reaches later matches", async () => {
+  let page = 0;
+  const matches = Array.from({ length: 21 }, (_, index) => ({
+    ...ADMIN_SKILLS.skills[0],
+    skill_id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+  }));
+  stub(true, (path) => {
+    if (path !== "/admin/skills") return undefined;
+    const skills = page++ === 0 ? matches.slice(0, 20) : matches.slice(20);
+    return {
+      body: { skills, total: 21, next_offset: skills.length === 20 ? 20 : undefined },
+      status: 200,
+    };
+  });
+  await mountAt("/admin/skills", { q: "pdf" });
+  await waitFor(has(matches[19].skill_id));
+  expect(has("已顯示 20 / 21 筆")()).toBe(true);
+  expect(container.querySelectorAll(".download-item")).toHaveLength(20);
+  await click(button("載入更多"));
+  await waitFor(has("已顯示 21 / 21 筆"));
+  expect(container.querySelectorAll(".download-item")).toHaveLength(21);
+  expect(container.textContent).toContain(matches[20].skill_id);
+  expect(
+    Array.from(container.querySelectorAll("button")).some(
+      (item) => item.textContent === "載入更多",
+    ),
+  ).toBe(false);
+  expect(calls.some((call) => call.url === "/admin/skills?q=pdf&offset=20")).toBe(true);
+});
+
+test("OPS-004: an unreadable governance total never becomes zero or unlocks actions", async () => {
+  stub(true, (path) =>
+    path === "/admin/skills" ? { body: { skills: ADMIN_SKILLS.skills }, status: 200 } : undefined,
+  );
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(() => has("PDF Summariser")() || has("無法確認查詢總數")());
+  expect(has("無法確認查詢總數")()).toBe(true);
+  expect(has("已顯示 1 / 0 筆")()).toBe(false);
+  expect(has("對「PDF Summariser」的動作")()).toBe(false);
+});
+
 test("OPS-004: a taken-down skill shows when and why, and offers no action", async () => {
   stub(true, (path) =>
     path === "/admin/skills"
       ? {
           body: {
+            total: 1,
             skills: [
               {
                 ...ADMIN_SKILLS.skills[0],
@@ -1232,6 +1276,7 @@ test("OPS-004: a takedown with no reason on record says it was not recorded", as
     path === "/admin/skills"
       ? {
           body: {
+            total: 1,
             skills: [
               {
                 ...ADMIN_SKILLS.skills[0],

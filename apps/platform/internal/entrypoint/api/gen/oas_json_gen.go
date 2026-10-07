@@ -20180,10 +20180,22 @@ func (s *FindSkillsForGovernanceOK) encodeFields(e *jx.Encoder) {
 		}
 		e.ArrEnd()
 	}
+	{
+		e.FieldStart("total")
+		e.Int(s.Total)
+	}
+	{
+		if s.NextOffset.Set {
+			e.FieldStart("next_offset")
+			s.NextOffset.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfFindSkillsForGovernanceOK = [1]string{
+var jsonFieldsNameOfFindSkillsForGovernanceOK = [3]string{
 	0: "skills",
+	1: "total",
+	2: "next_offset",
 }
 
 // Decode decodes FindSkillsForGovernanceOK from json.
@@ -20213,6 +20225,28 @@ func (s *FindSkillsForGovernanceOK) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"skills\"")
 			}
+		case "total":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Int()
+				s.Total = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"total\"")
+			}
+		case "next_offset":
+			if err := func() error {
+				s.NextOffset.Reset()
+				if err := s.NextOffset.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"next_offset\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -20223,7 +20257,7 @@ func (s *FindSkillsForGovernanceOK) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000001,
+		0b00000011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

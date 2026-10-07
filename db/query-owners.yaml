@@ -198,6 +198,7 @@ queries:
   CountTraceMaskingInWindow: trace
 
 scope:
+  CountSkillsForGovernance: operator
   TakeRateLimitToken: platform-wide
   SweepRateLimitBuckets: platform-wide
   AdjustCreditBalance: user

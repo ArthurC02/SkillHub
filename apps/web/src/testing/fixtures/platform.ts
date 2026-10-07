@@ -1010,6 +1010,7 @@ export const ADMIN_LEDGER = {
 } satisfies CreditLedger;
 
 export const ADMIN_SKILLS = {
+  total: 1,
   skills: [
     {
       skill_id: SKILL,
@@ -1021,7 +1022,7 @@ export const ADMIN_SKILLS = {
       takedown_reason: null,
     },
   ],
-} satisfies { skills: SkillGovernance[] };
+} satisfies { skills: SkillGovernance[]; total: number };
 
 export const ADMIN_DISPATCH = {
   dispatching: false,
