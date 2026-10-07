@@ -22,6 +22,8 @@
 
 同日補跑一條「真實瀏覽器＋API＋獨立 PostgreSQL」旅程：在隔離資料庫套用 101 筆 migration，以本機開發登入查找帳號、授予 5 點、確認稽核紀錄，並停止與恢復派送；頁面與 API 回應均符合預期。這證明上述日常操作的前後端整合，但只在本機開發設定、單一 operator 與無付費模型的條件下成立，不涵蓋部署、通知送達或角色治理。開發登入曾因同站不同 port 的寫入請求被拒絕、登入後查詢快取未更新而無法完成；修正後，兩者各有會失敗的回歸測試。淨測試模式在補齊本機套件後可完成 migration 與 API 啟動，但背景 Worker 與 PGlite 單連線競爭仍使登入逾時，**不能稱為完整通過**。
 
+另以本分支自建的 platform／web／llm 映像執行 `tools/ci/stack-smoke.sh`，回 `exit 0` 與 `stack-smoke: all assertions passed`。既有真實映像旅程已涵蓋 Skill 受限與下架、派送煞車、模型逾時；新增同一旅程中的帳號查找、點數讀取、按 Workspace 追查授予及敏感查詢事件，並驗證一般 member 對 operator 查詢均得 404。測試先揭露帳號頁在非安全 HTTP 主機呼叫 `crypto.randomUUID()` 時會整頁錯誤；改用原生隨機位元組後，紅燈轉綠。這是可重跑的本機映像整合證據，仍不是正式部署或值班驗收。
+
 本分支在 GitHub 尚無可引用的 workflow run；本機測試通過不宣稱 CI 或正式環境通過。正式部署的通知送達、P1 節點探針與值班處置亦無實測證據。
 
 ## 下一步與停止線
@@ -29,6 +31,6 @@
 1. 先裁定版本停用能否恢復、operator 可見的最少量版本資訊；再審查[版本停用提案](../domain-memory/changes/admin-version-disable/draft-pr.md)，才實作契約、交易內准入閘門、API 與 UI。既有 Version 與歷史 Run 不能被改寫。
 2. 裁定來源候選的身分鍵、白名單操作介面、來源下架對既有項目的效力與重審條件；再審查[來源准入提案](../domain-memory/changes/admin-source-admission/draft-pr.md)。未核准前不能把文件清單當作公開收錄閘門。
 3. 審查[事件通知提案](../domain-memory/changes/sec010-incident-notification/draft-pr.md)，完成控制平面 P1／P2 建單、憑證與非工作時間通知的端到端演練；把 P1 剩餘訊號與實際節點探針的證據接上，同時維持單一派送煞車狀態。
-4. 把本機已跑通的 operator 真實旅程固化為可重跑的系統測試，補足 Skill 治理、負面權限路徑與 CI 證據；另解決淨測試模式的單連線 Worker 競爭。既有 mock E2E 仍不可稱為系統驗收。
+4. 在 GitHub CI 核對同一批真實映像旅程的 workflow 與 job 結果；另解決淨測試模式的單連線 Worker 競爭，並擴充尚未覆蓋的治理負面路徑。既有 mock E2E 仍不可稱為系統驗收。
 
 [既定 OPS 規格](02-specifications-and-acceptance-criteria.md#412-營運後台ops)刻意不包含編輯 operator／封測名冊、讀取私有 Workspace 資料、個人排行、濫用案件、下架恢復或精選層寫入 UI。它們是產品範圍邊界，不應為了讓後台看似完整而自行加上。

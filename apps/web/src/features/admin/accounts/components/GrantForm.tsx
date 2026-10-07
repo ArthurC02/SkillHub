@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { newClientID } from "../../../../shared/id";
 import { isUncertainWriteFailure, useGrantCredits } from "../../admin.service";
 import { ActionForm } from "../../components/ActionForm";
 
@@ -12,7 +13,7 @@ export function GrantForm({
   const grant = useGrantCredits(workspaceId);
   const [amount, setAmount] = useState("");
   const [formVersion, setFormVersion] = useState(0);
-  const submissionKey = useRef(crypto.randomUUID());
+  const submissionKey = useRef(newClientID());
   const credits = Number(amount);
   const valid = /^-?\d+$/.test(amount.trim()) && Number.isSafeInteger(credits) && credits !== 0;
   const invalidAmount = amount.trim() !== "" && !valid;
@@ -20,7 +21,7 @@ export function GrantForm({
   const startNewGrant = () => {
     grant.reset();
     setAmount("");
-    submissionKey.current = crypto.randomUUID();
+    submissionKey.current = newClientID();
     setFormVersion((version) => version + 1);
   };
   return (
@@ -63,7 +64,7 @@ export function GrantForm({
             aria-describedby={invalidAmount ? "admin-grant-why" : undefined}
             onChange={(event) => {
               setAmount(event.target.value);
-              submissionKey.current = crypto.randomUUID();
+              submissionKey.current = newClientID();
               grant.reset();
             }}
             readOnly={grant.isPending || uncertain}
