@@ -20,13 +20,15 @@
 
 截至 2026-10-07，在 `ui/admin-ux` 的 `bde7306c3ba36ec422ede36f822aaa8deb83391a` 上，`npm --prefix apps/web test -- admin.test.tsx` 回 `exit 0`、`1 passed` test file、`112 passed` tests；這只證明元件與前端狀態處理。先前同分支的管理流程 Playwright 測試在 Chromium、Firefox、WebKit 共九次執行通過，但 `apps/web/e2e/admin-workflow.spec.ts` 以攔截回應模擬 API，**不是**前後端真實串接。後台 API 的具名整合測試曾連獨立 PostgreSQL 執行且未跳過資料庫測試；它不覆蓋缺失的治理機制，也不等於部署驗收。
 
-本工作樹的 `task doctor` 仍回報 `.env` 與 PGlite 套件缺席，因此尚未跑「瀏覽器＋真實 API」的淨測試模式。本分支在 GitHub 尚無可引用的 workflow run；本機測試通過不宣稱 CI 或正式環境通過。正式部署的通知送達、P1 節點探針與值班處置亦無實測證據。
+同日補跑一條「真實瀏覽器＋API＋獨立 PostgreSQL」旅程：在隔離資料庫套用 101 筆 migration，以本機開發登入查找帳號、授予 5 點、確認稽核紀錄，並停止與恢復派送；頁面與 API 回應均符合預期。這證明上述日常操作的前後端整合，但只在本機開發設定、單一 operator 與無付費模型的條件下成立，不涵蓋部署、通知送達或角色治理。開發登入曾因同站不同 port 的寫入請求被拒絕、登入後查詢快取未更新而無法完成；修正後，兩者各有會失敗的回歸測試。淨測試模式在補齊本機套件後可完成 migration 與 API 啟動，但背景 Worker 與 PGlite 單連線競爭仍使登入逾時，**不能稱為完整通過**。
+
+本分支在 GitHub 尚無可引用的 workflow run；本機測試通過不宣稱 CI 或正式環境通過。正式部署的通知送達、P1 節點探針與值班處置亦無實測證據。
 
 ## 下一步與停止線
 
 1. 先裁定版本停用能否恢復、operator 可見的最少量版本資訊；再審查[版本停用提案](../domain-memory/changes/admin-version-disable/draft-pr.md)，才實作契約、交易內准入閘門、API 與 UI。既有 Version 與歷史 Run 不能被改寫。
 2. 裁定來源候選的身分鍵、白名單操作介面、來源下架對既有項目的效力與重審條件；再審查[來源准入提案](../domain-memory/changes/admin-source-admission/draft-pr.md)。未核准前不能把文件清單當作公開收錄閘門。
 3. 審查[事件通知提案](../domain-memory/changes/sec010-incident-notification/draft-pr.md)，完成控制平面 P1／P2 建單、憑證與非工作時間通知的端到端演練；把 P1 剩餘訊號與實際節點探針的證據接上，同時維持單一派送煞車狀態。
-4. 在不使用付費模型的環境補跑 operator 登入、查找、治理、煞車、稽核的一條真實瀏覽器＋API 旅程，並核對 CI 對該 commit 的所有 workflow。未做之前不要把 mock E2E 稱為系統驗收。
+4. 把本機已跑通的 operator 真實旅程固化為可重跑的系統測試，補足 Skill 治理、負面權限路徑與 CI 證據；另解決淨測試模式的單連線 Worker 競爭。既有 mock E2E 仍不可稱為系統驗收。
 
 [既定 OPS 規格](02-specifications-and-acceptance-criteria.md#412-營運後台ops)刻意不包含編輯 operator／封測名冊、讀取私有 Workspace 資料、個人排行、濫用案件、下架恢復或精選層寫入 UI。它們是產品範圍邊界，不應為了讓後台看似完整而自行加上。

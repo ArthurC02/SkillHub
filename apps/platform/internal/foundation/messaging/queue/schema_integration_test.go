@@ -3,8 +3,10 @@ package queue
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -76,6 +78,40 @@ func TestProcessesStartingTogetherOnASmallPoolAllFindTheQueueSchemaReady(t *test
 	}
 	var tables int
 	if err := pool.QueryRow(context.Background(),
+		"SELECT count(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'river_job'",
+	).Scan(&tables); err != nil || tables != 1 {
+		t.Fatalf("river_job tables in the schema: %d (%v), want 1", tables, err)
+	}
+}
+
+func TestSingleProcessQueueSchemaNeedsOnlyOneDatabaseConnection(t *testing.T) {
+	base := poolInFreshSchema(t)
+	cfg := base.Config().Copy()
+	cfg.MaxConns = 1
+	dial := cfg.ConnConfig.DialFunc
+	if dial == nil {
+		dial = (&net.Dialer{}).DialContext
+	}
+	var attempts atomic.Int32
+	cfg.ConnConfig.DialFunc = func(ctx context.Context, network, address string) (net.Conn, error) {
+		attempts.Add(1)
+		return dial(ctx, network, address)
+	}
+	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	if err := EnsureSchemaForSingleProcess(ctx, pool); err != nil {
+		t.Fatalf("single-process queue schema: %v", err)
+	}
+	if got := attempts.Load(); got != 1 {
+		t.Errorf("database connections: %d, want one", got)
+	}
+	var tables int
+	if err := pool.QueryRow(ctx,
 		"SELECT count(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'river_job'",
 	).Scan(&tables); err != nil || tables != 1 {
 		t.Fatalf("river_job tables in the schema: %d (%v), want 1", tables, err)

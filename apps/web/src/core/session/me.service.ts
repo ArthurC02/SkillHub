@@ -39,7 +39,7 @@ export function devLogin(user: string) {
 
 export function useDevSignIn() {
   const client = useQueryClient();
-  return useMutation({ mutationFn: devLogin, onSuccess: () => client.clear() });
+  return useMutation({ mutationFn: devLogin, onSuccess: () => client.resetQueries() });
 }
 
 export function requestAccountDeletion() {

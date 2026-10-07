@@ -7,6 +7,7 @@ import { ApiError } from "../core/api/client";
 import { LoginRequired, ReadFailure } from "../shared/ui/LoginRequired";
 import { unauthenticated } from "../shared/ui/LoginRequired.model";
 import { FeedbackEntry } from "../app/shell/FeedbackEntry";
+import { AuthControls } from "../app/shell/AuthControls";
 import { ImportSkill } from "../features/creation/import/ImportSkill.page";
 import { RunCompare } from "../features/runs/compare/RunCompare.page";
 import { RunPreflight } from "../features/lab/preflight/RunPreflight.page";
@@ -344,4 +345,43 @@ test("IA-6 a 401 is the answer at once — no 「載入中」 sat on through thr
 
   expect(text()).toBe("versions:error trace:error");
   expect(calls).toBe(2);
+});
+
+test("offline sign-in and sign-out refresh the operator menu without navigation and clear private data", async () => {
+  vi.stubGlobal("__SKILLHUB_DEV_LOGIN__", true);
+  let signedIn = false;
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = String(input).replace(/^https?:\/\/[^/]+/, "");
+    if (path === "/auth/dev/login" || path === "/auth/logout") {
+      signedIn = path === "/auth/dev/login";
+      return Promise.resolve(new Response(null, { status: 204 }));
+    }
+    if (path === "/me") {
+      return signedIn
+        ? json({ display_name: "seed-importer", operator: true })
+        : json({ error: "not authenticated" }, 401);
+    }
+    throw new Error(`unexpected request ${path}`);
+  });
+
+  await render(<AuthControls />, () => text().includes("離線登入"));
+  queryClient.setQueryData(["private", "previous-user"], "previous-user secret");
+  const login = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "登入",
+  );
+  expect(login).toBeDefined();
+  await act(async () => login!.click());
+  await waitFor(() => text().includes("seed-importer"));
+  expect(container.querySelector('a[href="/admin"]')?.textContent).toBe("後台");
+  expect(queryClient.getQueryData(["private", "previous-user"])).toBeUndefined();
+
+  queryClient.setQueryData(["private", "signed-in-user"], "signed-in secret");
+  const logout = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "登出",
+  );
+  expect(logout).toBeDefined();
+  await act(async () => logout!.click());
+  await waitFor(() => text().includes("離線登入"));
+  expect(container.querySelector('a[href="/admin"]')).toBeNull();
+  expect(queryClient.getQueryData(["private", "signed-in-user"])).toBeUndefined();
 });

@@ -25,6 +25,11 @@ func SameOriginWrites(next http.Handler, appURL string) http.Handler {
 		case "same-origin", "none":
 			next.ServeHTTP(w, r)
 			return
+		case "same-site":
+			if Origin(r.Header.Get("Origin")) != want {
+				WriteError(w, http.StatusForbidden, "跨站的寫入請求已被拒絕。")
+				return
+			}
 		case "":
 
 		default:
