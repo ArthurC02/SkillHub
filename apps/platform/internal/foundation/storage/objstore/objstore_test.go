@@ -104,6 +104,46 @@ func TestAStoreThatKeepsFailingIsTriedThreeTimesAndNoMore(t *testing.T) {
 	}
 }
 
+func bucketRaceStore(t *testing.T, existsAfterRefusal bool) *Client {
+	t.Helper()
+	var refused atomic.Bool
+	store := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Query().Has("location"):
+			_, _ = w.Write([]byte(`<LocationConstraint xmlns="http://s3.amazonaws.com/doc/2006-03-01/">us-east-1</LocationConstraint>`))
+		case r.Method == http.MethodHead && refused.Load() && existsAfterRefusal:
+			w.WriteHeader(http.StatusOK)
+		case r.Method == http.MethodHead:
+			w.WriteHeader(http.StatusNotFound)
+		case r.Method == http.MethodPut:
+			refused.Store(true)
+			w.WriteHeader(http.StatusConflict)
+			_, _ = w.Write([]byte(`<Error><Code>BucketAlreadyOwnedByYou</Code><Message>Your previous request to create the named bucket succeeded and you already own it.</Message></Error>`))
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	t.Cleanup(store.Close)
+	c, err := New(strings.TrimPrefix(store.URL, "http://"), "key", "secret", "bucket", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
+func TestABucketAnotherProcessCreatedFirstIsReady(t *testing.T) {
+	if err := bucketRaceStore(t, true).EnsureBucket(context.Background()); err != nil {
+		t.Fatalf("losing the create race to another process stopped startup: %v", err)
+	}
+}
+
+func TestARefusedCreateOfABucketThatStillDoesNotExistFails(t *testing.T) {
+	err := bucketRaceStore(t, false).EnsureBucket(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "make bucket") {
+		t.Fatalf("EnsureBucket = %v, want the make bucket refusal", err)
+	}
+}
+
 func TestAStoreThatStopsAnsweringIsGivenUpOnAfterTwentySeconds(t *testing.T) {
 	transport, err := storeTransport(false)
 	if err != nil {
