@@ -7066,6 +7066,29 @@ func (s *DownloadArtifactStatus) UnmarshalText(data []byte) error {
 	}
 }
 
+type EngagePlatformAgentBrakeBadRequest Error
+
+func (*EngagePlatformAgentBrakeBadRequest) engagePlatformAgentBrakeRes() {}
+
+type EngagePlatformAgentBrakeNotFound Error
+
+func (*EngagePlatformAgentBrakeNotFound) engagePlatformAgentBrakeRes() {}
+
+type EngagePlatformAgentBrakeReq struct {
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetNote returns the value of Note.
+func (s *EngagePlatformAgentBrakeReq) GetNote() string {
+	return s.Note
+}
+
+// SetNote sets the value of Note.
+func (s *EngagePlatformAgentBrakeReq) SetNote(val string) {
+	s.Note = val
+}
+
 // Ref: #/components/schemas/Error
 type Error struct {
 	Error string `json:"error"`
@@ -7101,6 +7124,7 @@ func (*Error) listModelCallBudgetsRes()            {}
 func (*Error) listOwnBundleOverviewRes()           {}
 func (*Error) listOwnBundlesRes()                  {}
 func (*Error) listOwnPublicationsRes()             {}
+func (*Error) listPlatformAgentsRes()              {}
 func (*Error) listSkillVersionsRes()               {}
 func (*Error) publicSearchSkillsRes()              {}
 func (*Error) searchSkillsWithCorrectedIntentRes() {}
@@ -11979,6 +12003,33 @@ type ListPackagingTargetsUnauthorized Error
 
 func (*ListPackagingTargetsUnauthorized) listPackagingTargetsRes() {}
 
+type ListPlatformAgentsOK struct {
+	Agents []PlatformAgent       `json:"agents"`
+	Brake  OptPlatformAgentBrake `json:"brake"`
+}
+
+// GetAgents returns the value of Agents.
+func (s *ListPlatformAgentsOK) GetAgents() []PlatformAgent {
+	return s.Agents
+}
+
+// GetBrake returns the value of Brake.
+func (s *ListPlatformAgentsOK) GetBrake() OptPlatformAgentBrake {
+	return s.Brake
+}
+
+// SetAgents sets the value of Agents.
+func (s *ListPlatformAgentsOK) SetAgents(val []PlatformAgent) {
+	s.Agents = val
+}
+
+// SetBrake sets the value of Brake.
+func (s *ListPlatformAgentsOK) SetBrake(val OptPlatformAgentBrake) {
+	s.Brake = val
+}
+
+func (*ListPlatformAgentsOK) listPlatformAgentsRes() {}
+
 type ListRunArtifactsNotFound Error
 
 func (*ListRunArtifactsNotFound) listRunArtifactsRes() {}
@@ -15165,6 +15216,52 @@ func (o OptPackagingBlockedReason) Get() (v PackagingBlockedReason, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptPackagingBlockedReason) Or(d PackagingBlockedReason) PackagingBlockedReason {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPlatformAgentBrake returns new OptPlatformAgentBrake with value set to v.
+func NewOptPlatformAgentBrake(v PlatformAgentBrake) OptPlatformAgentBrake {
+	return OptPlatformAgentBrake{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPlatformAgentBrake is optional PlatformAgentBrake.
+type OptPlatformAgentBrake struct {
+	Value PlatformAgentBrake
+	Set   bool
+}
+
+// IsSet returns true if OptPlatformAgentBrake was set.
+func (o OptPlatformAgentBrake) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPlatformAgentBrake) Reset() {
+	var v PlatformAgentBrake
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPlatformAgentBrake) SetTo(v PlatformAgentBrake) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPlatformAgentBrake) Get() (v PlatformAgentBrake, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPlatformAgentBrake) Or(d PlatformAgentBrake) PlatformAgentBrake {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -18698,6 +18795,144 @@ func (s *PackagingTargetSupportStatus) UnmarshalText(data []byte) error {
 	}
 }
 
+// Ref: #/components/schemas/PlatformAgent
+type PlatformAgent struct {
+	Name    string `json:"name"`
+	Purpose string `json:"purpose"`
+	// The gateway role alias the agent's model calls go to.
+	ModelRole string `json:"model_role"`
+	// The most this agent may spend in a day, checked before each run's key is issued.
+	DailySpendCapUsdMicros int64 `json:"daily_spend_cap_usd_micros"`
+	// The read-only facts the agent may ask for.
+	Tools []string `json:"tools"`
+	// The actions the agent may propose.
+	Actions []string `json:"actions"`
+	Enabled bool     `json:"enabled"`
+	// The operator who last enabled or disabled the agent; absent until somebody has.
+	OwnerUserID OptUUID `json:"owner_user_id"`
+}
+
+// GetName returns the value of Name.
+func (s *PlatformAgent) GetName() string {
+	return s.Name
+}
+
+// GetPurpose returns the value of Purpose.
+func (s *PlatformAgent) GetPurpose() string {
+	return s.Purpose
+}
+
+// GetModelRole returns the value of ModelRole.
+func (s *PlatformAgent) GetModelRole() string {
+	return s.ModelRole
+}
+
+// GetDailySpendCapUsdMicros returns the value of DailySpendCapUsdMicros.
+func (s *PlatformAgent) GetDailySpendCapUsdMicros() int64 {
+	return s.DailySpendCapUsdMicros
+}
+
+// GetTools returns the value of Tools.
+func (s *PlatformAgent) GetTools() []string {
+	return s.Tools
+}
+
+// GetActions returns the value of Actions.
+func (s *PlatformAgent) GetActions() []string {
+	return s.Actions
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *PlatformAgent) GetEnabled() bool {
+	return s.Enabled
+}
+
+// GetOwnerUserID returns the value of OwnerUserID.
+func (s *PlatformAgent) GetOwnerUserID() OptUUID {
+	return s.OwnerUserID
+}
+
+// SetName sets the value of Name.
+func (s *PlatformAgent) SetName(val string) {
+	s.Name = val
+}
+
+// SetPurpose sets the value of Purpose.
+func (s *PlatformAgent) SetPurpose(val string) {
+	s.Purpose = val
+}
+
+// SetModelRole sets the value of ModelRole.
+func (s *PlatformAgent) SetModelRole(val string) {
+	s.ModelRole = val
+}
+
+// SetDailySpendCapUsdMicros sets the value of DailySpendCapUsdMicros.
+func (s *PlatformAgent) SetDailySpendCapUsdMicros(val int64) {
+	s.DailySpendCapUsdMicros = val
+}
+
+// SetTools sets the value of Tools.
+func (s *PlatformAgent) SetTools(val []string) {
+	s.Tools = val
+}
+
+// SetActions sets the value of Actions.
+func (s *PlatformAgent) SetActions(val []string) {
+	s.Actions = val
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *PlatformAgent) SetEnabled(val bool) {
+	s.Enabled = val
+}
+
+// SetOwnerUserID sets the value of OwnerUserID.
+func (s *PlatformAgent) SetOwnerUserID(val OptUUID) {
+	s.OwnerUserID = val
+}
+
+func (*PlatformAgent) setPlatformAgentEnabledRes() {}
+
+// Ref: #/components/schemas/PlatformAgentBrake
+type PlatformAgentBrake struct {
+	Reason          string    `json:"reason"`
+	EngagedAt       time.Time `json:"engaged_at"`
+	EngagedByUserID OptUUID   `json:"engaged_by_user_id"`
+}
+
+// GetReason returns the value of Reason.
+func (s *PlatformAgentBrake) GetReason() string {
+	return s.Reason
+}
+
+// GetEngagedAt returns the value of EngagedAt.
+func (s *PlatformAgentBrake) GetEngagedAt() time.Time {
+	return s.EngagedAt
+}
+
+// GetEngagedByUserID returns the value of EngagedByUserID.
+func (s *PlatformAgentBrake) GetEngagedByUserID() OptUUID {
+	return s.EngagedByUserID
+}
+
+// SetReason sets the value of Reason.
+func (s *PlatformAgentBrake) SetReason(val string) {
+	s.Reason = val
+}
+
+// SetEngagedAt sets the value of EngagedAt.
+func (s *PlatformAgentBrake) SetEngagedAt(val time.Time) {
+	s.EngagedAt = val
+}
+
+// SetEngagedByUserID sets the value of EngagedByUserID.
+func (s *PlatformAgentBrake) SetEngagedByUserID(val OptUUID) {
+	s.EngagedByUserID = val
+}
+
+func (*PlatformAgentBrake) engagePlatformAgentBrakeRes() {}
+
 // Ref: #/components/schemas/PluginContents
 type PluginContents struct {
 	Name    string                      `json:"name"`
@@ -20853,6 +21088,34 @@ func (s *RejectedSuggestion) SetBlockedReason(val SuggestionBlockedReason) {
 // SetMessage sets the value of Message.
 func (s *RejectedSuggestion) SetMessage(val string) {
 	s.Message = val
+}
+
+type ReleasePlatformAgentBrakeBadRequest Error
+
+func (*ReleasePlatformAgentBrakeBadRequest) releasePlatformAgentBrakeRes() {}
+
+// ReleasePlatformAgentBrakeNoContent is response for ReleasePlatformAgentBrake operation.
+type ReleasePlatformAgentBrakeNoContent struct{}
+
+func (*ReleasePlatformAgentBrakeNoContent) releasePlatformAgentBrakeRes() {}
+
+type ReleasePlatformAgentBrakeNotFound Error
+
+func (*ReleasePlatformAgentBrakeNotFound) releasePlatformAgentBrakeRes() {}
+
+type ReleasePlatformAgentBrakeReq struct {
+	// Why it is safe to resume. Same rule as on PUT.
+	Note string `json:"note"`
+}
+
+// GetNote returns the value of Note.
+func (s *ReleasePlatformAgentBrakeReq) GetNote() string {
+	return s.Note
+}
+
+// SetNote sets the value of Note.
+func (s *ReleasePlatformAgentBrakeReq) SetNote(val string) {
+	s.Note = val
 }
 
 type RequestAccountDeletionConflict Error
@@ -24830,6 +25093,40 @@ func (s *SetModelCallBudgetReq) SetSeconds(val int) {
 // SetReason sets the value of Reason.
 func (s *SetModelCallBudgetReq) SetReason(val string) {
 	s.Reason = val
+}
+
+type SetPlatformAgentEnabledBadRequest Error
+
+func (*SetPlatformAgentEnabledBadRequest) setPlatformAgentEnabledRes() {}
+
+type SetPlatformAgentEnabledNotFound Error
+
+func (*SetPlatformAgentEnabledNotFound) setPlatformAgentEnabledRes() {}
+
+type SetPlatformAgentEnabledReq struct {
+	Enabled bool `json:"enabled"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *SetPlatformAgentEnabledReq) GetEnabled() bool {
+	return s.Enabled
+}
+
+// GetNote returns the value of Note.
+func (s *SetPlatformAgentEnabledReq) GetNote() string {
+	return s.Note
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *SetPlatformAgentEnabledReq) SetEnabled(val bool) {
+	s.Enabled = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetPlatformAgentEnabledReq) SetNote(val string) {
+	s.Note = val
 }
 
 type SetSkillCategoryBadRequest Error

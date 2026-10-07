@@ -19,6 +19,7 @@
       "apps/platform/internal/entrypoint/wiring/trial.go",
       "apps/platform/internal/product/entitlements/doc.go",
       "apps/platform/internal/product/learning/doc.go",
+      "apps/platform/internal/product/operations/doc.go",
       "apps/platform/internal/skill/admission/doc.go",
       "apps/platform/internal/skill/delivery/doc.go",
       "apps/platform/internal/skill/discovery/doc.go",

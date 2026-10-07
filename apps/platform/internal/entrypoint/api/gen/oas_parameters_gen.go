@@ -497,6 +497,11 @@ type SetModelCallBudgetParams struct {
 	Kind string
 }
 
+// SetPlatformAgentEnabledParams is parameters of setPlatformAgentEnabled operation.
+type SetPlatformAgentEnabledParams struct {
+	Name string
+}
+
 // SetSkillCategoryParams is parameters of setSkillCategory operation.
 type SetSkillCategoryParams struct {
 	ID uuid.UUID

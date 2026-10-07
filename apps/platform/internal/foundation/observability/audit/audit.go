@@ -86,6 +86,11 @@ const (
 	ActionPublicationDelist   = "publication.delist"
 	ActionBundleVersionCreate = "bundle.version.create"
 	ActionExposureReview      = "publication.exposure.review"
+
+	ActionAgentEnable       = "platform_agent.enabled"
+	ActionAgentDisable      = "platform_agent.disabled"
+	ActionAgentBrakeEngage  = "platform_agent.brake_engaged"
+	ActionAgentBrakeRelease = "platform_agent.brake_released"
 )
 
 const ScopeOperator = "operator"
@@ -120,6 +125,8 @@ const (
 	ResourceBundle      = "bundle"
 
 	ResourceDomainEvent = "domain_event"
+
+	ResourcePlatformAgent = "platform_agent"
 )
 
 type Event struct {

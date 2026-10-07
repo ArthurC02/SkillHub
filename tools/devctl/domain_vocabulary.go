@@ -355,6 +355,13 @@ var domainVocabularies = []domainVocabulary{
 		},
 	},
 	{
+		name: "platform agent run status",
+		sources: []vocabularySource{
+			sqlColumnCheck("platform_agent_runs", "status"),
+			goConstEnum("apps/platform/internal/product/operations/runs.go", "RunStatus"),
+		},
+	},
+	{
 		name: "feedback report kind",
 		sources: []vocabularySource{
 			sqlColumnCheck("feedback_reports", "kind"),

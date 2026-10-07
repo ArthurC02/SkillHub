@@ -5,6 +5,7 @@ files:
   auth.sql: identity
   capacity.sql: capacity
   jobruns.sql: jobruns
+  operations.sql: operations
   beta.sql:
   dispatch.sql: run
   model_budget.sql: modelbudget
@@ -205,6 +206,16 @@ queries:
   ForgetUnscheduledMaintenanceJobs: jobruns
   RecordMaintenanceJobSuccess: jobruns
   ListMaintenanceJobRuns: jobruns
+
+  RegisterPlatformAgent: operations
+  ListPlatformAgents: operations
+  SetPlatformAgentEnabled: operations
+  GetPlatformAgentBrake: operations
+  EngagePlatformAgentBrake: operations
+  ReleasePlatformAgentBrake: operations
+  StartPlatformAgentRun: operations
+  GetPlatformAgentRunGate: operations
+  FinishPlatformAgentRun: operations
   GetTraceEventText: trace
   LockTraceIngestRun: trace
   NextTraceSeq: trace
@@ -218,6 +229,12 @@ scope:
   RegisterMaintenanceJobs: platform-wide
   ForgetUnscheduledMaintenanceJobs: platform-wide
   RecordMaintenanceJobSuccess: platform-wide
+  RegisterPlatformAgent: platform-wide
+  SetPlatformAgentEnabled: platform-wide
+  EngagePlatformAgentBrake: platform-wide
+  StartPlatformAgentRun: platform-wide
+  GetPlatformAgentRunGate: platform-wide
+  FinishPlatformAgentRun: platform-wide
   AdjustCreditBalance: user
   LockAccountLifecycle: user
   CreateIdentity: user
@@ -455,6 +472,9 @@ tables:
   rate_limit_buckets: httpx
   database_size_samples: capacity
   maintenance_job_runs: jobruns
+  platform_agents: operations
+  platform_agent_brake: operations
+  platform_agent_runs: operations
 
 retention:
   users: keep row stays after account purge so credit records keep their reference
@@ -514,3 +534,6 @@ retention:
   rate_limit_buckets: transient idle buckets swept by the limiter
   database_size_samples: keep one row a day
   maintenance_job_runs: keep one row per scheduled job, unscheduled jobs are forgotten
+  platform_agents: keep one row per agent defined in code
+  platform_agent_brake: transient present only while the brake is engaged
+  platform_agent_runs: archivable

@@ -16,6 +16,10 @@ export const ACTION_LABEL: Record<string, string> = {
   "dispatch.resumed": "恢復派送",
   "account.lookup": "查詢帳號",
   "credit.lookup": "查詢點數",
+  "platform_agent.enabled": "啟用平台 Agent",
+  "platform_agent.disabled": "停用平台 Agent",
+  "platform_agent.brake_engaged": "拉下 Agent 煞車",
+  "platform_agent.brake_released": "放開 Agent 煞車",
 };
 
 export const COST_KIND: Record<string, string> = {

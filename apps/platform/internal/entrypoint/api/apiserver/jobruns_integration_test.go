@@ -14,11 +14,7 @@ func TestMaintenanceJobsAreRegisteredForgottenAndTimedFromTheirLastSuccess(t *te
 	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM maintenance_job_runs`) })
 
 	if _, err := pool.Exec(ctx, `INSERT INTO maintenance_job_runs (job, period_seconds, registered_at)
-		VALUES ('retired-job', 86400, now() - interval '30 days')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `INSERT INTO maintenance_job_runs (job, period_seconds, registered_at)
-		VALUES ('weekly-job', 60, now() - interval '3 days')`); err != nil {
+		VALUES ('retired-job', 86400, now() - interval '30 days'), ('weekly-job', 60, now() - interval '3 days')`); err != nil {
 		t.Fatal(err)
 	}
 	if err := jobruns.Register(ctx, pool, []jobruns.Job{

@@ -535,6 +535,35 @@ type OutboxEvent struct {
 	NextDeliveryAt   pgtype.Timestamptz
 }
 
+type PlatformAgent struct {
+	ID                  pgtype.UUID
+	Name                string
+	Purpose             string
+	ModelRole           string
+	DailySpendCapMicros int64
+	Tools               []string
+	Actions             []string
+	Enabled             bool
+	OwnerID             pgtype.UUID
+	RegisteredAt        pgtype.Timestamptz
+}
+
+type PlatformAgentBrake struct {
+	Engaged   bool
+	EngagedBy pgtype.UUID
+	EngagedAt pgtype.Timestamptz
+	Reason    string
+}
+
+type PlatformAgentRun struct {
+	ID         pgtype.UUID
+	AgentID    pgtype.UUID
+	Status     string
+	StartedAt  pgtype.Timestamptz
+	FinishedAt pgtype.Timestamptz
+	Reason     *string
+}
+
 type Publication struct {
 	ID              pgtype.UUID
 	PublisherID     pgtype.UUID

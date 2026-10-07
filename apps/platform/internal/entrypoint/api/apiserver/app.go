@@ -24,6 +24,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/activity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
@@ -346,6 +347,7 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 			RunsInWorkspace: runSvc.RunsInWorkspace,
 		},
 		OperatorAudit: &operatorAuditHandler{DB: cfg.Pool},
+		Agents:        &operations.Handler{Svc: &operations.Service{Pool: cfg.Pool}, Actor: sessionActorID},
 		Trends: &trendsHandler{
 			Credits:            &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
 			DailyRuns:          runSvc.DailyRuns,

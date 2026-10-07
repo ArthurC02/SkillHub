@@ -239,6 +239,11 @@ import {
     DownloadArtifactToJSON,
 } from '../models/DownloadArtifact';
 import {
+    type EngagePlatformAgentBrakeRequest,
+    EngagePlatformAgentBrakeRequestFromJSON,
+    EngagePlatformAgentBrakeRequestToJSON,
+} from '../models/EngagePlatformAgentBrakeRequest';
+import {
     type Evaluation,
     EvaluationFromJSON,
     EvaluationToJSON,
@@ -399,6 +404,11 @@ import {
     ListPackagingTargets200ResponseToJSON,
 } from '../models/ListPackagingTargets200Response';
 import {
+    type ListPlatformAgents200Response,
+    ListPlatformAgents200ResponseFromJSON,
+    ListPlatformAgents200ResponseToJSON,
+} from '../models/ListPlatformAgents200Response';
+import {
     type ListRunArtifacts200Response,
     ListRunArtifacts200ResponseFromJSON,
     ListRunArtifacts200ResponseToJSON,
@@ -454,6 +464,16 @@ import {
     PackagingTargetIdToJSON,
 } from '../models/PackagingTargetId';
 import {
+    type PlatformAgent,
+    PlatformAgentFromJSON,
+    PlatformAgentToJSON,
+} from '../models/PlatformAgent';
+import {
+    type PlatformAgentBrake,
+    PlatformAgentBrakeFromJSON,
+    PlatformAgentBrakeToJSON,
+} from '../models/PlatformAgentBrake';
+import {
     type PublicPublication,
     PublicPublicationFromJSON,
     PublicPublicationToJSON,
@@ -493,6 +513,11 @@ import {
     RegisterPublisherRequestFromJSON,
     RegisterPublisherRequestToJSON,
 } from '../models/RegisterPublisherRequest';
+import {
+    type ReleasePlatformAgentBrakeRequest,
+    ReleasePlatformAgentBrakeRequestFromJSON,
+    ReleasePlatformAgentBrakeRequestToJSON,
+} from '../models/ReleasePlatformAgentBrakeRequest';
 import {
     type ReviewExposureRequest,
     ReviewExposureRequestFromJSON,
@@ -538,6 +563,11 @@ import {
     SetModelCallBudgetRequestFromJSON,
     SetModelCallBudgetRequestToJSON,
 } from '../models/SetModelCallBudgetRequest';
+import {
+    type SetPlatformAgentEnabledRequest,
+    SetPlatformAgentEnabledRequestFromJSON,
+    SetPlatformAgentEnabledRequestToJSON,
+} from '../models/SetPlatformAgentEnabledRequest';
 import {
     type SetSkillCategoryRequest,
     SetSkillCategoryRequestFromJSON,
@@ -937,6 +967,13 @@ export interface DownloadArtifactContentRequest {
      * 
      */
     artifactId: string;
+}
+
+export interface EngagePlatformAgentBrakeOperationRequest {
+    /**
+     * 
+     */
+    engagePlatformAgentBrakeRequest: EngagePlatformAgentBrakeRequest;
 }
 
 export interface ExportBundleRequest {
@@ -1491,6 +1528,13 @@ export interface RegisterPublisherOperationRequest {
     registerPublisherRequest: RegisterPublisherRequest;
 }
 
+export interface ReleasePlatformAgentBrakeOperationRequest {
+    /**
+     * 
+     */
+    releasePlatformAgentBrakeRequest: ReleasePlatformAgentBrakeRequest;
+}
+
 export interface ReviewExposureOperationRequest {
     /**
      * 
@@ -1557,6 +1601,17 @@ export interface SetModelCallBudgetOperationRequest {
      * 
      */
     setModelCallBudgetRequest: SetModelCallBudgetRequest;
+}
+
+export interface SetPlatformAgentEnabledOperationRequest {
+    /**
+     * 
+     */
+    name: string;
+    /**
+     * 
+     */
+    setPlatformAgentEnabledRequest: SetPlatformAgentEnabledRequest;
 }
 
 export interface SetSkillCategoryOperationRequest {
@@ -2417,6 +2472,30 @@ export interface DefaultApiInterface {
      * The package bytes themselves (PACK-001)
      */
     downloadArtifactContent(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob>;
+
+    /**
+     * Creates request options for engagePlatformAgentBrake without sending the request
+     * @param {EngagePlatformAgentBrakeRequest} engagePlatformAgentBrakeRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    engagePlatformAgentBrakeRequestOpts(requestParameters: EngagePlatformAgentBrakeOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. No agent starts, and every run in progress ends as stopped before its next step. Re-engaging rewrites the reason. Writes the brake and its audit event in one transaction. 
+     * @summary Stop every platform agent (02:OPS-011)
+     * @param {EngagePlatformAgentBrakeRequest} engagePlatformAgentBrakeRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    engagePlatformAgentBrakeRaw(requestParameters: EngagePlatformAgentBrakeOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformAgentBrake>>;
+
+    /**
+     * Operator only. No agent starts, and every run in progress ends as stopped before its next step. Re-engaging rewrites the reason. Writes the brake and its audit event in one transaction. 
+     * Stop every platform agent (02:OPS-011)
+     */
+    engagePlatformAgentBrake(requestParameters: EngagePlatformAgentBrakeOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgentBrake>;
 
     /**
      * Creates request options for exportBundle without sending the request
@@ -3710,6 +3789,28 @@ export interface DefaultApiInterface {
     listPackagingTargets(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPackagingTargets200Response>;
 
     /**
+     * Creates request options for listPlatformAgents without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listPlatformAgentsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. One row per agent the platform defines, with what it may read and propose, its model role and its daily spend cap. `brake` is present while the global agent brake is engaged; no agent starts or takes another step until it is released. 
+     * @summary The platform\'s own agents and whether they may run (02:OPS-011)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listPlatformAgentsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgents200Response>>;
+
+    /**
+     * Operator only. One row per agent the platform defines, with what it may read and propose, its model role and its daily spend cap. `brake` is present while the global agent brake is engaged; no agent starts or takes another step until it is released. 
+     * The platform\'s own agents and whether they may run (02:OPS-011)
+     */
+    listPlatformAgents(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgents200Response>;
+
+    /**
      * Creates request options for listRunArtifacts without sending the request
      * @param {string} id 
      * @throws {RequiredError}
@@ -4106,6 +4207,30 @@ export interface DefaultApiInterface {
     registerPublisher(requestParameters: RegisterPublisherOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publisher>;
 
     /**
+     * Creates request options for releasePlatformAgentBrake without sending the request
+     * @param {ReleasePlatformAgentBrakeRequest} releasePlatformAgentBrakeRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    releasePlatformAgentBrakeRequestOpts(requestParameters: ReleasePlatformAgentBrakeOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Runs stopped by the brake stay stopped; enabled agents start again on their next schedule. Releasing a brake that is not engaged answers 204 and writes no audit event. 
+     * @summary Let enabled agents run again (02:OPS-011)
+     * @param {ReleasePlatformAgentBrakeRequest} releasePlatformAgentBrakeRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    releasePlatformAgentBrakeRaw(requestParameters: ReleasePlatformAgentBrakeOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Operator only. Runs stopped by the brake stay stopped; enabled agents start again on their next schedule. Releasing a brake that is not engaged answers 204 and writes no audit event. 
+     * Let enabled agents run again (02:OPS-011)
+     */
+    releasePlatformAgentBrake(requestParameters: ReleasePlatformAgentBrakeOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for requestAccountDeletion without sending the request
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -4282,6 +4407,32 @@ export interface DefaultApiInterface {
      * Set how long one model call may run (02:OPS-009)
      */
     setModelCallBudget(requestParameters: SetModelCallBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ModelCallBudget>;
+
+    /**
+     * Creates request options for setPlatformAgentEnabled without sending the request
+     * @param {string} name 
+     * @param {SetPlatformAgentEnabledRequest} setPlatformAgentEnabledRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setPlatformAgentEnabledRequestOpts(requestParameters: SetPlatformAgentEnabledOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. The operator who decides becomes the agent\'s responsible operator. Disabling takes effect before the agent\'s next step: a run in progress ends as stopped. Writes the change and its audit event in one transaction. 
+     * @summary Enable or disable one agent (02:OPS-011)
+     * @param {string} name 
+     * @param {SetPlatformAgentEnabledRequest} setPlatformAgentEnabledRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setPlatformAgentEnabledRaw(requestParameters: SetPlatformAgentEnabledOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformAgent>>;
+
+    /**
+     * Operator only. The operator who decides becomes the agent\'s responsible operator. Disabling takes effect before the agent\'s next step: a run in progress ends as stopped. Writes the change and its audit event in one transaction. 
+     * Enable or disable one agent (02:OPS-011)
+     */
+    setPlatformAgentEnabled(requestParameters: SetPlatformAgentEnabledOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgent>;
 
     /**
      * Creates request options for setSkillCategory without sending the request
@@ -6131,6 +6282,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async downloadArtifactContent(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
         const response = await this.downloadArtifactContentRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for engagePlatformAgentBrake without sending the request
+     */
+    async engagePlatformAgentBrakeRequestOpts(requestParameters: EngagePlatformAgentBrakeOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['engagePlatformAgentBrakeRequest'] == null) {
+            throw new runtime.RequiredError(
+                'engagePlatformAgentBrakeRequest',
+                'Required parameter "engagePlatformAgentBrakeRequest" was null or undefined when calling engagePlatformAgentBrake().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/agents/brake`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: EngagePlatformAgentBrakeRequestToJSON(requestParameters['engagePlatformAgentBrakeRequest']),
+        };
+    }
+
+    /**
+     * Operator only. No agent starts, and every run in progress ends as stopped before its next step. Re-engaging rewrites the reason. Writes the brake and its audit event in one transaction. 
+     * Stop every platform agent (02:OPS-011)
+     */
+    async engagePlatformAgentBrakeRaw(requestParameters: EngagePlatformAgentBrakeOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformAgentBrake>> {
+        const requestOptions = await this.engagePlatformAgentBrakeRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformAgentBrakeFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. No agent starts, and every run in progress ends as stopped before its next step. Re-engaging rewrites the reason. Writes the brake and its audit event in one transaction. 
+     * Stop every platform agent (02:OPS-011)
+     */
+    async engagePlatformAgentBrake(requestParameters: EngagePlatformAgentBrakeOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgentBrake> {
+        const response = await this.engagePlatformAgentBrakeRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -8597,6 +8797,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for listPlatformAgents without sending the request
+     */
+    async listPlatformAgentsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/agents`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. One row per agent the platform defines, with what it may read and propose, its model role and its daily spend cap. `brake` is present while the global agent brake is engaged; no agent starts or takes another step until it is released. 
+     * The platform\'s own agents and whether they may run (02:OPS-011)
+     */
+    async listPlatformAgentsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgents200Response>> {
+        const requestOptions = await this.listPlatformAgentsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListPlatformAgents200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. One row per agent the platform defines, with what it may read and propose, its model role and its daily spend cap. `brake` is present while the global agent brake is engaged; no agent starts or takes another step until it is released. 
+     * The platform\'s own agents and whether they may run (02:OPS-011)
+     */
+    async listPlatformAgents(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgents200Response> {
+        const response = await this.listPlatformAgentsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listRunArtifacts without sending the request
      */
     async listRunArtifactsRequestOpts(requestParameters: ListRunArtifactsRequest): Promise<runtime.RequestOpts> {
@@ -9384,6 +9623,54 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for releasePlatformAgentBrake without sending the request
+     */
+    async releasePlatformAgentBrakeRequestOpts(requestParameters: ReleasePlatformAgentBrakeOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['releasePlatformAgentBrakeRequest'] == null) {
+            throw new runtime.RequiredError(
+                'releasePlatformAgentBrakeRequest',
+                'Required parameter "releasePlatformAgentBrakeRequest" was null or undefined when calling releasePlatformAgentBrake().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/agents/brake`;
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ReleasePlatformAgentBrakeRequestToJSON(requestParameters['releasePlatformAgentBrakeRequest']),
+        };
+    }
+
+    /**
+     * Operator only. Runs stopped by the brake stay stopped; enabled agents start again on their next schedule. Releasing a brake that is not engaged answers 204 and writes no audit event. 
+     * Let enabled agents run again (02:OPS-011)
+     */
+    async releasePlatformAgentBrakeRaw(requestParameters: ReleasePlatformAgentBrakeOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.releasePlatformAgentBrakeRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Operator only. Runs stopped by the brake stay stopped; enabled agents start again on their next schedule. Releasing a brake that is not engaged answers 204 and writes no audit event. 
+     * Let enabled agents run again (02:OPS-011)
+     */
+    async releasePlatformAgentBrake(requestParameters: ReleasePlatformAgentBrakeOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.releasePlatformAgentBrakeRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for requestAccountDeletion without sending the request
      */
     async requestAccountDeletionRequestOpts(): Promise<runtime.RequestOpts> {
@@ -9758,6 +10045,63 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async setModelCallBudget(requestParameters: SetModelCallBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ModelCallBudget> {
         const response = await this.setModelCallBudgetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setPlatformAgentEnabled without sending the request
+     */
+    async setPlatformAgentEnabledRequestOpts(requestParameters: SetPlatformAgentEnabledOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['name'] == null) {
+            throw new runtime.RequiredError(
+                'name',
+                'Required parameter "name" was null or undefined when calling setPlatformAgentEnabled().'
+            );
+        }
+
+        if (requestParameters['setPlatformAgentEnabledRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setPlatformAgentEnabledRequest',
+                'Required parameter "setPlatformAgentEnabledRequest" was null or undefined when calling setPlatformAgentEnabled().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/agents/{name}/enabled`;
+        urlPath = urlPath.replace('{name}', encodeURIComponent(String(requestParameters['name'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetPlatformAgentEnabledRequestToJSON(requestParameters['setPlatformAgentEnabledRequest']),
+        };
+    }
+
+    /**
+     * Operator only. The operator who decides becomes the agent\'s responsible operator. Disabling takes effect before the agent\'s next step: a run in progress ends as stopped. Writes the change and its audit event in one transaction. 
+     * Enable or disable one agent (02:OPS-011)
+     */
+    async setPlatformAgentEnabledRaw(requestParameters: SetPlatformAgentEnabledOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformAgent>> {
+        const requestOptions = await this.setPlatformAgentEnabledRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformAgentFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. The operator who decides becomes the agent\'s responsible operator. Disabling takes effect before the agent\'s next step: a run in progress ends as stopped. Writes the change and its audit event in one transaction. 
+     * Enable or disable one agent (02:OPS-011)
+     */
+    async setPlatformAgentEnabled(requestParameters: SetPlatformAgentEnabledOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgent> {
+        const response = await this.setPlatformAgentEnabledRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

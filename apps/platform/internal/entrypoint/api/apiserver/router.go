@@ -9,6 +9,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
@@ -42,6 +43,8 @@ type Deps struct {
 	OperatorAudit *operatorAuditHandler
 
 	ModelBudgets *modelbudget.Handler
+
+	Agents *operations.Handler
 
 	Trends *trendsHandler
 
@@ -205,6 +208,10 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /admin/model-budgets", auth.RequireOperator(d.ModelBudgets.List))
 	mux.HandleFunc("PUT /admin/model-budgets/{kind}", auth.RequireOperator(d.ModelBudgets.Set))
 	mux.HandleFunc("DELETE /admin/model-budgets/{kind}", auth.RequireOperator(d.ModelBudgets.Clear))
+	mux.HandleFunc("GET /admin/agents", auth.RequireOperator(d.Agents.List))
+	mux.HandleFunc("PUT /admin/agents/{name}/enabled", auth.RequireOperator(d.Agents.SetEnabled))
+	mux.HandleFunc("PUT /admin/agents/brake", auth.RequireOperator(d.Agents.EngageBrake))
+	mux.HandleFunc("DELETE /admin/agents/brake", auth.RequireOperator(d.Agents.ReleaseBrake))
 	mux.HandleFunc("GET /admin/trends/runs", auth.RequireOperator(d.Trends.Runs))
 	mux.HandleFunc("GET /admin/trends/funnel", auth.RequireOperator(d.Trends.Funnel))
 	mux.HandleFunc("GET /admin/trends/operator-actions", auth.RequireOperator(d.Trends.OperatorActions))

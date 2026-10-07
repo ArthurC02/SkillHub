@@ -1,0 +1,36 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "operations-owns-platform-agents",
+  "status": "draft",
+  "intent": "Operators decide which of the platform's own agents may run, and can stop one agent or all of them before their next step.",
+  "actor": "Operator responsible for the platform's agents",
+  "observable_outcome": "Each agent defined in code is registered disabled; an operator enables or disables it and engages or releases a global brake, every change is audited, and a run in progress ends as stopped before its next step once its agent is disabled or braked.",
+  "acceptance_criteria": [
+    {
+      "id": "agent-runs-only-when-enabled",
+      "statement": "A registered agent starts no run until an operator enables it; disabling it stops a run in progress before its next step, and a stopped run never takes another step."
+    },
+    {
+      "id": "brake-stops-every-agent",
+      "statement": "While the global brake is engaged no agent starts and every run in progress stops before its next step; releasing it lets enabled agents start again."
+    },
+    {
+      "id": "operator-only-and-audited",
+      "statement": "Only an operator can list agents, enable, disable, engage or release the brake; each change needs a note and writes an audit event naming the operator."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/product/operations/doc.go",
+    "apps/platform/internal/product/operations/agents.go",
+    "apps/platform/internal/product/operations/runs.go",
+    "apps/platform/internal/product/operations/handler.go",
+    "db/migrations/0109_platform_agents.sql",
+    "docs/adr/ADR-028-platform-agents.md"
+  ]
+}

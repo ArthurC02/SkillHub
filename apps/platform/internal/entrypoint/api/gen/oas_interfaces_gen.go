@@ -113,6 +113,10 @@ type DownloadArtifactContentRes interface {
 	downloadArtifactContentRes()
 }
 
+type EngagePlatformAgentBrakeRes interface {
+	engagePlatformAgentBrakeRes()
+}
+
 type ExportBundleRes interface {
 	exportBundleRes()
 }
@@ -321,6 +325,10 @@ type ListPackagingTargetsRes interface {
 	listPackagingTargetsRes()
 }
 
+type ListPlatformAgentsRes interface {
+	listPlatformAgentsRes()
+}
+
 type ListRunArtifactsRes interface {
 	listRunArtifactsRes()
 }
@@ -377,6 +385,10 @@ type RegisterPublisherRes interface {
 	registerPublisherRes()
 }
 
+type ReleasePlatformAgentBrakeRes interface {
+	releasePlatformAgentBrakeRes()
+}
+
 type RequestAccountDeletionRes interface {
 	requestAccountDeletionRes()
 }
@@ -403,6 +415,10 @@ type SetEvaluationFeedbackRes interface {
 
 type SetModelCallBudgetRes interface {
 	setModelCallBudgetRes()
+}
+
+type SetPlatformAgentEnabledRes interface {
+	setPlatformAgentEnabledRes()
 }
 
 type SetSkillCategoryRes interface {
