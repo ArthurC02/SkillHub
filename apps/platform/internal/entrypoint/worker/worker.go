@@ -10,6 +10,7 @@ import (
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/jobruns"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/jackc/pgx/v5"
@@ -294,7 +295,7 @@ func addGaugePublishers(set *Set, workers *river.Workers, outboxWorker *outbox.W
 
 func addCapacityObserver(set *Set, workers *river.Workers, store capacity.Store) {
 	addWorker(set, workers, &CapacitySampleWorker{Store: store})
-	set.Gauges = append(set.Gauges, store.PublishGauges)
+	set.Gauges = append(set.Gauges, store.PublishGauges, jobruns.PublishGauges(store.Pool))
 }
 
 func connectQueue(set *Set, client *river.Client[pgx.Tx]) {

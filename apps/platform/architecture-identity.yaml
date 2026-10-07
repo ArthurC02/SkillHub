@@ -32,6 +32,9 @@ packages:
   - id: capacity
     kind: Generic
     path: foundation/observability/capacity
+  - id: jobruns
+    kind: Generic
+    path: foundation/observability/jobruns
   - id: partition
     kind: Generic
     path: foundation/persistence/partition

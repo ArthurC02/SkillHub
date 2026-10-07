@@ -487,6 +487,13 @@ type GenerationLease struct {
 	ExpiresAt   pgtype.Timestamptz
 }
 
+type MaintenanceJobRun struct {
+	Job           string
+	PeriodSeconds int32
+	RegisteredAt  pgtype.Timestamptz
+	SucceededAt   pgtype.Timestamptz
+}
+
 // An operator-set per-call ceiling for one model endpoint (02:OPS-009). An absent row means the compiled default. Which kinds exist, and how far below the compiled deadline a value may sit, are decided in Go; this table stores a number and who set it.
 type ModelCallBudget struct {
 	Kind    string

@@ -4,6 +4,7 @@ files:
   cost.sql: credit
   auth.sql: identity
   capacity.sql: capacity
+  jobruns.sql: jobruns
   beta.sql:
   dispatch.sql: run
   model_budget.sql: modelbudget
@@ -199,6 +200,11 @@ queries:
 
   RecordDatabaseSize: capacity
   ListDatabaseSizesSince: capacity
+
+  RegisterMaintenanceJobs: jobruns
+  ForgetUnscheduledMaintenanceJobs: jobruns
+  RecordMaintenanceJobSuccess: jobruns
+  ListMaintenanceJobRuns: jobruns
   GetTraceEventText: trace
   LockTraceIngestRun: trace
   NextTraceSeq: trace
@@ -209,6 +215,9 @@ scope:
   SweepRateLimitBuckets: platform-wide
   RecordDatabaseSize: platform-wide
   ListDatabaseSizesSince: platform-wide
+  RegisterMaintenanceJobs: platform-wide
+  ForgetUnscheduledMaintenanceJobs: platform-wide
+  RecordMaintenanceJobSuccess: platform-wide
   AdjustCreditBalance: user
   LockAccountLifecycle: user
   CreateIdentity: user
@@ -445,6 +454,7 @@ tables:
   outbox_events: outbox
   rate_limit_buckets: httpx
   database_size_samples: capacity
+  maintenance_job_runs: jobruns
 
 retention:
   users: keep row stays after account purge so credit records keep their reference
@@ -503,3 +513,4 @@ retention:
   outbox_events: expire published events after seven days, dead letters stay
   rate_limit_buckets: transient idle buckets swept by the limiter
   database_size_samples: keep one row a day
+  maintenance_job_runs: keep one row per scheduled job, unscheduled jobs are forgotten

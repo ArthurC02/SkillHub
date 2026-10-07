@@ -359,6 +359,17 @@ groups:
           description: >-
             這個值由 worker 每分鐘從每日樣本算出；series 不存在＝worker 沒有在跑，或讀不到資料庫。
 
+      - alert: MaintenanceJobOverdue
+        expr: skillhub_maintenance_overdue_ratio > 2
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "維運工作 {{ $labels.job }} 已超過兩個週期沒有成功"
+          description: >-
+            `maintenance {{ $labels.job }}` 由 systemd timer 觸發；先查那個 timer 是否啟用、上一次執行的 journal。
+            從沒成功過的工作從它第一次被登記起算。清除類工作不跑，保存期限就只是一句承諾。
+
       - alert: SourceChecksStale
         expr: skillhub_backlog_oldest_seconds{backlog="source_checks"} > 2 * 86400
         for: 1h

@@ -730,6 +730,7 @@ linters:
             - "**/internal/foundation/messaging/queue/**"
             - "**/internal/foundation/storage/objstore/**"
             - "**/internal/foundation/observability/capacity/**"
+            - "**/internal/foundation/observability/jobruns/**"
             - "**/internal/foundation/observability/metrics/**"
             - "**/internal/foundation/persistence/partition/**"
             - "**/internal/foundation/persistence/pgconv/**"
