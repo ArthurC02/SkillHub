@@ -14,7 +14,7 @@
 
 ## Proposal and approvals
 
-產品裁定「恢復派送」只解除所見那筆，過期即拒絕；舊呼叫端缺前提也拒絕，不維持危險的無條件解除。`dispatch-halt-stale-lift` 仍是 draft，需 developer 審查；repo 外已部署的 operator 呼叫端須在發佈前盤點與通知。
+產品裁定「恢復派送」只解除所見那筆，過期即拒絕；舊呼叫端缺前提也拒絕，不維持危險的無條件解除。`dispatch-halt-stale-lift` 已提交 developer 審查，尚未核准；repo 外已部署的 operator 呼叫端須在發佈前盤點與通知。
 
 ## Contract impact
 

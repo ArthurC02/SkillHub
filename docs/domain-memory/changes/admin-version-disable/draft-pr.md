@@ -16,7 +16,7 @@ Registry 擁有版本與停用事實，Run 擁有新 Run 的建立與生命週�
 
 ## Proposal and approvals
 
-`admin-version-disable` 目前是 draft，未提交審查、未獲 developer 核准，也未升格 Registry 記錄。產品選擇已寫入規格，但本文件不得當成已核准的實作交接。
+`admin-version-disable` 已提交 developer 審查，尚未核准，也未升格 Registry 記錄。產品選擇已寫入規格，但本文件不得當成已核准的實作交接。
 
 ## Contract impact
 

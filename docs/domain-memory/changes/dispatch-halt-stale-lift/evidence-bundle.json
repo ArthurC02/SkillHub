@@ -2,7 +2,10 @@
   "format": "domain-evidence-bundle/v1",
   "requirement_id": "SEC-012-stale-halt-lift",
   "proposal_id": "dispatch-halt-stale-lift",
-  "registry_revision": null,
+  "registry_revision": {
+    "observed_commit": "a012c28e28a7754ab7fea74c18ba16ebcdcf048d",
+    "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+  },
   "approvals": [],
   "scm_attestation": null,
   "counterfactual_check": null,
@@ -19,7 +22,7 @@
   "architecture_checks": [],
   "security_checks": [],
   "residual_risks": [
-    "產品已裁定拒絕過期解除，但 developer 尚未審查本 Change Package；draft 不授權實作。",
+    "產品已裁定拒絕過期解除，但 developer 尚未核准本 Change Package；submitted 不授權實作。",
     "必填 API 前提會拒絕 repo 外尚未更新的 operator 呼叫端；其部署與使用情況未知，須在發佈前通知與確認。",
     "尚未實作或執行反證測試，本草案不代表保護已生效。"
   ]

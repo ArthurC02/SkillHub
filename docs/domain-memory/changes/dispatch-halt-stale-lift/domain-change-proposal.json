@@ -3,15 +3,20 @@
   "proposal_id": "dispatch-halt-stale-lift",
   "proposer": "coding-agent",
   "requirement_id": "SEC-012-stale-halt-lift",
-  "status": "draft",
+  "status": "submitted",
   "change_classification": "material",
-  "submitted_at": null,
+  "submitted_at": "2026-10-07T14:18:50.647945Z",
   "verified_at": null,
   "finalized_at": null,
   "applied_at": null,
   "proposal_revision": 1,
-  "base_registry_revision": null,
-  "affected_contexts": ["run"],
+  "base_registry_revision": {
+    "observed_commit": "a012c28e28a7754ab7fea74c18ba16ebcdcf048d",
+    "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+  },
+  "affected_contexts": [
+    "run"
+  ],
   "rule_ids": [],
   "contract_ids": [],
   "ownership_decision": {
@@ -68,7 +73,10 @@
     "breaking": true
   },
   "registry_updates": [],
-  "risk_flags": ["public_contract", "irreversible_change"],
+  "risk_flags": [
+    "public_contract",
+    "irreversible_change"
+  ],
   "open_questions": [],
   "approvals": []
 }

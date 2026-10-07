@@ -3,15 +3,21 @@
   "proposal_id": "admin-version-disable",
   "proposer": "coding-agent",
   "requirement_id": "SEC-011-version-disable",
-  "status": "draft",
+  "status": "submitted",
   "change_classification": "material",
-  "submitted_at": null,
+  "submitted_at": "2026-10-07T14:18:46.356807Z",
   "verified_at": null,
   "finalized_at": null,
   "applied_at": null,
   "proposal_revision": 1,
-  "base_registry_revision": null,
-  "affected_contexts": ["registry", "run"],
+  "base_registry_revision": {
+    "observed_commit": "a012c28e28a7754ab7fea74c18ba16ebcdcf048d",
+    "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+  },
+  "affected_contexts": [
+    "registry",
+    "run"
+  ],
   "rule_ids": [],
   "contract_ids": [],
   "ownership_decision": {
@@ -53,7 +59,16 @@
       "用事件最終一致地更新 Run 側狀態：停用提交後仍有接受新 Run 的時間窗。"
     ],
     "proof_obligations": [
-      "disable-authority", "disable-admission", "disable-race", "disable-history", "disable-audit", "disable-guidance", "disable-repeat", "disable-owner-boundary", "disable-contract", "disable-owner-contract"
+      "disable-authority",
+      "disable-admission",
+      "disable-race",
+      "disable-history",
+      "disable-audit",
+      "disable-guidance",
+      "disable-repeat",
+      "disable-owner-boundary",
+      "disable-contract",
+      "disable-owner-contract"
     ],
     "counterfactual_check": "暫時移除 Run 建立交易內的 Registry 停用判定，執行停用後建立及並行建立的整合測試，確認斷言失敗；還原後重跑並確認檔案回復原狀。"
   },
@@ -63,7 +78,12 @@
     "breaking": false
   },
   "registry_updates": [],
-  "risk_flags": ["cross_context", "public_contract", "sensitive_data", "irreversible_change"],
+  "risk_flags": [
+    "cross_context",
+    "public_contract",
+    "sensitive_data",
+    "irreversible_change"
+  ],
   "open_questions": [],
   "approvals": []
 }

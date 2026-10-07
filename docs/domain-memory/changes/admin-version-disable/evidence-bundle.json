@@ -2,7 +2,10 @@
   "format": "domain-evidence-bundle/v1",
   "requirement_id": "SEC-011-version-disable",
   "proposal_id": "admin-version-disable",
-  "registry_revision": null,
+  "registry_revision": {
+    "observed_commit": "a012c28e28a7754ab7fea74c18ba16ebcdcf048d",
+    "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+  },
   "approvals": [],
   "scm_attestation": null,
   "counterfactual_check": null,
@@ -15,7 +18,7 @@
   "architecture_checks": [],
   "security_checks": [],
   "residual_risks": [
-    "不可恢復與最小 metadata 已裁定，但 developer 尚未審查本 Change Package；draft 不授權實作不可逆動作。",
+    "不可恢復與最小 metadata 已裁定，但 developer 尚未核准本 Change Package；submitted 不授權實作不可逆動作。",
     "尚無實作與測試結果；本包只供審查，不表示 SEC-011 已完成。"
   ]
 }
