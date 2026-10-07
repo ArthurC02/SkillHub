@@ -6,10 +6,19 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { AdminPage } from "../components/AdminPage";
 import { GovernanceRow } from "./components/GovernanceRow";
 import { GovernanceActions } from "./components/GovernanceActions";
+import { VersionDisable } from "./components/VersionDisable";
 
 export function AdminSkills() {
   const { q = "" } = useSearch({ from: "/admin/skills" });
-  return <SkillSearch key={q} q={q} />;
+  return (
+    <AdminPage
+      heading="小工具治理"
+      lede="範圍是所有工作區，含私人的與已下架的；只顯示治理狀態，不顯示內容。"
+    >
+      <SkillSearch key={q} q={q} />
+      <VersionDisable />
+    </AdminPage>
+  );
 }
 
 function SkillSearch({ q }: { q: string }) {
@@ -21,10 +30,8 @@ function SkillSearch({ q }: { q: string }) {
   const showResult = queryMatches && !refreshing && (!skills.error || skills.isFetchNextPageError);
 
   return (
-    <AdminPage
-      heading="小工具治理"
-      lede="範圍是所有工作區，含私人的與已下架的；只顯示治理狀態，不顯示內容。"
-    >
+    <section aria-labelledby="admin-skill-search-heading">
+      <h2 id="admin-skill-search-heading">依名稱或 ID 查小工具</h2>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -66,7 +73,7 @@ function SkillSearch({ q }: { q: string }) {
           onMore={() => void skills.fetchNextPage()}
         />
       )}
-    </AdminPage>
+    </section>
   );
 }
 

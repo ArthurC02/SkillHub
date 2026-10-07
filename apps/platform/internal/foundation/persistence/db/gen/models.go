@@ -763,6 +763,11 @@ type SkillVersion struct {
 	SourcePath    string
 }
 
+type SkillVersionDisable struct {
+	SkillVersionID pgtype.UUID
+	DisabledAt     pgtype.Timestamptz
+}
+
 type TestCase struct {
 	ID                 pgtype.UUID
 	WorkspaceID        pgtype.UUID

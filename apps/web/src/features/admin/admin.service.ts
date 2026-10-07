@@ -37,6 +37,12 @@ export type SkillGovernance = {
   takedown_reason: string | null;
 };
 
+export type OperatorVersionStatus = {
+  version_id: string;
+  version_number: number;
+  disabled: boolean;
+};
+
 export type DispatchHalt = {
   target: string;
   halt_id: string;
@@ -193,6 +199,37 @@ export function useGovernance(q: string) {
       ),
     getNextPageParam: (last) => last.next_offset,
     enabled: useOperator() && q !== "",
+  });
+}
+
+export function useOperatorVersion(versionId: string) {
+  return useQuery({
+    queryKey: queryKeys.admin.version(versionId),
+    queryFn: () => apiFetch<OperatorVersionStatus>(`/admin/versions/${versionId}`),
+    enabled: useOperator() && versionId !== "",
+  });
+}
+
+export function useDisableVersion(versionId: string) {
+  const queryClient = useQueryClient();
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.version(versionId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.lab.preflights }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.auditLog }),
+    ]);
+  };
+  return useMutation({
+    mutationFn: (reason: string) =>
+      apiFetch<OperatorVersionStatus>(
+        `/admin/versions/${versionId}/disable`,
+        send("PUT", { reason }),
+      ),
+    onSuccess: refresh,
+    onError: (error) => {
+      if ((error instanceof ApiError && error.status === 409) || isUncertainWriteFailure(error))
+        return refresh();
+    },
   });
 }
 

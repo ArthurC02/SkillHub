@@ -26,6 +26,8 @@ export const SCRIPT_LABEL: Record<PreflightSummary["scripts"]["status"], string>
 };
 
 export const BLOCKED_SENTENCE: Record<NonNullable<PreflightResponse["blocked"]>, string> = {
+  version_disabled:
+    "這個小工具版本已由平台停用，不能建立新的 Run；既有 Run 不受影響。請改用新版本。",
   access_restricted:
     "這個小工具的來源授權還在審查中,審查期間不能試跑。授權審查完成後這一頁就會讓你開始。",
   capability_mismatch:

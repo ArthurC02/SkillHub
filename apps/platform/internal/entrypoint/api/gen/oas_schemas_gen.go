@@ -1682,17 +1682,18 @@ type ClearModelCallBudgetNotFound Error
 
 func (*ClearModelCallBudgetNotFound) clearModelCallBudgetRes() {}
 
-type ClearModelCallBudgetReq struct {
+// Ref: #/components/schemas/ClearModelCallBudgetRequest
+type ClearModelCallBudgetRequest struct {
 	Reason string `json:"reason"`
 }
 
 // GetReason returns the value of Reason.
-func (s *ClearModelCallBudgetReq) GetReason() string {
+func (s *ClearModelCallBudgetRequest) GetReason() string {
 	return s.Reason
 }
 
 // SetReason sets the value of Reason.
-func (s *ClearModelCallBudgetReq) SetReason(val string) {
+func (s *ClearModelCallBudgetRequest) SetReason(val string) {
 	s.Reason = val
 }
 
@@ -6589,6 +6590,33 @@ type DiffSkillVersionsUnauthorized Error
 
 func (*DiffSkillVersionsUnauthorized) diffSkillVersionsRes() {}
 
+type DisableSkillVersionBadRequest Error
+
+func (*DisableSkillVersionBadRequest) disableSkillVersionRes() {}
+
+type DisableSkillVersionConflict Error
+
+func (*DisableSkillVersionConflict) disableSkillVersionRes() {}
+
+type DisableSkillVersionNotFound Error
+
+func (*DisableSkillVersionNotFound) disableSkillVersionRes() {}
+
+// Ref: #/components/schemas/DisableSkillVersionRequest
+type DisableSkillVersionRequest struct {
+	Reason string `json:"reason"`
+}
+
+// GetReason returns the value of Reason.
+func (s *DisableSkillVersionRequest) GetReason() string {
+	return s.Reason
+}
+
+// SetReason sets the value of Reason.
+func (s *DisableSkillVersionRequest) SetReason(val string) {
+	s.Reason = val
+}
+
 // One thing a package declares about itself, with the words to show for it It replaces the parallel
 // `has_*` booleans that used to sit on `SkillRisk` and `SearchResultRisk`.
 //
@@ -7093,6 +7121,7 @@ func (*Error) getDispatchStatusRes()               {}
 func (*Error) getExposureCaseRes()                 {}
 func (*Error) getMeRes()                           {}
 func (*Error) getOperatorRostersRes()              {}
+func (*Error) getOperatorVersionStatusRes()        {}
 func (*Error) getPublicPublicationRes()            {}
 func (*Error) getSkillImportLimitsRes()            {}
 func (*Error) listDownloadArtifactsRes()           {}
@@ -13032,6 +13061,46 @@ func (s *OperatorAuditEventMetadata) init() OperatorAuditEventMetadata {
 	}
 	return m
 }
+
+// Ref: #/components/schemas/OperatorVersionStatus
+type OperatorVersionStatus struct {
+	VersionID     uuid.UUID `json:"version_id"`
+	VersionNumber int       `json:"version_number"`
+	Disabled      bool      `json:"disabled"`
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *OperatorVersionStatus) GetVersionID() uuid.UUID {
+	return s.VersionID
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *OperatorVersionStatus) GetVersionNumber() int {
+	return s.VersionNumber
+}
+
+// GetDisabled returns the value of Disabled.
+func (s *OperatorVersionStatus) GetDisabled() bool {
+	return s.Disabled
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *OperatorVersionStatus) SetVersionID(val uuid.UUID) {
+	s.VersionID = val
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *OperatorVersionStatus) SetVersionNumber(val int) {
+	s.VersionNumber = val
+}
+
+// SetDisabled sets the value of Disabled.
+func (s *OperatorVersionStatus) SetDisabled(val bool) {
+	s.Disabled = val
+}
+
+func (*OperatorVersionStatus) disableSkillVersionRes()      {}
+func (*OperatorVersionStatus) getOperatorVersionStatusRes() {}
 
 // NewOptAddAcceptanceCriterionReqSource returns new OptAddAcceptanceCriterionReqSource with value set to v.
 func NewOptAddAcceptanceCriterionReqSource(v AddAcceptanceCriterionReqSource) OptAddAcceptanceCriterionReqSource {
@@ -22651,7 +22720,8 @@ type RunPermissionSummary struct {
 	// is a licence hold on the skill, `capability_mismatch` a deployment with no model outlet or no
 	// sandbox that fits, `scan_blocked` and `scan_unavailable` the static scan refusing or being unable to
 	// read the package, and `content_not_curated` the clean test mode refusing material that is neither in
-	// the public catalogue nor curated at this exact version.
+	// the public catalogue nor curated at this exact version. `version_disabled` is the operator's
+	// irreversible stop on new Runs of precisely this version.
 	//
 	// Every one of these is also refused when the run is created; this field exists so the refusal arrives
 	// before the user has read a permission summary and confirmed it.
@@ -22737,7 +22807,8 @@ func (*RunPermissionSummary) getRunPreflightRes() {}
 // is a licence hold on the skill, `capability_mismatch` a deployment with no model outlet or no
 // sandbox that fits, `scan_blocked` and `scan_unavailable` the static scan refusing or being unable to
 // read the package, and `content_not_curated` the clean test mode refusing material that is neither in
-// the public catalogue nor curated at this exact version.
+// the public catalogue nor curated at this exact version. `version_disabled` is the operator's
+// irreversible stop on new Runs of precisely this version.
 //
 // Every one of these is also refused when the run is created; this field exists so the refusal arrives
 // before the user has read a permission summary and confirmed it.
@@ -22749,6 +22820,7 @@ const (
 	RunPermissionSummaryBlockedScanBlocked        RunPermissionSummaryBlocked = "scan_blocked"
 	RunPermissionSummaryBlockedScanUnavailable    RunPermissionSummaryBlocked = "scan_unavailable"
 	RunPermissionSummaryBlockedContentNotCurated  RunPermissionSummaryBlocked = "content_not_curated"
+	RunPermissionSummaryBlockedVersionDisabled    RunPermissionSummaryBlocked = "version_disabled"
 )
 
 // AllValues returns all RunPermissionSummaryBlocked values.
@@ -22759,6 +22831,7 @@ func (RunPermissionSummaryBlocked) AllValues() []RunPermissionSummaryBlocked {
 		RunPermissionSummaryBlockedScanBlocked,
 		RunPermissionSummaryBlockedScanUnavailable,
 		RunPermissionSummaryBlockedContentNotCurated,
+		RunPermissionSummaryBlockedVersionDisabled,
 	}
 }
 
@@ -22774,6 +22847,8 @@ func (s RunPermissionSummaryBlocked) MarshalText() ([]byte, error) {
 	case RunPermissionSummaryBlockedScanUnavailable:
 		return []byte(s), nil
 	case RunPermissionSummaryBlockedContentNotCurated:
+		return []byte(s), nil
+	case RunPermissionSummaryBlockedVersionDisabled:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -22797,6 +22872,9 @@ func (s *RunPermissionSummaryBlocked) UnmarshalText(data []byte) error {
 		return nil
 	case RunPermissionSummaryBlockedContentNotCurated:
 		*s = RunPermissionSummaryBlockedContentNotCurated
+		return nil
+	case RunPermissionSummaryBlockedVersionDisabled:
+		*s = RunPermissionSummaryBlockedVersionDisabled
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

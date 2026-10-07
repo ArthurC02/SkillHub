@@ -2933,6 +2933,66 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /admin/versions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getOperatorVersionStatus
+      summary: Read one Skill Version's disable status by exact ID
+      description: Operator only. Returns no package content or cross-workspace version list.
+      responses:
+        "200":
+          description: The version's minimal metadata.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperatorVersionStatus" }
+        "404":
+          description: No such version, invalid ID, or caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/versions/{id}/disable:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      operationId: disableSkillVersion
+      summary: Irreversibly prevent one Skill Version from starting new Runs
+      description: |
+        Operator only. The version content and existing Runs are unchanged.
+        The disable and audit event commit together. A repeated command records
+        the attempt and returns 409. There is no restore route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DisableSkillVersionRequest" }
+      responses:
+        "200":
+          description: Disabled for new Runs.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperatorVersionStatus" }
+        "400":
+          description: Missing, blank, or oversized reason, or malformed body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: No such version, invalid ID, or caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: This version was already disabled; the attempt is audited.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/skills/{id}/redistribution:
     parameters:
       - name: id
@@ -3689,13 +3749,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [reason]
-              properties:
-                reason:
-                  type: string
-                  maxLength: 1000
+            schema: { $ref: "#/components/schemas/ClearModelCallBudgetRequest" }
       responses:
         "204":
           description: This model call runs under its compiled default again.
@@ -4101,13 +4155,10 @@ paths:
         "422":
           description: |
             Well formed, the platform is working, and the run still may not
-            start. Six causes, and the message says which. The list read three
-            for a while, which is the drift this file warns about under
-            `/api/skills/search`: a cause missing from it is how a handler and
-            its contract come apart. The three that were missing are the last
-            three below, and one of them clears on its own in seconds while
-            another does not clear until tomorrow - a client that folded them
-            into a fallback branch told the user the wrong one.
+            start. The message names which of the seven causes applies; some
+            clear on their own, while others require a different version or
+            an operator decision. Clients must not collapse them into one
+            generic retry message.
 
             - No configured provider can satisfy the run's requirements
               (RUN-005); the message names the requirement each one failed.
@@ -4133,6 +4184,8 @@ paths:
             - The skill is under a licensing hold (0023, SEC-011). The request
               is fine and the platform is fine; this content may not be copied
               into a sandbox until the review concludes.
+            - The exact Skill Version was disabled by an operator (SEC-011).
+              Only new Runs are refused; existing Runs and version content remain.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -6707,6 +6760,24 @@ components:
           type: [string, "null"]
           format: date-time
         takedown_reason: { type: [string, "null"] }
+    OperatorVersionStatus:
+      type: object
+      required: [version_id, version_number, disabled]
+      additionalProperties: false
+      properties:
+        version_id: { type: string, format: uuid }
+        version_number: { type: integer }
+        disabled: { type: boolean }
+    DisableSkillVersionRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, maxLength: 1000 }
+    ClearModelCallBudgetRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, maxLength: 1000 }
     ModelCallBudget:
       type: object
       required: [kind, seconds, default_seconds, min_seconds, max_seconds, reason, set_at]
@@ -9073,7 +9144,7 @@ components:
             at all.
         blocked:
           type: string
-          enum: [access_restricted, capability_mismatch, scan_blocked, scan_unavailable, content_not_curated]
+          enum: [access_restricted, capability_mismatch, scan_blocked, scan_unavailable, content_not_curated, version_disabled]
           description: |
             Why this pair cannot start a run at all, absent when it can. A code
             rather than a sentence: the wording belongs to the interface, and an
@@ -9093,7 +9164,8 @@ components:
             `scan_unavailable` the static scan refusing or being unable to read
             the package, and `content_not_curated` the clean test mode refusing
             material that is neither in the public catalogue nor curated at
-            this exact version.
+            this exact version. `version_disabled` is the operator's irreversible
+            stop on new Runs of precisely this version.
 
             Every one of these is also refused when the run is created; this
             field exists so the refusal arrives before the user has read a

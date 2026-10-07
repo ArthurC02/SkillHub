@@ -1,0 +1,109 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-preflight-version-disable-citation",
+  "proposer": "coding-agent",
+  "requirement_id": "registry-run-preflight-citation-after-version-admission",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-07T18:21:40.201710Z",
+  "verified_at": "2026-10-07T18:25:53.885960Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "5012ce11e11fa728e7307cf86b0e6f76215c63ef",
+    "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+  },
+  "affected_contexts": [
+    "registry",
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [
+    "registry-run-facts-v1"
+  ],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Registry 擁有 Version 事實；Run 透過注入的 reader 讀取，不直接接觸 Registry 持久層。",
+    "evidence": [
+      "apps/platform/internal/trial/execution/preflight.go:206-229"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "保留 registry-run-preflight-facts 的同步事實讀取；新增的版本准入是另一個獨立互動，不改此舊契約。",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "run -> registry persistence"
+    ],
+    "evidence": [
+      "apps/platform/internal/trial/execution/preflight.go:206-229"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "版本停用檢查使同一檔案在舊引用範圍之前增加程式碼。",
+      "已審查記錄的程式片段內容沒變，但起訖行與全檔摘要因此失效。"
+    ],
+    "decision": "只更新既有互動的結構化引用，不擴張其契約或改寫領域事實。",
+    "invariants_preserved": [
+      "Registry 擁有 Version 事實；Run 透過注入的 reader 讀取。"
+    ],
+    "rejected_alternatives": [
+      "保留失效引用，讓機器無法再確認已審查事實。",
+      "為了保住行號而壓縮程式碼、犧牲可讀性。"
+    ],
+    "proof_obligations": [
+      "citation-current",
+      "reader-behavior-current",
+      "citation-counterfactual"
+    ],
+    "counterfactual_check": "舊引用對目前程式碼回報 stale；新引用通過 verify-evidence，且 reader 缺席的拒絕測試通過。"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "registry-run-preflight-facts",
+        "producer_context": "registry",
+        "consumer_context": "run",
+        "contract_id": "registry-run-facts-v1",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/preflight.go",
+            "lines": {
+              "start": 206,
+              "end": 229
+            },
+            "content_sha256": "sha256:c1fd893ea0d43002d0d1891bdaef86bb4e867fd2d32676a20c8e7222e8861ddc",
+            "excerpt_sha256": "sha256:0e7d275dfffb71434b32074faa03d716223531b42e45026afe560096c33f5f0b",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "open_questions": [],
+  "supersedes": "run-preflight-facts-follow-the-held-facts",
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-07T18:21:47.105749Z",
+      "scope": "Approve refreshing the unchanged Registry-to-Run preflight fact-reader citation after version admission moved its source lines; no deployment waiver.",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "5012ce11e11fa728e7307cf86b0e6f76215c63ef",
+        "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+      }
+    }
+  ]
+}

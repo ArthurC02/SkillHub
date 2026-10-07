@@ -29,6 +29,7 @@ var (
 
 const (
 	ReasonAccessRestricted       = "access_restricted"
+	ReasonVersionDisabled        = "version_disabled"
 	ReasonScanUnavailable        = "scan_unavailable"
 	ReasonScanBlocked            = "scan_blocked"
 	ReasonWorkspaceConcurrency   = "workspace_concurrency"
@@ -40,6 +41,7 @@ const (
 func RefusalReasons() []string {
 	reasons := []string{
 		ReasonAccessRestricted,
+		ReasonVersionDisabled,
 		ReasonScanUnavailable,
 		ReasonScanBlocked,
 		ReasonWorkspaceConcurrency,

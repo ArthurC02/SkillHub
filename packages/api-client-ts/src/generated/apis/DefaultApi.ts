@@ -234,6 +234,11 @@ import {
     DiffSkillVersions200ResponseToJSON,
 } from '../models/DiffSkillVersions200Response';
 import {
+    type DisableSkillVersionRequest,
+    DisableSkillVersionRequestFromJSON,
+    DisableSkillVersionRequestToJSON,
+} from '../models/DisableSkillVersionRequest';
+import {
     type DownloadArtifact,
     DownloadArtifactFromJSON,
     DownloadArtifactToJSON,
@@ -443,6 +448,11 @@ import {
     ModelCallBudgetFromJSON,
     ModelCallBudgetToJSON,
 } from '../models/ModelCallBudget';
+import {
+    type OperatorVersionStatus,
+    OperatorVersionStatusFromJSON,
+    OperatorVersionStatusToJSON,
+} from '../models/OperatorVersionStatus';
 import {
     type PackagingPreview,
     PackagingPreviewFromJSON,
@@ -932,6 +942,17 @@ export interface DiffSkillVersionsRequest {
     to: string;
 }
 
+export interface DisableSkillVersionOperationRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    disableSkillVersionRequest: DisableSkillVersionRequest;
+}
+
 export interface DownloadArtifactContentRequest {
     /**
      * 
@@ -1051,6 +1072,13 @@ export interface GetOperatorActionTrendRequest {
      * 
      */
     days?: GetOperatorActionTrendDaysEnum;
+}
+
+export interface GetOperatorVersionStatusRequest {
+    /**
+     * 
+     */
+    id: string;
 }
 
 export interface GetOwnBundlePublicationRequest {
@@ -2407,6 +2435,32 @@ export interface DefaultApiInterface {
     diffSkillVersions(requestParameters: DiffSkillVersionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DiffSkillVersions200Response>;
 
     /**
+     * Creates request options for disableSkillVersion without sending the request
+     * @param {string} id 
+     * @param {DisableSkillVersionRequest} disableSkillVersionRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    disableSkillVersionRequestOpts(requestParameters: DisableSkillVersionOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. The version content and existing Runs are unchanged. The disable and audit event commit together. A repeated command records the attempt and returns 409. There is no restore route. 
+     * @summary Irreversibly prevent one Skill Version from starting new Runs
+     * @param {string} id 
+     * @param {DisableSkillVersionRequest} disableSkillVersionRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    disableSkillVersionRaw(requestParameters: DisableSkillVersionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OperatorVersionStatus>>;
+
+    /**
+     * Operator only. The version content and existing Runs are unchanged. The disable and audit event commit together. A repeated command records the attempt and returns 409. There is no restore route. 
+     * Irreversibly prevent one Skill Version from starting new Runs
+     */
+    disableSkillVersion(requestParameters: DisableSkillVersionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OperatorVersionStatus>;
+
+    /**
      * Creates request options for downloadArtifactContent without sending the request
      * @param {string} artifactId 
      * @throws {RequiredError}
@@ -2965,6 +3019,30 @@ export interface DefaultApiInterface {
      * The two rosters in force, read-only (02:OPS-005)
      */
     getOperatorRosters(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetOperatorRosters200Response>;
+
+    /**
+     * Creates request options for getOperatorVersionStatus without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOperatorVersionStatusRequestOpts(requestParameters: GetOperatorVersionStatusRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Returns no package content or cross-workspace version list.
+     * @summary Read one Skill Version\'s disable status by exact ID
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOperatorVersionStatusRaw(requestParameters: GetOperatorVersionStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OperatorVersionStatus>>;
+
+    /**
+     * Operator only. Returns no package content or cross-workspace version list.
+     * Read one Skill Version\'s disable status by exact ID
+     */
+    getOperatorVersionStatus(requestParameters: GetOperatorVersionStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OperatorVersionStatus>;
 
     /**
      * Creates request options for getOwnBundlePublication without sending the request
@@ -6106,6 +6184,63 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for disableSkillVersion without sending the request
+     */
+    async disableSkillVersionRequestOpts(requestParameters: DisableSkillVersionOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling disableSkillVersion().'
+            );
+        }
+
+        if (requestParameters['disableSkillVersionRequest'] == null) {
+            throw new runtime.RequiredError(
+                'disableSkillVersionRequest',
+                'Required parameter "disableSkillVersionRequest" was null or undefined when calling disableSkillVersion().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/versions/{id}/disable`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: DisableSkillVersionRequestToJSON(requestParameters['disableSkillVersionRequest']),
+        };
+    }
+
+    /**
+     * Operator only. The version content and existing Runs are unchanged. The disable and audit event commit together. A repeated command records the attempt and returns 409. There is no restore route. 
+     * Irreversibly prevent one Skill Version from starting new Runs
+     */
+    async disableSkillVersionRaw(requestParameters: DisableSkillVersionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OperatorVersionStatus>> {
+        const requestOptions = await this.disableSkillVersionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OperatorVersionStatusFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. The version content and existing Runs are unchanged. The disable and audit event commit together. A repeated command records the attempt and returns 409. There is no restore route. 
+     * Irreversibly prevent one Skill Version from starting new Runs
+     */
+    async disableSkillVersion(requestParameters: DisableSkillVersionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OperatorVersionStatus> {
+        const response = await this.disableSkillVersionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for downloadArtifactContent without sending the request
      */
     async downloadArtifactContentRequestOpts(requestParameters: DownloadArtifactContentRequest): Promise<runtime.RequestOpts> {
@@ -7160,6 +7295,53 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getOperatorRosters(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetOperatorRosters200Response> {
         const response = await this.getOperatorRostersRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getOperatorVersionStatus without sending the request
+     */
+    async getOperatorVersionStatusRequestOpts(requestParameters: GetOperatorVersionStatusRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getOperatorVersionStatus().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/versions/{id}`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. Returns no package content or cross-workspace version list.
+     * Read one Skill Version\'s disable status by exact ID
+     */
+    async getOperatorVersionStatusRaw(requestParameters: GetOperatorVersionStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OperatorVersionStatus>> {
+        const requestOptions = await this.getOperatorVersionStatusRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OperatorVersionStatusFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Returns no package content or cross-workspace version list.
+     * Read one Skill Version\'s disable status by exact ID
+     */
+    async getOperatorVersionStatus(requestParameters: GetOperatorVersionStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OperatorVersionStatus> {
+        const response = await this.getOperatorVersionStatusRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

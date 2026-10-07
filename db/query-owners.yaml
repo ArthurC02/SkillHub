@@ -106,6 +106,11 @@ queries:
 
   GetSkillByName: registry
   GetVersionBySkillAndHash: registry
+  GetOperatorVersionStatus: registry
+  LockOperatorVersion: registry
+  GetWorkspaceVersionDisableStatus: registry
+  LockWorkspaceVersionAdmission: registry
+  InsertSkillVersionDisable: registry
 
   GetSkillEnrichment: catalog
 
@@ -199,6 +204,8 @@ queries:
 
 scope:
   CountSkillsForGovernance: operator
+  GetOperatorVersionStatus: operator
+  InsertSkillVersionDisable: operator
   TakeRateLimitToken: platform-wide
   SweepRateLimitBuckets: platform-wide
   AdjustCreditBalance: user
@@ -383,6 +390,7 @@ tables:
   workspaces: identity
   skills: registry
   skill_versions: registry
+  skill_version_disables: registry
   skill_runtime_compatibility: registry
   object_collection_queue: registry
   skill_sources: ingest

@@ -11,6 +11,8 @@ export const ACTION_LABEL: Record<string, string> = {
   "skill.redistribution_set": "再散布判定",
   "skill.curation_set": "精選層級",
   "skill.takedown": "下架",
+  "skill.version_disable": "停用版本",
+  "skill.version_disable_attempt": "重複停用版本",
   "credit.grant": "授予點數",
   "dispatch.halted": "停止派送",
   "dispatch.resumed": "恢復派送",

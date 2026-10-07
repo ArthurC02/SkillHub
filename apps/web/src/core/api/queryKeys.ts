@@ -58,6 +58,7 @@ export const queryKeys = {
     datasets: (testCaseId: string) => ["test-cases", testCaseId, "datasets"],
   },
   lab: {
+    preflights: ["preflight"],
     datasetLimits: ["dataset-limits"],
     preflight: (skillId: string, versionId: string, testCaseId: string) => [
       "preflight",
@@ -112,6 +113,7 @@ export const queryKeys = {
     ownBundlePublication: (bundle: string) => ["bundles", bundle, "publication"],
   },
   admin: {
+    version: (versionId: string) => ["admin", "version", versionId],
     account: (email: string) => ["admin", "account", email],
     ledger: (workspaceId: string) => ["admin", "ledger", workspaceId],
     skills: ["admin", "skills"],

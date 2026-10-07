@@ -12,20 +12,20 @@ Registry 擁有版本與停用事實，Run 擁有新 Run 的建立與生命週�
 
 方案：版本外的停用狀態、Registry 的窄交易內判定、組裝層注入 Run；不新增 Context，也不改寫 `skill_versions`。前端只使用核對目標所需的最少 metadata。不能以 preflight 舊結果、前端隱藏按鈕或異步投影作為唯一閘門；它們都無法排除停用提交後仍接受新 Run。
 
-產品裁定：停用不可恢復，只阻止新 Run；重複停用回已停用並記錄嘗試。operator 只能以精確 ID 查 ID、版本序號與停用狀態，不提供私有內容或跨 Workspace 版本清單。測試義務見 `test-obligations.json`；尚無突變結果。
+產品裁定：停用不可恢復，只阻止新 Run；重複停用回已停用並記錄嘗試。operator 只能以精確 ID 查 ID、版本序號與停用狀態，不提供私有內容或跨 Workspace 版本清單。測試義務見 `test-obligations.json`；交易內拒絕條件的突變讓既有兩個整合測試由 422 變成 201，還原後皆通過。
 
 ## Proposal and approvals
 
-`admin-version-disable` 已提交 developer 審查，尚未核准，也未升格 Registry 記錄。產品選擇已寫入規格，但本文件不得當成已核准的實作交接。
+`admin-version-disable` 已由 developer `ArthurC` 核准設計與實作範圍。實作與本機驗證進行中；正式 SCM 證明與 CI 尚未完成，也未升格 Registry 記錄。這份核准可作實作交接，不能當成可部署的證明。
 
 ## Contract impact
 
-預計新增 operator-only 停用與最少量狀態讀取 API，並為 preflight／Run 建立提供具名拒絕；既有成功回應不移除欄位。Registry→Run 的既有版本事實讀取可保留作一般讀取，但不能代替交易內准入。暫無新事件需求；若後續消費者需要停用通知，須另定事件語意與 outbox。
+已新增 operator-only 停用與最少量狀態讀取 API，並為 preflight／Run 建立提供具名拒絕；既有成功回應不移除欄位。Registry→Run 的既有版本事實讀取保留作一般讀取，交易內准入由獨立的注入介面負責。暫無新事件需求；若後續消費者需要停用通知，須另定事件語意與 outbox。
 
 ## Verification
 
-需求來源為 `02` 的 SEC-011 與版本／Run 不可變規則。現有後台 API 套件的整合測試曾在獨立 PostgreSQL 通過，但**未覆蓋本提案的新規則**；本包目前沒有可聲稱通過的新測試。實作時須驗證授權矩陣、並行序列化、交易 rollback、preflight 與 Run 建立拒絕、歷史 Run 保持不變，並對交易內准入閘門做一次會紅的突變檢查。
+需求來源為 `02` 的 SEC-011 與版本／Run 不可變規則。獨立 PostgreSQL 中，版本停用的授權矩陣、並行序列化、audit 失敗回滾、preflight 與 Run 建立拒絕、歷史 Run／版本／佇列任務不變、owner 讀取失敗 fail-closed 整合測試均通過；前端管理流程與無障礙測試也已執行。交易內准入閘門的突變得到兩條明確失敗斷言，還原後通過。全套及治理檢查完成前不提升正式狀態。
 
 ## Residual risks
 
-Developer 審查未完成；OpenAPI、migration、Query owner、Go 與前端均未改動。內容來源白名單是另一項 SEC-011 缺口，不在本包內；正式告警部署也不在本包內。
+Developer 已核准範圍，OpenAPI、migration、Query owner、Go 與前端均已實作；正式 SCM 驗證與遠端 CI 尚未完成。內容來源白名單是另一項 SEC-011 缺口，不在本包內；正式告警部署也不在本包內。

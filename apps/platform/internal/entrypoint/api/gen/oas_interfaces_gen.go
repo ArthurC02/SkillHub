@@ -109,6 +109,10 @@ type DiffSkillVersionsRes interface {
 	diffSkillVersionsRes()
 }
 
+type DisableSkillVersionRes interface {
+	disableSkillVersionRes()
+}
+
 type DownloadArtifactContentRes interface {
 	downloadArtifactContentRes()
 }
@@ -195,6 +199,10 @@ type GetOperatorActionTrendRes interface {
 
 type GetOperatorRostersRes interface {
 	getOperatorRostersRes()
+}
+
+type GetOperatorVersionStatusRes interface {
+	getOperatorVersionStatusRes()
 }
 
 type GetOwnBundlePublicationRes interface {

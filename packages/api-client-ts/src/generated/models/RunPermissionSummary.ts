@@ -104,7 +104,8 @@ export interface RunPermissionSummary {
      * `scan_unavailable` the static scan refusing or being unable to read
      * the package, and `content_not_curated` the clean test mode refusing
      * material that is neither in the public catalogue nor curated at
-     * this exact version.
+     * this exact version. `version_disabled` is the operator's irreversible
+     * stop on new Runs of precisely this version.
      * 
      * Every one of these is also refused when the run is created; this
      * field exists so the refusal arrives before the user has read a
@@ -132,6 +133,7 @@ export const RunPermissionSummaryBlockedEnum = {
     ScanBlocked: 'scan_blocked',
     ScanUnavailable: 'scan_unavailable',
     ContentNotCurated: 'content_not_curated',
+    VersionDisabled: 'version_disabled',
 } as const;
 export type RunPermissionSummaryBlockedEnum = typeof RunPermissionSummaryBlockedEnum[keyof typeof RunPermissionSummaryBlockedEnum];
 

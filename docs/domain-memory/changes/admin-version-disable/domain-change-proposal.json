@@ -85,5 +85,18 @@
     "irreversible_change"
   ],
   "open_questions": [],
-  "approvals": []
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-07T17:40:36.487575Z",
+      "scope": "Approve the reviewed irreversible Skill Version disable design and implementation scope: Registry-owned state and audit, serialized Run admission, exact-ID operator metadata, named rejection, and ten proof obligations; no deployment waiver.",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "a012c28e28a7754ab7fea74c18ba16ebcdcf048d",
+        "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+      }
+    }
+  ]
 }

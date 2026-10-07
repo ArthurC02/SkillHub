@@ -101,6 +101,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 
 	set.Runs = newRunService(pool, deps, testlabSvc)
 	wiring.WireRunRegistryReaders(set.Runs, registrySvc)
+	wiring.WireRunVersionAdmission(set.Runs, registrySvc)
 	traceSvc := wiring.NewTraceService(pool, deps.TraceSigner, set.Runs)
 	set.Runs.Trace = traceSvc
 

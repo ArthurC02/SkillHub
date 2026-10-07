@@ -93,6 +93,26 @@ func (q *Queries) GetNewestSkillVersion(ctx context.Context, skillID pgtype.UUID
 	return i, err
 }
 
+const getOperatorVersionStatus = `-- name: GetOperatorVersionStatus :one
+SELECT sv.id, sv.version_number,
+       EXISTS (SELECT 1 FROM skill_version_disables d WHERE d.skill_version_id = sv.id) AS disabled
+FROM skill_versions sv
+WHERE sv.id = $1
+`
+
+type GetOperatorVersionStatusRow struct {
+	ID            pgtype.UUID
+	VersionNumber int32
+	Disabled      bool
+}
+
+func (q *Queries) GetOperatorVersionStatus(ctx context.Context, versionID pgtype.UUID) (GetOperatorVersionStatusRow, error) {
+	row := q.db.QueryRow(ctx, getOperatorVersionStatus, versionID)
+	var i GetOperatorVersionStatusRow
+	err := row.Scan(&i.ID, &i.VersionNumber, &i.Disabled)
+	return i, err
+}
+
 const getSkillRuntimeCompatibility = `-- name: GetSkillRuntimeCompatibility :one
 SELECT capability, runtime, runtime_image, measured_at
 FROM skill_runtime_compatibility
@@ -152,6 +172,34 @@ func (q *Queries) GetSkillVersion(ctx context.Context, arg GetSkillVersionParams
 		&i.SourcePath,
 	)
 	return i, err
+}
+
+const getWorkspaceVersionDisableStatus = `-- name: GetWorkspaceVersionDisableStatus :one
+SELECT EXISTS (SELECT 1 FROM skill_version_disables d WHERE d.skill_version_id = sv.id) AS disabled
+FROM skill_versions sv
+WHERE sv.id = $1 AND sv.workspace_id = $2
+  AND EXISTS (SELECT 1 FROM skills sk WHERE sk.id = sv.skill_id AND sk.deleted_at IS NULL)
+`
+
+type GetWorkspaceVersionDisableStatusParams struct {
+	VersionID   pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) GetWorkspaceVersionDisableStatus(ctx context.Context, arg GetWorkspaceVersionDisableStatusParams) (bool, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceVersionDisableStatus, arg.VersionID, arg.WorkspaceID)
+	var disabled bool
+	err := row.Scan(&disabled)
+	return disabled, err
+}
+
+const insertSkillVersionDisable = `-- name: InsertSkillVersionDisable :exec
+INSERT INTO skill_version_disables (skill_version_id) VALUES ($1)
+`
+
+func (q *Queries) InsertSkillVersionDisable(ctx context.Context, versionID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, insertSkillVersionDisable, versionID)
+	return err
 }
 
 const listSkillSourcesInVersions = `-- name: ListSkillSourcesInVersions :many
@@ -363,6 +411,25 @@ func (q *Queries) ListVersionSummariesByID(ctx context.Context, versionIds []pgt
 	return items, nil
 }
 
+const lockOperatorVersion = `-- name: LockOperatorVersion :one
+SELECT sv.workspace_id, sv.version_number
+FROM skill_versions sv
+WHERE sv.id = $1
+FOR UPDATE OF sv
+`
+
+type LockOperatorVersionRow struct {
+	WorkspaceID   pgtype.UUID
+	VersionNumber int32
+}
+
+func (q *Queries) LockOperatorVersion(ctx context.Context, versionID pgtype.UUID) (LockOperatorVersionRow, error) {
+	row := q.db.QueryRow(ctx, lockOperatorVersion, versionID)
+	var i LockOperatorVersionRow
+	err := row.Scan(&i.WorkspaceID, &i.VersionNumber)
+	return i, err
+}
+
 const lockPackageObjectSession = `-- name: LockPackageObjectSession :exec
 SELECT pg_advisory_lock(hashtextextended('package-object:' || $1::text, 0))
 `
@@ -370,6 +437,26 @@ SELECT pg_advisory_lock(hashtextextended('package-object:' || $1::text, 0))
 func (q *Queries) LockPackageObjectSession(ctx context.Context, objectKey string) error {
 	_, err := q.db.Exec(ctx, lockPackageObjectSession, objectKey)
 	return err
+}
+
+const lockWorkspaceVersionAdmission = `-- name: LockWorkspaceVersionAdmission :one
+SELECT sv.id
+FROM skill_versions sv
+WHERE sv.id = $1 AND sv.workspace_id = $2
+  AND EXISTS (SELECT 1 FROM skills sk WHERE sk.id = sv.skill_id AND sk.deleted_at IS NULL)
+FOR UPDATE OF sv
+`
+
+type LockWorkspaceVersionAdmissionParams struct {
+	VersionID   pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) LockWorkspaceVersionAdmission(ctx context.Context, arg LockWorkspaceVersionAdmissionParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockWorkspaceVersionAdmission, arg.VersionID, arg.WorkspaceID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const oldestCollectableObjectEnqueuedAt = `-- name: OldestCollectableObjectEnqueuedAt :one

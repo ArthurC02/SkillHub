@@ -29,6 +29,7 @@ type Call = { method: string; url: string; body?: Record<string, unknown> };
 type Reply = { body: unknown; status: number } | undefined;
 const DISPATCH_HALT_NOTE =
   "new runs are refused and nothing is dispatched to this target; cleanup and orphan teardown stand down so the scene is preserved. This halt is never lifted automatically.";
+const VERSION_ID = "11111111-1111-4111-8111-111111111111";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -751,6 +752,117 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
     url: `/admin/skills/${SKILL}/takedown`,
     body: { reason: "DMCA notice" },
   });
+});
+
+test("SEC-011: an operator checks one exact version and confirms its irreversible disable", async () => {
+  let disabled = false;
+  stub(true, (path, method) => {
+    if (path === `/admin/versions/${VERSION_ID}` && method === "GET")
+      return { body: { version_id: VERSION_ID, version_number: 3, disabled }, status: 200 };
+    if (path === `/admin/versions/${VERSION_ID}/disable` && method === "PUT") {
+      disabled = true;
+      return { body: { version_id: VERSION_ID, version_number: 3, disabled }, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/skills");
+  expect(calls.some((call) => call.url.startsWith("/admin/versions/"))).toBe(false);
+  expect(button("核對版本").disabled).toBe(true);
+  await type("#admin-version-id", VERSION_ID);
+  await submit("#admin-version-id");
+  await waitFor(has("可建立新 Run"));
+  expect(has("私人套件內容")()).toBe(true);
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "停用版本"),
+  ).toBe(false);
+  await type("#admin-version-disable-reason", "安全事件");
+  await click(button("停用版本"));
+  expect(has(`停用版本 ${VERSION_ID}（第 3 版）`)()).toBe(true);
+  expect(has("既有 Run 與版本內容不變")()).toBe(true);
+  expect(calls.some((call) => call.method === "PUT")).toBe(false);
+  await click(button("確認停用版本"));
+  await waitFor(has("已停用"));
+  expect(calls.find((call) => call.method === "PUT")).toEqual({
+    method: "PUT",
+    url: `/admin/versions/${VERSION_ID}/disable`,
+    body: { reason: "安全事件" },
+  });
+  expect(calls.filter((call) => call.url === `/admin/versions/${VERSION_ID}`)).toHaveLength(2);
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "停用版本"),
+  ).toBe(false);
+});
+
+test("SEC-011: changing a version or confirmed reason cannot submit stale authority", async () => {
+  stub(true, (path) =>
+    path === `/admin/versions/${VERSION_ID}`
+      ? { body: { version_id: VERSION_ID, version_number: 3, disabled: false }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/skills");
+  await type("#admin-version-id", VERSION_ID);
+  await submit("#admin-version-id");
+  await waitFor(has("可建立新 Run"));
+  await type("#admin-version-disable-reason", "原理由");
+  await click(button("停用版本"));
+  await type("#admin-version-disable-reason", "新理由");
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "確認停用版本"),
+  ).toBe(false);
+  await type("#admin-version-id", "22222222-2222-4222-8222-222222222222");
+  expect(has("版本 ID 已變更")()).toBe(true);
+  expect(has("可建立新 Run")()).toBe(false);
+  expect(calls.some((call) => call.method === "PUT")).toBe(false);
+});
+
+test("SEC-011: a disable reason is bounded by UTF-8 bytes", async () => {
+  stub(true, (path) =>
+    path === `/admin/versions/${VERSION_ID}`
+      ? { body: { version_id: VERSION_ID, version_number: 3, disabled: false }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/skills");
+  await type("#admin-version-id", VERSION_ID);
+  await submit("#admin-version-id");
+  await waitFor(has("可建立新 Run"));
+  await type("#admin-version-disable-reason", "理".repeat(333));
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "停用版本"),
+  ).toBe(true);
+  await type("#admin-version-disable-reason", "理".repeat(334));
+  expect(has("上限 1000 位元組")()).toBe(true);
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "停用版本"),
+  ).toBe(false);
+  expect(calls.some((call) => call.method === "PUT")).toBe(false);
+});
+
+test("SEC-011: a concurrent disable refreshes status after conflict", async () => {
+  let disabled = false;
+  stub(true, (path, method) => {
+    if (path === `/admin/versions/${VERSION_ID}` && method === "GET")
+      return { body: { version_id: VERSION_ID, version_number: 3, disabled }, status: 200 };
+    if (path === `/admin/versions/${VERSION_ID}/disable` && method === "PUT") {
+      disabled = true;
+      return {
+        body: { code: "version_already_disabled", message: "already disabled" },
+        status: 409,
+      };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/skills");
+  await type("#admin-version-id", VERSION_ID);
+  await submit("#admin-version-id");
+  await waitFor(has("可建立新 Run"));
+  await type("#admin-version-disable-reason", "重複操作");
+  await click(button("停用版本"));
+  await click(button("確認停用版本"));
+  await waitFor(has("此版本在送出前已停用；重複操作已記錄。"));
+  expect(calls.filter((call) => call.url === `/admin/versions/${VERSION_ID}`)).toHaveLength(2);
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "停用版本"),
+  ).toBe(false);
 });
 
 test("OPS-004: a pending takedown locks the reason being confirmed", async () => {

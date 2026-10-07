@@ -3,10 +3,10 @@
   "proposal_id": "dispatch-halt-stale-lift",
   "proposer": "coding-agent",
   "requirement_id": "SEC-012-stale-halt-lift",
-  "status": "submitted",
+  "status": "verified",
   "change_classification": "material",
   "submitted_at": "2026-10-07T14:18:50.647945Z",
-  "verified_at": null,
+  "verified_at": "2026-10-07T17:40:47.050811Z",
   "finalized_at": null,
   "applied_at": null,
   "proposal_revision": 1,
@@ -78,5 +78,18 @@
     "irreversible_change"
   ],
   "open_questions": [],
-  "approvals": []
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-07T17:40:32.337030Z",
+      "scope": "Approve the reviewed stale dispatch-halt lift design and implementation scope: exact halt identity and generation precondition, transactional conflict rejection, operator guidance, and eight proof obligations; no deployment waiver.",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "a012c28e28a7754ab7fea74c18ba16ebcdcf048d",
+        "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+      }
+    }
+  ]
 }

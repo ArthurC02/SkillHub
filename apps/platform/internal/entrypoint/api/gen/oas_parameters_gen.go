@@ -134,6 +134,11 @@ type DiffSkillVersionsParams struct {
 	To   uuid.UUID
 }
 
+// DisableSkillVersionParams is parameters of disableSkillVersion operation.
+type DisableSkillVersionParams struct {
+	ID uuid.UUID
+}
+
 // DownloadArtifactContentParams is parameters of downloadArtifactContent operation.
 type DownloadArtifactContentParams struct {
 	ArtifactId uuid.UUID
@@ -209,6 +214,11 @@ type GetFunnelTrendParams struct {
 // GetOperatorActionTrendParams is parameters of getOperatorActionTrend operation.
 type GetOperatorActionTrendParams struct {
 	Days OptGetOperatorActionTrendDays `json:",omitempty,omitzero"`
+}
+
+// GetOperatorVersionStatusParams is parameters of getOperatorVersionStatus operation.
+type GetOperatorVersionStatusParams struct {
+	ID uuid.UUID
 }
 
 // GetOwnBundlePublicationParams is parameters of getOwnBundlePublication operation.

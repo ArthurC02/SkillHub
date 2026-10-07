@@ -6,7 +6,20 @@
     "observed_commit": "a012c28e28a7754ab7fea74c18ba16ebcdcf048d",
     "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
   },
-  "approvals": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-07T17:40:32.337030Z",
+      "scope": "Approve the reviewed stale dispatch-halt lift design and implementation scope: exact halt identity and generation precondition, transactional conflict rejection, operator guidance, and eight proof obligations; no deployment waiver.",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "a012c28e28a7754ab7fea74c18ba16ebcdcf048d",
+        "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+      }
+    }
+  ],
   "scm_attestation": null,
   "counterfactual_check": {
     "status": "passed",
@@ -101,7 +114,7 @@
   "architecture_checks": [],
   "security_checks": [],
   "residual_risks": [
-    "使用者已在對話中通過實作方向；但具名 developer approval 尚未記錄，Change Package 仍為 submitted，不能宣稱正式核准或套用 Registry。",
+    "developer ArthurC 已核准設計與實作範圍，且測試證據已核對；SCM 證明與遠端 CI 尚未完成，不能宣稱正式套用 Registry 或可部署。",
     "必填 API 前提會拒絕 repo 外尚未更新的 operator 呼叫端；其部署與使用情況未知，須在發佈前通知與確認。",
     "本機測試與反證已執行，但還沒有此實作 commit 的遠端 CI 與 SCM attestation。"
   ]

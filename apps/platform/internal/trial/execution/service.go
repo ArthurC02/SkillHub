@@ -28,11 +28,13 @@ var (
 	ErrNotFound = errors.New("run not found")
 
 	ErrPreflightTargetNotFound = errors.New("run: no such skill version or test case")
+	ErrVersionDisabled         = errors.New("run: skill version disabled for new runs")
 
-	ErrRunFinished               = errors.New("run has already finished")
-	errRegistryReadNotConfigured = errors.New("run: registry owner read is not configured")
-	errRunLinkMissing            = errors.New("run: its skill version or test case snapshot is gone")
-	errRunRequestUnbuildable     = errors.New("run: this attempt's request can never be built")
+	ErrRunFinished                   = errors.New("run has already finished")
+	errRegistryReadNotConfigured     = errors.New("run: registry owner read is not configured")
+	errVersionAdmissionNotConfigured = errors.New("run: version admission is not configured")
+	errRunLinkMissing                = errors.New("run: its skill version or test case snapshot is gone")
+	errRunRequestUnbuildable         = errors.New("run: this attempt's request can never be built")
 )
 
 type SkillFacts struct {
@@ -138,6 +140,11 @@ type RegistryReader interface {
 	ContentSource(ctx context.Context, workspaceID, versionID pgtype.UUID) (ContentSource, bool, error)
 }
 
+type VersionAdmission interface {
+	Disabled(ctx context.Context, workspaceID, versionID pgtype.UUID) (bool, error)
+	Admit(ctx context.Context, tx pgx.Tx, workspaceID, versionID pgtype.UUID) error
+}
+
 type RunSettlement struct {
 	WorkspaceID pgtype.UUID
 	RunID       pgtype.UUID
@@ -159,7 +166,8 @@ type Service struct {
 
 	TestLab *testlab.Service
 
-	Registry RegistryReader
+	Registry         RegistryReader
+	VersionAdmission VersionAdmission
 
 	Ledger CreditLedger
 
@@ -381,6 +389,15 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.queries().WithTx(tx)
+	if s.VersionAdmission == nil {
+		return gen.Run{}, errVersionAdmissionNotConfigured
+	}
+	if err := s.VersionAdmission.Admit(ctx, tx, p.WorkspaceID, p.VersionID); err != nil {
+		if errors.Is(err, ErrVersionDisabled) {
+			return gen.Run{}, refused(ReasonVersionDisabled, err)
+		}
+		return gen.Run{}, err
+	}
 
 	if err := s.reserveRunCapacity(ctx, tx, q, p.WorkspaceID); err != nil {
 		return gen.Run{}, err

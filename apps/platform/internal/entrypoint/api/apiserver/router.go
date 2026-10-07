@@ -173,6 +173,8 @@ func mountOwnerGovernanceRoutes(mux *http.ServeMux, d Deps) {
 
 func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	auth := d.Auth
+	mux.HandleFunc("GET /admin/versions/{id}", auth.RequireOperator(d.Registry.OperatorVersionStatus))
+	mux.HandleFunc("PUT /admin/versions/{id}/disable", auth.RequireOperator(d.Registry.DisableVersion))
 
 	mux.HandleFunc("PUT /admin/skills/{id}/restriction", auth.RequireOperator(d.Search.SetRestriction))
 	mux.HandleFunc("DELETE /admin/skills/{id}/restriction", auth.RequireOperator(d.Search.ClearRestriction))

@@ -105,6 +105,16 @@ const blockedContentNotCurated = "content_not_curated"
 func (s *Service) blockingReason(
 	ctx context.Context, workspaceID pgtype.UUID, version VersionFacts, snap policySnapshot, scan packageScan,
 ) (string, error) {
+	if s.VersionAdmission == nil {
+		return "", errVersionAdmissionNotConfigured
+	}
+	disabled, err := s.VersionAdmission.Disabled(ctx, workspaceID, version.ID)
+	if err != nil {
+		return "", err
+	}
+	if disabled {
+		return ReasonVersionDisabled, nil
+	}
 	if s.Registry != nil {
 		skill, found, err := s.Registry.Skill(ctx, workspaceID, version.SkillID)
 		if err != nil {

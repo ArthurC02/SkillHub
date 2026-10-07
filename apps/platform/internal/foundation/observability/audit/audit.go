@@ -26,9 +26,11 @@ const (
 	ActionSkillVersionCreate = "skill.version_create"
 	ActionSkillFork          = "skill.fork"
 
-	ActionSkillGenerateFailed = "skill.generate_failed"
-	ActionSkillDelete         = "skill.delete"
-	ActionSkillTakedown       = "skill.takedown"
+	ActionSkillGenerateFailed        = "skill.generate_failed"
+	ActionSkillDelete                = "skill.delete"
+	ActionSkillTakedown              = "skill.takedown"
+	ActionSkillVersionDisable        = "skill.version_disable"
+	ActionSkillVersionDisableAttempt = "skill.version_disable_attempt"
 
 	ActionSkillRestrict   = "skill.access_restrict"
 	ActionSkillUnrestrict = "skill.access_unrestrict"
