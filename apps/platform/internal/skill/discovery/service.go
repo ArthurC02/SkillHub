@@ -373,6 +373,7 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, req hy
 	candidates, err := queries.ListHybridSearchCandidates(ctx, gen.ListHybridSearchCandidatesParams{
 		CatalogWorkspaceIds: scope.catalogs,
 		ExposedKeys:         scope.exposedKeys,
+		ExposedSkillIds:     scope.exposedSkillIDs,
 		Query:               keywords,
 		BigramQuery:         lexicalQuery(query, "&"),
 		QueryEmbedding:      embedding,
@@ -397,6 +398,7 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, req hy
 		SkillIds:            admitted,
 		CatalogWorkspaceIds: scope.catalogs,
 		ExposedKeys:         scope.exposedKeys,
+		ExposedSkillIds:     scope.exposedSkillIDs,
 		HasScript:           filters.HasScript,
 		SpecValidated:       filters.SpecValidated,
 		AgentRuntime:        filters.AgentRuntime,
@@ -445,6 +447,7 @@ func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters
 	rows, err := queries.BrowseCatalogSkills(ctx, gen.BrowseCatalogSkillsParams{
 		CatalogWorkspaceIds: scope.catalogs,
 		ExposedKeys:         scope.exposedKeys,
+		ExposedSkillIds:     scope.exposedSkillIDs,
 		ResultLimit:         limit,
 		HasScript:           filters.HasScript,
 		SpecValidated:       filters.SpecValidated,
@@ -489,6 +492,7 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 	rows, err := queries.PublicSearchSkills(ctx, gen.PublicSearchSkillsParams{
 		CatalogWorkspaceIds: scope.catalogs,
 		ExposedKeys:         scope.exposedKeys,
+		ExposedSkillIds:     scope.exposedSkillIDs,
 		Query:               query,
 		BigramQuery:         lexicalQuery(query, "&"),
 		ResultLimit:         limit,

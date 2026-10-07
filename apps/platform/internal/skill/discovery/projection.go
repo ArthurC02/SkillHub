@@ -315,7 +315,7 @@ func (s *Service) CatalogSkillRisks(
 		return nil, err
 	}
 	rows, err := gen.New(s.Pool).ListCatalogSkillScans(ctx, gen.ListCatalogSkillScansParams{
-		SkillIds: skillIDs, CatalogWorkspaceIds: scope.catalogs, ExposedKeys: scope.exposedKeys,
+		SkillIds: skillIDs, CatalogWorkspaceIds: scope.catalogs, ExposedKeys: scope.exposedKeys, ExposedSkillIds: scope.exposedSkillIDs,
 	})
 	if err != nil {
 		return nil, err
