@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { ADMIN_ACCOUNT, ADMIN_DISPATCH, ADMIN_LEDGER } from "../src/testing/fixtures/platform";
+import {
+  ADMIN_ACCOUNT,
+  ADMIN_DISPATCH,
+  ADMIN_LEDGER,
+  ADMIN_SKILLS,
+  SKILL,
+} from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
 test("operator can find an account and verify a credit grant in the refreshed ledger", async ({
@@ -103,4 +109,48 @@ test("operator can halt and resume dispatch with the affected scope visible", as
     { method: "PUT", body: { note: "保留事故現場" } },
     { method: "DELETE", body: { note: "已確認可恢復" } },
   ]);
+});
+
+test("operator must confirm a skill takedown before it is sent and sees the refreshed state", async ({
+  page,
+}) => {
+  await stubPlatform(page);
+  let takenDown = false;
+  const reasons: string[] = [];
+  await page.route("**/admin/skills?*", (route) => {
+    if (route.request().resourceType() === "document") return route.continue();
+    return route.fulfill({
+      json: {
+        ...ADMIN_SKILLS,
+        skills: ADMIN_SKILLS.skills.map((skill) =>
+          takenDown
+            ? { ...skill, takedown_at: "2026-09-12T08:00:00Z", takedown_reason: "DMCA notice" }
+            : skill,
+        ),
+      },
+    });
+  });
+  await page.route(`**/admin/skills/${SKILL}/takedown`, (route) => {
+    reasons.push((route.request().postDataJSON() as { reason: string }).reason);
+    takenDown = true;
+    return route.fulfill({ json: { skill_id: SKILL, taken_down: true } });
+  });
+
+  await page.goto(`/admin/skills?q=${SKILL}`);
+  await expect(page.getByRole("heading", { name: "對「PDF Summariser」的動作" })).toBeVisible();
+  await page.getByLabel("下架理由（必填，最多 1000 位元組，會寫進動作紀錄）").fill(" DMCA notice ");
+  await page.getByRole("button", { name: "下架", exact: true }).click();
+  const confirm = page.getByRole("button", { name: "確認下架" });
+  await expect(confirm).toBeFocused();
+  await expect(confirm).toHaveAttribute("aria-describedby", "admin-takedown-scope");
+  await expect(page.locator("#admin-takedown-scope")).toContainText("下架沒有恢復的路");
+  expect(reasons).toEqual([]);
+
+  await page.getByRole("button", { name: "取消", exact: true }).click();
+  expect(reasons).toEqual([]);
+  await page.getByRole("button", { name: "下架", exact: true }).click();
+  await page.getByRole("button", { name: "確認下架" }).click();
+  await expect(page.getByText("已下架", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "對「PDF Summariser」的動作" })).toHaveCount(0);
+  expect(reasons).toEqual(["DMCA notice"]);
 });
