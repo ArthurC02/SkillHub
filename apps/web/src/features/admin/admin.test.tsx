@@ -192,6 +192,43 @@ test("the admin home distinguishes an empty queue and no halts from missing data
   expect(container.querySelector('.admin-home-list [role="alert"]')).toBeNull();
 });
 
+test("the admin home rechecks pending reviews when the operator returns to the tab", async () => {
+  let publications = ADMIN_EXPOSURE_QUEUE.publications;
+  stub(true, (path) =>
+    path === "/admin/exposure-reviews" ? { body: { publications }, status: 200 } : undefined,
+  );
+  await mountAt("/admin");
+  await waitFor(has("待審 1 筆"));
+  const query = queryClient.getQueryCache().find({ queryKey: queryKeys.admin.exposureQueue });
+  expect(query?.observers[0]?.options.refetchOnWindowFocus).toBe(true);
+  expect(query?.observers[0]?.options.refetchOnReconnect).toBe(true);
+
+  publications = [];
+  try {
+    await act(async () => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    await waitFor(has("待審 0 筆"));
+  } finally {
+    focusManager.setFocused(undefined);
+  }
+});
+
+test("the exposure review page can manually reload a changed queue", async () => {
+  let publications = ADMIN_EXPOSURE_QUEUE.publications;
+  stub(true, (path) =>
+    path === "/admin/exposure-reviews" ? { body: { publications }, status: 200 } : undefined,
+  );
+  await mountAt("/admin/exposure");
+  await waitFor(has("審這一筆"));
+
+  publications = [];
+  await click(button("重新整理待審清單"));
+  await waitFor(has("沒有等待審核的發佈物：0 筆。"));
+  expect(calls.filter((call) => call.url === "/admin/exposure-reviews")).toHaveLength(2);
+});
+
 test("the admin home does not call a node halt an all-clear", async () => {
   stub(true, (path) =>
     path === "/admin/dispatch"

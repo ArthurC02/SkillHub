@@ -43,6 +43,11 @@ export function AdminExposure() {
       lede="發佈物的最新 Release 要先由 operator 核准，才會出現在搜尋與目錄裡。"
     >
       <h2>待審清單</h2>
+      {queue.data && !queue.error && (
+        <button type="button" disabled={queue.isFetching} onClick={() => void queue.refetch()}>
+          重新整理待審清單
+        </button>
+      )}
       {queue.isFetching && <Loading what="待審清單" />}
       {!queue.isFetching && (
         <ReadFailure

@@ -293,6 +293,8 @@ export function useExposureQueue() {
     queryKey: queryKeys.admin.exposureQueue,
     queryFn: () => apiFetch<{ publications: ExposureQueueEntry[] }>("/admin/exposure-reviews"),
     enabled: useOperator(),
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 }
 
