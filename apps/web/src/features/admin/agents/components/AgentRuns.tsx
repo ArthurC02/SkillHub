@@ -9,6 +9,7 @@ import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Reveal } from "../../../../shared/ui/Reveal";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
+import "./AgentRuns.css";
 
 const RUN_STATUS: Record<PlatformAgentRunStatus, string> = {
   running: "執行中",
@@ -71,11 +72,11 @@ export function AgentRunSteps({ run }: { run: string }) {
                 模型 {step.model}；輸入 {step.prompt_tokens} tokens、輸出 {step.completion_tokens}{" "}
                 tokens；花費 {step.usd_micros === undefined ? "沒有回報" : usd(step.usd_micros)}
               </p>
-              <pre>
+              <pre className="agent-step-text">
                 <Reveal text={step.arguments} />
               </pre>
               {step.result !== "" && (
-                <pre>
+                <pre className="agent-step-text">
                   <Reveal text={step.result} />
                 </pre>
               )}
