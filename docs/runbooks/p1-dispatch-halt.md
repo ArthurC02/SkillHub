@@ -95,15 +95,18 @@ curl -s -b <cookie> -X PUT http://<api>/admin/dispatch/halt \
   -H 'Content-Type: application/json' \
   -d '{"note":"<觸發條件與已採取的止血動作>"}'
 
-# 修復、驗證與證據完成後解除；同樣可填 provider
-curl -s -b <cookie> -X DELETE http://<api>/admin/dispatch/halt \
+# 修復、驗證與證據完成後，讀取目標目前的 halt_id 與 generation
+curl -s -b <cookie> http://<api>/admin/dispatch
+
+# 確認來源與理由仍屬這次事故，再把剛讀到的值帶回；節點煞車需同時填 provider
+curl -i -s -b <cookie> -X DELETE http://<api>/admin/dispatch/halt \
   -H 'Content-Type: application/json' \
-  -d '{"note":"<修復內容、驗證結果與為何現在安全>"}'
+  -d '{"note":"<修復內容、驗證結果與為何現在安全>","halt_id":"<剛讀到的 halt_id>","generation":<剛讀到的 generation>}'
 ```
 
-目前解除 API 尚未核對操作者所見的煞車身分與代次；同一目標若在讀取後重新宣告，舊請求可能解除新煞車。事故觸發源仍可能重宣告時，保持煞車，不執行人工解除；先確認條件持續消失並完成處置。單次重讀或畫面自動更新不能消除送出瞬間的競態，直到具前提的解除契約落地前，不能把它當成安全保證。
+缺少 `halt_id` 或 `generation` 的舊解除請求會被拒絕。若回 `409 stale_dispatch_halt`，煞車沒有解除；重新讀取狀態、重新核對事故及處置證據，不能直接重送舊請求。若目標已無現行煞車，帶完整所見前提的請求回 `204`，不會解除後來新建的煞車。
 
-兩個操作都要求非空 `note`，並寫入 audit event。重複宣告與解除是冪等的。解除前必須同時確認：觸發條件已消失、現場與處置證據已保存、負責人可追溯事件的記錄已建立。對 `p1_incident` 而言，節點自己恢復、重啟程序或探針暫時安靜都不是解除理由。
+兩個操作都要求非空 `note`。重複宣告沿用同一筆煞車，但更新代次並再寫一筆 audit；若目標已無煞車，帶完整前提重複解除回 `204`，不再寫解除 audit。解除前必須同時確認：觸發條件已消失、現場與處置證據已保存、負責人可追溯事件的記錄已建立。對 `p1_incident` 而言，節點自己恢復、重啟程序或探針暫時安靜都不是解除理由。
 
 ## 5. 事故結束後
 

@@ -107,7 +107,14 @@ test("operator can halt and resume dispatch with the affected scope visible", as
   await expect(page.getByRole("status").filter({ hasText: "解除請求已處理" })).toBeVisible();
   expect(writes).toEqual([
     { method: "PUT", body: { note: "保留事故現場" } },
-    { method: "DELETE", body: { note: "已確認可恢復" } },
+    {
+      method: "DELETE",
+      body: {
+        note: "已確認可恢復",
+        halt_id: ADMIN_DISPATCH.halts[0].halt_id,
+        generation: ADMIN_DISPATCH.halts[0].generation,
+      },
+    },
   ]);
 });
 

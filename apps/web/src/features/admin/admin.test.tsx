@@ -1486,7 +1486,11 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
   await type("#admin-halt-lift-note", "cleared");
   await click(button("恢復派送"));
   await waitFor(() => calls.some((c) => c.method === "DELETE"));
-  expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({ note: "cleared" });
+  expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({
+    note: "cleared",
+    halt_id: ADMIN_DISPATCH.halts[0].halt_id,
+    generation: ADMIN_DISPATCH.halts[0].generation,
+  });
 });
 
 test("P1 recovery shows its evidence checklist, but an orphan halt does not", async () => {
@@ -1620,7 +1624,13 @@ test("recovery requires selecting an active halt and sends that target", async (
             dispatching: false,
             halts: [
               ...ADMIN_DISPATCH.halts,
-              { ...ADMIN_DISPATCH.halts[0], target: "node-2", reason: "node investigation" },
+              {
+                ...ADMIN_DISPATCH.halts[0],
+                target: "node-2",
+                halt_id: "22222222-2222-4222-8222-222222222222",
+                generation: 3,
+                reason: "node investigation",
+              },
             ],
           },
           status: 200,
@@ -1646,6 +1656,44 @@ test("recovery requires selecting an active halt and sends that target", async (
   expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({
     note: "verified node repair",
     provider: "node-2",
+    halt_id: "22222222-2222-4222-8222-222222222222",
+    generation: 3,
+  });
+});
+
+test("a stale recovery reloads the halt and requires a new selection", async () => {
+  let current: DispatchStatus = ADMIN_DISPATCH;
+  stub(true, (path, method) => {
+    if (path === "/admin/dispatch" && method === "GET") return { body: current, status: 200 };
+    if (path === "/admin/dispatch/halt" && method === "DELETE") {
+      current = {
+        ...ADMIN_DISPATCH,
+        halts: [{ ...ADMIN_DISPATCH.halts[0], generation: 2, reason: "new incident" }],
+      };
+      return { body: { error: "stale_dispatch_halt" }, status: 409 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-lift-note", "verified repair");
+  await click(button("恢復派送"));
+
+  await waitFor(has("煞車在你查看後已變更"));
+  await waitFor(has("new incident"));
+  expect(field<HTMLSelectElement>("#admin-halt-recovery-target").value).toBe("");
+  expect(field<HTMLTextAreaElement>("#admin-halt-lift-note").value).toBe("");
+  expect(button("恢復派送").disabled).toBe(true);
+  await type("#admin-halt-recovery-target", "pool");
+  expect(button("恢復派送").disabled).toBe(true);
+  expect(
+    calls.filter((call) => call.url === "/admin/dispatch" && call.method === "GET"),
+  ).toHaveLength(2);
+  expect(calls.find((call) => call.method === "DELETE")?.body).toEqual({
+    note: "verified repair",
+    halt_id: ADMIN_DISPATCH.halts[0].halt_id,
+    generation: 1,
   });
 });
 

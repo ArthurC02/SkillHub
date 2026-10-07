@@ -3201,11 +3201,19 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [target, source, reason, declared_at, automatic_recovery]
+                      required: [target, halt_id, generation, source, reason, declared_at, automatic_recovery]
                       properties:
                         target:
                           type: string
                           description: A provider name, or `pool` for the whole fleet.
+                        halt_id:
+                          type: string
+                          format: uuid
+                          description: Stable identity of this halt row.
+                        generation:
+                          type: integer
+                          minimum: 1
+                          description: Increases on every redeclaration of the same halt.
                         source:
                           type: string
                           enum: [p1_incident, orphan_threshold]
@@ -3235,7 +3243,7 @@ paths:
     put:
       operationId: declareDispatchHalt
       summary: Stop dispatching new Runs (SEC-012, 02:SEC-010 P1)
-      description: |
+      description: >-
         Operator only. Declares a P1 and performs its three automatic actions at
         once: new runs are refused (503 on POST /skills/{id}/runs), nothing is
         dispatched to the target, and cleanup and orphan teardown stand down so
@@ -3249,8 +3257,9 @@ paths:
         depends on.
 
         Writes the halt row and its audit event in one transaction (iron rule 9).
-        Idempotent: re-declaring rewrites the reason and writes a second audit
-        event, because an operator repeating an action is not an error.
+        Re-declaring keeps the active row, increases its generation, rewrites
+        the reason and writes another audit event. Repeating the action is not
+        an error, but an earlier lift observation becomes stale.
 
         A P1 declared over a target already paused by the X-04 threshold takes it
         over — including its release, which stops being automatic. The reverse
@@ -3312,7 +3321,7 @@ paths:
     delete:
       operationId: liftDispatchHalt
       summary: Resume dispatching (SEC-012)
-      description: |
+      description: >-
         Operator only, and the only way a `p1_incident` halt is ever released:
         03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時恢復服務）」.
 
@@ -3325,19 +3334,29 @@ paths:
         while the halt was in force, so nobody has to start over. Cleanups that
         stood down are performed on the next sweep as well.
 
-        Idempotent: lifting nothing answers 204, because the caller's intent is
-        already true.
+        The observed `halt_id` and `generation` from GET /admin/dispatch must
+        match the active halt in the same update transaction. A redeclared or
+        replaced halt returns 409 without lifting or auditing it. Lifting
+        nothing with a complete observation answers 204.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [note]
+              required: [note, halt_id, generation]
               properties:
                 provider:
                   type: string
                   description: The drained node to return to service; omit for the fleet-wide halt.
+                halt_id:
+                  type: string
+                  format: uuid
+                  description: The halt observed in GET /admin/dispatch.
+                generation:
+                  type: integer
+                  minimum: 1
+                  description: The generation observed in GET /admin/dispatch.
                 note:
                   type: string
                   maxLength: 1000
@@ -3348,7 +3367,12 @@ paths:
             This target is dispatchable. Also the answer when there was nothing
             to lift.
         "400":
-          description: Body is not JSON, `note` is blank or over 1000 bytes, or `provider` is not configured.
+          description: Body is invalid, `note` is blank or over 1000 bytes, `provider` is not configured, or the observation is missing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The active halt changed since the operator observed it. Fetch the latest status before deciding again.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

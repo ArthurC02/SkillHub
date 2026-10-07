@@ -2,7 +2,10 @@ package apiserver_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -36,6 +39,30 @@ func dispatchStatus(t *testing.T, c *client) (dispatching bool, halts []map[stri
 		t.Fatalf("GET /admin/dispatch: got %d, want 200", code)
 	}
 	return body.Dispatching, body.Halts
+}
+
+func haltLiftBody(t *testing.T, halt map[string]any, note string) string {
+	t.Helper()
+	body := map[string]any{
+		"note": note, "halt_id": halt["halt_id"], "generation": halt["generation"],
+	}
+	if halt["target"] != "pool" {
+		body["provider"] = halt["target"]
+	}
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(encoded)
+}
+
+func currentHaltLiftBody(t *testing.T, c *client, note string) string {
+	t.Helper()
+	_, halts := dispatchStatus(t, c)
+	if len(halts) != 1 {
+		t.Fatalf("active halts = %v, want one", halts)
+	}
+	return haltLiftBody(t, halts[0], note)
 }
 
 func haltAuditCount(t *testing.T, pool *pgxpool.Pool, action string) int {
@@ -90,6 +117,147 @@ func TestDispatchHaltRoutesAreInvisibleWithoutTheOperatorRole(t *testing.T) {
 	}
 }
 
+func TestOperatorLiftRequiresAnObservedHalt(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	_, _ = haltHarness(t, a, pool)
+	operator := a.login(t, "operator-observed-halt")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	declareP1Halt(t, operator, "investigating")
+	_, halts := dispatchStatus(t, operator)
+	before := haltAuditCount(t, pool, "dispatch.resumed")
+	for _, body := range []string{
+		`{"note":"safe"}`,
+		`{"note":"safe","halt_id":"11111111-1111-4111-8111-111111111111"}`,
+		`{"note":"safe","halt_id":"invalid","generation":1}`,
+		`{"note":"safe","halt_id":"11111111-1111-4111-8111-111111111111","generation":0}`,
+	} {
+		code, response := operatorCall(t, operator, http.MethodDelete, "/admin/dispatch/halt", body)
+		message, _ := response["error"].(string)
+		if code != http.StatusBadRequest || !strings.HasPrefix(message, "missing_dispatch_halt_observation:") {
+			t.Errorf("DELETE %s: got %d (%v), want named 400", body, code, response)
+		}
+	}
+	_, remaining := dispatchStatus(t, operator)
+	if len(remaining) != 1 || remaining[0]["halt_id"] != halts[0]["halt_id"] {
+		t.Fatalf("missing observations changed active halt: %v", remaining)
+	}
+	if got := haltAuditCount(t, pool, "dispatch.resumed"); got != before {
+		t.Fatalf("missing observations wrote %d resume audits, want none", got-before)
+	}
+}
+
+func TestOperatorLiftRejectsRedeclaredAndReplacementHalts(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	_, _ = haltHarness(t, a, pool)
+	operator := a.login(t, "operator-stale-halt")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	declareP1Halt(t, operator, "investigating")
+	_, original := dispatchStatus(t, operator)
+	staleBody := haltLiftBody(t, original[0], "safe to resume")
+	before := haltAuditCount(t, pool, "dispatch.resumed")
+
+	declareP1Halt(t, operator, "investigating")
+	_, redeclared := dispatchStatus(t, operator)
+	if redeclared[0]["halt_id"] != original[0]["halt_id"] || redeclared[0]["generation"] != original[0]["generation"].(float64)+1 {
+		t.Fatalf("redeclaration identity/generation = %v, original = %v", redeclared[0], original[0])
+	}
+	if code, response := operatorCall(t, operator, http.MethodDelete, "/admin/dispatch/halt", staleBody); code != http.StatusConflict || !strings.HasPrefix(fmt.Sprint(response["error"]), "stale_dispatch_halt:") {
+		t.Fatalf("stale redeclaration lift: got %d (%v), want named 409", code, response)
+	}
+	_, afterStale := dispatchStatus(t, operator)
+	if afterStale[0]["generation"] != redeclared[0]["generation"] || haltAuditCount(t, pool, "dispatch.resumed") != before {
+		t.Fatal("stale observation lifted or audited a redeclared halt")
+	}
+
+	currentBody := haltLiftBody(t, redeclared[0], "safe to resume")
+	if code, response := operatorCall(t, operator, http.MethodDelete, "/admin/dispatch/halt", currentBody); code != http.StatusNoContent {
+		t.Fatalf("matching lift: got %d (%v), want 204", code, response)
+	}
+	if got := haltAuditCount(t, pool, "dispatch.resumed"); got != before+1 {
+		t.Fatalf("matching lift wrote %d audits, want one", got-before)
+	}
+	declareP1Halt(t, operator, "new incident")
+	_, replacement := dispatchStatus(t, operator)
+	if replacement[0]["halt_id"] == redeclared[0]["halt_id"] {
+		t.Fatalf("replacement kept old halt ID: %v", replacement[0])
+	}
+	if replacement[0]["generation"] != original[0]["generation"] {
+		t.Fatalf("replacement generation = %v, want the former halt's initial %v", replacement[0]["generation"], original[0]["generation"])
+	}
+	if code, response := operatorCall(t, operator, http.MethodDelete, "/admin/dispatch/halt", staleBody); code != http.StatusConflict || !strings.HasPrefix(fmt.Sprint(response["error"]), "stale_dispatch_halt:") {
+		t.Fatalf("stale replacement lift: got %d (%v), want named 409", code, response)
+	}
+	_, remaining := dispatchStatus(t, operator)
+	if remaining[0]["halt_id"] != replacement[0]["halt_id"] || haltAuditCount(t, pool, "dispatch.resumed") != before+1 {
+		t.Fatal("stale observation lifted or audited a replacement halt")
+	}
+}
+
+func TestOperatorLiftRejectsAnOrphanHaltUpgradedToP1(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	_, svc := haltHarness(t, a, pool)
+	operator := a.login(t, "operator-upgraded-halt")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	if _, err := svc.DeclareHalt(t.Context(), "", run.HaltSourceOrphanThreshold, "orphan count", pgtype.UUID{}); err != nil {
+		t.Fatal(err)
+	}
+	_, orphan := dispatchStatus(t, operator)
+	staleBody := haltLiftBody(t, orphan[0], "safe to resume")
+	before := haltAuditCount(t, pool, "dispatch.resumed")
+	declareP1Halt(t, operator, "isolation incident")
+	_, incident := dispatchStatus(t, operator)
+	if incident[0]["halt_id"] != orphan[0]["halt_id"] || incident[0]["generation"] != orphan[0]["generation"].(float64)+1 || incident[0]["source"] != "p1_incident" {
+		t.Fatalf("P1 upgrade = %v, former orphan halt = %v", incident[0], orphan[0])
+	}
+	code, response := operatorCall(t, operator, http.MethodDelete, "/admin/dispatch/halt", staleBody)
+	if code != http.StatusConflict || !strings.HasPrefix(fmt.Sprint(response["error"]), "stale_dispatch_halt:") {
+		t.Fatalf("stale orphan observation: got %d (%v), want named 409", code, response)
+	}
+	_, remaining := dispatchStatus(t, operator)
+	if remaining[0]["source"] != "p1_incident" || haltAuditCount(t, pool, "dispatch.resumed") != before {
+		t.Fatal("old orphan observation lifted or audited the P1 incident")
+	}
+}
+
+func TestOperatorLiftRollsBackWhenAuditCannotBeWritten(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	_, _ = haltHarness(t, a, pool)
+	operator := a.login(t, "operator-audit-lift")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	declareP1Halt(t, operator, "investigating")
+	liftBody := currentHaltLiftBody(t, operator, "safe to resume")
+	before := haltAuditCount(t, pool, "dispatch.resumed")
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(), `DROP TRIGGER IF EXISTS reject_dispatch_resume_audit ON audit_events`); err != nil {
+			t.Error(err)
+		}
+		if _, err := pool.Exec(context.Background(), `DROP FUNCTION IF EXISTS reject_dispatch_resume_audit()`); err != nil {
+			t.Error(err)
+		}
+	})
+	for _, statement := range []string{
+		`CREATE FUNCTION reject_dispatch_resume_audit() RETURNS trigger LANGUAGE plpgsql AS $$
+         BEGIN IF NEW.action = 'dispatch.resumed' THEN RAISE EXCEPTION 'audit refused'; END IF; RETURN NEW; END $$`,
+		`CREATE TRIGGER reject_dispatch_resume_audit BEFORE INSERT ON audit_events
+         FOR EACH ROW EXECUTE FUNCTION reject_dispatch_resume_audit()`,
+	} {
+		if _, err := pool.Exec(t.Context(), statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if code, response := operatorCall(t, operator, http.MethodDelete, "/admin/dispatch/halt", liftBody); code != http.StatusInternalServerError {
+		t.Fatalf("audit refusal: got %d (%v), want 500", code, response)
+	}
+	_, remaining := dispatchStatus(t, operator)
+	if len(remaining) != 1 || haltAuditCount(t, pool, "dispatch.resumed") != before {
+		t.Fatal("audit failure committed the lift or wrote a partial audit")
+	}
+}
+
 func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -115,11 +283,15 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 	sc.assertP1HaltHoldsNewAndQueuedWork(t, hash, queued.RunID)
 	sc.assertP1HaltPreservesTheScene(t, finished.RunID)
 	sc.assertP1HaltAuditedAndNotSelfReleasing(t, haltsBefore, note)
-	sc.resumeAndFinishTheHeldWork(t, queued.RunID, finished.RunID)
+	liftBody := sc.resumeAndFinishTheHeldWork(t, queued.RunID, finished.RunID)
 
+	resumesBeforeRepeat := haltAuditCount(t, pool, "dispatch.resumed")
 	if code, _ := operatorCall(t, operator, http.MethodDelete, "/admin/dispatch/halt",
-		`{"note":"double check"}`); code != http.StatusNoContent {
+		liftBody); code != http.StatusNoContent {
 		t.Error("a repeated resume is not a no-op")
+	}
+	if got := haltAuditCount(t, pool, "dispatch.resumed"); got != resumesBeforeRepeat {
+		t.Errorf("a repeated resume wrote %d audits, want none", got-resumesBeforeRepeat)
 	}
 
 	for _, body := range []string{`{}`, `{"note":"  "}`, `{"note":"n","provider":"no_such_node"}`} {
@@ -236,12 +408,13 @@ func (sc haltScene) assertP1HaltAuditedAndNotSelfReleasing(t *testing.T, haltsBe
 	}
 }
 
-func (sc haltScene) resumeAndFinishTheHeldWork(t *testing.T, queuedRunID, finishedRunID string) {
+func (sc haltScene) resumeAndFinishTheHeldWork(t *testing.T, queuedRunID, finishedRunID string) string {
 	t.Helper()
 	ctx := context.Background()
 	resumesBefore := haltAuditCount(t, sc.pool, "dispatch.resumed")
+	liftBody := currentHaltLiftBody(t, sc.operator, "investigation closed, nothing escaped")
 	if code, body := operatorCall(t, sc.operator, http.MethodDelete, "/admin/dispatch/halt",
-		`{"note":"investigation closed, nothing escaped"}`); code != http.StatusNoContent {
+		liftBody); code != http.StatusNoContent {
 		t.Fatalf("operator DELETE /admin/dispatch/halt: got %d (%v)", code, body)
 	}
 	if got := haltAuditCount(t, sc.pool, "dispatch.resumed") - resumesBefore; got != 1 {
@@ -263,6 +436,7 @@ func (sc haltScene) resumeAndFinishTheHeldWork(t *testing.T, queuedRunID, finish
 	if _, view := sc.f.getRun(t, finishedRunID); view.CleanupStatus.Value != string(gen.RunCleanupStatusCleaned) {
 		t.Errorf("cleanup_status = %+v after the resume, want cleaned", view.CleanupStatus)
 	}
+	return liftBody
 }
 
 func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {

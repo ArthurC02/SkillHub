@@ -24,6 +24,14 @@ export interface LiftDispatchHaltRequest {
      */
     provider?: string;
     /**
+     * The halt observed in GET /admin/dispatch.
+     */
+    haltId: string;
+    /**
+     * The generation observed in GET /admin/dispatch.
+     */
+    generation: number;
+    /**
      * Why it is safe to resume. Required, same rule as on PUT.
      */
     note: string;
@@ -33,6 +41,8 @@ export interface LiftDispatchHaltRequest {
  * Check if a given object implements the LiftDispatchHaltRequest interface.
  */
 export function instanceOfLiftDispatchHaltRequest(value: object): value is LiftDispatchHaltRequest {
+    if ((!('haltId' in (value as Record<string, any>)) && !('halt_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['haltId'] === undefined && (value as Record<string, any>)['halt_id'] === undefined)) return false;
+    if (!('generation' in value) || value['generation'] === undefined) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;
 }
@@ -48,6 +58,8 @@ export function LiftDispatchHaltRequestFromJSONTyped(json: any, ignoreDiscrimina
     return {
         
         'provider': json['provider'] == null ? undefined : json['provider'],
+        'haltId': json['halt_id'],
+        'generation': json['generation'],
         'note': json['note'],
     };
 }
@@ -64,6 +76,8 @@ export function LiftDispatchHaltRequestToJSONTyped(value?: LiftDispatchHaltReque
     return {
         
         'provider': value['provider'],
+        'halt_id': value['haltId'],
+        'generation': value['generation'],
         'note': value['note'],
     };
 }

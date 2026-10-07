@@ -520,7 +520,7 @@ func TestOperatorHandlersRefuseWithoutASession(t *testing.T) {
 		{"SetRedistribution", http.MethodPut, `{"value":"blocked","note":"n"}`, d.Search.SetRedistribution},
 		{"Halts", http.MethodGet, "", d.Runs.Halts},
 		{"DeclareHalt", http.MethodPut, `{"note":"n"}`, d.Runs.DeclareHalt},
-		{"LiftHalt", http.MethodDelete, `{"note":"n"}`, d.Runs.LiftHalt},
+		{"LiftHalt", http.MethodDelete, `{"note":"n","halt_id":"11111111-1111-4111-8111-111111111111","generation":1}`, d.Runs.LiftHalt},
 	} {
 		req := httptest.NewRequest(tc.method, "/admin/skills/"+held+"/x", strings.NewReader(tc.body))
 		req.SetPathValue("id", held)

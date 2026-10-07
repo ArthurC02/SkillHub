@@ -39,6 +39,8 @@ export type SkillGovernance = {
 
 export type DispatchHalt = {
   target: string;
+  halt_id: string;
+  generation: number;
   source: "p1_incident" | "orphan_threshold";
   reason: string;
   declared_at: string;
@@ -224,10 +226,16 @@ export function useDispatchStatus() {
 export function useDispatchHalt(method: "PUT" | "DELETE") {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { note: string; provider?: string }) =>
-      apiFetch<{ note?: string } | undefined>("/admin/dispatch/halt", send(method, body)),
+    mutationFn: (body: {
+      note: string;
+      provider?: string;
+      halt_id?: string;
+      generation?: number;
+    }) => apiFetch<{ note?: string } | undefined>("/admin/dispatch/halt", send(method, body)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch }),
     onError: (error) => {
+      if (error instanceof ApiError && error.status === 409)
+        return queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch });
       if (isUncertainWriteFailure(error))
         return queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch });
     },

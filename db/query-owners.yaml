@@ -239,6 +239,7 @@ scope:
   RedeclareDispatchHalt: user
   GetNewestSkillVersion: user
   LiftDispatchHalt: user
+  LiftObservedDispatchHalt: operator
   ListPlatformAuditEvents: user
   LockSkillForOperatorWrite: user
   ListRecentCreditEntries: user

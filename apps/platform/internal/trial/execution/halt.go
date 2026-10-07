@@ -39,6 +39,7 @@ const haltPool = ""
 const haltRecoveryRounds = 2
 
 var ErrDispatchHalted = errors.New("the execution environment is temporarily unavailable")
+var ErrStaleDispatchHalt = errors.New("the dispatch halt has changed")
 
 type DispatchHalt struct {
 	ID          pgtype.UUID
@@ -47,6 +48,12 @@ type DispatchHalt struct {
 	Reason      string
 	DeclaredAt  *time.Time
 	ClearRounds int32
+	Generation  int32
+}
+
+type HaltObservation struct {
+	ID         pgtype.UUID
+	Generation int32
 }
 
 type haltState struct {
@@ -214,25 +221,67 @@ func (s *Service) LiftHalt(
 	if err != nil {
 		return DispatchHalt{}, false, err
 	}
-	if err := audit.Log(ctx, tx, audit.Event{
-		Actor:        actor,
-		Action:       audit.ActionDispatchResume,
-		ResourceType: audit.ResourceDispatch,
-		ResourceID:   halt.ID,
-		Metadata: map[string]any{
-			"target":       haltTarget(provider),
-			"source":       halt.Source,
-			"halt_reason":  halt.Reason,
-			"lift_reason":  reason,
-			"clear_rounds": halt.ClearRounds,
-		},
-	}); err != nil {
+	if err := logHaltLift(ctx, tx, halt, reason, actor); err != nil {
 		return DispatchHalt{}, false, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return DispatchHalt{}, false, err
 	}
 	return dispatchHalt(halt), true, nil
+}
+
+func (s *Service) LiftObservedHalt(
+	ctx context.Context, provider, reason string, actor pgtype.UUID, observed HaltObservation,
+) (DispatchHalt, bool, error) {
+	if err := requireHaltReason(reason); err != nil {
+		return DispatchHalt{}, false, err
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return DispatchHalt{}, false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.queries().WithTx(tx)
+	if err := q.LockDispatchHaltTarget(ctx, provider); err != nil {
+		return DispatchHalt{}, false, err
+	}
+	halt, err := q.LiftObservedDispatchHalt(ctx, gen.LiftObservedDispatchHaltParams{
+		Provider: provider, ID: observed.ID, Generation: observed.Generation, LiftReason: &reason, LiftedBy: actor,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		if _, err := q.GetActiveDispatchHalt(ctx, provider); errors.Is(err, pgx.ErrNoRows) {
+			return DispatchHalt{}, false, nil
+		} else if err != nil {
+			return DispatchHalt{}, false, err
+		}
+		return DispatchHalt{}, false, ErrStaleDispatchHalt
+	}
+	if err != nil {
+		return DispatchHalt{}, false, err
+	}
+	if err := logHaltLift(ctx, tx, halt, reason, actor); err != nil {
+		return DispatchHalt{}, false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return DispatchHalt{}, false, err
+	}
+	return dispatchHalt(halt), true, nil
+}
+
+func logHaltLift(ctx context.Context, tx pgx.Tx, halt gen.DispatchHalt, reason string, actor pgtype.UUID) error {
+	return audit.Log(ctx, tx, audit.Event{
+		Actor:        actor,
+		Action:       audit.ActionDispatchResume,
+		ResourceType: audit.ResourceDispatch,
+		ResourceID:   halt.ID,
+		Metadata: map[string]any{
+			"target":       haltTarget(halt.Provider),
+			"source":       halt.Source,
+			"halt_reason":  halt.Reason,
+			"lift_reason":  reason,
+			"clear_rounds": halt.ClearRounds,
+		},
+	})
 }
 
 func dispatchHalt(row gen.DispatchHalt) DispatchHalt {
@@ -243,6 +292,7 @@ func dispatchHalt(row gen.DispatchHalt) DispatchHalt {
 		Reason:      row.Reason,
 		DeclaredAt:  timePointer(row.DeclaredAt),
 		ClearRounds: row.ClearRounds,
+		Generation:  row.Generation,
 	}
 }
 
@@ -389,12 +439,16 @@ func (s *Service) publishHaltMetrics(ctx context.Context) {
 const maxHaltNoteBytes = 1000
 
 type haltRequest struct {
-	Provider string `json:"provider"`
-	Note     string `json:"note"`
+	Provider   string `json:"provider"`
+	Note       string `json:"note"`
+	HaltID     string `json:"halt_id"`
+	Generation int32  `json:"generation"`
 }
 
 type dispatchHaltResponse struct {
 	Target            string `json:"target"`
+	HaltID            string `json:"halt_id"`
+	Generation        int32  `json:"generation"`
 	Source            string `json:"source"`
 	Reason            string `json:"reason"`
 	DeclaredAt        string `json:"declared_at"`
@@ -437,6 +491,7 @@ func (h *Handler) Halts(w http.ResponseWriter, r *http.Request) {
 	for target, halt := range state.byTarget {
 		halts = append(halts, dispatchHaltResponse{
 			Target: haltTarget(target), Source: halt.Source, Reason: halt.Reason,
+			HaltID: pgconv.UUIDString(halt.ID), Generation: halt.Generation,
 			DeclaredAt: pgconv.RFC3339(halt.DeclaredAt), ClearRounds: halt.ClearRounds,
 			AutomaticRecovery: HaltSource(halt.Source).RecoversAutomatically(),
 		})
@@ -473,11 +528,22 @@ func (h *Handler) LiftHalt(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	var observedID pgtype.UUID
+	if err := observedID.Scan(body.HaltID); err != nil || !observedID.Valid || body.Generation < 1 {
+		httpx.WriteError(w, http.StatusBadRequest, "missing_dispatch_halt_observation: halt_id and generation from the current dispatch status are required")
+		return
+	}
 	user, ok := sessionActor(w, r)
 	if !ok {
 		return
 	}
-	if _, _, err := h.Svc.LiftHalt(r.Context(), body.Provider, body.Note, user.ID, AllHaltSources()); err != nil {
+	if _, _, err := h.Svc.LiftObservedHalt(r.Context(), body.Provider, body.Note, user.ID, HaltObservation{
+		ID: observedID, Generation: body.Generation,
+	}); err != nil {
+		if errors.Is(err, ErrStaleDispatchHalt) {
+			httpx.WriteError(w, http.StatusConflict, "stale_dispatch_halt: fetch the current dispatch status before deciding again")
+			return
+		}
 		httpx.WriteError(w, http.StatusInternalServerError, "dispatch resume failed")
 		return
 	}

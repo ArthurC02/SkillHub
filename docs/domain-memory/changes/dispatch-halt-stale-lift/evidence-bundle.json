@@ -8,7 +8,13 @@
   },
   "approvals": [],
   "scm_attestation": null,
-  "counterfactual_check": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "stale-redeclaration",
+    "mutated_protection": "將條件更新的 generation = @generation 放寬為 >=，並另將 id = @id 拿掉；各自重新生成 sqlc 程式。也分別暫時移除必要前提驗證、audit 寫入與前端衝突後清除選取和理由。",
+    "failure_evidence": "代次突變使同列重宣告與 orphan 升級 P1 測試由 409 變成 204；ID 突變使同代次新列測試由 409 變成 204；略過 audit 使受控寫入失敗測試由 500 變成 204；略過前提驗證使缺值測試由 400 變成 409；略過前端重置使 409 後仍可保留舊選取或理由。每次均在對應斷言失敗後還原。",
+    "restored": true
+  },
   "sources": [
     "contracts/openapi/public.yaml",
     "db/queries/dispatch.sql",
@@ -17,13 +23,86 @@
     "docs/plans/02-specifications-and-acceptance-criteria.md",
     "docs/runbooks/p1-dispatch-halt.md"
   ],
-  "test_results": [],
+  "test_results": [
+    {
+      "obligation_id": "stale-redeclaration",
+      "status": "passed",
+      "evidence": "資料庫整合測試 TestOperatorLiftRejectsRedeclaredAndReplacementHalts 與 TestOperatorLiftRejectsAnOrphanHaltUpgradedToP1 均通過；同內容重宣告及 orphan 升級 P1 的舊請求回具名 409，不解除、不寫解除 audit。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:6beb66be5e4ebf8f4fa226bc652a78f83e15cb397d88e63ef9ac2dccbc24d76e",
+      "finished_at": "2026-10-07T16:38:07Z"
+    },
+    {
+      "obligation_id": "stale-replacement",
+      "status": "passed",
+      "evidence": "同一目標的新列與舊列皆為 generation 1 時，舊 ID 的解除仍回具名 409；移除 ID 條件的反證測試會變成 204。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:6beb66be5e4ebf8f4fa226bc652a78f83e15cb397d88e63ef9ac2dccbc24d76e",
+      "finished_at": "2026-10-07T16:38:07Z"
+    },
+    {
+      "obligation_id": "matching-lift",
+      "status": "passed",
+      "evidence": "匹配所見前提後回 204 並恰寫一筆 resume audit；受控 audit 寫入失敗回 500，資料列仍維持煞車，反證移除 audit 呼叫會讓測試失敗。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:6beb66be5e4ebf8f4fa226bc652a78f83e15cb397d88e63ef9ac2dccbc24d76e",
+      "finished_at": "2026-10-07T16:38:07Z"
+    },
+    {
+      "obligation_id": "empty-lift",
+      "status": "passed",
+      "evidence": "已解除目標帶完整前提重複請求仍回 204，不新增 resume audit；把空目標結果改成衝突會使測試失敗。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:6beb66be5e4ebf8f4fa226bc652a78f83e15cb397d88e63ef9ac2dccbc24d76e",
+      "finished_at": "2026-10-07T16:38:07Z"
+    },
+    {
+      "obligation_id": "operator-guidance",
+      "status": "passed",
+      "evidence": "全套前端測試 69 檔、1232 條通過；後台送出 ID 與代次，409 後重讀、清除選取與舊理由，需重新選擇並填寫。",
+      "command_profile": "web-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:fffd306cd748c35e6c4184c052453f129d2acfd1e4f840c17c238654a23cfd0b",
+      "finished_at": "2026-10-07T16:39:14Z"
+    },
+    {
+      "obligation_id": "operator-authz",
+      "status": "passed",
+      "evidence": "TestDispatchHaltRoutesAreInvisibleWithoutTheOperatorRole 通過；匿名與 member 仍回 404 且未變更煞車。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:6beb66be5e4ebf8f4fa226bc652a78f83e15cb397d88e63ef9ac2dccbc24d76e",
+      "finished_at": "2026-10-07T16:38:07Z"
+    },
+    {
+      "obligation_id": "contract-compatibility",
+      "status": "passed",
+      "evidence": "task gen:check 顯示 sqlc、TypeScript、Python、Go 產出均與契約一致；平台缺前提及具名衝突整合測試、前端呼叫測試與 Chromium 後台流程測試通過。repo 外舊呼叫端仍需發佈前通知。",
+      "command_profile": "generation-check",
+      "exit_code": 0,
+      "output_sha256": "sha256:adfdccc631033a506c85f1d7107e471633995a928e0da156438981429a168768",
+      "finished_at": "2026-10-07T16:39:54Z"
+    },
+    {
+      "obligation_id": "missing-precondition",
+      "status": "passed",
+      "evidence": "TestOperatorLiftRequiresAnObservedHalt 通過：舊 DELETE、缺少代次、無效 ID 與零代次均具名 400，煞車與解除 audit 不變；runbook 與 repo 前端已帶前提。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:6beb66be5e4ebf8f4fa226bc652a78f83e15cb397d88e63ef9ac2dccbc24d76e",
+      "finished_at": "2026-10-07T16:38:07Z"
+    }
+  ],
   "contract_checks": [],
   "architecture_checks": [],
   "security_checks": [],
   "residual_risks": [
-    "產品已裁定拒絕過期解除，但 developer 尚未核准本 Change Package；submitted 不授權實作。",
+    "使用者已在對話中通過實作方向；但具名 developer approval 尚未記錄，Change Package 仍為 submitted，不能宣稱正式核准或套用 Registry。",
     "必填 API 前提會拒絕 repo 外尚未更新的 operator 呼叫端；其部署與使用情況未知，須在發佈前通知與確認。",
-    "尚未實作或執行反證測試，本草案不代表保護已生效。"
+    "本機測試與反證已執行，但還沒有此實作 commit 的遠端 CI 與 SCM attestation。"
   ]
 }

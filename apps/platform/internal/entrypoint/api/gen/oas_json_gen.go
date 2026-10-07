@@ -24048,6 +24048,14 @@ func (s *GetDispatchStatusOKHaltsItem) encodeFields(e *jx.Encoder) {
 		e.Str(s.Target)
 	}
 	{
+		e.FieldStart("halt_id")
+		json.EncodeUUID(e, s.HaltID)
+	}
+	{
+		e.FieldStart("generation")
+		e.Int(s.Generation)
+	}
+	{
 		e.FieldStart("source")
 		s.Source.Encode(e)
 	}
@@ -24071,13 +24079,15 @@ func (s *GetDispatchStatusOKHaltsItem) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfGetDispatchStatusOKHaltsItem = [6]string{
+var jsonFieldsNameOfGetDispatchStatusOKHaltsItem = [8]string{
 	0: "target",
-	1: "source",
-	2: "reason",
-	3: "declared_at",
-	4: "clear_rounds",
-	5: "automatic_recovery",
+	1: "halt_id",
+	2: "generation",
+	3: "source",
+	4: "reason",
+	5: "declared_at",
+	6: "clear_rounds",
+	7: "automatic_recovery",
 }
 
 // Decode decodes GetDispatchStatusOKHaltsItem from json.
@@ -24101,8 +24111,32 @@ func (s *GetDispatchStatusOKHaltsItem) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"target\"")
 			}
-		case "source":
+		case "halt_id":
 			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.HaltID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"halt_id\"")
+			}
+		case "generation":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Int()
+				s.Generation = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"generation\"")
+			}
+		case "source":
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				if err := s.Source.Decode(d); err != nil {
 					return err
@@ -24112,7 +24146,7 @@ func (s *GetDispatchStatusOKHaltsItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"source\"")
 			}
 		case "reason":
-			requiredBitSet[0] |= 1 << 2
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				v, err := d.Str()
 				s.Reason = string(v)
@@ -24124,7 +24158,7 @@ func (s *GetDispatchStatusOKHaltsItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"reason\"")
 			}
 		case "declared_at":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.DeclaredAt = v
@@ -24146,7 +24180,7 @@ func (s *GetDispatchStatusOKHaltsItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"clear_rounds\"")
 			}
 		case "automatic_recovery":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := d.Bool()
 				s.AutomaticRecovery = bool(v)
@@ -24167,7 +24201,7 @@ func (s *GetDispatchStatusOKHaltsItem) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00101111,
+		0b10111111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -28491,6 +28525,44 @@ func (s *LiftDispatchHaltBadRequest) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes LiftDispatchHaltConflict as json.
+func (s *LiftDispatchHaltConflict) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes LiftDispatchHaltConflict from json.
+func (s *LiftDispatchHaltConflict) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode LiftDispatchHaltConflict to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = LiftDispatchHaltConflict(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *LiftDispatchHaltConflict) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *LiftDispatchHaltConflict) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes LiftDispatchHaltNotFound as json.
 func (s *LiftDispatchHaltNotFound) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -28545,14 +28617,24 @@ func (s *LiftDispatchHaltReq) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		e.FieldStart("halt_id")
+		json.EncodeUUID(e, s.HaltID)
+	}
+	{
+		e.FieldStart("generation")
+		e.Int(s.Generation)
+	}
+	{
 		e.FieldStart("note")
 		e.Str(s.Note)
 	}
 }
 
-var jsonFieldsNameOfLiftDispatchHaltReq = [2]string{
+var jsonFieldsNameOfLiftDispatchHaltReq = [4]string{
 	0: "provider",
-	1: "note",
+	1: "halt_id",
+	2: "generation",
+	3: "note",
 }
 
 // Decode decodes LiftDispatchHaltReq from json.
@@ -28574,8 +28656,32 @@ func (s *LiftDispatchHaltReq) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"provider\"")
 			}
-		case "note":
+		case "halt_id":
 			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.HaltID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"halt_id\"")
+			}
+		case "generation":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Int()
+				s.Generation = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"generation\"")
+			}
+		case "note":
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				v, err := d.Str()
 				s.Note = string(v)
@@ -28596,7 +28702,7 @@ func (s *LiftDispatchHaltReq) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000010,
+		0b00001110,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

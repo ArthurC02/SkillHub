@@ -351,6 +351,7 @@ type DispatchHalt struct {
 	LiftedBy         pgtype.UUID
 	LiftReason       *string
 	LastClearRoundAt pgtype.Timestamptz
+	Generation       int32
 }
 
 type DownloadArtifact struct {

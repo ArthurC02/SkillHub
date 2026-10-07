@@ -1029,6 +1029,8 @@ export const ADMIN_DISPATCH = {
   halts: [
     {
       target: "pool",
+      halt_id: "11111111-1111-4111-8111-111111111111",
+      generation: 1,
       source: "p1_incident",
       reason: "sandbox escape suspected on node-2",
       declared_at: "2026-09-11T09:00:00Z",

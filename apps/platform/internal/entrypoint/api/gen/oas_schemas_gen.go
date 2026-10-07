@@ -10288,7 +10288,11 @@ func (*GetDispatchStatusOK) getDispatchStatusRes() {}
 
 type GetDispatchStatusOKHaltsItem struct {
 	// A provider name, or `pool` for the whole fleet.
-	Target     string                             `json:"target"`
+	Target string `json:"target"`
+	// Stable identity of this halt row.
+	HaltID uuid.UUID `json:"halt_id"`
+	// Increases on every redeclaration of the same halt.
+	Generation int                                `json:"generation"`
 	Source     GetDispatchStatusOKHaltsItemSource `json:"source"`
 	Reason     string                             `json:"reason"`
 	DeclaredAt time.Time                          `json:"declared_at"`
@@ -10303,6 +10307,16 @@ type GetDispatchStatusOKHaltsItem struct {
 // GetTarget returns the value of Target.
 func (s *GetDispatchStatusOKHaltsItem) GetTarget() string {
 	return s.Target
+}
+
+// GetHaltID returns the value of HaltID.
+func (s *GetDispatchStatusOKHaltsItem) GetHaltID() uuid.UUID {
+	return s.HaltID
+}
+
+// GetGeneration returns the value of Generation.
+func (s *GetDispatchStatusOKHaltsItem) GetGeneration() int {
+	return s.Generation
 }
 
 // GetSource returns the value of Source.
@@ -10333,6 +10347,16 @@ func (s *GetDispatchStatusOKHaltsItem) GetAutomaticRecovery() bool {
 // SetTarget sets the value of Target.
 func (s *GetDispatchStatusOKHaltsItem) SetTarget(val string) {
 	s.Target = val
+}
+
+// SetHaltID sets the value of HaltID.
+func (s *GetDispatchStatusOKHaltsItem) SetHaltID(val uuid.UUID) {
+	s.HaltID = val
+}
+
+// SetGeneration sets the value of Generation.
+func (s *GetDispatchStatusOKHaltsItem) SetGeneration(val int) {
+	s.Generation = val
 }
 
 // SetSource sets the value of Source.
@@ -11699,6 +11723,10 @@ type LiftDispatchHaltBadRequest Error
 
 func (*LiftDispatchHaltBadRequest) liftDispatchHaltRes() {}
 
+type LiftDispatchHaltConflict Error
+
+func (*LiftDispatchHaltConflict) liftDispatchHaltRes() {}
+
 // LiftDispatchHaltNoContent is response for LiftDispatchHalt operation.
 type LiftDispatchHaltNoContent struct{}
 
@@ -11711,6 +11739,10 @@ func (*LiftDispatchHaltNotFound) liftDispatchHaltRes() {}
 type LiftDispatchHaltReq struct {
 	// The drained node to return to service; omit for the fleet-wide halt.
 	Provider OptString `json:"provider"`
+	// The halt observed in GET /admin/dispatch.
+	HaltID uuid.UUID `json:"halt_id"`
+	// The generation observed in GET /admin/dispatch.
+	Generation int `json:"generation"`
 	// Why it is safe to resume. Required, same rule as on PUT.
 	Note string `json:"note"`
 }
@@ -11718,6 +11750,16 @@ type LiftDispatchHaltReq struct {
 // GetProvider returns the value of Provider.
 func (s *LiftDispatchHaltReq) GetProvider() OptString {
 	return s.Provider
+}
+
+// GetHaltID returns the value of HaltID.
+func (s *LiftDispatchHaltReq) GetHaltID() uuid.UUID {
+	return s.HaltID
+}
+
+// GetGeneration returns the value of Generation.
+func (s *LiftDispatchHaltReq) GetGeneration() int {
+	return s.Generation
 }
 
 // GetNote returns the value of Note.
@@ -11728,6 +11770,16 @@ func (s *LiftDispatchHaltReq) GetNote() string {
 // SetProvider sets the value of Provider.
 func (s *LiftDispatchHaltReq) SetProvider(val OptString) {
 	s.Provider = val
+}
+
+// SetHaltID sets the value of HaltID.
+func (s *LiftDispatchHaltReq) SetHaltID(val uuid.UUID) {
+	s.HaltID = val
+}
+
+// SetGeneration sets the value of Generation.
+func (s *LiftDispatchHaltReq) SetGeneration(val int) {
+	s.Generation = val
 }
 
 // SetNote sets the value of Note.

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useDispatchHalt, useDispatchStatus } from "../admin.service";
+import { ApiError } from "../../../core/api/client";
+import { useDispatchHalt, useDispatchStatus, type DispatchStatus } from "../admin.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
@@ -58,12 +59,45 @@ function P1RecoveryChecklist({ source }: { source?: string }) {
   );
 }
 
+function DispatchOverview({ status }: { status: DispatchStatus }) {
+  return (
+    <>
+      <p>
+        <span className={status.dispatching ? "badge" : "badge badge-danger"}>
+          {status.dispatching ? "正在派送" : "停止派送"}
+        </span>
+      </p>
+      {status.halts.length === 0 ? (
+        <p>煞車：0 個。</p>
+      ) : (
+        <ul className="download-list">
+          {status.halts.map((halt) => (
+            <li className="download-item" key={`${halt.target}-${halt.source}`}>
+              <p>
+                <strong>{halt.target === "pool" ? "整個叢集" : `節點 ${halt.target}`}</strong>
+              </p>
+              <p className="badge-row">
+                <span className="badge">{HALT_SOURCE[halt.source] ?? halt.source}</span>
+              </p>
+              <p>理由：{halt.reason}</p>
+              <p>
+                宣告於 <Timestamp at={halt.declared_at} />
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
 export function AdminDispatch() {
   const status = useDispatchStatus();
   const declare = useDispatchHalt("PUT");
   const lift = useDispatchHalt("DELETE");
   const [provider, setProvider] = useState("");
   const [recoveryTarget, setRecoveryTarget] = useState("");
+  const [recoveryFormRevision, setRecoveryFormRevision] = useState(0);
   const target = provider.trim() || undefined;
   const changing = declare.isPending || lift.isPending;
   const currentStatus = visibleStatus(status);
@@ -73,35 +107,7 @@ export function AdminDispatch() {
   return (
     <AdminPage heading="派送煞車">
       <StatusFeedback status={status} />
-      {currentStatus && (
-        <>
-          <p>
-            <span className={currentStatus.dispatching ? "badge" : "badge badge-danger"}>
-              {currentStatus.dispatching ? "正在派送" : "停止派送"}
-            </span>
-          </p>
-          {currentStatus.halts.length === 0 ? (
-            <p>煞車：0 個。</p>
-          ) : (
-            <ul className="download-list">
-              {currentStatus.halts.map((halt) => (
-                <li className="download-item" key={`${halt.target}-${halt.source}`}>
-                  <p>
-                    <strong>{halt.target === "pool" ? "整個叢集" : `節點 ${halt.target}`}</strong>
-                  </p>
-                  <p className="badge-row">
-                    <span className="badge">{HALT_SOURCE[halt.source] ?? halt.source}</span>
-                  </p>
-                  <p>理由：{halt.reason}</p>
-                  <p>
-                    宣告於 <Timestamp at={halt.declared_at} />
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
+      {currentStatus && <DispatchOverview status={currentStatus} />}
 
       <h2>停止派送</h2>
       <ActionForm
@@ -135,7 +141,13 @@ export function AdminDispatch() {
         <p className="note">本次停止範圍：{target ? `節點 ${target}` : "整個叢集"}。</p>
       </ActionForm>
       <h2>恢復派送</h2>
+      {lift.error instanceof ApiError && lift.error.status === 409 && (
+        <p className="notice notice-warning" role="alert">
+          煞車在你查看後已變更，沒有解除任何煞車。請等最新狀態載入，再重新選擇並確認事故。
+        </p>
+      )}
       <ActionForm
+        key={recoveryFormRevision}
         id="admin-halt-lift"
         submitLabel="恢復派送"
         pending={lift.isPending}
@@ -148,10 +160,22 @@ export function AdminDispatch() {
         onSubmit={(note) => {
           if (!selectedHalt) return;
           declare.reset();
-          lift.mutate({
-            note,
-            provider: selectedHalt.target === "pool" ? undefined : selectedHalt.target,
-          });
+          lift.mutate(
+            {
+              note,
+              provider: selectedHalt.target === "pool" ? undefined : selectedHalt.target,
+              halt_id: selectedHalt.halt_id,
+              generation: selectedHalt.generation,
+            },
+            {
+              onError: (error) => {
+                if (error instanceof ApiError && error.status === 409) {
+                  setRecoveryTarget("");
+                  setRecoveryFormRevision((revision) => revision + 1);
+                }
+              },
+            },
+          );
         }}
       >
         <div className="field">

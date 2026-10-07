@@ -12,7 +12,7 @@ import (
 )
 
 const getActiveDispatchHalt = `-- name: GetActiveDispatchHalt :one
-SELECT id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason, last_clear_round_at FROM dispatch_halts
+SELECT id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason, last_clear_round_at, generation FROM dispatch_halts
 WHERE provider = $1 AND lifted_at IS NULL
 FOR UPDATE
 `
@@ -32,6 +32,7 @@ func (q *Queries) GetActiveDispatchHalt(ctx context.Context, provider string) (D
 		&i.LiftedBy,
 		&i.LiftReason,
 		&i.LastClearRoundAt,
+		&i.Generation,
 	)
 	return i, err
 }
@@ -39,7 +40,7 @@ func (q *Queries) GetActiveDispatchHalt(ctx context.Context, provider string) (D
 const insertDispatchHalt = `-- name: InsertDispatchHalt :one
 INSERT INTO dispatch_halts (provider, source, reason, declared_by)
 VALUES ($1, $2, $3, $4)
-RETURNING id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason, last_clear_round_at
+RETURNING id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason, last_clear_round_at, generation
 `
 
 type InsertDispatchHaltParams struct {
@@ -69,6 +70,7 @@ func (q *Queries) InsertDispatchHalt(ctx context.Context, arg InsertDispatchHalt
 		&i.LiftedBy,
 		&i.LiftReason,
 		&i.LastClearRoundAt,
+		&i.Generation,
 	)
 	return i, err
 }
@@ -79,7 +81,7 @@ SET lifted_at = now(), lifted_by = $1, lift_reason = $2
 WHERE provider = $3
   AND lifted_at IS NULL
   AND source = ANY ($4::text[])
-RETURNING id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason, last_clear_round_at
+RETURNING id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason, last_clear_round_at, generation
 `
 
 type LiftDispatchHaltParams struct {
@@ -109,12 +111,57 @@ func (q *Queries) LiftDispatchHalt(ctx context.Context, arg LiftDispatchHaltPara
 		&i.LiftedBy,
 		&i.LiftReason,
 		&i.LastClearRoundAt,
+		&i.Generation,
+	)
+	return i, err
+}
+
+const liftObservedDispatchHalt = `-- name: LiftObservedDispatchHalt :one
+UPDATE dispatch_halts
+SET lifted_at = now(), lifted_by = $1, lift_reason = $2
+WHERE provider = $3
+  AND id = $4
+  AND generation = $5
+  AND lifted_at IS NULL
+RETURNING id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason, last_clear_round_at, generation
+`
+
+type LiftObservedDispatchHaltParams struct {
+	LiftedBy   pgtype.UUID
+	LiftReason *string
+	Provider   string
+	ID         pgtype.UUID
+	Generation int32
+}
+
+func (q *Queries) LiftObservedDispatchHalt(ctx context.Context, arg LiftObservedDispatchHaltParams) (DispatchHalt, error) {
+	row := q.db.QueryRow(ctx, liftObservedDispatchHalt,
+		arg.LiftedBy,
+		arg.LiftReason,
+		arg.Provider,
+		arg.ID,
+		arg.Generation,
+	)
+	var i DispatchHalt
+	err := row.Scan(
+		&i.ID,
+		&i.Provider,
+		&i.Source,
+		&i.Reason,
+		&i.DeclaredBy,
+		&i.DeclaredAt,
+		&i.ClearRounds,
+		&i.LiftedAt,
+		&i.LiftedBy,
+		&i.LiftReason,
+		&i.LastClearRoundAt,
+		&i.Generation,
 	)
 	return i, err
 }
 
 const listActiveDispatchHalts = `-- name: ListActiveDispatchHalts :many
-SELECT id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason, last_clear_round_at FROM dispatch_halts
+SELECT id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason, last_clear_round_at, generation FROM dispatch_halts
 WHERE lifted_at IS NULL
 ORDER BY declared_at
 `
@@ -140,6 +187,7 @@ func (q *Queries) ListActiveDispatchHalts(ctx context.Context) ([]DispatchHalt, 
 			&i.LiftedBy,
 			&i.LiftReason,
 			&i.LastClearRoundAt,
+			&i.Generation,
 		); err != nil {
 			return nil, err
 		}
@@ -162,9 +210,10 @@ func (q *Queries) LockDispatchHaltTarget(ctx context.Context, provider string) e
 
 const redeclareDispatchHalt = `-- name: RedeclareDispatchHalt :one
 UPDATE dispatch_halts
-SET source = $1, reason = $2, declared_by = $3, clear_rounds = $4
+SET source = $1, reason = $2, declared_by = $3, clear_rounds = $4,
+    generation = generation + 1
 WHERE id = $5 AND lifted_at IS NULL
-RETURNING id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason, last_clear_round_at
+RETURNING id, provider, source, reason, declared_by, declared_at, clear_rounds, lifted_at, lifted_by, lift_reason, last_clear_round_at, generation
 `
 
 type RedeclareDispatchHaltParams struct {
@@ -196,6 +245,7 @@ func (q *Queries) RedeclareDispatchHalt(ctx context.Context, arg RedeclareDispat
 		&i.LiftedBy,
 		&i.LiftReason,
 		&i.LastClearRoundAt,
+		&i.Generation,
 	)
 	return i, err
 }
