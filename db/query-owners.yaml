@@ -194,6 +194,7 @@ queries:
   ListEvaluationTraceEvents: trace
   GetTraceStreamHealth: trace
   ListTraceGeneralFacts: trace
+  DeleteTraceEventsBefore: trace
   GetTraceEventText: trace
   LockTraceIngestRun: trace
   NextTraceSeq: trace
@@ -268,6 +269,7 @@ scope:
   DeleteExpiredAuditEvents: user
   DeleteExpiredFeedbackReports: user
   DeleteAnalyticsEventsBefore: user
+  DeleteTraceEventsBefore: user
   DeleteOutboxEventsPublishedBefore: user
   DeleteRunArtifactUploadIntentByObjectKey: user
   DeleteUserIdentities: user
@@ -345,7 +347,7 @@ immutable:
   skill_versions: 版本快照；採納建議＝新版本，不原地覆寫（鐵律 4）
   test_case_snapshots: Run 引用的測試資料快照，改了會讓歷史 Run 的輸入說謊
   run_status_transitions: Run 編排與非同步工作流程狀態機的歷史；重寫轉移紀錄等於重寫 Run 發生過的事
-  trace_events: TRACE-001 執行事實；保存期到期是 DROP PARTITION，不是 DELETE
+  trace_events: TRACE-001 執行事實；保存期到期是 DROP PARTITION，只有落在 default 分割、早於最舊保留月份的列才 DELETE
   audit_events: NFR-001 稽核軌跡；可被改寫的軌跡不是軌跡
   download_artifacts: 產出的位元組與雙雜湊；重打包是新列
   download_records: 「誰在何時下載了什麼」，不是可編輯的狀態
@@ -361,6 +363,7 @@ immutable:
 immutable_allow:
   PurgeSkillsByID: skill_versions
   DeleteExpiredAuditEvents: audit_events
+  DeleteTraceEventsBefore: trace_events
   DeleteWorkspaceDownloadRecords: download_records
   DeleteWorkspaceDownloadArtifactDetails: download_artifacts
   DeleteWorkspaceDownloadArtifactMembers: download_artifact_members
@@ -369,6 +372,7 @@ raw_sql_allow:
   apps/platform/internal/creator/workspace/service.go@signup: advisory lock serializes first-login creation for one provider identity
   apps/platform/internal/creator/workspace/purge.go@purgeAccount: SET LOCAL enables immutable-table purge only inside the account purge transaction
   apps/platform/internal/foundation/observability/audit/purge.go@PurgeExpired: SET LOCAL enables the 400 day audit retention sweep only inside its own transaction
+  apps/platform/internal/trial/evidence/partitions.go@purgeStragglersBefore: SET LOCAL enables deleting default-partition trace rows older than every kept month only inside its own transaction
   apps/platform/internal/skill/library/purge.go@PurgeDeletedSkills: SET LOCAL enables the WS-005 deletion grace sweep only inside its own transaction
   apps/platform/internal/foundation/messaging/outbox/outbox.go@claim: session advisory lock elects one publisher and must be explicitly unlocked on its connection
   apps/platform/internal/trial/improvement/eval.go@begin: advisory lock serializes supersede-and-create for one run evaluation

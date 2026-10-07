@@ -51,6 +51,18 @@ func (q *Queries) CountTraceMaskingInWindow(ctx context.Context, arg CountTraceM
 	return i, err
 }
 
+const deleteTraceEventsBefore = `-- name: DeleteTraceEventsBefore :execrows
+DELETE FROM trace_events WHERE occurred_at < $1
+`
+
+func (q *Queries) DeleteTraceEventsBefore(ctx context.Context, occurredAt pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteTraceEventsBefore, occurredAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getRunForTraceIngest = `-- name: GetRunForTraceIngest :one
 SELECT id, workspace_id, status, finished_at FROM runs WHERE id = $1
 `
