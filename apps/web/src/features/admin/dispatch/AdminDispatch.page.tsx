@@ -45,6 +45,16 @@ function StatusFeedback({ status }: { status: ReturnType<typeof useDispatchStatu
   );
 }
 
+function P1RecoveryChecklist({ source }: { source?: string }) {
+  if (source !== "p1_incident") return null;
+  return (
+    <p className="notice notice-warning" id="admin-p1-recovery-checklist">
+      解除 P1 前：確認觸發條件已排除、現場與處置證據已保存，且 sev/P1
+      事件單已建立並記下自動動作結果。解除只恢復派送，不會補做暫停的清理。
+    </p>
+  );
+}
+
 export function AdminDispatch() {
   const status = useDispatchStatus();
   const declare = useDispatchHalt("PUT");
@@ -162,6 +172,7 @@ export function AdminDispatch() {
           </select>
         </div>
         {selectedHalt && <p className="note">將解除的煞車原因：{selectedHalt.reason}</p>}
+        <P1RecoveryChecklist source={selectedHalt?.source} />
       </ActionForm>
     </AdminPage>
   );

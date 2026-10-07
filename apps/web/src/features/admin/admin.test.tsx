@@ -1429,6 +1429,41 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
   expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({ note: "cleared" });
 });
 
+test("P1 recovery shows its evidence checklist, but an orphan halt does not", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/dispatch" && method === "GET"
+      ? {
+          body: {
+            dispatching: false,
+            halts: [
+              ...ADMIN_DISPATCH.halts,
+              {
+                ...ADMIN_DISPATCH.halts[0],
+                target: "node-2",
+                source: "orphan_threshold",
+                reason: "orphan capacity threshold",
+                automatic_recovery: true,
+              },
+            ],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("orphan capacity threshold"));
+  await type("#admin-halt-recovery-target", "pool");
+  const checklist = field<HTMLParagraphElement>("#admin-p1-recovery-checklist");
+  expect(checklist.closest("details")).toBeNull();
+  expect(checklist.textContent).toContain("觸發條件已排除");
+  expect(checklist.textContent).toContain("sev/P1 事件單已建立");
+  expect(checklist.textContent).toContain("不會補做暫停的清理");
+
+  await type("#admin-halt-recovery-target", "node-2");
+  expect(container.querySelector("#admin-p1-recovery-checklist")).toBeNull();
+  expect(calls.some((call) => call.method === "DELETE")).toBe(false);
+});
+
 test("OPS-005: halt and recovery notes stop at the server byte limit", async () => {
   stub(true);
   await mountAt("/admin/dispatch");

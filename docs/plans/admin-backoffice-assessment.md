@@ -20,9 +20,11 @@
 
 截至 2026-10-07，在 `ui/admin-ux` 的 `bde7306c3ba36ec422ede36f822aaa8deb83391a` 上，`npm --prefix apps/web test -- admin.test.tsx` 回 `exit 0`、`1 passed` test file、`112 passed` tests；這只證明元件與前端狀態處理。先前同分支的管理流程 Playwright 測試在 Chromium、Firefox、WebKit 共九次執行通過，但 `apps/web/e2e/admin-workflow.spec.ts` 以攔截回應模擬 API，**不是**前後端真實串接。後台 API 的具名整合測試曾連獨立 PostgreSQL 執行且未跳過資料庫測試；它不覆蓋缺失的治理機制，也不等於部署驗收。
 
-同日補跑一條「真實瀏覽器＋API＋獨立 PostgreSQL」旅程：在隔離資料庫套用 101 筆 migration，以本機開發登入查找帳號、授予 5 點、確認稽核紀錄，並停止與恢復派送；頁面與 API 回應均符合預期。這證明上述日常操作的前後端整合，但只在本機開發設定、單一 operator 與無付費模型的條件下成立，不涵蓋部署、通知送達或角色治理。開發登入曾因同站不同 port 的寫入請求被拒絕、登入後查詢快取未更新而無法完成；修正後，兩者各有會失敗的回歸測試。淨測試模式在補齊本機套件後可完成 migration 與 API 啟動，但背景 Worker 與 PGlite 單連線競爭仍使登入逾時，**不能稱為完整通過**。
+同日補跑一條「真實瀏覽器＋API＋獨立 PostgreSQL」旅程：在隔離資料庫套用 101 筆 migration，以本機開發登入查找帳號、授予 5 點、確認稽核紀錄，並停止與恢復派送；頁面與 API 回應均符合預期。這證明上述日常操作的前後端整合，但只在本機開發設定、單一 operator 與無付費模型的條件下成立，不涵蓋部署、通知送達或角色治理。開發登入曾因同站不同 port 的寫入請求被拒絕、登入後查詢快取未更新而無法完成；修正後，兩者各有會失敗的回歸測試。淨測試模式曾在背景 Worker 啟動後觀察到登入逾時，但新的隔離啟動未重現：PGlite 套用 101 筆 migration 後，8 次依序登入與 24 次同時登入均回 204，operator 查帳號與稽核均回 200；官方 seed 首筆匯入後，另 16 次同時登入及同樣查詢亦正常。seed 因未設定 LLM 而停在待增強的首筆，故**尚未驗證有模型服務、Worker 持續處理大量工作的情形**；舊逾時不能當作已確認的現行缺陷，也不能宣稱完整通過。
 
 另以本分支自建的 platform／web／llm 映像執行 `tools/ci/stack-smoke.sh`，回 `exit 0` 與 `stack-smoke: all assertions passed`。既有真實映像旅程已涵蓋 Skill 受限與下架、派送煞車、模型逾時；新增同一旅程中的帳號查找、點數讀取、按 Workspace 追查授予及敏感查詢事件，並驗證一般 member 對 operator 查詢均得 404。測試先揭露帳號頁在非安全 HTTP 主機呼叫 `crypto.randomUUID()` 時會整頁錯誤；改用原生隨機位元組後，紅燈轉綠。這是可重跑的本機映像整合證據，仍不是正式部署或值班驗收。
+
+派送頁現在在選到 P1 煞車時，於解除表單直接提示先確認觸發條件、現場與處置證據、`sev/P1` 事件單，並說明解除不補做暫停的清理；選到容量門檻煞車不顯示這段。這是依[事故 runbook](../runbooks/p1-dispatch-halt.md)提供的操作提醒，**不是**平台已核驗事件單或證據。對應前端測試反轉 P1／容量來源條件會在找不到提醒的斷言變紅，還原後回綠；本機完整 Web 測試為 69 個檔案、1228 條通過，管理流程的攔截式 Playwright 旅程在三個瀏覽器共 9 次通過。這些仍不取代通知送達與事故處置的正式驗收。
 
 本分支在 GitHub 尚無可引用的 workflow run；本機測試通過不宣稱 CI 或正式環境通過。正式部署的通知送達、P1 節點探針與值班處置亦無實測證據。
 
@@ -31,6 +33,6 @@
 1. 先裁定[`R-104`](05-pending-rulings.md)的版本停用後果與最少可見資訊；再審查[版本停用提案](../domain-memory/changes/admin-version-disable/draft-pr.md)，才實作契約、交易內准入閘門、API 與 UI。既有 Version 與歷史 Run 不能被改寫。
 2. 裁定[`R-105`](05-pending-rulings.md)的來源候選身分鍵、白名單操作介面、來源下架效力與重審條件；再審查[來源准入提案](../domain-memory/changes/admin-source-admission/draft-pr.md)。另裁定[`R-106`](05-pending-rulings.md)的完整下架是否可恢復；未核准前不能把文件清單當作公開收錄閘門，也不能把受限展示的解除當作完整下架的恢復。
 3. 審查[事件通知提案](../domain-memory/changes/sec010-incident-notification/draft-pr.md)，完成控制平面 P1／P2 建單、憑證與非工作時間通知的端到端演練；把 P1 剩餘訊號與實際節點探針的證據接上，同時維持單一派送煞車狀態。
-4. 在 GitHub CI 核對同一批真實映像旅程的 workflow 與 job 結果；另解決淨測試模式的單連線 Worker 競爭，並擴充尚未覆蓋的治理負面路徑。既有 mock E2E 仍不可稱為系統驗收。
+4. 在 GitHub CI 核對同一批真實映像旅程的 workflow 與 job 結果；用有模型服務的活躍 Worker 重跑淨測試模式，若逾時再重現才修正；並擴充尚未覆蓋的治理負面路徑。既有 mock E2E 仍不可稱為系統驗收。
 
 [既定 OPS 規格](02-specifications-and-acceptance-criteria.md#412-營運後台ops)刻意不包含編輯 operator／封測名冊、讀取私有 Workspace 資料、個人排行、濫用案件、下架恢復或精選層寫入 UI。它們是產品範圍邊界，不應為了讓後台看似完整而自行加上。
