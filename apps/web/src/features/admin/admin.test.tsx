@@ -808,7 +808,7 @@ test("OPS-008: a kind with no events in the range is named instead of drawn", as
   expect(has("這段期間沒有事件：儲值、更正。")()).toBe(true);
   expect(
     has(
-      "這段期間沒有事件：創作步驟、創作會話、搜尋向量、搜尋意圖分析、索引增強、改善建議、試跑、搜尋理由。",
+      "這段期間沒有事件：創作步驟、創作會話、搜尋向量、搜尋意圖分析、平台 Agent、索引增強、改善建議、試跑、搜尋理由。",
     )(),
   ).toBe(true);
 });
