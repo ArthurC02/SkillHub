@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type recordingDB struct {
@@ -33,14 +34,33 @@ func TestLogBuildsPersistenceParamsInsideAudit(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if len(db.args) != 6 {
-		t.Fatalf("insert args = %d, want 6", len(db.args))
+	if len(db.args) != 7 {
+		t.Fatalf("insert args = %d, want 7", len(db.args))
 	}
-	if db.args[2] != ActionLogin || db.args[3] != ResourceSession {
-		t.Fatalf("insert action/resource = %v/%v", db.args[2], db.args[3])
+	if db.args[3] != ActionLogin || db.args[4] != ResourceSession {
+		t.Fatalf("insert action/resource = %v/%v", db.args[3], db.args[4])
 	}
-	if got := string(db.args[5].([]byte)); got != `{"result":"ok"}` {
+	if got := string(db.args[6].([]byte)); got != `{"result":"ok"}` {
 		t.Fatalf("metadata = %s", got)
+	}
+}
+
+func TestTheActorKindFollowsWhichActorIsSet(t *testing.T) {
+	someone := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
+	for _, tc := range []struct {
+		name   string
+		record Record
+		want   ActorKind
+	}{
+		{name: "a person", record: Record{Actor: someone}, want: ActorPerson},
+		{name: "an agent", record: Record{Agent: someone}, want: ActorAgent},
+		{name: "neither is the platform", record: Record{}, want: ActorSystem},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.record.ActorKind(); got != tc.want {
+				t.Errorf("ActorKind() = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 

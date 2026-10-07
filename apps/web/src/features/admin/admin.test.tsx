@@ -579,7 +579,9 @@ test("OPS-006: a halt the platform declared by itself names the platform as the 
           body: {
             events: [
               {
+                actor_kind: "system",
                 actor_user_id: null,
+                actor_agent_id: null,
                 action: "dispatch.halted",
                 resource_type: "dispatch",
                 resource_id: "h-1",
@@ -597,6 +599,35 @@ test("OPS-006: a halt the platform declared by itself names the platform as the 
   await waitFor(has("停止派送"));
   expect(has("平台自動")()).toBe(true);
   expect(has("未測量")()).toBe(false);
+});
+
+test("OPS-011: an action one of the platform's agents took names the agent, not the platform", async () => {
+  stub(true, (path) =>
+    path.startsWith("/admin/audit-log")
+      ? {
+          body: {
+            events: [
+              {
+                actor_kind: "agent",
+                actor_user_id: null,
+                actor_agent_id: "agent-7",
+                action: "dispatch.halted",
+                resource_type: "dispatch",
+                resource_id: "h-2",
+                workspace_id: null,
+                occurred_at: "2026-09-10T08:00:00Z",
+                metadata: {},
+              },
+            ],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/audit-log");
+  await waitFor(has("停止派送"));
+  expect(has("平台 Agent agent-7")()).toBe(true);
+  expect(has("平台自動")()).toBe(false);
 });
 
 test("OPS-006: a full page of 50 stops, the 51st event offers the next page", async () => {

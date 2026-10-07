@@ -12906,18 +12906,32 @@ func (*NotModified) getSkillFilesRes()        {}
 
 // Ref: #/components/schemas/OperatorAuditEvent
 type OperatorAuditEvent struct {
-	ActorUserID  NilUUID                    `json:"actor_user_id"`
-	Action       string                     `json:"action"`
-	ResourceType string                     `json:"resource_type"`
-	ResourceID   NilUUID                    `json:"resource_id"`
-	WorkspaceID  NilUUID                    `json:"workspace_id"`
-	OccurredAt   time.Time                  `json:"occurred_at"`
-	Metadata     OperatorAuditEventMetadata `json:"metadata"`
+	// Who acted: a person (`actor_user_id`), one of the platform's own agents (`actor_agent_id`), or the
+	// platform itself with neither.
+	ActorKind    OperatorAuditEventActorKind `json:"actor_kind"`
+	ActorUserID  NilUUID                     `json:"actor_user_id"`
+	ActorAgentID NilUUID                     `json:"actor_agent_id"`
+	Action       string                      `json:"action"`
+	ResourceType string                      `json:"resource_type"`
+	ResourceID   NilUUID                     `json:"resource_id"`
+	WorkspaceID  NilUUID                     `json:"workspace_id"`
+	OccurredAt   time.Time                   `json:"occurred_at"`
+	Metadata     OperatorAuditEventMetadata  `json:"metadata"`
+}
+
+// GetActorKind returns the value of ActorKind.
+func (s *OperatorAuditEvent) GetActorKind() OperatorAuditEventActorKind {
+	return s.ActorKind
 }
 
 // GetActorUserID returns the value of ActorUserID.
 func (s *OperatorAuditEvent) GetActorUserID() NilUUID {
 	return s.ActorUserID
+}
+
+// GetActorAgentID returns the value of ActorAgentID.
+func (s *OperatorAuditEvent) GetActorAgentID() NilUUID {
+	return s.ActorAgentID
 }
 
 // GetAction returns the value of Action.
@@ -12950,9 +12964,19 @@ func (s *OperatorAuditEvent) GetMetadata() OperatorAuditEventMetadata {
 	return s.Metadata
 }
 
+// SetActorKind sets the value of ActorKind.
+func (s *OperatorAuditEvent) SetActorKind(val OperatorAuditEventActorKind) {
+	s.ActorKind = val
+}
+
 // SetActorUserID sets the value of ActorUserID.
 func (s *OperatorAuditEvent) SetActorUserID(val NilUUID) {
 	s.ActorUserID = val
+}
+
+// SetActorAgentID sets the value of ActorAgentID.
+func (s *OperatorAuditEvent) SetActorAgentID(val NilUUID) {
+	s.ActorAgentID = val
 }
 
 // SetAction sets the value of Action.
@@ -12983,6 +13007,56 @@ func (s *OperatorAuditEvent) SetOccurredAt(val time.Time) {
 // SetMetadata sets the value of Metadata.
 func (s *OperatorAuditEvent) SetMetadata(val OperatorAuditEventMetadata) {
 	s.Metadata = val
+}
+
+// Who acted: a person (`actor_user_id`), one of the platform's own agents (`actor_agent_id`), or the
+// platform itself with neither.
+type OperatorAuditEventActorKind string
+
+const (
+	OperatorAuditEventActorKindPerson OperatorAuditEventActorKind = "person"
+	OperatorAuditEventActorKindAgent  OperatorAuditEventActorKind = "agent"
+	OperatorAuditEventActorKindSystem OperatorAuditEventActorKind = "system"
+)
+
+// AllValues returns all OperatorAuditEventActorKind values.
+func (OperatorAuditEventActorKind) AllValues() []OperatorAuditEventActorKind {
+	return []OperatorAuditEventActorKind{
+		OperatorAuditEventActorKindPerson,
+		OperatorAuditEventActorKindAgent,
+		OperatorAuditEventActorKindSystem,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s OperatorAuditEventActorKind) MarshalText() ([]byte, error) {
+	switch s {
+	case OperatorAuditEventActorKindPerson:
+		return []byte(s), nil
+	case OperatorAuditEventActorKindAgent:
+		return []byte(s), nil
+	case OperatorAuditEventActorKindSystem:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OperatorAuditEventActorKind) UnmarshalText(data []byte) error {
+	switch OperatorAuditEventActorKind(data) {
+	case OperatorAuditEventActorKindPerson:
+		*s = OperatorAuditEventActorKindPerson
+		return nil
+	case OperatorAuditEventActorKindAgent:
+		*s = OperatorAuditEventActorKindAgent
+		return nil
+	case OperatorAuditEventActorKindSystem:
+		*s = OperatorAuditEventActorKindSystem
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 type OperatorAuditEventMetadata map[string]jx.Raw

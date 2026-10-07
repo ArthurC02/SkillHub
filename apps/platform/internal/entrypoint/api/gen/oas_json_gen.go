@@ -33176,8 +33176,16 @@ func (s *OperatorAuditEvent) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *OperatorAuditEvent) encodeFields(e *jx.Encoder) {
 	{
+		e.FieldStart("actor_kind")
+		s.ActorKind.Encode(e)
+	}
+	{
 		e.FieldStart("actor_user_id")
 		s.ActorUserID.Encode(e)
+	}
+	{
+		e.FieldStart("actor_agent_id")
+		s.ActorAgentID.Encode(e)
 	}
 	{
 		e.FieldStart("action")
@@ -33205,14 +33213,16 @@ func (s *OperatorAuditEvent) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfOperatorAuditEvent = [7]string{
-	0: "actor_user_id",
-	1: "action",
-	2: "resource_type",
-	3: "resource_id",
-	4: "workspace_id",
-	5: "occurred_at",
-	6: "metadata",
+var jsonFieldsNameOfOperatorAuditEvent = [9]string{
+	0: "actor_kind",
+	1: "actor_user_id",
+	2: "actor_agent_id",
+	3: "action",
+	4: "resource_type",
+	5: "resource_id",
+	6: "workspace_id",
+	7: "occurred_at",
+	8: "metadata",
 }
 
 // Decode decodes OperatorAuditEvent from json.
@@ -33220,12 +33230,22 @@ func (s *OperatorAuditEvent) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode OperatorAuditEvent to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
-		case "actor_user_id":
+		case "actor_kind":
 			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.ActorKind.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"actor_kind\"")
+			}
+		case "actor_user_id":
+			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
 				if err := s.ActorUserID.Decode(d); err != nil {
 					return err
@@ -33234,8 +33254,18 @@ func (s *OperatorAuditEvent) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"actor_user_id\"")
 			}
+		case "actor_agent_id":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				if err := s.ActorAgentID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"actor_agent_id\"")
+			}
 		case "action":
-			requiredBitSet[0] |= 1 << 1
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				v, err := d.Str()
 				s.Action = string(v)
@@ -33247,7 +33277,7 @@ func (s *OperatorAuditEvent) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"action\"")
 			}
 		case "resource_type":
-			requiredBitSet[0] |= 1 << 2
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				v, err := d.Str()
 				s.ResourceType = string(v)
@@ -33259,7 +33289,7 @@ func (s *OperatorAuditEvent) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"resource_type\"")
 			}
 		case "resource_id":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				if err := s.ResourceID.Decode(d); err != nil {
 					return err
@@ -33269,7 +33299,7 @@ func (s *OperatorAuditEvent) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"resource_id\"")
 			}
 		case "workspace_id":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				if err := s.WorkspaceID.Decode(d); err != nil {
 					return err
@@ -33279,7 +33309,7 @@ func (s *OperatorAuditEvent) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"workspace_id\"")
 			}
 		case "occurred_at":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.OccurredAt = v
@@ -33291,7 +33321,7 @@ func (s *OperatorAuditEvent) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"occurred_at\"")
 			}
 		case "metadata":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				if err := s.Metadata.Decode(d); err != nil {
 					return err
@@ -33309,8 +33339,9 @@ func (s *OperatorAuditEvent) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
-		0b01111111,
+	for i, mask := range [2]uint8{
+		0b11111111,
+		0b00000001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -33352,6 +33383,48 @@ func (s *OperatorAuditEvent) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OperatorAuditEvent) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes OperatorAuditEventActorKind as json.
+func (s OperatorAuditEventActorKind) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes OperatorAuditEventActorKind from json.
+func (s *OperatorAuditEventActorKind) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode OperatorAuditEventActorKind to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch OperatorAuditEventActorKind(v) {
+	case OperatorAuditEventActorKindPerson:
+		*s = OperatorAuditEventActorKindPerson
+	case OperatorAuditEventActorKindAgent:
+		*s = OperatorAuditEventActorKindAgent
+	case OperatorAuditEventActorKindSystem:
+		*s = OperatorAuditEventActorKindSystem
+	default:
+		*s = OperatorAuditEventActorKind(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OperatorAuditEventActorKind) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OperatorAuditEventActorKind) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

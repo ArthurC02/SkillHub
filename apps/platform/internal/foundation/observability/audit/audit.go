@@ -129,8 +129,17 @@ const (
 	ResourcePlatformAgent = "platform_agent"
 )
 
+type ActorKind string
+
+const (
+	ActorPerson ActorKind = "person"
+	ActorAgent  ActorKind = "agent"
+	ActorSystem ActorKind = "system"
+)
+
 type Event struct {
 	Actor        pgtype.UUID
+	Agent        pgtype.UUID
 	Workspace    pgtype.UUID
 	Action       string
 	ResourceType string
@@ -153,6 +162,7 @@ func Log(ctx context.Context, db DBTX, ev Event) error {
 	}
 	return gen.New(db).InsertAuditEvent(ctx, gen.InsertAuditEventParams{
 		ActorUserID:  ev.Actor,
+		ActorAgentID: ev.Agent,
 		WorkspaceID:  ev.Workspace,
 		Action:       ev.Action,
 		ResourceType: ev.ResourceType,
@@ -163,12 +173,24 @@ func Log(ctx context.Context, db DBTX, ev Event) error {
 
 type Record struct {
 	Actor        pgtype.UUID
+	Agent        pgtype.UUID
 	Workspace    pgtype.UUID
 	Action       string
 	ResourceType string
 	ResourceID   pgtype.UUID
 	OccurredAt   time.Time
 	Metadata     map[string]any
+}
+
+func (r Record) ActorKind() ActorKind {
+	switch {
+	case r.Agent.Valid:
+		return ActorAgent
+	case r.Actor.Valid:
+		return ActorPerson
+	default:
+		return ActorSystem
+	}
 }
 
 type PlatformFilter struct {
@@ -219,7 +241,7 @@ func records(rows []gen.AuditEvent) []Record {
 	out := make([]Record, 0, len(rows))
 	for _, r := range rows {
 		rec := Record{
-			Actor: r.ActorUserID, Workspace: r.WorkspaceID, Action: r.Action,
+			Actor: r.ActorUserID, Agent: r.ActorAgentID, Workspace: r.WorkspaceID, Action: r.Action,
 			ResourceType: r.ResourceType, ResourceID: r.ResourceID, OccurredAt: r.CreatedAt.Time,
 		}
 		if len(r.Metadata) > 0 {

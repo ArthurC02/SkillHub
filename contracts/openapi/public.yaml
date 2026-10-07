@@ -6841,9 +6841,18 @@ components:
           format: date-time
     OperatorAuditEvent:
       type: object
-      required: [actor_user_id, action, resource_type, resource_id, workspace_id, occurred_at, metadata]
+      required: [actor_kind, actor_user_id, actor_agent_id, action, resource_type, resource_id, workspace_id, occurred_at, metadata]
       properties:
+        actor_kind:
+          type: string
+          enum: [person, agent, system]
+          description: |
+            Who acted: a person (`actor_user_id`), one of the platform's own
+            agents (`actor_agent_id`), or the platform itself with neither.
         actor_user_id:
+          type: [string, "null"]
+          format: uuid
+        actor_agent_id:
           type: [string, "null"]
           format: uuid
         action: { type: string }

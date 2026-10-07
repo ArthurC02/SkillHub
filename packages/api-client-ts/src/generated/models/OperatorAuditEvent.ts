@@ -20,9 +20,19 @@ import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime }
  */
 export interface OperatorAuditEvent {
     /**
+     * Who acted: a person (`actor_user_id`), one of the platform's own
+     * agents (`actor_agent_id`), or the platform itself with neither.
+     * 
+     */
+    actorKind: OperatorAuditEventActorKindEnum;
+    /**
      * 
      */
     actorUserId: string | null;
+    /**
+     * 
+     */
+    actorAgentId: string | null;
     /**
      * 
      */
@@ -49,11 +59,25 @@ export interface OperatorAuditEvent {
     metadata: { [key: string]: any; };
 }
 
+
+/**
+ * @export
+ */
+export const OperatorAuditEventActorKindEnum = {
+    Person: 'person',
+    Agent: 'agent',
+    System: 'system',
+} as const;
+export type OperatorAuditEventActorKindEnum = typeof OperatorAuditEventActorKindEnum[keyof typeof OperatorAuditEventActorKindEnum];
+
+
 /**
  * Check if a given object implements the OperatorAuditEvent interface.
  */
 export function instanceOfOperatorAuditEvent(value: object): value is OperatorAuditEvent {
+    if ((!('actorKind' in (value as Record<string, any>)) && !('actor_kind' in (value as Record<string, any>))) || ((value as Record<string, any>)['actorKind'] === undefined && (value as Record<string, any>)['actor_kind'] === undefined)) return false;
     if ((!('actorUserId' in (value as Record<string, any>)) && !('actor_user_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['actorUserId'] === undefined && (value as Record<string, any>)['actor_user_id'] === undefined)) return false;
+    if ((!('actorAgentId' in (value as Record<string, any>)) && !('actor_agent_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['actorAgentId'] === undefined && (value as Record<string, any>)['actor_agent_id'] === undefined)) return false;
     if (!('action' in value) || value['action'] === undefined) return false;
     if ((!('resourceType' in (value as Record<string, any>)) && !('resource_type' in (value as Record<string, any>))) || ((value as Record<string, any>)['resourceType'] === undefined && (value as Record<string, any>)['resource_type'] === undefined)) return false;
     if ((!('resourceId' in (value as Record<string, any>)) && !('resource_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['resourceId'] === undefined && (value as Record<string, any>)['resource_id'] === undefined)) return false;
@@ -73,7 +97,9 @@ export function OperatorAuditEventFromJSONTyped(json: any, ignoreDiscriminator: 
     }
     return {
         
+        'actorKind': json['actor_kind'],
         'actorUserId': json['actor_user_id'],
+        'actorAgentId': json['actor_agent_id'],
         'action': json['action'],
         'resourceType': json['resource_type'],
         'resourceId': json['resource_id'],
@@ -94,7 +120,9 @@ export function OperatorAuditEventToJSONTyped(value?: OperatorAuditEvent | null,
 
     return {
         
+        'actor_kind': value['actorKind'],
         'actor_user_id': value['actorUserId'],
+        'actor_agent_id': value['actorAgentId'],
         'action': value['action'],
         'resource_type': value['resourceType'],
         'resource_id': value['resourceId'],

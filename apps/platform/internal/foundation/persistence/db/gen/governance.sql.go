@@ -316,12 +316,13 @@ func (q *Queries) DropReferencedCollectionEntries(ctx context.Context) (int64, e
 }
 
 const insertAuditEvent = `-- name: InsertAuditEvent :exec
-INSERT INTO audit_events (actor_user_id, workspace_id, action, resource_type, resource_id, metadata)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO audit_events (actor_user_id, actor_agent_id, workspace_id, action, resource_type, resource_id, metadata)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type InsertAuditEventParams struct {
 	ActorUserID  pgtype.UUID
+	ActorAgentID pgtype.UUID
 	WorkspaceID  pgtype.UUID
 	Action       string
 	ResourceType string
@@ -332,6 +333,7 @@ type InsertAuditEventParams struct {
 func (q *Queries) InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error {
 	_, err := q.db.Exec(ctx, insertAuditEvent,
 		arg.ActorUserID,
+		arg.ActorAgentID,
 		arg.WorkspaceID,
 		arg.Action,
 		arg.ResourceType,
@@ -413,7 +415,7 @@ func (q *Queries) ListCollectableObjects(ctx context.Context, rowLimit int32) ([
 }
 
 const listPlatformAuditEvents = `-- name: ListPlatformAuditEvents :many
-SELECT id, actor_user_id, workspace_id, action, resource_type, resource_id, metadata, created_at FROM audit_events
+SELECT id, actor_user_id, workspace_id, action, resource_type, resource_id, metadata, created_at, actor_agent_id FROM audit_events
 WHERE action = ANY($1::text[])
    OR (action = ANY($2::text[]) AND metadata->>'scope' = $3::text)
 ORDER BY created_at DESC, id DESC
@@ -452,6 +454,7 @@ func (q *Queries) ListPlatformAuditEvents(ctx context.Context, arg ListPlatformA
 			&i.ResourceID,
 			&i.Metadata,
 			&i.CreatedAt,
+			&i.ActorAgentID,
 		); err != nil {
 			return nil, err
 		}
@@ -542,7 +545,7 @@ func (q *Queries) ListSourcesToCheck(ctx context.Context, limit int32) ([]ListSo
 }
 
 const listWorkspaceAuditEvents = `-- name: ListWorkspaceAuditEvents :many
-SELECT id, actor_user_id, workspace_id, action, resource_type, resource_id, metadata, created_at FROM audit_events
+SELECT id, actor_user_id, workspace_id, action, resource_type, resource_id, metadata, created_at, actor_agent_id FROM audit_events
 WHERE workspace_id = $1 AND action = ANY($3::text[])
 ORDER BY created_at DESC, id DESC
 LIMIT $2
@@ -572,6 +575,7 @@ func (q *Queries) ListWorkspaceAuditEvents(ctx context.Context, arg ListWorkspac
 			&i.ResourceID,
 			&i.Metadata,
 			&i.CreatedAt,
+			&i.ActorAgentID,
 		); err != nil {
 			return nil, err
 		}

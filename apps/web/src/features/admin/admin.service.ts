@@ -61,7 +61,9 @@ export type ModelCallBudget = {
 export type Rosters = { operator_user_ids: string[]; beta_allowlist: string[] };
 
 export type OperatorAuditEvent = {
+  actor_kind: "person" | "agent" | "system";
   actor_user_id: string | null;
+  actor_agent_id: string | null;
   action: string;
   resource_type: string;
   resource_id: string | null;

@@ -1100,7 +1100,9 @@ export const ADMIN_EXPOSURE_CASE = {
 export const ADMIN_AUDIT_LOG = {
   events: [
     {
+      actor_kind: "person",
       actor_user_id: "u-1",
+      actor_agent_id: null,
       action: "credit.grant",
       resource_type: "credit_entry",
       resource_id: "u-2",
@@ -1109,7 +1111,9 @@ export const ADMIN_AUDIT_LOG = {
       metadata: { kind: "grant", credits: 150, reason: "beta reward" },
     },
     {
+      actor_kind: "person",
       actor_user_id: "u-1",
+      actor_agent_id: null,
       action: "account.lookup",
       resource_type: "account",
       resource_id: "u-2",

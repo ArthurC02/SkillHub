@@ -6,9 +6,12 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 )
 
@@ -67,6 +70,62 @@ func switchAgent(t *testing.T, operator *client, name string, enabled bool, note
 func agentAuditCount(t *testing.T, pool *pgxpool.Pool, action string) int {
 	t.Helper()
 	return countRow(t, pool, "SELECT count(*) FROM audit_events WHERE action = $1", action)
+}
+
+func TestTheAuditLogTellsAnAgentFromAPersonAndRefusesBoth(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	ctx := context.Background()
+	const name = "agent-audit-actor"
+	registerTestAgent(t, pool, name)
+	operator := a.login(t, "operator-agent-audit")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	agent := switchAgent(t, operator, name, true, "audit actor")
+
+	var agentID, operatorID pgtype.UUID
+	if err := pool.QueryRow(ctx, "SELECT id FROM platform_agents WHERE name = $1", name).Scan(&agentID); err != nil {
+		t.Fatal(err)
+	}
+	if err := operatorID.Scan(operator.userID); err != nil {
+		t.Fatal(err)
+	}
+	resource := pgtype.UUID{Bytes: [16]byte{0xa9, 0x7e}, Valid: true}
+	if err := audit.Log(ctx, pool, audit.Event{
+		Agent: agentID, Action: audit.ActionDispatchHalt, ResourceType: audit.ResourceDispatch, ResourceID: resource,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := pgx.BeginFunc(context.Background(), pool, func(tx pgx.Tx) error {
+			if _, err := tx.Exec(context.Background(), "SET LOCAL skillhub.purge = 'on'"); err != nil {
+				return err
+			}
+			_, err := tx.Exec(context.Background(), "DELETE FROM audit_events WHERE actor_agent_id = $1", agentID)
+			return err
+		}); err != nil {
+			t.Errorf("cleanup: %v", err)
+		}
+	})
+	if err := audit.Log(ctx, pool, audit.Event{
+		Actor: operatorID, Agent: agentID, Action: audit.ActionDispatchHalt, ResourceType: audit.ResourceDispatch,
+	}); err == nil {
+		t.Error("an audit event naming both a person and an agent was stored")
+	}
+
+	byResource := map[string]map[string]any{}
+	for _, event := range allAuditEvents(t, operator) {
+		if id, ok := event["resource_id"].(string); ok {
+			byResource[id] = event
+		}
+	}
+	byAgent := byResource[pgconv.UUIDString(resource)]
+	if byAgent["actor_kind"] != "agent" || byAgent["actor_agent_id"] != pgconv.UUIDString(agentID) || byAgent["actor_user_id"] != nil {
+		t.Errorf("the agent's event reads as %v, want actor_kind agent naming the agent and no person", byAgent)
+	}
+	byPerson := byResource[pgconv.UUIDString(agentID)]
+	if byPerson["actor_kind"] != "person" || byPerson["actor_user_id"] != operator.userID || byPerson["actor_agent_id"] != nil {
+		t.Errorf("the operator's enable reads as %v (agent %v), want actor_kind person naming the operator", byPerson, agent)
+	}
 }
 
 func TestPlatformAgentRoutesAreInvisibleWithoutTheOperatorRole(t *testing.T) {

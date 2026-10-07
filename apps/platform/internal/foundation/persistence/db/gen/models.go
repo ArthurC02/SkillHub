@@ -186,6 +186,7 @@ type AuditEvent struct {
 	ResourceID   pgtype.UUID
 	Metadata     []byte
 	CreatedAt    pgtype.Timestamptz
+	ActorAgentID pgtype.UUID
 }
 
 type Bundle struct {
