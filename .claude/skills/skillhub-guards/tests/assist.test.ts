@@ -113,7 +113,7 @@ test('the mutation tool runs the test on the broken file and puts the original b
   const runs: string[][] = []
   host(on, files, runs)
   const call = { tool: 'mcp__skillhub-guards__mutation_probe' as const,
-    input: { file: 'a.go', find: '<', replace: '<=', argv: ['go', 'test', './...'] } }
+    file: 'a.go', find: '<', replace: '<=', argv: ['go', 'test', './...'] }
   const result = await $.tool.call(call as never) as { result: string, isError?: boolean }
   expect(result.result).toMatch(/^RED/)
   expect(result.result).toContain('file restored byte for byte')
