@@ -11,6 +11,8 @@ const HALT_SOURCE: Record<string, string> = {
   p1_incident: "P1 事故：只有人能解除",
   orphan_threshold: "孤兒門檻：連續兩輪低於門檻會自動解除",
 };
+const HALT_DONE =
+  "新的 Run 已停止派往本次範圍，清理與孤兒資源拆除也已暫停。煞車不會自動解除；若狀態讀取失敗，請重新整理確認。";
 
 function recoveryBlockReason(
   status: ReturnType<typeof useDispatchStatus>,
@@ -95,7 +97,7 @@ export function AdminDispatch() {
         pending={declare.isPending}
         error={declare.error}
         maxNoteBytes={OPERATOR_NOTE_MAX_BYTES}
-        done={declare.data?.note}
+        done={declare.isSuccess && HALT_DONE}
         contextKey={target ?? "pool"}
         tone="caution"
         ready={!lift.isPending}

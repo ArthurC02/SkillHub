@@ -27,6 +27,8 @@ beforeAll(preloadEveryPage);
 
 type Call = { method: string; url: string; body?: Record<string, unknown> };
 type Reply = { body: unknown; status: number } | undefined;
+const DISPATCH_HALT_NOTE =
+  "new runs are refused and nothing is dispatched to this target; cleanup and orphan teardown stand down so the scene is preserved. This halt is never lifted automatically.";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -1296,7 +1298,7 @@ test("OPS-004: a takedown with no reason on record says it was not recorded", as
 test("OPS-005: the dispatch page names the halt, and a declaration without a node halts the fleet", async () => {
   stub(true, (path, method) =>
     path === "/admin/dispatch/halt" && method === "PUT"
-      ? { body: { note: "整個叢集停止派送。" }, status: 200 }
+      ? { body: { note: DISPATCH_HALT_NOTE }, status: 200 }
       : undefined,
   );
   await mountAt("/admin/dispatch");
@@ -1311,12 +1313,19 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
   await type("#admin-halt-declare-note", "escape drill");
   expect(has("本次停止範圍：整個叢集")()).toBe(true);
   await click(button("停止派送"));
-  await waitFor(has("整個叢集停止派送。"));
+  await waitFor(
+    () =>
+      field("#admin-halt-declare-note").closest("form")?.querySelector('[role="status"]') !== null,
+  );
+  expect(has("新的 Run 已停止派往本次範圍")()).toBe(true);
+  expect(has("清理與孤兒資源拆除也已暫停")()).toBe(true);
+  expect(has("煞車不會自動解除")()).toBe(true);
+  expect(has("new runs are refused")()).toBe(false);
   expect(calls.find((c) => c.method === "PUT")?.body).toEqual({ note: "escape drill" });
 
   await type("#admin-halt-recovery-target", "pool");
   await type("#admin-halt-provider", "node-2");
-  expect(has("整個叢集停止派送。")()).toBe(false);
+  expect(has("新的 Run 已停止派往本次範圍")()).toBe(false);
   expect(has("本次停止範圍：節點 node-2")()).toBe(true);
   await type("#admin-halt-lift-note", "cleared");
   await click(button("恢復派送"));
@@ -1368,15 +1377,15 @@ test("a pending dispatch halt prevents recovery from starting", async () => {
   expect(calls.some((call) => call.method === "DELETE")).toBe(false);
 
   await act(async () => {
-    finishHalt!(new Response(JSON.stringify({ note: "整個叢集停止派送。" }), { status: 200 }));
+    finishHalt!(new Response(JSON.stringify({ note: DISPATCH_HALT_NOTE }), { status: 200 }));
   });
-  await waitFor(has("整個叢集停止派送。"));
+  await waitFor(has("新的 Run 已停止派往本次範圍"));
 });
 
 test("recovering dispatch blocks another halt and clears the preceding halt notice", async () => {
   stub(true, (path, method) =>
     path === "/admin/dispatch/halt" && method === "PUT"
-      ? { body: { note: "整個叢集停止派送。" }, status: 200 }
+      ? { body: { note: DISPATCH_HALT_NOTE }, status: 200 }
       : undefined,
   );
   const fixtureFetch = globalThis.fetch;
@@ -1395,13 +1404,13 @@ test("recovering dispatch blocks another halt and clears the preceding halt noti
   await type("#admin-halt-declare-note", "stop for investigation");
   await type("#admin-halt-lift-note", "resume after investigation");
   await click(button("停止派送"));
-  await waitFor(has("整個叢集停止派送。"));
+  await waitFor(has("新的 Run 已停止派往本次範圍"));
   await click(button("恢復派送"));
   await waitFor(() => finishRecovery !== undefined);
 
   await waitFor(() => button("停止派送").disabled);
   await waitFor(has("正在恢復派送，完成後才能再次停止。"));
-  expect(has("整個叢集停止派送。")()).toBe(false);
+  expect(has("新的 Run 已停止派往本次範圍")()).toBe(false);
   await submit("#admin-halt-declare-note");
   expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1);
 
@@ -1409,7 +1418,7 @@ test("recovering dispatch blocks another halt and clears the preceding halt noti
     finishRecovery!(new Response("{}", { status: 200 }));
   });
   await waitFor(has("解除請求已處理；若狀態讀取失敗，請重新整理確認。"));
-  expect(has("整個叢集停止派送。")()).toBe(false);
+  expect(has("新的 Run 已停止派往本次範圍")()).toBe(false);
 });
 
 test("recovery requires selecting an active halt and sends that target", async () => {
