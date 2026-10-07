@@ -917,6 +917,62 @@ test("a revised model timeout does not inherit the previous success notice", asy
   expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(false);
 });
 
+test("a saved model timeout keeps its confirmation after the effective setting refreshes", async () => {
+  let current = ADMIN_MODEL_BUDGETS;
+  stub(true, (path, method) => {
+    if (path === "/admin/model-budgets" && method === "GET") return { body: current, status: 200 };
+    if (path === "/admin/model-budgets/judge-run" && method === "PUT") {
+      current = {
+        budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+          budget.kind === "judge-run"
+            ? { ...budget, seconds: 100, reason: "operator update", set_at: "2026-09-20T08:00:00Z" }
+            : budget,
+        ),
+      };
+      return { body: {}, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("管理員設定 90 秒"));
+  await type("#admin-budget-judge-run-seconds", "100");
+  await type("#admin-budget-judge-run-note", "operator update");
+  await click(button("改 評估判定 的秒數"));
+
+  await waitFor(has("管理員設定 100 秒"));
+  await waitFor(() => queryClient.isFetching({ queryKey: queryKeys.admin.modelBudgets }) === 0);
+  expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(true);
+});
+
+test("a cleared model timeout confirms the change after its reset form disappears", async () => {
+  let current = ADMIN_MODEL_BUDGETS;
+  stub(true, (path, method) => {
+    if (path === "/admin/model-budgets" && method === "GET") return { body: current, status: 200 };
+    if (path === "/admin/model-budgets/judge-run" && method === "DELETE") {
+      current = {
+        budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+          budget.kind === "judge-run"
+            ? { ...budget, seconds: null, reason: null, set_at: null }
+            : budget,
+        ),
+      };
+      return { body: {}, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("管理員設定 90 秒"));
+  await type("#admin-budget-judge-run-clear-note", "return to default");
+  await click(button("把 評估判定 改回預設"));
+
+  await waitFor(() => !has("管理員設定 90 秒")());
+  await waitFor(() => queryClient.isFetching({ queryKey: queryKeys.admin.modelBudgets }) === 0);
+  expect(has("已改回預設。")()).toBe(true);
+  expect(container.querySelector("#admin-budget-judge-run-clear-note")).toBeNull();
+  await type("#admin-budget-judge-run-seconds", "100");
+  expect(has("已改回預設。")()).toBe(false);
+});
+
 test("OPS-009: a configured timeout keeps its compiled default visible without failure styling", async () => {
   stub(true);
   await mountAt("/admin/model-budgets");
@@ -1090,11 +1146,20 @@ test("OPS-009: setting a budget locks clearing the same kind until the write fin
 });
 
 test("OPS-009: clearing a budget removes the preceding set-success message", async () => {
-  stub(true, (path, method) =>
-    path === "/admin/model-budgets/judge-run" && (method === "PUT" || method === "DELETE")
-      ? { body: {}, status: 200 }
-      : undefined,
-  );
+  let current = ADMIN_MODEL_BUDGETS;
+  stub(true, (path, method) => {
+    if (path === "/admin/model-budgets" && method === "GET") return { body: current, status: 200 };
+    if (path === "/admin/model-budgets/judge-run" && method === "DELETE") {
+      current = {
+        budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+          budget.kind === "judge-run"
+            ? { ...budget, seconds: null, reason: null, set_at: null }
+            : budget,
+        ),
+      };
+    }
+    return path === "/admin/model-budgets/judge-run" ? { body: {}, status: 200 } : undefined;
+  });
   await mountAt("/admin/model-budgets");
   await waitFor(has("評估判定"));
   await type("#admin-budget-judge-run-note", "wait longer");

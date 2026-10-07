@@ -20,9 +20,17 @@ function unavailableReason(fresh: boolean, otherPending: boolean, pendingReason:
   return otherPending ? pendingReason : undefined;
 }
 
+function editableSeconds(budget: ModelCallBudget, edit: { from: string; value: string } | null) {
+  return edit?.from === JSON.stringify(budget)
+    ? edit.value
+    : String(budget.seconds ?? budget.default_seconds);
+}
+
 function BudgetRow({ budget, fresh }: { budget: ModelCallBudget; fresh: boolean }) {
   const name = CALL_NAMES[budget.kind] ?? budget.kind;
-  const [seconds, setSeconds] = useState(String(budget.seconds ?? budget.default_seconds));
+  const [edit, setEdit] = useState<{ from: string; value: string } | null>(null);
+  const from = JSON.stringify(budget);
+  const seconds = editableSeconds(budget, edit);
   const set = useModelBudgetChange("PUT");
   const clear = useModelBudgetChange("DELETE");
   const changing = set.isPending || clear.isPending;
@@ -48,6 +56,11 @@ function BudgetRow({ budget, fresh }: { budget: ModelCallBudget; fresh: boolean 
             </p>
           )}
         </>
+      )}
+      {clear.isSuccess && budget.seconds === null && (
+        <p className="notice notice-success" role="status">
+          已改回預設。
+        </p>
       )}
       <ActionForm
         id={`admin-budget-${budget.kind}`}
@@ -76,8 +89,9 @@ function BudgetRow({ budget, fresh }: { budget: ModelCallBudget; fresh: boolean 
             inputMode="numeric"
             value={seconds}
             onChange={(event) => {
-              setSeconds(event.target.value);
+              setEdit({ from, value: event.target.value });
               set.reset();
+              clear.reset();
             }}
             readOnly={changing || !fresh}
             aria-describedby={inRange ? undefined : `admin-budget-${budget.kind}-range`}
@@ -102,7 +116,6 @@ function BudgetRow({ budget, fresh }: { budget: ModelCallBudget; fresh: boolean 
             set.isPending,
             "此呼叫正在設定秒數，完成後才能改回預設。",
           )}
-          done={clear.isSuccess && "已改回預設。"}
           onSubmit={(reason) => {
             set.reset();
             clear.mutate({ kind: budget.kind, reason });
@@ -137,7 +150,7 @@ export function AdminModelBudgets() {
       {budgets.data && !budgets.error && (
         <ul className="download-list">
           {budgets.data.budgets.map((budget) => (
-            <BudgetRow budget={budget} fresh={!budgets.isFetching} key={JSON.stringify(budget)} />
+            <BudgetRow budget={budget} fresh={!budgets.isFetching} key={budget.kind} />
           ))}
         </ul>
       )}
