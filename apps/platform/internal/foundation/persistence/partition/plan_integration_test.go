@@ -14,16 +14,17 @@ func TestAPlanNamesExactlyThePartitionsTheRotationThenCreatesAndDrops(t *testing
 		t.Fatal(err)
 	}
 
-	at, retention := date(2026, time.November, 15), 30*24*time.Hour
+	before := childPartitionNames(t, pool, analyticsTable)
+
+	at, retention := date(2030, time.January, 15), 30*24*time.Hour
 	plan, err := PlanMonthly(ctx, pool, analyticsTable, at, retention)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertNames(t, "planned drops", plan.Dropped, "analytics_events_2026_08", "analytics_events_2026_09")
-	assertNames(t, "planned creates", plan.Created, "analytics_events_2026_12", "analytics_events_2027_01")
-	if !contains(childPartitionNames(t, pool, analyticsTable), "analytics_events_2026_08") {
-		t.Fatal("planning dropped a partition")
+	if !contains(plan.Dropped, "analytics_events_2026_09") || !contains(plan.Created, "analytics_events_2030_01") {
+		t.Errorf("plan drops %v and creates %v, want September 2026 dropped and January 2030 created", plan.Dropped, plan.Created)
 	}
+	assertNames(t, "partitions after planning", childPartitionNames(t, pool, analyticsTable), before...)
 
 	done, err := MaintainMonthly(ctx, pool, analyticsTable, at, retention)
 	if err != nil {
