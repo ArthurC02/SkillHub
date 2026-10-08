@@ -22,6 +22,15 @@ func MaintainPartitions(ctx context.Context, pool *pgxpool.Pool, now time.Time, 
 	return report, errors.Join(err, purgeStragglersBefore(ctx, pool, oldestKeptMonth(now.Add(-retention))))
 }
 
+func PlanPartitions(ctx context.Context, pool *pgxpool.Pool, now time.Time, retention time.Duration) (partition.Report, int64, error) {
+	report, err := partition.PlanMonthly(ctx, pool, PartitionedTable, now, retention)
+	if err != nil {
+		return report, 0, err
+	}
+	rows, err := gen.New(pool).CountTraceEventsBefore(ctx, pgconv.Timestamptz(oldestKeptMonth(now.Add(-retention))))
+	return report, rows, err
+}
+
 func oldestKeptMonth(cutoff time.Time) time.Time {
 	cutoff = cutoff.UTC()
 	return time.Date(cutoff.Year(), cutoff.Month(), 1, 0, 0, 0, 0, time.UTC)

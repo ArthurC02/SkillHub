@@ -170,6 +170,17 @@ func (s *Service) RecordFeedback(ctx context.Context, report FeedbackReport) err
 	})
 }
 
+func (s *Service) CountExpiredFeedback(ctx context.Context, retention time.Duration) (int64, error) {
+	if s == nil || s.Pool == nil {
+		return 0, errors.New("feedback count requires a database pool")
+	}
+	if retention <= 0 {
+		return 0, errors.New("feedback count requires a positive retention period")
+	}
+	return gen.New(s.Pool).CountExpiredFeedbackReports(ctx,
+		pgtype.Timestamptz{Time: s.now().Add(-retention), Valid: true})
+}
+
 func (s *Service) PurgeExpiredFeedback(ctx context.Context, retention time.Duration) (int64, error) {
 	if s == nil || s.Pool == nil {
 		return 0, errors.New("feedback purge requires a database pool")

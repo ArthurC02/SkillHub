@@ -43,3 +43,6 @@ SELECT w.owner_user_id FROM workspaces w WHERE w.id = sqlc.arg(workspace_id)::uu
 
 -- name: GetUserLifecycle :one
 SELECT deleted_at, purge_started_at FROM users WHERE id = $1;
+
+-- name: CountExpiredSessions :one
+SELECT count(*)::bigint FROM sessions WHERE expires_at <= now();

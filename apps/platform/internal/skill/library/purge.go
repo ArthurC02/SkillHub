@@ -204,6 +204,17 @@ func TrackPackageObject(ctx context.Context, db gen.DBTX, key string) error {
 	return gen.New(db).RememberPackageObject(ctx, key)
 }
 
+func (s *Service) SkillsPastDeletionGrace(ctx context.Context, grace time.Duration) (int64, error) {
+	if grace <= 0 {
+		return 0, errors.New("registry: deletion grace period must be positive")
+	}
+	return gen.New(s.Pool).CountSkillsPastDeletionGrace(ctx, pgtype.Timestamptz{Time: time.Now().Add(-grace), Valid: true})
+}
+
+func (s *Service) CollectableObjects(ctx context.Context) (int64, error) {
+	return gen.New(s.Pool).CountUnreferencedCollectableObjects(ctx)
+}
+
 func (s *Service) OldestCollectableObject(ctx context.Context) (pgtype.Timestamptz, error) {
 	return gen.New(s.Pool).OldestCollectableObjectEnqueuedAt(ctx)
 }

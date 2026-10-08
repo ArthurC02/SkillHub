@@ -26,6 +26,12 @@ export const ACTION_LABEL: Record<string, string> = {
   "platform_agent_finding.acknowledged": "接手待辦",
   "platform_agent_finding.resolved": "解決待辦",
   "platform_agent_finding.dismissed": "忽略待辦",
+  "platform_agent_proposal.proposed": "Agent 提出提案",
+  "platform_agent_proposal.approved": "核准提案",
+  "platform_agent_proposal.rejected": "駁回提案",
+  "platform_agent_proposal.expired": "提案逾期作廢",
+  "platform_agent_proposal.succeeded": "提案執行完成",
+  "platform_agent_proposal.failed": "提案執行失敗",
 };
 
 export const COST_KIND: Record<string, string> = {

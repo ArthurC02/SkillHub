@@ -194,6 +194,11 @@ import {
     DatasetLimitsToJSON,
 } from '../models/DatasetLimits';
 import {
+    type DecidePlatformAgentProposalRequest,
+    DecidePlatformAgentProposalRequestFromJSON,
+    DecidePlatformAgentProposalRequestToJSON,
+} from '../models/DecidePlatformAgentProposalRequest';
+import {
     type DecideSuggestionRequest,
     DecideSuggestionRequestFromJSON,
     DecideSuggestionRequestToJSON,
@@ -414,6 +419,11 @@ import {
     ListPlatformAgentFindings200ResponseToJSON,
 } from '../models/ListPlatformAgentFindings200Response';
 import {
+    type ListPlatformAgentProposals200Response,
+    ListPlatformAgentProposals200ResponseFromJSON,
+    ListPlatformAgentProposals200ResponseToJSON,
+} from '../models/ListPlatformAgentProposals200Response';
+import {
     type ListPlatformAgentRunSteps200Response,
     ListPlatformAgentRunSteps200ResponseFromJSON,
     ListPlatformAgentRunSteps200ResponseToJSON,
@@ -498,6 +508,11 @@ import {
     PlatformAgentBrakeFromJSON,
     PlatformAgentBrakeToJSON,
 } from '../models/PlatformAgentBrake';
+import {
+    type PlatformAgentProposalDetail,
+    PlatformAgentProposalDetailFromJSON,
+    PlatformAgentProposalDetailToJSON,
+} from '../models/PlatformAgentProposalDetail';
 import {
     type PublicPublication,
     PublicPublicationFromJSON,
@@ -879,6 +894,17 @@ export interface CreateTestCaseOperationRequest {
     createTestCaseRequest: CreateTestCaseRequest;
 }
 
+export interface DecidePlatformAgentProposalOperationRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    decidePlatformAgentProposalRequest: DecidePlatformAgentProposalRequest;
+}
+
 export interface DecideSuggestionOperationRequest {
     /**
      * 
@@ -1126,6 +1152,13 @@ export interface GetOwnPublicationRequest {
 }
 
 export interface GetPlatformAgentFindingRequest {
+    /**
+     * 
+     */
+    id: string;
+}
+
+export interface GetPlatformAgentProposalRequest {
     /**
      * 
      */
@@ -2211,6 +2244,32 @@ export interface DefaultApiInterface {
     createTestCase(requestParameters: CreateTestCaseOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase>;
 
     /**
+     * Creates request options for decidePlatformAgentProposal without sending the request
+     * @param {string} id 
+     * @param {DecidePlatformAgentProposalRequest} decidePlatformAgentProposalRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    decidePlatformAgentProposalRequestOpts(requestParameters: DecidePlatformAgentProposalOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Only a proposal still waiting and not past its expiry can be decided. Approving releases it to the maintenance process, which runs the job and records the outcome; rejecting closes it. The decision and its audit event, naming the operator, are written in one transaction. 
+     * @summary Approve or reject a proposal (02:OPS-013)
+     * @param {string} id 
+     * @param {DecidePlatformAgentProposalRequest} decidePlatformAgentProposalRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    decidePlatformAgentProposalRaw(requestParameters: DecidePlatformAgentProposalOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Operator only. Only a proposal still waiting and not past its expiry can be decided. Approving releases it to the maintenance process, which runs the job and records the outcome; rejecting closes it. The decision and its audit event, naming the operator, are written in one transaction. 
+     * Approve or reject a proposal (02:OPS-013)
+     */
+    decidePlatformAgentProposal(requestParameters: DecidePlatformAgentProposalOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for decideSuggestion without sending the request
      * @param {string} id 
      * @param {DecideSuggestionRequest} decideSuggestionRequest 
@@ -3179,6 +3238,30 @@ export interface DefaultApiInterface {
     getPlatformAgentFinding(requestParameters: GetPlatformAgentFindingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetPlatformAgentFinding200Response>;
 
     /**
+     * Creates request options for getPlatformAgentProposal without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getPlatformAgentProposalRequestOpts(requestParameters: GetPlatformAgentProposalRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only.
+     * @summary One proposal with its preview, decision and outcome (02:OPS-013)
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getPlatformAgentProposalRaw(requestParameters: GetPlatformAgentProposalRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformAgentProposalDetail>>;
+
+    /**
+     * Operator only.
+     * One proposal with its preview, decision and outcome (02:OPS-013)
+     */
+    getPlatformAgentProposal(requestParameters: GetPlatformAgentProposalRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgentProposalDetail>;
+
+    /**
      * Creates request options for getPublicPublication without sending the request
      * @param {string} publisher 
      * @param {string} name 
@@ -3891,6 +3974,28 @@ export interface DefaultApiInterface {
      * The things platform agents reported as needing attention (02:OPS-012)
      */
     listPlatformAgentFindings(requestParameters: ListPlatformAgentFindingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentFindings200Response>;
+
+    /**
+     * Creates request options for listPlatformAgentProposals without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listPlatformAgentProposalsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Every proposal still waiting, approved or running, and every one that closed within the last seven days, newest first, at most 100. 
+     * @summary The actions agents proposed (02:OPS-013)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listPlatformAgentProposalsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgentProposals200Response>>;
+
+    /**
+     * Operator only. Every proposal still waiting, approved or running, and every one that closed within the last seven days, newest first, at most 100. 
+     * The actions agents proposed (02:OPS-013)
+     */
+    listPlatformAgentProposals(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentProposals200Response>;
 
     /**
      * Creates request options for listPlatformAgentRunSteps without sending the request
@@ -5809,6 +5914,62 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for decidePlatformAgentProposal without sending the request
+     */
+    async decidePlatformAgentProposalRequestOpts(requestParameters: DecidePlatformAgentProposalOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling decidePlatformAgentProposal().'
+            );
+        }
+
+        if (requestParameters['decidePlatformAgentProposalRequest'] == null) {
+            throw new runtime.RequiredError(
+                'decidePlatformAgentProposalRequest',
+                'Required parameter "decidePlatformAgentProposalRequest" was null or undefined when calling decidePlatformAgentProposal().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/agents/proposals/{id}/decision`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: DecidePlatformAgentProposalRequestToJSON(requestParameters['decidePlatformAgentProposalRequest']),
+        };
+    }
+
+    /**
+     * Operator only. Only a proposal still waiting and not past its expiry can be decided. Approving releases it to the maintenance process, which runs the job and records the outcome; rejecting closes it. The decision and its audit event, naming the operator, are written in one transaction. 
+     * Approve or reject a proposal (02:OPS-013)
+     */
+    async decidePlatformAgentProposalRaw(requestParameters: DecidePlatformAgentProposalOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.decidePlatformAgentProposalRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Operator only. Only a proposal still waiting and not past its expiry can be decided. Approving releases it to the maintenance process, which runs the job and records the outcome; rejecting closes it. The decision and its audit event, naming the operator, are written in one transaction. 
+     * Approve or reject a proposal (02:OPS-013)
+     */
+    async decidePlatformAgentProposal(requestParameters: DecidePlatformAgentProposalOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.decidePlatformAgentProposalRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for decideSuggestion without sending the request
      */
     async decideSuggestionRequestOpts(requestParameters: DecideSuggestionOperationRequest): Promise<runtime.RequestOpts> {
@@ -7690,6 +7851,53 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for getPlatformAgentProposal without sending the request
+     */
+    async getPlatformAgentProposalRequestOpts(requestParameters: GetPlatformAgentProposalRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getPlatformAgentProposal().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/agents/proposals/{id}`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only.
+     * One proposal with its preview, decision and outcome (02:OPS-013)
+     */
+    async getPlatformAgentProposalRaw(requestParameters: GetPlatformAgentProposalRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformAgentProposalDetail>> {
+        const requestOptions = await this.getPlatformAgentProposalRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformAgentProposalDetailFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only.
+     * One proposal with its preview, decision and outcome (02:OPS-013)
+     */
+    async getPlatformAgentProposal(requestParameters: GetPlatformAgentProposalRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgentProposalDetail> {
+        const response = await this.getPlatformAgentProposalRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getPublicPublication without sending the request
      */
     async getPublicPublicationRequestOpts(requestParameters: GetPublicPublicationRequest): Promise<runtime.RequestOpts> {
@@ -9057,6 +9265,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async listPlatformAgentFindings(requestParameters: ListPlatformAgentFindingsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentFindings200Response> {
         const response = await this.listPlatformAgentFindingsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listPlatformAgentProposals without sending the request
+     */
+    async listPlatformAgentProposalsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/agents/proposals`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. Every proposal still waiting, approved or running, and every one that closed within the last seven days, newest first, at most 100. 
+     * The actions agents proposed (02:OPS-013)
+     */
+    async listPlatformAgentProposalsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgentProposals200Response>> {
+        const requestOptions = await this.listPlatformAgentProposalsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListPlatformAgentProposals200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Every proposal still waiting, approved or running, and every one that closed within the last seven days, newest first, at most 100. 
+     * The actions agents proposed (02:OPS-013)
+     */
+    async listPlatformAgentProposals(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentProposals200Response> {
+        const response = await this.listPlatformAgentProposalsRaw(initOverrides);
         return await response.value();
     }
 

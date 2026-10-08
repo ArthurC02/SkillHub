@@ -145,3 +145,21 @@ GROUP BY resource_kind;
 -- name: MarkDatasetObjectLost :exec
 UPDATE datasets SET deleted_at = coalesce(deleted_at, now()), purged_at = now()
 WHERE id = $1 AND purged_at IS NULL;
+
+-- name: CountRunOutputsPastRetention :one
+SELECT count(*)::bigint FROM artifacts
+WHERE kind = 'run_output'
+  AND purged_at IS NULL
+  AND (deleted_at IS NOT NULL OR expires_at <= now())
+  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - @claim_lease::interval);
+
+-- name: CountDatasetsPastRetention :one
+SELECT count(*)::bigint FROM datasets
+WHERE purged_at IS NULL
+  AND (deleted_at IS NOT NULL OR expires_at <= now())
+  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - @claim_lease::interval);
+
+-- name: CountDatasetCleanupIntentsDue :one
+SELECT count(*)::bigint FROM dataset_object_cleanup_intents
+WHERE not_before <= now()
+  AND (attempted_at IS NULL OR attempted_at < now() - @claim_lease::interval);

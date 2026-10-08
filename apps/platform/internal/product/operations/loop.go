@@ -79,6 +79,7 @@ type Runner struct {
 	RevokeKey  func(ctx context.Context, run string) error
 	RecordCost func(ctx context.Context, run pgtype.UUID, call ModelCall)
 	Now        func() time.Time
+	Actions    []Action
 }
 
 const (
@@ -149,11 +150,20 @@ func (r *Runner) complete(ctx context.Context, report RunReport, def Definition,
 	if def.Sightings == nil {
 		return r.finish(ctx, report, RunCompleted, "", result)
 	}
+	var proposals []preparedProposal
+	if def.Proposals != nil {
+		var err error
+		if proposals, err = prepareProposals(ctx, def, r.Actions, def.Proposals(result)); err != nil {
+			return r.finish(ctx, report, RunFailed, err.Error(), result)
+		}
+	}
 	report.Status, report.Result = RunCompleted, result
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), revokeTimeout)
 	defer cancel()
 	findings := &trackedFindings{sightings: def.Sightings(result, steps), now: r.Now()}
-	return report, r.Svc.finishWithResult(ctx, report.ID, runEnding{status: RunCompleted, result: result, findings: findings})
+	return report, r.Svc.finishWithResult(ctx, report.ID, runEnding{
+		status: RunCompleted, result: result, findings: findings, proposals: proposals,
+	})
 }
 
 func offered(def Definition, tools []Tool) []Tool {

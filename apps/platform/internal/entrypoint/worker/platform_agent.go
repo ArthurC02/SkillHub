@@ -9,6 +9,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 )
 
 const (
@@ -42,6 +43,22 @@ func (w *PlatformAgentRunWorker) Timeout(*river.Job[PlatformAgentRunArgs]) time.
 	return wiring.AgentLimits.Deadline + time.Minute
 }
 
+const proposalExpiryInterval = 15 * time.Minute
+
+type ProposalExpiryArgs struct{}
+
+func (ProposalExpiryArgs) Kind() string { return "platform_agent_proposal_expiry" }
+
+type ProposalExpiryWorker struct {
+	river.WorkerDefaults[ProposalExpiryArgs]
+	Svc *operations.Service
+}
+
+func (w *ProposalExpiryWorker) Work(ctx context.Context, _ *river.Job[ProposalExpiryArgs]) error {
+	_, err := w.Svc.ExpireProposals(ctx)
+	return err
+}
+
 type dailyAt struct{ hour int }
 
 func (d dailyAt) Next(current time.Time) time.Time {
@@ -59,6 +76,7 @@ func agentRunsAvailable(deps Deps) bool {
 
 func addCreditConsumers(set *Set, workers *river.Workers, pool *pgxpool.Pool, deps Deps, creditSvc *credit.Service) {
 	addWorker(set, workers, &CreditRecomputeWorker{Svc: creditSvc})
+	addWorker(set, workers, &ProposalExpiryWorker{Svc: &operations.Service{Pool: pool}})
 	if agentRunsAvailable(deps) {
 		runs := wiring.NewAgentRuns(pool, deps.LLM, deps.Gateway, creditSvc, deps.RestoreRate)
 		addWorker(set, workers, &PlatformAgentRunWorker{Run: runs})

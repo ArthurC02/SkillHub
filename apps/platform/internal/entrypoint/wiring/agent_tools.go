@@ -3,6 +3,7 @@ package wiring
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,6 +27,7 @@ type JobFacts struct {
 	PeriodSeconds int64      `json:"period_seconds"`
 	LastSucceeded *time.Time `json:"last_succeeded_at"`
 	OverdueRatio  float64    `json:"overdue_ratio"`
+	Action        string     `json:"action,omitempty"`
 }
 
 type MaintenanceFacts struct {
@@ -49,9 +51,17 @@ func NewMaintenanceFacts(report capacity.Report, jobs []jobruns.Status) Maintena
 	for _, job := range jobs {
 		facts.MaintenanceJobs[job.Job] = JobFacts{
 			PeriodSeconds: job.PeriodSeconds, LastSucceeded: job.LastSucceeded, OverdueRatio: job.OverdueRatio,
+			Action: proposableAction(job.Job),
 		}
 	}
 	return facts
+}
+
+func proposableAction(job string) string {
+	if !slices.Contains(operations.ProposableMaintenanceJobs, job) {
+		return ""
+	}
+	return operations.MaintenanceJobAction(job)
 }
 
 func MaintenanceReportTool(pool *pgxpool.Pool, rate capacity.RestoreRate, now func() time.Time) operations.Tool {
@@ -59,7 +69,8 @@ func MaintenanceReportTool(pool *pgxpool.Pool, rate capacity.RestoreRate, now fu
 		Name: operations.ToolMaintenanceReport,
 		Description: "The platform's maintenance facts: database and per-table size in bytes, daily growth, " +
 			"the restore budget and days until it is crossed, and each scheduled maintenance job's period, " +
-			"last success and overdue ratio (time since last success over its period). Takes no arguments.",
+			"last success and overdue ratio (time since last success over its period), and the action that " +
+			"runs the job now when one can be proposed. Takes no arguments.",
 		Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 		Run: func(ctx context.Context, _ json.RawMessage) (any, error) {
 			at := now()

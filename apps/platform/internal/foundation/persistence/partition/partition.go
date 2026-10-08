@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"time"
@@ -27,14 +28,36 @@ type Report struct {
 	Dropped []string
 }
 
+func checkRotation(table string, retention time.Duration) error {
+	if !identifierPattern.MatchString(table) {
+		return fmt.Errorf("partition: %q is not a bare lower-case table identifier", table)
+	}
+	if retention <= 0 {
+		return fmt.Errorf("partition: %s needs a positive retention window, got %s", table, retention)
+	}
+	return nil
+}
+
+func PlanMonthly(ctx context.Context, pool *pgxpool.Pool, table string, now time.Time, retention time.Duration) (Report, error) {
+	if err := checkRotation(table, retention); err != nil {
+		return Report{}, err
+	}
+	now = now.UTC()
+	existing, err := childPartitions(ctx, pool, table)
+	if err != nil {
+		return Report{}, err
+	}
+	report := Report{Dropped: expiredMonths(table, existing, now, retention)}
+	for _, start := range missingMonths(table, existing, now) {
+		report.Created = append(report.Created, monthName(table, start))
+	}
+	return report, nil
+}
+
 func MaintainMonthly(ctx context.Context, pool *pgxpool.Pool, table string, now time.Time, retention time.Duration) (Report, error) {
 	var report Report
-	if !identifierPattern.MatchString(table) {
-		return report, fmt.Errorf("partition: %q is not a bare lower-case table identifier", table)
-	}
-
-	if retention <= 0 {
-		return report, fmt.Errorf("partition: %s needs a positive retention window, got %s", table, retention)
+	if err := checkRotation(table, retention); err != nil {
+		return report, err
 	}
 	now = now.UTC()
 
@@ -75,17 +98,10 @@ func CreateUpcoming(ctx context.Context, pool *pgxpool.Pool, table string, now t
 func createUpcoming(
 	ctx context.Context, pool *pgxpool.Pool, table string, existing []string, now time.Time,
 ) ([]string, error) {
-	present := make(map[string]bool, len(existing))
-	for _, name := range existing {
-		present[name] = true
-	}
 	var created []string
 	var failures []error
-	for _, start := range upcomingMonths(now) {
+	for _, start := range missingMonths(table, existing, now) {
 		name := monthName(table, start)
-		if present[name] {
-			continue
-		}
 		if err := createMonth(ctx, pool, table, name, start); err != nil {
 			failures = append(failures, err)
 			continue
@@ -93,6 +109,16 @@ func createUpcoming(
 		created = append(created, name)
 	}
 	return created, errors.Join(failures...)
+}
+
+func missingMonths(table string, existing []string, now time.Time) []time.Time {
+	var missing []time.Time
+	for _, start := range upcomingMonths(now) {
+		if !slices.Contains(existing, monthName(table, start)) {
+			missing = append(missing, start)
+		}
+	}
+	return missing
 }
 
 func childPartitions(ctx context.Context, pool *pgxpool.Pool, table string) ([]string, error) {

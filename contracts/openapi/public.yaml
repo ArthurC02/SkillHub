@@ -3683,6 +3683,105 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/agents/proposals:
+    get:
+      operationId: listPlatformAgentProposals
+      summary: The actions agents proposed (02:OPS-013)
+      description: |
+        Operator only. Every proposal still waiting, approved or running, and
+        every one that closed within the last seven days, newest first, at
+        most 100.
+      responses:
+        "200":
+          description: The proposals.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [proposals]
+                properties:
+                  proposals:
+                    type: array
+                    items: { $ref: "#/components/schemas/PlatformAgentProposal" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/agents/proposals/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getPlatformAgentProposal
+      summary: One proposal with its preview, decision and outcome (02:OPS-013)
+      description: Operator only.
+      responses:
+        "200":
+          description: The proposal.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformAgentProposalDetail" }
+        "400":
+          description: The id is not a UUID.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: No such proposal, or the caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/agents/proposals/{id}/decision:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      operationId: decidePlatformAgentProposal
+      summary: Approve or reject a proposal (02:OPS-013)
+      description: |
+        Operator only. Only a proposal still waiting and not past its expiry
+        can be decided. Approving releases it to the maintenance process,
+        which runs the job and records the outcome; rejecting closes it. The
+        decision and its audit event, naming the operator, are written in one
+        transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision, note]
+              properties:
+                decision:
+                  type: string
+                  enum: [approve, reject]
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why, in the operator's own words. Whitespace does not satisfy it.
+      responses:
+        "204":
+          description: The decision is recorded.
+        "400":
+          description: The id is not a UUID, the body is not JSON, `decision` is not approve or reject, or `note` is blank or over 1000 bytes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: No such proposal, or the caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The proposal is no longer waiting for a decision, or it has expired.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/accounts:
     get:
       operationId: lookupAccount
@@ -6694,6 +6793,63 @@ components:
           description: Each cite's value in the facts that run read.
         note: { type: string }
         occurred_at: { type: string, format: date-time }
+    PlatformAgentProposal:
+      type: object
+      required: [id, agent, action, tier, reason, status, proposed_at, expires_at]
+      properties:
+        id: { type: string, format: uuid }
+        agent: { type: string }
+        action:
+          type: string
+          description: The registered action, such as `run-purge-audit`.
+        tier:
+          type: string
+          enum: [read_only, reversible, destructive]
+        reason: { type: string }
+        status:
+          type: string
+          enum: [proposed, approved, rejected, expired, running, succeeded, failed]
+        proposed_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+    PlatformAgentProposalDetail:
+      allOf:
+        - $ref: "#/components/schemas/PlatformAgentProposal"
+        - type: object
+          required: [run_id, cites, preview]
+          properties:
+            run_id: { type: string, format: uuid }
+            cites:
+              type: array
+              items: { type: string }
+              description: JSON Pointers into the facts the proposing run read.
+            preview: { $ref: "#/components/schemas/PlatformAgentProposalPreview" }
+            decided_by_user_id: { type: string, format: uuid }
+            decided_at: { type: string, format: date-time }
+            decision_note: { type: string }
+            started_at: { type: string, format: date-time }
+            outcome:
+              type: string
+              description: Why the run failed; absent on success.
+    PlatformAgentProposalPreview:
+      type: object
+      required: [counts]
+      properties:
+        counts:
+          type: array
+          items:
+            type: object
+            required: [key, count, at_most]
+            properties:
+              key: { type: string }
+              count: { type: integer, format: int64 }
+              at_most:
+                type: boolean
+                description: True when the job re-checks each row before acting, so fewer may be affected.
+        batch_limit:
+          type: integer
+          format: int32
+          description: The most rows one run of the job handles; absent when it handles every match.
     PlatformAgentStep:
       type: object
       required: [seq, tool, arguments, result, model, prompt_tokens, completion_tokens, created_at]

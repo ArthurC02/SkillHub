@@ -153,7 +153,7 @@ def test_the_service_token_and_a_scoped_key_are_both_required(monkeypatch):
 def test_the_daily_report_finishes_with_cited_items():
     response, calls = invoke(request(agent="daily-report"), [call("finish", '{"items": []}')])
     assert response.status_code == 200
-    assert response.json()["prompt_version"] == "daily-report-v1"
+    assert response.json()["prompt_version"] == "daily-report-v2"
     item = calls[0]["tools"][-1]["function"]["parameters"]["properties"]["items"]["items"]
     assert item["properties"]["status"]["enum"] == ["fine", "attention"]
     assert item["properties"]["cites"]["minItems"] == 1

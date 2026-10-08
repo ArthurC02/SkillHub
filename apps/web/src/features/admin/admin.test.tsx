@@ -8,10 +8,12 @@ import { createAppRouter } from "../../app/router";
 import { daysOf, seriesOf, usd } from "./admin.service";
 import {
   ADMIN_AGENT_FINDINGS,
+  ADMIN_AGENT_PROPOSAL,
   ADMIN_AGENTS,
   ADMIN_AUDIT_LOG,
   AGENT_FAILED_RUN,
   AGENT_FINDING,
+  AGENT_PROPOSAL,
   AGENT_REPORT_RUN,
   ADMIN_EXPOSURE_CASE,
   ADMIN_SKILLS,
@@ -1080,6 +1082,68 @@ test("OPS-012: a refused move says so with the server's words", async () => {
   await type("#admin-finding-resolved-note", "fixed");
   await submit("#admin-finding-resolved-note");
   await waitFor(has("the finding cannot move to that status from where it is now"));
+});
+
+test("OPS-013: the waiting proposals show what each would run, its tier and why", async () => {
+  stub(true);
+  await mountAt("/admin/agents");
+  await waitFor(has("立刻補跑「輪替分割表」"));
+  expect(has("待核准")()).toBe(true);
+  expect(has("破壞性")()).toBe(true);
+  expect(has("分割表輪替從來沒有成功過，建議現在補跑一次。")()).toBe(true);
+  expect(calls.some((c) => c.url === "/admin/agents/proposals")).toBe(true);
+});
+
+test("OPS-013: a proposal opens with what would happen and the facts it rests on", async () => {
+  stub(true);
+  await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
+  await waitFor(has("要刪除的 Trace 分割表：1 筆"));
+  expect(has("會刪除的 Trace 事件：1834 筆")()).toBe(true);
+  expect(has("/maintenance_jobs/rotate-partitions/overdue_ratio")()).toBe(true);
+  expect(button("核准並執行")).toBeDefined();
+  expect(button("駁回")).toBeDefined();
+});
+
+test("OPS-013: approving sends the decision with the operator's note", async () => {
+  stub(true, (_path, method) => (method === "PUT" ? { body: {}, status: 204 } : undefined));
+  await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
+  await waitFor(has("核准並執行"));
+  await type("#admin-proposal-approve-note", " the job never ran ");
+  await submit("#admin-proposal-approve-note");
+  await waitFor(() => calls.some((c) => c.method === "PUT"));
+  expect(calls.find((c) => c.method === "PUT")).toEqual({
+    method: "PUT",
+    url: `/admin/agents/proposals/${AGENT_PROPOSAL}/decision`,
+    body: { decision: "approve", note: "the job never ran" },
+  });
+});
+
+test("OPS-013: a decided proposal shows its decision and outcome and offers no decision", async () => {
+  const done = {
+    ...ADMIN_AGENT_PROPOSAL,
+    status: "failed",
+    decided_by_user_id: "0b1c2d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e",
+    decided_at: "2026-10-08T03:00:00Z",
+    decision_note: "go ahead",
+    started_at: "2026-10-08T03:05:00Z",
+    finished_at: "2026-10-08T03:06:00Z",
+    outcome: "TRACE_RETENTION must be a positive Go duration",
+  };
+  stub(true, (path) =>
+    path === `/admin/agents/proposals/${AGENT_PROPOSAL}` ? { body: done, status: 200 } : undefined,
+  );
+  await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
+  await waitFor(has("營運者核准：go ahead"));
+  expect(has("執行失敗：TRACE_RETENTION must be a positive Go duration")()).toBe(true);
+  expect(has("核准並執行")()).toBe(false);
+  expect(has("駁回")()).toBe(false);
+});
+
+test("OPS-013: a proposal in the address that is not a UUID falls back to the list", async () => {
+  stub(true);
+  await mountAt("/admin/agents", { proposal: "rotate" });
+  await waitFor(has("打開這個提案"));
+  expect(calls.some((c) => c.url.startsWith("/admin/agents/proposals/"))).toBe(false);
 });
 
 test("OPS-012: a run in the address shows its report, then each step's tool, answer, tokens and cost", async () => {

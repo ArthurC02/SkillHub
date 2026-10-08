@@ -288,6 +288,7 @@ func periodicJobs(set *Set, deps Deps, outboxWorker *outbox.Worker) []*river.Per
 	schedule(CapacitySampleArgs{}, capacity.SampleInterval, true)
 
 	schedule(EnrichmentBackfillArgs{}, EnrichmentBackfillInterval, false)
+	schedule(ProposalExpiryArgs{}, proposalExpiryInterval, true)
 	if agentRunsAvailable(deps) {
 		for _, def := range operations.Definitions() {
 			scheduleAt(PlatformAgentRunArgs{Agent: def.Name}, dailyAt{hour: platformAgentHourUTC}, false)

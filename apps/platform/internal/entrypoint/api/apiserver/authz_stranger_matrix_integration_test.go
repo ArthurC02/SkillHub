@@ -69,6 +69,7 @@ var strangerRoutes = []strangerCase{
 	{pattern: "GET /admin/publications/{publisher}/{name}/exposure", want: http.StatusNotFound},
 	{pattern: "GET /admin/agents/runs/{id}/steps", want: http.StatusNotFound},
 	{pattern: "GET /admin/agents/findings/{id}", want: http.StatusNotFound},
+	{pattern: "GET /admin/agents/proposals/{id}", want: http.StatusNotFound},
 	{pattern: "POST /admin/publications/{publisher}/{name}/exposure",
 		body: `{"release_id":"{versionId}","expected_sequence":0,"decision":"approved","reason":"a stranger"}`,
 		want: http.StatusNotFound},
@@ -105,6 +106,8 @@ var strangerRoutes = []strangerCase{
 		body: `{"reason":"a stranger asked"}`, want: http.StatusNotFound},
 	{pattern: "PUT /admin/agents/findings/{id}/status",
 		body: `{"status":"resolved","note":"a stranger asked"}`, want: http.StatusNotFound},
+	{pattern: "PUT /admin/agents/proposals/{id}/decision",
+		body: `{"decision":"approve","note":"a stranger asked"}`, want: http.StatusNotFound},
 	{pattern: "PUT /admin/agents/{name}/enabled",
 		body: `{"enabled":true,"note":"a stranger asked"}`, want: http.StatusNotFound},
 

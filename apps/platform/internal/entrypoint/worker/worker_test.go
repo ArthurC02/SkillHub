@@ -239,6 +239,7 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 		CapacitySampleArgs{}.Kind():         true,
 		EnrichmentBackfillArgs{}.Kind():     false,
 		wiring.CreditRecomputeArgs{}.Kind(): false,
+		ProposalExpiryArgs{}.Kind():         true,
 	}
 	if !maps.Equal(set.Scheduled, want) {
 		t.Errorf("scheduled periodic jobs (kind -> RunOnStart) are %v, want %v", set.Scheduled, want)

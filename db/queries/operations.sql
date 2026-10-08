@@ -137,3 +137,59 @@ ORDER BY seq;
 
 -- name: GetPlatformAgentRunAgent :one
 SELECT agent_id FROM platform_agent_runs WHERE id = @id;
+
+-- name: ProposeAction :one
+INSERT INTO platform_agent_proposals (agent_id, run_id, action, tier, reason, cites, preview, proposed_at, expires_at)
+VALUES (@agent_id, @run_id, @action, @tier, @reason, @cites, @preview, @proposed_at, @expires_at)
+RETURNING id;
+
+-- name: LiveProposalExists :one
+SELECT EXISTS (
+    SELECT 1 FROM platform_agent_proposals WHERE action = @action AND status = ANY (@live::text[])
+);
+
+-- name: DecideProposal :one
+UPDATE platform_agent_proposals
+SET status = @status, decided_by = @decided_by, decided_at = now(), decision_note = @note,
+    finished_at = sqlc.narg(finished_at)
+WHERE id = @id AND status = 'proposed' AND expires_at > now()
+RETURNING id;
+
+-- name: ExpireProposals :many
+UPDATE platform_agent_proposals
+SET status = 'expired', finished_at = now()
+WHERE status = 'proposed' AND expires_at <= now()
+RETURNING id;
+
+-- name: ClaimApprovedProposal :one
+WITH next AS (
+    SELECT id FROM platform_agent_proposals
+    WHERE status = 'approved'
+    ORDER BY decided_at, id
+    LIMIT 1 FOR UPDATE SKIP LOCKED
+)
+UPDATE platform_agent_proposals p
+SET status = 'running', started_at = now()
+FROM next WHERE p.id = next.id
+RETURNING p.id, p.action;
+
+-- name: FinishProposal :execrows
+UPDATE platform_agent_proposals
+SET status = @status, finished_at = now(), outcome = @outcome
+WHERE id = @id AND status = 'running';
+
+-- name: ListProposals :many
+SELECT p.id, a.name AS agent, p.action, p.tier, p.reason, p.status, p.proposed_at, p.expires_at, p.finished_at
+FROM platform_agent_proposals p
+JOIN platform_agents a ON a.id = p.agent_id
+WHERE p.status = ANY (@live::text[]) OR p.finished_at >= @closed_since
+ORDER BY p.proposed_at DESC
+LIMIT @row_limit;
+
+-- name: GetProposal :one
+SELECT p.id, a.name AS agent, p.run_id, p.action, p.tier, p.reason, p.cites, p.preview, p.status,
+    p.proposed_at, p.expires_at, p.decided_by, p.decided_at, p.decision_note,
+    p.started_at, p.finished_at, p.outcome
+FROM platform_agent_proposals p
+JOIN platform_agents a ON a.id = p.agent_id
+WHERE p.id = @id;

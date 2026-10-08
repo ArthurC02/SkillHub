@@ -116,6 +116,19 @@ func (q *Queries) CountPersistentOrphans(ctx context.Context, arg CountPersisten
 	return count, err
 }
 
+const countRunArtifactUploadIntentsDue = `-- name: CountRunArtifactUploadIntentsDue :one
+SELECT count(*)::bigint FROM run_artifact_upload_intents
+WHERE not_before <= now()
+  AND (attempted_at IS NULL OR attempted_at < now() - $1::interval)
+`
+
+func (q *Queries) CountRunArtifactUploadIntentsDue(ctx context.Context, claimLease pgtype.Interval) (int64, error) {
+	row := q.db.QueryRow(ctx, countRunArtifactUploadIntentsDue, claimLease)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countRunWorkspacesByDay = `-- name: CountRunWorkspacesByDay :many
 SELECT (created_at AT TIME ZONE 'UTC')::date AS day, count(DISTINCT workspace_id)::bigint AS workspaces
 FROM runs

@@ -168,3 +168,6 @@ WHERE occurred_at >= @since AND source = @source;
 
 -- name: DeleteTraceEventsBefore :execrows
 DELETE FROM trace_events WHERE occurred_at < $1;
+
+-- name: CountTraceEventsBefore :one
+SELECT count(*)::bigint FROM trace_events WHERE occurred_at < $1;

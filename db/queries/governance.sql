@@ -236,3 +236,27 @@ WHERE created_at >= @since::timestamptz
        OR (action = ANY(@scoped_actions::text[]) AND metadata->>'scope' = @scope::text))
 GROUP BY 1, 2
 ORDER BY 1, 2;
+
+-- name: CountExpiredAuditEvents :one
+SELECT count(*)::bigint FROM audit_events WHERE created_at < $1;
+
+-- name: CountAccountsPastGrace :one
+SELECT count(*)::bigint FROM users
+WHERE deleted_at IS NULL
+  AND deletion_requested_at IS NOT NULL
+  AND deletion_requested_at <= sqlc.arg(cutoff)
+  AND (purge_attempted_at IS NULL OR purge_attempted_at < now() - @claim_lease::interval);
+
+-- name: CountSkillsPastDeletionGrace :one
+SELECT count(*)::bigint FROM skills
+WHERE deleted_at IS NOT NULL AND deleted_at <= @cutoff::timestamptz;
+
+-- name: CountUnreferencedCollectableObjects :one
+SELECT count(*)::bigint FROM object_collection_queue q
+WHERE NOT EXISTS (
+    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key
+);
+
+-- name: CountSourcesToCheck :one
+SELECT count(*)::bigint FROM skill_sources
+WHERE source_type = 'git' AND source_url IS NOT NULL;

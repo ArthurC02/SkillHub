@@ -496,10 +496,19 @@ const adminAgentsRoute = createRoute({
   ),
   validateSearch: (
     search: Record<string, unknown>,
-  ): { status?: "resolved" | "dismissed" | "recovered"; finding?: string; run?: string } => ({
+  ): {
+    status?: "resolved" | "dismissed" | "recovered";
+    finding?: string;
+    proposal?: string;
+    run?: string;
+  } => ({
     status: (["resolved", "dismissed", "recovered"] as const).find((s) => s === search.status),
     finding:
       typeof search.finding === "string" && UUID.test(search.finding) ? search.finding : undefined,
+    proposal:
+      typeof search.proposal === "string" && UUID.test(search.proposal)
+        ? search.proposal
+        : undefined,
     run: typeof search.run === "string" && UUID.test(search.run) ? search.run : undefined,
   }),
 });

@@ -581,6 +581,26 @@ type PlatformAgentFindingEvent struct {
 	OccurredAt pgtype.Timestamptz
 }
 
+type PlatformAgentProposal struct {
+	ID           pgtype.UUID
+	AgentID      pgtype.UUID
+	RunID        pgtype.UUID
+	Action       string
+	Tier         string
+	Reason       string
+	Cites        []string
+	Preview      []byte
+	Status       string
+	ProposedAt   pgtype.Timestamptz
+	ExpiresAt    pgtype.Timestamptz
+	DecidedBy    pgtype.UUID
+	DecidedAt    pgtype.Timestamptz
+	DecisionNote *string
+	StartedAt    pgtype.Timestamptz
+	FinishedAt   pgtype.Timestamptz
+	Outcome      *string
+}
+
 type PlatformAgentRun struct {
 	ID         pgtype.UUID
 	AgentID    pgtype.UUID

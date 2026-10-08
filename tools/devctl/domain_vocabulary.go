@@ -376,6 +376,20 @@ var domainVocabularies = []domainVocabulary{
 		},
 	},
 	{
+		name: "platform agent proposal status",
+		sources: []vocabularySource{
+			sqlColumnCheck("platform_agent_proposals", "status"),
+			goConstEnum("apps/platform/internal/product/operations/proposals.go", "ProposalStatus"),
+		},
+	},
+	{
+		name: "platform agent action tier",
+		sources: []vocabularySource{
+			sqlColumnCheck("platform_agent_proposals", "tier"),
+			goConstEnum("apps/platform/internal/product/operations/actions.go", "ActionTier"),
+		},
+	},
+	{
 		name: "feedback report kind",
 		sources: []vocabularySource{
 			sqlColumnCheck("feedback_reports", "kind"),

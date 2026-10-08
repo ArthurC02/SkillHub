@@ -356,3 +356,8 @@ FROM runs
 WHERE created_at >= @since::timestamptz
 GROUP BY 1
 ORDER BY 1;
+
+-- name: CountRunArtifactUploadIntentsDue :one
+SELECT count(*)::bigint FROM run_artifact_upload_intents
+WHERE not_before <= now()
+  AND (attempted_at IS NULL OR attempted_at < now() - @claim_lease::interval);

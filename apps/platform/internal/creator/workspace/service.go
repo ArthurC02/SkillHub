@@ -381,7 +381,6 @@ func (s *Service) changeDeletionRequest(
 func (s *Service) CleanupExpiredSessions(ctx context.Context) (int64, error) {
 	return s.queries().DeleteExpiredSessions(ctx)
 }
-
 func (s *Service) PersonalWorkspace(ctx context.Context, user User) (Workspace, error) {
 	if ws, ok := ctx.Value(sessionWorkspaceKey{}).(Workspace); ok && ws.OwnerUserID == user.ID {
 		return ws, nil

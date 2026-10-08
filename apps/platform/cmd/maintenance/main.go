@@ -8,6 +8,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"log/slog"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -18,9 +19,9 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/jobruns"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
@@ -34,7 +35,7 @@ func main() {
 	if len(os.Args) != 2 {
 		slog.Error("usage: maintenance purge-accounts|purge-audit|purge-feedback|" +
 			"purge-run-artifacts|purge-datasets|purge-deleted-skills|" +
-			"collect-objects|check-sources|rotate-partitions|report")
+			"collect-objects|check-sources|rotate-partitions|report|approved")
 		os.Exit(2)
 	}
 	if code := runJob(os.Args[1]); code != 0 {
@@ -45,17 +46,20 @@ func main() {
 var jobPeriods = map[string][]string{
 	"daily": {"purge-accounts", "purge-run-artifacts", "purge-datasets", "purge-deleted-skills",
 		"collect-objects", "check-sources", "report"},
-	"weekly":  {"purge-audit", "purge-feedback"},
-	"monthly": {"rotate-partitions"},
+	"weekly":   {"purge-audit", "purge-feedback"},
+	"monthly":  {"rotate-partitions"},
+	"frequent": {"approved"},
 }
 
 const (
 	day   = 24 * time.Hour
 	week  = 7 * day
 	month = 31 * day
+
+	frequently = 5 * time.Minute
 )
 
-var periodLengths = map[string]time.Duration{"daily": day, "weekly": week, "monthly": month}
+var periodLengths = map[string]time.Duration{"daily": day, "weekly": week, "monthly": month, "frequent": frequently}
 
 func scheduledJobs() []jobruns.Job {
 	var jobs []jobruns.Job
@@ -118,10 +122,42 @@ func runSubcommand(ctx context.Context, pool *pgxpool.Pool, job string) (known b
 		err = rotatePartitions(ctx, pool)
 	case "report":
 		err = printCapacityReport(ctx, pool)
+	case "approved":
+		err = runApproved(ctx, pool)
 	default:
 		return false, nil
 	}
 	return true, err
+}
+
+func runApproved(ctx context.Context, pool *pgxpool.Pool) error {
+	svc := &operations.Service{Pool: pool}
+	for {
+		proposal, ok, err := svc.ClaimApprovedProposal(ctx)
+		if err != nil || !ok {
+			return err
+		}
+		outcome := runProposedJob(ctx, pool, proposal.Action)
+		logSweep("approved "+proposal.Action, outcome)
+		if err := svc.FinishProposal(ctx, proposal.ID, outcome); err != nil {
+			return err
+		}
+	}
+}
+
+func runProposedJob(ctx context.Context, pool *pgxpool.Pool, action string) error {
+	job, ok := operations.MaintenanceJobOf(action)
+	if !ok || !slices.Contains(operations.ProposableMaintenanceJobs, job) {
+		return fmt.Errorf("%s names no maintenance job", action)
+	}
+	known, err := runSubcommand(ctx, pool, job)
+	if !known {
+		return fmt.Errorf("%s names no maintenance job", action)
+	}
+	if err != nil {
+		return err
+	}
+	return jobruns.RecordSuccess(ctx, pool, job)
 }
 
 func printCapacityReport(ctx context.Context, pool *pgxpool.Pool) error {
@@ -163,7 +199,7 @@ func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 			return out, nil
 		},
 		Mark: svc.MarkDatasetPurged,
-	}, batch())
+	}, wiring.MaintenanceBatch())
 	intentN, intentErr := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
 		List: func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 			rows, err := svc.DatasetCleanupIntentCandidates(ctx, limit)
@@ -177,7 +213,7 @@ func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 			return out, nil
 		},
 		Mark: svc.MarkDatasetCleanupIntentPurged, Guard: svc.GuardDatasetObjectRemoval,
-	}, batch())
+	}, wiring.MaintenanceBatch())
 
 	err = errors.Join(err, intentErr)
 	logSweep("dataset purge", err, "datasets_purged", n, "upload_intents_purged", intentN)
@@ -200,7 +236,7 @@ func rotatePartitions(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 func rotateWithin(retentionKey, table string, maintain func(time.Duration) (partition.Report, error)) error {
-	retention, err := positiveDuration(retentionKey)
+	retention, err := wiring.MaintenanceDuration(retentionKey)
 	if err != nil {
 		return err
 	}
@@ -210,7 +246,7 @@ func rotateWithin(retentionKey, table string, maintain func(time.Duration) (part
 }
 
 func purgeAudit(ctx context.Context, pool *pgxpool.Pool) error {
-	retention, err := positiveDuration("AUDIT_RETENTION")
+	retention, err := wiring.MaintenanceDuration("AUDIT_RETENTION")
 	if err != nil {
 		return err
 	}
@@ -240,7 +276,7 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 			return out, nil
 		},
 		Mark: svc.MarkRunOutputPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
-	}, batch())
+	}, wiring.MaintenanceBatch())
 	intentN, intentErr := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
 		List: func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 			rows, err := svc.ArtifactUploadIntentCandidates(ctx, limit)
@@ -254,7 +290,7 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 			return out, nil
 		},
 		Mark: svc.MarkArtifactUploadIntentPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
-	}, batch())
+	}, wiring.MaintenanceBatch())
 
 	err = errors.Join(err, intentErr)
 	logSweep("run artifact purge", err, "artifacts_purged", n, "upload_intents_purged", intentN)
@@ -262,11 +298,11 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 func purgeDeletedSkills(ctx context.Context, pool *pgxpool.Pool) error {
-	grace, err := positiveDuration("SKILL_DELETION_GRACE")
+	grace, err := wiring.MaintenanceDuration("SKILL_DELETION_GRACE")
 	if err != nil {
 		return err
 	}
-	sweep, err := registryPurger(pool).PurgeDeletedSkills(ctx, grace, batch())
+	sweep, err := registryPurger(pool).PurgeDeletedSkills(ctx, grace, wiring.MaintenanceBatch())
 	if err == nil {
 
 		slog.Info("deleted skill purge complete",
@@ -280,7 +316,7 @@ func collectObjects(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return err
 	}
-	c, err := (&registry.Service{Pool: pool}).CollectOrphanObjects(ctx, store, batch())
+	c, err := (&registry.Service{Pool: pool}).CollectOrphanObjects(ctx, store, wiring.MaintenanceBatch())
 
 	logSweep("orphan object collection", err,
 		"objects_collected", c.Collected, "entries_dropped", c.Dropped, "queue_depth", c.Depth)
@@ -288,7 +324,7 @@ func collectObjects(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 func purgeFeedback(ctx context.Context, pool *pgxpool.Pool) error {
-	retention, err := positiveDuration("FEEDBACK_RETENTION")
+	retention, err := wiring.MaintenanceDuration("FEEDBACK_RETENTION")
 	if err != nil {
 		return err
 	}
@@ -304,12 +340,12 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return err
 	}
-	grace, err := accountPurgeGrace()
+	grace, err := wiring.AccountPurgeGrace()
 	if err != nil {
 		return err
 	}
 	svc := purgeService(pool)
-	n, purgeErr := svc.PurgeExpiredAccounts(ctx, store, grace, batch())
+	n, purgeErr := svc.PurgeExpiredAccounts(ctx, store, grace, wiring.MaintenanceBatch())
 
 	logSweep("account purge", purgeErr, "accounts_purged", n)
 
@@ -363,32 +399,12 @@ func purgeService(pool *pgxpool.Pool) *identity.Service {
 
 func checkSources(ctx context.Context, pool *pgxpool.Pool) error {
 	svc := &ingest.Service{Pool: pool, Fetcher: wiring.ImportFetcher(wiring.PostureFromEnv())}
-	sweep, err := svc.CheckSources(ctx, batch())
+	sweep, err := svc.CheckSources(ctx, wiring.MaintenanceBatch())
 	if err != nil {
 		return err
 	}
 	slog.Info("source check complete", "checked", sweep.Checked, "unavailable", sweep.Unavailable, "changed", sweep.Changed)
 	return nil
-}
-
-func positiveDuration(key string) (time.Duration, error) {
-	d, err := time.ParseDuration(os.Getenv(key))
-	if err != nil || d <= 0 {
-		return 0, fmt.Errorf("%s must be a positive Go duration", key)
-	}
-	return d, nil
-}
-
-func accountPurgeGrace() (time.Duration, error) {
-	raw := os.Getenv("PURGE_GRACE")
-	if raw == "" {
-		return identity.AccountDeletionGrace, nil
-	}
-	d, err := time.ParseDuration(raw)
-	if err != nil || d < identity.AccountDeletionGrace {
-		return 0, fmt.Errorf("PURGE_GRACE must be a Go duration of at least %s, the grace a deleting account is promised", identity.AccountDeletionGrace)
-	}
-	return d, nil
 }
 
 func purgeDatabaseURL() string {
@@ -397,8 +413,4 @@ func purgeDatabaseURL() string {
 	}
 	slog.Info("SKILLHUB_PURGE_DATABASE_URL not set; purging under the API role (DATABASE_URL)")
 	return os.Getenv("DATABASE_URL")
-}
-
-func batch() int32 {
-	return envx.PositiveInt32("MAINTENANCE_BATCH", 100)
 }

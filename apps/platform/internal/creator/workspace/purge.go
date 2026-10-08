@@ -97,6 +97,19 @@ func (s *Service) requirePurgeSteps() error {
 	return nil
 }
 
+func (s *Service) AccountPurgeBacklog(ctx context.Context, grace time.Duration) (accounts, sessions int64, err error) {
+	q := s.queries()
+	accounts, err = q.CountAccountsPastGrace(ctx, gen.CountAccountsPastGraceParams{
+		Cutoff:     pgconv.Timestamptz(time.Now().Add(-grace)),
+		ClaimLease: pgconv.Interval(queue.SweepClaimLease),
+	})
+	if err != nil {
+		return 0, 0, err
+	}
+	sessions, err = q.CountExpiredSessions(ctx)
+	return accounts, sessions, err
+}
+
 func (s *Service) PurgeExpiredAccounts(ctx context.Context, store ObjectRemover, grace time.Duration, limit int32) (purged int, err error) {
 	if err := s.requirePurgeSteps(); err != nil {
 		return 0, err

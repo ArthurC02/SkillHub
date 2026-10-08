@@ -446,6 +446,64 @@ export function useMoveFinding() {
   });
 }
 
+export type ProposalStatus =
+  "proposed" | "approved" | "rejected" | "expired" | "running" | "succeeded" | "failed";
+
+export type PlatformAgentProposal = {
+  id: string;
+  agent: string;
+  action: string;
+  tier: "read_only" | "reversible" | "destructive";
+  reason: string;
+  status: ProposalStatus;
+  proposed_at: string;
+  expires_at: string;
+  finished_at?: string;
+};
+
+export type PlatformAgentProposalDetail = PlatformAgentProposal & {
+  run_id: string;
+  cites: string[];
+  preview: {
+    counts: { key: string; count: number; at_most: boolean }[];
+    batch_limit?: number;
+  };
+  decided_by_user_id?: string;
+  decided_at?: string;
+  decision_note?: string;
+  started_at?: string;
+  outcome?: string;
+};
+
+export function usePlatformAgentProposals() {
+  return useQuery({
+    queryKey: queryKeys.admin.agentProposalList,
+    queryFn: () => apiFetch<{ proposals: PlatformAgentProposal[] }>("/admin/agents/proposals"),
+    enabled: useOperator(),
+  });
+}
+
+export function usePlatformAgentProposal(id: string) {
+  return useQuery({
+    queryKey: queryKeys.admin.agentProposal(id),
+    queryFn: () =>
+      apiFetch<PlatformAgentProposalDetail>(`/admin/agents/proposals/${encodeURIComponent(id)}`),
+    enabled: useOperator(),
+  });
+}
+
+export function useDecideProposal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; decision: "approve" | "reject"; note: string }) =>
+      apiFetch<undefined>(
+        `/admin/agents/proposals/${encodeURIComponent(id)}/decision`,
+        send("PUT", body),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agentProposals }),
+  });
+}
+
 export function usePlatformAgentSteps(run: string) {
   return useQuery({
     queryKey: queryKeys.admin.agentSteps(run),

@@ -1356,6 +1356,36 @@ export const ADMIN_AGENT_FINDINGS = {
   counts: Record<FindingStatus, number>;
 };
 
+export const AGENT_PROPOSAL = "7e2f3a4b-5c6d-4e7f-8a9b-0c1d2e3f4a5b";
+
+export const ADMIN_AGENT_PROPOSALS = {
+  proposals: [
+    {
+      id: AGENT_PROPOSAL,
+      agent: "daily-report",
+      action: "run-rotate-partitions",
+      tier: "destructive",
+      reason: "分割表輪替從來沒有成功過，建議現在補跑一次。",
+      status: "proposed",
+      proposed_at: "2026-10-08T02:00:00Z",
+      expires_at: "2026-10-09T02:00:00Z",
+    },
+  ],
+};
+
+export const ADMIN_AGENT_PROPOSAL = {
+  ...ADMIN_AGENT_PROPOSALS.proposals[0],
+  run_id: "3a4b5c6d-7e8f-4a9b-8c0d-1e2f3a4b5c6d",
+  cites: ["/maintenance_jobs/rotate-partitions/overdue_ratio"],
+  preview: {
+    counts: [
+      { key: "trace_partitions_created", count: 2, at_most: false },
+      { key: "trace_partitions_dropped", count: 1, at_most: false },
+      { key: "trace_events_removed", count: 1834, at_most: false },
+    ],
+  },
+};
+
 export const ADMIN_AGENT_FINDING = {
   finding: ADMIN_AGENT_FINDINGS.findings[0],
   events: [
@@ -1407,6 +1437,9 @@ const ROUTES: RouteMatcher[] = [
   (path) => (path === "/admin/agents/runs" ? ok(ADMIN_AGENT_RUNS) : undefined),
   (path) => (path === "/admin/agents/findings" ? ok(ADMIN_AGENT_FINDINGS) : undefined),
   (path) => (/^\/admin\/agents\/findings\/[^/]+$/.test(path) ? ok(ADMIN_AGENT_FINDING) : undefined),
+  (path) => (path === "/admin/agents/proposals" ? ok(ADMIN_AGENT_PROPOSALS) : undefined),
+  (path) =>
+    /^\/admin\/agents\/proposals\/[^/]+$/.test(path) ? ok(ADMIN_AGENT_PROPOSAL) : undefined,
   (path) =>
     /^\/admin\/agents\/runs\/[^/]+\/steps$/.test(path) ? ok(ADMIN_AGENT_STEPS) : undefined,
   (path) =>

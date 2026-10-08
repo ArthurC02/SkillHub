@@ -79,6 +79,11 @@ type CreateSkillVersionFromSuggestionsParams struct {
 	ID uuid.UUID
 }
 
+// DecidePlatformAgentProposalParams is parameters of decidePlatformAgentProposal operation.
+type DecidePlatformAgentProposalParams struct {
+	ID uuid.UUID
+}
+
 // DecideSuggestionParams is parameters of decideSuggestion operation.
 type DecideSuggestionParams struct {
 	ID uuid.UUID
@@ -221,6 +226,11 @@ type GetOwnPublicationParams struct {
 
 // GetPlatformAgentFindingParams is parameters of getPlatformAgentFinding operation.
 type GetPlatformAgentFindingParams struct {
+	ID uuid.UUID
+}
+
+// GetPlatformAgentProposalParams is parameters of getPlatformAgentProposal operation.
+type GetPlatformAgentProposalParams struct {
 	ID uuid.UUID
 }
 

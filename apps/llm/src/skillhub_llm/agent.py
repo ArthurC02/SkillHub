@@ -42,7 +42,11 @@ DAILY_REPORT = AgentInstructions(
         "succeeding, or the restore rate is still an unmeasured default. "
         "Every item cites the facts it rests on as JSON Pointers into the tool's answer, such as "
         "`/capacity/days_until_budget` or `/maintenance_jobs/purge-audit/overdue_ratio`. "
-        "Cite only facts the answer contains; a report citing anything else is rejected."
+        "Cite only facts the answer contains; a report citing anything else is rejected. "
+        "When a job is attention because it has gone more than two periods without succeeding and "
+        "its facts carry an `action`, you may add one proposal for that action: name it exactly, "
+        "say why in one plain sentence, and cite the facts it rests on. An operator decides every "
+        "proposal; propose nothing else, and nothing for a job without an `action`."
     ),
     result_schema={
         "type": "object",
@@ -66,10 +70,27 @@ DAILY_REPORT = AgentInstructions(
                         },
                     },
                 },
-            }
+            },
+            "proposals": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["action", "reason", "cites"],
+                    "properties": {
+                        "action": {"type": "string", "minLength": 1},
+                        "reason": {"type": "string", "minLength": 1},
+                        "cites": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {"type": "string", "pattern": "^/"},
+                        },
+                    },
+                },
+            },
         },
     },
-    prompt_version="daily-report-v1",
+    prompt_version="daily-report-v2",
 )
 
 INSTRUCTIONS: dict[str, AgentInstructions] = {"daily-report": DAILY_REPORT}

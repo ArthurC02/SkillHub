@@ -62,12 +62,43 @@ func (q *Queries) AnonymizeWorkspacesByOwner(ctx context.Context, arg AnonymizeW
 	return result.RowsAffected(), nil
 }
 
+const countAccountsPastGrace = `-- name: CountAccountsPastGrace :one
+SELECT count(*)::bigint FROM users
+WHERE deleted_at IS NULL
+  AND deletion_requested_at IS NOT NULL
+  AND deletion_requested_at <= $1
+  AND (purge_attempted_at IS NULL OR purge_attempted_at < now() - $2::interval)
+`
+
+type CountAccountsPastGraceParams struct {
+	Cutoff     pgtype.Timestamptz
+	ClaimLease pgtype.Interval
+}
+
+func (q *Queries) CountAccountsPastGrace(ctx context.Context, arg CountAccountsPastGraceParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countAccountsPastGrace, arg.Cutoff, arg.ClaimLease)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countCollectableObjects = `-- name: CountCollectableObjects :one
 SELECT count(*)::bigint FROM object_collection_queue
 `
 
 func (q *Queries) CountCollectableObjects(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, countCollectableObjects)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countExpiredAuditEvents = `-- name: CountExpiredAuditEvents :one
+SELECT count(*)::bigint FROM audit_events WHERE created_at < $1
+`
+
+func (q *Queries) CountExpiredAuditEvents(ctx context.Context, createdAt pgtype.Timestamptz) (int64, error) {
+	row := q.db.QueryRow(ctx, countExpiredAuditEvents, createdAt)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -121,12 +152,50 @@ func (q *Queries) CountPlatformAuditEventsByDay(ctx context.Context, arg CountPl
 	return items, nil
 }
 
+const countSkillsPastDeletionGrace = `-- name: CountSkillsPastDeletionGrace :one
+SELECT count(*)::bigint FROM skills
+WHERE deleted_at IS NOT NULL AND deleted_at <= $1::timestamptz
+`
+
+func (q *Queries) CountSkillsPastDeletionGrace(ctx context.Context, cutoff pgtype.Timestamptz) (int64, error) {
+	row := q.db.QueryRow(ctx, countSkillsPastDeletionGrace, cutoff)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countSkillsWaitingForDeletionGrace = `-- name: CountSkillsWaitingForDeletionGrace :one
 SELECT count(*)::bigint FROM skills WHERE deleted_at > $1::timestamptz
 `
 
 func (q *Queries) CountSkillsWaitingForDeletionGrace(ctx context.Context, cutoff pgtype.Timestamptz) (int64, error) {
 	row := q.db.QueryRow(ctx, countSkillsWaitingForDeletionGrace, cutoff)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countSourcesToCheck = `-- name: CountSourcesToCheck :one
+SELECT count(*)::bigint FROM skill_sources
+WHERE source_type = 'git' AND source_url IS NOT NULL
+`
+
+func (q *Queries) CountSourcesToCheck(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countSourcesToCheck)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countUnreferencedCollectableObjects = `-- name: CountUnreferencedCollectableObjects :one
+SELECT count(*)::bigint FROM object_collection_queue q
+WHERE NOT EXISTS (
+    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key
+)
+`
+
+func (q *Queries) CountUnreferencedCollectableObjects(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countUnreferencedCollectableObjects)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err

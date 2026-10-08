@@ -24,6 +24,17 @@ func (q *Queries) CountRunsNeedingCleanup(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countTraceEventsBefore = `-- name: CountTraceEventsBefore :one
+SELECT count(*)::bigint FROM trace_events WHERE occurred_at < $1
+`
+
+func (q *Queries) CountTraceEventsBefore(ctx context.Context, occurredAt pgtype.Timestamptz) (int64, error) {
+	row := q.db.QueryRow(ctx, countTraceEventsBefore, occurredAt)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countTraceMaskingInWindow = `-- name: CountTraceMaskingInWindow :one
 SELECT count(*) FILTER (WHERE occurred_at >= $1)::bigint AS recent_events,
        count(*) FILTER (WHERE occurred_at <  $1)::bigint AS earlier_events,

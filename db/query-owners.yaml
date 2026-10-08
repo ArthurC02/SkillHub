@@ -231,6 +231,27 @@ queries:
   GetFinding: operations
   ListFindingEvents: operations
   GetPlatformAgentRunAgent: operations
+  CountRunOutputsPastRetention: run
+  CountRunArtifactUploadIntentsDue: run
+  CountDatasetsPastRetention: testlab
+  CountDatasetCleanupIntentsDue: testlab
+  CountExpiredAuditEvents: audit
+  CountAccountsPastGrace: identity
+  CountExpiredSessions: identity
+  CountSkillsPastDeletionGrace: registry
+  CountUnreferencedCollectableObjects: registry
+  CountSourcesToCheck: ingest
+  CountExpiredFeedbackReports: analytics
+  CountAnalyticsEventsBefore: analytics
+  CountTraceEventsBefore: trace
+  ProposeAction: operations
+  LiveProposalExists: operations
+  DecideProposal: operations
+  ExpireProposals: operations
+  ClaimApprovedProposal: operations
+  FinishProposal: operations
+  ListProposals: operations
+  GetProposal: operations
   GetTraceEventText: trace
   LockTraceIngestRun: trace
   NextTraceSeq: trace
@@ -264,6 +285,22 @@ scope:
   GetFinding: platform-wide
   ListFindingEvents: platform-wide
   GetPlatformAgentRunAgent: platform-wide
+  ProposeAction: platform-wide
+  LiveProposalExists: platform-wide
+  DecideProposal: platform-wide
+  FinishProposal: platform-wide
+  ListProposals: platform-wide
+  GetProposal: platform-wide
+  CountRunOutputsPastRetention: user
+  CountRunArtifactUploadIntentsDue: user
+  CountDatasetsPastRetention: user
+  CountDatasetCleanupIntentsDue: user
+  CountExpiredAuditEvents: user
+  CountAccountsPastGrace: user
+  CountSkillsPastDeletionGrace: user
+  CountExpiredFeedbackReports: user
+  CountAnalyticsEventsBefore: user
+  CountTraceEventsBefore: user
   AdjustCreditBalance: user
   LockAccountLifecycle: user
   CreateIdentity: user
@@ -507,6 +544,7 @@ tables:
   platform_agent_steps: operations
   platform_agent_findings: operations
   platform_agent_finding_events: operations
+  platform_agent_proposals: operations
 
 retention:
   users: keep row stays after account purge so credit records keep their reference
@@ -572,3 +610,4 @@ retention:
   platform_agent_steps: archivable
   platform_agent_findings: archivable
   platform_agent_finding_events: archivable
+  platform_agent_proposals: archivable

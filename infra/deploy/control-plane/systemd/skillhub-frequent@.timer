@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Skill Hub maintenance job %i every five minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+Unit=skillhub-maintenance@%i.service
+
+[Install]
+WantedBy=timers.target

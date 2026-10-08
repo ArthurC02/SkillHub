@@ -5971,6 +5971,90 @@ func (s *DatasetLimits) SetNote(val string) {
 
 func (*DatasetLimits) getDatasetLimitsRes() {}
 
+type DecidePlatformAgentProposalBadRequest Error
+
+func (*DecidePlatformAgentProposalBadRequest) decidePlatformAgentProposalRes() {}
+
+type DecidePlatformAgentProposalConflict Error
+
+func (*DecidePlatformAgentProposalConflict) decidePlatformAgentProposalRes() {}
+
+// DecidePlatformAgentProposalNoContent is response for DecidePlatformAgentProposal operation.
+type DecidePlatformAgentProposalNoContent struct{}
+
+func (*DecidePlatformAgentProposalNoContent) decidePlatformAgentProposalRes() {}
+
+type DecidePlatformAgentProposalNotFound Error
+
+func (*DecidePlatformAgentProposalNotFound) decidePlatformAgentProposalRes() {}
+
+type DecidePlatformAgentProposalReq struct {
+	Decision DecidePlatformAgentProposalReqDecision `json:"decision"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetDecision returns the value of Decision.
+func (s *DecidePlatformAgentProposalReq) GetDecision() DecidePlatformAgentProposalReqDecision {
+	return s.Decision
+}
+
+// GetNote returns the value of Note.
+func (s *DecidePlatformAgentProposalReq) GetNote() string {
+	return s.Note
+}
+
+// SetDecision sets the value of Decision.
+func (s *DecidePlatformAgentProposalReq) SetDecision(val DecidePlatformAgentProposalReqDecision) {
+	s.Decision = val
+}
+
+// SetNote sets the value of Note.
+func (s *DecidePlatformAgentProposalReq) SetNote(val string) {
+	s.Note = val
+}
+
+type DecidePlatformAgentProposalReqDecision string
+
+const (
+	DecidePlatformAgentProposalReqDecisionApprove DecidePlatformAgentProposalReqDecision = "approve"
+	DecidePlatformAgentProposalReqDecisionReject  DecidePlatformAgentProposalReqDecision = "reject"
+)
+
+// AllValues returns all DecidePlatformAgentProposalReqDecision values.
+func (DecidePlatformAgentProposalReqDecision) AllValues() []DecidePlatformAgentProposalReqDecision {
+	return []DecidePlatformAgentProposalReqDecision{
+		DecidePlatformAgentProposalReqDecisionApprove,
+		DecidePlatformAgentProposalReqDecisionReject,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DecidePlatformAgentProposalReqDecision) MarshalText() ([]byte, error) {
+	switch s {
+	case DecidePlatformAgentProposalReqDecisionApprove:
+		return []byte(s), nil
+	case DecidePlatformAgentProposalReqDecisionReject:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DecidePlatformAgentProposalReqDecision) UnmarshalText(data []byte) error {
+	switch DecidePlatformAgentProposalReqDecision(data) {
+	case DecidePlatformAgentProposalReqDecisionApprove:
+		*s = DecidePlatformAgentProposalReqDecisionApprove
+		return nil
+	case DecidePlatformAgentProposalReqDecisionReject:
+		*s = DecidePlatformAgentProposalReqDecisionReject
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type DecideSuggestionBadRequest Error
 
 func (*DecideSuggestionBadRequest) decideSuggestionRes() {}
@@ -7124,6 +7208,7 @@ func (*Error) listModelCallBudgetsRes()            {}
 func (*Error) listOwnBundleOverviewRes()           {}
 func (*Error) listOwnBundlesRes()                  {}
 func (*Error) listOwnPublicationsRes()             {}
+func (*Error) listPlatformAgentProposalsRes()      {}
 func (*Error) listPlatformAgentRunsRes()           {}
 func (*Error) listPlatformAgentsRes()              {}
 func (*Error) listSkillVersionsRes()               {}
@@ -10548,6 +10633,14 @@ func (s *GetPlatformAgentFindingOK) SetEvents(val []PlatformAgentFindingEvent) {
 
 func (*GetPlatformAgentFindingOK) getPlatformAgentFindingRes() {}
 
+type GetPlatformAgentProposalBadRequest Error
+
+func (*GetPlatformAgentProposalBadRequest) getPlatformAgentProposalRes() {}
+
+type GetPlatformAgentProposalNotFound Error
+
+func (*GetPlatformAgentProposalNotFound) getPlatformAgentProposalRes() {}
+
 type GetReadinessOK struct {
 	// Every capability was measured and works. `unmeasured` is deliberately not enough — a caller asking
 	// this wants to know whether the deployment works, and "nobody looked" is not an answer to that.
@@ -12193,6 +12286,22 @@ func (s *ListPlatformAgentFindingsStatus) UnmarshalText(data []byte) error {
 		return errors.Errorf("invalid value: %q", data)
 	}
 }
+
+type ListPlatformAgentProposalsOK struct {
+	Proposals []PlatformAgentProposal `json:"proposals"`
+}
+
+// GetProposals returns the value of Proposals.
+func (s *ListPlatformAgentProposalsOK) GetProposals() []PlatformAgentProposal {
+	return s.Proposals
+}
+
+// SetProposals sets the value of Proposals.
+func (s *ListPlatformAgentProposalsOK) SetProposals(val []PlatformAgentProposal) {
+	s.Proposals = val
+}
+
+func (*ListPlatformAgentProposalsOK) listPlatformAgentProposalsRes() {}
 
 type ListPlatformAgentRunStepsBadRequest Error
 
@@ -14911,6 +15020,52 @@ func (o OptInt) Get() (v int, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptInt) Or(d int) int {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptInt32 returns new OptInt32 with value set to v.
+func NewOptInt32(v int32) OptInt32 {
+	return OptInt32{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInt32 is optional int32.
+type OptInt32 struct {
+	Value int32
+	Set   bool
+}
+
+// IsSet returns true if OptInt32 was set.
+func (o OptInt32) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInt32) Reset() {
+	var v int32
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInt32) SetTo(v int32) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInt32) Get() (v int32, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInt32) Or(d int32) int32 {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -19830,6 +19985,619 @@ func (s *PlatformAgentFindingStatus) UnmarshalText(data []byte) error {
 		return nil
 	case PlatformAgentFindingStatusRecovered:
 		*s = PlatformAgentFindingStatusRecovered
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/PlatformAgentProposal
+type PlatformAgentProposal struct {
+	ID    uuid.UUID `json:"id"`
+	Agent string    `json:"agent"`
+	// The registered action, such as `run-purge-audit`.
+	Action     string                      `json:"action"`
+	Tier       PlatformAgentProposalTier   `json:"tier"`
+	Reason     string                      `json:"reason"`
+	Status     PlatformAgentProposalStatus `json:"status"`
+	ProposedAt time.Time                   `json:"proposed_at"`
+	ExpiresAt  time.Time                   `json:"expires_at"`
+	FinishedAt OptDateTime                 `json:"finished_at"`
+}
+
+// GetID returns the value of ID.
+func (s *PlatformAgentProposal) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetAgent returns the value of Agent.
+func (s *PlatformAgentProposal) GetAgent() string {
+	return s.Agent
+}
+
+// GetAction returns the value of Action.
+func (s *PlatformAgentProposal) GetAction() string {
+	return s.Action
+}
+
+// GetTier returns the value of Tier.
+func (s *PlatformAgentProposal) GetTier() PlatformAgentProposalTier {
+	return s.Tier
+}
+
+// GetReason returns the value of Reason.
+func (s *PlatformAgentProposal) GetReason() string {
+	return s.Reason
+}
+
+// GetStatus returns the value of Status.
+func (s *PlatformAgentProposal) GetStatus() PlatformAgentProposalStatus {
+	return s.Status
+}
+
+// GetProposedAt returns the value of ProposedAt.
+func (s *PlatformAgentProposal) GetProposedAt() time.Time {
+	return s.ProposedAt
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *PlatformAgentProposal) GetExpiresAt() time.Time {
+	return s.ExpiresAt
+}
+
+// GetFinishedAt returns the value of FinishedAt.
+func (s *PlatformAgentProposal) GetFinishedAt() OptDateTime {
+	return s.FinishedAt
+}
+
+// SetID sets the value of ID.
+func (s *PlatformAgentProposal) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetAgent sets the value of Agent.
+func (s *PlatformAgentProposal) SetAgent(val string) {
+	s.Agent = val
+}
+
+// SetAction sets the value of Action.
+func (s *PlatformAgentProposal) SetAction(val string) {
+	s.Action = val
+}
+
+// SetTier sets the value of Tier.
+func (s *PlatformAgentProposal) SetTier(val PlatformAgentProposalTier) {
+	s.Tier = val
+}
+
+// SetReason sets the value of Reason.
+func (s *PlatformAgentProposal) SetReason(val string) {
+	s.Reason = val
+}
+
+// SetStatus sets the value of Status.
+func (s *PlatformAgentProposal) SetStatus(val PlatformAgentProposalStatus) {
+	s.Status = val
+}
+
+// SetProposedAt sets the value of ProposedAt.
+func (s *PlatformAgentProposal) SetProposedAt(val time.Time) {
+	s.ProposedAt = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *PlatformAgentProposal) SetExpiresAt(val time.Time) {
+	s.ExpiresAt = val
+}
+
+// SetFinishedAt sets the value of FinishedAt.
+func (s *PlatformAgentProposal) SetFinishedAt(val OptDateTime) {
+	s.FinishedAt = val
+}
+
+// Merged schema.
+// Ref: #/components/schemas/PlatformAgentProposalDetail
+type PlatformAgentProposalDetail struct {
+	ID    uuid.UUID `json:"id"`
+	Agent string    `json:"agent"`
+	// The registered action, such as `run-purge-audit`.
+	Action     string                            `json:"action"`
+	Tier       PlatformAgentProposalDetailTier   `json:"tier"`
+	Reason     string                            `json:"reason"`
+	Status     PlatformAgentProposalDetailStatus `json:"status"`
+	ProposedAt time.Time                         `json:"proposed_at"`
+	ExpiresAt  time.Time                         `json:"expires_at"`
+	FinishedAt OptDateTime                       `json:"finished_at"`
+	RunID      uuid.UUID                         `json:"run_id"`
+	// JSON Pointers into the facts the proposing run read.
+	Cites           []string                     `json:"cites"`
+	Preview         PlatformAgentProposalPreview `json:"preview"`
+	DecidedByUserID OptUUID                      `json:"decided_by_user_id"`
+	DecidedAt       OptDateTime                  `json:"decided_at"`
+	DecisionNote    OptString                    `json:"decision_note"`
+	StartedAt       OptDateTime                  `json:"started_at"`
+	// Why the run failed; absent on success.
+	Outcome OptString `json:"outcome"`
+}
+
+// GetID returns the value of ID.
+func (s *PlatformAgentProposalDetail) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetAgent returns the value of Agent.
+func (s *PlatformAgentProposalDetail) GetAgent() string {
+	return s.Agent
+}
+
+// GetAction returns the value of Action.
+func (s *PlatformAgentProposalDetail) GetAction() string {
+	return s.Action
+}
+
+// GetTier returns the value of Tier.
+func (s *PlatformAgentProposalDetail) GetTier() PlatformAgentProposalDetailTier {
+	return s.Tier
+}
+
+// GetReason returns the value of Reason.
+func (s *PlatformAgentProposalDetail) GetReason() string {
+	return s.Reason
+}
+
+// GetStatus returns the value of Status.
+func (s *PlatformAgentProposalDetail) GetStatus() PlatformAgentProposalDetailStatus {
+	return s.Status
+}
+
+// GetProposedAt returns the value of ProposedAt.
+func (s *PlatformAgentProposalDetail) GetProposedAt() time.Time {
+	return s.ProposedAt
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *PlatformAgentProposalDetail) GetExpiresAt() time.Time {
+	return s.ExpiresAt
+}
+
+// GetFinishedAt returns the value of FinishedAt.
+func (s *PlatformAgentProposalDetail) GetFinishedAt() OptDateTime {
+	return s.FinishedAt
+}
+
+// GetRunID returns the value of RunID.
+func (s *PlatformAgentProposalDetail) GetRunID() uuid.UUID {
+	return s.RunID
+}
+
+// GetCites returns the value of Cites.
+func (s *PlatformAgentProposalDetail) GetCites() []string {
+	return s.Cites
+}
+
+// GetPreview returns the value of Preview.
+func (s *PlatformAgentProposalDetail) GetPreview() PlatformAgentProposalPreview {
+	return s.Preview
+}
+
+// GetDecidedByUserID returns the value of DecidedByUserID.
+func (s *PlatformAgentProposalDetail) GetDecidedByUserID() OptUUID {
+	return s.DecidedByUserID
+}
+
+// GetDecidedAt returns the value of DecidedAt.
+func (s *PlatformAgentProposalDetail) GetDecidedAt() OptDateTime {
+	return s.DecidedAt
+}
+
+// GetDecisionNote returns the value of DecisionNote.
+func (s *PlatformAgentProposalDetail) GetDecisionNote() OptString {
+	return s.DecisionNote
+}
+
+// GetStartedAt returns the value of StartedAt.
+func (s *PlatformAgentProposalDetail) GetStartedAt() OptDateTime {
+	return s.StartedAt
+}
+
+// GetOutcome returns the value of Outcome.
+func (s *PlatformAgentProposalDetail) GetOutcome() OptString {
+	return s.Outcome
+}
+
+// SetID sets the value of ID.
+func (s *PlatformAgentProposalDetail) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetAgent sets the value of Agent.
+func (s *PlatformAgentProposalDetail) SetAgent(val string) {
+	s.Agent = val
+}
+
+// SetAction sets the value of Action.
+func (s *PlatformAgentProposalDetail) SetAction(val string) {
+	s.Action = val
+}
+
+// SetTier sets the value of Tier.
+func (s *PlatformAgentProposalDetail) SetTier(val PlatformAgentProposalDetailTier) {
+	s.Tier = val
+}
+
+// SetReason sets the value of Reason.
+func (s *PlatformAgentProposalDetail) SetReason(val string) {
+	s.Reason = val
+}
+
+// SetStatus sets the value of Status.
+func (s *PlatformAgentProposalDetail) SetStatus(val PlatformAgentProposalDetailStatus) {
+	s.Status = val
+}
+
+// SetProposedAt sets the value of ProposedAt.
+func (s *PlatformAgentProposalDetail) SetProposedAt(val time.Time) {
+	s.ProposedAt = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *PlatformAgentProposalDetail) SetExpiresAt(val time.Time) {
+	s.ExpiresAt = val
+}
+
+// SetFinishedAt sets the value of FinishedAt.
+func (s *PlatformAgentProposalDetail) SetFinishedAt(val OptDateTime) {
+	s.FinishedAt = val
+}
+
+// SetRunID sets the value of RunID.
+func (s *PlatformAgentProposalDetail) SetRunID(val uuid.UUID) {
+	s.RunID = val
+}
+
+// SetCites sets the value of Cites.
+func (s *PlatformAgentProposalDetail) SetCites(val []string) {
+	s.Cites = val
+}
+
+// SetPreview sets the value of Preview.
+func (s *PlatformAgentProposalDetail) SetPreview(val PlatformAgentProposalPreview) {
+	s.Preview = val
+}
+
+// SetDecidedByUserID sets the value of DecidedByUserID.
+func (s *PlatformAgentProposalDetail) SetDecidedByUserID(val OptUUID) {
+	s.DecidedByUserID = val
+}
+
+// SetDecidedAt sets the value of DecidedAt.
+func (s *PlatformAgentProposalDetail) SetDecidedAt(val OptDateTime) {
+	s.DecidedAt = val
+}
+
+// SetDecisionNote sets the value of DecisionNote.
+func (s *PlatformAgentProposalDetail) SetDecisionNote(val OptString) {
+	s.DecisionNote = val
+}
+
+// SetStartedAt sets the value of StartedAt.
+func (s *PlatformAgentProposalDetail) SetStartedAt(val OptDateTime) {
+	s.StartedAt = val
+}
+
+// SetOutcome sets the value of Outcome.
+func (s *PlatformAgentProposalDetail) SetOutcome(val OptString) {
+	s.Outcome = val
+}
+
+func (*PlatformAgentProposalDetail) getPlatformAgentProposalRes() {}
+
+type PlatformAgentProposalDetailStatus string
+
+const (
+	PlatformAgentProposalDetailStatusProposed  PlatformAgentProposalDetailStatus = "proposed"
+	PlatformAgentProposalDetailStatusApproved  PlatformAgentProposalDetailStatus = "approved"
+	PlatformAgentProposalDetailStatusRejected  PlatformAgentProposalDetailStatus = "rejected"
+	PlatformAgentProposalDetailStatusExpired   PlatformAgentProposalDetailStatus = "expired"
+	PlatformAgentProposalDetailStatusRunning   PlatformAgentProposalDetailStatus = "running"
+	PlatformAgentProposalDetailStatusSucceeded PlatformAgentProposalDetailStatus = "succeeded"
+	PlatformAgentProposalDetailStatusFailed    PlatformAgentProposalDetailStatus = "failed"
+)
+
+// AllValues returns all PlatformAgentProposalDetailStatus values.
+func (PlatformAgentProposalDetailStatus) AllValues() []PlatformAgentProposalDetailStatus {
+	return []PlatformAgentProposalDetailStatus{
+		PlatformAgentProposalDetailStatusProposed,
+		PlatformAgentProposalDetailStatusApproved,
+		PlatformAgentProposalDetailStatusRejected,
+		PlatformAgentProposalDetailStatusExpired,
+		PlatformAgentProposalDetailStatusRunning,
+		PlatformAgentProposalDetailStatusSucceeded,
+		PlatformAgentProposalDetailStatusFailed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PlatformAgentProposalDetailStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case PlatformAgentProposalDetailStatusProposed:
+		return []byte(s), nil
+	case PlatformAgentProposalDetailStatusApproved:
+		return []byte(s), nil
+	case PlatformAgentProposalDetailStatusRejected:
+		return []byte(s), nil
+	case PlatformAgentProposalDetailStatusExpired:
+		return []byte(s), nil
+	case PlatformAgentProposalDetailStatusRunning:
+		return []byte(s), nil
+	case PlatformAgentProposalDetailStatusSucceeded:
+		return []byte(s), nil
+	case PlatformAgentProposalDetailStatusFailed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PlatformAgentProposalDetailStatus) UnmarshalText(data []byte) error {
+	switch PlatformAgentProposalDetailStatus(data) {
+	case PlatformAgentProposalDetailStatusProposed:
+		*s = PlatformAgentProposalDetailStatusProposed
+		return nil
+	case PlatformAgentProposalDetailStatusApproved:
+		*s = PlatformAgentProposalDetailStatusApproved
+		return nil
+	case PlatformAgentProposalDetailStatusRejected:
+		*s = PlatformAgentProposalDetailStatusRejected
+		return nil
+	case PlatformAgentProposalDetailStatusExpired:
+		*s = PlatformAgentProposalDetailStatusExpired
+		return nil
+	case PlatformAgentProposalDetailStatusRunning:
+		*s = PlatformAgentProposalDetailStatusRunning
+		return nil
+	case PlatformAgentProposalDetailStatusSucceeded:
+		*s = PlatformAgentProposalDetailStatusSucceeded
+		return nil
+	case PlatformAgentProposalDetailStatusFailed:
+		*s = PlatformAgentProposalDetailStatusFailed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type PlatformAgentProposalDetailTier string
+
+const (
+	PlatformAgentProposalDetailTierReadOnly    PlatformAgentProposalDetailTier = "read_only"
+	PlatformAgentProposalDetailTierReversible  PlatformAgentProposalDetailTier = "reversible"
+	PlatformAgentProposalDetailTierDestructive PlatformAgentProposalDetailTier = "destructive"
+)
+
+// AllValues returns all PlatformAgentProposalDetailTier values.
+func (PlatformAgentProposalDetailTier) AllValues() []PlatformAgentProposalDetailTier {
+	return []PlatformAgentProposalDetailTier{
+		PlatformAgentProposalDetailTierReadOnly,
+		PlatformAgentProposalDetailTierReversible,
+		PlatformAgentProposalDetailTierDestructive,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PlatformAgentProposalDetailTier) MarshalText() ([]byte, error) {
+	switch s {
+	case PlatformAgentProposalDetailTierReadOnly:
+		return []byte(s), nil
+	case PlatformAgentProposalDetailTierReversible:
+		return []byte(s), nil
+	case PlatformAgentProposalDetailTierDestructive:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PlatformAgentProposalDetailTier) UnmarshalText(data []byte) error {
+	switch PlatformAgentProposalDetailTier(data) {
+	case PlatformAgentProposalDetailTierReadOnly:
+		*s = PlatformAgentProposalDetailTierReadOnly
+		return nil
+	case PlatformAgentProposalDetailTierReversible:
+		*s = PlatformAgentProposalDetailTierReversible
+		return nil
+	case PlatformAgentProposalDetailTierDestructive:
+		*s = PlatformAgentProposalDetailTierDestructive
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/PlatformAgentProposalPreview
+type PlatformAgentProposalPreview struct {
+	Counts []PlatformAgentProposalPreviewCountsItem `json:"counts"`
+	// The most rows one run of the job handles; absent when it handles every match.
+	BatchLimit OptInt32 `json:"batch_limit"`
+}
+
+// GetCounts returns the value of Counts.
+func (s *PlatformAgentProposalPreview) GetCounts() []PlatformAgentProposalPreviewCountsItem {
+	return s.Counts
+}
+
+// GetBatchLimit returns the value of BatchLimit.
+func (s *PlatformAgentProposalPreview) GetBatchLimit() OptInt32 {
+	return s.BatchLimit
+}
+
+// SetCounts sets the value of Counts.
+func (s *PlatformAgentProposalPreview) SetCounts(val []PlatformAgentProposalPreviewCountsItem) {
+	s.Counts = val
+}
+
+// SetBatchLimit sets the value of BatchLimit.
+func (s *PlatformAgentProposalPreview) SetBatchLimit(val OptInt32) {
+	s.BatchLimit = val
+}
+
+type PlatformAgentProposalPreviewCountsItem struct {
+	Key   string `json:"key"`
+	Count int64  `json:"count"`
+	// True when the job re-checks each row before acting, so fewer may be affected.
+	AtMost bool `json:"at_most"`
+}
+
+// GetKey returns the value of Key.
+func (s *PlatformAgentProposalPreviewCountsItem) GetKey() string {
+	return s.Key
+}
+
+// GetCount returns the value of Count.
+func (s *PlatformAgentProposalPreviewCountsItem) GetCount() int64 {
+	return s.Count
+}
+
+// GetAtMost returns the value of AtMost.
+func (s *PlatformAgentProposalPreviewCountsItem) GetAtMost() bool {
+	return s.AtMost
+}
+
+// SetKey sets the value of Key.
+func (s *PlatformAgentProposalPreviewCountsItem) SetKey(val string) {
+	s.Key = val
+}
+
+// SetCount sets the value of Count.
+func (s *PlatformAgentProposalPreviewCountsItem) SetCount(val int64) {
+	s.Count = val
+}
+
+// SetAtMost sets the value of AtMost.
+func (s *PlatformAgentProposalPreviewCountsItem) SetAtMost(val bool) {
+	s.AtMost = val
+}
+
+type PlatformAgentProposalStatus string
+
+const (
+	PlatformAgentProposalStatusProposed  PlatformAgentProposalStatus = "proposed"
+	PlatformAgentProposalStatusApproved  PlatformAgentProposalStatus = "approved"
+	PlatformAgentProposalStatusRejected  PlatformAgentProposalStatus = "rejected"
+	PlatformAgentProposalStatusExpired   PlatformAgentProposalStatus = "expired"
+	PlatformAgentProposalStatusRunning   PlatformAgentProposalStatus = "running"
+	PlatformAgentProposalStatusSucceeded PlatformAgentProposalStatus = "succeeded"
+	PlatformAgentProposalStatusFailed    PlatformAgentProposalStatus = "failed"
+)
+
+// AllValues returns all PlatformAgentProposalStatus values.
+func (PlatformAgentProposalStatus) AllValues() []PlatformAgentProposalStatus {
+	return []PlatformAgentProposalStatus{
+		PlatformAgentProposalStatusProposed,
+		PlatformAgentProposalStatusApproved,
+		PlatformAgentProposalStatusRejected,
+		PlatformAgentProposalStatusExpired,
+		PlatformAgentProposalStatusRunning,
+		PlatformAgentProposalStatusSucceeded,
+		PlatformAgentProposalStatusFailed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PlatformAgentProposalStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case PlatformAgentProposalStatusProposed:
+		return []byte(s), nil
+	case PlatformAgentProposalStatusApproved:
+		return []byte(s), nil
+	case PlatformAgentProposalStatusRejected:
+		return []byte(s), nil
+	case PlatformAgentProposalStatusExpired:
+		return []byte(s), nil
+	case PlatformAgentProposalStatusRunning:
+		return []byte(s), nil
+	case PlatformAgentProposalStatusSucceeded:
+		return []byte(s), nil
+	case PlatformAgentProposalStatusFailed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PlatformAgentProposalStatus) UnmarshalText(data []byte) error {
+	switch PlatformAgentProposalStatus(data) {
+	case PlatformAgentProposalStatusProposed:
+		*s = PlatformAgentProposalStatusProposed
+		return nil
+	case PlatformAgentProposalStatusApproved:
+		*s = PlatformAgentProposalStatusApproved
+		return nil
+	case PlatformAgentProposalStatusRejected:
+		*s = PlatformAgentProposalStatusRejected
+		return nil
+	case PlatformAgentProposalStatusExpired:
+		*s = PlatformAgentProposalStatusExpired
+		return nil
+	case PlatformAgentProposalStatusRunning:
+		*s = PlatformAgentProposalStatusRunning
+		return nil
+	case PlatformAgentProposalStatusSucceeded:
+		*s = PlatformAgentProposalStatusSucceeded
+		return nil
+	case PlatformAgentProposalStatusFailed:
+		*s = PlatformAgentProposalStatusFailed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type PlatformAgentProposalTier string
+
+const (
+	PlatformAgentProposalTierReadOnly    PlatformAgentProposalTier = "read_only"
+	PlatformAgentProposalTierReversible  PlatformAgentProposalTier = "reversible"
+	PlatformAgentProposalTierDestructive PlatformAgentProposalTier = "destructive"
+)
+
+// AllValues returns all PlatformAgentProposalTier values.
+func (PlatformAgentProposalTier) AllValues() []PlatformAgentProposalTier {
+	return []PlatformAgentProposalTier{
+		PlatformAgentProposalTierReadOnly,
+		PlatformAgentProposalTierReversible,
+		PlatformAgentProposalTierDestructive,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PlatformAgentProposalTier) MarshalText() ([]byte, error) {
+	switch s {
+	case PlatformAgentProposalTierReadOnly:
+		return []byte(s), nil
+	case PlatformAgentProposalTierReversible:
+		return []byte(s), nil
+	case PlatformAgentProposalTierDestructive:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PlatformAgentProposalTier) UnmarshalText(data []byte) error {
+	switch PlatformAgentProposalTier(data) {
+	case PlatformAgentProposalTierReadOnly:
+		*s = PlatformAgentProposalTierReadOnly
+		return nil
+	case PlatformAgentProposalTierReversible:
+		*s = PlatformAgentProposalTierReversible
+		return nil
+	case PlatformAgentProposalTierDestructive:
+		*s = PlatformAgentProposalTierDestructive
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

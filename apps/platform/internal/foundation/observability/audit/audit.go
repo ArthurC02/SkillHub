@@ -98,6 +98,12 @@ const (
 	ActionFindingAcknowledge = "platform_agent_finding.acknowledged"
 	ActionFindingResolve     = "platform_agent_finding.resolved"
 	ActionFindingDismiss     = "platform_agent_finding.dismissed"
+	ActionProposalPropose    = "platform_agent_proposal.proposed"
+	ActionProposalApprove    = "platform_agent_proposal.approved"
+	ActionProposalReject     = "platform_agent_proposal.rejected"
+	ActionProposalExpire     = "platform_agent_proposal.expired"
+	ActionProposalSucceed    = "platform_agent_proposal.succeeded"
+	ActionProposalFail       = "platform_agent_proposal.failed"
 )
 
 const ScopeOperator = "operator"
@@ -133,8 +139,9 @@ const (
 
 	ResourceDomainEvent = "domain_event"
 
-	ResourcePlatformAgent        = "platform_agent"
-	ResourcePlatformAgentFinding = "platform_agent_finding"
+	ResourcePlatformAgent         = "platform_agent"
+	ResourcePlatformAgentFinding  = "platform_agent_finding"
+	ResourcePlatformAgentProposal = "platform_agent_proposal"
 )
 
 type ActorKind string

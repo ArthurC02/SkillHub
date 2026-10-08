@@ -91,6 +91,11 @@ func TestADailyReportMustBeWellFormedBeforeItsCitesCount(t *testing.T) {
 		{"unknown field", `{"items":[],"summary":"x"}`, "not a daily report"},
 		{"not an object", `[]`, "not a daily report"},
 		{"second item is wrong", `{"items":[{"status":"fine","text":"ok","cites":["/x"]},{"status":"fine","text":"ok","cites":["/y"]}]}`, "item 2"},
+		{"a proposal citing a fact", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":"run-a","reason":"late","cites":["/x"]}]}`, ""},
+		{"a proposal with no action", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":" ","reason":"late","cites":["/x"]}]}`, "names no action"},
+		{"a proposal with no reason", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":"run-a","reason":"","cites":["/x"]}]}`, "gives no reason"},
+		{"a proposal citing nothing", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":"run-a","reason":"late"}]}`, "proposal 1"},
+		{"a proposal citing a missing fact", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":"run-a","reason":"late","cites":["/y"]}]}`, `cites "/y"`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

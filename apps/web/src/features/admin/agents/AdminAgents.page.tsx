@@ -8,9 +8,11 @@ import { AgentRunList, AgentRunSteps } from "./components/AgentRuns";
 import { DailyReport } from "./components/DailyReport";
 import { FindingDetail } from "./components/FindingDetail";
 import { FindingInbox } from "./components/FindingInbox";
+import { ProposalDetail } from "./components/ProposalDetail";
+import { ProposalList } from "./components/ProposalList";
 
 export function AdminAgents() {
-  const { status, finding, run } = useSearch({ from: "/admin/agents" });
+  const { status, finding, proposal, run } = useSearch({ from: "/admin/agents" });
   const agents = usePlatformAgents();
   const runs = usePlatformAgentRuns();
   const opened = runs.data?.runs.find((r) => r.id === run);
@@ -18,8 +20,11 @@ export function AdminAgents() {
   return (
     <AdminPage
       heading="平台 Agent"
-      lede="平台自己的 Agent 只讀維運事實、不讀任何人的資料。日報說需要注意的事會進待辦，同一件事隔天再被報出來就併在同一筆，事實恢復正常時自動標成已自行恢復。"
+      lede="平台自己的 Agent 只讀維運事實、不讀任何人的資料。日報說需要注意的事會進待辦，同一件事隔天再被報出來就併在同一筆，事實恢復正常時自動標成已自行恢復。Agent 想補跑逾期的維運工作時只能提案，由你核准才會執行。"
     >
+      <h2>待核准</h2>
+      {proposal ? <ProposalDetail id={proposal} /> : <ProposalList />}
+
       <h2>待辦</h2>
       {finding ? <FindingDetail id={finding} /> : <FindingInbox status={status} />}
 

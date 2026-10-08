@@ -42,6 +42,33 @@ func (q *Queries) ClearObjectSightings(ctx context.Context, arg ClearObjectSight
 	return err
 }
 
+const countDatasetCleanupIntentsDue = `-- name: CountDatasetCleanupIntentsDue :one
+SELECT count(*)::bigint FROM dataset_object_cleanup_intents
+WHERE not_before <= now()
+  AND (attempted_at IS NULL OR attempted_at < now() - $1::interval)
+`
+
+func (q *Queries) CountDatasetCleanupIntentsDue(ctx context.Context, claimLease pgtype.Interval) (int64, error) {
+	row := q.db.QueryRow(ctx, countDatasetCleanupIntentsDue, claimLease)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countDatasetsPastRetention = `-- name: CountDatasetsPastRetention :one
+SELECT count(*)::bigint FROM datasets
+WHERE purged_at IS NULL
+  AND (deleted_at IS NOT NULL OR expires_at <= now())
+  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - $1::interval)
+`
+
+func (q *Queries) CountDatasetsPastRetention(ctx context.Context, claimLease pgtype.Interval) (int64, error) {
+	row := q.db.QueryRow(ctx, countDatasetsPastRetention, claimLease)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countLiveDatasetsSharingObject = `-- name: CountLiveDatasetsSharingObject :one
 SELECT count(*) FROM datasets
 WHERE object_key = $1 AND deleted_at IS NULL AND purged_at IS NULL
@@ -85,6 +112,21 @@ func (q *Queries) CountPersistentObjectSightings(ctx context.Context, rounds int
 		return nil, err
 	}
 	return items, nil
+}
+
+const countRunOutputsPastRetention = `-- name: CountRunOutputsPastRetention :one
+SELECT count(*)::bigint FROM artifacts
+WHERE kind = 'run_output'
+  AND purged_at IS NULL
+  AND (deleted_at IS NOT NULL OR expires_at <= now())
+  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - $1::interval)
+`
+
+func (q *Queries) CountRunOutputsPastRetention(ctx context.Context, claimLease pgtype.Interval) (int64, error) {
+	row := q.db.QueryRow(ctx, countRunOutputsPastRetention, claimLease)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const listArtifactsClaimingObject = `-- name: ListArtifactsClaimingObject :many

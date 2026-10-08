@@ -11,6 +11,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countAnalyticsEventsBefore = `-- name: CountAnalyticsEventsBefore :one
+SELECT count(*)::bigint FROM analytics_events WHERE occurred_at < $1
+`
+
+func (q *Queries) CountAnalyticsEventsBefore(ctx context.Context, occurredAt pgtype.Timestamptz) (int64, error) {
+	row := q.db.QueryRow(ctx, countAnalyticsEventsBefore, occurredAt)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countExpiredFeedbackReports = `-- name: CountExpiredFeedbackReports :one
+SELECT count(*)::bigint FROM feedback_reports WHERE created_at < $1
+`
+
+func (q *Queries) CountExpiredFeedbackReports(ctx context.Context, createdAt pgtype.Timestamptz) (int64, error) {
+	row := q.db.QueryRow(ctx, countExpiredFeedbackReports, createdAt)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countFunnelReachByDay = `-- name: CountFunnelReachByDay :many
 SELECT (occurred_at AT TIME ZONE 'UTC')::date AS day,
        event_name,

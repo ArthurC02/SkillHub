@@ -60,3 +60,9 @@ WHERE occurred_at >= @since::timestamptz
   AND event_name = ANY(@event_names::text[])
 GROUP BY 1, 2
 ORDER BY 1, 2;
+
+-- name: CountExpiredFeedbackReports :one
+SELECT count(*)::bigint FROM feedback_reports WHERE created_at < $1;
+
+-- name: CountAnalyticsEventsBefore :one
+SELECT count(*)::bigint FROM analytics_events WHERE occurred_at < $1;

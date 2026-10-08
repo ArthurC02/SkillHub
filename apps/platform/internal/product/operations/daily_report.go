@@ -16,7 +16,8 @@ type ReportItem struct {
 }
 
 type DailyReportResult struct {
-	Items []ReportItem `json:"items"`
+	Items     []ReportItem      `json:"items"`
+	Proposals []ProposalRequest `json:"proposals,omitempty"`
 }
 
 const (
@@ -42,7 +43,42 @@ func CitesOnlyReturnedFacts(result json.RawMessage, steps []StepRecord) error {
 			return fmt.Errorf("item %d: %w", i+1, err)
 		}
 	}
+	for i, proposal := range report.Proposals {
+		if err := checkProposal(proposal, facts); err != nil {
+			return fmt.Errorf("proposal %d: %w", i+1, err)
+		}
+	}
 	return nil
+}
+
+func checkProposal(proposal ProposalRequest, facts []any) error {
+	if strings.TrimSpace(proposal.Action) == "" {
+		return errors.New("the proposal names no action")
+	}
+	if strings.TrimSpace(proposal.Reason) == "" {
+		return errors.New("the proposal gives no reason")
+	}
+	return checkCites(proposal.Cites, facts)
+}
+
+func checkCites(cites []string, facts []any) error {
+	if len(cites) == 0 {
+		return errors.New("it cites no fact")
+	}
+	for _, cite := range cites {
+		if !citedInAny(cite, facts) {
+			return fmt.Errorf("it cites %q, which no tool returned", cite)
+		}
+	}
+	return nil
+}
+
+func DailyReportProposals(result json.RawMessage) []ProposalRequest {
+	var report DailyReportResult
+	if json.Unmarshal(result, &report) != nil {
+		return nil
+	}
+	return report.Proposals
 }
 
 func checkItem(item ReportItem, facts []any) error {
@@ -52,15 +88,7 @@ func checkItem(item ReportItem, facts []any) error {
 	if strings.TrimSpace(item.Text) == "" {
 		return errors.New("the item says nothing")
 	}
-	if len(item.Cites) == 0 {
-		return errors.New("the item cites no fact")
-	}
-	for _, cite := range item.Cites {
-		if !citedInAny(cite, facts) {
-			return fmt.Errorf("it cites %q, which no tool returned", cite)
-		}
-	}
-	return nil
+	return checkCites(item.Cites, facts)
 }
 
 func returnedFacts(steps []StepRecord) []any {

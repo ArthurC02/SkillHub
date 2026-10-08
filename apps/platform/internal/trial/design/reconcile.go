@@ -47,6 +47,19 @@ func (s *Service) ExpiredDatasetCandidates(ctx context.Context, limit int32) ([]
 	return out, nil
 }
 
+func (s *Service) DatasetRetentionBacklog(ctx context.Context) (datasets, intents int64, err error) {
+	if s == nil || s.Pool == nil {
+		return 0, 0, errPersistenceNotConfigured
+	}
+	lease := pgconv.Interval(queue.SweepClaimLease)
+	q := gen.New(s.Pool)
+	if datasets, err = q.CountDatasetsPastRetention(ctx, lease); err != nil {
+		return 0, 0, err
+	}
+	intents, err = q.CountDatasetCleanupIntentsDue(ctx, lease)
+	return datasets, intents, err
+}
+
 func (s *Service) DatasetCleanupIntentCandidates(ctx context.Context, limit int32) ([]ReconcileCandidate, error) {
 	if s == nil || s.Pool == nil {
 		return nil, errPersistenceNotConfigured

@@ -14,9 +14,9 @@
       }
     },
     "maintenance_jobs": {
-      "purge-accounts": {"period_seconds": 86400, "last_succeeded_at": "2026-10-06T03:00:00Z", "overdue_ratio": 1.1},
-      "rotate-partitions": {"period_seconds": 2678400, "last_succeeded_at": null, "overdue_ratio": 2.4},
-      "check-sources": {"period_seconds": 86400, "last_succeeded_at": "2026-10-07T03:00:00Z", "overdue_ratio": 0.2}
+      "purge-accounts": {"period_seconds": 86400, "last_succeeded_at": "2026-10-06T03:00:00Z", "overdue_ratio": 1.1, "action": "run-purge-accounts"},
+      "rotate-partitions": {"period_seconds": 2678400, "last_succeeded_at": null, "overdue_ratio": 2.4, "action": "run-rotate-partitions"},
+      "check-sources": {"period_seconds": 86400, "last_succeeded_at": "2026-10-07T03:00:00Z", "overdue_ratio": 0.2, "action": "run-check-sources"}
     }
   },
   "cases": [
@@ -71,6 +71,24 @@
       "passes": false,
       "report": {"items": [
         {"status": "fine", "text": "一切正常。", "cites": [""]}
+      ]}
+    },
+    {
+      "name": "a proposal resting on the facts that show the job is late",
+      "passes": true,
+      "report": {"items": [
+        {"status": "attention", "text": "分割表輪替從來沒有成功過，已經超過兩個週期。", "cites": ["/maintenance_jobs/rotate-partitions/overdue_ratio"]}
+      ], "proposals": [
+        {"action": "run-rotate-partitions", "reason": "分割表輪替從來沒有成功過，建議現在補跑一次。", "cites": ["/maintenance_jobs/rotate-partitions/action", "/maintenance_jobs/rotate-partitions/overdue_ratio"]}
+      ]}
+    },
+    {
+      "name": "a proposal resting on a fact the snapshot does not have",
+      "passes": false,
+      "report": {"items": [
+        {"status": "fine", "text": "一切正常。", "cites": ["/capacity/database_bytes"]}
+      ], "proposals": [
+        {"action": "run-purge-audit", "reason": "清除稽核紀錄逾期了。", "cites": ["/maintenance_jobs/purge-audit/overdue_ratio"]}
       ]}
     }
   ]

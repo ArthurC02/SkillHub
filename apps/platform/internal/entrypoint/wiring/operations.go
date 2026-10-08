@@ -71,6 +71,7 @@ func NewAgentRunner(
 		RevokeKey:  gateway.Revoke,
 		RecordCost: AgentCostRecorder(pool, credits),
 		Now:        time.Now,
+		Actions:    MaintenanceActions(pool),
 	}
 }
 

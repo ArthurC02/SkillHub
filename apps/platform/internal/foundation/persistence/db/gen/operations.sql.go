@@ -42,6 +42,31 @@ func (q *Queries) AppendFindingEvent(ctx context.Context, arg AppendFindingEvent
 	return err
 }
 
+const claimApprovedProposal = `-- name: ClaimApprovedProposal :one
+WITH next AS (
+    SELECT id FROM platform_agent_proposals
+    WHERE status = 'approved'
+    ORDER BY decided_at, id
+    LIMIT 1 FOR UPDATE SKIP LOCKED
+)
+UPDATE platform_agent_proposals p
+SET status = 'running', started_at = now()
+FROM next WHERE p.id = next.id
+RETURNING p.id, p.action
+`
+
+type ClaimApprovedProposalRow struct {
+	ID     pgtype.UUID
+	Action string
+}
+
+func (q *Queries) ClaimApprovedProposal(ctx context.Context) (ClaimApprovedProposalRow, error) {
+	row := q.db.QueryRow(ctx, claimApprovedProposal)
+	var i ClaimApprovedProposalRow
+	err := row.Scan(&i.ID, &i.Action)
+	return i, err
+}
+
 const countFindingsByStatus = `-- name: CountFindingsByStatus :many
 SELECT status, count(*)::integer AS findings
 FROM platform_agent_findings
@@ -73,6 +98,35 @@ func (q *Queries) CountFindingsByStatus(ctx context.Context) ([]CountFindingsByS
 	return items, nil
 }
 
+const decideProposal = `-- name: DecideProposal :one
+UPDATE platform_agent_proposals
+SET status = $1, decided_by = $2, decided_at = now(), decision_note = $3,
+    finished_at = $4
+WHERE id = $5 AND status = 'proposed' AND expires_at > now()
+RETURNING id
+`
+
+type DecideProposalParams struct {
+	Status     string
+	DecidedBy  pgtype.UUID
+	Note       *string
+	FinishedAt pgtype.Timestamptz
+	ID         pgtype.UUID
+}
+
+func (q *Queries) DecideProposal(ctx context.Context, arg DecideProposalParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, decideProposal,
+		arg.Status,
+		arg.DecidedBy,
+		arg.Note,
+		arg.FinishedAt,
+		arg.ID,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const engagePlatformAgentBrake = `-- name: EngagePlatformAgentBrake :one
 INSERT INTO platform_agent_brake (engaged_by, reason)
 VALUES ($1, $2)
@@ -97,6 +151,33 @@ func (q *Queries) EngagePlatformAgentBrake(ctx context.Context, arg EngagePlatfo
 	return i, err
 }
 
+const expireProposals = `-- name: ExpireProposals :many
+UPDATE platform_agent_proposals
+SET status = 'expired', finished_at = now()
+WHERE status = 'proposed' AND expires_at <= now()
+RETURNING id
+`
+
+func (q *Queries) ExpireProposals(ctx context.Context) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, expireProposals)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const finishPlatformAgentRun = `-- name: FinishPlatformAgentRun :execrows
 UPDATE platform_agent_runs
 SET status = $1, finished_at = now(), reason = $2, result = $3
@@ -117,6 +198,26 @@ func (q *Queries) FinishPlatformAgentRun(ctx context.Context, arg FinishPlatform
 		arg.Result,
 		arg.ID,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const finishProposal = `-- name: FinishProposal :execrows
+UPDATE platform_agent_proposals
+SET status = $1, finished_at = now(), outcome = $2
+WHERE id = $3 AND status = 'running'
+`
+
+type FinishProposalParams struct {
+	Status  string
+	Outcome *string
+	ID      pgtype.UUID
+}
+
+func (q *Queries) FinishProposal(ctx context.Context, arg FinishProposalParams) (int64, error) {
+	result, err := q.db.Exec(ctx, finishProposal, arg.Status, arg.Outcome, arg.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -217,6 +318,60 @@ func (q *Queries) GetPlatformAgentRunGate(ctx context.Context, id pgtype.UUID) (
 	row := q.db.QueryRow(ctx, getPlatformAgentRunGate, id)
 	var i GetPlatformAgentRunGateRow
 	err := row.Scan(&i.Status, &i.Enabled, &i.Braked)
+	return i, err
+}
+
+const getProposal = `-- name: GetProposal :one
+SELECT p.id, a.name AS agent, p.run_id, p.action, p.tier, p.reason, p.cites, p.preview, p.status,
+    p.proposed_at, p.expires_at, p.decided_by, p.decided_at, p.decision_note,
+    p.started_at, p.finished_at, p.outcome
+FROM platform_agent_proposals p
+JOIN platform_agents a ON a.id = p.agent_id
+WHERE p.id = $1
+`
+
+type GetProposalRow struct {
+	ID           pgtype.UUID
+	Agent        string
+	RunID        pgtype.UUID
+	Action       string
+	Tier         string
+	Reason       string
+	Cites        []string
+	Preview      []byte
+	Status       string
+	ProposedAt   pgtype.Timestamptz
+	ExpiresAt    pgtype.Timestamptz
+	DecidedBy    pgtype.UUID
+	DecidedAt    pgtype.Timestamptz
+	DecisionNote *string
+	StartedAt    pgtype.Timestamptz
+	FinishedAt   pgtype.Timestamptz
+	Outcome      *string
+}
+
+func (q *Queries) GetProposal(ctx context.Context, id pgtype.UUID) (GetProposalRow, error) {
+	row := q.db.QueryRow(ctx, getProposal, id)
+	var i GetProposalRow
+	err := row.Scan(
+		&i.ID,
+		&i.Agent,
+		&i.RunID,
+		&i.Action,
+		&i.Tier,
+		&i.Reason,
+		&i.Cites,
+		&i.Preview,
+		&i.Status,
+		&i.ProposedAt,
+		&i.ExpiresAt,
+		&i.DecidedBy,
+		&i.DecidedAt,
+		&i.DecisionNote,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.Outcome,
+	)
 	return i, err
 }
 
@@ -513,6 +668,81 @@ func (q *Queries) ListPlatformAgents(ctx context.Context) ([]PlatformAgent, erro
 	return items, nil
 }
 
+const listProposals = `-- name: ListProposals :many
+SELECT p.id, a.name AS agent, p.action, p.tier, p.reason, p.status, p.proposed_at, p.expires_at, p.finished_at
+FROM platform_agent_proposals p
+JOIN platform_agents a ON a.id = p.agent_id
+WHERE p.status = ANY ($1::text[]) OR p.finished_at >= $2
+ORDER BY p.proposed_at DESC
+LIMIT $3
+`
+
+type ListProposalsParams struct {
+	Live        []string
+	ClosedSince pgtype.Timestamptz
+	RowLimit    int32
+}
+
+type ListProposalsRow struct {
+	ID         pgtype.UUID
+	Agent      string
+	Action     string
+	Tier       string
+	Reason     string
+	Status     string
+	ProposedAt pgtype.Timestamptz
+	ExpiresAt  pgtype.Timestamptz
+	FinishedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListProposals(ctx context.Context, arg ListProposalsParams) ([]ListProposalsRow, error) {
+	rows, err := q.db.Query(ctx, listProposals, arg.Live, arg.ClosedSince, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProposalsRow
+	for rows.Next() {
+		var i ListProposalsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Agent,
+			&i.Action,
+			&i.Tier,
+			&i.Reason,
+			&i.Status,
+			&i.ProposedAt,
+			&i.ExpiresAt,
+			&i.FinishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const liveProposalExists = `-- name: LiveProposalExists :one
+SELECT EXISTS (
+    SELECT 1 FROM platform_agent_proposals WHERE action = $1 AND status = ANY ($2::text[])
+)
+`
+
+type LiveProposalExistsParams struct {
+	Action string
+	Live   []string
+}
+
+func (q *Queries) LiveProposalExists(ctx context.Context, arg LiveProposalExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, liveProposalExists, arg.Action, arg.Live)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const openFinding = `-- name: OpenFinding :one
 INSERT INTO platform_agent_findings (agent_id, title, cites)
 VALUES ($1, $2, $3::text[])
@@ -550,6 +780,41 @@ func (q *Queries) PlatformAgentSpendSince(ctx context.Context, arg PlatformAgent
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const proposeAction = `-- name: ProposeAction :one
+INSERT INTO platform_agent_proposals (agent_id, run_id, action, tier, reason, cites, preview, proposed_at, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id
+`
+
+type ProposeActionParams struct {
+	AgentID    pgtype.UUID
+	RunID      pgtype.UUID
+	Action     string
+	Tier       string
+	Reason     string
+	Cites      []string
+	Preview    []byte
+	ProposedAt pgtype.Timestamptz
+	ExpiresAt  pgtype.Timestamptz
+}
+
+func (q *Queries) ProposeAction(ctx context.Context, arg ProposeActionParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, proposeAction,
+		arg.AgentID,
+		arg.RunID,
+		arg.Action,
+		arg.Tier,
+		arg.Reason,
+		arg.Cites,
+		arg.Preview,
+		arg.ProposedAt,
+		arg.ExpiresAt,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const recordPlatformAgentStep = `-- name: RecordPlatformAgentStep :exec

@@ -61,6 +61,10 @@ type CreateTestCaseRes interface {
 	createTestCaseRes()
 }
 
+type DecidePlatformAgentProposalRes interface {
+	decidePlatformAgentProposalRes()
+}
+
 type DecideSuggestionRes interface {
 	decideSuggestionRes()
 }
@@ -217,6 +221,10 @@ type GetPlatformAgentFindingRes interface {
 	getPlatformAgentFindingRes()
 }
 
+type GetPlatformAgentProposalRes interface {
+	getPlatformAgentProposalRes()
+}
+
 type GetPublicPublicationRes interface {
 	getPublicPublicationRes()
 }
@@ -331,6 +339,10 @@ type ListPackagingTargetsRes interface {
 
 type ListPlatformAgentFindingsRes interface {
 	listPlatformAgentFindingsRes()
+}
+
+type ListPlatformAgentProposalsRes interface {
+	listPlatformAgentProposalsRes()
 }
 
 type ListPlatformAgentRunStepsRes interface {

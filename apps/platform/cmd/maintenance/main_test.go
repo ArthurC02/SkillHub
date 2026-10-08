@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
@@ -97,12 +98,12 @@ func TestEveryPartitionedTableIsRotated(t *testing.T) {
 func TestRetentionWindowsHaveNoDefault(t *testing.T) {
 	for _, unusable := range []string{"", "90", "0s", "-24h", "ninety days"} {
 		t.Setenv("TRACE_RETENTION", unusable)
-		if _, err := positiveDuration("TRACE_RETENTION"); err == nil {
+		if _, err := wiring.MaintenanceDuration("TRACE_RETENTION"); err == nil {
 			t.Errorf("TRACE_RETENTION=%q accepted", unusable)
 		}
 	}
 	t.Setenv("TRACE_RETENTION", "2160h")
-	if d, err := positiveDuration("TRACE_RETENTION"); err != nil || d != 2160*time.Hour {
+	if d, err := wiring.MaintenanceDuration("TRACE_RETENTION"); err != nil || d != 2160*time.Hour {
 		t.Errorf("positiveDuration = %s, %v", d, err)
 	}
 }
@@ -179,6 +180,15 @@ func TestAccountPurgeAsksRegistryWhichImportSourcesAreStillUsed(t *testing.T) {
 	}
 }
 
+func TestAnApprovedProposalThatNamesNoJobFailsWithoutRunningAnything(t *testing.T) {
+	for _, action := range []string{"run-purge-everything", "run-approved", "purge-audit", "run-"} {
+		err := runProposedJob(context.Background(), nil, action)
+		if err == nil || !strings.Contains(err.Error(), "names no maintenance job") {
+			t.Errorf("%s: %v, want it refused as naming no job", action, err)
+		}
+	}
+}
+
 func TestASweepThatFailedPartWayIsNotLoggedAsComplete(t *testing.T) {
 	var logged bytes.Buffer
 	previous := slog.Default()
@@ -211,7 +221,7 @@ func TestAccountsArePurgedNoSoonerThanTheGraceTheyWerePromised(t *testing.T) {
 	} {
 		t.Run(tc.raw, func(t *testing.T) {
 			t.Setenv("PURGE_GRACE", tc.raw)
-			got, err := accountPurgeGrace()
+			got, err := wiring.AccountPurgeGrace()
 			if (err == nil) != tc.ok || got != tc.want {
 				t.Errorf("grace = %s, err = %v; want %s, accepted %v", got, err, tc.want, tc.ok)
 			}

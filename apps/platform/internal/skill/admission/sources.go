@@ -107,6 +107,10 @@ type SourceSweep struct {
 	Changed     int
 }
 
+func (s *Service) SourcesToCheck(ctx context.Context) (int64, error) {
+	return gen.New(s.Pool).CountSourcesToCheck(ctx)
+}
+
 func (s *Service) CheckSources(ctx context.Context, limit int32) (SourceSweep, error) {
 	var sweep SourceSweep
 	if s.Fetcher == nil {

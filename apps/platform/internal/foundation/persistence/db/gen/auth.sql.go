@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countExpiredSessions = `-- name: CountExpiredSessions :one
+SELECT count(*)::bigint FROM sessions WHERE expires_at <= now()
+`
+
+func (q *Queries) CountExpiredSessions(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countExpiredSessions)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createIdentity = `-- name: CreateIdentity :exec
 INSERT INTO user_identities (user_id, provider, provider_user_id)
 VALUES ($1, $2, $3)

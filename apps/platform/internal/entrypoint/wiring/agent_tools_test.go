@@ -13,7 +13,7 @@ func TestTheMaintenanceFactsNameTablesAndJobsSoACiteCanReachThem(t *testing.T) {
 	days := 12.5
 	facts := NewMaintenanceFacts(
 		capacity.Report{DatabaseBytes: 100, DaysUntilBudget: &days, Tables: []capacity.TableSize{{Table: "runs", Bytes: 60}}},
-		[]jobruns.Status{{Job: "purge-audit", PeriodSeconds: 604800, OverdueRatio: 2.5}},
+		[]jobruns.Status{{Job: "purge-audit", PeriodSeconds: 604800, OverdueRatio: 2.5}, {Job: "report", PeriodSeconds: 86400}},
 	)
 	encoded, err := json.Marshal(facts)
 	if err != nil {
@@ -28,6 +28,7 @@ func TestTheMaintenanceFactsNameTablesAndJobsSoACiteCanReachThem(t *testing.T) {
 		MaintenanceJobs map[string]struct {
 			PeriodSeconds int64   `json:"period_seconds"`
 			OverdueRatio  float64 `json:"overdue_ratio"`
+			Action        string  `json:"action"`
 		} `json:"maintenance_jobs"`
 	}
 	if err := json.Unmarshal(encoded, &doc); err != nil {
@@ -38,6 +39,9 @@ func TestTheMaintenanceFactsNameTablesAndJobsSoACiteCanReachThem(t *testing.T) {
 	}
 	if job := doc.MaintenanceJobs["purge-audit"]; job.PeriodSeconds != 604800 || job.OverdueRatio != 2.5 {
 		t.Errorf("job facts %+v, want the job by name with its period and overdue ratio", doc.MaintenanceJobs)
+	}
+	if proposable, reportOnly := doc.MaintenanceJobs["purge-audit"].Action, doc.MaintenanceJobs["report"].Action; proposable != "run-purge-audit" || reportOnly != "" {
+		t.Errorf("actions %q and %q, want only the proposable job to name the action that reruns it", proposable, reportOnly)
 	}
 
 	report := `{"items":[{"status":"attention","text":"x","cites":[` +

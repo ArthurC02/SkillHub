@@ -35,6 +35,19 @@ func (s *Service) ExpiredArtifactCandidates(ctx context.Context, limit int32) ([
 	return out, nil
 }
 
+func (s *Service) ArtifactRetentionBacklog(ctx context.Context) (outputs, intents int64, err error) {
+	if s == nil || s.Pool == nil {
+		return 0, 0, errReconcilePersistenceNotConfigured
+	}
+	lease := pgconv.Interval(queue.SweepClaimLease)
+	q := gen.New(s.Pool)
+	if outputs, err = q.CountRunOutputsPastRetention(ctx, lease); err != nil {
+		return 0, 0, err
+	}
+	intents, err = q.CountRunArtifactUploadIntentsDue(ctx, lease)
+	return outputs, intents, err
+}
+
 func (s *Service) MarkRunOutputPurged(ctx context.Context, tx pgx.Tx, artifactID pgtype.UUID) error {
 	if s == nil || tx == nil || s.ClearSightings == nil {
 		return errReconcilePersistenceNotConfigured

@@ -11,6 +11,13 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
+func CountExpired(ctx context.Context, db DBTX, retention time.Duration) (int64, error) {
+	if retention <= 0 {
+		return 0, errors.New("audit: retention window must be positive")
+	}
+	return gen.New(db).CountExpiredAuditEvents(ctx, pgtype.Timestamptz{Time: time.Now().Add(-retention), Valid: true})
+}
+
 func PurgeExpired(ctx context.Context, pool *pgxpool.Pool, retention time.Duration) (int64, error) {
 	if pool == nil {
 		return 0, errors.New("audit: database handle is not configured")
