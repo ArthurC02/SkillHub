@@ -53,7 +53,7 @@ export function FindingDetail({ id }: { id: string }) {
       </p>
       {detail.isPending && <Loading what="這件事" />}
       <ReadFailure error={detail.error} what="這件事" />
-      {detail.data && (
+      {detail.data && !detail.error && (
         <>
           <p>
             <strong>{detail.data.finding.title}</strong>

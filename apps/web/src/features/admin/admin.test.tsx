@@ -4,6 +4,7 @@ import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { focusManager } from "@tanstack/react-query";
 import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
+import { queryKeys } from "../../core/api/queryKeys";
 import { createAppRouter } from "../../app/router";
 import { daysOf, seriesOf, usd } from "./admin.service";
 import {
@@ -1055,6 +1056,24 @@ test("OPS-012: a resolved finding offers only to reopen it", async () => {
   expect(has("忽略這件事")()).toBe(false);
 });
 
+test("a finding whose refreshed details cannot be read cannot be moved from cached facts", async () => {
+  let unreadable = false;
+  stub(true, (path) =>
+    unreadable && path === `/admin/agents/findings/${AGENT_FINDING}`
+      ? { body: { error: "finding unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("標記已解決"));
+  unreadable = true;
+  await act(async () => {
+    await queryClient.refetchQueries({ queryKey: queryKeys.admin.agentFinding(AGENT_FINDING) });
+  });
+  await waitFor(() => Boolean(container.querySelector('[role="alert"]')));
+  expect(has("標記已解決")()).toBe(false);
+  expect(has("我來處理")()).toBe(false);
+});
+
 test("OPS-012: taking on a finding sends the move with the operator's note", async () => {
   stub(true, (_path, method) => (method === "PUT" ? { body: {}, status: 204 } : undefined));
   await mountAt("/admin/agents", { finding: AGENT_FINDING });
@@ -1105,6 +1124,25 @@ test("OPS-013: a proposal opens with what would happen and the facts it rests on
   expect(button("駁回")).toBeDefined();
 });
 
+test("a proposal whose refreshed preview cannot be read cannot be decided from cached facts", async () => {
+  let unreadable = false;
+  stub(true, (path) =>
+    unreadable && path === `/admin/agents/proposals/${AGENT_PROPOSAL}`
+      ? { body: { error: "proposal unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
+  await waitFor(has("要刪除的 Trace 分割表：1 筆"));
+  unreadable = true;
+  await act(async () => {
+    await queryClient.refetchQueries({ queryKey: queryKeys.admin.agentProposal(AGENT_PROPOSAL) });
+  });
+  await waitFor(() => Boolean(container.querySelector('[role="alert"]')));
+  expect(has("要刪除的 Trace 分割表：1 筆")()).toBe(false);
+  expect(has("核准並執行")()).toBe(false);
+  expect(has("駁回")()).toBe(false);
+});
+
 test.each(["approve", "reject"])(
   "OPS-013: deciding %s sends that decision with the operator's note",
   async (decision) => {
@@ -1121,6 +1159,46 @@ test.each(["approve", "reject"])(
     });
   },
 );
+
+test("a successful rejection does not label an earlier failed approval as successful", async () => {
+  let decisions = 0;
+  stub(true, (_path, method) => {
+    if (method !== "PUT") return undefined;
+    decisions += 1;
+    return decisions === 1
+      ? { body: { error: "the proposal is no longer waiting for a decision" }, status: 409 }
+      : { body: {}, status: 200 };
+  });
+  await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
+  await waitFor(has("核准並執行"));
+  await type("#admin-proposal-approve-note", "first decision");
+  await submit("#admin-proposal-approve-note");
+  await waitFor(has("the proposal is no longer waiting for a decision"));
+  await type("#admin-proposal-reject-note", "second decision");
+  await submit("#admin-proposal-reject-note");
+  await waitFor(has("已駁回。"));
+  expect(has("已核准，維運程序會在幾分鐘內執行。")()).toBe(false);
+});
+
+test("a successful finding move does not label an earlier failed move as successful", async () => {
+  let moves = 0;
+  stub(true, (_path, method) => {
+    if (method !== "PUT") return undefined;
+    moves += 1;
+    return moves === 1
+      ? { body: { error: "the finding cannot move to that status" }, status: 409 }
+      : { body: {}, status: 200 };
+  });
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("我來處理"));
+  await type("#admin-finding-acknowledged-note", "first move");
+  await submit("#admin-finding-acknowledged-note");
+  await waitFor(has("the finding cannot move to that status"));
+  await type("#admin-finding-resolved-note", "second move");
+  await submit("#admin-finding-resolved-note");
+  await waitFor(has("已改成「已解決」。"));
+  expect(has("已改成「處理中」。")()).toBe(false);
+});
 
 test("OPS-013: a decided proposal shows its decision and outcome and offers no decision", async () => {
   const done = {
@@ -1460,4 +1538,22 @@ test("OPS-012: a daily-report item without cites shows its text and the page sti
   await waitFor(has("需要注意：2 項"));
   expect(container.querySelectorAll(".daily-report-cite").length).toBe(1);
   expect(container.textContent?.match(/same words/g)?.length).toBe(2);
+});
+
+test("agent and brake controls disappear when their refreshed status cannot be read", async () => {
+  let unreadable = false;
+  stub(true, (path) =>
+    unreadable && path === "/admin/agents"
+      ? { body: { error: "agent status unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/agents");
+  await waitFor(has("拉下 Agent 煞車"));
+  unreadable = true;
+  await act(async () => {
+    await queryClient.refetchQueries({ queryKey: queryKeys.admin.agents, exact: true });
+  });
+  await waitFor(() => Boolean(container.querySelector('[role="alert"]')));
+  expect(has("拉下 Agent 煞車")()).toBe(false);
+  expect(has("停用 daily-report")()).toBe(false);
 });

@@ -84,7 +84,7 @@ export function ProposalDetail({ id }: { id: string }) {
       </p>
       {detail.isPending && <Loading what="這個提案" />}
       <ReadFailure error={detail.error} what="這個提案" />
-      {proposal && (
+      {proposal && !detail.error && (
         <>
           <p>
             <strong>{actionLabel(proposal.action)}</strong>

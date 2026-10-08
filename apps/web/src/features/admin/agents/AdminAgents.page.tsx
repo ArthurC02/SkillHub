@@ -42,7 +42,9 @@ export function AdminAgents() {
 
       {agents.isPending && <Loading what="Agent 清單" />}
       <ReadFailure error={agents.error} what="Agent 清單" />
-      {agents.data && <AgentControls agents={agents.data.agents} brake={agents.data.brake} />}
+      {agents.data && !agents.error && (
+        <AgentControls agents={agents.data.agents} brake={agents.data.brake} />
+      )}
     </AdminPage>
   );
 }
