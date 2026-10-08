@@ -561,7 +561,43 @@ func TestProposalQueueCountsAndPagesWaitingBeforeClosed(t *testing.T) {
 	allTotal := countRow(t, testPool, "SELECT count(*) FROM platform_agent_proposals WHERE status IN ('proposed', 'approved', 'running') OR finished_at >= now() - interval '7 days'")
 	closedTotal := countRow(t, testPool, "SELECT count(*) FROM platform_agent_proposals WHERE status NOT IN ('proposed', 'approved', 'running') AND finished_at >= now() - interval '7 days'")
 	w.propose(proposal("run-test-proposal-paged", "review this", "/jobs/purge/overdue"))
-	base := w.proposals()[0].id
+	seedPagedProposals(t, w.proposals()[0].id)
+
+	code, all := operatorCall(t, w.operator, http.MethodGet, path, "")
+	if code != http.StatusOK || all["total"] != float64(allTotal+202) || len(all["proposals"].([]any)) != 20 {
+		t.Fatalf("all proposals: %d %v, want 202 more than before", code, all)
+	}
+	for _, item := range all["proposals"].([]any) {
+		if item.(map[string]any)["status"] != "proposed" {
+			t.Fatalf("closed proposal preceded a waiting decision: %v", item)
+		}
+	}
+	code, waiting := operatorCall(t, w.operator, http.MethodGet, path+"?view=proposed&offset=100", "")
+	if code != http.StatusOK || waiting["total"] != float64(waitingTotal+101) || len(waiting["proposals"].([]any)) == 0 {
+		t.Fatalf("second waiting page: %d %v, want the remaining decisions and their exact total", code, waiting)
+	}
+	code, closed := operatorCall(t, w.operator, http.MethodGet, path+"?view=closed", "")
+	if code != http.StatusOK || closed["total"] != float64(closedTotal+101) {
+		t.Fatalf("closed proposals: %d %v, want the recently closed queue", code, closed)
+	}
+	code, beyond := operatorCall(t, w.operator, http.MethodGet, path+"?view=proposed&offset=1000", "")
+	if code != http.StatusOK || beyond["total"] != float64(waitingTotal+101) || len(beyond["proposals"].([]any)) != 0 {
+		t.Fatalf("past the final page: %d %v, want an empty page with the exact total", code, beyond)
+	}
+	assertBadQueries(t, w.operator, path, "?view=unknown", "?offset=-1", "?offset=abc", "?offset=2147483648")
+}
+
+func assertBadQueries(t *testing.T, operator *client, path string, queries ...string) {
+	t.Helper()
+	for _, bad := range queries {
+		if code, _ := operatorCall(t, operator, http.MethodGet, path+bad, ""); code != http.StatusBadRequest {
+			t.Errorf("%s: %d, want 400", bad, code)
+		}
+	}
+}
+
+func seedPagedProposals(t *testing.T, base pgtype.UUID) {
+	t.Helper()
 	if _, err := testPool.Exec(context.Background(), `
 		UPDATE platform_agent_proposals
 		SET proposed_at = now() - interval '3 days', expires_at = now() + interval '2 days'
@@ -585,34 +621,6 @@ func TestProposalQueueCountsAndPagesWaitingBeforeClosed(t *testing.T) {
 		FROM platform_agent_proposals CROSS JOIN generate_series(1, 101) AS n
 		WHERE id = $1`, base); err != nil {
 		t.Fatal(err)
-	}
-
-	code, all := operatorCall(t, w.operator, http.MethodGet, path, "")
-	if code != http.StatusOK || all["total"] != float64(allTotal+202) || len(all["proposals"].([]any)) != 20 {
-		t.Fatalf("all proposals: %d %v, want 202 more than before", code, all)
-	}
-	for _, item := range all["proposals"].([]any) {
-		if item.(map[string]any)["status"] != "proposed" {
-			t.Fatalf("closed proposal preceded a waiting decision: %v", item)
-		}
-	}
-	code, waiting := operatorCall(t, w.operator, http.MethodGet, path+"?view=proposed&offset=100", "")
-	if code != http.StatusOK || waiting["total"] != float64(waitingTotal+101) || len(waiting["proposals"].([]any)) == 0 {
-		t.Fatalf("second waiting page: %d %v, want the remaining decisions and their exact total", code, waiting)
-	}
-	code, closed := operatorCall(t, w.operator, http.MethodGet, path+"?view=closed", "")
-	if code != http.StatusOK || closed["total"] != float64(closedTotal+101) {
-		t.Fatalf("closed proposals: %d %v, want the recently closed queue", code, closed)
-	}
-	code, beyond := operatorCall(t, w.operator, http.MethodGet, path+"?view=proposed&offset=1000", "")
-	if code != http.StatusOK || beyond["total"] != float64(waitingTotal+101) || len(beyond["proposals"].([]any)) != 0 {
-		t.Fatalf("past the final page: %d %v, want an empty page with the exact total", code, beyond)
-	}
-	for _, bad := range []string{"?view=unknown", "?offset=-1", "?offset=abc", "?offset=2147483648"} {
-		code, _ := operatorCall(t, w.operator, http.MethodGet, path+bad, "")
-		if code != http.StatusBadRequest {
-			t.Errorf("%s: %d, want 400", bad, code)
-		}
 	}
 }
 
