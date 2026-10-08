@@ -91,7 +91,7 @@ func (h *Handler) Proposal(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.WriteJSON(w, http.StatusOK, proposalDetailView{
 		proposalView: proposalBody(row),
-		RunID: pgconv.UUIDString(row.RunID), Cites: row.Cites, Preview: row.Preview,
+		RunID:        pgconv.UUIDString(row.RunID), Cites: row.Cites, Preview: row.Preview,
 		DecidedUserID: pgconv.UUIDString(row.DecidedBy), DecidedAt: pgconv.RFC3339(row.DecidedAt),
 		DecisionNote: deref(row.DecisionNote), StartedAt: pgconv.RFC3339(row.StartedAt), Outcome: deref(row.Outcome),
 	})
