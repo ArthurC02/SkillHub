@@ -62,15 +62,6 @@ func NewFetcher() *Fetcher {
 	return fetcherGuardedBy(publicIP)
 }
 
-func newLoopbackFetcher() *Fetcher {
-	return fetcherGuardedBy(func(ip net.IP) bool {
-		if ip.IsLoopback() {
-			return true
-		}
-		return publicIP(ip)
-	})
-}
-
 func fetcherGuardedBy(guard func(ip net.IP) bool) *Fetcher {
 	dialer := &net.Dialer{Timeout: fetchTimeout}
 	transport := &http.Transport{

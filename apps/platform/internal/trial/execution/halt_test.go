@@ -224,10 +224,6 @@ func TestHaltingOrResumingWithoutAReasonIsRefusedBeforeAnythingIsWritten(t *test
 	}
 }
 
-func DefaultRequirements() Requirements {
-	return requirementsFromPolicy(defaultPolicy(Deployment{}))
-}
-
 func TestAFleetVerdictIsNotReachedWhenAProvidersLeakCountIsUnreadable(t *testing.T) {
 	pool, err := pgxpool.New(context.Background(), "postgres://nobody@127.0.0.1:1/none?connect_timeout=1")
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -21,6 +22,15 @@ func TestValidateFetchURLRefusesWhatMustNeverBeAsked(t *testing.T) {
 	if err != nil || got != "https://Example.com/a?b=1" {
 		t.Fatalf("got %q err=%v", got, err)
 	}
+}
+
+func newLoopbackFetcher() *Fetcher {
+	return fetcherGuardedBy(func(ip net.IP) bool {
+		if ip.IsLoopback() {
+			return true
+		}
+		return publicIP(ip)
+	})
 }
 
 func fetcherTestServerHandler(hits map[string]int) http.HandlerFunc {
