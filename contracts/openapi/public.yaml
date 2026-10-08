@@ -3718,9 +3718,26 @@ paths:
       operationId: listPlatformAgentProposals
       summary: The actions agents proposed (02:OPS-013)
       description: |
-        Operator only. Every proposal still waiting, approved or running, and
-        every one that closed within the last seven days, newest first, at
-        most 100.
+        Operator only. Waiting proposals, approved or running proposals, and
+        proposals closed within the last seven days. Each page has at most 20
+        items. Waiting proposals come first, nearest expiry first; other items
+        are newest first. The total counts every item in the selected view.
+      parameters:
+        - name: view
+          in: query
+          description: Which proposal queue to show; all is the default.
+          schema:
+            type: string
+            enum: [all, proposed, processing, closed]
+            default: all
+        - name: offset
+          in: query
+          description: Number of proposals to skip in the selected view.
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 2147483647
+            default: 0
       responses:
         "200":
           description: The proposals.
@@ -3728,11 +3745,17 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [proposals]
+                required: [proposals, total]
                 properties:
                   proposals:
                     type: array
                     items: { $ref: "#/components/schemas/PlatformAgentProposal" }
+                  total: { type: integer, minimum: 0 }
+        "400":
+          description: Invalid view or offset.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: The caller is not an operator.
           content:

@@ -498,10 +498,25 @@ export type PlatformAgentProposalDetail = PlatformAgentProposal & {
   outcome?: string;
 };
 
-export function usePlatformAgentProposals() {
+export type ProposalQueueView = "proposed" | "processing" | "closed";
+
+export function usePlatformAgentProposals(view: ProposalQueueView = "proposed", offset = 0) {
   return useQuery({
-    queryKey: queryKeys.admin.agentProposalList,
-    queryFn: () => apiFetch<{ proposals: PlatformAgentProposal[] }>("/admin/agents/proposals"),
+    queryKey: queryKeys.admin.agentProposalPage(view, offset),
+    queryFn: () =>
+      apiFetch<{ proposals: PlatformAgentProposal[]; total: number }>(
+        `/admin/agents/proposals?view=${view}&offset=${offset}`,
+      ).then((page) => {
+        if (
+          !Array.isArray(page.proposals) ||
+          !Number.isSafeInteger(page.total) ||
+          page.total < 0 ||
+          (page.proposals.length > 0 && offset + page.proposals.length > page.total)
+        ) {
+          throw new Error("proposal queue response is incomplete");
+        }
+        return page;
+      }),
     enabled: useOperator(),
   });
 }

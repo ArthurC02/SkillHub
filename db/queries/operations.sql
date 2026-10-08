@@ -199,12 +199,25 @@ SET status = @status, finished_at = now(), outcome = @outcome
 WHERE id = @id AND status = 'running';
 
 -- name: ListProposals :many
-SELECT p.id, a.name AS agent, p.action, p.tier, p.reason, p.status, p.proposed_at, p.expires_at, p.finished_at
-FROM platform_agent_proposals p
-JOIN platform_agents a ON a.id = p.agent_id
-WHERE p.status = ANY (@live::text[]) OR p.finished_at >= @closed_since
-ORDER BY p.proposed_at DESC
-LIMIT @row_limit;
+WITH eligible AS (
+    SELECT p.id, a.name AS agent, p.action, p.tier, p.reason, p.status, p.proposed_at, p.expires_at, p.finished_at
+    FROM platform_agent_proposals p
+    JOIN platform_agents a ON a.id = p.agent_id
+    WHERE p.status = ANY (@unbounded::text[])
+        OR (p.status = ANY (@recent::text[]) AND p.finished_at >= @closed_since)
+), ordered AS (
+    SELECT *, 0 AS priority, expires_at AS pending_sort, NULL::timestamptz AS other_sort
+    FROM eligible WHERE status = @pending_status
+    UNION ALL
+    SELECT *, 1 AS priority, NULL::timestamptz AS pending_sort,
+        coalesce(finished_at, proposed_at) AS other_sort
+    FROM eligible WHERE status <> @pending_status
+)
+SELECT id, agent, action, tier, reason, status, proposed_at, expires_at, finished_at,
+    count(*) OVER() AS total
+FROM ordered
+ORDER BY priority, pending_sort ASC NULLS LAST, other_sort DESC NULLS LAST, id DESC
+LIMIT @row_limit::int OFFSET @row_offset::int;
 
 -- name: GetProposal :one
 SELECT p.id, a.name AS agent, p.run_id, p.action, p.tier, p.reason, p.cites, p.preview, p.status,

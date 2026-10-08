@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -16,7 +17,7 @@ import (
 )
 
 const (
-	proposalListLimit   = 100
+	proposalListLimit   = 20
 	closedProposalShown = 7 * 24 * time.Hour
 )
 
@@ -46,12 +47,44 @@ type proposalDetailView struct {
 
 type proposalsResponse struct {
 	Proposals []proposalView `json:"proposals"`
+	Total     int64          `json:"total"`
 }
 
-func (s *Service) Proposals(ctx context.Context, now time.Time) ([]gen.ListProposalsRow, error) {
-	return gen.New(s.Pool).ListProposals(ctx, gen.ListProposalsParams{
-		Live: liveProposalStatuses, ClosedSince: pgconv.Timestamptz(now.Add(-closedProposalShown)), RowLimit: proposalListLimit,
-	})
+func (s *Service) Proposals(ctx context.Context, now time.Time, view string, offset int32) ([]gen.ListProposalsRow, int64, error) {
+	queries := gen.New(s.Pool)
+	closed := []string{string(ProposalRejected), string(ProposalExpired), string(ProposalSucceeded), string(ProposalFailed)}
+	unbounded, recent := liveProposalStatuses, closed
+	switch view {
+	case "proposed":
+		unbounded, recent = []string{string(ProposalProposed)}, nil
+	case "processing":
+		unbounded, recent = []string{string(ProposalApproved), string(ProposalRunning)}, nil
+	case "closed":
+		unbounded, recent = nil, closed
+	}
+	params := gen.ListProposalsParams{
+		Unbounded: unbounded, Recent: recent, PendingStatus: string(ProposalProposed),
+		ClosedSince: pgconv.Timestamptz(now.Add(-closedProposalShown)), RowOffset: offset, RowLimit: proposalListLimit,
+	}
+	rows, err := queries.ListProposals(ctx, params)
+	if err != nil {
+		return nil, 0, err
+	}
+	if len(rows) > 0 {
+		return rows, rows[0].Total, nil
+	}
+	if offset == 0 {
+		return rows, 0, nil
+	}
+	params.RowOffset, params.RowLimit = 0, 1
+	first, err := queries.ListProposals(ctx, params)
+	if err != nil {
+		return nil, 0, err
+	}
+	if len(first) > 0 {
+		return rows, first[0].Total, nil
+	}
+	return rows, 0, nil
 }
 
 func (s *Service) Proposal(ctx context.Context, id pgtype.UUID) (gen.GetProposalRow, error) {
@@ -63,12 +96,32 @@ func (s *Service) Proposal(ctx context.Context, id pgtype.UUID) (gen.GetProposal
 }
 
 func (h *Handler) Proposals(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.Svc.Proposals(r.Context(), time.Now())
+	query := r.URL.Query()
+	view := "all"
+	if query.Has("view") {
+		view = query.Get("view")
+	}
+	switch view {
+	case "all", "proposed", "processing", "closed":
+	default:
+		httpx.WriteError(w, http.StatusBadRequest, "view must be all, proposed, processing or closed")
+		return
+	}
+	var offset int32
+	if query.Has("offset") {
+		parsed, err := strconv.ParseInt(query.Get("offset"), 10, 32)
+		if err != nil || parsed < 0 {
+			httpx.WriteError(w, http.StatusBadRequest, "offset must be a nonnegative integer")
+			return
+		}
+		offset = int32(parsed)
+	}
+	rows, total, err := h.Svc.Proposals(r.Context(), time.Now(), view, offset)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "proposal lookup failed")
 		return
 	}
-	response := proposalsResponse{Proposals: make([]proposalView, len(rows))}
+	response := proposalsResponse{Proposals: make([]proposalView, len(rows)), Total: total}
 	for i, row := range rows {
 		response.Proposals[i] = proposalView{
 			ID: pgconv.UUIDString(row.ID), Agent: row.Agent, Action: row.Action, Tier: row.Tier, Reason: row.Reason,

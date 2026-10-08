@@ -10,6 +10,7 @@ import { daysOf, seriesOf, usd } from "./admin.service";
 import {
   ADMIN_AGENT_FINDINGS,
   ADMIN_AGENT_PROPOSAL,
+  ADMIN_AGENT_PROPOSALS,
   ADMIN_AGENT_RUNS,
   ADMIN_AGENT_STEPS,
   ADMIN_AGENTS,
@@ -56,14 +57,14 @@ afterEach(async () => {
 
 function stub(
   operator: boolean,
-  override: (path: string, method: string) => Reply = () => undefined,
+  override: (path: string, method: string, url: string) => Reply = () => undefined,
 ) {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     const path = url.split("?")[0];
     const method = init?.method ?? "GET";
     calls.push({ method, url, body: init?.body ? JSON.parse(String(init.body)) : undefined });
-    const { body, status } = override(path, method) ?? platformResponse(url);
+    const { body, status } = override(path, method, url) ?? platformResponse(url);
     const payload = path === "/me" ? { ...(body as object), operator } : body;
     return Promise.resolve(
       new Response(status === 204 ? null : JSON.stringify(payload), {
@@ -1112,7 +1113,82 @@ test("OPS-013: the waiting proposals show what each would run, its tier and why"
   expect(has("待核准")()).toBe(true);
   expect(has("破壞性")()).toBe(true);
   expect(has("分割表輪替從來沒有成功過，建議現在補跑一次。")()).toBe(true);
-  expect(calls.some((c) => c.url === "/admin/agents/proposals")).toBe(true);
+  expect(calls.some((c) => c.url === "/admin/agents/proposals?view=proposed&offset=0")).toBe(true);
+});
+
+test("the proposal queue reports all waiting decisions and lets an operator reach the next page", async () => {
+  const firstPage = Array.from({ length: 20 }, (_, index) => ({
+    ...ADMIN_AGENT_PROPOSALS.proposals[0],
+    id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+  }));
+  const remaining = {
+    ...ADMIN_AGENT_PROPOSALS.proposals[0],
+    id: "8e2f3a4b-5c6d-4e7f-8a9b-0c1d2e3f4a5b",
+    reason: "第二頁仍有待核准提案。",
+  };
+  const secondPage = [
+    remaining,
+    ...Array.from({ length: 19 }, (_, index) => ({
+      ...ADMIN_AGENT_PROPOSALS.proposals[0],
+      id: `00000000-0000-4000-8001-${String(index).padStart(12, "0")}`,
+    })),
+  ];
+  stub(true, (path, _method, url) => {
+    if (path !== "/admin/agents/proposals") return undefined;
+    if (url.includes("view=proposed&offset=20")) {
+      return { body: { proposals: secondPage, total: 101 }, status: 200 };
+    }
+    if (url.includes("view=proposed")) {
+      return { body: { proposals: firstPage, total: 101 }, status: 200 };
+    }
+    if (url.includes("view=closed")) {
+      return {
+        body: { proposals: [{ ...remaining, status: "expired" }], total: 1 },
+        status: 200,
+      };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/agents");
+  await waitFor(has("待核准 101 件"));
+  expect(has("共 101 件")()).toBe(true);
+  await click(button("下一頁"));
+  await waitFor(has("第二頁仍有待核准提案。"));
+  expect(calls.some((c) => c.url === "/admin/agents/proposals?view=proposed&offset=20")).toBe(true);
+  await type("#admin-proposal-view", "closed");
+  await waitFor(has("最近七天結案：共 1 件"));
+  expect(has("待核准 101 件")()).toBe(true);
+});
+
+test.each([
+  {
+    name: "valid queue position",
+    search: { proposal_view: "closed", proposal_offset: "20" },
+    url: "/admin/agents/proposals?view=closed&offset=20",
+  },
+  {
+    name: "invalid queue position",
+    search: { proposal_view: "unknown", proposal_offset: "-1" },
+    url: "/admin/agents/proposals?view=proposed&offset=0",
+  },
+])("a $name in the address selects the correct proposal page", async ({ search, url }) => {
+  stub(true);
+  await mountAt("/admin/agents", search);
+  await waitFor(() => calls.some((call) => call.url === url));
+});
+
+test.each([
+  { name: "no total", body: { proposals: ADMIN_AGENT_PROPOSALS.proposals } },
+  { name: "a negative total", body: { proposals: ADMIN_AGENT_PROPOSALS.proposals, total: -1 } },
+  {
+    name: "fewer total items than shown",
+    body: { proposals: ADMIN_AGENT_PROPOSALS.proposals, total: 0 },
+  },
+])("a proposal response with $name cannot become a decision claim", async ({ body }) => {
+  stub(true, (path) => (path === "/admin/agents/proposals" ? { body, status: 200 } : undefined));
+  await mountAt("/admin/agents");
+  await waitFor(has("待核准 無法取得"));
+  expect(has("打開這個提案")()).toBe(false);
 });
 
 test("OPS-013: a proposal opens with what would happen and the facts it rests on", async () => {
@@ -1317,7 +1393,7 @@ test.each([
     stub(true, (requestPath) => {
       if (requestPath !== path || !refreshed) return undefined;
       return path.endsWith("proposals")
-        ? { body: { proposals: [] }, status: 200 }
+        ? { body: { proposals: [], total: 0 }, status: 200 }
         : {
             body: {
               findings: [],
@@ -1336,7 +1412,7 @@ test.each([
     await click(sectionNode.querySelector<HTMLButtonElement>("button")!);
     await waitFor(() => !sectionNode.querySelector(".download-item"));
     expect(sectionNode.textContent).toContain("0 件");
-    expect(calls.filter((c) => c.url === path).length).toBeGreaterThan(1);
+    expect(calls.filter((c) => c.url.startsWith(path)).length).toBeGreaterThan(1);
   },
 );
 

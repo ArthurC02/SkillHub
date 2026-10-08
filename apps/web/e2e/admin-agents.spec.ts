@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { AGENT_REPORT_RUN } from "../src/testing/fixtures/platform";
+import { ADMIN_AGENT_PROPOSALS, AGENT_REPORT_RUN } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
 test("the agent workbench opens one decision at a time on a narrow screen", async ({ page }) => {
@@ -26,6 +26,41 @@ test("the agent workbench opens one decision at a time on a narrow screen", asyn
   await expect(page.getByRole("heading", { name: "這件事" })).toBeVisible();
   await expect(workbench).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("the proposal queue keeps its decision count and page across navigation and reload", async ({
+  page,
+}) => {
+  await stubPlatform(page);
+  const base = ADMIN_AGENT_PROPOSALS.proposals[0];
+  await page.route(/\/admin\/agents\/proposals\?/, (route) => {
+    const url = new URL(route.request().url());
+    const view = url.searchParams.get("view");
+    const offset = Number(url.searchParams.get("offset"));
+    if (view === "closed") {
+      return route.fulfill({ json: { proposals: [{ ...base, status: "expired" }], total: 1 } });
+    }
+    const proposals = Array.from({ length: 20 }, (_, index) => ({
+      ...base,
+      id: `00000000-0000-4000-8000-${String(offset + index).padStart(12, "0")}`,
+      reason: offset === 20 && index === 0 ? "第二頁仍有待核准提案。" : base.reason,
+    }));
+    return route.fulfill({ json: { proposals, total: 101 } });
+  });
+  await page.goto("/admin/agents");
+  await expect(page.getByRole("navigation", { name: "平台 Agent 工作區" })).toContainText(
+    "待核准 101 件",
+  );
+  const queue = page.locator("#admin-agent-proposals");
+  await expect(queue.locator(".download-item")).toHaveCount(20);
+  await queue.getByRole("button", { name: "下一頁" }).click();
+  await expect(page).toHaveURL(/proposal_offset=20/);
+  await expect(queue.getByText("第二頁仍有待核准提案。")).toBeVisible();
+  await page.reload();
+  await expect(queue.getByText("第二頁仍有待核准提案。")).toBeVisible();
+  await queue.getByLabel("查看提案清單").selectOption("closed");
+  await expect(page).toHaveURL(/proposal_view=closed/);
+  await expect(queue).toContainText("最近七天結案：共 1 件");
 });
 
 test("a linked agent run shows its report before the collapsed raw steps", async ({ page }) => {

@@ -438,6 +438,70 @@ func TestOperatorsListLiveAndRecentlyClosedProposals(t *testing.T) {
 	}
 }
 
+func TestProposalQueueCountsAndPagesWaitingBeforeClosed(t *testing.T) {
+	const path = "/admin/agents/proposals"
+	w := newProposalWorld(t, "agent-proposals-paged", operations.Action{
+		Name: "run-test-proposal-paged", Tier: operations.TierDestructive, Preview: fixedPreview(),
+	})
+	waitingTotal := countRow(t, testPool, "SELECT count(*) FROM platform_agent_proposals WHERE status = 'proposed'")
+	allTotal := countRow(t, testPool, "SELECT count(*) FROM platform_agent_proposals WHERE status IN ('proposed', 'approved', 'running') OR finished_at >= now() - interval '7 days'")
+	closedTotal := countRow(t, testPool, "SELECT count(*) FROM platform_agent_proposals WHERE status NOT IN ('proposed', 'approved', 'running') AND finished_at >= now() - interval '7 days'")
+	w.propose(proposal("run-test-proposal-paged", "review this", "/jobs/purge/overdue"))
+	base := w.proposals()[0].id
+	if _, err := testPool.Exec(context.Background(), `
+		UPDATE platform_agent_proposals
+		SET proposed_at = now() - interval '3 days', expires_at = now() + interval '2 days'
+		WHERE id = $1`, base); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := testPool.Exec(context.Background(), `
+		INSERT INTO platform_agent_proposals
+		    (agent_id, run_id, action, tier, reason, cites, preview, status, proposed_at, expires_at)
+		SELECT agent_id, run_id, 'paged-waiting-' || n, tier, reason, cites, preview,
+		    'proposed', now() - interval '1 day', now() + interval '1 day'
+		FROM platform_agent_proposals CROSS JOIN generate_series(1, 100) AS n
+		WHERE id = $1`, base); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := testPool.Exec(context.Background(), `
+		INSERT INTO platform_agent_proposals
+		    (agent_id, run_id, action, tier, reason, cites, preview, status, proposed_at, expires_at, finished_at)
+		SELECT agent_id, run_id, 'paged-closed-' || n, tier, reason, cites, preview,
+		    'expired', now() - interval '2 hours', now() - interval '1 hour', now()
+		FROM platform_agent_proposals CROSS JOIN generate_series(1, 101) AS n
+		WHERE id = $1`, base); err != nil {
+		t.Fatal(err)
+	}
+
+	code, all := operatorCall(t, w.operator, http.MethodGet, path, "")
+	if code != http.StatusOK || all["total"] != float64(allTotal+202) || len(all["proposals"].([]any)) != 20 {
+		t.Fatalf("all proposals: %d %v, want 202 more than before", code, all)
+	}
+	for _, item := range all["proposals"].([]any) {
+		if item.(map[string]any)["status"] != "proposed" {
+			t.Fatalf("closed proposal preceded a waiting decision: %v", item)
+		}
+	}
+	code, waiting := operatorCall(t, w.operator, http.MethodGet, path+"?view=proposed&offset=100", "")
+	if code != http.StatusOK || waiting["total"] != float64(waitingTotal+101) || len(waiting["proposals"].([]any)) == 0 {
+		t.Fatalf("second waiting page: %d %v, want the remaining decisions and their exact total", code, waiting)
+	}
+	code, closed := operatorCall(t, w.operator, http.MethodGet, path+"?view=closed", "")
+	if code != http.StatusOK || closed["total"] != float64(closedTotal+101) {
+		t.Fatalf("closed proposals: %d %v, want the recently closed queue", code, closed)
+	}
+	code, beyond := operatorCall(t, w.operator, http.MethodGet, path+"?view=proposed&offset=1000", "")
+	if code != http.StatusOK || beyond["total"] != float64(waitingTotal+101) || len(beyond["proposals"].([]any)) != 0 {
+		t.Fatalf("past the final page: %d %v, want an empty page with the exact total", code, beyond)
+	}
+	for _, bad := range []string{"?view=unknown", "?offset=-1", "?offset=abc", "?offset=2147483648"} {
+		code, _ := operatorCall(t, w.operator, http.MethodGet, path+bad, "")
+		if code != http.StatusBadRequest {
+			t.Errorf("%s: %d, want 400", bad, code)
+		}
+	}
+}
+
 func containsAll(list []string, want ...string) bool {
 	for _, w := range want {
 		found := false

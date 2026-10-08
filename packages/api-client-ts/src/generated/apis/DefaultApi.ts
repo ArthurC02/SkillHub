@@ -1361,6 +1361,17 @@ export interface ListPlatformAgentFindingsRequest {
     status?: ListPlatformAgentFindingsStatusEnum;
 }
 
+export interface ListPlatformAgentProposalsRequest {
+    /**
+     * Which proposal queue to show; all is the default.
+     */
+    view?: ListPlatformAgentProposalsViewEnum;
+    /**
+     * Number of proposals to skip in the selected view.
+     */
+    offset?: number;
+}
+
 export interface ListPlatformAgentRunStepsRequest {
     /**
      * 
@@ -4012,25 +4023,29 @@ export interface DefaultApiInterface {
 
     /**
      * Creates request options for listPlatformAgentProposals without sending the request
+     * @param {'all' | 'proposed' | 'processing' | 'closed'} [view] Which proposal queue to show; all is the default.
+     * @param {number} [offset] Number of proposals to skip in the selected view.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    listPlatformAgentProposalsRequestOpts(): Promise<runtime.RequestOpts>;
+    listPlatformAgentProposalsRequestOpts(requestParameters: ListPlatformAgentProposalsRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Operator only. Every proposal still waiting, approved or running, and every one that closed within the last seven days, newest first, at most 100. 
+     * Operator only. Waiting proposals, approved or running proposals, and proposals closed within the last seven days. Each page has at most 20 items. Waiting proposals come first, nearest expiry first; other items are newest first. The total counts every item in the selected view. 
      * @summary The actions agents proposed (02:OPS-013)
+     * @param {'all' | 'proposed' | 'processing' | 'closed'} [view] Which proposal queue to show; all is the default.
+     * @param {number} [offset] Number of proposals to skip in the selected view.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    listPlatformAgentProposalsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgentProposals200Response>>;
+    listPlatformAgentProposalsRaw(requestParameters: ListPlatformAgentProposalsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgentProposals200Response>>;
 
     /**
-     * Operator only. Every proposal still waiting, approved or running, and every one that closed within the last seven days, newest first, at most 100. 
+     * Operator only. Waiting proposals, approved or running proposals, and proposals closed within the last seven days. Each page has at most 20 items. Waiting proposals come first, nearest expiry first; other items are newest first. The total counts every item in the selected view. 
      * The actions agents proposed (02:OPS-013)
      */
-    listPlatformAgentProposals(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentProposals200Response>;
+    listPlatformAgentProposals(requestParameters: ListPlatformAgentProposalsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentProposals200Response>;
 
     /**
      * Creates request options for listPlatformAgentRunSteps without sending the request
@@ -9351,8 +9366,16 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     /**
      * Creates request options for listPlatformAgentProposals without sending the request
      */
-    async listPlatformAgentProposalsRequestOpts(): Promise<runtime.RequestOpts> {
+    async listPlatformAgentProposalsRequestOpts(requestParameters: ListPlatformAgentProposalsRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
+
+        if (requestParameters['view'] != null) {
+            queryParameters['view'] = requestParameters['view'];
+        }
+
+        if (requestParameters['offset'] != null) {
+            queryParameters['offset'] = requestParameters['offset'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -9368,22 +9391,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Every proposal still waiting, approved or running, and every one that closed within the last seven days, newest first, at most 100. 
+     * Operator only. Waiting proposals, approved or running proposals, and proposals closed within the last seven days. Each page has at most 20 items. Waiting proposals come first, nearest expiry first; other items are newest first. The total counts every item in the selected view. 
      * The actions agents proposed (02:OPS-013)
      */
-    async listPlatformAgentProposalsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgentProposals200Response>> {
-        const requestOptions = await this.listPlatformAgentProposalsRequestOpts();
+    async listPlatformAgentProposalsRaw(requestParameters: ListPlatformAgentProposalsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgentProposals200Response>> {
+        const requestOptions = await this.listPlatformAgentProposalsRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ListPlatformAgentProposals200ResponseFromJSON(jsonValue));
     }
 
     /**
-     * Operator only. Every proposal still waiting, approved or running, and every one that closed within the last seven days, newest first, at most 100. 
+     * Operator only. Waiting proposals, approved or running proposals, and proposals closed within the last seven days. Each page has at most 20 items. Waiting proposals come first, nearest expiry first; other items are newest first. The total counts every item in the selected view. 
      * The actions agents proposed (02:OPS-013)
      */
-    async listPlatformAgentProposals(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentProposals200Response> {
-        const response = await this.listPlatformAgentProposalsRaw(initOverrides);
+    async listPlatformAgentProposals(requestParameters: ListPlatformAgentProposalsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentProposals200Response> {
+        const response = await this.listPlatformAgentProposalsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -11780,6 +11803,16 @@ export const ListPlatformAgentFindingsStatusEnum = {
     Recovered: 'recovered',
 } as const;
 export type ListPlatformAgentFindingsStatusEnum = typeof ListPlatformAgentFindingsStatusEnum[keyof typeof ListPlatformAgentFindingsStatusEnum];
+/**
+ * @export
+ */
+export const ListPlatformAgentProposalsViewEnum = {
+    All: 'all',
+    Proposed: 'proposed',
+    Processing: 'processing',
+    Closed: 'closed',
+} as const;
+export type ListPlatformAgentProposalsViewEnum = typeof ListPlatformAgentProposalsViewEnum[keyof typeof ListPlatformAgentProposalsViewEnum];
 /**
  * @export
  */

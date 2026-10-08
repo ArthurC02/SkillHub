@@ -753,18 +753,34 @@ func (q *Queries) ListPlatformAgents(ctx context.Context) ([]PlatformAgent, erro
 }
 
 const listProposals = `-- name: ListProposals :many
-SELECT p.id, a.name AS agent, p.action, p.tier, p.reason, p.status, p.proposed_at, p.expires_at, p.finished_at
-FROM platform_agent_proposals p
-JOIN platform_agents a ON a.id = p.agent_id
-WHERE p.status = ANY ($1::text[]) OR p.finished_at >= $2
-ORDER BY p.proposed_at DESC
-LIMIT $3
+WITH eligible AS (
+    SELECT p.id, a.name AS agent, p.action, p.tier, p.reason, p.status, p.proposed_at, p.expires_at, p.finished_at
+    FROM platform_agent_proposals p
+    JOIN platform_agents a ON a.id = p.agent_id
+    WHERE p.status = ANY ($3::text[])
+        OR (p.status = ANY ($4::text[]) AND p.finished_at >= $5)
+), ordered AS (
+    SELECT id, agent, action, tier, reason, status, proposed_at, expires_at, finished_at, 0 AS priority, expires_at AS pending_sort, NULL::timestamptz AS other_sort
+    FROM eligible WHERE status = $6
+    UNION ALL
+    SELECT id, agent, action, tier, reason, status, proposed_at, expires_at, finished_at, 1 AS priority, NULL::timestamptz AS pending_sort,
+        coalesce(finished_at, proposed_at) AS other_sort
+    FROM eligible WHERE status <> $6
+)
+SELECT id, agent, action, tier, reason, status, proposed_at, expires_at, finished_at,
+    count(*) OVER() AS total
+FROM ordered
+ORDER BY priority, pending_sort ASC NULLS LAST, other_sort DESC NULLS LAST, id DESC
+LIMIT $2::int OFFSET $1::int
 `
 
 type ListProposalsParams struct {
-	Live        []string
-	ClosedSince pgtype.Timestamptz
-	RowLimit    int32
+	RowOffset     int32
+	RowLimit      int32
+	Unbounded     []string
+	Recent        []string
+	ClosedSince   pgtype.Timestamptz
+	PendingStatus string
 }
 
 type ListProposalsRow struct {
@@ -777,10 +793,18 @@ type ListProposalsRow struct {
 	ProposedAt pgtype.Timestamptz
 	ExpiresAt  pgtype.Timestamptz
 	FinishedAt pgtype.Timestamptz
+	Total      int64
 }
 
 func (q *Queries) ListProposals(ctx context.Context, arg ListProposalsParams) ([]ListProposalsRow, error) {
-	rows, err := q.db.Query(ctx, listProposals, arg.Live, arg.ClosedSince, arg.RowLimit)
+	rows, err := q.db.Query(ctx, listProposals,
+		arg.RowOffset,
+		arg.RowLimit,
+		arg.Unbounded,
+		arg.Recent,
+		arg.ClosedSince,
+		arg.PendingStatus,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -798,6 +822,7 @@ func (q *Queries) ListProposals(ctx context.Context, arg ListProposalsParams) ([
 			&i.ProposedAt,
 			&i.ExpiresAt,
 			&i.FinishedAt,
+			&i.Total,
 		); err != nil {
 			return nil, err
 		}

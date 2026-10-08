@@ -32,8 +32,7 @@ function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recov
   const findings = usePlatformAgentFindings(status);
   const runs = usePlatformAgentRuns();
   const pendingDecisions = readLabel(
-    proposals.data &&
-      `${proposals.data.proposals.filter((item) => item.status === "proposed").length} 件`,
+    proposals.data && `${proposals.data.total} 件`,
     proposals.error,
   );
   const liveFindings = readLabel(
@@ -72,7 +71,7 @@ function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recov
 
       <div className="agent-workbench-queues">
         <section id="admin-agent-proposals" aria-labelledby="admin-agent-proposals-heading">
-          <h2 id="admin-agent-proposals-heading">待核准</h2>
+          <h2 id="admin-agent-proposals-heading">提案</h2>
           <ProposalList />
         </section>
 

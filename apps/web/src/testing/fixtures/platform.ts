@@ -1362,6 +1362,7 @@ export const ADMIN_AGENT_FINDINGS = {
 export const AGENT_PROPOSAL = "7e2f3a4b-5c6d-4e7f-8a9b-0c1d2e3f4a5b";
 
 export const ADMIN_AGENT_PROPOSALS = {
+  total: 1,
   proposals: [
     {
       id: AGENT_PROPOSAL,
@@ -1374,7 +1375,7 @@ export const ADMIN_AGENT_PROPOSALS = {
       expires_at: "2026-10-09T02:00:00Z",
     },
   ],
-} satisfies { proposals: PlatformAgentProposal[] };
+} satisfies { proposals: PlatformAgentProposal[]; total: number };
 
 export const ADMIN_AGENT_PROPOSAL = {
   ...ADMIN_AGENT_PROPOSALS.proposals[0],

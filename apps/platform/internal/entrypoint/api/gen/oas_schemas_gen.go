@@ -7208,7 +7208,6 @@ func (*Error) listModelCallBudgetsRes()            {}
 func (*Error) listOwnBundleOverviewRes()           {}
 func (*Error) listOwnBundlesRes()                  {}
 func (*Error) listOwnPublicationsRes()             {}
-func (*Error) listPlatformAgentProposalsRes()      {}
 func (*Error) listPlatformAgentRunsRes()           {}
 func (*Error) listPlatformAgentsRes()              {}
 func (*Error) listSkillVersionsRes()               {}
@@ -12295,8 +12294,17 @@ func (s *ListPlatformAgentFindingsStatus) UnmarshalText(data []byte) error {
 	}
 }
 
+type ListPlatformAgentProposalsBadRequest Error
+
+func (*ListPlatformAgentProposalsBadRequest) listPlatformAgentProposalsRes() {}
+
+type ListPlatformAgentProposalsNotFound Error
+
+func (*ListPlatformAgentProposalsNotFound) listPlatformAgentProposalsRes() {}
+
 type ListPlatformAgentProposalsOK struct {
 	Proposals []PlatformAgentProposal `json:"proposals"`
+	Total     int                     `json:"total"`
 }
 
 // GetProposals returns the value of Proposals.
@@ -12304,12 +12312,77 @@ func (s *ListPlatformAgentProposalsOK) GetProposals() []PlatformAgentProposal {
 	return s.Proposals
 }
 
+// GetTotal returns the value of Total.
+func (s *ListPlatformAgentProposalsOK) GetTotal() int {
+	return s.Total
+}
+
 // SetProposals sets the value of Proposals.
 func (s *ListPlatformAgentProposalsOK) SetProposals(val []PlatformAgentProposal) {
 	s.Proposals = val
 }
 
+// SetTotal sets the value of Total.
+func (s *ListPlatformAgentProposalsOK) SetTotal(val int) {
+	s.Total = val
+}
+
 func (*ListPlatformAgentProposalsOK) listPlatformAgentProposalsRes() {}
+
+type ListPlatformAgentProposalsView string
+
+const (
+	ListPlatformAgentProposalsViewAll        ListPlatformAgentProposalsView = "all"
+	ListPlatformAgentProposalsViewProposed   ListPlatformAgentProposalsView = "proposed"
+	ListPlatformAgentProposalsViewProcessing ListPlatformAgentProposalsView = "processing"
+	ListPlatformAgentProposalsViewClosed     ListPlatformAgentProposalsView = "closed"
+)
+
+// AllValues returns all ListPlatformAgentProposalsView values.
+func (ListPlatformAgentProposalsView) AllValues() []ListPlatformAgentProposalsView {
+	return []ListPlatformAgentProposalsView{
+		ListPlatformAgentProposalsViewAll,
+		ListPlatformAgentProposalsViewProposed,
+		ListPlatformAgentProposalsViewProcessing,
+		ListPlatformAgentProposalsViewClosed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ListPlatformAgentProposalsView) MarshalText() ([]byte, error) {
+	switch s {
+	case ListPlatformAgentProposalsViewAll:
+		return []byte(s), nil
+	case ListPlatformAgentProposalsViewProposed:
+		return []byte(s), nil
+	case ListPlatformAgentProposalsViewProcessing:
+		return []byte(s), nil
+	case ListPlatformAgentProposalsViewClosed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ListPlatformAgentProposalsView) UnmarshalText(data []byte) error {
+	switch ListPlatformAgentProposalsView(data) {
+	case ListPlatformAgentProposalsViewAll:
+		*s = ListPlatformAgentProposalsViewAll
+		return nil
+	case ListPlatformAgentProposalsViewProposed:
+		*s = ListPlatformAgentProposalsViewProposed
+		return nil
+	case ListPlatformAgentProposalsViewProcessing:
+		*s = ListPlatformAgentProposalsViewProcessing
+		return nil
+	case ListPlatformAgentProposalsViewClosed:
+		*s = ListPlatformAgentProposalsViewClosed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 type ListPlatformAgentRunStepsBadRequest Error
 
@@ -15224,6 +15297,52 @@ func (o OptListPlatformAgentFindingsStatus) Get() (v ListPlatformAgentFindingsSt
 
 // Or returns value if set, or given parameter if does not.
 func (o OptListPlatformAgentFindingsStatus) Or(d ListPlatformAgentFindingsStatus) ListPlatformAgentFindingsStatus {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptListPlatformAgentProposalsView returns new OptListPlatformAgentProposalsView with value set to v.
+func NewOptListPlatformAgentProposalsView(v ListPlatformAgentProposalsView) OptListPlatformAgentProposalsView {
+	return OptListPlatformAgentProposalsView{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptListPlatformAgentProposalsView is optional ListPlatformAgentProposalsView.
+type OptListPlatformAgentProposalsView struct {
+	Value ListPlatformAgentProposalsView
+	Set   bool
+}
+
+// IsSet returns true if OptListPlatformAgentProposalsView was set.
+func (o OptListPlatformAgentProposalsView) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptListPlatformAgentProposalsView) Reset() {
+	var v ListPlatformAgentProposalsView
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptListPlatformAgentProposalsView) SetTo(v ListPlatformAgentProposalsView) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptListPlatformAgentProposalsView) Get() (v ListPlatformAgentProposalsView, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptListPlatformAgentProposalsView) Or(d ListPlatformAgentProposalsView) ListPlatformAgentProposalsView {
 	if v, ok := o.Get(); ok {
 		return v
 	}

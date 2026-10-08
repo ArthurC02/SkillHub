@@ -500,6 +500,8 @@ const adminAgentsRoute = createRoute({
     status?: "resolved" | "dismissed" | "recovered";
     finding?: string;
     proposal?: string;
+    proposal_view?: "proposed" | "processing" | "closed";
+    proposal_offset?: number;
     run?: string;
   } => ({
     status: (["resolved", "dismissed", "recovered"] as const).find((s) => s === search.status),
@@ -508,6 +510,15 @@ const adminAgentsRoute = createRoute({
     proposal:
       typeof search.proposal === "string" && UUID.test(search.proposal)
         ? search.proposal
+        : undefined,
+    proposal_view: (["proposed", "processing", "closed"] as const).find(
+      (view) => view === search.proposal_view,
+    ),
+    proposal_offset:
+      /^\d+$/.test(String(search.proposal_offset)) &&
+      Number.isSafeInteger(Number(search.proposal_offset)) &&
+      Number(search.proposal_offset) <= 2147483647
+        ? Number(search.proposal_offset)
         : undefined,
     run: typeof search.run === "string" && UUID.test(search.run) ? search.run : undefined,
   }),

@@ -31,6 +31,10 @@ export interface ListPlatformAgentProposals200Response {
      * 
      */
     proposals: Array<PlatformAgentProposal>;
+    /**
+     * 
+     */
+    total: number;
 }
 
 /**
@@ -38,6 +42,7 @@ export interface ListPlatformAgentProposals200Response {
  */
 export function instanceOfListPlatformAgentProposals200Response(value: object): value is ListPlatformAgentProposals200Response {
     if (!('proposals' in value) || value['proposals'] === undefined) return false;
+    if (!('total' in value) || value['total'] === undefined) return false;
     return true;
 }
 
@@ -52,6 +57,7 @@ export function ListPlatformAgentProposals200ResponseFromJSONTyped(json: any, ig
     return {
         
         'proposals': ((json['proposals'] as Array<any>).map(PlatformAgentProposalFromJSON)),
+        'total': json['total'],
     };
 }
 
@@ -67,6 +73,7 @@ export function ListPlatformAgentProposals200ResponseToJSONTyped(value?: ListPla
     return {
         
         'proposals': ((value['proposals'] as Array<any>).map(PlatformAgentProposalToJSON)),
+        'total': value['total'],
     };
 }
 

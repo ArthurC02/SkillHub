@@ -303,7 +303,7 @@ Catalog landing `/` 的 `<h1>` 是名詞化的產品承諾 `探索能直接採�
 | `/admin/skills` | `q` | 你在治理哪一個 Skill（`02:OPS-004`）：一個 UUID 就是那一個，其他字串是名稱片段；清單上「處理這一個」把 `q` 換成那個 UUID，所以處理中的那一個可以連結、撐得過重新整理 |
 | `/admin/exposure` | `publication` | 你在審哪一個發佈物（`02:DISC-007`）：`發佈者/名稱` 這一對就是那一筆；清單上「審這一筆」把它放進網址，所以審到一半的那一筆可以連結、撐得過重新整理；不是這個形狀的值丟掉、回到只有清單 |
 | `/admin/trends` | `days` | 你在看哪一段資料（`02:OPS-008`）：7、30 或 90 天，其他值丟掉、回到預設的 30；分享出去的連結重現同一段 |
-| `/admin/agents` | `status`（已解決、已忽略、已自行恢復三種）、`finding`（須為 UUID）、`proposal`（須為 UUID）、`run`（須為 UUID） | 平台 Agent 的待辦收件匣與提案（`02:OPS-012`、`02:OPS-013`）：`status` 是你在看哪一疊已關閉的事，沒有它就是待辦（待處理與處理中）；`finding` 是你打開的那一件事，`proposal` 是你打開的那一個提案，`run` 是你在看哪一次執行的日報與步驟。四者都讓那一畫面可以連結、撐得過重新整理；不合形狀的值丟掉，回到清單 |
+| `/admin/agents` | `status`（已解決、已忽略、已自行恢復三種）、`finding`（須為 UUID）、`proposal`（須為 UUID）、`proposal_view`（待核准、處理中、最近結案三種）、`proposal_offset`（非負整數）、`run`（須為 UUID） | 平台 Agent 的待辦收件匣與提案（`02:OPS-012`、`02:OPS-013`）：`status` 是你在看哪一疊已關閉的事，沒有它就是待辦（待處理與處理中）；`finding`、`proposal`、`run` 各是正在打開的待辦、提案與執行；`proposal_view` 與 `proposal_offset` 指明提案清單的工作位置，沒有時從待核准的第一頁開始。這些都是「正在看哪一份東西」，可連結且重整後不遺失；不合形狀的值丟掉，回到預設 |
 
 **其餘十七條路由沒有 `validateSearch`**（33 條路由減去上表的 16 條）（`/skills/$id`、`/skills/$id/files`、`/skills/$id/versions/$versionId`、五條不含網址狀態的 `/workspace` 與 `/workspace/*`、`/policy` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
 

@@ -347,6 +347,14 @@ type ListPlatformAgentFindingsParams struct {
 	Status OptListPlatformAgentFindingsStatus `json:",omitempty,omitzero"`
 }
 
+// ListPlatformAgentProposalsParams is parameters of listPlatformAgentProposals operation.
+type ListPlatformAgentProposalsParams struct {
+	// Which proposal queue to show; all is the default.
+	View OptListPlatformAgentProposalsView `json:",omitempty,omitzero"`
+	// Number of proposals to skip in the selected view.
+	Offset OptInt `json:",omitempty,omitzero"`
+}
+
 // ListPlatformAgentRunStepsParams is parameters of listPlatformAgentRunSteps operation.
 type ListPlatformAgentRunStepsParams struct {
 	ID uuid.UUID
