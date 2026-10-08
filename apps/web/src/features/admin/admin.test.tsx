@@ -172,6 +172,57 @@ test("the admin home keeps decisions and operations inside Governing", async () 
   expect(has("Conducting")()).toBe(false);
 });
 
+test("the admin home leads with live operational priorities", async () => {
+  stub(true);
+  await mountAt("/admin");
+  await waitFor(has("停止派送"));
+
+  const priorities = field<HTMLElement>('[aria-label="目前需留意"]');
+  expect(priorities.querySelector('a[href="/admin/dispatch"]')?.textContent).toContain("停止派送");
+  const agentPriorities = Array.from(
+    priorities.querySelectorAll('a[href="/admin/agents"]'),
+    (item) => item.textContent,
+  );
+  expect(agentPriorities).toEqual(
+    expect.arrayContaining([
+      expect.stringContaining("1 件待核准"),
+      expect.stringContaining("2 件待辦"),
+    ]),
+  );
+  expect(priorities.querySelector('a[href="/admin/exposure"]')?.textContent).toContain("1 件待審");
+});
+
+test("the admin home does not mistake a failed priority read for an empty queue", async () => {
+  stub(true, (path) =>
+    path === "/admin/agents/proposals"
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin");
+  await waitFor(has("無法取得"));
+
+  const priorities = field<HTMLElement>('[aria-label="目前需留意"]');
+  expect(priorities.querySelector('a[href="/admin/agents"]')?.textContent).toContain("無法取得");
+  expect(priorities.querySelector('a[href="/admin/agents"]')?.textContent).not.toContain(
+    "0 件待核准",
+  );
+});
+
+test("the admin home can refresh operational state without leaving the page", async () => {
+  let dispatchReads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/dispatch") return undefined;
+    dispatchReads += 1;
+    return { body: { dispatching: dispatchReads > 1, halts: [] }, status: 200 };
+  });
+  await mountAt("/admin");
+  await waitFor(has("停止派送"));
+
+  await click(button("重新整理狀態"));
+  await waitFor(has("正在派送"));
+  expect(dispatchReads).toBe(2);
+});
+
 test("OPS-001: the admin page stays loading while the operator check is pending", async () => {
   vi.stubGlobal("fetch", () => new Promise<Response>(() => {}));
   await mountAt("/admin");
@@ -565,7 +616,9 @@ test("OPS-006: the audit log names actions in words and folds the metadata", asy
   expect(has("credit_entry")()).toBe(false);
   expect(field<HTMLElement>(".table-scroll").tabIndex).toBe(-1);
   const table = field<HTMLTableElement>("table.responsive-table");
-  const labels = ["時間", "動作", "operator", "對象", "內容"];
+  const labels = ["時間", "動作", "行為者", "對象", "內容"];
+  expect(table.caption?.textContent).toBe("全平台動作紀錄，新的在上面");
+  expect(has("已載入 2 筆動作紀錄")()).toBe(true);
   expect(Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent)).toEqual(
     labels,
   );
@@ -662,6 +715,7 @@ test("OPS-006: a full page of 50 stops, the 51st event offers the next page", as
   await mountAt("/admin/audit-log");
   await waitFor(() => container.querySelectorAll("tbody tr").length === 50);
   expect(button("載入更多")).toBeDefined();
+  expect(has("已載入 50 筆動作紀錄；還有更多")()).toBe(true);
   expect(
     calls
       .filter((c) => c.url.startsWith("/admin/audit-log"))

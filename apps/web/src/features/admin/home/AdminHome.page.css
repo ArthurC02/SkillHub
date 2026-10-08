@@ -1,7 +1,66 @@
+.admin-home-priorities {
+  margin-top: 24px;
+}
+
+.admin-home-priorities > header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.admin-home-priorities h2 {
+  margin: 0;
+}
+
+.admin-home-priority-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 12px;
+}
+
+.admin-home-priority {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  color: var(--text);
+  text-decoration: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.admin-home-priority strong {
+  color: var(--text-h);
+  font-size: 20px;
+}
+
+.admin-home-priority:hover {
+  border-color: var(--accent-border);
+}
+
+.admin-home-priority[data-state="halt"] {
+  background: var(--danger-bg);
+  border-left: 3px solid var(--danger);
+}
+
+.admin-home-priority[data-state="halt"] strong {
+  color: var(--danger);
+}
+
+.admin-home-priority[data-state="pending"] {
+  background: var(--warning-bg);
+  border-left: 3px solid var(--warning);
+}
+
 .admin-home-sections {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
+  align-items: start;
   margin-top: 24px;
 }
 
@@ -40,33 +99,16 @@
 }
 
 .admin-home-list > li {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-  padding: 16px 20px;
+  padding: 12px 20px;
 }
 
 .admin-home-list > li + li {
   border-top: 1px solid var(--border);
 }
 
-.admin-home-index {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  place-items: center;
-  color: var(--link);
-  font-family: var(--mono);
-  font-size: 12px;
-  background: var(--accent-bg);
-  border: 1px solid var(--accent-border);
-  border-radius: 10px;
-}
-
 .admin-home-list a {
   color: var(--text-h);
-  font-size: 18px;
+  font-size: 16px;
   text-decoration: none;
 }
 
@@ -87,12 +129,25 @@
 }
 
 @media (max-width: 640px) {
+  .admin-home-priority-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .admin-home-priority {
+    padding: 12px;
+  }
+
+  .admin-home-priority strong {
+    font-size: 16px;
+  }
+
   .admin-home-section {
     border-radius: 12px;
   }
 
   .admin-home-section > header,
   .admin-home-list > li {
-    padding: 16px;
+    padding: 12px 16px;
   }
 }

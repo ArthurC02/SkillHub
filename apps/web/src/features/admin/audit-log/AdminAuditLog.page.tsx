@@ -37,44 +37,49 @@ export function AdminAuditLog() {
       <ReadFailure error={log.error} what="動作紀錄" />
       {log.data &&
         (rows.length === 0 ? (
-          <p>operator 動作：0 筆。</p>
+          <p>動作紀錄：0 筆。</p>
         ) : (
-          <div className="table-scroll">
-            <table className="responsive-table">
-              <caption>operator 動作，新的在上面</caption>
-              <thead>
-                <tr>
-                  <th scope="col">時間</th>
-                  <th scope="col">動作</th>
-                  <th scope="col">operator</th>
-                  <th scope="col">對象</th>
-                  <th scope="col">內容</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((event, index) => (
-                  <tr key={`${event.action}-${index}`}>
-                    <td data-label="時間">
-                      <Timestamp at={event.occurred_at} />
-                    </td>
-                    <th scope="row" data-label="動作">
-                      {ACTION_LABEL[event.action] ?? event.action}
-                    </th>
-                    <td data-label="operator">
-                      <ActorCell event={event} />
-                    </td>
-                    <td data-label="對象">
-                      {RESOURCE_LABEL[event.resource_type] ?? event.resource_type}{" "}
-                      <code>{event.resource_id ?? "不適用"}</code>
-                    </td>
-                    <td data-label="內容">
-                      <MetadataCell metadata={event.metadata} />
-                    </td>
+          <>
+            <div className="table-scroll">
+              <table className="responsive-table">
+                <caption>全平台動作紀錄，新的在上面</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">時間</th>
+                    <th scope="col">動作</th>
+                    <th scope="col">行為者</th>
+                    <th scope="col">對象</th>
+                    <th scope="col">內容</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {rows.map((event, index) => (
+                    <tr key={`${event.action}-${index}`}>
+                      <td data-label="時間">
+                        <Timestamp at={event.occurred_at} />
+                      </td>
+                      <th scope="row" data-label="動作">
+                        {ACTION_LABEL[event.action] ?? event.action}
+                      </th>
+                      <td data-label="行為者">
+                        <ActorCell event={event} />
+                      </td>
+                      <td data-label="對象">
+                        {RESOURCE_LABEL[event.resource_type] ?? event.resource_type}{" "}
+                        <code>{event.resource_id ?? "不適用"}</code>
+                      </td>
+                      <td data-label="內容">
+                        <MetadataCell metadata={event.metadata} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="note" role="status">
+              已載入 {rows.length} 筆動作紀錄{log.hasNextPage ? "；還有更多。" : "。"}
+            </p>
+          </>
         ))}
       {log.hasNextPage && (
         <button type="button" disabled={log.isFetchingNextPage} onClick={() => log.fetchNextPage()}>

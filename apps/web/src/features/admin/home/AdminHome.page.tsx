@@ -1,13 +1,125 @@
 import { Link } from "@tanstack/react-router";
+import {
+  useDispatchStatus,
+  useExposureQueue,
+  usePlatformAgentFindings,
+  usePlatformAgentProposals,
+} from "../admin.service";
 import { AdminPage } from "../components/AdminPage";
 import "./AdminHome.page.css";
+
+function priorityText(value: string | undefined, error: Error | null): string {
+  if (error) return "無法取得";
+  return value ?? "讀取中";
+}
+
+function Priorities() {
+  const dispatch = useDispatchStatus();
+  const proposals = usePlatformAgentProposals();
+  const findings = usePlatformAgentFindings();
+  const exposure = useExposureQueue();
+  const fetching =
+    dispatch.isFetching || proposals.isFetching || findings.isFetching || exposure.isFetching;
+
+  return (
+    <section className="admin-home-priorities" aria-label="目前需留意">
+      <header>
+        <h2>目前需留意</h2>
+        <button
+          type="button"
+          disabled={fetching}
+          onClick={() =>
+            void Promise.all([
+              dispatch.refetch(),
+              proposals.refetch(),
+              findings.refetch(),
+              exposure.refetch(),
+            ])
+          }
+        >
+          {fetching ? "更新中…" : "重新整理狀態"}
+        </button>
+      </header>
+      <div className="admin-home-priority-list">
+        <Link
+          to="/admin/dispatch"
+          className="admin-home-priority"
+          data-state={
+            !dispatch.error && dispatch.data && !dispatch.data.dispatching ? "halt" : undefined
+          }
+        >
+          <span>派送狀態</span>
+          <strong>
+            {priorityText(
+              dispatch.data && (dispatch.data.dispatching ? "正在派送" : "停止派送"),
+              dispatch.error,
+            )}
+          </strong>
+        </Link>
+        <Link
+          to="/admin/agents"
+          search={{}}
+          className="admin-home-priority"
+          data-state={
+            !proposals.error && proposals.data && proposals.data.total > 0 ? "pending" : undefined
+          }
+        >
+          <span>平台 Agent 提案</span>
+          <strong>
+            {priorityText(proposals.data && `${proposals.data.total} 件待核准`, proposals.error)}
+          </strong>
+        </Link>
+        <Link
+          to="/admin/agents"
+          search={{}}
+          className="admin-home-priority"
+          data-state={
+            !findings.error &&
+            findings.data &&
+            findings.data.counts.open + findings.data.counts.acknowledged > 0
+              ? "pending"
+              : undefined
+          }
+        >
+          <span>平台 Agent 待辦</span>
+          <strong>
+            {priorityText(
+              findings.data &&
+                `${findings.data.counts.open + findings.data.counts.acknowledged} 件待辦`,
+              findings.error,
+            )}
+          </strong>
+        </Link>
+        <Link
+          to="/admin/exposure"
+          search={{}}
+          className="admin-home-priority"
+          data-state={
+            !exposure.error && exposure.data && exposure.data.publications.length > 0
+              ? "pending"
+              : undefined
+          }
+        >
+          <span>曝光審核</span>
+          <strong>
+            {priorityText(
+              exposure.data && `${exposure.data.publications.length} 件待審`,
+              exposure.error,
+            )}
+          </strong>
+        </Link>
+      </div>
+    </section>
+  );
+}
 
 export function AdminHome() {
   return (
     <AdminPage
       heading="營運後台"
-      lede="依工作目的進入平台治理與日常營運；每一區都只顯示它能採取的動作。"
+      lede="先確認派送與待處理事項，再依工作目的進入平台治理或日常營運。"
     >
+      <Priorities />
       <div className="admin-home-sections">
         <GovernanceSection />
         <OperationsSection />
@@ -26,9 +138,6 @@ function GovernanceSection() {
       </header>
       <ul className="admin-home-list">
         <li>
-          <span className="admin-home-index" aria-hidden="true">
-            01
-          </span>
           <div>
             <Link to="/admin/accounts">
               <strong>帳號與點數</strong>
@@ -37,9 +146,6 @@ function GovernanceSection() {
           </div>
         </li>
         <li>
-          <span className="admin-home-index" aria-hidden="true">
-            02
-          </span>
           <div>
             <Link to="/admin/skills" search={{}}>
               <strong>小工具治理</strong>
@@ -48,9 +154,6 @@ function GovernanceSection() {
           </div>
         </li>
         <li>
-          <span className="admin-home-index" aria-hidden="true">
-            03
-          </span>
           <div>
             <Link to="/admin/rosters">
               <strong>名冊</strong>
@@ -59,9 +162,6 @@ function GovernanceSection() {
           </div>
         </li>
         <li>
-          <span className="admin-home-index" aria-hidden="true">
-            04
-          </span>
           <div>
             <Link to="/admin/exposure" search={{}}>
               <strong>曝光審核</strong>
@@ -84,9 +184,6 @@ function OperationsSection() {
       </header>
       <ul className="admin-home-list">
         <li>
-          <span className="admin-home-index" aria-hidden="true">
-            05
-          </span>
           <div>
             <Link to="/admin/dispatch">
               <strong>派送煞車</strong>
@@ -95,20 +192,14 @@ function OperationsSection() {
           </div>
         </li>
         <li>
-          <span className="admin-home-index" aria-hidden="true">
-            06
-          </span>
           <div>
             <Link to="/admin/audit-log">
               <strong>動作紀錄</strong>
             </Link>
-            <p className="note">全平台 operator 做過的事，包括每一次查帳號與查點數。</p>
+            <p className="note">人員、平台 Agent 與平台自動執行的動作，包括查詢帳號與點數。</p>
           </div>
         </li>
         <li>
-          <span className="admin-home-index" aria-hidden="true">
-            07
-          </span>
           <div>
             <Link to="/admin/model-budgets">
               <strong>模型呼叫逾時</strong>
@@ -117,9 +208,6 @@ function OperationsSection() {
           </div>
         </li>
         <li>
-          <span className="admin-home-index" aria-hidden="true">
-            08
-          </span>
           <div>
             <Link to="/admin/cost-statistics">
               <strong>成本統計</strong>
@@ -128,9 +216,6 @@ function OperationsSection() {
           </div>
         </li>
         <li>
-          <span className="admin-home-index" aria-hidden="true">
-            09
-          </span>
           <div>
             <Link to="/admin/trends" search={{}}>
               <strong>趨勢</strong>
@@ -139,9 +224,6 @@ function OperationsSection() {
           </div>
         </li>
         <li>
-          <span className="admin-home-index" aria-hidden="true">
-            10
-          </span>
           <div>
             <Link to="/admin/agents" search={{}}>
               <strong>平台 Agent</strong>
