@@ -387,7 +387,7 @@ func (s *Service) advance(ctx context.Context, tx pgx.Tx, row gen.CreationSessio
 	if err != nil {
 		return r, err
 	}
-	err = q.AppendCreationEvent(ctx, gen.AppendCreationEventParams{SessionID: r.ID, WorkspaceID: r.WorkspaceID, Revision: r.Revision, EventType: event, Snapshot: b})
+	err = q.AppendCreationEvent(ctx, gen.AppendCreationEventParams{SessionID: r.ID, WorkspaceID: r.WorkspaceID, Revision: r.Revision, EventType: event, State: string(state)})
 	if err == nil && state.HasEnded() {
 		s.summarizeSession(ctx, tx, r.ID)
 	}

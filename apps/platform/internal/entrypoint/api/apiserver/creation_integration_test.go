@@ -314,7 +314,6 @@ func TestCreationDiagramUsesTransientWorkerAndStoresNoImage(t *testing.T) {
 	var found bool
 	err := testPool.QueryRow(context.Background(), `SELECT EXISTS(
  SELECT 1 FROM creation_sessions WHERE id=$1 AND snapshot::text LIKE '%'||$2||'%'
- UNION ALL SELECT 1 FROM creation_session_events WHERE session_id=$1 AND snapshot::text LIKE '%'||$2||'%'
  UNION ALL SELECT 1 FROM creation_receipts WHERE session_id=$1 AND (result::text||usage::text) LIKE '%'||$2||'%'
  UNION ALL SELECT 1 FROM river_job WHERE args->>'session_id'=$1::text AND args::text LIKE '%'||$2||'%')`, v.ID, image).Scan(&found)
 	if err != nil {
@@ -380,6 +379,35 @@ func TestTheMeasureHarnessAnswersEveryDiagramUncertaintyThroughTheAPI(t *testing
 		}
 	}
 }
+func TestEachCreationEventRecordsTheStateTheSessionMovedTo(t *testing.T) {
+	a, _, _ := creationFixture(t)
+	c := a.login(t, "creation-event-state")
+	started := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 200)
+	queued := creationPost(t, c, "/creation-sessions/"+started.ID+"/actions",
+		map[string]any{"command_id": creationID(t), "expected_revision": started.Revision, "kind": "message", "message": "建立摘要"}, 200)
+	if started.State != "waiting_input" || queued.State != "queued" {
+		t.Fatalf("states %q then %q, want waiting_input then queued", started.State, queued.State)
+	}
+	rows, err := testPool.Query(context.Background(), "SELECT event_type, state FROM creation_session_events WHERE session_id=$1 ORDER BY revision", started.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for rows.Next() {
+		var event, state string
+		if err := rows.Scan(&event, &state); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, event+"->"+state)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"created->waiting_input", "message->queued"}; strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("events %v, want %v", got, want)
+	}
+}
+
 func TestCreationCommandReplayCASAndQueuedCancellation(t *testing.T) {
 	a, s, calls := creationFixture(t)
 	c := a.login(t, "creation-cas")

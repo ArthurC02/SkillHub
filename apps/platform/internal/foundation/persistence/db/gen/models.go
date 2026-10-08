@@ -285,8 +285,8 @@ type CreationSessionEvent struct {
 	WorkspaceID pgtype.UUID
 	Revision    int64
 	EventType   string
-	Snapshot    []byte
 	CreatedAt   pgtype.Timestamptz
+	State       *string
 }
 
 type CreditAccount struct {

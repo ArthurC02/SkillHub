@@ -105,7 +105,7 @@ func (s *Service) insertSession(ctx context.Context, ws identity.Workspace, id p
 	if err != nil {
 		return View{}, err
 	}
-	if err = q.AppendCreationEvent(ctx, gen.AppendCreationEventParams{SessionID: id, WorkspaceID: ws.ID, Revision: 1, EventType: "created", Snapshot: b}); err != nil {
+	if err = q.AppendCreationEvent(ctx, gen.AppendCreationEventParams{SessionID: id, WorkspaceID: ws.ID, Revision: 1, EventType: "created", State: string(state)}); err != nil {
 		return View{}, err
 	}
 	if state == StateQueued {

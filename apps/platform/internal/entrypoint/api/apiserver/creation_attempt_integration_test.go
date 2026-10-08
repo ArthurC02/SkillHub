@@ -415,12 +415,12 @@ func TestFinishWhenTheReceiptWasAlreadyMarkedFailedIsANoop(t *testing.T) {
 	if after.State != "working" || after.Revision != before.Revision+1 {
 		t.Fatalf("after step: state=%q revision=%d, want working at exactly one revision past the pre-step view (%d)", after.State, after.Revision, before.Revision)
 	}
-	var eventType string
-	if err := pool.QueryRow(context.Background(), "SELECT event_type FROM creation_session_events WHERE session_id=$1 ORDER BY revision DESC LIMIT 1", id).Scan(&eventType); err != nil {
+	var eventType, eventState string
+	if err := pool.QueryRow(context.Background(), "SELECT event_type, state FROM creation_session_events WHERE session_id=$1 ORDER BY revision DESC LIMIT 1", id).Scan(&eventType, &eventState); err != nil {
 		t.Fatal(err)
 	}
-	if eventType != "attempt_started" {
-		t.Fatalf("last event = %q, want attempt_started (no attempt_settled)", eventType)
+	if eventType != "attempt_started" || eventState != "working" {
+		t.Fatalf("last event = %q into %q, want attempt_started into working (no attempt_settled)", eventType, eventState)
 	}
 	if settleCalls != 0 {
 		t.Fatalf("CreditSettle called %d times, want 0", settleCalls)

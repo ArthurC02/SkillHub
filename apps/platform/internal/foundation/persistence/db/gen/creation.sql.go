@@ -49,8 +49,8 @@ func (q *Queries) AdvanceCreationSession(ctx context.Context, arg AdvanceCreatio
 }
 
 const appendCreationEvent = `-- name: AppendCreationEvent :exec
-INSERT INTO creation_session_events(session_id,workspace_id,revision,event_type,snapshot)
-VALUES($1,$2,$3,$4,$5)
+INSERT INTO creation_session_events(session_id,workspace_id,revision,event_type,state)
+VALUES($1,$2,$3,$4,$5::text)
 `
 
 type AppendCreationEventParams struct {
@@ -58,7 +58,7 @@ type AppendCreationEventParams struct {
 	WorkspaceID pgtype.UUID
 	Revision    int64
 	EventType   string
-	Snapshot    []byte
+	State       string
 }
 
 func (q *Queries) AppendCreationEvent(ctx context.Context, arg AppendCreationEventParams) error {
@@ -67,7 +67,7 @@ func (q *Queries) AppendCreationEvent(ctx context.Context, arg AppendCreationEve
 		arg.WorkspaceID,
 		arg.Revision,
 		arg.EventType,
-		arg.Snapshot,
+		arg.State,
 	)
 	return err
 }

@@ -36,8 +36,8 @@ WHERE id=sqlc.arg(id) AND workspace_id=sqlc.arg(workspace_id)
  AND revision=sqlc.arg(expected_revision) RETURNING *;
 
 -- name: AppendCreationEvent :exec
-INSERT INTO creation_session_events(session_id,workspace_id,revision,event_type,snapshot)
-VALUES($1,$2,$3,$4,$5);
+INSERT INTO creation_session_events(session_id,workspace_id,revision,event_type,state)
+VALUES(@session_id,@workspace_id,@revision,@event_type,@state::text);
 
 -- name: InsertCreationReceipt :one
 INSERT INTO creation_receipts(id,session_id,workspace_id,kind,status,expected_revision,request_hash,result)
