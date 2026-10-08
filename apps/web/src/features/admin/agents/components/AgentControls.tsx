@@ -7,6 +7,7 @@ import {
 } from "../../admin.service";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { ActionForm } from "../../components/ActionForm";
+import { actionLabel } from "./proposalLabels";
 
 function AgentRow({ agent }: { agent: PlatformAgent }) {
   const toggle = usePlatformAgentSwitch();
@@ -25,6 +26,8 @@ function AgentRow({ agent }: { agent: PlatformAgent }) {
       <p className="note">
         每日花費上限 {usd(agent.daily_spend_cap_usd_micros)}；可讀：{agent.tools.join("、") || "無"}
       </p>
+      <p className="note">可提案：{agent.actions.map(actionLabel).join("、") || "無"}</p>
+      <p className="note">模型角色：{agent.model_role}</p>
       <ActionForm
         id={`admin-agent-${agent.name}`}
         submitLabel={next ? `啟用 ${agent.name}` : `停用 ${agent.name}`}
@@ -43,7 +46,7 @@ function AgentRow({ agent }: { agent: PlatformAgent }) {
   );
 }
 
-function BrakeControls({ brake }: { brake?: PlatformAgentBrake }) {
+export function BrakeControls({ brake }: { brake?: PlatformAgentBrake }) {
   const engage = usePlatformAgentBrake("PUT");
   const release = usePlatformAgentBrake("DELETE");
   return (
@@ -100,18 +103,9 @@ function BrakeControls({ brake }: { brake?: PlatformAgentBrake }) {
   );
 }
 
-export function AgentControls({
-  agents,
-  brake,
-}: {
-  agents: PlatformAgent[];
-  brake?: PlatformAgentBrake;
-}) {
+export function AgentControls({ agents }: { agents: PlatformAgent[] }) {
   return (
     <>
-      <h2>全域煞車</h2>
-      <BrakeControls brake={brake} />
-      <h2>Agent</h2>
       <ul className="download-list">
         {agents.map((agent) => (
           <AgentRow agent={agent} key={agent.name} />

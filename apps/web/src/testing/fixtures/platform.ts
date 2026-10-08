@@ -1258,6 +1258,7 @@ export const ADMIN_AGENTS = {
 } satisfies { agents: PlatformAgent[] };
 
 export const ADMIN_AGENT_RUNS = {
+  total: 2,
   runs: [
     {
       id: AGENT_FAILED_RUN,
@@ -1304,7 +1305,7 @@ export const ADMIN_AGENT_RUNS = {
       unpriced_steps: 0,
     },
   ],
-} satisfies { runs: PlatformAgentRun[] };
+} satisfies { runs: PlatformAgentRun[]; total: number };
 
 export const ADMIN_AGENT_STEPS = {
   steps: [

@@ -10,7 +10,7 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { AdminPage } from "../components/AdminPage";
-import { AgentControls } from "./components/AgentControls";
+import { AgentControls, BrakeControls } from "./components/AgentControls";
 import { AgentRunFacts, AgentRunList, AgentRunSteps } from "./components/AgentRuns";
 import { DailyReport } from "./components/DailyReport";
 import { FindingDetail } from "./components/FindingDetail";
@@ -56,20 +56,29 @@ function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recov
         <a href="#admin-agent-runs">
           最近 50 次內執行中 <strong>{running}</strong>
         </a>
-        <a href="#admin-agent-controls" data-braked={agents.data?.brake ? true : undefined}>
+        <a href="#admin-agent-brake" data-braked={agents.data?.brake ? true : undefined}>
           煞車 <strong>{brake}</strong>
         </a>
       </nav>
 
-      <section id="admin-agent-proposals" aria-labelledby="admin-agent-proposals-heading">
-        <h2 id="admin-agent-proposals-heading">待核准</h2>
-        <ProposalList />
+      <section id="admin-agent-brake" aria-labelledby="admin-agent-brake-heading">
+        <h2 id="admin-agent-brake-heading">全域煞車</h2>
+        {agents.isPending && <Loading what="Agent 控制" />}
+        <ReadFailure error={agents.error} what="Agent 控制" />
+        {agents.data && !agents.error && <BrakeControls brake={agents.data.brake} />}
       </section>
 
-      <section id="admin-agent-findings" aria-labelledby="admin-agent-findings-heading">
-        <h2 id="admin-agent-findings-heading">待辦</h2>
-        <FindingInbox status={status} />
-      </section>
+      <div className="agent-workbench-queues">
+        <section id="admin-agent-proposals" aria-labelledby="admin-agent-proposals-heading">
+          <h2 id="admin-agent-proposals-heading">待核准</h2>
+          <ProposalList />
+        </section>
+
+        <section id="admin-agent-findings" aria-labelledby="admin-agent-findings-heading">
+          <h2 id="admin-agent-findings-heading">待辦</h2>
+          <FindingInbox status={status} />
+        </section>
+      </div>
 
       <section id="admin-agent-runs" aria-labelledby="admin-agent-runs-heading">
         <h2 id="admin-agent-runs-heading">日報與執行紀錄</h2>
@@ -84,15 +93,12 @@ function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recov
             subject="Agent 執行"
           />
         )}
-        {runs.data && !runs.error && <AgentRunList runs={runs.data.runs} />}
+        {runs.data && !runs.error && <AgentRunList runs={runs.data.runs} total={runs.data.total} />}
       </section>
 
       <section id="admin-agent-controls" aria-label="Agent 控制">
-        {agents.isPending && <Loading what="Agent 清單" />}
-        <ReadFailure error={agents.error} what="Agent 清單" />
-        {agents.data && !agents.error && (
-          <AgentControls agents={agents.data.agents} brake={agents.data.brake} />
-        )}
+        <h2>Agent</h2>
+        {agents.data && !agents.error && <AgentControls agents={agents.data.agents} />}
       </section>
     </>
   );

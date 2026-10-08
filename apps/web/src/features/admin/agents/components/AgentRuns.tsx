@@ -19,6 +19,14 @@ const RUN_STATUS: Record<PlatformAgentRunStatus, string> = {
   failed: "失敗",
 };
 
+const RUN_TONE: Record<PlatformAgentRunStatus, string> = {
+  running: "badge",
+  completed: "badge",
+  incomplete: "badge badge-warning",
+  stopped: "badge badge-warning",
+  failed: "badge badge-danger",
+};
+
 function runCost(run: PlatformAgentRun): string {
   const known = usd(run.usd_micros);
   return run.unpriced_steps > 0 ? `${known}（另有 ${run.unpriced_steps} 步沒有回報花費）` : known;
@@ -28,9 +36,7 @@ export function AgentRunFacts({ run }: { run: PlatformAgentRun }) {
   return (
     <>
       <p className="badge-row">
-        <span className={run.status === "completed" ? "badge" : "badge badge-danger"}>
-          {RUN_STATUS[run.status]}
-        </span>
+        <span className={RUN_TONE[run.status]}>{RUN_STATUS[run.status]}</span>
       </p>
       {run.reason && <p>原因：{run.reason}</p>}
       <p className="note">
@@ -40,24 +46,42 @@ export function AgentRunFacts({ run }: { run: PlatformAgentRun }) {
   );
 }
 
-export function AgentRunList({ runs }: { runs: PlatformAgentRun[] }) {
+export function AgentRunList({ runs, total }: { runs: PlatformAgentRun[]; total: number }) {
   if (runs.length === 0) return <p>還沒有任何執行：0 次。</p>;
   return (
-    <ul className="download-list">
-      {runs.map((run) => (
-        <li className="download-item" key={run.id}>
-          <p>
-            <strong>{run.agent}</strong>
-          </p>
-          <AgentRunFacts run={run} />
-          <p>
-            <Link to="/admin/agents" search={{ run: run.id }}>
-              看這次的步驟
-            </Link>
-          </p>
-        </li>
-      ))}
-    </ul>
+    <>
+      {total > runs.length && (
+        <p className="note">
+          共 {total} 次；目前顯示最近 {runs.length} 次，這份清單最多顯示 50 次。
+        </p>
+      )}
+      <ul className="download-list agent-run-list">
+        {runs.map((run) => (
+          <li className="download-item" key={run.id}>
+            <p>
+              <strong>{run.agent}</strong>
+            </p>
+            <AgentRunFacts run={run} />
+            {run.status === "running" && (
+              <p className="note">
+                {run.last_step_at ? (
+                  <>
+                    最近一步記錄於 <Timestamp at={run.last_step_at} relative />。
+                  </>
+                ) : (
+                  "尚未記錄第一步。"
+                )}
+              </p>
+            )}
+            <p>
+              <Link to="/admin/agents" search={{ run: run.id }}>
+                看這次的步驟
+              </Link>
+            </p>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 

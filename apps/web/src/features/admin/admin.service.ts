@@ -330,6 +330,7 @@ export type PlatformAgentRun = {
   reason?: string;
   started_at: string;
   finished_at?: string;
+  last_step_at?: string;
   result?: Record<string, unknown>;
   steps: number;
   usd_micros: number;
@@ -381,7 +382,7 @@ export function usePlatformAgentBrake(method: "PUT" | "DELETE") {
 export function usePlatformAgentRuns() {
   return useQuery({
     queryKey: queryKeys.admin.agentRuns,
-    queryFn: () => apiFetch<{ runs: PlatformAgentRun[] }>("/admin/agents/runs"),
+    queryFn: () => apiFetch<{ runs: PlatformAgentRun[]; total: number }>("/admin/agents/runs"),
     enabled: useOperator(),
     refetchInterval: (query) =>
       !isLastingReadFailure(query.state.error) &&

@@ -12329,6 +12329,8 @@ func (*ListPlatformAgentRunStepsOK) listPlatformAgentRunStepsRes() {}
 
 type ListPlatformAgentRunsOK struct {
 	Runs []PlatformAgentRun `json:"runs"`
+	// Exact number of all recorded platform Agent runs, before the most-recent-50 limit.
+	Total int64 `json:"total"`
 }
 
 // GetRuns returns the value of Runs.
@@ -12336,9 +12338,19 @@ func (s *ListPlatformAgentRunsOK) GetRuns() []PlatformAgentRun {
 	return s.Runs
 }
 
+// GetTotal returns the value of Total.
+func (s *ListPlatformAgentRunsOK) GetTotal() int64 {
+	return s.Total
+}
+
 // SetRuns sets the value of Runs.
 func (s *ListPlatformAgentRunsOK) SetRuns(val []PlatformAgentRun) {
 	s.Runs = val
+}
+
+// SetTotal sets the value of Total.
+func (s *ListPlatformAgentRunsOK) SetTotal(val int64) {
+	s.Total = val
 }
 
 func (*ListPlatformAgentRunsOK) listPlatformAgentRunsRes() {}
@@ -20613,6 +20625,8 @@ type PlatformAgentRun struct {
 	Reason     OptString   `json:"reason"`
 	StartedAt  time.Time   `json:"started_at"`
 	FinishedAt OptDateTime `json:"finished_at"`
+	// Time of the latest recorded step; absent until the first step is recorded.
+	LastStepAt OptDateTime `json:"last_step_at"`
 	// The agent's final answer. Kept on a failed run whose answer did not pass its check, so the operator
 	// can see what was rejected.
 	Result OptPlatformAgentRunResult `json:"result"`
@@ -20651,6 +20665,11 @@ func (s *PlatformAgentRun) GetStartedAt() time.Time {
 // GetFinishedAt returns the value of FinishedAt.
 func (s *PlatformAgentRun) GetFinishedAt() OptDateTime {
 	return s.FinishedAt
+}
+
+// GetLastStepAt returns the value of LastStepAt.
+func (s *PlatformAgentRun) GetLastStepAt() OptDateTime {
+	return s.LastStepAt
 }
 
 // GetResult returns the value of Result.
@@ -20701,6 +20720,11 @@ func (s *PlatformAgentRun) SetStartedAt(val time.Time) {
 // SetFinishedAt sets the value of FinishedAt.
 func (s *PlatformAgentRun) SetFinishedAt(val OptDateTime) {
 	s.FinishedAt = val
+}
+
+// SetLastStepAt sets the value of LastStepAt.
+func (s *PlatformAgentRun) SetLastStepAt(val OptDateTime) {
+	s.LastStepAt = val
 }
 
 // SetResult sets the value of Result.

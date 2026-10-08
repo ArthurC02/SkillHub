@@ -31,6 +31,10 @@ export interface ListPlatformAgentRuns200Response {
      * 
      */
     runs: Array<PlatformAgentRun>;
+    /**
+     * Exact number of all recorded platform Agent runs, before the most-recent-50 limit.
+     */
+    total: number;
 }
 
 /**
@@ -38,6 +42,7 @@ export interface ListPlatformAgentRuns200Response {
  */
 export function instanceOfListPlatformAgentRuns200Response(value: object): value is ListPlatformAgentRuns200Response {
     if (!('runs' in value) || value['runs'] === undefined) return false;
+    if (!('total' in value) || value['total'] === undefined) return false;
     return true;
 }
 
@@ -52,6 +57,7 @@ export function ListPlatformAgentRuns200ResponseFromJSONTyped(json: any, ignoreD
     return {
         
         'runs': ((json['runs'] as Array<any>).map(PlatformAgentRunFromJSON)),
+        'total': json['total'],
     };
 }
 
@@ -67,6 +73,7 @@ export function ListPlatformAgentRuns200ResponseToJSONTyped(value?: ListPlatform
     return {
         
         'runs': ((value['runs'] as Array<any>).map(PlatformAgentRunToJSON)),
+        'total': value['total'],
     };
 }
 

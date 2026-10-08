@@ -21,6 +21,7 @@ type runView struct {
 	Reason        string          `json:"reason,omitempty"`
 	StartedAt     string          `json:"started_at"`
 	FinishedAt    string          `json:"finished_at,omitempty"`
+	LastStepAt    string          `json:"last_step_at,omitempty"`
 	Result        json.RawMessage `json:"result,omitempty"`
 	Steps         int32           `json:"steps"`
 	UsdMicros     int64           `json:"usd_micros"`
@@ -55,16 +56,26 @@ func (h *Handler) Runs(w http.ResponseWriter, r *http.Request) {
 	}
 	runs := make([]runView, len(rows))
 	for i, row := range rows {
-		runs[i] = runView{
-			ID: pgconv.UUIDString(row.ID), Agent: row.Agent, Status: row.Status, StartedAt: pgconv.RFC3339(row.StartedAt),
-			FinishedAt: pgconv.RFC3339(row.FinishedAt), Result: row.Result,
-			Steps: row.Steps, UsdMicros: row.UsdMicros, UnpricedSteps: row.UnpricedSteps,
-		}
-		if row.Reason != nil {
-			runs[i].Reason = *row.Reason
-		}
+		runs[i] = runViewFromRow(row)
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string][]runView{"runs": runs})
+	var total int64
+	if len(rows) > 0 {
+		total = rows[0].Total
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"runs": runs, "total": total})
+}
+
+func runViewFromRow(row gen.ListPlatformAgentRunsRow) runView {
+	view := runView{
+		ID: pgconv.UUIDString(row.ID), Agent: row.Agent, Status: row.Status, StartedAt: pgconv.RFC3339(row.StartedAt),
+		FinishedAt: pgconv.RFC3339(row.FinishedAt), Result: row.Result,
+		LastStepAt: pgconv.RFC3339(row.LastStepAt),
+		Steps:      row.Steps, UsdMicros: row.UsdMicros, UnpricedSteps: row.UnpricedSteps,
+	}
+	if row.Reason != nil {
+		view.Reason = *row.Reason
+	}
+	return view
 }
 
 func (h *Handler) Steps(w http.ResponseWriter, r *http.Request) {

@@ -7,6 +7,7 @@ import {
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
+import { ListFreshness } from "../../../../shared/ui/ListFreshness";
 import { FINDING_STATUS } from "./findingLabels";
 
 type ClosedView = "resolved" | "dismissed" | "recovered";
@@ -72,6 +73,16 @@ export function FindingInbox({ status }: { status?: ClosedView }) {
       </nav>
       {findings.isPending && <Loading what="待辦" />}
       <ReadFailure error={findings.error} what="待辦" />
+      {findings.data && !findings.error && (
+        <ListFreshness
+          inFlight={false}
+          showWhenIdle
+          updatedAt={findings.dataUpdatedAt}
+          fetching={findings.isFetching}
+          refetch={findings.refetch}
+          subject="待辦"
+        />
+      )}
       {findings.data && !findings.error && findings.data.findings.length === 0 && (
         <p>{current.label}：0 件。</p>
       )}

@@ -10,6 +10,11 @@ test("the agent workbench opens one decision at a time on a narrow screen", asyn
   const workbench = page.getByRole("navigation", { name: "平台 Agent 工作區" });
   await expect(workbench).toContainText("待核准 1 件");
   await expect(workbench).toContainText("待辦 2 件");
+  const brake = page.locator("#admin-agent-brake");
+  const proposals = page.locator("#admin-agent-proposals");
+  await expect(brake.getByRole("button", { name: "拉下 Agent 煞車" })).toBeVisible();
+  await expect(proposals).toContainText("提案清單上次取得於");
+  expect((await brake.boundingBox())!.y).toBeLessThan((await proposals.boundingBox())!.y);
   await page.getByRole("link", { name: "打開這個提案" }).click();
   await expect(page.getByRole("heading", { name: "這個提案" })).toBeVisible();
   await expect(workbench).toHaveCount(0);
@@ -33,6 +38,23 @@ test("a linked agent run shows its report before the collapsed raw steps", async
   await expect(page.locator(".agent-step-raw")).toHaveCount(2);
   await expect(page.locator(".agent-step-raw[open]")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "回到執行紀錄" })).toBeVisible();
+});
+
+test("the desktop workbench shows decisions and findings side by side without horizontal overflow", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await stubPlatform(page);
+  await page.goto("/admin/agents");
+  const proposals = page.locator("#admin-agent-proposals");
+  const findings = page.locator("#admin-agent-findings");
+  await expect(proposals.getByRole("link", { name: "打開這個提案" })).toBeVisible();
+  await expect(findings.getByRole("link", { name: "打開這件事" })).toBeVisible();
+  const proposalBox = (await proposals.boundingBox())!;
+  const findingBox = (await findings.boundingBox())!;
+  expect(findingBox.x).toBeGreaterThan(proposalBox.x);
+  expect(Math.abs(findingBox.y - proposalBox.y)).toBeLessThan(24);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
 test("destructive approval discloses scope before the final decision", async ({ page }) => {

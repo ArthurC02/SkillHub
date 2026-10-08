@@ -269,6 +269,19 @@ func TestTheDailySpendCapStopsARunBeforeAKeyIsIssued(t *testing.T) {
 	if report.Status != operations.RunIncomplete || report.Reason != "the agent's daily spend cap is reached" || len(second.issued) != 0 {
 		t.Errorf("second run %+v with keys %v, want incomplete at the cap and no key", report, second.issued)
 	}
+	runs, err := svc.RecentRuns(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, run := range runs {
+		if run.ID == report.ID {
+			if run.LastStepAt.Valid {
+				t.Errorf("last step of a zero-step run = %v, want absent", run.LastStepAt)
+			}
+			return
+		}
+	}
+	t.Fatalf("zero-step run %s missing from recent runs", pgconv.UUIDString(report.ID))
 }
 
 func TestDisablingAnAgentStopsItsLoopBeforeTheNextStep(t *testing.T) {
@@ -394,6 +407,10 @@ func assertListedRun(t *testing.T, operator *client, id string, want map[string]
 		t.Fatalf("GET runs: %d %v", code, body)
 	}
 	run := findByID(t, body["runs"], id)
+	listed, _ := body["runs"].([]any)
+	if total, ok := body["total"].(float64); !ok || total < float64(len(listed)) {
+		t.Errorf("run total = %v, want at least the returned rows", body["total"])
+	}
 	for key, value := range want {
 		if run[key] != value {
 			t.Errorf("run %s = %v, want %v", key, run[key], value)
@@ -412,6 +429,13 @@ func assertRunSteps(t *testing.T, operator *client, id string) {
 		t.Fatalf("GET steps: %d %v, want two steps", code, body)
 	}
 	first, last := steps[0].(map[string]any), steps[1].(map[string]any)
+	code, runsBody := operatorCall(t, operator, http.MethodGet, "/admin/agents/runs", "")
+	if code != http.StatusOK {
+		t.Fatalf("GET runs: %d %v", code, runsBody)
+	}
+	if got := findByID(t, runsBody["runs"], id)["last_step_at"]; got != last["created_at"] {
+		t.Errorf("last_step_at = %v, want final step's created_at %v", got, last["created_at"])
+	}
 	if first["tool"] != "maintenance_report" || first["result"] != `{"database_bytes":42}` ||
 		first["usd_micros"] != float64(1000) || first["prompt_tokens"] != float64(100) {
 		t.Errorf("first step %v, want the tool call with its answer, tokens and cost", first)
@@ -430,6 +454,31 @@ func TestReadingStepsNeedsARunIDAndAnUnknownRunHasNone(t *testing.T) {
 	if steps, ok := body["steps"].([]any); code != http.StatusOK || !ok || len(steps) != 0 {
 		t.Errorf("unknown run: %d %v, want 200 with an empty list", code, body)
 	}
+}
+
+func TestOperatorsSeeTheTotalBeyondTheRecentRunLimit(t *testing.T) {
+	_, def, operator := loopAgentWithOperator(t, "agent-run-records-limit", 1_000_000)
+	if _, err := testPool.Exec(context.Background(),
+		"INSERT INTO platform_agent_runs (agent_id, started_at) SELECT id, now() + interval '1 day' FROM platform_agents, generate_series(1, 51) WHERE name = $1", def.Name,
+	); err != nil {
+		t.Fatal(err)
+	}
+	code, body := operatorCall(t, operator, http.MethodGet, "/admin/agents/runs", "")
+	runs, _ := body["runs"].([]any)
+	total, _ := body["total"].(float64)
+	if code != http.StatusOK || len(runs) != 50 || total < 51 {
+		t.Errorf("GET runs: %d, %d rows, total %v; want the 50 most recent of at least 51", code, len(runs), total)
+	}
+	for _, item := range runs {
+		run := item.(map[string]any)
+		if run["agent"] == def.Name {
+			if _, hasStepTime := run["last_step_at"]; hasStepTime {
+				t.Errorf("zero-step run exposes last_step_at: %v", run)
+			}
+			return
+		}
+	}
+	t.Errorf("the recent list omitted the newly created Agent's runs: %v", runs)
 }
 
 func findByID(t *testing.T, list any, id string) map[string]any {

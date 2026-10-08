@@ -44,6 +44,10 @@ export interface PlatformAgentRun {
      */
     finishedAt?: Date;
     /**
+     * Time of the latest recorded step; absent until the first step is recorded.
+     */
+    lastStepAt?: Date;
+    /**
      * The agent's final answer. Kept on a failed run whose answer did not pass its check, so the operator can see what was rejected.
      */
     result?: { [key: string]: any; };
@@ -105,6 +109,7 @@ export function PlatformAgentRunFromJSONTyped(json: any, ignoreDiscriminator: bo
         'reason': json['reason'] == null ? undefined : json['reason'],
         'startedAt': (json['started_at'] == null ? json['started_at'] : parseDateTime(json['started_at'])),
         'finishedAt': json['finished_at'] == null ? undefined : (parseDateTime(json['finished_at'])),
+        'lastStepAt': json['last_step_at'] == null ? undefined : (parseDateTime(json['last_step_at'])),
         'result': json['result'] == null ? undefined : json['result'],
         'steps': json['steps'],
         'usdMicros': json['usd_micros'],
@@ -129,6 +134,7 @@ export function PlatformAgentRunToJSONTyped(value?: PlatformAgentRun | null, ign
         'reason': value['reason'],
         'started_at': value['startedAt'] == null ? value['startedAt'] : serializeDateTime(value['startedAt']),
         'finished_at': value['finishedAt'] == null ? value['finishedAt'] : serializeDateTime(value['finishedAt']),
+        'last_step_at': value['lastStepAt'] == null ? value['lastStepAt'] : serializeDateTime(value['lastStepAt']),
         'result': value['result'],
         'steps': value['steps'],
         'usd_micros': value['usdMicros'],

@@ -31,3 +31,17 @@
 .agent-workbench-summary a[data-braked] strong {
   color: var(--danger);
 }
+
+.agent-workbench-queues {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 24px;
+}
+
+.agent-workbench-queues > section {
+  min-width: 0;
+}
+
+.agent-workbench-queues .download-item {
+  max-width: none;
+}

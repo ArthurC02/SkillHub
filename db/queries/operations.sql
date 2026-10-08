@@ -63,7 +63,9 @@ WHERE a.name = @name AND s.created_at >= @since;
 SELECT r.id, a.name AS agent, r.status, r.reason, r.started_at, r.finished_at, r.result,
     count(s.seq)::integer AS steps,
     coalesce(sum(s.usd_micros), 0)::bigint AS usd_micros,
-    count(s.seq) FILTER (WHERE s.usd_micros IS NULL)::integer AS unpriced_steps
+    count(s.seq) FILTER (WHERE s.usd_micros IS NULL)::integer AS unpriced_steps,
+    max(s.created_at)::timestamptz AS last_step_at,
+    count(*) OVER() AS total
 FROM platform_agent_runs r
 JOIN platform_agents a ON a.id = r.agent_id
 LEFT JOIN platform_agent_steps s ON s.run_id = r.id

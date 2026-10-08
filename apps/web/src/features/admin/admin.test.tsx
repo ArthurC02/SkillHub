@@ -1271,6 +1271,75 @@ test("the agent workbench names pending decisions, live findings, running work a
   expect(summary?.querySelectorAll('a[href^="#"]')).toHaveLength(4);
 });
 
+test("OPS-011: the emergency brake is reachable before the decision lists", async () => {
+  stub(true);
+  await mountAt("/admin/agents");
+  await waitFor(has("拉下 Agent 煞車"));
+  const brake = field<HTMLElement>("#admin-agent-brake");
+  const proposals = field<HTMLElement>("#admin-agent-proposals");
+  expect(brake.compareDocumentPosition(proposals) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(
+    field<HTMLElement>('nav[aria-label="平台 Agent 工作區"] a[href="#admin-agent-brake"]'),
+  ).toBeDefined();
+});
+
+test("OPS-011: an Agent shows what it may propose and its model role before enabling", async () => {
+  stub(true, (path) =>
+    path === "/admin/agents"
+      ? {
+          body: {
+            agents: [
+              {
+                ...ADMIN_AGENTS.agents[0],
+                enabled: false,
+                actions: ["run-purge-audit"],
+              },
+            ],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/agents");
+  await waitFor(has("啟用 daily-report"));
+  const controls = field<HTMLElement>("#admin-agent-controls");
+  expect(controls.textContent).toContain("可提案：立刻補跑「清除過了保存期的稽核紀錄」");
+  expect(controls.textContent).toContain("模型角色：skillhub-ops-report");
+});
+
+test.each([
+  { kind: "提案", path: "/admin/agents/proposals", section: "#admin-agent-proposals" },
+  { kind: "待辦", path: "/admin/agents/findings", section: "#admin-agent-findings" },
+])(
+  "$kind list discloses its freshness and can refresh the workbench count",
+  async ({ path, section }) => {
+    let refreshed = false;
+    stub(true, (requestPath) => {
+      if (requestPath !== path || !refreshed) return undefined;
+      return path.endsWith("proposals")
+        ? { body: { proposals: [] }, status: 200 }
+        : {
+            body: {
+              findings: [],
+              counts: { open: 0, acknowledged: 0, resolved: 0, dismissed: 0, recovered: 0 },
+            },
+            status: 200,
+          };
+    });
+    await mountAt("/admin/agents");
+    const sectionNode = field<HTMLElement>(section);
+    await waitFor(() => Boolean(sectionNode.querySelector(".download-item")));
+    expect(sectionNode.textContent).toContain(
+      `${path.endsWith("proposals") ? "提案" : "待辦"}清單上次取得於`,
+    );
+    refreshed = true;
+    await click(sectionNode.querySelector<HTMLButtonElement>("button")!);
+    await waitFor(() => !sectionNode.querySelector(".download-item"));
+    expect(sectionNode.textContent).toContain("0 件");
+    expect(calls.filter((c) => c.url === path).length).toBeGreaterThan(1);
+  },
+);
+
 test("the agent workbench does not report zero decisions when proposals cannot be read", async () => {
   stub(true, (path) =>
     path === "/admin/agents/proposals"
@@ -1356,6 +1425,37 @@ test("OPS-012: a failed run's report is shown as not checked, and its list row n
   expect(has("2 步；花費 $0.0031")()).toBe(false);
 });
 
+test("OPS-012: a truncated Agent run list names its exact total and display limit", async () => {
+  stub(true, (path) =>
+    path === "/admin/agents/runs"
+      ? { body: { runs: ADMIN_AGENT_RUNS.runs, total: 73 }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/agents");
+  await waitFor(has("看這次的步驟"));
+  expect(field<HTMLElement>("#admin-agent-runs").textContent).toContain(
+    "共 73 次；目前顯示最近 2 次，這份清單最多顯示 50 次",
+  );
+});
+
+test.each([
+  { status: "running", label: "執行中", tone: "badge" },
+  { status: "completed", label: "完成", tone: "badge" },
+  { status: "incomplete", label: "未完成", tone: "badge-warning" },
+  { status: "stopped", label: "已停止", tone: "badge-warning" },
+  { status: "failed", label: "失敗", tone: "badge-danger" },
+])("agent run $status uses the $tone status tone", async ({ status, label, tone }) => {
+  stub(true, (path) =>
+    path === "/admin/agents/runs"
+      ? { body: { runs: [{ ...ADMIN_AGENT_RUNS.runs[1], status }] }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/agents", { run: AGENT_REPORT_RUN });
+  await waitFor(has(label));
+  const badge = field<HTMLElement>('section[aria-labelledby="admin-agent-run-heading"] .badge');
+  expect(badge.className).toBe(tone === "badge" ? "badge" : `badge ${tone}`);
+});
+
 test("a running agent says what progressed, when it last acted, and that leaving is safe", async () => {
   stub(true, (path) =>
     path === "/admin/agents/runs"
@@ -1375,6 +1475,37 @@ test("a running agent says what progressed, when it last acted, and that leaving
   expect(has("最近一步")()).toBe(true);
   expect(has("2026/10/06")()).toBe(true);
 });
+
+test.each([
+  { last: "2026-10-07T01:02:00Z", expected: "最近一步記錄於", missing: "尚未記錄第一步" },
+  { last: undefined, expected: "尚未記錄第一步", missing: "最近一步記錄於" },
+])(
+  "a running row uses recorded activity, not list freshness, when last step is $last",
+  async ({ last, expected, missing }) => {
+    stub(true, (path) =>
+      path === "/admin/agents/runs"
+        ? {
+            body: {
+              runs: [
+                {
+                  ...ADMIN_AGENT_RUNS.runs[1],
+                  status: "running",
+                  steps: last ? 2 : 0,
+                  last_step_at: last,
+                },
+              ],
+            },
+            status: 200,
+          }
+        : undefined,
+    );
+    await mountAt("/admin/agents");
+    await waitFor(has("看這次的步驟"));
+    const row = field<HTMLElement>("#admin-agent-runs .download-item");
+    expect(row.textContent).toContain(expected);
+    expect(row.textContent).not.toContain(missing);
+  },
+);
 
 test("a running agent refreshes its steps and stops reporting progress after completion", async () => {
   let progressed = false;

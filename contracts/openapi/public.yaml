@@ -3507,11 +3507,15 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [runs]
+                required: [runs, total]
                 properties:
                   runs:
                     type: array
                     items: { $ref: "#/components/schemas/PlatformAgentRun" }
+                  total:
+                    type: integer
+                    format: int64
+                    description: Exact number of all recorded platform Agent runs, before the most-recent-50 limit.
         "404":
           description: The caller is not an operator.
           content:
@@ -6734,6 +6738,10 @@ components:
           description: Why the run ended without completing, or why its result was rejected.
         started_at: { type: string, format: date-time }
         finished_at: { type: string, format: date-time }
+        last_step_at:
+          type: string
+          format: date-time
+          description: Time of the latest recorded step; absent until the first step is recorded.
         result:
           type: object
           additionalProperties: true

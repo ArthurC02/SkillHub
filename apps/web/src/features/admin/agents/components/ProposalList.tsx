@@ -3,6 +3,7 @@ import { usePlatformAgentProposals, type PlatformAgentProposal } from "../../adm
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
+import { ListFreshness } from "../../../../shared/ui/ListFreshness";
 import { PROPOSAL_STATUS, PROPOSAL_TIER, actionLabel } from "./proposalLabels";
 
 function ProposalRow({ proposal }: { proposal: PlatformAgentProposal }) {
@@ -46,6 +47,16 @@ export function ProposalList() {
     <>
       {proposals.isPending && <Loading what="提案" />}
       <ReadFailure error={proposals.error} what="提案" />
+      {proposals.data && !proposals.error && (
+        <ListFreshness
+          inFlight={false}
+          showWhenIdle
+          updatedAt={proposals.dataUpdatedAt}
+          fetching={proposals.isFetching}
+          refetch={proposals.refetch}
+          subject="提案"
+        />
+      )}
       {proposals.data && !proposals.error && proposals.data.proposals.length === 0 && (
         <p>待核准與最近七天的提案：0 件。</p>
       )}

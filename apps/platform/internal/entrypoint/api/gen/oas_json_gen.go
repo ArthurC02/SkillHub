@@ -31870,10 +31870,15 @@ func (s *ListPlatformAgentRunsOK) encodeFields(e *jx.Encoder) {
 		}
 		e.ArrEnd()
 	}
+	{
+		e.FieldStart("total")
+		e.Int64(s.Total)
+	}
 }
 
-var jsonFieldsNameOfListPlatformAgentRunsOK = [1]string{
+var jsonFieldsNameOfListPlatformAgentRunsOK = [2]string{
 	0: "runs",
+	1: "total",
 }
 
 // Decode decodes ListPlatformAgentRunsOK from json.
@@ -31903,6 +31908,18 @@ func (s *ListPlatformAgentRunsOK) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"runs\"")
 			}
+		case "total":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Int64()
+				s.Total = int64(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"total\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -31913,7 +31930,7 @@ func (s *ListPlatformAgentRunsOK) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000001,
+		0b00000011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -42586,6 +42603,12 @@ func (s *PlatformAgentRun) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.LastStepAt.Set {
+			e.FieldStart("last_step_at")
+			s.LastStepAt.Encode(e, json.EncodeDateTime)
+		}
+	}
+	{
 		if s.Result.Set {
 			e.FieldStart("result")
 			s.Result.Encode(e)
@@ -42605,17 +42628,18 @@ func (s *PlatformAgentRun) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfPlatformAgentRun = [10]string{
-	0: "id",
-	1: "agent",
-	2: "status",
-	3: "reason",
-	4: "started_at",
-	5: "finished_at",
-	6: "result",
-	7: "steps",
-	8: "usd_micros",
-	9: "unpriced_steps",
+var jsonFieldsNameOfPlatformAgentRun = [11]string{
+	0:  "id",
+	1:  "agent",
+	2:  "status",
+	3:  "reason",
+	4:  "started_at",
+	5:  "finished_at",
+	6:  "last_step_at",
+	7:  "result",
+	8:  "steps",
+	9:  "usd_micros",
+	10: "unpriced_steps",
 }
 
 // Decode decodes PlatformAgentRun from json.
@@ -42693,6 +42717,16 @@ func (s *PlatformAgentRun) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"finished_at\"")
 			}
+		case "last_step_at":
+			if err := func() error {
+				s.LastStepAt.Reset()
+				if err := s.LastStepAt.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"last_step_at\"")
+			}
 		case "result":
 			if err := func() error {
 				s.Result.Reset()
@@ -42704,7 +42738,7 @@ func (s *PlatformAgentRun) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"result\"")
 			}
 		case "steps":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Int()
 				s.Steps = int(v)
@@ -42716,7 +42750,7 @@ func (s *PlatformAgentRun) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"steps\"")
 			}
 		case "usd_micros":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				v, err := d.Int64()
 				s.UsdMicros = int64(v)
@@ -42728,7 +42762,7 @@ func (s *PlatformAgentRun) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"usd_micros\"")
 			}
 		case "unpriced_steps":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				v, err := d.Int()
 				s.UnpricedSteps = int(v)
@@ -42749,8 +42783,8 @@ func (s *PlatformAgentRun) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
-		0b10010111,
-		0b00000011,
+		0b00010111,
+		0b00000111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

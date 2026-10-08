@@ -1,3 +1,12 @@
+.agent-run-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+}
+
+.agent-run-list > li {
+  max-width: none;
+}
+
 .agent-step-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
