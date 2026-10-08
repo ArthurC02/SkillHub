@@ -848,3 +848,26 @@ exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities 
 ### 預設映像從 `-13` 移到 `-17`
 
 四項在 `-17` 的 digest 上通過之後，經負責人同意移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，以及 `apps/sandbox/README.md` 的環境變數表與建置範例。`-14`、`-15`、`-16` 沒有成為過預設；它們的變更都包含在 `-17` 裡。
+
+## `2026.08-17` → `2026.08-18`（2026-10-08）— **安全性修補：`perl-base` 與兩個 npm 套件；四項實測隨後補入本節**
+
+`-17` 的 digest 在 2026-10-07 的 main 推送被 I-06 擋下：這幾天新公布的公告讓三個套件有可修的 Critical／High。
+
+| 套件 | 原版本 | 修正版本 | 公告 |
+| --- | --- | --- | --- |
+| `perl-base`（deb） | `5.36.0-7+deb12u3` | `5.36.0-7+deb12u4` | CVE-2026-8376、CVE-2026-13221、CVE-2026-42496、CVE-2026-12087、CVE-2026-57433（Critical）；CVE-2026-48959、CVE-2026-48962、CVE-2026-42497、CVE-2026-7017、CVE-2026-57432（High） |
+| `proxy-addr`（npm） | `2.0.7` | `2.0.8` | GHSA-jqcg-44mw-7w3h（Critical） |
+| `@modelcontextprotocol/sdk`（npm） | `1.30.0` | `1.31.0` | GHSA-6qxp-vccf-f47h（High） |
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `Dockerfile` 的 `--only-upgrade` 清單加 `perl-base`；`package-lock.json` 只換上表兩個 npm 套件（都在原本的版本範圍內：`^1.29.0`、`^2.0.7`，`package.json` 一字未動）；`ARG IMAGE_VERSION` |
+| 新增的依賴 | 無 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| `run.mjs` | **未變** |
+| 預設映像 | 本節第一批推送時仍是 `-17`；四項在 CI 發佈的 digest 上跑過之後才移動 |
+
+### 本機驗證（2026-10-08，沒有任何模型呼叫）
+
+以 CI 釘住的同一組 `anchore/syft:v1.51.0@sha256:678bfa56…` 與 `anchore/grype:v0.117.0@sha256:ddf9e9f2…` 掃描本機建置，`--only-fixed --fail-on high`：`No vulnerabilities found`、exit 0。同一個映像、無網路：`perl-base` → `5.36.0-7+deb12u4`，`@modelcontextprotocol/sdk` → `1.31.0`，`proxy-addr` → `2.0.8`，`id -u` → `65532`，`pypdf` → `6.19.0`。`devctl image-gate` → `runtime image source gates passed`。

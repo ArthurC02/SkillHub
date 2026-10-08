@@ -2,7 +2,7 @@ FROM node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3e
 
 ARG CLAUDE_AGENT_SDK_VERSION=0.3.233
 
-ARG IMAGE_VERSION=2026.08-17
+ARG IMAGE_VERSION=2026.08-18
 
 # Non-root from the image on up: the provider also passes --user, but an image
 # whose only account is root is one bad flag away from running as root.
@@ -15,7 +15,7 @@ RUN groupadd --gid 65532 sandbox \
 RUN apt-get update \
     # Upgrades this one package to pick up a fixed CVE without floating the
     # pinned base digest or doing a drifting whole-image apt-get upgrade.
-    && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 \
+    && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 perl-base \
     && apt-get install -y --no-install-recommends python3 python3-pip \
     && rm -rf /var/lib/apt/lists/* \
     # Skills invoke `python`, but Debian ships only the versioned `python3` name.
