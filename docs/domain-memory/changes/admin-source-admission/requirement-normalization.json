@@ -8,7 +8,7 @@
   "acceptance_criteria": [
     {
       "id": "source-candidate-identity",
-      "statement": "候選可區分同一 repo 中授權不同的 Skill；記錄原始 repo、Skill 路徑及受審 commit，awesome 清單只能是發現線索。"
+      "statement": "候選以原始 repo URL 加 Skill 路徑穩定識別，受審 commit 是每次審查的證據；同 repo 中授權不同的 Skill 可作不同決定，awesome 清單只能是發現線索。"
     },
     {
       "id": "source-operator-authority",
@@ -20,11 +20,11 @@
     },
     {
       "id": "source-decision-lifecycle",
-      "statement": "准入、否決與下架有單一可查詢的現況及保留的歷史；否決有原因，同一候選及同一受審版本不會無理由重複評估。"
+      "statement": "准入、否決與下架有單一可查詢的現況及保留的歷史；否決有原因，只有來源或授權證據實質改變時才重新審查。"
     },
     {
       "id": "source-takedown-consistency",
-      "statement": "下架影響目錄可見性與可下載性時，沿用既有 Skill 下架事實與流程，不改寫 Skill Version 或歷史 Run，也不建立平行旗標。"
+      "statement": "撤銷來源准入只阻止新公開收錄，不自動下架既有 Skill；既有 Skill 若需下架，由 operator 逐項走既有下架流程，不改寫 Skill Version 或歷史 Run，也不建立平行旗標。"
     },
     {
       "id": "source-decision-audit",
@@ -44,10 +44,7 @@
     "收錄層級"
   ],
   "open_questions": [
-    "准入對象的穩定識別是否採 canonical repo URL 加 Skill 路徑，而受審 commit 作版本化證據？使用者自行上傳且公開分享時如何分類？",
-    "白名單異動要由 Admin 畫面完成，還是先維持可稽核的 operator API／工具流程？",
-    "下架一個候選應否自動下架它既有的所有平台 Skill，或僅阻止新索引並要求 operator 逐項決定？",
-    "否決後在什麼證據變更條件下允許重新審查？"
+    "使用者自行上傳且公開分享時如何分類？"
   ],
   "risk_flags": [
     "cross_context",

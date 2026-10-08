@@ -31,7 +31,7 @@ export function GovernanceRow({ skill, single }: { skill: SkillGovernance; singl
       {skill.takedown_at && (
         <p>
           下架於 <Timestamp at={skill.takedown_at} />
-          ，理由：{skill.takedown_reason ?? "未記錄"}。下架沒有恢復的路。
+          ，理由：{skill.takedown_reason ?? "未記錄"}。目前沒有恢復操作。
         </p>
       )}
       {!single && (

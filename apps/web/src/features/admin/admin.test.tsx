@@ -747,7 +747,9 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
 
   await type("#admin-takedown-reason", " DMCA notice ");
   await click(button("下架"));
-  expect(has("下架沒有恢復的路")()).toBe(true);
+  expect(has("下架本身不阻止新試跑")()).toBe(true);
+  expect(has("不能再下載或試跑")()).toBe(false);
+  expect(has("目前沒有恢復操作")()).toBe(true);
   expect(has(`PDF Summariser（${SKILL}，工作區 ws-2）`)()).toBe(true);
   expect(has("理由：DMCA notice")()).toBe(true);
   expect(calls.some((c) => c.method === "PUT")).toBe(false);

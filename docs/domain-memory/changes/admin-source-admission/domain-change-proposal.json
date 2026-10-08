@@ -25,7 +25,7 @@
   },
   "boundary_decision": {
     "interaction": "Ingest 擁有候選與准入決定；公開索引入口以窄 owner 判定取得准入事實。既有目錄下架由 Registry 的 Skill 下架能力執行，不為來源下架另建可見性狀態。",
-    "consistency": "准入判定與新公開索引的狀態轉移同步；決定與 audit 同交易。既有項目的下架須在同一受控命令中原子地完成 Registry 下架或明確回報部分失敗，不得宣稱已完成。",
+    "consistency": "准入判定與新公開索引的狀態轉移同步；決定與 audit 同交易。來源撤銷只停止新收錄，既有 Skill 的逐項下架是獨立的 Registry 命令，不宣稱來源撤銷已完成既有項目的下架。",
     "prohibited_dependencies": [
       "Catalog 不直接讀寫 Ingest 的候選或決定資料表。",
       "來源白名單不得與 URL 抓取的 SSRF host allowlist 混用。",
@@ -42,7 +42,7 @@
       "來源否決、重試與下架必須可稽核且冪等。",
       "公開收錄與個人匯入不是同一政策，operator 仍不能讀私人內容。"
     ],
-    "decision": "先建立 Ingest 擁有的候選決定與窄准入判定；穩定候選鍵暫以原始 repo 加 Skill 路徑為方案，commit 作受審證據，不把 seed source_id 當永久身分。收錄入口在寫入公開索引前查權威決定；下架沿用 Registry 的既有 Skill 可見性處置。具體狀態轉移、公開分享範圍與 Admin 互動待產品裁定後實作。",
+    "decision": "先建立 Ingest 擁有的候選決定與窄准入判定；以原始 repo URL 加 Skill 路徑作穩定候選鍵，commit 作每次受審證據，不把 seed source_id 當永久身分。先提供可稽核的 operator API 與工具，不以 Admin 畫面作首批前置。收錄入口在寫入公開索引前查權威決定；來源撤銷只阻止新收錄，既有 Skill 由 operator 逐項走 Registry 的下架命令。否決後只有來源或授權證據實質改變才重審；使用者自行上傳且公開分享的分類仍待決定。",
     "invariants_preserved": [
       "Skill Version 與歷史 Run 不可變。",
       "公開可見性以既有 Skill 下架事實為準。",
@@ -82,10 +82,7 @@
     "irreversible_change"
   ],
   "open_questions": [
-    "准入對象的穩定識別是否採 canonical repo URL 加 Skill 路徑，而受審 commit 作版本化證據？使用者自行上傳且公開分享時如何分類？",
-    "白名單異動要由 Admin 畫面完成，還是先維持可稽核的 operator API／工具流程？",
-    "下架一個候選應否自動下架它既有的所有平台 Skill，或僅阻止新索引並要求 operator 逐項決定？",
-    "否決後在什麼證據變更條件下允許重新審查？"
+    "使用者自行上傳且公開分享時如何分類？"
   ],
   "approvals": []
 }

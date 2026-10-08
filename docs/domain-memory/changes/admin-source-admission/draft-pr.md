@@ -10,11 +10,11 @@ Ingest 擁有候選和准入決定；Catalog 需要在公開收錄時取得權�
 
 ## Implementation handoff
 
-候選不能僅以 repo URL 識別：現有 `seed-skills.json` 的 `anthropic` 與 `anthropic-sa` 共享 repo，但依 Skill 目錄有不同授權。草案以原始 repo 與 Skill 路徑作穩定鍵、commit 作受審證據；最終鍵與公開分享範圍待裁定。先建立唯一可查詢的決定現況與歷史，再在所有公開索引寫入路徑接上 Ingest 判定；來源下架須沿 Registry 現有下架流程，不新增平行旗標。
+候選不能僅以 repo URL 識別：現有 `seed-skills.json` 的 `anthropic` 與 `anthropic-sa` 共享 repo，但依 Skill 目錄有不同授權。產品已裁定以原始 repo URL 與 Skill 路徑作穩定鍵，commit 作每次審查證據。先建立唯一可查詢的決定現況與歷史，再在所有公開索引寫入路徑接上 Ingest 判定；來源撤銷只阻止新收錄，既有 Skill 由 operator 逐項走 Registry 下架流程，不新增平行旗標。使用者自行上傳後公開分享的分類仍待釐清。
 
 ## Proposal and approvals
 
-`admin-source-admission` 是未提交、未核准的 draft。仍待產品裁定：候選識別；白名單異動由 Admin 畫面或 operator API／工具操作；來源下架是否及如何影響既有項目；否決後重審條件。不得把本包當作可直接實作的已審查規則。
+`admin-source-admission` 仍是未提交、未核准的 draft。產品已裁定先做可稽核 operator API／工具操作，Admin 畫面不作首批前置；否決後只有來源或授權證據實質改變才重審。這些裁定尚未等於 Change Package 的設計與證據審查，不得把本包當作可直接實作的已審查規則。
 
 ## Contract impact
 

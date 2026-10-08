@@ -519,6 +519,7 @@ Run 至少支援：
 - 進入索引的來源必須在白名單內。awesome 清單只作發現管道，任何條目須回溯原始 repo 並走完 PDM-002 的四步回溯准入流程才可加入白名單；清單本身的 License 不繼承給被列的 Skill。
 - 任一項檢查不過即記錄否決原因，且不重複評估同一候選。
 - 白名單異動（新增、否決、下架）記錄提名人、日期與涵蓋類別，異動流程由 `CONTENT-009` 承接。
+- 白名單候選以原始 repo URL 與其中的 Skill 路徑共同識別，受審 commit 是該次審查的證據，不是把整個 repo 一次放行的鍵。先提供可稽核的 operator API／工具操作，Admin 畫面待流程穩定後再設計。撤銷准入只阻止新收錄，既有 Skill 由 operator 逐項走原有下架流程；否決後僅在來源或授權證據實質改變時重新審查。此為准入政策，線上閘門與操作端點尚待實作。
 - 首批數量目標為每類別精選 4–6、已索引 8–12（含精選）；未達下限不得宣告該類別收錄完成。
 - 精選標記的使用者可見措辭為「已人工檢視來源與 License」，不得使用「安全」「官方推薦」等背書語（NFR-001）。
 
@@ -1008,7 +1009,9 @@ Run 至少支援：
 
 **本節不新增跨 Workspace 的內容管理權力**：Skill 治理按鈕對應 `SEC-011` 的端點；點數授予、派送煞車、曝光審核與模型呼叫逾時各依其需求的端點與授權規則，不因後台畫面存在而取得額外權力。後台也不是新的 Bounded Context，是組裝層——新讀取各歸原本的事實 owner（帳號與名冊歸 `identity`、點數與成本統計歸 `credit`、Skill 治理狀態歸 `catalog`、operator 動作紀錄歸 `audit`），畫面在 `apps/web` 的 `/admin/*` 把它們拼起來，後端不新增跨 context 的聚合端點。
 
-第一批：`OPS-001`～`OPS-005`。第二批：`OPS-006`、`OPS-007`。第三批（新增，[營運後台](../adr/README.md#營運後台)決策）：`OPS-008`。第四批（新增，[`05` R-84](05-pending-rulings.md) 裁定）：`OPS-009`。**不在範圍**：編輯 `OPERATOR_USER_IDS`／`BETA_ALLOWLIST`；讀取 `SEC-011` 列為私有的資料；依帳號或工作區的排行與下鑽（[`05` R-78](05-pending-rulings.md) 裁定不做）；濫用檢舉案件（`SEC-011` 要求另立需求）；下架後的恢復；精選層的寫入（只有 `PUT /admin/skills/{id}/tier` 端點，由內容工具呼叫，畫面不提供）。
+第一批：`OPS-001`～`OPS-005`。第二批：`OPS-006`、`OPS-007`。第三批（新增，[營運後台](../adr/README.md#營運後台)決策）：`OPS-008`。第四批（新增，[`05` R-84](05-pending-rulings.md) 裁定）：`OPS-009`。**不在範圍**：編輯 `OPERATOR_USER_IDS`／`BETA_ALLOWLIST`；讀取 `SEC-011` 列為私有的資料；依帳號或工作區的排行與下鑽（[`05` R-78](05-pending-rulings.md) 裁定不做）；濫用檢舉案件（`SEC-011` 要求另立需求）；精選層的寫入（只有 `PUT /admin/skills/{id}/tier` 端點，由內容工具呼叫，畫面不提供）。
+
+完整下架恢復已選擇另行設計；在恢復權限、重新審查與曝光效力定案前，不把目前沒有的操作算進 `OPS-004` 已完成的範圍。
 
 #### OPS-001：後台外殼與 operator 旗標
 
@@ -1041,7 +1044,7 @@ Run 至少支援：
 
 - 以 id 或名稱片段找 Skill，**範圍是所有 workspace，含私人的與已下架的**——公開搜尋找不到這兩種，而它們正是 operator 要處理的對象；已刪除的 Skill 不列。每筆只顯示治理狀態：名稱、所屬 workspace、授權受限展示、再散布判定、下架時間與理由，不含 `SKILL.md` 內容與檔案樹。這不是個人資料查詢，不寫 audit。
 - 三個既有動作在畫面上呈現：設定／解除受限（`PUT`／`DELETE /admin/skills/{id}/restriction`）、再散布判定（`PUT /admin/skills/{id}/redistribution`）、跨工作區下架（`PUT /admin/skills/{id}/takedown`）。**畫面不發明新動作**，理由必填與 audit 沿用各端點既有的規則。
-- 下架沒有恢復的路，畫面用兩段式確認（[system.md §2.8](../design/system.md)）；受限與再散布判定可以用同一個端點改回來，一次送出即可。
+- 下架目前沒有恢復操作，畫面用兩段式確認（[system.md §2.8](../design/system.md)）；受限與再散布判定可以用同一個端點改回來，一次送出即可。完整下架的恢復流程另行設計，不得以清空欄位替代。
 
 #### OPS-005：派送煞車與名冊
 
@@ -1470,7 +1473,7 @@ Run 至少支援：
 - 角色只有兩種：**`member`**（預設，權限完全由 Workspace Scope 決定）與 **`operator`**（平台管理員）。角色是平台層屬性，不是 Workspace 成員屬性。
 - **operator 可以做的事，窮舉如下**：①變更目錄項的可見性（下架／恢復）；②停用某個 Skill Version，使其不得被新的 Run 引用；③白名單的新增、否決與下架異動（`CONTENT-001`）；**④變更一個 Skill 的再散布判定（`skills.redistribution`），並且只有這一項在改成 `allowed` 時必須具名它依據的授權證據**（`license_expression` ＋來源層級，且必須與該 Skill 最新版本凍結的快照相符，見[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布)）。清單以外的動作一律不因 operator 身分而被允許。<br>**這句窮舉管的是什麼**（[`05` R-84](05-pending-rulings.md)）：它窮舉的是**跨 Workspace 作用在他人內容上的動作**，不是「operator 這個身分做過的每一件事」。派送煞車（`SEC-012`）與模型呼叫逾時（`OPS-009`）都不在清單上、也不該被加進來——它們改的是平台對自己的能力提供者的行為，一格 Workspace 資料都不碰，各自的允收準則在自己的需求裡。**分界線是「這個動作會不會改變別人看得到或拿得到的東西」**：會，就要進這張清單；不會，就是平台維運開關，另立需求並照樣寫稽核。**窮舉清單只在有人回來加行的時候才是窮舉的**，所以加的不只是一行，是這句界定。<br>**實作狀態**：①**完整下架已落地**——`PUT /admin/skills/{id}/takedown`（`RequireOperator`）寫的是與 owner-scoped `POST /skills/{id}/takedown` **同一個 `takedown_at`**，所以 410 與搜尋排除只有一套，符合本節末條「不得為 operator 另開第二套」；較輕等級「授權受限展示」見下方追加小節與 `03` `SEC-011`。④**已落地**（`PUT /admin/skills/{id}/redistribution`）。②**版本停用已落地**（`PUT /admin/versions/{id}/disable`，仍待正式 SCM／CI 驗證）。**③ 仍未實作**：目前沒有白名單異動的 operator 端點；其他後台端點分別依點數、派送、曝光與模型呼叫逾時等需求實作，不屬於本條跨 Workspace 內容權力的窮舉。窮舉清單本身不因未實作而縮減：它界定的是「即使實作了也不得超出」的上界。
 - **operator 不得讀取 Workspace 私有內容**（最小權力原則，NFR-001）：除下一條為精確停用目標所需的三項版本 metadata 外，Fork 內容、Test Case、Dataset、Run、Trace、Artifact 與下載紀錄一律不可讀；operator 身分**不擴充 Workspace Scope**，不得作為繞過鐵律 3 的路徑。需要私有內容才能判斷的案件（例如濫用檢舉），必須另立需求與另一套授權，不在本需求範圍。
-- **版本停用的操作語意**（[`05` R-104](05-pending-rulings.md)）：operator 只能以精確版本 ID 查該版本的 ID、版本序號與停用狀態，不取得私有套件內容或跨 Workspace 版本清單。停用不可恢復；誤停用由擁有者建立新版本處理。停用提交後只禁止新 Run 引用該版本，既有 Run 與不可變版本內容不變；建立 Run 與停用必須在同一版本的交易判定上序列化，不能只靠 preflight 或畫面狀態。重複停用回明確的已停用結果，並把嘗試、理由與操作者入稽核。交易閘門、契約、後台操作與整合測試已實作；[Change Package](../domain-memory/changes/admin-version-disable-v2/draft-pr.md) 的簽章 SCM 已驗證，遠端 CI 仍須確認，不等於 SEC-011 整項完成。
+- **版本停用的操作語意**（[`05` R-104](05-pending-rulings.md)）：operator 只能以精確版本 ID 查該版本的 ID、版本序號與停用狀態，不取得私有套件內容或跨 Workspace 版本清單。停用不可恢復；誤停用由擁有者建立新版本處理。停用提交後只禁止新 Run 引用該版本，既有 Run 與不可變版本內容不變；建立 Run 與停用必須在同一版本的交易判定上序列化，不能只靠 preflight 或畫面狀態。重複停用回明確的已停用結果，並把嘗試、理由與操作者入稽核。交易閘門、契約、後台操作與整合測試已實作；[Change Package](../domain-memory/changes/admin-version-disable-v2/draft-pr.md) 的簽章 SCM 與合併後版本遠端 CI 已驗證；正式部署與 SEC-011 其餘動作仍未完成。
 - **operator 不得代表使用者發起、取消或修改 Run**，亦不得建立、修改或刪除 Skill Version 與歷史 Run——下架只改變可見性與可下載性（`CONTENT-009`）。既有 Run 仍可追溯其使用的版本。
 - 每一個 operator 動作寫入 audit event（`CORE-008`），至少含：動作者、時間、對象（skill／skill_version／白名單條目 id）、動作、**理由（必填，空字串不成立）**、**變更前後的狀態**（**放寬措辭**：④ 改的不是可見性而是再散布判定，原句照字面讀會要求一個不存在的欄位；改成「該動作所改變的那個狀態的前後值」，①②③ 的判定一格未變）。**④ 另含它依據的授權證據**，而稽核記的是**快照的值**不是操作者送出的字串——兩者只差大小寫，而差的正好是「所有以 `repo-license-file` 為據放行的 Skill」那句 SQL 要對的那一格（見[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布)）。稽核事件不可由 operator 自行刪改。
 - **授予或撤銷 operator 角色本身也是 audit event**；角色只能由部署設定或既有 operator 授予，不得由使用者自助取得。（角色來源為部署設定 `OPERATOR_USER_IDS`（逗號分隔 user id），授予＝改設定並重啟，**使用者無自助路徑**，此半條完全成立。稽核半條以**最小形式**滿足：`cmd/api` 每次啟動寫一筆 `operator.roster` audit event，內容為當下生效的清單與筆數。**它記的是「誰現在是 operator」，不是「誰在何時授予」**——後者的事實在部署設定的變更歷史裡，不在平台內；要讓平台自己回答，需要 SEC-011 描述的角色表與授予端點，屬後續工作。另：寫不成這筆事件時，該次啟動**不承認任何 operator**（fail-closed，未稽核的角色等於沒有角色）。）

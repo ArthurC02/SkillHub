@@ -7,7 +7,7 @@
       "id": "candidate-key",
       "source_type": "acceptance-criterion",
       "source_id": "source-candidate-identity",
-      "expected_outcome": "同 repo 不同 Skill 路徑或授權可作不同決定，受審 commit 可追溯。",
+      "expected_outcome": "同 repo 不同 Skill 路徑或授權可作不同決定，受審 commit 可追溯但不改變候選鍵。",
       "level": "integration",
       "status": "planned",
       "check": "候選識別與實際策展資料對照測試"
@@ -34,7 +34,7 @@
       "id": "decision-history",
       "source_type": "acceptance-criterion",
       "source_id": "source-decision-lifecycle",
-      "expected_outcome": "現況唯一、歷史保留；重試或重複決定不重複評估。",
+      "expected_outcome": "現況唯一、歷史保留；重試或重複決定不重複評估，來源及授權證據均未實質改變時拒絕重審。",
       "level": "integration",
       "status": "planned",
       "check": "決定狀態轉移與重試測試"
@@ -43,10 +43,10 @@
       "id": "shared-takedown",
       "source_type": "acceptance-criterion",
       "source_id": "source-takedown-consistency",
-      "expected_outcome": "來源下架後目錄、詳情、下載一致遵守既有 Skill 下架，版本／Run 不變。",
+      "expected_outcome": "來源撤銷阻止新收錄但不自動影響既有 Skill；operator 逐項下架後，目錄、詳情、下載一致遵守既有 Skill 下架，版本／Run 不變。",
       "level": "integration",
       "status": "planned",
-      "check": "下架跨入口與歷史保持整合測試"
+      "check": "來源撤銷與逐項下架的跨入口及歷史保持整合測試"
     },
     {
       "id": "atomic-audit",

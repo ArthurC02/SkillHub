@@ -156,8 +156,8 @@ function TakedownAction({ skill }: { skill: SkillGovernance }) {
               下架 {skill.name}（<code>{skill.skill_id}</code>，工作區{" "}
               <code>{skill.workspace_id}</code>
               ），理由：{takedownReason.trim()}
-              。下架後從目錄與搜尋消失，不能再下載或試跑；沒有恢復期。
-              既有的試跑紀錄仍可追溯，不會因這次下架刪除；其他資料若需處理，必須另行處理。下架沒有恢復的路。
+              。下架後不再公開展示或提供下載；目前沒有恢復操作。
+              既有版本與試跑紀錄仍保留，下架本身不阻止新試跑；若需阻止，還須另行處理。
             </>
           }
           pending={takedown.isPending}
