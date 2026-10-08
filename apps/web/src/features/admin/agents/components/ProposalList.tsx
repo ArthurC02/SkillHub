@@ -51,9 +51,11 @@ export function ProposalList() {
   const view = proposal_view ?? "proposed";
   const offset = proposal_offset ?? 0;
   const proposals = usePlatformAgentProposals(view, offset);
-  const rows = proposals.data?.proposals ?? [];
+  const page = proposals.error ? undefined : proposals.data;
+  const rows = page?.proposals ?? [];
   const label = { proposed: "待核准", processing: "核准後處理中", closed: "最近七天結案" }[view];
   const nextOffset = offset + rows.length;
+  const canNext = !!page && rows.length > 0 && nextOffset < page.total;
   const changeOffset = (next: number | undefined) =>
     navigate({
       to: "/admin/agents",
@@ -85,7 +87,7 @@ export function ProposalList() {
       </div>
       {proposals.isPending && <Loading what="提案" />}
       <ReadFailure error={proposals.error} what="提案" />
-      {proposals.data && !proposals.error && (
+      {page && (
         <ListFreshness
           inFlight={rows.some((proposal) => ["approved", "running"].includes(proposal.status))}
           showWhenIdle
@@ -95,13 +97,13 @@ export function ProposalList() {
           subject="提案"
         />
       )}
-      {proposals.data && !proposals.error && rows.length === 0 && (
+      {page && rows.length === 0 && (
         <p>{offset > 0 ? "這一頁沒有提案，清單可能已更新。請返回上一頁。" : `${label}：0 件。`}</p>
       )}
-      {proposals.data && !proposals.error && rows.length > 0 && (
+      {page && rows.length > 0 && (
         <>
           <p className="note">
-            {label}：共 {proposals.data.total} 件；目前顯示第 {offset + 1}–{nextOffset} 件。
+            {label}：共 {page.total} 件；目前顯示第 {offset + 1}–{nextOffset} 件。
           </p>
           <ul className="download-list">
             {rows.map((proposal) => (
@@ -110,22 +112,18 @@ export function ProposalList() {
           </ul>
         </>
       )}
-      {(offset > 0 ||
-        (proposals.data && !proposals.error && nextOffset < proposals.data.total)) && (
+      {(offset > 0 || canNext) && (
         <nav aria-label="提案分頁">
           {offset > 0 && (
             <button type="button" onClick={() => void changeOffset(Math.max(0, offset - 20))}>
               上一頁
             </button>
           )}
-          {proposals.data &&
-            !proposals.error &&
-            rows.length > 0 &&
-            nextOffset < proposals.data.total && (
-              <button type="button" onClick={() => void changeOffset(nextOffset)}>
-                下一頁
-              </button>
-            )}
+          {canNext && (
+            <button type="button" onClick={() => void changeOffset(nextOffset)}>
+              下一頁
+            </button>
+          )}
         </nav>
       )}
     </>
