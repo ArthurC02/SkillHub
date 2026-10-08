@@ -12,11 +12,29 @@ export function CreditPanel({ workspaceId }: { workspaceId: string }) {
     <>
       <h2>點數</h2>
       {ledger.isPending && <Loading what="點數" />}
-      <ReadFailure error={ledger.error} what="點數" />
-      {ledger.data && (
+      <ReadFailure error={ledger.error} what="點數">
+        <p role="alert">
+          暫時無法讀取點數。{ledger.data ? "先前載入的餘額與分錄已隱藏。" : "請稍後再試。"}
+        </p>
+        <button type="button" disabled={ledger.isFetching} onClick={() => void ledger.refetch()}>
+          {ledger.isFetching ? "重新讀取中…" : "再試一次"}
+        </button>
+      </ReadFailure>
+      {ledger.data && !ledger.error && (
         <>
           <p>
             目前餘額 <strong>{ledger.data.balance_credits}</strong> 點
+          </p>
+          <p className="note">
+            餘額與分錄上次取得於{" "}
+            <Timestamp at={new Date(ledger.dataUpdatedAt).toISOString()} relative />。{" "}
+            <button
+              type="button"
+              disabled={ledger.isFetching}
+              onClick={() => void ledger.refetch()}
+            >
+              {ledger.isFetching ? "重新整理中…" : "重新整理點數"}
+            </button>
           </p>
           {ledger.data.entries.length === 0 ? (
             <p>這個帳戶的分錄：0 筆。</p>
@@ -58,7 +76,9 @@ export function CreditPanel({ workspaceId }: { workspaceId: string }) {
           </p>
         </>
       )}
-      <GrantForm workspaceId={workspaceId} />
+      {ledger.data && (
+        <GrantForm workspaceId={workspaceId} ledgerReady={!ledger.error && !ledger.isFetching} />
+      )}
     </>
   );
 }

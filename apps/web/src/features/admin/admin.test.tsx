@@ -15,6 +15,8 @@ import {
   ADMIN_AGENT_STEPS,
   ADMIN_AGENTS,
   ADMIN_AUDIT_LOG,
+  ADMIN_ACCOUNT,
+  ADMIN_LEDGER,
   ADMIN_MODEL_BUDGETS,
   AGENT_FAILED_RUN,
   AGENT_FINDING,
@@ -319,6 +321,141 @@ test("OPS-002: an email nobody has is named as such, not reported as a broken re
   await lookUp("ghost@example.com");
   await waitFor(has("沒有 email 是「ghost@example.com」的帳號"));
   expect(container.querySelector('[role="alert"]')).toBeNull();
+});
+
+test("OPS-002: editing the email hides the prior account until the new lookup completes", async () => {
+  stub(true, (path, _method, url) =>
+    path === "/admin/credits/ws-3"
+      ? { body: { ...ADMIN_LEDGER, workspace_id: "ws-3" }, status: 200 }
+      : path === "/admin/accounts" && url.includes("other%40example.com")
+        ? {
+            body: {
+              ...ADMIN_ACCOUNT,
+              email: "other@example.com",
+              display_name: "封測者乙",
+              workspace_id: "ws-3",
+            },
+            status: 200,
+          }
+        : undefined,
+  );
+  await lookUp("member@example.com");
+  await waitFor(has("封測者甲"));
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-amount", "50");
+  await type("#admin-grant-note", "first account");
+
+  await type("#admin-account-email", "MEMBER@example.com");
+  expect(has("封測者甲")()).toBe(true);
+  await type("#admin-account-email", "other@example.com");
+  expect(has("Email 已變更；按「查詢」載入新帳號。")()).toBe(true);
+  expect(has("封測者甲")()).toBe(false);
+  expect(container.querySelector("#admin-grant-amount")).toBeNull();
+  expect(calls.some((call) => call.url.includes("other%40example.com"))).toBe(false);
+
+  await submit("#admin-account-email");
+  await waitFor(has("封測者乙"));
+  await waitFor(has("授予點數"));
+  expect(field<HTMLInputElement>("#admin-grant-amount").value).toBe("");
+  expect(field<HTMLTextAreaElement>("#admin-grant-note").value).toBe("");
+  expect(button("授予").disabled).toBe(true);
+});
+
+test("OPS-002: a failed account reread hides the old target and offers retry", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/accounts") return undefined;
+    reads += 1;
+    return reads === 2
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : { body: ADMIN_ACCOUNT, status: 200 };
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await act(async () => {
+    await queryClient.refetchQueries({ queryKey: queryKeys.admin.account("member@example.com") });
+  });
+  await waitFor(has("暫時無法讀取帳號"));
+  expect(has("封測者甲")()).toBe(false);
+  expect(container.querySelector("#admin-grant-amount")).toBeNull();
+
+  await click(button("再試一次"));
+  await waitFor(has("封測者甲"));
+  expect(reads).toBe(3);
+});
+
+test("OPS-002: a first lookup failure offers retry without inventing an account", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/accounts") return undefined;
+    reads += 1;
+    return reads === 1
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : { body: ADMIN_ACCOUNT, status: 200 };
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("暫時無法讀取帳號"));
+  expect(has("請稍後再試。")()).toBe(true);
+  expect(has("封測者甲")()).toBe(false);
+  expect(container.querySelector("#admin-grant-amount")).toBeNull();
+
+  await click(button("再試一次"));
+  await waitFor(has("封測者甲"));
+  expect(reads).toBe(2);
+});
+
+test("OPS-003: a failed ledger reread hides stale balance and blocks a grant until retry", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/credits/ws-2") return undefined;
+    reads += 1;
+    return reads === 2
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : { body: ADMIN_LEDGER, status: 200 };
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("目前餘額"));
+  await type("#admin-grant-amount", "50");
+  await type("#admin-grant-note", "correction");
+  expect(button("授予").disabled).toBe(false);
+
+  await act(async () => {
+    await queryClient.refetchQueries({ queryKey: queryKeys.admin.ledger("ws-2") });
+  });
+  await waitFor(has("暫時無法讀取點數"));
+  expect(has("目前餘額")()).toBe(false);
+  expect(button("授予").disabled).toBe(true);
+  expect(has("要等最新餘額讀取完成，才可授予點數。")()).toBe(true);
+  expect(has("「授予」要等上面的欄位都填好。")()).toBe(false);
+  expect(button("授予").getAttribute("aria-describedby")).toBe("admin-grant-why");
+  expect(field<HTMLElement>("#admin-grant-why").textContent).toBe(
+    "要等最新餘額讀取完成，才可授予點數。",
+  );
+
+  await click(button("再試一次"));
+  await waitFor(has("目前餘額"));
+  expect(button("授予").disabled).toBe(false);
+  expect(reads).toBe(3);
+});
+
+test("OPS-003: a first ledger read failure offers retry without a grant form", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/credits/ws-2") return undefined;
+    reads += 1;
+    return reads === 1
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : { body: ADMIN_LEDGER, status: 200 };
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("暫時無法讀取點數"));
+  expect(has("請稍後再試。")()).toBe(true);
+  expect(has("目前餘額")()).toBe(false);
+  expect(container.querySelector("#admin-grant-amount")).toBeNull();
+
+  await click(button("再試一次"));
+  await waitFor(has("目前餘額"));
+  expect(reads).toBe(2);
 });
 
 test("OPS-003: a grant waits for a non-zero whole amount and a reason, then posts both and reloads the ledger", async () => {

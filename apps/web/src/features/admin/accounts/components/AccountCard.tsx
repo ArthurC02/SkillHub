@@ -9,18 +9,6 @@ export function AccountCard({ account }: { account: AccountLookup }) {
       <dl>
         <dt>Email</dt>
         <dd>{account.email}</dd>
-        <dt>User id</dt>
-        <dd>
-          <code>{account.user_id}</code>
-        </dd>
-        <dt>Workspace id</dt>
-        <dd>
-          <code>{account.workspace_id}</code>
-        </dd>
-        <dt>建立時間</dt>
-        <dd>
-          <Timestamp at={account.created_at} />
-        </dd>
         <dt>刪除申請</dt>
         <dd>
           {account.deletion_requested_at ? (
@@ -34,6 +22,23 @@ export function AccountCard({ account }: { account: AccountLookup }) {
         <dt>封測名單</dt>
         <dd>{account.in_beta_allowlist ? "在名單上，或這個部署沒有設定名單" : "不在名單上"}</dd>
       </dl>
+      <details>
+        <summary>帳號識別資料與建立時間</summary>
+        <dl>
+          <dt>User id</dt>
+          <dd>
+            <code>{account.user_id}</code>
+          </dd>
+          <dt>Workspace id</dt>
+          <dd>
+            <code>{account.workspace_id}</code>
+          </dd>
+          <dt>建立時間</dt>
+          <dd>
+            <Timestamp at={account.created_at} />
+          </dd>
+        </dl>
+      </details>
       <CreditPanel workspaceId={account.workspace_id} />
     </>
   );

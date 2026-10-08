@@ -11,6 +11,7 @@ export function ActionForm({
   contextKey = "",
   tone,
   ready = true,
+  blockedReason,
   confirmationScope,
   confirmationLabel,
   onSubmit,
@@ -24,6 +25,7 @@ export function ActionForm({
   contextKey?: string;
   tone?: "caution";
   ready?: boolean;
+  blockedReason?: string;
   confirmationScope?: ReactNode;
   confirmationLabel?: string;
   onSubmit: (note: string) => void;
@@ -82,7 +84,7 @@ export function ActionForm({
       )}
       {blocked && (
         <p id={`${id}-why`} className="note">
-          「{submitLabel}」要等上面的欄位都填好。
+          {blockedReason ?? `「${submitLabel}」要等上面的欄位都填好。`}
         </p>
       )}
       {done && resultMatches && (
