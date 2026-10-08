@@ -13,6 +13,7 @@ import {
 } from "../admin.service";
 import { AdminPage } from "../components/AdminPage";
 import { ENTRY_KIND, ACTION_LABEL, COST_KIND } from "../admin.model";
+import { Timestamp } from "../../../shared/ui/Timestamp";
 import { TrendSection } from "./components/TrendSection";
 
 const usdAmount = (micros: number) => usd(micros);
@@ -30,8 +31,11 @@ export function AdminTrends() {
   const runs = useTrend<Trend>("runs", days);
   const actions = useTrend<Trend>("operator-actions", days);
   const funnel = useTrend<FunnelTrend>("funnel", days);
+  const reads = [cost, credits, runs, actions, funnel];
+  const available = reads.filter((query) => query.data && !query.error);
+  const fetching = reads.some((query) => query.isFetching);
   const stages = funnel.data?.stages ?? [];
-  const range = [cost, credits, runs, actions, funnel].find((query) => query.data)?.data;
+  const range = available[0]?.data;
 
   return (
     <AdminPage
@@ -45,6 +49,31 @@ export function AdminTrends() {
           </Link>
         ))}
       </nav>
+      {reads.some((query) => query.data || query.error) && (
+        <p className="note">
+          {available.length > 0 ? (
+            <>
+              已取得 {available.length}/5 組趨勢；最早取得於{" "}
+              <Timestamp
+                at={new Date(
+                  Math.min(...available.map((query) => query.dataUpdatedAt)),
+                ).toISOString()}
+                relative
+              />
+              。{" "}
+            </>
+          ) : (
+            "目前沒有可用趨勢。 "
+          )}
+          <button
+            type="button"
+            disabled={fetching}
+            onClick={() => void Promise.all(reads.map((query) => query.refetch()))}
+          >
+            {fetching ? "重新整理中…" : "重新整理五組趨勢"}
+          </button>
+        </p>
+      )}
       {range && (
         <p>
           {range.from} 到 {range.to}（UTC），共 {daysOf(range.from, range.to).length} 天。

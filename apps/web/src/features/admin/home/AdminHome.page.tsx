@@ -201,7 +201,7 @@ function OperationsSection() {
   return (
     <section className="admin-home-section">
       <header>
-        <p className="admin-home-eyebrow">Governing · Operations</p>
+        <p className="admin-home-eyebrow">Conducting · Operations</p>
         <h2>派送、稽核與成本</h2>
         <p className="note">監看平台執行狀態、操作紀錄與資源使用。</p>
       </header>

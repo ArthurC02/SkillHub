@@ -166,15 +166,14 @@ test("OPS-001: the account menu offers nothing to a member", async () => {
   expect(container.querySelector('a[href="/admin"]')).toBeNull();
 });
 
-test("the admin home keeps decisions and operations inside Governing", async () => {
+test("the admin home separates governance decisions from operations", async () => {
   stub(true);
   await mountAt("/admin");
   await waitFor(has("營運後台"));
 
   expect(
     Array.from(container.querySelectorAll(".admin-home-eyebrow"), (item) => item.textContent),
-  ).toEqual(["Governing · Decisions", "Governing · Operations"]);
-  expect(has("Conducting")()).toBe(false);
+  ).toEqual(["Governing · Decisions", "Conducting · Operations"]);
 });
 
 test("the admin home leads with live operational priorities", async () => {
@@ -1481,6 +1480,59 @@ test("OPS-008: the trends page asks each owner for 30 days by default and draws 
       "看小工具詳情",
     ].map((name) => `${name}：每日長條圖，逐日數字在下方的表`),
   );
+});
+
+test("OPS-008: a failed trend hides its cached chart while other trends remain usable and refresh recovers it", async () => {
+  let creditReads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/trends/credits") return undefined;
+    creditReads += 1;
+    return creditReads === 2 ? { body: { error: "service unavailable" }, status: 503 } : undefined;
+  });
+  await mountAt("/admin/trends");
+  await waitFor(has("全平台目前餘額總和：1268 點。"));
+
+  const credits = Array.from(container.querySelectorAll("section")).find(
+    (section) => section.querySelector("h2")?.textContent === "每日點數異動（淨額）",
+  )!;
+  await act(async () => {
+    await queryClient.refetchQueries({ queryKey: queryKeys.admin.trend("credits", 30) });
+  });
+  await waitFor(() => credits.querySelector('[role="alert"]') !== null);
+  expect(credits.textContent).toContain("先前載入的趨勢已隱藏");
+  expect(credits.textContent).not.toContain("全平台目前餘額總和：1268 點。");
+  expect(credits.querySelector("figure")).toBeNull();
+  expect(has("評審：3 筆，合計 $0.0036")()).toBe(true);
+  expect(has("已取得 4/5 組趨勢")()).toBe(true);
+
+  await click(button("重新整理五組趨勢"));
+  await waitFor(has("全平台目前餘額總和：1268 點。"));
+  expect(creditReads).toBe(3);
+  expect(has("已取得 5/5 組趨勢")()).toBe(true);
+});
+
+test("OPS-008: losing all trend reads hides the cached range until refresh succeeds", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    unavailable && path.startsWith("/admin/trends/")
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/trends");
+  await waitFor(has("全平台目前餘額總和：1268 點。"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.refetchQueries({ queryKey: ["admin", "trends"] });
+  });
+  await waitFor(has("目前沒有可用趨勢。"));
+  expect(has("2026-09-06 到 2026-09-12（UTC），共 7 天。")()).toBe(false);
+  expect(container.querySelectorAll("figure")).toHaveLength(0);
+
+  unavailable = false;
+  await click(button("重新整理五組趨勢"));
+  await waitFor(has("全平台目前餘額總和：1268 點。"));
+  expect(has("2026-09-06 到 2026-09-12（UTC），共 7 天。")()).toBe(true);
 });
 
 test("OPS-008: a kind's figure totals its range and its table shows zero on the days it had nothing", async () => {
