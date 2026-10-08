@@ -894,3 +894,7 @@ exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities 
 這一版沒有改 `run.mjs`，所以沒有需要反證的新行為；四項證明的是換掉三個套件之後行為與 `-17` 相同。
 
 **預設映像仍是 `-17`**：四項已在 `-18` 的 digest 上通過，移動預設由負責人決定。
+
+### 預設映像從 `-17` 移到 `-18`
+
+四項在 `-18` 的 digest 上通過之後，經負責人同意移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，以及 `apps/sandbox/README.md` 的環境變數表與建置範例。

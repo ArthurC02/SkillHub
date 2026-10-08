@@ -297,7 +297,7 @@ jobs:
       SKILLHUB_REQUIRE_DOCKER: "1"
       # docker_test.go also reads SKILLHUB_SANDBOX_TEST_IMAGE; setting only this variable
       # keeps the other dockerdrv tests on busybox.
-      RUNTIME_IMAGE_FOR_PROBE: ghcr.io/arthurc02/skillhub-runtime-agent-sdk@sha256:344502fb9b4393fd69800b78e5d3cfe606e1f1cb4c5a29eaf05d2f8cf98e0f3a
+      RUNTIME_IMAGE_FOR_PROBE: ghcr.io/arthurc02/skillhub-runtime-agent-sdk@sha256:789d20e50701ec1eb199a55f823522ec642e2c05554652ee52f789bf9b22f00a
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -310,7 +310,7 @@ jobs:
       - name: Pull the Runtime Image the P-02 probe dials from
         run: |
           docker pull "$RUNTIME_IMAGE_FOR_PROBE"
-          docker tag "$RUNTIME_IMAGE_FOR_PROBE" skillhub/runtime-agent-sdk:2026.08-17
+          docker tag "$RUNTIME_IMAGE_FOR_PROBE" skillhub/runtime-agent-sdk:2026.08-18
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
