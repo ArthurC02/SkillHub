@@ -1244,7 +1244,7 @@ test("OPS-012: after a finding moves, the sentence stays up although the refetch
   await type("#admin-finding-acknowledged-note", "checking");
   await submit("#admin-finding-acknowledged-note");
   await waitFor(has("已改成「"));
-  expect(has("我來處理")()).toBe(false);
+  await waitFor(() => !has("我來處理")());
   await type("#admin-finding-resolved-note", "next note");
   await waitFor(() => !has("已改成「")());
 });
@@ -1273,7 +1273,7 @@ test.each([
     await type(`#admin-proposal-${decision}-note`, "reason");
     await submit(`#admin-proposal-${decision}-note`);
     await waitFor(has(sentence));
-    expect(container.querySelector("#admin-proposal-approve-note")).toBeNull();
+    await waitFor(() => container.querySelector("#admin-proposal-approve-note") === null);
   },
 );
 
@@ -1383,7 +1383,7 @@ test.each([
     await type("#admin-agent-daily-report-note", "because");
     await submit("#admin-agent-daily-report-note");
     await waitFor(has(sentence));
-    expect(has(enabledBefore ? "啟用 daily-report" : "停用 daily-report")()).toBe(true);
+    await waitFor(has(enabledBefore ? "啟用 daily-report" : "停用 daily-report"));
   },
 );
 
@@ -1403,13 +1403,13 @@ test("OPS-011: engaging the brake and releasing it each keep their sentence afte
   await type("#admin-agent-brake-engage-note", "incident");
   await submit("#admin-agent-brake-engage-note");
   await waitFor(has("已拉下，所有 Agent 在下一步之前停下。"));
-  expect(has("放開 Agent 煞車")()).toBe(true);
+  await waitFor(has("放開 Agent 煞車"));
 
   await type("#admin-agent-brake-release-note", "over");
   await waitFor(() => !has("已拉下，")());
   await submit("#admin-agent-brake-release-note");
   await waitFor(has("已放開，啟用中的 Agent 下一次排程會執行。"));
-  expect(has("拉下 Agent 煞車")()).toBe(true);
+  await waitFor(has("拉下 Agent 煞車"));
   expect(has("已拉下，")()).toBe(false);
 });
 
@@ -1432,7 +1432,7 @@ test("OPS-004: setting a restriction keeps its sentence after the refetched skil
   await type("#admin-restriction-note", "terms under review");
   await click(button("設定受限"));
   await waitFor(has("解除受限展示"));
-  expect(has("已送出，上面的狀態已更新。")()).toBe(true);
+  await waitFor(has("已送出，上面的狀態已更新。"));
 });
 
 test("OPS-012: a daily-report item without cites shows its text and the page still renders", async () => {
