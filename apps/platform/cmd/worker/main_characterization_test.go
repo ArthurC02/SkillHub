@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 const runWorkerUnderTest = "SKILLHUB_WORKER_MAIN_UNDER_TEST"
@@ -59,6 +61,19 @@ func runWorkerMain(t *testing.T, env ...string) workerExit {
 	return workerExit{code: code, stderr: stderr.String()}
 }
 
+func holdTheTestSchema(t *testing.T, dsn string) {
+	t.Helper()
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close(ctx) })
+	if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock(hashtextextended('skillhub:test-schema', 0))"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func hasAnyPrefix(s string, prefixes []string) bool {
 	for _, p := range prefixes {
 		if strings.HasPrefix(s, p) {
@@ -106,6 +121,7 @@ func TestAJudgeServiceWithoutItsTokenStopsTheWorkerAfterReportingItsDependencies
 		}
 		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping the database-backed start-up path")
 	}
+	holdTheTestSchema(t, dsn)
 	got := runWorkerMain(t, "COOKIE_INSECURE=1", "DATABASE_URL="+dsn, "LLM_SERVICE_URL=http://127.0.0.1:1")
 	if got.code != 1 || !strings.Contains(got.stderr, "LLM_SERVICE_TOKEN is required when LLM_SERVICE_URL is set") {
 		t.Fatalf("exit %d, want 1 naming the missing token; stderr:\n%s", got.code, got.stderr)
