@@ -74,7 +74,6 @@ func (s *Service) FinishRun(ctx context.Context, run pgtype.UUID, status RunStat
 
 type trackedFindings struct {
 	sightings []Sighting
-	now       time.Time
 }
 
 type runEnding struct {
@@ -83,6 +82,7 @@ type runEnding struct {
 	result    []byte
 	findings  *trackedFindings
 	proposals []preparedProposal
+	now       time.Time
 }
 
 func (s *Service) finishWithResult(ctx context.Context, run pgtype.UUID, end runEnding) error {
@@ -100,12 +100,11 @@ func (s *Service) finishWithResult(ctx context.Context, run pgtype.UUID, end run
 		if finished == 0 {
 			return ErrRunFinished
 		}
-		if end.findings == nil {
-			return nil
+		if end.findings != nil {
+			if err := s.recordFindings(ctx, tx, run, end.findings.sightings, end.now); err != nil {
+				return err
+			}
 		}
-		if err := s.recordFindings(ctx, tx, run, end.findings.sightings, end.findings.now); err != nil {
-			return err
-		}
-		return s.recordProposals(ctx, tx, run, end.proposals, end.findings.now)
+		return s.recordProposals(ctx, tx, run, end.proposals, end.now)
 	})
 }

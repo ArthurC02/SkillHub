@@ -108,7 +108,7 @@ func (h *Handler) Findings(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Finding(w http.ResponseWriter, r *http.Request) {
-	id, ok := findingID(w, r)
+	id, ok := pathID(w, r, "finding")
 	if !ok {
 		return
 	}
@@ -132,7 +132,7 @@ func (h *Handler) Finding(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) MoveFinding(w http.ResponseWriter, r *http.Request) {
-	id, ok := findingID(w, r)
+	id, ok := pathID(w, r, "finding")
 	if !ok {
 		return
 	}
@@ -167,15 +167,6 @@ func (h *Handler) MoveFinding(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusNoContent)
 	}
-}
-
-func findingID(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
-	var id pgtype.UUID
-	if err := id.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "finding id must be a UUID")
-		return id, false
-	}
-	return id, true
 }
 
 func findingBody(row gen.GetFindingRow) findingView {

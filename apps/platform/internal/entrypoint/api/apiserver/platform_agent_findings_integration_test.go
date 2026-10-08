@@ -169,6 +169,20 @@ func TestAReportedProblemIsOneFindingAcrossDaysUntilItRecoversAndReopens(t *test
 	assertPurgeHistory(t, w, purge)
 }
 
+func TestARunThatFailsLeavesEveryFindingAsItWas(t *testing.T) {
+	w := newFindingWorld(t, "agent-findings-failed-run")
+	w.report(attention("purge is late", "/jobs/purge/overdue"))
+
+	s := &loopScript{t: t, answers: answers(final(`{`))}
+	report, err := s.runner(w.svc).Run(context.Background(), w.def, nil, loopLimits)
+	if err != nil || report.Status != operations.RunFailed {
+		t.Fatalf("broken run %+v, err %v, want it failed", report, err)
+	}
+	if got := w.findings(); len(got) != 1 || got[0].status != "open" || got[0].seenCount != 1 {
+		t.Errorf("after a failed run: %+v, want the finding still open and seen once", got)
+	}
+}
+
 func assertPurgeHistory(t *testing.T, w *findingWorld, purge pgtype.UUID) {
 	t.Helper()
 	if kinds := w.eventKinds(purge); !slices.Equal(kinds, []string{"opened", "seen", "recovered", "reopened"}) {

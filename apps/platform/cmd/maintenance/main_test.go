@@ -190,6 +190,12 @@ func TestAnApprovedProposalThatNamesNoJobFailsWithoutRunningAnything(t *testing.
 	}
 }
 
+func TestASubcommandOutsideTheSwitchIsAnErrorNotASilentSuccess(t *testing.T) {
+	if err := runSubcommand(context.Background(), nil, "purge-everything"); err == nil {
+		t.Error("an unknown subcommand returned no error")
+	}
+}
+
 func TestASecondRunOfAJobRefusesWhileTheFirstStillHoldsIt(t *testing.T) {
 	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
 	if dsn == "" {

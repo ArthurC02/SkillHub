@@ -104,41 +104,36 @@ func runExclusively(ctx context.Context, pool *pgxpool.Pool, job string) (known 
 	if !slices.ContainsFunc(scheduledJobs(), func(j jobruns.Job) bool { return j.Name == job }) {
 		return false, nil
 	}
-	err = jobruns.Exclusively(ctx, pool, job, func() error {
-		_, err := runSubcommand(ctx, pool, job)
-		return err
-	})
-	return true, err
+	return true, jobruns.Exclusively(ctx, pool, job, func() error { return runSubcommand(ctx, pool, job) })
 }
 
-func runSubcommand(ctx context.Context, pool *pgxpool.Pool, job string) (known bool, err error) {
+func runSubcommand(ctx context.Context, pool *pgxpool.Pool, job string) error {
 	switch job {
 	case "purge-accounts":
-		err = purgeAccounts(ctx, pool)
+		return purgeAccounts(ctx, pool)
 	case "check-sources":
-		err = checkSources(ctx, pool)
+		return checkSources(ctx, pool)
 	case "purge-feedback":
-		err = purgeFeedback(ctx, pool)
+		return purgeFeedback(ctx, pool)
 	case "purge-audit":
-		err = purgeAudit(ctx, pool)
+		return purgeAudit(ctx, pool)
 	case "purge-run-artifacts":
-		err = purgeRunArtifacts(ctx, pool)
+		return purgeRunArtifacts(ctx, pool)
 	case "purge-datasets":
-		err = purgeDatasets(ctx, pool)
+		return purgeDatasets(ctx, pool)
 	case "purge-deleted-skills":
-		err = purgeDeletedSkills(ctx, pool)
+		return purgeDeletedSkills(ctx, pool)
 	case "collect-objects":
-		err = collectObjects(ctx, pool)
+		return collectObjects(ctx, pool)
 	case "rotate-partitions":
-		err = rotatePartitions(ctx, pool)
+		return rotatePartitions(ctx, pool)
 	case "report":
-		err = printCapacityReport(ctx, pool)
+		return printCapacityReport(ctx, pool)
 	case "approved":
-		err = runApproved(ctx, pool)
+		return runApproved(ctx, pool)
 	default:
-		return false, nil
+		return fmt.Errorf("%s is not a maintenance subcommand", job)
 	}
-	return true, err
 }
 
 func runApproved(ctx context.Context, pool *pgxpool.Pool) error {
@@ -161,11 +156,7 @@ func runProposedJob(ctx context.Context, pool *pgxpool.Pool, action string) erro
 	if !ok || !slices.Contains(operations.ProposableMaintenanceJobs, job) {
 		return fmt.Errorf("%s names no maintenance job", action)
 	}
-	known, err := runExclusively(ctx, pool, job)
-	if !known {
-		return fmt.Errorf("%s names no maintenance job", action)
-	}
-	if err != nil {
+	if _, err := runExclusively(ctx, pool, job); err != nil {
 		return err
 	}
 	return jobruns.RecordSuccess(ctx, pool, job)

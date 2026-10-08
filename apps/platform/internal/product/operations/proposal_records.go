@@ -80,7 +80,7 @@ func (h *Handler) Proposals(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Proposal(w http.ResponseWriter, r *http.Request) {
-	id, ok := proposalID(w, r)
+	id, ok := pathID(w, r, "proposal")
 	if !ok {
 		return
 	}
@@ -108,7 +108,7 @@ func (h *Handler) Proposal(w http.ResponseWriter, r *http.Request) {
 var decisions = map[string]decision{"approve": approve, "reject": reject}
 
 func (h *Handler) DecideProposal(w http.ResponseWriter, r *http.Request) {
-	id, ok := proposalID(w, r)
+	id, ok := pathID(w, r, "proposal")
 	if !ok {
 		return
 	}
@@ -145,10 +145,10 @@ func (h *Handler) DecideProposal(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func proposalID(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
+func pathID(w http.ResponseWriter, r *http.Request, noun string) (pgtype.UUID, bool) {
 	var id pgtype.UUID
 	if err := id.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "proposal id must be a UUID")
+		httpx.WriteError(w, http.StatusBadRequest, noun+" id must be a UUID")
 		return id, false
 	}
 	return id, true

@@ -65,8 +65,8 @@ func TestACiteResolvesOnlyToAFactTheDocumentHolds(t *testing.T) {
 		{"a", false},
 	}
 	for _, tc := range cases {
-		if got := resolves(tc.pointer, doc); got != tc.want {
-			t.Errorf("resolves(%q) = %v, want %v", tc.pointer, got, tc.want)
+		if _, got := valueAt(tc.pointer, doc); got != tc.want {
+			t.Errorf("valueAt(%q) found = %v, want %v", tc.pointer, got, tc.want)
 		}
 	}
 }

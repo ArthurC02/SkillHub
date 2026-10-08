@@ -66,7 +66,7 @@ func checkCites(cites []string, facts []any) error {
 		return errors.New("it cites no fact")
 	}
 	for _, cite := range cites {
-		if !citedInAny(cite, facts) {
+		if _, ok := citedValue(cite, facts); !ok {
 			return fmt.Errorf("it cites %q, which no tool returned", cite)
 		}
 	}
@@ -102,11 +102,6 @@ func returnedFacts(steps []StepRecord) []any {
 	return facts
 }
 
-func citedInAny(pointer string, facts []any) bool {
-	_, ok := citedValue(pointer, facts)
-	return ok
-}
-
 func citedValue(pointer string, facts []any) (any, bool) {
 	for _, fact := range facts {
 		if value, ok := valueAt(pointer, fact); ok {
@@ -116,10 +111,7 @@ func citedValue(pointer string, facts []any) (any, bool) {
 	return nil, false
 }
 
-func resolves(pointer string, node any) bool {
-	_, ok := valueAt(pointer, node)
-	return ok
-}
+var pointerUnescaper = strings.NewReplacer("~1", "/", "~0", "~")
 
 // valueAt follows a JSON Pointer (RFC 6901) into a decoded document; the
 // whole document ("") is not a citation, because it names no single fact.
@@ -128,7 +120,7 @@ func valueAt(pointer string, node any) (any, bool) {
 		return nil, false
 	}
 	for _, token := range strings.Split(pointer[1:], "/") {
-		token = strings.NewReplacer("~1", "/", "~0", "~").Replace(token)
+		token = pointerUnescaper.Replace(token)
 		switch value := node.(type) {
 		case map[string]any:
 			next, ok := value[token]
