@@ -674,6 +674,36 @@ test("OPS-004: the search field follows the skill selected in the address", asyn
   expect(new URLSearchParams(window.location.search).get("q")).toBe(SKILL);
 });
 
+test("OPS-004: editing a governance query hides the prior skill and actions until search", async () => {
+  const other = {
+    ...ADMIN_SKILLS.skills[0],
+    skill_id: "cccccccc-4444-4444-4444-444444444444",
+    name: "Other Tool",
+    workspace_id: "ws-3",
+  };
+  stub(true, (path, _method, url) =>
+    path === "/admin/skills" && url.includes("q=other")
+      ? { body: { skills: [other] }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+
+  await type("#admin-skill-q", "other");
+  expect(has("PDF Summariser")()).toBe(false);
+  expect(container.querySelector("#admin-skill-takedown")).toBeNull();
+  expect(has("查詢條件已變更；按「查詢」載入新小工具。")()).toBe(true);
+  expect(calls.some((call) => call.url === "/admin/skills?q=other")).toBe(false);
+
+  await type("#admin-skill-q", SKILL);
+  expect(has("對「PDF Summariser」的動作")()).toBe(true);
+  await type("#admin-skill-q", "other");
+  await submit("#admin-skill-q");
+  await waitFor(has("對「Other Tool」的動作"));
+  expect(has("PDF Summariser")()).toBe(false);
+  expect(new URLSearchParams(window.location.search).get("q")).toBe("other");
+});
+
 test("OPS-004: releasing a skill needs licence evidence; blocking it does not", async () => {
   stub(true, (path, method) =>
     path === `/admin/skills/${SKILL}/redistribution` && method === "PUT"

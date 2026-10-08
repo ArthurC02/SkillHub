@@ -3,6 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import {
   ADMIN_ACCOUNT,
   ADMIN_LEDGER,
+  ADMIN_SKILLS,
   ARTIFACT,
   CATALOG,
   OTHER_RUN,
@@ -851,6 +852,43 @@ test("admin account lookup keeps a grant tied to the submitted email on a phone"
     scroll: document.documentElement.scrollWidth,
   }));
   expect(width.scroll).toBeLessThanOrEqual(width.client);
+});
+
+test("admin governance keeps actions tied to the submitted search on a phone", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.route("**/admin/skills?q=other", (route) =>
+    route.fulfill({
+      json: {
+        skills: [
+          {
+            ...ADMIN_SKILLS.skills[0],
+            skill_id: SKILL_B,
+            name: "Other Tool",
+            workspace_id: "ws-3",
+          },
+        ],
+      },
+    }),
+  );
+  await page.goto(`/admin/skills?q=${SKILL}`);
+  await expect(page.getByRole("heading", { name: "對「PDF Summariser」的動作" })).toBeVisible();
+
+  await page.getByLabel("小工具 ID 或名稱").fill("other");
+  await expect(page.getByRole("heading", { name: "對「PDF Summariser」的動作" })).toHaveCount(0);
+  await expect(page.locator("#admin-skill-takedown")).toHaveCount(0);
+  await expect(page.getByText("查詢條件已變更；按「查詢」載入新小工具。")).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("admin-governance-new-query-phone.png"),
+    fullPage: true,
+  });
+
+  await page.getByRole("button", { name: "查詢", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "對「Other Tool」的動作" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "對「PDF Summariser」的動作" })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
 test.describe("QA-008 real layout", () => {

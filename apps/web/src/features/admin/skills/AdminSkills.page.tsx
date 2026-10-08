@@ -8,14 +8,17 @@ import { AdminPage } from "../components/AdminPage";
 import { GovernanceRow } from "./components/GovernanceRow";
 import { GovernanceActions } from "./components/GovernanceActions";
 
-function SearchForm({ q }: { q: string }) {
+function SearchForm({ q, onDraftChange }: { q: string; onDraftChange: (draft: string) => void }) {
   const navigate = useNavigate();
   const [draft, setDraft] = useState(q);
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        void navigate({ to: "/admin/skills", search: { q: draft.trim() || undefined } });
+        const query = draft.trim();
+        setDraft(query);
+        onDraftChange(query);
+        void navigate({ to: "/admin/skills", search: { q: query || undefined } });
       }}
     >
       <div className="field">
@@ -23,7 +26,10 @@ function SearchForm({ q }: { q: string }) {
         <input
           id="admin-skill-q"
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            onDraftChange(event.target.value);
+          }}
         />
       </div>
       <button type="submit" className="action">
@@ -33,17 +39,12 @@ function SearchForm({ q }: { q: string }) {
   );
 }
 
-export function AdminSkills() {
-  const { q = "" } = useSearch({ from: "/admin/skills" });
+function GovernanceResults({ q }: { q: string }) {
   const skills = useGovernance(q);
   const found = q !== "" && !skills.error ? (skills.data?.skills ?? []) : [];
 
   return (
-    <AdminPage
-      heading="小工具治理"
-      lede="範圍是所有工作區，含私人的與已下架的；只顯示治理狀態，不顯示內容。"
-    >
-      <SearchForm key={q} q={q} />
+    <>
       {q === "" && <p className="note">輸入 ID 或名稱，查詢所有工作區的小工具。</p>}
       {q !== "" && skills.isPending && <Loading what="小工具" />}
       <ReadFailure error={skills.error} what="小工具" />
@@ -74,6 +75,26 @@ export function AdminSkills() {
         ))}
       {found.length === 1 && found[0].takedown_at === null && (
         <GovernanceActions key={found[0].skill_id} skill={found[0]} />
+      )}
+    </>
+  );
+}
+
+export function AdminSkills() {
+  const { q = "" } = useSearch({ from: "/admin/skills" });
+  const [editing, setEditing] = useState<{ q: string; draft: string }>();
+  const queryChanged = editing?.q === q && editing.draft !== q;
+
+  return (
+    <AdminPage
+      heading="小工具治理"
+      lede="範圍是所有工作區，含私人的與已下架的；只顯示治理狀態，不顯示內容。"
+    >
+      <SearchForm key={q} q={q} onDraftChange={(draft) => setEditing({ q, draft })} />
+      {queryChanged ? (
+        <p className="note">查詢條件已變更；按「查詢」載入新小工具。</p>
+      ) : (
+        <GovernanceResults q={q} />
       )}
     </AdminPage>
   );
