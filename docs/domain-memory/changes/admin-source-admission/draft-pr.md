@@ -6,11 +6,11 @@
 
 ## Domain impact
 
-Ingest 擁有候選和准入決定；Catalog 需要在公開收錄時取得權威判定；Registry 已擁有 Skill 下架事實，不能另建第二套可見性。既有 Skill Version 和 Run 不改寫。
+Ingest 擁有候選和准入決定；Catalog 的一般搜尋文件也服務個人 Skill，不能直接把索引寫入當成公開收錄；目前公開搜尋同時收錄策展 Workspace 與 Publishing 核准曝光的 Release，兩條閘門需分別審查。Registry 已擁有 Skill 下架事實，不能另建第二套可見性。既有 Skill Version 和 Run 不改寫。
 
 ## Implementation handoff
 
-候選不能僅以 repo URL 識別：現有 `seed-skills.json` 的 `anthropic` 與 `anthropic-sa` 共享 repo，但依 Skill 目錄有不同授權。產品已裁定以原始 repo URL 與 Skill 路徑作穩定鍵，commit 作每次審查證據。先建立唯一可查詢的決定現況與歷史，再在所有公開索引寫入路徑接上 Ingest 判定；來源撤銷只阻止新收錄，既有 Skill 由 operator 逐項走 Registry 下架流程，不新增平行旗標。使用者自行上傳後公開分享的分類仍待釐清。
+候選不能僅以 repo URL 識別：現有 `seed-skills.json` 的 `anthropic` 與 `anthropic-sa` 共享 repo，但依 Skill 目錄有不同授權。產品已裁定以原始 repo URL 與 Skill 路徑作穩定鍵，commit 作每次審查證據。先建立唯一可查詢的決定現況與歷史，再於策展 Workspace 和經裁定屬外部來源收錄的 Publishing 曝光入口接上 Ingest 判定；不能阻斷個人匯入的一般搜尋文件寫入。來源撤銷只阻止新收錄，既有 Skill 由 operator 逐項走 Registry 下架流程，不新增平行旗標。使用者自行上傳後公開分享的分類及其曝光審核與白名單的關係仍待釐清。
 
 ## Proposal and approvals
 
@@ -26,4 +26,4 @@ Ingest 擁有候選和准入決定；Catalog 需要在公開收錄時取得權�
 
 ## Residual risks
 
-白名單目前只有策展文件流水帳，沒有可查詢現況或公開收錄閘門。法務未決的來源仍維持既有受限處置，不因准入草案放行。
+白名單目前只有策展文件流水帳，沒有可查詢現況或公開收錄閘門。公開曝光由 Publishing 審核，而 Domain Registry 尚無 Ingest 與 Publishing 的已審查互動，須在實作前明確決定與審查。法務未決的來源仍維持既有受限處置，不因准入草案放行。

@@ -25,10 +25,10 @@
       "id": "index-gate",
       "source_type": "acceptance-criterion",
       "source_id": "source-admission-gate",
-      "expected_outcome": "未准入、否決及已下架候選不能新增公開索引；有效准入可進；個人匯入不誤擋。",
+      "expected_outcome": "策展 Workspace 與適用白名單的 Publishing 曝光兩條公開入口都拒絕未准入、否決及已下架候選；有效准入可進，個人匯入的一般搜尋文件不誤擋。",
       "level": "integration",
       "status": "planned",
-      "check": "所有公開收錄入口的真實資料庫整合測試"
+      "check": "策展 Workspace、Publishing 曝光與個人匯入的真實資料庫整合測試"
     },
     {
       "id": "decision-history",

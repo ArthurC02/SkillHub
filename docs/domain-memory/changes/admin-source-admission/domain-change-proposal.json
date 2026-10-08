@@ -14,7 +14,8 @@
   "affected_contexts": [
     "ingest",
     "catalog",
-    "registry"
+    "registry",
+    "publishing"
   ],
   "rule_ids": [],
   "contract_ids": [],
@@ -24,7 +25,7 @@
     "evidence": []
   },
   "boundary_decision": {
-    "interaction": "Ingest 擁有候選與准入決定；公開索引入口以窄 owner 判定取得准入事實。既有目錄下架由 Registry 的 Skill 下架能力執行，不為來源下架另建可見性狀態。",
+    "interaction": "Ingest 擁有候選與准入決定；Catalog 的一般搜尋文件包含個人 Skill，不能直接把其寫入等同公開收錄。公開搜尋目前包含策展 Workspace 與 Publishing 核准曝光的兩條來源；兩條公開准入邊界須分別釐清後，以窄 owner 判定取得准入事實。既有目錄下架由 Registry 的 Skill 下架能力執行，不為來源下架另建可見性狀態。",
     "consistency": "准入判定與新公開索引的狀態轉移同步；決定與 audit 同交易。來源撤銷只停止新收錄，既有 Skill 的逐項下架是獨立的 Registry 命令，不宣稱來源撤銷已完成既有項目的下架。",
     "prohibited_dependencies": [
       "Catalog 不直接讀寫 Ingest 的候選或決定資料表。",
@@ -40,9 +41,10 @@
       "同一 repo 可含不同授權的 Skill，repo URL 單獨作白名單鍵過寬。",
       "人工策展紀錄目前沒有可查詢現況，也不能阻止 API 或腳本直接索引。",
       "來源否決、重試與下架必須可稽核且冪等。",
-      "公開收錄與個人匯入不是同一政策，operator 仍不能讀私人內容。"
+      "公開收錄與個人匯入不是同一政策，operator 仍不能讀私人內容。",
+      "Catalog 的一般搜尋文件可由個人匯入建立；Publishing 另以 Release 與搜尋快照審核公開曝光，准入閘門不能只依搜尋文件寫入判斷。"
     ],
-    "decision": "先建立 Ingest 擁有的候選決定與窄准入判定；以原始 repo URL 加 Skill 路徑作穩定候選鍵，commit 作每次受審證據，不把 seed source_id 當永久身分。先提供可稽核的 operator API 與工具，不以 Admin 畫面作首批前置。收錄入口在寫入公開索引前查權威決定；來源撤銷只阻止新收錄，既有 Skill 由 operator 逐項走 Registry 的下架命令。否決後只有來源或授權證據實質改變才重審；使用者自行上傳且公開分享的分類仍待決定。",
+    "decision": "先建立 Ingest 擁有的候選決定與窄准入判定；以原始 repo URL 加 Skill 路徑作穩定候選鍵，commit 作每次受審證據，不把 seed source_id 當永久身分。先提供可稽核的 operator API 與工具，不以 Admin 畫面作首批前置。在策展 Workspace 及經裁定屬外部來源收錄的 Publishing 公開曝光兩條入口檢查權威決定，不阻斷個人匯入的一般搜尋文件寫入；來源撤銷只阻止新收錄，既有 Skill 由 operator 逐項走 Registry 的下架命令。否決後只有來源或授權證據實質改變才重審；使用者自行上傳且公開分享的分類及閘門適用關係仍待決定。",
     "invariants_preserved": [
       "Skill Version 與歷史 Run 不可變。",
       "公開可見性以既有 Skill 下架事實為準。",
@@ -82,7 +84,7 @@
     "irreversible_change"
   ],
   "open_questions": [
-    "使用者自行上傳且公開分享時如何分類？"
+    "使用者自行上傳且公開分享時如何分類？其發佈曝光審核與外部來源白名單的適用關係為何？"
   ],
   "approvals": []
 }

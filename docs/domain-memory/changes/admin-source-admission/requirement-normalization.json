@@ -44,7 +44,7 @@
     "收錄層級"
   ],
   "open_questions": [
-    "使用者自行上傳且公開分享時如何分類？"
+    "使用者自行上傳且公開分享時如何分類？其發佈曝光審核與外部來源白名單的適用關係為何？"
   ],
   "risk_flags": [
     "cross_context",
@@ -62,6 +62,7 @@
     "tools/content/seed-skills.json",
     "apps/platform/internal/skill/admission/doc.go",
     "apps/platform/internal/skill/discovery/doc.go",
-    "apps/platform/internal/skill/library/doc.go"
+    "apps/platform/internal/skill/library/doc.go",
+    "apps/platform/internal/skill/publishing/doc.go"
   ]
 }
