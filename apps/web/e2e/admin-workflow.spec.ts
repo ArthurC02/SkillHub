@@ -150,7 +150,8 @@ test("operator must confirm a skill takedown before it is sent and sees the refr
   const confirm = page.getByRole("button", { name: "確認下架" });
   await expect(confirm).toBeFocused();
   await expect(confirm).toHaveAttribute("aria-describedby", "admin-takedown-scope");
-  await expect(page.locator("#admin-takedown-scope")).toContainText("下架沒有恢復的路");
+  await expect(page.locator("#admin-takedown-scope")).toContainText("目前沒有恢復操作");
+  await expect(page.locator("#admin-takedown-scope")).toContainText("下架本身不阻止新試跑");
   expect(reasons).toEqual([]);
 
   await page.getByRole("button", { name: "取消", exact: true }).click();
