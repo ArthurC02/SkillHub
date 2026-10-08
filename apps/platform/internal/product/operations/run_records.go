@@ -111,9 +111,8 @@ func runViewFromRow(row gen.ListPlatformAgentRunsRow) runView {
 }
 
 func (h *Handler) Steps(w http.ResponseWriter, r *http.Request) {
-	var run pgtype.UUID
-	if err := run.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "run id must be a UUID")
+	run, ok := pathID(w, r, "run")
+	if !ok {
 		return
 	}
 	rows, err := h.Svc.RunSteps(r.Context(), run)

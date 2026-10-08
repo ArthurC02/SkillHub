@@ -84,7 +84,7 @@ async def close_client() -> None:
         _shared_client.cache_clear()
 
 
-def _metadata(**pairs: str) -> dict:
+def request_metadata(**pairs: str) -> dict:
     """Gateway metadata so the spend lands on the right Run and operation.
 
     Correlation, never authority: this service has no database to look an id
@@ -107,7 +107,7 @@ class GatewayUsage(BaseModel):
     cost_source: Literal["gateway"] | None = None
 
 
-def _usage(completion, headers) -> GatewayUsage | None:
+def completion_usage(completion, headers) -> GatewayUsage | None:
     """The call's cost, or None when the gateway reported nothing usable.
 
     Omitted rather than zero-filled: a zero here would read downstream as a
@@ -135,8 +135,8 @@ def served_model(completion, headers, requested: str) -> str:
     return getattr(completion, "model", None) or requested
 
 
-def _embedding_usage(response, headers) -> GatewayUsage | None:
-    """`_usage` for an embeddings response, which has no completion half.
+def embedding_usage(response, headers) -> GatewayUsage | None:
+    """`completion_usage` for an embeddings response, which has no completion half.
 
     An embeddings response has no `completion_tokens`, so zero is the fact
     here rather than an absent reading.

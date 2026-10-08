@@ -17,9 +17,9 @@ from skillhub_llm.gateway import (
     SEED,
     TEMPERATURE,
     GatewayUsage,
-    _metadata,
-    _usage,
     client,
+    completion_usage,
+    request_metadata,
     served_model,
     within,
 )
@@ -197,7 +197,7 @@ async def enrich_skill(req: EnrichSkillRequest) -> EnrichSkillResponse:
             },
             temperature=TEMPERATURE,
             seed=SEED,
-            extra_body=_metadata(operation="enrich-skill"),
+            extra_body=request_metadata(operation="enrich-skill"),
         )
         completion = raw.parse()
     except OpenAIError as e:
@@ -233,5 +233,5 @@ async def enrich_skill(req: EnrichSkillRequest) -> EnrichSkillResponse:
         prompt_version=PROMPT_VERSION,
         temperature=TEMPERATURE,
         seed=SEED,
-        usage=_usage(completion, raw.headers),
+        usage=completion_usage(completion, raw.headers),
     )

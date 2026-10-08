@@ -449,10 +449,12 @@ func assertRunSteps(t *testing.T, operator *client, id string) {
 	}
 }
 
-func TestReadingStepsNeedsARunIDAndAnUnknownRunHasNone(t *testing.T) {
+func TestAMalformedAgentRecordIDIsABadRequestAndAnUnknownRunHasNoSteps(t *testing.T) {
 	_, _, operator := loopAgentWithOperator(t, "agent-run-records-ids", 1_000_000)
-	if code, body := operatorCall(t, operator, http.MethodGet, "/admin/agents/runs/not-a-uuid/steps", ""); code != http.StatusBadRequest {
-		t.Errorf("malformed id: %d %v, want 400", code, body)
+	for _, path := range []string{"/admin/agents/runs/not-a-uuid/steps", "/admin/agents/proposals/not-a-uuid", "/admin/agents/findings/not-a-uuid"} {
+		if code, body := operatorCall(t, operator, http.MethodGet, path, ""); code != http.StatusBadRequest {
+			t.Errorf("malformed id in %s: %d %v, want 400", path, code, body)
+		}
 	}
 	code, body := operatorCall(t, operator, http.MethodGet, "/admin/agents/runs/00000000-0000-0000-0000-000000000000/steps", "")
 	if steps, ok := body["steps"].([]any); code != http.StatusOK || !ok || len(steps) != 0 {

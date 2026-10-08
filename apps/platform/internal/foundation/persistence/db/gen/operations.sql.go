@@ -14,17 +14,17 @@ import (
 const abandonStaleProposals = `-- name: AbandonStaleProposals :many
 UPDATE platform_agent_proposals
 SET status = 'failed', finished_at = now(), outcome = $1
-WHERE status = 'running' AND started_at < $2
+WHERE status = 'running' AND started_at < now() - make_interval(secs => $2::double precision)
 RETURNING id
 `
 
 type AbandonStaleProposalsParams struct {
-	Outcome       *string
-	StartedBefore pgtype.Timestamptz
+	Outcome      *string
+	LeaseSeconds float64
 }
 
 func (q *Queries) AbandonStaleProposals(ctx context.Context, arg AbandonStaleProposalsParams) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, abandonStaleProposals, arg.Outcome, arg.StartedBefore)
+	rows, err := q.db.Query(ctx, abandonStaleProposals, arg.Outcome, arg.LeaseSeconds)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (q *Queries) AppendFindingEvent(ctx context.Context, arg AppendFindingEvent
 const claimApprovedProposal = `-- name: ClaimApprovedProposal :one
 WITH next AS (
     SELECT id FROM platform_agent_proposals
-    WHERE status = 'approved'
+    WHERE status = 'approved' AND NOT EXISTS (SELECT 1 FROM platform_agent_brake)
     ORDER BY decided_at, id
     LIMIT 1 FOR UPDATE SKIP LOCKED
 )
@@ -133,17 +133,17 @@ func (q *Queries) CountFindingsByStatus(ctx context.Context) ([]CountFindingsByS
 const decideProposal = `-- name: DecideProposal :one
 UPDATE platform_agent_proposals
 SET status = $1, decided_by = $2, decided_at = now(), decision_note = $3,
-    finished_at = $4
+    finished_at = CASE WHEN $4::boolean THEN now() END
 WHERE id = $5 AND status = 'proposed' AND expires_at > now()
 RETURNING id
 `
 
 type DecideProposalParams struct {
-	Status     string
-	DecidedBy  pgtype.UUID
-	Note       *string
-	FinishedAt pgtype.Timestamptz
-	ID         pgtype.UUID
+	Status    string
+	DecidedBy pgtype.UUID
+	Note      *string
+	Closes    bool
+	ID        pgtype.UUID
 }
 
 func (q *Queries) DecideProposal(ctx context.Context, arg DecideProposalParams) (pgtype.UUID, error) {
@@ -151,7 +151,7 @@ func (q *Queries) DecideProposal(ctx context.Context, arg DecideProposalParams) 
 		arg.Status,
 		arg.DecidedBy,
 		arg.Note,
-		arg.FinishedAt,
+		arg.Closes,
 		arg.ID,
 	)
 	var id pgtype.UUID

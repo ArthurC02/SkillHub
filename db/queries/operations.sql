@@ -165,7 +165,7 @@ SELECT EXISTS (
 -- name: DecideProposal :one
 UPDATE platform_agent_proposals
 SET status = @status, decided_by = @decided_by, decided_at = now(), decision_note = @note,
-    finished_at = sqlc.narg(finished_at)
+    finished_at = CASE WHEN @closes::boolean THEN now() END
 WHERE id = @id AND status = 'proposed' AND expires_at > now()
 RETURNING id;
 
@@ -178,7 +178,7 @@ RETURNING id;
 -- name: ClaimApprovedProposal :one
 WITH next AS (
     SELECT id FROM platform_agent_proposals
-    WHERE status = 'approved'
+    WHERE status = 'approved' AND NOT EXISTS (SELECT 1 FROM platform_agent_brake)
     ORDER BY decided_at, id
     LIMIT 1 FOR UPDATE SKIP LOCKED
 )
@@ -190,7 +190,7 @@ RETURNING p.id, p.action;
 -- name: AbandonStaleProposals :many
 UPDATE platform_agent_proposals
 SET status = 'failed', finished_at = now(), outcome = @outcome
-WHERE status = 'running' AND started_at < @started_before
+WHERE status = 'running' AND started_at < now() - make_interval(secs => @lease_seconds::double precision)
 RETURNING id;
 
 -- name: FinishProposal :execrows

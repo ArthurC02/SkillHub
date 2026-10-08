@@ -20,9 +20,9 @@ from skillhub_llm.gateway import (
     SEED,
     TEMPERATURE,
     GatewayUsage,
-    _metadata,
-    _usage,
     client,
+    completion_usage,
+    request_metadata,
     served_model,
     within,
 )
@@ -414,7 +414,7 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
             },
             temperature=TEMPERATURE,
             seed=SEED,
-            extra_body=_metadata(
+            extra_body=request_metadata(
                 run_id=req.run_id, evaluation_id=req.evaluation_id, operation="judge"
             ),
         )
@@ -443,7 +443,7 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
         prompt_version=JUDGE_PROMPT_VERSION,
         temperature=TEMPERATURE,
         seed=SEED,
-        usage=_usage(completion, raw.headers),
+        usage=completion_usage(completion, raw.headers),
     )
 
 
@@ -545,7 +545,7 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
             },
             temperature=TEMPERATURE,
             seed=SEED,
-            extra_body=_metadata(evaluation_id=req.evaluation_id, operation="suggest"),
+            extra_body=request_metadata(evaluation_id=req.evaluation_id, operation="suggest"),
         )
         completion = raw.parse()
     except OpenAIError as e:
@@ -597,5 +597,5 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
         prompt_version=SUGGEST_IMPROVEMENTS_PROMPT_VERSION,
         temperature=TEMPERATURE,
         seed=SEED,
-        usage=_usage(completion, raw.headers),
+        usage=completion_usage(completion, raw.headers),
     )

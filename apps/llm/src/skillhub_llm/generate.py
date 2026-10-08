@@ -26,9 +26,9 @@ from skillhub_llm.gateway import (
     SEED,
     TEMPERATURE,
     GatewayUsage,
-    _metadata,
-    _usage,
     client,
+    completion_usage,
+    request_metadata,
     served_model,
     within,
 )
@@ -287,7 +287,7 @@ async def generate_skill(req: GenerateSkillRequest) -> GenerateSkillResponse:
                     "schema": GeneratedSkill.model_json_schema(),
                 },
             },
-            extra_body=_metadata(operation="generate-skill"),
+            extra_body=request_metadata(operation="generate-skill"),
         )
         completion = raw.parse()
     except OpenAIError as e:
@@ -324,5 +324,5 @@ async def generate_skill(req: GenerateSkillRequest) -> GenerateSkillResponse:
         prompt_version=GENERATE_SKILL_PROMPT_VERSION,
         temperature=TEMPERATURE,
         seed=SEED,
-        usage=_usage(completion, raw.headers),
+        usage=completion_usage(completion, raw.headers),
     )

@@ -16,7 +16,13 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from openai import APIError
 from pydantic import BaseModel, ConfigDict, Field
 
-from skillhub_llm.gateway import GatewayUsage, _metadata, _usage, client, served_model
+from skillhub_llm.gateway import (
+    GatewayUsage,
+    client,
+    completion_usage,
+    request_metadata,
+    served_model,
+)
 from skillhub_llm.untrusted import data_block_rules, fence, scrub
 
 router = APIRouter()
@@ -31,6 +37,8 @@ class AgentInstructions:
     result_schema: dict
     prompt_version: str
 
+
+_CITES = {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^/"}}
 
 DAILY_REPORT = AgentInstructions(
     system=(
@@ -63,11 +71,7 @@ DAILY_REPORT = AgentInstructions(
                     "properties": {
                         "status": {"type": "string", "enum": ["fine", "attention"]},
                         "text": {"type": "string", "minLength": 1},
-                        "cites": {
-                            "type": "array",
-                            "minItems": 1,
-                            "items": {"type": "string", "pattern": "^/"},
-                        },
+                        "cites": _CITES,
                     },
                 },
             },
@@ -80,11 +84,7 @@ DAILY_REPORT = AgentInstructions(
                     "properties": {
                         "action": {"type": "string", "minLength": 1},
                         "reason": {"type": "string", "minLength": 1},
-                        "cites": {
-                            "type": "array",
-                            "minItems": 1,
-                            "items": {"type": "string", "pattern": "^/"},
-                        },
+                        "cites": _CITES,
                     },
                 },
             },
@@ -240,7 +240,7 @@ async def _step(
                 tools=_tools(req, instructions),
                 tool_choice="required",
                 max_tokens=req.max_output_tokens,
-                extra_body=_metadata(operation=f"agent:{req.agent}", run_id=req.run_id),
+                extra_body=request_metadata(operation=f"agent:{req.agent}", run_id=req.run_id),
             )
         )
     except APIError as error:
@@ -250,7 +250,7 @@ async def _step(
     common = {
         "model": served_model(completion, raw.headers, req.model_role),
         "prompt_version": instructions.prompt_version,
-        "usage": _usage(completion, raw.headers),
+        "usage": completion_usage(completion, raw.headers),
     }
     if isinstance(decision, AgentToolIntent):
         return AgentStepResponse(outcome="tool_intent", tool_intent=decision, **common)

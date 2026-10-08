@@ -207,7 +207,7 @@ func (r findingRecorder) event(ctx context.Context, finding pgtype.UUID, kind Fi
 func (r findingRecorder) audit(ctx context.Context, finding pgtype.UUID, action string) error {
 	return audit.Log(ctx, r.tx, audit.Event{
 		Agent: r.agent, Action: action, ResourceType: audit.ResourcePlatformAgentFinding, ResourceID: finding,
-		Metadata: map[string]any{"run": pgconv.UUIDString(r.run)},
+		Metadata: map[string]any{auditRun: pgconv.UUIDString(r.run)},
 	})
 }
 
@@ -260,7 +260,7 @@ func (s *Service) MoveFinding(ctx context.Context, id pgtype.UUID, to FindingSta
 		}
 		return audit.Log(ctx, tx, audit.Event{
 			Actor: operator, Action: action, ResourceType: audit.ResourcePlatformAgentFinding, ResourceID: id,
-			Metadata: map[string]any{"from": string(from), auditNote: note},
+			Metadata: map[string]any{auditFrom: string(from), auditNote: note},
 		})
 	})
 }

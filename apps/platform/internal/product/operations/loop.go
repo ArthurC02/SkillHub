@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -89,7 +89,7 @@ const (
 	reasonDeadline   = "the run reached its time limit"
 	reasonUnrecorded = "the run's outcome could not be recorded: "
 	finishTool       = "finish"
-	revokeTimeout    = 10 * time.Second
+	settleTimeout    = 10 * time.Second
 )
 
 var errUnoffered = errors.New("operations: the model asked for a tool this agent was not offered")
@@ -136,9 +136,7 @@ func (r *Runner) runStarted(ctx context.Context, report RunReport, def Definitio
 func (r *Runner) remainingBudgetUSD(ctx context.Context, def Definition) (float64, error) {
 	now := r.Now().UTC()
 	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	spent, err := gen.New(r.Svc.Pool).PlatformAgentSpendSince(ctx, gen.PlatformAgentSpendSinceParams{
-		Name: def.Name, Since: pgconv.Timestamptz(dayStart),
-	})
+	spent, err := r.Svc.spentSince(ctx, def.Name, dayStart)
 	if err != nil {
 		return 0, err
 	}
@@ -148,36 +146,35 @@ func (r *Runner) remainingBudgetUSD(ctx context.Context, def Definition) (float6
 const usdMicrosPerDollar = 1_000_000
 
 func (r *Runner) revoke(ctx context.Context, runID string) {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), revokeTimeout)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), settleTimeout)
 	defer cancel()
 	_ = r.RevokeKey(ctx, runID)
 }
 
 func (r *Runner) finish(ctx context.Context, report RunReport, status RunStatus, reason string, result json.RawMessage) (RunReport, error) {
-	report.Status, report.Reason, report.Result = status, reason, result
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), revokeTimeout)
-	defer cancel()
-	return report, r.Svc.finishWithResult(ctx, report.ID, runEnding{status: status, reason: reason, result: result})
+	return r.end(ctx, report, runEnding{status: status, reason: reason, result: result})
 }
 
 func (r *Runner) complete(ctx context.Context, report RunReport, def Definition, result json.RawMessage, steps []StepRecord) (RunReport, error) {
-	if def.Sightings == nil {
-		return r.finish(ctx, report, RunCompleted, "", result)
-	}
-	var proposals []preparedProposal
+	ending := runEnding{status: RunCompleted, result: result, now: r.Now()}
 	if def.Proposals != nil {
-		var err error
-		if proposals, err = prepareProposals(ctx, def, r.Actions, def.Proposals(result)); err != nil {
+		prepared, err := prepareProposals(ctx, def, r.Actions, def.Proposals(result))
+		if err != nil {
 			return r.finish(ctx, report, RunFailed, err.Error(), result)
 		}
+		ending.proposals, ending.reason = prepared.proposals, strings.Join(prepared.unpreviewed, "; ")
 	}
-	report.Status, report.Result = RunCompleted, result
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), revokeTimeout)
+	if def.Sightings != nil {
+		ending.tracksFindings, ending.sightings = true, def.Sightings(result, steps)
+	}
+	return r.end(ctx, report, ending)
+}
+
+func (r *Runner) end(ctx context.Context, report RunReport, ending runEnding) (RunReport, error) {
+	report.Status, report.Reason, report.Result = ending.status, ending.reason, ending.result
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), settleTimeout)
 	defer cancel()
-	findings := &trackedFindings{sightings: def.Sightings(result, steps), now: r.Now()}
-	return report, r.Svc.finishWithResult(ctx, report.ID, runEnding{
-		status: RunCompleted, result: result, findings: findings, proposals: proposals,
-	})
+	return report, r.Svc.finishWithResult(ctx, report.ID, ending)
 }
 
 func offered(def Definition, tools []Tool) []Tool {
@@ -273,11 +270,7 @@ func (l *runLoop) call(ctx context.Context, seq int, intent ToolCall, model Mode
 }
 
 func (l *runLoop) record(ctx context.Context, seq int, intent ToolCall, result string, model ModelCall) error {
-	return gen.New(l.runner.Svc.Pool).RecordPlatformAgentStep(ctx, gen.RecordPlatformAgentStepParams{
-		RunID: l.run, Seq: int32(seq), Tool: intent.Tool, Arguments: intent.Arguments, Result: result,
-		Model: model.Model, PromptTokens: model.PromptTokens, CompletionTokens: model.CompletionTokens,
-		UsdMicros: usdMicros(model.CostUSD),
-	})
+	return l.runner.Svc.recordStep(ctx, l.run, seq, StepRecord{ToolCall: intent, Result: result}, model)
 }
 
 func toolResult(ctx context.Context, tool Tool, arguments string) string {

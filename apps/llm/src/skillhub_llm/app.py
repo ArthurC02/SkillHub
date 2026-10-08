@@ -20,10 +20,10 @@ from skillhub_llm.enrich import router as enrich_router
 from skillhub_llm.evaluate import router as evaluate_router
 from skillhub_llm.gateway import (
     GatewayUsage,
-    _embedding_usage,
-    _metadata,
-    _usage,
     close_client,
+    completion_usage,
+    embedding_usage,
+    request_metadata,
     served_model,
     within,
 )
@@ -151,7 +151,7 @@ async def embed(req: EmbedRequest) -> EmbedResponse:
         raw = await client.embeddings.with_raw_response.create(
             model=EMBED_MODEL,
             input=req.texts,
-            extra_body=_metadata(operation="embed"),
+            extra_body=request_metadata(operation="embed"),
         )
         response = raw.parse()
     except Exception as e:
@@ -173,7 +173,7 @@ async def embed(req: EmbedRequest) -> EmbedResponse:
         embeddings=vectors,
         model=EMBED_MODEL,
         dimensions=EMBEDDING_DIMENSIONS,
-        usage=_embedding_usage(response, raw.headers),
+        usage=embedding_usage(response, raw.headers),
     )
 
 
@@ -266,7 +266,7 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
                     "schema": MatchReasons.model_json_schema(),
                 },
             },
-            extra_body=_metadata(operation="match-reasons"),
+            extra_body=request_metadata(operation="match-reasons"),
         )
         response = raw.parse()
     except Exception as e:
@@ -287,14 +287,14 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
         return MatchReasonsResponse(
             reasons=[],
             model=served_model(response, raw.headers, MATCH_REASON_MODEL),
-            usage=_usage(response, raw.headers),
+            usage=completion_usage(response, raw.headers),
         )
 
     wanted = {c.skill_id for c in req.candidates}
     return MatchReasonsResponse(
         reasons=[r for r in parsed.reasons if r.skill_id in wanted and r.reason],
         model=served_model(response, raw.headers, MATCH_REASON_MODEL),
-        usage=_usage(response, raw.headers),
+        usage=completion_usage(response, raw.headers),
     )
 
 
@@ -408,7 +408,7 @@ async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaRespon
                     "schema": SuggestedCriteria.model_json_schema(),
                 },
             },
-            extra_body=_metadata(operation="suggest-criteria"),
+            extra_body=request_metadata(operation="suggest-criteria"),
         )
         response = raw.parse()
     except Exception as e:
@@ -422,7 +422,7 @@ async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaRespon
         raise HTTPException(
             status_code=502, detail="suggest-criteria provider returned malformed output"
         ) from None
-    usage = _usage(response, raw.headers)
+    usage = completion_usage(response, raw.headers)
     try:
         parsed = SuggestedCriteria.model_validate_json(content)
     except ValidationError:

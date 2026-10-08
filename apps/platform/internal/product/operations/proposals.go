@@ -50,24 +50,30 @@ type preparedProposal struct {
 	preview Preview
 }
 
-func prepareProposals(ctx context.Context, def Definition, actions []Action, requests []ProposalRequest) ([]preparedProposal, error) {
-	prepared := make([]preparedProposal, 0, len(requests))
+type preparedProposals struct {
+	proposals   []preparedProposal
+	unpreviewed []string
+}
+
+func prepareProposals(ctx context.Context, def Definition, actions []Action, requests []ProposalRequest) (preparedProposals, error) {
+	var prepared preparedProposals
 	for _, request := range requests {
 		if !slices.Contains(def.Actions, request.Action) {
-			return nil, fmt.Errorf("operations: the agent proposed %q, which it is not allowed to propose", request.Action)
+			return preparedProposals{}, fmt.Errorf("operations: the agent proposed %q, which it is not allowed to propose", request.Action)
 		}
 		i := slices.IndexFunc(actions, func(a Action) bool { return a.Name == request.Action })
 		if i < 0 {
-			return nil, fmt.Errorf("operations: no action named %q is registered", request.Action)
+			return preparedProposals{}, fmt.Errorf("operations: no action named %q is registered", request.Action)
 		}
 		preview, err := actions[i].Preview(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("operations: previewing %q: %w", request.Action, err)
+			prepared.unpreviewed = append(prepared.unpreviewed, fmt.Sprintf("%q was not proposed because its preview failed: %v", request.Action, err))
+			continue
 		}
 		if preview.changesNothing() {
 			continue
 		}
-		prepared = append(prepared, preparedProposal{ProposalRequest: request, tier: actions[i].Tier, preview: preview})
+		prepared.proposals = append(prepared.proposals, preparedProposal{ProposalRequest: request, tier: actions[i].Tier, preview: preview})
 	}
 	return prepared, nil
 }
@@ -103,7 +109,7 @@ func (s *Service) recordProposals(ctx context.Context, tx pgx.Tx, run pgtype.UUI
 		}
 		if err := audit.Log(ctx, tx, audit.Event{
 			Agent: agentID, Action: audit.ActionProposalPropose, ResourceType: audit.ResourcePlatformAgentProposal,
-			ResourceID: id, Metadata: map[string]any{"run": pgconv.UUIDString(run), "action": p.Action},
+			ResourceID: id, Metadata: map[string]any{auditRun: pgconv.UUIDString(run), auditAction: p.Action},
 		}); err != nil {
 			return err
 		}
@@ -125,12 +131,8 @@ var (
 func (s *Service) DecideProposal(ctx context.Context, id pgtype.UUID, d decision, operator pgtype.UUID, note string) error {
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		q := gen.New(tx)
-		var finished pgtype.Timestamptz
-		if d.closes {
-			finished = pgconv.Timestamptz(time.Now())
-		}
 		if _, err := q.DecideProposal(ctx, gen.DecideProposalParams{
-			Status: string(d.status), DecidedBy: operator, Note: &note, FinishedAt: finished, ID: id,
+			Status: string(d.status), DecidedBy: operator, Note: &note, Closes: d.closes, ID: id,
 		}); errors.Is(err, pgx.ErrNoRows) {
 			return closedOrUnknown(ctx, q, id)
 		} else if err != nil {
@@ -176,14 +178,19 @@ type ClaimedProposal struct {
 }
 
 func (s *Service) ClaimApprovedProposal(ctx context.Context) (ClaimedProposal, bool, error) {
-	row, err := gen.New(s.Pool).ClaimApprovedProposal(ctx)
+	var claimed ClaimedProposal
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		row, err := gen.New(tx).ClaimApprovedProposal(ctx)
+		if err != nil {
+			return err
+		}
+		claimed = ClaimedProposal{ID: row.ID, Action: row.Action}
+		return systemAudit(ctx, tx, row.ID, audit.ActionProposalStart, nil)
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ClaimedProposal{}, false, nil
 	}
-	if err != nil {
-		return ClaimedProposal{}, false, err
-	}
-	return ClaimedProposal{ID: row.ID, Action: row.Action}, true, nil
+	return claimed, err == nil, err
 }
 
 func (s *Service) FinishProposal(ctx context.Context, id pgtype.UUID, failure error) error {
@@ -210,7 +217,6 @@ func (s *Service) FinishProposal(ctx context.Context, id pgtype.UUID, failure er
 }
 
 const (
-	auditError            = "error"
 	proposalRunLease      = 2 * time.Hour
 	outcomeFailedSilently = "the job failed without saying why"
 	outcomeAbandoned      = "the maintenance process stopped before it reported an outcome"
@@ -220,7 +226,7 @@ func (s *Service) AbandonStaleProposals(ctx context.Context) (int, error) {
 	var abandoned int
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		ids, err := gen.New(tx).AbandonStaleProposals(ctx, gen.AbandonStaleProposalsParams{
-			Outcome: new(outcomeAbandoned), StartedBefore: pgconv.Timestamptz(time.Now().Add(-proposalRunLease)),
+			Outcome: new(outcomeAbandoned), LeaseSeconds: proposalRunLease.Seconds(),
 		})
 		if err != nil {
 			return err

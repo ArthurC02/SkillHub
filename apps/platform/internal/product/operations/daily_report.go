@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -24,6 +25,8 @@ const (
 	ReportFine      = "fine"
 	ReportAttention = "attention"
 )
+
+const factAction = "action"
 
 var errNoItems = errors.New("the report has no items")
 
@@ -58,7 +61,26 @@ func checkProposal(proposal ProposalRequest, facts []any) error {
 	if strings.TrimSpace(proposal.Reason) == "" {
 		return errors.New("the proposal gives no reason")
 	}
+	if !slices.ContainsFunc(facts, func(fact any) bool { return offers(fact, proposal.Action) }) {
+		return fmt.Errorf("it proposes %q, which no returned fact offers", proposal.Action)
+	}
 	return checkCites(proposal.Cites, facts)
+}
+
+func offers(node any, action string) bool {
+	value, ok := node.(map[string]any)
+	if !ok {
+		return false
+	}
+	if value[factAction] == action {
+		return true
+	}
+	for _, child := range value {
+		if offers(child, action) {
+			return true
+		}
+	}
+	return false
 }
 
 func checkCites(cites []string, facts []any) error {
@@ -66,7 +88,7 @@ func checkCites(cites []string, facts []any) error {
 		return errors.New("it cites no fact")
 	}
 	for _, cite := range cites {
-		if !citedInAny(cite, facts) {
+		if _, ok := citedValue(cite, facts); !ok {
 			return fmt.Errorf("it cites %q, which no tool returned", cite)
 		}
 	}
@@ -102,11 +124,6 @@ func returnedFacts(steps []StepRecord) []any {
 	return facts
 }
 
-func citedInAny(pointer string, facts []any) bool {
-	_, ok := citedValue(pointer, facts)
-	return ok
-}
-
 func citedValue(pointer string, facts []any) (any, bool) {
 	for _, fact := range facts {
 		if value, ok := valueAt(pointer, fact); ok {
@@ -116,10 +133,7 @@ func citedValue(pointer string, facts []any) (any, bool) {
 	return nil, false
 }
 
-func resolves(pointer string, node any) bool {
-	_, ok := valueAt(pointer, node)
-	return ok
-}
+var pointerUnescaper = strings.NewReplacer("~1", "/", "~0", "~")
 
 // valueAt follows a JSON Pointer (RFC 6901) into a decoded document; the
 // whole document ("") is not a citation, because it names no single fact.
@@ -128,7 +142,7 @@ func valueAt(pointer string, node any) (any, bool) {
 		return nil, false
 	}
 	for _, token := range strings.Split(pointer[1:], "/") {
-		token = strings.NewReplacer("~1", "/", "~0", "~").Replace(token)
+		token = pointerUnescaper.Replace(token)
 		switch value := node.(type) {
 		case map[string]any:
 			next, ok := value[token]

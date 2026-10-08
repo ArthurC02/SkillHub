@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -20,9 +21,12 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/jobruns"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 func TestPurgeServiceCarriesEveryContextsStep(t *testing.T) {
@@ -187,6 +191,82 @@ func TestAnApprovedProposalThatNamesNoJobFailsWithoutRunningAnything(t *testing.
 		if err == nil || !strings.Contains(err.Error(), "names no maintenance job") {
 			t.Errorf("%s: %v, want it refused as naming no job", action, err)
 		}
+	}
+}
+
+func TestEveryJobAnAgentMayProposeIsAScheduledJob(t *testing.T) {
+	for _, job := range operations.ProposableMaintenanceJobs {
+		if !slices.ContainsFunc(scheduledJobs(), func(j jobruns.Job) bool { return j.Name == job }) {
+			t.Errorf("%s may be proposed but maintenance does not run it", job)
+		}
+	}
+}
+
+func TestASubcommandOutsideTheSwitchIsAnErrorNotASilentSuccess(t *testing.T) {
+	if err := runSubcommand(context.Background(), nil, "purge-everything"); err == nil {
+		t.Error("an unknown subcommand returned no error")
+	}
+}
+
+func TestEachReconcileRowBecomesTheCandidateItNamesWithinTheBatch(t *testing.T) {
+	row := run.ReconcileCandidate{
+		ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}, WorkspaceID: pgtype.UUID{Bytes: [16]byte{2}, Valid: true}, ObjectKey: "runs/a",
+	}
+	var asked int32
+	list := asCandidates(func(_ context.Context, limit int32) ([]run.ReconcileCandidate, error) {
+		asked = limit
+		return []run.ReconcileCandidate{row}, nil
+	})
+	got, err := list(context.Background(), 7)
+	want := []objreconcile.Candidate{{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: "runs/a"}}
+	if err != nil || asked != 7 || !reflect.DeepEqual(got, want) {
+		t.Errorf("candidates %+v (%v) with limit %d, want %+v with limit 7", got, err, asked, want)
+	}
+
+	failing := asCandidates(func(context.Context, int32) ([]run.ReconcileCandidate, error) {
+		return nil, errors.New("list failed")
+	})
+	if _, err := failing(context.Background(), 7); err == nil || err.Error() != "list failed" {
+		t.Errorf("a failing list returned %v, want its error", err)
+	}
+}
+
+type untouchedStore struct{}
+
+func (untouchedStore) Exists(context.Context, string) (bool, error) {
+	return false, errors.New("unexpected")
+}
+func (untouchedStore) Remove(context.Context, string) error { return errors.New("unexpected") }
+
+func TestTheIntentPassRunsEvenWhenTheExpiredPassFails(t *testing.T) {
+	var logged bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	pool, err := pgxpool.New(context.Background(), strings.TrimPrefix(unreachableMaintenanceDatabase, "DATABASE_URL="))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	mark := func(context.Context, pgx.Tx, pgtype.UUID) error { return nil }
+	intentsListed := false
+	passes := retentionPasses{
+		sweep: "test purge", purgedKey: "things_purged",
+		expired: objreconcile.RetentionOwner{Mark: mark, List: func(context.Context, int32) ([]objreconcile.Candidate, error) {
+			return nil, errors.New("expired list failed")
+		}},
+		intents: objreconcile.RetentionOwner{Mark: mark, List: func(context.Context, int32) ([]objreconcile.Candidate, error) {
+			intentsListed = true
+			return nil, errors.New("intent list failed")
+		}},
+	}
+
+	err = passes.run(context.Background(), pool, untouchedStore{})
+	if !intentsListed || err == nil || !strings.Contains(err.Error(), "expired list failed") || !strings.Contains(err.Error(), "intent list failed") {
+		t.Errorf("err %v, intents listed %v; want both passes run and both failures returned", err, intentsListed)
+	}
+	if out := logged.String(); !strings.Contains(out, "test purge stopped early") || !strings.Contains(out, "things_purged=0") || !strings.Contains(out, "upload_intents_purged=0") {
+		t.Errorf("logged %q, want the sweep named with both counts", out)
 	}
 }
 

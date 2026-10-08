@@ -133,7 +133,7 @@ func (h *Handler) Proposals(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Proposal(w http.ResponseWriter, r *http.Request) {
-	id, ok := proposalID(w, r)
+	id, ok := pathID(w, r, "proposal")
 	if !ok {
 		return
 	}
@@ -147,12 +147,8 @@ func (h *Handler) Proposal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, proposalDetailView{
-		proposalView: proposalView{
-			ID: pgconv.UUIDString(row.ID), Agent: row.Agent, Action: row.Action, Tier: row.Tier, Reason: row.Reason,
-			Status: row.Status, ProposedAt: pgconv.RFC3339(row.ProposedAt), ExpiresAt: pgconv.RFC3339(row.ExpiresAt),
-			FinishedAt: pgconv.RFC3339(row.FinishedAt),
-		},
-		RunID: pgconv.UUIDString(row.RunID), Cites: row.Cites, Preview: row.Preview,
+		proposalView: proposalBody(row),
+		RunID:        pgconv.UUIDString(row.RunID), Cites: row.Cites, Preview: row.Preview,
 		DecidedUserID: pgconv.UUIDString(row.DecidedBy), DecidedAt: pgconv.RFC3339(row.DecidedAt),
 		DecisionNote: deref(row.DecisionNote), StartedAt: pgconv.RFC3339(row.StartedAt), Outcome: deref(row.Outcome),
 	})
@@ -161,7 +157,7 @@ func (h *Handler) Proposal(w http.ResponseWriter, r *http.Request) {
 var decisions = map[string]decision{"approve": approve, "reject": reject}
 
 func (h *Handler) DecideProposal(w http.ResponseWriter, r *http.Request) {
-	id, ok := proposalID(w, r)
+	id, ok := pathID(w, r, "proposal")
 	if !ok {
 		return
 	}
@@ -198,11 +194,19 @@ func (h *Handler) DecideProposal(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func proposalID(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
+func pathID(w http.ResponseWriter, r *http.Request, noun string) (pgtype.UUID, bool) {
 	var id pgtype.UUID
 	if err := id.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "proposal id must be a UUID")
+		httpx.WriteError(w, http.StatusBadRequest, noun+" id must be a UUID")
 		return id, false
 	}
 	return id, true
+}
+
+func proposalBody(row gen.GetProposalRow) proposalView {
+	return proposalView{
+		ID: pgconv.UUIDString(row.ID), Agent: row.Agent, Action: row.Action, Tier: row.Tier, Reason: row.Reason,
+		Status: row.Status, ProposedAt: pgconv.RFC3339(row.ProposedAt), ExpiresAt: pgconv.RFC3339(row.ExpiresAt),
+		FinishedAt: pgconv.RFC3339(row.FinishedAt),
+	}
 }

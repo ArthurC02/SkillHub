@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 type RunStatus string
@@ -72,17 +73,14 @@ func (s *Service) FinishRun(ctx context.Context, run pgtype.UUID, status RunStat
 	return s.finishWithResult(ctx, run, runEnding{status: status, reason: reason})
 }
 
-type trackedFindings struct {
-	sightings []Sighting
-	now       time.Time
-}
-
 type runEnding struct {
-	status    RunStatus
-	reason    string
-	result    []byte
-	findings  *trackedFindings
-	proposals []preparedProposal
+	status         RunStatus
+	reason         string
+	result         []byte
+	tracksFindings bool
+	sightings      []Sighting
+	proposals      []preparedProposal
+	now            time.Time
 }
 
 func (s *Service) finishWithResult(ctx context.Context, run pgtype.UUID, end runEnding) error {
@@ -100,12 +98,25 @@ func (s *Service) finishWithResult(ctx context.Context, run pgtype.UUID, end run
 		if finished == 0 {
 			return ErrRunFinished
 		}
-		if end.findings == nil {
-			return nil
+		if end.tracksFindings {
+			if err := s.recordFindings(ctx, tx, run, end.sightings, end.now); err != nil {
+				return err
+			}
 		}
-		if err := s.recordFindings(ctx, tx, run, end.findings.sightings, end.findings.now); err != nil {
-			return err
-		}
-		return s.recordProposals(ctx, tx, run, end.proposals, end.findings.now)
+		return s.recordProposals(ctx, tx, run, end.proposals, end.now)
+	})
+}
+
+func (s *Service) spentSince(ctx context.Context, agent string, since time.Time) (int64, error) {
+	return gen.New(s.Pool).PlatformAgentSpendSince(ctx, gen.PlatformAgentSpendSinceParams{
+		Name: agent, Since: pgconv.Timestamptz(since),
+	})
+}
+
+func (s *Service) recordStep(ctx context.Context, run pgtype.UUID, seq int, step StepRecord, model ModelCall) error {
+	return gen.New(s.Pool).RecordPlatformAgentStep(ctx, gen.RecordPlatformAgentStepParams{
+		RunID: run, Seq: int32(seq), Tool: step.Tool, Arguments: step.Arguments, Result: step.Result,
+		Model: model.Model, PromptTokens: model.PromptTokens, CompletionTokens: model.CompletionTokens,
+		UsdMicros: usdMicros(model.CostUSD),
 	})
 }

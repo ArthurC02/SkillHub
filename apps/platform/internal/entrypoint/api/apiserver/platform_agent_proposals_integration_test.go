@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -57,7 +58,7 @@ func (w *proposalWorld) propose(proposals ...string) operations.RunReport {
 	result := `{"items":[` + attention("purge is late", "/jobs/purge/overdue") + `],"proposals":[` + joinComma(proposals) + `]}`
 	facts := operations.Tool{
 		Name: "maintenance_report", Description: "facts", Parameters: map[string]any{"type": "object"},
-		Run: func(context.Context, json.RawMessage) (any, error) { return json.RawMessage(findingFacts), nil },
+		Run: func(context.Context, json.RawMessage) (any, error) { return offering(proposals), nil },
 	}
 	s := &loopScript{t: w.t, answers: answers(intent("maintenance_report"), final(result))}
 	runner := s.runner(w.svc)
@@ -67,6 +68,19 @@ func (w *proposalWorld) propose(proposals ...string) operations.RunReport {
 		w.t.Fatalf("run: %v", err)
 	}
 	return report
+}
+
+func offering(proposals []string) map[string]any {
+	var facts map[string]any
+	_ = json.Unmarshal([]byte(findingFacts), &facts)
+	offers := map[string]any{}
+	for _, p := range proposals {
+		var request operations.ProposalRequest
+		_ = json.Unmarshal([]byte(p), &request)
+		offers[request.Action] = map[string]any{"action": request.Action}
+	}
+	facts["offers"] = offers
+	return facts
 }
 
 type storedProposal struct {
@@ -159,11 +173,7 @@ func TestAProposalWhosePreviewChangesNothingNeverReachesAnOperator(t *testing.T)
 
 func TestARunThatProposesBeyondWhatItMayEndsFailedAndProposesNothing(t *testing.T) {
 	allowed := operations.Action{Name: "run-test-proposal-allowed", Tier: operations.TierDestructive, Preview: fixedPreview()}
-	broken := operations.Action{Name: "run-test-proposal-broken", Tier: operations.TierDestructive,
-		Preview: func(context.Context) (operations.Preview, error) {
-			return operations.Preview{}, errors.New("count failed")
-		}}
-	w := newProposalWorld(t, "agent-proposals-refused", allowed, broken)
+	w := newProposalWorld(t, "agent-proposals-refused", allowed)
 	unregistered := "run-test-proposal-unregistered"
 	w.def.Actions = append(w.def.Actions, unregistered)
 
@@ -172,7 +182,6 @@ func TestARunThatProposesBeyondWhatItMayEndsFailedAndProposesNothing(t *testing.
 	}{
 		{"an action the agent is not allowed", "run-test-proposal-forbidden", "it is not allowed to propose"},
 		{"an allowed action nobody registered", unregistered, "no action named"},
-		{"an action whose preview fails", broken.Name, "count failed"},
 	}
 	for _, c := range cases {
 		report := w.propose(proposal(allowed.Name, "fine", "/jobs/purge/overdue"), proposal(c.action, "why", "/jobs/purge/overdue"))
@@ -182,6 +191,29 @@ func TestARunThatProposesBeyondWhatItMayEndsFailedAndProposesNothing(t *testing.
 	}
 	if got := w.proposals(); len(got) != 0 {
 		t.Errorf("proposals %+v, want none from a failed run", got)
+	}
+}
+
+func TestAProposalWhosePreviewFailsIsLeftOutAndTheReportStillCounts(t *testing.T) {
+	allowed := operations.Action{Name: "run-test-proposal-previewed", Tier: operations.TierDestructive, Preview: fixedPreview()}
+	broken := operations.Action{Name: "run-test-proposal-unpreviewed", Tier: operations.TierDestructive,
+		Preview: func(context.Context) (operations.Preview, error) {
+			return operations.Preview{}, errors.New("count failed")
+		}}
+	w := newProposalWorld(t, "agent-proposals-unpreviewed", allowed, broken)
+
+	report := w.propose(proposal(allowed.Name, "fine", "/jobs/purge/overdue"), proposal(broken.Name, "why", "/jobs/rotate/overdue"))
+	if report.Status != operations.RunCompleted || !strings.Contains(report.Reason, broken.Name) || !strings.Contains(report.Reason, "count failed") {
+		t.Errorf("run %s %q, want completed and naming the unpreviewed action and why", report.Status, report.Reason)
+	}
+	if status, reason := runStatus(t, testPool, report.ID); status != "completed" || reason != report.Reason {
+		t.Errorf("stored run %s %q, want completed with %q", status, reason, report.Reason)
+	}
+	if got := w.proposals(); len(got) != 1 || got[0].action != allowed.Name {
+		t.Errorf("proposals %+v, want only %s", got, allowed.Name)
+	}
+	if got := w.findings(); len(got) != 1 || got[0].status != "open" {
+		t.Errorf("findings %+v, want the report's attention item recorded", got)
 	}
 }
 
@@ -292,9 +324,18 @@ func TestTheMaintenanceRunnerTakesEachApprovedProposalOnceAndRecordsItsOutcome(t
 	if body["status"] != "failed" || body["outcome"] != "the job stopped part way" {
 		t.Errorf("failed proposal %v, want failed with the error", body)
 	}
-	if n := countRow(t, testPool, "SELECT count(*) FROM audit_events WHERE resource_id = ANY($1) AND action IN ('platform_agent_proposal.succeeded', 'platform_agent_proposal.failed')",
-		[]pgtype.UUID{claimed[ok.Name], claimed[bad.Name]}); n != 2 {
-		t.Errorf("outcome audit events: %d, want one each", n)
+	assertSystemAudited(t, []pgtype.UUID{claimed[ok.Name], claimed[bad.Name]}, map[string]int{
+		"platform_agent_proposal.started": 2, "platform_agent_proposal.succeeded": 1, "platform_agent_proposal.failed": 1,
+	})
+}
+
+func assertSystemAudited(t *testing.T, proposals []pgtype.UUID, want map[string]int) {
+	t.Helper()
+	for action, n := range want {
+		if got := countRow(t, testPool, "SELECT count(*) FROM audit_events WHERE resource_id = ANY($1) AND action = $2 AND actor_user_id IS NULL AND actor_agent_id IS NULL",
+			proposals, action); got != n {
+			t.Errorf("%s audit events: %d, want %d", action, got, n)
+		}
 	}
 }
 
@@ -315,6 +356,32 @@ func (w *proposalWorld) approveAndClaimAll() map[string]pgtype.UUID {
 			return claimed
 		}
 		claimed[p.Action] = p.ID
+	}
+}
+
+func TestTheBrakeHoldsAnApprovedProposalUntilItIsReleased(t *testing.T) {
+	held := operations.Action{Name: "run-test-proposal-held", Tier: operations.TierDestructive, Preview: fixedPreview()}
+	w := newProposalWorld(t, "agent-proposals-brake", held)
+	w.propose(proposal(held.Name, "a", "/jobs/purge/overdue"))
+	got := w.proposals()
+	if code, _ := w.decide(got[0].id, "approve", "go ahead"); code != http.StatusNoContent {
+		t.Fatalf("approve: %d", code)
+	}
+	if code, _ := operatorCall(t, w.operator, http.MethodPut, "/admin/agents/brake", `{"note":"incident"}`); code != http.StatusOK {
+		t.Fatalf("engage brake: %d", code)
+	}
+	t.Cleanup(func() { operatorCall(t, w.operator, http.MethodDelete, "/admin/agents/brake", `{"note":"cleanup"}`) })
+
+	ctx := context.Background()
+	if _, found, err := w.svc.ClaimApprovedProposal(ctx); err != nil || found {
+		t.Fatalf("claim under the brake: found=%v err=%v, want nothing taken", found, err)
+	}
+	if code, _ := operatorCall(t, w.operator, http.MethodDelete, "/admin/agents/brake", `{"note":"over"}`); code != http.StatusNoContent {
+		t.Fatalf("release brake: %d", code)
+	}
+	p, found, err := w.svc.ClaimApprovedProposal(ctx)
+	if err != nil || !found || p.ID != got[0].id {
+		t.Errorf("claim after release: %+v found=%v err=%v, want the held proposal", p, found, err)
 	}
 }
 
@@ -524,8 +591,13 @@ func TestEveryMaintenanceActionPreviewsAgainstTheDatabase(t *testing.T) {
 		t.Setenv(key, value)
 	}
 	actions := wiring.MaintenanceActions(testPool)
-	if len(actions) != len(operations.ProposableMaintenanceJobs) {
-		t.Fatalf("%d actions for %d proposable jobs", len(actions), len(operations.ProposableMaintenanceJobs))
+	var jobs []string
+	for _, a := range actions {
+		job, _ := operations.MaintenanceJobOf(a.Name)
+		jobs = append(jobs, job)
+	}
+	if !slices.Equal(slices.Sorted(slices.Values(jobs)), slices.Sorted(slices.Values(operations.ProposableMaintenanceJobs))) {
+		t.Fatalf("actions preview %v, want exactly the proposable jobs %v", jobs, operations.ProposableMaintenanceJobs)
 	}
 	for _, def := range operations.Definitions() {
 		for _, name := range def.Actions {
@@ -543,6 +615,39 @@ func TestEveryMaintenanceActionPreviewsAgainstTheDatabase(t *testing.T) {
 		batched := job != operations.JobPurgeAudit && job != operations.JobPurgeFeedback && job != operations.JobRotatePartitions
 		if batched != (preview.BatchLimit == 37) {
 			t.Errorf("%s batch limit %d, want 37 only for a job that handles a batch per run", a.Name, preview.BatchLimit)
+		}
+	}
+}
+
+func TestARotationPreviewCountsAnalyticsOnlyWhileAnalyticsIsCollected(t *testing.T) {
+	for _, tc := range []struct {
+		analytics     string
+		wantAnalytics int
+	}{{"2160h", 3}, {"", 0}} {
+		t.Setenv("TRACE_RETENTION", "2160h")
+		t.Setenv("ANALYTICS_RETENTION", tc.analytics)
+		var rotate operations.Action
+		for _, a := range wiring.MaintenanceActions(testPool) {
+			if a.Name == operations.MaintenanceJobAction(operations.JobRotatePartitions) {
+				rotate = a
+			}
+		}
+		preview, err := rotate.Preview(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		var trace, analytics int
+		for _, c := range preview.Counts {
+			switch {
+			case strings.HasPrefix(c.Key, "trace_"):
+				trace++
+			case strings.HasPrefix(c.Key, "analytics_"):
+				analytics++
+			}
+		}
+		if trace != 3 || analytics != tc.wantAnalytics {
+			t.Errorf("ANALYTICS_RETENTION=%q: %d trace and %d analytics counts, want 3 and %d",
+				tc.analytics, trace, analytics, tc.wantAnalytics)
 		}
 	}
 }

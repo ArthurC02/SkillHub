@@ -65,8 +65,8 @@ func TestACiteResolvesOnlyToAFactTheDocumentHolds(t *testing.T) {
 		{"a", false},
 	}
 	for _, tc := range cases {
-		if got := resolves(tc.pointer, doc); got != tc.want {
-			t.Errorf("resolves(%q) = %v, want %v", tc.pointer, got, tc.want)
+		if _, got := valueAt(tc.pointer, doc); got != tc.want {
+			t.Errorf("valueAt(%q) found = %v, want %v", tc.pointer, got, tc.want)
 		}
 	}
 }
@@ -74,7 +74,7 @@ func TestACiteResolvesOnlyToAFactTheDocumentHolds(t *testing.T) {
 func TestADailyReportMustBeWellFormedBeforeItsCitesCount(t *testing.T) {
 	steps := []StepRecord{
 		{ToolCall: ToolCall{Tool: ToolMaintenanceReport}, Result: "not json"},
-		{ToolCall: ToolCall{Tool: ToolMaintenanceReport}, Result: `{"x":1}`},
+		{ToolCall: ToolCall{Tool: ToolMaintenanceReport}, Result: `{"x":1,"jobs":{"a":{"action":"run-a"}},"actions":["run-b"]}`},
 	}
 	cases := []struct {
 		name   string
@@ -95,6 +95,8 @@ func TestADailyReportMustBeWellFormedBeforeItsCitesCount(t *testing.T) {
 		{"a proposal with no action", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":" ","reason":"late","cites":["/x"]}]}`, "names no action"},
 		{"a proposal with no reason", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":"run-a","reason":"","cites":["/x"]}]}`, "gives no reason"},
 		{"a proposal citing nothing", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":"run-a","reason":"late"}]}`, "proposal 1"},
+		{"a proposal no fact offers", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":"run-c","reason":"late","cites":["/x"]}]}`, `proposes "run-c", which no returned fact offers`},
+		{"a proposal whose name is a fact but not an offer", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":"run-b","reason":"late","cites":["/x"]}]}`, `proposes "run-b"`},
 		{"a proposal citing a missing fact", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":"run-a","reason":"late","cites":["/y"]}]}`, `cites "/y"`},
 	}
 	for _, tc := range cases {

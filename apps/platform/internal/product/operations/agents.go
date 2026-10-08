@@ -49,7 +49,14 @@ var (
 	switchOff = agentSwitch{enabled: false, action: audit.ActionAgentDisable}
 )
 
-const auditNote = "note"
+const (
+	auditNote   = "note"
+	auditError  = "error"
+	auditRun    = "run"
+	auditAction = "action"
+	auditAgent  = "agent"
+	auditFrom   = "from"
+)
 
 var ErrUnknownAgent = errors.New("operations: no agent is registered under that name")
 
@@ -115,7 +122,7 @@ func (s *Service) flip(ctx context.Context, name string, operator pgtype.UUID, n
 		updated = agent(row)
 		return audit.Log(ctx, tx, audit.Event{
 			Actor: operator, Action: to.action, ResourceType: audit.ResourcePlatformAgent, ResourceID: row.ID,
-			Metadata: map[string]any{"agent": name, auditNote: note},
+			Metadata: map[string]any{auditAgent: name, auditNote: note},
 		})
 	})
 	return updated, err
