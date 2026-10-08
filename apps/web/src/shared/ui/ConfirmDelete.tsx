@@ -5,6 +5,8 @@ export function ConfirmDelete({
   scopeId,
   scope,
   pending,
+  disabled = false,
+  disabledReasonId,
   onAsk,
   onConfirm,
   label = "刪除",
@@ -13,6 +15,8 @@ export function ConfirmDelete({
   scopeId: string;
   scope: ReactNode;
   pending: boolean;
+  disabled?: boolean;
+  disabledReasonId?: string;
   onAsk?: () => void;
   onConfirm: () => void;
   label?: string;
@@ -33,6 +37,8 @@ export function ConfirmDelete({
       <button
         ref={trigger}
         type="button"
+        disabled={pending || disabled}
+        aria-describedby={disabled ? disabledReasonId : undefined}
         onClick={() => {
           onAsk?.();
           setConfirming(true);
@@ -54,7 +60,7 @@ export function ConfirmDelete({
         className="destructive"
         autoFocus
         aria-describedby={scopeId}
-        disabled={pending}
+        disabled={pending || disabled}
         onClick={onConfirm}
       >
         {pending ? "送出中…" : confirmLabel}

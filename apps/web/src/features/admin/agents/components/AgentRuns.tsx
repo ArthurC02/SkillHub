@@ -24,6 +24,22 @@ function runCost(run: PlatformAgentRun): string {
   return run.unpriced_steps > 0 ? `${known}（另有 ${run.unpriced_steps} 步沒有回報花費）` : known;
 }
 
+export function AgentRunFacts({ run }: { run: PlatformAgentRun }) {
+  return (
+    <>
+      <p className="badge-row">
+        <span className={run.status === "completed" ? "badge" : "badge badge-danger"}>
+          {RUN_STATUS[run.status]}
+        </span>
+      </p>
+      {run.reason && <p>原因：{run.reason}</p>}
+      <p className="note">
+        開始於 <Timestamp at={run.started_at} />；{run.steps} 步；花費 {runCost(run)}
+      </p>
+    </>
+  );
+}
+
 export function AgentRunList({ runs }: { runs: PlatformAgentRun[] }) {
   if (runs.length === 0) return <p>還沒有任何執行：0 次。</p>;
   return (
@@ -33,15 +49,7 @@ export function AgentRunList({ runs }: { runs: PlatformAgentRun[] }) {
           <p>
             <strong>{run.agent}</strong>
           </p>
-          <p className="badge-row">
-            <span className={run.status === "completed" ? "badge" : "badge badge-danger"}>
-              {RUN_STATUS[run.status]}
-            </span>
-          </p>
-          {run.reason && <p>原因：{run.reason}</p>}
-          <p className="note">
-            開始於 <Timestamp at={run.started_at} />；{run.steps} 步；花費 {runCost(run)}
-          </p>
+          <AgentRunFacts run={run} />
           <p>
             <Link to="/admin/agents" search={{ run: run.id }}>
               看這次的步驟
@@ -53,15 +61,23 @@ export function AgentRunList({ runs }: { runs: PlatformAgentRun[] }) {
   );
 }
 
-export function AgentRunSteps({ run }: { run: string }) {
-  const steps = usePlatformAgentSteps(run);
+export function AgentRunSteps({ run, live }: { run: string; live: boolean }) {
+  const steps = usePlatformAgentSteps(run, live);
+  const latest = steps.data?.steps.at(-1);
   return (
     <>
-      <h2>這次執行的步驟</h2>
+      <h3>這次執行的步驟</h3>
       {steps.isPending && <Loading what="執行步驟" />}
       <ReadFailure error={steps.error} what="執行步驟" />
-      {steps.data && steps.data.steps.length === 0 && <p>這次執行沒有任何步驟：0 步。</p>}
-      {steps.data && steps.data.steps.length > 0 && (
+      {live && steps.data && !steps.error && latest && (
+        <p className="note">
+          最近一步記錄於 <Timestamp at={latest.created_at} relative />。
+        </p>
+      )}
+      {steps.data && !steps.error && steps.data.steps.length === 0 && (
+        <p>這次執行沒有任何步驟：0 步。</p>
+      )}
+      {steps.data && !steps.error && steps.data.steps.length > 0 && (
         <ol className="download-list">
           {steps.data.steps.map((step) => (
             <li className="download-item" key={step.seq}>
@@ -70,16 +86,24 @@ export function AgentRunSteps({ run }: { run: string }) {
               </p>
               <p className="note">
                 模型 {step.model}；輸入 {step.prompt_tokens} tokens、輸出 {step.completion_tokens}{" "}
-                tokens；花費 {step.usd_micros === undefined ? "沒有回報" : usd(step.usd_micros)}
+                tokens；花費 {step.usd_micros === undefined ? "沒有回報" : usd(step.usd_micros)}；
+                記錄於 <Timestamp at={step.created_at} />
               </p>
-              <pre className="agent-step-text">
-                <Reveal text={step.arguments} />
-              </pre>
-              {step.result !== "" && (
+              <details className="agent-step-raw">
+                <summary>{step.result === "" ? "查看輸入" : "查看輸入與結果"}</summary>
+                <p>輸入</p>
                 <pre className="agent-step-text">
-                  <Reveal text={step.result} />
+                  <Reveal text={step.arguments} />
                 </pre>
-              )}
+                {step.result !== "" && (
+                  <>
+                    <p>結果</p>
+                    <pre className="agent-step-text">
+                      <Reveal text={step.result} />
+                    </pre>
+                  </>
+                )}
+              </details>
             </li>
           ))}
         </ol>

@@ -1,0 +1,33 @@
+.agent-workbench-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(152px, 1fr));
+  gap: 8px;
+  margin: 16px 0 24px;
+}
+
+.agent-workbench-summary a {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.agent-workbench-summary a:hover {
+  border-color: var(--accent-border);
+}
+
+.agent-workbench-summary strong {
+  color: var(--text-h);
+}
+
+.agent-workbench-summary a[data-braked] {
+  border-color: var(--danger);
+}
+
+.agent-workbench-summary a[data-braked] strong {
+  color: var(--danger);
+}

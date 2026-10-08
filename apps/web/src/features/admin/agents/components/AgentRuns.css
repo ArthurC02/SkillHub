@@ -2,3 +2,8 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.agent-step-raw {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}

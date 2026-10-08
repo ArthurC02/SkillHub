@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "../../core/api/client";
+import { apiFetch, isLastingReadFailure } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
 
@@ -383,6 +383,11 @@ export function usePlatformAgentRuns() {
     queryKey: queryKeys.admin.agentRuns,
     queryFn: () => apiFetch<{ runs: PlatformAgentRun[] }>("/admin/agents/runs"),
     enabled: useOperator(),
+    refetchInterval: (query) =>
+      !isLastingReadFailure(query.state.error) &&
+      query.state.data?.runs.some((run) => run.status === "running")
+        ? 3000
+        : false,
   });
 }
 
@@ -510,7 +515,7 @@ export function useDecideProposal() {
   });
 }
 
-export function usePlatformAgentSteps(run: string) {
+export function usePlatformAgentSteps(run: string, live = false) {
   return useQuery({
     queryKey: queryKeys.admin.agentSteps(run),
     queryFn: () =>
@@ -518,6 +523,7 @@ export function usePlatformAgentSteps(run: string) {
         `/admin/agents/runs/${encodeURIComponent(run)}/steps`,
       ),
     enabled: useOperator(),
+    refetchInterval: (query) => (live && !isLastingReadFailure(query.state.error) ? 3000 : false),
   });
 }
 

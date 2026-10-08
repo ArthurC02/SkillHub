@@ -36,6 +36,21 @@ function Decide({
           id={`admin-proposal-${decision}`}
           submitLabel={label}
           tone={decision === "approve" && proposal.tier === "destructive" ? "caution" : undefined}
+          confirmationScope={
+            decision === "approve" && proposal.tier === "destructive" ? (
+              <>
+                <strong>這次會處理：</strong>
+                {proposal.preview.counts.map(previewLine).join("；")}。
+                <br />
+                <strong>能救回多久：</strong>此頁沒有復原功能；資料一旦清除，不能從這裡救回。
+                <br />
+                <strong>不受影響：</strong>其他待審提案不受影響。
+                <br />
+                <strong>另外要刪：</strong>其他維運工作須另行核准，這次不包含。
+              </>
+            ) : undefined
+          }
+          confirmationLabel="確認核准這個提案"
           pending={decide.isPending}
           error={decide.error}
           contextKey={`${proposal.id}:${decision}`}
@@ -78,7 +93,7 @@ export function ProposalDetail({ id }: { id: string }) {
     <section aria-labelledby="admin-proposal-heading">
       <h2 id="admin-proposal-heading">這個提案</h2>
       <p>
-        <Link to="/admin/agents" search={(prev) => ({ ...prev, proposal: undefined })}>
+        <Link to="/admin/agents" search={(prev) => ({ status: prev.status })}>
           回到提案
         </Link>
       </p>

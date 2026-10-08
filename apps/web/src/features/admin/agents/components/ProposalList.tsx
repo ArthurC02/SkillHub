@@ -24,7 +24,15 @@ function ProposalRow({ proposal }: { proposal: PlatformAgentProposal }) {
         </p>
       )}
       <p>
-        <Link to="/admin/agents" search={(prev) => ({ ...prev, proposal: proposal.id })}>
+        <Link
+          to="/admin/agents"
+          search={(prev) => ({
+            ...prev,
+            proposal: proposal.id,
+            finding: undefined,
+            run: undefined,
+          })}
+        >
           打開這個提案
         </Link>
       </p>
@@ -38,10 +46,10 @@ export function ProposalList() {
     <>
       {proposals.isPending && <Loading what="提案" />}
       <ReadFailure error={proposals.error} what="提案" />
-      {proposals.data && proposals.data.proposals.length === 0 && (
+      {proposals.data && !proposals.error && proposals.data.proposals.length === 0 && (
         <p>待核准與最近七天的提案：0 件。</p>
       )}
-      {proposals.data && proposals.data.proposals.length > 0 && (
+      {proposals.data && !proposals.error && proposals.data.proposals.length > 0 && (
         <ul className="download-list">
           {proposals.data.proposals.map((proposal) => (
             <ProposalRow proposal={proposal} key={proposal.id} />

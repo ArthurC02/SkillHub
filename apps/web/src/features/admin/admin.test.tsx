@@ -9,8 +9,9 @@ import { createAppRouter } from "../../app/router";
 import { daysOf, seriesOf, usd } from "./admin.service";
 import {
   ADMIN_AGENT_FINDINGS,
-  ADMIN_AGENT_RUNS,
   ADMIN_AGENT_PROPOSAL,
+  ADMIN_AGENT_RUNS,
+  ADMIN_AGENT_STEPS,
   ADMIN_AGENTS,
   ADMIN_AUDIT_LOG,
   AGENT_FAILED_RUN,
@@ -1150,7 +1151,17 @@ test.each(["approve", "reject"])(
     await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
     await waitFor(has("核准並執行"));
     await type(`#admin-proposal-${decision}-note`, " the job never ran ");
-    await submit(`#admin-proposal-${decision}-note`);
+    if (decision === "approve") {
+      await submit(`#admin-proposal-${decision}-note`);
+      expect(calls.some((c) => c.method === "PUT")).toBe(false);
+      await click(button("核准並執行"));
+      expect(has("會刪除的 Trace 事件：1834 筆")()).toBe(true);
+      expect(has("其他待審提案不受影響")()).toBe(true);
+      expect(calls.some((c) => c.method === "PUT")).toBe(false);
+      await click(button("確認核准這個提案"));
+    } else {
+      await submit(`#admin-proposal-${decision}-note`);
+    }
     await waitFor(() => calls.some((c) => c.method === "PUT"));
     expect(calls.find((c) => c.method === "PUT")).toEqual({
       method: "PUT",
@@ -1159,6 +1170,20 @@ test.each(["approve", "reject"])(
     });
   },
 );
+
+test("a destructive proposal can be cancelled after reviewing its scope", async () => {
+  stub(true);
+  await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
+  await waitFor(has("核准並執行"));
+  expect(button("核准並執行").disabled).toBe(true);
+  await type("#admin-proposal-approve-note", "need to run maintenance");
+  await click(button("核准並執行"));
+  expect(has("此頁沒有復原功能")()).toBe(true);
+  await click(button("取消"));
+  expect(button("核准並執行")).toBeDefined();
+  expect(has("確認核准這個提案")()).toBe(false);
+  expect(calls.some((c) => c.method === "PUT")).toBe(false);
+});
 
 test("a successful rejection does not label an earlier failed approval as successful", async () => {
   let decisions = 0;
@@ -1172,7 +1197,8 @@ test("a successful rejection does not label an earlier failed approval as succes
   await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
   await waitFor(has("核准並執行"));
   await type("#admin-proposal-approve-note", "first decision");
-  await submit("#admin-proposal-approve-note");
+  await click(button("核准並執行"));
+  await click(button("確認核准這個提案"));
   await waitFor(has("the proposal is no longer waiting for a decision"));
   await type("#admin-proposal-reject-note", "second decision");
   await submit("#admin-proposal-reject-note");
@@ -1228,6 +1254,84 @@ test("OPS-013: a proposal in the address that is not a UUID falls back to the li
   expect(calls.some((c) => c.url.startsWith("/admin/agents/proposals/"))).toBe(false);
 });
 
+test("the agent workbench names pending decisions, live findings, running work and brake state", async () => {
+  stub(true);
+  await mountAt("/admin/agents");
+  await waitFor(() =>
+    Boolean(
+      container
+        .querySelector('nav[aria-label="平台 Agent 工作區"]')
+        ?.textContent?.includes("待核准 1 件"),
+    ),
+  );
+  const summary = container.querySelector('nav[aria-label="平台 Agent 工作區"]');
+  expect(summary?.textContent).toContain("待辦 2 件");
+  expect(summary?.textContent).toContain("執行中 0 次");
+  expect(summary?.textContent).toContain("煞車 已放開");
+  expect(summary?.querySelectorAll('a[href^="#"]')).toHaveLength(4);
+});
+
+test("the agent workbench does not report zero decisions when proposals cannot be read", async () => {
+  stub(true, (path) =>
+    path === "/admin/agents/proposals"
+      ? { body: { error: "proposals unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/agents");
+  await waitFor(() =>
+    Boolean(
+      container
+        .querySelector('nav[aria-label="平台 Agent 工作區"]')
+        ?.textContent?.includes("待核准 無法取得"),
+    ),
+  );
+  const summary = container.querySelector('nav[aria-label="平台 Agent 工作區"]');
+  expect(summary?.textContent).not.toContain("待核准 0 件");
+});
+
+test.each([
+  { path: "/admin/agents/proposals", key: queryKeys.admin.agentProposalList, row: "打開這個提案" },
+  {
+    path: "/admin/agents/findings",
+    key: queryKeys.admin.agentFindingList("live"),
+    row: "打開這件事",
+  },
+])("the $path list hides cached rows when refreshing fails", async ({ path, key, row }) => {
+  let unreadable = false;
+  stub(true, (requestPath) =>
+    unreadable && requestPath === path
+      ? { body: { error: "list unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/agents");
+  await waitFor(has(row));
+  unreadable = true;
+  await act(async () => {
+    await queryClient.refetchQueries({ queryKey: key });
+  });
+  await waitFor(has(path.endsWith("proposals") ? "暫時無法讀取提案" : "暫時無法讀取待辦"));
+  expect(has(row)()).toBe(false);
+});
+
+const focusedAgentCases: { search: Record<string, string>; heading: string }[] = [
+  { search: { proposal: AGENT_PROPOSAL }, heading: "這個提案" },
+  { search: { finding: AGENT_FINDING }, heading: "這件事" },
+  { search: { run: AGENT_REPORT_RUN }, heading: "這次執行" },
+];
+
+test.each(focusedAgentCases)(
+  "opening $heading focuses that object instead of the whole workbench",
+  async ({ search, heading }) => {
+    stub(true);
+    await mountAt("/admin/agents", search);
+    await waitFor(has(heading));
+    expect(container.querySelector('nav[aria-label="平台 Agent 工作區"]')).toBeNull();
+    expect(container.querySelector("#admin-agent-controls")).toBeNull();
+    expect(container.querySelector("#admin-agent-proposals")).toBeNull();
+    expect(container.querySelector("#admin-agent-findings")).toBeNull();
+  },
+);
+
 test("OPS-012: a run in the address shows its report, then each step's tool, answer, tokens and cost", async () => {
   stub(true);
   await mountAt("/admin/agents", { run: AGENT_REPORT_RUN });
@@ -1236,6 +1340,11 @@ test("OPS-012: a run in the address shows its report, then each step's tool, ans
   await waitFor(has("呼叫 maintenance_report"));
   expect(has("交出結果")()).toBe(true);
   expect(has("輸入 812 tokens、輸出 14 tokens；花費 $0.0012")()).toBe(true);
+  expect(has("回到執行紀錄")()).toBe(true);
+  expect(has("看這次的步驟")()).toBe(false);
+  const rawSteps = container.querySelectorAll(".agent-step-raw");
+  expect(rawSteps).toHaveLength(2);
+  expect([...rawSteps].every((step) => !(step as HTMLDetailsElement).open)).toBe(true);
 });
 
 test("OPS-012: a failed run's report is shown as not checked, and its list row names why and what it cost", async () => {
@@ -1244,7 +1353,64 @@ test("OPS-012: a failed run's report is shown as not checked, and its list row n
   await waitFor(has("這份日報沒有通過核對"));
   expect(has("which no tool returned")()).toBe(true);
   expect(has("2 步；花費 $0.0018（另有 1 步沒有回報花費）")()).toBe(true);
-  expect(has("2 步；花費 $0.0031看這次的步驟")()).toBe(true);
+  expect(has("2 步；花費 $0.0031")()).toBe(false);
+});
+
+test("a running agent says what progressed, when it last acted, and that leaving is safe", async () => {
+  stub(true, (path) =>
+    path === "/admin/agents/runs"
+      ? {
+          body: {
+            runs: [{ ...ADMIN_AGENT_RUNS.runs[1], status: "running", steps: 1, result: undefined }],
+          },
+          status: 200,
+        }
+      : path === `/admin/agents/runs/${AGENT_REPORT_RUN}/steps`
+        ? { body: { steps: ADMIN_AGENT_STEPS.steps.slice(0, 1) }, status: 200 }
+        : undefined,
+  );
+  await mountAt("/admin/agents", { run: AGENT_REPORT_RUN });
+  await waitFor(has("仍在執行；已記錄 1 步"));
+  expect(has("可以離開這頁")()).toBe(true);
+  expect(has("最近一步")()).toBe(true);
+  expect(has("2026/10/06")()).toBe(true);
+});
+
+test("a running agent refreshes its steps and stops reporting progress after completion", async () => {
+  let progressed = false;
+  let completed = false;
+  stub(true, (path) => {
+    if (path === "/admin/agents/runs") {
+      return {
+        body: {
+          runs: [
+            {
+              ...ADMIN_AGENT_RUNS.runs[1],
+              status: completed ? "completed" : "running",
+              steps: progressed ? 2 : 1,
+              result: completed ? ADMIN_AGENT_RUNS.runs[1].result : undefined,
+            },
+          ],
+        },
+        status: 200,
+      };
+    }
+    if (path === `/admin/agents/runs/${AGENT_REPORT_RUN}/steps`) {
+      return {
+        body: { steps: progressed ? ADMIN_AGENT_STEPS.steps : ADMIN_AGENT_STEPS.steps.slice(0, 1) },
+        status: 200,
+      };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/agents", { run: AGENT_REPORT_RUN });
+  await waitFor(has("仍在執行；已記錄 1 步"));
+  expect(has("交出結果")()).toBe(false);
+  progressed = true;
+  await waitFor(has("交出結果"), 7000);
+  completed = true;
+  await waitFor(has("完成。每一項都附它根據的事實"), 7000);
+  expect(has("仍在執行；已記錄")()).toBe(false);
 });
 
 test("OPS-012: ids in the address that are not UUIDs are dropped instead of fetched", async () => {
@@ -1349,7 +1515,12 @@ test.each([
     await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
     await waitFor(has("核准並執行"));
     await type(`#admin-proposal-${decision}-note`, "reason");
-    await submit(`#admin-proposal-${decision}-note`);
+    if (decision === "approve") {
+      await click(button("核准並執行"));
+      await click(button("確認核准這個提案"));
+    } else {
+      await submit(`#admin-proposal-${decision}-note`);
+    }
     await waitFor(has(sentence));
     await waitFor(() => container.querySelector("#admin-proposal-approve-note") === null);
   },
@@ -1409,7 +1580,8 @@ test("OPS-013: a refused decision refetches the proposal so the screen shows wha
   await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
   await waitFor(has("核准並執行"));
   await type("#admin-proposal-approve-note", "reason");
-  await submit("#admin-proposal-approve-note");
+  await click(button("核准並執行"));
+  await click(button("確認核准這個提案"));
   await waitFor(() => container.querySelector("#admin-proposal-approve-note") === null);
   expect(
     calls.filter((c) => c.method === "GET" && c.url === `/admin/agents/proposals/${AGENT_PROPOSAL}`)

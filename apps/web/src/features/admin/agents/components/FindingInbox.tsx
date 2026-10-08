@@ -39,7 +39,10 @@ function FindingRow({ finding }: { finding: PlatformAgentFinding }) {
         )}
       </p>
       <p>
-        <Link to="/admin/agents" search={(prev) => ({ ...prev, finding: finding.id })}>
+        <Link
+          to="/admin/agents"
+          search={(prev) => ({ ...prev, finding: finding.id, proposal: undefined, run: undefined })}
+        >
           打開這件事
         </Link>
       </p>
@@ -49,7 +52,7 @@ function FindingRow({ finding }: { finding: PlatformAgentFinding }) {
 
 export function FindingInbox({ status }: { status?: ClosedView }) {
   const findings = usePlatformAgentFindings(status);
-  const counts = findings.data?.counts;
+  const counts = !findings.error && findings.data?.counts;
   const current = VIEWS.find((view) => view.status === status) ?? VIEWS[0];
   return (
     <>
@@ -69,8 +72,10 @@ export function FindingInbox({ status }: { status?: ClosedView }) {
       </nav>
       {findings.isPending && <Loading what="待辦" />}
       <ReadFailure error={findings.error} what="待辦" />
-      {findings.data && findings.data.findings.length === 0 && <p>{current.label}：0 件。</p>}
-      {findings.data && findings.data.findings.length > 0 && (
+      {findings.data && !findings.error && findings.data.findings.length === 0 && (
+        <p>{current.label}：0 件。</p>
+      )}
+      {findings.data && !findings.error && findings.data.findings.length > 0 && (
         <ul className="download-list">
           {findings.data.findings.map((finding) => (
             <FindingRow finding={finding} key={finding.id} />

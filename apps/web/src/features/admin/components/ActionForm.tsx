@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { WriteFailure } from "./WriteFailure";
 
 export function ActionForm({
@@ -10,6 +11,8 @@ export function ActionForm({
   contextKey = "",
   tone,
   ready = true,
+  confirmationScope,
+  confirmationLabel,
   onSubmit,
   children,
 }: {
@@ -21,6 +24,8 @@ export function ActionForm({
   contextKey?: string;
   tone?: "caution";
   ready?: boolean;
+  confirmationScope?: ReactNode;
+  confirmationLabel?: string;
   onSubmit: (note: string) => void;
   children?: ReactNode;
 }) {
@@ -28,15 +33,17 @@ export function ActionForm({
   const [submitted, setSubmitted] = useState<{ note: string; contextKey: string } | null>(null);
   const blocked = note.trim() === "" || !ready;
   const resultMatches = submitted?.note === note.trim() && submitted.contextKey === contextKey;
+  const send = () => {
+    if (blocked || pending) return;
+    setSubmitted({ note: note.trim(), contextKey });
+    onSubmit(note.trim());
+  };
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        if (!blocked && !pending) {
-          setSubmitted({ note: note.trim(), contextKey });
-          onSubmit(note.trim());
-        }
+        if (!confirmationScope) send();
       }}
     >
       {children}
@@ -52,14 +59,27 @@ export function ActionForm({
           readOnly={pending}
         />
       </div>
-      <button
-        type="submit"
-        className={tone}
-        disabled={blocked || pending}
-        aria-describedby={blocked ? `${id}-why` : undefined}
-      >
-        {pending ? "送出中…" : submitLabel}
-      </button>
+      {confirmationScope ? (
+        <ConfirmDelete
+          scopeId={`${id}-scope`}
+          scope={confirmationScope}
+          pending={pending}
+          disabled={blocked}
+          disabledReasonId={`${id}-why`}
+          label={submitLabel}
+          confirmLabel={confirmationLabel}
+          onConfirm={send}
+        />
+      ) : (
+        <button
+          type="submit"
+          className={tone}
+          disabled={blocked || pending}
+          aria-describedby={blocked ? `${id}-why` : undefined}
+        >
+          {pending ? "送出中…" : submitLabel}
+        </button>
+      )}
       {blocked && (
         <p id={`${id}-why`} className="note">
           「{submitLabel}」要等上面的欄位都填好。

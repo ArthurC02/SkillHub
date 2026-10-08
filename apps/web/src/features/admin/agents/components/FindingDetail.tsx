@@ -47,7 +47,7 @@ export function FindingDetail({ id }: { id: string }) {
     <section aria-labelledby="admin-finding-heading">
       <h2 id="admin-finding-heading">這件事</h2>
       <p>
-        <Link to="/admin/agents" search={(prev) => ({ ...prev, finding: undefined })}>
+        <Link to="/admin/agents" search={(prev) => ({ status: prev.status })}>
           回到待辦
         </Link>
       </p>
