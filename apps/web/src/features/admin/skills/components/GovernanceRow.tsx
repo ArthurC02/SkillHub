@@ -17,23 +17,23 @@ export function GovernanceRow({ skill, single }: { skill: SkillGovernance; singl
         <strong>{skill.name}</strong>
       </p>
       <p className="badge-row">
+        {skill.takedown_at && <span className="badge badge-danger">已下架</span>}{" "}
         <span className={skill.access_restriction ? "badge badge-unverified" : "badge"}>
           {skill.access_restriction ? `受限展示：${skill.access_restriction}` : "沒有受限"}
         </span>{" "}
         <span className="badge">
           再散布：{REDISTRIBUTION[skill.redistribution] ?? skill.redistribution}
         </span>{" "}
-        {skill.takedown_at && <span className="badge badge-danger">已下架</span>}
-      </p>
-      <p className="note">
-        小工具 <code>{skill.skill_id}</code>｜工作區 <code>{skill.workspace_id}</code>
       </p>
       {skill.takedown_at && (
         <p>
           下架於 <Timestamp at={skill.takedown_at} />
-          ，理由：{skill.takedown_reason ?? "未記錄"}。下架沒有恢復的路。
+          ，理由：{skill.takedown_reason ?? "未記錄"}。重新上架須先完成審查；後台目前不提供恢復。
         </p>
       )}
+      <p className="note">
+        小工具 <code>{skill.skill_id}</code>｜工作區 <code>{skill.workspace_id}</code>
+      </p>
       {!single && (
         <p>
           <Link to="/admin/skills" search={{ q: skill.skill_id }}>

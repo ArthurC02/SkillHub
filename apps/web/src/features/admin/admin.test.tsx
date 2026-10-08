@@ -549,7 +549,7 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
   await type("#admin-takedown-reason", " DMCA notice ");
   await click(button("下架"));
   expect(container.querySelector("#admin-takedown-scope")?.textContent).toContain(
-    "下架沒有恢復的路",
+    "後台目前不提供恢復",
   );
   expect(calls.some((c) => c.method === "PUT")).toBe(false);
   await click(button("確認下架"));
@@ -579,7 +579,7 @@ test("OPS-004: governance choices stay scannable without hiding takedown scope",
     item.textContent?.startsWith("下架後這個小工具從目錄與搜尋消失"),
   );
   expect(scope?.closest("details")).toBeNull();
-  expect(scope?.textContent).toContain("下架沒有恢復的路");
+  expect(scope?.textContent).toContain("後台目前不提供恢復");
 
   await click(field<HTMLElement>("#admin-skill-redistribution summary"));
   expect(choices[1].open).toBe(true);
@@ -907,6 +907,11 @@ test("OPS-004: a taken-down skill shows when and why, and offers no action", asy
   );
   await mountAt("/admin/skills", { q: SKILL });
   await waitFor(has("理由：DMCA"));
+  expect(has("重新上架須先完成審查")()).toBe(true);
+  expect(
+    field<HTMLLIElement>("li.download-item").querySelector(".badge-row")?.nextElementSibling
+      ?.textContent,
+  ).toContain("理由：DMCA");
   expect(has("的動作")()).toBe(false);
 });
 

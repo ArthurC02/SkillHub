@@ -5,7 +5,7 @@ import { WriteFailure } from "../../components/WriteFailure";
 import { ActionForm } from "../../components/ActionForm";
 
 const TAKEDOWN_SCOPE =
-  "下架後這個小工具從目錄與搜尋消失，不能再下載或試跑；既有的試跑紀錄仍可追溯。下架沒有恢復的路。";
+  "下架後這個小工具從目錄與搜尋消失，不能再下載或試跑；既有的試跑紀錄仍可追溯。後台目前不提供恢復，下架前請先確認。";
 
 export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
   const restriction = useGovernanceAction(skill.skill_id, "restriction");
