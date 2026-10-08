@@ -1,6 +1,7 @@
 import { useCostStatistics, usd } from "../admin.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
+import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { AdminPage } from "../components/AdminPage";
 import { COST_KIND } from "../admin.model";
@@ -12,8 +13,26 @@ export function AdminCostStatistics() {
   return (
     <AdminPage heading="成本統計" lede="與開始前檢查、會話估價讀的是同一組數字；不含使用者維度。">
       {stats.isPending && <Loading what="成本統計" />}
-      <ReadFailure error={stats.error} what="成本統計" />
+      <ReadFailure error={stats.error} what="成本統計">
+        <p role="alert">
+          暫時無法讀取成本統計。{stats.data ? "先前載入的數字已隱藏。" : "請稍後再試。"}
+        </p>
+        <button type="button" disabled={stats.isFetching} onClick={() => void stats.refetch()}>
+          {stats.isFetching ? "重新讀取中…" : "再試一次"}
+        </button>
+      </ReadFailure>
+      {stats.data && !stats.error && (
+        <ListFreshness
+          inFlight={false}
+          showWhenIdle
+          updatedAt={stats.dataUpdatedAt}
+          fetching={stats.isFetching}
+          refetch={stats.refetch}
+          subject="成本統計"
+        />
+      )}
       {stats.data &&
+        !stats.error &&
         (rows.length === 0 ? (
           <p>統計窗：0 個。每日統計跑過之後才會有。</p>
         ) : (

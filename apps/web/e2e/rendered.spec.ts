@@ -2,7 +2,9 @@ import { test, expect, type Page, type TestInfo } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import {
   ADMIN_ACCOUNT,
+  ADMIN_COST_STATISTICS,
   ADMIN_LEDGER,
+  ADMIN_ROSTERS,
   ADMIN_SKILLS,
   ARTIFACT,
   CATALOG,
@@ -888,6 +890,68 @@ test("admin governance keeps actions tied to the submitted search on a phone", a
   await page.getByRole("button", { name: "查詢", exact: true }).click();
   await expect(page.getByRole("heading", { name: "對「Other Tool」的動作" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "對「PDF Summariser」的動作" })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("admin rosters put beta access first and hide stale membership after a failed refresh", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let reads = 0;
+  await page.route("**/admin/rosters", (route) => {
+    if (route.request().resourceType() === "document") return route.continue();
+    reads += 1;
+    return route.fulfill(
+      reads === 2
+        ? { status: 503, json: { error: "service unavailable" } }
+        : { json: ADMIN_ROSTERS },
+    );
+  });
+  await page.goto("/admin/rosters");
+  const beta = page.getByRole("heading", { name: "封測准入" });
+  await expect(beta).toBeInViewport({ ratio: 1 });
+  await expect(page.getByText("每一個登入的帳號都算受邀", { exact: false })).toBeVisible();
+  await expect(page.getByText("目前 1 位。")).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("admin-rosters-phone.png"), fullPage: true });
+
+  await page.getByRole("button", { name: "重新整理", exact: true }).click();
+  await expect(page.getByText("先前載入的名冊已隱藏", { exact: false })).toBeVisible();
+  await expect(page.getByText("每一個登入的帳號都算受邀", { exact: false })).toHaveCount(0);
+  await expect(page.getByText("目前 1 位。")).toHaveCount(0);
+  await page.getByRole("button", { name: "再試一次" }).click();
+  await expect(page.getByText("每一個登入的帳號都算受邀", { exact: false })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("admin cost statistics hide stale figures after a failed refresh", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let reads = 0;
+  await page.route("**/admin/cost-statistics", (route) => {
+    if (route.request().resourceType() === "document") return route.continue();
+    reads += 1;
+    return route.fulfill(
+      reads === 2
+        ? { status: 503, json: { error: "service unavailable" } }
+        : { json: ADMIN_COST_STATISTICS },
+    );
+  });
+  await page.goto("/admin/cost-statistics");
+  await expect(page.getByRole("table", { name: "每一種呼叫最新的統計窗（美元）" })).toBeVisible();
+  await expect(page.getByText("成本統計清單上次取得於", { exact: false })).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("admin-cost-statistics-phone.png"),
+    fullPage: true,
+  });
+
+  await page.getByRole("button", { name: "重新整理", exact: true }).click();
+  await expect(page.getByText("先前載入的數字已隱藏", { exact: false })).toBeVisible();
+  await expect(page.getByRole("table")).toHaveCount(0);
+  await page.getByRole("button", { name: "再試一次" }).click();
+  await expect(page.getByRole("table", { name: "每一種呼叫最新的統計窗（美元）" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 

@@ -16,8 +16,10 @@ import {
   ADMIN_AGENTS,
   ADMIN_AUDIT_LOG,
   ADMIN_ACCOUNT,
+  ADMIN_COST_STATISTICS,
   ADMIN_LEDGER,
   ADMIN_MODEL_BUDGETS,
+  ADMIN_ROSTERS,
   AGENT_FAILED_RUN,
   AGENT_FINDING,
   AGENT_PROPOSAL,
@@ -1124,7 +1126,35 @@ test("OPS-005: the rosters page is read-only", async () => {
   await mountAt("/admin/rosters");
   await waitFor(has("每一個登入的帳號都算受邀"));
   expect(field("main code").textContent).toBe("u-1");
-  expect(container.querySelectorAll("main :is(input, textarea, select, button)")).toHaveLength(0);
+  expect(container.querySelectorAll("main :is(input, textarea, select)")).toHaveLength(0);
+  expect(button("重新整理")).toBeDefined();
+});
+
+test("OPS-005: unreadable rosters hide cached membership and recover on retry", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/rosters") return undefined;
+    reads += 1;
+    return reads === 1 || reads === 3
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : { body: ADMIN_ROSTERS, status: 200 };
+  });
+  await mountAt("/admin/rosters");
+  await waitFor(has("暫時無法讀取名冊"));
+  expect(has("請稍後再試。")()).toBe(true);
+  expect(has("每一個登入的帳號都算受邀")()).toBe(false);
+
+  await click(button("再試一次"));
+  await waitFor(has("每一個登入的帳號都算受邀"));
+  expect(has("名冊清單上次取得於")()).toBe(true);
+  await click(button("重新整理"));
+  await waitFor(has("先前載入的名冊已隱藏"));
+  expect(has("每一個登入的帳號都算受邀")()).toBe(false);
+  expect(has("目前 1 位")()).toBe(false);
+
+  await click(button("再試一次"));
+  await waitFor(has("每一個登入的帳號都算受邀"));
+  expect(reads).toBe(4);
 });
 
 test("OPS-006: the audit log names actions in words and folds the metadata", async () => {
@@ -1342,6 +1372,33 @@ test("OPS-007: cost statistics show dollars and name a window with no samples", 
     ["搜尋理由", "0", "未測量", "未測量", "未測量", "未測量"],
     ["評審", "40", "$0.0012", "$0.0034", "$0.0041", "$0.0090"],
   ]);
+});
+
+test("OPS-007: unreadable cost statistics hide cached figures and recover on retry", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/cost-statistics") return undefined;
+    reads += 1;
+    return reads === 1 || reads === 3
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : { body: ADMIN_COST_STATISTICS, status: 200 };
+  });
+  await mountAt("/admin/cost-statistics");
+  await waitFor(has("暫時無法讀取成本統計"));
+  expect(has("請稍後再試。")()).toBe(true);
+  expect(container.querySelector("table")).toBeNull();
+
+  await click(button("再試一次"));
+  await waitFor(has("搜尋理由"));
+  expect(has("成本統計清單上次取得於")()).toBe(true);
+  await click(button("重新整理"));
+  await waitFor(has("先前載入的數字已隱藏"));
+  expect(container.querySelector("table")).toBeNull();
+  expect(has("$0.0090")()).toBe(false);
+
+  await click(button("再試一次"));
+  await waitFor(has("搜尋理由"));
+  expect(reads).toBe(4);
 });
 
 test("OPS-007: micro-dollars format at four places, and a missing percentile is named", () => {
