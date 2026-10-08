@@ -418,6 +418,81 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
   });
 });
 
+test("OPS-004: changing a takedown reason requires a new confirmation", async () => {
+  stub(true);
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  await type("#admin-takedown-reason", "old reason");
+  await click(button("下架"));
+  expect(button("確認下架")).toBeDefined();
+
+  await type("#admin-takedown-reason", "revised reason");
+  expect(container.querySelector("#admin-takedown-scope")).toBeNull();
+  await click(button("下架"));
+  await click(button("確認下架"));
+  await waitFor(() => calls.some((call) => call.url === `/admin/skills/${SKILL}/takedown`));
+  expect(calls.find((call) => call.url === `/admin/skills/${SKILL}/takedown`)?.body).toEqual({
+    reason: "revised reason",
+  });
+});
+
+test("OPS-004: a failed governance refresh hides stale state and actions", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/skills") return undefined;
+    reads += 1;
+    return reads === 1
+      ? { body: ADMIN_SKILLS, status: 200 }
+      : { body: { error: "service unavailable" }, status: 503 };
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  await click(button("重新整理治理狀態"));
+  await waitFor(has("暫時無法讀取小工具"));
+  expect(reads).toBe(2);
+  expect(has("對「PDF Summariser」的動作")()).toBe(false);
+  expect(has("沒有符合")()).toBe(false);
+});
+
+test("OPS-004: a different skill returned by refresh starts with empty drafts", async () => {
+  const other = {
+    ...ADMIN_SKILLS.skills[0],
+    skill_id: "cccccccc-4444-4444-4444-444444444444",
+    name: "Other Tool",
+  };
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/skills") return undefined;
+    reads += 1;
+    return { body: { skills: [reads === 1 ? ADMIN_SKILLS.skills[0] : other] }, status: 200 };
+  });
+  await mountAt("/admin/skills", { q: "tool" });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  await type("#admin-redistribution-note", "first skill evidence");
+  await type("#admin-redistribution-value", "allowed");
+  await type("#admin-license-expression", "MIT");
+  await type("#admin-license-source", "manifest");
+  await type("#admin-takedown-reason", "first skill takedown");
+  await click(button("下架"));
+
+  await click(button("重新整理治理狀態"));
+  await waitFor(has("對「Other Tool」的動作"));
+  expect(field<HTMLSelectElement>("#admin-redistribution-value").value).toBe("blocked");
+  expect(field<HTMLTextAreaElement>("#admin-redistribution-note").value).toBe("");
+  expect(container.querySelector("#admin-license-expression")).toBeNull();
+  expect(field<HTMLInputElement>("#admin-takedown-reason").value).toBe("");
+  expect(container.querySelector("#admin-takedown-scope")).toBeNull();
+});
+
+test("OPS-004: the search field follows the skill selected in the address", async () => {
+  stub(true);
+  await mountAt("/admin/skills", { q: "pdf" });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  await go("/admin/skills", { q: SKILL });
+  await waitFor(() => field<HTMLInputElement>("#admin-skill-q").value === SKILL);
+  expect(new URLSearchParams(window.location.search).get("q")).toBe(SKILL);
+});
+
 test("OPS-004: releasing a skill needs licence evidence; blocking it does not", async () => {
   stub(true, (path, method) =>
     path === `/admin/skills/${SKILL}/redistribution` && method === "PUT"

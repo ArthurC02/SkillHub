@@ -124,12 +124,14 @@ function TakedownAction({ skillId }: { skillId: string }) {
           id="admin-takedown-reason"
           value={takedownReason}
           onChange={(event) => setTakedownReason(event.target.value)}
+          readOnly={takedown.isPending}
         />
       </div>
       {takedownReason.trim() === "" ? (
         <p className="note">填了理由才能下架。</p>
       ) : (
         <ConfirmDelete
+          key={takedownReason.trim()}
           scopeId="admin-takedown-scope"
           scope="下架後這個小工具從目錄與搜尋消失，不能再下載或試跑；既有的試跑紀錄仍可追溯。下架沒有恢復的路。"
           pending={takedown.isPending}
