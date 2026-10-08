@@ -50,24 +50,30 @@ type preparedProposal struct {
 	preview Preview
 }
 
-func prepareProposals(ctx context.Context, def Definition, actions []Action, requests []ProposalRequest) ([]preparedProposal, error) {
-	prepared := make([]preparedProposal, 0, len(requests))
+type preparedProposals struct {
+	proposals   []preparedProposal
+	unpreviewed []string
+}
+
+func prepareProposals(ctx context.Context, def Definition, actions []Action, requests []ProposalRequest) (preparedProposals, error) {
+	var prepared preparedProposals
 	for _, request := range requests {
 		if !slices.Contains(def.Actions, request.Action) {
-			return nil, fmt.Errorf("operations: the agent proposed %q, which it is not allowed to propose", request.Action)
+			return preparedProposals{}, fmt.Errorf("operations: the agent proposed %q, which it is not allowed to propose", request.Action)
 		}
 		i := slices.IndexFunc(actions, func(a Action) bool { return a.Name == request.Action })
 		if i < 0 {
-			return nil, fmt.Errorf("operations: no action named %q is registered", request.Action)
+			return preparedProposals{}, fmt.Errorf("operations: no action named %q is registered", request.Action)
 		}
 		preview, err := actions[i].Preview(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("operations: previewing %q: %w", request.Action, err)
+			prepared.unpreviewed = append(prepared.unpreviewed, fmt.Sprintf("%q was not proposed because its preview failed: %v", request.Action, err))
+			continue
 		}
 		if preview.changesNothing() {
 			continue
 		}
-		prepared = append(prepared, preparedProposal{ProposalRequest: request, tier: actions[i].Tier, preview: preview})
+		prepared.proposals = append(prepared.proposals, preparedProposal{ProposalRequest: request, tier: actions[i].Tier, preview: preview})
 	}
 	return prepared, nil
 }
@@ -176,14 +182,19 @@ type ClaimedProposal struct {
 }
 
 func (s *Service) ClaimApprovedProposal(ctx context.Context) (ClaimedProposal, bool, error) {
-	row, err := gen.New(s.Pool).ClaimApprovedProposal(ctx)
+	var claimed ClaimedProposal
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		row, err := gen.New(tx).ClaimApprovedProposal(ctx)
+		if err != nil {
+			return err
+		}
+		claimed = ClaimedProposal{ID: row.ID, Action: row.Action}
+		return systemAudit(ctx, tx, row.ID, audit.ActionProposalStart, nil)
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ClaimedProposal{}, false, nil
 	}
-	if err != nil {
-		return ClaimedProposal{}, false, err
-	}
-	return ClaimedProposal{ID: row.ID, Action: row.Action}, true, nil
+	return claimed, err == nil, err
 }
 
 func (s *Service) FinishProposal(ctx context.Context, id pgtype.UUID, failure error) error {

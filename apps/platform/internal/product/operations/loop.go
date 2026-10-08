@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -160,11 +161,11 @@ func (r *Runner) finish(ctx context.Context, report RunReport, status RunStatus,
 func (r *Runner) complete(ctx context.Context, report RunReport, def Definition, result json.RawMessage, steps []StepRecord) (RunReport, error) {
 	ending := runEnding{status: RunCompleted, result: result, now: r.Now()}
 	if def.Proposals != nil {
-		proposals, err := prepareProposals(ctx, def, r.Actions, def.Proposals(result))
+		prepared, err := prepareProposals(ctx, def, r.Actions, def.Proposals(result))
 		if err != nil {
 			return r.finish(ctx, report, RunFailed, err.Error(), result)
 		}
-		ending.proposals = proposals
+		ending.proposals, ending.reason = prepared.proposals, strings.Join(prepared.unpreviewed, "; ")
 	}
 	if def.Sightings != nil {
 		ending.findings = &trackedFindings{sightings: def.Sightings(result, steps)}

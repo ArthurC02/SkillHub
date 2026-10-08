@@ -159,11 +159,7 @@ func TestAProposalWhosePreviewChangesNothingNeverReachesAnOperator(t *testing.T)
 
 func TestARunThatProposesBeyondWhatItMayEndsFailedAndProposesNothing(t *testing.T) {
 	allowed := operations.Action{Name: "run-test-proposal-allowed", Tier: operations.TierDestructive, Preview: fixedPreview()}
-	broken := operations.Action{Name: "run-test-proposal-broken", Tier: operations.TierDestructive,
-		Preview: func(context.Context) (operations.Preview, error) {
-			return operations.Preview{}, errors.New("count failed")
-		}}
-	w := newProposalWorld(t, "agent-proposals-refused", allowed, broken)
+	w := newProposalWorld(t, "agent-proposals-refused", allowed)
 	unregistered := "run-test-proposal-unregistered"
 	w.def.Actions = append(w.def.Actions, unregistered)
 
@@ -172,7 +168,6 @@ func TestARunThatProposesBeyondWhatItMayEndsFailedAndProposesNothing(t *testing.
 	}{
 		{"an action the agent is not allowed", "run-test-proposal-forbidden", "it is not allowed to propose"},
 		{"an allowed action nobody registered", unregistered, "no action named"},
-		{"an action whose preview fails", broken.Name, "count failed"},
 	}
 	for _, c := range cases {
 		report := w.propose(proposal(allowed.Name, "fine", "/jobs/purge/overdue"), proposal(c.action, "why", "/jobs/purge/overdue"))
@@ -182,6 +177,29 @@ func TestARunThatProposesBeyondWhatItMayEndsFailedAndProposesNothing(t *testing.
 	}
 	if got := w.proposals(); len(got) != 0 {
 		t.Errorf("proposals %+v, want none from a failed run", got)
+	}
+}
+
+func TestAProposalWhosePreviewFailsIsLeftOutAndTheReportStillCounts(t *testing.T) {
+	allowed := operations.Action{Name: "run-test-proposal-previewed", Tier: operations.TierDestructive, Preview: fixedPreview()}
+	broken := operations.Action{Name: "run-test-proposal-unpreviewed", Tier: operations.TierDestructive,
+		Preview: func(context.Context) (operations.Preview, error) {
+			return operations.Preview{}, errors.New("count failed")
+		}}
+	w := newProposalWorld(t, "agent-proposals-unpreviewed", allowed, broken)
+
+	report := w.propose(proposal(allowed.Name, "fine", "/jobs/purge/overdue"), proposal(broken.Name, "why", "/jobs/rotate/overdue"))
+	if report.Status != operations.RunCompleted || !strings.Contains(report.Reason, broken.Name) || !strings.Contains(report.Reason, "count failed") {
+		t.Errorf("run %s %q, want completed and naming the unpreviewed action and why", report.Status, report.Reason)
+	}
+	if status, reason := runStatus(t, testPool, report.ID); status != "completed" || reason != report.Reason {
+		t.Errorf("stored run %s %q, want completed with %q", status, reason, report.Reason)
+	}
+	if got := w.proposals(); len(got) != 1 || got[0].action != allowed.Name {
+		t.Errorf("proposals %+v, want only %s", got, allowed.Name)
+	}
+	if got := w.findings(); len(got) != 1 || got[0].status != "open" {
+		t.Errorf("findings %+v, want the report's attention item recorded", got)
 	}
 }
 
@@ -292,9 +310,18 @@ func TestTheMaintenanceRunnerTakesEachApprovedProposalOnceAndRecordsItsOutcome(t
 	if body["status"] != "failed" || body["outcome"] != "the job stopped part way" {
 		t.Errorf("failed proposal %v, want failed with the error", body)
 	}
-	if n := countRow(t, testPool, "SELECT count(*) FROM audit_events WHERE resource_id = ANY($1) AND action IN ('platform_agent_proposal.succeeded', 'platform_agent_proposal.failed')",
-		[]pgtype.UUID{claimed[ok.Name], claimed[bad.Name]}); n != 2 {
-		t.Errorf("outcome audit events: %d, want one each", n)
+	assertSystemAudited(t, []pgtype.UUID{claimed[ok.Name], claimed[bad.Name]}, map[string]int{
+		"platform_agent_proposal.started": 2, "platform_agent_proposal.succeeded": 1, "platform_agent_proposal.failed": 1,
+	})
+}
+
+func assertSystemAudited(t *testing.T, proposals []pgtype.UUID, want map[string]int) {
+	t.Helper()
+	for action, n := range want {
+		if got := countRow(t, testPool, "SELECT count(*) FROM audit_events WHERE resource_id = ANY($1) AND action = $2 AND actor_user_id IS NULL AND actor_agent_id IS NULL",
+			proposals, action); got != n {
+			t.Errorf("%s audit events: %d, want %d", action, got, n)
+		}
 	}
 }
 

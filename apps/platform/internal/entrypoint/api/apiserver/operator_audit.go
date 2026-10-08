@@ -41,6 +41,7 @@ var operatorActions = audit.PlatformFilter{
 		audit.ActionProposalApprove,
 		audit.ActionProposalReject,
 		audit.ActionProposalExpire,
+		audit.ActionProposalStart,
 		audit.ActionProposalSucceed,
 		audit.ActionProposalFail,
 	},
