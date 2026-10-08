@@ -180,16 +180,13 @@ test("the admin home leads with live operational priorities", async () => {
 
   const priorities = field<HTMLElement>('[aria-label="目前需留意"]');
   expect(priorities.querySelector('a[href="/admin/dispatch"]')?.textContent).toContain("停止派送");
-  const agentPriorities = Array.from(
-    priorities.querySelectorAll('a[href="/admin/agents"]'),
-    (item) => item.textContent,
-  );
-  expect(agentPriorities).toEqual(
-    expect.arrayContaining([
-      expect.stringContaining("1 件待核准"),
-      expect.stringContaining("2 件待辦"),
-    ]),
-  );
+  expect(
+    priorities.querySelector('a[href="/admin/agents#admin-agent-proposals"]')?.textContent,
+  ).toContain("1 件待核准");
+  expect(
+    priorities.querySelector('a[href="/admin/agents#admin-agent-findings"]')?.textContent,
+  ).toContain("2 件待辦");
+  expect(priorities.textContent).toContain("四項狀態最早取得於");
   expect(priorities.querySelector('a[href="/admin/exposure"]')?.textContent).toContain("1 件待審");
 });
 
@@ -203,10 +200,13 @@ test("the admin home does not mistake a failed priority read for an empty queue"
   await waitFor(has("無法取得"));
 
   const priorities = field<HTMLElement>('[aria-label="目前需留意"]');
-  expect(priorities.querySelector('a[href="/admin/agents"]')?.textContent).toContain("無法取得");
-  expect(priorities.querySelector('a[href="/admin/agents"]')?.textContent).not.toContain(
-    "0 件待核准",
-  );
+  expect(
+    priorities.querySelector('a[href="/admin/agents#admin-agent-proposals"]')?.textContent,
+  ).toContain("無法取得");
+  expect(priorities.textContent).not.toContain("四項狀態最早取得於");
+  expect(
+    priorities.querySelector('a[href="/admin/agents#admin-agent-proposals"]')?.textContent,
+  ).not.toContain("0 件待核准");
 });
 
 test("the admin home can refresh operational state without leaving the page", async () => {

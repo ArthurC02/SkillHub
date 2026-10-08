@@ -7,6 +7,7 @@ import {
   type DispatchStatus,
 } from "../admin.service";
 import { dispatchState } from "../admin.model";
+import { Timestamp } from "../../../shared/ui/Timestamp";
 import { AdminPage } from "../components/AdminPage";
 import "./AdminHome.page.css";
 
@@ -33,6 +34,15 @@ function Priorities() {
   const dispatchSummary = dispatchPriority(dispatch.data, dispatch.error);
   const fetching =
     dispatch.isFetching || proposals.isFetching || findings.isFetching || exposure.isFetching;
+  const complete = [dispatch, proposals, findings, exposure].every(
+    (read) => read.data && !read.error,
+  );
+  const oldestAt = Math.min(
+    dispatch.dataUpdatedAt,
+    proposals.dataUpdatedAt,
+    findings.dataUpdatedAt,
+    exposure.dataUpdatedAt,
+  );
 
   return (
     <section className="admin-home-priorities" aria-label="目前需留意">
@@ -53,6 +63,11 @@ function Priorities() {
           {fetching ? "更新中…" : "重新整理狀態"}
         </button>
       </header>
+      {complete && (
+        <p className="note">
+          四項狀態最早取得於 <Timestamp at={new Date(oldestAt).toISOString()} relative />。
+        </p>
+      )}
       <div className="admin-home-priority-list">
         <Link
           to="/admin/dispatch"
@@ -65,6 +80,7 @@ function Priorities() {
         <Link
           to="/admin/agents"
           search={{}}
+          hash="admin-agent-proposals"
           className="admin-home-priority"
           data-state={
             !proposals.error && proposals.data && proposals.data.total > 0 ? "pending" : undefined
@@ -78,6 +94,7 @@ function Priorities() {
         <Link
           to="/admin/agents"
           search={{}}
+          hash="admin-agent-findings"
           className="admin-home-priority"
           data-state={
             !findings.error &&

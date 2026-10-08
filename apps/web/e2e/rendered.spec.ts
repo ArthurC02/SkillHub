@@ -732,6 +732,26 @@ async function verifyAuditContextOnPhone(page: Page) {
   await expect(page.getByRole("button", { name: "重新整理", exact: true })).toBeVisible();
 }
 
+async function verifyAdminPrioritiesReachTheirQueues(page: Page) {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+
+  for (const [label, target] of [
+    ["平台 Agent 提案", "admin-agent-proposals"],
+    ["平台 Agent 待辦", "admin-agent-findings"],
+  ]) {
+    await page.goto("/admin");
+    const priorities = page.locator('[aria-label="目前需留意"]');
+    await expect(priorities).toContainText("四項狀態最早取得於");
+    await priorities.getByRole("link", { name: new RegExp(label) }).click();
+    await expect(page).toHaveURL(new RegExp(`#${target}$`));
+    await expect(page.locator(`#${target} h2`)).toBeInViewport();
+  }
+}
+
+test("admin priority links reach their work queues on a phone", async ({ page }) =>
+  verifyAdminPrioritiesReachTheirQueues(page));
+
 test.describe("QA-008 real layout", () => {
   test("Run result keeps judgment first and turns evidence into a desktop workbench", async ({
     page,
