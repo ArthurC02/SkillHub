@@ -301,7 +301,7 @@ func TestTheMaintenanceRunnerTakesEachApprovedProposalOnceAndRecordsItsOutcome(t
 	outcomes := map[string]error{ok.Name: nil, bad.Name: errors.New("the job stopped part way")}
 	claimed := map[string]pgtype.UUID{}
 	for range 2 {
-		p, found, err := w.svc.ClaimApprovedProposal(ctx)
+		p, found, err := w.svc.ClaimApprovedProposal(ctx, nil)
 		if err != nil || !found {
 			t.Fatalf("claim: %v %v, want an approved proposal", found, err)
 		}
@@ -310,7 +310,7 @@ func TestTheMaintenanceRunnerTakesEachApprovedProposalOnceAndRecordsItsOutcome(t
 			t.Fatal(err)
 		}
 	}
-	if _, found, err := w.svc.ClaimApprovedProposal(ctx); err != nil || found {
+	if _, found, err := w.svc.ClaimApprovedProposal(ctx, nil); err != nil || found {
 		t.Errorf("third claim: %v %v, want nothing left", found, err)
 	}
 	if err := w.svc.FinishProposal(ctx, claimed[ok.Name], nil); !errors.Is(err, operations.ErrProposalClosed) {
@@ -348,7 +348,7 @@ func (w *proposalWorld) approveAndClaimAll() map[string]pgtype.UUID {
 	}
 	claimed := map[string]pgtype.UUID{}
 	for {
-		p, found, err := w.svc.ClaimApprovedProposal(context.Background())
+		p, found, err := w.svc.ClaimApprovedProposal(context.Background(), nil)
 		if err != nil {
 			w.t.Fatal(err)
 		}
@@ -356,6 +356,53 @@ func (w *proposalWorld) approveAndClaimAll() map[string]pgtype.UUID {
 			return claimed
 		}
 		claimed[p.Action] = p.ID
+	}
+}
+
+func TestAnApprovedProposalWhoseJobIsBusyWaitsForTheNextRound(t *testing.T) {
+	busy := operations.Action{Name: "run-test-proposal-busy", Tier: operations.TierDestructive, Preview: fixedPreview()}
+	free := operations.Action{Name: "run-test-proposal-free", Tier: operations.TierDestructive, Preview: fixedPreview()}
+	w := newProposalWorld(t, "agent-proposals-busy", busy, free)
+	w.propose(proposal(busy.Name, "a", "/jobs/purge/overdue"), proposal(free.Name, "b", "/jobs/rotate/overdue"))
+	ids := map[string]pgtype.UUID{}
+	for _, p := range w.proposals() {
+		ids[p.action] = p.id
+		if code, _ := w.decide(p.id, "approve", "go ahead"); code != http.StatusNoContent {
+			t.Fatalf("approve %s: %d", p.action, code)
+		}
+	}
+
+	ran := map[string]int{}
+	err := w.svc.WorkApprovedProposals(context.Background(), func(_ context.Context, action string) error {
+		ran[action]++
+		if ran[action] > 1 {
+			t.Fatalf("%s was tried again in the same round", action)
+		}
+		if action == busy.Name {
+			return fmt.Errorf("%w: the scheduled run holds it", operations.ErrActionBusy)
+		}
+		return nil
+	})
+	if err != nil || ran[busy.Name] != 1 || ran[free.Name] != 1 {
+		t.Fatalf("first round ran %v (%v), want each proposal tried once", ran, err)
+	}
+	assertProposalState(t, w, ids[busy.Name], "approved", false)
+	assertProposalState(t, w, ids[free.Name], "succeeded", true)
+	assertSystemAudited(t, []pgtype.UUID{ids[busy.Name]}, map[string]int{
+		"platform_agent_proposal.started": 1, "platform_agent_proposal.requeued": 1, "platform_agent_proposal.failed": 0,
+	})
+
+	if err := w.svc.WorkApprovedProposals(context.Background(), func(context.Context, string) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	assertProposalState(t, w, ids[busy.Name], "succeeded", true)
+}
+
+func assertProposalState(t *testing.T, w *proposalWorld, id pgtype.UUID, status string, started bool) {
+	t.Helper()
+	_, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidString(id), "")
+	if _, has := body["started_at"]; body["status"] != status || has != started {
+		t.Errorf("proposal %v, want %s with started_at present = %v", body, status, started)
 	}
 }
 
@@ -373,13 +420,13 @@ func TestTheBrakeHoldsAnApprovedProposalUntilItIsReleased(t *testing.T) {
 	t.Cleanup(func() { operatorCall(t, w.operator, http.MethodDelete, "/admin/agents/brake", `{"note":"cleanup"}`) })
 
 	ctx := context.Background()
-	if _, found, err := w.svc.ClaimApprovedProposal(ctx); err != nil || found {
+	if _, found, err := w.svc.ClaimApprovedProposal(ctx, nil); err != nil || found {
 		t.Fatalf("claim under the brake: found=%v err=%v, want nothing taken", found, err)
 	}
 	if code, _ := operatorCall(t, w.operator, http.MethodDelete, "/admin/agents/brake", `{"note":"over"}`); code != http.StatusNoContent {
 		t.Fatalf("release brake: %d", code)
 	}
-	p, found, err := w.svc.ClaimApprovedProposal(ctx)
+	p, found, err := w.svc.ClaimApprovedProposal(ctx, nil)
 	if err != nil || !found || p.ID != got[0].id {
 		t.Errorf("claim after release: %+v found=%v err=%v, want the held proposal", p, found, err)
 	}

@@ -103,6 +103,7 @@ const (
 	ActionProposalReject     = "platform_agent_proposal.rejected"
 	ActionProposalExpire     = "platform_agent_proposal.expired"
 	ActionProposalStart      = "platform_agent_proposal.started"
+	ActionProposalRequeue    = "platform_agent_proposal.requeued"
 	ActionProposalSucceed    = "platform_agent_proposal.succeeded"
 	ActionProposalFail       = "platform_agent_proposal.failed"
 )

@@ -187,9 +187,9 @@ func TestAccountPurgeAsksRegistryWhichImportSourcesAreStillUsed(t *testing.T) {
 
 func TestAnApprovedProposalThatNamesNoJobFailsWithoutRunningAnything(t *testing.T) {
 	for _, action := range []string{"run-purge-everything", "run-approved", "purge-audit", "run-"} {
-		err := runProposedJob(context.Background(), nil, action)
-		if err == nil || !strings.Contains(err.Error(), "names no maintenance job") {
-			t.Errorf("%s: %v, want it refused as naming no job", action, err)
+		err := runApprovedAction(context.Background(), nil, action)
+		if err == nil || !strings.Contains(err.Error(), "names no maintenance job") || errors.Is(err, operations.ErrActionBusy) {
+			t.Errorf("%s: %v, want it refused as naming no job, not as busy", action, err)
 		}
 	}
 }
@@ -300,6 +300,9 @@ func TestASecondRunOfAJobRefusesWhileTheFirstStillHoldsIt(t *testing.T) {
 	known, err := runExclusively(ctx, pool, job)
 	if !known || !errors.Is(err, jobruns.ErrAlreadyRunning) {
 		t.Errorf("known=%v err=%v, want a refusal naming the unfinished run before anything is purged", known, err)
+	}
+	if err := runApprovedAction(ctx, pool, operations.MaintenanceJobAction(job)); !errors.Is(err, operations.ErrActionBusy) {
+		t.Errorf("an approved %s while the job is held: %v, want it reported busy so the proposal waits", job, err)
 	}
 }
 

@@ -52,12 +52,18 @@ INSERT INTO platform_agent_steps (
     @run_id, @seq, @tool, @arguments, @result, @model, @prompt_tokens, @completion_tokens, sqlc.narg(usd_micros)
 );
 
--- name: PlatformAgentSpendSince :one
-SELECT coalesce(sum(s.usd_micros), 0)::bigint
+-- name: SetPlatformAgentRunKeyBudget :exec
+UPDATE platform_agent_runs SET key_budget_micros = @key_budget_micros WHERE id = @id;
+
+-- name: PlatformAgentSpendSince :many
+SELECT coalesce(sum(s.usd_micros), 0)::bigint AS priced_micros,
+    bool_or(s.usd_micros IS NULL)::boolean AS has_unpriced,
+    r.key_budget_micros
 FROM platform_agent_steps s
 JOIN platform_agent_runs r ON r.id = s.run_id
 JOIN platform_agents a ON a.id = r.agent_id
-WHERE a.name = @name AND s.created_at >= @since;
+WHERE a.name = @name AND s.created_at >= @since
+GROUP BY r.id;
 
 -- name: ListPlatformAgentRuns :many
 SELECT r.id, a.name AS agent, r.status, r.reason, r.started_at, r.finished_at, r.result,
@@ -178,7 +184,8 @@ RETURNING id;
 -- name: ClaimApprovedProposal :one
 WITH next AS (
     SELECT id FROM platform_agent_proposals
-    WHERE status = 'approved' AND NOT EXISTS (SELECT 1 FROM platform_agent_brake)
+    WHERE status = 'approved' AND NOT (id = ANY (@deferred::uuid[]))
+        AND NOT EXISTS (SELECT 1 FROM platform_agent_brake)
     ORDER BY decided_at, id
     LIMIT 1 FOR UPDATE SKIP LOCKED
 )
@@ -186,6 +193,11 @@ UPDATE platform_agent_proposals p
 SET status = 'running', started_at = now()
 FROM next WHERE p.id = next.id
 RETURNING p.id, p.action;
+
+-- name: RequeueProposal :execrows
+UPDATE platform_agent_proposals
+SET status = 'approved', started_at = NULL
+WHERE id = @id AND status = 'running';
 
 -- name: AbandonStaleProposals :many
 UPDATE platform_agent_proposals

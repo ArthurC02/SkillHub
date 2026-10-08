@@ -602,13 +602,14 @@ type PlatformAgentProposal struct {
 }
 
 type PlatformAgentRun struct {
-	ID         pgtype.UUID
-	AgentID    pgtype.UUID
-	Status     string
-	StartedAt  pgtype.Timestamptz
-	FinishedAt pgtype.Timestamptz
-	Reason     *string
-	Result     []byte
+	ID              pgtype.UUID
+	AgentID         pgtype.UUID
+	Status          string
+	StartedAt       pgtype.Timestamptz
+	FinishedAt      pgtype.Timestamptz
+	Reason          *string
+	Result          []byte
+	KeyBudgetMicros *int64
 }
 
 type PlatformAgentStep struct {

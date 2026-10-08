@@ -169,9 +169,9 @@ func agent(row gen.PlatformAgent) Agent {
 	}
 }
 
-func nonNil(values []string) []string {
+func nonNil[T any](values []T) []T {
 	if values == nil {
-		return []string{}
+		return []T{}
 	}
 	return values
 }

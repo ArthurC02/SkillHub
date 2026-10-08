@@ -138,18 +138,19 @@ func runSubcommand(ctx context.Context, pool *pgxpool.Pool, job string) error {
 }
 
 func runApproved(ctx context.Context, pool *pgxpool.Pool) error {
-	svc := &operations.Service{Pool: pool}
-	for {
-		proposal, ok, err := svc.ClaimApprovedProposal(ctx)
-		if err != nil || !ok {
-			return err
-		}
-		outcome := runProposedJob(ctx, pool, proposal.Action)
-		logSweep("approved "+proposal.Action, outcome)
-		if err := svc.FinishProposal(ctx, proposal.ID, outcome); err != nil {
-			return err
-		}
+	return (&operations.Service{Pool: pool}).WorkApprovedProposals(ctx, func(ctx context.Context, action string) error {
+		return runApprovedAction(ctx, pool, action)
+	})
+}
+
+func runApprovedAction(ctx context.Context, pool *pgxpool.Pool, action string) error {
+	outcome := runProposedJob(ctx, pool, action)
+	if errors.Is(outcome, jobruns.ErrAlreadyRunning) {
+		slog.Info("approved "+action+" waits for the scheduled run that holds the job", "error", outcome)
+		return fmt.Errorf("%w: %w", operations.ErrActionBusy, outcome)
 	}
+	logSweep("approved "+action, outcome)
+	return outcome
 }
 
 func runProposedJob(ctx context.Context, pool *pgxpool.Pool, action string) error {

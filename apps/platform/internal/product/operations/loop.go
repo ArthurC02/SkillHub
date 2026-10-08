@@ -77,19 +77,20 @@ type Runner struct {
 	Step       func(context.Context, StepRequest) (StepDecision, error)
 	IssueKey   func(ctx context.Context, run string, budgetUSD float64, ttl time.Duration) (string, error)
 	RevokeKey  func(ctx context.Context, run string) error
-	RecordCost func(ctx context.Context, run pgtype.UUID, call ModelCall)
+	RecordCost func(ctx context.Context, run pgtype.UUID, seq int, call ModelCall) error
 	Now        func() time.Time
 	Actions    []Action
 }
 
 const (
-	reasonSpendCap   = "the agent's daily spend cap is reached"
-	reasonStepLimit  = "the run reached its step limit"
-	reasonTokens     = "the run reached its token limit"
-	reasonDeadline   = "the run reached its time limit"
-	reasonUnrecorded = "the run's outcome could not be recorded: "
-	finishTool       = "finish"
-	settleTimeout    = 10 * time.Second
+	reasonSpendCap       = "the agent's daily spend cap is reached"
+	reasonStepLimit      = "the run reached its step limit"
+	reasonTokens         = "the run reached its token limit"
+	reasonDeadline       = "the run reached its time limit"
+	reasonUnrecorded     = "the run's outcome could not be recorded: "
+	reasonCostUnrecorded = "a model call's cost could not be recorded: "
+	finishTool           = "finish"
+	settleTimeout        = 10 * time.Second
 )
 
 var errUnoffered = errors.New("operations: the model asked for a tool this agent was not offered")
@@ -119,6 +120,9 @@ func (r *Runner) runStarted(ctx context.Context, report RunReport, def Definitio
 	}
 	if budget <= 0 {
 		return r.finish(ctx, report, RunIncomplete, reasonSpendCap, nil)
+	}
+	if err := r.Svc.recordKeyBudget(ctx, run, budget); err != nil {
+		return r.finish(ctx, report, RunFailed, err.Error(), nil)
 	}
 	runID := pgconv.UUIDString(run)
 	key, err := r.IssueKey(ctx, runID, budget, limits.Deadline)
@@ -211,16 +215,12 @@ func (l *runLoop) drive(ctx context.Context, report RunReport) (RunReport, error
 		if err != nil {
 			return l.runner.finish(ctx, report, RunFailed, err.Error(), nil)
 		}
-		l.runner.RecordCost(ctx, l.run, decision.Call)
+		if err := l.runner.RecordCost(ctx, l.run, seq, decision.Call); err != nil {
+			return l.runner.finish(ctx, report, RunFailed, reasonCostUnrecorded+err.Error(), nil)
+		}
 		l.tokens += decision.Call.PromptTokens + decision.Call.CompletionTokens
 		if decision.ToolIntent == nil {
-			if err := l.record(ctx, seq, ToolCall{Tool: finishTool, Arguments: string(decision.Result)}, "", decision.Call); err != nil {
-				return l.runner.finish(ctx, report, RunFailed, err.Error(), nil)
-			}
-			if err := l.check(decision.Result); err != nil {
-				return l.runner.finish(ctx, report, RunFailed, err.Error(), decision.Result)
-			}
-			return l.runner.complete(ctx, report, l.def, decision.Result, l.steps)
+			return l.conclude(ctx, report, seq, decision)
 		}
 		if err := l.call(ctx, seq, *decision.ToolIntent, decision.Call); err != nil {
 			return l.runner.finish(ctx, report, RunFailed, err.Error(), nil)
@@ -230,6 +230,16 @@ func (l *runLoop) drive(ctx context.Context, report RunReport) (RunReport, error
 		}
 	}
 	return l.runner.finish(ctx, report, RunIncomplete, reasonStepLimit, nil)
+}
+
+func (l *runLoop) conclude(ctx context.Context, report RunReport, seq int, decision StepDecision) (RunReport, error) {
+	if err := l.record(ctx, seq, ToolCall{Tool: finishTool, Arguments: string(decision.Result)}, "", decision.Call); err != nil {
+		return l.runner.finish(ctx, report, RunFailed, err.Error(), nil)
+	}
+	if err := l.check(decision.Result); err != nil {
+		return l.runner.finish(ctx, report, RunFailed, err.Error(), decision.Result)
+	}
+	return l.runner.complete(ctx, report, l.def, decision.Result, l.steps)
 }
 
 func (l *runLoop) ask(ctx context.Context) (StepDecision, error) {

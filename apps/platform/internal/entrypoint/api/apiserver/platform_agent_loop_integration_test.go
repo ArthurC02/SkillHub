@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
@@ -26,6 +27,7 @@ type loopScript struct {
 	issued    []float64
 	revoked   []string
 	costs     []operations.ModelCall
+	costErr   error
 	toolCalls []string
 }
 
@@ -47,8 +49,9 @@ func (s *loopScript) runner(svc *operations.Service) *operations.Runner {
 			s.revoked = append(s.revoked, run)
 			return nil
 		},
-		RecordCost: func(_ context.Context, _ pgtype.UUID, call operations.ModelCall) {
+		RecordCost: func(_ context.Context, _ pgtype.UUID, _ int, call operations.ModelCall) error {
 			s.costs = append(s.costs, call)
+			return s.costErr
 		},
 		Now: time.Now,
 	}
@@ -285,6 +288,41 @@ func TestTheDailySpendCapStopsARunBeforeAKeyIsIssued(t *testing.T) {
 	t.Fatalf("zero-step run %s missing from recent runs", pgconv.UUIDString(report.ID))
 }
 
+func TestAnUnpricedStepCountsAsItsRunsWholeKeyBudget(t *testing.T) {
+	const capMicros = 10_000
+	unpriced := func(context.Context, operations.StepRequest) (operations.StepDecision, error) {
+		return operations.StepDecision{
+			ToolIntent: &operations.ToolCall{Tool: "maintenance_report", Arguments: "{}"},
+			Call:       operations.ModelCall{Model: "m", PromptTokens: 100, CompletionTokens: 10},
+		}, nil
+	}
+	for _, tc := range []struct {
+		name      string
+		first     func(context.Context, operations.StepRequest) (operations.StepDecision, error)
+		laterKeys [][]float64
+	}{
+		{"every step priced", intent("maintenance_report"), [][]float64{{0.007}, {0.005}}},
+		{"one step unpriced", unpriced, [][]float64{nil, nil}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, def := loopAgent(t, "agent-loop-unpriced", capMicros, "maintenance_report")
+			first := &loopScript{t: t, answers: answers(tc.first, final(`{}`))}
+			if report, err := first.runner(svc).Run(context.Background(), def, first.tools(), loopLimits); err != nil || report.Status != operations.RunCompleted {
+				t.Fatalf("first run: %+v %v", report, err)
+			}
+			for i, want := range tc.laterKeys {
+				later := &loopScript{t: t, answers: answers(final(`{}`))}
+				if _, err := later.runner(svc).Run(context.Background(), def, later.tools(), loopLimits); err != nil {
+					t.Fatal(err)
+				}
+				if !slices.Equal(later.issued, want) {
+					t.Errorf("run %d key budget %v, want %v", i+2, later.issued, want)
+				}
+			}
+		})
+	}
+}
+
 func TestDisablingAnAgentStopsItsLoopBeforeTheNextStep(t *testing.T) {
 	svc, def := loopAgent(t, "agent-loop-disabled", 1_000_000, "maintenance_report")
 	var operatorID pgtype.UUID
@@ -325,16 +363,23 @@ func TestAnAgentsModelCallIsACostEventWithNoUserAndNoDebit(t *testing.T) {
 		t.Fatal(err)
 	}
 	cost := 0.0025
-	wiring.AgentCostRecorder(testPool, credits)(ctx, run, operations.ModelCall{
-		Model: "served-model", PromptVersion: "t1", PromptTokens: 30, CompletionTokens: 7, CostUSD: &cost,
-	})
+	call := operations.ModelCall{Model: "served-model", PromptVersion: "t1", PromptTokens: 30, CompletionTokens: 7, CostUSD: &cost}
+	record := wiring.AgentCostRecorder(testPool, credits)
+	for _, seq := range []int{0, 0, 1} {
+		if err := record(ctx, run, seq, call); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := countRow(t, testPool, "SELECT count(*) FROM cost_events WHERE ref_id = $1", run); n != 2 {
+		t.Errorf("cost events %d, want one per step however often a step is recorded", n)
+	}
 
 	var kind, refType, model string
 	var micros, debits int64
 	var userID, workspaceID pgtype.UUID
 	if err := testPool.QueryRow(ctx, `SELECT kind, ref_type, model, usd_micros, user_id, workspace_id,
 		(SELECT count(*) FROM credit_entries ce WHERE ce.cost_event_id = c.id)
-		FROM cost_events c WHERE ref_id = $1`, run).Scan(&kind, &refType, &model, &micros, &userID, &workspaceID, &debits); err != nil {
+		FROM cost_events c WHERE ref_id = $1 LIMIT 1`, run).Scan(&kind, &refType, &model, &micros, &userID, &workspaceID, &debits); err != nil {
 		t.Fatal(err)
 	}
 	if kind != "platform_agent" || refType != "platform_agent_run" || model != "served-model" || micros != 2500 {
@@ -342,6 +387,36 @@ func TestAnAgentsModelCallIsACostEventWithNoUserAndNoDebit(t *testing.T) {
 	}
 	if userID.Valid || workspaceID.Valid || debits != 0 {
 		t.Errorf("user %v workspace %v debits %d, want none of them", userID.Valid, workspaceID.Valid, debits)
+	}
+}
+
+func TestTheCostRecorderPassesTheLedgersRefusalBack(t *testing.T) {
+	svc, def := loopAgent(t, "agent-loop-cost-refused", 1_000_000, "maintenance_report")
+	run, err := svc.StartRun(context.Background(), def.Name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.FinishRun(context.Background(), run, operations.RunCompleted, "") })
+	cost := 0.001
+	err = wiring.AgentCostRecorder(testPool, &credit.Service{})(context.Background(), run, 0, operations.ModelCall{Model: "m", CostUSD: &cost})
+	if !errors.Is(err, credit.ErrUnavailable) {
+		t.Errorf("recording into an unavailable ledger: %v, want its error passed back", err)
+	}
+}
+
+func TestARunWhoseModelCostCannotBeRecordedFailsBeforeItActs(t *testing.T) {
+	svc, def := loopAgent(t, "agent-loop-cost-lost", 1_000_000, "maintenance_report")
+	s := &loopScript{t: t, answers: answers(intent("maintenance_report")), costErr: errors.New("ledger unavailable")}
+	report, err := s.runner(svc).Run(context.Background(), def, s.tools(), loopLimits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, reason := runStatus(t, testPool, report.ID)
+	if status != "failed" || reason != "a model call's cost could not be recorded: ledger unavailable" {
+		t.Errorf("run %s %q, want failed naming the unrecorded cost", status, reason)
+	}
+	if len(s.toolCalls) != 0 || len(s.revoked) != 1 {
+		t.Errorf("tools ran %v, keys revoked %d; want no tool run and the key revoked", s.toolCalls, len(s.revoked))
 	}
 }
 

@@ -7,13 +7,13 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
@@ -75,17 +75,16 @@ func NewAgentRunner(
 	}
 }
 
-func AgentCostRecorder(pool *pgxpool.Pool, credits *credit.Service) func(context.Context, pgtype.UUID, operations.ModelCall) {
-	return func(ctx context.Context, runID pgtype.UUID, call operations.ModelCall) {
+func AgentCostRecorder(pool *pgxpool.Pool, credits *credit.Service) func(context.Context, pgtype.UUID, int, operations.ModelCall) error {
+	return func(ctx context.Context, runID pgtype.UUID, seq int, call operations.ModelCall) error {
 		e := credit.CostEvent{
 			Kind: credit.KindPlatformAgent, Model: call.Model, PromptVersion: call.PromptVersion,
 			PromptTokens: call.PromptTokens, CompletionTokens: call.CompletionTokens,
 			RefType: credit.RefPlatformAgentRun, RefID: runID,
-			IdempotencyKey: string(credit.KindPlatformAgent) + ":" + uuid.NewString(),
+			IdempotencyKey: fmt.Sprintf("%s:%s:%d", credit.KindPlatformAgent, pgconv.UUIDString(runID), seq),
 		}
 		e.UsdMicros, e.Estimated = credit.UsageCost(call.CostUSD)
-		if _, _, err := credits.RecordCost(ctx, pool, e); err != nil {
-			slog.Warn("platform agent model call cost not recorded", "error", err)
-		}
+		_, _, err := credits.RecordCost(ctx, pool, e)
+		return err
 	}
 }

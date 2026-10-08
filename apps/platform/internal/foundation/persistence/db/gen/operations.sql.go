@@ -77,7 +77,8 @@ func (q *Queries) AppendFindingEvent(ctx context.Context, arg AppendFindingEvent
 const claimApprovedProposal = `-- name: ClaimApprovedProposal :one
 WITH next AS (
     SELECT id FROM platform_agent_proposals
-    WHERE status = 'approved' AND NOT EXISTS (SELECT 1 FROM platform_agent_brake)
+    WHERE status = 'approved' AND NOT (id = ANY ($1::uuid[]))
+        AND NOT EXISTS (SELECT 1 FROM platform_agent_brake)
     ORDER BY decided_at, id
     LIMIT 1 FOR UPDATE SKIP LOCKED
 )
@@ -92,8 +93,8 @@ type ClaimApprovedProposalRow struct {
 	Action string
 }
 
-func (q *Queries) ClaimApprovedProposal(ctx context.Context) (ClaimApprovedProposalRow, error) {
-	row := q.db.QueryRow(ctx, claimApprovedProposal)
+func (q *Queries) ClaimApprovedProposal(ctx context.Context, deferred []pgtype.UUID) (ClaimApprovedProposalRow, error) {
+	row := q.db.QueryRow(ctx, claimApprovedProposal, deferred)
 	var i ClaimApprovedProposalRow
 	err := row.Scan(&i.ID, &i.Action)
 	return i, err
@@ -871,12 +872,15 @@ func (q *Queries) OpenFinding(ctx context.Context, arg OpenFindingParams) (pgtyp
 	return id, err
 }
 
-const platformAgentSpendSince = `-- name: PlatformAgentSpendSince :one
-SELECT coalesce(sum(s.usd_micros), 0)::bigint
+const platformAgentSpendSince = `-- name: PlatformAgentSpendSince :many
+SELECT coalesce(sum(s.usd_micros), 0)::bigint AS priced_micros,
+    bool_or(s.usd_micros IS NULL)::boolean AS has_unpriced,
+    r.key_budget_micros
 FROM platform_agent_steps s
 JOIN platform_agent_runs r ON r.id = s.run_id
 JOIN platform_agents a ON a.id = r.agent_id
 WHERE a.name = $1 AND s.created_at >= $2
+GROUP BY r.id
 `
 
 type PlatformAgentSpendSinceParams struct {
@@ -884,11 +888,30 @@ type PlatformAgentSpendSinceParams struct {
 	Since pgtype.Timestamptz
 }
 
-func (q *Queries) PlatformAgentSpendSince(ctx context.Context, arg PlatformAgentSpendSinceParams) (int64, error) {
-	row := q.db.QueryRow(ctx, platformAgentSpendSince, arg.Name, arg.Since)
-	var column_1 int64
-	err := row.Scan(&column_1)
-	return column_1, err
+type PlatformAgentSpendSinceRow struct {
+	PricedMicros    int64
+	HasUnpriced     bool
+	KeyBudgetMicros *int64
+}
+
+func (q *Queries) PlatformAgentSpendSince(ctx context.Context, arg PlatformAgentSpendSinceParams) ([]PlatformAgentSpendSinceRow, error) {
+	rows, err := q.db.Query(ctx, platformAgentSpendSince, arg.Name, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlatformAgentSpendSinceRow
+	for rows.Next() {
+		var i PlatformAgentSpendSinceRow
+		if err := rows.Scan(&i.PricedMicros, &i.HasUnpriced, &i.KeyBudgetMicros); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const proposeAction = `-- name: ProposeAction :one
@@ -1005,6 +1028,20 @@ func (q *Queries) ReleasePlatformAgentBrake(ctx context.Context) (int64, error) 
 	return result.RowsAffected(), nil
 }
 
+const requeueProposal = `-- name: RequeueProposal :execrows
+UPDATE platform_agent_proposals
+SET status = 'approved', started_at = NULL
+WHERE id = $1 AND status = 'running'
+`
+
+func (q *Queries) RequeueProposal(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, requeueProposal, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const seeFinding = `-- name: SeeFinding :exec
 UPDATE platform_agent_findings
 SET title = $1, cites = $2::text[], last_seen_at = now(), seen_count = seen_count + 1
@@ -1076,6 +1113,20 @@ func (q *Queries) SetPlatformAgentEnabled(ctx context.Context, arg SetPlatformAg
 		&i.RegisteredAt,
 	)
 	return i, err
+}
+
+const setPlatformAgentRunKeyBudget = `-- name: SetPlatformAgentRunKeyBudget :exec
+UPDATE platform_agent_runs SET key_budget_micros = $1 WHERE id = $2
+`
+
+type SetPlatformAgentRunKeyBudgetParams struct {
+	KeyBudgetMicros *int64
+	ID              pgtype.UUID
+}
+
+func (q *Queries) SetPlatformAgentRunKeyBudget(ctx context.Context, arg SetPlatformAgentRunKeyBudgetParams) error {
+	_, err := q.db.Exec(ctx, setPlatformAgentRunKeyBudget, arg.KeyBudgetMicros, arg.ID)
+	return err
 }
 
 const startPlatformAgentRun = `-- name: StartPlatformAgentRun :one

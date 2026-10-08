@@ -31,6 +31,7 @@ export const ACTION_LABEL: Record<string, string> = {
   "platform_agent_proposal.rejected": "駁回提案",
   "platform_agent_proposal.expired": "提案逾期作廢",
   "platform_agent_proposal.started": "提案開始執行",
+  "platform_agent_proposal.requeued": "工作正在執行，提案退回待執行",
   "platform_agent_proposal.succeeded": "提案執行完成",
   "platform_agent_proposal.failed": "提案執行失敗",
 };

@@ -219,6 +219,7 @@ queries:
   GetPlatformAgentRunGate: operations
   RecordPlatformAgentStep: operations
   PlatformAgentSpendSince: operations
+  SetPlatformAgentRunKeyBudget: operations
   FinishPlatformAgentRun: operations
   ListPlatformAgentRuns: operations
   GetPlatformAgentRun: operations
@@ -253,6 +254,7 @@ queries:
   ExpireProposals: operations
   AbandonStaleProposals: operations
   ClaimApprovedProposal: operations
+  RequeueProposal: operations
   FinishProposal: operations
   ListProposals: operations
   GetProposal: operations
@@ -276,6 +278,7 @@ scope:
   GetPlatformAgentRunGate: platform-wide
   RecordPlatformAgentStep: platform-wide
   PlatformAgentSpendSince: platform-wide
+  SetPlatformAgentRunKeyBudget: platform-wide
   FinishPlatformAgentRun: platform-wide
   ListPlatformAgentRuns: platform-wide
   GetPlatformAgentRun: platform-wide
@@ -294,6 +297,8 @@ scope:
   LiveProposalExists: platform-wide
   DecideProposal: platform-wide
   FinishProposal: platform-wide
+  ClaimApprovedProposal: platform-wide
+  RequeueProposal: platform-wide
   AbandonStaleProposals: platform-wide
   ListProposals: platform-wide
   GetProposal: platform-wide

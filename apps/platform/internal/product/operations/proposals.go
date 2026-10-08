@@ -177,10 +177,32 @@ type ClaimedProposal struct {
 	Action string
 }
 
-func (s *Service) ClaimApprovedProposal(ctx context.Context) (ClaimedProposal, bool, error) {
+var ErrActionBusy = errors.New("operations: the action is already running elsewhere")
+
+func (s *Service) WorkApprovedProposals(ctx context.Context, run func(ctx context.Context, action string) error) error {
+	var deferred []pgtype.UUID
+	for {
+		proposal, ok, err := s.ClaimApprovedProposal(ctx, deferred)
+		if err != nil || !ok {
+			return err
+		}
+		outcome := run(ctx, proposal.Action)
+		if errors.Is(outcome, ErrActionBusy) {
+			deferred = append(deferred, proposal.ID)
+			err = s.RequeueProposal(ctx, proposal.ID)
+		} else {
+			err = s.FinishProposal(ctx, proposal.ID, outcome)
+		}
+		if err != nil {
+			return err
+		}
+	}
+}
+
+func (s *Service) ClaimApprovedProposal(ctx context.Context, deferred []pgtype.UUID) (ClaimedProposal, bool, error) {
 	var claimed ClaimedProposal
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		row, err := gen.New(tx).ClaimApprovedProposal(ctx)
+		row, err := gen.New(tx).ClaimApprovedProposal(ctx, nonNil(deferred))
 		if err != nil {
 			return err
 		}
@@ -191,6 +213,19 @@ func (s *Service) ClaimApprovedProposal(ctx context.Context) (ClaimedProposal, b
 		return ClaimedProposal{}, false, nil
 	}
 	return claimed, err == nil, err
+}
+
+func (s *Service) RequeueProposal(ctx context.Context, id pgtype.UUID) error {
+	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		requeued, err := gen.New(tx).RequeueProposal(ctx, id)
+		if err != nil {
+			return err
+		}
+		if requeued == 0 {
+			return ErrProposalClosed
+		}
+		return systemAudit(ctx, tx, id, audit.ActionProposalRequeue, nil)
+	})
 }
 
 func (s *Service) FinishProposal(ctx context.Context, id pgtype.UUID, failure error) error {
