@@ -1104,19 +1104,22 @@ test("OPS-013: a proposal opens with what would happen and the facts it rests on
   expect(button("駁回")).toBeDefined();
 });
 
-test("OPS-013: approving sends the decision with the operator's note", async () => {
-  stub(true, (_path, method) => (method === "PUT" ? { body: {}, status: 204 } : undefined));
-  await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
-  await waitFor(has("核准並執行"));
-  await type("#admin-proposal-approve-note", " the job never ran ");
-  await submit("#admin-proposal-approve-note");
-  await waitFor(() => calls.some((c) => c.method === "PUT"));
-  expect(calls.find((c) => c.method === "PUT")).toEqual({
-    method: "PUT",
-    url: `/admin/agents/proposals/${AGENT_PROPOSAL}/decision`,
-    body: { decision: "approve", note: "the job never ran" },
-  });
-});
+test.each(["approve", "reject"])(
+  "OPS-013: deciding %s sends that decision with the operator's note",
+  async (decision) => {
+    stub(true, (_path, method) => (method === "PUT" ? { body: {}, status: 204 } : undefined));
+    await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
+    await waitFor(has("核准並執行"));
+    await type(`#admin-proposal-${decision}-note`, " the job never ran ");
+    await submit(`#admin-proposal-${decision}-note`);
+    await waitFor(() => calls.some((c) => c.method === "PUT"));
+    expect(calls.find((c) => c.method === "PUT")).toEqual({
+      method: "PUT",
+      url: `/admin/agents/proposals/${AGENT_PROPOSAL}/decision`,
+      body: { decision, note: "the job never ran" },
+    });
+  },
+);
 
 test("OPS-013: a decided proposal shows its decision and outcome and offers no decision", async () => {
   const done = {
