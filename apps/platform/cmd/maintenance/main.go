@@ -184,22 +184,35 @@ func printCapacityReport(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
+	svc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
+	return purgeRetained(ctx, pool, retentionPasses{
+		sweep: "dataset purge", purgedKey: "datasets_purged",
+		expired: objreconcile.RetentionOwner{List: asCandidates(svc.ExpiredDatasetCandidates), Mark: svc.MarkDatasetPurged},
+		intents: objreconcile.RetentionOwner{
+			List: asCandidates(svc.DatasetCleanupIntentCandidates),
+			Mark: svc.MarkDatasetCleanupIntentPurged, Guard: svc.GuardDatasetObjectRemoval,
+		},
+	})
+}
+
+type retentionPasses struct {
+	sweep, purgedKey string
+	expired, intents objreconcile.RetentionOwner
+}
+
+func purgeRetained(ctx context.Context, pool *pgxpool.Pool, passes retentionPasses) error {
 	store, err := wiring.ObjectStoreFromEnv()
 	if err != nil {
 		return err
 	}
-	svc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
-	n, err := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
-		List: asCandidates(svc.ExpiredDatasetCandidates),
-		Mark: svc.MarkDatasetPurged,
-	}, wiring.MaintenanceBatch())
-	intentN, intentErr := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
-		List: asCandidates(svc.DatasetCleanupIntentCandidates),
-		Mark: svc.MarkDatasetCleanupIntentPurged, Guard: svc.GuardDatasetObjectRemoval,
-	}, wiring.MaintenanceBatch())
+	return passes.run(ctx, pool, store)
+}
 
+func (p retentionPasses) run(ctx context.Context, pool *pgxpool.Pool, store objreconcile.ObjectStore) error {
+	n, err := objreconcile.PurgeExpired(ctx, pool, store, p.expired, wiring.MaintenanceBatch())
+	intentN, intentErr := objreconcile.PurgeExpired(ctx, pool, store, p.intents, wiring.MaintenanceBatch())
 	err = errors.Join(err, intentErr)
-	logSweep("dataset purge", err, "datasets_purged", n, "upload_intents_purged", intentN)
+	logSweep(p.sweep, err, p.purgedKey, n, "upload_intents_purged", intentN)
 	return err
 }
 
@@ -263,23 +276,18 @@ func purgeAudit(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
-	store, err := wiring.ObjectStoreFromEnv()
-	if err != nil {
-		return err
-	}
 	svc := &run.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
-	n, err := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
-		List: asCandidates(svc.ExpiredArtifactCandidates),
-		Mark: svc.MarkRunOutputPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
-	}, wiring.MaintenanceBatch())
-	intentN, intentErr := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
-		List: asCandidates(svc.ArtifactUploadIntentCandidates),
-		Mark: svc.MarkArtifactUploadIntentPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
-	}, wiring.MaintenanceBatch())
-
-	err = errors.Join(err, intentErr)
-	logSweep("run artifact purge", err, "artifacts_purged", n, "upload_intents_purged", intentN)
-	return err
+	return purgeRetained(ctx, pool, retentionPasses{
+		sweep: "run artifact purge", purgedKey: "artifacts_purged",
+		expired: objreconcile.RetentionOwner{
+			List: asCandidates(svc.ExpiredArtifactCandidates),
+			Mark: svc.MarkRunOutputPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
+		},
+		intents: objreconcile.RetentionOwner{
+			List: asCandidates(svc.ArtifactUploadIntentCandidates),
+			Mark: svc.MarkArtifactUploadIntentPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
+		},
+	})
 }
 
 func purgeDeletedSkills(ctx context.Context, pool *pgxpool.Pool) error {

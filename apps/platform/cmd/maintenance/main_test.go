@@ -21,9 +21,9 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/jobruns"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -228,6 +228,45 @@ func TestEachReconcileRowBecomesTheCandidateItNamesWithinTheBatch(t *testing.T) 
 	})
 	if _, err := failing(context.Background(), 7); err == nil || err.Error() != "list failed" {
 		t.Errorf("a failing list returned %v, want its error", err)
+	}
+}
+
+type untouchedStore struct{}
+
+func (untouchedStore) Exists(context.Context, string) (bool, error) {
+	return false, errors.New("unexpected")
+}
+func (untouchedStore) Remove(context.Context, string) error { return errors.New("unexpected") }
+
+func TestTheIntentPassRunsEvenWhenTheExpiredPassFails(t *testing.T) {
+	var logged bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	pool, err := pgxpool.New(context.Background(), strings.TrimPrefix(unreachableMaintenanceDatabase, "DATABASE_URL="))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	mark := func(context.Context, pgx.Tx, pgtype.UUID) error { return nil }
+	intentsListed := false
+	passes := retentionPasses{
+		sweep: "test purge", purgedKey: "things_purged",
+		expired: objreconcile.RetentionOwner{Mark: mark, List: func(context.Context, int32) ([]objreconcile.Candidate, error) {
+			return nil, errors.New("expired list failed")
+		}},
+		intents: objreconcile.RetentionOwner{Mark: mark, List: func(context.Context, int32) ([]objreconcile.Candidate, error) {
+			intentsListed = true
+			return nil, errors.New("intent list failed")
+		}},
+	}
+
+	err = passes.run(context.Background(), pool, untouchedStore{})
+	if !intentsListed || err == nil || !strings.Contains(err.Error(), "expired list failed") || !strings.Contains(err.Error(), "intent list failed") {
+		t.Errorf("err %v, intents listed %v; want both passes run and both failures returned", err, intentsListed)
+	}
+	if out := logged.String(); !strings.Contains(out, "test purge stopped early") || !strings.Contains(out, "things_purged=0") || !strings.Contains(out, "upload_intents_purged=0") {
+		t.Errorf("logged %q, want the sweep named with both counts", out)
 	}
 }
 
