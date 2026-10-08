@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -266,7 +267,7 @@ func TestConcurrentBudgetChangesAuditTheCommittedPreviousValue(t *testing.T) {
 		t.Fatalf("locked setting = %d, %v; want 10", seconds, err)
 	}
 
-	blockedBefore := budgetLockWaiters(t)
+	blockedBefore := budgetLockWaiters(t, locked)
 	results := make(chan error, 2)
 	for _, value := range []int{20, 30} {
 		go func() {
@@ -274,7 +275,7 @@ func TestConcurrentBudgetChangesAuditTheCommittedPreviousValue(t *testing.T) {
 			results <- err
 		}()
 	}
-	blocked := waitForBudgetLockWaiters(t, blockedBefore+2)
+	blocked := waitForBudgetLockWaiters(t, locked, blockedBefore+2)
 	if err := locked.Rollback(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -319,18 +320,18 @@ func TestClearingAndSettingTheSameBudgetAuditInCommitOrder(t *testing.T) {
 		t.Fatalf("locked setting = %d, %v; want 10", seconds, err)
 	}
 
-	blockedBefore := budgetLockWaiters(t)
+	blockedBefore := budgetLockWaiters(t, locked)
 	cleared := make(chan error, 1)
 	go func() {
 		cleared <- svc.Clear(ctx, endpoint.Kind, "clear before the next setting", pgtype.UUID{})
 	}()
-	firstBlocked := waitForBudgetLockWaiters(t, blockedBefore+1)
+	firstBlocked := waitForBudgetLockWaiters(t, locked, blockedBefore+1)
 	set := make(chan error, 1)
 	go func() {
 		_, err := svc.Set(ctx, endpoint.Kind, 20, "new setting", pgtype.UUID{})
 		set <- err
 	}()
-	secondBlocked := waitForBudgetLockWaiters(t, blockedBefore+2)
+	secondBlocked := waitForBudgetLockWaiters(t, locked, blockedBefore+2)
 	if err := locked.Rollback(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -354,11 +355,11 @@ func TestClearingAndSettingTheSameBudgetAuditInCommitOrder(t *testing.T) {
 	}
 }
 
-func waitForBudgetLockWaiters(t *testing.T, want int) bool {
+func waitForBudgetLockWaiters(t *testing.T, tx pgx.Tx, want int) bool {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		if budgetLockWaiters(t) >= want {
+		if budgetLockWaiters(t, tx) >= want {
 			return true
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -366,10 +367,13 @@ func waitForBudgetLockWaiters(t *testing.T, want int) bool {
 	return false
 }
 
-func budgetLockWaiters(t *testing.T) int {
+func budgetLockWaiters(t *testing.T, tx pgx.Tx) int {
 	t.Helper()
 	var count int
-	if err := budgetPool.QueryRow(context.Background(),
+	if _, err := tx.Exec(context.Background(), "SELECT pg_stat_clear_snapshot()"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.QueryRow(context.Background(),
 		"SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'",
 	).Scan(&count); err != nil {
 		t.Fatal(err)
