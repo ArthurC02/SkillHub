@@ -13,28 +13,28 @@
         {
           "path": "apps/platform/internal/trial/execution/preflight.go",
           "lines": {
-            "start": 196,
-            "end": 219
+            "start": 206,
+            "end": 229
           },
-          "content_sha256": "sha256:e10576bc8f08b51ca9a9d096400675b65dfcac3ae091b58a6277477caf639308",
+          "content_sha256": "sha256:c1fd893ea0d43002d0d1891bdaef86bb4e867fd2d32676a20c8e7222e8861ddc",
           "excerpt_sha256": "sha256:0e7d275dfffb71434b32074faa03d716223531b42e45026afe560096c33f5f0b",
           "source_kind": "implementation"
         }
       ],
       "review": {
-        "proposal_id": "run-preflight-facts-follow-the-held-facts",
+        "proposal_id": "run-preflight-version-disable-citation-mainline",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-02T08:47:59.068189Z",
-            "scope": "The citation of the interaction registry-run-preflight-facts, moved to the lines where preflight now refuses without a Registry reader and reads Version facts through it; the interaction itself is unchanged",
+            "approved_at": "2026-10-08T03:57:15.027131Z",
+            "scope": "Approve revision 1 on the current mainline Registry: retain the 67-event audit chain and refresh only the existing Registry-to-Run preflight citation to lines 206-229; no contract or domain-rule change and no deployment waiver.",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "b38c98d658122921ed859162d1b456fc83417480",
-              "registry_digest": "sha256:d75493e27760f5054a1ffa592bf40193d910cb0bf71cae4ce535add36d14e15b"
+              "observed_commit": "c344e737fd9a522ba0a903d6dff62b1d076db7da",
+              "registry_digest": "sha256:afe0c20a28aebe47fb59adbd5353835b1fcc49b86f838f33d02c389536473ce2"
             }
           }
         ]

@@ -3,12 +3,12 @@
   "proposal_id": "run-preflight-version-disable-citation-mainline",
   "proposer": "coding-agent",
   "requirement_id": "registry-run-preflight-citation-after-mainline-merge",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-08T03:15:45.089027Z",
   "verified_at": "2026-10-08T04:00:27.302614Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-08T04:04:05.462533Z",
+  "applied_at": "2026-10-08T04:04:13.248487Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "c344e737fd9a522ba0a903d6dff62b1d076db7da",
@@ -107,5 +107,9 @@
         "registry_digest": "sha256:afe0c20a28aebe47fb59adbd5353835b1fcc49b86f838f33d02c389536473ce2"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "cf6d62d9df93adc19a140e1d11ba17c7537ec872",
+    "registry_digest": "sha256:abfa183cf432aa6fb7695eaca2aacc91591f4852e4290772a06c145be5618fce"
+  }
 }

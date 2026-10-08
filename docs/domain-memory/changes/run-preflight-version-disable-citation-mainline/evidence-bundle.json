@@ -20,7 +20,16 @@
       }
     }
   ],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "cf6d62d9df93adc19a140e1d11ba17c7537ec872",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "c344e737fd9a522ba0a903d6dff62b1d076db7da",
+      "registry_digest": "sha256:afe0c20a28aebe47fb59adbd5353835b1fcc49b86f838f33d02c389536473ce2"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "citation-counterfactual",

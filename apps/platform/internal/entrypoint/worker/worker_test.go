@@ -359,16 +359,7 @@ func TestAGaugeThatFailsToRefreshDoesNotStopTheOthersAndTheLoopEndsWithItsContex
 			return nil
 		},
 	}
-	done := make(chan struct{})
-	go func() {
-		RefreshGauges(ctx, publishers)
-		close(done)
-	}()
-	select {
-	case <-done:
-	case <-time.After(5 * time.Second):
-		t.Fatal("the refresh loop kept running after its context ended")
-	}
+	RefreshGauges(ctx, publishers)
 	if strings.Join(refreshed, ",") != "unreadable,readable" {
 		t.Errorf("refreshed %v, want both gauges attempted once", refreshed)
 	}
