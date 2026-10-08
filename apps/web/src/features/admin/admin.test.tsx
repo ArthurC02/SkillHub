@@ -983,11 +983,82 @@ test("OPS-006: the audit log names actions in words and folds the metadata", asy
   expect(
     Array.from(table.querySelectorAll('tbody th[scope="row"]')).map((th) => th.textContent),
   ).toEqual(["授予點數", "查詢帳號"]);
+  expect(table.tBodies[0].rows[0].querySelector('[data-label="對象"]')?.textContent).toContain(
+    "工作區：ws-2",
+  );
   expect(field("td details summary").textContent).toBe("3 項");
   expect(field("td details").textContent).toContain("beta reward");
   expect(
     Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "載入更多"),
   ).toBe(false);
+});
+
+test("audit events without a workspace name its absence", async () => {
+  stub(true, (path) =>
+    path === "/admin/audit-log"
+      ? { body: { events: [{ ...ADMIN_AUDIT_LOG.events[0], workspace_id: null }] }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/audit-log");
+  await waitFor(has("授予點數"));
+  expect(field<HTMLElement>('[data-label="對象"]').textContent).toContain("工作區：不適用");
+});
+
+test("a failed audit refresh hides old rows until retry succeeds", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/audit-log") return undefined;
+    reads += 1;
+    return reads === 2
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : { body: ADMIN_AUDIT_LOG, status: 200 };
+  });
+  await mountAt("/admin/audit-log");
+  await waitFor(() => container.querySelectorAll("tbody tr").length === 2);
+  await click(button("重新整理"));
+  await waitFor(has("暫時無法讀取動作紀錄"));
+  expect(reads).toBe(2);
+  expect(container.querySelector("tbody tr")).toBeNull();
+
+  await click(button("再試一次"));
+  await waitFor(() => reads === 3 && container.querySelectorAll("tbody tr").length === 2);
+  expect(has("暫時無法讀取動作紀錄")()).toBe(false);
+});
+
+test("an initial audit read failure offers retry without claiming prior data", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/audit-log") return undefined;
+    reads += 1;
+    return reads === 1
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : { body: ADMIN_AUDIT_LOG, status: 200 };
+  });
+  await mountAt("/admin/audit-log");
+  await waitFor(has("暫時無法讀取動作紀錄"));
+  expect(has("請稍後再試")()).toBe(true);
+  expect(has("先前載入的內容已隱藏")()).toBe(false);
+  expect(container.querySelector("table")).toBeNull();
+
+  await click(button("再試一次"));
+  await waitFor(() => reads === 2 && container.querySelectorAll("tbody tr").length === 2);
+});
+
+test("a lost operator session hides previously loaded audit rows", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/audit-log") return undefined;
+    reads += 1;
+    return reads === 2
+      ? { body: { error: "not authenticated" }, status: 401 }
+      : { body: ADMIN_AUDIT_LOG, status: 200 };
+  });
+  await mountAt("/admin/audit-log");
+  await waitFor(() => container.querySelectorAll("tbody tr").length === 2);
+  await click(button("重新整理"));
+  await waitFor(has("動作紀錄需要登入"));
+  expect(container.querySelector("table")).toBeNull();
+  expect(has("授予點數")()).toBe(false);
 });
 
 test("OPS-006: a halt the platform declared by itself names the platform as the actor", async () => {

@@ -721,6 +721,17 @@ async function verifyAdminSkillActionsOnPhone(page: Page) {
   await expect(page.locator("#admin-takedown-consequences")).toBeVisible();
 }
 
+async function verifyAuditContextOnPhone(page: Page) {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto("/admin/audit-log");
+
+  const target = page.locator('tbody tr:first-child [data-label="對象"]');
+  await expect(target.getByText("工作區：", { exact: false })).toBeVisible();
+  await expect(target.getByText("ws-2")).toBeVisible();
+  await expect(page.getByRole("button", { name: "重新整理", exact: true })).toBeVisible();
+}
+
 test.describe("QA-008 real layout", () => {
   test("Run result keeps judgment first and turns evidence into a desktop workbench", async ({
     page,
@@ -782,6 +793,9 @@ test.describe("QA-008 real layout", () => {
   test("model timeout choices keep the effective and default seconds visible on a phone", async ({
     page,
   }) => verifyModelTimeoutChoicesOnPhone(page));
+
+  test("audit rows show their workspace and refresh control on a phone", async ({ page }) =>
+    verifyAuditContextOnPhone(page));
 
   for (const [name, url] of PHONE_ROUTES) {
     test(`the page does not scroll sideways at 375px: ${name}`, async ({ page }) => {
