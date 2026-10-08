@@ -63,6 +63,9 @@ func prepareProposals(ctx context.Context, def Definition, actions []Action, req
 		if err != nil {
 			return nil, fmt.Errorf("operations: previewing %q: %w", request.Action, err)
 		}
+		if preview.changesNothing() {
+			continue
+		}
 		prepared = append(prepared, preparedProposal{ProposalRequest: request, tier: actions[i].Tier, preview: preview})
 	}
 	return prepared, nil

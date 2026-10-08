@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"slices"
 	"strings"
 )
 
@@ -22,6 +23,10 @@ type PreviewCount struct {
 type Preview struct {
 	Counts     []PreviewCount `json:"counts"`
 	BatchLimit int32          `json:"batch_limit,omitempty"`
+}
+
+func (p Preview) changesNothing() bool {
+	return len(p.Counts) > 0 && !slices.ContainsFunc(p.Counts, func(c PreviewCount) bool { return c.Count > 0 })
 }
 
 type Action struct {

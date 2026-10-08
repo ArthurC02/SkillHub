@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -129,6 +130,28 @@ func TestAnAgentProposesOnlyARegisteredActionWithItsPreviewAndOnceWhileItIsLive(
 	w.propose(proposal(audit.Name, "still late", "/jobs/purge/overdue"))
 	if got := w.proposals(); len(got) != 1 {
 		t.Errorf("after a second report: %d proposals, want the live one kept and no second", len(got))
+	}
+}
+
+func TestAProposalWhosePreviewChangesNothingNeverReachesAnOperator(t *testing.T) {
+	cases := []struct {
+		name   string
+		counts []operations.PreviewCount
+		want   int
+	}{
+		{"every count zero", []operations.PreviewCount{{Key: "a", Count: 0}, {Key: "b", Count: 0, AtMost: true}}, 0},
+		{"one row among zeros", []operations.PreviewCount{{Key: "a", Count: 0}, {Key: "b", Count: 1}}, 1},
+		{"no counts to judge by", nil, 1},
+	}
+	for i, c := range cases {
+		action := operations.Action{Name: fmt.Sprintf("run-test-proposal-noop-%d", i), Tier: operations.TierDestructive, Preview: fixedPreview(c.counts...)}
+		w := newProposalWorld(t, fmt.Sprintf("agent-proposals-noop-%d", i), action)
+		if report := w.propose(proposal(action.Name, "late", "/jobs/purge/overdue")); report.Status != operations.RunCompleted {
+			t.Fatalf("%s: run %+v, want completed", c.name, report)
+		}
+		if got := w.proposals(); len(got) != c.want {
+			t.Errorf("%s: %d proposals, want %d", c.name, len(got), c.want)
+		}
 	}
 }
 
