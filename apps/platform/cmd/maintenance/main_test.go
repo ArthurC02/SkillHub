@@ -19,6 +19,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/jobruns"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
@@ -186,6 +187,39 @@ func TestAnApprovedProposalThatNamesNoJobFailsWithoutRunningAnything(t *testing.
 		if err == nil || !strings.Contains(err.Error(), "names no maintenance job") {
 			t.Errorf("%s: %v, want it refused as naming no job", action, err)
 		}
+	}
+}
+
+func TestASecondRunOfAJobRefusesWhileTheFirstStillHoldsIt(t *testing.T) {
+	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
+	if dsn == "" {
+		if os.Getenv("SKILLHUB_REQUIRE_DB") == "1" {
+			t.Fatal("SKILLHUB_REQUIRE_DB=1 but SKILLHUB_TEST_DATABASE_URL is unset")
+		}
+		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping the job lock")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	const job = "purge-audit"
+
+	holder, err := pool.Acquire(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer holder.Release()
+	if _, err := holder.Exec(ctx, "SELECT pg_advisory_lock(hashtextextended($1, 0))", "skillhub:maintenance:"+job); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = holder.Exec(ctx, "SELECT pg_advisory_unlock(hashtextextended($1, 0))", "skillhub:maintenance:"+job)
+	}()
+	known, err := runExclusively(ctx, pool, job)
+	if !known || !errors.Is(err, jobruns.ErrAlreadyRunning) {
+		t.Errorf("known=%v err=%v, want a refusal naming the unfinished run before anything is purged", known, err)
 	}
 }
 

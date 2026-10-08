@@ -129,6 +129,7 @@ func (s *Service) CheckSources(ctx context.Context, limit int32) (SourceSweep, e
 	if err != nil {
 		return sweep, err
 	}
+	var unmarked []error
 	for _, row := range rows {
 		probe := sourceUnchanged
 		if err := s.Fetcher.Probe(ctx, *row.SourceUrl); err != nil {
@@ -140,7 +141,8 @@ func (s *Service) CheckSources(ctx context.Context, limit int32) (SourceSweep, e
 			sweep.Changed++
 		}
 		if err := s.markChecked(ctx, q, row, probe); err != nil {
-			return sweep, err
+			unmarked = append(unmarked, fmt.Errorf("source %s: %w", *row.SourceUrl, err))
+			continue
 		}
 		sweep.Checked++
 	}
@@ -149,7 +151,7 @@ func (s *Service) CheckSources(ctx context.Context, limit int32) (SourceSweep, e
 		slog.Warn("every source in this sweep hashed differently; suspect the archive generator, not the content",
 			"checked", sweep.Checked, "changed", sweep.Changed)
 	}
-	return sweep, nil
+	return sweep, errors.Join(unmarked...)
 }
 
 func (s *Service) contentDiffers(ctx context.Context, row gen.ListSourcesToCheckRow, skillPath string) bool {

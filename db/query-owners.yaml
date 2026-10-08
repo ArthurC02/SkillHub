@@ -205,6 +205,8 @@ queries:
   RegisterMaintenanceJobs: jobruns
   ForgetUnscheduledMaintenanceJobs: jobruns
   RecordMaintenanceJobSuccess: jobruns
+  TryLockMaintenanceJob: jobruns
+  UnlockMaintenanceJob: jobruns
   ListMaintenanceJobRuns: jobruns
 
   RegisterPlatformAgent: operations
@@ -248,6 +250,7 @@ queries:
   LiveProposalExists: operations
   DecideProposal: operations
   ExpireProposals: operations
+  AbandonStaleProposals: operations
   ClaimApprovedProposal: operations
   FinishProposal: operations
   ListProposals: operations
@@ -289,6 +292,7 @@ scope:
   LiveProposalExists: platform-wide
   DecideProposal: platform-wide
   FinishProposal: platform-wide
+  AbandonStaleProposals: platform-wide
   ListProposals: platform-wide
   GetProposal: platform-wide
   CountRunOutputsPastRetention: user

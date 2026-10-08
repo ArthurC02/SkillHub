@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -55,8 +56,9 @@ type ProposalExpiryWorker struct {
 }
 
 func (w *ProposalExpiryWorker) Work(ctx context.Context, _ *river.Job[ProposalExpiryArgs]) error {
-	_, err := w.Svc.ExpireProposals(ctx)
-	return err
+	_, expireErr := w.Svc.ExpireProposals(ctx)
+	_, abandonErr := w.Svc.AbandonStaleProposals(ctx)
+	return errors.Join(expireErr, abandonErr)
 }
 
 type dailyAt struct{ hour int }

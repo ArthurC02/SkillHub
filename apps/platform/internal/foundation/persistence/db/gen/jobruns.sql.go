@@ -76,3 +76,23 @@ func (q *Queries) RegisterMaintenanceJobs(ctx context.Context, arg RegisterMaint
 	_, err := q.db.Exec(ctx, registerMaintenanceJobs, arg.Jobs, arg.PeriodSeconds)
 	return err
 }
+
+const tryLockMaintenanceJob = `-- name: TryLockMaintenanceJob :one
+SELECT pg_try_advisory_lock(hashtextextended('skillhub:maintenance:' || $1::text, 0))
+`
+
+func (q *Queries) TryLockMaintenanceJob(ctx context.Context, job string) (bool, error) {
+	row := q.db.QueryRow(ctx, tryLockMaintenanceJob, job)
+	var pg_try_advisory_lock bool
+	err := row.Scan(&pg_try_advisory_lock)
+	return pg_try_advisory_lock, err
+}
+
+const unlockMaintenanceJob = `-- name: UnlockMaintenanceJob :exec
+SELECT pg_advisory_unlock(hashtextextended('skillhub:maintenance:' || $1::text, 0))
+`
+
+func (q *Queries) UnlockMaintenanceJob(ctx context.Context, job string) error {
+	_, err := q.db.Exec(ctx, unlockMaintenanceJob, job)
+	return err
+}

@@ -2,6 +2,7 @@ package jobruns
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -37,6 +38,26 @@ func Register(ctx context.Context, pool *pgxpool.Pool, jobs []Job) error {
 		}
 		return q.RegisterMaintenanceJobs(ctx, gen.RegisterMaintenanceJobsParams{Jobs: names, PeriodSeconds: periods})
 	})
+}
+
+var ErrAlreadyRunning = errors.New("another run of this job has not finished")
+
+func Exclusively(ctx context.Context, pool *pgxpool.Pool, job string, run func() error) error {
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+	q := gen.New(conn)
+	locked, err := q.TryLockMaintenanceJob(ctx, job)
+	if err != nil {
+		return err
+	}
+	if !locked {
+		return fmt.Errorf("%s: %w", job, ErrAlreadyRunning)
+	}
+	defer func() { _ = q.UnlockMaintenanceJob(context.WithoutCancel(ctx), job) }()
+	return run()
 }
 
 func RecordSuccess(ctx context.Context, pool *pgxpool.Pool, job string) error {

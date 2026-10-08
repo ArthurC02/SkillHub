@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -190,8 +191,11 @@ func (s *Service) FinishProposal(ctx context.Context, id pgtype.UUID, failure er
 	var outcome *string
 	if failure != nil {
 		message := failure.Error()
+		if strings.TrimSpace(message) == "" {
+			message = outcomeFailedSilently
+		}
 		status, action, outcome = ProposalFailed, audit.ActionProposalFail, &message
-		metadata = map[string]any{"error": message}
+		metadata = map[string]any{auditError: message}
 	}
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		finished, err := gen.New(tx).FinishProposal(ctx, gen.FinishProposalParams{Status: string(status), Outcome: outcome, ID: id})
@@ -203,6 +207,33 @@ func (s *Service) FinishProposal(ctx context.Context, id pgtype.UUID, failure er
 		}
 		return systemAudit(ctx, tx, id, action, metadata)
 	})
+}
+
+const (
+	auditError            = "error"
+	proposalRunLease      = 2 * time.Hour
+	outcomeFailedSilently = "the job failed without saying why"
+	outcomeAbandoned      = "the maintenance process stopped before it reported an outcome"
+)
+
+func (s *Service) AbandonStaleProposals(ctx context.Context) (int, error) {
+	var abandoned int
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		ids, err := gen.New(tx).AbandonStaleProposals(ctx, gen.AbandonStaleProposalsParams{
+			Outcome: new(outcomeAbandoned), StartedBefore: pgconv.Timestamptz(time.Now().Add(-proposalRunLease)),
+		})
+		if err != nil {
+			return err
+		}
+		for _, id := range ids {
+			if err := systemAudit(ctx, tx, id, audit.ActionProposalFail, map[string]any{auditError: outcomeAbandoned}); err != nil {
+				return err
+			}
+		}
+		abandoned = len(ids)
+		return nil
+	})
+	return abandoned, err
 }
 
 func systemAudit(ctx context.Context, tx pgx.Tx, id pgtype.UUID, action string, metadata map[string]any) error {

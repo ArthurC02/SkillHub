@@ -177,9 +177,13 @@ func (r findingRecorder) see(ctx context.Context, f matchable, s Sighting) error
 }
 
 func (r findingRecorder) transition(ctx context.Context, f matchable, to FindingStatus, s *Sighting, action string) error {
-	if _, err := r.q.SetFindingStatus(ctx, gen.SetFindingStatusParams{
+	_, err := r.q.SetFindingStatus(ctx, gen.SetFindingStatusParams{
 		ID: f.id, Status: string(to), FromStatus: string(f.status),
-	}); err != nil {
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
 		return err
 	}
 	if err := r.event(ctx, f.id, eventForStatus[to], s); err != nil {

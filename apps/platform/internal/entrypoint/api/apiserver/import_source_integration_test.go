@@ -533,6 +533,60 @@ func TestASkillImportedFromInsideAPluginIsChangedOnlyWhenItsOwnFilesChange(t *te
 	}
 }
 
+func TestASourceThatCannotBeMarkedDoesNotStopTheSweepBehindIt(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(upstream.Close)
+	for _, s := range []struct{ user, path, lastChecked string }{
+		{"sweep-stuck-source", "/stuck", "-infinity"},
+		{"sweep-healthy-source", "/healthy", "2000-01-01T00:00:00Z"},
+	} {
+		owner := a.login(t, s.user)
+		if code, body := postSource(t, owner, zipOf(t, map[string]string{"SKILL.md": skillNamed("tidy-notes")})); code != http.StatusCreated {
+			t.Fatalf("status = %d, want 201; body = %v", code, body)
+		}
+		if _, err := pool.Exec(context.Background(),
+			"UPDATE skill_sources SET source_type = 'git', source_url = $2, last_checked_at = $3::timestamptz, unavailable_since = NULL WHERE workspace_id = $1",
+			mustUUID(t, owner.workspaceID), upstream.URL+s.path, s.lastChecked); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := pool.Exec(context.Background(), `
+		CREATE OR REPLACE FUNCTION skillhub_test_stuck_source() RETURNS trigger LANGUAGE plpgsql AS $$
+		BEGIN RAISE EXCEPTION 'injected mark failure'; END $$;
+		CREATE TRIGGER skillhub_test_stuck_source BEFORE UPDATE ON skill_sources
+		FOR EACH ROW WHEN (OLD.source_url LIKE '%/stuck') EXECUTE FUNCTION skillhub_test_stuck_source()`); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(), `
+			DROP TRIGGER IF EXISTS skillhub_test_stuck_source ON skill_sources;
+			DROP FUNCTION IF EXISTS skillhub_test_stuck_source()`); err != nil {
+			t.Error(err)
+		}
+	})
+
+	svc := &ingest.Service{Pool: pool, Fetcher: &ingest.URLFetcher{
+		Allowed: map[string]bool{mustHost(t, upstream.URL): true}, AllowInsecure: true,
+	}}
+	_, err := svc.CheckSources(context.Background(), 200)
+	if err == nil || !strings.Contains(err.Error(), "injected mark failure") {
+		t.Errorf("sweep error %v, want the stuck source's failure reported", err)
+	}
+	var healthyMarked bool
+	if err := pool.QueryRow(context.Background(),
+		"SELECT unavailable_since IS NOT NULL AND last_checked_at > '2000-01-01T00:00:00Z' FROM skill_sources WHERE source_url = $1",
+		upstream.URL+"/healthy").Scan(&healthyMarked); err != nil {
+		t.Fatal(err)
+	}
+	if !healthyMarked {
+		t.Error("the healthy source behind the stuck one was never marked unavailable")
+	}
+}
+
 func TestImportingANewVersionOfASkillByNameUpdatesItsSummary(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

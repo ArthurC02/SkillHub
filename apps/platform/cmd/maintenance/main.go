@@ -84,7 +84,7 @@ func runJob(job string) int {
 		slog.Error("maintenance job registry", "error", err)
 	}
 
-	known, err := runSubcommand(ctx, pool, job)
+	known, err := runExclusively(ctx, pool, job)
 	if !known {
 		slog.Error("unknown job", "job", job)
 		return 2
@@ -98,6 +98,17 @@ func runJob(job string) int {
 		return 1
 	}
 	return 0
+}
+
+func runExclusively(ctx context.Context, pool *pgxpool.Pool, job string) (known bool, err error) {
+	if !slices.ContainsFunc(scheduledJobs(), func(j jobruns.Job) bool { return j.Name == job }) {
+		return false, nil
+	}
+	err = jobruns.Exclusively(ctx, pool, job, func() error {
+		_, err := runSubcommand(ctx, pool, job)
+		return err
+	})
+	return true, err
 }
 
 func runSubcommand(ctx context.Context, pool *pgxpool.Pool, job string) (known bool, err error) {
@@ -150,7 +161,7 @@ func runProposedJob(ctx context.Context, pool *pgxpool.Pool, action string) erro
 	if !ok || !slices.Contains(operations.ProposableMaintenanceJobs, job) {
 		return fmt.Errorf("%s names no maintenance job", action)
 	}
-	known, err := runSubcommand(ctx, pool, job)
+	known, err := runExclusively(ctx, pool, job)
 	if !known {
 		return fmt.Errorf("%s names no maintenance job", action)
 	}

@@ -87,8 +87,8 @@ func TestAnUnknownJobExitsTwo(t *testing.T) {
 func TestAFailedJobExitsOneAndNamesTheJob(t *testing.T) {
 	got := runMaintenanceMain(t, "purge-audit", unreachableMaintenanceDatabase)
 	if got.code != 1 || !strings.Contains(got.stderr, "maintenance job failed") ||
-		!strings.Contains(got.stderr, "job=purge-audit") || !strings.Contains(got.stderr, "AUDIT_RETENTION") {
-		t.Fatalf("exit %d, want 1 naming purge-audit and its missing retention; stderr:\n%s", got.code, got.stderr)
+		!strings.Contains(got.stderr, "job=purge-audit") || !strings.Contains(got.stderr, "failed to connect") {
+		t.Fatalf("exit %d, want 1 naming purge-audit and the database it could not reach; stderr:\n%s", got.code, got.stderr)
 	}
 }
 

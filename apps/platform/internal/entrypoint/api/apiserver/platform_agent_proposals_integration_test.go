@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	analytics "github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
@@ -293,6 +295,118 @@ func TestTheMaintenanceRunnerTakesEachApprovedProposalOnceAndRecordsItsOutcome(t
 	if n := countRow(t, testPool, "SELECT count(*) FROM audit_events WHERE resource_id = ANY($1) AND action IN ('platform_agent_proposal.succeeded', 'platform_agent_proposal.failed')",
 		[]pgtype.UUID{claimed[ok.Name], claimed[bad.Name]}); n != 2 {
 		t.Errorf("outcome audit events: %d, want one each", n)
+	}
+}
+
+func (w *proposalWorld) approveAndClaimAll() map[string]pgtype.UUID {
+	w.t.Helper()
+	for _, p := range w.proposals() {
+		if code, _ := w.decide(p.id, "approve", "go ahead"); code != http.StatusNoContent {
+			w.t.Fatalf("approve %s: %d", p.action, code)
+		}
+	}
+	claimed := map[string]pgtype.UUID{}
+	for {
+		p, found, err := w.svc.ClaimApprovedProposal(context.Background())
+		if err != nil {
+			w.t.Fatal(err)
+		}
+		if !found {
+			return claimed
+		}
+		claimed[p.Action] = p.ID
+	}
+}
+
+func TestAProposalWhoseRunnerVanishedFailsOnlyAfterItsLease(t *testing.T) {
+	gone := operations.Action{Name: "run-test-proposal-gone", Tier: operations.TierDestructive, Preview: fixedPreview()}
+	slow := operations.Action{Name: "run-test-proposal-slow", Tier: operations.TierDestructive, Preview: fixedPreview()}
+	w := newProposalWorld(t, "agent-proposals-lease", gone, slow)
+	w.propose(proposal(gone.Name, "a", "/jobs/purge/overdue"), proposal(slow.Name, "b", "/jobs/rotate/overdue"))
+	claimed := w.approveAndClaimAll()
+	for action, age := range map[string]string{gone.Name: "2 hours 1 second", slow.Name: "1 hour 59 minutes 59 seconds"} {
+		if _, err := testPool.Exec(context.Background(),
+			"UPDATE platform_agent_proposals SET started_at = now() - $2::interval WHERE id = $1", claimed[action], age); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	sweep := &worker.ProposalExpiryWorker{Svc: w.svc}
+	if err := sweep.Work(context.Background(), &river.Job[worker.ProposalExpiryArgs]{}); err != nil {
+		t.Fatalf("proposal sweep: %v", err)
+	}
+	_, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidString(claimed[gone.Name]), "")
+	if body["status"] != "failed" || body["outcome"] != "the maintenance process stopped before it reported an outcome" {
+		t.Errorf("abandoned proposal %v, want failed saying the process stopped", body)
+	}
+	_, body = operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidString(claimed[slow.Name]), "")
+	if body["status"] != "running" {
+		t.Errorf("proposal inside its lease %v, want still running", body)
+	}
+	if n := countRow(t, testPool, "SELECT count(*) FROM audit_events WHERE resource_id = $1 AND action = 'platform_agent_proposal.failed' AND actor_user_id IS NULL AND actor_agent_id IS NULL", claimed[gone.Name]); n != 1 {
+		t.Errorf("system failure audit events: %d, want 1", n)
+	}
+}
+
+func TestAJobThatFailsWithoutAMessageStillClosesItsProposal(t *testing.T) {
+	quiet := operations.Action{Name: "run-test-proposal-quiet", Tier: operations.TierDestructive, Preview: fixedPreview()}
+	w := newProposalWorld(t, "agent-proposals-quiet", quiet)
+	w.propose(proposal(quiet.Name, "a", "/jobs/purge/overdue"))
+	id := w.approveAndClaimAll()[quiet.Name]
+	if err := w.svc.FinishProposal(context.Background(), id, errors.New("  ")); err != nil {
+		t.Fatalf("finish: %v, want the proposal closed", err)
+	}
+	_, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidString(id), "")
+	if body["status"] != "failed" || body["outcome"] != "the job failed without saying why" {
+		t.Errorf("proposal %v, want failed saying the job gave no reason", body)
+	}
+}
+
+func TestARunWhoseOutcomeCannotBeRecordedEndsFailedNotRunning(t *testing.T) {
+	w := newFindingWorld(t, "agent-settle-unrecorded")
+	w.def.Sightings = func(json.RawMessage, []operations.StepRecord) []operations.Sighting {
+		return []operations.Sighting{{Title: "a sighting with no cite breaks the findings table's rule"}}
+	}
+	facts := operations.Tool{
+		Name: "maintenance_report", Description: "facts", Parameters: map[string]any{"type": "object"},
+		Run: func(context.Context, json.RawMessage) (any, error) { return json.RawMessage(findingFacts), nil },
+	}
+	result := `{"items":[` + attention("purge is late", "/jobs/purge/overdue") + `]}`
+	s := &loopScript{t: t, answers: answers(intent("maintenance_report"), final(result))}
+	report, err := s.runner(w.svc).Run(context.Background(), w.def, []operations.Tool{facts}, loopLimits)
+	if err == nil || report.Status != operations.RunFailed {
+		t.Fatalf("run %+v, err %v; want failed with the recording error", report, err)
+	}
+	var status, reason string
+	if err := testPool.QueryRow(context.Background(), "SELECT status, coalesce(reason, '') FROM platform_agent_runs WHERE id = $1", report.ID).Scan(&status, &reason); err != nil {
+		t.Fatal(err)
+	}
+	if status != "failed" || !strings.HasPrefix(reason, "the run's outcome could not be recorded: ") {
+		t.Errorf("stored run %s %q, want failed saying its outcome could not be recorded", status, reason)
+	}
+}
+
+func TestAFindingAnOperatorMovedDuringARunStaysWhereTheyPutIt(t *testing.T) {
+	w := newFindingWorld(t, "agent-settle-raced")
+	w.report(attention("purge is late", "/jobs/purge/overdue"))
+	if _, err := testPool.Exec(context.Background(), `
+		CREATE OR REPLACE FUNCTION skillhub_test_operator_got_there_first() RETURNS trigger LANGUAGE plpgsql AS $$
+		BEGIN RETURN NULL; END $$;
+		CREATE TRIGGER skillhub_test_operator_got_there_first BEFORE UPDATE ON platform_agent_findings
+		FOR EACH ROW WHEN (NEW.status = 'recovered') EXECUTE FUNCTION skillhub_test_operator_got_there_first()`); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := testPool.Exec(context.Background(), `
+			DROP TRIGGER IF EXISTS skillhub_test_operator_got_there_first ON platform_agent_findings;
+			DROP FUNCTION IF EXISTS skillhub_test_operator_got_there_first()`); err != nil {
+			t.Error(err)
+		}
+	})
+
+	w.report(fine("all clear", "/jobs/rotate/overdue"))
+	if got := w.findings(); len(got) != 1 || got[0].status != "open" {
+		t.Errorf("findings %+v, want the one finding left as it was", got)
 	}
 }
 

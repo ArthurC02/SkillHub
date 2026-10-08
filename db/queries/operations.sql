@@ -173,6 +173,12 @@ SET status = 'running', started_at = now()
 FROM next WHERE p.id = next.id
 RETURNING p.id, p.action;
 
+-- name: AbandonStaleProposals :many
+UPDATE platform_agent_proposals
+SET status = 'failed', finished_at = now(), outcome = @outcome
+WHERE status = 'running' AND started_at < @started_before
+RETURNING id;
+
 -- name: FinishProposal :execrows
 UPDATE platform_agent_proposals
 SET status = @status, finished_at = now(), outcome = @outcome

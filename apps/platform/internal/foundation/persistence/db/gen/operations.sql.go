@@ -11,6 +11,38 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const abandonStaleProposals = `-- name: AbandonStaleProposals :many
+UPDATE platform_agent_proposals
+SET status = 'failed', finished_at = now(), outcome = $1
+WHERE status = 'running' AND started_at < $2
+RETURNING id
+`
+
+type AbandonStaleProposalsParams struct {
+	Outcome       *string
+	StartedBefore pgtype.Timestamptz
+}
+
+func (q *Queries) AbandonStaleProposals(ctx context.Context, arg AbandonStaleProposalsParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, abandonStaleProposals, arg.Outcome, arg.StartedBefore)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const appendFindingEvent = `-- name: AppendFindingEvent :exec
 INSERT INTO platform_agent_finding_events (finding_id, seq, kind, run_id, operator_id, text, evidence, note)
 SELECT $1, coalesce(max(seq) + 1, 0), $2, $3, $4,

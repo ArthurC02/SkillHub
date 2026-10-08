@@ -83,12 +83,13 @@ type Runner struct {
 }
 
 const (
-	reasonSpendCap  = "the agent's daily spend cap is reached"
-	reasonStepLimit = "the run reached its step limit"
-	reasonTokens    = "the run reached its token limit"
-	reasonDeadline  = "the run reached its time limit"
-	finishTool      = "finish"
-	revokeTimeout   = 10 * time.Second
+	reasonSpendCap   = "the agent's daily spend cap is reached"
+	reasonStepLimit  = "the run reached its step limit"
+	reasonTokens     = "the run reached its token limit"
+	reasonDeadline   = "the run reached its time limit"
+	reasonUnrecorded = "the run's outcome could not be recorded: "
+	finishTool       = "finish"
+	revokeTimeout    = 10 * time.Second
 )
 
 var errUnoffered = errors.New("operations: the model asked for a tool this agent was not offered")
@@ -98,7 +99,20 @@ func (r *Runner) Run(ctx context.Context, def Definition, tools []Tool, limits L
 	if err != nil {
 		return RunReport{}, err
 	}
-	report := RunReport{ID: run}
+	report, err := r.runStarted(ctx, RunReport{ID: run}, def, tools, limits)
+	return r.settle(ctx, report, err)
+}
+
+func (r *Runner) settle(ctx context.Context, report RunReport, err error) (RunReport, error) {
+	if err == nil || errors.Is(err, ErrAgentHalted) || errors.Is(err, ErrRunFinished) {
+		return report, err
+	}
+	failed, ferr := r.finish(ctx, report, RunFailed, reasonUnrecorded+err.Error(), report.Result)
+	return failed, errors.Join(err, ferr)
+}
+
+func (r *Runner) runStarted(ctx context.Context, report RunReport, def Definition, tools []Tool, limits Limits) (RunReport, error) {
+	run := report.ID
 	budget, err := r.remainingBudgetUSD(ctx, def)
 	if err != nil {
 		return r.finish(ctx, report, RunFailed, err.Error(), nil)
