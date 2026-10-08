@@ -3,6 +3,8 @@ import { apiFetch, isLastingReadFailure } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
 
+export const AGENT_RUN_POLL_MS = 3000;
+
 export type AccountLookup = {
   user_id: string;
   email: string;
@@ -387,7 +389,7 @@ export function usePlatformAgentRuns() {
     refetchInterval: (query) =>
       !isLastingReadFailure(query.state.error) &&
       query.state.data?.runs.some((run) => run.status === "running")
-        ? 3000
+        ? AGENT_RUN_POLL_MS
         : false,
   });
 }
@@ -524,7 +526,8 @@ export function usePlatformAgentSteps(run: string, live = false) {
         `/admin/agents/runs/${encodeURIComponent(run)}/steps`,
       ),
     enabled: useOperator(),
-    refetchInterval: (query) => (live && !isLastingReadFailure(query.state.error) ? 3000 : false),
+    refetchInterval: (query) =>
+      live && !isLastingReadFailure(query.state.error) ? AGENT_RUN_POLL_MS : false,
   });
 }
 

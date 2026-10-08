@@ -1472,6 +1472,7 @@ test("a running agent says what progressed, when it last acted, and that leaving
   await mountAt("/admin/agents", { run: AGENT_REPORT_RUN });
   await waitFor(has("仍在執行；已記錄 1 步"));
   expect(has("可以離開這頁")()).toBe(true);
+  expect(has("每 3 秒自動更新")()).toBe(true);
   expect(has("最近一步")()).toBe(true);
   expect(has("2026/10/06")()).toBe(true);
 });
@@ -1501,6 +1502,7 @@ test.each([
     );
     await mountAt("/admin/agents");
     await waitFor(has("看這次的步驟"));
+    expect(field<HTMLElement>("#admin-agent-runs").textContent).toContain("每 3 秒自動更新");
     const row = field<HTMLElement>("#admin-agent-runs .download-item");
     expect(row.textContent).toContain(expected);
     expect(row.textContent).not.toContain(missing);
@@ -1542,6 +1544,7 @@ test("a running agent refreshes its steps and stops reporting progress after com
   completed = true;
   await waitFor(has("完成。每一項都附它根據的事實"), 7000);
   expect(has("仍在執行；已記錄")()).toBe(false);
+  expect(has("每 3 秒自動更新")()).toBe(false);
 });
 
 test("OPS-012: ids in the address that are not UUIDs are dropped instead of fetched", async () => {

@@ -1,5 +1,6 @@
 import { Link, useSearch } from "@tanstack/react-router";
 import {
+  AGENT_RUN_POLL_MS,
   usePlatformAgentFindings,
   usePlatformAgentProposals,
   usePlatformAgentRuns,
@@ -91,6 +92,7 @@ function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recov
             fetching={runs.isFetching}
             refetch={runs.refetch}
             subject="Agent 執行"
+            pollSeconds={AGENT_RUN_POLL_MS / 1000}
           />
         )}
         {runs.data && !runs.error && <AgentRunList runs={runs.data.runs} total={runs.data.total} />}
@@ -124,7 +126,7 @@ function AgentRunDetail({ id }: { id: string }) {
             仍在執行；已記錄 {opened.steps} 步。平台會自行結束，可以離開這頁，回來查看結果。
           </p>
           <p className="note">
-            狀態會自動更新；上次取得於{" "}
+            狀態每 {AGENT_RUN_POLL_MS / 1000} 秒自動更新；上次取得於{" "}
             <Timestamp at={new Date(runs.dataUpdatedAt).toISOString()} relative />。{" "}
             <button type="button" disabled={runs.isFetching} onClick={() => void runs.refetch()}>
               {runs.isFetching ? "重新整理中…" : "重新整理"}
