@@ -18,7 +18,13 @@ from langsmith import tracing_context
 from openai import OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from skillhub_llm.gateway import GatewayUsage, _metadata, _usage, client, served_model
+from skillhub_llm.gateway import (
+    GatewayUsage,
+    client,
+    completion_usage,
+    request_metadata,
+    served_model,
+)
 from skillhub_llm.generate import (
     FIELD_RULES,
     GeneratedFile,
@@ -655,7 +661,7 @@ async def _ask_model(req: CreationStepRequest, gateway_key: str, call: _ModelCal
                     "schema": call.schema.model_json_schema(),
                 },
             },
-            extra_body=_metadata(operation=call.operation, session_id=req.session_id),
+            extra_body=request_metadata(operation=call.operation, session_id=req.session_id),
         )
     )
 
@@ -707,7 +713,7 @@ async def _diagnose(
         ),
     )
     completion = raw.parse()
-    revision.usages.append(_usage(completion, raw.headers))
+    revision.usages.append(completion_usage(completion, raw.headers))
     diagnosis = ReviewDiagnosis.model_validate_json(completion.choices[0].message.content or "")
     if not diagnosis.edits:
         return
@@ -753,7 +759,7 @@ async def _rewrite(
         ),
     )
     rewrite = raw.parse()
-    revision.usages.append(_usage(rewrite, raw.headers))
+    revision.usages.append(completion_usage(rewrite, raw.headers))
     candidate = ReviewRewrite.model_validate_json(rewrite.choices[0].message.content or "")
     body_changed = bool(req.draft) and (candidate.body.strip() != req.draft.body.strip())
     files_changed = bool(req.draft) and candidate.files != req.draft.files
@@ -930,7 +936,7 @@ async def _decide(
         _refuse_over_caps(decision)
         _trim_search_rewrites(decision)
         _apply_rewrite(decision, revision)
-        usage = _usage(completion, raw.headers)
+        usage = completion_usage(completion, raw.headers)
         for spent in revision.usages:
             usage = _add_usage(usage, spent)
         return {

@@ -7,7 +7,14 @@ from fastapi import APIRouter, HTTPException
 from openai import OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError
 
-from skillhub_llm.gateway import GatewayUsage, _metadata, _usage, client, served_model, within
+from skillhub_llm.gateway import (
+    GatewayUsage,
+    client,
+    completion_usage,
+    request_metadata,
+    served_model,
+    within,
+)
 from skillhub_llm.untrusted import data_block_rules, fence, scrub
 
 router = APIRouter()
@@ -140,7 +147,7 @@ async def analyze_intent(req: AnalyzeSearchIntentRequest) -> AnalyzeSearchIntent
                     "schema": IntentProposal.model_json_schema(),
                 },
             },
-            extra_body=_metadata(operation="analyze-intent", prompt_version=PROMPT_VERSION),
+            extra_body=request_metadata(operation="analyze-intent", prompt_version=PROMPT_VERSION),
         )
         completion = raw.parse()
     except OpenAIError as error:
@@ -151,7 +158,7 @@ async def analyze_intent(req: AnalyzeSearchIntentRequest) -> AnalyzeSearchIntent
         model=served_model(completion, raw.headers, INTENT_MODEL),
         prompt_version=PROMPT_VERSION,
     )
-    usage = _usage(completion, raw.headers)
+    usage = completion_usage(completion, raw.headers)
     if usage is not None:
         response.usage = usage
     try:
