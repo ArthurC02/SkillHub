@@ -14,7 +14,7 @@
 
 ## Proposal and approvals
 
-`run-preflight-version-disable-citation-mainline` 目前為 draft，尚無對目前 Registry revision 的 developer 核准。舊提案 `run-preflight-version-disable-citation` 的核准與套用紀錄保留在分支 Git 歷史，但不能直接移植。此提案需重新提交、驗證、核准與以簽章 SCM 證明套用。
+`run-preflight-version-disable-citation-mainline` revision 1 已獲 developer 對目前 Registry revision 的核准，且三項證據均通過提案驗證。舊提案 `run-preflight-version-disable-citation` 的核准與套用紀錄保留在分支 Git 歷史，但沒有移植為此次核准。正式套用前仍須以簽章 SCM 證明完成治理驗證。
 
 ## Contract impact
 
@@ -22,7 +22,7 @@
 
 ## Verification
 
-已確認主線 67 筆審計事件鏈有效，原引用對合併後的 `preflight.go` 為唯一 stale citation。待新提案核准後，將以 `cite` 重算、`verify-evidence` 確認所有引用 current，並重跑 reader 缺席時拒絕的測試。
+主線 67 筆審計事件鏈有效，原引用對合併後的 `preflight.go` 為唯一 stale citation。`cite` 產生的新版摘要與提案相符；只替換該引用的隔離副本經 `verify-evidence` 確認 63 筆 current、0 stale；reader 缺席時拒絕的測試也通過。正式 Registry 尚待受控套用與完整閘門重跑。
 
 ## Residual risks
 
