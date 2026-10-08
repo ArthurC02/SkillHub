@@ -109,7 +109,7 @@ func (s *Service) recordProposals(ctx context.Context, tx pgx.Tx, run pgtype.UUI
 		}
 		if err := audit.Log(ctx, tx, audit.Event{
 			Agent: agentID, Action: audit.ActionProposalPropose, ResourceType: audit.ResourcePlatformAgentProposal,
-			ResourceID: id, Metadata: map[string]any{"run": pgconv.UUIDString(run), "action": p.Action},
+			ResourceID: id, Metadata: map[string]any{auditRun: pgconv.UUIDString(run), auditAction: p.Action},
 		}); err != nil {
 			return err
 		}
@@ -131,12 +131,8 @@ var (
 func (s *Service) DecideProposal(ctx context.Context, id pgtype.UUID, d decision, operator pgtype.UUID, note string) error {
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		q := gen.New(tx)
-		var finished pgtype.Timestamptz
-		if d.closes {
-			finished = pgconv.Timestamptz(time.Now())
-		}
 		if _, err := q.DecideProposal(ctx, gen.DecideProposalParams{
-			Status: string(d.status), DecidedBy: operator, Note: &note, FinishedAt: finished, ID: id,
+			Status: string(d.status), DecidedBy: operator, Note: &note, Closes: d.closes, ID: id,
 		}); errors.Is(err, pgx.ErrNoRows) {
 			return closedOrUnknown(ctx, q, id)
 		} else if err != nil {
@@ -221,7 +217,6 @@ func (s *Service) FinishProposal(ctx context.Context, id pgtype.UUID, failure er
 }
 
 const (
-	auditError            = "error"
 	proposalRunLease      = 2 * time.Hour
 	outcomeFailedSilently = "the job failed without saying why"
 	outcomeAbandoned      = "the maintenance process stopped before it reported an outcome"
@@ -231,7 +226,7 @@ func (s *Service) AbandonStaleProposals(ctx context.Context) (int, error) {
 	var abandoned int
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		ids, err := gen.New(tx).AbandonStaleProposals(ctx, gen.AbandonStaleProposalsParams{
-			Outcome: new(outcomeAbandoned), StartedBefore: pgconv.Timestamptz(time.Now().Add(-proposalRunLease)),
+			Outcome: new(outcomeAbandoned), LeaseSeconds: proposalRunLease.Seconds(),
 		})
 		if err != nil {
 			return err

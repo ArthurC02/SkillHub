@@ -165,7 +165,7 @@ func (r *Runner) complete(ctx context.Context, report RunReport, def Definition,
 		ending.proposals, ending.reason = prepared.proposals, strings.Join(prepared.unpreviewed, "; ")
 	}
 	if def.Sightings != nil {
-		ending.findings = &trackedFindings{sightings: def.Sightings(result, steps)}
+		ending.tracksFindings, ending.sightings = true, def.Sightings(result, steps)
 	}
 	return r.end(ctx, report, ending)
 }

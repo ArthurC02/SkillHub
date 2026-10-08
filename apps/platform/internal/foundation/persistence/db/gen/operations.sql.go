@@ -14,17 +14,17 @@ import (
 const abandonStaleProposals = `-- name: AbandonStaleProposals :many
 UPDATE platform_agent_proposals
 SET status = 'failed', finished_at = now(), outcome = $1
-WHERE status = 'running' AND started_at < $2
+WHERE status = 'running' AND started_at < now() - make_interval(secs => $2::double precision)
 RETURNING id
 `
 
 type AbandonStaleProposalsParams struct {
-	Outcome       *string
-	StartedBefore pgtype.Timestamptz
+	Outcome      *string
+	LeaseSeconds float64
 }
 
 func (q *Queries) AbandonStaleProposals(ctx context.Context, arg AbandonStaleProposalsParams) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, abandonStaleProposals, arg.Outcome, arg.StartedBefore)
+	rows, err := q.db.Query(ctx, abandonStaleProposals, arg.Outcome, arg.LeaseSeconds)
 	if err != nil {
 		return nil, err
 	}
@@ -133,17 +133,17 @@ func (q *Queries) CountFindingsByStatus(ctx context.Context) ([]CountFindingsByS
 const decideProposal = `-- name: DecideProposal :one
 UPDATE platform_agent_proposals
 SET status = $1, decided_by = $2, decided_at = now(), decision_note = $3,
-    finished_at = $4
+    finished_at = CASE WHEN $4::boolean THEN now() END
 WHERE id = $5 AND status = 'proposed' AND expires_at > now()
 RETURNING id
 `
 
 type DecideProposalParams struct {
-	Status     string
-	DecidedBy  pgtype.UUID
-	Note       *string
-	FinishedAt pgtype.Timestamptz
-	ID         pgtype.UUID
+	Status    string
+	DecidedBy pgtype.UUID
+	Note      *string
+	Closes    bool
+	ID        pgtype.UUID
 }
 
 func (q *Queries) DecideProposal(ctx context.Context, arg DecideProposalParams) (pgtype.UUID, error) {
@@ -151,7 +151,7 @@ func (q *Queries) DecideProposal(ctx context.Context, arg DecideProposalParams) 
 		arg.Status,
 		arg.DecidedBy,
 		arg.Note,
-		arg.FinishedAt,
+		arg.Closes,
 		arg.ID,
 	)
 	var id pgtype.UUID
@@ -701,7 +701,9 @@ func (q *Queries) ListPlatformAgents(ctx context.Context) ([]PlatformAgent, erro
 }
 
 const listProposals = `-- name: ListProposals :many
-SELECT p.id, a.name AS agent, p.action, p.tier, p.reason, p.status, p.proposed_at, p.expires_at, p.finished_at
+SELECT p.id, a.name AS agent, p.run_id, p.action, p.tier, p.reason, p.cites, p.preview, p.status,
+    p.proposed_at, p.expires_at, p.decided_by, p.decided_at, p.decision_note,
+    p.started_at, p.finished_at, p.outcome
 FROM platform_agent_proposals p
 JOIN platform_agents a ON a.id = p.agent_id
 WHERE p.status = ANY ($1::text[]) OR p.finished_at >= $2
@@ -716,15 +718,23 @@ type ListProposalsParams struct {
 }
 
 type ListProposalsRow struct {
-	ID         pgtype.UUID
-	Agent      string
-	Action     string
-	Tier       string
-	Reason     string
-	Status     string
-	ProposedAt pgtype.Timestamptz
-	ExpiresAt  pgtype.Timestamptz
-	FinishedAt pgtype.Timestamptz
+	ID           pgtype.UUID
+	Agent        string
+	RunID        pgtype.UUID
+	Action       string
+	Tier         string
+	Reason       string
+	Cites        []string
+	Preview      []byte
+	Status       string
+	ProposedAt   pgtype.Timestamptz
+	ExpiresAt    pgtype.Timestamptz
+	DecidedBy    pgtype.UUID
+	DecidedAt    pgtype.Timestamptz
+	DecisionNote *string
+	StartedAt    pgtype.Timestamptz
+	FinishedAt   pgtype.Timestamptz
+	Outcome      *string
 }
 
 func (q *Queries) ListProposals(ctx context.Context, arg ListProposalsParams) ([]ListProposalsRow, error) {
@@ -739,13 +749,21 @@ func (q *Queries) ListProposals(ctx context.Context, arg ListProposalsParams) ([
 		if err := rows.Scan(
 			&i.ID,
 			&i.Agent,
+			&i.RunID,
 			&i.Action,
 			&i.Tier,
 			&i.Reason,
+			&i.Cites,
+			&i.Preview,
 			&i.Status,
 			&i.ProposedAt,
 			&i.ExpiresAt,
+			&i.DecidedBy,
+			&i.DecidedAt,
+			&i.DecisionNote,
+			&i.StartedAt,
 			&i.FinishedAt,
+			&i.Outcome,
 		); err != nil {
 			return nil, err
 		}

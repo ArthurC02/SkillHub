@@ -23,6 +23,18 @@ import (
 
 const defaultMaintenanceBatch = 100
 
+const (
+	TraceRetentionEnv     = "TRACE_RETENTION"
+	AnalyticsRetentionEnv = "ANALYTICS_RETENTION"
+	AuditRetentionEnv     = "AUDIT_RETENTION"
+	FeedbackRetentionEnv  = "FEEDBACK_RETENTION"
+	SkillDeletionGraceEnv = "SKILL_DELETION_GRACE"
+)
+
+func AnalyticsCollected() bool {
+	return os.Getenv(AnalyticsRetentionEnv) != ""
+}
+
 func MaintenanceBatch() int32 {
 	return envx.PositiveInt32("MAINTENANCE_BATCH", defaultMaintenanceBatch)
 }
@@ -47,7 +59,17 @@ func AccountPurgeGrace() (time.Duration, error) {
 	return d, nil
 }
 
-type previewFunc func(ctx context.Context, pool *pgxpool.Pool) (operations.Preview, error)
+type maintenanceOwners struct {
+	pool     *pgxpool.Pool
+	accounts *identity.Service
+	runs     *run.Service
+	datasets *testlab.Service
+	skills   *registry.Service
+	sources  *ingest.Service
+	feedback *analytics.Service
+}
+
+type previewFunc func(ctx context.Context, owners maintenanceOwners) (operations.Preview, error)
 
 type maintenanceAction struct {
 	job     string
@@ -68,12 +90,17 @@ var maintenanceActions = []maintenanceAction{
 }
 
 func MaintenanceActions(pool *pgxpool.Pool) []operations.Action {
+	owners := maintenanceOwners{
+		pool: pool, accounts: &identity.Service{Pool: pool}, runs: &run.Service{Pool: pool},
+		datasets: &testlab.Service{Pool: pool}, skills: &registry.Service{Pool: pool},
+		sources: &ingest.Service{Pool: pool}, feedback: &analytics.Service{Pool: pool},
+	}
 	actions := make([]operations.Action, len(maintenanceActions))
 	for i, a := range maintenanceActions {
 		preview := a.preview
 		actions[i] = operations.Action{
 			Name: operations.MaintenanceJobAction(a.job), Tier: a.tier,
-			Preview: func(ctx context.Context) (operations.Preview, error) { return preview(ctx, pool) },
+			Preview: func(ctx context.Context) (operations.Preview, error) { return preview(ctx, owners) },
 		}
 	}
 	return actions
@@ -87,80 +114,80 @@ func batched(counts ...operations.PreviewCount) operations.Preview {
 	return operations.Preview{Counts: counts, BatchLimit: MaintenanceBatch()}
 }
 
-func previewAccountPurge(ctx context.Context, pool *pgxpool.Pool) (operations.Preview, error) {
+func previewAccountPurge(ctx context.Context, o maintenanceOwners) (operations.Preview, error) {
 	grace, err := AccountPurgeGrace()
 	if err != nil {
 		return operations.Preview{}, err
 	}
-	accounts, sessions, err := (&identity.Service{Pool: pool}).AccountPurgeBacklog(ctx, grace)
+	accounts, sessions, err := o.accounts.AccountPurgeBacklog(ctx, grace)
 	if err != nil {
 		return operations.Preview{}, err
 	}
 	return batched(count("accounts_past_grace", accounts, true), count("expired_sessions", sessions, false)), nil
 }
 
-func previewRunArtifactPurge(ctx context.Context, pool *pgxpool.Pool) (operations.Preview, error) {
-	outputs, intents, err := (&run.Service{Pool: pool}).ArtifactRetentionBacklog(ctx)
+func previewRunArtifactPurge(ctx context.Context, o maintenanceOwners) (operations.Preview, error) {
+	outputs, intents, err := o.runs.ArtifactRetentionBacklog(ctx)
 	if err != nil {
 		return operations.Preview{}, err
 	}
 	return batched(count("run_outputs_past_retention", outputs, true), count("run_upload_intents_due", intents, true)), nil
 }
 
-func previewDatasetPurge(ctx context.Context, pool *pgxpool.Pool) (operations.Preview, error) {
-	datasets, intents, err := (&testlab.Service{Pool: pool}).DatasetRetentionBacklog(ctx)
+func previewDatasetPurge(ctx context.Context, o maintenanceOwners) (operations.Preview, error) {
+	datasets, intents, err := o.datasets.DatasetRetentionBacklog(ctx)
 	if err != nil {
 		return operations.Preview{}, err
 	}
 	return batched(count("datasets_past_retention", datasets, true), count("dataset_cleanups_due", intents, true)), nil
 }
 
-func previewDeletedSkillPurge(ctx context.Context, pool *pgxpool.Pool) (operations.Preview, error) {
-	grace, err := MaintenanceDuration("SKILL_DELETION_GRACE")
+func previewDeletedSkillPurge(ctx context.Context, o maintenanceOwners) (operations.Preview, error) {
+	grace, err := MaintenanceDuration(SkillDeletionGraceEnv)
 	if err != nil {
 		return operations.Preview{}, err
 	}
-	skills, err := (&registry.Service{Pool: pool}).SkillsPastDeletionGrace(ctx, grace)
+	skills, err := o.skills.SkillsPastDeletionGrace(ctx, grace)
 	if err != nil {
 		return operations.Preview{}, err
 	}
 	return batched(count("deleted_skills_past_grace", skills, true)), nil
 }
 
-func previewObjectCollection(ctx context.Context, pool *pgxpool.Pool) (operations.Preview, error) {
-	objects, err := (&registry.Service{Pool: pool}).CollectableObjects(ctx)
+func previewObjectCollection(ctx context.Context, o maintenanceOwners) (operations.Preview, error) {
+	objects, err := o.skills.CollectableObjects(ctx)
 	if err != nil {
 		return operations.Preview{}, err
 	}
 	return batched(count("orphan_objects", objects, true)), nil
 }
 
-func previewSourceCheck(ctx context.Context, pool *pgxpool.Pool) (operations.Preview, error) {
-	sources, err := (&ingest.Service{Pool: pool}).SourcesToCheck(ctx)
+func previewSourceCheck(ctx context.Context, o maintenanceOwners) (operations.Preview, error) {
+	sources, err := o.sources.SourcesToCheck(ctx)
 	if err != nil {
 		return operations.Preview{}, err
 	}
 	return batched(count("sources_to_check", sources, false)), nil
 }
 
-func previewAuditPurge(ctx context.Context, pool *pgxpool.Pool) (operations.Preview, error) {
-	retention, err := MaintenanceDuration("AUDIT_RETENTION")
+func previewAuditPurge(ctx context.Context, o maintenanceOwners) (operations.Preview, error) {
+	retention, err := MaintenanceDuration(AuditRetentionEnv)
 	if err != nil {
 		return operations.Preview{}, err
 	}
-	events, err := audit.CountExpired(ctx, pool, retention)
+	events, err := audit.CountExpired(ctx, o.pool, retention)
 	if err != nil {
 		return operations.Preview{}, err
 	}
 	return operations.Preview{Counts: []operations.PreviewCount{count("audit_events_past_retention", events, false)}}, nil
 }
 
-func previewFeedbackPurge(ctx context.Context, pool *pgxpool.Pool) (operations.Preview, error) {
-	retention, err := MaintenanceDuration("FEEDBACK_RETENTION")
+func previewFeedbackPurge(ctx context.Context, o maintenanceOwners) (operations.Preview, error) {
+	retention, err := MaintenanceDuration(FeedbackRetentionEnv)
 	if err != nil {
 		return operations.Preview{}, err
 	}
-	reports, err := (&analytics.Service{Pool: pool}).CountExpiredFeedback(ctx, retention)
+	reports, err := o.feedback.CountExpiredFeedback(ctx, retention)
 	if err != nil {
 		return operations.Preview{}, err
 	}
@@ -172,13 +199,13 @@ type partitionFamily struct {
 	plan               func(ctx context.Context, pool *pgxpool.Pool, now time.Time, retention time.Duration) (partition.Report, int64, error)
 }
 
-func previewPartitionRotation(ctx context.Context, pool *pgxpool.Pool) (operations.Preview, error) {
+func previewPartitionRotation(ctx context.Context, o maintenanceOwners) (operations.Preview, error) {
 	now := time.Now().UTC()
-	counts, err := planRotation(ctx, pool, now, partitionFamily{"trace", "TRACE_RETENTION", trace.PlanPartitions})
-	if err != nil || os.Getenv("ANALYTICS_RETENTION") == "" {
+	counts, err := planRotation(ctx, o.pool, now, partitionFamily{"trace", TraceRetentionEnv, trace.PlanPartitions})
+	if err != nil || !AnalyticsCollected() {
 		return operations.Preview{Counts: counts}, err
 	}
-	more, err := planRotation(ctx, pool, now, partitionFamily{"analytics", "ANALYTICS_RETENTION", analytics.PlanPartitions})
+	more, err := planRotation(ctx, o.pool, now, partitionFamily{"analytics", AnalyticsRetentionEnv, analytics.PlanPartitions})
 	return operations.Preview{Counts: append(counts, more...)}, err
 }
 

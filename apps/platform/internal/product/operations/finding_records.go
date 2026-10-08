@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -17,7 +18,18 @@ import (
 
 const findingListLimit = 100
 
-var findingStatuses = []FindingStatus{FindingOpen, FindingAcknowledged, FindingResolved, FindingDismissed, FindingRecovered}
+var (
+	findingStatuses  = []FindingStatus{FindingOpen, FindingAcknowledged, FindingResolved, FindingDismissed, FindingRecovered}
+	operatorSettable = []FindingStatus{FindingOpen, FindingAcknowledged, FindingResolved, FindingDismissed}
+)
+
+func mustBeOneOf(statuses []FindingStatus) string {
+	names := make([]string, len(statuses))
+	for i, status := range statuses {
+		names[i] = string(status)
+	}
+	return "status must be one of " + strings.Join(names, ", ")
+}
 
 type findingView struct {
 	ID              string   `json:"id"`
@@ -90,7 +102,7 @@ func (h *Handler) Findings(w http.ResponseWriter, r *http.Request) {
 	statuses := liveStatuses
 	if raw := r.URL.Query().Get("status"); raw != "" {
 		if !slices.Contains(findingStatuses, FindingStatus(raw)) {
-			httpx.WriteError(w, http.StatusBadRequest, "status must be one of open, acknowledged, resolved, dismissed, recovered")
+			httpx.WriteError(w, http.StatusBadRequest, mustBeOneOf(findingStatuses))
 			return
 		}
 		statuses = []string{raw}
@@ -144,8 +156,8 @@ func (h *Handler) MoveFinding(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	to := FindingStatus(body.Status)
-	if to == FindingRecovered || !slices.Contains(findingStatuses, to) {
-		httpx.WriteError(w, http.StatusBadRequest, "status must be one of open, acknowledged, resolved, dismissed")
+	if !slices.Contains(operatorSettable, to) {
+		httpx.WriteError(w, http.StatusBadRequest, mustBeOneOf(operatorSettable))
 		return
 	}
 	note, ok := requireNote(w, body.Note)

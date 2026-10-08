@@ -11,6 +11,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
@@ -81,7 +82,7 @@ func runJob(job string) int {
 	defer pool.Close()
 
 	if err := jobruns.Register(ctx, pool, scheduledJobs()); err != nil {
-		slog.Error("maintenance job registry", "error", err)
+		slog.Error("maintenance job registry not updated; running the job anyway", "error", err)
 	}
 
 	known, err := runExclusively(ctx, pool, job)
@@ -189,31 +190,11 @@ func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	svc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
 	n, err := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
-		List: func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
-			rows, err := svc.ExpiredDatasetCandidates(ctx, limit)
-			if err != nil {
-				return nil, err
-			}
-			out := make([]objreconcile.Candidate, len(rows))
-			for i, row := range rows {
-				out[i] = objreconcile.Candidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
-			}
-			return out, nil
-		},
+		List: asCandidates(svc.ExpiredDatasetCandidates),
 		Mark: svc.MarkDatasetPurged,
 	}, wiring.MaintenanceBatch())
 	intentN, intentErr := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
-		List: func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
-			rows, err := svc.DatasetCleanupIntentCandidates(ctx, limit)
-			if err != nil {
-				return nil, err
-			}
-			out := make([]objreconcile.Candidate, len(rows))
-			for i, row := range rows {
-				out[i] = objreconcile.Candidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
-			}
-			return out, nil
-		},
+		List: asCandidates(svc.DatasetCleanupIntentCandidates),
 		Mark: svc.MarkDatasetCleanupIntentPurged, Guard: svc.GuardDatasetObjectRemoval,
 	}, wiring.MaintenanceBatch())
 
@@ -222,16 +203,38 @@ func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 	return err
 }
 
+type reconcileRow interface {
+	~struct {
+		ID          pgtype.UUID
+		WorkspaceID pgtype.UUID
+		ObjectKey   string
+	}
+}
+
+func asCandidates[T reconcileRow](list func(context.Context, int32) ([]T, error)) objreconcile.ListFunc {
+	return func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+		rows, err := list(ctx, limit)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]objreconcile.Candidate, len(rows))
+		for i, row := range rows {
+			out[i] = objreconcile.Candidate(row)
+		}
+		return out, nil
+	}
+}
+
 func rotatePartitions(ctx context.Context, pool *pgxpool.Pool) error {
 	now := time.Now().UTC()
-	traceErr := rotateWithin("TRACE_RETENTION", trace.PartitionedTable, func(retention time.Duration) (partition.Report, error) {
+	traceErr := rotateWithin(wiring.TraceRetentionEnv, trace.PartitionedTable, func(retention time.Duration) (partition.Report, error) {
 		return trace.MaintainPartitions(ctx, pool, now, retention)
 	})
-	if os.Getenv("ANALYTICS_RETENTION") == "" {
+	if !wiring.AnalyticsCollected() {
 		slog.Info("ANALYTICS_RETENTION not set; no funnel events are collected and existing analytics partitions are kept until it is set")
 		return traceErr
 	}
-	analyticsErr := rotateWithin("ANALYTICS_RETENTION", analytics.PartitionedTable, func(retention time.Duration) (partition.Report, error) {
+	analyticsErr := rotateWithin(wiring.AnalyticsRetentionEnv, analytics.PartitionedTable, func(retention time.Duration) (partition.Report, error) {
 		return analytics.MaintainPartitions(ctx, pool, now, retention)
 	})
 	return errors.Join(traceErr, analyticsErr)
@@ -248,7 +251,7 @@ func rotateWithin(retentionKey, table string, maintain func(time.Duration) (part
 }
 
 func purgeAudit(ctx context.Context, pool *pgxpool.Pool) error {
-	retention, err := wiring.MaintenanceDuration("AUDIT_RETENTION")
+	retention, err := wiring.MaintenanceDuration(wiring.AuditRetentionEnv)
 	if err != nil {
 		return err
 	}
@@ -266,31 +269,11 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	svc := &run.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
 	n, err := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
-		List: func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
-			rows, err := svc.ExpiredArtifactCandidates(ctx, limit)
-			if err != nil {
-				return nil, err
-			}
-			out := make([]objreconcile.Candidate, len(rows))
-			for i, row := range rows {
-				out[i] = objreconcile.Candidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
-			}
-			return out, nil
-		},
+		List: asCandidates(svc.ExpiredArtifactCandidates),
 		Mark: svc.MarkRunOutputPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
 	}, wiring.MaintenanceBatch())
 	intentN, intentErr := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
-		List: func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
-			rows, err := svc.ArtifactUploadIntentCandidates(ctx, limit)
-			if err != nil {
-				return nil, err
-			}
-			out := make([]objreconcile.Candidate, len(rows))
-			for i, row := range rows {
-				out[i] = objreconcile.Candidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
-			}
-			return out, nil
-		},
+		List: asCandidates(svc.ArtifactUploadIntentCandidates),
 		Mark: svc.MarkArtifactUploadIntentPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
 	}, wiring.MaintenanceBatch())
 
@@ -300,7 +283,7 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 func purgeDeletedSkills(ctx context.Context, pool *pgxpool.Pool) error {
-	grace, err := wiring.MaintenanceDuration("SKILL_DELETION_GRACE")
+	grace, err := wiring.MaintenanceDuration(wiring.SkillDeletionGraceEnv)
 	if err != nil {
 		return err
 	}
@@ -326,7 +309,7 @@ func collectObjects(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 func purgeFeedback(ctx context.Context, pool *pgxpool.Pool) error {
-	retention, err := wiring.MaintenanceDuration("FEEDBACK_RETENTION")
+	retention, err := wiring.MaintenanceDuration(wiring.FeedbackRetentionEnv)
 	if err != nil {
 		return err
 	}

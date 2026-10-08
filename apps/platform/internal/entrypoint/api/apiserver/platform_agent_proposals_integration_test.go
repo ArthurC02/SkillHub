@@ -555,6 +555,39 @@ func TestEveryMaintenanceActionPreviewsAgainstTheDatabase(t *testing.T) {
 	}
 }
 
+func TestARotationPreviewCountsAnalyticsOnlyWhileAnalyticsIsCollected(t *testing.T) {
+	for _, tc := range []struct {
+		analytics     string
+		wantAnalytics int
+	}{{"2160h", 3}, {"", 0}} {
+		t.Setenv("TRACE_RETENTION", "2160h")
+		t.Setenv("ANALYTICS_RETENTION", tc.analytics)
+		var rotate operations.Action
+		for _, a := range wiring.MaintenanceActions(testPool) {
+			if a.Name == operations.MaintenanceJobAction(operations.JobRotatePartitions) {
+				rotate = a
+			}
+		}
+		preview, err := rotate.Preview(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		var trace, analytics int
+		for _, c := range preview.Counts {
+			switch {
+			case strings.HasPrefix(c.Key, "trace_"):
+				trace++
+			case strings.HasPrefix(c.Key, "analytics_"):
+				analytics++
+			}
+		}
+		if trace != 3 || analytics != tc.wantAnalytics {
+			t.Errorf("ANALYTICS_RETENTION=%q: %d trace and %d analytics counts, want 3 and %d",
+				tc.analytics, trace, analytics, tc.wantAnalytics)
+		}
+	}
+}
+
 func TestARetentionPreviewCountsWhatThePurgeThenRemoves(t *testing.T) {
 	ctx := context.Background()
 	const retention = 90 * 24 * time.Hour

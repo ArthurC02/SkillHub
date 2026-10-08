@@ -244,6 +244,21 @@ func TestAnOperatorMovesAFindingOnlyAlongTheAllowedPaths(t *testing.T) {
 	}
 }
 
+func TestAWrongFindingStatusNamesEveryStatusTheRequestMayUse(t *testing.T) {
+	w := newFindingWorld(t, "agent-findings-status-words")
+	w.report(attention("purge is late", "/jobs/purge/overdue"))
+	purge := w.findings()[0].id
+
+	if code, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/findings?status=late", ""); code != http.StatusBadRequest ||
+		body["error"] != "status must be one of open, acknowledged, resolved, dismissed, recovered" {
+		t.Errorf("listing by an unknown status: %d %v, want 400 naming all five statuses", code, body)
+	}
+	if code, body := w.move(purge, "recovered", "only a report recovers it"); code != http.StatusBadRequest ||
+		body["error"] != "status must be one of open, acknowledged, resolved, dismissed" {
+		t.Errorf("moving to recovered: %d %v, want 400 naming the four an operator may set", code, body)
+	}
+}
+
 func TestAReportLeavesClosedFindingsAloneUntilAResolvedOneComesBack(t *testing.T) {
 	w := newFindingWorld(t, "agent-findings-closed")
 	w.report(attention("purge is late", "/jobs/purge/overdue"), attention("rotate is late", "/jobs/rotate/overdue"))

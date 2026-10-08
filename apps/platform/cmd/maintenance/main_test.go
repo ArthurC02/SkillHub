@@ -23,8 +23,10 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/jobruns"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 func TestPurgeServiceCarriesEveryContextsStep(t *testing.T) {
@@ -203,6 +205,29 @@ func TestEveryJobAnAgentMayProposeIsAScheduledJob(t *testing.T) {
 func TestASubcommandOutsideTheSwitchIsAnErrorNotASilentSuccess(t *testing.T) {
 	if err := runSubcommand(context.Background(), nil, "purge-everything"); err == nil {
 		t.Error("an unknown subcommand returned no error")
+	}
+}
+
+func TestEachReconcileRowBecomesTheCandidateItNamesWithinTheBatch(t *testing.T) {
+	row := run.ReconcileCandidate{
+		ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}, WorkspaceID: pgtype.UUID{Bytes: [16]byte{2}, Valid: true}, ObjectKey: "runs/a",
+	}
+	var asked int32
+	list := asCandidates(func(_ context.Context, limit int32) ([]run.ReconcileCandidate, error) {
+		asked = limit
+		return []run.ReconcileCandidate{row}, nil
+	})
+	got, err := list(context.Background(), 7)
+	want := []objreconcile.Candidate{{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: "runs/a"}}
+	if err != nil || asked != 7 || !reflect.DeepEqual(got, want) {
+		t.Errorf("candidates %+v (%v) with limit %d, want %+v with limit 7", got, err, asked, want)
+	}
+
+	failing := asCandidates(func(context.Context, int32) ([]run.ReconcileCandidate, error) {
+		return nil, errors.New("list failed")
+	})
+	if _, err := failing(context.Background(), 7); err == nil || err.Error() != "list failed" {
+		t.Errorf("a failing list returned %v, want its error", err)
 	}
 }
 
