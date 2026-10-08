@@ -164,7 +164,7 @@ RETURNING id;
 -- name: ClaimApprovedProposal :one
 WITH next AS (
     SELECT id FROM platform_agent_proposals
-    WHERE status = 'approved'
+    WHERE status = 'approved' AND NOT EXISTS (SELECT 1 FROM platform_agent_brake)
     ORDER BY decided_at, id
     LIMIT 1 FOR UPDATE SKIP LOCKED
 )

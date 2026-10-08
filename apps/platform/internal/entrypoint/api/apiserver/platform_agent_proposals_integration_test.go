@@ -318,6 +318,32 @@ func (w *proposalWorld) approveAndClaimAll() map[string]pgtype.UUID {
 	}
 }
 
+func TestTheBrakeHoldsAnApprovedProposalUntilItIsReleased(t *testing.T) {
+	held := operations.Action{Name: "run-test-proposal-held", Tier: operations.TierDestructive, Preview: fixedPreview()}
+	w := newProposalWorld(t, "agent-proposals-brake", held)
+	w.propose(proposal(held.Name, "a", "/jobs/purge/overdue"))
+	got := w.proposals()
+	if code, _ := w.decide(got[0].id, "approve", "go ahead"); code != http.StatusNoContent {
+		t.Fatalf("approve: %d", code)
+	}
+	if code, _ := operatorCall(t, w.operator, http.MethodPut, "/admin/agents/brake", `{"note":"incident"}`); code != http.StatusOK {
+		t.Fatalf("engage brake: %d", code)
+	}
+	t.Cleanup(func() { operatorCall(t, w.operator, http.MethodDelete, "/admin/agents/brake", `{"note":"cleanup"}`) })
+
+	ctx := context.Background()
+	if _, found, err := w.svc.ClaimApprovedProposal(ctx); err != nil || found {
+		t.Fatalf("claim under the brake: found=%v err=%v, want nothing taken", found, err)
+	}
+	if code, _ := operatorCall(t, w.operator, http.MethodDelete, "/admin/agents/brake", `{"note":"over"}`); code != http.StatusNoContent {
+		t.Fatalf("release brake: %d", code)
+	}
+	p, found, err := w.svc.ClaimApprovedProposal(ctx)
+	if err != nil || !found || p.ID != got[0].id {
+		t.Errorf("claim after release: %+v found=%v err=%v, want the held proposal", p, found, err)
+	}
+}
+
 func TestAProposalWhoseRunnerVanishedFailsOnlyAfterItsLease(t *testing.T) {
 	gone := operations.Action{Name: "run-test-proposal-gone", Tier: operations.TierDestructive, Preview: fixedPreview()}
 	slow := operations.Action{Name: "run-test-proposal-slow", Tier: operations.TierDestructive, Preview: fixedPreview()}
