@@ -51,17 +51,19 @@ func NewMaintenanceFacts(report capacity.Report, jobs []jobruns.Status) Maintena
 	for _, job := range jobs {
 		facts.MaintenanceJobs[job.Job] = JobFacts{
 			PeriodSeconds: job.PeriodSeconds, LastSucceeded: job.LastSucceeded, OverdueRatio: job.OverdueRatio,
-			Action: proposableAction(job.Job),
+			Action: proposableAction(job),
 		}
 	}
 	return facts
 }
 
-func proposableAction(job string) string {
-	if !slices.Contains(operations.ProposableMaintenanceJobs, job) {
+const rerunOverdueRatio = 2
+
+func proposableAction(job jobruns.Status) string {
+	if job.OverdueRatio <= rerunOverdueRatio || !slices.Contains(operations.ProposableMaintenanceJobs, job.Job) {
 		return ""
 	}
-	return operations.MaintenanceJobAction(job)
+	return operations.MaintenanceJobAction(job.Job)
 }
 
 func MaintenanceReportTool(pool *pgxpool.Pool, rate capacity.RestoreRate, now func() time.Time) operations.Tool {

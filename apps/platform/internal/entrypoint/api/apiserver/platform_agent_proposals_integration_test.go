@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -57,7 +58,7 @@ func (w *proposalWorld) propose(proposals ...string) operations.RunReport {
 	result := `{"items":[` + attention("purge is late", "/jobs/purge/overdue") + `],"proposals":[` + joinComma(proposals) + `]}`
 	facts := operations.Tool{
 		Name: "maintenance_report", Description: "facts", Parameters: map[string]any{"type": "object"},
-		Run: func(context.Context, json.RawMessage) (any, error) { return json.RawMessage(findingFacts), nil },
+		Run: func(context.Context, json.RawMessage) (any, error) { return offering(proposals), nil },
 	}
 	s := &loopScript{t: w.t, answers: answers(intent("maintenance_report"), final(result))}
 	runner := s.runner(w.svc)
@@ -67,6 +68,19 @@ func (w *proposalWorld) propose(proposals ...string) operations.RunReport {
 		w.t.Fatalf("run: %v", err)
 	}
 	return report
+}
+
+func offering(proposals []string) map[string]any {
+	var facts map[string]any
+	_ = json.Unmarshal([]byte(findingFacts), &facts)
+	offers := map[string]any{}
+	for _, p := range proposals {
+		var request operations.ProposalRequest
+		_ = json.Unmarshal([]byte(p), &request)
+		offers[request.Action] = map[string]any{"action": request.Action}
+	}
+	facts["offers"] = offers
+	return facts
 }
 
 type storedProposal struct {
@@ -513,8 +527,13 @@ func TestEveryMaintenanceActionPreviewsAgainstTheDatabase(t *testing.T) {
 		t.Setenv(key, value)
 	}
 	actions := wiring.MaintenanceActions(testPool)
-	if len(actions) != len(operations.ProposableMaintenanceJobs) {
-		t.Fatalf("%d actions for %d proposable jobs", len(actions), len(operations.ProposableMaintenanceJobs))
+	var jobs []string
+	for _, a := range actions {
+		job, _ := operations.MaintenanceJobOf(a.Name)
+		jobs = append(jobs, job)
+	}
+	if !slices.Equal(slices.Sorted(slices.Values(jobs)), slices.Sorted(slices.Values(operations.ProposableMaintenanceJobs))) {
+		t.Fatalf("actions preview %v, want exactly the proposable jobs %v", jobs, operations.ProposableMaintenanceJobs)
 	}
 	for _, def := range operations.Definitions() {
 		for _, name := range def.Actions {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -24,6 +25,8 @@ const (
 	ReportFine      = "fine"
 	ReportAttention = "attention"
 )
+
+const factAction = "action"
 
 var errNoItems = errors.New("the report has no items")
 
@@ -58,7 +61,26 @@ func checkProposal(proposal ProposalRequest, facts []any) error {
 	if strings.TrimSpace(proposal.Reason) == "" {
 		return errors.New("the proposal gives no reason")
 	}
+	if !slices.ContainsFunc(facts, func(fact any) bool { return offers(fact, proposal.Action) }) {
+		return fmt.Errorf("it proposes %q, which no returned fact offers", proposal.Action)
+	}
 	return checkCites(proposal.Cites, facts)
+}
+
+func offers(node any, action string) bool {
+	value, ok := node.(map[string]any)
+	if !ok {
+		return false
+	}
+	if value[factAction] == action {
+		return true
+	}
+	for _, child := range value {
+		if offers(child, action) {
+			return true
+		}
+	}
+	return false
 }
 
 func checkCites(cites []string, facts []any) error {

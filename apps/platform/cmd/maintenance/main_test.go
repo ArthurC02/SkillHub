@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/jobruns"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
@@ -186,6 +188,14 @@ func TestAnApprovedProposalThatNamesNoJobFailsWithoutRunningAnything(t *testing.
 		err := runProposedJob(context.Background(), nil, action)
 		if err == nil || !strings.Contains(err.Error(), "names no maintenance job") {
 			t.Errorf("%s: %v, want it refused as naming no job", action, err)
+		}
+	}
+}
+
+func TestEveryJobAnAgentMayProposeIsAScheduledJob(t *testing.T) {
+	for _, job := range operations.ProposableMaintenanceJobs {
+		if !slices.ContainsFunc(scheduledJobs(), func(j jobruns.Job) bool { return j.Name == job }) {
+			t.Errorf("%s may be proposed but maintenance does not run it", job)
 		}
 	}
 }

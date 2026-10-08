@@ -12,7 +12,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -137,9 +136,7 @@ func (r *Runner) runStarted(ctx context.Context, report RunReport, def Definitio
 func (r *Runner) remainingBudgetUSD(ctx context.Context, def Definition) (float64, error) {
 	now := r.Now().UTC()
 	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	spent, err := gen.New(r.Svc.Pool).PlatformAgentSpendSince(ctx, gen.PlatformAgentSpendSinceParams{
-		Name: def.Name, Since: pgconv.Timestamptz(dayStart),
-	})
+	spent, err := r.Svc.spentSince(ctx, def.Name, dayStart)
 	if err != nil {
 		return 0, err
 	}
@@ -273,11 +270,7 @@ func (l *runLoop) call(ctx context.Context, seq int, intent ToolCall, model Mode
 }
 
 func (l *runLoop) record(ctx context.Context, seq int, intent ToolCall, result string, model ModelCall) error {
-	return gen.New(l.runner.Svc.Pool).RecordPlatformAgentStep(ctx, gen.RecordPlatformAgentStepParams{
-		RunID: l.run, Seq: int32(seq), Tool: intent.Tool, Arguments: intent.Arguments, Result: result,
-		Model: model.Model, PromptTokens: model.PromptTokens, CompletionTokens: model.CompletionTokens,
-		UsdMicros: usdMicros(model.CostUSD),
-	})
+	return l.runner.Svc.recordStep(ctx, l.run, seq, StepRecord{ToolCall: intent, Result: result}, model)
 }
 
 func toolResult(ctx context.Context, tool Tool, arguments string) string {

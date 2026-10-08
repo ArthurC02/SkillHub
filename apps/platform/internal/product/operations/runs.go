@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 type RunStatus string
@@ -106,5 +107,19 @@ func (s *Service) finishWithResult(ctx context.Context, run pgtype.UUID, end run
 			}
 		}
 		return s.recordProposals(ctx, tx, run, end.proposals, end.now)
+	})
+}
+
+func (s *Service) spentSince(ctx context.Context, agent string, since time.Time) (int64, error) {
+	return gen.New(s.Pool).PlatformAgentSpendSince(ctx, gen.PlatformAgentSpendSinceParams{
+		Name: agent, Since: pgconv.Timestamptz(since),
+	})
+}
+
+func (s *Service) recordStep(ctx context.Context, run pgtype.UUID, seq int, step StepRecord, model ModelCall) error {
+	return gen.New(s.Pool).RecordPlatformAgentStep(ctx, gen.RecordPlatformAgentStepParams{
+		RunID: run, Seq: int32(seq), Tool: step.Tool, Arguments: step.Arguments, Result: step.Result,
+		Model: model.Model, PromptTokens: model.PromptTokens, CompletionTokens: model.CompletionTokens,
+		UsdMicros: usdMicros(model.CostUSD),
 	})
 }

@@ -51,3 +51,21 @@ func TestTheMaintenanceFactsNameTablesAndJobsSoACiteCanReachThem(t *testing.T) {
 		t.Errorf("a report citing the tool's own names was rejected: %v", err)
 	}
 }
+
+func TestARerunIsOfferedOnlyOnceAJobHasMissedMoreThanTwoPeriods(t *testing.T) {
+	for _, tc := range []struct {
+		job   string
+		ratio float64
+		want  string
+	}{
+		{"purge-audit", 2, ""},
+		{"purge-audit", 2.01, "run-purge-audit"},
+		{"purge-audit", 0, ""},
+		{"report", 9, ""},
+	} {
+		facts := NewMaintenanceFacts(capacity.Report{}, []jobruns.Status{{Job: tc.job, OverdueRatio: tc.ratio}})
+		if got := facts.MaintenanceJobs[tc.job].Action; got != tc.want {
+			t.Errorf("%s at %.2f periods overdue offers %q, want %q", tc.job, tc.ratio, got, tc.want)
+		}
+	}
+}
