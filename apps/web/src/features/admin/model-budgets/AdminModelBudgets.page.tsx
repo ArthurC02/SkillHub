@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useModelBudgetChange, useModelBudgets, type ModelCallBudget } from "../admin.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
+import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { AdminPage } from "../components/AdminPage";
 import { ActionForm } from "../components/ActionForm";
@@ -30,9 +31,15 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
         <strong>{name}</strong>
       </p>
       <p className="badge-row">
-        <span className={budget.seconds === null ? "badge" : "badge badge-danger"}>
-          {budget.seconds === null ? `預設 ${budget.default_seconds} 秒` : `${budget.seconds} 秒`}
+        <span className={budget.seconds === null ? "badge" : "badge badge-warning"}>
+          {budget.seconds === null
+            ? `目前：預設 ${budget.default_seconds} 秒`
+            : `目前：${budget.seconds} 秒（已調整）`}
         </span>
+      </p>
+      <p className="note">
+        {budget.seconds !== null && `程式預設：${budget.default_seconds} 秒；`}
+        可設定範圍：{budget.min_seconds}～{budget.max_seconds} 秒。
       </p>
       {budget.seconds !== null && (
         <>
@@ -44,48 +51,54 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
           )}
         </>
       )}
-      <ActionForm
-        id={`admin-budget-${budget.kind}`}
-        submitLabel={`改 ${name} 的秒數`}
-        pending={set.isPending}
-        error={set.error}
-        ready={inRange}
-        done={set.isSuccess && "已套用，下一次呼叫就用這個秒數。"}
-        contextKey={`${budget.kind}:${seconds}`}
-        onSubmit={(reason) => set.mutate({ kind: budget.kind, seconds: wanted, reason })}
-      >
-        <div className="field">
-          <label htmlFor={`admin-budget-${budget.kind}-seconds`}>
-            秒數（{budget.min_seconds}～{budget.max_seconds}）
-          </label>
-          <input
-            id={`admin-budget-${budget.kind}-seconds`}
-            inputMode="numeric"
-            value={seconds}
-            onChange={(event) => {
-              setSeconds(event.target.value);
-              set.reset();
-            }}
-            readOnly={set.isPending}
-            aria-describedby={inRange ? undefined : `admin-budget-${budget.kind}-range`}
-          />
-          {!inRange && (
-            <p id={`admin-budget-${budget.kind}-range`} className="note">
-              要填 {budget.min_seconds} 到 {budget.max_seconds} 之間的整數秒。上限是程式裡的
-              deadline 扣掉安全邊界，超過它平台會比模型服務先放棄等待。
-            </p>
-          )}
-        </div>
-      </ActionForm>
-      {budget.seconds !== null && (
+      <details id={`admin-budget-${budget.kind}-set`}>
+        <summary>調整秒數</summary>
         <ActionForm
-          id={`admin-budget-${budget.kind}-clear`}
-          submitLabel={`把 ${name} 改回預設`}
-          pending={clear.isPending}
-          error={clear.error}
-          done={clear.isSuccess && "已改回預設。"}
-          onSubmit={(reason) => clear.mutate({ kind: budget.kind, reason })}
-        />
+          id={`admin-budget-${budget.kind}`}
+          submitLabel={`改 ${name} 的秒數`}
+          pending={set.isPending}
+          error={set.error}
+          ready={inRange}
+          done={set.isSuccess && "已套用，下一次呼叫就用這個秒數。"}
+          contextKey={`${budget.kind}:${seconds}`}
+          onSubmit={(reason) => set.mutate({ kind: budget.kind, seconds: wanted, reason })}
+        >
+          <div className="field">
+            <label htmlFor={`admin-budget-${budget.kind}-seconds`}>
+              秒數（{budget.min_seconds}～{budget.max_seconds}）
+            </label>
+            <input
+              id={`admin-budget-${budget.kind}-seconds`}
+              inputMode="numeric"
+              value={seconds}
+              onChange={(event) => {
+                setSeconds(event.target.value);
+                set.reset();
+              }}
+              readOnly={set.isPending}
+              aria-describedby={inRange ? undefined : `admin-budget-${budget.kind}-range`}
+            />
+            {!inRange && (
+              <p id={`admin-budget-${budget.kind}-range`} className="note">
+                要填 {budget.min_seconds} 到 {budget.max_seconds} 之間的整數秒。上限是程式裡的
+                deadline 扣掉安全邊界，超過它平台會比模型服務先放棄等待。
+              </p>
+            )}
+          </div>
+        </ActionForm>
+      </details>
+      {budget.seconds !== null && (
+        <details id={`admin-budget-${budget.kind}-clear`}>
+          <summary>恢復程式預設（{budget.default_seconds} 秒）</summary>
+          <ActionForm
+            id={`admin-budget-${budget.kind}-clear`}
+            submitLabel={`把 ${name} 改回預設`}
+            pending={clear.isPending}
+            error={clear.error}
+            done={clear.isSuccess && "已改回預設。"}
+            onSubmit={(reason) => clear.mutate({ kind: budget.kind, reason })}
+          />
+        </details>
       )}
     </li>
   );
@@ -101,13 +114,32 @@ export function AdminModelBudgets() {
         上限由程式決定，這裡只能在上限以內調整。
       </p>
       {budgets.isPending && <Loading what="模型呼叫逾時" />}
-      <ReadFailure error={budgets.error} what="模型呼叫逾時" />
-      {budgets.data && (
-        <ul className="download-list">
-          {budgets.data.budgets.map((budget) => (
-            <BudgetRow budget={budget} key={budget.kind} />
-          ))}
-        </ul>
+      <ReadFailure error={budgets.error} what="模型呼叫逾時">
+        <p role="alert">暫時無法讀取模型呼叫逾時。</p>
+        <button type="button" disabled={budgets.isFetching} onClick={() => void budgets.refetch()}>
+          {budgets.isFetching ? "重新讀取中…" : "再試一次"}
+        </button>
+      </ReadFailure>
+      {budgets.data && !budgets.error && (
+        <>
+          <ListFreshness
+            inFlight={false}
+            showWhenIdle
+            updatedAt={budgets.dataUpdatedAt}
+            fetching={budgets.isFetching}
+            refetch={budgets.refetch}
+            subject="逾時設定"
+          />
+          {budgets.data.budgets.length === 0 ? (
+            <p>目前沒有可設定的模型呼叫。</p>
+          ) : (
+            <ul className="download-list">
+              {budgets.data.budgets.map((budget) => (
+                <BudgetRow budget={budget} key={budget.kind} />
+              ))}
+            </ul>
+          )}
+        </>
       )}
     </AdminPage>
   );

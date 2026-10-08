@@ -689,6 +689,38 @@ async function verifyRunWorkbench(page: Page, testInfo: TestInfo) {
   await page.screenshot({ path: testInfo.outputPath("run-workbench-phone.png"), fullPage: true });
 }
 
+async function verifyModelTimeoutChoicesOnPhone(page: Page) {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto("/admin/model-budgets");
+
+  const judge = page.locator("li.download-item").first();
+  await expect(judge.getByText("目前：90 秒（已調整）")).toBeVisible();
+  await expect(judge.getByText("程式預設：130 秒", { exact: false })).toBeVisible();
+  await expect(judge.locator("#admin-budget-judge-run-seconds")).not.toBeVisible();
+
+  await judge.locator("#admin-budget-judge-run-set summary").focus();
+  await page.keyboard.press("Enter");
+  await expect(judge.locator("#admin-budget-judge-run-seconds")).toBeVisible();
+  await expect(judge.getByText("程式預設：130 秒", { exact: false })).toBeVisible();
+}
+
+async function verifyAdminSkillActionsOnPhone(page: Page) {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/admin/skills?q=${SKILL}`);
+
+  const choices = page.locator("main details[id^='admin-skill-'] summary");
+  await expect(choices).toHaveCount(3);
+  await expect(page.locator("#admin-takedown-consequences")).toBeVisible();
+  await expect(page.locator("#admin-redistribution-value")).not.toBeVisible();
+
+  await choices.nth(1).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#admin-redistribution-value")).toBeVisible();
+  await expect(page.locator("#admin-takedown-consequences")).toBeVisible();
+}
+
 test.describe("QA-008 real layout", () => {
   test("Run result keeps judgment first and turns evidence into a desktop workbench", async ({
     page,
@@ -745,21 +777,11 @@ test.describe("QA-008 real layout", () => {
 
   test("admin skill actions reveal their forms by keyboard without hiding takedown consequences", async ({
     page,
-  }) => {
-    await stubPlatform(page);
-    await page.setViewportSize({ width: 375, height: 900 });
-    await page.goto(`/admin/skills?q=${SKILL}`);
+  }) => verifyAdminSkillActionsOnPhone(page));
 
-    const choices = page.locator("main details[id^='admin-skill-'] summary");
-    await expect(choices).toHaveCount(3);
-    await expect(page.locator("#admin-takedown-consequences")).toBeVisible();
-    await expect(page.locator("#admin-redistribution-value")).not.toBeVisible();
-
-    await choices.nth(1).focus();
-    await page.keyboard.press("Enter");
-    await expect(page.locator("#admin-redistribution-value")).toBeVisible();
-    await expect(page.locator("#admin-takedown-consequences")).toBeVisible();
-  });
+  test("model timeout choices keep the effective and default seconds visible on a phone", async ({
+    page,
+  }) => verifyModelTimeoutChoicesOnPhone(page));
 
   for (const [name, url] of PHONE_ROUTES) {
     test(`the page does not scroll sideways at 375px: ${name}`, async ({ page }) => {

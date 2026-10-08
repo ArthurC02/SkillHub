@@ -15,6 +15,7 @@ import {
   ADMIN_AGENT_STEPS,
   ADMIN_AGENTS,
   ADMIN_AUDIT_LOG,
+  ADMIN_MODEL_BUDGETS,
   AGENT_FAILED_RUN,
   AGENT_FINDING,
   AGENT_PROPOSAL,
@@ -580,6 +581,7 @@ test("a revised model timeout does not inherit the previous success notice", asy
   await mountAt("/admin/model-budgets");
   await waitFor(has("評估判定"));
 
+  await click(field<HTMLElement>("#admin-budget-judge-run-set summary"));
   await type("#admin-budget-judge-run-seconds", "100");
   await type("#admin-budget-judge-run-note", "調整等待時間");
   await click(button("改 評估判定 的秒數"));
@@ -587,6 +589,75 @@ test("a revised model timeout does not inherit the previous success notice", asy
 
   await type("#admin-budget-judge-run-seconds", "101");
   expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(false);
+});
+
+test("OPS-009: an override shows its effective value, default, range, and closed choices", async () => {
+  stub(true);
+  await mountAt("/admin/model-budgets");
+  await waitFor(() => !!container.querySelector("li.download-item"));
+
+  const judge = field<HTMLLIElement>("li.download-item");
+  expect(judge.querySelector(".badge-row")?.textContent).toContain("目前：90 秒（已調整）");
+  expect(judge.textContent).toContain("程式預設：130 秒；可設定範圍：1～130 秒");
+  expect(judge.querySelector(".badge-danger")).toBeNull();
+  const change = field<HTMLDetailsElement>("#admin-budget-judge-run-set");
+  const restore = field<HTMLDetailsElement>("#admin-budget-judge-run-clear");
+  expect(change.open).toBe(false);
+  expect(restore.open).toBe(false);
+  expect(restore.querySelector("summary")?.textContent).toContain("130 秒");
+
+  await click(field<HTMLElement>("#admin-budget-judge-run-set summary"));
+  expect(change.open).toBe(true);
+  expect(restore.open).toBe(false);
+  expect(container.querySelector("#admin-budget-match-reasons-clear")).toBeNull();
+});
+
+test("OPS-009: range endpoints are accepted and adjacent values are blocked", async () => {
+  stub(true);
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+  await click(field<HTMLElement>("#admin-budget-judge-run-set summary"));
+  await type("#admin-budget-judge-run-note", "reviewing deadline");
+
+  for (const seconds of ["1", "130"]) {
+    await type("#admin-budget-judge-run-seconds", seconds);
+    expect(button("改 評估判定 的秒數").disabled).toBe(false);
+  }
+  for (const seconds of ["0", "131"]) {
+    await type("#admin-budget-judge-run-seconds", seconds);
+    expect(button("改 評估判定 的秒數").disabled).toBe(true);
+    expect(has("要填 1 到 130 之間的整數秒")()).toBe(true);
+  }
+});
+
+test("OPS-009: failed refresh hides stale settings and retry restores the list", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/model-budgets") return undefined;
+    reads += 1;
+    return reads === 2
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : { body: ADMIN_MODEL_BUDGETS, status: 200 };
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+  await click(button("重新整理"));
+  await waitFor(has("暫時無法讀取模型呼叫逾時"));
+  expect(reads).toBe(2);
+  expect(container.querySelector("li.download-item")).toBeNull();
+
+  await click(button("再試一次"));
+  await waitFor(() => reads === 3 && !!container.querySelector("li.download-item"));
+  expect(has("暫時無法讀取模型呼叫逾時")()).toBe(false);
+});
+
+test("OPS-009: an empty configured-call roster names the absence", async () => {
+  stub(true, (path) =>
+    path === "/admin/model-budgets" ? { body: { budgets: [] }, status: 200 } : undefined,
+  );
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("目前沒有可設定的模型呼叫"));
+  expect(container.querySelector("li.download-item")).toBeNull();
 });
 
 test("OPS-004: a restriction is set with the known reason code and lifted by the same form", async () => {
