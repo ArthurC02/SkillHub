@@ -15,6 +15,7 @@ files:
   packaging.sql: packaging
   publishing.sql: publishing
   queue.sql: queue
+  testschema.sql: testschema
   reconcile.sql:
   run_permissions.sql: run
   runs.sql:

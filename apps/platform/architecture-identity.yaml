@@ -38,6 +38,9 @@ packages:
   - id: partition
     kind: Generic
     path: foundation/persistence/partition
+  - id: testschema
+    kind: Generic
+    path: foundation/persistence/testschema
   - id: pgconv
     kind: Generic
     path: foundation/persistence/pgconv

@@ -22,6 +22,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/testschema"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 )
 
@@ -47,7 +48,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	unlock := lockTestSchema(ctx, pool)
+	unlock := testschema.MustLock(ctx, pool)
 	if err := migrateTestLabSchema(ctx, pool); err != nil {
 		panic(err)
 	}
@@ -115,22 +116,6 @@ func migrateTestLabSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 	}
 	return nil
-}
-
-func lockTestSchema(ctx context.Context, pool *pgxpool.Pool) func() {
-	conn, err := pool.Acquire(ctx)
-	if err != nil {
-		panic(err)
-	}
-	if _, err := conn.Exec(ctx,
-		"SELECT pg_advisory_lock(hashtextextended('skillhub:test-schema', 0))"); err != nil {
-		panic(err)
-	}
-	return func() {
-		_, _ = conn.Exec(ctx,
-			"SELECT pg_advisory_unlock(hashtextextended('skillhub:test-schema', 0))")
-		conn.Release()
-	}
 }
 
 func requireTestLabDB(t *testing.T) *pgxpool.Pool {

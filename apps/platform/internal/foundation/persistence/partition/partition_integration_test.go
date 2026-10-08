@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/testschema"
 )
 
 const partitionDBURLEnv = "SKILLHUB_TEST_DATABASE_URL"
@@ -42,7 +44,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	unlock := lockTestSchema(ctx, pool)
+	unlock := testschema.MustLock(ctx, pool)
 	if err := migratePartitionSchema(ctx, pool); err != nil {
 		panic(err)
 	}
@@ -276,20 +278,4 @@ func migratePartitionSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 	}
 	return nil
-}
-
-func lockTestSchema(ctx context.Context, pool *pgxpool.Pool) func() {
-	conn, err := pool.Acquire(ctx)
-	if err != nil {
-		panic(err)
-	}
-	if _, err := conn.Exec(ctx,
-		"SELECT pg_advisory_lock(hashtextextended('skillhub:test-schema', 0))"); err != nil {
-		panic(err)
-	}
-	return func() {
-		_, _ = conn.Exec(ctx,
-			"SELECT pg_advisory_unlock(hashtextextended('skillhub:test-schema', 0))")
-		conn.Release()
-	}
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/testschema"
 )
 
 func integrationPool(t *testing.T) *pgxpool.Pool {
@@ -31,17 +32,11 @@ func integrationPool(t *testing.T) *pgxpool.Pool {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
-	conn, err := pool.Acquire(context.Background())
+	unlock, err := testschema.Lock(context.Background(), pool)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := conn.Exec(context.Background(), "SELECT pg_advisory_lock(hashtextextended('skillhub:test-schema', 0))"); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		_, _ = conn.Exec(context.Background(), "SELECT pg_advisory_unlock(hashtextextended('skillhub:test-schema', 0))")
-		conn.Release()
-	})
+	t.Cleanup(unlock)
 	return pool
 }
 

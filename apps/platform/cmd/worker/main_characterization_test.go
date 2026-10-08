@@ -10,7 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/testschema"
 )
 
 const runWorkerUnderTest = "SKILLHUB_WORKER_MAIN_UNDER_TEST"
@@ -63,15 +65,16 @@ func runWorkerMain(t *testing.T, env ...string) workerExit {
 
 func holdTheTestSchema(t *testing.T, dsn string) {
 	t.Helper()
-	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, dsn)
+	pool, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = conn.Close(ctx) })
-	if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock(hashtextextended('skillhub:test-schema', 0))"); err != nil {
+	t.Cleanup(pool.Close)
+	unlock, err := testschema.Lock(context.Background(), pool)
+	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(unlock)
 }
 
 func hasAnyPrefix(s string, prefixes []string) bool {

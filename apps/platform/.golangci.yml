@@ -812,6 +812,7 @@ linters:
             - "**/internal/foundation/observability/metrics/**"
             - "**/internal/foundation/persistence/partition/**"
             - "**/internal/foundation/persistence/pgconv/**"
+            - "**/internal/foundation/persistence/testschema/**"
             - "**/internal/foundation/runtime/envx/**"
             - "**/internal/foundation/runtime/httpx/**"
             - "**/internal/foundation/runtime/literalgate/**"

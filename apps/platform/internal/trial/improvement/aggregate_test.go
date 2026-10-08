@@ -20,6 +20,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/testschema"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
@@ -45,7 +46,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	unlock := lockTestSchema(ctx, pool)
+	unlock := testschema.MustLock(ctx, pool)
 	if err := migrateEvalSchema(ctx, pool); err != nil {
 		panic(err)
 	}
@@ -767,22 +768,6 @@ func TestAVerdictDoesNotTouchTheRunsRow(t *testing.T) {
 	var probe map[string]any
 	if err := json.Unmarshal([]byte(after), &probe); err != nil || probe["status"] != string(gen.RunStatusSucceeded) {
 		t.Fatalf("run row did not read back as a succeeded run: %v (%v)", after, err)
-	}
-}
-
-func lockTestSchema(ctx context.Context, pool *pgxpool.Pool) func() {
-	conn, err := pool.Acquire(ctx)
-	if err != nil {
-		panic(err)
-	}
-	if _, err := conn.Exec(ctx,
-		"SELECT pg_advisory_lock(hashtextextended('skillhub:test-schema', 0))"); err != nil {
-		panic(err)
-	}
-	return func() {
-		_, _ = conn.Exec(ctx,
-			"SELECT pg_advisory_unlock(hashtextextended('skillhub:test-schema', 0))")
-		conn.Release()
 	}
 }
 

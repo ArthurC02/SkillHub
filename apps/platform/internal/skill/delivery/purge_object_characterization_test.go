@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/testschema"
 )
 
 var purgePool *pgxpool.Pool
@@ -31,17 +32,10 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	schemaLock, err := pool.Acquire(ctx)
-	if err != nil {
-		panic(err)
-	}
-	if _, err := schemaLock.Exec(ctx, "SELECT pg_advisory_lock(hashtextextended('skillhub:test-schema', 0))"); err != nil {
-		panic(err)
-	}
+	unlock := testschema.MustLock(ctx, pool)
 	purgePool = pool
 	code := m.Run()
-	_, _ = schemaLock.Exec(ctx, "SELECT pg_advisory_unlock(hashtextextended('skillhub:test-schema', 0))")
-	schemaLock.Release()
+	unlock()
 	pool.Close()
 	os.Exit(code)
 }
