@@ -109,7 +109,7 @@ def verify_git_signed_commit(
     if not signers.intersection(authorized_signers):
         return ["Git commit signer is not authorized by Domain Memory policy"]
     changed = _git(
-        repo_root, "diff-tree", "--no-commit-id", "--name-only", "-r", "--root", commit
+        repo_root, "diff-tree", "-m", "--no-commit-id", "--name-only", "-r", "--root", commit
     )
     root = registry_root.resolve().relative_to(repo_root.resolve()).as_posix()
     if changed.returncode != 0 or not any(

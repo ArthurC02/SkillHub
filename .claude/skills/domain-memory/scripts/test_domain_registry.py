@@ -703,6 +703,41 @@ class DomainRegistryTest(unittest.TestCase):
                 ),
             )
 
+    def test_signed_merge_with_domain_memory_change_is_authorized(self) -> None:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            signer = init_signing_key(
+                self.repo, "probe@example.com", self.repo / "keys" / "signing-key"
+            )
+        base = subprocess.run(
+            ["git", "branch", "--show-current"], cwd=self.repo,
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        subprocess.run(["git", "switch", "-q", "-c", "memory"], cwd=self.repo, check=True)
+        self.sign_a_domain_memory_commit("new memory")
+        subprocess.run(["git", "switch", "-q", base], cwd=self.repo, check=True)
+        (self.repo / "other.txt").write_text("other", encoding="utf-8")
+        subprocess.run(["git", "add", "other.txt"], cwd=self.repo, check=True)
+        subprocess.run(
+            ["git", "-c", "user.name=Probe", "-c", "user.email=probe@example.com",
+             "commit", "-qm", "other"],
+            cwd=self.repo, check=True,
+        )
+        subprocess.run(
+            ["git", "-c", "user.name=Probe", "-c", "user.email=probe@example.com",
+             "merge", "--no-ff", "-q", "-S", "-m", "merge memory", "memory"],
+            cwd=self.repo, check=True,
+        )
+        merge = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo,
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        self.assertEqual(
+            [], verify_git_signed_commit(
+                {"commit": merge}, self.repo, self.repo / "docs" / "domain-memory",
+                [signer["fingerprint"]],
+            ),
+        )
+
     def test_pre_push_hook_checks_each_domain_memory_commit(self) -> None:
         (self.repo / ".git" / "hooks").mkdir(parents=True, exist_ok=True)
         existing = self.repo / ".git" / "hooks" / "pre-push"
