@@ -1246,7 +1246,7 @@ test("OPS-012: after a finding moves, the sentence stays up although the refetch
   await waitFor(has("已改成「"));
   expect(has("我來處理")()).toBe(false);
   await type("#admin-finding-resolved-note", "next note");
-  expect(has("已改成「")()).toBe(false);
+  await waitFor(() => !has("已改成「")());
 });
 
 test.each([
@@ -1406,7 +1406,7 @@ test("OPS-011: engaging the brake and releasing it each keep their sentence afte
   expect(has("放開 Agent 煞車")()).toBe(true);
 
   await type("#admin-agent-brake-release-note", "over");
-  expect(has("已拉下，")()).toBe(false);
+  await waitFor(() => !has("已拉下，")());
   await submit("#admin-agent-brake-release-note");
   await waitFor(has("已放開，啟用中的 Agent 下一次排程會執行。"));
   expect(has("拉下 Agent 煞車")()).toBe(true);
