@@ -583,6 +583,7 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
   expect(has("整個叢集")()).toBe(true);
   expect(button("停止派送").classList.contains("caution")).toBe(true);
   expect(button("恢復派送").classList.contains("caution")).toBe(false);
+  expect(button("恢復派送").disabled).toBe(true);
   await type("#admin-halt-declare-note", "escape drill");
   await click(button("停止派送"));
   await waitFor(has("整個叢集停止派送。"));
@@ -590,13 +591,174 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
 
   await type("#admin-halt-provider", "node-2");
   expect(has("整個叢集停止派送。")()).toBe(false);
+  await type("#admin-halt-lift-target", "pool");
   await type("#admin-halt-lift-note", "cleared");
   await click(button("恢復派送"));
+  expect(has("觸發條件已消失")()).toBe(true);
+  await click(button("確認恢復派送"));
   await waitFor(() => calls.some((c) => c.method === "DELETE"));
-  expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({
-    note: "cleared",
+  expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({ note: "cleared" });
+});
+
+test("OPS-005: a node halt remains visible while other nodes can still dispatch", async () => {
+  stub(true, (path, method) => {
+    if (path === "/admin/dispatch" && method === "GET") {
+      return {
+        body: {
+          dispatching: true,
+          halts: [
+            {
+              target: "node-2",
+              source: "orphan_threshold",
+              reason: "orphan capacity reached",
+              declared_at: "2026-09-11T09:00:00Z",
+              automatic_recovery: true,
+            },
+          ],
+        },
+        status: 200,
+      };
+    }
+    return path === "/admin/dispatch/halt" && method === "DELETE"
+      ? { body: undefined, status: 204 }
+      : undefined;
+  });
+  await mountAt("/admin");
+  await waitFor(has("仍在派送；1 個煞車"));
+  expect(
+    field<HTMLElement>('[aria-label="目前需留意"] a[href="/admin/dispatch"]').getAttribute(
+      "data-state",
+    ),
+  ).toBe("pending");
+
+  await go("/admin/dispatch");
+  await waitFor(has("部分節點停止派送"));
+  expect(has("其他節點仍可派送")()).toBe(true);
+  await type("#admin-halt-lift-target", "node-2");
+  await type("#admin-halt-lift-note", "capacity cleared and verified");
+  await click(button("恢復派送"));
+  await click(button("確認恢復派送"));
+  await waitFor(() => calls.some((call) => call.method === "DELETE"));
+  expect(calls.find((call) => call.method === "DELETE")?.body).toEqual({
+    note: "capacity cleared and verified",
     provider: "node-2",
   });
+});
+
+test("OPS-005: no active halt means there is nothing to release", async () => {
+  stub(true, (path) =>
+    path === "/admin/dispatch"
+      ? { body: { dispatching: true, halts: [] }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("沒有生效中的煞車"));
+  expect(container.querySelector("#admin-halt-lift-target")).toBeNull();
+  expect(
+    Array.from(container.querySelectorAll("button")).some(
+      (item) => item.textContent === "恢復派送",
+    ),
+  ).toBe(false);
+  expect(button("停止派送")).toBeDefined();
+});
+
+test("OPS-005: stopped dispatch with no listed halt is not described as healthy", async () => {
+  stub(true, (path) =>
+    path === "/admin/dispatch"
+      ? { body: { dispatching: false, halts: [] }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("未列出煞車，請確認節點設定與平台狀態"));
+  expect(has("停止派送")()).toBe(true);
+  expect(has("未列出煞車，請確認節點設定與平台狀態")()).toBe(true);
+});
+
+test("OPS-005: an unreadable dispatch state keeps emergency halt available but hides release", async () => {
+  stub(true, (path) =>
+    path === "/admin/dispatch"
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("暫時無法讀取派送狀態"));
+  expect(button("停止派送")).toBeDefined();
+  expect(
+    Array.from(container.querySelectorAll("button")).some(
+      (item) => item.textContent === "恢復派送",
+    ),
+  ).toBe(false);
+});
+
+test("OPS-005: refreshing dispatch status removes a halt that is no longer active", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/dispatch") return undefined;
+    reads += 1;
+    return reads === 1
+      ? {
+          body: {
+            dispatching: false,
+            halts: [
+              {
+                target: "pool",
+                source: "p1_incident",
+                reason: "incident",
+                declared_at: "2026-09-11T09:00:00Z",
+                automatic_recovery: false,
+              },
+            ],
+          },
+          status: 200,
+        }
+      : { body: { dispatching: true, halts: [] }, status: 200 };
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("incident"));
+  expect(button("恢復派送")).toBeDefined();
+
+  await click(button("重新整理派送狀態"));
+  await waitFor(has("沒有生效中的煞車"));
+  expect(reads).toBe(2);
+  expect(
+    Array.from(container.querySelectorAll("button")).some(
+      (item) => item.textContent === "恢復派送",
+    ),
+  ).toBe(false);
+});
+
+test("OPS-005: a changed halt requires a new release reason and confirmation", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/dispatch") return undefined;
+    reads += 1;
+    return {
+      body: {
+        dispatching: true,
+        halts: [
+          {
+            target: "node-2",
+            source: reads === 1 ? "orphan_threshold" : "p1_incident",
+            reason: reads === 1 ? "capacity threshold" : "new incident",
+            declared_at: reads === 1 ? "2026-09-11T09:00:00Z" : "2026-09-11T10:00:00Z",
+            automatic_recovery: reads === 1,
+          },
+        ],
+      },
+      status: 200,
+    };
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("capacity threshold"));
+  await type("#admin-halt-lift-target", "node-2");
+  await type("#admin-halt-lift-note", "capacity cleared");
+  await click(button("恢復派送"));
+  expect(button("確認恢復派送")).toBeDefined();
+
+  await click(button("重新整理派送狀態"));
+  await waitFor(has("new incident"));
+  expect(field<HTMLTextAreaElement>("#admin-halt-lift-note").value).toBe("");
+  expect(button("恢復派送").disabled).toBe(true);
 });
 
 test("OPS-005: the rosters page is read-only", async () => {

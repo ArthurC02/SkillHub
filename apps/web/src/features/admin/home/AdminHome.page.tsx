@@ -4,7 +4,9 @@ import {
   useExposureQueue,
   usePlatformAgentFindings,
   usePlatformAgentProposals,
+  type DispatchStatus,
 } from "../admin.service";
+import { dispatchState } from "../admin.model";
 import { AdminPage } from "../components/AdminPage";
 import "./AdminHome.page.css";
 
@@ -13,11 +15,22 @@ function priorityText(value: string | undefined, error: Error | null): string {
   return value ?? "讀取中";
 }
 
+function dispatchPriority(status: DispatchStatus | undefined, error: Error | null) {
+  if (!status || error) return undefined;
+  const state = dispatchState(status);
+  if (state === "stopped") return { label: "停止派送", tone: "halt" };
+  if (state === "partial") {
+    return { label: `仍在派送；${status.halts.length} 個煞車`, tone: "pending" };
+  }
+  return { label: "正在派送", tone: undefined };
+}
+
 function Priorities() {
   const dispatch = useDispatchStatus();
   const proposals = usePlatformAgentProposals();
   const findings = usePlatformAgentFindings();
   const exposure = useExposureQueue();
+  const dispatchSummary = dispatchPriority(dispatch.data, dispatch.error);
   const fetching =
     dispatch.isFetching || proposals.isFetching || findings.isFetching || exposure.isFetching;
 
@@ -44,17 +57,10 @@ function Priorities() {
         <Link
           to="/admin/dispatch"
           className="admin-home-priority"
-          data-state={
-            !dispatch.error && dispatch.data && !dispatch.data.dispatching ? "halt" : undefined
-          }
+          data-state={dispatchSummary?.tone}
         >
           <span>派送狀態</span>
-          <strong>
-            {priorityText(
-              dispatch.data && (dispatch.data.dispatching ? "正在派送" : "停止派送"),
-              dispatch.error,
-            )}
-          </strong>
+          <strong>{priorityText(dispatchSummary?.label, dispatch.error)}</strong>
         </Link>
         <Link
           to="/admin/agents"

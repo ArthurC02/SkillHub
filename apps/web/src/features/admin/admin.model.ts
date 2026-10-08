@@ -1,3 +1,7 @@
+export function dispatchState(status: { dispatching: boolean; halts: readonly unknown[] }) {
+  return !status.dispatching ? "stopped" : status.halts.length > 0 ? "partial" : "normal";
+}
+
 export const ENTRY_KIND: Record<string, string> = {
   debit: "扣點",
   grant: "授予",
