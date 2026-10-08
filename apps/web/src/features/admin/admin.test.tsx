@@ -405,9 +405,12 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
     Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "下架"),
   ).toBe(false);
 
+  await click(field<HTMLElement>("#admin-skill-takedown summary"));
   await type("#admin-takedown-reason", " DMCA notice ");
   await click(button("下架"));
-  expect(has("下架沒有恢復的路")()).toBe(true);
+  expect(container.querySelector("#admin-takedown-scope")?.textContent).toContain(
+    "下架沒有恢復的路",
+  );
   expect(calls.some((c) => c.method === "PUT")).toBe(false);
   await click(button("確認下架"));
   await waitFor(() => calls.some((c) => c.method === "PUT"));
@@ -418,10 +421,48 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
   });
 });
 
+test("OPS-004: governance choices stay scannable without hiding takedown scope", async () => {
+  stub(true);
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+
+  const choices = Array.from(
+    container.querySelectorAll<HTMLDetailsElement>("details[id^='admin-skill-']"),
+  );
+  expect(choices.map((choice) => choice.id)).toEqual([
+    "admin-skill-restriction",
+    "admin-skill-redistribution",
+    "admin-skill-takedown",
+  ]);
+  expect(choices.every((choice) => !choice.open)).toBe(true);
+  const scope = Array.from(container.querySelectorAll("p")).find((item) =>
+    item.textContent?.startsWith("下架後這個小工具從目錄與搜尋消失"),
+  );
+  expect(scope?.closest("details")).toBeNull();
+  expect(scope?.textContent).toContain("下架沒有恢復的路");
+
+  await click(field<HTMLElement>("#admin-skill-redistribution summary"));
+  expect(choices[1].open).toBe(true);
+  expect(choices[0].open).toBe(false);
+  expect(choices[2].open).toBe(false);
+});
+
+test("OPS-004: governance status precedes machine identifiers", async () => {
+  stub(true);
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+
+  const row = field<HTMLLIElement>("li.download-item");
+  expect(row.querySelector(".badge-row")?.nextElementSibling?.textContent ?? "").toContain(
+    "工作區",
+  );
+});
+
 test("OPS-004: changing a takedown reason requires a new confirmation", async () => {
   stub(true);
   await mountAt("/admin/skills", { q: SKILL });
   await waitFor(has("對「PDF Summariser」的動作"));
+  await click(field<HTMLElement>("#admin-skill-takedown summary"));
   await type("#admin-takedown-reason", "old reason");
   await click(button("下架"));
   expect(button("確認下架")).toBeDefined();
@@ -468,10 +509,12 @@ test("OPS-004: a different skill returned by refresh starts with empty drafts", 
   });
   await mountAt("/admin/skills", { q: "tool" });
   await waitFor(has("對「PDF Summariser」的動作"));
+  await click(field<HTMLElement>("#admin-skill-redistribution summary"));
   await type("#admin-redistribution-note", "first skill evidence");
   await type("#admin-redistribution-value", "allowed");
   await type("#admin-license-expression", "MIT");
   await type("#admin-license-source", "manifest");
+  await click(field<HTMLElement>("#admin-skill-takedown summary"));
   await type("#admin-takedown-reason", "first skill takedown");
   await click(button("下架"));
 
@@ -501,6 +544,7 @@ test("OPS-004: releasing a skill needs licence evidence; blocking it does not", 
   );
   await mountAt("/admin/skills", { q: SKILL });
   await waitFor(has("再散布判定"));
+  await click(field<HTMLElement>("#admin-skill-redistribution summary"));
   await type("#admin-redistribution-note", "legal cleared");
   expect(button("送出判定").disabled).toBe(false);
 
@@ -561,6 +605,7 @@ test("OPS-004: a restriction is set with the known reason code and lifted by the
   });
   await mountAt("/admin/skills", { q: SKILL });
   await waitFor(has("設定受限展示"));
+  await click(field<HTMLElement>("#admin-skill-restriction summary"));
   await type("#admin-restriction-note", "terms under review");
   await click(button("設定受限"));
   await waitFor(has("受限展示：license-review"));

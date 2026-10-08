@@ -16,9 +16,6 @@ export function GovernanceRow({ skill, single }: { skill: SkillGovernance; singl
       <p>
         <strong>{skill.name}</strong>
       </p>
-      <p className="note">
-        小工具 <code>{skill.skill_id}</code>｜工作區 <code>{skill.workspace_id}</code>
-      </p>
       <p className="badge-row">
         <span className={skill.access_restriction ? "badge badge-unverified" : "badge"}>
           {skill.access_restriction ? `受限展示：${skill.access_restriction}` : "沒有受限"}
@@ -27,6 +24,9 @@ export function GovernanceRow({ skill, single }: { skill: SkillGovernance; singl
           再散布：{REDISTRIBUTION[skill.redistribution] ?? skill.redistribution}
         </span>{" "}
         {skill.takedown_at && <span className="badge badge-danger">已下架</span>}
+      </p>
+      <p className="note">
+        小工具 <code>{skill.skill_id}</code>｜工作區 <code>{skill.workspace_id}</code>
       </p>
       {skill.takedown_at && (
         <p>

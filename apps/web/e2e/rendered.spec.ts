@@ -743,6 +743,24 @@ test.describe("QA-008 real layout", () => {
     await verifyCreationDecisionOnPhone(page, testInfo);
   });
 
+  test("admin skill actions reveal their forms by keyboard without hiding takedown consequences", async ({
+    page,
+  }) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 375, height: 900 });
+    await page.goto(`/admin/skills?q=${SKILL}`);
+
+    const choices = page.locator("main details[id^='admin-skill-'] summary");
+    await expect(choices).toHaveCount(3);
+    await expect(page.locator("#admin-takedown-consequences")).toBeVisible();
+    await expect(page.locator("#admin-redistribution-value")).not.toBeVisible();
+
+    await choices.nth(1).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#admin-redistribution-value")).toBeVisible();
+    await expect(page.locator("#admin-takedown-consequences")).toBeVisible();
+  });
+
   for (const [name, url] of PHONE_ROUTES) {
     test(`the page does not scroll sideways at 375px: ${name}`, async ({ page }) => {
       await stubPlatform(page);
