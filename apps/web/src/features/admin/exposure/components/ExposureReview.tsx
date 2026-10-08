@@ -76,6 +76,12 @@ function ReviewForm({
 }) {
   const [decision, setDecision] = useState<ExposureDecision>();
   const review = useReviewExposure(publication);
+  const approvalUnavailable =
+    c.status === "delisted"
+      ? "已撤回的發佈物不能核准；請作者重新發佈。"
+      : !c.snapshot || !c.snapshot.current || !c.snapshot.enriched
+        ? "核准要等這一版的搜尋內容可供審核；請稍後重新整理審核資料。"
+        : undefined;
 
   return (
     <ActionForm
@@ -85,9 +91,9 @@ function ReviewForm({
       error={review.error}
       done={review.isSuccess && "已送出，上面的狀態已更新。"}
       contextKey={`${publication}:${c.release.release_id}:${decision ?? "none"}`}
-      ready={decision !== undefined}
+      ready={decision !== undefined && (decision !== "approved" || !approvalUnavailable)}
       onSubmit={(reason) => {
-        if (!decision) return;
+        if (!decision || (decision === "approved" && approvalUnavailable)) return;
         review.mutate({
           release_id: c.release.release_id,
           expected_sequence: c.sequence,
@@ -106,15 +112,25 @@ function ReviewForm({
               name="admin-exposure-decision"
               value={value}
               checked={decision === value}
+              aria-describedby={
+                value === "approved" && approvalUnavailable
+                  ? "admin-exposure-approval-why"
+                  : undefined
+              }
               onChange={() => {
                 setDecision(value);
                 review.reset();
               }}
-              disabled={review.isPending}
+              disabled={review.isPending || (value === "approved" && Boolean(approvalUnavailable))}
             />
             {DECISION_LABEL[value]}
           </label>
         ))}
+        {approvalUnavailable && (
+          <p id="admin-exposure-approval-why" className="note">
+            {approvalUnavailable}
+          </p>
+        )}
       </fieldset>
       <div className="notice" data-role="evidence">
         <strong>送出前確認</strong>
@@ -163,6 +179,13 @@ export function ExposureReview({
       <h3>搜尋索引會收錄與顯示的內容</h3>
       <SnapshotSection exposureCase={c} />
 
+      <h3>審核這一版</h3>
+      <ReviewForm
+        key={`${c.release.release_id}:${c.sequence}:${c.snapshot?.digest ?? ""}`}
+        exposureCase={c}
+        publication={publication}
+      />
+
       <h3>歷次審核</h3>
       {c.history.length === 0 ? (
         <p>還沒有審核紀錄：0 筆。</p>
@@ -180,9 +203,6 @@ export function ExposureReview({
           ))}
         </ul>
       )}
-
-      <h2>審核這一版</h2>
-      <ReviewForm exposureCase={c} publication={publication} />
     </>
   );
 }

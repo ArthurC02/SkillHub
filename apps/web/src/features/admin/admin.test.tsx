@@ -1109,6 +1109,9 @@ test("DISC-007: the queue lists a waiting release, and reviewing it shows the ex
     Array.from(container.querySelectorAll("a")).find((a) => a.textContent === "審這一筆")!,
   );
   await waitFor(has("目前未曝光"));
+  expect(container.querySelector("h2")?.textContent).toBe(`審這一筆：${EXPOSURE_PUBLICATION}`);
+  expect(has("待審清單")()).toBe(true);
+  expect(has("曾核准，之後內容有變，需要重新審核。")()).toBe(false);
   expect(new URLSearchParams(window.location.search).get("publication")).toBe(EXPOSURE_PUBLICATION);
   expect(has(ADMIN_EXPOSURE_CASE.snapshot.enriched_summary)()).toBe(true);
   expect(has(ADMIN_EXPOSURE_CASE.snapshot.task_examples)()).toBe(true);
@@ -1121,6 +1124,12 @@ test("DISC-007: the queue lists a waiting release, and reviewing it shows the ex
     field<HTMLInputElement>('input[name="admin-exposure-decision"][value="revoked"]').checked,
   ).toBe(false);
   expect(button("送出審核結論").disabled).toBe(true);
+
+  await click(
+    Array.from(container.querySelectorAll("a")).find((a) => a.textContent === "返回待審清單")!,
+  );
+  await waitFor(has("曾核准，之後內容有變，需要重新審核。"));
+  expect(new URLSearchParams(window.location.search).has("publication")).toBe(false);
 });
 
 test("DISC-007: submitting a review sends this screen's release_id, sequence and snapshot digest", async () => {
@@ -1214,6 +1223,84 @@ test("DISC-007: a release search has not indexed yet says so instead of showing 
   await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
   await waitFor(has("尚未進索引"));
   expect(has(ADMIN_EXPOSURE_CASE.snapshot.enriched_summary)()).toBe(false);
+  expect(field<HTMLInputElement>('input[value="approved"]').disabled).toBe(true);
+  expect(has("核准要等這一版的搜尋內容可供審核")()).toBe(true);
+  expect(field<HTMLInputElement>('input[value="revoked"]').disabled).toBe(false);
+});
+
+test.each([
+  ["搜尋索引仍指向另一版", { ...ADMIN_EXPOSURE_CASE.snapshot, current: false }],
+  ["搜尋內容還在補充", { ...ADMIN_EXPOSURE_CASE.snapshot, enriched: false }],
+])("DISC-007: %s時不能核准曝光", async (_condition, snapshot) => {
+  stub(true, (path) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
+      ? { body: { ...ADMIN_EXPOSURE_CASE, snapshot }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核這一版"));
+  expect(field<HTMLInputElement>('input[value="approved"]').disabled).toBe(true);
+  expect(has("核准要等這一版的搜尋內容可供審核")()).toBe(true);
+  expect(field<HTMLInputElement>('input[value="revoked"]').disabled).toBe(false);
+});
+
+test("DISC-007: a withdrawn publication cannot be approved again", async () => {
+  stub(true, (path) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
+      ? { body: { ...ADMIN_EXPOSURE_CASE, status: "delisted" }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("已撤回的發佈物不能核准"));
+  expect(field<HTMLInputElement>('input[value="approved"]').disabled).toBe(true);
+  expect(field<HTMLInputElement>('input[value="revoked"]').disabled).toBe(false);
+});
+
+test("DISC-007: a failed refresh hides a previously loaded case and its approval control", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`) return undefined;
+    reads += 1;
+    return reads === 1
+      ? { body: ADMIN_EXPOSURE_CASE, status: 200 }
+      : { body: { error: "service unavailable" }, status: 503 };
+  });
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核序號：2"));
+  await click(button("重新整理審核資料"));
+  await waitFor(has("暫時無法讀取這一筆的曝光審核資料"));
+  expect(reads).toBe(2);
+  expect(container.querySelector('input[value="approved"]')).toBeNull();
+});
+
+test("DISC-007: a new review premise clears the previous decision and reason", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`) return undefined;
+    reads += 1;
+    return {
+      body: {
+        ...ADMIN_EXPOSURE_CASE,
+        sequence: reads === 1 ? 2 : 3,
+        release: {
+          ...ADMIN_EXPOSURE_CASE.release,
+          version_number: reads === 1 ? 1 : 2,
+        },
+      },
+      status: 200,
+    };
+  });
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核序號：2"));
+  await click(field<HTMLInputElement>('input[value="approved"]'));
+  await type("#admin-exposure-review-note", "已看過舊版");
+  expect(button("送出核准").disabled).toBe(false);
+
+  await click(button("重新整理審核資料"));
+  await waitFor(has("審核序號：3"));
+  expect(field<HTMLInputElement>('input[value="approved"]').checked).toBe(false);
+  expect(field<HTMLTextAreaElement>("#admin-exposure-review-note").value).toBe("");
+  expect(button("送出審核結論").disabled).toBe(true);
 });
 
 test("OPS-012: the inbox lists live findings with how often they were reported, and counts every status", async () => {

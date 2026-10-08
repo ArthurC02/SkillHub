@@ -383,7 +383,7 @@ test("QA-009: 後台 /admin/skills（查到一個）", async () => {
   await scan("/admin/skills");
 }, 30000);
 
-test("QA-009: 後台 /admin/exposure（待審清單與一筆案例）", async () => {
+test("QA-009: 後台 /admin/exposure（一筆案例）", async () => {
   stubOperator();
   await mount();
   await act(async () => {
