@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -407,6 +408,9 @@ func assertListedRun(t *testing.T, operator *client, id string, want map[string]
 		t.Fatalf("GET runs: %d %v", code, body)
 	}
 	run := findByID(t, body["runs"], id)
+	if directCode, direct := operatorCall(t, operator, http.MethodGet, "/admin/agents/runs/"+id, ""); directCode != http.StatusOK || !reflect.DeepEqual(direct, run) {
+		t.Errorf("direct run: %d %v, want the same facts as the recent row %v", directCode, direct, run)
+	}
 	listed, _ := body["runs"].([]any)
 	if total, ok := body["total"].(float64); !ok || total < float64(len(listed)) {
 		t.Errorf("run total = %v, want at least the returned rows", body["total"])
@@ -479,6 +483,43 @@ func TestOperatorsSeeTheTotalBeyondTheRecentRunLimit(t *testing.T) {
 		}
 	}
 	t.Errorf("the recent list omitted the newly created Agent's runs: %v", runs)
+}
+
+func TestOperatorCanOpenAnOlderAgentRunByItsPermanentID(t *testing.T) {
+	_, def, operator := loopAgentWithOperator(t, "agent-run-records-old-link", 1_000_000)
+	var oldRun string
+	if err := testPool.QueryRow(context.Background(),
+		`INSERT INTO platform_agent_runs (agent_id, status, started_at, finished_at, result)
+		 SELECT id, 'completed', now() - interval '1 day', now() - interval '1 day', '{"items":[]}'::jsonb
+		 FROM platform_agents WHERE name = $1 RETURNING platform_agent_runs.id::text`, def.Name,
+	).Scan(&oldRun); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := testPool.Exec(context.Background(),
+		"INSERT INTO platform_agent_runs (agent_id, started_at) SELECT id, now() + interval '1 day' FROM platform_agents, generate_series(1, 51) WHERE name = $1", def.Name,
+	); err != nil {
+		t.Fatal(err)
+	}
+	code, body := operatorCall(t, operator, http.MethodGet, "/admin/agents/runs", "")
+	runs, _ := body["runs"].([]any)
+	if code != http.StatusOK || len(runs) != 50 {
+		t.Fatalf("recent list: %d %v, want 50 rows", code, body)
+	}
+	for _, item := range runs {
+		if item.(map[string]any)["id"] == oldRun {
+			t.Fatalf("old run unexpectedly appears in the recent list: %v", item)
+		}
+	}
+	code, old := operatorCall(t, operator, http.MethodGet, "/admin/agents/runs/"+oldRun, "")
+	if code != http.StatusOK || old["id"] != oldRun || old["status"] != "completed" || old["result"] == nil {
+		t.Errorf("GET old run: %d %v, want its permanent report", code, old)
+	}
+	if code, _ := operatorCall(t, operator, http.MethodGet, "/admin/agents/runs/not-a-uuid", ""); code != http.StatusBadRequest {
+		t.Errorf("malformed run id returned %d, want 400", code)
+	}
+	if code, _ := operatorCall(t, operator, http.MethodGet, "/admin/agents/runs/00000000-0000-0000-0000-000000000000", ""); code != http.StatusNotFound {
+		t.Errorf("unknown run returned %d, want 404", code)
+	}
 }
 
 func findByID(t *testing.T, list any, id string) map[string]any {

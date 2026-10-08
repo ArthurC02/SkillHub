@@ -46,11 +46,15 @@ func startupRefusals(providers *run.Registry) []string {
 	return refusals
 }
 
-func prepareDatabase(ctx context.Context, pool *pgxpool.Pool) bool {
+func prepareQueueSchema(ctx context.Context, pool *pgxpool.Pool) bool {
 	if err := queue.EnsureSchema(ctx, pool); err != nil {
 		slog.Error("queue schema", "error", err)
 		return false
 	}
+	return true
+}
+
+func registerPlatformAgents(ctx context.Context, pool *pgxpool.Pool) bool {
 	if err := (&operations.Service{Pool: pool}).Register(ctx, operations.Definitions()); err != nil {
 		slog.Error("platform agent registration", "error", err)
 		return false
@@ -69,6 +73,14 @@ func main() {
 	}
 }
 
+func workerDatabasePool(ctx context.Context) (*pgxpool.Pool, error) {
+	cfg, err := wiring.DatabasePoolConfig(os.Getenv("DATABASE_URL"), wiring.WorkerPoolMaxConns, wiring.WorkerPoolAcquireWait)
+	if err != nil {
+		return nil, err
+	}
+	return pgxpool.NewWithConfig(ctx, cfg)
+}
+
 func runWorker() int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -80,19 +92,14 @@ func runWorker() int {
 		return 1
 	}
 
-	poolCfg, err := wiring.DatabasePoolConfig(os.Getenv("DATABASE_URL"), wiring.WorkerPoolMaxConns, wiring.WorkerPoolAcquireWait)
-	if err != nil {
-		slog.Error("database pool", "error", err)
-		return 1
-	}
-	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
+	pool, err := workerDatabasePool(ctx)
 	if err != nil {
 		slog.Error("database pool", "error", err)
 		return 1
 	}
 	defer pool.Close()
 
-	if !prepareDatabase(ctx, pool) {
+	if !prepareQueueSchema(ctx, pool) {
 		return 1
 	}
 
@@ -113,6 +120,9 @@ func runWorker() int {
 
 	llm, ok := judgeFromEnv()
 	if !ok {
+		return 1
+	}
+	if !registerPlatformAgents(ctx, pool) {
 		return 1
 	}
 

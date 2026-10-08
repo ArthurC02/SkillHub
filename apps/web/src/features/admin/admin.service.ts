@@ -394,6 +394,18 @@ export function usePlatformAgentRuns() {
   });
 }
 
+export function usePlatformAgentRun(id: string) {
+  return useQuery({
+    queryKey: queryKeys.admin.agentRun(id),
+    queryFn: () => apiFetch<PlatformAgentRun>(`/admin/agents/runs/${encodeURIComponent(id)}`),
+    enabled: useOperator(),
+    refetchInterval: (query) =>
+      !isLastingReadFailure(query.state.error) && query.state.data?.status === "running"
+        ? AGENT_RUN_POLL_MS
+        : false,
+  });
+}
+
 export type FindingStatus = "open" | "acknowledged" | "resolved" | "dismissed" | "recovered";
 
 export type PlatformAgentFinding = {

@@ -3,8 +3,10 @@ package operations
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -44,6 +46,10 @@ func (s *Service) RecentRuns(ctx context.Context) ([]gen.ListPlatformAgentRunsRo
 	return gen.New(s.Pool).ListPlatformAgentRuns(ctx, recentRunLimit)
 }
 
+func (s *Service) Run(ctx context.Context, id pgtype.UUID) (gen.GetPlatformAgentRunRow, error) {
+	return gen.New(s.Pool).GetPlatformAgentRun(ctx, id)
+}
+
 func (s *Service) RunSteps(ctx context.Context, run pgtype.UUID) ([]gen.ListPlatformAgentStepsRow, error) {
 	return gen.New(s.Pool).ListPlatformAgentSteps(ctx, run)
 }
@@ -63,6 +69,32 @@ func (h *Handler) Runs(w http.ResponseWriter, r *http.Request) {
 		total = rows[0].Total
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"runs": runs, "total": total})
+}
+
+func (h *Handler) Run(w http.ResponseWriter, r *http.Request) {
+	var id pgtype.UUID
+	if err := id.Scan(r.PathValue("id")); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "run id must be a UUID")
+		return
+	}
+	row, err := h.Svc.Run(r.Context(), id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "agent run lookup failed")
+		return
+	}
+	view := runView{
+		ID: pgconv.UUIDString(row.ID), Agent: row.Agent, Status: row.Status, StartedAt: pgconv.RFC3339(row.StartedAt),
+		FinishedAt: pgconv.RFC3339(row.FinishedAt), Result: row.Result, LastStepAt: pgconv.RFC3339(row.LastStepAt),
+		Steps: row.Steps, UsdMicros: row.UsdMicros, UnpricedSteps: row.UnpricedSteps,
+	}
+	if row.Reason != nil {
+		view.Reason = *row.Reason
+	}
+	httpx.WriteJSON(w, http.StatusOK, view)
 }
 
 func runViewFromRow(row gen.ListPlatformAgentRunsRow) runView {

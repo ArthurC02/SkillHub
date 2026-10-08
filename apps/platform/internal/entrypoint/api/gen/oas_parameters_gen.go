@@ -234,6 +234,12 @@ type GetPlatformAgentProposalParams struct {
 	ID uuid.UUID
 }
 
+// GetPlatformAgentRunParams is parameters of getPlatformAgentRun operation.
+type GetPlatformAgentRunParams struct {
+	// The permanent platform Agent run ID.
+	ID uuid.UUID
+}
+
 // GetPublicPublicationParams is parameters of getPublicPublication operation.
 type GetPublicPublicationParams struct {
 	Publisher string

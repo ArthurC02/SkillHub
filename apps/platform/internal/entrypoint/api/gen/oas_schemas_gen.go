@@ -10641,6 +10641,14 @@ type GetPlatformAgentProposalNotFound Error
 
 func (*GetPlatformAgentProposalNotFound) getPlatformAgentProposalRes() {}
 
+type GetPlatformAgentRunBadRequest Error
+
+func (*GetPlatformAgentRunBadRequest) getPlatformAgentRunRes() {}
+
+type GetPlatformAgentRunNotFound Error
+
+func (*GetPlatformAgentRunNotFound) getPlatformAgentRunRes() {}
+
 type GetReadinessOK struct {
 	// Every capability was measured and works. `unmeasured` is deliberately not enough — a caller asking
 	// this wants to know whether the deployment works, and "nobody looked" is not an answer to that.
@@ -20746,6 +20754,8 @@ func (s *PlatformAgentRun) SetUsdMicros(val int64) {
 func (s *PlatformAgentRun) SetUnpricedSteps(val int) {
 	s.UnpricedSteps = val
 }
+
+func (*PlatformAgentRun) getPlatformAgentRunRes() {}
 
 // The agent's final answer. Kept on a failed run whose answer did not pass its check, so the operator
 // can see what was rejected.

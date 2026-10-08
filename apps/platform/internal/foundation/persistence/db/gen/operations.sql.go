@@ -322,6 +322,52 @@ func (q *Queries) GetPlatformAgentBrake(ctx context.Context) (PlatformAgentBrake
 	return i, err
 }
 
+const getPlatformAgentRun = `-- name: GetPlatformAgentRun :one
+SELECT r.id, a.name AS agent, r.status, r.reason, r.started_at, r.finished_at, r.result,
+    count(s.seq)::integer AS steps,
+    coalesce(sum(s.usd_micros), 0)::bigint AS usd_micros,
+    count(s.seq) FILTER (WHERE s.usd_micros IS NULL)::integer AS unpriced_steps,
+    max(s.created_at)::timestamptz AS last_step_at
+FROM platform_agent_runs r
+JOIN platform_agents a ON a.id = r.agent_id
+LEFT JOIN platform_agent_steps s ON s.run_id = r.id
+WHERE r.id = $1
+GROUP BY r.id, a.name
+`
+
+type GetPlatformAgentRunRow struct {
+	ID            pgtype.UUID
+	Agent         string
+	Status        string
+	Reason        *string
+	StartedAt     pgtype.Timestamptz
+	FinishedAt    pgtype.Timestamptz
+	Result        []byte
+	Steps         int32
+	UsdMicros     int64
+	UnpricedSteps int32
+	LastStepAt    pgtype.Timestamptz
+}
+
+func (q *Queries) GetPlatformAgentRun(ctx context.Context, id pgtype.UUID) (GetPlatformAgentRunRow, error) {
+	row := q.db.QueryRow(ctx, getPlatformAgentRun, id)
+	var i GetPlatformAgentRunRow
+	err := row.Scan(
+		&i.ID,
+		&i.Agent,
+		&i.Status,
+		&i.Reason,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.Result,
+		&i.Steps,
+		&i.UsdMicros,
+		&i.UnpricedSteps,
+		&i.LastStepAt,
+	)
+	return i, err
+}
+
 const getPlatformAgentRunAgent = `-- name: GetPlatformAgentRunAgent :one
 SELECT agent_id FROM platform_agent_runs WHERE id = $1
 `

@@ -1438,6 +1438,10 @@ const ROUTES: RouteMatcher[] = [
   (path) => (path === "/admin/exposure-reviews" ? ok(ADMIN_EXPOSURE_QUEUE) : undefined),
   (path) => (path === "/admin/agents" ? ok(ADMIN_AGENTS) : undefined),
   (path) => (path === "/admin/agents/runs" ? ok(ADMIN_AGENT_RUNS) : undefined),
+  (path) => {
+    const run = ADMIN_AGENT_RUNS.runs.find((item) => path === `/admin/agents/runs/${item.id}`);
+    return run ? ok(run) : undefined;
+  },
   (path) => (path === "/admin/agents/findings" ? ok(ADMIN_AGENT_FINDINGS) : undefined),
   (path) => (/^\/admin\/agents\/findings\/[^/]+$/.test(path) ? ok(ADMIN_AGENT_FINDING) : undefined),
   (path) => (path === "/admin/agents/proposals" ? ok(ADMIN_AGENT_PROPOSALS) : undefined),

@@ -40,6 +40,17 @@ test("a linked agent run shows its report before the collapsed raw steps", async
   await expect(page.getByRole("link", { name: "回到執行紀錄" })).toBeVisible();
 });
 
+test("an older agent run link still shows its report outside the recent list", async ({ page }) => {
+  await stubPlatform(page);
+  await page.route("**/admin/agents/runs", (route) =>
+    route.fulfill({ json: { runs: [], total: 73 } }),
+  );
+  await page.goto(`/admin/agents?run=${AGENT_REPORT_RUN}`);
+
+  await expect(page.getByRole("heading", { name: "需要注意：1 項" })).toBeVisible();
+  await expect(page.getByText("分割表輪替從來沒有成功過，已經超過兩個週期。")).toBeVisible();
+});
+
 test("the desktop workbench shows decisions and findings side by side without horizontal overflow", async ({
   page,
 }) => {

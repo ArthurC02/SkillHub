@@ -225,6 +225,10 @@ type GetPlatformAgentProposalRes interface {
 	getPlatformAgentProposalRes()
 }
 
+type GetPlatformAgentRunRes interface {
+	getPlatformAgentRunRes()
+}
+
 type GetPublicPublicationRes interface {
 	getPublicPublicationRes()
 }

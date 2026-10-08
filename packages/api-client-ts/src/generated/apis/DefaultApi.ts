@@ -514,6 +514,11 @@ import {
     PlatformAgentProposalDetailToJSON,
 } from '../models/PlatformAgentProposalDetail';
 import {
+    type PlatformAgentRun,
+    PlatformAgentRunFromJSON,
+    PlatformAgentRunToJSON,
+} from '../models/PlatformAgentRun';
+import {
     type PublicPublication,
     PublicPublicationFromJSON,
     PublicPublicationToJSON,
@@ -1161,6 +1166,13 @@ export interface GetPlatformAgentFindingRequest {
 export interface GetPlatformAgentProposalRequest {
     /**
      * 
+     */
+    id: string;
+}
+
+export interface GetPlatformAgentRunRequest {
+    /**
+     * The permanent platform Agent run ID.
      */
     id: string;
 }
@@ -3260,6 +3272,29 @@ export interface DefaultApiInterface {
      * One proposal with its preview, decision and outcome (02:OPS-013)
      */
     getPlatformAgentProposal(requestParameters: GetPlatformAgentProposalRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgentProposalDetail>;
+
+    /**
+     * Creates request options for getPlatformAgentRun without sending the request
+     * @param {string} id The permanent platform Agent run ID.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getPlatformAgentRunRequestOpts(requestParameters: GetPlatformAgentRunRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @summary One platform Agent run by permanent ID, beyond the recent list (02:OPS-012)
+     * @param {string} id The permanent platform Agent run ID.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getPlatformAgentRunRaw(requestParameters: GetPlatformAgentRunRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformAgentRun>>;
+
+    /**
+     * One platform Agent run by permanent ID, beyond the recent list (02:OPS-012)
+     */
+    getPlatformAgentRun(requestParameters: GetPlatformAgentRunRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgentRun>;
 
     /**
      * Creates request options for getPublicPublication without sending the request
@@ -7894,6 +7929,51 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getPlatformAgentProposal(requestParameters: GetPlatformAgentProposalRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgentProposalDetail> {
         const response = await this.getPlatformAgentProposalRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getPlatformAgentRun without sending the request
+     */
+    async getPlatformAgentRunRequestOpts(requestParameters: GetPlatformAgentRunRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getPlatformAgentRun().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/agents/runs/{id}`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * One platform Agent run by permanent ID, beyond the recent list (02:OPS-012)
+     */
+    async getPlatformAgentRunRaw(requestParameters: GetPlatformAgentRunRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformAgentRun>> {
+        const requestOptions = await this.getPlatformAgentRunRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformAgentRunFromJSON(jsonValue));
+    }
+
+    /**
+     * One platform Agent run by permanent ID, beyond the recent list (02:OPS-012)
+     */
+    async getPlatformAgentRun(requestParameters: GetPlatformAgentRunRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgentRun> {
+        const response = await this.getPlatformAgentRunRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

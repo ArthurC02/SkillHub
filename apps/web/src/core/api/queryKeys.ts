@@ -123,6 +123,7 @@ export const queryKeys = {
     modelBudgets: ["admin", "model-budgets"],
     agents: ["admin", "agents"],
     agentRuns: ["admin", "agents", "runs"],
+    agentRun: (id: string) => ["admin", "agents", "runs", "one", id],
     agentSteps: (run: string) => ["admin", "agents", "runs", run],
     agentFindings: ["admin", "agents", "findings"],
     agentFindingList: (status: string) => ["admin", "agents", "findings", "list", status],

@@ -1416,6 +1416,16 @@ test("OPS-012: a run in the address shows its report, then each step's tool, ans
   expect([...rawSteps].every((step) => !(step as HTMLDetailsElement).open)).toBe(true);
 });
 
+test("OPS-012: a linked run still shows its report after it leaves the recent-50 list", async () => {
+  stub(true, (path) =>
+    path === "/admin/agents/runs" ? { body: { runs: [], total: 73 }, status: 200 } : undefined,
+  );
+  await mountAt("/admin/agents", { run: AGENT_REPORT_RUN });
+  await waitFor(has("需要注意：1 項"));
+  expect(has("分割表輪替從來沒有成功過")()).toBe(true);
+  expect(has("回到執行紀錄")()).toBe(true);
+});
+
 test("OPS-012: a failed run's report is shown as not checked, and its list row names why and what it cost", async () => {
   stub(true);
   await mountAt("/admin/agents", { run: AGENT_FAILED_RUN });
@@ -1446,8 +1456,8 @@ test.each([
   { status: "failed", label: "失敗", tone: "badge-danger" },
 ])("agent run $status uses the $tone status tone", async ({ status, label, tone }) => {
   stub(true, (path) =>
-    path === "/admin/agents/runs"
-      ? { body: { runs: [{ ...ADMIN_AGENT_RUNS.runs[1], status }] }, status: 200 }
+    path === `/admin/agents/runs/${AGENT_REPORT_RUN}`
+      ? { body: { ...ADMIN_AGENT_RUNS.runs[1], status }, status: 200 }
       : undefined,
   );
   await mountAt("/admin/agents", { run: AGENT_REPORT_RUN });
@@ -1458,11 +1468,9 @@ test.each([
 
 test("a running agent says what progressed, when it last acted, and that leaving is safe", async () => {
   stub(true, (path) =>
-    path === "/admin/agents/runs"
+    path === `/admin/agents/runs/${AGENT_REPORT_RUN}`
       ? {
-          body: {
-            runs: [{ ...ADMIN_AGENT_RUNS.runs[1], status: "running", steps: 1, result: undefined }],
-          },
+          body: { ...ADMIN_AGENT_RUNS.runs[1], status: "running", steps: 1, result: undefined },
           status: 200,
         }
       : path === `/admin/agents/runs/${AGENT_REPORT_RUN}/steps`
@@ -1473,7 +1481,7 @@ test("a running agent says what progressed, when it last acted, and that leaving
   await waitFor(has("仍在執行；已記錄 1 步"));
   expect(has("可以離開這頁")()).toBe(true);
   expect(has("每 3 秒自動更新")()).toBe(true);
-  expect(has("最近一步")()).toBe(true);
+  await waitFor(has("最近一步"));
   expect(has("2026/10/06")()).toBe(true);
 });
 
@@ -1513,17 +1521,13 @@ test("a running agent refreshes its steps and stops reporting progress after com
   let progressed = false;
   let completed = false;
   stub(true, (path) => {
-    if (path === "/admin/agents/runs") {
+    if (path === `/admin/agents/runs/${AGENT_REPORT_RUN}`) {
       return {
         body: {
-          runs: [
-            {
-              ...ADMIN_AGENT_RUNS.runs[1],
-              status: completed ? "completed" : "running",
-              steps: progressed ? 2 : 1,
-              result: completed ? ADMIN_AGENT_RUNS.runs[1].result : undefined,
-            },
-          ],
+          ...ADMIN_AGENT_RUNS.runs[1],
+          status: completed ? "completed" : "running",
+          steps: progressed ? 2 : 1,
+          result: completed ? ADMIN_AGENT_RUNS.runs[1].result : undefined,
         },
         status: 200,
       };
@@ -1553,7 +1557,9 @@ test("OPS-012: ids in the address that are not UUIDs are dropped instead of fetc
   await waitFor(has("日報與執行紀錄"));
   await waitFor(has("回報 3 次"));
   expect(has("這次執行")()).toBe(false);
-  expect(calls.some((c) => c.url.includes("/steps") || c.url.includes("/findings/"))).toBe(false);
+  expect(
+    calls.some((c) => c.url.includes("/runs/not-a-run") || c.url.includes("/findings/nope")),
+  ).toBe(false);
 });
 
 test("OPS-011: disabling an agent and engaging the brake each send the operator's note", async () => {
@@ -1821,20 +1827,16 @@ test("OPS-004: setting a restriction keeps its sentence after the refetched skil
 
 test("OPS-012: a daily-report item without cites shows its text and the page still renders", async () => {
   stub(true, (path) =>
-    path === "/admin/agents/runs"
+    path === `/admin/agents/runs/${AGENT_FAILED_RUN}`
       ? {
           body: {
-            runs: [
-              {
-                ...ADMIN_AGENT_RUNS.runs[0],
-                result: {
-                  items: [
-                    { status: "attention", text: "same words" },
-                    { status: "attention", text: "same words", cites: ["/a/b"] },
-                  ],
-                },
-              },
-            ],
+            ...ADMIN_AGENT_RUNS.runs[0],
+            result: {
+              items: [
+                { status: "attention", text: "same words" },
+                { status: "attention", text: "same words", cites: ["/a/b"] },
+              ],
+            },
           },
           status: 200,
         }

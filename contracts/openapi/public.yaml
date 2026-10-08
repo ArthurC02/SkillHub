@@ -3521,6 +3521,32 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/agents/runs/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+        description: The permanent platform Agent run ID.
+    get:
+      operationId: getPlatformAgentRun
+      summary: One platform Agent run by permanent ID, beyond the recent list (02:OPS-012)
+      responses:
+        "200":
+          description: The run.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformAgentRun" }
+        "400":
+          description: The id is not a UUID.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The run does not exist or the caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/agents/runs/{id}/steps:
     parameters:
       - name: id

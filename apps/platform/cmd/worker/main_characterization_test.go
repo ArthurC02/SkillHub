@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const runWorkerUnderTest = "SKILLHUB_WORKER_MAIN_UNDER_TEST"
@@ -106,7 +110,24 @@ func TestAJudgeServiceWithoutItsTokenStopsTheWorkerAfterReportingItsDependencies
 		}
 		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping the database-backed start-up path")
 	}
-	got := runWorkerMain(t, "COOKIE_INSECURE=1", "DATABASE_URL="+dsn, "LLM_SERVICE_URL=http://127.0.0.1:1")
+	u, err := url.Parse(dsn)
+	if err != nil || !strings.HasSuffix(strings.Trim(u.Path, "/"), "_test") {
+		t.Fatalf("SKILLHUB_TEST_DATABASE_URL must name a _test database: %v", err)
+	}
+	pool, err := pgxpool.New(context.Background(), dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	schema := fmt.Sprintf("worker_startup_%d", time.Now().UnixNano())
+	if _, err := pool.Exec(context.Background(), "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), "DROP SCHEMA "+schema+" CASCADE") })
+	query := u.Query()
+	query.Set("search_path", schema)
+	u.RawQuery = query.Encode()
+	got := runWorkerMain(t, "COOKIE_INSECURE=1", "DATABASE_URL="+u.String(), "LLM_SERVICE_URL=http://127.0.0.1:1")
 	if got.code != 1 || !strings.Contains(got.stderr, "LLM_SERVICE_TOKEN is required when LLM_SERVICE_URL is set") {
 		t.Fatalf("exit %d, want 1 naming the missing token; stderr:\n%s", got.code, got.stderr)
 	}

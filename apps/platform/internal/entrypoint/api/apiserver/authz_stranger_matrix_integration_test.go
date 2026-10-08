@@ -68,6 +68,7 @@ var strangerRoutes = []strangerCase{
 	{pattern: "DELETE /me/bundles/{name}/publication", want: http.StatusNotFound},
 	{pattern: "GET /admin/publications/{publisher}/{name}/exposure", want: http.StatusNotFound},
 	{pattern: "GET /admin/agents/runs/{id}/steps", want: http.StatusNotFound},
+	{pattern: "GET /admin/agents/runs/{id}", want: http.StatusNotFound},
 	{pattern: "GET /admin/agents/findings/{id}", want: http.StatusNotFound},
 	{pattern: "GET /admin/agents/proposals/{id}", want: http.StatusNotFound},
 	{pattern: "POST /admin/publications/{publisher}/{name}/exposure",

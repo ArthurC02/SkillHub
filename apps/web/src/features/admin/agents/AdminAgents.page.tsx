@@ -3,6 +3,7 @@ import {
   AGENT_RUN_POLL_MS,
   usePlatformAgentFindings,
   usePlatformAgentProposals,
+  usePlatformAgentRun,
   usePlatformAgentRuns,
   usePlatformAgents,
 } from "../admin.service";
@@ -107,9 +108,9 @@ function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recov
 }
 
 function AgentRunDetail({ id }: { id: string }) {
-  const runs = usePlatformAgentRuns();
-  const opened = runs.data?.runs.find((run) => run.id === id);
-  const live = !runs.error && opened?.status === "running";
+  const detail = usePlatformAgentRun(id);
+  const opened = detail.data;
+  const live = !detail.error && opened?.status === "running";
   return (
     <section aria-labelledby="admin-agent-run-heading">
       <h2 id="admin-agent-run-heading">這次執行</h2>
@@ -118,8 +119,8 @@ function AgentRunDetail({ id }: { id: string }) {
           回到執行紀錄
         </Link>
       </p>
-      {runs.isPending && <Loading what="執行紀錄" />}
-      <ReadFailure error={runs.error} what="執行紀錄" />
+      {detail.isPending && <Loading what="執行紀錄" />}
+      <ReadFailure error={detail.error} what="執行紀錄" />
       {live && opened && (
         <>
           <p role="status" className="notice">
@@ -127,14 +128,18 @@ function AgentRunDetail({ id }: { id: string }) {
           </p>
           <p className="note">
             狀態每 {AGENT_RUN_POLL_MS / 1000} 秒自動更新；上次取得於{" "}
-            <Timestamp at={new Date(runs.dataUpdatedAt).toISOString()} relative />。{" "}
-            <button type="button" disabled={runs.isFetching} onClick={() => void runs.refetch()}>
-              {runs.isFetching ? "重新整理中…" : "重新整理"}
+            <Timestamp at={new Date(detail.dataUpdatedAt).toISOString()} relative />。{" "}
+            <button
+              type="button"
+              disabled={detail.isFetching}
+              onClick={() => void detail.refetch()}
+            >
+              {detail.isFetching ? "重新整理中…" : "重新整理"}
             </button>
           </p>
         </>
       )}
-      {opened && !runs.error && (
+      {opened && !detail.error && (
         <>
           <p>
             <strong>{opened.agent}</strong>
@@ -143,7 +148,7 @@ function AgentRunDetail({ id }: { id: string }) {
           <DailyReport run={opened} />
         </>
       )}
-      <AgentRunSteps run={id} live={live} />
+      {opened && !detail.error && <AgentRunSteps run={id} live={live} />}
     </section>
   );
 }

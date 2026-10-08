@@ -221,6 +221,7 @@ queries:
   PlatformAgentSpendSince: operations
   FinishPlatformAgentRun: operations
   ListPlatformAgentRuns: operations
+  GetPlatformAgentRun: operations
   ListPlatformAgentSteps: operations
   ListMatchableFindings: operations
   OpenFinding: operations
@@ -277,6 +278,7 @@ scope:
   PlatformAgentSpendSince: platform-wide
   FinishPlatformAgentRun: platform-wide
   ListPlatformAgentRuns: platform-wide
+  GetPlatformAgentRun: platform-wide
   ListPlatformAgentSteps: platform-wide
   ListMatchableFindings: platform-wide
   OpenFinding: platform-wide
