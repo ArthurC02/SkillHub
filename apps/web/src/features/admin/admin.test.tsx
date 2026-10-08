@@ -8,6 +8,7 @@ import { createAppRouter } from "../../app/router";
 import { daysOf, seriesOf, usd } from "./admin.service";
 import {
   ADMIN_AGENT_FINDINGS,
+  ADMIN_AGENT_RUNS,
   ADMIN_AGENT_PROPOSAL,
   ADMIN_AGENTS,
   ADMIN_AUDIT_LOG,
@@ -63,7 +64,7 @@ function stub(
     const { body, status } = override(path, method) ?? platformResponse(url);
     const payload = path === "/me" ? { ...(body as object), operator } : body;
     return Promise.resolve(
-      new Response(JSON.stringify(payload), {
+      new Response(status === 204 ? null : JSON.stringify(payload), {
         status,
         headers: { "Content-Type": "application/json" },
       }),
@@ -1216,4 +1217,247 @@ test("OPS-011: an engaged brake shows its reason and offers only the release", a
   expect(has("理由：gateway incident")()).toBe(true);
   expect(button("放開 Agent 煞車")).toBeDefined();
   expect(has("拉下 Agent 煞車")()).toBe(false);
+});
+
+test("OPS-012: after a finding moves, the sentence stays up although the refetched finding shows the new status", async () => {
+  let moved = false;
+  stub(true, (path, method) => {
+    if (method === "PUT") {
+      moved = true;
+      return { body: {}, status: 204 };
+    }
+    if (path === `/admin/agents/findings/${AGENT_FINDING}`)
+      return {
+        body: {
+          finding: {
+            ...ADMIN_AGENT_FINDINGS.findings[0],
+            status: moved ? "acknowledged" : "open",
+          },
+          events: [],
+        },
+        status: 200,
+      };
+    return undefined;
+  });
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("我來處理"));
+  await type("#admin-finding-acknowledged-note", "checking");
+  await submit("#admin-finding-acknowledged-note");
+  await waitFor(has("已改成「"));
+  expect(has("我來處理")()).toBe(false);
+  await type("#admin-finding-resolved-note", "next note");
+  expect(has("已改成「")()).toBe(false);
+});
+
+test.each([
+  ["approve", "approved", "已核准，維運程序會在幾分鐘內執行。"],
+  ["reject", "rejected", "已駁回。"],
+])(
+  "OPS-013: after %s the sentence stays up although the refetched proposal is no longer open",
+  async (decision, status, sentence) => {
+    let decided = false;
+    stub(true, (path, method) => {
+      if (method === "PUT") {
+        decided = true;
+        return { body: {}, status: 204 };
+      }
+      if (path === `/admin/agents/proposals/${AGENT_PROPOSAL}`)
+        return {
+          body: { ...ADMIN_AGENT_PROPOSAL, status: decided ? status : "proposed" },
+          status: 200,
+        };
+      return undefined;
+    });
+    await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
+    await waitFor(has("核准並執行"));
+    await type(`#admin-proposal-${decision}-note`, "reason");
+    await submit(`#admin-proposal-${decision}-note`);
+    await waitFor(has(sentence));
+    expect(container.querySelector("#admin-proposal-approve-note")).toBeNull();
+  },
+);
+
+const OTHER_ITEM = "8e2f3a4b-5c6d-4e7f-8a9b-0c1d2e3f4a5c";
+
+async function openInPlace(search: Record<string, string>) {
+  await act(async () => {
+    await router.navigate({ to: "/admin/agents", search: search as never });
+  });
+}
+
+test("OPS-013: a decision's sentence does not follow the operator straight to another proposal", async () => {
+  let decided = false;
+  stub(true, (path, method) => {
+    if (method === "PUT") {
+      decided = true;
+      return { body: {}, status: 204 };
+    }
+    if (path === `/admin/agents/proposals/${AGENT_PROPOSAL}`)
+      return {
+        body: { ...ADMIN_AGENT_PROPOSAL, status: decided ? "rejected" : "proposed" },
+        status: 200,
+      };
+    if (path === `/admin/agents/proposals/${OTHER_ITEM}`)
+      return {
+        body: { ...ADMIN_AGENT_PROPOSAL, id: OTHER_ITEM, reason: "另一個提案" },
+        status: 200,
+      };
+    return undefined;
+  });
+  await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
+  await waitFor(has("核准並執行"));
+  await type("#admin-proposal-reject-note", "reason");
+  await submit("#admin-proposal-reject-note");
+  await waitFor(has("已駁回。"));
+  await openInPlace({ proposal: OTHER_ITEM });
+  await waitFor(has("另一個提案"));
+  expect(has("已駁回。")()).toBe(false);
+});
+
+test("OPS-013: a refused decision refetches the proposal so the screen shows what the server now holds", async () => {
+  let refused = false;
+  stub(true, (path, method) => {
+    if (method === "PUT") {
+      refused = true;
+      return { body: { error: "already decided" }, status: 409 };
+    }
+    if (path === `/admin/agents/proposals/${AGENT_PROPOSAL}`)
+      return {
+        body: { ...ADMIN_AGENT_PROPOSAL, status: refused ? "expired" : "proposed" },
+        status: 200,
+      };
+    return undefined;
+  });
+  await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
+  await waitFor(has("核准並執行"));
+  await type("#admin-proposal-approve-note", "reason");
+  await submit("#admin-proposal-approve-note");
+  await waitFor(() => container.querySelector("#admin-proposal-approve-note") === null);
+  expect(
+    calls.filter((c) => c.method === "GET" && c.url === `/admin/agents/proposals/${AGENT_PROPOSAL}`)
+      .length,
+  ).toBeGreaterThanOrEqual(2);
+});
+
+test("OPS-012: a refused move refetches the finding", async () => {
+  stub(true, (_path, method) =>
+    method === "PUT" ? { body: { error: "already moved" }, status: 409 } : undefined,
+  );
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("標記已解決"));
+  await type("#admin-finding-resolved-note", "fixed");
+  await submit("#admin-finding-resolved-note");
+  await waitFor(has("already moved"));
+  await waitFor(
+    () =>
+      calls.filter((c) => c.method === "GET" && c.url === `/admin/agents/findings/${AGENT_FINDING}`)
+        .length >= 2,
+  );
+});
+
+test.each([
+  ["disable", true, "已停用，執行中的那一次會在下一步之前停下。"],
+  ["enable", false, "已啟用，下一次排程會執行。"],
+])(
+  "OPS-011: after you %s an agent the sentence stays up although the refetched agent shows the flipped state",
+  async (_name, enabledBefore, sentence) => {
+    let flipped = false;
+    stub(true, (path, method) => {
+      if (method === "PUT") {
+        flipped = true;
+        return { body: {}, status: 200 };
+      }
+      if (path === "/admin/agents")
+        return {
+          body: {
+            agents: [
+              { ...ADMIN_AGENTS.agents[0], enabled: flipped ? !enabledBefore : enabledBefore },
+            ],
+          },
+          status: 200,
+        };
+      return undefined;
+    });
+    await mountAt("/admin/agents");
+    await waitFor(has(enabledBefore ? "停用 daily-report" : "啟用 daily-report"));
+    await type("#admin-agent-daily-report-note", "because");
+    await submit("#admin-agent-daily-report-note");
+    await waitFor(has(sentence));
+    expect(has(enabledBefore ? "啟用 daily-report" : "停用 daily-report")()).toBe(true);
+  },
+);
+
+test("OPS-011: engaging the brake and releasing it each keep their sentence after the form swaps", async () => {
+  let brake: object | undefined;
+  stub(true, (path, method) => {
+    if (path === "/admin/agents/brake") {
+      brake =
+        method === "PUT" ? { reason: "incident", engaged_at: "2026-10-07T01:00:00Z" } : undefined;
+      return { body: {}, status: method === "PUT" ? 200 : 204 };
+    }
+    if (path === "/admin/agents") return { body: { ...ADMIN_AGENTS, brake }, status: 200 };
+    return undefined;
+  });
+  await mountAt("/admin/agents");
+  await waitFor(has("拉下 Agent 煞車"));
+  await type("#admin-agent-brake-engage-note", "incident");
+  await submit("#admin-agent-brake-engage-note");
+  await waitFor(has("已拉下，所有 Agent 在下一步之前停下。"));
+  expect(has("放開 Agent 煞車")()).toBe(true);
+
+  await type("#admin-agent-brake-release-note", "over");
+  expect(has("已拉下，")()).toBe(false);
+  await submit("#admin-agent-brake-release-note");
+  await waitFor(has("已放開，啟用中的 Agent 下一次排程會執行。"));
+  expect(has("拉下 Agent 煞車")()).toBe(true);
+  expect(has("已拉下，")()).toBe(false);
+});
+
+test("OPS-004: setting a restriction keeps its sentence after the refetched skill shows the restriction", async () => {
+  let restricted: string | null = null;
+  stub(true, (path, method) => {
+    if (path === "/admin/skills")
+      return {
+        body: { skills: [{ ...ADMIN_SKILLS.skills[0], access_restriction: restricted }] },
+        status: 200,
+      };
+    if (path.endsWith("/restriction")) {
+      restricted = method === "PUT" ? "license-review" : null;
+      return { body: {}, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("設定受限展示"));
+  await type("#admin-restriction-note", "terms under review");
+  await click(button("設定受限"));
+  await waitFor(has("解除受限展示"));
+  expect(has("已送出，上面的狀態已更新。")()).toBe(true);
+});
+
+test("OPS-012: a daily-report item without cites shows its text and the page still renders", async () => {
+  stub(true, (path) =>
+    path === "/admin/agents/runs"
+      ? {
+          body: {
+            runs: [
+              {
+                ...ADMIN_AGENT_RUNS.runs[0],
+                result: {
+                  items: [
+                    { status: "attention", text: "same words" },
+                    { status: "attention", text: "same words", cites: ["/a/b"] },
+                  ],
+                },
+              },
+            ],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/agents", { run: AGENT_FAILED_RUN });
+  await waitFor(has("需要注意：2 項"));
+  expect(container.querySelectorAll(".daily-report-cite").length).toBe(1);
+  expect(container.textContent?.match(/same words/g)?.length).toBe(2);
 });

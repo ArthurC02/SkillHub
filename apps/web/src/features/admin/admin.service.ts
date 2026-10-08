@@ -443,6 +443,9 @@ export function useMoveFinding() {
         send("PUT", body),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agentFindings }),
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.admin.agentFindings });
+    },
   });
 }
 
@@ -501,6 +504,9 @@ export function useDecideProposal() {
         send("PUT", body),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agentProposals }),
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.admin.agentProposals });
+    },
   });
 }
 

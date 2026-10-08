@@ -23,7 +23,7 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
         pending={restriction.isPending}
         error={restriction.error}
         done={restriction.isSuccess && "已送出，上面的狀態已更新。"}
-        contextKey={`${skill.skill_id}:${skill.access_restriction ?? "none"}`}
+        contextKey={skill.skill_id}
         onSubmit={(note) =>
           skill.access_restriction
             ? restriction.mutate({ method: "DELETE", body: { note } })

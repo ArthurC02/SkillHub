@@ -23,7 +23,7 @@ export function AdminAgents() {
       lede="平台自己的 Agent 只讀維運事實、不讀任何人的資料。日報說需要注意的事會進待辦，同一件事隔天再被報出來就併在同一筆，事實恢復正常時自動標成已自行恢復。Agent 想補跑逾期的維運工作時只能提案，由你核准才會執行。"
     >
       <h2>待核准</h2>
-      {proposal ? <ProposalDetail id={proposal} /> : <ProposalList />}
+      {proposal ? <ProposalDetail key={proposal} id={proposal} /> : <ProposalList />}
 
       <h2>待辦</h2>
       {finding ? <FindingDetail id={finding} /> : <FindingInbox status={status} />}

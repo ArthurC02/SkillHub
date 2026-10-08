@@ -12,15 +12,25 @@ import { PROPOSAL_STATUS, PROPOSAL_TIER, actionLabel, previewLine } from "./prop
 import "./ProposalDetail.css";
 
 const DECISIONS = [
-  { decision: "approve", label: "核准並執行", done: "已核准，維運程序會在幾分鐘內執行。" },
-  { decision: "reject", label: "駁回", done: "已駁回。" },
+  { decision: "approve", label: "核准並執行" },
+  { decision: "reject", label: "駁回" },
 ] as const;
 
-function Decide({ proposal }: { proposal: PlatformAgentProposalDetail }) {
-  const decide = useDecideProposal();
+const DECIDED = {
+  approve: "已核准，維運程序會在幾分鐘內執行。",
+  reject: "已駁回。",
+};
+
+function Decide({
+  proposal,
+  decide,
+}: {
+  proposal: PlatformAgentProposalDetail;
+  decide: ReturnType<typeof useDecideProposal>;
+}) {
   return (
     <>
-      {DECISIONS.map(({ decision, label, done }) => (
+      {DECISIONS.map(({ decision, label }) => (
         <ActionForm
           key={decision}
           id={`admin-proposal-${decision}`}
@@ -28,8 +38,7 @@ function Decide({ proposal }: { proposal: PlatformAgentProposalDetail }) {
           tone={decision === "approve" && proposal.tier === "destructive" ? "caution" : undefined}
           pending={decide.isPending}
           error={decide.error}
-          done={decide.isSuccess && done}
-          contextKey={`${proposal.id}:${proposal.status}:${decision}`}
+          contextKey={`${proposal.id}:${decision}`}
           onSubmit={(note) => decide.mutate({ id: proposal.id, decision, note })}
         />
       ))}
@@ -63,6 +72,7 @@ function Outcome({ proposal }: { proposal: PlatformAgentProposalDetail }) {
 
 export function ProposalDetail({ id }: { id: string }) {
   const detail = usePlatformAgentProposal(id);
+  const decide = useDecideProposal();
   const proposal = detail.data;
   return (
     <section aria-labelledby="admin-proposal-heading">
@@ -114,8 +124,13 @@ export function ProposalDetail({ id }: { id: string }) {
               <p className="note">
                 <Timestamp at={proposal.expires_at} /> 前沒有核准就作廢。
               </p>
-              <Decide proposal={proposal} />
+              <Decide proposal={proposal} decide={decide} />
             </>
+          )}
+          {decide.isSuccess && (
+            <p className="notice notice-success" role="status">
+              {DECIDED[decide.variables.decision]}
+            </p>
           )}
         </>
       )}

@@ -4,7 +4,7 @@ import "./DailyReport.css";
 
 const DAILY_REPORT_AGENT = "daily-report";
 
-type ReportItem = { status: "fine" | "attention"; text: string; cites: string[] };
+type ReportItem = { status: "fine" | "attention"; text: string; cites?: string[] };
 
 function reportItems(run: PlatformAgentRun): ReportItem[] {
   const items = run.result?.items;
@@ -32,17 +32,19 @@ export function DailyReport({ run }: { run: PlatformAgentRun }) {
         <section key={heading}>
           <h3>{heading}</h3>
           <ul className="download-list">
-            {list.map((item) => (
-              <li className="download-item" key={item.text}>
+            {list.map((item, index) => (
+              <li className="download-item" key={index}>
                 <p>{item.text}</p>
-                <p className="note">
-                  依據：
-                  {item.cites.map((cite) => (
-                    <code className="daily-report-cite" key={cite}>
-                      {cite}
-                    </code>
-                  ))}
-                </p>
+                {Array.isArray(item.cites) && (
+                  <p className="note">
+                    依據：
+                    {item.cites.map((cite, at) => (
+                      <code className="daily-report-cite" key={at}>
+                        {cite}
+                      </code>
+                    ))}
+                  </p>
+                )}
               </li>
             ))}
           </ul>

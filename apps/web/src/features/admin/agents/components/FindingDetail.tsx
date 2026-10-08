@@ -19,7 +19,7 @@ function latestEvidence(events: PlatformAgentFindingEvent[]): Record<string, unk
 function Moves({ finding }: { finding: PlatformAgentFinding }) {
   const move = useMoveFinding();
   return (
-    <>
+    <div onInput={() => move.reset()}>
       {FINDING_MOVES[finding.status].map(({ to, label }) => (
         <ActionForm
           key={to}
@@ -28,12 +28,16 @@ function Moves({ finding }: { finding: PlatformAgentFinding }) {
           tone={to === "dismissed" ? "caution" : undefined}
           pending={move.isPending}
           error={move.error}
-          done={move.isSuccess && `已改成「${FINDING_STATUS[to]}」。`}
-          contextKey={`${finding.id}:${finding.status}:${to}`}
+          contextKey={`${finding.id}:${to}`}
           onSubmit={(note) => move.mutate({ id: finding.id, status: to, note })}
         />
       ))}
-    </>
+      {move.isSuccess && (
+        <p className="notice notice-success" role="status">
+          已改成「{FINDING_STATUS[move.variables.status]}」。
+        </p>
+      )}
+    </div>
   );
 }
 

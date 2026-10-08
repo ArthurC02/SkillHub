@@ -11,6 +11,8 @@ import type {
   PlatformAgent,
   PlatformAgentFinding,
   PlatformAgentFindingEvent,
+  PlatformAgentProposal,
+  PlatformAgentProposalDetail,
   PlatformAgentRun,
   PlatformAgentStep,
   Rosters,
@@ -1371,7 +1373,7 @@ export const ADMIN_AGENT_PROPOSALS = {
       expires_at: "2026-10-09T02:00:00Z",
     },
   ],
-};
+} satisfies { proposals: PlatformAgentProposal[] };
 
 export const ADMIN_AGENT_PROPOSAL = {
   ...ADMIN_AGENT_PROPOSALS.proposals[0],
@@ -1384,7 +1386,7 @@ export const ADMIN_AGENT_PROPOSAL = {
       { key: "trace_events_removed", count: 1834, at_most: false },
     ],
   },
-};
+} satisfies PlatformAgentProposalDetail;
 
 export const ADMIN_AGENT_FINDING = {
   finding: ADMIN_AGENT_FINDINGS.findings[0],

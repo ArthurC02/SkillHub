@@ -33,9 +33,10 @@ function AgentRow({ agent }: { agent: PlatformAgent }) {
         error={toggle.error}
         done={
           toggle.isSuccess &&
-          (next ? "已啟用，下一次排程會執行。" : "已停用，執行中的那一次會在下一步之前停下。")
+          (toggle.variables.enabled
+            ? "已啟用，下一次排程會執行。"
+            : "已停用，執行中的那一次會在下一步之前停下。")
         }
-        contextKey={String(next)}
         onSubmit={(note) => toggle.mutate({ name: agent.name, enabled: next, note })}
       />
     </li>
@@ -60,26 +61,41 @@ function BrakeControls({ brake }: { brake?: PlatformAgentBrake }) {
           </p>
         </>
       )}
-      {brake ? (
-        <ActionForm
-          id="admin-agent-brake-release"
-          submitLabel="放開 Agent 煞車"
-          pending={release.isPending}
-          error={release.error}
-          done={release.isSuccess && "已放開，啟用中的 Agent 下一次排程會執行。"}
-          onSubmit={(note) => release.mutate({ note })}
-        />
-      ) : (
-        <ActionForm
-          id="admin-agent-brake-engage"
-          submitLabel="拉下 Agent 煞車"
-          tone="caution"
-          pending={engage.isPending}
-          error={engage.error}
-          done={engage.isSuccess && "已拉下，所有 Agent 在下一步之前停下。"}
-          onSubmit={(note) => engage.mutate({ note })}
-        />
-      )}
+      <div
+        onInput={() => {
+          engage.reset();
+          release.reset();
+        }}
+      >
+        {brake ? (
+          <ActionForm
+            id="admin-agent-brake-release"
+            submitLabel="放開 Agent 煞車"
+            pending={release.isPending}
+            error={release.error}
+            onSubmit={(note) => release.mutate({ note })}
+          />
+        ) : (
+          <ActionForm
+            id="admin-agent-brake-engage"
+            submitLabel="拉下 Agent 煞車"
+            tone="caution"
+            pending={engage.isPending}
+            error={engage.error}
+            onSubmit={(note) => engage.mutate({ note })}
+          />
+        )}
+        {brake && engage.isSuccess && (
+          <p className="notice notice-success" role="status">
+            已拉下，所有 Agent 在下一步之前停下。
+          </p>
+        )}
+        {!brake && release.isSuccess && (
+          <p className="notice notice-success" role="status">
+            已放開，啟用中的 Agent 下一次排程會執行。
+          </p>
+        )}
+      </div>
     </>
   );
 }
