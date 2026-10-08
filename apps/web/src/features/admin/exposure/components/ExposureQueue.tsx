@@ -18,7 +18,11 @@ export function ExposureQueue({ entries }: { entries: ExposureQueueEntry[] }) {
           </p>
           {entry.reviewed_again && <p className="note">曾核准，之後內容有變，需要重新審核。</p>}
           <p>
-            <Link to="/admin/exposure" search={{ publication: `${entry.publisher}/${entry.name}` }}>
+            <Link
+              to="/admin/exposure"
+              search={{ publication: `${entry.publisher}/${entry.name}` }}
+              aria-label={`審核 ${entry.publisher}/${entry.name}`}
+            >
               審這一筆
             </Link>
           </p>

@@ -1366,6 +1366,11 @@ test("DISC-007: the queue lists a waiting release, and reviewing it shows the ex
   await mountAt("/admin/exposure");
   await waitFor(has(EXPOSURE_PUBLICATION));
   expect(has("曾核准，之後內容有變，需要重新審核。")()).toBe(true);
+  expect(has("待審：共 1 筆。")()).toBe(true);
+  expect(has("這份待審清單上次取得於")()).toBe(true);
+  expect(field<HTMLAnchorElement>(`a[aria-label="審核 ${EXPOSURE_PUBLICATION}"]`).textContent).toBe(
+    "審這一筆",
+  );
 
   await click(
     Array.from(container.querySelectorAll("a")).find((a) => a.textContent === "審這一筆")!,
@@ -1458,6 +1463,46 @@ test("DISC-007: an empty queue is named as a genuine zero, not a blank list", as
   await mountAt("/admin/exposure");
   await waitFor(has("沒有等待審核的發佈物：0 筆。"));
   expect(container.querySelectorAll(".download-item")).toHaveLength(0);
+});
+
+test("DISC-007: a failed queue refresh hides stale work and retry restores the latest queue", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/exposure-reviews") return undefined;
+    reads += 1;
+    if (reads === 2) return { body: { error: "service unavailable" }, status: 503 };
+    return reads === 1 ? platformResponse(path) : { body: { publications: [] }, status: 200 };
+  });
+  await mountAt("/admin/exposure");
+  await waitFor(has("待審：共 1 筆。"));
+
+  await click(button("重新整理"));
+  await waitFor(has("暫時無法讀取待審清單"));
+  expect(container.querySelectorAll(".download-item")).toHaveLength(0);
+  expect(has("先前載入的內容已隱藏。")()).toBe(true);
+
+  await click(button("再試一次"));
+  await waitFor(has("沒有等待審核的發佈物：0 筆。"));
+  expect(reads).toBe(3);
+});
+
+test("DISC-007: an initial queue failure offers retry without claiming the queue is empty", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/exposure-reviews") return undefined;
+    reads += 1;
+    return reads === 1
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : { body: { publications: [] }, status: 200 };
+  });
+  await mountAt("/admin/exposure");
+  await waitFor(has("暫時無法讀取待審清單"));
+  expect(has("請稍後再試。")()).toBe(true);
+  expect(has("沒有等待審核的發佈物：0 筆。")()).toBe(false);
+
+  await click(button("再試一次"));
+  await waitFor(has("沒有等待審核的發佈物：0 筆。"));
+  expect(reads).toBe(2);
 });
 
 test("DISC-007: a stale review (409) shows the server's own words, not a generic failure", async () => {

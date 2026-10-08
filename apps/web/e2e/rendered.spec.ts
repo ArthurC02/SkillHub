@@ -752,6 +752,45 @@ async function verifyAdminPrioritiesReachTheirQueues(page: Page) {
 test("admin priority links reach their work queues on a phone", async ({ page }) =>
   verifyAdminPrioritiesReachTheirQueues(page));
 
+test("admin exposure queue can recover from a failed refresh on a phone", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let reads = 0;
+  await page.route("**/admin/exposure-reviews", async (route) => {
+    reads += 1;
+    const { body, status } = platformResponse(route.request().url());
+    await route.fulfill({
+      status: reads === 2 ? 503 : status,
+      json:
+        reads === 2 ? { error: "service unavailable" } : reads === 3 ? { publications: [] } : body,
+    });
+  });
+
+  await page.goto("/admin/exposure");
+  await expect(page.getByText("待審：共 1 筆。")).toBeVisible();
+  await expect(page.getByText("這份待審清單上次取得於", { exact: false })).toBeVisible();
+  const review = page.getByRole("link", { name: `審核 ${PUBLISHER}/${PUBLICATION}` });
+  await expect(review).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("admin-exposure-queue-phone.png"),
+    fullPage: true,
+  });
+
+  await page.getByRole("button", { name: "重新整理", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "暫時無法讀取待審清單" })).toBeVisible();
+  await expect(review).toHaveCount(0);
+  await page.getByRole("button", { name: "再試一次" }).click();
+  await expect(page.getByText("沒有等待審核的發佈物：0 筆。")).toBeVisible();
+  expect(reads).toBe(3);
+  const width = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(width.scroll).toBeLessThanOrEqual(width.client);
+});
+
 test.describe("QA-008 real layout", () => {
   test("Run result keeps judgment first and turns evidence into a desktop workbench", async ({
     page,
