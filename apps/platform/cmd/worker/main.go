@@ -18,7 +18,9 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
@@ -38,7 +40,27 @@ func startupRefusals(providers *run.Registry) []string {
 	if reason := cleanModeRefusal(); reason != "" {
 		refusals = append(refusals, reason)
 	}
+	if _, err := capacity.ParseRestoreRate(os.Getenv(capacity.RestoreRateEnv)); err != nil {
+		refusals = append(refusals, err.Error())
+	}
 	return refusals
+}
+
+func prepareDatabase(ctx context.Context, pool *pgxpool.Pool) bool {
+	if err := queue.EnsureSchema(ctx, pool); err != nil {
+		slog.Error("queue schema", "error", err)
+		return false
+	}
+	if err := (&operations.Service{Pool: pool}).Register(ctx, operations.Definitions()); err != nil {
+		slog.Error("platform agent registration", "error", err)
+		return false
+	}
+	return true
+}
+
+func restoreRateFromEnv() capacity.RestoreRate {
+	rate, _ := capacity.ParseRestoreRate(os.Getenv(capacity.RestoreRateEnv))
+	return rate
 }
 
 func main() {
@@ -70,8 +92,7 @@ func runWorker() int {
 	}
 	defer pool.Close()
 
-	if err := queue.EnsureSchema(ctx, pool); err != nil {
-		slog.Error("queue schema", "error", err)
+	if !prepareDatabase(ctx, pool) {
 		return 1
 	}
 
@@ -105,6 +126,7 @@ func runWorker() int {
 		TraceSigner:        traceSigner,
 		TraceIngestBaseURL: traceBase,
 		LLM:                llm,
+		RestoreRate:        restoreRateFromEnv(),
 	})
 	if err != nil {
 		slog.Error("worker composition", "error", err)

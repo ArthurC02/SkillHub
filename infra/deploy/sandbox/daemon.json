@@ -1,7 +1,12 @@
 {
   "runtimes": {
     "runsc": {
-      "path": "/usr/local/bin/runsc"
+      "path": "/usr/local/bin/runsc",
+      "runtimeArgs": [
+        "--platform=systrap",
+        "--network=sandbox",
+        "--file-access=exclusive"
+      ]
     }
   },
   "bip": "172.17.0.1/16",

@@ -125,7 +125,7 @@ func driverWithCeiling(t *testing.T, g ModelGateway, maxInput, maxOutput int) *d
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &driver{svc: &Service{Gateway: g}, cur: gen.Run{PolicySnapshot: snapshot}}
+	return &driver{svc: &Service{Gateway: g}, policy: snapshot}
 }
 
 func anAttempt(t *testing.T) gen.RunAttempt {

@@ -20,6 +20,16 @@ export const ACTION_LABEL: Record<string, string> = {
   "publication.exposure.review": "曝光審核",
   "account.lookup": "查詢帳號",
   "credit.lookup": "查詢點數",
+  "platform_agent.enabled": "啟用平台 Agent",
+  "platform_agent.disabled": "停用平台 Agent",
+  "platform_agent.brake_engaged": "拉下 Agent 煞車",
+  "platform_agent.brake_released": "放開 Agent 煞車",
+  "platform_agent_finding.opened": "開了一筆待辦",
+  "platform_agent_finding.reopened": "重新打開待辦",
+  "platform_agent_finding.recovered": "待辦自行恢復",
+  "platform_agent_finding.acknowledged": "接手待辦",
+  "platform_agent_finding.resolved": "解決待辦",
+  "platform_agent_finding.dismissed": "忽略待辦",
 };
 
 export const COST_KIND: Record<string, string> = {
@@ -27,6 +37,7 @@ export const COST_KIND: Record<string, string> = {
   creation_session: "創作會話",
   search_embedding: "搜尋向量",
   search_intent: "搜尋意圖分析",
+  platform_agent: "平台 Agent",
   index_enrich: "索引增強",
   review: "評審",
   suggestion: "改善建議",

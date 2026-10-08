@@ -55,7 +55,8 @@ func TestARunsDeadlineIsJudgedAgainstTheClockTheServiceReads(t *testing.T) {
 		t.Fatal(err)
 	}
 	clock := clockFor(
-		gen.Run{CreatedAt: pgtype.Timestamptz{Time: dispatched, Valid: true}, PolicySnapshot: policy},
+		gen.Run{CreatedAt: pgtype.Timestamptz{Time: dispatched, Valid: true}},
+		policy,
 		[]gen.RunAttempt{dispatchedAttempt(dispatched)},
 	)
 	deadline := dispatched.Add(2 * time.Minute)

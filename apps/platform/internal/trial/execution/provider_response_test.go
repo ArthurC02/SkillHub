@@ -94,7 +94,7 @@ func TestArtifactManifestUsesTheRunFrozenLimits(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return &driver{cur: gen.Run{ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}, PolicySnapshot: policy}}
+		return &driver{cur: gen.Run{ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}}, policy: policy}
 	}
 	artifact := func(size int64) ProviderRun {
 		return ProviderRun{Result: &RunResult{Artifacts: []RunArtifact{{

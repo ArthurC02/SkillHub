@@ -5,6 +5,7 @@ import pytest
 import yaml
 from pydantic import BaseModel
 
+from skillhub_llm.agent import AgentStepResponse
 from skillhub_llm.creation import (
     CreationMessage,
     CreationStepRequest,
@@ -23,6 +24,7 @@ from skillhub_llm.generate import GenerateDiagram
 from skillhub_llm.intent import SearchFilters
 
 MODELS: dict[str, type[BaseModel]] = {
+    "AgentStepResponse": AgentStepResponse,
     "CreationMessage": CreationMessage,
     "CreationStepRequest": CreationStepRequest,
     "CreationStepResponse": CreationStepResponse,

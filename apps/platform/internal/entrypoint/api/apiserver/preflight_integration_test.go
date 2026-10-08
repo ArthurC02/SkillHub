@@ -165,7 +165,7 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 	}
 
 	wantLimits := run.ResourceLimits{
-		VCPU: 2, MemoryBytes: 4 << 30, DiskBytes: 8 << 30, MaxPIDs: 256, MaxOpenFiles: 1024,
+		VCPU: 2, MemoryBytes: 4 << 30, DiskBytes: 4 << 30, MaxPIDs: 256, MaxOpenFiles: 1024,
 		WallClockSoftSeconds: 600, WallClockHardSeconds: 900,
 		ArtifactTotalBytes: 100 << 20, ArtifactFileBytes: 25 << 20,
 	}
@@ -395,7 +395,7 @@ func TestPreflightShowsThePolicyTheRunIsActuallyHeldTo(t *testing.T) {
 
 	var raw []byte
 	if err := pool.QueryRow(context.Background(),
-		"SELECT policy_snapshot FROM runs WHERE id = $1", mustUUID(t, created.RunID),
+		"SELECT policy_snapshot FROM run_snapshots WHERE run_id = $1", mustUUID(t, created.RunID),
 	).Scan(&raw); err != nil {
 		t.Fatal(err)
 	}

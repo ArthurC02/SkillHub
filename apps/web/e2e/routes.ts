@@ -1,4 +1,5 @@
 import {
+  AGENT_REPORT_RUN,
   OTHER_RUN,
   PUBLICATION,
   PUBLISHER,
@@ -46,6 +47,7 @@ export const ROUTES: [name: string, url: string][] = [
   ["admin-cost-statistics", "/admin/cost-statistics"],
   ["admin-trends", "/admin/trends"],
   ["admin-exposure", `/admin/exposure?publication=${PUBLISHER}/${PUBLICATION}`],
+  ["admin-agents", `/admin/agents?run=${AGENT_REPORT_RUN}`],
 ];
 
 export const PHONE_ROUTES = ROUTES;

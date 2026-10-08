@@ -278,7 +278,7 @@ type ResourceLimits struct {
 const (
 	defaultVCPU                 = 2
 	defaultMemoryBytes          = 4 << 30
-	defaultDiskBytes            = 8 << 30
+	defaultDiskBytes            = defaultMemoryBytes
 	defaultMaxPIDs              = 256
 	defaultMaxOpenFiles         = 1024
 	defaultWallClockSoftSeconds = 600
@@ -413,10 +413,7 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		SkillVersionID:     admitted.version.ID,
 		TestCaseSnapshotID: snapshotID,
 		Provider:           providerUnassigned,
-
-		RuntimeSnapshot: []byte("{}"),
-		PolicySnapshot:  admitted.policy,
-	})
+	}, runSnapshots{runtime: []byte("{}"), policy: admitted.policy})
 	if err := s.saveRun(ctx, tx, requested, p.Actor); err != nil {
 		return gen.Run{}, err
 	}

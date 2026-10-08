@@ -41,6 +41,12 @@ func TestTheMaintenanceSwitchScanStillFindsTheJobs(t *testing.T) {
 
 const fixtureMaintenance = `package main
 
+var jobPeriods = map[string][]string{
+	"daily":   {"purge-accounts", "purge-datasets", "purge-analytics", "purge-run-artifacts", "collect-objects"},
+	"weekly":  {"purge-audit"},
+	"monthly": {"rotate-partitions"},
+}
+
 func main() {
 	switch os.Args[1] {
 	case "purge-accounts":
@@ -126,6 +132,38 @@ func TestPurgeScheduleRefusesALineThatCannotRun(t *testing.T) {
 		t.Parallel()
 		onlyProblem(t, purgeScheduleProblems(writePurgeFixture(t, allScheduled+"weekly purge-audit --dry-run\n")),
 			"want `<period> <subcommand>`")
+	})
+}
+
+func TestPurgeScheduleRequiresEachJobsPeriodToMatchTheSchedule(t *testing.T) {
+	t.Parallel()
+	t.Run("a period that disagrees with the schedule", func(t *testing.T) {
+		t.Parallel()
+		root := writePurgeFixture(t, allScheduled)
+		moved := strings.Replace(fixtureMaintenance, `"weekly":  {"purge-audit"}`, `"weekly":  {}`, 1)
+		writeAt(t, root, maintenanceMain, strings.Replace(moved,
+			`"monthly": {"rotate-partitions"}`, `"monthly": {"rotate-partitions", "purge-audit"}`, 1))
+		onlyProblem(t, purgeScheduleProblems(root), `jobPeriods["purge-audit"] = "monthly" but`)
+	})
+	t.Run("a scheduled job with no period", func(t *testing.T) {
+		t.Parallel()
+		root := writePurgeFixture(t, allScheduled)
+		writeAt(t, root, maintenanceMain, strings.Replace(fixtureMaintenance,
+			`, "collect-objects"}`, `}`, 1))
+		onlyProblem(t, purgeScheduleProblems(root), `jobPeriods["collect-objects"] = "" but`)
+	})
+	t.Run("a period for a job that no longer exists", func(t *testing.T) {
+		t.Parallel()
+		root := writePurgeFixture(t, allScheduled)
+		writeAt(t, root, maintenanceMain, strings.Replace(fixtureMaintenance,
+			`"weekly":  {"purge-audit"}`, `"weekly":  {"purge-audit", "purge-ghosts"}`, 1))
+		onlyProblem(t, purgeScheduleProblems(root), `jobPeriods["purge-ghosts"] is not a subcommand`)
+	})
+	t.Run("no period table at all", func(t *testing.T) {
+		t.Parallel()
+		root := writePurgeFixture(t, allScheduled)
+		writeAt(t, root, maintenanceMain, strings.Replace(fixtureMaintenance, "var jobPeriods", "var otherPeriods", 1))
+		onlyProblem(t, purgeScheduleProblems(root), "declares no jobPeriods")
 	})
 }
 

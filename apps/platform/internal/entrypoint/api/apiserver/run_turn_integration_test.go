@@ -119,10 +119,7 @@ func TestARunDoesNotYieldWhenMoreSlotsAreFreeThanRunsAheadOfIt(t *testing.T) {
 func TestARunDoesNotYieldToARunThatCannotUseTheFreeSlot(t *testing.T) {
 	s := newTurnScene(t, "unplaceable-ahead")
 	s.fake.SetFreeSlots(1)
-	if _, err := s.pool.Exec(s.ctx, `UPDATE runs SET policy_snapshot = jsonb_set(policy_snapshot,
-		'{resource_limits,vcpu}', '999') WHERE id = $1`, mustUUID(t, s.bobsQueued)); err != nil {
-		t.Fatal(err)
-	}
+	setRunPolicyValue(t, s.pool, mustUUID(t, s.bobsQueued), "{resource_limits,vcpu}", "999")
 
 	s.expectWaits(t, s.carolsQueuedLater, "carol's run behind one no provider can place")
 	if s.fake.Dispatches() != 2 {

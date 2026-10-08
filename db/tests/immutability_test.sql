@@ -80,6 +80,14 @@ VALUES ('66666666-6666-6666-6666-666666666666', '22222222-2222-2222-2222-2222222
 INSERT INTO runs (id, workspace_id, skill_version_id, test_case_snapshot_id, provider)
 VALUES ('77777777-7777-7777-7777-777777777777', '22222222-2222-2222-2222-222222222222',
         '44444444-4444-4444-4444-444444444444', '66666666-6666-6666-6666-666666666666', 'self-hosted');
+INSERT INTO run_snapshots (run_id, workspace_id, runtime_snapshot, policy_snapshot)
+VALUES ('77777777-7777-7777-7777-777777777777', '22222222-2222-2222-2222-222222222222',
+        '{"provider":"self-hosted"}'::jsonb, '{"clean_mode":false}'::jsonb);
+UPDATE run_snapshots SET runtime_snapshot = '{"provider":"rebound"}'::jsonb
+WHERE run_id = '77777777-7777-7777-7777-777777777777';
+SELECT must_fail($$UPDATE run_snapshots SET policy_snapshot = '{"clean_mode":true}'::jsonb
+                   WHERE run_id = '77777777-7777-7777-7777-777777777777'$$);
+SELECT must_fail($$DELETE FROM run_snapshots WHERE run_id = '77777777-7777-7777-7777-777777777777'$$);
 
 SELECT must_fail($$UPDATE skill_versions SET content_hash = 'tampered' WHERE content_hash = 'hash-1'$$);
 SELECT must_fail($$DELETE FROM skill_versions WHERE content_hash = 'hash-1'$$);
@@ -165,7 +173,7 @@ WHERE id = '77777777-7777-7777-7777-777777777777';
 UPDATE runs SET status = 'succeeded', finished_at = now()
 WHERE id = '77777777-7777-7777-7777-777777777777';
 SELECT must_fail($$UPDATE runs SET status = 'failed' WHERE id = '77777777-7777-7777-7777-777777777777'$$);
-SELECT must_fail($$UPDATE runs SET runtime_snapshot = '{"model":"swapped"}'::jsonb WHERE id = '77777777-7777-7777-7777-777777777777'$$);
+SELECT must_fail($$UPDATE run_snapshots SET runtime_snapshot = '{"model":"swapped"}'::jsonb WHERE run_id = '77777777-7777-7777-7777-777777777777'$$);
 SELECT must_fail($$DELETE FROM runs WHERE id = '77777777-7777-7777-7777-777777777777'$$);
 UPDATE runs SET cleanup_status = 'cleaned', cleanup_at = now()
 WHERE id = '77777777-7777-7777-7777-777777777777';
@@ -484,6 +492,108 @@ VALUES ('f0000000-0000-4000-8000-000000000020', 'f0000000-0000-4000-8000-0000000
 SELECT must_fail($$UPDATE exposure_reviews SET decision = 'revoked'
                    WHERE id = 'f0000000-0000-4000-8000-000000000020'$$);
 SELECT must_fail($$DELETE FROM exposure_reviews WHERE id = 'f0000000-0000-4000-8000-000000000020'$$);
+
+INSERT INTO users (id, email, display_name)
+VALUES ('19999999-9999-4999-8999-999999999999', 'other@example.test', 'Other');
+INSERT INTO workspaces (id, owner_user_id, name)
+VALUES ('29999999-9999-4999-8999-999999999999', '19999999-9999-4999-8999-999999999999', 'other');
+SELECT must_violate_fk($$INSERT INTO skill_versions (workspace_id, skill_id, version_number, content_hash, package_object_key)
+    VALUES ('29999999-9999-4999-8999-999999999999', '33333333-3333-3333-3333-333333333333', 99, 'hash-x', 'x')$$);
+SELECT must_violate_fk($$INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
+    VALUES ('29999999-9999-4999-8999-999999999999', '33333333-3333-3333-3333-333333333333', 'tc', 'p')$$);
+SELECT must_violate_fk($$INSERT INTO test_case_snapshots (workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
+    VALUES ('29999999-9999-4999-8999-999999999999', '55555555-5555-5555-5555-555555555555', 'p', '[]'::jsonb, 'hash-x')$$);
+SELECT must_violate_fk($$INSERT INTO datasets (workspace_id, test_case_id, file_name, content_type, size_bytes, content_hash, object_key, expires_at)
+    VALUES ('29999999-9999-4999-8999-999999999999', '55555555-5555-5555-5555-555555555555', 'd.csv', 'text/csv', 1, 'h', 'k', now())$$);
+INSERT INTO skills (id, workspace_id, name)
+VALUES ('39999999-9999-4999-8999-999999999999', '29999999-9999-4999-8999-999999999999', 'other-demo');
+INSERT INTO skill_versions (id, workspace_id, skill_id, version_number, content_hash, package_object_key)
+VALUES ('49999999-9999-4999-8999-999999999999', '29999999-9999-4999-8999-999999999999',
+        '39999999-9999-4999-8999-999999999999', 1, 'hash-o', 'ws/29/skill/39/v1.tar.zst');
+INSERT INTO test_cases (id, workspace_id, skill_id, name, user_prompt)
+VALUES ('59999999-9999-4999-8999-999999999999', '29999999-9999-4999-8999-999999999999',
+        '39999999-9999-4999-8999-999999999999', 'tc', 'p');
+INSERT INTO test_case_snapshots (id, workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
+VALUES ('69999999-9999-4999-8999-999999999999', '29999999-9999-4999-8999-999999999999',
+        '59999999-9999-4999-8999-999999999999', 'p', '[]'::jsonb, 'hash-o');
+SELECT must_violate_fk($$INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider)
+    VALUES ('22222222-2222-2222-2222-222222222222', '49999999-9999-4999-8999-999999999999',
+            '66666666-6666-6666-6666-666666666666', 'self-hosted')$$);
+SELECT must_violate_fk($$INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider)
+    VALUES ('22222222-2222-2222-2222-222222222222', '44444444-4444-4444-4444-444444444444',
+            '69999999-9999-4999-8999-999999999999', 'self-hosted')$$);
+SELECT must_violate_fk($$INSERT INTO run_attempts (run_id, workspace_id, attempt_number, provider)
+    VALUES ('77777777-7777-7777-7777-777777777777', '29999999-9999-4999-8999-999999999999', 9, 'self-hosted')$$);
+SELECT must_violate_fk($$INSERT INTO run_status_transitions (run_id, workspace_id, from_status, to_status, reason)
+    VALUES ('77777777-7777-7777-7777-777777777777', '29999999-9999-4999-8999-999999999999', 'queued', 'provisioning', 'x')$$);
+SELECT must_violate_fk($$INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred_at, event_type, source, masked)
+    VALUES ('89999999-9999-4999-8999-999999999999', '29999999-9999-4999-8999-999999999999',
+            '77777777-7777-7777-7777-777777777777', 1, 99, '2026-08-14 10:00:00+00', 'skill_activation', 'sandbox', true)$$);
+SELECT must_violate_fk($$INSERT INTO evaluations (workspace_id, run_id, status, overall, evidence_complete, superseded_at)
+    VALUES ('29999999-9999-4999-8999-999999999999', '77777777-7777-7777-7777-777777777777', 'completed', 'met', true, now())$$);
+SELECT must_violate_fk($$INSERT INTO artifacts (workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, expires_at)
+    VALUES ('29999999-9999-4999-8999-999999999999', '77777777-7777-7777-7777-777777777777', 'run_output', 'o', 'text/plain', 1, 'h', 'k', now())$$);
+SELECT must_violate_fk($$INSERT INTO evaluation_suggestions (workspace_id, evaluation_id, category, problem, target_path, proposed_content, expected_impact)
+    VALUES ('29999999-9999-4999-8999-999999999999', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'skill', 'p', 'SKILL.md', 'c', 'i')$$);
+INSERT INTO publications (id, publisher_id, name, skill_id, status)
+VALUES ('f0000000-0000-4000-8000-000000000099', 'f0000000-0000-4000-8000-000000000001',
+        'other-demo', '39999999-9999-4999-8999-999999999999', 'published');
+SELECT must_violate_fk($$INSERT INTO exposure_reviews (publication_id, sequence, release_id, content_hash, snapshot_digest, decision, reason, reviewer_user_id)
+    VALUES ('f0000000-0000-4000-8000-000000000099', 1, 'f0000000-0000-4000-8000-000000000003', 'hash-1', 'digest-1',
+            'approved', 'r', '11111111-1111-1111-1111-111111111111')$$);
+
+INSERT INTO search_documents (skill_id, workspace_id, name, latest_version_id, latest_package_object_key)
+VALUES ('39999999-9999-4999-8999-999999999999', '29999999-9999-4999-8999-999999999999', 'other-demo',
+        '49999999-9999-4999-8999-999999999999', 'ws/29/skill/39/v1.tar.zst');
+SELECT must_violate_fk($$UPDATE search_documents SET latest_package_object_key = 'ws/29/skill/39/elsewhere.tar.zst'
+                         WHERE skill_id = '39999999-9999-4999-8999-999999999999'$$);
+SELECT must_violate_check($$UPDATE search_documents SET latest_version_id = NULL
+                            WHERE skill_id = '39999999-9999-4999-8999-999999999999'$$);
+SELECT must_violate_fk($$UPDATE search_documents SET latest_version_id = '44444444-4444-4444-4444-444444444444'
+                         WHERE skill_id = '39999999-9999-4999-8999-999999999999'$$);
+SELECT must_violate_fk($$UPDATE search_documents SET curated_version_id = '44444444-4444-4444-4444-444444444444'
+                         WHERE skill_id = '39999999-9999-4999-8999-999999999999'$$);
+SELECT must_violate_fk($$INSERT INTO search_documents (skill_id, workspace_id, name)
+    VALUES ('33333333-3333-3333-3333-333333333333', '29999999-9999-4999-8999-999999999999', 'demo')$$);
+
+UPDATE search_documents SET curated_version_id = '49999999-9999-4999-8999-999999999999'
+WHERE skill_id = '39999999-9999-4999-8999-999999999999';
+DO $$
+BEGIN
+    IF NOT (SELECT curated FROM search_documents WHERE skill_id = '39999999-9999-4999-8999-999999999999') THEN
+        RAISE EXCEPTION 'a document whose newest version is the curated one must read as curated';
+    END IF;
+END;
+$$;
+INSERT INTO skill_versions (id, workspace_id, skill_id, version_number, content_hash, package_object_key)
+VALUES ('49999999-9999-4999-8999-999999999998', '29999999-9999-4999-8999-999999999999',
+        '39999999-9999-4999-8999-999999999999', 2, 'hash-o2', 'ws/29/skill/39/v2.tar.zst');
+UPDATE search_documents SET latest_version_id = '49999999-9999-4999-8999-999999999998',
+    latest_package_object_key = 'ws/29/skill/39/v2.tar.zst'
+WHERE skill_id = '39999999-9999-4999-8999-999999999999';
+DO $$
+BEGIN
+    IF (SELECT curated FROM search_documents WHERE skill_id = '39999999-9999-4999-8999-999999999999') THEN
+        RAISE EXCEPTION 'a document that moved past its curated version must not read as curated';
+    END IF;
+END;
+$$;
+
+SELECT set_config('skillhub.purge', 'on', true);
+DELETE FROM skill_versions WHERE id = '49999999-9999-4999-8999-999999999998';
+SELECT set_config('skillhub.purge', '', true);
+DO $$
+DECLARE
+    doc record;
+BEGIN
+    SELECT skill_id, latest_version_id, latest_package_object_key, curated_version_id INTO doc
+    FROM search_documents WHERE skill_id = '39999999-9999-4999-8999-999999999999';
+    IF doc.skill_id IS NULL OR doc.latest_version_id IS NOT NULL OR doc.latest_package_object_key IS NOT NULL
+       OR doc.curated_version_id IS DISTINCT FROM '49999999-9999-4999-8999-999999999999' THEN
+        RAISE EXCEPTION 'purging a version must clear only the document''s pointer to it: %', doc;
+    END IF;
+END;
+$$;
 
 \echo 'immutability_test: OK'
 ROLLBACK;

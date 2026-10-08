@@ -3,6 +3,9 @@ files:
   credit.sql: credit
   cost.sql: credit
   auth.sql: identity
+  capacity.sql: capacity
+  jobruns.sql: jobruns
+  operations.sql: operations
   beta.sql:
   dispatch.sql: run
   model_budget.sql: modelbudget
@@ -142,6 +145,9 @@ queries:
   CountPersistentObjectSightings: objreconcile
 
   CreateRun: run
+  InsertRunSnapshots: run
+  GetRunSnapshots: run
+  ListRunPolicies: run
   AccountPurgeReady: run
   GetRun: run
   GetRunCancellation: run
@@ -158,6 +164,7 @@ queries:
   TransitionRun: run
   RequestRunCancel: run
   SetRunProvider: run
+  SetRunRuntimeSnapshot: run
   ListActiveRuns: run
   ListRunsNeedingCleanup: run
   SetRunCleanupStatus: run
@@ -196,6 +203,40 @@ queries:
   ListEvaluationTraceEvents: trace
   GetTraceStreamHealth: trace
   ListTraceGeneralFacts: trace
+  DeleteTraceEventsBefore: trace
+
+  RecordDatabaseSize: capacity
+  ListDatabaseSizesSince: capacity
+
+  RegisterMaintenanceJobs: jobruns
+  ForgetUnscheduledMaintenanceJobs: jobruns
+  RecordMaintenanceJobSuccess: jobruns
+  ListMaintenanceJobRuns: jobruns
+
+  RegisterPlatformAgent: operations
+  ListPlatformAgents: operations
+  SetPlatformAgentEnabled: operations
+  GetPlatformAgentBrake: operations
+  EngagePlatformAgentBrake: operations
+  ReleasePlatformAgentBrake: operations
+  StartPlatformAgentRun: operations
+  GetPlatformAgentRunGate: operations
+  RecordPlatformAgentStep: operations
+  PlatformAgentSpendSince: operations
+  FinishPlatformAgentRun: operations
+  ListPlatformAgentRuns: operations
+  ListPlatformAgentSteps: operations
+  ListMatchableFindings: operations
+  OpenFinding: operations
+  SeeFinding: operations
+  SetFindingStatus: operations
+  GetFindingStatus: operations
+  AppendFindingEvent: operations
+  ListFindings: operations
+  CountFindingsByStatus: operations
+  GetFinding: operations
+  ListFindingEvents: operations
+  GetPlatformAgentRunAgent: operations
   GetTraceEventText: trace
   LockTraceIngestRun: trace
   NextTraceSeq: trace
@@ -208,6 +249,31 @@ scope:
   InsertSkillVersionDisable: operator
   TakeRateLimitToken: platform-wide
   SweepRateLimitBuckets: platform-wide
+  RecordDatabaseSize: platform-wide
+  ListDatabaseSizesSince: platform-wide
+  RegisterMaintenanceJobs: platform-wide
+  ForgetUnscheduledMaintenanceJobs: platform-wide
+  RecordMaintenanceJobSuccess: platform-wide
+  RegisterPlatformAgent: platform-wide
+  SetPlatformAgentEnabled: platform-wide
+  EngagePlatformAgentBrake: platform-wide
+  StartPlatformAgentRun: platform-wide
+  GetPlatformAgentRunGate: platform-wide
+  RecordPlatformAgentStep: platform-wide
+  PlatformAgentSpendSince: platform-wide
+  FinishPlatformAgentRun: platform-wide
+  ListPlatformAgentRuns: platform-wide
+  ListPlatformAgentSteps: platform-wide
+  ListMatchableFindings: platform-wide
+  OpenFinding: platform-wide
+  SeeFinding: platform-wide
+  SetFindingStatus: platform-wide
+  GetFindingStatus: platform-wide
+  AppendFindingEvent: platform-wide
+  ListFindings: platform-wide
+  GetFinding: platform-wide
+  ListFindingEvents: platform-wide
+  GetPlatformAgentRunAgent: platform-wide
   AdjustCreditBalance: user
   LockAccountLifecycle: user
   CreateIdentity: user
@@ -275,6 +341,7 @@ scope:
   DeleteExpiredAuditEvents: user
   DeleteExpiredFeedbackReports: user
   DeleteAnalyticsEventsBefore: user
+  DeleteTraceEventsBefore: user
   DeleteOutboxEventsPublishedBefore: user
   DeleteRunArtifactUploadIntentByObjectKey: user
   DeleteUserIdentities: user
@@ -284,6 +351,7 @@ scope:
   ListAccountsPastGrace: user
   ListActiveRuns: user
   ListUnfinishedRuns: user
+  ListRunPolicies: user
   ListCollectableObjects: user
   ListLiveSkillIDs: user
   ListSkillForks: user
@@ -351,7 +419,7 @@ immutable:
   skill_versions: 版本快照；採納建議＝新版本，不原地覆寫（鐵律 4）
   test_case_snapshots: Run 引用的測試資料快照，改了會讓歷史 Run 的輸入說謊
   run_status_transitions: Run 編排與非同步工作流程狀態機的歷史；重寫轉移紀錄等於重寫 Run 發生過的事
-  trace_events: TRACE-001 執行事實；保存期到期是 DROP PARTITION，不是 DELETE
+  trace_events: TRACE-001 執行事實；保存期到期是 DROP PARTITION，只有落在 default 分割、早於最舊保留月份的列才 DELETE
   audit_events: NFR-001 稽核軌跡；可被改寫的軌跡不是軌跡
   download_artifacts: 產出的位元組與雙雜湊；重打包是新列
   download_records: 「誰在何時下載了什麼」，不是可編輯的狀態
@@ -367,6 +435,7 @@ immutable:
 immutable_allow:
   PurgeSkillsByID: skill_versions
   DeleteExpiredAuditEvents: audit_events
+  DeleteTraceEventsBefore: trace_events
   DeleteWorkspaceDownloadRecords: download_records
   DeleteWorkspaceDownloadArtifactDetails: download_artifacts
   DeleteWorkspaceDownloadArtifactMembers: download_artifact_members
@@ -375,11 +444,13 @@ raw_sql_allow:
   apps/platform/internal/creator/workspace/service.go@signup: advisory lock serializes first-login creation for one provider identity
   apps/platform/internal/creator/workspace/purge.go@purgeAccount: SET LOCAL enables immutable-table purge only inside the account purge transaction
   apps/platform/internal/foundation/observability/audit/purge.go@PurgeExpired: SET LOCAL enables the 400 day audit retention sweep only inside its own transaction
+  apps/platform/internal/trial/evidence/partitions.go@purgeStragglersBefore: SET LOCAL enables deleting default-partition trace rows older than every kept month only inside its own transaction
   apps/platform/internal/skill/library/purge.go@PurgeDeletedSkills: SET LOCAL enables the WS-005 deletion grace sweep only inside its own transaction
   apps/platform/internal/foundation/messaging/outbox/outbox.go@claim: session advisory lock elects one publisher and must be explicitly unlocked on its connection
   apps/platform/internal/trial/improvement/eval.go@begin: advisory lock serializes supersede-and-create for one run evaluation
   apps/platform/internal/entrypoint/wiring/run_monitor.go@LastOrphanScan: reads River-owned river_job state that is outside SkillHub migrations and sqlc
   apps/platform/internal/foundation/persistence/partition/partition.go@MaintainMonthly: drops validated monthly partition identifiers through PostgreSQL DDL
+  apps/platform/internal/foundation/observability/capacity/capacity.go@tableSizes: reads PostgreSQL size catalogs rather than a domain table
   apps/platform/internal/foundation/persistence/partition/partition.go@childPartitions: reads PostgreSQL partition catalogs rather than a domain table
   apps/platform/internal/foundation/persistence/partition/partition.go@createMonth: creates validated monthly partitions through PostgreSQL DDL
 
@@ -401,6 +472,7 @@ tables:
   datasets: testlab
   dataset_object_cleanup_intents: testlab
   runs: run
+  run_snapshots: run
   run_attempts: run
   run_status_transitions: run
   run_permission_confirmations: run
@@ -439,3 +511,77 @@ tables:
   audit_events: audit
   outbox_events: outbox
   rate_limit_buckets: httpx
+  database_size_samples: capacity
+  maintenance_job_runs: jobruns
+  platform_agents: operations
+  platform_agent_brake: operations
+  platform_agent_runs: operations
+  platform_agent_steps: operations
+  platform_agent_findings: operations
+  platform_agent_finding_events: operations
+
+retention:
+  users: keep row stays after account purge so credit records keep their reference
+  user_identities: with_owner deleted by account purge
+  sessions: expire at expires_at, maintenance purge-accounts
+  workspaces: keep anonymized by account purge
+  skills: with_owner deleted after the deletion grace or by account purge
+  skill_versions: with_owner purged with their skill
+  skill_version_disables: with_owner deleted with its skill version
+  skill_runtime_compatibility: with_owner deleted with its skill
+  object_collection_queue: transient drained by maintenance collect-objects
+  skill_sources: with_owner unreferenced sources deleted by account purge
+  generation_leases: transient released when the generation ends
+  search_documents: with_owner rebuildable projection deleted with its skill
+  test_cases: with_owner deleted by the user or account purge
+  test_case_snapshots: archivable frozen run input
+  datasets: expire objects past retention, maintenance purge-datasets marks the row
+  dataset_object_cleanup_intents: transient deleted once the object is gone
+  runs: keep permanent run identity, its children are archivable
+  run_snapshots: archivable
+  run_attempts: archivable
+  run_status_transitions: archivable
+  run_permission_confirmations: keep
+  run_artifact_upload_intents: transient deleted once the object is settled
+  reconciler_orphan_sightings: transient deleted when the orphan clears
+  dispatch_halts: keep operator declarations
+  model_call_budgets: keep operator configuration
+  artifacts: expire objects past retention, maintenance purge-run-artifacts marks the row
+  download_artifacts: expire objects past DOWNLOAD_ARTIFACT_RETENTION, the row stays
+  download_records: keep
+  publishers: keep
+  publications: keep
+  publication_releases: keep
+  bundles: keep
+  bundle_versions: keep
+  bundle_members: keep
+  exposure_reviews: keep
+  download_artifact_members: keep
+  download_object_cleanup_intents: transient deleted once the object is gone
+  evaluations: archivable
+  evaluation_suggestions: archivable
+  evaluation_suggestion_applications: keep
+  evaluation_model_usage: archivable
+  trace_events: expire TRACE_RETENTION, monthly partition drop and default-partition stragglers
+  object_reconcile_sightings: transient deleted when the sighting clears
+  credit_accounts: keep never deleted, not even by account purge
+  credit_entries: keep never deleted, not even by account purge
+  cost_events: keep never deleted, not even by account purge
+  cost_statistics: keep derived, recomputed daily
+  cost_session_summaries: keep never deleted, not even by account purge
+  creation_sessions: expire at expires_at, creation expiry job
+  creation_session_events: with_owner cascades with its session
+  creation_receipts: with_owner cascades with its session
+  analytics_events: expire ANALYTICS_RETENTION
+  feedback_reports: expire FEEDBACK_RETENTION, purge refuses to start while unset
+  audit_events: expire AUDIT_RETENTION
+  outbox_events: expire published events after seven days, dead letters stay
+  rate_limit_buckets: transient idle buckets swept by the limiter
+  database_size_samples: keep one row a day
+  maintenance_job_runs: keep one row per scheduled job, unscheduled jobs are forgotten
+  platform_agents: keep one row per agent defined in code
+  platform_agent_brake: transient present only while the brake is engaged
+  platform_agent_runs: archivable
+  platform_agent_steps: archivable
+  platform_agent_findings: archivable
+  platform_agent_finding_events: archivable

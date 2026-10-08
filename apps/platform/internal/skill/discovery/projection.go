@@ -147,7 +147,6 @@ func listingOf(skillID pgtype.UUID, facts ListingFacts) gen.SetSearchDocumentLis
 	if facts.CurationTier == string(TierCurated) {
 		listing.CuratedVersionID = facts.CuratedVersionID
 	}
-	listing.Curated = curatedAt(facts.CurationTier, facts.CuratedVersionID, facts.LatestVersionID)
 	capability, runtime, image := compatUnverified, compatUnverified, ""
 	if facts.AgentMeasuredAt.Valid {
 		capability, runtime, image = facts.AgentCapability, facts.AgentRuntime, facts.AgentRuntimeImage
@@ -315,7 +314,7 @@ func (s *Service) CatalogSkillRisks(
 		return nil, err
 	}
 	rows, err := gen.New(s.Pool).ListCatalogSkillScans(ctx, gen.ListCatalogSkillScansParams{
-		SkillIds: skillIDs, CatalogWorkspaceIds: scope.catalogs, ExposedKeys: scope.exposedKeys,
+		SkillIds: skillIDs, CatalogWorkspaceIds: scope.catalogs, ExposedKeys: scope.exposedKeys, ExposedSkillIds: scope.exposedSkillIDs,
 	})
 	if err != nil {
 		return nil, err

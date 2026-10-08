@@ -1,0 +1,77 @@
+{
+  "snapshot": {
+    "capacity": {
+      "database_bytes": 5368709120,
+      "restore_bytes_per_second": 52428800,
+      "restore_rate_measured": false,
+      "restore_budget_bytes": 31457280000,
+      "days_until_budget": 61.5,
+      "growth_bytes_per_day": 425000000,
+      "table_bytes": {
+        "trace_events": 3221225472,
+        "runs": 536870912,
+        "search_documents": 268435456
+      }
+    },
+    "maintenance_jobs": {
+      "purge-accounts": {"period_seconds": 86400, "last_succeeded_at": "2026-10-06T03:00:00Z", "overdue_ratio": 1.1},
+      "rotate-partitions": {"period_seconds": 2678400, "last_succeeded_at": null, "overdue_ratio": 2.4},
+      "check-sources": {"period_seconds": 86400, "last_succeeded_at": "2026-10-07T03:00:00Z", "overdue_ratio": 0.2}
+    }
+  },
+  "cases": [
+    {
+      "name": "every item cites facts in the snapshot",
+      "passes": true,
+      "report": {"items": [
+        {"status": "attention", "text": "照現在的成長速度，約 61 天後資料庫會超過 10 分鐘內還原的預算；還原速率還是預設值，沒有實測。", "cites": ["/capacity/days_until_budget", "/capacity/restore_rate_measured"]},
+        {"status": "attention", "text": "分割表輪替從來沒有成功過，已經超過兩個週期。", "cites": ["/maintenance_jobs/rotate-partitions/last_succeeded_at", "/maintenance_jobs/rotate-partitions/overdue_ratio"]},
+        {"status": "fine", "text": "來源檢查今天已經跑過。", "cites": ["/maintenance_jobs/check-sources/overdue_ratio"]},
+        {"status": "fine", "text": "最大的表是 trace_events，約 3 GB。", "cites": ["/capacity/table_bytes/trace_events"]}
+      ]}
+    },
+    {
+      "name": "a job the snapshot does not have",
+      "passes": false,
+      "report": {"items": [
+        {"status": "attention", "text": "清除稽核紀錄的工作逾期了。", "cites": ["/maintenance_jobs/purge-audit/overdue_ratio"]}
+      ]}
+    },
+    {
+      "name": "a table the snapshot does not have",
+      "passes": false,
+      "report": {"items": [
+        {"status": "fine", "text": "使用者表很小。", "cites": ["/capacity/table_bytes/users"]}
+      ]}
+    },
+    {
+      "name": "a metric the report never measures",
+      "passes": false,
+      "report": {"items": [
+        {"status": "attention", "text": "CPU 使用率偏高。", "cites": ["/capacity/cpu_percent"]}
+      ]}
+    },
+    {
+      "name": "one invented cite among real ones",
+      "passes": false,
+      "report": {"items": [
+        {"status": "fine", "text": "資料庫大小正常。", "cites": ["/capacity/database_bytes"]},
+        {"status": "attention", "text": "備份昨天失敗了。", "cites": ["/capacity/database_bytes", "/backups/last_failed_at"]}
+      ]}
+    },
+    {
+      "name": "a claim with no cite",
+      "passes": false,
+      "report": {"items": [
+        {"status": "fine", "text": "一切正常。", "cites": []}
+      ]}
+    },
+    {
+      "name": "the whole snapshot as a cite",
+      "passes": false,
+      "report": {"items": [
+        {"status": "fine", "text": "一切正常。", "cites": [""]}
+      ]}
+    }
+  ]
+}

@@ -338,6 +338,7 @@ const SCANNED_ROUTES = [
   "/admin/cost-statistics",
   "/admin/trends",
   "/admin/exposure",
+  "/admin/agents",
 ];
 
 function stubOperator() {
@@ -359,6 +360,7 @@ for (const [to, heading] of [
   ["/admin/model-budgets", "模型呼叫逾時"],
   ["/admin/cost-statistics", "搜尋理由"],
   ["/admin/trends", "全平台目前餘額總和"],
+  ["/admin/agents", "分割表輪替從來沒有成功過，已經超過兩個週期。"],
 ] as const) {
   test(`QA-009: 後台 ${to}`, async () => {
     stubOperator();

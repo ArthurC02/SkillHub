@@ -109,3 +109,11 @@
 ## 外部系統的 Port 與 Adapter
 
 [ADR-024](./ADR-024-ports-and-adapters-for-external-systems.md)｜外部系統怎麼接進來、領域擁有什麼，以及換掉一個外部系統時要動哪些地方。
+
+## 資料保存、到期與封存
+
+[ADR-027](./ADR-027-data-retention-and-archival.md)｜每張表的處置怎麼宣告、封存為什麼不延長也不縮短保存期、何時才值得封存，以及被封存的 Run 怎麼呈現。
+
+## 平台 Agent
+
+[ADR-028](./ADR-028-platform-agents.md)｜協助管理系統的 Agent 是什麼身分、讀得到什麼、做得了什麼、花得了多少，以及人在哪裡放行。

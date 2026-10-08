@@ -46,7 +46,7 @@ const repo = (on: On, answers: Answers, runs: string[][], stdins: (string | unde
 }
 
 const ship = { tool: 'mcp__skillhub-guards__ship' as const,
-  input: { paths: ['c:/repo/apps/web/a.ts', 'docs/x.md'], message: 'feat: x\n\nCo-Authored-By: C' } }
+  paths: ['c:/repo/apps/web/a.ts', 'docs/x.md'], message: 'feat: x\n\nCo-Authored-By: C' }
 
 const gitVerbs = (runs: string[][]) => runs.filter(argv => argv[0] === 'git').map(argv => argv.slice(3).join(' '))
 
@@ -60,8 +60,7 @@ test('a clean ship lints, stages each file, commits from stdin, checks fast-forw
   expect(runs[0]).toEqual(['go', '-C', 'c:/repo/tools/devctl', 'run', '.', 'comment-lint', 'apps/web/a.ts', 'docs/x.md'])
   expect(gitVerbs(runs)).toEqual([
     'add -- apps/web/a.ts docs/x.md',
-    'diff --cached --name-only -- docs/domain-memory',
-    'commit -F -',
+    'commit -F - -- apps/web/a.ts docs/x.md',
     'fetch --quiet',
     'merge-base --is-ancestor origin/main HEAD',
     'rev-parse HEAD',
@@ -70,15 +69,23 @@ test('a clean ship lints, stages each file, commits from stdin, checks fast-forw
     'push --quiet',
     'rev-parse HEAD',
   ])
-  expect(stdins[gitVerbs(runs).indexOf('commit -F -') + 1]).toBe('feat: x\n\nCo-Authored-By: C')
+  expect(stdins[gitVerbs(runs).indexOf('commit -F - -- apps/web/a.ts docs/x.md') + 1]).toBe('feat: x\n\nCo-Authored-By: C')
 })
 
-test('a staged domain-memory file makes the commit signed', async ($, on) => {
+test('a named domain-memory file makes the commit signed', async ($, on) => {
   const runs: string[][] = []
-  repo(on, { staged: 'docs/domain-memory/registry/x.json\n' }, runs, [])
-  const result = await $.tool.call(ship as never) as { result: string }
-  expect(gitVerbs(runs)).toContain('commit -S -F -')
+  repo(on, {}, runs, [])
+  const result = await $.tool.call({ ...ship, paths: ['docs/domain-memory/registry/x.json'] } as never) as { result: string }
+  expect(gitVerbs(runs)).toContain('commit -S -F - -- docs/domain-memory/registry/x.json')
   expect(result.result).toMatch(/\(signed\)/)
+})
+
+test('a domain-memory file another session staged neither signs nor joins the commit', async ($, on) => {
+  const runs: string[][] = []
+  repo(on, { staged: 'docs/domain-memory/registry/theirs.json\n' }, runs, [])
+  const result = await $.tool.call(ship as never) as { result: string }
+  expect(gitVerbs(runs)).toContain('commit -F - -- apps/web/a.ts docs/x.md')
+  expect(result.result).not.toMatch(/\(signed\)/)
 })
 
 test('a comment-lint failure stops before anything is staged', async ($, on) => {

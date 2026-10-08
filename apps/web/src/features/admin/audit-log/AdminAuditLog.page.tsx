@@ -22,6 +22,18 @@ const RESOURCE_LABEL: Record<string, string> = {
   model_budget: "模型呼叫逾時",
 };
 
+function ActorCell({ event }: { event: OperatorAuditEvent }) {
+  if (event.actor_kind === "agent") {
+    return (
+      <>
+        平台 Agent <code>{event.actor_agent_id}</code>
+      </>
+    );
+  }
+  if (event.actor_kind === "person") return <code>{event.actor_user_id}</code>;
+  return <>平台自動</>;
+}
+
 export function AdminAuditLog() {
   const { workspace_id } = useSearch({ from: "/admin/audit-log" });
   return (
@@ -174,7 +186,7 @@ function AuditEventsTable({
                 {ACTION_LABEL[event.action] ?? event.action}
               </th>
               <td data-label="operator">
-                {event.actor_user_id ? <code>{event.actor_user_id}</code> : "平台自動"}
+                <ActorCell event={event} />
               </td>
               <td data-label="對象">
                 {RESOURCE_LABEL[event.resource_type] ?? event.resource_type}{" "}

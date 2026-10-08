@@ -633,13 +633,7 @@ func TestSupervisorTimesOutARunThatOutlivedItsWallClock(t *testing.T) {
 	ctx := context.Background()
 
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
-	if _, err := pool.Exec(ctx, `
-		UPDATE runs
-		SET policy_snapshot = jsonb_set(policy_snapshot,
-		        '{resource_limits,wall_clock_hard_seconds}', '1')
-		WHERE id = $1`, runID); err != nil {
-		t.Fatal(err)
-	}
+	setRunPolicyValue(t, pool, runID, "{resource_limits,wall_clock_hard_seconds}", "1")
 	dispatched := insertUnissuedAttempt(t, gen.New(pool), ws, runID, 1)
 	if _, err := pool.Exec(ctx, `UPDATE run_attempts SET provider_run_id = 'sbx-wall-clock',
 		started_at = now() - interval '1 hour' WHERE id = $1`, dispatched.ID); err != nil {
@@ -709,10 +703,7 @@ func TestADriverResumingADispatchedRunCountsItsWallClockFromTheDispatch(t *testi
 			t.Fatal(err)
 		}
 	}
-	if _, err := pool.Exec(ctx, `UPDATE runs SET policy_snapshot = jsonb_set(policy_snapshot,
-		'{resource_limits,wall_clock_hard_seconds}', '60') WHERE id = $1`, runID); err != nil {
-		t.Fatal(err)
-	}
+	setRunPolicyValue(t, pool, runID, "{resource_limits,wall_clock_hard_seconds}", "60")
 	dispatched := insertUnissuedAttempt(t, gen.New(pool), ws, runID, 1)
 	if _, err := pool.Exec(ctx, `UPDATE run_attempts SET provider_run_id = 'sbx-resumed',
 		started_at = now() - interval '2 minutes' WHERE id = $1`, dispatched.ID); err != nil {
@@ -744,10 +735,10 @@ func TestTimeSpentWaitingForASlotIsBoundedByTheWaitLimitNotTheWallClock(t *testi
 		within.RunID: run.SlotWaitLimit - time.Minute,
 		past.RunID:   run.SlotWaitLimit + time.Minute,
 	} {
+		setRunPolicyValue(t, pool, mustUUID(t, runID), "{resource_limits,wall_clock_hard_seconds}", "1")
 		if _, err := pool.Exec(ctx, `
 			UPDATE runs
-			SET policy_snapshot = jsonb_set(policy_snapshot, '{resource_limits,wall_clock_hard_seconds}', '1'),
-			    created_at = now() - make_interval(secs => $2)
+			SET created_at = now() - make_interval(secs => $2)
 			WHERE id = $1`, mustUUID(t, runID), waited.Seconds()); err != nil {
 			t.Fatal(err)
 		}
@@ -1307,9 +1298,10 @@ func TestARedispatchDoesNotRewriteTheRuntimeItAlreadyPinned(t *testing.T) {
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 
 	const pinned = `{"provider":"fake_sandbox","runtime":{"image_digest":"sha256:the-one-attempt-1-matched"}}`
-	if _, err := pool.Exec(ctx,
-		`UPDATE runs SET provider = 'fake_sandbox', runtime_snapshot = $2 WHERE id = $1`,
-		runID, pinned); err != nil {
+	if _, err := pool.Exec(ctx, `UPDATE runs SET provider = 'fake_sandbox' WHERE id = $1`, runID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE run_snapshots SET runtime_snapshot = $2 WHERE run_id = $1`, runID, pinned); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1319,7 +1311,7 @@ func TestARedispatchDoesNotRewriteTheRuntimeItAlreadyPinned(t *testing.T) {
 
 	var got string
 	if err := pool.QueryRow(ctx,
-		"SELECT runtime_snapshot::text FROM runs WHERE id = $1", runID).Scan(&got); err != nil {
+		"SELECT runtime_snapshot::text FROM run_snapshots WHERE run_id = $1", runID).Scan(&got); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(got, "the-one-attempt-1-matched") {
@@ -1960,5 +1952,32 @@ func TestARunAnswersForItsCreationAndRefusesACancelItCouldNotDescribe(t *testing
 	}
 	if cancelRequested.Valid {
 		t.Error("the cancel was recorded although the client was told it failed")
+	}
+}
+
+func setRunPolicyValue(t *testing.T, pool *pgxpool.Pool, runID pgtype.UUID, path, value string) {
+	t.Helper()
+	ctx := context.Background()
+	var workspaceID pgtype.UUID
+	var runtimeSnapshot, policySnapshot []byte
+	if err := pool.QueryRow(ctx, `
+		SELECT workspace_id, runtime_snapshot, jsonb_set(policy_snapshot, $2::text[], $3::jsonb)
+		FROM run_snapshots WHERE run_id = $1`, runID, path, value,
+	).Scan(&workspaceID, &runtimeSnapshot, &policySnapshot); err != nil {
+		t.Fatal(err)
+	}
+	if err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, "SET LOCAL skillhub.purge = 'on'"); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, "DELETE FROM run_snapshots WHERE run_id = $1", runID); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `
+			INSERT INTO run_snapshots (run_id, workspace_id, runtime_snapshot, policy_snapshot)
+			VALUES ($1, $2, $3, $4)`, runID, workspaceID, runtimeSnapshot, policySnapshot)
+		return err
+	}); err != nil {
+		t.Fatal(err)
 	}
 }

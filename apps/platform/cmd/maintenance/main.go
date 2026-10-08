@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
@@ -14,6 +15,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/jobruns"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
@@ -31,12 +34,37 @@ func main() {
 	if len(os.Args) != 2 {
 		slog.Error("usage: maintenance purge-accounts|purge-audit|purge-feedback|" +
 			"purge-run-artifacts|purge-datasets|purge-deleted-skills|" +
-			"collect-objects|check-sources|rotate-partitions")
+			"collect-objects|check-sources|rotate-partitions|report")
 		os.Exit(2)
 	}
 	if code := runJob(os.Args[1]); code != 0 {
 		os.Exit(code)
 	}
+}
+
+var jobPeriods = map[string][]string{
+	"daily": {"purge-accounts", "purge-run-artifacts", "purge-datasets", "purge-deleted-skills",
+		"collect-objects", "check-sources", "report"},
+	"weekly":  {"purge-audit", "purge-feedback"},
+	"monthly": {"rotate-partitions"},
+}
+
+const (
+	day   = 24 * time.Hour
+	week  = 7 * day
+	month = 31 * day
+)
+
+var periodLengths = map[string]time.Duration{"daily": day, "weekly": week, "monthly": month}
+
+func scheduledJobs() []jobruns.Job {
+	var jobs []jobruns.Job
+	for period, names := range jobPeriods {
+		for _, name := range names {
+			jobs = append(jobs, jobruns.Job{Name: name, Period: periodLengths[period]})
+		}
+	}
+	return jobs
 }
 
 func runJob(job string) int {
@@ -48,6 +76,27 @@ func runJob(job string) int {
 	}
 	defer pool.Close()
 
+	if err := jobruns.Register(ctx, pool, scheduledJobs()); err != nil {
+		slog.Error("maintenance job registry", "error", err)
+	}
+
+	known, err := runSubcommand(ctx, pool, job)
+	if !known {
+		slog.Error("unknown job", "job", job)
+		return 2
+	}
+	if err != nil {
+		slog.Error("maintenance job failed", "job", job, "error", err)
+		return 1
+	}
+	if err := jobruns.RecordSuccess(ctx, pool, job); err != nil {
+		slog.Error("maintenance job succeeded but its success was not recorded", "job", job, "error", err)
+		return 1
+	}
+	return 0
+}
+
+func runSubcommand(ctx context.Context, pool *pgxpool.Pool, job string) (known bool, err error) {
 	switch job {
 	case "purge-accounts":
 		err = purgeAccounts(ctx, pool)
@@ -67,15 +116,32 @@ func runJob(job string) int {
 		err = collectObjects(ctx, pool)
 	case "rotate-partitions":
 		err = rotatePartitions(ctx, pool)
+	case "report":
+		err = printCapacityReport(ctx, pool)
 	default:
-		slog.Error("unknown job", "job", job)
-		return 2
+		return false, nil
 	}
+	return true, err
+}
+
+func printCapacityReport(ctx context.Context, pool *pgxpool.Pool) error {
+	rate, err := capacity.ParseRestoreRate(os.Getenv(capacity.RestoreRateEnv))
 	if err != nil {
-		slog.Error("maintenance job failed", "job", job, "error", err)
-		return 1
+		return err
 	}
-	return 0
+	now := time.Now()
+	report, err := capacity.Store{Pool: pool, Rate: rate}.Report(ctx, now)
+	if err != nil {
+		return err
+	}
+	jobs, err := jobruns.List(ctx, pool, now)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(struct {
+		Capacity        capacity.Report  `json:"capacity"`
+		MaintenanceJobs []jobruns.Status `json:"maintenance_jobs"`
+	}{report, jobs})
 }
 
 func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {

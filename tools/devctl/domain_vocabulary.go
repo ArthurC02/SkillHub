@@ -355,6 +355,27 @@ var domainVocabularies = []domainVocabulary{
 		},
 	},
 	{
+		name: "platform agent run status",
+		sources: []vocabularySource{
+			sqlColumnCheck("platform_agent_runs", "status"),
+			goConstEnum("apps/platform/internal/product/operations/runs.go", "RunStatus"),
+		},
+	},
+	{
+		name: "platform agent finding status",
+		sources: []vocabularySource{
+			sqlColumnCheck("platform_agent_findings", "status"),
+			goConstEnum("apps/platform/internal/product/operations/findings.go", "FindingStatus"),
+		},
+	},
+	{
+		name: "platform agent finding event kind",
+		sources: []vocabularySource{
+			sqlColumnCheck("platform_agent_finding_events", "kind"),
+			goConstEnum("apps/platform/internal/product/operations/findings.go", "FindingEventKind"),
+		},
+	},
+	{
 		name: "feedback report kind",
 		sources: []vocabularySource{
 			sqlColumnCheck("feedback_reports", "kind"),

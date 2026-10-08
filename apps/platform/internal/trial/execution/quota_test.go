@@ -27,12 +27,13 @@ func TestOnlyFailuresOfTheRunItselfCountAgainstTheQuota(t *testing.T) {
 		{failurePlatform, false},
 		{failureNoProvider, false},
 		{failurePolicy, false},
+		{failureResourceLimit, false},
 	} {
 		if got := tc.class.CountsAgainstQuota(); got != tc.counts {
 			t.Errorf("%s counts against the quota = %v, want %v", tc.class, got, tc.counts)
 		}
 	}
-	if got, want := quotaExemptFailureClasses(), []string{"provider_error", "capability_mismatch", "policy_refused", "platform_error"}; !slices.Equal(got, want) {
+	if got, want := quotaExemptFailureClasses(), []string{"provider_error", "capability_mismatch", "policy_refused", "platform_error", "resource_limit"}; !slices.Equal(got, want) {
 		t.Errorf("exempt failure classes = %v, want %v", got, want)
 	}
 	if quotaCountsFromStatus != "preparing" {

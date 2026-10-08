@@ -27,10 +27,15 @@ func TestCreationRevisionReceivesVerifiedRunEvidence(t *testing.T) {
 	oldHash := v.Snapshot.Draft.ContentHash
 	wrongVersionRun, _ := seedEvaluatableRun(t, testPool, c.workspaceID, candidate.SkillID)
 	var runID string
-	if err := testPool.QueryRow(ctx, `INSERT INTO runs
-		(workspace_id, skill_version_id, test_case_snapshot_id, provider, runtime_snapshot, policy_snapshot, status, finished_at)
-		SELECT workspace_id, $2, test_case_snapshot_id, provider, runtime_snapshot, policy_snapshot, status, finished_at
-		FROM runs WHERE id=$1 RETURNING id::text`, mustUUID(t, wrongVersionRun), mustUUID(t, candidate.VersionID)).Scan(&runID); err != nil {
+	if err := testPool.QueryRow(ctx, `WITH r AS (
+			INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, status, finished_at)
+			SELECT workspace_id, $2, test_case_snapshot_id, provider, status, finished_at
+			FROM runs WHERE id=$1 RETURNING id, workspace_id),
+		s AS (
+			INSERT INTO run_snapshots (run_id, workspace_id, runtime_snapshot, policy_snapshot)
+			SELECT r.id, r.workspace_id, o.runtime_snapshot, o.policy_snapshot
+			FROM r, run_snapshots o WHERE o.run_id=$1)
+		SELECT id::text FROM r`, mustUUID(t, wrongVersionRun), mustUUID(t, candidate.VersionID)).Scan(&runID); err != nil {
 		t.Fatal(err)
 	}
 	const excerpt = "Duplicate rows remain in the input."
@@ -54,10 +59,15 @@ func TestCreationRevisionReceivesVerifiedRunEvidence(t *testing.T) {
 	creationPost(t, other, path, action(runID), 404)
 	creationPost(t, c, path, action("not-a-run"), 404)
 	var runningID string
-	if err := testPool.QueryRow(ctx, `INSERT INTO runs
-		(workspace_id, skill_version_id, test_case_snapshot_id, provider, runtime_snapshot, policy_snapshot, status)
-		SELECT workspace_id, skill_version_id, test_case_snapshot_id, provider, runtime_snapshot, policy_snapshot, 'running'
-		FROM runs WHERE id=$1 RETURNING id::text`, mustUUID(t, runID)).Scan(&runningID); err != nil {
+	if err := testPool.QueryRow(ctx, `WITH r AS (
+			INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, status)
+			SELECT workspace_id, skill_version_id, test_case_snapshot_id, provider, 'running'
+			FROM runs WHERE id=$1 RETURNING id, workspace_id),
+		s AS (
+			INSERT INTO run_snapshots (run_id, workspace_id, runtime_snapshot, policy_snapshot)
+			SELECT r.id, r.workspace_id, o.runtime_snapshot, o.policy_snapshot
+			FROM r, run_snapshots o WHERE o.run_id=$1)
+		SELECT id::text FROM r`, mustUUID(t, runID)).Scan(&runningID); err != nil {
 		t.Fatal(err)
 	}
 	creationPost(t, c, path, action(runningID), 422)

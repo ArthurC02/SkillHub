@@ -54,3 +54,19 @@ func TestTheWorkerRefusesToStartWithDevLoginATokenlessProviderOrCleanMode(t *tes
 		t.Fatalf("a local worker with dev login on insecure cookies was refused: %q", refusals)
 	}
 }
+
+func TestTheWorkerRefusesToStartWithAnUnusableRestoreRate(t *testing.T) {
+	for _, name := range []string{"APP_URL", "DEV_CORS_ORIGIN", "IMPORT_ALLOW_INSECURE", "IMPORT_EXTRA_HOSTS", "COOKIE_INSECURE", "DEV_LOGIN", "SKILLHUB_CLEAN_MODE"} {
+		t.Setenv(name, "")
+	}
+	t.Setenv("RESTORE_BYTES_PER_SECOND", "0")
+	refusals := startupRefusals(run.NewRegistry())
+	if len(refusals) != 1 || !strings.Contains(refusals[0], "RESTORE_BYTES_PER_SECOND") {
+		t.Fatalf("refusals = %q, want one naming RESTORE_BYTES_PER_SECOND", refusals)
+	}
+
+	t.Setenv("RESTORE_BYTES_PER_SECOND", "")
+	if refusals := startupRefusals(run.NewRegistry()); len(refusals) != 0 {
+		t.Fatalf("an unset restore rate was refused instead of falling back to the default: %q", refusals)
+	}
+}

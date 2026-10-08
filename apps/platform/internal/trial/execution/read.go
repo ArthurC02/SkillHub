@@ -129,7 +129,11 @@ func (s *Service) EvaluationRun(ctx context.Context, workspaceID, runID pgtype.U
 	if err != nil {
 		return EvaluationRun{}, false, err
 	}
-	return evaluationRun(row), true, nil
+	snapshots, err := s.queries().GetRunSnapshots(ctx, gen.GetRunSnapshotsParams{RunID: runID, WorkspaceID: workspaceID})
+	if err != nil {
+		return EvaluationRun{}, false, err
+	}
+	return evaluationRun(row, snapshots.RuntimeSnapshot), true, nil
 }
 
 func (s *Service) EvaluationInput(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationInput, bool, error) {
@@ -185,11 +189,11 @@ func evaluationArtifacts(rows []gen.Artifact, now time.Time) ([]EvaluationArtifa
 	return artifacts, absent
 }
 
-func evaluationRun(row gen.Run) EvaluationRun {
+func evaluationRun(row gen.Run, runtimeSnapshot []byte) EvaluationRun {
 	return EvaluationRun{
 		ID: row.ID, WorkspaceID: row.WorkspaceID,
 		SkillVersionID: row.SkillVersionID, TestCaseSnapshotID: row.TestCaseSnapshotID,
-		Status: string(row.Status), StatusReason: row.StatusReason, RuntimeSnapshot: row.RuntimeSnapshot,
+		Status: string(row.Status), StatusReason: row.StatusReason, RuntimeSnapshot: runtimeSnapshot,
 		Terminal:  IsTerminal(row.Status),
 		StartedAt: timePtr(row.StartedAt), FinishedAt: timePtr(row.FinishedAt), FailureClass: row.FailureClass,
 	}

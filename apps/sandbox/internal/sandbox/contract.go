@@ -34,6 +34,7 @@ const (
 	ClassCapabilityMismatch = "capability_mismatch"
 	ClassCancelled          = "cancelled"
 	ClassTimeout            = "timeout"
+	ClassResourceLimit      = "resource_limit"
 )
 
 type RunRequest struct {
@@ -108,7 +109,7 @@ type ResourceLimits struct {
 
 const (
 	defaultMemoryBytes          = 4 << 30
-	defaultDiskBytes            = 8 << 30
+	defaultDiskBytes            = defaultMemoryBytes
 	defaultMaxPIDs              = 256
 	defaultWallClockSoftSeconds = 600
 	defaultWallClockHardSeconds = 900

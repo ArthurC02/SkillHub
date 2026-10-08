@@ -20,3 +20,11 @@ func TestTheLargestInputsARunCanBeGivenFitInAQuarterOfItsDisk(t *testing.T) {
 			inputs, archive, staging+installed, testlab.MaxTestCaseBytes, disk)
 	}
 }
+
+func TestTheDefaultDiskIsNoLargerThanTheDefaultMemoryItIsBackedBy(t *testing.T) {
+	limits := DefaultResourceLimits()
+	if limits.DiskBytes > limits.MemoryBytes {
+		t.Fatalf("default disk %d exceeds default memory %d, but scratch files are counted against memory",
+			limits.DiskBytes, limits.MemoryBytes)
+	}
+}

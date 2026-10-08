@@ -22,7 +22,7 @@ type sdkVersionSite struct {
 var sdkVersionSites = []sdkVersionSite{
 	{
 		file:    "apps/sandbox/cmd/sandboxd/main.go",
-		what:    "the compiled default sandboxd advertises in ProviderCapability, which dispatch freezes into runs.runtime_snapshot as the run's permanent runtime_version, I-05",
+		what:    "the compiled default sandboxd advertises in ProviderCapability, which dispatch freezes into run_snapshots.runtime_snapshot as the run's permanent runtime_version, I-05",
 		pattern: regexp.MustCompile(`SKILLHUB_SANDBOX_RUNTIME_VERSION"\s*,\s*"([^"]*)"`),
 	},
 	{

@@ -31,7 +31,7 @@
 | --- | --- | --- |
 | `SKILLHUB_SANDBOX_TOKEN` | 無（**必填**） | Provider token；未設定則拒絕啟動（fail closed） |
 | `SKILLHUB_SANDBOX_ADDR` | `:9000` | 監聽位址 |
-| `SKILLHUB_SANDBOX_IMAGE` | `skillhub/runtime-agent-sdk:2026.08-17` | Runtime Image。**生產 `runsc` 強制填 digest**（I-02），tag 是移動標的。`2026.08-2` 起含 python3 與目錄宣告的 Python 依賴（[infra/images/README.md](../../infra/images/README.md)）——**目錄的 Agent 相容欄是在 `2026.08-1` 上實測的**，換版後那 45 筆結論不再適用，需重跑 CONTENT-008 基準才會有新的一組 |
+| `SKILLHUB_SANDBOX_IMAGE` | `skillhub/runtime-agent-sdk:2026.08-18` | Runtime Image。**生產 `runsc` 強制填 digest**（I-02），tag 是移動標的。`2026.08-2` 起含 python3 與目錄宣告的 Python 依賴（[infra/images/README.md](../../infra/images/README.md)）——**目錄的 Agent 相容欄是在 `2026.08-1` 上實測的**，換版後那 45 筆結論不再適用，需重跑 CONTENT-008 基準才會有新的一組 |
 | `SKILLHUB_SANDBOX_RUNTIME` | 空（＝主機預設 runtime） | 生產填 `runsc`（gVisor） |
 | `SKILLHUB_SANDBOX_NETWORK` | `none` | **出口網路**的名稱。`none`／空＝本節點無出口，所有沙箱一律 `--network none`。設了名字，沙箱**仍只在 `RunRequest.egress.allow` 含 `model_gateway` 時**才接上去；dev 填 `skillhub_egress`（`internal: true`，上面只有 LiteLLM 閘道），生產填 Egress Proxy 的網路名 |
 | `SKILLHUB_SANDBOX_SLOTS` | `2` | 併發上限；滿了回 429 |
@@ -53,6 +53,8 @@
 | `local` | 主機行程，無隔離（clean mode） | `none` | 宣告但不強制 |
 
 sandboxd 拒絕啟動的組合：不認得的值；`mxc` 搭配 `SKILLHUB_SANDBOX_RUNTIME=runsc`；`mxc` 搭配 `SKILLHUB_CLEAN_MODE=1`；`mxc` 而沒有 `SKILLHUB_SANDBOX_MXC_BIN`；`local` 而沒開 clean mode；`docker` 而開了 clean mode。
+
+`local` 後端撞到上限也回報 `resource_limit`：Linux 在行程結束後、cgroup 移除前讀 `memory.events` 的 `oom_kill` 與 `pids.events` 的 `max`，大於 0 即記下（記憶體算被殺，不看 exit code；行程數需 exit code 不為 0）。Windows 用 Job 物件的完成埠收 `ACTIVE_PROCESS_LIMIT` 與 `JOB_MEMORY_LIMIT` 訊息；Job 的記憶體上限只讓配置失敗、不殺行程，所以記憶體與行程數都要 exit code 不為 0 才算。
 
 `mxc` 後端沿用 `local` 的行程樹、輸入搬運、trace 與 artifact 讀取和殘留清理，只換掉啟動方式：
 
@@ -97,6 +99,8 @@ sandboxd 拒絕啟動的組合：不認得的值；`mxc` 搭配 `SKILLHUB_SANDBO
 | `AutoRemove` | `false` | 清理是 DELETE 的職責，容器不得自己消失，否則平台無法對帳 |
 
 `/work` 與 `/out` 用 tmpfs 是刻意的：tmpfs 能真的擋住 size，而它的頁面算在 memory cgroup 上，所以想灌滿磁碟的工作負載會先撞到記憶體上限——比磁碟上限更嚴格，不會更鬆。`--storage-opt` 只在檔案系統支援時才是更貼切的作法，因此以開關提供。
+
+工作負載撞到自己宣告的記憶體或行程數上限時，結果是 `completed`／`failed`，`error.class` 為 `resource_limit`，訊息說出是哪個上限（扣不扣試跑配額由平台決定）。記憶體看 Docker 的 `OOMKilled`；行程數由 `Wait` 期間監看容器 cgroup 的 `pids.events`（inotify 加 50 ms 輪詢）：計數大於 0 且 exit code 不為 0 才算，exit 0 照常是成功。找不到或讀不到 cgroup 只記一筆 warn，不影響 `Wait` 的結果。
 
 ### Egress（SBX-007，部分完成）
 
@@ -167,7 +171,7 @@ docker run --rm -v "$PWD:/src" -w /src/apps/sandbox \
   golangci/golangci-lint:v2.12.2 sh -c "golangci-lint fmt --diff && golangci-lint run ./..."
 
 # Runtime Image
-docker build -t skillhub/runtime-agent-sdk:2026.08-17 infra/images/runtime-agent-sdk
+docker build -t skillhub/runtime-agent-sdk:2026.08-18 infra/images/runtime-agent-sdk
 ```
 
 整合測試偵測不到 Docker daemon 就 skip 而非 fail，並且每個測試容器都帶 `skillhub.sandbox.test=1` label、用完即刪。

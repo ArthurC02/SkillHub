@@ -68,7 +68,7 @@ func TestSDKVersionCatchesAGoDefaultLeftBehind(t *testing.T) {
 	for _, needle := range []string{
 		sdkVersionDockerfile + ":3", "0.4.1",
 		"apps/sandbox/cmd/sandboxd/main.go:5", "0.3.233",
-		"runs.runtime_snapshot",
+		"run_snapshots.runtime_snapshot",
 	} {
 		if !strings.Contains(problems[0], needle) {
 			t.Fatalf("problem does not name %q: %q", needle, problems[0])

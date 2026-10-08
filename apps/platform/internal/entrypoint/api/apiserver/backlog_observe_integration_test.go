@@ -81,19 +81,26 @@ func TestTheEnrichmentBacklogCountsOnlyPendingDocumentsThatHaveAPackage(t *testi
 	c := a.login(t, uniqueWorklistLabel("backlog-enrichment"))
 
 	var skills []pgtype.UUID
-	seed := func(name, status string, key *string, updated time.Time) {
-		skill := mustUUID(t, seedSkill(t, pool, c.workspaceID, uniqueWorklistLabel(name)))
-		if _, err := pool.Exec(ctx, `UPDATE search_documents
-			SET enrichment_status = $2, latest_package_object_key = $3, updated_at = $4 WHERE skill_id = $1`,
-			skill, status, key, updated); err != nil {
+	seed := func(name, status string, packaged bool, updated time.Time) {
+		skillID := seedSkill(t, pool, c.workspaceID, uniqueWorklistLabel(name))
+		skill := mustUUID(t, skillID)
+		if _, err := pool.Exec(ctx, `UPDATE search_documents SET enrichment_status = $2, updated_at = $3 WHERE skill_id = $1`,
+			skill, status, updated); err != nil {
 			t.Fatal(err)
+		}
+		if packaged {
+			version := mustUUID(t, seedSkillVersion(t, pool, c.workspaceID, skillID))
+			if _, err := pool.Exec(ctx, `UPDATE search_documents sd
+				SET latest_version_id = v.id, latest_package_object_key = v.package_object_key, latest_source_path = v.source_path
+				FROM skill_versions v WHERE v.id = $2 AND sd.skill_id = $1`, skill, version); err != nil {
+				t.Fatal(err)
+			}
 		}
 		skills = append(skills, skill)
 	}
-	key := "packages/backlog.zip"
-	seed("backlog-no-package", string(catalog.EnrichmentPending), nil, backlogDay(1))
-	seed("backlog-enriched", string(catalog.EnrichmentEnriched), &key, backlogDay(2))
-	seed("backlog-waiting", string(catalog.EnrichmentPending), &key, backlogDay(5))
+	seed("backlog-no-package", string(catalog.EnrichmentPending), false, backlogDay(1))
+	seed("backlog-enriched", string(catalog.EnrichmentEnriched), true, backlogDay(2))
+	seed("backlog-waiting", string(catalog.EnrichmentPending), true, backlogDay(5))
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(), `UPDATE search_documents SET enrichment_status = $2, updated_at = now()
 			WHERE skill_id = ANY($1)`, skills, string(catalog.EnrichmentEnriched))

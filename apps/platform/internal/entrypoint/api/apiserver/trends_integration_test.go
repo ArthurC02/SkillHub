@@ -211,9 +211,12 @@ func seedRunCreatedAt(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID, ve
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
-		                  runtime_snapshot, policy_snapshot, status, finished_at, created_at)
-		VALUES ($1, $2, $3, 'fake_sandbox', '{}'::jsonb, '{}'::jsonb, 'succeeded', $4, $4)`,
+		WITH r AS (
+			INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
+			                  status, finished_at, created_at)
+			VALUES ($1, $2, $3, 'fake_sandbox', 'succeeded', $4, $4)
+			RETURNING id, workspace_id)
+		INSERT INTO run_snapshots (run_id, workspace_id) SELECT id, workspace_id FROM r`,
 		mustUUID(t, workspaceID), mustUUID(t, versionID), mustUUID(t, snapshotID), at); err != nil {
 		t.Fatal(err)
 	}

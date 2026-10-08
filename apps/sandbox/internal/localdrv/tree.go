@@ -10,6 +10,14 @@ type processTree interface {
 	terminate(pid int) error
 
 	release() error
+
+	limitHits() limitHits
+}
+
+type limitHits struct {
+	OOMKilled      bool
+	MemoryLimitHit bool
+	PidsLimitHit   bool
 }
 
 type treeLimits struct {

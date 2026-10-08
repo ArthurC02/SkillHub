@@ -330,6 +330,48 @@ groups:
             `maintenance collect-objects` 應該每天跑一次。先查部署的 cron 與那個 job 的 log。
             付的是無法觸及的物件儲存費用，不是資料遺失。
 
+      - alert: DatabaseNearRestoreBudget
+        expr: skillhub_restore_budget_days_left < 90
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "照近 30 天的成長，資料庫將在 90 天內大到無法 10 分鐘內從備份還原"
+          description: >-
+            跑 `maintenance report` 看哪幾張表在長；永久保存且可封存的資料（Run 底下的快照與轉換、評估）
+            是封存的對象。還原速率若還是預設值（report 的 restore_rate_measured=false），先在節點上實測再判斷。
+
+      - alert: DatabaseOverRestoreBudget
+        expr: skillhub_database_bytes > skillhub_restore_budget_bytes
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "資料庫已超過 10 分鐘還原預算，故障時 15 分鐘內恢復的目標不再成立"
+          description: >-
+            跑 `maintenance report`；在封存完成之前，故障恢復時間以實際還原時間為準。
+
+      - alert: CapacityNotObserved
+        expr: absent(skillhub_restore_budget_days_left)
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "資料庫容量沒有在發佈，上面兩條容量告警因此都不會響"
+          description: >-
+            這個值由 worker 每分鐘從每日樣本算出；series 不存在＝worker 沒有在跑，或讀不到資料庫。
+
+      - alert: MaintenanceJobOverdue
+        expr: skillhub_maintenance_overdue_ratio > 2
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "維運工作 {{ $labels.job }} 已超過兩個週期沒有成功"
+          description: >-
+            `maintenance {{ $labels.job }}` 由 systemd timer 觸發；先查那個 timer 是否啟用、上一次執行的 journal。
+            從沒成功過的工作從它第一次被登記起算。清除類工作不跑，保存期限就只是一句承諾。
+
       - alert: SourceChecksStale
         expr: skillhub_backlog_oldest_seconds{backlog="source_checks"} > 2 * 86400
         for: 1h

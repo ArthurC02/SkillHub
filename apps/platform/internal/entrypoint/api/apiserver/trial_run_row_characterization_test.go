@@ -23,7 +23,7 @@ func TestADispatchedRunRecordsItsPinnedRuntimeItsAttemptAndWhoStartedIt(t *testi
 
 	var raw []byte
 	if err := pool.QueryRow(context.Background(),
-		"SELECT runtime_snapshot FROM runs WHERE id = $1", runID).Scan(&raw); err != nil {
+		"SELECT runtime_snapshot FROM run_snapshots WHERE run_id = $1", runID).Scan(&raw); err != nil {
 		t.Fatal(err)
 	}
 	var snapshot struct {

@@ -18,10 +18,10 @@ if ! command -v runsc >/dev/null 2>&1; then
   : "${SEC009_RUNSC_VERSION:?the calling script must pass the gVisor baseline}"
   URL=https://storage.googleapis.com/gvisor/releases/release/${SEC009_RUNSC_VERSION#release-}/${ARCH}
   curl -fsSL -o /tmp/gvisor.tar.zstd "${URL}/gvisor.tar.zstd"
-  curl -fsSL -o /tmp/gvisor.tar.zstd.sha512 "${URL}/gvisor.tar.zstd.sha512"
-  ( cd /tmp && sha512sum -c gvisor.tar.zstd.sha512 )
+  : "${SEC009_RUNSC_SHA512:?the calling script must pass the pinned sha512}"
+  echo "${SEC009_RUNSC_SHA512}  /tmp/gvisor.tar.zstd" | sha512sum -c -
   tar --zstd -xf /tmp/gvisor.tar.zstd -C /usr/local/bin
-  rm -f /tmp/gvisor.tar.zstd /tmp/gvisor.tar.zstd.sha512
+  rm -f /tmp/gvisor.tar.zstd
 fi
 
 # Empties the root cgroup so subtree_control becomes writable: cgroup v2's

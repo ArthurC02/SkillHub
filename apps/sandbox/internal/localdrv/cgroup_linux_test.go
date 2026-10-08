@@ -67,6 +67,9 @@ func TestTheMemoryCeilingStopsAWorkloadThatOutgrowsIt(t *testing.T) {
 	if strings.Contains(outcome.Output, "unhindered") {
 		t.Fatalf("the workload allocated past its ceiling: %s", outcome.Output)
 	}
+	if !outcome.OOMKilled {
+		t.Fatalf("a workload killed at its memory ceiling was not reported as OOMKilled: %+v", outcome)
+	}
 	if outcome.ExitCode == 0 {
 		t.Fatalf("a workload killed at its memory ceiling reported success (output: %s)", outcome.Output)
 	}
@@ -83,6 +86,9 @@ func TestTheProcessCeilingRefusesTheChildrenPastIt(t *testing.T) {
 
 	if !strings.Contains(outcome.Output, "the storm:") {
 		t.Fatalf("the storm never reported back: %s", outcome.Output)
+	}
+	if !outcome.PidsLimitHit {
+		t.Fatalf("children were refused past the ceiling but PidsLimitHit is false: %+v", outcome)
 	}
 	if strings.Contains(outcome.Output, "refused=0") {
 		t.Fatalf("every child was allowed past a ceiling of 40: %s", outcome.Output)

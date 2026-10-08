@@ -30,6 +30,16 @@ var operatorActions = audit.PlatformFilter{
 		audit.ActionExposureReview,
 		audit.ActionAccountLookup,
 		audit.ActionCreditLookup,
+		audit.ActionAgentEnable,
+		audit.ActionAgentDisable,
+		audit.ActionAgentBrakeEngage,
+		audit.ActionAgentBrakeRelease,
+		audit.ActionFindingOpen,
+		audit.ActionFindingReopen,
+		audit.ActionFindingRecover,
+		audit.ActionFindingAcknowledge,
+		audit.ActionFindingResolve,
+		audit.ActionFindingDismiss,
 	},
 	ScopedActions: []string{audit.ActionSkillTakedown},
 	Scope:         audit.ScopeOperator,
@@ -45,13 +55,15 @@ type operatorAuditHandler struct {
 }
 
 type operatorAuditEventView struct {
-	ActorUserID  *string        `json:"actor_user_id"`
-	Action       string         `json:"action"`
-	ResourceType string         `json:"resource_type"`
-	ResourceID   *string        `json:"resource_id"`
-	WorkspaceID  *string        `json:"workspace_id"`
-	OccurredAt   string         `json:"occurred_at"`
-	Metadata     map[string]any `json:"metadata"`
+	ActorKind    audit.ActorKind `json:"actor_kind"`
+	ActorUserID  *string         `json:"actor_user_id"`
+	ActorAgentID *string         `json:"actor_agent_id"`
+	Action       string          `json:"action"`
+	ResourceType string          `json:"resource_type"`
+	ResourceID   *string         `json:"resource_id"`
+	WorkspaceID  *string         `json:"workspace_id"`
+	OccurredAt   string          `json:"occurred_at"`
+	Metadata     map[string]any  `json:"metadata"`
 }
 
 type operatorAuditResponse struct {
@@ -99,7 +111,8 @@ func (h *operatorAuditHandler) List(w http.ResponseWriter, r *http.Request) {
 	events := make([]operatorAuditEventView, 0, len(records))
 	for _, rec := range records {
 		events = append(events, operatorAuditEventView{
-			ActorUserID: optionalUUID(rec.Actor), Action: rec.Action, ResourceType: rec.ResourceType,
+			ActorKind: rec.ActorKind(), ActorUserID: optionalUUID(rec.Actor), ActorAgentID: optionalUUID(rec.Agent),
+			Action: rec.Action, ResourceType: rec.ResourceType,
 			ResourceID: optionalUUID(rec.ResourceID), WorkspaceID: optionalUUID(rec.Workspace),
 			OccurredAt: rec.OccurredAt.UTC().Format(time.RFC3339), Metadata: rec.Metadata,
 		})

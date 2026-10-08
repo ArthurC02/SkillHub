@@ -33,9 +33,10 @@ type SearchSnapshot struct {
 }
 
 type publicScope struct {
-	catalogs    []pgtype.UUID
-	exposedKeys []string
-	exposed     map[pgtype.UUID]ExposedSkill
+	catalogs        []pgtype.UUID
+	exposedKeys     []string
+	exposedSkillIDs []pgtype.UUID
+	exposed         map[pgtype.UUID]ExposedSkill
 }
 
 func exposureKey(skillID, versionID pgtype.UUID, digest string) string {
@@ -47,7 +48,7 @@ func (s *Service) publicScope(ctx context.Context) (publicScope, error) {
 	if err != nil {
 		return publicScope{}, err
 	}
-	scope := publicScope{catalogs: catalogs, exposedKeys: []string{}, exposed: map[pgtype.UUID]ExposedSkill{}}
+	scope := publicScope{catalogs: catalogs, exposedKeys: []string{}, exposedSkillIDs: []pgtype.UUID{}, exposed: map[pgtype.UUID]ExposedSkill{}}
 	if s.ExposedSkills == nil {
 		return scope, nil
 	}
@@ -57,6 +58,7 @@ func (s *Service) publicScope(ctx context.Context) (publicScope, error) {
 	}
 	for _, e := range exposed {
 		scope.exposedKeys = append(scope.exposedKeys, exposureKey(e.SkillID, e.VersionID, e.SnapshotDigest))
+		scope.exposedSkillIDs = append(scope.exposedSkillIDs, e.SkillID)
 		scope.exposed[e.SkillID] = e
 	}
 	return scope, nil

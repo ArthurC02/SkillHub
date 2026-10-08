@@ -9,8 +9,13 @@ import { createAppRouter } from "../../app/router";
 import { daysOf, seriesOf, usd, type DispatchStatus, type ExposureCase } from "./admin.service";
 import {
   ADMIN_ACCOUNT,
+  ADMIN_AGENT_FINDINGS,
+  ADMIN_AGENTS,
   ADMIN_AUDIT_LOG,
   ADMIN_DISPATCH,
+  AGENT_FAILED_RUN,
+  AGENT_FINDING,
+  AGENT_REPORT_RUN,
   ADMIN_EXPOSURE_CASE,
   ADMIN_EXPOSURE_QUEUE,
   ADMIN_MODEL_BUDGETS,
@@ -141,6 +146,7 @@ const ADMIN_PATHS = [
   "/admin/audit-log",
   "/admin/cost-statistics",
   "/admin/exposure",
+  "/admin/agents",
 ];
 
 test("OPS-001: the account menu offers 後台 to an operator", async () => {
@@ -2097,7 +2103,9 @@ test("OPS-006: a halt the platform declared by itself names the platform as the 
           body: {
             events: [
               {
+                actor_kind: "system",
                 actor_user_id: null,
+                actor_agent_id: null,
                 action: "dispatch.halted",
                 resource_type: "dispatch",
                 resource_id: "h-1",
@@ -2169,6 +2177,35 @@ test("OPS-006: a failed audit refresh does not show cached rows as current", asy
   await click(button("重新讀取動作紀錄"));
   await waitFor(has("授予點數"));
   expect(container.querySelectorAll("tbody tr").length).toBeGreaterThan(0);
+});
+
+test("OPS-011: an action one of the platform's agents took names the agent, not the platform", async () => {
+  stub(true, (path) =>
+    path.startsWith("/admin/audit-log")
+      ? {
+          body: {
+            events: [
+              {
+                actor_kind: "agent",
+                actor_user_id: null,
+                actor_agent_id: "agent-7",
+                action: "dispatch.halted",
+                resource_type: "dispatch",
+                resource_id: "h-2",
+                workspace_id: null,
+                occurred_at: "2026-09-10T08:00:00Z",
+                metadata: {},
+              },
+            ],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/audit-log");
+  await waitFor(has("停止派送"));
+  expect(has("平台 Agent agent-7")()).toBe(true);
+  expect(has("平台自動")()).toBe(false);
 });
 
 test("OPS-006: a full page of 50 stops, the 51st event offers the next page", async () => {
@@ -2550,7 +2587,7 @@ test("OPS-008: a kind with no events in the range is named instead of drawn", as
   expect(has("這段期間沒有事件：儲值、更正。")()).toBe(true);
   expect(
     has(
-      "這段期間沒有事件：創作步驟、創作會話、搜尋向量、搜尋意圖分析、索引增強、改善建議、試跑、搜尋理由。",
+      "這段期間沒有事件：創作步驟、創作會話、搜尋向量、搜尋意圖分析、平台 Agent、索引增強、改善建議、試跑、搜尋理由。",
     )(),
   ).toBe(true);
 });
@@ -2956,4 +2993,162 @@ test("an absent search snapshot does not prevent revoking exposure", async () =>
   await type("#admin-exposure-review-note", "下架待查");
 
   expect(button("送出撤銷").disabled).toBe(false);
+});
+
+test("OPS-012: the inbox lists live findings with how often they were reported, and counts every status", async () => {
+  stub(true);
+  await mountAt("/admin/agents");
+  await waitFor(has("分割表輪替從來沒有成功過，已經超過兩個週期。"));
+  expect(has("回報 3 次")()).toBe(true);
+  expect(has("待處理")()).toBe(true);
+  expect(has("待辦：2")()).toBe(true);
+  expect(has("已解決：4")()).toBe(true);
+  expect(has("已自行恢復：2")()).toBe(true);
+  expect(calls.some((c) => c.url === "/admin/agents/findings")).toBe(true);
+});
+
+test("OPS-012: a closed status in the address lists that status; any other value falls back to the live list", async () => {
+  stub(true);
+  await mountAt("/admin/agents", { status: "resolved" });
+  await waitFor(() => calls.some((c) => c.url === "/admin/agents/findings?status=resolved"));
+  await go("/admin/agents", { status: "open" });
+  await waitFor(() => calls.some((c) => c.url === "/admin/agents/findings"));
+  expect(calls.some((c) => c.url.includes("status=open"))).toBe(false);
+});
+
+test("OPS-012: an empty view says how many it holds", async () => {
+  stub(true, (path) =>
+    path === "/admin/agents/findings"
+      ? { body: { ...ADMIN_AGENT_FINDINGS, findings: [] }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/agents");
+  await waitFor(has("待辦：0 件。"));
+});
+
+test("OPS-012: a finding opens with the values it rests on, its history and only the moves its status allows", async () => {
+  stub(true);
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("這件事"));
+  await waitFor(has("日報首次回報"));
+  expect(has("/maintenance_jobs/rotate-partitions/overdue_ratio ＝ 3.4")()).toBe(true);
+  expect(has("日報再次回報")()).toBe(true);
+  expect(button("我來處理")).toBeDefined();
+  expect(button("忽略這件事")).toBeDefined();
+  expect(has("重新打開")()).toBe(false);
+  expect(has("打開這件事")()).toBe(false);
+});
+
+test("OPS-012: a resolved finding offers only to reopen it", async () => {
+  const resolved = { ...ADMIN_AGENT_FINDINGS.findings[0], status: "resolved" };
+  stub(true, (path) =>
+    path === `/admin/agents/findings/${AGENT_FINDING}`
+      ? { body: { finding: resolved, events: [] }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("重新打開"));
+  expect(has("我來處理")()).toBe(false);
+  expect(has("標記已解決")()).toBe(false);
+  expect(has("忽略這件事")()).toBe(false);
+});
+
+test("OPS-012: taking on a finding sends the move with the operator's note", async () => {
+  stub(true, (_path, method) => (method === "PUT" ? { body: {}, status: 204 } : undefined));
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("我來處理"));
+  await type("#admin-finding-acknowledged-note", " checking the job ");
+  await submit("#admin-finding-acknowledged-note");
+  await waitFor(() => calls.some((c) => c.method === "PUT"));
+  expect(calls.find((c) => c.method === "PUT")).toEqual({
+    method: "PUT",
+    url: `/admin/agents/findings/${AGENT_FINDING}/status`,
+    body: { status: "acknowledged", note: "checking the job" },
+  });
+});
+
+test("OPS-012: a refused move explains the conflict without exposing a raw server error", async () => {
+  stub(true, (_path, method) =>
+    method === "PUT"
+      ? {
+          body: { error: "the finding cannot move to that status from where it is now" },
+          status: 409,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("標記已解決"));
+  await type("#admin-finding-resolved-note", "fixed");
+  await submit("#admin-finding-resolved-note");
+  await waitFor(has("資料已變更，請重新整理頁面確認最新狀態後再試。"));
+  expect(has("the finding cannot move to that status from where it is now")()).toBe(false);
+});
+
+test("OPS-012: a run in the address shows its report, then each step's tool, answer, tokens and cost", async () => {
+  stub(true);
+  await mountAt("/admin/agents", { run: AGENT_REPORT_RUN });
+  await waitFor(has("需要注意：1 項"));
+  expect(has("正常：1 項")()).toBe(true);
+  await waitFor(has("呼叫 maintenance_report"));
+  expect(has("交出結果")()).toBe(true);
+  expect(has("輸入 812 tokens、輸出 14 tokens；花費 $0.0012")()).toBe(true);
+});
+
+test("OPS-012: a failed run's report is shown as not checked, and its list row names why and what it cost", async () => {
+  stub(true);
+  await mountAt("/admin/agents", { run: AGENT_FAILED_RUN });
+  await waitFor(has("這份日報沒有通過核對"));
+  expect(has("which no tool returned")()).toBe(true);
+  expect(has("2 步；花費 $0.0018（另有 1 步沒有回報花費）")()).toBe(true);
+  expect(has("2 步；花費 $0.0031看這次的步驟")()).toBe(true);
+});
+
+test("OPS-012: ids in the address that are not UUIDs are dropped instead of fetched", async () => {
+  stub(true);
+  await mountAt("/admin/agents", { run: "not-a-run", finding: "nope" });
+  await waitFor(has("日報與執行紀錄"));
+  await waitFor(has("回報 3 次"));
+  expect(has("這次執行")()).toBe(false);
+  expect(calls.some((c) => c.url.includes("/steps") || c.url.includes("/findings/"))).toBe(false);
+});
+
+test("OPS-011: disabling an agent and engaging the brake each send the operator's note", async () => {
+  stub(true, (_path, method) => (method === "GET" ? undefined : { body: {}, status: 200 }));
+  await mountAt("/admin/agents");
+  await waitFor(has("停用 daily-report"));
+  await type("#admin-agent-daily-report-note", "  rotating keys  ");
+  await submit("#admin-agent-daily-report-note");
+  await waitFor(() => calls.some((c) => c.method === "PUT" && c.url.endsWith("/enabled")));
+  expect(calls.find((c) => c.method === "PUT" && c.url.endsWith("/enabled"))).toEqual({
+    method: "PUT",
+    url: "/admin/agents/daily-report/enabled",
+    body: { enabled: false, note: "rotating keys" },
+  });
+  await type("#admin-agent-brake-engage-note", "incident");
+  await submit("#admin-agent-brake-engage-note");
+  await waitFor(() => calls.some((c) => c.url === "/admin/agents/brake"));
+  expect(calls.find((c) => c.url === "/admin/agents/brake")).toEqual({
+    method: "PUT",
+    url: "/admin/agents/brake",
+    body: { note: "incident" },
+  });
+});
+
+test("OPS-011: an engaged brake shows its reason and offers only the release", async () => {
+  stub(true, (path) =>
+    path === "/admin/agents"
+      ? {
+          body: {
+            ...ADMIN_AGENTS,
+            brake: { reason: "gateway incident", engaged_at: "2026-10-07T01:00:00Z" },
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/agents");
+  await waitFor(has("煞車拉下：所有 Agent 停止"));
+  expect(has("理由：gateway incident")()).toBe(true);
+  expect(button("放開 Agent 煞車")).toBeDefined();
+  expect(has("拉下 Agent 煞車")()).toBe(false);
 });

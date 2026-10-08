@@ -1,0 +1,19 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "registry-run-preflight-citation-after-mainline-merge",
+  "status": "draft",
+  "intent": "讓主線審計鏈與管理分支版本停用程式合併後，Registry→Run 的既有事實讀取仍可機器驗證。",
+  "actor": "維護 Run 與 Registry 邊界的開發者",
+  "observable_outcome": "保留主線 67 筆審計事件，既有互動的引用重新指向合併後的 preflight，verify-evidence 不再報 stale。",
+  "acceptance_criteria": [
+    {
+      "id": "preflight-fact-citation-current",
+      "statement": "互動語意與契約不變；新引用能對目前函式重算摘要，審計鏈延續主線。"
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": ["需要 developer 對新版 Registry revision 核准。"],
+  "risk_flags": ["cross_context"],
+  "required_approval_roles": ["developer"],
+  "sources": ["apps/platform/internal/trial/execution/preflight.go", "docs/domain-memory/audit/events.jsonl"]
+}

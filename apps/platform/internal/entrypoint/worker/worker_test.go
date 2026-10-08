@@ -145,6 +145,9 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 	}
 
 	assertRunServiceDependenciesWired(t, set)
+	if set.Runs.VersionAdmission == nil {
+		t.Error("run service has no Registry version admission")
+	}
 	assertEvaluationServiceDependenciesWired(t, set)
 	assertPackagingSharesTheTestLabService(t, set)
 	assertObjectReconcilerDependenciesWired(t, set)
@@ -236,6 +239,7 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 		outbox.PublishArgs{}.Kind():         true,
 		objreconcile.Args{}.Kind():          false,
 		PartitionCreateArgs{}.Kind():        true,
+		CapacitySampleArgs{}.Kind():         true,
 		EnrichmentBackfillArgs{}.Kind():     false,
 		wiring.CreditRecomputeArgs{}.Kind(): false,
 	}

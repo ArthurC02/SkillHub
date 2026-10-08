@@ -290,6 +290,16 @@ func TestClassifyResultSeparatesWorkloadFailureFromProviderFailure(t *testing.T)
 			gen.RunStatusCancelled, failureCancelled,
 		},
 		{
+			"workload hit a resource limit and the provider completed",
+			ProviderRun{State: ProviderStateCompleted, Result: result("failed", "resource_limit")},
+			gen.RunStatusFailed, failureResourceLimit,
+		},
+		{
+			"workload hit a resource limit and the provider failed",
+			ProviderRun{State: ProviderStateFailed, Result: result("failed", "resource_limit")},
+			gen.RunStatusFailed, failureResourceLimit,
+		},
+		{
 
 			"terminal with no result at all",
 			ProviderRun{State: ProviderStateCompleted},
@@ -315,6 +325,49 @@ func TestClassifyResultSeparatesWorkloadFailureFromProviderFailure(t *testing.T)
 	}
 }
 
+func TestClassifyResultRelaysTheResourceLimitTheSandboxNamed(t *testing.T) {
+	const memory = "memory limit reached; files under /work, /out and /tmp count toward it"
+	for _, tc := range []struct {
+		name       string
+		message    string
+		wantReason statusReason
+	}{
+		{"the sandbox named the memory limit", memory, statusReason(memory)},
+		{"the sandbox named nothing", "", "工作負載撞到了這次申請的資源上限"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := ProviderRun{State: ProviderStateCompleted, Result: &RunResult{
+				Status: "failed", Error: &RunError{Class: "resource_limit", Message: tc.message},
+			}}
+			ending, errClass := classifyResult(pr)
+			if ending.reason != tc.wantReason {
+				t.Errorf("reason = %q, want %q", ending.reason, tc.wantReason)
+			}
+			if errClass != "resource_limit" {
+				t.Errorf("attempt error class = %q, want resource_limit", errClass)
+			}
+		})
+	}
+}
+
+func TestAResourceLimitDoesNotOutrankACancellationOrATimeout(t *testing.T) {
+	limit := &RunError{Class: "resource_limit", Message: "process limit reached; the workload may run at most 8 processes"}
+	for _, tc := range []struct {
+		name string
+		in   ProviderRun
+		want FailureClass
+	}{
+		{"timed out", ProviderRun{State: ProviderStateFailed, Result: &RunResult{Status: "timed_out", Error: limit}}, failureTimeout},
+		{"cancelled", ProviderRun{State: ProviderStateCancelled, Result: &RunResult{Status: "cancelled", Error: limit}}, failureCancelled},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if ending, _ := classifyResult(tc.in); ending.failure != tc.want {
+				t.Errorf("failure class = %q, want %q", ending.failure, tc.want)
+			}
+		})
+	}
+}
+
 func dispatchedAttempt(at time.Time) gen.RunAttempt {
 	handle := "sbx-1"
 	return gen.RunAttempt{ProviderRunID: &handle, StartedAt: pgtype.Timestamptz{Time: at, Valid: true}}
@@ -327,29 +380,29 @@ func TestTheWallClockRunsFromTheFirstDispatchNotFromCreation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	run := gen.Run{CreatedAt: pgtype.Timestamptz{Time: created, Valid: true}, PolicySnapshot: policy}
+	run := gen.Run{CreatedAt: pgtype.Timestamptz{Time: created, Valid: true}}
 	refused := gen.RunAttempt{StartedAt: pgtype.Timestamptz{Time: created.Add(time.Minute), Valid: true}}
 	attempts := []gen.RunAttempt{refused, dispatchedAttempt(second), dispatchedAttempt(first)}
 
-	if got, want := clockFor(run, attempts).deadline(), first.Add(2*time.Minute); !got.Equal(want) {
+	if got, want := clockFor(run, policy, attempts).deadline(), first.Add(2*time.Minute); !got.Equal(want) {
 		t.Errorf("deadline = %s, want the earliest dispatch plus the frozen policy's 2m, %s", got, want)
 	}
 
-	run.PolicySnapshot = []byte(`{}`)
+	noPolicy := []byte(`{}`)
 	want := first.Add(time.Duration(DefaultResourceLimits().WallClockHardSeconds) * time.Second)
-	if got := clockFor(run, attempts).deadline(); !got.Equal(want) {
+	if got := clockFor(run, noPolicy, attempts).deadline(); !got.Equal(want) {
 		t.Errorf("deadline without a policy = %s, want the default counted from dispatch, %s", got, want)
 	}
-	if reason := clockFor(run, attempts).timeoutReason(); !strings.Contains(string(reason), "硬性時間上限") {
+	if reason := clockFor(run, noPolicy, attempts).timeoutReason(); !strings.Contains(string(reason), "硬性時間上限") {
 		t.Errorf("reason = %q, want it to name the wall clock", reason)
 	}
 }
 
 func TestARunNobodyHasAcceptedWaitsForASlotUpToTheWaitLimit(t *testing.T) {
 	created := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
-	run := gen.Run{CreatedAt: pgtype.Timestamptz{Time: created, Valid: true}, PolicySnapshot: []byte(`{}`)}
+	run := gen.Run{CreatedAt: pgtype.Timestamptz{Time: created, Valid: true}}
 	refused := gen.RunAttempt{StartedAt: pgtype.Timestamptz{Time: created, Valid: true}}
-	clock := clockFor(run, []gen.RunAttempt{refused})
+	clock := clockFor(run, []byte(`{}`), []gen.RunAttempt{refused})
 
 	if !clock.waiting() {
 		t.Fatal("a run whose only attempt got no provider handle is not waiting")

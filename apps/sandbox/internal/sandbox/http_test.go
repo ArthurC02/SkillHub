@@ -572,11 +572,16 @@ func TestNonZeroExitIsCompletedWithFailedResult(t *testing.T) {
 		name      string
 		outcome   sandbox.Outcome
 		wantState sandbox.RunState
+		wantClass string
 		wantMsg   string
 	}{
-		{"generic non-zero exit", sandbox.Outcome{ExitCode: 3}, sandbox.StateCompleted, "workload exited with code 3"},
-		{"oom killed", sandbox.Outcome{OOMKilled: true}, sandbox.StateFailed, "memory limit enforced against the workload"},
-		{"token ceiling reached", sandbox.Outcome{ExitCode: 9}, sandbox.StateCompleted, "token ceiling"},
+		{"generic non-zero exit", sandbox.Outcome{ExitCode: 3}, sandbox.StateCompleted, "execution", "workload exited with code 3"},
+		{"oom killed", sandbox.Outcome{ExitCode: 137, OOMKilled: true}, sandbox.StateCompleted, "resource_limit", "memory limit reached; files under /work, /out and /tmp count toward it"},
+		{"pids limit hit with a failing exit", sandbox.Outcome{ExitCode: 2, PidsLimitHit: true}, sandbox.StateCompleted, "resource_limit", "process limit reached; the workload may run at most 256 processes"},
+		{"oom killed wins over a pids limit hit", sandbox.Outcome{ExitCode: 137, OOMKilled: true, PidsLimitHit: true}, sandbox.StateCompleted, "resource_limit", "memory limit reached"},
+		{"memory ceiling hit with a failing exit", sandbox.Outcome{ExitCode: 1, MemoryLimitHit: true}, sandbox.StateCompleted, "resource_limit", "memory limit reached"},
+		{"memory ceiling hit with a failing exit and a pids hit", sandbox.Outcome{ExitCode: 1, MemoryLimitHit: true, PidsLimitHit: true}, sandbox.StateCompleted, "resource_limit", "memory limit reached"},
+		{"token ceiling reached", sandbox.Outcome{ExitCode: 9}, sandbox.StateCompleted, "execution", "token ceiling"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			drv, h := newServer(t)
@@ -590,13 +595,33 @@ func TestNonZeroExitIsCompletedWithFailedResult(t *testing.T) {
 			if final.Result.Status != sandbox.ResultFailed {
 				t.Errorf("result status = %s, want failed", final.Result.Status)
 			}
-			if final.Result.Error == nil || final.Result.Error.Class != sandbox.ClassExecution {
-				t.Fatalf("error = %+v, want class execution", final.Result.Error)
+			if final.Result.Error == nil || final.Result.Error.Class != tc.wantClass {
+				t.Fatalf("error = %+v, want class %s", final.Result.Error, tc.wantClass)
 			}
 			if !strings.Contains(final.Result.Error.Message, tc.wantMsg) {
 				t.Errorf("error message = %q, want it to mention %q", final.Result.Error.Message, tc.wantMsg)
 			}
 		})
+	}
+}
+
+func TestAPidsLimitHitWithAZeroExitStaysSucceeded(t *testing.T) {
+	assertZeroExitStaysSucceeded(t, sandbox.Outcome{ExitCode: 0, PidsLimitHit: true})
+}
+
+func TestAMemoryLimitHitWithAZeroExitStaysSucceeded(t *testing.T) {
+	assertZeroExitStaysSucceeded(t, sandbox.Outcome{ExitCode: 0, MemoryLimitHit: true})
+}
+
+func assertZeroExitStaysSucceeded(t *testing.T, outcome sandbox.Outcome) {
+	t.Helper()
+	drv, h := newServer(t)
+	_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
+	drv.exit(run.ProviderRunID, outcome)
+
+	final := waitForTerminal(t, h, run.ProviderRunID)
+	if final.State != sandbox.StateCompleted || final.Result.Status != sandbox.ResultSucceeded || final.Result.Error != nil {
+		t.Errorf("state = %s, result = %+v, want a completed succeeded run without an error", final.State, final.Result)
 	}
 }
 

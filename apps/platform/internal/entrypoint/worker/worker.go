@@ -9,6 +9,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/jobruns"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/jackc/pgx/v5"
@@ -21,6 +23,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
@@ -40,6 +43,8 @@ type Deps struct {
 	TraceIngestBaseURL string
 
 	LLM *llmclient.Client
+
+	RestoreRate capacity.RestoreRate
 
 	PollOnly bool
 }
@@ -99,9 +104,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	testlabSvc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
 	downloads.TestLab = testlabSvc
 
-	set.Runs = newRunService(pool, deps, testlabSvc)
-	wiring.WireRunRegistryReaders(set.Runs, registrySvc)
-	wiring.WireRunVersionAdmission(set.Runs, registrySvc)
+	set.Runs = newRunService(pool, deps, testlabSvc, registrySvc)
 	traceSvc := wiring.NewTraceService(pool, deps.TraceSigner, set.Runs)
 	set.Runs.Trace = traceSvc
 
@@ -153,8 +156,9 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		metrics.BacklogSourceChecks:  creationVersions.OldestSourceCheck,
 		metrics.BacklogEnrichment:    set.CreationSearch.OldestPendingEnrichment,
 	})
+	addCapacityObserver(set, workers, capacity.Store{Pool: pool, Rate: deps.RestoreRate})
 
-	addWorker(set, workers, &CreditRecomputeWorker{Svc: creditSvc})
+	addCreditConsumers(set, workers, pool, deps, creditSvc)
 
 	client, err := queue.New(pool, riverConfig(workers, periodicJobs(set, deps, outboxWorker), deps.PollOnly))
 	if err != nil {
@@ -164,8 +168,8 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	return set, nil
 }
 
-func newRunService(pool *pgxpool.Pool, deps Deps, testlabSvc *testlab.Service) *run.Service {
-	return &run.Service{
+func newRunService(pool *pgxpool.Pool, deps Deps, testlabSvc *testlab.Service, registrySvc *registry.Service) *run.Service {
+	runs := &run.Service{
 		Pool: pool, Providers: deps.Providers, Store: deps.Store, Gateway: run.GatewayOrNone(deps.Gateway),
 		ClearSightings: objreconcile.ClearArtifactSightings,
 		TestLab:        testlabSvc,
@@ -174,6 +178,9 @@ func newRunService(pool *pgxpool.Pool, deps Deps, testlabSvc *testlab.Service) *
 		LastOrphanScan:           wiring.LastOrphanScan(pool),
 		Deployment:               deps.RunDeployment,
 	}
+	wiring.WireRunRegistryReaders(runs, registrySvc)
+	wiring.WireRunVersionAdmission(runs, registrySvc)
+	return runs
 }
 
 func wireEvaluationModelAndEvents(evaluations *eval.Service, pool *pgxpool.Pool, llm *llmclient.Client) {
@@ -251,15 +258,18 @@ func newObjectReconciler(
 
 func periodicJobs(set *Set, deps Deps, outboxWorker *outbox.Worker) []*river.PeriodicJob {
 	var periodic []*river.PeriodicJob
-	schedule := func(args river.JobArgs, every time.Duration, runOnStart bool) {
+	scheduleAt := func(args river.JobArgs, when river.PeriodicSchedule, runOnStart bool) {
 		set.Scheduled[args.Kind()] = runOnStart
 		var opts *river.PeriodicJobOpts
 		if runOnStart {
 			opts = &river.PeriodicJobOpts{RunOnStart: true}
 		}
 		insert := periodicInsert(args)
-		periodic = append(periodic, river.NewPeriodicJob(river.PeriodicInterval(every),
+		periodic = append(periodic, river.NewPeriodicJob(when,
 			func() (river.JobArgs, *river.InsertOpts) { return args, insert }, opts))
+	}
+	schedule := func(args river.JobArgs, every time.Duration, runOnStart bool) {
+		scheduleAt(args, river.PeriodicInterval(every), runOnStart)
 	}
 	schedule(EvaluationRecoveryArgs{}, eval.RecoveryInterval, true)
 	schedule(RunSuperviseArgs{}, run.SuperviseInterval, true)
@@ -277,8 +287,14 @@ func periodicJobs(set *Set, deps Deps, outboxWorker *outbox.Worker) []*river.Per
 	}
 
 	schedule(PartitionCreateArgs{}, PartitionCreateInterval, true)
+	schedule(CapacitySampleArgs{}, capacity.SampleInterval, true)
 
 	schedule(EnrichmentBackfillArgs{}, EnrichmentBackfillInterval, false)
+	if agentRunsAvailable(deps) {
+		for _, def := range operations.Definitions() {
+			scheduleAt(PlatformAgentRunArgs{Agent: def.Name}, dailyAt{hour: platformAgentHourUTC}, false)
+		}
+	}
 	return periodic
 }
 
@@ -286,6 +302,11 @@ func addGaugePublishers(set *Set, workers *river.Workers, outboxWorker *outbox.W
 	observer := &BacklogObserveWorker{Backlogs: backlogs}
 	addWorker(set, workers, observer)
 	set.Gauges = []func(context.Context) error{set.Runs.PublishGauges, outboxWorker.PublishGauge, set.Objects.PublishGauge, observer.Observe}
+}
+
+func addCapacityObserver(set *Set, workers *river.Workers, store capacity.Store) {
+	addWorker(set, workers, &CapacitySampleWorker{Store: store})
+	set.Gauges = append(set.Gauges, store.PublishGauges, jobruns.PublishGauges(store.Pool))
 }
 
 func connectQueue(set *Set, client *river.Client[pgx.Tx]) {

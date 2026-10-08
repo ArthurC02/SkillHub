@@ -40,11 +40,14 @@ func seedEvaluatableRun(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID s
 	}
 
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
-		                  runtime_snapshot, policy_snapshot, status, started_at, finished_at)
-		VALUES ($1, $2, $3, 'fake_sandbox', '{}'::jsonb, '{}'::jsonb, 'succeeded',
-		        now() - interval '1 minute', now())
-		RETURNING id::text`,
+		WITH r AS (
+			INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
+			                  status, started_at, finished_at)
+			VALUES ($1, $2, $3, 'fake_sandbox', 'succeeded',
+			        now() - interval '1 minute', now())
+			RETURNING id, workspace_id),
+		s AS (INSERT INTO run_snapshots (run_id, workspace_id) SELECT id, workspace_id FROM r)
+		SELECT id::text FROM r`,
 		mustUUID(t, workspaceID), mustUUID(t, versionID), mustUUID(t, snapshotID),
 	).Scan(&runID); err != nil {
 		t.Fatal(err)

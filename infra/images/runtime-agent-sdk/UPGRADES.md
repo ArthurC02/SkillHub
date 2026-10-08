@@ -871,3 +871,30 @@ exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities 
 ### 本機驗證（2026-10-08，沒有任何模型呼叫）
 
 以 CI 釘住的同一組 `anchore/syft:v1.51.0@sha256:678bfa56…` 與 `anchore/grype:v0.117.0@sha256:ddf9e9f2…` 掃描本機建置，`--only-fixed --fail-on high`：`No vulnerabilities found`、exit 0。同一個映像、無網路：`perl-base` → `5.36.0-7+deb12u4`，`@modelcontextprotocol/sdk` → `1.31.0`，`proxy-addr` → `2.0.8`，`id -u` → `65532`，`pypdf` → `6.19.0`。`devctl image-gate` → `runtime image source gates passed`。
+
+### 2026-10-08：四項測項，全部跑在 CI 發佈的 digest 上
+
+| 欄位 | 值 |
+| --- | --- |
+| 映像 digest | `sha256:789d20e50701ec1eb199a55f823522ec642e2c05554652ee52f789bf9b22f00a`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-18`，[Runtime Image #37660577107](https://github.com/ArthurC02/SkillHub/actions/runs/37660577107) 於 commit `2247adbd` 發佈；以 tag `docker pull`，`RepoDigests` 對得上） |
+| 環境 | 本機 LiteLLM（`skillhub-litellm-1`）＋ `skillhub_egress`；`sandboxd` 以 HEAD 交叉編譯、在 `debian:12-slim` 容器跑，`SKILLHUB_SANDBOX_IMAGE` **直接指上面那個 digest**；測試二進位交叉編譯後在容器裡跑，共用一次性測試資料庫容器的網路；允許清單沿用 dev 那份，committed 的那份一字未動 |
+| 費用 | 合計 **$0.0994659**（`gpt-5.4-mini`，30 次呼叫，以閘道 `/spend/logs/v2` 逐列加總）：端到端三次 Run（單一 Skill $0.023698、Plugin 內的 Skill $0.025039、外層目錄裡的 Plugin $0.022631）、為取 trace 重跑外層目錄那次 $0.010974、harness 兩支；撤銷探測與被換掉的套件 $0 |
+| 見證 | GHCR 上該 digest 有兩份 attestation：`https://spdx.dev/Document/v2.3` 與 `https://in-toto.io/attestation/vulns/v0.1` |
+| 映像層 | 同一個 digest、無網路：`node --version` → `v22.23.2`、`perl-base` → `5.36.0-7+deb12u4`、`@modelcontextprotocol/sdk` → `1.31.0`、`proxy-addr` → `2.0.8`、`id -u` → `65532`、`command -v nc` → 無、`command -v npm` → 無、`/etc/debian_version` → `12.15`、`.Size` → 1,335,654,078 bytes、version label → `2026.08-18` |
+
+| 項次 | 狀態 | 實測輸出 / 判定 |
+| --- | --- | --- |
+| **1. Skill 載入條件** | ✅ **通過，三種形狀各跑一次** | `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS（24.69s）、`TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone` PASS（23.25s）、`TestEndToEndRunOfAPluginInsideARepositoryDirectoryInstallsItsSkill` PASS（19.21s）。外層目錄那次單獨重跑取 trace：`skill_activation {"skill_name":"run-marker","decision":"activated"}` → `tool_call` `Bash` `cd /work/.claude/skills/run-marker && python3 scripts/check.py` → `script_log`：`SKILLHUB-SCRIPT-RAN py3.11`、`SKILL-FILES=SKILL.md,scripts`、`SKILLS-INSTALLED=run-marker` |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | 每次 Run 的模型呼叫都記在該 Run 自己的 Virtual Key 下。撤銷：新開一把限 `gpt-5.4-mini`、0.5 USD、6 小時的 Virtual Key 打 `/v1/models` → **200**，`/key/delete` → 200，同一把再打 → **401** |
+| **3. Prompt caching 計費欄位與對帳** | ✅ **通過** | `cache_read_input_tokens` → `88576`，`cache_write_input_tokens` 仍為 `null`。外層目錄那次 trace `usage.cost_usd` `0.0109737`、閘道回報 `0.010974`、平台 `cost_events` `10974` µUSD |
+| **4. `usage` 事件的發出條件** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（15.81s，`in=2029 out=33 token_source=result`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（17.98s，撞上限仍回報 `in=17901 out=26`，provider 錯誤指向 `token_budget_exceeded`）。harness 以 master key 當 grant，所以 `cost_usd` 為 `null`，與 `-17` 相同 |
+
+**套件位元組核對（不在四項清單上，同批驗證）**：`TestEndToEndRunRefusesAPackageWhoseStoredBytesAreNotTheAdmittedOnes` PASS（11.15s），沒有呼叫模型。
+
+這一版沒有改 `run.mjs`，所以沒有需要反證的新行為；四項證明的是換掉三個套件之後行為與 `-17` 相同。
+
+**預設映像仍是 `-17`**：四項已在 `-18` 的 digest 上通過，移動預設由負責人決定。
+
+### 預設映像從 `-17` 移到 `-18`
+
+四項在 `-18` 的 digest 上通過之後，經負責人同意移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，以及 `apps/sandbox/README.md` 的環境變數表與建置範例。

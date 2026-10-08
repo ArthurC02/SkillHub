@@ -7,3 +7,4 @@ daily check-sources
 weekly purge-audit
 weekly purge-feedback
 monthly rotate-partitions
+daily report

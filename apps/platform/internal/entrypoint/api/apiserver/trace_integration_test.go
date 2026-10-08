@@ -38,10 +38,12 @@ func seedRun(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID string) stri
 
 	var runID string
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
-		                  runtime_snapshot, policy_snapshot)
-		VALUES ($1, $2, $3, 'fake_sandbox', '{}'::jsonb, '{}'::jsonb)
-		RETURNING id::text`,
+		WITH r AS (
+			INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider)
+			VALUES ($1, $2, $3, 'fake_sandbox')
+			RETURNING id, workspace_id),
+		s AS (INSERT INTO run_snapshots (run_id, workspace_id) SELECT id, workspace_id FROM r)
+		SELECT id::text FROM r`,
 		mustUUID(t, workspaceID), mustUUID(t, versionID), mustUUID(t, snapshotID),
 	).Scan(&runID); err != nil {
 		t.Fatal(err)

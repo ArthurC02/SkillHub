@@ -39,8 +39,13 @@ func (s *Service) Supervise(ctx context.Context) error {
 	}
 
 	var errs []error
+	policies, err := s.policiesOf(ctx, active)
+	if err != nil {
+		errs = append(errs, err)
+		active = nil
+	}
 	for _, run := range active {
-		if err := s.superviseRun(ctx, run); err != nil {
+		if err := s.superviseRun(ctx, run, policies[run.ID.Bytes]); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -68,17 +73,36 @@ func (s *Service) Supervise(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-func (s *Service) superviseRun(ctx context.Context, run gen.Run) error {
+func (s *Service) policiesOf(ctx context.Context, runs []gen.Run) (map[[16]byte][]byte, error) {
+	if len(runs) == 0 {
+		return nil, nil
+	}
+	ids := make([]pgtype.UUID, len(runs))
+	for i, run := range runs {
+		ids[i] = run.ID
+	}
+	rows, err := s.queries().ListRunPolicies(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	policies := make(map[[16]byte][]byte, len(rows))
+	for _, row := range rows {
+		policies[row.RunID.Bytes] = row.PolicySnapshot
+	}
+	return policies, nil
+}
+
+func (s *Service) superviseRun(ctx context.Context, run gen.Run, policy []byte) error {
 	attempts, err := s.queries().ListRunAttempts(ctx, gen.ListRunAttemptsParams{RunID: run.ID, WorkspaceID: run.WorkspaceID})
 	if err != nil {
 		return err
 	}
-	if clock := clockFor(run, attempts); clock.expired(s.now()) {
+	if clock := clockFor(run, policy, attempts); clock.expired(s.now()) {
 		var lastAttemptID pgtype.UUID
 		if len(attempts) > 0 {
 			lastAttemptID = attempts[len(attempts)-1].ID
 		}
-		d := &driver{svc: s, cur: run, clock: clock}
+		d := &driver{svc: s, cur: run, policy: policy, clock: clock}
 		err := d.finish(ctx, lastAttemptID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 		switch {
 		case err == nil:

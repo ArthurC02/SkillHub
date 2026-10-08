@@ -189,6 +189,19 @@ function OperationsSection() {
             <p className="note">成本、點數、試跑紀錄與 operator 動作的每日走勢，只有彙總。</p>
           </div>
         </li>
+        <li>
+          <span className="admin-home-index" aria-hidden="true">
+            10
+          </span>
+          <div>
+            <Link to="/admin/agents" search={{}}>
+              <strong>平台 Agent</strong>
+            </Link>
+            <p className="note">
+              最近的維運日報、每次執行的步驟與花費，以及每個 Agent 的啟停與全域煞車。
+            </p>
+          </div>
+        </li>
       </ul>
     </section>
   );

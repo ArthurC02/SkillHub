@@ -91,23 +91,23 @@
 - **不決定的代價**：`02:NFR-008` 的可用性那一條永遠無法驗收；1000 人在線時一次資料庫或主機故障，就是全平台停機直到有人醒來處理。
 - **決定之後誰動**：主 Agent 改寫架構決策中單節點與升級條件那兩段、部署組合與 runbook；開機器與付費由負責人。
 
-以下兩項來自在 gVisor（runsc）節點上量測沙箱資源上限。**都不擋封測**，但兩項都會讓使用者在 Run 失敗時看到不準確的原因。
+下面兩項來自在 gVisor（runsc）節點上量測沙箱資源上限，以及對照容器與 gVisor 的強化指引。**都不擋封測**。
 
-### R-101 試跑的「磁碟」上限其實與記憶體共用
+### R-101 試跑的「磁碟」上限要不要和記憶體分開
 
-- **要決定的是什麼**：使用者看到的「磁碟」上限，要不要名實相符；若不改實作，要不要至少把共用說清楚。
-- **已經查到的事實**（量測與程式皆已查證）：沙箱的 `/work`、`/out`、`/tmp` 都是 tmpfs，`/work` 與 `/out` 依磁碟上限切成 3：1，`/tmp` 另加 64 MiB（`apps/sandbox/internal/dockerdrv/docker.go`）。gVisor release-20260921.0、systrap、cgroup v2 上量到：寫入 128 MiB 檔案，容器記憶體用量增加約 135 MB，幾乎 1:1。寫入量超過記憶體上限時，整個 Run 被 OOM 結束（exit 137、OOMKilled），沙箱回報「memory limit enforced against the workload」（`apps/sandbox/internal/sandbox/manager.go`），使用者不會看到「磁碟已滿」。這種結束在沙箱是失敗狀態（不是「跑完但失敗」），平台因此把它歸為 Provider 錯誤（`apps/platform/internal/trial/execution/job.go` 的 `classifyResult`）：不計試跑配額、結算時不自動重試，但說明寫的是「這不是 Skill 的問題」（`http.go`），與同一行「memory limit enforced against the workload」互相矛盾。正式預設磁碟 8 GiB 大於記憶體 4 GiB（`apps/sandbox/internal/sandbox/contract.go`），而試跑前的權限摘要把兩個數字並列顯示（`apps/web/src/features/lab/preflight/components/ResourceLimitsFacts.tsx`）。也就是說，預設值下一個寫 5 GiB 暫存檔的 Skill，在寫到 8 GiB 之前就會先被記憶體上限殺掉。
-- **建議**：(2)＋(3)，(4) 列為長期。(1) 維持現狀：使用者看到的數字是假的，失敗原因也對不上。(2) 只改文案：權限摘要與 OOM 訊息說明「暫存檔與記憶體共用同一個上限」，成本最低、立刻消除誤導。(3) 讓預設磁碟不大於記憶體，或畫面改顯示「可用暫存＝記憶體上限扣除程式用量」，讓數字本身不再說謊；要連動 `DefaultLimits`、既有的上限驗證與相關測試。(4) 改用真正的磁碟（例如有配額的 volume）：才能讓兩個上限獨立，但要動節點部署與隔離驗收，不是一次小改。先做 (2)，隨後做 (3)，(4) 等節點實際上線並有大檔案需求的證據再評估。
-- **不決定的代價**：使用者寫暫存檔卻收到記憶體上限的結束，又被告知「不是 Skill 的問題」，於是以為是平台暫時故障而原樣重跑，每次都撞同一個上限；配額不扣，但每次都照 Run 的實際模型花費扣點。
-- **決定之後誰動**：主 Agent 改權限摘要文案與沙箱回報訊息（`apps/web`、`apps/sandbox`）；若選 (3) 另改預設值與驗證；選 (4) 需負責人配合節點部署。
+- **要決定的是什麼**：要不要讓試跑的「磁碟」成為獨立於記憶體的上限，寫滿時工作負載收到「磁碟已滿」，而不是撞記憶體上限結束。撞到上限時怎麼歸類已裁定（見 §4 R-102）。
+- **已經查到的事實**（量測與程式皆已查證）：沙箱的 `/work`、`/out`、`/tmp` 都是 tmpfs（`apps/sandbox/internal/dockerdrv/docker.go`）；gVisor release-20260921.0、systrap、cgroup v2 上寫入 128 MiB 檔案，容器記憶體用量增加約 135 MB。現在預設磁碟等於預設記憶體 4 GiB（`apps/sandbox/internal/sandbox/contract.go`、`apps/platform/internal/trial/execution/service.go`），試跑前的資源摘要註明暫存檔計入記憶體上限（`apps/web/src/features/lab/preflight/components/ResourceLimitsFacts.tsx`），撞到時以「撞到資源上限」結束且不計配額——這是記憶體後盾沙箱的常見做法（Cloud Run、E2B 都明說檔案計入記憶體）。要讓兩個上限獨立，做法是 gVisor 的 `--overlay2=root:self,size=N`（節點層級的 runsc 參數，大小不能逐請求設定）或 Docker 的 `--storage-opt size`（需要節點的 overlay2 落在掛了 `pquota` 的 xfs 上）；CI 的 runner 是 ext4，兩者都無法在 CI 驗證。
+- **建議**：(1)，有大檔案需求的證據時再做 (2)。(1) 維持現狀：數字與說明已經一致，代價是可寫入量要和程式記憶體共用。(2) 節點改用 xfs＋`pquota`，driver 以 `--storage-opt size` 給每次 Run 獨立的磁碟上限，暫存路徑改走可寫的根檔案系統：兩個上限真正獨立、寫滿時回「磁碟已滿」，但要改節點部署、隔離驗收與 driver，並另找能驗證 xfs 配額的環境。
+- **不決定的代價**：需要寫大量暫存檔的 Skill，可寫入量被程式的記憶體用量吃掉一部分；不扣配額，但時間與模型花費照付。
+- **決定之後誰動**：選 (2) 由負責人配合節點部署與驗收環境，主 Agent 改 driver、契約與資源摘要。
 
-### R-102 gVisor 沙箱因自身限制靜默結束時，使用者被算成「Skill 自己的失敗」
+### R-103 握有 Docker 的 `sandboxd` 等同節點 root，要不要再加一道限制
 
-- **要決定的是什麼**：沙箱因行程數上限等自身限制而結束時，平台要不要把它當成工作負載失敗（計入試跑配額、不重試、說明為 Skill 的問題），還是另歸一類。
-- **已經查到的事實**：已修好的一半——driver 在 runsc 下把 pids 上限換算成 `max_pids×2+64`（host 端每個 guest 行程佔 2 個 task，Sentry 自身約 26～36 個），使用者可以真正開到 `max_pids` 個行程。**殘留的一半**（量測已查證，分類路徑為程式查證）：工作負載真的超過 `max_pids` 時，gVisor 常整個以 exit 2 結束且輸出空白，原因只寫在 runsc 自己的 log，容器輸出看不到。平台把它歸為工作負載失敗（`apps/platform/internal/trial/execution/job.go` 的 `classifyResult`），計入試跑配額（`quota.go` 的 `CountsAgainstQuota`），不重試（`statemachine.go` 的 `retryable`），使用者看到的說明是「這是 Skill 在它自己的工作上失敗，不是平台故障；重試只會再花一次錢得到同一個答案」（`http.go`）——在這個情境下不準確。點數依實際模型花費扣，早死的 Run 多半花費很小，但不是豁免。同樣是撞到宣告的資源上限，記憶體超限卻被歸為 Provider 錯誤、不計配額（見 R-101）；兩個上限的歸類方向相反，宜一起裁定「工作負載撞到宣告的上限」該歸哪一類。
-- **建議**：(3)，(4) 先行。(1) 維持：失敗原因對不上，使用者找不到問題。(2) 沙箱把「runsc 下 exit 2 且輸出全空」歸為新的錯誤類別，平台分類為不計配額：要改沙箱 Provider 契約的錯誤類別；風險是使用者程式自己 exit 2 且不輸出也會被誤判，這個訊號太粗。(3) 讓節點開啟 runsc 的錯誤 log，driver 讀取 `newosproc`、stub 建立失敗這類明確訊號再分類：不靠猜，也不用人看 log（偵測不得靠人）；代價是節點部署設定，以及 log 的隱私與磁碟用量（需限量、限時、只取訊號不留全文）。(4) 只改使用者看到的文案，說明這類結束可能是行程數上限：不動契約與節點，立刻可做，但不改變配額與重試。先做 (4)，讓使用者不再被誤導；(3) 的訊號可靠後，再用它決定這類失敗是否不計配額、是否重試。
-- **不決定的代價**：使用者開太多行程，Run 靜默死掉，被說成「Skill 自己的失敗」並且計入配額，卻沒有任何線索指向行程數；這正是「使用者不能有挫敗感」要避免的。
-- **決定之後誰動**：主 Agent 改沙箱 driver 與（若動契約）`contracts/openapi/sandbox-provider.yaml`，後者屬序列化區域；平台分類與使用者說明文案；節點的 runsc log 設定由負責人配合部署。
+- **要決定的是什麼**：`sandboxd` 被攻破時的影響範圍。它目前能叫 dockerd 做任何事；要不要讓「它能叫 dockerd 做的事」也只剩它的程式本來就會做的那幾種。
+- **已經查到的事實**（程式皆已查證）：`sandboxd` 以非 root 使用者加入 docker 群組執行（`infra/deploy/sandbox/systemd/skillhub-sandboxd.service` 的 `SupplementaryGroups=docker`），Docker 官方與 OWASP 都把能操作 dockerd 視同主機 root；架構決策已明文接受這個形狀，理由是把 `sandboxd` 放進容器只會變成掛 `docker.sock`，隔離沒有變好。它的入口只接受帶權杖的結構化請求（`apps/sandbox/internal/sandbox/http.go`），容器的安全欄位全部寫死在驅動裡、請求改不到（`apps/sandbox/internal/dockerdrv/docker.go` 的 `HostConfig`），所以要利用這份權限，必須先在 `sandboxd` 本身找到程式漏洞，或偷到平台給它的權杖。節點上沒有 Docker 的授權外掛、socket proxy 或 rootless Docker。
+- **建議**：(1)，節點數變多或 `sandboxd` 的入口變寬時再做 (2)。(1) 維持現狀：已有的縮小入口就是業界對這類服務的首要建議，成本為零。(2) 在 `sandboxd` 與 dockerd 之間放一個只放行固定 API 的 proxy，並檢查建立容器的請求必須符合沙箱基線（`runsc`、非特權、無掛載、丟掉全部 capability）：`sandboxd` 被攻破也開不出特權容器，代價是多一個要維護的元件，且它本身也握有 Docker。(3) 改成 rootless Docker 或直連 containerd：rootless 與 gVisor 的組合官方支援有限，要先實測；直連 containerd 仍需 root 級權限，只是少一層 dockerd。
+- **不決定的代價**：維持現狀的風險已被架構決策接受；不裁定不會讓任何東西變差，只是沒有第二道防線。
+- **決定之後誰動**：選 (2) 或 (3) 由主 Agent 實作並補節點准入檢查，部署由負責人配合。
 
 ## 2. 不是簽名，但在等人的三件事
 
@@ -226,4 +226,5 @@
 | R-92 | 平台要不要產出 Agent Plugin | (a) 產出：Bundle 是有名稱、版本、成員清單的發佈物，匯出形狀是只含 Agent Skill 的 Agent Plugin；成員只限自己工作區的版本，信任取最壞 |
 | R-93 | 平台內分享的最小形態與封測准入 | (a) 公開連結；發佈與公開閱讀不要求受邀，取得（下載）要登入，未受邀者能否下載是部署設定、預設關，直到閘門與封測結論出來 |
 | R-94 | 命名空間的三條規則 | ①(a) 發佈者內唯一 ②(a) tombstone＋轉址（改名流程尚未做，名稱暫為永久） ③(a) 審曝光不審發佈；曝光的權威是營運者對精確 Release 的審核紀錄 |
-| R-104 | 停用 Skill Version 的操作後果與最小可見資訊（`02:SEC-011`、`04` 乙-240） | 不可恢復；只阻止新 Run，既有 Run 與版本內容不變；重複停用回已停用並記錄嘗試；operator 以精確 ID 查版本序號與停用狀態，不讀私有內容。Change Package 已核准設計與實作範圍，程式與測試已落地；簽章 SCM 已驗證，遠端 CI 仍待確認。 |
+| R-102 | 工作負載撞到自己申請的資源上限算誰的 | 算平台的：記憶體與程序數上限都以「撞到資源上限」結束，不計試跑配額、不自動重試、寫明是哪個上限；模型花費照常扣點。規則在沙箱隔離與執行安全、身分與額度 |
+| R-104 | 停用 Skill Version 的操作後果與最小可見資訊（`02:SEC-011`、`04` 乙-240） | 不可恢復；只阻止新 Run，既有 Run 與版本內容不變；重複停用回已停用並記錄嘗試；operator 以精確 ID 查版本序號與停用狀態，不讀私有內容。Change Package 已核准設計與實作範圍，程式與測試已落地；簽章 SCM 與合併前版本的遠端 CI 已驗證，此合併版仍待驗證。 |

@@ -408,10 +408,13 @@ func seedRunAt(t *testing.T, tx pgx.Tx, f fixture, status, at string) string {
 	}
 	var runID string
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
-		                  runtime_snapshot, policy_snapshot, status, created_at, finished_at)
-		VALUES ($1, $2, $3, 'seed', '{}'::jsonb, '{}'::jsonb, $4, $5, $6)
-		RETURNING id::text`,
+		WITH r AS (
+			INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
+			                  status, created_at, finished_at)
+			VALUES ($1, $2, $3, 'seed', $4, $5, $6)
+			RETURNING id, workspace_id),
+		s AS (INSERT INTO run_snapshots (run_id, workspace_id) SELECT id, workspace_id FROM r)
+		SELECT id::text FROM r`,
 		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, snapshotID), status, at, finishedAtOn(t, status, at),
 	).Scan(&runID); err != nil {
 		t.Fatal(err)

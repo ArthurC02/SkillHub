@@ -19,7 +19,7 @@ const quotaCountsFromStatus = gen.RunStatusPreparing
 
 func (c FailureClass) CountsAgainstQuota() bool {
 	switch c {
-	case failureProvider, failurePlatform, failureNoProvider, failurePolicy:
+	case failureProvider, failurePlatform, failureNoProvider, failurePolicy, failureResourceLimit:
 		return false
 	}
 	return true

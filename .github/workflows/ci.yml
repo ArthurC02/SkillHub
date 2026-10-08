@@ -297,7 +297,7 @@ jobs:
       SKILLHUB_REQUIRE_DOCKER: "1"
       # docker_test.go also reads SKILLHUB_SANDBOX_TEST_IMAGE; setting only this variable
       # keeps the other dockerdrv tests on busybox.
-      RUNTIME_IMAGE_FOR_PROBE: ghcr.io/arthurc02/skillhub-runtime-agent-sdk@sha256:344502fb9b4393fd69800b78e5d3cfe606e1f1cb4c5a29eaf05d2f8cf98e0f3a
+      RUNTIME_IMAGE_FOR_PROBE: ghcr.io/arthurc02/skillhub-runtime-agent-sdk@sha256:789d20e50701ec1eb199a55f823522ec642e2c05554652ee52f789bf9b22f00a
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -310,7 +310,7 @@ jobs:
       - name: Pull the Runtime Image the P-02 probe dials from
         run: |
           docker pull "$RUNTIME_IMAGE_FOR_PROBE"
-          docker tag "$RUNTIME_IMAGE_FOR_PROBE" skillhub/runtime-agent-sdk:2026.08-17
+          docker tag "$RUNTIME_IMAGE_FOR_PROBE" skillhub/runtime-agent-sdk:2026.08-18
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
@@ -340,12 +340,20 @@ jobs:
           ARCH="$(uname -m)"
           # Release tags read `release-YYYYMMDD.N`; the download path drops the prefix.
           URL="https://storage.googleapis.com/gvisor/releases/release/${BASELINE#release-}/${ARCH}"
-          wget -q "${URL}/gvisor.tar.zstd" "${URL}/gvisor.tar.zstd.sha512"
-          sha512sum -c gvisor.tar.zstd.sha512
+          EXPECTED=$(awk -v a="$ARCH" '$1 == "sha512" && $2 == a {print $3}' infra/nodes/gvisor-baseline.txt)
+          if [ -z "$EXPECTED" ]; then
+            echo "::error::infra/nodes/gvisor-baseline.txt pins no sha512 for $ARCH"
+            exit 1
+          fi
+          wget -q "${URL}/gvisor.tar.zstd"
+          echo "$EXPECTED  gvisor.tar.zstd" | sha512sum -c -
           sudo tar --zstd -xf gvisor.tar.zstd -C /usr/local/bin
-          rm -f gvisor.tar.zstd gvisor.tar.zstd.sha512
-          sudo runsc install
+          rm -f gvisor.tar.zstd
+          mapfile -t RUNSC_ARGS < <(jq -r '.runtimes.runsc.runtimeArgs[]' infra/deploy/sandbox/daemon.json)
+          sudo runsc install -- "${RUNSC_ARGS[@]}"
           sudo systemctl reload docker
+          diff <(jq -c '.runtimes.runsc.runtimeArgs' infra/deploy/sandbox/daemon.json) \
+               <(docker info --format '{{json .Runtimes.runsc.Args}}' | jq -c .)
         working-directory: .
       - name: Sandbox driver tests on gVisor
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox driver tests on gVisor' go test ./internal/dockerdrv/... -count=1

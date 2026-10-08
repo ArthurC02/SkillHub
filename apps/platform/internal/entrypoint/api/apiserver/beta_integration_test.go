@@ -59,10 +59,13 @@ func seedBetaRun(t *testing.T, pool *pgxpool.Pool, f fixture, status string, fai
 		t.Fatal(err)
 	}
 	err = pool.QueryRow(ctx, `
-		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
-		                  runtime_snapshot, policy_snapshot, status, failure_class, finished_at)
-		VALUES ($1, $2, $3, 'seed', '{}'::jsonb, '{}'::jsonb, $4, $5, $6)
-		RETURNING id::text`,
+		WITH r AS (
+			INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
+			                  status, failure_class, finished_at)
+			VALUES ($1, $2, $3, 'seed', $4, $5, $6)
+			RETURNING id, workspace_id),
+		s AS (INSERT INTO run_snapshots (run_id, workspace_id) SELECT id, workspace_id FROM r)
+		SELECT id::text FROM r`,
 		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, snapshotID), status, failureClass, finishedAtFor(status),
 	).Scan(&runID)
 	if err != nil {
@@ -189,6 +192,7 @@ func TestOnlyPlatformSideFailuresAreRefunded(t *testing.T) {
 		{"provider_error", false},
 		{"platform_error", false},
 		{"capability_mismatch", false},
+		{"resource_limit", false},
 		{"workload_error", true},
 		{"cancelled", true},
 		{"timeout", true},

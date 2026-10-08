@@ -140,6 +140,13 @@ func (g *Gateway) IssueCreationForModel(ctx context.Context, sessionID, attemptI
 	})
 }
 
+func (g *Gateway) IssueAgentRun(ctx context.Context, runID string, terms CreationKeyTerms) (*ModelGatewayGrant, error) {
+	return g.issue(ctx, virtualKeyTerms{
+		attemptID: runID, ttl: terms.TTL, maxBudgetUSD: terms.BudgetUSD, model: terms.Model,
+		metadata: map[string]string{"platform_agent_run_id": runID},
+	})
+}
+
 type virtualKeyTerms struct {
 	attemptID    string
 	ttl          time.Duration

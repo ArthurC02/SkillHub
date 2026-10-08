@@ -67,6 +67,8 @@ var strangerRoutes = []strangerCase{
 	{pattern: "POST /me/bundles/{name}/publication", body: `{"rights_attested":true}`, want: http.StatusNotFound},
 	{pattern: "DELETE /me/bundles/{name}/publication", want: http.StatusNotFound},
 	{pattern: "GET /admin/publications/{publisher}/{name}/exposure", want: http.StatusNotFound},
+	{pattern: "GET /admin/agents/runs/{id}/steps", want: http.StatusNotFound},
+	{pattern: "GET /admin/agents/findings/{id}", want: http.StatusNotFound},
 	{pattern: "POST /admin/publications/{publisher}/{name}/exposure",
 		body: `{"release_id":"{versionId}","expected_sequence":0,"decision":"approved","reason":"a stranger"}`,
 		want: http.StatusNotFound},
@@ -103,6 +105,10 @@ var strangerRoutes = []strangerCase{
 		body: `{"seconds":10,"reason":"a stranger asked"}`, want: http.StatusNotFound},
 	{pattern: "DELETE /admin/model-budgets/{kind}",
 		body: `{"reason":"a stranger asked"}`, want: http.StatusNotFound},
+	{pattern: "PUT /admin/agents/findings/{id}/status",
+		body: `{"status":"resolved","note":"a stranger asked"}`, want: http.StatusNotFound},
+	{pattern: "PUT /admin/agents/{name}/enabled",
+		body: `{"enabled":true,"note":"a stranger asked"}`, want: http.StatusNotFound},
 
 	{pattern: "POST /skills/{id}/runs/preflight/confirm",
 		body: `{"version_id":"{versionId}","test_case_id":"{testCaseId}","summary_hash":"` +

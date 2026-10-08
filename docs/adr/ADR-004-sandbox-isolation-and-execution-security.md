@@ -48,7 +48,7 @@ License 辨識規則與其對打包的阻擋效果屬[打包、授權溯源與�
 
 Sandbox 由一個獨立部署在專屬執行區域的 Provider（`SelfHostedProvider`）提供，疊加以下最低基線；後續決策（gVisor、拓撲、Egress）是在這個基線之上加強，不是取代。基線是對任何 Provider Adapter 的要求，不是對某一種技術的要求：換成 MicroVM 或受管沙箱服務時，同一份基線照樣要成立。
 
-**計算隔離**：每次 Run 獨立環境與暫存工作區；非 root、非特權身分；不允許 privileged mode 與 Host PID／IPC／Network namespace；不掛載 Docker 或容器管理 Socket；基礎檔案系統唯讀，只開放明確暫存與輸出路徑；套用系統呼叫／capabilities 最小權限；限制 CPU、記憶體、磁碟、程序數、檔案描述符與最大執行時間；程序數上限指工作負載可用的行程數，執行環境自身佔用由驅動另外吸收；不支援 GPU、特權程序、巢狀容器或長時間背景服務。
+**計算隔離**：每次 Run 獨立環境與暫存工作區；非 root、非特權身分；不允許 privileged mode 與 Host PID／IPC／Network namespace；不掛載 Docker 或容器管理 Socket；基礎檔案系統唯讀，只開放明確暫存與輸出路徑；套用系統呼叫／capabilities 最小權限；限制 CPU、記憶體、磁碟、程序數、檔案描述符與最大執行時間；程序數上限指工作負載可用的行程數，執行環境自身佔用由驅動另外吸收；工作負載撞到記憶體或程序數上限時，Provider 以專屬錯誤類別回報並寫明是哪個上限，不讓它看起來像工作負載自己的失敗；暫存路徑以記憶體為後盾，寫入量計入記憶體上限；不支援 GPU、特權程序、巢狀容器或長時間背景服務。
 
 **網路隔離**：預設拒絕所有非必要出站；允許的外部服務經受控 Egress；阻擋 Loopback、Link-local、Metadata Service、RFC1918／內部網路及控制平面位址；記錄目的地、協定、決策與資料量，不記錄內容；不接受網際網路主動入站。
 
@@ -60,7 +60,7 @@ Sandbox 由一個獨立部署在專屬執行區域的 Provider（`SelfHostedProv
 
 以 gVisor（`runsc`）作為使用者態核心攔截層，疊加在決策 4 的基線之上。選擇理由：一般雲端 VM 即可執行，不需裸機或巢狀虛擬化；沿用容器映像與工具鏈；比加固容器（runc＋seccomp）多一層核心攻擊面隔離，比 MicroVM 的維運與部署平台限制輕。
 
-節點編排採**每台 VM 一個主機服務**：每台節點跑 Docker Engine（`daemon.json` 註冊 `runsc` runtime、`icc: false`、`iptables: true`，Run 容器接在預設 bridge），節點上唯一的服務是 `sandboxd`，由 systemd 以非 root 使用者（附 docker 群組）執行並套 systemd 的沙箱化選項；容器只有 Run 的 gVisor 容器與 `sandboxd` 的常駐 P-02 探針。`sandboxd` 不放進容器：它要操作 dockerd，放進容器就得把 `docker.sock` 以可寫 bind mount 掛進去——那正是節點准入 C-01b 擋下的形狀，而且換不到任何隔離，握有 `docker.sock` 就等於握有主機 root。`sandboxd` 的執行檔由 CI 建成映像、以 commit SHA 發佈，節點從釘 digest 的映像取出。不引入 Kubernetes 或任何叢集排程器——調度決策已經在控制平面（依可用 slot 與 egress 模式選節點），第二個排程器只會與它衝突；也不引入 Nomad 等替代叢集技術。
+節點編排採**每台 VM 一個主機服務**：每台節點跑 Docker Engine（`daemon.json` 註冊 `runsc` runtime 並明列它的執行參數、`icc: false`、`iptables: true`，Run 容器接在預設 bridge；CI 以同一組參數註冊 `runsc` 跑驅動測試，除驗收允許的參數外，除錯、測試專用、主機網路與主機 socket 類參數一律不得進入正式設定），節點上唯一的服務是 `sandboxd`，由 systemd 以非 root 使用者（附 docker 群組）執行並套 systemd 的沙箱化選項；容器只有 Run 的 gVisor 容器與 `sandboxd` 的常駐 P-02 探針。`sandboxd` 不放進容器：它要操作 dockerd，放進容器就得把 `docker.sock` 以可寫 bind mount 掛進去——那正是節點准入 C-01b 擋下的形狀，而且換不到任何隔離，握有 `docker.sock` 就等於握有主機 root。`sandboxd` 的執行檔由 CI 建成映像、以 commit SHA 發佈，節點從釘 digest 的映像取出。不引入 Kubernetes 或任何叢集排程器——調度決策已經在控制平面（依可用 slot 與 egress 模式選節點），第二個排程器只會與它衝突；也不引入 Nomad 等替代叢集技術。
 
 gVisor、Docker Engine 與 systemd 是自建 Provider 內部的 Adapter。`sandboxd` 的執行邏輯只依賴自己的驅動 Port（啟動、等待、停止、移除、讀取 Trace 與 Artifact、探測出口），容器執行期是這個 Port 的一個實作：換成 MicroVM 是新增一個驅動，換成受管沙箱服務是在控制平面新增一個 Provider Adapter。能力宣告由驅動依它實際做到的事回報（例如每個 Run 是否有專屬工作區、資源上限是否被強制），`sandboxd` 不替驅動統一宣稱；控制平面依隔離強度與這些值選節點，不看產品名。
 
@@ -152,7 +152,7 @@ Runtime Image 基底以 digest 釘選；Agent SDK 以精確版本釘選並透過
 | 項目 | 值 | 違反時 |
 | --- | --- | --- |
 | 節點重建週期 | 7 天滾動 ＋ 事件觸發立即重建 | 超期告警並排入重建佇列；>14 天仍未重建由值班手動 drain |
-| gVisor 安全基準版本 | 上游最新版或前一版，且發佈日不早於 90 天前；每月例行更新隨節點重建進行 | 未達基準的節點不得加入池，已在池者 drain；全池未達基準時新 Run 停留排隊，不得降級放行 |
+| gVisor 安全基準版本 | 上游最新版或前一版，且發佈日不早於 90 天前；每月例行更新隨節點重建進行；各架構安裝檔的雜湊與版本一起釘在 repo，安裝只比對釘住的值，不信任與安裝檔同源下載的雜湊 | 未達基準的節點不得加入池，已在池者 drain；全池未達基準時新 Run 停留排隊，不得降級放行 |
 | gVisor 逃逸類 CVE 應變 | 每日 cron 比對上游 releases／advisories 後開出 issue 起 24 小時內完成全池換版，做不到即依停用流程停用該 Provider；起算點刻意訂為 issue 開出時刻而非上游 advisory 公開時刻，因為前者才是可稽核的時戳，代價是最壞情況比公開時刻晚 24 小時起算 | 逃逸類 CVE 未在時限內處理視為必須停用 |
 | gVisor 高風險 CVE 應變 | 7 天內處理 | 同上邏輯，時限較寬 |
 | 遺留資源掃描頻率 | 每 5 分鐘一輪；平台不認得的 sandbox 有 5 分鐘派工在途寬限，已辨識且已終態者立即清除 | 掃描停擺超過兩輪視為無人知道洩漏了多少，最高嚴重度告警並暫停受影響節點池的新 Run |

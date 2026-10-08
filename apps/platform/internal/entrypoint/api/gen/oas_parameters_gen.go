@@ -231,6 +231,11 @@ type GetOwnPublicationParams struct {
 	ID uuid.UUID
 }
 
+// GetPlatformAgentFindingParams is parameters of getPlatformAgentFinding operation.
+type GetPlatformAgentFindingParams struct {
+	ID uuid.UUID
+}
+
 // GetPublicPublicationParams is parameters of getPublicPublication operation.
 type GetPublicPublicationParams struct {
 	Publisher string
@@ -335,6 +340,16 @@ type ListOperatorAuditLogParams struct {
 	WorkspaceID OptUUID   `json:",omitempty,omitzero"`
 }
 
+// ListPlatformAgentFindingsParams is parameters of listPlatformAgentFindings operation.
+type ListPlatformAgentFindingsParams struct {
+	Status OptListPlatformAgentFindingsStatus `json:",omitempty,omitzero"`
+}
+
+// ListPlatformAgentRunStepsParams is parameters of listPlatformAgentRunSteps operation.
+type ListPlatformAgentRunStepsParams struct {
+	ID uuid.UUID
+}
+
 // ListRunArtifactsParams is parameters of listRunArtifacts operation.
 type ListRunArtifactsParams struct {
 	ID uuid.UUID
@@ -402,6 +417,11 @@ type ListWorkspaceActivityParams struct {
 // LookupAccountParams is parameters of lookupAccount operation.
 type LookupAccountParams struct {
 	Email string
+}
+
+// MovePlatformAgentFindingParams is parameters of movePlatformAgentFinding operation.
+type MovePlatformAgentFindingParams struct {
+	ID uuid.UUID
 }
 
 // PreviewPackagingParams is parameters of previewPackaging operation.
@@ -509,6 +529,11 @@ type SetModelCallBudgetParams struct {
 	// The model call, as `GET /admin/model-budgets` named it. A kind the platform does not call is 404,
 	// the same answer a non-operator gets.
 	Kind string
+}
+
+// SetPlatformAgentEnabledParams is parameters of setPlatformAgentEnabled operation.
+type SetPlatformAgentEnabledParams struct {
+	Name string
 }
 
 // SetSkillCategoryParams is parameters of setSkillCategory operation.

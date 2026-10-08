@@ -1,9 +1,18 @@
 -- name: CreateRun :one
 INSERT INTO runs (
-    workspace_id, skill_version_id, test_case_snapshot_id, provider,
-    runtime_snapshot, policy_snapshot, status
-) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    workspace_id, skill_version_id, test_case_snapshot_id, provider, status
+) VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
+
+-- name: InsertRunSnapshots :exec
+INSERT INTO run_snapshots (run_id, workspace_id, runtime_snapshot, policy_snapshot)
+VALUES ($1, $2, $3, $4);
+
+-- name: GetRunSnapshots :one
+SELECT runtime_snapshot, policy_snapshot FROM run_snapshots WHERE run_id = $1 AND workspace_id = $2;
+
+-- name: ListRunPolicies :many
+SELECT run_id, policy_snapshot FROM run_snapshots WHERE run_id = ANY(@run_ids::uuid[]);
 
 -- name: GetRun :one
 SELECT * FROM runs WHERE id = $1 AND workspace_id = $2;
@@ -74,9 +83,13 @@ WHERE r.workspace_id = @workspace_id
 ORDER BY r.activity_updated_at DESC, r.id;
 
 -- name: SetRunProvider :one
-UPDATE runs SET provider = @provider, runtime_snapshot = @runtime_snapshot
+UPDATE runs SET provider = @provider
 WHERE id = @id AND workspace_id = @workspace_id AND status = @status
 RETURNING *;
+
+-- name: SetRunRuntimeSnapshot :exec
+UPDATE run_snapshots SET runtime_snapshot = @runtime_snapshot
+WHERE run_id = @run_id AND workspace_id = @workspace_id;
 
 -- name: ListActiveRuns :many
 WITH candidates AS (

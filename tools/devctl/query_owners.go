@@ -55,6 +55,7 @@ func queryOwnerProblems(root string) []string {
 		problems = append(problems, crossContextAccessProblems(side, tolerated, ownership, calls, identities)...)
 	}
 	problems = append(problems, tableOwnershipProblems(root, sections, ownership, identities)...)
+	problems = append(problems, retentionDispositionProblems(sections)...)
 	problems = append(problems, immutableTableProblems(root, sections, queries)...)
 	return append(problems, rawSQLProblems(root, sections[rawSQLAllowSection])...)
 }
@@ -523,6 +524,45 @@ func tableOwnershipProblems(root string, sections map[string]map[string]string, 
 	owners, ownerProblems := declaredTableOwners(declared, created, identities)
 	problems = append(problems, ownerProblems...)
 	return append(problems, crossContextTableProblems(ownership, owners)...)
+}
+
+const retentionSection = "retention"
+
+var retentionDispositions = []string{"expire", "with_owner", "keep", "archivable", "transient"}
+
+func retentionDispositionProblems(sections map[string]map[string]string) []string {
+	owned := sections[tablesSection]
+	if len(owned) == 0 {
+		return nil
+	}
+	declared, ok := sections[retentionSection]
+	if !ok {
+		return []string{fmt.Sprintf(
+			"db/%s: missing section %q; every table needs a retention disposition, one of %s",
+			queryOwnersFile, retentionSection, strings.Join(retentionDispositions, ", "))}
+	}
+
+	var problems []string
+	for _, table := range sortedKeys(owned) {
+		if _, ok := declared[table]; !ok {
+			problems = append(problems, fmt.Sprintf(
+				"db/%s: %s.%s has no %s: disposition; declare one of %s",
+				queryOwnersFile, tablesSection, table, retentionSection, strings.Join(retentionDispositions, ", ")))
+		}
+	}
+	for _, table := range sortedKeys(declared) {
+		if _, ok := owned[table]; !ok {
+			problems = append(problems, fmt.Sprintf(
+				"db/%s: %s.%s is not a table in %s:", queryOwnersFile, retentionSection, table, tablesSection))
+			continue
+		}
+		if disposition, _, _ := strings.Cut(declared[table], " "); !slices.Contains(retentionDispositions, disposition) {
+			problems = append(problems, fmt.Sprintf(
+				"db/%s: %s.%s = %q does not start with one of %s",
+				queryOwnersFile, retentionSection, table, declared[table], strings.Join(retentionDispositions, ", ")))
+		}
+	}
+	return problems
 }
 
 func unownedTableProblems(created map[string]bool, declared map[string]string) []string {

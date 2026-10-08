@@ -17,6 +17,8 @@ RUN cd apps/web && npm run build
 
 FROM nginx:1.31-alpine-slim@sha256:032d437f2945ec236b0d093d0a4865a4b8e39eea52f60a25103645c95ccb4de0 AS runtime
 
+RUN apk upgrade --no-cache zlib pcre2
+
 COPY --from=build /src/apps/web/dist /usr/share/nginx/html
 COPY infra/images/web/nginx.conf /etc/nginx/conf.d/default.conf
 

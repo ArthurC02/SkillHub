@@ -110,6 +110,8 @@ var failureClassWords = map[FailureClass][2]string{
 		"這個部署自己的規則不讓這次試跑開始——不是能力對不上,也不是任何系統故障。擋下的理由見上面那一列。"},
 	failurePlatform: {"平台自己的錯誤",
 		"控制平面這一側的問題,不是 Skill 也不是 Provider 的問題。"},
+	failureResourceLimit: {"撞到資源上限",
+		"工作負載用到了這次請求申請的記憶體或行程數上限。/work、/out、/tmp 的檔案也計入記憶體。這次不計試跑配額;原樣重跑會得到同樣結果,請減少用量。"},
 }
 
 func failureClassWord(v string) *labelled {
@@ -163,6 +165,8 @@ func attemptErrorMessage(errorClass string) string {
 		return "這次嘗試超過時間上限。"
 	case errClassCancelled:
 		return "這次嘗試已取消。"
+	case errClassResourceLimit:
+		return "工作負載撞到了這次申請的記憶體或行程數上限。"
 	default:
 		return "這次嘗試失敗，請聯絡管理者。"
 	}

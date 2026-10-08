@@ -117,6 +117,10 @@ type DownloadArtifactContentRes interface {
 	downloadArtifactContentRes()
 }
 
+type EngagePlatformAgentBrakeRes interface {
+	engagePlatformAgentBrakeRes()
+}
+
 type ExportBundleRes interface {
 	exportBundleRes()
 }
@@ -215,6 +219,10 @@ type GetOwnPublicationRes interface {
 
 type GetOwnPublisherRes interface {
 	getOwnPublisherRes()
+}
+
+type GetPlatformAgentFindingRes interface {
+	getPlatformAgentFindingRes()
 }
 
 type GetPublicPublicationRes interface {
@@ -329,6 +337,22 @@ type ListPackagingTargetsRes interface {
 	listPackagingTargetsRes()
 }
 
+type ListPlatformAgentFindingsRes interface {
+	listPlatformAgentFindingsRes()
+}
+
+type ListPlatformAgentRunStepsRes interface {
+	listPlatformAgentRunStepsRes()
+}
+
+type ListPlatformAgentRunsRes interface {
+	listPlatformAgentRunsRes()
+}
+
+type ListPlatformAgentsRes interface {
+	listPlatformAgentsRes()
+}
+
 type ListRunArtifactsRes interface {
 	listRunArtifactsRes()
 }
@@ -365,6 +389,10 @@ type LookupAccountRes interface {
 	lookupAccountRes()
 }
 
+type MovePlatformAgentFindingRes interface {
+	movePlatformAgentFindingRes()
+}
+
 type PreviewPackagingRes interface {
 	previewPackagingRes()
 }
@@ -383,6 +411,10 @@ type PublishSkillRes interface {
 
 type RegisterPublisherRes interface {
 	registerPublisherRes()
+}
+
+type ReleasePlatformAgentBrakeRes interface {
+	releasePlatformAgentBrakeRes()
 }
 
 type RequestAccountDeletionRes interface {
@@ -411,6 +443,10 @@ type SetEvaluationFeedbackRes interface {
 
 type SetModelCallBudgetRes interface {
 	setModelCallBudgetRes()
+}
+
+type SetPlatformAgentEnabledRes interface {
+	setPlatformAgentEnabledRes()
 }
 
 type SetSkillCategoryRes interface {

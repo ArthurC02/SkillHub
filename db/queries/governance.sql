@@ -1,6 +1,6 @@
 -- name: InsertAuditEvent :exec
-INSERT INTO audit_events (actor_user_id, workspace_id, action, resource_type, resource_id, metadata)
-VALUES ($1, $2, $3, $4, $5, $6);
+INSERT INTO audit_events (actor_user_id, actor_agent_id, workspace_id, action, resource_type, resource_id, metadata)
+VALUES ($1, $2, $3, $4, $5, $6, $7);
 
 -- name: ListWorkspaceAuditEvents :many
 SELECT * FROM audit_events

@@ -1,0 +1,115 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "registry-operations-context",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "operations-owns-platform-agents",
+  "status": "applied",
+  "change_classification": "material",
+  "submitted_at": "2026-10-07T06:11:01.361220Z",
+  "verified_at": "2026-10-07T06:11:02.288883Z",
+  "finalized_at": "2026-10-07T06:13:04.704657Z",
+  "applied_at": "2026-10-07T06:14:23.075995Z",
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "b468c42c46b2bf42f7164c1e660738322df4b018",
+    "registry_digest": "sha256:fa7ced5fbfacdd6ff86cdbe93d119e9846c1175db72fb9065daac91397daff59"
+  },
+  "affected_contexts": [
+    "identity"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "operations",
+    "invariant": "Operations owns platform agent registrations, the global agent brake and agent runs; a run takes a step only while its agent is enabled and the brake is released.",
+    "evidence": [
+      "apps/platform/internal/product/operations/doc.go:1-3",
+      "db/migrations/0109_platform_agents.sql"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Operations imports no other context. The operator's identity reaches its handler through a function the composition root injects; the worker registers the agents defined in code at start.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "operations -> any context package",
+      "any context -> operations package"
+    ],
+    "evidence": [
+      "apps/platform/internal/entrypoint/api/apiserver/app.go",
+      "apps/platform/cmd/worker/main.go"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Agents that act for the platform need an off switch that holds between one step and the next, not only at the start of a run.",
+      "An agent's tools and actions are Go registries, so what an agent may do cannot be widened by editing a row."
+    ],
+    "decision": "Agent definitions live in code and are mirrored into the database at worker start, disabled until an operator enables them; the brake is a single row that exists only while engaged; every step first reads the agent and the brake and ends the run as stopped when either says so.",
+    "invariants_preserved": [
+      "Identity owns accounts and the operator roster.",
+      "Audit events are written in the same transaction as the change they record."
+    ],
+    "rejected_alternatives": [
+      "Agents defined only in the database: a row could name tools and actions the code does not have.",
+      "Checking the switch only when a run starts: a disable would wait for the run to finish."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "audit-chain-intact",
+      "guard-matches-policy",
+      "halt-reason",
+      "disable-stops-the-run",
+      "brake-holds",
+      "operator-only"
+    ],
+    "counterfactual_check": "halt-reason"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "operations",
+        "name": "Operations",
+        "responsibility": "Owns the platform's own agents: who each one is, whether it may run, the brake that stops them all, and the record of every run.",
+        "subdomain": "supporting",
+        "implementation_path": "product/operations",
+        "requirement_prefixes": [],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 3
+            },
+            "content_sha256": "sha256:60b4b87f6611a465e4b6d26509322606eb04f67b9d154407f465c1a15bddc3a5",
+            "excerpt_sha256": "sha256:60b4b87f6611a465e4b6d26509322606eb04f67b9d154407f465c1a15bddc3a5",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-07T06:11:01.778535Z",
+      "scope": "Operations as a new supporting context owning platform agent registrations, the global agent brake and agent runs, importing no other context",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "b468c42c46b2bf42f7164c1e660738322df4b018",
+        "registry_digest": "sha256:fa7ced5fbfacdd6ff86cdbe93d119e9846c1175db72fb9065daac91397daff59"
+      }
+    }
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "615555b7357a861c71858a1429ae1bd22346b86c",
+    "registry_digest": "sha256:afe0c20a28aebe47fb59adbd5353835b1fcc49b86f838f33d02c389536473ce2"
+  }
+}

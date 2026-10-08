@@ -617,6 +617,45 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "operations",
+      "name": "Operations",
+      "responsibility": "Owns the platform's own agents: who each one is, whether it may run, the brake that stops them all, and the record of every run.",
+      "subdomain": "supporting",
+      "implementation_path": "product/operations",
+      "requirement_prefixes": [],
+      "evidence": [
+        {
+          "path": "apps/platform/internal/product/operations/doc.go",
+          "lines": {
+            "start": 1,
+            "end": 3
+          },
+          "content_sha256": "sha256:60b4b87f6611a465e4b6d26509322606eb04f67b9d154407f465c1a15bddc3a5",
+          "excerpt_sha256": "sha256:60b4b87f6611a465e4b6d26509322606eb04f67b9d154407f465c1a15bddc3a5",
+          "source_kind": "bounded_contexts"
+        }
+      ],
+      "review": {
+        "proposal_id": "registry-operations-context",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-07T06:11:01.778535Z",
+            "scope": "Operations as a new supporting context owning platform agent registrations, the global agent brake and agent runs, importing no other context",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "b468c42c46b2bf42f7164c1e660738322df4b018",
+              "registry_digest": "sha256:fa7ced5fbfacdd6ff86cdbe93d119e9846c1175db72fb9065daac91397daff59"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }

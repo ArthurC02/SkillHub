@@ -30,6 +30,7 @@ const (
 	KindMatchReasons    CostKind = "match_reasons"
 	KindSuggestCriteria CostKind = "suggest_criteria"
 	KindSearchIntent    CostKind = "search_intent"
+	KindPlatformAgent   CostKind = "platform_agent"
 
 	KindRun CostKind = "run"
 
@@ -40,6 +41,7 @@ func AllCostEventKinds() []CostKind {
 	return []CostKind{
 		KindCreationStep, KindSearchEmbedding, KindIndexEnrich, KindReview,
 		KindSuggestion, KindGenerate, KindMatchReasons, KindSuggestCriteria, KindSearchIntent, KindRun,
+		KindPlatformAgent,
 	}
 }
 
@@ -47,7 +49,7 @@ func AllStatisticKinds() []CostKind {
 	return []CostKind{
 		KindCreationStep, KindSearchEmbedding, KindIndexEnrich, KindReview,
 		KindSuggestion, KindGenerate, KindMatchReasons, KindSuggestCriteria, KindSearchIntent,
-		KindRun, KindCreationSession,
+		KindRun, KindCreationSession, KindPlatformAgent,
 	}
 }
 
@@ -76,10 +78,11 @@ func AllCostSources() []CostSource {
 }
 
 const (
-	RefCreationSession = "creation_session"
-	RefRun             = "run"
-	RefSkillVersion    = "skill_version"
-	RefOperatorGrant   = "operator_grant"
+	RefCreationSession  = "creation_session"
+	RefRun              = "run"
+	RefSkillVersion     = "skill_version"
+	RefPlatformAgentRun = "platform_agent_run"
+	RefOperatorGrant    = "operator_grant"
 )
 
 type CostEvent struct {

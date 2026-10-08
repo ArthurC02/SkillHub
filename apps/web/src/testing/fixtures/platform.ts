@@ -7,6 +7,12 @@ import type {
   ExposureQueueEntry,
   ExposureRelease,
   OperatorAuditEvent,
+  FindingStatus,
+  PlatformAgent,
+  PlatformAgentFinding,
+  PlatformAgentFindingEvent,
+  PlatformAgentRun,
+  PlatformAgentStep,
   Rosters,
   SkillGovernance,
   CreditTrend,
@@ -536,7 +542,7 @@ export const PREFLIGHT = {
     resource_limits: {
       vcpu: 2,
       memory_bytes: 4 * 1024 ** 3,
-      disk_bytes: 8 * 1024 ** 3,
+      disk_bytes: 4 * 1024 ** 3,
       max_pids: 256,
       max_open_files: 1024,
       wall_clock_soft_seconds: 600,
@@ -1103,7 +1109,9 @@ export const ADMIN_EXPOSURE_CASE = {
 export const ADMIN_AUDIT_LOG = {
   events: [
     {
+      actor_kind: "person",
       actor_user_id: "u-1",
+      actor_agent_id: null,
       action: "credit.grant",
       resource_type: "credit_entry",
       resource_id: "u-2",
@@ -1112,7 +1120,9 @@ export const ADMIN_AUDIT_LOG = {
       metadata: { kind: "grant", credits: 150, reason: "beta reward" },
     },
     {
+      actor_kind: "person",
       actor_user_id: "u-1",
+      actor_agent_id: null,
       action: "account.lookup",
       resource_type: "account",
       resource_id: "u-2",
@@ -1229,6 +1239,154 @@ export const ADMIN_COST_STATISTICS = {
   ],
 } satisfies { statistics: CostStatisticsWindow[] };
 
+export const AGENT_REPORT_RUN = "9a1f3c2e-0b4d-4e5f-8a6b-7c8d9e0f1a2b";
+export const AGENT_FAILED_RUN = "1b2c3d4e-5f60-4718-89ab-cdef01234567";
+
+export const ADMIN_AGENTS = {
+  agents: [
+    {
+      name: "daily-report",
+      purpose:
+        "Reads the daily maintenance report and tells operators, in plain words, what is fine and what needs attention.",
+      model_role: "skillhub-ops-report",
+      daily_spend_cap_usd_micros: 200000,
+      tools: ["maintenance_report"],
+      actions: [],
+      enabled: true,
+      owner_user_id: "22222222-2222-2222-2222-222222222222",
+    },
+  ],
+} satisfies { agents: PlatformAgent[] };
+
+export const ADMIN_AGENT_RUNS = {
+  runs: [
+    {
+      id: AGENT_FAILED_RUN,
+      agent: "daily-report",
+      status: "failed",
+      reason:
+        'operations: the result failed its check: item 1: it cites "/capacity/cpu_percent", which no tool returned',
+      started_at: "2026-10-07T02:00:00Z",
+      finished_at: "2026-10-07T02:00:41Z",
+      result: {
+        items: [
+          { status: "attention", text: "CPU 使用率偏高。", cites: ["/capacity/cpu_percent"] },
+        ],
+      },
+      steps: 2,
+      usd_micros: 1800,
+      unpriced_steps: 1,
+    },
+    {
+      id: AGENT_REPORT_RUN,
+      agent: "daily-report",
+      status: "completed",
+      started_at: "2026-10-06T02:00:00Z",
+      finished_at: "2026-10-06T02:00:37Z",
+      result: {
+        items: [
+          {
+            status: "attention",
+            text: "分割表輪替從來沒有成功過，已經超過兩個週期。",
+            cites: [
+              "/maintenance_jobs/rotate-partitions/last_succeeded_at",
+              "/maintenance_jobs/rotate-partitions/overdue_ratio",
+            ],
+          },
+          {
+            status: "fine",
+            text: "照現在的成長速度，資料庫還要 412 天才會超過還原預算。",
+            cites: ["/capacity/days_until_budget"],
+          },
+        ],
+      },
+      steps: 2,
+      usd_micros: 3100,
+      unpriced_steps: 0,
+    },
+  ],
+} satisfies { runs: PlatformAgentRun[] };
+
+export const ADMIN_AGENT_STEPS = {
+  steps: [
+    {
+      seq: 0,
+      tool: "maintenance_report",
+      arguments: "{}",
+      result: '{"capacity":{"database_bytes":5368709120}}',
+      model: "gpt-6-luna",
+      prompt_tokens: 812,
+      completion_tokens: 14,
+      usd_micros: 1200,
+      created_at: "2026-10-06T02:00:12Z",
+    },
+    {
+      seq: 1,
+      tool: "finish",
+      arguments: '{"items":[]}',
+      result: "",
+      model: "gpt-6-luna",
+      prompt_tokens: 1630,
+      completion_tokens: 220,
+      usd_micros: 1900,
+      created_at: "2026-10-06T02:00:37Z",
+    },
+  ],
+} satisfies { steps: PlatformAgentStep[] };
+
+export const AGENT_FINDING = "5c1d2e3f-4a5b-4c6d-8e7f-90a1b2c3d4e5";
+
+export const ADMIN_AGENT_FINDINGS = {
+  findings: [
+    {
+      id: AGENT_FINDING,
+      agent: "daily-report",
+      status: "open",
+      title: "分割表輪替從來沒有成功過，已經超過兩個週期。",
+      cites: [
+        "/maintenance_jobs/rotate-partitions/last_succeeded_at",
+        "/maintenance_jobs/rotate-partitions/overdue_ratio",
+      ],
+      first_seen_at: "2026-10-05T02:00:37Z",
+      last_seen_at: "2026-10-07T02:00:41Z",
+      seen_count: 3,
+      status_changed_at: "2026-10-05T02:00:37Z",
+    },
+  ],
+  counts: { open: 1, acknowledged: 1, resolved: 4, dismissed: 0, recovered: 2 },
+} satisfies {
+  findings: PlatformAgentFinding[];
+  counts: Record<FindingStatus, number>;
+};
+
+export const ADMIN_AGENT_FINDING = {
+  finding: ADMIN_AGENT_FINDINGS.findings[0],
+  events: [
+    {
+      seq: 0,
+      kind: "opened",
+      run_id: AGENT_REPORT_RUN,
+      text: "分割表輪替從來沒有成功過，已經超過兩個週期。",
+      evidence: {
+        "/maintenance_jobs/rotate-partitions/last_succeeded_at": null,
+        "/maintenance_jobs/rotate-partitions/overdue_ratio": 2.4,
+      },
+      occurred_at: "2026-10-05T02:00:37Z",
+    },
+    {
+      seq: 1,
+      kind: "seen",
+      run_id: AGENT_REPORT_RUN,
+      text: "分割表輪替從來沒有成功過，已經超過兩個週期。",
+      evidence: {
+        "/maintenance_jobs/rotate-partitions/last_succeeded_at": null,
+        "/maintenance_jobs/rotate-partitions/overdue_ratio": 3.4,
+      },
+      occurred_at: "2026-10-06T02:00:37Z",
+    },
+  ],
+} satisfies { finding: PlatformAgentFinding; events: PlatformAgentFindingEvent[] };
+
 type RouteResult = { body: unknown; status: number };
 
 function ok(body: unknown, status = 200): RouteResult {
@@ -1248,6 +1406,12 @@ const ROUTES: RouteMatcher[] = [
   (path) => (path === "/admin/cost-statistics" ? ok(ADMIN_COST_STATISTICS) : undefined),
   (path) => (path === "/admin/model-budgets" ? ok(ADMIN_MODEL_BUDGETS) : undefined),
   (path) => (path === "/admin/exposure-reviews" ? ok(ADMIN_EXPOSURE_QUEUE) : undefined),
+  (path) => (path === "/admin/agents" ? ok(ADMIN_AGENTS) : undefined),
+  (path) => (path === "/admin/agents/runs" ? ok(ADMIN_AGENT_RUNS) : undefined),
+  (path) => (path === "/admin/agents/findings" ? ok(ADMIN_AGENT_FINDINGS) : undefined),
+  (path) => (/^\/admin\/agents\/findings\/[^/]+$/.test(path) ? ok(ADMIN_AGENT_FINDING) : undefined),
+  (path) =>
+    /^\/admin\/agents\/runs\/[^/]+\/steps$/.test(path) ? ok(ADMIN_AGENT_STEPS) : undefined,
   (path) =>
     path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
       ? ok(ADMIN_EXPOSURE_CASE)

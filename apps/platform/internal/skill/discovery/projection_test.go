@@ -43,15 +43,14 @@ func TestADocumentIsListedOnceEnrichedOrOnceAVectorCanFindIt(t *testing.T) {
 	}
 }
 
-func TestAnUnmeasuredListingIsWrittenUnverifiedAndOnlyTheReviewedNewestVersionIsCurated(t *testing.T) {
+func TestAnUnmeasuredListingIsWrittenUnverifiedAndOnlyACuratedTierNamesItsReviewedVersion(t *testing.T) {
 	reviewed := pgtype.UUID{Bytes: [16]byte{7}, Valid: true}
-	newer := pgtype.UUID{Bytes: [16]byte{8}, Valid: true}
 
 	current := listingOf(pgtype.UUID{}, ListingFacts{CurationTier: string(TierCurated), CuratedVersionID: reviewed, LatestVersionID: reviewed})
-	movedOn := listingOf(pgtype.UUID{}, ListingFacts{CurationTier: string(TierCurated), CuratedVersionID: reviewed, LatestVersionID: newer})
+	indexed := listingOf(pgtype.UUID{}, ListingFacts{CurationTier: string(TierIndexed), CuratedVersionID: reviewed, LatestVersionID: reviewed})
 
-	if !current.Curated || movedOn.Curated {
-		t.Fatalf("curated: reviewed newest = %v, newer version = %v; want true then false", current.Curated, movedOn.Curated)
+	if current.CuratedVersionID != reviewed || indexed.CuratedVersionID.Valid {
+		t.Fatalf("curated version: curated tier = %v, indexed tier = %v; want the reviewed version then none", current.CuratedVersionID, indexed.CuratedVersionID)
 	}
 	if *current.AgentCapability != "unverified" || *current.AgentRuntime != "unverified" || *current.AgentRuntimeImage != "" {
 		t.Fatalf("unmeasured compatibility = %q/%q/%q, want unverified/unverified and no image",

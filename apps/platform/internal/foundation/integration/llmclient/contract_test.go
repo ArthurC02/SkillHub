@@ -13,6 +13,11 @@ import (
 )
 
 var wireTypes = map[string]reflect.Type{
+	"AgentStepRecord":               reflect.TypeOf(AgentStepRecord{}),
+	"AgentStepRequest":              reflect.TypeOf(AgentStepRequest{}),
+	"AgentStepResponse":             reflect.TypeOf(AgentStepResponse{}),
+	"AgentTool":                     reflect.TypeOf(AgentTool{}),
+	"AgentToolIntent":               reflect.TypeOf(AgentToolIntent{}),
 	"AnalyzeSearchIntentRequest":    reflect.TypeOf(AnalyzeIntentRequest{}),
 	"AnalyzeSearchIntentResponse":   reflect.TypeOf(AnalyzeIntentResponse{}),
 	"CreationDraftValidation":       reflect.TypeOf(CreationDraftValidation{}),

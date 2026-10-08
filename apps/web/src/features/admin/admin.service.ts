@@ -69,7 +69,9 @@ export type ModelCallBudget = {
 export type Rosters = { operator_user_ids: string[]; beta_allowlist: string[] };
 
 export type OperatorAuditEvent = {
+  actor_kind: "person" | "agent" | "system";
   actor_user_id: string | null;
+  actor_agent_id: string | null;
   action: string;
   resource_type: string;
   resource_id: string | null;
@@ -391,6 +393,159 @@ export function useCostStatistics() {
 
 export function usd(micros: number | null): string {
   return micros === null ? "未測量" : `$${(micros / 1_000_000).toFixed(4)}`;
+}
+
+export type PlatformAgent = {
+  name: string;
+  purpose: string;
+  model_role: string;
+  daily_spend_cap_usd_micros: number;
+  tools: string[];
+  actions: string[];
+  enabled: boolean;
+  owner_user_id?: string;
+};
+
+export type PlatformAgentBrake = {
+  reason: string;
+  engaged_at: string;
+  engaged_by_user_id?: string;
+};
+
+export type PlatformAgentRunStatus = "running" | "completed" | "incomplete" | "stopped" | "failed";
+
+export type PlatformAgentRun = {
+  id: string;
+  agent: string;
+  status: PlatformAgentRunStatus;
+  reason?: string;
+  started_at: string;
+  finished_at?: string;
+  result?: Record<string, unknown>;
+  steps: number;
+  usd_micros: number;
+  unpriced_steps: number;
+};
+
+export type PlatformAgentStep = {
+  seq: number;
+  tool: string;
+  arguments: string;
+  result: string;
+  model: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  usd_micros?: number;
+  created_at: string;
+};
+
+export function usePlatformAgents() {
+  return useQuery({
+    queryKey: queryKeys.admin.agents,
+    queryFn: () =>
+      apiFetch<{ agents: PlatformAgent[]; brake?: PlatformAgentBrake }>("/admin/agents"),
+    enabled: useOperator(),
+  });
+}
+
+export function usePlatformAgentSwitch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, ...body }: { name: string; enabled: boolean; note: string }) =>
+      apiFetch<PlatformAgent>(
+        `/admin/agents/${encodeURIComponent(name)}/enabled`,
+        send("PUT", body),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agents }),
+  });
+}
+
+export function usePlatformAgentBrake(method: "PUT" | "DELETE") {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { note: string }) =>
+      apiFetch<PlatformAgentBrake | undefined>("/admin/agents/brake", send(method, body)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agents }),
+  });
+}
+
+export function usePlatformAgentRuns() {
+  return useQuery({
+    queryKey: queryKeys.admin.agentRuns,
+    queryFn: () => apiFetch<{ runs: PlatformAgentRun[] }>("/admin/agents/runs"),
+    enabled: useOperator(),
+  });
+}
+
+export type FindingStatus = "open" | "acknowledged" | "resolved" | "dismissed" | "recovered";
+
+export type PlatformAgentFinding = {
+  id: string;
+  agent: string;
+  status: FindingStatus;
+  title: string;
+  cites: string[];
+  assignee_user_id?: string;
+  first_seen_at: string;
+  last_seen_at: string;
+  seen_count: number;
+  status_changed_at: string;
+};
+
+export type PlatformAgentFindingEvent = {
+  seq: number;
+  kind: "opened" | "seen" | "reopened" | "recovered" | "acknowledged" | "resolved" | "dismissed";
+  run_id?: string;
+  operator_user_id?: string;
+  text?: string;
+  evidence?: Record<string, unknown>;
+  note?: string;
+  occurred_at: string;
+};
+
+export function usePlatformAgentFindings(status?: FindingStatus) {
+  return useQuery({
+    queryKey: queryKeys.admin.agentFindingList(status ?? "live"),
+    queryFn: () =>
+      apiFetch<{ findings: PlatformAgentFinding[]; counts: Record<FindingStatus, number> }>(
+        status ? `/admin/agents/findings?status=${status}` : "/admin/agents/findings",
+      ),
+    enabled: useOperator(),
+  });
+}
+
+export function usePlatformAgentFinding(id: string) {
+  return useQuery({
+    queryKey: queryKeys.admin.agentFinding(id),
+    queryFn: () =>
+      apiFetch<{ finding: PlatformAgentFinding; events: PlatformAgentFindingEvent[] }>(
+        `/admin/agents/findings/${encodeURIComponent(id)}`,
+      ),
+    enabled: useOperator(),
+  });
+}
+
+export function useMoveFinding() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; status: FindingStatus; note: string }) =>
+      apiFetch<undefined>(
+        `/admin/agents/findings/${encodeURIComponent(id)}/status`,
+        send("PUT", body),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agentFindings }),
+  });
+}
+
+export function usePlatformAgentSteps(run: string) {
+  return useQuery({
+    queryKey: queryKeys.admin.agentSteps(run),
+    queryFn: () =>
+      apiFetch<{ steps: PlatformAgentStep[] }>(
+        `/admin/agents/runs/${encodeURIComponent(run)}/steps`,
+      ),
+    enabled: useOperator(),
+  });
 }
 
 export type DailyCount = { day: string; key: string; count: number };

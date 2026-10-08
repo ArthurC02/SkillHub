@@ -282,7 +282,7 @@ export const register: Register = on => {
 
   on('tool.call', { tool: `mcp__skillhub-guards__${SHIP_TOOL}` }, async ($, e) => {
     if (e.agentId !== undefined) return { deny: 'skillhub-guards: a subagent may not commit or push (AGENTS.md 開發自動化 3).' }
-    const input = e.input as ShipInput
+    const input = e as unknown as ShipInput
     const root = await $.session.root()
     const paths = input.paths.map(path => repoRelative(root, path))
     const loose = shipPathProblem(paths)
@@ -297,9 +297,8 @@ export const register: Register = on => {
 
     const staged = await git($, root, ['add', '--', ...paths])
     if (!staged.ok) return { result: `git add failed:\n${staged.out}`, isError: true as const }
-    const memory = await git($, root, ['diff', '--cached', '--name-only', '--', DOMAIN_MEMORY])
-    const sign = input.sign === true || memory.out !== ''
-    const commit = await git($, root, ['commit', ...(sign ? ['-S'] : []), '-F', '-'], input.message)
+    const sign = input.sign === true || paths.some(path => path.startsWith(`${DOMAIN_MEMORY}/`))
+    const commit = await git($, root, ['commit', ...(sign ? ['-S'] : []), '-F', '-', '--', ...paths], input.message)
     if (!commit.ok) return { result: `git commit failed:\n${commit.out}`, isError: true as const }
 
     await git($, root, ['fetch', '--quiet'])
@@ -317,7 +316,7 @@ export const register: Register = on => {
   })
 
   on('tool.call', { tool: `mcp__skillhub-guards__${MUTATION_TOOL}` }, async ($, e) => {
-    const input = e.input as MutationInput
+    const input = e as unknown as MutationInput
     const root = await $.session.root()
     const path = /^([a-zA-Z]:|\/)/.test(input.file) ? input.file : `${root}/${input.file}`
     const original = await $.fs.read(path)

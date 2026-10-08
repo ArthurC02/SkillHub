@@ -186,6 +186,7 @@ type AuditEvent struct {
 	ResourceID   pgtype.UUID
 	Metadata     []byte
 	CreatedAt    pgtype.Timestamptz
+	ActorAgentID pgtype.UUID
 }
 
 type Bundle struct {
@@ -310,6 +311,12 @@ type CreditEntry struct {
 	IdempotencyKey     string
 	CreatedAt          pgtype.Timestamptz
 	RequestFingerprint []byte
+}
+
+type DatabaseSizeSample struct {
+	SampledOn     pgtype.Date
+	DatabaseBytes int64
+	SampledAt     pgtype.Timestamptz
 }
 
 type Dataset struct {
@@ -483,6 +490,13 @@ type GenerationLease struct {
 	ExpiresAt   pgtype.Timestamptz
 }
 
+type MaintenanceJobRun struct {
+	Job           string
+	PeriodSeconds int32
+	RegisteredAt  pgtype.Timestamptz
+	SucceededAt   pgtype.Timestamptz
+}
+
 // An operator-set per-call ceiling for one model endpoint (02:OPS-009). An absent row means the compiled default. Which kinds exist, and how far below the compiled deadline a value may sit, are decided in Go; this table stores a number and who set it.
 type ModelCallBudget struct {
 	Kind    string
@@ -522,6 +536,74 @@ type OutboxEvent struct {
 	DeliveryAttempts int32
 	DeadLetteredAt   pgtype.Timestamptz
 	NextDeliveryAt   pgtype.Timestamptz
+}
+
+type PlatformAgent struct {
+	ID                  pgtype.UUID
+	Name                string
+	Purpose             string
+	ModelRole           string
+	DailySpendCapMicros int64
+	Tools               []string
+	Actions             []string
+	Enabled             bool
+	OwnerID             pgtype.UUID
+	RegisteredAt        pgtype.Timestamptz
+}
+
+type PlatformAgentBrake struct {
+	Engaged   bool
+	EngagedBy pgtype.UUID
+	EngagedAt pgtype.Timestamptz
+	Reason    string
+}
+
+type PlatformAgentFinding struct {
+	ID              pgtype.UUID
+	AgentID         pgtype.UUID
+	Status          string
+	Title           string
+	Cites           []string
+	AssigneeID      pgtype.UUID
+	FirstSeenAt     pgtype.Timestamptz
+	LastSeenAt      pgtype.Timestamptz
+	SeenCount       int32
+	StatusChangedAt pgtype.Timestamptz
+}
+
+type PlatformAgentFindingEvent struct {
+	FindingID  pgtype.UUID
+	Seq        int32
+	Kind       string
+	RunID      pgtype.UUID
+	OperatorID pgtype.UUID
+	Text       *string
+	Evidence   []byte
+	Note       *string
+	OccurredAt pgtype.Timestamptz
+}
+
+type PlatformAgentRun struct {
+	ID         pgtype.UUID
+	AgentID    pgtype.UUID
+	Status     string
+	StartedAt  pgtype.Timestamptz
+	FinishedAt pgtype.Timestamptz
+	Reason     *string
+	Result     []byte
+}
+
+type PlatformAgentStep struct {
+	RunID            pgtype.UUID
+	Seq              int32
+	Tool             string
+	Arguments        string
+	Result           string
+	Model            string
+	PromptTokens     int64
+	CompletionTokens int64
+	UsdMicros        *int64
+	CreatedAt        pgtype.Timestamptz
 }
 
 type Publication struct {
@@ -578,8 +660,6 @@ type Run struct {
 	Status               RunStatus
 	StatusReason         *string
 	Provider             string
-	RuntimeSnapshot      []byte
-	PolicySnapshot       []byte
 	CleanupStatus        RunCleanupStatus
 	CleanupAt            pgtype.Timestamptz
 	CreatedAt            pgtype.Timestamptz
@@ -630,6 +710,13 @@ type RunPermissionConfirmation struct {
 	ConfirmedAt    pgtype.Timestamptz
 }
 
+type RunSnapshot struct {
+	RunID           pgtype.UUID
+	WorkspaceID     pgtype.UUID
+	RuntimeSnapshot []byte
+	PolicySnapshot  []byte
+}
+
 type RunStatusTransition struct {
 	ID           int64
 	RunID        pgtype.UUID
@@ -670,11 +757,11 @@ type SearchDocument struct {
 	AgentRuntime            *string
 	AgentRuntimeImage       *string
 	AgentMeasuredAt         pgtype.Timestamptz
-	Curated                 bool
 	Listable                bool
 	HasScript               *bool
 	LatestSourcePath        string
 	ExposureDigest          *string
+	Curated                 bool
 }
 
 type Session struct {

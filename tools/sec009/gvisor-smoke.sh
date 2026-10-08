@@ -16,12 +16,17 @@ if [ -z "$BASELINE" ] || [ "$BASELINE" = unset ]; then
   echo "infra/nodes/gvisor-baseline.txt is unset; there is no version to test" >&2
   exit 1
 fi
+RUNSC_SHA512="$(awk -v a="$(uname -m)" '$1 == "sha512" && $2 == a { print $3 }' "$HERE/../../infra/nodes/gvisor-baseline.txt")"
+if [ -z "$RUNSC_SHA512" ]; then
+  echo "infra/nodes/gvisor-baseline.txt pins no sha512 for $(uname -m)" >&2
+  exit 1
+fi
 
 # --privileged lets runsc create the namespaces and mounts its sentry needs;
 # --cgroupns=private plus the leaf-cgroup move in the prepared body avoids
 # "device or resource busy" without disabling resource limiting. -i: stdin.
 docker run --rm -i --privileged --cgroupns=private \
-  -e SEC009_RUNSC_VERSION="$BASELINE" "$IMAGE" \
+  -e SEC009_RUNSC_VERSION="$BASELINE" -e SEC009_RUNSC_SHA512="$RUNSC_SHA512" "$IMAGE" \
   bash -s <<INNER
 $PREPARE
 

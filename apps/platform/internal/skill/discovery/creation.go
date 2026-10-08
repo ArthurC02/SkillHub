@@ -65,7 +65,7 @@ func (w creationWordSearch) ids(ctx context.Context, op string, limit int32) ([]
 	if q == "" {
 		return nil, nil
 	}
-	rows, err := w.queries.CreationLexicalSearchSkills(ctx, gen.CreationLexicalSearchSkillsParams{CatalogWorkspaceIds: w.scope.catalogs, ExposedKeys: w.scope.exposedKeys, Query: q, ResultLimit: limit})
+	rows, err := w.queries.CreationLexicalSearchSkills(ctx, gen.CreationLexicalSearchSkillsParams{CatalogWorkspaceIds: w.scope.catalogs, ExposedKeys: w.scope.exposedKeys, ExposedSkillIds: w.scope.exposedSkillIDs, Query: q, ResultLimit: limit})
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (s *Service) CatalogReferenceFacts(ctx context.Context, skillID, versionID 
 		return unknownReferenceFacts, err
 	}
 	row, err := gen.New(s.Pool).GetCatalogReferenceFacts(ctx, gen.GetCatalogReferenceFactsParams{
-		SkillID: sid, CatalogWorkspaceIds: scope.catalogs, ExposedKeys: scope.exposedKeys,
+		SkillID: sid, CatalogWorkspaceIds: scope.catalogs, ExposedKeys: scope.exposedKeys, ExposedSkillIds: scope.exposedSkillIDs,
 	})
 	if err != nil {
 		return unknownReferenceFacts, err

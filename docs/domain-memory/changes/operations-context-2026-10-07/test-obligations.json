@@ -1,0 +1,70 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "operations-owns-platform-agents",
+  "proposal_id": "registry-operations-context",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "agent-runs-only-when-enabled",
+      "expected_outcome": "The validator accepts the new context.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "agent-runs-only-when-enabled",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "guard-matches-policy",
+      "source_type": "invariant",
+      "source_id": "operator-only-and-audited",
+      "expected_outcome": "The import guard carries an operations rule denying every context, every other context rule denies operations, and the platform lints clean under it.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "golangci-lint run ./..."
+    },
+    {
+      "id": "halt-reason",
+      "source_type": "acceptance-criterion",
+      "source_id": "brake-stops-every-agent",
+      "expected_outcome": "A run stops when its agent is disabled or the brake is engaged, and the brake is the reason named when both hold.",
+      "level": "unit",
+      "status": "executed",
+      "check": "go test ./internal/product/operations/ -run TestHaltReasonNamesTheBrakeBeforeTheDisable"
+    },
+    {
+      "id": "disable-stops-the-run",
+      "source_type": "acceptance-criterion",
+      "source_id": "agent-runs-only-when-enabled",
+      "expected_outcome": "An agent nobody enabled cannot start; a disable stops its run before the next step, and the stopped run stays stopped after the agent is enabled again.",
+      "level": "integration",
+      "status": "executed",
+      "check": "go test ./internal/entrypoint/api/apiserver/ -run TestDisablingAnAgentStopsItsRunBeforeTheNextStep"
+    },
+    {
+      "id": "brake-holds",
+      "source_type": "acceptance-criterion",
+      "source_id": "brake-stops-every-agent",
+      "expected_outcome": "The brake stops a running run and refuses new ones until released; releasing nothing writes no audit event.",
+      "level": "integration",
+      "status": "executed",
+      "check": "go test ./internal/entrypoint/api/apiserver/ -run TestTheAgentBrakeStopsRunsAndHoldsUntilReleased"
+    },
+    {
+      "id": "operator-only",
+      "source_type": "acceptance-criterion",
+      "source_id": "operator-only-and-audited",
+      "expected_outcome": "Anonymous and member callers get 404 on every agent route and change nothing; a blank note or an unknown agent is refused.",
+      "level": "integration",
+      "status": "executed",
+      "check": "go test ./internal/entrypoint/api/apiserver/ -run 'TestPlatformAgentRoutesAreInvisibleWithoutTheOperatorRole|TestAgentChangesNeedANoteAndAKnownAgent'"
+    }
+  ]
+}

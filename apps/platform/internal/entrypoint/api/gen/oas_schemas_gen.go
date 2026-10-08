@@ -7094,6 +7094,29 @@ func (s *DownloadArtifactStatus) UnmarshalText(data []byte) error {
 	}
 }
 
+type EngagePlatformAgentBrakeBadRequest Error
+
+func (*EngagePlatformAgentBrakeBadRequest) engagePlatformAgentBrakeRes() {}
+
+type EngagePlatformAgentBrakeNotFound Error
+
+func (*EngagePlatformAgentBrakeNotFound) engagePlatformAgentBrakeRes() {}
+
+type EngagePlatformAgentBrakeReq struct {
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetNote returns the value of Note.
+func (s *EngagePlatformAgentBrakeReq) GetNote() string {
+	return s.Note
+}
+
+// SetNote sets the value of Note.
+func (s *EngagePlatformAgentBrakeReq) SetNote(val string) {
+	s.Note = val
+}
+
 // Ref: #/components/schemas/Error
 type Error struct {
 	Error string `json:"error"`
@@ -7130,6 +7153,8 @@ func (*Error) listModelCallBudgetsRes()            {}
 func (*Error) listOwnBundleOverviewRes()           {}
 func (*Error) listOwnBundlesRes()                  {}
 func (*Error) listOwnPublicationsRes()             {}
+func (*Error) listPlatformAgentRunsRes()           {}
+func (*Error) listPlatformAgentsRes()              {}
 func (*Error) listSkillVersionsRes()               {}
 func (*Error) publicSearchSkillsRes()              {}
 func (*Error) searchSkillsWithCorrectedIntentRes() {}
@@ -10565,6 +10590,41 @@ type GetOwnPublisherUnauthorized Error
 
 func (*GetOwnPublisherUnauthorized) getOwnPublisherRes() {}
 
+type GetPlatformAgentFindingBadRequest Error
+
+func (*GetPlatformAgentFindingBadRequest) getPlatformAgentFindingRes() {}
+
+type GetPlatformAgentFindingNotFound Error
+
+func (*GetPlatformAgentFindingNotFound) getPlatformAgentFindingRes() {}
+
+type GetPlatformAgentFindingOK struct {
+	Finding PlatformAgentFinding        `json:"finding"`
+	Events  []PlatformAgentFindingEvent `json:"events"`
+}
+
+// GetFinding returns the value of Finding.
+func (s *GetPlatformAgentFindingOK) GetFinding() PlatformAgentFinding {
+	return s.Finding
+}
+
+// GetEvents returns the value of Events.
+func (s *GetPlatformAgentFindingOK) GetEvents() []PlatformAgentFindingEvent {
+	return s.Events
+}
+
+// SetFinding sets the value of Finding.
+func (s *GetPlatformAgentFindingOK) SetFinding(val PlatformAgentFinding) {
+	s.Finding = val
+}
+
+// SetEvents sets the value of Events.
+func (s *GetPlatformAgentFindingOK) SetEvents(val []PlatformAgentFindingEvent) {
+	s.Events = val
+}
+
+func (*GetPlatformAgentFindingOK) getPlatformAgentFindingRes() {}
+
 type GetReadinessOK struct {
 	// Every capability was measured and works. `unmeasured` is deliberately not enough — a caller asking
 	// this wants to know whether the deployment works, and "nobody looked" is not an answer to that.
@@ -12096,6 +12156,228 @@ type ListPackagingTargetsUnauthorized Error
 
 func (*ListPackagingTargetsUnauthorized) listPackagingTargetsRes() {}
 
+type ListPlatformAgentFindingsBadRequest Error
+
+func (*ListPlatformAgentFindingsBadRequest) listPlatformAgentFindingsRes() {}
+
+type ListPlatformAgentFindingsNotFound Error
+
+func (*ListPlatformAgentFindingsNotFound) listPlatformAgentFindingsRes() {}
+
+type ListPlatformAgentFindingsOK struct {
+	Findings []PlatformAgentFinding            `json:"findings"`
+	Counts   ListPlatformAgentFindingsOKCounts `json:"counts"`
+}
+
+// GetFindings returns the value of Findings.
+func (s *ListPlatformAgentFindingsOK) GetFindings() []PlatformAgentFinding {
+	return s.Findings
+}
+
+// GetCounts returns the value of Counts.
+func (s *ListPlatformAgentFindingsOK) GetCounts() ListPlatformAgentFindingsOKCounts {
+	return s.Counts
+}
+
+// SetFindings sets the value of Findings.
+func (s *ListPlatformAgentFindingsOK) SetFindings(val []PlatformAgentFinding) {
+	s.Findings = val
+}
+
+// SetCounts sets the value of Counts.
+func (s *ListPlatformAgentFindingsOK) SetCounts(val ListPlatformAgentFindingsOKCounts) {
+	s.Counts = val
+}
+
+func (*ListPlatformAgentFindingsOK) listPlatformAgentFindingsRes() {}
+
+type ListPlatformAgentFindingsOKCounts struct {
+	Open         int `json:"open"`
+	Acknowledged int `json:"acknowledged"`
+	Resolved     int `json:"resolved"`
+	Dismissed    int `json:"dismissed"`
+	Recovered    int `json:"recovered"`
+}
+
+// GetOpen returns the value of Open.
+func (s *ListPlatformAgentFindingsOKCounts) GetOpen() int {
+	return s.Open
+}
+
+// GetAcknowledged returns the value of Acknowledged.
+func (s *ListPlatformAgentFindingsOKCounts) GetAcknowledged() int {
+	return s.Acknowledged
+}
+
+// GetResolved returns the value of Resolved.
+func (s *ListPlatformAgentFindingsOKCounts) GetResolved() int {
+	return s.Resolved
+}
+
+// GetDismissed returns the value of Dismissed.
+func (s *ListPlatformAgentFindingsOKCounts) GetDismissed() int {
+	return s.Dismissed
+}
+
+// GetRecovered returns the value of Recovered.
+func (s *ListPlatformAgentFindingsOKCounts) GetRecovered() int {
+	return s.Recovered
+}
+
+// SetOpen sets the value of Open.
+func (s *ListPlatformAgentFindingsOKCounts) SetOpen(val int) {
+	s.Open = val
+}
+
+// SetAcknowledged sets the value of Acknowledged.
+func (s *ListPlatformAgentFindingsOKCounts) SetAcknowledged(val int) {
+	s.Acknowledged = val
+}
+
+// SetResolved sets the value of Resolved.
+func (s *ListPlatformAgentFindingsOKCounts) SetResolved(val int) {
+	s.Resolved = val
+}
+
+// SetDismissed sets the value of Dismissed.
+func (s *ListPlatformAgentFindingsOKCounts) SetDismissed(val int) {
+	s.Dismissed = val
+}
+
+// SetRecovered sets the value of Recovered.
+func (s *ListPlatformAgentFindingsOKCounts) SetRecovered(val int) {
+	s.Recovered = val
+}
+
+type ListPlatformAgentFindingsStatus string
+
+const (
+	ListPlatformAgentFindingsStatusOpen         ListPlatformAgentFindingsStatus = "open"
+	ListPlatformAgentFindingsStatusAcknowledged ListPlatformAgentFindingsStatus = "acknowledged"
+	ListPlatformAgentFindingsStatusResolved     ListPlatformAgentFindingsStatus = "resolved"
+	ListPlatformAgentFindingsStatusDismissed    ListPlatformAgentFindingsStatus = "dismissed"
+	ListPlatformAgentFindingsStatusRecovered    ListPlatformAgentFindingsStatus = "recovered"
+)
+
+// AllValues returns all ListPlatformAgentFindingsStatus values.
+func (ListPlatformAgentFindingsStatus) AllValues() []ListPlatformAgentFindingsStatus {
+	return []ListPlatformAgentFindingsStatus{
+		ListPlatformAgentFindingsStatusOpen,
+		ListPlatformAgentFindingsStatusAcknowledged,
+		ListPlatformAgentFindingsStatusResolved,
+		ListPlatformAgentFindingsStatusDismissed,
+		ListPlatformAgentFindingsStatusRecovered,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ListPlatformAgentFindingsStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case ListPlatformAgentFindingsStatusOpen:
+		return []byte(s), nil
+	case ListPlatformAgentFindingsStatusAcknowledged:
+		return []byte(s), nil
+	case ListPlatformAgentFindingsStatusResolved:
+		return []byte(s), nil
+	case ListPlatformAgentFindingsStatusDismissed:
+		return []byte(s), nil
+	case ListPlatformAgentFindingsStatusRecovered:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ListPlatformAgentFindingsStatus) UnmarshalText(data []byte) error {
+	switch ListPlatformAgentFindingsStatus(data) {
+	case ListPlatformAgentFindingsStatusOpen:
+		*s = ListPlatformAgentFindingsStatusOpen
+		return nil
+	case ListPlatformAgentFindingsStatusAcknowledged:
+		*s = ListPlatformAgentFindingsStatusAcknowledged
+		return nil
+	case ListPlatformAgentFindingsStatusResolved:
+		*s = ListPlatformAgentFindingsStatusResolved
+		return nil
+	case ListPlatformAgentFindingsStatusDismissed:
+		*s = ListPlatformAgentFindingsStatusDismissed
+		return nil
+	case ListPlatformAgentFindingsStatusRecovered:
+		*s = ListPlatformAgentFindingsStatusRecovered
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type ListPlatformAgentRunStepsBadRequest Error
+
+func (*ListPlatformAgentRunStepsBadRequest) listPlatformAgentRunStepsRes() {}
+
+type ListPlatformAgentRunStepsNotFound Error
+
+func (*ListPlatformAgentRunStepsNotFound) listPlatformAgentRunStepsRes() {}
+
+type ListPlatformAgentRunStepsOK struct {
+	Steps []PlatformAgentStep `json:"steps"`
+}
+
+// GetSteps returns the value of Steps.
+func (s *ListPlatformAgentRunStepsOK) GetSteps() []PlatformAgentStep {
+	return s.Steps
+}
+
+// SetSteps sets the value of Steps.
+func (s *ListPlatformAgentRunStepsOK) SetSteps(val []PlatformAgentStep) {
+	s.Steps = val
+}
+
+func (*ListPlatformAgentRunStepsOK) listPlatformAgentRunStepsRes() {}
+
+type ListPlatformAgentRunsOK struct {
+	Runs []PlatformAgentRun `json:"runs"`
+}
+
+// GetRuns returns the value of Runs.
+func (s *ListPlatformAgentRunsOK) GetRuns() []PlatformAgentRun {
+	return s.Runs
+}
+
+// SetRuns sets the value of Runs.
+func (s *ListPlatformAgentRunsOK) SetRuns(val []PlatformAgentRun) {
+	s.Runs = val
+}
+
+func (*ListPlatformAgentRunsOK) listPlatformAgentRunsRes() {}
+
+type ListPlatformAgentsOK struct {
+	Agents []PlatformAgent       `json:"agents"`
+	Brake  OptPlatformAgentBrake `json:"brake"`
+}
+
+// GetAgents returns the value of Agents.
+func (s *ListPlatformAgentsOK) GetAgents() []PlatformAgent {
+	return s.Agents
+}
+
+// GetBrake returns the value of Brake.
+func (s *ListPlatformAgentsOK) GetBrake() OptPlatformAgentBrake {
+	return s.Brake
+}
+
+// SetAgents sets the value of Agents.
+func (s *ListPlatformAgentsOK) SetAgents(val []PlatformAgent) {
+	s.Agents = val
+}
+
+// SetBrake sets the value of Brake.
+func (s *ListPlatformAgentsOK) SetBrake(val OptPlatformAgentBrake) {
+	s.Brake = val
+}
+
+func (*ListPlatformAgentsOK) listPlatformAgentsRes() {}
+
 type ListRunArtifactsNotFound Error
 
 func (*ListRunArtifactsNotFound) listRunArtifactsRes() {}
@@ -12624,6 +12906,104 @@ func (s *ModelCallBudget) SetSetAt(val NilDateTime) {
 
 func (*ModelCallBudget) setModelCallBudgetRes() {}
 
+type MovePlatformAgentFindingBadRequest Error
+
+func (*MovePlatformAgentFindingBadRequest) movePlatformAgentFindingRes() {}
+
+type MovePlatformAgentFindingConflict Error
+
+func (*MovePlatformAgentFindingConflict) movePlatformAgentFindingRes() {}
+
+// MovePlatformAgentFindingNoContent is response for MovePlatformAgentFinding operation.
+type MovePlatformAgentFindingNoContent struct{}
+
+func (*MovePlatformAgentFindingNoContent) movePlatformAgentFindingRes() {}
+
+type MovePlatformAgentFindingNotFound Error
+
+func (*MovePlatformAgentFindingNotFound) movePlatformAgentFindingRes() {}
+
+type MovePlatformAgentFindingReq struct {
+	Status MovePlatformAgentFindingReqStatus `json:"status"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetStatus returns the value of Status.
+func (s *MovePlatformAgentFindingReq) GetStatus() MovePlatformAgentFindingReqStatus {
+	return s.Status
+}
+
+// GetNote returns the value of Note.
+func (s *MovePlatformAgentFindingReq) GetNote() string {
+	return s.Note
+}
+
+// SetStatus sets the value of Status.
+func (s *MovePlatformAgentFindingReq) SetStatus(val MovePlatformAgentFindingReqStatus) {
+	s.Status = val
+}
+
+// SetNote sets the value of Note.
+func (s *MovePlatformAgentFindingReq) SetNote(val string) {
+	s.Note = val
+}
+
+type MovePlatformAgentFindingReqStatus string
+
+const (
+	MovePlatformAgentFindingReqStatusOpen         MovePlatformAgentFindingReqStatus = "open"
+	MovePlatformAgentFindingReqStatusAcknowledged MovePlatformAgentFindingReqStatus = "acknowledged"
+	MovePlatformAgentFindingReqStatusResolved     MovePlatformAgentFindingReqStatus = "resolved"
+	MovePlatformAgentFindingReqStatusDismissed    MovePlatformAgentFindingReqStatus = "dismissed"
+)
+
+// AllValues returns all MovePlatformAgentFindingReqStatus values.
+func (MovePlatformAgentFindingReqStatus) AllValues() []MovePlatformAgentFindingReqStatus {
+	return []MovePlatformAgentFindingReqStatus{
+		MovePlatformAgentFindingReqStatusOpen,
+		MovePlatformAgentFindingReqStatusAcknowledged,
+		MovePlatformAgentFindingReqStatusResolved,
+		MovePlatformAgentFindingReqStatusDismissed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s MovePlatformAgentFindingReqStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case MovePlatformAgentFindingReqStatusOpen:
+		return []byte(s), nil
+	case MovePlatformAgentFindingReqStatusAcknowledged:
+		return []byte(s), nil
+	case MovePlatformAgentFindingReqStatusResolved:
+		return []byte(s), nil
+	case MovePlatformAgentFindingReqStatusDismissed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *MovePlatformAgentFindingReqStatus) UnmarshalText(data []byte) error {
+	switch MovePlatformAgentFindingReqStatus(data) {
+	case MovePlatformAgentFindingReqStatusOpen:
+		*s = MovePlatformAgentFindingReqStatusOpen
+		return nil
+	case MovePlatformAgentFindingReqStatusAcknowledged:
+		*s = MovePlatformAgentFindingReqStatusAcknowledged
+		return nil
+	case MovePlatformAgentFindingReqStatusResolved:
+		*s = MovePlatformAgentFindingReqStatusResolved
+		return nil
+	case MovePlatformAgentFindingReqStatusDismissed:
+		*s = MovePlatformAgentFindingReqStatusDismissed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // NewNilDateTime returns new NilDateTime with value set to v.
 func NewNilDateTime(v time.Time) NilDateTime {
 	return NilDateTime{
@@ -12972,18 +13352,32 @@ func (*NotModified) getSkillFilesRes()        {}
 
 // Ref: #/components/schemas/OperatorAuditEvent
 type OperatorAuditEvent struct {
-	ActorUserID  NilUUID                    `json:"actor_user_id"`
-	Action       string                     `json:"action"`
-	ResourceType string                     `json:"resource_type"`
-	ResourceID   NilUUID                    `json:"resource_id"`
-	WorkspaceID  NilUUID                    `json:"workspace_id"`
-	OccurredAt   time.Time                  `json:"occurred_at"`
-	Metadata     OperatorAuditEventMetadata `json:"metadata"`
+	// Who acted: a person (`actor_user_id`), one of the platform's own agents (`actor_agent_id`), or the
+	// platform itself with neither.
+	ActorKind    OperatorAuditEventActorKind `json:"actor_kind"`
+	ActorUserID  NilUUID                     `json:"actor_user_id"`
+	ActorAgentID NilUUID                     `json:"actor_agent_id"`
+	Action       string                      `json:"action"`
+	ResourceType string                      `json:"resource_type"`
+	ResourceID   NilUUID                     `json:"resource_id"`
+	WorkspaceID  NilUUID                     `json:"workspace_id"`
+	OccurredAt   time.Time                   `json:"occurred_at"`
+	Metadata     OperatorAuditEventMetadata  `json:"metadata"`
+}
+
+// GetActorKind returns the value of ActorKind.
+func (s *OperatorAuditEvent) GetActorKind() OperatorAuditEventActorKind {
+	return s.ActorKind
 }
 
 // GetActorUserID returns the value of ActorUserID.
 func (s *OperatorAuditEvent) GetActorUserID() NilUUID {
 	return s.ActorUserID
+}
+
+// GetActorAgentID returns the value of ActorAgentID.
+func (s *OperatorAuditEvent) GetActorAgentID() NilUUID {
+	return s.ActorAgentID
 }
 
 // GetAction returns the value of Action.
@@ -13016,9 +13410,19 @@ func (s *OperatorAuditEvent) GetMetadata() OperatorAuditEventMetadata {
 	return s.Metadata
 }
 
+// SetActorKind sets the value of ActorKind.
+func (s *OperatorAuditEvent) SetActorKind(val OperatorAuditEventActorKind) {
+	s.ActorKind = val
+}
+
 // SetActorUserID sets the value of ActorUserID.
 func (s *OperatorAuditEvent) SetActorUserID(val NilUUID) {
 	s.ActorUserID = val
+}
+
+// SetActorAgentID sets the value of ActorAgentID.
+func (s *OperatorAuditEvent) SetActorAgentID(val NilUUID) {
+	s.ActorAgentID = val
 }
 
 // SetAction sets the value of Action.
@@ -13049,6 +13453,56 @@ func (s *OperatorAuditEvent) SetOccurredAt(val time.Time) {
 // SetMetadata sets the value of Metadata.
 func (s *OperatorAuditEvent) SetMetadata(val OperatorAuditEventMetadata) {
 	s.Metadata = val
+}
+
+// Who acted: a person (`actor_user_id`), one of the platform's own agents (`actor_agent_id`), or the
+// platform itself with neither.
+type OperatorAuditEventActorKind string
+
+const (
+	OperatorAuditEventActorKindPerson OperatorAuditEventActorKind = "person"
+	OperatorAuditEventActorKindAgent  OperatorAuditEventActorKind = "agent"
+	OperatorAuditEventActorKindSystem OperatorAuditEventActorKind = "system"
+)
+
+// AllValues returns all OperatorAuditEventActorKind values.
+func (OperatorAuditEventActorKind) AllValues() []OperatorAuditEventActorKind {
+	return []OperatorAuditEventActorKind{
+		OperatorAuditEventActorKindPerson,
+		OperatorAuditEventActorKindAgent,
+		OperatorAuditEventActorKindSystem,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s OperatorAuditEventActorKind) MarshalText() ([]byte, error) {
+	switch s {
+	case OperatorAuditEventActorKindPerson:
+		return []byte(s), nil
+	case OperatorAuditEventActorKindAgent:
+		return []byte(s), nil
+	case OperatorAuditEventActorKindSystem:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OperatorAuditEventActorKind) UnmarshalText(data []byte) error {
+	switch OperatorAuditEventActorKind(data) {
+	case OperatorAuditEventActorKindPerson:
+		*s = OperatorAuditEventActorKindPerson
+		return nil
+	case OperatorAuditEventActorKindAgent:
+		*s = OperatorAuditEventActorKindAgent
+		return nil
+	case OperatorAuditEventActorKindSystem:
+		*s = OperatorAuditEventActorKindSystem
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 type OperatorAuditEventMetadata map[string]jx.Raw
@@ -14712,6 +15166,52 @@ func (o OptLabelled) Or(d Labelled) Labelled {
 	return d
 }
 
+// NewOptListPlatformAgentFindingsStatus returns new OptListPlatformAgentFindingsStatus with value set to v.
+func NewOptListPlatformAgentFindingsStatus(v ListPlatformAgentFindingsStatus) OptListPlatformAgentFindingsStatus {
+	return OptListPlatformAgentFindingsStatus{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptListPlatformAgentFindingsStatus is optional ListPlatformAgentFindingsStatus.
+type OptListPlatformAgentFindingsStatus struct {
+	Value ListPlatformAgentFindingsStatus
+	Set   bool
+}
+
+// IsSet returns true if OptListPlatformAgentFindingsStatus was set.
+func (o OptListPlatformAgentFindingsStatus) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptListPlatformAgentFindingsStatus) Reset() {
+	var v ListPlatformAgentFindingsStatus
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptListPlatformAgentFindingsStatus) SetTo(v ListPlatformAgentFindingsStatus) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptListPlatformAgentFindingsStatus) Get() (v ListPlatformAgentFindingsStatus, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptListPlatformAgentFindingsStatus) Or(d ListPlatformAgentFindingsStatus) ListPlatformAgentFindingsStatus {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptMeFeatures returns new OptMeFeatures with value set to v.
 func NewOptMeFeatures(v MeFeatures) OptMeFeatures {
 	return OptMeFeatures{
@@ -15322,6 +15822,144 @@ func (o OptPackagingBlockedReason) Get() (v PackagingBlockedReason, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptPackagingBlockedReason) Or(d PackagingBlockedReason) PackagingBlockedReason {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPlatformAgentBrake returns new OptPlatformAgentBrake with value set to v.
+func NewOptPlatformAgentBrake(v PlatformAgentBrake) OptPlatformAgentBrake {
+	return OptPlatformAgentBrake{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPlatformAgentBrake is optional PlatformAgentBrake.
+type OptPlatformAgentBrake struct {
+	Value PlatformAgentBrake
+	Set   bool
+}
+
+// IsSet returns true if OptPlatformAgentBrake was set.
+func (o OptPlatformAgentBrake) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPlatformAgentBrake) Reset() {
+	var v PlatformAgentBrake
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPlatformAgentBrake) SetTo(v PlatformAgentBrake) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPlatformAgentBrake) Get() (v PlatformAgentBrake, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPlatformAgentBrake) Or(d PlatformAgentBrake) PlatformAgentBrake {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPlatformAgentFindingEventEvidence returns new OptPlatformAgentFindingEventEvidence with value set to v.
+func NewOptPlatformAgentFindingEventEvidence(v PlatformAgentFindingEventEvidence) OptPlatformAgentFindingEventEvidence {
+	return OptPlatformAgentFindingEventEvidence{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPlatformAgentFindingEventEvidence is optional PlatformAgentFindingEventEvidence.
+type OptPlatformAgentFindingEventEvidence struct {
+	Value PlatformAgentFindingEventEvidence
+	Set   bool
+}
+
+// IsSet returns true if OptPlatformAgentFindingEventEvidence was set.
+func (o OptPlatformAgentFindingEventEvidence) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPlatformAgentFindingEventEvidence) Reset() {
+	var v PlatformAgentFindingEventEvidence
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPlatformAgentFindingEventEvidence) SetTo(v PlatformAgentFindingEventEvidence) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPlatformAgentFindingEventEvidence) Get() (v PlatformAgentFindingEventEvidence, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPlatformAgentFindingEventEvidence) Or(d PlatformAgentFindingEventEvidence) PlatformAgentFindingEventEvidence {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPlatformAgentRunResult returns new OptPlatformAgentRunResult with value set to v.
+func NewOptPlatformAgentRunResult(v PlatformAgentRunResult) OptPlatformAgentRunResult {
+	return OptPlatformAgentRunResult{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPlatformAgentRunResult is optional PlatformAgentRunResult.
+type OptPlatformAgentRunResult struct {
+	Value PlatformAgentRunResult
+	Set   bool
+}
+
+// IsSet returns true if OptPlatformAgentRunResult was set.
+func (o OptPlatformAgentRunResult) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPlatformAgentRunResult) Reset() {
+	var v PlatformAgentRunResult
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPlatformAgentRunResult) SetTo(v PlatformAgentRunResult) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPlatformAgentRunResult) Get() (v PlatformAgentRunResult, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPlatformAgentRunResult) Or(d PlatformAgentRunResult) PlatformAgentRunResult {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -18855,6 +19493,805 @@ func (s *PackagingTargetSupportStatus) UnmarshalText(data []byte) error {
 	}
 }
 
+// Ref: #/components/schemas/PlatformAgent
+type PlatformAgent struct {
+	Name    string `json:"name"`
+	Purpose string `json:"purpose"`
+	// The gateway role alias the agent's model calls go to.
+	ModelRole string `json:"model_role"`
+	// The most this agent may spend in a day, checked before each run's key is issued.
+	DailySpendCapUsdMicros int64 `json:"daily_spend_cap_usd_micros"`
+	// The read-only facts the agent may ask for.
+	Tools []string `json:"tools"`
+	// The actions the agent may propose.
+	Actions []string `json:"actions"`
+	Enabled bool     `json:"enabled"`
+	// The operator who last enabled or disabled the agent; absent until somebody has.
+	OwnerUserID OptUUID `json:"owner_user_id"`
+}
+
+// GetName returns the value of Name.
+func (s *PlatformAgent) GetName() string {
+	return s.Name
+}
+
+// GetPurpose returns the value of Purpose.
+func (s *PlatformAgent) GetPurpose() string {
+	return s.Purpose
+}
+
+// GetModelRole returns the value of ModelRole.
+func (s *PlatformAgent) GetModelRole() string {
+	return s.ModelRole
+}
+
+// GetDailySpendCapUsdMicros returns the value of DailySpendCapUsdMicros.
+func (s *PlatformAgent) GetDailySpendCapUsdMicros() int64 {
+	return s.DailySpendCapUsdMicros
+}
+
+// GetTools returns the value of Tools.
+func (s *PlatformAgent) GetTools() []string {
+	return s.Tools
+}
+
+// GetActions returns the value of Actions.
+func (s *PlatformAgent) GetActions() []string {
+	return s.Actions
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *PlatformAgent) GetEnabled() bool {
+	return s.Enabled
+}
+
+// GetOwnerUserID returns the value of OwnerUserID.
+func (s *PlatformAgent) GetOwnerUserID() OptUUID {
+	return s.OwnerUserID
+}
+
+// SetName sets the value of Name.
+func (s *PlatformAgent) SetName(val string) {
+	s.Name = val
+}
+
+// SetPurpose sets the value of Purpose.
+func (s *PlatformAgent) SetPurpose(val string) {
+	s.Purpose = val
+}
+
+// SetModelRole sets the value of ModelRole.
+func (s *PlatformAgent) SetModelRole(val string) {
+	s.ModelRole = val
+}
+
+// SetDailySpendCapUsdMicros sets the value of DailySpendCapUsdMicros.
+func (s *PlatformAgent) SetDailySpendCapUsdMicros(val int64) {
+	s.DailySpendCapUsdMicros = val
+}
+
+// SetTools sets the value of Tools.
+func (s *PlatformAgent) SetTools(val []string) {
+	s.Tools = val
+}
+
+// SetActions sets the value of Actions.
+func (s *PlatformAgent) SetActions(val []string) {
+	s.Actions = val
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *PlatformAgent) SetEnabled(val bool) {
+	s.Enabled = val
+}
+
+// SetOwnerUserID sets the value of OwnerUserID.
+func (s *PlatformAgent) SetOwnerUserID(val OptUUID) {
+	s.OwnerUserID = val
+}
+
+func (*PlatformAgent) setPlatformAgentEnabledRes() {}
+
+// Ref: #/components/schemas/PlatformAgentBrake
+type PlatformAgentBrake struct {
+	Reason          string    `json:"reason"`
+	EngagedAt       time.Time `json:"engaged_at"`
+	EngagedByUserID OptUUID   `json:"engaged_by_user_id"`
+}
+
+// GetReason returns the value of Reason.
+func (s *PlatformAgentBrake) GetReason() string {
+	return s.Reason
+}
+
+// GetEngagedAt returns the value of EngagedAt.
+func (s *PlatformAgentBrake) GetEngagedAt() time.Time {
+	return s.EngagedAt
+}
+
+// GetEngagedByUserID returns the value of EngagedByUserID.
+func (s *PlatformAgentBrake) GetEngagedByUserID() OptUUID {
+	return s.EngagedByUserID
+}
+
+// SetReason sets the value of Reason.
+func (s *PlatformAgentBrake) SetReason(val string) {
+	s.Reason = val
+}
+
+// SetEngagedAt sets the value of EngagedAt.
+func (s *PlatformAgentBrake) SetEngagedAt(val time.Time) {
+	s.EngagedAt = val
+}
+
+// SetEngagedByUserID sets the value of EngagedByUserID.
+func (s *PlatformAgentBrake) SetEngagedByUserID(val OptUUID) {
+	s.EngagedByUserID = val
+}
+
+func (*PlatformAgentBrake) engagePlatformAgentBrakeRes() {}
+
+// Ref: #/components/schemas/PlatformAgentFinding
+type PlatformAgentFinding struct {
+	ID     uuid.UUID                  `json:"id"`
+	Agent  string                     `json:"agent"`
+	Status PlatformAgentFindingStatus `json:"status"`
+	// What the latest report said about it.
+	Title string `json:"title"`
+	// JSON Pointers into the facts the latest report rests on.
+	Cites []string `json:"cites"`
+	// The operator who took it on; present while it is acknowledged, and kept after.
+	AssigneeUserID  OptUUID   `json:"assignee_user_id"`
+	FirstSeenAt     time.Time `json:"first_seen_at"`
+	LastSeenAt      time.Time `json:"last_seen_at"`
+	SeenCount       int       `json:"seen_count"`
+	StatusChangedAt time.Time `json:"status_changed_at"`
+}
+
+// GetID returns the value of ID.
+func (s *PlatformAgentFinding) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetAgent returns the value of Agent.
+func (s *PlatformAgentFinding) GetAgent() string {
+	return s.Agent
+}
+
+// GetStatus returns the value of Status.
+func (s *PlatformAgentFinding) GetStatus() PlatformAgentFindingStatus {
+	return s.Status
+}
+
+// GetTitle returns the value of Title.
+func (s *PlatformAgentFinding) GetTitle() string {
+	return s.Title
+}
+
+// GetCites returns the value of Cites.
+func (s *PlatformAgentFinding) GetCites() []string {
+	return s.Cites
+}
+
+// GetAssigneeUserID returns the value of AssigneeUserID.
+func (s *PlatformAgentFinding) GetAssigneeUserID() OptUUID {
+	return s.AssigneeUserID
+}
+
+// GetFirstSeenAt returns the value of FirstSeenAt.
+func (s *PlatformAgentFinding) GetFirstSeenAt() time.Time {
+	return s.FirstSeenAt
+}
+
+// GetLastSeenAt returns the value of LastSeenAt.
+func (s *PlatformAgentFinding) GetLastSeenAt() time.Time {
+	return s.LastSeenAt
+}
+
+// GetSeenCount returns the value of SeenCount.
+func (s *PlatformAgentFinding) GetSeenCount() int {
+	return s.SeenCount
+}
+
+// GetStatusChangedAt returns the value of StatusChangedAt.
+func (s *PlatformAgentFinding) GetStatusChangedAt() time.Time {
+	return s.StatusChangedAt
+}
+
+// SetID sets the value of ID.
+func (s *PlatformAgentFinding) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetAgent sets the value of Agent.
+func (s *PlatformAgentFinding) SetAgent(val string) {
+	s.Agent = val
+}
+
+// SetStatus sets the value of Status.
+func (s *PlatformAgentFinding) SetStatus(val PlatformAgentFindingStatus) {
+	s.Status = val
+}
+
+// SetTitle sets the value of Title.
+func (s *PlatformAgentFinding) SetTitle(val string) {
+	s.Title = val
+}
+
+// SetCites sets the value of Cites.
+func (s *PlatformAgentFinding) SetCites(val []string) {
+	s.Cites = val
+}
+
+// SetAssigneeUserID sets the value of AssigneeUserID.
+func (s *PlatformAgentFinding) SetAssigneeUserID(val OptUUID) {
+	s.AssigneeUserID = val
+}
+
+// SetFirstSeenAt sets the value of FirstSeenAt.
+func (s *PlatformAgentFinding) SetFirstSeenAt(val time.Time) {
+	s.FirstSeenAt = val
+}
+
+// SetLastSeenAt sets the value of LastSeenAt.
+func (s *PlatformAgentFinding) SetLastSeenAt(val time.Time) {
+	s.LastSeenAt = val
+}
+
+// SetSeenCount sets the value of SeenCount.
+func (s *PlatformAgentFinding) SetSeenCount(val int) {
+	s.SeenCount = val
+}
+
+// SetStatusChangedAt sets the value of StatusChangedAt.
+func (s *PlatformAgentFinding) SetStatusChangedAt(val time.Time) {
+	s.StatusChangedAt = val
+}
+
+// Ref: #/components/schemas/PlatformAgentFindingEvent
+type PlatformAgentFindingEvent struct {
+	Seq  int                           `json:"seq"`
+	Kind PlatformAgentFindingEventKind `json:"kind"`
+	// The agent run that reported it; absent when an operator moved it.
+	RunID OptUUID `json:"run_id"`
+	// The operator who moved it; absent when a run did.
+	OperatorUserID OptUUID   `json:"operator_user_id"`
+	Text           OptString `json:"text"`
+	// Each cite's value in the facts that run read.
+	Evidence   OptPlatformAgentFindingEventEvidence `json:"evidence"`
+	Note       OptString                            `json:"note"`
+	OccurredAt time.Time                            `json:"occurred_at"`
+}
+
+// GetSeq returns the value of Seq.
+func (s *PlatformAgentFindingEvent) GetSeq() int {
+	return s.Seq
+}
+
+// GetKind returns the value of Kind.
+func (s *PlatformAgentFindingEvent) GetKind() PlatformAgentFindingEventKind {
+	return s.Kind
+}
+
+// GetRunID returns the value of RunID.
+func (s *PlatformAgentFindingEvent) GetRunID() OptUUID {
+	return s.RunID
+}
+
+// GetOperatorUserID returns the value of OperatorUserID.
+func (s *PlatformAgentFindingEvent) GetOperatorUserID() OptUUID {
+	return s.OperatorUserID
+}
+
+// GetText returns the value of Text.
+func (s *PlatformAgentFindingEvent) GetText() OptString {
+	return s.Text
+}
+
+// GetEvidence returns the value of Evidence.
+func (s *PlatformAgentFindingEvent) GetEvidence() OptPlatformAgentFindingEventEvidence {
+	return s.Evidence
+}
+
+// GetNote returns the value of Note.
+func (s *PlatformAgentFindingEvent) GetNote() OptString {
+	return s.Note
+}
+
+// GetOccurredAt returns the value of OccurredAt.
+func (s *PlatformAgentFindingEvent) GetOccurredAt() time.Time {
+	return s.OccurredAt
+}
+
+// SetSeq sets the value of Seq.
+func (s *PlatformAgentFindingEvent) SetSeq(val int) {
+	s.Seq = val
+}
+
+// SetKind sets the value of Kind.
+func (s *PlatformAgentFindingEvent) SetKind(val PlatformAgentFindingEventKind) {
+	s.Kind = val
+}
+
+// SetRunID sets the value of RunID.
+func (s *PlatformAgentFindingEvent) SetRunID(val OptUUID) {
+	s.RunID = val
+}
+
+// SetOperatorUserID sets the value of OperatorUserID.
+func (s *PlatformAgentFindingEvent) SetOperatorUserID(val OptUUID) {
+	s.OperatorUserID = val
+}
+
+// SetText sets the value of Text.
+func (s *PlatformAgentFindingEvent) SetText(val OptString) {
+	s.Text = val
+}
+
+// SetEvidence sets the value of Evidence.
+func (s *PlatformAgentFindingEvent) SetEvidence(val OptPlatformAgentFindingEventEvidence) {
+	s.Evidence = val
+}
+
+// SetNote sets the value of Note.
+func (s *PlatformAgentFindingEvent) SetNote(val OptString) {
+	s.Note = val
+}
+
+// SetOccurredAt sets the value of OccurredAt.
+func (s *PlatformAgentFindingEvent) SetOccurredAt(val time.Time) {
+	s.OccurredAt = val
+}
+
+// Each cite's value in the facts that run read.
+type PlatformAgentFindingEventEvidence map[string]jx.Raw
+
+func (s *PlatformAgentFindingEventEvidence) init() PlatformAgentFindingEventEvidence {
+	m := *s
+	if m == nil {
+		m = map[string]jx.Raw{}
+		*s = m
+	}
+	return m
+}
+
+type PlatformAgentFindingEventKind string
+
+const (
+	PlatformAgentFindingEventKindOpened       PlatformAgentFindingEventKind = "opened"
+	PlatformAgentFindingEventKindSeen         PlatformAgentFindingEventKind = "seen"
+	PlatformAgentFindingEventKindReopened     PlatformAgentFindingEventKind = "reopened"
+	PlatformAgentFindingEventKindRecovered    PlatformAgentFindingEventKind = "recovered"
+	PlatformAgentFindingEventKindAcknowledged PlatformAgentFindingEventKind = "acknowledged"
+	PlatformAgentFindingEventKindResolved     PlatformAgentFindingEventKind = "resolved"
+	PlatformAgentFindingEventKindDismissed    PlatformAgentFindingEventKind = "dismissed"
+)
+
+// AllValues returns all PlatformAgentFindingEventKind values.
+func (PlatformAgentFindingEventKind) AllValues() []PlatformAgentFindingEventKind {
+	return []PlatformAgentFindingEventKind{
+		PlatformAgentFindingEventKindOpened,
+		PlatformAgentFindingEventKindSeen,
+		PlatformAgentFindingEventKindReopened,
+		PlatformAgentFindingEventKindRecovered,
+		PlatformAgentFindingEventKindAcknowledged,
+		PlatformAgentFindingEventKindResolved,
+		PlatformAgentFindingEventKindDismissed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PlatformAgentFindingEventKind) MarshalText() ([]byte, error) {
+	switch s {
+	case PlatformAgentFindingEventKindOpened:
+		return []byte(s), nil
+	case PlatformAgentFindingEventKindSeen:
+		return []byte(s), nil
+	case PlatformAgentFindingEventKindReopened:
+		return []byte(s), nil
+	case PlatformAgentFindingEventKindRecovered:
+		return []byte(s), nil
+	case PlatformAgentFindingEventKindAcknowledged:
+		return []byte(s), nil
+	case PlatformAgentFindingEventKindResolved:
+		return []byte(s), nil
+	case PlatformAgentFindingEventKindDismissed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PlatformAgentFindingEventKind) UnmarshalText(data []byte) error {
+	switch PlatformAgentFindingEventKind(data) {
+	case PlatformAgentFindingEventKindOpened:
+		*s = PlatformAgentFindingEventKindOpened
+		return nil
+	case PlatformAgentFindingEventKindSeen:
+		*s = PlatformAgentFindingEventKindSeen
+		return nil
+	case PlatformAgentFindingEventKindReopened:
+		*s = PlatformAgentFindingEventKindReopened
+		return nil
+	case PlatformAgentFindingEventKindRecovered:
+		*s = PlatformAgentFindingEventKindRecovered
+		return nil
+	case PlatformAgentFindingEventKindAcknowledged:
+		*s = PlatformAgentFindingEventKindAcknowledged
+		return nil
+	case PlatformAgentFindingEventKindResolved:
+		*s = PlatformAgentFindingEventKindResolved
+		return nil
+	case PlatformAgentFindingEventKindDismissed:
+		*s = PlatformAgentFindingEventKindDismissed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type PlatformAgentFindingStatus string
+
+const (
+	PlatformAgentFindingStatusOpen         PlatformAgentFindingStatus = "open"
+	PlatformAgentFindingStatusAcknowledged PlatformAgentFindingStatus = "acknowledged"
+	PlatformAgentFindingStatusResolved     PlatformAgentFindingStatus = "resolved"
+	PlatformAgentFindingStatusDismissed    PlatformAgentFindingStatus = "dismissed"
+	PlatformAgentFindingStatusRecovered    PlatformAgentFindingStatus = "recovered"
+)
+
+// AllValues returns all PlatformAgentFindingStatus values.
+func (PlatformAgentFindingStatus) AllValues() []PlatformAgentFindingStatus {
+	return []PlatformAgentFindingStatus{
+		PlatformAgentFindingStatusOpen,
+		PlatformAgentFindingStatusAcknowledged,
+		PlatformAgentFindingStatusResolved,
+		PlatformAgentFindingStatusDismissed,
+		PlatformAgentFindingStatusRecovered,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PlatformAgentFindingStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case PlatformAgentFindingStatusOpen:
+		return []byte(s), nil
+	case PlatformAgentFindingStatusAcknowledged:
+		return []byte(s), nil
+	case PlatformAgentFindingStatusResolved:
+		return []byte(s), nil
+	case PlatformAgentFindingStatusDismissed:
+		return []byte(s), nil
+	case PlatformAgentFindingStatusRecovered:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PlatformAgentFindingStatus) UnmarshalText(data []byte) error {
+	switch PlatformAgentFindingStatus(data) {
+	case PlatformAgentFindingStatusOpen:
+		*s = PlatformAgentFindingStatusOpen
+		return nil
+	case PlatformAgentFindingStatusAcknowledged:
+		*s = PlatformAgentFindingStatusAcknowledged
+		return nil
+	case PlatformAgentFindingStatusResolved:
+		*s = PlatformAgentFindingStatusResolved
+		return nil
+	case PlatformAgentFindingStatusDismissed:
+		*s = PlatformAgentFindingStatusDismissed
+		return nil
+	case PlatformAgentFindingStatusRecovered:
+		*s = PlatformAgentFindingStatusRecovered
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/PlatformAgentRun
+type PlatformAgentRun struct {
+	ID     uuid.UUID              `json:"id"`
+	Agent  string                 `json:"agent"`
+	Status PlatformAgentRunStatus `json:"status"`
+	// Why the run ended without completing, or why its result was rejected.
+	Reason     OptString   `json:"reason"`
+	StartedAt  time.Time   `json:"started_at"`
+	FinishedAt OptDateTime `json:"finished_at"`
+	// The agent's final answer. Kept on a failed run whose answer did not pass its check, so the operator
+	// can see what was rejected.
+	Result OptPlatformAgentRunResult `json:"result"`
+	Steps  int                       `json:"steps"`
+	// The summed cost of the steps whose cost the gateway reported.
+	UsdMicros int64 `json:"usd_micros"`
+	// Steps whose cost the gateway did not report; `usd_micros` leaves them out.
+	UnpricedSteps int `json:"unpriced_steps"`
+}
+
+// GetID returns the value of ID.
+func (s *PlatformAgentRun) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetAgent returns the value of Agent.
+func (s *PlatformAgentRun) GetAgent() string {
+	return s.Agent
+}
+
+// GetStatus returns the value of Status.
+func (s *PlatformAgentRun) GetStatus() PlatformAgentRunStatus {
+	return s.Status
+}
+
+// GetReason returns the value of Reason.
+func (s *PlatformAgentRun) GetReason() OptString {
+	return s.Reason
+}
+
+// GetStartedAt returns the value of StartedAt.
+func (s *PlatformAgentRun) GetStartedAt() time.Time {
+	return s.StartedAt
+}
+
+// GetFinishedAt returns the value of FinishedAt.
+func (s *PlatformAgentRun) GetFinishedAt() OptDateTime {
+	return s.FinishedAt
+}
+
+// GetResult returns the value of Result.
+func (s *PlatformAgentRun) GetResult() OptPlatformAgentRunResult {
+	return s.Result
+}
+
+// GetSteps returns the value of Steps.
+func (s *PlatformAgentRun) GetSteps() int {
+	return s.Steps
+}
+
+// GetUsdMicros returns the value of UsdMicros.
+func (s *PlatformAgentRun) GetUsdMicros() int64 {
+	return s.UsdMicros
+}
+
+// GetUnpricedSteps returns the value of UnpricedSteps.
+func (s *PlatformAgentRun) GetUnpricedSteps() int {
+	return s.UnpricedSteps
+}
+
+// SetID sets the value of ID.
+func (s *PlatformAgentRun) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetAgent sets the value of Agent.
+func (s *PlatformAgentRun) SetAgent(val string) {
+	s.Agent = val
+}
+
+// SetStatus sets the value of Status.
+func (s *PlatformAgentRun) SetStatus(val PlatformAgentRunStatus) {
+	s.Status = val
+}
+
+// SetReason sets the value of Reason.
+func (s *PlatformAgentRun) SetReason(val OptString) {
+	s.Reason = val
+}
+
+// SetStartedAt sets the value of StartedAt.
+func (s *PlatformAgentRun) SetStartedAt(val time.Time) {
+	s.StartedAt = val
+}
+
+// SetFinishedAt sets the value of FinishedAt.
+func (s *PlatformAgentRun) SetFinishedAt(val OptDateTime) {
+	s.FinishedAt = val
+}
+
+// SetResult sets the value of Result.
+func (s *PlatformAgentRun) SetResult(val OptPlatformAgentRunResult) {
+	s.Result = val
+}
+
+// SetSteps sets the value of Steps.
+func (s *PlatformAgentRun) SetSteps(val int) {
+	s.Steps = val
+}
+
+// SetUsdMicros sets the value of UsdMicros.
+func (s *PlatformAgentRun) SetUsdMicros(val int64) {
+	s.UsdMicros = val
+}
+
+// SetUnpricedSteps sets the value of UnpricedSteps.
+func (s *PlatformAgentRun) SetUnpricedSteps(val int) {
+	s.UnpricedSteps = val
+}
+
+// The agent's final answer. Kept on a failed run whose answer did not pass its check, so the operator
+// can see what was rejected.
+type PlatformAgentRunResult map[string]jx.Raw
+
+func (s *PlatformAgentRunResult) init() PlatformAgentRunResult {
+	m := *s
+	if m == nil {
+		m = map[string]jx.Raw{}
+		*s = m
+	}
+	return m
+}
+
+type PlatformAgentRunStatus string
+
+const (
+	PlatformAgentRunStatusRunning    PlatformAgentRunStatus = "running"
+	PlatformAgentRunStatusCompleted  PlatformAgentRunStatus = "completed"
+	PlatformAgentRunStatusIncomplete PlatformAgentRunStatus = "incomplete"
+	PlatformAgentRunStatusStopped    PlatformAgentRunStatus = "stopped"
+	PlatformAgentRunStatusFailed     PlatformAgentRunStatus = "failed"
+)
+
+// AllValues returns all PlatformAgentRunStatus values.
+func (PlatformAgentRunStatus) AllValues() []PlatformAgentRunStatus {
+	return []PlatformAgentRunStatus{
+		PlatformAgentRunStatusRunning,
+		PlatformAgentRunStatusCompleted,
+		PlatformAgentRunStatusIncomplete,
+		PlatformAgentRunStatusStopped,
+		PlatformAgentRunStatusFailed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PlatformAgentRunStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case PlatformAgentRunStatusRunning:
+		return []byte(s), nil
+	case PlatformAgentRunStatusCompleted:
+		return []byte(s), nil
+	case PlatformAgentRunStatusIncomplete:
+		return []byte(s), nil
+	case PlatformAgentRunStatusStopped:
+		return []byte(s), nil
+	case PlatformAgentRunStatusFailed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PlatformAgentRunStatus) UnmarshalText(data []byte) error {
+	switch PlatformAgentRunStatus(data) {
+	case PlatformAgentRunStatusRunning:
+		*s = PlatformAgentRunStatusRunning
+		return nil
+	case PlatformAgentRunStatusCompleted:
+		*s = PlatformAgentRunStatusCompleted
+		return nil
+	case PlatformAgentRunStatusIncomplete:
+		*s = PlatformAgentRunStatusIncomplete
+		return nil
+	case PlatformAgentRunStatusStopped:
+		*s = PlatformAgentRunStatusStopped
+		return nil
+	case PlatformAgentRunStatusFailed:
+		*s = PlatformAgentRunStatusFailed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/PlatformAgentStep
+type PlatformAgentStep struct {
+	Seq       int    `json:"seq"`
+	Tool      string `json:"tool"`
+	Arguments string `json:"arguments"`
+	// The tool's answer as the model saw it; empty on `finish`.
+	Result           string `json:"result"`
+	Model            string `json:"model"`
+	PromptTokens     int64  `json:"prompt_tokens"`
+	CompletionTokens int64  `json:"completion_tokens"`
+	// Absent when the gateway reported no cost.
+	UsdMicros OptInt64  `json:"usd_micros"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// GetSeq returns the value of Seq.
+func (s *PlatformAgentStep) GetSeq() int {
+	return s.Seq
+}
+
+// GetTool returns the value of Tool.
+func (s *PlatformAgentStep) GetTool() string {
+	return s.Tool
+}
+
+// GetArguments returns the value of Arguments.
+func (s *PlatformAgentStep) GetArguments() string {
+	return s.Arguments
+}
+
+// GetResult returns the value of Result.
+func (s *PlatformAgentStep) GetResult() string {
+	return s.Result
+}
+
+// GetModel returns the value of Model.
+func (s *PlatformAgentStep) GetModel() string {
+	return s.Model
+}
+
+// GetPromptTokens returns the value of PromptTokens.
+func (s *PlatformAgentStep) GetPromptTokens() int64 {
+	return s.PromptTokens
+}
+
+// GetCompletionTokens returns the value of CompletionTokens.
+func (s *PlatformAgentStep) GetCompletionTokens() int64 {
+	return s.CompletionTokens
+}
+
+// GetUsdMicros returns the value of UsdMicros.
+func (s *PlatformAgentStep) GetUsdMicros() OptInt64 {
+	return s.UsdMicros
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *PlatformAgentStep) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// SetSeq sets the value of Seq.
+func (s *PlatformAgentStep) SetSeq(val int) {
+	s.Seq = val
+}
+
+// SetTool sets the value of Tool.
+func (s *PlatformAgentStep) SetTool(val string) {
+	s.Tool = val
+}
+
+// SetArguments sets the value of Arguments.
+func (s *PlatformAgentStep) SetArguments(val string) {
+	s.Arguments = val
+}
+
+// SetResult sets the value of Result.
+func (s *PlatformAgentStep) SetResult(val string) {
+	s.Result = val
+}
+
+// SetModel sets the value of Model.
+func (s *PlatformAgentStep) SetModel(val string) {
+	s.Model = val
+}
+
+// SetPromptTokens sets the value of PromptTokens.
+func (s *PlatformAgentStep) SetPromptTokens(val int64) {
+	s.PromptTokens = val
+}
+
+// SetCompletionTokens sets the value of CompletionTokens.
+func (s *PlatformAgentStep) SetCompletionTokens(val int64) {
+	s.CompletionTokens = val
+}
+
+// SetUsdMicros sets the value of UsdMicros.
+func (s *PlatformAgentStep) SetUsdMicros(val OptInt64) {
+	s.UsdMicros = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *PlatformAgentStep) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
 // Ref: #/components/schemas/PluginContents
 type PluginContents struct {
 	Name    string                      `json:"name"`
@@ -21012,6 +22449,34 @@ func (s *RejectedSuggestion) SetMessage(val string) {
 	s.Message = val
 }
 
+type ReleasePlatformAgentBrakeBadRequest Error
+
+func (*ReleasePlatformAgentBrakeBadRequest) releasePlatformAgentBrakeRes() {}
+
+// ReleasePlatformAgentBrakeNoContent is response for ReleasePlatformAgentBrake operation.
+type ReleasePlatformAgentBrakeNoContent struct{}
+
+func (*ReleasePlatformAgentBrakeNoContent) releasePlatformAgentBrakeRes() {}
+
+type ReleasePlatformAgentBrakeNotFound Error
+
+func (*ReleasePlatformAgentBrakeNotFound) releasePlatformAgentBrakeRes() {}
+
+type ReleasePlatformAgentBrakeReq struct {
+	// Why it is safe to resume. Same rule as on PUT.
+	Note string `json:"note"`
+}
+
+// GetNote returns the value of Note.
+func (s *ReleasePlatformAgentBrakeReq) GetNote() string {
+	return s.Note
+}
+
+// SetNote sets the value of Note.
+func (s *ReleasePlatformAgentBrakeReq) SetNote(val string) {
+	s.Note = val
+}
+
 type RequestAccountDeletionConflict Error
 
 func (*RequestAccountDeletionConflict) requestAccountDeletionRes() {}
@@ -22421,12 +23886,14 @@ type RunListItem struct {
 	// row. Not permission to re-run — that is preflight's answer (TEST-009).
 	TestCaseID OptUUID `json:"test_case_id"`
 	Provider   string  `json:"provider"`
-	// Why the run failed, in the platform's own seven-value vocabulary, fixed by a CHECK constraint whose
-	// current form is in db/migrations/0080_run_failure_class_policy_refused.sql: `provider_error` (the
+	// Why the run failed, in the platform's own eight-value vocabulary, fixed by a CHECK constraint whose
+	// current form is in db/migrations/0101_run_failure_class_resource_limit.sql: `provider_error` (the
 	// provider could not carry the attempt), `workload_error` (the workload ran and reported failure),
 	// `timeout`, `cancelled` (the user asked), `capability_mismatch` (no configured provider can run this
 	// request), `policy_refused` (this deployment's own rules stopped it before anything ran — not a
-	// capability gap and not a fault) and `platform_error` (the control plane's own fault).
+	// capability gap and not a fault), `platform_error` (the control plane's own fault) and
+	// `resource_limit` (the workload hit the memory or process limit it asked for; not counted against the
+	// trial quota and not retried).
 	//
 	// Not the provider's ten `class` values — those are sandbox-provider.yaml's, and they live per
 	// attempt on `run_attempts.error_class`. The vocabulary here is narrow because the retry rule is
@@ -24994,6 +26461,40 @@ func (s *SetModelCallBudgetReq) SetSeconds(val int) {
 // SetReason sets the value of Reason.
 func (s *SetModelCallBudgetReq) SetReason(val string) {
 	s.Reason = val
+}
+
+type SetPlatformAgentEnabledBadRequest Error
+
+func (*SetPlatformAgentEnabledBadRequest) setPlatformAgentEnabledRes() {}
+
+type SetPlatformAgentEnabledNotFound Error
+
+func (*SetPlatformAgentEnabledNotFound) setPlatformAgentEnabledRes() {}
+
+type SetPlatformAgentEnabledReq struct {
+	Enabled bool `json:"enabled"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *SetPlatformAgentEnabledReq) GetEnabled() bool {
+	return s.Enabled
+}
+
+// GetNote returns the value of Note.
+func (s *SetPlatformAgentEnabledReq) GetNote() string {
+	return s.Note
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *SetPlatformAgentEnabledReq) SetEnabled(val bool) {
+	s.Enabled = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetPlatformAgentEnabledReq) SetNote(val string) {
+	s.Note = val
 }
 
 type SetSkillCategoryBadRequest Error

@@ -508,6 +508,57 @@ paths:
         "503":
           $ref: '#/components/responses/Unavailable'
 
+  /v1/agent/step:
+    post:
+      operationId: agentStep
+      parameters:
+        - name: X-Agent-Gateway-Key
+          in: header
+          required: true
+          description: Ephemeral Go-issued Virtual Key for this one agent run; never persisted or logged.
+          schema: {type: string, minLength: 1}
+      summary: The next step of one platform agent run, reconstructed from the steps Go recorded
+      description: |
+        Returns either one tool intent or the run's final result. Go owns the
+        run, its limits, which tools exist, executing them and recording every
+        step; this service holds no state between calls. Tool results are data
+        and are fenced off from the instructions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentStepRequest'
+      responses:
+        "200":
+          description: The next step and the actual gateway usage, when known.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentStepResponse'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "422":
+          description: An agent this service has no instructions for, or a request out of bounds.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "499":
+          description: Caller disconnected; model await is cancelled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: Gateway failure or unusable model output; usage may be unknown.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "503":
+          $ref: '#/components/responses/Unavailable'
+
 components:
   responses:
     Unauthorized:
@@ -2213,6 +2264,103 @@ components:
           type: string
         usage:
           $ref: '#/components/schemas/GatewayUsage'
+    AgentStepRequest:
+      type: object
+      additionalProperties: false
+      required: [agent, run_id, model_role, tools, steps, timeout_seconds, max_output_tokens]
+      properties:
+        agent:
+          type: string
+          minLength: 1
+          description: The registered agent's name; selects its instructions and result shape.
+        run_id:
+          type: string
+          minLength: 1
+        model_role:
+          type: string
+          minLength: 1
+          description: The gateway role alias Go chose for this agent.
+        tools:
+          type: array
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/AgentTool'
+          description: The tools Go will execute for this run; an intent naming any other is refused by Go.
+        steps:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/AgentStepRecord'
+          description: Every tool call of this run so far, oldest first, with what Go returned.
+        timeout_seconds:
+          type: integer
+          minimum: 1
+          maximum: 120
+        max_output_tokens:
+          type: integer
+          minimum: 1
+          maximum: 16000
+    AgentTool:
+      type: object
+      additionalProperties: false
+      required: [name, description, parameters]
+      properties:
+        name:
+          type: string
+          pattern: '^[a-z][a-z0-9_]*$'
+        description:
+          type: string
+          maxLength: 1000
+        parameters:
+          type: object
+          additionalProperties: true
+          description: JSON Schema of the tool's input.
+    AgentStepRecord:
+      type: object
+      additionalProperties: false
+      required: [tool, arguments, result]
+      properties:
+        tool:
+          type: string
+        arguments:
+          type: string
+          maxLength: 4000
+          description: The JSON-encoded input the model asked for.
+        result:
+          type: string
+          maxLength: 60000
+          description: What Go returned, JSON-encoded. Data, never instructions.
+    AgentStepResponse:
+      type: object
+      additionalProperties: false
+      required: [outcome, model, prompt_version]
+      properties:
+        outcome:
+          type: string
+          enum: [tool_intent, final]
+        tool_intent:
+          $ref: '#/components/schemas/AgentToolIntent'
+        result:
+          type: string
+          maxLength: 60000
+          description: Present when outcome is final; the JSON-encoded result in the agent's result shape.
+        model:
+          type: string
+        prompt_version:
+          type: string
+        usage:
+          $ref: '#/components/schemas/GatewayUsage'
+    AgentToolIntent:
+      type: object
+      additionalProperties: false
+      required: [tool, arguments]
+      properties:
+        tool:
+          type: string
+        arguments:
+          type: string
+          maxLength: 4000
+          description: The JSON-encoded input for the tool.
     CreationDraftValidation:
       type: object
       additionalProperties: false
