@@ -1,0 +1,139 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "SEC-011-version-disable",
+  "proposal_id": "admin-version-disable",
+  "registry_revision": {
+    "observed_commit": "a012c28e28a7754ab7fea74c18ba16ebcdcf048d",
+    "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+  },
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-07T17:40:36.487575Z",
+      "scope": "Approve the reviewed irreversible Skill Version disable design and implementation scope: Registry-owned state and audit, serialized Run admission, exact-ID operator metadata, named rejection, and ten proof obligations; no deployment waiver.",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "a012c28e28a7754ab7fea74c18ba16ebcdcf048d",
+        "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+      }
+    }
+  ],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "disable-admission",
+    "mutated_protection": "暫時略過 Registry 交易內的 disabled 判定；另逐項破壞 operator 授權、audit 動作、歷史佇列保留、owner 失敗拒絕與四個前端防護。",
+    "failure_evidence": "交易准入突變讓停用後建立與並行建立兩測試由預期 422 變成 201；其餘突變各使對應整合或前端斷言失敗。每次還原後重新執行聚焦測試並通過。",
+    "restored": true
+  },
+  "sources": [
+    "docs/plans/02-specifications-and-acceptance-criteria.md",
+    "docs/plans/05-pending-rulings.md",
+    "contracts/openapi/public.yaml",
+    "db/queries/skill_versions.sql",
+    "apps/platform/internal/skill/library/version_disable.go",
+    "apps/platform/internal/trial/execution/service.go",
+    "apps/web/src/features/admin/skills/components/VersionDisable.tsx"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "disable-authority",
+      "status": "passed",
+      "evidence": "資料庫整合測試 TestOperatorVersionDisableUsesExactMinimalStatusAndAuditsRepeats：匿名與 member 對 GET／PUT 均 404 且狀態不變；放寬 GET 授權後該測試以 401／200 失敗。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:e270bb769b8000de486da30dab2b81db29062efb0bac0040380be292f80fc52e",
+      "finished_at": "2026-10-07T18:38:11Z"
+    },
+    {
+      "obligation_id": "disable-admission",
+      "status": "passed",
+      "evidence": "TestDisablingVersionRefusesNewRunsWithoutChangingExistingRuns：停用後 preflight 顯示 version_disabled，POST /runs 回具名 422、零新 Run，另一版仍可建立；移除交易判定後 422 變 201。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:e270bb769b8000de486da30dab2b81db29062efb0bac0040380be292f80fc52e",
+      "finished_at": "2026-10-07T18:38:11Z"
+    },
+    {
+      "obligation_id": "disable-race",
+      "status": "passed",
+      "evidence": "TestRunCreationWaitsForVersionDisableCommit 用兩個交易證明 Run 等待版本鎖，停用先提交後回 422、零新 Run；移除判定後得到 201。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:e270bb769b8000de486da30dab2b81db29062efb0bac0040380be292f80fc52e",
+      "finished_at": "2026-10-07T18:38:11Z"
+    },
+    {
+      "obligation_id": "disable-history",
+      "status": "passed",
+      "evidence": "TestVersionDisablePreservesExistingRunVersionAndQueuedJob 比對既有 Run、版本 hash 與預定的 River 任務；刻意改動既有任務狀態後該測試失敗。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:e270bb769b8000de486da30dab2b81db29062efb0bac0040380be292f80fc52e",
+      "finished_at": "2026-10-07T18:38:11Z"
+    },
+    {
+      "obligation_id": "disable-audit",
+      "status": "passed",
+      "evidence": "成功停用核對 actor／理由／前後值；重複停用另留 attempt；受控 audit trigger 失敗使狀態回滾。改錯 audit action 後回滾測試由 500 變 200。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:e270bb769b8000de486da30dab2b81db29062efb0bac0040380be292f80fc52e",
+      "finished_at": "2026-10-07T18:38:11Z"
+    },
+    {
+      "obligation_id": "disable-guidance",
+      "status": "passed",
+      "evidence": "API 僅回 ID、序號與停用狀態三欄；前端 121 個管理案例通過，核對、兩步確認、位元組邊界、舊理由清除與 409 重讀均有斷言及會紅反證。",
+      "command_profile": "web-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:e8868784962b36942d3d26f086d5606e9382db18cba71e338f27a602b5cc0d06",
+      "finished_at": "2026-10-07T18:38:11Z"
+    },
+    {
+      "obligation_id": "disable-repeat",
+      "status": "passed",
+      "evidence": "重複停用回具名 409，attempt audit 的 actor、理由與 true→true 均核對；不存在恢復路由。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:e270bb769b8000de486da30dab2b81db29062efb0bac0040380be292f80fc52e",
+      "finished_at": "2026-10-07T18:38:11Z"
+    },
+    {
+      "obligation_id": "disable-owner-boundary",
+      "status": "passed",
+      "evidence": "task automation:check 通過：Registry 擁有停用表與全部新 query，operator 例外明列；Run 僅透過組裝層注入介面判定，已審查引用、context-map、query-owners 與 depguard 均通過。",
+      "command_profile": "automation-check",
+      "exit_code": 0,
+      "output_sha256": "sha256:a49bfe0ddf6d149eea15c7f0ac88778e6ec06dd664493a50fed13c1cb80aa44f",
+      "finished_at": "2026-10-07T18:42:31Z"
+    },
+    {
+      "obligation_id": "disable-contract",
+      "status": "passed",
+      "evidence": "task gen:check 確認 sqlc、TypeScript、Python、Go 產出與 OpenAPI／SQL 來源一致；兩個 request schema 具名，既有模型預算請求型別不再被停用版本型別覆蓋。",
+      "command_profile": "generation-check",
+      "exit_code": 0,
+      "output_sha256": "sha256:adfdccc631033a506c85f1d7107e471633995a928e0da156438981429a168768",
+      "finished_at": "2026-10-07T18:38:11Z"
+    },
+    {
+      "obligation_id": "disable-owner-contract",
+      "status": "passed",
+      "evidence": "TestVersionAdmissionReadFailureFailsClosed：preflight 與 POST /runs 的 owner 讀取失敗均回 500、零新 Run；略過錯誤檢查後 preflight 變 200，測試失敗。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:e270bb769b8000de486da30dab2b81db29062efb0bac0040380be292f80fc52e",
+      "finished_at": "2026-10-07T18:38:11Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "developer 已核准設計與實作範圍；十項義務已有本機測試與架構檢查證據，SCM 證明與遠端 CI 尚未完成。",
+    "內容來源白名單、角色授予變更歷史與完整下架恢復語意是 SEC-011 的其他缺口，不在本包內；本包不能代表 SEC-011 整項完成。"
+  ]
+}

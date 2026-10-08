@@ -23,6 +23,8 @@ func TestSameOriginWritesRefusesOnlyCrossSiteWrites(t *testing.T) {
 		{name: "typed URL or bookmark", method: http.MethodPost, fetchSite: "none", want: http.StatusOK},
 		{name: "cross-site POST", method: http.MethodPost, fetchSite: "cross-site", want: http.StatusForbidden},
 		{name: "a sibling subdomain is not this app", method: http.MethodPost, fetchSite: "same-site", want: http.StatusForbidden},
+		{name: "same-site development origin is the configured app", method: http.MethodPost, fetchSite: "same-site", origin: app, want: http.StatusOK},
+		{name: "same-site sibling with its own Origin is refused", method: http.MethodPost, fetchSite: "same-site", origin: "https://other.example.test", want: http.StatusForbidden},
 		{name: "older browser, matching Origin", method: http.MethodPost, origin: app, want: http.StatusOK},
 		{name: "older browser, matching Origin with a path", method: http.MethodPost, origin: app + "/skills", want: http.StatusOK},
 		{name: "older browser, foreign Origin", method: http.MethodPost, origin: "https://evil.example", want: http.StatusForbidden},

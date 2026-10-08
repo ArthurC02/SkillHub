@@ -104,8 +104,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	testlabSvc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
 	downloads.TestLab = testlabSvc
 
-	set.Runs = newRunService(pool, deps, testlabSvc)
-	wiring.WireRunRegistryReaders(set.Runs, registrySvc)
+	set.Runs = newRunService(pool, deps, testlabSvc, registrySvc)
 	traceSvc := wiring.NewTraceService(pool, deps.TraceSigner, set.Runs)
 	set.Runs.Trace = traceSvc
 
@@ -169,8 +168,8 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	return set, nil
 }
 
-func newRunService(pool *pgxpool.Pool, deps Deps, testlabSvc *testlab.Service) *run.Service {
-	return &run.Service{
+func newRunService(pool *pgxpool.Pool, deps Deps, testlabSvc *testlab.Service, registrySvc *registry.Service) *run.Service {
+	runs := &run.Service{
 		Pool: pool, Providers: deps.Providers, Store: deps.Store, Gateway: run.GatewayOrNone(deps.Gateway),
 		ClearSightings: objreconcile.ClearArtifactSightings,
 		TestLab:        testlabSvc,
@@ -179,6 +178,9 @@ func newRunService(pool *pgxpool.Pool, deps Deps, testlabSvc *testlab.Service) *
 		LastOrphanScan:           wiring.LastOrphanScan(pool),
 		Deployment:               deps.RunDeployment,
 	}
+	wiring.WireRunRegistryReaders(runs, registrySvc)
+	wiring.WireRunVersionAdmission(runs, registrySvc)
+	return runs
 }
 
 func wireEvaluationModelAndEvents(evaluations *eval.Service, pool *pgxpool.Pool, llm *llmclient.Client) {

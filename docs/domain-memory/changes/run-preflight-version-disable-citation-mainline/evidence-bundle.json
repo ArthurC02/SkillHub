@@ -1,0 +1,79 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "registry-run-preflight-citation-after-mainline-merge",
+  "proposal_id": "run-preflight-version-disable-citation-mainline",
+  "registry_revision": {
+    "observed_commit": "c344e737fd9a522ba0a903d6dff62b1d076db7da",
+    "registry_digest": "sha256:afe0c20a28aebe47fb59adbd5353835b1fcc49b86f838f33d02c389536473ce2"
+  },
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-08T03:57:15.027131Z",
+      "scope": "Approve revision 1 on the current mainline Registry: retain the 67-event audit chain and refresh only the existing Registry-to-Run preflight citation to lines 206-229; no contract or domain-rule change and no deployment waiver.",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "c344e737fd9a522ba0a903d6dff62b1d076db7da",
+        "registry_digest": "sha256:afe0c20a28aebe47fb59adbd5353835b1fcc49b86f838f33d02c389536473ce2"
+      }
+    }
+  ],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "cf6d62d9df93adc19a140e1d11ba17c7537ec872",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "c344e737fd9a522ba0a903d6dff62b1d076db7da",
+      "registry_digest": "sha256:afe0c20a28aebe47fb59adbd5353835b1fcc49b86f838f33d02c389536473ce2"
+    }
+  },
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "citation-counterfactual",
+    "mutated_protection": "主線 Registry 的 preflight.go 第 196–219 行舊引用",
+    "failure_evidence": "正式 Registry 的 verify-evidence exit 1，結果為 62 current、1 stale，唯一過期檔案是 preflight.go；隔離副本只換成第 206–229 行與 cite 產生的摘要後，verify-evidence exit 0，63 current、0 stale。正式 Registry 未被測試改動。",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/trial/execution/preflight.go",
+    "docs/domain-memory/audit/events.jsonl"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "citation-current",
+      "status": "passed",
+      "evidence": "cite 產生的第 206–229 行摘要與提案相符；隔離 Registry 副本的 verify-evidence 為 63 current、0 stale，正式主線審計鏈 verify-audit 為 67 events valid。",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:62b9c1d6fcd4abeb341c9f06bbbb024c061f41de07e2cc5467391e82d2582c86",
+      "finished_at": "2026-10-08T03:59:24Z"
+    },
+    {
+      "obligation_id": "reader-behavior-current",
+      "status": "passed",
+      "evidence": "TestPermissionSummaryRefusesWithoutRegistryRead 實際通過；缺少注入的 Registry reader 時 preflight 拒絕。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:dacbc0d36c7d54f108c9de37dbd0fa1b844685f1c5a29f55ca4fbc19af957223",
+      "finished_at": "2026-10-08T03:58:08Z"
+    },
+    {
+      "obligation_id": "citation-counterfactual",
+      "status": "passed",
+      "evidence": "正式 Registry 的舊引用報 stale；隔離副本只替換同一筆引用後 verify-evidence 通過，正式 Registry 未被測試改動。",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:62b9c1d6fcd4abeb341c9f06bbbb024c061f41de07e2cc5467391e82d2582c86",
+      "finished_at": "2026-10-08T03:59:24Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "此提案僅修復既有互動的證據引用；合併版的正式閘門與遠端 CI 須在套用後重新確認。"
+  ]
+}

@@ -23,6 +23,25 @@ func (q *Queries) CountSkillVersions(ctx context.Context, skillID pgtype.UUID) (
 	return count, err
 }
 
+const countSkillsForGovernance = `-- name: CountSkillsForGovernance :one
+SELECT count(*) FROM skills
+WHERE deleted_at IS NULL
+  AND (id = $1::uuid
+       OR ($1::uuid IS NULL AND name ILIKE '%' || $2::text || '%'))
+`
+
+type CountSkillsForGovernanceParams struct {
+	SkillID  pgtype.UUID
+	NamePart string
+}
+
+func (q *Queries) CountSkillsForGovernance(ctx context.Context, arg CountSkillsForGovernanceParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countSkillsForGovernance, arg.SkillID, arg.NamePart)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createSkill = `-- name: CreateSkill :one
 INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id,
                     access_restriction, redistribution, category, category_source)
@@ -85,13 +104,14 @@ WHERE deleted_at IS NULL
   AND (id = $1::uuid
        OR ($1::uuid IS NULL AND name ILIKE '%' || $2::text || '%'))
 ORDER BY created_at DESC, id
-LIMIT $3
+LIMIT $4 OFFSET $3
 `
 
 type FindSkillsForGovernanceParams struct {
-	SkillID     pgtype.UUID
-	NamePart    string
-	ResultLimit int32
+	SkillID      pgtype.UUID
+	NamePart     string
+	ResultOffset int32
+	ResultLimit  int32
 }
 
 type FindSkillsForGovernanceRow struct {
@@ -105,7 +125,12 @@ type FindSkillsForGovernanceRow struct {
 }
 
 func (q *Queries) FindSkillsForGovernance(ctx context.Context, arg FindSkillsForGovernanceParams) ([]FindSkillsForGovernanceRow, error) {
-	rows, err := q.db.Query(ctx, findSkillsForGovernance, arg.SkillID, arg.NamePart, arg.ResultLimit)
+	rows, err := q.db.Query(ctx, findSkillsForGovernance,
+		arg.SkillID,
+		arg.NamePart,
+		arg.ResultOffset,
+		arg.ResultLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

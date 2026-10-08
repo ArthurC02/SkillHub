@@ -11,9 +11,13 @@ export const ACTION_LABEL: Record<string, string> = {
   "skill.redistribution_set": "再散布判定",
   "skill.curation_set": "精選層級",
   "skill.takedown": "下架",
+  "skill.version_disable": "停用版本",
+  "skill.version_disable_attempt": "重複停用版本",
   "credit.grant": "授予點數",
   "dispatch.halted": "停止派送",
   "dispatch.resumed": "恢復派送",
+  "model_budget.set": "設定模型呼叫逾時",
+  "publication.exposure.review": "曝光審核",
   "account.lookup": "查詢帳號",
   "credit.lookup": "查詢點數",
   "platform_agent.enabled": "啟用平台 Agent",
@@ -47,3 +51,9 @@ export const COST_KIND: Record<string, string> = {
   run: "試跑",
   match_reasons: "搜尋理由",
 };
+
+export const OPERATOR_NOTE_MAX_BYTES = 1000;
+
+export function operatorNoteBytes(value: string): number {
+  return new TextEncoder().encode(value.trim()).length;
+}

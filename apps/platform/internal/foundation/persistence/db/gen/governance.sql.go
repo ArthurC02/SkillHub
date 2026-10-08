@@ -485,16 +485,20 @@ func (q *Queries) ListCollectableObjects(ctx context.Context, rowLimit int32) ([
 
 const listPlatformAuditEvents = `-- name: ListPlatformAuditEvents :many
 SELECT id, actor_user_id, workspace_id, action, resource_type, resource_id, metadata, created_at, actor_agent_id FROM audit_events
-WHERE action = ANY($1::text[])
-   OR (action = ANY($2::text[]) AND metadata->>'scope' = $3::text)
+WHERE (action = ANY($1::text[])
+   OR (action = ANY($2::text[]) AND metadata->>'scope' = $3::text))
+  AND ($4::timestamptz IS NULL
+       OR (created_at, id) < ($4::timestamptz, $5::bigint))
 ORDER BY created_at DESC, id DESC
-LIMIT $5 OFFSET $4
+LIMIT $7 OFFSET $6
 `
 
 type ListPlatformAuditEventsParams struct {
 	Actions       []string
 	ScopedActions []string
 	Scope         string
+	BeforeAt      pgtype.Timestamptz
+	BeforeID      *int64
 	PageOffset    int32
 	PageLimit     int32
 }
@@ -504,6 +508,8 @@ func (q *Queries) ListPlatformAuditEvents(ctx context.Context, arg ListPlatformA
 		arg.Actions,
 		arg.ScopedActions,
 		arg.Scope,
+		arg.BeforeAt,
+		arg.BeforeID,
 		arg.PageOffset,
 		arg.PageLimit,
 	)
@@ -703,6 +709,67 @@ func (q *Queries) ListWorkspaceDownloadArtifactObjectKeys(ctx context.Context, w
 			return nil, err
 		}
 		items = append(items, object_key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWorkspaceOperatorAuditEvents = `-- name: ListWorkspaceOperatorAuditEvents :many
+SELECT id, actor_user_id, workspace_id, action, resource_type, resource_id, metadata, created_at, actor_agent_id FROM audit_events
+WHERE workspace_id = $1::uuid
+  AND (action = ANY($2::text[])
+   OR (action = ANY($3::text[]) AND metadata->>'scope' = $4::text))
+  AND ($5::timestamptz IS NULL
+       OR (created_at, id) < ($5::timestamptz, $6::bigint))
+ORDER BY created_at DESC, id DESC
+LIMIT $8 OFFSET $7
+`
+
+type ListWorkspaceOperatorAuditEventsParams struct {
+	WorkspaceID   pgtype.UUID
+	Actions       []string
+	ScopedActions []string
+	Scope         string
+	BeforeAt      pgtype.Timestamptz
+	BeforeID      *int64
+	PageOffset    int32
+	PageLimit     int32
+}
+
+func (q *Queries) ListWorkspaceOperatorAuditEvents(ctx context.Context, arg ListWorkspaceOperatorAuditEventsParams) ([]AuditEvent, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceOperatorAuditEvents,
+		arg.WorkspaceID,
+		arg.Actions,
+		arg.ScopedActions,
+		arg.Scope,
+		arg.BeforeAt,
+		arg.BeforeID,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AuditEvent
+	for rows.Next() {
+		var i AuditEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActorUserID,
+			&i.WorkspaceID,
+			&i.Action,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.ActorAgentID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

@@ -1,5 +1,6 @@
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { ApiError } from "../../../../core/api/client";
+import { serverSentenceOr } from "../../../../shared/format";
 
 export function MutationError({
   error,
@@ -16,7 +17,7 @@ export function MutationError({
     <ReadFailure error={error} what={what}>
       <p role="alert">
         {error instanceof ApiError && serverSaysStatuses.includes(error.status)
-          ? error.message
+          ? serverSentenceOr(error.message, fallback)
           : fallback}
       </p>
     </ReadFailure>

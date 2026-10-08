@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "../../core/api/client";
+import { ApiError, apiFetch } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
 
@@ -37,8 +37,16 @@ export type SkillGovernance = {
   takedown_reason: string | null;
 };
 
+export type OperatorVersionStatus = {
+  version_id: string;
+  version_number: number;
+  disabled: boolean;
+};
+
 export type DispatchHalt = {
   target: string;
+  halt_id: string;
+  generation: number;
   source: "p1_incident" | "orphan_threshold";
   reason: string;
   declared_at: string;
@@ -172,15 +180,58 @@ export function useGrantCredits(workspaceId: string) {
       ),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.ledger(workspaceId) }),
+    onError: (error) => {
+      if (isUncertainWriteFailure(error))
+        return queryClient.invalidateQueries({ queryKey: queryKeys.admin.ledger(workspaceId) });
+    },
   });
 }
 
+export function isUncertainWriteFailure(error: unknown): boolean {
+  return !(error instanceof ApiError) || error.status === 408 || error.status >= 500;
+}
+
 export function useGovernance(q: string) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: queryKeys.admin.skillSearch(q),
-    queryFn: () =>
-      apiFetch<{ skills: SkillGovernance[] }>(`/admin/skills?q=${encodeURIComponent(q)}`),
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      apiFetch<{ skills: SkillGovernance[]; total: number; next_offset?: number }>(
+        `/admin/skills?q=${encodeURIComponent(q)}${pageParam ? `&offset=${pageParam}` : ""}`,
+      ),
+    getNextPageParam: (last) => last.next_offset,
     enabled: useOperator() && q !== "",
+  });
+}
+
+export function useOperatorVersion(versionId: string) {
+  return useQuery({
+    queryKey: queryKeys.admin.version(versionId),
+    queryFn: () => apiFetch<OperatorVersionStatus>(`/admin/versions/${versionId}`),
+    enabled: useOperator() && versionId !== "",
+  });
+}
+
+export function useDisableVersion(versionId: string) {
+  const queryClient = useQueryClient();
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.version(versionId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.lab.preflights }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.auditLog }),
+    ]);
+  };
+  return useMutation({
+    mutationFn: (reason: string) =>
+      apiFetch<OperatorVersionStatus>(
+        `/admin/versions/${versionId}/disable`,
+        send("PUT", { reason }),
+      ),
+    onSuccess: refresh,
+    onError: (error) => {
+      if ((error instanceof ApiError && error.status === 409) || isUncertainWriteFailure(error))
+        return refresh();
+    },
   });
 }
 
@@ -193,6 +244,10 @@ export function useGovernanceAction(
     mutationFn: ({ method, body }: { method: "PUT" | "DELETE"; body: Record<string, unknown> }) =>
       apiFetch<unknown>(`/admin/skills/${skillId}/${action}`, send(method, body)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.skills }),
+    onError: (error) => {
+      if (isUncertainWriteFailure(error))
+        return queryClient.invalidateQueries({ queryKey: queryKeys.admin.skills });
+    },
   });
 }
 
@@ -201,15 +256,28 @@ export function useDispatchStatus() {
     queryKey: queryKeys.admin.dispatch,
     queryFn: () => apiFetch<DispatchStatus>("/admin/dispatch"),
     enabled: useOperator(),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 }
 
 export function useDispatchHalt(method: "PUT" | "DELETE") {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { note: string; provider?: string }) =>
-      apiFetch<{ note?: string } | undefined>("/admin/dispatch/halt", send(method, body)),
+    mutationFn: (body: {
+      note: string;
+      provider?: string;
+      halt_id?: string;
+      generation?: number;
+    }) => apiFetch<{ note?: string } | undefined>("/admin/dispatch/halt", send(method, body)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch }),
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 409)
+        return queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch });
+      if (isUncertainWriteFailure(error))
+        return queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch });
+    },
   });
 }
 
@@ -230,6 +298,10 @@ export function useModelBudgetChange(method: "PUT" | "DELETE") {
         send(method, body),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.modelBudgets }),
+    onError: (error) => {
+      if (isUncertainWriteFailure(error))
+        return queryClient.invalidateQueries({ queryKey: queryKeys.admin.modelBudgets });
+    },
   });
 }
 
@@ -243,19 +315,23 @@ export function useRosters() {
 
 const AUDIT_PAGE = 50;
 
-export function useOperatorAuditLog() {
+export function validAuditWorkspace(workspaceId: string): boolean {
+  return (
+    workspaceId === "" ||
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId)
+  );
+}
+
+export function useOperatorAuditLog(workspaceId: string, emptyAddress: boolean) {
   return useInfiniteQuery({
-    queryKey: queryKeys.admin.auditLog,
-    initialPageParam: 0,
+    queryKey: queryKeys.admin.auditLogFor(workspaceId),
+    initialPageParam: "",
     queryFn: ({ pageParam }) =>
-      apiFetch<{ events: OperatorAuditEvent[] }>(
-        `/admin/audit-log?limit=${AUDIT_PAGE + 1}&offset=${pageParam}`,
-      ).then((page) => ({
-        events: page.events.slice(0, AUDIT_PAGE),
-        nextOffset: page.events.length > AUDIT_PAGE ? pageParam + AUDIT_PAGE : undefined,
-      })),
-    getNextPageParam: (last) => last.nextOffset,
-    enabled: useOperator(),
+      apiFetch<{ events: OperatorAuditEvent[]; next_before?: string }>(
+        `/admin/audit-log?limit=${AUDIT_PAGE}${workspaceId ? `&workspace_id=${encodeURIComponent(workspaceId)}` : ""}${pageParam ? `&before=${encodeURIComponent(pageParam)}` : ""}`,
+      ),
+    getNextPageParam: (last) => last.next_before,
+    enabled: useOperator() && !emptyAddress && validAuditWorkspace(workspaceId),
   });
 }
 
@@ -264,6 +340,8 @@ export function useExposureQueue() {
     queryKey: queryKeys.admin.exposureQueue,
     queryFn: () => apiFetch<{ publications: ExposureQueueEntry[] }>("/admin/exposure-reviews"),
     enabled: useOperator(),
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 }
 
@@ -288,6 +366,19 @@ export function useReviewExposure(publication: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureCase(publication) });
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 409)
+        return queryClient.invalidateQueries({
+          queryKey: queryKeys.admin.exposureQueue,
+          exact: true,
+        });
+      if (isUncertainWriteFailure(error)) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue });
+        return queryClient.invalidateQueries({
+          queryKey: queryKeys.admin.exposureCase(publication),
+        });
+      }
     },
   });
 }

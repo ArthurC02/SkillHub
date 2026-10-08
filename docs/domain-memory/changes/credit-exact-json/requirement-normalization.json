@@ -1,0 +1,56 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "CRED-exact-transport",
+  "status": "draft",
+  "intent": "Credit 數值跨 API 傳輸後仍與帳本整數相同，不因瀏覽器精度失真。",
+  "actor": "使用者、operator、公開 API client",
+  "observable_outcome": "大額 Credit 在查帳、授點、創作、趨勢與 Run 證據中保持精確。",
+  "acceptance_criteria": [
+    {
+      "id": "exact-read",
+      "statement": "所有公開 Credit 金額在 JavaScript 安全整數界線及 int64 邊界以十進位字串精確還原。"
+    },
+    {
+      "id": "exact-write",
+      "statement": "授點請求與回應精確傳輸，後端保留原有授權、理由、冪等與 int64 範圍驗證。"
+    },
+    {
+      "id": "exact-aggregate",
+      "statement": "每日 Credit 異動與全平台餘額彙總不先失真；超過支援範圍時不能回傳失真的成功數字。"
+    },
+    {
+      "id": "exact-consumers",
+      "statement": "所有 Web Credit 顯示與運算保留精度，計數與美元微單位不混入 Credit 遷移。"
+    },
+    {
+      "id": "compatible-rollout",
+      "statement": "改公開契約前具名決定舊 client 的遷移、版本與回退條件。"
+    }
+  ],
+  "candidate_terms": [
+    "Credit",
+    "Credit balance",
+    "Credit entry"
+  ],
+  "open_questions": [
+    "選十進位字串或全域安全數值上限？",
+    "若選字串，舊 client 如何遷移？",
+    "Credit 聚合超過 int64 與非 Credit 數值的界線如何處理？"
+  ],
+  "risk_flags": [
+    "public_contract",
+    "cross_context"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/plans/02-specifications-and-acceptance-criteria.md",
+    "docs/adr/ADR-025-credit-metering-and-charging.md",
+    "contracts/openapi/public.yaml",
+    "apps/platform/internal/entrypoint/api/apiserver/credits.go",
+    "db/queries/credit.sql",
+    "db/migrations/0060_credit_ledger.sql",
+    "apps/web/src/core/session/credits.service.ts"
+  ]
+}

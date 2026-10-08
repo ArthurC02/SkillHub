@@ -26,8 +26,18 @@ export function TrendSection<B extends DailyCount, T extends Trend<B>>({
     <section>
       <h2>{heading}</h2>
       {query.isPending && <Loading what={heading} />}
-      <ReadFailure error={query.error} what={heading} />
-      {query.data && (
+      <ReadFailure
+        error={query.error}
+        what={heading}
+        onRetry={() => void query.refetch()}
+        retrying={query.isFetching}
+      />
+      {query.isFetching && query.data && !query.error && (
+        <p className="note" role="status">
+          正在更新{heading}；圖表仍顯示上次讀取的資料。
+        </p>
+      )}
+      {query.data && !query.error && (
         <TrendCharts
           trend={query.data}
           value={value}
@@ -36,7 +46,7 @@ export function TrendSection<B extends DailyCount, T extends Trend<B>>({
           valueHeading={valueHeading}
         />
       )}
-      {children}
+      {!query.error && children}
     </section>
   );
 }

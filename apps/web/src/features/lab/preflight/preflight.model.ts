@@ -1,5 +1,5 @@
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
-import { bytes } from "../../../shared/format";
+import { bytes, serverSentenceOr } from "../../../shared/format";
 import { ApiError } from "../../../core/api/client";
 import type { PreflightResponse, PreflightSummary } from "../lab.service";
 
@@ -26,6 +26,8 @@ export const SCRIPT_LABEL: Record<PreflightSummary["scripts"]["status"], string>
 };
 
 export const BLOCKED_SENTENCE: Record<NonNullable<PreflightResponse["blocked"]>, string> = {
+  version_disabled:
+    "這個小工具版本已由平台停用，不能建立新的 Run；既有 Run 不受影響。請改用新版本。",
   access_restricted:
     "這個小工具的來源授權還在審查中,審查期間不能試跑。授權審查完成後這一頁就會讓你開始。",
   capability_mismatch:
@@ -42,9 +44,7 @@ export const BLOCKED_SENTENCE: Record<NonNullable<PreflightResponse["blocked"]>,
 export function startFailureSentence(err: unknown): string {
   if (!err) return "";
   if (err instanceof ApiError && err.status === 422) {
-    return err.message
-      ? `這次試跑沒有開始：${err.message}`
-      : "這次試跑沒有開始。下方摘要已重新讀取,請確認之後再試。";
+    return `這次試跑沒有開始：${serverSentenceOr(err.message, "請確認下方摘要後再試。")}`;
   }
   if (err instanceof ApiError && err.status === 403) {
     return "這個帳號還沒有封測邀請，所以試跑沒有開始。想試的話，用頁尾的「回報問題」選「我想要的東西，這裡沒有」告訴我們你想做什麼。";

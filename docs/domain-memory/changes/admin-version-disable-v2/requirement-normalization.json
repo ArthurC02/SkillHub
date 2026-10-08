@@ -1,0 +1,45 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "SEC-011-version-disable",
+  "status": "draft",
+  "intent": "讓 operator 能停用指定 Skill Version，阻止新的 Run 引用它，同時保留不可變版本與歷史 Run。",
+  "actor": "平台 operator 與要求建立 Run 的使用者",
+  "observable_outcome": "停用完成後，新 Run 無法引用該版本；已建立的 Run 與版本內容不被改寫，操作留下可追溯紀錄。",
+  "acceptance_criteria": [
+    {
+      "id": "version-disable-authority",
+      "statement": "只有 operator 能停用指定版本；匿名與一般成員得到與不存在端點相同的 404，且不產生狀態或稽核變更。"
+    },
+    {
+      "id": "version-disable-admission",
+      "statement": "停用交易提交後，任何新 Run 都不能引用該版本；與停用並行的建立請求必須由同一版本上的交易序列化決定先後。"
+    },
+    {
+      "id": "version-disable-history",
+      "statement": "停用不修改 Skill Version 的不可變內容，也不取消、改寫或重派已建立的 Run。"
+    },
+    {
+      "id": "version-disable-audit",
+      "statement": "停用命令的理由與操作者、目標版本、前後狀態同交易入稽核；任一步驟失敗時兩者皆不提交。"
+    },
+    {
+      "id": "version-disable-guidance",
+      "statement": "使用者在 preflight 與建立 Run 時都得到明確的版本停用拒絕；operator 只能以精確版本 ID 查詢 ID、版本序號與停用狀態，不讀取私人套件內容或跨 Workspace 版本清單。"
+    },
+    {
+      "id": "version-disable-repeat",
+      "statement": "停用不可恢復；重複停用回明確的已停用結果，記錄操作者、理由與嘗試，且不修改版本內容或既有 Run。"
+    }
+  ],
+  "candidate_terms": ["Skill Version", "Run", "operator", "版本停用", "新 Run 准入"],
+  "open_questions": [],
+  "risk_flags": ["cross_context", "public_contract", "sensitive_data", "irreversible_change"],
+  "required_approval_roles": ["developer"],
+  "sources": [
+    "docs/plans/02-specifications-and-acceptance-criteria.md",
+    "docs/adr/ADR-017-query-and-write-ownership.md",
+    "apps/platform/internal/trial/execution/service.go",
+    "apps/platform/internal/skill/library/doc.go"
+  ]
+}
+

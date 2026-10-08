@@ -466,16 +466,24 @@ type Governance struct {
 
 const governanceLookupLimit = 20
 
-func SkillsForGovernance(ctx context.Context, db gen.DBTX, skillID pgtype.UUID, namePart string) ([]Governance, error) {
-	rows, err := gen.New(db).FindSkillsForGovernance(ctx, gen.FindSkillsForGovernanceParams{
-		SkillID: skillID, NamePart: namePart, ResultLimit: governanceLookupLimit,
+func SkillsForGovernance(ctx context.Context, db gen.DBTX, skillID pgtype.UUID, namePart string, offset int32) ([]Governance, int64, error) {
+	queries := gen.New(db)
+	total, err := queries.CountSkillsForGovernance(ctx, gen.CountSkillsForGovernanceParams{SkillID: skillID, NamePart: namePart})
+	if err != nil {
+		return nil, 0, err
+	}
+	if int64(offset) >= total {
+		return []Governance{}, total, nil
+	}
+	rows, err := queries.FindSkillsForGovernance(ctx, gen.FindSkillsForGovernanceParams{
+		SkillID: skillID, NamePart: namePart, ResultLimit: governanceLookupLimit, ResultOffset: offset,
 	})
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	out := make([]Governance, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, Governance(row))
 	}
-	return out, nil
+	return out, total, nil
 }

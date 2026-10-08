@@ -31,6 +31,10 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	if err := gen.New(lockSession).LockQueueSchema(ctx); err != nil {
 		return err
 	}
+	return EnsureSchemaForSingleProcess(ctx, pool)
+}
+
+func EnsureSchemaForSingleProcess(ctx context.Context, pool *pgxpool.Pool) error {
 	m, err := rivermigrate.New(riverpgxv5.New(pool), nil)
 	if err != nil {
 		return err

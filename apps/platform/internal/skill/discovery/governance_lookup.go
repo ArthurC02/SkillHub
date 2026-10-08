@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -22,7 +23,9 @@ type governanceView struct {
 }
 
 type governanceSearchResponse struct {
-	Skills []governanceView `json:"skills"`
+	Skills     []governanceView `json:"skills"`
+	Total      int64            `json:"total"`
+	NextOffset *int64           `json:"next_offset,omitempty"`
 }
 
 func (h *Handler) FindSkillsForGovernance(w http.ResponseWriter, r *http.Request) {
@@ -31,11 +34,20 @@ func (h *Handler) FindSkillsForGovernance(w http.ResponseWriter, r *http.Request
 		httpx.WriteError(w, http.StatusBadRequest, "q is required")
 		return
 	}
+	var offset int64
+	if r.URL.Query().Has("offset") {
+		var err error
+		offset, err = strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32)
+		if err != nil || offset < 0 {
+			httpx.WriteError(w, http.StatusBadRequest, "offset must be a nonnegative integer")
+			return
+		}
+	}
 	var skillID pgtype.UUID
 	if err := skillID.Scan(q); err != nil {
 		skillID = pgtype.UUID{}
 	}
-	found, err := registry.SkillsForGovernance(r.Context(), h.Svc.Pool, skillID, q)
+	found, total, err := registry.SkillsForGovernance(r.Context(), h.Svc.Pool, skillID, q, int32(offset))
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "skill lookup failed")
 		return
@@ -52,5 +64,10 @@ func (h *Handler) FindSkillsForGovernance(w http.ResponseWriter, r *http.Request
 		}
 		views = append(views, view)
 	}
-	httpx.WriteJSON(w, http.StatusOK, governanceSearchResponse{Skills: views})
+	response := governanceSearchResponse{Skills: views, Total: total}
+	if len(views) > 0 && offset+int64(len(views)) < total {
+		next := offset + int64(len(views))
+		response.NextOffset = &next
+	}
+	httpx.WriteJSON(w, http.StatusOK, response)
 }

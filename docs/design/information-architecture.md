@@ -301,11 +301,12 @@ Catalog landing `/` 的 `<h1>` 是名詞化的產品承諾 `探索能直接採�
 | `/runs/$id/compare` | `against` | EVAL-003：對照的另一次 Run 在網址裡，比較才能被連結 |
 | `/runs/$id` | `evaluation`、`events` | **這一格曾經寫「無」而且從來沒有更新過。** 一般／進階模式確實不在網址上（IA-4 的裁定，R4），但那不代表這一條路由沒有 search param——它有兩個，而且兩個都是 R4 的另一半「你在看哪一份東西」：`evaluation` 指名這次 Run 的某一份不可變判定（[資料所有權與核心基礎設施](../adr/README.md#資料所有權與核心基礎設施)／[評估判定與 Judge 信任邊界](../adr/README.md#評估判定與-judge-信任邊界)；沒有它，被取代的舊判定連不出去，而重新評估過的 Run 的「目前判定」是另一個判定），`events` 是進階 Trace 的游標堆疊，讓事件流的第 7 頁貼得出去也撐得過重新整理。<br>**這一格是本節補上機器的直接原因**：文件說「無」，程式說「兩個」，而在那之前沒有任何東西會 FAIL |
 | `/admin/skills` | `q` | 你在治理哪一個 Skill（`02:OPS-004`）：一個 UUID 就是那一個，其他字串是名稱片段；清單上「處理這一個」把 `q` 換成那個 UUID，所以處理中的那一個可以連結、撐得過重新整理 |
+| `/admin/audit-log` | `workspace_id` | 你在查哪一個 Workspace 的 operator 動作（`02:OPS-006`）：沒有參數時仍看全平台；帶精確 UUID 時先依 Workspace 縮小再翻頁，每一頁沿用同一條件。格式錯誤或明寫空值時明示錯誤且不查詢，不默默退回全平台 |
 | `/admin/exposure` | `publication` | 你在審哪一個發佈物（`02:DISC-007`）：`發佈者/名稱` 這一對就是那一筆；清單上「審這一筆」把它放進網址，所以審到一半的那一筆可以連結、撐得過重新整理；不是這個形狀的值丟掉、回到只有清單 |
 | `/admin/trends` | `days` | 你在看哪一段資料（`02:OPS-008`）：7、30 或 90 天，其他值丟掉、回到預設的 30；分享出去的連結重現同一段 |
 | `/admin/agents` | `status`（已解決、已忽略、已自行恢復三種）、`finding`（須為 UUID）、`proposal`（須為 UUID）、`run`（須為 UUID） | 平台 Agent 的待辦收件匣與提案（`02:OPS-012`、`02:OPS-013`）：`status` 是你在看哪一疊已關閉的事，沒有它就是待辦（待處理與處理中）；`finding` 是你打開的那一件事，`proposal` 是你打開的那一個提案，`run` 是你在看哪一次執行的日報與步驟。四者都讓那一畫面可以連結、撐得過重新整理；不合形狀的值丟掉，回到清單 |
 
-**其餘十七條路由沒有 `validateSearch`**（33 條路由減去上表的 16 條）（`/skills/$id`、`/skills/$id/files`、`/skills/$id/versions/$versionId`、五條不含網址狀態的 `/workspace` 與 `/workspace/*`、`/policy` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
+**其餘十六條路由沒有 `validateSearch`**（33 條路由減去上表的 17 條）（`/skills/$id`、`/skills/$id/files`、`/skills/$id/versions/$versionId`、五條不含網址狀態的 `/workspace` 與 `/workspace/*`、`/policy` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
 
 **永遠不進網址的一項**：Provider 的臨時 id。平台的 `run_id` 是唯一識別（鐵律 10）。
 
@@ -390,7 +391,7 @@ Catalog landing `/` 的 `<h1>` 是名詞化的產品承諾 `探索能直接採�
 - **三處把完整可操作的表單畫給訪客，等他做完事才拒絕**：`/workspace/import` 給出 radio、網址欄、檔案選擇器與可按的「開始匯入」；`/runs/$runId/compare` 在 `against` 為空時不發任何請求；**以及上面那個頁尾回報表單，它比前兩者都廣**。這是本項裡最壞的一格——**它違反的不是資訊架構，是 [設計系統](system.md) §2.2「顯示與強制成對」與 §2.4**：會被拒絕的控制項要在被使用**之前**說，不是之後。
 - **一頁誤導**：`/lab/run` 沒有 `?skill=&test_case=` 時說「這個頁面需要兩個 ID」——它把一個未登入的訪客送去找查詢參數。
 - **沒有任何一頁 `reads as empty`**，而且那不是運氣：每一句空狀態文案都掛在 `xxx.data &&` 之後，而讀取 401 時它不可能為真。所以 **§2.9 的 `無權檢視` 那一格在全 app 沒有發生**——這一項不是缺席呈現的問題，別把已經對的東西「修」壞。
-- **沒有任何一頁會崩**（全 app 沒有 ErrorBoundary，也不需要為這件事加一個），`apiFetch` 對 401 **沒有任何全域行為**（沒有轉址、沒有 toast、沒有清快取），而 `AuthControls.tsx:15` 是**全 app 唯一一處** `error.status === 401` 的判斷（落地後那一行搬進 `shared/ui/LoginRequired.tsx` 的 `unauthenticated()`，`AuthControls` 成為它的呼叫者之一）。
+- **401 本身不會令頁面元件拋例外**，這種可預期的登入狀態不靠 ErrorBoundary 處理；非預期的渲染例外則由路由層錯誤畫面承接。`apiFetch` 對 401 **沒有任何全域行為**（沒有轉址、沒有 toast、沒有清快取），而 `AuthControls.tsx:15` 是**全 app 唯一一處** `error.status === 401` 的判斷（落地後那一行搬進 `shared/ui/LoginRequired.tsx` 的 `unauthenticated()`，`AuthControls` 成為它的呼叫者之一）。
 
 #### 裁定
 
@@ -505,7 +506,7 @@ Run 比較仍要求一個基準 Run，但這個脈絡不只由 Run 頁產生：T
 | 導覽 landmark 唯一且具名 | `a11y.test.tsx`（axe `landmark-unique`） | 全部路由。平台導覽與 Skill 工作台局部導覽各自有名稱，頁面新增 `<nav>` 時不能借用既有名稱 |
 | 「你在哪裡」有語意 | TanStack Router 自動加的 `aria-current="page"` | 主要導覽五項 |
 | 375px 不橫向溢出 | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)＋[`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) 的棘輪 | **全部路由**，三引擎（34 個位址；33 條路由，其中 `/` 掃兩種狀態）。**棘輪**：`ia.test.ts` 把 `e2e/routes.ts` 當文字讀，與 `router.tsx` 的 `path` **雙向**比對，兩邊先收斂成 shape（去掉 query，`${SKILL}` 與 `$skillId` 都變 `*`），所以一條路由掃多個位址仍然合法，少一條或多一條都 FAIL。做法照抄同表的 `a11y.test.tsx` |
-| 網址參數不在列舉內就丟掉（不落在錯誤頁） | `validateSearch`（逐路由手寫） | 有 `validateSearch` 的 **16** 條 |
+| 網址參數不在列舉內就丟掉（不落在錯誤頁） | `validateSearch`（逐路由手寫） | 有 `validateSearch` 的 **17** 條；`/admin/audit-log` 的無效 UUID 保留錯誤狀態，不擴大查詢 |
 | §4 的網址狀態表與程式一致 | [`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) | **雙向**：逐路由比對 `validateSearch` 的 key 與表格第二欄，兩邊都不得多也不得少 |
 | **§1 的路由表與 `router.tsx` 一致** | [`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) | 全部路由，**雙向**：新路由沒補列會 FAIL，刪了路由沒刪列也會 |
 | **§2.1 的主要導覽與 `RootLayout` 一致** | 同上 | 導覽列全部項目 |

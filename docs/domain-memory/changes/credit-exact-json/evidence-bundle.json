@@ -1,0 +1,26 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "CRED-exact-transport",
+  "proposal_id": "credit-exact-json",
+  "registry_revision": null,
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [
+    "docs/plans/02-specifications-and-acceptance-criteria.md",
+    "docs/adr/ADR-025-credit-metering-and-charging.md",
+    "contracts/openapi/public.yaml",
+    "apps/platform/internal/entrypoint/api/apiserver/credits.go",
+    "db/queries/credit.sql",
+    "db/migrations/0060_credit_ledger.sql",
+    "apps/web/src/core/session/credits.service.ts"
+  ],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "未核准、未實作；公開 API 相容策略待裁定。",
+    "美元微單位與計數也可能有精度界線，但不是本 Credit 候選方案。"
+  ]
+}

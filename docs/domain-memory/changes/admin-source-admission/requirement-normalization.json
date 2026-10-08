@@ -1,0 +1,68 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "SEC-011-source-admission",
+  "status": "draft",
+  "intent": "讓平台 operator 能審查、准入、否決與下架內容來源候選，並使公開索引只收錄已准入的原始 Skill 來源。",
+  "actor": "平台 operator、內容提名人與瀏覽公開目錄的使用者",
+  "observable_outcome": "每個進入精選或已索引層的來源可追溯到一項有效准入決定；否決或下架不會被重新匯入繞過，既有版本與 Run 保持可追溯。",
+  "acceptance_criteria": [
+    {
+      "id": "source-candidate-identity",
+      "statement": "候選以原始 repo URL 加 Skill 路徑穩定識別，受審 commit 是每次審查的證據；同 repo 中授權不同的 Skill 可作不同決定，awesome 清單只能是發現線索。"
+    },
+    {
+      "id": "source-operator-authority",
+      "statement": "只有 operator 能新增准入、否決與下架決定；匿名與 member 均得 404，且不得藉 operator 身分讀取 Workspace 私有內容。"
+    },
+    {
+      "id": "source-admission-gate",
+      "statement": "精選與已索引層的新增收錄必須有對應且有效的准入決定；直接呼叫 API、策展腳本或重試均不得繞過；個人匯入的外部結果不被誤擋。"
+    },
+    {
+      "id": "source-decision-lifecycle",
+      "statement": "准入、否決與下架有單一可查詢的現況及保留的歷史；否決有原因，只有來源或授權證據實質改變時才重新審查。"
+    },
+    {
+      "id": "source-takedown-consistency",
+      "statement": "撤銷來源准入只阻止新公開收錄，不自動下架既有 Skill；既有 Skill 若需下架，由 operator 逐項走既有下架流程，不改寫 Skill Version 或歷史 Run，也不建立平行旗標。"
+    },
+    {
+      "id": "source-decision-audit",
+      "statement": "每筆決定及重複命令記錄 operator、提名人、日期、原因、涵蓋類別、對象與前後狀態；狀態和 audit 同交易提交或同時回滾。"
+    },
+    {
+      "id": "source-license-boundary",
+      "statement": "准入證據逐 Skill 判定 License 與來源，不把 repo 根 License 或清單站 License 自動授予子目錄；授權未決的候選不得因白名單決定繞過既有受限規則。"
+    }
+  ],
+  "candidate_terms": [
+    "內容來源候選",
+    "准入決定",
+    "否決",
+    "白名單下架",
+    "原始來源",
+    "收錄層級"
+  ],
+  "open_questions": [
+    "使用者自行上傳且公開分享時如何分類？其發佈曝光審核與外部來源白名單的適用關係為何？"
+  ],
+  "risk_flags": [
+    "cross_context",
+    "public_contract",
+    "sensitive_data",
+    "irreversible_change"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/plans/02-specifications-and-acceptance-criteria.md",
+    "docs/plans/03-work-items.md",
+    "docs/plans/mvp/content/curated-skill-list.md",
+    "tools/content/seed-skills.json",
+    "apps/platform/internal/skill/admission/doc.go",
+    "apps/platform/internal/skill/discovery/doc.go",
+    "apps/platform/internal/skill/library/doc.go",
+    "apps/platform/internal/skill/publishing/doc.go"
+  ]
+}

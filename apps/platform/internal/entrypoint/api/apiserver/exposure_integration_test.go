@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 
@@ -166,6 +167,32 @@ func (w exposureWorld) approveAndAssertExposedToAnyone(t *testing.T) {
 	}
 }
 
+func TestExposureReviewAppearsInOperatorAuditLog(t *testing.T) {
+	w := newExposureWorld(t, "exposure-audit")
+	w.allowRedistribution(t)
+	if code, body := w.reviewCurrent(t, "approved", "reviewed the current release"); code != http.StatusOK {
+		t.Fatalf("review: %d %v", code, body)
+	}
+	events := allAuditEvents(t, w.operator)
+	isReview := func(event map[string]any) bool {
+		metadata, ok := event["metadata"].(map[string]any)
+		return ok && event["action"] == "publication.exposure.review" &&
+			event["actor_user_id"] == w.operator.userID && event["resource_type"] == "publication" &&
+			event["workspace_id"] == w.author.workspaceID && metadata["reason"] == "reviewed the current release"
+	}
+	if !slices.ContainsFunc(events, isReview) {
+		t.Errorf("the operator audit log omitted the completed exposure review: %v", events)
+	}
+	code, filtered := getAdmin(t, w.operator, "/admin/audit-log?workspace_id="+w.author.workspaceID)
+	if code != http.StatusOK || !slices.ContainsFunc(objects(t, filtered["events"]), isReview) {
+		t.Errorf("the owner's filtered audit log omitted the exposure review: %d %v", code, filtered)
+	}
+	code, unrelated := getAdmin(t, w.operator, "/admin/audit-log?workspace_id="+w.operator.workspaceID)
+	if code != http.StatusOK || slices.ContainsFunc(objects(t, unrelated["events"]), isReview) {
+		t.Errorf("an unrelated workspace's audit log included the exposure review: %d %v", code, unrelated)
+	}
+}
+
 func TestAnApprovedReleaseEntersSearchAndTheDetailPageForAnyone(t *testing.T) {
 	w := newExposureWorld(t, "exposed")
 	if w.searchFinds(t) || w.anonymousDetail(t) != http.StatusNotFound {
@@ -274,6 +301,40 @@ func TestANewReleaseIsNotExposedUntilReviewedAndTakesTheOldOneDownWithIt(t *test
 	}
 	if !w.searchFinds(t) {
 		t.Errorf("v2 is missing from search after its own approval")
+	}
+}
+
+func TestCategoryTotalTracksOnlyTheCurrentlyApprovedRelease(t *testing.T) {
+	w := newExposureWorld(t, "category-exposure")
+	setCategory(t, w.pool, w.skillID, "data")
+	w.allowRedistribution(t)
+	anon := &client{Client: http.DefaultClient, base: w.a.URL}
+	categoryTotal := func() int {
+		return anon.search(t, "/api/skills/catalog?category=data").Total
+	}
+	before := categoryTotal()
+
+	if code, body := w.reviewCurrent(t, "approved", "first release reviewed"); code != http.StatusOK {
+		t.Fatalf("approving the first release: %d %v", code, body)
+	}
+	if got := categoryTotal(); got != before+1 {
+		t.Fatalf("approved category total = %d, want %d", got, before+1)
+	}
+
+	uploadedSkill(t, w.author, w.name, "A second, unreviewed way.")
+	w.enrich(t)
+	if code, body := publish(t, w.author, w.skillID, `{"rights_attested":true}`); code != http.StatusOK {
+		t.Fatalf("publishing the second release: %d %v", code, body)
+	}
+	if got := categoryTotal(); got != before {
+		t.Fatalf("unreviewed category total = %d, want %d", got, before)
+	}
+
+	if code, body := w.reviewCurrent(t, "approved", "second release reviewed"); code != http.StatusOK {
+		t.Fatalf("approving the second release: %d %v", code, body)
+	}
+	if got := categoryTotal(); got != before+1 {
+		t.Fatalf("reapproved category total = %d, want %d", got, before+1)
 	}
 }
 

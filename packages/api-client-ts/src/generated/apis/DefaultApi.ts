@@ -239,6 +239,11 @@ import {
     DiffSkillVersions200ResponseToJSON,
 } from '../models/DiffSkillVersions200Response';
 import {
+    type DisableSkillVersionRequest,
+    DisableSkillVersionRequestFromJSON,
+    DisableSkillVersionRequestToJSON,
+} from '../models/DisableSkillVersionRequest';
+import {
     type DownloadArtifact,
     DownloadArtifactFromJSON,
     DownloadArtifactToJSON,
@@ -488,6 +493,11 @@ import {
     MovePlatformAgentFindingRequestFromJSON,
     MovePlatformAgentFindingRequestToJSON,
 } from '../models/MovePlatformAgentFindingRequest';
+import {
+    type OperatorVersionStatus,
+    OperatorVersionStatusFromJSON,
+    OperatorVersionStatusToJSON,
+} from '../models/OperatorVersionStatus';
 import {
     type PackagingPreview,
     PackagingPreviewFromJSON,
@@ -1013,6 +1023,17 @@ export interface DiffSkillVersionsRequest {
     to: string;
 }
 
+export interface DisableSkillVersionOperationRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    disableSkillVersionRequest: DisableSkillVersionRequest;
+}
+
 export interface DownloadArtifactContentRequest {
     /**
      * 
@@ -1043,6 +1064,10 @@ export interface FindSkillsForGovernanceRequest {
      * 
      */
     q: string;
+    /**
+     * Number of matching skills to skip; defaults to zero.
+     */
+    offset?: number;
 }
 
 export interface FinishGithubLoginRequest {
@@ -1135,6 +1160,13 @@ export interface GetOperatorActionTrendRequest {
      * 
      */
     days?: GetOperatorActionTrendDaysEnum;
+}
+
+export interface GetOperatorVersionStatusRequest {
+    /**
+     * 
+     */
+    id: string;
 }
 
 export interface GetOwnBundlePublicationRequest {
@@ -1340,6 +1372,14 @@ export interface ListOperatorAuditLogRequest {
      * 
      */
     offset?: number;
+    /**
+     * 
+     */
+    before?: string;
+    /**
+     * 
+     */
+    workspaceId?: string;
 }
 
 export interface ListPlatformAgentFindingsRequest {
@@ -2304,7 +2344,7 @@ export interface DefaultApiInterface {
     declareDispatchHaltRequestOpts(requestParameters: DeclareDispatchHaltOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Operator only. Declares a P1 and performs its three automatic actions at once: new runs are refused (503 on POST /skills/{id}/runs), nothing is dispatched to the target, and cleanup and orphan teardown stand down so the scene is preserved for the investigation.  This endpoint exists because most P1 criteria are judgements or live outside this process — 逃逸疑慮, the P-02 probe, the gVisor advisory cron, and a Reconciler that has stopped cannot be the thing that notices it stopped. What the platform can do is make the response one request, which is what 02:SEC-010\'s escalation rule 「不確定屬 P1 或 P2 時一律以 P1 處理」 depends on.  Writes the halt row and its audit event in one transaction (iron rule 9). Idempotent: re-declaring rewrites the reason and writes a second audit event, because an operator repeating an action is not an error.  A P1 declared over a target already paused by the X-04 threshold takes it over — including its release, which stops being automatic. The reverse never happens. 
+     * Operator only. Declares a P1 and performs its three automatic actions at once: new runs are refused (503 on POST /skills/{id}/runs), nothing is dispatched to the target, and cleanup and orphan teardown stand down so the scene is preserved for the investigation. This endpoint exists because most P1 criteria are judgements or live outside this process — 逃逸疑慮, the P-02 probe, the gVisor advisory cron, and a Reconciler that has stopped cannot be the thing that notices it stopped. What the platform can do is make the response one request, which is what 02:SEC-010\'s escalation rule 「不確定屬 P1 或 P2 時一律以 P1 處理」 depends on. Writes the halt row and its audit event in one transaction (iron rule 9). Re-declaring keeps the active row, increases its generation, rewrites the reason and writes another audit event. Repeating the action is not an error, but an earlier lift observation becomes stale. A P1 declared over a target already paused by the X-04 threshold takes it over — including its release, which stops being automatic. The reverse never happens.
      * @summary Stop dispatching new Runs (SEC-012, 02:SEC-010 P1)
      * @param {DeclareDispatchHaltRequest} declareDispatchHaltRequest 
      * @param {*} [options] Override http request option.
@@ -2314,7 +2354,7 @@ export interface DefaultApiInterface {
     declareDispatchHaltRaw(requestParameters: DeclareDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeclareDispatchHalt200Response>>;
 
     /**
-     * Operator only. Declares a P1 and performs its three automatic actions at once: new runs are refused (503 on POST /skills/{id}/runs), nothing is dispatched to the target, and cleanup and orphan teardown stand down so the scene is preserved for the investigation.  This endpoint exists because most P1 criteria are judgements or live outside this process — 逃逸疑慮, the P-02 probe, the gVisor advisory cron, and a Reconciler that has stopped cannot be the thing that notices it stopped. What the platform can do is make the response one request, which is what 02:SEC-010\'s escalation rule 「不確定屬 P1 或 P2 時一律以 P1 處理」 depends on.  Writes the halt row and its audit event in one transaction (iron rule 9). Idempotent: re-declaring rewrites the reason and writes a second audit event, because an operator repeating an action is not an error.  A P1 declared over a target already paused by the X-04 threshold takes it over — including its release, which stops being automatic. The reverse never happens. 
+     * Operator only. Declares a P1 and performs its three automatic actions at once: new runs are refused (503 on POST /skills/{id}/runs), nothing is dispatched to the target, and cleanup and orphan teardown stand down so the scene is preserved for the investigation. This endpoint exists because most P1 criteria are judgements or live outside this process — 逃逸疑慮, the P-02 probe, the gVisor advisory cron, and a Reconciler that has stopped cannot be the thing that notices it stopped. What the platform can do is make the response one request, which is what 02:SEC-010\'s escalation rule 「不確定屬 P1 或 P2 時一律以 P1 處理」 depends on. Writes the halt row and its audit event in one transaction (iron rule 9). Re-declaring keeps the active row, increases its generation, rewrites the reason and writes another audit event. Repeating the action is not an error, but an earlier lift observation becomes stale. A P1 declared over a target already paused by the X-04 threshold takes it over — including its release, which stops being automatic. The reverse never happens.
      * Stop dispatching new Runs (SEC-012, 02:SEC-010 P1)
      */
     declareDispatchHalt(requestParameters: DeclareDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeclareDispatchHalt200Response>;
@@ -2566,6 +2606,32 @@ export interface DefaultApiInterface {
     diffSkillVersions(requestParameters: DiffSkillVersionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DiffSkillVersions200Response>;
 
     /**
+     * Creates request options for disableSkillVersion without sending the request
+     * @param {string} id 
+     * @param {DisableSkillVersionRequest} disableSkillVersionRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    disableSkillVersionRequestOpts(requestParameters: DisableSkillVersionOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. The version content and existing Runs are unchanged. The disable and audit event commit together. A repeated command records the attempt and returns 409. There is no restore route. 
+     * @summary Irreversibly prevent one Skill Version from starting new Runs
+     * @param {string} id 
+     * @param {DisableSkillVersionRequest} disableSkillVersionRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    disableSkillVersionRaw(requestParameters: DisableSkillVersionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OperatorVersionStatus>>;
+
+    /**
+     * Operator only. The version content and existing Runs are unchanged. The disable and audit event commit together. A repeated command records the attempt and returns 409. There is no restore route. 
+     * Irreversibly prevent one Skill Version from starting new Runs
+     */
+    disableSkillVersion(requestParameters: DisableSkillVersionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OperatorVersionStatus>;
+
+    /**
      * Creates request options for downloadArtifactContent without sending the request
      * @param {string} artifactId 
      * @throws {RequiredError}
@@ -2642,6 +2708,7 @@ export interface DefaultApiInterface {
     /**
      * Creates request options for findSkillsForGovernance without sending the request
      * @param {string} q 
+     * @param {number} [offset] Number of matching skills to skip; defaults to zero.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
@@ -2651,6 +2718,7 @@ export interface DefaultApiInterface {
      * Operator only. A `q` that is a UUID matches that skill id; anything else is a case-insensitive substring of the name. Every workspace is searched, private and taken-down skills included, because those are what public search cannot find and what an operator acts on. Deleted skills are never listed. At most 20, newest first.  Each match carries governance state only, never SKILL.md or the file tree, so this is not a personal-data read and writes no audit event. 
      * @summary Find skills to govern, in every workspace (02:OPS-004)
      * @param {string} q 
+     * @param {number} [offset] Number of matching skills to skip; defaults to zero.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -3148,6 +3216,30 @@ export interface DefaultApiInterface {
     getOperatorRosters(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetOperatorRosters200Response>;
 
     /**
+     * Creates request options for getOperatorVersionStatus without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOperatorVersionStatusRequestOpts(requestParameters: GetOperatorVersionStatusRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Returns no package content or cross-workspace version list.
+     * @summary Read one Skill Version\'s disable status by exact ID
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOperatorVersionStatusRaw(requestParameters: GetOperatorVersionStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OperatorVersionStatus>>;
+
+    /**
+     * Operator only. Returns no package content or cross-workspace version list.
+     * Read one Skill Version\'s disable status by exact ID
+     */
+    getOperatorVersionStatus(requestParameters: GetOperatorVersionStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OperatorVersionStatus>;
+
+    /**
      * Creates request options for getOwnBundlePublication without sending the request
      * @param {string} name 
      * @throws {RequiredError}
@@ -3590,7 +3682,7 @@ export interface DefaultApiInterface {
     grantCreditsRequestOpts(requestParameters: GrantCreditsOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Idempotent only when the request carries `idempotency_key`: a replay of the same key for the same account writes no second entry and no second audit event, and answers with the balance as it stands. Without a key nothing identifies a retry, so two identical calls are two grants. A key already used on this account for a different amount is a 409, not a replay: answering 200 would report a grant that was never applied. 
+     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Idempotent only when the request carries `idempotency_key`: a replay of the same key for the same account, amount, reason and operator writes no second entry or audit event, and answers with the balance as it stands. Without a key nothing identifies a retry, so two identical calls are two grants. Reusing a key with another amount, reason or operator is a 409: answering 200 would report a grant that was never applied. A legacy grant without a request fingerprint also returns 409 on replay, because the server cannot verify the original request.
      * @summary Put Credit into an account (CRED-007)
      * @param {string} workspaceId 
      * @param {GrantCreditsRequest} grantCreditsRequest 
@@ -3601,7 +3693,7 @@ export interface DefaultApiInterface {
     grantCreditsRaw(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GrantCredits200Response>>;
 
     /**
-     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Idempotent only when the request carries `idempotency_key`: a replay of the same key for the same account writes no second entry and no second audit event, and answers with the balance as it stands. Without a key nothing identifies a retry, so two identical calls are two grants. A key already used on this account for a different amount is a 409, not a replay: answering 200 would report a grant that was never applied. 
+     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Idempotent only when the request carries `idempotency_key`: a replay of the same key for the same account, amount, reason and operator writes no second entry or audit event, and answers with the balance as it stands. Without a key nothing identifies a retry, so two identical calls are two grants. Reusing a key with another amount, reason or operator is a 409: answering 200 would report a grant that was never applied. A legacy grant without a request fingerprint also returns 409 on replay, because the server cannot verify the original request.
      * Put Credit into an account (CRED-007)
      */
     grantCredits(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GrantCredits200Response>;
@@ -3665,7 +3757,7 @@ export interface DefaultApiInterface {
     liftDispatchHaltRequestOpts(requestParameters: LiftDispatchHaltOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Operator only, and the only way a `p1_incident` halt is ever released: 03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時恢復服務）」.  It releases an `orphan_threshold` halt too, because an operator who has finished dealing with a leak should not have to wait out the reconciler. Same statement either way — there is no second path back to dispatching that could disagree with this one.  Queued runs resume on the supervisor\'s next sweep; nothing was failed while the halt was in force, so nobody has to start over. Cleanups that stood down are performed on the next sweep as well.  Idempotent: lifting nothing answers 204, because the caller\'s intent is already true. 
+     * Operator only, and the only way a `p1_incident` halt is ever released: 03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時恢復服務）」. It releases an `orphan_threshold` halt too, because an operator who has finished dealing with a leak should not have to wait out the reconciler. Same statement either way — there is no second path back to dispatching that could disagree with this one. Queued runs resume on the supervisor\'s next sweep; nothing was failed while the halt was in force, so nobody has to start over. Cleanups that stood down are performed on the next sweep as well. The observed `halt_id` and `generation` from GET /admin/dispatch must match the active halt in the same update transaction. A redeclared or replaced halt returns 409 without lifting or auditing it. Lifting nothing with a complete observation answers 204.
      * @summary Resume dispatching (SEC-012)
      * @param {LiftDispatchHaltRequest} liftDispatchHaltRequest 
      * @param {*} [options] Override http request option.
@@ -3675,7 +3767,7 @@ export interface DefaultApiInterface {
     liftDispatchHaltRaw(requestParameters: LiftDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
 
     /**
-     * Operator only, and the only way a `p1_incident` halt is ever released: 03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時恢復服務）」.  It releases an `orphan_threshold` halt too, because an operator who has finished dealing with a leak should not have to wait out the reconciler. Same statement either way — there is no second path back to dispatching that could disagree with this one.  Queued runs resume on the supervisor\'s next sweep; nothing was failed while the halt was in force, so nobody has to start over. Cleanups that stood down are performed on the next sweep as well.  Idempotent: lifting nothing answers 204, because the caller\'s intent is already true. 
+     * Operator only, and the only way a `p1_incident` halt is ever released: 03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時恢復服務）」. It releases an `orphan_threshold` halt too, because an operator who has finished dealing with a leak should not have to wait out the reconciler. Same statement either way — there is no second path back to dispatching that could disagree with this one. Queued runs resume on the supervisor\'s next sweep; nothing was failed while the halt was in force, so nobody has to start over. Cleanups that stood down are performed on the next sweep as well. The observed `halt_id` and `generation` from GET /admin/dispatch must match the active halt in the same update transaction. A redeclared or replaced halt returns 409 without lifting or auditing it. Lifting nothing with a complete observation answers 204.
      * Resume dispatching (SEC-012)
      */
     liftDispatchHalt(requestParameters: LiftDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
@@ -3843,16 +3935,20 @@ export interface DefaultApiInterface {
      * Creates request options for listOperatorAuditLog without sending the request
      * @param {number} [limit] 
      * @param {number} [offset] 
+     * @param {string} [before] 
+     * @param {string} [workspaceId] 
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
     listOperatorAuditLogRequestOpts(requestParameters: ListOperatorAuditLogRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_before` as the next request\'s `before` cursor so new events do not move the page boundary. `offset` remains for older clients; it cannot be combined with `before`. An optional `workspace_id` narrows the operator-only view before pagination; without it, the response remains platform-wide. 
      * @summary What operators did, platform-wide (02:OPS-006)
      * @param {number} [limit] 
      * @param {number} [offset] 
+     * @param {string} [before] 
+     * @param {string} [workspaceId] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -3860,7 +3956,7 @@ export interface DefaultApiInterface {
     listOperatorAuditLogRaw(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOperatorAuditLog200Response>>;
 
     /**
-     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_before` as the next request\'s `before` cursor so new events do not move the page boundary. `offset` remains for older clients; it cannot be combined with `before`. An optional `workspace_id` narrows the operator-only view before pagination; without it, the response remains platform-wide. 
      * What operators did, platform-wide (02:OPS-006)
      */
     listOperatorAuditLog(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOperatorAuditLog200Response>;
@@ -6056,7 +6152,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Declares a P1 and performs its three automatic actions at once: new runs are refused (503 on POST /skills/{id}/runs), nothing is dispatched to the target, and cleanup and orphan teardown stand down so the scene is preserved for the investigation.  This endpoint exists because most P1 criteria are judgements or live outside this process — 逃逸疑慮, the P-02 probe, the gVisor advisory cron, and a Reconciler that has stopped cannot be the thing that notices it stopped. What the platform can do is make the response one request, which is what 02:SEC-010\'s escalation rule 「不確定屬 P1 或 P2 時一律以 P1 處理」 depends on.  Writes the halt row and its audit event in one transaction (iron rule 9). Idempotent: re-declaring rewrites the reason and writes a second audit event, because an operator repeating an action is not an error.  A P1 declared over a target already paused by the X-04 threshold takes it over — including its release, which stops being automatic. The reverse never happens. 
+     * Operator only. Declares a P1 and performs its three automatic actions at once: new runs are refused (503 on POST /skills/{id}/runs), nothing is dispatched to the target, and cleanup and orphan teardown stand down so the scene is preserved for the investigation. This endpoint exists because most P1 criteria are judgements or live outside this process — 逃逸疑慮, the P-02 probe, the gVisor advisory cron, and a Reconciler that has stopped cannot be the thing that notices it stopped. What the platform can do is make the response one request, which is what 02:SEC-010\'s escalation rule 「不確定屬 P1 或 P2 時一律以 P1 處理」 depends on. Writes the halt row and its audit event in one transaction (iron rule 9). Re-declaring keeps the active row, increases its generation, rewrites the reason and writes another audit event. Repeating the action is not an error, but an earlier lift observation becomes stale. A P1 declared over a target already paused by the X-04 threshold takes it over — including its release, which stops being automatic. The reverse never happens.
      * Stop dispatching new Runs (SEC-012, 02:SEC-010 P1)
      */
     async declareDispatchHaltRaw(requestParameters: DeclareDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeclareDispatchHalt200Response>> {
@@ -6067,7 +6163,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Declares a P1 and performs its three automatic actions at once: new runs are refused (503 on POST /skills/{id}/runs), nothing is dispatched to the target, and cleanup and orphan teardown stand down so the scene is preserved for the investigation.  This endpoint exists because most P1 criteria are judgements or live outside this process — 逃逸疑慮, the P-02 probe, the gVisor advisory cron, and a Reconciler that has stopped cannot be the thing that notices it stopped. What the platform can do is make the response one request, which is what 02:SEC-010\'s escalation rule 「不確定屬 P1 或 P2 時一律以 P1 處理」 depends on.  Writes the halt row and its audit event in one transaction (iron rule 9). Idempotent: re-declaring rewrites the reason and writes a second audit event, because an operator repeating an action is not an error.  A P1 declared over a target already paused by the X-04 threshold takes it over — including its release, which stops being automatic. The reverse never happens. 
+     * Operator only. Declares a P1 and performs its three automatic actions at once: new runs are refused (503 on POST /skills/{id}/runs), nothing is dispatched to the target, and cleanup and orphan teardown stand down so the scene is preserved for the investigation. This endpoint exists because most P1 criteria are judgements or live outside this process — 逃逸疑慮, the P-02 probe, the gVisor advisory cron, and a Reconciler that has stopped cannot be the thing that notices it stopped. What the platform can do is make the response one request, which is what 02:SEC-010\'s escalation rule 「不確定屬 P1 或 P2 時一律以 P1 處理」 depends on. Writes the halt row and its audit event in one transaction (iron rule 9). Re-declaring keeps the active row, increases its generation, rewrites the reason and writes another audit event. Repeating the action is not an error, but an earlier lift observation becomes stale. A P1 declared over a target already paused by the X-04 threshold takes it over — including its release, which stops being automatic. The reverse never happens.
      * Stop dispatching new Runs (SEC-012, 02:SEC-010 P1)
      */
     async declareDispatchHalt(requestParameters: DeclareDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeclareDispatchHalt200Response> {
@@ -6576,6 +6672,63 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for disableSkillVersion without sending the request
+     */
+    async disableSkillVersionRequestOpts(requestParameters: DisableSkillVersionOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling disableSkillVersion().'
+            );
+        }
+
+        if (requestParameters['disableSkillVersionRequest'] == null) {
+            throw new runtime.RequiredError(
+                'disableSkillVersionRequest',
+                'Required parameter "disableSkillVersionRequest" was null or undefined when calling disableSkillVersion().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/versions/{id}/disable`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: DisableSkillVersionRequestToJSON(requestParameters['disableSkillVersionRequest']),
+        };
+    }
+
+    /**
+     * Operator only. The version content and existing Runs are unchanged. The disable and audit event commit together. A repeated command records the attempt and returns 409. There is no restore route. 
+     * Irreversibly prevent one Skill Version from starting new Runs
+     */
+    async disableSkillVersionRaw(requestParameters: DisableSkillVersionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OperatorVersionStatus>> {
+        const requestOptions = await this.disableSkillVersionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OperatorVersionStatusFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. The version content and existing Runs are unchanged. The disable and audit event commit together. A repeated command records the attempt and returns 409. There is no restore route. 
+     * Irreversibly prevent one Skill Version from starting new Runs
+     */
+    async disableSkillVersion(requestParameters: DisableSkillVersionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OperatorVersionStatus> {
+        const response = await this.disableSkillVersionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for downloadArtifactContent without sending the request
      */
     async downloadArtifactContentRequestOpts(requestParameters: DownloadArtifactContentRequest): Promise<runtime.RequestOpts> {
@@ -6737,6 +6890,10 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         if (requestParameters['q'] != null) {
             queryParameters['q'] = requestParameters['q'];
+        }
+
+        if (requestParameters['offset'] != null) {
+            queryParameters['offset'] = requestParameters['offset'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -7679,6 +7836,53 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for getOperatorVersionStatus without sending the request
+     */
+    async getOperatorVersionStatusRequestOpts(requestParameters: GetOperatorVersionStatusRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getOperatorVersionStatus().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/versions/{id}`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. Returns no package content or cross-workspace version list.
+     * Read one Skill Version\'s disable status by exact ID
+     */
+    async getOperatorVersionStatusRaw(requestParameters: GetOperatorVersionStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OperatorVersionStatus>> {
+        const requestOptions = await this.getOperatorVersionStatusRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OperatorVersionStatusFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Returns no package content or cross-workspace version list.
+     * Read one Skill Version\'s disable status by exact ID
+     */
+    async getOperatorVersionStatus(requestParameters: GetOperatorVersionStatusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OperatorVersionStatus> {
+        const response = await this.getOperatorVersionStatusRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getOwnBundlePublication without sending the request
      */
     async getOwnBundlePublicationRequestOpts(requestParameters: GetOwnBundlePublicationRequest): Promise<runtime.RequestOpts> {
@@ -8562,7 +8766,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Idempotent only when the request carries `idempotency_key`: a replay of the same key for the same account writes no second entry and no second audit event, and answers with the balance as it stands. Without a key nothing identifies a retry, so two identical calls are two grants. A key already used on this account for a different amount is a 409, not a replay: answering 200 would report a grant that was never applied. 
+     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Idempotent only when the request carries `idempotency_key`: a replay of the same key for the same account, amount, reason and operator writes no second entry or audit event, and answers with the balance as it stands. Without a key nothing identifies a retry, so two identical calls are two grants. Reusing a key with another amount, reason or operator is a 409: answering 200 would report a grant that was never applied. A legacy grant without a request fingerprint also returns 409 on replay, because the server cannot verify the original request.
      * Put Credit into an account (CRED-007)
      */
     async grantCreditsRaw(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GrantCredits200Response>> {
@@ -8573,7 +8777,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Idempotent only when the request carries `idempotency_key`: a replay of the same key for the same account writes no second entry and no second audit event, and answers with the balance as it stands. Without a key nothing identifies a retry, so two identical calls are two grants. A key already used on this account for a different amount is a 409, not a replay: answering 200 would report a grant that was never applied. 
+     * Operator only. MVP connects no payment gateway, so an operator entry is the whole of \"top up\" — and it is also how a beta participant\'s reward is issued, which is why this route exists before any billing does.  The reason is required and is not decoration: it becomes part of the audit event this write emits in the same transaction as the balance change (02:SEC-011). A granted balance with no trail of who granted it and why is not a state this endpoint can end in.  `amount_credits` may be negative — a corrective adjustment is the same mechanism in the other direction — but never zero, which would write an entry that changes nothing while claiming an operator did something.  Idempotent only when the request carries `idempotency_key`: a replay of the same key for the same account, amount, reason and operator writes no second entry or audit event, and answers with the balance as it stands. Without a key nothing identifies a retry, so two identical calls are two grants. Reusing a key with another amount, reason or operator is a 409: answering 200 would report a grant that was never applied. A legacy grant without a request fingerprint also returns 409 on replay, because the server cannot verify the original request.
      * Put Credit into an account (CRED-007)
      */
     async grantCredits(requestParameters: GrantCreditsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GrantCredits200Response> {
@@ -8717,7 +8921,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only, and the only way a `p1_incident` halt is ever released: 03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時恢復服務）」.  It releases an `orphan_threshold` halt too, because an operator who has finished dealing with a leak should not have to wait out the reconciler. Same statement either way — there is no second path back to dispatching that could disagree with this one.  Queued runs resume on the supervisor\'s next sweep; nothing was failed while the halt was in force, so nobody has to start over. Cleanups that stood down are performed on the next sweep as well.  Idempotent: lifting nothing answers 204, because the caller\'s intent is already true. 
+     * Operator only, and the only way a `p1_incident` halt is ever released: 03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時恢復服務）」. It releases an `orphan_threshold` halt too, because an operator who has finished dealing with a leak should not have to wait out the reconciler. Same statement either way — there is no second path back to dispatching that could disagree with this one. Queued runs resume on the supervisor\'s next sweep; nothing was failed while the halt was in force, so nobody has to start over. Cleanups that stood down are performed on the next sweep as well. The observed `halt_id` and `generation` from GET /admin/dispatch must match the active halt in the same update transaction. A redeclared or replaced halt returns 409 without lifting or auditing it. Lifting nothing with a complete observation answers 204.
      * Resume dispatching (SEC-012)
      */
     async liftDispatchHaltRaw(requestParameters: LiftDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -8728,7 +8932,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only, and the only way a `p1_incident` halt is ever released: 03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時恢復服務）」.  It releases an `orphan_threshold` halt too, because an operator who has finished dealing with a leak should not have to wait out the reconciler. Same statement either way — there is no second path back to dispatching that could disagree with this one.  Queued runs resume on the supervisor\'s next sweep; nothing was failed while the halt was in force, so nobody has to start over. Cleanups that stood down are performed on the next sweep as well.  Idempotent: lifting nothing answers 204, because the caller\'s intent is already true. 
+     * Operator only, and the only way a `p1_incident` halt is ever released: 03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時恢復服務）」. It releases an `orphan_threshold` halt too, because an operator who has finished dealing with a leak should not have to wait out the reconciler. Same statement either way — there is no second path back to dispatching that could disagree with this one. Queued runs resume on the supervisor\'s next sweep; nothing was failed while the halt was in force, so nobody has to start over. Cleanups that stood down are performed on the next sweep as well. The observed `halt_id` and `generation` from GET /admin/dispatch must match the active halt in the same update transaction. A redeclared or replaced halt returns 409 without lifting or auditing it. Lifting nothing with a complete observation answers 204.
      * Resume dispatching (SEC-012)
      */
     async liftDispatchHalt(requestParameters: LiftDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
@@ -9040,6 +9244,14 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             queryParameters['offset'] = requestParameters['offset'];
         }
 
+        if (requestParameters['before'] != null) {
+            queryParameters['before'] = requestParameters['before'];
+        }
+
+        if (requestParameters['workspaceId'] != null) {
+            queryParameters['workspace_id'] = requestParameters['workspaceId'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -9054,7 +9266,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_before` as the next request\'s `before` cursor so new events do not move the page boundary. `offset` remains for older clients; it cannot be combined with `before`. An optional `workspace_id` narrows the operator-only view before pagination; without it, the response remains platform-wide. 
      * What operators did, platform-wide (02:OPS-006)
      */
     async listOperatorAuditLogRaw(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOperatorAuditLog200Response>> {
@@ -9065,7 +9277,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_before` as the next request\'s `before` cursor so new events do not move the page boundary. `offset` remains for older clients; it cannot be combined with `before`. An optional `workspace_id` narrows the operator-only view before pagination; without it, the response remains platform-wide. 
      * What operators did, platform-wide (02:OPS-006)
      */
     async listOperatorAuditLog(requestParameters: ListOperatorAuditLogRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOperatorAuditLog200Response> {

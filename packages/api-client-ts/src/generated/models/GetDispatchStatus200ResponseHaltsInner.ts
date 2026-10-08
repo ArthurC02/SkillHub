@@ -24,6 +24,14 @@ export interface GetDispatchStatus200ResponseHaltsInner {
      */
     target: string;
     /**
+     * Stable identity of this halt row.
+     */
+    haltId: string;
+    /**
+     * Increases on every redeclaration of the same halt.
+     */
+    generation: number;
+    /**
      * 
      */
     source: GetDispatchStatus200ResponseHaltsInnerSourceEnum;
@@ -67,6 +75,8 @@ export type GetDispatchStatus200ResponseHaltsInnerSourceEnum = typeof GetDispatc
  */
 export function instanceOfGetDispatchStatus200ResponseHaltsInner(value: object): value is GetDispatchStatus200ResponseHaltsInner {
     if (!('target' in value) || value['target'] === undefined) return false;
+    if ((!('haltId' in (value as Record<string, any>)) && !('halt_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['haltId'] === undefined && (value as Record<string, any>)['halt_id'] === undefined)) return false;
+    if (!('generation' in value) || value['generation'] === undefined) return false;
     if (!('source' in value) || value['source'] === undefined) return false;
     if (!('reason' in value) || value['reason'] === undefined) return false;
     if ((!('declaredAt' in (value as Record<string, any>)) && !('declared_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['declaredAt'] === undefined && (value as Record<string, any>)['declared_at'] === undefined)) return false;
@@ -85,6 +95,8 @@ export function GetDispatchStatus200ResponseHaltsInnerFromJSONTyped(json: any, i
     return {
         
         'target': json['target'],
+        'haltId': json['halt_id'],
+        'generation': json['generation'],
         'source': json['source'],
         'reason': json['reason'],
         'declaredAt': (json['declared_at'] == null ? json['declared_at'] : parseDateTime(json['declared_at'])),
@@ -105,6 +117,8 @@ export function GetDispatchStatus200ResponseHaltsInnerToJSONTyped(value?: GetDis
     return {
         
         'target': value['target'],
+        'halt_id': value['haltId'],
+        'generation': value['generation'],
         'source': value['source'],
         'reason': value['reason'],
         'declared_at': value['declaredAt'] == null ? value['declaredAt'] : serializeDateTime(value['declaredAt']),

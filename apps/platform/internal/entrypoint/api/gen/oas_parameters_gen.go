@@ -139,6 +139,11 @@ type DiffSkillVersionsParams struct {
 	To   uuid.UUID
 }
 
+// DisableSkillVersionParams is parameters of disableSkillVersion operation.
+type DisableSkillVersionParams struct {
+	ID uuid.UUID
+}
+
 // DownloadArtifactContentParams is parameters of downloadArtifactContent operation.
 type DownloadArtifactContentParams struct {
 	ArtifactId uuid.UUID
@@ -154,6 +159,8 @@ type ExportBundleParams struct {
 // FindSkillsForGovernanceParams is parameters of findSkillsForGovernance operation.
 type FindSkillsForGovernanceParams struct {
 	Q string
+	// Number of matching skills to skip; defaults to zero.
+	Offset OptInt `json:",omitempty,omitzero"`
 }
 
 // FinishGithubLoginParams is parameters of finishGithubLogin operation.
@@ -212,6 +219,11 @@ type GetFunnelTrendParams struct {
 // GetOperatorActionTrendParams is parameters of getOperatorActionTrend operation.
 type GetOperatorActionTrendParams struct {
 	Days OptGetOperatorActionTrendDays `json:",omitempty,omitzero"`
+}
+
+// GetOperatorVersionStatusParams is parameters of getOperatorVersionStatus operation.
+type GetOperatorVersionStatusParams struct {
+	ID uuid.UUID
 }
 
 // GetOwnBundlePublicationParams is parameters of getOwnBundlePublication operation.
@@ -332,8 +344,10 @@ type ListDownloadRecordsParams struct {
 
 // ListOperatorAuditLogParams is parameters of listOperatorAuditLog operation.
 type ListOperatorAuditLogParams struct {
-	Limit  OptInt `json:",omitempty,omitzero"`
-	Offset OptInt `json:",omitempty,omitzero"`
+	Limit       OptInt    `json:",omitempty,omitzero"`
+	Offset      OptInt    `json:",omitempty,omitzero"`
+	Before      OptString `json:",omitempty,omitzero"`
+	WorkspaceID OptUUID   `json:",omitempty,omitzero"`
 }
 
 // ListPlatformAgentFindingsParams is parameters of listPlatformAgentFindings operation.

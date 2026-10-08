@@ -1,0 +1,34 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "registry-run-preflight-citation-after-version-admission",
+  "proposal_id": "run-preflight-version-disable-citation",
+  "obligations": [
+    {
+      "id": "citation-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "preflight-fact-citation-current",
+      "expected_outcome": "新引用可重算摘要，Registry 的 citation 檢查不再報 stale。",
+      "level": "architecture",
+      "status": "executed",
+      "check": "cite 與 verify-evidence"
+    },
+    {
+      "id": "reader-behavior-current",
+      "source_type": "contract",
+      "source_id": "registry-run-facts-v1",
+      "expected_outcome": "缺少 Registry reader 時 preflight 拒絕，Version 仍透過注入介面讀取。",
+      "level": "integration",
+      "status": "executed",
+      "check": "既有 Run preflight 及整合測試"
+    },
+    {
+      "id": "citation-counterfactual",
+      "source_type": "rule",
+      "source_id": "preflight-fact-citation-current",
+      "expected_outcome": "原引用對現行檔案報 stale；新引用可驗證。",
+      "level": "architecture",
+      "status": "executed",
+      "check": "verify-evidence 舊版／暫存新版對照"
+    }
+  ]
+}

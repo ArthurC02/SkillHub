@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -29,6 +30,7 @@ const (
 var (
 	ErrUnknownKind    = errors.New("modelbudget: no such model endpoint")
 	ErrReasonRequired = errors.New("modelbudget: a reason is required")
+	ErrReasonTooLong  = errors.New("modelbudget: reason too long")
 	ErrOutOfRange     = errors.New("modelbudget: seconds outside what the platform allows")
 	ErrNotSet         = errors.New("modelbudget: no operator value is set for this endpoint")
 )
@@ -100,7 +102,11 @@ func (s *Service) Within(ctx context.Context, e Endpoint) time.Duration {
 
 // Get is the operator's value for one endpoint, or ErrNotSet.
 func (s *Service) Get(ctx context.Context, kind string) (Setting, error) {
-	rows, err := s.queries().ListModelCallBudgets(ctx)
+	return get(ctx, s.queries(), kind)
+}
+
+func get(ctx context.Context, q *gen.Queries, kind string) (Setting, error) {
+	rows, err := q.ListModelCallBudgets(ctx)
 	if err != nil {
 		return Setting{}, err
 	}
@@ -140,21 +146,13 @@ func (s *Service) Set(ctx context.Context, kind string, seconds int, reason stri
 	if !known {
 		return Setting{}, ErrUnknownKind
 	}
-	reason = strings.TrimSpace(reason)
-	if reason == "" {
-		return Setting{}, ErrReasonRequired
-	}
-	if len(reason) > maxReason {
-		return Setting{}, fmt.Errorf("%w: at most %d bytes", ErrReasonRequired, maxReason)
+	reason, err := acceptedReason(reason)
+	if err != nil {
+		return Setting{}, err
 	}
 	if !e.valid(seconds) {
 		return Setting{}, fmt.Errorf("%w: %s accepts %d to %d seconds",
 			ErrOutOfRange, kind, MinSeconds, e.Ceiling())
-	}
-
-	before, err := s.Get(ctx, kind)
-	if err != nil && !errors.Is(err, ErrNotSet) {
-		return Setting{}, err
 	}
 
 	tx, err := s.Pool.Begin(ctx)
@@ -162,8 +160,16 @@ func (s *Service) Set(ctx context.Context, kind string, seconds int, reason stri
 		return Setting{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.queries().WithTx(tx)
+	if err := q.LockModelCallBudget(ctx, kind); err != nil {
+		return Setting{}, err
+	}
+	before, err := get(ctx, q, kind)
+	if err != nil && !errors.Is(err, ErrNotSet) {
+		return Setting{}, err
+	}
 
-	row, err := s.queries().WithTx(tx).SetModelCallBudget(ctx, gen.SetModelCallBudgetParams{
+	row, err := q.SetModelCallBudget(ctx, gen.SetModelCallBudgetParams{
 		Kind:    kind,
 		Seconds: int32(seconds),
 		Reason:  reason,
@@ -184,9 +190,9 @@ func (s *Service) Clear(ctx context.Context, kind, reason string, actor pgtype.U
 	if _, known := s.endpoint(kind); !known {
 		return ErrUnknownKind
 	}
-	reason = strings.TrimSpace(reason)
-	if reason == "" {
-		return ErrReasonRequired
+	reason, err := acceptedReason(reason)
+	if err != nil {
+		return err
 	}
 
 	tx, err := s.Pool.Begin(ctx)
@@ -194,8 +200,12 @@ func (s *Service) Clear(ctx context.Context, kind, reason string, actor pgtype.U
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.queries().WithTx(tx)
+	if err := q.LockModelCallBudget(ctx, kind); err != nil {
+		return err
+	}
 
-	removed, err := s.queries().WithTx(tx).ClearModelCallBudget(ctx, kind)
+	removed, err := q.ClearModelCallBudget(ctx, kind)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return err
 	}
@@ -203,6 +213,17 @@ func (s *Service) Clear(ctx context.Context, kind, reason string, actor pgtype.U
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+func acceptedReason(raw string) (string, error) {
+	reason := strings.TrimSpace(raw)
+	if reason == "" {
+		return "", ErrReasonRequired
+	}
+	if utf8.RuneCountInString(reason) > maxReason {
+		return "", ErrReasonTooLong
+	}
+	return reason, nil
 }
 
 func changeEvent(actor pgtype.UUID, kind, reason string, before, after int) audit.Event {

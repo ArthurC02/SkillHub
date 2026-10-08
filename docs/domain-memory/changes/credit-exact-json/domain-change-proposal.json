@@ -1,0 +1,77 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "credit-exact-json",
+  "proposer": "coding-agent",
+  "requirement_id": "CRED-exact-transport",
+  "status": "draft",
+  "change_classification": "material",
+  "submitted_at": null,
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": null,
+  "affected_contexts": [
+    "credit"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "credit",
+    "invariant": "對外 Credit 整數須精確對應帳本原值；前端數值型別不得悄悄改變其值。",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "Credit 擁有帳本；API adapter 編解碼公開契約，Web 使用精確字串或 BigInt，不新增 Bounded Context。",
+    "consistency": "授點、帳本與稽核維持既有交易；只改傳輸表示。",
+    "prohibited_dependencies": [
+      "不得以 JavaScript Number 中繼大額 Credit。",
+      "不得混改美元微單位或計數的語意。",
+      "不得手改 generated API client。"
+    ],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Go 與資料庫可表示 int64；JavaScript JSON number 只保證安全整數範圍內精確。",
+      "表單安全整數限制擋不住既有餘額、其他 client 或累積後餘額。",
+      "趨勢 bucket 同時承載 Credit 與美元微單位。",
+      "公開 number 改 string 是破壞性契約變更。"
+    ],
+    "decision": "候選方案：所有對外 Credit 數量採十進位字串。先裁定相容 rollout，再同步修改 OpenAPI、Go 邊界、生成 client、Web 顯示與運算；不加套件。",
+    "invariants_preserved": [
+      "餘額仍是不可變分錄之和。",
+      "授點理由、授權、冪等與 audit 不變。",
+      "美元成本與計數不是 Credit。"
+    ],
+    "rejected_alternatives": [
+      "只限制授點表單：讀取與累積餘額仍可失真。",
+      "只限制單帳戶餘額：全平台彙總仍可超界且改變帳務允收。",
+      "收到 JSON number 後才轉字串：無法恢復已遺失位數。"
+    ],
+    "proof_obligations": [
+      "exact-read",
+      "exact-write",
+      "exact-aggregate",
+      "exact-consumers",
+      "compatible-rollout"
+    ],
+    "counterfactual_check": "將一個大額 Credit 回應退回 JSON number，只跑超過 2^53 的精度斷言；應因實際值不符而 FAIL，恢復字串後 PASS。"
+  },
+  "event_change": null,
+  "contract_change": {
+    "description": "候選：授點、餘額、分錄、估算、Credit 趨勢、Trace 與評估成本改為十進位字串；非 Credit 數值不連帶改。",
+    "breaking": true
+  },
+  "registry_updates": [],
+  "risk_flags": [
+    "public_contract",
+    "cross_context"
+  ],
+  "open_questions": [
+    "需先由負責人選擇字串或上限；本 draft 不是已批准的實作依據。",
+    "若採字串，舊 client 版本與過渡期限待裁定。",
+    "聚合超過 int64、美元微單位及計數安全上限待決。"
+  ],
+  "approvals": []
+}

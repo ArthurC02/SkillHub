@@ -296,20 +296,21 @@ type CreditAccount struct {
 }
 
 type CreditEntry struct {
-	ID             pgtype.UUID
-	UserID         pgtype.UUID
-	Kind           string
-	DeltaCredits   int64
-	UsdMicros      *int64
-	MarkupBps      *int32
-	Model          *string
-	PromptVersion  *string
-	RefType        *string
-	RefID          pgtype.UUID
-	CostEventID    pgtype.UUID
-	Estimated      bool
-	IdempotencyKey string
-	CreatedAt      pgtype.Timestamptz
+	ID                 pgtype.UUID
+	UserID             pgtype.UUID
+	Kind               string
+	DeltaCredits       int64
+	UsdMicros          *int64
+	MarkupBps          *int32
+	Model              *string
+	PromptVersion      *string
+	RefType            *string
+	RefID              pgtype.UUID
+	CostEventID        pgtype.UUID
+	Estimated          bool
+	IdempotencyKey     string
+	CreatedAt          pgtype.Timestamptz
+	RequestFingerprint []byte
 }
 
 type DatabaseSizeSample struct {
@@ -357,6 +358,7 @@ type DispatchHalt struct {
 	LiftedBy         pgtype.UUID
 	LiftReason       *string
 	LastClearRoundAt pgtype.Timestamptz
+	Generation       int32
 }
 
 type DownloadArtifact struct {
@@ -866,6 +868,11 @@ type SkillVersion struct {
 	// Provenance tier of license_expression, strongest first: manifest (author declared it in SKILL.md frontmatter), manifest-referenced-file (frontmatter pointed at a package file, e.g. "SEE LICENSE IN LICENSE.txt", and that file's text was recognised), package-license-file (a LICENSE file in the package itself), repo-license-file (repository-level LICENSE carried into a package cut from a monorepo subdirectory). NULL whenever license_expression is NULL.
 	LicenseSource *string
 	SourcePath    string
+}
+
+type SkillVersionDisable struct {
+	SkillVersionID pgtype.UUID
+	DisabledAt     pgtype.Timestamptz
 }
 
 type TestCase struct {

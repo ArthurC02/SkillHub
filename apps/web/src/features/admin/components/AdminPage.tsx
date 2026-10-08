@@ -16,7 +16,15 @@ export function AdminPage({
 }) {
   const me = useMe();
   if (me.isPending) return <Loading what="" />;
-  if (me.error) return <ReadFailure error={me.error} what="後台" />;
+  if (me.error)
+    return (
+      <ReadFailure
+        error={me.error}
+        what="後台"
+        onRetry={() => void me.refetch()}
+        retrying={me.isFetching}
+      />
+    );
   if (me.data?.operator !== true) return <RouteNotFound />;
   return (
     <section>

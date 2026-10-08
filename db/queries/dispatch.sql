@@ -18,8 +18,18 @@ RETURNING *;
 
 -- name: RedeclareDispatchHalt :one
 UPDATE dispatch_halts
-SET source = @source, reason = @reason, declared_by = sqlc.narg(declared_by), clear_rounds = @clear_rounds
+SET source = @source, reason = @reason, declared_by = sqlc.narg(declared_by), clear_rounds = @clear_rounds,
+    generation = generation + 1
 WHERE id = @id AND lifted_at IS NULL
+RETURNING *;
+
+-- name: LiftObservedDispatchHalt :one
+UPDATE dispatch_halts
+SET lifted_at = now(), lifted_by = sqlc.narg(lifted_by), lift_reason = @lift_reason
+WHERE provider = @provider
+  AND id = @id
+  AND generation = @generation
+  AND lifted_at IS NULL
 RETURNING *;
 
 -- name: LiftDispatchHalt :one

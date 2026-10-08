@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { RootLayout } from "./RootLayout";
 import { RouteNotFound } from "../shared/ui/RouteNotFound";
+import { RouteFailure } from "./RouteFailure";
 import type { AgentRuntime, SkillCategory } from "../core/api/types";
 
 const rootRoute = createRootRoute({ component: RootLayout });
@@ -440,6 +441,14 @@ const adminAuditLogRoute = createRoute({
     () => import("../features/admin/audit-log/AdminAuditLog.page"),
     "AdminAuditLog",
   ),
+  validateSearch: (search: Record<string, unknown>): { workspace_id?: string } => ({
+    workspace_id:
+      search.workspace_id !== undefined
+        ? typeof search.workspace_id === "string"
+          ? search.workspace_id.trim()
+          : String(search.workspace_id)
+        : undefined,
+  }),
 });
 
 const adminModelBudgetsRoute = createRoute({
@@ -553,7 +562,11 @@ const routeTree = rootRoute.addChildren([
 ]);
 
 export function createAppRouter() {
-  return createRouter({ routeTree, defaultNotFoundComponent: RouteNotFound });
+  return createRouter({
+    routeTree,
+    defaultNotFoundComponent: RouteNotFound,
+    defaultErrorComponent: RouteFailure,
+  });
 }
 
 export const router = createAppRouter();

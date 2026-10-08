@@ -7,6 +7,7 @@ import { ApiError } from "../core/api/client";
 import { LoginRequired, ReadFailure } from "../shared/ui/LoginRequired";
 import { unauthenticated } from "../shared/ui/LoginRequired.model";
 import { FeedbackEntry } from "../app/shell/FeedbackEntry";
+import { AuthControls } from "../app/shell/AuthControls";
 import { ImportSkill } from "../features/creation/import/ImportSkill.page";
 import { RunCompare } from "../features/runs/compare/RunCompare.page";
 import { RunPreflight } from "../features/lab/preflight/RunPreflight.page";
@@ -134,6 +135,33 @@ test("IA-6 ReadFailure keeps a 500 actionable without exposing its raw message",
   expect(text()).not.toContain("database connection refused");
   expect(container.querySelector("[role=alert]")).not.toBeNull();
   expect(text()).not.toContain("需要登入");
+});
+
+test("ReadFailure offers a page-owned retry for a temporary read failure", async () => {
+  const retry = vi.fn();
+  await render(
+    <ReadFailure
+      error={new ApiError(503, "temporarily unavailable")}
+      what="派送狀態"
+      onRetry={retry}
+    />,
+    () => text().includes("暫時無法讀取派送狀態"),
+  );
+  const button = Array.from(container.querySelectorAll("button")).find(
+    (candidate) => candidate.textContent === "重新讀取派送狀態",
+  );
+  expect(button).toBeDefined();
+  await act(async () => button!.click());
+  expect(retry).toHaveBeenCalledOnce();
+});
+
+test("ReadFailure does not offer read retry instead of sign-in on 401", async () => {
+  await render(
+    <ReadFailure error={new ApiError(401, "not authenticated")} what="後台" onRetry={vi.fn()} />,
+    () => text().includes("需要登入"),
+  );
+  expect(text()).toContain("後台需要登入。");
+  expect(container.querySelector("button")).toBeNull();
 });
 
 test("IA-6 ReadFailure renders nothing when there is no error", async () => {
@@ -317,4 +345,43 @@ test("IA-6 a 401 is the answer at once — no 「載入中」 sat on through thr
 
   expect(text()).toBe("versions:error trace:error");
   expect(calls).toBe(2);
+});
+
+test("offline sign-in and sign-out refresh the operator menu without navigation and clear private data", async () => {
+  vi.stubGlobal("__SKILLHUB_DEV_LOGIN__", true);
+  let signedIn = false;
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = String(input).replace(/^https?:\/\/[^/]+/, "");
+    if (path === "/auth/dev/login" || path === "/auth/logout") {
+      signedIn = path === "/auth/dev/login";
+      return Promise.resolve(new Response(null, { status: 204 }));
+    }
+    if (path === "/me") {
+      return signedIn
+        ? json({ display_name: "seed-importer", operator: true })
+        : json({ error: "not authenticated" }, 401);
+    }
+    throw new Error(`unexpected request ${path}`);
+  });
+
+  await render(<AuthControls />, () => text().includes("離線登入"));
+  queryClient.setQueryData(["private", "previous-user"], "previous-user secret");
+  const login = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "登入",
+  );
+  expect(login).toBeDefined();
+  await act(async () => login!.click());
+  await waitFor(() => text().includes("seed-importer"));
+  expect(container.querySelector('a[href="/admin"]')?.textContent).toBe("後台");
+  expect(queryClient.getQueryData(["private", "previous-user"])).toBeUndefined();
+
+  queryClient.setQueryData(["private", "signed-in-user"], "signed-in secret");
+  const logout = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "登出",
+  );
+  expect(logout).toBeDefined();
+  await act(async () => logout!.click());
+  await waitFor(() => text().includes("離線登入"));
+  expect(container.querySelector('a[href="/admin"]')).toBeNull();
+  expect(queryClient.getQueryData(["private", "signed-in-user"])).toBeUndefined();
 });

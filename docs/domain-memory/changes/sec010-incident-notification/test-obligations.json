@@ -1,0 +1,61 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "SEC-010-runtime-incident-notification",
+  "proposal_id": "sec010-incident-notification",
+  "obligations": [
+    {
+      "id": "incident-classification",
+      "source_type": "acceptance-criterion",
+      "source_id": "incident-classification",
+      "expected_outcome": "Reconciler 與 Trace 遮罩停擺列 P1，Provider 長時間不可用列 P2；改動 Prometheus 的 critical 字樣不改變事件分級。",
+      "level": "unit",
+      "status": "planned",
+      "check": "以 SEC-010 判準的決策表測試每個具名訊號及未知訊號"
+    },
+    {
+      "id": "incident-issue",
+      "source_type": "acceptance-criterion",
+      "source_id": "incident-issue",
+      "expected_outcome": "模擬 GitHub 建單回應後再次讀取 issue，label、assignee、觸發判準、自動動作結果與現場均存在；缺少現場證據時明寫未確認。",
+      "level": "integration",
+      "status": "planned",
+      "check": "GitHub Adapter 對可控 HTTP server 的契約測試與部署端實例檢查"
+    },
+    {
+      "id": "incident-retry",
+      "source_type": "acceptance-criterion",
+      "source_id": "incident-retry",
+      "expected_outcome": "同一 fingerprint 重送及建單後回應遺失只留一筆 issue；GitHub 失敗時接收端回錯並保留重試與錯誤訊號。",
+      "level": "integration",
+      "status": "planned",
+      "check": "同事件重送、曖昧成功、429／5xx 與重啟案例"
+    },
+    {
+      "id": "incident-boundary",
+      "source_type": "acceptance-criterion",
+      "source_id": "incident-boundary",
+      "expected_outcome": "外部請求或無憑證 webhook 被拒，GitHub 憑證不入 log、issue 或平台環境；含 Secret 的輸入不得出現在 issue。",
+      "level": "security",
+      "status": "planned",
+      "check": "拒絕與遮罩測試、部署 manifest 的網路與秘密檢查"
+    },
+    {
+      "id": "incident-delivery",
+      "source_type": "acceptance-criterion",
+      "source_id": "incident-delivery",
+      "expected_outcome": "真實演練留下 issue、label、assignee、email 及非工作時間 P1 行動推播送達證據。",
+      "level": "integration",
+      "status": "planned",
+      "check": "在控制平面與維運者真實 GitHub 帳號上進行端到端演練並保存時間與畫面證據"
+    },
+    {
+      "id": "incident-coverage",
+      "source_type": "acceptance-criterion",
+      "source_id": "incident-coverage",
+      "expected_outcome": "P1／P2 判準各有可觸發來源、分級與事件單路徑；缺訊號或缺自動動作證據的列仍明確標為未覆蓋。",
+      "level": "architecture",
+      "status": "planned",
+      "check": "以 SEC-010 判準對照 Prometheus 規則、平台 watcher、供應鏈 workflow 與部署接線的機器清單"
+    }
+  ]
+}

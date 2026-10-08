@@ -14,17 +14,18 @@ RETURNING balance_credits;
 -- name: InsertCreditEntry :one
 INSERT INTO credit_entries (
     user_id, kind, delta_credits, usd_micros, markup_bps, model, prompt_version,
-    ref_type, ref_id, cost_event_id, estimated, idempotency_key
+    ref_type, ref_id, cost_event_id, estimated, idempotency_key, request_fingerprint
 ) VALUES (
     sqlc.arg(user_id), sqlc.arg(kind), sqlc.arg(delta_credits), sqlc.arg(usd_micros),
     sqlc.arg(markup_bps), sqlc.arg(model), sqlc.arg(prompt_version), sqlc.arg(ref_type),
-    sqlc.arg(ref_id), sqlc.arg(cost_event_id), sqlc.arg(estimated), sqlc.arg(idempotency_key)
+    sqlc.arg(ref_id), sqlc.arg(cost_event_id), sqlc.arg(estimated), sqlc.arg(idempotency_key),
+    sqlc.arg(request_fingerprint)
 )
 ON CONFLICT ON CONSTRAINT credit_entries_idempotency_key_key DO NOTHING
 RETURNING *;
 
 -- name: GetCreditEntryByIdempotencyKey :one
-SELECT kind, delta_credits FROM credit_entries
+SELECT kind, delta_credits, request_fingerprint FROM credit_entries
 WHERE user_id = sqlc.arg(user_id) AND idempotency_key = sqlc.arg(idempotency_key);
 
 -- name: ListRecentCreditEntries :many

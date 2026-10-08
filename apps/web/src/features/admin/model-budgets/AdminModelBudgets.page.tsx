@@ -15,11 +15,25 @@ const CALL_NAMES: Record<string, string> = {
   "suggest-improvements": "建議改善",
 };
 
-function BudgetRow({ budget }: { budget: ModelCallBudget }) {
+function unavailableReason(fresh: boolean, otherPending: boolean, pendingReason: string) {
+  if (!fresh) return "正在確認最新設定，完成後才能更改。";
+  return otherPending ? pendingReason : undefined;
+}
+
+function editableSeconds(budget: ModelCallBudget, edit: { from: string; value: string } | null) {
+  return edit?.from === JSON.stringify(budget)
+    ? edit.value
+    : String(budget.seconds ?? budget.default_seconds);
+}
+
+function BudgetRow({ budget, fresh }: { budget: ModelCallBudget; fresh: boolean }) {
   const name = CALL_NAMES[budget.kind] ?? budget.kind;
-  const [seconds, setSeconds] = useState(String(budget.seconds ?? budget.default_seconds));
+  const [edit, setEdit] = useState<{ from: string; value: string } | null>(null);
+  const from = JSON.stringify(budget);
+  const seconds = editableSeconds(budget, edit);
   const set = useModelBudgetChange("PUT");
   const clear = useModelBudgetChange("DELETE");
+  const changing = set.isPending || clear.isPending;
   const wanted = Number(seconds);
   const inRange =
     Number.isInteger(wanted) && wanted >= budget.min_seconds && wanted <= budget.max_seconds;
@@ -30,9 +44,8 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
         <strong>{name}</strong>
       </p>
       <p className="badge-row">
-        <span className={budget.seconds === null ? "badge" : "badge badge-danger"}>
-          {budget.seconds === null ? `預設 ${budget.default_seconds} 秒` : `${budget.seconds} 秒`}
-        </span>
+        <span className="badge">程式預設 {budget.default_seconds} 秒</span>
+        {budget.seconds !== null && <span className="badge">管理員設定 {budget.seconds} 秒</span>}
       </p>
       {budget.seconds !== null && (
         <>
@@ -44,15 +57,28 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
           )}
         </>
       )}
+      {clear.isSuccess && budget.seconds === null && (
+        <p className="notice notice-success" role="status">
+          已改回預設。
+        </p>
+      )}
       <ActionForm
         id={`admin-budget-${budget.kind}`}
         submitLabel={`改 ${name} 的秒數`}
         pending={set.isPending}
         error={set.error}
-        ready={inRange}
+        ready={fresh && inRange && !clear.isPending}
+        unavailableReason={unavailableReason(
+          fresh,
+          clear.isPending,
+          "此呼叫正在改回預設，完成後才能再次設定。",
+        )}
         done={set.isSuccess && "已套用，下一次呼叫就用這個秒數。"}
         contextKey={`${budget.kind}:${seconds}`}
-        onSubmit={(reason) => set.mutate({ kind: budget.kind, seconds: wanted, reason })}
+        onSubmit={(reason) => {
+          clear.reset();
+          set.mutate({ kind: budget.kind, seconds: wanted, reason });
+        }}
       >
         <div className="field">
           <label htmlFor={`admin-budget-${budget.kind}-seconds`}>
@@ -63,10 +89,11 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
             inputMode="numeric"
             value={seconds}
             onChange={(event) => {
-              setSeconds(event.target.value);
+              setEdit({ from, value: event.target.value });
               set.reset();
+              clear.reset();
             }}
-            readOnly={set.isPending}
+            readOnly={changing || !fresh}
             aria-describedby={inRange ? undefined : `admin-budget-${budget.kind}-range`}
           />
           {!inRange && (
@@ -83,8 +110,16 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
           submitLabel={`把 ${name} 改回預設`}
           pending={clear.isPending}
           error={clear.error}
-          done={clear.isSuccess && "已改回預設。"}
-          onSubmit={(reason) => clear.mutate({ kind: budget.kind, reason })}
+          ready={fresh && !set.isPending}
+          unavailableReason={unavailableReason(
+            fresh,
+            set.isPending,
+            "此呼叫正在設定秒數，完成後才能改回預設。",
+          )}
+          onSubmit={(reason) => {
+            set.reset();
+            clear.mutate({ kind: budget.kind, reason });
+          }}
         />
       )}
     </li>
@@ -101,11 +136,21 @@ export function AdminModelBudgets() {
         上限由程式決定，這裡只能在上限以內調整。
       </p>
       {budgets.isPending && <Loading what="模型呼叫逾時" />}
-      <ReadFailure error={budgets.error} what="模型呼叫逾時" />
-      {budgets.data && (
+      {budgets.isFetching && !budgets.isPending && (
+        <p className="note" role="status">
+          正在確認最新設定；完成前不能更改。
+        </p>
+      )}
+      <ReadFailure
+        error={budgets.error}
+        what="模型呼叫逾時"
+        onRetry={() => void budgets.refetch()}
+        retrying={budgets.isFetching}
+      />
+      {budgets.data && !budgets.error && (
         <ul className="download-list">
           {budgets.data.budgets.map((budget) => (
-            <BudgetRow budget={budget} key={budget.kind} />
+            <BudgetRow budget={budget} fresh={!budgets.isFetching} key={budget.kind} />
           ))}
         </ul>
       )}

@@ -1,0 +1,78 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "registry-run-preflight-citation-after-version-admission",
+  "proposal_id": "run-preflight-version-disable-citation",
+  "registry_revision": {
+    "observed_commit": "5012ce11e11fa728e7307cf86b0e6f76215c63ef",
+    "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+  },
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-07T18:21:47.105749Z",
+      "scope": "Approve refreshing the unchanged Registry-to-Run preflight fact-reader citation after version admission moved its source lines; no deployment waiver.",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "5012ce11e11fa728e7307cf86b0e6f76215c63ef",
+        "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+      }
+    }
+  ],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "97a6ea96e3a7108033ce50afbd57e57884321a65",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "5012ce11e11fa728e7307cf86b0e6f76215c63ef",
+      "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
+    }
+  },
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "citation-counterfactual",
+    "mutated_protection": "舊互動記錄的 preflight.go 第 196–219 行引用",
+    "failure_evidence": "原 Registry 的 verify-evidence exit 1 並指出 preflight.go stale；暫存副本改用第 206–229 行與 cite 重算摘要後，62 項引用 current、0 stale，exit 0。正式 Registry 尚未更新。",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/trial/execution/preflight.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "citation-current",
+      "status": "passed",
+      "evidence": "對暫存 Registry 副本套用 proposal 的唯一引用變更後，verify-evidence 顯示 62 current、0 stale；正式 Registry 保持不變直到核准套用。",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:ada2cd242bced71dc85d8769f38041f1fc51562005a956106a732fb01be0defa",
+      "finished_at": "2026-10-07T18:25:28Z"
+    },
+    {
+      "obligation_id": "reader-behavior-current",
+      "status": "passed",
+      "evidence": "TestPermissionSummaryRefusesWithoutRegistryRead 通過；缺少注入的 Registry reader 時回錯，不會讀取版本事實。",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:0065a924d6fe3a8d2848cce17ff197ca41f803806c605d94a801b1a8141d320f",
+      "finished_at": "2026-10-07T18:25:28Z"
+    },
+    {
+      "obligation_id": "citation-counterfactual",
+      "status": "passed",
+      "evidence": "原 Registry 的 verify-evidence exit 1，唯一 stale 是 preflight.go；暫存副本套入新引用後通過。",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:ada2cd242bced71dc85d8769f38041f1fc51562005a956106a732fb01be0defa",
+      "finished_at": "2026-10-07T18:25:28Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "此包僅修復舊互動的證據引用；版本停用的新契約與產品驗證另由 admin-version-disable 追蹤。"
+  ]
+}

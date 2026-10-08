@@ -1,0 +1,20 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "SEC-011-source-admission",
+  "proposal_id": "admin-source-admission",
+  "registry_revision": null,
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "使用者自行上傳且公開分享時的來源分類及曝光審核與白名單關係尚未裁定；repo URL 正規化與 Skill 路徑驗證仍需在契約與測試中具體化。",
+    "公開搜尋包含策展 Workspace 與 Publishing 曝光兩條來源；兩條准入閘門的具體一致性與 Ingest 協作尚未審查。",
+    "此包為 draft，未獲核准、未改契約或程式，不能當作白名單閘門已存在的證據。",
+    "monorepo 根授權檔變更是否被來源巡檢偵測，仍需獨立測試確認。"
+  ]
+}

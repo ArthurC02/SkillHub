@@ -11,9 +11,16 @@ export function CreditPanel({ workspaceId }: { workspaceId: string }) {
   return (
     <>
       <h2>點數</h2>
-      {ledger.isPending && <Loading what="點數" />}
-      <ReadFailure error={ledger.error} what="點數" />
-      {ledger.data && (
+      {ledger.isFetching && <Loading what="點數" />}
+      {!ledger.isFetching && (
+        <ReadFailure
+          error={ledger.error}
+          what="點數"
+          onRetry={() => void ledger.refetch()}
+          retrying={ledger.isFetching}
+        />
+      )}
+      {ledger.data && !ledger.error && !ledger.isFetching && (
         <>
           <p>
             目前餘額 <strong>{ledger.data.balance_credits}</strong> 點
@@ -58,7 +65,7 @@ export function CreditPanel({ workspaceId }: { workspaceId: string }) {
           </p>
         </>
       )}
-      <GrantForm workspaceId={workspaceId} />
+      <GrantForm workspaceId={workspaceId} ledgerReady={ledger.isSuccess && !ledger.isFetching} />
     </>
   );
 }

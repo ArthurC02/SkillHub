@@ -880,6 +880,91 @@ try {
   );
 
   const operatorPage = await operator.newPage();
+  operatorPage.on("pageerror", (error) =>
+    problems.push(`operator: ${error.message}`),
+  );
+  await operatorPage.goto(base + "/admin/accounts", {
+    waitUntil: "networkidle",
+  });
+  await operatorPage.getByLabel("Email").fill(me.email);
+  const accountResponse = await Promise.all([
+    operatorPage.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/admin/accounts" &&
+        response.request().method() === "GET",
+    ),
+    operatorPage.getByRole("button", { name: "查詢" }).click(),
+  ]).then(([response]) => response);
+  const account = await accountResponse.json().catch(() => ({}));
+  const displayedBalance = await operatorPage
+    .locator("p")
+    .filter({ hasText: "目前餘額" })
+    .first()
+    .textContent({ timeout: 10000 })
+    .catch(() => null);
+  const accountScreen = await operatorPage.locator("main").innerText();
+  check(
+    "the operator finds the member and reads its credited balance in the browser",
+    accountResponse.status() === 200 &&
+      account.email === me.email &&
+      account.workspace_id === me.workspace_id &&
+      /目前餘額\s*13000\s*點/.test(displayedBalance ?? "") &&
+      !new URL(operatorPage.url()).searchParams.has("email"),
+    JSON.stringify({
+      status: accountResponse.status(),
+      account,
+      displayedBalance,
+      accountScreen: accountScreen.slice(0, 1000),
+      problems,
+      url: operatorPage.url(),
+    }),
+  );
+  const operatorMe = await (await operator.request.get(base + "/me")).json();
+  const auditResponse = await operator.request.get(
+    `${base}/admin/audit-log?workspace_id=${me.workspace_id}`,
+  );
+  const auditLog = await auditResponse.json().catch(() => ({}));
+  const actions = ["credit.grant", "account.lookup", "credit.lookup"];
+  check(
+    "the workspace audit log attributes the grant and sensitive reads to the operator",
+    auditResponse.status() === 200 &&
+      actions.every((action) =>
+        auditLog.events?.some(
+          (event) =>
+            event.action === action &&
+            event.actor_user_id === operatorMe.user_id &&
+            event.workspace_id === me.workspace_id,
+        ),
+      ) &&
+      auditLog.events?.every((event) => event.workspace_id === me.workspace_id),
+    JSON.stringify({ status: auditResponse.status(), events: auditLog.events }),
+  );
+  await operatorPage.goto(
+    `${base}/admin/audit-log?workspace_id=${me.workspace_id}`,
+    {
+      waitUntil: "networkidle",
+    },
+  );
+  check(
+    "the browser shows the member's workspace-filtered audit trail",
+    (await operatorPage.getByText("查詢帳號", { exact: true }).count()) > 0 &&
+      (await operatorPage.getByText("授予點數", { exact: true }).count()) > 0 &&
+      (await operatorPage.getByText("查詢點數", { exact: true }).count()) > 0 &&
+      (await operatorPage.locator("#admin-audit-workspace").inputValue()) ===
+        me.workspace_id,
+  );
+  const memberAccountLookup = await member.request.get(
+    `${base}/admin/accounts?email=${encodeURIComponent(me.email)}`,
+  );
+  const memberAuditLog = await member.request.get(
+    `${base}/admin/audit-log?workspace_id=${me.workspace_id}`,
+  );
+  check(
+    "a member cannot read operator account lookup or audit history",
+    memberAccountLookup.status() === 404 && memberAuditLog.status() === 404,
+    `${memberAccountLookup.status()} ${memberAuditLog.status()}`,
+  );
+
   await operatorPage.goto(base + "/admin/dispatch", {
     waitUntil: "networkidle",
   });
@@ -901,6 +986,7 @@ try {
   const haltedDispatch = await (
     await operator.request.get(`${base}/admin/dispatch`)
   ).json();
+  await operatorPage.getByLabel("要解除的煞車").selectOption("pool");
   await operatorPage
     .locator("#admin-halt-lift-note")
     .fill("browser smoke resume");

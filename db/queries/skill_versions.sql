@@ -16,6 +16,34 @@ WHERE skill_versions.id = $1 AND skill_versions.workspace_id = $2
       WHERE sk.id = skill_versions.skill_id AND sk.deleted_at IS NULL
   );
 
+-- name: GetOperatorVersionStatus :one
+SELECT sv.id, sv.version_number,
+       EXISTS (SELECT 1 FROM skill_version_disables d WHERE d.skill_version_id = sv.id) AS disabled
+FROM skill_versions sv
+WHERE sv.id = @version_id;
+
+-- name: LockOperatorVersion :one
+SELECT sv.workspace_id, sv.version_number
+FROM skill_versions sv
+WHERE sv.id = @version_id
+FOR UPDATE OF sv;
+
+-- name: GetWorkspaceVersionDisableStatus :one
+SELECT EXISTS (SELECT 1 FROM skill_version_disables d WHERE d.skill_version_id = sv.id) AS disabled
+FROM skill_versions sv
+WHERE sv.id = @version_id AND sv.workspace_id = @workspace_id
+  AND EXISTS (SELECT 1 FROM skills sk WHERE sk.id = sv.skill_id AND sk.deleted_at IS NULL);
+
+-- name: LockWorkspaceVersionAdmission :one
+SELECT sv.id
+FROM skill_versions sv
+WHERE sv.id = @version_id AND sv.workspace_id = @workspace_id
+  AND EXISTS (SELECT 1 FROM skills sk WHERE sk.id = sv.skill_id AND sk.deleted_at IS NULL)
+FOR UPDATE OF sv;
+
+-- name: InsertSkillVersionDisable :exec
+INSERT INTO skill_version_disables (skill_version_id) VALUES (@version_id);
+
 -- name: ListVersionSummaries :many
 SELECT sv.id, sv.skill_id, sv.version_number, sk.name AS skill_name,
        sk.access_restriction, sk.redistribution, (sk.takedown_at IS NOT NULL)::bool AS taken_down,

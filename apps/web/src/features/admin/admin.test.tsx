@@ -4,18 +4,23 @@ import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { focusManager } from "@tanstack/react-query";
 import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
+import { queryKeys } from "../../core/api/queryKeys";
 import { createAppRouter } from "../../app/router";
-import { daysOf, seriesOf, usd } from "./admin.service";
+import { daysOf, seriesOf, usd, type DispatchStatus, type ExposureCase } from "./admin.service";
 import {
+  ADMIN_ACCOUNT,
   ADMIN_AGENT_FINDINGS,
   ADMIN_AGENT_PROPOSAL,
   ADMIN_AGENTS,
   ADMIN_AUDIT_LOG,
+  ADMIN_DISPATCH,
   AGENT_FAILED_RUN,
   AGENT_FINDING,
   AGENT_PROPOSAL,
   AGENT_REPORT_RUN,
   ADMIN_EXPOSURE_CASE,
+  ADMIN_EXPOSURE_QUEUE,
+  ADMIN_MODEL_BUDGETS,
   ADMIN_SKILLS,
   PUBLICATION,
   PUBLISHER,
@@ -29,6 +34,9 @@ beforeAll(preloadEveryPage);
 
 type Call = { method: string; url: string; body?: Record<string, unknown> };
 type Reply = { body: unknown; status: number } | undefined;
+const DISPATCH_HALT_NOTE =
+  "new runs are refused and nothing is dispatched to this target; cleanup and orphan teardown stand down so the scene is preserved. This halt is never lifted automatically.";
+const VERSION_ID = "11111111-1111-4111-8111-111111111111";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -168,6 +176,135 @@ test("the admin home keeps decisions and operations inside Governing", async () 
   expect(has("Conducting")()).toBe(false);
 });
 
+test("the admin home shows halted dispatch and the pending review count in their entry rows", async () => {
+  stub(true);
+  await mountAt("/admin");
+  await waitFor(has("已停止派送 · 1 個煞車"));
+  const entries = Array.from(container.querySelectorAll(".admin-home-list a"));
+  const dispatch = entries.find((link) => link.textContent === "派送煞車")?.closest("li");
+  const exposure = entries.find((link) => link.textContent === "曝光審核")?.closest("li");
+  expect(dispatch?.querySelector(".badge-danger")?.textContent).toBe("已停止派送 · 1 個煞車");
+  expect(exposure?.textContent).toContain("待審 1 筆");
+  expect(calls.some((call) => call.url === "/admin/dispatch")).toBe(true);
+  expect(calls.some((call) => call.url === "/admin/exposure-reviews")).toBe(true);
+});
+
+test("the admin home distinguishes an empty queue and no halts from missing data", async () => {
+  stub(true, (path) => {
+    if (path === "/admin/dispatch") return { body: { dispatching: true, halts: [] }, status: 200 };
+    if (path === "/admin/exposure-reviews") return { body: { publications: [] }, status: 200 };
+    return undefined;
+  });
+  await mountAt("/admin");
+  await waitFor(has("派送中 · 0 個煞車"));
+  expect(has("待審 0 筆")()).toBe(true);
+  expect(container.querySelector('.admin-home-list [role="alert"]')).toBeNull();
+});
+
+test("the admin home rechecks pending reviews when the operator returns to the tab", async () => {
+  let publications = ADMIN_EXPOSURE_QUEUE.publications;
+  stub(true, (path) =>
+    path === "/admin/exposure-reviews" ? { body: { publications }, status: 200 } : undefined,
+  );
+  await mountAt("/admin");
+  await waitFor(has("待審 1 筆"));
+  const query = queryClient.getQueryCache().find({ queryKey: queryKeys.admin.exposureQueue });
+  expect(query?.observers[0]?.options.refetchOnWindowFocus).toBe(true);
+  expect(query?.observers[0]?.options.refetchOnReconnect).toBe(true);
+
+  publications = [];
+  try {
+    await act(async () => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    await waitFor(has("待審 0 筆"));
+  } finally {
+    focusManager.setFocused(undefined);
+  }
+});
+
+test("the exposure review page can manually reload a changed queue", async () => {
+  let publications = ADMIN_EXPOSURE_QUEUE.publications;
+  stub(true, (path) =>
+    path === "/admin/exposure-reviews" ? { body: { publications }, status: 200 } : undefined,
+  );
+  await mountAt("/admin/exposure");
+  await waitFor(has("審這一筆"));
+
+  publications = [];
+  await click(button("重新整理待審清單"));
+  await waitFor(has("沒有等待審核的發佈物：0 筆。"));
+  expect(calls.filter((call) => call.url === "/admin/exposure-reviews")).toHaveLength(2);
+});
+
+test("the admin home does not call a node halt an all-clear", async () => {
+  stub(true, (path) =>
+    path === "/admin/dispatch"
+      ? {
+          body: { dispatching: true, halts: [{ ...ADMIN_DISPATCH.halts[0], target: "node-2" }] },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin");
+  await waitFor(has("派送中 · 1 個節點煞車"));
+  expect(has("派送中 · 0 個煞車")()).toBe(false);
+});
+
+test("OPS-005: an open dispatch view rechecks on focus and keeps polling while active", async () => {
+  let current: DispatchStatus = { dispatching: true, halts: [] };
+  stub(true, (path, method) =>
+    path === "/admin/dispatch" && method === "GET" ? { body: current, status: 200 } : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("煞車：0 個"));
+  const query = queryClient.getQueryCache().find({ queryKey: queryKeys.admin.dispatch });
+  expect(query?.observers[0]?.options.refetchInterval).toBe(30_000);
+  expect(query?.observers[0]?.options.refetchOnReconnect).toBe(true);
+
+  current = ADMIN_DISPATCH;
+  try {
+    await act(async () => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    await waitFor(has("sandbox escape suspected on node-2"));
+  } finally {
+    focusManager.setFocused(undefined);
+  }
+});
+
+test("the admin home hides cached operational verdicts when their sources fail", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    unavailable && (path === "/admin/dispatch" || path === "/admin/exposure-reviews")
+      ? { body: { error: "unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin");
+  await waitFor(has("已停止派送 · 1 個煞車"));
+  await waitFor(has("待審 1 筆"));
+
+  unavailable = true;
+  await act(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue }),
+    ]);
+  });
+  await waitFor(has("暫時無法讀取派送狀態"));
+  await waitFor(has("暫時無法讀取曝光待審數"));
+  expect(has("已停止派送 · 1 個煞車")()).toBe(false);
+  expect(has("待審 1 筆")()).toBe(false);
+
+  unavailable = false;
+  await click(button("重新讀取派送狀態"));
+  await click(button("重新讀取曝光待審數"));
+  await waitFor(has("已停止派送 · 1 個煞車"));
+  await waitFor(has("待審 1 筆"));
+});
+
 test("OPS-001: the admin page stays loading while the operator check is pending", async () => {
   vi.stubGlobal("fetch", () => new Promise<Response>(() => {}));
   await mountAt("/admin");
@@ -175,10 +312,14 @@ test("OPS-001: the admin page stays loading while the operator check is pending"
   expect(container.querySelector("main h1")).toBeNull();
 });
 
-test("OPS-001: a failed operator check names the read failure instead of a missing page", async () => {
-  stub(true, (path) =>
-    path === "/me" ? { body: { error: "service unavailable" }, status: 503 } : undefined,
-  );
+test("OPS-001: a failed operator check offers retry and never masquerades as a missing page", async () => {
+  let reads = 0;
+  let unavailable = true;
+  stub(true, (path) => {
+    if (path !== "/me") return undefined;
+    reads += 1;
+    return unavailable ? { body: { error: "service unavailable" }, status: 503 } : undefined;
+  });
   await mountAt("/admin");
   await waitFor(has("暫時無法讀取後台。請重新整理，或稍後再試。"));
   expect(field<HTMLElement>('main [role="alert"]').textContent).toBe(
@@ -186,6 +327,11 @@ test("OPS-001: a failed operator check names the read failure instead of a missi
   );
   expect(has("service unavailable")()).toBe(false);
   expect(has("這一頁現在不存在")()).toBe(false);
+  const readsBeforeRetry = reads;
+  unavailable = false;
+  await click(button("重新讀取後台"));
+  await waitFor(has("營運後台"));
+  expect(reads).toBeGreaterThan(readsBeforeRetry);
 });
 
 test("OPS-001: an unauthenticated operator check asks for sign-in", async () => {
@@ -256,6 +402,94 @@ test("OPS-002: a lookup keeps the email out of the address and shows the account
   expect(field("strong").textContent).toBe("120");
 });
 
+test("OPS-002: submitting the same email again reads the current account", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/accounts") return undefined;
+    reads += 1;
+    return {
+      body: { ...ADMIN_ACCOUNT, display_name: reads === 1 ? "封測者甲" : "封測者乙" },
+      status: 200,
+    };
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("封測者甲"));
+  const initialReads = reads;
+
+  await submit("#admin-account-email");
+  await waitFor(has("封測者乙"));
+  expect(reads).toBe(initialReads + 1);
+  expect(window.location.search).not.toContain("member");
+});
+
+test("OPS-003: a failed ledger refresh hides the cached balance and entries", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/credits/ws-2" && unavailable
+      ? { body: { error: "ledger unavailable" }, status: 503 }
+      : undefined,
+  );
+  await lookUp("member@example.com");
+  await waitFor(has("目前餘額"));
+  await type("#admin-grant-amount", "50");
+  await type("#admin-grant-note", "welcome credit");
+  expect(button("授予").disabled).toBe(false);
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.ledger("ws-2") });
+  });
+  await waitFor(has("暫時無法讀取點數"));
+  expect(has("目前餘額")()).toBe(false);
+  expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
+  expect(button("授予").disabled).toBe(true);
+  expect(has("先讀到目前點數狀態，才能授予。")()).toBe(true);
+  await submit("#admin-grant-note");
+  expect(calls.some((call) => call.method === "POST")).toBe(false);
+});
+
+test("a pending ledger refresh blocks a grant until the current balance is known", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let reads = 0;
+  let finishRead: ((response: Response) => void) | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/credits/ws-2") && (init?.method ?? "GET") === "GET") {
+      reads += 1;
+      if (reads > 1) {
+        return new Promise<Response>((resolve) => {
+          finishRead = resolve;
+        });
+      }
+    }
+    return fixtureFetch(input, init);
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("目前餘額"));
+  await type("#admin-grant-amount", "50");
+  await type("#admin-grant-note", "welcome credit");
+  expect(button("授予").disabled).toBe(false);
+
+  await act(async () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.ledger("ws-2") });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await waitFor(() => button("授予").disabled);
+  expect(has("目前餘額")()).toBe(false);
+  await submit("#admin-grant-note");
+  expect(calls.some((call) => call.method === "POST")).toBe(false);
+
+  await act(async () => {
+    finishRead!(
+      new Response(JSON.stringify(platformResponse("/admin/credits/ws-2").body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(() => !button("授予").disabled);
+});
+
 test("OPS-002: an email nobody has is named as such, not reported as a broken read", async () => {
   stub(true, (path) =>
     path === "/admin/accounts" ? { body: { error: "not found" }, status: 404 } : undefined,
@@ -263,6 +497,48 @@ test("OPS-002: an email nobody has is named as such, not reported as a broken re
   await lookUp("ghost@example.com");
   await waitFor(has("沒有 email 是「ghost@example.com」的帳號"));
   expect(container.querySelector('[role="alert"]')).toBeNull();
+});
+
+test("editing a new account query hides the previous account and its grant form", async () => {
+  stub(true);
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-amount", "50");
+  await type("#admin-grant-note", "welcome credit");
+  expect(button("授予").disabled).toBe(false);
+
+  await type("#admin-account-email", "next@example.com");
+  expect(container.querySelector("#admin-grant-amount")).toBeNull();
+  expect(has("封測者甲")()).toBe(false);
+  expect(has("查詢條件已變更")()).toBe(true);
+  expect(calls.some((c) => c.method === "POST")).toBe(false);
+});
+
+test("OPS-002: a failed account refresh hides cached identity and its grant form", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/accounts" && unavailable
+      ? { body: { error: "account unavailable" }, status: 503 }
+      : undefined,
+  );
+  await lookUp("member@example.com");
+  await waitFor(has("封測者甲"));
+  await waitFor(has("授予點數"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.admin.account("member@example.com"),
+    });
+  });
+  await waitFor(has("暫時無法讀取帳號"));
+  expect(has("封測者甲")()).toBe(false);
+  expect(container.querySelector("#admin-grant-amount")).toBeNull();
+
+  unavailable = false;
+  await click(button("重新讀取帳號"));
+  await waitFor(has("封測者甲"));
+  expect(has("授予點數")()).toBe(true);
 });
 
 test("OPS-003: a grant waits for a non-zero whole amount and a reason, then posts both and reloads the ledger", async () => {
@@ -287,7 +563,7 @@ test("OPS-003: a grant waits for a non-zero whole amount and a reason, then post
   const ledgerReads = () => calls.filter((c) => c.url === "/admin/credits/ws-2").length;
   const before = ledgerReads();
   await click(grant());
-  await waitFor(has("已授予 50 點，餘額現在是 170 點。"));
+  await waitFor(has("已授予 50 點，授予時餘額為 170 點。"));
   expect(calls.find((c) => c.method === "POST")?.body).toEqual({
     amount_credits: 50,
     reason: "beta reward",
@@ -295,10 +571,30 @@ test("OPS-003: a grant waits for a non-zero whole amount and a reason, then post
   });
   await waitFor(() => ledgerReads() > before);
   await type("#admin-grant-amount", "75");
-  expect(has("已授予 50 點，餘額現在是 170 點。")()).toBe(false);
+  expect(has("已授予 50 點，授予時餘額為 170 點。")()).toBe(false);
 });
 
-test("OPS-003: a failed grant is retried under the same key, and the next grant gets a fresh one", async () => {
+test("a grant rejects amounts that cannot be represented exactly", async () => {
+  stub(true);
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-note", "precision check");
+
+  for (const amount of ["9007199254740992", "-9007199254740992", "1.0000000000000001"]) {
+    await type("#admin-grant-amount", amount);
+    expect(button("授予").disabled, `amount 「${amount}」`).toBe(true);
+    expect(has("請輸入非 0 的整數，且點數不可超過 ±9,007,199,254,740,991。")()).toBe(true);
+    await submit("#admin-grant-note");
+  }
+  expect(calls.filter((call) => call.method === "POST")).toHaveLength(0);
+
+  for (const amount of ["9007199254740991", "-9007199254740991"]) {
+    await type("#admin-grant-amount", amount);
+    expect(button("授予").disabled, `amount 「${amount}」`).toBe(false);
+  }
+});
+
+test("OPS-003: a failed grant reuses its key and a completed grant needs a new explicit start", async () => {
   let attempt = 0;
   stub(true, (path, method) => {
     if (method !== "POST" || !path.endsWith("/grants")) return undefined;
@@ -312,9 +608,20 @@ test("OPS-003: a failed grant is retried under the same key, and the next grant 
   await type("#admin-grant-amount", "10");
   await type("#admin-grant-note", "r");
   await click(button("授予"));
-  await waitFor(has("沒有完成，伺服器說：grant failed"));
+  await waitFor(has("這次授予的結果尚未確認"));
+  expect(has("這個動作沒有完成")()).toBe(false);
+  expect(has("grant failed")()).toBe(false);
   await click(button("授予"));
-  await waitFor(has("已授予 10 點，餘額現在是 60 點。"));
+  await waitFor(has("已授予 10 點，授予時餘額為 60 點。"));
+  expect(button("授予").disabled).toBe(true);
+  expect(document.activeElement).toBe(button("開始另一筆授予"));
+  await click(button("授予"));
+  expect(calls.filter((c) => c.method === "POST")).toHaveLength(2);
+  await waitFor(() => !button("開始另一筆授予").disabled);
+  await click(button("開始另一筆授予"));
+  expect(field<HTMLInputElement>("#admin-grant-amount").value).toBe("");
+  await type("#admin-grant-amount", "10");
+  await type("#admin-grant-note", "another grant");
   await click(button("授予"));
   await waitFor(() => calls.filter((c) => c.method === "POST").length === 3);
   const keys = calls
@@ -324,7 +631,95 @@ test("OPS-003: a failed grant is retried under the same key, and the next grant 
   expect(keys[2]).not.toBe(keys[0]);
 });
 
-test("OPS-003: a refused grant says so with the server's words", async () => {
+test("a completed grant cannot start another while the refreshed ledger is unreadable", async () => {
+  let ledgerUnavailable = false;
+  stub(true, (path, method) => {
+    if (method === "POST" && path === "/admin/credits/ws-2/grants") {
+      ledgerUnavailable = true;
+      return {
+        body: { workspace_id: "ws-2", balance_credits: 130, amount_credits: 10 },
+        status: 200,
+      };
+    }
+    if (path === "/admin/credits/ws-2" && ledgerUnavailable)
+      return { body: { error: "ledger unavailable" }, status: 503 };
+    return undefined;
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-amount", "10");
+  await type("#admin-grant-note", "補點");
+  await click(button("授予"));
+  await waitFor(has("暫時無法讀取點數"));
+  expect(button("授予").disabled).toBe(true);
+  expect(button("開始另一筆授予").disabled).toBe(true);
+  await click(button("開始另一筆授予"));
+  expect(calls.filter((call) => call.method === "POST")).toHaveLength(1);
+
+  ledgerUnavailable = false;
+  await click(button("重新讀取點數"));
+  await waitFor(() => !button("開始另一筆授予").disabled);
+});
+
+test("a failed grant holds its payload until the ledger is reread before starting another", async () => {
+  stub(true, (path, method) =>
+    method === "POST" && path === "/admin/credits/ws-2/grants"
+      ? { body: { error: "response unavailable" }, status: 503 }
+      : undefined,
+  );
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-amount", "10");
+  await type("#admin-grant-note", "首次補點");
+  const ledgerReads = () => calls.filter((call) => call.url === "/admin/credits/ws-2").length;
+  const before = ledgerReads();
+  await click(button("授予"));
+  await waitFor(has("這次授予的結果尚未確認"));
+  expect(has("這個動作沒有完成")()).toBe(false);
+  expect(field<HTMLInputElement>("#admin-grant-amount").readOnly).toBe(true);
+  expect(field<HTMLTextAreaElement>("#admin-grant-note").readOnly).toBe(true);
+  await waitFor(() => ledgerReads() > before);
+  await click(button("已核對分錄，開始新授予"));
+  expect(field<HTMLInputElement>("#admin-grant-amount").value).toBe("");
+  expect(field<HTMLTextAreaElement>("#admin-grant-note").value).toBe("");
+
+  await type("#admin-grant-amount", "10");
+  await type("#admin-grant-note", "改過的理由");
+  await click(button("授予"));
+  await waitFor(() => calls.filter((call) => call.method === "POST").length === 2);
+  const posts = calls.filter((call) => call.method === "POST");
+  expect(posts[0].body?.reason).toBe("首次補點");
+  expect(posts[1].body?.reason).toBe("改過的理由");
+  expect(posts[1].body?.idempotency_key).not.toBe(posts[0].body?.idempotency_key);
+});
+
+test("an unreadable ledger prevents starting a new grant after an uncertain result", async () => {
+  let ledgerUnavailable = false;
+  stub(true, (path, method) => {
+    if (method === "POST" && path === "/admin/credits/ws-2/grants") {
+      ledgerUnavailable = true;
+      return { body: { error: "response unavailable" }, status: 503 };
+    }
+    if (path === "/admin/credits/ws-2" && ledgerUnavailable)
+      return { body: { error: "ledger unavailable" }, status: 503 };
+    return undefined;
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-amount", "10");
+  await type("#admin-grant-note", "補點");
+  await click(button("授予"));
+  await waitFor(has("暫時無法讀取點數"));
+  expect(button("已核對分錄，開始新授予").disabled).toBe(true);
+  expect(button("授予").disabled).toBe(true);
+
+  ledgerUnavailable = false;
+  await click(button("重新讀取點數"));
+  await waitFor(has("目前餘額"));
+  expect(button("已核對分錄，開始新授予").disabled).toBe(false);
+});
+
+test("OPS-003: an English refusal stays internal and editing clears the fallback", async () => {
   stub(true, (path, method) =>
     method === "POST" && path.endsWith("/grants")
       ? { body: { error: "amount_credits must not be zero" }, status: 400 }
@@ -335,9 +730,11 @@ test("OPS-003: a refused grant says so with the server's words", async () => {
   await type("#admin-grant-amount", "5");
   await type("#admin-grant-note", "r");
   await click(button("授予"));
-  await waitFor(has("沒有完成，伺服器說：amount_credits must not be zero"));
+  await waitFor(has("這個動作沒有完成，請稍後再試"));
+  expect(has("amount_credits must not be zero")()).toBe(false);
+  expect(field<HTMLTextAreaElement>("#admin-grant-note").readOnly).toBe(false);
   await type("#admin-grant-note", "修改後的理由");
-  expect(has("沒有完成，伺服器說：amount_credits must not be zero")()).toBe(false);
+  expect(has("這個動作沒有完成，請稍後再試")()).toBe(false);
 });
 
 test("OPS-004: takedown of the one skill found takes a reason and a second click", async () => {
@@ -352,7 +749,11 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
 
   await type("#admin-takedown-reason", " DMCA notice ");
   await click(button("下架"));
-  expect(has("下架沒有恢復的路")()).toBe(true);
+  expect(has("下架本身不阻止新試跑")()).toBe(true);
+  expect(has("不能再下載或試跑")()).toBe(false);
+  expect(has("目前沒有恢復操作")()).toBe(true);
+  expect(has(`PDF Summariser（${SKILL}，工作區 ws-2）`)()).toBe(true);
+  expect(has("理由：DMCA notice")()).toBe(true);
   expect(calls.some((c) => c.method === "PUT")).toBe(false);
   await click(button("確認下架"));
   await waitFor(() => calls.some((c) => c.method === "PUT"));
@@ -363,7 +764,281 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
   });
 });
 
-test("OPS-004: releasing a skill needs licence evidence; blocking it does not", async () => {
+test("SEC-011: an operator checks one exact version and confirms its irreversible disable", async () => {
+  let disabled = false;
+  stub(true, (path, method) => {
+    if (path === `/admin/versions/${VERSION_ID}` && method === "GET")
+      return { body: { version_id: VERSION_ID, version_number: 3, disabled }, status: 200 };
+    if (path === `/admin/versions/${VERSION_ID}/disable` && method === "PUT") {
+      disabled = true;
+      return { body: { version_id: VERSION_ID, version_number: 3, disabled }, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/skills");
+  expect(calls.some((call) => call.url.startsWith("/admin/versions/"))).toBe(false);
+  expect(button("核對版本").disabled).toBe(true);
+  await type("#admin-version-id", VERSION_ID);
+  await submit("#admin-version-id");
+  await waitFor(has("可建立新 Run"));
+  expect(has("私人套件內容")()).toBe(true);
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "停用版本"),
+  ).toBe(false);
+  await type("#admin-version-disable-reason", "安全事件");
+  await click(button("停用版本"));
+  expect(has(`停用版本 ${VERSION_ID}（第 3 版）`)()).toBe(true);
+  expect(has("既有 Run 與版本內容不變")()).toBe(true);
+  expect(calls.some((call) => call.method === "PUT")).toBe(false);
+  await click(button("確認停用版本"));
+  await waitFor(has("已停用"));
+  expect(calls.find((call) => call.method === "PUT")).toEqual({
+    method: "PUT",
+    url: `/admin/versions/${VERSION_ID}/disable`,
+    body: { reason: "安全事件" },
+  });
+  expect(calls.filter((call) => call.url === `/admin/versions/${VERSION_ID}`)).toHaveLength(2);
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "停用版本"),
+  ).toBe(false);
+});
+
+test("SEC-011: changing a version or confirmed reason cannot submit stale authority", async () => {
+  stub(true, (path) =>
+    path === `/admin/versions/${VERSION_ID}`
+      ? { body: { version_id: VERSION_ID, version_number: 3, disabled: false }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/skills");
+  await type("#admin-version-id", VERSION_ID);
+  await submit("#admin-version-id");
+  await waitFor(has("可建立新 Run"));
+  await type("#admin-version-disable-reason", "原理由");
+  await click(button("停用版本"));
+  await type("#admin-version-disable-reason", "新理由");
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "確認停用版本"),
+  ).toBe(false);
+  await type("#admin-version-id", "22222222-2222-4222-8222-222222222222");
+  expect(has("版本 ID 已變更")()).toBe(true);
+  expect(has("可建立新 Run")()).toBe(false);
+  expect(calls.some((call) => call.method === "PUT")).toBe(false);
+});
+
+test("SEC-011: a disable reason is bounded by UTF-8 bytes", async () => {
+  stub(true, (path) =>
+    path === `/admin/versions/${VERSION_ID}`
+      ? { body: { version_id: VERSION_ID, version_number: 3, disabled: false }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/skills");
+  await type("#admin-version-id", VERSION_ID);
+  await submit("#admin-version-id");
+  await waitFor(has("可建立新 Run"));
+  await type("#admin-version-disable-reason", "理".repeat(333));
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "停用版本"),
+  ).toBe(true);
+  await type("#admin-version-disable-reason", "理".repeat(334));
+  expect(has("上限 1000 位元組")()).toBe(true);
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "停用版本"),
+  ).toBe(false);
+  expect(calls.some((call) => call.method === "PUT")).toBe(false);
+});
+
+test("SEC-011: a concurrent disable refreshes status after conflict", async () => {
+  let disabled = false;
+  stub(true, (path, method) => {
+    if (path === `/admin/versions/${VERSION_ID}` && method === "GET")
+      return { body: { version_id: VERSION_ID, version_number: 3, disabled }, status: 200 };
+    if (path === `/admin/versions/${VERSION_ID}/disable` && method === "PUT") {
+      disabled = true;
+      return {
+        body: { code: "version_already_disabled", message: "already disabled" },
+        status: 409,
+      };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/skills");
+  await type("#admin-version-id", VERSION_ID);
+  await submit("#admin-version-id");
+  await waitFor(has("可建立新 Run"));
+  await type("#admin-version-disable-reason", "重複操作");
+  await click(button("停用版本"));
+  await click(button("確認停用版本"));
+  await waitFor(has("此版本在送出前已停用；重複操作已記錄。"));
+  expect(calls.filter((call) => call.url === `/admin/versions/${VERSION_ID}`)).toHaveLength(2);
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "停用版本"),
+  ).toBe(false);
+});
+
+test("OPS-004: a pending takedown locks the reason being confirmed", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishTakedown: ((response: Response) => void) | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith(`/admin/skills/${SKILL}/takedown`) && init?.method === "PUT") {
+      return new Promise<Response>((resolve) => {
+        finishTakedown = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  const reason = field<HTMLInputElement>("#admin-takedown-reason");
+  expect(reason.readOnly).toBe(false);
+
+  await type("#admin-takedown-reason", "DMCA notice");
+  await click(button("下架"));
+  await click(button("確認下架"));
+  await waitFor(() => finishTakedown !== undefined);
+  await waitFor(
+    () => container.querySelector<HTMLButtonElement>("button.destructive")?.disabled === true,
+  );
+  expect(reason.readOnly).toBe(true);
+  expect(reason.value).toBe("DMCA notice");
+
+  await act(async () => {
+    finishTakedown!(
+      new Response(JSON.stringify({ skill_id: SKILL, taken_down: true }), { status: 200 }),
+    );
+  });
+});
+
+test("OPS-004: takedown refuses a reason beyond the UTF-8 byte limit before confirmation", async () => {
+  stub(true);
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  await type("#admin-takedown-reason", "x".repeat(1000));
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "下架"),
+  ).toBe(true);
+
+  await type("#admin-takedown-reason", "x".repeat(1001));
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "下架"),
+  ).toBe(false);
+  expect(has("上限 1000 位元組")()).toBe(true);
+  expect(calls.some((call) => call.method === "PUT")).toBe(false);
+
+  await type("#admin-takedown-reason", "理".repeat(333));
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "下架"),
+  ).toBe(true);
+  await type("#admin-takedown-reason", "理".repeat(334));
+  expect(
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "下架"),
+  ).toBe(false);
+});
+
+test("OPS-004: editing the skill search hides the old result and actions until submitted", async () => {
+  stub(true);
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+
+  await type("#admin-skill-q", "another skill");
+  expect(has("查詢條件已變更")()).toBe(true);
+  expect(has("PDF Summariser")()).toBe(false);
+  expect(has("的動作")()).toBe(false);
+  expect(calls.some((call) => call.url === "/admin/skills?q=another%20skill")).toBe(false);
+
+  await submit("#admin-skill-q");
+  await waitFor(() => calls.some((call) => call.url === "/admin/skills?q=another%20skill"));
+  expect(field<HTMLInputElement>("#admin-skill-q").value).toBe("another skill");
+  await go("/admin/skills", { q: SKILL });
+  expect(field<HTMLInputElement>("#admin-skill-q").value).toBe(SKILL);
+});
+
+test("OPS-004: submitting the same skill query again reads current governance", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/skills") return undefined;
+    reads += 1;
+    return {
+      body: {
+        total: 1,
+        skills: ADMIN_SKILLS.skills.map((skill) => ({
+          ...skill,
+          access_restriction: reads === 1 ? null : "license-review",
+        })),
+      },
+      status: 200,
+    };
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("設定受限展示"));
+  const initialReads = reads;
+
+  await submit("#admin-skill-q");
+  await waitFor(has("解除受限展示"));
+  expect(reads).toBe(initialReads + 1);
+});
+
+test("OPS-004: governance actions disappear while a cached result is refreshing", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let reads = 0;
+  let finishRead: ((response: Response) => void) | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).startsWith("/admin/skills?")) {
+      reads += 1;
+      if (reads > 1) {
+        return new Promise<Response>((resolve) => {
+          finishRead = resolve;
+        });
+      }
+    }
+    return fixtureFetch(input, init);
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+
+  await act(async () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.skillSearch(SKILL) });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await waitFor(() => !has("對「PDF Summariser」的動作")());
+  expect(has("載入小工具中")()).toBe(true);
+
+  await act(async () => {
+    finishRead!(
+      new Response(JSON.stringify(ADMIN_SKILLS), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(has("對「PDF Summariser」的動作"));
+});
+
+test("OPS-004: a failed skill refresh cannot leave cached governance actions available", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/skills" && unavailable
+      ? { body: { error: "search unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.skillSearch(SKILL) });
+  });
+  await waitFor(has("暫時無法讀取小工具"));
+  expect(has("PDF Summariser")()).toBe(false);
+  expect(has("的動作")()).toBe(false);
+
+  unavailable = false;
+  await click(button("重新讀取小工具"));
+  await waitFor(has("對「PDF Summariser」的動作"));
+});
+
+test("OPS-004: redistribution needs an explicit verdict and releasing needs licence evidence", async () => {
   stub(true, (path, method) =>
     path === `/admin/skills/${SKILL}/redistribution` && method === "PUT"
       ? { body: {}, status: 200 }
@@ -371,6 +1046,15 @@ test("OPS-004: releasing a skill needs licence evidence; blocking it does not", 
   );
   await mountAt("/admin/skills", { q: SKILL });
   await waitFor(has("再散布判定"));
+  await type("#admin-redistribution-note", "legal cleared");
+  expect(button("送出判定").disabled).toBe(true);
+
+  await type("#admin-redistribution-value", "blocked");
+  expect(button("送出判定").disabled).toBe(false);
+  await type("#admin-redistribution-note", "x".repeat(1001));
+  expect(button("送出判定").disabled).toBe(true);
+  expect(has("上限 1000 位元組")()).toBe(true);
+  expect(calls.some((call) => call.method === "PUT")).toBe(false);
   await type("#admin-redistribution-note", "legal cleared");
   expect(button("送出判定").disabled).toBe(false);
 
@@ -415,12 +1099,267 @@ test("a revised model timeout does not inherit the previous success notice", asy
   expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(false);
 });
 
+test("a saved model timeout keeps its confirmation after the effective setting refreshes", async () => {
+  let current = ADMIN_MODEL_BUDGETS;
+  stub(true, (path, method) => {
+    if (path === "/admin/model-budgets" && method === "GET") return { body: current, status: 200 };
+    if (path === "/admin/model-budgets/judge-run" && method === "PUT") {
+      current = {
+        budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+          budget.kind === "judge-run"
+            ? { ...budget, seconds: 100, reason: "operator update", set_at: "2026-09-20T08:00:00Z" }
+            : budget,
+        ),
+      };
+      return { body: {}, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("管理員設定 90 秒"));
+  await type("#admin-budget-judge-run-seconds", "100");
+  await type("#admin-budget-judge-run-note", "operator update");
+  await click(button("改 評估判定 的秒數"));
+
+  await waitFor(has("管理員設定 100 秒"));
+  await waitFor(() => queryClient.isFetching({ queryKey: queryKeys.admin.modelBudgets }) === 0);
+  expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(true);
+});
+
+test("a cleared model timeout confirms the change after its reset form disappears", async () => {
+  let current = ADMIN_MODEL_BUDGETS;
+  stub(true, (path, method) => {
+    if (path === "/admin/model-budgets" && method === "GET") return { body: current, status: 200 };
+    if (path === "/admin/model-budgets/judge-run" && method === "DELETE") {
+      current = {
+        budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+          budget.kind === "judge-run"
+            ? { ...budget, seconds: null, reason: null, set_at: null }
+            : budget,
+        ),
+      };
+      return { body: {}, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("管理員設定 90 秒"));
+  await type("#admin-budget-judge-run-clear-note", "return to default");
+  await click(button("把 評估判定 改回預設"));
+
+  await waitFor(() => !has("管理員設定 90 秒")());
+  await waitFor(() => queryClient.isFetching({ queryKey: queryKeys.admin.modelBudgets }) === 0);
+  expect(has("已改回預設。")()).toBe(true);
+  expect(container.querySelector("#admin-budget-judge-run-clear-note")).toBeNull();
+  await type("#admin-budget-judge-run-seconds", "100");
+  expect(has("已改回預設。")()).toBe(false);
+});
+
+test("OPS-009: a configured timeout keeps its compiled default visible without failure styling", async () => {
+  stub(true);
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+
+  const rows = Array.from(container.querySelectorAll("li.download-item"));
+  const configured = rows.find((row) => row.textContent?.includes("評估判定"));
+  expect(configured?.textContent).toContain("程式預設 130 秒");
+  expect(configured?.textContent).toContain("管理員設定 90 秒");
+  expect(configured?.querySelector(".badge-danger")).toBeNull();
+
+  const unconfigured = rows.find((row) => row.textContent?.includes("搜尋結果的推薦理由"));
+  expect(unconfigured?.textContent).toContain("程式預設 8 秒");
+  expect(unconfigured?.textContent).not.toContain("管理員設定");
+});
+
+test("OPS-009: a refreshed model timeout replaces the stale edit value", async () => {
+  let current = ADMIN_MODEL_BUDGETS;
+  stub(true, (path) =>
+    path === "/admin/model-budgets" ? { body: current, status: 200 } : undefined,
+  );
+  await mountAt("/admin/model-budgets");
+  await waitFor(
+    () =>
+      container.querySelector<HTMLInputElement>("#admin-budget-judge-run-seconds")?.value === "90",
+  );
+  await type("#admin-budget-judge-run-seconds", "100");
+
+  current = {
+    budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+      budget.kind === "judge-run"
+        ? { ...budget, seconds: 60, reason: "new operator setting", set_at: "2026-09-20T08:00:00Z" }
+        : budget,
+    ),
+  };
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.modelBudgets });
+  });
+  await waitFor(
+    () =>
+      container.querySelector<HTMLInputElement>("#admin-budget-judge-run-seconds")?.value === "60",
+  );
+  expect(has("60 秒")()).toBe(true);
+});
+
+test("an uncertain model timeout write rereads the effective setting", async () => {
+  let current = ADMIN_MODEL_BUDGETS;
+  stub(true, (path, method) => {
+    if (path === "/admin/model-budgets" && method === "GET") return { body: current, status: 200 };
+    if (path === "/admin/model-budgets/judge-run" && method === "PUT") {
+      current = {
+        budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+          budget.kind === "judge-run"
+            ? { ...budget, seconds: 100, reason: "operator update", set_at: "2026-09-20T08:00:00Z" }
+            : budget,
+        ),
+      };
+      return { body: { error: "response lost" }, status: 503 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+  await type("#admin-budget-judge-run-seconds", "100");
+  await type("#admin-budget-judge-run-note", "operator update");
+  await click(button("改 評估判定 的秒數"));
+
+  await waitFor(has("管理員設定 100 秒"));
+  expect(
+    calls.filter((call) => call.method === "GET" && call.url === "/admin/model-budgets").length,
+  ).toBeGreaterThan(1);
+});
+
+test("OPS-009: a pending budget refresh blocks writes based on cached settings", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishRead: ((response: Response) => void) | undefined;
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+  await type("#admin-budget-judge-run-note", "wait longer");
+  await type("#admin-budget-judge-run-clear-note", "return to default");
+  expect(button("改 評估判定 的秒數").disabled).toBe(false);
+  expect(button("把 評估判定 改回預設").disabled).toBe(false);
+
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/model-budgets") && (init?.method ?? "GET") === "GET") {
+      return new Promise<Response>((resolve) => {
+        finishRead = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await act(async () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.modelBudgets });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await waitFor(() => button("改 評估判定 的秒數").disabled);
+  expect(button("把 評估判定 改回預設").disabled).toBe(true);
+  expect(has("正在確認最新設定；完成前不能更改。")()).toBe(true);
+  await click(button("改 評估判定 的秒數"));
+  await click(button("把 評估判定 改回預設"));
+  expect(calls.some((call) => call.method === "PUT" || call.method === "DELETE")).toBe(false);
+
+  await act(async () => {
+    finishRead!(
+      new Response(JSON.stringify(ADMIN_MODEL_BUDGETS), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(() => !button("改 評估判定 的秒數").disabled);
+  expect(button("把 評估判定 改回預設").disabled).toBe(false);
+});
+
+test("OPS-009: a failed budget refresh hides cached settings and actions", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/model-budgets" && unavailable
+      ? { body: { error: "budgets unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.modelBudgets });
+  });
+  await waitFor(has("暫時無法讀取模型呼叫逾時"));
+  expect(has("評估判定")()).toBe(false);
+  expect(container.querySelector("#admin-budget-judge-run-seconds")).toBeNull();
+
+  unavailable = false;
+  await click(button("重新讀取模型呼叫逾時"));
+  await waitFor(() => container.querySelector("#admin-budget-judge-run-seconds") !== null);
+  expect(has("評估判定")()).toBe(true);
+});
+
+test("OPS-009: setting a budget locks clearing the same kind until the write finishes", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishWrite: ((response: Response) => void) | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/model-budgets/judge-run") && init?.method === "PUT") {
+      return new Promise<Response>((resolve) => {
+        finishWrite = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+  await type("#admin-budget-judge-run-note", "wait longer");
+  await type("#admin-budget-judge-run-clear-note", "return to default");
+  await click(button("改 評估判定 的秒數"));
+  await waitFor(() => finishWrite !== undefined);
+  const clearButton = field<HTMLTextAreaElement>("#admin-budget-judge-run-clear-note")
+    .closest("form")!
+    .querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  await waitFor(() => clearButton.disabled);
+  expect(has("此呼叫正在設定秒數，完成後才能改回預設。")()).toBe(true);
+  expect(field<HTMLInputElement>("#admin-budget-judge-run-seconds").readOnly).toBe(true);
+  await click(clearButton);
+  expect(calls.some((call) => call.method === "DELETE")).toBe(false);
+
+  await act(async () => {
+    finishWrite!(new Response("{}", { status: 200 }));
+  });
+  await waitFor(has("已套用，下一次呼叫就用這個秒數。"));
+});
+
+test("OPS-009: clearing a budget removes the preceding set-success message", async () => {
+  let current = ADMIN_MODEL_BUDGETS;
+  stub(true, (path, method) => {
+    if (path === "/admin/model-budgets" && method === "GET") return { body: current, status: 200 };
+    if (path === "/admin/model-budgets/judge-run" && method === "DELETE") {
+      current = {
+        budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+          budget.kind === "judge-run"
+            ? { ...budget, seconds: null, reason: null, set_at: null }
+            : budget,
+        ),
+      };
+    }
+    return path === "/admin/model-budgets/judge-run" ? { body: {}, status: 200 } : undefined;
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+  await type("#admin-budget-judge-run-note", "wait longer");
+  await click(button("改 評估判定 的秒數"));
+  await waitFor(has("已套用，下一次呼叫就用這個秒數。"));
+
+  await type("#admin-budget-judge-run-clear-note", "return to default");
+  await click(button("把 評估判定 改回預設"));
+  await waitFor(has("已改回預設。"));
+  expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(false);
+});
+
 test("OPS-004: a restriction is set with the known reason code and lifted by the same form", async () => {
   let restricted: string | null = null;
   stub(true, (path, method) => {
     if (path === "/admin/skills")
       return {
-        body: { skills: [{ ...ADMIN_SKILLS.skills[0], access_restriction: restricted }] },
+        body: { total: 1, skills: [{ ...ADMIN_SKILLS.skills[0], access_restriction: restricted }] },
         status: 200,
       };
     if (path.endsWith("/restriction")) {
@@ -449,11 +1388,55 @@ test("OPS-004: a restriction is set with the known reason code and lifted by the
   expect(has("設定受限展示")()).toBe(true);
 });
 
+test("OPS-004: restriction note limits UTF-8 bytes before a write", async () => {
+  stub(true);
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  await type("#admin-restriction-note", "x".repeat(1000));
+  expect(button("設定受限").disabled).toBe(false);
+  await type("#admin-restriction-note", "x".repeat(1001));
+  expect(button("設定受限").disabled).toBe(true);
+  expect(has("上限 1000 位元組")()).toBe(true);
+  expect(calls.some((call) => call.method === "PUT")).toBe(false);
+
+  await type("#admin-restriction-note", "理".repeat(333));
+  expect(button("設定受限").disabled).toBe(false);
+  await type("#admin-restriction-note", "理".repeat(334));
+  expect(button("設定受限").disabled).toBe(true);
+});
+
+test("an uncertain restriction write rereads the skill before another action", async () => {
+  let restricted: string | null = null;
+  stub(true, (path, method) => {
+    if (path === "/admin/skills")
+      return {
+        body: { total: 1, skills: [{ ...ADMIN_SKILLS.skills[0], access_restriction: restricted }] },
+        status: 200,
+      };
+    if (path === `/admin/skills/${SKILL}/restriction` && method === "PUT") {
+      restricted = "license-review";
+      return { body: { error: "response lost" }, status: 503 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("設定受限展示"));
+  await type("#admin-restriction-note", "terms under review");
+  await click(button("設定受限"));
+
+  await waitFor(has("受限展示：license-review"));
+  expect(has("解除受限展示")()).toBe(true);
+  expect(
+    calls.filter((call) => call.method === "GET" && call.url === `/admin/skills?q=${SKILL}`).length,
+  ).toBeGreaterThan(1);
+});
+
 test("OPS-004: a name matching several skills lists a way to pick each and offers no action yet", async () => {
   stub(true, (path) =>
     path === "/admin/skills"
       ? {
           body: {
+            total: 2,
             skills: [
               ADMIN_SKILLS.skills[0],
               {
@@ -473,11 +1456,84 @@ test("OPS-004: a name matching several skills lists a way to pick each and offer
   expect(has("的動作")()).toBe(false);
 });
 
+test("OPS-004: a capped governance search shows the total and reaches later matches", async () => {
+  let page = 0;
+  const matches = Array.from({ length: 21 }, (_, index) => ({
+    ...ADMIN_SKILLS.skills[0],
+    skill_id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+  }));
+  stub(true, (path) => {
+    if (path !== "/admin/skills") return undefined;
+    const skills = page++ === 0 ? matches.slice(0, 20) : matches.slice(20);
+    return {
+      body: { skills, total: 21, next_offset: skills.length === 20 ? 20 : undefined },
+      status: 200,
+    };
+  });
+  await mountAt("/admin/skills", { q: "pdf" });
+  await waitFor(has(matches[19].skill_id));
+  expect(has("已顯示 20 / 21 筆")()).toBe(true);
+  expect(container.querySelectorAll(".download-item")).toHaveLength(20);
+  await click(button("載入更多"));
+  await waitFor(has("已顯示 21 / 21 筆"));
+  expect(container.querySelectorAll(".download-item")).toHaveLength(21);
+  expect(container.textContent).toContain(matches[20].skill_id);
+  expect(
+    Array.from(container.querySelectorAll("button")).some(
+      (item) => item.textContent === "載入更多",
+    ),
+  ).toBe(false);
+  expect(calls.some((call) => call.url === "/admin/skills?q=pdf&offset=20")).toBe(true);
+});
+
+test("OPS-004: a failed next governance page keeps confirmed matches and can retry", async () => {
+  let nextFails = true;
+  const matches = Array.from({ length: 21 }, (_, index) => ({
+    ...ADMIN_SKILLS.skills[0],
+    skill_id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+  }));
+  stub(true, (path) => {
+    if (path !== "/admin/skills") return undefined;
+    const offset = new URLSearchParams(calls.at(-1)?.url.split("?")[1]).get("offset");
+    return offset === "20" && nextFails
+      ? { body: { error: "skill lookup failed" }, status: 500 }
+      : offset === "20"
+        ? { body: { skills: matches.slice(20), total: 21 }, status: 200 }
+        : { body: { skills: matches.slice(0, 20), total: 21, next_offset: 20 }, status: 200 };
+  });
+  await mountAt("/admin/skills", { q: "pdf" });
+  await waitFor(has("已顯示 20 / 21 筆"));
+  await click(button("載入更多"));
+  await waitFor(has("清單不完整"));
+  expect(container.querySelectorAll(".download-item")).toHaveLength(20);
+  expect(has("已顯示 20 / 21 筆")()).toBe(true);
+  expect(has("暫時無法讀取小工具")()).toBe(false);
+  expect(button("重試載入更多")).toBeDefined();
+
+  nextFails = false;
+  await click(button("重試載入更多"));
+  await waitFor(has("已顯示 21 / 21 筆"));
+  expect(container.querySelectorAll(".download-item")).toHaveLength(21);
+  expect(has("清單不完整")()).toBe(false);
+});
+
+test("OPS-004: an unreadable governance total never becomes zero or unlocks actions", async () => {
+  stub(true, (path) =>
+    path === "/admin/skills" ? { body: { skills: ADMIN_SKILLS.skills }, status: 200 } : undefined,
+  );
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(() => has("PDF Summariser")() || has("無法確認查詢總數")());
+  expect(has("無法確認查詢總數")()).toBe(true);
+  expect(has("已顯示 1 / 0 筆")()).toBe(false);
+  expect(has("對「PDF Summariser」的動作")()).toBe(false);
+});
+
 test("OPS-004: a taken-down skill shows when and why, and offers no action", async () => {
   stub(true, (path) =>
     path === "/admin/skills"
       ? {
           body: {
+            total: 1,
             skills: [
               {
                 ...ADMIN_SKILLS.skills[0],
@@ -500,6 +1556,7 @@ test("OPS-004: a takedown with no reason on record says it was not recorded", as
     path === "/admin/skills"
       ? {
           body: {
+            total: 1,
             skills: [
               {
                 ...ADMIN_SKILLS.skills[0],
@@ -519,29 +1576,377 @@ test("OPS-004: a takedown with no reason on record says it was not recorded", as
 test("OPS-005: the dispatch page names the halt, and a declaration without a node halts the fleet", async () => {
   stub(true, (path, method) =>
     path === "/admin/dispatch/halt" && method === "PUT"
-      ? { body: { note: "整個叢集停止派送。" }, status: 200 }
+      ? { body: { note: DISPATCH_HALT_NOTE }, status: 200 }
       : undefined,
   );
   await mountAt("/admin/dispatch");
   await waitFor(has("sandbox escape suspected on node-2"));
+  expect(
+    Array.from(container.querySelectorAll("main h2"), (heading) => heading.textContent),
+  ).toEqual(["停止派送", "恢復派送"]);
   expect(has("P1 事故：只有人能解除")()).toBe(true);
   expect(has("整個叢集")()).toBe(true);
   expect(button("停止派送").classList.contains("caution")).toBe(true);
   expect(button("恢復派送").classList.contains("caution")).toBe(false);
   await type("#admin-halt-declare-note", "escape drill");
+  expect(has("本次停止範圍：整個叢集")()).toBe(true);
   await click(button("停止派送"));
-  await waitFor(has("整個叢集停止派送。"));
+  await waitFor(
+    () =>
+      field("#admin-halt-declare-note").closest("form")?.querySelector('[role="status"]') !== null,
+  );
+  expect(has("新的 Run 已停止派往本次範圍")()).toBe(true);
+  expect(has("清理與孤兒資源拆除也已暫停")()).toBe(true);
+  expect(has("煞車不會自動解除")()).toBe(true);
+  expect(has("new runs are refused")()).toBe(false);
   expect(calls.find((c) => c.method === "PUT")?.body).toEqual({ note: "escape drill" });
 
+  await type("#admin-halt-recovery-target", "pool");
   await type("#admin-halt-provider", "node-2");
-  expect(has("整個叢集停止派送。")()).toBe(false);
+  expect(has("新的 Run 已停止派往本次範圍")()).toBe(false);
+  expect(has("本次停止範圍：節點 node-2")()).toBe(true);
   await type("#admin-halt-lift-note", "cleared");
   await click(button("恢復派送"));
   await waitFor(() => calls.some((c) => c.method === "DELETE"));
   expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({
     note: "cleared",
-    provider: "node-2",
+    halt_id: ADMIN_DISPATCH.halts[0].halt_id,
+    generation: ADMIN_DISPATCH.halts[0].generation,
   });
+});
+
+test("P1 recovery shows its evidence checklist, but an orphan halt does not", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/dispatch" && method === "GET"
+      ? {
+          body: {
+            dispatching: false,
+            halts: [
+              ...ADMIN_DISPATCH.halts,
+              {
+                ...ADMIN_DISPATCH.halts[0],
+                target: "node-2",
+                source: "orphan_threshold",
+                reason: "orphan capacity threshold",
+                automatic_recovery: true,
+              },
+            ],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("orphan capacity threshold"));
+  await type("#admin-halt-recovery-target", "pool");
+  const checklist = field<HTMLParagraphElement>("#admin-p1-recovery-checklist");
+  expect(checklist.closest("details")).toBeNull();
+  expect(checklist.textContent).toContain("觸發條件已排除");
+  expect(checklist.textContent).toContain("sev/P1 事件單已建立");
+  expect(checklist.textContent).toContain("不會補做暫停的清理");
+
+  await type("#admin-halt-recovery-target", "node-2");
+  expect(container.querySelector("#admin-p1-recovery-checklist")).toBeNull();
+  expect(calls.some((call) => call.method === "DELETE")).toBe(false);
+});
+
+test("OPS-005: halt and recovery notes stop at the server byte limit", async () => {
+  stub(true);
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-declare-note", "x".repeat(1001));
+  expect(button("停止派送").disabled).toBe(true);
+  expect(has("上限 1000 位元組")()).toBe(true);
+  await type("#admin-halt-declare-note", "x".repeat(1000));
+  expect(button("停止派送").disabled).toBe(false);
+
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-lift-note", "x".repeat(1001));
+  expect(button("恢復派送").disabled).toBe(true);
+  await type("#admin-halt-lift-note", "x".repeat(1000));
+  expect(button("恢復派送").disabled).toBe(false);
+  expect(calls.some((call) => call.method === "PUT" || call.method === "DELETE")).toBe(false);
+});
+
+test("a pending dispatch halt prevents recovery from starting", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishHalt: ((response: Response) => void) | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/dispatch/halt") && init?.method === "PUT") {
+      return new Promise<Response>((resolve) => {
+        finishHalt = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-declare-note", "stop for investigation");
+  await type("#admin-halt-lift-note", "resume after investigation");
+  await click(button("停止派送"));
+  await waitFor(() => finishHalt !== undefined);
+
+  await waitFor(() => button("恢復派送").disabled);
+  await waitFor(has("正在停止派送，完成後才能恢復。"));
+  await submit("#admin-halt-lift-note");
+  expect(calls.some((call) => call.method === "DELETE")).toBe(false);
+
+  await act(async () => {
+    finishHalt!(new Response(JSON.stringify({ note: DISPATCH_HALT_NOTE }), { status: 200 }));
+  });
+  await waitFor(has("新的 Run 已停止派往本次範圍"));
+});
+
+test("recovering dispatch blocks another halt and clears the preceding halt notice", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/dispatch/halt" && method === "PUT"
+      ? { body: { note: DISPATCH_HALT_NOTE }, status: 200 }
+      : undefined,
+  );
+  const fixtureFetch = globalThis.fetch;
+  let finishRecovery: ((response: Response) => void) | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/dispatch/halt") && init?.method === "DELETE") {
+      return new Promise<Response>((resolve) => {
+        finishRecovery = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-declare-note", "stop for investigation");
+  await type("#admin-halt-lift-note", "resume after investigation");
+  await click(button("停止派送"));
+  await waitFor(has("新的 Run 已停止派往本次範圍"));
+  await click(button("恢復派送"));
+  await waitFor(() => finishRecovery !== undefined);
+
+  await waitFor(() => button("停止派送").disabled);
+  await waitFor(has("正在恢復派送，完成後才能再次停止。"));
+  expect(has("新的 Run 已停止派往本次範圍")()).toBe(false);
+  await submit("#admin-halt-declare-note");
+  expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1);
+
+  await act(async () => {
+    finishRecovery!(new Response("{}", { status: 200 }));
+  });
+  await waitFor(has("解除請求已處理；若狀態讀取失敗，請重新整理確認。"));
+  expect(has("新的 Run 已停止派往本次範圍")()).toBe(false);
+});
+
+test("recovery requires selecting an active halt and sends that target", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/dispatch" && method === "GET"
+      ? {
+          body: {
+            dispatching: false,
+            halts: [
+              ...ADMIN_DISPATCH.halts,
+              {
+                ...ADMIN_DISPATCH.halts[0],
+                target: "node-2",
+                halt_id: "22222222-2222-4222-8222-222222222222",
+                generation: 3,
+                reason: "node investigation",
+              },
+            ],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("node investigation"));
+  await type("#admin-halt-lift-note", "verified node repair");
+  expect(button("恢復派送").disabled).toBe(true);
+  expect(has("先選擇目前清單中的煞車")()).toBe(true);
+  expect(
+    Array.from(
+      field<HTMLSelectElement>("#admin-halt-recovery-target").options,
+      (option) => option.value,
+    ),
+  ).toEqual(["", "pool", "node-2"]);
+
+  await type("#admin-halt-recovery-target", "node-2");
+  expect(button("恢復派送").disabled).toBe(false);
+  await click(button("恢復派送"));
+  await waitFor(() => calls.some((c) => c.method === "DELETE"));
+  expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({
+    note: "verified node repair",
+    provider: "node-2",
+    halt_id: "22222222-2222-4222-8222-222222222222",
+    generation: 3,
+  });
+});
+
+test("a stale recovery reloads the halt and requires a new selection", async () => {
+  let current: DispatchStatus = ADMIN_DISPATCH;
+  stub(true, (path, method) => {
+    if (path === "/admin/dispatch" && method === "GET") return { body: current, status: 200 };
+    if (path === "/admin/dispatch/halt" && method === "DELETE") {
+      current = {
+        ...ADMIN_DISPATCH,
+        halts: [{ ...ADMIN_DISPATCH.halts[0], generation: 2, reason: "new incident" }],
+      };
+      return { body: { error: "stale_dispatch_halt" }, status: 409 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-lift-note", "verified repair");
+  await click(button("恢復派送"));
+
+  await waitFor(has("煞車在你查看後已變更"));
+  await waitFor(has("new incident"));
+  expect(field<HTMLSelectElement>("#admin-halt-recovery-target").value).toBe("");
+  expect(field<HTMLTextAreaElement>("#admin-halt-lift-note").value).toBe("");
+  expect(button("恢復派送").disabled).toBe(true);
+  await type("#admin-halt-recovery-target", "pool");
+  expect(button("恢復派送").disabled).toBe(true);
+  expect(
+    calls.filter((call) => call.url === "/admin/dispatch" && call.method === "GET"),
+  ).toHaveLength(2);
+  expect(calls.find((call) => call.method === "DELETE")?.body).toEqual({
+    note: "verified repair",
+    halt_id: ADMIN_DISPATCH.halts[0].halt_id,
+    generation: 1,
+  });
+});
+
+test("a halt removed by a status refresh cannot be recovered from an old selection", async () => {
+  stub(true);
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-lift-note", "verified repair");
+  expect(button("恢復派送").disabled).toBe(false);
+
+  await act(async () => {
+    queryClient.setQueryData(queryKeys.admin.dispatch, { dispatching: true, halts: [] });
+  });
+  await waitFor(has("煞車：0 個"));
+  expect(button("恢復派送").disabled).toBe(true);
+  await submit("#admin-halt-lift-note");
+  expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+});
+
+test("recovery is unavailable when no halt exists", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/dispatch" && method === "GET"
+      ? { body: { dispatching: true, halts: [] }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("煞車：0 個"));
+  await type("#admin-halt-lift-note", "nothing to lift");
+  expect(button("恢復派送").disabled).toBe(true);
+  expect(has("目前沒有煞車可解除")()).toBe(true);
+  expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+});
+
+test("dispatch status failure preserves emergency stop and retry restores recovery controls", async () => {
+  let reads = 0;
+  stub(true, (path, method) => {
+    if (path === "/admin/dispatch" && method === "GET") {
+      reads += 1;
+      return reads === 1
+        ? { body: { error: "unavailable" }, status: 503 }
+        : { body: ADMIN_DISPATCH, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("暫時無法讀取派送狀態"));
+  await type("#admin-halt-declare-note", "emergency");
+  await type("#admin-halt-lift-note", "cleared");
+
+  expect(button("停止派送").disabled).toBe(false);
+  expect(button("恢復派送").disabled).toBe(true);
+  expect(has("必須先讀到目前的派送狀態")()).toBe(true);
+  expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+
+  await click(button("重新讀取派送狀態"));
+  await waitFor(has("sandbox escape suspected on node-2"));
+  expect(button("恢復派送").disabled).toBe(true);
+  await type("#admin-halt-recovery-target", "pool");
+  expect(button("恢復派送").disabled).toBe(false);
+  expect(reads).toBe(2);
+  expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+});
+
+test("a failed dispatch refresh does not present cached halts as current", async () => {
+  let fails = false;
+  stub(true, (path, method) =>
+    path === "/admin/dispatch" && method === "GET" && fails
+      ? { body: { error: "unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-lift-note", "verified repair");
+
+  fails = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch });
+  });
+  await waitFor(has("暫時無法讀取派送狀態"));
+  expect(has("sandbox escape suspected on node-2")()).toBe(false);
+  expect(button("恢復派送").disabled).toBe(true);
+  expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+});
+
+test("an uncertain recovery refreshes dispatch and does not claim the write failed", async () => {
+  let current: DispatchStatus = ADMIN_DISPATCH;
+  stub(true, (path, method) => {
+    if (path === "/admin/dispatch" && method === "GET") return { body: current, status: 200 };
+    if (path === "/admin/dispatch/halt" && method === "DELETE") {
+      current = { dispatching: true, halts: [] };
+      return { body: { error: "temporary failure" }, status: 503 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-lift-note", "verified repair");
+  await click(button("恢復派送"));
+
+  await waitFor(has("這個動作的結果尚未確認"));
+  await waitFor(has("煞車：0 個"));
+  expect(has("這個動作沒有完成")()).toBe(false);
+  expect(has("解除請求已處理；若狀態讀取失敗，請重新整理確認。")()).toBe(false);
+  expect(
+    calls.filter((call) => call.url === "/admin/dispatch" && call.method === "GET").length,
+  ).toBeGreaterThan(1);
+});
+
+test("a completed recovery does not claim the status refreshed when rereading fails", async () => {
+  let unavailable = false;
+  stub(true, (path, method) => {
+    if (path === "/admin/dispatch" && method === "GET" && unavailable)
+      return { body: { error: "status unavailable" }, status: 503 };
+    if (path === "/admin/dispatch/halt" && method === "DELETE") {
+      unavailable = true;
+      return { body: {}, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-recovery-target", "pool");
+  await type("#admin-halt-lift-note", "verified repair");
+  await click(button("恢復派送"));
+
+  await waitFor(has("暫時無法讀取派送狀態"));
+  await waitFor(has("解除請求已處理"));
+  expect(has("上面的狀態已更新")()).toBe(false);
 });
 
 test("OPS-005: the rosters page is read-only", async () => {
@@ -550,6 +1955,74 @@ test("OPS-005: the rosters page is read-only", async () => {
   await waitFor(has("每一個登入的帳號都算受邀"));
   expect(field("main code").textContent).toBe("u-1");
   expect(container.querySelectorAll("main :is(input, textarea, select, button)")).toHaveLength(0);
+});
+
+test("OPS-005: an empty operator roster is a named zero, not an empty section", async () => {
+  stub(true, (path) =>
+    path === "/admin/rosters"
+      ? { body: { operator_user_ids: [], beta_allowlist: [] }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/rosters");
+  await waitFor(has("封測名單"));
+  expect(has("目前生效的 operator：0 人。")()).toBe(true);
+  expect(container.querySelector("main ul")).toBeNull();
+});
+
+test("OPS-005: a failed roster refresh hides cached membership", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/rosters" && unavailable
+      ? { body: { error: "roster unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/rosters");
+  await waitFor(has("u-1"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.rosters });
+  });
+  await waitFor(has("暫時無法讀取名冊"));
+  expect(container.querySelectorAll("main code")).toHaveLength(0);
+
+  unavailable = false;
+  await click(button("重新讀取名冊"));
+  await waitFor(has("u-1"));
+});
+
+test("OPS-005: a pending roster refresh does not present cached membership as current", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishRead: ((response: Response) => void) | undefined;
+  await mountAt("/admin/rosters");
+  await waitFor(has("u-1"));
+
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/rosters") && (init?.method ?? "GET") === "GET") {
+      return new Promise<Response>((resolve) => {
+        finishRead = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await act(async () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.rosters });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await waitFor(() => !has("u-1")());
+  expect(has("載入名冊中")()).toBe(true);
+
+  await act(async () => {
+    finishRead!(
+      new Response(JSON.stringify({ operator_user_ids: ["u-2"], beta_allowlist: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(has("u-2"));
+  expect(has("u-1")()).toBe(false);
 });
 
 test("OPS-006: the audit log names actions in words and folds the metadata", async () => {
@@ -561,7 +2034,7 @@ test("OPS-006: the audit log names actions in words and folds the metadata", asy
   expect(has("credit_entry")()).toBe(false);
   expect(field<HTMLElement>(".table-scroll").tabIndex).toBe(-1);
   const table = field<HTMLTableElement>("table.responsive-table");
-  const labels = ["時間", "動作", "operator", "對象", "內容"];
+  const labels = ["時間", "動作", "operator", "對象", "Workspace", "內容"];
   expect(Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent)).toEqual(
     labels,
   );
@@ -573,11 +2046,58 @@ test("OPS-006: the audit log names actions in words and folds the metadata", asy
   expect(
     Array.from(table.querySelectorAll('tbody th[scope="row"]')).map((th) => th.textContent),
   ).toEqual(["授予點數", "查詢帳號"]);
+  expect(
+    Array.from(table.querySelectorAll('tbody td[data-label="Workspace"]')).map((cell) =>
+      cell.textContent?.trim(),
+    ),
+  ).toEqual(["ws-2", "ws-2"]);
   expect(field("td details summary").textContent).toBe("3 項");
   expect(field("td details").textContent).toContain("beta reward");
   expect(
     Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "載入更多"),
   ).toBe(false);
+});
+
+test("the audit log names exposure reviews and model budget changes in plain language", async () => {
+  stub(true, (path) =>
+    path === "/admin/audit-log"
+      ? {
+          body: {
+            events: [
+              {
+                actor_user_id: "u-1",
+                action: "publication.exposure.review",
+                resource_type: "publication",
+                resource_id: "publication-1",
+                workspace_id: null,
+                occurred_at: "2026-10-06T00:00:00Z",
+                metadata: { decision: "approved", reason: "reviewed" },
+              },
+              {
+                actor_user_id: "u-1",
+                action: "model_budget.set",
+                resource_type: "model_budget",
+                resource_id: null,
+                workspace_id: null,
+                occurred_at: "2026-10-06T00:00:00Z",
+                metadata: { reason: "shorten timeout" },
+              },
+            ],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/audit-log");
+  await waitFor(() => container.querySelectorAll('tbody th[scope="row"]').length === 2);
+  expect(
+    Array.from(container.querySelectorAll('tbody th[scope="row"]')).map((row) => row.textContent),
+  ).toEqual(["曝光審核", "設定模型呼叫逾時"]);
+  expect(
+    Array.from(container.querySelectorAll('tbody td[data-label="對象"]')).map((cell) =>
+      cell.textContent?.trim(),
+    ),
+  ).toEqual(["發佈物 publication-1", "模型呼叫逾時 不適用"]);
 });
 
 test("OPS-006: a halt the platform declared by itself names the platform as the actor", async () => {
@@ -606,7 +2126,61 @@ test("OPS-006: a halt the platform declared by itself names the platform as the 
   await mountAt("/admin/audit-log");
   await waitFor(has("停止派送"));
   expect(has("平台自動")()).toBe(true);
+  expect(field<HTMLElement>('tbody td[data-label="Workspace"]').textContent).toBe("不適用");
   expect(has("未測量")()).toBe(false);
+});
+
+test("OPS-006: a failed next page marks the audit list partial and can retry", async () => {
+  let nextFails = true;
+  const event = ADMIN_AUDIT_LOG.events[0];
+  const events = Array.from({ length: 51 }, (_, index) => ({
+    ...event,
+    resource_id: `entry-${index}`,
+  }));
+  stub(true, (path) => {
+    if (path !== "/admin/audit-log") return undefined;
+    const before = new URLSearchParams(calls.at(-1)?.url.split("?")[1]).get("before");
+    return before === "audit-page-2" && nextFails
+      ? { body: { error: "audit unavailable" }, status: 503 }
+      : before === "audit-page-2"
+        ? { body: { events: events.slice(50) }, status: 200 }
+        : { body: { events: events.slice(0, 50), next_before: "audit-page-2" }, status: 200 };
+  });
+  await mountAt("/admin/audit-log");
+  await waitFor(() => container.querySelectorAll("tbody tr").length === 50);
+  await click(button("載入更多"));
+  await waitFor(has("清單不完整"));
+  expect(calls.at(-1)?.url).toContain("before=audit-page-2");
+  expect(container.querySelectorAll("tbody tr")).toHaveLength(50);
+  expect(button("重試載入更多")).toBeDefined();
+
+  nextFails = false;
+  await click(button("重試載入更多"));
+  await waitFor(() => container.querySelectorAll("tbody tr").length === 51);
+  expect(has("清單不完整")()).toBe(false);
+});
+
+test("OPS-006: a failed audit refresh does not show cached rows as current", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/audit-log" && unavailable
+      ? { body: { error: "audit unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/audit-log");
+  await waitFor(has("授予點數"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.auditLog });
+  });
+  await waitFor(has("暫時無法讀取動作紀錄"));
+  expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
+
+  unavailable = false;
+  await click(button("重新讀取動作紀錄"));
+  await waitFor(has("授予點數"));
+  expect(container.querySelectorAll("tbody tr").length).toBeGreaterThan(0);
 });
 
 test("OPS-011: an action one of the platform's agents took names the agent, not the platform", async () => {
@@ -643,7 +2217,13 @@ test("OPS-006: a full page of 50 stops, the 51st event offers the next page", as
   const event = ADMIN_AUDIT_LOG.events[0];
   stub(true, (path) =>
     path === "/admin/audit-log"
-      ? { body: { events: Array.from({ length: total }, () => event) }, status: 200 }
+      ? {
+          body: {
+            events: Array.from({ length: 50 }, () => event),
+            ...(total > 50 ? { next_before: "audit-page-2" } : {}),
+          },
+          status: 200,
+        }
       : undefined,
   );
   await mountAt("/admin/audit-log");
@@ -661,17 +2241,71 @@ test("OPS-006: a full page of 50 stops, the 51st event offers the next page", as
   expect(
     calls
       .filter((c) => c.url.startsWith("/admin/audit-log"))
-      .every((c) => c.url.includes("limit=51")),
+      .every((c) => c.url.includes("limit=50")),
   ).toBe(true);
 });
 
-test("OPS-007: cost statistics show dollars and name a window with no samples", async () => {
+test("OPS-006: a workspace filter stays on both audit pages and clearing it restores the platform view", async () => {
+  const workspaceID = "00000000-0000-4000-8000-0000000000aa";
+  const event = { ...ADMIN_AUDIT_LOG.events[0], workspace_id: workspaceID };
+  stub(true, (path) => {
+    if (path !== "/admin/audit-log") return undefined;
+    const params = new URLSearchParams(calls.at(-1)?.url.split("?")[1]);
+    if (params.get("workspace_id") !== workspaceID) return undefined;
+    return params.has("before")
+      ? { body: { events: [{ ...event, resource_id: "second-entry" }] }, status: 200 }
+      : { body: { events: [event], next_before: "audit-page-2" }, status: 200 };
+  });
+  await mountAt("/admin/audit-log", { workspace_id: workspaceID });
+  await waitFor(() => container.querySelectorAll("tbody tr").length === 1);
+  expect(calls.at(-1)?.url).toContain(`workspace_id=${workspaceID}`);
+  expect(field<HTMLTableElement>("table").caption?.textContent).toContain(workspaceID);
+  await click(button("載入更多"));
+  await waitFor(() => container.querySelectorAll("tbody tr").length === 2);
+  expect(calls.at(-1)?.url).toContain(`workspace_id=${workspaceID}`);
+  expect(calls.at(-1)?.url).toContain("before=audit-page-2");
+
+  await type("#admin-audit-workspace", "");
+  await submit("#admin-audit-workspace");
+  await waitFor(() => !window.location.search.includes("workspace_id"));
+  await waitFor(
+    () => container.querySelector("table caption")?.textContent === "operator 動作，新的在上面",
+  );
+  expect(calls.at(-1)?.url).toBe("/admin/audit-log?limit=50");
+});
+
+test.each(["not-a-uuid", ""])(
+  "OPS-006: invalid workspace address %j never broadens the audit view",
+  async (workspaceID) => {
+    stub(true);
+    await mountAt("/admin/audit-log", { workspace_id: workspaceID });
+    await waitFor(has(workspaceID ? "Workspace ID 格式不正確" : "網址中的 Workspace ID 為空"));
+    expect(calls.some((call) => call.url.startsWith("/admin/audit-log"))).toBe(false);
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
+    expect(field<HTMLInputElement>("#admin-audit-workspace").getAttribute("aria-describedby")).toBe(
+      "admin-audit-workspace-error",
+    );
+  },
+);
+
+test("OPS-006: an empty workspace address offers an explicit path back to the platform view", async () => {
+  stub(true);
+  await mountAt("/admin/audit-log", { workspace_id: "" });
+  await waitFor(has("網址中的 Workspace ID 為空"));
+  await click(button("顯示全平台"));
+  await waitFor(() => !window.location.search.includes("workspace_id"));
+  await waitFor(
+    () => container.querySelector("table caption")?.textContent === "operator 動作，新的在上面",
+  );
+});
+
+test("OPS-007: cost statistics show window bounds and dollars", async () => {
   stub(true);
   await mountAt("/admin/cost-statistics");
   await waitFor(has("搜尋理由"));
   expect(field<HTMLElement>(".table-scroll").tabIndex).toBe(-1);
   const table = field<HTMLTableElement>("table.responsive-table");
-  const labels = ["種類", "統計窗結束", "樣本數", "p50", "p90", "p95", "最大"];
+  const labels = ["種類", "統計窗開始", "統計窗結束", "樣本數", "p50", "p90", "p95", "最大"];
   expect(Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent)).toEqual(
     labels,
   );
@@ -683,16 +2317,86 @@ test("OPS-007: cost statistics show dollars and name a window with no samples", 
   expect(
     Array.from(table.querySelectorAll('tbody th[scope="row"]')).map((th) => th.textContent),
   ).toEqual(["搜尋理由", "評審"]);
+  expect(
+    Array.from(table.tBodies[0].rows).map((row) =>
+      Array.from(row.querySelectorAll("td time"), (time) => time.getAttribute("datetime")),
+    ),
+  ).toEqual([
+    ["2026-08-12T00:00:00Z", "2026-09-11T00:00:00Z"],
+    ["2026-08-12T00:00:00Z", "2026-09-11T00:00:00Z"],
+  ]);
   const rows = Array.from(container.querySelectorAll("tbody tr")).map((tr) => [
     tr.querySelector("th")?.textContent,
     ...Array.from(tr.querySelectorAll("td"))
-      .slice(1)
+      .slice(2)
       .map((td) => td.textContent),
   ]);
   expect(rows).toEqual([
     ["搜尋理由", "0", "未測量", "未測量", "未測量", "未測量"],
     ["評審", "40", "$0.0012", "$0.0034", "$0.0041", "$0.0090"],
   ]);
+});
+
+test("OPS-007: a failed statistics refresh does not present cached windows as current", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/cost-statistics" && unavailable
+      ? { body: { error: "statistics unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/cost-statistics");
+  await waitFor(has("搜尋理由"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.costStatistics });
+  });
+  await waitFor(has("暫時無法讀取成本統計"));
+  expect(container.querySelectorAll("tbody tr")).toHaveLength(0);
+
+  unavailable = false;
+  await click(button("重新讀取成本統計"));
+  await waitFor(() => container.querySelectorAll("tbody tr").length > 0);
+});
+
+test("OPS-007: a pending statistics refresh labels the retained table as previous data", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishRead: ((response: Response) => void) | undefined;
+  await mountAt("/admin/cost-statistics");
+  await waitFor(has("搜尋理由"));
+
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).includes("/admin/cost-statistics")) {
+      return new Promise<Response>((resolve) => {
+        finishRead = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await act(async () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.costStatistics });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await pollUntil(
+    () => queryClient.isFetching({ queryKey: queryKeys.admin.costStatistics }) === 1,
+    () => container.textContent,
+    DEFAULT_WAIT_MS,
+    { flushBeforeFirstCheck: true },
+  );
+  expect(has("正在更新成本統計；表格仍顯示上次讀取的資料。")()).toBe(true);
+  expect(container.querySelectorAll("tbody tr")).toHaveLength(2);
+
+  await act(async () => {
+    const { body, status } = platformResponse("/admin/cost-statistics");
+    finishRead!(
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(() => !has("正在更新成本統計；表格仍顯示上次讀取的資料。")());
 });
 
 test("OPS-007: micro-dollars format at four places, and a missing percentile is named", () => {
@@ -770,6 +2474,77 @@ test("OPS-008: the trends page asks each owner for 30 days by default and draws 
       "看小工具詳情",
     ].map((name) => `${name}：每日長條圖，逐日數字在下方的表`),
   );
+});
+
+test("OPS-008: a failed trend refresh hides that cached chart and balance", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/trends/credits" && unavailable
+      ? { body: { error: "trend unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/trends");
+  await waitFor(has("全平台目前餘額總和：1268 點。"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.trend("credits", 30) });
+  });
+  await waitFor(has("暫時無法讀取每日點數異動（淨額）"));
+  const credits = Array.from(container.querySelectorAll("h2"))
+    .find((heading) => heading.textContent === "每日點數異動（淨額）")
+    ?.closest("section");
+  expect(credits?.querySelectorAll("figure")).toHaveLength(0);
+  expect(has("全平台目前餘額總和：1268 點。")()).toBe(false);
+
+  unavailable = false;
+  await click(button("重新讀取每日點數異動（淨額）"));
+  await waitFor(has("全平台目前餘額總和：1268 點。"));
+});
+
+test("OPS-008: a pending trend refresh labels its retained chart as previous data", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishRead: ((response: Response) => void) | undefined;
+  await mountAt("/admin/trends");
+  await waitFor(has("全平台目前餘額總和：1268 點。"));
+
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).includes("/admin/trends/credits")) {
+      return new Promise<Response>((resolve) => {
+        finishRead = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await act(async () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.trend("credits", 30) });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await pollUntil(
+    () => queryClient.isFetching({ queryKey: queryKeys.admin.trend("credits", 30) }) === 1,
+    () => container.textContent,
+    DEFAULT_WAIT_MS,
+    { flushBeforeFirstCheck: true },
+  );
+  const credits = Array.from(container.querySelectorAll("h2"))
+    .find((heading) => heading.textContent === "每日點數異動（淨額）")
+    ?.closest("section");
+  expect(credits?.querySelector('[role="status"]')?.textContent).toBe(
+    "正在更新每日點數異動（淨額）；圖表仍顯示上次讀取的資料。",
+  );
+  expect(credits?.querySelectorAll("figure").length).toBeGreaterThan(0);
+
+  await act(async () => {
+    const { body, status } = platformResponse("/admin/trends/credits?days=30");
+    finishRead!(
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(() => credits?.querySelector('[role="status"]') === null);
 });
 
 test("OPS-008: a kind's figure totals its range and its table shows zero on the days it had nothing", async () => {
@@ -924,6 +2699,42 @@ test("DISC-007: submitting a review sends this screen's release_id, sequence and
   });
 });
 
+test("an uncertain exposure decision rereads the case and waiting queue", async () => {
+  let currentCase: ExposureCase = ADMIN_EXPOSURE_CASE;
+  let waiting = true;
+  stub(true, (path, method) => {
+    if (path === "/admin/exposure-reviews" && method === "GET")
+      return { body: waiting ? ADMIN_EXPOSURE_QUEUE : { publications: [] }, status: 200 };
+    if (path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && method === "GET")
+      return { body: currentCase, status: 200 };
+    if (path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && method === "POST") {
+      currentCase = { ...ADMIN_EXPOSURE_CASE, sequence: 3, exposed: true };
+      waiting = false;
+      return { body: { error: "response lost" }, status: 503 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核序號：2"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
+  await type("#admin-exposure-review-note", "看過了，符合規範");
+  await click(button("送出核准"));
+
+  await waitFor(has("審核序號：3"));
+  expect(has("目前曝光中")()).toBe(true);
+  await waitFor(has("沒有等待審核的發佈物：0 筆。"));
+  expect(
+    calls.filter(
+      (call) =>
+        call.method === "GET" &&
+        call.url === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`,
+    ).length,
+  ).toBeGreaterThan(1);
+  expect(
+    calls.filter((call) => call.method === "GET" && call.url === "/admin/exposure-reviews").length,
+  ).toBeGreaterThan(1);
+});
+
 test("a completed exposure decision does not describe the next decision", async () => {
   stub(true, (path, method) =>
     path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && method === "POST"
@@ -969,20 +2780,178 @@ test("DISC-007: an empty queue is named as a genuine zero, not a blank list", as
   expect(container.querySelectorAll(".download-item")).toHaveLength(0);
 });
 
-test("DISC-007: a stale review (409) shows the server's own words, not a generic failure", async () => {
-  const staleMessage =
-    "這份審核的前提已經過期：有新的 Release，或別人已經審過。重新打開這一筆，看過現在的內容再送出";
-  stub(true, (path, method) =>
-    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && method === "POST"
-      ? { body: { error: staleMessage, reason: "review_stale" }, status: 409 }
+test("DISC-007: a failed exposure queue refresh hides cached waiting releases", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === "/admin/exposure-reviews" && unavailable
+      ? { body: { error: "queue unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin/exposure");
+  await waitFor(has("審這一筆"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue });
+  });
+  await waitFor(has("暫時無法讀取待審清單"));
+  expect(has("審這一筆")()).toBe(false);
+
+  unavailable = false;
+  await click(button("重新讀取待審清單"));
+  await waitFor(has("審這一筆"));
+});
+
+test("DISC-007: a pending exposure queue refresh does not present old reviews as current", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishRead: ((response: Response) => void) | undefined;
+  await mountAt("/admin/exposure");
+  await waitFor(has("審這一筆"));
+
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).includes("/admin/exposure-reviews") && (init?.method ?? "GET") === "GET") {
+      return new Promise<Response>((resolve) => {
+        finishRead = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await act(async () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await pollUntil(
+    () => queryClient.isFetching({ queryKey: queryKeys.admin.exposureQueue }) === 1,
+    () => container.textContent,
+    DEFAULT_WAIT_MS,
+    { flushBeforeFirstCheck: true },
+  );
+  expect(has("載入待審清單中")()).toBe(true);
+  expect(has("審這一筆")()).toBe(false);
+
+  await act(async () => {
+    finishRead!(
+      new Response(JSON.stringify({ publications: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(has("沒有等待審核的發佈物：0 筆。"));
+});
+
+test("DISC-007: a failed exposure case refresh hides cached review actions", async () => {
+  let unavailable = false;
+  stub(true, (path) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && unavailable
+      ? { body: { error: "case unavailable" }, status: 503 }
       : undefined,
   );
   await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
   await waitFor(has("審核這一版"));
+
+  unavailable = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.admin.exposureCase(EXPOSURE_PUBLICATION),
+    });
+  });
+  await waitFor(has("暫時無法讀取這一筆的曝光審核資料"));
+  expect(has("審核這一版")()).toBe(false);
+  expect(container.querySelector("#admin-exposure-review-note")).toBeNull();
+
+  unavailable = false;
+  await click(button("重新讀取這一筆的曝光審核資料"));
+  await waitFor(has("審核這一版"));
+  expect(button("送出審核結論").disabled).toBe(true);
+});
+
+test("a pending exposure case refresh hides the old snapshot and resets its decision", async () => {
+  stub(true);
+  const fixtureFetch = globalThis.fetch;
+  let finishRead: ((response: Response) => void) | undefined;
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核序號：2"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
+  await type("#admin-exposure-review-note", "看過舊版");
+  expect(button("送出核准").disabled).toBe(false);
+
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (
+      String(input).includes(`/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`) &&
+      (init?.method ?? "GET") === "GET"
+    ) {
+      return new Promise<Response>((resolve) => {
+        finishRead = resolve;
+      });
+    }
+    return fixtureFetch(input, init);
+  });
+  await act(async () => {
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.admin.exposureCase(EXPOSURE_PUBLICATION),
+    });
+  });
+  await waitFor(() => finishRead !== undefined);
+  await waitFor(() => !has("審核序號：2")());
+  expect(container.querySelector("#admin-exposure-review-note")).toBeNull();
+
+  await act(async () => {
+    finishRead!(
+      new Response(JSON.stringify({ ...ADMIN_EXPOSURE_CASE, sequence: 3 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+  await waitFor(has("審核序號：3"));
+  expect(button("送出審核結論").disabled).toBe(true);
+  expect(calls.some((call) => call.method === "POST")).toBe(false);
+});
+
+test("a stale exposure review blocks resubmission until the current case is reloaded", async () => {
+  const staleMessage =
+    "這份審核的前提已經過期：有新的 Release，或別人已經審過。重新打開這一筆，看過現在的內容再送出";
+  let currentCase: ExposureCase = ADMIN_EXPOSURE_CASE;
+  let queueChanged = false;
+  stub(true, (path, method) => {
+    if (path === "/admin/exposure-reviews")
+      return {
+        body: queueChanged ? { publications: [] } : ADMIN_EXPOSURE_QUEUE,
+        status: 200,
+      };
+    if (path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && method === "GET")
+      return { body: currentCase, status: 200 };
+    if (path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && method === "POST") {
+      queueChanged = true;
+      currentCase = { ...ADMIN_EXPOSURE_CASE, sequence: 3, exposed: true };
+      return { body: { error: staleMessage, reason: "review_stale" }, status: 409 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核序號：2"));
   await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
   await type("#admin-exposure-review-note", "看過了");
   await click(button("送出核准"));
-  await waitFor(has(`沒有完成，伺服器說：${staleMessage}`));
+  await waitFor(has(staleMessage));
+  await waitFor(has("沒有等待審核的發佈物：0 筆。"));
+  expect(button("送出核准").disabled).toBe(true);
+  expect(has("審核序號：2")()).toBe(true);
+  await click(button("重新讀取審核資料"));
+  await waitFor(has("審核序號：3"));
+  expect(has("目前曝光中")()).toBe(true);
+  expect(button("送出審核結論").disabled).toBe(true);
+  expect(field<HTMLTextAreaElement>("#admin-exposure-review-note").value).toBe("");
+  expect(calls.filter((call) => call.method === "POST")).toHaveLength(1);
+  expect(
+    calls.filter(
+      (call) =>
+        call.method === "GET" &&
+        call.url === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`,
+    ).length,
+  ).toBeGreaterThan(1);
 });
 
 test("DISC-007: a release search has not indexed yet says so instead of showing stale text", async () => {
@@ -994,6 +2963,40 @@ test("DISC-007: a release search has not indexed yet says so instead of showing 
   await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
   await waitFor(has("尚未進索引"));
   expect(has(ADMIN_EXPOSURE_CASE.snapshot.enriched_summary)()).toBe(false);
+});
+
+test.each([
+  ["missing", undefined],
+  ["outdated", { ...ADMIN_EXPOSURE_CASE.snapshot, current: false }],
+  ["incomplete", { ...ADMIN_EXPOSURE_CASE.snapshot, enriched: false }],
+])("an %s search snapshot cannot be approved", async (_state, snapshot) => {
+  stub(true, (path) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
+      ? { body: { ...ADMIN_EXPOSURE_CASE, snapshot }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核這一版"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
+  await type("#admin-exposure-review-note", "符合規範");
+
+  expect(button("送出核准").disabled).toBe(true);
+  expect(has("必須先看到與這個 Release 相符的完整搜尋內容")()).toBe(true);
+  expect(calls.some((c) => c.method === "POST")).toBe(false);
+});
+
+test("an absent search snapshot does not prevent revoking exposure", async () => {
+  stub(true, (path) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
+      ? { body: { ...ADMIN_EXPOSURE_CASE, snapshot: undefined }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("尚未進索引"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="revoked"]'));
+  await type("#admin-exposure-review-note", "下架待查");
+
+  expect(button("送出撤銷").disabled).toBe(false);
 });
 
 test("OPS-012: the inbox lists live findings with how often they were reported, and counts every status", async () => {
@@ -1068,7 +3071,7 @@ test("OPS-012: taking on a finding sends the move with the operator's note", asy
   });
 });
 
-test("OPS-012: a refused move says so with the server's words", async () => {
+test("OPS-012: a refused move explains the conflict without exposing a raw server error", async () => {
   stub(true, (_path, method) =>
     method === "PUT"
       ? {
@@ -1081,7 +3084,8 @@ test("OPS-012: a refused move says so with the server's words", async () => {
   await waitFor(has("標記已解決"));
   await type("#admin-finding-resolved-note", "fixed");
   await submit("#admin-finding-resolved-note");
-  await waitFor(has("the finding cannot move to that status from where it is now"));
+  await waitFor(has("資料已變更，請重新整理頁面確認最新狀態後再試。"));
+  expect(has("the finding cannot move to that status from where it is now")()).toBe(false);
 });
 
 test("OPS-013: the waiting proposals show what each would run, its tier and why", async () => {

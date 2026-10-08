@@ -200,6 +200,8 @@ type refusedRun struct {
 }
 
 var refusedRuns = []refusedRun{
+	{ErrVersionDisabled, http.StatusUnprocessableEntity,
+		"這個 Skill 版本已由平台停用，不能建立新的 Run；既有 Run 不受影響。請改用新版本。"},
 	{ErrPreflightTargetNotFound, http.StatusNotFound, messagePreflightTargetNotFound},
 	{ErrNotFound, http.StatusNotFound, messageRunNotFound},
 	{ErrDispatchHalted, http.StatusServiceUnavailable,

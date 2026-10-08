@@ -1,0 +1,54 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "SEC-010-runtime-incident-notification",
+  "status": "draft",
+  "intent": "讓控制平面的重大安全事件成為可追蹤、可接手且能在非工作時間送達的事件，而不是只寄一封沒有處置紀錄的告警信。",
+  "actor": "平台維運負責人與發出安全訊號的控制平面",
+  "observable_outcome": "每個已確認的 P1／P2 事件有分級 GitHub issue，記下觸發判準、自動動作結果與現場；P1 的手機推播在非工作時間實際送達。",
+  "acceptance_criteria": [
+    {
+      "id": "incident-classification",
+      "statement": "控制平面訊號依 SEC-010 的判準逐一分類；不能把 Prometheus 的 critical 一概當成 P1，不確定是 P1 或 P2 時按 P1 處理。"
+    },
+    {
+      "id": "incident-issue",
+      "statement": "每個已確認的 P1／P2 事件建立帶 sev/P1 或 sev/P2、指派維運負責人的 issue，內容有觸發條件、自動動作是否成功及現場位置；缺證據時明寫未確認。"
+    },
+    {
+      "id": "incident-retry",
+      "statement": "同一事件重送或接收端重啟不產生重複 issue；GitHub 建單失敗不得回報成功，並留下可重試、可觀測的失敗。"
+    },
+    {
+      "id": "incident-boundary",
+      "statement": "接收端只接受內部 Alertmanager 的有認證請求，GitHub 寫入憑證只在部署秘密中；事件單不含 Secret、Trace 明文或 Workspace 私有內容。"
+    },
+    {
+      "id": "incident-delivery",
+      "statement": "在真實控制平面注入 P1／P2 演練事件，逐項確認 GitHub issue 的 label 與 assignee 沒被靜默忽略、email 送達，且 P1 的行動 App 推播於非工作時間送達。"
+    },
+    {
+      "id": "incident-coverage",
+      "statement": "逐項對照 SEC-010 的 P1／P2 判準與現有控制平面、供應鏈訊號；沒有可觀測來源的判準明列未涵蓋，不把部分告警接線宣稱為全數完成。"
+    }
+  ],
+  "candidate_terms": ["安全事件", "P1", "P2", "派送煞車", "事件單", "現場"],
+  "open_questions": [
+    "跨 Run、Trace、Sandbox 與供應鏈訊號的事件生命週期應由新的 Supporting Context 擁有，還是維持部署層的整合能力？現有 Registry 沒有事件回應 owner。",
+    "部署使用哪個 GitHub repository、具 Issues write 權限的憑證與可被指派的維運帳號？目前沒有控制平面實際設定可驗證。",
+    "維運負責人的 GitHub Mobile 是否已開啟 issue 指派推播，且非工作時間沒有靜音？必須真人演練確認。",
+    "Reconciler、遮罩器與 Provider 等訊號如何取得同一事件的自動動作結果與現場位置；現行 Alertmanager payload 未必有這些事實。",
+    "同一 P1 故障可能同時發出根因告警與 DispatchHaltedForIncident；要用哪個權威事件識別關聯，而不是各開一張事件單？"
+  ],
+  "risk_flags": ["cross_context", "public_contract", "sensitive_data", "irreversible_change"],
+  "required_approval_roles": ["developer"],
+  "sources": [
+    "docs/plans/02-specifications-and-acceptance-criteria.md",
+    "docs/plans/03-work-items.md",
+    "infra/observability/alerts.yml",
+    "infra/deploy/control-plane/alertmanager.yml.tmpl",
+    "infra/compose/control-plane.yml",
+    "https://prometheus.io/docs/alerting/latest/configuration/",
+    "https://docs.github.com/en/rest/issues/issues",
+    "https://docs.github.com/en/subscriptions-and-notifications/get-started/configuring-notifications"
+  ]
+}

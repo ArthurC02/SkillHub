@@ -1682,17 +1682,18 @@ type ClearModelCallBudgetNotFound Error
 
 func (*ClearModelCallBudgetNotFound) clearModelCallBudgetRes() {}
 
-type ClearModelCallBudgetReq struct {
+// Ref: #/components/schemas/ClearModelCallBudgetRequest
+type ClearModelCallBudgetRequest struct {
 	Reason string `json:"reason"`
 }
 
 // GetReason returns the value of Reason.
-func (s *ClearModelCallBudgetReq) GetReason() string {
+func (s *ClearModelCallBudgetRequest) GetReason() string {
 	return s.Reason
 }
 
 // SetReason sets the value of Reason.
-func (s *ClearModelCallBudgetReq) SetReason(val string) {
+func (s *ClearModelCallBudgetRequest) SetReason(val string) {
 	s.Reason = val
 }
 
@@ -6673,6 +6674,33 @@ type DiffSkillVersionsUnauthorized Error
 
 func (*DiffSkillVersionsUnauthorized) diffSkillVersionsRes() {}
 
+type DisableSkillVersionBadRequest Error
+
+func (*DisableSkillVersionBadRequest) disableSkillVersionRes() {}
+
+type DisableSkillVersionConflict Error
+
+func (*DisableSkillVersionConflict) disableSkillVersionRes() {}
+
+type DisableSkillVersionNotFound Error
+
+func (*DisableSkillVersionNotFound) disableSkillVersionRes() {}
+
+// Ref: #/components/schemas/DisableSkillVersionRequest
+type DisableSkillVersionRequest struct {
+	Reason string `json:"reason"`
+}
+
+// GetReason returns the value of Reason.
+func (s *DisableSkillVersionRequest) GetReason() string {
+	return s.Reason
+}
+
+// SetReason sets the value of Reason.
+func (s *DisableSkillVersionRequest) SetReason(val string) {
+	s.Reason = val
+}
+
 // One thing a package declares about itself, with the words to show for it It replaces the parallel
 // `has_*` booleans that used to sit on `SkillRisk` and `SearchResultRisk`.
 //
@@ -7200,6 +7228,7 @@ func (*Error) getDispatchStatusRes()               {}
 func (*Error) getExposureCaseRes()                 {}
 func (*Error) getMeRes()                           {}
 func (*Error) getOperatorRostersRes()              {}
+func (*Error) getOperatorVersionStatusRes()        {}
 func (*Error) getPublicPublicationRes()            {}
 func (*Error) getSkillImportLimitsRes()            {}
 func (*Error) listDownloadArtifactsRes()           {}
@@ -8982,6 +9011,10 @@ func (*FindSkillsForGovernanceNotFound) findSkillsForGovernanceRes() {}
 
 type FindSkillsForGovernanceOK struct {
 	Skills []SkillGovernance `json:"skills"`
+	// Total matches before the offset is applied.
+	Total int `json:"total"`
+	// Offset of the next page; absent on the last page.
+	NextOffset OptInt `json:"next_offset"`
 }
 
 // GetSkills returns the value of Skills.
@@ -8989,9 +9022,29 @@ func (s *FindSkillsForGovernanceOK) GetSkills() []SkillGovernance {
 	return s.Skills
 }
 
+// GetTotal returns the value of Total.
+func (s *FindSkillsForGovernanceOK) GetTotal() int {
+	return s.Total
+}
+
+// GetNextOffset returns the value of NextOffset.
+func (s *FindSkillsForGovernanceOK) GetNextOffset() OptInt {
+	return s.NextOffset
+}
+
 // SetSkills sets the value of Skills.
 func (s *FindSkillsForGovernanceOK) SetSkills(val []SkillGovernance) {
 	s.Skills = val
+}
+
+// SetTotal sets the value of Total.
+func (s *FindSkillsForGovernanceOK) SetTotal(val int) {
+	s.Total = val
+}
+
+// SetNextOffset sets the value of NextOffset.
+func (s *FindSkillsForGovernanceOK) SetNextOffset(val OptInt) {
+	s.NextOffset = val
 }
 
 func (*FindSkillsForGovernanceOK) findSkillsForGovernanceRes() {}
@@ -10374,7 +10427,11 @@ func (*GetDispatchStatusOK) getDispatchStatusRes() {}
 
 type GetDispatchStatusOKHaltsItem struct {
 	// A provider name, or `pool` for the whole fleet.
-	Target     string                             `json:"target"`
+	Target string `json:"target"`
+	// Stable identity of this halt row.
+	HaltID uuid.UUID `json:"halt_id"`
+	// Increases on every redeclaration of the same halt.
+	Generation int                                `json:"generation"`
 	Source     GetDispatchStatusOKHaltsItemSource `json:"source"`
 	Reason     string                             `json:"reason"`
 	DeclaredAt time.Time                          `json:"declared_at"`
@@ -10389,6 +10446,16 @@ type GetDispatchStatusOKHaltsItem struct {
 // GetTarget returns the value of Target.
 func (s *GetDispatchStatusOKHaltsItem) GetTarget() string {
 	return s.Target
+}
+
+// GetHaltID returns the value of HaltID.
+func (s *GetDispatchStatusOKHaltsItem) GetHaltID() uuid.UUID {
+	return s.HaltID
+}
+
+// GetGeneration returns the value of Generation.
+func (s *GetDispatchStatusOKHaltsItem) GetGeneration() int {
+	return s.Generation
 }
 
 // GetSource returns the value of Source.
@@ -10419,6 +10486,16 @@ func (s *GetDispatchStatusOKHaltsItem) GetAutomaticRecovery() bool {
 // SetTarget sets the value of Target.
 func (s *GetDispatchStatusOKHaltsItem) SetTarget(val string) {
 	s.Target = val
+}
+
+// SetHaltID sets the value of HaltID.
+func (s *GetDispatchStatusOKHaltsItem) SetHaltID(val uuid.UUID) {
+	s.HaltID = val
+}
+
+// SetGeneration sets the value of Generation.
+func (s *GetDispatchStatusOKHaltsItem) SetGeneration(val int) {
+	s.Generation = val
 }
 
 // SetSource sets the value of Source.
@@ -11828,6 +11905,10 @@ type LiftDispatchHaltBadRequest Error
 
 func (*LiftDispatchHaltBadRequest) liftDispatchHaltRes() {}
 
+type LiftDispatchHaltConflict Error
+
+func (*LiftDispatchHaltConflict) liftDispatchHaltRes() {}
+
 // LiftDispatchHaltNoContent is response for LiftDispatchHalt operation.
 type LiftDispatchHaltNoContent struct{}
 
@@ -11840,6 +11921,10 @@ func (*LiftDispatchHaltNotFound) liftDispatchHaltRes() {}
 type LiftDispatchHaltReq struct {
 	// The drained node to return to service; omit for the fleet-wide halt.
 	Provider OptString `json:"provider"`
+	// The halt observed in GET /admin/dispatch.
+	HaltID uuid.UUID `json:"halt_id"`
+	// The generation observed in GET /admin/dispatch.
+	Generation int `json:"generation"`
 	// Why it is safe to resume. Required, same rule as on PUT.
 	Note string `json:"note"`
 }
@@ -11847,6 +11932,16 @@ type LiftDispatchHaltReq struct {
 // GetProvider returns the value of Provider.
 func (s *LiftDispatchHaltReq) GetProvider() OptString {
 	return s.Provider
+}
+
+// GetHaltID returns the value of HaltID.
+func (s *LiftDispatchHaltReq) GetHaltID() uuid.UUID {
+	return s.HaltID
+}
+
+// GetGeneration returns the value of Generation.
+func (s *LiftDispatchHaltReq) GetGeneration() int {
+	return s.Generation
 }
 
 // GetNote returns the value of Note.
@@ -11857,6 +11952,16 @@ func (s *LiftDispatchHaltReq) GetNote() string {
 // SetProvider sets the value of Provider.
 func (s *LiftDispatchHaltReq) SetProvider(val OptString) {
 	s.Provider = val
+}
+
+// SetHaltID sets the value of HaltID.
+func (s *LiftDispatchHaltReq) SetHaltID(val uuid.UUID) {
+	s.HaltID = val
+}
+
+// SetGeneration sets the value of Generation.
+func (s *LiftDispatchHaltReq) SetGeneration(val int) {
+	s.Generation = val
 }
 
 // SetNote sets the value of Note.
@@ -12046,6 +12151,8 @@ func (*ListOperatorAuditLogNotFound) listOperatorAuditLogRes() {}
 
 type ListOperatorAuditLogOK struct {
 	Events []OperatorAuditEvent `json:"events"`
+	// Present only when another page exists.
+	NextBefore OptString `json:"next_before"`
 }
 
 // GetEvents returns the value of Events.
@@ -12053,9 +12160,19 @@ func (s *ListOperatorAuditLogOK) GetEvents() []OperatorAuditEvent {
 	return s.Events
 }
 
+// GetNextBefore returns the value of NextBefore.
+func (s *ListOperatorAuditLogOK) GetNextBefore() OptString {
+	return s.NextBefore
+}
+
 // SetEvents sets the value of Events.
 func (s *ListOperatorAuditLogOK) SetEvents(val []OperatorAuditEvent) {
 	s.Events = val
+}
+
+// SetNextBefore sets the value of NextBefore.
+func (s *ListOperatorAuditLogOK) SetNextBefore(val OptString) {
+	s.NextBefore = val
 }
 
 func (*ListOperatorAuditLogOK) listOperatorAuditLogRes() {}
@@ -13507,6 +13624,46 @@ func (s *OperatorAuditEventMetadata) init() OperatorAuditEventMetadata {
 	}
 	return m
 }
+
+// Ref: #/components/schemas/OperatorVersionStatus
+type OperatorVersionStatus struct {
+	VersionID     uuid.UUID `json:"version_id"`
+	VersionNumber int       `json:"version_number"`
+	Disabled      bool      `json:"disabled"`
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *OperatorVersionStatus) GetVersionID() uuid.UUID {
+	return s.VersionID
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *OperatorVersionStatus) GetVersionNumber() int {
+	return s.VersionNumber
+}
+
+// GetDisabled returns the value of Disabled.
+func (s *OperatorVersionStatus) GetDisabled() bool {
+	return s.Disabled
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *OperatorVersionStatus) SetVersionID(val uuid.UUID) {
+	s.VersionID = val
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *OperatorVersionStatus) SetVersionNumber(val int) {
+	s.VersionNumber = val
+}
+
+// SetDisabled sets the value of Disabled.
+func (s *OperatorVersionStatus) SetDisabled(val bool) {
+	s.Disabled = val
+}
+
+func (*OperatorVersionStatus) disableSkillVersionRes()      {}
+func (*OperatorVersionStatus) getOperatorVersionStatusRes() {}
 
 // NewOptAddAcceptanceCriterionReqSource returns new OptAddAcceptanceCriterionReqSource with value set to v.
 func NewOptAddAcceptanceCriterionReqSource(v AddAcceptanceCriterionReqSource) OptAddAcceptanceCriterionReqSource {
@@ -24798,7 +24955,8 @@ type RunPermissionSummary struct {
 	// is a licence hold on the skill, `capability_mismatch` a deployment with no model outlet or no
 	// sandbox that fits, `scan_blocked` and `scan_unavailable` the static scan refusing or being unable to
 	// read the package, and `content_not_curated` the clean test mode refusing material that is neither in
-	// the public catalogue nor curated at this exact version.
+	// the public catalogue nor curated at this exact version. `version_disabled` is the operator's
+	// irreversible stop on new Runs of precisely this version.
 	//
 	// Every one of these is also refused when the run is created; this field exists so the refusal arrives
 	// before the user has read a permission summary and confirmed it.
@@ -24884,7 +25042,8 @@ func (*RunPermissionSummary) getRunPreflightRes() {}
 // is a licence hold on the skill, `capability_mismatch` a deployment with no model outlet or no
 // sandbox that fits, `scan_blocked` and `scan_unavailable` the static scan refusing or being unable to
 // read the package, and `content_not_curated` the clean test mode refusing material that is neither in
-// the public catalogue nor curated at this exact version.
+// the public catalogue nor curated at this exact version. `version_disabled` is the operator's
+// irreversible stop on new Runs of precisely this version.
 //
 // Every one of these is also refused when the run is created; this field exists so the refusal arrives
 // before the user has read a permission summary and confirmed it.
@@ -24896,6 +25055,7 @@ const (
 	RunPermissionSummaryBlockedScanBlocked        RunPermissionSummaryBlocked = "scan_blocked"
 	RunPermissionSummaryBlockedScanUnavailable    RunPermissionSummaryBlocked = "scan_unavailable"
 	RunPermissionSummaryBlockedContentNotCurated  RunPermissionSummaryBlocked = "content_not_curated"
+	RunPermissionSummaryBlockedVersionDisabled    RunPermissionSummaryBlocked = "version_disabled"
 )
 
 // AllValues returns all RunPermissionSummaryBlocked values.
@@ -24906,6 +25066,7 @@ func (RunPermissionSummaryBlocked) AllValues() []RunPermissionSummaryBlocked {
 		RunPermissionSummaryBlockedScanBlocked,
 		RunPermissionSummaryBlockedScanUnavailable,
 		RunPermissionSummaryBlockedContentNotCurated,
+		RunPermissionSummaryBlockedVersionDisabled,
 	}
 }
 
@@ -24921,6 +25082,8 @@ func (s RunPermissionSummaryBlocked) MarshalText() ([]byte, error) {
 	case RunPermissionSummaryBlockedScanUnavailable:
 		return []byte(s), nil
 	case RunPermissionSummaryBlockedContentNotCurated:
+		return []byte(s), nil
+	case RunPermissionSummaryBlockedVersionDisabled:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -24944,6 +25107,9 @@ func (s *RunPermissionSummaryBlocked) UnmarshalText(data []byte) error {
 		return nil
 	case RunPermissionSummaryBlockedContentNotCurated:
 		*s = RunPermissionSummaryBlockedContentNotCurated
+		return nil
+	case RunPermissionSummaryBlockedVersionDisabled:
+		*s = RunPermissionSummaryBlockedVersionDisabled
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

@@ -26,9 +26,11 @@ const (
 	ActionSkillVersionCreate = "skill.version_create"
 	ActionSkillFork          = "skill.fork"
 
-	ActionSkillGenerateFailed = "skill.generate_failed"
-	ActionSkillDelete         = "skill.delete"
-	ActionSkillTakedown       = "skill.takedown"
+	ActionSkillGenerateFailed        = "skill.generate_failed"
+	ActionSkillDelete                = "skill.delete"
+	ActionSkillTakedown              = "skill.takedown"
+	ActionSkillVersionDisable        = "skill.version_disable"
+	ActionSkillVersionDisableAttempt = "skill.version_disable_attempt"
 
 	ActionSkillRestrict   = "skill.access_restrict"
 	ActionSkillUnrestrict = "skill.access_unrestrict"
@@ -187,6 +189,7 @@ func Log(ctx context.Context, db DBTX, ev Event) error {
 }
 
 type Record struct {
+	ID           int64
 	Actor        pgtype.UUID
 	Agent        pgtype.UUID
 	Workspace    pgtype.UUID
@@ -215,6 +218,14 @@ type PlatformFilter struct {
 	Scope         string
 }
 
+type PlatformPage struct {
+	Limit       int32
+	Offset      int32
+	WorkspaceID pgtype.UUID
+	BeforeAt    time.Time
+	BeforeID    int64
+}
+
 func ListForWorkspace(
 	ctx context.Context, db DBTX, workspaceID pgtype.UUID, actions []string, limit int32,
 ) ([]Record, error) {
@@ -235,16 +246,33 @@ func ListForWorkspace(
 	return records(rows), nil
 }
 
-func ListPlatform(ctx context.Context, db DBTX, filter PlatformFilter, limit, offset int32) ([]Record, error) {
+func ListPlatform(ctx context.Context, db DBTX, filter PlatformFilter, page PlatformPage) ([]Record, error) {
 	if db == nil {
 		return nil, errors.New("audit: database handle is not configured")
 	}
-	rows, err := gen.New(db).ListPlatformAuditEvents(ctx, gen.ListPlatformAuditEventsParams{
-		Actions:       filter.Actions,
-		ScopedActions: filter.ScopedActions,
-		Scope:         filter.Scope,
-		PageLimit:     limit,
-		PageOffset:    offset,
+	var beforeAt pgtype.Timestamptz
+	var beforeID *int64
+	if !page.BeforeAt.IsZero() {
+		beforeAt = pgtype.Timestamptz{Time: page.BeforeAt, Valid: true}
+		beforeID = &page.BeforeID
+	}
+	queries := gen.New(db)
+	if page.WorkspaceID.Valid {
+		rows, err := queries.ListWorkspaceOperatorAuditEvents(ctx, gen.ListWorkspaceOperatorAuditEventsParams{
+			WorkspaceID: page.WorkspaceID, Actions: filter.Actions,
+			ScopedActions: filter.ScopedActions, Scope: filter.Scope,
+			BeforeAt: beforeAt, BeforeID: beforeID,
+			PageLimit: page.Limit, PageOffset: page.Offset,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return records(rows), nil
+	}
+	rows, err := queries.ListPlatformAuditEvents(ctx, gen.ListPlatformAuditEventsParams{
+		Actions: filter.Actions, ScopedActions: filter.ScopedActions, Scope: filter.Scope,
+		BeforeAt: beforeAt, BeforeID: beforeID,
+		PageLimit: page.Limit, PageOffset: page.Offset,
 	})
 	if err != nil {
 		return nil, err
@@ -256,6 +284,7 @@ func records(rows []gen.AuditEvent) []Record {
 	out := make([]Record, 0, len(rows))
 	for _, r := range rows {
 		rec := Record{
+			ID:    r.ID,
 			Actor: r.ActorUserID, Agent: r.ActorAgentID, Workspace: r.WorkspaceID, Action: r.Action,
 			ResourceType: r.ResourceType, ResourceID: r.ResourceID, OccurredAt: r.CreatedAt.Time,
 		}

@@ -2516,7 +2516,7 @@ paths:
     post:
       operationId: grantCredits
       summary: Put Credit into an account (CRED-007)
-      description: |
+      description: |-
         Operator only. MVP connects no payment gateway, so an operator entry is
         the whole of "top up" — and it is also how a beta participant's reward
         is issued, which is why this route exists before any billing does.
@@ -2531,11 +2531,13 @@ paths:
         entry that changes nothing while claiming an operator did something.
 
         Idempotent only when the request carries `idempotency_key`: a replay of
-        the same key for the same account writes no second entry and no second
-        audit event, and answers with the balance as it stands. Without a key
-        nothing identifies a retry, so two identical calls are two grants. A
-        key already used on this account for a different amount is a 409, not
-        a replay: answering 200 would report a grant that was never applied.
+        the same key for the same account, amount, reason and operator writes no
+        second entry or audit event, and answers with the balance as it stands.
+        Without a key nothing identifies a retry, so two identical calls are
+        two grants. Reusing a key with another amount, reason or operator is a
+        409: answering 200 would report a grant that was never applied. A
+        legacy grant without a request fingerprint also returns 409 on replay,
+        because the server cannot verify the original request.
       requestBody:
         required: true
         content:
@@ -2586,10 +2588,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "409":
-          description: |
+          description: |-
             Nothing was changed: the account is being deleted, or the
-            `idempotency_key` was already used on this account for a grant of a
-            different amount.
+            `idempotency_key` was already used on this account for a grant with
+            another amount, reason or operator, or the earlier request cannot
+            be verified.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -2930,6 +2933,66 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /admin/versions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getOperatorVersionStatus
+      summary: Read one Skill Version's disable status by exact ID
+      description: Operator only. Returns no package content or cross-workspace version list.
+      responses:
+        "200":
+          description: The version's minimal metadata.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperatorVersionStatus" }
+        "404":
+          description: No such version, invalid ID, or caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/versions/{id}/disable:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      operationId: disableSkillVersion
+      summary: Irreversibly prevent one Skill Version from starting new Runs
+      description: |
+        Operator only. The version content and existing Runs are unchanged.
+        The disable and audit event commit together. A repeated command records
+        the attempt and returns 409. There is no restore route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DisableSkillVersionRequest" }
+      responses:
+        "200":
+          description: Disabled for new Runs.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperatorVersionStatus" }
+        "400":
+          description: Missing, blank, or oversized reason, or malformed body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: No such version, invalid ID, or caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: This version was already disabled; the attempt is audited.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/skills/{id}/redistribution:
     parameters:
       - name: id
@@ -3198,11 +3261,19 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [target, source, reason, declared_at, automatic_recovery]
+                      required: [target, halt_id, generation, source, reason, declared_at, automatic_recovery]
                       properties:
                         target:
                           type: string
                           description: A provider name, or `pool` for the whole fleet.
+                        halt_id:
+                          type: string
+                          format: uuid
+                          description: Stable identity of this halt row.
+                        generation:
+                          type: integer
+                          minimum: 1
+                          description: Increases on every redeclaration of the same halt.
                         source:
                           type: string
                           enum: [p1_incident, orphan_threshold]
@@ -3232,7 +3303,7 @@ paths:
     put:
       operationId: declareDispatchHalt
       summary: Stop dispatching new Runs (SEC-012, 02:SEC-010 P1)
-      description: |
+      description: >-
         Operator only. Declares a P1 and performs its three automatic actions at
         once: new runs are refused (503 on POST /skills/{id}/runs), nothing is
         dispatched to the target, and cleanup and orphan teardown stand down so
@@ -3246,8 +3317,9 @@ paths:
         depends on.
 
         Writes the halt row and its audit event in one transaction (iron rule 9).
-        Idempotent: re-declaring rewrites the reason and writes a second audit
-        event, because an operator repeating an action is not an error.
+        Re-declaring keeps the active row, increases its generation, rewrites
+        the reason and writes another audit event. Repeating the action is not
+        an error, but an earlier lift observation becomes stale.
 
         A P1 declared over a target already paused by the X-04 threshold takes it
         over — including its release, which stops being automatic. The reverse
@@ -3309,7 +3381,7 @@ paths:
     delete:
       operationId: liftDispatchHalt
       summary: Resume dispatching (SEC-012)
-      description: |
+      description: >-
         Operator only, and the only way a `p1_incident` halt is ever released:
         03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時恢復服務）」.
 
@@ -3322,19 +3394,29 @@ paths:
         while the halt was in force, so nobody has to start over. Cleanups that
         stood down are performed on the next sweep as well.
 
-        Idempotent: lifting nothing answers 204, because the caller's intent is
-        already true.
+        The observed `halt_id` and `generation` from GET /admin/dispatch must
+        match the active halt in the same update transaction. A redeclared or
+        replaced halt returns 409 without lifting or auditing it. Lifting
+        nothing with a complete observation answers 204.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [note]
+              required: [note, halt_id, generation]
               properties:
                 provider:
                   type: string
                   description: The drained node to return to service; omit for the fleet-wide halt.
+                halt_id:
+                  type: string
+                  format: uuid
+                  description: The halt observed in GET /admin/dispatch.
+                generation:
+                  type: integer
+                  minimum: 1
+                  description: The generation observed in GET /admin/dispatch.
                 note:
                   type: string
                   maxLength: 1000
@@ -3345,7 +3427,12 @@ paths:
             This target is dispatchable. Also the answer when there was nothing
             to lift.
         "400":
-          description: Body is not JSON, `note` is blank or over 1000 bytes, or `provider` is not configured.
+          description: Body is invalid, `note` is blank or over 1000 bytes, `provider` is not configured, or the observation is missing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The active halt changed since the operator observed it. Fetch the latest status before deciding again.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3868,6 +3955,10 @@ paths:
           in: query
           required: true
           schema: { type: string, minLength: 1 }
+        - name: offset
+          in: query
+          description: Number of matching skills to skip; defaults to zero.
+          schema: { type: integer, minimum: 0, default: 0 }
       responses:
         "200":
           description: Zero or more matches.
@@ -3875,13 +3966,21 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [skills]
+                required: [skills, total]
                 properties:
                   skills:
                     type: array
                     items: { $ref: "#/components/schemas/SkillGovernance" }
+                  total:
+                    type: integer
+                    minimum: 0
+                    description: Total matches before the offset is applied.
+                  next_offset:
+                    type: integer
+                    minimum: 0
+                    description: Offset of the next page; absent on the last page.
         "400":
-          description: "`q` is missing or blank."
+          description: "`q` is missing or blank, or `offset` is invalid."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3931,6 +4030,11 @@ paths:
         operator actions; the account and ledger lookups are among them.
         `skill.takedown` is also written by the owner's own takedown, so only
         the events whose metadata carries `scope: operator` are listed.
+        Use `next_before` as the next request's `before` cursor so new events
+        do not move the page boundary. `offset` remains for older clients;
+        it cannot be combined with `before`. An optional `workspace_id`
+        narrows the operator-only view before pagination; without it, the
+        response remains platform-wide.
       parameters:
         - name: limit
           in: query
@@ -3940,6 +4044,14 @@ paths:
           in: query
           required: false
           schema: { type: integer, minimum: 0, default: 0 }
+        - name: before
+          in: query
+          required: false
+          schema: { type: string }
+        - name: workspace_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
       responses:
         "200":
           description: One page of events.
@@ -3952,8 +4064,11 @@ paths:
                   events:
                     type: array
                     items: { $ref: "#/components/schemas/OperatorAuditEvent" }
+                  next_before:
+                    type: string
+                    description: Present only when another page exists.
         "400":
-          description: "`limit` or `offset` is out of range."
+          description: "`limit`, `offset`, `before`, or `workspace_id` is invalid."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -4062,13 +4177,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [reason]
-              properties:
-                reason:
-                  type: string
-                  maxLength: 1000
+            schema: { $ref: "#/components/schemas/ClearModelCallBudgetRequest" }
       responses:
         "204":
           description: This model call runs under its compiled default again.
@@ -4474,13 +4583,10 @@ paths:
         "422":
           description: |
             Well formed, the platform is working, and the run still may not
-            start. Six causes, and the message says which. The list read three
-            for a while, which is the drift this file warns about under
-            `/api/skills/search`: a cause missing from it is how a handler and
-            its contract come apart. The three that were missing are the last
-            three below, and one of them clears on its own in seconds while
-            another does not clear until tomorrow - a client that folded them
-            into a fallback branch told the user the wrong one.
+            start. The message names which of the seven causes applies; some
+            clear on their own, while others require a different version or
+            an operator decision. Clients must not collapse them into one
+            generic retry message.
 
             - No configured provider can satisfy the run's requirements
               (RUN-005); the message names the requirement each one failed.
@@ -4506,6 +4612,8 @@ paths:
             - The skill is under a licensing hold (0023, SEC-011). The request
               is fine and the platform is fine; this content may not be copied
               into a sandbox until the review concludes.
+            - The exact Skill Version was disabled by an operator (SEC-011).
+              Only new Runs are refused; existing Runs and version content remain.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -7261,6 +7369,24 @@ components:
           type: [string, "null"]
           format: date-time
         takedown_reason: { type: [string, "null"] }
+    OperatorVersionStatus:
+      type: object
+      required: [version_id, version_number, disabled]
+      additionalProperties: false
+      properties:
+        version_id: { type: string, format: uuid }
+        version_number: { type: integer }
+        disabled: { type: boolean }
+    DisableSkillVersionRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, maxLength: 1000 }
+    ClearModelCallBudgetRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, maxLength: 1000 }
     ModelCallBudget:
       type: object
       required: [kind, seconds, default_seconds, min_seconds, max_seconds, reason, set_at]
@@ -9636,7 +9762,7 @@ components:
             at all.
         blocked:
           type: string
-          enum: [access_restricted, capability_mismatch, scan_blocked, scan_unavailable, content_not_curated]
+          enum: [access_restricted, capability_mismatch, scan_blocked, scan_unavailable, content_not_curated, version_disabled]
           description: |
             Why this pair cannot start a run at all, absent when it can. A code
             rather than a sentence: the wording belongs to the interface, and an
@@ -9656,7 +9782,8 @@ components:
             `scan_unavailable` the static scan refusing or being unable to read
             the package, and `content_not_curated` the clean test mode refusing
             material that is neither in the public catalogue nor curated at
-            this exact version.
+            this exact version. `version_disabled` is the operator's irreversible
+            stop on new Runs of precisely this version.
 
             Every one of these is also refused when the run is created; this
             field exists so the refusal arrives before the user has read a

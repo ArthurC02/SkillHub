@@ -261,6 +261,7 @@ func newRunServices(
 		ActiveArtifactReferences: packaging.ActiveArtifactReferences,
 	}
 	wiring.WireRunRegistryReaders(runSvc, registrySvc)
+	wiring.WireRunVersionAdmission(runSvc, registrySvc)
 	traceSvc := wiring.NewTraceService(cfg.Pool, cfg.TraceSigner, runSvc)
 	runSvc.Trace = traceSvc
 	return runSvc, traceSvc

@@ -66,6 +66,13 @@ order by events desc;
 
 canary 與流量型訊號保護不同邊界：canary 檢查 masker 規則本身，即使零流量也有效；流量型訊號檢查 ingest 呼叫端是否仍然使用 masker。合成或沒有 Secret 的語料可使流量型訊號不具判讀力，不能用來推翻 canary。
 
+若確認遮罩規則漏掉了真實秘密，即使事件的 `masked` 欄位是 `true`，仍按外洩處理，不等遮罩器修好才止血：
+
+1. 保持整池 halt；以 alias 批次撤銷暴露時間窗內所有 attempt 的 Virtual Key，重複執行也不能留下有效金鑰。輪替 `SKILLHUB_TRACE_INGEST_SECRET`；若涉及供應商憑證，也到供應商端輪替，並以舊憑證取得 401 確認撤銷生效。
+2. 在受控作業環境以已知外洩值本身為比對條件重掃 `trace_events.payload`，不要依賴已失效的遮罩規則或 `masked` 旗標，也不要把外洩值放進命令列歷史或 Log。定位受影響事件後就地重遮並補記 `masked_fields`，不刪除事件；在事故 issue 逐筆記下事件 ID、時間及修改前後的處置狀態，不貼明文秘密。同步確認相同值未留在 Log 或分析事件。
+3. 通知每個受影響 Workspace 的擁有者，說明外洩值的類別、暴露時間窗與已完成的撤銷動作。憑證一律視為已外洩，不以「可能沒人讀到」降低處置級別；通知內容也不得重複洩露秘密。
+4. 在事故 issue 於 24 小時內補上時間軸、根因與偵測延遲的 postmortem，並新增一條以該筆明文為斷言的遮罩回歸測試。沒有這條會因舊缺陷而失敗的測試，不把修復視為完成。
+
 ### 3.2 Reconciler 的最小判讀
 
 ```sql
@@ -80,19 +87,26 @@ where kind = 'run_orphan_scan';
 
 只有「逃逸疑慮」與「隔離技術高風險 CVE」需要由人主動宣告；canary、流量型遮罩、P-02、Reconciler 停擺會由平台建立整池 `p1_incident`。不確定是 P1 或較低等級時，按 P1 處理。
 
+每起 P1／P2 事故都需要帶 `sev/P1`／`sev/P2` label 的 GitHub issue，記下觸發判準、自動動作是否成功及現場保留位置；issue 是事故的唯一事實來源。若自動建單尚未接上，值班者須手動建立並確認通知送達，不能把 Alertmanager email 或應用程式 Log 當成已建單的證據。P1 還須確認非工作時間的手機推播實際送達。
+
 ```bash
 # 宣告整池 P1；填 provider 才只停止該 Provider
 curl -s -b <cookie> -X PUT http://<api>/admin/dispatch/halt \
   -H 'Content-Type: application/json' \
   -d '{"note":"<觸發條件與已採取的止血動作>"}'
 
-# 修復、驗證與證據完成後解除；同樣可填 provider
-curl -s -b <cookie> -X DELETE http://<api>/admin/dispatch/halt \
+# 修復、驗證與證據完成後，讀取目標目前的 halt_id 與 generation
+curl -s -b <cookie> http://<api>/admin/dispatch
+
+# 確認來源與理由仍屬這次事故，再把剛讀到的值帶回；節點煞車需同時填 provider
+curl -i -s -b <cookie> -X DELETE http://<api>/admin/dispatch/halt \
   -H 'Content-Type: application/json' \
-  -d '{"note":"<修復內容、驗證結果與為何現在安全>"}'
+  -d '{"note":"<修復內容、驗證結果與為何現在安全>","halt_id":"<剛讀到的 halt_id>","generation":<剛讀到的 generation>}'
 ```
 
-兩個操作都要求非空 `note`，並寫入 audit event。重複宣告與解除是冪等的。解除前必須同時確認：觸發條件已消失、現場與處置證據已保存、負責人可追溯事件的記錄已建立。對 `p1_incident` 而言，節點自己恢復、重啟程序或探針暫時安靜都不是解除理由。
+缺少 `halt_id` 或 `generation` 的舊解除請求會被拒絕。若回 `409 stale_dispatch_halt`，煞車沒有解除；重新讀取狀態、重新核對事故及處置證據，不能直接重送舊請求。若目標已無現行煞車，帶完整所見前提的請求回 `204`，不會解除後來新建的煞車。
+
+兩個操作都要求非空 `note`。重複宣告沿用同一筆煞車，但更新代次並再寫一筆 audit；若目標已無煞車，帶完整前提重複解除回 `204`，不再寫解除 audit。解除前必須同時確認：觸發條件已消失、現場與處置證據已保存、負責人可追溯事件的記錄已建立。對 `p1_incident` 而言，節點自己恢復、重啟程序或探針暫時安靜都不是解除理由。
 
 ## 5. 事故結束後
 

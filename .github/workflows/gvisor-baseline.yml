@@ -15,6 +15,7 @@ jobs:
     timeout-minutes: 10
     env:
       GH_TOKEN: ${{ github.token }}
+      INCIDENT_ASSIGNEE: ${{ vars.SKILLHUB_INCIDENT_ASSIGNEE || github.repository_owner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -46,47 +47,32 @@ jobs:
           [ "$AGE_DAYS" -le 90 ] || FAIL="${FAIL:+$FAIL; }latest upstream release is ${AGE_DAYS}d old"
           [ -z "$FAIL" ] || { echo "FAIL=$FAIL" >> "$GITHUB_ENV"; echo "::error::$FAIL"; }
 
-      - name: New escape-class advisory in the last 24h
+      - name: Recent suspected escape-class advisories
         if: ${{ env.SKIP != '1' }}
         run: |
           set -euo pipefail
           gh api repos/google/gvisor/security-advisories --jq \
             '.[] | select(.published_at != null)
-                 | select((now - (.published_at | fromdateiso8601)) < 86400)
+                 | select((now - (.published_at | fromdateiso8601)) < 604800)
                  | select(.severity == "critical" or (.summary | ascii_downcase | test("escape")))
-                 | "GHSA \(.ghsa_id) [\(.severity)] \(.summary)"' > advisories.txt \
+                 | [.ghsa_id, .severity, .summary, .html_url] | @tsv' > advisories.tsv \
             || { echo "::error::gVisor security-advisories feed unreachable — cannot conclude 'no new advisory'"; exit 1; }
           gh api repos/google/gvisor/releases --jq \
             '[.[] | select(.prerelease == false)][0]
              | select(.body != null and (.body | test("escape|CVE-"; "i")))
-             | select((now - (.published_at | fromdateiso8601)) < 86400)
-             | "RELEASE \(.tag_name) notes mention escape/CVE"' > relnotes.txt \
+             | select((now - (.published_at | fromdateiso8601)) < 604800)
+             | [.tag_name, .html_url] | @tsv' > relnotes.tsv \
             || { echo "::error::gVisor releases feed unreachable — cannot conclude 'no new advisory'"; exit 1; }
-          cat advisories.txt relnotes.txt > escape.txt
-          if [ -s escape.txt ]; then
+          if [ -s advisories.tsv ] || [ -s relnotes.tsv ]; then
             echo "ESCAPE=1" >> "$GITHUB_ENV"
-            cat escape.txt
+            cat advisories.tsv relnotes.tsv
           else
-            echo "::notice::both sources reachable, 0 escape-class matches ($(date -u +%F))"
+            echo "::notice::both sources reachable, 0 suspected escape-class matches in the last 7 days ($(date -u +%F))"
           fi
 
       - name: File or update the issue
         if: ${{ env.FAIL != '' || env.ESCAPE == '1' }}
-        run: |
-          set -euo pipefail
-          if [ "${ESCAPE:-}" = 1 ]; then
-            TITLE="gVisor escape-class advisory — 24h SLA started (SEC-002 P-04)"
-            HALT='curl -X PUT -b "$COOKIE" -H "Content-Type: application/json" -d '"'"'{"note":"gVisor escape-class advisory, pool not yet patched"}'"'"' https://<host>/admin/dispatch/halt'
-            BODY=$(printf 'P-04: patch the whole pool within 24h of this issue, or disable SelfHostedProvider per SEC-010.\n\nTo stop dispatching now (03:SEC-012, as the operator):\n\n```\n%s\n```\n\nThat refuses new runs, stops dispatch and preserves the scene, and it is never lifted automatically: `DELETE /admin/dispatch/halt` once the pool is patched.\n\n```\n%s\n```\n' "$HALT" "$(cat escape.txt)")
-          else
-            TITLE="gVisor baseline has drifted (SEC-002 P-04)"
-            BODY="P-04: $FAIL. Update infra/nodes/gvisor-baseline.txt (the release and both sha512 lines together) and rebuild the pool (P-03)."
-          fi
-          if gh issue list --state open --search "in:title \"$TITLE\"" --json title --jq '.[].title' | grep -qxF "$TITLE"; then
-            echo "::notice::issue already open, not duplicating"
-          else
-            gh issue create --title "$TITLE" --body "$BODY"
-          fi
+        run: bash tools/ci/gvisor-incident-issues.sh
 
       - name: Fail the run if the baseline drifted
         if: ${{ env.FAIL != '' || env.ESCAPE == '1' }}

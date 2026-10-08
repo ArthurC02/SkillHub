@@ -12,8 +12,19 @@ export function AdminCostStatistics() {
   return (
     <AdminPage heading="成本統計" lede="與開始前檢查、會話估價讀的是同一組數字；不含使用者維度。">
       {stats.isPending && <Loading what="成本統計" />}
-      <ReadFailure error={stats.error} what="成本統計" />
+      <ReadFailure
+        error={stats.error}
+        what="成本統計"
+        onRetry={() => void stats.refetch()}
+        retrying={stats.isFetching}
+      />
+      {stats.isFetching && stats.data && !stats.error && (
+        <p className="note" role="status">
+          正在更新成本統計；表格仍顯示上次讀取的資料。
+        </p>
+      )}
       {stats.data &&
+        !stats.error &&
         (rows.length === 0 ? (
           <p>統計窗：0 個。每日統計跑過之後才會有。</p>
         ) : (
@@ -23,6 +34,7 @@ export function AdminCostStatistics() {
               <thead>
                 <tr>
                   <th scope="col">種類</th>
+                  <th scope="col">統計窗開始</th>
                   <th scope="col">統計窗結束</th>
                   <th scope="col">樣本數</th>
                   <th scope="col">p50</th>
@@ -37,6 +49,9 @@ export function AdminCostStatistics() {
                     <th scope="row" data-label="種類">
                       {COST_KIND[row.kind] ?? row.kind}
                     </th>
+                    <td data-label="統計窗開始">
+                      <Timestamp at={row.window_start} />
+                    </td>
                     <td data-label="統計窗結束">
                       <Timestamp at={row.window_end} />
                     </td>

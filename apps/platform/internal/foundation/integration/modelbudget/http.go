@@ -3,6 +3,7 @@ package modelbudget
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -111,6 +112,9 @@ func (h *Handler) writeRefusal(w http.ResponseWriter, err error, fallback string
 		httpx.WriteError(w, http.StatusBadRequest,
 			"reason is required: changing how long the platform waits for a model is an "+
 				"operator action nobody can explain later otherwise")
+	case errors.Is(err, ErrReasonTooLong):
+		httpx.WriteError(w, http.StatusBadRequest,
+			fmt.Sprintf("reason must be at most %d characters", maxReason))
 	case errors.Is(err, ErrOutOfRange):
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 	default:

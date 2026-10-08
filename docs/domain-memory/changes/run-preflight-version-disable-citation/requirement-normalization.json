@@ -1,0 +1,19 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "registry-run-preflight-citation-after-version-admission",
+  "status": "draft",
+  "intent": "讓已審查的 Registry→Run preflight 事實讀取仍能以目前程式碼驗證。",
+  "actor": "維護 Run 與 Registry 邊界的開發者",
+  "observable_outcome": "互動記錄的引用指向目前拒絕缺少 reader 並讀取 Version 事實的程式碼，verify-evidence 不再報 stale。",
+  "acceptance_criteria": [
+    {
+      "id": "preflight-fact-citation-current",
+      "statement": "既有互動的語意與契約不變，引用移至目前的函式範圍且可重算摘要。"
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": ["cross_context"],
+  "required_approval_roles": ["developer"],
+  "sources": ["apps/platform/internal/trial/execution/preflight.go"]
+}

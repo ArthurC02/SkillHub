@@ -3,6 +3,8 @@ package modelbudget
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -84,7 +86,7 @@ func TestSettingRefusesWhatTheOperatorMayNotDecide(t *testing.T) {
 		{name: "a reason of only spaces", kind: judge.Kind, seconds: 10, reason: "   ",
 			want: ErrReasonRequired},
 		{name: "a reason past the cap", kind: judge.Kind, seconds: 10,
-			reason: strings.Repeat("x", maxReason+1), want: ErrReasonRequired},
+			reason: strings.Repeat("x", 1001), want: ErrReasonTooLong},
 		{name: "zero seconds", kind: judge.Kind, seconds: 0, reason: "why", want: ErrOutOfRange},
 		{name: "one second past the ceiling", kind: judge.Kind, seconds: judge.Ceiling() + 1,
 			reason: "why", want: ErrOutOfRange},
@@ -107,5 +109,16 @@ func TestClearingRefusesAnEndpointOrAReasonItCannotAccept(t *testing.T) {
 	if err := svc.Clear(context.Background(), judge.Kind, "  ", pgtype.UUID{}); !errors.Is(err, ErrReasonRequired) {
 		t.Errorf("Clear without a reason = %v, want %v; returning an endpoint to its default is an "+
 			"operator action nobody can explain later otherwise", err, ErrReasonRequired)
+	}
+	if err := svc.Clear(context.Background(), judge.Kind, strings.Repeat("x", 1001), pgtype.UUID{}); !errors.Is(err, ErrReasonTooLong) {
+		t.Errorf("Clear with 1001 characters = %v, want %v", err, ErrReasonTooLong)
+	}
+}
+
+func TestOverlongReasonRefusalNamesTheCharacterLimit(t *testing.T) {
+	rec := httptest.NewRecorder()
+	(&Handler{}).writeRefusal(rec, ErrReasonTooLong, "model budget could not be cleared")
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "1000 characters") {
+		t.Errorf("overlong reason response = %d %q, want 400 naming the 1000-character limit", rec.Code, rec.Body.String())
 	}
 }

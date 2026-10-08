@@ -186,11 +186,13 @@ func TestOperatorActionTrendCountsOnlyOperatorActions(t *testing.T) {
 	insert("skill.takedown", `{"scope":"operator"}`)
 	insert("skill.takedown", `{}`)
 	insert("credit.lookup", `{}`)
+	insert("publication.exposure.review", `{"decision":"approved"}`)
 	insert("artifact.download", `{}`)
 
 	_, after := getTrend(t, operator, "/admin/trends/operator-actions?days=7")
 	assertTrendDelta(t, before, after, to, "skill.takedown", "count", 1)
 	assertTrendDelta(t, before, after, to, "credit.lookup", "count", 1)
+	assertTrendDelta(t, before, after, to, "publication.exposure.review", "count", 1)
 	if _, ok := after[trendKey{to.Format(time.DateOnly), "artifact.download"}]; ok {
 		t.Error("an action outside the operator list came back as a bucket")
 	}

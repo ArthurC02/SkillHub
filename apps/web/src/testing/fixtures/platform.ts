@@ -1016,6 +1016,7 @@ export const ADMIN_LEDGER = {
 } satisfies CreditLedger;
 
 export const ADMIN_SKILLS = {
+  total: 1,
   skills: [
     {
       skill_id: SKILL,
@@ -1027,13 +1028,15 @@ export const ADMIN_SKILLS = {
       takedown_reason: null,
     },
   ],
-} satisfies { skills: SkillGovernance[] };
+} satisfies { skills: SkillGovernance[]; total: number };
 
 export const ADMIN_DISPATCH = {
   dispatching: false,
   halts: [
     {
       target: "pool",
+      halt_id: "11111111-1111-4111-8111-111111111111",
+      generation: 1,
       source: "p1_incident",
       reason: "sandbox escape suspected on node-2",
       declared_at: "2026-09-11T09:00:00Z",

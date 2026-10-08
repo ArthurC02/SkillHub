@@ -65,6 +65,7 @@ export interface PreflightResponse {
   estimated_cost: CostEstimate;
   quota?: RunQuota;
   blocked?:
+    | "version_disabled"
     | "access_restricted"
     | "capability_mismatch"
     | "scan_blocked"

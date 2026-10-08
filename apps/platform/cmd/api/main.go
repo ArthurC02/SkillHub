@@ -504,7 +504,7 @@ func inProcessWorkerDeps(cfg apiserver.Config, store *objstore.Client) func() wo
 }
 
 func startCleanWorker(ctx context.Context, pool *pgxpool.Pool, deps func() worker.Deps) *worker.Set {
-	exitOn(queue.EnsureSchema(ctx, pool), "clean mode: queue schema")
+	exitOn(queue.EnsureSchemaForSingleProcess(ctx, pool), "clean mode: queue schema")
 	set, err := worker.BuildWorkers(pool, deps())
 	exitOn(err, "clean mode: worker composition")
 	exitOn(set.Queue.Start(ctx), "clean mode: queue start")

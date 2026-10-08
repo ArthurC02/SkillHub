@@ -411,7 +411,7 @@ func (s *Service) ReviewExposure(
 		return ExposureCase{}, err
 	}
 	if err := audit.Log(ctx, tx, audit.Event{
-		Actor: reviewer.ID, Action: audit.ActionExposureReview,
+		Actor: reviewer.ID, Workspace: state.OwnerWorkspaceID, Action: audit.ActionExposureReview,
 		ResourceType: audit.ResourcePublication, ResourceID: publicationID,
 		Metadata: map[string]any{
 			"publisher": publisher, auditKeyName: name, "decision": string(in.Decision), "reason": reason,

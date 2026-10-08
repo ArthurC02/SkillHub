@@ -7,6 +7,8 @@ import { router } from "../../app/router";
 import type { PreflightResponse } from "./lab.service";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import { preloadEveryPage } from "../../testing/pages";
+import { ApiError } from "../../core/api/client";
+import { MutationError } from "./test-cases/components/MutationError";
 
 beforeAll(preloadEveryPage);
 
@@ -31,6 +33,25 @@ const OLDER_VERSION = "44444444-4444-4444-4444-444444444444";
 const UNKNOWN_VERSION = "66666666-6666-6666-6666-666666666666";
 const TEST_CASE = "33333333-3333-3333-3333-333333333333";
 const OTHER_SKILL = "55555555-5555-5555-5555-555555555555";
+
+test.each([
+  ["name must be 1-64 characters", "儲存沒有成功，可以再試一次。"],
+  ["名稱太長，請縮短後再試。", "名稱太長，請縮短後再試。"],
+])("a Test Case validation error is actionable: %s", async (message, expected) => {
+  root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <MutationError
+        error={new ApiError(400, message)}
+        what="測試題"
+        fallback="儲存沒有成功，可以再試一次。"
+        serverSaysStatuses={[400]}
+      />,
+    ),
+  );
+  expect(container.querySelector('[role="alert"]')?.textContent).toBe(expected);
+  if (message !== expected) expect(container.textContent).not.toContain(message);
+});
 
 const VERSIONS = {
   versions: [
@@ -372,7 +393,8 @@ test("02:TEST-005 a permission change forces a fresh confirmation instead of reu
 
   await clickConfirm();
   await waitFor(() => text().includes("這次試跑沒有開始"));
-  expect(container.textContent).toContain("summary_hash does not match");
+  expect(container.textContent).toContain("請確認下方摘要後再試");
+  expect(container.textContent).not.toContain("summary_hash does not match");
   expect(platform.calls.some((c) => c.url.endsWith("/runs"))).toBe(false);
   expect(container.textContent).toContain("extra.csv");
 
@@ -483,7 +505,8 @@ test("SEC-002 gate B: an exhausted allowance is not reported as a permission cha
   await clickConfirm();
 
   await waitFor(() => text().includes("這次試跑沒有開始"));
-  expect(container.textContent).toContain("resets 24 hours after");
+  expect(container.textContent).toContain("請確認下方摘要後再試");
+  expect(container.textContent).not.toContain("resets 24 hours after");
   expect(container.textContent).not.toContain("權限內容已變更");
 });
 

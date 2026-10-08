@@ -3,11 +3,12 @@ import { useGovernanceAction, type SkillGovernance } from "../../admin.service";
 import { ConfirmDelete } from "../../../../shared/ui/ConfirmDelete";
 import { WriteFailure } from "../../components/WriteFailure";
 import { ActionForm } from "../../components/ActionForm";
+import { OPERATOR_NOTE_MAX_BYTES, operatorNoteBytes } from "../../admin.model";
 
 export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
   const restriction = useGovernanceAction(skill.skill_id, "restriction");
   const redistribution = useGovernanceAction(skill.skill_id, "redistribution");
-  const [verdict, setVerdict] = useState("blocked");
+  const [verdict, setVerdict] = useState("");
   const [licenseExpression, setLicenseExpression] = useState("");
   const [licenseSource, setLicenseSource] = useState("");
   const releasing = verdict === "allowed";
@@ -22,6 +23,7 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
         submitLabel={skill.access_restriction ? "解除受限" : "設定受限"}
         pending={restriction.isPending}
         error={restriction.error}
+        maxNoteBytes={OPERATOR_NOTE_MAX_BYTES}
         done={restriction.isSuccess && "已送出，上面的狀態已更新。"}
         contextKey={`${skill.skill_id}:${skill.access_restriction ?? "none"}`}
         onSubmit={(note) =>
@@ -37,10 +39,15 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
         submitLabel="送出判定"
         pending={redistribution.isPending}
         error={redistribution.error}
-        ready={!releasing || (licenseExpression.trim() !== "" && licenseSource !== "")}
+        maxNoteBytes={OPERATOR_NOTE_MAX_BYTES}
+        ready={
+          verdict !== "" &&
+          (!releasing || (licenseExpression.trim() !== "" && licenseSource !== ""))
+        }
         done={redistribution.isSuccess && "已送出，上面的狀態已更新。"}
         contextKey={`${skill.skill_id}:${verdict}:${licenseExpression.trim()}:${licenseSource}`}
         onSubmit={(note) =>
+          verdict &&
           redistribution.mutate({
             method: "PUT",
             body: releasing
@@ -65,6 +72,7 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
             }}
             disabled={redistribution.isPending}
           >
+            <option value="">選擇判定</option>
             <option value="blocked">禁止再散布</option>
             <option value="unknown">尚未判定</option>
             <option value="allowed">可以再散布（要附授權證據）</option>
@@ -106,32 +114,52 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
         )}
       </ActionForm>
 
-      <TakedownAction skillId={skill.skill_id} />
+      <TakedownAction skill={skill} />
     </>
   );
 }
 
-function TakedownAction({ skillId }: { skillId: string }) {
-  const takedown = useGovernanceAction(skillId, "takedown");
+function TakedownAction({ skill }: { skill: SkillGovernance }) {
+  const takedown = useGovernanceAction(skill.skill_id, "takedown");
   const [takedownReason, setTakedownReason] = useState("");
+  const reasonBytes = operatorNoteBytes(takedownReason);
+  const tooLong = reasonBytes > OPERATOR_NOTE_MAX_BYTES;
 
   return (
     <>
       <h3>下架</h3>
       <div className="field">
-        <label htmlFor="admin-takedown-reason">下架理由（必填，會寫進動作紀錄）</label>
+        <label htmlFor="admin-takedown-reason">
+          下架理由（必填，最多 {OPERATOR_NOTE_MAX_BYTES} 位元組，會寫進動作紀錄）
+        </label>
         <input
           id="admin-takedown-reason"
           value={takedownReason}
           onChange={(event) => setTakedownReason(event.target.value)}
+          readOnly={takedown.isPending}
+          aria-invalid={tooLong}
+          aria-describedby={tooLong ? "admin-takedown-reason-too-long" : undefined}
         />
       </div>
       {takedownReason.trim() === "" ? (
         <p className="note">填了理由才能下架。</p>
+      ) : tooLong ? (
+        <p id="admin-takedown-reason-too-long" className="note">
+          理由太長：目前 {reasonBytes} 位元組，上限 {OPERATOR_NOTE_MAX_BYTES}{" "}
+          位元組。請縮短後再送出。
+        </p>
       ) : (
         <ConfirmDelete
           scopeId="admin-takedown-scope"
-          scope="下架後這個小工具從目錄與搜尋消失，不能再下載或試跑；既有的試跑紀錄仍可追溯。下架沒有恢復的路。"
+          scope={
+            <>
+              下架 {skill.name}（<code>{skill.skill_id}</code>，工作區{" "}
+              <code>{skill.workspace_id}</code>
+              ），理由：{takedownReason.trim()}
+              。下架後不再公開展示或提供下載；目前沒有恢復操作。
+              既有版本與試跑紀錄仍保留，下架本身不阻止新試跑；若需阻止，還須另行處理。
+            </>
+          }
           pending={takedown.isPending}
           label="下架"
           confirmLabel="確認下架"

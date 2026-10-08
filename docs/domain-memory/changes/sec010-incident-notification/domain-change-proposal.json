@@ -1,0 +1,85 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "sec010-incident-notification",
+  "proposer": "coding-agent",
+  "requirement_id": "SEC-010-runtime-incident-notification",
+  "status": "draft",
+  "change_classification": "material",
+  "submitted_at": null,
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": null,
+  "affected_contexts": ["run", "trace"],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "incident",
+    "invariant": "已確認的 P1／P2 事件必須有且只有一個可追蹤的事件單；P1 不得僅因通知失敗而繼續無人知曉地派送，未知的自動動作結果不得寫成成功。",
+    "evidence": [
+      "docs/plans/02-specifications-and-acceptance-criteria.md:1376-1393",
+      "docs/plans/03-work-items.md:305"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "候選 Incident Response 能力接收控制平面的已發生訊號，依明確判準產生事件意圖；GitHub Issues Adapter 只負責外部建單、查重與回傳結果。Run 的派送煞車仍由 Run 擁有，不由建單成功與否決定。",
+    "consistency": "派送停止與事件單建立分屬兩個系統，採最終一致；Alertmanager 可重送，同一事件須冪等，外部建單失敗需維持可重試且可觀測，不得聲稱已通知。",
+    "prohibited_dependencies": [
+      "不得以 Prometheus severity=critical 推導 SEC-010 的 P1。",
+      "GitHub Adapter 不得擁有分級判斷或派送煞車狀態。",
+      "事件接收端不得取得核心資料庫憑證、讀取 Workspace 私有內容或把 Secret 放進 issue。",
+      "不得以 issue 建立成功推定手機推播已送達。"
+    ],
+    "evidence": [
+      "infra/observability/alerts.yml",
+      "infra/deploy/control-plane/alertmanager.yml.tmpl",
+      "https://prometheus.io/docs/alerting/latest/configuration/",
+      "https://docs.github.com/en/rest/issues/issues"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "SEC-010 的 P1／P2 判準與 Prometheus 的 critical／warning 不同；例如 Provider 不可用是 P2，Reconciler 停擺是 P1。",
+      "Alertmanager webhook 有每筆 alert 的 fingerprint，可能重送；GitHub 建單可能逾時、失敗或靜默忽略 label／assignee。",
+      "P1 的停派送必須先於人接告警，且不能依賴 GitHub；事件單必須如實呈現自動動作是否已證實。",
+      "單人維運依靠 GitHub 指派通知與行動推播；程式綠燈無法替代真實帳號的非工作時間送達演練。"
+    ],
+    "decision": "先由審查者裁定 Incident Response 是新的 Supporting Context 還是部署層整合能力；實作只在內部網路接收 Alertmanager webhook，以明確的訊號對照表分類，不以 critical 直接推斷 P1。以 alert fingerprint 與事件窗口識別同一事件，透過窄的『記錄事件』Port 呼叫 GitHub Issues Adapter；失敗回錯讓來源重試並留下可觀測狀態。對缺少自動動作或現場證據的訊號寫『未確認』而不虛構結果。",
+    "invariants_preserved": [
+      "Run 擁有派送煞車與解除路徑，建單失敗不解除煞車。",
+      "operator 不因事件接收端而取得 Workspace 私有資料。",
+      "SEC-010 的不確定 P1／P2 依 P1 處理。",
+      "只有 GitHub issue 是事件處置的事實來源，告警郵件與畫面不假裝是已接手紀錄。"
+    ],
+    "rejected_alternatives": [
+      "把 critical 一律標 sev/P1：ProviderCapabilityUnreachable 與 RunFailureRateHigh 會被誤分級。",
+      "只依賴 Alertmanager email：沒有唯一事件單、自動動作結果與處置歷史，也不能證明手機推播。",
+      "由 GitHub-hosted 排程直接查控制平面：私有部署狀態與現場不一定可達，可能漏掉即時 P1。",
+      "在接收端另建派送煞車：產生第二套權威狀態，與現有 Run 開關可能衝突。"
+    ],
+    "proof_obligations": [
+      "incident-classification", "incident-issue", "incident-retry", "incident-boundary", "incident-delivery", "incident-coverage"
+    ],
+    "counterfactual_check": "把 ProviderCapabilityUnreachable 的明確 P2 對照暫時改成 P1，單獨執行分級測試應以實際標籤錯誤 FAIL；還原後 PASS 且檔案逐位元組一致。"
+  },
+  "event_change": null,
+  "contract_change": {
+    "producer": "Alertmanager",
+    "consumers": ["候選 Incident Response 能力", "GitHub Issues Adapter"],
+    "version": "Alertmanager webhook version 4；外部 GitHub Issues REST",
+    "compatibility": "新增內部 receiver，不變更既有 public API；舊 email receiver 仍可作獨立告警通道，但不能替代事件單。",
+    "data_classification": "內部安全診斷 metadata；不得含 Secret、Trace 明文或 Workspace 私有內容。",
+    "retry_behavior": "Alertmanager 重送視為同一事件；GitHub 回應及建立後的 label、assignee 必須查證，未知結果不回報成功。",
+    "breaking_change": false
+  },
+  "registry_updates": [],
+  "risk_flags": ["cross_context", "public_contract", "sensitive_data", "irreversible_change"],
+  "open_questions": [
+    "Incident Response 的 owner 是否為新 Supporting Context；裁定之前不新增平台內套件或 Registry 紀錄。",
+    "哪些現有訊號足以證明自動動作結果與現場；沒有證據的來源不能被包裝成已完整建單。",
+    "根因告警與同一次 DispatchHaltedForIncident 如何共用事件識別，避免不同 alert fingerprint 對同一事故開兩張單？",
+    "真實 GitHub repository、憑證、指派帳號及手機推播設定待部署負責人確認。"
+  ],
+  "approvals": []
+}

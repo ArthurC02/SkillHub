@@ -20,6 +20,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       WARN_DAYS: ${{ inputs.warn_days || '7' }}
+      INCIDENT_ASSIGNEE: ${{ vars.SKILLHUB_INCIDENT_ASSIGNEE || github.repository_owner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -48,11 +49,16 @@ jobs:
         if: ${{ env.PROBLEM != '' }}
         run: |
           set -euo pipefail
+          labels=$(gh label list --search sev/P3 --json name --jq '.[].name')
+          if ! grep -qxF sev/P3 <<< "$labels"; then
+            gh label create sev/P3 --color 0969DA --description 'Baseline drift or warning requiring review'
+          fi
           TITLE="Runtime image scan is expiring or failing (SBX-002 I-04)"
-          BODY=$(printf 'Nodes admit a runtime image only while its scan attestation is under 30 days old; after that no new run may use the digest.\n\n%s\n\nRe-run the rescan job of the Runtime Image workflow (workflow_dispatch) and check why the weekly run did not refresh it.\n' "$PROBLEM")
-          if gh issue list --state open --search "in:title \"$TITLE\"" --json title --jq '.[].title' | grep -qxF "$TITLE"; then
+          BODY=$(printf 'Severity: P3 pending operator review; this workflow cannot establish whether an expired digest is still referenced by a node.\nTrigger: %s\nAutomatic action: node admission rejects an expired attestation; this workflow does not stop dispatch.\nScene: https://github.com/%s/actions/runs/%s (audit output in the job log).\n\nRe-run the Runtime Image rescan and inspect the nodes before classifying a still-referenced digest as P2.\n' "$PROBLEM" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")
+          existing=$(gh issue list --state open --search "in:title \"$TITLE\"" --json title --jq '.[].title')
+          if grep -qxF "$TITLE" <<< "$existing"; then
             echo "::notice::issue already open, not duplicating"
           else
-            gh issue create --title "$TITLE" --body "$BODY"
+            gh issue create --title "$TITLE" --label sev/P3 --assignee "$INCIDENT_ASSIGNEE" --body "$BODY"
           fi
           exit 1

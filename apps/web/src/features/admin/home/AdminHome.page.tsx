@@ -1,4 +1,6 @@
 import { Link } from "@tanstack/react-router";
+import { useDispatchStatus, useExposureQueue } from "../admin.service";
+import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { AdminPage } from "../components/AdminPage";
 import "./AdminHome.page.css";
 
@@ -17,6 +19,9 @@ export function AdminHome() {
 }
 
 function GovernanceSection() {
+  const queue = useExposureQueue();
+  const pending = queue.data?.publications.length ?? 0;
+
   return (
     <section className="admin-home-section">
       <header>
@@ -67,6 +72,22 @@ function GovernanceSection() {
               <strong>曝光審核</strong>
             </Link>
             <p className="note">審核發佈物的最新 Release，決定要不要讓它出現在搜尋與目錄裡。</p>
+            {queue.isFetching && <p role="status">正在讀取待審數…</p>}
+            {!queue.isFetching && (
+              <ReadFailure
+                error={queue.error}
+                what="曝光待審數"
+                onRetry={() => void queue.refetch()}
+                retrying={queue.isFetching}
+              />
+            )}
+            {queue.data && !queue.error && !queue.isFetching && (
+              <p className="badge-row">
+                <span className={pending > 0 ? "badge badge-warning" : "badge"}>
+                  待審 {pending} 筆
+                </span>
+              </p>
+            )}
           </div>
         </li>
       </ul>
@@ -75,6 +96,10 @@ function GovernanceSection() {
 }
 
 function OperationsSection() {
+  const dispatch = useDispatchStatus();
+  const status = dispatch.data;
+  const haltCount = status?.halts.length ?? 0;
+
   return (
     <section className="admin-home-section">
       <header>
@@ -92,6 +117,32 @@ function OperationsSection() {
               <strong>派送煞車</strong>
             </Link>
             <p className="note">看平台有沒有在派送新的試跑紀錄，宣告或解除煞車。</p>
+            {dispatch.isPending && dispatch.isFetching && <p role="status">正在讀取派送狀態…</p>}
+            {status && dispatch.isFetching && <p className="note">正在確認最新派送狀態…</p>}
+            {!dispatch.isFetching && (
+              <ReadFailure
+                error={dispatch.error}
+                what="派送狀態"
+                onRetry={() => void dispatch.refetch()}
+                retrying={dispatch.isFetching}
+              />
+            )}
+            {status && !dispatch.error && !dispatch.isFetching && (
+              <p className="badge-row">
+                <span
+                  className={
+                    !status.dispatching
+                      ? "badge badge-danger"
+                      : haltCount > 0
+                        ? "badge badge-warning"
+                        : "badge"
+                  }
+                >
+                  {status.dispatching ? "派送中" : "已停止派送"} · {haltCount}{" "}
+                  {status.dispatching && haltCount > 0 ? "個節點煞車" : "個煞車"}
+                </span>
+              </p>
+            )}
           </div>
         </li>
         <li>

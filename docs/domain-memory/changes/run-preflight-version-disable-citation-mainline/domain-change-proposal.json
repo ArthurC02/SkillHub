@@ -1,0 +1,115 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-preflight-version-disable-citation-mainline",
+  "proposer": "coding-agent",
+  "requirement_id": "registry-run-preflight-citation-after-mainline-merge",
+  "status": "applied",
+  "change_classification": "material",
+  "submitted_at": "2026-10-08T03:15:45.089027Z",
+  "verified_at": "2026-10-08T04:00:27.302614Z",
+  "finalized_at": "2026-10-08T04:04:05.462533Z",
+  "applied_at": "2026-10-08T04:04:13.248487Z",
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "c344e737fd9a522ba0a903d6dff62b1d076db7da",
+    "registry_digest": "sha256:afe0c20a28aebe47fb59adbd5353835b1fcc49b86f838f33d02c389536473ce2"
+  },
+  "affected_contexts": [
+    "registry",
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [
+    "registry-run-facts-v1"
+  ],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Registry 擁有 Version 事實；Run 透過注入的 reader 讀取，不直接接觸 Registry 持久層。",
+    "evidence": [
+      "apps/platform/internal/trial/execution/preflight.go:206-229"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "保留 registry-run-preflight-facts 的同步事實讀取；版本准入仍是獨立互動，不改舊契約。",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "run -> registry persistence"
+    ],
+    "evidence": [
+      "apps/platform/internal/trial/execution/preflight.go:206-229"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "版本停用檢查讓同檔案的既有引用後移，主線 Registry 的引用因此失效。",
+      "主線和管理分支從相同的第 64 筆審計事件分岔；主線已有 Operations Context 的 3 筆後續事件。"
+    ],
+    "decision": "保留主線審計鏈；在目前 Registry 版本上以受控提案重做唯一的引用更新，不重寫舊事件。",
+    "invariants_preserved": [
+      "Registry 擁有 Version 事實；Run 透過注入的 reader 讀取。"
+    ],
+    "rejected_alternatives": [
+      "直接串接兩條雜湊鏈或改寫既有事件摘要。",
+      "把舊分支的核准視為對新版 Registry 的自動核准。"
+    ],
+    "proof_obligations": [
+      "citation-current",
+      "reader-behavior-current",
+      "citation-counterfactual"
+    ],
+    "counterfactual_check": "主線舊引用對合併後程式碼報 stale；新版引用由 cite 產生並通過 verify-evidence。"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "registry-run-preflight-facts",
+        "producer_context": "registry",
+        "consumer_context": "run",
+        "contract_id": "registry-run-facts-v1",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/preflight.go",
+            "lines": {
+              "start": 206,
+              "end": 229
+            },
+            "content_sha256": "sha256:c1fd893ea0d43002d0d1891bdaef86bb4e867fd2d32676a20c8e7222e8861ddc",
+            "excerpt_sha256": "sha256:0e7d275dfffb71434b32074faa03d716223531b42e45026afe560096c33f5f0b",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "open_questions": [
+    "需要 developer 針對目前主線 Registry revision 重新核准；舊分支核准不可移植。"
+  ],
+  "supersedes": "run-preflight-facts-follow-the-held-facts",
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-08T03:57:15.027131Z",
+      "scope": "Approve revision 1 on the current mainline Registry: retain the 67-event audit chain and refresh only the existing Registry-to-Run preflight citation to lines 206-229; no contract or domain-rule change and no deployment waiver.",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "c344e737fd9a522ba0a903d6dff62b1d076db7da",
+        "registry_digest": "sha256:afe0c20a28aebe47fb59adbd5353835b1fcc49b86f838f33d02c389536473ce2"
+      }
+    }
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "cf6d62d9df93adc19a140e1d11ba17c7537ec872",
+    "registry_digest": "sha256:abfa183cf432aa6fb7695eaca2aacc91591f4852e4290772a06c145be5618fce"
+  }
+}

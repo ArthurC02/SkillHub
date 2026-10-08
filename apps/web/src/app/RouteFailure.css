@@ -1,0 +1,12 @@
+.route-failure {
+  box-sizing: border-box;
+  width: min(42rem, calc(100% - 32px));
+  margin: 32px auto;
+  padding: 24px;
+}
+
+.route-failure-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}

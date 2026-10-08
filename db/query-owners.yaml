@@ -41,6 +41,7 @@ queries:
   InsertAuditEvent: audit
   ListWorkspaceAuditEvents: audit
   ListPlatformAuditEvents: audit
+  ListWorkspaceOperatorAuditEvents: audit
   CountPlatformAuditEventsByDay: audit
   ListWorkspaceDatasetObjectKeys: testlab
   ListWorkspaceRunArtifactObjectKeys: run
@@ -108,6 +109,11 @@ queries:
 
   GetSkillByName: registry
   GetVersionBySkillAndHash: registry
+  GetOperatorVersionStatus: registry
+  LockOperatorVersion: registry
+  GetWorkspaceVersionDisableStatus: registry
+  LockWorkspaceVersionAdmission: registry
+  InsertSkillVersionDisable: registry
 
   GetSkillEnrichment: catalog
 
@@ -255,9 +261,13 @@ queries:
   GetTraceEventText: trace
   LockTraceIngestRun: trace
   NextTraceSeq: trace
+  LockModelCallBudget: modelbudget
   CountTraceMaskingInWindow: trace
 
 scope:
+  CountSkillsForGovernance: operator
+  GetOperatorVersionStatus: operator
+  InsertSkillVersionDisable: operator
   TakeRateLimitToken: platform-wide
   SweepRateLimitBuckets: platform-wide
   RecordDatabaseSize: platform-wide
@@ -339,6 +349,7 @@ scope:
   RedeclareDispatchHalt: user
   GetNewestSkillVersion: user
   LiftDispatchHalt: user
+  LiftObservedDispatchHalt: operator
   ListPlatformAuditEvents: user
   LockSkillForOperatorWrite: user
   ListRecentCreditEntries: user
@@ -487,6 +498,7 @@ tables:
   workspaces: identity
   skills: registry
   skill_versions: registry
+  skill_version_disables: registry
   skill_runtime_compatibility: registry
   object_collection_queue: registry
   skill_sources: ingest
@@ -553,6 +565,7 @@ retention:
   workspaces: keep anonymized by account purge
   skills: with_owner deleted after the deletion grace or by account purge
   skill_versions: with_owner purged with their skill
+  skill_version_disables: with_owner deleted with its skill version
   skill_runtime_compatibility: with_owner deleted with its skill
   object_collection_queue: transient drained by maintenance collect-objects
   skill_sources: with_owner unreferenced sources deleted by account purge
