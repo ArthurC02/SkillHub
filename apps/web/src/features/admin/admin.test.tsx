@@ -1929,8 +1929,14 @@ test("OPS-012: a finding opens with the values it rests on, its history and only
   await waitFor(has("日報首次回報"));
   expect(has("/maintenance_jobs/rotate-partitions/overdue_ratio ＝ 3.4")()).toBe(true);
   expect(has("日報再次回報")()).toBe(true);
+  expect(
+    Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[name="admin-finding-move"]'),
+    ).map((input) => input.value),
+  ).toEqual(["acknowledged", "resolved", "dismissed"]);
+  expect(container.querySelectorAll('textarea[id="admin-finding-note"]')).toHaveLength(1);
   expect(button("我來處理")).toBeDefined();
-  expect(button("忽略這件事")).toBeDefined();
+  expect(has("忽略這件事")()).toBe(true);
   expect(has("重新打開")()).toBe(false);
   expect(has("打開這件事")()).toBe(false);
 });
@@ -1971,14 +1977,54 @@ test("OPS-012: taking on a finding sends the move with the operator's note", asy
   stub(true, (_path, method) => (method === "PUT" ? { body: {}, status: 204 } : undefined));
   await mountAt("/admin/agents", { finding: AGENT_FINDING });
   await waitFor(has("我來處理"));
-  await type("#admin-finding-acknowledged-note", " checking the job ");
-  await submit("#admin-finding-acknowledged-note");
+  await type("#admin-finding-note", " checking the job ");
+  await submit("#admin-finding-note");
   await waitFor(() => calls.some((c) => c.method === "PUT"));
   expect(calls.find((c) => c.method === "PUT")).toEqual({
     method: "PUT",
     url: `/admin/agents/findings/${AGENT_FINDING}/status`,
     body: { status: "acknowledged", note: "checking the job" },
   });
+});
+
+test("OPS-012: changing the finding move clears a reason written for another move", async () => {
+  stub(true);
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("我來處理"));
+  await type("#admin-finding-note", "I will investigate");
+  await click(field<HTMLInputElement>('input[name="admin-finding-move"][value="dismissed"]'));
+  expect(field<HTMLTextAreaElement>("#admin-finding-note").value).toBe("");
+  expect(button("忽略這件事").disabled).toBe(true);
+});
+
+test("OPS-012: a changed finding status clears a reason written for the earlier status", async () => {
+  let acknowledged = false;
+  stub(true, (path) =>
+    path === `/admin/agents/findings/${AGENT_FINDING}`
+      ? {
+          body: {
+            finding: {
+              ...ADMIN_AGENT_FINDINGS.findings[0],
+              status: acknowledged ? "acknowledged" : "open",
+            },
+            events: [],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("我來處理"));
+  await click(field<HTMLInputElement>('input[name="admin-finding-move"][value="resolved"]'));
+  await type("#admin-finding-note", "fixed in the earlier status");
+
+  acknowledged = true;
+  await act(async () => {
+    await queryClient.refetchQueries({ queryKey: queryKeys.admin.agentFinding(AGENT_FINDING) });
+  });
+  await waitFor(has("處理中"));
+  expect(field<HTMLTextAreaElement>("#admin-finding-note").value).toBe("");
+  expect(button("標記已解決").disabled).toBe(true);
 });
 
 test("OPS-012: a refused move says so with the server's words", async () => {
@@ -1992,9 +2038,14 @@ test("OPS-012: a refused move says so with the server's words", async () => {
   );
   await mountAt("/admin/agents", { finding: AGENT_FINDING });
   await waitFor(has("標記已解決"));
-  await type("#admin-finding-resolved-note", "fixed");
-  await submit("#admin-finding-resolved-note");
+  await click(field<HTMLInputElement>('input[name="admin-finding-move"][value="resolved"]'));
+  await type("#admin-finding-note", "fixed");
+  await submit("#admin-finding-note");
   await waitFor(has("the finding cannot move to that status from where it is now"));
+  expect(calls.find((call) => call.method === "PUT")?.body).toEqual({
+    status: "resolved",
+    note: "fixed",
+  });
 });
 
 test("OPS-013: the waiting proposals show what each would run, its tier and why", async () => {
@@ -2184,11 +2235,12 @@ test("a successful finding move does not label an earlier failed move as success
   });
   await mountAt("/admin/agents", { finding: AGENT_FINDING });
   await waitFor(has("我來處理"));
-  await type("#admin-finding-acknowledged-note", "first move");
-  await submit("#admin-finding-acknowledged-note");
+  await type("#admin-finding-note", "first move");
+  await submit("#admin-finding-note");
   await waitFor(has("the finding cannot move to that status"));
-  await type("#admin-finding-resolved-note", "second move");
-  await submit("#admin-finding-resolved-note");
+  await click(field<HTMLInputElement>('input[name="admin-finding-move"][value="resolved"]'));
+  await type("#admin-finding-note", "second move");
+  await submit("#admin-finding-note");
   await waitFor(has("已改成「已解決」。"));
   expect(has("已改成「處理中」。")()).toBe(false);
 });
@@ -2592,11 +2644,11 @@ test("OPS-012: after a finding moves, the sentence stays up although the refetch
   });
   await mountAt("/admin/agents", { finding: AGENT_FINDING });
   await waitFor(has("我來處理"));
-  await type("#admin-finding-acknowledged-note", "checking");
-  await submit("#admin-finding-acknowledged-note");
+  await type("#admin-finding-note", "checking");
+  await submit("#admin-finding-note");
   await waitFor(has("已改成「"));
   await waitFor(() => !has("我來處理")());
-  await type("#admin-finding-resolved-note", "next note");
+  await type("#admin-finding-note", "next note");
   await waitFor(() => !has("已改成「")());
 });
 
@@ -2702,8 +2754,9 @@ test("OPS-012: a refused move refetches the finding", async () => {
   );
   await mountAt("/admin/agents", { finding: AGENT_FINDING });
   await waitFor(has("標記已解決"));
-  await type("#admin-finding-resolved-note", "fixed");
-  await submit("#admin-finding-resolved-note");
+  await click(field<HTMLInputElement>('input[name="admin-finding-move"][value="resolved"]'));
+  await type("#admin-finding-note", "fixed");
+  await submit("#admin-finding-note");
   await waitFor(has("already moved"));
   await waitFor(
     () =>

@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   useMoveFinding,
   usePlatformAgentFinding,
   type PlatformAgentFinding,
   type PlatformAgentFindingEvent,
+  type FindingStatus,
 } from "../../admin.service";
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
@@ -18,20 +20,44 @@ function latestEvidence(events: PlatformAgentFindingEvent[]): Record<string, unk
 
 function Moves({ finding }: { finding: PlatformAgentFinding }) {
   const move = useMoveFinding();
+  const [selected, setSelected] = useState<FindingStatus>();
+  const choices = FINDING_MOVES[finding.status];
+  const choice = choices.find(({ to }) => to === selected) ?? choices[0];
+  if (!choice) return null;
+
   return (
     <div onInput={() => move.reset()}>
-      {FINDING_MOVES[finding.status].map(({ to, label }) => (
-        <ActionForm
-          key={to}
-          id={`admin-finding-${to}`}
-          submitLabel={label}
-          tone={to === "dismissed" ? "caution" : undefined}
-          pending={move.isPending}
-          error={move.error}
-          contextKey={`${finding.id}:${to}`}
-          onSubmit={(note) => move.mutate({ id: finding.id, status: to, note })}
-        />
-      ))}
+      {choices.length > 1 && (
+        <fieldset>
+          <legend>處理方式</legend>
+          {choices.map(({ to, label }) => (
+            <label key={to}>
+              <input
+                type="radio"
+                name="admin-finding-move"
+                value={to}
+                checked={choice.to === to}
+                disabled={move.isPending}
+                onChange={() => {
+                  setSelected(to);
+                  move.reset();
+                }}
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+      )}
+      <ActionForm
+        key={`${finding.id}:${finding.status}:${choice.to}`}
+        id="admin-finding"
+        submitLabel={choice.label}
+        tone={choice.to === "dismissed" ? "caution" : undefined}
+        pending={move.isPending}
+        error={move.error}
+        contextKey={`${finding.id}:${finding.status}:${choice.to}`}
+        onSubmit={(note) => move.mutate({ id: finding.id, status: choice.to, note })}
+      />
       {move.isSuccess && (
         <p className="notice notice-success" role="status">
           已改成「{FINDING_STATUS[move.variables.status]}」。
@@ -62,7 +88,7 @@ export function FindingDetail({ id }: { id: string }) {
             <span className="badge">{FINDING_STATUS[detail.data.finding.status]}</span>
           </p>
           <h3>依據</h3>
-          <ul>
+          <ul className="finding-evidence">
             {Object.entries(latestEvidence(detail.data.events)).map(([cite, value]) => (
               <li key={cite}>
                 <code className="finding-cite">{cite}</code> ＝ {JSON.stringify(value)}

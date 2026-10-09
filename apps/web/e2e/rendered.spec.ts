@@ -1,11 +1,13 @@
 import { test, expect, type Page, type TestInfo } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import {
+  ADMIN_AGENT_FINDING,
   ADMIN_ACCOUNT,
   ADMIN_COST_STATISTICS,
   ADMIN_LEDGER,
   ADMIN_ROSTERS,
   ADMIN_SKILLS,
+  AGENT_FINDING,
   ARTIFACT,
   CATALOG,
   OTHER_RUN,
@@ -1396,6 +1398,38 @@ test.describe("QA-008 real layout: 桌面版頁首與導覽對齊", () => {
       expect(l.framed, `「${l.text}」被畫成按鈕了`).toBe(false);
       expect(l.height, `「${l.text}」的命中區只有 ${l.height}px`).toBeGreaterThanOrEqual(40);
     }
+  });
+});
+
+test("long Agent finding evidence stays within the phone viewport", async ({ page }, testInfo) => {
+  const longValue = "x".repeat(500);
+  await stubPlatform(page);
+  await page.route(`**/admin/agents/findings/${AGENT_FINDING}`, (route) =>
+    route.fulfill({
+      json: {
+        ...ADMIN_AGENT_FINDING,
+        events: ADMIN_AGENT_FINDING.events.map((event, index) =>
+          index === ADMIN_AGENT_FINDING.events.length - 1
+            ? { ...event, evidence: { ...event.evidence, long_value: longValue } }
+            : event,
+        ),
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/admin/agents?finding=${AGENT_FINDING}`);
+
+  await expect(page.getByRole("listitem").filter({ hasText: "long_value" })).toContainText(
+    longValue,
+  );
+  const width = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(width.scroll).toBeLessThanOrEqual(width.client);
+  await page.screenshot({
+    path: testInfo.outputPath("admin-finding-long-mobile.png"),
+    fullPage: true,
   });
 });
 
