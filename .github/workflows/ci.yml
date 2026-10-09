@@ -573,6 +573,14 @@ jobs:
           bash tools/ci/report-failure.sh 'Domain Memory plugin tests'
           python -m unittest discover -s .claude/skills/domain-memory/scripts -p 'test_*.py'
 
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.10'
+      - name: Domain Memory plugin tests on the oldest Python it supports
+        run: >-
+          bash tools/ci/report-failure.sh 'Domain Memory plugin tests on Python 3.10'
+          python -m unittest discover -s .claude/skills/domain-memory/scripts -p 'test_*.py'
+
   qa002:
     needs: changes
     if: needs.changes.outputs.qa002 == 'true'
