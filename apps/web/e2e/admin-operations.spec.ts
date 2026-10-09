@@ -98,6 +98,20 @@ test("a release in progress blocks another dispatch decision on a phone", async 
     await route.fulfill({ status: 204, body: "" });
   });
   await page.goto("/admin/dispatch");
+  await expect(page.locator("#admin-dispatch-lift")).toBeVisible();
+  expect(
+    await page
+      .locator("#admin-dispatch-lift")
+      .evaluate((element) => element.getBoundingClientRect().top),
+  ).toBeLessThan(
+    await page
+      .locator("#admin-dispatch-declare")
+      .evaluate((element) => element.getBoundingClientRect().top),
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("dispatch-recovery-first-phone.png"),
+    fullPage: true,
+  });
   await page.locator("#admin-halt-lift-target").selectOption("pool");
   await page.locator("#admin-halt-lift-note").fill("incident resolved");
   await page.locator("#admin-halt-declare-note").fill("new incident");
@@ -163,6 +177,7 @@ test("a release result stays reachable when dispatch status cannot be reread on 
 
   await page.getByRole("button", { name: "重新整理派送狀態" }).click();
   await expect(page.getByText("沒有生效中的煞車。")).toBeVisible();
+  await expect(page.locator("#admin-dispatch-lift")).toHaveCount(0);
   await expect(result).toHaveClass(/notice-success/);
   await expect(result).toContainText("已不在生效中的煞車清單");
 });

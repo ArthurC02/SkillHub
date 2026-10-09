@@ -1471,6 +1471,11 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
   await waitFor(has("sandbox escape suspected on node-2"));
   expect(has("P1 事故：只有人能解除")()).toBe(true);
   expect(has("整個叢集")()).toBe(true);
+  expect(
+    field<HTMLElement>("#admin-dispatch-lift").compareDocumentPosition(
+      field<HTMLElement>("#admin-dispatch-declare"),
+    ) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   expect(field<HTMLElement>("#admin-halt-declare-scope").textContent).toBe(
     "本次停止範圍：整個叢集。新的 Run 將無法建立或派送；清理會停下以保留現場。",
   );
@@ -1525,6 +1530,7 @@ test("OPS-005: a released halt leaves a focused, verified result after its form 
   expect(result.classList.contains("notice-success")).toBe(true);
   expect(document.activeElement).toBe(result);
   expect(container.querySelector("#admin-halt-lift-target")).toBeNull();
+  expect(container.querySelector("#admin-dispatch-lift")).toBeNull();
 });
 
 test("OPS-005: a completed release remains visible when status reread fails, then verifies on retry", async () => {
