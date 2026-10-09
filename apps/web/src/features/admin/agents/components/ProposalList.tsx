@@ -86,7 +86,13 @@ export function ProposalList() {
         </select>
       </div>
       {proposals.isPending && <Loading what="提案" />}
-      <ReadFailure error={proposals.error} what="提案" />
+      <ReadFailure
+        error={proposals.error}
+        what="提案"
+        retry={() => void proposals.refetch()}
+        retrying={proposals.isFetching}
+        focusTarget="admin-agent-proposals-heading"
+      />
       {page && (
         <ListFreshness
           inFlight={rows.some((proposal) => ["approved", "running"].includes(proposal.status))}

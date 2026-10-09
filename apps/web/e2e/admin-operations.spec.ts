@@ -1,7 +1,85 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { ADMIN_DISPATCH, ADMIN_MODEL_BUDGETS } from "../src/testing/fixtures/platform";
+import {
+  ADMIN_AGENT_PROPOSAL,
+  ADMIN_AGENT_PROPOSALS,
+  ADMIN_DISPATCH,
+  ADMIN_MODEL_BUDGETS,
+  AGENT_PROPOSAL,
+} from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
+
+test("an Agent proposal read can recover in place on a phone", async ({ page }, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let reads = 0;
+  let finishRetry!: () => void;
+  const held = new Promise<void>((resolve) => {
+    finishRetry = resolve;
+  });
+  await page.route(`**/admin/agents/proposals/${AGENT_PROPOSAL}`, async (route) => {
+    reads += 1;
+    if (reads === 1) {
+      return route.fulfill({ status: 503, json: { error: "service unavailable" } });
+    }
+    await held;
+    return route.fulfill({ json: ADMIN_AGENT_PROPOSAL });
+  });
+  await page.goto(`/admin/agents?proposal=${AGENT_PROPOSAL}`);
+
+  await expect(page.getByRole("alert")).toContainText("暫時無法讀取這個提案");
+  await expect(page.getByRole("button", { name: "再試一次" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "會發生什麼" })).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath("agent-proposal-read-failed-phone.png") });
+  try {
+    await page.getByRole("button", { name: "再試一次" }).click();
+    await expect(page.getByRole("status")).toContainText("載入這個提案中");
+    await expect(page.getByRole("button", { name: "再試一次" })).toHaveCount(0);
+    expect(reads).toBe(2);
+  } finally {
+    finishRetry();
+  }
+  await expect(page.getByRole("heading", { name: "會發生什麼" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "再試一次" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "這個提案" })).toBeFocused();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("agent-proposal-recovered-phone.png") });
+});
+
+test("retrying a failed proposal list does not expose stale decisions", async ({ page }) => {
+  await stubPlatform(page);
+  let reads = 0;
+  let finishRetry!: () => void;
+  const held = new Promise<void>((resolve) => {
+    finishRetry = resolve;
+  });
+  await page.route("**/admin/agents/proposals?*", async (route) => {
+    reads += 1;
+    if (reads === 2) {
+      return route.fulfill({ status: 503, json: { error: "service unavailable" } });
+    }
+    if (reads === 3) await held;
+    return route.fulfill({ json: ADMIN_AGENT_PROPOSALS });
+  });
+  await page.goto("/admin/agents");
+  const proposals = page.locator("#admin-agent-proposals");
+  await expect(proposals.getByText("打開這個提案")).toBeVisible();
+  await proposals.getByRole("button", { name: "重新整理" }).click();
+  await expect(proposals.getByRole("alert")).toContainText("暫時無法讀取提案");
+  await expect(proposals.getByText("打開這個提案")).toHaveCount(0);
+
+  try {
+    await proposals.getByRole("button", { name: "再試一次" }).click();
+    await expect.poll(() => reads).toBe(3);
+    await expect(proposals.getByText("打開這個提案")).toHaveCount(0);
+    await expect(proposals.getByRole("button", { name: "重新讀取中…" })).toBeDisabled();
+  } finally {
+    finishRetry();
+  }
+  await expect(proposals.getByText("打開這個提案")).toBeVisible();
+});
 
 test("a release in progress blocks another dispatch decision on a phone", async ({
   page,

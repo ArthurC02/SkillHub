@@ -3112,12 +3112,12 @@ test.each(["stale", "unavailable"])(
     expect(document.activeElement).toBe(field<HTMLElement>("#admin-finding-result"));
     if (refresh === "unavailable") {
       await waitFor(has("暫時無法讀取這件事。請重新整理，或稍後再試。"));
-      expect(button("重新整理這件事")).toBeDefined();
+      expect(button("再試一次")).toBeDefined();
       expect(field<HTMLElement>("#admin-finding-result").textContent).toContain(
         ADMIN_AGENT_FINDING.finding.title,
       );
       verified = true;
-      await click(button("重新整理這件事"));
+      await click(button("再試一次"));
       await waitFor(has("已改成「處理中」。"));
       expect(button("標記已解決")).toBeDefined();
     } else {
@@ -3695,6 +3695,114 @@ const focusedAgentCases: { search: Record<string, string>; heading: string }[] =
   { search: { finding: AGENT_FINDING }, heading: "這件事" },
   { search: { run: AGENT_REPORT_RUN }, heading: "這次執行" },
 ];
+
+const agentRetryCases: {
+  name: string;
+  path: string;
+  search?: Record<string, string>;
+  failed: string;
+  recovered: string;
+  focus: string;
+}[] = [
+  {
+    name: "Agent control",
+    path: "/admin/agents",
+    failed: " Agent 控制",
+    recovered: "拉下 Agent 煞車",
+    focus: "admin-agent-brake-heading",
+  },
+  {
+    name: "proposal list",
+    path: "/admin/agents/proposals",
+    failed: "提案",
+    recovered: "打開這個提案",
+    focus: "admin-agent-proposals-heading",
+  },
+  {
+    name: "finding list",
+    path: "/admin/agents/findings",
+    failed: "待辦",
+    recovered: "打開這件事",
+    focus: "admin-agent-findings-heading",
+  },
+  {
+    name: "run list",
+    path: "/admin/agents/runs",
+    failed: "執行紀錄",
+    recovered: "看這次的步驟",
+    focus: "admin-agent-runs-heading",
+  },
+  {
+    name: "proposal detail",
+    path: `/admin/agents/proposals/${AGENT_PROPOSAL}`,
+    search: { proposal: AGENT_PROPOSAL },
+    failed: "這個提案",
+    recovered: "會發生什麼",
+    focus: "admin-proposal-heading",
+  },
+  {
+    name: "finding detail",
+    path: `/admin/agents/findings/${AGENT_FINDING}`,
+    search: { finding: AGENT_FINDING },
+    failed: "這件事",
+    recovered: "依據",
+    focus: "admin-finding-heading",
+  },
+  {
+    name: "run detail",
+    path: `/admin/agents/runs/${AGENT_REPORT_RUN}`,
+    search: { run: AGENT_REPORT_RUN },
+    failed: "執行紀錄",
+    recovered: "需要注意：1 項",
+    focus: "admin-agent-run-heading",
+  },
+  {
+    name: "run steps",
+    path: `/admin/agents/runs/${AGENT_REPORT_RUN}/steps`,
+    search: { run: AGENT_REPORT_RUN },
+    failed: "執行步驟",
+    recovered: "呼叫 maintenance_report",
+    focus: "admin-agent-steps-heading",
+  },
+];
+
+test.each(agentRetryCases)(
+  "$name can retry a failed read in place",
+  async ({ path, search, failed, recovered, focus }) => {
+    let unavailable = true;
+    stub(true, (requestPath) =>
+      unavailable && requestPath === path
+        ? { body: { error: "service unavailable" }, status: 503 }
+        : undefined,
+    );
+    await mountAt("/admin/agents", search);
+    await waitFor(has(`暫時無法讀取${failed}`));
+    expect(has(recovered)()).toBe(false);
+    unavailable = false;
+    await click(button("再試一次"));
+    expect(document.activeElement).toBe(field<HTMLElement>(`#${focus}`));
+    expect(calls.filter((call) => call.url.split("?")[0] === path)).toHaveLength(2);
+    await waitFor(has(recovered));
+    expect(has(`暫時無法讀取${failed}`)()).toBe(false);
+    expect(calls.filter((call) => call.url.split("?")[0] === path)).toHaveLength(2);
+  },
+);
+
+test("an unauthenticated Agent detail offers sign-in instead of retrying", async () => {
+  stub(true, (path) =>
+    path === `/admin/agents/proposals/${AGENT_PROPOSAL}`
+      ? { body: { error: "not authenticated" }, status: 401 }
+      : undefined,
+  );
+  await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
+  await waitFor(has("這個提案需要登入。"));
+  expect(has("暫時無法讀取這個提案")()).toBe(false);
+  expect(
+    Array.from(container.querySelectorAll("button")).some(
+      (item) => item.textContent === "再試一次",
+    ),
+  ).toBe(false);
+});
 
 test.each(focusedAgentCases)(
   "opening $heading focuses that object instead of the whole workbench",

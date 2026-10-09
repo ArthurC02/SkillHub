@@ -90,9 +90,17 @@ export function AgentRunSteps({ run, live }: { run: string; live: boolean }) {
   const latest = steps.data?.steps.at(-1);
   return (
     <>
-      <h3>這次執行的步驟</h3>
+      <h3 id="admin-agent-steps-heading" tabIndex={-1}>
+        這次執行的步驟
+      </h3>
       {steps.isPending && <Loading what="執行步驟" />}
-      <ReadFailure error={steps.error} what="執行步驟" />
+      <ReadFailure
+        error={steps.error}
+        what="執行步驟"
+        retry={() => void steps.refetch()}
+        retrying={steps.isFetching}
+        focusTarget="admin-agent-steps-heading"
+      />
       {live && steps.data && !steps.error && latest && (
         <p className="note">
           最近一步記錄於 <Timestamp at={latest.created_at} relative />。

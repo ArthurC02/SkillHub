@@ -67,6 +67,31 @@ function Moves({
   );
 }
 
+function FindingReadRecovery({
+  detail,
+  unverified,
+}: {
+  detail: ReturnType<typeof usePlatformAgentFinding>;
+  unverified: boolean;
+}) {
+  return (
+    <>
+      <ReadFailure
+        error={detail.error}
+        what="這件事"
+        retry={() => void detail.refetch()}
+        retrying={detail.isFetching}
+        focusTarget="admin-finding-heading"
+      />
+      {unverified && !detail.error && (
+        <button type="button" disabled={detail.isFetching} onClick={() => void detail.refetch()}>
+          重新整理這件事
+        </button>
+      )}
+    </>
+  );
+}
+
 export function FindingDetail({ id }: { id: string }) {
   const detail = usePlatformAgentFinding(id);
   const move = useMoveFinding();
@@ -105,12 +130,7 @@ export function FindingDetail({ id }: { id: string }) {
             : `已改成「${FINDING_STATUS[move.variables.status]}」。`}
         </p>
       )}
-      <ReadFailure error={detail.error} what="這件事" />
-      {unverified && (
-        <button type="button" disabled={detail.isFetching} onClick={() => void detail.refetch()}>
-          重新整理這件事
-        </button>
-      )}
+      <FindingReadRecovery detail={detail} unverified={unverified} />
       {detail.data && !detail.error && !unverified && (
         <>
           <p>

@@ -77,7 +77,13 @@ export function FindingInbox({ status }: { status?: ClosedView }) {
         ))}
       </nav>
       {findings.isPending && <Loading what="待辦" />}
-      <ReadFailure error={blockingError} what="待辦" />
+      <ReadFailure
+        error={blockingError}
+        what="待辦"
+        retry={() => void findings.refetch()}
+        retrying={findings.isFetching}
+        focusTarget="admin-agent-findings-heading"
+      />
       {showRows && (
         <ListFreshness
           inFlight={false}

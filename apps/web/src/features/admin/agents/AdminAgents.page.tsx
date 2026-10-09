@@ -43,6 +43,26 @@ function brakeRead(
   };
 }
 
+function AgentControlReadFailure({ agents }: { agents: ReturnType<typeof usePlatformAgents> }) {
+  return (
+    <ReadFailure error={agents.error} what="Agent 控制">
+      <p role="alert">暫時無法讀取 Agent 控制。請重新整理，或稍後再試。</p>
+      {!agents.data && (
+        <button
+          type="button"
+          disabled={agents.isFetching}
+          onClick={() => {
+            void agents.refetch();
+            document.getElementById("admin-agent-brake-heading")?.focus();
+          }}
+        >
+          {agents.isFetching ? "重新讀取中…" : "再試一次"}
+        </button>
+      )}
+    </ReadFailure>
+  );
+}
+
 function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recovered" }) {
   const agents = usePlatformAgents();
   const engage = usePlatformAgentBrake("PUT");
@@ -90,11 +110,11 @@ function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recov
       </nav>
 
       <section id="admin-agent-brake" aria-labelledby="admin-agent-brake-heading">
-        <h2 id="admin-agent-brake-heading">全域煞車</h2>
+        <h2 id="admin-agent-brake-heading" tabIndex={-1}>
+          全域煞車
+        </h2>
         {agents.isPending && <Loading what="Agent 控制" />}
-        <ReadFailure error={agents.error} what="Agent 控制">
-          <p role="alert">暫時無法讀取 Agent 控制。請重新整理，或稍後再試。</p>
-        </ReadFailure>
+        <AgentControlReadFailure agents={agents} />
         {agents.data && (
           <BrakeControls
             brake={agents.data.brake}
@@ -129,7 +149,13 @@ function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recov
           日報與執行紀錄
         </h2>
         {runs.isPending && <Loading what="執行紀錄" />}
-        <ReadFailure error={runs.error} what="執行紀錄" />
+        <ReadFailure
+          error={runs.error}
+          what="執行紀錄"
+          retry={() => void runs.refetch()}
+          retrying={runs.isFetching}
+          focusTarget="admin-agent-runs-heading"
+        />
         {runs.data && !runs.error && (
           <ListFreshness
             inFlight={runs.data.runs.some((run) => run.status === "running")}
@@ -173,7 +199,13 @@ function AgentRunDetail({ id }: { id: string }) {
         </Link>
       </p>
       {detail.isPending && <Loading what="執行紀錄" />}
-      <ReadFailure error={detail.error} what="執行紀錄" />
+      <ReadFailure
+        error={detail.error}
+        what="執行紀錄"
+        retry={() => void detail.refetch()}
+        retrying={detail.isFetching}
+        focusTarget="admin-agent-run-heading"
+      />
       {live && opened && (
         <>
           <p role="status" className="notice">

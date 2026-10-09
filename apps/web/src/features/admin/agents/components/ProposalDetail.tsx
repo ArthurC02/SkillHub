@@ -127,7 +127,13 @@ export function ProposalDetail({ id }: { id: string }) {
           {DECIDED[decide.variables.decision]}
         </p>
       )}
-      <ReadFailure error={detail.error} what="這個提案" />
+      <ReadFailure
+        error={detail.error}
+        what="這個提案"
+        retry={() => void detail.refetch()}
+        retrying={detail.isFetching}
+        focusTarget="admin-proposal-heading"
+      />
       {proposal && !detail.error && (
         <>
           <p>
