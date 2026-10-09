@@ -316,6 +316,25 @@ test("OPS-002: a lookup keeps the email out of the address and shows the account
   expect(has("封測准入目前可通過；可能是已受邀，或此部署未限制。")()).toBe(true);
 });
 
+test("OPS-002: submitting the same email again performs a fresh audited lookup", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/accounts") return undefined;
+    reads += 1;
+    return {
+      body: { ...ADMIN_ACCOUNT, display_name: `第 ${reads} 次查詢` },
+      status: 200,
+    };
+  });
+  await lookUp("member@example.com");
+  await waitFor(has("第 1 次查詢"));
+  expect(reads).toBe(1);
+
+  await submit("#admin-account-email");
+  await waitFor(has("第 2 次查詢"));
+  expect(reads).toBe(2);
+});
+
 test("an account denied by beta admission is not described as merely absent from a roster", async () => {
   stub(true, (path) =>
     path === "/admin/accounts"
