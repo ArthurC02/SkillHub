@@ -14,8 +14,10 @@ import { ActionForm } from "../../components/ActionForm";
 import { FINDING_EVENT, FINDING_MOVES, FINDING_STATUS } from "./findingLabels";
 import "./FindingDetail.css";
 
-function latestEvidence(events: PlatformAgentFindingEvent[]): Record<string, unknown> {
-  return [...events].reverse().find((event) => event.evidence)?.evidence ?? {};
+function latestEvidence(
+  events: PlatformAgentFindingEvent[],
+): PlatformAgentFindingEvent | undefined {
+  return [...events].reverse().find((event) => event.evidence);
 }
 
 function Moves({ finding }: { finding: PlatformAgentFinding }) {
@@ -69,6 +71,7 @@ function Moves({ finding }: { finding: PlatformAgentFinding }) {
 
 export function FindingDetail({ id }: { id: string }) {
   const detail = usePlatformAgentFinding(id);
+  const report = detail.data && latestEvidence(detail.data.events);
   return (
     <section aria-labelledby="admin-finding-heading">
       <h2 id="admin-finding-heading" tabIndex={-1}>
@@ -91,12 +94,19 @@ export function FindingDetail({ id }: { id: string }) {
           </p>
           <h3>依據</h3>
           <ul className="finding-evidence">
-            {Object.entries(latestEvidence(detail.data.events)).map(([cite, value]) => (
+            {Object.entries(report?.evidence ?? {}).map(([cite, value]) => (
               <li key={cite}>
                 <code className="finding-cite">{cite}</code> ＝ {JSON.stringify(value)}
               </li>
             ))}
           </ul>
+          {report?.run_id && (
+            <p>
+              <Link to="/admin/agents" search={{ run: report.run_id }}>
+                查看產生這份依據的執行
+              </Link>
+            </p>
+          )}
           <h3>經過</h3>
           <ol>
             {detail.data.events.map((event) => (

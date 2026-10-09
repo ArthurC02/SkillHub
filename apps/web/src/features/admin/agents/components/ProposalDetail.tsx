@@ -137,6 +137,11 @@ export function ProposalDetail({ id }: { id: string }) {
               </li>
             ))}
           </ul>
+          <p>
+            <Link to="/admin/agents" search={{ run: proposal.run_id }}>
+              查看提出這個提案的執行
+            </Link>
+          </p>
           <h3>經過</h3>
           <p>
             <Timestamp at={proposal.proposed_at} /> 由 {proposal.agent} 提出

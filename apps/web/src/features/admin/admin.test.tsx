@@ -8,6 +8,7 @@ import { queryKeys } from "../../core/api/queryKeys";
 import { createAppRouter } from "../../app/router";
 import { daysOf, seriesOf, usd } from "./admin.service";
 import {
+  ADMIN_AGENT_FINDING,
   ADMIN_AGENT_FINDINGS,
   ADMIN_AGENT_PROPOSAL,
   ADMIN_AGENT_PROPOSALS,
@@ -2479,6 +2480,38 @@ test("OPS-012: a finding opens with the values it rests on, its history and only
   expect(has("打開這件事")()).toBe(false);
 });
 
+test("a finding's cited report opens the agent run that produced its evidence", async () => {
+  stub(true);
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("查看產生這份依據的執行"));
+  const source = Array.from(container.querySelectorAll("a")).find(
+    (link) => link.textContent === "查看產生這份依據的執行",
+  )!;
+  await click(source);
+  await waitFor(has("這次執行"));
+  expect(router.state.location.search).toMatchObject({
+    run: "9a1f3c2e-0b4d-4e5f-8a6b-7c8d9e0f1a2b",
+  });
+  expect(router.state.location.search.finding).toBeUndefined();
+});
+
+test("a finding event without a reporting run does not invent a source link", async () => {
+  stub(true, (path) =>
+    path === `/admin/agents/findings/${AGENT_FINDING}`
+      ? {
+          body: {
+            finding: ADMIN_AGENT_FINDINGS.findings[0],
+            events: [{ ...ADMIN_AGENT_FINDING.events[0], run_id: undefined }],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("/maintenance_jobs/rotate-partitions/overdue_ratio ＝ 2.4"));
+  expect(has("查看產生這份依據的執行")()).toBe(false);
+});
+
 test("OPS-012: a resolved finding offers only to reopen it", async () => {
   const resolved = { ...ADMIN_AGENT_FINDINGS.findings[0], status: "resolved" };
   stub(true, (path) =>
@@ -2702,6 +2735,21 @@ test("OPS-013: a proposal opens with what would happen and the facts it rests on
   expect(has("/maintenance_jobs/rotate-partitions/overdue_ratio")()).toBe(true);
   expect(button("核准並執行")).toBeDefined();
   expect(button("駁回")).toBeDefined();
+});
+
+test("a proposal opens the run that supplied its evidence before a decision", async () => {
+  stub(true);
+  await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
+  await waitFor(has("查看提出這個提案的執行"));
+  const source = Array.from(container.querySelectorAll("a")).find(
+    (link) => link.textContent === "查看提出這個提案的執行",
+  )!;
+  await click(source);
+  await waitFor(has("這次執行"));
+  expect(router.state.location.search).toMatchObject({
+    run: "3a4b5c6d-7e8f-4a9b-8c0d-1e2f3a4b5c6d",
+  });
+  expect(router.state.location.search.proposal).toBeUndefined();
 });
 
 test("a proposal whose refreshed preview cannot be read cannot be decided from cached facts", async () => {

@@ -2,6 +2,8 @@ import { test, expect, type Page, type TestInfo } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import {
   ADMIN_AGENT_FINDING,
+  ADMIN_AGENT_PROPOSAL,
+  ADMIN_AGENT_RUNS,
   ADMIN_ACCOUNT,
   ADMIN_COST_STATISTICS,
   ADMIN_EXPOSURE_CASE,
@@ -9,6 +11,8 @@ import {
   ADMIN_ROSTERS,
   ADMIN_SKILLS,
   AGENT_FINDING,
+  AGENT_PROPOSAL,
+  AGENT_REPORT_RUN,
   ARTIFACT,
   CATALOG,
   OTHER_RUN,
@@ -1577,6 +1581,45 @@ test("long Agent finding evidence stays within the phone viewport", async ({ pag
     path: testInfo.outputPath("admin-finding-long-mobile.png"),
     fullPage: true,
   });
+});
+
+test("a finding opens the run that reported its visible evidence", async ({ page }, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/admin/agents?finding=${AGENT_FINDING}`);
+  const source = page.getByRole("link", { name: "查看產生這份依據的執行" });
+  await expect(source).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("admin-finding-source-mobile.png"),
+    fullPage: true,
+  });
+  await source.click();
+  await expect(page).toHaveURL(`http://localhost:4173/admin/agents?run=${AGENT_REPORT_RUN}`);
+  await expect(page.getByRole("heading", { name: "這次執行", exact: true })).toBeFocused();
+  await expect(page.getByText("需要注意：1 項")).toBeVisible();
+});
+
+test("a proposal opens its proposing run before an operator decides", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.route(`**/admin/agents/runs/${ADMIN_AGENT_PROPOSAL.run_id}`, (route) =>
+    route.fulfill({ json: { ...ADMIN_AGENT_RUNS.runs[1], id: ADMIN_AGENT_PROPOSAL.run_id } }),
+  );
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/admin/agents?proposal=${AGENT_PROPOSAL}`);
+  const source = page.getByRole("link", { name: "查看提出這個提案的執行" });
+  await expect(source).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("admin-proposal-source-mobile.png"),
+    fullPage: true,
+  });
+  await source.click();
+  await expect(page).toHaveURL(
+    `http://localhost:4173/admin/agents?run=${ADMIN_AGENT_PROPOSAL.run_id}`,
+  );
+  await expect(page.getByRole("heading", { name: "這次執行", exact: true })).toBeFocused();
+  await expect(page.getByText("需要注意：1 項")).toBeVisible();
 });
 
 test("exposure review keeps the decision evidence visible and folds technical identifiers", async ({
