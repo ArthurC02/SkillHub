@@ -22,6 +22,7 @@ Usage:
   devctl agent-sync [--check]  regenerate or check portable Agent artifacts from .claude
   devctl automation-check  verify Task, Agent docs and generated ownership markers
   devctl comment-lint [path-prefix...]  list comments that break AGENTS.md's comment rule
+  devctl domain-memory-release  record the Domain Memory plugin's version and content digest (refuses a content change without a version bump)
   devctl test-report dir [go test args]  run the suite and report what skipped and why
   devctl seed-clean [--dry-run]  upload PORT-007's real, traceable demo skills into a clean-mode deployment
   devctl image-gate  runtime image source gates: digest-pinned base, upgrade record, image content matches its published version
@@ -61,7 +62,7 @@ func runCommand(root, command string, args []string) (int, error) {
 		return 0, nil
 	case cmdDoctor, cmdBootstrap, "env-init", "profile-check":
 		return runSetupCommand(root, command, args)
-	case cmdGen, "agent-sync", "automation-check", "comment-lint":
+	case cmdGen, "agent-sync", "automation-check", "comment-lint", cmdDomainMemoryRelease:
 		return runRepoCheckCommand(root, command, args)
 	case "test-report", "seed-clean", "image-gate", cmdPreflight, "ci-status", "dep-audit":
 		return runPipelineCommand(root, command, args)
@@ -95,6 +96,8 @@ func runRepoCheckCommand(root, command string, args []string) (int, error) {
 		return 0, agentSync(root, args, os.Stdout)
 	case "automation-check":
 		return 0, automationCheck(root, os.Stdout)
+	case cmdDomainMemoryRelease:
+		return 0, recordDomainMemoryRelease(root, os.Stdout)
 	default:
 		return 0, commentLint(root, args, os.Stdout)
 	}
