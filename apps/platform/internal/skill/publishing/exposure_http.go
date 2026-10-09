@@ -53,6 +53,16 @@ type exposureReviewView struct {
 	ReviewedAt     string `json:"reviewed_at"`
 }
 
+type exposureRefusalView struct {
+	Error  string `json:"error"`
+	Reason string `json:"reason"`
+}
+
+type exposureApprovalView struct {
+	Allowed bool                 `json:"allowed"`
+	Refusal *exposureRefusalView `json:"refusal,omitempty"`
+}
+
 type exposureCaseView struct {
 	Publisher string               `json:"publisher"`
 	Name      string               `json:"name"`
@@ -61,6 +71,7 @@ type exposureCaseView struct {
 	Release   exposureReleaseView  `json:"release"`
 	Sequence  int32                `json:"sequence"`
 	Exposed   bool                 `json:"exposed"`
+	Approval  exposureApprovalView `json:"approval"`
 	Snapshot  *searchSnapshotView  `json:"snapshot,omitempty"`
 	History   []exposureReviewView `json:"history"`
 }
@@ -76,7 +87,13 @@ func exposureCaseViewOf(c ExposureCase) exposureCaseView {
 	view := exposureCaseView{
 		Publisher: c.State.Publisher, Name: c.State.Name, Address: address(c.State.Publisher, c.State.Name),
 		Status: string(c.State.Status), Release: exposureRelease(c.State), Sequence: c.State.Sequence,
-		Exposed: c.Exposed, History: make([]exposureReviewView, 0, len(c.History)),
+		Exposed: c.Exposed, Approval: exposureApprovalView{Allowed: c.ApprovalProblem == ""},
+		History: make([]exposureReviewView, 0, len(c.History)),
+	}
+	if c.ApprovalProblem != "" {
+		view.Approval.Refusal = &exposureRefusalView{
+			Error: exposureProblemWords[c.ApprovalProblem], Reason: string(c.ApprovalProblem),
+		}
 	}
 	if snap := c.Snapshot; snap != nil {
 		view.Snapshot = &searchSnapshotView{

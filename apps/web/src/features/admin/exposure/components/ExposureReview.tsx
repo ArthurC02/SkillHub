@@ -76,12 +76,9 @@ function ReviewForm({
 }) {
   const [decision, setDecision] = useState<ExposureDecision>();
   const review = useReviewExposure(publication);
-  const approvalUnavailable =
-    c.status === "delisted"
-      ? "已撤回的發佈物不能核准；請作者重新發佈。"
-      : !c.snapshot || !c.snapshot.current || !c.snapshot.enriched
-        ? "核准要等這一版的搜尋內容可供審核；請稍後重新整理審核資料。"
-        : undefined;
+  const approvalUnavailable = c.approval?.allowed
+    ? undefined
+    : (c.approval?.refusal?.error ?? "無法確認核准資格；請重新整理審核資料。");
 
   return (
     <ActionForm
@@ -182,7 +179,7 @@ export function ExposureReview({
 
       <h3>審核這一版</h3>
       <ReviewForm
-        key={`${c.release.release_id}:${c.sequence}:${c.snapshot?.digest ?? ""}`}
+        key={`${c.release.release_id}:${c.sequence}:${c.snapshot?.digest ?? ""}:${c.approval?.refusal?.reason ?? c.approval?.allowed}`}
         exposureCase={c}
         publication={publication}
       />

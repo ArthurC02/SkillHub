@@ -59,6 +59,30 @@ func (w exposureWorld) exposureCase(t *testing.T) map[string]any {
 	return body
 }
 
+func (w exposureWorld) assertApproval(t *testing.T, wantReason string) string {
+	t.Helper()
+	approval, _ := w.exposureCase(t)["approval"].(map[string]any)
+	wantAllowed := wantReason == ""
+	if approval["allowed"] != wantAllowed {
+		t.Fatalf("GET approval = %v, want allowed %v", approval, wantAllowed)
+	}
+	if wantAllowed {
+		if approval["refusal"] != nil {
+			t.Fatalf("GET approval = %v, want no refusal", approval)
+		}
+		return ""
+	}
+	refusal, _ := approval["refusal"].(map[string]any)
+	if refusal["reason"] != wantReason {
+		t.Fatalf("GET approval = %v, want refusal %s", approval, wantReason)
+	}
+	message, _ := refusal["error"].(string)
+	if message == "" {
+		t.Fatalf("GET approval = %v, want a refusal message", approval)
+	}
+	return message
+}
+
 func (w exposureWorld) review(t *testing.T, releaseID string, sequence int, digest, decision, reason string) (int, map[string]any) {
 	t.Helper()
 	return postJSON(t, w.operator, w.casePath(), fmt.Sprintf(
@@ -415,8 +439,11 @@ func TestOnlyAnAllowedVerdictOnCurrentFinishedTextCanBeApproved(t *testing.T) {
 		{"held", "redistribution = 'allowed', access_restriction = 'license-review'", "not_available"},
 	} {
 		setSkill(t, w.pool, w.skillID, tc.assignment)
+		message := w.assertApproval(t, tc.wantReason)
 		if code, body := w.reviewCurrent(t, "approved", "fine"); code != http.StatusUnprocessableEntity || body["reason"] != tc.wantReason {
 			t.Errorf("%s: %d %v, want 422 %s", tc.name, code, body, tc.wantReason)
+		} else if message != body["error"] {
+			t.Errorf("%s: GET refusal %q differs from POST refusal %v", tc.name, message, body)
 		}
 	}
 	setSkill(t, w.pool, w.skillID, "access_restriction = NULL")
@@ -424,10 +451,12 @@ func TestOnlyAnAllowedVerdictOnCurrentFinishedTextCanBeApproved(t *testing.T) {
 		"UPDATE search_documents SET enrichment_status = 'pending' WHERE skill_id = $1", mustUUID(t, w.skillID)); err != nil {
 		t.Fatal(err)
 	}
+	w.assertApproval(t, "snapshot_pending")
 	if code, body := w.reviewCurrent(t, "approved", "fine"); code != http.StatusUnprocessableEntity || body["reason"] != "snapshot_pending" {
 		t.Errorf("text still being enriched: %d %v, want 422 snapshot_pending", code, body)
 	}
 	w.enrich(t)
+	w.assertApproval(t, "")
 	if code, body := w.reviewCurrent(t, "approved", "fine"); code != http.StatusOK {
 		t.Fatalf("approving once allowed and finished: %d %v", code, body)
 	}

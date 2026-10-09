@@ -150,3 +150,35 @@ func TestAReviewIsStaleOnceAnythingItJudgedHasMoved(t *testing.T) {
 		})
 	}
 }
+
+func TestApprovalProblemUsesTheSameFactsAsTheReviewGuard(t *testing.T) {
+	versionID := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
+	otherVersionID := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}
+	state := ExposureState{Status: StatusPublished, VersionID: versionID}
+	skill := SkillFacts{Redistribution: redistributionAllowed}
+	snapshot := &SearchSnapshot{VersionID: versionID, Enriched: true}
+	for _, tc := range []struct {
+		name        string
+		state       ExposureState
+		skill       SkillFacts
+		skillFound  bool
+		snapshot    *SearchSnapshot
+		wantProblem ExposureProblem
+	}{
+		{"ready", state, skill, true, snapshot, ""},
+		{"withdrawn publication", ExposureState{Status: StatusDelisted, VersionID: versionID}, skill, true, snapshot, "not_published"},
+		{"missing skill", state, skill, false, snapshot, "not_available"},
+		{"taken down skill", state, SkillFacts{Redistribution: redistributionAllowed, TakenDown: true}, true, snapshot, "not_available"},
+		{"held skill", state, SkillFacts{Redistribution: redistributionAllowed, AccessRestricted: true}, true, snapshot, "not_available"},
+		{"not cleared for redistribution", state, SkillFacts{Redistribution: redistributionSelfSupplied}, true, snapshot, "redistribution_not_allowed"},
+		{"snapshot absent", state, skill, true, nil, "snapshot_not_current"},
+		{"snapshot for another version", state, skill, true, &SearchSnapshot{VersionID: otherVersionID, Enriched: true}, "snapshot_not_current"},
+		{"snapshot still enriching", state, skill, true, &SearchSnapshot{VersionID: versionID}, "snapshot_pending"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := approvalProblem(tc.state, tc.skill, tc.skillFound, tc.snapshot); got != tc.wantProblem {
+				t.Errorf("approval problem = %q, want %q", got, tc.wantProblem)
+			}
+		})
+	}
+}

@@ -8202,7 +8202,7 @@ components:
           description: True when this release was approved before and search no longer holds that text.
     ExposureCase:
       type: object
-      required: [publisher, name, address, status, release, sequence, exposed, history]
+      required: [publisher, name, address, status, release, sequence, exposed, approval, history]
       properties:
         publisher: { type: string }
         name: { type: string }
@@ -8211,6 +8211,13 @@ components:
         release: { $ref: "#/components/schemas/ExposureRelease" }
         sequence: { type: integer }
         exposed: { type: boolean }
+        approval:
+          type: object
+          description: Advisory eligibility for approving this release at read time; POST rechecks under the publication lock.
+          required: [allowed]
+          properties:
+            allowed: { type: boolean }
+            refusal: { $ref: "#/components/schemas/ExposureRefusal" }
         snapshot:
           type: object
           description: What search holds for this Skill right now; absent before it is indexed.

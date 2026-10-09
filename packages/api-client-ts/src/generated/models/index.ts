@@ -82,6 +82,7 @@ export * from './EvidenceRef';
 export * from './EvidenceRefByteRange';
 export * from './EvidenceRefCharRange';
 export * from './ExposureCase';
+export * from './ExposureCaseApproval';
 export * from './ExposureCaseHistoryInner';
 export * from './ExposureCaseSnapshot';
 export * from './ExposureDecision';

@@ -1842,43 +1842,155 @@ test("DISC-007: a stale review (409) shows the server's own words, not a generic
 test("DISC-007: a release search has not indexed yet says so instead of showing stale text", async () => {
   stub(true, (path) =>
     path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
-      ? { body: { ...ADMIN_EXPOSURE_CASE, snapshot: undefined }, status: 200 }
+      ? {
+          body: {
+            ...ADMIN_EXPOSURE_CASE,
+            snapshot: undefined,
+            approval: {
+              allowed: false,
+              refusal: {
+                reason: "snapshot_not_current",
+                error: "搜尋索引裡的內容不是這一筆 Release 的版本",
+              },
+            },
+          },
+          status: 200,
+        }
       : undefined,
   );
   await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
   await waitFor(has("尚未進索引"));
   expect(has(ADMIN_EXPOSURE_CASE.snapshot.enriched_summary)()).toBe(false);
   expect(field<HTMLInputElement>('input[value="approved"]').disabled).toBe(true);
-  expect(has("核准要等這一版的搜尋內容可供審核")()).toBe(true);
+  expect(has("搜尋索引裡的內容不是這一筆 Release 的版本")()).toBe(true);
   expect(field<HTMLInputElement>('input[value="revoked"]').disabled).toBe(false);
 });
 
 test.each([
-  ["搜尋索引仍指向另一版", { ...ADMIN_EXPOSURE_CASE.snapshot, current: false }],
-  ["搜尋內容還在補充", { ...ADMIN_EXPOSURE_CASE.snapshot, enriched: false }],
-])("DISC-007: %s時不能核准曝光", async (_condition, snapshot) => {
+  [
+    "搜尋索引仍指向另一版",
+    { ...ADMIN_EXPOSURE_CASE.snapshot, current: false },
+    "snapshot_not_current",
+    "搜尋索引裡的內容不是這一筆 Release 的版本",
+  ],
+  [
+    "搜尋內容還在補充",
+    { ...ADMIN_EXPOSURE_CASE.snapshot, enriched: false },
+    "snapshot_pending",
+    "這一版的搜尋內容還在補充",
+  ],
+])("DISC-007: %s時不能核准曝光", async (_condition, snapshot, reason, error) => {
   stub(true, (path) =>
     path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
-      ? { body: { ...ADMIN_EXPOSURE_CASE, snapshot }, status: 200 }
+      ? {
+          body: {
+            ...ADMIN_EXPOSURE_CASE,
+            snapshot,
+            approval: { allowed: false, refusal: { reason, error } },
+          },
+          status: 200,
+        }
       : undefined,
   );
   await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
   await waitFor(has("審核這一版"));
   expect(field<HTMLInputElement>('input[value="approved"]').disabled).toBe(true);
-  expect(has("核准要等這一版的搜尋內容可供審核")()).toBe(true);
+  expect(has(error)()).toBe(true);
   expect(field<HTMLInputElement>('input[value="revoked"]').disabled).toBe(false);
 });
 
 test("DISC-007: a withdrawn publication cannot be approved again", async () => {
   stub(true, (path) =>
     path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
-      ? { body: { ...ADMIN_EXPOSURE_CASE, status: "delisted" }, status: 200 }
+      ? {
+          body: {
+            ...ADMIN_EXPOSURE_CASE,
+            status: "delisted",
+            approval: {
+              allowed: false,
+              refusal: { reason: "not_published", error: "這個發佈物已經撤回，不能核准曝光" },
+            },
+          },
+          status: 200,
+        }
       : undefined,
   );
   await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
-  await waitFor(has("已撤回的發佈物不能核准"));
+  await waitFor(has("這個發佈物已經撤回，不能核准曝光"));
   expect(field<HTMLInputElement>('input[value="approved"]').disabled).toBe(true);
   expect(field<HTMLInputElement>('input[value="revoked"]').disabled).toBe(false);
+});
+
+test.each([
+  [
+    "redistribution_not_allowed",
+    "可散布判定不是 allowed：要先以既有的可散布判定動詞附授權證據判成 allowed，才能核准曝光",
+  ],
+  ["not_available", "這個 Skill 目前被下架、被保留或已刪除，不能核准曝光"],
+])(
+  "DISC-007: %s blocks approval before submission and preserves revocation",
+  async (reason, error) => {
+    stub(true, (path) =>
+      path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
+        ? {
+            body: {
+              ...ADMIN_EXPOSURE_CASE,
+              approval: { allowed: false, refusal: { reason, error } },
+            },
+            status: 200,
+          }
+        : undefined,
+    );
+    await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+    await waitFor(has("審核這一版"));
+    expect(has(error)()).toBe(true);
+    const approved = field<HTMLInputElement>('input[value="approved"]');
+    expect(approved.disabled).toBe(true);
+    expect(approved.getAttribute("aria-describedby")).toBe("admin-exposure-approval-why");
+    expect(field<HTMLInputElement>('input[value="revoked"]').disabled).toBe(false);
+  },
+);
+
+test("DISC-007: missing approval evidence does not make approval available", async () => {
+  stub(true, (path) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
+      ? { body: { ...ADMIN_EXPOSURE_CASE, approval: undefined }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("無法確認核准資格；請重新整理審核資料。"));
+  expect(field<HTMLInputElement>('input[value="approved"]').disabled).toBe(true);
+});
+
+test("DISC-007: changed approval evidence clears a draft based on the old eligibility", async () => {
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`) return undefined;
+    reads += 1;
+    return {
+      body:
+        reads === 1
+          ? ADMIN_EXPOSURE_CASE
+          : {
+              ...ADMIN_EXPOSURE_CASE,
+              approval: {
+                allowed: false,
+                refusal: { reason: "not_available", error: "這個 Skill 目前被保留，不能核准曝光" },
+              },
+            },
+      status: 200,
+    };
+  });
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核這一版"));
+  await click(field<HTMLInputElement>('input[value="approved"]'));
+  await type("#admin-exposure-review-note", "原先看到的資料");
+
+  await click(button("重新整理審核資料"));
+  await waitFor(has("這個 Skill 目前被保留，不能核准曝光"));
+  expect(field<HTMLInputElement>('input[value="approved"]').checked).toBe(false);
+  expect(field<HTMLInputElement>('input[value="approved"]').disabled).toBe(true);
+  expect(field<HTMLTextAreaElement>("#admin-exposure-review-note").value).toBe("");
 });
 
 test("DISC-007: a failed refresh hides a previously loaded case and its approval control", async () => {

@@ -8258,6 +8258,9 @@ type ExposureCase struct {
 	Release   ExposureRelease    `json:"release"`
 	Sequence  int                `json:"sequence"`
 	Exposed   bool               `json:"exposed"`
+	// Advisory eligibility for approving this release at read time; POST rechecks under the publication
+	// lock.
+	Approval ExposureCaseApproval `json:"approval"`
 	// What search holds for this Skill right now; absent before it is indexed.
 	Snapshot OptExposureCaseSnapshot   `json:"snapshot"`
 	History  []ExposureCaseHistoryItem `json:"history"`
@@ -8296,6 +8299,11 @@ func (s *ExposureCase) GetSequence() int {
 // GetExposed returns the value of Exposed.
 func (s *ExposureCase) GetExposed() bool {
 	return s.Exposed
+}
+
+// GetApproval returns the value of Approval.
+func (s *ExposureCase) GetApproval() ExposureCaseApproval {
+	return s.Approval
 }
 
 // GetSnapshot returns the value of Snapshot.
@@ -8343,6 +8351,11 @@ func (s *ExposureCase) SetExposed(val bool) {
 	s.Exposed = val
 }
 
+// SetApproval sets the value of Approval.
+func (s *ExposureCase) SetApproval(val ExposureCaseApproval) {
+	s.Approval = val
+}
+
 // SetSnapshot sets the value of Snapshot.
 func (s *ExposureCase) SetSnapshot(val OptExposureCaseSnapshot) {
 	s.Snapshot = val
@@ -8355,6 +8368,33 @@ func (s *ExposureCase) SetHistory(val []ExposureCaseHistoryItem) {
 
 func (*ExposureCase) getExposureCaseRes() {}
 func (*ExposureCase) reviewExposureRes()  {}
+
+// Advisory eligibility for approving this release at read time; POST rechecks under the publication
+// lock.
+type ExposureCaseApproval struct {
+	Allowed bool               `json:"allowed"`
+	Refusal OptExposureRefusal `json:"refusal"`
+}
+
+// GetAllowed returns the value of Allowed.
+func (s *ExposureCaseApproval) GetAllowed() bool {
+	return s.Allowed
+}
+
+// GetRefusal returns the value of Refusal.
+func (s *ExposureCaseApproval) GetRefusal() OptExposureRefusal {
+	return s.Refusal
+}
+
+// SetAllowed sets the value of Allowed.
+func (s *ExposureCaseApproval) SetAllowed(val bool) {
+	s.Allowed = val
+}
+
+// SetRefusal sets the value of Refusal.
+func (s *ExposureCaseApproval) SetRefusal(val OptExposureRefusal) {
+	s.Refusal = val
+}
 
 type ExposureCaseHistoryItem struct {
 	Sequence       int              `json:"sequence"`
@@ -14515,6 +14555,52 @@ func (o OptExposureCaseSnapshot) Get() (v ExposureCaseSnapshot, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptExposureCaseSnapshot) Or(d ExposureCaseSnapshot) ExposureCaseSnapshot {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptExposureRefusal returns new OptExposureRefusal with value set to v.
+func NewOptExposureRefusal(v ExposureRefusal) OptExposureRefusal {
+	return OptExposureRefusal{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptExposureRefusal is optional ExposureRefusal.
+type OptExposureRefusal struct {
+	Value ExposureRefusal
+	Set   bool
+}
+
+// IsSet returns true if OptExposureRefusal was set.
+func (o OptExposureRefusal) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptExposureRefusal) Reset() {
+	var v ExposureRefusal
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptExposureRefusal) SetTo(v ExposureRefusal) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptExposureRefusal) Get() (v ExposureRefusal, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptExposureRefusal) Or(d ExposureRefusal) ExposureRefusal {
 	if v, ok := o.Get(); ok {
 		return v
 	}

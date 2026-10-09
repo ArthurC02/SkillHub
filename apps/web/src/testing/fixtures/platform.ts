@@ -1079,6 +1079,7 @@ export const ADMIN_EXPOSURE_CASE = {
   release: ADMIN_EXPOSURE_RELEASE,
   sequence: 2,
   exposed: false,
+  approval: { allowed: true },
   snapshot: {
     version_id: VERSION,
     current: true,

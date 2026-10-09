@@ -4,6 +4,7 @@ import {
   ADMIN_AGENT_FINDING,
   ADMIN_ACCOUNT,
   ADMIN_COST_STATISTICS,
+  ADMIN_EXPOSURE_CASE,
   ADMIN_LEDGER,
   ADMIN_ROSTERS,
   ADMIN_SKILLS,
@@ -1495,6 +1496,42 @@ test("exposure review keeps the decision evidence visible and folds technical id
   await expect(identifiers.getByText(/審核序號：2/)).toBeVisible();
   await expect(identifiers.locator("code")).toHaveText("sha256:aa");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("exposure review explains an unavailable approval beside its control on mobile", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.route(`**/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`, (route) =>
+    route.fulfill({
+      json: {
+        ...ADMIN_EXPOSURE_CASE,
+        approval: {
+          allowed: false,
+          refusal: {
+            reason: "redistribution_not_allowed",
+            error:
+              "可散布判定不是 allowed：要先以既有的可散布判定動詞附授權證據判成 allowed，才能核准曝光",
+          },
+        },
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/admin/exposure?publication=${PUBLISHER}%2F${PUBLICATION}`);
+
+  const approved = page.getByRole("radio", { name: "核准" });
+  await expect(approved).toBeDisabled();
+  await expect(approved).toHaveAttribute("aria-describedby", "admin-exposure-approval-why");
+  await expect(page.locator("#admin-exposure-approval-why")).toBeVisible();
+  await expect(page.getByRole("radio", { name: "撤銷" })).toBeEnabled();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.screenshot({
+    path: testInfo.outputPath("exposure-approval-block-mobile.png"),
+    fullPage: true,
+  });
 });
 
 test("a model timeout change keeps the same kind's restore action unavailable", async ({

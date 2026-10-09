@@ -20,6 +20,13 @@ import {
     ExposureCaseHistoryInnerToJSON,
     ExposureCaseHistoryInnerToJSONTyped,
 } from './ExposureCaseHistoryInner';
+import type { ExposureCaseApproval } from './ExposureCaseApproval';
+import {
+    ExposureCaseApprovalFromJSON,
+    ExposureCaseApprovalFromJSONTyped,
+    ExposureCaseApprovalToJSON,
+    ExposureCaseApprovalToJSONTyped,
+} from './ExposureCaseApproval';
 import type { ExposureCaseSnapshot } from './ExposureCaseSnapshot';
 import {
     ExposureCaseSnapshotFromJSON,
@@ -72,6 +79,10 @@ export interface ExposureCase {
     /**
      * 
      */
+    approval: ExposureCaseApproval;
+    /**
+     * 
+     */
     snapshot?: ExposureCaseSnapshot;
     /**
      * 
@@ -101,6 +112,7 @@ export function instanceOfExposureCase(value: object): value is ExposureCase {
     if (!('release' in value) || value['release'] === undefined) return false;
     if (!('sequence' in value) || value['sequence'] === undefined) return false;
     if (!('exposed' in value) || value['exposed'] === undefined) return false;
+    if (!('approval' in value) || value['approval'] === undefined) return false;
     if (!('history' in value) || value['history'] === undefined) return false;
     return true;
 }
@@ -122,6 +134,7 @@ export function ExposureCaseFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'release': ExposureReleaseFromJSON(json['release']),
         'sequence': json['sequence'],
         'exposed': json['exposed'],
+        'approval': ExposureCaseApprovalFromJSON(json['approval']),
         'snapshot': json['snapshot'] == null ? undefined : ExposureCaseSnapshotFromJSON(json['snapshot']),
         'history': ((json['history'] as Array<any>).map(ExposureCaseHistoryInnerFromJSON)),
     };
@@ -145,6 +158,7 @@ export function ExposureCaseToJSONTyped(value?: ExposureCase | null, ignoreDiscr
         'release': ExposureReleaseToJSON(value['release']),
         'sequence': value['sequence'],
         'exposed': value['exposed'],
+        'approval': ExposureCaseApprovalToJSON(value['approval']),
         'snapshot': ExposureCaseSnapshotToJSON(value['snapshot']),
         'history': ((value['history'] as Array<any>).map(ExposureCaseHistoryInnerToJSON)),
     };

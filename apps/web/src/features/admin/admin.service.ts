@@ -125,6 +125,10 @@ export type ExposureCase = {
   release: ExposureRelease;
   sequence: number;
   exposed: boolean;
+  approval: {
+    allowed: boolean;
+    refusal?: { error: string; reason: string };
+  };
   snapshot?: ExposureSnapshot;
   history: ExposureReviewRecord[];
 };

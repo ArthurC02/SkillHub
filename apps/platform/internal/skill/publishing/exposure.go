@@ -93,10 +93,11 @@ type ExposureReview struct {
 }
 
 type ExposureCase struct {
-	State    ExposureState
-	Snapshot *SearchSnapshot
-	Exposed  bool
-	History  []ExposureReview
+	State           ExposureState
+	Snapshot        *SearchSnapshot
+	Exposed         bool
+	ApprovalProblem ExposureProblem
+	History         []ExposureReview
 }
 
 type ExposureInput struct {
@@ -204,6 +205,23 @@ func (s *Service) exposureEligible(ctx context.Context, state ExposureState) (bo
 
 func exposable(status Status, skill SkillFacts, found bool) bool {
 	return availabilityOf(status, skill, found) == AvailabilityAvailable && skill.Redistribution == redistributionAllowed
+}
+
+func approvalProblem(state ExposureState, skill SkillFacts, skillFound bool, snapshot *SearchSnapshot) ExposureProblem {
+	switch {
+	case state.Status != StatusPublished:
+		return ExposureNotPublished
+	case !skillFound || skill.TakenDown || skill.AccessRestricted:
+		return ExposureNotAvailable
+	case skill.Redistribution != redistributionAllowed:
+		return ExposureNotAllowed
+	case snapshot == nil || snapshot.VersionID != state.VersionID:
+		return ExposureSnapshotMissing
+	case !snapshot.Enriched:
+		return ExposureSnapshotPending
+	default:
+		return ""
+	}
 }
 
 func (s *Service) catalogExposure(ctx context.Context, state ExposureState) (CatalogExposure, error) {
@@ -346,10 +364,19 @@ func (s *Service) ExposureCase(ctx context.Context, publisher, name string) (Exp
 		return ExposureCase{}, false, err
 	}
 	out := ExposureCase{State: states[0]}
-	out.Exposed, out.Snapshot, err = s.exposedNow(ctx, out.State)
+	var skill SkillFacts
+	var found bool
+	if out.State.Status == StatusPublished {
+		skill, found, err = s.ReadSkill(ctx, out.State.OwnerWorkspaceID, out.State.SkillID)
+		if err != nil {
+			return ExposureCase{}, false, err
+		}
+	}
+	out.Exposed, out.Snapshot, err = s.exposedFor(ctx, out.State, skill, found)
 	if err != nil {
 		return ExposureCase{}, false, err
 	}
+	out.ApprovalProblem = approvalProblem(out.State, skill, found, out.Snapshot)
 	reviews, err := q.ListExposureReviews(ctx, row.ID)
 	if err != nil {
 		return ExposureCase{}, false, err
@@ -484,17 +511,12 @@ func (s *Service) approvalDigest(ctx context.Context, state ExposureState, in Ex
 	if err != nil {
 		return "", err
 	}
-	if !skillFound || skill.TakenDown || skill.AccessRestricted {
-		return "", &ExposureError{ExposureNotAvailable}
+	var current *SearchSnapshot
+	if found {
+		current = &snapshot
 	}
-	if skill.Redistribution != redistributionAllowed {
-		return "", &ExposureError{ExposureNotAllowed}
-	}
-	if !found || snapshot.VersionID != state.VersionID {
-		return "", &ExposureError{ExposureSnapshotMissing}
-	}
-	if !snapshot.Enriched {
-		return "", &ExposureError{ExposureSnapshotPending}
+	if problem := approvalProblem(state, skill, skillFound, current); problem != "" {
+		return "", &ExposureError{problem}
 	}
 	if snapshot.Digest != in.ExpectedDigest {
 		return "", &ExposureError{ExposureStale}
