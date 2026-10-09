@@ -485,16 +485,20 @@ func (q *Queries) ListCollectableObjects(ctx context.Context, rowLimit int32) ([
 
 const listPlatformAuditEvents = `-- name: ListPlatformAuditEvents :many
 SELECT id, actor_user_id, workspace_id, action, resource_type, resource_id, metadata, created_at, actor_agent_id FROM audit_events
-WHERE action = ANY($1::text[])
-   OR (action = ANY($2::text[]) AND metadata->>'scope' = $3::text)
+WHERE (action = ANY($1::text[])
+   OR (action = ANY($2::text[]) AND metadata->>'scope' = $3::text))
+  AND ($4::timestamptz IS NULL
+       OR (created_at, id) < ($4::timestamptz, $5::bigint))
 ORDER BY created_at DESC, id DESC
-LIMIT $5 OFFSET $4
+LIMIT $7 OFFSET $6
 `
 
 type ListPlatformAuditEventsParams struct {
 	Actions       []string
 	ScopedActions []string
 	Scope         string
+	BeforeAt      pgtype.Timestamptz
+	BeforeID      *int64
 	PageOffset    int32
 	PageLimit     int32
 }
@@ -504,6 +508,8 @@ func (q *Queries) ListPlatformAuditEvents(ctx context.Context, arg ListPlatformA
 		arg.Actions,
 		arg.ScopedActions,
 		arg.Scope,
+		arg.BeforeAt,
+		arg.BeforeID,
 		arg.PageOffset,
 		arg.PageLimit,
 	)

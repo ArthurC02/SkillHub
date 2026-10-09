@@ -31,6 +31,10 @@ export interface ListOperatorAuditLog200Response {
      * 
      */
     events: Array<OperatorAuditEvent>;
+    /**
+     * Pass as `cursor` for the next page. Absent on the last page.
+     */
+    nextCursor?: string;
 }
 
 /**
@@ -52,6 +56,7 @@ export function ListOperatorAuditLog200ResponseFromJSONTyped(json: any, ignoreDi
     return {
         
         'events': ((json['events'] as Array<any>).map(OperatorAuditEventFromJSON)),
+        'nextCursor': json['next_cursor'] == null ? undefined : json['next_cursor'],
     };
 }
 
@@ -67,6 +72,7 @@ export function ListOperatorAuditLog200ResponseToJSONTyped(value?: ListOperatorA
     return {
         
         'events': ((value['events'] as Array<any>).map(OperatorAuditEventToJSON)),
+        'next_cursor': value['nextCursor'],
     };
 }
 

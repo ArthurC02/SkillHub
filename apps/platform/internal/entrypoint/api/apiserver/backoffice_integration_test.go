@@ -396,6 +396,66 @@ func TestOperatorAuditLogListsOnlyOperatorActions(t *testing.T) {
 	}
 }
 
+func TestOperatorAuditLogCursorKeepsItsPositionWhenANewerEventArrives(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	operator := a.login(t, "bo-log-cursor-operator")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = tx.Rollback(ctx) })
+	a.app.Deps.OperatorAudit.DB = tx
+	at := time.Date(2100, 1, 1, 0, 0, 0, 0, time.UTC)
+	insert := func(seq int) {
+		t.Helper()
+		_, err := tx.Exec(ctx, `INSERT INTO audit_events
+			(actor_user_id, action, resource_type, metadata, created_at)
+			VALUES ($1, 'credit.grant', 'credit_entry', jsonb_build_object('seq', $2::int), $3)`,
+			mustUUID(t, operator.userID), seq, at)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for seq := 1; seq <= 4; seq++ {
+		insert(seq)
+	}
+	page := func(path string, want []int) map[string]any {
+		t.Helper()
+		code, body := getAdmin(t, operator, path)
+		if code != http.StatusOK {
+			t.Fatalf("audit page %s: got %d (%v)", path, code, body)
+		}
+		rows := objects(t, body["events"])
+		got := make([]int, 0, len(rows))
+		for _, row := range rows {
+			got = append(got, int(row["metadata"].(map[string]any)["seq"].(float64)))
+		}
+		if !slices.Equal(got, want) {
+			t.Fatalf("audit page %s: got %v, want %v", path, got, want)
+		}
+		return body
+	}
+	first := page("/admin/audit-log?limit=2", []int{4, 3})
+	cursor, ok := first["next_cursor"].(string)
+	if !ok || cursor == "" {
+		t.Fatalf("first page continuation = %v, want cursor", first["next_cursor"])
+	}
+	insert(5)
+	page("/admin/audit-log?limit=2&cursor="+url.QueryEscape(cursor), []int{2, 1})
+	for _, path := range []string{
+		"/admin/audit-log?cursor=not-a-cursor",
+		"/admin/audit-log?cursor=" + url.QueryEscape(cursor) + "&offset=1",
+	} {
+		if code, _ := getAdmin(t, operator, path); code != http.StatusBadRequest {
+			t.Errorf("audit page %s: got %d, want 400", path, code)
+		}
+	}
+}
+
 func TestCostStatisticsShowTheNewestWindowOfEachKind(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

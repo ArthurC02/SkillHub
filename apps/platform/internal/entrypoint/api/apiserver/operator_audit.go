@@ -5,6 +5,7 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -72,7 +73,8 @@ type operatorAuditEventView struct {
 }
 
 type operatorAuditResponse struct {
-	Events []operatorAuditEventView `json:"events"`
+	Events     []operatorAuditEventView `json:"events"`
+	NextCursor string                   `json:"next_cursor,omitempty"`
 }
 
 func (h *operatorAuditHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -86,10 +88,30 @@ func (h *operatorAuditHandler) List(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	records, err := audit.ListPlatform(r.Context(), h.DB, operatorActions, limit, offset)
+	var beforeAt time.Time
+	var beforeID int64
+	if values, present := r.URL.Query()["cursor"]; present {
+		if len(values) != 1 || offset != 0 {
+			httpx.WriteError(w, http.StatusBadRequest, "cursor cannot be repeated or combined with offset")
+			return
+		}
+		beforeAt, beforeID, err = parseOperatorAuditCursor(values[0])
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+	filter := operatorActions
+	filter.BeforeAt, filter.BeforeID = beforeAt, beforeID
+	records, err := audit.ListPlatform(r.Context(), h.DB, filter, limit+1, offset)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "audit log lookup failed")
 		return
+	}
+	response := operatorAuditResponse{}
+	if len(records) > int(limit) {
+		records = records[:limit]
+		response.NextCursor = operatorAuditCursor(records[len(records)-1])
 	}
 	events := make([]operatorAuditEventView, 0, len(records))
 	for _, rec := range records {
@@ -100,7 +122,22 @@ func (h *operatorAuditHandler) List(w http.ResponseWriter, r *http.Request) {
 			OccurredAt: rec.OccurredAt.UTC().Format(time.RFC3339), Metadata: rec.Metadata,
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, operatorAuditResponse{Events: events})
+	response.Events = events
+	httpx.WriteJSON(w, http.StatusOK, response)
+}
+
+func parseOperatorAuditCursor(raw string) (time.Time, int64, error) {
+	at, rawID, found := strings.Cut(raw, "_")
+	when, timeErr := time.Parse(time.RFC3339Nano, at)
+	id, idErr := strconv.ParseInt(rawID, 10, 64)
+	if !found || timeErr != nil || idErr != nil || id <= 0 {
+		return time.Time{}, 0, fmt.Errorf("cursor is invalid")
+	}
+	return when, id, nil
+}
+
+func operatorAuditCursor(record audit.Record) string {
+	return record.OccurredAt.UTC().Format(time.RFC3339Nano) + "_" + strconv.FormatInt(record.ID, 10)
 }
 
 func queryInt32(r *http.Request, name string, fallback, low, high int64) (int32, error) {

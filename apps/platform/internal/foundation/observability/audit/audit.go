@@ -189,6 +189,7 @@ func Log(ctx context.Context, db DBTX, ev Event) error {
 }
 
 type Record struct {
+	ID           int64
 	Actor        pgtype.UUID
 	Agent        pgtype.UUID
 	Workspace    pgtype.UUID
@@ -215,6 +216,8 @@ type PlatformFilter struct {
 
 	ScopedActions []string
 	Scope         string
+	BeforeAt      time.Time
+	BeforeID      int64
 }
 
 func ListForWorkspace(
@@ -245,6 +248,8 @@ func ListPlatform(ctx context.Context, db DBTX, filter PlatformFilter, limit, of
 		Actions:       filter.Actions,
 		ScopedActions: filter.ScopedActions,
 		Scope:         filter.Scope,
+		BeforeAt:      pgtype.Timestamptz{Time: filter.BeforeAt, Valid: !filter.BeforeAt.IsZero()},
+		BeforeID:      &filter.BeforeID,
 		PageLimit:     limit,
 		PageOffset:    offset,
 	})
@@ -258,6 +263,7 @@ func records(rows []gen.AuditEvent) []Record {
 	out := make([]Record, 0, len(rows))
 	for _, r := range rows {
 		rec := Record{
+			ID:    r.ID,
 			Actor: r.ActorUserID, Agent: r.ActorAgentID, Workspace: r.WorkspaceID, Action: r.Action,
 			ResourceType: r.ResourceType, ResourceID: r.ResourceID, OccurredAt: r.CreatedAt.Time,
 		}

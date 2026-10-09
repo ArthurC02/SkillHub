@@ -1390,7 +1390,13 @@ test("OPS-006: a full page of 50 stops, the 51st event offers the next page", as
   const event = ADMIN_AUDIT_LOG.events[0];
   stub(true, (path) =>
     path === "/admin/audit-log"
-      ? { body: { events: Array.from({ length: total }, () => event) }, status: 200 }
+      ? {
+          body: {
+            events: Array.from({ length: Math.min(total, 50) }, () => event),
+            ...(total > 50 ? { next_cursor: "next-50" } : {}),
+          },
+          status: 200,
+        }
       : undefined,
   );
   await mountAt("/admin/audit-log");
@@ -1409,19 +1415,24 @@ test("OPS-006: a full page of 50 stops, the 51st event offers the next page", as
   expect(
     calls
       .filter((c) => c.url.startsWith("/admin/audit-log"))
-      .every((c) => c.url.includes("limit=51")),
+      .every((c) => c.url === "/admin/audit-log?limit=50"),
   ).toBe(true);
 });
 
 test("a failed next audit page keeps loaded rows and retries only that page", async () => {
   const event = ADMIN_AUDIT_LOG.events[0];
+  const cursor = "2026-09-10T08:00:00Z_50";
   let nextPageReads = 0;
   stub(true, (_path, _method, url) => {
     if (!url.startsWith("/admin/audit-log?")) return undefined;
-    if (!url.includes("offset=50")) {
-      return { body: { events: Array.from({ length: 51 }, () => event) }, status: 200 };
+    if (!new URL(url, "http://localhost").searchParams.has("cursor")) {
+      return {
+        body: { events: Array.from({ length: 50 }, () => event), next_cursor: cursor },
+        status: 200,
+      };
     }
     nextPageReads += 1;
+    expect(new URL(url, "http://localhost").searchParams.get("cursor")).toBe(cursor);
     return nextPageReads === 1
       ? { body: { error: "service unavailable" }, status: 503 }
       : { body: { events: [ADMIN_AUDIT_LOG.events[1]] }, status: 200 };
@@ -1443,9 +1454,12 @@ test("a lost operator session on the next audit page hides loaded rows", async (
   const event = ADMIN_AUDIT_LOG.events[0];
   stub(true, (_path, _method, url) => {
     if (!url.startsWith("/admin/audit-log?")) return undefined;
-    return url.includes("offset=50")
+    return url.includes("cursor=next-50")
       ? { body: { error: "not authenticated" }, status: 401 }
-      : { body: { events: Array.from({ length: 51 }, () => event) }, status: 200 };
+      : {
+          body: { events: Array.from({ length: 50 }, () => event), next_cursor: "next-50" },
+          status: 200,
+        };
   });
   await mountAt("/admin/audit-log");
   await waitFor(() => container.querySelectorAll("tbody tr").length === 50);

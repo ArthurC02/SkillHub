@@ -30819,10 +30819,17 @@ func (s *ListOperatorAuditLogOK) encodeFields(e *jx.Encoder) {
 		}
 		e.ArrEnd()
 	}
+	{
+		if s.NextCursor.Set {
+			e.FieldStart("next_cursor")
+			s.NextCursor.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfListOperatorAuditLogOK = [1]string{
+var jsonFieldsNameOfListOperatorAuditLogOK = [2]string{
 	0: "events",
+	1: "next_cursor",
 }
 
 // Decode decodes ListOperatorAuditLogOK from json.
@@ -30851,6 +30858,16 @@ func (s *ListOperatorAuditLogOK) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"events\"")
+			}
+		case "next_cursor":
+			if err := func() error {
+				s.NextCursor.Reset()
+				if err := s.NextCursor.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"next_cursor\"")
 			}
 		default:
 			return d.Skip()

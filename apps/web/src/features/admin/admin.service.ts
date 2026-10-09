@@ -252,15 +252,12 @@ const AUDIT_PAGE = 50;
 export function useOperatorAuditLog() {
   return useInfiniteQuery({
     queryKey: queryKeys.admin.auditLog,
-    initialPageParam: 0,
+    initialPageParam: "",
     queryFn: ({ pageParam }) =>
-      apiFetch<{ events: OperatorAuditEvent[] }>(
-        `/admin/audit-log?limit=${AUDIT_PAGE + 1}&offset=${pageParam}`,
-      ).then((page) => ({
-        events: page.events.slice(0, AUDIT_PAGE),
-        nextOffset: page.events.length > AUDIT_PAGE ? pageParam + AUDIT_PAGE : undefined,
-      })),
-    getNextPageParam: (last) => last.nextOffset,
+      apiFetch<{ events: OperatorAuditEvent[]; next_cursor?: string }>(
+        `/admin/audit-log?limit=${AUDIT_PAGE}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,
+      ),
+    getNextPageParam: (last) => last.next_cursor,
     enabled: useOperator(),
   });
 }

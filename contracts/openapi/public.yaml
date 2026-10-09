@@ -3979,11 +3979,14 @@ paths:
     get:
       operationId: listOperatorAuditLog
       summary: What operators did, platform-wide (02:OPS-006)
-      description: |
+      description: |-
         Operator only. Newest first. The server decides which actions are
         operator actions; the account and ledger lookups are among them.
         `skill.takedown` is also written by the owner's own takedown, so only
         the events whose metadata carries `scope: operator` are listed.
+        Use `next_cursor` to continue without repeating events inserted after
+        the first page. `offset` remains for existing clients; it cannot be
+        combined with a cursor.
       parameters:
         - name: limit
           in: query
@@ -3993,6 +3996,11 @@ paths:
           in: query
           required: false
           schema: { type: integer, minimum: 0, default: 0 }
+        - name: cursor
+          in: query
+          required: false
+          description: The opaque `next_cursor` returned by the previous page.
+          schema: { type: string }
       responses:
         "200":
           description: One page of events.
@@ -4005,8 +4013,11 @@ paths:
                   events:
                     type: array
                     items: { $ref: "#/components/schemas/OperatorAuditEvent" }
+                  next_cursor:
+                    type: string
+                    description: Pass as `cursor` for the next page. Absent on the last page.
         "400":
-          description: "`limit` or `offset` is out of range."
+          description: "`limit`, `offset`, or `cursor` is invalid, or cursor and nonzero offset are combined."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

@@ -340,6 +340,8 @@ type ListDownloadRecordsParams struct {
 type ListOperatorAuditLogParams struct {
 	Limit  OptInt `json:",omitempty,omitzero"`
 	Offset OptInt `json:",omitempty,omitzero"`
+	// The opaque `next_cursor` returned by the previous page.
+	Cursor OptString `json:",omitempty,omitzero"`
 }
 
 // ListPlatformAgentFindingsParams is parameters of listPlatformAgentFindings operation.

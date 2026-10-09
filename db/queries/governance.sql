@@ -10,8 +10,10 @@ LIMIT $2;
 
 -- name: ListPlatformAuditEvents :many
 SELECT * FROM audit_events
-WHERE action = ANY(@actions::text[])
-   OR (action = ANY(@scoped_actions::text[]) AND metadata->>'scope' = @scope::text)
+WHERE (action = ANY(@actions::text[])
+   OR (action = ANY(@scoped_actions::text[]) AND metadata->>'scope' = @scope::text))
+  AND (sqlc.narg('before_at')::timestamptz IS NULL
+       OR (created_at, id) < (sqlc.narg('before_at')::timestamptz, sqlc.narg('before_id')::bigint))
 ORDER BY created_at DESC, id DESC
 LIMIT @page_limit OFFSET @page_offset;
 

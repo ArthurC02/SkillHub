@@ -12093,6 +12093,8 @@ func (*ListOperatorAuditLogNotFound) listOperatorAuditLogRes() {}
 
 type ListOperatorAuditLogOK struct {
 	Events []OperatorAuditEvent `json:"events"`
+	// Pass as `cursor` for the next page. Absent on the last page.
+	NextCursor OptString `json:"next_cursor"`
 }
 
 // GetEvents returns the value of Events.
@@ -12100,9 +12102,19 @@ func (s *ListOperatorAuditLogOK) GetEvents() []OperatorAuditEvent {
 	return s.Events
 }
 
+// GetNextCursor returns the value of NextCursor.
+func (s *ListOperatorAuditLogOK) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
 // SetEvents sets the value of Events.
 func (s *ListOperatorAuditLogOK) SetEvents(val []OperatorAuditEvent) {
 	s.Events = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *ListOperatorAuditLogOK) SetNextCursor(val OptString) {
+	s.NextCursor = val
 }
 
 func (*ListOperatorAuditLogOK) listOperatorAuditLogRes() {}

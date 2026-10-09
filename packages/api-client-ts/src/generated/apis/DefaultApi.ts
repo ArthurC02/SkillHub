@@ -1352,6 +1352,10 @@ export interface ListOperatorAuditLogRequest {
      * 
      */
     offset?: number;
+    /**
+     * The opaque `next_cursor` returned by the previous page.
+     */
+    cursor?: string;
 }
 
 export interface ListPlatformAgentFindingsRequest {
@@ -3889,16 +3893,18 @@ export interface DefaultApiInterface {
      * Creates request options for listOperatorAuditLog without sending the request
      * @param {number} [limit] 
      * @param {number} [offset] 
+     * @param {string} [cursor] The opaque &#x60;next_cursor&#x60; returned by the previous page.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
     listOperatorAuditLogRequestOpts(requestParameters: ListOperatorAuditLogRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_cursor` to continue without repeating events inserted after the first page. `offset` remains for existing clients; it cannot be combined with a cursor.
      * @summary What operators did, platform-wide (02:OPS-006)
      * @param {number} [limit] 
      * @param {number} [offset] 
+     * @param {string} [cursor] The opaque &#x60;next_cursor&#x60; returned by the previous page.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -3906,7 +3912,7 @@ export interface DefaultApiInterface {
     listOperatorAuditLogRaw(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOperatorAuditLog200Response>>;
 
     /**
-     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_cursor` to continue without repeating events inserted after the first page. `offset` remains for existing clients; it cannot be combined with a cursor.
      * What operators did, platform-wide (02:OPS-006)
      */
     listOperatorAuditLog(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOperatorAuditLog200Response>;
@@ -9135,6 +9141,10 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             queryParameters['offset'] = requestParameters['offset'];
         }
 
+        if (requestParameters['cursor'] != null) {
+            queryParameters['cursor'] = requestParameters['cursor'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -9149,7 +9159,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_cursor` to continue without repeating events inserted after the first page. `offset` remains for existing clients; it cannot be combined with a cursor.
      * What operators did, platform-wide (02:OPS-006)
      */
     async listOperatorAuditLogRaw(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOperatorAuditLog200Response>> {
@@ -9160,7 +9170,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. 
+     * Operator only. Newest first. The server decides which actions are operator actions; the account and ledger lookups are among them. `skill.takedown` is also written by the owner\'s own takedown, so only the events whose metadata carries `scope: operator` are listed. Use `next_cursor` to continue without repeating events inserted after the first page. `offset` remains for existing clients; it cannot be combined with a cursor.
      * What operators did, platform-wide (02:OPS-006)
      */
     async listOperatorAuditLog(requestParameters: ListOperatorAuditLogRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOperatorAuditLog200Response> {
