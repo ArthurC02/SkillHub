@@ -1,6 +1,7 @@
 import { test, expect, type Page, type TestInfo } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import {
+  ADMIN_AGENTS,
   ADMIN_AGENT_FINDING,
   ADMIN_AGENT_PROPOSAL,
   ADMIN_AGENT_RUNS,
@@ -1840,6 +1841,81 @@ test("an Agent finding move keeps its result when detail refresh fails", async (
   const accessibility = await new AxeBuilder({ page }).include("main").analyze();
   expect(accessibility.violations).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("admin-finding-read-failure-phone.png") });
+});
+
+test("an Agent brake command stays visible when its status refresh fails", async ({
+  page,
+}, testInfo) => {
+  let engaged = false;
+  await stubPlatform(page);
+  await page.route("**/admin/agents/brake", (route) => {
+    engaged = true;
+    return route.fulfill({ status: 200, json: {} });
+  });
+  await page.route("**/admin/agents", (route) => {
+    if (route.request().resourceType() === "document") return route.continue();
+    return engaged
+      ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
+      : route.fulfill({ json: ADMIN_AGENTS });
+  });
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto("/admin/agents");
+  await page.locator("#admin-agent-brake-engage-note").fill("incident");
+  await page.getByRole("button", { name: "拉下 Agent 煞車" }).click();
+
+  await expect(page.getByRole("alert")).toContainText("暫時無法讀取 Agent 控制");
+  await expect(page.locator("#admin-agent-brake-result")).toContainText("最新狀態尚未確認");
+  await expect(page.locator("#admin-agent-brake-result")).toBeFocused();
+  await expect(page.locator('nav[aria-label="平台 Agent 工作區"]')).toContainText("煞車 待確認");
+  await expect(page.getByRole("button", { name: "拉下 Agent 煞車" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "重新整理 Agent 狀態" })).toBeVisible();
+  const resultTop = await page
+    .locator("#admin-agent-brake-result")
+    .evaluate((element) => element.getBoundingClientRect().top);
+  const headerBottom = await page
+    .locator(".app-header")
+    .evaluate((element) => element.getBoundingClientRect().bottom);
+  expect(resultTop).toBeGreaterThanOrEqual(headerBottom);
+  const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("admin-agent-brake-read-failure-phone.png") });
+});
+
+test("an Agent switch keeps its result when status refresh fails", async ({ page }, testInfo) => {
+  let switched = false;
+  await stubPlatform(page);
+  await page.route("**/admin/agents/daily-report/enabled", (route) => {
+    switched = true;
+    return route.fulfill({ status: 200, json: {} });
+  });
+  await page.route("**/admin/agents", (route) => {
+    if (route.request().resourceType() === "document") return route.continue();
+    return switched
+      ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
+      : route.fulfill({ json: ADMIN_AGENTS });
+  });
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto("/admin/agents");
+  await page.locator("#admin-agent-daily-report-note").fill("incident");
+  await page.getByRole("button", { name: "停用 daily-report" }).click();
+
+  await expect(page.getByRole("alert")).toContainText("暫時無法讀取 Agent 控制");
+  await expect(page.locator("#admin-agent-daily-report-result")).toContainText(
+    "已送出停用 daily-report；最新狀態尚未確認。",
+  );
+  await expect(page.locator("#admin-agent-daily-report-result")).toBeFocused();
+  await expect(page.getByRole("button", { name: "停用 daily-report" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "重新整理此 Agent" })).toBeVisible();
+  const resultTop = await page
+    .locator("#admin-agent-daily-report-result")
+    .evaluate((element) => element.getBoundingClientRect().top);
+  const headerBottom = await page
+    .locator(".app-header")
+    .evaluate((element) => element.getBoundingClientRect().bottom);
+  expect(resultTop).toBeGreaterThanOrEqual(headerBottom);
+  const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("admin-agent-switch-read-failure-phone.png") });
 });
 
 test("a completed Agent proposal decision keeps keyboard focus on its result", async ({

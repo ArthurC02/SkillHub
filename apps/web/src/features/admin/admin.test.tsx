@@ -3852,6 +3852,72 @@ test.each([
   },
 );
 
+test.each([
+  ["disable", "stale", true],
+  ["disable", "unavailable", true],
+  ["enable", "stale", false],
+  ["enable", "unavailable", false],
+] as const)(
+  "OPS-011: a %s Agent command keeps its result but hides stale controls when status is %s",
+  async (direction, refresh, initiallyEnabled) => {
+    let sent = false;
+    let verified = false;
+    stub(true, (path, method) => {
+      if (path === "/admin/agents/daily-report/enabled" && method === "PUT") {
+        sent = true;
+        return { body: {}, status: 200 };
+      }
+      if (path === "/admin/agents") {
+        if (sent && !verified && refresh === "unavailable") {
+          return { body: { error: "agent status unavailable" }, status: 503 };
+        }
+        return {
+          body: {
+            ...ADMIN_AGENTS,
+            agents: [
+              {
+                ...ADMIN_AGENTS.agents[0],
+                enabled: verified ? !initiallyEnabled : initiallyEnabled,
+              },
+            ],
+          },
+          status: 200,
+        };
+      }
+      return undefined;
+    });
+    await mountAt("/admin/agents");
+    await waitFor(has(direction === "disable" ? "停用 daily-report" : "啟用 daily-report"));
+    await type("#admin-agent-daily-report-note", "because");
+    await submit("#admin-agent-daily-report-note");
+    await waitFor(
+      has(
+        direction === "disable"
+          ? "已送出停用 daily-report；最新狀態尚未確認。"
+          : "已送出啟用 daily-report；最新狀態尚未確認。",
+      ),
+    );
+    expect(container.querySelector("#admin-agent-daily-report-note")).toBeNull();
+    expect(document.activeElement).toBe(field<HTMLElement>("#admin-agent-daily-report-result"));
+    if (refresh === "unavailable") {
+      await waitFor(has("暫時無法讀取 Agent 控制。請重新整理，或稍後再試。"));
+    }
+    verified = true;
+    await click(button("重新整理此 Agent"));
+    await waitFor(
+      has(
+        direction === "disable"
+          ? "已停用，執行中的那一次會在下一步之前停下。"
+          : "已啟用，下一次排程會執行。",
+      ),
+    );
+    expect(
+      button(direction === "disable" ? "啟用 daily-report" : "停用 daily-report"),
+    ).toBeDefined();
+    expect(field<HTMLTextAreaElement>("#admin-agent-daily-report-note").value).toBe("");
+  },
+);
+
 test("OPS-011: engaging the brake and releasing it each keep their sentence after the form swaps", async () => {
   let brake: object | undefined;
   stub(true, (path, method) => {
@@ -3877,6 +3943,80 @@ test("OPS-011: engaging the brake and releasing it each keep their sentence afte
   await waitFor(has("拉下 Agent 煞車"));
   expect(has("已拉下，")()).toBe(false);
 });
+
+test.each([
+  ["engage", "stale"],
+  ["engage", "unavailable"],
+  ["release", "stale"],
+  ["release", "unavailable"],
+] as const)(
+  "OPS-011: a %s brake command keeps its result but hides stale controls when status is %s",
+  async (direction, refresh) => {
+    const engaged = { reason: "incident", engaged_at: "2026-10-07T01:00:00Z" };
+    let sent = false;
+    let verified = false;
+    stub(true, (path, method) => {
+      if (path === "/admin/agents/brake" && method !== "GET") {
+        sent = true;
+        return { body: {}, status: method === "PUT" ? 200 : 204 };
+      }
+      if (path === "/admin/agents") {
+        if (sent && !verified && refresh === "unavailable") {
+          return { body: { error: "agent status unavailable" }, status: 503 };
+        }
+        return {
+          body: {
+            ...ADMIN_AGENTS,
+            brake: verified
+              ? direction === "engage"
+                ? engaged
+                : undefined
+              : direction === "release"
+                ? engaged
+                : undefined,
+          },
+          status: 200,
+        };
+      }
+      return undefined;
+    });
+    await mountAt("/admin/agents");
+    await waitFor(has(direction === "engage" ? "拉下 Agent 煞車" : "放開 Agent 煞車"));
+    await type(
+      direction === "engage" ? "#admin-agent-brake-engage-note" : "#admin-agent-brake-release-note",
+      "because",
+    );
+    await submit(
+      direction === "engage" ? "#admin-agent-brake-engage-note" : "#admin-agent-brake-release-note",
+    );
+    await waitFor(
+      has(
+        direction === "engage"
+          ? "已送出拉下煞車；最新狀態尚未確認。"
+          : "已送出放開煞車；最新狀態尚未確認。",
+      ),
+    );
+    expect(field<HTMLElement>('nav[aria-label="平台 Agent 工作區"]').textContent).toContain(
+      "煞車 待確認",
+    );
+    expect(has("拉下 Agent 煞車")()).toBe(false);
+    expect(has("放開 Agent 煞車")()).toBe(false);
+    expect(document.activeElement).toBe(field<HTMLElement>("#admin-agent-brake-result"));
+    if (refresh === "unavailable") {
+      await waitFor(has("暫時無法讀取 Agent 控制。請重新整理，或稍後再試。"));
+    }
+    verified = true;
+    await click(button("重新整理 Agent 狀態"));
+    await waitFor(
+      has(
+        direction === "engage"
+          ? "已拉下，所有 Agent 在下一步之前停下。"
+          : "已放開，啟用中的 Agent 下一次排程會執行。",
+      ),
+    );
+    expect(button(direction === "engage" ? "放開 Agent 煞車" : "拉下 Agent 煞車")).toBeDefined();
+  },
+);
 
 test("OPS-004: setting a restriction keeps its sentence after the refetched skill shows the restriction", async () => {
   let restricted: string | null = null;

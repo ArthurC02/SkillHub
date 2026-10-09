@@ -3,6 +3,7 @@ import { Link, useSearch } from "@tanstack/react-router";
 import {
   AGENT_RUN_POLL_MS,
   canKeepLoadedFindings,
+  usePlatformAgentBrake,
   usePlatformAgentFindings,
   usePlatformAgentProposals,
   usePlatformAgentRun,
@@ -28,8 +29,24 @@ function readLabel(value: string | undefined, error: Error | null): string {
   return value ?? "讀取中";
 }
 
+function brakeRead(
+  agents: ReturnType<typeof usePlatformAgents>,
+  engaged: boolean,
+  released: boolean,
+) {
+  const brake = agents.data?.brake;
+  const error = agents.error;
+  const unverified = (engaged && (!brake || !!error)) || (released && (!!brake || !!error));
+  return {
+    unverified,
+    label: unverified ? "待確認" : readLabel(agents.data && (brake ? "已拉下" : "已放開"), error),
+  };
+}
+
 function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recovered" }) {
   const agents = usePlatformAgents();
+  const engage = usePlatformAgentBrake("PUT");
+  const release = usePlatformAgentBrake("DELETE");
   const proposals = usePlatformAgentProposals();
   const findings = usePlatformAgentFindings(status);
   const runs = usePlatformAgentRuns();
@@ -49,7 +66,11 @@ function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recov
     runs.data && `${runs.data.runs.filter((item) => item.status === "running").length} 次`,
     runs.error,
   );
-  const brake = readLabel(agents.data && (agents.data.brake ? "已拉下" : "已放開"), agents.error);
+  const { unverified: brakeUnverified, label: brake } = brakeRead(
+    agents,
+    engage.isSuccess,
+    release.isSuccess,
+  );
 
   return (
     <>
@@ -71,8 +92,20 @@ function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recov
       <section id="admin-agent-brake" aria-labelledby="admin-agent-brake-heading">
         <h2 id="admin-agent-brake-heading">全域煞車</h2>
         {agents.isPending && <Loading what="Agent 控制" />}
-        <ReadFailure error={agents.error} what="Agent 控制" />
-        {agents.data && !agents.error && <BrakeControls brake={agents.data.brake} />}
+        <ReadFailure error={agents.error} what="Agent 控制">
+          <p role="alert">暫時無法讀取 Agent 控制。請重新整理，或稍後再試。</p>
+        </ReadFailure>
+        {agents.data && (
+          <BrakeControls
+            brake={agents.data.brake}
+            engage={engage}
+            release={release}
+            unverified={brakeUnverified}
+            readable={!agents.error}
+            fetching={agents.isFetching}
+            refresh={() => void agents.refetch()}
+          />
+        )}
       </section>
 
       <div className="agent-workbench-queues">
@@ -112,7 +145,14 @@ function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recov
 
       <section id="admin-agent-controls" aria-label="Agent 控制">
         <h2>Agent</h2>
-        {agents.data && !agents.error && <AgentControls agents={agents.data.agents} />}
+        {agents.data && (
+          <AgentControls
+            agents={agents.data.agents}
+            readable={!agents.error}
+            fetching={agents.isFetching}
+            refresh={() => void agents.refetch()}
+          />
+        )}
       </section>
     </>
   );
