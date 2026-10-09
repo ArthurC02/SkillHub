@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
-import { BarController, BarElement, CategoryScale, Chart, LinearScale } from "chart.js";
+import { BarController, BarElement, CategoryScale, Chart, LinearScale, Tooltip } from "chart.js";
 import "./BarChart.css";
 
-Chart.register(BarController, BarElement, CategoryScale, LinearScale);
+Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip);
 
 const token = (name: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -34,6 +34,14 @@ export function BarChart({
           animation: false,
           responsive: true,
           maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                title: (items) => days[items[0].dataIndex],
+                label: (item) => `${label}：${format(item.raw as number)}`,
+              },
+            },
+          },
           scales: {
             x: {
               ticks: { color: token("--text") },

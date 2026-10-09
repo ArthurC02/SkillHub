@@ -2529,6 +2529,28 @@ test.describe("QA-008 real layout: 表格與段落寬度", () => {
   });
 });
 
+test("trend bars reveal a full day and a formatted value on hover", async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = CanvasRenderingContext2D.prototype.fillText;
+    const texts: string[] = [];
+    (window as unknown as { chartTexts: string[] }).chartTexts = texts;
+    CanvasRenderingContext2D.prototype.fillText = function (...args) {
+      texts.push(String(args[0]));
+      return original.apply(this, args);
+    };
+  });
+  await stubPlatform(page);
+  await page.goto("/admin/trends?days=7");
+  const canvas = page.getByRole("img", { name: "單次生成：每日長條圖，逐日數字在下方的表" });
+  await expect(canvas).toBeVisible();
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  await canvas.hover({ position: { x: box!.width * 0.92, y: box!.height * 0.5 } });
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { chartTexts: string[] }).chartTexts))
+    .toEqual(expect.arrayContaining(["2026-09-12", "單次生成：$0.0900"]));
+});
+
 test.describe("QA-008 real layout: 選中狀態與資料完整性", () => {
   for (const [name, url, label] of [
     ["catalog category", "/?category=documents", "文件（"],
