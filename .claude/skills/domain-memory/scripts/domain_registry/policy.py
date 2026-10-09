@@ -160,23 +160,12 @@ def _field_parent(document: dict[str, Any], field: str) -> dict[str, Any]:
 
 
 def _apply_field(
-    document: dict[str, Any],
-    before: dict[str, Any],
-    field: str,
-    value: str,
-    reason: str,
-    verifier: str | None,
+    document: dict[str, Any], field: str, value: str, verifier: str | None
 ) -> dict[str, Any]:
     key = AMENDABLE_FIELDS[field][-1]
     target = _field_parent(document, field)
     amended = _amended_value(field, value)
-    change = {
-        "operation": "amend-policy",
-        "field": field,
-        "from": _field_parent(before, field).get(key),
-        "to": amended,
-        "reason": reason,
-    }
+    change = {"operation": "amend-policy", "field": field, "to": amended}
     target[key] = amended
     if field == "review_mode" and value == "local-draft-only":
         document["review_governance"] = _default_governance(value)
@@ -220,7 +209,11 @@ def amend_policy_fields(
     values = dict(assignments)
     mode_first = sorted(assignments, key=lambda assignment: assignment[0] != "review_mode")
     changes = [
-        _apply_field(document, before, field, value, reason.strip(), verifier or values.get("review_verifier"))
+        {
+            **_apply_field(document, field, value, verifier or values.get("review_verifier")),
+            "from": _field_parent(before, field).get(AMENDABLE_FIELDS[field][-1]),
+            "reason": reason.strip(),
+        }
         for field, value in mode_first
     ]
     errors = validate_policy(document)
