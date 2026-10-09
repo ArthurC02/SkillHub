@@ -25,9 +25,10 @@
   background: var(--surface-hover);
 }
 
-.admin-nav-group:has([aria-current="page"]) > summary {
-  border-color: var(--accent-border);
-  background: var(--accent-bg);
+.admin-nav-group > summary[aria-current="page"] {
+  border-color: var(--text-h);
+  background: var(--code-bg);
+  font-weight: 600;
 }
 
 .admin-nav-group[open] {

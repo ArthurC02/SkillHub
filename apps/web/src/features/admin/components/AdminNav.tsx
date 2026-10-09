@@ -1,18 +1,26 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import "./AdminNav.css";
 
-export function AdminNav() {
+export function AdminNav({ currentPage }: { currentPage: string }) {
   const section = useRouterState({ select: (state) => state.location.pathname.split("/")[2] });
+  const governance = ["accounts", "skills", "rosters", "exposure"].includes(section);
+  const operations = [
+    "dispatch",
+    "audit-log",
+    "model-budgets",
+    "cost-statistics",
+    "trends",
+    "agents",
+  ].includes(section);
   return (
     <nav aria-label="後台" className="admin-nav">
       <Link to="/admin" className="chip" activeOptions={{ exact: true }}>
         後台首頁
       </Link>
-      <details
-        className="admin-nav-group"
-        open={["accounts", "skills", "rosters", "exposure"].includes(section)}
-      >
-        <summary>治理</summary>
+      <details className="admin-nav-group">
+        <summary aria-current={governance ? "page" : undefined}>
+          {governance ? `治理 · ${currentPage}` : "治理"}
+        </summary>
         <div className="admin-nav-links">
           <Link to="/admin/accounts" className="chip">
             帳號與點數
@@ -28,18 +36,10 @@ export function AdminNav() {
           </Link>
         </div>
       </details>
-      <details
-        className="admin-nav-group"
-        open={[
-          "dispatch",
-          "audit-log",
-          "model-budgets",
-          "cost-statistics",
-          "trends",
-          "agents",
-        ].includes(section)}
-      >
-        <summary>營運</summary>
+      <details className="admin-nav-group">
+        <summary aria-current={operations ? "page" : undefined}>
+          {operations ? `營運 · ${currentPage}` : "營運"}
+        </summary>
         <div className="admin-nav-links">
           <Link to="/admin/dispatch" className="chip">
             派送煞車

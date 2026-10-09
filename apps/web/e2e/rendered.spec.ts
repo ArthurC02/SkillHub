@@ -1279,11 +1279,13 @@ test("後台導覽按工作群組展開，窄螢幕也找得到每個目的地",
     await page.goto("/admin/agents");
     const nav = page.getByRole("navigation", { name: "後台" });
     await expect(nav.locator("summary").first()).toHaveText("治理");
-    await expect(nav.locator("summary").last()).toHaveText("營運");
+    await expect(nav.locator("summary").last()).toHaveText("營運 · 平台 Agent");
     await expect(nav.getByRole("link", { name: "後台首頁" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "帳號與點數" })).toBeHidden();
-    await expect(nav.getByRole("link", { name: "平台 Agent" })).toBeVisible();
+    await expect(nav.locator('a[href="/admin/agents"]')).toBeHidden();
     await nav.locator("summary").first().focus();
+    await page.keyboard.press("Enter");
+    await nav.locator("summary").last().focus();
     await page.keyboard.press("Enter");
     const groupLayout = await nav
       .locator(".admin-nav-links")
@@ -1327,7 +1329,23 @@ test("後台導覽按工作群組展開，窄螢幕也找得到每個目的地",
     );
     await nav.getByRole("link", { name: "帳號與點數" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "帳號與點數" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "帳號與點數" })).toBeVisible();
+    await expect(nav.locator("summary").first()).toHaveText("治理 · 帳號與點數");
+  }
+});
+
+test("後台目前群組在手機首屏保持緊湊且入口可見", async ({ page }) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+
+  for (const [route, label] of [
+    ["/admin/skills", "小工具治理"],
+    ["/admin/agents", "平台 Agent"],
+  ]) {
+    await page.goto(route);
+    const nav = page.getByRole("navigation", { name: "後台" });
+    await expect(nav.locator("summary").filter({ hasText: label })).toBeVisible();
+    const navHeight = await nav.evaluate((element) => element.getBoundingClientRect().height);
+    expect(navHeight, `${route} 的後台導覽佔用過多首屏`).toBeLessThan(160);
   }
 });
 
@@ -1772,7 +1790,6 @@ test.describe("QA-008 real layout: 表格與段落寬度", () => {
 test.describe("QA-008 real layout: 選中狀態與資料完整性", () => {
   for (const [name, url, label] of [
     ["catalog category", "/?category=documents", "文件（"],
-    ["admin section", "/admin/accounts", "帳號與點數"],
     ["trend range", "/admin/trends?days=7", "7 天"],
   ] as const) {
     test(`the current ${name} chip is visibly selected`, async ({ page }) => {
@@ -1799,6 +1816,29 @@ test.describe("QA-008 real layout: 選中狀態與資料完整性", () => {
       expect(selected.weight).toBeGreaterThanOrEqual(600);
     });
   }
+
+  test("the current admin page is visibly selected in the collapsed group", async ({ page }) => {
+    await stubPlatform(page);
+    await page.goto("/admin/accounts");
+
+    const current = page.locator('.admin-nav-group > summary[aria-current="page"]');
+    await expect(current).toHaveText("治理 · 帳號與點數");
+    await expect(current).toBeVisible();
+    const selected = await current.evaluate((element) => {
+      const probe = document.createElement("div");
+      probe.style.background = "var(--code-bg)";
+      document.body.appendChild(probe);
+      const background = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return {
+        background,
+        selectedBackground: getComputedStyle(element).backgroundColor,
+        weight: Number(getComputedStyle(element).fontWeight),
+      };
+    });
+    expect(selected.selectedBackground).toBe(selected.background);
+    expect(selected.weight).toBeGreaterThanOrEqual(600);
+  });
 
   test("the account visual fixture is a complete success state", async ({ page }) => {
     await stubPlatform(page);

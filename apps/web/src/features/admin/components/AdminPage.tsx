@@ -25,7 +25,7 @@ export function AdminPage({
   if (me.data?.operator !== true) return <RouteNotFound />;
   return (
     <section>
-      <AdminNav />
+      <AdminNav currentPage={heading} />
       <h1 ref={headingRef} tabIndex={-1} className="admin-page-heading">
         {heading}
       </h1>
