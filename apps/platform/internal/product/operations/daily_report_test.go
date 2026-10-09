@@ -3,6 +3,7 @@ package operations
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -18,8 +19,22 @@ type dailyReportEvals struct {
 	} `json:"cases"`
 }
 
+const agentEvalsDir = "../../../../../contracts/agents"
+
+func evalsPath(agent string) string {
+	return filepath.Join(agentEvalsDir, agent+".evals.json")
+}
+
+func TestEveryDefinedAgentHasItsFixedEvals(t *testing.T) {
+	for _, def := range Definitions() {
+		if _, err := os.Stat(evalsPath(def.Name)); err != nil {
+			t.Errorf("agent %q has no fixed evals: %v", def.Name, err)
+		}
+	}
+}
+
 func TestDailyReportEvalsAcceptOnlyReportsThatCiteTheSnapshot(t *testing.T) {
-	raw, err := os.ReadFile("testdata/daily_report_evals.json")
+	raw, err := os.ReadFile(evalsPath(DailyReport.Name))
 	if err != nil {
 		t.Fatal(err)
 	}
