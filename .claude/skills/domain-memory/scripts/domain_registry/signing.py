@@ -48,7 +48,7 @@ def _generate(key_file: Path, principal: str) -> None:
 
 
 def _adopt_from_environment(key_file: Path, material: str) -> None:
-    _write_verbatim(key_file, material)
+    _write_verbatim(key_file, material.replace("\r\n", "\n").replace("\r", "\n"))
     _restrict(key_file)
     result = _run(["ssh-keygen", "-y", "-f", str(key_file)])
     if result.returncode != 0:

@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import stat
+import sys
 import uuid
 from collections.abc import Callable
 from pathlib import Path
@@ -39,10 +41,24 @@ def read_journal_document(journal: Path) -> Any:
     )
 
 
+def _clear_read_only_and_retry(function: Callable[[str], object], path: str, _error: object) -> None:
+    writable = stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC
+    os.chmod(os.path.dirname(path), writable)
+    os.chmod(path, writable)
+    function(path)
+
+
+def remove_tree(path: Path) -> None:
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=_clear_read_only_and_retry)
+    else:
+        shutil.rmtree(path, onerror=_clear_read_only_and_retry)
+
+
 def discard_transaction(journal: Path, backup: Path, staging: Path) -> None:
     for leftover in (backup, staging):
         if leftover.exists():
-            shutil.rmtree(leftover)
+            remove_tree(leftover)
     journal.unlink(missing_ok=True)
 
 
@@ -69,7 +85,7 @@ def recover(root: Path) -> None:
         if not target.exists() and backup.exists():
             backup.replace(target)
         elif target.exists() and backup.exists():
-            shutil.rmtree(backup)
+            remove_tree(backup)
         discard_transaction(journal, backup, staging)
         return
     if value["phase"] not in {
@@ -168,12 +184,12 @@ def mutate_registry(
                     raise
                 journal_value["phase"] = "audited"
                 write_json(journal, journal_value)
-            shutil.rmtree(backup)
-            shutil.rmtree(staging)
+            remove_tree(backup)
+            remove_tree(staging)
             journal.unlink(missing_ok=True)
         except Exception:
             if staging.exists():
-                shutil.rmtree(staging)
+                remove_tree(staging)
             raise
 
 

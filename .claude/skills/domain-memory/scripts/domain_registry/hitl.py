@@ -132,6 +132,31 @@ def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
         raise ValueError("verified proposal is invalid: " + "; ".join(errors))
 
 
+ATTESTATION_STEPS = {
+    "github-pr": (
+        "after the pull request merges, add scm_attestation to evidence-bundle.json with provider "
+        '"github", status "approved", the merged head commit as 40 hex characters, pull_request and '
+        "checks_url as https URLs"
+    ),
+    "git-signed-commit": (
+        "after the signed commit that changes the Domain Memory files exists, add scm_attestation to "
+        'evidence-bundle.json with provider "git-signed-commit", status "approved", that commit as 40 '
+        "hex characters"
+    ),
+}
+
+
+def missing_attestation_message(verifier: str) -> str:
+    steps = ATTESTATION_STEPS.get(verifier)
+    if steps is None:
+        return "finalizing a proposal requires SCM attestation, and the policy names no review verifier"
+    return (
+        f"finalizing a proposal requires SCM attestation: {steps}, and proposal_revision and "
+        "base_registry_revision copied from domain-change-proposal.json; check it with "
+        "verify-scm-attestation, then finalize again"
+    )
+
+
 def finalize_proposal(
     root: Path, registry_root: Path, repo_root: Path, verification_token_env: str = "GITHUB_TOKEN"
 ) -> None:
@@ -142,9 +167,9 @@ def finalize_proposal(
     require_current_registry_revision(proposal, registry_root, repo_root)
     evidence = load_json(root / "evidence-bundle.json")
     attestation = evidence.get("scm_attestation")
-    if not isinstance(attestation, dict):
-        raise ValueError("finalizing a proposal requires SCM attestation")
     governance = review_governance(registry_root)
+    if not isinstance(attestation, dict):
+        raise ValueError(missing_attestation_message(governance["verifier"]))
     if governance["verifier"] == "github-pr":
         errors = verify_external_scm(
             attestation,

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -28,6 +30,7 @@ from domain_registry.evidence import (
 )
 from domain_registry.hitl import (
     finalize_proposal,
+    missing_attestation_message,
     record_approval,
     submit_proposal,
     supersede_proposal,
@@ -622,6 +625,22 @@ class DomainRegistryTest(unittest.TestCase):
         elsewhere = self.repo / "elsewhere"
         subprocess.run(["git", "init", "-q", str(elsewhere)], check=True)
         with patch.dict("os.environ", {SIGNING_KEY_ENV: material}):
+            second = init_signing_key(
+                elsewhere, "probe@example.com", elsewhere / "keys" / "signing-key"
+            )
+        self.assertEqual("environment", second["source"])
+        self.assertEqual(first["fingerprint"], second["fingerprint"])
+
+    def test_key_material_with_crlf_line_endings_and_no_final_newline_rebuilds(self) -> None:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            first = init_signing_key(
+                self.repo, "probe@example.com", self.repo / "keys" / "signing-key"
+            )
+        material = (self.repo / "keys" / "signing-key").read_text(encoding="utf-8")
+        pasted = material.rstrip("\n").replace("\n", "\r\n")
+        elsewhere = self.repo / "elsewhere"
+        subprocess.run(["git", "init", "-q", str(elsewhere)], check=True)
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: pasted}):
             second = init_signing_key(
                 elsewhere, "probe@example.com", elsewhere / "keys" / "signing-key"
             )
@@ -1472,6 +1491,35 @@ class DomainRegistryTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must be an upsert or a remove"):
             self.approve_and_apply(package)
         self.assertEqual(self.rule_ids(), ["order-total"])
+
+    def test_finalizing_without_scm_attestation_names_the_fields_and_the_step(self) -> None:
+        package = self.draft_package()
+        submit_proposal(package, self.repo / "memory", self.repo)
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        verify_proposal(package, self.repo / "memory", self.repo)
+        with self.assertRaises(ValueError) as refused:
+            finalize_proposal(package, self.repo / "memory", self.repo)
+        message = str(refused.exception)
+        for expected in (
+            "after the pull request merges",
+            'add scm_attestation to evidence-bundle.json with provider "github"',
+            "pull_request and checks_url",
+            "base_registry_revision copied from domain-change-proposal.json",
+            "verify-scm-attestation",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, message)
+        proposal = json.loads(
+            (package / "domain-change-proposal.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual("verified", proposal["status"])
+
+    def test_the_missing_attestation_message_follows_the_policy_verifier(self) -> None:
+        signed = missing_attestation_message("git-signed-commit")
+        self.assertIn("after the signed commit that changes the Domain Memory files exists", signed)
+        self.assertIn('provider "git-signed-commit"', signed)
+        self.assertNotIn("pull_request", signed)
+        self.assertIn("names no review verifier", missing_attestation_message("none"))
 
     def test_approved_package_applies_against_its_exact_revision(self) -> None:
         package = self.draft_package()
@@ -2841,6 +2889,24 @@ class DomainRegistryTest(unittest.TestCase):
         recover_interrupted_update(root, False)
         self.assertTrue((root / "registry" / "contexts.json").is_file())
         self.assertFalse(transaction_path(root).exists())
+
+    def test_recovery_discards_a_backup_whose_folders_are_read_only(self) -> None:
+        root = self.repo / "memory"
+        backup = root / ".domain-registry-backup-abc"
+        shutil.copytree(root / "registry", backup)
+        read_only = stat.S_IREAD | stat.S_IEXEC
+        for path in [*backup.iterdir(), backup]:
+            os.chmod(path, read_only)
+        transaction_path(root).write_text(
+            json.dumps(
+                {"backup": backup.name, "staging": ".domain-registry-stage-abc"}
+            ),
+            encoding="utf-8",
+        )
+        recover_interrupted_update(root, False)
+        self.assertFalse(backup.exists())
+        self.assertFalse(transaction_path(root).exists())
+        self.assertTrue((root / "registry" / "contexts.json").is_file())
 
     def test_recovery_discards_a_backup_once_the_registry_is_already_in_place(
         self,
