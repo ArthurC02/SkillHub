@@ -2155,12 +2155,14 @@ test("OPS-007: unreadable cost statistics hide cached figures and recover on ret
   expect(reads).toBe(4);
 });
 
-test("OPS-007: micro-dollars format at four places, and a missing percentile is named", () => {
+test("OPS-007: nonzero micro-dollar costs remain distinct from zero and missing values", () => {
   expect(usd(null)).toBe("未測量");
   expect(usd(0)).toBe("$0.0000");
-  expect(usd(49)).toBe("$0.0000");
-  expect(usd(50)).toBe("$0.0001");
-  expect(usd(1_234_567)).toBe("$1.2346");
+  expect(usd(1)).toBe("$0.000001");
+  expect(usd(49)).toBe("$0.000049");
+  expect(usd(50)).toBe("$0.00005");
+  expect(usd(100)).toBe("$0.0001");
+  expect(usd(1_234_567)).toBe("$1.234567");
 });
 
 test("OPS-008: the day list runs from the first to the last day inclusive, across a month end", () => {

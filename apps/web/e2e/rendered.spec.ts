@@ -1227,6 +1227,34 @@ test("admin rosters put beta access first and hide stale membership after a fail
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test("admin cost statistics distinguish a micro-dollar charge from zero", async ({ page }) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.route("**/admin/cost-statistics", (route) => {
+    if (route.request().resourceType() === "document") return route.continue();
+    return route.fulfill({
+      json: {
+        statistics: [
+          {
+            ...ADMIN_COST_STATISTICS.statistics[1],
+            p50_usd_micros: 0,
+            p90_usd_micros: 1,
+            p95_usd_micros: 49,
+            max_usd_micros: 50,
+          },
+        ],
+      },
+    });
+  });
+  await page.goto("/admin/cost-statistics");
+  const row = page.locator("tbody tr");
+  await expect(row.locator('[data-label="p50"]')).toHaveText("$0.0000");
+  await expect(row.locator('[data-label="p90"]')).toHaveText("$0.000001");
+  await expect(row.locator('[data-label="p95"]')).toHaveText("$0.000049");
+  await expect(row.locator('[data-label="最大"]')).toHaveText("$0.00005");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test("admin cost statistics hide stale figures after a failed refresh", async ({
   page,
 }, testInfo) => {

@@ -307,8 +307,15 @@ export function useCostStatistics() {
   });
 }
 
+const usdFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 4,
+  maximumFractionDigits: 6,
+});
+
 export function usd(micros: number | null): string {
-  return micros === null ? "未測量" : `$${(micros / 1_000_000).toFixed(4)}`;
+  return micros === null ? "未測量" : usdFormatter.format(micros / 1_000_000);
 }
 
 export type PlatformAgent = {
