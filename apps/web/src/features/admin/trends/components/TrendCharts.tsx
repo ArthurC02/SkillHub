@@ -60,7 +60,10 @@ export function TrendCharts<B extends DailyCount>({
         </div>
       )}
       {absent.length > 0 && (
-        <p>這段期間沒有事件：{absent.map((key) => labels[key]).join("、")}。</p>
+        <details>
+          <summary>這段期間有 {absent.length} 類沒有事件</summary>
+          <p>這段期間沒有事件：{absent.map((key) => labels[key]).join("、")}。</p>
+        </details>
       )}
     </>
   );

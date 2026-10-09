@@ -1877,6 +1877,15 @@ test("OPS-008: the funnel says what one count means at every stage, from the ser
   ]);
   expect(has("這段期間沒有事件：按下下載。")()).toBe(true);
   expect(has("搜尋：12 筆")()).toBe(true);
+  const funnelSection = Array.from(container.querySelectorAll("section")).find(
+    (section) => section.querySelector("h2")?.textContent === "漏斗各段每天到達的數量",
+  )!;
+  expect(
+    funnelSection
+      .querySelector("dl")!
+      .compareDocumentPosition(funnelSection.querySelector("figure")!) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
 });
 
 test("OPS-008: a kind with no events in the range is named instead of drawn", async () => {
@@ -1889,6 +1898,11 @@ test("OPS-008: a kind with no events in the range is named instead of drawn", as
       "這段期間沒有事件：創作步驟、創作會話、搜尋向量、搜尋意圖分析、平台 Agent、索引增強、改善建議、試跑、搜尋理由。",
     )(),
   ).toBe(true);
+  const absent = Array.from(container.querySelectorAll("details")).find((details) =>
+    details.textContent?.includes("這段期間沒有事件：創作步驟"),
+  )!;
+  expect(absent.open).toBe(false);
+  expect(absent.querySelector("summary")?.textContent).toBe("這段期間有 9 類沒有事件");
 });
 
 test("OPS-008: a range in the address is asked for, and a range the page does not offer falls back to 30", async () => {
