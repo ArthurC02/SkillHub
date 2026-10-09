@@ -2338,6 +2338,29 @@ test.each([
   await waitFor(() => calls.some((call) => call.url === url));
 });
 
+test("returning from a proposal preserves its queue view and page", async () => {
+  stub(true);
+  await mountAt("/admin/agents", {
+    proposal: AGENT_PROPOSAL,
+    proposal_view: "closed",
+    proposal_offset: "20",
+  });
+  await waitFor(has("要刪除的 Trace 分割表：1 筆"));
+  const back = Array.from(container.querySelectorAll<HTMLAnchorElement>("a")).find(
+    (link) => link.textContent?.trim() === "回到提案",
+  );
+  expect(back).toBeDefined();
+  await click(back!);
+  await waitFor(() =>
+    calls.some((call) => call.url === "/admin/agents/proposals?view=closed&offset=20"),
+  );
+  expect(router.state.location.search).toMatchObject({
+    proposal_view: "closed",
+    proposal_offset: 20,
+  });
+  expect(router.state.location.search.proposal).toBeUndefined();
+});
+
 test.each([
   { name: "no total", body: { proposals: ADMIN_AGENT_PROPOSALS.proposals } },
   { name: "a negative total", body: { proposals: ADMIN_AGENT_PROPOSALS.proposals, total: -1 } },

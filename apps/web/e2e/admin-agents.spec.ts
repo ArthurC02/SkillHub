@@ -42,7 +42,10 @@ test("the proposal queue keeps its decision count and page across navigation and
     }
     const proposals = Array.from({ length: 20 }, (_, index) => ({
       ...base,
-      id: `00000000-0000-4000-8000-${String(offset + index).padStart(12, "0")}`,
+      id:
+        offset === 20 && index === 0
+          ? base.id
+          : `00000000-0000-4000-8000-${String(offset + index).padStart(12, "0")}`,
       reason: offset === 20 && index === 0 ? "第二頁仍有待核准提案。" : base.reason,
     }));
     return route.fulfill({ json: { proposals, total: 101 } });
@@ -54,6 +57,11 @@ test("the proposal queue keeps its decision count and page across navigation and
   const queue = page.locator("#admin-agent-proposals");
   await expect(queue.locator(".download-item")).toHaveCount(20);
   await queue.getByRole("button", { name: "下一頁" }).click();
+  await expect(page).toHaveURL(/proposal_offset=20/);
+  await expect(queue.getByText("第二頁仍有待核准提案。")).toBeVisible();
+  await queue.getByText("第二頁仍有待核准提案。").locator("..").getByRole("link").click();
+  await expect(page.getByRole("heading", { name: "這個提案" })).toBeVisible();
+  await page.getByRole("link", { name: "回到提案" }).click();
   await expect(page).toHaveURL(/proposal_offset=20/);
   await expect(queue.getByText("第二頁仍有待核准提案。")).toBeVisible();
   await page.reload();

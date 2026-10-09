@@ -93,7 +93,14 @@ export function ProposalDetail({ id }: { id: string }) {
     <section aria-labelledby="admin-proposal-heading">
       <h2 id="admin-proposal-heading">這個提案</h2>
       <p>
-        <Link to="/admin/agents" search={(prev) => ({ status: prev.status })}>
+        <Link
+          to="/admin/agents"
+          search={(prev) => ({
+            status: prev.status,
+            proposal_view: prev.proposal_view,
+            proposal_offset: prev.proposal_offset,
+          })}
+        >
           回到提案
         </Link>
       </p>
