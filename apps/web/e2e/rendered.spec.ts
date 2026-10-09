@@ -1715,6 +1715,24 @@ test("從後台首頁下方入口切換頁面後，焦點與畫面都回到新�
   await expect(heading).toBeInViewport();
 });
 
+test("後台首頁的功能列說明也能點擊，且保留簡短的連結名稱", async ({ page }) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto("/admin");
+
+  const row = page.locator(".admin-home-list li").filter({
+    has: page.getByRole("link", { name: "平台 Agent", exact: true }),
+  });
+  const note = row.getByText("最近的維運日報", { exact: false });
+  await note.scrollIntoViewIfNeeded();
+  const bounds = await note.boundingBox();
+  expect(bounds).not.toBeNull();
+  await page.mouse.click(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height / 2);
+
+  await expect(page).toHaveURL(/\/admin\/agents$/);
+  await expect(page.getByRole("heading", { level: 1, name: "平台 Agent" })).toBeFocused();
+});
+
 test("後台首頁的待辦捷徑仍落在指定區塊，不跳回頁面標題", async ({ page }) => {
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 900 });

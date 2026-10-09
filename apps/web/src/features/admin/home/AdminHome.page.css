@@ -99,7 +99,13 @@
 }
 
 .admin-home-list > li {
+  position: relative;
   padding: 12px 20px;
+}
+
+.admin-home-list > li:hover,
+.admin-home-list > li:focus-within {
+  background: var(--accent-bg);
 }
 
 .admin-home-list > li + li {
@@ -116,6 +122,12 @@
   color: var(--link);
   text-decoration: underline;
   text-underline-offset: 4px;
+}
+
+.admin-home-list a::after {
+  position: absolute;
+  inset: 0;
+  content: "";
 }
 
 .admin-home-list .note {
