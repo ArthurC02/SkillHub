@@ -1,0 +1,150 @@
+{
+  "round": 1,
+  "sample_input": "請依規則逐筆產生預約提醒：\n陳小姐 | 預約日期：7/12 | 預約時間：14:30 | 取消截止日期：7/11 | 取消截止時間：18:00\n林小姐 | 預約日期：7/13 | 預約時間：10:00 | 取消截止資料：缺漏\n王小姐 | 預約日期：2026年07月12日（星期日） | 預約時間：14時30分 | 取消截止日期：2026年07月11日（星期六） | 取消截止時間：18時00分",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 筆完整資料時，輸出恰為「陳小姐，提醒您：7/12 14:30預約，7/11 18:00前可取消。」；稱呼、日期與時間均與輸入原樣相同，全文 36 字。"
+    },
+    {
+      "text": "第 1 筆的輸出包含顧客稱呼、預約日期與時間、取消截止日期與時間，且沒有漏項。"
+    },
+    {
+      "text": "第 1 筆輸出不超過 40 字，且輸出中沒有標題、字數統計或額外說明。"
+    },
+    {
+      "text": "試跑輸入第 2 筆缺少取消截止資料時，只輸出「資料不足，無法產生提醒。」且不猜測缺少的資料。"
+    },
+    {
+      "text": "試跑輸入第 3 筆必要日期時間與稱呼合計已超過 40 字時，只輸出「必要資訊超過40字，無法產生提醒。」且不截短或改寫必要資訊。"
+    }
+  ],
+  "final_output": "陳小姐，提醒您：7/12 14:30預約，7/11 18:00前可取消。\n資料不足，無法產生提醒。\n必要資訊超過40字，無法產生提醒。",
+  "artifacts": [
+    "reminder-chen.txt",
+    "reminder-lin.txt",
+    "reminder-wang.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "1c5703ea-6990-4344-9084-1b91321e792f",
+    "run_id": "4f393bbd-7d9d-460f-8c80-af3a747ba239",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三筆輸出均符合各自的指定格式與內容；五項驗收標準皆已達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "3193845b-e6c1-477d-b128-a072e459dc25",
+        "text": "試跑輸入第 1 筆完整資料時，輸出恰為「陳小姐，提醒您：7/12 14:30預約，7/11 18:00前可取消。」；稱呼、日期與時間均與輸入原樣相同，全文 36 字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆輸出與指定文字完全相同；稱呼、日期及時間保留原樣，全文 36 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳小姐，提醒您：7/12 14:30預約，7/11 18:00前可取消。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b4fde011-43ee-42f9-9a21-43642d93790b",
+        "text": "第 1 筆的輸出包含顧客稱呼、預約日期與時間、取消截止日期與時間，且沒有漏項。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆包含顧客稱呼、預約日期與時間，以及取消截止日期與時間，沒有漏項。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳小姐，提醒您：7/12 14:30預約，7/11 18:00前可取消。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ebf30ff0-e660-4320-9cc3-1f36a6a90242",
+        "text": "第 1 筆輸出不超過 40 字，且輸出中沒有標題、字數統計或額外說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆為 36 字，沒有標題、字數統計或額外說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳小姐，提醒您：7/12 14:30預約，7/11 18:00前可取消。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "031c6c7e-a8e9-4c14-9ead-5aaab35b0321",
+        "text": "試跑輸入第 2 筆缺少取消截止資料時，只輸出「資料不足，無法產生提醒。」且不猜測缺少的資料。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆只輸出指定的資料不足提示，未猜測取消截止資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "資料不足，無法產生提醒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b3f6d65e-f7eb-471f-9097-c3291d7ac36a",
+        "text": "試跑輸入第 3 筆必要日期時間與稱呼合計已超過 40 字時，只輸出「必要資訊超過40字，無法產生提醒。」且不截短或改寫必要資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆只輸出指定的超過 40 字提示，沒有截短或改寫必要資訊來產生提醒。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "必要資訊超過40字，無法產生提醒。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 3 readable output file(s): reminder-chen.txt, reminder-lin.txt, reminder-wang.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1713 input and 1979 output tokens on skillhub-run; reported cost $0.0053 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

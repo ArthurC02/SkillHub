@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "幫我分類這四筆退費，都沒有領教材包：\nA：購買 2026-03-02，申請 2026-03-09\nB：購買 2026-03-02，申請 2026-03-10\nC：購買 2026-03-02，申請 2026-04-01\nD：購買 2026-03-02，申請 2026-04-02",
+  "acceptance_criteria": [
+    {
+      "text": "A 筆分類為全額退費"
+    },
+    {
+      "text": "B 筆分類為退一半"
+    },
+    {
+      "text": "C 筆分類為退一半"
+    },
+    {
+      "text": "D 筆分類為不可退費"
+    }
+  ],
+  "final_output": "A｜天數差：7 天｜分類：全額退費  \nB｜天數差：8 天｜分類：退一半  \nC｜天數差：30 天｜分類：退一半  \nD｜天數差：31 天｜分類：不可退費",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "249be237-7a09-486f-98b8-26814cf4dbb6",
+    "run_id": "57df68e4-04fc-4620-9840-9c8c1039aa2a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四筆退費申請的分類均符合各項驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "0d2fe84e-aa59-4fd1-a1c2-7bae7b0d87f5",
+        "text": "A 筆分類為全額退費",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 筆列為全額退費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "A｜天數差：7 天｜分類：全額退費",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "79707816-7f31-40c5-a2a2-c7d58796d6fb",
+        "text": "B 筆分類為退一半",
+        "result": "passed",
+        "source": "model",
+        "reason": "B 筆列為退一半。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "B｜天數差：8 天｜分類：退一半",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "61978348-0655-47e1-80ee-abaee3cf5f48",
+        "text": "C 筆分類為退一半",
+        "result": "passed",
+        "source": "model",
+        "reason": "C 筆列為退一半。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "C｜天數差：30 天｜分類：退一半",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "023ed649-c136-42fe-8e82-149133621f36",
+        "text": "D 筆分類為不可退費",
+        "result": "passed",
+        "source": "model",
+        "reason": "D 筆列為不可退費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "D｜天數差：31 天｜分類：不可退費",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1527 input and 432 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "round": 0,
+  "sample_input": "幫我記一下喔，淺焙肯亞兩包，一包四百五十；深焙巴西一包三百，我要四包；還有掛耳包十盒，一盒兩百；寄送費八十不用加進商品總額。",
+  "acceptance_criteria": [
+    {
+      "text": "商品總額為 4100 元"
+    },
+    {
+      "text": "回答中沒有把寄送費 80 元加進商品總額（總額不是 4180 元）"
+    }
+  ],
+  "final_output": "已整理：\n\n**咖啡豆商品**\n- 淺焙肯亞：2 包 × 450 元／包＝900 元\n- 深焙巴西：4 包 × 300 元／包＝1,200 元\n- **咖啡豆商品總額：2,100 元**\n\n**另外記下**\n- 掛耳包：10 盒，每盒 200 元（未納入咖啡豆商品總額）\n- 寄送費：80 元（不納入商品總額）\n\n你未指定幣別，以上暫以「元」計。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6b083514-62d2-4c77-a8d6-a6a1726eb9f9",
+    "run_id": "85e0ec51-a70e-450e-a254-d51a4386b1ad",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "寄送費已排除，但掛耳包也被排除，導致商品總額誤列為 2,100 元，而非 4,100 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "9fc12573-9acb-46eb-95d3-c1cb74dd226e",
+        "text": "商品總額為 4100 元",
+        "result": "failed",
+        "source": "model",
+        "reason": "回答將掛耳包排除在商品總額外，只列出 2,100 元，並非要求的 4,100 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "咖啡豆商品總額：2,100 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "掛耳包：10 盒，每盒 200 元（未納入咖啡豆商品總額）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "14e424c4-b08c-4e51-9e90-7b85459a124f",
+        "text": "回答中沒有把寄送費 80 元加進商品總額（總額不是 4180 元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回答明確表示寄送費 80 元不納入商品總額，也未列出 4,180 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "寄送費：80 元（不納入商品總額）",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1533 input and 1862 output tokens on skillhub-run; reported cost $0.0041 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

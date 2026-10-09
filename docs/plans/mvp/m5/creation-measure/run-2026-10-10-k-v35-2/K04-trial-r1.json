@@ -1,0 +1,122 @@
+{
+  "round": 1,
+  "sample_input": "請依照下列資料分別計算水電維修報價，列出工時費、夜間加成、材料費與總額。\n案件 A｜工時：1.5 小時｜22:00 後出勤：否｜材料費：300 元\n案件 B｜工時：2 小時｜22:00 後出勤：是｜材料費：450 元",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入中的案件 A（1.5 小時、22:00 後出勤：否、材料費 300 元）顯示工時費 1,200 元、夜間加成 0 元、材料費 300 元及總額 1,500 元。"
+    },
+    {
+      "text": "試跑輸入中的案件 B（2 小時、22:00 後出勤：是、材料費 450 元）顯示工時費 1,600 元、夜間加成 320 元、材料費 450 元及總額 2,370 元。"
+    },
+    {
+      "text": "對兩筆案件分別列出工時費、夜間加成、材料費與總額，並以新台幣元呈現；不把夜間加成套用到材料費。"
+    }
+  ],
+  "final_output": "假設：夜間加成率為 20%；夜間加成僅計於工時費，不另計稅金、交通費或其他費用。\n\n案件 A\n工時費：1200 元\n夜間加成：0 元\n材料費：300 元\n總額：1500 元\n\n案件 B\n工時費：1600 元\n夜間加成：320 元\n材料費：450 元\n總額：2370 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f3849a0d-e33c-4276-8f7d-6aa738b1242b",
+    "run_id": "e17fe436-140c-42a9-9be3-61893e31b1a6",
+    "status": "completed",
+    "overall": "met",
+    "summary": "案件 A、B 的各項報價與總額均符合驗收數值。兩案分開列示，夜間加成僅計於工時費。",
+    "criterion_results": [
+      {
+        "criterion_id": "73cab437-bc7b-4b78-9e76-2ee88b1621eb",
+        "text": "試跑輸入中的案件 A（1.5 小時、22:00 後出勤：否、材料費 300 元）顯示工時費 1,200 元、夜間加成 0 元、材料費 300 元及總額 1,500 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件 A 分別列出工時費 1200 元、夜間加成 0 元、材料費 300 元及總額 1500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案件 A\n工時費：1200 元\n夜間加成：0 元\n材料費：300 元\n總額：1500 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "be0700c1-3cba-4048-b5ba-cf6e1c906d21",
+        "text": "試跑輸入中的案件 B（2 小時、22:00 後出勤：是、材料費 450 元）顯示工時費 1,600 元、夜間加成 320 元、材料費 450 元及總額 2,370 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件 B 分別列出工時費 1600 元、夜間加成 320 元、材料費 450 元及總額 2370 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案件 B\n工時費：1600 元\n夜間加成：320 元\n材料費：450 元\n總額：2370 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6c46a735-64a3-478d-9244-179c8071c288",
+        "text": "對兩筆案件分別列出工時費、夜間加成、材料費與總額，並以新台幣元呈現；不把夜間加成套用到材料費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆案件各自列出四項金額，均以元呈現；回覆也明示夜間加成僅計於工時費，未套用至材料費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "夜間加成僅計於工時費",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "案件 A\n工時費：1200 元\n夜間加成：0 元\n材料費：300 元\n總額：1500 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "案件 B\n工時費：1600 元\n夜間加成：320 元\n材料費：450 元\n總額：2370 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1616 input and 1137 output tokens on skillhub-run; reported cost $0.0049 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

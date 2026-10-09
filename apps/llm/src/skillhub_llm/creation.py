@@ -39,7 +39,7 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "skillhub-creation"
-PROMPT_VERSION = "creation-step/v34"
+PROMPT_VERSION = "creation-step/v35"
 CHECK_SCRIPT_PATH = "scripts/check_output.py"
 SHIPPED_SCRIPT_PATH = re.compile(r"^scripts/[^/]+\.py$")
 SHIPPED_REFERENCE_PATH = re.compile(r"^references/[^/]+\.md$")
@@ -462,7 +462,9 @@ PHASE_INSTRUCTIONS = {
         "agent cannot do it, and names who has to do it instead (the person asking, or whoever "
         "the request puts in charge of it); a line that only says it cannot is incomplete. "
         "These lines are required whenever the "
-        "request mentions such an action, even when it only asks for the document. The body "
+        "request mentions such an action, even when it only asks for the document; the body "
+        "states this as a standing rule for whatever such action a run's request names, never "
+        "as a list of the actions foreseen now. The body "
         "is a map, not a manual: what the Skill does, when, the steps in "
         "order and the exact commands, in the language the user wrote in, under about 120 "
         "lines. Anything longer — rule tables, templates, examples, background — "
@@ -476,7 +478,10 @@ PHASE_INSTRUCTIONS = {
         "inputs already settle (the weekday of a given date, a sum of given parts) is worked "
         "out by the script, and a condition nobody stated (whether a weekday is a public "
         "holiday) is an optional argument with the ordinary case as its default, never a "
-        "required one; the body's step runs it "
+        "required one; a value the request left open (a rate, a multiplier, a surcharge) is "
+        "likewise an optional argument with a common default, and whenever the script uses a "
+        "default it prints, next to the result, one line naming the value it assumed and the "
+        "argument that changes it; the body's step runs it "
         "with `python scripts/<name>.py ...` from the directory holding this SKILL.md and "
         "presents what it printed, and the body carries no worked answers — the script "
         "produces them. When the request caps sentences, characters or items, or names facts "

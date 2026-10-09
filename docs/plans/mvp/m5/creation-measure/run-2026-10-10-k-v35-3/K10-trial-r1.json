@@ -1,0 +1,112 @@
+{
+  "round": 1,
+  "sample_input": "請依規則計算以下各筆洗衣與烘乾的應付金額，每行是一筆，並只輸出各筆金額：\n洗衣 5 公斤，烘乾 40 分鐘。\n洗衣 6 公斤，烘乾 41 分鐘。\n洗衣 10 公斤，烘乾 100 分鐘。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 行（洗衣 5 公斤、烘乾 40 分鐘）時，輸出應付 280 元；輸出只包含金額。"
+    },
+    {
+      "text": "試跑輸入第 2 行（洗衣 6 公斤、烘乾 41 分鐘）時，輸出應付 311 元；洗衣費為 200+30=230 元，烘乾費為 80+1=81 元，合計 311 元，且輸出只包含金額。"
+    },
+    {
+      "text": "試跑輸入第 3 行（洗衣 10 公斤、烘乾 100 分鐘）時，未封頂合計為洗衣 350 元加烘乾 140 元，共 490 元，因此輸出應付 400 元；輸出只包含金額。"
+    }
+  ],
+  "final_output": "280 元\n311 元\n400 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a0139ca7-9f6d-4153-846c-754a99f38b89",
+    "run_id": "bb5ef456-2fa7-4533-b9e4-92596231bcac",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三筆金額依序為 280 元、311 元及 400 元；最終回覆僅逐行列出金額。",
+    "criterion_results": [
+      {
+        "criterion_id": "bb8a5cc3-c8cf-48a6-99fc-686e5f629ea8",
+        "text": "試跑輸入第 1 行（洗衣 5 公斤、烘乾 40 分鐘）時，輸出應付 280 元；輸出只包含金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 行輸出為 280 元；最終回覆每行只有金額，沒有其他內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "280 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fad98b5d-6c62-4c06-9b36-855a24ef7b0e",
+        "text": "試跑輸入第 2 行（洗衣 6 公斤、烘乾 41 分鐘）時，輸出應付 311 元；洗衣費為 200+30=230 元，烘乾費為 80+1=81 元，合計 311 元，且輸出只包含金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 行輸出為 311 元，符合洗衣 230 元加烘乾 81 元；該行只有金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "311 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "839fbb7d-6915-4970-b776-d33bb223cd55",
+        "text": "試跑輸入第 3 行（洗衣 10 公斤、烘乾 100 分鐘）時，未封頂合計為洗衣 350 元加烘乾 140 元，共 490 元，因此輸出應付 400 元；輸出只包含金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 行輸出為封頂後的 400 元；該行只有金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "400 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1527 input and 393 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

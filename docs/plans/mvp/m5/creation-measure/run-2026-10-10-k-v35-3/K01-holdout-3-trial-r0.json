@@ -1,0 +1,78 @@
+{
+  "round": 0,
+  "sample_input": "兔子寄宿 73 小時，要多少錢？",
+  "acceptance_criteria": [
+    {
+      "text": "最後應付金額為 1500 元，不是 1530 元"
+    }
+  ],
+  "final_output": "1500 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "d25fb72e-5836-4f27-a27f-0d3dff14eece",
+    "run_id": "fdba6f12-c424-499d-bd58-d8fc1c3f39c0",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兔子寄宿 73 小時的最後報價為 1500 元，符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "76331132-a9b3-42da-ac16-e578f2840995",
+        "text": "最後應付金額為 1500 元，不是 1530 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最後回覆的應付金額是 1500 元，而非 1530 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1500 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1549 input and 194 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 7,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

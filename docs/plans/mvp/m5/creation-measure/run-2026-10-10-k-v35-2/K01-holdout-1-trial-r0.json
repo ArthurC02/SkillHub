@@ -1,0 +1,78 @@
+{
+  "round": 0,
+  "sample_input": "我家柴犬要寄宿 25 小時，應該付多少？",
+  "acceptance_criteria": [
+    {
+      "text": "最後應付金額為 720 元"
+    }
+  ],
+  "final_output": "720",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6de8e9fd-9c09-4944-ae20-210909422189",
+    "run_id": "1763921c-fdaf-46a3-b8ca-cb4cb46ef9b8",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最後回覆的金額符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "2a4d22e9-aa06-4a6a-b4f0-2c75bc5c3f7e",
+        "text": "最後應付金額為 720 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆為 720，符合應付金額 720 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "720",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1550 input and 560 output tokens on skillhub-run; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 9,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

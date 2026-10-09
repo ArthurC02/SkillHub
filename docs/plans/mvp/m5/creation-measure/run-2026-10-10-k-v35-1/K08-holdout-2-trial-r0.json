@@ -1,0 +1,131 @@
+{
+  "round": 0,
+  "sample_input": "租借清單：起日 2026-02-30，租 3 天。桌子 6 張，椅子 -5 張，投影機 2 台。幫我算總額。",
+  "acceptance_criteria": [
+    {
+      "text": "指出 2026-02-30 這個日期不存在"
+    },
+    {
+      "text": "指出椅子 -5 張的負數量不合理"
+    },
+    {
+      "text": "請使用者確認或更正這些資料"
+    },
+    {
+      "text": "沒有給出把椅子 -5 張算進去的最終總額"
+    }
+  ],
+  "final_output": "租借起日 2026-02-30 不是有效的 YYYY-MM-DD 日期，請你確認；租借天數未提供（[未提供]），請你確認並補充；椅子數量 -5 不是非負整數，請你確認。本次未計算總額。\n\n請確認有效的起日與椅子數量，並補充租借天數。",
+  "artifacts": [
+    "rental-row-1.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "aa600e64-96cd-49b7-99d6-49ae603483f6",
+    "run_id": "54594b07-85c1-44d3-8c34-6d1953b8169f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成。不過，回覆誤稱租借天數未提供；使用者其實已寫明租 3 天。",
+    "criterion_results": [
+      {
+        "criterion_id": "03703fe9-d9a9-497c-81aa-4fe821db5017",
+        "text": "指出 2026-02-30 這個日期不存在",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆指出 2026-02-30 不是有效日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "租借起日 2026-02-30 不是有效的 YYYY-MM-DD 日期",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c0cde64c-becd-4d37-8657-1e6e96ce1eaa",
+        "text": "指出椅子 -5 張的負數量不合理",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆指出椅子 -5 張不是合理的非負數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "椅子數量 -5 不是非負整數",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "69ed3cf0-24d6-4b13-9214-0264fc8353fb",
+        "text": "請使用者確認或更正這些資料",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆請使用者確認有效起日與椅子數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請確認有效的起日與椅子數量",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d3568c13-3483-4a3b-ab65-79f5650e7195",
+        "text": "沒有給出把椅子 -5 張算進去的最終總額",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆沒有給出將椅子 -5 張計入的最終總額，並明確表示未計算總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本次未計算總額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): rental-row-1.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1552 input and 578 output tokens on skillhub-run; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

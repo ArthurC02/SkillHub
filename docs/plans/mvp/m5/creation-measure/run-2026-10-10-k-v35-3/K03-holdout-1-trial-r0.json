@@ -1,0 +1,100 @@
+{
+  "round": 0,
+  "sample_input": "老闆我要耶加雪菲 3 包，一包 420 啦，然後曼特寧要 2 包，一包 380，還有那個哥倫比亞半磅的來 5 包，一包 250；對了運費我知道是 150 那個不用算進去喔",
+  "acceptance_criteria": [
+    {
+      "text": "商品總額為 3270 元"
+    },
+    {
+      "text": "回答中沒有把運費 150 元加進商品總額（總額不是 3420 元）"
+    }
+  ],
+  "final_output": "- 耶加雪菲：3 包 × 420 元／包＝1,260 元\n- 曼特寧：2 包 × 380 元／包＝760 元\n- 哥倫比亞半磅：5 包 × 250 元／包＝1,250 元\n\n**商品總額：3,270 元**  \n運費 150 元不計入。幣別未註明，以上假設以「元」計；可用 `--currency` 更改。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "2244eb72-f831-453b-acc7-7b37d6fd5c75",
+    "run_id": "52772c51-1a10-4735-ab5b-027f09d1e27d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收條件均已達成：商品總額為 3,270 元，且未計入 150 元運費。",
+    "criterion_results": [
+      {
+        "criterion_id": "acd2fcdf-b309-4506-bba5-ced3636a5e48",
+        "text": "商品總額為 3270 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "回答列出的商品總額為 3,270 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**商品總額：3,270 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "23f5d3a9-635d-454a-bbd1-c1e6bfe19c20",
+        "text": "回答中沒有把運費 150 元加進商品總額（總額不是 3420 元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回答明確表示運費 150 元不計入，商品總額也沒有加上運費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "運費 150 元不計入。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**商品總額：3,270 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1533 input and 474 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

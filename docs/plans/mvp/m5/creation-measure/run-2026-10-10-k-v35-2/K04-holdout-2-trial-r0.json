@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "晚上 11 點到府搶修跳電，工時 2 小時，材料費 500 元，幫我報價。",
+  "acceptance_criteria": [
+    {
+      "text": "回答給出一個具體的報價金額，沒有只反問使用者加成要多少而不給金額"
+    },
+    {
+      "text": "回答明講夜間加成幅度是採用的預設假設，並寫出所採的加成比例（介於 10% 到 100% 之間）"
+    },
+    {
+      "text": "報價金額與其所述加成比例一致：工時費 1600 元乘以（1 加加成比例）再加材料費 500 元，材料費沒有被加成"
+    }
+  ],
+  "final_output": "到府搶修（晚上 11 點出勤；工時 2 小時）\n工時費：1600 元\n夜間加成：320 元（工時費的 20%）\n材料費：500 元\n總額：2420 元",
+  "artifacts": [
+    "quote.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "eb10fda8-55a4-442b-804c-4c1520cddc2b",
+    "run_id": "381c652e-5cc7-4907-ba9c-26074cc4c612",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "報價為 2420 元，計算與所列的 20% 夜間加成一致，材料費也未加成。但回答沒有明講 20% 是採用的預設假設。",
+    "criterion_results": [
+      {
+        "criterion_id": "c2b04869-19a0-40df-9b58-4e50db8faafe",
+        "text": "回答給出一個具體的報價金額，沒有只反問使用者加成要多少而不給金額",
+        "result": "passed",
+        "source": "model",
+        "reason": "回答直接給出具體報價總額，沒有只反問加成比例。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總額：2420 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d5997a8b-fe9f-4e53-945f-786791258500",
+        "text": "回答明講夜間加成幅度是採用的預設假設，並寫出所採的加成比例（介於 10% 到 100% 之間）",
+        "result": "failed",
+        "source": "model",
+        "reason": "回答寫明採用 20% 夜間加成，但沒有明講這是預設假設；工具輸出的假設說明沒有出現在回答中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "夜間加成：320 元（工時費的 20%）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "119b3e1e-41dd-48a0-8803-eea32fa66e58",
+        "text": "報價金額與其所述加成比例一致：工時費 1600 元乘以（1 加加成比例）再加材料費 500 元，材料費沒有被加成",
+        "result": "passed",
+        "source": "model",
+        "reason": "工時費 1600 元加上其 20% 夜間加成 320 元，再加未加成的材料費 500 元，等於所報總額 2420 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "工時費：1600 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "夜間加成：320 元（工時費的 20%）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "材料費：500 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總額：2420 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): quote.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1596 input and 834 output tokens on skillhub-run; reported cost $0.0043 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

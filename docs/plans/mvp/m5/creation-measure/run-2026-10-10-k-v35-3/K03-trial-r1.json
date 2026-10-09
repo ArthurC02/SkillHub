@@ -1,0 +1,154 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下客人訂單，列出咖啡豆品項小計及商品總額：\n早安～日曬耶加兩公斤，680元一公斤；哥倫比亞水洗 1.5kg、每公斤540元；義式配方豆三包，一包420元。曼特寧2公斤，單價我忘了；危地馬拉的單價是每公斤500元，但數量忘記寫。運費120元，包材30元。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中資料完整的三個咖啡豆品項，輸出各自的數量、單價與小計：日曬耶加 2 × 680 = 1,360 元；哥倫比亞水洗 1.5 × 540 = 810 元；義式配方豆 3 × 420 = 1,260 元。"
+    },
+    {
+      "text": "商品總額只加總完整品項的小計，輸出 3,430 元（1,360 + 810 + 1,260），且不把運費或包材費算入。"
+    },
+    {
+      "text": "對曼特寧，因有數量但缺單價且訊息無法唯一推得，標明缺少單價、不編造金額，並排除於商品總額。"
+    },
+    {
+      "text": "對危地馬拉，因有單價但缺數量且訊息無法唯一推得，標明缺少數量、不編造金額，並排除於商品總額。"
+    }
+  ],
+  "final_output": "### 咖啡豆品項小計\n- 日曬耶加：2 公斤 × 680 元／公斤＝**1,360 元**\n- 哥倫比亞水洗：1.5 公斤 × 540 元／公斤＝**810 元**\n- 義式配方豆：3 包 × 420 元／包＝**1,260 元**\n\n**可計算商品總額：3,430 元**\n\n### 尚未計入\n- 曼特寧：數量為 2 公斤；缺少單價及單價單位。\n- 危地馬拉：單價為 500 元／公斤；缺少數量及數量單位。\n\n運費 120 元、包材 30 元為非咖啡豆商品費用，未納入商品總額。幣別未明確提供，以上暫以「元」計。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "638b6076-97c0-498e-bdb6-f7fcafe0e13f",
+    "run_id": "eb1755c1-8bcb-4689-a472-5be232795fdb",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成：三項完整品項的小計與商品總額正確，兩項資料不完整的品項及非商品費用均未計入。",
+    "criterion_results": [
+      {
+        "criterion_id": "f42e3374-2f6a-42e2-ae02-b3e262126637",
+        "text": "對試跑輸入中資料完整的三個咖啡豆品項，輸出各自的數量、單價與小計：日曬耶加 2 × 680 = 1,360 元；哥倫比亞水洗 1.5 × 540 = 810 元；義式配方豆 3 × 420 = 1,260 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三個資料完整的咖啡豆品項均列出正確數量、單價與小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日曬耶加：2 公斤 × 680 元／公斤＝**1,360 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "哥倫比亞水洗：1.5 公斤 × 540 元／公斤＝**810 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "義式配方豆：3 包 × 420 元／包＝**1,260 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3ceeeb4b-821f-4a61-ae4f-12b7159fd6c1",
+        "text": "商品總額只加總完整品項的小計，輸出 3,430 元（1,360 + 810 + 1,260），且不把運費或包材費算入。",
+        "result": "passed",
+        "source": "model",
+        "reason": "商品總額為三項可計算品項小計之和 3,430 元，並明確排除運費及包材費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**可計算商品總額：3,430 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "運費 120 元、包材 30 元為非咖啡豆商品費用，未納入商品總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "550d6e78-a159-4610-9c30-91858eed8c2d",
+        "text": "對曼特寧，因有數量但缺單價且訊息無法唯一推得，標明缺少單價、不編造金額，並排除於商品總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "曼特寧列於「尚未計入」，註明數量及缺少單價，未編造小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 尚未計入",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "曼特寧：數量為 2 公斤；缺少單價及單價單位。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cddfe1f0-13f6-459d-a9d5-af28ce6b4f60",
+        "text": "對危地馬拉，因有單價但缺數量且訊息無法唯一推得，標明缺少數量、不編造金額，並排除於商品總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "危地馬拉列於「尚未計入」，註明單價及缺少數量，未編造小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 尚未計入",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "危地馬拉：單價為 500 元／公斤；缺少數量及數量單位。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1533 input and 918 output tokens on skillhub-run; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "round": 2,
+  "sample_input": "請把以下段考事項整理成家長群組公告，並依規定附上處理說明。\n段考日期：11/18（二）至11/20（四）\n學費繳費截止日：11/10（一）\n考試範圍：第1至第5課\n考試請帶2B鉛筆和橡皮擦\n11/17（一）晚自習延長至晚上8點\n複習講義於11/14（五）發下\n請家長提醒孩子按時休息。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入，公告本體至多 3 句；另有一個獨立的處理說明句，且不把該句算入公告句數。"
+    },
+    {
+      "text": "公告保留輸入中的段考日期「11/18（二）至11/20（四）」及學費繳費截止日「11/10（一）」，不改動其日期資訊。"
+    },
+    {
+      "text": "對輸入中未列為必保留的事項，處理說明如實指出哪些事項被合併或捨棄；若沒有合併或捨棄，明確說明沒有。"
+    },
+    {
+      "text": "公告與處理說明不添加輸入未提供的日期、安排或其他事實。"
+    }
+  ],
+  "final_output": "公告  \n各位家長您好，段考日期為11/18（二）至11/20（四），考試範圍為第1至第5課，請孩子準備2B鉛筆和橡皮擦。  \n學費繳費截止日：11/10（一）；複習講義於11/14（五）發下。  \n11/17（一）晚自習延長至晚上8點，請家長提醒孩子按時休息，謝謝。\n\n處理說明：將考試範圍與應帶文具合併於第一句、學費截止日與講義發放日期合併於第二句；其餘事項均保留，沒有捨棄事項。",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "d5281f09-c3ce-46d6-8baa-ce3ef2070871",
+    "run_id": "ae96e3b8-3840-4ba8-b529-d34eac034491",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "公告符合三句上限，保留了兩個指定日期，也沒有增添新事實。處理說明未完整指出合併情形：第三句亦合併了晚自習安排與休息提醒。",
+    "criterion_results": [
+      {
+        "criterion_id": "7cbac884-c2b2-469b-ba44-f90369639df4",
+        "text": "對試跑輸入，公告本體至多 3 句；另有一個獨立的處理說明句，且不把該句算入公告句數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告本體共三句，處理說明另列為獨立一句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "11/17（一）晚自習延長至晚上8點，請家長提醒孩子按時休息，謝謝。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "處理說明：將考試範圍與應帶文具合併於第一句、學費截止日與講義發放日期合併於第二句；其餘事項均保留，沒有捨棄事項。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f0b59008-d2fc-4a7f-9845-30f4d7ff94f5",
+        "text": "公告保留輸入中的段考日期「11/18（二）至11/20（四）」及學費繳費截止日「11/10（一）」，不改動其日期資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告原樣保留段考日期與學費繳費截止日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "段考日期為11/18（二）至11/20（四）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "學費繳費截止日：11/10（一）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d2c35850-9309-4f7a-bc93-2c7c1e7eaeea",
+        "text": "對輸入中未列為必保留的事項，處理說明如實指出哪些事項被合併或捨棄；若沒有合併或捨棄，明確說明沒有。",
+        "result": "failed",
+        "source": "model",
+        "reason": "處理說明列出第一、二句的合併事項，也說明沒有捨棄；但公告第三句合併了晚自習安排與休息提醒，處理說明未指出這項合併。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "11/17（一）晚自習延長至晚上8點，請家長提醒孩子按時休息，謝謝。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "處理說明：將考試範圍與應帶文具合併於第一句、學費截止日與講義發放日期合併於第二句；其餘事項均保留，沒有捨棄事項。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ee2ba5a7-bc30-4762-a298-63849169ec4f",
+        "text": "公告與處理說明不添加輸入未提供的日期、安排或其他事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告與處理說明均未添加輸入以外的日期、安排或其他事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "各位家長您好，段考日期為11/18（二）至11/20（四），考試範圍為第1至第5課，請孩子準備2B鉛筆和橡皮擦。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "學費繳費截止日：11/10（一）；複習講義於11/14（五）發下。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "11/17（一）晚自習延長至晚上8點，請家長提醒孩子按時休息，謝謝。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "處理說明：將考試範圍與應帶文具合併於第一句、學費截止日與講義發放日期合併於第二句；其餘事項均保留，沒有捨棄事項。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1554 input and 1659 output tokens on skillhub-run; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 30,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

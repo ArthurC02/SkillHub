@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "白天到府修漏水，工時 3 小時，材料費 650 元，幫我報價。",
+  "acceptance_criteria": [
+    {
+      "text": "報價為 3050 元"
+    },
+    {
+      "text": "沒有向使用者追問夜間加成幅度才給答案"
+    }
+  ],
+  "final_output": "到府修漏水（白天到府）  \n工時：3 小時  \n工時費：新台幣 2,400 元  \n夜間加成：新台幣 0 元  \n材料費：新台幣 650 元  \n總額：新台幣 3,050 元  \n\n計價說明：工時費每小時新台幣 800 元；夜間加成率為 20%，僅適用於晚上 10 點後出勤，本次為白天，故無夜間加成。不含稅金、交通費或其他費用。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "715f3236-8455-4777-8c27-1e2b27a4802c",
+    "run_id": "fb964982-a69c-42d1-8660-0e9de9fa0547",
+    "status": "completed",
+    "overall": "met",
+    "summary": "本次報價為 3,050 元，且未要求使用者先提供夜間加成幅度；兩項標準均達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "75317119-6c0a-4298-a60f-bcbab4a292d1",
+        "text": "報價為 3050 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終報價總額為 3,050 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總額：新台幣 3,050 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "83b40d51-4ab5-4e16-8738-842387e27520",
+        "text": "沒有向使用者追問夜間加成幅度才給答案",
+        "result": "passed",
+        "source": "model",
+        "reason": "直接給出報價，並說明白天出勤沒有夜間加成；沒有先追問夜間加成幅度。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "夜間加成率為 20%，僅適用於晚上 10 點後出勤，本次為白天，故無夜間加成。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1616 input and 740 output tokens on skillhub-run; reported cost $0.0045 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

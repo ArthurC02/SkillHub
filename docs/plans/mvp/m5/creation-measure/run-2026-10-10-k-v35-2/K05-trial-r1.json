@@ -1,0 +1,153 @@
+{
+  "round": 1,
+  "sample_input": "請依照規則整理成家長群組公告。\n本次段考日期：2026年5月20日。\n學費繳費截止日：2026年5月15日。\n5月12日晚上7點至8點有考前複習課。\n複習課請帶鉛筆和橡皮擦。\n5月17日辦公室休息，當天無法現場繳費。\n段考複習講義預計5月18日上傳到班級群組。\n5月19日課程改在302教室上課。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸出中的公告本體明確包含段考日期「2026年5月20日」及學費繳費截止日「2026年5月15日」，日期不得更改。"
+    },
+    {
+      "text": "公告本體不超過 3 句；其後另有恰好 1 句「處理說明」，且該句不算入公告本體句數。"
+    },
+    {
+      "text": "對輸入中的每一項非必留事項，輸出要麼在公告本體中保留其事實，要麼在處理說明中如實交代其被合併或捨棄；不得把未保留的事項說成已保留。"
+    },
+    {
+      "text": "輸出不添加輸入未提供的日期、時間、地點、規定或其他事實。"
+    },
+    {
+      "text": "公告使用繁體中文，語氣清楚、適合直接貼到家長群組。"
+    }
+  ],
+  "final_output": "公告本體：提醒家長，本次段考日期為2026年5月20日，學費繳費截止日為2026年5月15日。5月12日晚上7點至8點有考前複習課，請帶鉛筆和橡皮擦。5月17日辦公室休息，當天無法現場繳費；段考複習講義預計於5月18日上傳到班級群組，5月19日課程改在302教室上課。處理說明：已保留所有事項，未合併或捨棄。",
+  "artifacts": [
+    "parent-announcement.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "bf4bc45e-840e-4d42-8f49-47c9c5e040e9",
+    "run_id": "df2e7f91-87f3-4286-bf23-810ba9fa0da3",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收標準均已達成。公告在三句內完整呈現提供的事項，並另附一句處理說明。",
+    "criterion_results": [
+      {
+        "criterion_id": "483179ef-4771-4a0f-a07b-c667beb1f58a",
+        "text": "試跑輸出中的公告本體明確包含段考日期「2026年5月20日」及學費繳費截止日「2026年5月15日」，日期不得更改。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告本體明確寫出段考日期與學費繳費截止日，兩個日期均與輸入相同。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本次段考日期為2026年5月20日，學費繳費截止日為2026年5月15日。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b6bb158b-b473-4e9e-9d88-e7823f7089eb",
+        "text": "公告本體不超過 3 句；其後另有恰好 1 句「處理說明」，且該句不算入公告本體句數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告本體共三句，後面另有一句處理說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "公告本體：提醒家長，本次段考日期為2026年5月20日，學費繳費截止日為2026年5月15日。5月12日晚上7點至8點有考前複習課，請帶鉛筆和橡皮擦。5月17日辦公室休息，當天無法現場繳費；段考複習講義預計於5月18日上傳到班級群組，5月19日課程改在302教室上課。處理說明：已保留所有事項，未合併或捨棄。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cc93f05e-e266-465b-821c-84dde5b08269",
+        "text": "對輸入中的每一項非必留事項，輸出要麼在公告本體中保留其事實，要麼在處理說明中如實交代其被合併或捨棄；不得把未保留的事項說成已保留。",
+        "result": "passed",
+        "source": "model",
+        "reason": "複習課時間與攜帶物品、辦公室休息及現場繳費限制、講義上傳、教室異動均保留在公告本體；沒有把未保留的事項說成已保留。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5月12日晚上7點至8點有考前複習課，請帶鉛筆和橡皮擦。5月17日辦公室休息，當天無法現場繳費；段考複習講義預計於5月18日上傳到班級群組，5月19日課程改在302教室上課。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "處理說明：已保留所有事項，未合併或捨棄。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4d39e506-4331-48ae-8f3b-2d896b1651c8",
+        "text": "輸出不添加輸入未提供的日期、時間、地點、規定或其他事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告中的日期、時間、地點及事項均來自輸入，未見新增事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "公告本體：提醒家長，本次段考日期為2026年5月20日，學費繳費截止日為2026年5月15日。5月12日晚上7點至8點有考前複習課，請帶鉛筆和橡皮擦。5月17日辦公室休息，當天無法現場繳費；段考複習講義預計於5月18日上傳到班級群組，5月19日課程改在302教室上課。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1eba5149-7aee-4c1c-bb9a-7b7941366ca2",
+        "text": "公告使用繁體中文，語氣清楚、適合直接貼到家長群組。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告使用繁體中文，表述清楚，適合貼到家長群組。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "提醒家長，本次段考日期為2026年5月20日，學費繳費截止日為2026年5月15日。5月12日晚上7點至8點有考前複習課，請帶鉛筆和橡皮擦。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): parent-announcement.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1791 input and 2866 output tokens on skillhub-run; reported cost $0.0067 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 36,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

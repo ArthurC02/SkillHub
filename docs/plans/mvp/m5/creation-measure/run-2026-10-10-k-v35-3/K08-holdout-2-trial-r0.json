@@ -1,0 +1,134 @@
+{
+  "round": 0,
+  "sample_input": "租借清單：起日 2026-02-30，租 3 天。桌子 6 張，椅子 -5 張，投影機 2 台。幫我算總額。",
+  "acceptance_criteria": [
+    {
+      "text": "指出 2026-02-30 這個日期不存在"
+    },
+    {
+      "text": "指出椅子 -5 張的負數量不合理"
+    },
+    {
+      "text": "請使用者確認或更正這些資料"
+    },
+    {
+      "text": "沒有給出把椅子 -5 張算進去的最終總額"
+    }
+  ],
+  "final_output": "收到的資料：起日 **2026-02-30**、租借 **3 天**；桌子 **6 張**、椅子 **-5 張**、投影機 **2 台**。\n\n| 器材 | 日單價 | 金額 |\n|---|---:|---:|\n| 桌子 | NT$200／張／日 | 6 × 200 = **NT$1,200／日** |\n| 椅子 | NT$30／張／日 | 數量為 **-5 張**，是無效的負數，待確認 |\n| 投影機 | NT$1,500／台／日 | 2 × 1,500 = **NT$3,000／日** |\n\n桌子與投影機的已知金額合計 **NT$4,200／日**，不含椅子。日期 **2026-02-30** 不是有效日期；日期不影響器材金額計算。\n\n因椅子數量無效，**總額未計算**。請確認椅子的非負數量，並提供有效的租借起日。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "2dab72dd-5c08-4d8c-b0f0-431a85cc31f5",
+    "run_id": "d4642f4a-a7bb-4b03-92a1-0b2ba255da0b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆指出無效日期與負數量，要求使用者更正，且沒有將椅子 -5 張計入最終總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "aec02135-de47-4976-967a-f69953db4d49",
+        "text": "指出 2026-02-30 這個日期不存在",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出 2026-02-30 不是有效日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期 **2026-02-30** 不是有效日期",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d2b48c6c-b348-4681-a75b-3143a8f6cf87",
+        "text": "指出椅子 -5 張的負數量不合理",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出椅子 -5 張是無效的負數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "數量為 **-5 張**，是無效的負數，待確認",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "171c5e47-ba95-411a-a855-169b5ce05924",
+        "text": "請使用者確認或更正這些資料",
+        "result": "passed",
+        "source": "model",
+        "reason": "請使用者確認椅子數量，並提供有效的租借起日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請確認椅子的非負數量，並提供有效的租借起日。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3ace12b8-ad42-437f-b338-fe9d41ac1812",
+        "text": "沒有給出把椅子 -5 張算進去的最終總額",
+        "result": "passed",
+        "source": "model",
+        "reason": "只列出不含椅子的每日已知金額，並明確表示總額未計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "桌子與投影機的已知金額合計 **NT$4,200／日**，不含椅子。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "因椅子數量無效，**總額未計算**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1512 input and 2144 output tokens on skillhub-run; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

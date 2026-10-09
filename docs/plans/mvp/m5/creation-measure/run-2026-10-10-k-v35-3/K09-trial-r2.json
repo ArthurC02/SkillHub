@@ -1,0 +1,179 @@
+{
+  "round": 2,
+  "sample_input": "請根據以下資料寫一則吸引人的農場採果活動社群貼文。\n活動名稱：莓好採果日\n日期：2026/6/20\n時間：09:00–12:00\n地點：晴田農場（桃園市大溪區）\n費用：每人 350 元\n補充：親子皆可參加，名額有限，需事先報名。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入，輸出恰為一則可直接發布的繁體中文社群貼文，而非多個版本或分析說明。"
+    },
+    {
+      "text": "輸出完整且逐字保留活動名稱「莓好採果日」、日期「2026/6/20」、時間「09:00–12:00」、地點「晴田農場（桃園市大溪區）」及費用「每人 350 元」，不得更改其字詞、數字或格式。"
+    },
+    {
+      "text": "輸出包含輸入中的五項硬事實：活動名稱、日期、時間、地點與費用，沒有遺漏。"
+    },
+    {
+      "text": "文案語氣具有邀請感，並且不把輸入沒有提供的資訊寫成活動事實或承諾。"
+    }
+  ],
+  "final_output": "🍓 **莓好採果日** 🍓\n\n一起到農場享受採果樂趣，親子皆可參加，邀請大小朋友一同來玩！\n\n📅 日期：2026/6/20  \n🕘 時間：09:00–12:00  \n📍 地點：晴田農場（桃園市大溪區）  \n🎟️ 費用：每人 350 元  \n\n名額有限，需事先報名，快來一起度過莓好時光！",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0ef9befd-f5ae-4896-a1ad-8015ad669fba",
+    "run_id": "0b3724f8-9dea-4abd-b223-8d67ce791d8d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "這次輸出是一則可直接發布的繁體中文採果活動貼文，完整保留五項指定資訊，語氣具邀請感，且未增添未提供的活動事實或承諾。",
+    "criterion_results": [
+      {
+        "criterion_id": "d841758c-6346-4aea-9cf2-fa0c6d8a52e9",
+        "text": "對試跑輸入，輸出恰為一則可直接發布的繁體中文社群貼文，而非多個版本或分析說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出只有一則繁體中文活動貼文，沒有提供多個版本或分析說明，可直接發布。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "🍓 **莓好採果日** 🍓",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "名額有限，需事先報名，快來一起度過莓好時光！",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e941feec-232e-4c26-82fd-7d4bf1aa193c",
+        "text": "輸出完整且逐字保留活動名稱「莓好採果日」、日期「2026/6/20」、時間「09:00–12:00」、地點「晴田農場（桃園市大溪區）」及費用「每人 350 元」，不得更改其字詞、數字或格式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "活動名稱、日期、時間、地點及費用均以指定字詞、數字與格式逐字呈現。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "莓好採果日",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2026/6/20",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "09:00–12:00",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "晴田農場（桃園市大溪區）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "每人 350 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "56dad76d-f1a7-4569-ac9a-4c68d6235efd",
+        "text": "輸出包含輸入中的五項硬事實：活動名稱、日期、時間、地點與費用，沒有遺漏。",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文包含活動名稱及日期、時間、地點、費用，五項硬事實均未遺漏。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "莓好採果日",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "日期：2026/6/20",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "時間：09:00–12:00",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "地點：晴田農場（桃園市大溪區）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "費用：每人 350 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0b33f66c-4ee1-440b-8d4f-d98046681352",
+        "text": "文案語氣具有邀請感，並且不把輸入沒有提供的資訊寫成活動事實或承諾。",
+        "result": "passed",
+        "source": "model",
+        "reason": "「邀請大小朋友一同來玩」等措辭具有邀請感；貼文未將未提供的具體安排或承諾寫成活動事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "一起到農場享受採果樂趣，親子皆可參加，邀請大小朋友一同來玩！",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "名額有限，需事先報名，快來一起度過莓好時光！",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1492 input and 317 output tokens on skillhub-run; reported cost $0.0028 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "round": 0,
+  "sample_input": "我洗了 8 公斤衣服，烘乾 60 分鐘，要付多少？",
+  "acceptance_criteria": [
+    {
+      "text": "應付金額為 390 元"
+    }
+  ],
+  "final_output": "390 元",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "77a1aaae-1e91-40c0-bfa0-2e46f50ff644",
+    "run_id": "40f16a06-f6a7-4b6e-8e57-f43d26e80eea",
+    "status": "completed",
+    "overall": "met",
+    "summary": "本次回覆為 390 元，符合指定的應付金額。",
+    "criterion_results": [
+      {
+        "criterion_id": "fb3c727d-2ba6-4006-bc62-084d857b6a44",
+        "text": "應付金額為 390 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆的應付金額為 390 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "390 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1578 input and 549 output tokens on skillhub-run; reported cost $0.0040 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 9,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "round": 0,
+  "sample_input": "顧客：王小姐。預約：2026-11-14 下午 2 點 30 分，做凝膠美甲加卸甲。取消請在前一天（11 月 13 日）晚上 6 點前通知。店名：小棧美甲，地址：台中市西區某某路 88 號 2 樓，電話 04-2222-3333。幫我寫提醒簡訊。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出的簡訊全文不超過 40 個字（含標點、空格、數字）"
+    },
+    {
+      "text": "簡訊含顧客稱呼「王小姐」"
+    },
+    {
+      "text": "簡訊含預約日期 11 月 14 日（或 11/14）與時間 14:30（或下午 2 點 30 分）"
+    },
+    {
+      "text": "簡訊含取消截止時間 11 月 13 日 18:00（或晚上 6 點）"
+    },
+    {
+      "text": "輸出只有簡訊本文，沒有字數統計、標題或額外說明"
+    }
+  ],
+  "final_output": "必要資訊超過40字，無法產生提醒。",
+  "artifacts": [
+    "reminder.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "d7953dd7-f732-49b9-9563-b949c95f8a7e",
+    "run_id": "cbfde6db-7db1-4ac0-8e4e-243158bb02e0",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "輸出符合 40 字上限，但沒有產生預約提醒簡訊，也未包含顧客稱呼、預約時間或取消截止時間。",
+    "criterion_results": [
+      {
+        "criterion_id": "94a9df78-a0b7-4307-bc3e-0178df6a7d22",
+        "text": "輸出的簡訊全文不超過 40 個字（含標點、空格、數字）",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出文字未超過 40 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "必要資訊超過40字，無法產生提醒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cc878d3a-2048-4684-b965-702f52d79f6c",
+        "text": "簡訊含顧客稱呼「王小姐」",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出未包含「王小姐」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "必要資訊超過40字，無法產生提醒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "451d113e-2a9c-4fc6-a672-3dd10d4b4835",
+        "text": "簡訊含預約日期 11 月 14 日（或 11/14）與時間 14:30（或下午 2 點 30 分）",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出未包含預約日期及時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "必要資訊超過40字，無法產生提醒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "393454da-11cf-456f-b3e9-4615ddf386f2",
+        "text": "簡訊含取消截止時間 11 月 13 日 18:00（或晚上 6 點）",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出未包含取消截止日期及時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "必要資訊超過40字，無法產生提醒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4fe2c512-aace-4114-95c3-25aa3afc0b1e",
+        "text": "輸出只有簡訊本文，沒有字數統計、標題或額外說明",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出是無法產生提醒的提示，並非簡訊本文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "必要資訊超過40字，無法產生提醒。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): reminder.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1571 input and 502 output tokens on skillhub-run; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

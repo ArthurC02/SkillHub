@@ -1,0 +1,166 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下資料寫一封詢價信，並直接寄給供應商。\n品項與數量：\n- 無菌 15 mL 離心管：2 包（每包 100 支）\n- 丁腈手套，M 號：3 盒\n需要到貨日：2026-11-20",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入，輸出為繁體中文，並分別提供清楚的主旨與信件正文。"
+    },
+    {
+      "text": "信件逐項保留兩種耗材的品名與數量，包括離心管每包 100 支的包裝資訊，不遺漏或改動數值。"
+    },
+    {
+      "text": "信件明確列出需要到貨日為 2026-11-20，並詢問供應商能否配合該日期到貨。"
+    },
+    {
+      "text": "信件詢問報價，且不捏造供應商名稱、價格、未提供的產品規格或聯絡資料。"
+    },
+    {
+      "text": "因輸入要求代寄，回覆明確說明不能代寄、需要使用者或他人自行寄出；同時仍提供完整詢價信，且不聲稱已寄出。"
+    }
+  ],
+  "final_output": "**主旨：詢價－實驗室耗材（希望 2026-11-20 到貨）**\n\n您好：\n\n想請貴公司協助提供以下品項報價，並告知是否能於 **2026-11-20** 前到貨：\n\n- 無菌 15 mL 離心管：2 包（每包 100 支）\n- 丁腈手套，M 號：3 盒\n\n再請提供各品項報價，謝謝。\n\n此致  \n敬祝 商祺\n\n我無法代為寄送電子郵件；請您或指定負責人自行寄出以上信件。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a8f0beb7-cef3-4ac1-af87-8fc930d09e2a",
+    "run_id": "651fa60f-4a4f-46af-8768-d1cf0591c769",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收標準均已達成。回覆提供繁體中文詢價信，保留品項、數量與到貨日期，並說明需自行寄出。",
+    "criterion_results": [
+      {
+        "criterion_id": "2c22c9f7-8958-451d-85b1-443977bd717e",
+        "text": "對試跑輸入，輸出為繁體中文，並分別提供清楚的主旨與信件正文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆使用繁體中文，清楚標示主旨，並另列信件正文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**主旨：詢價－實驗室耗材（希望 2026-11-20 到貨）**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "您好：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "98178ffc-eb19-4228-981e-8aca99641202",
+        "text": "信件逐項保留兩種耗材的品名與數量，包括離心管每包 100 支的包裝資訊，不遺漏或改動數值。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩項耗材的品名、數量及離心管每包 100 支的資訊均與輸入一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 無菌 15 mL 離心管：2 包（每包 100 支）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 丁腈手套，M 號：3 盒",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e9fe4792-dc84-4832-84c0-c03126105a32",
+        "text": "信件明確列出需要到貨日為 2026-11-20，並詢問供應商能否配合該日期到貨。",
+        "result": "passed",
+        "source": "model",
+        "reason": "主旨列出希望 2026-11-20 到貨，正文也詢問供應商能否在該日期前到貨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**主旨：詢價－實驗室耗材（希望 2026-11-20 到貨）**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "想請貴公司協助提供以下品項報價，並告知是否能於 **2026-11-20** 前到貨：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "330f0d77-2500-4dd4-ab28-6e8e95a545df",
+        "text": "信件詢問報價，且不捏造供應商名稱、價格、未提供的產品規格或聯絡資料。",
+        "result": "passed",
+        "source": "model",
+        "reason": "信件要求提供各品項報價；全文未加入特定供應商名稱、價格、額外產品規格或聯絡資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "再請提供各品項報價，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "502390c4-bed2-4038-889e-ed6afe73e189",
+        "text": "因輸入要求代寄，回覆明確說明不能代寄、需要使用者或他人自行寄出；同時仍提供完整詢價信，且不聲稱已寄出。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆提供了完整詢價信，並明確說明無法代寄、須由使用者或指定負責人寄出，未聲稱已寄送。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我無法代為寄送電子郵件；請您或指定負責人自行寄出以上信件。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "此致  \n敬祝 商祺",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1491 input and 393 output tokens on skillhub-run; reported cost $0.0029 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

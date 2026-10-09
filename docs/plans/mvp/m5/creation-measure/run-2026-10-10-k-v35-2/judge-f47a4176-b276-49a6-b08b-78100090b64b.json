@@ -1,0 +1,164 @@
+{
+  "request": {
+    "RunID": "f47a4176-b276-49a6-b08b-78100090b64b",
+    "EvaluationID": "35ddf29d-5ab8-4cff-abcc-bd8765ba9e0b",
+    "Skill": {
+      "Name": "farm-picking-social-post",
+      "Summary": "根據使用者提供的農場採果活動資料，撰寫一則繁體中文、可直接發布的通用社群貼文。當使用者提供活動資訊並需要宣傳文案時使用；完整保留所有硬事實，不補造細節。"
+    },
+    "UserPrompt": "請根據以下活動資料寫一則吸引人的社群貼文。\n活動名稱：秋日紅柿採果日\n日期：2026/11/08\n時間：09:30–12:00\n地點：新竹縣橫山鄉晴野果園\n費用：每人 NT$350\n活動內容：親手採摘當季紅柿，適合親子一同參加。",
+    "Criteria": [
+      {
+        "ID": "c7e3bb31-e411-477c-b161-051bf2499c20",
+        "Text": "在試跑輸入提供全部必要硬事實且資料一致時，輸出一則繁體中文、適合通用社群發布的活動貼文。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "fb0b93e5-f590-4a77-a101-cf39fd1528b3",
+        "Text": "試跑貼文逐字包含輸入中的活動名稱「秋日紅柿採果日」、日期「2026/11/08」、時間「09:30–12:00」、地點「新竹縣橫山鄉晴野果園」及費用「每人 NT$350」，各項均不得遺漏或改動。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "6e556739-4569-4995-9eb7-840753171989",
+        "Text": "試跑貼文不加入輸入未提供的活動安排、優惠、名額、交通資訊或其他可被當作事實的細節。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "🍂秋天的果園，等你一起來採果！🍂\n\n邀請大小朋友走進果園，親手採摘當季紅柿，享受親子同遊的秋日時光。一起把秋日的美好，裝進採果的回憶裡吧！❤️\n\n📍活動名稱：秋日紅柿採果日  \n📅日期：2026/11/08  \n🕤時間：09:30–12:00  \n📌地點：新竹縣橫山鄉晴野果園  \n💰費用：每人 NT$350  \n👨‍👩‍👧‍👦適合親子一同參加\n\n#秋日紅柿採果日 #親手採紅柿 #親子同遊",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "70e77d14-2e6b-4abe-8c92-15ad46e985d2",
+          "OccurredAt": "2026-10-09T20:29:05.031Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"farm-picking-social-post\", \"skill_version_id\": \"dbbe7a06-b6f7-48c4-9b2e-4cc83ea8710e\"}"
+        },
+        {
+          "TraceEventID": "7bf050a2-dfee-47a4-a595-62d394d369a1",
+          "OccurredAt": "2026-10-09T20:29:05.051Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"farm-picking-social-post\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 20, \"invocation_id\": \"call_dNiMAzRgzK2kSZLLFmqbVWFD\", \"result_summary\": \"Launching skill: farm-picking-social-post\"}"
+        },
+        {
+          "TraceEventID": "60d594df-c2e1-45a6-959d-182e3e61870b",
+          "OccurredAt": "2026-10-09T20:29:09.793Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"🍂秋天的果園，等你一起來採果！🍂\\n\\n邀請大小朋友走進果園，親手採摘當季紅柿，享受親子同遊的秋日時光。一起把秋日的美好，裝進採果的回憶裡吧！❤️\\n\\n📍活動名稱：秋日紅柿採果日  \\n📅日期：2026/11/08  \\n🕤時間：09:30–12:00  \\n📌地點：新竹縣橫山鄉晴野果園  \\n💰費用：每人 NT$350  \\n👨‍👩‍👧‍👦適合親子一同參加\\n\\n#秋日紅柿採果日 #親手採紅柿 #親子同遊\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "ecd78417-c48e-465c-800a-f437dda64256",
+          "OccurredAt": "2026-10-09T20:29:10.055Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"🍂秋天的果園，等你一起來採果！🍂\\n\\n邀請大小朋友走進果園，親手採摘當季紅柿，享受親子同遊的秋日時光。一起把秋日的美好，裝進採果的回憶裡吧！❤️\\n\\n📍活動名稱：秋日紅柿採果日  \\n📅日期：2026/11/08  \\n🕤時間：09:30–12:00  \\n📌地點：新竹縣橫山鄉晴野果園  \\n💰費用：每人 NT$350  \\n👨‍👩‍👧‍👦適合親子一同參加\\n\\n#秋日紅柿採果日 #親手採紅柿 #親子同遊\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "244e6a79-ebda-4efd-8653-7b6c8d204ff4",
+          "OccurredAt": "2026-10-09T20:29:14.119Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.002860095, \"cost_source\": \"gateway\", \"duration_ms\": 12056, \"input_tokens\": 1488, \"token_source\": \"result\", \"output_tokens\": 317, \"cache_read_input_tokens\": 16587, \"cache_write_input_tokens\": 18609}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "c7e3bb31-e411-477c-b161-051bf2499c20",
+        "Result": "passed",
+        "Reason": "輸出以繁體中文撰寫，包含吸引人的邀請文案、活動資訊與標籤，可作為通用社群貼文直接發布。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "🍂秋天的果園，等你一起來採果！🍂"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "#秋日紅柿採果日 #親手採紅柿 #親子同遊"
+          }
+        ]
+      },
+      {
+        "CriterionID": "fb0b93e5-f590-4a77-a101-cf39fd1528b3",
+        "Result": "passed",
+        "Reason": "貼文逐字保留活動名稱、日期、時間、地點及費用，沒有遺漏或改動。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "📍活動名稱：秋日紅柿採果日"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "📅日期：2026/11/08"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "🕤時間：09:30–12:00"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "📌地點：新竹縣橫山鄉晴野果園"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "💰費用：每人 NT$350"
+          }
+        ]
+      },
+      {
+        "CriterionID": "6e556739-4569-4995-9eb7-840753171989",
+        "Result": "passed",
+        "Reason": "貼文的敘述與標籤圍繞已提供的採摘紅柿及親子參加資訊；未見新增活動安排、優惠、名額、交通或其他可被當作事實的細節。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "邀請大小朋友走進果園，親手採摘當季紅柿，享受親子同遊的秋日時光。一起把秋日的美好，裝進採果的回憶裡吧！❤️"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "👨‍👩‍👧‍👦適合親子一同參加"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "#秋日紅柿採果日 #親手採紅柿 #親子同遊"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "這則繁體中文社群貼文可直接發布，完整保留所有指定硬事實，且未加入未提供的事實性細節。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2663,
+      "CompletionTokens": 1012,
+      "CostUSD": 0.014241400000000001,
+      "CostReported": true
+    }
+  }
+}

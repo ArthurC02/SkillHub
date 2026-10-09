@@ -1,0 +1,149 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下資料寫一則吸引人的農場採果活動社群貼文。\n活動名稱：秋日紅寶石採果日\n日期：2026年11月7日（星期六）\n時間：上午 9:30 至下午 1:00\n地點：新竹縣峨眉鄉湖光村 12 號\n費用：未提供",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑範例中已提供的活動名稱、日期、時間與地址，貼文逐字保留原文，且不遺漏任何一項。"
+    },
+    {
+      "text": "試跑範例未提供費用時，貼文會補上一個合理的建議費用，並明確標示為「建議資訊，請主辦方確認」；不把它寫成已確認費用。"
+    },
+    {
+      "text": "試跑範例未提供費用時，Skill 直接產出貼文，不先向使用者追問。"
+    },
+    {
+      "text": "輸出包含一則適合社群發布、具有吸引力並鼓勵讀者參加的貼文，且不把其他未提供的活動硬事實寫成已確認資訊。"
+    }
+  ],
+  "final_output": "🍂✨ **秋日紅寶石採果日** ✨🍂\n\n秋日相約，一起走進農場，享受採果時光！邀請你把這一天留給秋日，和親友一起來參加「秋日紅寶石採果日」❤️\n\n📅 日期：2026年11月7日（星期六）  \n🕤 時間：上午 9:30 至下午 1:00  \n📍 地點：新竹縣峨眉鄉湖光村 12 號  \n💰 費用：【未提供】\n\n邀請親友一起來，期待與你相見！",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "65ad03ac-d15f-4f4c-b557-2598682f9b1b",
+    "run_id": "ebb62e99-5cb8-45e0-a379-a93617c62e43",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "貼文保留了活動名稱、日期、時間與地址，並直接產出具邀請性的社群文案。但費用只標為未提供，未依標準補上明確註明待主辦方確認的建議費用。",
+    "criterion_results": [
+      {
+        "criterion_id": "a791fe64-4679-4311-96eb-f76051e134d7",
+        "text": "對試跑範例中已提供的活動名稱、日期、時間與地址，貼文逐字保留原文，且不遺漏任何一項。",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文逐字保留活動名稱、日期、時間與地址，四項均未遺漏。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "秋日紅寶石採果日",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年11月7日（星期六）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "上午 9:30 至下午 1:00",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "新竹縣峨眉鄉湖光村 12 號",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f6e74a01-6f3d-4efd-8405-be540eead0b4",
+        "text": "試跑範例未提供費用時，貼文會補上一個合理的建議費用，並明確標示為「建議資訊，請主辦方確認」；不把它寫成已確認費用。",
+        "result": "failed",
+        "source": "model",
+        "reason": "貼文將費用標為「未提供」，沒有補上建議費用，也沒有標示「建議資訊，請主辦方確認」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "💰 費用：【未提供】",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "733adb97-9d94-46b2-bedf-d84d95f27426",
+        "text": "試跑範例未提供費用時，Skill 直接產出貼文，不先向使用者追問。",
+        "result": "passed",
+        "source": "model",
+        "reason": "試跑直接產出貼文，沒有先向使用者追問費用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "🍂✨ **秋日紅寶石採果日** ✨🍂",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7ff6e1d7-f872-4329-8e74-24832f2a5b23",
+        "text": "輸出包含一則適合社群發布、具有吸引力並鼓勵讀者參加的貼文，且不把其他未提供的活動硬事實寫成已確認資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出是一則邀請讀者與親友參加的社群貼文；未提供的費用明確標為未提供，未見將其他未提供的活動硬事實寫成已確認資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "秋日相約，一起走進農場，享受採果時光！邀請你把這一天留給秋日，和親友一起來參加「秋日紅寶石採果日」❤️",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "💰 費用：【未提供】",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1497 input and 246 output tokens on skillhub-run; reported cost $0.0028 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

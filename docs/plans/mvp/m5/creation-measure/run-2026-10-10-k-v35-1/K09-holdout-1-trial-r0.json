@@ -1,0 +1,178 @@
+{
+  "round": 0,
+  "sample_input": "活動名稱：秋日蜜柚採收趣。日期：2026 年 10 月 24 日（星期六）。時間：上午 9:00 到下午 4:00。地點：果香農場，苗栗縣大湖鄉富興村 12 號。費用：每人 350 元，含採果 2 斤。報名專線 037-123-456。請幫我寫貼文。",
+  "acceptance_criteria": [
+    {
+      "text": "貼文含完整活動名稱「秋日蜜柚採收趣」"
+    },
+    {
+      "text": "貼文含日期 10 月 24 日，且若有寫星期則為星期六"
+    },
+    {
+      "text": "貼文含時間 9:00 到 16:00（或上午 9 點到下午 4 點）"
+    },
+    {
+      "text": "貼文含地點「果香農場」與地址「苗栗縣大湖鄉富興村 12 號」"
+    },
+    {
+      "text": "貼文含費用每人 350 元與含採果 2 斤"
+    },
+    {
+      "text": "貼文中沒有與給定資料不符的日期、時間、地點或金額"
+    }
+  ],
+  "final_output": "🍊【秋日蜜柚採收趣】🍊\n\n秋天來了，一起來參加「秋日蜜柚採收趣」！\n\n📅 日期：2026 年 10 月 24 日（星期六）  \n🕘 時間：上午 9:00 到下午 4:00  \n📍 地點：果香農場，苗栗縣大湖鄉富興村 12 號  \n💰 費用：每人 350 元，含採果 2 斤  \n☎️ 報名專線：037-123-456\n\n想參加嗎？歡迎來電報名，一起迎接秋日採收時光！",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3d18521b-70de-45de-b398-51e677095230",
+    "run_id": "4877a2b0-e7cd-4d46-83fa-b9d001b07f6b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收標準均已達成。貼文完整呈現活動名稱、日期、時間、地點與費用，且未出現與給定資料不符的資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "372a0fbe-1a56-403f-9648-8baceadca4b6",
+        "text": "貼文含完整活動名稱「秋日蜜柚採收趣」",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文含完整活動名稱。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【秋日蜜柚採收趣】",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9beab501-1005-4676-9211-84cabf496ad6",
+        "text": "貼文含日期 10 月 24 日，且若有寫星期則為星期六",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文載明 10 月 24 日，星期標示為星期六。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期：2026 年 10 月 24 日（星期六）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8b693280-537b-445f-ac92-7a2887a958fa",
+        "text": "貼文含時間 9:00 到 16:00（或上午 9 點到下午 4 點）",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文載明上午 9:00 到下午 4:00。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "時間：上午 9:00 到下午 4:00",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cb92c64e-e7c9-4918-b8ff-2106a81feff7",
+        "text": "貼文含地點「果香農場」與地址「苗栗縣大湖鄉富興村 12 號」",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文含農場名稱及完整地址。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "地點：果香農場，苗栗縣大湖鄉富興村 12 號",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2296317c-b403-4cac-83a1-696f923395fc",
+        "text": "貼文含費用每人 350 元與含採果 2 斤",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文載明每人 350 元，且含採果 2 斤。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "費用：每人 350 元，含採果 2 斤",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "667a671c-546d-4880-98eb-4e91774beff3",
+        "text": "貼文中沒有與給定資料不符的日期、時間、地點或金額",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文中的日期、時間、地點及金額均與給定資料一致，沒有相互矛盾的資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期：2026 年 10 月 24 日（星期六）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "時間：上午 9:00 到下午 4:00",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "地點：果香農場，苗栗縣大湖鄉富興村 12 號",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "費用：每人 350 元，含採果 2 斤",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1497 input and 396 output tokens on skillhub-run; reported cost $0.0029 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

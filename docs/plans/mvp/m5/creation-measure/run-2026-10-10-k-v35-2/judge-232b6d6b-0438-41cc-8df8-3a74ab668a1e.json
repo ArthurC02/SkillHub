@@ -1,0 +1,194 @@
+{
+  "request": {
+    "RunID": "232b6d6b-0438-41cc-8df8-3a74ab668a1e",
+    "EvaluationID": "8f9cb449-e344-42de-b391-9fccc88e0a87",
+    "Skill": {
+      "Name": "farm-picking-social-post",
+      "Summary": "根據使用者提供的農場採果活動資料，撰寫一則繁體中文、可直接發布的通用社群貼文。當使用者提供活動資訊並需要宣傳文案時使用；完整保留所有硬事實，不補造細節。"
+    },
+    "UserPrompt": "活動名稱：秋日蜜柚採收趣。日期：2026 年 10 月 24 日（星期六）。時間：上午 9:00 到下午 4:00。地點：果香農場，苗栗縣大湖鄉富興村 12 號。費用：每人 350 元，含採果 2 斤。報名專線 037-123-456。請幫我寫貼文。",
+    "Criteria": [
+      {
+        "ID": "0e3e2032-646c-47a6-b1f5-b65a2415d9fc",
+        "Text": "貼文含完整活動名稱「秋日蜜柚採收趣」",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "338fa78a-2bf2-4579-a21f-7cba10c01a14",
+        "Text": "貼文含日期 10 月 24 日，且若有寫星期則為星期六",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2b166a36-9c7e-4959-8f08-b0d18e89b7c5",
+        "Text": "貼文含時間 9:00 到 16:00（或上午 9 點到下午 4 點）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "326b433a-b114-4a49-b4de-ded072b1f724",
+        "Text": "貼文含地點「果香農場」與地址「苗栗縣大湖鄉富興村 12 號」",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "784a224a-1d46-42d8-8c61-8812535d41fb",
+        "Text": "貼文含費用每人 350 元與含採果 2 斤",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2f11c962-fd48-429e-8323-e0e90e0f6efa",
+        "Text": "貼文中沒有與給定資料不符的日期、時間、地點或金額",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "🍊 秋日蜜柚採收趣，邀你一起來體驗採果樂趣！\n\n📅 日期：2026 年 10 月 24 日（星期六）  \n🕘 時間：上午 9:00 到下午 4:00  \n📍 地點：果香農場，苗栗縣大湖鄉富興村 12 號  \n💰 費用：每人 350 元，含採果 2 斤  \n\n📞 報名專線：037-123-456\n\n約上親朋好友，一起來參加「秋日蜜柚採收趣」吧！",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "ae10e992-d513-4500-bc66-6aac3145140e",
+          "OccurredAt": "2026-10-09T20:29:31.623Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"farm-picking-social-post\", \"skill_version_id\": \"dbbe7a06-b6f7-48c4-9b2e-4cc83ea8710e\"}"
+        },
+        {
+          "TraceEventID": "b859506a-1697-4ea5-baae-2575ac7694ba",
+          "OccurredAt": "2026-10-09T20:29:31.634Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"farm-picking-social-post\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_DU28Yi1sDGO7Y9YGnz8BTSPA\", \"result_summary\": \"Launching skill: farm-picking-social-post\"}"
+        },
+        {
+          "TraceEventID": "0f268b78-bff8-4fc4-9954-63c2c5ef0777",
+          "OccurredAt": "2026-10-09T20:29:34.677Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"🍊 秋日蜜柚採收趣，邀你一起來體驗採果樂趣！\\n\\n📅 日期：2026 年 10 月 24 日（星期六）  \\n🕘 時間：上午 9:00 到下午 4:00  \\n📍 地點：果香農場，苗栗縣大湖鄉富興村 12 號  \\n💰 費用：每人 350 元，含採果 2 斤  \\n\\n📞 報名專線：037-123-456\\n\\n約上親朋好友，一起來參加「秋日蜜柚採收趣」吧！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "0dd2e989-645d-4633-81a6-11451109e077",
+          "OccurredAt": "2026-10-09T20:29:34.918Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"🍊 秋日蜜柚採收趣，邀你一起來體驗採果樂趣！\\n\\n📅 日期：2026 年 10 月 24 日（星期六）  \\n🕘 時間：上午 9:00 到下午 4:00  \\n📍 地點：果香農場，苗栗縣大湖鄉富興村 12 號  \\n💰 費用：每人 350 元，含採果 2 斤  \\n\\n📞 報名專線：037-123-456\\n\\n約上親朋好友，一起來參加「秋日蜜柚採收趣」吧！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "fa3e5362-e3f4-4391-9b4c-c0826e101c0a",
+          "OccurredAt": "2026-10-09T20:29:38.983Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.00285214, \"cost_source\": \"gateway\", \"duration_ms\": 9722, \"input_tokens\": 1488, \"token_source\": \"result\", \"output_tokens\": 297, \"cache_read_input_tokens\": 16594, \"cache_write_input_tokens\": 18616}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "0e3e2032-646c-47a6-b1f5-b65a2415d9fc",
+        "Result": "passed",
+        "Reason": "貼文包含完整活動名稱「秋日蜜柚採收趣」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "🍊 秋日蜜柚採收趣，邀你一起來體驗採果樂趣！"
+          }
+        ]
+      },
+      {
+        "CriterionID": "338fa78a-2bf2-4579-a21f-7cba10c01a14",
+        "Result": "passed",
+        "Reason": "貼文寫明 10 月 24 日，星期為星期六。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "📅 日期：2026 年 10 月 24 日（星期六）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "2b166a36-9c7e-4959-8f08-b0d18e89b7c5",
+        "Result": "passed",
+        "Reason": "貼文寫明上午 9:00 到下午 4:00。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "🕘 時間：上午 9:00 到下午 4:00"
+          }
+        ]
+      },
+      {
+        "CriterionID": "326b433a-b114-4a49-b4de-ded072b1f724",
+        "Result": "passed",
+        "Reason": "貼文包含果香農場及完整地址。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "📍 地點：果香農場，苗栗縣大湖鄉富興村 12 號"
+          }
+        ]
+      },
+      {
+        "CriterionID": "784a224a-1d46-42d8-8c61-8812535d41fb",
+        "Result": "passed",
+        "Reason": "貼文寫明每人 350 元，含採果 2 斤。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "💰 費用：每人 350 元，含採果 2 斤"
+          }
+        ]
+      },
+      {
+        "CriterionID": "2f11c962-fd48-429e-8323-e0e90e0f6efa",
+        "Result": "passed",
+        "Reason": "貼文所列日期、時間、地點與金額均與給定資料一致，沒有相互矛盾的資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "📅 日期：2026 年 10 月 24 日（星期六）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "🕘 時間：上午 9:00 到下午 4:00"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "📍 地點：果香農場，苗栗縣大湖鄉富興村 12 號"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "💰 費用：每人 350 元，含採果 2 斤"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "貼文完整保留活動名稱、日期、時間、地點、地址與費用；未見與給定資料不符的日期、時間、地點或金額。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2621,
+      "CompletionTokens": 807,
+      "CostUSD": 0.0120864,
+      "CostReported": true
+    }
+  }
+}

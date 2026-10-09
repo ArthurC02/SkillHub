@@ -1,0 +1,165 @@
+{
+  "round": 1,
+  "sample_input": "請依規則計算以下各筆洗衣與烘乾費用，只回覆各筆應付金額：\n3 公斤，20 分鐘\n5 公斤，40 分鐘\n6 公斤，40 分鐘\n5 公斤，50 分鐘\n10 公斤，100 分鐘",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 行為 3 公斤、20 分鐘時，只輸出「160 元」。"
+    },
+    {
+      "text": "試跑輸入第 2 行為 5 公斤、40 分鐘時，只輸出「280 元」，正確套用兩項費率的前段門檻。"
+    },
+    {
+      "text": "試跑輸入第 3 行為 6 公斤、40 分鐘時，只輸出「310 元」，洗衣超過 5 公斤的部分按每公斤 30 元計。"
+    },
+    {
+      "text": "試跑輸入第 4 行為 5 公斤、50 分鐘時，只輸出「290 元」，烘乾超過 40 分鐘的部分按每分鐘 1 元計。"
+    },
+    {
+      "text": "試跑輸入第 5 行為 10 公斤、100 分鐘時，只輸出「400 元」；未封頂合計為 490 元，應封頂為 400 元。"
+    },
+    {
+      "text": "對包含多筆資料的試跑輸入，依原順序逐筆輸出金額，每筆一行，且不附加其他文字。"
+    }
+  ],
+  "final_output": "160 元\n280 元\n310 元\n290 元\n400 元",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "94404c2a-73ef-4b9b-880e-e293e1ffc88d",
+    "run_id": "00750389-0b80-420a-bb89-2a25067c6dc9",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆金額均正確，並依原順序各列一行，沒有附加文字。",
+    "criterion_results": [
+      {
+        "criterion_id": "f8845a1a-1b2a-4aac-8a5d-e2da642903d8",
+        "text": "試跑輸入第 1 行為 3 公斤、20 分鐘時，只輸出「160 元」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 行為「160 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "160 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e86c5f34-37e2-4c9b-81c2-09ea84525f2f",
+        "text": "試跑輸入第 2 行為 5 公斤、40 分鐘時，只輸出「280 元」，正確套用兩項費率的前段門檻。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 行為「280 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "280 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7cf4de44-8a40-437e-bc48-5f48bcfcd5ed",
+        "text": "試跑輸入第 3 行為 6 公斤、40 分鐘時，只輸出「310 元」，洗衣超過 5 公斤的部分按每公斤 30 元計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 行為「310 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "310 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4e868bd6-0a21-4540-92ef-d3d53d50bf28",
+        "text": "試跑輸入第 4 行為 5 公斤、50 分鐘時，只輸出「290 元」，烘乾超過 40 分鐘的部分按每分鐘 1 元計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 行為「290 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "290 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fa6527ae-b3c4-4505-b07b-72e68eab5b0d",
+        "text": "試跑輸入第 5 行為 10 公斤、100 分鐘時，只輸出「400 元」；未封頂合計為 490 元，應封頂為 400 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 行為封頂後的「400 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "400 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3dfcd310-841e-436f-8bd6-1e46199c36ef",
+        "text": "對包含多筆資料的試跑輸入，依原順序逐筆輸出金額，每筆一行，且不附加其他文字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "依輸入順序逐筆輸出，共五行，每行只有應付金額，沒有其他文字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "160 元\n280 元\n310 元\n290 元\n400 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1598 input and 1166 output tokens on skillhub-run; reported cost $0.0047 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請依下列每筆顧客資料各寫一則預約提醒簡訊。\n顧客稱呼：林小姐；預約：2026/10/12 14:30；取消截止時間：2026/10/11 14:30\n顧客稱呼：未提供；預約：2026/10/12 14:30；取消截止時間：2026/10/11 14:30\n顧客稱呼：陳小姐；預約：2026/10/12 14:30；取消截止時間：未提供\n顧客稱呼：林小姐；預約日期與時間：未提供；取消截止時間：2026/10/10 12:00\n顧客稱呼：林小姐；預約：2026/10/12 14:30；備註：預約改為2026/10/13 14:30；取消截止時間：2026/10/11 14:30",
+  "acceptance_criteria": [
+    {
+      "text": "輸入第 1 筆資料時，輸出須為「林小姐，提醒您10/12 14:30預約；取消期限10/11 14:30。」；這些日期與時間須與資料相符，全文不超過 40 字。"
+    },
+    {
+      "text": "輸入第 2 筆資料時，缺少稱呼須以「您好」替代，並保留預約及取消截止日期／時間；全文不超過 40 字。"
+    },
+    {
+      "text": "輸入第 3 筆資料時，須將 2026/10/12 14:30 前 24 小時計算為 2026/10/11 14:30，並在簡訊中寫為「10/11 14:30」；全文不超過 40 字。"
+    },
+    {
+      "text": "輸入第 4 筆資料時，因預約日期與時間未提供，須標示「預約日期時間待確認」，保留已提供的取消截止時間，不得編造預約日期或時間；全文不超過 40 字。"
+    },
+    {
+      "text": "輸入第 5 筆資料時，因預約日期互相矛盾，須標示「預約日期時間待確認」，不得自行選定其中一個日期；全文不超過 40 字。"
+    },
+    {
+      "text": "對試跑輸入中的每筆資料，輸出須依輸入順序各給一則簡訊本文，且不得附加標題、解說、字數統計或其他非簡訊內容。"
+    }
+  ],
+  "final_output": "林小姐，提醒您10/12 14:30預約；取消期限10/11 14:30。\n您好，提醒您10/12 14:30預約；取消期限10/11 14:30。\n陳小姐，提醒您10/12 14:30預約；取消期限10/11 14:30。\n林小姐，提醒您預約日期時間待確認預約；取消期限10/10 12:00。\n林小姐，提醒您預約日期時間待確認預約；取消期限10/11 14:30。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "bee94c14-5abf-447c-a9b4-8ec7b20b465c",
+    "run_id": "322f20a4-4aa6-4e61-b0df-bbda0e469b7f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收條件均已達成。最終回覆依序提供五則符合要求的簡訊，未夾帶其他內容。",
+    "criterion_results": [
+      {
+        "criterion_id": "ea94db3b-e3db-4dbb-a391-d877d15c94ee",
+        "text": "輸入第 1 筆資料時，輸出須為「林小姐，提醒您10/12 14:30預約；取消期限10/11 14:30。」；這些日期與時間須與資料相符，全文不超過 40 字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 則與指定文字完全相同，日期時間正確，且不超過 40 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林小姐，提醒您10/12 14:30預約；取消期限10/11 14:30。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4032fd31-b250-4681-a69c-6ca8d7d89abc",
+        "text": "輸入第 2 筆資料時，缺少稱呼須以「您好」替代，並保留預約及取消截止日期／時間；全文不超過 40 字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 則以「您好」代替稱呼，保留預約與取消截止時間，且不超過 40 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，提醒您10/12 14:30預約；取消期限10/11 14:30。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2fe834c5-c45b-434c-94eb-4217a32cd25b",
+        "text": "輸入第 3 筆資料時，須將 2026/10/12 14:30 前 24 小時計算為 2026/10/11 14:30，並在簡訊中寫為「10/11 14:30」；全文不超過 40 字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 則將預約前 24 小時的取消期限寫為「10/11 14:30」，且不超過 40 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳小姐，提醒您10/12 14:30預約；取消期限10/11 14:30。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f6125d64-a174-428c-bdc0-0993b1c329ac",
+        "text": "輸入第 4 筆資料時，因預約日期與時間未提供，須標示「預約日期時間待確認」，保留已提供的取消截止時間，不得編造預約日期或時間；全文不超過 40 字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 則標示「預約日期時間待確認」，保留取消截止時間，未編造預約時間，且不超過 40 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林小姐，提醒您預約日期時間待確認預約；取消期限10/10 12:00。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c6567691-ff8c-4e2e-8db7-7e38e9bd3362",
+        "text": "輸入第 5 筆資料時，因預約日期互相矛盾，須標示「預約日期時間待確認」，不得自行選定其中一個日期；全文不超過 40 字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 則標示「預約日期時間待確認」，沒有自行選定互相矛盾的預約日期，且不超過 40 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林小姐，提醒您預約日期時間待確認預約；取消期限10/11 14:30。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1216ba17-c70a-46c4-a38d-5d3297187ec3",
+        "text": "對試跑輸入中的每筆資料，輸出須依輸入順序各給一則簡訊本文，且不得附加標題、解說、字數統計或其他非簡訊內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出依輸入順序提供五則簡訊，每行一則，沒有標題、解說或字數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林小姐，提醒您10/12 14:30預約；取消期限10/11 14:30。\n您好，提醒您10/12 14:30預約；取消期限10/11 14:30。\n陳小姐，提醒您10/12 14:30預約；取消期限10/11 14:30。\n林小姐，提醒您預約日期時間待確認預約；取消期限10/10 12:00。\n林小姐，提醒您預約日期時間待確認預約；取消期限10/11 14:30。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1524 input and 1307 output tokens on skillhub-run; reported cost $0.0039 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}
