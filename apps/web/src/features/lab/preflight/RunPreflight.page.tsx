@@ -12,14 +12,21 @@ import { RunStartControl } from "./components/RunStartControl";
 import "./RunPreflight.page.css";
 
 type RunPreflightParams = { skillId?: string; testCaseId?: string };
-type RunPreflightSearch = { version?: string };
-type PreflightProps = { skill: string; linkedVersion: string; testCase: string };
+type RunPreflightSearch = { version?: string; against?: string };
+type PreflightProps = {
+  skill: string;
+  linkedVersion: string;
+  testCase: string;
+  against?: string;
+};
 
 export function RunPreflight() {
   const { skillId: skill = "", testCaseId: testCase = "" } = useParams({
     strict: false,
   }) as RunPreflightParams;
-  const { version: linkedVersion = "" } = useSearch({ strict: false }) as RunPreflightSearch;
+  const { version: linkedVersion = "", against } = useSearch({
+    strict: false,
+  }) as RunPreflightSearch;
   // Search params change without remounting the route; the key starts a fresh form.
   return (
     <Preflight
@@ -27,11 +34,12 @@ export function RunPreflight() {
       skill={skill}
       linkedVersion={linkedVersion}
       testCase={testCase}
+      against={against}
     />
   );
 }
 
-function Preflight({ skill, linkedVersion, testCase }: PreflightProps) {
+function Preflight({ skill, linkedVersion, testCase, against }: PreflightProps) {
   const navigate = useNavigate();
   const version = linkedVersion;
   const me = useMe();
@@ -65,7 +73,7 @@ function Preflight({ skill, linkedVersion, testCase }: PreflightProps) {
       void navigate({
         to: "/skills/$skillId/test-cases/$testCaseId/runs/new",
         params: { skillId: skill, testCaseId: testCase },
-        search: { version: id },
+        search: { version: id, against },
       });
     },
   };
@@ -149,7 +157,7 @@ function Preflight({ skill, linkedVersion, testCase }: PreflightProps) {
         </p>
       ))}
 
-      <RunStartControl start={start} hash={hash} blocked={blocked} />
+      <RunStartControl start={start} hash={hash} blocked={blocked} against={against} />
     </PreflightShell>
   );
 }

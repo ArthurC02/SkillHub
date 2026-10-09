@@ -253,8 +253,10 @@ const runPreflightRoute = createRoute({
     () => import("../features/lab/preflight/RunPreflight.page"),
     "RunPreflight",
   ),
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { version?: string; against?: string } => ({
     version: typeof search.version === "string" ? search.version : undefined,
+    against:
+      typeof search.against === "string" && search.against.length > 0 ? search.against : undefined,
   }),
 });
 

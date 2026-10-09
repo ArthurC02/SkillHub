@@ -5,9 +5,11 @@ import { BLOCKED_REASON_LABEL } from "../evaluation.model";
 export function AppliedResult({
   result,
   testCaseId,
+  runId,
 }: {
   result: VersionFromSuggestions;
   testCaseId?: string;
+  runId: string;
 }) {
   return (
     <div role="status">
@@ -36,11 +38,11 @@ export function AppliedResult({
           <Link
             to="/skills/$skillId/test-cases/$testCaseId/runs/new"
             params={{ skillId: result.skill_id, testCaseId }}
-            search={{ version: result.version_id }}
+            search={{ version: result.version_id, against: runId }}
           >
             以新版本重跑這個測試題
           </Link>
-          ：連過去的是執行前權限確認畫面，仍須在那裡確認一次才會開始試跑。
+          ：連過去的是執行前權限確認畫面，仍須在那裡確認一次才會開始試跑；開始後可以和這次試跑逐條比較，看建議有沒有真的改善。
         </p>
       ) : (
         <p className="note">

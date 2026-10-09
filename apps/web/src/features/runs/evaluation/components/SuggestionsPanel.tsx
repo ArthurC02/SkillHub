@@ -70,7 +70,7 @@ export function SuggestionsPanel({ runId }: { runId: string }) {
           <ApplyFailureBody error={error} />
         </div>
       </ReadFailure>
-      {applied && <AppliedResult result={applied} testCaseId={run?.test_case_id} />}
+      {applied && <AppliedResult result={applied} testCaseId={run?.test_case_id} runId={runId} />}
     </section>
   );
 }

@@ -180,7 +180,7 @@ TestCases ──────► /lab/test-cases/$id, /lab/test-cases/$id/dataset
                   /runs/$id/compare, /skills/$id, /skills/$id/files
 DatasetUpload ──► /lab/test-cases/$id, /skills/$id, /skills/$id/files,
                   /skills/$id/versions/$id
-RunPreflight ───► /lab/test-cases, /runs/$id, /skills/$id, /skills/$id/files
+RunPreflight ───► /lab/test-cases, /runs/$id, /runs/$id/compare, /skills/$id, /skills/$id/files
 RunTrace ───────► /runs/$id/compare, /lab/test-cases, /skills/$id,
                   /skills/$id/files
 RunCompare ─────► /skills/$id/test-cases/$id/runs/new, /runs/$id, /lab/test-cases, /skills/$id,
@@ -292,7 +292,7 @@ Catalog landing `/` 的 `<h1>` 是名詞化的產品承諾 `探索能直接採�
 | `/skills/$id/package` | `version` | PACK-001／002：版本是路徑之外的另一個「哪一份」 |
 | `/workspace/creations` | `session`（須為 UUID） | 目前正在續作哪一場可變創作會話；選擇歷程或建立成功都改寫同一個值，重載後向伺服器取回該 session 的最新 revision。它不把 revision 放進網址，也不把 session 當成正式 Skill Version |
 | `/workspace/downloads` | `artifact`（須為 UUID）、`publication`（須為 `發佈者/名稱`）、`bundleVersion`（須為 UUID） | 發佈與交付空間裡正在續接哪一筆保存紀錄或哪一個 Bundle 成員版本。`artifact` 指向一個不可變打包成品，`publication` 指向一筆 Skill Publication，`bundleVersion` 指向使用者剛選定且 owner 版本清單確實包含的不可變 Skill Version；三者都只使用 owner API 已回傳的識別，不把 Workspace 識別或前一頁脈絡塞進網址。打包、公開取得或 Bundle 匯出一旦收到 `artifact_id`，產生結果的連結就必須帶回該值；版本內的 Publication 操作同樣使用回應中的 `publisher/name`；「加入 Bundle」則保留當下的精確 Version，不得只把人送到泛用清單，也不得改選最新版本。資料成功載入且找到精確項目後才定位；成功載入但找不到時說明目前工作區找不到這筆，讀取失敗仍是讀取失敗。兩個以上參數同時出現是含糊連結，頁面不任選一筆，也不移動焦點。Bundle Publication 不在 `/me/publications`，不由這一批參數假裝支援 |
-| `/skills/$skillId/test-cases/$testCaseId/runs/new` | `version` | TEST-008／009：Skill 與 Test Case 是建立 Run 的固定工作脈絡；只有可替換的 Version 留在網址狀態並由頁面選擇 |
+| `/skills/$skillId/test-cases/$testCaseId/runs/new` | `version`、`against` | TEST-008／009：Skill 與 Test Case 是建立 Run 的固定工作脈絡；只有可替換的 Version 留在網址狀態並由頁面選擇。`against` 是改版前那次 Run：從改善建議建立新版本後重跑同一題時帶著它，試跑開始後頁面多給一條到 `/runs/$id/compare?against=` 的連結，讓使用者自己確認建議有沒有真的改善；它不改變確認流程，也不自動開跑 |
 | `/lab/run` | `skill`、`version`、`test_case` | 舊深連結的相容輸入；帶齊 Skill 與 Test Case 後改寫成上列 canonical URL，沒有足夠脈絡時回到 Test Case 清單或單筆，不渲染第二份 preflight |
 | `/lab/test-cases/$testCaseId/datasets` | `version`（須為 UUID） | Test Case 已固定在路徑；精確 Version 留在網址，讓 Dataset、Test Case 與後續 preflight 共用同一個不可變版本脈絡 |
 | `/lab/datasets` | `test_case`、`version`（後者須為 UUID） | 舊深連結的相容輸入；有 Test Case 就改寫成上列 canonical URL，沒有就回到 Test Case 清單，不渲染第二份 Dataset 畫面 |

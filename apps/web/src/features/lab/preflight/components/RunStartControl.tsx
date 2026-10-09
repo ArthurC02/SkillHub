@@ -10,10 +10,12 @@ export function RunStartControl({
   start,
   hash,
   blocked,
+  against,
 }: {
   start: ReturnType<typeof useConfirmAndStartRun>;
   hash: string;
   blocked: PreflightResponse["blocked"];
+  against?: string;
 }) {
   const runId = start.data?.run_id ?? "";
   const message = startFailureSentence(start.error);
@@ -39,6 +41,14 @@ export function RunStartControl({
               試跑紀錄 ID：<code>{runId}</code>
             </span>
           </p>
+          {against && (
+            <p>
+              <Link to="/runs/$runId/compare" params={{ runId }} search={{ against }}>
+                和改版前的那次試跑逐條比較
+              </Link>
+              ：評估完成後，兩次試跑的每條驗收條件會並排列出。
+            </p>
+          )}
         </>
       ) : blocked ? (
         <p role="alert" className="notice">
