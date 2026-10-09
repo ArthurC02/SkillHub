@@ -2639,6 +2639,48 @@ class DomainRegistryTest(unittest.TestCase):
         kept.unlink()
         self.assertEqual(verify_source_map(self.repo, path)["status"], "stale")
 
+    def test_each_structural_problem_in_a_source_map_gets_its_own_verdict_and_reason(self) -> None:
+        path = self.committed_source_map()
+        sound = json.loads(path.read_text(encoding="utf-8"))
+        policy = stored_policy_of(self.repo)
+
+        def escaping(value):
+            value["selected_paths"] = ["../outside"]
+            value["source_snapshots"][0]["path"] = "../outside"
+
+        cases = [
+            ("no snapshots", lambda value: value.pop("source_snapshots"), None,
+             "unverified", "source map has no snapshots"),
+            ("a snapshot that is not an object", lambda value: value["source_snapshots"].append(7), None,
+             "unverified", "source map has an invalid snapshot"),
+            ("a path selected twice", lambda value: value["selected_paths"].append("docs"), None,
+             "unverified", "source map snapshots do not match selected_paths"),
+            ("a path outside the repository", escaping, None,
+             "invalid", "source path escapes repository: ../outside"),
+            ("a policy selecting other paths", lambda value: None, ["other"],
+             "invalid", "policy selected_paths do not match the source map"),
+        ]
+        for label, change, policy_paths, status, reason in cases:
+            with self.subTest(label):
+                value = json.loads(json.dumps(sound))
+                change(value)
+                path.write_text(json.dumps(value), encoding="utf-8")
+                chosen = None
+                if policy_paths is not None:
+                    chosen = json.loads(json.dumps(policy))
+                    chosen["source_policy"]["selected_paths"] = policy_paths
+                result = verify_source_map(self.repo, path, chosen)
+                self.assertEqual((status, reason), (result["status"], result["reason"]))
+
+    def test_a_selected_path_that_disappeared_makes_the_map_stale_and_is_named_missing(self) -> None:
+        path = self.committed_source_map()
+        remove_tree(self.repo / "docs")
+        result = verify_source_map(self.repo, path)
+        self.assertEqual(
+            ("stale", [{"path": "docs", "status": "missing"}]),
+            (result["status"], result["changed_sources"]),
+        )
+
     def test_a_map_without_snapshots_cannot_answer_the_question(self) -> None:
         path = self.write_record(
             "source-map.json",

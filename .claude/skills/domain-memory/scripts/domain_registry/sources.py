@@ -512,59 +512,44 @@ def source_verdict(status: str, selection_status: str, reason: str) -> dict[str,
     return {"status": status, "selection_status": selection_status, "reason": reason}
 
 
-def verify_source_map(  # noqa: C901, PLR0911, PLR0912
-    root: Path, source_map_path: Path, policy: dict[str, Any] | None = None
-) -> dict[str, Any]:
-    root = root.resolve()
-    source_map = load_json(source_map_path)
-    snapshots = source_map.get("source_snapshots")
-    selection_status = source_map.get("selection_status", "agent-asserted")
+def _snapshot_problem(snapshots: Any, selected_paths: Any) -> str | None:
     if not isinstance(snapshots, list):
-        return source_verdict(
-            "unverified", selection_status, "source map has no snapshots"
-        )
+        return "source map has no snapshots"
     if not all(
         isinstance(snapshot, dict) and isinstance(snapshot.get("path"), str)
         for snapshot in snapshots
     ):
-        return source_verdict(
-            "unverified", selection_status, "source map has an invalid snapshot"
-        )
-    recorded_paths = [snapshot["path"] for snapshot in snapshots]
-    selected_paths = source_map.get("selected_paths")
+        return "source map has an invalid snapshot"
     if (
         not isinstance(selected_paths, list)
         or not all(isinstance(path, str) and path.strip() for path in selected_paths)
         or len(selected_paths) != len(set(selected_paths))
-        or set(selected_paths) != set(recorded_paths)
+        or set(selected_paths) != {snapshot["path"] for snapshot in snapshots}
     ):
-        return source_verdict(
-            "unverified",
-            selection_status,
-            "source map snapshots do not match selected_paths",
-        )
-    for selected_path in recorded_paths:
-        try:
-            (root / selected_path).resolve().relative_to(root)
-        except ValueError:  # noqa: PERF203
-            return source_verdict(
-                "invalid",
-                selection_status,
-                f"source path escapes repository: {selected_path}",
-            )
-    if policy is not None:
-        policy_paths = policy.get("source_policy", {}).get("selected_paths")
-        if isinstance(policy_paths, list) and sorted(policy_paths) != sorted(
-            selected_paths
-        ):
-            return source_verdict(
-                "invalid",
-                selection_status,
-                "policy selected_paths do not match the source map",
-            )
+        return "source map snapshots do not match selected_paths"
+    return None
+
+
+def _selection_problem(
+    root: Path, selected_paths: list[str], policy: dict[str, Any] | None
+) -> str | None:
+    escaping = next(
+        (path for path in selected_paths if not (root / path).resolve().is_relative_to(root)), None
+    )
+    if escaping is not None:
+        return f"source path escapes repository: {escaping}"
+    policy_paths = (policy or {}).get("source_policy", {}).get("selected_paths")
+    if isinstance(policy_paths, list) and sorted(policy_paths) != sorted(selected_paths):
+        return "policy selected_paths do not match the source map"
+    return None
+
+
+def _compare_snapshots(
+    root: Path, snapshots: list[dict[str, Any]], policy: dict[str, Any] | None
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     actual = {
         snapshot["path"]: snapshot
-        for snapshot in source_snapshots(root, recorded_paths, policy)
+        for snapshot in source_snapshots(root, [s["path"] for s in snapshots], policy)
     }
     changed = []
     drifted = []
@@ -574,15 +559,28 @@ def verify_source_map(  # noqa: C901, PLR0911, PLR0912
             changed.append({"path": snapshot["path"], "status": "missing"})
         elif selection_moved(snapshot, current):
             changed.append(
-                {
-                    "path": snapshot["path"],
-                    "status": "changed",
-                    "expected": snapshot,
-                    "actual": current,
-                }
+                {"path": snapshot["path"], "status": "changed", "expected": snapshot, "actual": current}
             )
         elif snapshot.get("digest") != current.get("digest"):
             drifted.append({"path": snapshot["path"], "status": "content-changed"})
+    return changed, drifted
+
+
+def verify_source_map(
+    root: Path, source_map_path: Path, policy: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    root = root.resolve()
+    source_map = load_json(source_map_path)
+    snapshots = source_map.get("source_snapshots")
+    selected_paths = source_map.get("selected_paths")
+    selection_status = source_map.get("selection_status", "agent-asserted")
+    unverified = _snapshot_problem(snapshots, selected_paths)
+    if unverified:
+        return source_verdict("unverified", selection_status, unverified)
+    invalid = _selection_problem(root, selected_paths, policy)
+    if invalid:
+        return source_verdict("invalid", selection_status, invalid)
+    changed, drifted = _compare_snapshots(root, snapshots, policy)
     if policy:
         report = source_policy_report(
             root, [root / path for path in selected_paths], policy
