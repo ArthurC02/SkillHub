@@ -51,6 +51,8 @@ jobs:
               - 'contracts/**'
               - 'apps/llm/**'
               - 'tools/ci/**'
+              - 'tools/toolchain.yaml'
+              - '.github/actions/golangci-lint/**'
               - '.github/workflows/ci.yml'
             llm:
               - 'apps/llm/**'
@@ -64,6 +66,8 @@ jobs:
               - 'infra/egress/**'
               - 'tools/sec009/**'
               - 'tools/ci/**'
+              - 'tools/toolchain.yaml'
+              - '.github/actions/golangci-lint/**'
               - '.github/workflows/ci.yml'
             qa002:
               - 'apps/platform/internal/skill/admission/**'
