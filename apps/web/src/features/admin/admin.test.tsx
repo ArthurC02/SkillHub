@@ -2512,6 +2512,48 @@ test("a finding event without a reporting run does not invent a source link", as
   expect(has("查看產生這份依據的執行")()).toBe(false);
 });
 
+test.each([
+  { name: "missing", evidence: undefined },
+  { name: "empty", evidence: {} },
+])(
+  "a finding's latest report with $name evidence names the gap instead of showing older values",
+  async ({ evidence }) => {
+    const latestRun = "11111111-1111-4111-8111-111111111111";
+    stub(true, (path) =>
+      path === `/admin/agents/findings/${AGENT_FINDING}`
+        ? {
+            body: {
+              finding: ADMIN_AGENT_FINDING.finding,
+              events: [
+                ADMIN_AGENT_FINDING.events[0],
+                { ...ADMIN_AGENT_FINDING.events[1], run_id: latestRun, evidence },
+              ],
+            },
+            status: 200,
+          }
+        : undefined,
+    );
+    await mountAt("/admin/agents", { finding: AGENT_FINDING });
+    await waitFor(has("未測量：目前沒有可核對的引用值。"));
+    expect(has("/maintenance_jobs/rotate-partitions/overdue_ratio ＝ 2.4")()).toBe(false);
+    const source = Array.from(container.querySelectorAll("a")).find(
+      (link) => link.textContent === "查看最近一次回報的執行",
+    );
+    expect(source?.getAttribute("href")).toBe(`/admin/agents?run=${latestRun}`);
+  },
+);
+
+test("a finding without report events names the missing evidence without inventing a source", async () => {
+  stub(true, (path) =>
+    path === `/admin/agents/findings/${AGENT_FINDING}`
+      ? { body: { finding: ADMIN_AGENT_FINDING.finding, events: [] }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("未測量：目前沒有可核對的引用值。"));
+  expect(has("查看最近一次回報的執行")()).toBe(false);
+});
+
 test("OPS-012: a resolved finding offers only to reopen it", async () => {
   const resolved = { ...ADMIN_AGENT_FINDINGS.findings[0], status: "resolved" };
   stub(true, (path) =>

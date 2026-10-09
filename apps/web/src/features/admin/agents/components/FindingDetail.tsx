@@ -14,10 +14,8 @@ import { ActionForm } from "../../components/ActionForm";
 import { FINDING_EVENT, FINDING_MOVES, FINDING_STATUS } from "./findingLabels";
 import "./FindingDetail.css";
 
-function latestEvidence(
-  events: PlatformAgentFindingEvent[],
-): PlatformAgentFindingEvent | undefined {
-  return [...events].reverse().find((event) => event.evidence);
+function latestReport(events: PlatformAgentFindingEvent[]): PlatformAgentFindingEvent | undefined {
+  return [...events].reverse().find((event) => event.run_id || event.evidence !== undefined);
 }
 
 function Moves({ finding }: { finding: PlatformAgentFinding }) {
@@ -81,7 +79,8 @@ function Moves({ finding }: { finding: PlatformAgentFinding }) {
 
 export function FindingDetail({ id }: { id: string }) {
   const detail = usePlatformAgentFinding(id);
-  const report = detail.data && latestEvidence(detail.data.events);
+  const report = detail.data && latestReport(detail.data.events);
+  const evidence = Object.entries(report?.evidence ?? {});
   return (
     <section aria-labelledby="admin-finding-heading">
       <h2 id="admin-finding-heading" tabIndex={-1}>
@@ -103,17 +102,21 @@ export function FindingDetail({ id }: { id: string }) {
             <span className="badge">{FINDING_STATUS[detail.data.finding.status]}</span>
           </p>
           <h3>依據</h3>
-          <ul className="finding-evidence">
-            {Object.entries(report?.evidence ?? {}).map(([cite, value]) => (
-              <li key={cite}>
-                <code className="finding-cite">{cite}</code> ＝ {JSON.stringify(value)}
-              </li>
-            ))}
-          </ul>
+          {evidence.length > 0 ? (
+            <ul className="finding-evidence">
+              {evidence.map(([cite, value]) => (
+                <li key={cite}>
+                  <code className="finding-cite">{cite}</code> ＝ {JSON.stringify(value)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>未測量：目前沒有可核對的引用值。</p>
+          )}
           {report?.run_id && (
             <p>
               <Link to="/admin/agents" search={{ run: report.run_id }}>
-                查看產生這份依據的執行
+                {evidence.length > 0 ? "查看產生這份依據的執行" : "查看最近一次回報的執行"}
               </Link>
             </p>
           )}

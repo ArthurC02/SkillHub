@@ -1599,6 +1599,35 @@ test("a finding opens the run that reported its visible evidence", async ({ page
   await expect(page.getByText("需要注意：1 項")).toBeVisible();
 });
 
+test("a finding does not show old evidence when its latest report has none", async ({
+  page,
+}, testInfo) => {
+  const latestRun = "11111111-1111-4111-8111-111111111111";
+  await stubPlatform(page);
+  await page.route(`**/admin/agents/findings/${AGENT_FINDING}`, (route) =>
+    route.fulfill({
+      json: {
+        ...ADMIN_AGENT_FINDING,
+        events: [
+          ADMIN_AGENT_FINDING.events[0],
+          { ...ADMIN_AGENT_FINDING.events[1], run_id: latestRun, evidence: undefined },
+        ],
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/admin/agents?finding=${AGENT_FINDING}`);
+  await expect(page.getByText("未測量：目前沒有可核對的引用值。")).toBeVisible();
+  await expect(
+    page.getByText("/maintenance_jobs/rotate-partitions/overdue_ratio ＝ 2.4"),
+  ).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "查看最近一次回報的執行" })).toHaveAttribute(
+    "href",
+    `/admin/agents?run=${latestRun}`,
+  );
+  await page.screenshot({ path: testInfo.outputPath("admin-finding-missing-evidence-mobile.png") });
+});
+
 test("a proposal opens its proposing run before an operator decides", async ({
   page,
 }, testInfo) => {
