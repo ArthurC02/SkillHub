@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .attestations import verify_scm
 from .audit import verify as verify_audit
-from .changes import init_change_package, validate_change_package
+from .changes import init_change_package, redraft_change_package, validate_change_package
 from .common import load_json
 from .contracts import validate_schema
 from .counterfactual import Mutation, counterfactual
@@ -20,8 +20,11 @@ from .git_hooks import (
     verify_git_governance,
 )
 from .hitl import (
+    ObligationRun,
+    attest_signed_commit,
     finalize_proposal,
     record_approval,
+    record_test_result,
     submit_proposal,
     supersede_proposal,
     verify_proposal,
@@ -119,6 +122,11 @@ def handle_init(args: argparse.Namespace) -> int:
 
 def handle_init_change_package(args: argparse.Namespace) -> int:
     init_change_package(args.output.resolve(), args.requirement_id, args.proposal_id)
+    return 0
+
+
+def handle_redraft_proposal(args: argparse.Namespace) -> int:
+    redraft_change_package(args.package_root.resolve(), args.output.resolve(), args.proposal_id)
     return 0
 
 
@@ -532,6 +540,24 @@ def handle_verify_proposal(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_record_test_result(args: argparse.Namespace) -> int:
+    record_test_result(
+        args.package_root.resolve(), args.registry_root.resolve(), args.repo_root.resolve(),
+        ObligationRun(args.obligation, args.command, args.command_profile), args.timeout,
+    )
+    print(f"Recorded a passing result for {args.obligation}.")
+    return 0
+
+
+def handle_attest_signed_commit(args: argparse.Namespace) -> int:
+    commit = attest_signed_commit(
+        args.package_root.resolve(), args.registry_root.resolve(), args.repo_root.resolve(),
+        args.commit,
+    )
+    print(f"Attested with signed commit {commit}.")
+    return 0
+
+
 def handle_finalize_proposal(args: argparse.Namespace) -> int:
     if args.registry_root is None or args.repo_root is None:
         raise ValueError("finalize-proposal requires --registry-root and --repo-root")
@@ -582,6 +608,7 @@ HANDLERS = {
     "counterfactual": handle_counterfactual,
     "init": handle_init,
     "init-change-package": handle_init_change_package,
+    "redraft-proposal": handle_redraft_proposal,
     "validate": handle_validate,
     "coverage": handle_coverage,
     "lookup": handle_lookup,
@@ -621,6 +648,8 @@ HANDLERS = {
     "record-approval": handle_record_approval,
     "supersede-proposal": handle_supersede_proposal,
     "verify-proposal": handle_verify_proposal,
+    "record-test-result": handle_record_test_result,
+    "attest-signed-commit": handle_attest_signed_commit,
     "finalize-proposal": handle_finalize_proposal,
     "validate-change-package": handle_validate_change_package,
 }

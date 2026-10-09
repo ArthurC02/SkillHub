@@ -140,6 +140,43 @@ def _fill_identifiers(output: Path, given: dict[str, str]) -> None:
         )
 
 
+REVIEW_STATE = {
+    PROPOSAL_FILE: (
+        "status", "proposal_revision", "submitted_at", "verified_at", "finalized_at", "applied_at",
+        "base_registry_revision", "approvals",
+    ),
+    EVIDENCE_FILE: ("registry_revision", "approvals", "scm_attestation"),
+}
+STATE_AFTER_SUBMISSION = (
+    "applied_registry_revision", "superseded_from_status", "superseded_at", "superseded_reason",
+    "superseded_by",
+)
+
+
+def redraft_change_package(source: Path, output: Path, proposal_id: str) -> None:
+    if load_json(source / PROPOSAL_FILE).get("status") != "superseded":
+        raise ValueError(
+            "only a superseded proposal is redrafted; supersede it first with its reason, "
+            "so its own record says why it was replaced"
+        )
+    if not completed_identifier(proposal_id):
+        raise ValueError("proposal_id must not be blank")
+    if output.exists() and any(output.iterdir()):
+        raise FileExistsError(f"output directory is not empty: {output}")
+    shutil.copytree(source, output, dirs_exist_ok=True)
+    _fill_identifiers(output, {"proposal_id": proposal_id})
+    templates = change_template_dir()
+    for name, fields in REVIEW_STATE.items():
+        document = load_json(output / name)
+        template = load_json(templates / name)
+        document.update({field: template[field] for field in fields})
+        for field in STATE_AFTER_SUBMISSION:
+            document.pop(field, None)
+        (output / name).write_text(
+            json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
+        )
+
+
 def implementation_design_errors(  # noqa: C901
     proposal: dict[str, Any], obligation_ids: set[str]
 ) -> list[str]:

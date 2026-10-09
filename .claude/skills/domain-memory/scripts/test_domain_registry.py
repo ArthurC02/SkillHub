@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -24,7 +25,7 @@ from domain_registry.attestations import (
 from domain_registry.audit import append as append_audit
 from domain_registry.audit import read_events as read_audit_events
 from domain_registry.audit import verify as verify_audit
-from domain_registry.changes import init_change_package, validate_change_package
+from domain_registry.changes import init_change_package, redraft_change_package, validate_change_package
 from domain_registry.common import ASSET_KEYS, load_json
 from domain_registry.contracts import validate_schema
 from domain_registry.evidence import (
@@ -35,8 +36,11 @@ from domain_registry.evidence import (
     verify,
 )
 from domain_registry.hitl import (
+    ObligationRun,
+    attest_signed_commit,
     finalize_proposal,
     missing_attestation_message,
+    record_test_result,
     record_approval,
     submit_proposal,
     supersede_proposal,
@@ -603,11 +607,11 @@ class DomainRegistryTest(unittest.TestCase):
             capture_output=True, text=True, check=True,
         ).stdout.strip()
 
-    def commit_everything(self, message: str) -> str:
+    def commit_everything(self, message: str, signed: bool = False) -> str:
         subprocess.run(["git", "add", "-A"], cwd=self.repo, check=True)
         subprocess.run(
             ["git", "-c", "user.name=Probe", "-c", "user.email=probe@example.com",
-             "-c", "commit.gpgsign=false", "commit", "-qm", message],
+             "-c", f"commit.gpgsign={'true' if signed else 'false'}", "commit", "-qm", message],
             cwd=self.repo, check=True,
         )
         return subprocess.run(
@@ -629,6 +633,87 @@ class DomainRegistryTest(unittest.TestCase):
             self.repo, carrying, package, {**proposal, "proposal_revision": 2}
         )
         self.assertIn("another proposal or revision", other)
+
+    def test_attesting_a_signed_commit_that_carries_the_package_lets_it_finalize(self) -> None:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            key = init_signing_key(self.repo, "probe@example.com", self.repo / "keys" / "signing-key")
+        policy_path = self.repo / "memory" / "domain-memory-policy.json"
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        policy["review_governance"].update(
+            verifier="git-signed-commit", trigger="git-push", authorized_signers=[key["fingerprint"]]
+        )
+        policy_path.write_text(json.dumps(policy), encoding="utf-8")
+        unsigned = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True
+        ).stdout.strip()
+        signed_before = self.commit_everything("signs the policy before the package", signed=True)
+        package = self.draft_package()
+        submit_proposal(package, self.repo / "memory", self.repo)
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        with self.assertRaisesRegex(ValueError, "cannot attest this proposal: Git commit signature is invalid"):
+            attest_signed_commit(package, self.repo / "memory", self.repo, unsigned)
+        with self.assertRaisesRegex(ValueError, "does not carry this Change Package"):
+            attest_signed_commit(package, self.repo / "memory", self.repo, signed_before)
+        signed = self.commit_everything("adds the Change Package", signed=True)
+        self.assertEqual(signed, attest_signed_commit(package, self.repo / "memory", self.repo, signed[:12]))
+        evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            {"provider": "git-signed-commit", "commit": signed, "status": "approved",
+             "proposal_revision": 1, "base_registry_revision": proposal["base_registry_revision"]},
+            evidence["scm_attestation"],
+        )
+        verify_proposal(package, self.repo / "memory", self.repo)
+        finalize_proposal(package, self.repo / "memory", self.repo)
+        finalized = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        self.assertEqual("approved", finalized["status"])
+
+    def test_attesting_needs_the_signed_commit_verifier_and_a_submitted_proposal(self) -> None:
+        package = self.draft_package()
+        with self.assertRaisesRegex(ValueError, "this policy uses github-pr"):
+            attest_signed_commit(package, self.repo / "memory", self.repo, "HEAD")
+        policy_path = self.repo / "memory" / "domain-memory-policy.json"
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        policy["review_governance"].update(
+            verifier="git-signed-commit", trigger="git-push", authorized_signers=["probe@example.com"]
+        )
+        policy_path.write_text(json.dumps(policy), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "submit the proposal first"):
+            attest_signed_commit(package, self.repo / "memory", self.repo, "HEAD")
+
+    def run_writing(self, text: str, exit_code: int = 0) -> str:
+        script = f"import sys; sys.stdout.write({text!r}); sys.exit({exit_code})"
+        return f'"{sys.executable}" -c "{script}"'
+
+    def test_a_passing_run_replaces_the_obligation_result_with_its_output_digest(self) -> None:
+        package = self.draft_package()
+        record_test_result(
+            package, self.repo / "memory", self.repo,
+            ObligationRun("OB-1", self.run_writing("ok"), "unit"), 60,
+        )
+        evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
+        [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
+        self.assertEqual(
+            ("passed", 0, "unit", "sha256:" + hashlib.sha256(b"ok").hexdigest()),
+            (result["status"], result["exit_code"], result["command_profile"], result["output_sha256"]),
+        )
+
+    def test_a_failing_run_and_an_unknown_obligation_or_profile_record_nothing(self) -> None:
+        package = self.draft_package()
+        before = (package / "evidence-bundle.json").read_bytes()
+        cases = [
+            ("OB-1", self.run_writing("broken", 3), "unit", "exited 3; only a passing run is recorded"),
+            ("OB-9", self.run_writing("ok"), "unit", "no obligation OB-9"),
+            ("OB-1", self.run_writing("ok"), "release", "release is not approved"),
+        ]
+        for obligation, command, profile, refusal in cases:
+            with self.subTest(refusal=refusal):
+                with self.assertRaisesRegex(ValueError, refusal):
+                    record_test_result(
+                        package, self.repo / "memory", self.repo,
+                        ObligationRun(obligation, command, profile), 60,
+                    )
+                self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
 
     def test_finalizing_refuses_a_signed_commit_that_predates_the_change_package(self) -> None:
         policy_path = self.repo / "memory" / "domain-memory-policy.json"
@@ -1564,6 +1649,36 @@ class DomainRegistryTest(unittest.TestCase):
                 self.assertIn(b"\n", content)
                 self.assertNotIn(b"\r\n", content)
 
+    def test_a_superseded_proposal_redrafts_into_a_package_that_applies(self) -> None:
+        stuck = self.draft_package()
+        submit_proposal(stuck, self.repo / "memory", self.repo)
+        supersede_proposal(stuck, "verified before its approval was recorded", None)
+        redraft = self.repo / "redraft"
+        redraft_change_package(stuck, redraft, "PRO-2")
+        proposal = json.loads((redraft / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            ("draft", None, [], None),
+            (proposal["status"], proposal["submitted_at"], proposal["approvals"],
+             proposal["base_registry_revision"]),
+        )
+        self.assertFalse([key for key in proposal if key.startswith("superseded")])
+        for name in ("domain-change-proposal.json", "test-obligations.json", "evidence-bundle.json"):
+            with self.subTest(name=name):
+                document = json.loads((redraft / name).read_text(encoding="utf-8"))
+                self.assertEqual("PRO-2", document["proposal_id"])
+        self.approve_and_apply(redraft)
+        self.assertEqual(["order-total"], self.rule_ids())
+
+    def test_redrafting_refuses_a_live_proposal_and_a_used_output(self) -> None:
+        package = self.draft_package()
+        with self.assertRaisesRegex(ValueError, "only a superseded proposal is redrafted"):
+            redraft_change_package(package, self.repo / "redraft", "PRO-2")
+        supersede_proposal(package, "replaced", None)
+        (self.repo / "used").mkdir()
+        (self.repo / "used" / "note.txt").write_text("kept", encoding="utf-8")
+        with self.assertRaises(FileExistsError):
+            redraft_change_package(package, self.repo / "used", "PRO-2")
+
     def test_a_submitted_package_ends_lines_with_lf_on_every_platform(self) -> None:
         package = self.draft_package()
         submit_proposal(package, self.repo / "memory", self.repo)
@@ -1806,6 +1921,7 @@ class DomainRegistryTest(unittest.TestCase):
         signed = missing_attestation_message("git-signed-commit")
         self.assertIn("after the signed commit that adds this Change Package and changes the Domain Memory files exists", signed)
         self.assertIn('provider "git-signed-commit"', signed)
+        self.assertIn("run attest-signed-commit --commit", signed)
         self.assertNotIn("pull_request", signed)
         self.assertIn("names no review verifier", missing_attestation_message("none"))
 
