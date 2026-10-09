@@ -3424,6 +3424,112 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/agents/{name}/spend-cap:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      operationId: setPlatformAgentSpendCap
+      summary: Set or clear one agent's daily spend cap (02:OPS-011)
+      description: |
+        Operator only. A number replaces the cap the agent is defined with; null
+        returns it to that default. The next run reads the new cap before its key
+        is issued; a run already in progress keeps the cap it started with. Writes
+        the change and its audit event, with the cap before and after, in one
+        transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [daily_spend_cap_usd_micros, note]
+              properties:
+                daily_spend_cap_usd_micros:
+                  type: [integer, "null"]
+                  format: int64
+                  minimum: 1
+                  maximum: 5000000
+                  description: Micro-dollars a day, at most five dollars; null returns to the defined cap.
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why, in the operator's own words. Whitespace does not satisfy it.
+      responses:
+        "200":
+          description: The agent as it now stands.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformAgent" }
+        "400":
+          description: Body is not JSON, the cap is missing, not a whole number or out of range, or `note` is blank or over 1000 bytes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator, or no agent has this name.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/settings:
+    get:
+      operationId: getPlatformSettings
+      summary: Platform settings an operator can change (02:OPS-011)
+      description: |
+        Operator only. Each setting shows its current value and, once an operator
+        has changed it, who did, when and why. A setting nobody has changed is at
+        its default.
+      responses:
+        "200":
+          description: Every operator-set platform setting.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformSettings" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/settings/judge-panel:
+    put:
+      operationId: setJudgePanel
+      summary: Switch the judge panel on or off (02:EVAL-002)
+      description: |
+        Operator only. On, every evaluation is judged by three independent calls
+        and each criterion takes the strict majority; judging then costs about
+        three times as much. The next evaluation reads the new value. Writes the
+        change and its audit event in one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled, note]
+              properties:
+                enabled: { type: boolean }
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why, in the operator's own words. Whitespace does not satisfy it.
+      responses:
+        "200":
+          description: The settings as they now stand.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformSettings" }
+        "400":
+          description: Body is not JSON, `enabled` is missing, or `note` is blank or over 1000 bytes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/agents/brake:
     put:
       operationId: engagePlatformAgentBrake
@@ -6742,7 +6848,7 @@ components:
           enum: [ok]
     PlatformAgent:
       type: object
-      required: [name, purpose, model_role, daily_spend_cap_usd_micros, tools, actions, enabled]
+      required: [name, purpose, model_role, daily_spend_cap_usd_micros, default_daily_spend_cap_usd_micros, daily_spend_cap_overridden, tools, actions, enabled]
       properties:
         name: { type: string }
         purpose: { type: string }
@@ -6753,6 +6859,13 @@ components:
           type: integer
           format: int64
           description: The most this agent may spend in a day, checked before each run's key is issued.
+        default_daily_spend_cap_usd_micros:
+          type: integer
+          format: int64
+          description: The cap the agent is defined with, which applies while no operator has set one.
+        daily_spend_cap_overridden:
+          type: boolean
+          description: True while an operator-set cap replaces the defined one.
         tools:
           type: array
           items: { type: string }
@@ -6766,6 +6879,18 @@ components:
           type: string
           format: uuid
           description: The operator who last enabled or disabled the agent; absent until somebody has.
+    PlatformSettings:
+      type: object
+      required: [judge_panel]
+      properties:
+        judge_panel:
+          type: object
+          required: [enabled]
+          properties:
+            enabled: { type: boolean }
+            reason: { type: string, description: Present once an operator has changed the setting. }
+            set_by_user_id: { type: string, format: uuid }
+            set_at: { type: string, format: date-time }
     PlatformAgentBrake:
       type: object
       required: [reason, engaged_at]

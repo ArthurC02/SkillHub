@@ -1,6 +1,9 @@
+import { useState } from "react";
 import {
+  MAX_AGENT_SPEND_CAP_MICROS,
   usd,
   usePlatformAgentBrake,
+  usePlatformAgentSpendCap,
   usePlatformAgentSwitch,
   type PlatformAgent,
   type PlatformAgentBrake,
@@ -8,6 +11,71 @@ import {
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { ActionForm } from "../../components/ActionForm";
 import { actionLabel } from "./proposalLabels";
+
+function dollarsToMicros(text: string): number | null {
+  if (!/^\d+(\.\d{1,6})?$/.test(text.trim())) return null;
+  const micros = Math.round(Number(text) * 1_000_000);
+  return micros > 0 && micros <= MAX_AGENT_SPEND_CAP_MICROS ? micros : null;
+}
+
+function SpendCapControls({ agent }: { agent: PlatformAgent }) {
+  const [dollars, setDollars] = useState(String(agent.daily_spend_cap_usd_micros / 1_000_000));
+  const set = usePlatformAgentSpendCap();
+  const clear = usePlatformAgentSpendCap();
+  const micros = dollarsToMicros(dollars);
+  const fieldId = `admin-agent-${agent.name}-cap`;
+  return (
+    <>
+      <ActionForm
+        id={`${fieldId}-set`}
+        submitLabel={`改 ${agent.name} 的每日上限`}
+        pending={set.isPending}
+        error={set.error}
+        ready={micros !== null}
+        contextKey={dollars}
+        done={set.isSuccess && "已套用，下一次執行就用這個上限。"}
+        onSubmit={(note) =>
+          micros !== null &&
+          set.mutate({ name: agent.name, daily_spend_cap_usd_micros: micros, note })
+        }
+      >
+        <div className="field">
+          <label htmlFor={fieldId}>
+            每日花費上限（美元，最多 {usd(MAX_AGENT_SPEND_CAP_MICROS)}）
+          </label>
+          <input
+            id={fieldId}
+            inputMode="decimal"
+            value={dollars}
+            onChange={(event) => {
+              setDollars(event.target.value);
+              set.reset();
+            }}
+            readOnly={set.isPending}
+            aria-describedby={micros === null ? `${fieldId}-range` : undefined}
+          />
+          {micros === null && (
+            <p id={`${fieldId}-range`} className="note">
+              要填大於 0、最多 {usd(MAX_AGENT_SPEND_CAP_MICROS)} 的金額，小數最多六位。
+            </p>
+          )}
+        </div>
+      </ActionForm>
+      {agent.daily_spend_cap_overridden && (
+        <ActionForm
+          id={`${fieldId}-clear`}
+          submitLabel={`把 ${agent.name} 的上限改回預設 ${usd(agent.default_daily_spend_cap_usd_micros)}`}
+          pending={clear.isPending}
+          error={clear.error}
+          done={clear.isSuccess && "已改回預設。"}
+          onSubmit={(note) =>
+            clear.mutate({ name: agent.name, daily_spend_cap_usd_micros: null, note })
+          }
+        />
+      )}
+    </>
+  );
+}
 
 function AgentRow({ agent }: { agent: PlatformAgent }) {
   const toggle = usePlatformAgentSwitch();
@@ -24,7 +92,11 @@ function AgentRow({ agent }: { agent: PlatformAgent }) {
       </p>
       <p>{agent.purpose}</p>
       <p className="note">
-        每日花費上限 {usd(agent.daily_spend_cap_usd_micros)}；可讀：{agent.tools.join("、") || "無"}
+        每日花費上限 {usd(agent.daily_spend_cap_usd_micros)}
+        {agent.daily_spend_cap_overridden
+          ? `（營運者設定；預設 ${usd(agent.default_daily_spend_cap_usd_micros)}）`
+          : "（預設）"}
+        ；可讀：{agent.tools.join("、") || "無"}
       </p>
       <p className="note">可提案：{agent.actions.map(actionLabel).join("、") || "無"}</p>
       <p className="note">模型角色：{agent.model_role}</p>
@@ -42,6 +114,7 @@ function AgentRow({ agent }: { agent: PlatformAgent }) {
         }
         onSubmit={(note) => toggle.mutate({ name: agent.name, enabled: next, note })}
       />
+      <SpendCapControls agent={agent} />
     </li>
   );
 }

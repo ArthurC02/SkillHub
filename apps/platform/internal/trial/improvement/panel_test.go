@@ -28,6 +28,8 @@ func (p *panelOfFakes) JudgeRun(_ context.Context, req JudgeRequest) (*Judgement
 	return p.byRole[req.ModelRole], nil
 }
 
+func panelOn(context.Context) (bool, error) { return true, nil }
+
 var realQuote = []Citation{{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"}}
 
 var realFile = []Citation{{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}
@@ -48,7 +50,7 @@ func judgedByPanel(t *testing.T, members ...*Judgement) (verdict, *panelOfFakes)
 	for i, member := range members {
 		fakes.byRole[PanelRoles[i]] = member
 	}
-	s := &Service{Judge: fakes, JudgePanel: PanelRoles}
+	s := &Service{Judge: fakes, PanelEnabled: panelOn}
 	m, _ := fixtureMaterial(true)
 	v, err := s.judge(context.Background(), m, gen.Evaluation{})
 	if err != nil {
@@ -122,7 +124,7 @@ func TestAPanelMemberThatDoesNotAnswerLeavesThePanelWithoutAVerdict(t *testing.T
 		PanelRoles[2]: said("c", ResultPassed, realQuote, ResultFailed, realFile),
 	}}
 	m, _ := fixtureMaterial(true)
-	if _, err := (&Service{Judge: fakes, JudgePanel: PanelRoles}).judge(context.Background(), m, gen.Evaluation{}); err == nil {
+	if _, err := (&Service{Judge: fakes, PanelEnabled: panelOn}).judge(context.Background(), m, gen.Evaluation{}); err == nil {
 		t.Fatal("a panel missing a member returned a verdict")
 	}
 }
@@ -138,6 +140,32 @@ func TestWithoutAPanelTheJudgeIsAskedOnceInItsOwnRole(t *testing.T) {
 	}
 	if !slices.Equal(fakes.asked, []string{""}) || v.model != "solo" || v.summary != "solo summary" {
 		t.Fatalf("asked %q, model %q, summary %q; want one call in the service's own role", fakes.asked, v.model, v.summary)
+	}
+}
+
+func TestAPanelSwitchedOffAsksTheJudgeOnceInItsOwnRole(t *testing.T) {
+	fakes := &panelOfFakes{byRole: map[string]*Judgement{
+		"": said("solo", ResultPassed, realQuote, ResultFailed, realFile),
+	}}
+	off := func(context.Context) (bool, error) { return false, nil }
+	m, _ := fixtureMaterial(true)
+	if _, err := (&Service{Judge: fakes, PanelEnabled: off}).judge(context.Background(), m, gen.Evaluation{}); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(fakes.asked, []string{""}) {
+		t.Fatalf("asked %q, want one call in the service's own role", fakes.asked)
+	}
+}
+
+func TestAnUnreadablePanelSettingLeavesTheEvaluationWithoutAVerdict(t *testing.T) {
+	fakes := &panelOfFakes{byRole: map[string]*Judgement{}}
+	unreadable := func(context.Context) (bool, error) { return false, errors.New("settings unreadable") }
+	m, _ := fixtureMaterial(true)
+	if _, err := (&Service{Judge: fakes, PanelEnabled: unreadable}).judge(context.Background(), m, gen.Evaluation{}); err == nil {
+		t.Fatal("an evaluation went ahead without knowing whether the panel is on")
+	}
+	if len(fakes.asked) != 0 {
+		t.Errorf("asked %q before the setting was known", fakes.asked)
 	}
 }
 

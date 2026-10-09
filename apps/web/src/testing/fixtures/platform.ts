@@ -9,6 +9,7 @@ import type {
   OperatorAuditEvent,
   FindingStatus,
   PlatformAgent,
+  PlatformSettings,
   PlatformAgentFinding,
   PlatformAgentFindingEvent,
   PlatformAgentProposal,
@@ -1190,6 +1191,10 @@ export const ADMIN_TREND_ACTIONS = {
   ],
 } satisfies Trend;
 
+export const ADMIN_SETTINGS = {
+  judge_panel: { enabled: false },
+} satisfies PlatformSettings;
+
 export const ADMIN_MODEL_BUDGETS = {
   budgets: [
     {
@@ -1249,6 +1254,8 @@ export const ADMIN_AGENTS = {
         "Reads the daily maintenance report and tells operators, in plain words, what is fine and what needs attention.",
       model_role: "skillhub-ops-report",
       daily_spend_cap_usd_micros: 200000,
+      default_daily_spend_cap_usd_micros: 200000,
+      daily_spend_cap_overridden: false,
       tools: ["maintenance_report"],
       actions: [],
       enabled: true,
@@ -1438,6 +1445,7 @@ const ROUTES: RouteMatcher[] = [
   (path) => (path === "/admin/model-budgets" ? ok(ADMIN_MODEL_BUDGETS) : undefined),
   (path) => (path === "/admin/exposure-reviews" ? ok(ADMIN_EXPOSURE_QUEUE) : undefined),
   (path) => (path === "/admin/agents" ? ok(ADMIN_AGENTS) : undefined),
+  (path) => (path === "/admin/settings" ? ok(ADMIN_SETTINGS) : undefined),
   (path) => (path === "/admin/agents/runs" ? ok(ADMIN_AGENT_RUNS) : undefined),
   (path) => {
     const run = ADMIN_AGENT_RUNS.runs.find((item) => path === `/admin/agents/runs/${item.id}`);

@@ -11,7 +11,7 @@ import (
 )
 
 var sharedCapabilityIDs = []string{
-	"catalogue_search", "intent_search", "evaluation_judge", "evaluation_judge_panel", "run_dispatch",
+	"catalogue_search", "intent_search", "evaluation_judge", "run_dispatch",
 	"packaging_download", "redistribution_release", "funnel_analytics", "credit_pricing",
 	"github_login", "dev_login", "beta_gate", "object_store",
 	"generation_entry", "publication_downloads_uninvited",

@@ -121,6 +121,7 @@
 | `/admin/rosters` | `AdminRosters` | 02:OPS-005 | 產品營運／**營運後台** |
 | `/admin/audit-log` | `AdminAuditLog` | 02:OPS-006 | 產品營運／**營運後台** |
 | `/admin/model-budgets` | `AdminModelBudgets` | 02:OPS-009 | 產品營運／**營運後台** |
+| `/admin/settings` | `AdminSettings` | 02:OPS-011 | 產品營運／**營運後台**〔影響整個平台的開關：目前是評估判定的評審團；每次改動要理由並進動作紀錄〕 |
 | `/admin/cost-statistics` | `AdminCostStatistics` | 02:OPS-007 | 產品營運／**營運後台** |
 | `/admin/trends` | `AdminTrends` | 02:OPS-008 | 產品營運／**營運後台**〔圖表見 [營運後台](../adr/README.md#營運後台)〕 |
 | `/admin/exposure` | `AdminExposure` | 02:DISC-007 | 產品營運／**營運後台**〔發佈物的曝光審核：待審清單與一筆的精確快照〕 |
@@ -231,7 +232,7 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 | ---: | --- | --- |
 | **0** | （無） | ✅ 沒有孤兒頁 |
 | **1** | `/compare`、`/lab/test-cases/$testCaseId/datasets` | ✅ 兩項都是 R3 的「具名」那一支（IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7 |
-| 2 | `/workspace`、`/workspace/account`、`/workspace/creations`、`/policy`、`/runs/$runId/compare`、`/admin`、`/admin/accounts`、`/admin/dispatch`、`/admin/rosters`、`/admin/model-budgets`、`/admin/cost-statistics` | ✅ |
+| 2 | `/workspace`、`/workspace/account`、`/workspace/creations`、`/policy`、`/runs/$runId/compare`、`/admin`、`/admin/accounts`、`/admin/dispatch`、`/admin/rosters`、`/admin/model-budgets`、`/admin/settings`、`/admin/cost-statistics` | ✅ |
 | 3 | `/skills/$skillId/files`、`/skills/$skillId/package`、`/p/$publisher/$name`、`/workspace/runs`、`/admin/skills`、`/admin/audit-log`、`/admin/trends`、`/admin/exposure` | ✅ |
 | 4 | `/workspace/import`、`/skills/$skillId/test-cases/$testCaseId/runs/new` | ✅ |
 | 5 | `/lab/test-cases/$testCaseId` | ✅ |

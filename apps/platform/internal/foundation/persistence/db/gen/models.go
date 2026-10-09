@@ -435,6 +435,15 @@ type EvaluationModelUsage struct {
 	CreatedAt        pgtype.Timestamptz
 }
 
+// Operator-set evaluation policy. An absent row means every setting is at its default: one judge, no panel.
+type EvaluationSetting struct {
+	Singleton  bool
+	JudgePanel bool
+	Reason     string
+	SetBy      pgtype.UUID
+	SetAt      pgtype.Timestamptz
+}
+
 type EvaluationSuggestion struct {
 	ID                    pgtype.UUID
 	WorkspaceID           pgtype.UUID
@@ -547,6 +556,8 @@ type PlatformAgent struct {
 	Enabled             bool
 	OwnerID             pgtype.UUID
 	RegisteredAt        pgtype.Timestamptz
+	// An operator-set daily spend cap that replaces the one defined in code; null means the defined cap applies.
+	DailySpendCapOverrideMicros *int64
 }
 
 type PlatformAgentBrake struct {

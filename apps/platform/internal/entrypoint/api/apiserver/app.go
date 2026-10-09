@@ -348,6 +348,7 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 		},
 		OperatorAudit: &operatorAuditHandler{DB: cfg.Pool},
 		Agents:        &operations.Handler{Svc: &operations.Service{Pool: cfg.Pool}, Actor: sessionActorID},
+		Settings:      &eval.SettingsHandler{Svc: evalSvc, Actor: sessionActorID},
 		Trends: &trendsHandler{
 			Credits:            &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
 			DailyRuns:          runSvc.DailyRuns,

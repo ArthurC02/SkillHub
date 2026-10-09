@@ -7200,6 +7200,7 @@ func (*Error) getDispatchStatusRes()               {}
 func (*Error) getExposureCaseRes()                 {}
 func (*Error) getMeRes()                           {}
 func (*Error) getOperatorRostersRes()              {}
+func (*Error) getPlatformSettingsRes()             {}
 func (*Error) getPublicPublicationRes()            {}
 func (*Error) getSkillImportLimitsRes()            {}
 func (*Error) listDownloadArtifactsRes()           {}
@@ -19638,6 +19639,10 @@ type PlatformAgent struct {
 	ModelRole string `json:"model_role"`
 	// The most this agent may spend in a day, checked before each run's key is issued.
 	DailySpendCapUsdMicros int64 `json:"daily_spend_cap_usd_micros"`
+	// The cap the agent is defined with, which applies while no operator has set one.
+	DefaultDailySpendCapUsdMicros int64 `json:"default_daily_spend_cap_usd_micros"`
+	// True while an operator-set cap replaces the defined one.
+	DailySpendCapOverridden bool `json:"daily_spend_cap_overridden"`
 	// The read-only facts the agent may ask for.
 	Tools []string `json:"tools"`
 	// The actions the agent may propose.
@@ -19665,6 +19670,16 @@ func (s *PlatformAgent) GetModelRole() string {
 // GetDailySpendCapUsdMicros returns the value of DailySpendCapUsdMicros.
 func (s *PlatformAgent) GetDailySpendCapUsdMicros() int64 {
 	return s.DailySpendCapUsdMicros
+}
+
+// GetDefaultDailySpendCapUsdMicros returns the value of DefaultDailySpendCapUsdMicros.
+func (s *PlatformAgent) GetDefaultDailySpendCapUsdMicros() int64 {
+	return s.DefaultDailySpendCapUsdMicros
+}
+
+// GetDailySpendCapOverridden returns the value of DailySpendCapOverridden.
+func (s *PlatformAgent) GetDailySpendCapOverridden() bool {
+	return s.DailySpendCapOverridden
 }
 
 // GetTools returns the value of Tools.
@@ -19707,6 +19722,16 @@ func (s *PlatformAgent) SetDailySpendCapUsdMicros(val int64) {
 	s.DailySpendCapUsdMicros = val
 }
 
+// SetDefaultDailySpendCapUsdMicros sets the value of DefaultDailySpendCapUsdMicros.
+func (s *PlatformAgent) SetDefaultDailySpendCapUsdMicros(val int64) {
+	s.DefaultDailySpendCapUsdMicros = val
+}
+
+// SetDailySpendCapOverridden sets the value of DailySpendCapOverridden.
+func (s *PlatformAgent) SetDailySpendCapOverridden(val bool) {
+	s.DailySpendCapOverridden = val
+}
+
 // SetTools sets the value of Tools.
 func (s *PlatformAgent) SetTools(val []string) {
 	s.Tools = val
@@ -19727,7 +19752,8 @@ func (s *PlatformAgent) SetOwnerUserID(val OptUUID) {
 	s.OwnerUserID = val
 }
 
-func (*PlatformAgent) setPlatformAgentEnabledRes() {}
+func (*PlatformAgent) setPlatformAgentEnabledRes()  {}
+func (*PlatformAgent) setPlatformAgentSpendCapRes() {}
 
 // Ref: #/components/schemas/PlatformAgentBrake
 type PlatformAgentBrake struct {
@@ -21054,6 +21080,72 @@ func (s *PlatformAgentStep) SetUsdMicros(val OptInt64) {
 // SetCreatedAt sets the value of CreatedAt.
 func (s *PlatformAgentStep) SetCreatedAt(val time.Time) {
 	s.CreatedAt = val
+}
+
+// Ref: #/components/schemas/PlatformSettings
+type PlatformSettings struct {
+	JudgePanel PlatformSettingsJudgePanel `json:"judge_panel"`
+}
+
+// GetJudgePanel returns the value of JudgePanel.
+func (s *PlatformSettings) GetJudgePanel() PlatformSettingsJudgePanel {
+	return s.JudgePanel
+}
+
+// SetJudgePanel sets the value of JudgePanel.
+func (s *PlatformSettings) SetJudgePanel(val PlatformSettingsJudgePanel) {
+	s.JudgePanel = val
+}
+
+func (*PlatformSettings) getPlatformSettingsRes() {}
+func (*PlatformSettings) setJudgePanelRes()       {}
+
+type PlatformSettingsJudgePanel struct {
+	Enabled bool `json:"enabled"`
+	// Present once an operator has changed the setting.
+	Reason      OptString   `json:"reason"`
+	SetByUserID OptUUID     `json:"set_by_user_id"`
+	SetAt       OptDateTime `json:"set_at"`
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *PlatformSettingsJudgePanel) GetEnabled() bool {
+	return s.Enabled
+}
+
+// GetReason returns the value of Reason.
+func (s *PlatformSettingsJudgePanel) GetReason() OptString {
+	return s.Reason
+}
+
+// GetSetByUserID returns the value of SetByUserID.
+func (s *PlatformSettingsJudgePanel) GetSetByUserID() OptUUID {
+	return s.SetByUserID
+}
+
+// GetSetAt returns the value of SetAt.
+func (s *PlatformSettingsJudgePanel) GetSetAt() OptDateTime {
+	return s.SetAt
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *PlatformSettingsJudgePanel) SetEnabled(val bool) {
+	s.Enabled = val
+}
+
+// SetReason sets the value of Reason.
+func (s *PlatformSettingsJudgePanel) SetReason(val OptString) {
+	s.Reason = val
+}
+
+// SetSetByUserID sets the value of SetByUserID.
+func (s *PlatformSettingsJudgePanel) SetSetByUserID(val OptUUID) {
+	s.SetByUserID = val
+}
+
+// SetSetAt sets the value of SetAt.
+func (s *PlatformSettingsJudgePanel) SetSetAt(val OptDateTime) {
+	s.SetAt = val
 }
 
 // Ref: #/components/schemas/PluginContents
@@ -27183,6 +27275,40 @@ type SetEvaluationFeedbackUnauthorized Error
 
 func (*SetEvaluationFeedbackUnauthorized) setEvaluationFeedbackRes() {}
 
+type SetJudgePanelBadRequest Error
+
+func (*SetJudgePanelBadRequest) setJudgePanelRes() {}
+
+type SetJudgePanelNotFound Error
+
+func (*SetJudgePanelNotFound) setJudgePanelRes() {}
+
+type SetJudgePanelReq struct {
+	Enabled bool `json:"enabled"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *SetJudgePanelReq) GetEnabled() bool {
+	return s.Enabled
+}
+
+// GetNote returns the value of Note.
+func (s *SetJudgePanelReq) GetNote() string {
+	return s.Note
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *SetJudgePanelReq) SetEnabled(val bool) {
+	s.Enabled = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetJudgePanelReq) SetNote(val string) {
+	s.Note = val
+}
+
 type SetModelCallBudgetBadRequest Error
 
 func (*SetModelCallBudgetBadRequest) setModelCallBudgetRes() {}
@@ -27249,6 +27375,41 @@ func (s *SetPlatformAgentEnabledReq) SetEnabled(val bool) {
 
 // SetNote sets the value of Note.
 func (s *SetPlatformAgentEnabledReq) SetNote(val string) {
+	s.Note = val
+}
+
+type SetPlatformAgentSpendCapBadRequest Error
+
+func (*SetPlatformAgentSpendCapBadRequest) setPlatformAgentSpendCapRes() {}
+
+type SetPlatformAgentSpendCapNotFound Error
+
+func (*SetPlatformAgentSpendCapNotFound) setPlatformAgentSpendCapRes() {}
+
+type SetPlatformAgentSpendCapReq struct {
+	// Micro-dollars a day, at most five dollars; null returns to the defined cap.
+	DailySpendCapUsdMicros NilInt64 `json:"daily_spend_cap_usd_micros"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetDailySpendCapUsdMicros returns the value of DailySpendCapUsdMicros.
+func (s *SetPlatformAgentSpendCapReq) GetDailySpendCapUsdMicros() NilInt64 {
+	return s.DailySpendCapUsdMicros
+}
+
+// GetNote returns the value of Note.
+func (s *SetPlatformAgentSpendCapReq) GetNote() string {
+	return s.Note
+}
+
+// SetDailySpendCapUsdMicros sets the value of DailySpendCapUsdMicros.
+func (s *SetPlatformAgentSpendCapReq) SetDailySpendCapUsdMicros(val NilInt64) {
+	s.DailySpendCapUsdMicros = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetPlatformAgentSpendCapReq) SetNote(val string) {
 	s.Note = val
 }
 

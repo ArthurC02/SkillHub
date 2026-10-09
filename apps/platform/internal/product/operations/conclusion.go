@@ -14,7 +14,7 @@ import (
 
 func (s *Service) LoopAgent(def Definition, actions []Action) agentloop.Agent {
 	return agentloop.Agent{
-		Name: def.Name, ModelRole: def.ModelRole, DailySpendCapMicros: def.DailySpendCapMicros,
+		Name: def.Name, ModelRole: def.ModelRole,
 		Tools: def.Tools, CheckResult: def.CheckResult,
 		Conclude: func(ctx context.Context, result json.RawMessage, steps []agentloop.StepRecord) (agentloop.Conclusion, error) {
 			return s.conclude(ctx, def, actions, result, steps)

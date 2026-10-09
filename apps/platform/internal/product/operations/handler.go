@@ -28,6 +28,8 @@ type agentView struct {
 	Purpose             string   `json:"purpose"`
 	ModelRole           string   `json:"model_role"`
 	DailySpendCapMicros int64    `json:"daily_spend_cap_usd_micros"`
+	DefaultSpendCap     int64    `json:"default_daily_spend_cap_usd_micros"`
+	SpendCapOverridden  bool     `json:"daily_spend_cap_overridden"`
 	Tools               []string `json:"tools"`
 	Actions             []string `json:"actions"`
 	Enabled             bool     `json:"enabled"`
@@ -43,6 +45,11 @@ type brakeView struct {
 type agentsResponse struct {
 	Agents []agentView `json:"agents"`
 	Brake  *brakeView  `json:"brake,omitempty"`
+}
+
+type spendCapRequest struct {
+	CapMicros json.RawMessage `json:"daily_spend_cap_usd_micros"`
+	Note      string          `json:"note"`
 }
 
 type enabledRequest struct {
@@ -98,6 +105,52 @@ func (h *Handler) SetEnabled(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, view(updated))
+}
+
+func (h *Handler) SetSpendCap(w http.ResponseWriter, r *http.Request) {
+	var body spendCapRequest
+	if !decode(w, r, &body) {
+		return
+	}
+	capMicros, ok := spendCapOf(w, body.CapMicros)
+	if !ok {
+		return
+	}
+	note, ok := requireNote(w, body.Note)
+	if !ok {
+		return
+	}
+	operator, ok := h.operator(w, r)
+	if !ok {
+		return
+	}
+	updated, err := h.Svc.SetSpendCap(r.Context(), r.PathValue("name"), operator, capMicros, note)
+	switch {
+	case errors.Is(err, ErrUnknownAgent):
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+	case errors.Is(err, ErrSpendCapOutOfRange):
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+	case err != nil:
+		httpx.WriteError(w, http.StatusInternalServerError, "agent update failed")
+	default:
+		httpx.WriteJSON(w, http.StatusOK, view(updated))
+	}
+}
+
+func spendCapOf(w http.ResponseWriter, raw json.RawMessage) (*int64, bool) {
+	if len(raw) == 0 {
+		httpx.WriteError(w, http.StatusBadRequest, "daily_spend_cap_usd_micros is required; null returns to the agent's default")
+		return nil, false
+	}
+	if string(raw) == "null" {
+		return nil, true
+	}
+	var capMicros int64
+	if err := json.Unmarshal(raw, &capMicros); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "daily_spend_cap_usd_micros must be a whole number of micro-dollars or null")
+		return nil, false
+	}
+	return &capMicros, true
 }
 
 func (h *Handler) EngageBrake(w http.ResponseWriter, r *http.Request) {
@@ -171,7 +224,8 @@ func (h *Handler) operator(w http.ResponseWriter, r *http.Request) (pgtype.UUID,
 
 func view(a Agent) agentView {
 	v := agentView{
-		Name: a.Name, Purpose: a.Purpose, ModelRole: a.ModelRole, DailySpendCapMicros: a.DailySpendCapMicros,
+		Name: a.Name, Purpose: a.Purpose, ModelRole: a.ModelRole, DailySpendCapMicros: a.EffectiveSpendCapMicros(),
+		DefaultSpendCap: a.DailySpendCapMicros, SpendCapOverridden: a.SpendCapOverrideMicros != nil,
 		Tools: nonNil(a.Tools), Actions: nonNil(a.Actions), Enabled: a.Enabled,
 	}
 	if a.OwnerID.Valid {

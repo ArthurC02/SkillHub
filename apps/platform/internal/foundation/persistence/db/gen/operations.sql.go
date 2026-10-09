@@ -400,6 +400,19 @@ func (q *Queries) GetPlatformAgentRunGate(ctx context.Context, id pgtype.UUID) (
 	return i, err
 }
 
+const getPlatformAgentSpendCap = `-- name: GetPlatformAgentSpendCap :one
+SELECT coalesce(daily_spend_cap_override_micros, daily_spend_cap_micros)::bigint AS cap_micros
+FROM platform_agents
+WHERE name = $1
+`
+
+func (q *Queries) GetPlatformAgentSpendCap(ctx context.Context, name string) (int64, error) {
+	row := q.db.QueryRow(ctx, getPlatformAgentSpendCap, name)
+	var cap_micros int64
+	err := row.Scan(&cap_micros)
+	return cap_micros, err
+}
+
 const getProposal = `-- name: GetProposal :one
 SELECT p.id, a.name AS agent, p.run_id, p.action, p.tier, p.reason, p.cites, p.preview, p.status,
     p.proposed_at, p.expires_at, p.decided_by, p.decided_at, p.decision_note,
@@ -719,7 +732,7 @@ func (q *Queries) ListPlatformAgentSteps(ctx context.Context, runID pgtype.UUID)
 }
 
 const listPlatformAgents = `-- name: ListPlatformAgents :many
-SELECT id, name, purpose, model_role, daily_spend_cap_micros, tools, actions, enabled, owner_id, registered_at FROM platform_agents ORDER BY name
+SELECT id, name, purpose, model_role, daily_spend_cap_micros, tools, actions, enabled, owner_id, registered_at, daily_spend_cap_override_micros FROM platform_agents ORDER BY name
 `
 
 func (q *Queries) ListPlatformAgents(ctx context.Context) ([]PlatformAgent, error) {
@@ -742,6 +755,7 @@ func (q *Queries) ListPlatformAgents(ctx context.Context) ([]PlatformAgent, erro
 			&i.Enabled,
 			&i.OwnerID,
 			&i.RegisteredAt,
+			&i.DailySpendCapOverrideMicros,
 		); err != nil {
 			return nil, err
 		}
@@ -1088,7 +1102,7 @@ func (q *Queries) SetFindingStatus(ctx context.Context, arg SetFindingStatusPara
 const setPlatformAgentEnabled = `-- name: SetPlatformAgentEnabled :one
 UPDATE platform_agents SET enabled = $1, owner_id = $2
 WHERE name = $3
-RETURNING id, name, purpose, model_role, daily_spend_cap_micros, tools, actions, enabled, owner_id, registered_at
+RETURNING id, name, purpose, model_role, daily_spend_cap_micros, tools, actions, enabled, owner_id, registered_at, daily_spend_cap_override_micros
 `
 
 type SetPlatformAgentEnabledParams struct {
@@ -1111,6 +1125,7 @@ func (q *Queries) SetPlatformAgentEnabled(ctx context.Context, arg SetPlatformAg
 		&i.Enabled,
 		&i.OwnerID,
 		&i.RegisteredAt,
+		&i.DailySpendCapOverrideMicros,
 	)
 	return i, err
 }
@@ -1127,6 +1142,36 @@ type SetPlatformAgentRunKeyBudgetParams struct {
 func (q *Queries) SetPlatformAgentRunKeyBudget(ctx context.Context, arg SetPlatformAgentRunKeyBudgetParams) error {
 	_, err := q.db.Exec(ctx, setPlatformAgentRunKeyBudget, arg.KeyBudgetMicros, arg.ID)
 	return err
+}
+
+const setPlatformAgentSpendCapOverride = `-- name: SetPlatformAgentSpendCapOverride :one
+UPDATE platform_agents SET daily_spend_cap_override_micros = $1
+WHERE name = $2
+RETURNING id, name, purpose, model_role, daily_spend_cap_micros, tools, actions, enabled, owner_id, registered_at, daily_spend_cap_override_micros
+`
+
+type SetPlatformAgentSpendCapOverrideParams struct {
+	CapMicros *int64
+	Name      string
+}
+
+func (q *Queries) SetPlatformAgentSpendCapOverride(ctx context.Context, arg SetPlatformAgentSpendCapOverrideParams) (PlatformAgent, error) {
+	row := q.db.QueryRow(ctx, setPlatformAgentSpendCapOverride, arg.CapMicros, arg.Name)
+	var i PlatformAgent
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Purpose,
+		&i.ModelRole,
+		&i.DailySpendCapMicros,
+		&i.Tools,
+		&i.Actions,
+		&i.Enabled,
+		&i.OwnerID,
+		&i.RegisteredAt,
+		&i.DailySpendCapOverrideMicros,
+	)
+	return i, err
 }
 
 const startPlatformAgentRun = `-- name: StartPlatformAgentRun :one

@@ -255,6 +255,21 @@ func withLimits(change func(*agentloop.Limits)) agentloop.Limits {
 	return limits
 }
 
+func TestAnOperatorsSpendCapReplacesTheDefinedOneForTheNextRun(t *testing.T) {
+	svc, def, operator := loopAgentWithOperator(t, "agent-loop-operator-cap", 3_000, "maintenance_report")
+	if code, body := operatorCall(t, operator, http.MethodPut, "/admin/agents/agent-loop-operator-cap/spend-cap",
+		`{"daily_spend_cap_usd_micros":1000,"note":"tighter"}`); code != http.StatusOK {
+		t.Fatalf("setting the cap: %d %v", code, body)
+	}
+	script := &loopScript{t: t, answers: answers(intent("maintenance_report"), final(`{}`))}
+	if report, err := script.runner(svc).Run(context.Background(), svc.LoopAgent(def, nil), script.tools(), loopLimits); err != nil || report.Status != agentloop.Completed {
+		t.Fatalf("run: %+v %v", report, err)
+	}
+	if len(script.issued) != 1 || script.issued[0] != 0.001 {
+		t.Errorf("key budget %v, want the operator's $0.001 rather than the defined $0.003", script.issued)
+	}
+}
+
 func TestTheDailySpendCapStopsARunBeforeAKeyIsIssued(t *testing.T) {
 	const capMicros = 3_000
 	svc, def := loopAgent(t, "agent-loop-spend-cap", capMicros, "maintenance_report")

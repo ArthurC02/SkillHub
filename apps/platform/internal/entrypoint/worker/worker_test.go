@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -28,7 +27,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
-	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 func testDeps(t *testing.T) (*pgxpool.Pool, Deps) {
@@ -165,15 +163,17 @@ func TestBuildWorkersLeavesTheJudgeUnsetWithoutAnLLM(t *testing.T) {
 	}
 }
 
-func TestBuildWorkersHandsTheJudgePanelToTheEvaluationService(t *testing.T) {
+func TestBuildWorkersLetsTheEvaluationServiceReadThePanelSettingEachTime(t *testing.T) {
 	pool, deps := testDeps(t)
-	deps.JudgePanel = eval.PanelRoles
 	set, err := BuildWorkers(pool, deps)
 	if err != nil {
 		t.Fatalf("BuildWorkers: %v", err)
 	}
-	if !slices.Equal(set.Evaluations.JudgePanel, eval.PanelRoles) {
-		t.Errorf("evaluation service panel = %v, want %v", set.Evaluations.JudgePanel, eval.PanelRoles)
+	if set.Evaluations.PanelEnabled == nil {
+		t.Fatal("the evaluation service cannot read the judge panel setting, so an operator's switch would never take effect")
+	}
+	if _, err := set.Evaluations.PanelEnabled(context.Background()); err == nil {
+		t.Error("the panel setting was answered without reaching the unreachable test database, so it is not read from the settings table")
 	}
 }
 

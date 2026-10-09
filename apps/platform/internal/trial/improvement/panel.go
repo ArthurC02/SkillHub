@@ -10,15 +10,30 @@ import (
 
 var PanelRoles = []string{"skillhub-judge", "skillhub-judge-panel-1", "skillhub-judge-panel-2"}
 
+func (s *Service) panelRoles(ctx context.Context) ([]string, error) {
+	if s.PanelEnabled == nil {
+		return nil, nil
+	}
+	on, err := s.PanelEnabled(ctx)
+	if err != nil || !on {
+		return nil, err
+	}
+	return PanelRoles, nil
+}
+
 func (s *Service) judgeAll(ctx context.Context, req JudgeRequest) ([]*Judgement, error) {
-	if len(s.JudgePanel) == 0 {
+	roles, err := s.panelRoles(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(roles) == 0 {
 		resp, err := s.Judge.JudgeRun(ctx, req)
 		return []*Judgement{resp}, err
 	}
-	answers := make([]*Judgement, len(s.JudgePanel))
-	failures := make([]error, len(s.JudgePanel))
+	answers := make([]*Judgement, len(roles))
+	failures := make([]error, len(roles))
 	var wg sync.WaitGroup
-	for i, role := range s.JudgePanel {
+	for i, role := range roles {
 		wg.Go(func() {
 			member := req
 			member.ModelRole = role

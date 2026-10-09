@@ -29,9 +29,19 @@ type Definition struct {
 
 type Agent struct {
 	Definition
-	ID      pgtype.UUID
-	Enabled bool
-	OwnerID pgtype.UUID
+	ID                     pgtype.UUID
+	Enabled                bool
+	OwnerID                pgtype.UUID
+	SpendCapOverrideMicros *int64
+}
+
+const MaxDailySpendCapMicros = 5_000_000
+
+func (a Agent) EffectiveSpendCapMicros() int64 {
+	if a.SpendCapOverrideMicros != nil {
+		return *a.SpendCapOverrideMicros
+	}
+	return a.DailySpendCapMicros
 }
 
 type Brake struct {
@@ -57,9 +67,13 @@ const (
 	auditAction = "action"
 	auditAgent  = "agent"
 	auditFrom   = "from"
+	auditTo     = "to"
 )
 
-var ErrUnknownAgent = errors.New("operations: no agent is registered under that name")
+var (
+	ErrUnknownAgent       = errors.New("operations: no agent is registered under that name")
+	ErrSpendCapOutOfRange = errors.New("operations: a daily spend cap must be above zero and at most the platform's ceiling")
+)
 
 type Service struct {
 	Pool *pgxpool.Pool
@@ -129,6 +143,45 @@ func (s *Service) flip(ctx context.Context, name string, operator pgtype.UUID, n
 	return updated, err
 }
 
+func (s *Service) SetSpendCap(
+	ctx context.Context, name string, operator pgtype.UUID, capMicros *int64, note string,
+) (Agent, error) {
+	if capMicros != nil && (*capMicros <= 0 || *capMicros > MaxDailySpendCapMicros) {
+		return Agent{}, ErrSpendCapOutOfRange
+	}
+	var updated Agent
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		q := gen.New(tx)
+		before, err := q.GetPlatformAgentSpendCap(ctx, name)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrUnknownAgent
+		}
+		if err != nil {
+			return err
+		}
+		row, err := q.SetPlatformAgentSpendCapOverride(ctx, gen.SetPlatformAgentSpendCapOverrideParams{
+			Name: name, CapMicros: capMicros,
+		})
+		if err != nil {
+			return err
+		}
+		updated = agent(row)
+		return audit.Log(ctx, tx, audit.Event{
+			Actor: operator, Action: audit.ActionAgentSpendCapSet, ResourceType: audit.ResourcePlatformAgent, ResourceID: row.ID,
+			Metadata: map[string]any{auditAgent: name, auditNote: note, auditFrom: before, auditTo: updated.EffectiveSpendCapMicros()},
+		})
+	})
+	return updated, err
+}
+
+func (s *Service) SpendCapMicros(ctx context.Context, name string) (int64, error) {
+	capMicros, err := gen.New(s.Pool).GetPlatformAgentSpendCap(ctx, name)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, ErrUnknownAgent
+	}
+	return capMicros, err
+}
+
 func (s *Service) EngageBrake(ctx context.Context, operator pgtype.UUID, reason string) (Brake, error) {
 	var engaged Brake
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
@@ -166,7 +219,7 @@ func agent(row gen.PlatformAgent) Agent {
 			Name: row.Name, Purpose: row.Purpose, ModelRole: row.ModelRole,
 			DailySpendCapMicros: row.DailySpendCapMicros, Tools: row.Tools, Actions: row.Actions,
 		},
-		ID: row.ID, Enabled: row.Enabled, OwnerID: row.OwnerID,
+		ID: row.ID, Enabled: row.Enabled, OwnerID: row.OwnerID, SpendCapOverrideMicros: row.DailySpendCapOverrideMicros,
 	}
 }
 

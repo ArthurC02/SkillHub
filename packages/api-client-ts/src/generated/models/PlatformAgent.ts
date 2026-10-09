@@ -36,6 +36,14 @@ export interface PlatformAgent {
      */
     dailySpendCapUsdMicros: number;
     /**
+     * The cap the agent is defined with, which applies while no operator has set one.
+     */
+    defaultDailySpendCapUsdMicros: number;
+    /**
+     * True while an operator-set cap replaces the defined one.
+     */
+    dailySpendCapOverridden: boolean;
+    /**
      * The read-only facts the agent may ask for.
      */
     tools: Array<string>;
@@ -61,6 +69,8 @@ export function instanceOfPlatformAgent(value: object): value is PlatformAgent {
     if (!('purpose' in value) || value['purpose'] === undefined) return false;
     if ((!('modelRole' in (value as Record<string, any>)) && !('model_role' in (value as Record<string, any>))) || ((value as Record<string, any>)['modelRole'] === undefined && (value as Record<string, any>)['model_role'] === undefined)) return false;
     if ((!('dailySpendCapUsdMicros' in (value as Record<string, any>)) && !('daily_spend_cap_usd_micros' in (value as Record<string, any>))) || ((value as Record<string, any>)['dailySpendCapUsdMicros'] === undefined && (value as Record<string, any>)['daily_spend_cap_usd_micros'] === undefined)) return false;
+    if ((!('defaultDailySpendCapUsdMicros' in (value as Record<string, any>)) && !('default_daily_spend_cap_usd_micros' in (value as Record<string, any>))) || ((value as Record<string, any>)['defaultDailySpendCapUsdMicros'] === undefined && (value as Record<string, any>)['default_daily_spend_cap_usd_micros'] === undefined)) return false;
+    if ((!('dailySpendCapOverridden' in (value as Record<string, any>)) && !('daily_spend_cap_overridden' in (value as Record<string, any>))) || ((value as Record<string, any>)['dailySpendCapOverridden'] === undefined && (value as Record<string, any>)['daily_spend_cap_overridden'] === undefined)) return false;
     if (!('tools' in value) || value['tools'] === undefined) return false;
     if (!('actions' in value) || value['actions'] === undefined) return false;
     if (!('enabled' in value) || value['enabled'] === undefined) return false;
@@ -81,6 +91,8 @@ export function PlatformAgentFromJSONTyped(json: any, ignoreDiscriminator: boole
         'purpose': json['purpose'],
         'modelRole': json['model_role'],
         'dailySpendCapUsdMicros': json['daily_spend_cap_usd_micros'],
+        'defaultDailySpendCapUsdMicros': json['default_daily_spend_cap_usd_micros'],
+        'dailySpendCapOverridden': json['daily_spend_cap_overridden'],
         'tools': json['tools'],
         'actions': json['actions'],
         'enabled': json['enabled'],
@@ -103,6 +115,8 @@ export function PlatformAgentToJSONTyped(value?: PlatformAgent | null, ignoreDis
         'purpose': value['purpose'],
         'model_role': value['modelRole'],
         'daily_spend_cap_usd_micros': value['dailySpendCapUsdMicros'],
+        'default_daily_spend_cap_usd_micros': value['defaultDailySpendCapUsdMicros'],
+        'daily_spend_cap_overridden': value['dailySpendCapOverridden'],
         'tools': value['tools'],
         'actions': value['actions'],
         'enabled': value['enabled'],

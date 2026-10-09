@@ -546,6 +546,11 @@ type SetPlatformAgentEnabledParams struct {
 	Name string
 }
 
+// SetPlatformAgentSpendCapParams is parameters of setPlatformAgentSpendCap operation.
+type SetPlatformAgentSpendCapParams struct {
+	Name string
+}
+
 // SetSkillCategoryParams is parameters of setSkillCategory operation.
 type SetSkillCategoryParams struct {
 	ID uuid.UUID

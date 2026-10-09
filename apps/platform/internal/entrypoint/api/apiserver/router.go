@@ -46,6 +46,8 @@ type Deps struct {
 
 	Agents *operations.Handler
 
+	Settings *eval.SettingsHandler
+
 	Trends *trendsHandler
 
 	Analytics *analytics.Handler
@@ -208,8 +210,11 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /admin/model-budgets", auth.RequireOperator(d.ModelBudgets.List))
 	mux.HandleFunc("PUT /admin/model-budgets/{kind}", auth.RequireOperator(d.ModelBudgets.Set))
 	mux.HandleFunc("DELETE /admin/model-budgets/{kind}", auth.RequireOperator(d.ModelBudgets.Clear))
+	mux.HandleFunc("GET /admin/settings", auth.RequireOperator(d.Settings.Get))
+	mux.HandleFunc("PUT /admin/settings/judge-panel", auth.RequireOperator(d.Settings.SetJudgePanel))
 	mux.HandleFunc("GET /admin/agents", auth.RequireOperator(d.Agents.List))
 	mux.HandleFunc("PUT /admin/agents/{name}/enabled", auth.RequireOperator(d.Agents.SetEnabled))
+	mux.HandleFunc("PUT /admin/agents/{name}/spend-cap", auth.RequireOperator(d.Agents.SetSpendCap))
 	mux.HandleFunc("PUT /admin/agents/brake", auth.RequireOperator(d.Agents.EngageBrake))
 	mux.HandleFunc("DELETE /admin/agents/brake", auth.RequireOperator(d.Agents.ReleaseBrake))
 	mux.HandleFunc("GET /admin/agents/runs", auth.RequireOperator(d.Agents.Runs))

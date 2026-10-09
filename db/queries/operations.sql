@@ -16,6 +16,16 @@ UPDATE platform_agents SET enabled = @enabled, owner_id = @owner_id
 WHERE name = @name
 RETURNING *;
 
+-- name: SetPlatformAgentSpendCapOverride :one
+UPDATE platform_agents SET daily_spend_cap_override_micros = sqlc.narg(cap_micros)
+WHERE name = @name
+RETURNING *;
+
+-- name: GetPlatformAgentSpendCap :one
+SELECT coalesce(daily_spend_cap_override_micros, daily_spend_cap_micros)::bigint AS cap_micros
+FROM platform_agents
+WHERE name = @name;
+
 -- name: GetPlatformAgentBrake :one
 SELECT * FROM platform_agent_brake;
 

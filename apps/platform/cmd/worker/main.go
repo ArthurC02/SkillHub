@@ -43,9 +43,6 @@ func startupRefusals(providers *run.Registry) []string {
 	if _, err := capacity.ParseRestoreRate(os.Getenv(capacity.RestoreRateEnv)); err != nil {
 		refusals = append(refusals, err.Error())
 	}
-	if _, err := wiring.JudgePanelFromEnv(); err != nil {
-		refusals = append(refusals, err.Error())
-	}
 	return refusals
 }
 
@@ -68,11 +65,6 @@ func registerPlatformAgents(ctx context.Context, pool *pgxpool.Pool) bool {
 func restoreRateFromEnv() capacity.RestoreRate {
 	rate, _ := capacity.ParseRestoreRate(os.Getenv(capacity.RestoreRateEnv))
 	return rate
-}
-
-func judgePanelFromEnv() []string {
-	panel, _ := wiring.JudgePanelFromEnv()
-	return panel
 }
 
 func main() {
@@ -145,7 +137,6 @@ func runWorker() int {
 		TraceIngestBaseURL: traceBase,
 		LLM:                llm,
 		RestoreRate:        restoreRateFromEnv(),
-		JudgePanel:         judgePanelFromEnv(),
 	})
 	if err != nil {
 		slog.Error("worker composition", "error", err)

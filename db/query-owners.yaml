@@ -274,6 +274,9 @@ scope:
   RecordMaintenanceJobSuccess: platform-wide
   RegisterPlatformAgent: platform-wide
   SetPlatformAgentEnabled: platform-wide
+  SetPlatformAgentSpendCapOverride: platform-wide
+  GetPlatformAgentSpendCap: platform-wide
+  SetEvaluationSettings: platform-wide
   EngagePlatformAgentBrake: platform-wide
   StartPlatformAgentRun: platform-wide
   GetPlatformAgentRunGate: platform-wide
@@ -533,6 +536,7 @@ tables:
   evaluation_suggestions: eval
   evaluation_suggestion_applications: eval
   evaluation_model_usage: eval
+  evaluation_settings: eval
   trace_events: trace
   object_reconcile_sightings: objreconcile
   credit_accounts: credit
@@ -583,6 +587,7 @@ retention:
   reconciler_orphan_sightings: transient deleted when the orphan clears
   dispatch_halts: keep operator declarations
   model_call_budgets: keep operator configuration
+  evaluation_settings: keep operator configuration
   artifacts: expire objects past retention, maintenance purge-run-artifacts marks the row
   download_artifacts: expire objects past DOWNLOAD_ARTIFACT_RETENTION, the row stays
   download_records: keep

@@ -28,6 +28,8 @@ func (j *memoryJournal) SpentSince(context.Context, string, time.Time) (int64, e
 	return j.spent, nil
 }
 
+func (j *memoryJournal) SpendCapMicros(context.Context, string) (int64, error) { return 1_000_000, nil }
+
 func (j *memoryJournal) RecordKeyBudget(context.Context, pgtype.UUID, float64) error { return nil }
 
 func (j *memoryJournal) RecordStep(_ context.Context, _ pgtype.UUID, _ int, step StepRecord, _ ModelCall) error {
@@ -62,7 +64,7 @@ var oneStep = Limits{MaxSteps: 1, MaxTokens: 1_000, Deadline: time.Minute, StepT
 
 func TestAConclusionsReasonAndRecordReachTheJournalWithTheRun(t *testing.T) {
 	journal := &memoryJournal{}
-	agent := Agent{Name: "a", DailySpendCapMicros: 1_000_000,
+	agent := Agent{Name: "a",
 		Conclude: func(_ context.Context, result json.RawMessage, _ []StepRecord) (Conclusion, error) {
 			if string(result) != finalResult {
 				t.Errorf("Conclude saw %s, want the final result", result)
@@ -87,7 +89,7 @@ func TestAConclusionsReasonAndRecordReachTheJournalWithTheRun(t *testing.T) {
 
 func TestAConclusionThatFailsFailsTheRunAndKeepsTheResult(t *testing.T) {
 	journal := &memoryJournal{}
-	agent := Agent{Name: "a", DailySpendCapMicros: 1_000_000,
+	agent := Agent{Name: "a",
 		Conclude: func(context.Context, json.RawMessage, []StepRecord) (Conclusion, error) {
 			return Conclusion{}, errors.New("proposed an action it may not propose")
 		},
@@ -106,7 +108,7 @@ func TestAConclusionThatFailsFailsTheRunAndKeepsTheResult(t *testing.T) {
 
 func TestAnAgentWithoutAConclusionCompletesWithNothingToRecord(t *testing.T) {
 	journal := &memoryJournal{}
-	report, err := finishing(journal).Run(context.Background(), Agent{Name: "a", DailySpendCapMicros: 1_000_000}, nil, oneStep)
+	report, err := finishing(journal).Run(context.Background(), Agent{Name: "a"}, nil, oneStep)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +124,7 @@ func TestASpentCapEndsTheRunBeforeAnyStep(t *testing.T) {
 		t.Fatal("a step was asked after the cap was spent")
 		return StepDecision{}, nil
 	}
-	report, err := runner.Run(context.Background(), Agent{Name: "a", DailySpendCapMicros: 1_000_000}, nil, oneStep)
+	report, err := runner.Run(context.Background(), Agent{Name: "a"}, nil, oneStep)
 	if err != nil {
 		t.Fatal(err)
 	}

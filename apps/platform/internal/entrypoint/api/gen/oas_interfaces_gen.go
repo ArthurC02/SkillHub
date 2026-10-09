@@ -229,6 +229,10 @@ type GetPlatformAgentRunRes interface {
 	getPlatformAgentRunRes()
 }
 
+type GetPlatformSettingsRes interface {
+	getPlatformSettingsRes()
+}
+
 type GetPublicPublicationRes interface {
 	getPublicPublicationRes()
 }
@@ -449,12 +453,20 @@ type SetEvaluationFeedbackRes interface {
 	setEvaluationFeedbackRes()
 }
 
+type SetJudgePanelRes interface {
+	setJudgePanelRes()
+}
+
 type SetModelCallBudgetRes interface {
 	setModelCallBudgetRes()
 }
 
 type SetPlatformAgentEnabledRes interface {
 	setPlatformAgentEnabledRes()
+}
+
+type SetPlatformAgentSpendCapRes interface {
+	setPlatformAgentSpendCapRes()
 }
 
 type SetSkillCategoryRes interface {

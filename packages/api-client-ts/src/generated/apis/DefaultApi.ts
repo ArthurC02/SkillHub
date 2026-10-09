@@ -519,6 +519,11 @@ import {
     PlatformAgentRunToJSON,
 } from '../models/PlatformAgentRun';
 import {
+    type PlatformSettings,
+    PlatformSettingsFromJSON,
+    PlatformSettingsToJSON,
+} from '../models/PlatformSettings';
+import {
     type PublicPublication,
     PublicPublicationFromJSON,
     PublicPublicationToJSON,
@@ -613,6 +618,11 @@ import {
     SetPlatformAgentEnabledRequestFromJSON,
     SetPlatformAgentEnabledRequestToJSON,
 } from '../models/SetPlatformAgentEnabledRequest';
+import {
+    type SetPlatformAgentSpendCapRequest,
+    SetPlatformAgentSpendCapRequestFromJSON,
+    SetPlatformAgentSpendCapRequestToJSON,
+} from '../models/SetPlatformAgentSpendCapRequest';
 import {
     type SetSkillCategoryRequest,
     SetSkillCategoryRequestFromJSON,
@@ -1703,6 +1713,13 @@ export interface SetEvaluationFeedbackOperationRequest {
     setEvaluationFeedbackRequest: SetEvaluationFeedbackRequest;
 }
 
+export interface SetJudgePanelRequest {
+    /**
+     * 
+     */
+    setPlatformAgentEnabledRequest: SetPlatformAgentEnabledRequest;
+}
+
 export interface SetModelCallBudgetOperationRequest {
     /**
      * The model call, as `GET /admin/model-budgets` named it. A kind the
@@ -1725,6 +1742,17 @@ export interface SetPlatformAgentEnabledOperationRequest {
      * 
      */
     setPlatformAgentEnabledRequest: SetPlatformAgentEnabledRequest;
+}
+
+export interface SetPlatformAgentSpendCapOperationRequest {
+    /**
+     * 
+     */
+    name: string;
+    /**
+     * 
+     */
+    setPlatformAgentSpendCapRequest: SetPlatformAgentSpendCapRequest;
 }
 
 export interface SetSkillCategoryOperationRequest {
@@ -3308,6 +3336,28 @@ export interface DefaultApiInterface {
     getPlatformAgentRun(requestParameters: GetPlatformAgentRunRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgentRun>;
 
     /**
+     * Creates request options for getPlatformSettings without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getPlatformSettingsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Each setting shows its current value and, once an operator has changed it, who did, when and why. A setting nobody has changed is at its default. 
+     * @summary Platform settings an operator can change (02:OPS-011)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getPlatformSettingsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformSettings>>;
+
+    /**
+     * Operator only. Each setting shows its current value and, once an operator has changed it, who did, when and why. A setting nobody has changed is at its default. 
+     * Platform settings an operator can change (02:OPS-011)
+     */
+    getPlatformSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformSettings>;
+
+    /**
      * Creates request options for getPublicPublication without sending the request
      * @param {string} publisher 
      * @param {string} name 
@@ -4714,6 +4764,30 @@ export interface DefaultApiInterface {
     setEvaluationFeedback(requestParameters: SetEvaluationFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Evaluation>;
 
     /**
+     * Creates request options for setJudgePanel without sending the request
+     * @param {SetPlatformAgentEnabledRequest} setPlatformAgentEnabledRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setJudgePanelRequestOpts(requestParameters: SetJudgePanelRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. On, every evaluation is judged by three independent calls and each criterion takes the strict majority; judging then costs about three times as much. The next evaluation reads the new value. Writes the change and its audit event in one transaction. 
+     * @summary Switch the judge panel on or off (02:EVAL-002)
+     * @param {SetPlatformAgentEnabledRequest} setPlatformAgentEnabledRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setJudgePanelRaw(requestParameters: SetJudgePanelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformSettings>>;
+
+    /**
+     * Operator only. On, every evaluation is judged by three independent calls and each criterion takes the strict majority; judging then costs about three times as much. The next evaluation reads the new value. Writes the change and its audit event in one transaction. 
+     * Switch the judge panel on or off (02:EVAL-002)
+     */
+    setJudgePanel(requestParameters: SetJudgePanelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformSettings>;
+
+    /**
      * Creates request options for setModelCallBudget without sending the request
      * @param {string} kind The model call, as &#x60;GET /admin/model-budgets&#x60; named it. A kind the platform does not call is 404, the same answer a non-operator gets. 
      * @param {SetModelCallBudgetRequest} setModelCallBudgetRequest 
@@ -4764,6 +4838,32 @@ export interface DefaultApiInterface {
      * Enable or disable one agent (02:OPS-011)
      */
     setPlatformAgentEnabled(requestParameters: SetPlatformAgentEnabledOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgent>;
+
+    /**
+     * Creates request options for setPlatformAgentSpendCap without sending the request
+     * @param {string} name 
+     * @param {SetPlatformAgentSpendCapRequest} setPlatformAgentSpendCapRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setPlatformAgentSpendCapRequestOpts(requestParameters: SetPlatformAgentSpendCapOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. A number replaces the cap the agent is defined with; null returns it to that default. The next run reads the new cap before its key is issued; a run already in progress keeps the cap it started with. Writes the change and its audit event, with the cap before and after, in one transaction. 
+     * @summary Set or clear one agent\'s daily spend cap (02:OPS-011)
+     * @param {string} name 
+     * @param {SetPlatformAgentSpendCapRequest} setPlatformAgentSpendCapRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setPlatformAgentSpendCapRaw(requestParameters: SetPlatformAgentSpendCapOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformAgent>>;
+
+    /**
+     * Operator only. A number replaces the cap the agent is defined with; null returns it to that default. The next run reads the new cap before its key is issued; a run already in progress keeps the cap it started with. Writes the change and its audit event, with the cap before and after, in one transaction. 
+     * Set or clear one agent\'s daily spend cap (02:OPS-011)
+     */
+    setPlatformAgentSpendCap(requestParameters: SetPlatformAgentSpendCapOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgent>;
 
     /**
      * Creates request options for setSkillCategory without sending the request
@@ -7993,6 +8093,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for getPlatformSettings without sending the request
+     */
+    async getPlatformSettingsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/settings`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. Each setting shows its current value and, once an operator has changed it, who did, when and why. A setting nobody has changed is at its default. 
+     * Platform settings an operator can change (02:OPS-011)
+     */
+    async getPlatformSettingsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformSettings>> {
+        const requestOptions = await this.getPlatformSettingsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformSettingsFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Each setting shows its current value and, once an operator has changed it, who did, when and why. A setting nobody has changed is at its default. 
+     * Platform settings an operator can change (02:OPS-011)
+     */
+    async getPlatformSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformSettings> {
+        const response = await this.getPlatformSettingsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getPublicPublication without sending the request
      */
     async getPublicPublicationRequestOpts(requestParameters: GetPublicPublicationRequest): Promise<runtime.RequestOpts> {
@@ -10748,6 +10887,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for setJudgePanel without sending the request
+     */
+    async setJudgePanelRequestOpts(requestParameters: SetJudgePanelRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['setPlatformAgentEnabledRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setPlatformAgentEnabledRequest',
+                'Required parameter "setPlatformAgentEnabledRequest" was null or undefined when calling setJudgePanel().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/settings/judge-panel`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetPlatformAgentEnabledRequestToJSON(requestParameters['setPlatformAgentEnabledRequest']),
+        };
+    }
+
+    /**
+     * Operator only. On, every evaluation is judged by three independent calls and each criterion takes the strict majority; judging then costs about three times as much. The next evaluation reads the new value. Writes the change and its audit event in one transaction. 
+     * Switch the judge panel on or off (02:EVAL-002)
+     */
+    async setJudgePanelRaw(requestParameters: SetJudgePanelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformSettings>> {
+        const requestOptions = await this.setJudgePanelRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformSettingsFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. On, every evaluation is judged by three independent calls and each criterion takes the strict majority; judging then costs about three times as much. The next evaluation reads the new value. Writes the change and its audit event in one transaction. 
+     * Switch the judge panel on or off (02:EVAL-002)
+     */
+    async setJudgePanel(requestParameters: SetJudgePanelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformSettings> {
+        const response = await this.setJudgePanelRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for setModelCallBudget without sending the request
      */
     async setModelCallBudgetRequestOpts(requestParameters: SetModelCallBudgetOperationRequest): Promise<runtime.RequestOpts> {
@@ -10858,6 +11046,63 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async setPlatformAgentEnabled(requestParameters: SetPlatformAgentEnabledOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgent> {
         const response = await this.setPlatformAgentEnabledRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setPlatformAgentSpendCap without sending the request
+     */
+    async setPlatformAgentSpendCapRequestOpts(requestParameters: SetPlatformAgentSpendCapOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['name'] == null) {
+            throw new runtime.RequiredError(
+                'name',
+                'Required parameter "name" was null or undefined when calling setPlatformAgentSpendCap().'
+            );
+        }
+
+        if (requestParameters['setPlatformAgentSpendCapRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setPlatformAgentSpendCapRequest',
+                'Required parameter "setPlatformAgentSpendCapRequest" was null or undefined when calling setPlatformAgentSpendCap().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/agents/{name}/spend-cap`;
+        urlPath = urlPath.replace('{name}', encodeURIComponent(String(requestParameters['name'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetPlatformAgentSpendCapRequestToJSON(requestParameters['setPlatformAgentSpendCapRequest']),
+        };
+    }
+
+    /**
+     * Operator only. A number replaces the cap the agent is defined with; null returns it to that default. The next run reads the new cap before its key is issued; a run already in progress keeps the cap it started with. Writes the change and its audit event, with the cap before and after, in one transaction. 
+     * Set or clear one agent\'s daily spend cap (02:OPS-011)
+     */
+    async setPlatformAgentSpendCapRaw(requestParameters: SetPlatformAgentSpendCapOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformAgent>> {
+        const requestOptions = await this.setPlatformAgentSpendCapRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformAgentFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. A number replaces the cap the agent is defined with; null returns it to that default. The next run reads the new cap before its key is issued; a run already in progress keeps the cap it started with. Writes the change and its audit event, with the cap before and after, in one transaction. 
+     * Set or clear one agent\'s daily spend cap (02:OPS-011)
+     */
+    async setPlatformAgentSpendCap(requestParameters: SetPlatformAgentSpendCapOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgent> {
+        const response = await this.setPlatformAgentSpendCapRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

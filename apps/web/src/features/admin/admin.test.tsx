@@ -145,6 +145,7 @@ const ADMIN_PATHS = [
   "/admin/cost-statistics",
   "/admin/exposure",
   "/admin/agents",
+  "/admin/settings",
 ];
 
 test("OPS-001: the account menu offers 後台 to an operator", async () => {
@@ -417,6 +418,92 @@ test("a revised model timeout does not inherit the previous success notice", asy
 
   await type("#admin-budget-judge-run-seconds", "101");
   expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(false);
+});
+
+test("OPS-011: switching the judge panel on sends the choice with its reason and shows the new state", async () => {
+  let enabled = false;
+  stub(true, (path, method) => {
+    if (path === "/admin/settings/judge-panel" && method === "PUT") {
+      enabled = true;
+      return {
+        body: {
+          judge_panel: { enabled, reason: "measure agreement", set_at: "2026-10-09T08:00:00Z" },
+        },
+        status: 200,
+      };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/settings");
+  await waitFor(has("關閉：一個判定（預設）"));
+  expect(button("開啟評審團").disabled).toBe(true);
+
+  await type("#admin-settings-judge-panel-note", "measure agreement");
+  await click(button("開啟評審團"));
+  await waitFor(has("已開啟，下一次評估由三個判定投票。"));
+  expect(calls.find((c) => c.method === "PUT")).toEqual({
+    method: "PUT",
+    url: "/admin/settings/judge-panel",
+    body: { enabled: true, note: "measure agreement" },
+  });
+  expect(has("開啟：三個判定逐條多數決")()).toBe(true);
+  expect(has("理由：measure agreement")()).toBe(true);
+  expect(button("關閉評審團")).toBeDefined();
+});
+
+test("OPS-011: an agent's daily spend cap accepts up to five dollars and sends micro-dollars", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/agents/daily-report/spend-cap" && method === "PUT"
+      ? { body: ADMIN_AGENTS.agents[0], status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/agents");
+  await waitFor(has("（預設）"));
+  await type("#admin-agent-daily-report-cap-set-note", "busy week");
+
+  for (const refused of ["0", "5.000001", "0.0000001", "abc", ""]) {
+    await type("#admin-agent-daily-report-cap", refused);
+    expect(button("改 daily-report 的每日上限").disabled, refused).toBe(true);
+  }
+  await type("#admin-agent-daily-report-cap", "5");
+  expect(button("改 daily-report 的每日上限").disabled).toBe(false);
+  await click(button("改 daily-report 的每日上限"));
+  await waitFor(() => calls.some((c) => c.method === "PUT"));
+  expect(calls.find((c) => c.method === "PUT")).toEqual({
+    method: "PUT",
+    url: "/admin/agents/daily-report/spend-cap",
+    body: { daily_spend_cap_usd_micros: 5_000_000, note: "busy week" },
+  });
+});
+
+test("OPS-011: an operator-set cap shows the default it replaced and can be cleared back to it", async () => {
+  stub(true, (path, method) => {
+    if (path === "/admin/agents" && method === "GET")
+      return {
+        body: {
+          agents: [
+            {
+              ...ADMIN_AGENTS.agents[0],
+              daily_spend_cap_usd_micros: 1_000_000,
+              daily_spend_cap_overridden: true,
+            },
+          ],
+        },
+        status: 200,
+      };
+    if (path === "/admin/agents/daily-report/spend-cap")
+      return { body: ADMIN_AGENTS.agents[0], status: 200 };
+    return undefined;
+  });
+  await mountAt("/admin/agents");
+  await waitFor(has("（營運者設定；預設 $0.2000）"));
+  await type("#admin-agent-daily-report-cap-clear-note", "back to normal");
+  await click(button("把 daily-report 的上限改回預設 $0.2000"));
+  await waitFor(() => calls.some((c) => c.method === "PUT"));
+  expect(calls.find((c) => c.method === "PUT")?.body).toEqual({
+    daily_spend_cap_usd_micros: null,
+    note: "back to normal",
+  });
 });
 
 test("OPS-004: a restriction is set with the known reason code and lifted by the same form", async () => {

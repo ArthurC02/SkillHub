@@ -82,12 +82,11 @@ type Conclusion struct {
 }
 
 type Agent struct {
-	Name                string
-	ModelRole           string
-	DailySpendCapMicros int64
-	Tools               []string
-	CheckResult         func(result json.RawMessage, steps []StepRecord) error
-	Conclude            func(ctx context.Context, result json.RawMessage, steps []StepRecord) (Conclusion, error)
+	Name        string
+	ModelRole   string
+	Tools       []string
+	CheckResult func(result json.RawMessage, steps []StepRecord) error
+	Conclude    func(ctx context.Context, result json.RawMessage, steps []StepRecord) (Conclusion, error)
 }
 
 type Ending struct {
@@ -102,6 +101,7 @@ type Journal interface {
 	StartRun(ctx context.Context, agent string) (pgtype.UUID, error)
 	BeforeStep(ctx context.Context, run pgtype.UUID) error
 	SpentSince(ctx context.Context, agent string, since time.Time) (int64, error)
+	SpendCapMicros(ctx context.Context, agent string) (int64, error)
 	RecordKeyBudget(ctx context.Context, run pgtype.UUID, budgetUSD float64) error
 	RecordStep(ctx context.Context, run pgtype.UUID, seq int, step StepRecord, model ModelCall) error
 	Finish(ctx context.Context, run pgtype.UUID, ending Ending) error
@@ -190,7 +190,11 @@ func (r *Runner) remainingBudgetUSD(ctx context.Context, agent Agent) (float64, 
 	if err != nil {
 		return 0, err
 	}
-	return float64(agent.DailySpendCapMicros-spent) / usdMicrosPerDollar, nil
+	capMicros, err := r.Journal.SpendCapMicros(ctx, agent.Name)
+	if err != nil {
+		return 0, err
+	}
+	return float64(capMicros-spent) / usdMicrosPerDollar, nil
 }
 
 func (r *Runner) revoke(ctx context.Context, runID string) {

@@ -37,6 +37,9 @@ export function AdminNav() {
       <Link to="/admin/agents" search={{}} className="chip">
         平台 Agent
       </Link>
+      <Link to="/admin/settings" className="chip">
+        平台設定
+      </Link>
       <NavScrollCue />
     </nav>
   );

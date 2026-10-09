@@ -143,6 +143,9 @@ func TestPlatformAgentRoutesAreInvisibleWithoutTheOperatorRole(t *testing.T) {
 		for _, tc := range []struct{ method, path, body string }{
 			{http.MethodGet, "/admin/agents", ""},
 			{http.MethodPut, "/admin/agents/agent-route-404/enabled", `{"enabled":true,"note":"n"}`},
+			{http.MethodPut, "/admin/agents/agent-route-404/spend-cap", `{"daily_spend_cap_usd_micros":2,"note":"n"}`},
+			{http.MethodGet, "/admin/settings", ""},
+			{http.MethodPut, "/admin/settings/judge-panel", `{"enabled":true,"note":"n"}`},
 			{http.MethodPut, "/admin/agents/brake", `{"note":"n"}`},
 			{http.MethodDelete, "/admin/agents/brake", `{"note":"n"}`},
 		} {
@@ -156,6 +159,9 @@ func TestPlatformAgentRoutesAreInvisibleWithoutTheOperatorRole(t *testing.T) {
 	}
 	if n := countRow(t, pool, "SELECT count(*) FROM platform_agent_brake"); n != 0 {
 		t.Error("a refused call engaged the brake")
+	}
+	if n := countRow(t, pool, "SELECT count(*) FROM platform_agents WHERE name = 'agent-route-404' AND daily_spend_cap_override_micros IS NOT NULL"); n != 0 {
+		t.Error("a refused call set the agent's spend cap")
 	}
 }
 
