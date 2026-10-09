@@ -969,6 +969,27 @@ class DomainRegistryTest(unittest.TestCase):
             append_audit(root, {"operation": "second"})
         self.assertEqual(1, len(events.read_text(encoding="utf-8").splitlines()))
 
+    def test_a_registry_root_one_directory_too_deep_is_named_as_such(self) -> None:
+        inner = self.repo / "memory" / "registry"
+        self.assertEqual(
+            [
+                f"missing manifest: {inner / 'registry' / 'manifest.json'}; {inner / 'manifest.json'} exists, "
+                "so a root option probably points one directory too deep: a registry root holds registry/, "
+                "source-map.json, and the policy"
+            ],
+            validate(inner, self.repo, False),
+        )
+        with self.assertRaisesRegex(ValueError, "points one directory too deep"):
+            load_json(inner / "domain-memory-policy.json")
+
+    def test_a_missing_file_with_nothing_nearby_gets_no_hint(self) -> None:
+        missing = self.repo / "memory" / "nowhere.json"
+        with self.assertRaises(ValueError) as refused:
+            load_json(missing)
+        self.assertEqual(f"JSON file required: {missing}", str(refused.exception))
+        elsewhere = self.repo / "elsewhere"
+        self.assertEqual([f"missing manifest: {elsewhere / 'registry' / 'manifest.json'}"], validate(elsewhere, None, False))
+
     def test_json_loader_rejects_duplicate_keys(self) -> None:
         path = self.repo / "duplicate.json"
         path.write_text('{"status":"approved","status":"rejected"}\n', encoding="utf-8")
@@ -3478,6 +3499,26 @@ class DomainRegistryTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)["source_kind"], "decisions")
+        self.assertEqual("", result.stderr)
+
+    def test_citing_outside_the_confirmed_sources_says_review_will_refuse_it(self) -> None:
+        self.cited_file()
+        write_source_map(
+            self.repo / "memory" / "source-map.json",
+            selected_source_map(self.repo, [self.repo / "docs" / "adr"]),
+        )
+        (self.repo / "db").mkdir()
+        (self.repo / "db" / "queries.sql").write_text("select 1;\n", encoding="utf-8")
+        result = self.run_cli(
+            "cite", "--repo-root", str(self.repo), "--path", "db/queries.sql",
+            "--start", "1", "--end", "1", "--registry-root", str(self.repo / "memory"),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        reference = json.loads(result.stdout)
+        self.assertEqual("unclassified", reference["source_kind"])
+        self.assertEqual({"path", "lines", "content_sha256", "excerpt_sha256", "source_kind"}, set(reference))
+        self.assertIn("db/queries.sql is outside the confirmed sources", result.stderr)
+        self.assertIn("apply-approved-updates refuses to review", result.stderr)
 
     def confirmed_corpus(self) -> None:
         self.cited_file()
@@ -3502,6 +3543,26 @@ class DomainRegistryTest(unittest.TestCase):
             upsert_candidate(self.repo / "memory", self.repo, "contexts", record),
             ["notes.md"],
         )
+
+    def test_the_upsert_command_says_review_will_refuse_an_unconfirmed_file(self) -> None:
+        self.confirmed_corpus()
+        (self.repo / "notes.md").write_text("Orders owns pricing.", encoding="utf-8")
+        record = self.write_record(
+            "context.json",
+            {
+                "id": "orders",
+                "name": "Orders",
+                "responsibility": "Own orders.",
+                "evidence": [citation(self.repo, "notes.md", 1, 1)],
+            },
+        )
+        result = self.run_cli(
+            "upsert-candidate", "--registry-root", str(self.repo / "memory"),
+            "--repo-root", str(self.repo), "--asset", "contexts", "--record-file", str(record),
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("files the confirmed source map does not cover: notes.md", result.stdout)
+        self.assertIn("apply-approved-updates refuses to review", result.stdout)
 
     def test_a_candidate_inside_the_confirmed_corpus_raises_no_reach_warning(
         self,

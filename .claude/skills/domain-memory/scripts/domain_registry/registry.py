@@ -11,6 +11,7 @@ from .common import (
     REGISTRY_STATUSES,
     REVIEW_REQUIRED_FIELDS,
     load_json,
+    one_level_too_deep_hint,
     registry_dir,
     template_dir,
 )
@@ -273,7 +274,7 @@ def _validate_evidence(
 def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list[str]:
     manifest_path = registry_dir(root) / "manifest.json"
     if not manifest_path.is_file():
-        return [f"missing manifest: {manifest_path}"]
+        return [f"missing manifest: {manifest_path}{one_level_too_deep_hint(manifest_path)}"]
     errors: list[str] = []
     if require_reviewed and review_mode(root) != "scm-verified":
         errors.append("local-draft-only Domain Memory cannot satisfy --require-reviewed")

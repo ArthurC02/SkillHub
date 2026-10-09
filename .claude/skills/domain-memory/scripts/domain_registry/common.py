@@ -124,9 +124,19 @@ def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return value
 
 
+def one_level_too_deep_hint(path: Path) -> str:
+    nearby = path.parent.parent / path.name
+    if not nearby.is_file():
+        return ""
+    return (
+        f"; {nearby} exists, so a root option probably points one directory too deep: a registry root "
+        "holds registry/, source-map.json, and the policy"
+    )
+
+
 def load_json(path: Path) -> dict[str, Any]:
     if not path.is_file():
-        raise ValueError(f"JSON file required: {path}")
+        raise ValueError(f"JSON file required: {path}{one_level_too_deep_hint(path)}")
     if path.stat().st_size > MAX_JSON_BYTES:
         raise ValueError(f"JSON file exceeds {MAX_JSON_BYTES} bytes: {path}")
     try:

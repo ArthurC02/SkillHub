@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import sys
 from pathlib import Path
 
 from .attestations import verify_scm
@@ -175,11 +176,23 @@ def handle_analyze_boundary(args: argparse.Namespace) -> int:
     return 0
 
 
+OUTSIDE_SOURCES_CONSEQUENCE = (
+    "A candidate may rest on it, but apply-approved-updates refuses to review a record whose evidence rests "
+    "outside the confirmed sources; cite a source the corpus covers, or have the developer confirm this path "
+    "before the record is reviewed."
+)
+
+
 def handle_cite(args: argparse.Namespace) -> int:
     reference = citation(args.repo_root.resolve(), args.path, args.start, args.end)
     if args.registry_root:
         reference = classified(reference, source_map_for(args.registry_root.resolve()))
     print_json(reference)
+    if reference.get("source_kind") == "unclassified":
+        print(
+            f"NOTE: {reference['path']} is outside the confirmed sources. {OUTSIDE_SOURCES_CONSEQUENCE}",
+            file=sys.stderr,
+        )
     return 0
 
 
@@ -208,8 +221,8 @@ def handle_upsert_candidate(args: argparse.Namespace) -> int:
             "NOTE: this record rests on files the confirmed source map does not cover: "
             + ", ".join(outside)
             + ". That is reach, not an error. A Domain Memory that comes to depend on an unconfirmed file loses its "
-            "evidence when that file moves; either have the developer confirm the source, or cite something the "
-            "corpus already covers."
+            "evidence when that file moves. "
+            + OUTSIDE_SOURCES_CONSEQUENCE
         )
     return 0
 
