@@ -1492,6 +1492,43 @@ class DomainRegistryTest(unittest.TestCase):
             self.approve_and_apply(package)
         self.assertEqual(self.rule_ids(), ["order-total"])
 
+    def test_previewing_approved_lists_every_missing_piece_of_that_stage_at_once(self) -> None:
+        package = self.draft_package()
+        errors = validate_change_package(package, self.repo / "memory", "approved")
+        self.assertEqual(
+            [
+                "an approved or applied proposal lacks required approvals",
+                "an approved or applied proposal requires SCM attestation",
+            ],
+            errors,
+        )
+        self.assertEqual([], validate_change_package(package, self.repo / "memory"))
+
+    def test_previewing_does_not_ask_for_fields_the_stage_commands_write(self) -> None:
+        package = self.draft_package()
+        for status in ("submitted", "verified", "applied"):
+            with self.subTest(status=status):
+                errors = "; ".join(
+                    validate_change_package(package, self.repo / "memory", status)
+                )
+                for written_by_the_command in (
+                    "Registry digest base revision",
+                    "retain the proposal base_registry_revision",
+                    "requires verified_at",
+                    "requires applied_at",
+                    "requires applied_registry_revision",
+                ):
+                    self.assertNotIn(written_by_the_command, errors)
+
+    def test_previewing_keeps_the_base_revision_a_submitted_proposal_already_has(self) -> None:
+        package = self.draft_package()
+        submit_proposal(package, self.repo / "memory", self.repo)
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        self.assertEqual(
+            ["an approved or applied proposal requires SCM attestation"],
+            validate_change_package(package, self.repo / "memory", "approved"),
+        )
+
     def test_finalizing_without_scm_attestation_names_the_fields_and_the_step(self) -> None:
         package = self.draft_package()
         submit_proposal(package, self.repo / "memory", self.repo)

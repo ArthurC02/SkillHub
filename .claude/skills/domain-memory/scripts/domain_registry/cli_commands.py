@@ -512,8 +512,11 @@ def handle_validate_change_package(args: argparse.Namespace) -> int:
     errors = validate_change_package(
         args.package_root.resolve(),
         args.registry_root.resolve() if args.registry_root else None,
+        args.as_status,
     )
-    return report_errors(errors, "Change package is valid.")
+    if args.as_status is None:
+        return report_errors(errors, "Change package is valid.")
+    return report_errors(errors, f"Change package has everything {args.as_status} requires.")
 
 
 def handle_coverage(args: argparse.Namespace) -> int:

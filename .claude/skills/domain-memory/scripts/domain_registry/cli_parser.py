@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 
+from .changes import PREVIEW_STATUSES
 from .common import ASSET_KEYS
 from .counterfactual import DEFAULT_TIMEOUT_SECONDS
 from .policy import AMENDABLE_FIELDS
@@ -212,4 +213,5 @@ def build_parser() -> argparse.ArgumentParser:
     package_validate_parser = commands.add_parser("validate-change-package")
     add_path(package_validate_parser, "--package-root")
     add_path(package_validate_parser, "--registry-root", required=False)
+    package_validate_parser.add_argument("--as-status", choices=PREVIEW_STATUSES)
     return parser

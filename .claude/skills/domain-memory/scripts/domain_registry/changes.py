@@ -18,11 +18,32 @@ from .common import (
 )
 from .policy import approved_command_profiles
 from .registry import asset_records
-from .revision import valid_registry_revision
+from .revision import DIGEST_HEX_LENGTH, DIGEST_PREFIX, valid_registry_revision
 
 SUBMITTED_OR_LATER = {"submitted", "verified", "approved", "applied"}
 VERIFIED_OR_LATER = {"verified", "approved", "applied"}
 APPROVED_OR_LATER = {"approved", "applied"}
+PREVIEW_STATUSES = ("submitted", "verified", "approved", "applied")
+PROPOSAL_FILE = "domain-change-proposal.json"
+EVIDENCE_FILE = "evidence-bundle.json"
+STAND_IN_REVISION = {"observed_commit": None, "registry_digest": DIGEST_PREFIX + "0" * DIGEST_HEX_LENGTH}
+STAND_IN_TIME = "1970-01-01T00:00:00Z"
+
+
+def as_if_moved_to(status: str, documents: dict[str, Any]) -> dict[str, Any]:
+    proposal = {**documents[PROPOSAL_FILE], "status": status}
+    evidence = dict(documents[EVIDENCE_FILE])
+    if status in SUBMITTED_OR_LATER and not valid_registry_revision(proposal.get("base_registry_revision")):
+        proposal["base_registry_revision"] = STAND_IN_REVISION
+        evidence["registry_revision"] = STAND_IN_REVISION
+    if status == "verified" and not iso_timestamp(proposal.get("verified_at")):
+        proposal["verified_at"] = STAND_IN_TIME
+    if status == "applied":
+        if not iso_timestamp(proposal.get("applied_at")):
+            proposal["applied_at"] = STAND_IN_TIME
+        if not valid_registry_revision(proposal.get("applied_registry_revision")):
+            proposal["applied_registry_revision"] = STAND_IN_REVISION
+    return {**documents, PROPOSAL_FILE: proposal, EVIDENCE_FILE: evidence}
 
 
 def valid_digest(value: Any) -> bool:
@@ -405,7 +426,9 @@ def _requirement_and_proposal_errors(
     return errors, criterion_ids
 
 
-def validate_change_package(root: Path, registry_root: Path | None) -> list[str]:
+def validate_change_package(
+    root: Path, registry_root: Path | None, as_status: str | None = None
+) -> list[str]:
     errors = [
         f"missing change package file: {root / name}"
         for name in CHANGE_PACKAGE_FILES
@@ -414,6 +437,8 @@ def validate_change_package(root: Path, registry_root: Path | None) -> list[str]
     if errors:
         return errors
     documents = {name: load_json(root / name) for name in CHANGE_PACKAGE_FORMATS}
+    if as_status is not None:
+        documents = as_if_moved_to(as_status, documents)
     requirement, proposal, obligations, evidence = documents.values()
     errors.extend(_identity_errors(documents))
     proposal_errors, criterion_ids = _requirement_and_proposal_errors(
