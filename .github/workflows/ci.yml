@@ -552,6 +552,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: tools/devctl/go.mod
@@ -599,6 +600,12 @@ jobs:
         run: >-
           bash tools/ci/report-failure.sh 'Domain Memory plugin lint'
           ruff check .claude/skills/domain-memory
+
+      - name: Domain Memory attested commits carry their packages
+        run: >-
+          bash tools/ci/report-failure.sh 'Domain Memory attestation audit'
+          python .claude/skills/domain-memory/scripts/registry_tools.py audit-attestations
+          --repo-root . --changes-root docs/domain-memory/changes
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
