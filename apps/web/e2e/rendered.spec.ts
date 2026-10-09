@@ -907,6 +907,40 @@ test("admin governance keeps actions tied to the submitted search on a phone", a
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test("下架完成後把焦點交給更新的治理結果", async ({ page }) => {
+  await stubPlatform(page);
+  let takenDown = false;
+  await page.route(`**/admin/skills/${SKILL}/takedown`, (route) => {
+    takenDown = true;
+    return route.fulfill({ json: {} });
+  });
+  await page.route(`**/admin/skills?q=${SKILL}`, (route) => {
+    if (route.request().resourceType() === "document") return route.fallback();
+    return route.fulfill({
+      json: {
+        skills: ADMIN_SKILLS.skills.map((skill) => ({
+          ...skill,
+          takedown_at: takenDown ? "2026-10-09T08:00:00Z" : null,
+          takedown_reason: takenDown ? "授權問題" : null,
+        })),
+      },
+    });
+  });
+  await page.goto(`/admin/skills?q=${SKILL}`);
+
+  await page.locator("#admin-skill-takedown summary").click();
+  await page.getByLabel("下架理由（必填，會寫進動作紀錄）").fill("授權問題");
+  await page.getByRole("button", { name: "下架", exact: true }).click();
+  await page.getByRole("button", { name: "確認下架" }).click();
+
+  await expect(page.getByRole("status").filter({ hasText: "已下架" })).toBeVisible();
+  await expect(page.locator(".download-item").first().locator("strong").first()).toBeFocused();
+
+  await page.reload();
+  await expect(page.getByRole("status").filter({ hasText: "已下架" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "小工具治理" })).toBeFocused();
+});
+
 test("admin rosters put beta access first and hide stale membership after a failed refresh", async ({
   page,
 }, testInfo) => {
@@ -1281,6 +1315,30 @@ test("後台導覽按工作群組展開，窄螢幕也找得到每個目的地",
     await expect(page.getByRole("heading", { level: 1, name: "帳號與點數" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "帳號與點數" })).toBeVisible();
   }
+});
+
+test("從後台首頁下方入口切換頁面後，焦點與畫面都回到新頁標題", async ({ page }) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto("/admin");
+
+  await page.locator(".admin-home-list").getByRole("link", { name: "平台 Agent" }).click();
+
+  const heading = page.getByRole("heading", { level: 1, name: "平台 Agent" });
+  await expect(heading).toBeFocused();
+  await expect(heading).toBeInViewport();
+});
+
+test("後台首頁的待辦捷徑仍落在指定區塊，不跳回頁面標題", async ({ page }) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto("/admin");
+
+  await page.getByRole("link", { name: /平台 Agent 待辦/ }).click();
+
+  await expect(page).toHaveURL(/\/admin\/agents#admin-agent-findings$/);
+  await expect(page.locator("#admin-agent-findings")).toBeInViewport();
+  await expect(page.getByRole("heading", { level: 1, name: "平台 Agent" })).not.toBeFocused();
 });
 
 test("舊資產清單網址保留建立錨點並導向 Library", async ({ page }) => {

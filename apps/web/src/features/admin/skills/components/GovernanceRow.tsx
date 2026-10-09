@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import type { SkillGovernance } from "../../admin.service";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
@@ -11,13 +12,24 @@ const REDISTRIBUTION: Record<string, string> = {
 };
 
 export function GovernanceRow({ skill, single }: { skill: SkillGovernance; single: boolean }) {
+  const title = useRef<HTMLElement>(null);
+  const previousTakedown = useRef(skill.takedown_at);
+  useEffect(() => {
+    if (!previousTakedown.current && skill.takedown_at) title.current?.focus();
+    previousTakedown.current = skill.takedown_at;
+  }, [skill.takedown_at]);
+
   return (
     <li className="download-item">
       <p>
-        <strong>{skill.name}</strong>
+        <strong ref={title} tabIndex={-1}>
+          {skill.name}
+        </strong>
       </p>
       <p className="badge-row">
-        {skill.takedown_at && <span className="badge badge-danger">已下架</span>}{" "}
+        <span role="status" className={skill.takedown_at ? "badge badge-danger" : undefined}>
+          {skill.takedown_at ? "已下架" : ""}
+        </span>{" "}
         <span className={skill.access_restriction ? "badge badge-unverified" : "badge"}>
           {skill.access_restriction
             ? `受限展示：${skill.access_restriction === "license-review" ? "授權審查中" : `其他原因（${skill.access_restriction}）`}`
