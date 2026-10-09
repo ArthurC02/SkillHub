@@ -67,7 +67,10 @@ def git_ignored(root: Path, candidates: list[Path]) -> set[Path]:
 
 
 def relative(root: Path, path: Path) -> str:
-    return path.relative_to(root).as_posix()
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return path.resolve().relative_to(root.resolve()).as_posix()
 
 
 def in_excluded_directory(path: Path) -> bool:
