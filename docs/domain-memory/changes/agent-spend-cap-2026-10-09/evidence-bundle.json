@@ -1,0 +1,95 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "operators-set-agent-spend-caps",
+  "proposal_id": "operations-agent-spend-cap-override",
+  "registry_revision": {
+    "observed_commit": "945526e7c62436da9141e8cd81c3db38b955680a",
+    "registry_digest": "sha256:eb106ef787b02a125c96aa5b588cb5ca7682b8b93910a91ce073f6766c5f569d"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "override-bounds",
+    "mutated_protection": "the US$5 ceiling on an operator's override",
+    "failure_evidence": "Changing `*capMicros > MaxDailySpendCapMicros` to `*capMicros > MaxDailySpendCapMicros+1` in SetSpendCap made TestAnOperatorSetsAnAgentsDailySpendCapWithinTheCeilingAndClearsItBackToTheDefault report one past the ceiling: got 200 with daily_spend_cap_usd_micros 5000001, want 400; the line was restored and git diff of agents.go is empty.",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/product/operations/agents.go",
+    "apps/platform/internal/product/operations/handler.go",
+    "apps/platform/internal/foundation/integration/agentloop/loop.go",
+    "db/migrations/0116_operator_platform_settings.sql"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "registry_tools.py validate --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:eb9efcdfd94e49e427f5da2056f49c54431bbdfe62005f100e94dd7971087a05",
+      "finished_at": "2026-10-09T13:33:27Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-audit reported status valid over 68 events",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:da4652a3ce2effd5a9733c7a988ce45046fe7a5ba91bd5d065f68b062ca3f271",
+      "finished_at": "2026-10-09T13:33:27Z"
+    },
+    {
+      "obligation_id": "override-bounds",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnOperatorSetsAnAgentsDailySpendCapWithinTheCeilingAndClearsItBackToTheDefault$ ./internal/entrypoint/api/apiserver/ against skillhub_test with SKILLHUB_REQUIRE_DB=1: 1 PASS, 0 SKIP",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:b9ed08bd0d35a92f00f4ab523a845c3d83a7c0e8134f2d9d7633f568193b0994",
+      "finished_at": "2026-10-09T13:33:27Z"
+    },
+    {
+      "obligation_id": "override-survives",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnOperatorSetsAnAgentsDailySpendCapWithinTheCeilingAndClearsItBackToTheDefault$ ./internal/entrypoint/api/apiserver/ against skillhub_test with SKILLHUB_REQUIRE_DB=1: 1 PASS, 0 SKIP",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:b9ed08bd0d35a92f00f4ab523a845c3d83a7c0e8134f2d9d7633f568193b0994",
+      "finished_at": "2026-10-09T13:33:27Z"
+    },
+    {
+      "obligation_id": "next-run-budget",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnOperatorsSpendCapReplacesTheDefinedOneForTheNextRun$ ./internal/entrypoint/api/apiserver/ against skillhub_test with SKILLHUB_REQUIRE_DB=1: 1 PASS, 0 SKIP",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:7ef24337f067b8cce3f5d937ae702d6c094dd5ae75c9ba2adaf8727630dbbdad",
+      "finished_at": "2026-10-09T13:33:27Z"
+    },
+    {
+      "obligation_id": "operator-only",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestPlatformAgentRoutesAreInvisibleWithoutTheOperatorRole$ ./internal/entrypoint/api/apiserver/ against skillhub_test with SKILLHUB_REQUIRE_DB=1: 1 PASS, 0 SKIP",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:35b72d4a935f4da720f7c7f8395b168e56da60009fe077769ff5538c17ac7796",
+      "finished_at": "2026-10-09T13:33:27Z"
+    },
+    {
+      "obligation_id": "rule-effective-cap",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run ^TestAnOperatorSetsAnAgentsDailySpendCapWithinTheCeilingAndClearsItBackToTheDefault$ ./internal/entrypoint/api/apiserver/ against skillhub_test with SKILLHUB_REQUIRE_DB=1: 1 PASS, 0 SKIP; go test -count=1 -v -run ^TestAnOperatorsSpendCapReplacesTheDefinedOneForTheNextRun$ ./internal/entrypoint/api/apiserver/ against skillhub_test with SKILLHUB_REQUIRE_DB=1: 1 PASS, 0 SKIP",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:b9ed08bd0d35a92f00f4ab523a845c3d83a7c0e8134f2d9d7633f568193b0994",
+      "finished_at": "2026-10-09T13:33:27Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "The sum of all agents' caps is not checked against the gateway's global daily total."
+  ]
+}

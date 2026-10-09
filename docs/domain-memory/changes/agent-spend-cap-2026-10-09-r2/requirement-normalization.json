@@ -1,0 +1,38 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "operators-set-agent-spend-caps",
+  "status": "draft",
+  "intent": "Operators decide how much each platform agent may spend a day without redeploying, within a ceiling the platform fixes.",
+  "actor": "Operator responsible for the platform's agents",
+  "observable_outcome": "An operator sets or clears an agent's daily spend cap from the admin workbench with a note; the agent's next run is budgeted against the new cap, and every change is audited.",
+  "acceptance_criteria": [
+    {
+      "id": "override-within-ceiling",
+      "statement": "An override above zero and at most US$5 a day is accepted; zero, one micro past the ceiling, a fraction or a missing cap is refused and changes nothing."
+    },
+    {
+      "id": "next-run-uses-effective-cap",
+      "statement": "The next run of the agent issues its gateway key from the effective cap, which is the override when set and the defined default otherwise."
+    },
+    {
+      "id": "override-survives-registration",
+      "statement": "Registering the definitions again at worker start replaces only the default and leaves the operator's override in place; clearing the override returns the agent to the default."
+    },
+    {
+      "id": "operator-only-and-audited",
+      "statement": "Only an operator can change a cap; each change needs a note and writes an audit event with the previous and new effective cap."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/product/operations/agents.go",
+    "apps/platform/internal/product/operations/handler.go",
+    "apps/platform/internal/foundation/integration/agentloop/loop.go",
+    "db/migrations/0116_operator_platform_settings.sql"
+  ]
+}

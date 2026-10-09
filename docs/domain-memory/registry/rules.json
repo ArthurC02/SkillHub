@@ -141,7 +141,25 @@
           "source_kind": "implementation"
         }
       ],
-      "status": "candidate"
+      "review": {
+        "proposal_id": "operations-agent-spend-cap-override-r2",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-09T13:34:13.849059Z",
+            "scope": "Operations rule: an agent's effective daily spend cap is the operator override when set, else the defined default, bounded to (0, US$5] and kept across re-registration",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "945526e7c62436da9141e8cd81c3db38b955680a",
+              "registry_digest": "sha256:eb106ef787b02a125c96aa5b588cb5ca7682b8b93910a91ce073f6766c5f569d"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }

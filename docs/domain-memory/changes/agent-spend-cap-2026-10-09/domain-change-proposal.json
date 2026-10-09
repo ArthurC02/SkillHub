@@ -1,0 +1,118 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "operations-agent-spend-cap-override",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "operators-set-agent-spend-caps",
+  "status": "superseded",
+  "change_classification": "material",
+  "submitted_at": "2026-10-09T13:33:28.680041Z",
+  "verified_at": "2026-10-09T13:33:37.222913Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "945526e7c62436da9141e8cd81c3db38b955680a",
+    "registry_digest": "sha256:eb106ef787b02a125c96aa5b588cb5ca7682b8b93910a91ce073f6766c5f569d"
+  },
+  "affected_contexts": [
+    "operations"
+  ],
+  "rule_ids": [
+    "agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "operations",
+    "invariant": "An agent's effective daily spend cap is the operator override when set, else the defined default; an override is in (0, 5000000] micros and survives re-registration.",
+    "evidence": [
+      "apps/platform/internal/product/operations/agents.go:38-45",
+      "apps/platform/internal/product/operations/agents.go:146-151"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Operations keeps importing no other context. The agent loop in foundation reads the cap through the Journal port that operations implements, so the cap stays operations' fact.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "agentloop -> operations"
+    ],
+    "evidence": [
+      "apps/platform/internal/foundation/integration/agentloop/loop.go"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A cap fixed at compile time cannot follow real spending without a redeploy.",
+      "A worker restart re-registers every definition and must not undo an operator's decision.",
+      "The gateway budget for a run must come from the same cap an operator sees."
+    ],
+    "decision": "A nullable override column beside the defined default; the effective cap is computed in one query; the Journal port supplies it to the runner at every run start; the operator API refuses values outside (0, US$5] and audits from and to in the change's transaction.",
+    "invariants_preserved": [
+      "Operations imports no other context.",
+      "Audit events are written in the same transaction as the change they record.",
+      "A run is budgeted against what the agent may still spend today."
+    ],
+    "rejected_alternatives": [
+      "Overwriting the defined default: the next worker start would silently restore it.",
+      "An environment variable per agent: fixed at startup and invisible in the admin workbench."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "audit-chain-intact",
+      "override-bounds",
+      "next-run-budget",
+      "operator-only",
+      "override-survives",
+      "rule-effective-cap"
+    ],
+    "counterfactual_check": "override-bounds"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling",
+        "contexts": [
+          "operations"
+        ],
+        "statement": "A platform agent's effective daily spend cap is the operator's override when one is set, otherwise the default its definition declares. An override must be above zero and at most US$5 a day, and re-registering the definitions replaces only the default, never the override.",
+        "examples": [
+          "An operator raising an agent's cap to 5000000 micros takes effect at that agent's next run; 5000001 micros is refused.",
+          "Clearing the override returns the agent to the default its definition declares.",
+          "A worker restart re-registers every definition and the operator's override survives it."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/agents.go",
+            "lines": {
+              "start": 38,
+              "end": 45
+            },
+            "content_sha256": "sha256:1a656cf87dd2761f9509ec5b897b3443b581dbf8d760c99c5a0710a88b874a5d",
+            "excerpt_sha256": "sha256:6211e42ac2359b958cd10d4857a002f3bc66b51d2ba7611f690b9dba4df51f66",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/product/operations/agents.go",
+            "lines": {
+              "start": 146,
+              "end": 151
+            },
+            "content_sha256": "sha256:1a656cf87dd2761f9509ec5b897b3443b581dbf8d760c99c5a0710a88b874a5d",
+            "excerpt_sha256": "sha256:340bcb7471e9f24e68d0ab5b19f3262013d77d69a40ce07f12ba96908a86e518",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "superseded_from_status": "verified",
+  "superseded_at": "2026-10-09T13:34:12.346173Z",
+  "superseded_reason": "verified before the developer approval was recorded, so it can no longer take one",
+  "superseded_by": "operations-agent-spend-cap-override-r2"
+}
