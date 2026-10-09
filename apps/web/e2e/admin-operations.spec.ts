@@ -22,6 +22,7 @@ test("a release in progress blocks another dispatch decision on a phone", async 
   await page.locator("#admin-halt-lift-target").selectOption("pool");
   await page.locator("#admin-halt-lift-note").fill("incident resolved");
   await page.locator("#admin-halt-declare-note").fill("new incident");
+  await expect(page.locator("#admin-halt-declare-scope")).toContainText("本次停止範圍：整個叢集");
   await page.getByRole("button", { name: "恢復派送" }).click();
   await page.getByRole("button", { name: "確認恢復派送" }).click();
 
@@ -81,4 +82,50 @@ test("restoring a model timeout also resets its editable draft on a phone", asyn
   await page.screenshot({
     path: testInfo.outputPath("model-timeout-default-phone.png"),
   });
+});
+
+test("a refreshed model timeout replaces a stale editable draft on a phone", async ({ page }) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let currentSeconds = 90;
+  await page.route("**/admin/model-budgets", (route) => {
+    if (route.request().resourceType() === "document") return route.fallback();
+    return route.fulfill({
+      json: {
+        budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+          budget.kind === "judge-run" ? { ...budget, seconds: currentSeconds } : budget,
+        ),
+      },
+    });
+  });
+  await page.goto("/admin/model-budgets");
+  await page.locator("#admin-budget-judge-run-set summary").click();
+  await page.locator("#admin-budget-judge-run-seconds").fill("100");
+
+  currentSeconds = 120;
+  await page.getByRole("button", { name: "重新整理" }).click();
+  await expect(page.getByText("目前：120 秒（已調整）")).toBeVisible();
+  await expect(page.locator("#admin-budget-judge-run-seconds")).toHaveValue("120");
+  await expect(page.getByText("設定已變更；草稿改為最新的 120 秒，請確認後再送出。")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("a credit correction describes its deduction on a phone", async ({ page }) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.route("**/admin/credits/ws-2/grants", (route) =>
+    route.fulfill({
+      json: { workspace_id: "ws-2", balance_credits: 90, amount_credits: -30 },
+    }),
+  );
+  await page.goto("/admin/accounts");
+  await page.getByLabel("Email").fill("member@example.com");
+  await page.getByRole("button", { name: "查詢" }).click();
+  await page.locator("#admin-grant-amount").fill("-30");
+  await page.locator("#admin-grant-note").fill("corrects an over-grant");
+
+  await expect(page.getByRole("heading", { name: "更正點數" })).toBeVisible();
+  await page.getByRole("button", { name: "扣減點數" }).click();
+  await expect(page.getByText("已扣減 30 點，餘額現在是 90 點。")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

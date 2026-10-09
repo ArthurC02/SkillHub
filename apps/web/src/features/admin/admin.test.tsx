@@ -523,6 +523,27 @@ test("OPS-003: a grant waits for a non-zero whole amount and a reason, then post
   expect(has("已授予 50 點，餘額現在是 170 點。")()).toBe(false);
 });
 
+test("OPS-003: a negative correction says it deducts credits before and after submission", async () => {
+  stub(true, (path, method) =>
+    method === "POST" && path === "/admin/credits/ws-2/grants"
+      ? { body: { workspace_id: "ws-2", balance_credits: 90, amount_credits: -30 }, status: 200 }
+      : undefined,
+  );
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-amount", "-30");
+  await type("#admin-grant-note", "corrects an over-grant");
+
+  expect(has("更正點數")()).toBe(true);
+  expect(button("扣減點數").disabled).toBe(false);
+  await click(button("扣減點數"));
+  await waitFor(has("已扣減 30 點，餘額現在是 90 點。"));
+  expect(calls.find((call) => call.method === "POST")?.body).toMatchObject({
+    amount_credits: -30,
+    reason: "corrects an over-grant",
+  });
+});
+
 test("OPS-003: a failed grant is retried under the same key, and the next grant gets a fresh one", async () => {
   let attempt = 0;
   stub(true, (path, method) => {
@@ -844,6 +865,32 @@ test("OPS-009: restoring the default also resets the editable seconds", async ()
   expect(field<HTMLInputElement>("#admin-budget-judge-run-seconds").value).toBe("130");
 });
 
+test("OPS-009: refreshing a changed model timeout replaces an obsolete editable draft", async () => {
+  let currentSeconds = 90;
+  stub(true, (path, method) =>
+    path === "/admin/model-budgets" && method === "GET"
+      ? {
+          body: {
+            budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+              budget.kind === "judge-run" ? { ...budget, seconds: currentSeconds } : budget,
+            ),
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("目前：90 秒（已調整）"));
+  await click(field<HTMLElement>("#admin-budget-judge-run-set summary"));
+  await type("#admin-budget-judge-run-seconds", "100");
+
+  currentSeconds = 120;
+  await click(button("重新整理"));
+  await waitFor(has("目前：120 秒（已調整）"));
+  expect(field<HTMLInputElement>("#admin-budget-judge-run-seconds").value).toBe("120");
+  expect(has("設定已變更；草稿改為最新的 120 秒，請確認後再送出。")()).toBe(true);
+});
+
 test("OPS-009: range endpoints are accepted and adjacent values are blocked", async () => {
   stub(true);
   await mountAt("/admin/model-budgets");
@@ -1062,7 +1109,13 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
   await waitFor(has("sandbox escape suspected on node-2"));
   expect(has("P1 事故：只有人能解除")()).toBe(true);
   expect(has("整個叢集")()).toBe(true);
+  expect(field<HTMLElement>("#admin-halt-declare-scope").textContent).toBe(
+    "本次停止範圍：整個叢集。新的 Run 將無法建立或派送；清理會停下以保留現場。",
+  );
   expect(button("停止派送").classList.contains("caution")).toBe(true);
+  expect(field<HTMLElement>("#admin-halt-declare-why").textContent).toBe(
+    "先填宣告理由；節點名稱可以留空，代表停止整個叢集。",
+  );
   expect(button("恢復派送").classList.contains("caution")).toBe(false);
   expect(button("恢復派送").disabled).toBe(true);
   await type("#admin-halt-declare-note", "escape drill");
@@ -1071,6 +1124,9 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
   expect(calls.find((c) => c.method === "PUT")?.body).toEqual({ note: "escape drill" });
 
   await type("#admin-halt-provider", "node-2");
+  expect(field<HTMLElement>("#admin-halt-declare-scope").textContent).toBe(
+    "本次停止範圍：節點 node-2。該節點不再接收新 Run；清理會停下以保留現場。",
+  );
   expect(has("整個叢集停止派送。")()).toBe(false);
   await type("#admin-halt-lift-target", "pool");
   await type("#admin-halt-lift-note", "cleared");

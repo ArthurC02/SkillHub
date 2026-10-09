@@ -16,13 +16,29 @@ const CALL_NAMES: Record<string, string> = {
   "suggest-improvements": "建議改善",
 };
 
+function CurrentBudget({ budget }: { budget: ModelCallBudget }) {
+  return (
+    <p className="badge-row">
+      <span className={budget.seconds === null ? "badge" : "badge badge-warning"}>
+        {budget.seconds === null
+          ? `目前：預設 ${budget.default_seconds} 秒`
+          : `目前：${budget.seconds} 秒（已調整）`}
+      </span>
+    </p>
+  );
+}
+
 function BudgetRow({ budget }: { budget: ModelCallBudget }) {
   const name = CALL_NAMES[budget.kind] ?? budget.kind;
-  const [seconds, setSeconds] = useState(String(budget.seconds ?? budget.default_seconds));
+  const currentSeconds = budget.seconds ?? budget.default_seconds;
+  const [seconds, setSeconds] = useState(String(currentSeconds));
+  const [sourceSeconds, setSourceSeconds] = useState(currentSeconds);
+  const staleDraft = sourceSeconds !== currentSeconds;
+  const editableSeconds = staleDraft ? String(currentSeconds) : seconds;
   const set = useModelBudgetChange("PUT");
   const clear = useModelBudgetChange("DELETE");
   const busy = set.isPending || clear.isPending;
-  const wanted = Number(seconds);
+  const wanted = Number(editableSeconds);
   const inRange =
     Number.isInteger(wanted) && wanted >= budget.min_seconds && wanted <= budget.max_seconds;
 
@@ -31,13 +47,7 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
       <p>
         <strong>{name}</strong>
       </p>
-      <p className="badge-row">
-        <span className={budget.seconds === null ? "badge" : "badge badge-warning"}>
-          {budget.seconds === null
-            ? `目前：預設 ${budget.default_seconds} 秒`
-            : `目前：${budget.seconds} 秒（已調整）`}
-        </span>
-      </p>
+      <CurrentBudget budget={budget} />
       <p className="note">
         {budget.seconds !== null && `程式預設：${budget.default_seconds} 秒；`}
         可設定範圍：{budget.min_seconds}～{budget.max_seconds} 秒。
@@ -54,6 +64,9 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
       )}
       <details id={`admin-budget-${budget.kind}-set`}>
         <summary>調整秒數</summary>
+        {staleDraft && (
+          <p role="status">設定已變更；草稿改為最新的 {currentSeconds} 秒，請確認後再送出。</p>
+        )}
         <ActionForm
           id={`admin-budget-${budget.kind}`}
           submitLabel={`改 ${name} 的秒數`}
@@ -64,7 +77,7 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
             clear.isPending ? "這一種呼叫正在恢復預設，完成後才能調整秒數。" : undefined
           }
           done={set.isSuccess && "已套用，下一次呼叫就用這個秒數。"}
-          contextKey={`${budget.kind}:${seconds}`}
+          contextKey={`${budget.kind}:${editableSeconds}`}
           onSubmit={(reason) => {
             clear.reset();
             set.mutate({ kind: budget.kind, seconds: wanted, reason });
@@ -77,8 +90,9 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
             <input
               id={`admin-budget-${budget.kind}-seconds`}
               inputMode="numeric"
-              value={seconds}
+              value={editableSeconds}
               onChange={(event) => {
+                setSourceSeconds(currentSeconds);
                 setSeconds(event.target.value);
                 set.reset();
               }}

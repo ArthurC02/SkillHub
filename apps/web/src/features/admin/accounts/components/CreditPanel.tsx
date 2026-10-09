@@ -71,7 +71,7 @@ export function CreditPanel({ workspaceId }: { workspaceId: string }) {
             </div>
           )}
           <p className="note">
-            分錄不記授予的理由；誰在何時、以什麼理由授予，看{" "}
+            分錄不記授予或更正的理由；誰在何時、以什麼理由異動點數，看{" "}
             <Link to="/admin/audit-log">動作紀錄</Link>。
           </p>
         </>

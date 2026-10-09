@@ -14,19 +14,26 @@ export function GrantForm({
   const submissionKey = useRef(crypto.randomUUID());
   const credits = Number(amount);
   const valid = amount.trim() !== "" && Number.isInteger(credits) && credits !== 0;
+  const correction = credits < 0;
   return (
     <>
-      <h3>授予點數</h3>
+      <h3>{correction ? "更正點數" : "授予點數"}</h3>
       <ActionForm
         id="admin-grant"
-        submitLabel="授予"
+        submitLabel={correction ? "扣減點數" : "授予"}
         pending={grant.isPending}
         error={grant.error}
         ready={valid && ledgerReady}
-        blockedReason={!ledgerReady ? "要等最新餘額讀取完成，才可授予點數。" : undefined}
+        blockedReason={
+          !ledgerReady
+            ? `要等最新餘額讀取完成，才可${correction ? "更正" : "授予"}點數。`
+            : undefined
+        }
         done={
           grant.data &&
-          `已授予 ${grant.data.amount_credits} 點，餘額現在是 ${grant.data.balance_credits} 點。`
+          (grant.data.amount_credits < 0
+            ? `已扣減 ${-grant.data.amount_credits} 點，餘額現在是 ${grant.data.balance_credits} 點。`
+            : `已授予 ${grant.data.amount_credits} 點，餘額現在是 ${grant.data.balance_credits} 點。`)
         }
         contextKey={`${workspaceId}:${amount}`}
         onSubmit={(reason) =>

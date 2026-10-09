@@ -203,6 +203,11 @@ export function AdminDispatch() {
             readOnly={declare.isPending || lift.isPending}
           />
         </div>
+        <p id="admin-halt-declare-scope" className="notice notice-warning">
+          {target
+            ? `本次停止範圍：節點 ${target}。該節點不再接收新 Run；清理會停下以保留現場。`
+            : "本次停止範圍：整個叢集。新的 Run 將無法建立或派送；清理會停下以保留現場。"}
+        </p>
         <ActionForm
           id="admin-halt-declare"
           submitLabel="停止派送"
@@ -212,7 +217,11 @@ export function AdminDispatch() {
           contextKey={target ?? "pool"}
           tone="caution"
           ready={!lift.isPending}
-          blockedReason={lift.isPending ? "正在解除煞車，完成後才能停止派送。" : undefined}
+          blockedReason={
+            lift.isPending
+              ? "正在解除煞車，完成後才能停止派送。"
+              : "先填宣告理由；節點名稱可以留空，代表停止整個叢集。"
+          }
           onSubmit={(note) => declare.mutate({ note, provider: target })}
         />
       </section>
