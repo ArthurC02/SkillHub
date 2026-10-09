@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下資料，寫一封給維修廠商的辦公室設備報修信。\n設備：影印機\n位置：3樓西側茶水間\n症狀：開機後顯示卡紙，但紙匣和出紙口都沒有紙張。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入，輸出包含清楚標示的「主旨」與「內文」，且是一封繁體中文報修信。"
+    },
+    {
+      "text": "內文準確列出輸入中的設備「影印機」、位置「3樓西側茶水間」及症狀「開機後顯示卡紙，但紙匣和出紙口都沒有紙張」。"
+    },
+    {
+      "text": "內文明確請廠商受理報修，並回覆可安排的到場時間。"
+    },
+    {
+      "text": "由於試跑輸入未提供聯絡方式或可到場時段，輸出不捏造這些資料、不放入待補佔位符，並以請廠商提出可安排時間處理。"
+    },
+    {
+      "text": "輸出不臆測故障原因，也不表示報修已寄出或到場時間已確定。"
+    }
+  ],
+  "final_output": "主旨：影印機報修\n\n內文：\n\n維修廠商您好：\n\n本辦公室影印機發生故障，設備位於3樓西側茶水間。開機後顯示卡紙，但紙匣和出紙口都沒有紙張。\n\n敬請協助受理報修，並回覆可安排的到場時間，謝謝。\n\n敬祝 順心  \n辦公室敬上",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f6a4c49f-e6c6-4072-a981-790f19f582b1",
+    "run_id": "f034e214-a3ab-4760-8451-b0e2ef49fec6",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收標準均已達成。報修信準確描述設備、位置與症狀，請廠商受理並回覆可安排的到場時間，未加入未提供的資訊或臆測。",
+    "criterion_results": [
+      {
+        "criterion_id": "afae7825-66b7-4333-99de-ccd35fe382d3",
+        "text": "對試跑輸入，輸出包含清楚標示的「主旨」與「內文」，且是一封繁體中文報修信。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出清楚標示「主旨」與「內文」，內容是一封繁體中文報修信。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "主旨：影印機報修\n\n內文：\n\n維修廠商您好：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a79bb44a-3049-4188-af31-90167e154a06",
+        "text": "內文準確列出輸入中的設備「影印機」、位置「3樓西側茶水間」及症狀「開機後顯示卡紙，但紙匣和出紙口都沒有紙張」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內文準確載明影印機、位置及使用者描述的症狀。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本辦公室影印機發生故障，設備位於3樓西側茶水間。開機後顯示卡紙，但紙匣和出紙口都沒有紙張。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "17ece809-72a2-47de-8f78-995fd36bdcd3",
+        "text": "內文明確請廠商受理報修，並回覆可安排的到場時間。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內文明確請廠商受理報修，並回覆可安排的到場時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "敬請協助受理報修，並回覆可安排的到場時間，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "81e5aa6d-70a8-453f-8c7c-5da7d21599e6",
+        "text": "由於試跑輸入未提供聯絡方式或可到場時段，輸出不捏造這些資料、不放入待補佔位符，並以請廠商提出可安排時間處理。",
+        "result": "passed",
+        "source": "model",
+        "reason": "完整輸出沒有捏造聯絡方式或可到場時段，也沒有待補佔位符；信中請廠商回覆可安排的時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "主旨：影印機報修\n\n內文：\n\n維修廠商您好：\n\n本辦公室影印機發生故障，設備位於3樓西側茶水間。開機後顯示卡紙，但紙匣和出紙口都沒有紙張。\n\n敬請協助受理報修，並回覆可安排的到場時間，謝謝。\n\n敬祝 順心  \n辦公室敬上",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f835b00e-202a-4cf1-acec-61fd5fa6a870",
+        "text": "輸出不臆測故障原因，也不表示報修已寄出或到場時間已確定。",
+        "result": "passed",
+        "source": "model",
+        "reason": "完整輸出只描述故障現象並請求報修，沒有臆測原因，也沒有宣稱已寄出報修或已確定到場時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "主旨：影印機報修\n\n內文：\n\n維修廠商您好：\n\n本辦公室影印機發生故障，設備位於3樓西側茶水間。開機後顯示卡紙，但紙匣和出紙口都沒有紙張。\n\n敬請協助受理報修，並回覆可安排的到場時間，謝謝。\n\n敬祝 順心  \n辦公室敬上",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1493 input and 122 output tokens on skillhub-run; reported cost $0.0027 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

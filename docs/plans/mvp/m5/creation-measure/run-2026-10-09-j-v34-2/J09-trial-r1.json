@@ -1,0 +1,180 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下資訊寫一段親切的社區健康講座邀請文案，五項資訊須原樣保留。\n活動名稱：銀髮族的睡眠與健康\n日期：2026年11月18日（星期三）\n時間：下午2:30–4:00\n地點：大安區和平東路二段 99 號，社區活動中心 2 樓\n報名方式：請於11月15日前致電 (02) 2345-6789",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸出包含一段親切、邀請式的社區健康講座文案。"
+    },
+    {
+      "text": "輸出逐字包含活動名稱「銀髮族的睡眠與健康」。"
+    },
+    {
+      "text": "輸出逐字包含日期「2026年11月18日（星期三）」。"
+    },
+    {
+      "text": "輸出逐字包含時間「下午2:30–4:00」。"
+    },
+    {
+      "text": "輸出逐字包含地點「大安區和平東路二段 99 號，社區活動中心 2 樓」。"
+    },
+    {
+      "text": "輸出逐字包含報名方式「請於11月15日前致電 (02) 2345-6789」。"
+    },
+    {
+      "text": "輸出不加入使用者未提供的活動安排、講座內容或健康效果等事實。"
+    }
+  ],
+  "final_output": "誠摯邀請您參加社區健康講座，和我們一起關心睡眠與健康！活動名稱：銀髮族的睡眠與健康；日期：2026年11月18日（星期三）；時間：下午2:30–4:00；地點：大安區和平東路二段 99 號，社區活動中心 2 樓。報名方式：請於11月15日前致電 (02) 2345-6789，期待您的參與！",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "98ee58e1-dbe8-44ee-8d70-1ad6deb88154",
+    "run_id": "f3701877-2734-48ae-bf03-1a6e88fb665a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "試跑輸出符合七項驗收標準：文案語氣親切，五項活動資訊均逐字保留，且未增添未提供的事實。",
+    "criterion_results": [
+      {
+        "criterion_id": "28797022-026a-4b2d-af1a-4f6eda5bd787",
+        "text": "試跑輸出包含一段親切、邀請式的社區健康講座文案。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出是一段親切、邀請式的社區健康講座文案。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "誠摯邀請您參加社區健康講座，和我們一起關心睡眠與健康！",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "183c7d39-64f8-4a9c-8eb3-2141f5a107d1",
+        "text": "輸出逐字包含活動名稱「銀髮族的睡眠與健康」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "活動名稱逐字出現在輸出中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "銀髮族的睡眠與健康",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1a5eaab7-d932-4ac4-906b-23bf13f5eade",
+        "text": "輸出逐字包含日期「2026年11月18日（星期三）」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "日期逐字出現在輸出中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年11月18日（星期三）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6a51468f-7e66-4fc7-a549-67ba79d06f48",
+        "text": "輸出逐字包含時間「下午2:30–4:00」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "時間逐字出現在輸出中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "下午2:30–4:00",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "db05c9d3-0f19-4116-8f68-6e56bf2145c6",
+        "text": "輸出逐字包含地點「大安區和平東路二段 99 號，社區活動中心 2 樓」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "地點逐字出現在輸出中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大安區和平東路二段 99 號，社區活動中心 2 樓",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ff976dd2-a266-4d32-8a34-4bd03989f61c",
+        "text": "輸出逐字包含報名方式「請於11月15日前致電 (02) 2345-6789」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "報名方式逐字出現在輸出中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請於11月15日前致電 (02) 2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ec64dce4-bdd9-4c16-baca-41eaed52f9cc",
+        "text": "輸出不加入使用者未提供的活動安排、講座內容或健康效果等事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "完整輸出僅包含邀請語及使用者提供的活動資訊，未加入額外的活動安排、講座內容或健康效果等事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "誠摯邀請您參加社區健康講座，和我們一起關心睡眠與健康！活動名稱：銀髮族的睡眠與健康；日期：2026年11月18日（星期三）；時間：下午2:30–4:00；地點：大安區和平東路二段 99 號，社區活動中心 2 樓。報名方式：請於11月15日前致電 (02) 2345-6789，期待您的參與！",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1485 input and 219 output tokens on skillhub-run; reported cost $0.0028 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

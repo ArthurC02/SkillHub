@@ -1,0 +1,194 @@
+{
+  "request": {
+    "RunID": "f3701877-2734-48ae-bf03-1a6e88fb665a",
+    "EvaluationID": "98ee58e1-dbe8-44ee-8d70-1ad6deb88154",
+    "Skill": {
+      "Name": "community-health-talk-invitation",
+      "Summary": "根據使用者提供的活動資訊，撰寫一段親切的社區健康講座邀請文案。當使用者需要邀請文案時使用，並逐字保留活動名稱、日期、時間、地點及報名方式。"
+    },
+    "UserPrompt": "請根據以下資訊寫一段親切的社區健康講座邀請文案，五項資訊須原樣保留。\n活動名稱：銀髮族的睡眠與健康\n日期：2026年11月18日（星期三）\n時間：下午2:30–4:00\n地點：大安區和平東路二段 99 號，社區活動中心 2 樓\n報名方式：請於11月15日前致電 (02) 2345-6789",
+    "Criteria": [
+      {
+        "ID": "28797022-026a-4b2d-af1a-4f6eda5bd787",
+        "Text": "試跑輸出包含一段親切、邀請式的社區健康講座文案。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "183c7d39-64f8-4a9c-8eb3-2141f5a107d1",
+        "Text": "輸出逐字包含活動名稱「銀髮族的睡眠與健康」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "1a5eaab7-d932-4ac4-906b-23bf13f5eade",
+        "Text": "輸出逐字包含日期「2026年11月18日（星期三）」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "6a51468f-7e66-4fc7-a549-67ba79d06f48",
+        "Text": "輸出逐字包含時間「下午2:30–4:00」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "db05c9d3-0f19-4116-8f68-6e56bf2145c6",
+        "Text": "輸出逐字包含地點「大安區和平東路二段 99 號，社區活動中心 2 樓」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ff976dd2-a266-4d32-8a34-4bd03989f61c",
+        "Text": "輸出逐字包含報名方式「請於11月15日前致電 (02) 2345-6789」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ec64dce4-bdd9-4c16-baca-41eaed52f9cc",
+        "Text": "輸出不加入使用者未提供的活動安排、講座內容或健康效果等事實。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "誠摯邀請您參加社區健康講座，和我們一起關心睡眠與健康！活動名稱：銀髮族的睡眠與健康；日期：2026年11月18日（星期三）；時間：下午2:30–4:00；地點：大安區和平東路二段 99 號，社區活動中心 2 樓。報名方式：請於11月15日前致電 (02) 2345-6789，期待您的參與！",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "aa2705ea-4b1b-4d2b-b8e6-de57105c2337",
+          "OccurredAt": "2026-10-09T18:19:32.867Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"community-health-talk-invitation\", \"skill_version_id\": \"ead1d9b6-1d82-4730-80a4-d8b35f2d97c9\"}"
+        },
+        {
+          "TraceEventID": "af7ce703-aa53-4794-a233-0cd8b365b33b",
+          "OccurredAt": "2026-10-09T18:19:32.921Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"community-health-talk-invitation\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 53, \"invocation_id\": \"call_6ZbrtLZBE3IgEMKUHsukSBXP\", \"result_summary\": \"Launching skill: community-health-talk-invitation\"}"
+        },
+        {
+          "TraceEventID": "be3c86f6-678e-42ad-9c01-e7cd617a8056",
+          "OccurredAt": "2026-10-09T18:19:35.956Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"誠摯邀請您參加社區健康講座，和我們一起關心睡眠與健康！活動名稱：銀髮族的睡眠與健康；日期：2026年11月18日（星期三）；時間：下午2:30–4:00；地點：大安區和平東路二段 99 號，社區活動中心 2 樓。報名方式：請於11月15日前致電 (02) 2345-6789，期待您的參與！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "4779110a-0793-401b-b17f-4718dfda3449",
+          "OccurredAt": "2026-10-09T18:19:36.11Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"誠摯邀請您參加社區健康講座，和我們一起關心睡眠與健康！活動名稱：銀髮族的睡眠與健康；日期：2026年11月18日（星期三）；時間：下午2:30–4:00；地點：大安區和平東路二段 99 號，社區活動中心 2 樓。報名方式：請於11月15日前致電 (02) 2345-6789，期待您的參與！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "f762538e-88ee-459b-aa5e-9332701eb2f9",
+          "OccurredAt": "2026-10-09T18:19:40.253Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.0028053, \"cost_source\": \"gateway\", \"duration_ms\": 11114, \"input_tokens\": 1485, \"token_source\": \"result\", \"output_tokens\": 219, \"cache_read_input_tokens\": 16605, \"cache_write_input_tokens\": 18534}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "28797022-026a-4b2d-af1a-4f6eda5bd787",
+        "Result": "passed",
+        "Reason": "輸出是一段親切、邀請式的社區健康講座文案。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "誠摯邀請您參加社區健康講座，和我們一起關心睡眠與健康！"
+          }
+        ]
+      },
+      {
+        "CriterionID": "183c7d39-64f8-4a9c-8eb3-2141f5a107d1",
+        "Result": "passed",
+        "Reason": "活動名稱逐字出現在輸出中。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "銀髮族的睡眠與健康"
+          }
+        ]
+      },
+      {
+        "CriterionID": "1a5eaab7-d932-4ac4-906b-23bf13f5eade",
+        "Result": "passed",
+        "Reason": "日期逐字出現在輸出中。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026年11月18日（星期三）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "6a51468f-7e66-4fc7-a549-67ba79d06f48",
+        "Result": "passed",
+        "Reason": "時間逐字出現在輸出中。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "下午2:30–4:00"
+          }
+        ]
+      },
+      {
+        "CriterionID": "db05c9d3-0f19-4116-8f68-6e56bf2145c6",
+        "Result": "passed",
+        "Reason": "地點逐字出現在輸出中。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "大安區和平東路二段 99 號，社區活動中心 2 樓"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ff976dd2-a266-4d32-8a34-4bd03989f61c",
+        "Result": "passed",
+        "Reason": "報名方式逐字出現在輸出中。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "請於11月15日前致電 (02) 2345-6789"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ec64dce4-bdd9-4c16-baca-41eaed52f9cc",
+        "Result": "passed",
+        "Reason": "完整輸出僅包含邀請語及使用者提供的活動資訊，未加入額外的活動安排、講座內容或健康效果等事實。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "誠摯邀請您參加社區健康講座，和我們一起關心睡眠與健康！活動名稱：銀髮族的睡眠與健康；日期：2026年11月18日（星期三）；時間：下午2:30–4:00；地點：大安區和平東路二段 99 號，社區活動中心 2 樓。報名方式：請於11月15日前致電 (02) 2345-6789，期待您的參與！"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "試跑輸出符合七項驗收標準：文案語氣親切，五項活動資訊均逐字保留，且未增添未提供的事實。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2589,
+      "CompletionTokens": 1031,
+      "CostUSD": 0.0142464,
+      "CostReported": true
+    }
+  }
+}

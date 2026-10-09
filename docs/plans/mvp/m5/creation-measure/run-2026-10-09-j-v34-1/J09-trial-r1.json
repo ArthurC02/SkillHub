@@ -1,0 +1,131 @@
+{
+  "round": 1,
+  "sample_input": "請依以下活動資訊寫成一段親切的邀請文案；若缺資料，請依合理假設補足並清楚標示為暫定。\n活動名稱：銀髮族健康促進講座\n日期：2026年11月14日（星期六）\n時間：上午10:00至11:30\n地點：松柏里活動中心",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中的已提供資訊，輸出文案逐字保留活動名稱「銀髮族健康促進講座」、日期「2026年11月14日（星期六）」、時間「上午10:00至11:30」及地點「松柏里活動中心」，且四項均出現在文案中。"
+    },
+    {
+      "text": "輸出是一段親切、清楚的繁體中文邀請文案，而不是只列活動資料或提出追問。"
+    },
+    {
+      "text": "輸入未提供報名方式時，文案仍包含報名方式，並將補足的方式清楚標示為暫定，不使讀者誤以為它是原始提供或已查證的資訊。"
+    },
+    {
+      "text": "文案不加入試跑輸入未提供的具體主辦單位、聯絡方式、費用或醫療效果承諾。"
+    }
+  ],
+  "final_output": "誠摯邀請您參加「銀髮族健康促進講座」！活動日期為2026年11月14日（星期六），時間是上午10:00至11:30，地點在松柏里活動中心；報名方式：未提供（暫定：【待補】）。歡迎您前來參與，一起度過充實的時光！",
+  "artifacts": [
+    "invitation.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "21aefe47-f17b-403c-b0ef-cd6b20dc0539",
+    "run_id": "9b4f8e26-21a8-41fa-b8a4-81cea4704574",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "文案保留了四項活動資訊，語氣親切，也未加入不實的具體資訊；但報名方式只有待補標記，未依要求提供暫定的報名方式。",
+    "criterion_results": [
+      {
+        "criterion_id": "ec6f2bb1-1ecf-4bdb-8a22-965782e2e8d2",
+        "text": "對試跑輸入中的已提供資訊，輸出文案逐字保留活動名稱「銀髮族健康促進講座」、日期「2026年11月14日（星期六）」、時間「上午10:00至11:30」及地點「松柏里活動中心」，且四項均出現在文案中。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文案逐字保留並包含活動名稱、日期、時間及地點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "「銀髮族健康促進講座」！活動日期為2026年11月14日（星期六），時間是上午10:00至11:30，地點在松柏里活動中心",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ee9adcc2-0a8b-4319-93c4-97d292ea6d13",
+        "text": "輸出是一段親切、清楚的繁體中文邀請文案，而不是只列活動資料或提出追問。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出是一段繁體中文邀請文案，有邀請與歡迎參與的語句，而非僅列資料或追問。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "誠摯邀請您參加「銀髮族健康促進講座」！活動日期為2026年11月14日（星期六），時間是上午10:00至11:30，地點在松柏里活動中心；報名方式：未提供（暫定：【待補】）。歡迎您前來參與，一起度過充實的時光！",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4cf6953b-3c7e-4536-8f26-2e177a1624f1",
+        "text": "輸入未提供報名方式時，文案仍包含報名方式，並將補足的方式清楚標示為暫定，不使讀者誤以為它是原始提供或已查證的資訊。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖標示「暫定」，但僅寫「未提供」及「待補」，沒有補足可使用的報名方式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "報名方式：未提供（暫定：【待補】）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d4d5e90b-c3ba-44e4-b8ed-6d9f69903d43",
+        "text": "文案不加入試跑輸入未提供的具體主辦單位、聯絡方式、費用或醫療效果承諾。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文案未加入具體主辦單位、聯絡方式、費用或醫療效果承諾。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "誠摯邀請您參加「銀髮族健康促進講座」！活動日期為2026年11月14日（星期六），時間是上午10:00至11:30，地點在松柏里活動中心；報名方式：未提供（暫定：【待補】）。歡迎您前來參與，一起度過充實的時光！",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): invitation.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1558 input and 1437 output tokens on skillhub-run; reported cost $0.0041 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

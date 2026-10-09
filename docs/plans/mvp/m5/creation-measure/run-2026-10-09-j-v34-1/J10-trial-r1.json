@@ -1,0 +1,131 @@
+{
+  "round": 1,
+  "sample_input": "請分別計算以下二手家具搬運的距離費、樓層費與套用上限後的總額：\nA｜5.2 公里｜1 樓｜有電梯\nB｜15 公里｜3 樓｜有電梯\nC｜16 公里｜4 樓｜無電梯\nD｜70 公里｜1 樓｜有電梯",
+  "acceptance_criteria": [
+    {
+      "text": "輸入 A（5.2 公里、1 樓、有電梯）時，距離無條件進位為 6 公里，距離費 225 元、樓層費 0 元，總額 225 元。"
+    },
+    {
+      "text": "輸入 B（15 公里、3 樓、有電梯）時，距離費按前 5 公里 200 元及接續 10 公里 250 元累進計為 450 元，樓層費 0 元，總額 450 元。"
+    },
+    {
+      "text": "輸入 C（16 公里、4 樓、無電梯）時，距離費為 465 元；需爬 3 層，樓層費為 2×100＋1×150＝350 元；總額為 815 元。"
+    },
+    {
+      "text": "輸入 D（70 公里、1 樓、有電梯）時，距離費為 200＋250＋55×15＝1275 元，樓層費為 0 元；套用總上限後總額為 1200 元。"
+    }
+  ],
+  "final_output": "A｜5.2 公里｜1 樓｜有電梯  \n第1筆：進位後距離 6 公里；距離費 225 元；樓層費 0 元；未封頂合計 225 元；搬運費 225 元（總上限 1200 元）。\n\nB｜15 公里｜3 樓｜有電梯  \n第2筆：進位後距離 15 公里；距離費 450 元；樓層費 0 元；未封頂合計 450 元；搬運費 450 元（總上限 1200 元）。\n\nC｜16 公里｜4 樓｜無電梯  \n第3筆：進位後距離 16 公里；距離費 465 元；樓層費 350 元；未封頂合計 815 元；搬運費 815 元（總上限 1200 元）。\n\nD｜70 公里｜1 樓｜有電梯  \n第4筆：進位後距離 70 公里；距離費 1275 元；樓層費 0 元；未封頂合計 1275 元；搬運費 1200 元（總上限 1200 元）。",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "f4efc68d-7a44-42f2-bdfe-2ae0b2900a24",
+    "run_id": "ddeb7446-3c69-4da4-b883-2775bf599b5f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四筆搬運報價的距離費、樓層費與套用上限後的總額均符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "5f9a3215-bcc4-49ee-88a8-d4e5bb9b9345",
+        "text": "輸入 A（5.2 公里、1 樓、有電梯）時，距離無條件進位為 6 公里，距離費 225 元、樓層費 0 元，總額 225 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 的進位距離、距離費、樓層費與總額均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第1筆：進位後距離 6 公里；距離費 225 元；樓層費 0 元；未封頂合計 225 元；搬運費 225 元（總上限 1200 元）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "06f38011-ce41-4405-9037-9f19e6c4862e",
+        "text": "輸入 B（15 公里、3 樓、有電梯）時，距離費按前 5 公里 200 元及接續 10 公里 250 元累進計為 450 元，樓層費 0 元，總額 450 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "B 的距離費 450 元符合累進計算，樓層費及總額也正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第2筆：進位後距離 15 公里；距離費 450 元；樓層費 0 元；未封頂合計 450 元；搬運費 450 元（總上限 1200 元）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5fa2273c-8da7-45a9-b86a-d9b5bc6cc89d",
+        "text": "輸入 C（16 公里、4 樓、無電梯）時，距離費為 465 元；需爬 3 層，樓層費為 2×100＋1×150＝350 元；總額為 815 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C 的距離費 465 元、樓層費 350 元及總額 815 元均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第3筆：進位後距離 16 公里；距離費 465 元；樓層費 350 元；未封頂合計 815 元；搬運費 815 元（總上限 1200 元）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fb1900c7-2db8-4fe9-a815-7785c0c3b087",
+        "text": "輸入 D（70 公里、1 樓、有電梯）時，距離費為 200＋250＋55×15＝1275 元，樓層費為 0 元；套用總上限後總額為 1200 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "D 的距離費為 1275 元、樓層費為 0 元，總額正確封頂為 1200 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第4筆：進位後距離 70 公里；距離費 1275 元；樓層費 0 元；未封頂合計 1275 元；搬運費 1200 元（總上限 1200 元）。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1577 input and 1400 output tokens on skillhub-run; reported cost $0.0045 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

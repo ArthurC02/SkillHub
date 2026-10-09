@@ -1,0 +1,146 @@
+{
+  "round": 0,
+  "sample_input": "驗收日期 2026-02-30。紀錄：墊片 -5 個，單價 12；電線 8 條，單價 50。請算驗收總額。",
+  "acceptance_criteria": [
+    {
+      "text": "指出驗收日期 2026-02-30 不存在（2026 年 2 月只有 28 天）"
+    },
+    {
+      "text": "指出墊片數量 -5 為負數"
+    },
+    {
+      "text": "請使用者確認日期與墊片數量"
+    },
+    {
+      "text": "沒有給出驗收總額數字（不論是含 -60 的 340 元，或自行改成正數後的 460 元）"
+    },
+    {
+      "text": "若有給出電線小計，必須是 400 元"
+    }
+  ],
+  "final_output": "- **墊片**：數量為 **-5**，且驗收日期 **2026-02-30** 不是有效日期；小計未計算。\n- **電線**：驗收日期 **2026-02-30** 不是有效日期；小計未計算。\n\n**可確認小計合計：0.00**。因有資料需確認，這不是完整驗收總額。請確認墊片數量及兩筆紀錄的正確日期後再核算。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "691c7196-64b1-4c00-ad52-cdf817d1afd9",
+    "run_id": "c4a473b9-2ae8-4f0c-a76c-c9ac93552cfa",
+    "status": "completed",
+    "overall": "met",
+    "summary": "本次回覆指出日期與墊片數量有誤，要求確認後再核算，且未將可確認小計合計冒充驗收總額。電線小計未給出。",
+    "criterion_results": [
+      {
+        "criterion_id": "47a8c4e8-3375-4d0f-9962-87c40645d3e2",
+        "text": "指出驗收日期 2026-02-30 不存在（2026 年 2 月只有 28 天）",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出 2026-02-30 不是有效日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "驗收日期 **2026-02-30** 不是有效日期",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "85df23b4-f7aa-4bfb-b631-dc95b067550a",
+        "text": "指出墊片數量 -5 為負數",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出墊片數量為 -5。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**墊片**：數量為 **-5**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "947e9695-2634-456c-8e21-45b97acf9c24",
+        "text": "請使用者確認日期與墊片數量",
+        "result": "passed",
+        "source": "model",
+        "reason": "請使用者確認墊片數量及正確日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請確認墊片數量及兩筆紀錄的正確日期後再核算。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "99c27d7c-79af-483d-b963-cdea978f38c2",
+        "text": "沒有給出驗收總額數字（不論是含 -60 的 340 元，或自行改成正數後的 460 元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "只列出可確認小計合計 0.00，並明確說明這不是完整驗收總額；未給出驗收總額數字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**可確認小計合計：0.00**。因有資料需確認，這不是完整驗收總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ca59d91b-8cc6-460e-880b-01ed2255a629",
+        "text": "若有給出電線小計，必須是 400 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "未給出電線小計，因此未違反「若有給出」的小計數字要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**電線**：驗收日期 **2026-02-30** 不是有效日期；小計未計算。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1516 input and 334 output tokens on skillhub-run; reported cost $0.0031 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

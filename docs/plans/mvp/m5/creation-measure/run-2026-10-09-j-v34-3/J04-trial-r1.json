@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請依規則分別計算以下四筆馬克杯印製訂單的報價：\n29 個，非急件\n30 個，非急件\n29 個，急件\n30 個，急件",
+  "acceptance_criteria": [
+    {
+      "text": "樣本第 1 筆（29 個、非急件）須使用每個 150 元，列出小計 4,350 元、急件加成 0 元、最終報價 4,350 元。"
+    },
+    {
+      "text": "樣本第 2 筆（30 個、非急件）須使用每個 135 元，列出小計 4,050 元、急件加成 0 元、最終報價 4,050 元。"
+    },
+    {
+      "text": "樣本第 3 筆（29 個、急件）須使用每個 150 元，列出小計 4,350 元、急件加成 870 元（4,350 × 20%）、最終報價 5,220 元。"
+    },
+    {
+      "text": "樣本第 4 筆（30 個、急件）須使用每個 135 元，列出小計 4,050 元、急件加成 810 元（4,050 × 20%）、最終報價 4,860 元。"
+    },
+    {
+      "text": "輸出須將樣本四筆訂單分開列示，且每筆都包含數量、單價、小計、急件加成及最終報價。"
+    }
+  ],
+  "final_output": "| 訂單 | 數量 | 急件狀態 | 單價 | 小計 | 急件加成 | 最終報價 |\n|---|---:|---|---:|---:|---:|---:|\n| 1 | 29 個 | 非急件 | NT$150 | NT$4,350 | NT$0 | **NT$4,350** |\n| 2 | 30 個 | 非急件 | NT$135 | NT$4,050 | NT$0 | **NT$4,050** |\n| 3 | 29 個 | 急件 | NT$150 | NT$4,350 | NT$870 | **NT$5,220** |\n| 4 | 30 個 | 急件 | NT$135 | NT$4,050 | NT$810 | **NT$4,860** |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "30972cca-f55f-4a87-a842-3ebc185af19a",
+    "run_id": "fb9fd2ea-c072-4716-94f3-a1071386d742",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四筆訂單均分開列示，單價、小計、急件加成及最終報價皆符合驗收條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "32c0fc24-eec6-4a21-8c1c-9410a5ff931e",
+        "text": "樣本第 1 筆（29 個、非急件）須使用每個 150 元，列出小計 4,350 元、急件加成 0 元、最終報價 4,350 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆以每個 150 元計算，列出小計 4,350 元、急件加成 0 元及最終報價 4,350 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 29 個 | 非急件 | NT$150 | NT$4,350 | NT$0 | **NT$4,350** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ab475559-fdc2-4123-b9b2-5274a648784c",
+        "text": "樣本第 2 筆（30 個、非急件）須使用每個 135 元，列出小計 4,050 元、急件加成 0 元、最終報價 4,050 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆以每個 135 元計算，列出小計 4,050 元、急件加成 0 元及最終報價 4,050 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 30 個 | 非急件 | NT$135 | NT$4,050 | NT$0 | **NT$4,050** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e11e6201-9f31-4849-89dd-65b047fd7036",
+        "text": "樣本第 3 筆（29 個、急件）須使用每個 150 元，列出小計 4,350 元、急件加成 870 元（4,350 × 20%）、最終報價 5,220 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆以每個 150 元計算，列出小計 4,350 元、急件加成 870 元（小計的 20%）及最終報價 5,220 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 29 個 | 急件 | NT$150 | NT$4,350 | NT$870 | **NT$5,220** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "28a0a370-d83f-4105-976b-0d27cc7d29b0",
+        "text": "樣本第 4 筆（30 個、急件）須使用每個 135 元，列出小計 4,050 元、急件加成 810 元（4,050 × 20%）、最終報價 4,860 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆以每個 135 元計算，列出小計 4,050 元、急件加成 810 元（小計的 20%）及最終報價 4,860 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 30 個 | 急件 | NT$135 | NT$4,050 | NT$810 | **NT$4,860** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "240f7d3e-7690-4eb7-9833-698f4bc4da73",
+        "text": "輸出須將樣本四筆訂單分開列示，且每筆都包含數量、單價、小計、急件加成及最終報價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以四個獨立表格列分別呈現訂單，且每筆都有數量、單價、小計、急件加成及最終報價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 訂單 | 數量 | 急件狀態 | 單價 | 小計 | 急件加成 | 最終報價 |\n|---|---:|---|---:|---:|---:|---:|\n| 1 | 29 個 | 非急件 | NT$150 | NT$4,350 | NT$0 | **NT$4,350** |\n| 2 | 30 個 | 非急件 | NT$135 | NT$4,050 | NT$0 | **NT$4,050** |\n| 3 | 29 個 | 急件 | NT$150 | NT$4,350 | NT$870 | **NT$5,220** |\n| 4 | 30 個 | 急件 | NT$135 | NT$4,050 | NT$810 | **NT$4,860** |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1513 input and 495 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

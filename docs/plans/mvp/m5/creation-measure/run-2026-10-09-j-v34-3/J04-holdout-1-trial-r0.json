@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "我要印 30 個杯子，不急，報價多少？",
+  "acceptance_criteria": [
+    {
+      "text": "適用 30 個以上的單價 135 元"
+    },
+    {
+      "text": "報價為 4050 元（30 × 135）"
+    },
+    {
+      "text": "沒有加收急件加成"
+    },
+    {
+      "text": "直接給出報價，沒有反問使用者任何設定"
+    }
+  ],
+  "final_output": "30 個杯子，非急件：每個新台幣 135 元，小計及最終報價為 **新台幣 4,050 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7d6bf641-1176-4f15-8887-4849eabb3be7",
+    "run_id": "958e5b34-e28d-4e43-9162-101688a9c627",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項標準均已達成：30 個非急件杯子按每個 135 元計算，無急件加成，直接報價新台幣 4,050 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "981d3188-d0bf-4e62-9a8e-875d16badd9a",
+        "text": "適用 30 個以上的單價 135 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "30 個杯子的報價採用每個新台幣 135 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "30 個杯子，非急件：每個新台幣 135 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1ae1c9ab-afc8-421e-ac01-0f6dde155d43",
+        "text": "報價為 4050 元（30 × 135）",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終報價為新台幣 4,050 元，符合 30 × 135。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "小計及最終報價為 **新台幣 4,050 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d77c321b-e8bd-4ba8-ab43-85904c5e6e25",
+        "text": "沒有加收急件加成",
+        "result": "passed",
+        "source": "model",
+        "reason": "計算結果顯示急件加成為 0 元。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "急件加成新台幣 0 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b9161eb8-5bf1-4e37-b03f-b75fef7723b2",
+        "text": "直接給出報價，沒有反問使用者任何設定",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆直接提供報價，沒有反問設定。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "30 個杯子，非急件：每個新台幣 135 元，小計及最終報價為 **新台幣 4,050 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1513 input and 279 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

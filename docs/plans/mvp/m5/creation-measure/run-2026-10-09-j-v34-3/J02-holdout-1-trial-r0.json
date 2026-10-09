@@ -1,0 +1,102 @@
+{
+  "round": 0,
+  "sample_input": "標準方案，入住日期 2026-11-20，我想在 2026-11-13 取消，房費總額 6400 元，可以退多少？",
+  "acceptance_criteria": [
+    {
+      "text": "天數計為 7 天（11 月 20 日減 11 月 13 日）"
+    },
+    {
+      "text": "適用 7 天以上全額退款，退款金額為 6400 元"
+    }
+  ],
+  "final_output": "標準方案在入住前 **7 天**取消，可全額退款。\n\n**可退款金額：6,400 元**",
+  "artifacts": [
+    "records.json"
+  ],
+  "evaluation": {
+    "evaluation_id": "baebc19f-ddea-4f36-8f0c-a3e870a4200b",
+    "run_id": "4151bdd3-ca11-4fe1-ae78-8dd345e06944",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均已達成：取消時間為入住前 7 天，標準方案可全額退還 6,400 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "e7976e0f-31c3-43b8-909a-f6d323dd3a14",
+        "text": "天數計為 7 天（11 月 20 日減 11 月 13 日）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將入住前的取消天數計為 7 天。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "標準方案在入住前 **7 天**取消，可全額退款。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bc84f7c0-947d-4948-8e4d-f5bdd476fe2b",
+        "text": "適用 7 天以上全額退款，退款金額為 6400 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆指出取消時間符合全額退款，退款金額為 6,400 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "標準方案在入住前 **7 天**取消，可全額退款。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**可退款金額：6,400 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): records.json"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1528 input and 501 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 10,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

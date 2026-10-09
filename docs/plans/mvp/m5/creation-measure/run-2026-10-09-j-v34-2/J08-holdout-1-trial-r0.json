@@ -1,0 +1,151 @@
+{
+  "round": 0,
+  "sample_input": "驗收日期 2026-10-05。紀錄：螺絲盒 20 盒，單價 45；手套 10 雙，單價 30；螺絲盒 25 盒，單價 45（後面補登的）。請算驗收總額。",
+  "acceptance_criteria": [
+    {
+      "text": "指出螺絲盒出現兩個不同的數量（20 與 25）"
+    },
+    {
+      "text": "請使用者確認螺絲盒的正確數量"
+    },
+    {
+      "text": "沒有自行選用 20 或 25 算出螺絲盒小計（900 或 1125 元）"
+    },
+    {
+      "text": "沒有給出驗收總額數字"
+    },
+    {
+      "text": "若有給出手套小計，必須是 300 元"
+    }
+  ],
+  "final_output": "驗收日期：2026-10-05\n\n- 螺絲盒：數量紀錄不一致，分別為 20 盒與 25 盒（單價皆為 45）。小計暫不計算，請確認應採用的數量。\n- 手套：10 雙 × 30 = **300**\n\n**可確認小計合計：300**  \n因螺絲盒數量尚待確認，這不是完整驗收總額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "d9ba62aa-b5b6-4f99-951f-114f500d7226",
+    "run_id": "4d43ac00-61d9-4d7e-970c-1334b7ff3663",
+    "status": "completed",
+    "overall": "met",
+    "summary": "本次回覆辨識了螺絲盒數量矛盾並要求確認，未計算其小計或完整驗收總額；手套小計正確。五項驗收標準均已達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "886d4ed5-c2a7-44b8-9677-777f0689837b",
+        "text": "指出螺絲盒出現兩個不同的數量（20 與 25）",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出螺絲盒有 20 盒與 25 盒兩筆不同的數量紀錄。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "螺絲盒：數量紀錄不一致，分別為 20 盒與 25 盒",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "55a0e2b8-f301-43bb-86f8-84ee8a2c26f9",
+        "text": "請使用者確認螺絲盒的正確數量",
+        "result": "passed",
+        "source": "model",
+        "reason": "請使用者確認螺絲盒應採用的數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請確認應採用的數量。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "51af810a-6388-449d-b27a-3fbcdd7686d3",
+        "text": "沒有自行選用 20 或 25 算出螺絲盒小計（900 或 1125 元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確表示暫不計算螺絲盒小計，沒有選用其中一個數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "小計暫不計算，請確認應採用的數量。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5102d426-584b-482a-8895-d8c3740266ee",
+        "text": "沒有給出驗收總額數字",
+        "result": "passed",
+        "source": "model",
+        "reason": "只給出可確認小計合計 300，並明確說明它不是完整驗收總額；未給出驗收總額數字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "可確認小計合計：300",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "這不是完整驗收總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "196a441e-9b90-4736-8fee-8e989fa0fb73",
+        "text": "若有給出手套小計，必須是 300 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "手套小計按 10 雙乘以單價 30，正確列為 300 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "手套：10 雙 × 30 = **300**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1536 input and 530 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

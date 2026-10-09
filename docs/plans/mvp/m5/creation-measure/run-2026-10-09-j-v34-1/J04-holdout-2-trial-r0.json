@@ -1,0 +1,151 @@
+{
+  "round": 0,
+  "sample_input": "我要印 12 個杯子，急件，報價多少？",
+  "acceptance_criteria": [
+    {
+      "text": "加成前的金額為 1800 元（12 × 150，未達 30 個不適用 135 元單價）"
+    },
+    {
+      "text": "直接給出具體的最後報價金額，沒有因為缺少加成比例而只反問或拒絕計算"
+    },
+    {
+      "text": "明講所採用的急件加成比例是預設假設，並說明使用者可以調整"
+    },
+    {
+      "text": "所採用的比例落在常見急件加成的合理範圍（約 10%～50%）"
+    },
+    {
+      "text": "最後報價與其所述比例自洽（1800 元 × (1 + 所述比例)）"
+    }
+  ],
+  "final_output": "12 個急件馬克杯報價：單價 NT$150，商品小計 NT$1,800，急件加成 NT$360，**總價 NT$2,160**。\n\n假設急件加成為商品小計的 20%；金額四捨五入至整數元。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "803d81d8-3a98-448b-9634-a853728e0dd0",
+    "run_id": "402ef74e-e835-40e6-b6a7-a14763160bbd",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "報價金額與 20% 急件加成計算正確，也直接給出了總價；但回覆沒有告知使用者可調整急件加成比例。",
+    "criterion_results": [
+      {
+        "criterion_id": "8afd22f3-5b8f-4320-9118-961ff544a099",
+        "text": "加成前的金額為 1800 元（12 × 150，未達 30 個不適用 135 元單價）",
+        "result": "passed",
+        "source": "model",
+        "reason": "以每個 NT$150 計算 12 個，商品小計為 NT$1,800。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "單價 NT$150，商品小計 NT$1,800",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f3d6123d-c677-425d-9570-edb3cb4adacc",
+        "text": "直接給出具體的最後報價金額，沒有因為缺少加成比例而只反問或拒絕計算",
+        "result": "passed",
+        "source": "model",
+        "reason": "直接給出最後報價 NT$2,160，沒有只反問或拒絕計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**總價 NT$2,160**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0973fae6-0399-48a2-809f-49eb7185cfe8",
+        "text": "明講所採用的急件加成比例是預設假設，並說明使用者可以調整",
+        "result": "failed",
+        "source": "model",
+        "reason": "有明講 20% 是假設，但沒有說明使用者可以調整急件加成比例。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "假設急件加成為商品小計的 20%；金額四捨五入至整數元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "af429247-5920-451f-8926-8ef0edff7cda",
+        "text": "所採用的比例落在常見急件加成的合理範圍（約 10%～50%）",
+        "result": "passed",
+        "source": "model",
+        "reason": "採用的急件加成比例為 20%，落在約 10%～50% 的範圍內。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "假設急件加成為商品小計的 20%",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e6d53236-a14d-45ed-9b40-bb55b5b3f5a3",
+        "text": "最後報價與其所述比例自洽（1800 元 × (1 + 所述比例)）",
+        "result": "passed",
+        "source": "model",
+        "reason": "NT$1,800 的 20% 為 NT$360，加總為 NT$2,160，與報價一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "商品小計 NT$1,800，急件加成 NT$360，**總價 NT$2,160**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "假設急件加成為商品小計的 20%",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1528 input and 284 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

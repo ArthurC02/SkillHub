@@ -1,0 +1,114 @@
+{
+  "round": 1,
+  "sample_input": "請依以下資料產生一則機車行保養到期提醒簡訊：\n車牌：ABC-1234\n下次保養日期：2026/11/15\n保養費用：$1,200\n機車行電話：02-2345-6789",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入，只輸出一行簡訊本文，不附加說明、標題或字數統計。"
+    },
+    {
+      "text": "對試跑輸入，簡訊內容恰為「車牌ABC-1234 保養2026/11/15 費用$1,200 電話02-2345-6789」，並依序包含四項輸入值。"
+    },
+    {
+      "text": "對試跑輸入，簡訊共 47 字元，包含空白及標點計數，因此不超過 50 字元。"
+    }
+  ],
+  "final_output": "車牌ABC-1234 保養2026/11/15 費用$1,200 電話02-2345-6789",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "721d08ec-5b55-4270-a143-f0cdeea0083f",
+    "run_id": "6dbfd3a0-ff45-4583-8bf4-2f43f1f7adb1",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項驗收標準均已達成：回覆僅有一行指定簡訊，且全文為 47 字元。",
+    "criterion_results": [
+      {
+        "criterion_id": "e68c7099-281f-425f-831c-cec537bb000c",
+        "text": "對試跑輸入，只輸出一行簡訊本文，不附加說明、標題或字數統計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆只有一行簡訊本文，沒有說明、標題或字數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "車牌ABC-1234 保養2026/11/15 費用$1,200 電話02-2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5a59674f-950f-4404-a107-ce3e661450b8",
+        "text": "對試跑輸入，簡訊內容恰為「車牌ABC-1234 保養2026/11/15 費用$1,200 電話02-2345-6789」，並依序包含四項輸入值。",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊與指定文字完全相同，四項輸入值依序出現。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "車牌ABC-1234 保養2026/11/15 費用$1,200 電話02-2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9888c1f3-c478-438c-815a-dd34e2b923ea",
+        "text": "對試跑輸入，簡訊共 47 字元，包含空白及標點計數，因此不超過 50 字元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "將空白與標點一併計入，簡訊共 47 字元，未超過 50 字元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "車牌ABC-1234 保養2026/11/15 費用$1,200 電話02-2345-6789",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1543 input and 713 output tokens on skillhub-run; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

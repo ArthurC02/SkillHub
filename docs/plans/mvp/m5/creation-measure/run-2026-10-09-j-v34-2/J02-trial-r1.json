@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請依規則計算以下訂房的取消退款，逐筆列出天數、退款比例與應退款金額：\n入住日期 | 取消日期 | 房費總額 | 訂房方案\n2026-06-08 | 2026-06-01 | 1000.00 | 標準方案\n2026-06-08 | 2026-06-02 | 1000.00 | 標準方案\n2026-06-08 | 2026-06-05 | 100.01 | 標準方案\n2026-06-08 | 2026-06-06 | 1000.00 | 標準方案\n2026-06-08 | 2026-05-29 | 1000.00 | 不可退款方案",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入第 1 筆，入住日與取消日相差 7 個日曆天；輸出天數 7、退款比例 100%、退款金額 1000.00。"
+    },
+    {
+      "text": "對試跑輸入第 2 筆，入住日與取消日相差 6 個日曆天；輸出天數 6、退款比例 50%、退款金額 500.00。"
+    },
+    {
+      "text": "對試跑輸入第 3 筆，入住日與取消日相差 3 個日曆天；輸出天數 3、退款比例 50%、退款金額 50.01（100.01 × 50% 為 50.005，按假設進位至兩位小數）。"
+    },
+    {
+      "text": "對試跑輸入第 4 筆，入住日與取消日相差 2 個日曆天；輸出天數 2、退款比例 0%、退款金額 0.00。"
+    },
+    {
+      "text": "對試跑輸入第 5 筆，方案為不可退款且入住日與取消日相差 10 個日曆天；即使天數達全額退款門檻，仍輸出退款比例 0%、退款金額 0.00。"
+    }
+  ],
+  "final_output": "| 筆次 | 天數 | 退款比例 | 應退款金額 |\n|---:|---:|---:|---:|\n| 1 | 7 天 | 100% | 1000.00 |\n| 2 | 6 天 | 50% | 500.00 |\n| 3 | 3 天 | 50% | 50.01 |\n| 4 | 2 天 | 0% | 0.00 |\n| 5 | 10 天 | 0% | 0.00 |\n\n退款合計（幣別未提供）：1550.01",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a2b14c89-9f21-4d07-8a3e-fb596398f665",
+    "run_id": "45319cca-c02a-4de4-aa9b-3a1372f67938",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆訂房的天數、退款比例及應退款金額均符合各項驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "4b983dc4-8888-4963-a7b3-6a4b9c9d77bc",
+        "text": "對試跑輸入第 1 筆，入住日與取消日相差 7 個日曆天；輸出天數 7、退款比例 100%、退款金額 1000.00。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆列出 7 天、100% 及 1000.00，符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 7 天 | 100% | 1000.00 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "71461549-c85a-47a2-a31e-0abc18252291",
+        "text": "對試跑輸入第 2 筆，入住日與取消日相差 6 個日曆天；輸出天數 6、退款比例 50%、退款金額 500.00。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆列出 6 天、50% 及 500.00，符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 6 天 | 50% | 500.00 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d1683ef6-84a3-432d-88bc-3818867b3f80",
+        "text": "對試跑輸入第 3 筆，入住日與取消日相差 3 個日曆天；輸出天數 3、退款比例 50%、退款金額 50.01（100.01 × 50% 為 50.005，按假設進位至兩位小數）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆列出 3 天、50% 及進位後的 50.01，符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 3 天 | 50% | 50.01 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6b0dedd3-6d9c-4153-8ae2-779b5e4885bc",
+        "text": "對試跑輸入第 4 筆，入住日與取消日相差 2 個日曆天；輸出天數 2、退款比例 0%、退款金額 0.00。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆列出 2 天、0% 及 0.00，符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 2 天 | 0% | 0.00 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b7f3ba07-b20d-471b-8191-7435b37126a7",
+        "text": "對試跑輸入第 5 筆，方案為不可退款且入住日與取消日相差 10 個日曆天；即使天數達全額退款門檻，仍輸出退款比例 0%、退款金額 0.00。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆為不可退款方案；輸出列出 10 天、0% 及 0.00，符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 5 | 10 天 | 0% | 0.00 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1516 input and 627 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

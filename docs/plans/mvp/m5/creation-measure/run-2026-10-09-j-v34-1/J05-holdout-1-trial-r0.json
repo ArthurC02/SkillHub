@@ -1,0 +1,181 @@
+{
+  "round": 0,
+  "sample_input": "管理室資訊：B 棟 3 號電梯因馬達老化要更換，2026-11-02 到 2026-11-06 停用；施工廠商是宏達電梯，每天 09:00 到 17:00 施工，會有敲打噪音；請住戶改搭 2 號電梯或走樓梯，施工期間 2 號電梯可能比較擠；11 月 7 日上午會試運轉約 1 小時；有急事請打管理室分機 305。請幫我寫給住戶的通知。",
+  "acceptance_criteria": [
+    {
+      "text": "通知本文不超過 3 句話（不含說明捨棄或合併的那一句）"
+    },
+    {
+      "text": "本文保留停用的電梯編號：B 棟 3 號電梯"
+    },
+    {
+      "text": "本文保留停用起訖日期：11 月 2 日到 11 月 6 日（起訖兩端都在，寫法等價即可）"
+    },
+    {
+      "text": "本文保留管理室分機 305"
+    },
+    {
+      "text": "本文之外另有一句話說明捨棄或合併了哪些資訊（例如維修原因、廠商、噪音、替代電梯、試運轉）"
+    },
+    {
+      "text": "那句說明裡提到被捨棄的項目，在通知本文裡確實沒有出現"
+    }
+  ],
+  "final_output": "【B棟電梯維修通知】\nB棟3號電梯因馬達老化需更換，將於2026-11-02至2026-11-06停用。\n施工廠商為宏達電梯，每日09:00至17:00施工，期間會有敲打噪音，且2號電梯可能較擁擠。\n11月7日上午將試運轉約1小時；如有急事，請聯絡管理室分機305。\n說明：維修原因與3號電梯停用影響合併表述；替代搭乘建議（改搭2號電梯或走樓梯）因屬一般措施，未納入本文。",
+  "artifacts": [
+    "answer.txt",
+    "body.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "94711764-e5a0-49b0-b83d-877fd4ae6317",
+    "run_id": "b1200d21-ead8-49f9-b9b3-4084cc252079",
+    "status": "completed",
+    "overall": "met",
+    "summary": "通知本文共三句，保留了停用電梯編號、起訖日期及管理室分機。另列的一句說明指出合併的資訊與未納入的替代搭乘建議；本文確實沒有提出該建議。",
+    "criterion_results": [
+      {
+        "criterion_id": "01ffe464-69d9-4128-b7c0-1c4f8c07e0ed",
+        "text": "通知本文不超過 3 句話（不含說明捨棄或合併的那一句）",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文為三句；標題與另列的說明不計入本文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "B棟3號電梯因馬達老化需更換，將於2026-11-02至2026-11-06停用。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "施工廠商為宏達電梯，每日09:00至17:00施工，期間會有敲打噪音，且2號電梯可能較擁擠。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "11月7日上午將試運轉約1小時；如有急事，請聯絡管理室分機305。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6a34fe3a-21b2-47a2-9b77-a67ecde7fcd1",
+        "text": "本文保留停用的電梯編號：B 棟 3 號電梯",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文寫明停用的是 B 棟 3 號電梯。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "B棟3號電梯因馬達老化需更換，將於2026-11-02至2026-11-06停用。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bd9b645b-61de-4790-99e3-4d167ad1d063",
+        "text": "本文保留停用起訖日期：11 月 2 日到 11 月 6 日（起訖兩端都在，寫法等價即可）",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文保留 2026 年 11 月 2 日至 11 月 6 日的停用起訖日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "B棟3號電梯因馬達老化需更換，將於2026-11-02至2026-11-06停用。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "146ad313-9642-422a-9e5a-666526e77039",
+        "text": "本文保留管理室分機 305",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文寫明管理室分機 305。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "11月7日上午將試運轉約1小時；如有急事，請聯絡管理室分機305。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "80f7f3a7-2722-4868-9c81-62374f911610",
+        "text": "本文之外另有一句話說明捨棄或合併了哪些資訊（例如維修原因、廠商、噪音、替代電梯、試運轉）",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文之外另有一句說明，指出合併表述的資訊與未納入的替代搭乘建議。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "說明：維修原因與3號電梯停用影響合併表述；替代搭乘建議（改搭2號電梯或走樓梯）因屬一般措施，未納入本文。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "38e00fb4-2174-4a6b-b11c-ce1762f2db15",
+        "text": "那句說明裡提到被捨棄的項目，在通知本文裡確實沒有出現",
+        "result": "passed",
+        "source": "model",
+        "reason": "說明中稱未納入的是「改搭 2 號電梯或走樓梯」的建議；本文雖提到 2 號電梯可能擁擠，但沒有提出該搭乘建議。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "說明：維修原因與3號電梯停用影響合併表述；替代搭乘建議（改搭2號電梯或走樓梯）因屬一般措施，未納入本文。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "施工廠商為宏達電梯，每日09:00至17:00施工，期間會有敲打噪音，且2號電梯可能較擁擠。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 2 readable output file(s): answer.txt, body.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1623 input and 3818 output tokens on skillhub-run; reported cost $0.0061 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 35,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "round": 1,
+  "sample_input": "請核對以下兩張進貨驗收單，列出品項小計、問題與可計算的總額。\n乾淨驗收單：\n品項 | 數量 | 單價 | 驗收日期\n螺栓 | 3 | 12.50 | 2026-10-01\n蘋果 | 4 | 2.25 | 2026-10-01\n\n待確認驗收單：\n品項 | 數量 | 單價 | 驗收日期\n電纜 | 2 | 10.00 | 2026-10-02\n電纜 | 3 | 10.00 | 2026-10-02\n米 | 5 | 1.20 | 2026-02-30\n手套 | -1 | 4.00 | 2026-10-02\n膠帶 | 2 | 3.00 | 2026-10-02",
+  "acceptance_criteria": [
+    {
+      "text": "在「乾淨驗收單」中，對螺栓 3 × 12.50 算出小計 37.50，對蘋果 4 × 2.25 算出小計 9.00，並算出總額 46.50。"
+    },
+    {
+      "text": "在「待確認驗收單」中，對兩筆數量分別為 2 與 3 的電纜指出同品項數量矛盾，不選擇其中一個數量，且不輸出電纜小計。"
+    },
+    {
+      "text": "在「待確認驗收單」中，將數量 5、單價 1.20、日期 2026-02-30 的米標記為無效日期並請使用者確認；仍可列出該筆小計 6.00。"
+    },
+    {
+      "text": "在「待確認驗收單」中，將數量為 -1 的手套標記為無效數量並請使用者確認，且不輸出手套小計。"
+    },
+    {
+      "text": "在「待確認驗收單」中，對未受矛盾影響的膠帶 2 × 3 算出小計 6.00；因該驗收單仍有待確認問題，不輸出驗收總額。"
+    }
+  ],
+  "final_output": "## 整理紀錄\n\n**驗收單：乾淨驗收單**\n\n| 品項 | 數量 | 單價 | 驗收日期 |\n|---|---:|---:|---|\n| 螺栓 | 3 | 12.50 | 2026-10-01 |\n| 蘋果 | 4 | 2.25 | 2026-10-01 |\n\n**驗收單：待確認驗收單**\n\n| 品項 | 數量 | 單價 | 驗收日期 |\n|---|---:|---:|---|\n| 電纜 | 2 | 10.00 | 2026-10-02 |\n| 電纜 | 3 | 10.00 | 2026-10-02 |\n| 米 | 5 | 1.20 | 2026-02-30 |\n| 手套 | -1 | 4.00 | 2026-10-02 |\n| 膠帶 | 2 | 3.00 | 2026-10-02 |\n\n## 核對結果\n\n- **乾淨驗收單**：螺栓小計 37.50、蘋果小計 9.00；可計算驗收總額 **46.50**。\n- **待確認驗收單**：電纜數量有矛盾（2、3），手套數量為負數（-1），兩項小計未提供；米的日期 `2026-02-30` 不存在，但數量與單價有效，因此米小計為 6.00。膠帶小計為 6.00。因仍有待確認問題，**驗收總額未提供**。\n\n以下為核對腳本輸出：\n\n```text\n驗收單：乾淨驗收單\n  第 1 筆：品項=螺栓；數量=3；單價=12.50；日期=2026-10-01；金額=37.50\n  第 2 筆：品項=蘋果；數量=4；單價=2.25；日期=2026-10-01；金額=9.00\n  品項小計：螺栓＝37.50\n  品項小計：蘋果＝9.00\n  驗收總額：46.50\n驗收單：待確認驗收單\n  第 3 筆：品項=電纜；數量=2；單價=10.00；日期=2026-10-02；金額=20.00\n  第 4 筆：品項=電纜；數量=3；單價=10.00；日期=2026-10-02；金額=30.00\n  第 5 筆：品項=米；數量=5；單價=1.20；日期=2026-02-30；金額=6.00；日期待確認\n  第 6 筆：品項=手套；數量=-1；單價=4.00；日期=2026-10-02；金額=未計算；數量為負，待確認\n  第 7 筆：品項=膠帶；數量=2；單價=3.00；日期=2026-10-02；金額=6.00\n  品項小計：電纜＝未提供（同品項數量矛盾，待確認）\n  品項小計：米＝6.00\n  品項小計：手套＝未提供（負數數量，待確認）\n  品項小計：膠帶＝6.00\n  待確認：品項「米」第 5 筆日期 '2026-02-30' 不存在或格式不是 YYYY-MM-DD，請確認。\n  待確認：品項「手套」第 6 筆數量為負數 -1，請確認。\n  待確認：品項「電纜」同單數量不一致（2、3），請確認各筆數量。\n  驗收總額：未提供（仍有待確認問題或缺漏金額資料）。\n```",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ee98a1a1-1892-437f-bf13-79b79a732f8d",
+    "run_id": "f94a530f-1f61-46c8-9b27-3cb160ce6d97",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩張驗收單的可計算小計均正確列出。待確認驗收單的數量矛盾、無效日期及負數數量均已標示，且未提供其驗收總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "8c87e89c-ce11-4d57-87c1-0133a94d2ae7",
+        "text": "在「乾淨驗收單」中，對螺栓 3 × 12.50 算出小計 37.50，對蘋果 4 × 2.25 算出小計 9.00，並算出總額 46.50。",
+        "result": "passed",
+        "source": "model",
+        "reason": "乾淨驗收單列出螺栓小計 37.50、蘋果小計 9.00，總額為 46.50。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "螺栓小計 37.50、蘋果小計 9.00；可計算驗收總額 **46.50**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "08d7b2a0-80ab-4f17-968a-257552a56fc4",
+        "text": "在「待確認驗收單」中，對兩筆數量分別為 2 與 3 的電纜指出同品項數量矛盾，不選擇其中一個數量，且不輸出電纜小計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出兩筆電纜的數量 2 與 3 不一致，要求確認各筆數量；未選定數量，也未提供電纜品項小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "品項小計：電纜＝未提供（同品項數量矛盾，待確認）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "待確認：品項「電纜」同單數量不一致（2、3），請確認各筆數量。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "26b2a555-e2f2-492d-9e4c-a6955572a4d4",
+        "text": "在「待確認驗收單」中，將數量 5、單價 1.20、日期 2026-02-30 的米標記為無效日期並請使用者確認；仍可列出該筆小計 6.00。",
+        "result": "passed",
+        "source": "model",
+        "reason": "將米的 2026-02-30 標為不存在的日期並請使用者確認，同時列出小計 6.00。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "品項小計：米＝6.00",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "待確認：品項「米」第 5 筆日期 '2026-02-30' 不存在或格式不是 YYYY-MM-DD，請確認。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "30805d59-6d67-49ea-9aa6-1be1b418b753",
+        "text": "在「待確認驗收單」中，將數量為 -1 的手套標記為無效數量並請使用者確認，且不輸出手套小計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "將手套數量 -1 標為負數並請使用者確認，未提供手套小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "品項小計：手套＝未提供（負數數量，待確認）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "待確認：品項「手套」第 6 筆數量為負數 -1，請確認。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d6a55595-7a2d-4774-b2d5-d3f518f624ca",
+        "text": "在「待確認驗收單」中，對未受矛盾影響的膠帶 2 × 3 算出小計 6.00；因該驗收單仍有待確認問題，不輸出驗收總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "膠帶小計為 6.00；因仍有待確認問題，未提供待確認驗收單的總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "品項小計：膠帶＝6.00",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "驗收總額：未提供（仍有待確認問題或缺漏金額資料）。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1538 input and 1903 output tokens on skillhub-run; reported cost $0.0043 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 34,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

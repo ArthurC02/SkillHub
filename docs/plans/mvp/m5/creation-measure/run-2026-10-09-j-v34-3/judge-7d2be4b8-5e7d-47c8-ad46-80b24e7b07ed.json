@@ -1,0 +1,255 @@
+{
+  "request": {
+    "RunID": "7d2be4b8-5e7d-47c8-ad46-80b24e7b07ed",
+    "EvaluationID": "f9b13d19-a6a6-418b-9066-18faba70f1c0",
+    "Skill": {
+      "Name": "elevator-maintenance-notice",
+      "Summary": "將管理室提供的電梯維修資訊改寫成繁體中文住戶通知。當需要撰寫大樓電梯停用或維修公告時使用，並確保通知本文最多三句且保留指定資訊。"
+    },
+    "UserPrompt": "管理室資訊：B 棟 3 號電梯因馬達老化要更換，2026-11-02 到 2026-11-06 停用；施工廠商是宏達電梯，每天 09:00 到 17:00 施工，會有敲打噪音；請住戶改搭 2 號電梯或走樓梯，施工期間 2 號電梯可能比較擠；11 月 7 日上午會試運轉約 1 小時；有急事請打管理室分機 305。請幫我寫給住戶的通知。",
+    "Criteria": [
+      {
+        "ID": "8d7adb73-16a9-4793-831c-ab386a9e0564",
+        "Text": "通知本文不超過 3 句話（不含說明捨棄或合併的那一句）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "937f4cf8-35ac-4c08-86e6-e6120a2dec13",
+        "Text": "本文保留停用的電梯編號：B 棟 3 號電梯",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "780a3633-1326-424a-905e-3907dd2894ff",
+        "Text": "本文保留停用起訖日期：11 月 2 日到 11 月 6 日（起訖兩端都在，寫法等價即可）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "f1a14081-a700-4535-8988-78992565de2a",
+        "Text": "本文保留管理室分機 305",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "f71dcbe2-3f12-45cf-aaee-1087a06062d3",
+        "Text": "本文之外另有一句話說明捨棄或合併了哪些資訊（例如維修原因、廠商、噪音、替代電梯、試運轉）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a3efb971-0755-435c-b5b6-eeaefe4caff6",
+        "Text": "那句說明裡提到被捨棄的項目，在通知本文裡確實沒有出現",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "通知本文  \nB 棟 3 號電梯因馬達老化需更換，將於 2026-11-02 到 2026-11-06 停用；請住戶改搭 2 號電梯或走樓梯，施工期間 2 號電梯可能較擠。宏達電梯每日 09:00 到 17:00 施工，期間會有敲打噪音。11 月 7 日上午將試運轉約 1 小時；有急事請打管理室分機 305。\n\n說明  \n將停用原因與期間、施工廠商與時段及噪音、替代搭乘方式與擁擠提醒，以及試運轉安排與緊急聯絡方式合寫於通知本文。",
+    "Artifacts": [
+      {
+        "Path": "answer.txt",
+        "SizeBytes": 504,
+        "ContentType": "application/octet-stream",
+        "TextExcerpt": ""
+      },
+      {
+        "Path": "notice.txt",
+        "SizeBytes": 320,
+        "ContentType": "application/octet-stream",
+        "TextExcerpt": ""
+      }
+    ],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "9a1579a6-641e-4838-bbde-1ef9fa2fbe5d",
+          "OccurredAt": "2026-10-09T18:43:51.432Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"elevator-maintenance-notice\", \"skill_version_id\": \"ee36544c-f8fc-432f-85a9-72959c2bbf08\"}"
+        },
+        {
+          "TraceEventID": "78a846a9-f6bd-497a-833d-9d5e7ba6f089",
+          "OccurredAt": "2026-10-09T18:43:51.45Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"elevator-maintenance-notice\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 19, \"invocation_id\": \"call_yhd8lsKEZSn4OgDxkJao6SpB\", \"result_summary\": \"Launching skill: elevator-maintenance-notice\"}"
+        },
+        {
+          "TraceEventID": "fddef7b8-45f8-4b62-a4a3-af5646b5d6b4",
+          "OccurredAt": "2026-10-09T18:43:58.093Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 4163, \"resource_path\": \"elevator-maintenance-notice/scripts/check_output.py\"}"
+        },
+        {
+          "TraceEventID": "aa29fd74-5aff-47cf-8245-36df1f41be22",
+          "OccurredAt": "2026-10-09T18:43:58.093Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/elevator-maintenance-notice/scripts/check_output.py\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 13, \"invocation_id\": \"call_dKXK8qDWX070tx69vSQidu8L\", \"result_summary\": \"1\\t\\\"\\\"\\\"Count sentences, characters and items in a file and check them against limits.\\\"\\\"\\\"\\n2\\t\\n3\\tfrom __future__ import annotations\\n4\\t\\n5\\timport argparse\\n6\\timport re\\n7\\timport sys\\n8\\t\\n9\\tSENTENCE_SPLIT = re.compile(r\\\"[。！？!?]|\\\\n\\\")\\n10\\tITEM_LINE = re.compile(r\\\"^\\\\s*(?:[-*•]|\\\\d+[.)、．])\\\\s\\\")\\n11\\t\\n12\\t\\n13\\tdef count_sentences(text: str) -\u003e int:\\n14\\t    return sum(1 for part in SENTENCE_SPLIT.split(text) if part.strip())\\n15\\t\\n16\\t\\n17\\tdef count_chars(text: str) -\u003e int:\\n18\\t    return sum(1 for ch in text if not ch.isspace())\\n19\\t\\n20\\t\\n21\\tdef count_items(text: str) -\u003e int:\\n22\\t    return sum(1 for line in text.splitlines() if ITEM_LINE.match(line))\\n23\\t\\n24\\t\\n25\\tdef missing_requirements(text: str, requirements: list[str]) -\u003e list[str]:\\n26\\t    return [req for req in requirements if req not in text]\\n27\\t\\n28\\t\\n29\\tdef check(\\n30\\t    text: str,\\n31\\t    max_sentences: int | None,\\n32\\t    max_chars: int | None,\\n33\\t    max_items: int | None,\\n34\\t    require: list[str],\\n35\\t) -\u003e list[str]:\\n36\\t    failures: list[str] = []\\n37\\t    sentences = count_sentences(text)\\n38\\t    if max_sentences is not None and sentences \u003e max_sentences:\\n39\\t        failures.append(f\\\"sentences {sentences} \u003e {max_sentences}\\\")\\n40\\t    chars = count_chars(text)\\n41\\t    if max_chars is not None and chars \u003e max_chars:\\n42\\t        failures.append(f\\\"chars {chars} \u003e {max_chars}\\\")\\n43\\t    items = count_items(text)\\n44\\t    if max_items is not None and items \u003e max_items:\\n45\\t        failures.append(f\\\"items {items} \u003e {max_items}\\\")\\n46\\t    missing = missing_requirements(text, require)\\n47\\t    if missing:\\n48\\t        failures.append(\\\"missing: \\\" + \\\", \\\".join(missing))\\n49\\t    return failures\\n50\\t\\n51\\t\\n52\\tdef build_parser() -\u003e argparse.ArgumentParser:\\n53\\t    parser = argparse.ArgumentParser(\\n54\\t        description=(\\\"Check a file's draft answer against countable limits and required facts.\\\")\\n55\\t    )\\n56\\t    parser.add_argument(\\n57\\t        \\\"--max-sentences\\\",\\n58\\t        type=int,\\n59\\t        help=(\\n60\\t            \\\"reject if the file has more sentences than this; a sentence is a run of \\\"\\n61\\t            \\\"text separated by 。！？!? or a newline, trimmed and non-empty\\\"\\n62\\t        ),\\n63\\t    )\\n64\\t    parser.add_argument(\\n65\\t        \\\"--max-chars\\\",\\n66\\t        type=int,\\n67\\t        help=\\\"reject if the file has more non-whitespace characters than this\\\",\\n68\\t    )\\n69\\t    parser.add_argument(\\n70\\t        \\\"--max-items\\\",\\n71\\t        type=int,\\n72\\t        help=(\\n73\\t            \\\"reject if the file has more list items than this; an item is a line \\\"\\n74\\t            \\\"starting with -, * or •, or a numbered marker such as '1.' '2)' '3、'\\\"\\n75\\t        ),\\n76\\t    )\\n77\\t    parser.add_argument(\\n78\\t        \\\"--require\\\",\\n79\\t        action=\\\"append\\\",\\n80\\t        default=[],\\n81\\t        metavar=\\\"TEXT\\\",\\n82\\t        help=\\\"reject if this exact text is missing from the file; repeatable\\\",\\n83\\t    )\\n84\\t    parser.add_argument(\\\"file\\\", metavar=\\\"FILE\\\", help=\\\"path to check, or - for stdin\\\")\\n85\\t    return parser\\n86\\t\\n87\\t\\n88\\tdef _read(path: str) -\u003e str:\\n89\\t    if path == \\\"-\\\":\\n90\\t        return sys.stdin.read()\\n91\\t    with open(path, encoding=\\\"utf-8\\\") as handle:\\n92\\t        return handle.read()\\n93\\t\\n94\\t\\n95\\tdef main(argv: list[str] | None = None) -\u003e int:\\n96\\t    args = build_parser().parse_args(argv)\\n97\\t    no_checks = (\\n98\\t        args.max_sentences is None\\n99\\t        and args.max_chars is None\\n100\\t        and args.max_items is None\\n101\\t        and not args.require\\n102\\t    )\\n103\\t    if no_checks:\\n104\\t        print(\\n105\\t            \\\"no checks given: pass at least one of --max-sentences, --max-chars, \\\"\\n106\\t            \\\"--max-items, --require\\\"\\n107\\t        )\\n108\\t        return 2\\n109\\t    try:\\n110\\t        text = _read(args.file)\\n111\\t    except OSError as exc:\\n112\\t        print(f\\\"cannot read {args.file}: {exc}\\\")\\n113\\t        return 2\\n114\\t    except UnicodeDecodeError as exc:\\n115\\t        print(f\\\"cannot decode {args.file} as UTF-8: {exc}\\\")\\n116\\t        return 2\\n117\\t    failures = check(text, args.max_sentences, args.max_chars, args.max_items, args.require)\\n118\\t    if not failures:\\n119\\t        print(\\\"OK\\\")\\n120\\t        return 0\\n121\\t    for failure in failures:\\n122\\t        print(failure)\\n123\\t    return 1\\n124\\t\\n125\\t\\n126\\tif __name__ == \\\"__main__\\\":\\n127\\t    sys.exit(main())\\n128\\t\"}"
+        },
+        {
+          "TraceEventID": "746bf2ec-522c-41dc-864f-78ca236da8b8",
+          "OccurredAt": "2026-10-09T18:44:04.734Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"(Bash completed with no output)\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "ba26e345-864c-42b0-96bb-9eee0fe29b3a",
+          "OccurredAt": "2026-10-09T18:44:04.734Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"mkdir -p /out/artifacts\", \"description\": \"Create artifact output directory\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 70, \"invocation_id\": \"call_vCCeZ45z2jspWmK3SxDiSQ3K\", \"result_summary\": \"(Bash completed with no output)\"}"
+        },
+        {
+          "TraceEventID": "80c9773d-ddcf-40a3-a17e-f52f1a6ffec7",
+          "OccurredAt": "2026-10-09T18:44:13.231Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"B 棟 3 號電梯因馬達老化需更換，將於 2026-11-02 到 2026-11-06 停用；請住戶改搭 2 號電梯或走樓梯，施工期間 2 號電梯可能較擠。宏達電梯每日 09:00 到 17:00 施工，期間會有敲打噪音。11 月 7 日上午將試運轉約 1 小時；有急事請打管理室分機 305。\", \"file_path\": \"/out/artifacts/notice.txt\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 47, \"invocation_id\": \"call_xaxCJff4q9hV68NuHDTdZvm8\", \"result_summary\": \"File created successfully at: /out/artifacts/notice.txt (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "ba86958f-f0c4-4cf3-bde0-83eee0d94150",
+          "OccurredAt": "2026-10-09T18:44:15.079Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/check_output.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "58896372-3955-4adc-bd52-c15e859f8e7f",
+          "OccurredAt": "2026-10-09T18:44:15.079Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python scripts/check_output.py /out/artifacts/notice.txt --max-sentences 3 --require \\\"B 棟 3 號電梯\\\" --require \\\"2026-11-02 到 2026-11-06\\\" --require \\\"管理室分機 305\\\"\", \"description\": \"Validate notice sentence count and required details\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 116, \"invocation_id\": \"call_HBawsdXPJ7oVyPJePop4dhxN\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/check_output.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "e34e25ee-0b69-4d30-8dc6-4f6a07dd4ded",
+          "OccurredAt": "2026-10-09T18:44:17.465Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"OK\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "3008d386-8302-4dab-83ba-49e0f132c0d9",
+          "OccurredAt": "2026-10-09T18:44:17.465Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/elevator-maintenance-notice \u0026\u0026 python scripts/check_output.py /out/artifacts/notice.txt --max-sentences 3 --require \\\"B 棟 3 號電梯\\\" --require \\\"2026-11-02 到 2026-11-06\\\" --require \\\"管理室分機 305\\\"\", \"description\": \"Run required notice validation\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 208, \"invocation_id\": \"call_OoySpIWaNnDzrJShnhDF78va\", \"result_summary\": \"OK\"}"
+        },
+        {
+          "TraceEventID": "aec3a227-72c2-4348-b61e-5809880ff030",
+          "OccurredAt": "2026-10-09T18:44:23.347Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"通知本文\\nB 棟 3 號電梯因馬達老化需更換，將於 2026-11-02 到 2026-11-06 停用；請住戶改搭 2 號電梯或走樓梯，施工期間 2 號電梯可能較擠。宏達電梯每日 09:00 到 17:00 施工，期間會有敲打噪音。11 月 7 日上午將試運轉約 1 小時；有急事請打管理室分機 305。\\n\\n說明\\n將停用原因與期間、施工廠商與時段及噪音、替代搭乘方式與擁擠提醒，以及試運轉安排與緊急聯絡方式合寫於通知本文。\", \"file_path\": \"/out/artifacts/answer.txt\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 8, \"invocation_id\": \"call_uQ7ObfazOMyPDqpPFpqENrsw\", \"result_summary\": \"File created successfully at: /out/artifacts/answer.txt (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "51c4b932-96a3-4a4e-8ef6-d3e036c7c06d",
+          "OccurredAt": "2026-10-09T18:44:24.755Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/out/artifacts/answer.txt\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 6, \"invocation_id\": \"call_rtMiIUl1GGLt3WMmHKTLQWz8\", \"result_summary\": \"1\\t通知本文\\n2\\tB 棟 3 號電梯因馬達老化需更換，將於 2026-11-02 到 2026-11-06 停用；請住戶改搭 2 號電梯或走樓梯，施工期間 2 號電梯可能較擠。宏達電梯每日 09:00 到 17:00 施工，期間會有敲打噪音。11 月 7 日上午將試運轉約 1 小時；有急事請打管理室分機 305。\\n3\\t\\n4\\t說明\\n5\\t將停用原因與期間、施工廠商與時段及噪音、替代搭乘方式與擁擠提醒，以及試運轉安排與緊急聯絡方式合寫於通知本文。\"}"
+        },
+        {
+          "TraceEventID": "eb07de1b-9e23-4695-b822-783231a645ec",
+          "OccurredAt": "2026-10-09T18:44:27.053Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"通知本文  \\nB 棟 3 號電梯因馬達老化需更換，將於 2026-11-02 到 2026-11-06 停用；請住戶改搭 2 號電梯或走樓梯，施工期間 2 號電梯可能較擠。宏達電梯每日 09:00 到 17:00 施工，期間會有敲打噪音。11 月 7 日上午將試運轉約 1 小時；有急事請打管理室分機 305。\\n\\n說明  \\n將停用原因與期間、施工廠商與時段及噪音、替代搭乘方式與擁擠提醒，以及試運轉安排與緊急聯絡方式合寫於通知本文。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "793fe1f3-d5e6-4bfe-8b5b-4bd9a5dafbd4",
+          "OccurredAt": "2026-10-09T18:44:27.655Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"通知本文  \\nB 棟 3 號電梯因馬達老化需更換，將於 2026-11-02 到 2026-11-06 停用；請住戶改搭 2 號電梯或走樓梯，施工期間 2 號電梯可能較擠。宏達電梯每日 09:00 到 17:00 施工，期間會有敲打噪音。11 月 7 日上午將試運轉約 1 小時；有急事請打管理室分機 305。\\n\\n說明  \\n將停用原因與期間、施工廠商與時段及噪音、替代搭乘方式與擁擠提醒，以及試運轉安排與緊急聯絡方式合寫於通知本文。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "beaca63c-e8db-47c0-99ad-4fb6882164ab",
+          "OccurredAt": "2026-10-09T18:44:31.732Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.006276845000000001, \"cost_source\": \"gateway\", \"duration_ms\": 43220, \"input_tokens\": 1620, \"token_source\": \"result\", \"output_tokens\": 3789, \"cache_read_input_tokens\": 155817, \"cache_write_input_tokens\": 20787}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "8d7adb73-16a9-4793-831c-ab386a9e0564",
+        "Result": "passed",
+        "Reason": "通知本文共有三句話。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "B 棟 3 號電梯因馬達老化需更換，將於 2026-11-02 到 2026-11-06 停用；請住戶改搭 2 號電梯或走樓梯，施工期間 2 號電梯可能較擠。宏達電梯每日 09:00 到 17:00 施工，期間會有敲打噪音。11 月 7 日上午將試運轉約 1 小時；有急事請打管理室分機 305。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "937f4cf8-35ac-4c08-86e6-e6120a2dec13",
+        "Result": "passed",
+        "Reason": "本文明確寫出 B 棟 3 號電梯。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "B 棟 3 號電梯因馬達老化需更換"
+          }
+        ]
+      },
+      {
+        "CriterionID": "780a3633-1326-424a-905e-3907dd2894ff",
+        "Result": "passed",
+        "Reason": "本文寫明停用期間從 2026 年 11 月 2 日到 11 月 6 日。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026-11-02 到 2026-11-06 停用"
+          }
+        ]
+      },
+      {
+        "CriterionID": "f1a14081-a700-4535-8988-78992565de2a",
+        "Result": "passed",
+        "Reason": "本文保留管理室分機 305。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "有急事請打管理室分機 305。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "f71dcbe2-3f12-45cf-aaee-1087a06062d3",
+        "Result": "passed",
+        "Reason": "本文之外另有一句說明，列出合寫於通知本文的資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "將停用原因與期間、施工廠商與時段及噪音、替代搭乘方式與擁擠提醒，以及試運轉安排與緊急聯絡方式合寫於通知本文。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a3efb971-0755-435c-b5b6-eeaefe4caff6",
+        "Result": "passed",
+        "Reason": "說明只提到合寫的資訊，沒有聲稱捨棄任何項目；因此沒有被稱為「捨棄」卻出現在本文的項目。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "將停用原因與期間、施工廠商與時段及噪音、替代搭乘方式與擁擠提醒，以及試運轉安排與緊急聯絡方式合寫於通知本文。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "通知本文為三句，保留了指定的電梯編號、停用日期及管理室分機。另有一句說明資訊均合寫於本文，未聲稱捨棄任何項目。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 6119,
+      "CompletionTokens": 1004,
+      "CostUSD": 0.0228014,
+      "CostReported": true
+    }
+  }
+}

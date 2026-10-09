@@ -1,0 +1,106 @@
+{
+  "round": 0,
+  "sample_input": "我剛騎了 91 分鐘，要付多少？",
+  "acceptance_criteria": [
+    {
+      "text": "91 分鐘先進位為 10 個單位（100 分鐘）"
+    },
+    {
+      "text": "費用計算為前 3 單位 18 元、第 4～9 單位 24 元、第 10 單位 2 元，總費用為 44 元"
+    },
+    {
+      "text": "沒有套用 60 元上限（44 元未達上限）"
+    }
+  ],
+  "final_output": "租借 91 分鐘：計費單位 10；未封頂費用 44 元；實收費用 44 元。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a54d1e71-4aeb-49d8-ab28-db43e0dacfbb",
+    "run_id": "22a6a5ae-32b9-4f4c-9887-6525f5157855",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "這次回覆正確列出 10 個計費單位與實收 44 元，且未套用 60 元上限。總費用雖符合指定結果，但缺少各級距分項，無法確認完整的級距計算。",
+    "criterion_results": [
+      {
+        "criterion_id": "bfb8260f-fe7e-4fb6-b640-97a9bac248dc",
+        "text": "91 分鐘先進位為 10 個單位（100 分鐘）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將 91 分鐘計為 10 個計費單位，即進位至 100 分鐘。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "租借 91 分鐘：計費單位 10",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bf2f6b39-45df-4383-8120-b26e722ebbd1",
+        "text": "費用計算為前 3 單位 18 元、第 4～9 單位 24 元、第 10 單位 2 元，總費用為 44 元",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "回覆顯示總費用為 44 元，但沒有列出各級距的費用，也沒有可查核的計算過程，無法確認 18 元、24 元及 2 元的分項是否依指定級距計算。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "37646b80-d824-443a-887f-c7546c6d9076",
+        "text": "沒有套用 60 元上限（44 元未達上限）",
+        "result": "passed",
+        "source": "model",
+        "reason": "未封頂費用與實收費用同為 44 元，顯示沒有套用 60 元上限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "未封頂費用 44 元；實收費用 44 元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1523 input and 327 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

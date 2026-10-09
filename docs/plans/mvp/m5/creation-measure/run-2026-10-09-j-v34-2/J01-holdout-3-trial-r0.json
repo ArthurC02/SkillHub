@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "這次騎了 181 分鐘，幫我算費用。",
+  "acceptance_criteria": [
+    {
+      "text": "181 分鐘進位為 19 個單位"
+    },
+    {
+      "text": "最終費用為 60 元（累計 62 元超過上限，以 60 元計）"
+    }
+  ],
+  "final_output": "租借 1：時長 181 分鐘｜計費單位 19｜封頂前金額 62 元｜最終費用 **60 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "821fbdb0-590c-4e12-a179-828720799ad0",
+    "run_id": "07972de3-58b5-4d6e-8752-27e7e88b60f8",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項標準均達成：181 分鐘計為 19 個單位，封頂前 62 元，最終收費 60 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "33a72e75-e58a-443e-95c2-47b2a040cf0e",
+        "text": "181 分鐘進位為 19 個單位",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將 181 分鐘列為 19 個計費單位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "時長 181 分鐘｜計費單位 19",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a07756bf-7962-4ec8-901a-0ef201411955",
+        "text": "最終費用為 60 元（累計 62 元超過上限，以 60 元計）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆列出封頂前金額 62 元，最終費用為 60 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "封頂前金額 62 元｜最終費用 **60 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1527 input and 218 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 9,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

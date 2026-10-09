@@ -1,0 +1,168 @@
+{
+  "round": 1,
+  "sample_input": "請依規則計算以下每筆客製馬克杯訂單，列出單價、商品小計、急件加成與最後總價。\n29 個，非急件\n29 個，急件\n30 個，非急件\n30 個，急件\n31 個，急件",
+  "acceptance_criteria": [
+    {
+      "text": "試跑第 1 行（29 個、非急件）須列出單價 150 元、商品小計 4,350 元、急件加成 0 元、總價 4,350 元。"
+    },
+    {
+      "text": "試跑第 2 行（29 個、急件）須列出單價 150 元、商品小計 4,350 元、急件加成 870 元（4,350 × 20%）、總價 5,220 元。"
+    },
+    {
+      "text": "試跑第 3 行（30 個、非急件）須列出單價 135 元、商品小計 4,050 元、急件加成 0 元、總價 4,050 元。"
+    },
+    {
+      "text": "試跑第 4 行（30 個、急件）須列出單價 135 元、商品小計 4,050 元、急件加成 810 元（4,050 × 20%）、總價 4,860 元。"
+    },
+    {
+      "text": "試跑第 5 行（31 個、急件）須列出單價 135 元、商品小計 4,185 元、急件加成 837 元（4,185 × 20%）、總價 5,022 元。"
+    },
+    {
+      "text": "每筆試跑結果均須分別呈現適用單價、商品小計、急件加成及最後總價，並以新台幣元標示。"
+    }
+  ],
+  "final_output": "| 訂單 | 杯數 | 急件 | 單價 | 商品小計 | 急件加成 | 最後總價 |\n|---|---:|:---:|---:|---:|---:|---:|\n| 1 | 29 | 否 | NT$150 | NT$4,350 | NT$0 | **NT$4,350** |\n| 2 | 29 | 是 | NT$150 | NT$4,350 | NT$870 | **NT$5,220** |\n| 3 | 30 | 否 | NT$135 | NT$4,050 | NT$0 | **NT$4,050** |\n| 4 | 30 | 是 | NT$135 | NT$4,050 | NT$810 | **NT$4,860** |\n| 5 | 31 | 是 | NT$135 | NT$4,185 | NT$837 | **NT$5,022** |\n\n計算假設：急件加成為商品小計的 20%；金額四捨五入至整數新台幣元。零頭處理方式可依需求更改。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "dcefd11f-a374-4a7b-9086-08d474b19270",
+    "run_id": "6f28b840-076f-4810-a605-a354a17064a5",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆訂單的單價、商品小計、急件加成與最後總價均符合驗收標準，且皆以新台幣標示。",
+    "criterion_results": [
+      {
+        "criterion_id": "d0bbd786-66d5-49fb-8784-ec4cb16ccae4",
+        "text": "試跑第 1 行（29 個、非急件）須列出單價 150 元、商品小計 4,350 元、急件加成 0 元、總價 4,350 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆列出單價 NT$150、商品小計 NT$4,350、急件加成 NT$0、最後總價 NT$4,350。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 29 | 否 | NT$150 | NT$4,350 | NT$0 | **NT$4,350** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a7eb3ab7-c7c3-4100-9d19-5803cb6a0fd0",
+        "text": "試跑第 2 行（29 個、急件）須列出單價 150 元、商品小計 4,350 元、急件加成 870 元（4,350 × 20%）、總價 5,220 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆列出單價 NT$150、商品小計 NT$4,350、急件加成 NT$870、最後總價 NT$5,220。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 29 | 是 | NT$150 | NT$4,350 | NT$870 | **NT$5,220** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5d037940-b9bb-4553-be65-15e7910bad7b",
+        "text": "試跑第 3 行（30 個、非急件）須列出單價 135 元、商品小計 4,050 元、急件加成 0 元、總價 4,050 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆列出單價 NT$135、商品小計 NT$4,050、急件加成 NT$0、最後總價 NT$4,050。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 30 | 否 | NT$135 | NT$4,050 | NT$0 | **NT$4,050** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b85677fc-fc97-4786-aaca-357f02df1656",
+        "text": "試跑第 4 行（30 個、急件）須列出單價 135 元、商品小計 4,050 元、急件加成 810 元（4,050 × 20%）、總價 4,860 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆列出單價 NT$135、商品小計 NT$4,050、急件加成 NT$810、最後總價 NT$4,860。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 30 | 是 | NT$135 | NT$4,050 | NT$810 | **NT$4,860** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "35c46b4a-492c-45ad-8b5b-b69d8e6b2f24",
+        "text": "試跑第 5 行（31 個、急件）須列出單價 135 元、商品小計 4,185 元、急件加成 837 元（4,185 × 20%）、總價 5,022 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆列出單價 NT$135、商品小計 NT$4,185、急件加成 NT$837、最後總價 NT$5,022。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 5 | 31 | 是 | NT$135 | NT$4,185 | NT$837 | **NT$5,022** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "83fac6b8-1f5a-4bce-8956-243ec7f201b0",
+        "text": "每筆試跑結果均須分別呈現適用單價、商品小計、急件加成及最後總價，並以新台幣元標示。",
+        "result": "passed",
+        "source": "model",
+        "reason": "五筆訂單各自列出單價、商品小計、急件加成與最後總價，所有金額均以 NT$ 標示。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 訂單 | 杯數 | 急件 | 單價 | 商品小計 | 急件加成 | 最後總價 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 29 | 否 | NT$150 | NT$4,350 | NT$0 | **NT$4,350** |\n| 2 | 29 | 是 | NT$150 | NT$4,350 | NT$870 | **NT$5,220** |\n| 3 | 30 | 否 | NT$135 | NT$4,050 | NT$0 | **NT$4,050** |\n| 4 | 30 | 是 | NT$135 | NT$4,050 | NT$810 | **NT$4,860** |\n| 5 | 31 | 是 | NT$135 | NT$4,185 | NT$837 | **NT$5,022** |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1528 input and 543 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

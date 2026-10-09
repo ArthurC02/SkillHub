@@ -1,0 +1,154 @@
+{
+  "round": 1,
+  "sample_input": "請把以下資料改寫成給住戶的電梯維修通知。\n管理室提供的維修資訊：\n停用電梯：2號、4號\n停用期間：2026年11月3日上午9時至11月5日下午6時\n管理室分機：分機 123\n維修原因：控制面板老化\n施工安排：第一天先更換控制面板，第二天測試運轉\n提醒：施工期間請勿使用停用電梯；大樓大廳會張貼紙本公告",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸出清楚區分「通知本文」與本文之外的說明。"
+    },
+    {
+      "text": "通知本文不超過 3 句；句數以句末標點「。」「！」「？」判定。"
+    },
+    {
+      "text": "通知本文保留試跑資料中的停用電梯編號「2號、4號」、停用起訖時間「2026年11月3日上午9時至11月5日下午6時」及「分機 123」，且不改動其意義。"
+    },
+    {
+      "text": "若試跑輸出捨棄或合併了維修原因、施工安排或提醒等資訊，本文之外另有一句話說明實際捨棄或合併的內容；若未捨棄或合併，則不要求這句說明。"
+    },
+    {
+      "text": "輸出不加入試跑資料未提供的維修日期、聯絡方式或其他事實。"
+    }
+  ],
+  "final_output": "通知本文\n敬愛的住戶您好，因控制面板老化，2號、4號電梯將於2026年11月3日上午9時至11月5日下午6時停用維修。\n施工安排為第一天更換控制面板、第二天測試運轉；施工期間請勿使用停用電梯。\n如有疑問，請洽管理室分機 123；大樓大廳會張貼紙本公告。",
+  "artifacts": [
+    "answer.txt",
+    "notice.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "2be8e459-7cab-45a9-b6fd-ba69a9860e7c",
+    "run_id": "aa3608c7-c6c4-43f1-882a-cc7a7d0409c6",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "通知本文符合三句上限，保留了指定資訊，也未新增事實。但本文將施工安排與提醒合併後，未在本文之外說明，因此未滿足全部條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "744e9113-8be7-4f4d-8b02-f1d1da95582e",
+        "text": "試跑輸出清楚區分「通知本文」與本文之外的說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以「通知本文」標示公告範圍，標示之外沒有混入說明文字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "通知本文",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8e3c83a9-ec4d-4925-b01c-35f721e74b5d",
+        "text": "通知本文不超過 3 句；句數以句末標點「。」「！」「？」判定。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文共有三個句末標點「。」；依指定方式計算為三句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "敬愛的住戶您好，因控制面板老化，2號、4號電梯將於2026年11月3日上午9時至11月5日下午6時停用維修。\n施工安排為第一天更換控制面板、第二天測試運轉；施工期間請勿使用停用電梯。\n如有疑問，請洽管理室分機 123；大樓大廳會張貼紙本公告。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e8c418c1-fe73-4ab7-98df-4fde5dba4b26",
+        "text": "通知本文保留試跑資料中的停用電梯編號「2號、4號」、停用起訖時間「2026年11月3日上午9時至11月5日下午6時」及「分機 123」，且不改動其意義。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文保留了指定的電梯編號、停用起訖時間及管理室分機，意義未變。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2號、4號電梯將於2026年11月3日上午9時至11月5日下午6時停用維修。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "管理室分機 123",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "59b44942-1d0c-4841-88aa-b9d5de85b4a9",
+        "text": "若試跑輸出捨棄或合併了維修原因、施工安排或提醒等資訊，本文之外另有一句話說明實際捨棄或合併的內容；若未捨棄或合併，則不要求這句說明。",
+        "result": "failed",
+        "source": "model",
+        "reason": "本文將施工安排與勿用電梯的提醒合併在同一句，卻沒有在本文之外另以一句話說明這項合併。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "施工安排為第一天更換控制面板、第二天測試運轉；施工期間請勿使用停用電梯。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9a88508d-3a15-4c92-a544-067c5121acee",
+        "text": "輸出不加入試跑資料未提供的維修日期、聯絡方式或其他事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出的維修日期、聯絡方式及其他事實均來自試跑資料，未見新增事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "敬愛的住戶您好，因控制面板老化，2號、4號電梯將於2026年11月3日上午9時至11月5日下午6時停用維修。\n施工安排為第一天更換控制面板、第二天測試運轉；施工期間請勿使用停用電梯。\n如有疑問，請洽管理室分機 123；大樓大廳會張貼紙本公告。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 2 readable output file(s): answer.txt, notice.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1540 input and 1134 output tokens on skillhub-run; reported cost $0.0039 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

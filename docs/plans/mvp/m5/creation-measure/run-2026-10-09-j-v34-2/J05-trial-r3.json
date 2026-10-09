@@ -1,0 +1,142 @@
+{
+  "round": 3,
+  "sample_input": "請把以下管理室維修資訊改寫成給住戶的通知：\nA棟2號及3號電梯將於11月6日上午9時起至11月8日下午5時止停用進行保養。施工期間請改搭4號電梯。管理室分機 205。如有大型家具搬運，請提前一天聯絡管理室；施工期間可能有短暫噪音。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入中的通知本文不超過 3 句，編輯說明不計入本文句數。"
+    },
+    {
+      "text": "通知本文完整保留停用電梯編號「2號及3號」、起始日期「11月6日」及結束日期「11月8日」，並保留管理室分機「分機 205」。"
+    },
+    {
+      "text": "若通知本文省略或合併輸入中的資訊，輸出會在本文之外另附一句編輯說明，指出省略或合併的資訊。"
+    },
+    {
+      "text": "輸出不把未提供的日期、電梯編號或聯絡資訊寫成事實。"
+    }
+  ],
+  "final_output": "通知本文：\n敬愛的住戶您好，A棟2號及3號電梯將於11月6日上午9時起至11月8日下午5時止停用進行保養，施工期間請改搭4號電梯；如有大型家具搬運，請提前一天聯絡管理室（分機 205），施工期間可能有短暫噪音。\n\n修改紀錄：\n- 將電梯停用保養資訊與施工期間改搭4號電梯的安排合併於同一句。\n- 將大型家具搬運須提前一天聯絡管理室的提醒與管理室分機 205 合併呈現。\n- 將大型家具搬運提醒與施工期間可能有短暫噪音的提醒合併於同一句。",
+  "artifacts": [
+    "answer.txt",
+    "notification-body.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "feca967f-3e4d-4372-81c9-8a4660c92bf5",
+    "run_id": "c735945b-be2f-4973-bbb0-2309f67d40c9",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "通知本文符合句數限制，保留了指定資訊，也未增寫未提供的日期、電梯編號或聯絡資訊。合併內容雖有在本文之外說明，但編輯說明寫成三句，不符合「另附一句」的要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "df41a34c-38e5-459b-978e-2efb444843b2",
+        "text": "試跑輸入中的通知本文不超過 3 句，編輯說明不計入本文句數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文只有一句，未超過三句；修改紀錄在本文之外。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "敬愛的住戶您好，A棟2號及3號電梯將於11月6日上午9時起至11月8日下午5時止停用進行保養，施工期間請改搭4號電梯；如有大型家具搬運，請提前一天聯絡管理室（分機 205），施工期間可能有短暫噪音。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "79ef548a-9522-4cb8-b7a4-c8e7484f2605",
+        "text": "通知本文完整保留停用電梯編號「2號及3號」、起始日期「11月6日」及結束日期「11月8日」，並保留管理室分機「分機 205」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文保留了指定的電梯編號、起訖日期及管理室分機。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "A棟2號及3號電梯將於11月6日上午9時起至11月8日下午5時止停用進行保養，施工期間請改搭4號電梯；如有大型家具搬運，請提前一天聯絡管理室（分機 205）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4f7f00d7-bf39-4aea-975c-c22d08e66124",
+        "text": "若通知本文省略或合併輸入中的資訊，輸出會在本文之外另附一句編輯說明，指出省略或合併的資訊。",
+        "result": "failed",
+        "source": "model",
+        "reason": "本文合併了資訊，輸出也在本文之外指出合併內容，但修改紀錄共有三句，而非另附一句編輯說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 將電梯停用保養資訊與施工期間改搭4號電梯的安排合併於同一句。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 將大型家具搬運須提前一天聯絡管理室的提醒與管理室分機 205 合併呈現。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 將大型家具搬運提醒與施工期間可能有短暫噪音的提醒合併於同一句。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e157f2b3-8d1d-4295-9922-3c9f4a359b74",
+        "text": "輸出不把未提供的日期、電梯編號或聯絡資訊寫成事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知中的日期、電梯編號和聯絡資訊均與輸入相符，沒有增寫未提供的此類資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "敬愛的住戶您好，A棟2號及3號電梯將於11月6日上午9時起至11月8日下午5時止停用進行保養，施工期間請改搭4號電梯；如有大型家具搬運，請提前一天聯絡管理室（分機 205），施工期間可能有短暫噪音。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 2 readable output file(s): answer.txt, notification-body.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1645 input and 3992 output tokens on skillhub-run; reported cost $0.0064 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}
