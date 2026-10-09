@@ -37,7 +37,7 @@ func isDomainMemoryDistributed(file string) bool {
 }
 
 func domainMemoryDistributedFiles(root string) ([]string, error) {
-	listed, err := gitOutput(root, "ls-files", "-z", "--", domainMemoryPluginDir)
+	listed, err := gitOutput(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", domainMemoryPluginDir)
 	if err != nil {
 		return nil, err
 	}

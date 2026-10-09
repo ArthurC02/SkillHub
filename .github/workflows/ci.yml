@@ -29,6 +29,7 @@ jobs:
       pglite: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.pglite == 'true' }}
       images: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.images == 'true' }}
       deploy: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.deploy == 'true' }}
+      domain-memory: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.domain-memory == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -112,6 +113,9 @@ jobs:
               - 'tools/sec009/t8-node-probe.py'
               - 'tools/deploy/**'
               - 'tools/ci/deploy-config-check.sh'
+              - '.github/workflows/ci.yml'
+            domain-memory:
+              - '.claude/skills/domain-memory/**'
               - '.github/workflows/ci.yml'
 
   web:
@@ -422,6 +426,24 @@ jobs:
           bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Local driver ceilings' \
             bash "$GITHUB_WORKSPACE/tools/ci/with-delegated-cgroup.sh" \
             /tmp/localdrv.test -test.run Ceiling -test.v
+
+  domain-memory-windows:
+    needs: changes
+    if: needs.changes.outputs.domain-memory == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.10'
+      - name: Domain Memory plugin tests on Windows
+        shell: bash
+        run: >-
+          bash tools/ci/report-failure.sh 'Domain Memory plugin tests on Windows'
+          python -m unittest discover -s .claude/skills/domain-memory/scripts -p 'test_*.py'
 
   sandbox-windows:
     needs: changes

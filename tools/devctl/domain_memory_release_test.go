@@ -62,6 +62,23 @@ func TestAScriptWhoseNameOnlyContainsTestIsStillDistributed(t *testing.T) {
 	expectOneProblemContaining(t, domainMemoryReleaseProblems(repo.root), "still says version 0.1.0")
 }
 
+func TestANewFileNotYetCommittedIsAChange(t *testing.T) {
+	t.Parallel()
+	repo := releasedPlugin(t)
+	editPlugin(t, repo, "ruff.toml", "line-length = 100\n")
+	expectOneProblemContaining(t, domainMemoryReleaseProblems(repo.root), "still says version 0.1.0")
+}
+
+func TestAnIgnoredFileIsNotAChange(t *testing.T) {
+	t.Parallel()
+	repo := releasedPlugin(t)
+	writeTestFile(t, repo.root, ".gitignore", "__pycache__/\n")
+	editPlugin(t, repo, "scripts/__pycache__/registry.cpython-310.pyc", "bytecode")
+	if problems := domainMemoryReleaseProblems(repo.root); len(problems) != 0 {
+		t.Fatalf("problems = %q, want none", problems)
+	}
+}
+
 func TestEvalsAndPythonTestsAreNotDistributed(t *testing.T) {
 	t.Parallel()
 	repo := releasedPlugin(t)
