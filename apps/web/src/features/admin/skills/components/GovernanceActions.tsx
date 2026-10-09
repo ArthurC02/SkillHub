@@ -23,7 +23,7 @@ export function GovernanceActions({
       `「${skill.name}」的再散布判定已改為「${body.value === "allowed" ? "可以再散布" : body.value === "blocked" ? "禁止再散布" : "尚未判定"}」。`,
     ),
   );
-  const [verdict, setVerdict] = useState("blocked");
+  const [verdict, setVerdict] = useState("");
   const [licenseExpression, setLicenseExpression] = useState("");
   const [licenseSource, setLicenseSource] = useState("");
   const releasing = verdict === "allowed";
@@ -41,7 +41,10 @@ export function GovernanceActions({
           submitLabel="送出判定"
           pending={redistribution.isPending}
           error={redistribution.error}
-          ready={!releasing || (licenseExpression.trim() !== "" && licenseSource !== "")}
+          ready={
+            verdict !== "" &&
+            (!releasing || (licenseExpression.trim() !== "" && licenseSource !== ""))
+          }
           contextKey={`${skill.skill_id}:${verdict}:${licenseExpression.trim()}:${licenseSource}`}
           onSubmit={(note) => {
             onDraftChange();
@@ -63,6 +66,7 @@ export function GovernanceActions({
             <select
               id="admin-redistribution-value"
               value={verdict}
+              required
               onChange={(event) => {
                 onDraftChange();
                 setVerdict(event.target.value);
@@ -70,6 +74,9 @@ export function GovernanceActions({
               }}
               disabled={redistribution.isPending}
             >
+              <option value="" disabled>
+                選擇判定
+              </option>
               <option value="blocked">禁止再散布</option>
               <option value="unknown">尚未判定</option>
               <option value="allowed">可以再散布（要附授權證據）</option>

@@ -816,7 +816,7 @@ test("OPS-004: a different skill returned by refresh starts with empty drafts", 
 
   await click(button("重新整理治理狀態"));
   await waitFor(has("對「Other Tool」的動作"));
-  expect(field<HTMLSelectElement>("#admin-redistribution-value").value).toBe("blocked");
+  expect(field<HTMLSelectElement>("#admin-redistribution-value").value).toBe("");
   expect(field<HTMLTextAreaElement>("#admin-redistribution-note").value).toBe("");
   expect(container.querySelector("#admin-license-expression")).toBeNull();
   expect(field<HTMLInputElement>("#admin-takedown-reason").value).toBe("");
@@ -862,6 +862,31 @@ test("OPS-004: editing a governance query hides the prior skill and actions unti
   expect(new URLSearchParams(window.location.search).get("q")).toBe("other");
 });
 
+test.each(["unknown", "blocked", "allowed"] as const)(
+  "OPS-004: a %s redistribution state does not preselect the operator's next decision",
+  async (redistribution) => {
+    stub(true, (path) =>
+      path === "/admin/skills"
+        ? {
+            body: {
+              skills: [{ ...ADMIN_SKILLS.skills[0], redistribution }],
+            },
+            status: 200,
+          }
+        : undefined,
+    );
+    await mountAt("/admin/skills", { q: SKILL });
+    await waitFor(has("再散布判定"));
+    await click(field<HTMLElement>("#admin-skill-redistribution summary"));
+    expect(field<HTMLSelectElement>("#admin-redistribution-value").value).toBe("");
+    await type("#admin-redistribution-note", "legal review");
+    expect(button("送出判定").disabled).toBe(true);
+    expect(calls.some((call) => call.url.endsWith("/redistribution"))).toBe(false);
+    await type("#admin-redistribution-value", "blocked");
+    expect(button("送出判定").disabled).toBe(false);
+  },
+);
+
 test("OPS-004: releasing a skill needs licence evidence; blocking it does not", async () => {
   stub(true, (path, method) =>
     path === `/admin/skills/${SKILL}/redistribution` && method === "PUT"
@@ -872,6 +897,8 @@ test("OPS-004: releasing a skill needs licence evidence; blocking it does not", 
   await waitFor(has("再散布判定"));
   await click(field<HTMLElement>("#admin-skill-redistribution summary"));
   await type("#admin-redistribution-note", "legal cleared");
+  expect(button("送出判定").disabled).toBe(true);
+  await type("#admin-redistribution-value", "blocked");
   expect(button("送出判定").disabled).toBe(false);
 
   await type("#admin-redistribution-value", "allowed");
@@ -1141,6 +1168,7 @@ test("OPS-004: a confirmed redistribution remains visible when refreshing govern
   await waitFor(has("再散布判定"));
   await click(field<HTMLElement>("#admin-skill-redistribution summary"));
   await type("#admin-redistribution-note", "distribution blocked");
+  await type("#admin-redistribution-value", "blocked");
   await click(button("送出判定"));
 
   await waitFor(has("「PDF Summariser」的再散布判定已改為「禁止再散布」。"));

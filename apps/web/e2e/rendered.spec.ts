@@ -731,6 +731,11 @@ async function verifyAdminSkillActionsOnPhone(page: Page) {
   await choices.nth(1).focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("#admin-redistribution-value")).toBeVisible();
+  await expect(page.locator("#admin-redistribution-value")).toHaveValue("");
+  await page.locator("#admin-redistribution-note").fill("授權狀態已審查");
+  await expect(page.getByRole("button", { name: "送出判定" })).toBeDisabled();
+  await page.locator("#admin-redistribution-value").selectOption("blocked");
+  await expect(page.getByRole("button", { name: "送出判定" })).toBeEnabled();
   await expect(page.locator("#admin-takedown-consequences")).toBeVisible();
 }
 
@@ -1062,6 +1067,7 @@ test("再散布判定成功但治理狀態重讀失敗時保留完成結果", as
   await page.goto(`/admin/skills?q=${SKILL}`);
   await page.locator("#admin-skill-redistribution summary").click();
   await page.locator("#admin-redistribution-note").fill("禁止再散布");
+  await page.locator("#admin-redistribution-value").selectOption("blocked");
   await page.getByRole("button", { name: "送出判定" }).click();
 
   await expect(page.getByRole("alert")).toContainText("暫時無法讀取小工具");
