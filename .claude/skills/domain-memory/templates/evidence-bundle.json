@@ -7,17 +7,7 @@
   "scm_attestation": null,
   "counterfactual_check": null,
   "sources": [],
-  "test_results": [
-    {
-      "obligation_id": "<test-obligation-id>",
-      "status": "passed",
-      "evidence": "<command-or-ci-url>",
-      "command_profile": "<policy-command-profile>",
-      "exit_code": 0,
-      "output_sha256": "sha256:<output-digest>",
-      "finished_at": "<ISO-8601>"
-    }
-  ],
+  "test_results": [],
   "contract_checks": [],
   "architecture_checks": [],
   "security_checks": [],

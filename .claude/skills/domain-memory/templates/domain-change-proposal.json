@@ -38,15 +38,5 @@
   "registry_updates": [],
   "risk_flags": [],
   "open_questions": [],
-  "approvals": [
-    {
-      "role": "<required-role>",
-      "reviewer": "<reviewer-identity>",
-      "decision": "approved",
-      "approved_at": "<ISO-8601-timestamp>",
-      "scope": "<approved-scope>",
-      "proposal_revision": 1,
-      "base_registry_revision": null
-    }
-  ]
+  "approvals": []
 }

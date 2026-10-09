@@ -1515,6 +1515,14 @@ class DomainRegistryTest(unittest.TestCase):
             self.approve_and_apply(package)
         self.assertEqual(self.rule_ids(), ["order-total"])
 
+    def test_a_fresh_package_is_not_asked_for_test_results_before_they_exist(self) -> None:
+        package = self.repo / "fresh"
+        init_change_package(package)
+        errors = validate_change_package(package, self.repo / "memory", "submitted")
+        self.assertNotIn("each test result requires a passed obligation_id and evidence", errors)
+        self.assertNotIn("a test result references an unknown obligation", errors)
+        self.assertNotIn("an approval requires role, reviewer, approved_at, and scope", errors)
+
     def test_previewing_approved_lists_every_missing_piece_of_that_stage_at_once(self) -> None:
         package = self.draft_package()
         errors = validate_change_package(package, self.repo / "memory", "approved")
