@@ -7,7 +7,16 @@
     "registry_digest": "sha256:d905ca4d1d1adeec2e4274054eb507d6df7053973588eaa61ae9d77832faf316"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "b6ccbfb976410fff594092bdaabec79f974bb36b",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "2f415c043dabe39d09c67d66e87dcd2779c492f3",
+      "registry_digest": "sha256:d905ca4d1d1adeec2e4274054eb507d6df7053973588eaa61ae9d77832faf316"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "preflight-refuses-without-a-reader",
