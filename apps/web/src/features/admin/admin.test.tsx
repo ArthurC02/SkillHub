@@ -2289,6 +2289,25 @@ test("OPS-008: a range in the address is asked for, and a range the page does no
   expect(new Set(trendCalls())).toEqual(trendsFor(30));
 });
 
+test("OPS-008: exactly the queried range is marked as selected after navigation and fallback", async () => {
+  stub(true);
+  await mountAt("/admin/trends");
+  const selectedRange = () =>
+    Array.from(container.querySelectorAll('nav[aria-label="時間範圍"] a[aria-current="page"]')).map(
+      (link) => link.textContent,
+    );
+  await waitFor(() => selectedRange().join() === "30 天");
+  expect(selectedRange()).toEqual(["30 天"]);
+
+  await go("/admin/trends", { days: "7" });
+  await waitFor(() => selectedRange().join() === "7 天");
+  expect(selectedRange()).toEqual(["7 天"]);
+
+  await go("/admin/trends", { days: "8" });
+  await waitFor(() => selectedRange().join() === "30 天");
+  expect(selectedRange()).toEqual(["30 天"]);
+});
+
 test("OPS-008: the trends are asked for once, not again when the window regains focus", async () => {
   stub(true);
   await mountAt("/admin/trends");

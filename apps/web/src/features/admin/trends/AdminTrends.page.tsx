@@ -44,7 +44,13 @@ export function AdminTrends() {
     >
       <nav aria-label="時間範圍" className="category-nav">
         {TREND_DAYS.map((n) => (
-          <Link key={n} to="/admin/trends" search={{ days: n }} className="chip">
+          <Link
+            key={n}
+            to="/admin/trends"
+            search={{ days: n }}
+            className="chip"
+            aria-current={n === days ? "page" : undefined}
+          >
             {n} 天
           </Link>
         ))}
