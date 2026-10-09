@@ -298,16 +298,17 @@ func (state ExposureState) mayBeExposed() bool {
 	return state.Approved && state.Status == StatusPublished
 }
 
-func (s *Service) exposedNow(ctx context.Context, state ExposureState) (bool, *SearchSnapshot, error) {
+func (s *Service) exposedNow(ctx context.Context, state ExposureState) (bool, error) {
 	var skill SkillFacts
 	found := false
 	if state.mayBeExposed() {
 		var err error
 		if skill, found, err = s.ReadSkill(ctx, state.OwnerWorkspaceID, state.SkillID); err != nil {
-			return false, nil, err
+			return false, err
 		}
 	}
-	return s.exposedFor(ctx, state, skill, found)
+	exposed, _, err := s.exposedFor(ctx, state, skill, found)
+	return exposed, err
 }
 
 func (s *Service) exposedFor(ctx context.Context, state ExposureState, skill SkillFacts, skillFound bool) (bool, *SearchSnapshot, error) {
@@ -339,7 +340,7 @@ func (s *Service) ExposureQueue(ctx context.Context) ([]ExposureState, error) {
 		if !state.Approved {
 			continue
 		}
-		exposed, _, err := s.exposedNow(ctx, state)
+		exposed, err := s.exposedNow(ctx, state)
 		if err != nil {
 			return nil, err
 		}

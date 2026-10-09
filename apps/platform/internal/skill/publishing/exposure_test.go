@@ -24,7 +24,7 @@ func TestANonListableSnapshotIsNotExposed(t *testing.T) {
 		},
 	}
 
-	exposed, _, err := svc.exposedNow(context.Background(), state)
+	exposed, err := svc.exposedNow(context.Background(), state)
 	if err != nil {
 		t.Fatal(err)
 	}
