@@ -1,18 +1,18 @@
 {
   "format": "domain-change-proposal/v1",
-  "proposal_id": "operations-agent-spend-cap-override-r2",
+  "proposal_id": "operations-agent-spend-cap-override-r3",
   "proposer": "domain-memory-agent",
   "requirement_id": "operators-set-agent-spend-caps",
-  "status": "superseded",
+  "status": "submitted",
   "change_classification": "material",
-  "submitted_at": "2026-10-09T13:34:13.152739Z",
-  "verified_at": "2026-10-09T13:34:14.569049Z",
-  "finalized_at": "2026-10-09T13:34:49.227078Z",
-  "applied_at": "2026-10-09T13:35:02.445436Z",
+  "submitted_at": "2026-10-09T15:23:54.916331Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
   "proposal_revision": 1,
   "base_registry_revision": {
-    "observed_commit": "945526e7c62436da9141e8cd81c3db38b955680a",
-    "registry_digest": "sha256:eb106ef787b02a125c96aa5b588cb5ca7682b8b93910a91ce073f6766c5f569d"
+    "observed_commit": "26c58b59eb7d3f6c135e33317fb6ce9446855988",
+    "registry_digest": "sha256:d905ca4d1d1adeec2e4274054eb507d6df7053973588eaa61ae9d77832faf316"
   },
   "affected_contexts": [
     "operations"
@@ -115,21 +115,14 @@
       "role": "developer",
       "reviewer": "ArthurC",
       "decision": "approved",
-      "approved_at": "2026-10-09T13:34:13.849059Z",
+      "approved_at": "2026-10-09T15:24:12.209782Z",
       "scope": "Operations rule: an agent's effective daily spend cap is the operator override when set, else the defined default, bounded to (0, US$5] and kept across re-registration",
       "proposal_revision": 1,
       "base_registry_revision": {
-        "observed_commit": "945526e7c62436da9141e8cd81c3db38b955680a",
-        "registry_digest": "sha256:eb106ef787b02a125c96aa5b588cb5ca7682b8b93910a91ce073f6766c5f569d"
+        "observed_commit": "26c58b59eb7d3f6c135e33317fb6ce9446855988",
+        "registry_digest": "sha256:d905ca4d1d1adeec2e4274054eb507d6df7053973588eaa61ae9d77832faf316"
       }
     }
   ],
-  "applied_registry_revision": {
-    "observed_commit": "945526e7c62436da9141e8cd81c3db38b955680a",
-    "registry_digest": "sha256:d905ca4d1d1adeec2e4274054eb507d6df7053973588eaa61ae9d77832faf316"
-  },
-  "superseded_from_status": "applied",
-  "superseded_at": "2026-10-09T15:23:26.736379Z",
-  "superseded_reason": "The attested commit does not carry this Change Package, so its review never covered this proposal; re-reviewed as r3 with a signed commit that carries the package.",
-  "superseded_by": "operations-agent-spend-cap-override-r3"
+  "supersedes": "operations-agent-spend-cap-override-r2"
 }
