@@ -5,7 +5,7 @@ from .cli_parser import build_parser
 def main() -> int:
     try:
         return execute(build_parser().parse_args())
-    except ValueError as error:
+    except (ValueError, OSError) as error:
         print(f"ERROR: {error}")
         return 1
 

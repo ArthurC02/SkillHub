@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .common import MAX_JSON_BYTES, load_json, reject_duplicate_keys, writer_lock
+from .common import MAX_JSON_BYTES, load_json, registry_dir, reject_duplicate_keys, writer_lock
 
 MANIFEST_FORMAT = "domain-memory-audit/v1"
 
@@ -112,6 +112,11 @@ def _invalid(reason: str) -> dict[str, Any]:
 
 
 def verify(root: Path) -> dict[str, Any]:  # noqa: PLR0911
+    if not (registry_dir(root) / "manifest.json").is_file():
+        return _invalid(
+            f"no Domain Memory Registry at {root}; point --registry-root at the directory "
+            "that holds registry/manifest.json"
+        )
     try:
         events = read_events(root)
     except ValueError as error:

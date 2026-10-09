@@ -13,4 +13,4 @@ ruff check .
 
 `ruff.toml` pins every finding that predates the lint gate with a line-level `noqa`. A new finding fails, and so does a `noqa` that no longer suppresses anything: simplify a pinned function and its marker has to go in the same change.
 
-Any change to what ships — everything except `evals/` and `scripts/test_*.py` — raises `version` in `.claude-plugin/plugin.json`, so installed copies see it.
+Any change to what ships — everything except `evals/` and `scripts/test_*.py` — raises `version` in `.claude-plugin/plugin.json`, so installed copies see it, and adds an entry to `CHANGELOG.md`.

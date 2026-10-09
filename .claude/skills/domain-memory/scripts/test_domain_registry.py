@@ -1320,6 +1320,14 @@ class DomainRegistryTest(unittest.TestCase):
         path = self.write_record("attestation.json", {"provider": "git-signed-commit", "commit": "a" * 40, "status": "approved", "proposal_revision": 1, "base_registry_revision": proposal["base_registry_revision"]})
         self.assertEqual([], verify_scm(path, proposal))
 
+    def test_an_audit_chain_where_no_registry_exists_is_not_called_valid(self) -> None:
+        self.assertEqual(
+            ("valid", 0), tuple(verify_audit(self.repo / "memory")[key] for key in ("status", "events"))
+        )
+        result = verify_audit(self.repo / "nowhere")
+        self.assertEqual("invalid", result["status"])
+        self.assertIn("no Domain Memory Registry", result["reason"])
+
     def test_audit_chain_detects_tampering(self) -> None:
         append_audit(self.repo / "memory", {"operation": "first"})
         append_audit(self.repo / "memory", {"operation": "second"})
@@ -3333,6 +3341,14 @@ class DomainRegistryTest(unittest.TestCase):
             text=True,
             check=False,
         )
+
+    def test_a_file_system_error_ends_in_one_error_line_instead_of_a_traceback(self) -> None:
+        occupied = self.repo / "occupied.txt"
+        occupied.write_text("not a directory\n", encoding="utf-8")
+        result = self.run_cli("init-change-package", "--output", str(occupied))
+        self.assertEqual(1, result.returncode)
+        self.assertNotIn("Traceback", result.stdout + result.stderr)
+        self.assertTrue(result.stdout.startswith("ERROR: "), result.stdout)
 
     def test_the_module_entry_point_runs_the_command_instead_of_exiting_quietly(
         self,
