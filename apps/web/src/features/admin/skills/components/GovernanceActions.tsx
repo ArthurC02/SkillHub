@@ -121,7 +121,11 @@ export function GovernanceActions({
         </ActionForm>
       </details>
 
-      <TakedownAction skillId={skill.skill_id} onTakedown={onTakedown} />
+      <TakedownAction
+        skillId={skill.skill_id}
+        onTakedown={onTakedown}
+        onDraftChange={onDraftChange}
+      />
     </>
   );
 }
@@ -166,7 +170,15 @@ function RestrictionAction({
   );
 }
 
-function TakedownAction({ skillId, onTakedown }: { skillId: string; onTakedown: () => void }) {
+function TakedownAction({
+  skillId,
+  onTakedown,
+  onDraftChange,
+}: {
+  skillId: string;
+  onTakedown: () => void;
+  onDraftChange: () => void;
+}) {
   const takedown = useGovernanceAction(skillId, "takedown", onTakedown);
   const [takedownReason, setTakedownReason] = useState("");
 
@@ -183,7 +195,11 @@ function TakedownAction({ skillId, onTakedown }: { skillId: string; onTakedown: 
           <input
             id="admin-takedown-reason"
             value={takedownReason}
-            onChange={(event) => setTakedownReason(event.target.value)}
+            onChange={(event) => {
+              setTakedownReason(event.target.value);
+              onDraftChange();
+              takedown.reset();
+            }}
             readOnly={takedown.isPending}
           />
         </div>

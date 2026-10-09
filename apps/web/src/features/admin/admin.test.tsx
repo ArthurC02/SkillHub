@@ -813,6 +813,46 @@ test("OPS-004: changing a takedown reason requires a new confirmation", async ()
   });
 });
 
+test("OPS-004: a new takedown draft clears the previous governance success", async () => {
+  stub(true, (path, method) =>
+    path === `/admin/skills/${SKILL}/redistribution` && method === "PUT"
+      ? { body: {}, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  await click(field<HTMLElement>("#admin-skill-redistribution summary"));
+  await type("#admin-redistribution-note", "distribution blocked");
+  await type("#admin-redistribution-value", "blocked");
+  await click(button("送出判定"));
+  await waitFor(has("「PDF Summariser」的再散布判定已改為「禁止再散布」。"));
+
+  await click(field<HTMLElement>("#admin-skill-takedown summary"));
+  await type("#admin-takedown-reason", "New evidence");
+  expect(has("「PDF Summariser」的再散布判定已改為「禁止再散布」。")()).toBe(false);
+  expect(field<HTMLInputElement>("#admin-takedown-reason").value).toBe("New evidence");
+  expect(calls.some((call) => call.url.endsWith("/takedown"))).toBe(false);
+});
+
+test("OPS-004: editing a rejected takedown clears the old failure", async () => {
+  stub(true, (path, method) =>
+    path === `/admin/skills/${SKILL}/takedown` && method === "PUT"
+      ? { body: { error: "review required" }, status: 409 }
+      : undefined,
+  );
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  await click(field<HTMLElement>("#admin-skill-takedown summary"));
+  await type("#admin-takedown-reason", "Old evidence");
+  await click(button("下架"));
+  await click(button("確認下架"));
+  await waitFor(has("沒有完成，伺服器說：review required"));
+
+  await type("#admin-takedown-reason", "New evidence");
+  expect(has("沒有完成，伺服器說：review required")()).toBe(false);
+  expect(container.querySelector("#admin-takedown-scope")).toBeNull();
+});
+
 test("OPS-004: a failed governance refresh hides stale state and actions", async () => {
   let reads = 0;
   stub(true, (path) => {
