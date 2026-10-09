@@ -933,12 +933,13 @@ test("admin governance keeps actions tied to the submitted search on a phone", a
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test("下架完成後把焦點交給更新的治理結果", async ({ page }) => {
+test("下架完成後把焦點交給更新的治理結果", async ({ page }, testInfo) => {
   await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
   let takenDown = false;
   await page.route(`**/admin/skills/${SKILL}/takedown`, (route) => {
     takenDown = true;
-    return route.fulfill({ json: {} });
+    return route.fulfill({ json: { skill_id: SKILL, taken_down: true } });
   });
   await page.route(`**/admin/skills?q=${SKILL}`, (route) => {
     if (route.request().resourceType() === "document") return route.fallback();
@@ -959,12 +960,39 @@ test("下架完成後把焦點交給更新的治理結果", async ({ page }) => 
   await page.getByRole("button", { name: "下架", exact: true }).click();
   await page.getByRole("button", { name: "確認下架" }).click();
 
-  await expect(page.getByRole("status").filter({ hasText: "已下架" })).toBeVisible();
-  await expect(page.locator(".download-item").first().locator("strong").first()).toBeFocused();
+  await expect(page.getByText("已下架", { exact: true })).toBeVisible();
+  await expect(page.locator("#admin-takedown-result")).toHaveText("「PDF Summariser」已下架。");
+  await expect(page.locator("#admin-takedown-result")).toBeFocused();
+  await page.screenshot({ path: testInfo.outputPath("admin-takedown-result-phone.png") });
 
   await page.reload();
   await expect(page.getByRole("status").filter({ hasText: "已下架" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "小工具治理" })).toBeFocused();
+});
+
+test("下架成功但重讀失敗時仍保留這次的完成結果", async ({ page }) => {
+  await stubPlatform(page);
+  let takenDown = false;
+  await page.route(`**/admin/skills/${SKILL}/takedown`, (route) => {
+    takenDown = true;
+    return route.fulfill({ json: { skill_id: SKILL, taken_down: true } });
+  });
+  await page.route(`**/admin/skills?q=${SKILL}`, (route) => {
+    if (route.request().resourceType() === "document") return route.fallback();
+    return takenDown
+      ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
+      : route.fulfill({ json: ADMIN_SKILLS });
+  });
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/admin/skills?q=${SKILL}`);
+  await page.locator("#admin-skill-takedown summary").click();
+  await page.getByLabel("下架理由（必填，會寫進動作紀錄）").fill("授權問題");
+  await page.getByRole("button", { name: "下架", exact: true }).click();
+  await page.getByRole("button", { name: "確認下架" }).click();
+  await expect(page.getByRole("alert")).toContainText("暫時無法讀取小工具");
+  await expect(page.locator("#admin-takedown-result")).toHaveText("「PDF Summariser」已下架。");
+  await expect(page.locator("#admin-takedown-result")).toBeFocused();
+  await expect(page.locator("#admin-skill-takedown")).toHaveCount(0);
 });
 
 test("admin route focus highlights the heading without outlining the entire content column", async ({

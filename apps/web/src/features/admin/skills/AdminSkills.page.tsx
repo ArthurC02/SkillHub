@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useGovernance } from "../admin.service";
+import { useGovernance, type SkillGovernance } from "../admin.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
@@ -39,14 +39,42 @@ function SearchForm({ q, onDraftChange }: { q: string; onDraftChange: (draft: st
   );
 }
 
+function TakedownResult({
+  completed,
+  skills,
+}: {
+  completed?: { id: string; name: string };
+  skills?: SkillGovernance[];
+}) {
+  const result = useRef<HTMLParagraphElement>(null);
+  const show = Boolean(completed && skills?.some((skill) => skill.skill_id === completed.id));
+  useEffect(() => {
+    if (show) result.current?.focus();
+  }, [show]);
+  if (!show || !completed) return null;
+  return (
+    <p
+      id="admin-takedown-result"
+      ref={result}
+      tabIndex={-1}
+      className="notice notice-success"
+      role="status"
+    >
+      「{completed.name}」已下架。
+    </p>
+  );
+}
+
 function GovernanceResults({ q }: { q: string }) {
   const skills = useGovernance(q);
   const found = q !== "" && !skills.error ? (skills.data?.skills ?? []) : [];
+  const [completedTakedown, setCompletedTakedown] = useState<{ id: string; name: string }>();
 
   return (
     <>
       {q === "" && <p className="note">輸入 ID 或名稱，查詢所有工作區的小工具。</p>}
       {q !== "" && skills.isPending && <Loading what="小工具" />}
+      <TakedownResult completed={completedTakedown} skills={skills.data?.skills} />
       <ReadFailure error={skills.error} what="小工具" />
       {q !== "" && (
         <p className="note">
@@ -73,13 +101,22 @@ function GovernanceResults({ q }: { q: string }) {
             </p>
             <ul className="download-list">
               {found.map((skill) => (
-                <GovernanceRow key={skill.skill_id} skill={skill} single={found.length === 1} />
+                <GovernanceRow
+                  key={skill.skill_id}
+                  skill={skill}
+                  single={found.length === 1}
+                  focusWhenTakenDown={completedTakedown?.id !== skill.skill_id}
+                />
               ))}
             </ul>
           </>
         ))}
       {found.length === 1 && found[0].takedown_at === null && (
-        <GovernanceActions key={found[0].skill_id} skill={found[0]} />
+        <GovernanceActions
+          key={found[0].skill_id}
+          skill={found[0]}
+          onTakedown={() => setCompletedTakedown({ id: found[0].skill_id, name: found[0].name })}
+        />
       )}
     </>
   );
@@ -99,7 +136,7 @@ export function AdminSkills() {
       {queryChanged ? (
         <p className="note">查詢條件已變更；按「查詢」載入新小工具。</p>
       ) : (
-        <GovernanceResults q={q} />
+        <GovernanceResults key={`results:${q}`} q={q} />
       )}
     </AdminPage>
   );

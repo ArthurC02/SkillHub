@@ -7,7 +7,13 @@ import { ActionForm } from "../../components/ActionForm";
 const TAKEDOWN_SCOPE =
   "下架後這個小工具從目錄與搜尋消失，不能再下載或試跑；既有的試跑紀錄仍可追溯。後台目前不提供恢復，下架前請先確認。";
 
-export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
+export function GovernanceActions({
+  skill,
+  onTakedown,
+}: {
+  skill: SkillGovernance;
+  onTakedown: () => void;
+}) {
   const restriction = useGovernanceAction(skill.skill_id, "restriction");
   const redistribution = useGovernanceAction(skill.skill_id, "redistribution");
   const [verdict, setVerdict] = useState("blocked");
@@ -115,13 +121,13 @@ export function GovernanceActions({ skill }: { skill: SkillGovernance }) {
         </ActionForm>
       </details>
 
-      <TakedownAction skillId={skill.skill_id} />
+      <TakedownAction skillId={skill.skill_id} onTakedown={onTakedown} />
     </>
   );
 }
 
-function TakedownAction({ skillId }: { skillId: string }) {
-  const takedown = useGovernanceAction(skillId, "takedown");
+function TakedownAction({ skillId, onTakedown }: { skillId: string; onTakedown: () => void }) {
+  const takedown = useGovernanceAction(skillId, "takedown", onTakedown);
   const [takedownReason, setTakedownReason] = useState("");
 
   return (

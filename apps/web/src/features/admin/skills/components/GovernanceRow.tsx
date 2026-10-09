@@ -11,13 +11,22 @@ const REDISTRIBUTION: Record<string, string> = {
   generated: "平台生成",
 };
 
-export function GovernanceRow({ skill, single }: { skill: SkillGovernance; single: boolean }) {
+export function GovernanceRow({
+  skill,
+  single,
+  focusWhenTakenDown,
+}: {
+  skill: SkillGovernance;
+  single: boolean;
+  focusWhenTakenDown: boolean;
+}) {
   const title = useRef<HTMLElement>(null);
   const previousTakedown = useRef(skill.takedown_at);
   useEffect(() => {
-    if (!previousTakedown.current && skill.takedown_at) title.current?.focus();
+    if (focusWhenTakenDown && !previousTakedown.current && skill.takedown_at)
+      title.current?.focus();
     previousTakedown.current = skill.takedown_at;
-  }, [skill.takedown_at]);
+  }, [focusWhenTakenDown, skill.takedown_at]);
 
   return (
     <li className="download-item">

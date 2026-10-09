@@ -613,6 +613,104 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
   });
 });
 
+test("a completed takedown stays confirmed after its controls disappear and a later read fails", async () => {
+  const takenDown = {
+    ...ADMIN_SKILLS.skills[0],
+    takedown_at: "2026-09-11T10:00:00Z",
+    takedown_reason: "DMCA notice",
+  };
+  let reads = 0;
+  stub(true, (path, method) => {
+    if (path === `/admin/skills/${SKILL}/takedown` && method === "PUT") {
+      return { body: { skill_id: SKILL, taken_down: true }, status: 200 };
+    }
+    if (path !== "/admin/skills") return undefined;
+    reads += 1;
+    return reads === 3
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : { body: { skills: [reads === 1 ? ADMIN_SKILLS.skills[0] : takenDown] }, status: 200 };
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  await click(field<HTMLElement>("#admin-skill-takedown summary"));
+  await type("#admin-takedown-reason", "DMCA notice");
+  await click(button("下架"));
+  await click(button("確認下架"));
+  await waitFor(has("已下架"));
+  expect(has("「PDF Summariser」已下架。")()).toBe(true);
+  expect(document.activeElement).toBe(field<HTMLElement>("#admin-takedown-result"));
+  expect(container.querySelector("#admin-skill-takedown")).toBeNull();
+
+  await click(button("重新整理治理狀態"));
+  await waitFor(has("暫時無法讀取小工具"));
+  expect(has("「PDF Summariser」已下架。")()).toBe(true);
+  expect(has("已下架")()).toBe(true);
+  expect(container.querySelector("#admin-skill-takedown")).toBeNull();
+});
+
+test("a successful takedown remains identified when the first refresh fails", async () => {
+  let reads = 0;
+  stub(true, (path, method) => {
+    if (path === `/admin/skills/${SKILL}/takedown` && method === "PUT") {
+      return { body: { skill_id: SKILL, taken_down: true }, status: 200 };
+    }
+    if (path !== "/admin/skills") return undefined;
+    reads += 1;
+    return reads === 1
+      ? { body: ADMIN_SKILLS, status: 200 }
+      : { body: { error: "service unavailable" }, status: 503 };
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  await click(field<HTMLElement>("#admin-skill-takedown summary"));
+  await type("#admin-takedown-reason", "DMCA notice");
+  await click(button("下架"));
+  await click(button("確認下架"));
+  await waitFor(has("暫時無法讀取小工具"));
+  expect(has("「PDF Summariser」已下架。")()).toBe(true);
+  expect(document.activeElement).toBe(field<HTMLElement>("#admin-takedown-result"));
+  expect(container.querySelector("#admin-skill-takedown")).toBeNull();
+  expect(reads).toBe(2);
+});
+
+test("a new governance query does not inherit the previous takedown result", async () => {
+  let takenDown = false;
+  stub(true, (path, method) => {
+    if (path === `/admin/skills/${SKILL}/takedown` && method === "PUT") {
+      takenDown = true;
+      return { body: { skill_id: SKILL, taken_down: true }, status: 200 };
+    }
+    return path === "/admin/skills"
+      ? {
+          body: {
+            skills: [
+              takenDown
+                ? {
+                    ...ADMIN_SKILLS.skills[0],
+                    takedown_at: "2026-09-11T10:00:00Z",
+                    takedown_reason: "DMCA notice",
+                  }
+                : ADMIN_SKILLS.skills[0],
+            ],
+          },
+          status: 200,
+        }
+      : undefined;
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("對「PDF Summariser」的動作"));
+  await click(field<HTMLElement>("#admin-skill-takedown summary"));
+  await type("#admin-takedown-reason", "DMCA notice");
+  await click(button("下架"));
+  await click(button("確認下架"));
+  await waitFor(has("「PDF Summariser」已下架。"));
+
+  await go("/admin/skills", { q: "PDF" });
+  await waitFor(() => field<HTMLInputElement>("#admin-skill-q").value === "PDF");
+  await waitFor(has("下架於"));
+  expect(has("「PDF Summariser」已下架。")()).toBe(false);
+});
+
 test("OPS-004: governance search states how many skills were found", async () => {
   stub(true);
   await mountAt("/admin/skills", { q: SKILL });

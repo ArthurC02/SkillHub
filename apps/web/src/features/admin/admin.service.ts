@@ -193,12 +193,16 @@ export function useGovernance(q: string) {
 export function useGovernanceAction(
   skillId: string,
   action: "restriction" | "redistribution" | "takedown",
+  onComplete?: () => void,
 ) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ method, body }: { method: "PUT" | "DELETE"; body: Record<string, unknown> }) =>
       apiFetch<unknown>(`/admin/skills/${skillId}/${action}`, send(method, body)),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.skills }),
+    onSuccess: () => {
+      onComplete?.();
+      return queryClient.invalidateQueries({ queryKey: queryKeys.admin.skills });
+    },
   });
 }
 
