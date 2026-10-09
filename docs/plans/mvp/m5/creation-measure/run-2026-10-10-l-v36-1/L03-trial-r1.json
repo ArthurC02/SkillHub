@@ -1,0 +1,198 @@
+{
+  "round": 1,
+  "sample_input": "請把以下訂餐訊息整理成新臺幣報價表，列出品項、數量、單價、小計與總額，並標出待確認及不列入報價的項目。\n下週六要辦活動，迷你漢堡24個，每個85元；炸雞拼盤3份，一份420元；檸檬茶兩桶，一桶350元；紙餐盒30個，一個12元。水果盒要10盒，單價我晚點再確認。另有場地清潔費900元，我會直接付給場地方，不用算進你們的報價。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出表格會將迷你漢堡列為24個、單價新臺幣85元、小計新臺幣2,040元，炸雞拼盤列為3份、單價新臺幣420元、小計新臺幣1,260元。"
+    },
+    {
+      "text": "輸出表格會將檸檬茶列為2桶、單價新臺幣350元、小計新臺幣700元，並將紙餐盒列為30個、單價新臺幣12元、小計新臺幣360元；這些非清潔費項目均納入報價。"
+    },
+    {
+      "text": "場地清潔費會標示為客戶直接支付給場地方、不列入我方報價，且新臺幣900元不會加進總額。"
+    },
+    {
+      "text": "水果盒會標示為10盒、單價待確認，不會替它猜測單價或計入目前可計算的總額。"
+    },
+    {
+      "text": "輸出會以新臺幣列出暫估總額新臺幣4,360元，計算為2,040＋1,260＋700＋360＝4,360，並標明水果盒價格待確認。"
+    },
+    {
+      "text": "報價表會呈現品項、數量、單價和小計，並清楚區分待確認項目及不列入報價的場地清潔費。"
+    }
+  ],
+  "final_output": "## 新臺幣報價表\n\n| 品項 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 迷你漢堡 | 24 個 | 新臺幣 85 元 | 新臺幣 2,040 元 |\n| 炸雞拼盤 | 3 份 | 新臺幣 420 元 | 新臺幣 1,260 元 |\n| 檸檬茶 | 2 桶 | 新臺幣 350 元 | 新臺幣 700 元 |\n| 紙餐盒 | 30 個 | 新臺幣 12 元 | 新臺幣 360 元 |\n| 水果盒 | 10 盒 | **待確認** | **待確認** |\n\n**新臺幣暫估總額：4,360 元（含待確認單價品項；待確認品項未計入）**\n\n**不列入我方報價：**場地清潔費新臺幣 900 元，由客戶直接支付給場地方。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "379eb831-df47-46f7-8f30-dbc0d53c3189",
+    "run_id": "46cdc931-1338-4547-9b1a-f18c98c6853f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收條件均達成：表格列出正確的小計與新臺幣4,360元暫估總額，水果盒待確認，清潔費不列入報價。總額括註的「含待確認單價品項」與「待確認品項未計入」並列，措辭略有歧義。",
+    "criterion_results": [
+      {
+        "criterion_id": "78e19699-ae52-4bdb-8247-66bb123d6ecc",
+        "text": "輸出表格會將迷你漢堡列為24個、單價新臺幣85元、小計新臺幣2,040元，炸雞拼盤列為3份、單價新臺幣420元、小計新臺幣1,260元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "迷你漢堡與炸雞拼盤的數量、單價及小計均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 迷你漢堡 | 24 個 | 新臺幣 85 元 | 新臺幣 2,040 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 炸雞拼盤 | 3 份 | 新臺幣 420 元 | 新臺幣 1,260 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "71bf1ac1-48dc-41c3-bb0e-ca882197d52b",
+        "text": "輸出表格會將檸檬茶列為2桶、單價新臺幣350元、小計新臺幣700元，並將紙餐盒列為30個、單價新臺幣12元、小計新臺幣360元；這些非清潔費項目均納入報價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "檸檬茶與紙餐盒均列入報價表，數量、單價及小計正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 檸檬茶 | 2 桶 | 新臺幣 350 元 | 新臺幣 700 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 紙餐盒 | 30 個 | 新臺幣 12 元 | 新臺幣 360 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b7936285-5ed9-4760-9462-4c0a5b0d4b54",
+        "text": "場地清潔費會標示為客戶直接支付給場地方、不列入我方報價，且新臺幣900元不會加進總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "場地清潔費標明由客戶直接支付、不列入我方報價；暫估總額未加上該筆900元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**不列入我方報價：**場地清潔費新臺幣 900 元，由客戶直接支付給場地方。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**新臺幣暫估總額：4,360 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2a5d67af-2718-4abb-b46e-479ea2f6c6dd",
+        "text": "水果盒會標示為10盒、單價待確認，不會替它猜測單價或計入目前可計算的總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "水果盒列為10盒，單價及小計均標示待確認，並註明待確認品項未計入暫估總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 水果盒 | 10 盒 | **待確認** | **待確認** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "待確認品項未計入",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0130d80e-ec27-4ace-a2f3-a088d7407720",
+        "text": "輸出會以新臺幣列出暫估總額新臺幣4,360元，計算為2,040＋1,260＋700＋360＝4,360，並標明水果盒價格待確認。",
+        "result": "passed",
+        "source": "model",
+        "reason": "四項已知小計相加為新臺幣4,360元，輸出列出此暫估總額，水果盒價格標示待確認。總額括註中的「含待確認單價品項」措辭不清，但同時明示待確認品項未計入。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**新臺幣暫估總額：4,360 元（含待確認單價品項；待確認品項未計入）**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 水果盒 | 10 盒 | **待確認** | **待確認** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "19fc8310-c824-4304-a48f-aa35458c3a20",
+        "text": "報價表會呈現品項、數量、單價和小計，並清楚區分待確認項目及不列入報價的場地清潔費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "報價表具備品項、數量、單價與小計欄位；水果盒標示待確認，場地清潔費另行標示不列入報價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 品項 | 數量 | 單價 | 小計 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 水果盒 | 10 盒 | **待確認** | **待確認** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**不列入我方報價：**場地清潔費新臺幣 900 元，由客戶直接支付給場地方。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1558 input and 614 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 33,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,192 @@
+{
+  "round": 1,
+  "sample_input": "請把以下活動資訊寫成一則輕鬆親切的 Instagram 貼文。\n活動名稱：週末手捏陶體驗\n日期：2026年11月14日（星期六）\n時間：14:00–16:30\n地點：陶日子工作室，台北市大安區和平東路二段100號\n費用：NT$1,200／人（含材料與燒製）\n報名截止日：2026年11月10日（星期二）",
+  "acceptance_criteria": [
+    {
+      "text": "對 sample_input，輸出包含活動名稱「週末手捏陶體驗」，字詞與順序完全一致。"
+    },
+    {
+      "text": "對 sample_input，輸出包含日期「2026年11月14日（星期六）」，包括星期，且完整一致。"
+    },
+    {
+      "text": "對 sample_input，輸出包含時間「14:00–16:30」，符號與數字完整一致。"
+    },
+    {
+      "text": "對 sample_input，輸出包含地點「陶日子工作室，台北市大安區和平東路二段100號」，完整一致。"
+    },
+    {
+      "text": "對 sample_input，輸出包含費用「NT$1,200／人（含材料與燒製）」，完整一致。"
+    },
+    {
+      "text": "對 sample_input，輸出包含報名截止日「2026年11月10日（星期二）」，包括星期，且完整一致。"
+    },
+    {
+      "text": "對 sample_input，輸出是一則輕鬆親切、適合 Instagram 發布的繁體中文宣傳貼文，且沒有加入輸入未提供的活動事實。"
+    }
+  ],
+  "final_output": "週末一起玩陶吧！👐\n來場輕鬆的手捏陶體驗，用雙手感受陶土的樂趣，期待和你一起度過愉快的午後～\n\n活動名稱：週末手捏陶體驗\n日期：2026年11月14日（星期六）\n時間：14:00–16:30\n地點：陶日子工作室，台北市大安區和平東路二段100號\n費用：NT$1,200／人（含材料與燒製）\n報名截止日：2026年11月10日（星期二）\n\n想一起來玩陶嗎？歡迎在報名截止日前報名！",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "1f7c09a4-08a9-4c30-8445-20926e14c3ab",
+    "run_id": "f6883c2a-0203-4939-aaf4-b8a5bd2985c4",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七項驗收條件均已達成。貼文保留所有指定活動資訊，語氣輕鬆親切，未加入額外的活動事實。",
+    "criterion_results": [
+      {
+        "criterion_id": "451cbcd8-e0d2-4972-b925-a4065986cc00",
+        "text": "對 sample_input，輸出包含活動名稱「週末手捏陶體驗」，字詞與順序完全一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文完整保留活動名稱，字詞與順序一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "活動名稱：週末手捏陶體驗",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1dbd0416-9e56-4c68-a1a7-1edfb80605fa",
+        "text": "對 sample_input，輸出包含日期「2026年11月14日（星期六）」，包括星期，且完整一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文完整保留日期及星期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期：2026年11月14日（星期六）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "919f4d4d-1bb8-4879-beca-ffa98f53ecdd",
+        "text": "對 sample_input，輸出包含時間「14:00–16:30」，符號與數字完整一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文中的時間數字與符號完全一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "時間：14:00–16:30",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3dbf17f0-fcb8-4641-9067-45553881eb4d",
+        "text": "對 sample_input，輸出包含地點「陶日子工作室，台北市大安區和平東路二段100號」，完整一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文完整保留工作室名稱及地址。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "地點：陶日子工作室，台北市大安區和平東路二段100號",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4eb0c6de-b9f7-4029-9322-037d94fcd5db",
+        "text": "對 sample_input，輸出包含費用「NT$1,200／人（含材料與燒製）」，完整一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文完整保留費用及其包含項目。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "費用：NT$1,200／人（含材料與燒製）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8daccd85-bf5c-4d2e-8df3-3262d776cde0",
+        "text": "對 sample_input，輸出包含報名截止日「2026年11月10日（星期二）」，包括星期，且完整一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文完整保留報名截止日期及星期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "報名截止日：2026年11月10日（星期二）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "60a8837b-bb3e-4c0e-87b1-601709fbcc00",
+        "text": "對 sample_input，輸出是一則輕鬆親切、適合 Instagram 發布的繁體中文宣傳貼文，且沒有加入輸入未提供的活動事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文以繁體中文、親切的邀請語氣呈現，適合 Instagram；其餘文字只是體驗氛圍與報名邀請，沒有增添未提供的活動事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "週末一起玩陶吧！👐",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "來場輕鬆的手捏陶體驗，用雙手感受陶土的樂趣，期待和你一起度過愉快的午後～",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "想一起來玩陶嗎？歡迎在報名截止日前報名！",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1574 input and 1467 output tokens on skillhub-run; reported cost $0.0045 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

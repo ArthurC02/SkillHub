@@ -1,0 +1,248 @@
+{
+  "round": 1,
+  "sample_input": "請將以下五筆訂單各自整理成含出貨日期的出貨單，按指定價目計算並標出需確認之處：\n\n訂單：晴日商行\n出貨日期：2026-10-12\n蜂蜜 250ml：2 瓶\n蜂蜜 500ml：1 瓶\n蜂蠟蠟燭：3 支\n\n訂單：山野蜂坊\n蜂蜜 250ml：1 瓶\n\n訂單：河岸雜貨\n出貨日期：2026-02-30\n蜂蜜 500ml：2 瓶\n\n訂單：松林食品\n出貨日期：2026-10-14\n蜂蜜 250ml：2 瓶\n蜂蜜 250ml：3 瓶\n\n訂單：微光選物\n出貨日期：2026-10-15\n蜂蜜 500ml：-1 瓶",
+  "acceptance_criteria": [
+    {
+      "text": "訂單「晴日商行」須列出 250ml 2 瓶小計 360 元、500ml 1 瓶小計 320 元、蠟燭 3 支小計 270 元，訂單總額為 950 元。"
+    },
+    {
+      "text": "訂單「山野蜂坊」未提供出貨日期時，須採用本次試跑日期 2026-10-09，並計算 250ml 1 瓶總額 180 元。"
+    },
+    {
+      "text": "訂單「河岸雜貨」的 2026-02-30 須被指出為不存在的日期並要求確認；不得替它改日期或輸出依賴該訂單資料的總額。"
+    },
+    {
+      "text": "訂單「松林食品」同一 250ml 品項列出 2 瓶與 3 瓶時，須指出數量矛盾並要求確認，不得選定其中一個數量或計算該品項金額及訂單總額。"
+    },
+    {
+      "text": "訂單「微光選物」的 500ml 數量 -1 須被指出為負數並要求確認，不得計算該品項金額或訂單總額。"
+    },
+    {
+      "text": "輸出須將五筆訂單分開呈現，並在各訂單中清楚標示出貨日期；需確認的訂單要明確標示待確認。"
+    }
+  ],
+  "final_output": "### 訂單：晴日商行\n出貨日期：2026-10-12\n| 品項 | 數量 | 單價（元） | 小計（元） |\n|---|---:|---:|---:|\n| 蜂蜜 250ml | 2 瓶 | 180 | 360 |\n| 蜂蜜 500ml | 1 瓶 | 320 | 320 |\n| 蜂蠟蠟燭 | 3 支 | 90 | 270 |\n訂單總額：950 元\n\n### 訂單：山野蜂坊\n出貨日期：2026-10-09\n假設：缺少出貨日期，採用 2026-10-09；可用 --today 更改。\n| 品項 | 數量 | 單價（元） | 小計（元） |\n|---|---:|---:|---:|\n| 蜂蜜 250ml | 1 瓶 | 180 | 180 |\n訂單總額：180 元\n\n### 訂單：河岸雜貨\n出貨日期：2026-02-30\n需你確認：出貨日期「2026-02-30」不是有效日期，請你確認原日期。\n| 品項 | 數量 | 單價（元） | 小計（元） |\n|---|---:|---:|---:|\n| 蜂蜜 500ml | 2 瓶 | 320 | 640 |\n訂單總額：不計（有待確認資料）。\n\n### 訂單：松林食品\n出貨日期：2026-10-14\n| 品項 | 數量 | 單價（元） | 小計（元） |\n|---|---:|---:|---:|\n| 蜂蜜 250ml | 待確認：2 瓶、3 瓶 | 180 | 不計 |\n需你確認：蜂蜜 250ml 出現不同數量（2 瓶、3 瓶），請你確認正確數量。\n訂單總額：不計（有待確認資料）。\n\n### 訂單：微光選物\n出貨日期：2026-10-15\n| 品項 | 數量 | 單價（元） | 小計（元） |\n|---|---:|---:|---:|\n| 蜂蜜 500ml | -1 瓶 | 320 | 不計 |\n需你確認：蜂蜜 500ml 數量為負數（-1），請你確認數量。\n訂單總額：不計（有待確認資料）。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3a128ce6-9871-43d5-85e2-b0294708f6f8",
+    "run_id": "ebdfbf21-5b62-434d-a546-de9062793a34",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆出貨單分開呈現，日期與可確定的金額均符合要求。三筆有問題的訂單已要求確認，且未計算其訂單總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "980ba69d-960a-4ec7-9373-3b31aa9a11ea",
+        "text": "訂單「晴日商行」須列出 250ml 2 瓶小計 360 元、500ml 1 瓶小計 320 元、蠟燭 3 支小計 270 元，訂單總額為 950 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "晴日商行三項小計分別為 360、320、270 元，訂單總額為 950 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 蜂蜜 250ml | 2 瓶 | 180 | 360 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 蜂蜜 500ml | 1 瓶 | 320 | 320 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 蜂蠟蠟燭 | 3 支 | 90 | 270 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單總額：950 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f6da8ce9-3021-453c-bc54-1e2c221e3783",
+        "text": "訂單「山野蜂坊」未提供出貨日期時，須採用本次試跑日期 2026-10-09，並計算 250ml 1 瓶總額 180 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "山野蜂坊採用試跑日期 2026-10-09，250ml 一瓶的總額為 180 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "假設：缺少出貨日期，採用 2026-10-09；可用 --today 更改。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 蜂蜜 250ml | 1 瓶 | 180 | 180 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單總額：180 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2f501e16-1fb2-4f42-a85a-07225eaaf419",
+        "text": "訂單「河岸雜貨」的 2026-02-30 須被指出為不存在的日期並要求確認；不得替它改日期或輸出依賴該訂單資料的總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "河岸雜貨保留原填日期，指出該日期無效並要求確認；雖列出品項小計 640 元，但未計算訂單總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "需你確認：出貨日期「2026-02-30」不是有效日期，請你確認原日期。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單總額：不計（有待確認資料）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cfa99648-a4dd-4461-9eba-3b85acfcf46d",
+        "text": "訂單「松林食品」同一 250ml 品項列出 2 瓶與 3 瓶時，須指出數量矛盾並要求確認，不得選定其中一個數量或計算該品項金額及訂單總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "松林食品標出兩個互相矛盾的數量並要求確認，品項金額與訂單總額均未計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 蜂蜜 250ml | 待確認：2 瓶、3 瓶 | 180 | 不計 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "需你確認：蜂蜜 250ml 出現不同數量（2 瓶、3 瓶），請你確認正確數量。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單總額：不計（有待確認資料）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cfe1caa3-4bc3-42db-8a3e-301dbb9c4a3b",
+        "text": "訂單「微光選物」的 500ml 數量 -1 須被指出為負數並要求確認，不得計算該品項金額或訂單總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "微光選物的負數數量已標出並要求確認，品項金額與訂單總額均未計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 蜂蜜 500ml | -1 瓶 | 320 | 不計 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "需你確認：蜂蜜 500ml 數量為負數（-1），請你確認數量。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單總額：不計（有待確認資料）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3bcae13a-6a18-4cbe-a44a-324b26419cdf",
+        "text": "輸出須將五筆訂單分開呈現，並在各訂單中清楚標示出貨日期；需確認的訂單要明確標示待確認。",
+        "result": "passed",
+        "source": "model",
+        "reason": "五筆訂單各有獨立標題及出貨日期；日期無效、數量矛盾與負數的訂單均明確標示需確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 訂單：晴日商行\n出貨日期：2026-10-12",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### 訂單：山野蜂坊\n出貨日期：2026-10-09",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### 訂單：河岸雜貨\n出貨日期：2026-02-30",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### 訂單：松林食品\n出貨日期：2026-10-14",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### 訂單：微光選物\n出貨日期：2026-10-15",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "需你確認：出貨日期「2026-02-30」不是有效日期，請你確認原日期。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "需你確認：蜂蜜 250ml 出現不同數量（2 瓶、3 瓶），請你確認正確數量。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "需你確認：蜂蜜 500ml 數量為負數（-1），請你確認數量。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1525 input and 1400 output tokens on skillhub-run; reported cost $0.0039 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 42,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

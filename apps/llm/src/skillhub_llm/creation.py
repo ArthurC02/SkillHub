@@ -39,7 +39,7 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "skillhub-creation"
-PROMPT_VERSION = "creation-step/v35"
+PROMPT_VERSION = "creation-step/v36"
 CHECK_SCRIPT_PATH = "scripts/check_output.py"
 SHIPPED_SCRIPT_PATH = re.compile(r"^scripts/[^/]+\.py$")
 SHIPPED_REFERENCE_PATH = re.compile(r"^references/[^/]+\.md$")
@@ -59,9 +59,11 @@ OUTPUT_CHECK_SECTION = (
     "## Output check\n\n"
     "Before answering, write the answer to `answer.txt`, run\n"
     "`python scripts/{flags} answer.txt`\n"
-    "from the directory holding this SKILL.md, and revise the file until it prints OK; then "
+    "from the directory holding this SKILL.md, and revise the file until it prints OK, "
+    "first by shorter wording and the short forms of dates and times (11/14 14:30); then "
     "answer with the file's content and nothing else. When everything cannot fit, keep the "
-    "limit and add one line after the answer saying what was left out.\n"
+    "limit and add one line after the answer saying what was left out; never answer with a "
+    "note that it cannot fit instead of the text.\n"
 )
 OUTPUT_CAPS = {
     "--max-sentences": re.compile(
@@ -483,7 +485,8 @@ PHASE_INSTRUCTIONS = {
         "default it prints, next to the result, one line naming the value it assumed and the "
         "argument that changes it; the body's step runs it "
         "with `python scripts/<name>.py ...` from the directory holding this SKILL.md and "
-        "presents what it printed, and the body carries no worked answers — the script "
+        "presents what it printed, copying every line that names an assumed value word for "
+        "word into the answer, and the body carries no worked answers — the script "
         "produces them. When the request caps sentences, characters or items, or names facts "
         "that must appear, the body's last step writes the answer to a file, runs `python "
         "scripts/check_output.py` with the matching flags (--max-sentences, --max-chars, "

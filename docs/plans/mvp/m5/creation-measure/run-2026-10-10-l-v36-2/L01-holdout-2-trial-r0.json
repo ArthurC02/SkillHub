@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "預估列印 10 小時 1 分鐘，幫我算一下列印費。",
+  "acceptance_criteria": [
+    {
+      "text": "單件列印費為 1250 元"
+    },
+    {
+      "text": "不是 1200 元，也不是未進位算出的約 1202 元"
+    }
+  ],
+  "final_output": "1,250 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ae7641de-06f6-4abe-bd18-593440faf703",
+    "run_id": "7b8e11c6-e7c8-4827-8912-1fa921dfad85",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收條件均達成：單件列印費報價為 1,250 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "5bd5805f-c1be-4eac-a3d9-230ad60cc7f7",
+        "text": "單件列印費為 1250 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆的單件列印費為 1,250 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1,250 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d09bbe1c-54cf-46c7-be12-1b37c1d10f4b",
+        "text": "不是 1200 元，也不是未進位算出的約 1202 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終報價為 1,250 元，並非 1,200 元或未進位的約 1,202 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1,250 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1520 input and 269 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 8,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "round": 1,
+  "sample_input": "請分別計算以下四筆冷氣清洗報價，並列出原價小計、折扣、急件加成與總價。\n1) 分離式 1 台，非急件\n2) 窗型 1 台，急件\n3) 分離式 2 台、窗型 1 台，非急件\n4) 分離式 1 台、窗型 1 台，急件",
+  "acceptance_criteria": [
+    {
+      "text": "第 1 行是 1 台分離式、非急件；輸出原價小計 1,800 元、折扣 0 元、急件加成 0 元、總價 1,800 元。"
+    },
+    {
+      "text": "第 2 行是 1 台窗型、急件；輸出原價小計 1,200 元、折扣 0 元、急件加成 240 元、總價 1,440 元。"
+    },
+    {
+      "text": "第 3 行是 2 台分離式及 1 台窗型、非急件；按總台數 3 台計算，每台折 100 元，輸出原價小計 4,800 元、折扣 300 元、急件加成 0 元、總價 4,500 元。"
+    },
+    {
+      "text": "第 4 行是 1 台分離式及 1 台窗型、急件；因總台數只有 2 台而不折扣，輸出原價小計 3,000 元、折扣 0 元、急件加成 600 元、總價 3,600 元。"
+    }
+  ],
+  "final_output": "假設急件加成 20%，可用 --rush-rate 更改。  \n假設未註明急件者視為非急件。\n\n1. **分離式 1 台，非急件**\n   - 原價小計：1,800 元\n   - 折扣：0 元\n   - 急件加成：0 元\n   - **總價：1,800 元**\n\n2. **窗型 1 台，急件**\n   - 原價小計：1,200 元\n   - 折扣：0 元\n   - 急件加成：240 元\n   - **總價：1,440 元**\n\n3. **分離式 2 台、窗型 1 台，非急件**\n   - 原價小計：4,800 元\n   - 折扣：300 元\n   - 急件加成：0 元\n   - **總價：4,500 元**\n\n4. **分離式 1 台、窗型 1 台，急件**\n   - 原價小計：3,000 元\n   - 折扣：0 元\n   - 急件加成：600 元\n   - **總價：3,600 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8e8aadb9-7921-4eac-8492-9981bcc9c29c",
+    "run_id": "f93106cc-f188-47eb-91a6-9fd12e3871ed",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四筆報價的品項、原價小計、折扣、急件加成及總價均符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "7632064a-506d-4498-a9ba-17bc1a0c0d7e",
+        "text": "第 1 行是 1 台分離式、非急件；輸出原價小計 1,800 元、折扣 0 元、急件加成 0 元、總價 1,800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆列為分離式 1 台、非急件，四項金額均符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **分離式 1 台，非急件**\n   - 原價小計：1,800 元\n   - 折扣：0 元\n   - 急件加成：0 元\n   - **總價：1,800 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "88736285-ee73-4c78-b527-4a434d0d4339",
+        "text": "第 2 行是 1 台窗型、急件；輸出原價小計 1,200 元、折扣 0 元、急件加成 240 元、總價 1,440 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆列為窗型 1 台、急件，四項金額均符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. **窗型 1 台，急件**\n   - 原價小計：1,200 元\n   - 折扣：0 元\n   - 急件加成：240 元\n   - **總價：1,440 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "aeef35fa-bb5d-49a1-897e-fb6bb95cb3da",
+        "text": "第 3 行是 2 台分離式及 1 台窗型、非急件；按總台數 3 台計算，每台折 100 元，輸出原價小計 4,800 元、折扣 300 元、急件加成 0 元、總價 4,500 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆列出共 3 台冷氣，折扣 300 元，相當於每台折 100 元；其餘金額也符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. **分離式 2 台、窗型 1 台，非急件**\n   - 原價小計：4,800 元\n   - 折扣：300 元\n   - 急件加成：0 元\n   - **總價：4,500 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "97d740e1-8b98-4a45-a380-b403c670164e",
+        "text": "第 4 行是 1 台分離式及 1 台窗型、急件；因總台數只有 2 台而不折扣，輸出原價小計 3,000 元、折扣 0 元、急件加成 600 元、總價 3,600 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆列為分離式及窗型各 1 台、急件，未給予折扣，四項金額均符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. **分離式 1 台、窗型 1 台，急件**\n   - 原價小計：3,000 元\n   - 折扣：0 元\n   - 急件加成：600 元\n   - **總價：3,600 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1539 input and 599 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

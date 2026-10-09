@@ -1,0 +1,134 @@
+{
+  "round": 1,
+  "sample_input": "請把以下資料寫成不超過80字的LINE流感疫苗公告，保留全部指定資訊；若無法兼顧，依約定只輸出固定提示。\n日期：2026/11/3；時段：09:00-12:00；費用：800元；長者免費：65歲以上；地址：台北市中正區仁愛路1段2號；電話：02-2345-6789\n\n請把以下資料寫成不超過80字的LINE流感疫苗公告，保留全部指定資訊；若無法兼顧，依約定只輸出固定提示。\n日期：2026/11/3；時段：09:00-12:00；費用：800元；長者免費：65歲以上；地址：台北市中正區仁愛路仁愛路仁愛路仁愛路仁愛路仁愛路仁愛路仁愛路仁愛路仁愛路仁愛路仁愛路仁愛路仁愛路仁愛路1段2號；電話：02-2345-6789",
+  "acceptance_criteria": [
+    {
+      "text": "範例第 1 則的輸出是一則公告本文，保留原文日期 2026/11/3、時段 09:00-12:00、費用 800元、65歲以上免費、地址台北市中正區仁愛路1段2號及電話02-2345-6789，不漏掉或改動任何日期與數字。"
+    },
+    {
+      "text": "範例第 1 則的公告全文不超過 80 字，計算時包含標點與空白。"
+    },
+    {
+      "text": "範例第 2 則因完整地址及其他指定資訊無法在 80 字內完整保留，輸出恰為「資訊過長，無法在 80 字內完整公告」，不附其他內容。"
+    },
+    {
+      "text": "兩則輸出都不含額外說明、引號或字數統計，也不加入來源未提供的接種資訊。"
+    }
+  ],
+  "final_output": "日期2026/11/3 時段09:00-12:00 費用800元 長者免費65歲以上 地址台北市中正區仁愛路1段2號 電話02-2345-6789\n資訊過長，無法在 80 字內完整公告",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "92dac3ed-f5aa-489a-bc0c-9d1f40707c2d",
+    "run_id": "f7e978e5-e683-4754-aa57-6fabe53fc384",
+    "status": "completed",
+    "overall": "met",
+    "summary": "第 1 則完整保留指定資訊且未超過 80 字；第 2 則依約定只輸出固定提示。兩則均無額外內容。",
+    "criterion_results": [
+      {
+        "criterion_id": "69de736d-b760-4cc9-a528-43098bd6dc8c",
+        "text": "範例第 1 則的輸出是一則公告本文，保留原文日期 2026/11/3、時段 09:00-12:00、費用 800元、65歲以上免費、地址台北市中正區仁愛路1段2號及電話02-2345-6789，不漏掉或改動任何日期與數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 則保留了指定日期、時段、費用、長者免費條件、完整地址及電話，日期與數字均未改動。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期2026/11/3 時段09:00-12:00 費用800元 長者免費65歲以上 地址台北市中正區仁愛路1段2號 電話02-2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "07c322c9-ddd5-4b39-9964-9b10444d8923",
+        "text": "範例第 1 則的公告全文不超過 80 字，計算時包含標點與空白。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 則公告計入空白後共 73 字，未超過 80 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期2026/11/3 時段09:00-12:00 費用800元 長者免費65歲以上 地址台北市中正區仁愛路1段2號 電話02-2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dc21a120-09e5-4604-a8b8-db7409e1505f",
+        "text": "範例第 2 則因完整地址及其他指定資訊無法在 80 字內完整保留，輸出恰為「資訊過長，無法在 80 字內完整公告」，不附其他內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 則僅輸出指定的固定提示，沒有附加內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "資訊過長，無法在 80 字內完整公告",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "700e8b77-cf11-429a-9c7c-3bd62d5b6318",
+        "text": "兩則輸出都不含額外說明、引號或字數統計，也不加入來源未提供的接種資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩則輸出各占一行，沒有額外說明、引號、字數統計或來源未提供的接種資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期2026/11/3 時段09:00-12:00 費用800元 長者免費65歲以上 地址台北市中正區仁愛路1段2號 電話02-2345-6789",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "資訊過長，無法在 80 字內完整公告",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1559 input and 1033 output tokens on skillhub-run; reported cost $0.0041 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

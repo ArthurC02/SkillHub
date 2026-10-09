@@ -1,0 +1,100 @@
+{
+  "round": 0,
+  "sample_input": "切片軟體顯示預估列印 9 小時 50 分鐘，這件列印費多少？",
+  "acceptance_criteria": [
+    {
+      "text": "單件列印費為 1200 元"
+    },
+    {
+      "text": "沒有用未進位的 9 小時 50 分鐘計算（那樣會得到約 1180 元）"
+    }
+  ],
+  "final_output": "1200",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "55062e4a-ce90-4bd7-92e7-b90b4b851050",
+    "run_id": "f3598538-cf32-46cd-a4b6-b008978091f5",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此執行回覆的單件列印費為 1200 元；計算結果也不是未進位時的約 1180 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "f94a4bd2-bf65-4062-9423-a91ed3211604",
+        "text": "單件列印費為 1200 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆為 1200，符合單件列印費 1200 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1200",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "39012312-acda-4cbc-9968-78f59139ca36",
+        "text": "沒有用未進位的 9 小時 50 分鐘計算（那樣會得到約 1180 元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "執行列印費計算後得到 1200，而非以未進位時間計算所得的約 1180 元。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "\"result_summary\": \"1200\"",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "1200",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1508 input and 223 output tokens on skillhub-run; reported cost $0.0030 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

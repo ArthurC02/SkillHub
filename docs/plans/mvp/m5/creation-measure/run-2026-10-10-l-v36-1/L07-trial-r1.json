@@ -1,0 +1,134 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下資料撰寫補件通知信本文：\n客戶姓名：林小姐\n缺少的文件：2025年度扣繳憑單、銀行存摺封面影本\n補件期限：2026年10月20日",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入，輸出為繁體中文、禮貌正式的通知信本文，且不包含主旨、簽名或本文以外的說明。"
+    },
+    {
+      "text": "本文以「林小姐」作為稱呼，並逐項列出「2025年度扣繳憑單」及「銀行存摺封面影本」，順序與輸入一致。"
+    },
+    {
+      "text": "本文清楚寫出補件期限為「2026年10月20日」，不改寫或推算日期。"
+    },
+    {
+      "text": "本文不聲稱資料已收到、客戶已逾期，或加入輸入未提供的事實、聯絡資訊。"
+    }
+  ],
+  "final_output": "林小姐您好：\n\n為辦理相關作業，敬請您於2026年10月20日前提供以下文件：\n\n1. 2025年度扣繳憑單\n2. 銀行存摺封面影本\n\n謝謝您的協助。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "98a4f284-43df-48b8-b1dc-a420fc7eca0e",
+    "run_id": "c469ccdc-1d1f-42e6-9ae4-3fe075660840",
+    "status": "completed",
+    "overall": "met",
+    "summary": "試跑輸出符合全部四項驗收標準：通知信格式與語氣適當，稱呼、缺件順序及期限正確，且未加入不當聲稱或額外資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "06f378ad-46cc-4ab0-9835-85854a0c3bc3",
+        "text": "對試跑輸入，輸出為繁體中文、禮貌正式的通知信本文，且不包含主旨、簽名或本文以外的說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為繁體中文，語氣禮貌正式；全文僅有通知信本文，沒有主旨、簽名或額外說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林小姐您好：\n\n為辦理相關作業，敬請您於2026年10月20日前提供以下文件：\n\n1. 2025年度扣繳憑單\n2. 銀行存摺封面影本\n\n謝謝您的協助。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "da5b57be-c800-4221-9745-5e6b465ee4b5",
+        "text": "本文以「林小姐」作為稱呼，並逐項列出「2025年度扣繳憑單」及「銀行存摺封面影本」，順序與輸入一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文以林小姐為稱呼，並依輸入順序逐項列出兩份文件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林小姐您好：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 2025年度扣繳憑單\n2. 銀行存摺封面影本",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "97719a07-0ebb-4e7c-aa5a-a98d135f130f",
+        "text": "本文清楚寫出補件期限為「2026年10月20日」，不改寫或推算日期。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文直接寫明補件期限為2026年10月20日，未改寫或推算日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "敬請您於2026年10月20日前提供以下文件：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "85177e15-ce05-4ab5-b8a7-8b79f3872d9a",
+        "text": "本文不聲稱資料已收到、客戶已逾期，或加入輸入未提供的事實、聯絡資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "全文未聲稱資料已收到或客戶已逾期，也未加入輸入未提供的具體事實或聯絡資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林小姐您好：\n\n為辦理相關作業，敬請您於2026年10月20日前提供以下文件：\n\n1. 2025年度扣繳憑單\n2. 銀行存摺封面影本\n\n謝謝您的協助。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1483 input and 167 output tokens on skillhub-run; reported cost $0.0028 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

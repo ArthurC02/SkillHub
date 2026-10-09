@@ -1,0 +1,185 @@
+{
+  "round": 1,
+  "sample_input": "請把以下考試資訊寫成給考生的考前簡訊：\n考試日期：2026年11月18日（星期三）\n報到時間：上午8:10\n考場地點：台北市中正區衡陽路100號明德考場\n考生須攜帶：身分證、准考證\n交通：搭捷運至台大醫院站2號出口，步行約7分鐘。\n停車：考場不提供停車位，附近有收費停車場，步行約10分鐘。\n置物：考場不提供置物櫃，請勿攜帶大型行李。\n午餐：不供午餐，附近有便利商店。\n規定：手機須關機並放入包內；考試開始後不得入場；不得攜帶電子計算器。\n提醒：請預留安檢時間。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入，通知本文位於說明句之前，且以「。」「！」「？」結尾計算為 1 至 3 句；資訊處理說明另起一行，恰為 1 句。"
+    },
+    {
+      "text": "本文準確保留試跑輸入中的考試日期「2026年11月18日（星期三）」、報到時間「上午8:10」及考場地點「台北市中正區衡陽路100號明德考場」。"
+    },
+    {
+      "text": "本文明確提醒考生攜帶身分證和准考證。"
+    },
+    {
+      "text": "試跑輸入中的交通、停車、置物、午餐、規定及預留安檢時間資訊，各自都能在本文找到準確保留或合併後的內容；若有任何一項未在本文呈現，另行說明句必須點名該項被捨棄。"
+    },
+    {
+      "text": "若本文把相關資訊合併，另行說明句須如實指出合併了哪些資訊；不得把仍在本文中的資訊說成已捨棄，也不得漏報確實捨棄的資訊。"
+    },
+    {
+      "text": "輸出不添加試跑輸入未提供的考試安排、地點細節或規定。"
+    }
+  ],
+  "final_output": "考試日期：2026年11月18日（星期三），報到時間：上午8:10，考場地點：台北市中正區衡陽路100號明德考場；請攜帶身分證、准考證。\n交通：搭捷運至台大醫院站2號出口，步行約7分鐘；停車：考場不提供停車位，附近有收費停車場，步行約10分鐘；置物：考場不提供置物櫃，請勿攜帶大型行李；午餐：不供午餐，附近有便利商店；規定：手機須關機並放入包內；考試開始後不得入場；不得攜帶電子計算器；提醒：請預留安檢時間。\n資訊處理說明：交通、停車、置物、午餐、規定及安檢提醒合併於第二句，未捨棄其他資訊。",
+  "artifacts": [
+    "exam-reminder.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "b4be2a5e-f661-445f-972a-f304eb862cb9",
+    "run_id": "c0ee93b1-b479-4dd9-a816-317d531afbb4",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收標準均已達成。通知保留所有指定資訊，並以獨立的一句說明資訊合併方式。",
+    "criterion_results": [
+      {
+        "criterion_id": "1f23991b-38cc-4ffa-84f7-d2a62feb2125",
+        "text": "對試跑輸入，通知本文位於說明句之前，且以「。」「！」「？」結尾計算為 1 至 3 句；資訊處理說明另起一行，恰為 1 句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文在說明句之前，共兩句；資訊處理說明另起一行，且只有一句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "考試日期：2026年11月18日（星期三），報到時間：上午8:10，考場地點：台北市中正區衡陽路100號明德考場；請攜帶身分證、准考證。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "交通：搭捷運至台大醫院站2號出口，步行約7分鐘；停車：考場不提供停車位，附近有收費停車場，步行約10分鐘；置物：考場不提供置物櫃，請勿攜帶大型行李；午餐：不供午餐，附近有便利商店；規定：手機須關機並放入包內；考試開始後不得入場；不得攜帶電子計算器；提醒：請預留安檢時間。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "資訊處理說明：交通、停車、置物、午餐、規定及安檢提醒合併於第二句，未捨棄其他資訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "286ccabd-0da9-4246-b0cc-8097ef1ea8f7",
+        "text": "本文準確保留試跑輸入中的考試日期「2026年11月18日（星期三）」、報到時間「上午8:10」及考場地點「台北市中正區衡陽路100號明德考場」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文準確列出指定的考試日期、報到時間及考場地點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "考試日期：2026年11月18日（星期三），報到時間：上午8:10，考場地點：台北市中正區衡陽路100號明德考場",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cf5cb060-dbd7-4874-b6da-166f9688ca0b",
+        "text": "本文明確提醒考生攜帶身分證和准考證。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文明確提醒攜帶身分證和准考證。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請攜帶身分證、准考證。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2fb81708-b4bc-4d9b-bec9-f8801babce63",
+        "text": "試跑輸入中的交通、停車、置物、午餐、規定及預留安檢時間資訊，各自都能在本文找到準確保留或合併後的內容；若有任何一項未在本文呈現，另行說明句必須點名該項被捨棄。",
+        "result": "passed",
+        "source": "model",
+        "reason": "交通、停車、置物、午餐、各項規定及預留安檢時間的提醒均準確呈現在本文中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "交通：搭捷運至台大醫院站2號出口，步行約7分鐘；停車：考場不提供停車位，附近有收費停車場，步行約10分鐘；置物：考場不提供置物櫃，請勿攜帶大型行李；午餐：不供午餐，附近有便利商店；規定：手機須關機並放入包內；考試開始後不得入場；不得攜帶電子計算器；提醒：請預留安檢時間。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8ed3eaaf-103c-4ac3-8097-5bea55f0aea8",
+        "text": "若本文把相關資訊合併，另行說明句須如實指出合併了哪些資訊；不得把仍在本文中的資訊說成已捨棄，也不得漏報確實捨棄的資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "說明句如實指出第二句合併的六類資訊；這些資訊都仍在本文中，沒有錯報捨棄項目。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "交通：搭捷運至台大醫院站2號出口，步行約7分鐘；停車：考場不提供停車位，附近有收費停車場，步行約10分鐘；置物：考場不提供置物櫃，請勿攜帶大型行李；午餐：不供午餐，附近有便利商店；規定：手機須關機並放入包內；考試開始後不得入場；不得攜帶電子計算器；提醒：請預留安檢時間。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "資訊處理說明：交通、停車、置物、午餐、規定及安檢提醒合併於第二句，未捨棄其他資訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8b13a1f2-be62-4da1-9377-5f6064196e86",
+        "text": "輸出不添加試跑輸入未提供的考試安排、地點細節或規定。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出的考試安排、地點細節和規定均來自試跑輸入，未見新增內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "考試日期：2026年11月18日（星期三），報到時間：上午8:10，考場地點：台北市中正區衡陽路100號明德考場；請攜帶身分證、准考證。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "交通：搭捷運至台大醫院站2號出口，步行約7分鐘；停車：考場不提供停車位，附近有收費停車場，步行約10分鐘；置物：考場不提供置物櫃，請勿攜帶大型行李；午餐：不供午餐，附近有便利商店；規定：手機須關機並放入包內；考試開始後不得入場；不得攜帶電子計算器；提醒：請預留安檢時間。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): exam-reminder.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1544 input and 1872 output tokens on skillhub-run; reported cost $0.0042 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 33,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,200 @@
+{
+  "round": 0,
+  "sample_input": "活動資訊：『秋季拉坯體驗日』，2026 年 11 月 7 日（星期六），分兩場：10:00–12:00 與 14:00–16:00。地點：河岸陶坊，高雄市鹽埕區大勇路 28 號。費用每人 800 元，含材料與一件作品燒製。報名到 10 月 31 日截止。",
+  "acceptance_criteria": [
+    {
+      "text": "活動名稱「秋季拉坯體驗日」完整出現"
+    },
+    {
+      "text": "日期 11 月 7 日且標明星期六"
+    },
+    {
+      "text": "兩場時間 10:00–12:00 與 14:00–16:00 都出現"
+    },
+    {
+      "text": "地點河岸陶坊與地址高雄市鹽埕區大勇路 28 號完整出現"
+    },
+    {
+      "text": "費用每人 800 元"
+    },
+    {
+      "text": "報名截止日 10 月 31 日"
+    },
+    {
+      "text": "沒有編造與提供資訊不同的日期、時間、地址或金額"
+    }
+  ],
+  "final_output": "秋天一起來體驗拉坯，享受親手創作的樂趣吧 🍂\n\n『秋季拉坯體驗日』\n\n日期｜2026 年 11 月 7 日（星期六）  \n場次｜分兩場：10:00–12:00 與 14:00–16:00。  \n地點｜河岸陶坊，高雄市鹽埕區大勇路 28 號。  \n費用｜每人 800 元，含材料與一件作品燒製。  \n報名截止｜報名到 10 月 31 日截止。  \n報名方式｜未提供\n\n把握截止日，記得完成報名，期待和你一起享受拉坯時光！\n\n#陶藝 #拉坯 #陶藝體驗 #手作時光 #高雄活動",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ff549e68-7916-4983-811a-b40a3f9498cb",
+    "run_id": "9a51b376-8385-46fd-bae0-9846e5c6c861",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七項驗收標準均已達成。貼文完整呈現活動名稱、日期與星期、兩場時間、地點、費用及報名截止日，且未見與提供資訊不符的日期、時間、地址或金額。",
+    "criterion_results": [
+      {
+        "criterion_id": "e2e27eb3-0ac0-42a5-b2d4-91e946bacd5b",
+        "text": "活動名稱「秋季拉坯體驗日」完整出現",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文完整寫出活動名稱。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "『秋季拉坯體驗日』",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "afc74089-e70a-4c35-905b-687c75665e1b",
+        "text": "日期 11 月 7 日且標明星期六",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文標明 11 月 7 日為星期六。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期｜2026 年 11 月 7 日（星期六）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "eaebae1b-2d2c-40c4-a0db-b0f3ea5a6c61",
+        "text": "兩場時間 10:00–12:00 與 14:00–16:00 都出現",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩場時間均完整出現。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "場次｜分兩場：10:00–12:00 與 14:00–16:00。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4983d798-bac4-4318-a880-ecd14e3aae0c",
+        "text": "地點河岸陶坊與地址高雄市鹽埕區大勇路 28 號完整出現",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文完整列出陶坊名稱與地址。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "地點｜河岸陶坊，高雄市鹽埕區大勇路 28 號。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fd335248-a1a1-4af4-bb32-927dce1d9018",
+        "text": "費用每人 800 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文載明費用為每人 800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "費用｜每人 800 元，含材料與一件作品燒製。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "98187321-7201-4f55-b6ec-958960110d2b",
+        "text": "報名截止日 10 月 31 日",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文載明報名於 10 月 31 日截止。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "報名截止｜報名到 10 月 31 日截止。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "405d4f19-0265-48f4-8c20-24bc0332ede2",
+        "text": "沒有編造與提供資訊不同的日期、時間、地址或金額",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文中的日期、場次時間、地址和金額均與提供資訊一致，未見編造或相互矛盾的資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期｜2026 年 11 月 7 日（星期六）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "場次｜分兩場：10:00–12:00 與 14:00–16:00。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "地點｜河岸陶坊，高雄市鹽埕區大勇路 28 號。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "費用｜每人 800 元，含材料與一件作品燒製。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "報名截止｜報名到 10 月 31 日截止。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1489 input and 883 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

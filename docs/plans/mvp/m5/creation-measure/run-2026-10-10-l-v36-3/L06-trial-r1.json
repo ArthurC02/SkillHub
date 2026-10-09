@@ -1,0 +1,148 @@
+{
+  "round": 1,
+  "sample_input": "請把以下接種資訊寫成一則不超過 80 字的 LINE 公告，只輸出公告本文。\n接種資訊：日期 2026/11/05；時段 09:00-12:00；費用 500元；滿65歲長者免費；地址 台北市中正區忠孝東路1段10號；電話 02-2345-6789",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸出須與「流感疫苗｜日期2026/11/05｜時段09:00-12:00｜費用500元｜滿65歲長者免費｜地址台北市中正區忠孝東路1段10號｜電話02-2345-6789」一致，完整保留日期、時段、費用、免費年齡、地址及電話。"
+    },
+    {
+      "text": "試跑公告全文（含標點與空白）恰為 80 字，不超過上限。"
+    },
+    {
+      "text": "試跑輸出只包含公告本文，不包含前言、額外說明或字數統計。"
+    },
+    {
+      "text": "試跑輸出中的日期、時段、費用、免費年齡及電話數字，均與輸入逐項一致，沒有遺漏或改動。"
+    },
+    {
+      "text": "試跑輸出中的地址文字與輸入一致，沒有遺漏或改動。"
+    }
+  ],
+  "final_output": "流感疫苗｜日期2026/11/05｜時段09:00-12:00｜費用500元｜滿65歲長者免費｜地址台北市中正區忠孝東路1段10號｜電話02-2345-6789",
+  "artifacts": [
+    "announcement.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "a7387064-4984-4aa4-b0a2-33ba6fc1b55f",
+    "run_id": "d75aa587-02a7-4b51-add0-7e3f00b2e4f1",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收條件均已達成。最終輸出與指定公告一致，全文恰為 80 字，且只包含公告本文。",
+    "criterion_results": [
+      {
+        "criterion_id": "c75baf38-32eb-4da9-99d2-d946182e3911",
+        "text": "試跑輸出須與「流感疫苗｜日期2026/11/05｜時段09:00-12:00｜費用500元｜滿65歲長者免費｜地址台北市中正區忠孝東路1段10號｜電話02-2345-6789」一致，完整保留日期、時段、費用、免費年齡、地址及電話。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出與指定公告逐字一致，完整保留所有接種資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "流感疫苗｜日期2026/11/05｜時段09:00-12:00｜費用500元｜滿65歲長者免費｜地址台北市中正區忠孝東路1段10號｜電話02-2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "36bfe02e-4e78-4930-9bae-6a5678964206",
+        "text": "試跑公告全文（含標點與空白）恰為 80 字，不超過上限。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終公告含標點共 80 字，未超過上限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "流感疫苗｜日期2026/11/05｜時段09:00-12:00｜費用500元｜滿65歲長者免費｜地址台北市中正區忠孝東路1段10號｜電話02-2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0c244c79-929a-4092-9462-11089f6272f6",
+        "text": "試跑輸出只包含公告本文，不包含前言、額外說明或字數統計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有公告本文，沒有前言、額外說明或字數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "流感疫苗｜日期2026/11/05｜時段09:00-12:00｜費用500元｜滿65歲長者免費｜地址台北市中正區忠孝東路1段10號｜電話02-2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f931394a-0450-415d-8640-30b823adfde4",
+        "text": "試跑輸出中的日期、時段、費用、免費年齡及電話數字，均與輸入逐項一致，沒有遺漏或改動。",
+        "result": "passed",
+        "source": "model",
+        "reason": "日期、時段、費用、長者免費年齡及電話數字均與輸入一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期2026/11/05｜時段09:00-12:00｜費用500元｜滿65歲長者免費｜地址台北市中正區忠孝東路1段10號｜電話02-2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ce1fa6e9-38e2-4be0-a426-b5ee9059997e",
+        "text": "試跑輸出中的地址文字與輸入一致，沒有遺漏或改動。",
+        "result": "passed",
+        "source": "model",
+        "reason": "地址文字與輸入一致，沒有遺漏或改動。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "台北市中正區忠孝東路1段10號",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): announcement.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1546 input and 963 output tokens on skillhub-run; reported cost $0.0040 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "round": 0,
+  "sample_input": "A 同事貼的：500ml 蜂蜜 10 瓶、250ml 蜂蜜 5 瓶，出貨日 2026-03-12。\nB 同事貼的：500ml 蜂蜜 15 瓶、蜂蠟蠟燭 4 支，出貨日 2026-03-12。\n兩段是同一張訂單，幫我整理出貨單算總額。",
+  "acceptance_criteria": [
+    {
+      "text": "指出 500ml 蜂蜜出現 10 瓶與 15 瓶兩個不同的數量"
+    },
+    {
+      "text": "請使用者確認哪一個數量正確"
+    },
+    {
+      "text": "沒有自行選定 10 瓶或 15 瓶當作最終數量"
+    },
+    {
+      "text": "沒有把依賴該數量的金額當作確定結果輸出（500ml 蜂蜜小計 3200 元或 4800 元、訂單總額 4460 元或 6060 元）；若並列「若 10 瓶…、若 15 瓶…」且明講待確認前不是最終結果，不算違反"
+    },
+    {
+      "text": "若有列出不受矛盾影響的小計或其合計，數字須正確（250ml 蜂蜜 5 瓶 900 元、蜂蠟蠟燭 4 支 360 元、兩者合計 1260 元）"
+    }
+  ],
+  "final_output": "同一張訂單\n客戶：未提供\n出貨日期：2026-03-12\n蜂蜜 250ml：5 瓶；單價：180 元/瓶\n小計：900 元\n蜂蜜 500ml：25 瓶；單價：320 元/瓶\n小計：8000 元\n蜂蠟蠟燭：4 支；單價：90 元/支\n小計：360 元\n總額：9260 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "22562937-b05a-4815-8f5a-6ea679eda6e6",
+    "run_id": "b5e1fa26-3638-4ed1-b60e-1eed729dd400",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "兩項不受數量矛盾影響的小計正確，且沒有選 10 瓶或 15 瓶作為最終數量。但回覆未指出或請使用者確認矛盾，反而將數量合為 25 瓶，並把據此計算的金額列為確定結果。",
+    "criterion_results": [
+      {
+        "criterion_id": "b6d31185-5714-4812-b561-fbd27b3721ad",
+        "text": "指出 500ml 蜂蜜出現 10 瓶與 15 瓶兩個不同的數量",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆將 500ml 蜂蜜列為 25 瓶，沒有指出原訊息分別寫了 10 瓶與 15 瓶。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "蜂蜜 500ml：25 瓶；單價：320 元/瓶",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e8bf1e64-1efe-40c5-933c-1ee34eeb179a",
+        "text": "請使用者確認哪一個數量正確",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆直接列出 25 瓶及總額，沒有請使用者確認 10 瓶或 15 瓶何者正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "蜂蜜 500ml：25 瓶；單價：320 元/瓶",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總額：9260 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e019d2d9-591c-481a-bb4a-e96a5693f5ed",
+        "text": "沒有自行選定 10 瓶或 15 瓶當作最終數量",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆沒有選定 10 瓶或 15 瓶作為最終數量；它改列 25 瓶，但這也未處理原有矛盾。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "蜂蜜 500ml：25 瓶；單價：320 元/瓶",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0c6ee9a6-8712-402b-9c18-3fc92ac0dd93",
+        "text": "沒有把依賴該數量的金額當作確定結果輸出（500ml 蜂蜜小計 3200 元或 4800 元、訂單總額 4460 元或 6060 元）；若並列「若 10 瓶…、若 15 瓶…」且明講待確認前不是最終結果，不算違反",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆把依賴 500ml 蜂蜜數量的小計 8000 元及訂單總額 9260 元當作確定結果輸出，沒有註明待確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "小計：8000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總額：9260 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f1c89f5d-f521-4c14-96cd-b0c73b7ffdd1",
+        "text": "若有列出不受矛盾影響的小計或其合計，數字須正確（250ml 蜂蜜 5 瓶 900 元、蜂蠟蠟燭 4 支 360 元、兩者合計 1260 元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "不受矛盾影響的兩項小計正確：250ml 蜂蜜 5 瓶為 900 元，蜂蠟蠟燭 4 支為 360 元；回覆未列兩者合計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "蜂蜜 250ml：5 瓶；單價：180 元/瓶\n小計：900 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "蜂蠟蠟燭：4 支；單價：90 元/支\n小計：360 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1619 input and 3791 output tokens on skillhub-run; reported cost $0.0061 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 35,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

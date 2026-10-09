@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請按列計算各列單件列印費，依相同順序只回覆金額，每列一個。\n00:01\n10:00\n10:01\n23:01\n30:01",
+  "acceptance_criteria": [
+    {
+      "text": "Sample 第 1 行 00:01 向上進位為 0.5 小時，輸出 60 元。"
+    },
+    {
+      "text": "Sample 第 2 行 10:00 正好 10 小時，輸出 1200 元。"
+    },
+    {
+      "text": "Sample 第 3 行 10:01 向上進位為 10.5 小時，費用為 10×120＋0.5×100＝1250 元。"
+    },
+    {
+      "text": "Sample 第 4 行 23:01 向上進位為 23.5 小時，未封頂費用為 10×120＋13.5×100＝2550 元，故輸出上限 2500 元。"
+    },
+    {
+      "text": "Sample 第 5 行 30:01 向上進位為 30.5 小時，未封頂費用為 10×120＋20×100＋0.5×70＝3235 元，故輸出上限 2500 元。"
+    },
+    {
+      "text": "輸出依 Sample 輸入順序逐行列出五個金額，且不包含計算過程或額外文字。"
+    }
+  ],
+  "final_output": "60\n1200\n1250\n2500\n2500",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4ed936b9-90dc-4e13-a322-24fd53eb1523",
+    "run_id": "046be57e-30a1-4edb-8bad-062fd20da5a1",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆報價均符合指定金額；最終回覆也符合逐行且僅列金額的格式。",
+    "criterion_results": [
+      {
+        "criterion_id": "511df650-0513-42e4-a15b-2b45049785a6",
+        "text": "Sample 第 1 行 00:01 向上進位為 0.5 小時，輸出 60 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 行輸出為 60，符合 00:01 的報價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "60\n1200\n1250\n2500\n2500",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fb39e33c-5c36-4624-9c95-f333e8bc63bf",
+        "text": "Sample 第 2 行 10:00 正好 10 小時，輸出 1200 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 行輸出為 1200，符合 10:00 的報價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "60\n1200\n1250\n2500\n2500",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5b5275c6-a931-4024-a94f-d670731e41df",
+        "text": "Sample 第 3 行 10:01 向上進位為 10.5 小時，費用為 10×120＋0.5×100＝1250 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 行輸出為 1250，符合 10:01 的報價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "60\n1200\n1250\n2500\n2500",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1044a4d4-85f4-4245-88f6-4a87ad8b4928",
+        "text": "Sample 第 4 行 23:01 向上進位為 23.5 小時，未封頂費用為 10×120＋13.5×100＝2550 元，故輸出上限 2500 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 行輸出為封頂金額 2500，符合 23:01 的報價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "60\n1200\n1250\n2500\n2500",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4696a63d-95dd-4b3b-9eb8-bcb72ea6f497",
+        "text": "Sample 第 5 行 30:01 向上進位為 30.5 小時，未封頂費用為 10×120＋20×100＋0.5×70＝3235 元，故輸出上限 2500 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 行輸出為封頂金額 2500，符合 30:01 的報價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "60\n1200\n1250\n2500\n2500",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1631875d-8064-4d2c-90a8-5e8a4ab072fa",
+        "text": "輸出依 Sample 輸入順序逐行列出五個金額，且不包含計算過程或額外文字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆依輸入順序逐行列出五個金額，沒有計算過程或額外文字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "60\n1200\n1250\n2500\n2500",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1528 input and 203 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

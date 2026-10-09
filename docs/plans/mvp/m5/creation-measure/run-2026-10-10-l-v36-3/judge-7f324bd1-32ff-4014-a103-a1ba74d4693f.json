@@ -1,0 +1,164 @@
+{
+  "request": {
+    "RunID": "7f324bd1-32ff-4014-a103-a1ba74d4693f",
+    "EvaluationID": "d8463b72-a423-4ff0-ad5f-9ce297a62a7f",
+    "Skill": {
+      "Name": "ceramics-event-instagram-post",
+      "Summary": "將陶藝工作室活動資訊整理成輕鬆親切、可直接使用的繁體中文 Instagram 宣傳貼文，並附上 hashtag 與報名行動呼籲。當使用者貼上活動資料並要求撰寫活動貼文時使用。"
+    },
+    "UserPrompt": "請把以下活動資訊寫成一則輕鬆親切的 Instagram 宣傳貼文，並附上 hashtag 與報名行動呼籲：\n活動名稱：秋日手捏陶杯體驗\n日期：2026年11月14日（星期六）\n時間：14:00–16:30\n地點：青禾陶藝工作室｜台北市大安區和平東路二段88號\n費用：每人 NT$1,200\n報名截止日：2026年11月7日",
+    "Criteria": [
+      {
+        "ID": "b371d159-8351-456f-b2a3-494c75ed17b1",
+        "Text": "對試跑範例，輸出是一則可直接發布的繁體中文 Instagram 活動貼文，語氣輕鬆親切。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d74e7151-d4ca-4a74-bb71-d79a28242e71",
+        "Text": "對試跑範例，貼文完整且原樣包含活動名稱「秋日手捏陶杯體驗」、日期「2026年11月14日（星期六）」、時間「14:00–16:30」、地點「青禾陶藝工作室｜台北市大安區和平東路二段88號」、費用「每人 NT$1,200」、報名截止日「2026年11月7日」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b06eca83-fbb8-4a6a-9141-d47c9565623e",
+        "Text": "對試跑範例，貼文附有相關 hashtag 和明確的報名行動呼籲；不得捏造報名連結、聯絡方式或其他未提供的活動資訊。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "🍂 秋天一起來捏陶吧！  \n歡迎參加「秋日手捏陶杯體驗」，一起享受秋日陶藝時光✨\n\n📅 日期：2026年11月14日（星期六）  \n🕑 時間：14:00–16:30  \n📍 地點：青禾陶藝工作室｜台北市大安區和平東路二段88號  \n💰 費用：每人 NT$1,200  \n📝 報名截止日：2026年11月7日\n\n記得把握時間，在報名截止日前完成報名，期待和你一起度過秋日陶藝時光！\n\n#秋日手捏陶杯體驗 #手捏陶 #陶藝體驗 #陶藝 #手作時光 #台北陶藝",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "0593bc40-585a-4574-8303-f4d52fca9d41",
+          "OccurredAt": "2026-10-09T23:05:04.759Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"ceramics-event-instagram-post\", \"skill_version_id\": \"ed7881e9-a021-486d-8159-b5524209a70d\"}"
+        },
+        {
+          "TraceEventID": "0cea703d-87cc-4a7b-a0d1-be0f6e8fd8e4",
+          "OccurredAt": "2026-10-09T23:05:04.775Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"ceramics-event-instagram-post\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 17, \"invocation_id\": \"call_7brIjtLoMo4qotBc45a7nWWa\", \"result_summary\": \"Launching skill: ceramics-event-instagram-post\"}"
+        },
+        {
+          "TraceEventID": "575a5d3e-f18e-480d-8cb2-7f600e6e79d7",
+          "OccurredAt": "2026-10-09T23:05:10.933Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"🍂 秋天一起來捏陶吧！  \\n歡迎參加「秋日手捏陶杯體驗」，一起享受秋日陶藝時光✨\\n\\n📅 日期：2026年11月14日（星期六）  \\n🕑 時間：14:00–16:30  \\n📍 地點：青禾陶藝工作室｜台北市大安區和平東路二段88號  \\n💰 費用：每人 NT$1,200  \\n📝 報名截止日：2026年11月7日\\n\\n記得把握時間，在報名截止日前完成報名，期待和你一起度過秋日陶藝時光！\\n\\n#秋日手捏陶杯體驗 #手捏陶 #陶藝體驗 #陶藝 #手作時光 #台北陶藝\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "a0a4972a-c5ae-466b-bff2-58b30bcc943c",
+          "OccurredAt": "2026-10-09T23:05:11.135Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"🍂 秋天一起來捏陶吧！  \\n歡迎參加「秋日手捏陶杯體驗」，一起享受秋日陶藝時光✨\\n\\n📅 日期：2026年11月14日（星期六）  \\n🕑 時間：14:00–16:30  \\n📍 地點：青禾陶藝工作室｜台北市大安區和平東路二段88號  \\n💰 費用：每人 NT$1,200  \\n📝 報名截止日：2026年11月7日\\n\\n記得把握時間，在報名截止日前完成報名，期待和你一起度過秋日陶藝時光！\\n\\n#秋日手捏陶杯體驗 #手捏陶 #陶藝體驗 #陶藝 #手作時光 #台北陶藝\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "dae8ebf1-e1f1-4c79-9248-85b0f97dd192",
+          "OccurredAt": "2026-10-09T23:05:15.198Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.003026075, \"cost_source\": \"gateway\", \"duration_ms\": 12796, \"input_tokens\": 1489, \"token_source\": \"result\", \"output_tokens\": 585, \"cache_read_input_tokens\": 16610, \"cache_write_input_tokens\": 18839}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "b371d159-8351-456f-b2a3-494c75ed17b1",
+        "Result": "passed",
+        "Reason": "輸出為可直接發布的繁體中文 Instagram 貼文，開場語氣輕鬆親切。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "🍂 秋天一起來捏陶吧！"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "歡迎參加「秋日手捏陶杯體驗」，一起享受秋日陶藝時光✨"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d74e7151-d4ca-4a74-bb71-d79a28242e71",
+        "Result": "passed",
+        "Reason": "貼文原樣包含指定的活動名稱、日期、時間、地點、費用及報名截止日。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "秋日手捏陶杯體驗"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026年11月14日（星期六）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "14:00–16:30"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "青禾陶藝工作室｜台北市大安區和平東路二段88號"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "每人 NT$1,200"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026年11月7日"
+          }
+        ]
+      },
+      {
+        "CriterionID": "b06eca83-fbb8-4a6a-9141-d47c9565623e",
+        "Result": "passed",
+        "Reason": "貼文附有相關 hashtag，並呼籲讀者在截止日前完成報名；未見捏造的報名連結、聯絡方式或其他活動資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "記得把握時間，在報名截止日前完成報名，期待和你一起度過秋日陶藝時光！"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "#秋日手捏陶杯體驗 #手捏陶 #陶藝體驗 #陶藝 #手作時光 #台北陶藝"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "這則貼文語氣輕鬆親切，完整保留指定活動資訊，並附上報名呼籲與相關 hashtag；三項驗收標準均已達成。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2747,
+      "CompletionTokens": 676,
+      "CostUSD": 0.011091400000000001,
+      "CostReported": true
+    }
+  }
+}

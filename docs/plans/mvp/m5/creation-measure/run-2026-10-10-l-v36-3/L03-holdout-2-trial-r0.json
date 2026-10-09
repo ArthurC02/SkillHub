@@ -1,0 +1,100 @@
+{
+  "round": 0,
+  "sample_input": "老闆～下午茶要訂：水果塔 8 份，單價 180 啦，馬卡龍三盒一盒 360，咖啡 20 杯一杯 55，場地清潔費 500 我自己會去付場地",
+  "acceptance_criteria": [
+    {
+      "text": "餐點總額為 3620 元"
+    },
+    {
+      "text": "總額不含場地清潔費 500 元（不是 4120 元）"
+    }
+  ],
+  "final_output": "## 下午茶報價\n\n| 品項 | 數量 | 單價（新台幣） | 小計（新台幣） |\n|---|---:|---:|---:|\n| 水果塔 | 8 份 | NT$180 | NT$1,440 |\n| 馬卡龍 | 3 盒 | NT$360 | NT$1,080 |\n| 咖啡 | 20 杯 | NT$55 | NT$1,100 |\n\n**報價總額：NT$3,620**\n\n備註：場地清潔費 NT$500 由您直接支付給場地方，不列入本報價。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1b2afc19-ec5a-40d1-8559-99af286a709c",
+    "run_id": "ca24b9a5-ae22-4024-b03f-576d3824f1a5",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項標準均已達成：餐點報價為新台幣 3,620 元，未計入 500 元場地清潔費。",
+    "criterion_results": [
+      {
+        "criterion_id": "e6c9cc1f-dabb-4ddc-886a-2e4a550b3797",
+        "text": "餐點總額為 3620 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "報價列出的餐點小計為 1,440、1,080 和 1,100 元，合計 3,620 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**報價總額：NT$3,620**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d4a3d55d-a6a2-4709-b36a-97292f97b7ae",
+        "text": "總額不含場地清潔費 500 元（不是 4120 元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "報價明確將 500 元場地清潔費排除，由客戶另行支付；報價總額為 3,620 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**報價總額：NT$3,620**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "備註：場地清潔費 NT$500 由您直接支付給場地方，不列入本報價。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1540 input and 442 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

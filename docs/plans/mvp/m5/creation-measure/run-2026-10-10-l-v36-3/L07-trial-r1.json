@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下資料撰寫給客戶的補件通知信本文。\n客戶姓名：林雅婷\n缺少文件：2025年度損益表、銀行存摺封面\n補件期限：2026/10/20",
+  "acceptance_criteria": [
+    {
+      "text": "對下方試跑輸入，輸出為繁體中文通知信本文，不包含主旨。"
+    },
+    {
+      "text": "本文以「林雅婷」作為稱呼對象。"
+    },
+    {
+      "text": "缺件清單逐項包含「2025年度損益表」及「銀行存摺封面」，且沒有漏列或改寫成不同文件。"
+    },
+    {
+      "text": "本文清楚列出補件期限「2026/10/20」，格式與輸入一致。"
+    },
+    {
+      "text": "本文語氣禮貌、正式，且不添加輸入未提供的客戶資訊、補件方式或其他事實。"
+    }
+  ],
+  "final_output": "林雅婷您好：\n\n為辦理相關作業，尚缺以下文件，敬請協助提供：\n\n1. 2025年度損益表\n2. 銀行存摺封面\n\n補件期限：2026/10/20\n\n再麻煩您於期限前補齊上述文件，謝謝。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "d475194a-c06e-4a3e-a8a8-9b1f7fea766f",
+    "run_id": "c27330af-81aa-4b0e-9884-cd663ff92432",
+    "status": "completed",
+    "overall": "met",
+    "summary": "試跑輸出符合全部五項標準：信件以繁體中文撰寫、稱呼正確，並準確列出缺件與期限；語氣禮貌正式，沒有主旨或額外具體資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "f3dcc4a7-4d28-4839-8ae1-93d17e0dbfef",
+        "text": "對下方試跑輸入，輸出為繁體中文通知信本文，不包含主旨。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為繁體中文補件通知信本文，未包含主旨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林雅婷您好：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d7a555c8-c8d3-4213-8eff-53869a8c7233",
+        "text": "本文以「林雅婷」作為稱呼對象。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文以林雅婷為稱呼對象。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林雅婷您好：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1fac7c6e-3b95-4fc2-b937-1bcd9a1c8a21",
+        "text": "缺件清單逐項包含「2025年度損益表」及「銀行存摺封面」，且沒有漏列或改寫成不同文件。",
+        "result": "passed",
+        "source": "model",
+        "reason": "缺件清單逐項列出指定的兩份文件，名稱與輸入一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 2025年度損益表",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 銀行存摺封面",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d18943a4-deff-4132-9262-6b8578d86949",
+        "text": "本文清楚列出補件期限「2026/10/20」，格式與輸入一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文清楚列出補件期限，日期格式與輸入一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "補件期限：2026/10/20",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4317db13-c509-4870-99a7-8267038ad289",
+        "text": "本文語氣禮貌、正式，且不添加輸入未提供的客戶資訊、補件方式或其他事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "用語正式禮貌，未加入未提供的客戶資訊、補件方式或其他具體事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "尚缺以下文件，敬請協助提供：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "再麻煩您於期限前補齊上述文件，謝謝。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1486 input and 199 output tokens on skillhub-run; reported cost $0.0028 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

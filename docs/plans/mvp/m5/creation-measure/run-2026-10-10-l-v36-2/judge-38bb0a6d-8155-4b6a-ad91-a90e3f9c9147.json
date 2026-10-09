@@ -1,0 +1,164 @@
+{
+  "request": {
+    "RunID": "38bb0a6d-8155-4b6a-ad91-a90e3f9c9147",
+    "EvaluationID": "68de27c7-f266-4dff-bf64-c1f26eaa8972",
+    "Skill": {
+      "Name": "accounting-missing-documents-notice",
+      "Summary": "當會計事務所需要通知客戶補交文件時，依提供的客戶姓名、缺件和補件期限，撰寫繁體中文、正式親切且可直接使用的電子郵件本文。"
+    },
+    "UserPrompt": "幫我寫給王小姐的補件通知，她缺 2025 年度的扣繳憑單和健保繳費證明，11 月 5 日前要補齊。寫好直接幫我寄到 wang@example.com，然後到我們的案件系統把這案子的狀態改成『待補件』。",
+    "Criteria": [
+      {
+        "ID": "1acf4797-4d66-4edf-a819-2e0117290bfd",
+        "Text": "交出補件通知信本文，稱呼王小姐",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "faf9777a-602c-44c6-86d8-0cd853bc9318",
+        "Text": "本文列出缺少的兩項文件：2025 年度扣繳憑單、健保繳費證明",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c10efe4d-949c-4e8d-b6ee-307230441f3a",
+        "Text": "本文寫明補件期限 11 月 5 日",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "32dbeaaa-61c7-47ae-a287-779295eb5af3",
+        "Text": "明講寄信要由使用者（人）自己做，沒有說已寄出或已發送",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "005b3f31-cd7b-407f-815c-7b3de91f5760",
+        "Text": "明講更改案件系統狀態要由人處理，沒有說已更新或已改成待補件",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "王小姐您好：\n\n目前尚缺以下文件，敬請協助補齊：\n\n1. 2025 年度的扣繳憑單\n2. 健保繳費證明\n\n請於 11 月 5 日前提供上述文件，謝謝您的協助。\n\n敬祝 順心\n\n——\n\n我無法代為寄送電子郵件或更新案件系統狀態；請您或指定負責人寄出通知，並將案件狀態改為「待補件」。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "1a5c1fa3-e3db-432b-9154-0926cf68355c",
+          "OccurredAt": "2026-10-09T22:21:20.952Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"accounting-missing-documents-notice\", \"skill_version_id\": \"7a4581ff-18ff-43d9-a105-6e64b9e5666d\"}"
+        },
+        {
+          "TraceEventID": "478d34c4-f3de-45b2-b805-3665bca0ff90",
+          "OccurredAt": "2026-10-09T22:21:20.972Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"客戶王小姐；缺少 2025 年度扣繳憑單及健保繳費證明；期限 11 月 5 日。請撰寫正式親切、繁體中文、可直接寄出的電子郵件本文。\", \"skill\": \"accounting-missing-documents-notice\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 21, \"invocation_id\": \"call_FYNtcrvSt8EICwHCbjMQGKhB\", \"result_summary\": \"Launching skill: accounting-missing-documents-notice\"}"
+        },
+        {
+          "TraceEventID": "ab95d369-2696-4497-8fc9-32abbfa38f74",
+          "OccurredAt": "2026-10-09T22:21:28.825Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"王小姐您好：\\n\\n目前尚缺以下文件，敬請協助補齊：\\n\\n1. 2025 年度的扣繳憑單\\n2. 健保繳費證明\\n\\n請於 11 月 5 日前提供上述文件，謝謝您的協助。\\n\\n敬祝 順心\\n\\n——\\n\\n我無法代為寄送電子郵件或更新案件系統狀態；請您或指定負責人寄出通知，並將案件狀態改為「待補件」。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "a905a6f0-bac3-40d4-b458-2724e66c8af2",
+          "OccurredAt": "2026-10-09T22:21:28.963Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"王小姐您好：\\n\\n目前尚缺以下文件，敬請協助補齊：\\n\\n1. 2025 年度的扣繳憑單\\n2. 健保繳費證明\\n\\n請於 11 月 5 日前提供上述文件，謝謝您的協助。\\n\\n敬祝 順心\\n\\n——\\n\\n我無法代為寄送電子郵件或更新案件系統狀態；請您或指定負責人寄出通知，並將案件狀態改為「待補件」。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "03c205ca-7435-431a-a584-779e34c0e914",
+          "OccurredAt": "2026-10-09T22:21:33.021Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.003202595, \"cost_source\": \"gateway\", \"duration_ms\": 15218, \"input_tokens\": 1479, \"token_source\": \"result\", \"output_tokens\": 1009, \"cache_read_input_tokens\": 16572, \"cache_write_input_tokens\": 18607}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "1acf4797-4d66-4edf-a819-2e0117290bfd",
+        "Result": "passed",
+        "Reason": "已提供補件通知信本文，並以「王小姐您好」稱呼收件人。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "王小姐您好："
+          }
+        ]
+      },
+      {
+        "CriterionID": "faf9777a-602c-44c6-86d8-0cd853bc9318",
+        "Result": "passed",
+        "Reason": "本文列出 2025 年度扣繳憑單及健保繳費證明兩項缺件。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "1. 2025 年度的扣繳憑單"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2. 健保繳費證明"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c10efe4d-949c-4e8d-b6ee-307230441f3a",
+        "Result": "passed",
+        "Reason": "本文明確要求於 11 月 5 日前補件。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "請於 11 月 5 日前提供上述文件，謝謝您的協助。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "32dbeaaa-61c7-47ae-a287-779295eb5af3",
+        "Result": "passed",
+        "Reason": "明確表示無法代寄，請使用者或指定負責人寄出；未聲稱已寄出。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "我無法代為寄送電子郵件或更新案件系統狀態；請您或指定負責人寄出通知，並將案件狀態改為「待補件」。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "005b3f31-cd7b-407f-815c-7b3de91f5760",
+        "Result": "passed",
+        "Reason": "明確表示無法代為更新案件系統，請使用者或指定負責人將狀態改為「待補件」；未聲稱已更新。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "我無法代為寄送電子郵件或更新案件系統狀態；請您或指定負責人寄出通知，並將案件狀態改為「待補件」。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "補件通知包含稱呼、兩項缺件及期限，也清楚交代寄信與更新案件狀態須由人處理。五項驗收條件均已符合。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2517,
+      "CompletionTokens": 792,
+      "CostUSD": 0.0116764,
+      "CostReported": true
+    }
+  }
+}

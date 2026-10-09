@@ -1,0 +1,248 @@
+{
+  "round": 1,
+  "sample_input": "請把以下客戶訂購訊息分別整理成出貨單：\n\n一般訂單：出貨日期 2026-10-12；蜂蜜 250ml 2 瓶、蜂蜜 500ml 1 瓶、蜂蠟蠟燭 3 支。\n\n未提供日期訂單：蜂蜜 250ml 1 瓶、蜂蜜 500ml 2 瓶。\n\n數量矛盾訂單：出貨日期 2026-10-12；蜂蜜 250ml 2 瓶；蜂蜜 250ml 3 瓶；蜂蠟蠟燭 1 支。\n\n不存在日期訂單：出貨日期 2026-02-30；蜂蜜 500ml 1 瓶。\n\n負數訂單：出貨日期 2026-10-12；蜂蠟蠟燭 -2 支。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑訊息中的「一般訂單」必須輸出 2026-10-12 為出貨日期，列出蜂蜜 250ml：2 瓶 × 180 元＝360 元、蜂蜜 500ml：1 瓶 × 320 元＝320 元、蜂蠟蠟燭：3 支 × 90 元＝270 元，總額 950 元。"
+    },
+    {
+      "text": "試跑訊息中的「未提供日期訂單」必須標示出貨日期採用預設日期 2026-10-09，並計算蜂蜜 250ml：1 瓶 × 180 元＝180 元、蜂蜜 500ml：2 瓶 × 320 元＝640 元，總額 820 元。"
+    },
+    {
+      "text": "試跑訊息中的「數量矛盾訂單」必須指出蜂蜜 250ml 同時出現 2 瓶與 3 瓶、請使用者確認；不得替該品項選定數量或計算其小計，並須將訂單總額標示為待確認，而不是提供總額。"
+    },
+    {
+      "text": "試跑訊息中的「不存在日期訂單」必須指出 2026-02-30 不存在並請使用者確認，不得改猜其他日期；日期問題不影響明確數量的算術，因此須正確列出蜂蜜 500ml：1 瓶 × 320 元＝320 元及總額 320 元，並標示日期待確認。"
+    },
+    {
+      "text": "試跑訊息中的「負數訂單」必須指出蜂蠟蠟燭數量為 -2、請使用者確認；不得計算該品項小計或訂單總額，並將總額標示為待確認。"
+    },
+    {
+      "text": "每筆訂單都須分開呈現，清楚標出日期、品項明細、例外或待確認事項，以及已算出的總額或總額待確認狀態。"
+    }
+  ],
+  "final_output": "出貨單：一般訂單\n出貨日期：2026-10-12\n品項明細：\n- 蜂蜜 250ml：2 瓶 × 180 元＝360 元\n- 蜂蜜 500ml：1 瓶 × 320 元＝320 元\n- 蜂蠟蠟燭：3 支 × 90 元＝270 元\n總額：950 元\n\n出貨單：未提供日期訂單\n出貨日期：2026-10-09\n預設假設：出貨日期採用 2026-10-09（可用 --today 改變）。\n品項明細：\n- 蜂蜜 250ml：1 瓶 × 180 元＝180 元\n- 蜂蜜 500ml：2 瓶 × 320 元＝640 元\n總額：820 元\n\n出貨單：數量矛盾訂單\n出貨日期：2026-10-12\n品項明細：\n- 蜂蜜 250ml：數量矛盾（2、3）；小計：不計算。\n需由你確認：蜂蜜 250ml 的原始數量為 2、3。\n- 蜂蠟蠟燭：1 支 × 90 元＝90 元\n總額：待確認\n\n出貨單：不存在日期訂單\n出貨日期：待確認（原文：2026-02-30）\n需由你確認：日期 2026-02-30 不存在或格式無效。\n品項明細：\n- 蜂蜜 500ml：1 瓶 × 320 元＝320 元\n總額：320 元\n\n出貨單：負數訂單\n出貨日期：2026-10-12\n品項明細：\n- 蜂蠟蠟燭：-2；小計：不計算。\n需由你確認：蜂蠟蠟燭 的數量為 -2，是負數。\n總額：待確認",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9778c093-b992-48dc-a594-e75e11f68ece",
+    "run_id": "bd0958f8-62d4-41ad-8d37-0658df16386b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆出貨單均分開呈現。一般與缺日期訂單的金額正確；數量矛盾、無效日期及負數數量也依要求標示確認狀態並處理計算。",
+    "criterion_results": [
+      {
+        "criterion_id": "84b7efc4-a7be-4f3b-ac59-d90f62f3f9df",
+        "text": "試跑訊息中的「一般訂單」必須輸出 2026-10-12 為出貨日期，列出蜂蜜 250ml：2 瓶 × 180 元＝360 元、蜂蜜 500ml：1 瓶 × 320 元＝320 元、蜂蠟蠟燭：3 支 × 90 元＝270 元，總額 950 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "一般訂單的出貨日期、三項明細與總額均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "出貨單：一般訂單\n出貨日期：2026-10-12",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "蜂蜜 250ml：2 瓶 × 180 元＝360 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "蜂蜜 500ml：1 瓶 × 320 元＝320 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "蜂蠟蠟燭：3 支 × 90 元＝270 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總額：950 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9f674325-a12a-479b-aaa9-5203afeb5544",
+        "text": "試跑訊息中的「未提供日期訂單」必須標示出貨日期採用預設日期 2026-10-09，並計算蜂蜜 250ml：1 瓶 × 180 元＝180 元、蜂蜜 500ml：2 瓶 × 320 元＝640 元，總額 820 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "未提供日期訂單明示採用預設日期 2026-10-09，兩項明細及總額均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "出貨單：未提供日期訂單\n出貨日期：2026-10-09\n預設假設：出貨日期採用 2026-10-09",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "蜂蜜 250ml：1 瓶 × 180 元＝180 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "蜂蜜 500ml：2 瓶 × 320 元＝640 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總額：820 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3049ef89-f79e-4a9c-b689-ba4aad5bf198",
+        "text": "試跑訊息中的「數量矛盾訂單」必須指出蜂蜜 250ml 同時出現 2 瓶與 3 瓶、請使用者確認；不得替該品項選定數量或計算其小計，並須將訂單總額標示為待確認，而不是提供總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "數量矛盾訂單列出蜂蜜 250ml 的兩個數量並要求確認，未選定數量或計算該品項小計，總額標為待確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 蜂蜜 250ml：數量矛盾（2、3）；小計：不計算。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "需由你確認：蜂蜜 250ml 的原始數量為 2、3。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 蜂蠟蠟燭：1 支 × 90 元＝90 元\n總額：待確認",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f4b35542-1f8a-4df9-b801-6311ab4fbd9a",
+        "text": "試跑訊息中的「不存在日期訂單」必須指出 2026-02-30 不存在並請使用者確認，不得改猜其他日期；日期問題不影響明確數量的算術，因此須正確列出蜂蜜 500ml：1 瓶 × 320 元＝320 元及總額 320 元，並標示日期待確認。",
+        "result": "passed",
+        "source": "model",
+        "reason": "不存在日期訂單將原日期標為待確認，指出日期不存在並要求確認；未另猜日期，明確品項的小計與總額均為 320 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "出貨單：不存在日期訂單\n出貨日期：待確認（原文：2026-02-30）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "需由你確認：日期 2026-02-30 不存在或格式無效。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 蜂蜜 500ml：1 瓶 × 320 元＝320 元\n總額：320 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5db974a1-d5bf-4363-9dc0-349fc3e6e36f",
+        "text": "試跑訊息中的「負數訂單」必須指出蜂蠟蠟燭數量為 -2、請使用者確認；不得計算該品項小計或訂單總額，並將總額標示為待確認。",
+        "result": "passed",
+        "source": "model",
+        "reason": "負數訂單指出蠟燭數量為 -2 並要求確認，未計算小計，總額標為待確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 蜂蠟蠟燭：-2；小計：不計算。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "需由你確認：蜂蠟蠟燭 的數量為 -2，是負數。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總額：待確認",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "145140dc-daec-47a9-8d65-c294276537d1",
+        "text": "每筆訂單都須分開呈現，清楚標出日期、品項明細、例外或待確認事項，以及已算出的總額或總額待確認狀態。",
+        "result": "passed",
+        "source": "model",
+        "reason": "五筆訂單各自以出貨單標題分開呈現，並列出日期、品項明細、適用的預設或待確認事項，以及總額或總額待確認狀態。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "出貨單：一般訂單",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "出貨單：未提供日期訂單",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "出貨單：數量矛盾訂單",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "出貨單：不存在日期訂單",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "出貨單：負數訂單",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1527 input and 1149 output tokens on skillhub-run; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 36,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}
