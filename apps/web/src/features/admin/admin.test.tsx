@@ -595,6 +595,9 @@ test("OPS-003: a failed grant retries with one key, but a completed draft cannot
   await click(button("授予"));
   await waitFor(has("無法確認操作是否完成；請先重新整理目前狀態，再決定是否重試。"));
   expect(has("grant failed")()).toBe(false);
+  expect(field<HTMLInputElement>("#admin-grant-amount").readOnly).toBe(true);
+  expect(field<HTMLTextAreaElement>("#admin-grant-note").readOnly).toBe(true);
+  expect(has("金額與理由暫時不能更改")()).toBe(true);
   await click(button("授予"));
   await waitFor(has("已授予 10 點，餘額現在是 60 點。"));
   expect(button("授予").disabled).toBe(true);
@@ -612,6 +615,8 @@ test("OPS-003: a failed grant retries with one key, but a completed draft cannot
     .map((c) => (c.body as { idempotency_key: string }).idempotency_key);
   expect(keys[1]).toBe(keys[0]);
   expect(keys[2]).not.toBe(keys[0]);
+  expect(field<HTMLInputElement>("#admin-grant-amount").readOnly).toBe(false);
+  expect(field<HTMLTextAreaElement>("#admin-grant-note").readOnly).toBe(false);
 });
 
 test("OPS-003: a refused grant explains the next step without raw server text", async () => {
@@ -627,6 +632,8 @@ test("OPS-003: a refused grant explains the next step without raw server text", 
   await click(button("授予"));
   await waitFor(has("操作未被接受；請核對輸入與目前狀態後再試。"));
   expect(has("amount_credits must not be zero")()).toBe(false);
+  expect(field<HTMLInputElement>("#admin-grant-amount").readOnly).toBe(false);
+  expect(field<HTMLTextAreaElement>("#admin-grant-note").readOnly).toBe(false);
   await type("#admin-grant-note", "修改後的理由");
   expect(has("操作未被接受；請核對輸入與目前狀態後再試。")()).toBe(false);
 });

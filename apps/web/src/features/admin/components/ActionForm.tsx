@@ -11,6 +11,7 @@ export function ActionForm({
   contextKey = "",
   tone,
   ready = true,
+  readOnlyNote = pending,
   blockedReason,
   confirmationScope,
   confirmationLabel,
@@ -25,6 +26,7 @@ export function ActionForm({
   contextKey?: string;
   tone?: "caution";
   ready?: boolean;
+  readOnlyNote?: boolean;
   blockedReason?: string;
   confirmationScope?: ReactNode;
   confirmationLabel?: string;
@@ -59,7 +61,7 @@ export function ActionForm({
             setNote(event.target.value);
             setSubmitted(null);
           }}
-          readOnly={pending}
+          readOnly={readOnlyNote}
         />
       </div>
       {confirmationScope ? (

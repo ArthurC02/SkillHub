@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { ApiError } from "../../../../core/api/client";
 import { useGrantCredits } from "../../admin.service";
 import { ActionForm } from "../../components/ActionForm";
 
@@ -15,6 +16,10 @@ export function GrantForm({
   const credits = Number(amount);
   const valid = amount.trim() !== "" && Number.isInteger(credits) && credits !== 0;
   const correction = credits < 0;
+  const uncertain = Boolean(
+    grant.error &&
+    !(grant.error instanceof ApiError && grant.error.status >= 400 && grant.error.status < 500),
+  );
   return (
     <>
       <h3>{correction ? "更正點數" : "授予點數"}</h3>
@@ -22,6 +27,7 @@ export function GrantForm({
         id="admin-grant"
         submitLabel={correction ? "扣減點數" : "授予"}
         pending={grant.isPending}
+        readOnlyNote={grant.isPending || uncertain}
         error={grant.error}
         ready={valid && ledgerReady}
         blockedReason={
@@ -59,9 +65,14 @@ export function GrantForm({
               submissionKey.current = crypto.randomUUID();
               grant.reset();
             }}
-            readOnly={grant.isPending}
+            readOnly={grant.isPending || uncertain}
           />
         </div>
+        {uncertain && (
+          <p className="note">
+            結果尚未確認；金額與理由暫時不能更改。先按「重新整理點數」核對分錄；需要重試時，原樣送出會沿用同一請求。
+          </p>
+        )}
       </ActionForm>
     </>
   );

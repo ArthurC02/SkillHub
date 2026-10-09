@@ -320,6 +320,11 @@ button[aria-pressed="true"] {
   width: 100%;
 }
 
+.field :is(input, textarea)[readonly] {
+  background: var(--code-bg);
+  border-style: dashed;
+}
+
 /* --- 從來沒有被樣式化的那些元素（2026-09-08，第一階段）---------------------
    這一批不是風格選擇，是**補漏**。數過：`<fieldset>` 3 處、`<legend>` 3 處、
    `<input type=radio|checkbox>` 14 處、`<dl>` 8 處、`<ul>/<ol>` 大量——在這之前

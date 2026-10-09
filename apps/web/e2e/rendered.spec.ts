@@ -1057,6 +1057,9 @@ test("an uncertain admin grant explains verification before retry on a phone", a
   await expect(page.getByRole("heading", { name: "封測者甲" })).toBeVisible();
   await page.locator("#admin-grant-amount").fill("50");
   await page.locator("#admin-grant-note").fill("beta reward");
+  const editableBackground = await page
+    .locator("#admin-grant-amount")
+    .evaluate((field) => getComputedStyle(field).backgroundColor);
   await page.getByRole("button", { name: "授予", exact: true }).click();
   const failure = page
     .getByRole("alert")
@@ -1064,6 +1067,17 @@ test("an uncertain admin grant explains verification before retry on a phone", a
   await expect(failure).toBeVisible();
   await expect(failure).toBeInViewport();
   await expect(failure).not.toContainText("grant failed");
+  await expect(page.locator("#admin-grant-amount")).toHaveAttribute("readonly", "");
+  await expect(page.locator("#admin-grant-note")).toHaveAttribute("readonly", "");
+  await expect(page.locator("#admin-grant-amount")).not.toHaveCSS(
+    "background-color",
+    editableBackground,
+  );
+  await expect(page.locator("#admin-grant-note")).not.toHaveCSS(
+    "background-color",
+    editableBackground,
+  );
+  await expect(page.getByText("金額與理由暫時不能更改", { exact: false })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("admin-grant-uncertain-phone.png") });
 });
 
