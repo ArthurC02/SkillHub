@@ -197,7 +197,7 @@ export function AdminAgents() {
       {proposal ? (
         <ProposalDetail key={proposal} id={proposal} />
       ) : finding ? (
-        <FindingDetail id={finding} />
+        <FindingDetail key={finding} id={finding} />
       ) : run ? (
         <AgentRunDetail id={run} />
       ) : (

@@ -1622,6 +1622,58 @@ test("a proposal opens its proposing run before an operator decides", async ({
   await expect(page.getByText("需要注意：1 項")).toBeVisible();
 });
 
+test("a completed Agent finding move keeps keyboard focus on its result", async ({
+  page,
+}, testInfo) => {
+  let acknowledged = false;
+  await stubPlatform(page);
+  await page.route(`**/admin/agents/findings/${AGENT_FINDING}/status`, (route) => {
+    acknowledged = true;
+    return route.fulfill({ status: 204 });
+  });
+  await page.route(`**/admin/agents/findings/${AGENT_FINDING}`, (route) =>
+    route.fulfill({
+      json: {
+        ...ADMIN_AGENT_FINDING,
+        finding: {
+          ...ADMIN_AGENT_FINDING.finding,
+          status: acknowledged ? "acknowledged" : "open",
+        },
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/admin/agents?finding=${AGENT_FINDING}`);
+  await page.locator("#admin-finding-note").fill("checking the job");
+  await page.getByRole("button", { name: "我來處理" }).click();
+  await expect(page.locator("#admin-finding-result")).toBeFocused();
+  await expect(page.getByRole("button", { name: "我來處理" })).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath("admin-finding-result-mobile.png") });
+});
+
+test("a completed Agent proposal decision keeps keyboard focus on its result", async ({
+  page,
+}, testInfo) => {
+  let rejected = false;
+  await stubPlatform(page);
+  await page.route(`**/admin/agents/proposals/${AGENT_PROPOSAL}/decision`, (route) => {
+    rejected = true;
+    return route.fulfill({ status: 204 });
+  });
+  await page.route(`**/admin/agents/proposals/${AGENT_PROPOSAL}`, (route) =>
+    route.fulfill({
+      json: { ...ADMIN_AGENT_PROPOSAL, status: rejected ? "rejected" : "proposed" },
+    }),
+  );
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/admin/agents?proposal=${AGENT_PROPOSAL}`);
+  await page.locator("#admin-proposal-reject-note").fill("not needed now");
+  await page.getByRole("button", { name: "駁回", exact: true }).click();
+  await expect(page.locator("#admin-proposal-result")).toBeFocused();
+  await expect(page.getByRole("button", { name: "駁回", exact: true })).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath("admin-proposal-result-mobile.png") });
+});
+
 test("exposure review keeps the decision evidence visible and folds technical identifiers", async ({
   page,
 }) => {

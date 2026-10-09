@@ -2558,6 +2558,65 @@ test("OPS-012: taking on a finding sends the move with the operator's note", asy
   });
 });
 
+test("a completed finding move focuses its result after the controls change", async () => {
+  let acknowledged = false;
+  stub(true, (path, method) => {
+    if (path === `/admin/agents/findings/${AGENT_FINDING}/status` && method === "PUT") {
+      acknowledged = true;
+      return { body: {}, status: 204 };
+    }
+    if (path === `/admin/agents/findings/${AGENT_FINDING}`) {
+      return {
+        body: {
+          ...ADMIN_AGENT_FINDING,
+          finding: {
+            ...ADMIN_AGENT_FINDING.finding,
+            status: acknowledged ? "acknowledged" : "open",
+          },
+        },
+        status: 200,
+      };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("我來處理"));
+  await type("#admin-finding-note", "checking the job");
+  await submit("#admin-finding-note");
+  await waitFor(has("已改成「處理中」。"));
+  expect(has("我來處理")()).toBe(false);
+  expect(document.activeElement).toBe(field<HTMLElement>("#admin-finding-result"));
+});
+
+test("a cached next finding does not inherit the previous finding's success message", async () => {
+  const nextId = "8e2f3a4b-5c6d-4e7f-8a9b-0c1d2e3f4a5b";
+  stub(true, (path, method) =>
+    method === "PUT"
+      ? { body: {}, status: 204 }
+      : path === `/admin/agents/findings/${nextId}`
+        ? {
+            body: {
+              finding: { ...ADMIN_AGENT_FINDING.finding, id: nextId, title: "下一件待辦" },
+              events: ADMIN_AGENT_FINDING.events,
+            },
+            status: 200,
+          }
+        : undefined,
+  );
+  queryClient.setQueryData(queryKeys.admin.agentFinding(nextId), {
+    finding: { ...ADMIN_AGENT_FINDING.finding, id: nextId, title: "下一件待辦" },
+    events: ADMIN_AGENT_FINDING.events,
+  });
+  await mountAt("/admin/agents", { finding: AGENT_FINDING });
+  await waitFor(has("我來處理"));
+  await type("#admin-finding-note", "checking the job");
+  await submit("#admin-finding-note");
+  await waitFor(has("已改成「處理中」。"));
+  await go("/admin/agents", { finding: nextId });
+  await waitFor(has("下一件待辦"));
+  expect(has("已改成「處理中」。")()).toBe(false);
+});
+
 test("OPS-012: changing the finding move clears a reason written for another move", async () => {
   stub(true);
   await mountAt("/admin/agents", { finding: AGENT_FINDING });
@@ -2797,6 +2856,34 @@ test.each(["approve", "reject"])(
     });
   },
 );
+
+test("a completed proposal decision focuses its result after the decision forms disappear", async () => {
+  let approved = false;
+  stub(true, (path, method) => {
+    if (path === `/admin/agents/proposals/${AGENT_PROPOSAL}/decision` && method === "PUT") {
+      approved = true;
+      return { body: {}, status: 204 };
+    }
+    if (path === `/admin/agents/proposals/${AGENT_PROPOSAL}`) {
+      return {
+        body: {
+          ...ADMIN_AGENT_PROPOSAL,
+          status: approved ? "approved" : "proposed",
+        },
+        status: 200,
+      };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
+  await waitFor(has("核准並執行"));
+  await type("#admin-proposal-approve-note", "job needs attention");
+  await click(button("核准並執行"));
+  await click(button("確認核准這個提案"));
+  await waitFor(has("已核准，維運程序會在幾分鐘內執行。"));
+  expect(has("核准並執行")()).toBe(false);
+  expect(document.activeElement).toBe(field<HTMLElement>("#admin-proposal-result"));
+});
 
 test("a destructive proposal can be cancelled after reviewing its scope", async () => {
   stub(true);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   useMoveFinding,
@@ -23,6 +23,10 @@ function latestEvidence(
 function Moves({ finding }: { finding: PlatformAgentFinding }) {
   const move = useMoveFinding();
   const [selected, setSelected] = useState<FindingStatus>();
+  const result = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (move.isSuccess) result.current?.focus();
+  }, [move.isSuccess]);
   const choices = FINDING_MOVES[finding.status];
   const choice = choices.find(({ to }) => to === selected) ?? choices[0];
   if (!choice) return null;
@@ -61,7 +65,13 @@ function Moves({ finding }: { finding: PlatformAgentFinding }) {
         onSubmit={(note) => move.mutate({ id: finding.id, status: choice.to, note })}
       />
       {move.isSuccess && (
-        <p className="notice notice-success" role="status">
+        <p
+          id="admin-finding-result"
+          ref={result}
+          tabIndex={-1}
+          className="notice notice-success"
+          role="status"
+        >
           已改成「{FINDING_STATUS[move.variables.status]}」。
         </p>
       )}

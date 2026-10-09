@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   useDecideProposal,
@@ -88,6 +89,10 @@ function Outcome({ proposal }: { proposal: PlatformAgentProposalDetail }) {
 export function ProposalDetail({ id }: { id: string }) {
   const detail = usePlatformAgentProposal(id);
   const decide = useDecideProposal();
+  const result = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (decide.isSuccess) result.current?.focus();
+  }, [decide.isSuccess]);
   const proposal = detail.data;
   return (
     <section aria-labelledby="admin-proposal-heading">
@@ -157,7 +162,13 @@ export function ProposalDetail({ id }: { id: string }) {
             </>
           )}
           {decide.isSuccess && (
-            <p className="notice notice-success" role="status">
+            <p
+              id="admin-proposal-result"
+              ref={result}
+              tabIndex={-1}
+              className="notice notice-success"
+              role="status"
+            >
               {DECIDED[decide.variables.decision]}
             </p>
           )}
