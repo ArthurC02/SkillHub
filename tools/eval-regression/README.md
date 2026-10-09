@@ -24,7 +24,7 @@ Fork Run 的 rubric 以來源 Skill 名稱選取，但送往 Judge 的 Skill 名
 | `injection-results.jsonl` | 注入回歸的逐樣本結果，**append-only，與 `results.jsonl` 分開**（報告 §8.2 建議 2 要求兩者分開統計）。每列另帶 `sample_set_version`——**換樣本集也是另一次回歸** |
 | [`judge-adversarial-samples-v1.json`](judge-adversarial-samples-v1.json) | 互動創作對抗量測裡被懷疑判錯的案例，`sample_set_version = judge-adversarial/v1`：輸入、Skill 的最後輸出與條件逐字取自存下的試跑紀錄；`attacker_wants` 放的是當時判錯的答案，沒有它的樣本是對照組。用 `injection_regression.py --samples judge-adversarial-samples-v2.json --out judge-adversarial-results.jsonl` 跑 |
 | [`judge-adversarial-samples-v2.json`](judge-adversarial-samples-v2.json) | v1 加上 `ja-05`：由量測 harness 存下的一份完整判定請求（`judge-<run_id>.json`）逐欄重建。那一場的輸出正確，判定模型把兩段不相鄰的文字接成一句引文，平台回驗找不到而退成「無法判定」；這一列的 `attacker_wants` 是那次平台降級，不是模型的判定 |
-| `judge-adversarial-results.jsonl` | 上者的逐樣本結果，**append-only**，與另外兩份結果分開 |
+| `judge-adversarial-results.jsonl` | 上者的逐樣本結果，**append-only**，與另外兩份結果分開。帶 `--model-role <閘道角色>` 時由那個角色判定，每列記下 `model_role`；評審團的三個成員各跑一次、逐條多數決，就是單一 Judge 與評審團的對照 |
 | [`rubric-content-007-writing-v1.json`](rubric-content-007-writing-v1.json) | `--rubric` 的輸入：`CONTENT-007` 五個 `writing` 精選的預設 rubric，逐字取自 [`docs/plans/mvp/content/writing-rubrics.md`](../../docs/plans/mvp/content/writing-rubrics.md) §4。**每個 item 的 `id` 是它加強的那條驗收條件的 id**（harness 會擋下對不上的檔案）。帶 `--rubric` 時回歸集縮到該檔涵蓋的 Skill、快照原本的條件照舊送出、`rubric_version` 不再是 `null`——**換 rubric 版本就是另一次回歸** |
 
 方法、逐筆結果、差異歸因與結論見 [`docs/plans/mvp/m3/report-judge-regression.md`](../../docs/plans/mvp/m3/report-judge-regression.md)；重跑指令見該報告 §10，帶 rubric 的那一輪見 §11，注入抵抗那一輪見 §12。
