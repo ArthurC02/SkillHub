@@ -1,0 +1,84 @@
+import { expect, test } from "@playwright/test";
+import { ADMIN_MODEL_BUDGETS } from "../src/testing/fixtures/platform";
+import { stubPlatform } from "./stub";
+
+test("a release in progress blocks another dispatch decision on a phone", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let releaseRequest = 0;
+  let finishRelease!: () => void;
+  const held = new Promise<void>((resolve) => {
+    finishRelease = resolve;
+  });
+  await page.route("**/admin/dispatch/halt", async (route) => {
+    if (route.request().method() !== "DELETE") return route.fallback();
+    releaseRequest += 1;
+    await held;
+    await route.fulfill({ status: 204, body: "" });
+  });
+  await page.goto("/admin/dispatch");
+  await page.locator("#admin-halt-lift-target").selectOption("pool");
+  await page.locator("#admin-halt-lift-note").fill("incident resolved");
+  await page.locator("#admin-halt-declare-note").fill("new incident");
+  await page.getByRole("button", { name: "恢復派送" }).click();
+  await page.getByRole("button", { name: "確認恢復派送" }).click();
+
+  try {
+    await expect.poll(() => releaseRequest).toBe(1);
+    await expect(page.getByRole("button", { name: "停止派送" })).toBeDisabled();
+    await expect(page.getByText("正在解除煞車，完成後才能停止派送。")).toBeVisible();
+    await expect(page.getByRole("button", { name: "停止派送" })).toHaveAttribute(
+      "aria-describedby",
+      "admin-halt-declare-why",
+    );
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await page.screenshot({
+      path: testInfo.outputPath("dispatch-release-phone.png"),
+    });
+  } finally {
+    finishRelease();
+  }
+  await expect(page.getByRole("button", { name: "停止派送" })).toBeEnabled();
+});
+
+test("restoring a model timeout also resets its editable draft on a phone", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let restored = false;
+  await page.route("**/admin/model-budgets", (route) => {
+    if (route.request().resourceType() === "document") return route.fallback();
+    return route.fulfill({
+      json: {
+        budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+          budget.kind === "judge-run" && restored
+            ? { ...budget, seconds: null, reason: null, set_at: null }
+            : budget,
+        ),
+      },
+    });
+  });
+  await page.route("**/admin/model-budgets/judge-run", (route) => {
+    if (route.request().method() !== "DELETE") return route.fallback();
+    restored = true;
+    return route.fulfill({ status: 200, json: {} });
+  });
+  await page.goto("/admin/model-budgets");
+  await page.locator("#admin-budget-judge-run-set summary").click();
+  await expect(page.locator("#admin-budget-judge-run-seconds")).toHaveValue("90");
+  await page.locator("#admin-budget-judge-run-clear summary").click();
+  await page.locator("#admin-budget-judge-run-clear-note").fill("restore the default");
+  await page.getByRole("button", { name: "把 評估判定 改回預設" }).click();
+
+  await expect(page.getByText("目前：預設 130 秒")).toBeVisible();
+  await expect(page.locator("#admin-budget-judge-run-seconds")).toHaveValue("130");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("model-timeout-default-phone.png"),
+  });
+});
