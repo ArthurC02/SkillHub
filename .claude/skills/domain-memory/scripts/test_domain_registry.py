@@ -1697,6 +1697,10 @@ class DomainRegistryTest(unittest.TestCase):
         return package
 
     def approve_and_apply(self, package: Path) -> None:
+        self.approve_and_finalize(package)
+        apply_approved_updates(package, self.repo / "memory", self.repo)
+
+    def approve_and_finalize(self, package: Path) -> None:
         submit_proposal(package, self.repo / "memory", self.repo)
         record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
         submitted = json.loads(
@@ -1718,7 +1722,6 @@ class DomainRegistryTest(unittest.TestCase):
         with patch("domain_registry.hitl.verify_external_scm", return_value=[]), \
                 patch("domain_registry.hitl.github_commit_carries_proposal", return_value=[]):
             finalize_proposal(package, self.repo / "memory", self.repo)
-        apply_approved_updates(package, self.repo / "memory", self.repo)
 
     def redraft_package(
         self, package: Path, proposal_id: str, statement: str, supersedes: str | None
@@ -2082,6 +2085,58 @@ class DomainRegistryTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cannot remove absent record"):
             self.approve_and_apply(package)
         self.assertEqual(self.rule_ids(), ["order-total"])
+
+    def drafted_with_updates(self, updates: list) -> Path:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        proposal["registry_updates"] = updates
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+        return package
+
+    def test_an_update_naming_an_unknown_asset_is_refused_and_writes_nothing(self) -> None:
+        package = self.drafted_with_updates(
+            [{"operation": "upsert", "asset": "nonsense", "record": {"id": "x"}}]
+        )
+        with self.assertRaisesRegex(ValueError, "registry update has an invalid asset or record"):
+            self.approve_and_apply(package)
+        self.assertEqual(self.rule_ids(), [])
+
+    def test_a_proposal_without_updates_is_refused(self) -> None:
+        package = self.drafted_with_updates([])
+        with self.assertRaisesRegex(ValueError, "approved proposal has no registry_updates"):
+            self.approve_and_apply(package)
+
+    def test_only_a_finalized_proposal_applies(self) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        submit_proposal(package, self.repo / "memory", self.repo)
+        with self.assertRaisesRegex(ValueError, "only a finalized approved proposal may apply"):
+            apply_approved_updates(package, self.repo / "memory", self.repo)
+
+    def test_a_finalized_proposal_superseded_before_it_applied_does_not_apply(self) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.approve_and_finalize(package)
+        supersede_proposal(package, "A later proposal records this rule differently.", None)
+        with self.assertRaisesRegex(ValueError, "only a finalized approved proposal may apply"):
+            apply_approved_updates(package, self.repo / "memory", self.repo)
+        self.assertEqual(self.rule_ids(), [])
+
+    def test_an_invalid_package_is_refused_before_anything_applies(self) -> None:
+        package = self.draft_package()
+        (package / "test-obligations.json").unlink()
+        with self.assertRaisesRegex(ValueError, "change package is invalid"):
+            apply_approved_updates(package, self.repo / "memory", self.repo)
+
+    def test_applying_requires_an_scm_verified_policy(self) -> None:
+        package = self.draft_package()
+        amend_policy(
+            self.repo / "memory", "review_mode", "local-draft-only", "No external verifier is configured."
+        )
+        with self.assertRaisesRegex(ValueError, "reviewed updates require an scm-verified"):
+            apply_approved_updates(package, self.repo / "memory", self.repo)
 
     def test_a_registry_update_that_is_neither_an_upsert_nor_a_remove_is_refused(
         self,

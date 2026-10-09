@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -235,10 +236,87 @@ def retract_candidate(
     )
 
 
-def apply_approved_updates(  # noqa: C901, PLR0915
-    package_root: Path, registry_root: Path, repo_root: Path
+@dataclass(frozen=True)
+class ParsedUpdate:
+    asset: str
+    record_id: str
+    record: dict[str, Any] | None
+
+    @property
+    def document_name(self) -> str:
+        return f"{self.asset}.json"
+
+
+def parsed_update(update: Any) -> ParsedUpdate:
+    if not isinstance(update, dict) or update.get("operation") not in ("upsert", "remove"):
+        raise ValueError("each registry update must be an upsert or a remove")
+    removing = update.get("operation") == "remove"
+    asset = update.get("asset")
+    record = None if removing else update.get("record")
+    record_id = update.get("id") if removing else (record or {}).get("id")
+    if (
+        not isinstance(asset, str)
+        or f"{asset}.json" not in ASSET_KEYS
+        or (not removing and not isinstance(record, dict))
+        or not completed_identifier(record_id)
+    ):
+        raise ValueError("registry update has an invalid asset or record")
+    return ParsedUpdate(asset, record_id, record)
+
+
+def _refuse_unsuperseded_overwrite(
+    update: ParsedUpdate, document: dict[str, Any], existing: Any, proposal: dict[str, Any]
 ) -> None:
-    reconcile_pending_update(registry_root, repo_root)
+    if not is_reviewed(update.asset, document, existing):
+        return
+    reviewed_by = (existing.get("review") or {}).get("proposal_id")
+    if not reviewed_by or proposal.get("supersedes") != reviewed_by:
+        raise ValueError(
+            f"cannot overwrite reviewed record: {update.record_id}; a proposal that "
+            f"replaces it must supersede {reviewed_by or 'the proposal that reviewed it'}"
+        )
+
+
+def _reviewed_record(
+    update: ParsedUpdate, proposal: dict[str, Any], source_map: Any
+) -> dict[str, Any]:
+    promoted = classify_all(dict(update.record or {}), source_map)
+    outside = unclassified_paths(promoted)
+    if outside:
+        raise ValueError(
+            f"cannot review a record whose evidence rests outside the "
+            f"confirmed sources: {update.asset}/{update.record_id} cites "
+            + ", ".join(outside)
+            + "; cite a confirmed source, or select that path before "
+            "the record is reviewed"
+        )
+    promoted["review"] = {
+        "proposal_id": proposal["proposal_id"],
+        "proposal_revision": proposal["proposal_revision"],
+        "approvals": proposal["approvals"],
+    }
+    promoted[review_field(update.asset)] = "reviewed"
+    return promoted
+
+
+def _apply_update(
+    update: ParsedUpdate, document: dict[str, Any], proposal: dict[str, Any], source_map: Any
+) -> None:
+    records = document[ASSET_KEYS[update.document_name]]
+    existing = find_record(records, update.record_id)
+    _refuse_unsuperseded_overwrite(update, document, existing, proposal)
+    if update.record is not None:
+        put_record(records, existing, _reviewed_record(update, proposal, source_map))
+        return
+    if existing is None:
+        raise ValueError(
+            f"cannot remove absent record: {update.asset}/{update.record_id}; a removal "
+            "names a record the Registry holds"
+        )
+    records.remove(existing)
+
+
+def _finalized_proposal(package_root: Path, registry_root: Path) -> dict[str, Any]:
     if review_mode(registry_root) != "scm-verified":
         raise ValueError(
             "reviewed updates require an scm-verified Domain Memory policy"
@@ -246,14 +324,21 @@ def apply_approved_updates(  # noqa: C901, PLR0915
     errors = validate_change_package(package_root, registry_root)
     if errors:
         raise ValueError("change package is invalid: " + "; ".join(errors))
-    proposal_path = package_root / "domain-change-proposal.json"
-    proposal = load_json(proposal_path)
+    proposal = load_json(package_root / "domain-change-proposal.json")
     if proposal.get("status") != "approved" or not iso_timestamp(
         proposal.get("finalized_at")
     ):
         raise ValueError(
             "only a finalized approved proposal may apply registry updates"
         )
+    return proposal
+
+
+def apply_approved_updates(
+    package_root: Path, registry_root: Path, repo_root: Path
+) -> None:
+    reconcile_pending_update(registry_root, repo_root)
+    proposal = _finalized_proposal(package_root, registry_root)
     accepted_digest = require_current_registry_revision(proposal, registry_root, repo_root)
     updates = proposal.get("registry_updates", [])
     if not isinstance(updates, list) or not updates:
@@ -262,61 +347,11 @@ def apply_approved_updates(  # noqa: C901, PLR0915
 
     def mutate(staging: Path) -> None:
         documents: dict[str, dict[str, Any]] = {}
-        for update in updates:
-            if not isinstance(update, dict) or update.get("operation") not in (
-                "upsert",
-                "remove",
-            ):
-                raise ValueError("each registry update must be an upsert or a remove")
-            removing = update.get("operation") == "remove"
-            asset = update.get("asset")
-            record = update.get("id") if removing else update.get("record")
-            record_id = record if removing else (record or {}).get("id")
-            if (
-                not isinstance(asset, str)
-                or f"{asset}.json" not in ASSET_KEYS
-                or (not removing and not isinstance(record, dict))
-                or not completed_identifier(record_id)
-            ):
-                raise ValueError("registry update has an invalid asset or record")
-            name = f"{asset}.json"
+        for update in map(parsed_update, updates):
             document = documents.setdefault(
-                name, load_json(registry_dir(staging) / name)
+                update.document_name, load_json(registry_dir(staging) / update.document_name)
             )
-            records = document[ASSET_KEYS[name]]
-            existing = find_record(records, record_id)
-            if is_reviewed(asset, document, existing):
-                reviewed_by = (existing.get("review") or {}).get("proposal_id")
-                if not reviewed_by or proposal.get("supersedes") != reviewed_by:
-                    raise ValueError(
-                        f"cannot overwrite reviewed record: {record_id}; a proposal that "
-                        f"replaces it must supersede {reviewed_by or 'the proposal that reviewed it'}"
-                    )
-            if removing:
-                if existing is None:
-                    raise ValueError(
-                        f"cannot remove absent record: {asset}/{record_id}; a removal "
-                        "names a record the Registry holds"
-                    )
-                records.remove(existing)
-                continue
-            promoted = classify_all(dict(record), source_map)
-            outside = unclassified_paths(promoted)
-            if outside:
-                raise ValueError(
-                    f"cannot review a record whose evidence rests outside the "
-                    f"confirmed sources: {asset}/{record_id} cites "
-                    + ", ".join(outside)
-                    + "; cite a confirmed source, or select that path before "
-                    "the record is reviewed"
-                )
-            promoted["review"] = {
-                "proposal_id": proposal["proposal_id"],
-                "proposal_revision": proposal["proposal_revision"],
-                "approvals": proposal["approvals"],
-            }
-            promoted[review_field(asset)] = "reviewed"
-            put_record(records, existing, promoted)
+            _apply_update(update, document, proposal, source_map)
         for name, document in documents.items():
             write_json(registry_dir(staging) / name, document)
 
@@ -344,9 +379,8 @@ def apply_approved_updates(  # noqa: C901, PLR0915
             "to_revision": current_registry_revision(registry_root, repo_root),
         },
     )
-    mark_applied(proposal_path, proposal, registry_root, repo_root)
+    mark_applied(package_root / "domain-change-proposal.json", proposal, registry_root, repo_root)
     reconciliation_path(registry_root).unlink(missing_ok=True)
-
 
 def promote_candidate(
     package_root: Path, registry_root: Path, asset: str, record_id: str
