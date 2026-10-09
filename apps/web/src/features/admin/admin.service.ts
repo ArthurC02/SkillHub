@@ -292,7 +292,8 @@ export function useReviewExposure(publication: string) {
       decision: ExposureDecision;
       reason: string;
     }) => apiFetch<ExposureCase>(`/admin/publications/${publication}/exposure`, send("POST", body)),
-    onSuccess: () => {
+    onSuccess: (currentCase) => {
+      queryClient.setQueryData(queryKeys.admin.exposureCase(publication), currentCase);
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureCase(publication) });
     },

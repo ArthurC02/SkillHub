@@ -2173,6 +2173,58 @@ test("an exposure decision keeps its result after the server advances the review
   await page.screenshot({ path: testInfo.outputPath("exposure-review-result-mobile.png") });
 });
 
+test("an exposure decision does not show the old exposure state while rereading", async ({
+  page,
+}, testInfo) => {
+  const updated = {
+    ...ADMIN_EXPOSURE_CASE,
+    sequence: 3,
+    exposed: true,
+    history: [
+      { ...ADMIN_EXPOSURE_CASE.history[0], sequence: 3, reason: "看過了，符合規範" },
+      ...ADMIN_EXPOSURE_CASE.history,
+    ],
+  };
+  let reviewed = false;
+  let rereads = 0;
+  let finishReread!: () => void;
+  const held = new Promise<void>((resolve) => {
+    finishReread = resolve;
+  });
+  await stubPlatform(page);
+  await page.route(`**/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`, async (route) => {
+    if (route.request().method() === "POST") {
+      reviewed = true;
+      return route.fulfill({ json: updated });
+    }
+    if (reviewed) {
+      rereads += 1;
+      await held;
+    }
+    return route.fulfill({ json: reviewed ? updated : ADMIN_EXPOSURE_CASE });
+  });
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/admin/exposure?publication=${PUBLISHER}%2F${PUBLICATION}`);
+  await page.getByRole("radio", { name: "核准" }).check();
+  await page.locator("#admin-exposure-review-note").fill("看過了，符合規範");
+  await page.getByRole("button", { name: "送出核准" }).click();
+
+  try {
+    await expect.poll(() => rereads).toBeGreaterThan(0);
+    await expect(page.locator("#admin-exposure-result")).toBeVisible();
+    await expect(page.getByText("目前曝光中：搜尋與目錄看得到它。")).toBeVisible();
+    await expect(page.getByText("目前未曝光：搜尋與目錄看不到它。")).toHaveCount(0);
+    await expect(page.getByText("核准：看過了，符合規範")).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath("exposure-review-readback-phone.png"),
+      fullPage: true,
+    });
+  } finally {
+    finishReread();
+  }
+  await expect(page.getByText("目前曝光中：搜尋與目錄看得到它。")).toBeVisible();
+});
+
 test("exposure review explains an unavailable approval beside its control on mobile", async ({
   page,
 }, testInfo) => {
