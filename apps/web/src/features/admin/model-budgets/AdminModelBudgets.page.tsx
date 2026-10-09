@@ -16,6 +16,18 @@ const CALL_NAMES: Record<string, string> = {
   "suggest-improvements": "建議改善",
 };
 
+type CompletedChange = {
+  kind: string;
+  name: string;
+  seconds: number | null;
+  defaultSeconds: number;
+};
+type BudgetRowProps = {
+  budget: ModelCallBudget;
+  onCompleted: (result: CompletedChange) => void;
+  onDraftChange: () => void;
+};
+
 function BudgetSummary({ budget, name }: { budget: ModelCallBudget; name: string }) {
   return (
     <>
@@ -47,15 +59,7 @@ function BudgetSummary({ budget, name }: { budget: ModelCallBudget; name: string
   );
 }
 
-function BudgetRow({
-  budget,
-  onRestored,
-  onDraftChange,
-}: {
-  budget: ModelCallBudget;
-  onRestored: (result: { kind: string; text: string }) => void;
-  onDraftChange: () => void;
-}) {
+function BudgetRow({ budget, onCompleted, onDraftChange }: BudgetRowProps) {
   const name = CALL_NAMES[budget.kind] ?? budget.kind;
   const currentSeconds = budget.seconds ?? budget.default_seconds;
   const [seconds, setSeconds] = useState(String(currentSeconds));
@@ -68,7 +72,6 @@ function BudgetRow({
   const wanted = Number(editableSeconds);
   const inRange =
     Number.isInteger(wanted) && wanted >= budget.min_seconds && wanted <= budget.max_seconds;
-  const restoredText = `${name}已改回預設。下次呼叫使用程式預設 ${budget.default_seconds} 秒。`;
   const restoreBlockedReason = clear.isSuccess
     ? "這筆恢復請求已完成；請核對上方目前值。"
     : set.isPending
@@ -91,11 +94,24 @@ function BudgetRow({
           blockedReason={
             clear.isPending ? "這一種呼叫正在恢復預設，完成後才能調整秒數。" : undefined
           }
-          done={set.isSuccess && "已套用，下一次呼叫就用這個秒數。"}
+          done={set.isSuccess && "調整請求已完成；請核對上方的目前值。"}
           contextKey={`${budget.kind}:${editableSeconds}`}
           onSubmit={(reason) => {
             clear.reset();
-            set.mutate({ kind: budget.kind, seconds: wanted, reason });
+            set.mutate(
+              { kind: budget.kind, seconds: wanted, reason },
+              {
+                onSuccess: () => {
+                  setSourceSeconds(wanted);
+                  onCompleted({
+                    kind: budget.kind,
+                    name,
+                    seconds: wanted,
+                    defaultSeconds: budget.default_seconds,
+                  });
+                },
+              },
+            );
           }}
         >
           <div className="field">
@@ -140,7 +156,13 @@ function BudgetRow({
                 {
                   onSuccess: () => {
                     setSeconds(String(budget.default_seconds));
-                    onRestored({ kind: budget.kind, text: restoredText });
+                    setSourceSeconds(budget.default_seconds);
+                    onCompleted({
+                      kind: budget.kind,
+                      name,
+                      seconds: null,
+                      defaultSeconds: budget.default_seconds,
+                    });
                   },
                 },
               );
@@ -152,15 +174,34 @@ function BudgetRow({
   );
 }
 
+function completedMessage(
+  completed: CompletedChange,
+  current: ModelCallBudget | undefined,
+  fetching: boolean,
+  error: unknown,
+) {
+  if (fetching) return "正在重新讀取目前設定。";
+  if (error) return "目前設定暫時無法重新讀取，請稍後核對。";
+  if (current?.seconds === completed.seconds) {
+    return `目前顯示${completed.seconds === null ? "程式預設" : "設定"} ${completed.seconds ?? completed.defaultSeconds} 秒；下次呼叫將使用此設定。`;
+  }
+  if (current) {
+    return `重新讀取仍顯示 ${current.seconds === null ? `程式預設 ${current.default_seconds}` : current.seconds} 秒；請重新整理確認。`;
+  }
+  return "重新讀取未找到這種模型呼叫；請重新整理確認。";
+}
+
 export function AdminModelBudgets() {
   const budgets = useModelBudgets();
-  const [restored, setRestored] = useState<{ kind: string; text: string } | null>(null);
+  const [completed, setCompleted] = useState<CompletedChange | null>(null);
   const result = useRef<HTMLParagraphElement>(null);
-  const current = budgets.data?.budgets.find((budget) => budget.kind === restored?.kind);
+  const current = budgets.data?.budgets.find((budget) => budget.kind === completed?.kind);
+  const verified =
+    completed && !budgets.isFetching && !budgets.error && current?.seconds === completed.seconds;
 
   useEffect(() => {
-    if (restored) result.current?.focus();
-  }, [restored]);
+    if (completed) result.current?.focus();
+  }, [completed]);
 
   return (
     <AdminPage heading="模型呼叫逾時">
@@ -175,20 +216,16 @@ export function AdminModelBudgets() {
           {budgets.isFetching ? "重新讀取中…" : "再試一次"}
         </button>
       </ReadFailure>
-      {restored && (
+      {completed && (
         <p
           id="admin-budget-result"
           ref={result}
           tabIndex={-1}
-          className="notice notice-success"
+          className={`notice ${verified ? "notice-success" : "notice-warning"}`}
           role="status"
         >
-          {restored.text}
-          {budgets.error
-            ? "目前設定暫時無法重新讀取，請稍後核對。"
-            : current?.seconds !== null && current?.seconds !== undefined
-              ? `重新讀取仍顯示 ${current.seconds} 秒；請重新整理確認。`
-              : ""}
+          {completed.name}的{completed.seconds === null ? "恢復預設" : "調整秒數"}請求已完成。
+          {completedMessage(completed, current, budgets.isFetching, budgets.error)}
         </p>
       )}
       {budgets.data && !budgets.error && (
@@ -209,8 +246,8 @@ export function AdminModelBudgets() {
                 <BudgetRow
                   budget={budget}
                   key={budget.kind}
-                  onRestored={setRestored}
-                  onDraftChange={() => setRestored(null)}
+                  onCompleted={setCompleted}
+                  onDraftChange={() => setCompleted(null)}
                 />
               ))}
             </ul>

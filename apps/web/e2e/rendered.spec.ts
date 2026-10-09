@@ -2142,7 +2142,46 @@ test("a model timeout change keeps the same kind's restore action unavailable", 
   } finally {
     releaseSet();
   }
-  await expect(page.getByText("已套用，下一次呼叫就用這個秒數。")).toBeVisible();
+  await expect(page.locator("#admin-budget-result")).toContainText(
+    "重新讀取仍顯示 90 秒；請重新整理確認。",
+  );
+  await expect(page.locator("#admin-budget-result")).toBeFocused();
+});
+
+test("a completed timeout change remains reachable when rereading fails", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let changed = false;
+  await page.route("**/admin/model-budgets", (route) => {
+    if (route.request().resourceType() === "document") return route.fallback();
+    return changed
+      ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
+      : route.fulfill({ json: ADMIN_MODEL_BUDGETS });
+  });
+  await page.route("**/admin/model-budgets/judge-run", (route) => {
+    changed = true;
+    return route.fulfill({ json: {} });
+  });
+  await page.goto("/admin/model-budgets");
+  await page.locator("#admin-budget-judge-run-set summary").click();
+  await page.locator("#admin-budget-judge-run-seconds").fill("100");
+  await page.locator("#admin-budget-judge-run-note").fill("調整等待時間");
+  await page.getByRole("button", { name: "改 評估判定 的秒數" }).click();
+
+  await expect(
+    page.getByRole("alert").filter({ hasText: "暫時無法讀取模型呼叫逾時" }),
+  ).toBeVisible();
+  const result = page.locator("#admin-budget-result");
+  await expect(result).toContainText("目前設定暫時無法重新讀取，請稍後核對。");
+  await expect(result).toHaveClass(/notice-warning/);
+  await expect(result).toBeFocused();
+  await expect(page.getByText("目前：90 秒（已調整）")).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("admin-budget-set-reread-failed-phone.png") });
 });
 
 for (const refreshFails of [false, true]) {
@@ -2185,7 +2224,7 @@ for (const refreshFails of [false, true]) {
       await expect(page.getByText("目前：90 秒（已調整）")).toHaveCount(0);
     } else {
       await expect(page.getByText("目前：預設 130 秒")).toBeVisible();
-      await expect(result).toContainText("下次呼叫使用程式預設 130 秒");
+      await expect(result).toContainText("目前顯示程式預設 130 秒；下次呼叫將使用此設定。");
     }
     await expect(page.locator("#admin-budget-judge-run-clear")).toHaveCount(0);
     await expect(result).toBeFocused();

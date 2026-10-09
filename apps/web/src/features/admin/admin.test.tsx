@@ -933,7 +933,7 @@ test("OPS-004: releasing a skill needs licence evidence; blocking it does not", 
   expect(has("「PDF Summariser」的再散布判定已改為「可以再散布」。")()).toBe(false);
 });
 
-test("a revised model timeout does not inherit the previous success notice", async () => {
+test("a revised model timeout replaces the previous result even when reread stays stale", async () => {
   stub(true, (path, method) =>
     path === "/admin/model-budgets/judge-run" && method === "PUT"
       ? { body: {}, status: 200 }
@@ -946,10 +946,82 @@ test("a revised model timeout does not inherit the previous success notice", asy
   await type("#admin-budget-judge-run-seconds", "100");
   await type("#admin-budget-judge-run-note", "調整等待時間");
   await click(button("改 評估判定 的秒數"));
-  await waitFor(has("已套用，下一次呼叫就用這個秒數。"));
+  await waitFor(has("重新讀取仍顯示 90 秒；請重新整理確認。"));
+  expect(field<HTMLElement>("#admin-budget-result").classList.contains("notice-warning")).toBe(
+    true,
+  );
+  expect(document.activeElement).toBe(field<HTMLElement>("#admin-budget-result"));
 
   await type("#admin-budget-judge-run-seconds", "101");
-  expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(false);
+  expect(container.querySelector("#admin-budget-result")).toBeNull();
+});
+
+test("OPS-009: changing a timeout confirms the reread value before promising the next call", async () => {
+  let currentSeconds = 90;
+  stub(true, (path, method) => {
+    if (path === "/admin/model-budgets" && method === "GET") {
+      return {
+        body: {
+          budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+            budget.kind === "judge-run" ? { ...budget, seconds: currentSeconds } : budget,
+          ),
+        },
+        status: 200,
+      };
+    }
+    if (path === "/admin/model-budgets/judge-run" && method === "PUT") {
+      currentSeconds = 100;
+      return { body: {}, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("目前：90 秒（已調整）"));
+  await click(field<HTMLElement>("#admin-budget-judge-run-set summary"));
+  await type("#admin-budget-judge-run-seconds", "100");
+  await type("#admin-budget-judge-run-note", "調整等待時間");
+  await click(button("改 評估判定 的秒數"));
+
+  await waitFor(has("目前：100 秒（已調整）"));
+  await waitFor(has("目前顯示設定 100 秒；下次呼叫將使用此設定。"));
+  expect(has("設定已變更；草稿改為最新的 100 秒")()).toBe(false);
+  expect(field<HTMLInputElement>("#admin-budget-judge-run-seconds").value).toBe("100");
+  expect(field<HTMLElement>("#admin-budget-result").classList.contains("notice-success")).toBe(
+    true,
+  );
+  expect(document.activeElement).toBe(field<HTMLElement>("#admin-budget-result"));
+});
+
+test("OPS-009: a completed timeout change stays visible when rereading fails", async () => {
+  let reads = 0;
+  stub(true, (path, method) => {
+    if (path === "/admin/model-budgets" && method === "GET") {
+      reads += 1;
+      return reads === 1
+        ? { body: ADMIN_MODEL_BUDGETS, status: 200 }
+        : { body: { error: "service unavailable" }, status: 503 };
+    }
+    if (path === "/admin/model-budgets/judge-run" && method === "PUT") {
+      return { body: {}, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("目前：90 秒（已調整）"));
+  await click(field<HTMLElement>("#admin-budget-judge-run-set summary"));
+  await type("#admin-budget-judge-run-seconds", "100");
+  await type("#admin-budget-judge-run-note", "調整等待時間");
+  await click(button("改 評估判定 的秒數"));
+  await waitFor(has("暫時無法讀取模型呼叫逾時"));
+
+  expect(has("目前：90 秒（已調整）")()).toBe(false);
+  expect(field<HTMLElement>("#admin-budget-result").textContent).toContain(
+    "目前設定暫時無法重新讀取，請稍後核對。",
+  );
+  expect(field<HTMLElement>("#admin-budget-result").classList.contains("notice-warning")).toBe(
+    true,
+  );
+  expect(document.activeElement).toBe(field<HTMLElement>("#admin-budget-result"));
 });
 
 test("OPS-009: an override shows its effective value, default, range, and closed choices", async () => {
@@ -1004,8 +1076,9 @@ test("OPS-009: restoring the default keeps a focused result after the restore fo
   await waitFor(has("目前：預設 130 秒"));
 
   expect(field<HTMLInputElement>("#admin-budget-judge-run-seconds").value).toBe("130");
+  expect(has("設定已變更；草稿改為最新的 130 秒")()).toBe(false);
   expect(container.querySelector("#admin-budget-judge-run-clear")).toBeNull();
-  await waitFor(has("評估判定已改回預設。下次呼叫使用程式預設 130 秒。"));
+  await waitFor(has("目前顯示程式預設 130 秒；下次呼叫將使用此設定。"));
   expect(document.activeElement).toBe(field<HTMLElement>("#admin-budget-result"));
   await type("#admin-budget-judge-run-seconds", "100");
   expect(container.querySelector("#admin-budget-result")).toBeNull();
@@ -1033,7 +1106,7 @@ test("OPS-009: a successful restore remains visible when the new budget cannot b
   await waitFor(has("暫時無法讀取模型呼叫逾時"));
 
   expect(has("目前：90 秒（已調整）")()).toBe(false);
-  await waitFor(has("評估判定已改回預設。下次呼叫使用程式預設 130 秒。"));
+  await waitFor(has("評估判定的恢復預設請求已完成。"));
   expect(field<HTMLElement>("#admin-budget-result").textContent).toContain(
     "目前設定暫時無法重新讀取，請稍後核對。",
   );
@@ -1134,11 +1207,11 @@ test("OPS-009: an in-flight timeout change blocks restoring the same call kind",
   expect(has("這一種呼叫正在調整秒數，完成後才能恢復預設。")()).toBe(true);
   expect(field<HTMLInputElement>("#admin-budget-judge-run-seconds").readOnly).toBe(true);
   await act(async () => finishSet!(new Response("{}", { status: 200 })));
-  await waitFor(has("已套用，下一次呼叫就用這個秒數。"));
+  await waitFor(has("評估判定的調整秒數請求已完成。"));
 
   await click(button("把 評估判定 改回預設"));
-  await waitFor(has("已改回預設。"));
-  expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(false);
+  await waitFor(has("評估判定的恢復預設請求已完成。"));
+  expect(has("評估判定的調整秒數請求已完成。")()).toBe(false);
 });
 
 test("OPS-009: an empty configured-call roster names the absence", async () => {
