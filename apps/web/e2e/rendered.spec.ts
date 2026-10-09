@@ -1477,6 +1477,62 @@ test("long Agent finding evidence stays within the phone viewport", async ({ pag
   });
 });
 
+test("exposure review keeps the decision evidence visible and folds technical identifiers", async ({
+  page,
+}) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/admin/exposure?publication=${PUBLISHER}%2F${PUBLICATION}`);
+
+  await expect(page.getByText("目前未曝光：搜尋與目錄看不到它。")).toBeVisible();
+  await expect(page.getByText("把 PDF 整理成重點摘要，附上引用頁碼。")).toBeVisible();
+  await expect(page.locator('[data-role="evidence"] code')).toHaveText("sha256:aa");
+  const identifiers = page.locator("details").filter({ hasText: "審核序號：2" });
+  await expect(identifiers).toHaveCount(1);
+  await expect(identifiers.locator("summary")).toHaveText("版本識別與審核序號");
+  await expect(identifiers.getByText(/審核序號：2/)).toBeHidden();
+  await identifiers.locator("summary").click();
+  await expect(identifiers.getByText(/審核序號：2/)).toBeVisible();
+  await expect(identifiers.locator("code")).toHaveText("sha256:aa");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("a model timeout change keeps the same kind's restore action unavailable", async ({
+  page,
+}) => {
+  await stubPlatform(page);
+  let releaseSet!: () => void;
+  let started = 0;
+  const held = new Promise<void>((resolve) => {
+    releaseSet = resolve;
+  });
+  await page.route("**/admin/model-budgets/judge-run", async (route) => {
+    if (route.request().method() !== "PUT") return route.fallback();
+    started += 1;
+    await held;
+    await route.fulfill({ status: 200, json: {} });
+  });
+  await page.goto("/admin/model-budgets");
+  await page.locator("#admin-budget-judge-run-set summary").click();
+  await page.locator("#admin-budget-judge-run-clear summary").click();
+  await page.locator("#admin-budget-judge-run-seconds").fill("100");
+  await page.locator("#admin-budget-judge-run-note").fill("調整等待時間");
+  await page.locator("#admin-budget-judge-run-clear-note").fill("恢復預設");
+  await page.getByRole("button", { name: "改 評估判定 的秒數" }).click();
+
+  try {
+    await expect.poll(() => started).toBe(1);
+    await expect(
+      page.locator('#admin-budget-judge-run-clear button[type="submit"]'),
+    ).toBeDisabled();
+    await expect(page.getByText("這一種呼叫正在調整秒數，完成後才能恢復預設。")).toBeVisible();
+    await expect(page.locator("#admin-budget-judge-run-seconds")).toHaveAttribute("readonly", "");
+  } finally {
+    releaseSet();
+  }
+  await expect(page.getByText("已套用，下一次呼叫就用這個秒數。")).toBeVisible();
+});
+
 test.describe("QA-008 real layout: 表格與段落寬度", () => {
   test("a comparison table scrolls inside its own container", async ({ page }) => {
     await stubPlatform(page);

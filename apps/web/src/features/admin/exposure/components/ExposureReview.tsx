@@ -159,22 +159,23 @@ export function ExposureReview({
 }) {
   return (
     <>
+      <p>{c.exposed ? "目前曝光中：搜尋與目錄看得到它。" : "目前未曝光：搜尋與目錄看不到它。"}</p>
       <p>
-        發佈物：
         <strong>
           {c.publisher}/{c.name}
         </strong>
-        ，狀態：{STATUS_LABEL[c.status]}
+        ：{STATUS_LABEL[c.status]}；最新 Release 版本 {c.release.version_number}。
       </p>
-      <p>
-        最新 Release：版本 {c.release.version_number}，內容雜湊{" "}
-        <code>{c.release.content_hash}</code>
-        ，發佈於 <Timestamp at={c.release.released_at} />
-      </p>
-      <p>{c.exposed ? "目前曝光中：搜尋與目錄看得到它。" : "目前未曝光：搜尋與目錄看不到它。"}</p>
-      <p className="note">
-        審核序號：{c.sequence}（送出審核結果時，伺服器用這個序號確認你看到的還是最新的一筆）。
-      </p>
+      <details>
+        <summary>版本識別與審核序號</summary>
+        <p>
+          內容雜湊 <code>{c.release.content_hash}</code>，發佈於{" "}
+          <Timestamp at={c.release.released_at} />。
+        </p>
+        <p className="note">
+          審核序號：{c.sequence}（送出審核結果時，伺服器用這個序號確認你看到的還是最新的一筆）。
+        </p>
+      </details>
 
       <h3>搜尋索引會收錄與顯示的內容</h3>
       <SnapshotSection exposureCase={c} />

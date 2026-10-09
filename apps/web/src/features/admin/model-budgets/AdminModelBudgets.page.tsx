@@ -21,6 +21,7 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
   const [seconds, setSeconds] = useState(String(budget.seconds ?? budget.default_seconds));
   const set = useModelBudgetChange("PUT");
   const clear = useModelBudgetChange("DELETE");
+  const busy = set.isPending || clear.isPending;
   const wanted = Number(seconds);
   const inRange =
     Number.isInteger(wanted) && wanted >= budget.min_seconds && wanted <= budget.max_seconds;
@@ -58,10 +59,16 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
           submitLabel={`改 ${name} 的秒數`}
           pending={set.isPending}
           error={set.error}
-          ready={inRange}
+          ready={inRange && !clear.isPending}
+          blockedReason={
+            clear.isPending ? "這一種呼叫正在恢復預設，完成後才能調整秒數。" : undefined
+          }
           done={set.isSuccess && "已套用，下一次呼叫就用這個秒數。"}
           contextKey={`${budget.kind}:${seconds}`}
-          onSubmit={(reason) => set.mutate({ kind: budget.kind, seconds: wanted, reason })}
+          onSubmit={(reason) => {
+            clear.reset();
+            set.mutate({ kind: budget.kind, seconds: wanted, reason });
+          }}
         >
           <div className="field">
             <label htmlFor={`admin-budget-${budget.kind}-seconds`}>
@@ -75,7 +82,7 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
                 setSeconds(event.target.value);
                 set.reset();
               }}
-              readOnly={set.isPending}
+              readOnly={busy}
               aria-describedby={inRange ? undefined : `admin-budget-${budget.kind}-range`}
             />
             {!inRange && (
@@ -95,8 +102,15 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
             submitLabel={`把 ${name} 改回預設`}
             pending={clear.isPending}
             error={clear.error}
+            ready={!set.isPending}
+            blockedReason={
+              set.isPending ? "這一種呼叫正在調整秒數，完成後才能恢復預設。" : undefined
+            }
             done={clear.isSuccess && "已改回預設。"}
-            onSubmit={(reason) => clear.mutate({ kind: budget.kind, reason })}
+            onSubmit={(reason) => {
+              set.reset();
+              clear.mutate({ kind: budget.kind, reason });
+            }}
           />
         </details>
       )}

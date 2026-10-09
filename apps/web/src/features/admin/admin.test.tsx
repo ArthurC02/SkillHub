@@ -819,6 +819,43 @@ test("OPS-009: failed refresh hides stale settings and retry restores the list",
   expect(has("暫時無法讀取模型呼叫逾時")()).toBe(false);
 });
 
+test("OPS-009: an in-flight timeout change blocks restoring the same call kind", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/model-budgets/judge-run" && method === "DELETE"
+      ? { body: {}, status: 200 }
+      : undefined,
+  );
+  const read = globalThis.fetch;
+  let finishSet: ((response: Response) => void) | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/model-budgets/judge-run") && init?.method === "PUT") {
+      return new Promise<Response>((resolve) => {
+        finishSet = resolve;
+      });
+    }
+    return read(input, init);
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("評估判定"));
+  await click(field<HTMLElement>("#admin-budget-judge-run-set summary"));
+  await click(field<HTMLElement>("#admin-budget-judge-run-clear summary"));
+  await type("#admin-budget-judge-run-seconds", "100");
+  await type("#admin-budget-judge-run-note", "調整等待時間");
+  await type("#admin-budget-judge-run-clear-note", "恢復預設");
+  await click(button("改 評估判定 的秒數"));
+  await waitFor(() => finishSet !== undefined);
+
+  expect(button("把 評估判定 改回預設").disabled).toBe(true);
+  expect(has("這一種呼叫正在調整秒數，完成後才能恢復預設。")()).toBe(true);
+  expect(field<HTMLInputElement>("#admin-budget-judge-run-seconds").readOnly).toBe(true);
+  await act(async () => finishSet!(new Response("{}", { status: 200 })));
+  await waitFor(has("已套用，下一次呼叫就用這個秒數。"));
+
+  await click(button("把 評估判定 改回預設"));
+  await waitFor(has("已改回預設。"));
+  expect(has("已套用，下一次呼叫就用這個秒數。")()).toBe(false);
+});
+
 test("OPS-009: an empty configured-call roster names the absence", async () => {
   stub(true, (path) =>
     path === "/admin/model-budgets" ? { body: { budgets: [] }, status: 200 } : undefined,
