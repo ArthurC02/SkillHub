@@ -1,0 +1,243 @@
+{
+  "request": {
+    "RunID": "29807ea1-79a8-4e3c-a59d-556b2624e4d6",
+    "EvaluationID": "e533763d-abda-491f-b712-da8b39525fe3",
+    "Skill": {
+      "Name": "community-water-outage-brief",
+      "Summary": "將管委會提供的完整社區停水通知，濃縮成適合住戶群組使用的繁體中文公告，並另用一句話說明省略或合併的資訊。當使用者貼上停水通知並需要簡短公告時使用。"
+    },
+    "UserPrompt": "幫我濃縮這份通知：\n【停水通知】本社區將於 2026 年 11 月 3 日（週二）上午 9:00 至下午 5:00 進行水塔清洗，A 棟與 B 棟全面停水，C 棟不受影響。施工單位為恆安水電行。11 月 2 日晚上 10:00 起部分樓層水壓可能變小。請住戶提前儲水，每戶建議至少備水 20 公升。復水後請先放水 5 分鐘再使用。如有疑問請洽管理室 02-2345-1100。管理委員會 敬啟",
+    "Criteria": [
+      {
+        "ID": "5d9384c5-cc05-49d1-9f2e-4740ed491444",
+        "Text": "公告本文不超過 3 句",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ace7b76f-666c-4f15-98ea-25a0f424bc75",
+        "Text": "公告保留停水日期 2026 年 11 月 3 日（或 11/3，若寫週幾則必須是週二）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "dc92c22f-4818-4305-a79d-1b873369fefb",
+        "Text": "公告保留停水時段上午 9:00 至下午 5:00（或 09:00 到 17:00）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "daac34f2-275a-41aa-8e3c-cc20df3829a2",
+        "Text": "公告保留受影響棟別為 A 棟與 B 棟",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "cce586a3-e32b-4667-9490-e99e1484540c",
+        "Text": "公告之外另有一句話交代捨棄或合併了哪些資訊，且所說的資訊確實在公告中被省略或合併",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "890e8c38-d927-4072-9729-c029c0949111",
+        "Text": "公告沒有與原通知矛盾或原通知沒有的事實",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "公告：2026 年 11 月 3 日（週二）上午 9:00 至下午 5:00，A 棟與 B 棟全面停水，C 棟不受影響，進行水塔清洗。11 月 2 日晚上 10:00 起部分樓層水壓可能變小，請提前儲水（每戶建議至少備水 20 公升）；復水後請先放水 5 分鐘再使用。有疑問請洽管理室 02-2345-1100。\n\n說明：已省略施工單位「恆安水電行」及「管理委員會 敬啟」，並合併儲水提醒與復水後放水指引。",
+    "Artifacts": [
+      {
+        "Path": "answer.txt",
+        "SizeBytes": 476,
+        "ContentType": "application/octet-stream",
+        "TextExcerpt": ""
+      }
+    ],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "e0e6089a-51d4-4e63-9066-02db13661358",
+          "OccurredAt": "2026-10-09T15:22:04.804Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"community-water-outage-brief\", \"skill_version_id\": \"0045e0bb-ec7e-48e5-ab82-bd4de96a18d5\"}"
+        },
+        {
+          "TraceEventID": "4df39f85-204b-4f7a-a1c3-738630b10354",
+          "OccurredAt": "2026-10-09T15:22:04.833Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"community-water-outage-brief\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 29, \"invocation_id\": \"call_7IL4iEXL3BfTgkri0g9bgTOO\", \"result_summary\": \"Launching skill: community-water-outage-brief\"}"
+        },
+        {
+          "TraceEventID": "39a00d94-fde6-414f-819a-3538f24bf737",
+          "OccurredAt": "2026-10-09T15:22:11.265Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 14, \"resource_path\": \"community-water-outage-brief\"}"
+        },
+        {
+          "TraceEventID": "94558f35-3de1-4b1c-8bb0-df5903ab1bca",
+          "OccurredAt": "2026-10-09T15:22:11.266Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"path\": \"/work/.claude/skills/community-water-outage-brief\", \"pattern\": \"scripts/check_output.py\"}, \"tool_name\": \"Glob\", \"truncated\": false, \"duration_ms\": 19, \"invocation_id\": \"call_IBcbhllKLam5XjcJfCD0vvB8\", \"result_summary\": \"No files found\"}"
+        },
+        {
+          "TraceEventID": "1aa2e42a-c866-4454-8cdc-f26e017494be",
+          "OccurredAt": "2026-10-09T15:22:13.789Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 120, \"resource_path\": \"community-water-outage-brief\"}"
+        },
+        {
+          "TraceEventID": "9591765c-0243-462a-9908-3821ef932949",
+          "OccurredAt": "2026-10-09T15:22:13.789Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"path\": \"/work/.claude/skills/community-water-outage-brief\", \"pattern\": \"**/*\"}, \"tool_name\": \"Glob\", \"truncated\": false, \"duration_ms\": 12, \"invocation_id\": \"call_231yoiZeJ3qTXEw2pBRHSeMm\", \"result_summary\": \".claude/skills/community-water-outage-brief/scripts/check_output.py\\n.claude/skills/community-water-outage-brief/SKILL.md\"}"
+        },
+        {
+          "TraceEventID": "2311af00-9d32-4302-8a4a-f543c5251026",
+          "OccurredAt": "2026-10-09T15:22:20.438Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 4163, \"resource_path\": \"community-water-outage-brief/scripts/check_output.py\"}"
+        },
+        {
+          "TraceEventID": "d444370a-b7da-46ee-a0bf-b61f5292c06a",
+          "OccurredAt": "2026-10-09T15:22:20.438Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/community-water-outage-brief/scripts/check_output.py\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 12, \"invocation_id\": \"call_a8EDq0TO2Ay19DA63Z28BHiE\", \"result_summary\": \"1\\t\\\"\\\"\\\"Count sentences, characters and items in a file and check them against limits.\\\"\\\"\\\"\\n2\\t\\n3\\tfrom __future__ import annotations\\n4\\t\\n5\\timport argparse\\n6\\timport re\\n7\\timport sys\\n8\\t\\n9\\tSENTENCE_SPLIT = re.compile(r\\\"[。！？!?]|\\\\n\\\")\\n10\\tITEM_LINE = re.compile(r\\\"^\\\\s*(?:[-*•]|\\\\d+[.)、．])\\\\s\\\")\\n11\\t\\n12\\t\\n13\\tdef count_sentences(text: str) -\u003e int:\\n14\\t    return sum(1 for part in SENTENCE_SPLIT.split(text) if part.strip())\\n15\\t\\n16\\t\\n17\\tdef count_chars(text: str) -\u003e int:\\n18\\t    return sum(1 for ch in text if not ch.isspace())\\n19\\t\\n20\\t\\n21\\tdef count_items(text: str) -\u003e int:\\n22\\t    return sum(1 for line in text.splitlines() if ITEM_LINE.match(line))\\n23\\t\\n24\\t\\n25\\tdef missing_requirements(text: str, requirements: list[str]) -\u003e list[str]:\\n26\\t    return [req for req in requirements if req not in text]\\n27\\t\\n28\\t\\n29\\tdef check(\\n30\\t    text: str,\\n31\\t    max_sentences: int | None,\\n32\\t    max_chars: int | None,\\n33\\t    max_items: int | None,\\n34\\t    require: list[str],\\n35\\t) -\u003e list[str]:\\n36\\t    failures: list[str] = []\\n37\\t    sentences = count_sentences(text)\\n38\\t    if max_sentences is not None and sentences \u003e max_sentences:\\n39\\t        failures.append(f\\\"sentences {sentences} \u003e {max_sentences}\\\")\\n40\\t    chars = count_chars(text)\\n41\\t    if max_chars is not None and chars \u003e max_chars:\\n42\\t        failures.append(f\\\"chars {chars} \u003e {max_chars}\\\")\\n43\\t    items = count_items(text)\\n44\\t    if max_items is not None and items \u003e max_items:\\n45\\t        failures.append(f\\\"items {items} \u003e {max_items}\\\")\\n46\\t    missing = missing_requirements(text, require)\\n47\\t    if missing:\\n48\\t        failures.append(\\\"missing: \\\" + \\\", \\\".join(missing))\\n49\\t    return failures\\n50\\t\\n51\\t\\n52\\tdef build_parser() -\u003e argparse.ArgumentParser:\\n53\\t    parser = argparse.ArgumentParser(\\n54\\t        description=(\\\"Check a file's draft answer against countable limits and required facts.\\\")\\n55\\t    )\\n56\\t    parser.add_argument(\\n57\\t        \\\"--max-sentences\\\",\\n58\\t        type=int,\\n59\\t        help=(\\n60\\t            \\\"reject if the file has more sentences than this; a sentence is a run of \\\"\\n61\\t            \\\"text separated by 。！？!? or a newline, trimmed and non-empty\\\"\\n62\\t        ),\\n63\\t    )\\n64\\t    parser.add_argument(\\n65\\t        \\\"--max-chars\\\",\\n66\\t        type=int,\\n67\\t        help=\\\"reject if the file has more non-whitespace characters than this\\\",\\n68\\t    )\\n69\\t    parser.add_argument(\\n70\\t        \\\"--max-items\\\",\\n71\\t        type=int,\\n72\\t        help=(\\n73\\t            \\\"reject if the file has more list items than this; an item is a line \\\"\\n74\\t            \\\"starting with -, * or •, or a numbered marker such as '1.' '2)' '3、'\\\"\\n75\\t        ),\\n76\\t    )\\n77\\t    parser.add_argument(\\n78\\t        \\\"--require\\\",\\n79\\t        action=\\\"append\\\",\\n80\\t        default=[],\\n81\\t        metavar=\\\"TEXT\\\",\\n82\\t        help=\\\"reject if this exact text is missing from the file; repeatable\\\",\\n83\\t    )\\n84\\t    parser.add_argument(\\\"file\\\", metavar=\\\"FILE\\\", help=\\\"path to check, or - for stdin\\\")\\n85\\t    return parser\\n86\\t\\n87\\t\\n88\\tdef _read(path: str) -\u003e str:\\n89\\t    if path == \\\"-\\\":\\n90\\t        return sys.stdin.read()\\n91\\t    with open(path, encoding=\\\"utf-8\\\") as handle:\\n92\\t        return handle.read()\\n93\\t\\n94\\t\\n95\\tdef main(argv: list[str] | None = None) -\u003e int:\\n96\\t    args = build_parser().parse_args(argv)\\n97\\t    no_checks = (\\n98\\t        args.max_sentences is None\\n99\\t        and args.max_chars is None\\n100\\t        and args.max_items is None\\n101\\t        and not args.require\\n102\\t    )\\n103\\t    if no_checks:\\n104\\t        print(\\n105\\t            \\\"no checks given: pass at least one of --max-sentences, --max-chars, \\\"\\n106\\t            \\\"--max-items, --require\\\"\\n107\\t        )\\n108\\t        return 2\\n109\\t    try:\\n110\\t        text = _read(args.file)\\n111\\t    except OSError as exc:\\n112\\t        print(f\\\"cannot read {args.file}: {exc}\\\")\\n113\\t        return 2\\n114\\t    except UnicodeDecodeError as exc:\\n115\\t        print(f\\\"cannot decode {args.file} as UTF-8: {exc}\\\")\\n116\\t        return 2\\n117\\t    failures = check(text, args.max_sentences, args.max_chars, args.max_items, args.require)\\n118\\t    if not failures:\\n119\\t        print(\\\"OK\\\")\\n120\\t        return 0\\n121\\t    for failure in failures:\\n122\\t        print(failure)\\n123\\t    return 1\\n124\\t\\n125\\t\\n126\\tif __name__ == \\\"__main__\\\":\\n127\\t    sys.exit(main())\\n128\\t\"}"
+        },
+        {
+          "TraceEventID": "9ea4f8d3-573f-4ba8-933b-2d83a4c2304b",
+          "OccurredAt": "2026-10-09T15:22:34.718Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"公告：2026 年 11 月 3 日（週二）上午 9:00 至下午 5:00，A 棟與 B 棟全面停水，C 棟不受影響，進行水塔清洗。11 月 2 日晚上 10:00 起部分樓層水壓可能變小，請提前儲水（每戶建議至少備水 20 公升）；復水後請先放水 5 分鐘再使用。有疑問請洽管理室 02-2345-1100。說明：已省略施工單位「恆安水電行」及「管理委員會 敬啟」，並合併儲水提醒與復水後放水指引。\\n\", \"file_path\": \"/out/artifacts/answer.txt\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 12, \"invocation_id\": \"call_PHK678d731Td4z6gg0ZX6OCx\", \"result_summary\": \"File created successfully at: /out/artifacts/answer.txt (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "2e995fb9-cdca-4246-bc5f-e53b9e4a55cf",
+          "OccurredAt": "2026-10-09T15:22:38.241Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"OK\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "ffc4d3f4-319d-41a5-9883-124de67373f8",
+          "OccurredAt": "2026-10-09T15:22:38.241Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"DATE_TEXT='2026 年 11 月 3 日（週二）' TIME_TEXT='上午 9:00 至下午 5:00' BUILDING_TEXT='A 棟與 B 棟全面停水，C 棟不受影響' python /work/.claude/skills/community-water-outage-brief/scripts/check_output.py --max-sentences 4 --require \\\"$DATE_TEXT\\\" --require \\\"$TIME_TEXT\\\" --require \\\"$BUILDING_TEXT\\\" /out/artifacts/answer.txt\", \"description\": \"Validate the brief outage notice\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 120, \"invocation_id\": \"call_Djm2XBVq8mkvm4Dm6RknA3T9\", \"result_summary\": \"OK\"}"
+        },
+        {
+          "TraceEventID": "9bd4792a-9500-4b26-87ed-9a759c775b32",
+          "OccurredAt": "2026-10-09T15:22:41.263Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"公告：2026 年 11 月 3 日（週二）上午 9:00 至下午 5:00，A 棟與 B 棟全面停水，C 棟不受影響，進行水塔清洗。11 月 2 日晚上 10:00 起部分樓層水壓可能變小，請提前儲水（每戶建議至少備水 20 公升）；復水後請先放水 5 分鐘再使用。有疑問請洽管理室 02-2345-1100。\\n\\n說明：已省略施工單位「恆安水電行」及「管理委員會 敬啟」，並合併儲水提醒與復水後放水指引。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "7cecbd7f-8609-4d7f-a45b-1fa2ef9e2b33",
+          "OccurredAt": "2026-10-09T15:22:41.504Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"公告：2026 年 11 月 3 日（週二）上午 9:00 至下午 5:00，A 棟與 B 棟全面停水，C 棟不受影響，進行水塔清洗。11 月 2 日晚上 10:00 起部分樓層水壓可能變小，請提前儲水（每戶建議至少備水 20 公升）；復水後請先放水 5 分鐘再使用。有疑問請洽管理室 02-2345-1100。\\n\\n說明：已省略施工單位「恆安水電行」及「管理委員會 敬啟」，並合併儲水提醒與復水後放水指引。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "300179fe-ff40-425b-b29c-ae3e9308fcab",
+          "OccurredAt": "2026-10-09T15:22:45.58Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.005075390000000001, \"cost_source\": \"gateway\", \"duration_ms\": 45727, \"input_tokens\": 1591, \"token_source\": \"result\", \"output_tokens\": 2300, \"cache_read_input_tokens\": 113719, \"cache_write_input_tokens\": 20508}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "5d9384c5-cc05-49d1-9f2e-4740ed491444",
+        "Result": "passed",
+        "Reason": "公告本文共 3 句，說明另列於公告之外。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "公告：2026 年 11 月 3 日（週二）上午 9:00 至下午 5:00，A 棟與 B 棟全面停水，C 棟不受影響，進行水塔清洗。11 月 2 日晚上 10:00 起部分樓層水壓可能變小，請提前儲水（每戶建議至少備水 20 公升）；復水後請先放水 5 分鐘再使用。有疑問請洽管理室 02-2345-1100。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ace7b76f-666c-4f15-98ea-25a0f424bc75",
+        "Result": "passed",
+        "Reason": "公告保留 2026 年 11 月 3 日，並正確標示週二。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026 年 11 月 3 日（週二）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "dc92c22f-4818-4305-a79d-1b873369fefb",
+        "Result": "passed",
+        "Reason": "公告保留上午 9:00 至下午 5:00 的停水時段。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "上午 9:00 至下午 5:00"
+          }
+        ]
+      },
+      {
+        "CriterionID": "daac34f2-275a-41aa-8e3c-cc20df3829a2",
+        "Result": "passed",
+        "Reason": "公告明確指出 A 棟與 B 棟全面停水。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "A 棟與 B 棟全面停水"
+          }
+        ]
+      },
+      {
+        "CriterionID": "cce586a3-e32b-4667-9490-e99e1484540c",
+        "Result": "passed",
+        "Reason": "公告外另有一句說明；所列施工單位與管委會署名確實未出現在公告本文，儲水與復水指引也合併敘述。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "公告：2026 年 11 月 3 日（週二）上午 9:00 至下午 5:00，A 棟與 B 棟全面停水，C 棟不受影響，進行水塔清洗。11 月 2 日晚上 10:00 起部分樓層水壓可能變小，請提前儲水（每戶建議至少備水 20 公升）；復水後請先放水 5 分鐘再使用。有疑問請洽管理室 02-2345-1100。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "說明：已省略施工單位「恆安水電行」及「管理委員會 敬啟」，並合併儲水提醒與復水後放水指引。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "890e8c38-d927-4072-9729-c029c0949111",
+        "Result": "passed",
+        "Reason": "公告中的日期、時段、棟別、水壓提醒、備水量、復水指引及聯絡電話均與原通知一致，未見新增或矛盾的事實。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "公告：2026 年 11 月 3 日（週二）上午 9:00 至下午 5:00，A 棟與 B 棟全面停水，C 棟不受影響，進行水塔清洗。11 月 2 日晚上 10:00 起部分樓層水壓可能變小，請提前儲水（每戶建議至少備水 20 公升）；復水後請先放水 5 分鐘再使用。有疑問請洽管理室 02-2345-1100。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "六項驗收標準皆符合。公告以三句保留關鍵停水資訊，另以一句說明省略及合併的內容。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 5448,
+      "CompletionTokens": 1122,
+      "CostUSD": 0.0223039,
+      "CostReported": true
+    }
+  }
+}

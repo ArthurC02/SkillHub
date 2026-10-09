@@ -1,0 +1,129 @@
+{
+  "round": 1,
+  "sample_input": "請依下列資料撰寫一則不超過 70 字元的牙醫回診提醒簡訊，並只輸出簡訊本文。\n病患姓名：林小姐\n回診日期：2026/11/03\n回診時間：14:30\n診所電話：02-2345-6789\n其他備註：洗牙",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入，輸出恰為一則簡訊本文，沒有前言、說明或字數統計。"
+    },
+    {
+      "text": "對試跑輸入，簡訊本文總長不超過 70 個字元，標點及空格也計入。"
+    },
+    {
+      "text": "對試跑輸入，簡訊本文原樣包含日期「2026/11/03」、時間「14:30」及診所電話「02-2345-6789」。"
+    },
+    {
+      "text": "對試跑輸入，簡訊本文包含病患姓名「林小姐」及備註「洗牙」，因兩者都能在 70 字元限制內納入。"
+    }
+  ],
+  "final_output": "林小姐您好，提醒回診：2026/11/03 14:30；電話：02-2345-6789；備註：洗牙。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "51453094-cbc0-47f7-b3ad-ffd62f5ca89c",
+    "run_id": "6468fb91-51de-497e-b1b1-e06ec1ae916e",
+    "status": "completed",
+    "overall": "met",
+    "summary": "試跑輸出為單則 50 字元的簡訊，包含所有指定資訊，且沒有額外說明。",
+    "criterion_results": [
+      {
+        "criterion_id": "e926be96-6c0f-4319-a7d5-7ffb48a28201",
+        "text": "對試跑輸入，輸出恰為一則簡訊本文，沒有前言、說明或字數統計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有一則簡訊本文，沒有前言、說明或字數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林小姐您好，提醒回診：2026/11/03 14:30；電話：02-2345-6789；備註：洗牙。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bd6ffea6-9a70-4d79-bd53-e9bf01c7d647",
+        "text": "對試跑輸入，簡訊本文總長不超過 70 個字元，標點及空格也計入。",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊本文共 50 個字元，含標點及空格，未超過 70 個字元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林小姐您好，提醒回診：2026/11/03 14:30；電話：02-2345-6789；備註：洗牙。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7aa92999-c047-46cd-8e3d-e162743fe958",
+        "text": "對試跑輸入，簡訊本文原樣包含日期「2026/11/03」、時間「14:30」及診所電話「02-2345-6789」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊本文原樣包含指定日期、時間及診所電話。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026/11/03 14:30；電話：02-2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a504520c-cbec-414c-8d79-1890dedacafc",
+        "text": "對試跑輸入，簡訊本文包含病患姓名「林小姐」及備註「洗牙」，因兩者都能在 70 字元限制內納入。",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊本文包含病患姓名「林小姐」及備註「洗牙」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林小姐您好，提醒回診：2026/11/03 14:30；電話：02-2345-6789；備註：洗牙。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1541 input and 426 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

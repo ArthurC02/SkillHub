@@ -1,0 +1,148 @@
+{
+  "round": 0,
+  "sample_input": "幫我寫回診提醒簡訊：病患王小明，回診 2026 年 12 月 8 日（週二）下午 2:30，微笑牙醫診所，電話 02-2345-6789，地址台北市大安區和平東路二段 100 號 3 樓，請攜帶健保卡並提早 10 分鐘到，如需改期請於前一天下午 5:00 前來電。",
+  "acceptance_criteria": [
+    {
+      "text": "簡訊全文（含標點）不超過 70 個字"
+    },
+    {
+      "text": "簡訊含回診日期 12 月 8 日（或 12/8）"
+    },
+    {
+      "text": "簡訊含回診時間下午 2:30（或 14:30）"
+    },
+    {
+      "text": "簡訊含診所電話 02-2345-6789"
+    },
+    {
+      "text": "輸出只有簡訊本文，沒有前後說明、沒有字數統計、沒有「以下是」之類的引言"
+    }
+  ],
+  "final_output": "王小明您好，提醒回診：2026 年 12 月 8 日（週二） 下午 2:30；電話：02-2345-6789。",
+  "artifacts": [
+    "reminder.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "c34178ea-e23b-4f41-a94f-a4745ff1ac43",
+    "run_id": "ca5f7795-9bc7-45ef-9ffb-c43a0b0f6a12",
+    "status": "completed",
+    "overall": "met",
+    "summary": "本次輸出的簡訊符合全部五項驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "45a001d2-fdf1-4368-a352-192f22b2f81a",
+        "text": "簡訊全文（含標點）不超過 70 個字",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊全文含標點共 54 個字元，未超過 70 個字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王小明您好，提醒回診：2026 年 12 月 8 日（週二） 下午 2:30；電話：02-2345-6789。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f8ed3014-4784-4028-840c-b49f52538d0d",
+        "text": "簡訊含回診日期 12 月 8 日（或 12/8）",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊包含回診日期 12 月 8 日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "12 月 8 日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5cc46912-c3fd-4d4d-9a01-0fa394bb3d0c",
+        "text": "簡訊含回診時間下午 2:30（或 14:30）",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊包含回診時間下午 2:30。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "下午 2:30",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5b12e479-e203-4e4c-9a4a-549428793d58",
+        "text": "簡訊含診所電話 02-2345-6789",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊包含指定的診所電話。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "02-2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cf638cbf-b9ea-49d2-b8d1-1fe44359760d",
+        "text": "輸出只有簡訊本文，沒有前後說明、沒有字數統計、沒有「以下是」之類的引言",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有簡訊本文，沒有引言、前後說明或字數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王小明您好，提醒回診：2026 年 12 月 8 日（週二） 下午 2:30；電話：02-2345-6789。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): reminder.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1541 input and 600 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

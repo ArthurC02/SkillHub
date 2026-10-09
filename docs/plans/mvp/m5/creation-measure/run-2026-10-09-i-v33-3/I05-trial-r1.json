@@ -1,0 +1,136 @@
+{
+  "round": 1,
+  "sample_input": "請將以下完整停水通知濃縮成住戶群組公告：\n管委會公告：本社區將於2026年11月12日（星期四）上午09:00至下午16:00進行供水管線維修，A棟及B棟停水，C棟供水不受影響。請住戶提前儲水；施工期間請勿使用抽水設備，以免影響工程。若工程提前完成，將提早恢復供水；如遇雨勢過大，施工可能延期，另行通知。造成不便，敬請見諒。",
+  "acceptance_criteria": [
+    {
+      "text": "對範例通知，輸出包含「住戶公告」及公告外的資訊處理說明兩部分。"
+    },
+    {
+      "text": "「住戶公告」本文不超過 3 句，且保留停水日期「2026年11月12日」、時段「09:00至16:00」及受影響的「A、B棟」。"
+    },
+    {
+      "text": "公告外另有且只有一句說明省略或合併了哪些資訊；範例中須提及供水管線維修、提前儲水或施工期間勿使用抽水設備等被省略或合併的資訊。"
+    },
+    {
+      "text": "公告不加入範例通知未提供的停水原因、日期、時段或受影響棟別等事實。"
+    }
+  ],
+  "final_output": "住戶公告：本社區將於2026年11月12日（星期四）上午09:00至下午16:00進行供水管線維修，A棟及B棟停水，C棟供水不受影響。請住戶提前儲水，施工期間請勿使用抽水設備。工程若提前完成將提早恢復供水，如遇雨勢過大可能延期，並另行通知。資訊處理說明：將提前完工及雨勢過大時的處理方式合併於同一句，並省略致歉語。",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "10cd8ce8-2c8f-4e77-9ac0-7b73080dea89",
+    "run_id": "17e0ed4f-d75c-451b-bec4-4287633e3561",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "公告分為本文與資訊處理說明，本文三句並保留必要停水資訊，也未增添不實事實。但資訊處理說明未提及該項準則指定的維修、儲水或抽水設備資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "a41e8266-48f7-4a4b-96ee-fbde4b1cef78",
+        "text": "對範例通知，輸出包含「住戶公告」及公告外的資訊處理說明兩部分。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以「住戶公告」呈現公告，並另以「資訊處理說明」交代資訊處理方式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "住戶公告：本社區將於2026年11月12日",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "資訊處理說明：將提前完工及雨勢過大時的處理方式合併於同一句，並省略致歉語。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1e8ebcaa-d383-4009-ae13-a0997c40cd5a",
+        "text": "「住戶公告」本文不超過 3 句，且保留停水日期「2026年11月12日」、時段「09:00至16:00」及受影響的「A、B棟」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告本文為三句，保留了停水日期、09:00至16:00的時段，以及A棟與B棟停水的資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "住戶公告：本社區將於2026年11月12日（星期四）上午09:00至下午16:00進行供水管線維修，A棟及B棟停水，C棟供水不受影響。請住戶提前儲水，施工期間請勿使用抽水設備。工程若提前完成將提早恢復供水，如遇雨勢過大可能延期，並另行通知。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0683aa06-d0a6-4823-ad47-ba0f698e4054",
+        "text": "公告外另有且只有一句說明省略或合併了哪些資訊；範例中須提及供水管線維修、提前儲水或施工期間勿使用抽水設備等被省略或合併的資訊。",
+        "result": "failed",
+        "source": "model",
+        "reason": "公告外雖只有一句資訊處理說明，但該句僅提及合併提前完工與雨勢過大的處理方式、並省略致歉語；未提及準則指定的供水管線維修、提前儲水或施工期間勿使用抽水設備等資訊如何省略或合併。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "資訊處理說明：將提前完工及雨勢過大時的處理方式合併於同一句，並省略致歉語。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "461d0b25-f764-456f-96c3-3cfe6d552df6",
+        "text": "公告不加入範例通知未提供的停水原因、日期、時段或受影響棟別等事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告所述維修、日期、時段及受影響棟別均與原通知一致，未加入原通知沒有的相關事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本社區將於2026年11月12日（星期四）上午09:00至下午16:00進行供水管線維修，A棟及B棟停水，C棟供水不受影響。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1753 input and 3196 output tokens on skillhub-run; reported cost $0.0065 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 36,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

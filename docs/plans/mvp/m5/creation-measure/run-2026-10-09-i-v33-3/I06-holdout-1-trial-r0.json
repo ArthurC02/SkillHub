@@ -1,0 +1,148 @@
+{
+  "round": 0,
+  "sample_input": "幫我寫回診提醒簡訊：病患王小明，回診 2026 年 12 月 8 日（週二）下午 2:30，微笑牙醫診所，電話 02-2345-6789，地址台北市大安區和平東路二段 100 號 3 樓，請攜帶健保卡並提早 10 分鐘到，如需改期請於前一天下午 5:00 前來電。",
+  "acceptance_criteria": [
+    {
+      "text": "簡訊全文（含標點）不超過 70 個字"
+    },
+    {
+      "text": "簡訊含回診日期 12 月 8 日（或 12/8）"
+    },
+    {
+      "text": "簡訊含回診時間下午 2:30（或 14:30）"
+    },
+    {
+      "text": "簡訊含診所電話 02-2345-6789"
+    },
+    {
+      "text": "輸出只有簡訊本文，沒有前後說明、沒有字數統計、沒有「以下是」之類的引言"
+    }
+  ],
+  "final_output": "王小明您好，提醒您於2026 年 12 月 8 日（週二） 下午 2:30回診，診所電話02-2345-6789。，微笑牙醫診所，地址台北…",
+  "artifacts": [
+    "sms.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "438f573f-15fa-4b06-b9bd-22fc897a7213",
+    "run_id": "8ebb4e69-5051-4233-9ba6-6ff0e465f3a3",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "簡訊包含指定的日期、時間與電話，且只輸出簡訊本文；但全文共 71 個字元，未符合 70 字元上限。",
+    "criterion_results": [
+      {
+        "criterion_id": "39784b5f-5cc6-4b7b-95ca-985dec3656a2",
+        "text": "簡訊全文（含標點）不超過 70 個字",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終簡訊含標點共 71 個字元，超過 70 個字元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王小明您好，提醒您於2026 年 12 月 8 日（週二） 下午 2:30回診，診所電話02-2345-6789。，微笑牙醫診所，地址台北…",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f15f409f-3cf3-4252-8720-f8f01f622c74",
+        "text": "簡訊含回診日期 12 月 8 日（或 12/8）",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊含回診日期「12 月 8 日」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "12 月 8 日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "38d4b7e9-de1c-4bfe-a931-3df7d274fd4d",
+        "text": "簡訊含回診時間下午 2:30（或 14:30）",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊含回診時間「下午 2:30」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "下午 2:30",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4e970fda-6813-47fa-b91e-3bc3f5a016fe",
+        "text": "簡訊含診所電話 02-2345-6789",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊含指定的診所電話。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "02-2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "64df0ddc-e1c3-451a-9dd2-0aa73a70874c",
+        "text": "輸出只有簡訊本文，沒有前後說明、沒有字數統計、沒有「以下是」之類的引言",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有簡訊本文，沒有引言、前後說明或字數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王小明您好，提醒您於2026 年 12 月 8 日（週二） 下午 2:30回診，診所電話02-2345-6789。，微笑牙醫診所，地址台北…",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): sms.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1558 input and 999 output tokens on skillhub-run; reported cost $0.0041 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

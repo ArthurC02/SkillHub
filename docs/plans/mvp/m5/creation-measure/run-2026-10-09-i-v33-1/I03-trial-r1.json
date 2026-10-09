@@ -1,0 +1,178 @@
+{
+  "round": 1,
+  "sample_input": "請整理這則花店訂單，數量或單價缺漏處依合理假設處理：紅玫瑰一打，每枝 80 元；白百合 3 枝，每枝 120 元；滿天星 2 把，免費；綠葉 1 把，單價 0 元；鬱金香每枝 90 元，數量沒寫；康乃馨 2 枝，單價沒寫；外送車資 150 元，由司機到府另收。",
+  "acceptance_criteria": [
+    {
+      "text": "在樣本中將「一打」換算為 12，紅玫瑰小計為 12 × 80 = 960 元。"
+    },
+    {
+      "text": "在樣本中正確列出白百合 3 枝、單價 120 元、小計 360 元。"
+    },
+    {
+      "text": "在樣本中仍列出免費滿天星與 0 元綠葉，兩者小計均為 0 元。"
+    },
+    {
+      "text": "在樣本中將未寫數量的鬱金香按 1 枝處理，小計為 90 元。"
+    },
+    {
+      "text": "在樣本中將缺少單價的康乃馨標為「待確認」，不猜價格，也不納入可計算總額。"
+    },
+    {
+      "text": "在樣本中可計算品項總額為 960 + 360 + 0 + 0 + 90 = 1,410 元；外送車資 150 元只列於備註，不加入總額。"
+    }
+  ],
+  "final_output": "| 品項 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 紅玫瑰 | 12 枝 | 80 元 | 960 元 |\n| 白百合 | 3 枝 | 120 元 | 360 元 |\n| 滿天星 | 2 把 | 免費 | 0 元 |\n| 綠葉 | 1 把 | 0 元 | 0 元 |\n| 鬱金香 | 1 枝（缺漏按 1 枝計） | 90 元 | 90 元 |\n| 康乃馨 | 2 枝 | 待確認 | 待確認 |\n\n**品項總額：1,410 元**  \n備註：外送車資 150 元，由司機到府另收；不計入品項總額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "dcc64384-49c3-4408-ae6a-a3457a1f279c",
+    "run_id": "ff438916-1566-4aff-aa8b-a4c562105224",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收標準皆符合。報價列出了各品項數量、單價與小計，將缺價的康乃馨標為待確認，並將外送車資排除於 1,410 元品項總額之外。",
+    "criterion_results": [
+      {
+        "criterion_id": "ecb5706d-2266-4ca3-b548-f82885ca2414",
+        "text": "在樣本中將「一打」換算為 12，紅玫瑰小計為 12 × 80 = 960 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "紅玫瑰列為 12 枝、每枝 80 元，小計 960 元，符合一打換算結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 紅玫瑰 | 12 枝 | 80 元 | 960 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0a88c837-47ab-4238-854d-7d898351eaef",
+        "text": "在樣本中正確列出白百合 3 枝、單價 120 元、小計 360 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "白百合列為 3 枝、單價 120 元、小計 360 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 白百合 | 3 枝 | 120 元 | 360 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "829cc909-2055-4f04-802c-30ff495e8ebf",
+        "text": "在樣本中仍列出免費滿天星與 0 元綠葉，兩者小計均為 0 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "免費滿天星與單價 0 元的綠葉均有列出，小計皆為 0 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 滿天星 | 2 把 | 免費 | 0 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 綠葉 | 1 把 | 0 元 | 0 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5b1190a9-b464-49b3-bd60-a26490d8855b",
+        "text": "在樣本中將未寫數量的鬱金香按 1 枝處理，小計為 90 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "鬱金香缺漏數量按 1 枝計，單價 90 元，小計 90 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 鬱金香 | 1 枝（缺漏按 1 枝計） | 90 元 | 90 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "788c98dd-bc65-450f-a3f4-f3770b2b90ae",
+        "text": "在樣本中將缺少單價的康乃馨標為「待確認」，不猜價格，也不納入可計算總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "康乃馨單價及小計均標為待確認，沒有猜測價格；品項總額也未計入康乃馨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 康乃馨 | 2 枝 | 待確認 | 待確認 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**品項總額：1,410 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "aa3b11ad-3dd6-49b0-9a36-02bc08ddfa4f",
+        "text": "在樣本中可計算品項總額為 960 + 360 + 0 + 0 + 90 = 1,410 元；外送車資 150 元只列於備註，不加入總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "可計算品項總額為 1,410 元；外送車資 150 元僅列於備註，明確排除於總額之外。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**品項總額：1,410 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "備註：外送車資 150 元，由司機到府另收；不計入品項總額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1552 input and 877 output tokens on skillhub-run; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

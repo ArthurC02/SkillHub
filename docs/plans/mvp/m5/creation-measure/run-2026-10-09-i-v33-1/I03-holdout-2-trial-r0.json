@@ -1,0 +1,124 @@
+{
+  "round": 0,
+  "sample_input": "你好 我要桔梗 3 束 每束 120、白色洋桔梗 6 支 一支 35，再加玻璃花瓶 1 個 280，運費 150 是給司機的",
+  "acceptance_criteria": [
+    {
+      "text": "桔梗小計 360 元，洋桔梗小計 210 元，玻璃花瓶小計 280 元"
+    },
+    {
+      "text": "品項總額為 850 元"
+    },
+    {
+      "text": "運費 150 元沒有被算進品項總額"
+    }
+  ],
+  "final_output": "| 品項 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 桔梗 | 3 | 120 元 | 360 元 |\n| 白色洋桔梗 | 6 | 35 元 | 210 元 |\n| 玻璃花瓶 | 1 | 280 元 | 280 元 |\n\n品項總額：850 元  \n備註：外送車資 150 元，由司機到府另收；不計入品項總額。",
+  "artifacts": [
+    "quote-input.json"
+  ],
+  "evaluation": {
+    "evaluation_id": "887d8513-6dd7-488d-9126-ab547b57786a",
+    "run_id": "e23b9561-4467-4aab-85b3-345bc56497d0",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項小計與品項總額均正確；150 元運費已明確排除在品項總額之外。",
+    "criterion_results": [
+      {
+        "criterion_id": "5e74e8bf-0c55-4bf3-8d01-56d026e46469",
+        "text": "桔梗小計 360 元，洋桔梗小計 210 元，玻璃花瓶小計 280 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "報價逐項列出桔梗 360 元、白色洋桔梗 210 元、玻璃花瓶 280 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 桔梗 | 3 | 120 元 | 360 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 白色洋桔梗 | 6 | 35 元 | 210 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 玻璃花瓶 | 1 | 280 元 | 280 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1d35ce41-622b-485b-ae9e-7196b5518ab6",
+        "text": "品項總額為 850 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "品項總額列為 850 元，與三項小計相加一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "品項總額：850 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9e433588-e874-4288-b3fa-580e6e6d8282",
+        "text": "運費 150 元沒有被算進品項總額",
+        "result": "passed",
+        "source": "model",
+        "reason": "報價明確註明外送車資 150 元由司機另收，不計入品項總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "備註：外送車資 150 元，由司機到府另收；不計入品項總額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): quote-input.json"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1532 input and 783 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

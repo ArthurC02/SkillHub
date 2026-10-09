@@ -1,0 +1,137 @@
+{
+  "round": 0,
+  "sample_input": "再幫我看這四筆：\n1. 小安，兒童證，逾期 30 天，未遺失\n2. 小宇，兒童證，逾期 12 天，已回報遺失\n3. 吳女士，一般證，逾期 3 天，已回報遺失\n4. 小華，兒童證，逾期 0 天，未遺失",
+  "acceptance_criteria": [
+    {
+      "text": "小安（兒童證、逾期 30 天、未遺失）判定為「提醒」，不是「停借」"
+    },
+    {
+      "text": "小宇（兒童證、已回報遺失）判定為「賠償」"
+    },
+    {
+      "text": "吳女士（一般證、逾期 3 天、已回報遺失）判定為「賠償」，不是「提醒」"
+    },
+    {
+      "text": "小華（兒童證、逾期 0 天）判定為「免處理」"
+    }
+  ],
+  "final_output": "",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a11d9482-12cd-4c34-986a-cc71da464025",
+    "run_id": "980f433f-81cc-4fde-9c25-75268b418f7e",
+    "status": "completed",
+    "overall": "met",
+    "summary": "工具執行結果顯示四筆分類均符合各項判定標準。不過，這次試跑沒有產生給使用者的最終回覆。",
+    "criterion_results": [
+      {
+        "criterion_id": "46c3e62b-1408-4628-a09a-e8dfb5a8618e",
+        "text": "小安（兒童證、逾期 30 天、未遺失）判定為「提醒」，不是「停借」",
+        "result": "passed",
+        "source": "model",
+        "reason": "分類器的實際輸出將小安判定為「提醒」，而非「停借」。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "小安｜提醒",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cc7fe037-c440-41ac-807d-0ce1b90cad1e",
+        "text": "小宇（兒童證、已回報遺失）判定為「賠償」",
+        "result": "passed",
+        "source": "model",
+        "reason": "分類器的實際輸出將小宇判定為「賠償」。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "小宇｜賠償",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8a188436-32c4-4808-b990-15a4a65ebcda",
+        "text": "吳女士（一般證、逾期 3 天、已回報遺失）判定為「賠償」，不是「提醒」",
+        "result": "passed",
+        "source": "model",
+        "reason": "分類器的實際輸出將吳女士判定為「賠償」，而非「提醒」。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "吳女士｜賠償",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bcfbb15b-092a-4b5f-b6ba-6c01fbda1914",
+        "text": "小華（兒童證、逾期 0 天）判定為「免處理」",
+        "result": "passed",
+        "source": "model",
+        "reason": "分類器的實際輸出將小華判定為「免處理」。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "小華｜免處理",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "error",
+        "message": "the run ended as failed, classified workload_error: 這次試跑用掉的輸入 token 超過上限:已用 320610,上限 300000。此上限可跑的輪數取決於每輪的工具呼叫次數:純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪"
+      },
+      {
+        "category": "execution",
+        "severity": "error",
+        "message": "error event (execution/token_budget_exceeded): run stopped at its input token ceiling: 320121 of 300000 tokens (PDM-005 5.2a; the limit shown in the pre-run permission summary)"
+      },
+      {
+        "category": "execution",
+        "severity": "error",
+        "message": "error event (execution/workload_error): 這次試跑用掉的輸入 token 超過上限:已用 320610,上限 300000。此上限可跑的輪數取決於每輪的工具呼叫次數:純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1856 input and 4609 output tokens on skillhub-run; reported cost $0.0082 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 31,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  },
+  "read_errors": [
+    "final agent output: no rows in result set"
+  ]
+}

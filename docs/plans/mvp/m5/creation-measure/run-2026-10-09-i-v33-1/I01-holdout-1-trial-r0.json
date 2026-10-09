@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "這次會議室用了 121 分鐘，費用多少？",
+  "acceptance_criteria": [
+    {
+      "text": "121 分鐘先進位為 5 個單位（150 分鐘）"
+    },
+    {
+      "text": "費用為 1,440 元（4 個單位 × 300 加 1 個單位 × 240）"
+    },
+    {
+      "text": "沒有套用 2,400 元上限"
+    }
+  ],
+  "final_output": "租借 1：實際使用 121 分鐘，計費 5 個單位，應收 **1,440 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a7d2c591-2f56-44af-b601-fff42f3c2722",
+    "run_id": "7a8b0c09-5b38-4b33-80d2-c60803398a45",
+    "status": "completed",
+    "overall": "met",
+    "summary": "這次計費為 5 個 30 分鐘單位，應收 1,440 元；金額未觸及 2,400 元上限。",
+    "criterion_results": [
+      {
+        "criterion_id": "7069c18f-79c5-4286-9719-a9070759ce39",
+        "text": "121 分鐘先進位為 5 個單位（150 分鐘）",
+        "result": "passed",
+        "source": "model",
+        "reason": "121 分鐘計為 5 個單位；每單位 30 分鐘，相當於進位至 150 分鐘。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "實際使用 121 分鐘，計費 5 個單位",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7cfc2c6f-b4dd-4170-8aca-dc3ab1bd31e6",
+        "text": "費用為 1,440 元（4 個單位 × 300 加 1 個單位 × 240）",
+        "result": "passed",
+        "source": "model",
+        "reason": "應收金額為 1,440 元，符合 4 × 300 加 1 × 240 的計算結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "應收 **1,440 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d38793b5-b384-49ed-ac8e-0c1e0658101b",
+        "text": "沒有套用 2,400 元上限",
+        "result": "passed",
+        "source": "model",
+        "reason": "應收 1,440 元是未觸及 2,400 元上限的分段計費金額，沒有被上限截斷。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "計費 5 個單位，應收 **1,440 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1533 input and 212 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

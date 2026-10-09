@@ -1,0 +1,141 @@
+{
+  "round": 1,
+  "sample_input": "請依以下資料各寫一則回診提醒簡訊；每行是一位病患，分別作為獨立案例處理。\n姓名：陳小明；回診日期：2026/10/20；時間：09:30；診所電話：02-2345-6789；備註：請提前十分鐘報到。\n姓名：林美玲；回診日期：2026/10/20；時間：09:30；診所電話：02-2345-6789；備註：請提前十分鐘報到，並攜帶健保卡與過往檢查資料，若有服用藥物請一併攜帶藥袋，抵達後先至櫃檯辦理報到手續。\n姓名：甲乙丙丁戊己庚辛壬癸甲乙丙丁戊己庚辛壬癸甲乙丙丁戊己庚辛壬癸；回診日期：2026/10/20；時間：09:30；診所電話：02-2345-6789；備註：無",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 行：輸出只有一則繁體中文簡訊本文，包含姓名、日期、時間、診所電話及完整備註；全文不超過 70 個字元。"
+    },
+    {
+      "text": "試跑輸入第 2 行：輸出只有一則簡訊本文；日期、時間與診所電話原樣保留，姓名保留，備註可縮短或移除以符合 70 字元上限。"
+    },
+    {
+      "text": "試跑輸入第 3 行：在無備註且含姓名會超過 70 字元時，省略姓名；日期、時間與診所電話仍原樣保留，全文不超過 70 個字元。"
+    },
+    {
+      "text": "每個案例的簡訊都不含欄位標籤、額外說明或字數統計；計數包含標點與空格。"
+    }
+  ],
+  "final_output": "陳小明您好，提醒您於2026/10/20 09:30回診，診所電話02-2345-6789。，請提前十分鐘報到。\n林美玲您好，提醒您於2026/10/20 09:30回診，診所電話02-2345-6789。，請提前十分鐘報到，並攜帶健保卡與過往檢查資料…\n提醒您於2026/10/20 09:30回診，診所電話02-2345-6789。",
+  "artifacts": [
+    "sms.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "bf8660a1-f053-4b32-ae08-ba3cfc9942be",
+    "run_id": "c72c117b-00e6-48b9-9725-7c208fe73ae2",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三則簡訊分別符合各案例的資料保留與 70 字元要求，輸出也沒有附加說明。前兩則出現「。，」的標點銜接，雖不自然，但不影響所列驗收條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "61e0ff76-35d4-4693-b301-633a19f9d92e",
+        "text": "試跑輸入第 1 行：輸出只有一則繁體中文簡訊本文，包含姓名、日期、時間、診所電話及完整備註；全文不超過 70 個字元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 行是一則繁體中文簡訊，包含姓名、日期、時間、診所電話及完整備註；包含空格和標點仍未超過 70 字元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳小明您好，提醒您於2026/10/20 09:30回診，診所電話02-2345-6789。，請提前十分鐘報到。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "04f0bbe0-bc9f-4d13-8e89-70d1b724b68f",
+        "text": "試跑輸入第 2 行：輸出只有一則簡訊本文；日期、時間與診所電話原樣保留，姓名保留，備註可縮短或移除以符合 70 字元上限。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 行是一則簡訊，保留姓名及原樣的日期、時間、診所電話；備註經截短後，全文連同空格和標點為 70 字元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林美玲您好，提醒您於2026/10/20 09:30回診，診所電話02-2345-6789。，請提前十分鐘報到，並攜帶健保卡與過往檢查資料…",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7e313553-7b45-40cf-88d9-1c7796c36aa3",
+        "text": "試跑輸入第 3 行：在無備註且含姓名會超過 70 字元時，省略姓名；日期、時間與診所電話仍原樣保留，全文不超過 70 個字元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 行省略了過長的姓名，原樣保留日期、時間與診所電話，且全文不超過 70 字元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "提醒您於2026/10/20 09:30回診，診所電話02-2345-6789。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "64f47543-5656-4ffa-9e07-c373525b28e2",
+        "text": "每個案例的簡訊都不含欄位標籤、額外說明或字數統計；計數包含標點與空格。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三個案例各佔一行，均只有簡訊本文，沒有獨立的欄位標籤、額外說明或字數統計；各行計入標點與空格後均符合字數限制。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳小明您好，提醒您於2026/10/20 09:30回診，診所電話02-2345-6789。，請提前十分鐘報到。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "林美玲您好，提醒您於2026/10/20 09:30回診，診所電話02-2345-6789。，請提前十分鐘報到，並攜帶健保卡與過往檢查資料…",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "提醒您於2026/10/20 09:30回診，診所電話02-2345-6789。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): sms.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1700 input and 3645 output tokens on skillhub-run; reported cost $0.0064 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 41,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

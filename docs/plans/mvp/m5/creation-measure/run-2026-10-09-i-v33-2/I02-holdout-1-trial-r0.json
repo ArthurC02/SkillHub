@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "今天的逾期名單，幫我判定處理等級：\n1. 林小姐，一般證，逾期 7 天，未遺失\n2. 陳先生，一般證，逾期 8 天，未遺失\n3. 周先生，一般證，逾期 0 天，未遺失",
+  "acceptance_criteria": [
+    {
+      "text": "林小姐（一般證、逾期 7 天）判定為「提醒」"
+    },
+    {
+      "text": "陳先生（一般證、逾期 8 天）判定為「停借」"
+    },
+    {
+      "text": "周先生（逾期 0 天）判定為「免處理」"
+    }
+  ],
+  "final_output": "| 讀者 | 處理等級 | 判定理由 |\n|---|---|---|\n| 林小姐 | 提醒 | 一般證未遺失，逾期 1–7 天 |\n| 陳先生 | 停借 | 一般證未遺失，逾期 8 天以上 |\n| 周先生 | 免處理 | 未遺失且逾期 0 天 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fa096495-4284-49e7-bb8f-c27556fda859",
+    "run_id": "621fa7a6-3384-4b00-8522-3e00aab26696",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終表格對三位讀者的處理等級均符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "5fafb5d7-c823-4f46-9e8e-d03e776b0f25",
+        "text": "林小姐（一般證、逾期 7 天）判定為「提醒」",
+        "result": "passed",
+        "source": "model",
+        "reason": "林小姐被判定為「提醒」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 林小姐 | 提醒 | 一般證未遺失，逾期 1–7 天 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5082cf06-7776-40e2-9e91-c15e360bfa01",
+        "text": "陳先生（一般證、逾期 8 天）判定為「停借」",
+        "result": "passed",
+        "source": "model",
+        "reason": "陳先生被判定為「停借」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 陳先生 | 停借 | 一般證未遺失，逾期 8 天以上 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "abc21b5f-82af-4f08-9425-6cea07e88a21",
+        "text": "周先生（逾期 0 天）判定為「免處理」",
+        "result": "passed",
+        "source": "model",
+        "reason": "周先生被判定為「免處理」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 周先生 | 免處理 | 未遺失且逾期 0 天 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1562 input and 827 output tokens on skillhub-run; reported cost $0.0039 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

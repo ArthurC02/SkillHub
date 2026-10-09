@@ -1,0 +1,242 @@
+{
+  "request": {
+    "RunID": "d3878d5a-7598-4fa4-9876-f4aeabf95c53",
+    "EvaluationID": "42b11040-ba50-4929-ae91-1c62f4489136",
+    "Skill": {
+      "Name": "community-water-outage-notice",
+      "Summary": "將管委會提供的完整停水通知濃縮為住戶群組公告，並另用一句說明省略或合併的資訊。當需要保留停水日期、時段及受影響棟別，且公告本文最多三句時使用。"
+    },
+    "UserPrompt": "請將以下完整停水通知濃縮成住戶群組公告：\n管委會公告：本社區將於2026年11月12日（星期四）上午09:00至下午16:00進行供水管線維修，A棟及B棟停水，C棟供水不受影響。請住戶提前儲水；施工期間請勿使用抽水設備，以免影響工程。若工程提前完成，將提早恢復供水；如遇雨勢過大，施工可能延期，另行通知。造成不便，敬請見諒。",
+    "Criteria": [
+      {
+        "ID": "ffd7b8b3-000c-4697-90dd-9f8c65eb021f",
+        "Text": "對範例通知，輸出包含「住戶公告」及公告外的資訊處理說明兩部分。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ab2c3660-d6e8-4273-8f16-630fcb3df9b5",
+        "Text": "「住戶公告」本文不超過 3 句，且保留停水日期「2026年11月12日」、時段「09:00至16:00」及受影響的「A、B棟」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c6144ef7-0b40-4435-95e7-865600247895",
+        "Text": "公告外另有且只有一句說明省略或合併了哪些資訊；範例中須提及供水管線維修、提前儲水或施工期間勿使用抽水設備等被省略或合併的資訊。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "261efa41-ad1a-4f41-936f-6f3f11b88a95",
+        "Text": "公告不加入範例通知未提供的停水原因、日期、時段或受影響棟別等事實。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "住戶公告\n2026年11月12日（星期四）上午09:00至下午16:00，A棟及B棟停水，C棟供水不受影響。請提前儲水且施工期間勿使用抽水設備；若提前完工將提早恢復供水，遇雨勢過大可能延期並另行通知，造成不便敬請見諒。\n\n資訊處理說明：將住戶應採取的措施及施工進度安排合併表述，並省略供水管線維修的作業原因。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "3b407aa5-1312-48a9-8931-730abbd0b9b1",
+          "OccurredAt": "2026-10-09T16:07:27.519Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"community-water-outage-notice\", \"skill_version_id\": \"5604a8dc-90bf-42ee-bcff-8b9ba1ad1074\"}"
+        },
+        {
+          "TraceEventID": "79d049b5-3fb2-4a92-a0fc-ba8763e0353a",
+          "OccurredAt": "2026-10-09T16:07:27.555Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"community-water-outage-notice\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 36, \"invocation_id\": \"call_sxTCpmn9KLWIxeYw8dJTvn5m\", \"result_summary\": \"Launching skill: community-water-outage-notice\"}"
+        },
+        {
+          "TraceEventID": "57aeb322-cc2c-4977-a83d-c01881427c76",
+          "OccurredAt": "2026-10-09T16:07:37.826Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 157, \"resource_path\": \"community-water-outage-notice/answer.txt\"}"
+        },
+        {
+          "TraceEventID": "4eafdba1-b743-460c-975e-c9bc46670e1a",
+          "OccurredAt": "2026-10-09T16:07:37.826Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"住戶公告\\n2026年11月12日（星期四）上午09:00至下午16:00，A棟及B棟停水，C棟供水不受影響。請住戶提前儲水，施工期間請勿使用抽水設備。若工程提前完成將提早恢復供水；如遇雨勢過大，施工可能延期，另行通知，造成不便敬請見諒。\\n\\n資訊處理說明：將提前完工及雨勢過大時的施工進度安排合併於同一句，並省略供水管線維修的作業原因。\\n\", \"file_path\": \"/work/.claude/skills/community-water-outage-notice/answer.txt\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 15, \"invocation_id\": \"call_TdCufw2O67ZIi0axeSvVyZcG\", \"result_summary\": \"File created successfully at: /work/.claude/skills/community-water-outage-notice/answer.txt (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "4b2f468c-7d5d-4326-a7d2-05a9b0ab6ee6",
+          "OccurredAt": "2026-10-09T16:07:39.57Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 1\\n/bin/bash: line 1: answer.txt: No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "9ffabd4f-e7b8-4323-84b1-b5f7ee548bfe",
+          "OccurredAt": "2026-10-09T16:07:39.57Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python scripts/check_output.py --max-sentences 4 --require \\\"住戶公告\\\" --require \\\"資訊處理說明\\\" \u003c answer.txt\", \"description\": \"Validate condensed outage notice\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 96, \"invocation_id\": \"call_qdWM7vhS9XMZEFLL4dzrQOhD\", \"result_summary\": \"Exit code 1\\n/bin/bash: line 1: answer.txt: No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "d8d48d16-fe76-49c4-9dce-4d3a49323a0f",
+          "OccurredAt": "2026-10-09T16:07:42.878Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\nusage: check_output.py [-h] [--max-sentences MAX_SENTENCES]\\n                       [--max-chars MAX_CHARS] [--max-items MAX_ITEMS]\\n                       [--require TEXT]\\n                       FILE\\ncheck_output.py: error: the following arguments are required: FILE\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "ddf03835-3e45-4934-8d55-68b9f5307994",
+          "OccurredAt": "2026-10-09T16:07:42.879Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"cd /work/.claude/skills/community-water-outage-notice \u0026\u0026 python scripts/check_output.py --max-sentences 4 --require \\\"住戶公告\\\" --require \\\"資訊處理說明\\\" \u003c answer.txt\", \"description\": \"Validate condensed outage notice\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 80, \"invocation_id\": \"call_gGHWnB1LGlAvDnxe5ArEKglK\", \"result_summary\": \"Exit code 2\\nusage: check_output.py [-h] [--max-sentences MAX_SENTENCES]\\n                       [--max-chars MAX_CHARS] [--max-items MAX_ITEMS]\\n                       [--require TEXT]\\n                       FILE\\ncheck_output.py: error: the following arguments are required: FILE\"}"
+        },
+        {
+          "TraceEventID": "a6262e0c-5331-493f-965a-501040d6a170",
+          "OccurredAt": "2026-10-09T16:07:45.5Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 1\\nsentences 5 \u003e 4\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "17ae5a16-e2d8-43e0-8365-332181fc1603",
+          "OccurredAt": "2026-10-09T16:07:45.501Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"cd /work/.claude/skills/community-water-outage-notice \u0026\u0026 python scripts/check_output.py --max-sentences 4 --require \\\"住戶公告\\\" --require \\\"資訊處理說明\\\" answer.txt\", \"description\": \"Validate condensed outage notice\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 74, \"invocation_id\": \"call_Kx19gHZA2f7ym4VMxwY5j5sX\", \"result_summary\": \"Exit code 1\\nsentences 5 \u003e 4\"}"
+        },
+        {
+          "TraceEventID": "f1687a14-f988-4bd5-849d-7a55b4f1b529",
+          "OccurredAt": "2026-10-09T16:07:54.153Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 178, \"resource_path\": \"community-water-outage-notice/answer.txt\"}"
+        },
+        {
+          "TraceEventID": "235dc1c7-5925-4b35-a3c7-7bf5997c06d9",
+          "OccurredAt": "2026-10-09T16:07:54.153Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/community-water-outage-notice/answer.txt\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 19, \"invocation_id\": \"call_YEkeJQQfBKJvSb9yq2dgoJsn\", \"result_summary\": \"1\\t住戶公告\\n2\\t2026年11月12日（星期四）上午09:00至下午16:00，A棟及B棟停水，C棟供水不受影響。請住戶提前儲水，施工期間請勿使用抽水設備。若工程提前完成將提早恢復供水；如遇雨勢過大，施工可能延期，另行通知，造成不便敬請見諒。\\n3\\t\\n4\\t資訊處理說明：將提前完工及雨勢過大時的施工進度安排合併於同一句，並省略供水管線維修的作業原因。\\n5\\t\"}"
+        },
+        {
+          "TraceEventID": "da21b878-94d3-4dcd-b090-cb3691cd28dd",
+          "OccurredAt": "2026-10-09T16:08:00.268Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 4163, \"resource_path\": \"community-water-outage-notice/scripts/check_output.py\"}"
+        },
+        {
+          "TraceEventID": "6ff736d0-e671-4573-a414-7f6428dd6d58",
+          "OccurredAt": "2026-10-09T16:08:00.268Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/community-water-outage-notice/scripts/check_output.py\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 14, \"invocation_id\": \"call_sgUE4wdg4xSuMMPAS1UCXpvf\", \"result_summary\": \"1\\t\\\"\\\"\\\"Count sentences, characters and items in a file and check them against limits.\\\"\\\"\\\"\\n2\\t\\n3\\tfrom __future__ import annotations\\n4\\t\\n5\\timport argparse\\n6\\timport re\\n7\\timport sys\\n8\\t\\n9\\tSENTENCE_SPLIT = re.compile(r\\\"[。！？!?]|\\\\n\\\")\\n10\\tITEM_LINE = re.compile(r\\\"^\\\\s*(?:[-*•]|\\\\d+[.)、．])\\\\s\\\")\\n11\\t\\n12\\t\\n13\\tdef count_sentences(text: str) -\u003e int:\\n14\\t    return sum(1 for part in SENTENCE_SPLIT.split(text) if part.strip())\\n15\\t\\n16\\t\\n17\\tdef count_chars(text: str) -\u003e int:\\n18\\t    return sum(1 for ch in text if not ch.isspace())\\n19\\t\\n20\\t\\n21\\tdef count_items(text: str) -\u003e int:\\n22\\t    return sum(1 for line in text.splitlines() if ITEM_LINE.match(line))\\n23\\t\\n24\\t\\n25\\tdef missing_requirements(text: str, requirements: list[str]) -\u003e list[str]:\\n26\\t    return [req for req in requirements if req not in text]\\n27\\t\\n28\\t\\n29\\tdef check(\\n30\\t    text: str,\\n31\\t    max_sentences: int | None,\\n32\\t    max_chars: int | None,\\n33\\t    max_items: int | None,\\n34\\t    require: list[str],\\n35\\t) -\u003e list[str]:\\n36\\t    failures: list[str] = []\\n37\\t    sentences = count_sentences(text)\\n38\\t    if max_sentences is not None and sentences \u003e max_sentences:\\n39\\t        failures.append(f\\\"sentences {sentences} \u003e {max_sentences}\\\")\\n40\\t    chars = count_chars(text)\\n41\\t    if max_chars is not None and chars \u003e max_chars:\\n42\\t        failures.append(f\\\"chars {chars} \u003e {max_chars}\\\")\\n43\\t    items = count_items(text)\\n44\\t    if max_items is not None and items \u003e max_items:\\n45\\t        failures.append(f\\\"items {items} \u003e {max_items}\\\")\\n46\\t    missing = missing_requirements(text, require)\\n47\\t    if missing:\\n48\\t        failures.append(\\\"missing: \\\" + \\\", \\\".join(missing))\\n49\\t    return failures\\n50\\t\\n51\\t\\n52\\tdef build_parser() -\u003e argparse.ArgumentParser:\\n53\\t    parser = argparse.ArgumentParser(\\n54\\t        description=(\\\"Check a file's draft answer against countable limits and required facts.\\\")\\n55\\t    )\\n56\\t    parser.add_argument(\\n57\\t        \\\"--max-sentences\\\",\\n58\\t        type=int,\\n59\\t        help=(\\n60\\t            \\\"reject if the file has more sentences than this; a sentence is a run of \\\"\\n61\\t            \\\"text separated by 。！？!? or a newline, trimmed and non-empty\\\"\\n62\\t        ),\\n63\\t    )\\n64\\t    parser.add_argument(\\n65\\t        \\\"--max-chars\\\",\\n66\\t        type=int,\\n67\\t        help=\\\"reject if the file has more non-whitespace characters than this\\\",\\n68\\t    )\\n69\\t    parser.add_argument(\\n70\\t        \\\"--max-items\\\",\\n71\\t        type=int,\\n72\\t        help=(\\n73\\t            \\\"reject if the file has more list items than this; an item is a line \\\"\\n74\\t            \\\"starting with -, * or •, or a numbered marker such as '1.' '2)' '3、'\\\"\\n75\\t        ),\\n76\\t    )\\n77\\t    parser.add_argument(\\n78\\t        \\\"--require\\\",\\n79\\t        action=\\\"append\\\",\\n80\\t        default=[],\\n81\\t        metavar=\\\"TEXT\\\",\\n82\\t        help=\\\"reject if this exact text is missing from the file; repeatable\\\",\\n83\\t    )\\n84\\t    parser.add_argument(\\\"file\\\", metavar=\\\"FILE\\\", help=\\\"path to check, or - for stdin\\\")\\n85\\t    return parser\\n86\\t\\n87\\t\\n88\\tdef _read(path: str) -\u003e str:\\n89\\t    if path == \\\"-\\\":\\n90\\t        return sys.stdin.read()\\n91\\t    with open(path, encoding=\\\"utf-8\\\") as handle:\\n92\\t        return handle.read()\\n93\\t\\n94\\t\\n95\\tdef main(argv: list[str] | None = None) -\u003e int:\\n96\\t    args = build_parser().parse_args(argv)\\n97\\t    no_checks = (\\n98\\t        args.max_sentences is None\\n99\\t        and args.max_chars is None\\n100\\t        and args.max_items is None\\n101\\t        and not args.require\\n102\\t    )\\n103\\t    if no_checks:\\n104\\t        print(\\n105\\t            \\\"no checks given: pass at least one of --max-sentences, --max-chars, \\\"\\n106\\t            \\\"--max-items, --require\\\"\\n107\\t        )\\n108\\t        return 2\\n109\\t    try:\\n110\\t        text = _read(args.file)\\n111\\t    except OSError as exc:\\n112\\t        print(f\\\"cannot read {args.file}: {exc}\\\")\\n113\\t        return 2\\n114\\t    except UnicodeDecodeError as exc:\\n115\\t        print(f\\\"cannot decode {args.file} as UTF-8: {exc}\\\")\\n116\\t        return 2\\n117\\t    failures = check(text, args.max_sentences, args.max_chars, args.max_items, args.require)\\n118\\t    if not failures:\\n119\\t        print(\\\"OK\\\")\\n120\\t        return 0\\n121\\t    for failure in failures:\\n122\\t        print(failure)\\n123\\t    return 1\\n124\\t\\n125\\t\\n126\\tif __name__ == \\\"__main__\\\":\\n127\\t    sys.exit(main())\\n128\\t\"}"
+        },
+        {
+          "TraceEventID": "5c692df2-351b-408c-983e-4a0d796c3b74",
+          "OccurredAt": "2026-10-09T16:08:07.87Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 167, \"resource_path\": \"community-water-outage-notice/answer.txt\"}"
+        },
+        {
+          "TraceEventID": "c02cb361-547b-448d-8957-7237af4c73f8",
+          "OccurredAt": "2026-10-09T16:08:07.871Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/community-water-outage-notice/answer.txt\", \"new_string\": \"住戶公告\\n2026年11月12日（星期四）上午09:00至下午16:00，A棟及B棟停水，C棟供水不受影響。請提前儲水且施工期間勿使用抽水設備；若提前完工將提早恢復供水，遇雨勢過大可能延期並另行通知，造成不便敬請見諒。\\n\\n資訊處理說明：將住戶應採取的措施及施工進度安排合併表述，並省略供水管線維修的作業原因。\\n\", \"old_string\": \"住戶公告\\n2026年11月12日（星期四）上午09:00至下午16:00，A棟及B棟停水，C棟供水不受影響。請住戶提前儲水，施工期間請勿使用抽水設備。若工程提前完成將提早恢復供水；如遇雨勢過大，施工可能延期，另行通知，造成不便敬請見諒。\\n\\n資訊處理說明：將提前完工及雨勢過大時的施工進度安排合併於同一句，並省略供水管線維修的作業原因。\\n\", \"replace_all\": false}, \"tool_name\": \"Edit\", \"truncated\": false, \"duration_ms\": 21, \"invocation_id\": \"call_rHJriNorQ2Z38oNFDJbHgWEi\", \"result_summary\": \"The file /work/.claude/skills/community-water-outage-notice/answer.txt has been updated successfully. (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "a615fa66-114e-4eb5-9d68-c51b2b241d6d",
+          "OccurredAt": "2026-10-09T16:08:13.741Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"OK\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "5b1c1d0c-b62a-4544-b5b8-dfbcac514a38",
+          "OccurredAt": "2026-10-09T16:08:13.741Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/community-water-outage-notice \u0026\u0026 python scripts/check_output.py --max-sentences 4 --require \\\"住戶公告\\\" --require \\\"資訊處理說明\\\" answer.txt\", \"description\": \"Validate revised outage notice\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 243, \"invocation_id\": \"call_bQMW4DRJNj9S7FtFFXaljBO6\", \"result_summary\": \"OK\"}"
+        },
+        {
+          "TraceEventID": "bdb84bb1-3dc4-405d-a15a-10aa0a6879e6",
+          "OccurredAt": "2026-10-09T16:08:21.175Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"住戶公告\\n2026年11月12日（星期四）上午09:00至下午16:00，A棟及B棟停水，C棟供水不受影響。請提前儲水且施工期間勿使用抽水設備；若提前完工將提早恢復供水，遇雨勢過大可能延期並另行通知，造成不便敬請見諒。\\n\\n資訊處理說明：將住戶應採取的措施及施工進度安排合併表述，並省略供水管線維修的作業原因。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "1daa9e27-c09c-4845-9a17-2201ca7c270b",
+          "OccurredAt": "2026-10-09T16:08:21.43Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"住戶公告\\n2026年11月12日（星期四）上午09:00至下午16:00，A棟及B棟停水，C棟供水不受影響。請提前儲水且施工期間勿使用抽水設備；若提前完工將提早恢復供水，遇雨勢過大可能延期並另行通知，造成不便敬請見諒。\\n\\n資訊處理說明：將住戶應採取的措施及施工進度安排合併表述，並省略供水管線維修的作業原因。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "a81319df-d0b3-455a-9768-60149e7a92a3",
+          "OccurredAt": "2026-10-09T16:08:25.591Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.005979045000000001, \"cost_source\": \"gateway\", \"duration_ms\": 63709, \"input_tokens\": 1651, \"token_source\": \"result\", \"output_tokens\": 2716, \"cache_read_input_tokens\": 173817, \"cache_write_input_tokens\": 21243}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "ffd7b8b3-000c-4697-90dd-9f8c65eb021f",
+        "Result": "passed",
+        "Reason": "輸出分為「住戶公告」及公告外的「資訊處理說明」兩部分。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "住戶公告"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "資訊處理說明：將住戶應採取的措施及施工進度安排合併表述，並省略供水管線維修的作業原因。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ab2c3660-d6e8-4273-8f16-630fcb3df9b5",
+        "Result": "passed",
+        "Reason": "公告本文共兩句，保留2026年11月12日、上午09:00至下午16:00，以及A棟和B棟停水的資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026年11月12日（星期四）上午09:00至下午16:00，A棟及B棟停水，C棟供水不受影響。請提前儲水且施工期間勿使用抽水設備；若提前完工將提早恢復供水，遇雨勢過大可能延期並另行通知，造成不便敬請見諒。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c6144ef7-0b40-4435-95e7-865600247895",
+        "Result": "passed",
+        "Reason": "公告外只有一句資訊處理說明，指出合併了住戶措施與施工進度安排，並省略供水管線維修的作業原因。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "資訊處理說明：將住戶應採取的措施及施工進度安排合併表述，並省略供水管線維修的作業原因。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "261efa41-ad1a-4f41-936f-6f3f11b88a95",
+        "Result": "passed",
+        "Reason": "公告中的日期、時段、停水棟別及其他敘述均與範例通知相符，未加入未提供的事實。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026年11月12日（星期四）上午09:00至下午16:00，A棟及B棟停水，C棟供水不受影響。請提前儲水且施工期間勿使用抽水設備；若提前完工將提早恢復供水，遇雨勢過大可能延期並另行通知，造成不便敬請見諒。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "四項驗收標準均符合。公告以兩句呈現停水日期、時段和受影響棟別，另以一句說明資訊處理方式，且未增添範例通知以外的事實。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 6704,
+      "CompletionTokens": 969,
+      "CostUSD": 0.023913900000000002,
+      "CostReported": true
+    }
+  }
+}

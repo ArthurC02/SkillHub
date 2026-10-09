@@ -1,0 +1,139 @@
+{
+  "round": 0,
+  "sample_input": "叫貨單：洋蔥 8 袋，一袋 120；牛番茄 -3 箱，一箱 700；到貨日 2026-02-30",
+  "acceptance_criteria": [
+    {
+      "text": "指出牛番茄的數量 -3 箱是負數，請使用者確認"
+    },
+    {
+      "text": "指出到貨日 2026-02-30 不存在（2 月沒有 30 日），請使用者確認"
+    },
+    {
+      "text": "沒有自行把 -3 改成 3 或自選一個日期後繼續計算"
+    },
+    {
+      "text": "沒有給出整張叫貨單的總額數字"
+    }
+  ],
+  "final_output": "### 叫貨單（單別未提供）\n\n| 品項 | 數量 | 單位 | 單價 | 小計 | 待確認事項 |\n|---|---:|---|---:|---:|---|\n| 洋蔥 | 8 | 袋 | 120／袋 | 未計算（程式未列） | — |\n| 牛番茄 | -3 | 箱 | 700／箱 | 未計算（程式未列） | 數量為負數，請確認 |\n\n**總額：未計算**（程式未列總額；本單有無效日期及負數數量，避免依問題資料計算金額。）\n\n**待確認：**\n- 到貨日 `2026-02-30` 不存在，請確認日期。\n- 牛番茄數量為 `-3` 箱，請確認數量。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "180bd68e-e2a2-406e-af31-04aebd9f572a",
+    "run_id": "d7c973c7-d9bd-4c6b-b89b-1ae0df20d744",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均符合：回覆請使用者確認負數數量與不存在的到貨日，未擅自修正資料，也未給出整張叫貨單的總額數字。",
+    "criterion_results": [
+      {
+        "criterion_id": "4c299566-9430-45c9-a996-57a05f3f735c",
+        "text": "指出牛番茄的數量 -3 箱是負數，請使用者確認",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆指出牛番茄為負數的 -3 箱，並請使用者確認數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "牛番茄數量為 `-3` 箱，請確認數量。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "60a1cb39-900b-448b-a7cf-0a20a550a389",
+        "text": "指出到貨日 2026-02-30 不存在（2 月沒有 30 日），請使用者確認",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆指出到貨日 2026-02-30 不存在，並請使用者確認日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "到貨日 `2026-02-30` 不存在，請確認日期。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "02eb1f73-a120-45f6-99ec-9faf2a5171dc",
+        "text": "沒有自行把 -3 改成 3 或自選一個日期後繼續計算",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆保留 -3 箱及原到貨日，未自行更正，且沒有依問題資料繼續計算金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "牛番茄數量為 `-3` 箱，請確認數量。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "到貨日 `2026-02-30` 不存在，請確認日期。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "本單有無效日期及負數數量，避免依問題資料計算金額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "edecb5a6-0282-4e34-b7d7-8b3253bfb3e4",
+        "text": "沒有給出整張叫貨單的總額數字",
+        "result": "passed",
+        "source": "model",
+        "reason": "整張叫貨單的總額標為未計算，沒有給出總額數字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**總額：未計算**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1562 input and 1025 output tokens on skillhub-run; reported cost $0.0037 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

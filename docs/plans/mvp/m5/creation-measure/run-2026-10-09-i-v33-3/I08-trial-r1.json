@@ -1,0 +1,176 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下兩張食材叫貨單，列出品項、數量、單位、單價、小計、待確認事項與各單總額。\n叫貨單甲（2026-10-08）\n番茄 3 公斤，單價 40 元/公斤\n雞蛋 2 盒，單價 85 元/盒\n青蔥 1 把，單價 30 元/把\n\n叫貨單乙（2026-02-30）\n洋蔥 4 公斤，單價 50 元/公斤\n洋蔥 6 公斤，單價 50 元/公斤\n牛奶 -2 瓶，單價 90 元/瓶\n豆腐 3 盒\n白蘿蔔，單價 25 元/公斤",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入「叫貨單甲」，輸出三筆品項的數量、單位、單價與小計，分別為番茄 3 公斤、40 元、120 元；雞蛋 2 盒、85 元、170 元；青蔥 1 把、30 元、30 元，並列出總額 320 元。"
+    },
+    {
+      "text": "對「叫貨單乙」的 2026-02-30，指出日期不存在、請人確認，且不列出該單總額。"
+    },
+    {
+      "text": "對叫貨單乙中兩筆洋蔥數量 4 公斤與 6 公斤，指出同品項數量矛盾、請人確認，不自行選擇數量，且不計算洋蔥小計。"
+    },
+    {
+      "text": "對叫貨單乙中牛奶數量 -2 瓶，指出數量為負數、請人確認，且不計算該筆小計。"
+    },
+    {
+      "text": "對叫貨單乙中豆腐缺少單價及白蘿蔔缺少數量，將缺值標為待確認、不臆造數字，不計算各自小計，也不列出叫貨單乙總額。"
+    }
+  ],
+  "final_output": "## 叫貨單甲（2026-10-08）\n\n| 品項 | 數量 | 單位 | 單價 | 小計 | 待確認事項 |\n|---|---:|---|---:|---:|---|\n| 番茄 | 3 | 公斤 | 40 元/公斤 | 120 元 | — |\n| 雞蛋 | 2 | 盒 | 85 元/盒 | 170 元 | — |\n| 青蔥 | 1 | 把 | 30 元/把 | 30 元 | — |\n\n**總額：320 元**\n\n## 叫貨單乙（2026-02-30）\n\n| 品項 | 數量 | 單位 | 單價 | 小計 | 待確認事項 |\n|---|---:|---|---:|---:|---|\n| 洋蔥 | 4 | 公斤 | 50 元/公斤 | 未計算 | 同品項數量矛盾：原列 4 公斤、6 公斤，請確認 |\n| 洋蔥 | 6 | 公斤 | 50 元/公斤 | 未計算 | 同品項數量矛盾：原列 4 公斤、6 公斤，請確認 |\n| 牛奶 | -2 | 瓶 | 90 元/瓶 | 未計算 | 數量為負數，請確認 |\n| 豆腐 | 3 | 盒 | 未提供 | 未計算 | 單價未提供 |\n| 白蘿蔔 | 未提供 | 公斤 | 25 元/公斤 | 未計算 | 數量未提供 |\n\n**總額：未計算。** 日期「2026-02-30」不存在，請確認；此外洋蔥數量有矛盾、牛奶數量為負數，且豆腐缺少單價、白蘿蔔缺少數量，因此無法核算總額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b4d9e237-44be-439c-acdc-eaf7073d9a44",
+    "run_id": "6a65e8a0-1dcd-4b7b-b216-6c356f99fc34",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收條件均已符合。甲單逐項金額與總額正確；乙單將無效日期、矛盾或缺漏資料列為待確認，未計算受影響的小計或總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "366ec2b4-7d5e-4534-83de-9f531036873e",
+        "text": "對試跑輸入「叫貨單甲」，輸出三筆品項的數量、單位、單價與小計，分別為番茄 3 公斤、40 元、120 元；雞蛋 2 盒、85 元、170 元；青蔥 1 把、30 元、30 元，並列出總額 320 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "叫貨單甲的三筆數量、單位、單價與小計均正確，總額為 320 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 番茄 | 3 | 公斤 | 40 元/公斤 | 120 元 | — |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 雞蛋 | 2 | 盒 | 85 元/盒 | 170 元 | — |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 青蔥 | 1 | 把 | 30 元/把 | 30 元 | — |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**總額：320 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6cc6886a-2d72-4d7e-adf6-b43e3e7f01a0",
+        "text": "對「叫貨單乙」的 2026-02-30，指出日期不存在、請人確認，且不列出該單總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出乙單日期不存在並請求確認；總額標為未計算，未列出金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**總額：未計算。** 日期「2026-02-30」不存在，請確認；",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "935d3ec4-2a83-441a-af62-4153daf3f2c8",
+        "text": "對叫貨單乙中兩筆洋蔥數量 4 公斤與 6 公斤，指出同品項數量矛盾、請人確認，不自行選擇數量，且不計算洋蔥小計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留洋蔥 4 公斤及 6 公斤兩筆原始數量，標示同品項數量矛盾並請求確認，兩筆小計均未計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 洋蔥 | 4 | 公斤 | 50 元/公斤 | 未計算 | 同品項數量矛盾：原列 4 公斤、6 公斤，請確認 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 洋蔥 | 6 | 公斤 | 50 元/公斤 | 未計算 | 同品項數量矛盾：原列 4 公斤、6 公斤，請確認 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e00363c9-df24-4571-ad8e-8523396d6005",
+        "text": "對叫貨單乙中牛奶數量 -2 瓶，指出數量為負數、請人確認，且不計算該筆小計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "牛奶保留 -2 瓶，指出數量為負數、請求確認，且未計算小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 牛奶 | -2 | 瓶 | 90 元/瓶 | 未計算 | 數量為負數，請確認 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "526cdbbd-53b2-4db3-bb39-cabe605c8b2d",
+        "text": "對叫貨單乙中豆腐缺少單價及白蘿蔔缺少數量，將缺值標為待確認、不臆造數字，不計算各自小計，也不列出叫貨單乙總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "豆腐單價與白蘿蔔數量均標為未提供，未臆造數字或計算小計；乙單總額也未計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 豆腐 | 3 | 盒 | 未提供 | 未計算 | 單價未提供 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 白蘿蔔 | 未提供 | 公斤 | 25 元/公斤 | 未計算 | 數量未提供 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**總額：未計算。**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1582 input and 1253 output tokens on skillhub-run; reported cost $0.0041 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 30,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

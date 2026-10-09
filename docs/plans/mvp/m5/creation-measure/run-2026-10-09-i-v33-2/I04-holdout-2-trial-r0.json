@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "客人有一份 1,500 字的原稿，明天中午前就要交，算急件，幫我報個價。",
+  "acceptance_criteria": [
+    {
+      "text": "給出一個明確的報價金額，而不是只反問加成比例"
+    },
+    {
+      "text": "報價高於基本費 3,000 元（1,500 字 × 2 元）"
+    },
+    {
+      "text": "報價金額與它自己所說的加成比例相符"
+    },
+    {
+      "text": "明講加成比例是預設或假設，使用者可以調整"
+    }
+  ],
+  "final_output": "原稿：1,500 字，明天中午前交（依您指定列為急件）；1,500 × 2 × 1.5 = **4,500 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "aa562caf-9db5-420f-96ac-47120edf432e",
+    "run_id": "b83b7542-61f2-4ca9-85bb-a03969b6c8a6",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "已給出高於基本費、且計算相符的明確報價 4,500 元；但未說明加成比例屬預設或假設，也未告知可以調整。",
+    "criterion_results": [
+      {
+        "criterion_id": "7a2f9081-b485-444e-8c8c-c0a49f67c745",
+        "text": "給出一個明確的報價金額，而不是只反問加成比例",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確報價 4,500 元，沒有只反問加成比例。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1,500 × 2 × 1.5 = **4,500 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7f990055-f6a2-40f5-b865-6a3bd3dbf3b6",
+        "text": "報價高於基本費 3,000 元（1,500 字 × 2 元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "報價 4,500 元，高於基本費 3,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1,500 × 2 × 1.5 = **4,500 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c4899b09-4c70-41b7-9785-bc9c46e35b3c",
+        "text": "報價金額與它自己所說的加成比例相符",
+        "result": "passed",
+        "source": "model",
+        "reason": "列出的 1.5 倍計算結果與報價相符。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1,500 × 2 × 1.5 = **4,500 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5e0aa93a-7359-4c5e-9ab3-08848f3c14ba",
+        "text": "明講加成比例是預設或假設，使用者可以調整",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆列出 1.5 倍計算式，但沒有明講加成比例是預設或假設，也沒有說使用者可以調整。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "原稿：1,500 字，明天中午前交（依您指定列為急件）；1,500 × 2 × 1.5 = **4,500 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1558 input and 4114 output tokens on skillhub-run; reported cost $0.0057 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

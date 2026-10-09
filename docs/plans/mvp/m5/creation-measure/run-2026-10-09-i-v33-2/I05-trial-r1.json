@@ -1,0 +1,165 @@
+{
+  "round": 1,
+  "sample_input": "請把以下完整停水通知濃縮成住戶群組公告，並在公告之外另用一句說明捨棄或合併了哪些資訊。\n【停水通知】因配合地下室管線更新工程，2026年10月18日（星期日）09:00至13:30將暫停供水。受影響範圍為A棟、C棟及D棟全棟住戶。請住戶提前儲水，施工期間請勿開啟水龍頭。實際復水時間可能依施工進度調整；復水初期若有短暫水色混濁，請先放水至清澈再使用。如需協助，請洽管理室，電話02-2345-6789。施工期間造成不便，敬請見諒。",
+  "acceptance_criteria": [
+    {
+      "text": "對 sample_input，公告本文明確保留停水日期「2026年10月18日（星期日）」。"
+    },
+    {
+      "text": "對 sample_input，公告本文明確保留停水時段「09:00至13:30」。"
+    },
+    {
+      "text": "對 sample_input，公告本文明確列出受影響棟別「A棟、C棟及D棟」，不遺漏或擅自增加棟別。"
+    },
+    {
+      "text": "對 sample_input，公告本文不超過 3 句；公告外的說明句不計入本文句數。"
+    },
+    {
+      "text": "對 sample_input，公告本文之外另有恰好 1 句，說明哪些通知資訊被捨棄或合併。"
+    },
+    {
+      "text": "對 sample_input，輸出不把通知未提供的停水資訊當成事實加入公告。"
+    }
+  ],
+  "final_output": "【住戶公告】因配合地下室管線更新工程，2026年10月18日（星期日）09:00至13:30將暫停供水，影響A棟、C棟及D棟全棟住戶。請住戶提前儲水，施工期間請勿開啟水龍頭；實際復水時間依施工進度調整，復水初期若水色混濁請先放水至清澈再使用，如需協助請洽管理室02-2345-6789，施工期間造成不便敬請見諒。\n\n【資訊取捨】已合併停水原因、施工注意事項、復水提醒與聯絡方式，未刪除實用資訊。",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "e47423f3-ea2f-4e7d-812c-3acf78749459",
+    "run_id": "afbd9302-b666-4804-aa4d-c512a5b1f4d8",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收標準均已達成。公告以兩句保留日期、時段及受影響棟別，並另以一句說明資訊合併情形。",
+    "criterion_results": [
+      {
+        "criterion_id": "ceab7eb8-b388-47d8-9a05-2d25edfb3b9f",
+        "text": "對 sample_input，公告本文明確保留停水日期「2026年10月18日（星期日）」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告本文明確保留完整停水日期與星期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年10月18日（星期日）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "09909eb0-2d95-4023-8c4f-6fb75fe55a73",
+        "text": "對 sample_input，公告本文明確保留停水時段「09:00至13:30」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告本文明確保留停水時段。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "09:00至13:30",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cd75725f-3eb6-4c76-b7da-61f33aeab794",
+        "text": "對 sample_input，公告本文明確列出受影響棟別「A棟、C棟及D棟」，不遺漏或擅自增加棟別。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告本文列出A棟、C棟及D棟，沒有遺漏或增加棟別。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "影響A棟、C棟及D棟全棟住戶",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "93e7ff69-b905-4a42-b6c6-c0beed553604",
+        "text": "對 sample_input，公告本文不超過 3 句；公告外的說明句不計入本文句數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "「住戶公告」本文共兩句，未超過三句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【住戶公告】因配合地下室管線更新工程，2026年10月18日（星期日）09:00至13:30將暫停供水，影響A棟、C棟及D棟全棟住戶。請住戶提前儲水，施工期間請勿開啟水龍頭；實際復水時間依施工進度調整，復水初期若水色混濁請先放水至清澈再使用，如需協助請洽管理室02-2345-6789，施工期間造成不便敬請見諒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dad021b9-fcf6-4a86-b963-e55ece72c740",
+        "text": "對 sample_input，公告本文之外另有恰好 1 句，說明哪些通知資訊被捨棄或合併。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告之外另有恰好一句「資訊取捨」說明，指出合併的資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【資訊取捨】已合併停水原因、施工注意事項、復水提醒與聯絡方式，未刪除實用資訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f573e201-c95c-4f3c-9f95-f625dfc7056e",
+        "text": "對 sample_input，輸出不把通知未提供的停水資訊當成事實加入公告。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告中的停水日期、時段、範圍、原因與相關提醒均來自原通知，未見額外編造的停水資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【住戶公告】因配合地下室管線更新工程，2026年10月18日（星期日）09:00至13:30將暫停供水，影響A棟、C棟及D棟全棟住戶。請住戶提前儲水，施工期間請勿開啟水龍頭；實際復水時間依施工進度調整，復水初期若水色混濁請先放水至清澈再使用，如需協助請洽管理室02-2345-6789，施工期間造成不便敬請見諒。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1631 input and 2703 output tokens on skillhub-run; reported cost $0.0057 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 34,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

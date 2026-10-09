@@ -1,0 +1,128 @@
+{
+  "round": 0,
+  "sample_input": "客人有一份 1,500 字的原稿，明天中午前就要交，算急件，幫我報個價。",
+  "acceptance_criteria": [
+    {
+      "text": "給出一個明確的報價金額，而不是只反問加成比例"
+    },
+    {
+      "text": "報價高於基本費 3,000 元（1,500 字 × 2 元）"
+    },
+    {
+      "text": "報價金額與它自己所說的加成比例相符"
+    },
+    {
+      "text": "明講加成比例是預設或假設，使用者可以調整"
+    }
+  ],
+  "final_output": "報價明細：\n- 原文字數：1,500 字\n- 交件期限：21.4 小時\n- 件別：急件\n- 一般費用：3,000 元\n- 急件加成：1,500 元\n- **總額：4,500 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f29c9851-79ff-4177-a6d8-21c7abd03ce6",
+    "run_id": "b6147a1a-10a7-4415-a4d4-40b50a8dab66",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "這次提供了高於基本費的明確報價，且列出的金額相加一致；但未說明加成比例及其可調整性，也無法核對報價與所稱比例是否相符。",
+    "criterion_results": [
+      {
+        "criterion_id": "f95fda8a-d0f8-4f82-b43a-3b48c10285b0",
+        "text": "給出一個明確的報價金額，而不是只反問加成比例",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確報出總額 4,500 元，沒有只反問加成比例。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**總額：4,500 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "256810bf-5ce4-4d0e-a253-f571a444db4a",
+        "text": "報價高於基本費 3,000 元（1,500 字 × 2 元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "報價 4,500 元，高於基本費 3,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "一般費用：3,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**總額：4,500 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5212675b-b5e0-4b16-ac86-dba1f458eab6",
+        "text": "報價金額與它自己所說的加成比例相符",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "一般費用、急件加成與總額的數字相加一致，但回覆沒有說出加成比例，因此無法核對報價是否符合它所說的比例。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "5f4e3a56-2e30-407e-8c0b-e18459d795e6",
+        "text": "明講加成比例是預設或假設，使用者可以調整",
+        "result": "failed",
+        "source": "model",
+        "reason": "完整回覆只列出急件加成金額，沒有明講加成比例是預設或假設，也沒有告知使用者可以調整。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "報價明細：\n- 原文字數：1,500 字\n- 交件期限：21.4 小時\n- 件別：急件\n- 一般費用：3,000 元\n- 急件加成：1,500 元\n- **總額：4,500 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1543 input and 869 output tokens on skillhub-run; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

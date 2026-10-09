@@ -1,0 +1,82 @@
+{
+  "acceptance_criteria": [
+    "對範例通知，輸出包含「住戶公告」及公告外的資訊處理說明兩部分。",
+    "「住戶公告」本文不超過 3 句，且保留停水日期「2026年11月12日」、時段「09:00至16:00」及受影響的「A、B棟」。",
+    "公告外另有且只有一句說明省略或合併了哪些資訊；範例中須提及供水管線維修、提前儲水或施工期間勿使用抽水設備等被省略或合併的資訊。",
+    "公告不加入範例通知未提供的停水原因、日期、時段或受影響棟別等事實。"
+  ],
+  "brief": "任務：把管委會提供的完整停水通知，濃縮成適合貼到住戶群組的公告。輸入：一份完整停水通知文字。輸出：先提供「住戶公告」，公告本文最多 3 句，並保留停水日期、停水時段及受影響棟別；再於公告外另寫一句，說明哪些資訊被省略或合併。工具需求：不需要外部工具。限制與假設：只依輸入通知整理，不自行補充通知中沒有的資訊；可省略或合併日期、時段、棟別以外的內容；以句末的「。」「！」「？」計算句數；若通知有多項其他資訊，外部說明可概括列出，不要求逐項詳述。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "我要做一個社區停水公告濃縮的 Skill：管委會貼上一份完整的停水通知，Skill 濃縮成住戶群組用的公告，公告本文最多 3 句。一定要保留：停水日期、停水時段、受影響的棟別。其他資訊可以捨棄或合併，但公告之外要另外用一句話告訴我你捨棄或合併了哪些資訊。",
+      "created_at": "2026-10-09T16:02:34.93835921Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我先查找是否有可參考的公告摘要 Skill。",
+      "created_at": "2026-10-09T16:02:42.669299301Z"
+    },
+    {
+      "role": "tool",
+      "content": "目錄裡沒有符合的 Skill（第 1／2 回）；換個說法、加一個關鍵詞或另一種語言再搜一次，或直接起草。",
+      "created_at": "2026-10-09T16:02:42.669309402Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我再用不同關鍵詞搜尋一次相關 Skill。",
+      "created_at": "2026-10-09T16:02:47.636886895Z"
+    },
+    {
+      "role": "tool",
+      "content": "目錄搜了兩回都沒有相近的 Skill：沒有可參考的，請直接依需求起草。",
+      "created_at": "2026-10-09T16:02:47.636890396Z"
+    },
+    {
+      "role": "assistant",
+      "content": "請確認以下 Skill 規格。若你確認，我就依此起草。",
+      "created_at": "2026-10-09T16:03:02.259174539Z"
+    },
+    {
+      "role": "assistant",
+      "content": "已依確認的規格完成草稿，請驗證。",
+      "created_at": "2026-10-09T16:04:02.389079107Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-10-09T16:04:02.392194123Z"
+    },
+    {
+      "role": "assistant",
+      "content": "草稿已通過 Go 靜態驗證（blocked=false），但尚無試跑評估，這不代表任務結果已確認。請用下方範例輸入開始試跑；評估結果返回後，我再依未通過或未判定的準則修訂。",
+      "created_at": "2026-10-09T16:04:15.845651366Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"10cd8ce8-2c8f-4e77-9ac0-7b73080dea89\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"公告分為本文與資訊處理說明，本文三句並保留必要停水資訊，也未增添不實事實。但資訊處理說明未提及該項準則指定的維修、儲水或抽水設備資訊。\",\"criterion_results\":[{\"criterion_id\":\"0683aa06-d0a6-4823-ad47-ba0f698e4054\",\"text\":\"公告外另有且只有一句說明省略或合併了哪些資訊；範例中須提及供水管線維修、提前儲水或施工期間勿使用抽水設備等被省略或合併的資訊。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":120,\"end\":157},\"excerpt\":\"資訊處理說明：將提前完工及雨勢過大時的處理方式合併於同一句，並省略致歉語。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"公告外雖只有一句資訊處理說明，但該句僅提及合併提前完工與雨勢過大的處理方式、並省略致歉語；未提及準則指定的供水管線維修、提前儲水或施工期間勿使用抽水設備等資訊如何省略或合併。\"},{\"criterion_id\":\"a41e8266-48f7-4a4b-96ee-fbde4b1cef78\",\"text\":\"對範例通知，輸出包含「住戶公告」及公告外的資訊處理說明兩部分。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":21},\"excerpt\":\"住戶公告：本社區將於2026年11月12日\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":120,\"end\":157},\"excerpt\":\"資訊處理說明：將提前完工及雨勢過大時的處理方式合併於同一句，並省略致歉語。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出以「住戶公告」呈現公告，並另以「資訊處理說明」交代資訊處理方式。\"},{\"criterion_id\":\"1e8ebcaa-d383-4009-ae13-a0997c40cd5a\",\"text\":\"「住戶公告」本文不超過 3 句，且保留停水日期「2026年11月12日」、時段「09:00至16:00」及受影響的「A、B棟」。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":120},\"excerpt\":\"住戶公告：本社區將於2026年11月12日（星期四）上午09:00至下午16:00進行供水管線維修，A棟及B棟停水，C棟供水不受影響。請住戶提前儲水，施工期間請勿使用抽水設備。工程若提前完成將提早恢復供水，如遇雨勢過大可能延期，並另行通知。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"公告本文為三句，保留了停水日期、09:00至16:00的時段，以及A棟與B棟停水的資訊。\"},{\"criterion_id\":\"461d0b25-f764-456f-96c3-3cfe6d552df6\",\"text\":\"公告不加入範例通知未提供的停水原因、日期、時段或受影響棟別等事實。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":5,\"end\":67},\"excerpt\":\"本社區將於2026年11月12日（星期四）上午09:00至下午16:00進行供水管線維修，A棟及B棟停水，C棟供水不受影響。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"公告所述維修、日期、時段及受影響棟別均與原通知一致，未加入原通知沒有的相關事實。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"e36a6fd6-dce8-4b52-b69d-73acea76d053\",\"occurred_at\":\"2026-10-09T16:04:44.546Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"community-water-outage-notice\\\", \\\"skill_version_id\\\": \\\"51b40561-6c03-46c4-bdc1-7d2854ebdb41\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the run recorded 1 readable output file(s): answer.txt\",\"evidence\":[{\"kind\":\"artifact\",\"match\":\"not_checked\",\"artifact_path\":\"answer.txt\",\"excerpt\":\"answer.txt (430 bytes, application/octet-stream, 2a7e47fd87cf619bbcce8c3b1f9c1502195d2edb07c60534eab8189f74dda562)\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 1753 input and 3196 output tokens on skillhub-run; reported cost $0.0065 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"17e0ed4f-d75c-451b-bec4-4287633e3561\",\"skill_version_id\":\"51b40561-6c03-46c4-bdc1-7d2854ebdb41\"}",
+      "created_at": "2026-10-09T16:06:18.767686764Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「公告外另有且只有一句說明省略或合併了哪些資訊；範例中須提及供水管線維修、提前儲水或施工期間勿使用抽水設備等被省略或合併的資訊。」：沒過——公告外雖只有一句資訊處理說明，但該句僅提及合併提前完工與雨勢過大的處理方式、並省略致歉語；未提及準則指定的供水管線維修、提前儲水或施工期間勿使用抽水設備等資訊如何省略或合併。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-10-09T16:06:18.767750369Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-10-09T16:06:18.782345825Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有一項準則未通過：公告外的資訊處理說明沒有提及通知中供水管線維修、提前儲水或施工期間勿使用抽水設備等資訊如何被省略或合併。我已在步驟 4 加入要求：具體指出通知中實際出現、但未納入公告本文的內容類別，不可只作籠統描述，也不得臆造。範例通知已包含這些資訊。你可以接受這份修訂草稿，或告訴我還想改哪些地方。",
+      "created_at": "2026-10-09T16:07:05.653581322Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-10-09T16:07:05.655534382Z"
+    }
+  ],
+  "state": "candidate_ready"
+}

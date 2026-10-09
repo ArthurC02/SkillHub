@@ -1,0 +1,149 @@
+{
+  "round": 0,
+  "sample_input": "叫貨單：洋蔥 8 袋，一袋 120；牛番茄 -3 箱，一箱 700；到貨日 2026-02-30",
+  "acceptance_criteria": [
+    {
+      "text": "指出牛番茄的數量 -3 箱是負數，請使用者確認"
+    },
+    {
+      "text": "指出到貨日 2026-02-30 不存在（2 月沒有 30 日），請使用者確認"
+    },
+    {
+      "text": "沒有自行把 -3 改成 3 或自選一個日期後繼續計算"
+    },
+    {
+      "text": "沒有給出整張叫貨單的總額數字"
+    }
+  ],
+  "final_output": "# 食材叫貨單整理\n\n## 叫貨單：未提供（日期：2026-02-30；日期待確認）\n\n| 品項 | 數量 | 單位 | 單價 | 小計 |\n|---|---:|---|---:|---:|\n| 洋蔥 | 8 袋 | 袋 | 120 | 960 |\n| 牛番茄 | -3 箱 | 箱 | 700 | 待確認 |\n\n- 待確認：日期「2026-02-30」不是有效的公曆日期，待確認。\n- 待確認：品項「牛番茄」數量為負數；待確認。\n**叫貨總額：不列（資料待確認或不完整）**\n\n確認待確認項目：本 Skill 無法代為詢問；如有標記項目，請廚房負責人確認。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "670e1659-901e-4fe9-82ea-ade1845fa986",
+    "run_id": "740e7fee-f4ce-4d82-bb27-5ded2d7b2f88",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項標準均已達成：回覆標示負數數量及無效日期待確認，未擅自修正資料，也未列出整張叫貨單的總額數字。",
+    "criterion_results": [
+      {
+        "criterion_id": "a08ed147-7d41-418d-9d4c-b0821f8b54e9",
+        "text": "指出牛番茄的數量 -3 箱是負數，請使用者確認",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出牛番茄的 -3 箱數量為負數，並要求確認待確認項目。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 牛番茄 | -3 箱 | 箱 | 700 | 待確認 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 待確認：品項「牛番茄」數量為負數；待確認。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "請廚房負責人確認。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e7d4e34e-dd6e-4ef2-abc7-63112077e92e",
+        "text": "指出到貨日 2026-02-30 不存在（2 月沒有 30 日），請使用者確認",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出 2026-02-30 不是有效日期，並要求確認；這涵蓋了 2 月沒有 30 日的錯誤。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 待確認：日期「2026-02-30」不是有效的公曆日期，待確認。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "請廚房負責人確認。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "78128f89-8748-4616-b26e-bdb8adc116ed",
+        "text": "沒有自行把 -3 改成 3 或自選一個日期後繼續計算",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留 -3 箱與原日期，將牛番茄小計標為待確認；沒有擅自修正後計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 叫貨單：未提供（日期：2026-02-30；日期待確認）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 牛番茄 | -3 箱 | 箱 | 700 | 待確認 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7a26988e-5058-43a2-a64a-1b11703b6f67",
+        "text": "沒有給出整張叫貨單的總額數字",
+        "result": "passed",
+        "source": "model",
+        "reason": "未給出整張叫貨單的總額數字，明確註明總額不列。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**叫貨總額：不列（資料待確認或不完整）**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1518 input and 585 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

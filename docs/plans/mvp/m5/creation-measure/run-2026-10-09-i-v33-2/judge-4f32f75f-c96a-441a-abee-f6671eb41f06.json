@@ -1,0 +1,278 @@
+{
+  "request": {
+    "RunID": "4f32f75f-c96a-441a-abee-f6671eb41f06",
+    "EvaluationID": "0aa60d98-1d69-44f1-81d6-b9c7ef0bcc23",
+    "Skill": {
+      "Name": "meeting-room-rental-fee",
+      "Summary": "依實際使用分鐘數計算單次共享會議室租借費用，包含 30 分鐘單位的無條件進位、分級費率與每次 2,400 元上限。當櫃台需要計算一筆租借的應收金額時使用。"
+    },
+    "UserPrompt": "請依規則計算每次租借的應收費用，並列出計費單位與費用計算。\n本次租借實際使用 30 分鐘。\n本次租借實際使用 31 分鐘。\n本次租借實際使用 120 分鐘。\n本次租借實際使用 150 分鐘。\n本次租借實際使用 240 分鐘。\n本次租借實際使用 270 分鐘。\n本次租借實際使用 300 分鐘。",
+    "Criteria": [
+      {
+        "ID": "24525d4d-8b86-4685-af21-967909e9df4f",
+        "Text": "試跑第 1 行的 30 分鐘時，輸出 1 個計費單位及 300 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "81d0f5ff-59be-432f-8c48-72defb2ee0c9",
+        "Text": "試跑第 2 行的 31 分鐘時，無條件進位為 2 個計費單位，輸出 600 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e5f8db7c-2ae3-47e0-b604-833b538a4a6a",
+        "Text": "試跑第 3 行的 120 分鐘時，輸出 4 個計費單位及 1,200 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "76e575b8-d656-46b2-b039-445da23ee7b0",
+        "Text": "試跑第 4 行的 150 分鐘時，輸出 5 個計費單位及 1,440 元（1,200 + 240）。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "0d5c1f67-4ff5-4edd-a217-074e81039185",
+        "Text": "試跑第 5 行的 240 分鐘時，輸出 8 個計費單位及 2,160 元（1,200 + 960）。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "eca33a38-37f1-48c6-9c9a-1098f6a58851",
+        "Text": "試跑第 6 行的 270 分鐘時，輸出 9 個計費單位及 2,340 元（1,200 + 960 + 180）。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d4f11976-ac4d-4d2b-965e-e2b314cb6b56",
+        "Text": "試跑第 7 行的 300 分鐘時，算出 10 個計費單位、上限前費用 2,520 元，並將應收金額限制為 2,400 元（1,200 + 960 + 360 = 2,520）。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "依每 30 分鐘計 1 單位，不足 30 分鐘進位；費率為第 1–4 單位每單位 300 元、第 5–8 單位每單位 240 元、第 9 單位起每單位 180 元，每次上限 2,400 元。\n\n| 實際使用時間 | 計費單位 | 分級費用計算 | 上限前費用 | 應收金額 |\n|---|---:|---|---:|---:|\n| 30 分鐘 | 1 單位 | 第 1–4 單位：1 × 300 = 300 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 300 元 | **300 元** |\n| 31 分鐘 | 2 單位 | 第 1–4 單位：2 × 300 = 600 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 600 元 | **600 元** |\n| 120 分鐘 | 4 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 1,200 元 | **1,200 元** |\n| 150 分鐘 | 5 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：1 × 240 = 240 元；第 9 單位起：0 元 | 1,440 元 | **1,440 元** |\n| 240 分鐘 | 8 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：0 元 | 2,160 元 | **2,160 元** |\n| 270 分鐘 | 9 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：1 × 180 = 180 元 | 2,340 元 | **2,340 元** |\n| 300 分鐘 | 10 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：2 × 180 = 360 元 | 2,520 元 | **2,400 元**（套用 2,400 元上限） |",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "6211efd8-4c89-414f-93a2-7491c3b21b34",
+          "OccurredAt": "2026-10-09T15:05:15.726Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"meeting-room-rental-fee\", \"skill_version_id\": \"9dbdf53d-7db8-4f67-8110-d624ead6eaa7\"}"
+        },
+        {
+          "TraceEventID": "6491cb65-79e8-4d65-809a-9bca7b1ec02d",
+          "OccurredAt": "2026-10-09T15:05:15.754Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"meeting-room-rental-fee\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 29, \"invocation_id\": \"call_zu3226FmDuD73hA5lTyJiD25\", \"result_summary\": \"Launching skill: meeting-room-rental-fee\"}"
+        },
+        {
+          "TraceEventID": "dc62b3f1-4be7-42db-8f5a-c267f723e986",
+          "OccurredAt": "2026-10-09T15:05:21.849Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"實際使用分鐘數：30\\n計費單位數：1（每 30 分鐘 1 單位，不足 30 分鐘以 1 單位計）\\n分級費用：第 1–4 單位 1 × 300 元 = 300 元；第 5–8 單位 0 × 240 元 = 0 元；第 9 單位起 0 × 180 元 = 0 元。\\n上限前費用：300 + 0 + 0 = 300 元\\n應收金額：min(300, 2,400) = 300 元\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "6a884608-a10c-49b0-953c-14b42ae0992f",
+          "OccurredAt": "2026-10-09T15:05:21.849Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/meeting-room-rental-fee \u0026\u0026 MINUTES='30' \u0026\u0026 python scripts/room_fee.py --minutes \\\"$MINUTES\\\"\", \"description\": \"計算租借 30 分鐘費用\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 366, \"invocation_id\": \"call_DrRP4cCuxJUf2ZtB3WStRC3Y\", \"result_summary\": \"實際使用分鐘數：30\\n計費單位數：1（每 30 分鐘 1 單位，不足 30 分鐘以 1 單位計）\\n分級費用：第 1–4 單位 1 × 300 元 = 300 元；第 5–8 單位 0 × 240 元 = 0 元；第 9 單位起 0 × 180 元 = 0 元。\\n上限前費用：300 + 0 + 0 = 300 元\\n應收金額：min(300, 2,400) = 300 元\"}"
+        },
+        {
+          "TraceEventID": "e5c4302c-7ffb-4d64-9a16-df572f3623db",
+          "OccurredAt": "2026-10-09T15:05:21.935Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"實際使用分鐘數：31\\n計費單位數：2（每 30 分鐘 1 單位，不足 30 分鐘以 1 單位計）\\n分級費用：第 1–4 單位 2 × 300 元 = 600 元；第 5–8 單位 0 × 240 元 = 0 元；第 9 單位起 0 × 180 元 = 0 元。\\n上限前費用：600 + 0 + 0 = 600 元\\n應收金額：min(600, 2,400) = 600 元\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "6902e1bb-7560-4c8a-99b0-b8e4189b3a67",
+          "OccurredAt": "2026-10-09T15:05:21.935Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/meeting-room-rental-fee \u0026\u0026 MINUTES='31' \u0026\u0026 python scripts/room_fee.py --minutes \\\"$MINUTES\\\"\", \"description\": \"計算租借 31 分鐘費用\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 413, \"invocation_id\": \"call_uW8CQnZnEtuVZV0P8uuXAzui\", \"result_summary\": \"實際使用分鐘數：31\\n計費單位數：2（每 30 分鐘 1 單位，不足 30 分鐘以 1 單位計）\\n分級費用：第 1–4 單位 2 × 300 元 = 600 元；第 5–8 單位 0 × 240 元 = 0 元；第 9 單位起 0 × 180 元 = 0 元。\\n上限前費用：600 + 0 + 0 = 600 元\\n應收金額：min(600, 2,400) = 600 元\"}"
+        },
+        {
+          "TraceEventID": "1bea2395-92c6-4f7f-8691-6449f51f8eab",
+          "OccurredAt": "2026-10-09T15:05:22.002Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"實際使用分鐘數：120\\n計費單位數：4（每 30 分鐘 1 單位，不足 30 分鐘以 1 單位計）\\n分級費用：第 1–4 單位 4 × 300 元 = 1200 元；第 5–8 單位 0 × 240 元 = 0 元；第 9 單位起 0 × 180 元 = 0 元。\\n上限前費用：1200 + 0 + 0 = 1200 元\\n應收金額：min(1200, 2,400) = 1200 元\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "9dc92dd0-f094-4cd3-be40-df80a6452043",
+          "OccurredAt": "2026-10-09T15:05:22.002Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/meeting-room-rental-fee \u0026\u0026 MINUTES='120' \u0026\u0026 python scripts/room_fee.py --minutes \\\"$MINUTES\\\"\", \"description\": \"計算租借 120 分鐘費用\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 332, \"invocation_id\": \"call_BxgiU3NGdp7AyZR4AxRLceeH\", \"result_summary\": \"實際使用分鐘數：120\\n計費單位數：4（每 30 分鐘 1 單位，不足 30 分鐘以 1 單位計）\\n分級費用：第 1–4 單位 4 × 300 元 = 1200 元；第 5–8 單位 0 × 240 元 = 0 元；第 9 單位起 0 × 180 元 = 0 元。\\n上限前費用：1200 + 0 + 0 = 1200 元\\n應收金額：min(1200, 2,400) = 1200 元\"}"
+        },
+        {
+          "TraceEventID": "0eba7c9f-a725-4997-9291-0a4f8ac77b67",
+          "OccurredAt": "2026-10-09T15:05:22.079Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"實際使用分鐘數：150\\n計費單位數：5（每 30 分鐘 1 單位，不足 30 分鐘以 1 單位計）\\n分級費用：第 1–4 單位 4 × 300 元 = 1200 元；第 5–8 單位 1 × 240 元 = 240 元；第 9 單位起 0 × 180 元 = 0 元。\\n上限前費用：1200 + 240 + 0 = 1440 元\\n應收金額：min(1440, 2,400) = 1440 元\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "4b0b1e3d-dbbd-443c-978c-23171767c4a5",
+          "OccurredAt": "2026-10-09T15:05:22.079Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/meeting-room-rental-fee \u0026\u0026 MINUTES='150' \u0026\u0026 python scripts/room_fee.py --minutes \\\"$MINUTES\\\"\", \"description\": \"計算租借 150 分鐘費用\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 396, \"invocation_id\": \"call_GR0OL1Wzl2yOW1WvrVO58OYi\", \"result_summary\": \"實際使用分鐘數：150\\n計費單位數：5（每 30 分鐘 1 單位，不足 30 分鐘以 1 單位計）\\n分級費用：第 1–4 單位 4 × 300 元 = 1200 元；第 5–8 單位 1 × 240 元 = 240 元；第 9 單位起 0 × 180 元 = 0 元。\\n上限前費用：1200 + 240 + 0 = 1440 元\\n應收金額：min(1440, 2,400) = 1440 元\"}"
+        },
+        {
+          "TraceEventID": "0af3d6ec-2457-4499-9a5d-b80a65f3be4b",
+          "OccurredAt": "2026-10-09T15:05:22.169Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"實際使用分鐘數：240\\n計費單位數：8（每 30 分鐘 1 單位，不足 30 分鐘以 1 單位計）\\n分級費用：第 1–4 單位 4 × 300 元 = 1200 元；第 5–8 單位 4 × 240 元 = 960 元；第 9 單位起 0 × 180 元 = 0 元。\\n上限前費用：1200 + 960 + 0 = 2160 元\\n應收金額：min(2160, 2,400) = 2160 元\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "94d172ca-86a7-4bac-a0e4-0bcdda16aa68",
+          "OccurredAt": "2026-10-09T15:05:22.169Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/meeting-room-rental-fee \u0026\u0026 MINUTES='240' \u0026\u0026 python scripts/room_fee.py --minutes \\\"$MINUTES\\\"\", \"description\": \"計算租借 240 分鐘費用\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 478, \"invocation_id\": \"call_PwMtzy9t1wGTvqklAU6p8zjC\", \"result_summary\": \"實際使用分鐘數：240\\n計費單位數：8（每 30 分鐘 1 單位，不足 30 分鐘以 1 單位計）\\n分級費用：第 1–4 單位 4 × 300 元 = 1200 元；第 5–8 單位 4 × 240 元 = 960 元；第 9 單位起 0 × 180 元 = 0 元。\\n上限前費用：1200 + 960 + 0 = 2160 元\\n應收金額：min(2160, 2,400) = 2160 元\"}"
+        },
+        {
+          "TraceEventID": "a7788442-474e-4195-a03d-6e8bac55cdb8",
+          "OccurredAt": "2026-10-09T15:05:22.236Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"實際使用分鐘數：270\\n計費單位數：9（每 30 分鐘 1 單位，不足 30 分鐘以 1 單位計）\\n分級費用：第 1–4 單位 4 × 300 元 = 1200 元；第 5–8 單位 4 × 240 元 = 960 元；第 9 單位起 1 × 180 元 = 180 元。\\n上限前費用：1200 + 960 + 180 = 2340 元\\n應收金額：min(2340, 2,400) = 2340 元\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "a1e8b3aa-328a-4b8c-a765-1d4deb633a0b",
+          "OccurredAt": "2026-10-09T15:05:22.236Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/meeting-room-rental-fee \u0026\u0026 MINUTES='270' \u0026\u0026 python scripts/room_fee.py --minutes \\\"$MINUTES\\\"\", \"description\": \"計算租借 270 分鐘費用\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 545, \"invocation_id\": \"call_C053H125AD55MeuIVH7Pmyd4\", \"result_summary\": \"實際使用分鐘數：270\\n計費單位數：9（每 30 分鐘 1 單位，不足 30 分鐘以 1 單位計）\\n分級費用：第 1–4 單位 4 × 300 元 = 1200 元；第 5–8 單位 4 × 240 元 = 960 元；第 9 單位起 1 × 180 元 = 180 元。\\n上限前費用：1200 + 960 + 180 = 2340 元\\n應收金額：min(2340, 2,400) = 2340 元\"}"
+        },
+        {
+          "TraceEventID": "6aa159f4-3f60-44dd-8af3-87a0d96e7a49",
+          "OccurredAt": "2026-10-09T15:05:22.3Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"實際使用分鐘數：300\\n計費單位數：10（每 30 分鐘 1 單位，不足 30 分鐘以 1 單位計）\\n分級費用：第 1–4 單位 4 × 300 元 = 1200 元；第 5–8 單位 4 × 240 元 = 960 元；第 9 單位起 2 × 180 元 = 360 元。\\n上限前費用：1200 + 960 + 360 = 2520 元\\n應收金額：min(2520, 2,400) = 2400 元\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "ffa841f2-89dd-44ae-ae71-57503cce399f",
+          "OccurredAt": "2026-10-09T15:05:22.3Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/meeting-room-rental-fee \u0026\u0026 MINUTES='300' \u0026\u0026 python scripts/room_fee.py --minutes \\\"$MINUTES\\\"\", \"description\": \"計算租借 300 分鐘費用\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 607, \"invocation_id\": \"call_xYLdzMKE8vr0ZiOysCMqZyXf\", \"result_summary\": \"實際使用分鐘數：300\\n計費單位數：10（每 30 分鐘 1 單位，不足 30 分鐘以 1 單位計）\\n分級費用：第 1–4 單位 4 × 300 元 = 1200 元；第 5–8 單位 4 × 240 元 = 960 元；第 9 單位起 2 × 180 元 = 360 元。\\n上限前費用：1200 + 960 + 360 = 2520 元\\n應收金額：min(2520, 2,400) = 2400 元\"}"
+        },
+        {
+          "TraceEventID": "667b8975-d36a-4b76-a38f-c535edebf8e3",
+          "OccurredAt": "2026-10-09T15:05:28.372Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"依每 30 分鐘計 1 單位，不足 30 分鐘進位；費率為第 1–4 單位每單位 300 元、第 5–8 單位每單位 240 元、第 9 單位起每單位 180 元，每次上限 2,400 元。\\n\\n| 實際使用時間 | 計費單位 | 分級費用計算 | 上限前費用 | 應收金額 |\\n|---|---:|---|---:|---:|\\n| 30 分鐘 | 1 單位 | 第 1–4 單位：1 × 300 = 300 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 300 元 | **300 元** |\\n| 31 分鐘 | 2 單位 | 第 1–4 單位：2 × 300 = 600 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 600 元 | **600 元** |\\n| 120 分鐘 | 4 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 1,200 元 | **1,200 元** |\\n| 150 分鐘 | 5 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：1 × 240 = 240 元；第 9 單位起：0 元 | 1,440 元 | **1,440 元** |\\n| 240 分鐘 | 8 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：0 元 | 2,160 元 | **2,160 元** |\\n| 270 分鐘 | 9 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：1 × 180 = 180 元 | 2,340 元 | **2,340 元** |\\n| 300 分鐘 | 10 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：2 × 180 = 360 元 | 2,520 元 | **2,400 元**（套用 2,400 元上限） |\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "09c15a79-57d3-430a-9df5-1fe78d2493bf",
+          "OccurredAt": "2026-10-09T15:05:28.744Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"依每 30 分鐘計 1 單位，不足 30 分鐘進位；費率為第 1–4 單位每單位 300 元、第 5–8 單位每單位 240 元、第 9 單位起每單位 180 元，每次上限 2,400 元。\\n\\n| 實際使用時間 | 計費單位 | 分級費用計算 | 上限前費用 | 應收金額 |\\n|---|---:|---|---:|---:|\\n| 30 分鐘 | 1 單位 | 第 1–4 單位：1 × 300 = 300 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 300 元 | **300 元** |\\n| 31 分鐘 | 2 單位 | 第 1–4 單位：2 × 300 = 600 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 600 元 | **600 元** |\\n| 120 分鐘 | 4 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 1,200 元 | **1,200 元** |\\n| 150 分鐘 | 5 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：1 × 240 = 240 元；第 9 單位起：0 元 | 1,440 元 | **1,440 元** |\\n| 240 分鐘 | 8 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：0 元 | 2,160 元 | **2,160 元** |\\n| 270 分鐘 | 9 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：1 × 180 = 180 元 | 2,340 元 | **2,340 元** |\\n| 300 分鐘 | 10 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：2 × 180 = 360 元 | 2,520 元 | **2,400 元**（套用 2,400 元上限） |\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "bb603218-8195-4af6-9c14-76255bd83661",
+          "OccurredAt": "2026-10-09T15:05:32.816Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.003781115, \"cost_source\": \"gateway\", \"duration_ms\": 20480, \"input_tokens\": 1517, \"token_source\": \"result\", \"output_tokens\": 1418, \"cache_read_input_tokens\": 35154, \"cache_write_input_tokens\": 20055}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "24525d4d-8b86-4685-af21-967909e9df4f",
+        "Result": "passed",
+        "Reason": "30 分鐘列為 1 個計費單位，應收 300 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 30 分鐘 | 1 單位 | 第 1–4 單位：1 × 300 = 300 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 300 元 | **300 元** |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "81d0f5ff-59be-432f-8c48-72defb2ee0c9",
+        "Result": "passed",
+        "Reason": "31 分鐘進位為 2 個計費單位，應收 600 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 31 分鐘 | 2 單位 | 第 1–4 單位：2 × 300 = 600 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 600 元 | **600 元** |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e5f8db7c-2ae3-47e0-b604-833b538a4a6a",
+        "Result": "passed",
+        "Reason": "120 分鐘列為 4 個計費單位，應收 1,200 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 120 分鐘 | 4 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 1,200 元 | **1,200 元** |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "76e575b8-d656-46b2-b039-445da23ee7b0",
+        "Result": "passed",
+        "Reason": "150 分鐘列為 5 個計費單位，分級費用為 1,200 元加 240 元，應收 1,440 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 150 分鐘 | 5 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：1 × 240 = 240 元；第 9 單位起：0 元 | 1,440 元 | **1,440 元** |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "0d5c1f67-4ff5-4edd-a217-074e81039185",
+        "Result": "passed",
+        "Reason": "240 分鐘列為 8 個計費單位，分級費用為 1,200 元加 960 元，應收 2,160 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 240 分鐘 | 8 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：0 元 | 2,160 元 | **2,160 元** |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "eca33a38-37f1-48c6-9c9a-1098f6a58851",
+        "Result": "passed",
+        "Reason": "270 分鐘列為 9 個計費單位，分級費用為 1,200 元、960 元及 180 元，應收 2,340 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 270 分鐘 | 9 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：1 × 180 = 180 元 | 2,340 元 | **2,340 元** |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d4f11976-ac4d-4d2b-965e-e2b314cb6b56",
+        "Result": "passed",
+        "Reason": "300 分鐘列為 10 個計費單位，上限前費用為 1,200 元加 960 元加 360 元，共 2,520 元；應收金額套用上限後為 2,400 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 300 分鐘 | 10 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：2 × 180 = 360 元 | 2,520 元 | **2,400 元**（套用 2,400 元上限） |"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "七筆租借均列出正確的計費單位、分級費用與應收金額；300 分鐘的費用也正確套用 2,400 元上限。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 8033,
+      "CompletionTokens": 1256,
+      "CostUSD": 0.030106400000000005,
+      "CostReported": true
+    }
+  }
+}
