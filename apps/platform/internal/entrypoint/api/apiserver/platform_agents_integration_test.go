@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
@@ -167,7 +168,7 @@ func TestDisablingAnAgentStopsItsRunBeforeTheNextStep(t *testing.T) {
 	operator := a.login(t, "operator-agent-disable")
 	a.auth.Operators = map[string]bool{operator.userID: true}
 
-	if _, err := svc.StartRun(ctx, name); !errors.Is(err, operations.ErrAgentHalted) {
+	if _, err := svc.StartRun(ctx, name); !errors.Is(err, agentloop.ErrHalted) {
 		t.Fatalf("a registered agent nobody enabled started a run: %v", err)
 	}
 
@@ -183,17 +184,17 @@ func TestDisablingAnAgentStopsItsRunBeforeTheNextStep(t *testing.T) {
 	}
 
 	switchAgent(t, operator, name, false, "misbehaving")
-	if err := svc.BeforeStep(ctx, run); !errors.Is(err, operations.ErrAgentHalted) {
+	if err := svc.BeforeStep(ctx, run); !errors.Is(err, agentloop.ErrHalted) {
 		t.Fatalf("the next step after a disable: got %v, want ErrAgentHalted", err)
 	}
 	if status, reason := runStatus(t, pool, run); status != "stopped" || reason != "the agent was disabled" {
 		t.Errorf("run after disable: %s (%q), want stopped (the agent was disabled)", status, reason)
 	}
-	if _, err := svc.StartRun(ctx, name); !errors.Is(err, operations.ErrAgentHalted) {
+	if _, err := svc.StartRun(ctx, name); !errors.Is(err, agentloop.ErrHalted) {
 		t.Errorf("a disabled agent started a run: %v", err)
 	}
 	switchAgent(t, operator, name, true, "fixed")
-	if err := svc.BeforeStep(ctx, run); !errors.Is(err, operations.ErrRunFinished) {
+	if err := svc.BeforeStep(ctx, run); !errors.Is(err, agentloop.ErrRunFinished) {
 		t.Errorf("a stopped run took another step once its agent was enabled again: %v", err)
 	}
 	for action, want := range map[string]int{"platform_agent.enabled": 2, "platform_agent.disabled": 1} {
@@ -226,13 +227,13 @@ func TestTheAgentBrakeStopsRunsAndHoldsUntilReleased(t *testing.T) {
 	if code, listed := operatorCall(t, operator, http.MethodGet, "/admin/agents", ""); code != http.StatusOK || listed["brake"] == nil {
 		t.Errorf("GET /admin/agents while braked: %d %v, want the brake listed", code, listed)
 	}
-	if err := svc.BeforeStep(ctx, run); !errors.Is(err, operations.ErrAgentHalted) {
+	if err := svc.BeforeStep(ctx, run); !errors.Is(err, agentloop.ErrHalted) {
 		t.Fatalf("the next step under the brake: got %v, want ErrAgentHalted", err)
 	}
 	if status, reason := runStatus(t, pool, run); status != "stopped" || reason != "the agent brake is engaged" {
 		t.Errorf("run under the brake: %s (%q)", status, reason)
 	}
-	if _, err := svc.StartRun(ctx, name); !errors.Is(err, operations.ErrAgentHalted) {
+	if _, err := svc.StartRun(ctx, name); !errors.Is(err, agentloop.ErrHalted) {
 		t.Errorf("an enabled agent started under the brake: %v", err)
 	}
 

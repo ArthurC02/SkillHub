@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
@@ -21,8 +22,8 @@ type Definition struct {
 	DailySpendCapMicros int64
 	Tools               []string
 	Actions             []string
-	CheckResult         func(result json.RawMessage, steps []StepRecord) error
-	Sightings           func(result json.RawMessage, steps []StepRecord) []Sighting
+	CheckResult         func(result json.RawMessage, steps []agentloop.StepRecord) error
+	Sightings           func(result json.RawMessage, steps []agentloop.StepRecord) []Sighting
 	Proposals           func(result json.RawMessage) []ProposalRequest
 }
 

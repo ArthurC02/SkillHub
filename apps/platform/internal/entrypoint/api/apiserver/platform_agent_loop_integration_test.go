@@ -16,25 +16,26 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 )
 
 type loopScript struct {
 	t         *testing.T
-	answers   []func(context.Context, operations.StepRequest) (operations.StepDecision, error)
-	requests  []operations.StepRequest
+	answers   []func(context.Context, agentloop.StepRequest) (agentloop.StepDecision, error)
+	requests  []agentloop.StepRequest
 	issued    []float64
 	revoked   []string
-	costs     []operations.ModelCall
+	costs     []agentloop.ModelCall
 	costErr   error
 	toolCalls []string
 }
 
-func (s *loopScript) runner(svc *operations.Service) *operations.Runner {
-	return &operations.Runner{
-		Svc: svc,
-		Step: func(ctx context.Context, req operations.StepRequest) (operations.StepDecision, error) {
+func (s *loopScript) runner(svc *operations.Service) *agentloop.Runner {
+	return &agentloop.Runner{
+		Journal: svc,
+		Step: func(ctx context.Context, req agentloop.StepRequest) (agentloop.StepDecision, error) {
 			s.requests = append(s.requests, req)
 			if len(s.requests) > len(s.answers) {
 				s.t.Fatalf("step %d asked, only %d scripted", len(s.requests), len(s.answers))
@@ -49,7 +50,7 @@ func (s *loopScript) runner(svc *operations.Service) *operations.Runner {
 			s.revoked = append(s.revoked, run)
 			return nil
 		},
-		RecordCost: func(_ context.Context, _ pgtype.UUID, _ int, call operations.ModelCall) error {
+		RecordCost: func(_ context.Context, _ pgtype.UUID, _ int, call agentloop.ModelCall) error {
 			s.costs = append(s.costs, call)
 			return s.costErr
 		},
@@ -57,45 +58,45 @@ func (s *loopScript) runner(svc *operations.Service) *operations.Runner {
 	}
 }
 
-func (s *loopScript) tools() []operations.Tool {
-	report := operations.Tool{
+func (s *loopScript) tools() []agentloop.Tool {
+	report := agentloop.Tool{
 		Name: "maintenance_report", Description: "facts", Parameters: map[string]any{"type": "object"},
 		Run: func(_ context.Context, _ json.RawMessage) (any, error) {
 			s.toolCalls = append(s.toolCalls, "maintenance_report")
 			return map[string]any{"database_bytes": 42}, nil
 		},
 	}
-	broken := operations.Tool{
+	broken := agentloop.Tool{
 		Name: "broken_tool", Description: "fails", Parameters: map[string]any{"type": "object"},
 		Run: func(_ context.Context, _ json.RawMessage) (any, error) {
 			s.toolCalls = append(s.toolCalls, "broken_tool")
 			return nil, errors.New("facts unavailable")
 		},
 	}
-	return []operations.Tool{report, broken}
+	return []agentloop.Tool{report, broken}
 }
 
-func intent(tool string) func(context.Context, operations.StepRequest) (operations.StepDecision, error) {
+func intent(tool string) func(context.Context, agentloop.StepRequest) (agentloop.StepDecision, error) {
 	cost := 0.001
-	return func(context.Context, operations.StepRequest) (operations.StepDecision, error) {
-		return operations.StepDecision{
-			ToolIntent: &operations.ToolCall{Tool: tool, Arguments: "{}"},
-			Call:       operations.ModelCall{Model: "m", PromptTokens: 100, CompletionTokens: 10, CostUSD: &cost},
+	return func(context.Context, agentloop.StepRequest) (agentloop.StepDecision, error) {
+		return agentloop.StepDecision{
+			ToolIntent: &agentloop.ToolCall{Tool: tool, Arguments: "{}"},
+			Call:       agentloop.ModelCall{Model: "m", PromptTokens: 100, CompletionTokens: 10, CostUSD: &cost},
 		}, nil
 	}
 }
 
-func final(result string) func(context.Context, operations.StepRequest) (operations.StepDecision, error) {
+func final(result string) func(context.Context, agentloop.StepRequest) (agentloop.StepDecision, error) {
 	cost := 0.002
-	return func(context.Context, operations.StepRequest) (operations.StepDecision, error) {
-		return operations.StepDecision{
+	return func(context.Context, agentloop.StepRequest) (agentloop.StepDecision, error) {
+		return agentloop.StepDecision{
 			Result: json.RawMessage(result),
-			Call:   operations.ModelCall{Model: "m", PromptTokens: 200, CompletionTokens: 20, CostUSD: &cost},
+			Call:   agentloop.ModelCall{Model: "m", PromptTokens: 200, CompletionTokens: 20, CostUSD: &cost},
 		}, nil
 	}
 }
 
-var loopLimits = operations.Limits{
+var loopLimits = agentloop.Limits{
 	MaxSteps: 4, MaxTokens: 10_000, Deadline: time.Minute, StepTimeout: 10 * time.Second, MaxOutputTokens: 500,
 }
 
@@ -146,14 +147,14 @@ func stepRows(t *testing.T, run pgtype.UUID) []string {
 
 func TestAnAgentRunCallsItsToolThenFinishesWithItsResult(t *testing.T) {
 	svc, def := loopAgent(t, "agent-loop-completes", 1_000_000, "maintenance_report")
-	s := &loopScript{t: t, answers: []func(context.Context, operations.StepRequest) (operations.StepDecision, error){
+	s := &loopScript{t: t, answers: []func(context.Context, agentloop.StepRequest) (agentloop.StepDecision, error){
 		intent("maintenance_report"), final(`{"summary":"all fine"}`),
 	}}
-	report, err := s.runner(svc).Run(context.Background(), def, s.tools(), loopLimits)
+	report, err := s.runner(svc).Run(context.Background(), svc.LoopAgent(def, nil), s.tools(), loopLimits)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.Status != operations.RunCompleted || string(report.Result) != `{"summary":"all fine"}` {
+	if report.Status != agentloop.Completed || string(report.Result) != `{"summary":"all fine"}` {
 		t.Fatalf("report = %+v, want completed with the final result", report)
 	}
 	assertStoredCompletion(t, report.ID, `{"summary": "all fine"}`, []string{"maintenance_report", "finish"})
@@ -184,11 +185,11 @@ func assertStoredCompletion(t *testing.T, run pgtype.UUID, result string, steps 
 
 func TestAToolErrorIsShownToTheModelAndTheRunGoesOn(t *testing.T) {
 	svc, def := loopAgent(t, "agent-loop-tool-error", 1_000_000, "broken_tool")
-	s := &loopScript{t: t, answers: []func(context.Context, operations.StepRequest) (operations.StepDecision, error){
+	s := &loopScript{t: t, answers: []func(context.Context, agentloop.StepRequest) (agentloop.StepDecision, error){
 		intent("broken_tool"), final(`{}`),
 	}}
-	report, err := s.runner(svc).Run(context.Background(), def, s.tools(), loopLimits)
-	if err != nil || report.Status != operations.RunCompleted {
+	report, err := s.runner(svc).Run(context.Background(), svc.LoopAgent(def, nil), s.tools(), loopLimits)
+	if err != nil || report.Status != agentloop.Completed {
 		t.Fatalf("report = %+v, err %v", report, err)
 	}
 	if steps := s.requests[1].Steps; len(steps) != 1 || steps[0].Result != `{"error":"facts unavailable"}` {
@@ -197,39 +198,39 @@ func TestAToolErrorIsShownToTheModelAndTheRunGoesOn(t *testing.T) {
 }
 
 func TestAnAgentRunEndsWithoutSuccessWhenItCannotGoOn(t *testing.T) {
-	never := func(ctx context.Context, _ operations.StepRequest) (operations.StepDecision, error) {
+	never := func(ctx context.Context, _ agentloop.StepRequest) (agentloop.StepDecision, error) {
 		<-ctx.Done()
-		return operations.StepDecision{}, ctx.Err()
+		return agentloop.StepDecision{}, ctx.Err()
 	}
 	for _, tc := range []struct {
 		name    string
-		answers []func(context.Context, operations.StepRequest) (operations.StepDecision, error)
-		limits  operations.Limits
-		status  operations.RunStatus
+		answers []func(context.Context, agentloop.StepRequest) (agentloop.StepDecision, error)
+		limits  agentloop.Limits
+		status  agentloop.Status
 		reason  string
 		tools   []string
 	}{
 		{name: "a tool it was not offered", answers: answers(intent("drop_database")),
-			limits: loopLimits, status: operations.RunFailed,
-			reason: "operations: the model asked for a tool this agent was not offered: drop_database"},
+			limits: loopLimits, status: agentloop.Failed,
+			reason: "agentloop: the model asked for a tool this agent was not offered: drop_database"},
 		{name: "a result that is not JSON", answers: answers(final(`{`)),
-			limits: loopLimits, status: operations.RunFailed, reason: "operations: the final result is not JSON"},
+			limits: loopLimits, status: agentloop.Failed, reason: "agentloop: the final result is not JSON"},
 		{name: "the step limit", answers: answers(intent("maintenance_report"), intent("maintenance_report")),
-			limits: withLimits(func(l *operations.Limits) { l.MaxSteps = 2 }), status: operations.RunIncomplete,
+			limits: withLimits(func(l *agentloop.Limits) { l.MaxSteps = 2 }), status: agentloop.Incomplete,
 			reason: "the run reached its step limit"},
 		{name: "the token limit", answers: answers(intent("maintenance_report")),
-			limits: withLimits(func(l *operations.Limits) { l.MaxTokens = 110 }), status: operations.RunIncomplete,
+			limits: withLimits(func(l *agentloop.Limits) { l.MaxTokens = 110 }), status: agentloop.Incomplete,
 			reason: "the run reached its token limit"},
 		{name: "just under the token limit", answers: answers(intent("maintenance_report"), final(`{}`)),
-			limits: withLimits(func(l *operations.Limits) { l.MaxTokens = 111 }), status: operations.RunCompleted},
+			limits: withLimits(func(l *agentloop.Limits) { l.MaxTokens = 111 }), status: agentloop.Completed},
 		{name: "the time limit", answers: answers(never),
-			limits: withLimits(func(l *operations.Limits) { l.Deadline = 200 * time.Millisecond }), status: operations.RunIncomplete,
+			limits: withLimits(func(l *agentloop.Limits) { l.Deadline = 200 * time.Millisecond }), status: agentloop.Incomplete,
 			reason: "the run reached its time limit"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, def := loopAgent(t, "agent-loop-ends", 1_000_000, "maintenance_report")
 			s := &loopScript{t: t, answers: tc.answers}
-			report, err := s.runner(svc).Run(context.Background(), def, s.tools(), tc.limits)
+			report, err := s.runner(svc).Run(context.Background(), svc.LoopAgent(def, nil), s.tools(), tc.limits)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -244,11 +245,11 @@ func TestAnAgentRunEndsWithoutSuccessWhenItCannotGoOn(t *testing.T) {
 	}
 }
 
-func answers(steps ...func(context.Context, operations.StepRequest) (operations.StepDecision, error)) []func(context.Context, operations.StepRequest) (operations.StepDecision, error) {
+func answers(steps ...func(context.Context, agentloop.StepRequest) (agentloop.StepDecision, error)) []func(context.Context, agentloop.StepRequest) (agentloop.StepDecision, error) {
 	return steps
 }
 
-func withLimits(change func(*operations.Limits)) operations.Limits {
+func withLimits(change func(*agentloop.Limits)) agentloop.Limits {
 	limits := loopLimits
 	change(&limits)
 	return limits
@@ -258,7 +259,7 @@ func TestTheDailySpendCapStopsARunBeforeAKeyIsIssued(t *testing.T) {
 	const capMicros = 3_000
 	svc, def := loopAgent(t, "agent-loop-spend-cap", capMicros, "maintenance_report")
 	first := &loopScript{t: t, answers: answers(intent("maintenance_report"), final(`{}`))}
-	if report, err := first.runner(svc).Run(context.Background(), def, first.tools(), loopLimits); err != nil || report.Status != operations.RunCompleted {
+	if report, err := first.runner(svc).Run(context.Background(), svc.LoopAgent(def, nil), first.tools(), loopLimits); err != nil || report.Status != agentloop.Completed {
 		t.Fatalf("first run: %+v %v", report, err)
 	}
 	if len(first.issued) != 1 || first.issued[0] != 0.003 {
@@ -266,11 +267,11 @@ func TestTheDailySpendCapStopsARunBeforeAKeyIsIssued(t *testing.T) {
 	}
 
 	second := &loopScript{t: t}
-	report, err := second.runner(svc).Run(context.Background(), def, second.tools(), loopLimits)
+	report, err := second.runner(svc).Run(context.Background(), svc.LoopAgent(def, nil), second.tools(), loopLimits)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.Status != operations.RunIncomplete || report.Reason != "the agent's daily spend cap is reached" || len(second.issued) != 0 {
+	if report.Status != agentloop.Incomplete || report.Reason != "the agent's daily spend cap is reached" || len(second.issued) != 0 {
 		t.Errorf("second run %+v with keys %v, want incomplete at the cap and no key", report, second.issued)
 	}
 	runs, err := svc.RecentRuns(context.Background())
@@ -290,15 +291,15 @@ func TestTheDailySpendCapStopsARunBeforeAKeyIsIssued(t *testing.T) {
 
 func TestAnUnpricedStepCountsAsItsRunsWholeKeyBudget(t *testing.T) {
 	const capMicros = 10_000
-	unpriced := func(context.Context, operations.StepRequest) (operations.StepDecision, error) {
-		return operations.StepDecision{
-			ToolIntent: &operations.ToolCall{Tool: "maintenance_report", Arguments: "{}"},
-			Call:       operations.ModelCall{Model: "m", PromptTokens: 100, CompletionTokens: 10},
+	unpriced := func(context.Context, agentloop.StepRequest) (agentloop.StepDecision, error) {
+		return agentloop.StepDecision{
+			ToolIntent: &agentloop.ToolCall{Tool: "maintenance_report", Arguments: "{}"},
+			Call:       agentloop.ModelCall{Model: "m", PromptTokens: 100, CompletionTokens: 10},
 		}, nil
 	}
 	for _, tc := range []struct {
 		name      string
-		first     func(context.Context, operations.StepRequest) (operations.StepDecision, error)
+		first     func(context.Context, agentloop.StepRequest) (agentloop.StepDecision, error)
 		laterKeys [][]float64
 	}{
 		{"every step priced", intent("maintenance_report"), [][]float64{{0.007}, {0.005}}},
@@ -307,12 +308,12 @@ func TestAnUnpricedStepCountsAsItsRunsWholeKeyBudget(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, def := loopAgent(t, "agent-loop-unpriced", capMicros, "maintenance_report")
 			first := &loopScript{t: t, answers: answers(tc.first, final(`{}`))}
-			if report, err := first.runner(svc).Run(context.Background(), def, first.tools(), loopLimits); err != nil || report.Status != operations.RunCompleted {
+			if report, err := first.runner(svc).Run(context.Background(), svc.LoopAgent(def, nil), first.tools(), loopLimits); err != nil || report.Status != agentloop.Completed {
 				t.Fatalf("first run: %+v %v", report, err)
 			}
 			for i, want := range tc.laterKeys {
 				later := &loopScript{t: t, answers: answers(final(`{}`))}
-				if _, err := later.runner(svc).Run(context.Background(), def, later.tools(), loopLimits); err != nil {
+				if _, err := later.runner(svc).Run(context.Background(), svc.LoopAgent(def, nil), later.tools(), loopLimits); err != nil {
 					t.Fatal(err)
 				}
 				if !slices.Equal(later.issued, want) {
@@ -329,15 +330,15 @@ func TestDisablingAnAgentStopsItsLoopBeforeTheNextStep(t *testing.T) {
 	if err := testPool.QueryRow(context.Background(), "SELECT owner_id FROM platform_agents WHERE name = $1", def.Name).Scan(&operatorID); err != nil {
 		t.Fatal(err)
 	}
-	disableThenAsk := func(ctx context.Context, req operations.StepRequest) (operations.StepDecision, error) {
+	disableThenAsk := func(ctx context.Context, req agentloop.StepRequest) (agentloop.StepDecision, error) {
 		if _, err := svc.Disable(ctx, def.Name, operatorID, "stop it"); err != nil {
 			t.Fatal(err)
 		}
 		return intent("maintenance_report")(ctx, req)
 	}
 	s := &loopScript{t: t, answers: answers(disableThenAsk)}
-	report, err := s.runner(svc).Run(context.Background(), def, s.tools(), loopLimits)
-	if !errors.Is(err, operations.ErrAgentHalted) || report.Status != operations.RunStopped {
+	report, err := s.runner(svc).Run(context.Background(), svc.LoopAgent(def, nil), s.tools(), loopLimits)
+	if !errors.Is(err, agentloop.ErrHalted) || report.Status != agentloop.Stopped {
 		t.Fatalf("report %+v err %v, want stopped by ErrAgentHalted", report, err)
 	}
 	if status, reason := runStatus(t, testPool, report.ID); status != "stopped" || reason != "the agent was disabled" {
@@ -355,7 +356,7 @@ func TestAnAgentsModelCallIsACostEventWithNoUserAndNoDebit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.FinishRun(ctx, run, operations.RunCompleted, ""); err != nil {
+	if err := svc.Finish(ctx, run, agentloop.Ending{Status: agentloop.Completed}); err != nil {
 		t.Fatal(err)
 	}
 	credits, err := wiring.NewCreditService(testPool)
@@ -363,7 +364,7 @@ func TestAnAgentsModelCallIsACostEventWithNoUserAndNoDebit(t *testing.T) {
 		t.Fatal(err)
 	}
 	cost := 0.0025
-	call := operations.ModelCall{Model: "served-model", PromptVersion: "t1", PromptTokens: 30, CompletionTokens: 7, CostUSD: &cost}
+	call := agentloop.ModelCall{Model: "served-model", PromptVersion: "t1", PromptTokens: 30, CompletionTokens: 7, CostUSD: &cost}
 	record := wiring.AgentCostRecorder(testPool, credits)
 	for _, seq := range []int{0, 0, 1} {
 		if err := record(ctx, run, seq, call); err != nil {
@@ -396,9 +397,9 @@ func TestTheCostRecorderPassesTheLedgersRefusalBack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = svc.FinishRun(context.Background(), run, operations.RunCompleted, "") })
+	t.Cleanup(func() { _ = svc.Finish(context.Background(), run, agentloop.Ending{Status: agentloop.Completed}) })
 	cost := 0.001
-	err = wiring.AgentCostRecorder(testPool, &credit.Service{})(context.Background(), run, 0, operations.ModelCall{Model: "m", CostUSD: &cost})
+	err = wiring.AgentCostRecorder(testPool, &credit.Service{})(context.Background(), run, 0, agentloop.ModelCall{Model: "m", CostUSD: &cost})
 	if !errors.Is(err, credit.ErrUnavailable) {
 		t.Errorf("recording into an unavailable ledger: %v, want its error passed back", err)
 	}
@@ -407,7 +408,7 @@ func TestTheCostRecorderPassesTheLedgersRefusalBack(t *testing.T) {
 func TestARunWhoseModelCostCannotBeRecordedFailsBeforeItActs(t *testing.T) {
 	svc, def := loopAgent(t, "agent-loop-cost-lost", 1_000_000, "maintenance_report")
 	s := &loopScript{t: t, answers: answers(intent("maintenance_report")), costErr: errors.New("ledger unavailable")}
-	report, err := s.runner(svc).Run(context.Background(), def, s.tools(), loopLimits)
+	report, err := s.runner(svc).Run(context.Background(), svc.LoopAgent(def, nil), s.tools(), loopLimits)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -424,17 +425,17 @@ func TestARunWhoseResultFailsItsCheckFailsAndKeepsTheResultForTheOperator(t *tes
 	cases := []struct {
 		name   string
 		result string
-		status operations.RunStatus
+		status agentloop.Status
 	}{
-		{"a cite to a returned fact", `{"items":[{"status":"fine","text":"ok","cites":["/database_bytes"]}]}`, operations.RunCompleted},
-		{"a cite to a fact no tool returned", `{"items":[{"status":"fine","text":"ok","cites":["/cpu_percent"]}]}`, operations.RunFailed},
+		{"a cite to a returned fact", `{"items":[{"status":"fine","text":"ok","cites":["/database_bytes"]}]}`, agentloop.Completed},
+		{"a cite to a fact no tool returned", `{"items":[{"status":"fine","text":"ok","cites":["/cpu_percent"]}]}`, agentloop.Failed},
 	}
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, def := loopAgent(t, fmt.Sprintf("agent-loop-check-%d", i), 1_000_000, "maintenance_report")
 			def.CheckResult = operations.CitesOnlyReturnedFacts
 			s := &loopScript{t: t, answers: answers(intent("maintenance_report"), final(tc.result))}
-			report, err := s.runner(svc).Run(context.Background(), def, s.tools(), loopLimits)
+			report, err := s.runner(svc).Run(context.Background(), svc.LoopAgent(def, nil), s.tools(), loopLimits)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -448,7 +449,7 @@ func TestARunWhoseResultFailsItsCheckFailsAndKeepsTheResultForTheOperator(t *tes
 			).Scan(&stored, &reason, &kept); err != nil || stored != string(tc.status) || !kept {
 				t.Fatalf("stored status %q result kept %v (%v), want %s with the result", stored, kept, err, tc.status)
 			}
-			if tc.status == operations.RunFailed && !strings.Contains(reason, `"/cpu_percent"`) {
+			if tc.status == agentloop.Failed && !strings.Contains(reason, `"/cpu_percent"`) {
 				t.Errorf("reason %q does not name the cite no tool returned", reason)
 			}
 			if got := stepRows(t, report.ID); !slices.Equal(got, []string{"maintenance_report", "finish"}) {
@@ -460,12 +461,12 @@ func TestARunWhoseResultFailsItsCheckFailsAndKeepsTheResultForTheOperator(t *tes
 
 func TestOperatorsReadAnAgentRunWithItsStepsAndWhatEachCost(t *testing.T) {
 	svc, def, operator := loopAgentWithOperator(t, "agent-run-records", 1_000_000, "maintenance_report")
-	unpriced := func(context.Context, operations.StepRequest) (operations.StepDecision, error) {
-		return operations.StepDecision{Result: json.RawMessage(`{"summary":"ok"}`), Call: operations.ModelCall{Model: "m"}}, nil
+	unpriced := func(context.Context, agentloop.StepRequest) (agentloop.StepDecision, error) {
+		return agentloop.StepDecision{Result: json.RawMessage(`{"summary":"ok"}`), Call: agentloop.ModelCall{Model: "m"}}, nil
 	}
 	s := &loopScript{t: t, answers: answers(intent("maintenance_report"), unpriced)}
-	report, err := s.runner(svc).Run(context.Background(), def, s.tools(), loopLimits)
-	if err != nil || report.Status != operations.RunCompleted {
+	report, err := s.runner(svc).Run(context.Background(), svc.LoopAgent(def, nil), s.tools(), loopLimits)
+	if err != nil || report.Status != agentloop.Completed {
 		t.Fatalf("report %+v, err %v", report, err)
 	}
 	id := pgconv.UUIDString(report.ID)

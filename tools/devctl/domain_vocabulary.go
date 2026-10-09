@@ -358,7 +358,7 @@ var domainVocabularies = []domainVocabulary{
 		name: "platform agent run status",
 		sources: []vocabularySource{
 			sqlColumnCheck("platform_agent_runs", "status"),
-			goConstEnum("apps/platform/internal/product/operations/runs.go", "RunStatus"),
+			goConstEnum("apps/platform/internal/foundation/integration/agentloop/loop.go", "Status"),
 		},
 	},
 	{

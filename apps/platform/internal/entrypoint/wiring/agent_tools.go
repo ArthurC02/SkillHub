@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/jobruns"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
@@ -66,8 +67,8 @@ func proposableAction(job jobruns.Status) string {
 	return operations.MaintenanceJobAction(job.Job)
 }
 
-func MaintenanceReportTool(pool *pgxpool.Pool, rate capacity.RestoreRate, now func() time.Time) operations.Tool {
-	return operations.Tool{
+func MaintenanceReportTool(pool *pgxpool.Pool, rate capacity.RestoreRate, now func() time.Time) agentloop.Tool {
+	return agentloop.Tool{
 		Name: operations.ToolMaintenanceReport,
 		Description: "The platform's maintenance facts: database and per-table size in bytes, daily growth, " +
 			"the restore budget and days until it is crossed, and each scheduled maintenance job's period, " +

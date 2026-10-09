@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 )
 
 type ReportItem struct {
@@ -30,7 +32,7 @@ const factAction = "action"
 
 var errNoItems = errors.New("the report has no items")
 
-func CitesOnlyReturnedFacts(result json.RawMessage, steps []StepRecord) error {
+func CitesOnlyReturnedFacts(result json.RawMessage, steps []agentloop.StepRecord) error {
 	dec := json.NewDecoder(bytes.NewReader(result))
 	dec.DisallowUnknownFields()
 	var report DailyReportResult
@@ -113,7 +115,7 @@ func checkItem(item ReportItem, facts []any) error {
 	return checkCites(item.Cites, facts)
 }
 
-func returnedFacts(steps []StepRecord) []any {
+func returnedFacts(steps []agentloop.StepRecord) []any {
 	var facts []any
 	for _, step := range steps {
 		var decoded any
@@ -163,7 +165,7 @@ func valueAt(pointer string, node any) (any, bool) {
 	return node, true
 }
 
-func DailyReportSightings(result json.RawMessage, steps []StepRecord) []Sighting {
+func DailyReportSightings(result json.RawMessage, steps []agentloop.StepRecord) []Sighting {
 	var report DailyReportResult
 	if json.Unmarshal(result, &report) != nil {
 		return nil

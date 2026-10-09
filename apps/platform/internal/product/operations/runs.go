@@ -4,23 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
-)
-
-type RunStatus string
-
-const (
-	RunRunning    RunStatus = "running"
-	RunCompleted  RunStatus = "completed"
-	RunIncomplete RunStatus = "incomplete"
-	RunStopped    RunStatus = "stopped"
-	RunFailed     RunStatus = "failed"
 )
 
 const (
@@ -28,14 +20,12 @@ const (
 	stoppedByDisable = "the agent was disabled"
 )
 
-var ErrAgentHalted = errors.New("operations: the agent is disabled or the agent brake is engaged")
-
-var ErrRunFinished = errors.New("operations: the run has already finished")
+const usdMicrosPerDollar = 1_000_000
 
 func (s *Service) StartRun(ctx context.Context, agent string) (pgtype.UUID, error) {
 	id, err := gen.New(s.Pool).StartPlatformAgentRun(ctx, agent)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return pgtype.UUID{}, ErrAgentHalted
+		return pgtype.UUID{}, agentloop.ErrHalted
 	}
 	return id, err
 }
@@ -45,17 +35,17 @@ func (s *Service) BeforeStep(ctx context.Context, run pgtype.UUID) error {
 	if err != nil {
 		return err
 	}
-	if RunStatus(gate.Status) != RunRunning {
-		return ErrRunFinished
+	if agentloop.Status(gate.Status) != agentloop.Running {
+		return agentloop.ErrRunFinished
 	}
 	reason := haltReason(gate.Enabled, gate.Braked)
 	if reason == "" {
 		return nil
 	}
-	if err := s.FinishRun(ctx, run, RunStopped, reason); err != nil {
+	if err := s.Finish(ctx, run, agentloop.Ending{Status: agentloop.Stopped, Reason: reason}); err != nil {
 		return err
 	}
-	return fmt.Errorf("%w: %s", ErrAgentHalted, reason)
+	return fmt.Errorf("%w: %s", agentloop.ErrHalted, reason)
 }
 
 func haltReason(enabled, braked bool) string {
@@ -69,45 +59,29 @@ func haltReason(enabled, braked bool) string {
 	}
 }
 
-func (s *Service) FinishRun(ctx context.Context, run pgtype.UUID, status RunStatus, reason string) error {
-	return s.finishWithResult(ctx, run, runEnding{status: status, reason: reason})
-}
-
-type runEnding struct {
-	status         RunStatus
-	reason         string
-	result         []byte
-	tracksFindings bool
-	sightings      []Sighting
-	proposals      []preparedProposal
-	now            time.Time
-}
-
-func (s *Service) finishWithResult(ctx context.Context, run pgtype.UUID, end runEnding) error {
+func (s *Service) Finish(ctx context.Context, run pgtype.UUID, end agentloop.Ending) error {
 	var why *string
-	if end.reason != "" {
-		why = &end.reason
+	if end.Reason != "" {
+		why = &end.Reason
 	}
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		finished, err := gen.New(tx).FinishPlatformAgentRun(ctx, gen.FinishPlatformAgentRunParams{
-			ID: run, Status: string(end.status), Reason: why, Result: end.result,
+			ID: run, Status: string(end.Status), Reason: why, Result: end.Result,
 		})
 		if err != nil {
 			return err
 		}
 		if finished == 0 {
-			return ErrRunFinished
+			return agentloop.ErrRunFinished
 		}
-		if end.tracksFindings {
-			if err := s.recordFindings(ctx, tx, run, end.sightings, end.now); err != nil {
-				return err
-			}
+		if end.Record == nil {
+			return nil
 		}
-		return s.recordProposals(ctx, tx, run, end.proposals, end.now)
+		return end.Record(ctx, tx, run, end.Now)
 	})
 }
 
-func (s *Service) spentSince(ctx context.Context, agent string, since time.Time) (int64, error) {
+func (s *Service) SpentSince(ctx context.Context, agent string, since time.Time) (int64, error) {
 	runs, err := gen.New(s.Pool).PlatformAgentSpendSince(ctx, gen.PlatformAgentSpendSinceParams{
 		Name: agent, Since: pgconv.Timestamptz(since),
 	})
@@ -125,7 +99,7 @@ func countedSpend(run gen.PlatformAgentSpendSinceRow) int64 {
 	return run.PricedMicros
 }
 
-func (s *Service) recordStep(ctx context.Context, run pgtype.UUID, seq int, step StepRecord, model ModelCall) error {
+func (s *Service) RecordStep(ctx context.Context, run pgtype.UUID, seq int, step agentloop.StepRecord, model agentloop.ModelCall) error {
 	return gen.New(s.Pool).RecordPlatformAgentStep(ctx, gen.RecordPlatformAgentStepParams{
 		RunID: run, Seq: int32(seq), Tool: step.Tool, Arguments: step.Arguments, Result: step.Result,
 		Model: model.Model, PromptTokens: model.PromptTokens, CompletionTokens: model.CompletionTokens,
@@ -133,8 +107,16 @@ func (s *Service) recordStep(ctx context.Context, run pgtype.UUID, seq int, step
 	})
 }
 
-func (s *Service) recordKeyBudget(ctx context.Context, run pgtype.UUID, budgetUSD float64) error {
+func (s *Service) RecordKeyBudget(ctx context.Context, run pgtype.UUID, budgetUSD float64) error {
 	return gen.New(s.Pool).SetPlatformAgentRunKeyBudget(ctx, gen.SetPlatformAgentRunKeyBudgetParams{
 		KeyBudgetMicros: usdMicros(&budgetUSD), ID: run,
 	})
+}
+
+func usdMicros(costUSD *float64) *int64 {
+	if costUSD == nil {
+		return nil
+	}
+	micros := int64(math.Round(*costUSD * usdMicrosPerDollar))
+	return &micros
 }

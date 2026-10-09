@@ -1,4 +1,4 @@
-package operations
+package agentloop
 
 import (
 	"context"
@@ -50,7 +50,7 @@ func stepDecision(resp *llmclient.AgentStepResponse) (StepDecision, error) {
 	case resp.Outcome == outcomeFinal:
 		decision.Result = json.RawMessage(resp.Result)
 	default:
-		return decision, fmt.Errorf("operations: the step answered %q without what that outcome needs", resp.Outcome)
+		return decision, fmt.Errorf("agentloop: the step answered %q without what that outcome needs", resp.Outcome)
 	}
 	return decision, nil
 }

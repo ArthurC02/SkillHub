@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 )
 
 type dailyReportEvals struct {
@@ -28,7 +30,7 @@ func TestDailyReportEvalsAcceptOnlyReportsThatCiteTheSnapshot(t *testing.T) {
 	if len(evals.Cases) == 0 {
 		t.Fatal("the eval file has no cases")
 	}
-	steps := []StepRecord{{ToolCall: ToolCall{Tool: ToolMaintenanceReport, Arguments: "{}"}, Result: string(evals.Snapshot)}}
+	steps := []agentloop.StepRecord{{ToolCall: agentloop.ToolCall{Tool: ToolMaintenanceReport, Arguments: "{}"}, Result: string(evals.Snapshot)}}
 	for _, tc := range evals.Cases {
 		t.Run(tc.Name, func(t *testing.T) {
 			err := CitesOnlyReturnedFacts(tc.Report, steps)
@@ -72,9 +74,9 @@ func TestACiteResolvesOnlyToAFactTheDocumentHolds(t *testing.T) {
 }
 
 func TestADailyReportMustBeWellFormedBeforeItsCitesCount(t *testing.T) {
-	steps := []StepRecord{
-		{ToolCall: ToolCall{Tool: ToolMaintenanceReport}, Result: "not json"},
-		{ToolCall: ToolCall{Tool: ToolMaintenanceReport}, Result: `{"x":1,"jobs":{"a":{"action":"run-a"}},"actions":["run-b"]}`},
+	steps := []agentloop.StepRecord{
+		{ToolCall: agentloop.ToolCall{Tool: ToolMaintenanceReport}, Result: "not json"},
+		{ToolCall: agentloop.ToolCall{Tool: ToolMaintenanceReport}, Result: `{"x":1,"jobs":{"a":{"action":"run-a"}},"actions":["run-b"]}`},
 	}
 	cases := []struct {
 		name   string

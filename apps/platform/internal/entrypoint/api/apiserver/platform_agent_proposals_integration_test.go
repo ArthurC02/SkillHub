@@ -16,6 +16,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	analytics "github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
@@ -53,17 +54,15 @@ func proposal(action, reason string, cites ...string) string {
 	return string(encoded)
 }
 
-func (w *proposalWorld) propose(proposals ...string) operations.RunReport {
+func (w *proposalWorld) propose(proposals ...string) agentloop.Report {
 	w.t.Helper()
 	result := `{"items":[` + attention("purge is late", "/jobs/purge/overdue") + `],"proposals":[` + joinComma(proposals) + `]}`
-	facts := operations.Tool{
+	facts := agentloop.Tool{
 		Name: "maintenance_report", Description: "facts", Parameters: map[string]any{"type": "object"},
 		Run: func(context.Context, json.RawMessage) (any, error) { return offering(proposals), nil },
 	}
 	s := &loopScript{t: w.t, answers: answers(intent("maintenance_report"), final(result))}
-	runner := s.runner(w.svc)
-	runner.Actions = w.actions
-	report, err := runner.Run(context.Background(), w.def, []operations.Tool{facts}, loopLimits)
+	report, err := s.runner(w.svc).Run(context.Background(), w.svc.LoopAgent(w.def, w.actions), []agentloop.Tool{facts}, loopLimits)
 	if err != nil {
 		w.t.Fatalf("run: %v", err)
 	}
@@ -129,7 +128,7 @@ func TestAnAgentProposesOnlyARegisteredActionWithItsPreviewAndOnceWhileItIsLive(
 		Preview: fixedPreview(operations.PreviewCount{Key: "audit_events_past_retention", Count: 42})}
 	w := newProposalWorld(t, "agent-proposals-propose", audit)
 
-	if report := w.propose(proposal(audit.Name, "purge is two periods late", "/jobs/purge/overdue")); report.Status != operations.RunCompleted {
+	if report := w.propose(proposal(audit.Name, "purge is two periods late", "/jobs/purge/overdue")); report.Status != agentloop.Completed {
 		t.Fatalf("run %+v, want completed", report)
 	}
 	got := w.proposals()
@@ -162,7 +161,7 @@ func TestAProposalWhosePreviewChangesNothingNeverReachesAnOperator(t *testing.T)
 	for i, c := range cases {
 		action := operations.Action{Name: fmt.Sprintf("run-test-proposal-noop-%d", i), Tier: operations.TierDestructive, Preview: fixedPreview(c.counts...)}
 		w := newProposalWorld(t, fmt.Sprintf("agent-proposals-noop-%d", i), action)
-		if report := w.propose(proposal(action.Name, "late", "/jobs/purge/overdue")); report.Status != operations.RunCompleted {
+		if report := w.propose(proposal(action.Name, "late", "/jobs/purge/overdue")); report.Status != agentloop.Completed {
 			t.Fatalf("%s: run %+v, want completed", c.name, report)
 		}
 		if got := w.proposals(); len(got) != c.want {
@@ -185,7 +184,7 @@ func TestARunThatProposesBeyondWhatItMayEndsFailedAndProposesNothing(t *testing.
 	}
 	for _, c := range cases {
 		report := w.propose(proposal(allowed.Name, "fine", "/jobs/purge/overdue"), proposal(c.action, "why", "/jobs/purge/overdue"))
-		if report.Status != operations.RunFailed || !strings.Contains(report.Reason, c.reason) {
+		if report.Status != agentloop.Failed || !strings.Contains(report.Reason, c.reason) {
 			t.Errorf("%s: run %s %q, want failed naming %q", c.name, report.Status, report.Reason, c.reason)
 		}
 	}
@@ -203,7 +202,7 @@ func TestAProposalWhosePreviewFailsIsLeftOutAndTheReportStillCounts(t *testing.T
 	w := newProposalWorld(t, "agent-proposals-unpreviewed", allowed, broken)
 
 	report := w.propose(proposal(allowed.Name, "fine", "/jobs/purge/overdue"), proposal(broken.Name, "why", "/jobs/rotate/overdue"))
-	if report.Status != operations.RunCompleted || !strings.Contains(report.Reason, broken.Name) || !strings.Contains(report.Reason, "count failed") {
+	if report.Status != agentloop.Completed || !strings.Contains(report.Reason, broken.Name) || !strings.Contains(report.Reason, "count failed") {
 		t.Errorf("run %s %q, want completed and naming the unpreviewed action and why", report.Status, report.Reason)
 	}
 	if status, reason := runStatus(t, testPool, report.ID); status != "completed" || reason != report.Reason {
@@ -478,17 +477,17 @@ func TestAJobThatFailsWithoutAMessageStillClosesItsProposal(t *testing.T) {
 
 func TestARunWhoseOutcomeCannotBeRecordedEndsFailedNotRunning(t *testing.T) {
 	w := newFindingWorld(t, "agent-settle-unrecorded")
-	w.def.Sightings = func(json.RawMessage, []operations.StepRecord) []operations.Sighting {
+	w.def.Sightings = func(json.RawMessage, []agentloop.StepRecord) []operations.Sighting {
 		return []operations.Sighting{{Title: "a sighting with no cite breaks the findings table's rule"}}
 	}
-	facts := operations.Tool{
+	facts := agentloop.Tool{
 		Name: "maintenance_report", Description: "facts", Parameters: map[string]any{"type": "object"},
 		Run: func(context.Context, json.RawMessage) (any, error) { return json.RawMessage(findingFacts), nil },
 	}
 	result := `{"items":[` + attention("purge is late", "/jobs/purge/overdue") + `]}`
 	s := &loopScript{t: t, answers: answers(intent("maintenance_report"), final(result))}
-	report, err := s.runner(w.svc).Run(context.Background(), w.def, []operations.Tool{facts}, loopLimits)
-	if err == nil || report.Status != operations.RunFailed {
+	report, err := s.runner(w.svc).Run(context.Background(), w.svc.LoopAgent(w.def, nil), []agentloop.Tool{facts}, loopLimits)
+	if err == nil || report.Status != agentloop.Failed {
 		t.Fatalf("run %+v, err %v; want failed with the recording error", report, err)
 	}
 	var status, reason string
