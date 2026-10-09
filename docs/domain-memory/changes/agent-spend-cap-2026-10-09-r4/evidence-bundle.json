@@ -7,7 +7,16 @@
     "registry_digest": "sha256:bff34a96ec180077eaffcdb09ace694de8b0c74d46a3dbd9204408f1dfc6a381"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "4fc20a5c1af61103cb1d3c5f04cfbf0a33ad9f57",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "e174e623487521347c2279a447fdb9c95b1dd1a4",
+      "registry_digest": "sha256:bff34a96ec180077eaffcdb09ace694de8b0c74d46a3dbd9204408f1dfc6a381"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "override-bounds",

@@ -3,12 +3,12 @@
   "proposal_id": "operations-agent-spend-cap-override-r4",
   "proposer": "domain-memory-agent",
   "requirement_id": "operators-set-agent-spend-caps",
-  "status": "submitted",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-09T16:48:06.200988Z",
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "verified_at": "2026-10-09T16:48:23.839253Z",
+  "finalized_at": "2026-10-09T16:48:24.821698Z",
+  "applied_at": "2026-10-09T16:48:25.695156Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "e174e623487521347c2279a447fdb9c95b1dd1a4",
@@ -124,5 +124,9 @@
       }
     }
   ],
-  "supersedes": "operations-agent-spend-cap-override-r2"
+  "supersedes": "operations-agent-spend-cap-override-r2",
+  "applied_registry_revision": {
+    "observed_commit": "4fc20a5c1af61103cb1d3c5f04cfbf0a33ad9f57",
+    "registry_digest": "sha256:7b3350f330524bff3062dd87c3088baf26cfff59f3f18d9fddc04b82ee53e04f"
+  }
 }
