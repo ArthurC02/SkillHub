@@ -1806,6 +1806,42 @@ test("a completed Agent finding move keeps keyboard focus on its result", async 
   await page.screenshot({ path: testInfo.outputPath("admin-finding-result-mobile.png") });
 });
 
+test("an Agent finding move keeps its result when detail refresh fails", async ({
+  page,
+}, testInfo) => {
+  let moved = false;
+  await stubPlatform(page);
+  await page.route(`**/admin/agents/findings/${AGENT_FINDING}/status`, (route) => {
+    moved = true;
+    return route.fulfill({ status: 204 });
+  });
+  await page.route(`**/admin/agents/findings/${AGENT_FINDING}`, (route) =>
+    moved
+      ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
+      : route.fulfill({ json: ADMIN_AGENT_FINDING }),
+  );
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/admin/agents?finding=${AGENT_FINDING}`);
+  await page.locator("#admin-finding-note").fill("checking the job");
+  await page.getByRole("button", { name: "我來處理" }).click();
+
+  await expect(page.getByRole("alert")).toContainText("暫時無法讀取這件事");
+  await expect(page.locator("#admin-finding-result")).toContainText("最新狀態尚未確認");
+  await expect(page.getByRole("button", { name: "重新整理這件事" })).toBeVisible();
+  await expect(page.locator("#admin-finding-result")).toBeFocused();
+  await expect(page.locator("#admin-finding-note")).toHaveCount(0);
+  const resultTop = await page
+    .locator("#admin-finding-result")
+    .evaluate((element) => element.getBoundingClientRect().top);
+  const headerBottom = await page
+    .locator(".app-header")
+    .evaluate((element) => element.getBoundingClientRect().bottom);
+  expect(resultTop).toBeGreaterThanOrEqual(headerBottom);
+  const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("admin-finding-read-failure-phone.png") });
+});
+
 test("a completed Agent proposal decision keeps keyboard focus on its result", async ({
   page,
 }, testInfo) => {

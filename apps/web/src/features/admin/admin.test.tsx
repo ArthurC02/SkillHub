@@ -2836,6 +2836,69 @@ test("a completed finding move focuses its result after the controls change", as
   expect(document.activeElement).toBe(field<HTMLElement>("#admin-finding-result"));
 });
 
+test.each(["stale", "unavailable"])(
+  "a completed finding move keeps its result and hides unverified controls when details are %s",
+  async (refresh) => {
+    let moved = false;
+    let verified = false;
+    stub(true, (path, method) => {
+      if (path === `/admin/agents/findings/${AGENT_FINDING}/status` && method === "PUT") {
+        moved = true;
+        return { body: {}, status: 204 };
+      }
+      if (path === `/admin/agents/findings/${AGENT_FINDING}` && verified) {
+        return {
+          body: {
+            ...ADMIN_AGENT_FINDING,
+            finding: { ...ADMIN_AGENT_FINDING.finding, status: "acknowledged" },
+          },
+          status: 200,
+        };
+      }
+      if (
+        path === `/admin/agents/findings/${AGENT_FINDING}` &&
+        moved &&
+        refresh === "unavailable"
+      ) {
+        return { body: { error: "finding unavailable" }, status: 503 };
+      }
+      return undefined;
+    });
+    await mountAt("/admin/agents", { finding: AGENT_FINDING });
+    await waitFor(has("我來處理"));
+    await type("#admin-finding-note", "checking the job");
+    await submit("#admin-finding-note");
+    await waitFor(has("已送出改為「處理中」；最新狀態尚未確認。"));
+    expect(field<HTMLElement>("#admin-finding-result").classList.contains("notice-warning")).toBe(
+      true,
+    );
+    expect(has("我來處理")()).toBe(false);
+    expect(has("標記已解決")()).toBe(false);
+    expect(container.querySelector("#admin-finding-note")).toBeNull();
+    expect(document.activeElement).toBe(field<HTMLElement>("#admin-finding-result"));
+    if (refresh === "unavailable") {
+      await waitFor(has("暫時無法讀取這件事。請重新整理，或稍後再試。"));
+      expect(button("重新整理這件事")).toBeDefined();
+      expect(field<HTMLElement>("#admin-finding-result").textContent).toContain(
+        ADMIN_AGENT_FINDING.finding.title,
+      );
+      verified = true;
+      await click(button("重新整理這件事"));
+      await waitFor(has("已改成「處理中」。"));
+      expect(button("標記已解決")).toBeDefined();
+    } else {
+      expect(button("重新整理這件事")).toBeDefined();
+      verified = true;
+      await click(button("重新整理這件事"));
+      await waitFor(has("已改成「處理中」。"));
+      expect(field<HTMLElement>("#admin-finding-result").classList.contains("notice-success")).toBe(
+        true,
+      );
+      expect(button("標記已解決")).toBeDefined();
+    }
+  },
+);
+
 test("a cached next finding does not inherit the previous finding's success message", async () => {
   const nextId = "8e2f3a4b-5c6d-4e7f-8a9b-0c1d2e3f4a5b";
   stub(true, (path, method) =>
@@ -2859,10 +2922,10 @@ test("a cached next finding does not inherit the previous finding's success mess
   await waitFor(has("我來處理"));
   await type("#admin-finding-note", "checking the job");
   await submit("#admin-finding-note");
-  await waitFor(has("已改成「處理中」。"));
+  await waitFor(has("已送出改為「處理中」；最新狀態尚未確認。"));
   await go("/admin/agents", { finding: nextId });
   await waitFor(has("下一件待辦"));
-  expect(has("已改成「處理中」。")()).toBe(false);
+  expect(has("已送出改為「處理中」")()).toBe(false);
 });
 
 test("OPS-012: changing the finding move clears a reason written for another move", async () => {
@@ -3216,8 +3279,8 @@ test("a successful finding move does not label an earlier failed move as success
   await click(field<HTMLInputElement>('input[name="admin-finding-move"][value="resolved"]'));
   await type("#admin-finding-note", "second move");
   await submit("#admin-finding-note");
-  await waitFor(has("已改成「已解決」。"));
-  expect(has("已改成「處理中」。")()).toBe(false);
+  await waitFor(has("已送出改為「已解決」；最新狀態尚未確認。"));
+  expect(has("已送出改為「處理中」")()).toBe(false);
 });
 
 test("OPS-013: a decided proposal shows its decision and outcome and offers no decision", async () => {

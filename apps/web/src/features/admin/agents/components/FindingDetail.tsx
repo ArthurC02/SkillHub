@@ -18,13 +18,14 @@ function latestReport(events: PlatformAgentFindingEvent[]): PlatformAgentFinding
   return [...events].reverse().find((event) => event.run_id || event.evidence !== undefined);
 }
 
-function Moves({ finding }: { finding: PlatformAgentFinding }) {
-  const move = useMoveFinding();
+function Moves({
+  finding,
+  move,
+}: {
+  finding: PlatformAgentFinding;
+  move: ReturnType<typeof useMoveFinding>;
+}) {
   const [selected, setSelected] = useState<FindingStatus>();
-  const result = useRef<HTMLParagraphElement>(null);
-  useEffect(() => {
-    if (move.isSuccess) result.current?.focus();
-  }, [move.isSuccess]);
   const choices = FINDING_MOVES[finding.status];
   const choice = choices.find(({ to }) => to === selected) ?? choices[0];
   if (!choice) return null;
@@ -62,23 +63,21 @@ function Moves({ finding }: { finding: PlatformAgentFinding }) {
         contextKey={`${finding.id}:${finding.status}:${choice.to}`}
         onSubmit={(note) => move.mutate({ id: finding.id, status: choice.to, note })}
       />
-      {move.isSuccess && (
-        <p
-          id="admin-finding-result"
-          ref={result}
-          tabIndex={-1}
-          className="notice notice-success"
-          role="status"
-        >
-          已改成「{FINDING_STATUS[move.variables.status]}」。
-        </p>
-      )}
     </div>
   );
 }
 
 export function FindingDetail({ id }: { id: string }) {
   const detail = usePlatformAgentFinding(id);
+  const move = useMoveFinding();
+  const result = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (move.isSuccess) {
+      result.current?.focus();
+      result.current?.scrollIntoView?.({ block: "center" });
+    }
+  }, [move.isSuccess]);
+  const unverified = move.isSuccess && detail.data?.finding.status !== move.variables.status;
   const report = detail.data && latestReport(detail.data.events);
   const evidence = Object.entries(report?.evidence ?? {});
   return (
@@ -92,8 +91,27 @@ export function FindingDetail({ id }: { id: string }) {
         </Link>
       </p>
       {detail.isPending && <Loading what="這件事" />}
+      {move.isSuccess && (
+        <p
+          id="admin-finding-result"
+          ref={result}
+          tabIndex={-1}
+          className={unverified ? "notice notice-warning" : "notice notice-success"}
+          role="status"
+        >
+          {detail.data?.finding.title ?? "這件事"}：
+          {unverified
+            ? `已送出改為「${FINDING_STATUS[move.variables.status]}」；最新狀態尚未確認。`
+            : `已改成「${FINDING_STATUS[move.variables.status]}」。`}
+        </p>
+      )}
       <ReadFailure error={detail.error} what="這件事" />
-      {detail.data && !detail.error && (
+      {unverified && (
+        <button type="button" disabled={detail.isFetching} onClick={() => void detail.refetch()}>
+          重新整理這件事
+        </button>
+      )}
+      {detail.data && !detail.error && !unverified && (
         <>
           <p>
             <strong>{detail.data.finding.title}</strong>
@@ -130,7 +148,7 @@ export function FindingDetail({ id }: { id: string }) {
             ))}
           </ol>
           <h3>處理</h3>
-          <Moves finding={detail.data.finding} />
+          <Moves finding={detail.data.finding} move={move} />
         </>
       )}
     </section>
