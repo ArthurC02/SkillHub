@@ -1,22 +1,13 @@
 {
   "format": "domain-evidence-bundle/v1",
   "requirement_id": "operators-set-agent-spend-caps",
-  "proposal_id": "operations-agent-spend-cap-override-r3",
+  "proposal_id": "operations-agent-spend-cap-override-r4",
   "registry_revision": {
-    "observed_commit": "26c58b59eb7d3f6c135e33317fb6ce9446855988",
-    "registry_digest": "sha256:d905ca4d1d1adeec2e4274054eb507d6df7053973588eaa61ae9d77832faf316"
+    "observed_commit": "e174e623487521347c2279a447fdb9c95b1dd1a4",
+    "registry_digest": "sha256:bff34a96ec180077eaffcdb09ace694de8b0c74d46a3dbd9204408f1dfc6a381"
   },
   "approvals": [],
-  "scm_attestation": {
-    "provider": "git-signed-commit",
-    "commit": "e174e623487521347c2279a447fdb9c95b1dd1a4",
-    "status": "approved",
-    "proposal_revision": 1,
-    "base_registry_revision": {
-      "observed_commit": "26c58b59eb7d3f6c135e33317fb6ce9446855988",
-      "registry_digest": "sha256:d905ca4d1d1adeec2e4274054eb507d6df7053973588eaa61ae9d77832faf316"
-    }
-  },
+  "scm_attestation": null,
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "override-bounds",
@@ -31,24 +22,6 @@
     "db/migrations/0116_operator_platform_settings.sql"
   ],
   "test_results": [
-    {
-      "obligation_id": "registry-structurally-valid",
-      "status": "passed",
-      "evidence": "python -X utf8 .claude/skills/domain-memory/scripts/registry_tools.py validate --registry-root docs/domain-memory --repo-root .",
-      "command_profile": "registry",
-      "exit_code": 0,
-      "output_sha256": "sha256:eb9efcdfd94e49e427f5da2056f49c54431bbdfe62005f100e94dd7971087a05",
-      "finished_at": "2026-10-09T15:24:13.076837Z"
-    },
-    {
-      "obligation_id": "audit-chain-intact",
-      "status": "passed",
-      "evidence": "python -X utf8 .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
-      "command_profile": "registry",
-      "exit_code": 0,
-      "output_sha256": "sha256:ef0b4c9724efab0cb9ab88969b34a9bab8b7b6f8513bd94142715aef834c3b42",
-      "finished_at": "2026-10-09T15:24:13.942655Z"
-    },
     {
       "obligation_id": "override-bounds",
       "status": "passed",
@@ -93,6 +66,24 @@
       "exit_code": 0,
       "output_sha256": "sha256:98893a4c5cff1c9fe0522b7f6cc22c34232c35609280d12c3ea028557c374077",
       "finished_at": "2026-10-09T16:46:08.415181Z"
+    },
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "python -X utf8 .claude/skills/domain-memory/scripts/registry_tools.py validate --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:eb9efcdfd94e49e427f5da2056f49c54431bbdfe62005f100e94dd7971087a05",
+      "finished_at": "2026-10-09T16:48:19.655250Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python -X utf8 .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:bfdf8437086ad0d117c438aab64878bc62f52f8cd53f4c99928a1e1a1bbe0de0",
+      "finished_at": "2026-10-09T16:48:20.738974Z"
     }
   ],
   "contract_checks": [],

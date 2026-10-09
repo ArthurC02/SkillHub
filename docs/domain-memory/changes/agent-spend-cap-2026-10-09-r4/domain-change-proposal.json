@@ -1,18 +1,18 @@
 {
   "format": "domain-change-proposal/v1",
-  "proposal_id": "operations-agent-spend-cap-override-r3",
+  "proposal_id": "operations-agent-spend-cap-override-r4",
   "proposer": "domain-memory-agent",
   "requirement_id": "operators-set-agent-spend-caps",
-  "status": "superseded",
+  "status": "submitted",
   "change_classification": "material",
-  "submitted_at": "2026-10-09T15:23:54.916331Z",
+  "submitted_at": "2026-10-09T16:48:06.200988Z",
   "verified_at": null,
   "finalized_at": null,
   "applied_at": null,
   "proposal_revision": 1,
   "base_registry_revision": {
-    "observed_commit": "26c58b59eb7d3f6c135e33317fb6ce9446855988",
-    "registry_digest": "sha256:d905ca4d1d1adeec2e4274054eb507d6df7053973588eaa61ae9d77832faf316"
+    "observed_commit": "e174e623487521347c2279a447fdb9c95b1dd1a4",
+    "registry_digest": "sha256:bff34a96ec180077eaffcdb09ace694de8b0c74d46a3dbd9204408f1dfc6a381"
   },
   "affected_contexts": [
     "operations"
@@ -115,18 +115,14 @@
       "role": "developer",
       "reviewer": "ArthurC",
       "decision": "approved",
-      "approved_at": "2026-10-09T15:24:12.209782Z",
+      "approved_at": "2026-10-09T16:48:06.630489Z",
       "scope": "Operations rule: an agent's effective daily spend cap is the operator override when set, else the defined default, bounded to (0, US$5] and kept across re-registration",
       "proposal_revision": 1,
       "base_registry_revision": {
-        "observed_commit": "26c58b59eb7d3f6c135e33317fb6ce9446855988",
-        "registry_digest": "sha256:d905ca4d1d1adeec2e4274054eb507d6df7053973588eaa61ae9d77832faf316"
+        "observed_commit": "e174e623487521347c2279a447fdb9c95b1dd1a4",
+        "registry_digest": "sha256:bff34a96ec180077eaffcdb09ace694de8b0c74d46a3dbd9204408f1dfc6a381"
       }
     }
   ],
-  "supersedes": "operations-agent-spend-cap-override-r2",
-  "superseded_from_status": "submitted",
-  "superseded_at": "2026-10-09T16:48:05.068435Z",
-  "superseded_reason": "Its base Registry digest went stale when an unrelated package was applied after submission; re-reviewed as r4 on the current Registry.",
-  "superseded_by": "operations-agent-spend-cap-override-r4"
+  "supersedes": "operations-agent-spend-cap-override-r2"
 }
