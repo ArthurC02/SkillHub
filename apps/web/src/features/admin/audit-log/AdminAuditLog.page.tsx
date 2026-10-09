@@ -1,4 +1,5 @@
 import { useOperatorAuditLog } from "../admin.service";
+import { ApiError } from "../../../core/api/client";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
@@ -28,14 +29,27 @@ function ActorCell({ event }: { event: OperatorAuditEvent }) {
   return <>平台自動</>;
 }
 
+function auditPageState(log: ReturnType<typeof useOperatorAuditLog>) {
+  const nextPageError =
+    log.isFetchNextPageError &&
+    !(log.error instanceof ApiError && log.error.status >= 400 && log.error.status < 500);
+  return {
+    nextPageError,
+    showRows: log.data && (!log.error || nextPageError),
+    blockingError: nextPageError ? null : log.error,
+    loadMoreLabel: log.isFetchingNextPage ? "載入中…" : nextPageError ? "重試載入更多" : "載入更多",
+  };
+}
+
 export function AdminAuditLog() {
   const log = useOperatorAuditLog();
   const rows = log.data?.pages.flatMap((page) => page.events) ?? [];
+  const { nextPageError, showRows, blockingError, loadMoreLabel } = auditPageState(log);
 
   return (
     <AdminPage heading="動作紀錄">
       {log.isPending && <Loading what="動作紀錄" />}
-      <ReadFailure error={log.error} what="動作紀錄">
+      <ReadFailure error={blockingError} what="動作紀錄">
         <p role="alert">
           暫時無法讀取動作紀錄。{log.data ? "先前載入的內容已隱藏。" : "請稍後再試。"}
         </p>
@@ -43,7 +57,7 @@ export function AdminAuditLog() {
           {log.isFetching ? "重新讀取中…" : "再試一次"}
         </button>
       </ReadFailure>
-      {log.data && !log.error && (
+      {showRows && (
         <ListFreshness
           inFlight={false}
           showWhenIdle
@@ -53,8 +67,7 @@ export function AdminAuditLog() {
           subject="動作紀錄"
         />
       )}
-      {log.data &&
-        !log.error &&
+      {showRows &&
         (rows.length === 0 ? (
           <p>動作紀錄：0 筆。</p>
         ) : (
@@ -108,9 +121,10 @@ export function AdminAuditLog() {
             </p>
           </>
         ))}
-      {log.hasNextPage && !log.error && (
+      {nextPageError && <p role="alert">後續紀錄暫時無法讀取；已載入的紀錄仍可查看。</p>}
+      {log.hasNextPage && showRows && (
         <button type="button" disabled={log.isFetchingNextPage} onClick={() => log.fetchNextPage()}>
-          {log.isFetchingNextPage ? "載入中…" : "載入更多"}
+          {loadMoreLabel}
         </button>
       )}
     </AdminPage>

@@ -884,7 +884,7 @@ test("OPS-004: a restriction is set with the known reason code and lifted by the
   await click(field<HTMLElement>("#admin-skill-restriction summary"));
   await type("#admin-restriction-note", "terms under review");
   await click(button("設定受限"));
-  await waitFor(has("受限展示：license-review"));
+  await waitFor(has("受限展示：授權審查中"));
   expect(calls.find((c) => c.method === "PUT")?.body).toEqual({
     reason: "license-review",
     note: "terms under review",
@@ -898,6 +898,22 @@ test("OPS-004: a restriction is set with the known reason code and lifted by the
   await waitFor(has("沒有受限"));
   expect(has("受限展示：")()).toBe(false);
   expect(has("設定受限展示")()).toBe(true);
+});
+
+test("an unknown restriction reason stays visible without looking unrestricted", async () => {
+  stub(true, (path) =>
+    path === "/admin/skills"
+      ? {
+          body: {
+            skills: [{ ...ADMIN_SKILLS.skills[0], access_restriction: "policy-review" }],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("受限展示：其他原因（policy-review）"));
+  expect(has("沒有受限")()).toBe(false);
 });
 
 test("OPS-004: a name matching several skills lists a way to pick each and offers no action yet", async () => {
@@ -1383,6 +1399,48 @@ test("OPS-006: a full page of 50 stops, the 51st event offers the next page", as
       .filter((c) => c.url.startsWith("/admin/audit-log"))
       .every((c) => c.url.includes("limit=51")),
   ).toBe(true);
+});
+
+test("a failed next audit page keeps loaded rows and retries only that page", async () => {
+  const event = ADMIN_AUDIT_LOG.events[0];
+  let nextPageReads = 0;
+  stub(true, (_path, _method, url) => {
+    if (!url.startsWith("/admin/audit-log?")) return undefined;
+    if (!url.includes("offset=50")) {
+      return { body: { events: Array.from({ length: 51 }, () => event) }, status: 200 };
+    }
+    nextPageReads += 1;
+    return nextPageReads === 1
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : { body: { events: [ADMIN_AUDIT_LOG.events[1]] }, status: 200 };
+  });
+  await mountAt("/admin/audit-log");
+  await waitFor(() => container.querySelectorAll("tbody tr").length === 50);
+  await click(button("載入更多"));
+  await waitFor(has("後續紀錄暫時無法讀取"));
+  expect(container.querySelectorAll("tbody tr")).toHaveLength(50);
+  expect(has("已載入 50 筆動作紀錄；還有更多")()).toBe(true);
+  await click(button("重試載入更多"));
+  await waitFor(() => container.querySelectorAll("tbody tr").length === 51);
+  expect(nextPageReads).toBe(2);
+  expect(has("後續紀錄暫時無法讀取")()).toBe(false);
+  expect(calls.filter((call) => call.url.includes("/admin/audit-log?"))).toHaveLength(3);
+});
+
+test("a lost operator session on the next audit page hides loaded rows", async () => {
+  const event = ADMIN_AUDIT_LOG.events[0];
+  stub(true, (_path, _method, url) => {
+    if (!url.startsWith("/admin/audit-log?")) return undefined;
+    return url.includes("offset=50")
+      ? { body: { error: "not authenticated" }, status: 401 }
+      : { body: { events: Array.from({ length: 51 }, () => event) }, status: 200 };
+  });
+  await mountAt("/admin/audit-log");
+  await waitFor(() => container.querySelectorAll("tbody tr").length === 50);
+  await click(button("載入更多"));
+  await waitFor(has("動作紀錄需要登入"));
+  expect(container.querySelector("table")).toBeNull();
+  expect(has("重試載入更多")()).toBe(false);
 });
 
 test("OPS-007: cost statistics show dollars and name a window with no samples", async () => {

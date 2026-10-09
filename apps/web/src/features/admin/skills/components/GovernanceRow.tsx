@@ -19,7 +19,9 @@ export function GovernanceRow({ skill, single }: { skill: SkillGovernance; singl
       <p className="badge-row">
         {skill.takedown_at && <span className="badge badge-danger">已下架</span>}{" "}
         <span className={skill.access_restriction ? "badge badge-unverified" : "badge"}>
-          {skill.access_restriction ? `受限展示：${skill.access_restriction}` : "沒有受限"}
+          {skill.access_restriction
+            ? `受限展示：${skill.access_restriction === "license-review" ? "授權審查中" : `其他原因（${skill.access_restriction}）`}`
+            : "沒有受限"}
         </span>{" "}
         <span className="badge">
           再散布：{REDISTRIBUTION[skill.redistribution] ?? skill.redistribution}
