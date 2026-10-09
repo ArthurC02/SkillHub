@@ -178,15 +178,17 @@ export function AdminDispatch() {
     <AdminPage heading="派送煞車">
       {status.isPending && <Loading what="派送狀態" />}
       <ReadFailure error={status.error} what="派送狀態" />
-      {status.data && !status.error && (
-        <p className="note">
-          派送狀態上次取得於{" "}
-          <Timestamp at={new Date(status.dataUpdatedAt).toISOString()} relative />。{" "}
-          <button type="button" disabled={status.isFetching} onClick={() => void status.refetch()}>
-            {status.isFetching ? "重新整理中…" : "重新整理派送狀態"}
-          </button>
-        </p>
-      )}
+      <p className="note">
+        {status.data && !status.error && (
+          <>
+            派送狀態上次取得於{" "}
+            <Timestamp at={new Date(status.dataUpdatedAt).toISOString()} relative />。{" "}
+          </>
+        )}
+        <button type="button" disabled={status.isFetching} onClick={() => void status.refetch()}>
+          {status.isFetching ? "重新整理中…" : "重新整理派送狀態"}
+        </button>
+      </p>
       {status.data && !status.error && <DispatchOverview status={status.data} />}
 
       <section aria-labelledby="admin-dispatch-declare">

@@ -803,6 +803,28 @@ test("admin exposure queue can recover from a failed refresh on a phone", async 
   expect(width.scroll).toBeLessThanOrEqual(width.client);
 });
 
+test("admin dispatch can retry an unreadable status without enabling release", async ({ page }) => {
+  await stubPlatform(page);
+  let reads = 0;
+  await page.route("**/admin/dispatch", (route) => {
+    if (route.request().resourceType() === "document") return route.continue();
+    reads += 1;
+    return route.fulfill(
+      reads === 1
+        ? { status: 503, json: { error: "service unavailable" } }
+        : { json: { dispatching: true, halts: [] } },
+    );
+  });
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto("/admin/dispatch");
+  await expect(page.getByRole("alert")).toContainText("暫時無法讀取派送狀態");
+  await expect(page.getByRole("button", { name: "停止派送" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "恢復派送" })).toHaveCount(0);
+  await page.getByRole("button", { name: "重新整理派送狀態" }).click();
+  await expect(page.getByText("沒有生效中的煞車。")).toBeVisible();
+  expect(reads).toBe(2);
+});
+
 test("an Agent owner remains visible without widening the phone page", async ({ page }) => {
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 900 });

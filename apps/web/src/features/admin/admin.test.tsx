@@ -1219,11 +1219,14 @@ test("OPS-005: stopped dispatch with no listed halt is not described as healthy"
 });
 
 test("OPS-005: an unreadable dispatch state keeps emergency halt available but hides release", async () => {
-  stub(true, (path) =>
-    path === "/admin/dispatch"
+  let reads = 0;
+  stub(true, (path) => {
+    if (path !== "/admin/dispatch") return undefined;
+    reads += 1;
+    return reads === 1
       ? { body: { error: "service unavailable" }, status: 503 }
-      : undefined,
-  );
+      : { body: { dispatching: true, halts: [] }, status: 200 };
+  });
   await mountAt("/admin/dispatch");
   await waitFor(has("暫時無法讀取派送狀態"));
   expect(button("停止派送")).toBeDefined();
@@ -1232,6 +1235,9 @@ test("OPS-005: an unreadable dispatch state keeps emergency halt available but h
       (item) => item.textContent === "恢復派送",
     ),
   ).toBe(false);
+  await click(button("重新整理派送狀態"));
+  await waitFor(has("沒有生效中的煞車"));
+  expect(reads).toBe(2);
 });
 
 test("OPS-005: refreshing dispatch status removes a halt that is no longer active", async () => {
