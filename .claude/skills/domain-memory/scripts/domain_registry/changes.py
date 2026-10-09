@@ -313,7 +313,35 @@ def missing_approval_roles(requirement: dict[str, Any], proposal: dict[str, Any]
     return sorted(set(required if isinstance(required, list) else []) - approved)
 
 
-def _approval_and_revision_errors(  # noqa: C901, PLR0912
+def _approval_entry_error(approval: Any, revision: Any, base_revision: Any) -> str | None:
+    if not isinstance(approval, dict):
+        return "domain-change-proposal.json has invalid approval entry"
+    if approval.get("decision") != "approved" or approval.get("proposal_revision") != revision:
+        return None
+    if not all(
+        (
+            completed_identifier(approval.get("role")),
+            completed_identifier(approval.get("reviewer")),
+            iso_timestamp(approval.get("approved_at")),
+            completed_identifier(approval.get("scope")),
+        )
+    ):
+        return "an approval requires role, reviewer, approved_at, and scope"
+    if approval.get("base_registry_revision") != base_revision:
+        return "an approval must bind to the proposal base_registry_revision"
+    return None
+
+
+def _approval_list_errors(proposal: dict[str, Any], revision: Any) -> list[str]:
+    approvals = proposal.get("approvals", [])
+    if not isinstance(approvals, list):
+        return ["domain-change-proposal.json has invalid approvals"]
+    base_revision = proposal.get("base_registry_revision")
+    found = (_approval_entry_error(approval, revision, base_revision) for approval in approvals)
+    return [error for error in found if error]
+
+
+def _approval_and_revision_errors(
     requirement: dict[str, Any],
     proposal: dict[str, Any],
     evidence: dict[str, Any],
@@ -321,40 +349,19 @@ def _approval_and_revision_errors(  # noqa: C901, PLR0912
     revision: Any,
 ) -> list[str]:
     errors: list[str] = []
-    required_roles = requirement.get("required_approval_roles", [])
-    if not completed_identifiers(required_roles):
+    if not completed_identifiers(requirement.get("required_approval_roles", [])):
         errors.append(
             "requirement-normalization.json has invalid required_approval_roles"
         )
+    errors.extend(_approval_list_errors(proposal, revision))
+    return errors + _lifecycle_field_errors(requirement, proposal, evidence, status)
+
+
+def _lifecycle_field_errors(
+    requirement: dict[str, Any], proposal: dict[str, Any], evidence: dict[str, Any], status: Any
+) -> list[str]:
+    errors: list[str] = []
     base_revision = proposal.get("base_registry_revision")
-    approvals = proposal.get("approvals", [])
-    if not isinstance(approvals, list):
-        errors.append("domain-change-proposal.json has invalid approvals")
-    else:
-        for approval in approvals:
-            if not isinstance(approval, dict):
-                errors.append("domain-change-proposal.json has invalid approval entry")
-                continue
-            if (
-                approval.get("decision") != "approved"
-                or approval.get("proposal_revision") != revision
-            ):
-                continue
-            if not all(
-                (
-                    completed_identifier(approval.get("role")),
-                    completed_identifier(approval.get("reviewer")),
-                    iso_timestamp(approval.get("approved_at")),
-                    completed_identifier(approval.get("scope")),
-                )
-            ):
-                errors.append(
-                    "an approval requires role, reviewer, approved_at, and scope"
-                )
-            elif approval.get("base_registry_revision") != base_revision:
-                errors.append(
-                    "an approval must bind to the proposal base_registry_revision"
-                )
     missing = missing_approval_roles(requirement, proposal)
     if status in APPROVED_OR_LATER and missing:
         errors.append(

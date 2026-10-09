@@ -2242,6 +2242,57 @@ class DomainRegistryTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "each of: domain-owner$"):
             verify_proposal(package, self.repo / "memory", self.repo)
 
+    def test_each_approval_and_lifecycle_defect_is_named(self) -> None:
+        package = self.draft_package()
+        files = {
+            name: json.loads((package / name).read_text(encoding="utf-8"))
+            for name in ("requirement-normalization.json", "domain-change-proposal.json", "evidence-bundle.json")
+        }
+        revision = {"observed_commit": None, "registry_digest": "sha256:" + "1" * 64}
+        other = {"observed_commit": None, "registry_digest": "sha256:" + "2" * 64}
+        complete = {
+            "role": "domain-owner", "reviewer": "reviewer", "decision": "approved",
+            "approved_at": "2026-10-10T00:00:00Z", "scope": "entire proposal", "proposal_revision": 1,
+        }
+        cases = [
+            ("roles", {"requirement-normalization.json": {"required_approval_roles": [""]}},
+             "requirement-normalization.json has invalid required_approval_roles"),
+            ("approvals", {"domain-change-proposal.json": {"approvals": "all"}},
+             "domain-change-proposal.json has invalid approvals"),
+            ("entry", {"domain-change-proposal.json": {"approvals": [7]}},
+             "domain-change-proposal.json has invalid approval entry"),
+            ("fields", {"domain-change-proposal.json": {"approvals": [{**complete, "scope": ""}]}},
+             "an approval requires role, reviewer, approved_at, and scope"),
+            ("binding", {"domain-change-proposal.json": {"approvals": [{**complete, "base_registry_revision": other}]}},
+             "an approval must bind to the proposal base_registry_revision"),
+            ("base", {"domain-change-proposal.json": {"status": "submitted"}},
+             "a submitted, approved, or applied proposal requires a Registry digest base revision"),
+            ("retained", {"domain-change-proposal.json": {"status": "submitted", "base_registry_revision": revision},
+                          "evidence-bundle.json": {"registry_revision": other}},
+             "evidence-bundle.json must retain the proposal base_registry_revision"),
+            ("missing role", {"domain-change-proposal.json": {"status": "approved"}},
+             "an approved or applied proposal lacks required approvals: domain-owner"),
+            ("verified_at", {"domain-change-proposal.json": {"status": "verified"}},
+             "a verified proposal requires verified_at"),
+            ("applied_at", {"domain-change-proposal.json": {"status": "applied"}},
+             "an applied proposal requires applied_at"),
+            ("applied revision", {"domain-change-proposal.json": {"status": "applied"}},
+             "an applied proposal requires applied_registry_revision"),
+        ]
+        for label, changes, message in cases:
+            with self.subTest(label):
+                for name, value in files.items():
+                    (package / name).write_text(json.dumps({**value, **changes.get(name, {})}), encoding="utf-8")
+                self.assertIn(message, validate_change_package(package, self.repo / "memory"))
+        other_revision = {**complete, "scope": "", "proposal_revision": 2}
+        for name, value in files.items():
+            changed = {"approvals": [other_revision]} if name == "domain-change-proposal.json" else {}
+            (package / name).write_text(json.dumps({**value, **changed}), encoding="utf-8")
+        self.assertNotIn(
+            "an approval requires role, reviewer, approved_at, and scope",
+            validate_change_package(package, self.repo / "memory"),
+        )
+
     def test_previewing_does_not_ask_for_fields_the_stage_commands_write(self) -> None:
         package = self.draft_package()
         for status in ("submitted", "verified", "applied"):
