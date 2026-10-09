@@ -1,3 +1,4 @@
+import json
 import shutil
 from pathlib import Path
 from typing import Any
@@ -108,13 +109,35 @@ def test_attestation_errors(
     return errors
 
 
-def init_change_package(output: Path) -> None:
+def init_change_package(
+    output: Path, requirement_id: str | None = None, proposal_id: str | None = None
+) -> None:
+    identifiers = {"requirement_id": requirement_id, "proposal_id": proposal_id}
+    blank = [
+        key
+        for key, value in identifiers.items()
+        if value is not None and not completed_identifier(value)
+    ]
+    if blank:
+        raise ValueError(f"{', '.join(blank)} must not be blank")
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(f"output directory is not empty: {output}")
     output.mkdir(parents=True, exist_ok=True)
     templates = change_template_dir()
     for name in CHANGE_PACKAGE_FILES:
         shutil.copyfile(templates / name, output / name)
+    given = {key: value for key, value in identifiers.items() if value is not None}
+    if given:
+        _fill_identifiers(output, given)
+
+
+def _fill_identifiers(output: Path, given: dict[str, str]) -> None:
+    for name in CHANGE_PACKAGE_FORMATS:
+        document = load_json(output / name)
+        document.update({key: value for key, value in given.items() if key in document})
+        (output / name).write_text(
+            json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
 
 
 def implementation_design_errors(

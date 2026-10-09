@@ -14,7 +14,7 @@ Run `discover-sources --repo-root <repo>` without writing output. Present the ca
 
 ## Step 0: Normalize the requirement
 
-Run `init-change-package --output <package-root>`, then complete [requirement-normalization.json](../templates/requirement-normalization.json). Record the intended business outcome, observable acceptance criteria, candidate terms, unknowns, and risk flags. Flag `cross_context`, `public_contract`, `regulated_rule`, `sensitive_data`, `financial_decision`, and `irreversible_change` when applicable. Discovery may continue with unknowns; implementation may not assume their answers.
+Run `init-change-package --output <package-root> --requirement-id <id> --proposal-id <id>`, then complete [requirement-normalization.json](../templates/requirement-normalization.json). Record the intended business outcome, observable acceptance criteria, candidate terms, unknowns, and risk flags. Flag `cross_context`, `public_contract`, `regulated_rule`, `sensitive_data`, `financial_decision`, and `irreversible_change` when applicable. Discovery may continue with unknowns; implementation may not assume their answers.
 
 ## Step 1: Discover the primary Context
 

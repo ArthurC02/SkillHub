@@ -1515,6 +1515,52 @@ class DomainRegistryTest(unittest.TestCase):
             self.approve_and_apply(package)
         self.assertEqual(self.rule_ids(), ["order-total"])
 
+    def package_documents(self, package: Path) -> dict[str, dict]:
+        return {
+            path.name: json.loads(path.read_text(encoding="utf-8"))
+            for path in package.glob("*.json")
+        }
+
+    def test_a_package_started_with_its_identifiers_carries_them_in_every_file(self) -> None:
+        package = self.repo / "named"
+        result = self.run_cli(
+            "init-change-package", "--output", str(package),
+            "--requirement-id", "REQ-7", "--proposal-id", "PRO-7",
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        documents = self.package_documents(package)
+        self.assertEqual(
+            {
+                "requirement-normalization.json": ("REQ-7", None),
+                "domain-change-proposal.json": ("REQ-7", "PRO-7"),
+                "test-obligations.json": ("REQ-7", "PRO-7"),
+                "evidence-bundle.json": ("REQ-7", "PRO-7"),
+            },
+            {
+                name: (document.get("requirement_id"), document.get("proposal_id"))
+                for name, document in documents.items()
+            },
+        )
+        errors = "; ".join(validate_change_package(package, self.repo / "memory", "submitted"))
+        for gone in ("must reference the requirement_id", "must reference the proposal_id",
+                     "requires a completed requirement_id", "requires a completed proposal_id"):
+            with self.subTest(gone=gone):
+                self.assertNotIn(gone, errors)
+
+    def test_a_package_started_without_identifiers_is_the_plain_template(self) -> None:
+        package = self.repo / "plain"
+        init_change_package(package)
+        templates = Path(__file__).resolve().parent.parent / "templates"
+        for path in package.iterdir():
+            with self.subTest(file=path.name):
+                self.assertEqual((templates / path.name).read_bytes(), path.read_bytes())
+
+    def test_a_blank_identifier_is_refused_before_anything_is_written(self) -> None:
+        package = self.repo / "blank"
+        with self.assertRaisesRegex(ValueError, "proposal_id must not be blank"):
+            init_change_package(package, "REQ-7", " ")
+        self.assertFalse(package.exists())
+
     def test_a_fresh_package_is_not_asked_for_test_results_before_they_exist(self) -> None:
         package = self.repo / "fresh"
         init_change_package(package)

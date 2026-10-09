@@ -28,6 +28,8 @@ def build_parser() -> argparse.ArgumentParser:
     add_path(migrate_parser, "--registry-root")
     package_init_parser = commands.add_parser("init-change-package")
     add_path(package_init_parser, "--output")
+    package_init_parser.add_argument("--requirement-id")
+    package_init_parser.add_argument("--proposal-id")
     validate_parser = commands.add_parser("validate")
     add_path(validate_parser, "--registry-root")
     add_path(validate_parser, "--repo-root", required=False)
