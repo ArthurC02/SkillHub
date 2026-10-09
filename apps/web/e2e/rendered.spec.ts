@@ -2613,13 +2613,23 @@ test("admin trend topics jump to the requested chart group on a phone", async ({
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto("/admin/trends?days=30");
   await expect(page.getByText("2026-08-14 到 2026-09-12（UTC），共 30 天。")).toBeVisible();
+  const readStatus = page.locator("p.note").filter({ hasText: "已取得 5/5 組 ·" });
+  await expect(readStatus.getByRole("button", { name: "重新整理五組趨勢" })).toBeVisible();
+  expect((await readStatus.boundingBox())!.height).toBeLessThanOrEqual(48);
 
   const topics = page.getByRole("navigation", { name: "趨勢主題" });
+  const topicRows = await topics
+    .getByRole("link")
+    .evaluateAll(
+      (links) => new Set(links.map((link) => Math.round(link.getBoundingClientRect().top))).size,
+    );
+  expect(topicRows).toBe(1);
+  expect(await topics.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
   for (const [label, id, heading] of [
     ["成本", "admin-trend-cost", "每日成本（美元，含估計值）"],
     ["點數", "admin-trend-credits", "每日點數異動（淨額）"],
     ["試跑", "admin-trend-runs", "每天建立的試跑紀錄（依目前狀態）"],
-    ["operator 動作", "admin-trend-actions", "每日 operator 動作"],
+    ["後台動作", "admin-trend-actions", "每日 operator 動作"],
     ["漏斗", "admin-trend-funnel", "漏斗各段每天到達的數量"],
   ]) {
     await expect(topics.getByRole("link", { name: label })).toHaveAttribute("href", `#${id}`);

@@ -2275,6 +2275,19 @@ test("OPS-008: the trends page asks each owner for 30 days by default and draws 
   );
 });
 
+test("OPS-008: the range comes before compact read metadata on a complete trends page", async () => {
+  stub(true);
+  await mountAt("/admin/trends");
+  await waitFor(has("全平台目前餘額總和：1268 點。"));
+  const text = container.textContent ?? "";
+  expect(text).toContain("2026-08-14 到 2026-09-12（UTC），共 30 天。");
+  expect(text).toContain("已取得 5/5 組 ·");
+  expect(text.indexOf("2026-08-14 到 2026-09-12（UTC），共 30 天。")).toBeLessThan(
+    text.indexOf("已取得 5/5 組 ·"),
+  );
+  expect(text).not.toContain("秒前");
+});
+
 test("OPS-008: a failed trend hides its cached chart while other trends remain usable and refresh recovers it", async () => {
   let creditReads = 0;
   stub(true, (path) => {
@@ -2296,12 +2309,12 @@ test("OPS-008: a failed trend hides its cached chart while other trends remain u
   expect(credits.textContent).not.toContain("全平台目前餘額總和：1268 點。");
   expect(credits.querySelector("figure")).toBeNull();
   expect(has("評審：3 筆，合計 $0.0036")()).toBe(true);
-  expect(has("已取得 4/5 組趨勢")()).toBe(true);
+  expect(has("已取得 4/5 組 ·")()).toBe(true);
 
-  await click(button("重新整理五組趨勢"));
+  await click(button("重新整理"));
   await waitFor(has("全平台目前餘額總和：1268 點。"));
   expect(creditReads).toBe(3);
-  expect(has("已取得 5/5 組趨勢")()).toBe(true);
+  expect(has("已取得 5/5 組 ·")()).toBe(true);
 });
 
 test("OPS-008: losing all trend reads hides the cached range until refresh succeeds", async () => {
@@ -2323,7 +2336,7 @@ test("OPS-008: losing all trend reads hides the cached range until refresh succe
   expect(container.querySelectorAll("figure")).toHaveLength(0);
 
   unavailable = false;
-  await click(button("重新整理五組趨勢"));
+  await click(button("重新整理"));
   await waitFor(has("全平台目前餘額總和：1268 點。"));
   expect(has("2026-08-14 到 2026-09-12（UTC），共 30 天。")()).toBe(true);
 });
@@ -2335,7 +2348,7 @@ test("OPS-008: different response windows are not presented as one comparable ra
     return { ...response, body: { ...(response.body as object), from: "2026-08-15" } };
   });
   await mountAt("/admin/trends");
-  await waitFor(has("已取得 5/5 組趨勢"));
+  await waitFor(has("已取得 5/5 組 ·"));
   expect(has("取得的趨勢日期範圍與選擇不一致，請重新整理後再比較。")()).toBe(true);
   expect(has("2026-08-14 到 2026-09-12（UTC），共 30 天。")()).toBe(false);
 });
@@ -2347,7 +2360,7 @@ test("OPS-008: a seven-day response does not masquerade as the selected 30 days"
     return { ...response, body: { ...(response.body as object), from: "2026-09-06" } };
   });
   await mountAt("/admin/trends");
-  await waitFor(has("已取得 5/5 組趨勢"));
+  await waitFor(has("已取得 5/5 組 ·"));
   expect(has("取得的趨勢日期範圍與選擇不一致，請重新整理後再比較。")()).toBe(true);
   expect(has("2026-09-06 到 2026-09-12（UTC），共 7 天。")()).toBe(false);
 });

@@ -27,7 +27,7 @@ const totalOf = (bucket: DailyAmount) => bucket.total;
 
 function TrendTopics() {
   return (
-    <nav aria-label="趨勢主題" className="badge-row">
+    <nav aria-label="趨勢主題" className="category-nav">
       <a className="chip" href="#admin-trend-cost">
         成本
       </a>
@@ -38,7 +38,7 @@ function TrendTopics() {
         試跑
       </a>
       <a className="chip" href="#admin-trend-actions">
-        operator 動作
+        後台動作
       </a>
       <a className="chip" href="#admin-trend-funnel">
         漏斗
@@ -98,16 +98,16 @@ export function AdminTrends() {
           </Link>
         ))}
       </nav>
+      <TrendRangeStatus ranges={available.map((query) => query.data)} days={days} />
       {reads.some((query) => query.data || query.error) && (
         <p className="note">
           {available.length > 0 ? (
             <>
-              已取得 {available.length}/5 組趨勢；最早取得於{" "}
+              已取得 {available.length}/{reads.length} 組 ·{" "}
               <Timestamp
                 at={new Date(
                   Math.min(...available.map((query) => query.dataUpdatedAt)),
                 ).toISOString()}
-                relative
               />
               。{" "}
             </>
@@ -117,13 +117,13 @@ export function AdminTrends() {
           <button
             type="button"
             disabled={fetching}
+            aria-label={fetching ? undefined : "重新整理五組趨勢"}
             onClick={() => void Promise.all(reads.map((query) => query.refetch()))}
           >
-            {fetching ? "重新整理中…" : "重新整理五組趨勢"}
+            {fetching ? "重新整理中…" : "重新整理"}
           </button>
         </p>
       )}
-      <TrendRangeStatus ranges={available.map((query) => query.data)} days={days} />
       <TrendTopics />
       <TrendSection
         id="admin-trend-cost"
