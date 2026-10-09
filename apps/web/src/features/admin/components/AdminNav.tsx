@@ -1,13 +1,17 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import "./AdminNav.css";
 
 export function AdminNav() {
+  const section = useRouterState({ select: (state) => state.location.pathname.split("/")[2] });
   return (
     <nav aria-label="後台" className="admin-nav">
       <Link to="/admin" className="chip" activeOptions={{ exact: true }}>
         後台首頁
       </Link>
-      <details className="admin-nav-group">
+      <details
+        className="admin-nav-group"
+        open={["accounts", "skills", "rosters", "exposure"].includes(section)}
+      >
         <summary>治理</summary>
         <div className="admin-nav-links">
           <Link to="/admin/accounts" className="chip">
@@ -24,7 +28,17 @@ export function AdminNav() {
           </Link>
         </div>
       </details>
-      <details className="admin-nav-group">
+      <details
+        className="admin-nav-group"
+        open={[
+          "dispatch",
+          "audit-log",
+          "model-budgets",
+          "cost-statistics",
+          "trends",
+          "agents",
+        ].includes(section)}
+      >
         <summary>營運</summary>
         <div className="admin-nav-links">
           <Link to="/admin/dispatch" className="chip">

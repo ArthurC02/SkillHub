@@ -852,7 +852,7 @@ test("admin account lookup keeps a grant tied to the submitted email on a phone"
   });
 
   await page.getByRole("button", { name: "查詢", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "封測者乙" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "封測者乙" })).toBeFocused();
   await expect(page.locator("#admin-grant-amount")).toHaveValue("");
   await expect(page.locator("#admin-grant-note")).toHaveValue("");
   await expect(page.getByRole("button", { name: "授予", exact: true })).toBeDisabled();
@@ -1234,10 +1234,9 @@ test("後台導覽按工作群組展開，窄螢幕也找得到每個目的地",
     await expect(nav.locator("summary").last()).toHaveText("營運");
     await expect(nav.getByRole("link", { name: "後台首頁" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "帳號與點數" })).toBeHidden();
-    await expect(nav.getByRole("link", { name: "平台 Agent" })).toBeHidden();
+    await expect(nav.getByRole("link", { name: "平台 Agent" })).toBeVisible();
     await nav.locator("summary").first().focus();
     await page.keyboard.press("Enter");
-    await nav.locator("summary").last().click();
     const groupLayout = await nav
       .locator(".admin-nav-links")
       .first()
@@ -1280,6 +1279,7 @@ test("後台導覽按工作群組展開，窄螢幕也找得到每個目的地",
     );
     await nav.getByRole("link", { name: "帳號與點數" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "帳號與點數" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "帳號與點數" })).toBeVisible();
   }
 });
 

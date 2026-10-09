@@ -1,11 +1,19 @@
+import { useEffect, useRef } from "react";
 import type { AccountLookup } from "../../admin.service";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { CreditPanel } from "./CreditPanel";
 
 export function AccountCard({ account }: { account: AccountLookup }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    heading.current?.focus();
+    heading.current?.scrollIntoView?.({ block: "center" });
+  }, []);
   return (
     <>
-      <h2>{account.display_name}</h2>
+      <h2 ref={heading} tabIndex={-1}>
+        {account.display_name}
+      </h2>
       <dl>
         <dt>Email</dt>
         <dd>{account.email}</dd>
