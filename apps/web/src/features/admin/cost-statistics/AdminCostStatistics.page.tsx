@@ -42,7 +42,7 @@ export function AdminCostStatistics() {
               <thead>
                 <tr>
                   <th scope="col">種類</th>
-                  <th scope="col">統計窗結束</th>
+                  <th scope="col">統計期間</th>
                   <th scope="col">樣本數</th>
                   <th scope="col">p50</th>
                   <th scope="col">p90</th>
@@ -56,8 +56,10 @@ export function AdminCostStatistics() {
                     <th scope="row" data-label="種類">
                       {COST_KIND[row.kind] ?? row.kind}
                     </th>
-                    <td data-label="統計窗結束">
-                      <Timestamp at={row.window_end} />
+                    <td data-label="統計期間">
+                      <span>
+                        <Timestamp at={row.window_start} /> 至 <Timestamp at={row.window_end} />
+                      </span>
                     </td>
                     <td data-label="樣本數">{row.sample_count}</td>
                     <td data-label="p50">{usd(row.p50_usd_micros)}</td>

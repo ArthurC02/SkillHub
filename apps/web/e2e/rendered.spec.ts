@@ -1256,7 +1256,7 @@ test("admin cost statistics distinguish a micro-dollar charge from zero", async 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test("admin cost statistics hide stale figures after a failed refresh", async ({
+test("admin cost statistics show the full period and hide stale figures after a failed refresh", async ({
   page,
 }, testInfo) => {
   await stubPlatform(page);
@@ -1274,6 +1274,11 @@ test("admin cost statistics hide stale figures after a failed refresh", async ({
   await page.goto("/admin/cost-statistics");
   await expect(page.getByRole("table", { name: "每一種呼叫最新的統計窗（美元）" })).toBeVisible();
   await expect(page.getByText("成本統計清單上次取得於", { exact: false })).toBeVisible();
+  const period = page.locator('tbody tr:first-child [data-label="統計期間"]');
+  await expect(period.locator(":scope > span")).toHaveCount(1);
+  await expect(period.locator("time")).toHaveCount(2);
+  await expect(period.locator("time").first()).toHaveAttribute("datetime", "2026-08-12T00:00:00Z");
+  await expect(period.locator("time").last()).toHaveAttribute("datetime", "2026-09-11T00:00:00Z");
   await page.screenshot({
     path: testInfo.outputPath("admin-cost-statistics-phone.png"),
     fullPage: true,

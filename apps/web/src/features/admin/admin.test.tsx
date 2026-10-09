@@ -2120,7 +2120,7 @@ test("OPS-007: cost statistics show dollars and name a window with no samples", 
   await waitFor(has("搜尋理由"));
   expect(field<HTMLElement>(".table-scroll").tabIndex).toBe(-1);
   const table = field<HTMLTableElement>("table.responsive-table");
-  const labels = ["種類", "統計窗結束", "樣本數", "p50", "p90", "p95", "最大"];
+  const labels = ["種類", "統計期間", "樣本數", "p50", "p90", "p95", "最大"];
   expect(Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent)).toEqual(
     labels,
   );
@@ -2132,6 +2132,14 @@ test("OPS-007: cost statistics show dollars and name a window with no samples", 
   expect(
     Array.from(table.querySelectorAll('tbody th[scope="row"]')).map((th) => th.textContent),
   ).toEqual(["搜尋理由", "評審"]);
+  expect(
+    Array.from(table.querySelectorAll('tbody td[data-label="統計期間"]')).map((cell) =>
+      Array.from(cell.querySelectorAll("time")).map((time) => time.dateTime),
+    ),
+  ).toEqual([
+    ["2026-08-12T00:00:00Z", "2026-09-11T00:00:00Z"],
+    ["2026-08-12T00:00:00Z", "2026-09-11T00:00:00Z"],
+  ]);
   const rows = Array.from(container.querySelectorAll("tbody tr")).map((tr) => [
     tr.querySelector("th")?.textContent,
     ...Array.from(tr.querySelectorAll("td"))
