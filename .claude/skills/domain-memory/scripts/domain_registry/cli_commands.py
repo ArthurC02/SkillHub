@@ -6,7 +6,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from .attestations import verify_scm
+from .attestations import audit_attestations, verify_scm
 from .audit import verify as verify_audit
 from .changes import init_change_package, redraft_change_package, validate_change_package
 from .common import load_json
@@ -558,6 +558,14 @@ def handle_attest_signed_commit(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_audit_attestations(args: argparse.Namespace) -> int:
+    findings = audit_attestations(
+        args.repo_root.resolve(), args.changes_root.resolve(), args.verification_token_env
+    )
+    print(json.dumps(findings, indent=2, ensure_ascii=False))
+    return 0 if all(finding["verdict"] == "carried" for finding in findings) else 1
+
+
 def handle_finalize_proposal(args: argparse.Namespace) -> int:
     if args.registry_root is None or args.repo_root is None:
         raise ValueError("finalize-proposal requires --registry-root and --repo-root")
@@ -650,6 +658,7 @@ HANDLERS = {
     "verify-proposal": handle_verify_proposal,
     "record-test-result": handle_record_test_result,
     "attest-signed-commit": handle_attest_signed_commit,
+    "audit-attestations": handle_audit_attestations,
     "finalize-proposal": handle_finalize_proposal,
     "validate-change-package": handle_validate_change_package,
 }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -13,11 +14,14 @@ import unittest
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.attestations import (
+    audit_attestations,
     commit_carries_proposal,
+    github_commit_carries_proposal,
     verify_external_scm,
     verify_git_signed_commit,
     verify_scm,
@@ -715,6 +719,107 @@ class DomainRegistryTest(unittest.TestCase):
                     )
                 self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
 
+    def changed_package(self, name: str, status: str, attestation: dict | None) -> None:
+        package = self.repo / "changes" / name
+        package.mkdir(parents=True)
+        proposal = {"proposal_id": name, "proposal_revision": 1, "status": status}
+        (package / "domain-change-proposal.json").write_text(json.dumps(proposal), encoding="utf-8")
+        evidence = {"scm_attestation": attestation}
+        (package / "evidence-bundle.json").write_text(json.dumps(evidence), encoding="utf-8")
+
+    def test_the_attestation_audit_tells_carried_from_not_carried_from_unconfirmed(self) -> None:
+        earlier = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True
+        ).stdout.strip()
+        self.changed_package("carried", "applied", None)
+        self.changed_package("draft", "draft", None)
+        carrying = self.commit_everything("adds the carried package")
+        evidence_path = self.repo / "changes" / "carried" / "evidence-bundle.json"
+        evidence_path.write_text(
+            json.dumps({"scm_attestation": {"provider": "git-signed-commit", "commit": carrying}}),
+            encoding="utf-8",
+        )
+        self.changed_package("reused", "approved", {"provider": "git-signed-commit", "commit": earlier})
+        self.changed_package("unfetched", "applied", {"provider": "git-signed-commit", "commit": "f" * 40})
+        self.changed_package("remote", "applied", {
+            "provider": "github", "commit": "e" * 40,
+            "pull_request": "https://github.com/acme/shop/pull/7",
+        })
+        self.changed_package("unattested", "applied", None)
+        with patch.dict("os.environ", {"GITHUB_TOKEN": ""}):
+            findings = audit_attestations(self.repo, self.repo / "changes", "GITHUB_TOKEN")
+        self.assertEqual(
+            [("carried", "carried"), ("remote", "unconfirmed"), ("reused", "not carried"),
+             ("unattested", "not carried"), ("unfetched", "unconfirmed")],
+            [(finding["proposal_id"], finding["verdict"]) for finding in findings],
+        )
+
+    def test_finalizing_refuses_a_merged_pull_request_that_does_not_carry_the_package(self) -> None:
+        package = self.draft_package()
+        submit_proposal(package, self.repo / "memory", self.repo)
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        submitted = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        evidence_path = package / "evidence-bundle.json"
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        evidence["scm_attestation"] = {
+            "provider": "github", "pull_request": "https://github.com/acme/shop/pull/7",
+            "checks_url": "https://github.com/acme/shop/actions/runs/1", "commit": "a" * 40,
+            "status": "approved", "proposal_revision": 1,
+            "base_registry_revision": submitted["base_registry_revision"],
+        }
+        evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+        verify_proposal(package, self.repo / "memory", self.repo)
+        absent = ["Git commit does not carry this Change Package at proposal"]
+        with patch("domain_registry.hitl.verify_external_scm", return_value=[]), \
+                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=absent):
+            with self.assertRaisesRegex(ValueError, "not externally verified: Git commit does not carry"):
+                finalize_proposal(package, self.repo / "memory", self.repo)
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        self.assertEqual("verified", proposal["status"])
+
+    def test_a_github_pull_request_head_must_carry_this_proposal_revision(self) -> None:
+        package = self.draft_package()
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        attestation = {"pull_request": "https://github.com/acme/shop/pull/7", "commit": "c" * 40}
+
+        def served(document: dict) -> dict:
+            encoded = base64.b64encode(json.dumps(document).encode("utf-8")).decode("ascii")
+            return {"encoding": "base64", "content": encoded}
+
+        def not_found(*_: object) -> None:
+            raise HTTPError("url", 404, "Not Found", {}, None)
+
+        def unavailable(*_: object) -> None:
+            raise HTTPError("url", 503, "Service Unavailable", {}, None)
+
+        cases = [
+            ("carried", lambda *_: served(proposal), None),
+            ("other revision", lambda *_: served({**proposal, "proposal_revision": 2}), "another proposal or revision"),
+            ("absent", not_found, "does not carry this Change Package at proposal"),
+            ("unavailable", unavailable, "verification failed: HTTP Error 503"),
+        ]
+        for name, provider, refusal in cases:
+            with self.subTest(name=name), patch.dict("os.environ", {"GITHUB_TOKEN": "t"}), \
+                    patch("domain_registry.attestations.github_json", side_effect=provider) as fetch:
+                errors = github_commit_carries_proposal(
+                    attestation, "GITHUB_TOKEN", self.repo, package, proposal
+                )
+                self.assertEqual(
+                    "https://api.github.com/repos/acme/shop/contents/proposal/domain-change-proposal.json"
+                    f"?ref={'c' * 40}",
+                    fetch.call_args.args[0],
+                )
+                if refusal is None:
+                    self.assertEqual([], errors)
+                else:
+                    [error] = errors
+                    self.assertIn(refusal, error)
+        with patch.dict("os.environ", {"GITHUB_TOKEN": ""}):
+            self.assertEqual(
+                ["SCM governance verification requires GITHUB_TOKEN"],
+                github_commit_carries_proposal(attestation, "GITHUB_TOKEN", self.repo, package, proposal),
+            )
+
     def test_finalizing_refuses_a_signed_commit_that_predates_the_change_package(self) -> None:
         policy_path = self.repo / "memory" / "domain-memory-policy.json"
         policy = json.loads(policy_path.read_text(encoding="utf-8"))
@@ -1399,7 +1504,8 @@ class DomainRegistryTest(unittest.TestCase):
         }
         evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
         verify_proposal(package, self.repo / "memory", self.repo)
-        with patch("domain_registry.hitl.verify_external_scm", return_value=[]):
+        with patch("domain_registry.hitl.verify_external_scm", return_value=[]), \
+                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=[]):
             finalize_proposal(package, self.repo / "memory", self.repo)
         apply_approved_updates(package, self.repo / "memory", self.repo)
 
@@ -1945,7 +2051,8 @@ class DomainRegistryTest(unittest.TestCase):
         }
         evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
         verify_proposal(package, self.repo / "memory", self.repo)
-        with patch("domain_registry.hitl.verify_external_scm", return_value=[]) as verify_scm:
+        with patch("domain_registry.hitl.verify_external_scm", return_value=[]) as verify_scm, \
+                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=[]):
             finalize_proposal(package, self.repo / "memory", self.repo)
         verify_scm.assert_called_once_with(evidence["scm_attestation"], "GITHUB_TOKEN", True)
         apply_approved_updates(package, self.repo / "memory", self.repo)

@@ -5,7 +5,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .changes import missing_approval_roles, test_attestation_errors, validate_change_package
-from .attestations import commit_carries_proposal, verify_external_scm, verify_git_signed_commit
+from .attestations import (
+    commit_carries_proposal,
+    github_commit_carries_proposal,
+    verify_external_scm,
+    verify_git_signed_commit,
+)
 from .common import completed_identifier, iso_timestamp, load_json
 from .counterfactual import OUTPUT_TAIL, digest
 from .policy import approved_command_profiles, review_governance
@@ -267,6 +272,8 @@ def finalize_proposal(
             attestation,
             verification_token_env,
             governance["ci_requirement"] == "required",
+        ) or github_commit_carries_proposal(
+            attestation, verification_token_env, repo_root, root, proposal
         )
     elif governance["verifier"] == "git-signed-commit":
         errors = verify_git_signed_commit(
