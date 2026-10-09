@@ -1209,6 +1209,78 @@ test("OPS-005: a changed halt requires a new release reason and confirmation", a
   expect(button("恢復派送").disabled).toBe(true);
 });
 
+test("OPS-005: a pending release prevents a conflicting halt declaration", async () => {
+  stub(true);
+  const fetchBefore = globalThis.fetch;
+  let finishRelease: ((response: Response) => void) | undefined;
+  let declarations = 0;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/dispatch/halt") && init?.method === "DELETE") {
+      return new Promise<Response>((resolve) => {
+        finishRelease = resolve;
+      });
+    }
+    if (String(input).endsWith("/admin/dispatch/halt") && init?.method === "PUT") {
+      declarations += 1;
+    }
+    return fetchBefore(input, init);
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-lift-target", "pool");
+  await type("#admin-halt-lift-note", "incident resolved");
+  await type("#admin-halt-declare-note", "new incident");
+  await click(button("恢復派送"));
+  await click(button("確認恢復派送"));
+  await waitFor(() => Boolean(finishRelease));
+
+  expect(button("停止派送").disabled).toBe(true);
+  expect(has("正在解除煞車")()).toBe(true);
+  await submit("#admin-halt-declare-note");
+  expect(declarations).toBe(0);
+  await act(async () => finishRelease!(new Response(null, { status: 204 })));
+});
+
+test("OPS-005: a pending halt declaration prevents a prepared release confirmation", async () => {
+  stub(true);
+  const fetchBefore = globalThis.fetch;
+  let finishDeclaration: ((response: Response) => void) | undefined;
+  let releases = 0;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (String(input).endsWith("/admin/dispatch/halt") && init?.method === "PUT") {
+      return new Promise<Response>((resolve) => {
+        finishDeclaration = resolve;
+      });
+    }
+    if (String(input).endsWith("/admin/dispatch/halt") && init?.method === "DELETE") {
+      releases += 1;
+    }
+    return fetchBefore(input, init);
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-lift-target", "pool");
+  await type("#admin-halt-lift-note", "incident resolved");
+  await click(button("恢復派送"));
+  expect(button("確認恢復派送")).toBeDefined();
+  await type("#admin-halt-declare-note", "new incident");
+  await click(button("停止派送"));
+  await waitFor(() => Boolean(finishDeclaration));
+
+  expect(button("確認恢復派送").disabled).toBe(true);
+  expect(field<HTMLSelectElement>("#admin-halt-lift-target").disabled).toBe(true);
+  expect(has("正在停止派送")()).toBe(true);
+  expect(releases).toBe(0);
+  await act(async () =>
+    finishDeclaration!(
+      new Response(JSON.stringify({ note: "stop recorded" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ),
+  );
+});
+
 test("OPS-005: the rosters page is read-only", async () => {
   stub(true);
   await mountAt("/admin/rosters");

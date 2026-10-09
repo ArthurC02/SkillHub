@@ -85,9 +85,11 @@ function DispatchOverview({ status }: { status: DispatchStatus }) {
 function LiftHalt({
   halts,
   lift,
+  declarePending,
 }: {
   halts: DispatchHalt[];
   lift: ReturnType<typeof useDispatchHalt>;
+  declarePending: boolean;
 }) {
   const [liftTarget, setLiftTarget] = useState("");
   const selectedHalt = halts.find((halt) => halt.target === liftTarget);
@@ -110,7 +112,7 @@ function LiftHalt({
                 setLiftTarget(event.target.value);
                 lift.reset();
               }}
-              disabled={lift.isPending}
+              disabled={lift.isPending || declarePending}
             >
               <option value="">請選擇生效中的煞車</option>
               {halts.map((halt) => (
@@ -136,7 +138,8 @@ function LiftHalt({
             pending={lift.isPending}
             error={lift.error}
             contextKey={selectedHalt?.target ?? ""}
-            ready={Boolean(selectedHalt)}
+            ready={Boolean(selectedHalt) && !declarePending}
+            blockedReason={declarePending ? "正在停止派送，完成後才能恢復派送。" : undefined}
             confirmationScope={
               selectedHalt &&
               "將解除" +
@@ -208,11 +211,15 @@ export function AdminDispatch() {
           done={declare.data?.note}
           contextKey={target ?? "pool"}
           tone="caution"
+          ready={!lift.isPending}
+          blockedReason={lift.isPending ? "正在解除煞車，完成後才能停止派送。" : undefined}
           onSubmit={(note) => declare.mutate({ note, provider: target })}
         />
       </section>
 
-      {status.data && !status.error && <LiftHalt halts={status.data.halts} lift={lift} />}
+      {status.data && !status.error && (
+        <LiftHalt halts={status.data.halts} lift={lift} declarePending={declare.isPending} />
+      )}
     </AdminPage>
   );
 }
