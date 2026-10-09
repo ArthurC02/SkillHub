@@ -1,0 +1,3 @@
+{"plugin": "0.6.4", "date": "2026-10-09", "model": "haiku", "delivery": "installed, not named in the prompt", "replicates": 3, "passed": {"delivery-price": 3, "loan-terms": 0, "loyalty-discount": 0, "receipt-by-sms": 2, "release-reservation": 3, "rename-calc": 3, "review-limits": 2, "shipping-quote": 0}}
+{"plugin": "0.6.4", "date": "2026-10-09", "model": "haiku", "delivery": "hygiene capability named in the prompt", "replicates": 3, "passed": {"loan-terms": 0, "loyalty-discount": 3, "receipt-by-sms": 3, "shipping-quote": 3}}
+{"plugin": "0.6.5", "date": "2026-10-09", "model": "haiku", "delivery": "hygiene capability named in the prompt", "replicates": 3, "passed": {"loan-terms": 3}}
