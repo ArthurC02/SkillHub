@@ -761,7 +761,7 @@ async function verifyAdminPrioritiesReachTheirQueues(page: Page) {
   ]) {
     await page.goto("/admin");
     const priorities = page.locator('[aria-label="目前需留意"]');
-    await expect(priorities).toContainText("四項狀態最早取得於");
+    await expect(priorities).toContainText("已取得 4/4 項狀態；其中最早取得於");
     await priorities.getByRole("link", { name: new RegExp(label) }).click();
     await expect(page).toHaveURL(new RegExp(`#${target}$`));
     await expect(page.locator(`#${target} h2`)).toBeInViewport();
@@ -770,6 +770,42 @@ async function verifyAdminPrioritiesReachTheirQueues(page: Page) {
 
 test("admin priority links reach their work queues on a phone", async ({ page }) =>
   verifyAdminPrioritiesReachTheirQueues(page));
+
+test("admin priorities disclose a partial read failure and recover on a phone", async ({
+  page,
+}) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let reads = 0;
+  await page.route("**/admin/agents/proposals**", async (route) => {
+    reads += 1;
+    const { body, status } = platformResponse(route.request().url());
+    await route.fulfill({
+      status: reads === 1 ? 503 : status,
+      json: reads === 1 ? { error: "service unavailable" } : body,
+    });
+  });
+
+  await page.goto("/admin");
+  const priorities = page.locator('[aria-label="目前需留意"]');
+  await expect(priorities.getByRole("alert")).toHaveText(
+    "1 項狀態無法取得；請重新整理後再判斷是否還有待處理事項。",
+  );
+  await expect(priorities).toContainText("已取得 3/4 項狀態；其中最早取得於");
+  await expect(priorities.getByRole("link", { name: /平台 Agent 提案/ })).toContainText("無法取得");
+  const accessibility = await new AxeBuilder({ page })
+    .include('[aria-label="目前需留意"]')
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
+
+  await priorities.getByRole("button", { name: "重新整理狀態" }).click();
+  await expect(priorities.getByRole("alert")).toHaveCount(0);
+  await expect(priorities).toContainText("已取得 4/4 項狀態；其中最早取得於");
+  await expect(priorities.getByRole("link", { name: /平台 Agent 提案/ })).toContainText(
+    "1 件待核准",
+  );
+  expect(reads).toBe(2);
+});
 
 test("admin exposure queue can recover from a failed refresh on a phone", async ({
   page,

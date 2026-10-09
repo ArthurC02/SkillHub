@@ -191,7 +191,7 @@ test("the admin home leads with live operational priorities", async () => {
   expect(
     priorities.querySelector('a[href="/admin/agents#admin-agent-findings"]')?.textContent,
   ).toContain("2 件待辦");
-  expect(priorities.textContent).toContain("四項狀態最早取得於");
+  expect(priorities.textContent).toContain("已取得 4/4 項狀態；其中最早取得於");
   expect(priorities.querySelector('a[href="/admin/exposure"]')?.textContent).toContain("1 件待審");
 });
 
@@ -208,10 +208,41 @@ test("the admin home does not mistake a failed priority read for an empty queue"
   expect(
     priorities.querySelector('a[href="/admin/agents#admin-agent-proposals"]')?.textContent,
   ).toContain("無法取得");
-  expect(priorities.textContent).not.toContain("四項狀態最早取得於");
+  expect(priorities.textContent).not.toContain("已取得 4/4 項狀態");
   expect(
     priorities.querySelector('a[href="/admin/agents#admin-agent-proposals"]')?.textContent,
   ).not.toContain("0 件待核准");
+  expect(priorities.querySelector('[role="alert"]')?.textContent).toBe(
+    "1 項狀態無法取得；請重新整理後再判斷是否還有待處理事項。",
+  );
+  expect(priorities.textContent).toContain("已取得 3/4 項狀態；其中最早取得於");
+});
+
+test("the admin home shows no freshness claim when all four priority reads fail", async () => {
+  stub(true, (path) =>
+    [
+      "/admin/dispatch",
+      "/admin/agents/proposals",
+      "/admin/agents/findings",
+      "/admin/exposure-reviews",
+    ].includes(path)
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : undefined,
+  );
+  await mountAt("/admin");
+  await waitFor(() => {
+    const values = Array.from(
+      container.querySelectorAll('[aria-label="目前需留意"] a strong'),
+      (strong) => strong.textContent,
+    );
+    return values.length === 4 && values.every((value) => value === "無法取得");
+  });
+
+  const priorities = field<HTMLElement>('[aria-label="目前需留意"]');
+  expect(priorities.querySelector('[role="alert"]')?.textContent).toBe(
+    "4 項狀態無法取得；請重新整理後再判斷是否還有待處理事項。",
+  );
+  expect(priorities.textContent).not.toContain("最早取得於");
 });
 
 test("the admin home can refresh operational state without leaving the page", async () => {

@@ -43,14 +43,17 @@ function Priorities() {
   const { error: findingReadError, data: readableFindings } = findingPriorityRead(findings);
   const fetching =
     dispatch.isFetching || proposals.isFetching || findings.isFetching || exposure.isFetching;
-  const complete =
-    readableFindings && [dispatch, proposals, exposure].every((read) => read.data && !read.error);
-  const oldestAt = Math.min(
-    dispatch.dataUpdatedAt,
-    proposals.dataUpdatedAt,
-    findings.dataUpdatedAt,
-    exposure.dataUpdatedAt,
-  );
+  const failures = [dispatch.error, proposals.error, findingReadError, exposure.error].filter(
+    Boolean,
+  ).length;
+  const availableAt = [
+    dispatch,
+    proposals,
+    exposure,
+    { data: readableFindings, error: findingReadError, dataUpdatedAt: findings.dataUpdatedAt },
+  ]
+    .filter((read) => read.data && !read.error)
+    .map((read) => read.dataUpdatedAt);
 
   return (
     <section className="admin-home-priorities" aria-label="目前需留意">
@@ -71,9 +74,15 @@ function Priorities() {
           {fetching ? "更新中…" : "重新整理狀態"}
         </button>
       </header>
-      {complete && (
+      {failures > 0 && (
+        <p role="alert" className="notice notice-warning">
+          {failures} 項狀態無法取得；請重新整理後再判斷是否還有待處理事項。
+        </p>
+      )}
+      {availableAt.length > 0 && (
         <p className="note">
-          四項狀態最早取得於 <Timestamp at={new Date(oldestAt).toISOString()} relative />。
+          已取得 {availableAt.length}/4 項狀態；其中最早取得於{" "}
+          <Timestamp at={new Date(Math.min(...availableAt)).toISOString()} relative />。
         </p>
       )}
       <div className="admin-home-priority-list">
