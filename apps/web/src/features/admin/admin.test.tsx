@@ -6,7 +6,9 @@ import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
 import { createAppRouter } from "../../app/router";
+import { ApiError } from "../../core/api/client";
 import { daysOf, seriesOf, usd } from "./admin.service";
+import { WriteFailure } from "./components/WriteFailure";
 import {
   ADMIN_AGENT_FINDING,
   ADMIN_AGENT_FINDINGS,
@@ -591,7 +593,8 @@ test("OPS-003: a failed grant retries with one key, but a completed draft cannot
   await type("#admin-grant-amount", "10");
   await type("#admin-grant-note", "r");
   await click(button("授予"));
-  await waitFor(has("沒有完成，伺服器說：grant failed"));
+  await waitFor(has("無法確認操作是否完成；請先重新整理目前狀態，再決定是否重試。"));
+  expect(has("grant failed")()).toBe(false);
   await click(button("授予"));
   await waitFor(has("已授予 10 點，餘額現在是 60 點。"));
   expect(button("授予").disabled).toBe(true);
@@ -611,7 +614,7 @@ test("OPS-003: a failed grant retries with one key, but a completed draft cannot
   expect(keys[2]).not.toBe(keys[0]);
 });
 
-test("OPS-003: a refused grant says so with the server's words", async () => {
+test("OPS-003: a refused grant explains the next step without raw server text", async () => {
   stub(true, (path, method) =>
     method === "POST" && path.endsWith("/grants")
       ? { body: { error: "amount_credits must not be zero" }, status: 400 }
@@ -622,9 +625,10 @@ test("OPS-003: a refused grant says so with the server's words", async () => {
   await type("#admin-grant-amount", "5");
   await type("#admin-grant-note", "r");
   await click(button("授予"));
-  await waitFor(has("沒有完成，伺服器說：amount_credits must not be zero"));
+  await waitFor(has("操作未被接受；請核對輸入與目前狀態後再試。"));
+  expect(has("amount_credits must not be zero")()).toBe(false);
   await type("#admin-grant-note", "修改後的理由");
-  expect(has("沒有完成，伺服器說：amount_credits must not be zero")()).toBe(false);
+  expect(has("操作未被接受；請核對輸入與目前狀態後再試。")()).toBe(false);
 });
 
 test("OPS-004: takedown of the one skill found takes a reason and a second click", async () => {
@@ -846,10 +850,11 @@ test("OPS-004: editing a rejected takedown clears the old failure", async () => 
   await type("#admin-takedown-reason", "Old evidence");
   await click(button("下架"));
   await click(button("確認下架"));
-  await waitFor(has("沒有完成，伺服器說：review required"));
+  await waitFor(has("操作未被接受；目前狀態可能已變更，請重新整理後再判斷。"));
+  expect(has("review required")()).toBe(false);
 
   await type("#admin-takedown-reason", "New evidence");
-  expect(has("沒有完成，伺服器說：review required")()).toBe(false);
+  expect(has("操作未被接受；目前狀態可能已變更，請重新整理後再判斷。")()).toBe(false);
   expect(container.querySelector("#admin-takedown-scope")).toBeNull();
 });
 
@@ -2664,7 +2669,7 @@ test("DISC-007: an initial queue failure offers retry without claiming the queue
   expect(reads).toBe(2);
 });
 
-test("DISC-007: a stale review (409) shows the server's own words, not a generic failure", async () => {
+test("DISC-007: a stale review retains its actionable Chinese reason", async () => {
   const staleMessage =
     "這份審核的前提已經過期：有新的 Release，或別人已經審過。重新打開這一筆，看過現在的內容再送出";
   stub(true, (path, method) =>
@@ -2677,7 +2682,28 @@ test("DISC-007: a stale review (409) shows the server's own words, not a generic
   await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
   await type("#admin-exposure-review-note", "看過了");
   await click(button("送出核准"));
-  await waitFor(has(`沒有完成，伺服器說：${staleMessage}`));
+  await waitFor(has(`操作未被接受：${staleMessage}`));
+});
+
+test.each([
+  [403, "操作未被接受；目前沒有執行權限，請確認登入身分。"],
+  [429, "操作未被接受；送出太頻繁，請稍後再試。"],
+])("an admin write refused with %i gives an actionable next step", async (status, expected) => {
+  root = createRoot(container);
+  await act(async () =>
+    root.render(<WriteFailure error={new ApiError(status, "server detail")} />),
+  );
+  expect(container.textContent).toContain(expected);
+  expect(container.textContent).not.toContain("server detail");
+});
+
+test("an English server diagnostic with a Chinese fragment stays hidden", async () => {
+  root = createRoot(container);
+  await act(async () =>
+    root.render(<WriteFailure error={new ApiError(409, "server detail：中文")} />),
+  );
+  expect(container.textContent).toContain("操作未被接受；目前狀態可能已變更，請重新整理後再判斷。");
+  expect(container.textContent).not.toContain("server detail");
 });
 
 test("DISC-007: a release search has not indexed yet says so instead of showing stale text", async () => {
@@ -3318,7 +3344,7 @@ test("OPS-012: a changed finding status clears a reason written for the earlier 
   expect(button("標記已解決").disabled).toBe(true);
 });
 
-test("OPS-012: a refused move says so with the server's words", async () => {
+test("OPS-012: a refused move explains the changed state without raw server text", async () => {
   stub(true, (_path, method) =>
     method === "PUT"
       ? {
@@ -3332,7 +3358,8 @@ test("OPS-012: a refused move says so with the server's words", async () => {
   await click(field<HTMLInputElement>('input[name="admin-finding-move"][value="resolved"]'));
   await type("#admin-finding-note", "fixed");
   await submit("#admin-finding-note");
-  await waitFor(has("the finding cannot move to that status from where it is now"));
+  await waitFor(has("操作未被接受；目前狀態可能已變更，請重新整理後再判斷。"));
+  expect(has("the finding cannot move to that status from where it is now")()).toBe(false);
   expect(calls.find((call) => call.method === "PUT")?.body).toEqual({
     status: "resolved",
     note: "fixed",
@@ -3605,7 +3632,8 @@ test("a successful rejection does not label an earlier failed approval as succes
   await type("#admin-proposal-approve-note", "first decision");
   await click(button("核准並執行"));
   await click(button("確認核准這個提案"));
-  await waitFor(has("the proposal is no longer waiting for a decision"));
+  await waitFor(has("操作未被接受；目前狀態可能已變更，請重新整理後再判斷。"));
+  expect(has("the proposal is no longer waiting for a decision")()).toBe(false);
   await type("#admin-proposal-reject-note", "second decision");
   await submit("#admin-proposal-reject-note");
   await waitFor(has("已駁回。"));
@@ -3625,7 +3653,8 @@ test("a successful finding move does not label an earlier failed move as success
   await waitFor(has("我來處理"));
   await type("#admin-finding-note", "first move");
   await submit("#admin-finding-note");
-  await waitFor(has("the finding cannot move to that status"));
+  await waitFor(has("操作未被接受；目前狀態可能已變更，請重新整理後再判斷。"));
+  expect(has("the finding cannot move to that status")()).toBe(false);
   await click(field<HTMLInputElement>('input[name="admin-finding-move"][value="resolved"]'));
   await type("#admin-finding-note", "second move");
   await submit("#admin-finding-note");
@@ -4275,7 +4304,8 @@ test("OPS-012: a refused move refetches the finding", async () => {
   await click(field<HTMLInputElement>('input[name="admin-finding-move"][value="resolved"]'));
   await type("#admin-finding-note", "fixed");
   await submit("#admin-finding-note");
-  await waitFor(has("already moved"));
+  await waitFor(has("操作未被接受；目前狀態可能已變更，請重新整理後再判斷。"));
+  expect(has("already moved")()).toBe(false);
   await waitFor(
     () =>
       calls.filter((c) => c.method === "GET" && c.url === `/admin/agents/findings/${AGENT_FINDING}`)

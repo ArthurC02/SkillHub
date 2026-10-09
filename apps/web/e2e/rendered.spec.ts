@@ -1007,6 +1007,30 @@ test("a completed credit grant needs a changed draft before another submission",
   await expect(grant).toBeEnabled();
 });
 
+test("an uncertain admin grant explains verification before retry on a phone", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.route("**/admin/credits/ws-2/grants", (route) =>
+    route.fulfill({ status: 500, json: { error: "grant failed" } }),
+  );
+  await page.goto("/admin/accounts");
+  await page.getByLabel("Email").fill("member@example.com");
+  await page.getByRole("button", { name: "查詢", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "封測者甲" })).toBeVisible();
+  await page.locator("#admin-grant-amount").fill("50");
+  await page.locator("#admin-grant-note").fill("beta reward");
+  await page.getByRole("button", { name: "授予", exact: true }).click();
+  const failure = page
+    .getByRole("alert")
+    .filter({ hasText: "無法確認操作是否完成；請先重新整理目前狀態，再決定是否重試。" });
+  await expect(failure).toBeVisible();
+  await expect(failure).toBeInViewport();
+  await expect(failure).not.toContainText("grant failed");
+  await page.screenshot({ path: testInfo.outputPath("admin-grant-uncertain-phone.png") });
+});
+
 test("admin governance keeps actions tied to the submitted search on a phone", async ({
   page,
 }, testInfo) => {
