@@ -26,7 +26,7 @@ from .hitl import (
     verify_proposal,
 )
 from .policy import (
-    amend_policy,
+    amend_policy_fields,
     policy_path,
     validate_policy,
     write_policy,
@@ -372,17 +372,29 @@ def handle_refine_sources(args: argparse.Namespace) -> int:
     return 0
 
 
+def policy_assignments(args: argparse.Namespace) -> list[tuple[str, str]]:
+    single = (args.field, args.value)
+    if any(part is not None for part in single):
+        if None in single or args.set:
+            raise ValueError("give --field with --value, or one or more --set FIELD=VALUE, not both")
+        return [single]
+    malformed = [entry for entry in args.set if "=" not in entry]
+    if not args.set or malformed:
+        raise ValueError("each --set takes FIELD=VALUE; give at least one, or --field with --value")
+    return [tuple(entry.split("=", 1)) for entry in args.set]
+
+
 def handle_amend_policy(args: argparse.Namespace) -> int:
-    change = amend_policy(
+    changes = amend_policy_fields(
         args.registry_root.resolve(),
-        args.field,
-        args.value,
+        policy_assignments(args),
         args.reason,
         args.verifier,
     )
+    for change in changes:
+        print(f"{change['field']}: {change['from']} -> {change['to']}")
     print(
-        f"{change['field']}: {change['from']} -> {change['to']}. The Registry revision moved, so every captured "
-        "base revision is now stale and needs fresh approval."
+        "The Registry revision moved once, so every captured base revision is now stale and needs fresh approval."
     )
     return 0
 

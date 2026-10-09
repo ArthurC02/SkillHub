@@ -143,38 +143,43 @@ LIST_FIELDS = {"authorized_signers"}
 def amend_policy(
     root: Path, field: str, value: str, reason: str, verifier: str | None = None
 ) -> dict[str, Any]:
-    from .audit import append_locked
+    return amend_policy_fields(root, [(field, value)], reason, verifier)[0]
 
-    if field not in AMENDABLE_FIELDS:
-        raise ValueError(
-            f"{field} is not an amendable policy field; amend one of {', '.join(sorted(AMENDABLE_FIELDS))}. "
-            "Selected source paths and limits are settled when a Domain Memory is initialized."
-        )
-    if not isinstance(reason, str) or not reason.strip():
-        raise ValueError(
-            "amending a Domain Memory policy requires a reason: the policy decides what the Registry may become"
-        )
-    path = policy_path(root)
-    if not path.is_file():
-        raise ValueError(f"no Domain Memory policy at {path}")
-    value_document = load_json(path)
-    keys = AMENDABLE_FIELDS[field]
-    target = value_document
-    for key in keys[:-1]:
-        target = target[key]
-    amended: Any = value
+
+def _amended_value(field: str, value: str) -> Any:
     if field in LIST_FIELDS:
-        amended = [entry.strip() for entry in value.split(",") if entry.strip()]
+        return [entry.strip() for entry in value.split(",") if entry.strip()]
+    return value
+
+
+def _field_parent(document: dict[str, Any], field: str) -> dict[str, Any]:
+    target = document
+    for key in AMENDABLE_FIELDS[field][:-1]:
+        target = target[key]
+    return target
+
+
+def _apply_field(
+    document: dict[str, Any],
+    before: dict[str, Any],
+    field: str,
+    value: str,
+    reason: str,
+    verifier: str | None,
+) -> dict[str, Any]:
+    key = AMENDABLE_FIELDS[field][-1]
+    target = _field_parent(document, field)
+    amended = _amended_value(field, value)
     change = {
         "operation": "amend-policy",
         "field": field,
-        "from": target.get(keys[-1]),
+        "from": _field_parent(before, field).get(key),
         "to": amended,
-        "reason": reason.strip(),
+        "reason": reason,
     }
-    target[keys[-1]] = amended
+    target[key] = amended
     if field == "review_mode" and value == "local-draft-only":
-        value_document["review_governance"] = _default_governance(value)
+        document["review_governance"] = _default_governance(value)
     elif field == "review_mode" and value == "scm-verified":
         if not isinstance(verifier, str) or not verifier.strip():
             raise ValueError(
@@ -182,15 +187,50 @@ def amend_policy(
                 f"one of {', '.join(sorted(GOVERNANCE_VERIFIERS - {'none'}))}: "
                 "a review mode and the authority that backs it move together"
             )
-        value_document["review_governance"]["verifier"] = verifier.strip()
+        document["review_governance"]["verifier"] = verifier.strip()
         change["verifier"] = verifier.strip()
-    errors = validate_policy(value_document)
+    return change
+
+
+def amend_policy_fields(
+    root: Path, assignments: list[tuple[str, str]], reason: str, verifier: str | None = None
+) -> list[dict[str, Any]]:
+    from .audit import append_locked
+
+    fields = [field for field, _ in assignments]
+    unknown = [field for field in fields if field not in AMENDABLE_FIELDS]
+    if not assignments or unknown:
+        raise ValueError(
+            f"{', '.join(unknown) or 'nothing'} is not an amendable policy field; amend one of "
+            f"{', '.join(sorted(AMENDABLE_FIELDS))}. "
+            "Selected source paths and limits are settled when a Domain Memory is initialized."
+        )
+    repeated = sorted({field for field in fields if fields.count(field) > 1})
+    if repeated:
+        raise ValueError(f"{', '.join(repeated)} is named more than once; give each field one value")
+    if not isinstance(reason, str) or not reason.strip():
+        raise ValueError(
+            "amending a Domain Memory policy requires a reason: the policy decides what the Registry may become"
+        )
+    path = policy_path(root)
+    if not path.is_file():
+        raise ValueError(f"no Domain Memory policy at {path}")
+    document = load_json(path)
+    before = load_json(path)
+    values = dict(assignments)
+    mode_first = sorted(assignments, key=lambda assignment: assignment[0] != "review_mode")
+    changes = [
+        _apply_field(document, before, field, value, reason.strip(), verifier or values.get("review_verifier"))
+        for field, value in mode_first
+    ]
+    errors = validate_policy(document)
     if errors:
         raise ValueError("amended policy is invalid: " + "; ".join(errors))
     with writer_lock(root):
-        _write_policy_file(path, value_document)
-        append_locked(root, change)
-    return change
+        _write_policy_file(path, document)
+        for change in changes:
+            append_locked(root, change)
+    return changes
 
 
 def _valid_policy(path: Path) -> dict[str, Any]:

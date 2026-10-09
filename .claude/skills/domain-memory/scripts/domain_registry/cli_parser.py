@@ -143,10 +143,9 @@ def build_parser() -> argparse.ArgumentParser:
     refine_parser.add_argument("--source", required=True, action="append", type=Path)
     amend_parser = commands.add_parser("amend-policy")
     add_path(amend_parser, "--registry-root")
-    amend_parser.add_argument(
-        "--field", required=True, choices=sorted(AMENDABLE_FIELDS)
-    )
-    amend_parser.add_argument("--value", required=True)
+    amend_parser.add_argument("--field", choices=sorted(AMENDABLE_FIELDS))
+    amend_parser.add_argument("--value")
+    amend_parser.add_argument("--set", action="append", default=[], metavar="FIELD=VALUE")
     amend_parser.add_argument("--reason", required=True)
     amend_parser.add_argument("--verifier")
     signing_parser = commands.add_parser("init-signing-key")

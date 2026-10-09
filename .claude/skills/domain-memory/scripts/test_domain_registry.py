@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import shutil
@@ -37,7 +38,8 @@ from domain_registry.hitl import (
     verify_proposal,
 )
 from domain_registry.git_hooks import governance_readiness, install_pre_push_hook
-from domain_registry.policy import amend_policy, validate_policy
+from domain_registry.cli_commands import policy_assignments
+from domain_registry.policy import amend_policy, amend_policy_fields, validate_policy
 from domain_registry.readiness import assess_readiness
 from domain_registry.registry import (
     boundary_analysis,
@@ -3208,6 +3210,91 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertEqual(recorded["from"], "scm-verified")
         self.assertIn("reviewer", recorded["reason"])
         self.assertEqual("valid", verify_audit(self.repo / "memory")["status"])
+
+    def audit_lines(self) -> list[dict]:
+        return [
+            json.loads(line)
+            for line in (self.repo / "memory" / "audit" / "events.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
+        ]
+
+    def test_one_amendment_moves_review_and_its_authority_together(self) -> None:
+        root = self.repo / "memory"
+        amend_policy(root, "review_mode", "local-draft-only", "Drafting alone.")
+        recorded_before = len(self.audit_lines())
+        changes = amend_policy_fields(
+            root,
+            [
+                ("review_verifier", "github-pr"),
+                ("review_trigger", "external-scm"),
+                ("ci_requirement", "required"),
+                ("review_mode", "scm-verified"),
+            ],
+            "A reviewer and CI exist now.",
+        )
+        policy = self.stored_policy()
+        self.assertEqual("scm-verified", policy["review_mode"])
+        self.assertEqual(
+            ("github-pr", "external-scm", "required"),
+            tuple(policy["review_governance"][key] for key in ("verifier", "trigger", "ci_requirement")),
+        )
+        self.assertEqual(
+            [
+                ("review_mode", "local-draft-only", "scm-verified"),
+                ("review_verifier", "none", "github-pr"),
+                ("review_trigger", "none", "external-scm"),
+                ("ci_requirement", "none", "required"),
+            ],
+            [(change["field"], change["from"], change["to"]) for change in changes],
+        )
+        appended = self.audit_lines()[recorded_before:]
+        self.assertEqual([change["field"] for change in changes], [event["field"] for event in appended])
+        self.assertEqual("valid", verify_audit(root)["status"])
+
+    def test_an_amendment_whose_final_policy_is_invalid_writes_nothing(self) -> None:
+        root = self.repo / "memory"
+        amend_policy(root, "review_mode", "local-draft-only", "Drafting alone.")
+        policy_before = (root / "domain-memory-policy.json").read_bytes()
+        recorded_before = len(self.audit_lines())
+        with self.assertRaisesRegex(ValueError, "amended policy is invalid"):
+            amend_policy_fields(
+                root,
+                [("review_mode", "scm-verified"), ("review_verifier", "none")],
+                "A reviewer exists now.",
+            )
+        self.assertEqual(policy_before, (root / "domain-memory-policy.json").read_bytes())
+        self.assertEqual(recorded_before, len(self.audit_lines()))
+
+    def test_an_amendment_naming_a_field_twice_is_refused(self) -> None:
+        with self.assertRaisesRegex(ValueError, "ci_requirement is named more than once"):
+            amend_policy_fields(
+                self.repo / "memory",
+                [("ci_requirement", "required"), ("ci_requirement", "none")],
+                "Undecided.",
+            )
+
+    def test_the_command_line_takes_one_field_or_several_sets_but_not_both(self) -> None:
+        def parsed(**values) -> argparse.Namespace:
+            return argparse.Namespace(**{"field": None, "value": None, "set": [], **values})
+
+        self.assertEqual(
+            [("ci_requirement", "required")],
+            policy_assignments(parsed(field="ci_requirement", value="required")),
+        )
+        self.assertEqual(
+            [("review_mode", "scm-verified"), ("authorized_signers", "a=b,c")],
+            policy_assignments(parsed(set=["review_mode=scm-verified", "authorized_signers=a=b,c"])),
+        )
+        for refused in (
+            parsed(),
+            parsed(field="ci_requirement"),
+            parsed(field="ci_requirement", value="required", set=["review_mode=scm-verified"]),
+            parsed(set=["review_mode"]),
+        ):
+            with self.subTest(refused=vars(refused)):
+                with self.assertRaises(ValueError):
+                    policy_assignments(refused)
 
     def test_a_policy_can_leave_local_draft_only_for_external_review(self) -> None:
         amend_policy(

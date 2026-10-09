@@ -107,4 +107,4 @@ The policy sets limits for file count, file size, total bytes, hash duration, qu
 
 The Registry digest covers the policy as well as the assets, because the policy decides what the Registry may become: whether a record can ever be reviewed, who the sources answer to, and which command profiles a test attestation may cite. A captured base revision therefore goes stale when the policy changes, however it changed, and approvals taken against it must be sought again.
 
-`amend-policy` changes one governance field and audits the change; see [script-api.md](script-api.md). Selected source paths and limits are not amendable: they are settled at initialization, where a developer confirms them.
+`amend-policy` changes one or several governance fields as one audited change; see [script-api.md](script-api.md). Selected source paths and limits are not amendable: they are settled at initialization, where a developer confirms them.
