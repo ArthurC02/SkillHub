@@ -13,6 +13,7 @@ import {
   ADMIN_ROSTERS,
   ADMIN_SKILLS,
   AGENT_FINDING,
+  AGENT_FAILED_RUN,
   AGENT_PROPOSAL,
   AGENT_REPORT_RUN,
   ARTIFACT,
@@ -1640,6 +1641,22 @@ test("後台首頁的待辦捷徑仍落在指定區塊，不跳回頁面標題",
   await expect(page).toHaveURL(/\/admin\/agents#admin-agent-findings$/);
   await expect(page.locator("#admin-agent-findings")).toBeInViewport();
   await expect(page.getByRole("heading", { level: 1, name: "平台 Agent" })).not.toBeFocused();
+});
+
+test("未核對的 Agent 日報在手機上不會被呈現成平台已確認的判斷", async ({ page }, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/admin/agents?run=${AGENT_FAILED_RUN}`);
+
+  await expect(
+    page.getByRole("status").filter({ hasText: "不是平台確認的維運事實" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "未核對的原稿 · 需要注意：1 項" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "需要注意：1 項", exact: true })).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath("agent-report-unverified-phone.png"),
+    fullPage: true,
+  });
 });
 
 test("舊資產清單網址保留建立錨點並導向 Library", async ({ page }) => {

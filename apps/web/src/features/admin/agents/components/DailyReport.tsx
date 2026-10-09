@@ -17,20 +17,24 @@ export function DailyReport({ run }: { run: PlatformAgentRun }) {
   if (items.length === 0) return <p>這次執行沒有交出日報。</p>;
   const attention = items.filter((item) => item.status === "attention");
   const fine = items.filter((item) => item.status === "fine");
+  const verified = run.status === "completed";
   return (
     <>
-      <p className="note">
+      <p
+        className={verified ? "note" : "notice notice-warning"}
+        role={verified ? undefined : "status"}
+      >
         <Timestamp at={run.finished_at ?? run.started_at} />{" "}
-        {run.status === "completed"
+        {verified
           ? "完成。每一項都附它根據的事實，平台已核對這些事實都在當天的維運報表裡。"
-          : "這份日報沒有通過核對，所以沒有進待辦；原因寫在執行紀錄上。"}
+          : "這份日報沒有通過核對；下列內容只是 Agent 原稿，不是平台確認的維運事實，也沒有進待辦。原因寫在執行紀錄上。"}
       </p>
       {[
         { heading: `需要注意：${attention.length} 項`, list: attention },
         { heading: `正常：${fine.length} 項`, list: fine },
       ].map(({ heading, list }) => (
         <section key={heading}>
-          <h3>{heading}</h3>
+          <h3>{verified ? heading : `未核對的原稿 · ${heading}`}</h3>
           <ul className="download-list">
             {list.map((item, index) => (
               <li className="download-item" key={index}>

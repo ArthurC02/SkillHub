@@ -3948,6 +3948,11 @@ test("OPS-012: a failed run's report is shown as not checked, and its list row n
   stub(true);
   await mountAt("/admin/agents", { run: AGENT_FAILED_RUN });
   await waitFor(has("這份日報沒有通過核對"));
+  const warning = field<HTMLElement>(".notice-warning[role='status']");
+  expect(warning.textContent).toContain("不是平台確認的維運事實，也沒有進待辦");
+  expect(
+    Array.from(container.querySelectorAll("h3")).map((heading) => heading.textContent),
+  ).toContain("未核對的原稿 · 需要注意：1 項");
   expect(has("which no tool returned")()).toBe(true);
   expect(has("2 步；花費 $0.0018（另有 1 步沒有回報花費）")()).toBe(true);
   expect(has("2 步；花費 $0.0031")()).toBe(false);
