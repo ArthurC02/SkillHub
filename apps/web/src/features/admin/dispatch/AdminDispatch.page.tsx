@@ -70,6 +70,13 @@ function DispatchOverview({ status }: { status: DispatchStatus }) {
                   <span className="badge">{HALT_SOURCE[halt.source] ?? halt.source}</span>
                 </p>
                 <p>理由：{halt.reason}</p>
+                {halt.source === "orphan_threshold" && (
+                  <p>
+                    {halt.clear_rounds == null
+                      ? "自動解除進度未回報；請重新整理派送狀態確認。"
+                      : `已連續 ${halt.clear_rounds}／2 輪低於門檻。`}
+                  </p>
+                )}
                 <p>
                   宣告於 <Timestamp at={halt.declared_at} />
                 </p>

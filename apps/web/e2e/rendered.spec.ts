@@ -888,6 +888,42 @@ test("admin dispatch can retry an unreadable status without enabling release", a
   expect(reads).toBe(2);
 });
 
+test("automatic dispatch halt progress updates after refresh on a phone", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  let reads = 0;
+  await page.route("**/admin/dispatch", (route) => {
+    if (route.request().resourceType() === "document") return route.continue();
+    return route.fulfill({
+      json: {
+        dispatching: true,
+        halts: [
+          {
+            target: "node-2",
+            source: "orphan_threshold",
+            reason: "orphan capacity reached",
+            declared_at: "2026-09-11T09:00:00Z",
+            clear_rounds: reads++,
+            automatic_recovery: true,
+          },
+        ],
+      },
+    });
+  });
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto("/admin/dispatch");
+  await expect(page.getByText("已連續 0／2 輪低於門檻。")).toBeVisible();
+  await page.getByRole("button", { name: "重新整理派送狀態" }).click();
+  await expect(page.getByText("已連續 1／2 輪低於門檻。")).toBeVisible();
+  expect(reads).toBe(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+  await page.screenshot({
+    path: testInfo.outputPath("admin-dispatch-progress-phone.png"),
+    fullPage: true,
+  });
+});
+
 test("an Agent owner remains visible without widening the phone page", async ({ page }) => {
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 900 });

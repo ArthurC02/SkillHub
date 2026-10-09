@@ -1601,7 +1601,7 @@ test("OPS-005: an unverified release clears when a new halt is declared", async 
   expect(container.querySelector("#admin-dispatch-lift-result")).toBeNull();
 });
 
-test("OPS-005: a node halt remains visible while other nodes can still dispatch", async () => {
+test("OPS-005: a node halt without recovery progress stays unknown while other nodes dispatch", async () => {
   stub(true, (path, method) => {
     if (path === "/admin/dispatch" && method === "GET") {
       return {
@@ -1635,6 +1635,8 @@ test("OPS-005: a node halt remains visible while other nodes can still dispatch"
   await go("/admin/dispatch");
   await waitFor(has("部分節點停止派送"));
   expect(has("其他節點仍可派送")()).toBe(true);
+  expect(has("自動解除進度未回報")()).toBe(true);
+  expect(has("已連續 0／2 輪低於門檻")()).toBe(false);
   await type("#admin-halt-lift-target", "node-2");
   await type("#admin-halt-lift-note", "capacity cleared and verified");
   await click(button("恢復派送"));
@@ -1748,6 +1750,7 @@ test("OPS-005: a changed halt requires a new release reason and confirmation", a
             source: reads === 1 ? "orphan_threshold" : "p1_incident",
             reason: reads === 1 ? "capacity threshold" : "new incident",
             declared_at: reads === 1 ? "2026-09-11T09:00:00Z" : "2026-09-11T10:00:00Z",
+            clear_rounds: reads === 1 ? 1 : undefined,
             automatic_recovery: reads === 1,
           },
         ],
@@ -1757,6 +1760,7 @@ test("OPS-005: a changed halt requires a new release reason and confirmation", a
   });
   await mountAt("/admin/dispatch");
   await waitFor(has("capacity threshold"));
+  expect(has("已連續 1／2 輪低於門檻")()).toBe(true);
   await type("#admin-halt-lift-target", "node-2");
   await type("#admin-halt-lift-note", "capacity cleared");
   await click(button("恢復派送"));
@@ -1764,6 +1768,7 @@ test("OPS-005: a changed halt requires a new release reason and confirmation", a
 
   await click(button("重新整理派送狀態"));
   await waitFor(has("new incident"));
+  expect(has("已連續 1／2 輪低於門檻")()).toBe(false);
   expect(field<HTMLTextAreaElement>("#admin-halt-lift-note").value).toBe("");
   expect(button("恢復派送").disabled).toBe(true);
 });
