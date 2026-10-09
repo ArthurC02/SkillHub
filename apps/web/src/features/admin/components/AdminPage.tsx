@@ -4,6 +4,7 @@ import { AdminNav } from "./AdminNav";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { RouteNotFound } from "../../../shared/ui/RouteNotFound";
+import "./AdminPage.css";
 
 export function AdminPage({
   heading,
@@ -25,7 +26,7 @@ export function AdminPage({
   return (
     <section>
       <AdminNav />
-      <h1 ref={headingRef} tabIndex={-1}>
+      <h1 ref={headingRef} tabIndex={-1} className="admin-page-heading">
         {heading}
       </h1>
       {lede && <p className="note">{lede}</p>}

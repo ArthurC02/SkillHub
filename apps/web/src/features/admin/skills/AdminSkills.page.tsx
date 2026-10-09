@@ -67,11 +67,16 @@ function GovernanceResults({ q }: { q: string }) {
         (found.length === 0 ? (
           <p>沒有符合「{q}」的小工具：0 筆。已刪除的小工具不會出現。</p>
         ) : (
-          <ul className="download-list">
-            {found.map((skill) => (
-              <GovernanceRow key={skill.skill_id} skill={skill} single={found.length === 1} />
-            ))}
-          </ul>
+          <>
+            <p className="note" role="status">
+              查到 {found.length} 筆小工具。
+            </p>
+            <ul className="download-list">
+              {found.map((skill) => (
+                <GovernanceRow key={skill.skill_id} skill={skill} single={found.length === 1} />
+              ))}
+            </ul>
+          </>
         ))}
       {found.length === 1 && found[0].takedown_at === null && (
         <GovernanceActions key={found[0].skill_id} skill={found[0]} />

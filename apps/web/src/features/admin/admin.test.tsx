@@ -612,6 +612,12 @@ test("OPS-004: takedown of the one skill found takes a reason and a second click
   });
 });
 
+test("OPS-004: governance search states how many skills were found", async () => {
+  stub(true);
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("查到 1 筆小工具。"));
+});
+
 test("OPS-004: governance choices stay scannable without hiding takedown scope", async () => {
   stub(true);
   await mountAt("/admin/skills", { q: SKILL });

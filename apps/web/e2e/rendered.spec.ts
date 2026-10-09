@@ -941,6 +941,20 @@ test("下架完成後把焦點交給更新的治理結果", async ({ page }) => 
   await expect(page.getByRole("heading", { level: 1, name: "小工具治理" })).toBeFocused();
 });
 
+test("admin route focus highlights the heading without outlining the entire content column", async ({
+  page,
+}) => {
+  await stubPlatform(page);
+  await page.goto(`/admin/skills?q=${SKILL}`);
+  const heading = page.getByRole("heading", { level: 1, name: "小工具治理" });
+  await expect(heading).toBeFocused();
+  const headingWidth = await heading.evaluate((element) => element.getBoundingClientRect().width);
+  const pageWidth = await heading.evaluate(
+    (element) => element.parentElement!.getBoundingClientRect().width,
+  );
+  expect(headingWidth).toBeLessThan(pageWidth / 2);
+});
+
 test("admin rosters put beta access first and hide stale membership after a failed refresh", async ({
   page,
 }, testInfo) => {
