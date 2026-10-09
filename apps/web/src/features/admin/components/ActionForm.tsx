@@ -33,8 +33,9 @@ export function ActionForm({
 }) {
   const [note, setNote] = useState("");
   const [submitted, setSubmitted] = useState<{ note: string; contextKey: string } | null>(null);
-  const blocked = note.trim() === "" || !ready;
   const resultMatches = submitted?.note === note.trim() && submitted.contextKey === contextKey;
+  const completed = Boolean(done && resultMatches);
+  const blocked = note.trim() === "" || !ready || completed;
   const send = () => {
     if (blocked || pending) return;
     setSubmitted({ note: note.trim(), contextKey });
@@ -84,7 +85,9 @@ export function ActionForm({
       )}
       {blocked && (
         <p id={`${id}-why`} className="note">
-          {blockedReason ?? `「${submitLabel}」要等上面的欄位都填好。`}
+          {completed
+            ? "已完成這筆操作；修改上方欄位或理由後再送出，會建立另一筆操作。"
+            : (blockedReason ?? `「${submitLabel}」要等上面的欄位都填好。`)}
         </p>
       )}
       {done && resultMatches && (

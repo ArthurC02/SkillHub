@@ -545,7 +545,7 @@ test("OPS-003: a negative correction says it deducts credits before and after su
   });
 });
 
-test("OPS-003: a failed grant is retried under the same key, and the next grant gets a fresh one", async () => {
+test("OPS-003: a failed grant retries with one key, but a completed draft cannot be sent again", async () => {
   let attempt = 0;
   stub(true, (path, method) => {
     if (method !== "POST" || !path.endsWith("/grants")) return undefined;
@@ -562,6 +562,14 @@ test("OPS-003: a failed grant is retried under the same key, and the next grant 
   await waitFor(has("沒有完成，伺服器說：grant failed"));
   await click(button("授予"));
   await waitFor(has("已授予 10 點，餘額現在是 60 點。"));
+  expect(button("授予").disabled).toBe(true);
+  expect(button("授予").getAttribute("aria-describedby")).toBe("admin-grant-why");
+  expect(field<HTMLElement>("#admin-grant-why").textContent).toBe(
+    "已完成這筆操作；修改上方欄位或理由後再送出，會建立另一筆操作。",
+  );
+  expect(calls.filter((c) => c.method === "POST")).toHaveLength(2);
+  await type("#admin-grant-note", "another grant");
+  expect(button("授予").disabled).toBe(false);
   await click(button("授予"));
   await waitFor(() => calls.filter((c) => c.method === "POST").length === 3);
   const keys = calls

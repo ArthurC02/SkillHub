@@ -902,6 +902,54 @@ test("admin account lookup keeps a grant tied to the submitted email on a phone"
   expect(width.scroll).toBeLessThanOrEqual(width.client);
 });
 
+test("a completed credit grant needs a changed draft before another submission", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let grants = 0;
+  await page.route("**/admin/credits/ws-2", (route) =>
+    route.fulfill({
+      json: {
+        ...ADMIN_LEDGER,
+        balance_credits: grants ? 170 : 120,
+        entries: grants
+          ? [
+              {
+                ...ADMIN_LEDGER.entries[1],
+                delta_credits: 50,
+                created_at: "2026-10-09T09:00:00Z",
+              },
+              ...ADMIN_LEDGER.entries,
+            ]
+          : ADMIN_LEDGER.entries,
+      },
+    }),
+  );
+  await page.route("**/admin/credits/ws-2/grants", (route) => {
+    grants += 1;
+    return route.fulfill({ json: { balance_credits: 170, amount_credits: 50 } });
+  });
+  await page.goto("/admin/accounts");
+  await page.getByLabel("Email").fill("member@example.com");
+  await page.getByRole("button", { name: "查詢", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "封測者甲" })).toBeVisible();
+  await page.locator("#admin-grant-amount").fill("50");
+  await page.locator("#admin-grant-note").fill("beta reward");
+  const grant = page.getByRole("button", { name: "授予", exact: true });
+  await grant.click();
+  await expect(page.getByRole("status")).toContainText("已授予 50 點，餘額現在是 170 點。");
+  await expect(grant).toBeDisabled();
+  await expect(page.locator("#admin-grant-why")).toContainText("再送出，會建立另一筆操作");
+  expect(grants).toBe(1);
+  await page.screenshot({
+    path: testInfo.outputPath("admin-grant-completed-phone.png"),
+    fullPage: true,
+  });
+  await page.locator("#admin-grant-note").fill("second grant");
+  await expect(grant).toBeEnabled();
+});
+
 test("admin governance keeps actions tied to the submitted search on a phone", async ({
   page,
 }, testInfo) => {
