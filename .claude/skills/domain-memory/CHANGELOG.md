@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.10.2
+
+### Changed
+
+- Recovery of an interrupted Registry update is restructured into one handler per journal phase; what it does in each phase is unchanged.
+
 ## 0.10.1
 
 ### Fixed

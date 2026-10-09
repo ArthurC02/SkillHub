@@ -7,6 +7,7 @@ import stat
 import sys
 import uuid
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -62,10 +63,19 @@ def discard_transaction(journal: Path, backup: Path, staging: Path) -> None:
     journal.unlink(missing_ok=True)
 
 
-def recover(root: Path) -> None:  # noqa: C901, PLR0912
-    journal = transaction_path(root)
-    if not journal.is_file():
-        return
+@dataclass(frozen=True)
+class InterruptedTransaction:
+    root: Path
+    journal: Path
+    operation_id: str | None
+    backup: Path
+    staging: Path
+
+    def discard(self) -> None:
+        discard_transaction(self.journal, self.backup, self.staging)
+
+
+def _checked_journal(journal: Path) -> dict[str, Any]:
     value = read_journal_document(journal)
     if not isinstance(value, dict) or not all(
         isinstance(value.get(key), str) for key in ("backup", "staging")
@@ -77,46 +87,66 @@ def recover(root: Path) -> None:  # noqa: C901, PLR0912
         for key, kind in (("backup", "backup"), ("staging", "stage"))
     ):
         raise ValueError("registry recovery journal contains an unsafe path")
-    backup = root / value["backup"]
-    staging = root / value["staging"]
-    target = registry_dir(root)
-    legacy = "phase" not in value or "operation_id" not in value
-    if legacy:
-        if not target.exists() and backup.exists():
-            backup.replace(target)
-        elif target.exists() and backup.exists():
-            remove_tree(backup)
-        discard_transaction(journal, backup, staging)
-        return
-    if value["phase"] not in {
-        "prepared",
-        "installed",
-        "audited",
-        "reconciliation-required",
-    }:
-        raise ValueError("registry recovery journal has an invalid phase")
-    if value["phase"] == "prepared":
-        discard_transaction(journal, backup, staging)
-        return
-    if value["phase"] == "installed":
-        from .audit import read_events
+    return value
 
-        events = read_events(root)
-        audited = bool(
-            events and events[-1].get("operation_id") == value["operation_id"]
-        )
-        if not audited:
-            if not backup.exists() or not staging.parent.exists():
-                raise ValueError("registry transaction requires manual reconciliation")
-            staging_registry = registry_dir(staging)
-            if target.exists():
-                target.replace(staging_registry)
-            backup.replace(target)
-            journal.unlink(missing_ok=True)
-            return
-    if value["phase"] == "reconciliation-required":
+
+def _recover_legacy(transaction: InterruptedTransaction) -> None:
+    target = registry_dir(transaction.root)
+    if transaction.backup.exists():
+        if target.exists():
+            remove_tree(transaction.backup)
+        else:
+            transaction.backup.replace(target)
+    transaction.discard()
+
+
+def _was_audited(transaction: InterruptedTransaction) -> bool:
+    from .audit import read_events
+
+    events = read_events(transaction.root)
+    return bool(events and events[-1].get("operation_id") == transaction.operation_id)
+
+
+def _recover_installed(transaction: InterruptedTransaction) -> None:
+    if _was_audited(transaction):
+        transaction.discard()
+        return
+    if not transaction.backup.exists() or not transaction.staging.parent.exists():
         raise ValueError("registry transaction requires manual reconciliation")
-    discard_transaction(journal, backup, staging)
+    target = registry_dir(transaction.root)
+    if target.exists():
+        target.replace(registry_dir(transaction.staging))
+    transaction.backup.replace(target)
+    transaction.journal.unlink(missing_ok=True)
+
+
+def _require_reconciliation(_transaction: InterruptedTransaction) -> None:
+    raise ValueError("registry transaction requires manual reconciliation")
+
+
+RECOVERY_BY_PHASE: dict[str, Callable[[InterruptedTransaction], None]] = {
+    "prepared": InterruptedTransaction.discard,
+    "installed": _recover_installed,
+    "audited": InterruptedTransaction.discard,
+    "reconciliation-required": _require_reconciliation,
+}
+
+
+def recover(root: Path) -> None:
+    journal = transaction_path(root)
+    if not journal.is_file():
+        return
+    value = _checked_journal(journal)
+    transaction = InterruptedTransaction(
+        root, journal, value.get("operation_id"), root / value["backup"], root / value["staging"]
+    )
+    if "phase" not in value or "operation_id" not in value:
+        _recover_legacy(transaction)
+        return
+    handler = RECOVERY_BY_PHASE.get(value["phase"])
+    if handler is None:
+        raise ValueError("registry recovery journal has an invalid phase")
+    handler(transaction)
 
 
 def recover_interrupted_update(root: Path, force: bool) -> None:  # noqa: FBT001

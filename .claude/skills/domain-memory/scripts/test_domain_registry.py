@@ -89,7 +89,7 @@ from domain_registry.sources import (
 )
 from domain_registry.sources import discover_ci_tools
 from domain_registry.sources import test_locations as discovered_test_locations
-from domain_registry.transaction import recover_interrupted_update, transaction_path
+from domain_registry.transaction import recover_interrupted_update, remove_tree, transaction_path
 from domain_registry.updates import (
     apply_approved_updates,
     demote_local_reviews,
@@ -1493,6 +1493,60 @@ class DomainRegistryTest(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "manual reconciliation"):
             recover_interrupted_update(root, False)
+
+    def interrupted_transaction(self, phase: str) -> tuple[Path, Path, Path]:
+        root = self.repo / "memory"
+        backup = root / ".domain-registry-backup-op"
+        staging = root / ".domain-registry-stage-op"
+        shutil.copytree(root / "registry", backup)
+        staging.mkdir()
+        (root / "registry" / "manifest.json").write_text("{}\n", encoding="utf-8")
+        transaction_path(root).write_text(
+            json.dumps({
+                "format": "domain-registry-transaction/v2", "operation_id": "op",
+                "phase": phase, "backup": backup.name, "staging": staging.name,
+            }),
+            encoding="utf-8",
+        )
+        return root, backup, staging
+
+    def test_recovery_discards_a_prepared_or_audited_transaction_and_keeps_the_registry(self) -> None:
+        for phase in ("prepared", "audited"):
+            with self.subTest(phase):
+                root, backup, staging = self.interrupted_transaction(phase)
+                recover_interrupted_update(root, False)
+                self.assertEqual(
+                    ("{}\n", False, False, False),
+                    (
+                        (root / "registry" / "manifest.json").read_text(encoding="utf-8"),
+                        backup.exists(), staging.exists(), transaction_path(root).exists(),
+                    ),
+                )
+
+    def test_recovery_refuses_a_transaction_marked_for_reconciliation_or_in_an_unknown_phase(self) -> None:
+        for phase, refusal in (
+            ("reconciliation-required", "manual reconciliation"), ("halfway", "invalid phase"),
+        ):
+            with self.subTest(phase):
+                root, backup, _ = self.interrupted_transaction(phase)
+                with self.assertRaisesRegex(ValueError, refusal):
+                    recover_interrupted_update(root, False)
+                self.assertEqual((True, True), (backup.exists(), transaction_path(root).exists()))
+                remove_tree(backup)
+                remove_tree(root / ".domain-registry-stage-op")
+                transaction_path(root).unlink()
+
+    def test_recovery_restores_the_backup_when_an_unaudited_install_left_no_registry(self) -> None:
+        root, backup, _ = self.interrupted_transaction("installed")
+        remove_tree(root / "registry")
+        recover_interrupted_update(root, False)
+        self.assertEqual(
+            ("domain-registry/v1", False, False),
+            (
+                json.loads((root / "registry" / "manifest.json").read_text(encoding="utf-8"))["format"],
+                backup.exists(), transaction_path(root).exists(),
+            ),
+        )
 
     def test_structured_evidence_detects_source_drift(self) -> None:
         source = self.repo / "evidence.md"
