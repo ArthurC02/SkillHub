@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useModelBudgetChange, useModelBudgets, type ModelCallBudget } from "../admin.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
@@ -16,38 +16,19 @@ const CALL_NAMES: Record<string, string> = {
   "suggest-improvements": "建議改善",
 };
 
-function CurrentBudget({ budget }: { budget: ModelCallBudget }) {
+function BudgetSummary({ budget, name }: { budget: ModelCallBudget; name: string }) {
   return (
-    <p className="badge-row">
-      <span className={budget.seconds === null ? "badge" : "badge badge-warning"}>
-        {budget.seconds === null
-          ? `目前：預設 ${budget.default_seconds} 秒`
-          : `目前：${budget.seconds} 秒（已調整）`}
-      </span>
-    </p>
-  );
-}
-
-function BudgetRow({ budget }: { budget: ModelCallBudget }) {
-  const name = CALL_NAMES[budget.kind] ?? budget.kind;
-  const currentSeconds = budget.seconds ?? budget.default_seconds;
-  const [seconds, setSeconds] = useState(String(currentSeconds));
-  const [sourceSeconds, setSourceSeconds] = useState(currentSeconds);
-  const staleDraft = sourceSeconds !== currentSeconds;
-  const editableSeconds = staleDraft ? String(currentSeconds) : seconds;
-  const set = useModelBudgetChange("PUT");
-  const clear = useModelBudgetChange("DELETE");
-  const busy = set.isPending || clear.isPending;
-  const wanted = Number(editableSeconds);
-  const inRange =
-    Number.isInteger(wanted) && wanted >= budget.min_seconds && wanted <= budget.max_seconds;
-
-  return (
-    <li className="download-item">
+    <>
       <p>
         <strong>{name}</strong>
       </p>
-      <CurrentBudget budget={budget} />
+      <p className="badge-row">
+        <span className={budget.seconds === null ? "badge" : "badge badge-warning"}>
+          {budget.seconds === null
+            ? `目前：預設 ${budget.default_seconds} 秒`
+            : `目前：${budget.seconds} 秒（已調整）`}
+        </span>
+      </p>
       <p className="note">
         {budget.seconds !== null && `程式預設：${budget.default_seconds} 秒；`}
         可設定範圍：{budget.min_seconds}～{budget.max_seconds} 秒。
@@ -62,6 +43,40 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
           )}
         </>
       )}
+    </>
+  );
+}
+
+function BudgetRow({
+  budget,
+  onRestored,
+  onDraftChange,
+}: {
+  budget: ModelCallBudget;
+  onRestored: (result: { kind: string; text: string }) => void;
+  onDraftChange: () => void;
+}) {
+  const name = CALL_NAMES[budget.kind] ?? budget.kind;
+  const currentSeconds = budget.seconds ?? budget.default_seconds;
+  const [seconds, setSeconds] = useState(String(currentSeconds));
+  const [sourceSeconds, setSourceSeconds] = useState(currentSeconds);
+  const staleDraft = sourceSeconds !== currentSeconds;
+  const editableSeconds = staleDraft ? String(currentSeconds) : seconds;
+  const set = useModelBudgetChange("PUT");
+  const clear = useModelBudgetChange("DELETE");
+  const busy = set.isPending || clear.isPending;
+  const wanted = Number(editableSeconds);
+  const inRange =
+    Number.isInteger(wanted) && wanted >= budget.min_seconds && wanted <= budget.max_seconds;
+  const restoredText = `${name}已改回預設。下次呼叫使用程式預設 ${budget.default_seconds} 秒。`;
+  const restoreBlockedReason = clear.isSuccess
+    ? "這筆恢復請求已完成；請核對上方目前值。"
+    : set.isPending
+      ? "這一種呼叫正在調整秒數，完成後才能恢復預設。"
+      : undefined;
+  return (
+    <li className="download-item" onInput={onDraftChange}>
+      <BudgetSummary budget={budget} name={name} />
       <details id={`admin-budget-${budget.kind}-set`}>
         <summary>調整秒數</summary>
         {staleDraft && (
@@ -116,16 +131,18 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
             submitLabel={`把 ${name} 改回預設`}
             pending={clear.isPending}
             error={clear.error}
-            ready={!set.isPending}
-            blockedReason={
-              set.isPending ? "這一種呼叫正在調整秒數，完成後才能恢復預設。" : undefined
-            }
-            done={clear.isSuccess && "已改回預設。"}
+            ready={!set.isPending && !clear.isSuccess}
+            blockedReason={restoreBlockedReason}
             onSubmit={(reason) => {
               set.reset();
               clear.mutate(
                 { kind: budget.kind, reason },
-                { onSuccess: () => setSeconds(String(budget.default_seconds)) },
+                {
+                  onSuccess: () => {
+                    setSeconds(String(budget.default_seconds));
+                    onRestored({ kind: budget.kind, text: restoredText });
+                  },
+                },
               );
             }}
           />
@@ -137,6 +154,13 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
 
 export function AdminModelBudgets() {
   const budgets = useModelBudgets();
+  const [restored, setRestored] = useState<{ kind: string; text: string } | null>(null);
+  const result = useRef<HTMLParagraphElement>(null);
+  const current = budgets.data?.budgets.find((budget) => budget.kind === restored?.kind);
+
+  useEffect(() => {
+    if (restored) result.current?.focus();
+  }, [restored]);
 
   return (
     <AdminPage heading="模型呼叫逾時">
@@ -151,6 +175,22 @@ export function AdminModelBudgets() {
           {budgets.isFetching ? "重新讀取中…" : "再試一次"}
         </button>
       </ReadFailure>
+      {restored && (
+        <p
+          id="admin-budget-result"
+          ref={result}
+          tabIndex={-1}
+          className="notice notice-success"
+          role="status"
+        >
+          {restored.text}
+          {budgets.error
+            ? "目前設定暫時無法重新讀取，請稍後核對。"
+            : current?.seconds !== null && current?.seconds !== undefined
+              ? `重新讀取仍顯示 ${current.seconds} 秒；請重新整理確認。`
+              : ""}
+        </p>
+      )}
       {budgets.data && !budgets.error && (
         <>
           <ListFreshness
@@ -166,7 +206,12 @@ export function AdminModelBudgets() {
           ) : (
             <ul className="download-list">
               {budgets.data.budgets.map((budget) => (
-                <BudgetRow budget={budget} key={budget.kind} />
+                <BudgetRow
+                  budget={budget}
+                  key={budget.kind}
+                  onRestored={setRestored}
+                  onDraftChange={() => setRestored(null)}
+                />
               ))}
             </ul>
           )}

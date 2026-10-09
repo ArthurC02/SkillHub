@@ -9,6 +9,7 @@ import {
   ADMIN_COST_STATISTICS,
   ADMIN_EXPOSURE_CASE,
   ADMIN_LEDGER,
+  ADMIN_MODEL_BUDGETS,
   ADMIN_ROSTERS,
   ADMIN_SKILLS,
   AGENT_FINDING,
@@ -2143,6 +2144,54 @@ test("a model timeout change keeps the same kind's restore action unavailable", 
   }
   await expect(page.getByText("已套用，下一次呼叫就用這個秒數。")).toBeVisible();
 });
+
+for (const refreshFails of [false, true]) {
+  test(`restoring a model timeout keeps its result reachable ${refreshFails ? "when rereading fails" : "after the form disappears"}`, async ({
+    page,
+  }, testInfo) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 375, height: 900 });
+    let restored = false;
+    await page.route("**/admin/model-budgets", (route) => {
+      if (route.request().resourceType() === "document") return route.fallback();
+      if (restored && refreshFails) {
+        return route.fulfill({ status: 503, json: { error: "service unavailable" } });
+      }
+      return route.fulfill({
+        json: {
+          budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+            restored && budget.kind === "judge-run"
+              ? { ...budget, seconds: null, reason: null, set_at: null }
+              : budget,
+          ),
+        },
+      });
+    });
+    await page.route("**/admin/model-budgets/judge-run", (route) => {
+      restored = true;
+      return route.fulfill({ json: {} });
+    });
+    await page.goto("/admin/model-budgets");
+    await page.locator("#admin-budget-judge-run-clear summary").click();
+    await page.locator("#admin-budget-judge-run-clear-note").fill("恢復平台預設");
+    await page.getByRole("button", { name: "把 評估判定 改回預設" }).click();
+
+    const result = page.locator("#admin-budget-result");
+    if (refreshFails) {
+      await expect(
+        page.getByRole("alert").filter({ hasText: "暫時無法讀取模型呼叫逾時" }),
+      ).toBeVisible();
+      await expect(result).toContainText("目前設定暫時無法重新讀取，請稍後核對。");
+      await expect(page.getByText("目前：90 秒（已調整）")).toHaveCount(0);
+    } else {
+      await expect(page.getByText("目前：預設 130 秒")).toBeVisible();
+      await expect(result).toContainText("下次呼叫使用程式預設 130 秒");
+    }
+    await expect(page.locator("#admin-budget-judge-run-clear")).toHaveCount(0);
+    await expect(result).toBeFocused();
+    await page.screenshot({ path: testInfo.outputPath("admin-budget-restored-phone.png") });
+  });
+}
 
 test.describe("QA-008 real layout: 表格與段落寬度", () => {
   test("a comparison table scrolls inside its own container", async ({ page }) => {

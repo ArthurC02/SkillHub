@@ -973,7 +973,7 @@ test("OPS-009: an override shows its effective value, default, range, and closed
   expect(container.querySelector("#admin-budget-match-reasons-clear")).toBeNull();
 });
 
-test("OPS-009: restoring the default also resets the editable seconds", async () => {
+test("OPS-009: restoring the default keeps a focused result after the restore form disappears", async () => {
   let overridden = true;
   stub(true, (path, method) => {
     if (path === "/admin/model-budgets" && method === "GET") {
@@ -1004,6 +1004,39 @@ test("OPS-009: restoring the default also resets the editable seconds", async ()
   await waitFor(has("目前：預設 130 秒"));
 
   expect(field<HTMLInputElement>("#admin-budget-judge-run-seconds").value).toBe("130");
+  expect(container.querySelector("#admin-budget-judge-run-clear")).toBeNull();
+  await waitFor(has("評估判定已改回預設。下次呼叫使用程式預設 130 秒。"));
+  expect(document.activeElement).toBe(field<HTMLElement>("#admin-budget-result"));
+  await type("#admin-budget-judge-run-seconds", "100");
+  expect(container.querySelector("#admin-budget-result")).toBeNull();
+});
+
+test("OPS-009: a successful restore remains visible when the new budget cannot be read", async () => {
+  let reads = 0;
+  stub(true, (path, method) => {
+    if (path === "/admin/model-budgets" && method === "GET") {
+      reads += 1;
+      return reads === 1
+        ? { body: ADMIN_MODEL_BUDGETS, status: 200 }
+        : { body: { error: "service unavailable" }, status: 503 };
+    }
+    if (path === "/admin/model-budgets/judge-run" && method === "DELETE") {
+      return { body: {}, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("目前：90 秒（已調整）"));
+  await click(field<HTMLElement>("#admin-budget-judge-run-clear summary"));
+  await type("#admin-budget-judge-run-clear-note", "恢復平台預設");
+  await click(button("把 評估判定 改回預設"));
+  await waitFor(has("暫時無法讀取模型呼叫逾時"));
+
+  expect(has("目前：90 秒（已調整）")()).toBe(false);
+  await waitFor(has("評估判定已改回預設。下次呼叫使用程式預設 130 秒。"));
+  expect(field<HTMLElement>("#admin-budget-result").textContent).toContain(
+    "目前設定暫時無法重新讀取，請稍後核對。",
+  );
 });
 
 test("OPS-009: refreshing a changed model timeout replaces an obsolete editable draft", async () => {
