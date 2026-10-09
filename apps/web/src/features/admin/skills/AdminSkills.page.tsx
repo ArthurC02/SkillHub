@@ -49,7 +49,10 @@ function GovernanceResult({
   const result = useRef<HTMLParagraphElement>(null);
   const show = Boolean(completed && skills?.some((skill) => skill.skill_id === completed.id));
   useEffect(() => {
-    if (show) result.current?.focus();
+    if (show) {
+      result.current?.focus();
+      result.current?.scrollIntoView?.({ block: "center" });
+    }
   }, [completed, show]);
   if (!show || !completed) return null;
   return (
@@ -57,7 +60,7 @@ function GovernanceResult({
       id={completed.takedown ? "admin-takedown-result" : "admin-governance-result"}
       ref={result}
       tabIndex={-1}
-      className="notice notice-success admin-page-result"
+      className="notice notice-success"
       role="status"
     >
       {completed.message}

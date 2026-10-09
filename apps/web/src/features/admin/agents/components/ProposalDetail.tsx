@@ -18,7 +18,7 @@ const DECISIONS = [
 ] as const;
 
 const DECIDED = {
-  approve: "已核准，維運程序會在幾分鐘內執行。",
+  approve: "已核准。",
   reject: "已駁回。",
 };
 
@@ -91,7 +91,10 @@ export function ProposalDetail({ id }: { id: string }) {
   const decide = useDecideProposal();
   const result = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    if (decide.isSuccess) result.current?.focus();
+    if (decide.isSuccess) {
+      result.current?.focus();
+      result.current?.scrollIntoView?.({ block: "center" });
+    }
   }, [decide.isSuccess]);
   const proposal = detail.data;
   return (
@@ -112,6 +115,18 @@ export function ProposalDetail({ id }: { id: string }) {
         </Link>
       </p>
       {detail.isPending && <Loading what="這個提案" />}
+      {decide.isSuccess && (
+        <p
+          id="admin-proposal-result"
+          ref={result}
+          tabIndex={-1}
+          className="notice notice-success"
+          role="status"
+        >
+          {proposal ? actionLabel(proposal.action) : `提案 ${id}`}：
+          {DECIDED[decide.variables.decision]}
+        </p>
+      )}
       <ReadFailure error={detail.error} what="這個提案" />
       {proposal && !detail.error && (
         <>
@@ -152,7 +167,7 @@ export function ProposalDetail({ id }: { id: string }) {
             <Timestamp at={proposal.proposed_at} /> 由 {proposal.agent} 提出
           </p>
           <Outcome proposal={proposal} />
-          {proposal.status === "proposed" && (
+          {proposal.status === "proposed" && !decide.isSuccess && (
             <>
               <h3>決定</h3>
               <p className="note">
@@ -160,17 +175,6 @@ export function ProposalDetail({ id }: { id: string }) {
               </p>
               <Decide proposal={proposal} decide={decide} />
             </>
-          )}
-          {decide.isSuccess && (
-            <p
-              id="admin-proposal-result"
-              ref={result}
-              tabIndex={-1}
-              className="notice notice-success"
-              role="status"
-            >
-              {DECIDED[decide.variables.decision]}
-            </p>
           )}
         </>
       )}

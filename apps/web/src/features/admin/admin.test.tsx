@@ -3128,10 +3128,41 @@ test("a completed proposal decision focuses its result after the decision forms 
   await type("#admin-proposal-approve-note", "job needs attention");
   await click(button("核准並執行"));
   await click(button("確認核准這個提案"));
-  await waitFor(has("已核准，維運程序會在幾分鐘內執行。"));
+  await waitFor(has("已核准。"));
+  expect(field<HTMLElement>("#admin-proposal-result").textContent).toBe(
+    "立刻補跑「輪替分割表」：已核准。",
+  );
   expect(has("核准並執行")()).toBe(false);
   expect(document.activeElement).toBe(field<HTMLElement>("#admin-proposal-result"));
 });
+
+test.each(["stale", "failed"] as const)(
+  "a completed proposal decision stays confirmed and cannot be repeated after a %s detail refresh",
+  async (refresh) => {
+    let decided = false;
+    stub(true, (path, method) => {
+      if (path === `/admin/agents/proposals/${AGENT_PROPOSAL}/decision` && method === "PUT") {
+        decided = true;
+        return { body: {}, status: 204 };
+      }
+      if (path === `/admin/agents/proposals/${AGENT_PROPOSAL}`)
+        return decided && refresh === "failed"
+          ? { body: { error: "read unavailable" }, status: 503 }
+          : { body: ADMIN_AGENT_PROPOSAL, status: 200 };
+      return undefined;
+    });
+    await mountAt("/admin/agents", { proposal: AGENT_PROPOSAL });
+    await waitFor(has("駁回"));
+    await type("#admin-proposal-reject-note", "not needed");
+    await submit("#admin-proposal-reject-note");
+
+    await waitFor(has("已駁回。"));
+    expect(document.activeElement).toBe(field<HTMLElement>("#admin-proposal-result"));
+    expect(container.querySelector("#admin-proposal-reject-note")).toBeNull();
+    expect(container.querySelector("#admin-proposal-approve-note")).toBeNull();
+    if (refresh === "failed") expect(has("暫時無法讀取這個提案")()).toBe(true);
+  },
+);
 
 test("a destructive proposal can be cancelled after reviewing its scope", async () => {
   stub(true);
@@ -3165,7 +3196,7 @@ test("a successful rejection does not label an earlier failed approval as succes
   await type("#admin-proposal-reject-note", "second decision");
   await submit("#admin-proposal-reject-note");
   await waitFor(has("已駁回。"));
-  expect(has("已核准，維運程序會在幾分鐘內執行。")()).toBe(false);
+  expect(has("已核准。")()).toBe(false);
 });
 
 test("a successful finding move does not label an earlier failed move as successful", async () => {
@@ -3614,7 +3645,7 @@ test("OPS-012: after a finding moves, the sentence stays up although the refetch
 });
 
 test.each([
-  ["approve", "approved", "已核准，維運程序會在幾分鐘內執行。"],
+  ["approve", "approved", "已核准。"],
   ["reject", "rejected", "已駁回。"],
 ])(
   "OPS-013: after %s the sentence stays up although the refetched proposal is no longer open",

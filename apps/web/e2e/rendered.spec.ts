@@ -1829,6 +1829,42 @@ test("a completed Agent proposal decision keeps keyboard focus on its result", a
   await page.screenshot({ path: testInfo.outputPath("admin-proposal-result-mobile.png") });
 });
 
+test("a confirmed proposal decision remains visible when its detail refresh fails", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let decided = false;
+  await page.route(`**/admin/agents/proposals/${AGENT_PROPOSAL}/decision`, (route) => {
+    decided = true;
+    return route.fulfill({ status: 204 });
+  });
+  await page.route(`**/admin/agents/proposals/${AGENT_PROPOSAL}`, (route) =>
+    decided
+      ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
+      : route.fulfill({ json: ADMIN_AGENT_PROPOSAL }),
+  );
+  await page.goto(`/admin/agents?proposal=${AGENT_PROPOSAL}`);
+  await page.locator("#admin-proposal-reject-note").fill("not needed now");
+  await page.getByRole("button", { name: "駁回", exact: true }).click();
+
+  await expect(page.getByRole("alert")).toContainText("暫時無法讀取這個提案");
+  await expect(page.locator("#admin-proposal-result")).toContainText("立刻補跑「輪替分割表」");
+  await expect(page.locator("#admin-proposal-result")).toContainText("已駁回。");
+  await expect(page.locator("#admin-proposal-result")).toBeFocused();
+  await expect(page.locator("#admin-proposal-reject-note")).toHaveCount(0);
+  const resultTop = await page
+    .locator("#admin-proposal-result")
+    .evaluate((element) => element.getBoundingClientRect().top);
+  const headerBottom = await page
+    .locator(".app-header")
+    .evaluate((element) => element.getBoundingClientRect().bottom);
+  expect(resultTop).toBeGreaterThanOrEqual(headerBottom);
+  const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("admin-proposal-read-failure-phone.png") });
+});
+
 test("exposure review keeps the decision evidence visible and folds technical identifiers", async ({
   page,
 }) => {
