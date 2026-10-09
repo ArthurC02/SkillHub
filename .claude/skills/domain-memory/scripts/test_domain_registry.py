@@ -3005,6 +3005,54 @@ class DomainRegistryTest(unittest.TestCase):
             candidates = discover_sources(self.repo)["governance_candidates"]
             self.assertEqual([], validate_policy(policy_from(candidates)))
 
+    def test_each_policy_defect_is_named_and_governance_reports_only_its_first(self) -> None:
+        sound = stored_policy_of(self.repo)
+        self.assertEqual([], validate_policy(sound))
+        signed = {"verifier": "git-signed-commit", "trigger": "git-push", "ci_requirement": "none",
+                  "authorized_signers": ["SHA256:key"]}
+        cases = [
+            ("format", {"format": "domain-memory-policy/v2"}, "policy has an invalid format"),
+            ("storage", {"storage_mode": "cloud"}, "policy has an invalid storage_mode"),
+            ("classification", {"data_classification": "secret"}, "policy has an invalid data_classification"),
+            ("review mode", {"review_mode": "maybe"}, "policy has an invalid review_mode"),
+            ("no governance", {"review_governance": None}, "policy requires review_governance"),
+            ("unknown verifier", {"review_governance": {**sound["review_governance"], "verifier": "fax"}},
+             "policy has invalid review_governance"),
+            ("blank signer", {"review_governance": {**signed, "authorized_signers": [" "]}},
+             "policy has invalid review_governance"),
+            ("local with verifier", {"review_mode": "local-draft-only"},
+             "local-draft-only policy must not select a review verifier"),
+            ("scm without verifier",
+             {"review_governance": {**sound["review_governance"], "verifier": "none", "trigger": "none"}},
+             "scm-verified policy requires a review verifier"),
+            ("signed without signers", {"review_governance": {**signed, "authorized_signers": []}},
+             "git-signed-commit policy requires authorized_signers"),
+            ("signed without push", {"review_governance": {**signed, "trigger": "git-commit"}},
+             "git-signed-commit policy requires git-push enforcement"),
+            ("signed without signers or push",
+             {"review_governance": {**signed, "authorized_signers": [], "trigger": "git-commit"}},
+             "git-signed-commit policy requires authorized_signers"),
+            ("local with an unsigned verifier",
+             {"review_mode": "local-draft-only", "review_governance": {**signed, "authorized_signers": []}},
+             "local-draft-only policy must not select a review verifier"),
+            ("no authority", {"source_policy": {**sound["source_policy"], "authority": " "}},
+             "policy requires selected source paths and authority"),
+            ("no sources", {"source_policy": {**sound["source_policy"], "selected_paths": []}},
+             "policy requires selected source paths and authority"),
+            ("no include", {"source_policy": {**sound["source_policy"], "include": []}},
+             "policy requires include patterns and valid exclude patterns"),
+            ("limit below one", {"limits": {**sound["limits"], "max_file_count": 0}}, "policy has invalid limits"),
+            ("limit not a number", {"limits": {**sound["limits"], "max_query_results": "9"}},
+             "policy has invalid limits"),
+        ]
+        for label, change, message in cases:
+            with self.subTest(label):
+                self.assertEqual([message], validate_policy({**sound, **change}))
+        with self.subTest("a limit of one"):
+            self.assertEqual([], validate_policy({**sound, "limits": {**sound["limits"], "max_file_count": 1}}))
+        with self.subTest("a signed-commit policy that is complete"):
+            self.assertEqual([], validate_policy({**sound, "review_governance": signed}))
+
     def test_resolve_terms_reads_the_definition_and_not_the_rest_of_the_record(
         self,
     ) -> None:

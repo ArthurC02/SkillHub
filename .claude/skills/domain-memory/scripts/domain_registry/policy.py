@@ -24,35 +24,41 @@ def _nonblank_strings(value: Any) -> bool:
     )
 
 
-def validate_policy(value: dict[str, Any]) -> list[str]:  # noqa: C901, PLR0912
-    errors = []
-    if value.get("format") != "domain-memory-policy/v1":
-        errors.append("policy has an invalid format")
-    if value.get("storage_mode") not in STORAGE_MODES:
-        errors.append("policy has an invalid storage_mode")
-    if value.get("data_classification") not in CLASSIFICATIONS:
-        errors.append("policy has an invalid data_classification")
-    if value.get("review_mode") not in REVIEW_MODES:
-        errors.append("policy has an invalid review_mode")
-    governance = value.get("review_governance")
+ENUMERATED_FIELDS = (
+    ("format", {"domain-memory-policy/v1"}, "policy has an invalid format"),
+    ("storage_mode", STORAGE_MODES, "policy has an invalid storage_mode"),
+    ("data_classification", CLASSIFICATIONS, "policy has an invalid data_classification"),
+    ("review_mode", REVIEW_MODES, "policy has an invalid review_mode"),
+)
+LIMIT_KEYS = ("max_file_count", "max_file_bytes", "max_total_bytes", "max_query_results")
+GOVERNANCE_RULES = (
+    (lambda mode, rules: mode == "local-draft-only" and rules["verifier"] != "none",
+     "local-draft-only policy must not select a review verifier"),
+    (lambda mode, rules: mode == "scm-verified" and rules["verifier"] == "none",
+     "scm-verified policy requires a review verifier"),
+    (lambda _mode, rules: rules["verifier"] == "git-signed-commit" and not rules["authorized_signers"],
+     "git-signed-commit policy requires authorized_signers"),
+    (lambda _mode, rules: rules["verifier"] == "git-signed-commit" and rules.get("trigger") != "git-push",
+     "git-signed-commit policy requires git-push enforcement"),
+)
+
+
+def _governance_error(review_mode: Any, governance: Any) -> str | None:
     if not isinstance(governance, dict):
-        errors.append("policy requires review_governance")
-    elif (
+        return "policy requires review_governance"
+    if (
         governance.get("verifier") not in GOVERNANCE_VERIFIERS
         or governance.get("trigger") not in GOVERNANCE_TRIGGERS
         or governance.get("ci_requirement") not in CI_REQUIREMENTS
         or not _nonblank_strings(governance.get("authorized_signers"))
     ):
-        errors.append("policy has invalid review_governance")
-    elif value.get("review_mode") == "local-draft-only" and governance["verifier"] != "none":
-        errors.append("local-draft-only policy must not select a review verifier")
-    elif value.get("review_mode") == "scm-verified" and governance["verifier"] == "none":
-        errors.append("scm-verified policy requires a review verifier")
-    elif governance["verifier"] == "git-signed-commit" and not governance["authorized_signers"]:
-        errors.append("git-signed-commit policy requires authorized_signers")
-    elif governance["verifier"] == "git-signed-commit" and governance.get("trigger") != "git-push":
-        errors.append("git-signed-commit policy requires git-push enforcement")
-    source = value.get("source_policy")
+        return "policy has invalid review_governance"
+    return next(
+        (message for broken, message in GOVERNANCE_RULES if broken(review_mode, governance)), None
+    )
+
+
+def _source_error(source: Any) -> str | None:
     if (
         not isinstance(source, dict)
         or not _nonblank_strings(source.get("selected_paths"))
@@ -60,25 +66,32 @@ def validate_policy(value: dict[str, Any]) -> list[str]:  # noqa: C901, PLR0912
         or not isinstance(source.get("authority"), str)
         or not source["authority"].strip()
     ):
-        errors.append("policy requires selected source paths and authority")
-    elif (
+        return "policy requires selected source paths and authority"
+    if (
         not _nonblank_strings(source.get("include"))
         or not source["include"]
         or not _nonblank_strings(source.get("exclude"))
     ):
-        errors.append("policy requires include patterns and valid exclude patterns")
-    limits = value.get("limits")
+        return "policy requires include patterns and valid exclude patterns"
+    return None
+
+
+def _limits_error(limits: Any) -> str | None:
     if not isinstance(limits, dict) or any(
-        not isinstance(limits.get(key), int) or limits[key] < 1
-        for key in (
-            "max_file_count",
-            "max_file_bytes",
-            "max_total_bytes",
-            "max_query_results",
-        )
+        not isinstance(limits.get(key), int) or limits[key] < 1 for key in LIMIT_KEYS
     ):
-        errors.append("policy has invalid limits")
-    return errors
+        return "policy has invalid limits"
+    return None
+
+
+def validate_policy(value: dict[str, Any]) -> list[str]:
+    errors = [message for key, allowed, message in ENUMERATED_FIELDS if value.get(key) not in allowed]
+    found = (
+        _governance_error(value.get("review_mode"), value.get("review_governance")),
+        _source_error(value.get("source_policy")),
+        _limits_error(value.get("limits")),
+    )
+    return errors + [error for error in found if error]
 
 
 def _default_governance(review_mode: str) -> dict[str, Any]:
