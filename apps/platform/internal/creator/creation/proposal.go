@@ -22,18 +22,22 @@ var reasonSentences = map[string]string{
 func reasonSentence(code string) (string, error) {
 	s, ok := reasonSentences[code]
 	if !ok {
-		return "", ErrInvalidCommand
+		return "", rejectedReply(fmt.Sprintf("names an unknown reason %q", code))
 	}
 	return s, nil
 }
 
+func rejectedReply(rule string) error {
+	return fmt.Errorf("%w: the model's reply %s", ErrInvalidCommand, rule)
+}
+
 func validateCriteria(criteria []string) error {
 	if len(criteria) > MaxAcceptanceCriteria {
-		return ErrInvalidCommand
+		return rejectedReply(fmt.Sprintf("has %d acceptance criteria, more than %d", len(criteria), MaxAcceptanceCriteria))
 	}
 	for _, c := range criteria {
 		if strings.TrimSpace(c) == "" || utf8.RuneCountInString(c) > MaxCriterionRunes {
-			return ErrInvalidCommand
+			return rejectedReply("has an empty or over-long acceptance criterion")
 		}
 	}
 	return nil
@@ -87,7 +91,7 @@ func (s *Service) proposal(ctx context.Context, revision int64, e *envelope, r *
 	case outcomeConfirmBrief:
 		return askToConfirmBrief(p)
 	case outcomeConfirmDiagram, outcomeConfirmDiagramDescription, outcomeConfirmDiagramInterpretation:
-		return "", false, ErrInvalidCommand
+		return "", false, rejectedReply("asks to confirm a diagram it did not describe or interpret")
 	case outcomeDraft:
 		return s.acceptDraft(ctx, revision, e, r)
 	case outcomeToolIntent:
@@ -108,14 +112,14 @@ const (
 
 func acceptDiagramDescription(p *Snapshot, r *StepResult) (State, bool, error) {
 	if r.Outcome != outcomeConfirmDiagramDescription || r.DiagramInterpretation != nil || r.Draft != nil || p.DiagramDescriptionConfirmed || p.DiagramInterpretation != nil {
-		return "", false, ErrInvalidCommand
+		return "", false, rejectedReply("describes a diagram out of turn")
 	}
 	return describeDiagram(p, r.DiagramDescription), false, nil
 }
 
 func acceptDiagramInterpretation(p *Snapshot, r *StepResult) (State, bool, error) {
 	if r.Outcome != outcomeConfirmDiagramInterpretation || r.Draft != nil || !p.DiagramDescriptionConfirmed || p.DiagramInterpretation != nil {
-		return "", false, ErrInvalidCommand
+		return "", false, rejectedReply("interprets a diagram out of turn")
 	}
 	return interpretDiagram(p, r.DiagramInterpretation), false, nil
 }
@@ -147,19 +151,22 @@ func normalizeReply(r *StepResult, p Snapshot) {
 
 func admitReply(r *StepResult, p Snapshot) error {
 	if r.DiagramDescription != "" && !validDiagramDescription(r.DiagramDescription) {
-		return ErrInvalidCommand
+		return rejectedReply("has an invalid diagram description")
 	}
 	if r.DiagramInterpretation != nil && !validDiagramDecomposition(r.DiagramInterpretation) {
-		return ErrInvalidCommand
+		return rejectedReply("has an invalid diagram interpretation")
 	}
-	if r.Message == "" || utf8.RuneCountInString(r.Message) > MaxTextRunes || utf8.RuneCountInString(r.Brief) > MaxTextRunes || utf8.RuneCountInString(r.DiagramUnderstanding) > MaxTextRunes || !p.hasRoomFor(1) {
-		return ErrInvalidCommand
+	if r.Message == "" || utf8.RuneCountInString(r.Message) > MaxTextRunes || utf8.RuneCountInString(r.Brief) > MaxTextRunes || utf8.RuneCountInString(r.DiagramUnderstanding) > MaxTextRunes {
+		return rejectedReply("has an empty or over-long message, or an over-long brief or diagram understanding")
+	}
+	if !p.hasRoomFor(1) {
+		return rejectedReply("arrived when the session had no room for another message")
 	}
 	if err := validateCriteria(r.AcceptanceCriteria); err != nil {
 		return err
 	}
 	if utf8.RuneCountInString(r.SampleInput) > MaxSampleInputRunes {
-		return ErrInvalidCommand
+		return rejectedReply("has an over-long sample input")
 	}
 	return nil
 }
@@ -243,7 +250,7 @@ func reviseBrief(p *Snapshot, r *StepResult, c briefChange) State {
 
 func askToConfirmBrief(p *Snapshot) (State, bool, error) {
 	if strings.TrimSpace(p.Brief) == "" {
-		return "", false, ErrInvalidCommand
+		return "", false, rejectedReply("asks to confirm an empty brief")
 	}
 	if p.BriefConfirmed {
 		p.PendingAction = NothingPending
@@ -265,7 +272,7 @@ func draftFollowsConfirmation(p Snapshot, r *StepResult) bool {
 func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, r *StepResult) (State, bool, error) {
 	p := &e.Snapshot
 	if !draftFollowsConfirmation(*p, r) || s.ValidateDraft == nil {
-		return "", false, ErrInvalidCommand
+		return "", false, rejectedReply("delivers a draft that does not follow the confirmed brief")
 	}
 	hash, report, blocked, err := s.ValidateDraft(ctx, *r.Draft)
 	if err != nil {

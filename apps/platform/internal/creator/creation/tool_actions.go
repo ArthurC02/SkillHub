@@ -12,7 +12,7 @@ import (
 func (s *Service) useTool(ctx context.Context, revision int64, e *envelope, r *StepResult, found *searchAnswer) (State, bool, error) {
 	run := s.toolFor(ctx, revision, e, r, found)
 	if run == nil {
-		return "", false, ErrInvalidCommand
+		return "", false, rejectedReply("asks for no tool or an unknown one")
 	}
 	if e.Snapshot.ToolCalls >= e.Limits.MaxToolCalls {
 		return "", false, ErrLimit
@@ -153,7 +153,7 @@ func fetchableURL(requested string) (string, bool) {
 func (s *Service) validateRequestedDraft(ctx context.Context, revision int64, e *envelope, r *StepResult) (State, bool, error) {
 	p := &e.Snapshot
 	if !draftFollowsConfirmation(*p, r) || s.ValidateDraft == nil {
-		return "", false, ErrInvalidCommand
+		return "", false, rejectedReply("asks to validate a draft that does not follow the confirmed brief")
 	}
 	hash, report, blocked, err := s.ValidateDraft(ctx, *r.Draft)
 	if err != nil {

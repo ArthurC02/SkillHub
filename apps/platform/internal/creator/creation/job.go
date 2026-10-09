@@ -583,7 +583,7 @@ func (s *Service) attemptOutcome(ctx context.Context, row gen.CreationSession, e
 		return "", false, ErrUnavailable
 	}
 	if call.carriedDiagram && !validDiagramDescription(call.reply.DiagramDescription) {
-		return "", false, ErrInvalidCommand
+		return "", false, rejectedReply("carries no valid description of the uploaded diagram")
 	}
 	return s.proposal(ctx, row.Revision+1, e, call.reply, call.found)
 }
