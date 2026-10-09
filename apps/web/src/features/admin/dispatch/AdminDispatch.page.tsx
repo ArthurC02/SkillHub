@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { dispatchState } from "../admin.model";
 import {
   useDispatchHalt,
@@ -158,12 +158,47 @@ function LiftHalt({
           />
         </>
       )}
-      {lift.isSuccess && (
-        <p className="notice notice-success" role="status">
-          解除請求已完成，請核對上方派送狀態。
-        </p>
-      )}
     </section>
+  );
+}
+
+function LiftResult({
+  lift,
+  status,
+}: {
+  lift: ReturnType<typeof useDispatchHalt>;
+  status: ReturnType<typeof useDispatchStatus>;
+}) {
+  const result = useRef<HTMLParagraphElement>(null);
+  const target = lift.variables?.provider ?? "pool";
+  const stillHalted = status.data?.halts.some((halt) => halt.target === target);
+  const verified =
+    lift.isSuccess && Boolean(status.data) && !status.error && !status.isFetching && !stillHalted;
+
+  useEffect(() => {
+    if (lift.isSuccess) result.current?.focus();
+  }, [lift.isSuccess]);
+
+  if (!lift.isSuccess) return null;
+  return (
+    <p
+      id="admin-dispatch-lift-result"
+      ref={result}
+      tabIndex={-1}
+      className={`notice ${verified ? "notice-success" : "notice-warning"}`}
+      role="status"
+    >
+      解除{haltTargetLabel(target)}煞車的請求已完成。
+      {status.isFetching
+        ? "正在重新讀取派送狀態。"
+        : status.error
+          ? "目前派送狀態無法重新讀取；請稍後核對，暫勿假定已恢復派送。"
+          : !status.data
+            ? "目前尚未取得派送狀態；請稍後核對，暫勿假定已恢復派送。"
+            : stillHalted
+              ? "目前仍列有這個對象的煞車；請核對來源與理由，再決定後續處置。"
+              : "這個對象已不在生效中的煞車清單；請核對上方目前派送狀態。"}
+    </p>
   );
 }
 
@@ -190,6 +225,7 @@ export function AdminDispatch() {
         </button>
       </p>
       {status.data && !status.error && <DispatchOverview status={status.data} />}
+      <LiftResult lift={lift} status={status} />
 
       <section aria-labelledby="admin-dispatch-declare">
         <h2 id="admin-dispatch-declare">宣告 P1 煞車</h2>
@@ -224,7 +260,10 @@ export function AdminDispatch() {
               ? "正在解除煞車，完成後才能停止派送。"
               : "先填宣告理由；節點名稱可以留空，代表停止整個叢集。"
           }
-          onSubmit={(note) => declare.mutate({ note, provider: target })}
+          onSubmit={(note) => {
+            lift.reset();
+            declare.mutate({ note, provider: target });
+          }}
         />
       </section>
 

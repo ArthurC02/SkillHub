@@ -18,6 +18,7 @@ import {
   ADMIN_AUDIT_LOG,
   ADMIN_ACCOUNT,
   ADMIN_COST_STATISTICS,
+  ADMIN_DISPATCH,
   ADMIN_LEDGER,
   ADMIN_MODEL_BUDGETS,
   ADMIN_ROSTERS,
@@ -1415,6 +1416,97 @@ test("OPS-005: the dispatch page names the halt, and a declaration without a nod
   await click(button("確認恢復派送"));
   await waitFor(() => calls.some((c) => c.method === "DELETE"));
   expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({ note: "cleared" });
+});
+
+test("OPS-005: a released halt leaves a focused, verified result after its form disappears", async () => {
+  let released = false;
+  stub(true, (path, method) => {
+    if (path === "/admin/dispatch" && method === "GET") {
+      return { body: released ? { dispatching: true, halts: [] } : ADMIN_DISPATCH, status: 200 };
+    }
+    if (path === "/admin/dispatch/halt" && method === "DELETE") {
+      released = true;
+      return { body: undefined, status: 204 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-lift-target", "pool");
+  await type("#admin-halt-lift-note", "incident resolved");
+  await click(button("恢復派送"));
+  await click(button("確認恢復派送"));
+
+  await waitFor(has("沒有生效中的煞車"));
+  const result = field<HTMLElement>("#admin-dispatch-lift-result");
+  expect(result.textContent).toContain("整個叢集煞車的請求已完成");
+  expect(result.textContent).toContain("已不在生效中的煞車清單");
+  expect(result.classList.contains("notice-success")).toBe(true);
+  expect(document.activeElement).toBe(result);
+  expect(container.querySelector("#admin-halt-lift-target")).toBeNull();
+});
+
+test("OPS-005: a completed release remains visible when status reread fails, then verifies on retry", async () => {
+  let reads = 0;
+  stub(true, (path, method) => {
+    if (path === "/admin/dispatch" && method === "GET") {
+      reads += 1;
+      return reads === 1
+        ? { body: ADMIN_DISPATCH, status: 200 }
+        : reads === 2
+          ? { body: { error: "service unavailable" }, status: 503 }
+          : { body: { dispatching: true, halts: [] }, status: 200 };
+    }
+    if (path === "/admin/dispatch/halt" && method === "DELETE") {
+      return { body: undefined, status: 204 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-lift-target", "pool");
+  await type("#admin-halt-lift-note", "incident resolved");
+  await click(button("恢復派送"));
+  await click(button("確認恢復派送"));
+
+  await waitFor(has("暫時無法讀取派送狀態"));
+  const result = field<HTMLElement>("#admin-dispatch-lift-result");
+  expect(result.textContent).toContain("暫勿假定已恢復派送");
+  expect(result.classList.contains("notice-warning")).toBe(true);
+  expect(document.activeElement).toBe(result);
+  expect(has("sandbox escape suspected on node-2")()).toBe(false);
+  expect(container.querySelector("#admin-halt-lift-target")).toBeNull();
+
+  await click(button("重新整理派送狀態"));
+  await waitFor(has("沒有生效中的煞車"));
+  expect(result.classList.contains("notice-success")).toBe(true);
+  expect(result.textContent).toContain("已不在生效中的煞車清單");
+  expect(calls.filter((call) => call.method === "DELETE")).toHaveLength(1);
+});
+
+test("OPS-005: an unverified release clears when a new halt is declared", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/dispatch/halt"
+      ? method === "DELETE"
+        ? { body: undefined, status: 204 }
+        : { body: { note: "叢集已再次停止派送。" }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("sandbox escape suspected on node-2"));
+  await type("#admin-halt-lift-target", "pool");
+  await type("#admin-halt-lift-note", "incident resolved");
+  await click(button("恢復派送"));
+  await click(button("確認恢復派送"));
+
+  await waitFor(has("目前仍列有這個對象的煞車"));
+  const result = field<HTMLElement>("#admin-dispatch-lift-result");
+  expect(result.classList.contains("notice-warning")).toBe(true);
+  expect(result.textContent).not.toContain("已不在生效中的煞車清單");
+
+  await type("#admin-halt-declare-note", "new incident");
+  await click(button("停止派送"));
+  expect(container.querySelector("#admin-dispatch-lift-result")).toBeNull();
 });
 
 test("OPS-005: a node halt remains visible while other nodes can still dispatch", async () => {

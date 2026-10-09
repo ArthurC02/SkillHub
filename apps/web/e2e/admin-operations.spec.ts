@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { ADMIN_MODEL_BUDGETS } from "../src/testing/fixtures/platform";
+import AxeBuilder from "@axe-core/playwright";
+import { ADMIN_DISPATCH, ADMIN_MODEL_BUDGETS } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
 test("a release in progress blocks another dispatch decision on a phone", async ({
@@ -44,6 +45,48 @@ test("a release in progress blocks another dispatch decision on a phone", async 
     finishRelease();
   }
   await expect(page.getByRole("button", { name: "停止派送" })).toBeEnabled();
+});
+
+test("a release result stays reachable when dispatch status cannot be reread on a phone", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let reads = 0;
+  await page.route("**/admin/dispatch", (route) => {
+    if (route.request().resourceType() === "document") return route.fallback();
+    reads += 1;
+    return route.fulfill(
+      reads === 1
+        ? { json: ADMIN_DISPATCH }
+        : reads === 2
+          ? { status: 503, json: { error: "service unavailable" } }
+          : { json: { dispatching: true, halts: [] } },
+    );
+  });
+  await page.route("**/admin/dispatch/halt", (route) => route.fulfill({ status: 204, body: "" }));
+  await page.goto("/admin/dispatch");
+  await page.locator("#admin-halt-lift-target").selectOption("pool");
+  await page.locator("#admin-halt-lift-note").fill("incident resolved");
+  await page.getByRole("button", { name: "恢復派送" }).click();
+  await page.getByRole("button", { name: "確認恢復派送" }).click();
+
+  await expect(page.getByRole("alert")).toContainText("暫時無法讀取派送狀態");
+  const result = page.locator("#admin-dispatch-lift-result");
+  await expect(result).toContainText("暫勿假定已恢復派送");
+  await expect(result).toHaveClass(/notice-warning/);
+  await expect(result).toBeFocused();
+  await expect(page.getByText("sandbox escape suspected on node-2")).toHaveCount(0);
+  await expect(page.locator("#admin-halt-lift-target")).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("dispatch-release-reread-failed-phone.png") });
+
+  await page.getByRole("button", { name: "重新整理派送狀態" }).click();
+  await expect(page.getByText("沒有生效中的煞車。")).toBeVisible();
+  await expect(result).toHaveClass(/notice-success/);
+  await expect(result).toContainText("已不在生效中的煞車清單");
 });
 
 test("restoring a model timeout also resets its editable draft on a phone", async ({
