@@ -543,7 +543,7 @@ def handle_verify_proposal(args: argparse.Namespace) -> int:
 def handle_record_test_result(args: argparse.Namespace) -> int:
     record_test_result(
         args.package_root.resolve(), args.registry_root.resolve(), args.repo_root.resolve(),
-        ObligationRun(args.obligation, args.command, args.command_profile), args.timeout,
+        ObligationRun(args.obligation, args.obligation_command, args.command_profile), args.timeout,
     )
     print(f"Recorded a passing result for {args.obligation}.")
     return 0

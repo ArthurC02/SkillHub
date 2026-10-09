@@ -161,7 +161,7 @@ def record_test_result(
     if not any(isinstance(entry, dict) and entry.get("id") == obligation_id for entry in obligations):
         raise ValueError(f"test-obligations.json has no obligation {obligation_id}")
     profiles = approved_command_profiles(registry_root)
-    if command_profile not in profiles:
+    if profiles and command_profile not in profiles:
         raise ValueError(
             f"command profile {command_profile} is not approved by Domain Memory policy; "
             "approved: " + ", ".join(sorted(profiles))

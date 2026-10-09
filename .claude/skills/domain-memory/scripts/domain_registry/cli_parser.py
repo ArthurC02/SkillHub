@@ -209,7 +209,7 @@ def build_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
     add_path(result_parser, "--registry-root")
     add_path(result_parser, "--repo-root")
     result_parser.add_argument("--obligation", required=True)
-    result_parser.add_argument("--command", required=True)
+    result_parser.add_argument("--command", dest="obligation_command", required=True)
     result_parser.add_argument("--command-profile", required=True)
     result_parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT_SECONDS)
     attest_parser = commands.add_parser("attest-signed-commit")

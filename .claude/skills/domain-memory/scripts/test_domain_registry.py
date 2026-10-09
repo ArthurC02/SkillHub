@@ -702,6 +702,37 @@ class DomainRegistryTest(unittest.TestCase):
             (result["status"], result["exit_code"], result["command_profile"], result["output_sha256"]),
         )
 
+    def test_the_command_line_records_the_run_it_was_given(self) -> None:
+        package = self.draft_package()
+        completed = subprocess.run(
+            [
+                sys.executable, str(Path(__file__).resolve().parent / "registry_tools.py"),
+                "record-test-result", "--package-root", str(package),
+                "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+                "--obligation", "OB-1", "--command", self.run_writing("cli"),
+                "--command-profile", "unit",
+            ],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
+        [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
+        self.assertEqual("sha256:" + hashlib.sha256(b"cli").hexdigest(), result["output_sha256"])
+
+    def test_a_policy_without_approved_profiles_accepts_any_profile(self) -> None:
+        package = self.draft_package()
+        policy_path = self.repo / "memory" / "domain-memory-policy.json"
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        policy["approved_command_profiles"] = []
+        policy_path.write_text(json.dumps(policy), encoding="utf-8")
+        record_test_result(
+            package, self.repo / "memory", self.repo,
+            ObligationRun("OB-1", self.run_writing("ok"), "release"), 60,
+        )
+        evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
+        [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
+        self.assertEqual("release", result["command_profile"])
+
     def test_a_failing_run_and_an_unknown_obligation_or_profile_record_nothing(self) -> None:
         package = self.draft_package()
         before = (package / "evidence-bundle.json").read_bytes()
