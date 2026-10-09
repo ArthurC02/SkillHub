@@ -133,7 +133,7 @@ async function refuse($: EngineInterface, action: string, reason: string) {
 }
 
 async function status($: EngineInterface, root: string): Promise<string | undefined> {
-  const result = await $.process.run(['git', '-C', root, 'status', '--porcelain', '-z'])
+  const result = await $.process.run(['git', '-C', root, 'status', '--porcelain', '-z', '--untracked-files=all'])
   return result.exitCode === 0 ? result.stdout : undefined
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "skillhub-guards",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Guards the repository's red lines at the moment of action, runs platform tests against the test database, watches CI after a push, and gives the model a mutation probe that always restores the file and a ship tool that commits and pushes by the repository's rules",
   "types": "./types/index.d.ts"
 }
