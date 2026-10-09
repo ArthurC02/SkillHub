@@ -80,6 +80,7 @@ from domain_registry.transaction import recover_interrupted_update, transaction_
 from domain_registry.updates import (
     apply_approved_updates,
     demote_local_reviews,
+    promote_candidate,
     reconcile_pending_update,
     retract_candidate,
     upsert_candidate,
@@ -1465,6 +1466,68 @@ class DomainRegistryTest(unittest.TestCase):
             ],
         )
         self.assertEqual([], coverage(self.repo / "memory")["evidence_gaps"])
+
+    def package_with_a_candidate_rule(self, statement: str) -> Path:
+        package = self.draft_package()
+        proposal_file = package / "domain-change-proposal.json"
+        proposal = json.loads(proposal_file.read_text(encoding="utf-8"))
+        proposal["registry_updates"] = []
+        proposal_file.write_text(json.dumps(proposal), encoding="utf-8")
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        record = self.write_record(
+            "rule.json",
+            {"id": "order-total", "contexts": ["orders"], "statement": statement, "evidence": ["README.md:1"]},
+        )
+        upsert_candidate(self.repo / "memory", self.repo, "rules", record)
+        return package
+
+    def registry_updates(self, package: Path) -> list[dict]:
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        return proposal["registry_updates"]
+
+    def test_a_promoted_candidate_is_applied_as_the_reviewed_record(self) -> None:
+        package = self.package_with_a_candidate_rule("An order total is non-negative.")
+        promote_candidate(package, self.repo / "memory", "rules", "order-total")
+        [update] = self.registry_updates(package)
+        self.assertEqual(("upsert", "rules"), (update["operation"], update["asset"]))
+        self.assertNotIn("status", update["record"])
+        self.approve_and_apply(package)
+        rules = json.loads((self.repo / "memory" / "registry" / "rules.json").read_text(encoding="utf-8"))
+        [rule] = rules["rules"]
+        self.assertEqual(("order-total", "reviewed", "An order total is non-negative."),
+                         (rule["id"], rule["status"], rule["statement"]))
+
+    def test_promoting_again_replaces_the_entry_with_the_current_candidate(self) -> None:
+        package = self.package_with_a_candidate_rule("First wording.")
+        promote_candidate(package, self.repo / "memory", "rules", "order-total")
+        record = self.write_record(
+            "rule.json",
+            {"id": "order-total", "contexts": ["orders"], "statement": "Second wording.", "evidence": ["README.md:1"]},
+        )
+        upsert_candidate(self.repo / "memory", self.repo, "rules", record)
+        promote_candidate(package, self.repo / "memory", "rules", "order-total")
+        self.assertEqual(["Second wording."], [entry["record"]["statement"] for entry in self.registry_updates(package)])
+
+    def test_promoting_refuses_what_cannot_become_a_reviewed_update(self) -> None:
+        package = self.package_with_a_candidate_rule("An order total is non-negative.")
+        with self.assertRaisesRegex(ValueError, "no rules/missing in the Registry"):
+            promote_candidate(package, self.repo / "memory", "rules", "missing")
+        promote_candidate(package, self.repo / "memory", "rules", "order-total")
+        self.approve_and_apply(package)
+        again = self.redraft_target()
+        with self.assertRaisesRegex(ValueError, "already reviewed"):
+            promote_candidate(again, self.repo / "memory", "rules", "order-total")
+        with self.assertRaisesRegex(ValueError, "added while the proposal is a draft"):
+            promote_candidate(package, self.repo / "memory", "rules", "order-total")
+
+    def redraft_target(self) -> Path:
+        package = self.repo / "second"
+        shutil.copytree(self.repo / "proposal", package)
+        proposal_file = package / "domain-change-proposal.json"
+        proposal = json.loads(proposal_file.read_text(encoding="utf-8"))
+        proposal["status"] = "draft"
+        proposal_file.write_text(json.dumps(proposal), encoding="utf-8")
+        return package
 
     def rule_ids(self) -> list[str]:
         document = json.loads(

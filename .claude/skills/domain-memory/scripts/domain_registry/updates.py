@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .changes import validate_change_package
+from .changes import PROPOSAL_FILE, validate_change_package
 from .common import (
     ASSET_KEYS,
     completed_identifier,
@@ -335,3 +335,40 @@ def apply_approved_updates(
     )
     mark_applied(proposal_path, proposal, registry_root, repo_root)
     reconciliation_path(registry_root).unlink(missing_ok=True)
+
+
+def promote_candidate(
+    package_root: Path, registry_root: Path, asset: str, record_id: str
+) -> None:
+    path = package_root / PROPOSAL_FILE
+    proposal = load_json(path)
+    if proposal.get("status") != "draft":
+        raise ValueError(
+            "registry updates are added while the proposal is a draft; a submitted proposal's "
+            "content is what its approvals cover"
+        )
+    name = asset_file_name(asset)
+    document = load_json(registry_dir(registry_root) / name)
+    record = find_record(document[ASSET_KEYS[name]], record_id)
+    if record is None:
+        raise ValueError(
+            f"no {asset}/{record_id} in the Registry; record it with upsert-candidate first"
+        )
+    if is_reviewed(asset, document, record):
+        raise ValueError(
+            f"{asset}/{record_id} is already reviewed; record the change as a candidate with "
+            "upsert-candidate, then promote that"
+        )
+    promoted = {
+        key: value
+        for key, value in record.items()
+        if key not in {review_field(asset), "review"}
+    }
+    update = {"operation": "upsert", "asset": asset, "record": promoted}
+    updates = [
+        entry
+        for entry in proposal.get("registry_updates", [])
+        if not (entry.get("asset") == asset and (entry.get("record") or {}).get("id") == record_id)
+    ]
+    proposal["registry_updates"] = [*updates, update]
+    write_json(path, proposal)

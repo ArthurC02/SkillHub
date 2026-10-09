@@ -62,6 +62,7 @@ from .transaction import recover_interrupted_update
 from .updates import (
     apply_approved_updates,
     demote_local_reviews,
+    promote_candidate,
     retract_candidate,
     upsert_candidate,
 )
@@ -205,6 +206,17 @@ def handle_retract_candidate(args: argparse.Namespace) -> int:
         args.reason,
     )
     print("Candidate record retracted.")
+    return 0
+
+
+def handle_promote_candidate(args: argparse.Namespace) -> int:
+    promote_candidate(
+        args.package_root.resolve(), args.registry_root.resolve(), args.asset, args.id
+    )
+    print(
+        f"{args.asset}/{args.id} is in registry_updates; "
+        "apply-approved-updates reviews it once the proposal is approved."
+    )
     return 0
 
 
@@ -581,6 +593,7 @@ HANDLERS = {
     "cite": handle_cite,
     "upsert-candidate": handle_upsert_candidate,
     "retract-candidate": handle_retract_candidate,
+    "promote-candidate": handle_promote_candidate,
     "apply-approved-updates": handle_apply_approved_updates,
     "demote-local-reviews": handle_demote_local_reviews,
     "discover-sources": handle_discover_sources,
