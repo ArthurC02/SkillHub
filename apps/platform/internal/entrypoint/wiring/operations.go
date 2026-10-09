@@ -16,6 +16,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
@@ -32,14 +33,15 @@ var AgentLimits = agentloop.Limits{
 	StepTimeout: agentStepTimeout, MaxOutputTokens: agentMaxOutputToken,
 }
 
-func AgentTools(pool *pgxpool.Pool, rate capacity.RestoreRate) []agentloop.Tool {
-	return []agentloop.Tool{MaintenanceReportTool(pool, rate, time.Now)}
+func AgentTools(
+	pool *pgxpool.Pool, rate capacity.RestoreRate, docket func(context.Context) ([]publishing.DocketEntry, error),
+) []agentloop.Tool {
+	return []agentloop.Tool{MaintenanceReportTool(pool, rate, time.Now), ExposureQueueTool(docket)}
 }
 
 func NewAgentRuns(
-	pool *pgxpool.Pool, llm *llmclient.Client, gateway *run.Gateway, credits *credit.Service, rate capacity.RestoreRate,
+	pool *pgxpool.Pool, llm *llmclient.Client, gateway *run.Gateway, credits *credit.Service, tools []agentloop.Tool,
 ) func(ctx context.Context, agent string) error {
-	tools := AgentTools(pool, rate)
 	return func(ctx context.Context, agent string) error {
 		def, ok := operations.Lookup(agent)
 		if !ok {

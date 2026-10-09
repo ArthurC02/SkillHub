@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
@@ -21,11 +22,11 @@ func newPublishingService(cfg Config, registrySvc *registry.Service, packagingSv
 	}
 	svc.LockSkillForRelease = func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (publishing.SkillFacts, bool, error) {
 		skill, found, err := registrySvc.LockLiveWorkspaceSkill(ctx, tx, workspaceID, skillID)
-		return publishingSkillFacts(skill), found, err
+		return wiring.PublishingSkillFacts(skill), found, err
 	}
 	svc.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (publishing.SkillFacts, bool, error) {
 		skill, found, err := registrySvc.WorkspaceSkill(ctx, workspaceID, skillID)
-		return publishingSkillFacts(skill), found, err
+		return wiring.PublishingSkillFacts(skill), found, err
 	}
 	svc.ReadSkills = publishingSkillsReader(registrySvc)
 	svc.ReadVersion = func(ctx context.Context, workspaceID, versionID pgtype.UUID) (publishing.VersionFacts, bool, error) {
@@ -85,17 +86,6 @@ func acquisitionOf(artifact packaging.Artifact, duplicate bool) publishing.Acqui
 	}
 }
 
-func publishingSkillFacts(skill registry.Skill) publishing.SkillFacts {
-	facts := publishing.SkillFacts{
-		ID: skill.ID, Name: skill.Name, TakenDown: skill.TakenDown(),
-		AccessRestricted: skill.Restriction().InEffect(), Redistribution: skill.Redistribution,
-	}
-	if skill.Summary != nil {
-		facts.Summary = *skill.Summary
-	}
-	return facts
-}
-
 func publishingVersionFacts(version registry.Version) publishing.VersionFacts {
 	facts := publishing.VersionFacts{
 		ID: version.ID, SkillID: version.SkillID, VersionNumber: version.VersionNumber,
@@ -116,15 +106,7 @@ func describeRedistribution(value string) (label, note string) {
 }
 
 func wireExposure(catalogSvc *catalog.Service, publishingSvc *publishing.Service) {
-	publishingSvc.ReadSearchSnapshot = func(ctx context.Context, skillID pgtype.UUID) (publishing.SearchSnapshot, bool, error) {
-		snapshot, found, err := catalogSvc.SearchSnapshotOf(ctx, skillID)
-		return publishing.SearchSnapshot{
-			VersionID: snapshot.VersionID, Name: snapshot.Name, Summary: snapshot.Summary,
-			EnrichedSummary: snapshot.EnrichedSummary, TaskExamples: snapshot.TaskExamples, Tags: snapshot.Tags,
-			Limitations: snapshot.Limitations, Enriched: snapshot.Enriched, Listable: snapshot.Listable,
-			Digest: snapshot.Digest,
-		}, found, err
-	}
+	publishingSvc.ReadSearchSnapshot = wiring.SearchSnapshotReader(catalogSvc)
 	catalogSvc.ExposedSkills = func(ctx context.Context) ([]catalog.ExposedSkill, error) {
 		exposed, err := publishingSvc.ExposedSkills(ctx)
 		if err != nil {
@@ -152,7 +134,7 @@ func publishingSkillsReader(registrySvc *registry.Service) func(context.Context,
 		}
 		out := make(map[publishing.SkillRef]publishing.SkillFacts, len(skills))
 		for ref, skill := range skills {
-			out[publishing.SkillRef{WorkspaceID: ref.WorkspaceID, SkillID: ref.SkillID}] = publishingSkillFacts(skill)
+			out[publishing.SkillRef{WorkspaceID: ref.WorkspaceID, SkillID: ref.SkillID}] = wiring.PublishingSkillFacts(skill)
 		}
 		return out, nil
 	}

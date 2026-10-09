@@ -10,7 +10,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 )
 
-type dailyReportEvals struct {
+type agentEvals struct {
 	Snapshot json.RawMessage `json:"snapshot"`
 	Cases    []struct {
 		Name   string          `json:"name"`
@@ -31,26 +31,40 @@ func TestEveryDefinedAgentHasItsFixedEvals(t *testing.T) {
 			t.Errorf("agent %q has no fixed evals: %v", def.Name, err)
 		}
 	}
+	files, err := filepath.Glob(filepath.Join(agentEvalsDir, "*.evals.json"))
+	if err != nil || len(files) == 0 {
+		t.Fatalf("no evals found in %s: %v", agentEvalsDir, err)
+	}
+	for _, file := range files {
+		name := strings.TrimSuffix(filepath.Base(file), ".evals.json")
+		if _, ok := Lookup(name); !ok {
+			t.Errorf("%s has fixed evals but no agent is defined under that name", name)
+		}
+	}
 }
 
-func TestDailyReportEvalsAcceptOnlyReportsThatCiteTheSnapshot(t *testing.T) {
-	raw, err := os.ReadFile(evalsPath(DailyReport.Name))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var evals dailyReportEvals
-	if err := json.Unmarshal(raw, &evals); err != nil {
-		t.Fatal(err)
-	}
-	if len(evals.Cases) == 0 {
-		t.Fatal("the eval file has no cases")
-	}
-	steps := []agentloop.StepRecord{{ToolCall: agentloop.ToolCall{Tool: ToolMaintenanceReport, Arguments: "{}"}, Result: string(evals.Snapshot)}}
-	for _, tc := range evals.Cases {
-		t.Run(tc.Name, func(t *testing.T) {
-			err := CitesOnlyReturnedFacts(tc.Report, steps)
-			if (err == nil) != tc.Passes {
-				t.Errorf("check returned %v, want passes=%v", err, tc.Passes)
+func TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot(t *testing.T) {
+	for _, def := range Definitions() {
+		t.Run(def.Name, func(t *testing.T) {
+			raw, err := os.ReadFile(evalsPath(def.Name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var evals agentEvals
+			if err := json.Unmarshal(raw, &evals); err != nil {
+				t.Fatal(err)
+			}
+			if len(evals.Cases) == 0 {
+				t.Fatal("the eval file has no cases")
+			}
+			steps := []agentloop.StepRecord{{ToolCall: agentloop.ToolCall{Tool: def.Tools[0], Arguments: "{}"}, Result: string(evals.Snapshot)}}
+			for _, tc := range evals.Cases {
+				t.Run(tc.Name, func(t *testing.T) {
+					err := def.CheckResult(tc.Report, steps)
+					if (err == nil) != tc.Passes {
+						t.Errorf("check returned %v, want passes=%v", err, tc.Passes)
+					}
+				})
 			}
 		})
 	}
@@ -105,8 +119,8 @@ func TestADailyReportMustBeWellFormedBeforeItsCitesCount(t *testing.T) {
 		{"unknown status", `{"items":[{"status":"warning","text":"ok","cites":["/x"]}]}`, `status "warning"`},
 		{"blank text", `{"items":[{"status":"fine","text":"  ","cites":["/x"]}]}`, "says nothing"},
 		{"no cites", `{"items":[{"status":"fine","text":"ok"}]}`, "cites no fact"},
-		{"unknown field", `{"items":[],"summary":"x"}`, "not a daily report"},
-		{"not an object", `[]`, "not a daily report"},
+		{"unknown field", `{"items":[],"summary":"x"}`, "not a report of cited items"},
+		{"not an object", `[]`, "not a report of cited items"},
 		{"second item is wrong", `{"items":[{"status":"fine","text":"ok","cites":["/x"]},{"status":"fine","text":"ok","cites":["/y"]}]}`, "item 2"},
 		{"a proposal citing a fact", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":"run-a","reason":"late","cites":["/x"]}]}`, ""},
 		{"a proposal with no action", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":" ","reason":"late","cites":["/x"]}]}`, "names no action"},

@@ -37,7 +37,7 @@ func CitesOnlyReturnedFacts(result json.RawMessage, steps []agentloop.StepRecord
 	dec.DisallowUnknownFields()
 	var report DailyReportResult
 	if err := dec.Decode(&report); err != nil {
-		return fmt.Errorf("the report is not a daily report: %w", err)
+		return fmt.Errorf("the result is not a report of cited items: %w", err)
 	}
 	if len(report.Items) == 0 {
 		return errNoItems

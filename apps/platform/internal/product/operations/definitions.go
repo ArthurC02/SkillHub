@@ -16,6 +16,21 @@ var DailyReport = Definition{
 	Proposals:           DailyReportProposals,
 }
 
+const exposureReviewSpendCapMicros = 200_000
+
+const ToolExposureQueue = "exposure_queue"
+
+var ExposureReview = Definition{
+	Name:                "exposure-review",
+	Purpose:             "Reads the publications waiting for an exposure decision and points operators at the ones whose search text or scan findings need a closer look; the decision stays with the operator.",
+	ModelRole:           "skillhub-ops-report",
+	DailySpendCapMicros: exposureReviewSpendCapMicros,
+	Tools:               []string{ToolExposureQueue},
+	Actions:             []string{},
+	CheckResult:         CitesOnlyReturnedFacts,
+	Sightings:           DailyReportSightings,
+}
+
 func maintenanceJobActions() []string {
 	actions := make([]string, len(ProposableMaintenanceJobs))
 	for i, job := range ProposableMaintenanceJobs {
@@ -25,7 +40,7 @@ func maintenanceJobActions() []string {
 }
 
 func Definitions() []Definition {
-	return []Definition{DailyReport}
+	return []Definition{DailyReport, ExposureReview}
 }
 
 func Lookup(name string) (Definition, bool) {
