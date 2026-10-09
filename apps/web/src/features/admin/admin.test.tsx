@@ -811,6 +811,39 @@ test("OPS-009: an override shows its effective value, default, range, and closed
   expect(container.querySelector("#admin-budget-match-reasons-clear")).toBeNull();
 });
 
+test("OPS-009: restoring the default also resets the editable seconds", async () => {
+  let overridden = true;
+  stub(true, (path, method) => {
+    if (path === "/admin/model-budgets" && method === "GET") {
+      return {
+        body: {
+          budgets: ADMIN_MODEL_BUDGETS.budgets.map((budget) =>
+            budget.kind === "judge-run" && !overridden
+              ? { ...budget, seconds: null, reason: null, set_at: null }
+              : budget,
+          ),
+        },
+        status: 200,
+      };
+    }
+    if (path === "/admin/model-budgets/judge-run" && method === "DELETE") {
+      overridden = false;
+      return { body: {}, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/model-budgets");
+  await waitFor(has("目前：90 秒（已調整）"));
+  await click(field<HTMLElement>("#admin-budget-judge-run-set summary"));
+  expect(field<HTMLInputElement>("#admin-budget-judge-run-seconds").value).toBe("90");
+  await click(field<HTMLElement>("#admin-budget-judge-run-clear summary"));
+  await type("#admin-budget-judge-run-clear-note", "恢復平台預設");
+  await click(button("把 評估判定 改回預設"));
+  await waitFor(has("目前：預設 130 秒"));
+
+  expect(field<HTMLInputElement>("#admin-budget-judge-run-seconds").value).toBe("130");
+});
+
 test("OPS-009: range endpoints are accepted and adjacent values are blocked", async () => {
   stub(true);
   await mountAt("/admin/model-budgets");

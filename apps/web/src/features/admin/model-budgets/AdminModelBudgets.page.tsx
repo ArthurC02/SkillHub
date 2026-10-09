@@ -109,7 +109,10 @@ function BudgetRow({ budget }: { budget: ModelCallBudget }) {
             done={clear.isSuccess && "已改回預設。"}
             onSubmit={(reason) => {
               set.reset();
-              clear.mutate({ kind: budget.kind, reason });
+              clear.mutate(
+                { kind: budget.kind, reason },
+                { onSuccess: () => setSeconds(String(budget.default_seconds)) },
+              );
             }}
           />
         </details>
