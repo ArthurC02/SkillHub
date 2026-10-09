@@ -280,6 +280,33 @@ def test_an_unreadable_manifest_is_never_told_to_the_judge_as_a_run_that_wrote_n
     assert "the run wrote no files" in calls[0]["messages"][1]["content"]
 
 
+def test_a_panel_member_is_its_own_role_with_its_own_seed(capture):
+    calls = capture(json.dumps(GOOD_VERDICT))
+
+    alone = client.post("/judge-run", json=JUDGE_REQUEST)
+    member = client.post(
+        "/judge-run", json={**JUDGE_REQUEST, "model_role": "skillhub-judge-panel-2"}
+    )
+
+    assert alone.status_code == member.status_code == 200
+    assert [call["model"] for call in calls] == ["skillhub-judge", "skillhub-judge-panel-2"]
+    assert calls[1]["seed"] == calls[0]["seed"] + 2
+    assert member.json()["seed"] == calls[1]["seed"]
+    assert member.json()["model"] == "skillhub-judge-panel-2"
+
+
+@pytest.mark.parametrize(
+    "role", ["skillhub-run", "skillhub-judge-panel-0", "skillhub-judge-panel-10", "skillhub-judge-"]
+)
+def test_a_role_outside_the_judge_panel_is_refused_before_any_call(capture, role):
+    calls = capture(json.dumps(GOOD_VERDICT))
+
+    response = client.post("/judge-run", json={**JUDGE_REQUEST, "model_role": role})
+
+    assert response.status_code == 422
+    assert calls == []
+
+
 def test_judge_call_is_strict_json_schema_and_carries_cost_metadata(capture):
     calls = capture(json.dumps(GOOD_VERDICT))
 

@@ -147,6 +147,7 @@ type Service struct {
 	ReadRuntimeCompatibility func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error)
 
 	JudgeModel         string
+	JudgePanel         []string
 	JudgePromptVersion string
 }
 

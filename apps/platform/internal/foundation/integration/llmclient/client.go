@@ -272,6 +272,7 @@ type JudgeRunRequest struct {
 	TraceDigest  TraceDigest      `json:"trace_digest"`
 
 	Truncation []string `json:"truncation"`
+	ModelRole  string   `json:"model_role,omitempty"`
 
 	TimeoutSeconds float64 `json:"timeout_seconds,omitempty"`
 }

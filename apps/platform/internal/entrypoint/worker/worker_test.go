@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -27,6 +28,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 func testDeps(t *testing.T) (*pgxpool.Pool, Deps) {
@@ -160,6 +162,18 @@ func TestBuildWorkersLeavesTheJudgeUnsetWithoutAnLLM(t *testing.T) {
 	}
 	if set.Evaluations.Judge != nil || set.Evaluations.Suggester != nil {
 		t.Error("no LLM service configured, yet the evaluation service holds a judge or a suggester")
+	}
+}
+
+func TestBuildWorkersHandsTheJudgePanelToTheEvaluationService(t *testing.T) {
+	pool, deps := testDeps(t)
+	deps.JudgePanel = eval.PanelRoles
+	set, err := BuildWorkers(pool, deps)
+	if err != nil {
+		t.Fatalf("BuildWorkers: %v", err)
+	}
+	if !slices.Equal(set.Evaluations.JudgePanel, eval.PanelRoles) {
+		t.Errorf("evaluation service panel = %v, want %v", set.Evaluations.JudgePanel, eval.PanelRoles)
 	}
 }
 

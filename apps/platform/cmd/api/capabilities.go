@@ -90,6 +90,14 @@ func searchAndModelCapabilities(pool *pgxpool.Pool, client *http.Client) []envx.
 			Probe:   probeLLMService(client),
 		},
 		{
+			ID:      "evaluation_judge_panel",
+			Name:    "評估判定的評審團",
+			Needs:   []string{"JUDGE_PANEL"},
+			Without: "每次評估只有一個判定呼叫，同一份輸出重判可能得到不同結果",
+			Fix: "設成 on：三個獨立的判定呼叫逐條多數決，沒有多數的條件記為 undetermined；判定費用約為三倍。" +
+				"閘道要有 skillhub-judge-panel-1、skillhub-judge-panel-2 兩個角色；只有 Worker 讀它",
+		},
+		{
 			ID:    "run_dispatch",
 			Name:  "試跑（模型出口）",
 			Needs: []string{"SKILLHUB_MODEL_GATEWAY_URL", "SKILLHUB_MODEL_GATEWAY_KEY", "SKILLHUB_RUN_MODEL"},

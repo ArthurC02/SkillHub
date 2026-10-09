@@ -45,6 +45,7 @@ type Deps struct {
 	LLM *llmclient.Client
 
 	RestoreRate capacity.RestoreRate
+	JudgePanel  []string
 
 	PollOnly bool
 }
@@ -111,7 +112,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 
 	set.Evaluations = &eval.Service{
 		Pool: pool, Store: deps.Store,
-		Trace: traceSvc, TestLab: testlabSvc,
+		Trace: traceSvc, TestLab: testlabSvc, JudgePanel: deps.JudgePanel,
 	}
 	wiring.WireEvaluationRunReaders(set.Evaluations, set.Runs)
 	wiring.WireEvaluationRegistryReaders(set.Evaluations, registrySvc)

@@ -371,6 +371,10 @@ class JudgeRunRequest(BaseModel):
         None,
         description="A ceiling this caller wants, honoured only when it is BELOW the\nservice's own (the handler takes `min()` of the two). It cannot buy\na longer call.\n\nWhich caller gets which deadline stays a Go decision (Iron Rule 6).\nWithout this field the service's own constant is the only ceiling,\nso a Go deadline set below it expires first: Go records a timeout\nwhile the gateway call keeps running and keeps billing.\n",
     )
+    model_role: constr(pattern=r'^skillhub-judge(-panel-[1-9])?$') | None = Field(
+        None,
+        description="Which gateway judge role answers. Go names one per panel member so\nthe members are independent calls; the panel's size and how its\nverdicts are combined stay Go decisions. Without it the service's\nown judge role answers.\n",
+    )
 
 
 class Kind(Enum):

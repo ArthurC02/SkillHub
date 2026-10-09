@@ -70,3 +70,19 @@ func TestTheWorkerRefusesToStartWithAnUnusableRestoreRate(t *testing.T) {
 		t.Fatalf("an unset restore rate was refused instead of falling back to the default: %q", refusals)
 	}
 }
+
+func TestTheWorkerRefusesToStartWithAJudgePanelValueItCannotRead(t *testing.T) {
+	for _, name := range []string{"APP_URL", "DEV_CORS_ORIGIN", "IMPORT_ALLOW_INSECURE", "IMPORT_EXTRA_HOSTS", "COOKIE_INSECURE", "DEV_LOGIN", "SKILLHUB_CLEAN_MODE", "RESTORE_BYTES_PER_SECOND"} {
+		t.Setenv(name, "")
+	}
+	t.Setenv("JUDGE_PANEL", "yes")
+	refusals := startupRefusals(run.NewRegistry())
+	if len(refusals) != 1 || !strings.Contains(refusals[0], "JUDGE_PANEL") {
+		t.Fatalf("refusals = %q, want one naming JUDGE_PANEL", refusals)
+	}
+
+	t.Setenv("JUDGE_PANEL", "on")
+	if refusals := startupRefusals(run.NewRegistry()); len(refusals) != 0 {
+		t.Fatalf("a panel switched on was refused: %q", refusals)
+	}
+}

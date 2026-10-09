@@ -132,6 +132,7 @@ services:
       SKILLHUB_TRACE_INGEST_URL: http://platform-api:8080
       SKILLHUB_TRACE_INGEST_SECRET: ${SKILLHUB_TRACE_INGEST_SECRET:-}
       METRICS_ADDR: ${METRICS_ADDR:-}
+      JUDGE_PANEL: ${JUDGE_PANEL:-off}
 
   llm:
     profiles: ["app"]

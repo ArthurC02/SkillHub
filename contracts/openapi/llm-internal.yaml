@@ -1413,6 +1413,14 @@ components:
             Without this field the service's own constant is the only ceiling,
             so a Go deadline set below it expires first: Go records a timeout
             while the gateway call keeps running and keeps billing.
+        model_role:
+          type: string
+          pattern: '^skillhub-judge(-panel-[1-9])?$'
+          description: |
+            Which gateway judge role answers. Go names one per panel member so
+            the members are independent calls; the panel's size and how its
+            verdicts are combined stay Go decisions. Without it the service's
+            own judge role answers.
     JudgeEvidenceRef:
       type: object
       description: |

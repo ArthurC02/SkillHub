@@ -251,6 +251,14 @@ class JudgeRunRequest(BaseModel):
     trace_digest: TraceDigest
     truncation: list[str] = Field(default_factory=list, max_length=100)
     timeout_seconds: float | None = Field(None, gt=0)
+    model_role: str | None = Field(None, pattern=r"^skillhub-judge(-panel-[1-9])?$")
+
+
+def _panel_member(role: str | None) -> int:
+    """0 for the judge itself, N for its `-panel-N` role."""
+    if role is None or "-panel-" not in role:
+        return 0
+    return int(role.rsplit("-", 1)[1])
 
 
 class JudgeEvidenceRef(BaseModel):
@@ -393,13 +401,15 @@ def _judge_user_message(req: JudgeRunRequest) -> str:
 async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
     """Judge one Run against its acceptance criteria - a verdict, never a decision."""
     system = JUDGE_SYSTEM_PROMPT
+    role = req.model_role or JUDGE_MODEL
+    seed = SEED + _panel_member(req.model_role)
     if not req.trace_digest.complete or req.truncation:
         system += EVIDENCE_INCOMPLETE_NOTICE
 
     try:
         # Raw response: the call's cost is in a response header, never in the body.
         raw = await _client(req.timeout_seconds).chat.completions.with_raw_response.create(
-            model=JUDGE_MODEL,
+            model=role,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": _judge_user_message(req)},
@@ -413,7 +423,7 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
                 },
             },
             temperature=TEMPERATURE,
-            seed=SEED,
+            seed=seed,
             extra_body=request_metadata(
                 run_id=req.run_id, evaluation_id=req.evaluation_id, operation="judge"
             ),
@@ -439,10 +449,10 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
 
     return JudgeRunResponse(
         verdict=verdict,
-        model=served_model(completion, raw.headers, JUDGE_MODEL),
+        model=served_model(completion, raw.headers, role),
         prompt_version=JUDGE_PROMPT_VERSION,
         temperature=TEMPERATURE,
-        seed=SEED,
+        seed=seed,
         usage=completion_usage(completion, raw.headers),
     )
 
