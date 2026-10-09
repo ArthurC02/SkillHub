@@ -15,9 +15,8 @@ from typing import Any
 INVOCATION = re.compile(r"registry_tools\.py[\"']?\s+([a-z][a-z0-9-]*)")
 COMMAND_LIST = re.compile(r"\{([a-z0-9,-]+)\}")
 FAILURE_LINE = re.compile(
-    r"^(ERROR: .*|registry_tools\.py [a-z0-9-]+: error: .*|[A-Za-z]*Error: .*)$", re.MULTILINE
+    r"^(ERROR: .*|registry_tools\.py [a-z0-9-]+: error: .*|[\w.]*(?:Error|Exception): .*)$", re.MULTILINE
 )
-TRACEBACK = "Traceback (most recent call last)"
 HOST_REFUSALS = (
     "Permission to use",
     "Permission for this action was denied",
@@ -70,15 +69,13 @@ def refused_by_host(result: dict[str, Any]) -> bool:
 
 def failure_of(result: dict[str, Any]) -> str | None:
     text = result_text(result)
-    lines = FAILURE_LINE.findall(text)
-    if lines:
+    lines = [line for line in text.splitlines() if line.strip()]
+    if lines and FAILURE_LINE.fullmatch(lines[-1]):
         return signature(lines[-1])
-    if TRACEBACK in text:
-        return "Traceback"
-    if result.get("is_error"):
-        first = next((line for line in text.splitlines() if line.strip()), "")
-        return signature(first) or "error"
-    return None
+    if not result.get("is_error"):
+        return None
+    failures = FAILURE_LINE.findall(text)
+    return signature(failures[-1] if failures else lines[0] if lines else "") or "error"
 
 
 def _blocks(entry: dict[str, Any]) -> list[dict[str, Any]]:

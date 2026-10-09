@@ -38,8 +38,10 @@ def test_each_failure_form_is_counted_with_its_last_failure_line():
         ("usage: x\nregistry_tools.py validate: error: the following arguments are required: --registry-root",
          False, "registry_tools.py validate: error: the following arguments are required: --registry-root"),
         ("Traceback (most recent call last):\n  File x\nKeyError: 'x'", False, "KeyError: <text>"),
-        ("Traceback (most recent call last):\n  File x", False, "Traceback"),
+        ("Traceback (most recent call last):\n  File x\njson.decoder.JSONDecodeError: Expecting value",
+         False, "json.decoder.JSONDecodeError: Expecting value"),
         ("ERROR: a staged copy failed\nERROR: nothing was written", False, "ERROR: nothing was written"),
+        ("Exit code 1\nERROR: broken\nsummary follows", True, "ERROR: broken"),
         ("Exit code 2\nsomething", True, "Exit code <n>"),
     ]
     for content, is_error, expected in cases:
@@ -52,6 +54,12 @@ def test_each_failure_form_is_counted_with_its_last_failure_line():
 def test_a_clean_run_is_a_call_and_not_a_failure():
     summary = scanned([call("a", "python registry_tools.py cite --file x"), result("a", "Registry is valid.")])
     assert (row(summary, "cite")["calls"], row(summary, "cite")["failures"]) == (1, 0)
+
+
+def test_a_failure_echoed_inside_a_clean_run_is_not_a_failure():
+    echoed = '{\n  "output": "Traceback (most recent call last):\nAssertionError: expected red"\n}'
+    summary = scanned([call("a", "python registry_tools.py validate"), result("a", echoed)])
+    assert row(summary, "validate")["failures"] == 0
 
 
 def test_list_content_is_read_like_text():
