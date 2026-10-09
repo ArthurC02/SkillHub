@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "客戶說：我是張先生，這次健檢加做了胃鏡，想約2026年11月18日星期三上午10點來領報告，自費項目費用是1800元，我電話0933444555。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出只有簡訊本文一行，沒有附加任何字數統計或說明文字"
+    },
+    {
+      "text": "本文總字數（含標點與英數字）不超過 28 字"
+    },
+    {
+      "text": "本文包含日期 11/18（或 2026/11/18 等同表示）與時間 10:00（或上午10點等同表示）"
+    },
+    {
+      "text": "本文包含自費項目費用 1800 元"
+    }
+  ],
+  "final_output": "2026年11月18日星期三上午10點領取胃鏡1800元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "12a06002-48af-4cef-843e-d1f6d9b53119",
+    "run_id": "68d7bb91-8826-4e70-99e4-011891b44452",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收條件均符合：輸出僅有一行簡訊、恰為 28 字，並包含指定日期、時間及費用。",
+    "criterion_results": [
+      {
+        "criterion_id": "6ce5aa92-39b8-4265-9eb6-ac885795ab63",
+        "text": "輸出只有簡訊本文一行，沒有附加任何字數統計或說明文字",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有一行簡訊本文，沒有字數統計或說明文字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年11月18日星期三上午10點領取胃鏡1800元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "988183ed-79ab-439a-91be-5720f0e611d1",
+        "text": "本文總字數（含標點與英數字）不超過 28 字",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊本文共 28 字，未超過上限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年11月18日星期三上午10點領取胃鏡1800元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d7ea9e7c-ec33-4b59-9e0d-65ab73eae856",
+        "text": "本文包含日期 11/18（或 2026/11/18 等同表示）與時間 10:00（或上午10點等同表示）",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文包含 2026年11月18日及上午10點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年11月18日星期三上午10點",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e931421f-5337-43f2-b029-a836d2048d33",
+        "text": "本文包含自費項目費用 1800 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文包含自費項目費用 1800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "胃鏡1800元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1644 input and 4643 output tokens on skillhub-run; reported cost $0.0067 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下資料，各寫一篇溫馨感恩的繁體中文退休歡送會邀請文，保留並核對四項活動資訊；如有缺漏，請明確標示待確認，不要把推測寫成已確認事實。\n資料一：歡送會名稱：星河同心退休歡送會；活動日期：2026年11月6日；集合時間：下午5:30；地點：松風廳。\n資料二：歡送會名稱：海棠相伴退休歡送會；活動日期：未提供；集合時間：下午6:00；地點：一樓交誼廳。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑資料一：輸出是一篇繁體中文、溫馨感恩且得體的邀請文，並逐字保留「星河同心退休歡送會」、「2026年11月6日」、「下午5:30」與「松風廳」四項資訊，不漏列任何一項。"
+    },
+    {
+      "text": "試跑資料一：輸出不得把已提供的活動日期、集合時間或地點改成其他內容，也不得加入與輸入矛盾的活動事實。"
+    },
+    {
+      "text": "試跑資料二：邀請文仍提及「海棠相伴退休歡送會」、集合時間「下午6:00」及地點「一樓交誼廳」，並明確將缺少的活動日期標為待主辦人確認或建議待確認；不得編出並當作已確認的日期。"
+    },
+    {
+      "text": "試跑資料二：輸出以溫馨感恩的語氣撰寫繁體中文邀請文，並清楚區分輸入中已確認的資訊與任何待確認的建議。"
+    }
+  ],
+  "final_output": "### 星河同心退休歡送會\n\n誠摯邀請您一同參加「星河同心退休歡送會」，以感恩與祝福，為這段珍貴的相伴時光留下溫暖回憶。期待與您相聚，共同送上真摯的祝福。\n\n- **歡送會名稱：**星河同心退休歡送會\n- **活動日期：**2026年11月6日\n- **集合時間：**下午5:30\n- **地點：**松風廳\n\n### 海棠相伴退休歡送會\n\n誠摯邀請您一同參加「海棠相伴退休歡送會」，以溫暖的心意與感恩的祝福，共同分享這個珍貴時刻。期待與您相聚，送上真摯祝福。\n\n- **歡送會名稱：**海棠相伴退休歡送會\n- **活動日期：**未提供（待主辦人確認）\n- **集合時間：**下午6:00\n- **地點：**一樓交誼廳\n\n**日期核對結果：**日期格式與日曆有效：2026年11月6日。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c904e72b-9bdb-4528-87d9-759d42ea3844",
+    "run_id": "20ea7d93-e024-4924-b30f-0a7ebd524adf",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩篇邀請文均保留了已提供的活動資訊，語氣溫馨得體。資料二缺少的日期已明確標示待主辦人確認，未被寫成已確認事實。",
+    "criterion_results": [
+      {
+        "criterion_id": "21e351e6-ba0f-47ec-9101-9ce47c6a997c",
+        "text": "試跑資料一：輸出是一篇繁體中文、溫馨感恩且得體的邀請文，並逐字保留「星河同心退休歡送會」、「2026年11月6日」、「下午5:30」與「松風廳」四項資訊，不漏列任何一項。",
+        "result": "passed",
+        "source": "model",
+        "reason": "資料一以繁體中文撰寫溫馨得體的邀請文，四項活動資訊均逐字保留。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "誠摯邀請您一同參加「星河同心退休歡送會」，以感恩與祝福，為這段珍貴的相伴時光留下溫暖回憶。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **活動日期：**2026年11月6日",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **集合時間：**下午5:30",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **地點：**松風廳",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7e4851f8-3351-4b51-93b0-97df695d1ef2",
+        "text": "試跑資料一：輸出不得把已提供的活動日期、集合時間或地點改成其他內容，也不得加入與輸入矛盾的活動事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "資料一列出的日期、集合時間及地點與輸入一致；邀請文沒有加入相矛盾的活動事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **活動日期：**2026年11月6日",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **集合時間：**下午5:30",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **地點：**松風廳",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7a6ce828-f67b-445f-b48d-d2bc3cf63643",
+        "text": "試跑資料二：邀請文仍提及「海棠相伴退休歡送會」、集合時間「下午6:00」及地點「一樓交誼廳」，並明確將缺少的活動日期標為待主辦人確認或建議待確認；不得編出並當作已確認的日期。",
+        "result": "passed",
+        "source": "model",
+        "reason": "資料二保留名稱、集合時間與地點，並將未提供的日期明確標為待主辦人確認，沒有編造日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **歡送會名稱：**海棠相伴退休歡送會",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **活動日期：**未提供（待主辦人確認）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **集合時間：**下午6:00",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **地點：**一樓交誼廳",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f47a760a-e5aa-4c47-8835-84145df81367",
+        "text": "試跑資料二：輸出以溫馨感恩的語氣撰寫繁體中文邀請文，並清楚區分輸入中已確認的資訊與任何待確認的建議。",
+        "result": "passed",
+        "source": "model",
+        "reason": "資料二的邀請文使用溫馨感恩的繁體中文，且清楚區分已提供的活動資訊與待確認的日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "誠摯邀請您一同參加「海棠相伴退休歡送會」，以溫暖的心意與感恩的祝福，共同分享這個珍貴時刻。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **活動日期：**未提供（待主辦人確認）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **集合時間：**下午6:00",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1533 input and 814 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

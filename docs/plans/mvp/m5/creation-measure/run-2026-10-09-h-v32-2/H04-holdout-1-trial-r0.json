@@ -1,0 +1,117 @@
+{
+  "round": 0,
+  "sample_input": "護理師這週有兩次到府訪視：2026 年 1/1（四，元旦）上午10點訪視一次；1/2（五）下午2點再訪視一次。請分別算出這兩次訪視各自的應收費用。",
+  "acceptance_criteria": [
+    {
+      "text": "1/2（週五白天、非假日）那次訪視應收費用為 1500 元（原價）"
+    },
+    {
+      "text": "1/1（元旦、國定假日）那次訪視應收費用高於 1500 元（適用假日加成）"
+    },
+    {
+      "text": "輸出有算出兩次訪視各自具體的金額數字，不是只反問使用者加成幅度是多少"
+    }
+  ],
+  "final_output": "- **2026 年 1 月 1 日（四）上午 10:00，國定假日：2,000 元**（國定假日費率）\n- **2026 年 1 月 2 日（五）下午 2:00，非國定假日：1,500 元**（平日非加成時段費率）",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c646ef9f-164d-4ecc-82b2-bd47c5d90afd",
+    "run_id": "82c1387b-289d-4821-a55b-fe1b1337c559",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項驗收標準均達成：元旦訪視為 2,000 元，1 月 2 日訪視為 1,500 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "cc99bfdb-6244-447d-b519-1c89cc4cc216",
+        "text": "1/2（週五白天、非假日）那次訪視應收費用為 1500 元（原價）",
+        "result": "passed",
+        "source": "model",
+        "reason": "1 月 2 日下午的訪視列為非國定假日，應收 1,500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026 年 1 月 2 日（五）下午 2:00，非國定假日：1,500 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e3bdfb0c-2ab5-4b62-88ef-d145365a5cde",
+        "text": "1/1（元旦、國定假日）那次訪視應收費用高於 1500 元（適用假日加成）",
+        "result": "passed",
+        "source": "model",
+        "reason": "1 月 1 日元旦訪視採國定假日費率，應收 2,000 元，高於 1,500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026 年 1 月 1 日（四）上午 10:00，國定假日：2,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1e88e6a1-3e9c-4751-a9e2-76883a2af83c",
+        "text": "輸出有算出兩次訪視各自具體的金額數字，不是只反問使用者加成幅度是多少",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆分別給出兩次訪視的具體金額，沒有只反問加成幅度。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026 年 1 月 1 日（四）上午 10:00，國定假日：2,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2026 年 1 月 2 日（五）下午 2:00，非國定假日：1,500 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1545 input and 868 output tokens on skillhub-run; reported cost $0.0037 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

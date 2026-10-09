@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請依規則計算以下每筆單次訪視的應收費用，分別列出金額、費率類別和簡短理由：日期 2026-10-08，開始時間 20:59，國定假日：否。\n請依規則計算以下每筆單次訪視的應收費用，分別列出金額、費率類別和簡短理由：日期 2026-10-08，開始時間 21:00，國定假日：否。\n請依規則計算以下每筆單次訪視的應收費用，分別列出金額、費率類別和簡短理由：日期 2026-10-08，開始時間 00:00，國定假日：否。\n請依規則計算以下每筆單次訪視的應收費用，分別列出金額、費率類別和簡短理由：日期 2026-10-08，開始時間 06:59，國定假日：否。\n請依規則計算以下每筆單次訪視的應收費用，分別列出金額、費率類別和簡短理由：日期 2026-10-08，開始時間 07:00，國定假日：否。\n請依規則計算以下每筆單次訪視的應收費用，分別列出金額、費率類別和簡短理由：日期 2026-10-10，開始時間 14:00，國定假日：是。\n請依規則計算以下每筆單次訪視的應收費用，分別列出金額、費率類別和簡短理由：日期 2026-10-10，開始時間 21:00，國定假日：是。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 行（非國定假日 20:59）須輸出新台幣 1,500 元，並判定為一般時段。"
+    },
+    {
+      "text": "試跑輸入第 2、3、4 行（非國定假日 21:00、00:00、06:59）各須輸出新台幣 1,800 元，並判定為夜間時段。"
+    },
+    {
+      "text": "試跑輸入第 5 行（非國定假日 07:00）須輸出新台幣 1,500 元，並判定為一般時段；這確認 07:00 整不屬夜間。"
+    },
+    {
+      "text": "試跑輸入第 6 行（國定假日 14:00）須輸出新台幣 2,000 元，並判定為國定假日時段。"
+    },
+    {
+      "text": "試跑輸入第 7 行（國定假日 21:00，夜間與國定假日重疊）須輸出新台幣 2,000 元，並說明採國定假日費率而非累加。"
+    }
+  ],
+  "final_output": "訪視日期以你提供的國定假日狀態計算：\n\n| 日期 | 開始時間 | 應收費用 | 費率類別 | 簡短理由 |\n|---|---:|---:|---|---|\n| 2026-10-08 | 20:59 | 新台幣 1,500 元 | 一般時段 | 非國定假日，開始時間不在夜間時段。 |\n| 2026-10-08 | 21:00 | 新台幣 1,800 元 | 夜間 | 非國定假日，21:00 起屬夜間時段。 |\n| 2026-10-08 | 00:00 | 新台幣 1,800 元 | 夜間 | 非國定假日，00:00 屬夜間時段。 |\n| 2026-10-08 | 06:59 | 新台幣 1,800 元 | 夜間 | 非國定假日，07:00 前屬夜間時段。 |\n| 2026-10-08 | 07:00 | 新台幣 1,500 元 | 一般時段 | 非國定假日，07:00 整屬一般時段。 |\n| 2026-10-10 | 14:00 | 新台幣 2,000 元 | 國定假日 | 國定假日全天適用此費率。 |\n| 2026-10-10 | 21:00 | 新台幣 2,000 元 | 國定假日 | 國定假日費率取代夜間費率，不累加。 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b5fd7328-1aa7-4a81-8c84-e45009f9e944",
+    "run_id": "7b1b6ef9-1318-4c81-9376-65fd04738dad",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七筆訪視的金額與費率類別均符合驗收條件；07:00 的時段邊界及國定假日與夜間重疊時不累加的處理也正確。",
+    "criterion_results": [
+      {
+        "criterion_id": "a01f7546-1bdb-410a-bd41-b32ade7595ed",
+        "text": "試跑輸入第 1 行（非國定假日 20:59）須輸出新台幣 1,500 元，並判定為一般時段。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆 20:59 列為新台幣 1,500 元、一般時段。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-08 | 20:59 | 新台幣 1,500 元 | 一般時段 | 非國定假日，開始時間不在夜間時段。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "daeb204d-0a13-46c2-908f-d9abb7a2f309",
+        "text": "試跑輸入第 2、3、4 行（非國定假日 21:00、00:00、06:59）各須輸出新台幣 1,800 元，並判定為夜間時段。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2、3、4 筆均列為新台幣 1,800 元、夜間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-08 | 21:00 | 新台幣 1,800 元 | 夜間 | 非國定假日，21:00 起屬夜間時段。 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-08 | 00:00 | 新台幣 1,800 元 | 夜間 | 非國定假日，00:00 屬夜間時段。 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-08 | 06:59 | 新台幣 1,800 元 | 夜間 | 非國定假日，07:00 前屬夜間時段。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "31b6da25-35ab-4e3c-93ff-0678f791b1fd",
+        "text": "試跑輸入第 5 行（非國定假日 07:00）須輸出新台幣 1,500 元，並判定為一般時段；這確認 07:00 整不屬夜間。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆 07:00 列為新台幣 1,500 元、一般時段，並指出 07:00 整屬一般時段。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-08 | 07:00 | 新台幣 1,500 元 | 一般時段 | 非國定假日，07:00 整屬一般時段。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a8ca81d7-b0cd-4526-b53c-55d2880f4300",
+        "text": "試跑輸入第 6 行（國定假日 14:00）須輸出新台幣 2,000 元，並判定為國定假日時段。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 筆國定假日 14:00 列為新台幣 2,000 元、國定假日費率。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-10 | 14:00 | 新台幣 2,000 元 | 國定假日 | 國定假日全天適用此費率。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "12a6fa19-05aa-40ee-af4b-fd5456e4ddd1",
+        "text": "試跑輸入第 7 行（國定假日 21:00，夜間與國定假日重疊）須輸出新台幣 2,000 元，並說明採國定假日費率而非累加。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 7 筆國定假日 21:00 列為新台幣 2,000 元，並明確說明國定假日費率取代夜間費率、不累加。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-10 | 21:00 | 新台幣 2,000 元 | 國定假日 | 國定假日費率取代夜間費率，不累加。 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1505 input and 905 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

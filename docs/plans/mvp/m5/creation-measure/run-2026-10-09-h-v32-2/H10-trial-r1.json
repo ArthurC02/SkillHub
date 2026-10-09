@@ -1,0 +1,220 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下運動中心單次包場費用，逐筆列出包場費、器材費、封頂前合計及總費用：\nA：包場 0.5 小時，租借器材 0 件。\nB：包場 2 小時，租借器材 5 件。\nC：包場 2.5 小時，租借器材 6 件。\nD：包場 4 小時，租借器材 10 件。\nE：包場 4.25 小時，租借器材 12 件。\nF：包場 9.1 小時，租借器材 0 件。",
+  "acceptance_criteria": [
+    {
+      "text": "對輸入 0.5 小時、0 件，應列出包場費 800 元、器材費 0 元、未封頂合計及總費用 800 元；不足一小時按開始一小時計。"
+    },
+    {
+      "text": "對輸入 2 小時、5 件，應列出包場費 800 元、器材費 200 元、總費用 1,000 元，正確處理 2 小時及 5 件的含端點級距。"
+    },
+    {
+      "text": "對輸入 2.5 小時、6 件，應列出包場費 1,400 元、器材費 400 元、總費用 1,800 元，正確處理超過 2 小時及 6 件的下一級距。"
+    },
+    {
+      "text": "對輸入 4 小時、10 件，應列出包場費 1,400 元、器材費 400 元、總費用 1,800 元，正確處理 4 小時及 10 件的含端點級距。"
+    },
+    {
+      "text": "對輸入 4.25 小時、12 件，應將超過 4 小時的 0.25 小時按一個開始的小時計，列出包場費 1,700 元、器材費 500 元、總費用 2,200 元。"
+    },
+    {
+      "text": "對輸入 9.1 小時、0 件，超過 4 小時的 5.1 小時按 6 個開始的小時計算，未封頂包場費為 1,400＋6×300＝3,200 元；應列出器材費 0 元、未封頂合計 3,200 元，並依上限收取總費用 3,000 元。"
+    },
+    {
+      "text": "每次計算都應清楚列出包場費、器材費、封頂前合計及套用 3,000 元上限後的總費用。"
+    }
+  ],
+  "final_output": "依序對應 A 至 F：\n\n第 1 筆：包場費 800 元；器材費 0 元；封頂前合計 800 元；套用 3,000 元上限後總費用 800 元。\n第 2 筆：包場費 800 元；器材費 200 元；封頂前合計 1000 元；套用 3,000 元上限後總費用 1000 元。\n第 3 筆：包場費 1400 元；器材費 400 元；封頂前合計 1800 元；套用 3,000 元上限後總費用 1800 元。\n第 4 筆：包場費 1400 元；器材費 400 元；封頂前合計 1800 元；套用 3,000 元上限後總費用 1800 元。\n第 5 筆：包場費 1700 元；器材費 500 元；封頂前合計 2200 元；套用 3,000 元上限後總費用 2200 元。\n第 6 筆：包場費 3200 元；器材費 0 元；封頂前合計 3200 元；套用 3,000 元上限後總費用 3000 元。\n\n採用假設：不足一小時按每開始一小時計費（包含超過 4 小時的零碎時數）；器材件數為非負整數；金額為新臺幣整數元，沒有其他費用。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b601b763-9d35-4e8e-944a-c30053ad5de0",
+    "run_id": "f1ff2009-8edb-450a-9ba6-e5a5a8320537",
+    "status": "completed",
+    "overall": "met",
+    "summary": "A 至 F 的各項費用均與驗收標準相符；每筆皆列出封頂前合計及套用 3000 元上限後的總費用。",
+    "criterion_results": [
+      {
+        "criterion_id": "53e8eb61-d409-4b27-8adf-52755711150f",
+        "text": "對輸入 0.5 小時、0 件，應列出包場費 800 元、器材費 0 元、未封頂合計及總費用 800 元；不足一小時按開始一小時計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 筆列出包場費 800 元、器材費 0 元、封頂前合計及總費用均為 800 元，並說明不足一小時按開始一小時計費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 筆：包場費 800 元；器材費 0 元；封頂前合計 800 元；套用 3,000 元上限後總費用 800 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "不足一小時按每開始一小時計費（包含超過 4 小時的零碎時數）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dac9bd46-6c93-4417-b80f-9e3c58929015",
+        "text": "對輸入 2 小時、5 件，應列出包場費 800 元、器材費 200 元、總費用 1,000 元，正確處理 2 小時及 5 件的含端點級距。",
+        "result": "passed",
+        "source": "model",
+        "reason": "B 筆的包場費、器材費及總費用分別為 800、200 及 1000 元，符合 2 小時與 5 件的級距。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 2 筆：包場費 800 元；器材費 200 元；封頂前合計 1000 元；套用 3,000 元上限後總費用 1000 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "aaa0b4f1-98c5-43a6-a841-a8f5f4eada31",
+        "text": "對輸入 2.5 小時、6 件，應列出包場費 1,400 元、器材費 400 元、總費用 1,800 元，正確處理超過 2 小時及 6 件的下一級距。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C 筆列出包場費 1400 元、器材費 400 元、總費用 1800 元，符合下一級距。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 3 筆：包場費 1400 元；器材費 400 元；封頂前合計 1800 元；套用 3,000 元上限後總費用 1800 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a2bdd447-3fc6-46cd-861e-b20079489441",
+        "text": "對輸入 4 小時、10 件，應列出包場費 1,400 元、器材費 400 元、總費用 1,800 元，正確處理 4 小時及 10 件的含端點級距。",
+        "result": "passed",
+        "source": "model",
+        "reason": "D 筆列出包場費 1400 元、器材費 400 元、總費用 1800 元，符合 4 小時與 10 件的含端點級距。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 4 筆：包場費 1400 元；器材費 400 元；封頂前合計 1800 元；套用 3,000 元上限後總費用 1800 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "65f268a6-f743-458e-83b4-1df621a635b1",
+        "text": "對輸入 4.25 小時、12 件，應將超過 4 小時的 0.25 小時按一個開始的小時計，列出包場費 1,700 元、器材費 500 元、總費用 2,200 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "E 筆列出包場費 1700 元、器材費 500 元及總費用 2200 元；回覆亦說明超過 4 小時的零碎時數按開始一小時計費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 5 筆：包場費 1700 元；器材費 500 元；封頂前合計 2200 元；套用 3,000 元上限後總費用 2200 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "不足一小時按每開始一小時計費（包含超過 4 小時的零碎時數）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7956d11a-702a-43c4-99de-d1d143c1058e",
+        "text": "對輸入 9.1 小時、0 件，超過 4 小時的 5.1 小時按 6 個開始的小時計算，未封頂包場費為 1,400＋6×300＝3,200 元；應列出器材費 0 元、未封頂合計 3,200 元，並依上限收取總費用 3,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "F 筆列出未封頂包場費及合計 3200 元、器材費 0 元，並將總費用限制在 3000 元；數額符合超過 4 小時的 5.1 小時按 6 小時計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 6 筆：包場費 3200 元；器材費 0 元；封頂前合計 3200 元；套用 3,000 元上限後總費用 3000 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "不足一小時按每開始一小時計費（包含超過 4 小時的零碎時數）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d470f3ba-f55c-430e-8b1e-e08ee71361f8",
+        "text": "每次計算都應清楚列出包場費、器材費、封頂前合計及套用 3,000 元上限後的總費用。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 至 F 每筆均列出包場費、器材費、封頂前合計，以及套用 3000 元上限後的總費用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 筆：包場費 800 元；器材費 0 元；封頂前合計 800 元；套用 3,000 元上限後總費用 800 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 2 筆：包場費 800 元；器材費 200 元；封頂前合計 1000 元；套用 3,000 元上限後總費用 1000 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 3 筆：包場費 1400 元；器材費 400 元；封頂前合計 1800 元；套用 3,000 元上限後總費用 1800 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 4 筆：包場費 1400 元；器材費 400 元；封頂前合計 1800 元；套用 3,000 元上限後總費用 1800 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 5 筆：包場費 1700 元；器材費 500 元；封頂前合計 2200 元；套用 3,000 元上限後總費用 2200 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 6 筆：包場費 3200 元；器材費 0 元；封頂前合計 3200 元；套用 3,000 元上限後總費用 3000 元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1530 input and 778 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 34,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

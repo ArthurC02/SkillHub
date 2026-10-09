@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "護理師 2026 年 1 月 5 日（一）上午 9 點到府訪視一次，這次應收費用是多少？",
+  "acceptance_criteria": [
+    {
+      "text": "應收費用為 1500 元"
+    },
+    {
+      "text": "輸出沒有反問使用者，直接給出金額"
+    }
+  ],
+  "final_output": "國定假日標註未提供，依規則不推定是否為假日，因此目前無法計算費用。\n\n請補充：`2026-01-05,09:00,國定假日（是/否）`",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e213e742-5bf6-4d57-b4ca-25e912829da9",
+    "run_id": "7da7f5b2-27b4-45cd-b835-142e87a4a1b6",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "這次回覆沒有提供 1500 元，反而要求使用者補充資料。兩項驗收標準均未達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "39841c67-ae76-475c-b09a-83fc77ee2e6b",
+        "text": "應收費用為 1500 元",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終回覆表示目前無法計算費用，沒有給出應收費用 1500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "因此目前無法計算費用。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "14248dea-0282-44c9-8ffe-bd739c1a981a",
+        "text": "輸出沒有反問使用者，直接給出金額",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終回覆要求使用者補充國定假日標註，並未直接給出金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請補充：`2026-01-05,09:00,國定假日（是/否）`",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1485 input and 236 output tokens on skillhub-run; reported cost $0.0028 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 8,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

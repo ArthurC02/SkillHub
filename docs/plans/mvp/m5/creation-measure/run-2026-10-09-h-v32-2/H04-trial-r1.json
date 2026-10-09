@@ -1,0 +1,168 @@
+{
+  "round": 1,
+  "sample_input": "請分別計算以下每次到府坐月子護理訪視的應收費用，並簡述適用的計費理由：\n2026-10-12 20:59，國定假日=否\n2026-10-12 21:00，國定假日=否\n2026-10-12 06:59，國定假日=否\n2026-10-12 07:00，國定假日=否\n2026-10-12 00:00，國定假日=是\n2026-10-12 23:59，國定假日=是",
+  "acceptance_criteria": [
+    {
+      "text": "對 sample_input 第 1 行，將非夜間且非國定假日的訪視算為 1,500 元。"
+    },
+    {
+      "text": "對 sample_input 第 2 行，將 21:00 開始的訪視算為夜間費用 1,800 元。"
+    },
+    {
+      "text": "對 sample_input 第 3 行，將 06:59 開始的訪視算為夜間費用 1,800 元。"
+    },
+    {
+      "text": "對 sample_input 第 4 行，將 07:00 開始的非國定假日訪視算為 1,500 元，因 07:00 不屬夜間時段。"
+    },
+    {
+      "text": "對 sample_input 第 5 行，將國定假日 00:00 開始的訪視算為 2,000 元。"
+    },
+    {
+      "text": "對 sample_input 第 6 行，將國定假日 23:59 開始且同時落在夜間時段的訪視算為 2,000 元，採國定假日費率而非夜間費率。"
+    }
+  ],
+  "final_output": "- **2026-10-12 20:59，國定假日=否：1,500 元** — 平日非加成時段。\n- **2026-10-12 21:00，國定假日=否：1,800 元** — 夜間時段自 21:00 起算。\n- **2026-10-12 06:59，國定假日=否：1,800 元** — 屬於 07:00 前的夜間時段。\n- **2026-10-12 07:00，國定假日=否：1,500 元** — 不在夜間時段內。\n- **2026-10-12 00:00，國定假日=是：2,000 元** — 國定假日全天適用假日費率。\n- **2026-10-12 23:59，國定假日=是：2,000 元** — 國定假日全天適用假日費率。\n\n費率彼此取代而不累加；國定假日時採國定假日費率。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "16b63f0c-59d0-488c-b6f6-43f19f2aea80",
+    "run_id": "8a9a5ed3-d97e-43e5-b06a-2571134281d6",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六次訪視的金額均符合驗收條件；夜間起迄界線及國定假日優先適用費率的理由也已交代。",
+    "criterion_results": [
+      {
+        "criterion_id": "9742d05d-b2a7-4f14-a74b-3145421d8396",
+        "text": "對 sample_input 第 1 行，將非夜間且非國定假日的訪視算為 1,500 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "20:59 非國定假日訪視列為 1,500 元，理由為非加成時段。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-10-12 20:59，國定假日=否：1,500 元** — 平日非加成時段。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7f9b0058-555e-43db-b599-69ed00aed9e9",
+        "text": "對 sample_input 第 2 行，將 21:00 開始的訪視算為夜間費用 1,800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "21:00 非國定假日訪視列為夜間費用 1,800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-10-12 21:00，國定假日=否：1,800 元** — 夜間時段自 21:00 起算。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a02b7fdb-626a-4375-a5a1-54a077c799b7",
+        "text": "對 sample_input 第 3 行，將 06:59 開始的訪視算為夜間費用 1,800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "06:59 非國定假日訪視列為夜間費用 1,800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-10-12 06:59，國定假日=否：1,800 元** — 屬於 07:00 前的夜間時段。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c0e451b7-80dd-44f3-b0f6-0d28fb838ad1",
+        "text": "對 sample_input 第 4 行，將 07:00 開始的非國定假日訪視算為 1,500 元，因 07:00 不屬夜間時段。",
+        "result": "passed",
+        "source": "model",
+        "reason": "07:00 非國定假日訪視列為 1,500 元，並說明不屬夜間時段。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-10-12 07:00，國定假日=否：1,500 元** — 不在夜間時段內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6279ffaa-c44b-4ab9-8090-3b351e0fab86",
+        "text": "對 sample_input 第 5 行，將國定假日 00:00 開始的訪視算為 2,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "國定假日 00:00 訪視列為假日費率 2,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-10-12 00:00，國定假日=是：2,000 元** — 國定假日全天適用假日費率。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7057314b-0bfb-4b9e-8446-72434f82de06",
+        "text": "對 sample_input 第 6 行，將國定假日 23:59 開始且同時落在夜間時段的訪視算為 2,000 元，採國定假日費率而非夜間費率。",
+        "result": "passed",
+        "source": "model",
+        "reason": "國定假日 23:59 訪視列為 2,000 元，並明確說明採假日費率、不與其他費率累加。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-10-12 23:59，國定假日=是：2,000 元** — 國定假日全天適用假日費率。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "費率彼此取代而不累加；國定假日時採國定假日費率。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1525 input and 605 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

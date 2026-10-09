@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "請幫我把以下 4 位學員分類：\n1. 學員A：已通過路考、拿到駕照，繳費至今 5 天。\n2. 學員B：尚未通過路考，繳費至今剛好 30 天。\n3. 學員C：尚未通過路考，繳費至今 31 天。\n4. 學員D：已通過路考、拿到駕照，繳費至今 200 天。",
+  "acceptance_criteria": [
+    {
+      "text": "學員A（已通過路考，5天）判定為不得退費"
+    },
+    {
+      "text": "學員B（未通過路考，剛好30天）判定為全額退費"
+    },
+    {
+      "text": "學員C（未通過路考，31天）判定為退七成學費"
+    },
+    {
+      "text": "學員D（已通過路考，200天）判定為不得退費"
+    }
+  ],
+  "final_output": "學員A｜不得退費  \n學員B｜全額退費  \n學員C｜退七成學費  \n學員D｜不得退費",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "957456e0-c27a-49bd-879f-0070a35d7c09",
+    "run_id": "5160f3bd-05b7-48fc-9f8f-af3d1e9fb9db",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終回覆對四位學員的分類均符合各項驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "3b9cc0b7-04d5-47eb-b17b-0bf8653872b9",
+        "text": "學員A（已通過路考，5天）判定為不得退費",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將學員A判定為不得退費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "學員A｜不得退費",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f2096f82-f7a5-4e80-a2be-81054ca61079",
+        "text": "學員B（未通過路考，剛好30天）判定為全額退費",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將學員B判定為全額退費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "學員B｜全額退費",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cda45e41-4422-4d87-bdf0-00021b7c4070",
+        "text": "學員C（未通過路考，31天）判定為退七成學費",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將學員C判定為退七成學費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "學員C｜退七成學費",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "49fcaf13-9a8c-4093-b133-35511ce61b2e",
+        "text": "學員D（已通過路考，200天）判定為不得退費",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將學員D判定為不得退費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "學員D｜不得退費",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1533 input and 367 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

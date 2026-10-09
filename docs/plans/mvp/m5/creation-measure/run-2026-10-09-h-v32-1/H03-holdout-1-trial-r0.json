@@ -1,0 +1,139 @@
+{
+  "round": 0,
+  "sample_input": "欸大家想喝的我幫忙統計一下喔，珍珠奶茶要15杯，一杯55元那種，然後四季春紅茶8杯，單價35元，啊還有芋頭鮮奶10杯，單價65塊，對了外送費好像是90元，這個不要算進總額裡面喔，麻煩你了。",
+  "acceptance_criteria": [
+    {
+      "text": "飲料總金額為 1755 元（不含外送費）"
+    },
+    {
+      "text": "外送費 90 元有另外列出、沒有計入總金額"
+    },
+    {
+      "text": "訂購清單包含珍珠奶茶 15 杯、四季春紅茶 8 杯、芋頭鮮奶 10 杯"
+    },
+    {
+      "text": "沒有捏造清單以外的品項或數量"
+    }
+  ],
+  "final_output": "訂購清單：\n- 珍珠奶茶：15 杯，單價 55 元，小計 825 元；規格未提供\n- 四季春紅茶：8 杯，單價 35 元，小計 280 元；規格未提供\n- 芋頭鮮奶：10 杯，單價 65 元，小計 650 元；規格未提供\n\n**飲料總金額：1,755 元**  \n外送費（不計入飲料金額）：90 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4fd7c7ab-8342-43f2-94e3-723f99719743",
+    "run_id": "4dccbbc6-676d-4e38-aaab-8682c1fc9084",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成：品項與數量正確，飲料總額為 1,755 元，外送費 90 元另列且未計入總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "b032ef86-3a6e-4549-9dd9-05e86efde8db",
+        "text": "飲料總金額為 1755 元（不含外送費）",
+        "result": "passed",
+        "source": "model",
+        "reason": "飲料總金額列為 1,755 元，未包含外送費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**飲料總金額：1,755 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "246e5415-a54e-48f2-ab82-99c01399d3f6",
+        "text": "外送費 90 元有另外列出、沒有計入總金額",
+        "result": "passed",
+        "source": "model",
+        "reason": "外送費 90 元另列，並明確標示不計入飲料金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "外送費（不計入飲料金額）：90 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4db28d6b-3af4-487a-9217-d803c7f1c215",
+        "text": "訂購清單包含珍珠奶茶 15 杯、四季春紅茶 8 杯、芋頭鮮奶 10 杯",
+        "result": "passed",
+        "source": "model",
+        "reason": "訂購清單列出珍珠奶茶 15 杯、四季春紅茶 8 杯及芋頭鮮奶 10 杯。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 珍珠奶茶：15 杯，單價 55 元，小計 825 元；規格未提供",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 四季春紅茶：8 杯，單價 35 元，小計 280 元；規格未提供",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 芋頭鮮奶：10 杯，單價 65 元，小計 650 元；規格未提供",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2239be48-e127-45a0-ad47-de3a1f3ff2dd",
+        "text": "沒有捏造清單以外的品項或數量",
+        "result": "passed",
+        "source": "model",
+        "reason": "完整訂購清單只有指定的三種飲料，數量也與原訂單相符，沒有新增品項或數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂購清單：\n- 珍珠奶茶：15 杯，單價 55 元，小計 825 元；規格未提供\n- 四季春紅茶：8 杯，單價 35 元，小計 280 元；規格未提供\n- 芋頭鮮奶：10 杯，單價 65 元，小計 650 元；規格未提供",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1534 input and 632 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

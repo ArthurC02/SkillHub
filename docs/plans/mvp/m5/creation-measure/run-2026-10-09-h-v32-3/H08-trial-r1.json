@@ -1,0 +1,154 @@
+{
+  "round": 1,
+  "sample_input": "請把以下二手服飾收購紀錄整理成驗收清單並計算總金額：\n2026-10-01，牛仔褲，數量 2，收購單價 150\n2026-10-01，襯衫，數量 3，收購單價 80\n2026-10-01，襯衫，數量 1，收購單價 80",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中的每筆紀錄，輸出表格都保留一列，並正確列出日期、品項、數量與收購單價。"
+    },
+    {
+      "text": "每列金額等於該筆數量乘以收購單價：牛仔褲為 2 × 150 = 300；襯衫第一筆為 3 × 80 = 240；襯衫第二筆為 1 × 80 = 80。"
+    },
+    {
+      "text": "襯衫的兩筆紀錄分別保留，不合併。"
+    },
+    {
+      "text": "表格下方的總金額為 300 + 240 + 80 = 620，且不添加輸入未指定的幣別符號。"
+    }
+  ],
+  "final_output": "| 日期 | 品項 | 數量 | 收購單價 | 該筆金額 |\n|---|---|---:|---:|---:|\n| 2026-10-01 | 牛仔褲 | 2 | 150 | 300 |\n| 2026-10-01 | 襯衫 | 3 | 80 | 240 |\n| 2026-10-01 | 襯衫 | 1 | 80 | 80 |\n\n**總金額：620**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "972597e5-e7f4-40d1-b6c6-c765ac22eebc",
+    "run_id": "775753a8-6c87-4604-915f-a77bd9610a95",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三筆收購紀錄均逐筆保留，金額計算與總金額正確，且未添加幣別符號。",
+    "criterion_results": [
+      {
+        "criterion_id": "34220e6f-37f3-4418-987d-4553b48ff3a2",
+        "text": "對試跑輸入中的每筆紀錄，輸出表格都保留一列，並正確列出日期、品項、數量與收購單價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格逐筆列出三筆紀錄，日期、品項、數量及收購單價均與輸入相符。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 牛仔褲 | 2 | 150 | 300 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 襯衫 | 3 | 80 | 240 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 襯衫 | 1 | 80 | 80 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "20968153-361c-4285-bd82-175a1159fa6c",
+        "text": "每列金額等於該筆數量乘以收購單價：牛仔褲為 2 × 150 = 300；襯衫第一筆為 3 × 80 = 240；襯衫第二筆為 1 × 80 = 80。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三列金額分別為 300、240、80，均等於各列數量乘以收購單價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 牛仔褲 | 2 | 150 | 300 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 襯衫 | 3 | 80 | 240 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 襯衫 | 1 | 80 | 80 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cdf7d954-99f3-42c0-b4a1-02f0aadc247f",
+        "text": "襯衫的兩筆紀錄分別保留，不合併。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆襯衫紀錄分列呈現，未合併。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 襯衫 | 3 | 80 | 240 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 襯衫 | 1 | 80 | 80 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "11fff976-9016-4d1a-8507-f654b7804651",
+        "text": "表格下方的總金額為 300 + 240 + 80 = 620，且不添加輸入未指定的幣別符號。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格下方標示總金額 620，等於三筆金額之和，且未添加幣別符號。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**總金額：620**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1515 input and 329 output tokens on skillhub-run; reported cost $0.0031 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

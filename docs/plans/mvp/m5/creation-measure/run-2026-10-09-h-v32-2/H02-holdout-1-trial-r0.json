@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "請幫我把以下 4 位學員分類：\n1. 學員A：已通過路考、拿到駕照，繳費至今 5 天。\n2. 學員B：尚未通過路考，繳費至今剛好 30 天。\n3. 學員C：尚未通過路考，繳費至今 31 天。\n4. 學員D：已通過路考、拿到駕照，繳費至今 200 天。",
+  "acceptance_criteria": [
+    {
+      "text": "學員A（已通過路考，5天）判定為不得退費"
+    },
+    {
+      "text": "學員B（未通過路考，剛好30天）判定為全額退費"
+    },
+    {
+      "text": "學員C（未通過路考，31天）判定為退七成學費"
+    },
+    {
+      "text": "學員D（已通過路考，200天）判定為不得退費"
+    }
+  ],
+  "final_output": "| 學員 | 分類 | 理由 |\n|---|---|---|\n| 學員A | 不得退費 | 已通過路考並取得駕照，不受繳費天數影響。 |\n| 學員B | 全額退費 | 尚未通過路考，繳費至今 30 天（30 天以內，含 30 天）。 |\n| 學員C | 退七成學費 | 尚未通過路考，繳費至今 31 天（超過 30 天）。 |\n| 學員D | 不得退費 | 已通過路考並取得駕照，不受繳費天數影響。 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "30ae35ee-209c-443c-b36d-95c21c41ca8d",
+    "run_id": "5e33ab21-3fcd-43ac-ba57-bbf05ff4ff31",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四位學員的退費分類均符合對應的驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "3d27b7c2-1bec-4e57-b1b5-914cf390635b",
+        "text": "學員A（已通過路考，5天）判定為不得退費",
+        "result": "passed",
+        "source": "model",
+        "reason": "學員A被判定為不得退費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 學員A | 不得退費 | 已通過路考並取得駕照，不受繳費天數影響。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d8f4f6c5-4d0d-4756-9e64-686d69310884",
+        "text": "學員B（未通過路考，剛好30天）判定為全額退費",
+        "result": "passed",
+        "source": "model",
+        "reason": "學員B繳費剛好30天，被判定為全額退費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 學員B | 全額退費 | 尚未通過路考，繳費至今 30 天（30 天以內，含 30 天）。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "963ccf3c-9789-4065-9be8-375be0f4ab63",
+        "text": "學員C（未通過路考，31天）判定為退七成學費",
+        "result": "passed",
+        "source": "model",
+        "reason": "學員C繳費31天，被判定為退七成學費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 學員C | 退七成學費 | 尚未通過路考，繳費至今 31 天（超過 30 天）。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "727eb112-0a83-490b-8df5-df89eca724c5",
+        "text": "學員D（已通過路考，200天）判定為不得退費",
+        "result": "passed",
+        "source": "model",
+        "reason": "學員D被判定為不得退費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 學員D | 不得退費 | 已通過路考並取得駕照，不受繳費天數影響。 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1522 input and 604 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "round": 1,
+  "sample_input": "請依規則分類以下學員的學費退費資格，只列出每人的識別碼與退費分類。\n識別碼,已通過路考並取得駕照,繳費至今天數\n甲,是,12\n乙,是,50\n丙,否,30\n丁,否,31",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入有四筆資料時，輸出恰有四筆分類結果，並將每個學員識別碼配對到一個分類。"
+    },
+    {
+      "text": "輸入中已通過路考並取得駕照、繳費 12 天的甲，分類為「不得退費」。"
+    },
+    {
+      "text": "輸入中已通過路考並取得駕照、繳費 50 天的乙，仍分類為「不得退費」，驗證此規則不受繳費天數影響。"
+    },
+    {
+      "text": "輸入中尚未通過路考、繳費 30 天的丙，分類為「全額退費」。"
+    },
+    {
+      "text": "輸入中尚未通過路考、繳費 31 天的丁，分類為「退七成學費」。"
+    }
+  ],
+  "final_output": "甲　不得退費\n乙　不得退費\n丙　全額退費\n丁　退七成學費",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7f851bc9-9dee-46fd-9d44-500a5b4fca8e",
+    "run_id": "49825ace-3ee6-4ae9-a261-45ae4390bdb4",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四筆學員資料均有對應分類，且各分類符合驗收條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "d0539f47-5955-45b3-8497-ec236c58b8dc",
+        "text": "試跑輸入有四筆資料時，輸出恰有四筆分類結果，並將每個學員識別碼配對到一個分類。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出恰有四筆結果，甲、乙、丙、丁各配對一個分類。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "甲　不得退費",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "乙　不得退費",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "丙　全額退費",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "丁　退七成學費",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "89e958f8-6bb3-4dd6-8ee9-78a2da3a8a58",
+        "text": "輸入中已通過路考並取得駕照、繳費 12 天的甲，分類為「不得退費」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲分類為「不得退費」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "甲　不得退費",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "71d65086-eb55-4bca-902f-6c75d3567e21",
+        "text": "輸入中已通過路考並取得駕照、繳費 50 天的乙，仍分類為「不得退費」，驗證此規則不受繳費天數影響。",
+        "result": "passed",
+        "source": "model",
+        "reason": "繳費 50 天的乙仍分類為「不得退費」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "乙　不得退費",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f423ed81-c9b7-4463-b2eb-f703c2dbef4d",
+        "text": "輸入中尚未通過路考、繳費 30 天的丙，分類為「全額退費」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "丙分類為「全額退費」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "丙　全額退費",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "75637cd9-7c84-439f-9269-90697f01d9aa",
+        "text": "輸入中尚未通過路考、繳費 31 天的丁，分類為「退七成學費」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "丁分類為「退七成學費」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "丁　退七成學費",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1535 input and 321 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

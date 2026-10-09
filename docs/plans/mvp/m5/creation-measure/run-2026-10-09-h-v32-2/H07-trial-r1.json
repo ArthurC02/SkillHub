@@ -1,0 +1,243 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下屋主資料，製作一份繁體中文裝潢工程報價提案草稿，並附丈量聯絡話術與建材採購清單。\n\n屋主：林小姐\n工程地點：台北市大安區\n工程內容：浴室翻修，浴室地坪長 2.4 m、寬 1.8 m；地坪鋪 600 mm × 600 mm 磁磚，抓 10% 損耗，每箱可鋪 1.44 m²，每箱 680 元。另需淋浴設備 1 組，報價 12,500 元；人工報價 48,000 元。以上金額均未稅。拆除清運費尚未報價，稅率未提供。\n採購需求：磁磚依實際地坪與 10% 損耗計算箱數；填縫劑 2 包。\n丈量聯絡：師傅阿明；請詢問 10 月 15 日或 16 日上午 9:00–12:00 是否能到場丈量，目前尚未確認日期。報價中不要虛構工期或未提供的費用，也不要宣稱已聯絡師傅或已下單。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入產生繁體中文提案草稿，且分列工程摘要、施工範圍、假設／不包含項目、估價明細，以及待確認事項。"
+    },
+    {
+      "text": "依輸入的浴室地坪 2.4 m × 1.8 m 算出 4.32 m²；加 10% 損耗後列出 4.752 m²，並依每箱 1.44 m² 算出需購買 4 箱磁磚。"
+    },
+    {
+      "text": "依輸入單價列出人工 48,000 元、設備 12,500 元、磁磚 4 箱 × 680 元 = 2,720 元，並算出未稅小計 63,220 元；不自行計算未提供稅率的稅額。"
+    },
+    {
+      "text": "採購清單列出磁磚 4 箱及填縫劑 2 包，且清楚標示這是待使用者確認並自行下單的清單，不聲稱已完成採購。"
+    },
+    {
+      "text": "丈量聯絡話術會請師傅阿明確認 10 月 15 日或 16 日上午 9:00–12:00 是否可到場，並把實際約定時間標示為待確認。"
+    },
+    {
+      "text": "對輸入未提供的拆除清運費及稅額標示待確認，不自行補入價格；並明確說明 Skill 無法代為撥電話或登入採購系統。"
+    }
+  ],
+  "final_output": "# 浴室翻修工程報價提案草稿\n\n**屋主：**林小姐  \n**工程地點：**台北市大安區  \n**幣別：**未提供，待確認  \n**報價性質：**草稿；已知報價金額均未稅\n\n## 一、工程摘要\n\n浴室地坪尺寸為長 **2.4 m**、寬 **1.8 m**，地坪預計鋪設 **600 mm × 600 mm 磁磚**。另列淋浴設備 1 組及人工報價。拆除清運費尚未報價，稅額待確認。\n\n## 二、施工範圍\n\n依目前提供資料，列入本草稿的項目如下：\n\n- 浴室地坪磁磚鋪設：地坪長 2.4 m、寬 1.8 m；磁磚尺寸 600 mm × 600 mm。\n- 淋浴設備：1 組。\n- 人工：依已提供的人工報價列入；具體計價基礎待確認。\n\n**拆除清運：待報價。**其餘未明確提供的工程項目不列入本次估價範圍。\n\n## 三、估價明細\n\n地坪面積與磁磚採購量依提供資料計算：\n\n- 地坪面積：4.32 m²\n- 含 10% 損耗面積：4.752 m²\n- 整箱採購數：4 箱\n\n| 項目 | 數量 | 單價 | 金額 |\n|---|---:|---:|---:|\n| 磁磚 | 4 箱 | 680／箱 | 2,720 |\n| 淋浴設備 | 1 組 | 12,500／組 | 12,500 |\n| 人工 | 1 項報價列* | 48,000 | 48,000 |\n| **未稅小計** |  |  | **63,220** |\n\n\\* 人工以 1 項報價列納入計算；原始資料未說明人工的計價單位或計價基礎，待確認。以上金額均未稅；幣別未提供，待確認。\n\n- **稅額：待確認**（稅率及適用方式未提供，未計算）。\n- **拆除清運費：待報價**，未併入小計。\n- **填縫劑：**採購需求為 2 包，價格未提供，未併入小計。\n\n## 四、假設與不包含項目\n\n- 磁磚數量計算使用的條件為：地坪 2.4 m × 1.8 m、損耗率 10%、每箱可鋪 1.44 m²。\n- 磁磚每箱報價 680；淋浴設備 1 組報價 12,500；人工報價 48,000。以上均依提供資料以未稅金額列示。\n- 拆除清運費尚未報價；填縫劑單價未提供；稅率、稅務適用方式與幣別均待確認。\n- 本草稿未列入未提供價格或施工範圍的項目；不代表已確認其施工內容或費用。\n\n## 五、工期與待確認事項\n\n- **工期未提供。**\n- **待丈量：**浴室現場尺寸與實際施工範圍尚待丈量確認。\n- **丈量日期待確認：**目前尚未約定；可詢問 10 月 15 日或 16 日上午 9:00–12:00。日期未提供年份，不代填年份。\n- **待報價：**拆除清運費、填縫劑價格。\n- **待確認：**幣別、稅率及稅務適用方式、人工計價基礎。\n- 目前提供的尺寸、價格及日期資料未見明確矛盾值；丈量結果仍待現場核對。\n\n## 六、丈量聯絡話術\n\n\u003e 阿明師傅您好，我是林小姐。想請問您 10 月 15 日或 16 日上午 9:00–12:00，是否方便到台北市大安區協助浴室丈量？目前日期尚未確認，麻煩您告知哪個時段方便，謝謝。\n\n## 七、建材採購清單\n\n| 材料／設備 | 採購數量 | 單價／價格 |\n|---|---:|---:|\n| 600 mm × 600 mm 磁磚 | 4 箱 | 680／箱；合計 2,720 |\n| 填縫劑 | 2 包 | 待報價 |\n| 淋浴設備 | 1 組 | 12,500／組 |\n\n此清單供使用者確認與自行採購，**不代表已下單**；幣別未提供，待確認。\n\n無法從這裡代為打電話；由使用者自行聯絡師傅。  \n無法從這裡登入採購系統或下單；由使用者自行登入確認並下單。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "77ed3a35-9d25-4aac-9cba-f0d9190beb64",
+    "run_id": "e17515c6-191e-45c1-923c-caf197c372ec",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收標準均已達成。提案列出正確的磁磚數量與未稅小計，並將未報價費用、稅額、丈量時間及採購狀態保留為待確認事項。",
+    "criterion_results": [
+      {
+        "criterion_id": "f9d0d8a3-09bb-4964-98e9-aff4db3da7db",
+        "text": "對試跑輸入產生繁體中文提案草稿，且分列工程摘要、施工範圍、假設／不包含項目、估價明細，以及待確認事項。",
+        "result": "passed",
+        "source": "model",
+        "reason": "繁體中文提案草稿分列工程摘要、施工範圍、估價明細、假設與不包含項目，以及待確認事項。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 一、工程摘要",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## 二、施工範圍",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## 三、估價明細",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## 四、假設與不包含項目",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## 五、工期與待確認事項",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "64fcf5f8-00b7-4024-aa75-3bee3cbfb1dc",
+        "text": "依輸入的浴室地坪 2.4 m × 1.8 m 算出 4.32 m²；加 10% 損耗後列出 4.752 m²，並依每箱 1.44 m² 算出需購買 4 箱磁磚。",
+        "result": "passed",
+        "source": "model",
+        "reason": "依提供的尺寸、損耗率與每箱鋪設面積，正確列出地坪面積、含損耗面積及整箱採購數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 地坪面積：4.32 m²",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 含 10% 損耗面積：4.752 m²",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 整箱採購數：4 箱",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "每箱可鋪 1.44 m²",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "01df9cd7-6248-4c0c-b13b-e95639807b38",
+        "text": "依輸入單價列出人工 48,000 元、設備 12,500 元、磁磚 4 箱 × 680 元 = 2,720 元，並算出未稅小計 63,220 元；不自行計算未提供稅率的稅額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "估價明細列出人工、設備及磁磚的指定價格，未稅小計為 63,220 元；稅率未提供，因此未計算稅額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 磁磚 | 4 箱 | 680／箱 | 2,720 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 淋浴設備 | 1 組 | 12,500／組 | 12,500 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 人工 | 1 項報價列* | 48,000 | 48,000 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| **未稅小計** |  |  | **63,220** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**稅額：待確認**（稅率及適用方式未提供，未計算）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fb98549d-a1cc-41bd-a4d5-ddb7aa2e8e2d",
+        "text": "採購清單列出磁磚 4 箱及填縫劑 2 包，且清楚標示這是待使用者確認並自行下單的清單，不聲稱已完成採購。",
+        "result": "passed",
+        "source": "model",
+        "reason": "採購清單列有磁磚 4 箱及填縫劑 2 包，並明示供使用者確認與自行採購，沒有宣稱已下單。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 600 mm × 600 mm 磁磚 | 4 箱 | 680／箱；合計 2,720 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 填縫劑 | 2 包 | 待報價 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "此清單供使用者確認與自行採購，**不代表已下單**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d7a11d32-2549-4c13-949a-f1ae511bd0f7",
+        "text": "丈量聯絡話術會請師傅阿明確認 10 月 15 日或 16 日上午 9:00–12:00 是否可到場，並把實際約定時間標示為待確認。",
+        "result": "passed",
+        "source": "model",
+        "reason": "聯絡話術詢問阿明師傅 10 月 15 日或 16 日上午指定時段是否可到場丈量，並註明日期尚未確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "阿明師傅您好，我是林小姐。想請問您 10 月 15 日或 16 日上午 9:00–12:00，是否方便到台北市大安區協助浴室丈量？目前日期尚未確認，麻煩您告知哪個時段方便，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "498c97c5-5918-45ef-882a-a516e8b841b1",
+        "text": "對輸入未提供的拆除清運費及稅額標示待確認，不自行補入價格；並明確說明 Skill 無法代為撥電話或登入採購系統。",
+        "result": "passed",
+        "source": "model",
+        "reason": "拆除清運費與稅額均標示待確認或待報價，未補入價格；回覆也明確說明無法代為打電話或登入採購系統。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**稅額：待確認**（稅率及適用方式未提供，未計算）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**拆除清運費：待報價**，未併入小計。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "無法從這裡代為打電話；由使用者自行聯絡師傅。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "無法從這裡登入採購系統或下單；由使用者自行登入確認並下單。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1584 input and 3343 output tokens on skillhub-run; reported cost $0.0054 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 44,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

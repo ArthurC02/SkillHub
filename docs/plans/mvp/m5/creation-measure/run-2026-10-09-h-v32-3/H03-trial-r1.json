@@ -1,0 +1,168 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下手搖飲團購訂單，列出品項清單、飲料金額與外送費。\n阿美：珍珠奶茶，半糖少冰，2杯，每杯60元。\n小陳：珍珠奶茶，半糖少冰，1杯，單價60元。\n小林：珍珠奶茶，全糖少冰，1杯，每杯60元。\n小周：烏龍鮮奶，微糖去冰，單價70元。\n小吳：百香綠茶，2杯。\n外送費45元。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入中品項及規格完全相同的訂單會合併：珍珠奶茶半糖少冰共 3 杯，單價 60 元，小計 180 元。"
+    },
+    {
+      "text": "相同品項但規格不同會分開列出：珍珠奶茶全糖少冰列為 1 杯，單價 60 元，小計 60 元。"
+    },
+    {
+      "text": "未寫數量的烏龍鮮奶按 1 杯處理，單價 70 元，小計 70 元。"
+    },
+    {
+      "text": "百香綠茶未提供單價時，數量列為 2 杯，單價與小計標示「未提供」，不猜測金額。"
+    },
+    {
+      "text": "飲料已知小計為 310 元（180 + 60 + 70），並註明此金額尚未包含未定價的百香綠茶；外送費 45 元另列且不計入飲料金額。"
+    },
+    {
+      "text": "結果清楚列出各品項及規格、數量、單價、小計、飲料金額，以及另列的外送費。"
+    }
+  ],
+  "final_output": "訂購清單：\n- 珍珠奶茶（半糖少冰）：3 杯；單價 60；小計 180\n- 珍珠奶茶（全糖少冰）：1 杯；單價 60；小計 60\n- 烏龍鮮奶（微糖去冰）：1 杯；單價 70；小計 70\n- 百香綠茶（規格未提供）：2 杯；單價 未提供；小計 未提供（有訂單未提供單價）\n飲料已知小計：310（未包含：百香綠茶（規格未提供）（有訂單未提供單價））\n外送費（不計入飲料金額）：45\n\n未寫數量的烏龍鮮奶按 1 杯處理。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4282d2fa-3a32-448c-87f1-6fde9892651c",
+    "run_id": "5909c2ec-d152-4789-aefe-c58472a89ef6",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收標準均已達成。訂單正確合併或區分規格，未定價品項未被估價，飲料已知小計與外送費也分開列示。",
+    "criterion_results": [
+      {
+        "criterion_id": "da6c36fc-2a12-4fc1-bd95-406fd378448b",
+        "text": "輸入中品項及規格完全相同的訂單會合併：珍珠奶茶半糖少冰共 3 杯，單價 60 元，小計 180 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "半糖少冰珍珠奶茶合併列為 3 杯，單價 60 元，小計 180 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 珍珠奶茶（半糖少冰）：3 杯；單價 60；小計 180",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9f43a026-3fd3-4a87-a503-75860586c729",
+        "text": "相同品項但規格不同會分開列出：珍珠奶茶全糖少冰列為 1 杯，單價 60 元，小計 60 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "全糖少冰珍珠奶茶與半糖少冰分開列出，數量、單價及小計均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 珍珠奶茶（全糖少冰）：1 杯；單價 60；小計 60",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6948c7f7-35d7-4eaf-85e9-46f2623d3d76",
+        "text": "未寫數量的烏龍鮮奶按 1 杯處理，單價 70 元，小計 70 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "烏龍鮮奶按 1 杯列出，單價 70 元，小計 70 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 烏龍鮮奶（微糖去冰）：1 杯；單價 70；小計 70",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a8f09dfe-3d63-4241-a2e7-3b5090526d5b",
+        "text": "百香綠茶未提供單價時，數量列為 2 杯，單價與小計標示「未提供」，不猜測金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "百香綠茶列為 2 杯，單價與小計均標示未提供，沒有猜測金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 百香綠茶（規格未提供）：2 杯；單價 未提供；小計 未提供（有訂單未提供單價）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3d26d354-bcbc-4444-a771-da391284fbe7",
+        "text": "飲料已知小計為 310 元（180 + 60 + 70），並註明此金額尚未包含未定價的百香綠茶；外送費 45 元另列且不計入飲料金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "飲料已知小計為 310 元，註明未包含未定價的百香綠茶；45 元外送費另列，且明示不計入飲料金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "飲料已知小計：310（未包含：百香綠茶（規格未提供）（有訂單未提供單價））",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "外送費（不計入飲料金額）：45",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "efe124fb-f991-4909-aff3-4620d5e76080",
+        "text": "結果清楚列出各品項及規格、數量、單價、小計、飲料金額，以及另列的外送費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "結果逐項列出品項、規格、數量、單價與小計，並分別列出飲料已知金額及外送費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂購清單：\n- 珍珠奶茶（半糖少冰）：3 杯；單價 60；小計 180\n- 珍珠奶茶（全糖少冰）：1 杯；單價 60；小計 60\n- 烏龍鮮奶（微糖去冰）：1 杯；單價 70；小計 70\n- 百香綠茶（規格未提供）：2 杯；單價 未提供；小計 未提供（有訂單未提供單價）\n飲料已知小計：310（未包含：百香綠茶（規格未提供）（有訂單未提供單價））\n外送費（不計入飲料金額）：45",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1564 input and 926 output tokens on skillhub-run; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

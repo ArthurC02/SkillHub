@@ -1,0 +1,191 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下團購訂單，合併品項與規格相同的訂購，並計算飲料總金額。\n午安，今天團購：\n小美：珍珠奶茶，微糖去冰，2杯，每杯65元。\n阿強：珍珠奶茶，微糖去冰，1杯，每杯65元；四季春青茶，無糖少冰，1杯，每杯35元。\n小玲：珍珠奶茶，半糖去冰，1杯，每杯65元。\n外送費30元。",
+  "acceptance_criteria": [
+    {
+      "text": "表格包含品項、規格、數量、單價及小計欄位，並整理出試跑輸入中的三種品項／規格組合。"
+    },
+    {
+      "text": "將小美與阿強訂購的微糖去冰珍珠奶茶合併為3杯，單價65元，小計195元。"
+    },
+    {
+      "text": "將半糖去冰珍珠奶茶與微糖去冰珍珠奶茶分開列；四季春青茶也單獨列為1杯、單價35元、小計35元。"
+    },
+    {
+      "text": "飲料總金額列為295元，計算為195＋65＋35，不包含外送費。"
+    },
+    {
+      "text": "外送費另列為30元，且不加進飲料總金額。"
+    }
+  ],
+  "final_output": "| 品項 | 規格 | 數量 | 單價 | 小計 |\n|---|---|---:|---:|---:|\n| 珍珠奶茶 | 微糖去冰 | 3 杯 | 65 元 | 195 元 |\n| 四季春青茶 | 無糖少冰 | 1 杯 | 35 元 | 35 元 |\n| 珍珠奶茶 | 半糖去冰 | 1 杯 | 65 元 | 65 元 |\n\n飲料總金額：295 元（不含外送費）  \n外送費：30 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1ce36bc6-a36f-4599-a929-3b17c9e47dca",
+    "run_id": "c7b21bbe-eae2-41a6-99f7-8a85364cfbaa",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收標準均已達成：訂單依品項與規格彙整，飲料合計295元，外送費30元另列。",
+    "criterion_results": [
+      {
+        "criterion_id": "03fb19eb-5c5a-4b77-9c5e-419b603e74dd",
+        "text": "表格包含品項、規格、數量、單價及小計欄位，並整理出試跑輸入中的三種品項／規格組合。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格包含指定的五個欄位，並列出三種不同的品項與規格組合。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 品項 | 規格 | 數量 | 單價 | 小計 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 珍珠奶茶 | 微糖去冰 | 3 杯 | 65 元 | 195 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 四季春青茶 | 無糖少冰 | 1 杯 | 35 元 | 35 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 珍珠奶茶 | 半糖去冰 | 1 杯 | 65 元 | 65 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e263655b-8b2c-48c6-b77f-acaa59929542",
+        "text": "將小美與阿強訂購的微糖去冰珍珠奶茶合併為3杯，單價65元，小計195元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "微糖去冰珍珠奶茶合併為3杯，單價65元，小計195元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 珍珠奶茶 | 微糖去冰 | 3 杯 | 65 元 | 195 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dbb40f93-40f2-40b7-b192-b54cf8e93341",
+        "text": "將半糖去冰珍珠奶茶與微糖去冰珍珠奶茶分開列；四季春青茶也單獨列為1杯、單價35元、小計35元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "半糖與微糖去冰珍珠奶茶分列；四季春青茶另列為1杯、單價35元、小計35元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 珍珠奶茶 | 微糖去冰 | 3 杯 | 65 元 | 195 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 珍珠奶茶 | 半糖去冰 | 1 杯 | 65 元 | 65 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 四季春青茶 | 無糖少冰 | 1 杯 | 35 元 | 35 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a907db2f-c2be-4218-96d5-fdcee96d9373",
+        "text": "飲料總金額列為295元，計算為195＋65＋35，不包含外送費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三筆飲料小計為195、65及35元，合計295元；回覆明確註明不含外送費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 珍珠奶茶 | 微糖去冰 | 3 杯 | 65 元 | 195 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 珍珠奶茶 | 半糖去冰 | 1 杯 | 65 元 | 65 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 四季春青茶 | 無糖少冰 | 1 杯 | 35 元 | 35 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "飲料總金額：295 元（不含外送費）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "67d54d95-3fc4-4832-b9f6-ee469ed1136a",
+        "text": "外送費另列為30元，且不加進飲料總金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "外送費另列30元，飲料總金額明確標示不含外送費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "飲料總金額：295 元（不含外送費）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "外送費：30 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1539 input and 545 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

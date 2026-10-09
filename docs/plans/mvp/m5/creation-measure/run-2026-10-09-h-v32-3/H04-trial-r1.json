@@ -1,0 +1,197 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆計算以下到府坐月子護理訪視的應收費用，並以表格列出每筆的應收金額：\n1. 日期：2026-10-13；開始時間：14:00；是否為國定假日：否\n2. 日期：2026-10-13；開始時間：20:59；是否為國定假日：否\n3. 日期：2026-10-13；開始時間：21:00；是否為國定假日：否\n4. 日期：2026-10-14；開始時間：06:59；是否為國定假日：否\n5. 日期：2026-10-14；開始時間：07:00；是否為國定假日：否\n6. 日期：2026-10-14；開始時間：00:00；是否為國定假日：是\n7. 日期：2026-10-14；開始時間：23:59；是否為國定假日：是\n8. 日期：2026-10-14；開始時間：21:00；是否為國定假日：是",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 筆（2026-10-13 14:00，非國定假日）應列出應收新台幣 1,500 元。"
+    },
+    {
+      "text": "試跑輸入第 2 筆（2026-10-13 20:59，非國定假日）應列出應收新台幣 1,500 元，確認 21:00 前不屬夜間加成。"
+    },
+    {
+      "text": "試跑輸入第 3 筆（2026-10-13 21:00，非國定假日）應列出應收新台幣 1,800 元，確認夜間起點包含在加成時段內。"
+    },
+    {
+      "text": "試跑輸入第 4 筆（2026-10-14 06:59，非國定假日）應列出應收新台幣 1,800 元，確認隔日 07:00 前仍屬夜間加成。"
+    },
+    {
+      "text": "試跑輸入第 5 筆（2026-10-14 07:00，非國定假日）應列出應收新台幣 1,500 元，確認 07:00 整不屬夜間加成。"
+    },
+    {
+      "text": "試跑輸入第 6 筆（2026-10-14 00:00，國定假日）應列出應收新台幣 2,250 元，確認國定假日當日午夜起適用全天假日費。"
+    },
+    {
+      "text": "試跑輸入第 7 筆（2026-10-14 23:59，國定假日）應列出應收新台幣 2,250 元，確認國定假日當日接近午夜仍適用假日費。"
+    },
+    {
+      "text": "試跑輸入第 8 筆（2026-10-14 21:00，國定假日）應列出新台幣 2,250 元而非疊加費用，確認夜間與假日重疊時採假日費。"
+    }
+  ],
+  "final_output": "| # | 日期 | 開始時間 | 國定假日 | 應收費用 |\n|---:|---|---|---|---:|\n| 1 | 2026-10-13 | 14:00 | 否 | 新台幣 1,500 元 |\n| 2 | 2026-10-13 | 20:59 | 否 | 新台幣 1,500 元 |\n| 3 | 2026-10-13 | 21:00 | 否 | 新台幣 1,800 元 |\n| 4 | 2026-10-14 | 06:59 | 否 | 新台幣 1,800 元 |\n| 5 | 2026-10-14 | 07:00 | 否 | 新台幣 1,500 元 |\n| 6 | 2026-10-14 | 00:00 | 是 | 新台幣 2,250 元 |\n| 7 | 2026-10-14 | 23:59 | 是 | 新台幣 2,250 元 |\n| 8 | 2026-10-14 | 21:00 | 是 | 新台幣 2,250 元 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7fe36540-5dae-4f16-82ae-f7b908e104e1",
+    "run_id": "3f58da41-ba79-4cc0-a663-82a156faa50b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終表格逐筆列出八筆訪視費用；各筆金額均符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "b0eb7288-a15a-46c0-a7a3-11bb71a8cfd8",
+        "text": "試跑輸入第 1 筆（2026-10-13 14:00，非國定假日）應列出應收新台幣 1,500 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆列為新台幣 1,500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 2026-10-13 | 14:00 | 否 | 新台幣 1,500 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c634a198-ca23-4501-a170-8ae2ecc18f35",
+        "text": "試跑輸入第 2 筆（2026-10-13 20:59，非國定假日）應列出應收新台幣 1,500 元，確認 21:00 前不屬夜間加成。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆 20:59 列為新台幣 1,500 元，未計夜間加成。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 2026-10-13 | 20:59 | 否 | 新台幣 1,500 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "71f0ec33-d6c8-4b3e-b3b6-ef46ff1ebe8d",
+        "text": "試跑輸入第 3 筆（2026-10-13 21:00，非國定假日）應列出應收新台幣 1,800 元，確認夜間起點包含在加成時段內。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆 21:00 列為新台幣 1,800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 2026-10-13 | 21:00 | 否 | 新台幣 1,800 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0d6d9761-799e-4800-af19-0eef483a661c",
+        "text": "試跑輸入第 4 筆（2026-10-14 06:59，非國定假日）應列出應收新台幣 1,800 元，確認隔日 07:00 前仍屬夜間加成。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆 06:59 列為新台幣 1,800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 2026-10-14 | 06:59 | 否 | 新台幣 1,800 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "929fcc4f-fb5f-439c-bca6-da36ae80d88d",
+        "text": "試跑輸入第 5 筆（2026-10-14 07:00，非國定假日）應列出應收新台幣 1,500 元，確認 07:00 整不屬夜間加成。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆 07:00 列為新台幣 1,500 元，未計夜間加成。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 5 | 2026-10-14 | 07:00 | 否 | 新台幣 1,500 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e4431e5e-66b7-476a-b2c4-c1e1d026e3a8",
+        "text": "試跑輸入第 6 筆（2026-10-14 00:00，國定假日）應列出應收新台幣 2,250 元，確認國定假日當日午夜起適用全天假日費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 筆國定假日 00:00 列為新台幣 2,250 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 6 | 2026-10-14 | 00:00 | 是 | 新台幣 2,250 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "71d3e9c5-09c3-465f-a61a-94c594e47cc1",
+        "text": "試跑輸入第 7 筆（2026-10-14 23:59，國定假日）應列出應收新台幣 2,250 元，確認國定假日當日接近午夜仍適用假日費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 7 筆國定假日 23:59 列為新台幣 2,250 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 7 | 2026-10-14 | 23:59 | 是 | 新台幣 2,250 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d505a017-2afb-43ee-a2d7-612912cbb24f",
+        "text": "試跑輸入第 8 筆（2026-10-14 21:00，國定假日）應列出新台幣 2,250 元而非疊加費用，確認夜間與假日重疊時採假日費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 8 筆國定假日 21:00 列為新台幣 2,250 元，未疊加夜間費用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 8 | 2026-10-14 | 21:00 | 是 | 新台幣 2,250 元 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1536 input and 675 output tokens on skillhub-run; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

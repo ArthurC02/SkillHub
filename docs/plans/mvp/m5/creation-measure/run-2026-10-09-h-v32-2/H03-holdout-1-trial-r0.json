@@ -1,0 +1,72 @@
+{
+  "round": 0,
+  "sample_input": "欸大家想喝的我幫忙統計一下喔，珍珠奶茶要15杯，一杯55元那種，然後四季春紅茶8杯，單價35元，啊還有芋頭鮮奶10杯，單價65塊，對了外送費好像是90元，這個不要算進總額裡面喔，麻煩你了。",
+  "acceptance_criteria": [
+    {
+      "text": "飲料總金額為 1755 元（不含外送費）"
+    },
+    {
+      "text": "外送費 90 元有另外列出、沒有計入總金額"
+    },
+    {
+      "text": "訂購清單包含珍珠奶茶 15 杯、四季春紅茶 8 杯、芋頭鮮奶 10 杯"
+    },
+    {
+      "text": "沒有捏造清單以外的品項或數量"
+    }
+  ],
+  "final_output": "| 品項 | 規格 | 數量 | 單價 | 小計 |\n|---|---|---:|---:|---:|\n| 珍珠奶茶 | 未提供 | 15 | 55 | 825 |\n| 四季春紅茶 | 未提供 | 8 | 35 | 280 |\n| 芋頭鮮奶 | 未提供 | 10 | 65 | 650 |\n\n飲料總金額：未提供  \n外送費：90（不計入飲料總金額）",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "5d62108c-1cb3-4a69-ab6f-0990713cf303",
+    "run_id": "1574dd1a-040d-4862-8e4e-f43993bb3f41",
+    "status": "failed",
+    "overall": "undetermined",
+    "summary": "這次判定沒有跑完：模型閘道或證據讀取失敗。原因已記在這個 Run 的執行紀錄（進階模式）裡。",
+    "criterion_results": [],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1539 input and 871 output tokens on skillhub-run; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": null,
+      "source": "unreported",
+      "note": "Judge 這一次呼叫沒有回報花費：這裡是未測量，不是 0 點。權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "round": 0,
+  "sample_input": "會員姓名陳小姐，會籍到期日期2026年11月20日，續約優惠價一年8888元（原價12000元），續約需在10月31日前完成付款才享優惠，教練姓名是小力教練，本月新增有氧課程時段，健身中心地址是台北市信義區松仁路100號，續約還送體驗課3堂，另外停車場即日起收費。請幫我寫續約通知。",
+  "acceptance_criteria": [
+    {
+      "text": "通知本文不超過 2 句話（不含說明省略內容的那一句）"
+    },
+    {
+      "text": "本文包含到期日期 2026 年 11 月 20 日"
+    },
+    {
+      "text": "本文包含續約優惠價 8888 元（或等同表示）"
+    },
+    {
+      "text": "輸出另有一句話說明為了守住 2 句話上限而省略或合併了哪些資訊"
+    }
+  ],
+  "final_output": "- 陳小姐您好，您的到期日期2026年11月20日；續約優惠價一年8888元（原價12000元），續約需在10月31日前完成付款才享優惠，續約另送體驗課3堂，本月新增有氧課程時段，教練姓名是小力教練，健身中心地址是台北市信義區松仁路100號，另外停車場即日起收費。\n補充說明：已將付款期限與續約優惠、贈送體驗課、本月新增有氧課程時段、教練姓名、健身中心地址及停車收費資訊合併於通知本文。",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "2353fa7b-b65e-433a-bd25-b3172fd6760c",
+    "run_id": "1f944afb-4bee-42e4-9508-c09e66a519c1",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "通知本文符合句數上限，並包含到期日及續約優惠價。補充說明列出了合併的資訊，但沒有交代合併是為了遵守兩句話上限。",
+    "criterion_results": [
+      {
+        "criterion_id": "1076f3e9-23b8-47c1-bc8f-2227f89de7ba",
+        "text": "通知本文不超過 2 句話（不含說明省略內容的那一句）",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文只有一句話；補充說明另列，不計入本文句數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 陳小姐您好，您的到期日期2026年11月20日；續約優惠價一年8888元（原價12000元），續約需在10月31日前完成付款才享優惠，續約另送體驗課3堂，本月新增有氧課程時段，教練姓名是小力教練，健身中心地址是台北市信義區松仁路100號，另外停車場即日起收費。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "81e06c40-f5c2-448e-888a-b9d18d6809ca",
+        "text": "本文包含到期日期 2026 年 11 月 20 日",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文載明到期日期為2026年11月20日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "到期日期2026年11月20日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dc7639d2-bed2-44b6-90f5-1b3366eb426c",
+        "text": "本文包含續約優惠價 8888 元（或等同表示）",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文載明一年續約優惠價8888元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "續約優惠價一年8888元（原價12000元）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "80434477-2c3a-4fc9-a6f0-1abd6bccbf66",
+        "text": "輸出另有一句話說明為了守住 2 句話上限而省略或合併了哪些資訊",
+        "result": "failed",
+        "source": "model",
+        "reason": "另有一句說明合併了哪些資訊，但未說明合併是為了守住本文兩句話的上限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "補充說明：已將付款期限與續約優惠、贈送體驗課、本月新增有氧課程時段、教練姓名、健身中心地址及停車收費資訊合併於通知本文。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1626 input and 4214 output tokens on skillhub-run; reported cost $0.0068 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "round": 3,
+  "sample_input": "請為這筆資料寫一則續約通知。會員稱呼：林怡君；會籍到期日：2026年11月30日；續約優惠價：月繳 NT$899；其他資訊：可到櫃檯或透過會員 App 續約。\n請為這筆資料寫一則續約通知。會員稱呼：陳柏翰；會籍到期日：2026年12月15日；續約優惠價：年繳 NT$8,800；其他資訊：可到櫃檯續約、續約後可使用泳池與重訓區、優惠只適用於到期前續約、續約方案可選月繳或年繳。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑第 1 行：通知正文不超過 2 句，並包含會員稱呼、到期日期「2026年11月30日」和優惠價「月繳 NT$899」；其他提供的資訊都能放入時不得省略，且不應另加省略或合併說明。"
+    },
+    {
+      "text": "試跑第 2 行：通知正文不超過 2 句，並包含會員稱呼、到期日期「2026年12月15日」和優惠價「年繳 NT$8,800」；不得自行增添輸入未提供的優惠條件。"
+    },
+    {
+      "text": "試跑第 2 行：正文空間不足時，依輸入順序合併或省略其他資訊，並在正文外另用一句話明確指出被合併或省略的資訊；該說明句不計入正文句數。"
+    },
+    {
+      "text": "試跑兩行：每一行各產生一則繁體中文通知，並保留該行原有的日期與價格格式。"
+    }
+  ],
+  "final_output": "林怡君您好，您的會籍將於2026年11月30日到期，續約優惠價為月繳 NT$899，可到櫃檯或透過會員 App 續約。\n陳柏翰您好，您的會籍將於2026年12月15日到期，續約優惠價為年繳 NT$8,800；可到櫃檯續約、續約後可使用泳池與重訓區、優惠只適用於到期前續約、續約方案可選月繳或年繳。",
+  "artifacts": [
+    "notice-body.txt",
+    "notice.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "874721f4-0024-49b0-acc4-1913e2070cc4",
+    "run_id": "a8d497e8-8c3e-4f92-9d30-88010c4a31d8",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩則通知各以一句繁體中文寫成，保留指定的會員稱呼、日期、價格格式及其他資訊。第 2 則沒有資訊遭省略或合併，無須額外說明。",
+    "criterion_results": [
+      {
+        "criterion_id": "997ce118-3b06-4e76-b5fa-50a4be952fbc",
+        "text": "試跑第 1 行：通知正文不超過 2 句，並包含會員稱呼、到期日期「2026年11月30日」和優惠價「月繳 NT$899」；其他提供的資訊都能放入時不得省略，且不應另加省略或合併說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 則正文只有一句，包含會員稱呼、指定日期與價格，也保留櫃檯及會員 App 兩種續約方式；沒有另加省略或合併說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林怡君您好，您的會籍將於2026年11月30日到期，續約優惠價為月繳 NT$899，可到櫃檯或透過會員 App 續約。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "abeba16a-c0e1-4de0-8e9e-fd917a4f488d",
+        "text": "試跑第 2 行：通知正文不超過 2 句，並包含會員稱呼、到期日期「2026年12月15日」和優惠價「年繳 NT$8,800」；不得自行增添輸入未提供的優惠條件。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 則正文只有一句，包含會員稱呼、指定日期與價格；所述優惠期限及其他條件均來自輸入，沒有自行增添優惠條件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳柏翰您好，您的會籍將於2026年12月15日到期，續約優惠價為年繳 NT$8,800；可到櫃檯續約、續約後可使用泳池與重訓區、優惠只適用於到期前續約、續約方案可選月繳或年繳。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "70373cfb-ec1d-45da-9b51-2c022f00216a",
+        "text": "試跑第 2 行：正文空間不足時，依輸入順序合併或省略其他資訊，並在正文外另用一句話明確指出被合併或省略的資訊；該說明句不計入正文句數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 則在一句正文中依輸入順序列出全部其他資訊，沒有因空間不足而合併或省略資訊，因此無須另加說明句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳柏翰您好，您的會籍將於2026年12月15日到期，續約優惠價為年繳 NT$8,800；可到櫃檯續約、續約後可使用泳池與重訓區、優惠只適用於到期前續約、續約方案可選月繳或年繳。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a0486852-119d-4286-84d4-2d19bb5f6e15",
+        "text": "試跑兩行：每一行各產生一則繁體中文通知，並保留該行原有的日期與價格格式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出分別為兩位會員各寫一則繁體中文通知，兩行的日期與價格均保留原有格式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林怡君您好，您的會籍將於2026年11月30日到期，續約優惠價為月繳 NT$899，可到櫃檯或透過會員 App 續約。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "陳柏翰您好，您的會籍將於2026年12月15日到期，續約優惠價為年繳 NT$8,800；可到櫃檯續約、續約後可使用泳池與重訓區、優惠只適用於到期前續約、續約方案可選月繳或年繳。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 2 readable output file(s): notice-body.txt, notice.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1585 input and 1944 output tokens on skillhub-run; reported cost $0.0049 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}
