@@ -995,6 +995,82 @@ test("下架成功但重讀失敗時仍保留這次的完成結果", async ({ pa
   await expect(page.locator("#admin-skill-takedown")).toHaveCount(0);
 });
 
+test("受限展示完成後顯示結果，反向操作從空白理由開始", async ({ page }, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let restricted = false;
+  await page.route(`**/admin/skills/${SKILL}/restriction`, (route) => {
+    restricted = true;
+    return route.fulfill({ json: { skill_id: SKILL, access_restriction: "license-review" } });
+  });
+  await page.route(`**/admin/skills?q=${SKILL}`, (route) => {
+    if (route.request().resourceType() === "document") return route.fallback();
+    return route.fulfill({
+      json: {
+        skills: ADMIN_SKILLS.skills.map((skill) => ({
+          ...skill,
+          access_restriction: restricted ? "license-review" : null,
+        })),
+      },
+    });
+  });
+  await page.goto(`/admin/skills?q=${SKILL}`);
+  await page.locator("#admin-skill-restriction summary").click();
+  await page.locator("#admin-restriction-note").fill("授權審查");
+  await page.getByRole("button", { name: "設定受限", exact: true }).click();
+
+  await expect(page.locator("#admin-governance-result")).toHaveText(
+    "「PDF Summariser」已設定受限展示。",
+  );
+  await expect(page.locator("#admin-governance-result")).toBeFocused();
+  await expect(page.locator("#admin-governance-result")).toBeInViewport({ ratio: 1 });
+  const resultTop = await page
+    .locator("#admin-governance-result")
+    .evaluate((element) => element.getBoundingClientRect().top);
+  const headerBottom = await page
+    .locator(".app-header")
+    .evaluate((element) => element.getBoundingClientRect().bottom);
+  expect(resultTop).toBeGreaterThanOrEqual(headerBottom);
+  await expect(page.getByRole("button", { name: "解除受限", exact: true })).toBeDisabled();
+  await expect(page.locator("#admin-restriction-note")).toBeEmpty();
+  await page.screenshot({
+    path: testInfo.outputPath("admin-restriction-result-phone.png"),
+    fullPage: true,
+  });
+  await expect(page.locator("#admin-governance-result")).toHaveText(
+    "「PDF Summariser」已設定受限展示。",
+  );
+
+  await page.locator("#admin-restriction-note").fill("授權已確認");
+  await expect(page.locator("#admin-governance-result")).toHaveCount(0);
+});
+
+test("再散布判定成功但治理狀態重讀失敗時保留完成結果", async ({ page }) => {
+  await stubPlatform(page);
+  let changed = false;
+  await page.route(`**/admin/skills/${SKILL}/redistribution`, (route) => {
+    changed = true;
+    return route.fulfill({ json: { skill_id: SKILL, redistribution: "blocked" } });
+  });
+  await page.route(`**/admin/skills?q=${SKILL}`, (route) => {
+    if (route.request().resourceType() === "document") return route.fallback();
+    return changed
+      ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
+      : route.fulfill({ json: ADMIN_SKILLS });
+  });
+  await page.goto(`/admin/skills?q=${SKILL}`);
+  await page.locator("#admin-skill-redistribution summary").click();
+  await page.locator("#admin-redistribution-note").fill("禁止再散布");
+  await page.getByRole("button", { name: "送出判定" }).click();
+
+  await expect(page.getByRole("alert")).toContainText("暫時無法讀取小工具");
+  await expect(page.locator("#admin-governance-result")).toHaveText(
+    "「PDF Summariser」的再散布判定已改為「禁止再散布」。",
+  );
+  await expect(page.locator("#admin-governance-result")).toBeFocused();
+  await expect(page.locator("#admin-skill-redistribution")).toHaveCount(0);
+});
+
 test("admin route focus highlights the heading without outlining the entire content column", async ({
   page,
 }) => {

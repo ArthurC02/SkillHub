@@ -2,3 +2,7 @@
   width: fit-content;
   max-width: 100%;
 }
+
+.admin-page-result {
+  scroll-margin-top: 128px;
+}

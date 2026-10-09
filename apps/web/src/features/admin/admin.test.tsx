@@ -892,9 +892,10 @@ test("OPS-004: releasing a skill needs licence evidence; blocking it does not", 
       license_source: "package-license-file",
     },
   });
-  await waitFor(has("已送出，上面的狀態已更新。"));
+  await waitFor(has("「PDF Summariser」的再散布判定已改為「可以再散布」。"));
+  expect(document.activeElement?.id).toBe("admin-governance-result");
   await type("#admin-license-expression", "Apache-2.0");
-  expect(has("已送出，上面的狀態已更新。")()).toBe(false);
+  expect(has("「PDF Summariser」的再散布判定已改為「可以再散布」。")()).toBe(false);
 });
 
 test("a revised model timeout does not inherit the previous success notice", async () => {
@@ -1107,13 +1108,45 @@ test("OPS-004: a restriction is set with the known reason code and lifted by the
   });
 
   await waitFor(has("解除受限展示"));
+  await waitFor(has("「PDF Summariser」已設定受限展示。"));
+  expect(document.activeElement?.id).toBe("admin-governance-result");
+  expect(field<HTMLTextAreaElement>("#admin-restriction-note").value).toBe("");
+  expect(button("解除受限").disabled).toBe(true);
   await type("#admin-restriction-note", "cleared");
+  expect(has("「PDF Summariser」已設定受限展示。")()).toBe(false);
   await click(button("解除受限"));
   await waitFor(() => calls.some((c) => c.method === "DELETE"));
   expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({ note: "cleared" });
   await waitFor(has("沒有受限"));
   expect(has("受限展示：")()).toBe(false);
   expect(has("設定受限展示")()).toBe(true);
+  await waitFor(has("「PDF Summariser」已解除受限展示。"));
+  expect(field<HTMLTextAreaElement>("#admin-restriction-note").value).toBe("");
+});
+
+test("OPS-004: a confirmed redistribution remains visible when refreshing governance fails", async () => {
+  let changed = false;
+  stub(true, (path, method) => {
+    if (path === "/admin/skills" && method === "GET")
+      return changed
+        ? { body: { error: "read unavailable" }, status: 503 }
+        : { body: ADMIN_SKILLS, status: 200 };
+    if (path === `/admin/skills/${SKILL}/redistribution` && method === "PUT") {
+      changed = true;
+      return { body: {}, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("再散布判定"));
+  await click(field<HTMLElement>("#admin-skill-redistribution summary"));
+  await type("#admin-redistribution-note", "distribution blocked");
+  await click(button("送出判定"));
+
+  await waitFor(has("「PDF Summariser」的再散布判定已改為「禁止再散布」。"));
+  await waitFor(() => field<HTMLElement>("#admin-governance-result") === document.activeElement);
+  await waitFor(() => container.querySelector("#admin-skill-redistribution") === null);
+  expect(has("暫時無法讀取小工具")()).toBe(true);
 });
 
 test("an unknown restriction reason stays visible without looking unrestricted", async () => {
@@ -3770,7 +3803,8 @@ test("OPS-004: setting a restriction keeps its sentence after the refetched skil
   await type("#admin-restriction-note", "terms under review");
   await click(button("設定受限"));
   await waitFor(has("解除受限展示"));
-  await waitFor(has("已送出，上面的狀態已更新。"));
+  await waitFor(has("「PDF Summariser」已設定受限展示。"));
+  expect(document.activeElement?.id).toBe("admin-governance-result");
 });
 
 test("OPS-012: a daily-report item without cites shows its text and the page still renders", async () => {

@@ -39,28 +39,28 @@ function SearchForm({ q, onDraftChange }: { q: string; onDraftChange: (draft: st
   );
 }
 
-function TakedownResult({
+function GovernanceResult({
   completed,
   skills,
 }: {
-  completed?: { id: string; name: string };
+  completed?: { id: string; message: string; takedown?: boolean };
   skills?: SkillGovernance[];
 }) {
   const result = useRef<HTMLParagraphElement>(null);
   const show = Boolean(completed && skills?.some((skill) => skill.skill_id === completed.id));
   useEffect(() => {
     if (show) result.current?.focus();
-  }, [show]);
+  }, [completed, show]);
   if (!show || !completed) return null;
   return (
     <p
-      id="admin-takedown-result"
+      id={completed.takedown ? "admin-takedown-result" : "admin-governance-result"}
       ref={result}
       tabIndex={-1}
-      className="notice notice-success"
+      className="notice notice-success admin-page-result"
       role="status"
     >
-      「{completed.name}」已下架。
+      {completed.message}
     </p>
   );
 }
@@ -68,13 +68,17 @@ function TakedownResult({
 function GovernanceResults({ q }: { q: string }) {
   const skills = useGovernance(q);
   const found = q !== "" && !skills.error ? (skills.data?.skills ?? []) : [];
-  const [completedTakedown, setCompletedTakedown] = useState<{ id: string; name: string }>();
+  const [completed, setCompleted] = useState<{
+    id: string;
+    message: string;
+    takedown?: boolean;
+  }>();
 
   return (
     <>
       {q === "" && <p className="note">輸入 ID 或名稱，查詢所有工作區的小工具。</p>}
       {q !== "" && skills.isPending && <Loading what="小工具" />}
-      <TakedownResult completed={completedTakedown} skills={skills.data?.skills} />
+      <GovernanceResult completed={completed} skills={skills.data?.skills} />
       <ReadFailure error={skills.error} what="小工具" />
       {q !== "" && (
         <p className="note">
@@ -105,7 +109,9 @@ function GovernanceResults({ q }: { q: string }) {
                   key={skill.skill_id}
                   skill={skill}
                   single={found.length === 1}
-                  focusWhenTakenDown={completedTakedown?.id !== skill.skill_id}
+                  focusWhenTakenDown={
+                    completed?.takedown !== true || completed.id !== skill.skill_id
+                  }
                 />
               ))}
             </ul>
@@ -115,7 +121,15 @@ function GovernanceResults({ q }: { q: string }) {
         <GovernanceActions
           key={found[0].skill_id}
           skill={found[0]}
-          onTakedown={() => setCompletedTakedown({ id: found[0].skill_id, name: found[0].name })}
+          onTakedown={() =>
+            setCompleted({
+              id: found[0].skill_id,
+              message: `「${found[0].name}」已下架。`,
+              takedown: true,
+            })
+          }
+          onOutcome={(message) => setCompleted({ id: found[0].skill_id, message })}
+          onDraftChange={() => setCompleted(undefined)}
         />
       )}
     </>

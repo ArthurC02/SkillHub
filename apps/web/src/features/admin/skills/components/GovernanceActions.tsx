@@ -10,12 +10,19 @@ const TAKEDOWN_SCOPE =
 export function GovernanceActions({
   skill,
   onTakedown,
+  onOutcome,
+  onDraftChange,
 }: {
   skill: SkillGovernance;
   onTakedown: () => void;
+  onOutcome: (message: string) => void;
+  onDraftChange: () => void;
 }) {
-  const restriction = useGovernanceAction(skill.skill_id, "restriction");
-  const redistribution = useGovernanceAction(skill.skill_id, "redistribution");
+  const redistribution = useGovernanceAction(skill.skill_id, "redistribution", ({ body }) =>
+    onOutcome(
+      `「${skill.name}」的再散布判定已改為「${body.value === "allowed" ? "可以再散布" : body.value === "blocked" ? "禁止再散布" : "尚未判定"}」。`,
+    ),
+  );
   const [verdict, setVerdict] = useState("blocked");
   const [licenseExpression, setLicenseExpression] = useState("");
   const [licenseSource, setLicenseSource] = useState("");
@@ -24,27 +31,10 @@ export function GovernanceActions({
   return (
     <>
       <h2>對「{skill.name}」的動作</h2>
-      <h3>{skill.access_restriction ? "解除受限展示" : "設定受限展示"}</h3>
-      <p className="note">受限展示關掉全文與試跑，小工具仍在搜尋裡。可以用同一個地方改回來。</p>
-      <details id="admin-skill-restriction">
-        <summary>填寫變更理由</summary>
-        <ActionForm
-          id="admin-restriction"
-          submitLabel={skill.access_restriction ? "解除受限" : "設定受限"}
-          pending={restriction.isPending}
-          error={restriction.error}
-          done={restriction.isSuccess && "已送出，上面的狀態已更新。"}
-          contextKey={skill.skill_id}
-          onSubmit={(note) =>
-            skill.access_restriction
-              ? restriction.mutate({ method: "DELETE", body: { note } })
-              : restriction.mutate({ method: "PUT", body: { reason: "license-review", note } })
-          }
-        />
-      </details>
+      <RestrictionAction skill={skill} onOutcome={onOutcome} onDraftChange={onDraftChange} />
 
       <h3>再散布判定</h3>
-      <details id="admin-skill-redistribution">
+      <details id="admin-skill-redistribution" onInput={onDraftChange}>
         <summary>填寫判定與理由</summary>
         <ActionForm
           id="admin-redistribution"
@@ -52,9 +42,9 @@ export function GovernanceActions({
           pending={redistribution.isPending}
           error={redistribution.error}
           ready={!releasing || (licenseExpression.trim() !== "" && licenseSource !== "")}
-          done={redistribution.isSuccess && "已送出，上面的狀態已更新。"}
           contextKey={`${skill.skill_id}:${verdict}:${licenseExpression.trim()}:${licenseSource}`}
-          onSubmit={(note) =>
+          onSubmit={(note) => {
+            onDraftChange();
             redistribution.mutate({
               method: "PUT",
               body: releasing
@@ -65,8 +55,8 @@ export function GovernanceActions({
                     license_source: licenseSource,
                   }
                 : { value: verdict, note },
-            })
-          }
+            });
+          }}
         >
           <div className="field">
             <label htmlFor="admin-redistribution-value">判定</label>
@@ -74,6 +64,7 @@ export function GovernanceActions({
               id="admin-redistribution-value"
               value={verdict}
               onChange={(event) => {
+                onDraftChange();
                 setVerdict(event.target.value);
                 redistribution.reset();
               }}
@@ -92,6 +83,7 @@ export function GovernanceActions({
                   id="admin-license-expression"
                   value={licenseExpression}
                   onChange={(event) => {
+                    onDraftChange();
                     setLicenseExpression(event.target.value);
                     redistribution.reset();
                   }}
@@ -104,6 +96,7 @@ export function GovernanceActions({
                   id="admin-license-source"
                   value={licenseSource}
                   onChange={(event) => {
+                    onDraftChange();
                     setLicenseSource(event.target.value);
                     redistribution.reset();
                   }}
@@ -122,6 +115,46 @@ export function GovernanceActions({
       </details>
 
       <TakedownAction skillId={skill.skill_id} onTakedown={onTakedown} />
+    </>
+  );
+}
+
+function RestrictionAction({
+  skill,
+  onOutcome,
+  onDraftChange,
+}: {
+  skill: SkillGovernance;
+  onOutcome: (message: string) => void;
+  onDraftChange: () => void;
+}) {
+  const restriction = useGovernanceAction(skill.skill_id, "restriction", ({ method }) =>
+    onOutcome(
+      method === "DELETE"
+        ? `「${skill.name}」已解除受限展示。`
+        : `「${skill.name}」已設定受限展示。`,
+    ),
+  );
+
+  return (
+    <>
+      <h3>{skill.access_restriction ? "解除受限展示" : "設定受限展示"}</h3>
+      <p className="note">受限展示關掉全文與試跑，小工具仍在搜尋裡。可以用同一個地方改回來。</p>
+      <details id="admin-skill-restriction" onInput={onDraftChange}>
+        <summary>填寫變更理由</summary>
+        <ActionForm
+          key={skill.access_restriction ?? "unrestricted"}
+          id="admin-restriction"
+          submitLabel={skill.access_restriction ? "解除受限" : "設定受限"}
+          pending={restriction.isPending}
+          error={restriction.error}
+          onSubmit={(note) => {
+            onDraftChange();
+            if (skill.access_restriction) restriction.mutate({ method: "DELETE", body: { note } });
+            else restriction.mutate({ method: "PUT", body: { reason: "license-review", note } });
+          }}
+        />
+      </details>
     </>
   );
 }
