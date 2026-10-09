@@ -1,0 +1,42 @@
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.admin-nav-group {
+  margin: 0;
+  min-width: 0;
+}
+
+.admin-nav-group > summary {
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.admin-nav-group > summary:hover {
+  background: var(--surface-hover);
+}
+
+.admin-nav-group:has([aria-current="page"]) > summary {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.admin-nav-group[open] {
+  flex-basis: 100%;
+}
+
+.admin-nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+}

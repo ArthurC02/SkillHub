@@ -1175,7 +1175,7 @@ test("手機平台框架維持兩列頁首與單列導覽（設計 §4.5）", as
   expect(new Set(chrome.navTops).size, "主要導覽不再是單列橫向 rail").toBe(1);
 });
 
-test("手機橫向導覽只在真的溢位時顯示提示", async ({ page }) => {
+test("手機主要導覽只在真的溢位時顯示提示", async ({ page }) => {
   test.slow();
   await stubPlatform(page);
 
@@ -1209,22 +1209,66 @@ test("手機橫向導覽只在真的溢位時顯示提示", async ({ page }) => 
   expect(overflowingWidths, "沒有任何寬度溢位，有溢位的那一支從沒跑到").not.toEqual([]);
   expect(fittingWidths, "沒有任何寬度放得下，沒溢位的那一支從沒跑到").not.toEqual([]);
   expect(scrolledToEnd, "沒有任何寬度溢位，捲到最右邊的檢查從沒跑到").toBe(true);
+});
 
-  await page.setViewportSize({ width: 375, height: 900 });
-  await page.goto("/admin");
-  const adminNav = page.locator(".category-nav");
-  const adminCue = adminNav.locator(":scope > .nav-scroll-cue");
-  await expect(adminCue).toBeVisible();
-  const edges = await adminNav.evaluate((element) => {
-    const hint = element.querySelector(".nav-scroll-cue")!;
-    return {
-      overflows: element.scrollWidth > element.clientWidth,
-      hintRight: Math.round(hint.getBoundingClientRect().right),
-      navRight: Math.round(element.getBoundingClientRect().right),
-    };
-  });
-  expect(edges.overflows, "後台導覽沒有溢位，提示沒有用途").toBe(true);
-  expect(Math.abs(edges.hintRight - edges.navRight), "後台提示沒有黏在右緣").toBeLessThanOrEqual(2);
+test("後台導覽按工作群組展開，窄螢幕也找得到每個目的地", async ({ page }) => {
+  await stubPlatform(page);
+
+  for (const width of [320, 375, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/admin/agents");
+    const nav = page.getByRole("navigation", { name: "後台" });
+    await expect(nav.locator("summary").first()).toHaveText("治理");
+    await expect(nav.locator("summary").last()).toHaveText("營運");
+    await expect(nav.getByRole("link", { name: "後台首頁" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "帳號與點數" })).toBeHidden();
+    await expect(nav.getByRole("link", { name: "平台 Agent" })).toBeHidden();
+    await nav.locator("summary").first().focus();
+    await page.keyboard.press("Enter");
+    await nav.locator("summary").last().click();
+    const groupLayout = await nav
+      .locator(".admin-nav-links")
+      .first()
+      .evaluate((element) => getComputedStyle(element).flexWrap);
+    expect(groupLayout, `${width}px 後台入口未換行`).toBe("wrap");
+
+    for (const name of [
+      "帳號與點數",
+      "小工具治理",
+      "名冊",
+      "曝光審核",
+      "派送煞車",
+      "動作紀錄",
+      "模型呼叫逾時",
+      "成本統計",
+      "趨勢",
+      "平台 Agent",
+    ]) {
+      await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
+    }
+    await expect(nav.getByRole("link", { name: "平台 Agent" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    const offscreenLinks = await nav.locator(".admin-nav-links a").evaluateAll((links) =>
+      links
+        .filter((link) => {
+          const bounds = link.getBoundingClientRect();
+          return bounds.left < 0 || bounds.right > document.documentElement.clientWidth;
+        })
+        .map((link) => link.textContent?.trim()),
+    );
+    expect(offscreenLinks, `${width}px 有後台入口落在畫面外`).toEqual([]);
+    const size = await page.evaluate(() => ({
+      pageWidth: document.documentElement.scrollWidth,
+      viewportWidth: document.documentElement.clientWidth,
+    }));
+    expect(size.pageWidth, `${width}px 後台導覽把頁面撐出視窗`).toBeLessThanOrEqual(
+      size.viewportWidth,
+    );
+    await nav.getByRole("link", { name: "帳號與點數" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "帳號與點數" })).toBeVisible();
+  }
 });
 
 test("舊資產清單網址保留建立錨點並導向 Library", async ({ page }) => {

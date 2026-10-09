@@ -1,43 +1,52 @@
 import { Link } from "@tanstack/react-router";
-import { NavScrollCue } from "../../../shared/ui/NavScrollCue";
+import "./AdminNav.css";
 
 export function AdminNav() {
   return (
-    <nav aria-label="後台" className="category-nav">
+    <nav aria-label="後台" className="admin-nav">
       <Link to="/admin" className="chip" activeOptions={{ exact: true }}>
         後台首頁
       </Link>
-      <Link to="/admin/accounts" className="chip">
-        帳號與點數
-      </Link>
-      <Link to="/admin/skills" search={{}} className="chip">
-        小工具治理
-      </Link>
-      <Link to="/admin/dispatch" className="chip">
-        派送煞車
-      </Link>
-      <Link to="/admin/rosters" className="chip">
-        名冊
-      </Link>
-      <Link to="/admin/audit-log" className="chip">
-        動作紀錄
-      </Link>
-      <Link to="/admin/model-budgets" className="chip">
-        模型呼叫逾時
-      </Link>
-      <Link to="/admin/cost-statistics" className="chip">
-        成本統計
-      </Link>
-      <Link to="/admin/trends" search={{}} className="chip">
-        趨勢
-      </Link>
-      <Link to="/admin/exposure" search={{}} className="chip">
-        曝光審核
-      </Link>
-      <Link to="/admin/agents" search={{}} className="chip">
-        平台 Agent
-      </Link>
-      <NavScrollCue />
+      <details className="admin-nav-group">
+        <summary>治理</summary>
+        <div className="admin-nav-links">
+          <Link to="/admin/accounts" className="chip">
+            帳號與點數
+          </Link>
+          <Link to="/admin/skills" search={{}} className="chip">
+            小工具治理
+          </Link>
+          <Link to="/admin/rosters" className="chip">
+            名冊
+          </Link>
+          <Link to="/admin/exposure" search={{}} className="chip">
+            曝光審核
+          </Link>
+        </div>
+      </details>
+      <details className="admin-nav-group">
+        <summary>營運</summary>
+        <div className="admin-nav-links">
+          <Link to="/admin/dispatch" className="chip">
+            派送煞車
+          </Link>
+          <Link to="/admin/audit-log" className="chip">
+            動作紀錄
+          </Link>
+          <Link to="/admin/model-budgets" className="chip">
+            模型呼叫逾時
+          </Link>
+          <Link to="/admin/cost-statistics" className="chip">
+            成本統計
+          </Link>
+          <Link to="/admin/trends" search={{}} className="chip">
+            趨勢
+          </Link>
+          <Link to="/admin/agents" search={{}} className="chip">
+            平台 Agent
+          </Link>
+        </div>
+      </details>
     </nav>
   );
 }
