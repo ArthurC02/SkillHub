@@ -39,6 +39,17 @@ def mark_applied(
     write_json(proposal_path, proposal)
 
 
+def rebased_revisions(
+    base: dict[str, Any], accepted_digest: str, registry_root: Path, repo_root: Path
+) -> dict[str, Any]:
+    if base["registry_digest"] == accepted_digest:
+        return {"from_revision": base}
+    return {
+        "from_revision": {**current_registry_revision(registry_root, repo_root), "registry_digest": accepted_digest},
+        "proposal_base_revision": base,
+    }
+
+
 def reconcile_pending_update(registry_root: Path, repo_root: Path) -> None:
     marker_path = reconciliation_path(registry_root)
     if not marker_path.is_file():
@@ -243,7 +254,7 @@ def apply_approved_updates(  # noqa: C901, PLR0915
         raise ValueError(
             "only a finalized approved proposal may apply registry updates"
         )
-    require_current_registry_revision(proposal, registry_root, repo_root)
+    accepted_digest = require_current_registry_revision(proposal, registry_root, repo_root)
     updates = proposal.get("registry_updates", [])
     if not isinstance(updates, list) or not updates:
         raise ValueError("approved proposal has no registry_updates")
@@ -325,11 +336,11 @@ def apply_approved_updates(  # noqa: C901, PLR0915
         registry_root,
         repo_root,
         mutate,
-        base_revision["registry_digest"],
+        accepted_digest,
         audit_event=lambda: {
             "operation": "apply-approved-updates",
             "proposal_id": proposal["proposal_id"],
-            "from_revision": base_revision,
+            **rebased_revisions(base_revision, accepted_digest, registry_root, repo_root),
             "to_revision": current_registry_revision(registry_root, repo_root),
         },
     )

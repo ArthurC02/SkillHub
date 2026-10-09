@@ -1,4 +1,5 @@
 import json
+import shlex
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -168,10 +169,12 @@ def record_test_result(
         )
     try:
         completed = subprocess.run(
-            command, cwd=repo_root, shell=True, capture_output=True, timeout=timeout, check=False
+            shlex.split(command), cwd=repo_root, capture_output=True, timeout=timeout, check=False
         )
     except subprocess.TimeoutExpired as error:
         raise ValueError(f"{command} gave no result within {timeout} seconds; nothing recorded") from error
+    except OSError as error:
+        raise ValueError(f"{command} could not start: {error}; nothing recorded") from error
     if completed.returncode != 0:
         tail = (completed.stdout + completed.stderr)[-OUTPUT_TAIL:].decode("utf-8", "replace")
         raise ValueError(

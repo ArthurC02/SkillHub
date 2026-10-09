@@ -234,6 +234,103 @@ class DomainRegistryTest(unittest.TestCase):
                 {"base_registry_revision": expected}, self.repo / "memory", self.repo
             )
 
+    def edit_registry(self, name: str, change) -> None:
+        path = self.repo / "memory" / "registry" / name
+        value = json.loads(path.read_text(encoding="utf-8"))
+        change(value)
+        path.write_text(json.dumps(value), encoding="utf-8")
+
+    def test_a_stale_base_holds_only_while_what_the_proposal_touches_is_unchanged(self) -> None:
+        def billing_renamed(value):
+            value["contexts"][1]["name"] = "Invoicing"
+
+        def orders_renamed(value):
+            value["contexts"][0]["name"] = "Purchases"
+
+        def rule_written(value):
+            value["rules"].append({"id": "order-total", "contexts": ["orders"]})
+
+        def context_list_annotated(value):
+            value["note"] = "changed"
+
+        cases = [
+            ("an untouched record changed", "contexts.json", billing_renamed, None),
+            ("a record it references changed", "contexts.json", orders_renamed, "contexts/orders"),
+            ("the record it writes changed", "rules.json", rule_written, "rules/order-total"),
+            ("an asset changed outside its records", "contexts.json", context_list_annotated,
+             "contexts.json changed outside its records"),
+        ]
+        for label, name, change, refusal in cases:
+            with self.subTest(label):
+                self.two_contexts()
+                self.seed("rules.json", [])
+                self.commit_everything("base")
+                proposal = {
+                    "base_registry_revision": current_registry_revision(self.repo / "memory", self.repo),
+                    "registry_updates": [{
+                        "operation": "upsert", "asset": "rules",
+                        "record": {"id": "order-total", "contexts": ["orders"]},
+                    }],
+                }
+                self.edit_registry(name, change)
+                if refusal is None:
+                    self.assertEqual(
+                        registry_digest(self.repo / "memory"),
+                        require_current_registry_revision(proposal, self.repo / "memory", self.repo),
+                    )
+                else:
+                    with self.assertRaisesRegex(ValueError, f"stale.*{refusal}"):
+                        require_current_registry_revision(proposal, self.repo / "memory", self.repo)
+
+    def test_a_stale_base_that_was_never_committed_cannot_be_compared(self) -> None:
+        self.two_contexts()
+        proposal = {
+            "base_registry_revision": current_registry_revision(self.repo / "memory", self.repo),
+            "registry_updates": [{"operation": "upsert", "asset": "rules", "record": {"id": "order-total"}}],
+        }
+        self.edit_registry("contexts.json", lambda value: value["contexts"][1].update(name="Invoicing"))
+        with self.assertRaisesRegex(ValueError, "stale.*cannot be rebuilt"):
+            require_current_registry_revision(proposal, self.repo / "memory", self.repo)
+
+    def test_an_unrelated_apply_does_not_void_a_submitted_proposal(self) -> None:
+        package = self.draft_package()
+        self.commit_everything("draft")
+        submit_proposal(package, self.repo / "memory", self.repo)
+        submitted = self.proposal_in(package)
+        self.edit_registry(
+            "contexts.json",
+            lambda value: value["contexts"].append(
+                {"id": "billing", "name": "Billing", "responsibility": "Own invoices."}
+            ),
+        )
+        self.commit_everything("another proposal applied")
+        current = registry_digest(self.repo / "memory")
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        evidence_path = package / "evidence-bundle.json"
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        evidence["scm_attestation"] = {
+            "provider": "github",
+            "pull_request": "https://github.example/repo/pull/1",
+            "checks_url": "https://github.example/repo/actions/runs/1",
+            "commit": "a" * 40,
+            "status": "approved",
+            "proposal_revision": 1,
+            "base_registry_revision": submitted["base_registry_revision"],
+        }
+        evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+        verify_proposal(package, self.repo / "memory", self.repo)
+        with patch("domain_registry.hitl.verify_external_scm", return_value=[]), \
+                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=[]):
+            finalize_proposal(package, self.repo / "memory", self.repo)
+        apply_approved_updates(package, self.repo / "memory", self.repo)
+        self.assertEqual("applied", self.proposal_in(package)["status"])
+        events = (self.repo / "memory" / "audit" / "events.jsonl").read_text(encoding="utf-8")
+        applied = json.loads(events.splitlines()[-1])
+        self.assertEqual(
+            (current, submitted["base_registry_revision"]),
+            (applied["from_revision"]["registry_digest"], applied["proposal_base_revision"]),
+        )
+
     def test_invalid_candidate_does_not_change_registry(self) -> None:
         before = (self.repo / "memory" / "registry" / "vocabulary.json").read_text(
             encoding="utf-8"
@@ -615,7 +712,7 @@ class DomainRegistryTest(unittest.TestCase):
         subprocess.run(["git", "add", "-A"], cwd=self.repo, check=True)
         subprocess.run(
             ["git", "-c", "user.name=Probe", "-c", "user.email=probe@example.com",
-             "-c", f"commit.gpgsign={'true' if signed else 'false'}", "commit", "-qm", message],
+             "-c", f"commit.gpgsign={'true' if signed else 'false'}", "commit", "--allow-empty", "-qm", message],
             cwd=self.repo, check=True,
         )
         return subprocess.run(
@@ -718,6 +815,27 @@ class DomainRegistryTest(unittest.TestCase):
         evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
         [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
         self.assertEqual("sha256:" + hashlib.sha256(b"cli").hexdigest(), result["output_sha256"])
+
+    def test_a_recorded_command_passes_shell_characters_through_unchanged(self) -> None:
+        package = self.draft_package()
+        echo = "import sys; sys.stdout.write(sys.argv[1])"
+        record_test_result(
+            package, self.repo / "memory", self.repo,
+            ObligationRun("OB-1", f'"{sys.executable}" -c "{echo}" ^(A|B)$', "unit"), 60,
+        )
+        evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
+        [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
+        self.assertEqual("sha256:" + hashlib.sha256(b"^(A|B)$").hexdigest(), result["output_sha256"])
+
+    def test_a_command_that_cannot_start_records_nothing(self) -> None:
+        package = self.draft_package()
+        before = (package / "evidence-bundle.json").read_bytes()
+        with self.assertRaisesRegex(ValueError, "could not start"):
+            record_test_result(
+                package, self.repo / "memory", self.repo,
+                ObligationRun("OB-1", "no-such-program-for-domain-memory --version", "unit"), 60,
+            )
+        self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
 
     def test_a_policy_without_approved_profiles_accepts_any_profile(self) -> None:
         package = self.draft_package()
