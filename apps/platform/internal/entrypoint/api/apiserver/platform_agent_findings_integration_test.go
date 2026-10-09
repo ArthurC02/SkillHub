@@ -315,6 +315,49 @@ func TestOperatorsListLiveFindingsWithCountsAndReadOneWithItsHistory(t *testing.
 	assertDismissedFindingDetail(t, w, got[1].id)
 }
 
+func TestFindingInboxContinuesPastOnePageWithoutLosingTiedRows(t *testing.T) {
+	w := newFindingWorld(t, "agent-findings-pages")
+	_, err := testPool.Exec(context.Background(), `
+		INSERT INTO platform_agent_findings (agent_id, title, cites, last_seen_at)
+		SELECT a.id, 'page item ' || n, ARRAY['/jobs/purge/overdue'], now() + interval '10 years'
+		FROM platform_agents a CROSS JOIN generate_series(1, 26) AS n
+		WHERE a.name = $1`, w.def.Name)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	code, first := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/findings", "")
+	if code != http.StatusOK || len(idsOf(first["findings"])) != 25 {
+		t.Fatalf("first page = status %d, %d findings; want 200 and 25", code, len(idsOf(first["findings"])))
+	}
+	cursor, ok := first["next_cursor"].(string)
+	if !ok || cursor == "" {
+		t.Fatalf("first page continuation = %v, want cursor", first["next_cursor"])
+	}
+	_, err = testPool.Exec(context.Background(), `
+		INSERT INTO platform_agent_findings (agent_id, title, cites, last_seen_at)
+		SELECT id, 'newer page item', ARRAY['/jobs/purge/overdue'], now() + interval '11 years'
+		FROM platform_agents WHERE name = $1`, w.def.Name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, second := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/findings?cursor="+cursor, "")
+	if code != http.StatusOK || len(idsOf(second["findings"])) != 1 || second["next_cursor"] != nil {
+		t.Fatalf("second page = status %d, %d findings, cursor %v; want 200, one finding, no cursor", code, len(idsOf(second["findings"])), second["next_cursor"])
+	}
+	for _, id := range idsOf(first["findings"]) {
+		if id == idsOf(second["findings"])[0] {
+			t.Fatalf("finding %s repeated across pages", id)
+		}
+	}
+	if code, _ := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/findings?cursor=bad", ""); code != http.StatusBadRequest {
+		t.Fatalf("malformed cursor status = %d, want 400", code)
+	}
+	if code, _ := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/findings?cursor="+cursor+"&cursor="+cursor, ""); code != http.StatusBadRequest {
+		t.Fatalf("repeated cursor status = %d, want 400", code)
+	}
+}
+
 func assertDismissedFindingDetail(t *testing.T, w *findingWorld, id pgtype.UUID) {
 	t.Helper()
 	code, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/findings/"+uuidString(id), "")

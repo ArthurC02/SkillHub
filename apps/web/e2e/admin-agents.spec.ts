@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { ADMIN_AGENT_PROPOSALS, AGENT_REPORT_RUN } from "../src/testing/fixtures/platform";
+import {
+  ADMIN_AGENT_FINDINGS,
+  ADMIN_AGENT_PROPOSALS,
+  AGENT_REPORT_RUN,
+} from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
 test("the agent workbench opens one decision at a time on a narrow screen", async ({ page }) => {
@@ -25,6 +29,39 @@ test("the agent workbench opens one decision at a time on a narrow screen", asyn
   await page.getByRole("link", { name: "打開這件事" }).click();
   await expect(page.getByRole("heading", { name: "這件事" })).toBeVisible();
   await expect(workbench).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("an older finding stays reachable after loading more and returning from detail", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 900 });
+  await stubPlatform(page);
+  const later = {
+    ...ADMIN_AGENT_FINDINGS.findings[0],
+    id: "5c1d2e3f-4a5b-4c6d-8e7f-90a1b2c3d4e6",
+    title: "較早的待辦",
+  };
+  await page.route(/\/admin\/agents\/findings(?:\?.*)?$/, (route) => {
+    const cursor = new URL(route.request().url()).searchParams.get("cursor");
+    return route.fulfill({
+      json: cursor
+        ? { findings: [later], counts: ADMIN_AGENT_FINDINGS.counts }
+        : { ...ADMIN_AGENT_FINDINGS, next_cursor: "later" },
+    });
+  });
+  await page.route(`**/admin/agents/findings/${later.id}`, (route) =>
+    route.fulfill({ json: { finding: later, events: [] } }),
+  );
+  await page.goto("/admin/agents");
+
+  const inbox = page.locator("#admin-agent-findings");
+  await inbox.getByRole("button", { name: "載入更多待辦" }).click();
+  await expect(inbox.getByText("較早的待辦")).toBeVisible();
+  await inbox.getByRole("link", { name: "打開這件事" }).last().click();
+  await expect(page.getByRole("heading", { name: "這件事" })).toBeVisible();
+  await page.getByRole("link", { name: "回到待辦" }).click();
+  await expect(inbox.getByText("較早的待辦")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 

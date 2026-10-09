@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import {
+  canKeepLoadedFindings,
   useDispatchStatus,
   useExposureQueue,
   usePlatformAgentFindings,
@@ -26,17 +27,24 @@ function dispatchPriority(status: DispatchStatus | undefined, error: Error | nul
   return { label: "正在派送", tone: undefined };
 }
 
+function findingPriorityRead(findings: ReturnType<typeof usePlatformAgentFindings>) {
+  const error = canKeepLoadedFindings(findings.error, findings.isFetchNextPageError)
+    ? null
+    : findings.error;
+  return { error, data: error ? undefined : findings.data };
+}
+
 function Priorities() {
   const dispatch = useDispatchStatus();
   const proposals = usePlatformAgentProposals();
   const findings = usePlatformAgentFindings();
   const exposure = useExposureQueue();
   const dispatchSummary = dispatchPriority(dispatch.data, dispatch.error);
+  const { error: findingReadError, data: readableFindings } = findingPriorityRead(findings);
   const fetching =
     dispatch.isFetching || proposals.isFetching || findings.isFetching || exposure.isFetching;
-  const complete = [dispatch, proposals, findings, exposure].every(
-    (read) => read.data && !read.error,
-  );
+  const complete =
+    readableFindings && [dispatch, proposals, exposure].every((read) => read.data && !read.error);
   const oldestAt = Math.min(
     dispatch.dataUpdatedAt,
     proposals.dataUpdatedAt,
@@ -97,9 +105,9 @@ function Priorities() {
           hash="admin-agent-findings"
           className="admin-home-priority"
           data-state={
-            !findings.error &&
-            findings.data &&
-            findings.data.counts.open + findings.data.counts.acknowledged > 0
+            readableFindings &&
+            readableFindings.pages[0].counts.open + readableFindings.pages[0].counts.acknowledged >
+              0
               ? "pending"
               : undefined
           }
@@ -107,9 +115,9 @@ function Priorities() {
           <span>平台 Agent 待辦</span>
           <strong>
             {priorityText(
-              findings.data &&
-                `${findings.data.counts.open + findings.data.counts.acknowledged} 件待辦`,
-              findings.error,
+              readableFindings &&
+                `${readableFindings.pages[0].counts.open + readableFindings.pages[0].counts.acknowledged} 件待辦`,
+              findingReadError,
             )}
           </strong>
         </Link>

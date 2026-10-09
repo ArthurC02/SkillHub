@@ -347,6 +347,8 @@ type ListOperatorAuditLogParams struct {
 // ListPlatformAgentFindingsParams is parameters of listPlatformAgentFindings operation.
 type ListPlatformAgentFindingsParams struct {
 	Status OptListPlatformAgentFindingsStatus `json:",omitempty,omitzero"`
+	// The opaque `next_cursor` returned by the preceding findings page.
+	Cursor OptString `json:",omitempty,omitzero"`
 }
 
 // ListPlatformAgentProposalsParams is parameters of listPlatformAgentProposals operation.

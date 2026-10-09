@@ -12200,13 +12200,20 @@ type ListPlatformAgentFindingsNotFound Error
 func (*ListPlatformAgentFindingsNotFound) listPlatformAgentFindingsRes() {}
 
 type ListPlatformAgentFindingsOK struct {
-	Findings []PlatformAgentFinding            `json:"findings"`
-	Counts   ListPlatformAgentFindingsOKCounts `json:"counts"`
+	Findings []PlatformAgentFinding `json:"findings"`
+	// Present when older findings remain in the selected status view.
+	NextCursor OptString                         `json:"next_cursor"`
+	Counts     ListPlatformAgentFindingsOKCounts `json:"counts"`
 }
 
 // GetFindings returns the value of Findings.
 func (s *ListPlatformAgentFindingsOK) GetFindings() []PlatformAgentFinding {
 	return s.Findings
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *ListPlatformAgentFindingsOK) GetNextCursor() OptString {
+	return s.NextCursor
 }
 
 // GetCounts returns the value of Counts.
@@ -12217,6 +12224,11 @@ func (s *ListPlatformAgentFindingsOK) GetCounts() ListPlatformAgentFindingsOKCou
 // SetFindings sets the value of Findings.
 func (s *ListPlatformAgentFindingsOK) SetFindings(val []PlatformAgentFinding) {
 	s.Findings = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *ListPlatformAgentFindingsOK) SetNextCursor(val OptString) {
+	s.NextCursor = val
 }
 
 // SetCounts sets the value of Counts.

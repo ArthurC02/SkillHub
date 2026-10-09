@@ -507,12 +507,16 @@ SELECT f.id, a.name AS agent, f.status, f.title, f.cites, f.assignee_id,
 FROM platform_agent_findings f
 JOIN platform_agents a ON a.id = f.agent_id
 WHERE f.status = ANY ($1::text[])
-ORDER BY f.last_seen_at DESC
-LIMIT $2
+  AND ($2::timestamptz IS NULL OR
+       (f.last_seen_at, f.id) < ($2::timestamptz, $3::uuid))
+ORDER BY f.last_seen_at DESC, f.id DESC
+LIMIT $4
 `
 
 type ListFindingsParams struct {
 	Statuses []string
+	BeforeAt pgtype.Timestamptz
+	BeforeID pgtype.UUID
 	RowLimit int32
 }
 
@@ -530,7 +534,12 @@ type ListFindingsRow struct {
 }
 
 func (q *Queries) ListFindings(ctx context.Context, arg ListFindingsParams) ([]ListFindingsRow, error) {
-	rows, err := q.db.Query(ctx, listFindings, arg.Statuses, arg.RowLimit)
+	rows, err := q.db.Query(ctx, listFindings,
+		arg.Statuses,
+		arg.BeforeAt,
+		arg.BeforeID,
+		arg.RowLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

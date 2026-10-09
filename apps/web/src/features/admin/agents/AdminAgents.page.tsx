@@ -1,6 +1,7 @@
 import { Link, useSearch } from "@tanstack/react-router";
 import {
   AGENT_RUN_POLL_MS,
+  canKeepLoadedFindings,
   usePlatformAgentFindings,
   usePlatformAgentProposals,
   usePlatformAgentRun,
@@ -31,13 +32,17 @@ function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recov
   const proposals = usePlatformAgentProposals();
   const findings = usePlatformAgentFindings(status);
   const runs = usePlatformAgentRuns();
+  const findingReadError = canKeepLoadedFindings(findings.error, findings.isFetchNextPageError)
+    ? null
+    : findings.error;
   const pendingDecisions = readLabel(
     proposals.data && `${proposals.data.total} 件`,
     proposals.error,
   );
   const liveFindings = readLabel(
-    findings.data && `${findings.data.counts.open + findings.data.counts.acknowledged} 件`,
-    findings.error,
+    findings.data &&
+      `${findings.data.pages[0].counts.open + findings.data.pages[0].counts.acknowledged} 件`,
+    findingReadError,
   );
   const running = readLabel(
     runs.data && `${runs.data.runs.filter((item) => item.status === "running").length} 次`,

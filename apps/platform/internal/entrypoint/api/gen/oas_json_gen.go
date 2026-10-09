@@ -31519,14 +31519,21 @@ func (s *ListPlatformAgentFindingsOK) encodeFields(e *jx.Encoder) {
 		e.ArrEnd()
 	}
 	{
+		if s.NextCursor.Set {
+			e.FieldStart("next_cursor")
+			s.NextCursor.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("counts")
 		s.Counts.Encode(e)
 	}
 }
 
-var jsonFieldsNameOfListPlatformAgentFindingsOK = [2]string{
+var jsonFieldsNameOfListPlatformAgentFindingsOK = [3]string{
 	0: "findings",
-	1: "counts",
+	1: "next_cursor",
+	2: "counts",
 }
 
 // Decode decodes ListPlatformAgentFindingsOK from json.
@@ -31556,8 +31563,18 @@ func (s *ListPlatformAgentFindingsOK) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"findings\"")
 			}
+		case "next_cursor":
+			if err := func() error {
+				s.NextCursor.Reset()
+				if err := s.NextCursor.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"next_cursor\"")
+			}
 		case "counts":
-			requiredBitSet[0] |= 1 << 1
+			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
 				if err := s.Counts.Decode(d); err != nil {
 					return err
@@ -31576,7 +31593,7 @@ func (s *ListPlatformAgentFindingsOK) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000011,
+		0b00000101,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

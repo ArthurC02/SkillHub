@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -16,7 +17,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
-const findingListLimit = 100
+const findingListLimit = 25
 
 var (
 	findingStatuses  = []FindingStatus{FindingOpen, FindingAcknowledged, FindingResolved, FindingDismissed, FindingRecovered}
@@ -56,8 +57,9 @@ type findingEventView struct {
 }
 
 type findingsResponse struct {
-	Findings []findingView    `json:"findings"`
-	Counts   map[string]int32 `json:"counts"`
+	Findings   []findingView    `json:"findings"`
+	Counts     map[string]int32 `json:"counts"`
+	NextCursor string           `json:"next_cursor,omitempty"`
 }
 
 type findingDetailResponse struct {
@@ -65,15 +67,17 @@ type findingDetailResponse struct {
 	Events  []findingEventView `json:"events"`
 }
 
-func (s *Service) Findings(ctx context.Context, statuses []string) ([]gen.ListFindingsRow, map[string]int32, error) {
+func (s *Service) Findings(ctx context.Context, statuses []string, beforeAt pgtype.Timestamptz, beforeID pgtype.UUID) ([]gen.ListFindingsRow, map[string]int32, string, error) {
 	q := gen.New(s.Pool)
-	rows, err := q.ListFindings(ctx, gen.ListFindingsParams{Statuses: statuses, RowLimit: findingListLimit})
+	rows, err := q.ListFindings(ctx, gen.ListFindingsParams{
+		Statuses: statuses, BeforeAt: beforeAt, BeforeID: beforeID, RowLimit: findingListLimit + 1,
+	})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 	countRows, err := q.CountFindingsByStatus(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 	counts := make(map[string]int32, len(findingStatuses))
 	for _, status := range findingStatuses {
@@ -82,7 +86,25 @@ func (s *Service) Findings(ctx context.Context, statuses []string) ([]gen.ListFi
 	for _, row := range countRows {
 		counts[row.Status] = row.Findings
 	}
-	return rows, counts, nil
+	var nextCursor string
+	if len(rows) > findingListLimit {
+		rows = rows[:findingListLimit]
+		last := rows[len(rows)-1]
+		nextCursor = last.LastSeenAt.Time.UTC().Format(time.RFC3339Nano) + "_" + pgconv.UUIDString(last.ID)
+	}
+	return rows, counts, nextCursor, nil
+}
+
+func findingCursor(raw string) (pgtype.Timestamptz, pgtype.UUID, error) {
+	var beforeAt pgtype.Timestamptz
+	var beforeID pgtype.UUID
+	at, id, found := strings.Cut(raw, "_")
+	when, err := time.Parse(time.RFC3339Nano, at)
+	if !found || err != nil || beforeID.Scan(id) != nil {
+		return beforeAt, beforeID, errors.New("cursor is invalid")
+	}
+	beforeAt = pgconv.Timestamptz(when)
+	return beforeAt, beforeID, nil
 }
 
 func (s *Service) Finding(ctx context.Context, id pgtype.UUID) (gen.GetFindingRow, []gen.ListFindingEventsRow, error) {
@@ -107,12 +129,24 @@ func (h *Handler) Findings(w http.ResponseWriter, r *http.Request) {
 		}
 		statuses = []string{raw}
 	}
-	rows, counts, err := h.Svc.Findings(r.Context(), statuses)
+	var beforeAt pgtype.Timestamptz
+	var beforeID pgtype.UUID
+	if values, present := r.URL.Query()["cursor"]; present {
+		var err error
+		if len(values) == 1 {
+			beforeAt, beforeID, err = findingCursor(values[0])
+		}
+		if len(values) != 1 || err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, "cursor is invalid")
+			return
+		}
+	}
+	rows, counts, nextCursor, err := h.Svc.Findings(r.Context(), statuses, beforeAt, beforeID)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "finding lookup failed")
 		return
 	}
-	response := findingsResponse{Findings: make([]findingView, len(rows)), Counts: counts}
+	response := findingsResponse{Findings: make([]findingView, len(rows)), Counts: counts, NextCursor: nextCursor}
 	for i, row := range rows {
 		response.Findings[i] = findingBody(gen.GetFindingRow(row))
 	}

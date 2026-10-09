@@ -3589,7 +3589,8 @@ paths:
       summary: The things platform agents reported as needing attention (02:OPS-012)
       description: |
         Operator only. One row per tracked finding, most recently seen first, at
-        most 100. Without `status` the list holds the live ones, open and
+        most 25 per page. Follow `next_cursor` to reach older findings. Without
+        `status` the list holds the live ones, open and
         acknowledged; `counts` always counts every status. A finding a later
         report repeats folds into the same row; one a later report no longer
         mentions becomes recovered, and one that comes back after being resolved
@@ -3601,6 +3602,11 @@ paths:
           schema:
             type: string
             enum: [open, acknowledged, resolved, dismissed, recovered]
+        - name: cursor
+          in: query
+          required: false
+          description: The opaque `next_cursor` returned by the preceding findings page.
+          schema: { type: string }
       responses:
         "200":
           description: The findings and how many there are in each status.
@@ -3613,6 +3619,9 @@ paths:
                   findings:
                     type: array
                     items: { $ref: "#/components/schemas/PlatformAgentFinding" }
+                  next_cursor:
+                    type: string
+                    description: Present when older findings remain in the selected status view.
                   counts:
                     type: object
                     required: [open, acknowledged, resolved, dismissed, recovered]
@@ -3623,7 +3632,7 @@ paths:
                       dismissed: { type: integer }
                       recovered: { type: integer }
         "400":
-          description: "`status` is not one of the five."
+          description: "`status` is not one of the five, or `cursor` is invalid."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

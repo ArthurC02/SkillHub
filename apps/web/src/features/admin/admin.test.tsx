@@ -2155,6 +2155,111 @@ test("OPS-012: the inbox lists live findings with how often they were reported, 
   expect(calls.some((c) => c.url === "/admin/agents/findings")).toBe(true);
 });
 
+test("OPS-012: the inbox can load a later finding and keep it after opening its detail", async () => {
+  const later = {
+    ...ADMIN_AGENT_FINDINGS.findings[0],
+    id: "5c1d2e3f-4a5b-4c6d-8e7f-90a1b2c3d4e6",
+    title: "較早的待辦",
+  };
+  stub(true, (path, _method, url) => {
+    if (url === "/admin/agents/findings?cursor=later") {
+      return { body: { findings: [later], counts: ADMIN_AGENT_FINDINGS.counts }, status: 200 };
+    }
+    if (url === "/admin/agents/findings") {
+      return { body: { ...ADMIN_AGENT_FINDINGS, next_cursor: "later" }, status: 200 };
+    }
+    if (path === `/admin/agents/findings/${later.id}`) {
+      return { body: { finding: later, events: [] }, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/agents");
+  await waitFor(has("分割表輪替從來沒有成功過，已經超過兩個週期。"));
+  await click(button("載入更多待辦"));
+  await waitFor(has("較早的待辦"));
+  expect(calls.some((c) => c.url === "/admin/agents/findings?cursor=later")).toBe(true);
+  const laterRow = Array.from(container.querySelectorAll(".download-item")).find((row) =>
+    row.textContent?.includes("較早的待辦"),
+  );
+  await click(laterRow!.querySelector("a")!);
+  await waitFor(has("回到待辦"));
+  await click(
+    Array.from(container.querySelectorAll("a")).find((link) => link.textContent === "回到待辦")!,
+  );
+  await waitFor(has("較早的待辦"));
+});
+
+test("OPS-012: a failed later inbox page keeps loaded findings and can retry", async () => {
+  let nextPageReads = 0;
+  const later = {
+    ...ADMIN_AGENT_FINDINGS.findings[0],
+    id: "5c1d2e3f-4a5b-4c6d-8e7f-90a1b2c3d4e6",
+    title: "較早的待辦",
+  };
+  stub(true, (_path, _method, url) => {
+    if (url === "/admin/agents/findings") {
+      return { body: { ...ADMIN_AGENT_FINDINGS, next_cursor: "later" }, status: 200 };
+    }
+    if (url === "/admin/agents/findings?cursor=later") {
+      nextPageReads += 1;
+      return nextPageReads === 1
+        ? { body: { error: "service unavailable" }, status: 503 }
+        : { body: { findings: [later], counts: ADMIN_AGENT_FINDINGS.counts }, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/agents");
+  await waitFor(has("載入更多待辦"));
+  await click(button("載入更多待辦"));
+  await waitFor(has("後續待辦暫時無法讀取"));
+  expect(has("分割表輪替從來沒有成功過，已經超過兩個週期。")()).toBe(true);
+  expect(container.querySelector('nav[aria-label="平台 Agent 工作區"]')?.textContent).toContain(
+    "待辦 2 件",
+  );
+  await click(button("重試載入更多待辦"));
+  await waitFor(has("較早的待辦"));
+  expect(nextPageReads).toBe(2);
+  expect(has("後續待辦暫時無法讀取")()).toBe(false);
+});
+
+test("the admin home keeps the known finding count after a later page fails", async () => {
+  stub(true, (_path, _method, url) => {
+    if (url === "/admin/agents/findings") {
+      return { body: { ...ADMIN_AGENT_FINDINGS, next_cursor: "later" }, status: 200 };
+    }
+    if (url === "/admin/agents/findings?cursor=later") {
+      return { body: { error: "service unavailable" }, status: 503 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/agents");
+  await waitFor(has("載入更多待辦"));
+  await click(button("載入更多待辦"));
+  await waitFor(has("後續待辦暫時無法讀取"));
+  await go("/admin");
+  expect(
+    container.querySelector('a[href="/admin/agents#admin-agent-findings"]')?.textContent,
+  ).toContain("2 件待辦");
+});
+
+test("OPS-012: losing the operator session on a later page hides cached findings", async () => {
+  stub(true, (_path, _method, url) => {
+    if (url === "/admin/agents/findings") {
+      return { body: { ...ADMIN_AGENT_FINDINGS, next_cursor: "later" }, status: 200 };
+    }
+    if (url === "/admin/agents/findings?cursor=later") {
+      return { body: { error: "not authenticated" }, status: 401 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/agents");
+  await waitFor(has("載入更多待辦"));
+  await click(button("載入更多待辦"));
+  await waitFor(has("待辦需要登入"));
+  expect(has("打開這件事")()).toBe(false);
+  expect(has("重試載入更多待辦")()).toBe(false);
+});
+
 test("OPS-012: a closed status in the address lists that status; any other value falls back to the live list", async () => {
   stub(true);
   await mountAt("/admin/agents", { status: "resolved" });

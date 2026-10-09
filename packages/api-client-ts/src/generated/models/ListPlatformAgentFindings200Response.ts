@@ -39,6 +39,10 @@ export interface ListPlatformAgentFindings200Response {
      */
     findings: Array<PlatformAgentFinding>;
     /**
+     * Present when older findings remain in the selected status view.
+     */
+    nextCursor?: string;
+    /**
      * 
      */
     counts: ListPlatformAgentFindings200ResponseCounts;
@@ -64,6 +68,7 @@ export function ListPlatformAgentFindings200ResponseFromJSONTyped(json: any, ign
     return {
         
         'findings': ((json['findings'] as Array<any>).map(PlatformAgentFindingFromJSON)),
+        'nextCursor': json['next_cursor'] == null ? undefined : json['next_cursor'],
         'counts': ListPlatformAgentFindings200ResponseCountsFromJSON(json['counts']),
     };
 }
@@ -80,6 +85,7 @@ export function ListPlatformAgentFindings200ResponseToJSONTyped(value?: ListPlat
     return {
         
         'findings': ((value['findings'] as Array<any>).map(PlatformAgentFindingToJSON)),
+        'next_cursor': value['nextCursor'],
         'counts': ListPlatformAgentFindings200ResponseCountsToJSON(value['counts']),
     };
 }

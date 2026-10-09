@@ -134,7 +134,9 @@ SELECT f.id, a.name AS agent, f.status, f.title, f.cites, f.assignee_id,
 FROM platform_agent_findings f
 JOIN platform_agents a ON a.id = f.agent_id
 WHERE f.status = ANY (@statuses::text[])
-ORDER BY f.last_seen_at DESC
+  AND (sqlc.narg(before_at)::timestamptz IS NULL OR
+       (f.last_seen_at, f.id) < (sqlc.narg(before_at)::timestamptz, sqlc.narg(before_id)::uuid))
+ORDER BY f.last_seen_at DESC, f.id DESC
 LIMIT @row_limit;
 
 -- name: CountFindingsByStatus :many

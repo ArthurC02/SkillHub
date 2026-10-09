@@ -1363,6 +1363,10 @@ export interface ListPlatformAgentFindingsRequest {
      * 
      */
     status?: ListPlatformAgentFindingsStatusEnum;
+    /**
+     * The opaque `next_cursor` returned by the preceding findings page.
+     */
+    cursor?: string;
 }
 
 export interface ListPlatformAgentProposalsRequest {
@@ -4006,15 +4010,17 @@ export interface DefaultApiInterface {
     /**
      * Creates request options for listPlatformAgentFindings without sending the request
      * @param {'open' | 'acknowledged' | 'resolved' | 'dismissed' | 'recovered'} [status] 
+     * @param {string} [cursor] The opaque &#x60;next_cursor&#x60; returned by the preceding findings page.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
     listPlatformAgentFindingsRequestOpts(requestParameters: ListPlatformAgentFindingsRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Operator only. One row per tracked finding, most recently seen first, at most 100. Without `status` the list holds the live ones, open and acknowledged; `counts` always counts every status. A finding a later report repeats folds into the same row; one a later report no longer mentions becomes recovered, and one that comes back after being resolved or recovered reopens. 
+     * Operator only. One row per tracked finding, most recently seen first, at most 25 per page. Follow `next_cursor` to reach older findings. Without `status` the list holds the live ones, open and acknowledged; `counts` always counts every status. A finding a later report repeats folds into the same row; one a later report no longer mentions becomes recovered, and one that comes back after being resolved or recovered reopens. 
      * @summary The things platform agents reported as needing attention (02:OPS-012)
      * @param {'open' | 'acknowledged' | 'resolved' | 'dismissed' | 'recovered'} [status] 
+     * @param {string} [cursor] The opaque &#x60;next_cursor&#x60; returned by the preceding findings page.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -4022,7 +4028,7 @@ export interface DefaultApiInterface {
     listPlatformAgentFindingsRaw(requestParameters: ListPlatformAgentFindingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgentFindings200Response>>;
 
     /**
-     * Operator only. One row per tracked finding, most recently seen first, at most 100. Without `status` the list holds the live ones, open and acknowledged; `counts` always counts every status. A finding a later report repeats folds into the same row; one a later report no longer mentions becomes recovered, and one that comes back after being resolved or recovered reopens. 
+     * Operator only. One row per tracked finding, most recently seen first, at most 25 per page. Follow `next_cursor` to reach older findings. Without `status` the list holds the live ones, open and acknowledged; `counts` always counts every status. A finding a later report repeats folds into the same row; one a later report no longer mentions becomes recovered, and one that comes back after being resolved or recovered reopens. 
      * The things platform agents reported as needing attention (02:OPS-012)
      */
     listPlatformAgentFindings(requestParameters: ListPlatformAgentFindingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentFindings200Response>;
@@ -9340,6 +9346,10 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             queryParameters['status'] = requestParameters['status'];
         }
 
+        if (requestParameters['cursor'] != null) {
+            queryParameters['cursor'] = requestParameters['cursor'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -9354,7 +9364,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. One row per tracked finding, most recently seen first, at most 100. Without `status` the list holds the live ones, open and acknowledged; `counts` always counts every status. A finding a later report repeats folds into the same row; one a later report no longer mentions becomes recovered, and one that comes back after being resolved or recovered reopens. 
+     * Operator only. One row per tracked finding, most recently seen first, at most 25 per page. Follow `next_cursor` to reach older findings. Without `status` the list holds the live ones, open and acknowledged; `counts` always counts every status. A finding a later report repeats folds into the same row; one a later report no longer mentions becomes recovered, and one that comes back after being resolved or recovered reopens. 
      * The things platform agents reported as needing attention (02:OPS-012)
      */
     async listPlatformAgentFindingsRaw(requestParameters: ListPlatformAgentFindingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPlatformAgentFindings200Response>> {
@@ -9365,7 +9375,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Operator only. One row per tracked finding, most recently seen first, at most 100. Without `status` the list holds the live ones, open and acknowledged; `counts` always counts every status. A finding a later report repeats folds into the same row; one a later report no longer mentions becomes recovered, and one that comes back after being resolved or recovered reopens. 
+     * Operator only. One row per tracked finding, most recently seen first, at most 25 per page. Follow `next_cursor` to reach older findings. Without `status` the list holds the live ones, open and acknowledged; `counts` always counts every status. A finding a later report repeats folds into the same row; one a later report no longer mentions becomes recovered, and one that comes back after being resolved or recovered reopens. 
      * The things platform agents reported as needing attention (02:OPS-012)
      */
     async listPlatformAgentFindings(requestParameters: ListPlatformAgentFindingsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgentFindings200Response> {

@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, isLastingReadFailure } from "../../core/api/client";
+import { ApiError, apiFetch, isLastingReadFailure } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
 
@@ -434,14 +434,30 @@ export type PlatformAgentFindingEvent = {
 };
 
 export function usePlatformAgentFindings(status?: FindingStatus) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: queryKeys.admin.agentFindingList(status ?? "live"),
-    queryFn: () =>
-      apiFetch<{ findings: PlatformAgentFinding[]; counts: Record<FindingStatus, number> }>(
-        status ? `/admin/agents/findings?status=${status}` : "/admin/agents/findings",
-      ),
+    initialPageParam: "",
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams();
+      if (status) params.set("status", status);
+      if (pageParam) params.set("cursor", pageParam);
+      const query = params.toString();
+      return apiFetch<{
+        findings: PlatformAgentFinding[];
+        counts: Record<FindingStatus, number>;
+        next_cursor?: string;
+      }>(`/admin/agents/findings${query ? `?${query}` : ""}`);
+    },
+    getNextPageParam: (last) => last.next_cursor,
     enabled: useOperator(),
   });
+}
+
+export function canKeepLoadedFindings(error: Error | null, isFetchNextPageError: boolean) {
+  return (
+    isFetchNextPageError &&
+    !(error instanceof ApiError && error.status >= 400 && error.status < 500)
+  );
 }
 
 export function usePlatformAgentFinding(id: string) {

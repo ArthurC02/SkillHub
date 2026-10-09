@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import {
+  canKeepLoadedFindings,
   usePlatformAgentFindings,
   type FindingStatus,
   type PlatformAgentFinding,
@@ -53,7 +54,11 @@ function FindingRow({ finding }: { finding: PlatformAgentFinding }) {
 
 export function FindingInbox({ status }: { status?: ClosedView }) {
   const findings = usePlatformAgentFindings(status);
-  const counts = !findings.error && findings.data?.counts;
+  const nextPageError = canKeepLoadedFindings(findings.error, findings.isFetchNextPageError);
+  const blockingError = nextPageError ? null : findings.error;
+  const showRows = findings.data && !blockingError;
+  const rows = findings.data?.pages.flatMap((page) => page.findings) ?? [];
+  const counts = showRows && findings.data.pages[0].counts;
   const current = VIEWS.find((view) => view.status === status) ?? VIEWS[0];
   return (
     <>
@@ -72,8 +77,8 @@ export function FindingInbox({ status }: { status?: ClosedView }) {
         ))}
       </nav>
       {findings.isPending && <Loading what="待辦" />}
-      <ReadFailure error={findings.error} what="待辦" />
-      {findings.data && !findings.error && (
+      <ReadFailure error={blockingError} what="待辦" />
+      {showRows && (
         <ListFreshness
           inFlight={false}
           showWhenIdle
@@ -83,15 +88,32 @@ export function FindingInbox({ status }: { status?: ClosedView }) {
           subject="待辦"
         />
       )}
-      {findings.data && !findings.error && findings.data.findings.length === 0 && (
-        <p>{current.label}：0 件。</p>
+      {showRows && rows.length === 0 && <p>{current.label}：0 件。</p>}
+      {showRows && rows.length > 0 && (
+        <>
+          <ul className="download-list">
+            {rows.map((finding) => (
+              <FindingRow finding={finding} key={finding.id} />
+            ))}
+          </ul>
+          <p className="note" role="status">
+            已載入 {rows.length} 件待辦{findings.hasNextPage ? "；還有更多。" : "。"}
+          </p>
+        </>
       )}
-      {findings.data && !findings.error && findings.data.findings.length > 0 && (
-        <ul className="download-list">
-          {findings.data.findings.map((finding) => (
-            <FindingRow finding={finding} key={finding.id} />
-          ))}
-        </ul>
+      {nextPageError && <p role="alert">後續待辦暫時無法讀取；已載入的待辦仍可查看。</p>}
+      {showRows && findings.hasNextPage && (
+        <button
+          type="button"
+          disabled={findings.isFetchingNextPage}
+          onClick={() => void findings.fetchNextPage()}
+        >
+          {findings.isFetchingNextPage
+            ? "載入中…"
+            : nextPageError
+              ? "重試載入更多待辦"
+              : "載入更多待辦"}
+        </button>
       )}
     </>
   );
