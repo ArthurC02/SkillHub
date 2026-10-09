@@ -313,6 +313,18 @@ test("OPS-002: a lookup keeps the email out of the address and shows the account
   ]);
   expect(field<HTMLElement>(".table-scroll").tabIndex).toBe(0);
   expect(field("strong").textContent).toBe("120");
+  expect(has("封測准入目前可通過；可能是已受邀，或此部署未限制。")()).toBe(true);
+});
+
+test("an account denied by beta admission is not described as merely absent from a roster", async () => {
+  stub(true, (path) =>
+    path === "/admin/accounts"
+      ? { body: { ...ADMIN_ACCOUNT, in_beta_allowlist: false }, status: 200 }
+      : undefined,
+  );
+  await lookUp("member@example.com");
+  await waitFor(has("目前不可通過；請確認封測名單或部署設定。"));
+  expect(has("不在名單上")()).toBe(false);
 });
 
 test("OPS-002: an email nobody has is named as such, not reported as a broken read", async () => {
@@ -2531,6 +2543,23 @@ test("OPS-011: an Agent shows what it may propose and its model role before enab
   const controls = field<HTMLElement>("#admin-agent-controls");
   expect(controls.textContent).toContain("可提案：立刻補跑「清除過了保存期的稽核紀錄」");
   expect(controls.textContent).toContain("模型角色：skillhub-ops-report");
+  expect(controls.textContent).toContain("負責營運者：22222222-2222-2222-2222-222222222222");
+});
+
+test("an Agent without a recorded owner does not appear assigned", async () => {
+  stub(true, (path) =>
+    path === "/admin/agents"
+      ? {
+          body: {
+            agents: [{ ...ADMIN_AGENTS.agents[0], owner_user_id: undefined }],
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/agents");
+  await waitFor(has("負責營運者：未記錄"));
+  expect(has("負責營運者：22222222-2222-2222-2222-222222222222")()).toBe(false);
 });
 
 test.each([

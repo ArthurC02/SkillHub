@@ -19,8 +19,12 @@ export function AccountCard({ account }: { account: AccountLookup }) {
             "沒有申請"
           )}
         </dd>
-        <dt>封測名單</dt>
-        <dd>{account.in_beta_allowlist ? "在名單上，或這個部署沒有設定名單" : "不在名單上"}</dd>
+        <dt>封測准入</dt>
+        <dd>
+          {account.in_beta_allowlist
+            ? "目前可通過；可能是已受邀，或此部署未限制。"
+            : "目前不可通過；請確認封測名單或部署設定。"}
+        </dd>
       </dl>
       <details>
         <summary>帳號識別資料與建立時間</summary>

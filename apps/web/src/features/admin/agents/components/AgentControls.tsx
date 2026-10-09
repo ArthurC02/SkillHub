@@ -28,6 +28,9 @@ function AgentRow({ agent }: { agent: PlatformAgent }) {
       </p>
       <p className="note">可提案：{agent.actions.map(actionLabel).join("、") || "無"}</p>
       <p className="note">模型角色：{agent.model_role}</p>
+      <p className="note">
+        負責營運者：{agent.owner_user_id ? <code>{agent.owner_user_id}</code> : "未記錄"}
+      </p>
       <ActionForm
         id={`admin-agent-${agent.name}`}
         submitLabel={next ? `啟用 ${agent.name}` : `停用 ${agent.name}`}

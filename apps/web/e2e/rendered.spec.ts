@@ -799,6 +799,17 @@ test("admin exposure queue can recover from a failed refresh on a phone", async 
   expect(width.scroll).toBeLessThanOrEqual(width.client);
 });
 
+test("an Agent owner remains visible without widening the phone page", async ({ page }) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto("/admin/agents");
+
+  const owner = page.locator("#admin-agent-controls li.download-item").first();
+  await expect(owner.getByText("負責營運者：", { exact: false })).toBeVisible();
+  await expect(owner.locator("code")).toHaveText("22222222-2222-2222-2222-222222222222");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+});
+
 test("admin account lookup keeps a grant tied to the submitted email on a phone", async ({
   page,
 }, testInfo) => {
