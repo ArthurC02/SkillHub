@@ -24,6 +24,28 @@ const countOf = (bucket: DailyCount) => bucket.count;
 
 const totalOf = (bucket: DailyAmount) => bucket.total;
 
+function TrendTopics() {
+  return (
+    <nav aria-label="趨勢主題" className="badge-row">
+      <a className="chip" href="#admin-trend-cost">
+        成本
+      </a>
+      <a className="chip" href="#admin-trend-credits">
+        點數
+      </a>
+      <a className="chip" href="#admin-trend-runs">
+        試跑
+      </a>
+      <a className="chip" href="#admin-trend-actions">
+        operator 動作
+      </a>
+      <a className="chip" href="#admin-trend-funnel">
+        漏斗
+      </a>
+    </nav>
+  );
+}
+
 export function AdminTrends() {
   const { days = 30 } = useSearch({ from: "/admin/trends" });
   const cost = useTrend<Trend<DailyAmount>>("cost", days);
@@ -85,7 +107,9 @@ export function AdminTrends() {
           {range.from} 到 {range.to}（UTC），共 {daysOf(range.from, range.to).length} 天。
         </p>
       )}
+      <TrendTopics />
       <TrendSection
+        id="admin-trend-cost"
         heading="每日成本（美元，含估計值）"
         query={cost}
         value={totalOf}
@@ -94,6 +118,7 @@ export function AdminTrends() {
         valueHeading="美元"
       />
       <TrendSection
+        id="admin-trend-credits"
         heading="每日點數異動（淨額）"
         query={credits}
         value={totalOf}
@@ -104,6 +129,7 @@ export function AdminTrends() {
         {credits.data && <p>全平台目前餘額總和：{credits.data.balance_total} 點。</p>}
       </TrendSection>
       <TrendSection
+        id="admin-trend-runs"
         heading="每天建立的試跑紀錄（依目前狀態）"
         query={runs}
         value={countOf}
@@ -111,6 +137,7 @@ export function AdminTrends() {
         labels={RUN_STATUS_LABEL}
       />
       <TrendSection
+        id="admin-trend-actions"
         heading="每日 operator 動作"
         query={actions}
         value={countOf}
@@ -118,6 +145,7 @@ export function AdminTrends() {
         labels={ACTION_LABEL}
       />
       <TrendSection
+        id="admin-trend-funnel"
         heading="漏斗各段每天到達的數量"
         query={funnel}
         value={countOf}

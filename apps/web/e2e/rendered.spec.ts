@@ -1695,6 +1695,11 @@ test("後台目前群組在手機首屏保持緊湊且入口可見", async ({ pa
     await expect(nav.locator("summary").filter({ hasText: label })).toBeVisible();
     const navHeight = await nav.evaluate((element) => element.getBoundingClientRect().height);
     expect(navHeight, `${route} 的後台導覽佔用過多首屏`).toBeLessThan(160);
+    const titleBottom = await page
+      .getByRole("heading", { level: 1, name: label })
+      .evaluate((element) => element.getBoundingClientRect().bottom);
+    const navTop = await nav.evaluate((element) => element.getBoundingClientRect().top);
+    expect(titleBottom, `${route} 的頁面標題應先於後台導覽`).toBeLessThan(navTop);
   }
 });
 
@@ -2599,6 +2604,37 @@ test("trend bars reveal a full day and a formatted value on hover", async ({ pag
   await expect
     .poll(() => page.evaluate(() => (window as unknown as { chartTexts: string[] }).chartTexts))
     .toEqual(expect.arrayContaining(["2026-09-12", "單次生成：$0.0900"]));
+});
+
+test("admin trend topics jump to the requested chart group on a phone", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto("/admin/trends?days=30");
+
+  const topics = page.getByRole("navigation", { name: "趨勢主題" });
+  for (const [label, id, heading] of [
+    ["成本", "admin-trend-cost", "每日成本（美元，含估計值）"],
+    ["點數", "admin-trend-credits", "每日點數異動（淨額）"],
+    ["試跑", "admin-trend-runs", "每天建立的試跑紀錄（依目前狀態）"],
+    ["operator 動作", "admin-trend-actions", "每日 operator 動作"],
+    ["漏斗", "admin-trend-funnel", "漏斗各段每天到達的數量"],
+  ]) {
+    await expect(topics.getByRole("link", { name: label })).toHaveAttribute("href", `#${id}`);
+    await expect(page.getByRole("heading", { name: heading })).toHaveAttribute("id", id);
+  }
+
+  const widths = await page.evaluate(() => ({
+    content: document.documentElement.scrollWidth,
+    viewport: document.documentElement.clientWidth,
+  }));
+  expect(widths.content).toBeLessThanOrEqual(widths.viewport);
+  await page.screenshot({ path: testInfo.outputPath("admin-trends-top-phone.png") });
+
+  await topics.getByRole("link", { name: "漏斗" }).click();
+  await expect(page.getByRole("heading", { name: "漏斗各段每天到達的數量" })).toBeInViewport();
+  expect(new URL(page.url()).hash).toBe("#admin-trend-funnel");
 });
 
 test.describe("QA-008 real layout: 選中狀態與資料完整性", () => {

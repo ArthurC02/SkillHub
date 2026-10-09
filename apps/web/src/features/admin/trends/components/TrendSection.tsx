@@ -6,6 +6,7 @@ import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { TrendCharts } from "./TrendCharts";
 
 export function TrendSection<B extends DailyCount, T extends Trend<B>>({
+  id,
   heading,
   query,
   value,
@@ -14,6 +15,7 @@ export function TrendSection<B extends DailyCount, T extends Trend<B>>({
   valueHeading,
   children,
 }: {
+  id: string;
   heading: string;
   query: UseQueryResult<T>;
   value: (bucket: B) => number;
@@ -24,7 +26,9 @@ export function TrendSection<B extends DailyCount, T extends Trend<B>>({
 }) {
   return (
     <section>
-      <h2>{heading}</h2>
+      <h2 id={id} tabIndex={-1}>
+        {heading}
+      </h2>
       {query.isPending && <Loading what={heading} />}
       <ReadFailure error={query.error} what={heading}>
         <p role="alert">
