@@ -9,7 +9,7 @@ from .policy import AMENDABLE_FIELDS
 ASSET_CHOICES = [name.removesuffix(".json") for name in ASSET_KEYS]
 
 
-def add_path(parser: argparse.ArgumentParser, name: str, required: bool = True) -> None:
+def add_path(parser: argparse.ArgumentParser, name: str, required: bool = True) -> None:  # noqa: FBT001, FBT002
     parser.add_argument(name, required=required, type=Path)
 
 
@@ -17,7 +17,7 @@ def add_asset(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--asset", required=True, choices=ASSET_CHOICES)
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
     parser = argparse.ArgumentParser(
         description="Initialize, validate, or assess a file-backed Domain Registry."
     )

@@ -17,7 +17,7 @@ def github_api_path(pull_request: str) -> str:
     parts = [part for part in parsed.path.split("/") if part]
     if parsed.scheme != "https" or parsed.netloc != "github.com":
         raise ValueError("SCM attestation pull_request must be a GitHub pull request URL")
-    if len(parts) != 4 or parts[2] != "pull" or not parts[3].isdigit():
+    if len(parts) != 4 or parts[2] != "pull" or not parts[3].isdigit():  # noqa: PLR2004
         raise ValueError("SCM attestation pull_request must identify one pull request")
     return f"repos/{parts[0]}/{parts[1]}/pulls/{parts[3]}"
 
@@ -35,8 +35,8 @@ def github_json(url: str, token: str) -> Any:
         return json.loads(response.read().decode("utf-8"))
 
 
-def verify_external_scm(
-    value: dict[str, Any], token_env: str, require_checks: bool = True
+def verify_external_scm(  # noqa: C901, PLR0911
+    value: dict[str, Any], token_env: str, require_checks: bool = True  # noqa: FBT001, FBT002
 ) -> list[str]:
     if value.get("provider") != "github":
         return ["SCM governance verification currently supports GitHub only"]

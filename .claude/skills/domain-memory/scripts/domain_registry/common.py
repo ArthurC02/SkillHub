@@ -147,7 +147,7 @@ def load_json(path: Path) -> dict[str, Any]:
     except OSError as error:
         raise ValueError(f"cannot read JSON file: {path}") from error
     if not isinstance(value, dict):
-        raise ValueError(f"JSON object required: {path}")  # noqa: TRY004
+        raise ValueError(f"JSON object required: {path}")
     return value
 
 

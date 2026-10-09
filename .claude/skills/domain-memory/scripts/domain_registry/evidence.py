@@ -101,7 +101,7 @@ def unclassified_paths(value: Any) -> list[str]:
     )
 
 
-def verify(reference: Any, repo_root: Path) -> dict[str, Any]:
+def verify(reference: Any, repo_root: Path) -> dict[str, Any]:  # noqa: PLR0911
     if isinstance(reference, str):
         return {"status": "legacy-unverified", "reference": reference}
     if not isinstance(reference, dict):

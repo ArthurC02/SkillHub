@@ -62,7 +62,7 @@ def discard_transaction(journal: Path, backup: Path, staging: Path) -> None:
     journal.unlink(missing_ok=True)
 
 
-def recover(root: Path) -> None:
+def recover(root: Path) -> None:  # noqa: C901, PLR0912
     journal = transaction_path(root)
     if not journal.is_file():
         return
@@ -119,7 +119,7 @@ def recover(root: Path) -> None:
     discard_transaction(journal, backup, staging)
 
 
-def recover_interrupted_update(root: Path, force: bool) -> None:
+def recover_interrupted_update(root: Path, force: bool) -> None:  # noqa: FBT001
     lock = root / ".domain-registry.lock"
     if lock.exists():
         if not force:
@@ -150,7 +150,7 @@ def mutate_registry(
         try:
             shutil.copytree(registry_dir(root), staging_registry)
             mutate(staging)
-            errors = validate(staging, repo_root, False)
+            errors = validate(staging, repo_root, False)  # noqa: FBT003
             if errors:
                 raise ValueError("registry update is invalid: " + "; ".join(errors))
             journal = transaction_path(root)

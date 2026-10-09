@@ -41,7 +41,7 @@ def registry_condition(
                 "before they can guide implementation."
             ],
         )
-    errors = validate(registry_path, repo_root, False)
+    errors = validate(registry_path, repo_root, False)  # noqa: FBT003
     if errors:
         return (
             "invalid",

@@ -24,7 +24,7 @@ def _nonblank_strings(value: Any) -> bool:
     )
 
 
-def validate_policy(value: dict[str, Any]) -> list[str]:
+def validate_policy(value: dict[str, Any]) -> list[str]:  # noqa: C901, PLR0912
     errors = []
     if value.get("format") != "domain-memory-policy/v1":
         errors.append("policy has an invalid format")
@@ -97,7 +97,7 @@ def _write_policy_file(path: Path, value: dict[str, Any]) -> None:
     )
 
 
-def write_policy(
+def write_policy(  # noqa: PLR0913, PLR0917
     root: Path,
     source_map: dict[str, Any],
     storage_mode: str,

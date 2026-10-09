@@ -18,7 +18,7 @@ MAX_FILE_BYTES = 1_048_576
 MAX_REPORTED_SKIPS = 1_000
 
 
-def scan_report(root: Path) -> dict[str, object]:
+def scan_report(root: Path) -> dict[str, object]:  # noqa: C901
     root = root.resolve()
     findings: list[dict[str, str | int]] = []
     skipped: list[dict[str, str]] = []

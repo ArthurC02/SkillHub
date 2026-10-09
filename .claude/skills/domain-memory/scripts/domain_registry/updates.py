@@ -224,7 +224,7 @@ def retract_candidate(
     )
 
 
-def apply_approved_updates(
+def apply_approved_updates(  # noqa: C901, PLR0915
     package_root: Path, registry_root: Path, repo_root: Path
 ) -> None:
     reconcile_pending_update(registry_root, repo_root)

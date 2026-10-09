@@ -73,8 +73,8 @@ def init_signing_key(
     repo_root: Path,
     principal: str,
     key_file: Path | None = None,
-    force: bool = False,
-    sign_every_commit: bool = False,
+    force: bool = False,  # noqa: FBT001, FBT002
+    sign_every_commit: bool = False,  # noqa: FBT001, FBT002
 ) -> dict[str, Any]:
     if not isinstance(principal, str) or not principal.strip():
         raise ValueError(

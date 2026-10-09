@@ -50,7 +50,7 @@ def as_if_moved_to(status: str, documents: dict[str, Any]) -> dict[str, Any]:
 def valid_digest(value: Any) -> bool:
     return (
         isinstance(value, str)
-        and len(value) == 71
+        and len(value) == 71  # noqa: PLR2004
         and value.startswith("sha256:")
         and all(character in "0123456789abcdef" for character in value[7:])
     )
@@ -140,7 +140,7 @@ def _fill_identifiers(output: Path, given: dict[str, str]) -> None:
         )
 
 
-def implementation_design_errors(
+def implementation_design_errors(  # noqa: C901
     proposal: dict[str, Any], obligation_ids: set[str]
 ) -> list[str]:
     classification = proposal.get("change_classification")
@@ -252,7 +252,7 @@ def _obligation_errors(
     return errors, obligation_ids
 
 
-def _approval_and_revision_errors(
+def _approval_and_revision_errors(  # noqa: C901, PLR0912
     requirement: dict[str, Any],
     proposal: dict[str, Any],
     evidence: dict[str, Any],
@@ -402,7 +402,7 @@ def _identity_errors(documents: dict[str, dict[str, Any]]) -> list[str]:
     return errors
 
 
-def _requirement_and_proposal_errors(
+def _requirement_and_proposal_errors(  # noqa: C901
     requirement: dict[str, Any], proposal: dict[str, Any]
 ) -> tuple[list[str], set[str]]:
     errors: list[str] = []

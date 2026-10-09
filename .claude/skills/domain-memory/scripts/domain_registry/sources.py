@@ -270,7 +270,7 @@ def source_policy_report(
         )
     if oversized:
         named = ", ".join(oversized[:5])
-        remainder = "" if len(oversized) <= 5 else f", and {len(oversized) - 5} more"
+        remainder = "" if len(oversized) <= 5 else f", and {len(oversized) - 5} more"  # noqa: PLR2004
         errors.append(
             f"over max_file_bytes {limits['max_file_bytes']}: {named}{remainder}"
         )
@@ -509,7 +509,7 @@ def source_verdict(status: str, selection_status: str, reason: str) -> dict[str,
     return {"status": status, "selection_status": selection_status, "reason": reason}
 
 
-def verify_source_map(
+def verify_source_map(  # noqa: C901, PLR0911, PLR0912
     root: Path, source_map_path: Path, policy: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     root = root.resolve()
@@ -543,7 +543,7 @@ def verify_source_map(
     for selected_path in recorded_paths:
         try:
             (root / selected_path).resolve().relative_to(root)
-        except ValueError:
+        except ValueError:  # noqa: PERF203
             return source_verdict(
                 "invalid",
                 selection_status,
@@ -641,7 +641,7 @@ def git_state(root: Path, selected_paths: list[str]) -> dict[str, Any]:
     }
 
 
-def probe_sources(
+def probe_sources(  # noqa: PLR0911
     root: Path, source_map_path: Path, policy: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     if not source_map_path.exists():

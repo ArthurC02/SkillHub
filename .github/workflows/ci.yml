@@ -573,6 +573,11 @@ jobs:
           bash tools/ci/report-failure.sh 'Domain Memory plugin tests'
           python -m unittest discover -s .claude/skills/domain-memory/scripts -p 'test_*.py'
 
+      - name: Domain Memory plugin lint
+        run: >-
+          bash tools/ci/report-failure.sh 'Domain Memory plugin lint'
+          ruff check .claude/skills/domain-memory
+
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.10'

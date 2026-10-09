@@ -83,10 +83,10 @@ def _load_registry_assets(
     return records, errors
 
 
-def _validate_asset_records(
+def _validate_asset_records(  # noqa: C901
     root: Path,
     records: dict[str, list[dict[str, Any]]],
-    require_reviewed: bool,
+    require_reviewed: bool,  # noqa: FBT001
 ) -> list[str]:
     errors: list[str] = []
     for name, entries in records.items():
@@ -207,7 +207,7 @@ def _validate_confirmed_absences(
     return errors
 
 
-def _validate_context_references(
+def _validate_context_references(  # noqa: C901
     records: dict[str, list[dict[str, Any]]],
 ) -> list[str]:
     errors: list[str] = []
@@ -271,7 +271,7 @@ def _validate_evidence(
     ]
 
 
-def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list[str]:
+def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list[str]:  # noqa: FBT001
     manifest_path = registry_dir(root) / "manifest.json"
     if not manifest_path.is_file():
         return [f"missing manifest: {manifest_path}{one_level_too_deep_hint(manifest_path)}"]

@@ -45,7 +45,7 @@ def read_events(root: Path) -> list[dict[str, Any]]:
         except (json.JSONDecodeError, ValueError) as error:
             raise ValueError(f"audit event {index} is invalid JSON") from error
         if not isinstance(value, dict):
-            raise ValueError(f"audit event {index} must be an object")  # noqa: TRY004
+            raise ValueError(f"audit event {index} must be an object")
         events.append(value)
     return events
 
@@ -111,7 +111,7 @@ def _invalid(reason: str) -> dict[str, Any]:
     return {"status": "invalid", "reason": reason}
 
 
-def verify(root: Path) -> dict[str, Any]:
+def verify(root: Path) -> dict[str, Any]:  # noqa: PLR0911
     try:
         events = read_events(root)
     except ValueError as error:
