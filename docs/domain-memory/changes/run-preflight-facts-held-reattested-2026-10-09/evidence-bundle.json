@@ -1,0 +1,90 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-preflight-facts-citation-follows-the-held-facts",
+  "proposal_id": "run-preflight-facts-held-reattested",
+  "registry_revision": {
+    "observed_commit": "2f415c043dabe39d09c67d66e87dcd2779c492f3",
+    "registry_digest": "sha256:d905ca4d1d1adeec2e4274054eb507d6df7053973588eaa61ae9d77832faf316"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "preflight-refuses-without-a-reader",
+    "mutated_protection": "the refusal in PermissionSummaryFor when no Registry reader is injected",
+    "failure_evidence": "With the refusal disabled, TestPermissionSummaryRefusesWithoutRegistryRead failed: the summary went on to the absent reader and panicked with a nil pointer dereference. The earlier form of the test passed under the same mutation, because a missing test lab refused first; the test now injects a test lab and requires the Registry refusal itself.",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/trial/execution/preflight.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:eb9efcdfd94e49e427f5da2056f49c54431bbdfe62005f100e94dd7971087a05",
+      "finished_at": "2026-10-09T15:07:38.928729Z"
+    },
+    {
+      "obligation_id": "refreshed-citation-current",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-evidence --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:0b5b18add0212064c47a23216a3779aa74e3a5d6a15d780a0ed315f823d2212a",
+      "finished_at": "2026-10-09T15:07:39.866925Z"
+    },
+    {
+      "obligation_id": "fact-reader-contract-holds",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py analyze-boundary --registry-root docs/domain-memory --source-context registry --target-context run",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f07620da55e44669486cf5bbcd3c4378515f9246d5fb1cc2817fb7c445e030be",
+      "finished_at": "2026-10-09T15:07:40.755564Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:ef0b4c9724efab0cb9ab88969b34a9bab8b7b6f8513bd94142715aef834c3b42",
+      "finished_at": "2026-10-09T15:07:41.952645Z"
+    },
+    {
+      "obligation_id": "run-creation-reads-no-package-under-lock",
+      "status": "passed",
+      "evidence": "go -C apps/platform test ./internal/entrypoint/api/apiserver/ -count=1 -run TestARunIsCreatedWithoutReadingThePackageWhileTheTestCaseIsLocked -v",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:62b35364ff5eecec30bc9093bd64602ee36930151214bfb61fde08db8f06df96",
+      "finished_at": "2026-10-09T16:39:21.568587Z"
+    },
+    {
+      "obligation_id": "preflight-refuses-without-a-reader",
+      "status": "passed",
+      "evidence": "go -C apps/platform test ./internal/trial/execution/ -count=1 -run TestPermissionSummaryRefusesWithoutRegistryRead -v",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:c2ae58c283fb00335eeafb3d913f3b4e2ac976f55236059338d5dd15dee6db02",
+      "finished_at": "2026-10-09T16:42:54.269166Z"
+    }
+  ],
+  "contract_checks": [
+    {
+      "contract_id": "registry-run-facts-v1",
+      "status": "passed",
+      "evidence": "The reader's shape is untouched; the Version read moved into its own function beside the public entry and the summary receives the facts run creation already read."
+    }
+  ],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "The unit test covers the refusal without a reader; that the reader is the only path to Version facts rests on the cited code and on the import guard, not on a test of its own.",
+    "A citation is line-addressed, so the next edit above or inside these lines needs the same correction."
+  ]
+}
