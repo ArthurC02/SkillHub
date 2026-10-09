@@ -2612,6 +2612,7 @@ test("admin trend topics jump to the requested chart group on a phone", async ({
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto("/admin/trends?days=30");
+  await expect(page.getByText("2026-08-14 到 2026-09-12（UTC），共 30 天。")).toBeVisible();
 
   const topics = page.getByRole("navigation", { name: "趨勢主題" });
   for (const [label, id, heading] of [

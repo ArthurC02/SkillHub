@@ -2253,7 +2253,7 @@ test("OPS-008: the trends page asks each owner for 30 days by default and draws 
       (scroll) => scroll.tabIndex,
     ),
   ).toEqual(Array(11).fill(0));
-  expect(has("2026-09-06 到 2026-09-12（UTC），共 7 天。")()).toBe(true);
+  expect(has("2026-08-14 到 2026-09-12（UTC），共 30 天。")()).toBe(true);
   expect(
     Array.from(container.querySelectorAll('canvas[role="img"]')).map((c) =>
       c.getAttribute("aria-label"),
@@ -2319,18 +2319,42 @@ test("OPS-008: losing all trend reads hides the cached range until refresh succe
     await queryClient.refetchQueries({ queryKey: ["admin", "trends"] });
   });
   await waitFor(has("目前沒有可用趨勢。"));
-  expect(has("2026-09-06 到 2026-09-12（UTC），共 7 天。")()).toBe(false);
+  expect(has("2026-08-14 到 2026-09-12（UTC），共 30 天。")()).toBe(false);
   expect(container.querySelectorAll("figure")).toHaveLength(0);
 
   unavailable = false;
   await click(button("重新整理五組趨勢"));
   await waitFor(has("全平台目前餘額總和：1268 點。"));
-  expect(has("2026-09-06 到 2026-09-12（UTC），共 7 天。")()).toBe(true);
+  expect(has("2026-08-14 到 2026-09-12（UTC），共 30 天。")()).toBe(true);
+});
+
+test("OPS-008: different response windows are not presented as one comparable range", async () => {
+  stub(true, (path, _method, url) => {
+    if (path !== "/admin/trends/runs") return undefined;
+    const response = platformResponse(url);
+    return { ...response, body: { ...(response.body as object), from: "2026-08-15" } };
+  });
+  await mountAt("/admin/trends");
+  await waitFor(has("已取得 5/5 組趨勢"));
+  expect(has("取得的趨勢日期範圍與選擇不一致，請重新整理後再比較。")()).toBe(true);
+  expect(has("2026-08-14 到 2026-09-12（UTC），共 30 天。")()).toBe(false);
+});
+
+test("OPS-008: a seven-day response does not masquerade as the selected 30 days", async () => {
+  stub(true, (path, _method, url) => {
+    if (!path.startsWith("/admin/trends/")) return undefined;
+    const response = platformResponse(url);
+    return { ...response, body: { ...(response.body as object), from: "2026-09-06" } };
+  });
+  await mountAt("/admin/trends");
+  await waitFor(has("已取得 5/5 組趨勢"));
+  expect(has("取得的趨勢日期範圍與選擇不一致，請重新整理後再比較。")()).toBe(true);
+  expect(has("2026-09-06 到 2026-09-12（UTC），共 7 天。")()).toBe(false);
 });
 
 test("OPS-008: a kind's figure totals its range and its table shows zero on the days it had nothing", async () => {
   stub(true);
-  await mountAt("/admin/trends");
+  await mountAt("/admin/trends", { days: "7" });
   await waitFor(has("評審：3 筆，合計 $0.0036"));
   expect(has("扣點：4 筆，合計 -32 點")()).toBe(true);
   const review = Array.from(container.querySelectorAll("figure")).find((figure) =>
@@ -2396,6 +2420,12 @@ test("OPS-008: a range in the address is asked for, and a range the page does no
   await mountAt("/admin/trends", { days: "7" });
   await waitFor(has("全平台目前餘額總和"));
   expect(new Set(trendCalls())).toEqual(trendsFor(7));
+  expect(has("2026-09-06 到 2026-09-12（UTC），共 7 天。")()).toBe(true);
+
+  calls = [];
+  await go("/admin/trends", { days: "90" });
+  await waitFor(has("2026-06-15 到 2026-09-12（UTC），共 90 天。"));
+  expect(new Set(trendCalls())).toEqual(trendsFor(90));
 
   calls = [];
   await go("/admin/trends", { days: "8" });

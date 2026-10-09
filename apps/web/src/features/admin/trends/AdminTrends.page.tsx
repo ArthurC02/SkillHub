@@ -10,6 +10,7 @@ import {
   type DailyCount,
   type FunnelTrend,
   type Trend,
+  type TrendDays,
 } from "../admin.service";
 import { AdminPage } from "../components/AdminPage";
 import { ENTRY_KIND, ACTION_LABEL, COST_KIND } from "../admin.model";
@@ -46,6 +47,27 @@ function TrendTopics() {
   );
 }
 
+function TrendRangeStatus({ ranges, days }: { ranges: Array<Trend | undefined>; days: TrendDays }) {
+  const range = ranges[0];
+  if (!range) return null;
+  const mismatch = ranges.some(
+    (item) =>
+      item &&
+      (item.from !== range.from ||
+        item.to !== range.to ||
+        daysOf(item.from, item.to).length !== days),
+  );
+  return mismatch ? (
+    <p role="alert" className="notice notice-warning">
+      取得的趨勢日期範圍與選擇不一致，請重新整理後再比較。
+    </p>
+  ) : (
+    <p>
+      {range.from} 到 {range.to}（UTC），共 {daysOf(range.from, range.to).length} 天。
+    </p>
+  );
+}
+
 export function AdminTrends() {
   const { days = 30 } = useSearch({ from: "/admin/trends" });
   const cost = useTrend<Trend<DailyAmount>>("cost", days);
@@ -57,7 +79,6 @@ export function AdminTrends() {
   const available = reads.filter((query) => query.data && !query.error);
   const fetching = reads.some((query) => query.isFetching);
   const stages = funnel.data?.stages ?? [];
-  const range = available[0]?.data;
 
   return (
     <AdminPage
@@ -102,11 +123,7 @@ export function AdminTrends() {
           </button>
         </p>
       )}
-      {range && (
-        <p>
-          {range.from} 到 {range.to}（UTC），共 {daysOf(range.from, range.to).length} 天。
-        </p>
-      )}
+      <TrendRangeStatus ranges={available.map((query) => query.data)} days={days} />
       <TrendTopics />
       <TrendSection
         id="admin-trend-cost"

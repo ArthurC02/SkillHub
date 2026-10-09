@@ -1427,6 +1427,14 @@ function ok(body: unknown, status = 200): RouteResult {
 
 type RouteMatcher = (path: string, url: string) => RouteResult | undefined;
 
+const ADMIN_TRENDS: Record<string, Trend> = {
+  "/admin/trends/cost": ADMIN_TREND_COST,
+  "/admin/trends/credits": ADMIN_TREND_CREDITS,
+  "/admin/trends/runs": ADMIN_TREND_RUNS,
+  "/admin/trends/operator-actions": ADMIN_TREND_ACTIONS,
+  "/admin/trends/funnel": ADMIN_TREND_FUNNEL,
+};
+
 const ROUTES: RouteMatcher[] = [
   (path) => (path === "/admin/accounts" ? ok(ADMIN_ACCOUNT) : undefined),
   (path) =>
@@ -1455,11 +1463,13 @@ const ROUTES: RouteMatcher[] = [
     path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
       ? ok(ADMIN_EXPOSURE_CASE)
       : undefined,
-  (path) => (path === "/admin/trends/cost" ? ok(ADMIN_TREND_COST) : undefined),
-  (path) => (path === "/admin/trends/credits" ? ok(ADMIN_TREND_CREDITS) : undefined),
-  (path) => (path === "/admin/trends/runs" ? ok(ADMIN_TREND_RUNS) : undefined),
-  (path) => (path === "/admin/trends/operator-actions" ? ok(ADMIN_TREND_ACTIONS) : undefined),
-  (path) => (path === "/admin/trends/funnel" ? ok(ADMIN_TREND_FUNNEL) : undefined),
+  (path, url) => {
+    const trend = ADMIN_TRENDS[path];
+    if (!trend) return undefined;
+    const days = Number(new URLSearchParams(url.split("?")[1]).get("days") ?? 30);
+    const from = new Date(Date.parse(`${trend.to}T00:00:00Z`) - (days - 1) * 86_400_000);
+    return ok({ ...trend, from: from.toISOString().slice(0, 10) });
+  },
   (path) => (path.startsWith("/api/skills/search") ? ok(SEARCH) : undefined),
   (path, url) => {
     if (!path.startsWith("/api/skills/catalog")) return undefined;
