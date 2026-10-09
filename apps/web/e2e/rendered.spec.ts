@@ -1723,6 +1723,27 @@ test("exposure review keeps the decision evidence visible and folds technical id
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test("an exposure decision keeps its result after the server advances the review sequence", async ({
+  page,
+}, testInfo) => {
+  const updated = { ...ADMIN_EXPOSURE_CASE, sequence: 3, exposed: true };
+  let current: typeof updated = ADMIN_EXPOSURE_CASE;
+  await stubPlatform(page);
+  await page.route(`**/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`, (route) => {
+    if (route.request().method() === "POST") current = updated;
+    return route.fulfill({ json: current });
+  });
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto(`/admin/exposure?publication=${PUBLISHER}%2F${PUBLICATION}`);
+  await page.getByRole("radio", { name: "核准" }).check();
+  await page.locator("#admin-exposure-review-note").fill("看過了，符合規範");
+  await page.getByRole("button", { name: "送出核准" }).click();
+  await expect(page.getByText("目前曝光中：搜尋與目錄看得到它。")).toBeVisible();
+  await expect(page.locator("#admin-exposure-result")).toHaveText("這筆曝光審核已核准。");
+  await expect(page.locator("#admin-exposure-result")).toBeFocused();
+  await page.screenshot({ path: testInfo.outputPath("exposure-review-result-mobile.png") });
+});
+
 test("exposure review explains an unavailable approval beside its control on mobile", async ({
   page,
 }, testInfo) => {

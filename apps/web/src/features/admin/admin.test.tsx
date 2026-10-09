@@ -2034,10 +2034,79 @@ test("a completed exposure decision does not describe the next decision", async 
   await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
   await type("#admin-exposure-review-note", "看過了，符合規範");
   await click(button("送出核准"));
-  await waitFor(has("已送出，上面的狀態已更新。"));
+  await waitFor(has("這筆曝光審核已核准。"));
 
   await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="revoked"]'));
-  expect(has("已送出，上面的狀態已更新。")()).toBe(false);
+  expect(has("這筆曝光審核已核准。")()).toBe(false);
+});
+
+test("a completed exposure review keeps its result when the server advances the review sequence", async () => {
+  const updated = {
+    ...ADMIN_EXPOSURE_CASE,
+    sequence: 3,
+    exposed: true,
+    history: [
+      { ...ADMIN_EXPOSURE_CASE.history[0], sequence: 3, reason: "看過了，符合規範" },
+      ...ADMIN_EXPOSURE_CASE.history,
+    ],
+  };
+  let reviewed = false;
+  stub(true, (path, method) => {
+    if (path !== `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`) return undefined;
+    if (method === "POST") {
+      reviewed = true;
+      return { body: updated, status: 200 };
+    }
+    return { body: reviewed ? updated : ADMIN_EXPOSURE_CASE, status: 200 };
+  });
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核序號：2"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
+  await type("#admin-exposure-review-note", "看過了，符合規範");
+  await click(button("送出核准"));
+  await waitFor(has("審核序號：3"));
+  expect(has("目前曝光中")()).toBe(true);
+  expect(has("這筆曝光審核已核准。")()).toBe(true);
+  expect(document.activeElement).toBe(field<HTMLElement>("#admin-exposure-result"));
+});
+
+test("editing a new exposure reason clears the previous review result", async () => {
+  stub(true, (path, method) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && method === "POST"
+      ? { body: ADMIN_EXPOSURE_CASE, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核這一版"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
+  await type("#admin-exposure-review-note", "看過了，符合規範");
+  await click(button("送出核准"));
+  await waitFor(has("這筆曝光審核已核准。"));
+  await type("#admin-exposure-review-note", "需要重新確認");
+  expect(has("這筆曝光審核已核准。")()).toBe(false);
+});
+
+test("a completed exposure review stays confirmed when rereading the current state fails", async () => {
+  const updated = { ...ADMIN_EXPOSURE_CASE, sequence: 3, exposed: true };
+  let reviewed = false;
+  stub(true, (path, method) => {
+    if (path !== `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`) return undefined;
+    if (method === "POST") {
+      reviewed = true;
+      return { body: updated, status: 200 };
+    }
+    return reviewed
+      ? { body: { error: "refresh unavailable" }, status: 503 }
+      : { body: ADMIN_EXPOSURE_CASE, status: 200 };
+  });
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核這一版"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
+  await type("#admin-exposure-review-note", "看過了，符合規範");
+  await click(button("送出核准"));
+  await waitFor(has("暫時無法讀取這一筆的曝光審核資料"));
+  expect(has("這筆曝光審核已核准。")()).toBe(true);
+  expect(document.activeElement).toBe(field<HTMLElement>("#admin-exposure-result"));
 });
 
 test("DISC-007: a decision and reason are both required before submission", async () => {

@@ -1,5 +1,6 @@
+import { useEffect, useRef } from "react";
 import { Link, useSearch } from "@tanstack/react-router";
-import { useExposureCase, useExposureQueue } from "../admin.service";
+import { useExposureCase, useExposureQueue, useReviewExposure } from "../admin.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
@@ -10,6 +11,17 @@ import { ExposureReview } from "./components/ExposureReview";
 
 function ExposureCaseSection({ publication }: { publication: string }) {
   const exposureCase = useExposureCase(publication);
+  const review = useReviewExposure(publication);
+  const result = useRef<HTMLParagraphElement>(null);
+  const showResult =
+    review.isSuccess &&
+    (!exposureCase.data ||
+      Boolean(exposureCase.error) ||
+      (review.data?.release.release_id === exposureCase.data.release.release_id &&
+        exposureCase.data.sequence <= review.data.sequence));
+  useEffect(() => {
+    if (showResult) result.current?.focus();
+  }, [showResult]);
   return (
     <>
       <h2>審這一筆：{publication}</h2>
@@ -34,9 +46,26 @@ function ExposureCaseSection({ publication }: { publication: string }) {
         </button>
       </p>
       {exposureCase.isPending && <Loading what="這一筆的曝光審核資料" />}
+      {showResult && (
+        <p
+          id="admin-exposure-result"
+          ref={result}
+          tabIndex={-1}
+          className="notice notice-success"
+          role="status"
+        >
+          {review.variables.decision === "approved"
+            ? "這筆曝光審核已核准。"
+            : "這筆曝光資格已撤銷。"}
+        </p>
+      )}
       <ReadFailure error={exposureCase.error} what="這一筆的曝光審核資料" />
       {exposureCase.data && !exposureCase.error && (
-        <ExposureReview exposureCase={exposureCase.data} publication={publication} />
+        <ExposureReview
+          exposureCase={exposureCase.data}
+          publication={publication}
+          review={review}
+        />
       )}
     </>
   );
@@ -84,7 +113,11 @@ export function AdminExposure() {
       heading="曝光審核"
       lede="發佈物的最新 Release 要先由 operator 核准，才會出現在搜尋與目錄裡。"
     >
-      {publication ? <ExposureCaseSection publication={publication} /> : <ExposureQueueSection />}
+      {publication ? (
+        <ExposureCaseSection key={publication} publication={publication} />
+      ) : (
+        <ExposureQueueSection />
+      )}
     </AdminPage>
   );
 }

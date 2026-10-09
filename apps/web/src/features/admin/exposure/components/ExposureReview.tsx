@@ -70,89 +70,95 @@ function SnapshotSection({ exposureCase: c }: { exposureCase: ExposureCase }) {
 function ReviewForm({
   exposureCase: c,
   publication,
+  review,
 }: {
   exposureCase: ExposureCase;
   publication: string;
+  review: ReturnType<typeof useReviewExposure>;
 }) {
   const [decision, setDecision] = useState<ExposureDecision>();
-  const review = useReviewExposure(publication);
   const approvalUnavailable = c.approval?.allowed
     ? undefined
     : (c.approval?.refusal?.error ?? "無法確認核准資格；請重新整理審核資料。");
 
   return (
-    <ActionForm
-      id="admin-exposure-review"
-      submitLabel={decision ? `送出${DECISION_LABEL[decision]}` : "送出審核結論"}
-      pending={review.isPending}
-      error={review.error}
-      done={review.isSuccess && "已送出，上面的狀態已更新。"}
-      contextKey={`${publication}:${c.release.release_id}:${decision ?? "none"}`}
-      ready={decision !== undefined && (decision !== "approved" || !approvalUnavailable)}
-      onSubmit={(reason) => {
-        if (!decision || (decision === "approved" && approvalUnavailable)) return;
-        review.mutate({
-          release_id: c.release.release_id,
-          expected_sequence: c.sequence,
-          expected_snapshot_digest: c.snapshot?.digest ?? "",
-          decision,
-          reason,
-        });
-      }}
-    >
-      <fieldset>
-        <legend>結論</legend>
-        {(["approved", "revoked"] as const).map((value) => (
-          <label key={value}>
-            <input
-              type="radio"
-              name="admin-exposure-decision"
-              value={value}
-              checked={decision === value}
-              aria-describedby={
-                value === "approved" && approvalUnavailable
-                  ? "admin-exposure-approval-why"
-                  : undefined
-              }
-              onChange={() => {
-                setDecision(value);
-                review.reset();
-              }}
-              disabled={review.isPending || (value === "approved" && Boolean(approvalUnavailable))}
-            />
-            {DECISION_LABEL[value]}
-          </label>
-        ))}
-        {approvalUnavailable && (
-          <p id="admin-exposure-approval-why" className="note">
-            {approvalUnavailable}
+    <div onInput={() => review.isSuccess && review.reset()}>
+      <ActionForm
+        id="admin-exposure-review"
+        submitLabel={decision ? `送出${DECISION_LABEL[decision]}` : "送出審核結論"}
+        pending={review.isPending}
+        error={review.error}
+        contextKey={`${publication}:${c.release.release_id}:${decision ?? "none"}`}
+        ready={decision !== undefined && (decision !== "approved" || !approvalUnavailable)}
+        onSubmit={(reason) => {
+          if (!decision || (decision === "approved" && approvalUnavailable)) return;
+          review.mutate({
+            release_id: c.release.release_id,
+            expected_sequence: c.sequence,
+            expected_snapshot_digest: c.snapshot?.digest ?? "",
+            decision,
+            reason,
+          });
+        }}
+      >
+        <fieldset>
+          <legend>結論</legend>
+          {(["approved", "revoked"] as const).map((value) => (
+            <label key={value}>
+              <input
+                type="radio"
+                name="admin-exposure-decision"
+                value={value}
+                checked={decision === value}
+                aria-describedby={
+                  value === "approved" && approvalUnavailable
+                    ? "admin-exposure-approval-why"
+                    : undefined
+                }
+                onChange={() => {
+                  setDecision(value);
+                  review.reset();
+                }}
+                disabled={
+                  review.isPending || (value === "approved" && Boolean(approvalUnavailable))
+                }
+              />
+              {DECISION_LABEL[value]}
+            </label>
+          ))}
+          {approvalUnavailable && (
+            <p id="admin-exposure-approval-why" className="note">
+              {approvalUnavailable}
+            </p>
+          )}
+        </fieldset>
+        <div className="notice" data-role="evidence">
+          <strong>送出前確認</strong>
+          <p>
+            這次只決定版本 {c.release.version_number}（<code>{c.release.content_hash}</code>）的
+            Catalog 曝光。
           </p>
-        )}
-      </fieldset>
-      <div className="notice" data-role="evidence">
-        <strong>送出前確認</strong>
-        <p>
-          這次只決定版本 {c.release.version_number}（<code>{c.release.content_hash}</code>）的
-          Catalog 曝光。
-        </p>
-        <p>
-          {decision === "approved"
-            ? "核准後，搜尋與 Catalog 可以顯示這個 Release。"
-            : decision === "revoked"
-              ? "撤銷後，搜尋與 Catalog 會隱藏這個 Release；公開位址不受影響。"
-              : "先選擇核准或撤銷；系統不會預先替你選擇。"}
-        </p>
-      </div>
-    </ActionForm>
+          <p>
+            {decision === "approved"
+              ? "核准後，搜尋與 Catalog 可以顯示這個 Release。"
+              : decision === "revoked"
+                ? "撤銷後，搜尋與 Catalog 會隱藏這個 Release；公開位址不受影響。"
+                : "先選擇核准或撤銷；系統不會預先替你選擇。"}
+          </p>
+        </div>
+      </ActionForm>
+    </div>
   );
 }
 
 export function ExposureReview({
   exposureCase: c,
   publication,
+  review,
 }: {
   exposureCase: ExposureCase;
   publication: string;
+  review: ReturnType<typeof useReviewExposure>;
 }) {
   return (
     <>
@@ -182,8 +188,8 @@ export function ExposureReview({
         key={`${c.release.release_id}:${c.sequence}:${c.snapshot?.digest ?? ""}:${c.approval?.refusal?.reason ?? c.approval?.allowed}`}
         exposureCase={c}
         publication={publication}
+        review={review}
       />
-
       <h3>歷次審核</h3>
       {c.history.length === 0 ? (
         <p>還沒有審核紀錄：0 筆。</p>
