@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 INVOCATION = re.compile(r"registry_tools\.py[\"']?\s+([a-z][a-z0-9-]*)")
+INTERPRETER = re.compile(r"(?<![\w-])python[\d.]*(?:\.exe)?(?![\w-])")
 COMMAND_LIST = re.compile(r"\{([a-z0-9,-]+)\}")
 FAILURE_LINE = re.compile(
     r"^(ERROR: .*|registry_tools\.py [a-z0-9-]+: error: .*|[\w.]*(?:Error|Exception): .*)$", re.MULTILINE
@@ -121,7 +122,7 @@ def scan(projects_root: Path, known: set[str], since: str | None = None) -> Usag
         names = [name for name in INVOCATION.findall(command) if name in known]
         if not names:
             continue
-        if len(names) > 1:
+        if len(names) > 1 or len(INTERPRETER.findall(command)) > 1:
             usage.compound_calls += 1
             for name in names:
                 usage.commands[name].calls += 1

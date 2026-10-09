@@ -80,6 +80,18 @@ def test_several_commands_in_one_call_are_counted_but_not_judged():
     assert (summary["compound_calls"], summary["failures"], row(summary, "cite")["calls"]) == (1, 0, 1)
 
 
+def test_a_call_piped_into_another_python_program_is_counted_but_not_judged():
+    command = '"C:/Python314/python.exe" registry_tools.py validate | python -c "import json; json.load(open(\'x\'))"'
+    summary = scanned([call("a", command), result("a", "FileNotFoundError: [Errno 2] x", True)])
+    assert (summary["compound_calls"], summary["failures"], row(summary, "validate")["calls"]) == (1, 0, 1)
+
+
+def test_one_python_running_the_plugin_is_still_judged():
+    summary = scanned([call("a", "python3.12 .claude/scripts/registry_tools.py validate | tail -3"),
+                       result("a", "ERROR: broken", True)])
+    assert (summary["compound_calls"], summary["failures"]) == (0, 1)
+
+
 def test_a_call_without_a_result_is_counted_but_not_called_a_success():
     summary = scanned([call("a", "python registry_tools.py validate")])
     assert (summary["unanswered_calls"], row(summary, "validate")["calls"], summary["failures"]) == (1, 1, 0)
