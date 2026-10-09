@@ -22,7 +22,7 @@ from .revision import registry_digest
 
 def write_json(path: Path, value: dict) -> None:
     temporary = path.with_suffix(f"{path.suffix}.tmp")
-    with temporary.open("w", encoding="utf-8") as output:
+    with temporary.open("w", encoding="utf-8", newline="\n") as output:
         output.write(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
         output.flush()
         os.fsync(output.fileno())

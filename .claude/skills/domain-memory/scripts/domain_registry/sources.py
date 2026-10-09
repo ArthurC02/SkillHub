@@ -495,7 +495,7 @@ def refine_sources(
     policy["source_policy"]["selected_paths"] = source_map["selected_paths"]
     with writer_lock(root):
         (root / "domain-memory-policy.json").write_text(
-            json.dumps(policy, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            json.dumps(policy, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
         )
         write_and_audit(
             root,
@@ -602,7 +602,7 @@ def verify_source_map(  # noqa: C901, PLR0911, PLR0912
 def write_source_map(path: Path, source_map: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(source_map, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        json.dumps(source_map, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
     )
 
 

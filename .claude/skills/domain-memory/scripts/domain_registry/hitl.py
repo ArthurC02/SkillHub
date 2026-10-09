@@ -2,8 +2,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .changes import test_attestation_errors, validate_change_package
-from .attestations import verify_external_scm, verify_git_signed_commit
+from .changes import missing_approval_roles, test_attestation_errors, validate_change_package
+from .attestations import commit_carries_proposal, verify_external_scm, verify_git_signed_commit
 from .common import completed_identifier, iso_timestamp, load_json
 from .policy import review_governance
 from .revision import current_registry_revision, require_current_registry_revision
@@ -12,7 +12,7 @@ from .revision import current_registry_revision, require_current_registry_revisi
 def write_document(path: Path, value: dict) -> None:
     temporary = path.with_suffix(f"{path.suffix}.tmp")
     temporary.write_text(
-        json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
     )
     temporary.replace(path)
 
@@ -110,6 +110,12 @@ def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
     proposal = load_json(path)
     if proposal.get("status") != "submitted":
         raise ValueError("only a submitted proposal may be verified")
+    missing = missing_approval_roles(load_json(root / "requirement-normalization.json"), proposal)
+    if missing:
+        raise ValueError(
+            "a proposal is verified after its required approvals, which can be recorded only "
+            "while it is submitted; first run record-approval for each of: " + ", ".join(missing)
+        )
     require_current_registry_revision(proposal, registry_root, repo_root)
     obligations = load_json(root / "test-obligations.json").get("obligations", [])
     obligation_ids = {
@@ -139,7 +145,8 @@ ATTESTATION_STEPS = {
         "checks_url as https URLs"
     ),
     "git-signed-commit": (
-        "after the signed commit that changes the Domain Memory files exists, add scm_attestation to "
+        "after the signed commit that adds this Change Package and changes the Domain Memory files "
+        "exists, add scm_attestation to "
         'evidence-bundle.json with provider "git-signed-commit", status "approved", that commit as 40 '
         "hex characters"
     ),
@@ -179,7 +186,7 @@ def finalize_proposal(
     elif governance["verifier"] == "git-signed-commit":
         errors = verify_git_signed_commit(
             attestation, repo_root, registry_root, governance["authorized_signers"]
-        )
+        ) or commit_carries_proposal(repo_root, attestation["commit"], root, proposal)
     else:
         errors = ["policy has no review verifier"]
     if errors:
@@ -193,5 +200,6 @@ def finalize_proposal(
         proposal.pop("finalized_at", None)
         write_document(path, proposal)
         raise ValueError(
-            "proposal lacks required approvals or traceability: " + "; ".join(errors)
+            "proposal lacks required approvals or traceability, and is submitted again so it "
+            "can be corrected, then verified and finalized again: " + "; ".join(errors)
         )

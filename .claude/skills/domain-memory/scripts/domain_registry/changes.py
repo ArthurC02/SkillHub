@@ -136,7 +136,7 @@ def _fill_identifiers(output: Path, given: dict[str, str]) -> None:
         document = load_json(output / name)
         document.update({key: value for key, value in given.items() if key in document})
         (output / name).write_text(
-            json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
         )
 
 
@@ -252,6 +252,30 @@ def _obligation_errors(
     return errors, obligation_ids
 
 
+def _counts_as_approval(approval: Any, proposal: dict[str, Any]) -> bool:
+    return (
+        isinstance(approval, dict)
+        and approval.get("decision") == "approved"
+        and approval.get("proposal_revision") == proposal.get("proposal_revision")
+        and approval.get("base_registry_revision") == proposal.get("base_registry_revision")
+        and all(
+            completed_identifier(approval.get(field)) for field in ("role", "reviewer", "scope")
+        )
+        and iso_timestamp(approval.get("approved_at"))
+    )
+
+
+def missing_approval_roles(requirement: dict[str, Any], proposal: dict[str, Any]) -> list[str]:
+    required = requirement.get("required_approval_roles", [])
+    approvals = proposal.get("approvals", [])
+    approved = {
+        approval["role"]
+        for approval in (approvals if isinstance(approvals, list) else [])
+        if _counts_as_approval(approval, proposal)
+    }
+    return sorted(set(required if isinstance(required, list) else []) - approved)
+
+
 def _approval_and_revision_errors(  # noqa: C901, PLR0912
     requirement: dict[str, Any],
     proposal: dict[str, Any],
@@ -267,7 +291,6 @@ def _approval_and_revision_errors(  # noqa: C901, PLR0912
         )
     base_revision = proposal.get("base_registry_revision")
     approvals = proposal.get("approvals", [])
-    approved_roles: set[str] = set()
     if not isinstance(approvals, list):
         errors.append("domain-change-proposal.json has invalid approvals")
     else:
@@ -295,14 +318,11 @@ def _approval_and_revision_errors(  # noqa: C901, PLR0912
                 errors.append(
                     "an approval must bind to the proposal base_registry_revision"
                 )
-            else:
-                approved_roles.add(approval["role"])
-    if (
-        status in APPROVED_OR_LATER
-        and set(required_roles if isinstance(required_roles, list) else [])
-        - approved_roles
-    ):
-        errors.append("an approved or applied proposal lacks required approvals")
+    missing = missing_approval_roles(requirement, proposal)
+    if status in APPROVED_OR_LATER and missing:
+        errors.append(
+            "an approved or applied proposal lacks required approvals: " + ", ".join(missing)
+        )
     if status in SUBMITTED_OR_LATER and not valid_registry_revision(base_revision):
         errors.append(
             "a submitted, approved, or applied proposal requires a Registry digest base revision"

@@ -89,7 +89,7 @@ def verify_external_scm(  # noqa: C901, PLR0911
 def _git(repo_root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", "-C", str(repo_root), *arguments],
-        capture_output=True, text=True, check=False,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
     )
 
 
@@ -116,6 +116,32 @@ def verify_git_signed_commit(
         path == root or path.startswith(root + "/") for path in changed.stdout.splitlines()
     ):
         return ["Git commit does not change Domain Memory files"]
+    return []
+
+
+def commit_carries_proposal(
+    repo_root: Path, commit: str, package_root: Path, proposal: dict[str, Any]
+) -> list[str]:
+    try:
+        relative = package_root.resolve().relative_to(repo_root.resolve()).as_posix()
+    except ValueError:
+        return ["the Change Package must be inside the repository, so the signed commit can carry it"]
+    shown = _git(repo_root, "show", f"{commit}:{relative}/domain-change-proposal.json")
+    if shown.returncode != 0:
+        return [
+            f"Git commit does not carry this Change Package at {relative}; the signed commit "
+            "must add the package, so the signature covers this proposal"
+        ]
+    try:
+        committed = json.loads(shown.stdout)
+    except json.JSONDecodeError:
+        return ["Git commit carries an unreadable domain-change-proposal.json"]
+    identity = ("proposal_id", "proposal_revision")
+    if any(committed.get(key) != proposal.get(key) for key in identity):
+        return [
+            "Git commit carries another proposal or revision; sign a commit with this "
+            "proposal_id and proposal_revision"
+        ]
     return []
 
 

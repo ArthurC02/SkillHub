@@ -33,7 +33,7 @@
 | Submit for review | `submit-proposal --package-root <path> --registry-root <path> --repo-root <repo>` | Captures the exact Git HEAD and Registry digest before changing a valid draft to `submitted`. |
 | Retire a proposal | `supersede-proposal --package-root <path> --reason <text> [--superseded-by <id>]` | Keeps the status the proposal died in, its reason, and its replacement, rather than editing it back to a draft. |
 | Record human approval | `record-approval --package-root <path> --role <role> --reviewer <identity> --scope <scope>` | Rejects self-approval and duplicate approval for the same role and revision. |
-| Verify test attestations | `verify-proposal --package-root <path> --registry-root <root> --repo-root <repo>` | Promotes only a submitted Proposal that has a passing, digest-backed result for every obligation. Add one entry to `test_results` in `evidence-bundle.json` per obligation after its test has run: `obligation_id`, `status: "passed"`, `evidence` (the command or CI link), a `command_profile` the policy approves, `exit_code: 0`, `output_sha256` (`sha256:` and 64 hex characters), and `finished_at` (ISO-8601). Approvals are written by `record-approval`, never by hand. |
+| Verify test attestations | `verify-proposal --package-root <path> --registry-root <root> --repo-root <repo>` | Promotes only a submitted Proposal that every required approval role has approved and that has a passing, digest-backed result for every obligation; approvals can be recorded only while it is submitted, so it names any role still missing. Add one entry to `test_results` in `evidence-bundle.json` per obligation after its test has run: `obligation_id`, `status: "passed"`, `evidence` (the command or CI link), a `command_profile` the policy approves, `exit_code: 0`, `output_sha256` (`sha256:` and 64 hex characters), and `finished_at` (ISO-8601). Approvals are written by `record-approval`, never by hand. |
 | Finalize approval | `finalize-proposal --package-root <path> --registry-root <root> --repo-root <repo>` | Promotes only a verified Proposal whose required approval roles, externally verifiable SCM evidence, traceability, and base revision still validate. |
 
 ## Preparing the approval authority
@@ -42,7 +42,7 @@ A Registry initialized as `local-draft-only` produces candidates and nothing els
 
 A repository whose pull requests are reviewed uses `github-pr`: the merged, approved, green pull request is the evidence, and `finalize-proposal` confirms it through the provider API. This needs a reviewer other than the proposal's author, because a hosting provider does not let an author approve their own pull request.
 
-A repository without that reviewer uses `git-signed-commit`: the maintainer signs the commit that carries the change, and the signature is the evidence.
+A repository without that reviewer uses `git-signed-commit`: the maintainer signs the commit that carries the change, and the signature is the evidence. That commit must add this Change Package with the same `proposal_id` and `proposal_revision`, so a signature on an earlier commit cannot stand in for this proposal's review.
 
 | Capability | Command | Machine guarantee |
 | --- | --- | --- |

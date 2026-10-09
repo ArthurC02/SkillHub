@@ -52,7 +52,7 @@ def migrate_registry(root: Path) -> list[str]:
         if name not in artifacts:
             artifacts.append(name)
     (target / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
     )
     return created
 

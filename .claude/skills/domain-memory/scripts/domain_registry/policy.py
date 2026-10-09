@@ -93,7 +93,7 @@ def _default_governance(review_mode: str) -> dict[str, Any]:
 
 def _write_policy_file(path: Path, value: dict[str, Any]) -> None:
     path.write_text(
-        json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
     )
 
 

@@ -86,7 +86,7 @@ def append_locked(root: Path, event: dict[str, Any]) -> None:
         **event,
     }
     value["event_sha256"] = event_digest(value)
-    with events_path(root).open("a", encoding="utf-8") as output:
+    with events_path(root).open("a", encoding="utf-8", newline="\n") as output:
         output.write(json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n")
         output.flush()
         os.fsync(output.fileno())
@@ -97,7 +97,7 @@ def append_locked(root: Path, event: dict[str, Any]) -> None:
     }
     temporary = audit_manifest_path(root).with_suffix(".json.tmp")
     temporary.write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
     )
     temporary.replace(audit_manifest_path(root))
 

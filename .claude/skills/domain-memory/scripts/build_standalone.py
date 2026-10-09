@@ -14,7 +14,7 @@ def build(plugin_root: Path, skill_name: str, output: Path) -> None:
     output.mkdir(parents=True, exist_ok=True)
     skill = (skill_root / "SKILL.md").read_text(encoding="utf-8")
     skill = skill.replace("../../", "")
-    (output / "SKILL.md").write_text(skill, encoding="utf-8")
+    (output / "SKILL.md").write_text(skill, encoding="utf-8", newline="\n")
     shutil.copyfile(plugin_root / "AGENTS.md", output / "AGENTS.md")
     for name in ("references", "templates"):
         shutil.copytree(plugin_root / name, output / name, dirs_exist_ok=True)
