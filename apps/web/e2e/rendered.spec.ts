@@ -807,6 +807,25 @@ test("admin priorities disclose a partial read failure and recover on a phone", 
   expect(reads).toBe(2);
 });
 
+test("exposure review moves keyboard focus between the queue and case", async ({ page }) => {
+  await stubPlatform(page);
+  await page.goto("/admin/exposure");
+  const pageHeading = page.getByRole("heading", { level: 1, name: "曝光審核" });
+  const queueHeading = page.getByRole("heading", { level: 2, name: "待審清單" });
+  await expect(pageHeading).toBeFocused();
+  const review = page.getByRole("link", { name: `審核 ${PUBLISHER}/${PUBLICATION}` });
+  await review.focus();
+  await review.press("Enter");
+
+  const caseHeading = page.getByRole("heading", {
+    level: 2,
+    name: `審這一筆：${PUBLISHER}/${PUBLICATION}`,
+  });
+  await expect(caseHeading).toBeFocused();
+  await page.getByRole("link", { name: "返回待審清單" }).press("Enter");
+  await expect(queueHeading).toBeFocused();
+});
+
 test("admin exposure queue can recover from a failed refresh on a phone", async ({
   page,
 }, testInfo) => {

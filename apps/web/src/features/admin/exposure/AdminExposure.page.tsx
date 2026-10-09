@@ -24,7 +24,9 @@ function ExposureCaseSection({ publication }: { publication: string }) {
   }, [showResult]);
   return (
     <>
-      <h2>審這一筆：{publication}</h2>
+      <h2 id="admin-exposure-case-heading" tabIndex={-1}>
+        審這一筆：{publication}
+      </h2>
       <p>
         <Link to="/admin/exposure" search={{}}>
           返回待審清單
@@ -75,7 +77,9 @@ function ExposureQueueSection() {
   const queue = useExposureQueue();
   return (
     <>
-      <h2>待審清單</h2>
+      <h2 id="admin-exposure-queue-heading" tabIndex={-1}>
+        待審清單
+      </h2>
       {queue.isPending && <Loading what="待審清單" />}
       <ReadFailure error={queue.error} what="待審清單">
         <p role="alert">
@@ -107,6 +111,15 @@ function ExposureQueueSection() {
 
 export function AdminExposure() {
   const { publication } = useSearch({ from: "/admin/exposure" });
+  const previousPublication = useRef(publication);
+  useEffect(() => {
+    const previous = previousPublication.current;
+    previousPublication.current = publication;
+    if (previous === publication) return;
+    document
+      .getElementById(publication ? "admin-exposure-case-heading" : "admin-exposure-queue-heading")
+      ?.focus();
+  }, [publication]);
 
   return (
     <AdminPage
