@@ -1422,12 +1422,22 @@ test("OPS-004: a taken-down skill shows when and why, and offers no action", asy
   );
   await mountAt("/admin/skills", { q: SKILL });
   await waitFor(has("理由：DMCA"));
+  expect(field<HTMLElement>(".badge-row [role='status']").textContent).toBe("已下架");
   expect(has("重新上架須先完成審查")()).toBe(true);
   expect(
     field<HTMLLIElement>("li.download-item").querySelector(".badge-row")?.nextElementSibling
       ?.textContent,
   ).toContain("理由：DMCA");
   expect(has("的動作")()).toBe(false);
+});
+
+test("a skill without a takedown has a visible neutral governance status", async () => {
+  stub(true);
+  await mountAt("/admin/skills", { q: SKILL });
+  await waitFor(has("再散布："));
+  const status = field<HTMLElement>(".badge-row [role='status']");
+  expect(status.textContent).toBe("未下架");
+  expect(status.className).toBe("badge");
 });
 
 test("OPS-004: a takedown with no reason on record says it was not recorded", async () => {

@@ -36,8 +36,8 @@ export function GovernanceRow({
         </strong>
       </p>
       <p className="badge-row">
-        <span role="status" className={skill.takedown_at ? "badge badge-danger" : undefined}>
-          {skill.takedown_at ? "已下架" : ""}
+        <span role="status" className={skill.takedown_at ? "badge badge-danger" : "badge"}>
+          {skill.takedown_at ? "已下架" : "未下架"}
         </span>{" "}
         <span className={skill.access_restriction ? "badge badge-unverified" : "badge"}>
           {skill.access_restriction
