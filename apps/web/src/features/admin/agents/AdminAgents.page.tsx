@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Link, useSearch } from "@tanstack/react-router";
 import {
   AGENT_RUN_POLL_MS,
@@ -76,18 +77,24 @@ function AgentWorkbench({ status }: { status?: "resolved" | "dismissed" | "recov
 
       <div className="agent-workbench-queues">
         <section id="admin-agent-proposals" aria-labelledby="admin-agent-proposals-heading">
-          <h2 id="admin-agent-proposals-heading">提案</h2>
+          <h2 id="admin-agent-proposals-heading" tabIndex={-1}>
+            提案
+          </h2>
           <ProposalList />
         </section>
 
         <section id="admin-agent-findings" aria-labelledby="admin-agent-findings-heading">
-          <h2 id="admin-agent-findings-heading">待辦</h2>
+          <h2 id="admin-agent-findings-heading" tabIndex={-1}>
+            待辦
+          </h2>
           <FindingInbox status={status} />
         </section>
       </div>
 
       <section id="admin-agent-runs" aria-labelledby="admin-agent-runs-heading">
-        <h2 id="admin-agent-runs-heading">日報與執行紀錄</h2>
+        <h2 id="admin-agent-runs-heading" tabIndex={-1}>
+          日報與執行紀錄
+        </h2>
         {runs.isPending && <Loading what="執行紀錄" />}
         <ReadFailure error={runs.error} what="執行紀錄" />
         {runs.data && !runs.error && (
@@ -117,7 +124,9 @@ function AgentRunDetail({ id }: { id: string }) {
   const live = !detail.error && opened?.status === "running";
   return (
     <section aria-labelledby="admin-agent-run-heading">
-      <h2 id="admin-agent-run-heading">這次執行</h2>
+      <h2 id="admin-agent-run-heading" tabIndex={-1}>
+        這次執行
+      </h2>
       <p>
         <Link to="/admin/agents" search={{}}>
           回到執行紀錄
@@ -159,6 +168,27 @@ function AgentRunDetail({ id }: { id: string }) {
 
 export function AdminAgents() {
   const { status, finding, proposal, run } = useSearch({ from: "/admin/agents" });
+  const view = proposal ? "proposal" : finding ? "finding" : run ? "run" : undefined;
+  const previousView = useRef(view);
+  useEffect(() => {
+    const previous = previousView.current;
+    previousView.current = view;
+    if (previous === view) return;
+    const target = view
+      ? {
+          proposal: "admin-proposal-heading",
+          finding: "admin-finding-heading",
+          run: "admin-agent-run-heading",
+        }[view]
+      : previous
+        ? {
+            proposal: "admin-agent-proposals-heading",
+            finding: "admin-agent-findings-heading",
+            run: "admin-agent-runs-heading",
+          }[previous]
+        : undefined;
+    if (target) document.getElementById(target)?.focus();
+  }, [view]);
   return (
     <AdminPage
       heading="平台 Agent"

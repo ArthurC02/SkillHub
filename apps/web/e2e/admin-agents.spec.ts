@@ -6,7 +6,9 @@ import {
 } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
-test("the agent workbench opens one decision at a time on a narrow screen", async ({ page }) => {
+test("agent workbench moves focus between each detail and its queue on a narrow screen", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 375, height: 900 });
   await stubPlatform(page);
   await page.goto("/admin/agents");
@@ -20,15 +22,24 @@ test("the agent workbench opens one decision at a time on a narrow screen", asyn
   await expect(proposals).toContainText("提案清單上次取得於");
   expect((await brake.boundingBox())!.y).toBeLessThan((await proposals.boundingBox())!.y);
   await page.getByRole("link", { name: "打開這個提案" }).click();
-  await expect(page.getByRole("heading", { name: "這個提案" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "這個提案" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "這個提案" })).toBeInViewport();
   await expect(workbench).toHaveCount(0);
   await expect(page.getByRole("button", { name: "核准並執行" })).toBeVisible();
 
   await page.getByRole("link", { name: "回到提案" }).click();
   await expect(workbench).toBeVisible();
+  await expect(page.getByRole("heading", { name: "提案", exact: true })).toBeFocused();
   await page.getByRole("link", { name: "打開這件事" }).click();
-  await expect(page.getByRole("heading", { name: "這件事" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "這件事" })).toBeFocused();
   await expect(workbench).toHaveCount(0);
+  await page.getByRole("link", { name: "回到待辦" }).click();
+  await expect(page.getByRole("heading", { name: "待辦", exact: true })).toBeFocused();
+  await page.getByRole("link", { name: "看這次的步驟" }).first().click();
+  await expect(page.getByRole("heading", { name: "這次執行", exact: true })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "這次執行", exact: true })).toBeInViewport();
+  await page.getByRole("link", { name: "回到執行紀錄" }).click();
+  await expect(page.getByRole("heading", { name: "日報與執行紀錄" })).toBeFocused();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 

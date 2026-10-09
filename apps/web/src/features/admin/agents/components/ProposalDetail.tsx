@@ -91,7 +91,9 @@ export function ProposalDetail({ id }: { id: string }) {
   const proposal = detail.data;
   return (
     <section aria-labelledby="admin-proposal-heading">
-      <h2 id="admin-proposal-heading">這個提案</h2>
+      <h2 id="admin-proposal-heading" tabIndex={-1}>
+        這個提案
+      </h2>
       <p>
         <Link
           to="/admin/agents"

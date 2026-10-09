@@ -71,7 +71,9 @@ export function FindingDetail({ id }: { id: string }) {
   const detail = usePlatformAgentFinding(id);
   return (
     <section aria-labelledby="admin-finding-heading">
-      <h2 id="admin-finding-heading">這件事</h2>
+      <h2 id="admin-finding-heading" tabIndex={-1}>
+        這件事
+      </h2>
       <p>
         <Link to="/admin/agents" search={(prev) => ({ status: prev.status })}>
           回到待辦
