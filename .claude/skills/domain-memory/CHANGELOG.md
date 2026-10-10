@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.10.13
+
+### Changed
+
+- The secret scanner keeps its counts in one value and admits, reads and skips files in separate steps; its report is unchanged.
+
+### Fixed
+
+- A file that fails while it is being read is reported as an `unreadable` skip, leaving the scan `incomplete`, instead of ending `scan-secrets` with an error.
+
 ## 0.10.12
 
 ### Changed

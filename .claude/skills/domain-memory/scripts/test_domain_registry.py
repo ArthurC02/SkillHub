@@ -13,7 +13,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -3807,6 +3807,55 @@ class DomainRegistryTest(unittest.TestCase):
             report = scan_report(secrets)
         self.assertEqual("incomplete", report["status"])
         self.assertEqual("resource-limit", report["skipped"][0]["reason"])
+
+    def test_a_secret_scan_reports_what_it_read_and_why_it_skipped_the_rest(self) -> None:
+        secrets = self.repo / "leaky"
+        (secrets / "node_modules").mkdir(parents=True)
+        (secrets / "node_modules" / "vendored.env").write_bytes(b"ghp_" + b"e" * 30)
+        (secrets / "clean.md").write_bytes(b"one\n")
+        (secrets / "ci.env").write_bytes(b"first\nghp_" + b"f" * 30 + b"\n")
+        report = scan_report(secrets)
+        self.assertEqual(
+            ("complete", [{"path": "ci.env", "line": 2, "kind": "github-token"}], 2, 4 + 6 + 35, 0),
+            (report["status"], report["findings"], report["scanned_files"], report["scanned_bytes"],
+             report["skipped_count"]),
+        )
+        with self.subTest("symlink and unreadable"), \
+                patch.object(Path, "is_symlink", lambda path: path.name == "clean.md"), \
+                patch.object(Path, "open", side_effect=OSError("denied")):
+            report = scan_report(secrets)
+            self.assertEqual(
+                ("incomplete", [{"path": "ci.env", "reason": "unreadable"}, {"path": "clean.md", "reason": "symlink"}]),
+                (report["status"], sorted(report["skipped"], key=lambda skip: skip["path"])),
+            )
+        failing = MagicMock()
+        failing.__enter__.return_value = MagicMock(__iter__=MagicMock(side_effect=OSError("device lost")))
+        with self.subTest("a file that fails while it is read"), patch.object(Path, "open", return_value=failing):
+            report = scan_report(secrets)
+            self.assertEqual(
+                ("incomplete", {"unreadable"}), (report["status"], {skip["reason"] for skip in report["skipped"]})
+            )
+        with self.subTest("a file of exactly the per-file limit"), \
+                patch("domain_registry.security.MAX_FILE_BYTES", 41):
+            self.assertEqual("complete", scan_report(secrets)["status"])
+        with self.subTest("one byte over the per-file limit"), \
+                patch("domain_registry.security.MAX_FILE_BYTES", 40):
+            self.assertEqual(
+                [{"path": "ci.env", "reason": "file-too-large"}], scan_report(secrets)["skipped"]
+            )
+        with self.subTest("the byte budget is inclusive"), patch("domain_registry.security.MAX_SCAN_BYTES", 45):
+            self.assertEqual("complete", scan_report(secrets)["status"])
+        with self.subTest("one byte over the budget"), patch("domain_registry.security.MAX_SCAN_BYTES", 44):
+            self.assertEqual("resource-limit", scan_report(secrets)["skipped"][0]["reason"])
+        with self.subTest("the scan stops at the first file past the budget"), \
+                patch("domain_registry.security.MAX_SCAN_FILES", 0):
+            report = scan_report(secrets)
+            self.assertEqual((1, 0), (report["skipped_count"], report["scanned_files"]))
+        with self.subTest("reported skips are capped but all are counted"), \
+                patch("domain_registry.security.MAX_REPORTED_SKIPS", 1), \
+                patch("domain_registry.security.MAX_FILE_BYTES", 0):
+            report = scan_report(secrets)
+            self.assertEqual((1, 2), (len(report["skipped"]), report["skipped_count"]))
 
     def test_secret_scan_reports_oversized_files_as_incomplete(self) -> None:
         secrets = self.repo / "leaky"
