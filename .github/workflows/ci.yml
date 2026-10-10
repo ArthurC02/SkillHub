@@ -575,6 +575,9 @@ jobs:
       - name: Judge evidence-citation regression
         run: python tools/eval-regression/test_judge_regression.py
 
+      - name: Creation frozen-set comparison
+        run: python tools/eval-regression/test_creation_frozen_compare.py
+
       - name: Tools scripts — complexity gate
         run: |
           pip install ruff==0.16.7

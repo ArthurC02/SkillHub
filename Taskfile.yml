@@ -115,7 +115,9 @@ tasks:
 
   test:judge-rubric:
     desc: Run the Judge evidence-citation regression; pure functions, no model, no database
-    cmd: python tools/eval-regression/test_judge_regression.py
+    cmds:
+      - python tools/eval-regression/test_judge_regression.py
+      - python tools/eval-regression/test_creation_frozen_compare.py
 
   test:llm:
     desc: Run mocked Python LLM tests without live provider calls
