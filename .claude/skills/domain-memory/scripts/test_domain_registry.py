@@ -58,7 +58,8 @@ from domain_registry.hitl import (
     verify_proposal,
 )
 from domain_registry.git_hooks import governance_readiness, install_pre_push_hook
-from domain_registry.cli_commands import policy_assignments
+from domain_registry.cli_commands import HANDLERS, policy_assignments
+from domain_registry.cli_parser import build_parser
 from domain_registry.policy import amend_policy, amend_policy_fields, validate_policy
 from domain_registry.readiness import assess_readiness
 from domain_registry.registry import (
@@ -3909,6 +3910,12 @@ class DomainRegistryTest(unittest.TestCase):
             text=True,
             check=False,
         )
+
+    def test_every_parsed_command_has_a_handler_and_every_handler_a_command(self) -> None:
+        subcommands = next(
+            action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)
+        )
+        self.assertEqual(set(HANDLERS), set(subcommands.choices))
 
     def test_a_file_system_error_ends_in_one_error_line_instead_of_a_traceback(self) -> None:
         occupied = self.repo / "occupied.txt"

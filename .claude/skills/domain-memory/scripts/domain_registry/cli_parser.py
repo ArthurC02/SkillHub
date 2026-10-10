@@ -17,11 +17,20 @@ def add_asset(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--asset", required=True, choices=ASSET_CHOICES)
 
 
-def build_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Initialize, validate, or assess a file-backed Domain Registry."
     )
     commands = parser.add_subparsers(dest="command", required=True)
+    for add_commands in (
+        _add_registry_commands, _add_record_and_source_commands, _add_governance_commands,
+        _add_review_governance_commands, _add_proposal_commands, _add_proposal_check_commands,
+    ):
+        add_commands(commands)
+    return parser
+
+
+def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     init_parser = commands.add_parser("init")
     add_path(init_parser, "--output")
     migrate_parser = commands.add_parser("migrate-registry")
@@ -62,6 +71,9 @@ def build_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
     add_path(boundary_parser, "--registry-root")
     boundary_parser.add_argument("--source-context", required=True)
     boundary_parser.add_argument("--target-context", required=True)
+
+
+def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> None:
     cite_parser = commands.add_parser("cite")
     add_path(cite_parser, "--repo-root")
     cite_parser.add_argument("--path", required=True)
@@ -111,6 +123,9 @@ def build_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
     recovery_parser = commands.add_parser("recover-registry-update")
     add_path(recovery_parser, "--registry-root")
     recovery_parser.add_argument("--force", action="store_true")
+
+
+def _add_governance_commands(commands: argparse._SubParsersAction) -> None:
     memory_init_parser = commands.add_parser("init-domain-memory")
     add_path(memory_init_parser, "--repo-root")
     add_path(memory_init_parser, "--output")
@@ -159,6 +174,9 @@ def build_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
     amend_parser.add_argument("--set", action="append", default=[], metavar="FIELD=VALUE")
     amend_parser.add_argument("--reason", required=True)
     amend_parser.add_argument("--verifier")
+
+
+def _add_review_governance_commands(commands: argparse._SubParsersAction) -> None:
     signing_parser = commands.add_parser("init-signing-key")
     add_path(signing_parser, "--repo-root")
     signing_parser.add_argument("--principal", required=True)
@@ -186,6 +204,9 @@ def build_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
     add_path(governance_parser, "--repo-root")
     audit_parser = commands.add_parser("verify-audit")
     add_path(audit_parser, "--registry-root")
+
+
+def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:
     submit_parser = commands.add_parser("submit-proposal")
     add_path(submit_parser, "--package-root")
     add_path(submit_parser, "--registry-root")
@@ -217,6 +238,9 @@ def build_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
     add_path(attest_parser, "--registry-root")
     add_path(attest_parser, "--repo-root")
     attest_parser.add_argument("--commit", required=True)
+
+
+def _add_proposal_check_commands(commands: argparse._SubParsersAction) -> None:
     audit_attestations_parser = commands.add_parser("audit-attestations")
     add_path(audit_attestations_parser, "--repo-root")
     add_path(audit_attestations_parser, "--changes-root")
@@ -241,4 +265,3 @@ def build_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
     add_path(package_validate_parser, "--package-root")
     add_path(package_validate_parser, "--registry-root", required=False)
     package_validate_parser.add_argument("--as-status", choices=PREVIEW_STATUSES)
-    return parser
