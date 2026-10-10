@@ -3057,6 +3057,34 @@ class DomainRegistryTest(unittest.TestCase):
             "invalid", verify_source_map(self.repo, path, policy)["status"]
         )
 
+    def test_the_probe_answers_absent_invalid_and_hashed_cases_without_git(self) -> None:
+        missing = self.repo / "memory" / "no-map.json"
+        self.assertEqual("absent", probe_sources(self.repo, missing)["status"])
+        path = self.committed_source_map()
+        policy = stored_policy_of(self.repo)
+        with self.subTest("an invalid policy"):
+            result = probe_sources(self.repo, path, {**policy, "storage_mode": "cloud"})
+            self.assertEqual(("invalid", "policy has an invalid storage_mode"), (result["status"], result["reason"]))
+        with self.subTest("a policy report that cannot be built"), \
+                patch("domain_registry.sources.source_policy_report", side_effect=OSError("disk gone")):
+            result = probe_sources(self.repo, path, policy)
+            self.assertEqual(("invalid", "disk gone"), (result["status"], result["reason"]))
+        with self.subTest("a map recorded with dirty sources"):
+            value = json.loads(path.read_text(encoding="utf-8"))
+            value["git_state"]["dirty_sources"] = ["docs/kept.md"]
+            path.write_text(json.dumps(value), encoding="utf-8")
+            self.assertEqual(("current", "hash"), tuple(probe_sources(self.repo, path)[key] for key in ("status", "checked")))
+
+    def test_a_committed_source_change_sends_the_probe_back_to_hashing(self) -> None:
+        path = self.committed_source_map()
+        (self.repo / "docs" / "kept.md").write_text("kept, then edited", encoding="utf-8")
+        self.commit_all("edit a source")
+        result = probe_sources(self.repo, path)
+        self.assertEqual(
+            ("hash", [{"path": "docs", "status": "content-changed"}]),
+            (result["checked"], result["content_changed"]),
+        )
+
     def test_an_uncommitted_source_sends_the_probe_back_to_hashing(self) -> None:
         path = self.committed_source_map()
         (self.repo / "docs" / "kept.md").write_text("edited", encoding="utf-8")

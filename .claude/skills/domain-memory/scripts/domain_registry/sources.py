@@ -642,50 +642,54 @@ def git_state(root: Path, selected_paths: list[str]) -> dict[str, Any]:
     }
 
 
-def probe_sources(  # noqa: PLR0911
+def _policy_verdict(
+    root: Path, source_map: dict[str, Any], policy: dict[str, Any], selection_status: str
+) -> dict[str, Any] | None:
+    from .policy import validate_policy
+
+    errors = validate_policy(policy)
+    if errors:
+        return source_verdict("invalid", selection_status, "; ".join(errors))
+    policy_paths = policy["source_policy"]["selected_paths"]
+    if sorted(policy_paths) != sorted(source_map.get("selected_paths", [])):
+        return source_verdict(
+            "invalid", selection_status, "policy selected_paths do not match the source map"
+        )
+    try:
+        report = source_policy_report(root, [root / path for path in policy_paths], policy)
+    except (OSError, ValueError) as error:
+        return source_verdict("invalid", selection_status, str(error))
+    if report["errors"]:
+        return source_verdict("invalid", selection_status, "; ".join(report["errors"])) | {
+            "source_policy_report": report
+        }
+    return None
+
+
+def _git_shows_no_change(root: Path, source_map: dict[str, Any]) -> bool:
+    recorded = source_map.get("git_state")
+    if not isinstance(recorded, dict) or not recorded.get("tracked_objects") or recorded.get("dirty_sources"):
+        return False
+    now = git_state(root, source_map.get("selected_paths", []))
+    return now.get("tracked_objects") == recorded["tracked_objects"] and not now.get("dirty_sources")
+
+
+def probe_sources(
     root: Path, source_map_path: Path, policy: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     if not source_map_path.exists():
         return {"status": "absent", "reason": f"no source map at {source_map_path}"}
     source_map = load_json(source_map_path)
-    recorded = source_map.get("git_state")
     selection_status = source_map.get("selection_status", "agent-asserted")
     if policy is not None:
-        from .policy import validate_policy
-
-        errors = validate_policy(policy)
-        if errors:
-            return source_verdict("invalid", selection_status, "; ".join(errors))
-        policy_paths = policy["source_policy"]["selected_paths"]
-        if sorted(policy_paths) != sorted(source_map.get("selected_paths", [])):
-            return source_verdict(
-                "invalid",
-                selection_status,
-                "policy selected_paths do not match the source map",
-            )
-        try:
-            report = source_policy_report(
-                root, [root / path for path in policy_paths], policy
-            )
-        except (OSError, ValueError) as error:
-            return source_verdict("invalid", selection_status, str(error))
-        if report["errors"]:
-            return source_verdict(
-                "invalid", selection_status, "; ".join(report["errors"])
-            ) | {"source_policy_report": report}
-    if (
-        isinstance(recorded, dict)
-        and recorded.get("tracked_objects")
-        and not recorded.get("dirty_sources")
-    ):
-        now = git_state(root, source_map.get("selected_paths", []))
-        if now.get("tracked_objects") == recorded["tracked_objects"] and not now.get(
-            "dirty_sources"
-        ):
-            return {
-                "status": "current",
-                "selection_status": selection_status,
-                "changed_sources": [],
-                "checked": "git",
-            }
+        invalid = _policy_verdict(root, source_map, policy, selection_status)
+        if invalid:
+            return invalid
+    if _git_shows_no_change(root, source_map):
+        return {
+            "status": "current",
+            "selection_status": selection_status,
+            "changed_sources": [],
+            "checked": "git",
+        }
     return verify_source_map(root, source_map_path, policy) | {"checked": "hash"}
