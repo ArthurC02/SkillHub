@@ -1,0 +1,131 @@
+{
+  "round": 1,
+  "sample_input": "請依規則為以下每筆試聽資料各寫一則確認簡訊。\n第1筆：試聽日期=2026/11/03；時間=14:30；教室編號=2；試聽費=500元；改期截止日=2026/11/01；備註=請帶教材；聯絡電話=0912345678\n第2筆：試聽日期=2026/11/04；時間=15:00；教室編號=—（未提供）；試聽費=600元；改期截止日=2026/11/02\n第3筆：試聽日期=2026/11/05；時間=16:00；教室編號=1234567890123456789012345678901234567890；試聽費=700元；改期截止日=2026/11/03",
+  "acceptance_criteria": [
+    {
+      "text": "試跑資料第 1 筆：輸出一則不超過 50 字的簡訊本文，保留日期 2026/11/03、時間 14:30、教室編號 2、試聽費 500 元及改期截止日 2026/11/01；不得帶入備註或電話。"
+    },
+    {
+      "text": "試跑資料第 2 筆：輸出一則不超過 50 字的簡訊本文，保留其餘四項已提供的必要資料，並以「教室未提供」標示缺漏的教室編號；不得自行補造編號。"
+    },
+    {
+      "text": "試跑資料第 3 筆：因 40 位數的教室編號連同其餘必要資料無法在 50 字內保留，輸出固定本文「試聽資訊過長，請聯絡教室確認。」"
+    },
+    {
+      "text": "整體輸出恰有三行、每筆資料一行，且只有簡訊本文；每行均以包含標點、數字及空白在內的字元數計算，不超過 50 字，沒有解說、標籤或字數統計。"
+    }
+  ],
+  "final_output": "試聽2026/11/03 14:30 教室2 費500元 改期至2026/11/01\n試聽2026/11/04 15:00 教室未提供 費600元 改期至2026/11/02\n試聽資訊過長，請聯絡教室確認。",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "f562199e-a012-4dc9-93bb-cc166f20e3a0",
+    "run_id": "55711daa-5c3b-4224-bae3-d8ccebaaa8ed",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均符合。三筆資料各對應一行簡訊，內容與字元限制符合要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "f3a2bb07-b92a-44d6-b6c2-f83bd3ece66d",
+        "text": "試跑資料第 1 筆：輸出一則不超過 50 字的簡訊本文，保留日期 2026/11/03、時間 14:30、教室編號 2、試聽費 500 元及改期截止日 2026/11/01；不得帶入備註或電話。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 行保留五項必要資料，未帶入備註或電話，且不超過 50 字元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "試聽2026/11/03 14:30 教室2 費500元 改期至2026/11/01",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "112177bf-d685-4cdf-9cac-4a97d8e76d36",
+        "text": "試跑資料第 2 筆：輸出一則不超過 50 字的簡訊本文，保留其餘四項已提供的必要資料，並以「教室未提供」標示缺漏的教室編號；不得自行補造編號。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 行保留四項已提供的必要資料，以「教室未提供」標示缺漏，沒有補造編號，且不超過 50 字元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "試聽2026/11/04 15:00 教室未提供 費600元 改期至2026/11/02",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ef3082c2-2423-4b40-ac68-3bb0b43ed340",
+        "text": "試跑資料第 3 筆：因 40 位數的教室編號連同其餘必要資料無法在 50 字內保留，輸出固定本文「試聽資訊過長，請聯絡教室確認。」",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 行輸出指定的固定本文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "試聽資訊過長，請聯絡教室確認。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9e55b2ff-5ea1-4259-8c51-47993f20861f",
+        "text": "整體輸出恰有三行、每筆資料一行，且只有簡訊本文；每行均以包含標點、數字及空白在內的字元數計算，不超過 50 字，沒有解說、標籤或字數統計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出恰有三行，每筆一行；各行計入標點、數字及空白後均不超過 50 字元，沒有解說、標籤或字數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "試聽2026/11/03 14:30 教室2 費500元 改期至2026/11/01\n試聽2026/11/04 15:00 教室未提供 費600元 改期至2026/11/02\n試聽資訊過長，請聯絡教室確認。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1641 input and 2609 output tokens on skillhub-run; reported cost $0.0058 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 30,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

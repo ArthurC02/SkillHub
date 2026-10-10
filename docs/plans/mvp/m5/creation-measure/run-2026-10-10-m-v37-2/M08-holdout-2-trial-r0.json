@@ -1,0 +1,117 @@
+{
+  "round": 0,
+  "sample_input": "孔雀魚苗 -4 包，一包 80 元；水草 2 包，一包 50 元。算一下這張單的總額。",
+  "acceptance_criteria": [
+    {
+      "text": "指出孔雀魚苗的數量 -4 包不合理（負數）並請使用者確認"
+    },
+    {
+      "text": "沒有自行把 -4 當作 4 包或當作退貨來計算"
+    },
+    {
+      "text": "沒有把任何單一金額（例如 420 元或 -220 元）宣告為這張訂單的最終總額"
+    }
+  ],
+  "final_output": "【未標示訂單】\n\n- 孔雀魚苗：數量 -4 包，單價 80 元；金額不計算（數量為負，待確認）。\n- 水草：數量 2 包，單價 50 元；商品金額 100 元。\n\n孔雀魚苗數量是負數，請確認數量。由於訂單有待確認的數量，**目前不提供最終總額**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8801c7b1-5973-4c2c-993a-683550eb230e",
+    "run_id": "4c36312d-5af9-42ba-af9f-1eb13de95095",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項驗收條件均已達成：回覆指出負數數量須確認，未擅自計算孔雀魚苗金額，也未宣告訂單最終總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "4e85ff32-f336-4015-88a4-6b49bf93fde5",
+        "text": "指出孔雀魚苗的數量 -4 包不合理（負數）並請使用者確認",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出孔雀魚苗的 -4 包為負數，並請使用者確認數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "孔雀魚苗數量是負數，請確認數量。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6b7a5d60-fdb0-46c6-8dd0-88b79eecc1d0",
+        "text": "沒有自行把 -4 當作 4 包或當作退貨來計算",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留 -4 包的原始數量，未將其視為 4 包或退貨計算，並註明該品項金額不計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "孔雀魚苗：數量 -4 包，單價 80 元；金額不計算（數量為負，待確認）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "182572c1-6bfb-4790-b27c-4ff8579882a1",
+        "text": "沒有把任何單一金額（例如 420 元或 -220 元）宣告為這張訂單的最終總額",
+        "result": "passed",
+        "source": "model",
+        "reason": "僅列出水草的商品金額 100 元，明確表示目前不提供整張訂單的最終總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "水草：數量 2 包，單價 50 元；商品金額 100 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "目前不提供最終總額",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1577 input and 1581 output tokens on skillhub-run; reported cost $0.0046 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "錦鯉魚苗 10 袋……不對，我剛剛講的是 15 袋？我也不確定到底是 10 還是 15，一袋 200 元。水草 3 包，一包 50 元。幫我算訂單總額。",
+  "acceptance_criteria": [
+    {
+      "text": "指出錦鯉魚苗的數量有矛盾（10 袋與 15 袋）並請使用者確認"
+    },
+    {
+      "text": "沒有選定 10 袋或 15 袋其中一個作為定案數量"
+    },
+    {
+      "text": "沒有把任何單一金額（例如 2,150 元或 3,150 元）宣告為這張訂單的最終總額"
+    }
+  ],
+  "final_output": "目前不能提供最終總額。核對工具未能正確拆出原文中的錦鯉魚苗品項，也未辨認出水草單價；它只輸出一筆合併品項，數量為 3 包、單價未提供，商品金額未計算。\n\n請確認錦鯉魚苗究竟是 10 袋還是 15 袋，並將魚苗與水草分開列明數量和單價，以便核算。工具目前未算出可確認的商品金額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9d0efe95-5ed7-423e-965a-3d4a1d1dc395",
+    "run_id": "ef0cb2d1-7896-4257-a83a-17adc2d0cd99",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項驗收標準均已達成：回覆要求確認錦鯉魚苗數量，未擅自選定數量，也未宣告最終總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "babd03e0-a141-48c0-a28e-f4c6fbc47aa0",
+        "text": "指出錦鯉魚苗的數量有矛盾（10 袋與 15 袋）並請使用者確認",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆指出錦鯉魚苗數量在 10 袋與 15 袋之間未確定，並請使用者確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請確認錦鯉魚苗究竟是 10 袋還是 15 袋",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "247604d5-7e67-42ff-b6de-b0b137091a03",
+        "text": "沒有選定 10 袋或 15 袋其中一個作為定案數量",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆要求確認是 10 袋還是 15 袋，沒有將其中一個定為數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請確認錦鯉魚苗究竟是 10 袋還是 15 袋",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8bbff084-6e98-48ae-a697-19891052312d",
+        "text": "沒有把任何單一金額（例如 2,150 元或 3,150 元）宣告為這張訂單的最終總額",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確表示不能提供最終總額，沒有宣告任何單一金額為訂單總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "目前不能提供最終總額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1577 input and 2880 output tokens on skillhub-run; reported cost $0.0052 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,203 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下訂單，列出品項明細、矛盾事項與各訂單總額狀態。\n訂單 A｜日期：2025-06-18\n草金魚苗 10尾，單價 NT$12／尾\n孔雀魚苗 5尾，單價 NT$20／尾\n水蘊草 3把，單價 NT$30／把\n運費 NT$100；稅金 NT$20\n\n訂單 B｜日期：2025-02-30\n錦鯉苗 8尾，單價 NT$50／尾；錦鯉苗 6尾，單價 NT$50／尾\n水草 2把，單價 NT$40／把\n孔雀魚苗 -2尾，單價 NT$10／尾",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中的「訂單 A」，輸出三項商品的品名、數量及單價，並將商品金額列為 120、100、90 元；運費與稅金不得列入商品總額。"
+    },
+    {
+      "text": "對「訂單 A」，輸出最終商品總額為 310 元，計算為 10×12 + 5×20 + 3×30 = 120 + 100 + 90 = 310。"
+    },
+    {
+      "text": "對「訂單 B」，指出同一「錦鯉苗」品項被記為 8尾與 6尾，請人確認；不得自行選定數量或計算依賴該數量的金額。"
+    },
+    {
+      "text": "對「訂單 B」，指出 2025-02-30 是不存在的日期，並請人確認。"
+    },
+    {
+      "text": "對「訂單 B」，指出「孔雀魚苗」數量為 -2 尾不合法，並請人確認。"
+    },
+    {
+      "text": "對「訂單 B」，由於有矛盾，輸出中不得宣告最終訂單總額。"
+    }
+  ],
+  "final_output": "## 訂單 A｜2025-06-18\n- 草金魚苗：10尾 × NT$12／尾＝**NT$120**\n- 孔雀魚苗：5尾 × NT$20／尾＝**NT$100**\n- 水蘊草：3把 × NT$30／把＝**NT$90**\n- 運費 NT$100、稅金 NT$20：不計入商品總額\n\n**最終商品總額：NT$310**\n\n## 訂單 B｜日期：2025-02-30\n- 錦鯉苗：原文列出 **8尾** × NT$50／尾；同一訂單另列 **6尾** × NT$50／尾。數量矛盾，兩筆金額均不計算。\n- 水草：2把 × NT$40／把＝**NT$80**\n- 孔雀魚苗：-2尾 × NT$10／尾。數量為負數，金額不計算。\n\n**待確認事項：**\n- 日期「2025-02-30」無效，請確認正確日期。\n- 錦鯉苗數量同時列為 8尾與 6尾，請確認應採用的數量。\n- 孔雀魚苗數量為 -2尾，請確認正確數量。\n\n**訂單商品總額：不提供最終總額（有矛盾或資料缺漏）。**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b41f202c-8485-4e6c-bfbd-31c9c2832657",
+    "run_id": "55adfe35-3838-47ed-9420-3c298e0f7f23",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收標準均已達成。訂單 A 的商品明細與總額正確，且排除了運費和稅金；訂單 B 的日期、數量問題均已指出，未宣告最終總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "89f92eb6-68c4-43c3-a5a8-a824c9e8cee6",
+        "text": "對試跑輸入中的「訂單 A」，輸出三項商品的品名、數量及單價，並將商品金額列為 120、100、90 元；運費與稅金不得列入商品總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "訂單 A 列出三項商品的品名、數量、單價及各項金額，並明確排除運費與稅金。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 草金魚苗：10尾 × NT$12／尾＝**NT$120**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 孔雀魚苗：5尾 × NT$20／尾＝**NT$100**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 水蘊草：3把 × NT$30／把＝**NT$90**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 運費 NT$100、稅金 NT$20：不計入商品總額",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bd131afe-60ab-4492-8ae5-15f97b3754d7",
+        "text": "對「訂單 A」，輸出最終商品總額為 310 元，計算為 10×12 + 5×20 + 3×30 = 120 + 100 + 90 = 310。",
+        "result": "passed",
+        "source": "model",
+        "reason": "訂單 A 的三項乘積分別為 120、100、90 元，合計並標示最終商品總額 310 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 草金魚苗：10尾 × NT$12／尾＝**NT$120**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 孔雀魚苗：5尾 × NT$20／尾＝**NT$100**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 水蘊草：3把 × NT$30／把＝**NT$90**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**最終商品總額：NT$310**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b4adb987-2e3b-43f5-bc3e-9fe4eb73592c",
+        "text": "對「訂單 B」，指出同一「錦鯉苗」品項被記為 8尾與 6尾，請人確認；不得自行選定數量或計算依賴該數量的金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "訂單 B 指出錦鯉苗的 8 尾與 6 尾數量矛盾，請人確認，且未計算兩筆依賴該數量的金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 錦鯉苗：原文列出 **8尾** × NT$50／尾；同一訂單另列 **6尾** × NT$50／尾。數量矛盾，兩筆金額均不計算。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 錦鯉苗數量同時列為 8尾與 6尾，請確認應採用的數量。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e357987e-9747-4619-9742-3fcdce02b4e0",
+        "text": "對「訂單 B」，指出 2025-02-30 是不存在的日期，並請人確認。",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出訂單 B 的日期 2025-02-30 無效，並請人確認正確日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 日期「2025-02-30」無效，請確認正確日期。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "76ad2a0a-ea4f-48a9-a431-d7e1f376c6b7",
+        "text": "對「訂單 B」，指出「孔雀魚苗」數量為 -2 尾不合法，並請人確認。",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出訂單 B 的孔雀魚苗數量為負數，並請人確認正確數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 孔雀魚苗：-2尾 × NT$10／尾。數量為負數，金額不計算。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 孔雀魚苗數量為 -2尾，請確認正確數量。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "71ba9b77-9ec7-4285-b2dc-53ed4fabc351",
+        "text": "對「訂單 B」，由於有矛盾，輸出中不得宣告最終訂單總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "訂單 B 因資料矛盾而明確不提供最終商品總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**訂單商品總額：不提供最終總額（有矛盾或資料缺漏）。**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1537 input and 1098 output tokens on skillhub-run; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 32,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

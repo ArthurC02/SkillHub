@@ -1,0 +1,181 @@
+{
+  "round": 1,
+  "sample_input": "請幫我算魚貨總額（元）：我要鱸魚兩尾、每尾三百；白蝦半斤，一斤四百；花枝三隻、每隻一百五，再加花枝一隻照剛才單價。冰袋二十五元，運費九十元。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入能整理出四筆魚貨：鱸魚 2 尾、白蝦半斤、花枝 3 隻，以及依上下文補出的花枝 1 隻。"
+    },
+    {
+      "text": "逐項計算正確：鱸魚 600 元、白蝦 200 元、原先花枝 450 元、補出的花枝 150 元。"
+    },
+    {
+      "text": "回覆的魚貨商品總額是 1,400 元。"
+    },
+    {
+      "text": "冰袋 25 元與運費 90 元均不計入魚貨商品總額。"
+    },
+    {
+      "text": "回覆清楚標示總額為元，並說明額外一隻花枝沿用前述每隻 150 元的單價。"
+    }
+  ],
+  "final_output": "鱸魚：2 尾 × 300 元／尾＝600 元  \n白蝦：0.5 斤 × 400 元／斤＝200 元  \n花枝：3 隻＋1 隻 × 150 元／隻＝600 元（沿用前述花枝單價）\n\n**魚貨總額：1,400 元**\n\n冰袋 25 元、運費 90 元未列入魚貨總額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a9e558e7-27a9-439a-901e-4bc8b5c68ebd",
+    "run_id": "b3f226dd-ab14-432a-8169-ccc4c8a85ef5",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收條件均達成：四筆魚貨計算正確，魚貨總額為 1,400 元，冰袋與運費未計入。",
+    "criterion_results": [
+      {
+        "criterion_id": "9b9fe2b5-dc82-4151-aba3-9c83d4343b72",
+        "text": "對試跑輸入能整理出四筆魚貨：鱸魚 2 尾、白蝦半斤、花枝 3 隻，以及依上下文補出的花枝 1 隻。",
+        "result": "passed",
+        "source": "model",
+        "reason": "試跑將鱸魚、白蝦、原先的花枝及追加的花枝整理為四筆魚貨。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "鱸魚：2 尾 × 300 元/尾 = 600 元",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "白蝦：0.5 斤 × 400 元/斤 = 200 元",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "花枝：3 隻 × 150 元/隻 = 450 元",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "花枝：1 隻 × 150 元/隻 = 150 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "58369fe4-6f55-4c92-806a-63246f94b2a4",
+        "text": "逐項計算正確：鱸魚 600 元、白蝦 200 元、原先花枝 450 元、補出的花枝 150 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "四筆魚貨的逐項計算分別為 600、200、450、150 元。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "鱸魚：2 尾 × 300 元/尾 = 600 元",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "白蝦：0.5 斤 × 400 元/斤 = 200 元",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "花枝：3 隻 × 150 元/隻 = 450 元",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "花枝：1 隻 × 150 元/隻 = 150 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "eaeebd0d-7c86-46ac-a15f-06a8b470de24",
+        "text": "回覆的魚貨商品總額是 1,400 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆的魚貨總額是 1,400 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**魚貨總額：1,400 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "16703b86-9238-44cb-8afd-4c9fd2224b06",
+        "text": "冰袋 25 元與運費 90 元均不計入魚貨商品總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確表示冰袋與運費均未列入魚貨總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "冰袋 25 元、運費 90 元未列入魚貨總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fa6b3bf2-8ce0-4b40-b2d2-f456b80d1de2",
+        "text": "回覆清楚標示總額為元，並說明額外一隻花枝沿用前述每隻 150 元的單價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆以元標示總額，並說明追加的一隻花枝沿用前述每隻 150 元的單價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "花枝：3 隻＋1 隻 × 150 元／隻＝600 元（沿用前述花枝單價）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**魚貨總額：1,400 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1512 input and 369 output tokens on skillhub-run; reported cost $0.0031 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,185 @@
+{
+  "round": 1,
+  "sample_input": "請計算獨木舟租借應收租金：1 分鐘\n請計算獨木舟租借應收租金：30 分鐘\n請計算獨木舟租借應收租金：30.1 分鐘\n請計算獨木舟租借應收租金：120 分鐘\n請計算獨木舟租借應收租金：121 分鐘\n請計算獨木舟租借應收租金：241 分鐘\n請計算獨木舟租借應收租金：0 分鐘\n請計算獨木舟租借應收租金：-1 分鐘",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 行的 1 分鐘應計為 1 個單位，收 150 元。"
+    },
+    {
+      "text": "試跑輸入第 2 行的 30 分鐘應計為 1 個單位，收 150 元。"
+    },
+    {
+      "text": "試跑輸入第 3 行的 30.1 分鐘應進位為 2 個單位，收 300 元。"
+    },
+    {
+      "text": "試跑輸入第 4 行的 120 分鐘應計為 4 個單位，收 600 元。"
+    },
+    {
+      "text": "試跑輸入第 5 行的 121 分鐘應計為 5 個單位，收 700 元。"
+    },
+    {
+      "text": "試跑輸入第 6 行的 241 分鐘應計為 9 個單位，未封頂金額為 4×150 + 5×100 = 1,100 元，最後收 1,000 元。"
+    },
+    {
+      "text": "試跑輸入第 7 行的 0 分鐘與第 8 行的 -1 分鐘都應回覆「分鐘數須大於 0」，而非計算租金。"
+    }
+  ],
+  "final_output": "1 分鐘：計費單位：1；應收租金：150 元\n30 分鐘：計費單位：1；應收租金：150 元\n30.1 分鐘：計費單位：2；應收租金：300 元\n120 分鐘：計費單位：4；應收租金：600 元\n121 分鐘：計費單位：5；應收租金：700 元\n241 分鐘：計費單位：9；應收租金：1000 元（已達 1,000 元上限）\n0 分鐘：分鐘數須大於 0\n-1 分鐘：分鐘數須大於 0",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "803124bc-7442-4d67-9052-2366a9df8d87",
+    "run_id": "80b0e503-308c-431e-9126-c9fc2cb4ce8c",
+    "status": "completed",
+    "overall": "met",
+    "summary": "八筆輸入的計費單位、應收金額與無效分鐘數回覆均符合驗收標準。241 分鐘的回覆未另列未封頂金額，但其 9 個單位及封頂收費結果正確。",
+    "criterion_results": [
+      {
+        "criterion_id": "ca407928-042b-4aa7-a0a8-fc4f637a69dc",
+        "text": "試跑輸入第 1 行的 1 分鐘應計為 1 個單位，收 150 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "1 分鐘計為 1 個單位，收 150 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1 分鐘：計費單位：1；應收租金：150 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "db504f84-e9cf-49a3-8cad-8e427742b8d1",
+        "text": "試跑輸入第 2 行的 30 分鐘應計為 1 個單位，收 150 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "30 分鐘計為 1 個單位，收 150 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "30 分鐘：計費單位：1；應收租金：150 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1b69d220-69a7-4379-a397-5ee809324ff4",
+        "text": "試跑輸入第 3 行的 30.1 分鐘應進位為 2 個單位，收 300 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "30.1 分鐘進位為 2 個單位，收 300 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "30.1 分鐘：計費單位：2；應收租金：300 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c8e03a13-19c4-4365-a190-608e91849375",
+        "text": "試跑輸入第 4 行的 120 分鐘應計為 4 個單位，收 600 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "120 分鐘計為 4 個單位，收 600 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "120 分鐘：計費單位：4；應收租金：600 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "47d6471e-24ef-4566-97d0-7e8dd79f4d39",
+        "text": "試跑輸入第 5 行的 121 分鐘應計為 5 個單位，收 700 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "121 分鐘計為 5 個單位，收 700 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "121 分鐘：計費單位：5；應收租金：700 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f1c4170e-638d-4ca2-861a-7be34c8d3b74",
+        "text": "試跑輸入第 6 行的 241 分鐘應計為 9 個單位，未封頂金額為 4×150 + 5×100 = 1,100 元，最後收 1,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "241 分鐘計為 9 個單位，並依 1,000 元上限收費；按題定費率計算，未封頂金額為 1,100 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "241 分鐘：計費單位：9；應收租金：1000 元（已達 1,000 元上限）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a6268639-24aa-426d-995c-72e6e5ab3f96",
+        "text": "試跑輸入第 7 行的 0 分鐘與第 8 行的 -1 分鐘都應回覆「分鐘數須大於 0」，而非計算租金。",
+        "result": "passed",
+        "source": "model",
+        "reason": "0 分鐘與 -1 分鐘均回覆「分鐘數須大於 0」，未計算租金。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "0 分鐘：分鐘數須大於 0",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "-1 分鐘：分鐘數須大於 0",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1513 input and 467 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

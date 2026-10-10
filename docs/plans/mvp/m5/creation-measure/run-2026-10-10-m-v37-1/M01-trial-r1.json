@@ -1,0 +1,180 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下每筆獨立獨木舟租借的應收租金（元）：\n1 分鐘\n30 分鐘\n31 分鐘\n120 分鐘\n121 分鐘\n240 分鐘\n241 分鐘",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中 1 分鐘的租借，輸出 150 元：不足一個 30 分鐘單位仍按一個單位計費。"
+    },
+    {
+      "text": "對試跑輸入中 30 分鐘的租借，輸出 150 元：剛好一個單位。"
+    },
+    {
+      "text": "對試跑輸入中 31 分鐘的租借，輸出 300 元：進位為兩個單位，每單位 150 元。"
+    },
+    {
+      "text": "對試跑輸入中 120 分鐘的租借，輸出 600 元：四個單位各 150 元。"
+    },
+    {
+      "text": "對試跑輸入中 121 分鐘的租借，輸出 700 元：進位為五個單位，前四個共 600 元，第五個 100 元。"
+    },
+    {
+      "text": "對試跑輸入中 240 分鐘的租借，輸出 1,000 元：八個單位按分段費率計算，達到上限。"
+    },
+    {
+      "text": "對試跑輸入中 241 分鐘的租借，輸出仍為 1,000 元：進位為九個單位，未封頂金額 1,100 元，須套用租金上限。"
+    }
+  ],
+  "final_output": "1 分鐘：150 元  \n30 分鐘：150 元  \n31 分鐘：300 元  \n120 分鐘：600 元  \n121 分鐘：700 元  \n240 分鐘：1000 元  \n241 分鐘：1000 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6376a855-5861-41b2-a94c-898bb870b45a",
+    "run_id": "b627b6de-9851-4d7d-934b-0b6363297c4a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七筆獨立租借均輸出符合各自驗收標準的應收租金。",
+    "criterion_results": [
+      {
+        "criterion_id": "f1f0bb0f-60ff-4d95-ad1a-6d5552bc1a78",
+        "text": "對試跑輸入中 1 分鐘的租借，輸出 150 元：不足一個 30 分鐘單位仍按一個單位計費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "1 分鐘租借輸出 150 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1 分鐘：150 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2d1142f2-33a2-4667-9635-04ef97856b1c",
+        "text": "對試跑輸入中 30 分鐘的租借，輸出 150 元：剛好一個單位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "30 分鐘租借輸出 150 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "30 分鐘：150 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ff8f2aa5-2d49-45eb-93c6-8e05bc670fcd",
+        "text": "對試跑輸入中 31 分鐘的租借，輸出 300 元：進位為兩個單位，每單位 150 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "31 分鐘租借輸出 300 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "31 分鐘：300 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9aad428f-f1ef-481a-82ed-5b98ade8beb7",
+        "text": "對試跑輸入中 120 分鐘的租借，輸出 600 元：四個單位各 150 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "120 分鐘租借輸出 600 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "120 分鐘：600 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "54caba98-44ea-4a0a-af67-d2470f8ca535",
+        "text": "對試跑輸入中 121 分鐘的租借，輸出 700 元：進位為五個單位，前四個共 600 元，第五個 100 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "121 分鐘租借輸出 700 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "121 分鐘：700 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5e46bd24-dc8a-449f-9c68-dee7d2b6b20d",
+        "text": "對試跑輸入中 240 分鐘的租借，輸出 1,000 元：八個單位按分段費率計算，達到上限。",
+        "result": "passed",
+        "source": "model",
+        "reason": "240 分鐘租借輸出 1000 元，即 1,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "240 分鐘：1000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "848ac5a8-285f-4907-b71e-f027c85eaf24",
+        "text": "對試跑輸入中 241 分鐘的租借，輸出仍為 1,000 元：進位為九個單位，未封頂金額 1,100 元，須套用租金上限。",
+        "result": "passed",
+        "source": "model",
+        "reason": "241 分鐘租借輸出封頂金額 1000 元，即 1,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "241 分鐘：1000 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1520 input and 293 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,183 @@
+{
+  "round": 1,
+  "sample_input": "請按每行資料各自試算退款總額（元）：\n第 1 行：單張票價 101 元，張數 1，開演日期 2026-11-20，退票申請日期 2026-11-20，是否由主辦方取消：是。\n第 2 行：單張票價 101 元，張數 1，開演日期 2026-11-20，退票申請日期 2026-11-13，是否由主辦方取消：否。\n第 3 行：單張票價 101 元，張數 1，開演日期 2026-11-20，退票申請日期 2026-11-19，是否由主辦方取消：否。\n第 4 行：單張票價 10 元，張數 1，開演日期 2026-11-20，退票申請日期 2026-11-14，是否由主辦方取消：否。\n第 5 行：單張票價 101 元，張數 1，開演日期 2026-11-20，退票申請日期 2026-11-20，是否由主辦方取消：否。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑第 1 行：主辦方取消為「是」時，即使申請日在開演當天，也應忽略一般期限規則，退還全額 101 元。"
+    },
+    {
+      "text": "試跑第 2 行：非主辦方取消且距開演恰為 7 天時，101 元票價總額按 80% 計為 80.8 元，四捨五入後應回覆 81 元。"
+    },
+    {
+      "text": "試跑第 3 行：非主辦方取消且距開演 1 天時，101 元票價總額按 50% 計為 50.5 元，半元進位後應回覆 51 元。"
+    },
+    {
+      "text": "試跑第 4 行：非主辦方取消且距開演 6 天時，10 元票價總額按 50% 計算，應回覆 5 元。"
+    },
+    {
+      "text": "試跑第 5 行：非主辦方取消且距開演 0 天時，應回覆 0 元。"
+    },
+    {
+      "text": "回覆應逐行列出退款總額，且金額以整元表示。"
+    }
+  ],
+  "final_output": "- 第 1 行：**101 元**\n- 第 2 行：**81 元**\n- 第 3 行：**51 元**\n- 第 4 行：**5 元**\n- 第 5 行：**0 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ca25057a-e68c-456a-9513-a91c4a5ebab4",
+    "run_id": "2aeae111-10f0-41e1-92e2-4717f842d56b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五行退款金額均正確，並已逐行以整元列出。",
+    "criterion_results": [
+      {
+        "criterion_id": "552853d6-52f2-48d9-8303-57d409d428ba",
+        "text": "試跑第 1 行：主辦方取消為「是」時，即使申請日在開演當天，也應忽略一般期限規則，退還全額 101 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 行回覆全額 101 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 第 1 行：**101 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4afa8a7a-e6e8-4cf2-a499-c666d52d6694",
+        "text": "試跑第 2 行：非主辦方取消且距開演恰為 7 天時，101 元票價總額按 80% 計為 80.8 元，四捨五入後應回覆 81 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 行回覆四捨五入後的 81 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 第 2 行：**81 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "96e01c18-f7c3-4deb-b6c0-f7439014daeb",
+        "text": "試跑第 3 行：非主辦方取消且距開演 1 天時，101 元票價總額按 50% 計為 50.5 元，半元進位後應回覆 51 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 行回覆半元進位後的 51 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 第 3 行：**51 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "25074b19-a3f7-4f25-a719-2acac4f5ea57",
+        "text": "試跑第 4 行：非主辦方取消且距開演 6 天時，10 元票價總額按 50% 計算，應回覆 5 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 行回覆 5 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 第 4 行：**5 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9ba96b6d-1e66-458d-9a1c-72239e0ee994",
+        "text": "試跑第 5 行：非主辦方取消且距開演 0 天時，應回覆 0 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 行回覆 0 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 第 5 行：**0 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "25d01859-c512-404a-b831-04af0cda87c2",
+        "text": "回覆應逐行列出退款總額，且金額以整元表示。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆逐行列出五筆退款總額，金額均以整元表示。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 第 1 行：**101 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 第 2 行：**81 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 第 3 行：**51 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 第 4 行：**5 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 第 5 行：**0 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1525 input and 657 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

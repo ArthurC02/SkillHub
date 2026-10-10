@@ -1,0 +1,127 @@
+{
+  "round": 0,
+  "sample_input": "孔雀魚苗 -4 包，一包 80 元；水草 2 包，一包 50 元。算一下這張單的總額。",
+  "acceptance_criteria": [
+    {
+      "text": "指出孔雀魚苗的數量 -4 包不合理（負數）並請使用者確認"
+    },
+    {
+      "text": "沒有自行把 -4 當作 4 包或當作退貨來計算"
+    },
+    {
+      "text": "沒有把任何單一金額（例如 420 元或 -220 元）宣告為這張訂單的最終總額"
+    }
+  ],
+  "final_output": "| 訂單編號 | 日期 | 品項 | 數量 | 單價 | 商品小計 | 核對狀態 |\n|---|---|---|---:|---:|---:|---|\n| 未提供 | 未提供 | 孔雀魚苗 | -4 包 | 80 元／包 | — | 數量為負數，請確認 |\n| 未提供 | 未提供 | 水草 | 2 包 | 50 元／包 | 100 元 | 可計算 |\n\n**訂單總額：待確認，暫不能確定最終總額。** 孔雀魚苗數量是負數，需確認是否輸入有誤；水草小計為 100 元。總額只計魚苗與水草商品金額；未提及其他費用。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8862b5ab-8e4b-42e6-8f28-8d6ae78acda7",
+    "run_id": "03a9bc70-5181-4cce-b035-487d3888dfd2",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項標準均已達成：回覆要求確認負數數量，未擅自計算孔雀魚苗金額，也未宣告最終總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "5dcbbfaf-96d2-4897-8b55-d85859b4ab1e",
+        "text": "指出孔雀魚苗的數量 -4 包不合理（負數）並請使用者確認",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆保留孔雀魚苗數量為 -4 包，指出數量為負數並請使用者確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "孔雀魚苗 | -4 包 | 80 元／包 | — | 數量為負數，請確認",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cc34203b-c08f-4747-941a-d989f63c9131",
+        "text": "沒有自行把 -4 當作 4 包或當作退貨來計算",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆未將 -4 改成 4 包或視為退貨計算；孔雀魚苗的小計留空，總額待確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "孔雀魚苗 | -4 包 | 80 元／包 | — | 數量為負數，請確認",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單總額：待確認，暫不能確定最終總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3a5f60d1-4ae0-425a-a33e-d117edb37e8a",
+        "text": "沒有把任何單一金額（例如 420 元或 -220 元）宣告為這張訂單的最終總額",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確表示最終總額尚不能確定；100 元僅列為水草小計，未宣告任何單一金額為訂單最終總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單總額：待確認，暫不能確定最終總額。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "水草小計為 100 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1574 input and 1108 output tokens on skillhub-run; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      },
+      {
+        "category": "effect",
+        "severity": "warning",
+        "message": "the material sent for judgement was truncated (trace_digest.entries[].excerpt); criteria depending on it are undetermined rather than passed"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": false,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

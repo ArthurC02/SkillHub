@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "老闆我要 2 斤石斑，一斤 380；還有蛤蜊 3 斤，一斤 120；再來 5 隻螃蟹，一隻 250。冰袋 30 塊、運費 150 元那些我知道另外算。",
+  "acceptance_criteria": [
+    {
+      "text": "回覆的總額為 2,370 元"
+    },
+    {
+      "text": "總額沒有把冰袋 30 元或運費 150 元算進去"
+    }
+  ],
+  "final_output": "石斑：2 斤 × 380 元／斤＝760 元  \n蛤蜊：3 斤 × 120 元／斤＝360 元  \n螃蟹：5 隻 × 250 元／隻＝1,250 元  \n\n**魚貨商品小計：2,370 元**  \n冰袋 30 元、運費 150 元為另計費用，未列入魚貨小計。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "40c155a0-5823-40f3-b803-e9eb8e442922",
+    "run_id": "a9d67161-7df7-4d90-84fd-27071175628e",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項標準均已達成：魚貨小計為 2,370 元，且未計入冰袋及運費。",
+    "criterion_results": [
+      {
+        "criterion_id": "cfcf5699-272b-456a-9af7-c4cf327ba586",
+        "text": "回覆的總額為 2,370 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆的魚貨商品小計為 2,370 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**魚貨商品小計：2,370 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "68191669-0767-4447-bbf0-3ce38410a50f",
+        "text": "總額沒有把冰袋 30 元或運費 150 元算進去",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確表示冰袋 30 元及運費 150 元另計，未納入魚貨小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "冰袋 30 元、運費 150 元為另計費用，未列入魚貨小計。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1552 input and 434 output tokens on skillhub-run; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

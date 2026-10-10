@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "我要退 2 張票，每張 1,200 元，開演日是 2026-11-14，我今天 2026-11-08 申請退票，可以退多少？",
+  "acceptance_criteria": [
+    {
+      "text": "回覆的退款總額為 1,200 元"
+    },
+    {
+      "text": "沒有把退款寫成 1,920 元作為最終結果"
+    }
+  ],
+  "final_output": "開演日與申請日相差 6 天，適用「距開演 1 至 6 天退票，退款 50%」規則。\n\n兩張票總票價為 2,400 元，可退款 **1,200.00 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "2478ce48-4dd9-4467-8540-fb7f4cf3c55d",
+    "run_id": "1f603420-084a-4f7a-b200-4105ee901c47",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均已達成：最終回覆的退款總額是 1,200 元，沒有以 1,920 元作為最終結果。",
+    "criterion_results": [
+      {
+        "criterion_id": "4c6962af-27cd-4686-8de5-7cbe66e2f45e",
+        "text": "回覆的退款總額為 1,200 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆的退款總額為 1,200.00 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "可退款 **1,200.00 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "06265648-a0e1-4e3c-9134-7328414d4361",
+        "text": "沒有把退款寫成 1,920 元作為最終結果",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將退款結果寫為 1,200.00 元，而非 1,920 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "兩張票總票價為 2,400 元，可退款 **1,200.00 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1544 input and 379 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 9,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

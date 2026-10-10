@@ -1,0 +1,183 @@
+{
+  "round": 1,
+  "sample_input": "請試算以下各筆獨立退票案例的退款金額（元）：\n案例｜單張票價（元）｜張數｜開演日期｜申請日期｜主辦方取消\n取消｜450｜2｜2026-11-10｜2026-11-07｜是\n第七天｜501｜3｜2026-11-10｜2026-11-03｜否\n第一天｜501｜1｜2026-11-10｜2026-11-09｜否\n第六天｜350｜2｜2026-11-10｜2026-11-04｜否\n開演當天｜600｜1｜2026-11-10｜2026-11-10｜否",
+  "acceptance_criteria": [
+    {
+      "text": "輸入案例「取消」中，主辦方取消為是，票價 450 元、2 張、申請日距開演日 3 天時，輸出退款 900 元，且取消規則優先於一般比例。"
+    },
+    {
+      "text": "輸入案例「第七天」中，主辦方取消為否，票價 501 元、3 張、申請日距開演日 7 天時，輸出退款 1202 元（1503 × 80% = 1202.4，四捨五入）。"
+    },
+    {
+      "text": "輸入案例「第一天」中，主辦方取消為否，票價 501 元、1 張、申請日距開演日 1 天時，輸出退款 251 元（501 × 50% = 250.5，.5 進位）。"
+    },
+    {
+      "text": "輸入案例「第六天」中，主辦方取消為否，票價 350 元、2 張、申請日距開演日 6 天時，輸出退款 350 元。"
+    },
+    {
+      "text": "輸入案例「開演當天」中，主辦方取消為否，票價 600 元、1 張、申請日為開演日時，輸出退款 0 元。"
+    },
+    {
+      "text": "輸出包含上述五個案例各自的名稱與退款金額（元），且不把彼此獨立的案例合併成單一退款額。"
+    }
+  ],
+  "final_output": "| 案例 | 退款總額 |\n|---|---:|\n| 取消 | 900 元 |\n| 第七天 | 1202 元 |\n| 第一天 | 251 元 |\n| 第六天 | 350 元 |\n| 開演當天 | 0 元 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a1354555-2ed6-4bf0-8aba-4c2c4e4ac6fb",
+    "run_id": "104e4d3b-c31a-4ad5-bfc8-b53bfac3065a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆獨立案例均列出正確的退款金額；六項驗收標準全部通過。",
+    "criterion_results": [
+      {
+        "criterion_id": "c4631bf5-a85a-4ba3-b9ca-22f7b50d17d9",
+        "text": "輸入案例「取消」中，主辦方取消為是，票價 450 元、2 張、申請日距開演日 3 天時，輸出退款 900 元，且取消規則優先於一般比例。",
+        "result": "passed",
+        "source": "model",
+        "reason": "「取消」輸出 900 元，為兩張票的全額退款，而非開演前三天的一般比例退款。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 取消 | 900 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c423d711-4703-405e-8a98-509d7541b8dc",
+        "text": "輸入案例「第七天」中，主辦方取消為否，票價 501 元、3 張、申請日距開演日 7 天時，輸出退款 1202 元（1503 × 80% = 1202.4，四捨五入）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "「第七天」輸出 1202 元，符合 1503 元的 80% 四捨五入結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 第七天 | 1202 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7b46b8c7-8358-4692-b1fc-4f2bd794cc76",
+        "text": "輸入案例「第一天」中，主辦方取消為否，票價 501 元、1 張、申請日距開演日 1 天時，輸出退款 251 元（501 × 50% = 250.5，.5 進位）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "「第一天」輸出 251 元，符合 250.5 元進位的結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 第一天 | 251 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7bcfb19d-dcde-4c61-ab73-922e4653568e",
+        "text": "輸入案例「第六天」中，主辦方取消為否，票價 350 元、2 張、申請日距開演日 6 天時，輸出退款 350 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "「第六天」輸出 350 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 第六天 | 350 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "400bee31-ea92-4333-a163-20a406948fdb",
+        "text": "輸入案例「開演當天」中，主辦方取消為否，票價 600 元、1 張、申請日為開演日時，輸出退款 0 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "「開演當天」輸出 0 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 開演當天 | 0 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "be5ddbf7-ed21-4a3d-8c95-5d0bb6edfc55",
+        "text": "輸出包含上述五個案例各自的名稱與退款金額（元），且不把彼此獨立的案例合併成單一退款額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以表格分列五個案例，各列均有名稱及退款金額，沒有合併為單一金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 取消 | 900 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 第七天 | 1202 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 第一天 | 251 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 第六天 | 350 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 開演當天 | 0 元 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1514 input and 481 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

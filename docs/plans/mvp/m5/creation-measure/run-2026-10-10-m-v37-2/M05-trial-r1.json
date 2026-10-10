@@ -1,0 +1,222 @@
+{
+  "round": 1,
+  "sample_input": "請把以下三筆行政資料各改寫成一則給員工的 LINE 健檢行前通知，遵守每則最多 4 句、不用條列並如實處理缺漏資訊的規則。\n資料 A：健檢日期：未提供；集合時間：上午 7:30；空腹要求：需空腹 8 小時；地點：台北市中山區民生東路 3 段 10 號；攜帶：健保卡、身分證；前一晚注意事項：避免飲酒；衣著：穿著方便捲袖的衣物。\n資料 B：健檢日期：2026 年 11 月 19 日；集合時間：未提供；空腹要求：需空腹 8 小時；地點：新北市板橋區中山路 1 段 20 號；攜帶：健保卡、身分證；前一晚注意事項：避免飲酒；衣著：穿著方便捲袖的衣物。\n資料 C：健檢日期：2026 年 11 月 26 日；集合時間：上午 8:00；空腹要求：需空腹 8 小時；地點：台北市信義區松仁路 30 號；攜帶：健保卡、身分證；前一晚注意事項：避免飲酒；衣著：穿著方便捲袖的衣物。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中的每筆資料各輸出一則獨立訊息；每則不使用條列，且不超過 4 句。"
+    },
+    {
+      "text": "資料 A 缺少日期，訊息將日期明確標為「待確認」，並正確保留集合時間「上午 7:30」。"
+    },
+    {
+      "text": "資料 B 缺少集合時間，訊息將集合時間明確標為「待確認」，並正確保留日期「2026 年 11 月 19 日」。"
+    },
+    {
+      "text": "資料 C 正確保留日期「2026 年 11 月 26 日」及集合時間「上午 8:00」。"
+    },
+    {
+      "text": "三則訊息都明確保留需空腹 8 小時，不把它改成其他時長或模糊說法。"
+    },
+    {
+      "text": "每則訊息都另用一句話誠實交代合併或省略了哪些非必要資訊，且不暗示已完整納入實際省略的細節。"
+    },
+    {
+      "text": "不臆造任何輸入未提供的日期或集合時間；對缺漏欄位使用「待確認」，不以推測值取代。"
+    }
+  ],
+  "final_output": "資料 A\n員工您好，健檢日期待確認，集合時間為上午 7:30，需空腹 8 小時。健檢地點為台北市中山區民生東路 3 段 10 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。\n\n資料 B\n員工您好，健檢日期為 2026 年 11 月 19 日，集合時間待確認，需空腹 8 小時。健檢地點為新北市板橋區中山路 1 段 20 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。\n\n資料 C\n員工您好，健檢日期為 2026 年 11 月 26 日，集合時間為上午 8:00，需空腹 8 小時。健檢地點為台北市信義區松仁路 30 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊.",
+  "artifacts": [
+    "line-health-notices.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "55830ee8-aa92-4f5d-9e95-496f4a9bc417",
+    "run_id": "f2150752-ce97-48b4-8d90-d7e158a10cf2",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三筆資料均改寫為各自獨立、非條列且不超過四句的通知。缺漏欄位標示為「待確認」，其餘指定資訊均如實保留，並各以一句交代資訊合併情形。",
+    "criterion_results": [
+      {
+        "criterion_id": "ade7246c-0d61-40ee-9229-dc6dfd8efc4a",
+        "text": "對試跑輸入中的每筆資料各輸出一則獨立訊息；每則不使用條列，且不超過 4 句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "資料 A、B、C 各有一則獨立訊息；每則皆為四句，且未使用條列。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "資料 A\n員工您好，健檢日期待確認，集合時間為上午 7:30，需空腹 8 小時。健檢地點為台北市中山區民生東路 3 段 10 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "資料 B\n員工您好，健檢日期為 2026 年 11 月 19 日，集合時間待確認，需空腹 8 小時。健檢地點為新北市板橋區中山路 1 段 20 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "資料 C\n員工您好，健檢日期為 2026 年 11 月 26 日，集合時間為上午 8:00，需空腹 8 小時。健檢地點為台北市信義區松仁路 30 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊.",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1b0f5c4f-5edb-4320-8739-b99b94e0efd7",
+        "text": "資料 A 缺少日期，訊息將日期明確標為「待確認」，並正確保留集合時間「上午 7:30」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "資料 A 將缺少的日期標為「待確認」，並保留上午 7:30 的集合時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢日期待確認，集合時間為上午 7:30，需空腹 8 小時",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2277b5ec-675e-4f85-bb63-b63625a289ad",
+        "text": "資料 B 缺少集合時間，訊息將集合時間明確標為「待確認」，並正確保留日期「2026 年 11 月 19 日」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "資料 B 將缺少的集合時間標為「待確認」，並保留 2026 年 11 月 19 日的日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢日期為 2026 年 11 月 19 日，集合時間待確認，需空腹 8 小時",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "04763452-3946-4aa6-9953-ebccb002ae73",
+        "text": "資料 C 正確保留日期「2026 年 11 月 26 日」及集合時間「上午 8:00」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "資料 C 正確保留 2026 年 11 月 26 日及上午 8:00。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢日期為 2026 年 11 月 26 日，集合時間為上午 8:00，需空腹 8 小時",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d91c914c-320d-4491-8caf-a0f5dc190d10",
+        "text": "三則訊息都明確保留需空腹 8 小時，不把它改成其他時長或模糊說法。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三則訊息均明確寫出「需空腹 8 小時」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢日期待確認，集合時間為上午 7:30，需空腹 8 小時",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢日期為 2026 年 11 月 19 日，集合時間待確認，需空腹 8 小時",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢日期為 2026 年 11 月 26 日，集合時間為上午 8:00，需空腹 8 小時",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b59c65b3-c93a-459b-b322-22f7225e48db",
+        "text": "每則訊息都另用一句話誠實交代合併或省略了哪些非必要資訊，且不暗示已完整納入實際省略的細節。",
+        "result": "passed",
+        "source": "model",
+        "reason": "每則均另以一句說明合併了攜帶物品、前一晚注意事項與衣著提醒；這些細節均已寫入訊息，故「沒有省略資訊」與內容相符。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢地點為台北市中山區民生東路 3 段 10 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢地點為新北市板橋區中山路 1 段 20 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢地點為台北市信義區松仁路 30 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊.",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2a92bd76-2f5b-4ace-977e-3958529a5c22",
+        "text": "不臆造任何輸入未提供的日期或集合時間；對缺漏欄位使用「待確認」，不以推測值取代。",
+        "result": "passed",
+        "source": "model",
+        "reason": "資料 A 的日期及資料 B 的集合時間均標為「待確認」；其餘日期與集合時間皆與輸入相符，沒有臆造。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢日期待確認，集合時間為上午 7:30",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢日期為 2026 年 11 月 19 日，集合時間待確認",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢日期為 2026 年 11 月 26 日，集合時間為上午 8:00",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): line-health-notices.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1603 input and 4163 output tokens on skillhub-run; reported cost $0.0063 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 49,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "round": 1,
+  "sample_input": "請依以下資料寫好給團員的行前通知信，並替我寄出。\n出團名稱：七星山東峰健行\n日期：2026年11月8日（星期日）\n集合時間：上午7:30\n集合地點：台北捷運劍潭站1號出口\n行程：小油坑集合，經七星山主峰、東峰下山至冷水坑；預計下午3:00左右結束\n裝備：登山鞋、飲水至少1.5公升、午餐、雨具、保暖外套\n費用：每人新台幣300元，請於集合時交給領隊\n領隊：林怡君\n天氣預報：未提供\n其他：請勿無故遲到；若身體不適，請儘早通知領隊。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出包含一封繁體中文純文字的行前通知信本文，並依試跑資料寫出集合日期、時間、地點、行程、裝備與費用，不改動已提供的資訊。"
+    },
+    {
+      "text": "由於試跑資料未提供天氣預報，通知不會捏造具體天氣，而會以保守的一般提醒處理天氣或保暖準備。"
+    },
+    {
+      "text": "因試跑要求代為寄信，輸出會明確表示無法代寄、須由人接手寄送，且不會聲稱信件已寄出。"
+    },
+    {
+      "text": "即使無法代寄，輸出仍會完整提供可交給團員的通知信本文。"
+    }
+  ],
+  "final_output": "主旨：七星山東峰健行行前通知（2026年11月8日）\n\n各位團員好：\n\n以下是「七星山東峰健行」行前資訊，請大家預先確認並準備。\n\n日期：2026年11月8日（星期日）\n集合時間：上午7:30\n集合地點：台北捷運劍潭站1號出口\n領隊：林怡君\n\n行程：小油坑集合，經七星山主峰、東峰下山至冷水坑，預計下午3:00左右結束。\n\n請攜帶以下裝備：\n- 登山鞋\n- 飲水至少1.5公升\n- 午餐\n- 雨具\n- 保暖外套\n\n費用：每人新台幣300元，請於集合時交給領隊。\n\n天氣預報目前未提供，請做好一般天候變化的準備，並攜帶雨具與保暖外套。請勿無故遲到；若身體不適，請儘早通知領隊。\n\n期待與大家一同出發，請做好準備！\n\n行前通知信寄送：此技能無法代為寄送，請由您或您指定的負責人接手寄出。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4aa9c60f-3f65-4914-9175-758d81d01709",
+    "run_id": "e8ab1f8a-c6ab-41ff-ad39-011d850a1d1d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成。通知信完整保留出團資訊、審慎處理未提供的天氣預報，並明確說明須由人接手寄送。",
+    "criterion_results": [
+      {
+        "criterion_id": "ed2c7ae2-dc3f-4667-ac99-d2b7d0af38dd",
+        "text": "輸出包含一封繁體中文純文字的行前通知信本文，並依試跑資料寫出集合日期、時間、地點、行程、裝備與費用，不改動已提供的資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為繁體中文純文字通知信，集合日期、時間、地點、行程、裝備及費用均與提供資料一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期：2026年11月8日（星期日）\n集合時間：上午7:30\n集合地點：台北捷運劍潭站1號出口",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "行程：小油坑集合，經七星山主峰、東峰下山至冷水坑，預計下午3:00左右結束。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "請攜帶以下裝備：\n- 登山鞋\n- 飲水至少1.5公升\n- 午餐\n- 雨具\n- 保暖外套",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "費用：每人新台幣300元，請於集合時交給領隊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4397d32e-2c9e-4751-a447-43e95695dab0",
+        "text": "由於試跑資料未提供天氣預報，通知不會捏造具體天氣，而會以保守的一般提醒處理天氣或保暖準備。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知說明未提供天氣預報，僅提醒一般天候變化及雨具、保暖準備，未捏造具體天氣。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "天氣預報目前未提供，請做好一般天候變化的準備，並攜帶雨具與保暖外套。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a7fda1a6-25b7-44dc-9a24-c4eeb5b43a24",
+        "text": "因試跑要求代為寄信，輸出會明確表示無法代寄、須由人接手寄送，且不會聲稱信件已寄出。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確表示無法代寄，請使用者或指定負責人接手，且未聲稱已寄出。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "行前通知信寄送：此技能無法代為寄送，請由您或您指定的負責人接手寄出。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d13d6a01-dd4d-4303-9bc5-4212200dda33",
+        "text": "即使無法代寄，輸出仍會完整提供可交給團員的通知信本文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "即使無法代寄，輸出仍提供從主旨、稱呼到行程與注意事項的完整團員通知信本文；寄送說明置於信後。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "主旨：七星山東峰健行行前通知（2026年11月8日）\n\n各位團員好：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "天氣預報目前未提供，請做好一般天候變化的準備，並攜帶雨具與保暖外套。請勿無故遲到；若身體不適，請儘早通知領隊。\n\n期待與大家一同出發，請做好準備！",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1488 input and 767 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

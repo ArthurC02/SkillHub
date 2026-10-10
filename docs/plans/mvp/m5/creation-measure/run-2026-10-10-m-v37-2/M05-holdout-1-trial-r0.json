@@ -1,0 +1,148 @@
+{
+  "round": 0,
+  "sample_input": "幫我改成 LINE 通知。健檢日期 2026 年 11 月 18 日，早上 7:30 在院區 3 樓健檢中心集合，要空腹 8 小時（可以喝少量白開水），帶健保卡跟身分證，開車的同仁停車可折抵 2 小時，費用公司全額補助自付 0 元，報告 2 週後到人資室領取，聯絡人王小姐分機 1234，檢查當天請勿佩戴金屬飾品，平常有服藥的同仁請先問過醫師。",
+  "acceptance_criteria": [
+    {
+      "text": "全文不超過 4 句（以句號、問號、驚嘆號結尾計）"
+    },
+    {
+      "text": "保留健檢日期 11 月 18 日（11/18 或 2026-11-18 等寫法皆可）"
+    },
+    {
+      "text": "保留集合時間 7:30（07:30 或早上 7 點半皆可）"
+    },
+    {
+      "text": "保留需空腹 8 小時"
+    },
+    {
+      "text": "有一句話說明有資訊被省略或合併了（點出是哪些資訊，或說明其他細節未全部列出，皆可接受），且沒有聲稱已包含所有細節"
+    }
+  ],
+  "final_output": "您好，健檢日期為 2026 年 11 月 18 日，早上 7:30 請於院區 3 樓健檢中心集合，並空腹 8 小時（可以喝少量白開水）。\n請攜帶健保卡和身分證，檢查當天請勿佩戴金屬飾品；平常有服藥的同仁請先問過醫師。\n開車的同仁停車可折抵 2 小時，費用由公司全額補助、自付 0 元，報告請於 2 週後到人資室領取；聯絡人為王小姐，分機 1234。\n已將健檢日期、集合時間、地點、檢查注意事項與行政資訊整合呈現，未省略任何提供資訊。",
+  "artifacts": [
+    "line_health_check_notice.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "68b6f916-e447-4d61-875f-7a1c175f9b23",
+    "run_id": "63e63f43-a8cd-4054-9f67-827a7b40227a",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "通知符合四句上限，並保留日期、集合時間與空腹要求；但最後一句聲稱未省略任何資訊，因此未符合資訊省略或合併說明的完整條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "089cebb5-ac05-474a-9d7f-1da889378ed4",
+        "text": "全文不超過 4 句（以句號、問號、驚嘆號結尾計）",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知全文共四句，未超過四句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，健檢日期為 2026 年 11 月 18 日，早上 7:30 請於院區 3 樓健檢中心集合，並空腹 8 小時（可以喝少量白開水）。\n請攜帶健保卡和身分證，檢查當天請勿佩戴金屬飾品；平常有服藥的同仁請先問過醫師。\n開車的同仁停車可折抵 2 小時，費用由公司全額補助、自付 0 元，報告請於 2 週後到人資室領取；聯絡人為王小姐，分機 1234。\n已將健檢日期、集合時間、地點、檢查注意事項與行政資訊整合呈現，未省略任何提供資訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e7ceaf6e-fced-40bf-816e-05ba2c86f25b",
+        "text": "保留健檢日期 11 月 18 日（11/18 或 2026-11-18 等寫法皆可）",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留了健檢日期 2026 年 11 月 18 日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢日期為 2026 年 11 月 18 日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a0d019f7-6fc5-4b7b-ac4d-d43d3d47a3fe",
+        "text": "保留集合時間 7:30（07:30 或早上 7 點半皆可）",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留了早上 7:30 的集合時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "早上 7:30 請於院區 3 樓健檢中心集合",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "94d0fbdd-2bc8-47b0-adfa-bc7badc38224",
+        "text": "保留需空腹 8 小時",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確保留空腹 8 小時的要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "並空腹 8 小時（可以喝少量白開水）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "02cbe408-660f-41b1-9443-c2f0f787b84a",
+        "text": "有一句話說明有資訊被省略或合併了（點出是哪些資訊，或說明其他細節未全部列出，皆可接受），且沒有聲稱已包含所有細節",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖有說明資訊已整合呈現，卻明確聲稱「未省略任何提供資訊」，不符合不得聲稱已包含所有細節的要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "已將健檢日期、集合時間、地點、檢查注意事項與行政資訊整合呈現，未省略任何提供資訊。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): line_health_check_notice.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1563 input and 1980 output tokens on skillhub-run; reported cost $0.0048 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

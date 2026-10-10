@@ -1,0 +1,161 @@
+{
+  "round": 1,
+  "sample_input": "請依雪板組租賃規則計算以下各筆總租金，列出旺季日數、非旺季日數與計算式。\nA，起租日期 2026-12-19，天數 4，套數 2\nB，起租日期 2026-12-31，天數 7，套數 2\nC，起租日期 2027-01-04，天數 3，套數 1\nD，起租日期 2026-10-01，天數 2，套數 3",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入 A（2026-12-19 起租、4 天、2 套），辨識 3 個旺季日及 1 個非旺季日，並算出 (3 × 960 + 1 × 800) × 2 = 新台幣 7,360 元。"
+    },
+    {
+      "text": "對試跑輸入 B（2026-12-31 起租、7 天、2 套），正確跨越年份並辨識 6 個旺季日及 1 個非旺季日，算出 (6 × 960 + 1 × 800) × 2 = 新台幣 13,120 元。"
+    },
+    {
+      "text": "對試跑輸入 C（2027-01-04 起租、3 天、1 套），辨識 2 個旺季日及 1 個非旺季日，並算出 (2 × 960 + 1 × 800) × 1 = 新台幣 2,720 元。"
+    },
+    {
+      "text": "對試跑輸入 D（2026-10-01 起租、2 天、3 套），辨識 0 個旺季日及 2 個非旺季日，並算出 (0 × 960 + 2 × 800) × 3 = 新台幣 4,800 元。"
+    },
+    {
+      "text": "對每筆試跑資料，輸出旺季日數、非旺季日數、可核對的計算式及新台幣總額，並將四筆報價分開呈現。"
+    }
+  ],
+  "final_output": "A（起租日期 2026-12-19，天數 4，套數 2）\n旺季日數：3 天\n非旺季日數：1 天\n計算式：(1 × 800 + 3 × 960) × 2 = 新台幣 7,360 元\n總租金：新台幣 7,360 元\n\nB（起租日期 2026-12-31，天數 7，套數 2）\n旺季日數：6 天\n非旺季日數：1 天\n計算式：(1 × 800 + 6 × 960) × 2 = 新台幣 13,120 元\n總租金：新台幣 13,120 元\n\nC（起租日期 2027-01-04，天數 3，套數 1）\n旺季日數：2 天\n非旺季日數：1 天\n計算式：(1 × 800 + 2 × 960) × 1 = 新台幣 2,720 元\n總租金：新台幣 2,720 元\n\nD（起租日期 2026-10-01，天數 2，套數 3）\n旺季日數：0 天\n非旺季日數：2 天\n計算式：(2 × 800 + 0 × 960) × 3 = 新台幣 4,800 元\n總租金：新台幣 4,800 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "43eb9c20-a43d-4234-96a5-0377e238fb76",
+    "run_id": "e7168c88-92e0-4c57-8a93-51bbfce14cff",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四筆報價均分開列示，旺季與非旺季日數、計算式及新台幣總額皆符合各項驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "a990c8ef-7154-4407-95ec-549369ffbc12",
+        "text": "對試跑輸入 A（2026-12-19 起租、4 天、2 套），辨識 3 個旺季日及 1 個非旺季日，並算出 (3 × 960 + 1 × 800) × 2 = 新台幣 7,360 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 列出旺季 3 天、非旺季 1 天，計算式與總額均正確；加總順序不同不影響結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "A（起租日期 2026-12-19，天數 4，套數 2）\n旺季日數：3 天\n非旺季日數：1 天\n計算式：(1 × 800 + 3 × 960) × 2 = 新台幣 7,360 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9ed77a98-922f-48a5-b18e-294bbe94c5d1",
+        "text": "對試跑輸入 B（2026-12-31 起租、7 天、2 套），正確跨越年份並辨識 6 個旺季日及 1 個非旺季日，算出 (6 × 960 + 1 × 800) × 2 = 新台幣 13,120 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "B 跨年租期列出旺季 6 天、非旺季 1 天，計算式與新台幣 13,120 元的總額正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "B（起租日期 2026-12-31，天數 7，套數 2）\n旺季日數：6 天\n非旺季日數：1 天\n計算式：(1 × 800 + 6 × 960) × 2 = 新台幣 13,120 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0b2940e6-d521-4d02-9263-eb4efa299b03",
+        "text": "對試跑輸入 C（2027-01-04 起租、3 天、1 套），辨識 2 個旺季日及 1 個非旺季日，並算出 (2 × 960 + 1 × 800) × 1 = 新台幣 2,720 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C 列出旺季 2 天、非旺季 1 天，計算式得出新台幣 2,720 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "C（起租日期 2027-01-04，天數 3，套數 1）\n旺季日數：2 天\n非旺季日數：1 天\n計算式：(1 × 800 + 2 × 960) × 1 = 新台幣 2,720 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "662d6a25-f257-426e-a901-4f63a99e22ec",
+        "text": "對試跑輸入 D（2026-10-01 起租、2 天、3 套），辨識 0 個旺季日及 2 個非旺季日，並算出 (0 × 960 + 2 × 800) × 3 = 新台幣 4,800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "D 列出旺季 0 天、非旺季 2 天，計算式得出新台幣 4,800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "D（起租日期 2026-10-01，天數 2，套數 3）\n旺季日數：0 天\n非旺季日數：2 天\n計算式：(2 × 800 + 0 × 960) × 3 = 新台幣 4,800 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "96a1fc69-7950-4132-b27b-a967d7fd1c68",
+        "text": "對每筆試跑資料，輸出旺季日數、非旺季日數、可核對的計算式及新台幣總額，並將四筆報價分開呈現。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A、B、C、D 分開呈現；每筆均列出兩類日數、可核對的計算式及新台幣總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "A（起租日期 2026-12-19，天數 4，套數 2）\n旺季日數：3 天\n非旺季日數：1 天\n計算式：(1 × 800 + 3 × 960) × 2 = 新台幣 7,360 元\n總租金：新台幣 7,360 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "B（起租日期 2026-12-31，天數 7，套數 2）\n旺季日數：6 天\n非旺季日數：1 天\n計算式：(1 × 800 + 6 × 960) × 2 = 新台幣 13,120 元\n總租金：新台幣 13,120 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "C（起租日期 2027-01-04，天數 3，套數 1）\n旺季日數：2 天\n非旺季日數：1 天\n計算式：(1 × 800 + 2 × 960) × 1 = 新台幣 2,720 元\n總租金：新台幣 2,720 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "D（起租日期 2026-10-01，天數 2，套數 3）\n旺季日數：0 天\n非旺季日數：2 天\n計算式：(2 × 800 + 0 × 960) × 3 = 新台幣 4,800 元\n總租金：新台幣 4,800 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1495 input and 699 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 31,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

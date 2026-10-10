@@ -1,0 +1,169 @@
+{
+  "round": 2,
+  "sample_input": "請根據以下活動資料，寫一則適合發布在 LINE 的親子烘焙活動宣傳文案。\n活動名稱：親子小熊餅乾烘焙日\n日期：2026 年 11 月 21 日\n時間：上午 10:00–12:00\n地點：台北市大安區和平東路二段 100 號 1 樓\n名額：12 組親子\n報名截止日：2026 年 11 月 15 日\n費用：未提供",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入中提供的活動名稱、日期、時間、地點、名額與報名截止日，文案都逐項保留且不改值。"
+    },
+    {
+      "text": "試跑輸入缺少費用時，輸出仍包含費用資訊，並清楚標示其為推定值，而非使用者提供的事實。"
+    },
+    {
+      "text": "輸出是一則可直接用於 LINE 的親子烘焙活動宣傳文案，並包含七項硬事實，不以待填欄位或問題取代缺漏資訊。"
+    },
+    {
+      "text": "輸出不把試跑輸入未提供的其他活動內容寫成確定事實。"
+    }
+  ],
+  "final_output": "🐻🍪 **親子小熊餅乾烘焙日** 🍪🐻\n\n和孩子一起動手烘焙，享受甜甜的親子時光！\n\n📅 日期：2026 年 11 月 21 日  \n🕙 時間：上午 10:00–12:00  \n📍 地點：台北市大安區和平東路二段 100 號 1 樓  \n👨‍👧 名額：12 組親子  \n💰 費用：NT$300／組親子（推定）  \n📝 報名截止日：2026 年 11 月 15 日\n\n一起來做可愛的小熊餅乾吧！",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "958cf02e-608f-425c-b236-3c08684d1c98",
+    "run_id": "392396c3-8cf7-4888-9441-3b85b523a1ea",
+    "status": "completed",
+    "overall": "met",
+    "summary": "文案保留六項已提供的活動資料，並將補上的費用明確標為推定。整體可作為 LINE 宣傳文案，未見將其他未提供的活動內容寫成確定事實。",
+    "criterion_results": [
+      {
+        "criterion_id": "74e1b84c-7096-484f-baaf-d3b8d0fbe528",
+        "text": "試跑輸入中提供的活動名稱、日期、時間、地點、名額與報名截止日，文案都逐項保留且不改值。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文案逐項保留活動名稱、日期、時間、地點、名額及報名截止日，數值均與輸入相同。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "親子小熊餅乾烘焙日",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "📅 日期：2026 年 11 月 21 日",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "🕙 時間：上午 10:00–12:00",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "📍 地點：台北市大安區和平東路二段 100 號 1 樓",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "👨‍👧 名額：12 組親子",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "📝 報名截止日：2026 年 11 月 15 日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "28f4d9ca-d715-4d39-b325-c69e6caa1819",
+        "text": "試跑輸入缺少費用時，輸出仍包含費用資訊，並清楚標示其為推定值，而非使用者提供的事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文案提供費用，並以「推定」明確標示該金額並非使用者提供的事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "💰 費用：NT$300／組親子（推定）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "01d788de-ff4a-426f-ac10-8d3220fea709",
+        "text": "輸出是一則可直接用於 LINE 的親子烘焙活動宣傳文案，並包含七項硬事實，不以待填欄位或問題取代缺漏資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出是完整的親子烘焙活動宣傳文案，列出七項資訊；缺少的費用以推定金額呈現，沒有留下待填欄位或提問。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "和孩子一起動手烘焙，享受甜甜的親子時光！",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "💰 費用：NT$300／組親子（推定）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "一起來做可愛的小熊餅乾吧！",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d2f03656-025e-4de9-831d-26aa7230535a",
+        "text": "輸出不把試跑輸入未提供的其他活動內容寫成確定事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "除已標示為推定的費用外，額外文字只是與活動名稱相符的邀請語，沒有把未提供的其他活動安排寫成確定事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "和孩子一起動手烘焙，享受甜甜的親子時光！",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "一起來做可愛的小熊餅乾吧！",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1487 input and 493 output tokens on skillhub-run; reported cost $0.0030 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

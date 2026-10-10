@@ -1,0 +1,315 @@
+{
+  "request": {
+    "RunID": "f2150752-ce97-48b4-8d90-d7e158a10cf2",
+    "EvaluationID": "55830ee8-aa92-4f5d-9e95-496f4a9bc417",
+    "Skill": {
+      "Name": "health-check-line-notice",
+      "Summary": "將行政提供的一筆或多筆企業健檢資訊改寫成給員工的繁體中文 LINE 行前通知。當需要產生不使用條列、每則最多四句且保留指定健檢資訊的通知時使用。"
+    },
+    "UserPrompt": "請把以下三筆行政資料各改寫成一則給員工的 LINE 健檢行前通知，遵守每則最多 4 句、不用條列並如實處理缺漏資訊的規則。\n資料 A：健檢日期：未提供；集合時間：上午 7:30；空腹要求：需空腹 8 小時；地點：台北市中山區民生東路 3 段 10 號；攜帶：健保卡、身分證；前一晚注意事項：避免飲酒；衣著：穿著方便捲袖的衣物。\n資料 B：健檢日期：2026 年 11 月 19 日；集合時間：未提供；空腹要求：需空腹 8 小時；地點：新北市板橋區中山路 1 段 20 號；攜帶：健保卡、身分證；前一晚注意事項：避免飲酒；衣著：穿著方便捲袖的衣物。\n資料 C：健檢日期：2026 年 11 月 26 日；集合時間：上午 8:00；空腹要求：需空腹 8 小時；地點：台北市信義區松仁路 30 號；攜帶：健保卡、身分證；前一晚注意事項：避免飲酒；衣著：穿著方便捲袖的衣物。",
+    "Criteria": [
+      {
+        "ID": "ade7246c-0d61-40ee-9229-dc6dfd8efc4a",
+        "Text": "對試跑輸入中的每筆資料各輸出一則獨立訊息；每則不使用條列，且不超過 4 句。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "1b0f5c4f-5edb-4320-8739-b99b94e0efd7",
+        "Text": "資料 A 缺少日期，訊息將日期明確標為「待確認」，並正確保留集合時間「上午 7:30」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2277b5ec-675e-4f85-bb63-b63625a289ad",
+        "Text": "資料 B 缺少集合時間，訊息將集合時間明確標為「待確認」，並正確保留日期「2026 年 11 月 19 日」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "04763452-3946-4aa6-9953-ebccb002ae73",
+        "Text": "資料 C 正確保留日期「2026 年 11 月 26 日」及集合時間「上午 8:00」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d91c914c-320d-4491-8caf-a0f5dc190d10",
+        "Text": "三則訊息都明確保留需空腹 8 小時，不把它改成其他時長或模糊說法。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b59c65b3-c93a-459b-b322-22f7225e48db",
+        "Text": "每則訊息都另用一句話誠實交代合併或省略了哪些非必要資訊，且不暗示已完整納入實際省略的細節。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2a92bd76-2f5b-4ace-977e-3958529a5c22",
+        "Text": "不臆造任何輸入未提供的日期或集合時間；對缺漏欄位使用「待確認」，不以推測值取代。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "資料 A\n員工您好，健檢日期待確認，集合時間為上午 7:30，需空腹 8 小時。健檢地點為台北市中山區民生東路 3 段 10 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。\n\n資料 B\n員工您好，健檢日期為 2026 年 11 月 19 日，集合時間待確認，需空腹 8 小時。健檢地點為新北市板橋區中山路 1 段 20 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。\n\n資料 C\n員工您好，健檢日期為 2026 年 11 月 26 日，集合時間為上午 8:00，需空腹 8 小時。健檢地點為台北市信義區松仁路 30 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊.",
+    "Artifacts": [
+      {
+        "Path": "line-health-notices.txt",
+        "SizeBytes": 1047,
+        "ContentType": "application/octet-stream",
+        "TextExcerpt": ""
+      }
+    ],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "37255ecd-25a8-4864-a153-99aad93d7387",
+          "OccurredAt": "2026-10-10T00:15:18.145Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"health-check-line-notice\", \"skill_version_id\": \"167e1ccb-badb-405d-bdc9-49c8c2723085\"}"
+        },
+        {
+          "TraceEventID": "c9ebb042-cd1d-4798-9254-a091c547821e",
+          "OccurredAt": "2026-10-10T00:15:18.161Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"health-check-line-notice\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 16, \"invocation_id\": \"call_A61tQtKuQUTSBYg4D7cK0j4s\", \"result_summary\": \"Launching skill: health-check-line-notice\"}"
+        },
+        {
+          "TraceEventID": "9c92b1f5-bbf0-41f4-9a87-fa018c38f1c6",
+          "OccurredAt": "2026-10-10T00:15:20.008Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 112, \"resource_path\": \"health-check-line-notice\"}"
+        },
+        {
+          "TraceEventID": "bcf59cbb-8dd5-4d77-ad44-356d5db42f80",
+          "OccurredAt": "2026-10-10T00:15:20.008Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"path\": \"/work/.claude/skills/health-check-line-notice\", \"pattern\": \"**/*\"}, \"tool_name\": \"Glob\", \"truncated\": false, \"duration_ms\": 14, \"invocation_id\": \"call_DpSZxVbjNrzV9nlcTchtPuT6\", \"result_summary\": \".claude/skills/health-check-line-notice/scripts/check_output.py\\n.claude/skills/health-check-line-notice/SKILL.md\"}"
+        },
+        {
+          "TraceEventID": "0db44a16-2ee2-4430-9bb4-82210d8827d5",
+          "OccurredAt": "2026-10-10T00:15:22.023Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"not_found\", \"truncated\": false, \"bytes_read\": null, \"resource_path\": \"health-check-line-notice/.claude/skills/health-check-line-notice/scripts/check_output.py\"}"
+        },
+        {
+          "TraceEventID": "0918c16e-66b5-41cd-ae1a-ddf111349b76",
+          "OccurredAt": "2026-10-10T00:15:22.023Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"file_path\": \"/work/.claude/skills/health-check-line-notice/.claude/skills/health-check-line-notice/scripts/check_output.py\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 16, \"invocation_id\": \"call_lTtqFVERWu0hpGTbHOo0mcpL\", \"result_summary\": \"File does not exist. Note: your current working directory is /work.\"}"
+        },
+        {
+          "TraceEventID": "51b5f92f-077a-4b71-87b3-99fec340d863",
+          "OccurredAt": "2026-10-10T00:15:26.104Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 4163, \"resource_path\": \"health-check-line-notice/scripts/check_output.py\"}"
+        },
+        {
+          "TraceEventID": "e1c49faf-dec0-4b51-8c87-a09005bc263a",
+          "OccurredAt": "2026-10-10T00:15:26.104Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/health-check-line-notice/scripts/check_output.py\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 8, \"invocation_id\": \"call_JhyU4dqi37xQnY03gZpGS470\", \"result_summary\": \"1\\t\\\"\\\"\\\"Count sentences, characters and items in a file and check them against limits.\\\"\\\"\\\"\\n2\\t\\n3\\tfrom __future__ import annotations\\n4\\t\\n5\\timport argparse\\n6\\timport re\\n7\\timport sys\\n8\\t\\n9\\tSENTENCE_SPLIT = re.compile(r\\\"[。！？!?]|\\\\n\\\")\\n10\\tITEM_LINE = re.compile(r\\\"^\\\\s*(?:[-*•]|\\\\d+[.)、．])\\\\s\\\")\\n11\\t\\n12\\t\\n13\\tdef count_sentences(text: str) -\u003e int:\\n14\\t    return sum(1 for part in SENTENCE_SPLIT.split(text) if part.strip())\\n15\\t\\n16\\t\\n17\\tdef count_chars(text: str) -\u003e int:\\n18\\t    return sum(1 for ch in text if not ch.isspace())\\n19\\t\\n20\\t\\n21\\tdef count_items(text: str) -\u003e int:\\n22\\t    return sum(1 for line in text.splitlines() if ITEM_LINE.match(line))\\n23\\t\\n24\\t\\n25\\tdef missing_requirements(text: str, requirements: list[str]) -\u003e list[str]:\\n26\\t    return [req for req in requirements if req not in text]\\n27\\t\\n28\\t\\n29\\tdef check(\\n30\\t    text: str,\\n31\\t    max_sentences: int | None,\\n32\\t    max_chars: int | None,\\n33\\t    max_items: int | None,\\n34\\t    require: list[str],\\n35\\t) -\u003e list[str]:\\n36\\t    failures: list[str] = []\\n37\\t    sentences = count_sentences(text)\\n38\\t    if max_sentences is not None and sentences \u003e max_sentences:\\n39\\t        failures.append(f\\\"sentences {sentences} \u003e {max_sentences}\\\")\\n40\\t    chars = count_chars(text)\\n41\\t    if max_chars is not None and chars \u003e max_chars:\\n42\\t        failures.append(f\\\"chars {chars} \u003e {max_chars}\\\")\\n43\\t    items = count_items(text)\\n44\\t    if max_items is not None and items \u003e max_items:\\n45\\t        failures.append(f\\\"items {items} \u003e {max_items}\\\")\\n46\\t    missing = missing_requirements(text, require)\\n47\\t    if missing:\\n48\\t        failures.append(\\\"missing: \\\" + \\\", \\\".join(missing))\\n49\\t    return failures\\n50\\t\\n51\\t\\n52\\tdef build_parser() -\u003e argparse.ArgumentParser:\\n53\\t    parser = argparse.ArgumentParser(\\n54\\t        description=(\\\"Check a file's draft answer against countable limits and required facts.\\\")\\n55\\t    )\\n56\\t    parser.add_argument(\\n57\\t        \\\"--max-sentences\\\",\\n58\\t        type=int,\\n59\\t        help=(\\n60\\t            \\\"reject if the file has more sentences than this; a sentence is a run of \\\"\\n61\\t            \\\"text separated by 。！？!? or a newline, trimmed and non-empty\\\"\\n62\\t        ),\\n63\\t    )\\n64\\t    parser.add_argument(\\n65\\t        \\\"--max-chars\\\",\\n66\\t        type=int,\\n67\\t        help=\\\"reject if the file has more non-whitespace characters than this\\\",\\n68\\t    )\\n69\\t    parser.add_argument(\\n70\\t        \\\"--max-items\\\",\\n71\\t        type=int,\\n72\\t        help=(\\n73\\t            \\\"reject if the file has more list items than this; an item is a line \\\"\\n74\\t            \\\"starting with -, * or •, or a numbered marker such as '1.' '2)' '3、'\\\"\\n75\\t        ),\\n76\\t    )\\n77\\t    parser.add_argument(\\n78\\t        \\\"--require\\\",\\n79\\t        action=\\\"append\\\",\\n80\\t        default=[],\\n81\\t        metavar=\\\"TEXT\\\",\\n82\\t        help=\\\"reject if this exact text is missing from the file; repeatable\\\",\\n83\\t    )\\n84\\t    parser.add_argument(\\\"file\\\", metavar=\\\"FILE\\\", help=\\\"path to check, or - for stdin\\\")\\n85\\t    return parser\\n86\\t\\n87\\t\\n88\\tdef _read(path: str) -\u003e str:\\n89\\t    if path == \\\"-\\\":\\n90\\t        return sys.stdin.read()\\n91\\t    with open(path, encoding=\\\"utf-8\\\") as handle:\\n92\\t        return handle.read()\\n93\\t\\n94\\t\\n95\\tdef main(argv: list[str] | None = None) -\u003e int:\\n96\\t    args = build_parser().parse_args(argv)\\n97\\t    no_checks = (\\n98\\t        args.max_sentences is None\\n99\\t        and args.max_chars is None\\n100\\t        and args.max_items is None\\n101\\t        and not args.require\\n102\\t    )\\n103\\t    if no_checks:\\n104\\t        print(\\n105\\t            \\\"no checks given: pass at least one of --max-sentences, --max-chars, \\\"\\n106\\t            \\\"--max-items, --require\\\"\\n107\\t        )\\n108\\t        return 2\\n109\\t    try:\\n110\\t        text = _read(args.file)\\n111\\t    except OSError as exc:\\n112\\t        print(f\\\"cannot read {args.file}: {exc}\\\")\\n113\\t        return 2\\n114\\t    except UnicodeDecodeError as exc:\\n115\\t        print(f\\\"cannot decode {args.file} as UTF-8: {exc}\\\")\\n116\\t        return 2\\n117\\t    failures = check(text, args.max_sentences, args.max_chars, args.max_items, args.require)\\n118\\t    if not failures:\\n119\\t        print(\\\"OK\\\")\\n120\\t        return 0\\n121\\t    for failure in failures:\\n122\\t        print(failure)\\n123\\t    return 1\\n124\\t\\n125\\t\\n126\\tif __name__ == \\\"__main__\\\":\\n127\\t    sys.exit(main())\\n128\\t\"}"
+        },
+        {
+          "TraceEventID": "886f957f-9354-4ddb-bdc2-431fe7c20a13",
+          "OccurredAt": "2026-10-10T00:15:32.433Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"(Bash completed with no output)\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "5878140a-fd5c-4b0a-86ce-5f430ab547d4",
+          "OccurredAt": "2026-10-10T00:15:32.433Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"mkdir -p /out/artifacts\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 63, \"invocation_id\": \"call_BDhQmOpp9p6MV8oI9Fd8cCQT\", \"result_summary\": \"(Bash completed with no output)\"}"
+        },
+        {
+          "TraceEventID": "d9af522c-f170-4f82-b351-8c29bd14fb5d",
+          "OccurredAt": "2026-10-10T00:15:48.164Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"資料 A\\n員工您好，健檢日期待確認，集合時間為上午 7:30，需空腹 8 小時。健檢地點為台北市中山區民生東路 3 段 10 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。\\n\\n資料 B\\n員工您好，健檢日期為 2026 年 11 月 19 日，集合時間待確認，需空腹 8 小時。健檢地點為新北市板橋區中山路 1 段 20 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。\\n\\n資料 C\\n員工您好，健檢日期為 2026 年 11 月 26 日，集合時間為上午 8:00，需空腹 8 小時。健檢地點為台北市信義區松仁路 30 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。\", \"file_path\": \"/out/artifacts/line-health-notices.txt\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 8, \"invocation_id\": \"call_UzsdFkOkar8e67Baog4eKQaP\", \"result_summary\": \"File created successfully at: /out/artifacts/line-health-notices.txt (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "5f9e3dd8-b06a-4d5f-920b-f747def2beca",
+          "OccurredAt": "2026-10-10T00:15:57.936Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"資料 A: OK\\n資料 B: OK\\n資料 C: OK\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "b4910ff5-f78b-43f4-b99b-66fb999a91d4",
+          "OccurredAt": "2026-10-10T00:15:57.936Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python3 - \u003c\u003c'PY'\\nfrom pathlib import Path\\nimport subprocess, tempfile\\nsource = Path('/out/artifacts/line-health-notices.txt').read_text(encoding='utf-8')\\nchecker = '/work/.claude/skills/health-check-line-notice/scripts/check_output.py'\\nblocks = source.strip().split('\\\\n\\\\n')\\nrequired = [\\n    ['健檢日期待確認', '集合時間為上午 7:30', '需空腹 8 小時', '台北市中山區民生東路 3 段 10 號', '健保卡', '身分證', '避免飲酒', '方便捲袖的衣物', '沒有省略資訊'],\\n    ['健檢日期為 2026 年 11 月 19 日', '集合時間待確認', '需空腹 8 小時', '新北市板橋區中山路 1 段 20 號', '健保卡', '身分證', '避免飲酒', '方便捲袖的衣物', '沒有省略資訊'],\\n    ['健檢日期為 2026 年 11 月 26 日', '集合時間為上午 8:00', '需空腹 8 小時', '台北市信義區松仁路 30 號', '健保卡', '身分證', '避免飲酒', '方便捲袖的衣物', '沒有省略資訊'],\\n]\\nwith tempfile.TemporaryDirectory() as tmp:\\n    for index, (block, reqs) in enumerate(zip(blocks, required), 1):\\n        message = '\\\\n'.join(block.splitlines()[1:])\\n        path = Path(tmp) / f'message-{index}.txt'\\n        path.write_text(message, encoding='utf-8')\\n        command = ['python3', checker, '--max-sentences', '4']\\n        for req in reqs:\\n            command.extend(['--require', req])\\n        command.append(str(path))\\n        result = subprocess.run(command, capture_output=True, text=True)\\n        print(f'{block.splitlines()[0]}: {result.stdout.strip()}')\\n        if result.returncode:\\n            print(result.stderr)\\n            raise SystemExit(result.returncode)\\nPY\", \"description\": \"Validate each employee notice against required details\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 209, \"invocation_id\": \"call_ntsGv0yFcEclIkW7oLBi9a08\", \"result_summary\": \"資料 A: OK\\n資料 B: OK\\n資料 C: OK\"}"
+        },
+        {
+          "TraceEventID": "a28c7e56-4eb3-40d7-9192-7c0d62e841e5",
+          "OccurredAt": "2026-10-10T00:16:01.13Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"資料 A\\n員工您好，健檢日期待確認，集合時間為上午 7:30，需空腹 8 小時。健檢地點為台北市中山區民生東路 3 段 10 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。\\n\\n資料 B\\n員工您好，健檢日期為 2026 年 11 月 19 日，集合時間待確認，需空腹 8 小時。健檢地點為新北市板橋區中山路 1 段 20 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。\\n\\n資料 C\\n員工您好，健檢日期為 2026 年 11 月 26 日，集合時間為上午 8:00，需空腹 8 小時。健檢地點為台北市信義區松仁路 30 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊.\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "2bdf56fe-8346-4aac-b94a-b583c69f735c",
+          "OccurredAt": "2026-10-10T00:16:01.322Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"資料 A\\n員工您好，健檢日期待確認，集合時間為上午 7:30，需空腹 8 小時。健檢地點為台北市中山區民生東路 3 段 10 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。\\n\\n資料 B\\n員工您好，健檢日期為 2026 年 11 月 19 日，集合時間待確認，需空腹 8 小時。健檢地點為新北市板橋區中山路 1 段 20 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。\\n\\n資料 C\\n員工您好，健檢日期為 2026 年 11 月 26 日，集合時間為上午 8:00，需空腹 8 小時。健檢地點為台北市信義區松仁路 30 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊.\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "99b441a4-aed3-4ab5-be62-cf07243694ba",
+          "OccurredAt": "2026-10-10T00:16:05.387Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.006338805, \"cost_source\": \"gateway\", \"duration_ms\": 49974, \"input_tokens\": 1603, \"token_source\": \"result\", \"output_tokens\": 4163, \"cache_read_input_tokens\": 135028, \"cache_write_input_tokens\": 21309}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "ade7246c-0d61-40ee-9229-dc6dfd8efc4a",
+        "Result": "passed",
+        "Reason": "資料 A、B、C 各有一則獨立訊息；每則皆為四句，且未使用條列。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "資料 A\n員工您好，健檢日期待確認，集合時間為上午 7:30，需空腹 8 小時。健檢地點為台北市中山區民生東路 3 段 10 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "資料 B\n員工您好，健檢日期為 2026 年 11 月 19 日，集合時間待確認，需空腹 8 小時。健檢地點為新北市板橋區中山路 1 段 20 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "資料 C\n員工您好，健檢日期為 2026 年 11 月 26 日，集合時間為上午 8:00，需空腹 8 小時。健檢地點為台北市信義區松仁路 30 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊."
+          }
+        ]
+      },
+      {
+        "CriterionID": "1b0f5c4f-5edb-4320-8739-b99b94e0efd7",
+        "Result": "passed",
+        "Reason": "資料 A 將缺少的日期標為「待確認」，並保留上午 7:30 的集合時間。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健檢日期待確認，集合時間為上午 7:30，需空腹 8 小時"
+          }
+        ]
+      },
+      {
+        "CriterionID": "2277b5ec-675e-4f85-bb63-b63625a289ad",
+        "Result": "passed",
+        "Reason": "資料 B 將缺少的集合時間標為「待確認」，並保留 2026 年 11 月 19 日的日期。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健檢日期為 2026 年 11 月 19 日，集合時間待確認，需空腹 8 小時"
+          }
+        ]
+      },
+      {
+        "CriterionID": "04763452-3946-4aa6-9953-ebccb002ae73",
+        "Result": "passed",
+        "Reason": "資料 C 正確保留 2026 年 11 月 26 日及上午 8:00。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健檢日期為 2026 年 11 月 26 日，集合時間為上午 8:00，需空腹 8 小時"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d91c914c-320d-4491-8caf-a0f5dc190d10",
+        "Result": "passed",
+        "Reason": "三則訊息均明確寫出「需空腹 8 小時」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健檢日期待確認，集合時間為上午 7:30，需空腹 8 小時"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健檢日期為 2026 年 11 月 19 日，集合時間待確認，需空腹 8 小時"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健檢日期為 2026 年 11 月 26 日，集合時間為上午 8:00，需空腹 8 小時"
+          }
+        ]
+      },
+      {
+        "CriterionID": "b59c65b3-c93a-459b-b322-22f7225e48db",
+        "Result": "passed",
+        "Reason": "每則均另以一句說明合併了攜帶物品、前一晚注意事項與衣著提醒；這些細節均已寫入訊息，故「沒有省略資訊」與內容相符。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健檢地點為台北市中山區民生東路 3 段 10 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健檢地點為新北市板橋區中山路 1 段 20 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健檢地點為台北市信義區松仁路 30 號，請攜帶健保卡及身分證。前一晚請避免飲酒，並穿著方便捲袖的衣物。已合併整理攜帶物品、前一晚注意事項與衣著提醒，沒有省略資訊."
+          }
+        ]
+      },
+      {
+        "CriterionID": "2a92bd76-2f5b-4ace-977e-3958529a5c22",
+        "Result": "passed",
+        "Reason": "資料 A 的日期及資料 B 的集合時間均標為「待確認」；其餘日期與集合時間皆與輸入相符，沒有臆造。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健檢日期待確認，集合時間為上午 7:30"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健檢日期為 2026 年 11 月 19 日，集合時間待確認"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健檢日期為 2026 年 11 月 26 日，集合時間為上午 8:00"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "三筆資料均改寫為各自獨立、非條列且不超過四句的通知。缺漏欄位標示為「待確認」，其餘指定資訊均如實保留，並各以一句交代資訊合併情形。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 7143,
+      "CompletionTokens": 2191,
+      "CostUSD": 0.037231400000000005,
+      "CostReported": true
+    }
+  }
+}

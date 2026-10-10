@@ -1,0 +1,188 @@
+{
+  "request": {
+    "RunID": "392396c3-8cf7-4888-9441-3b85b523a1ea",
+    "EvaluationID": "958cf02e-608f-425c-b236-3c08684d1c98",
+    "Skill": {
+      "Name": "parent-child-baking-line-promo",
+      "Summary": "當使用者提供親子烘焙活動資料並需要 LINE 宣傳文案時，依資料撰寫可直接發布的文案，保留七項硬事實；缺少資訊時補上合理推定值並明確標示。"
+    },
+    "UserPrompt": "請根據以下活動資料，寫一則適合發布在 LINE 的親子烘焙活動宣傳文案。\n活動名稱：親子小熊餅乾烘焙日\n日期：2026 年 11 月 21 日\n時間：上午 10:00–12:00\n地點：台北市大安區和平東路二段 100 號 1 樓\n名額：12 組親子\n報名截止日：2026 年 11 月 15 日\n費用：未提供",
+    "Criteria": [
+      {
+        "ID": "74e1b84c-7096-484f-baaf-d3b8d0fbe528",
+        "Text": "試跑輸入中提供的活動名稱、日期、時間、地點、名額與報名截止日，文案都逐項保留且不改值。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "28f4d9ca-d715-4d39-b325-c69e6caa1819",
+        "Text": "試跑輸入缺少費用時，輸出仍包含費用資訊，並清楚標示其為推定值，而非使用者提供的事實。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "01d788de-ff4a-426f-ac10-8d3220fea709",
+        "Text": "輸出是一則可直接用於 LINE 的親子烘焙活動宣傳文案，並包含七項硬事實，不以待填欄位或問題取代缺漏資訊。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d2f03656-025e-4de9-831d-26aa7230535a",
+        "Text": "輸出不把試跑輸入未提供的其他活動內容寫成確定事實。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "🐻🍪 **親子小熊餅乾烘焙日** 🍪🐻\n\n和孩子一起動手烘焙，享受甜甜的親子時光！\n\n📅 日期：2026 年 11 月 21 日  \n🕙 時間：上午 10:00–12:00  \n📍 地點：台北市大安區和平東路二段 100 號 1 樓  \n👨‍👧 名額：12 組親子  \n💰 費用：NT$300／組親子（推定）  \n📝 報名截止日：2026 年 11 月 15 日\n\n一起來做可愛的小熊餅乾吧！",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "2e2ee526-5593-484d-8a74-d480c272565a",
+          "OccurredAt": "2026-10-10T01:09:59.538Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"parent-child-baking-line-promo\", \"skill_version_id\": \"285c4153-971b-4c9d-b0e0-51d39eccc86e\"}"
+        },
+        {
+          "TraceEventID": "5bd8a9b9-9fc7-42cb-b4ad-856dfa71eba3",
+          "OccurredAt": "2026-10-10T01:09:59.556Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"parent-child-baking-line-promo\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 19, \"invocation_id\": \"call_4FTecnGQQZ8MOZCENDrMko17\", \"result_summary\": \"Launching skill: parent-child-baking-line-promo\"}"
+        },
+        {
+          "TraceEventID": "36c387bd-646e-4a4f-b852-9c42480b1093",
+          "OccurredAt": "2026-10-10T01:10:05.105Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"🐻🍪 **親子小熊餅乾烘焙日** 🍪🐻\\n\\n和孩子一起動手烘焙，享受甜甜的親子時光！\\n\\n📅 日期：2026 年 11 月 21 日  \\n🕙 時間：上午 10:00–12:00  \\n📍 地點：台北市大安區和平東路二段 100 號 1 樓  \\n👨‍👧 名額：12 組親子  \\n💰 費用：NT$300／組親子（推定）  \\n📝 報名截止日：2026 年 11 月 15 日\\n\\n一起來做可愛的小熊餅乾吧！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "93e2da8f-55dd-4212-8e7e-2da8b5dfd083",
+          "OccurredAt": "2026-10-10T01:10:05.405Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"🐻🍪 **親子小熊餅乾烘焙日** 🍪🐻\\n\\n和孩子一起動手烘焙，享受甜甜的親子時光！\\n\\n📅 日期：2026 年 11 月 21 日  \\n🕙 時間：上午 10:00–12:00  \\n📍 地點：台北市大安區和平東路二段 100 號 1 樓  \\n👨‍👧 名額：12 組親子  \\n💰 費用：NT$300／組親子（推定）  \\n📝 報名截止日：2026 年 11 月 15 日\\n\\n一起來做可愛的小熊餅乾吧！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "cfc04544-0b2c-4301-a256-678ede6086d3",
+          "OccurredAt": "2026-10-10T01:10:09.481Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.00295176, \"cost_source\": \"gateway\", \"duration_ms\": 12693, \"input_tokens\": 1487, \"token_source\": \"result\", \"output_tokens\": 493, \"cache_read_input_tokens\": 16611, \"cache_write_input_tokens\": 18610}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "74e1b84c-7096-484f-baaf-d3b8d0fbe528",
+        "Result": "passed",
+        "Reason": "文案逐項保留活動名稱、日期、時間、地點、名額及報名截止日，數值均與輸入相同。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "親子小熊餅乾烘焙日"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "📅 日期：2026 年 11 月 21 日"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "🕙 時間：上午 10:00–12:00"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "📍 地點：台北市大安區和平東路二段 100 號 1 樓"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "👨‍👧 名額：12 組親子"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "📝 報名截止日：2026 年 11 月 15 日"
+          }
+        ]
+      },
+      {
+        "CriterionID": "28f4d9ca-d715-4d39-b325-c69e6caa1819",
+        "Result": "passed",
+        "Reason": "文案提供費用，並以「推定」明確標示該金額並非使用者提供的事實。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "💰 費用：NT$300／組親子（推定）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "01d788de-ff4a-426f-ac10-8d3220fea709",
+        "Result": "passed",
+        "Reason": "輸出是完整的親子烘焙活動宣傳文案，列出七項資訊；缺少的費用以推定金額呈現，沒有留下待填欄位或提問。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "和孩子一起動手烘焙，享受甜甜的親子時光！"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "💰 費用：NT$300／組親子（推定）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "一起來做可愛的小熊餅乾吧！"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d2f03656-025e-4de9-831d-26aa7230535a",
+        "Result": "passed",
+        "Reason": "除已標示為推定的費用外，額外文字只是與活動名稱相符的邀請語，沒有把未提供的其他活動安排寫成確定事實。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "和孩子一起動手烘焙，享受甜甜的親子時光！"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "一起來做可愛的小熊餅乾吧！"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "文案保留六項已提供的活動資料，並將補上的費用明確標為推定。整體可作為 LINE 宣傳文案，未見將其他未提供的活動內容寫成確定事實。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2662,
+      "CompletionTokens": 1182,
+      "CostUSD": 0.0159389,
+      "CostReported": true
+    }
+  }
+}

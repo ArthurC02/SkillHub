@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "我要退 2 張票，每張 1,200 元，開演日是 2026-11-14，我今天 2026-11-08 申請退票，可以退多少？",
+  "acceptance_criteria": [
+    {
+      "text": "回覆的退款總額為 1,200 元"
+    },
+    {
+      "text": "沒有把退款寫成 1,920 元作為最終結果"
+    }
+  ],
+  "final_output": "目前無法確定退款金額，因為尚未提供「主辦方是否取消」；我不會代為猜測。\n\n`未提供|1,200|2|2026-11-14|2026-11-08|未提供`\n\n請補充主辦方是否取消（是／否），我就能接著試算。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "765100f6-ca9b-45ee-97b7-bfe77a2ef86a",
+    "run_id": "99b67925-663f-4f7a-b138-b896764ae610",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆沒有給出要求的 1,200 元退款總額，但也沒有將 1,920 元作為最終結果。",
+    "criterion_results": [
+      {
+        "criterion_id": "a8051824-de2d-4aad-8998-99e059b8e997",
+        "text": "回覆的退款總額為 1,200 元",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆表示無法確定退款金額，沒有將 1,200 元列為退款總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "目前無法確定退款金額，因為尚未提供「主辦方是否取消」；我不會代為猜測。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "045598fc-a933-45ed-a914-de1e132e5354",
+        "text": "沒有把退款寫成 1,920 元作為最終結果",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆沒有將 1,920 元寫成退款結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "目前無法確定退款金額，因為尚未提供「主辦方是否取消」；我不會代為猜測。\n\n`未提供|1,200|2|2026-11-14|2026-11-08|未提供`\n\n請補充主辦方是否取消（是／否），我就能接著試算。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1534 input and 789 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

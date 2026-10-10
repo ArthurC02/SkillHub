@@ -1,0 +1,168 @@
+{
+  "round": 0,
+  "sample_input": "幫我寫宣傳文案。活動名稱「小小麵包師」親子烘焙體驗，2026 年 12 月 6 日（日）上午 10:00 到 12:00，地點在幸福社區活動中心 2 樓烘焙教室，費用每組（1 大 1 小）450 元，限額 20 組，11 月 25 日截止報名。",
+  "acceptance_criteria": [
+    {
+      "text": "活動名稱「小小麵包師」完整出現"
+    },
+    {
+      "text": "日期 12 月 6 日正確（有寫星期時必須是星期日）"
+    },
+    {
+      "text": "時間為 10:00 到 12:00（上午 10 點到 12 點等寫法皆可）"
+    },
+    {
+      "text": "地點為幸福社區活動中心 2 樓烘焙教室"
+    },
+    {
+      "text": "費用為每組 450 元，名額為 20 組"
+    },
+    {
+      "text": "報名截止日為 11 月 25 日"
+    }
+  ],
+  "final_output": "🥐【小小麵包師】親子烘焙體驗 🥐\n\n和孩子一起動手做烘焙，享受親子共作的美好時光！\n\n📅 日期｜2026 年 12 月 6 日（日）  \n⏰ 時間｜上午 10:00 到 12:00  \n📍 地點｜幸福社區活動中心 2 樓烘焙教室  \n💰 費用｜每組（1 大 1 小）450 元  \n👨‍👧 名額｜限額 20 組  \n📝 報名截止｜11 月 25 日\n\n名額有限，歡迎把握機會報名，一起成為小小麵包師！",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "dd7311eb-841b-4f55-94ad-5caff4623139",
+    "run_id": "c43a2eb1-09e1-4757-8412-2391126c5596",
+    "status": "completed",
+    "overall": "met",
+    "summary": "文案包含活動名稱、正確日期與時間、完整地點、費用與名額，以及報名截止日；六項驗收條件均符合。",
+    "criterion_results": [
+      {
+        "criterion_id": "a9eed8c3-8644-42ba-80bd-d287e6fe95cf",
+        "text": "活動名稱「小小麵包師」完整出現",
+        "result": "passed",
+        "source": "model",
+        "reason": "文案完整寫出活動名稱「小小麵包師」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "🥐【小小麵包師】親子烘焙體驗 🥐",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d0672882-bc6e-41f1-aae8-3cb359dbccf1",
+        "text": "日期 12 月 6 日正確（有寫星期時必須是星期日）",
+        "result": "passed",
+        "source": "model",
+        "reason": "日期寫為 2026 年 12 月 6 日，星期日也正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "📅 日期｜2026 年 12 月 6 日（日）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d9bb9b46-6047-4035-8b1d-c676224374f2",
+        "text": "時間為 10:00 到 12:00（上午 10 點到 12 點等寫法皆可）",
+        "result": "passed",
+        "source": "model",
+        "reason": "時間寫為上午 10:00 到 12:00。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "⏰ 時間｜上午 10:00 到 12:00",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "083ca3f5-2683-4c31-a3cb-9ca911c517d1",
+        "text": "地點為幸福社區活動中心 2 樓烘焙教室",
+        "result": "passed",
+        "source": "model",
+        "reason": "地點完整寫為幸福社區活動中心 2 樓烘焙教室。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "📍 地點｜幸福社區活動中心 2 樓烘焙教室",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "da543f7a-4b0e-4557-8f71-af023568fb77",
+        "text": "費用為每組 450 元，名額為 20 組",
+        "result": "passed",
+        "source": "model",
+        "reason": "費用為每組 450 元，名額為 20 組。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "💰 費用｜每組（1 大 1 小）450 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "👨‍👧 名額｜限額 20 組",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7ff1230e-0a7b-4691-aeb5-efaff4185814",
+        "text": "報名截止日為 11 月 25 日",
+        "result": "passed",
+        "source": "model",
+        "reason": "報名截止日寫為 11 月 25 日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "📝 報名截止｜11 月 25 日",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1487 input and 307 output tokens on skillhub-run; reported cost $0.0029 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆計算以下雪板組租賃報價，列出基本租金、旺季加成與總租金。\n起租日期 | 天數 | 套數\n2026-12-19 | 1 | 1\n2026-12-20 | 1 | 2\n2026-12-19 | 3 | 1\n2027-01-05 | 1 | 1\n2027-01-06 | 1 | 1\n2026-12-31 | 6 | 2",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入第 1 筆（2026-12-19 起租、1 天、1 套），輸出基本租金 800 元、旺季加成 0 元、總租金 800 元。"
+    },
+    {
+      "text": "對試跑輸入第 2 筆（2026-12-20 起租、1 天、2 套），輸出基本租金 1600 元、旺季加成 320 元、總租金 1920 元。"
+    },
+    {
+      "text": "對試跑輸入第 3 筆（2026-12-19 起租、3 天、1 套），因租期涵蓋 12 月 20 日，輸出基本租金 2400 元、旺季加成 480 元、總租金 2880 元。"
+    },
+    {
+      "text": "對試跑輸入第 4 筆（2027-01-05 起租、1 天、1 套），輸出基本租金 800 元、旺季加成 160 元、總租金 960 元。"
+    },
+    {
+      "text": "對試跑輸入第 5 筆（2027-01-06 起租、1 天、1 套），輸出基本租金 800 元、旺季加成 0 元、總租金 800 元。"
+    },
+    {
+      "text": "對試跑輸入第 6 筆（2026-12-31 起租、6 天、2 套），正確計入跨年且落在旺季的租期，輸出基本租金 9600 元、旺季加成 1920 元、總租金 11520 元。"
+    }
+  ],
+  "final_output": "雪板組租賃報價（旺季加成率 20%）\n\n| 起租日期 | 天數 | 套數 | 基本租金 | 旺季加成 | 總租金 |\n|---|---:|---:|---:|---:|---:|\n| 2026-12-19 | 1 | 1 | 800 元 | 0 元 | 800 元 |\n| 2026-12-20 | 1 | 2 | 1600 元 | 320 元 | 1920 元 |\n| 2026-12-19 | 3 | 1 | 2400 元 | 480 元 | 2880 元 |\n| 2027-01-05 | 1 | 1 | 800 元 | 160 元 | 960 元 |\n| 2027-01-06 | 1 | 1 | 800 元 | 0 元 | 800 元 |\n| 2026-12-31 | 6 | 2 | 9600 元 | 1920 元 | 11520 元 |",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "afef5047-578d-4162-b52e-f6569ef9b536",
+    "run_id": "89c1d669-abcd-4b58-930b-fca662c27518",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六筆報價均列出符合驗收標準的基本租金、旺季加成與總租金。",
+    "criterion_results": [
+      {
+        "criterion_id": "7a406ce2-30b6-40b3-95cb-95e504d49c39",
+        "text": "對試跑輸入第 1 筆（2026-12-19 起租、1 天、1 套），輸出基本租金 800 元、旺季加成 0 元、總租金 800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆的基本租金、旺季加成及總租金均符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-12-19 | 1 | 1 | 800 元 | 0 元 | 800 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "80d956e3-dcae-4bc5-8293-70c441f2ea45",
+        "text": "對試跑輸入第 2 筆（2026-12-20 起租、1 天、2 套），輸出基本租金 1600 元、旺季加成 320 元、總租金 1920 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆的三項金額均符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-12-20 | 1 | 2 | 1600 元 | 320 元 | 1920 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "54c269bd-7219-46cd-9ac8-3373c9372416",
+        "text": "對試跑輸入第 3 筆（2026-12-19 起租、3 天、1 套），因租期涵蓋 12 月 20 日，輸出基本租金 2400 元、旺季加成 480 元、總租金 2880 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆的租期涵蓋 12 月 20 日，輸出的三項金額均符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-12-19 | 3 | 1 | 2400 元 | 480 元 | 2880 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0f49d12d-731f-4293-b2d4-ac48ffd6d1b1",
+        "text": "對試跑輸入第 4 筆（2027-01-05 起租、1 天、1 套），輸出基本租金 800 元、旺季加成 160 元、總租金 960 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆的三項金額均符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2027-01-05 | 1 | 1 | 800 元 | 160 元 | 960 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2a06a53a-181b-4407-9f10-89645cd7710c",
+        "text": "對試跑輸入第 5 筆（2027-01-06 起租、1 天、1 套），輸出基本租金 800 元、旺季加成 0 元、總租金 800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆的三項金額均符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2027-01-06 | 1 | 1 | 800 元 | 0 元 | 800 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b7f51ba6-d2d8-48d2-b8cd-2040f31f1b39",
+        "text": "對試跑輸入第 6 筆（2026-12-31 起租、6 天、2 套），正確計入跨年且落在旺季的租期，輸出基本租金 9600 元、旺季加成 1920 元、總租金 11520 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 筆跨年租期的基本租金、旺季加成及總租金均符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-12-31 | 6 | 2 | 9600 元 | 1920 元 | 11520 元 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1553 input and 1062 output tokens on skillhub-run; reported cost $0.0041 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

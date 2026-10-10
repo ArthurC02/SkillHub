@@ -1,0 +1,185 @@
+{
+  "round": 2,
+  "sample_input": "請將以下三筆行政資料各自改寫成一則符合規則的員工 LINE 健檢通知。\n第一筆：健檢日期：2026年11月5日；集合時間：上午7:30；需空腹8小時。地點：市立健康中心3樓；請攜帶健保卡及身分證；請穿著方便捲袖的衣服；檢查前一天晚上避免飲酒；若有固定用藥，請先詢問醫師是否照常服用；報到後先至櫃台領取表單。\n第二筆：健檢日期：未提供；集合時間：上午8:00；需空腹8小時。地點：東區診所；請攜帶健保卡。\n第三筆：健檢日期：2026年11月12日；集合時間：未提供；需空腹8小時。地點：西區醫療中心；請穿著方便檢查的衣物。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入的三筆資料各自產生一則可辨識的 LINE 訊息，不混淆不同資料的內容。"
+    },
+    {
+      "text": "每則訊息最多 4 句，依句號、問號、驚嘆號計句，且不使用條列格式。"
+    },
+    {
+      "text": "第一筆訊息保留健檢日期「2026年11月5日」、集合時間「上午7:30」及「空腹8小時」的要求。"
+    },
+    {
+      "text": "第一筆若合併或省略任何非必要資訊，須另有一句明確指出實際合併或省略的內容，且不得聲稱保留了實際上未保留的細節。"
+    },
+    {
+      "text": "第二筆缺少健檢日期時，以「待補」標示日期缺漏，不捏造日期；仍保留集合時間「上午8:00」與空腹8小時要求。"
+    },
+    {
+      "text": "第三筆缺少集合時間時，以「待補」標示集合時間缺漏，不捏造時間；仍保留健檢日期「2026年11月12日」與空腹8小時要求。"
+    }
+  ],
+  "final_output": "【員工健檢通知】健檢日期：2026年11月5日；集合時間：上午7:30；需空腹 8 小時；地點：市立健康中心3樓；請攜帶健保卡及身分證，並穿著方便捲袖的衣服；檢查前一天晚上避免飲酒；如有固定用藥，請先詢問醫師是否照常服用；報到後先至櫃台領取表單。\n【員工健檢通知】健檢日期：待補；集合時間：上午8:00；需空腹 8 小時；地點：東區診所；請攜帶健保卡。\n【員工健檢通知】健檢日期：2026年11月12日；集合時間：待補；需空腹 8 小時；地點：西區醫療中心；請穿著方便檢查的衣物。",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "4581ebce-28e4-46d1-a688-dc2bb6773f2a",
+    "run_id": "e99d513b-8d9e-4892-86a4-cd0a25a51abc",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "三筆資料均各自形成簡短通知，必要日期、時間與空腹要求也已妥善呈現或標為待補。第一則合併了非必要資訊，但未另以一句交代合併內容，因此未滿足全部準則。",
+    "criterion_results": [
+      {
+        "criterion_id": "6108e84d-14cd-4e3f-9eef-1d7d3966d390",
+        "text": "試跑輸入的三筆資料各自產生一則可辨識的 LINE 訊息，不混淆不同資料的內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出有三則分行通知，各則的日期、時間與地點對應各自資料，未見混淆。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【員工健檢通知】健檢日期：2026年11月5日；集合時間：上午7:30；需空腹 8 小時；地點：市立健康中心3樓",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "【員工健檢通知】健檢日期：待補；集合時間：上午8:00；需空腹 8 小時；地點：東區診所",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "【員工健檢通知】健檢日期：2026年11月12日；集合時間：待補；需空腹 8 小時；地點：西區醫療中心",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "49486c5f-a0b4-45c8-ad16-bbdd28dbca00",
+        "text": "每則訊息最多 4 句，依句號、問號、驚嘆號計句，且不使用條列格式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三則訊息各以一個句號結尾，沒有問號、驚嘆號或條列格式；每則均不超過四句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【員工健檢通知】健檢日期：2026年11月5日；集合時間：上午7:30；需空腹 8 小時；地點：市立健康中心3樓；請攜帶健保卡及身分證，並穿著方便捲袖的衣服；檢查前一天晚上避免飲酒；如有固定用藥，請先詢問醫師是否照常服用；報到後先至櫃台領取表單。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "【員工健檢通知】健檢日期：待補；集合時間：上午8:00；需空腹 8 小時；地點：東區診所；請攜帶健保卡。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "【員工健檢通知】健檢日期：2026年11月12日；集合時間：待補；需空腹 8 小時；地點：西區醫療中心；請穿著方便檢查的衣物。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3dc05569-babc-4d19-92be-bd0304c80157",
+        "text": "第一筆訊息保留健檢日期「2026年11月5日」、集合時間「上午7:30」及「空腹8小時」的要求。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第一則保留指定健檢日期、集合時間及空腹八小時要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢日期：2026年11月5日；集合時間：上午7:30；需空腹 8 小時",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "124d1448-a8f6-4a3c-8c0e-80de2c4152ab",
+        "text": "第一筆若合併或省略任何非必要資訊，須另有一句明確指出實際合併或省略的內容，且不得聲稱保留了實際上未保留的細節。",
+        "result": "failed",
+        "source": "model",
+        "reason": "第一則將攜帶證件與穿著要求合併敘述，卻沒有另以一句明確指出合併了哪些內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【員工健檢通知】健檢日期：2026年11月5日；集合時間：上午7:30；需空腹 8 小時；地點：市立健康中心3樓；請攜帶健保卡及身分證，並穿著方便捲袖的衣服；檢查前一天晚上避免飲酒；如有固定用藥，請先詢問醫師是否照常服用；報到後先至櫃台領取表單。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "74e9d1ea-57ff-410d-a8b3-657ec6707254",
+        "text": "第二筆缺少健檢日期時，以「待補」標示日期缺漏，不捏造日期；仍保留集合時間「上午8:00」與空腹8小時要求。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第二則以「待補」標示健檢日期，未捏造日期，並保留上午8:00及空腹八小時要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【員工健檢通知】健檢日期：待補；集合時間：上午8:00；需空腹 8 小時；地點：東區診所；請攜帶健保卡。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c7625ca6-d33a-4ca4-b22a-b10beb09e242",
+        "text": "第三筆缺少集合時間時，以「待補」標示集合時間缺漏，不捏造時間；仍保留健檢日期「2026年11月12日」與空腹8小時要求。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第三則以「待補」標示集合時間，未捏造時間，並保留指定日期及空腹八小時要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【員工健檢通知】健檢日期：2026年11月12日；集合時間：待補；需空腹 8 小時；地點：西區醫療中心；請穿著方便檢查的衣物。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1705 input and 5745 output tokens on skillhub-run; reported cost $0.0074 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 43,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "round": 0,
+  "sample_input": "鯖魚我拿 4 條，一條 85 啦，透抽 2 隻一隻 190，蚵仔 1 盒 150。對了保冷袋 20、運費 100 這兩個不用算。",
+  "acceptance_criteria": [
+    {
+      "text": "回覆的總額為 870 元"
+    },
+    {
+      "text": "總額沒有把保冷袋 20 元或運費 100 元算進去"
+    }
+  ],
+  "final_output": "魚貨總額：**870 元**\n\n- 鯖魚：4 條 × 85 元＝340 元\n- 透抽：2 隻 × 190 元＝380 元\n- 蚵仔：1 盒 × 150 元＝150 元\n\n保冷袋 20 元、運費 100 元不計入。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "22402c5e-70c0-4de9-aaac-f09fb9807ea5",
+    "run_id": "6fe50cfd-9d69-47aa-b3cc-854ccee1300a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均達成：魚貨總額為 870 元，未計入保冷袋與運費。",
+    "criterion_results": [
+      {
+        "criterion_id": "f929c7d3-84ae-4148-ad0d-7206174a5040",
+        "text": "回覆的總額為 870 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆的魚貨總額為 870 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "魚貨總額：**870 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b7a168de-1137-4602-a924-6cd1f7484288",
+        "text": "總額沒有把保冷袋 20 元或運費 100 元算進去",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆列出的魚貨金額合計為 870 元，並明確表示保冷袋與運費不計入。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "保冷袋 20 元、運費 100 元不計入。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "魚貨總額：**870 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1534 input and 639 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

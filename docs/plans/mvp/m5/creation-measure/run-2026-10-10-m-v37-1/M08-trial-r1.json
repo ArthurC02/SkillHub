@@ -1,0 +1,223 @@
+{
+  "round": 1,
+  "sample_input": "請核對以下各筆訂單，整理品項、數量、單價與金額，並依規則計算總額或指出需確認之處。\n\nA單｜日期：2025-03-10｜幣別：NT$\n孔雀魚苗 120 尾，單價 0.8；水蘊草 15 株，單價 12；運費 50；石頭 2 袋，單價 20。\n\nB單｜日期：2025-03-11｜幣別：NT$\n孔雀魚苗 20 尾，單價 1；孔雀魚苗 25 尾，單價 1。\n\nC單｜日期：2025-02-30｜幣別：NT$\n孔雀魚苗 10 尾，單價 1。\n\nD單｜日期：2025-03-12｜幣別：NT$\n孔雀魚苗 -3 尾，單價 1。\n\nE單｜日期：2025-03-13｜幣別：NT$\n孔雀魚苗，單價 2；水蘊草 3 株，單價 10。\n\nF單｜日期：2025-03-14｜幣別：NT$\n水蘊草 4 株，單價未提供。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入中的「A單」須列出孔雀魚苗 120 尾、單價 NT$0.8、金額 NT$96；水蘊草 15 株、單價 NT$12、金額 NT$180；排除運費與石頭後，最終總額須為 NT$276。"
+    },
+    {
+      "text": "對「B單」，須指出同一訂單的孔雀魚苗數量同時為 20 尾及 25 尾，請人確認；不得自行選一個數量，也不得輸出該訂單的最終總額。"
+    },
+    {
+      "text": "對「C單」，須指出日期 2025-02-30 無效、請人確認，且不得輸出該訂單的最終總額。"
+    },
+    {
+      "text": "對「D單」，須指出孔雀魚苗數量為負數、請人確認，且不得輸出該訂單的最終總額。"
+    },
+    {
+      "text": "對「E單」，須標記孔雀魚苗缺少數量並請人補充；不得臆測該品項數量或宣告最終總額，但須將已知的水蘊草金額 NT$30 列為可計算小計。"
+    },
+    {
+      "text": "對「F單」，須標記水蘊草缺少單價並請人補充；不得臆測單價或宣告最終總額。"
+    }
+  ],
+  "final_output": "## 訂單核對結果\n\n### A單｜2025-03-10｜NT$\n| 品項 | 數量 | 單價 | 金額 | 處理 |\n|---|---:|---:|---:|---|\n| 孔雀魚苗 | 120 尾 | 0.8 | NT$96 | 計入 |\n| 水蘊草 | 15 株 | 12 | NT$180 | 計入 |\n| 運費 | 數量未提供 | 原文金額 50 | NT$50 | 排除；不影響商品總額 |\n| 石頭 | 2 袋 | 20 | NT$40 | 排除 |\n\n**魚苗／水草小計：NT$276**\n\n### B單｜2025-03-11｜NT$\n| 品項 | 數量 | 單價 | 金額 | 處理 |\n|---|---:|---:|---:|---|\n| 孔雀魚苗 | 20、25 尾 | 1、1 | 未計算 | 同一品項有不同數量，待確認 |\n\n**訂單總額不提供，請確認數量是 20 尾或 25 尾，或說明是否為兩筆不同品項紀錄。**\n\n### C單｜2025-02-30｜NT$\n| 品項 | 數量 | 單價 | 品項金額 | 處理 |\n|---|---:|---:|---:|---|\n| 孔雀魚苗 | 10 尾 | 1 | NT$10 | 日期無效，待確認 |\n\n**「2025-02-30」不是有效日期；因此不提供此單小計或總額。**\n\n### D單｜2025-03-12｜NT$\n| 品項 | 數量 | 單價 | 金額 | 處理 |\n|---|---:|---:|---:|---|\n| 孔雀魚苗 | -3 尾 | 1 | 未計算 | 數量為負，待確認 |\n\n**此單不提供小計或總額，請確認數量。**\n\n### E單｜2025-03-13｜NT$\n| 品項 | 數量 | 單價 | 品項金額 | 處理 |\n|---|---:|---:|---:|---|\n| 孔雀魚苗 | 未提供 | 2 | 未計算 | 數量及單位未提供 |\n| 水蘊草 | 3 株 | 10 | NT$30 | 計入 |\n\n**已知可計算小計：NT$30。因孔雀魚苗數量未提供，不提供此單最終總額。**\n\n### F單｜2025-03-14｜NT$\n| 品項 | 數量 | 單價 | 金額 | 處理 |\n|---|---:|---:|---:|---|\n| 水蘊草 | 4 株 | 未提供 | 未計算 | 單價未提供 |\n\n**目前可計算小計：NT$0（沒有完整可計價的品項）；不提供此單最終總額。**\n\n目前只有 A 單可確認魚苗與水草商品總額；其餘訂單依上述缺漏或矛盾待補充確認。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "501a7ce4-3e78-4632-b97a-346c1a0ed655",
+    "run_id": "c737e6a4-8527-4d1e-99b5-6524e2af8041",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收條件均已達成。A單正確計算商品總額；B至F單分別標示矛盾、無效日期或資料缺漏，且未提供不應確認的最終總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "b61e0e96-022d-46ed-a926-bcadc9850b16",
+        "text": "試跑輸入中的「A單」須列出孔雀魚苗 120 尾、單價 NT$0.8、金額 NT$96；水蘊草 15 株、單價 NT$12、金額 NT$180；排除運費與石頭後，最終總額須為 NT$276。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A單列出兩項商品的正確數量、單價與金額，排除運費和石頭後，商品總額為 NT$276。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 孔雀魚苗 | 120 尾 | 0.8 | NT$96 | 計入 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 水蘊草 | 15 株 | 12 | NT$180 | 計入 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 石頭 | 2 袋 | 20 | NT$40 | 排除 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 運費 | 數量未提供 | 原文金額 50 | NT$50 | 排除；不影響商品總額 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**魚苗／水草小計：NT$276**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "923cd083-b07e-4dce-ab22-fc78775557c8",
+        "text": "對「B單」，須指出同一訂單的孔雀魚苗數量同時為 20 尾及 25 尾，請人確認；不得自行選一個數量，也不得輸出該訂單的最終總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "B單保留孔雀魚苗的 20 尾與 25 尾兩個數量，要求確認，未選定數量或提供最終總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 孔雀魚苗 | 20、25 尾 | 1、1 | 未計算 | 同一品項有不同數量，待確認 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**訂單總額不提供，請確認數量是 20 尾或 25 尾，或說明是否為兩筆不同品項紀錄。**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7c94a59e-1ae5-4f43-8080-99da611a4ef6",
+        "text": "對「C單」，須指出日期 2025-02-30 無效、請人確認，且不得輸出該訂單的最終總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C單指出 2025-02-30 是無效日期，將其標為待確認，且不提供訂單總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 孔雀魚苗 | 10 尾 | 1 | NT$10 | 日期無效，待確認 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**「2025-02-30」不是有效日期；因此不提供此單小計或總額。**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "584318ca-dbe2-47a3-ade4-34df6b626016",
+        "text": "對「D單」，須指出孔雀魚苗數量為負數、請人確認，且不得輸出該訂單的最終總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "D單指出孔雀魚苗數量 -3 尾為負數，請求確認數量，且未提供最終總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 孔雀魚苗 | -3 尾 | 1 | 未計算 | 數量為負，待確認 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**此單不提供小計或總額，請確認數量。**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ba7bd974-2f73-40f6-bb6f-62680cf7c12e",
+        "text": "對「E單」，須標記孔雀魚苗缺少數量並請人補充；不得臆測該品項數量或宣告最終總額，但須將已知的水蘊草金額 NT$30 列為可計算小計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "E單標記孔雀魚苗數量未提供，未臆測數量或給出最終總額；水蘊草金額及已知可計算小計均列為 NT$30，並表示缺漏待補充。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 孔雀魚苗 | 未提供 | 2 | 未計算 | 數量及單位未提供 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 水蘊草 | 3 株 | 10 | NT$30 | 計入 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**已知可計算小計：NT$30。因孔雀魚苗數量未提供，不提供此單最終總額。**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "其餘訂單依上述缺漏或矛盾待補充確認。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b64820b4-0d75-42c3-a0a7-411f222f39e0",
+        "text": "對「F單」，須標記水蘊草缺少單價並請人補充；不得臆測單價或宣告最終總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "F單標記水蘊草單價未提供，未臆測單價或提供最終總額，並表示缺漏待補充。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 水蘊草 | 4 株 | 未提供 | 未計算 | 單價未提供 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**目前可計算小計：NT$0（沒有完整可計價的品項）；不提供此單最終總額。**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "其餘訂單依上述缺漏或矛盾待補充確認。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1572 input and 4306 output tokens on skillhub-run; reported cost $0.0061 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 51,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

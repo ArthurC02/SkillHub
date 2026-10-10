@@ -1,0 +1,146 @@
+{
+  "round": 0,
+  "sample_input": "我 2026-12-28 起租，租 2 天，1 套雪板組，幫我報價。",
+  "acceptance_criteria": [
+    {
+      "text": "直接回覆了一個明確的總租金金額，沒有只反問加成幅度而不報價"
+    },
+    {
+      "text": "明確寫出報價所採用的加成幅度或加成假設"
+    },
+    {
+      "text": "回覆的總租金等於 1,600 元乘以（1 + 其所寫的加成幅度），前後一致"
+    },
+    {
+      "text": "所採用的加成幅度大於 0% 且不超過 100%"
+    }
+  ],
+  "final_output": "起租日期：2026-12-28\n租借天數：2 天\n雪板組數：1 套\n基本租金：1600 元\n旺季加成：320 元\n總租金：1920 元",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "a9f37374-f07f-453d-bb64-6e5e2f998285",
+    "run_id": "94eb7135-8eb4-4c6e-9d5f-c78b5a08e58a",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "已報出 1920 元總租金；320 元加成相當於基本租金的 20%。但回覆沒有明寫加成比例或假設，未滿足要求以所寫加成幅度核對總租金的條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "b3643236-0ce3-4a07-b06a-9cd3d27b7dd7",
+        "text": "直接回覆了一個明確的總租金金額，沒有只反問加成幅度而不報價",
+        "result": "passed",
+        "source": "model",
+        "reason": "直接報出明確的總租金，沒有只反問加成幅度。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總租金：1920 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7153fe13-fb25-452e-9dcc-e2ca1c8216c7",
+        "text": "明確寫出報價所採用的加成幅度或加成假設",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆只寫出加成金額 320 元，沒有明確寫出加成百分比或加成假設。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "旺季加成：320 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "01562b96-2a73-415b-acab-20cfa895e387",
+        "text": "回覆的總租金等於 1,600 元乘以（1 + 其所寫的加成幅度），前後一致",
+        "result": "failed",
+        "source": "model",
+        "reason": "1600 元加上 320 元確實等於 1920 元，但回覆未寫出可代入「1＋加成幅度」的加成比例，因此不符合以其所寫幅度核對總租金的條件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "基本租金：1600 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "旺季加成：320 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總租金：1920 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d4fac663-047f-4215-b77f-ee370d402a08",
+        "text": "所採用的加成幅度大於 0% 且不超過 100%",
+        "result": "passed",
+        "source": "model",
+        "reason": "依報價中的基本租金與加成金額，可算出採用的加成幅度為 320 ÷ 1600＝20%，大於 0% 且不超過 100%。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "基本租金：1600 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "旺季加成：320 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1553 input and 631 output tokens on skillhub-run; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

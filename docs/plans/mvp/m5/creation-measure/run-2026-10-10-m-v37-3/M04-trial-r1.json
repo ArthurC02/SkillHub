@@ -1,0 +1,139 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下雪板組租借的租金，逐筆列出基本租金、旺季日數、旺季加成與總租金。\nA：起租日期 2026-12-19，租借 19 天，1 套\nB：起租日期 2027-01-04，租借 2 天，2 套\nC：起租日期 2026-02-10，租借 3 天，1 套",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中的每筆資料，輸出基本租金、旺季日數、旺季加成及總租金，並以元標示金額。"
+    },
+    {
+      "text": "對資料 A，將 2026-12-19 起租的 19 個連續租借日判定為 17 個旺季日，並回報基本租金 15,200 元、旺季加成 2,720 元、總租金 17,920 元。"
+    },
+    {
+      "text": "對資料 B，將 2027-01-04 起租的 2 個租借日（含 1 月 5 日）都判定為旺季日，並回報基本租金 3,200 元、旺季加成 640 元、總租金 3,840 元。"
+    },
+    {
+      "text": "對資料 C，判定旺季日數為 0，並回報基本租金 2,400 元、旺季加成 0 元、總租金 2,400 元。"
+    }
+  ],
+  "final_output": "A：基本租金 15,200 元；旺季日數 17 日；旺季加成 2,720 元；總租金 17,920 元。  \nB：基本租金 3,200 元；旺季日數 2 日；旺季加成 640 元；總租金 3,840 元。  \nC：基本租金 2,400 元；旺季日數 0 日；旺季加成 0 元；總租金 2,400 元。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "98687e24-7589-44b9-ac8e-ec09b033dc16",
+    "run_id": "43efb1a0-2ea9-4361-8043-2eda049cbd74",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成；A、B、C 的逐筆報價及旺季日數符合要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "5eb49d01-c063-4ebd-9f18-251de5b96a11",
+        "text": "對試跑輸入中的每筆資料，輸出基本租金、旺季日數、旺季加成及總租金，並以元標示金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A、B、C 三筆均逐筆列出基本租金、旺季日數、旺季加成及總租金，金額均標示為元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "A：基本租金 15,200 元；旺季日數 17 日；旺季加成 2,720 元；總租金 17,920 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "B：基本租金 3,200 元；旺季日數 2 日；旺季加成 640 元；總租金 3,840 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "C：基本租金 2,400 元；旺季日數 0 日；旺季加成 0 元；總租金 2,400 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d2284b7c-ae92-411a-8a2a-541cfcc7edb5",
+        "text": "對資料 A，將 2026-12-19 起租的 19 個連續租借日判定為 17 個旺季日，並回報基本租金 15,200 元、旺季加成 2,720 元、總租金 17,920 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 回報 17 個旺季日，基本租金、旺季加成及總租金均符合指定金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "A：基本租金 15,200 元；旺季日數 17 日；旺季加成 2,720 元；總租金 17,920 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6cbaf4ec-310b-4bbc-b34d-df0d55b65adb",
+        "text": "對資料 B，將 2027-01-04 起租的 2 個租借日（含 1 月 5 日）都判定為旺季日，並回報基本租金 3,200 元、旺季加成 640 元、總租金 3,840 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "B 的兩個租借日均計為旺季日，且三項金額均符合指定數值。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "B：基本租金 3,200 元；旺季日數 2 日；旺季加成 640 元；總租金 3,840 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c56e5ed9-1dcc-4c00-a94d-d3e0d5006832",
+        "text": "對資料 C，判定旺季日數為 0，並回報基本租金 2,400 元、旺季加成 0 元、總租金 2,400 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C 回報 0 個旺季日，基本租金 2,400 元、旺季加成 0 元及總租金 2,400 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "C：基本租金 2,400 元；旺季日數 0 日；旺季加成 0 元；總租金 2,400 元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1528 input and 415 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

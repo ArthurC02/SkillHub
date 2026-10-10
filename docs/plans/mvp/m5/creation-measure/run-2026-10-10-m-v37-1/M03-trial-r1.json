@@ -1,0 +1,186 @@
+{
+  "round": 1,
+  "sample_input": "幫我算這筆海鮮訂單的魚貨商品總額（元），也列出沒算進去的費用和待確認項目。\n今天要午仔魚兩尾，一尾180；白蝦半斤，一斤320；蛤蜊兩斤，每斤90。透抽一尾。冰袋20元，運費120元。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入，能辨識完整魚貨資料：午仔魚 2 尾、每尾 180 元；白蝦 0.5 斤、每斤 320 元；蛤蜊 2 斤、每斤 90 元。"
+    },
+    {
+      "text": "對上述完整魚貨逐項計算為 360 元、160 元與 180 元，並得到魚貨商品總額 700 元。"
+    },
+    {
+      "text": "不把冰袋 20 元或運費 120 元計入魚貨商品總額。"
+    },
+    {
+      "text": "不猜測透抽的單價；將「透抽一尾」列為單價待確認，且不將它計入總額。"
+    },
+    {
+      "text": "回覆以元呈現總額，並以簡短明確的方式列出總額、排除的非魚貨費用及待確認項目。"
+    }
+  ],
+  "final_output": "魚貨商品總額：**700 元**\n\n- 午仔魚：2 尾 × 180 元／尾＝360 元\n- 白蝦：半斤 × 320 元／斤＝160 元\n- 蛤蜊：2 斤 × 90 元／斤＝180 元\n\n未計入的費用：冰袋 20 元、運費 120 元。\n\n待確認：透抽 1 尾的單價未提供，尚未計入總額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0e4b4f0c-3a73-4d2f-9a98-c88a1bc4194c",
+    "run_id": "be03f5c3-7680-4469-b3f6-d7c8a9f6420a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收標準均已達成。最終回覆正確計算魚貨商品總額為 700 元，並清楚列出未計入的費用與透抽單價待確認事項。",
+    "criterion_results": [
+      {
+        "criterion_id": "6526ad2a-1dd6-4221-92da-f241a66724f9",
+        "text": "對試跑輸入，能辨識完整魚貨資料：午仔魚 2 尾、每尾 180 元；白蝦 0.5 斤、每斤 320 元；蛤蜊 2 斤、每斤 90 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆正確列出三項魚貨的數量與單價；白蝦半斤即 0.5 斤。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "午仔魚：2 尾 × 180 元／尾＝360 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "白蝦：半斤 × 320 元／斤＝160 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "蛤蜊：2 斤 × 90 元／斤＝180 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "15cb4935-b300-4ec9-b188-82a8ba0a7949",
+        "text": "對上述完整魚貨逐項計算為 360 元、160 元與 180 元，並得到魚貨商品總額 700 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "逐項金額為 360、160、180 元，魚貨商品總額為 700 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "魚貨商品總額：**700 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "午仔魚：2 尾 × 180 元／尾＝360 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "白蝦：半斤 × 320 元／斤＝160 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "蛤蜊：2 斤 × 90 元／斤＝180 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7cdb2e59-3f2b-444e-9f26-b63ac8a6e970",
+        "text": "不把冰袋 20 元或運費 120 元計入魚貨商品總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "冰袋與運費明列為未計入費用，700 元總額只包含三項已計價魚貨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "魚貨商品總額：**700 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "未計入的費用：冰袋 20 元、運費 120 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d5340817-e63a-4205-86af-316f15a0e11c",
+        "text": "不猜測透抽的單價；將「透抽一尾」列為單價待確認，且不將它計入總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "將透抽 1 尾列為單價待確認，沒有猜測價格，也未計入總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "待確認：透抽 1 尾的單價未提供，尚未計入總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1a2461a9-1d80-48e5-8d41-9775c26b10e2",
+        "text": "回覆以元呈現總額，並以簡短明確的方式列出總額、排除的非魚貨費用及待確認項目。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆簡短明確，以元列出總額、排除費用及待確認項目。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "魚貨商品總額：**700 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "未計入的費用：冰袋 20 元、運費 120 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "待確認：透抽 1 尾的單價未提供，尚未計入總額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1614 input and 4071 output tokens on skillhub-run; reported cost $0.0064 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 38,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}
