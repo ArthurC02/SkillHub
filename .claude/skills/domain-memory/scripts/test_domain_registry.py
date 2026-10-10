@@ -1542,6 +1542,58 @@ class DomainRegistryTest(unittest.TestCase):
             )[1],
         )
 
+    def test_each_record_and_reference_defect_is_named(self) -> None:
+        orders = {"id": "orders", "name": "Orders", "responsibility": "Own orders."}
+        billing = {"id": "billing", "name": "Billing", "responsibility": "Own invoices."}
+        cases = [
+            ("duplicate id", "contexts.json", [orders, dict(orders)], "contexts.json contains duplicate id"),
+            ("blank id", "contexts.json", [orders, {**billing, "id": ""}], "contexts.json entries require non-empty id"),
+            ("unknown status", "contexts.json", [{**orders, "status": "pending"}, billing],
+             "contexts.json:orders has an invalid status"),
+            ("decision review status", "decisions.json", [{"id": "d", "review_status": "bogus", "status": "candidate"}],
+             "decisions.json:d has an invalid status"),
+            ("reviewed without fields", "rules.json",
+             [{"id": "r", "contexts": ["orders"], "status": "reviewed", "evidence": ["x"]}],
+             "rules.json:r is reviewed but missing statement, review"),
+            ("reviewed without evidence", "rules.json",
+             [{"id": "r", "contexts": ["orders"], "statement": "s", "review": {"p": 1}, "status": "reviewed"}],
+             "rules.json:r is reviewed but lacks evidence"),
+            ("term without contexts", "vocabulary.json", [{"id": "t", "contexts": []}], "vocabulary.json:t requires contexts"),
+            ("rule in unknown context", "rules.json", [{"id": "r", "contexts": ["ghost"]}],
+             "rules.json:r references unknown context"),
+            ("aggregate in unknown context", "aggregates.json", [{"id": "a", "context": "ghost"}],
+             "aggregates.json:a references unknown context"),
+            ("unknown consumer", "interactions.json",
+             [{"id": "i", "producer_context": "orders", "consumer_context": "ghost"}],
+             "interactions.json:i references unknown context"),
+            ("policy to unknown context", "dependency-policies.json",
+             [{"id": "p", "from_context": "orders", "to_context": "ghost"}],
+             "dependency-policies.json:p references unknown context"),
+            ("contract producer", "contracts.json", [{"id": "c", "producer_context": "ghost", "consumer_contexts": []}],
+             "contracts.json:c references unknown producer context"),
+            ("contract consumer", "contracts.json",
+             [{"id": "c", "producer_context": "orders", "consumer_contexts": ["ghost"]}],
+             "contracts.json:c references unknown consumer context"),
+            ("unknown contract", "interactions.json",
+             [{"id": "i", "producer_context": "orders", "consumer_context": "billing", "contract_id": "none"}],
+             "interactions.json:i references unknown contract"),
+        ]
+        registry = self.repo / "memory" / "registry"
+        pristine = {name: (registry / name).read_text(encoding="utf-8") for name in ASSET_KEYS}
+        for label, name, records, message in cases:
+            with self.subTest(label):
+                for asset, text in pristine.items():
+                    (registry / asset).write_text(text, encoding="utf-8")
+                if name != "contexts.json":
+                    self.seed("contexts.json", [orders, billing])
+                self.seed(name, records)
+                self.assertIn(message, validate(self.repo / "memory", None, False))
+        with self.subTest("candidate where reviewed is required"):
+            for asset, text in pristine.items():
+                (registry / asset).write_text(text, encoding="utf-8")
+            self.seed("contexts.json", [orders])
+            self.assertIn("contexts.json:orders is not reviewed", validate(self.repo / "memory", None, True))
+
     def test_audit_rejects_reserved_fields_before_writing(self) -> None:
         root = self.repo / "memory"
         append_audit(root, {"operation": "first"})

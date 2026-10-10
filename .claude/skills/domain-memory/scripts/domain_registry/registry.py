@@ -83,7 +83,39 @@ def _load_registry_assets(
     return records, errors
 
 
-def _validate_asset_records(  # noqa: C901
+def _asset_header_errors(name: str, asset: dict[str, Any], entries: list[dict[str, Any]]) -> list[str]:
+    errors: list[str] = []
+    if asset.get("format") != ASSET_FORMATS[name]:
+        errors.append(f"{name} has an invalid format")
+    if asset.get("status") not in REGISTRY_STATUSES:
+        errors.append(f"{name} has an invalid status")
+    identifiers = [entry.get("id") for entry in entries]
+    if not all(isinstance(identifier, str) and identifier for identifier in identifiers):
+        errors.append(f"{name} entries require non-empty id")
+    elif len(identifiers) != len(set(identifiers)):
+        errors.append(f"{name} contains duplicate id")
+    return errors
+
+
+def _entry_status_errors(
+    name: str, entry: dict[str, Any], status: Any, require_reviewed: bool  # noqa: FBT001
+) -> list[str]:
+    label = f"{name}:{entry.get('id')}"
+    if status not in REGISTRY_STATUSES:
+        return [f"{label} has an invalid status"]
+    errors: list[str] = []
+    if status == "reviewed":
+        missing = [field for field in REVIEW_REQUIRED_FIELDS[name] if not entry.get(field)]
+        if missing:
+            errors.append(f"{label} is reviewed but missing {', '.join(missing)}")
+        if not entry.get("evidence"):
+            errors.append(f"{label} is reviewed but lacks evidence")
+    if require_reviewed and status != "reviewed":
+        errors.append(f"{label} is not reviewed")
+    return errors
+
+
+def _validate_asset_records(
     root: Path,
     records: dict[str, list[dict[str, Any]]],
     require_reviewed: bool,  # noqa: FBT001
@@ -91,39 +123,11 @@ def _validate_asset_records(  # noqa: C901
     errors: list[str] = []
     for name, entries in records.items():
         asset = load_json(registry_dir(root) / name)
-        if asset.get("format") != ASSET_FORMATS[name]:
-            errors.append(f"{name} has an invalid format")
-        asset_status = asset.get("status")
-        if asset_status not in REGISTRY_STATUSES:
-            errors.append(f"{name} has an invalid status")
-        identifiers = [entry.get("id") for entry in entries]
-        if not all(
-            isinstance(identifier, str) and identifier for identifier in identifiers
-        ):
-            errors.append(f"{name} entries require non-empty id")
-        elif len(identifiers) != len(set(identifiers)):
-            errors.append(f"{name} contains duplicate id")
+        errors.extend(_asset_header_errors(name, asset, entries))
         status_field = "review_status" if name == "decisions.json" else "status"
         for entry in entries:
-            label = f"{name}:{entry.get('id')}"
-            status = entry.get(status_field, asset_status)
-            if status not in REGISTRY_STATUSES:
-                errors.append(f"{label} has an invalid status")
-                continue
-            if status == "reviewed":
-                missing = [
-                    field
-                    for field in REVIEW_REQUIRED_FIELDS[name]
-                    if not entry.get(field)
-                ]
-                if missing:
-                    errors.append(
-                        f"{label} is reviewed but missing {', '.join(missing)}"
-                    )
-                if not entry.get("evidence"):
-                    errors.append(f"{label} is reviewed but lacks evidence")
-            if require_reviewed and status != "reviewed":
-                errors.append(f"{label} is not reviewed")
+            status = entry.get(status_field, asset.get("status"))
+            errors.extend(_entry_status_errors(name, entry, status, require_reviewed))
     errors.extend(_context_placement_problems(records.get("contexts.json", [])))
     return errors
 
@@ -207,11 +211,29 @@ def _validate_confirmed_absences(
     return errors
 
 
-def _validate_context_references(  # noqa: C901
+SINGLE_CONTEXT_FIELDS = (
+    ("aggregates.json", ("context",)),
+    ("interactions.json", ("producer_context", "consumer_context")),
+    ("events.json", ("owner_context",)),
+    ("capabilities.json", ("context",)),
+    ("value-objects.json", ("context",)),
+)
+
+
+def _validate_context_references(
     records: dict[str, list[dict[str, Any]]],
 ) -> list[str]:
-    errors: list[str] = []
     known_contexts = {entry.get("id") for entry in records.get("contexts.json", [])}
+    return [
+        *_context_list_errors(records, known_contexts),
+        *_single_context_errors(records, known_contexts),
+        *_contract_party_errors(records, known_contexts),
+        *_interaction_contract_errors(records),
+    ]
+
+
+def _context_list_errors(records: dict[str, list[dict[str, Any]]], known_contexts: set[Any]) -> list[str]:
+    errors: list[str] = []
     for name in ("vocabulary.json", "rules.json"):
         for entry in records.get(name, []):
             contexts = entry.get("contexts")
@@ -219,25 +241,28 @@ def _validate_context_references(  # noqa: C901
                 errors.append(f"{name}:{entry.get('id')} requires contexts")
             elif set(contexts) - known_contexts:
                 errors.append(f"{name}:{entry.get('id')} references unknown context")
-    for name, fields in (
-        ("aggregates.json", ("context",)),
-        ("interactions.json", ("producer_context", "consumer_context")),
-        ("events.json", ("owner_context",)),
-        ("capabilities.json", ("context",)),
-        ("value-objects.json", ("context",)),
-    ):
-        errors.extend(
-            f"{name}:{entry.get('id')} references unknown context"
-            for entry in records.get(name, [])
-            for field in fields
-            if entry.get(field) not in known_contexts
-        )
+    return errors
+
+
+def _single_context_errors(records: dict[str, list[dict[str, Any]]], known_contexts: set[Any]) -> list[str]:
+    errors = [
+        f"{name}:{entry.get('id')} references unknown context"
+        for name, fields in SINGLE_CONTEXT_FIELDS
+        for entry in records.get(name, [])
+        for field in fields
+        if entry.get(field) not in known_contexts
+    ]
     errors.extend(
         f"dependency-policies.json:{entry.get('id')} references unknown context"
         for entry in records.get("dependency-policies.json", [])
         if entry.get("from_context") not in known_contexts
         or entry.get("to_context") not in known_contexts
     )
+    return errors
+
+
+def _contract_party_errors(records: dict[str, list[dict[str, Any]]], known_contexts: set[Any]) -> list[str]:
+    errors: list[str] = []
     for entry in records.get("contracts.json", []):
         if entry.get("producer_context") not in known_contexts:
             errors.append(
@@ -248,6 +273,11 @@ def _validate_context_references(  # noqa: C901
             errors.append(
                 f"contracts.json:{entry.get('id')} references unknown consumer context"
             )
+    return errors
+
+
+def _interaction_contract_errors(records: dict[str, list[dict[str, Any]]]) -> list[str]:
+    errors: list[str] = []
     contract_ids = {entry.get("id") for entry in records.get("contracts.json", [])}
     for entry in records.get("interactions.json", []):
         contract_id = entry.get("contract_id")
