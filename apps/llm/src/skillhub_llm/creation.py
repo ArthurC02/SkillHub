@@ -39,8 +39,22 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "skillhub-creation"
-PROMPT_VERSION = "creation-step/v39"
+PROMPT_VERSION = "creation-step/v40"
 CHECK_SCRIPT_PATH = "scripts/check_output.py"
+INPUT_SCRIPT_PATH = "scripts/check_input.py"
+INPUT_SCHEMA_PATH = "scripts/input_schema.json"
+INPUT_CHECK_SECTION = (
+    "## Input check (first step)\n\n"
+    "Before any other step, write every value the message gives into `input.json` as "
+    '`{{"records": [{{<field name>: <the value exactly as written>}}, ...]}}`, one record '
+    "per item, with the field names of `scripts/input_schema.json`, then run\n"
+    "`python scripts/check_input.py input.json`\n"
+    "from the directory holding this SKILL.md, adding `--today YYYY-MM-DD` when the message "
+    "states today's date. Every later step and script takes its values only from "
+    "`checked.json`. Copy every line it prints that starts with 假設：, 無法採用： or 未提供： "
+    "into the answer word for word; compute nothing from a value it refused, and still give "
+    "every result the other values settle.\n"
+)
 SHIPPED_SCRIPT_PATH = re.compile(r"^scripts/[^/]+\.py$")
 SHIPPED_REFERENCE_PATH = re.compile(r"^references/[^/]+\.md$")
 SCRIPTS_SECTION = (
@@ -86,7 +100,9 @@ CLAUSE_BREAK = re.compile(r"[。；;，,\n]")
 PER_UNIT = re.compile(r"每|各|\b(?:each|per|every)\b", re.IGNORECASE)
 SHIPPED_FILES_RULE = (
     "- `files`: every script the body runs, each with its full path under scripts/ and "
-    "its complete content; a body that runs a script the files do not ship is incomplete."
+    "its complete content; a body that runs a script the files do not ship is incomplete. "
+    "scripts/input_schema.json is a file too; scripts/check_input.py and "
+    "scripts/check_output.py are supplied by the platform, never by you."
 )
 DATA_TAG = "untrusted_creation_snapshot"
 REFERENCE_TAG = "untrusted_reference_skill"
@@ -411,9 +427,12 @@ DIAGNOSIS_INSTRUCTIONS = (
     "wording); when the cause is a countable limit the output overran or a fact it dropped, "
     "the edit is to add or correct the check_output.py flags (--max-sentences, --max-chars, "
     "--max-items, --require) the body's workflow step runs, never an instruction to count or "
-    "check by eye; when a computed figure or verdict is wrong and the rule it comes from is "
-    "implemented by a script the body runs, target files, name that script's path and say "
-    "which function or branch to fix, and leave the body alone; "
+    "check by eye; when a value that cannot be right was used, or a reading of a value "
+    "(a unit, a relative date, a figure in words, a score out of another total) was wrong "
+    "or not stated, target files and name the field, type or bound to add or correct in "
+    "scripts/input_schema.json; when a computed figure or verdict is wrong and the rule "
+    "it comes from is implemented by a script the body runs, target files, name that "
+    "script's path and say which function or branch to fix, and leave the body alone; "
     "target sample_input when the criterion cannot be decided from this sample in "
     "one run (a branch the sample does not take, a quantity it does not contain) — add the "
     "missing case and keep the cases the sample already had; target criteria when the "
@@ -484,83 +503,87 @@ PHASE_INSTRUCTIONS = {
         "uncertainty for every information gap that would require an assumption. Do not draft."
     ),
     "compose": (
-        "Compose a first draft from the exact confirmed requirements. Go must validate it "
-        "before completion. brief_confirmed is true: you are past confirmation, so return "
-        "outcome draft or tool_intent validate_draft; do not return confirm_brief again "
-        "unless the newest message is a user message that changes the requirements. "
-        "Either way the draft object must be present and complete (name, description, "
-        "compatibility, allowed_tools, the full SKILL.md body, files); outcome draft with "
-        "draft null is a wasted turn. The agent that runs the Skill has files and a shell "
-        "and nothing else: no login, no sending, no posting, no scheduling, no network, no "
-        "system it can change. A body never contains such a step and never has the agent "
-        "report one as done; it has the agent prepare the content ready to use and close the "
-        "answer with one line per such action that names the action, says plainly that this "
-        "agent cannot do it, and names who has to do it instead (the person asking, or whoever "
-        "the request puts in charge of it); a line that only says it cannot is incomplete. "
-        "These lines are required whenever the "
-        "request mentions such an action, even when it only asks for the document; the body "
-        "states this as a standing rule for whatever such action a run's request names, never "
-        "as a list of the actions foreseen now. The body "
-        "is a map, not a manual: what the Skill does, when, the steps in "
-        "order and the exact commands, in the language the user wrote in, under about 120 "
-        "lines. Anything longer — rule tables, templates, examples, background — "
-        "goes into references/<topic>.md shipped in files and linked from the body, one level "
-        "deep, with a line saying when to read it. Rules that turn inputs into a result "
-        "(thresholds, tiers, rates, caps, rounding, decision tables, sums, date arithmetic) "
-        "live in scripts/<name>.py: standard library only (the sandbox has Python 3.11 and no "
-        "package installation), argparse, the inputs as arguments, the result printed, exit "
-        "code 2 with a one-line message naming any value it cannot use instead of computing "
-        "with it, and asks for no argument the result does not depend on; a condition the "
-        "inputs already settle (the weekday of a given date, a sum of given parts) is worked "
-        "out by the script, and a condition nobody stated (whether a weekday is a public "
-        "holiday) is an optional argument with the ordinary case as its default, never a "
+        "Compose a first draft from the exact confirmed requirements. Go must validate it before "
+        "completion. brief_confirmed is true: you are past confirmation, so return outcome draft "
+        "or tool_intent validate_draft; do not return confirm_brief again unless the newest "
+        "message is a user message that changes the requirements. Either way the draft object "
+        "must be present and complete (name, description, compatibility, allowed_tools, the full "
+        "SKILL.md body, files); outcome draft with draft null is a wasted turn. The agent that "
+        "runs the Skill has files and a shell and nothing else: no login, no sending, no posting, "
+        "no scheduling, no network, no system it can change. A body never contains such a step "
+        "and never has the agent report one as done; it has the agent prepare the content ready "
+        "to use and close the answer with one line per such action that names the action, says "
+        "plainly that this agent cannot do it, and names who has to do it instead (the person "
+        "asking, or whoever the request puts in charge of it); a line that only says it cannot is "
+        "incomplete. These lines are required whenever the request mentions such an action, even "
+        "when it only asks for the document; the body states this as a standing rule for whatever "
+        "such action a run's request names, never as a list of the actions foreseen now. The body "
+        "is a map, not a manual: what the Skill does, when, the steps in order and the exact "
+        "commands, in the language the user wrote in, under about 120 lines. Anything longer — "
+        "rule tables, templates, examples, background — goes into references/<topic>.md shipped "
+        "in files and linked from the body, one level deep, with a line saying when to read it. "
+        "Rules that turn inputs into a result (thresholds, tiers, rates, caps, rounding, decision "
+        "tables, sums, date arithmetic) live in scripts/<name>.py: standard library only (the "
+        "sandbox has Python 3.11 and no package installation), argparse, the inputs as arguments, "
+        "the result printed, exit code 2 with a one-line message naming any value it cannot use "
+        "instead of computing with it, and asks for no argument the result does not depend on; a "
+        "condition the inputs already settle (the weekday of a given date, a sum of given parts) "
+        "is worked out by the script, and a condition nobody stated (whether a weekday is a "
+        "public holiday) is an optional argument with the ordinary case as its default, never a "
         "required one; a value the request left open (a rate, a multiplier, a surcharge) is "
         "likewise an optional argument with a common default (a surcharge the request says "
-        "applies defaults to a common positive rate, never zero), and whenever the script uses "
-        "a default it prints, next to the result, one line naming the value it assumed and the "
-        "argument that changes it; a default fills only a value nobody gave, never one that "
-        "was given and cannot be right; a script that sorts free-text input into categories "
-        "accepts the person's own wording and reads it by meaning (cover damaged counts as "
-        "defective), treats a category nobody mentioned as the ordinary case, and decides every "
-        "item its rules can decide even when another item is unclear; the body's step runs it "
-        "with `python scripts/<name>.py ...` from the directory holding this SKILL.md and "
-        "presents what it printed, copying every line that names an assumed value word for "
-        "word into the answer, and the body carries no worked answers — the script "
-        "produces them. When the request caps sentences, characters or items, or names facts "
-        "that must appear, the body's last step writes the answer to a file, runs `python "
-        "scripts/check_output.py` with the matching flags (--max-sentences, --max-chars, "
-        "--max-items, --require) until it prints OK, and answers with that file's content "
-        "only; the platform supplies that script. --require names the shortest core of each "
-        "must-keep fact (the figure, the time, the number) so everything around it can be "
-        "shortened, and neither the body nor a script ever plans a way out of the limit (no "
-        "keeping everything when it will not fit, no fixed too-long message). When the script "
-        "refuses an argument, the agent corrects that argument and runs it again; it never "
-        "leaves a result blank because of its own argument. The agent must act in one pass on the "
-        "input it is handed: it takes the common default for a missing setting (a rate, a "
-        "multiplier, the current date or time) and, next to the figure it produced, says "
-        "which default it took and that the person can change it, never withholding the "
-        "result for want of that setting; it gives a usable template with marked blanks when "
-        "the input itself is missing; it never invents a fact, writes every fact it was "
-        "given exactly as given "
-        "and never marks one as pending, and marks a missing one as not given in the "
-        "output's language, and never marks as not given a value it can work out from what "
-        "it was given; it totals what belongs together and shows the total whenever every "
-        "part of it is known; it names every value that "
-        "cannot be right (a date that does not exist, a negative count, two different values "
-        "for one thing, including a later remark that changes an earlier figure), asks the "
-        "person making the request, not someone else, to confirm each, gives no total that "
-        "depends on one, and questions nothing "
-        "else; a missing name, label or date it was not asked for never stops a calculation "
-        "or a document; when two "
-        "requirements cannot both hold it keeps the hard limit and says in one line what was "
-        "left out; and it delivers the artifact itself in this same answer, complete, with a "
-        "marked blank for anything not given, never a plan, a question or a promise to write "
-        "it once something is confirmed. A "
-        "Skill whose run ends in a question has failed every criterion. When a confirmed "
-        "diagram_understanding exists, the body walks its nodes as steps, in order, each "
-        "named as the diagram names it, and adds no step, condition, role or tool the "
-        "diagram does not show; where the diagram is silent, say so instead of inventing. "
-        "Go refuses a draft whose body skips a node."
+        "applies defaults to a common positive rate, never zero), and whenever the script uses a "
+        "default it prints, next to the result, one line naming the value it assumed and the "
+        "argument that changes it; a default fills only a value nobody gave, never one that was "
+        "given and cannot be right; a script that sorts free-text input into categories accepts "
+        "the person's own wording and reads it by meaning (cover damaged counts as defective), "
+        "treats a category nobody mentioned as the ordinary case, and decides every item its "
+        "rules can decide even when another item is unclear; the body's step runs it with `python "
+        "scripts/<name>.py ...` from the directory holding this SKILL.md and presents what it "
+        "printed, copying every line that names an assumed value word for word into the answer, "
+        "and the body carries no worked answers — the script produces them. When the input "
+        "carries dates, amounts, counts, durations or scores, ship scripts/input_schema.json: "
+        '{"fields": [{"name", "type": date, number, hours or text, and the checks that apply: '
+        'min, max, integer, units (a map from each unit word to its factor, such as {"度": 1, '
+        '"公升": 0.001}), out_of (the total a score is converted to), not_after_today (something '
+        "that already happened), not_before_today (a deadline ahead), not_before (the date field "
+        "it cannot precede)}]}; bounds come from what is possible (a count is at least 0, a day "
+        "has at most 24 hours, an age is at most 120) and from the request's own limits. The "
+        "platform supplies scripts/check_input.py and the first step that runs it: it reads each "
+        "value as the person wrote it, resolves words, units, relative dates and other totals, "
+        "refuses a value that cannot be right, and prints each reading as an assumption; every "
+        "later step and script works only on the checked values, so neither the body nor your "
+        "scripts parse or validate those values again. When the request caps sentences, "
+        "characters or items, or names facts that must appear, the body's last step writes the "
+        "answer to a file, runs `python scripts/check_output.py` with the matching flags "
+        "(--max-sentences, --max-chars, --max-items, --require) until it prints OK, and answers "
+        "with that file's content only; the platform supplies that script. --require names the "
+        "shortest core of each must-keep fact (the figure, the time, the number) so everything "
+        "around it can be shortened, and neither the body nor a script ever plans a way out of "
+        "the limit (no keeping everything when it will not fit, no fixed too-long message). When "
+        "the script refuses an argument, the agent corrects that argument and runs it again; it "
+        "never leaves a result blank because of its own argument. The agent must act in one pass "
+        "on the input it is handed: it takes the common default for a missing setting (a rate, a "
+        "multiplier, the current date or time) and, next to the figure it produced, says which "
+        "default it took and that the person can change it, never withholding the result for want "
+        "of that setting; it gives a usable template with marked blanks when the input itself is "
+        "missing; it never invents a fact, writes every fact it was given exactly as given and "
+        "never marks one as pending, and marks a missing one as not given in the output's "
+        "language, and never marks as not given a value it can work out from what it was given; "
+        "it totals what belongs together and shows the total whenever every part of it is known; "
+        "it names every value that cannot be right (a date that does not exist, a negative count, "
+        "two different values for one thing, including a later remark that changes an earlier "
+        "figure), asks the person making the request, not someone else, to confirm each, gives no "
+        "total that depends on one, and questions nothing else; a missing name, label or date it "
+        "was not asked for never stops a calculation or a document; when two requirements cannot "
+        "both hold it keeps the hard limit and says in one line what was left out; and it "
+        "delivers the artifact itself in this same answer, complete, with a marked blank for "
+        "anything not given, never a plan, a question or a promise to write it once something is "
+        "confirmed. A Skill whose run ends in a question has failed every criterion. When a "
+        "confirmed diagram_understanding exists, the body walks its nodes as steps, in order, "
+        "each named as the diagram names it, and adds no step, condition, role or tool the "
+        "diagram does not show; where the diagram is silent, say so instead of inventing. Go "
+        "refuses a draft whose body skips a node."
     ),
     "revise": (
         "Inspect draft_validation.report and tool observations. Repair the specific "
@@ -1253,6 +1276,18 @@ def _supply_check_script(draft: GeneratedSkill | None) -> GeneratedSkill | None:
     return draft.model_copy(update={"files": files})
 
 
+def _supply_input_check(draft: GeneratedSkill | None) -> GeneratedSkill | None:
+    if draft is None or not any(f.path == INPUT_SCHEMA_PATH for f in draft.files):
+        return draft
+    source = Path(__file__).with_name("check_input.py").read_text(encoding="utf-8")
+    files = [f for f in draft.files if f.path != INPUT_SCRIPT_PATH]
+    files.append(GeneratedFile(path=INPUT_SCRIPT_PATH, content=source))
+    draft = draft.model_copy(update={"files": files})
+    if INPUT_SCRIPT_PATH in draft.body:
+        return draft
+    return _append_section(draft, INPUT_CHECK_SECTION.format())
+
+
 def _append_section(draft: GeneratedSkill, section: str) -> GeneratedSkill:
     return draft.model_copy(update={"body": draft.body.rstrip() + "\n\n" + section})
 
@@ -1341,7 +1376,9 @@ def _render(state: _State) -> dict:
             diagram_description=d.diagram_description or "",
             diagram_interpretation=d.diagram_interpretation,
             tool_intent=d.tool_intent,
-            draft=_bind_shipped_files(_supply_check_script(_bind_output_check(d.draft, req))),
+            draft=_bind_shipped_files(
+                _supply_check_script(_bind_output_check(_supply_input_check(d.draft), req))
+            ),
             model=state.get("served_model") or MODEL,
             prompt_version=PROMPT_VERSION,
             usage=state.get("usage"),

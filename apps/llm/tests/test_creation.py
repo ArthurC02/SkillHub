@@ -674,6 +674,46 @@ def test_the_models_own_content_at_the_check_output_path_is_replaced():
     ]
 
 
+INPUT_SCRIPT_SOURCE = (
+    Path(creation.__file__).with_name("check_input.py").read_text(encoding="utf-8")
+)
+INPUT_SCHEMA = {"path": "scripts/input_schema.json", "content": '{"fields": []}'}
+
+
+def test_a_draft_shipping_an_input_schema_gets_the_platforms_input_check_run_first():
+    draft = SKILL | {"files": [INPUT_SCHEMA, {"path": "scripts/check_input.py", "content": "x"}]}
+
+    body = _validated_draft_response(draft)[0].json()["draft"]
+
+    assert body["files"] == [
+        INPUT_SCHEMA,
+        {"path": "scripts/check_input.py", "content": INPUT_SCRIPT_SOURCE},
+    ]
+    assert "## Input check (first step)" in body["body"]
+    assert '`{"records": [{<field name>: <the value exactly as written>}, ...]}`' in body["body"]
+    assert "`python scripts/check_input.py input.json`" in body["body"]
+
+
+def test_a_body_already_running_the_input_check_gets_no_second_section():
+    draft = SKILL | {
+        "body": SKILL["body"] + " First run `python scripts/check_input.py input.json`.",
+        "files": [INPUT_SCHEMA],
+    }
+
+    body = _validated_draft_response(draft)[0].json()["draft"]["body"]
+
+    assert "## Input check" not in body
+
+
+def test_a_draft_without_an_input_schema_gets_no_input_check():
+    draft = SKILL | {"files": []}
+
+    body = _validated_draft_response(draft)[0].json()["draft"]
+
+    assert body["files"] == []
+    assert "check_input" not in body["body"]
+
+
 def test_tracing_disabled_even_when_environment_enables_it(monkeypatch):
     monkeypatch.setenv("LANGSMITH_TRACING", "true")
     monkeypatch.setenv("LANGCHAIN_TRACING_V2", "true")
