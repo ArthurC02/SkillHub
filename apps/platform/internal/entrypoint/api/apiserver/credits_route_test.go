@@ -135,7 +135,8 @@ func creditsLogin(t *testing.T, srv *httptest.Server, name string) *creditsClien
 		t.Fatal(err)
 	}
 	c := &creditsClient{Client: &http.Client{Jar: jar}, base: srv.URL}
-	resp, err := c.Post(srv.URL+"/auth/dev/login", "application/json", strings.NewReader(`{"user":"`+name+`"}`))
+	alias := name + "-" + strings.ReplaceAll(uuid.NewString(), "-", "")[:8]
+	resp, err := c.Post(srv.URL+"/auth/dev/login", "application/json", strings.NewReader(`{"user":"`+alias+`"}`))
 	if err != nil {
 		t.Fatal(err)
 	}

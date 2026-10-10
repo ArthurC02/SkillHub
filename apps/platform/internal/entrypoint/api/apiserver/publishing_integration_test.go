@@ -578,7 +578,7 @@ func TestUninvitedAccountsAcquireOnlyWhenTheDeploymentOpensDownloads(t *testing.
 		t.Run(tc.name, func(t *testing.T) {
 			authorName, invitedName := freshName("gate-author"), freshName("gate-invited")
 			a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
-				d.Auth.Invited = map[string]bool{authorName: true, invitedName: true}
+				d.Auth.Invited = map[string]bool{devAlias(t, authorName): true, devAlias(t, invitedName): true}
 				d.Publishing.DownloadsOpenToUninvited = tc.open
 			})
 			author := a.login(t, authorName)

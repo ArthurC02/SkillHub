@@ -521,7 +521,7 @@ func TestTheEntryPointIsNotAdvertisedToSomeoneWhoMayNotUseIt(t *testing.T) {
 		d.GenerateExposed = true
 		d.Auth.Features = map[string]bool{"generate_skill": true}
 
-		d.Auth.Invited = map[string]bool{"gen-invited": true}
+		d.Auth.Invited = map[string]bool{devAlias(t, "gen-invited"): true}
 	})
 	c := a.login(t, "gen-uninvited")
 

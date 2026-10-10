@@ -169,7 +169,31 @@ func requirePartitionDB(t *testing.T) *pgxpool.Pool {
 	if partitionPool == nil {
 		t.Skipf("%s not set; skipping partition rotation test", partitionDBURLEnv)
 	}
+	resetPartitions(t, partitionPool)
+	t.Cleanup(func() { resetPartitions(t, partitionPool) })
 	return partitionPool
+}
+
+func resetPartitions(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := context.Background()
+	for _, table := range []string{analyticsTable, traceTable} {
+		for _, child := range childPartitionNames(t, pool, table) {
+			if child == table+"_default" {
+				continue
+			}
+			if _, err := pool.Exec(ctx, "DROP TABLE "+child); err != nil {
+				t.Fatalf("reset %s: %v", child, err)
+			}
+		}
+		if _, err := pool.Exec(ctx, "TRUNCATE ONLY "+table+"_default"); err != nil {
+			t.Fatalf("reset %s_default: %v", table, err)
+		}
+		if _, err := pool.Exec(ctx, "CREATE TABLE "+table+"_2026_08 PARTITION OF "+table+
+			" FOR VALUES FROM ('2026-08-01 00:00:00+00') TO ('2026-09-01 00:00:00+00')"); err != nil {
+			t.Fatalf("restore %s_2026_08: %v", table, err)
+		}
+	}
 }
 
 func insertAnalyticsEvent(t *testing.T, pool *pgxpool.Pool, session string, at time.Time) {

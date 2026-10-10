@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
@@ -74,8 +75,39 @@ func TestTheSourceCheckBacklogCountsOnlyUrlSourcesFromTheirLastCheckOrCreation(t
 	assertOldest(t, "source checks", got, err, backlogDay(3))
 }
 
+func setAsidePendingEnrichments(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := context.Background()
+	rows, err := pool.Query(ctx, `UPDATE search_documents SET enrichment_status = $2
+		WHERE enrichment_status = $1 RETURNING skill_id`,
+		string(catalog.EnrichmentPending), string(catalog.EnrichmentEnriched))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var setAside []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			t.Fatal(err)
+		}
+		setAside = append(setAside, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(), `UPDATE search_documents SET enrichment_status = $2
+			WHERE skill_id = ANY($1)`, setAside, string(catalog.EnrichmentPending)); err != nil {
+			t.Errorf("restore pending enrichments: %v", err)
+		}
+	})
+}
+
 func TestTheEnrichmentBacklogCountsOnlyPendingDocumentsThatHaveAPackage(t *testing.T) {
 	pool := requireDB(t)
+	setAsidePendingEnrichments(t, pool)
 	a := newAPI(t, pool)
 	ctx := context.Background()
 	c := a.login(t, uniqueWorklistLabel("backlog-enrichment"))

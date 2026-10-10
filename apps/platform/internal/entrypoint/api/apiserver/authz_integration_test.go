@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -105,9 +106,10 @@ func TestDestructiveTestDatabaseURLGuard(t *testing.T) {
 func TestConcurrentFirstLoginCreatesOneAccount(t *testing.T) {
 	pool := requireDB(t)
 	svc := &identity.Service{Pool: pool}
+	unique := freshName("concurrent-first-login")
 	id := identity.ExternalIdentity{
-		Provider: "github", ProviderUserID: "concurrent-first-login",
-		Email: "concurrent-first-login@example.test", Name: "Concurrent", Login: "concurrent",
+		Provider: "github", ProviderUserID: unique,
+		Email: unique + "@example.test", Name: "Concurrent", Login: "concurrent",
 	}
 
 	start := make(chan struct{})
@@ -290,6 +292,37 @@ type client struct {
 	userID      string
 }
 
+var (
+	devAliasesMu sync.Mutex
+	devAliases   = map[*testing.T]map[string]string{}
+)
+
+func devAlias(t *testing.T, name string) string {
+	t.Helper()
+	devAliasesMu.Lock()
+	defer devAliasesMu.Unlock()
+	byName, seen := devAliases[t]
+	if !seen {
+		byName = map[string]string{}
+		devAliases[t] = byName
+		t.Cleanup(func() {
+			devAliasesMu.Lock()
+			defer devAliasesMu.Unlock()
+			delete(devAliases, t)
+		})
+	}
+	if alias, ok := byName[name]; ok {
+		return alias
+	}
+	suffix := "-" + strings.ReplaceAll(uuid.NewString(), "-", "")[:8]
+	prefix := name
+	if limit := 64 - len(suffix); len(prefix) > limit {
+		prefix = prefix[:limit]
+	}
+	byName[name] = prefix + suffix
+	return byName[name]
+}
+
 func (a *api) login(t *testing.T, name string) *client {
 	t.Helper()
 	jar, err := cookiejar.New(nil)
@@ -297,7 +330,7 @@ func (a *api) login(t *testing.T, name string) *client {
 		t.Fatal(err)
 	}
 	c := &client{Client: &http.Client{Jar: jar}, base: a.URL}
-	body := strings.NewReader(`{"user":"` + name + `"}`)
+	body := strings.NewReader(`{"user":"` + devAlias(t, name) + `"}`)
 	resp, err := c.Post(a.URL+"/auth/dev/login", "application/json", body)
 	if err != nil {
 		t.Fatal(err)
@@ -596,6 +629,7 @@ func TestPublicSearchSeesOnlyCatalogWorkspaces(t *testing.T) {
 	if _, err := pool.Exec(ctx, "UPDATE workspaces SET is_catalog = true WHERE id = $1", curatorWS); err != nil {
 		t.Fatal(err)
 	}
+	leaveCatalogAtEnd(t, pool, curatorWS)
 	published := seedSkill(t, pool, curator.workspaceID, "zaphodian public analyzer")
 
 	seedEmbedding(t, pool, published, 1301)

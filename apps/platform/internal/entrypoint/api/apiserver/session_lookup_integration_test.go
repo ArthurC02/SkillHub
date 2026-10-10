@@ -60,6 +60,7 @@ func TestTheWorkspaceFoundWithTheSessionIsTheOneTheTableHolds(t *testing.T) {
 	if _, err := pool.Exec(t.Context(), "UPDATE workspaces SET is_catalog = true, updated_at = created_at + interval '1 hour' WHERE id = $1", mustUUID(t, c.workspaceID)); err != nil {
 		t.Fatal(err)
 	}
+	leaveCatalogAtEnd(t, pool, mustUUID(t, c.workspaceID))
 
 	other := a.login(t, "session-workspace-someone-else")
 

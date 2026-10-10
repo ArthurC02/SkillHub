@@ -48,6 +48,16 @@ func markCatalog(t *testing.T, pool *pgxpool.Pool, workspaceID string) {
 	); err != nil {
 		t.Fatal(err)
 	}
+	leaveCatalogAtEnd(t, pool, ws)
+}
+
+func leaveCatalogAtEnd(t *testing.T, pool *pgxpool.Pool, workspace pgtype.UUID) {
+	t.Helper()
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(), "UPDATE workspaces SET is_catalog = false WHERE id = $1", workspace); err != nil {
+			t.Error(err)
+		}
+	})
 }
 
 func seedSkillVersion(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID string) string {
@@ -1555,6 +1565,7 @@ func TestAForkInheritsTheScanOnlyWhileItsSourceIsInTheCatalog(t *testing.T) {
 		"UPDATE workspaces SET is_catalog = true WHERE id = $1", mustUUID(t, curator.workspaceID)); err != nil {
 		t.Fatal(err)
 	}
+	leaveCatalogAtEnd(t, pool, mustUUID(t, curator.workspaceID))
 	if got := verification(); got != "scanned" {
 		t.Fatalf("the source back in the catalog: verification %q, want scanned; the rest proves nothing", got)
 	}
