@@ -898,3 +898,15 @@ exit 1（與 CI 的 I-06 失敗相同）；`2026.08-17` → `No vulnerabilities 
 ### 預設映像從 `-17` 移到 `-18`
 
 四項在 `-18` 的 digest 上通過之後，經負責人同意移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，以及 `apps/sandbox/README.md` 的環境變數表與建置範例。
+
+## `2026.08-18` → `2026.08-19`（2026-10-11）— **`run.mjs` 加上向使用者提問的工具；四項實測隨後補入本節**
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `run.mjs` 以 SDK 的 `createSdkMcpServer` 註冊一個程序內工具 `mcp__skillhub__ask_person`：1～3 題，每題「問什麼、為什麼會改變結果、可選選項」，由 schema 檢查。Skill 呼叫它之後 Run 立刻停下（不讓模型問完又自己猜答案），問題同時寫成 `agent_output` 的 `question` 與 `final` 事件、也進 `result.json` 的 `questions`；`ARG IMAGE_VERSION` |
+| 新增的依賴 | 無（`zod` 已是 SDK 的 peer 依賴，鎖檔裡本來就有） |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| 預設映像 | 仍是 `-18`；四項與提問工具的真模型實測在 CI 發佈的 digest 上跑過之後才移動 |
+
+**這一版改了 `run.mjs`，要反證的新行為**：提問之後 Run 停下而不是繼續回答、沒提問的 Run 不帶 `questions`。`run.test.mjs` 的兩支端到端測試各自被弄壞過一次（拿掉停下、拿掉記錄問題），都會紅。

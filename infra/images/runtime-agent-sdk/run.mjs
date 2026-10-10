@@ -597,8 +597,54 @@ export function outputContract(dir) {
 // settingSources is intentionally left unset — passing it discovers no
 // project skills on the pinned SDK. includePartialMessages is the only
 // setting that makes per-response token usage appear on the stream at all.
-export function agentOptions(dir) {
-  return {
+export const ASK_PERSON_SERVER = "skillhub";
+export const ASK_PERSON_TOOL = `mcp__${ASK_PERSON_SERVER}__ask_person`;
+const MAX_QUESTIONS = 3;
+
+export function askPersonServer({ createSdkMcpServer, tool }, z, onAsk) {
+  return createSdkMcpServer({
+    name: ASK_PERSON_SERVER,
+    version: "1.0.0",
+    tools: [
+      tool(
+        "ask_person",
+        "Hand questions back to the person who started this run. Use it only when the answer depends on a fact only that person knows (their own situation, choice, or the basis they use) and no stated rule, bundled reference, calculation or search can settle it. The run ends right after this call; the person's answers start a new run with the original request and the answers.",
+        {
+          questions: z
+            .array(
+              z.object({
+                question: z.string().min(1).max(500),
+                why: z.string().min(1).max(500),
+                options: z.array(z.string().min(1).max(200)).max(6).optional(),
+              }),
+            )
+            .min(1)
+            .max(MAX_QUESTIONS),
+        },
+        async ({ questions }) => {
+          onAsk(questions);
+          return {
+            content: [
+              { type: "text", text: "Handed to the person. The run ends here." },
+            ],
+          };
+        },
+      ),
+    ],
+  });
+}
+
+export function renderQuestions(questions) {
+  return questions
+    .map((q, i) => {
+      const options = q.options?.length ? `（${q.options.join("／")}）` : "";
+      return `${i + 1}. ${q.question}${options}\n   ${q.why}`;
+    })
+    .join("\n");
+}
+
+export function agentOptions(dir, askServer) {
+  const options = {
     cwd: workDir,
     skills: "all",
     allowedTools: ["Skill", "Read", "Write", "Edit", "Glob", "Grep", "Bash"],
@@ -607,6 +653,11 @@ export function agentOptions(dir) {
     systemPrompt: outputContract(dir),
     includePartialMessages: true,
   };
+  if (askServer) {
+    options.mcpServers = { [ASK_PERSON_SERVER]: askServer };
+    options.allowedTools = [...options.allowedTools, ASK_PERSON_TOOL];
+  }
+  return options;
 }
 
 const isMain = process.argv[1]
@@ -864,11 +915,38 @@ if (isMain) {
     );
   }
 
+  let asked = null;
+  const stopAfterAsking = new AbortController();
+
+  function recordQuestions() {
+    output = renderQuestions(asked);
+    const text = clip(output, LIMITS.text);
+    emit("agent_output", {
+      kind: "question",
+      text: text.value,
+      truncated: text.truncated,
+      questions: asked,
+    });
+    emit("agent_output", {
+      kind: "final",
+      text: text.value,
+      truncated: text.truncated,
+    });
+  }
+
   async function streamAgentTurn() {
-    const { query } = await import("@anthropic-ai/claude-agent-sdk");
-    for await (const msg of query({
+    const sdk = await import("@anthropic-ai/claude-agent-sdk");
+    const { z } = await import("zod");
+    const askServer = askPersonServer(sdk, z, (questions) => {
+      asked = questions;
+      stopAfterAsking.abort();
+    });
+    for await (const msg of sdk.query({
       prompt,
-      options: agentOptions(artifactDir),
+      options: {
+        ...agentOptions(artifactDir, askServer),
+        abortController: stopAfterAsking,
+      },
     })) {
       if (msg.type === "stream_event") {
         breach = observeStreamEvent(msg.event);
@@ -885,9 +963,12 @@ if (isMain) {
   try {
     await streamAgentTurn();
   } catch (err) {
-    await emitUsage(totals(), "accumulated");
-    fail("execution", "agent_turn_failed", String(err?.message ?? err));
+    if (!asked) {
+      await emitUsage(totals(), "accumulated");
+      fail("execution", "agent_turn_failed", String(err?.message ?? err));
+    }
   }
+  if (asked) recordQuestions();
 
   if (breach) {
     const message =
@@ -913,5 +994,9 @@ if (isMain) {
 
   await emitUsage(totals(), "accumulated");
 
-  finish("succeeded", { agent_output: output, message_types: messages });
+  finish("succeeded", {
+    agent_output: output,
+    message_types: messages,
+    ...(asked ? { questions: asked } : {}),
+  });
 }
