@@ -34,6 +34,35 @@ function findingPriorityRead(findings: ReturnType<typeof usePlatformAgentFinding
   return { error, data: error ? undefined : findings.data };
 }
 
+function PrioritySummary({
+  dispatch,
+  proposals,
+  findingCount,
+  exposure,
+  loaded,
+  fetching,
+}: {
+  dispatch: ReturnType<typeof dispatchPriority>;
+  proposals: ReturnType<typeof usePlatformAgentProposals>["data"];
+  findingCount: number;
+  exposure: ReturnType<typeof useExposureQueue>["data"];
+  loaded: number;
+  fetching: boolean;
+}) {
+  if (loaded !== 4) return null;
+  const attention = [
+    Boolean(dispatch?.tone),
+    (proposals?.total ?? 0) > 0,
+    findingCount > 0,
+    (exposure?.publications.length ?? 0) > 0,
+  ].filter(Boolean).length;
+  return (
+    <p className="admin-home-summary" role="status" aria-busy={fetching}>
+      {attention > 0 ? `目前有 ${attention} 類狀態需留意。` : "這四項目前沒有需留意的狀態。"}
+    </p>
+  );
+}
+
 function Priorities() {
   const dispatch = useDispatchStatus();
   const proposals = usePlatformAgentProposals();
@@ -41,6 +70,9 @@ function Priorities() {
   const exposure = useExposureQueue();
   const dispatchSummary = dispatchPriority(dispatch.data, dispatch.error);
   const { error: findingReadError, data: readableFindings } = findingPriorityRead(findings);
+  const findingCount = readableFindings
+    ? readableFindings.pages[0].counts.open + readableFindings.pages[0].counts.acknowledged
+    : 0;
   const fetching =
     dispatch.isFetching || proposals.isFetching || findings.isFetching || exposure.isFetching;
   const failures = [dispatch.error, proposals.error, findingReadError, exposure.error].filter(
@@ -74,6 +106,14 @@ function Priorities() {
           {fetching ? "更新中…" : "重新整理狀態"}
         </button>
       </header>
+      <PrioritySummary
+        dispatch={dispatchSummary}
+        proposals={proposals.data}
+        findingCount={findingCount}
+        exposure={exposure.data}
+        loaded={availableAt.length}
+        fetching={fetching}
+      />
       {failures > 0 && (
         <p role="alert" className="notice notice-warning">
           {failures} 項狀態無法取得；請重新整理後再判斷是否還有待處理事項。
@@ -113,21 +153,11 @@ function Priorities() {
           search={{}}
           hash="admin-agent-findings"
           className="admin-home-priority"
-          data-state={
-            readableFindings &&
-            readableFindings.pages[0].counts.open + readableFindings.pages[0].counts.acknowledged >
-              0
-              ? "pending"
-              : undefined
-          }
+          data-state={findingCount > 0 ? "pending" : undefined}
         >
           <span>平台 Agent 待辦</span>
           <strong>
-            {priorityText(
-              readableFindings &&
-                `${readableFindings.pages[0].counts.open + readableFindings.pages[0].counts.acknowledged} 件待辦`,
-              findingReadError,
-            )}
+            {priorityText(readableFindings && `${findingCount} 件待辦`, findingReadError)}
           </strong>
         </Link>
         <Link

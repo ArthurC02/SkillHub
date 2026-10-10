@@ -195,6 +195,71 @@ test("the admin home leads with live operational priorities", async () => {
   ).toContain("2 件待辦");
   expect(priorities.textContent).toContain("已取得 4/4 項狀態；其中最早取得於");
   expect(priorities.querySelector('a[href="/admin/exposure"]')?.textContent).toContain("1 件待審");
+  expect(priorities.querySelector('[role="status"]')?.textContent).toBe("目前有 4 類狀態需留意。");
+});
+
+test("the admin home names an all-clear only after all four reads succeed", async () => {
+  stub(true, (path) => {
+    if (path === "/admin/dispatch") {
+      return { body: { dispatching: true, halts: [] }, status: 200 };
+    }
+    if (path === "/admin/agents/proposals") {
+      return { body: { proposals: [], total: 0 }, status: 200 };
+    }
+    if (path === "/admin/agents/findings") {
+      return {
+        body: {
+          findings: [],
+          counts: { open: 0, acknowledged: 0, resolved: 0, dismissed: 0, recovered: 0 },
+        },
+        status: 200,
+      };
+    }
+    if (path === "/admin/exposure-reviews") {
+      return { body: { publications: [] }, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin");
+  await waitFor(has("已取得 4/4 項狀態"));
+
+  const priorities = field<HTMLElement>('[aria-label="目前需留意"]');
+  expect(priorities.querySelector('[role="status"]')?.textContent).toBe(
+    "這四項目前沒有需留意的狀態。",
+  );
+  expect(priorities.querySelectorAll('a[data-state="pending"], a[data-state="halt"]')).toHaveLength(
+    0,
+  );
+});
+
+test("the admin home never claims all-clear when one of four zero-count reads fails", async () => {
+  stub(true, (path) => {
+    if (path === "/admin/dispatch") {
+      return { body: { dispatching: true, halts: [] }, status: 200 };
+    }
+    if (path === "/admin/agents/proposals") {
+      return { body: { error: "service unavailable" }, status: 503 };
+    }
+    if (path === "/admin/agents/findings") {
+      return {
+        body: {
+          findings: [],
+          counts: { open: 0, acknowledged: 0, resolved: 0, dismissed: 0, recovered: 0 },
+        },
+        status: 200,
+      };
+    }
+    if (path === "/admin/exposure-reviews") {
+      return { body: { publications: [] }, status: 200 };
+    }
+    return undefined;
+  });
+  await mountAt("/admin");
+  await waitFor(has("已取得 3/4 項狀態"));
+
+  const priorities = field<HTMLElement>('[aria-label="目前需留意"]');
+  expect(priorities.querySelector('[role="status"]')).toBeNull();
+  expect(priorities.querySelector('[role="alert"]')?.textContent).toContain("1 項狀態無法取得");
 });
 
 test("the admin home does not mistake a failed priority read for an empty queue", async () => {
@@ -255,10 +320,11 @@ test("the admin home can refresh operational state without leaving the page", as
     return { body: { dispatching: dispatchReads > 1, halts: [] }, status: 200 };
   });
   await mountAt("/admin");
-  await waitFor(has("停止派送"));
+  await waitFor(has("目前有 4 類狀態需留意。"));
 
   await click(button("重新整理狀態"));
-  await waitFor(has("正在派送"));
+  await waitFor(has("目前有 3 類狀態需留意。"));
+  expect(has("正在派送")()).toBe(true);
   expect(dispatchReads).toBe(2);
 });
 
