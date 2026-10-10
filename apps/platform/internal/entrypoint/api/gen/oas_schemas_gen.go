@@ -59,7 +59,8 @@ type AcceptanceCriterion struct {
 	Source AcceptanceCriterionSource `json:"source"`
 	// When the user explicitly agreed to this wording. Null means proposed but not confirmed. Editing the
 	// text clears it.
-	ConfirmedAt NilDateTime `json:"confirmed_at"`
+	ConfirmedAt NilDateTime       `json:"confirmed_at"`
+	Check       OptCriterionCheck `json:"check"`
 }
 
 // GetID returns the value of ID.
@@ -82,6 +83,11 @@ func (s *AcceptanceCriterion) GetConfirmedAt() NilDateTime {
 	return s.ConfirmedAt
 }
 
+// GetCheck returns the value of Check.
+func (s *AcceptanceCriterion) GetCheck() OptCriterionCheck {
+	return s.Check
+}
+
 // SetID sets the value of ID.
 func (s *AcceptanceCriterion) SetID(val string) {
 	s.ID = val
@@ -100,6 +106,11 @@ func (s *AcceptanceCriterion) SetSource(val AcceptanceCriterionSource) {
 // SetConfirmedAt sets the value of ConfirmedAt.
 func (s *AcceptanceCriterion) SetConfirmedAt(val NilDateTime) {
 	s.ConfirmedAt = val
+}
+
+// SetCheck sets the value of Check.
+func (s *AcceptanceCriterion) SetCheck(val OptCriterionCheck) {
+	s.Check = val
 }
 
 // Who proposed the condition. `suggested` is reserved for TEST-002's automatic suggestion so EVAL-001
@@ -431,6 +442,7 @@ type AddAcceptanceCriterionReq struct {
 	// drops the label makes that impossible. Editing the text later re-labels it `user`, because by then
 	// the words are theirs.
 	Source OptAddAcceptanceCriterionReqSource `json:"source"`
+	Check  OptCriterionCheck                  `json:"check"`
 }
 
 // GetText returns the value of Text.
@@ -443,6 +455,11 @@ func (s *AddAcceptanceCriterionReq) GetSource() OptAddAcceptanceCriterionReqSour
 	return s.Source
 }
 
+// GetCheck returns the value of Check.
+func (s *AddAcceptanceCriterionReq) GetCheck() OptCriterionCheck {
+	return s.Check
+}
+
 // SetText sets the value of Text.
 func (s *AddAcceptanceCriterionReq) SetText(val string) {
 	s.Text = val
@@ -451,6 +468,11 @@ func (s *AddAcceptanceCriterionReq) SetText(val string) {
 // SetSource sets the value of Source.
 func (s *AddAcceptanceCriterionReq) SetSource(val OptAddAcceptanceCriterionReqSource) {
 	s.Source = val
+}
+
+// SetCheck sets the value of Check.
+func (s *AddAcceptanceCriterionReq) SetCheck(val OptCriterionCheck) {
+	s.Check = val
 }
 
 // Who wrote the wording. `suggested` is for text taken verbatim from a suggestion — EVAL-001 reads
@@ -5276,6 +5298,85 @@ func (s *CreditTrend) SetBalanceTotal(val int64) {
 }
 
 func (*CreditTrend) getCreditTrendRes() {}
+
+// A check the platform decides from the run's own records instead of asking the judge model; the
+// result is labelled `rule`. `contains_values`: the final output mentions every value (numbers and
+// dates in their common written forms). `asks`: the run ended by asking the person, and the questions
+// mention every value given. `does_not_ask`: the run succeeded and answered without asking. A
+// criterion without a check goes to the judge.
+// Ref: #/components/schemas/CriterionCheck
+type CriterionCheck struct {
+	Kind   CriterionCheckKind `json:"kind"`
+	Values []string           `json:"values"`
+}
+
+// GetKind returns the value of Kind.
+func (s *CriterionCheck) GetKind() CriterionCheckKind {
+	return s.Kind
+}
+
+// GetValues returns the value of Values.
+func (s *CriterionCheck) GetValues() []string {
+	return s.Values
+}
+
+// SetKind sets the value of Kind.
+func (s *CriterionCheck) SetKind(val CriterionCheckKind) {
+	s.Kind = val
+}
+
+// SetValues sets the value of Values.
+func (s *CriterionCheck) SetValues(val []string) {
+	s.Values = val
+}
+
+type CriterionCheckKind string
+
+const (
+	CriterionCheckKindContainsValues CriterionCheckKind = "contains_values"
+	CriterionCheckKindAsks           CriterionCheckKind = "asks"
+	CriterionCheckKindDoesNotAsk     CriterionCheckKind = "does_not_ask"
+)
+
+// AllValues returns all CriterionCheckKind values.
+func (CriterionCheckKind) AllValues() []CriterionCheckKind {
+	return []CriterionCheckKind{
+		CriterionCheckKindContainsValues,
+		CriterionCheckKindAsks,
+		CriterionCheckKindDoesNotAsk,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CriterionCheckKind) MarshalText() ([]byte, error) {
+	switch s {
+	case CriterionCheckKindContainsValues:
+		return []byte(s), nil
+	case CriterionCheckKindAsks:
+		return []byte(s), nil
+	case CriterionCheckKindDoesNotAsk:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CriterionCheckKind) UnmarshalText(data []byte) error {
+	switch CriterionCheckKind(data) {
+	case CriterionCheckKindContainsValues:
+		*s = CriterionCheckKindContainsValues
+		return nil
+	case CriterionCheckKindAsks:
+		*s = CriterionCheckKindAsks
+		return nil
+	case CriterionCheckKindDoesNotAsk:
+		*s = CriterionCheckKindDoesNotAsk
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 // One acceptance criterion's verdict. `criterion_id` refers to the run's frozen test case snapshot, so
 // editing the draft afterwards cannot rewrite what was judged (iron rule 4).
@@ -14257,6 +14358,52 @@ func (o OptCreationReferenceTier) Get() (v CreationReferenceTier, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptCreationReferenceTier) Or(d CreationReferenceTier) CreationReferenceTier {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptCriterionCheck returns new OptCriterionCheck with value set to v.
+func NewOptCriterionCheck(v CriterionCheck) OptCriterionCheck {
+	return OptCriterionCheck{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptCriterionCheck is optional CriterionCheck.
+type OptCriterionCheck struct {
+	Value CriterionCheck
+	Set   bool
+}
+
+// IsSet returns true if OptCriterionCheck was set.
+func (o OptCriterionCheck) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptCriterionCheck) Reset() {
+	var v CriterionCheck
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptCriterionCheck) SetTo(v CriterionCheck) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptCriterionCheck) Get() (v CriterionCheck, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptCriterionCheck) Or(d CriterionCheck) CriterionCheck {
 	if v, ok := o.Get(); ok {
 		return v
 	}

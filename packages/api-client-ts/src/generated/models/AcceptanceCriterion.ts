@@ -13,6 +13,14 @@
  */
 
 import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
+import type { CriterionCheck } from './CriterionCheck';
+import {
+    CriterionCheckFromJSON,
+    CriterionCheckFromJSONTyped,
+    CriterionCheckToJSON,
+    CriterionCheckToJSONTyped,
+} from './CriterionCheck';
+
 /**
  * One acceptance condition (TEST-003). Stored inside the test case rather
  * than as its own resource, because the run snapshot and the evaluation
@@ -43,6 +51,10 @@ export interface AcceptanceCriterion {
      * 
      */
     confirmedAt: Date | null;
+    /**
+     * 
+     */
+    check?: CriterionCheck;
 }
 
 
@@ -81,6 +93,7 @@ export function AcceptanceCriterionFromJSONTyped(json: any, ignoreDiscriminator:
         'text': json['text'],
         'source': json['source'],
         'confirmedAt': (json['confirmed_at'] == null ? null : parseDateTime(json['confirmed_at'])),
+        'check': json['check'] == null ? undefined : CriterionCheckFromJSON(json['check']),
     };
 }
 
@@ -99,6 +112,7 @@ export function AcceptanceCriterionToJSONTyped(value?: AcceptanceCriterion | nul
         'text': value['text'],
         'source': value['source'],
         'confirmed_at': value['confirmedAt'] == null ? value['confirmedAt'] : serializeDateTime(value['confirmedAt']),
+        'check': CriterionCheckToJSON(value['check']),
     };
 }
 

@@ -16,25 +16,33 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
+const twoJudgedCriteria = `[{"id":"c1","text":"duplicates are removed","source":"user"},
+	{"id":"c2","text":"an xlsx file is produced","source":"user"}]`
+
 func seedEvaluatableRun(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID string, rubric ...string) (runID, versionID string) {
+	t.Helper()
+	var frozenRubric *string
+	if len(rubric) == 1 {
+		frozenRubric = &rubric[0]
+	}
+	return seedEvaluatableRunWithCriteria(t, pool, workspaceID, skillID, twoJudgedCriteria, frozenRubric)
+}
+
+func seedEvaluatableRunWithCriteria(
+	t *testing.T, pool *pgxpool.Pool, workspaceID, skillID, criteria string, frozenRubric *string,
+) (runID, versionID string) {
 	t.Helper()
 	ctx := context.Background()
 	versionID = seedSkillVersion(t, pool, workspaceID, skillID)
 	testCaseID := seedTestCase(t, pool, workspaceID, skillID)
 
-	var frozenRubric *string
-	if len(rubric) == 1 {
-		frozenRubric = &rubric[0]
-	}
 	var snapshotID string
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO test_case_snapshots (workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash, rubric)
-		VALUES ($1, $2, 'deduplicate the attached spreadsheet',
-		        '[{"id":"c1","text":"duplicates are removed","source":"user"},
-		          {"id":"c2","text":"an xlsx file is produced","source":"user"}]'::jsonb,
+		VALUES ($1, $2, 'deduplicate the attached spreadsheet', $4::jsonb,
 		        'sha256:eval-snapshot', $3::jsonb)
 		RETURNING id::text`,
-		mustUUID(t, workspaceID), mustUUID(t, testCaseID), frozenRubric,
+		mustUUID(t, workspaceID), mustUUID(t, testCaseID), frozenRubric, criteria,
 	).Scan(&snapshotID); err != nil {
 		t.Fatal(err)
 	}

@@ -5697,6 +5697,7 @@ paths:
                     a client that drops the label makes that impossible. Editing
                     the text later re-labels it `user`, because by then the words
                     are theirs.
+                check: { $ref: "#/components/schemas/CriterionCheck" }
 
       responses:
         "201":
@@ -9519,6 +9520,25 @@ components:
           description: |
             When the user explicitly agreed to this wording. Null means proposed
             but not confirmed. Editing the text clears it.
+        check: { $ref: "#/components/schemas/CriterionCheck" }
+    CriterionCheck:
+      description: |
+        A check the platform decides from the run's own records instead of asking
+        the judge model; the result is labelled `rule`. `contains_values`: the
+        final output mentions every value (numbers and dates in their common
+        written forms). `asks`: the run ended by asking the person, and the
+        questions mention every value given. `does_not_ask`: the run succeeded
+        and answered without asking. A criterion without a check goes to the judge.
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [contains_values, asks, does_not_ask]
+        values:
+          type: array
+          maxItems: 20
+          items: { type: string, minLength: 1, maxLength: 200 }
     AcceptanceCriteriaSuggestions:
       description: |
         What the model proposed for one draft (TEST-002). Text and nothing else:

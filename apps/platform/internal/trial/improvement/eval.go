@@ -33,7 +33,10 @@ const (
 	ResultUndetermined = "undetermined"
 )
 
-const SourceModel = "model"
+const (
+	SourceModel = "model"
+	SourceRule  = "rule"
+)
 
 type Range struct {
 	Start int `json:"start"`
@@ -356,14 +359,49 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 		})
 	}
 
-	v, err := s.judge(ctx, m, ev)
+	ruled, judged := splitByRule(m.criteria)
+	ruledResults := gradeByRule(m, ruled)
+	if len(judged) == 0 {
+		return s.completeAndSuggest(ctx, m, ev, verdict{
+			overall: overallFrom(ruledResults),
+			summary: "every acceptance criterion of this run carries a check the platform " +
+				"decides from the run's own records, so no model was asked",
+			results:          ruledResults,
+			findings:         findings,
+			evidenceComplete: evidenceComplete,
+		})
+	}
+
+	v, err := s.judge(ctx, m.withoutRuled(ruled, judged), ev)
 	if err != nil {
 
 		return s.fail(ctx, m, ev, gatheredEvidence{findings: findings, complete: evidenceComplete}, err)
 	}
+	v.results = inCriteriaOrder(m.criteria, ruledResults, v.results)
+	v.overall = overallFrom(v.results)
 	v.findings = append(findings, v.findings...)
 	v.evidenceComplete = evidenceComplete && v.evidenceComplete
 	return s.settleJudgement(ctx, m, ev, v)
+}
+
+func (m material) withoutRuled(ruled, judged []testlab.Criterion) material {
+	m.criteria = judged
+	if m.rubric == nil {
+		return m
+	}
+	decided := map[string]bool{}
+	for _, c := range ruled {
+		decided[c.ID] = true
+	}
+	rubric := *m.rubric
+	rubric.Items = nil
+	for _, it := range m.rubric.Items {
+		if !decided[it.ID] {
+			rubric.Items = append(rubric.Items, it)
+		}
+	}
+	m.rubric = &rubric
+	return m
 }
 
 func (s *Service) settleJudgement(ctx context.Context, m material, ev gen.Evaluation, v verdict) error {

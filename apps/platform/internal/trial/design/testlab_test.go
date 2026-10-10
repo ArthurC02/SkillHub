@@ -192,11 +192,11 @@ func TestAddCriterionAcceptsUpToTheLimitAndRefusesOneOver(t *testing.T) {
 	}
 
 	for i := 0; i < MaxCriteria; i++ {
-		if _, err := svc.AddCriterion(t.Context(), ws, tc.ID, "c", SourceUser); err != nil {
+		if _, err := svc.AddCriterion(t.Context(), ws, tc.ID, NewCriterion{Text: "c", Source: SourceUser}); err != nil {
 			t.Fatalf("criterion %d: %v", i+1, err)
 		}
 	}
-	if _, err := svc.AddCriterion(t.Context(), ws, tc.ID, "overflow", SourceUser); !errors.Is(err, ErrLimitExceeded) {
+	if _, err := svc.AddCriterion(t.Context(), ws, tc.ID, NewCriterion{Text: "overflow", Source: SourceUser}); !errors.Is(err, ErrLimitExceeded) {
 		t.Fatalf("criterion %d returned %v, want ErrLimitExceeded", MaxCriteria+1, err)
 	}
 }

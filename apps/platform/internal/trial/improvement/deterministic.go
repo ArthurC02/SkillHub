@@ -104,7 +104,7 @@ func executionFindings(m material) []Finding {
 	severity := SeverityInfo
 	message := "the workload ran to its own end and reported success. That is an " +
 		"execution outcome and not a task verdict"
-	if m.run.Status != "succeeded" {
+	if m.run.Status != runSucceeded {
 		severity = SeverityError
 		message = fmt.Sprintf("the run ended as %s", m.run.Status)
 		if m.run.FailureClass != nil && *m.run.FailureClass != "" {
@@ -162,7 +162,7 @@ func artifactFindings(m material) []Finding {
 		})
 	}
 	if len(m.artifacts) == 0 {
-		if m.absent.Any() || m.run.Status != "succeeded" {
+		if m.absent.Any() || m.run.Status != runSucceeded {
 
 			return out
 		}

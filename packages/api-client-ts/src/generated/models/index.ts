@@ -54,6 +54,7 @@ export * from './CreditLedgerEntry';
 export * from './CreditStatement';
 export * from './CreditStatementEntry';
 export * from './CreditTrend';
+export * from './CriterionCheck';
 export * from './CriterionResult';
 export * from './DailyAmount';
 export * from './DailyCount';

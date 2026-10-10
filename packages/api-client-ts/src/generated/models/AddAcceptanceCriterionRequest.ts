@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { CriterionCheck } from './CriterionCheck';
+import {
+    CriterionCheckFromJSON,
+    CriterionCheckFromJSONTyped,
+    CriterionCheckToJSON,
+    CriterionCheckToJSONTyped,
+} from './CriterionCheck';
+
 /**
  * 
  * @export
@@ -33,6 +41,10 @@ export interface AddAcceptanceCriterionRequest {
      * 
      */
     source?: AddAcceptanceCriterionRequestSourceEnum;
+    /**
+     * 
+     */
+    check?: CriterionCheck;
 }
 
 
@@ -66,6 +78,7 @@ export function AddAcceptanceCriterionRequestFromJSONTyped(json: any, ignoreDisc
         
         'text': json['text'],
         'source': json['source'] == null ? undefined : json['source'],
+        'check': json['check'] == null ? undefined : CriterionCheckFromJSON(json['check']),
     };
 }
 
@@ -82,6 +95,7 @@ export function AddAcceptanceCriterionRequestToJSONTyped(value?: AddAcceptanceCr
         
         'text': value['text'],
         'source': value['source'],
+        'check': CriterionCheckToJSON(value['check']),
     };
 }
 
