@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.10.7
+
+### Changed
+
+- GitHub pull request verification is split into fetching its state and judging the merge, the current approval and the checks; every message is unchanged.
+
 ## 0.10.6
 
 ### Changed

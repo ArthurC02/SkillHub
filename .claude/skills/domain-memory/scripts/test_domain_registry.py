@@ -683,6 +683,40 @@ class DomainRegistryTest(unittest.TestCase):
                     verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"),
                 )
 
+    def test_each_external_scm_defect_is_named(self) -> None:
+        attestation = {"provider": "github", "pull_request": "https://github.com/acme/skills/pull/7", "commit": "a" * 40}
+        merged = {"state": "closed", "merged_at": "2026-01-01T00:00:00Z", "head": {"sha": "a" * 40}}
+        approved = [{"user": {"login": "reviewer"}, "state": "APPROVED"}]
+        green = {"check_runs": [{"status": "completed", "conclusion": "success"}]}
+        cases = [
+            ("open", [{**merged, "state": "open"}, approved, green], "SCM pull request is not merged"),
+            ("unmerged close", [{**merged, "merged_at": None}, approved, green], "SCM pull request is not merged"),
+            ("other head", [{**merged, "head": {"sha": "b" * 40}}, approved, green],
+             "SCM pull request head does not match the attested commit"),
+            ("no reviews", [merged, [], green], "SCM pull request has no current approval"),
+            ("approval withdrawn",
+             [merged, [*approved, {"user": {"login": "reviewer"}, "state": "CHANGES_REQUESTED"}, 7], green],
+             "SCM pull request has no current approval"),
+            ("no checks", [merged, approved, {"check_runs": []}], "SCM attested commit has no check runs"),
+            ("running check", [merged, approved, {"check_runs": [{"status": "in_progress", "conclusion": None}]}],
+             "SCM attested commit has incomplete or unsuccessful checks"),
+            ("unreachable", OSError("network down"), "SCM governance verification failed: network down"),
+        ]
+        with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
+            for label, responses, message in cases:
+                with self.subTest(label), patch("domain_registry.attestations.github_json", side_effect=responses):
+                    self.assertEqual([message], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"))
+            with self.subTest("another provider"):
+                self.assertEqual(
+                    ["SCM governance verification currently supports GitHub only"],
+                    verify_external_scm({**attestation, "provider": "gitlab"}, "DOMAIN_MEMORY_SCM_TOKEN"),
+                )
+        with self.subTest("no token"), patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": ""}):
+            self.assertEqual(
+                ["SCM governance verification requires DOMAIN_MEMORY_SCM_TOKEN"],
+                verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"),
+            )
+
     def test_external_scm_verification_can_make_ci_optional(self) -> None:
         attestation = {"provider": "github", "pull_request": "https://github.com/acme/skills/pull/7", "commit": "a" * 40}
         responses = [

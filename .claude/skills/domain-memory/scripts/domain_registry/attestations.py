@@ -39,32 +39,32 @@ def github_json(url: str, token: str) -> Any:
         return json.loads(response.read().decode("utf-8"))
 
 
-def verify_external_scm(  # noqa: C901, PLR0911
-    value: dict[str, Any], token_env: str, require_checks: bool = True  # noqa: FBT001, FBT002
-) -> list[str]:
-    if value.get("provider") != "github":
-        return ["SCM governance verification currently supports GitHub only"]
-    token = os.environ.get(token_env)
-    if not token:
-        return [f"SCM governance verification requires {token_env}"]
-    try:
-        endpoint = github_api_path(str(value.get("pull_request", "")))
-        api = "https://api.github.com/"
-        base = api + endpoint
-        repository = "/".join(endpoint.split("/")[:3])
-        pull = github_json(base, token)
-        reviews = github_json(base + "/reviews", token)
-        checks = (
-            github_json(f"{api}{repository}/commits/{value['commit']}/check-runs", token)
-            if require_checks
-            else None
-        )
-    except (OSError, ValueError, json.JSONDecodeError) as error:
-        return [f"SCM governance verification failed: {error}"]
+def _pull_request_state(
+    value: dict[str, Any], token: str, require_checks: bool  # noqa: FBT001
+) -> tuple[Any, Any, Any]:
+    endpoint = github_api_path(str(value.get("pull_request", "")))
+    api = "https://api.github.com/"
+    base = api + endpoint
+    repository = "/".join(endpoint.split("/")[:3])
+    pull = github_json(base, token)
+    reviews = github_json(base + "/reviews", token)
+    checks = (
+        github_json(f"{api}{repository}/commits/{value['commit']}/check-runs", token)
+        if require_checks
+        else None
+    )
+    return pull, reviews, checks
+
+
+def _pull_request_error(pull: Any, commit: Any) -> str | None:
     if not isinstance(pull, dict) or pull.get("state") != "closed" or not pull.get("merged_at"):
-        return ["SCM pull request is not merged"]
-    if pull.get("head", {}).get("sha") != value.get("commit"):
-        return ["SCM pull request head does not match the attested commit"]
+        return "SCM pull request is not merged"
+    if pull.get("head", {}).get("sha") != commit:
+        return "SCM pull request head does not match the attested commit"
+    return None
+
+
+def _has_current_approval(reviews: Any) -> bool:
     latest_reviews: dict[str, str] = {}
     for review in reviews if isinstance(reviews, list) else []:
         if not isinstance(review, dict):
@@ -73,21 +73,41 @@ def verify_external_scm(  # noqa: C901, PLR0911
         state = review.get("state")
         if isinstance(user, str) and isinstance(state, str):
             latest_reviews[user] = state
-    if "APPROVED" not in latest_reviews.values():
-        return ["SCM pull request has no current approval"]
-    if not require_checks:
-        return []
+    return "APPROVED" in latest_reviews.values()
+
+
+def _checks_error(checks: Any) -> str | None:
     check_runs = checks.get("check_runs") if isinstance(checks, dict) else None
     if not isinstance(check_runs, list) or not check_runs:
-        return ["SCM attested commit has no check runs"]
+        return "SCM attested commit has no check runs"
     if any(
         not isinstance(run, dict)
         or run.get("status") != "completed"
         or run.get("conclusion") != "success"
         for run in check_runs
     ):
-        return ["SCM attested commit has incomplete or unsuccessful checks"]
-    return []
+        return "SCM attested commit has incomplete or unsuccessful checks"
+    return None
+
+
+def verify_external_scm(
+    value: dict[str, Any], token_env: str, require_checks: bool = True  # noqa: FBT001, FBT002
+) -> list[str]:
+    if value.get("provider") != "github":
+        return ["SCM governance verification currently supports GitHub only"]
+    token = os.environ.get(token_env)
+    if not token:
+        return [f"SCM governance verification requires {token_env}"]
+    try:
+        pull, reviews, checks = _pull_request_state(value, token, require_checks)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return [f"SCM governance verification failed: {error}"]
+    error = _pull_request_error(pull, value.get("commit"))
+    if error is None and not _has_current_approval(reviews):
+        error = "SCM pull request has no current approval"
+    if error is None and require_checks:
+        error = _checks_error(checks)
+    return [error] if error else []
 
 
 def _git(repo_root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
