@@ -30,7 +30,12 @@ from domain_registry.audit import append as append_audit
 from domain_registry.audit import read_events as read_audit_events
 from domain_registry.audit import event_digest as audit_event_digest
 from domain_registry.audit import verify as verify_audit
-from domain_registry.changes import init_change_package, redraft_change_package, validate_change_package
+from domain_registry.changes import (
+    implementation_design_errors,
+    init_change_package,
+    redraft_change_package,
+    validate_change_package,
+)
 from domain_registry.common import ASSET_KEYS, load_json
 from domain_registry.contracts import validate_schema
 from domain_registry.evidence import (
@@ -1458,6 +1463,43 @@ class DomainRegistryTest(unittest.TestCase):
                 {"status": "invalid", "reason": "evidence source exceeds 4 bytes", "path": "fact.md"},
                 verify(cited, self.repo),
             )
+
+    def test_each_implementation_design_defect_is_named(self) -> None:
+        design = {
+            "domain_forces": ["force"], "decision": "decide", "invariants_preserved": ["kept"],
+            "rejected_alternatives": ["other"], "proof_obligations": ["OB-1"], "counterfactual_check": "break it",
+        }
+        material = {"change_classification": "material", "implementation_design": design}
+        cases = [
+            ("complete", material, []),
+            ("unknown classification", {**material, "change_classification": "minor"},
+             ["domain-change-proposal.json has an invalid change_classification"]),
+            ("material without design", {"change_classification": "material"},
+             ["a material proposal requires implementation_design with domain forces, decision, invariants, "
+              "alternatives, proof obligations, and counterfactual check"]),
+            ("routine without design", {"change_classification": "routine"}, []),
+            ("blank force", {**material, "implementation_design": {**design, "domain_forces": [""]}},
+             ["implementation_design requires a valid domain_forces list"]),
+            ("no invariants", {**material, "implementation_design": {**design, "invariants_preserved": "kept"}},
+             ["implementation_design requires a valid invariants_preserved list"]),
+            ("no alternatives", {**material, "implementation_design": {**design, "rejected_alternatives": None}},
+             ["implementation_design requires a valid rejected_alternatives list"]),
+            ("no decision", {**material, "implementation_design": {**design, "decision": " "}},
+             ["implementation_design requires a completed decision"]),
+            ("no obligation ids", {**material, "implementation_design": {**design, "proof_obligations": "OB-1"}},
+             ["implementation_design requires proof obligation IDs"]),
+            ("unknown obligation", {**material, "implementation_design": {**design, "proof_obligations": ["OB-9"]}},
+             ["implementation_design references an unknown proof obligation"]),
+            ("no counterfactual", {**material, "implementation_design": {**design, "counterfactual_check": ""}},
+             ["implementation_design requires a counterfactual check"]),
+            ("material without obligations", {**material, "implementation_design": {**design, "proof_obligations": []}},
+             ["a material proposal requires at least one proof obligation"]),
+            ("routine without obligations",
+             {"change_classification": "routine", "implementation_design": {**design, "proof_obligations": []}}, []),
+        ]
+        for label, proposal, expected in cases:
+            with self.subTest(label):
+                self.assertEqual(expected, implementation_design_errors(proposal, {"OB-1"}))
 
     def test_audit_rejects_reserved_fields_before_writing(self) -> None:
         root = self.repo / "memory"

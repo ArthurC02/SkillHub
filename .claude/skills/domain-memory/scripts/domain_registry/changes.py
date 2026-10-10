@@ -177,19 +177,25 @@ def redraft_change_package(source: Path, output: Path, proposal_id: str) -> None
         )
 
 
-def implementation_design_errors(  # noqa: C901
+def implementation_design_errors(
     proposal: dict[str, Any], obligation_ids: set[str]
 ) -> list[str]:
     classification = proposal.get("change_classification")
     if classification not in CHANGE_CLASSIFICATIONS:
         return ["domain-change-proposal.json has an invalid change_classification"]
     design = proposal.get("implementation_design")
-    if not isinstance(design, dict):
-        if classification == "material":
-            return [
-                "a material proposal requires implementation_design with domain forces, decision, invariants, alternatives, proof obligations, and counterfactual check"
-            ]
-        return []
+    if isinstance(design, dict):
+        return _design_field_errors(design, obligation_ids, classification)
+    if classification == "material":
+        return [
+            "a material proposal requires implementation_design with domain forces, decision, invariants, alternatives, proof obligations, and counterfactual check"
+        ]
+    return []
+
+
+def _design_field_errors(
+    design: dict[str, Any], obligation_ids: set[str], classification: str
+) -> list[str]:
     errors: list[str] = []
     for field in ("domain_forces", "invariants_preserved", "rejected_alternatives"):
         values = design.get(field)
