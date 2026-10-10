@@ -35,6 +35,10 @@ export interface CreationCandidate {
      * The Test Case Go created from the confirmed acceptance criteria when this candidate was materialized.
      */
     testCaseId?: string;
+    /**
+     * One Test Case per confirmed challenge case, created alongside test_case_id when this candidate was materialized.
+     */
+    challengeTestCaseIds?: Array<string>;
 }
 
 /**
@@ -60,6 +64,7 @@ export function CreationCandidateFromJSONTyped(json: any, ignoreDiscriminator: b
         'versionId': json['version_id'],
         'runId': json['run_id'] == null ? undefined : json['run_id'],
         'testCaseId': json['test_case_id'] == null ? undefined : json['test_case_id'],
+        'challengeTestCaseIds': json['challenge_test_case_ids'] == null ? undefined : json['challenge_test_case_ids'],
     };
 }
 
@@ -78,6 +83,7 @@ export function CreationCandidateToJSONTyped(value?: CreationCandidate | null, i
         'version_id': value['versionId'],
         'run_id': value['runId'],
         'test_case_id': value['testCaseId'],
+        'challenge_test_case_ids': value['challengeTestCaseIds'],
     };
 }
 

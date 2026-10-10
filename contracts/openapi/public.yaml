@@ -11859,6 +11859,12 @@ components:
           type: "string"
           format: "uuid"
           description: "The Test Case Go created from the confirmed acceptance criteria when this candidate was materialized."
+        challenge_test_case_ids:
+          type: "array"
+          items:
+            type: "string"
+            format: "uuid"
+          description: "One Test Case per confirmed challenge case, created alongside test_case_id when this candidate was materialized."
 
     CreationFetch:
       type: "object"
@@ -11889,6 +11895,19 @@ components:
         sha256:
           type: "string"
           description: "The digest of the bytes that were sent. It is what the platform keeps INSTEAD of them; it is not a URL and nothing serves the picture back."
+    CreationChallengeCase:
+      type: "object"
+      additionalProperties: false
+      required: ["name", "prompt", "criteria"]
+      properties:
+        name:
+          type: "string"
+        prompt:
+          type: "string"
+        criteria:
+          type: "array"
+          items:
+            type: "string"
     CreationSnapshot:
       type: "object"
       additionalProperties: false
@@ -11921,6 +11940,12 @@ components:
         sample_input:
           type: "string"
           description: "The example input proposed with the brief and confirmed by the same confirm_brief; it is the prompt of the candidate's Test Case. Empty until proposed."
+        challenge_cases:
+          type: "array"
+          maxItems: 3
+          description: "Inputs the sample does not exercise, written by a second call that sees only the brief, the criteria and the sample; confirmed by the same confirm_brief, each becomes its own Test Case at materialize."
+          items:
+            $ref: "#/components/schemas/CreationChallengeCase"
         brief_confirmed:
           type: "boolean"
         model_changed:

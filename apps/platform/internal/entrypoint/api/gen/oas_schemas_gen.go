@@ -3232,6 +3232,9 @@ type CreationCandidate struct {
 	// The Test Case Go created from the confirmed acceptance criteria when this candidate was
 	// materialized.
 	TestCaseID OptUUID `json:"test_case_id"`
+	// One Test Case per confirmed challenge case, created alongside test_case_id when this candidate was
+	// materialized.
+	ChallengeTestCaseIds []uuid.UUID `json:"challenge_test_case_ids"`
 }
 
 // GetSkillID returns the value of SkillID.
@@ -3254,6 +3257,11 @@ func (s *CreationCandidate) GetTestCaseID() OptUUID {
 	return s.TestCaseID
 }
 
+// GetChallengeTestCaseIds returns the value of ChallengeTestCaseIds.
+func (s *CreationCandidate) GetChallengeTestCaseIds() []uuid.UUID {
+	return s.ChallengeTestCaseIds
+}
+
 // SetSkillID sets the value of SkillID.
 func (s *CreationCandidate) SetSkillID(val uuid.UUID) {
 	s.SkillID = val
@@ -3272,6 +3280,48 @@ func (s *CreationCandidate) SetRunID(val OptUUID) {
 // SetTestCaseID sets the value of TestCaseID.
 func (s *CreationCandidate) SetTestCaseID(val OptUUID) {
 	s.TestCaseID = val
+}
+
+// SetChallengeTestCaseIds sets the value of ChallengeTestCaseIds.
+func (s *CreationCandidate) SetChallengeTestCaseIds(val []uuid.UUID) {
+	s.ChallengeTestCaseIds = val
+}
+
+// Ref: #/components/schemas/CreationChallengeCase
+type CreationChallengeCase struct {
+	Name     string   `json:"name"`
+	Prompt   string   `json:"prompt"`
+	Criteria []string `json:"criteria"`
+}
+
+// GetName returns the value of Name.
+func (s *CreationChallengeCase) GetName() string {
+	return s.Name
+}
+
+// GetPrompt returns the value of Prompt.
+func (s *CreationChallengeCase) GetPrompt() string {
+	return s.Prompt
+}
+
+// GetCriteria returns the value of Criteria.
+func (s *CreationChallengeCase) GetCriteria() []string {
+	return s.Criteria
+}
+
+// SetName sets the value of Name.
+func (s *CreationChallengeCase) SetName(val string) {
+	s.Name = val
+}
+
+// SetPrompt sets the value of Prompt.
+func (s *CreationChallengeCase) SetPrompt(val string) {
+	s.Prompt = val
+}
+
+// SetCriteria sets the value of Criteria.
+func (s *CreationChallengeCase) SetCriteria(val []string) {
+	s.Criteria = val
 }
 
 // Ref: #/components/schemas/CreationDiagramInterpretation
@@ -4216,9 +4266,12 @@ type CreationSnapshot struct {
 	AcceptanceCriteria []string `json:"acceptance_criteria"`
 	// The example input proposed with the brief and confirmed by the same confirm_brief; it is the prompt
 	// of the candidate's Test Case. Empty until proposed.
-	SampleInput    OptString              `json:"sample_input"`
-	BriefConfirmed bool                   `json:"brief_confirmed"`
-	ModelChanged   OptCreationModelChange `json:"model_changed"`
+	SampleInput OptString `json:"sample_input"`
+	// Inputs the sample does not exercise, written by a second call that sees only the brief, the criteria
+	// and the sample; confirmed by the same confirm_brief, each becomes its own Test Case at materialize.
+	ChallengeCases []CreationChallengeCase `json:"challenge_cases"`
+	BriefConfirmed bool                    `json:"brief_confirmed"`
+	ModelChanged   OptCreationModelChange  `json:"model_changed"`
 	// Legacy one-phase diagram interpretation. It remains readable for an existing session but cannot
 	// authorize a draft; upload the image again to use the checkpointed flow.
 	DiagramUnderstanding string `json:"diagram_understanding"`
@@ -4310,6 +4363,11 @@ func (s *CreationSnapshot) GetAcceptanceCriteria() []string {
 // GetSampleInput returns the value of SampleInput.
 func (s *CreationSnapshot) GetSampleInput() OptString {
 	return s.SampleInput
+}
+
+// GetChallengeCases returns the value of ChallengeCases.
+func (s *CreationSnapshot) GetChallengeCases() []CreationChallengeCase {
+	return s.ChallengeCases
 }
 
 // GetBriefConfirmed returns the value of BriefConfirmed.
@@ -4515,6 +4573,11 @@ func (s *CreationSnapshot) SetAcceptanceCriteria(val []string) {
 // SetSampleInput sets the value of SampleInput.
 func (s *CreationSnapshot) SetSampleInput(val OptString) {
 	s.SampleInput = val
+}
+
+// SetChallengeCases sets the value of ChallengeCases.
+func (s *CreationSnapshot) SetChallengeCases(val []CreationChallengeCase) {
+	s.ChallengeCases = val
 }
 
 // SetBriefConfirmed sets the value of BriefConfirmed.

@@ -6,6 +6,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"io"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -27,7 +28,7 @@ func TestCreationBatchCandidateSurvivesAMessage(t *testing.T) {
 	}
 	candidate := *v.Snapshot.Candidate
 	v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "message", "message": "很好，就存這一份。"}, 200)
-	if v.Snapshot.Candidate == nil || *v.Snapshot.Candidate != candidate {
+	if v.Snapshot.Candidate == nil || !reflect.DeepEqual(*v.Snapshot.Candidate, candidate) {
 		t.Fatalf("message discarded the materialized candidate: %+v", v)
 	}
 

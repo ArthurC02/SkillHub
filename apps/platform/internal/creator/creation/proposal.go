@@ -43,6 +43,25 @@ func validateCriteria(criteria []string) error {
 	return nil
 }
 
+func validateChallengeCases(cases []ChallengeCase) error {
+	if len(cases) > MaxChallengeCases {
+		return rejectedReply(fmt.Sprintf("has %d challenge cases, more than %d", len(cases), MaxChallengeCases))
+	}
+	for _, c := range cases {
+		if strings.TrimSpace(c.Name) == "" || utf8.RuneCountInString(c.Name) > MaxChallengeNameRunes ||
+			strings.TrimSpace(c.Prompt) == "" || utf8.RuneCountInString(c.Prompt) > MaxSampleInputRunes {
+			return rejectedReply("has a challenge case with an empty or over-long name or prompt")
+		}
+		if len(c.Criteria) == 0 || len(c.Criteria) > MaxChallengeCriteria {
+			return rejectedReply(fmt.Sprintf("has a challenge case with %d criteria, not 1 to %d", len(c.Criteria), MaxChallengeCriteria))
+		}
+		if err := validateCriteria(c.Criteria); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func equalStrings(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
@@ -168,7 +187,7 @@ func admitReply(r *StepResult, p Snapshot) error {
 	if utf8.RuneCountInString(r.SampleInput) > MaxSampleInputRunes {
 		return rejectedReply("has an over-long sample input")
 	}
-	return nil
+	return validateChallengeCases(r.ChallengeCases)
 }
 
 func recordReply(p *Snapshot, r *StepResult) {
@@ -242,6 +261,7 @@ func reviseBrief(p *Snapshot, r *StepResult, c briefChange) State {
 	if c.sample {
 		p.SampleInput = r.SampleInput
 	}
+	p.ChallengeCases = r.ChallengeCases
 	p.BriefConfirmed = false
 	invalidate(p)
 	p.PendingAction = PendingBriefConfirmation

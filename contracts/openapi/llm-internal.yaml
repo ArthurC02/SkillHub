@@ -2184,6 +2184,12 @@ components:
           description: One realistic, complete example of what a user would hand the Skill (the content itself, not a description of it), proposed and confirmed with the brief. It becomes the prompt of the Test Case the criteria are judged against; without it the trial run has nothing to work on and every criterion comes back undetermined. Empty until the model proposes it.
         brief_confirmed:
           type: boolean
+        challenge_cases:
+          type: array
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/CreationChallengeCase'
+          description: The challenge cases confirmed together with the brief. Go turns each into its own Test Case at materialize, so the trial also runs inputs the creator did not hand over.
         diagram_understanding:
           type: string
           maxLength: 20000
@@ -2253,6 +2259,12 @@ components:
           type: string
           maxLength: 4000
           description: The example input that accompanies the brief in this proposal; empty means unchanged.
+        challenge_cases:
+          type: array
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/CreationChallengeCase'
+          description: Inputs written by a second call that sees only the brief, the criteria and the sample, each aimed at a condition the sample does not exercise. Present only with confirm_brief; empty means none.
         diagram_understanding:
           type: string
           maxLength: 20000
@@ -2272,6 +2284,27 @@ components:
           type: string
         usage:
           $ref: '#/components/schemas/GatewayUsage'
+    CreationChallengeCase:
+      type: object
+      additionalProperties: false
+      required: [name, prompt, criteria]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        prompt:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        criteria:
+          type: array
+          minItems: 1
+          maxItems: 4
+          items:
+            type: string
+            minLength: 1
+            maxLength: 500
     AgentStepRequest:
       type: object
       additionalProperties: false

@@ -56,6 +56,12 @@ type DraftValidation struct {
 	Report      string
 }
 
+type ChallengeCase struct {
+	Name     string   `json:"name"`
+	Prompt   string   `json:"prompt"`
+	Criteria []string `json:"criteria"`
+}
+
 type ToolIntent struct {
 	Kind    string
 	Query   string
@@ -70,6 +76,7 @@ type StepRequest struct {
 	AcceptanceCriteria          []string
 	SampleInput                 string
 	BriefConfirmed              bool
+	ChallengeCases              []ChallengeCase
 	DiagramUnderstanding        string
 	DiagramDescription          string
 	DiagramDescriptionConfirmed bool
@@ -91,6 +98,7 @@ type StepResult struct {
 	Brief                 string
 	AcceptanceCriteria    []string
 	SampleInput           string
+	ChallengeCases        []ChallengeCase
 	DiagramUnderstanding  string
 	DiagramDescription    string
 	DiagramInterpretation *DiagramDecomposition

@@ -8238,13 +8238,24 @@ func (s *CreationCandidate) encodeFields(e *jx.Encoder) {
 			s.TestCaseID.Encode(e)
 		}
 	}
+	{
+		if s.ChallengeTestCaseIds != nil {
+			e.FieldStart("challenge_test_case_ids")
+			e.ArrStart()
+			for _, elem := range s.ChallengeTestCaseIds {
+				json.EncodeUUID(e, elem)
+			}
+			e.ArrEnd()
+		}
+	}
 }
 
-var jsonFieldsNameOfCreationCandidate = [4]string{
+var jsonFieldsNameOfCreationCandidate = [5]string{
 	0: "skill_id",
 	1: "version_id",
 	2: "run_id",
 	3: "test_case_id",
+	4: "challenge_test_case_ids",
 }
 
 // Decode decodes CreationCandidate from json.
@@ -8300,6 +8311,25 @@ func (s *CreationCandidate) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"test_case_id\"")
 			}
+		case "challenge_test_case_ids":
+			if err := func() error {
+				s.ChallengeTestCaseIds = make([]uuid.UUID, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem uuid.UUID
+					v, err := json.DecodeUUID(d)
+					elem = v
+					if err != nil {
+						return err
+					}
+					s.ChallengeTestCaseIds = append(s.ChallengeTestCaseIds, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"challenge_test_case_ids\"")
+			}
 		default:
 			return errors.Errorf("unexpected field %q", k)
 		}
@@ -8352,6 +8382,148 @@ func (s *CreationCandidate) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *CreationCandidate) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *CreationChallengeCase) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *CreationChallengeCase) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("name")
+		e.Str(s.Name)
+	}
+	{
+		e.FieldStart("prompt")
+		e.Str(s.Prompt)
+	}
+	{
+		e.FieldStart("criteria")
+		e.ArrStart()
+		for _, elem := range s.Criteria {
+			e.Str(elem)
+		}
+		e.ArrEnd()
+	}
+}
+
+var jsonFieldsNameOfCreationChallengeCase = [3]string{
+	0: "name",
+	1: "prompt",
+	2: "criteria",
+}
+
+// Decode decodes CreationChallengeCase from json.
+func (s *CreationChallengeCase) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreationChallengeCase to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "name":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Name = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"name\"")
+			}
+		case "prompt":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.Prompt = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"prompt\"")
+			}
+		case "criteria":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				s.Criteria = make([]string, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem string
+					v, err := d.Str()
+					elem = string(v)
+					if err != nil {
+						return err
+					}
+					s.Criteria = append(s.Criteria, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"criteria\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode CreationChallengeCase")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfCreationChallengeCase) {
+					name = jsonFieldsNameOfCreationChallengeCase[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *CreationChallengeCase) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreationChallengeCase) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -10424,6 +10596,16 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.ChallengeCases != nil {
+			e.FieldStart("challenge_cases")
+			e.ArrStart()
+			for _, elem := range s.ChallengeCases {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
 		e.FieldStart("brief_confirmed")
 		e.Bool(s.BriefConfirmed)
 	}
@@ -10643,48 +10825,49 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreationSnapshot = [41]string{
+var jsonFieldsNameOfCreationSnapshot = [42]string{
 	0:  "messages",
 	1:  "brief",
 	2:  "acceptance_criteria",
 	3:  "sample_input",
-	4:  "brief_confirmed",
-	5:  "model_changed",
-	6:  "diagram_understanding",
-	7:  "diagram_description",
-	8:  "diagram_description_confirmed",
-	9:  "diagram_interpretation",
-	10: "diagram_confirmed",
-	11: "diagram_fingerprint",
-	12: "attachments",
-	13: "references",
-	14: "draft",
-	15: "candidate",
-	16: "pending_action",
-	17: "budget_credits",
-	18: "reserved_credits",
-	19: "spent_credits",
-	20: "usage_unknown",
-	21: "steps",
-	22: "tool_calls",
-	23: "draft_retries",
-	24: "run_unmet",
-	25: "nudges",
-	26: "blocked_repeats",
-	27: "search_rounds",
-	28: "catalog_checked",
-	29: "duplicates",
-	30: "pending_materialize",
-	31: "duplicate_acknowledged",
-	32: "adopted",
-	33: "pending_fetch_url",
-	34: "approved_fetch_url",
-	35: "fetches",
-	36: "model",
-	37: "prompt_version",
-	38: "diagram_media_type",
-	39: "diagram_bytes",
-	40: "previous_draft",
+	4:  "challenge_cases",
+	5:  "brief_confirmed",
+	6:  "model_changed",
+	7:  "diagram_understanding",
+	8:  "diagram_description",
+	9:  "diagram_description_confirmed",
+	10: "diagram_interpretation",
+	11: "diagram_confirmed",
+	12: "diagram_fingerprint",
+	13: "attachments",
+	14: "references",
+	15: "draft",
+	16: "candidate",
+	17: "pending_action",
+	18: "budget_credits",
+	19: "reserved_credits",
+	20: "spent_credits",
+	21: "usage_unknown",
+	22: "steps",
+	23: "tool_calls",
+	24: "draft_retries",
+	25: "run_unmet",
+	26: "nudges",
+	27: "blocked_repeats",
+	28: "search_rounds",
+	29: "catalog_checked",
+	30: "duplicates",
+	31: "pending_materialize",
+	32: "duplicate_acknowledged",
+	33: "adopted",
+	34: "pending_fetch_url",
+	35: "approved_fetch_url",
+	36: "fetches",
+	37: "model",
+	38: "prompt_version",
+	39: "diagram_media_type",
+	40: "diagram_bytes",
+	41: "previous_draft",
 }
 
 // Decode decodes CreationSnapshot from json.
@@ -10756,8 +10939,25 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"sample_input\"")
 			}
+		case "challenge_cases":
+			if err := func() error {
+				s.ChallengeCases = make([]CreationChallengeCase, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem CreationChallengeCase
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.ChallengeCases = append(s.ChallengeCases, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"challenge_cases\"")
+			}
 		case "brief_confirmed":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				v, err := d.Bool()
 				s.BriefConfirmed = bool(v)
@@ -10779,7 +10979,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"model_changed\"")
 			}
 		case "diagram_understanding":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := d.Str()
 				s.DiagramUnderstanding = string(v)
@@ -10821,7 +11021,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"diagram_interpretation\"")
 			}
 		case "diagram_confirmed":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				v, err := d.Bool()
 				s.DiagramConfirmed = bool(v)
@@ -10860,7 +11060,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"attachments\"")
 			}
 		case "references":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				s.References = make([]CreationReference, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -10898,7 +11098,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"candidate\"")
 			}
 		case "pending_action":
-			requiredBitSet[2] |= 1 << 0
+			requiredBitSet[2] |= 1 << 1
 			if err := func() error {
 				v, err := d.Str()
 				s.PendingAction = string(v)
@@ -10910,7 +11110,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"pending_action\"")
 			}
 		case "budget_credits":
-			requiredBitSet[2] |= 1 << 1
+			requiredBitSet[2] |= 1 << 2
 			if err := func() error {
 				v, err := d.Int()
 				s.BudgetCredits = int(v)
@@ -10922,7 +11122,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"budget_credits\"")
 			}
 		case "reserved_credits":
-			requiredBitSet[2] |= 1 << 2
+			requiredBitSet[2] |= 1 << 3
 			if err := func() error {
 				v, err := d.Int()
 				s.ReservedCredits = int(v)
@@ -10944,7 +11144,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"spent_credits\"")
 			}
 		case "usage_unknown":
-			requiredBitSet[2] |= 1 << 4
+			requiredBitSet[2] |= 1 << 5
 			if err := func() error {
 				v, err := d.Bool()
 				s.UsageUnknown = bool(v)
@@ -10956,7 +11156,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"usage_unknown\"")
 			}
 		case "steps":
-			requiredBitSet[2] |= 1 << 5
+			requiredBitSet[2] |= 1 << 6
 			if err := func() error {
 				v, err := d.Int()
 				s.Steps = int(v)
@@ -10968,7 +11168,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"steps\"")
 			}
 		case "tool_calls":
-			requiredBitSet[2] |= 1 << 6
+			requiredBitSet[2] |= 1 << 7
 			if err := func() error {
 				v, err := d.Int()
 				s.ToolCalls = int(v)
@@ -11183,9 +11383,9 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [6]uint8{
-		0b01010111,
-		0b00100100,
-		0b01110111,
+		0b10100111,
+		0b01001000,
+		0b11101110,
 		0b00000000,
 		0b00000000,
 		0b00000000,

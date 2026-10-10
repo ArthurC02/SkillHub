@@ -26,6 +26,7 @@ func (a stepOverHTTP) CreationStep(ctx context.Context, req StepRequest) (*StepR
 		AcceptanceCriteria:          req.AcceptanceCriteria,
 		SampleInput:                 req.SampleInput,
 		BriefConfirmed:              req.BriefConfirmed,
+		ChallengeCases:              wireChallengeCases(req.ChallengeCases),
 		DiagramUnderstanding:        req.DiagramUnderstanding,
 		DiagramDescription:          req.DiagramDescription,
 		DiagramDescriptionConfirmed: req.DiagramDescriptionConfirmed,
@@ -49,6 +50,7 @@ func (a stepOverHTTP) CreationStep(ctx context.Context, req StepRequest) (*StepR
 		Brief:                 resp.Brief,
 		AcceptanceCriteria:    resp.AcceptanceCriteria,
 		SampleInput:           resp.SampleInput,
+		ChallengeCases:        challengeCasesFromWire(resp.ChallengeCases),
 		DiagramUnderstanding:  resp.DiagramUnderstanding,
 		DiagramDescription:    resp.DiagramDescription,
 		DiagramInterpretation: diagramDecompositionFromWire(resp.DiagramInterpretation),
@@ -79,6 +81,22 @@ func diagramDecompositionFromWire(value *llmclient.DiagramDecomposition) *Diagra
 		return nil
 	}
 	return &DiagramDecomposition{Nodes: append([]string(nil), value.Nodes...), Conditions: append([]string(nil), value.Conditions...), Branches: append([]string(nil), value.Branches...), Uncertainties: append([]string(nil), value.Uncertainties...)}
+}
+
+func wireChallengeCases(cases []ChallengeCase) []llmclient.CreationChallengeCase {
+	var out []llmclient.CreationChallengeCase
+	for _, c := range cases {
+		out = append(out, llmclient.CreationChallengeCase{Name: c.Name, Prompt: c.Prompt, Criteria: append([]string(nil), c.Criteria...)})
+	}
+	return out
+}
+
+func challengeCasesFromWire(cases []llmclient.CreationChallengeCase) []ChallengeCase {
+	var out []ChallengeCase
+	for _, c := range cases {
+		out = append(out, ChallengeCase{Name: c.Name, Prompt: c.Prompt, Criteria: append([]string(nil), c.Criteria...)})
+	}
+	return out
 }
 
 func wireMessages(messages []Message) []llmclient.CreationMessage {

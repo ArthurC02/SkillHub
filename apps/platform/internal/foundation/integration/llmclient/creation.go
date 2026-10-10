@@ -17,6 +17,7 @@ type CreationStepRequest struct {
 	AcceptanceCriteria          []string                 `json:"acceptance_criteria"`
 	SampleInput                 string                   `json:"sample_input"`
 	BriefConfirmed              bool                     `json:"brief_confirmed"`
+	ChallengeCases              []CreationChallengeCase  `json:"challenge_cases,omitempty"`
 	DiagramUnderstanding        string                   `json:"diagram_understanding"`
 	DiagramDescription          string                   `json:"diagram_description"`
 	DiagramDescriptionConfirmed bool                     `json:"diagram_description_confirmed"`
@@ -56,6 +57,12 @@ type CreationDraftValidation struct {
 	Blocked     bool   `json:"blocked"`
 	Report      string `json:"report"`
 }
+type CreationChallengeCase struct {
+	Name     string   `json:"name"`
+	Prompt   string   `json:"prompt"`
+	Criteria []string `json:"criteria"`
+}
+
 type CreationMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
@@ -67,14 +74,15 @@ type CreationToolIntent struct {
 	Queries []string `json:"queries"`
 }
 type CreationStepResponse struct {
-	Outcome               string                `json:"outcome"`
-	Message               string                `json:"message"`
-	Brief                 string                `json:"brief"`
-	AcceptanceCriteria    []string              `json:"acceptance_criteria"`
-	SampleInput           string                `json:"sample_input"`
-	DiagramUnderstanding  string                `json:"diagram_understanding"`
-	DiagramDescription    string                `json:"diagram_description"`
-	DiagramInterpretation *DiagramDecomposition `json:"diagram_interpretation,omitempty"`
+	Outcome               string                  `json:"outcome"`
+	Message               string                  `json:"message"`
+	Brief                 string                  `json:"brief"`
+	AcceptanceCriteria    []string                `json:"acceptance_criteria"`
+	SampleInput           string                  `json:"sample_input"`
+	ChallengeCases        []CreationChallengeCase `json:"challenge_cases,omitempty"`
+	DiagramUnderstanding  string                  `json:"diagram_understanding"`
+	DiagramDescription    string                  `json:"diagram_description"`
+	DiagramInterpretation *DiagramDecomposition   `json:"diagram_interpretation,omitempty"`
 
 	Reason        string              `json:"reason,omitempty"`
 	ToolIntent    *CreationToolIntent `json:"tool_intent,omitempty"`

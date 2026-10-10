@@ -57,6 +57,10 @@ const (
 
 	MaxSampleInputRunes = 4000
 
+	MaxChallengeCases     = 3
+	MaxChallengeCriteria  = 4
+	MaxChallengeNameRunes = 60
+
 	MaxNudges = 2
 
 	MaxBlockedRepeats = 2
@@ -139,6 +143,8 @@ type Candidate struct {
 	RunID     string `json:"run_id,omitempty"`
 
 	TestCaseID string `json:"test_case_id,omitempty"`
+
+	ChallengeTestCaseIDs []string `json:"challenge_test_case_ids,omitempty"`
 }
 
 type Attachment struct {
@@ -175,6 +181,7 @@ type Snapshot struct {
 	AcceptanceCriteria []string `json:"acceptance_criteria"`
 
 	SampleInput                 string                 `json:"sample_input"`
+	ChallengeCases              []ChallengeCase        `json:"challenge_cases,omitempty"`
 	BriefConfirmed              bool                   `json:"brief_confirmed"`
 	DiagramUnderstanding        string                 `json:"diagram_understanding"`
 	DiagramDescription          string                 `json:"diagram_description,omitempty"`

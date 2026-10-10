@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -108,7 +109,7 @@ func (s langGraphSession) finalizeReviewedDraft(v creation.View, goodHash string
 	}
 	candidate := *v.Snapshot.Candidate
 	v = creationAct(t, s.creator, v, "finalize")
-	if v.State != "saved" || v.Snapshot.Candidate == nil || *v.Snapshot.Candidate != candidate || v.Snapshot.Draft == nil || v.Snapshot.Draft.ContentHash != goodHash || s.calls.Load() != 4 {
+	if v.State != "saved" || v.Snapshot.Candidate == nil || !reflect.DeepEqual(*v.Snapshot.Candidate, candidate) || v.Snapshot.Draft == nil || v.Snapshot.Draft.ContentHash != goodHash || s.calls.Load() != 4 {
 		t.Fatalf("finalize changed the candidate or regenerated: %+v calls=%d", v, s.calls.Load())
 	}
 }
