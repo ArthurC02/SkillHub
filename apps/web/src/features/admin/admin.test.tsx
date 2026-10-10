@@ -1106,7 +1106,7 @@ test("a revised model timeout replaces the previous result even when reread stay
   expect(container.querySelector("#admin-budget-result")).toBeNull();
 });
 
-test("OPS-009: changing a timeout confirms the reread value before promising the next call", async () => {
+test("changing a timeout confirms the platform setting without promising the service deadline", async () => {
   let currentSeconds = 90;
   stub(true, (path, method) => {
     if (path === "/admin/model-budgets" && method === "GET") {
@@ -1133,7 +1133,7 @@ test("OPS-009: changing a timeout confirms the reread value before promising the
   await click(button("改 評估判定 的秒數"));
 
   await waitFor(has("目前：100 秒（已調整）"));
-  await waitFor(has("目前顯示設定 100 秒；下次呼叫將使用此設定。"));
+  await waitFor(has("目前顯示設定 100 秒；下次呼叫平台會送出此值，模型服務可能採用更短的上限。"));
   expect(has("設定已變更；草稿改為最新的 100 秒")()).toBe(false);
   expect(field<HTMLInputElement>("#admin-budget-judge-run-seconds").value).toBe("100");
   expect(field<HTMLElement>("#admin-budget-result").classList.contains("notice-success")).toBe(
@@ -1228,7 +1228,9 @@ test("OPS-009: restoring the default keeps a focused result after the restore fo
   expect(field<HTMLInputElement>("#admin-budget-judge-run-seconds").value).toBe("130");
   expect(has("設定已變更；草稿改為最新的 130 秒")()).toBe(false);
   expect(container.querySelector("#admin-budget-judge-run-clear")).toBeNull();
-  await waitFor(has("目前顯示程式預設 130 秒；下次呼叫將使用此設定。"));
+  await waitFor(
+    has("目前顯示程式預設 130 秒；下次呼叫平台會送出此值，模型服務可能採用更短的上限。"),
+  );
   expect(document.activeElement).toBe(field<HTMLElement>("#admin-budget-result"));
   await type("#admin-budget-judge-run-seconds", "100");
   expect(container.querySelector("#admin-budget-result")).toBeNull();
@@ -2341,6 +2343,29 @@ test("OPS-008: the trends page asks each owner for 30 days by default and draws 
   );
 });
 
+test("aligned trends put four period totals before the daily charts", async () => {
+  stub(true);
+  await mountAt("/admin/trends");
+  await waitFor(has("全平台目前餘額總和：1268 點。"));
+  const overview = field<HTMLElement>("#admin-trend-overview");
+  expect(
+    Array.from(overview.querySelectorAll("dl > div")).map((row) => [
+      row.querySelector("dt")?.textContent,
+      row.querySelector("dd")?.textContent,
+    ]),
+  ).toEqual([
+    ["模型成本（含估計）", "$0.0936"],
+    ["點數淨異動", "+118 點"],
+    ["建立 Run", "6 筆"],
+    ["後台動作", "2 筆"],
+  ]);
+  expect(
+    overview.compareDocumentPosition(field<HTMLElement>("#admin-trend-cost")) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(trendCalls()).toHaveLength(5);
+});
+
 test("OPS-008: the range comes before compact read metadata on a complete trends page", async () => {
   stub(true);
   await mountAt("/admin/trends");
@@ -2376,6 +2401,7 @@ test("OPS-008: a failed trend hides its cached chart while other trends remain u
   expect(credits.querySelector("figure")).toBeNull();
   expect(has("評審：3 筆，合計 $0.0036")()).toBe(true);
   expect(has("已取得 4/5 組 ·")()).toBe(true);
+  expect(container.querySelector("#admin-trend-overview")).toBeNull();
 
   await click(button("重新整理"));
   await waitFor(has("全平台目前餘額總和：1268 點。"));
@@ -2417,6 +2443,7 @@ test("OPS-008: different response windows are not presented as one comparable ra
   await waitFor(has("已取得 5/5 組 ·"));
   expect(has("取得的趨勢日期範圍與選擇不一致，請重新整理後再比較。")()).toBe(true);
   expect(has("2026-08-14 到 2026-09-12（UTC），共 30 天。")()).toBe(false);
+  expect(container.querySelector("#admin-trend-overview")).toBeNull();
 });
 
 test("OPS-008: a seven-day response does not masquerade as the selected 30 days", async () => {
@@ -2454,7 +2481,10 @@ test("OPS-008: the funnel says what one count means at every stage, from the ser
   stub(true);
   await mountAt("/admin/trends");
   await waitFor(has("每個瀏覽工作階段一天算一次，這一段系統性偏高。"));
-  const grains = Array.from(container.querySelectorAll("dl > div")).map((row) => [
+  const funnelSection = Array.from(container.querySelectorAll("section")).find(
+    (section) => section.querySelector("h2")?.textContent === "漏斗各段每天到達的數量",
+  )!;
+  const grains = Array.from(funnelSection.querySelectorAll("dl > div")).map((row) => [
     row.querySelector("dt")?.textContent,
     row.querySelector("dd")?.textContent,
   ]);
@@ -2466,9 +2496,6 @@ test("OPS-008: the funnel says what one count means at every stage, from the ser
   ]);
   expect(has("這段期間沒有事件：按下下載。")()).toBe(true);
   expect(has("搜尋：12 筆")()).toBe(true);
-  const funnelSection = Array.from(container.querySelectorAll("section")).find(
-    (section) => section.querySelector("h2")?.textContent === "漏斗各段每天到達的數量",
-  )!;
   expect(
     funnelSection
       .querySelector("dl")!

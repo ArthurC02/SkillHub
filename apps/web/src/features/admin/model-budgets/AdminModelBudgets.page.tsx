@@ -183,7 +183,7 @@ function completedMessage(
   if (fetching) return "正在重新讀取目前設定。";
   if (error) return "目前設定暫時無法重新讀取，請稍後核對。";
   if (current?.seconds === completed.seconds) {
-    return `目前顯示${completed.seconds === null ? "程式預設" : "設定"} ${completed.seconds ?? completed.defaultSeconds} 秒；下次呼叫將使用此設定。`;
+    return `目前顯示${completed.seconds === null ? "程式預設" : "設定"} ${completed.seconds ?? completed.defaultSeconds} 秒；下次呼叫平台會送出此值，模型服務可能採用更短的上限。`;
   }
   if (current) {
     return `重新讀取仍顯示 ${current.seconds === null ? `程式預設 ${current.default_seconds}` : current.seconds} 秒；請重新整理確認。`;
