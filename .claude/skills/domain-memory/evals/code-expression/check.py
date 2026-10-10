@@ -391,6 +391,17 @@ def renamed(text: str) -> str:
     return re.sub(r"\bcalc\b", "invoice_total", text)
 
 
+def code_with_imports_sorted(text: str) -> str | None:
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            node.names.sort(key=lambda alias: (alias.name, alias.asname or ""))
+    return ast.dump(tree)
+
+
 def only_the_name_changed(run: Run) -> Check:
     differing = [
         name
@@ -398,8 +409,8 @@ def only_the_name_changed(run: Run) -> Check:
         if name.endswith(".py")
         and (
             not (run.result / name).is_file()
-            or (run.result / name).read_text(encoding="utf-8")
-            != renamed((run.fixture / name).read_text(encoding="utf-8"))
+            or code_with_imports_sorted((run.result / name).read_text(encoding="utf-8"))
+            != code_with_imports_sorted(renamed((run.fixture / name).read_text(encoding="utf-8")))
         )
     ]
     return verdict("only_the_name_changed", passed=not differing, detail=differing)
