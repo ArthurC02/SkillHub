@@ -151,12 +151,12 @@ func (s creationTurnScript) respond(call int32, system, prompt string) (map[stri
 
 func creationLangGraphGateway(t *testing.T, calls *atomic.Int32, script creationTurnScript) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		system, prompt, ok := readCreationGatewayPrompts(t, w, r)
+		system, prompt, schema, ok := readCreationGatewayPrompts(t, w, r)
 		if !ok {
 			return
 		}
 		var decision any = map[string]any{"cases": []any{}}
-		if !strings.HasPrefix(system, "You test an Agent Skill before it is written.") {
+		if schema != "challenge_cases" {
 			var problem string
 			decision, problem = script.respond(calls.Add(1), system, prompt)
 			if problem != "" {
@@ -180,11 +180,11 @@ func creationLangGraphGateway(t *testing.T, calls *atomic.Int32, script creation
 	}
 }
 
-func readCreationGatewayPrompts(t *testing.T, w http.ResponseWriter, r *http.Request) (string, string, bool) {
+func readCreationGatewayPrompts(t *testing.T, w http.ResponseWriter, r *http.Request) (system, prompt, schema string, ok bool) {
 	if r.Method != http.MethodPost || r.URL.Path != "/v1/chat/completions" {
 		t.Errorf("gateway request = %s %s", r.Method, r.URL.Path)
 		http.NotFound(w, r)
-		return "", "", false
+		return "", "", "", false
 	}
 	if got := r.Header.Get("Authorization"); got != "Bearer test-attempt-key" {
 		t.Errorf("gateway authorization = %q", got)
@@ -194,26 +194,29 @@ func readCreationGatewayPrompts(t *testing.T, w http.ResponseWriter, r *http.Req
 			Role    string          `json:"role"`
 			Content json.RawMessage `json:"content"`
 		} `json:"messages"`
+		ResponseFormat struct {
+			JSONSchema struct {
+				Name string `json:"name"`
+			} `json:"json_schema"`
+		} `json:"response_format"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
 		t.Errorf("decode gateway request: %v", err)
 		http.Error(w, "bad request", http.StatusBadRequest)
-		return "", "", false
+		return "", "", "", false
 	}
 	if len(in.Messages) != 2 || in.Messages[1].Role != "user" {
 		t.Errorf("gateway messages = %+v", in.Messages)
 		http.Error(w, "bad messages", http.StatusBadRequest)
-		return "", "", false
+		return "", "", "", false
 	}
-	var prompt string
 	if err := json.Unmarshal(in.Messages[1].Content, &prompt); err != nil {
 		t.Errorf("creation prompt is not text: %v", err)
 	}
-	var system string
 	if err := json.Unmarshal(in.Messages[0].Content, &system); err != nil {
 		t.Error(err)
 	}
-	return system, prompt, true
+	return system, prompt, in.ResponseFormat.JSONSchema.Name, true
 }
 
 func creationDecision(outcome, message string, brief *string, draft map[string]any) map[string]any {
