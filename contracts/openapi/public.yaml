@@ -7272,6 +7272,22 @@ components:
             restarts at zero on every page load and would report a stalled run as
             having just moved.
         final_output: { type: string }
+        questions:
+          type: array
+          description: |
+            Present only when the run ended by handing questions back to the
+            person (the ask tool). Each entry says what was asked, why it
+            changes the result, and optional choices. Untrusted content —
+            render as inert text.
+          items:
+            type: object
+            required: [question, why]
+            properties:
+              question: { type: string }
+              why: { type: string }
+              options:
+                type: array
+                items: { type: string }
         usage:
           type: object
           properties:

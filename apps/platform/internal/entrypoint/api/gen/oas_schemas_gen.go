@@ -31669,9 +31669,13 @@ type TraceSummary struct {
 	// A watching screen needs this and cannot derive it from the counters: a wedged run's counters simply
 	// stop, and stopping looks exactly like finishing. Client-side timing cannot stand in either, because
 	// it restarts at zero on every page load and would report a stalled run as having just moved.
-	LastEventAt OptDateTime          `json:"last_event_at"`
-	FinalOutput OptString            `json:"final_output"`
-	Usage       OptTraceSummaryUsage `json:"usage"`
+	LastEventAt OptDateTime `json:"last_event_at"`
+	FinalOutput OptString   `json:"final_output"`
+	// Present only when the run ended by handing questions back to the person (the ask tool). Each entry
+	// says what was asked, why it changes the result, and optional choices. Untrusted content — render
+	// as inert text.
+	Questions []TraceSummaryQuestionsItem `json:"questions"`
+	Usage     OptTraceSummaryUsage        `json:"usage"`
 	// Progress, taken from run_status_transitions - the authoritative history - and never reconstructed by
 	// replaying run_lifecycle events (iron rule 5).
 	//
@@ -31746,6 +31750,11 @@ func (s *TraceSummary) GetLastEventAt() OptDateTime {
 // GetFinalOutput returns the value of FinalOutput.
 func (s *TraceSummary) GetFinalOutput() OptString {
 	return s.FinalOutput
+}
+
+// GetQuestions returns the value of Questions.
+func (s *TraceSummary) GetQuestions() []TraceSummaryQuestionsItem {
+	return s.Questions
 }
 
 // GetUsage returns the value of Usage.
@@ -31823,6 +31832,11 @@ func (s *TraceSummary) SetFinalOutput(val OptString) {
 	s.FinalOutput = val
 }
 
+// SetQuestions sets the value of Questions.
+func (s *TraceSummary) SetQuestions(val []TraceSummaryQuestionsItem) {
+	s.Questions = val
+}
+
 // SetUsage sets the value of Usage.
 func (s *TraceSummary) SetUsage(val OptTraceSummaryUsage) {
 	s.Usage = val
@@ -31867,6 +31881,42 @@ func (s *TraceSummaryErrorsItem) SetCode(val OptString) {
 // SetMessage sets the value of Message.
 func (s *TraceSummaryErrorsItem) SetMessage(val OptString) {
 	s.Message = val
+}
+
+type TraceSummaryQuestionsItem struct {
+	Question string   `json:"question"`
+	Why      string   `json:"why"`
+	Options  []string `json:"options"`
+}
+
+// GetQuestion returns the value of Question.
+func (s *TraceSummaryQuestionsItem) GetQuestion() string {
+	return s.Question
+}
+
+// GetWhy returns the value of Why.
+func (s *TraceSummaryQuestionsItem) GetWhy() string {
+	return s.Why
+}
+
+// GetOptions returns the value of Options.
+func (s *TraceSummaryQuestionsItem) GetOptions() []string {
+	return s.Options
+}
+
+// SetQuestion sets the value of Question.
+func (s *TraceSummaryQuestionsItem) SetQuestion(val string) {
+	s.Question = val
+}
+
+// SetWhy sets the value of Why.
+func (s *TraceSummaryQuestionsItem) SetWhy(val string) {
+	s.Why = val
+}
+
+// SetOptions sets the value of Options.
+func (s *TraceSummaryQuestionsItem) SetOptions(val []string) {
+	s.Options = val
 }
 
 type TraceSummarySkillsItem struct {

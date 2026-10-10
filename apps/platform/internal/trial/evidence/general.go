@@ -14,6 +14,7 @@ const (
 	generalErrorsShown = 100
 
 	outputKindFinal    = "final"
+	outputKindQuestion = "question"
 	usageScopeRunTotal = "run_total"
 	toolCallSucceeded  = "succeeded"
 )
@@ -31,6 +32,7 @@ type generalFold struct {
 	summary     Summary
 	costUSD     *float64
 	finalOutput *gen.ListTraceGeneralFactsRow
+	question    *gen.ListTraceGeneralFactsRow
 }
 
 func foldGeneral(rows []gen.ListTraceGeneralFactsRow) generalFold {
@@ -54,8 +56,11 @@ func foldGeneral(rows []gen.ListTraceGeneralFactsRow) generalFold {
 				fold.summary.Errors = append(fold.summary.Errors, ErrorSummary{Category: row.Category, Code: row.Code, Message: row.Message})
 			}
 		case TypeAgentOutput:
-			if row.Kind == outputKindFinal {
+			switch row.Kind {
+			case outputKindFinal:
 				fold.finalOutput = row
+			case outputKindQuestion:
+				fold.question = row
 			}
 		case TypeUsage:
 			usage = append(usage, *row)

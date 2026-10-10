@@ -26707,6 +26707,19 @@ func (s *GetRunTraceOK) Decode(d *jx.Decoder) error {
 				}
 				found = true
 				s.Type = match
+			case "questions":
+				// Type-based discrimination: check if field has expected JSON type
+				if typ := d.Next(); typ != jx.Array {
+					// Field exists but has wrong type, not a match for this variant
+					return d.Skip()
+				}
+				match := TraceSummaryGetRunTraceOK
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
 			case "resources_read":
 				// Type-based discrimination: check if field has expected JSON type
 				if typ := d.Next(); typ != jx.Number {
@@ -66064,6 +66077,16 @@ func (s *TraceSummary) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.Questions != nil {
+			e.FieldStart("questions")
+			e.ArrStart()
+			for _, elem := range s.Questions {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
 		if s.Usage.Set {
 			e.FieldStart("usage")
 			s.Usage.Encode(e)
@@ -66079,7 +66102,7 @@ func (s *TraceSummary) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTraceSummary = [15]string{
+var jsonFieldsNameOfTraceSummary = [16]string{
 	0:  "run_id",
 	1:  "status",
 	2:  "status_reason",
@@ -66093,8 +66116,9 @@ var jsonFieldsNameOfTraceSummary = [15]string{
 	10: "summary_truncated",
 	11: "last_event_at",
 	12: "final_output",
-	13: "usage",
-	14: "steps",
+	13: "questions",
+	14: "usage",
+	15: "steps",
 }
 
 // Decode decodes TraceSummary from json.
@@ -66264,6 +66288,23 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"final_output\"")
 			}
+		case "questions":
+			if err := func() error {
+				s.Questions = make([]TraceSummaryQuestionsItem, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem TraceSummaryQuestionsItem
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Questions = append(s.Questions, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"questions\"")
+			}
 		case "usage":
 			if err := func() error {
 				s.Usage.Reset()
@@ -66275,7 +66316,7 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"usage\"")
 			}
 		case "steps":
-			requiredBitSet[1] |= 1 << 6
+			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
 				s.Steps = make([]TraceSummaryStepsItem, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -66303,7 +66344,7 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b11111011,
-		0b01000111,
+		0b10000111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -66442,6 +66483,149 @@ func (s *TraceSummaryErrorsItem) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *TraceSummaryErrorsItem) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *TraceSummaryQuestionsItem) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *TraceSummaryQuestionsItem) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("question")
+		e.Str(s.Question)
+	}
+	{
+		e.FieldStart("why")
+		e.Str(s.Why)
+	}
+	{
+		if s.Options != nil {
+			e.FieldStart("options")
+			e.ArrStart()
+			for _, elem := range s.Options {
+				e.Str(elem)
+			}
+			e.ArrEnd()
+		}
+	}
+}
+
+var jsonFieldsNameOfTraceSummaryQuestionsItem = [3]string{
+	0: "question",
+	1: "why",
+	2: "options",
+}
+
+// Decode decodes TraceSummaryQuestionsItem from json.
+func (s *TraceSummaryQuestionsItem) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TraceSummaryQuestionsItem to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "question":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Question = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"question\"")
+			}
+		case "why":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.Why = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"why\"")
+			}
+		case "options":
+			if err := func() error {
+				s.Options = make([]string, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem string
+					v, err := d.Str()
+					elem = string(v)
+					if err != nil {
+						return err
+					}
+					s.Options = append(s.Options, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"options\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode TraceSummaryQuestionsItem")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfTraceSummaryQuestionsItem) {
+					name = jsonFieldsNameOfTraceSummaryQuestionsItem[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *TraceSummaryQuestionsItem) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TraceSummaryQuestionsItem) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

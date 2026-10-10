@@ -287,6 +287,7 @@ export * from './TraceIngestReport';
 export * from './TraceStream';
 export * from './TraceSummary';
 export * from './TraceSummaryErrorsInner';
+export * from './TraceSummaryQuestionsInner';
 export * from './TraceSummarySkillsInner';
 export * from './TraceSummaryStepsInner';
 export * from './TraceSummaryToolCalls';

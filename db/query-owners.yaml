@@ -260,6 +260,7 @@ queries:
   ListProposals: operations
   GetProposal: operations
   GetTraceEventText: trace
+  GetTraceEventQuestions: trace
   LockTraceIngestRun: trace
   NextTraceSeq: trace
   CountTraceMaskingInWindow: trace

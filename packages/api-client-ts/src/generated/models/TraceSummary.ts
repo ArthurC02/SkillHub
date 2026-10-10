@@ -41,6 +41,13 @@ import {
     TraceSummaryErrorsInnerToJSON,
     TraceSummaryErrorsInnerToJSONTyped,
 } from './TraceSummaryErrorsInner';
+import type { TraceSummaryQuestionsInner } from './TraceSummaryQuestionsInner';
+import {
+    TraceSummaryQuestionsInnerFromJSON,
+    TraceSummaryQuestionsInnerFromJSONTyped,
+    TraceSummaryQuestionsInnerToJSON,
+    TraceSummaryQuestionsInnerToJSONTyped,
+} from './TraceSummaryQuestionsInner';
 import type { TraceSummaryStepsInner } from './TraceSummaryStepsInner';
 import {
     TraceSummaryStepsInnerFromJSON,
@@ -127,6 +134,14 @@ export interface TraceSummary {
      */
     finalOutput?: string;
     /**
+     * Present only when the run ended by handing questions back to the
+     * person (the ask tool). Each entry says what was asked, why it
+     * changes the result, and optional choices. Untrusted content —
+     * render as inert text.
+     * 
+     */
+    questions?: Array<TraceSummaryQuestionsInner>;
+    /**
      * 
      */
     usage?: TraceSummaryUsage;
@@ -206,6 +221,7 @@ export function TraceSummaryFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'summaryTruncated': json['summary_truncated'],
         'lastEventAt': json['last_event_at'] == null ? undefined : (parseDateTime(json['last_event_at'])),
         'finalOutput': json['final_output'] == null ? undefined : json['final_output'],
+        'questions': json['questions'] == null ? undefined : ((json['questions'] as Array<any>).map(TraceSummaryQuestionsInnerFromJSON)),
         'usage': json['usage'] == null ? undefined : TraceSummaryUsageFromJSON(json['usage']),
         'steps': ((json['steps'] as Array<any>).map(TraceSummaryStepsInnerFromJSON)),
     };
@@ -235,6 +251,7 @@ export function TraceSummaryToJSONTyped(value?: TraceSummary | null, ignoreDiscr
         'summary_truncated': value['summaryTruncated'],
         'last_event_at': value['lastEventAt'] == null ? value['lastEventAt'] : serializeDateTime(value['lastEventAt']),
         'final_output': value['finalOutput'],
+        'questions': value['questions'] == null ? undefined : ((value['questions'] as Array<any>).map(TraceSummaryQuestionsInnerToJSON)),
         'usage': TraceSummaryUsageToJSON(value['usage']),
         'steps': ((value['steps'] as Array<any>).map(TraceSummaryStepsInnerToJSON)),
     };

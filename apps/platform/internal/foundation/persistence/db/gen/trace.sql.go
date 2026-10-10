@@ -97,6 +97,34 @@ func (q *Queries) GetRunForTraceIngest(ctx context.Context, id pgtype.UUID) (Get
 	return i, err
 }
 
+const getTraceEventQuestions = `-- name: GetTraceEventQuestions :one
+SELECT COALESCE(payload->'questions', '[]'::jsonb)::jsonb AS questions
+FROM trace_events
+WHERE run_id = $1 AND workspace_id = $2
+  AND source = $3 AND attempt = $4 AND seq = $5
+`
+
+type GetTraceEventQuestionsParams struct {
+	RunID       pgtype.UUID
+	WorkspaceID pgtype.UUID
+	Source      string
+	Attempt     int32
+	Seq         int64
+}
+
+func (q *Queries) GetTraceEventQuestions(ctx context.Context, arg GetTraceEventQuestionsParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getTraceEventQuestions,
+		arg.RunID,
+		arg.WorkspaceID,
+		arg.Source,
+		arg.Attempt,
+		arg.Seq,
+	)
+	var questions []byte
+	err := row.Scan(&questions)
+	return questions, err
+}
+
 const getTraceEventText = `-- name: GetTraceEventText :one
 SELECT COALESCE(payload->>'text', '')::text AS text
 FROM trace_events
