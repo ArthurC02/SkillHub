@@ -333,6 +333,9 @@ jobs:
       - name: Gate A node probe self-check (SEC-009 T8)
         working-directory: ${{ github.workspace }}
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Gate A node probe self-check' python3 tools/sec009/t8-node-probe.py --self-check
+      - name: Install the runtime image's locked dependencies
+        working-directory: ${{ github.workspace }}
+        run: npm ci --prefix infra/images/runtime-agent-sdk --no-audit --no-fund
       - name: Runtime workload script tests
         working-directory: ${{ github.workspace }}
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Runtime workload script tests' node --test infra/images/runtime-agent-sdk/run.test.mjs
