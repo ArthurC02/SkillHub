@@ -28,6 +28,7 @@ from domain_registry.attestations import (
 )
 from domain_registry.audit import append as append_audit
 from domain_registry.audit import read_events as read_audit_events
+from domain_registry.audit import event_digest as audit_event_digest
 from domain_registry.audit import verify as verify_audit
 from domain_registry.changes import init_change_package, redraft_change_package, validate_change_package
 from domain_registry.common import ASSET_KEYS, load_json
@@ -1386,6 +1387,48 @@ class DomainRegistryTest(unittest.TestCase):
             encoding="utf-8",
         )
         self.assertEqual("invalid", verify_audit(self.repo / "memory")["status"])
+
+    def test_each_way_an_audit_chain_breaks_is_named(self) -> None:
+        root = self.repo / "memory"
+        for operation in ("first", "second", "third"):
+            append_audit(root, {"operation": operation})
+        events_file = root / "audit" / "events.jsonl"
+        manifest_file = root / "audit" / "manifest.json"
+        events = [json.loads(line) for line in events_file.read_text(encoding="utf-8").splitlines()]
+        manifest = manifest_file.read_text(encoding="utf-8")
+
+        def resigned(event):
+            unsigned = {key: value for key, value in event.items() if key != "event_sha256"}
+            return {**unsigned, "event_sha256": audit_event_digest(unsigned)}
+
+        relinked = resigned({**events[1], "previous_event_sha256": "sha256:" + "0" * 64})
+        cases = [
+            ("renumbered", [events[0], resigned({**events[1], "sequence": 5}), events[2]], manifest,
+             "audit sequence is invalid at event 2"),
+            ("relinked", [events[0], relinked, events[2]], manifest, "audit chain is broken at event 2"),
+            ("edited", [events[0], {**events[1], "operation": "changed"}, events[2]], manifest,
+             "audit digest is invalid at event 2"),
+            ("truncated", events[:2], manifest, "audit manifest does not match the event log"),
+            ("miscounted", events, json.dumps({**json.loads(manifest), "events": 4}),
+             "audit manifest does not match the event log"),
+            ("other head", events, json.dumps({**json.loads(manifest), "head_sha256": events[1]["event_sha256"]}),
+             "audit manifest does not match the event log"),
+            ("unreadable manifest", events, "{", None),
+            ("unreadable event", None, manifest, "audit event 2 is invalid JSON"),
+        ]
+        for label, chain, manifest_text, reason in cases:
+            with self.subTest(label):
+                lines = [json.dumps(event) for event in chain] if chain is not None else [
+                    json.dumps(events[0]), "{", json.dumps(events[2])]
+                events_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                manifest_file.write_text(manifest_text, encoding="utf-8")
+                result = verify_audit(root)
+                self.assertEqual("invalid", result["status"])
+                if reason is not None:
+                    self.assertEqual(reason, result["reason"])
+        events_file.write_text("\n".join(json.dumps(event) for event in events) + "\n", encoding="utf-8")
+        manifest_file.write_text(manifest, encoding="utf-8")
+        self.assertEqual(("valid", 3), (verify_audit(root)["status"], verify_audit(root)["events"]))
 
     def test_audit_rejects_reserved_fields_before_writing(self) -> None:
         root = self.repo / "memory"
