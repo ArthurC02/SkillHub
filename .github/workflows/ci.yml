@@ -257,7 +257,7 @@ jobs:
           go-version-file: apps/platform/go.mod
           cache-dependency-path: apps/platform/go.sum
       - run: go mod verify
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
       - name: Sync the creation service's interpreter (Go-to-Python test)
@@ -483,7 +483,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
       - run: uv sync --frozen
@@ -504,7 +504,7 @@ jobs:
           cache-dependency-path: |
             tools/devctl/go.mod
             apps/platform/go.sum
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
       - uses: ./.github/actions/golangci-lint
@@ -537,7 +537,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
       - name: Shipped dependencies — fixable vulnerabilities, licenses, workflow audit
         if: github.event_name == 'push' || github.event_name == 'pull_request'
         run: go -C tools/devctl run . dep-audit
@@ -695,9 +695,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Build the platform image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: infra/images/platform/Dockerfile
@@ -707,7 +707,7 @@ jobs:
           cache-from: type=gha,scope=platform
           cache-to: type=gha,mode=max,scope=platform
       - name: Build the web image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: infra/images/web/Dockerfile
@@ -717,7 +717,7 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
       - name: Build the llm image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: apps/llm
           file: infra/images/llm/Dockerfile
@@ -733,7 +733,7 @@ jobs:
           LLM_IMAGE: ${{ env.REGISTRY }}/skillhub-llm:${{ github.sha }}
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Stack smoke' bash tools/ci/stack-smoke.sh
       - name: Build the postgres image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: infra/images/postgres
           tags: ${{ env.REGISTRY }}/skillhub-postgres:${{ github.sha }}
@@ -746,7 +746,7 @@ jobs:
           POSTGRES_IMAGE: ${{ env.REGISTRY }}/skillhub-postgres:${{ github.sha }}
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Backup drill' bash tools/ci/backup-drill.sh
       - name: Build the sandboxd image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: infra/images/sandboxd/Dockerfile
@@ -779,13 +779,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Log in to GHCR
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
       - name: Push the platform image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: infra/images/platform/Dockerfile
@@ -793,7 +793,7 @@ jobs:
           push: true
           cache-from: type=gha,scope=platform
       - name: Push the web image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: infra/images/web/Dockerfile
@@ -801,7 +801,7 @@ jobs:
           push: true
           cache-from: type=gha,scope=web
       - name: Push the llm image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: apps/llm
           file: infra/images/llm/Dockerfile
@@ -809,14 +809,14 @@ jobs:
           push: true
           cache-from: type=gha,scope=llm
       - name: Push the postgres image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: infra/images/postgres
           tags: ${{ env.REGISTRY }}/skillhub-postgres:${{ github.sha }}
           push: true
           cache-from: type=gha,scope=postgres
       - name: Push the sandboxd image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: infra/images/sandboxd/Dockerfile
