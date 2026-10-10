@@ -68,7 +68,8 @@ var payloadRules = map[string]payloadRule{
 		payloadTruncated: {required: true, kinds: []string{kindBoolean}},
 	}},
 	"agent_output": {open: false, fields: map[string]payloadField{
-		"kind":           {required: true, kinds: []string{kindString}, enum: []string{"captured", "final", "intermediate"}},
+		"kind":           {required: true, kinds: []string{kindString}, enum: []string{"captured", "final", "intermediate", "question"}},
+		"questions":      {kinds: []string{kindArray}},
 		"text":           {required: true, kinds: []string{kindString}},
 		payloadTruncated: {required: true, kinds: []string{kindBoolean}},
 	}},
