@@ -101,19 +101,18 @@ def unclassified_paths(value: Any) -> list[str]:
     )
 
 
-def verify(reference: Any, repo_root: Path) -> dict[str, Any]:  # noqa: PLR0911
-    if isinstance(reference, str):
-        return {"status": "legacy-unverified", "reference": reference}
+def _shape_error(reference: Any) -> str | None:
     if not isinstance(reference, dict):
-        return {"status": "invalid", "reason": "evidence must be an object"}
-    path_text = reference.get("path")
+        return "evidence must be an object"
     lines = reference.get("lines")
-    if not isinstance(path_text, str) or not isinstance(lines, dict):
-        return {"status": "invalid", "reason": "evidence requires path and lines"}
-    start, end = lines.get("start"), lines.get("end")
-    if not _valid_line_range(start, end):
-        return {"status": "invalid", "reason": "evidence line range is invalid"}
-    path = (repo_root / path_text).resolve()
+    if not isinstance(reference.get("path"), str) or not isinstance(lines, dict):
+        return "evidence requires path and lines"
+    if not _valid_line_range(lines.get("start"), lines.get("end")):
+        return "evidence line range is invalid"
+    return None
+
+
+def _source_verdict(path: Path, path_text: str, repo_root: Path) -> dict[str, Any] | None:
     if not path.is_relative_to(repo_root.resolve()):
         return {"status": "invalid", "reason": "evidence path escapes repository"}
     if not path.is_file():
@@ -124,6 +123,21 @@ def verify(reference: Any, repo_root: Path) -> dict[str, Any]:  # noqa: PLR0911
             "reason": f"evidence source exceeds {MAX_EVIDENCE_BYTES} bytes",
             "path": path_text,
         }
+    return None
+
+
+def verify(reference: Any, repo_root: Path) -> dict[str, Any]:
+    if isinstance(reference, str):
+        return {"status": "legacy-unverified", "reference": reference}
+    shape = _shape_error(reference)
+    if shape:
+        return {"status": "invalid", "reason": shape}
+    path_text = reference["path"]
+    start, end = reference["lines"]["start"], reference["lines"]["end"]
+    path = (repo_root / path_text).resolve()
+    problem = _source_verdict(path, path_text, repo_root)
+    if problem:
+        return problem
     _, rows = _read_lines(path)
     if end > len(rows):
         return {

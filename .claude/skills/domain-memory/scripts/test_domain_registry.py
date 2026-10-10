@@ -1430,6 +1430,35 @@ class DomainRegistryTest(unittest.TestCase):
         manifest_file.write_text(manifest, encoding="utf-8")
         self.assertEqual(("valid", 3), (verify_audit(root)["status"], verify_audit(root)["events"]))
 
+    def test_each_evidence_defect_gets_its_verdict(self) -> None:
+        source = self.repo / "fact.md"
+        source.write_text("one\ntwo\nthree\n", encoding="utf-8")
+        cited = citation(self.repo, "fact.md", 2, 3)
+        cases = [
+            ("legacy text", "fact.md:2", {"status": "legacy-unverified", "reference": "fact.md:2"}),
+            ("not an object", 7, {"status": "invalid", "reason": "evidence must be an object"}),
+            ("no lines", {"path": "fact.md"}, {"status": "invalid", "reason": "evidence requires path and lines"}),
+            ("line zero", {**cited, "lines": {"start": 0, "end": 1}},
+             {"status": "invalid", "reason": "evidence line range is invalid"}),
+            ("end before start", {**cited, "lines": {"start": 3, "end": 2}},
+             {"status": "invalid", "reason": "evidence line range is invalid"}),
+            ("outside", {**cited, "path": "../fact.md"},
+             {"status": "invalid", "reason": "evidence path escapes repository"}),
+            ("absent", {**cited, "path": "gone.md"}, {"status": "missing", "path": "gone.md"}),
+            ("past the end", {**cited, "lines": {"start": 3, "end": 4}},
+             {"status": "invalid", "reason": "evidence line range exceeds source", "path": "fact.md"}),
+            ("last line", {**cited, "lines": {"start": 3, "end": 3}}, {"status": "stale", "path": "fact.md"}),
+        ]
+        for label, reference, expected in cases:
+            with self.subTest(label):
+                self.assertEqual(expected, verify(reference, self.repo))
+        self.assertEqual("current", verify(cited, self.repo)["status"])
+        with self.subTest("oversized"), patch("domain_registry.evidence.MAX_EVIDENCE_BYTES", 4):
+            self.assertEqual(
+                {"status": "invalid", "reason": "evidence source exceeds 4 bytes", "path": "fact.md"},
+                verify(cited, self.repo),
+            )
+
     def test_audit_rejects_reserved_fields_before_writing(self) -> None:
         root = self.repo / "memory"
         append_audit(root, {"operation": "first"})
