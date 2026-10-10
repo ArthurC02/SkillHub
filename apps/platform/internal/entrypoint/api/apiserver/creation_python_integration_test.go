@@ -155,10 +155,13 @@ func creationLangGraphGateway(t *testing.T, calls *atomic.Int32, script creation
 		if !ok {
 			return
 		}
-		call := calls.Add(1)
-		decision, problem := script.respond(call, system, prompt)
-		if problem != "" {
-			t.Error(problem)
+		var decision any = map[string]any{"cases": []any{}}
+		if !strings.HasPrefix(system, "You test an Agent Skill before it is written.") {
+			var problem string
+			decision, problem = script.respond(calls.Add(1), system, prompt)
+			if problem != "" {
+				t.Error(problem)
+			}
 		}
 		content, err := json.Marshal(decision)
 		if err != nil {
