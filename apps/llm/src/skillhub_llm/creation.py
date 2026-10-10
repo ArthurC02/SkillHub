@@ -39,7 +39,7 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "skillhub-creation"
-PROMPT_VERSION = "creation-step/v38"
+PROMPT_VERSION = "creation-step/v39"
 CHECK_SCRIPT_PATH = "scripts/check_output.py"
 SHIPPED_SCRIPT_PATH = re.compile(r"^scripts/[^/]+\.py$")
 SHIPPED_REFERENCE_PATH = re.compile(r"^references/[^/]+\.md$")
@@ -1086,23 +1086,30 @@ def _confirmation(state: _State) -> dict:
 
 
 CHALLENGE_INSTRUCTIONS = (
-    "You test an Agent Skill before it is written. You see only its brief, its acceptance "
-    "criteria and the one sample input it will be tried on. Write up to three more inputs, "
-    "each realistic and complete like the sample (one sentence stating the request, then "
-    "the literal material, never a description of it or a placeholder), each aimed at one "
-    "thing the sample does not exercise and the brief still covers. Choose among: a "
-    "condition nobody stated, which the Skill must settle with the ordinary case and name "
-    "as its assumption, never by asking back; the same request in other words or the same "
-    "data in another layout; a value that cannot be right (a date that does not exist, a "
-    "negative count, two different values for one thing), which the Skill must name and "
-    "keep out of every result that depends on it; more material than a stated cap allows, "
-    "which the Skill must cut down while keeping every required fact. Give each input a "
-    "short name saying what it tests, and 1-4 criteria a single run on that input can "
-    "confirm or refute, derived only from the brief's own rules: never a requirement the "
-    "brief does not make, never sending, scheduling, logging in or reaching the network. "
-    "Work out every figure a criterion states from the brief's rules step by step, and add "
-    "it up once more before writing it. Skip a kind the brief gives no ground for; fewer "
-    "sound cases beat three weak ones. Write in the language of the brief. "
+    "You try to break an Agent Skill before it is written. You see only its brief, its "
+    "acceptance criteria and the one sample input it will be tried on. Write up to three "
+    "more inputs, each a different kind of trap the sample does not set and the brief still "
+    "covers. Each input is the message the person would really send: one sentence stating "
+    "the request, then the literal material, never a description of it or a placeholder, "
+    "and never a word that tells the Skill what to assume, which value is wrong or how to "
+    "handle it. The kinds, in this order of priority: (1) whenever the material has a "
+    "number, date, count or measure, a value that cannot be right (a date that does not "
+    "exist, a negative or impossible quantity, a date after today, two different values "
+    "for one thing) placed among valid ones; its criteria require the Skill to say that "
+    "this value cannot be right and to give no result that uses it, while still giving "
+    "every result the other values settle; (2) a setting the brief leaves open or a form "
+    "it does not use (another unit, a figure in words or in a local short form, a relative "
+    "or partial date, a missing optional detail); its criteria require the result the "
+    "ordinary reading gives and a sentence stating that reading as an assumption, never a "
+    "question back; (3) a boundary of a stated rule, exactly on it or just past it, or more "
+    "material than a stated cap allows, which the Skill must cut down while keeping every "
+    "required fact. Give each input a short name saying what it tests, and 1-4 criteria a "
+    "single run on that input can confirm or refute, derived only from the brief's own "
+    "rules: never a requirement the brief does not make, never sending, scheduling, "
+    "logging in or reaching the network. Work out every figure a criterion states from the "
+    "brief's rules step by step, and add it up once more before writing it. Skip a kind "
+    "only when the brief gives no ground for it. Write in the language of the brief; when "
+    "an input needs today's date, state it in the input. "
     + data_block_rules(
         DATA_TAG, "the brief, acceptance criteria and sample input the person is confirming"
     )
