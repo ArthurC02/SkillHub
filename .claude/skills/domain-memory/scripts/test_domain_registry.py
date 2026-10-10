@@ -30,13 +30,14 @@ from domain_registry.audit import append as append_audit
 from domain_registry.audit import read_events as read_audit_events
 from domain_registry.audit import event_digest as audit_event_digest
 from domain_registry.audit import verify as verify_audit
+from domain_registry.changes import _requirement_and_proposal_errors as requirement_and_proposal_errors
 from domain_registry.changes import (
     implementation_design_errors,
     init_change_package,
     redraft_change_package,
     validate_change_package,
 )
-from domain_registry.common import ASSET_KEYS, load_json
+from domain_registry.common import ASSET_KEYS, RISK_FLAGS, load_json
 from domain_registry.contracts import validate_schema
 from domain_registry.evidence import (
     citation,
@@ -1500,6 +1501,46 @@ class DomainRegistryTest(unittest.TestCase):
         for label, proposal, expected in cases:
             with self.subTest(label):
                 self.assertEqual(expected, implementation_design_errors(proposal, {"OB-1"}))
+
+    def test_each_requirement_and_proposal_defect_is_named(self) -> None:
+        requirement = {"acceptance_criteria": [{"id": "AC-1", "statement": "Totals hold."}], "risk_flags": []}
+        proposal = {"status": "draft", "proposal_revision": 1, "affected_contexts": ["orders"], "risk_flags": []}
+        flagged = sorted(RISK_FLAGS)[0]
+        cases = [
+            ("complete", {}, {}, []),
+            ("no criteria", {"acceptance_criteria": []}, {},
+             ["requirement-normalization.json requires acceptance_criteria"]),
+            ("blank criterion", {"acceptance_criteria": [{"id": "AC-1", "statement": ""}]}, {},
+             ["each acceptance criterion requires a completed id and statement"]),
+            ("unknown requirement flag", {"risk_flags": ["comet"]}, {},
+             ["requirement-normalization.json has an unknown risk flag",
+              "domain-change-proposal.json must retain requirement risk flags"]),
+            ("unknown proposal flag", {}, {"risk_flags": ["comet"]},
+             ["domain-change-proposal.json has an unknown risk flag"]),
+            ("dropped flag", {"risk_flags": [flagged]}, {},
+             ["domain-change-proposal.json must retain requirement risk flags"]),
+            ("kept flag", {"risk_flags": [flagged]}, {"risk_flags": [flagged]}, []),
+            ("status", {}, {"status": "shipped"}, ["domain-change-proposal.json has an invalid status"]),
+            ("revision zero", {}, {"proposal_revision": 0},
+             ["domain-change-proposal.json requires a positive proposal_revision"]),
+            ("no contexts", {}, {"affected_contexts": []}, ["domain-change-proposal.json requires affected_contexts"]),
+            ("rule ids", {}, {"rule_ids": [""]}, ["domain-change-proposal.json has invalid rule_ids"]),
+            ("contract ids", {}, {"contract_ids": "c"}, ["domain-change-proposal.json has invalid contract_ids"]),
+        ]
+        for label, requirement_change, proposal_change, expected in cases:
+            with self.subTest(label):
+                errors, criteria = requirement_and_proposal_errors(
+                    {**requirement, **requirement_change}, {**proposal, **proposal_change}
+                )
+                self.assertEqual(expected, errors)
+        self.assertEqual(
+            {"AC-1", "AC-2"},
+            requirement_and_proposal_errors(
+                {**requirement, "acceptance_criteria": [
+                    {"id": "AC-1", "statement": "a"}, 7, {"id": "AC-2", "statement": "b"}]},
+                proposal,
+            )[1],
+        )
 
     def test_audit_rejects_reserved_fields_before_writing(self) -> None:
         root = self.repo / "memory"

@@ -472,26 +472,26 @@ def _identity_errors(documents: dict[str, dict[str, Any]]) -> list[str]:
     return errors
 
 
-def _requirement_and_proposal_errors(  # noqa: C901
-    requirement: dict[str, Any], proposal: dict[str, Any]
-) -> tuple[list[str], set[str]]:
-    errors: list[str] = []
+def _acceptance_criteria(requirement: dict[str, Any]) -> tuple[list[str], set[str]]:
     acceptance_criteria = requirement.get("acceptance_criteria")
-    criterion_ids: set[str] = set()
     if not isinstance(acceptance_criteria, list) or not acceptance_criteria:
-        errors.append("requirement-normalization.json requires acceptance_criteria")
-    else:
-        for criterion in acceptance_criteria:
-            if (
-                not isinstance(criterion, dict)
-                or not completed_identifier(criterion.get("id"))
-                or not completed_identifier(criterion.get("statement"))
-            ):
-                errors.append(
-                    "each acceptance criterion requires a completed id and statement"
-                )
-                continue
-            criterion_ids.add(criterion["id"])
+        return ["requirement-normalization.json requires acceptance_criteria"], set()
+    errors: list[str] = []
+    criterion_ids: set[str] = set()
+    for criterion in acceptance_criteria:
+        if (
+            not isinstance(criterion, dict)
+            or not completed_identifier(criterion.get("id"))
+            or not completed_identifier(criterion.get("statement"))
+        ):
+            errors.append("each acceptance criterion requires a completed id and statement")
+            continue
+        criterion_ids.add(criterion["id"])
+    return errors, criterion_ids
+
+
+def _risk_flag_errors(requirement: dict[str, Any], proposal: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
     requirement_flags = requirement.get("risk_flags", [])
     proposal_flags = proposal.get("risk_flags", [])
     if not isinstance(requirement_flags, list) or set(requirement_flags) - RISK_FLAGS:
@@ -502,6 +502,11 @@ def _requirement_and_proposal_errors(  # noqa: C901
         proposal_flags
     ):
         errors.append("domain-change-proposal.json must retain requirement risk flags")
+    return errors
+
+
+def _proposal_field_errors(proposal: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
     if proposal.get("status") not in PROPOSAL_STATUSES:
         errors.append("domain-change-proposal.json has an invalid status")
     revision = proposal.get("proposal_revision")
@@ -516,6 +521,14 @@ def _requirement_and_proposal_errors(  # noqa: C901
         errors.append("domain-change-proposal.json has invalid rule_ids")
     if not completed_identifiers(proposal.get("contract_ids", [])):
         errors.append("domain-change-proposal.json has invalid contract_ids")
+    return errors
+
+
+def _requirement_and_proposal_errors(
+    requirement: dict[str, Any], proposal: dict[str, Any]
+) -> tuple[list[str], set[str]]:
+    errors, criterion_ids = _acceptance_criteria(requirement)
+    errors += _risk_flag_errors(requirement, proposal) + _proposal_field_errors(proposal)
     return errors, criterion_ids
 
 
