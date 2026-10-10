@@ -30,6 +30,7 @@ type modesReference struct {
 	ID              string   `json:"id"`
 	Description     string   `json:"description"`
 	DescriptionKeys []string `json:"description_keys"`
+	AuthorFacts     []string `json:"author_facts"`
 	Reference       struct {
 		Name    string   `json:"name"`
 		SkillMD string   `json:"skill_md"`

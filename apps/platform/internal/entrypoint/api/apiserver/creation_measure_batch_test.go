@@ -196,6 +196,7 @@ type measureTask struct {
 	ID          string
 	Kind        string
 	Description string
+	AuthorFacts []string
 	Diagram     *ingest.GenerateDiagram
 
 	DiagramNodes []string
@@ -893,7 +894,7 @@ func summarizeCreationMeasure(interactive []sessionRow, singleShot []singleShotR
 func textMeasureTasks(references []modesReference) []measureTask {
 	var tasks []measureTask
 	for _, r := range references {
-		tasks = append(tasks, measureTask{ID: r.ID, Kind: "text", Description: r.Description, Holdout: r.Holdout})
+		tasks = append(tasks, measureTask{ID: r.ID, Kind: "text", Description: r.Description, AuthorFacts: r.AuthorFacts, Holdout: r.Holdout})
 	}
 	return tasks
 }
@@ -901,7 +902,7 @@ func textMeasureTasks(references []modesReference) []measureTask {
 func referenceMeasureTasks(references []modesReference) []measureTask {
 	var tasks []measureTask
 	for _, r := range references {
-		tasks = append(tasks, measureTask{ID: r.ID, Kind: "reference", Description: r.Description, ReferenceMD: r.Reference.SkillMD, Holdout: r.Holdout})
+		tasks = append(tasks, measureTask{ID: r.ID, Kind: "reference", Description: r.Description, AuthorFacts: r.AuthorFacts, ReferenceMD: r.Reference.SkillMD, Holdout: r.Holdout})
 	}
 	return tasks
 }
@@ -1195,8 +1196,24 @@ func (m *interactiveSession) clarify() sessionTurn {
 	}
 	m.clarifications++
 	m.row.Clarifications++
-	m.v = creationMessage(m.t, m.c, m.v, "請依合理假設補上缺的資訊，然後繼續。")
+	m.v = creationMessage(m.t, m.c, m.v, authorReply(m.task.AuthorFacts))
 	return turnCounted
+}
+
+func authorReply(facts []string) string {
+	if len(facts) == 0 {
+		return "我沒有其他規則了，請照一般做法處理，並在 Skill 裡寫明你採用的做法。"
+	}
+	return "補充我剛才沒講的規則：" + strings.Join(facts, "；") + "。其他照我前面說的。"
+}
+
+func TestTheSimulatedAuthorAnswersWithTheFactsTheTaskHid(t *testing.T) {
+	if got := authorReply([]string{"剩餘堂數不併入折扣", "退款不扣除"}); got != "補充我剛才沒講的規則：剩餘堂數不併入折扣；退款不扣除。其他照我前面說的。" {
+		t.Errorf("with hidden facts the author said %q", got)
+	}
+	if got := authorReply(nil); got != "我沒有其他規則了，請照一般做法處理，並在 Skill 裡寫明你採用的做法。" {
+		t.Errorf("with no hidden facts the author said %q", got)
+	}
 }
 
 func (m *interactiveSession) materializeAndTrial() sessionTurn {
