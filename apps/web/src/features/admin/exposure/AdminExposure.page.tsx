@@ -1,6 +1,12 @@
 import { useEffect, useRef } from "react";
 import { Link, useSearch } from "@tanstack/react-router";
-import { useExposureCase, useExposureQueue, useReviewExposure } from "../admin.service";
+import { ApiError } from "../../../core/api/client";
+import {
+  useExposureCase,
+  useExposureQueue,
+  useReviewExposure,
+  type ExposureCase,
+} from "../admin.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
@@ -8,6 +14,19 @@ import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { AdminPage } from "../components/AdminPage";
 import { ExposureQueue } from "./components/ExposureQueue";
 import { ExposureReview } from "./components/ExposureReview";
+
+function reviewPremiseChanged(
+  current: ExposureCase | undefined,
+  submitted:
+    { release_id: string; expected_sequence: number; expected_snapshot_digest: string } | undefined,
+) {
+  if (!current || !submitted) return false;
+  return (
+    current.release.release_id !== submitted.release_id ||
+    current.sequence !== submitted.expected_sequence ||
+    (current.snapshot?.digest ?? "") !== submitted.expected_snapshot_digest
+  );
+}
 
 function ExposureCaseSection({ publication }: { publication: string }) {
   const exposureCase = useExposureCase(publication);
@@ -19,6 +38,11 @@ function ExposureCaseSection({ publication }: { publication: string }) {
       Boolean(exposureCase.error) ||
       (review.data?.release.release_id === exposureCase.data.release.release_id &&
         exposureCase.data.sequence <= review.data.sequence));
+  const reloadedAfterConflict =
+    review.error instanceof ApiError &&
+    review.error.status === 409 &&
+    !exposureCase.error &&
+    reviewPremiseChanged(exposureCase.data, review.variables);
   useEffect(() => {
     if (showResult) result.current?.focus();
   }, [showResult]);
@@ -59,6 +83,11 @@ function ExposureCaseSection({ publication }: { publication: string }) {
           {review.variables.decision === "approved"
             ? "這筆曝光審核已核准。"
             : "這筆曝光資格已撤銷。"}
+        </p>
+      )}
+      {reloadedAfterConflict && (
+        <p className="notice notice-warning" role="status">
+          案件已更新，請重新檢查內容後再決定。
         </p>
       )}
       <ReadFailure error={exposureCase.error} what="這一筆的曝光審核資料" />

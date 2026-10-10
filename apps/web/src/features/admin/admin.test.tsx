@@ -2806,6 +2806,40 @@ test("DISC-007: a stale review retains its actionable Chinese reason", async () 
   await waitFor(has(`操作未被接受：${staleMessage}`));
 });
 
+test("a stale exposure review reloads the current case before another decision", async () => {
+  let stale = false;
+  stub(true, (path, method) => {
+    if (path !== `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`) return undefined;
+    if (method === "POST") {
+      stale = true;
+      return { body: { error: "審核前提已過期", reason: "review_stale" }, status: 409 };
+    }
+    return {
+      body: {
+        ...ADMIN_EXPOSURE_CASE,
+        sequence: stale ? 3 : 2,
+        exposed: stale,
+      },
+      status: 200,
+    };
+  });
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核序號：2"));
+  await click(field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]'));
+  await type("#admin-exposure-review-note", "看過舊版");
+  await click(button("送出核准"));
+
+  await waitFor(has("審核序號：3"));
+  expect(
+    calls.filter((call) => call.method === "GET" && call.url.endsWith("/exposure")).length,
+  ).toBeGreaterThanOrEqual(2);
+  expect(
+    field<HTMLInputElement>('input[name="admin-exposure-decision"][value="approved"]').checked,
+  ).toBe(false);
+  expect(field<HTMLTextAreaElement>("#admin-exposure-review-note").value).toBe("");
+  expect(has("案件已更新，請重新檢查內容後再決定。")()).toBe(true);
+});
+
 test.each([
   [403, "操作未被接受；目前沒有執行權限，請確認登入身分。"],
   [429, "操作未被接受；送出太頻繁，請稍後再試。"],
