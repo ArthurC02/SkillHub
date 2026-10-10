@@ -109,8 +109,8 @@ func TestRequirementTestMatrixReadsTheLiveTable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(required) != 95 || len(postMVP) != 12 {
-		t.Fatalf("the live spec reads as %d MVP-required and %d 後 MVP; the table is built for 95 and 12",
+	if len(required) != 98 || len(postMVP) != 12 {
+		t.Fatalf("the live spec reads as %d MVP-required and %d 後 MVP; the table is built for 98 and 12",
 			len(required), len(postMVP))
 	}
 	if problems := requirementTestMatrixProblems("../.."); len(problems) != 0 {
