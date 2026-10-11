@@ -40,6 +40,7 @@ var (
 	ErrBatchShape  = errors.New("an evaluation batch needs 1 to 50 distinct test cases and 1 to 10 trials")
 	ErrRunMustWait = errors.New("the workspace cannot start a run right now; the batch waits for its turn")
 	errBatchPorts  = errors.New("eval: batch run ports are not injected")
+	errItemTaken   = errors.New("eval: another advance already started this trial")
 )
 
 type UnconfirmedTestCasesError struct{ TestCaseIDs []pgtype.UUID }
@@ -63,6 +64,7 @@ type BatchRun struct {
 	VersionID   pgtype.UUID
 	TestCaseID  pgtype.UUID
 	SummaryHash string
+	Link        func(ctx context.Context, tx pgx.Tx, runID pgtype.UUID) error
 }
 
 type ChainEnd struct {
@@ -220,43 +222,46 @@ func (s *BatchService) AdvanceBatches(ctx context.Context, workspaceID pgtype.UU
 }
 
 func (s *BatchService) startNextTrial(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
-	started := false
-	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		q := gen.New(tx)
-		next, err := q.ClaimNextBatchItem(ctx, workspaceID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			_, err = q.MarkBatchesLaunched(ctx, workspaceID)
-			return err
-		}
-		if err != nil {
-			return err
-		}
-		if !next.CreatedBy.Valid {
-			started = true
-			return s.stopBatch(ctx, q, workspaceID, next.BatchID, stopReasonCreatorGone)
-		}
-		runID, err := s.Ports.StartRun(ctx, BatchRun{
-			WorkspaceID: workspaceID, Actor: next.CreatedBy, SkillID: next.SkillID,
-			VersionID: next.SkillVersionID, TestCaseID: next.TestCaseID, SummaryHash: next.SummaryHash,
-		})
-		if errors.Is(err, ErrRunMustWait) {
-			return nil
-		}
-		if refused, isRefused := errors.AsType[RunRefusedError](err); isRefused {
-			started = true
-			return s.stopBatch(ctx, q, workspaceID, next.BatchID, refused.Reason)
-		}
-		if err != nil {
-			return err
-		}
-		started = true
-		_, err = q.LinkBatchItemRun(ctx, gen.LinkBatchItemRunParams{
-			RunID: runID, BatchID: next.BatchID, TestCaseID: next.TestCaseID,
-			Trial: next.Trial, WorkspaceID: workspaceID,
-		})
-		return err
+	q := s.queries()
+	next, err := q.ClaimNextBatchItem(ctx, workspaceID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		_, err = q.MarkBatchesLaunched(ctx, workspaceID)
+		return false, err
+	}
+	if err != nil {
+		return false, err
+	}
+	if !next.CreatedBy.Valid {
+		return true, s.stopBatch(ctx, q, workspaceID, next.BatchID, stopReasonCreatorGone)
+	}
+	_, err = s.Ports.StartRun(ctx, BatchRun{
+		WorkspaceID: workspaceID, Actor: next.CreatedBy, SkillID: next.SkillID,
+		VersionID: next.SkillVersionID, TestCaseID: next.TestCaseID, SummaryHash: next.SummaryHash,
+		Link: linkTrial(workspaceID, next),
 	})
-	return started, err
+	if errors.Is(err, ErrRunMustWait) {
+		return false, nil
+	}
+	if refused, isRefused := errors.AsType[RunRefusedError](err); isRefused {
+		return true, s.stopBatch(ctx, q, workspaceID, next.BatchID, refused.Reason)
+	}
+	if errors.Is(err, errItemTaken) {
+		return true, nil
+	}
+	return err == nil, err
+}
+
+func linkTrial(workspaceID pgtype.UUID, item gen.ClaimNextBatchItemRow) func(context.Context, pgx.Tx, pgtype.UUID) error {
+	return func(ctx context.Context, tx pgx.Tx, runID pgtype.UUID) error {
+		linked, err := gen.New(tx).LinkBatchItemRun(ctx, gen.LinkBatchItemRunParams{
+			RunID: runID, BatchID: item.BatchID, TestCaseID: item.TestCaseID,
+			Trial: item.Trial, WorkspaceID: workspaceID,
+		})
+		if err == nil && linked == 0 {
+			return errItemTaken
+		}
+		return err
+	}
 }
 
 func (s *BatchService) stopBatch(ctx context.Context, q *gen.Queries, workspaceID, batchID pgtype.UUID, reason string) error {

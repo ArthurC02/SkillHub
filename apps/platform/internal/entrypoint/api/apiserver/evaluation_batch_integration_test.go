@@ -8,7 +8,10 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 const doesNotAsk = `[{"id":"c1","text":"answers without asking","check":{"kind":"does_not_ask"}}]`
@@ -103,6 +106,54 @@ func TestABatchWhoseEveryTrialStartedIsLaunched(t *testing.T) {
 	code, body := f.doJSON(t, http.MethodPost, "/skills/"+f.skillID+"/evaluation-batches", batchBody(f.versionID, 1, f.testCaseID))
 	if code != http.StatusCreated || body["status"] != "launched" {
 		t.Fatalf("a one-trial batch: got %d %v, want 201 launched", code, body)
+	}
+}
+
+func runsOfTestCase(t *testing.T, pool *pgxpool.Pool, testCaseID string) int {
+	t.Helper()
+	var n int
+	if err := pool.QueryRow(context.Background(), `
+		SELECT count(*) FROM runs r JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
+		WHERE s.test_case_id = $1`, mustUUID(t, testCaseID)).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+func TestATrialAnotherAdvanceStartedFirstNeverGetsASecondRun(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-batch-race")
+	f.confirmPermissions(t)
+	ctx := context.Background()
+
+	code, body := f.doJSON(t, http.MethodPost, "/skills/"+f.skillID+"/evaluation-batches", batchBody(f.versionID, 2, f.testCaseID))
+	if code != http.StatusCreated {
+		t.Fatalf("create: %d %v", code, body)
+	}
+	batchID := body["id"].(string)
+	first := batchTrialRuns(t, pool, batchID)[f.testCaseID+"#1"]
+	mustExec(t, pool, `UPDATE runs SET status = 'cancelled', finished_at = now() WHERE id = $1`, mustUUID(t, first))
+	competitor := seedFinishedRun(t, pool, f, finishedRun{testCaseID: f.testCaseID, criteria: doesNotAsk, contentHash: "sha256:race"})
+	before := runsOfTestCase(t, pool, f.testCaseID)
+
+	ports := a.batches.Ports
+	start := ports.StartRun
+	ports.StartRun = func(ctx context.Context, b eval.BatchRun) (pgtype.UUID, error) {
+		mustExec(t, pool, `UPDATE evaluation_batch_items SET run_id = $1 WHERE batch_id = $2 AND trial = 2`,
+			mustUUID(t, competitor), mustUUID(t, batchID))
+		return start(ctx, b)
+	}
+	racing := &eval.BatchService{Pool: pool, Ports: ports}
+	if err := racing.AdvanceBatches(ctx, mustUUID(t, f.workspaceID)); err != nil {
+		t.Fatalf("losing the race is not an error: %v", err)
+	}
+
+	if after := runsOfTestCase(t, pool, f.testCaseID); after != before {
+		t.Errorf("runs for the test case went from %d to %d, want the losing run rolled back", before, after)
+	}
+	if got := batchTrialRuns(t, pool, batchID)[f.testCaseID+"#2"]; got != competitor {
+		t.Errorf("trial 2 is linked to %q, want the competitor's run %s", got, competitor)
 	}
 }
 
