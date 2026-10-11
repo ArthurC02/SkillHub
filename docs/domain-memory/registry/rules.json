@@ -203,7 +203,25 @@
           "source_kind": "decisions"
         }
       ],
-      "status": "candidate"
+      "review": {
+        "proposal_id": "eval-run-collaboration-r2",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-11T17:35:11.366282Z",
+            "scope": "The eval and run collaboration: run's trial port with its origin-key idempotency and passing-refusal fact, run's fact reader for judging, eval's verdict reader for the run list, and eval's wait-or-stop rule",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "7ae276dc85afa0672a63370516232830a78fba90",
+              "registry_digest": "sha256:7735d13dfcdb3a462c8b4d65265fd62d6fed592669cca700643a0accc382302c"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }

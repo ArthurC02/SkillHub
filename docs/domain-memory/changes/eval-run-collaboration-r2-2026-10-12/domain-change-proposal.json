@@ -3,12 +3,12 @@
   "proposal_id": "eval-run-collaboration-r2",
   "proposer": "domain-memory-agent",
   "requirement_id": "eval-run-collaboration",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-11T17:32:41.558847Z",
   "verified_at": "2026-10-11T17:35:11.872846Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-11T17:35:47.582536Z",
+  "applied_at": "2026-10-11T17:35:48.584152Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "7ae276dc85afa0672a63370516232830a78fba90",
@@ -311,5 +311,9 @@
         "registry_digest": "sha256:7735d13dfcdb3a462c8b4d65265fd62d6fed592669cca700643a0accc382302c"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "dc750670ba5f7b10c9ff89ec70d3b2660d7d05de",
+    "registry_digest": "sha256:d44db34d0967414a1d29bd43b559cee455d1fd522f12ab6c0fa34efa7b8b218a"
+  }
 }
