@@ -310,6 +310,9 @@ type material struct {
 
 	rubric *testlab.Rubric
 
+	graders      map[string]graderVersion
+	instructions map[string]string
+
 	advanced  trace.AdvancedView
 	summary   trace.Summary
 	artifacts []ArtifactFacts
@@ -368,7 +371,7 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	}
 
 	plan := planCriteria(m)
-	if len(plan.toJudge) == 0 {
+	if len(plan.asks.list) == 0 {
 		return s.completeAndSuggest(ctx, m, ev, verdict{
 			overall: overallFrom(plan.decided),
 			summary: "every acceptance criterion of this run carries a check the platform " +
@@ -392,18 +395,25 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 }
 
 func (m material) judging(p criteriaPlan) material {
-	m.criteria = p.toJudge
+	isCriterion := make(map[string]bool, len(m.criteria))
+	for _, c := range m.criteria {
+		isCriterion[c.ID] = true
+	}
+	m.criteria = make([]testlab.Criterion, len(p.asks.list))
+	m.instructions = map[string]string{}
+	for i, it := range p.asks.list {
+		m.criteria[i] = testlab.Criterion{ID: it.key, Text: it.text}
+		if it.instructions != "" {
+			m.instructions[it.key] = it.instructions
+		}
+	}
 	if m.rubric == nil {
 		return m
-	}
-	decided := map[string]bool{}
-	for _, r := range p.decided {
-		decided[r.CriterionID] = true
 	}
 	rubric := *m.rubric
 	rubric.Items = nil
 	for _, it := range m.rubric.Items {
-		if !decided[it.ID] {
+		if p.asks.seen[it.ID] || !isCriterion[it.ID] {
 			rubric.Items = append(rubric.Items, it)
 		}
 	}
@@ -552,6 +562,9 @@ func (s *Service) gatherTestCase(ctx context.Context, workspaceID pgtype.UUID, m
 	}
 
 	if m.criteria, err = testlab.DecodeCriteria(m.snapshot.AcceptanceCriteria); err != nil {
+		return err
+	}
+	if m.graders, err = loadGraderVersions(ctx, s.queries(), workspaceID, referencedGraderVersions(m.criteria)); err != nil {
 		return err
 	}
 	m.rubric, err = testlab.DecodeRubric(m.snapshot.Rubric)

@@ -122,6 +122,10 @@ var strangerRoutes = []strangerCase{
 	{pattern: "POST /skills/{id}/runs/preflight/confirm",
 		body: `{"version_id":"{versionId}","test_case_id":"{testCaseId}","summary_hash":"` +
 			strangerGuessedHash + `"}`, want: http.StatusNotFound},
+	{pattern: "POST /evaluation/graders/{id}/versions",
+		body: `{"instructions":"a stranger rewrote this","reason":"a stranger asked"}`, want: http.StatusNotFound},
+	{pattern: "POST /admin/evaluation/graders/{id}/versions",
+		body: `{"instructions":"a stranger rewrote this","reason":"a stranger asked"}`, want: http.StatusNotFound},
 	{pattern: "POST /skills/{id}/evaluation-batches",
 		body: `{"skill_version_id":"{versionId}","test_case_ids":["{testCaseId}"],"trials":1}`, want: http.StatusNotFound},
 	{pattern: "POST /skills/{id}/runs",
@@ -162,6 +166,7 @@ type aliceWorld struct {
 	workspaceID   string
 	bundleName    string
 	batchID       string
+	graderID      string
 
 	secrets map[string]string
 }
@@ -177,6 +182,8 @@ func (w aliceWorld) resolve(path string) string {
 		path = strings.ReplaceAll(path, "{id}", w.testCaseID)
 	case strings.HasPrefix(path, "/downloads/"):
 		path = strings.ReplaceAll(path, "{id}", w.artifactID)
+	case strings.Contains(path, "/evaluation/graders/"):
+		path = strings.ReplaceAll(path, "{id}", w.graderID)
 	default:
 		path = strings.ReplaceAll(path, "{id}", w.skillID)
 	}
@@ -308,11 +315,12 @@ func newAliceWorld(t *testing.T, a *api, pool *pgxpool.Pool) (aliceWorld, *clien
 	}
 
 	batchID := seedAlicesBatch(t, pool, alice, skillID, versionID)
+	graderID, graderInstructions := seedAlicesGrader(t, alice)
 	world := aliceWorld{
 		skillID: skillID, versionID: versionID, testCaseID: testCaseID, criterionID: criterionID,
 		datasetID: datasetID, runID: created.RunID, liveRunID: liveRunID, artifactID: artifactID, runArtifactID: runArtifactID,
 		workspaceID: alice.workspaceID, bundleName: aliceBundleName,
-		batchID: batchID,
+		batchID: batchID, graderID: graderID,
 		secrets: map[string]string{
 			"the version id":      versionID,
 			"the test case id":    testCaseID,
@@ -320,6 +328,8 @@ func newAliceWorld(t *testing.T, a *api, pool *pgxpool.Pool) (aliceWorld, *clien
 			"the dataset id":      datasetID,
 			"the run id":          created.RunID,
 			"the batch id":        batchID,
+			"the grader id":       graderID,
+			"the grader prompt":   graderInstructions,
 			"the artifact id":     artifactID,
 			"the run artifact id": runArtifactID,
 			"the skill name":      aliceSkillName,
@@ -489,4 +499,12 @@ func seedAlicesBatch(t *testing.T, pool *pgxpool.Pool, alice *client, skillID, v
 		t.Fatalf("seed Alice's evaluation batch: %v", err)
 	}
 	return pgconv.UUIDString(batch.ID)
+}
+
+func seedAlicesGrader(t *testing.T, alice *client) (id, instructions string) {
+	t.Helper()
+	instructions = "alice-only grading rule: fail when the reply sounds curt"
+	created := createGrader(t, alice, "/evaluation/graders", "alice-grader", instructions)
+	id, _ = created["id"].(string)
+	return id, instructions
 }

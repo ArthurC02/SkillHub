@@ -284,6 +284,26 @@ import {
     EvaluationBatchReportToJSON,
 } from '../models/EvaluationBatchReport';
 import {
+    type EvaluationGrader,
+    EvaluationGraderFromJSON,
+    EvaluationGraderToJSON,
+} from '../models/EvaluationGrader';
+import {
+    type EvaluationGraderDraft,
+    EvaluationGraderDraftFromJSON,
+    EvaluationGraderDraftToJSON,
+} from '../models/EvaluationGraderDraft';
+import {
+    type EvaluationGraderList,
+    EvaluationGraderListFromJSON,
+    EvaluationGraderListToJSON,
+} from '../models/EvaluationGraderList';
+import {
+    type EvaluationGraderRevision,
+    EvaluationGraderRevisionFromJSON,
+    EvaluationGraderRevisionToJSON,
+} from '../models/EvaluationGraderRevision';
+import {
     type ExposureCase,
     ExposureCaseFromJSON,
     ExposureCaseToJSON,
@@ -976,6 +996,20 @@ export interface CreateEvaluationBatchOperationRequest {
      * 
      */
     createEvaluationBatchRequest: CreateEvaluationBatchRequest;
+}
+
+export interface CreateEvaluationGraderRequest {
+    /**
+     * 
+     */
+    evaluationGraderDraft: EvaluationGraderDraft;
+}
+
+export interface CreatePlatformEvaluationGraderRequest {
+    /**
+     * 
+     */
+    evaluationGraderDraft: EvaluationGraderDraft;
 }
 
 export interface CreateSkillVersionFromSuggestionsOperationRequest {
@@ -1786,6 +1820,28 @@ export interface ReviewExposureOperationRequest {
     reviewExposureRequest: ReviewExposureRequest;
 }
 
+export interface ReviseEvaluationGraderRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    evaluationGraderRevision: EvaluationGraderRevision;
+}
+
+export interface RevisePlatformEvaluationGraderRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    evaluationGraderRevision: EvaluationGraderRevision;
+}
+
 export interface SaveSkillVersionRequest {
     /**
      * 
@@ -2443,6 +2499,54 @@ export interface DefaultApiInterface {
      * Run a set of test cases against one skill version, each several times (EVAL-014)
      */
     createEvaluationBatch(requestParameters: CreateEvaluationBatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationBatch>;
+
+    /**
+     * Creates request options for createEvaluationGrader without sending the request
+     * @param {EvaluationGraderDraft} evaluationGraderDraft 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createEvaluationGraderRequestOpts(requestParameters: CreateEvaluationGraderRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Only this workspace sees it. Creates version 1 and its audit event in one transaction. 
+     * @summary Define a prompt grader for this workspace (EVAL-014)
+     * @param {EvaluationGraderDraft} evaluationGraderDraft 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createEvaluationGraderRaw(requestParameters: CreateEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationGrader>>;
+
+    /**
+     * Only this workspace sees it. Creates version 1 and its audit event in one transaction. 
+     * Define a prompt grader for this workspace (EVAL-014)
+     */
+    createEvaluationGrader(requestParameters: CreateEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationGrader>;
+
+    /**
+     * Creates request options for createPlatformEvaluationGrader without sending the request
+     * @param {EvaluationGraderDraft} evaluationGraderDraft 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createPlatformEvaluationGraderRequestOpts(requestParameters: CreatePlatformEvaluationGraderRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Creates version 1 and its audit event in one transaction.
+     * @summary Define a prompt grader for every workspace (EVAL-014)
+     * @param {EvaluationGraderDraft} evaluationGraderDraft 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createPlatformEvaluationGraderRaw(requestParameters: CreatePlatformEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationGrader>>;
+
+    /**
+     * Operator only. Creates version 1 and its audit event in one transaction.
+     * Define a prompt grader for every workspace (EVAL-014)
+     */
+    createPlatformEvaluationGrader(requestParameters: CreatePlatformEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationGrader>;
 
     /**
      * Creates request options for createSkillVersionFromSuggestions without sending the request
@@ -4163,6 +4267,28 @@ export interface DefaultApiInterface {
     listEvaluationBatches(requestParameters: ListEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListEvaluationBatches200Response>;
 
     /**
+     * Creates request options for listEvaluationGraders without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listEvaluationGradersRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Platform graders operators defined for everyone, then this workspace\'s own, each at its latest version. A check names a version id, so a later version never changes what an existing check judges with. 
+     * @summary The prompt graders this workspace may use (EVAL-014)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listEvaluationGradersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationGraderList>>;
+
+    /**
+     * Platform graders operators defined for everyone, then this workspace\'s own, each at its latest version. A check names a version id, so a later version never changes what an existing check judges with. 
+     * The prompt graders this workspace may use (EVAL-014)
+     */
+    listEvaluationGraders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationGraderList>;
+
+    /**
      * Creates request options for listExposureQueue without sending the request
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -4461,6 +4587,28 @@ export interface DefaultApiInterface {
      * The platform\'s own agents and whether they may run (02:OPS-011)
      */
     listPlatformAgents(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgents200Response>;
+
+    /**
+     * Creates request options for listPlatformEvaluationGraders without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listPlatformEvaluationGradersRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only.
+     * @summary The prompt graders every workspace may use (EVAL-014)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listPlatformEvaluationGradersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationGraderList>>;
+
+    /**
+     * Operator only.
+     * The prompt graders every workspace may use (EVAL-014)
+     */
+    listPlatformEvaluationGraders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationGraderList>;
 
     /**
      * Creates request options for listRunArtifacts without sending the request
@@ -4957,6 +5105,58 @@ export interface DefaultApiInterface {
      * Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
      */
     reviewExposure(requestParameters: ReviewExposureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExposureCase>;
+
+    /**
+     * Creates request options for reviseEvaluationGrader without sending the request
+     * @param {string} id 
+     * @param {EvaluationGraderRevision} evaluationGraderRevision 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    reviseEvaluationGraderRequestOpts(requestParameters: ReviseEvaluationGraderRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Versions are never edited; this adds the next one. Checks that name an earlier version keep judging with it. Platform graders are revised only from the admin route. 
+     * @summary Save a new version of one of this workspace\'s prompt graders (EVAL-014)
+     * @param {string} id 
+     * @param {EvaluationGraderRevision} evaluationGraderRevision 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    reviseEvaluationGraderRaw(requestParameters: ReviseEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationGrader>>;
+
+    /**
+     * Versions are never edited; this adds the next one. Checks that name an earlier version keep judging with it. Platform graders are revised only from the admin route. 
+     * Save a new version of one of this workspace\'s prompt graders (EVAL-014)
+     */
+    reviseEvaluationGrader(requestParameters: ReviseEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationGrader>;
+
+    /**
+     * Creates request options for revisePlatformEvaluationGrader without sending the request
+     * @param {string} id 
+     * @param {EvaluationGraderRevision} evaluationGraderRevision 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    revisePlatformEvaluationGraderRequestOpts(requestParameters: RevisePlatformEvaluationGraderRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Checks that name an earlier version keep judging with it.
+     * @summary Save a new version of a platform prompt grader (EVAL-014)
+     * @param {string} id 
+     * @param {EvaluationGraderRevision} evaluationGraderRevision 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    revisePlatformEvaluationGraderRaw(requestParameters: RevisePlatformEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationGrader>>;
+
+    /**
+     * Operator only. Checks that name an earlier version keep judging with it.
+     * Save a new version of a platform prompt grader (EVAL-014)
+     */
+    revisePlatformEvaluationGrader(requestParameters: RevisePlatformEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationGrader>;
 
     /**
      * Creates request options for saveSkillVersion without sending the request
@@ -6455,6 +6655,104 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async createEvaluationBatch(requestParameters: CreateEvaluationBatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationBatch> {
         const response = await this.createEvaluationBatchRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for createEvaluationGrader without sending the request
+     */
+    async createEvaluationGraderRequestOpts(requestParameters: CreateEvaluationGraderRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['evaluationGraderDraft'] == null) {
+            throw new runtime.RequiredError(
+                'evaluationGraderDraft',
+                'Required parameter "evaluationGraderDraft" was null or undefined when calling createEvaluationGrader().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/evaluation/graders`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: EvaluationGraderDraftToJSON(requestParameters['evaluationGraderDraft']),
+        };
+    }
+
+    /**
+     * Only this workspace sees it. Creates version 1 and its audit event in one transaction. 
+     * Define a prompt grader for this workspace (EVAL-014)
+     */
+    async createEvaluationGraderRaw(requestParameters: CreateEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationGrader>> {
+        const requestOptions = await this.createEvaluationGraderRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EvaluationGraderFromJSON(jsonValue));
+    }
+
+    /**
+     * Only this workspace sees it. Creates version 1 and its audit event in one transaction. 
+     * Define a prompt grader for this workspace (EVAL-014)
+     */
+    async createEvaluationGrader(requestParameters: CreateEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationGrader> {
+        const response = await this.createEvaluationGraderRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for createPlatformEvaluationGrader without sending the request
+     */
+    async createPlatformEvaluationGraderRequestOpts(requestParameters: CreatePlatformEvaluationGraderRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['evaluationGraderDraft'] == null) {
+            throw new runtime.RequiredError(
+                'evaluationGraderDraft',
+                'Required parameter "evaluationGraderDraft" was null or undefined when calling createPlatformEvaluationGrader().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/evaluation/graders`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: EvaluationGraderDraftToJSON(requestParameters['evaluationGraderDraft']),
+        };
+    }
+
+    /**
+     * Operator only. Creates version 1 and its audit event in one transaction.
+     * Define a prompt grader for every workspace (EVAL-014)
+     */
+    async createPlatformEvaluationGraderRaw(requestParameters: CreatePlatformEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationGrader>> {
+        const requestOptions = await this.createPlatformEvaluationGraderRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EvaluationGraderFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Creates version 1 and its audit event in one transaction.
+     * Define a prompt grader for every workspace (EVAL-014)
+     */
+    async createPlatformEvaluationGrader(requestParameters: CreatePlatformEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationGrader> {
+        const response = await this.createPlatformEvaluationGraderRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -9823,6 +10121,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for listEvaluationGraders without sending the request
+     */
+    async listEvaluationGradersRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/evaluation/graders`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Platform graders operators defined for everyone, then this workspace\'s own, each at its latest version. A check names a version id, so a later version never changes what an existing check judges with. 
+     * The prompt graders this workspace may use (EVAL-014)
+     */
+    async listEvaluationGradersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationGraderList>> {
+        const requestOptions = await this.listEvaluationGradersRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EvaluationGraderListFromJSON(jsonValue));
+    }
+
+    /**
+     * Platform graders operators defined for everyone, then this workspace\'s own, each at its latest version. A check names a version id, so a later version never changes what an existing check judges with. 
+     * The prompt graders this workspace may use (EVAL-014)
+     */
+    async listEvaluationGraders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationGraderList> {
+        const response = await this.listEvaluationGradersRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listExposureQueue without sending the request
      */
     async listExposureQueueRequestOpts(): Promise<runtime.RequestOpts> {
@@ -10358,6 +10695,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async listPlatformAgents(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPlatformAgents200Response> {
         const response = await this.listPlatformAgentsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listPlatformEvaluationGraders without sending the request
+     */
+    async listPlatformEvaluationGradersRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/evaluation/graders`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only.
+     * The prompt graders every workspace may use (EVAL-014)
+     */
+    async listPlatformEvaluationGradersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationGraderList>> {
+        const requestOptions = await this.listPlatformEvaluationGradersRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EvaluationGraderListFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only.
+     * The prompt graders every workspace may use (EVAL-014)
+     */
+    async listPlatformEvaluationGraders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationGraderList> {
+        const response = await this.listPlatformEvaluationGradersRaw(initOverrides);
         return await response.value();
     }
 
@@ -11353,6 +11729,120 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async reviewExposure(requestParameters: ReviewExposureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExposureCase> {
         const response = await this.reviewExposureRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for reviseEvaluationGrader without sending the request
+     */
+    async reviseEvaluationGraderRequestOpts(requestParameters: ReviseEvaluationGraderRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling reviseEvaluationGrader().'
+            );
+        }
+
+        if (requestParameters['evaluationGraderRevision'] == null) {
+            throw new runtime.RequiredError(
+                'evaluationGraderRevision',
+                'Required parameter "evaluationGraderRevision" was null or undefined when calling reviseEvaluationGrader().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/evaluation/graders/{id}/versions`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: EvaluationGraderRevisionToJSON(requestParameters['evaluationGraderRevision']),
+        };
+    }
+
+    /**
+     * Versions are never edited; this adds the next one. Checks that name an earlier version keep judging with it. Platform graders are revised only from the admin route. 
+     * Save a new version of one of this workspace\'s prompt graders (EVAL-014)
+     */
+    async reviseEvaluationGraderRaw(requestParameters: ReviseEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationGrader>> {
+        const requestOptions = await this.reviseEvaluationGraderRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EvaluationGraderFromJSON(jsonValue));
+    }
+
+    /**
+     * Versions are never edited; this adds the next one. Checks that name an earlier version keep judging with it. Platform graders are revised only from the admin route. 
+     * Save a new version of one of this workspace\'s prompt graders (EVAL-014)
+     */
+    async reviseEvaluationGrader(requestParameters: ReviseEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationGrader> {
+        const response = await this.reviseEvaluationGraderRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for revisePlatformEvaluationGrader without sending the request
+     */
+    async revisePlatformEvaluationGraderRequestOpts(requestParameters: RevisePlatformEvaluationGraderRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling revisePlatformEvaluationGrader().'
+            );
+        }
+
+        if (requestParameters['evaluationGraderRevision'] == null) {
+            throw new runtime.RequiredError(
+                'evaluationGraderRevision',
+                'Required parameter "evaluationGraderRevision" was null or undefined when calling revisePlatformEvaluationGrader().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/evaluation/graders/{id}/versions`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: EvaluationGraderRevisionToJSON(requestParameters['evaluationGraderRevision']),
+        };
+    }
+
+    /**
+     * Operator only. Checks that name an earlier version keep judging with it.
+     * Save a new version of a platform prompt grader (EVAL-014)
+     */
+    async revisePlatformEvaluationGraderRaw(requestParameters: RevisePlatformEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationGrader>> {
+        const requestOptions = await this.revisePlatformEvaluationGraderRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EvaluationGraderFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Checks that name an earlier version keep judging with it.
+     * Save a new version of a platform prompt grader (EVAL-014)
+     */
+    async revisePlatformEvaluationGrader(requestParameters: RevisePlatformEvaluationGraderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationGrader> {
+        const response = await this.revisePlatformEvaluationGraderRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

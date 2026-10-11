@@ -12,6 +12,7 @@ files:
   rate_limit.sql: httpx
   evaluation.sql: eval
   evaluation_batches.sql: eval
+  evaluation_graders.sql: eval
   governance.sql:
   packaging.sql: packaging
   publishing.sql: publishing
@@ -475,6 +476,7 @@ immutable:
   bundle_versions: 一份組合釘住的成員清單；成員升版是新的 Bundle Version，不是改寫舊的
   bundle_members: Bundle Version 的成員；改了等於改寫別人安裝過的那一份組合
   download_artifact_members: Plugin 產物是由哪幾個版本組成的；重打包是新列
+  evaluation_grader_versions: 一個 check 釘住的評分指示；改了等於改寫已經判過的尺
   exposure_reviews: 曝光審核紀錄；撤銷是新的一筆，舊的判斷與它看過的快照要留著
 
 immutable_allow:
@@ -543,6 +545,8 @@ tables:
   evaluation_settings: eval
   evaluation_batches: eval
   evaluation_batch_items: eval
+  evaluation_graders: eval
+  evaluation_grader_versions: eval
   run_continuations: run
   run_settings: run
   trace_events: trace
@@ -600,6 +604,8 @@ retention:
   run_settings: keep operator configuration
   evaluation_batches: keep the record of which evaluation set ran against which version
   evaluation_batch_items: keep the link from a batch trial to its permanent run
+  evaluation_graders: with_owner deleted with its workspace by account purge; platform graders keep
+  evaluation_grader_versions: with_owner deleted with its grader
   artifacts: expire objects past retention, maintenance purge-run-artifacts marks the row
   download_artifacts: expire objects past DOWNLOAD_ARTIFACT_RETENTION, the row stays
   download_records: keep

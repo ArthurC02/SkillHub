@@ -110,7 +110,7 @@ func wireCriteria(criteria []JudgeCriterion) []llmclient.JudgeCriterion {
 	out := make([]llmclient.JudgeCriterion, 0, len(criteria))
 	for _, c := range criteria {
 		out = append(out, llmclient.JudgeCriterion{
-			ID: c.ID, Text: c.Text, EvidenceExcerpt: c.EvidenceExcerpt,
+			ID: c.ID, Text: c.Text, Instructions: c.Instructions, EvidenceExcerpt: c.EvidenceExcerpt,
 		})
 	}
 	return out

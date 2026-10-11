@@ -114,7 +114,7 @@ func (s *Service) buildRequest(m material, ev gen.Evaluation) (JudgeRequest, sen
 			truncation = append(truncation, "criteria")
 			break
 		}
-		criteria = append(criteria, JudgeCriterion{ID: c.ID, Text: c.Text})
+		criteria = append(criteria, JudgeCriterion{ID: c.ID, Text: c.Text, Instructions: m.instructions[c.ID]})
 	}
 
 	artifacts := make([]JudgeArtifact, 0, len(m.artifacts))

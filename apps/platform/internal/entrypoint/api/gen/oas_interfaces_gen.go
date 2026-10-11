@@ -65,6 +65,14 @@ type CreateEvaluationBatchRes interface {
 	createEvaluationBatchRes()
 }
 
+type CreateEvaluationGraderRes interface {
+	createEvaluationGraderRes()
+}
+
+type CreatePlatformEvaluationGraderRes interface {
+	createPlatformEvaluationGraderRes()
+}
+
 type CreateSkillVersionFromSuggestionsRes interface {
 	createSkillVersionFromSuggestionsRes()
 }
@@ -341,6 +349,10 @@ type ListEvaluationBatchesRes interface {
 	listEvaluationBatchesRes()
 }
 
+type ListEvaluationGradersRes interface {
+	listEvaluationGradersRes()
+}
+
 type ListExposureQueueRes interface {
 	listExposureQueueRes()
 }
@@ -391,6 +403,10 @@ type ListPlatformAgentRunsRes interface {
 
 type ListPlatformAgentsRes interface {
 	listPlatformAgentsRes()
+}
+
+type ListPlatformEvaluationGradersRes interface {
+	listPlatformEvaluationGradersRes()
 }
 
 type ListRunArtifactsRes interface {
@@ -463,6 +479,14 @@ type RequestAccountDeletionRes interface {
 
 type ReviewExposureRes interface {
 	reviewExposureRes()
+}
+
+type ReviseEvaluationGraderRes interface {
+	reviseEvaluationGraderRes()
+}
+
+type RevisePlatformEvaluationGraderRes interface {
+	revisePlatformEvaluationGraderRes()
 }
 
 type SaveSkillVersionRes interface {

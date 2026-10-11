@@ -16,7 +16,9 @@ import { mapValues } from '../runtime';
 /**
  * How a criterion is decided, as a tree. A grader node decides from the
  * run's own records (`contains_values`, `asks`, `does_not_ask`) or asks the
- * judge model about the criterion's text (`judge`); a composite node
+ * judge model about the criterion's text (`judge`, or `prompt_grader`
+ * with one value: the id of a grader version from GET /evaluation/graders,
+ * whose instructions the judge applies); a composite node
  * combines its children in sequence, all, any, if or each. The kinds, the
  * number of values and children each takes, and their labels come from
  * GET /evaluation/check-kinds, so a new kind needs no contract change. A

@@ -1,7 +1,6 @@
 package eval
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -23,7 +22,7 @@ const (
 	CategoryComposite = "composite"
 )
 
-var ErrInvalidCheck = errors.New("eval: invalid check")
+var ErrInvalidCheck = fmt.Errorf("eval: invalid check: %w", testlab.ErrInvalid)
 
 type Bounds struct{ Min, Max int }
 
@@ -45,10 +44,12 @@ type outcome struct {
 }
 
 type checkScope struct {
-	m     material
-	judge *CriterionResult
-	item  string
-	steps *[]CheckStep
+	m         material
+	criterion testlab.Criterion
+	verdicts  map[string]CriterionResult
+	asking    *judgeItems
+	item      string
+	steps     *[]CheckStep
 }
 
 type CheckStep struct {
@@ -64,7 +65,7 @@ type checkNode interface {
 }
 
 var checkNodeList = []checkNode{
-	containsValuesNode{}, asksNode{}, doesNotAskNode{}, judgeNode{},
+	containsValuesNode{}, asksNode{}, doesNotAskNode{}, judgeNode{}, promptGraderNode{},
 	sequenceNode{}, allNode{}, anyNode{}, ifNode{}, eachNode{},
 }
 
@@ -234,10 +235,42 @@ func (judgeNode) kind() CheckKind {
 }
 
 func (judgeNode) evaluate(s checkScope, _ testlab.Check, _ string) outcome {
-	if s.judge == nil {
+	return s.modelVerdict(judgeItem{key: s.criterion.ID, text: s.criterion.Text})
+}
+
+type promptGraderNode struct{}
+
+const promptGraderKind = "prompt_grader"
+
+func (promptGraderNode) kind() CheckKind {
+	return CheckKind{Kind: promptGraderKind, Category: CategoryGrader, Label: "Prompt 評分器",
+		Description: "依選定評分器版本的評分指示，請評審模型判定這條驗收條件；值是評分器版本的 id", Values: Bounds{1, 1}}
+}
+
+func (promptGraderNode) evaluate(s checkScope, n testlab.Check, path string) outcome {
+	g, found := s.m.graders[n.Values[0]]
+	if !found {
+		return outcome{result: ResultUndetermined, reason: "the grader version this check names is not available to this workspace"}
+	}
+	o := s.modelVerdict(judgeItem{
+		key: s.criterion.ID + "@" + path, text: s.criterion.Text, instructions: s.withItem([]string{g.instructions})[0],
+	})
+	o.reason = fmt.Sprintf("%s v%d: %s", g.name, g.version, o.reason)
+	return o
+}
+
+func (s checkScope) modelVerdict(it judgeItem) outcome {
+	if s.asking != nil {
+		s.asking.add(it)
+	}
+	if s.verdicts == nil {
 		return outcome{result: resultPending, reason: "waiting for the judge"}
 	}
-	return outcome{result: s.judge.Result, reason: s.judge.Reason, judged: true, evidence: s.judge.Evidence}
+	v, answered := s.verdicts[it.key]
+	if !answered {
+		return outcome{result: ResultUndetermined, reason: "the judge returned no verdict for this check"}
+	}
+	return outcome{result: v.Result, reason: v.Reason, judged: true, evidence: v.Evidence}
 }
 
 type sequenceNode struct{}
@@ -249,13 +282,26 @@ func (sequenceNode) kind() CheckKind {
 
 func (sequenceNode) evaluate(s checkScope, n testlab.Check, path string) outcome {
 	var merged outcome
+	waiting := -1
 	for i, child := range n.Children {
 		o := evaluateCheck(s, child, childPath(path, i))
 		merged = merged.joinedWith(o)
-		if o.result != ResultPassed {
-			merged.result, merged.reason = o.result, fmt.Sprintf("step %d stopped the sequence: %s", i+1, o.reason)
-			return merged
+		if o.result == ResultPassed {
+			continue
 		}
+		if o.result == resultPending && s.asking != nil {
+			waiting = max(waiting, i)
+			continue
+		}
+		if waiting >= 0 {
+			break
+		}
+		merged.result, merged.reason = o.result, fmt.Sprintf("step %d stopped the sequence: %s", i+1, o.reason)
+		return merged
+	}
+	if waiting >= 0 {
+		merged.result, merged.reason = resultPending, "a step is waiting for the judge"
+		return merged
 	}
 	merged.result, merged.reason = ResultPassed, fmt.Sprintf("all %d steps passed", len(n.Children))
 	return merged
@@ -319,6 +365,11 @@ func (ifNode) evaluate(s checkScope, n testlab.Check, path string) outcome {
 		o := evaluateCheck(s, n.Children[ifElseBranch], childPath(path, ifElseBranch))
 		return condition.joinedWith(o).as(o.result, "the condition did not hold: "+o.reason)
 	default:
+		if condition.result == resultPending && s.asking != nil {
+			for i := 1; i < len(n.Children); i++ {
+				evaluateCheck(s, n.Children[i], childPath(path, i))
+			}
+		}
 		return condition.as(condition.result, "the condition could not be decided: "+condition.reason)
 	}
 }

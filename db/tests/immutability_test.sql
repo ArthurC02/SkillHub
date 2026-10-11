@@ -95,6 +95,13 @@ SELECT must_fail($$DELETE FROM skill_versions WHERE content_hash = 'hash-1'$$);
 SELECT must_fail($$UPDATE test_case_snapshots SET user_prompt = 'edited' WHERE content_hash = 'hash-tc-1'$$);
 SELECT must_fail($$DELETE FROM test_case_snapshots WHERE content_hash = 'hash-tc-1'$$);
 
+INSERT INTO evaluation_graders (id, workspace_id, name)
+VALUES ('88888888-8888-4888-8888-888888888888', '22222222-2222-2222-2222-222222222222', 'tone');
+INSERT INTO evaluation_grader_versions (grader_id, version, instructions, reason)
+VALUES ('88888888-8888-4888-8888-888888888888', 1, 'fail when curt', 'first version');
+SELECT must_fail($$UPDATE evaluation_grader_versions SET instructions = 'rewritten' WHERE reason = 'first version'$$);
+SELECT must_fail($$DELETE FROM evaluation_grader_versions WHERE reason = 'first version'$$);
+
 SELECT must_violate_check($$UPDATE runs SET status = 'running'
 WHERE id = '77777777-7777-7777-7777-777777777777'$$);
 UPDATE runs SET status = 'provisioning', started_at = now()

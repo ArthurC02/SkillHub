@@ -5360,6 +5360,187 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /evaluation/graders:
+    get:
+      operationId: listEvaluationGraders
+      summary: The prompt graders this workspace may use (EVAL-014)
+      description: |
+        Platform graders operators defined for everyone, then this workspace's
+        own, each at its latest version. A check names a version id, so a
+        later version never changes what an existing check judges with.
+      responses:
+        "200":
+          description: The graders, platform ones first.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EvaluationGraderList" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      operationId: createEvaluationGrader
+      summary: Define a prompt grader for this workspace (EVAL-014)
+      description: |
+        Only this workspace sees it. Creates version 1 and its audit event in
+        one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EvaluationGraderDraft" }
+      responses:
+        "201":
+          description: The grader at version 1.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EvaluationGrader" }
+        "400":
+          description: The name is blank or over 100 characters, the instructions are blank or over 4000 characters, or the reason is blank.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: The caller is not invited to the beta.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: This workspace already has a grader with that name.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /evaluation/graders/{id}/versions:
+    post:
+      operationId: reviseEvaluationGrader
+      summary: Save a new version of one of this workspace's prompt graders (EVAL-014)
+      description: |
+        Versions are never edited; this adds the next one. Checks that name an
+        earlier version keep judging with it. Platform graders are revised
+        only from the admin route.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EvaluationGraderRevision" }
+      responses:
+        "201":
+          description: The grader at its new version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EvaluationGrader" }
+        "400":
+          description: The instructions are blank or over 4000 characters, or the reason is blank.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: The caller is not invited to the beta.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: No grader with that id belongs to this workspace.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Another version was saved at the same moment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/evaluation/graders:
+    get:
+      operationId: listPlatformEvaluationGraders
+      summary: The prompt graders every workspace may use (EVAL-014)
+      description: Operator only.
+      responses:
+        "200":
+          description: The platform graders at their latest versions.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EvaluationGraderList" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      operationId: createPlatformEvaluationGrader
+      summary: Define a prompt grader for every workspace (EVAL-014)
+      description: Operator only. Creates version 1 and its audit event in one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EvaluationGraderDraft" }
+      responses:
+        "201":
+          description: The grader at version 1.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EvaluationGrader" }
+        "400":
+          description: The name is blank or over 100 characters, the instructions are blank or over 4000 characters, or the reason is blank.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: A platform grader with that name already exists.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/evaluation/graders/{id}/versions:
+    post:
+      operationId: revisePlatformEvaluationGrader
+      summary: Save a new version of a platform prompt grader (EVAL-014)
+      description: Operator only. Checks that name an earlier version keep judging with it.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EvaluationGraderRevision" }
+      responses:
+        "201":
+          description: The grader at its new version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EvaluationGrader" }
+        "400":
+          description: The instructions are blank or over 4000 characters, or the reason is blank.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator, or no platform grader has that id.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Another version was saved at the same moment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /runs/{id}/evaluation:
     get:
       operationId: getRunEvaluation
@@ -9969,7 +10150,9 @@ components:
       description: |
         How a criterion is decided, as a tree. A grader node decides from the
         run's own records (`contains_values`, `asks`, `does_not_ask`) or asks the
-        judge model about the criterion's text (`judge`); a composite node
+        judge model about the criterion's text (`judge`, or `prompt_grader`
+        with one value: the id of a grader version from GET /evaluation/graders,
+        whose instructions the judge applies); a composite node
         combines its children in sequence, all, any, if or each. The kinds, the
         number of values and children each takes, and their labels come from
         GET /evaluation/check-kinds, so a new kind needs no contract change. A
@@ -9991,6 +10174,48 @@ components:
           type: integer
           minimum: 0
           description: For `each`, how many items must pass; 0 means every item.
+    EvaluationGrader:
+      type: object
+      required: [id, name, scope, version_id, version, instructions, revised_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        scope:
+          type: string
+          enum: [platform, workspace]
+          description: "`platform`: operators defined it for every workspace; `workspace`: this workspace's own."
+        version_id:
+          type: string
+          format: uuid
+          description: What a `prompt_grader` check names. Never changes meaning.
+        version: { type: integer, minimum: 1 }
+        instructions:
+          type: string
+          description: How the judge decides the criterion. `{item}` is filled in under an `each`.
+        revised_at: { type: string, format: date-time }
+    EvaluationGraderList:
+      type: object
+      required: [graders]
+      properties:
+        graders:
+          type: array
+          items: { $ref: "#/components/schemas/EvaluationGrader" }
+    EvaluationGraderRevision:
+      type: object
+      required: [instructions, reason]
+      properties:
+        instructions: { type: string, minLength: 1, maxLength: 4000 }
+        reason:
+          type: string
+          minLength: 1
+          description: What this version changes; kept with the version and in the audit trail.
+    EvaluationGraderDraft:
+      allOf:
+        - $ref: "#/components/schemas/EvaluationGraderRevision"
+        - type: object
+          required: [name]
+          properties:
+            name: { type: string, minLength: 1, maxLength: 100 }
     CheckKind:
       type: object
       required: [kind, category, label, description, values, children, at_least]

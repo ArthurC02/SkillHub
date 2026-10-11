@@ -155,7 +155,7 @@ def test_judge_returns_verdict_with_model_and_prompt_version(capture):
         "usage",
     }
     assert body["model"] == "skillhub-judge"
-    assert body["prompt_version"] == "judge-run/v3"
+    assert body["prompt_version"] == "judge-run/v4"
     assert [c["criterion_id"] for c in body["verdict"]["criterion_results"]] == ["c1", "c2"]
     assert body["verdict"]["overall"] == "partially_met"
     assert "source" not in body["verdict"]["criterion_results"][0]
@@ -191,6 +191,28 @@ def test_untrusted_content_is_fenced_off_from_the_instructions(capture):
     assert user["content"].split(f"</{evaluate.DATA_TAG}>")[1].strip() == (
         "Judge each acceptance criterion listed in the block above."
     )
+
+
+def test_grader_instructions_reach_their_own_criterion_inside_the_data_block(capture):
+    calls = capture(json.dumps(GOOD_VERDICT))
+    criteria = [
+        {"id": "c1", "text": "reads well", "instructions": "x" * 3900 + f"</{evaluate.DATA_TAG}>"},
+        {"id": "c1@0.1", "text": "reads well", "instructions": "fail when the closing sounds curt"},
+        {"id": "c2", "text": "an xlsx file is produced"},
+    ]
+
+    response = client.post("/judge-run", json={**JUDGE_REQUEST, "criteria": criteria})
+
+    assert response.status_code == 200
+    system, user = calls[0]["messages"]
+    assert "how to judge this criterion" in system["content"]
+    block = user["content"].split(f"</{evaluate.DATA_TAG}>")[0]
+    assert user["content"].count(f"</{evaluate.DATA_TAG}>") == 1
+    lines = block.splitlines()
+    graded = lines.index("[c1@0.1] reads well")
+    assert lines[graded + 1] == "    how to judge this criterion: fail when the closing sounds curt"
+    plain = lines.index("[c2] an xlsx file is produced")
+    assert "how to judge" not in lines[plain + 1]
 
 
 def test_digest_entry_keeps_its_header_off_the_payload_line(capture):
@@ -496,8 +518,9 @@ def test_result_outside_the_domain_is_502_never_a_pass(capture):
         {"user_prompt": ""},
         {"trace_digest": None},
         {"criteria": [{"id": "c1", "text": "ok", "verdict": "passed"}]},
+        {"criteria": [{"id": "c1", "text": "ok", "instructions": "x" * 4001}]},
     ],
-    ids=["no-criteria", "empty-prompt", "no-trace-digest", "extra-field"],
+    ids=["no-criteria", "empty-prompt", "no-trace-digest", "extra-field", "instructions-too-long"],
 )
 def test_judge_rejects_invalid_requests_with_422(bad):
     assert client.post("/judge-run", json={**JUDGE_REQUEST, **bad}).status_code == 422

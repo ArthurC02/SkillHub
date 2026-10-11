@@ -3144,6 +3144,34 @@ func (s *CreateEvaluationBatchUnprocessableEntity) SetUnconfirmedTestCaseIds(val
 
 func (*CreateEvaluationBatchUnprocessableEntity) createEvaluationBatchRes() {}
 
+type CreateEvaluationGraderBadRequest Error
+
+func (*CreateEvaluationGraderBadRequest) createEvaluationGraderRes() {}
+
+type CreateEvaluationGraderConflict Error
+
+func (*CreateEvaluationGraderConflict) createEvaluationGraderRes() {}
+
+type CreateEvaluationGraderForbidden Error
+
+func (*CreateEvaluationGraderForbidden) createEvaluationGraderRes() {}
+
+type CreateEvaluationGraderUnauthorized Error
+
+func (*CreateEvaluationGraderUnauthorized) createEvaluationGraderRes() {}
+
+type CreatePlatformEvaluationGraderBadRequest Error
+
+func (*CreatePlatformEvaluationGraderBadRequest) createPlatformEvaluationGraderRes() {}
+
+type CreatePlatformEvaluationGraderConflict Error
+
+func (*CreatePlatformEvaluationGraderConflict) createPlatformEvaluationGraderRes() {}
+
+type CreatePlatformEvaluationGraderNotFound Error
+
+func (*CreatePlatformEvaluationGraderNotFound) createPlatformEvaluationGraderRes() {}
+
 type CreateSkillVersionFromSuggestionsBadRequest Error
 
 func (*CreateSkillVersionFromSuggestionsBadRequest) createSkillVersionFromSuggestionsRes() {}
@@ -5818,10 +5846,12 @@ func (*CreditTrend) getCreditTrendRes() {}
 
 // How a criterion is decided, as a tree. A grader node decides from the run's own records
 // (`contains_values`, `asks`, `does_not_ask`) or asks the judge model about the criterion's text
-// (`judge`); a composite node combines its children in sequence, all, any, if or each. The kinds, the
-// number of values and children each takes, and their labels come from GET /evaluation/check-kinds, so
-// a new kind needs no contract change. A criterion without a check goes to the judge. The result is
-// labelled `rule` unless the judge was consulted.
+// (`judge`, or `prompt_grader` with one value: the id of a grader version from GET
+// /evaluation/graders, whose instructions the judge applies); a composite node combines its children
+// in sequence, all, any, if or each. The kinds, the number of values and children each takes, and
+// their labels come from GET /evaluation/check-kinds, so a new kind needs no contract change. A
+// criterion without a check goes to the judge. The result is labelled `rule` unless the judge was
+// consulted.
 // Ref: #/components/schemas/CriterionCheck
 type CriterionCheck struct {
 	Kind     string           `json:"kind"`
@@ -7876,6 +7906,7 @@ func (*Error) getSkillImportLimitsRes()            {}
 func (*Error) listCheckKindsRes()                  {}
 func (*Error) listDownloadArtifactsRes()           {}
 func (*Error) listEvaluationBatchesRes()           {}
+func (*Error) listEvaluationGradersRes()           {}
 func (*Error) listExposureQueueRes()               {}
 func (*Error) listModelCallBudgetsRes()            {}
 func (*Error) listOwnBundleOverviewRes()           {}
@@ -7883,6 +7914,7 @@ func (*Error) listOwnBundlesRes()                  {}
 func (*Error) listOwnPublicationsRes()             {}
 func (*Error) listPlatformAgentRunsRes()           {}
 func (*Error) listPlatformAgentsRes()              {}
+func (*Error) listPlatformEvaluationGradersRes()   {}
 func (*Error) listSkillVersionsRes()               {}
 func (*Error) publicSearchSkillsRes()              {}
 func (*Error) searchSkillsWithCorrectedIntentRes() {}
@@ -8748,6 +8780,221 @@ func (s *EvaluationFeedback) SetComment(val OptString) {
 // SetSubmittedAt sets the value of SubmittedAt.
 func (s *EvaluationFeedback) SetSubmittedAt(val time.Time) {
 	s.SubmittedAt = val
+}
+
+// Ref: #/components/schemas/EvaluationGrader
+type EvaluationGrader struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+	// `platform`: operators defined it for every workspace; `workspace`: this workspace's own.
+	Scope EvaluationGraderScope `json:"scope"`
+	// What a `prompt_grader` check names. Never changes meaning.
+	VersionID uuid.UUID `json:"version_id"`
+	Version   int       `json:"version"`
+	// How the judge decides the criterion. `{item}` is filled in under an `each`.
+	Instructions string    `json:"instructions"`
+	RevisedAt    time.Time `json:"revised_at"`
+}
+
+// GetID returns the value of ID.
+func (s *EvaluationGrader) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetName returns the value of Name.
+func (s *EvaluationGrader) GetName() string {
+	return s.Name
+}
+
+// GetScope returns the value of Scope.
+func (s *EvaluationGrader) GetScope() EvaluationGraderScope {
+	return s.Scope
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *EvaluationGrader) GetVersionID() uuid.UUID {
+	return s.VersionID
+}
+
+// GetVersion returns the value of Version.
+func (s *EvaluationGrader) GetVersion() int {
+	return s.Version
+}
+
+// GetInstructions returns the value of Instructions.
+func (s *EvaluationGrader) GetInstructions() string {
+	return s.Instructions
+}
+
+// GetRevisedAt returns the value of RevisedAt.
+func (s *EvaluationGrader) GetRevisedAt() time.Time {
+	return s.RevisedAt
+}
+
+// SetID sets the value of ID.
+func (s *EvaluationGrader) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetName sets the value of Name.
+func (s *EvaluationGrader) SetName(val string) {
+	s.Name = val
+}
+
+// SetScope sets the value of Scope.
+func (s *EvaluationGrader) SetScope(val EvaluationGraderScope) {
+	s.Scope = val
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *EvaluationGrader) SetVersionID(val uuid.UUID) {
+	s.VersionID = val
+}
+
+// SetVersion sets the value of Version.
+func (s *EvaluationGrader) SetVersion(val int) {
+	s.Version = val
+}
+
+// SetInstructions sets the value of Instructions.
+func (s *EvaluationGrader) SetInstructions(val string) {
+	s.Instructions = val
+}
+
+// SetRevisedAt sets the value of RevisedAt.
+func (s *EvaluationGrader) SetRevisedAt(val time.Time) {
+	s.RevisedAt = val
+}
+
+func (*EvaluationGrader) createEvaluationGraderRes()         {}
+func (*EvaluationGrader) createPlatformEvaluationGraderRes() {}
+func (*EvaluationGrader) reviseEvaluationGraderRes()         {}
+func (*EvaluationGrader) revisePlatformEvaluationGraderRes() {}
+
+// Merged schema.
+// Ref: #/components/schemas/EvaluationGraderDraft
+type EvaluationGraderDraft struct {
+	Instructions string `json:"instructions"`
+	// What this version changes; kept with the version and in the audit trail.
+	Reason string `json:"reason"`
+	Name   string `json:"name"`
+}
+
+// GetInstructions returns the value of Instructions.
+func (s *EvaluationGraderDraft) GetInstructions() string {
+	return s.Instructions
+}
+
+// GetReason returns the value of Reason.
+func (s *EvaluationGraderDraft) GetReason() string {
+	return s.Reason
+}
+
+// GetName returns the value of Name.
+func (s *EvaluationGraderDraft) GetName() string {
+	return s.Name
+}
+
+// SetInstructions sets the value of Instructions.
+func (s *EvaluationGraderDraft) SetInstructions(val string) {
+	s.Instructions = val
+}
+
+// SetReason sets the value of Reason.
+func (s *EvaluationGraderDraft) SetReason(val string) {
+	s.Reason = val
+}
+
+// SetName sets the value of Name.
+func (s *EvaluationGraderDraft) SetName(val string) {
+	s.Name = val
+}
+
+// Ref: #/components/schemas/EvaluationGraderList
+type EvaluationGraderList struct {
+	Graders []EvaluationGrader `json:"graders"`
+}
+
+// GetGraders returns the value of Graders.
+func (s *EvaluationGraderList) GetGraders() []EvaluationGrader {
+	return s.Graders
+}
+
+// SetGraders sets the value of Graders.
+func (s *EvaluationGraderList) SetGraders(val []EvaluationGrader) {
+	s.Graders = val
+}
+
+func (*EvaluationGraderList) listEvaluationGradersRes()         {}
+func (*EvaluationGraderList) listPlatformEvaluationGradersRes() {}
+
+// Ref: #/components/schemas/EvaluationGraderRevision
+type EvaluationGraderRevision struct {
+	Instructions string `json:"instructions"`
+	// What this version changes; kept with the version and in the audit trail.
+	Reason string `json:"reason"`
+}
+
+// GetInstructions returns the value of Instructions.
+func (s *EvaluationGraderRevision) GetInstructions() string {
+	return s.Instructions
+}
+
+// GetReason returns the value of Reason.
+func (s *EvaluationGraderRevision) GetReason() string {
+	return s.Reason
+}
+
+// SetInstructions sets the value of Instructions.
+func (s *EvaluationGraderRevision) SetInstructions(val string) {
+	s.Instructions = val
+}
+
+// SetReason sets the value of Reason.
+func (s *EvaluationGraderRevision) SetReason(val string) {
+	s.Reason = val
+}
+
+// `platform`: operators defined it for every workspace; `workspace`: this workspace's own.
+type EvaluationGraderScope string
+
+const (
+	EvaluationGraderScopePlatform  EvaluationGraderScope = "platform"
+	EvaluationGraderScopeWorkspace EvaluationGraderScope = "workspace"
+)
+
+// AllValues returns all EvaluationGraderScope values.
+func (EvaluationGraderScope) AllValues() []EvaluationGraderScope {
+	return []EvaluationGraderScope{
+		EvaluationGraderScopePlatform,
+		EvaluationGraderScopeWorkspace,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s EvaluationGraderScope) MarshalText() ([]byte, error) {
+	switch s {
+	case EvaluationGraderScopePlatform:
+		return []byte(s), nil
+	case EvaluationGraderScopeWorkspace:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *EvaluationGraderScope) UnmarshalText(data []byte) error {
+	switch EvaluationGraderScope(data) {
+	case EvaluationGraderScopePlatform:
+		*s = EvaluationGraderScopePlatform
+		return nil
+	case EvaluationGraderScopeWorkspace:
+		*s = EvaluationGraderScopeWorkspace
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // Whether the task was achieved. Never derived from the run's terminal state. `undetermined` is the
@@ -24876,6 +25123,38 @@ func (s *ReviewExposureReq) SetReason(val string) {
 type ReviewExposureUnprocessableEntity ExposureRefusal
 
 func (*ReviewExposureUnprocessableEntity) reviewExposureRes() {}
+
+type ReviseEvaluationGraderBadRequest Error
+
+func (*ReviseEvaluationGraderBadRequest) reviseEvaluationGraderRes() {}
+
+type ReviseEvaluationGraderConflict Error
+
+func (*ReviseEvaluationGraderConflict) reviseEvaluationGraderRes() {}
+
+type ReviseEvaluationGraderForbidden Error
+
+func (*ReviseEvaluationGraderForbidden) reviseEvaluationGraderRes() {}
+
+type ReviseEvaluationGraderNotFound Error
+
+func (*ReviseEvaluationGraderNotFound) reviseEvaluationGraderRes() {}
+
+type ReviseEvaluationGraderUnauthorized Error
+
+func (*ReviseEvaluationGraderUnauthorized) reviseEvaluationGraderRes() {}
+
+type RevisePlatformEvaluationGraderBadRequest Error
+
+func (*RevisePlatformEvaluationGraderBadRequest) revisePlatformEvaluationGraderRes() {}
+
+type RevisePlatformEvaluationGraderConflict Error
+
+func (*RevisePlatformEvaluationGraderConflict) revisePlatformEvaluationGraderRes() {}
+
+type RevisePlatformEvaluationGraderNotFound Error
+
+func (*RevisePlatformEvaluationGraderNotFound) revisePlatformEvaluationGraderRes() {}
 
 // A user-editable strengthening of the acceptance criteria (CONTENT-007) — not a second mechanism.
 // Its items map onto the same `criterion_results` entries the criteria produce; a rubric only adds

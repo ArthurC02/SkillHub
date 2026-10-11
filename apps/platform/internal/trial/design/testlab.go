@@ -584,7 +584,7 @@ func (s *Service) AddCriterion(
 	if err != nil {
 		return TestCase{}, err
 	}
-	check, err := s.validateCheck(added.Check)
+	check, err := s.validateCheck(ctx, ws.ID, added.Check)
 	if err != nil {
 		return TestCase{}, err
 	}

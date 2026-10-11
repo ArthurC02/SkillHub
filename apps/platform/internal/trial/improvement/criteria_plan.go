@@ -4,32 +4,56 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
+type judgeItem struct {
+	key          string
+	text         string
+	instructions string
+}
+
+type judgeItems struct {
+	list []judgeItem
+	seen map[string]bool
+}
+
+func (j *judgeItems) add(it judgeItem) {
+	if j.seen[it.key] {
+		return
+	}
+	if j.seen == nil {
+		j.seen = map[string]bool{}
+	}
+	j.seen[it.key] = true
+	j.list = append(j.list, it)
+}
+
 type criteriaPlan struct {
 	decided      []CriterionResult
-	toJudge      []testlab.Criterion
+	plain        []testlab.Criterion
 	pendingTrees []testlab.Criterion
+	asks         judgeItems
 }
 
 func planCriteria(m material) criteriaPlan {
 	var p criteriaPlan
 	for _, c := range m.criteria {
 		if c.Check == nil {
-			p.toJudge = append(p.toJudge, c)
+			p.plain = append(p.plain, c)
+			p.asks.add(judgeItem{key: c.ID, text: c.Text})
 			continue
 		}
 		if r, decided := treeResult(m, c, nil); decided {
 			p.decided = append(p.decided, r)
 			continue
 		}
-		p.toJudge = append(p.toJudge, c)
 		p.pendingTrees = append(p.pendingTrees, c)
+		evaluateCheck(checkScope{m: m, criterion: c, asking: &p.asks}, *c.Check, "0")
 	}
 	return p
 }
 
-func treeResult(m material, c testlab.Criterion, judge *CriterionResult) (CriterionResult, bool) {
+func treeResult(m material, c testlab.Criterion, verdicts map[string]CriterionResult) (CriterionResult, bool) {
 	var steps []CheckStep
-	o := evaluateCheck(checkScope{m: m, judge: judge, steps: &steps}, *c.Check, "0")
+	o := evaluateCheck(checkScope{m: m, criterion: c, verdicts: verdicts, steps: &steps}, *c.Check, "0")
 	if o.result == resultPending {
 		return CriterionResult{}, false
 	}
@@ -49,31 +73,29 @@ func treeResult(m material, c testlab.Criterion, judge *CriterionResult) (Criter
 }
 
 func (p criteriaPlan) finish(m material, judged []CriterionResult) []CriterionResult {
-	byID := make(map[string]CriterionResult, len(judged))
+	verdicts := make(map[string]CriterionResult, len(judged))
 	for _, r := range judged {
-		byID[r.CriterionID] = r
+		verdicts[r.CriterionID] = r
 	}
 	out := append([]CriterionResult{}, p.decided...)
-	inTree := make(map[string]bool, len(p.pendingTrees))
-	for _, c := range p.pendingTrees {
-		inTree[c.ID] = true
-		out = append(out, finishedTree(m, c, byID))
-	}
-	for _, r := range judged {
-		if !inTree[r.CriterionID] {
-			out = append(out, r)
+	for _, c := range p.plain {
+		r, answered := verdicts[c.ID]
+		if !answered {
+			r = noVerdict(c)
 		}
+		out = append(out, r)
+	}
+	for _, c := range p.pendingTrees {
+		r, decided := treeResult(m, c, verdicts)
+		if !decided {
+			r = noVerdict(c)
+		}
+		out = append(out, r)
 	}
 	return inCriteriaOrder(m.criteria, out)
 }
 
-func finishedTree(m material, c testlab.Criterion, judged map[string]CriterionResult) CriterionResult {
-	verdict, found := judged[c.ID]
-	if found {
-		if r, decided := treeResult(m, c, &verdict); decided {
-			return r
-		}
-	}
+func noVerdict(c testlab.Criterion) CriterionResult {
 	return CriterionResult{
 		CriterionID: c.ID, Text: c.Text, Result: ResultUndetermined, Source: SourceModel,
 		Evidence: []EvidenceRef{}, Reason: "the judge returned no verdict for this criterion",
