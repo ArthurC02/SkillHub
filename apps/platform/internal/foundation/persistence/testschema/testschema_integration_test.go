@@ -40,9 +40,11 @@ func TestASecondHolderWaitsUntilTheFirstUnlocks(t *testing.T) {
 	}
 
 	unlock()
-	if err := lockWithin(second, 5*time.Second); err != nil {
+	unlockSecond, err := Lock(context.Background(), second)
+	if err != nil {
 		t.Fatalf("second Lock after the first unlocked: %v", err)
 	}
+	unlockSecond()
 }
 
 func lockWithin(pool *pgxpool.Pool, wait time.Duration) error {
