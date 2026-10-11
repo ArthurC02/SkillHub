@@ -1,0 +1,51 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "eval-trace-write-mode",
+  "proposal_id": "eval-trace-write-mode",
+  "registry_revision": {
+    "observed_commit": "aa601842278408101cb7162ca7a64d54c78c47ef",
+    "registry_digest": "sha256:48d1084f5f47f7bea29eee3b14bc074b1cae643762565c773801ad4a96a769d2"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "not_applicable",
+    "reason": "No rule, contract or aggregate changes; the policy permits the same import and only names its mode correctly."
+  },
+  "sources": [
+    "apps/platform/internal/trial/improvement/eval.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "package-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate-change-package --package-root docs/domain-memory/changes/eval-trace-write-mode-2026-10-12 --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f59ed0f5e58f24af697fc460db7a190345b22c6e6c8a2fdbf184d0f488d61a0f",
+      "finished_at": "2026-10-11T20:09:31.781827Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:3f03847e03b9f59bc0e5f2c79e19201de249393a94ef1b6eeebd55c77e8aa762",
+      "finished_at": "2026-10-11T20:09:33.010743Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py governance-readiness --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:2b6a3a27f1223e6cc1dc91aae0d304d9226040ff5508b5e8d4133a1df04930ec",
+      "finished_at": "2026-10-11T20:09:34.056256Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
