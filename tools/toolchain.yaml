@@ -10,7 +10,7 @@ tools:
   redocly: "2.52.1"
   ogen: "1.24.0"
   openapi_generator: "7.25.0"
-  datamodel_code_generator: "0.76.2"
+  datamodel_code_generator: "0.81.0"
   govulncheck: "1.8.0"
   pip_audit: "2.10.1"
   go_licenses: "2.0.1"
@@ -23,5 +23,5 @@ tools:
 images:
   sqlc: "sqlc/sqlc:1.31.1@sha256:70f53171d27b2424e9358869975455a6e955a5aa8e58a998a270a6e34e525537"
   openapi_generator: "openapitools/openapi-generator-cli:v7.25.0@sha256:2ab0a9680222de65dc9d3baf861aa02b99e1b80c211d8221ebf3ae8f8a102524"
-  python_codegen: "skillhub/python-codegen:0.76.2"
+  python_codegen: "skillhub/python-codegen:0.81.0"
   go_codegen: "skillhub/go-codegen:ogen-1.24.0"
