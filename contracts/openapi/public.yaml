@@ -5100,6 +5100,13 @@ paths:
                   uniqueItems: true
                   items: { type: string, format: uuid }
                 trials: { type: integer, minimum: 1, maximum: 10 }
+                with_baseline:
+                  type: boolean
+                  default: false
+                  description: |
+                    Also run every trial with the skill withheld, under the same
+                    admission and billing, so the report can show what the skill
+                    adds (EVAL-014).
       responses:
         "201":
           description: The batch, with its first run started when a slot was free.
@@ -7441,12 +7448,13 @@ components:
             set_at: { type: string, format: date-time }
     EvaluationBatch:
       type: object
-      required: [id, skill_id, skill_version_id, trials, status, created_at]
+      required: [id, skill_id, skill_version_id, trials, with_baseline, status, created_at]
       properties:
         id: { type: string, format: uuid }
         skill_id: { type: string, format: uuid }
         skill_version_id: { type: string, format: uuid }
         trials: { type: integer, minimum: 1, maximum: 10 }
+        with_baseline: { type: boolean, description: Every trial also runs with the skill withheld. }
         status:
           type: string
           enum: [launching, launched, stopped]
@@ -7491,10 +7499,45 @@ components:
           type: boolean
           description: The test case was edited while the batch ran, so its trials did not all see the same task.
     EvaluationBatchReport:
+      allOf:
+        - $ref: "#/components/schemas/EvaluationBatchArm"
+        - type: object
+          required: [batch]
+          properties:
+            batch: { $ref: "#/components/schemas/EvaluationBatch" }
+            without_skill:
+              $ref: "#/components/schemas/EvaluationBatchArm"
+              description: The same trials with the skill withheld; present only when the batch was created with a baseline.
+            skill_effect:
+              $ref: "#/components/schemas/EvaluationPairedDifference"
+              description: |
+                With the skill minus without it, paired by test case; present
+                only when the batch was created with a baseline.
+    EvaluationPairedDifference:
       type: object
-      required: [batch, test_cases, passed, judged, test_cases_all_passed, test_cases_decided]
+      description: |
+        Per test case, one arm's pass rate minus the other's, over the test
+        cases both arms judged; the mean with a 95% interval from the paired
+        standard error.
+      required: [paired, unpaired, better, worse, tied]
       properties:
-        batch: { $ref: "#/components/schemas/EvaluationBatch" }
+        paired: { type: integer }
+        unpaired: { type: integer, description: Test cases judged in only one arm. }
+        difference: { type: number, description: Absent while nothing is paired. }
+        difference_95:
+          type: object
+          description: Absent with fewer than two pairs.
+          required: [low, high]
+          properties:
+            low: { type: number }
+            high: { type: number }
+        better: { type: integer, description: Test cases where the first arm passed more often. }
+        worse: { type: integer }
+        tied: { type: integer }
+    EvaluationBatchArm:
+      type: object
+      required: [test_cases, passed, judged, test_cases_all_passed, test_cases_decided]
+      properties:
         test_cases:
           type: array
           items: { $ref: "#/components/schemas/EvaluationBatchTestCase" }
@@ -10956,6 +10999,12 @@ components:
             evaluation never writes back into. A surface showing this
             value alone must word it as execution (執行完成 / 執行失敗) and must
             not present it as a pass.
+        skill_withheld:
+          type: boolean
+          description: |
+            The run deliberately executed the test case without loading the
+            skill, as the baseline an evaluation batch compares against. Absent
+            for an ordinary run.
         status_reason:
           type: string
           description: |

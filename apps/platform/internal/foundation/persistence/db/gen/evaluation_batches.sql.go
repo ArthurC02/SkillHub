@@ -12,11 +12,11 @@ import (
 )
 
 const claimNextBatchItem = `-- name: ClaimNextBatchItem :one
-SELECT i.batch_id, i.test_case_id, i.trial, i.summary_hash, b.skill_id, b.skill_version_id, b.created_by
+SELECT i.batch_id, i.test_case_id, i.trial, i.skill_withheld, i.summary_hash, b.skill_id, b.skill_version_id, b.created_by
 FROM evaluation_batch_items i
 JOIN evaluation_batches b ON b.id = i.batch_id AND b.workspace_id = i.workspace_id
 WHERE b.workspace_id = $1 AND b.status = 'launching' AND i.run_id IS NULL
-ORDER BY b.created_at, i.trial, i.position
+ORDER BY b.created_at, i.trial, i.position, i.skill_withheld
 LIMIT 1
 FOR UPDATE OF i SKIP LOCKED
 `
@@ -25,6 +25,7 @@ type ClaimNextBatchItemRow struct {
 	BatchID        pgtype.UUID
 	TestCaseID     pgtype.UUID
 	Trial          int32
+	SkillWithheld  bool
 	SummaryHash    string
 	SkillID        pgtype.UUID
 	SkillVersionID pgtype.UUID
@@ -38,6 +39,7 @@ func (q *Queries) ClaimNextBatchItem(ctx context.Context, workspaceID pgtype.UUI
 		&i.BatchID,
 		&i.TestCaseID,
 		&i.Trial,
+		&i.SkillWithheld,
 		&i.SummaryHash,
 		&i.SkillID,
 		&i.SkillVersionID,
@@ -47,7 +49,7 @@ func (q *Queries) ClaimNextBatchItem(ctx context.Context, workspaceID pgtype.UUI
 }
 
 const getEvaluationBatch = `-- name: GetEvaluationBatch :one
-SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at FROM evaluation_batches WHERE id = $1 AND workspace_id = $2
+SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline FROM evaluation_batches WHERE id = $1 AND workspace_id = $2
 `
 
 type GetEvaluationBatchParams struct {
@@ -68,6 +70,7 @@ func (q *Queries) GetEvaluationBatch(ctx context.Context, arg GetEvaluationBatch
 		&i.StopReason,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.WithBaseline,
 	)
 	return i, err
 }
@@ -86,9 +89,9 @@ func (q *Queries) HasLaunchingBatch(ctx context.Context, workspaceID pgtype.UUID
 }
 
 const insertEvaluationBatch = `-- name: InsertEvaluationBatch :one
-INSERT INTO evaluation_batches (workspace_id, skill_id, skill_version_id, trials, created_by)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at
+INSERT INTO evaluation_batches (workspace_id, skill_id, skill_version_id, trials, with_baseline, created_by)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline
 `
 
 type InsertEvaluationBatchParams struct {
@@ -96,6 +99,7 @@ type InsertEvaluationBatchParams struct {
 	SkillID        pgtype.UUID
 	SkillVersionID pgtype.UUID
 	Trials         int32
+	WithBaseline   bool
 	CreatedBy      pgtype.UUID
 }
 
@@ -105,6 +109,7 @@ func (q *Queries) InsertEvaluationBatch(ctx context.Context, arg InsertEvaluatio
 		arg.SkillID,
 		arg.SkillVersionID,
 		arg.Trials,
+		arg.WithBaseline,
 		arg.CreatedBy,
 	)
 	var i EvaluationBatch
@@ -118,23 +123,26 @@ func (q *Queries) InsertEvaluationBatch(ctx context.Context, arg InsertEvaluatio
 		&i.StopReason,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.WithBaseline,
 	)
 	return i, err
 }
 
 const insertEvaluationBatchTrials = `-- name: InsertEvaluationBatchTrials :exec
-INSERT INTO evaluation_batch_items (batch_id, workspace_id, test_case_id, position, trial, summary_hash)
-SELECT $1, $2, $3, $4, trial, $5
-FROM generate_series(1, $6::integer) AS trial
+INSERT INTO evaluation_batch_items (batch_id, workspace_id, test_case_id, position, trial, summary_hash, skill_withheld)
+SELECT $1, $2, $3, $4, trial, $5, withheld
+FROM generate_series(1, $6::integer) AS trial,
+     unnest(CASE WHEN $7::boolean THEN ARRAY[false, true] ELSE ARRAY[false] END) AS withheld
 `
 
 type InsertEvaluationBatchTrialsParams struct {
-	BatchID     pgtype.UUID
-	WorkspaceID pgtype.UUID
-	TestCaseID  pgtype.UUID
-	Position    int32
-	SummaryHash string
-	Trials      int32
+	BatchID      pgtype.UUID
+	WorkspaceID  pgtype.UUID
+	TestCaseID   pgtype.UUID
+	Position     int32
+	SummaryHash  string
+	Trials       int32
+	WithBaseline bool
 }
 
 func (q *Queries) InsertEvaluationBatchTrials(ctx context.Context, arg InsertEvaluationBatchTrialsParams) error {
@@ -145,6 +153,7 @@ func (q *Queries) InsertEvaluationBatchTrials(ctx context.Context, arg InsertEva
 		arg.Position,
 		arg.SummaryHash,
 		arg.Trials,
+		arg.WithBaseline,
 	)
 	return err
 }
@@ -152,15 +161,16 @@ func (q *Queries) InsertEvaluationBatchTrials(ctx context.Context, arg InsertEva
 const linkBatchItemRun = `-- name: LinkBatchItemRun :execrows
 UPDATE evaluation_batch_items SET run_id = $1
 WHERE batch_id = $2 AND test_case_id = $3 AND trial = $4
-  AND workspace_id = $5 AND run_id IS NULL
+  AND skill_withheld = $5 AND workspace_id = $6 AND run_id IS NULL
 `
 
 type LinkBatchItemRunParams struct {
-	RunID       pgtype.UUID
-	BatchID     pgtype.UUID
-	TestCaseID  pgtype.UUID
-	Trial       int32
-	WorkspaceID pgtype.UUID
+	RunID         pgtype.UUID
+	BatchID       pgtype.UUID
+	TestCaseID    pgtype.UUID
+	Trial         int32
+	SkillWithheld bool
+	WorkspaceID   pgtype.UUID
 }
 
 func (q *Queries) LinkBatchItemRun(ctx context.Context, arg LinkBatchItemRunParams) (int64, error) {
@@ -169,6 +179,7 @@ func (q *Queries) LinkBatchItemRun(ctx context.Context, arg LinkBatchItemRunPara
 		arg.BatchID,
 		arg.TestCaseID,
 		arg.Trial,
+		arg.SkillWithheld,
 		arg.WorkspaceID,
 	)
 	if err != nil {
@@ -178,9 +189,9 @@ func (q *Queries) LinkBatchItemRun(ctx context.Context, arg LinkBatchItemRunPara
 }
 
 const listEvaluationBatchItems = `-- name: ListEvaluationBatchItems :many
-SELECT batch_id, workspace_id, test_case_id, position, trial, summary_hash, run_id FROM evaluation_batch_items
+SELECT batch_id, workspace_id, test_case_id, position, trial, summary_hash, run_id, skill_withheld FROM evaluation_batch_items
 WHERE batch_id = $1 AND workspace_id = $2
-ORDER BY position, trial
+ORDER BY skill_withheld, position, trial
 `
 
 type ListEvaluationBatchItemsParams struct {
@@ -205,6 +216,7 @@ func (q *Queries) ListEvaluationBatchItems(ctx context.Context, arg ListEvaluati
 			&i.Trial,
 			&i.SummaryHash,
 			&i.RunID,
+			&i.SkillWithheld,
 		); err != nil {
 			return nil, err
 		}
@@ -217,7 +229,7 @@ func (q *Queries) ListEvaluationBatchItems(ctx context.Context, arg ListEvaluati
 }
 
 const listEvaluationBatches = `-- name: ListEvaluationBatches :many
-SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at FROM evaluation_batches
+SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline FROM evaluation_batches
 WHERE workspace_id = $1 AND skill_id = $2
 ORDER BY created_at DESC
 LIMIT 50
@@ -247,6 +259,7 @@ func (q *Queries) ListEvaluationBatches(ctx context.Context, arg ListEvaluationB
 			&i.StopReason,
 			&i.CreatedBy,
 			&i.CreatedAt,
+			&i.WithBaseline,
 		); err != nil {
 			return nil, err
 		}

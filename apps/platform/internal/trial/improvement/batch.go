@@ -58,13 +58,14 @@ func (e RunRefusedError) Error() string { return e.Err.Error() }
 func (e RunRefusedError) Unwrap() error { return e.Err }
 
 type BatchRun struct {
-	WorkspaceID pgtype.UUID
-	Actor       pgtype.UUID
-	SkillID     pgtype.UUID
-	VersionID   pgtype.UUID
-	TestCaseID  pgtype.UUID
-	SummaryHash string
-	Link        func(ctx context.Context, tx pgx.Tx, runID pgtype.UUID) error
+	WorkspaceID   pgtype.UUID
+	Actor         pgtype.UUID
+	SkillID       pgtype.UUID
+	VersionID     pgtype.UUID
+	TestCaseID    pgtype.UUID
+	SummaryHash   string
+	WithholdSkill bool
+	Link          func(ctx context.Context, tx pgx.Tx, runID pgtype.UUID) error
 }
 
 type ChainEnd struct {
@@ -98,22 +99,24 @@ type BatchService struct {
 func (s *BatchService) queries() *gen.Queries { return gen.New(s.Pool) }
 
 type Batch struct {
-	ID         pgtype.UUID
-	SkillID    pgtype.UUID
-	VersionID  pgtype.UUID
-	Trials     int
-	Status     BatchStatus
-	StopReason string
-	CreatedAt  time.Time
+	ID           pgtype.UUID
+	SkillID      pgtype.UUID
+	VersionID    pgtype.UUID
+	Trials       int
+	WithBaseline bool
+	Status       BatchStatus
+	StopReason   string
+	CreatedAt    time.Time
 }
 
 type NewBatch struct {
-	WorkspaceID pgtype.UUID
-	Actor       pgtype.UUID
-	SkillID     pgtype.UUID
-	VersionID   pgtype.UUID
-	TestCaseIDs []pgtype.UUID
-	Trials      int
+	WorkspaceID  pgtype.UUID
+	Actor        pgtype.UUID
+	SkillID      pgtype.UUID
+	VersionID    pgtype.UUID
+	TestCaseIDs  []pgtype.UUID
+	Trials       int
+	WithBaseline bool
 }
 
 func (n NewBatch) validShape() bool {
@@ -149,7 +152,7 @@ func (s *BatchService) CreateBatch(ctx context.Context, n NewBatch) (Batch, erro
 		q := gen.New(tx)
 		created, err = q.InsertEvaluationBatch(ctx, gen.InsertEvaluationBatchParams{
 			WorkspaceID: n.WorkspaceID, SkillID: n.SkillID, SkillVersionID: n.VersionID,
-			Trials: int32(n.Trials), CreatedBy: n.Actor,
+			Trials: int32(n.Trials), WithBaseline: n.WithBaseline, CreatedBy: n.Actor,
 		})
 		if err != nil {
 			return err
@@ -158,6 +161,7 @@ func (s *BatchService) CreateBatch(ctx context.Context, n NewBatch) (Batch, erro
 			if err := q.InsertEvaluationBatchTrials(ctx, gen.InsertEvaluationBatchTrialsParams{
 				BatchID: created.ID, WorkspaceID: n.WorkspaceID, TestCaseID: testCaseID,
 				Position: int32(position), SummaryHash: hashes[position], Trials: int32(n.Trials),
+				WithBaseline: n.WithBaseline,
 			}); err != nil {
 				return err
 			}
@@ -237,7 +241,7 @@ func (s *BatchService) startNextTrial(ctx context.Context, workspaceID pgtype.UU
 	_, err = s.Ports.StartRun(ctx, BatchRun{
 		WorkspaceID: workspaceID, Actor: next.CreatedBy, SkillID: next.SkillID,
 		VersionID: next.SkillVersionID, TestCaseID: next.TestCaseID, SummaryHash: next.SummaryHash,
-		Link: linkTrial(workspaceID, next),
+		WithholdSkill: next.SkillWithheld, Link: linkTrial(workspaceID, next),
 	})
 	if errors.Is(err, ErrRunMustWait) {
 		return false, nil
@@ -255,7 +259,7 @@ func linkTrial(workspaceID pgtype.UUID, item gen.ClaimNextBatchItemRow) func(con
 	return func(ctx context.Context, tx pgx.Tx, runID pgtype.UUID) error {
 		linked, err := gen.New(tx).LinkBatchItemRun(ctx, gen.LinkBatchItemRunParams{
 			RunID: runID, BatchID: item.BatchID, TestCaseID: item.TestCaseID,
-			Trial: item.Trial, WorkspaceID: workspaceID,
+			Trial: item.Trial, SkillWithheld: item.SkillWithheld, WorkspaceID: workspaceID,
 		})
 		if err == nil && linked == 0 {
 			return errItemTaken
@@ -299,7 +303,7 @@ func (s *BatchService) batch(ctx context.Context, workspaceID, batchID pgtype.UU
 func batchOf(row gen.EvaluationBatch) Batch {
 	b := Batch{
 		ID: row.ID, SkillID: row.SkillID, VersionID: row.SkillVersionID,
-		Trials: int(row.Trials), Status: BatchStatus(row.Status), CreatedAt: row.CreatedAt.Time,
+		Trials: int(row.Trials), WithBaseline: row.WithBaseline, Status: BatchStatus(row.Status), CreatedAt: row.CreatedAt.Time,
 	}
 	if row.StopReason != nil {
 		b.StopReason = *row.StopReason

@@ -25,6 +25,7 @@ type batchView struct {
 	SkillID        string      `json:"skill_id"`
 	SkillVersionID string      `json:"skill_version_id"`
 	Trials         int         `json:"trials"`
+	WithBaseline   bool        `json:"with_baseline"`
 	Status         BatchStatus `json:"status"`
 	StopReason     string      `json:"stop_reason,omitempty"`
 	CreatedAt      string      `json:"created_at"`
@@ -52,8 +53,7 @@ type intervalView struct {
 	High float64 `json:"high"`
 }
 
-type batchReportView struct {
-	Batch              batchView           `json:"batch"`
+type armView struct {
 	TestCases          []batchTestCaseView `json:"test_cases"`
 	Passed             int                 `json:"passed"`
 	Judged             int                 `json:"judged"`
@@ -61,6 +61,23 @@ type batchReportView struct {
 	PassRate95         *intervalView       `json:"pass_rate_95,omitempty"`
 	TestCasesAllPassed int                 `json:"test_cases_all_passed"`
 	TestCasesDecided   int                 `json:"test_cases_decided"`
+}
+
+type pairedView struct {
+	Paired       int           `json:"paired"`
+	Unpaired     int           `json:"unpaired"`
+	Difference   *float64      `json:"difference,omitempty"`
+	Difference95 *intervalView `json:"difference_95,omitempty"`
+	Better       int           `json:"better"`
+	Worse        int           `json:"worse"`
+	Tied         int           `json:"tied"`
+}
+
+type batchReportView struct {
+	Batch batchView `json:"batch"`
+	armView
+	WithoutSkill *armView    `json:"without_skill,omitempty"`
+	SkillEffect  *pairedView `json:"skill_effect,omitempty"`
 }
 
 func (h *BatchHandler) CreateBatch(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +93,7 @@ func (h *BatchHandler) CreateBatch(w http.ResponseWriter, r *http.Request) {
 		SkillVersionID string   `json:"skill_version_id"`
 		TestCaseIDs    []string `json:"test_case_ids"`
 		Trials         int      `json:"trials"`
+		WithBaseline   bool     `json:"with_baseline"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBatchBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with `skill_version_id`, `test_case_ids` and `trials`")
@@ -88,7 +106,7 @@ func (h *BatchHandler) CreateBatch(w http.ResponseWriter, r *http.Request) {
 	}
 	batch, err := h.Svc.CreateBatch(r.Context(), NewBatch{
 		WorkspaceID: ws.ID, Actor: user, SkillID: skillID,
-		VersionID: ids[0], TestCaseIDs: ids[1:], Trials: body.Trials,
+		VersionID: ids[0], TestCaseIDs: ids[1:], Trials: body.Trials, WithBaseline: body.WithBaseline,
 	})
 	if unconfirmed, isUnconfirmed := errors.AsType[UnconfirmedTestCasesError](err); isUnconfirmed {
 		httpx.WriteJSON(w, http.StatusUnprocessableEntity, map[string]any{
@@ -189,10 +207,8 @@ func (h *BatchHandler) CompareBatches(w http.ResponseWriter, r *http.Request) {
 	view := batchComparisonView{
 		Baseline: viewOfBatch(comparison.Baseline), Candidate: viewOfBatch(comparison.Candidate),
 		Paired: comparison.Paired, Unpaired: comparison.Unpaired, Difference: comparison.Difference,
-		CandidateBetter: comparison.CandidateBetter, BaselineBetter: comparison.BaselineBetter, Tied: comparison.Tied,
-	}
-	if comparison.Difference95 != nil {
-		view.Difference95 = &intervalView{Low: comparison.Difference95.Low, High: comparison.Difference95.High}
+		Difference95:    viewOfInterval(comparison.Difference95),
+		CandidateBetter: comparison.Better, BaselineBetter: comparison.Worse, Tied: comparison.Tied,
 	}
 	httpx.WriteJSON(w, http.StatusOK, view)
 }
@@ -231,20 +247,40 @@ func optionalUUIDString(id pgtype.UUID) string {
 func viewOfBatch(b Batch) batchView {
 	return batchView{
 		ID: pgconv.UUIDString(b.ID), SkillID: pgconv.UUIDString(b.SkillID), SkillVersionID: pgconv.UUIDString(b.VersionID),
-		Trials: b.Trials, Status: b.Status, StopReason: b.StopReason, CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
+		Trials: b.Trials, WithBaseline: b.WithBaseline, Status: b.Status, StopReason: b.StopReason,
+		CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }
 
+func viewOfInterval(i *Interval) *intervalView {
+	if i == nil {
+		return nil
+	}
+	return &intervalView{Low: i.Low, High: i.High}
+}
+
 func viewOfReport(report BatchReport) batchReportView {
-	view := batchReportView{
-		Batch: viewOfBatch(report.Batch), TestCases: make([]batchTestCaseView, len(report.TestCases)),
-		Passed: report.Passed, Judged: report.Judged, PassRate: report.PassRate,
-		TestCasesAllPassed: report.TestCasesAllK, TestCasesDecided: report.TestCasesDecided,
+	view := batchReportView{Batch: viewOfBatch(report.Batch), armView: viewOfArm(report.ArmReport)}
+	if report.WithoutSkill != nil {
+		without := viewOfArm(*report.WithoutSkill)
+		view.WithoutSkill = &without
 	}
-	if report.PassRate95 != nil {
-		view.PassRate95 = &intervalView{Low: report.PassRate95.Low, High: report.PassRate95.High}
+	if p := report.SkillEffect; p != nil {
+		view.SkillEffect = &pairedView{
+			Paired: p.Paired, Unpaired: p.Unpaired, Difference: p.Difference, Difference95: viewOfInterval(p.Difference95),
+			Better: p.Better, Worse: p.Worse, Tied: p.Tied,
+		}
 	}
-	for i, tc := range report.TestCases {
+	return view
+}
+
+func viewOfArm(arm ArmReport) armView {
+	view := armView{
+		TestCases: make([]batchTestCaseView, len(arm.TestCases)),
+		Passed:    arm.Passed, Judged: arm.Judged, PassRate: arm.PassRate, PassRate95: viewOfInterval(arm.PassRate95),
+		TestCasesAllPassed: arm.TestCasesAllK, TestCasesDecided: arm.TestCasesDecided,
+	}
+	for i, tc := range arm.TestCases {
 		trials := make([]batchTrialView, len(tc.Trials))
 		for j, t := range tc.Trials {
 			trials[j] = batchTrialView{

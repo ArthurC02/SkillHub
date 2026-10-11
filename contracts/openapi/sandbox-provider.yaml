@@ -763,7 +763,10 @@ components:
         per attempt by the worker at dispatch (SBX-008) as a pre-signed URL, and
         fail-closed: a dispatch that cannot authorize its inputs never reaches a
         sandbox, because a run that silently executed without its skill package
-        would be reported as executed-and-failed and blame the skill.
+        would be reported as executed-and-failed and blame the skill. The one
+        run that carries no `skill_package` grant on purpose is a baseline the
+        control plane asked for: its `skill_version` has no `object_key`, and
+        the runtime starts with no skill installed.
 
         One object, never a prefix. There is no grant shape that says "this
         directory", so the write side has exactly one key to aim at and the

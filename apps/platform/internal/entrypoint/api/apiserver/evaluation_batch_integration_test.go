@@ -7,10 +7,13 @@ import (
 	"math"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
@@ -154,6 +157,87 @@ func TestATrialAnotherAdvanceStartedFirstNeverGetsASecondRun(t *testing.T) {
 	}
 	if got := batchTrialRuns(t, pool, batchID)[f.testCaseID+"#2"]; got != competitor {
 		t.Errorf("trial 2 is linked to %q, want the competitor's run %s", got, competitor)
+	}
+}
+
+func dispatchedRequest(t *testing.T, pool *pgxpool.Pool, fake *providertest.Fake, runID string) run.RunRequest {
+	t.Helper()
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) {
+		if req, ok := fake.Request(runID, 1); ok {
+			return req
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	var status, reason string
+	_ = pool.QueryRow(context.Background(), `SELECT status::text, COALESCE(status_reason, '') FROM runs WHERE id = $1`,
+		mustUUID(t, runID)).Scan(&status, &reason)
+	t.Fatalf("run %s was never dispatched; it is %s (%s)", runID, status, reason)
+	return run.RunRequest{}
+}
+
+func grantsSkillPackage(req run.RunRequest) bool {
+	for _, g := range req.ObjectGrants {
+		if g.Purpose == "skill_package" {
+			return true
+		}
+	}
+	return false
+}
+
+func bothArmsStarted(t *testing.T, a *api, pool *pgxpool.Pool, workspaceID, batchID string) (withSkill, withheld string) {
+	t.Helper()
+	ctx := context.Background()
+	for deadline := time.Now().Add(30 * time.Second); withheld == "" && time.Now().Before(deadline); {
+		if err := a.batches.AdvanceBatches(ctx, mustUUID(t, workspaceID)); err != nil {
+			t.Fatal(err)
+		}
+		_ = pool.QueryRow(ctx, `
+			SELECT COALESCE(max(run_id::text) FILTER (WHERE NOT skill_withheld), ''),
+			       COALESCE(max(run_id::text) FILTER (WHERE skill_withheld), '')
+			FROM evaluation_batch_items WHERE batch_id = $1`, mustUUID(t, batchID)).Scan(&withSkill, &withheld)
+		time.Sleep(50 * time.Millisecond)
+	}
+	return withSkill, withheld
+}
+
+func TestABaselineBatchRunsEveryTrialAgainWithTheSkillWithheld(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	fake, _ := withProvider(t, a, pool, providertest.Plan{CreatingPolls: 1, RunningPolls: 1})
+	f := newFixture(t, a, pool, "alice-batch-baseline")
+	f.confirmPermissions(t)
+	code, body := f.doJSON(t, http.MethodPost, "/skills/"+f.skillID+"/evaluation-batches",
+		`{"skill_version_id":"`+f.versionID+`","test_case_ids":["`+f.testCaseID+`"],"trials":1,"with_baseline":true}`)
+	if code != http.StatusCreated || body["with_baseline"] != true {
+		t.Fatalf("create: got %d %v, want 201 with a baseline", code, body)
+	}
+	batchID := body["id"].(string)
+
+	withSkill, withheld := bothArmsStarted(t, a, pool, f.workspaceID, batchID)
+	if withheld == "" || withSkill == "" || withheld == withSkill {
+		t.Fatalf("trial runs: with %q, withheld %q; want two distinct runs", withSkill, withheld)
+	}
+
+	if req := dispatchedRequest(t, pool, fake, withSkill); !grantsSkillPackage(req) || req.SkillVersion.ObjectKey == "" {
+		t.Errorf("the trial with the skill was dispatched without its package: %+v", req.SkillVersion)
+	}
+	if req := dispatchedRequest(t, pool, fake, withheld); grantsSkillPackage(req) || req.SkillVersion.ObjectKey != "" {
+		t.Errorf("the baseline trial was handed the skill: %+v", req.SkillVersion)
+	}
+	if _, view := f.doJSON(t, http.MethodGet, "/runs/"+withheld, ""); view["skill_withheld"] != true {
+		t.Errorf("the baseline run reads %v, want it marked as run without the skill", view["skill_withheld"])
+	}
+	if _, view := f.doJSON(t, http.MethodGet, "/runs/"+withSkill, ""); view["skill_withheld"] != nil {
+		t.Errorf("the ordinary run reads skill_withheld=%v, want it absent", view["skill_withheld"])
+	}
+
+	_, report := f.doJSON(t, http.MethodGet, "/skills/"+f.skillID+"/evaluation-batches/"+batchID, "")
+	if without, _ := report["without_skill"].(map[string]any); without == nil || len(without["test_cases"].([]any)) != 1 {
+		t.Errorf("report without_skill = %v, want the withheld arm with its one test case", report["without_skill"])
+	}
+	if report["skill_effect"] == nil {
+		t.Error("report has no skill_effect, want the paired difference")
 	}
 }
 

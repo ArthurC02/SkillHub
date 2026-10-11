@@ -25,3 +25,11 @@ func (s *CreateDownloadArtifactReq) setDefaults() {
 		s.IncludeTestCases.SetTo(val)
 	}
 }
+
+// setDefaults set default value of fields.
+func (s *CreateEvaluationBatchReq) setDefaults() {
+	{
+		val := bool(false)
+		s.WithBaseline.SetTo(val)
+	}
+}

@@ -61,6 +61,13 @@ export interface CancelRun202Response {
      */
     status: CancelRun202ResponseStatusEnum;
     /**
+     * The run deliberately executed the test case without loading the
+     * skill, as the baseline an evaluation batch compares against. Absent
+     * for an ordinary run.
+     * 
+     */
+    skillWithheld?: boolean;
+    /**
      * Why the run entered this status. Masked and safe to display.
      * 
      * Two kinds of sentence arrive here and the difference matters. Most
@@ -216,6 +223,7 @@ export function CancelRun202ResponseFromJSONTyped(json: any, ignoreDiscriminator
         
         'runId': json['run_id'],
         'status': json['status'],
+        'skillWithheld': json['skill_withheld'] == null ? undefined : json['skill_withheld'],
         'statusReason': json['status_reason'] == null ? undefined : json['status_reason'],
         'skillId': json['skill_id'],
         'skillVersionId': json['skill_version_id'],
@@ -247,6 +255,7 @@ export function CancelRun202ResponseToJSONTyped(value?: CancelRun202Response | n
         
         'run_id': value['runId'],
         'status': value['status'],
+        'skill_withheld': value['skillWithheld'],
         'status_reason': value['statusReason'],
         'skill_id': value['skillId'],
         'skill_version_id': value['skillVersionId'],

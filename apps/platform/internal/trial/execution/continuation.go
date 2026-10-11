@@ -70,9 +70,14 @@ func (s *Service) Continue(ctx context.Context, p ContinueParams) (RunView, erro
 	if !found {
 		return RunView{}, ErrNotFound
 	}
+	withheld, err := s.skillWithheld(ctx, original)
+	if err != nil {
+		return RunView{}, err
+	}
 	params := CreateParams{
 		WorkspaceID: p.WorkspaceID, Actor: p.Actor,
 		SkillID: version.SkillID, VersionID: version.ID, TestCaseID: snapshot.TestCaseID,
+		WithholdSkill: withheld,
 	}
 	run, err := s.continueRun(ctx, params, continuation{original: original, answered: answered, actor: p.Actor}, prompt)
 	if err != nil {

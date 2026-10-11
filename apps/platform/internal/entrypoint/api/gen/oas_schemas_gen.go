@@ -1063,6 +1063,9 @@ type CancelRunAccepted struct {
 	// never writes back into. A surface showing this value alone must word it as execution (執行完成 /
 	// 執行失敗) and must not present it as a pass.
 	Status CancelRunAcceptedStatus `json:"status"`
+	// The run deliberately executed the test case without loading the skill, as the baseline an evaluation
+	// batch compares against. Absent for an ordinary run.
+	SkillWithheld OptBool `json:"skill_withheld"`
 	// Why the run entered this status. Masked and safe to display.
 	//
 	// Two kinds of sentence arrive here and the difference matters. Most are the platform's own, and those
@@ -1128,6 +1131,11 @@ func (s *CancelRunAccepted) GetRunID() uuid.UUID {
 // GetStatus returns the value of Status.
 func (s *CancelRunAccepted) GetStatus() CancelRunAcceptedStatus {
 	return s.Status
+}
+
+// GetSkillWithheld returns the value of SkillWithheld.
+func (s *CancelRunAccepted) GetSkillWithheld() OptBool {
+	return s.SkillWithheld
 }
 
 // GetStatusReason returns the value of StatusReason.
@@ -1213,6 +1221,11 @@ func (s *CancelRunAccepted) SetRunID(val uuid.UUID) {
 // SetStatus sets the value of Status.
 func (s *CancelRunAccepted) SetStatus(val CancelRunAcceptedStatus) {
 	s.Status = val
+}
+
+// SetSkillWithheld sets the value of SkillWithheld.
+func (s *CancelRunAccepted) SetSkillWithheld(val OptBool) {
+	s.SkillWithheld = val
 }
 
 // SetStatusReason sets the value of StatusReason.
@@ -3081,6 +3094,9 @@ type CreateEvaluationBatchReq struct {
 	SkillVersionID uuid.UUID   `json:"skill_version_id"`
 	TestCaseIds    []uuid.UUID `json:"test_case_ids"`
 	Trials         int         `json:"trials"`
+	// Also run every trial with the skill withheld, under the same admission and billing, so the report
+	// can show what the skill adds (EVAL-014).
+	WithBaseline OptBool `json:"with_baseline"`
 }
 
 // GetSkillVersionID returns the value of SkillVersionID.
@@ -3098,6 +3114,11 @@ func (s *CreateEvaluationBatchReq) GetTrials() int {
 	return s.Trials
 }
 
+// GetWithBaseline returns the value of WithBaseline.
+func (s *CreateEvaluationBatchReq) GetWithBaseline() OptBool {
+	return s.WithBaseline
+}
+
 // SetSkillVersionID sets the value of SkillVersionID.
 func (s *CreateEvaluationBatchReq) SetSkillVersionID(val uuid.UUID) {
 	s.SkillVersionID = val
@@ -3111,6 +3132,11 @@ func (s *CreateEvaluationBatchReq) SetTestCaseIds(val []uuid.UUID) {
 // SetTrials sets the value of Trials.
 func (s *CreateEvaluationBatchReq) SetTrials(val int) {
 	s.Trials = val
+}
+
+// SetWithBaseline sets the value of WithBaseline.
+func (s *CreateEvaluationBatchReq) SetWithBaseline(val OptBool) {
+	s.WithBaseline = val
 }
 
 type CreateEvaluationBatchUnauthorized Error
@@ -8167,6 +8193,8 @@ type EvaluationBatch struct {
 	SkillID        uuid.UUID `json:"skill_id"`
 	SkillVersionID uuid.UUID `json:"skill_version_id"`
 	Trials         int       `json:"trials"`
+	// Every trial also runs with the skill withheld.
+	WithBaseline bool `json:"with_baseline"`
 	// `launching` while some trials have not started, `launched` once every trial has its run, `stopped`
 	// when a run was refused for a reason that waiting does not fix.
 	Status EvaluationBatchStatus `json:"status"`
@@ -8193,6 +8221,11 @@ func (s *EvaluationBatch) GetSkillVersionID() uuid.UUID {
 // GetTrials returns the value of Trials.
 func (s *EvaluationBatch) GetTrials() int {
 	return s.Trials
+}
+
+// GetWithBaseline returns the value of WithBaseline.
+func (s *EvaluationBatch) GetWithBaseline() bool {
+	return s.WithBaseline
 }
 
 // GetStatus returns the value of Status.
@@ -8230,6 +8263,11 @@ func (s *EvaluationBatch) SetTrials(val int) {
 	s.Trials = val
 }
 
+// SetWithBaseline sets the value of WithBaseline.
+func (s *EvaluationBatch) SetWithBaseline(val bool) {
+	s.WithBaseline = val
+}
+
 // SetStatus sets the value of Status.
 func (s *EvaluationBatch) SetStatus(val EvaluationBatchStatus) {
 	s.Status = val
@@ -8247,9 +8285,120 @@ func (s *EvaluationBatch) SetCreatedAt(val time.Time) {
 
 func (*EvaluationBatch) createEvaluationBatchRes() {}
 
+// Ref: #/components/schemas/EvaluationBatchArm
+type EvaluationBatchArm struct {
+	TestCases []EvaluationBatchTestCase `json:"test_cases"`
+	Passed    int                       `json:"passed"`
+	Judged    int                       `json:"judged"`
+	// Passed / judged; absent while nothing is judged.
+	PassRate OptFloat64 `json:"pass_rate"`
+	// Wilson score interval at 95% around pass_rate.
+	PassRate95 OptEvaluationBatchArmPassRate95 `json:"pass_rate_95"`
+	// Test cases that passed every trial.
+	TestCasesAllPassed int `json:"test_cases_all_passed"`
+	// Test cases whose every-trial result is known.
+	TestCasesDecided int `json:"test_cases_decided"`
+}
+
+// GetTestCases returns the value of TestCases.
+func (s *EvaluationBatchArm) GetTestCases() []EvaluationBatchTestCase {
+	return s.TestCases
+}
+
+// GetPassed returns the value of Passed.
+func (s *EvaluationBatchArm) GetPassed() int {
+	return s.Passed
+}
+
+// GetJudged returns the value of Judged.
+func (s *EvaluationBatchArm) GetJudged() int {
+	return s.Judged
+}
+
+// GetPassRate returns the value of PassRate.
+func (s *EvaluationBatchArm) GetPassRate() OptFloat64 {
+	return s.PassRate
+}
+
+// GetPassRate95 returns the value of PassRate95.
+func (s *EvaluationBatchArm) GetPassRate95() OptEvaluationBatchArmPassRate95 {
+	return s.PassRate95
+}
+
+// GetTestCasesAllPassed returns the value of TestCasesAllPassed.
+func (s *EvaluationBatchArm) GetTestCasesAllPassed() int {
+	return s.TestCasesAllPassed
+}
+
+// GetTestCasesDecided returns the value of TestCasesDecided.
+func (s *EvaluationBatchArm) GetTestCasesDecided() int {
+	return s.TestCasesDecided
+}
+
+// SetTestCases sets the value of TestCases.
+func (s *EvaluationBatchArm) SetTestCases(val []EvaluationBatchTestCase) {
+	s.TestCases = val
+}
+
+// SetPassed sets the value of Passed.
+func (s *EvaluationBatchArm) SetPassed(val int) {
+	s.Passed = val
+}
+
+// SetJudged sets the value of Judged.
+func (s *EvaluationBatchArm) SetJudged(val int) {
+	s.Judged = val
+}
+
+// SetPassRate sets the value of PassRate.
+func (s *EvaluationBatchArm) SetPassRate(val OptFloat64) {
+	s.PassRate = val
+}
+
+// SetPassRate95 sets the value of PassRate95.
+func (s *EvaluationBatchArm) SetPassRate95(val OptEvaluationBatchArmPassRate95) {
+	s.PassRate95 = val
+}
+
+// SetTestCasesAllPassed sets the value of TestCasesAllPassed.
+func (s *EvaluationBatchArm) SetTestCasesAllPassed(val int) {
+	s.TestCasesAllPassed = val
+}
+
+// SetTestCasesDecided sets the value of TestCasesDecided.
+func (s *EvaluationBatchArm) SetTestCasesDecided(val int) {
+	s.TestCasesDecided = val
+}
+
+// Wilson score interval at 95% around pass_rate.
+type EvaluationBatchArmPassRate95 struct {
+	Low  float64 `json:"low"`
+	High float64 `json:"high"`
+}
+
+// GetLow returns the value of Low.
+func (s *EvaluationBatchArmPassRate95) GetLow() float64 {
+	return s.Low
+}
+
+// GetHigh returns the value of High.
+func (s *EvaluationBatchArmPassRate95) GetHigh() float64 {
+	return s.High
+}
+
+// SetLow sets the value of Low.
+func (s *EvaluationBatchArmPassRate95) SetLow(val float64) {
+	s.Low = val
+}
+
+// SetHigh sets the value of High.
+func (s *EvaluationBatchArmPassRate95) SetHigh(val float64) {
+	s.High = val
+}
+
+// Merged schema.
 // Ref: #/components/schemas/EvaluationBatchReport
 type EvaluationBatchReport struct {
-	Batch     EvaluationBatch           `json:"batch"`
 	TestCases []EvaluationBatchTestCase `json:"test_cases"`
 	Passed    int                       `json:"passed"`
 	Judged    int                       `json:"judged"`
@@ -8260,12 +8409,13 @@ type EvaluationBatchReport struct {
 	// Test cases that passed every trial.
 	TestCasesAllPassed int `json:"test_cases_all_passed"`
 	// Test cases whose every-trial result is known.
-	TestCasesDecided int `json:"test_cases_decided"`
-}
-
-// GetBatch returns the value of Batch.
-func (s *EvaluationBatchReport) GetBatch() EvaluationBatch {
-	return s.Batch
+	TestCasesDecided int             `json:"test_cases_decided"`
+	Batch            EvaluationBatch `json:"batch"`
+	// The same trials with the skill withheld; present only when the batch was created with a baseline.
+	WithoutSkill OptEvaluationBatchArm `json:"without_skill"`
+	// With the skill minus without it, paired by test case; present only when the batch was created with a
+	// baseline.
+	SkillEffect OptEvaluationPairedDifference `json:"skill_effect"`
 }
 
 // GetTestCases returns the value of TestCases.
@@ -8303,9 +8453,19 @@ func (s *EvaluationBatchReport) GetTestCasesDecided() int {
 	return s.TestCasesDecided
 }
 
-// SetBatch sets the value of Batch.
-func (s *EvaluationBatchReport) SetBatch(val EvaluationBatch) {
-	s.Batch = val
+// GetBatch returns the value of Batch.
+func (s *EvaluationBatchReport) GetBatch() EvaluationBatch {
+	return s.Batch
+}
+
+// GetWithoutSkill returns the value of WithoutSkill.
+func (s *EvaluationBatchReport) GetWithoutSkill() OptEvaluationBatchArm {
+	return s.WithoutSkill
+}
+
+// GetSkillEffect returns the value of SkillEffect.
+func (s *EvaluationBatchReport) GetSkillEffect() OptEvaluationPairedDifference {
+	return s.SkillEffect
 }
 
 // SetTestCases sets the value of TestCases.
@@ -8341,6 +8501,21 @@ func (s *EvaluationBatchReport) SetTestCasesAllPassed(val int) {
 // SetTestCasesDecided sets the value of TestCasesDecided.
 func (s *EvaluationBatchReport) SetTestCasesDecided(val int) {
 	s.TestCasesDecided = val
+}
+
+// SetBatch sets the value of Batch.
+func (s *EvaluationBatchReport) SetBatch(val EvaluationBatch) {
+	s.Batch = val
+}
+
+// SetWithoutSkill sets the value of WithoutSkill.
+func (s *EvaluationBatchReport) SetWithoutSkill(val OptEvaluationBatchArm) {
+	s.WithoutSkill = val
+}
+
+// SetSkillEffect sets the value of SkillEffect.
+func (s *EvaluationBatchReport) SetSkillEffect(val OptEvaluationPairedDifference) {
+	s.SkillEffect = val
 }
 
 func (*EvaluationBatchReport) getEvaluationBatchReportRes() {}
@@ -9053,6 +9228,119 @@ func (s *EvaluationOverall) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+// Per test case, one arm's pass rate minus the other's, over the test cases both arms judged; the mean
+// with a 95% interval from the paired standard error.
+// Ref: #/components/schemas/EvaluationPairedDifference
+type EvaluationPairedDifference struct {
+	Paired int `json:"paired"`
+	// Test cases judged in only one arm.
+	Unpaired int `json:"unpaired"`
+	// Absent while nothing is paired.
+	Difference OptFloat64 `json:"difference"`
+	// Absent with fewer than two pairs.
+	Difference95 OptEvaluationPairedDifferenceDifference95 `json:"difference_95"`
+	// Test cases where the first arm passed more often.
+	Better int `json:"better"`
+	Worse  int `json:"worse"`
+	Tied   int `json:"tied"`
+}
+
+// GetPaired returns the value of Paired.
+func (s *EvaluationPairedDifference) GetPaired() int {
+	return s.Paired
+}
+
+// GetUnpaired returns the value of Unpaired.
+func (s *EvaluationPairedDifference) GetUnpaired() int {
+	return s.Unpaired
+}
+
+// GetDifference returns the value of Difference.
+func (s *EvaluationPairedDifference) GetDifference() OptFloat64 {
+	return s.Difference
+}
+
+// GetDifference95 returns the value of Difference95.
+func (s *EvaluationPairedDifference) GetDifference95() OptEvaluationPairedDifferenceDifference95 {
+	return s.Difference95
+}
+
+// GetBetter returns the value of Better.
+func (s *EvaluationPairedDifference) GetBetter() int {
+	return s.Better
+}
+
+// GetWorse returns the value of Worse.
+func (s *EvaluationPairedDifference) GetWorse() int {
+	return s.Worse
+}
+
+// GetTied returns the value of Tied.
+func (s *EvaluationPairedDifference) GetTied() int {
+	return s.Tied
+}
+
+// SetPaired sets the value of Paired.
+func (s *EvaluationPairedDifference) SetPaired(val int) {
+	s.Paired = val
+}
+
+// SetUnpaired sets the value of Unpaired.
+func (s *EvaluationPairedDifference) SetUnpaired(val int) {
+	s.Unpaired = val
+}
+
+// SetDifference sets the value of Difference.
+func (s *EvaluationPairedDifference) SetDifference(val OptFloat64) {
+	s.Difference = val
+}
+
+// SetDifference95 sets the value of Difference95.
+func (s *EvaluationPairedDifference) SetDifference95(val OptEvaluationPairedDifferenceDifference95) {
+	s.Difference95 = val
+}
+
+// SetBetter sets the value of Better.
+func (s *EvaluationPairedDifference) SetBetter(val int) {
+	s.Better = val
+}
+
+// SetWorse sets the value of Worse.
+func (s *EvaluationPairedDifference) SetWorse(val int) {
+	s.Worse = val
+}
+
+// SetTied sets the value of Tied.
+func (s *EvaluationPairedDifference) SetTied(val int) {
+	s.Tied = val
+}
+
+// Absent with fewer than two pairs.
+type EvaluationPairedDifferenceDifference95 struct {
+	Low  float64 `json:"low"`
+	High float64 `json:"high"`
+}
+
+// GetLow returns the value of Low.
+func (s *EvaluationPairedDifferenceDifference95) GetLow() float64 {
+	return s.Low
+}
+
+// GetHigh returns the value of High.
+func (s *EvaluationPairedDifferenceDifference95) GetHigh() float64 {
+	return s.High
+}
+
+// SetLow sets the value of Low.
+func (s *EvaluationPairedDifferenceDifference95) SetLow(val float64) {
+	s.Low = val
+}
+
+// SetHigh sets the value of High.
+func (s *EvaluationPairedDifferenceDifference95) SetHigh(val float64) {
+	s.High = val
 }
 
 // One entry in a run's judgement history. It carries just enough to tell which rubric and judge prompt
@@ -15909,6 +16197,98 @@ func (o OptDevLoginReq) Or(d DevLoginReq) DevLoginReq {
 	return d
 }
 
+// NewOptEvaluationBatchArm returns new OptEvaluationBatchArm with value set to v.
+func NewOptEvaluationBatchArm(v EvaluationBatchArm) OptEvaluationBatchArm {
+	return OptEvaluationBatchArm{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptEvaluationBatchArm is optional EvaluationBatchArm.
+type OptEvaluationBatchArm struct {
+	Value EvaluationBatchArm
+	Set   bool
+}
+
+// IsSet returns true if OptEvaluationBatchArm was set.
+func (o OptEvaluationBatchArm) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptEvaluationBatchArm) Reset() {
+	var v EvaluationBatchArm
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptEvaluationBatchArm) SetTo(v EvaluationBatchArm) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptEvaluationBatchArm) Get() (v EvaluationBatchArm, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptEvaluationBatchArm) Or(d EvaluationBatchArm) EvaluationBatchArm {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptEvaluationBatchArmPassRate95 returns new OptEvaluationBatchArmPassRate95 with value set to v.
+func NewOptEvaluationBatchArmPassRate95(v EvaluationBatchArmPassRate95) OptEvaluationBatchArmPassRate95 {
+	return OptEvaluationBatchArmPassRate95{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptEvaluationBatchArmPassRate95 is optional EvaluationBatchArmPassRate95.
+type OptEvaluationBatchArmPassRate95 struct {
+	Value EvaluationBatchArmPassRate95
+	Set   bool
+}
+
+// IsSet returns true if OptEvaluationBatchArmPassRate95 was set.
+func (o OptEvaluationBatchArmPassRate95) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptEvaluationBatchArmPassRate95) Reset() {
+	var v EvaluationBatchArmPassRate95
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptEvaluationBatchArmPassRate95) SetTo(v EvaluationBatchArmPassRate95) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptEvaluationBatchArmPassRate95) Get() (v EvaluationBatchArmPassRate95, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptEvaluationBatchArmPassRate95) Or(d EvaluationBatchArmPassRate95) EvaluationBatchArmPassRate95 {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptEvaluationBatchReportPassRate95 returns new OptEvaluationBatchReportPassRate95 with value set to v.
 func NewOptEvaluationBatchReportPassRate95(v EvaluationBatchReportPassRate95) OptEvaluationBatchReportPassRate95 {
 	return OptEvaluationBatchReportPassRate95{
@@ -15995,6 +16375,98 @@ func (o OptEvaluationFeedback) Get() (v EvaluationFeedback, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptEvaluationFeedback) Or(d EvaluationFeedback) EvaluationFeedback {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptEvaluationPairedDifference returns new OptEvaluationPairedDifference with value set to v.
+func NewOptEvaluationPairedDifference(v EvaluationPairedDifference) OptEvaluationPairedDifference {
+	return OptEvaluationPairedDifference{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptEvaluationPairedDifference is optional EvaluationPairedDifference.
+type OptEvaluationPairedDifference struct {
+	Value EvaluationPairedDifference
+	Set   bool
+}
+
+// IsSet returns true if OptEvaluationPairedDifference was set.
+func (o OptEvaluationPairedDifference) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptEvaluationPairedDifference) Reset() {
+	var v EvaluationPairedDifference
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptEvaluationPairedDifference) SetTo(v EvaluationPairedDifference) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptEvaluationPairedDifference) Get() (v EvaluationPairedDifference, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptEvaluationPairedDifference) Or(d EvaluationPairedDifference) EvaluationPairedDifference {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptEvaluationPairedDifferenceDifference95 returns new OptEvaluationPairedDifferenceDifference95 with value set to v.
+func NewOptEvaluationPairedDifferenceDifference95(v EvaluationPairedDifferenceDifference95) OptEvaluationPairedDifferenceDifference95 {
+	return OptEvaluationPairedDifferenceDifference95{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptEvaluationPairedDifferenceDifference95 is optional EvaluationPairedDifferenceDifference95.
+type OptEvaluationPairedDifferenceDifference95 struct {
+	Value EvaluationPairedDifferenceDifference95
+	Set   bool
+}
+
+// IsSet returns true if OptEvaluationPairedDifferenceDifference95 was set.
+func (o OptEvaluationPairedDifferenceDifference95) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptEvaluationPairedDifferenceDifference95) Reset() {
+	var v EvaluationPairedDifferenceDifference95
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptEvaluationPairedDifferenceDifference95) SetTo(v EvaluationPairedDifferenceDifference95) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptEvaluationPairedDifferenceDifference95) Get() (v EvaluationPairedDifferenceDifference95, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptEvaluationPairedDifferenceDifference95) Or(d EvaluationPairedDifferenceDifference95) EvaluationPairedDifferenceDifference95 {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -25265,6 +25737,9 @@ type Run struct {
 	// never writes back into. A surface showing this value alone must word it as execution (執行完成 /
 	// 執行失敗) and must not present it as a pass.
 	Status RunStatus `json:"status"`
+	// The run deliberately executed the test case without loading the skill, as the baseline an evaluation
+	// batch compares against. Absent for an ordinary run.
+	SkillWithheld OptBool `json:"skill_withheld"`
 	// Why the run entered this status. Masked and safe to display.
 	//
 	// Two kinds of sentence arrive here and the difference matters. Most are the platform's own, and those
@@ -25329,6 +25804,11 @@ func (s *Run) GetRunID() uuid.UUID {
 // GetStatus returns the value of Status.
 func (s *Run) GetStatus() RunStatus {
 	return s.Status
+}
+
+// GetSkillWithheld returns the value of SkillWithheld.
+func (s *Run) GetSkillWithheld() OptBool {
+	return s.SkillWithheld
 }
 
 // GetStatusReason returns the value of StatusReason.
@@ -25409,6 +25889,11 @@ func (s *Run) SetRunID(val uuid.UUID) {
 // SetStatus sets the value of Status.
 func (s *Run) SetStatus(val RunStatus) {
 	s.Status = val
+}
+
+// SetSkillWithheld sets the value of SkillWithheld.
+func (s *Run) SetSkillWithheld(val OptBool) {
+	s.SkillWithheld = val
 }
 
 // SetStatusReason sets the value of StatusReason.

@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -140,5 +141,41 @@ func TestThePairedDifferenceCarriesItsStandardErrorInterval(t *testing.T) {
 	mean, interval := pairedDifference([]float64{1, 0, 0.5, -0.5})
 	if math.Abs(*mean-0.25) > 1e-9 || math.Abs(interval.Low+0.3826) > 5e-4 || math.Abs(interval.High-0.8826) > 5e-4 {
 		t.Errorf("four pairs: mean %v interval %+v, want 0.25 [-0.3826, 0.8826]", *mean, *interval)
+	}
+}
+
+func TestTheSkillEffectPairsEachTestCaseWithItsOwnTrialsWithoutTheSkill(t *testing.T) {
+	cases := distinctTestCases(3)
+	outcomes := map[pgtype.UUID]resolvedTrial{}
+	var items []gen.EvaluationBatchItem
+	trial := func(testCase pgtype.UUID, n int32, withheld bool, outcome TrialOutcome) {
+		run := pgtype.UUID{Bytes: [16]byte{byte(len(items) + 1), 9}, Valid: true}
+		items = append(items, gen.EvaluationBatchItem{TestCaseID: testCase, Trial: n, SkillWithheld: withheld, RunID: run})
+		outcomes[run] = resolvedTrial{end: ChainEnd{RunID: run}, outcome: outcome}
+	}
+	trial(cases[0], 1, false, TrialMet)
+	trial(cases[0], 2, false, TrialMet)
+	trial(cases[1], 1, false, TrialNotMet)
+	trial(cases[1], 2, false, TrialMet)
+	trial(cases[2], 1, false, TrialMet)
+	trial(cases[2], 2, false, TrialMet)
+	trial(cases[0], 1, true, TrialMet)
+	trial(cases[0], 2, true, TrialNotMet)
+	trial(cases[1], 1, true, TrialNotMet)
+	trial(cases[1], 2, true, TrialNotMet)
+	trial(cases[2], 1, true, TrialRunning)
+	trial(cases[2], 2, true, TrialPending)
+
+	withSkill, withheld := splitByArm(items)
+	with, without := armReport(withSkill, outcomes, 2), armReport(withheld, outcomes, 2)
+	if with.Passed != 5 || with.Judged != 6 || without.Passed != 1 || without.Judged != 4 {
+		t.Fatalf("arms = %d/%d with and %d/%d without, want 5/6 and 1/4", with.Passed, with.Judged, without.Passed, without.Judged)
+	}
+	effect := pairArms(with, without)
+	if effect.Paired != 2 || effect.Unpaired != 1 || effect.Better != 2 || effect.Worse != 0 || effect.Tied != 0 {
+		t.Errorf("effect = %+v, want two pairs both better and the unjudged test case unpaired", effect)
+	}
+	if effect.Difference == nil || math.Abs(*effect.Difference-0.5) > 1e-9 {
+		t.Errorf("difference = %v, want 0.5", effect.Difference)
 	}
 }

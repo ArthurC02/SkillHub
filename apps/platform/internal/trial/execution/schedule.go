@@ -524,6 +524,9 @@ func (s *Service) buildRunRequest(ctx context.Context, run gen.Run, attempt gen.
 	if err != nil {
 		return RunRequest{}, err
 	}
+	if policy.SkillWithheld {
+		version = version.withoutPackage()
+	}
 	snapshot, err := s.TestLab.ReadSnapshot(ctx, run.WorkspaceID, run.TestCaseSnapshotID)
 	if err != nil {
 		return RunRequest{}, unbuildableWhenGone(err)

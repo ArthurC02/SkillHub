@@ -8,15 +8,19 @@ import (
 )
 
 type BatchComparison struct {
-	Baseline        Batch
-	Candidate       Batch
-	Paired          int
-	Unpaired        int
-	Difference      *float64
-	Difference95    *Interval
-	CandidateBetter int
-	BaselineBetter  int
-	Tied            int
+	Baseline  Batch
+	Candidate Batch
+	PairedDifference
+}
+
+type PairedDifference struct {
+	Paired       int
+	Unpaired     int
+	Difference   *float64
+	Difference95 *Interval
+	Better       int
+	Worse        int
+	Tied         int
 }
 
 func (s *BatchService) CompareBatches(ctx context.Context, workspaceID, skillID, candidateID, baselineID pgtype.UUID) (BatchComparison, error) {
@@ -28,33 +32,40 @@ func (s *BatchService) CompareBatches(ctx context.Context, workspaceID, skillID,
 	if err != nil {
 		return BatchComparison{}, err
 	}
-	comparison := BatchComparison{Baseline: baseline.Batch, Candidate: candidate.Batch}
-	baseRates := judgedRates(baseline)
+	return BatchComparison{
+		Baseline: baseline.Batch, Candidate: candidate.Batch,
+		PairedDifference: pairArms(candidate.ArmReport, baseline.ArmReport),
+	}, nil
+}
+
+func pairArms(first, second ArmReport) PairedDifference {
+	var p PairedDifference
+	secondRates := judgedRates(second)
 	var differences []float64
-	for testCaseID, candRate := range judgedRates(candidate) {
-		baseRate, both := baseRates[testCaseID]
+	for testCaseID, firstRate := range judgedRates(first) {
+		secondRate, both := secondRates[testCaseID]
 		if !both {
 			continue
 		}
-		differences = append(differences, candRate-baseRate)
+		differences = append(differences, firstRate-secondRate)
 	}
-	comparison.Paired = len(differences)
-	comparison.Unpaired = len(unionOfTestCases(candidate, baseline)) - comparison.Paired
+	p.Paired = len(differences)
+	p.Unpaired = len(unionOfTestCases(first, second)) - p.Paired
 	for _, d := range differences {
 		switch {
 		case d > 0:
-			comparison.CandidateBetter++
+			p.Better++
 		case d < 0:
-			comparison.BaselineBetter++
+			p.Worse++
 		default:
-			comparison.Tied++
+			p.Tied++
 		}
 	}
-	comparison.Difference, comparison.Difference95 = pairedDifference(differences)
-	return comparison, nil
+	p.Difference, p.Difference95 = pairedDifference(differences)
+	return p
 }
 
-func judgedRates(report BatchReport) map[pgtype.UUID]float64 {
+func judgedRates(report ArmReport) map[pgtype.UUID]float64 {
 	rates := make(map[pgtype.UUID]float64, len(report.TestCases))
 	for _, tc := range report.TestCases {
 		if tc.Judged > 0 {
@@ -64,7 +75,7 @@ func judgedRates(report BatchReport) map[pgtype.UUID]float64 {
 	return rates
 }
 
-func unionOfTestCases(reports ...BatchReport) map[pgtype.UUID]bool {
+func unionOfTestCases(reports ...ArmReport) map[pgtype.UUID]bool {
 	union := map[pgtype.UUID]bool{}
 	for _, report := range reports {
 		for _, tc := range report.TestCases {

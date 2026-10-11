@@ -31,6 +31,13 @@ export interface CreateEvaluationBatchRequest {
      * 
      */
     trials: number;
+    /**
+     * Also run every trial with the skill withheld, under the same
+     * admission and billing, so the report can show what the skill
+     * adds (EVAL-014).
+     * 
+     */
+    withBaseline?: boolean;
 }
 
 /**
@@ -56,6 +63,7 @@ export function CreateEvaluationBatchRequestFromJSONTyped(json: any, ignoreDiscr
         'skillVersionId': json['skill_version_id'],
         'testCaseIds': new Set(json['test_case_ids']),
         'trials': json['trials'],
+        'withBaseline': json['with_baseline'] == null ? undefined : json['with_baseline'],
     };
 }
 
@@ -73,6 +81,7 @@ export function CreateEvaluationBatchRequestToJSONTyped(value?: CreateEvaluation
         'skill_version_id': value['skillVersionId'],
         'test_case_ids': Array.from(value['testCaseIds'] as Set<any>),
         'trials': value['trials'],
+        'with_baseline': value['withBaseline'],
     };
 }
 
