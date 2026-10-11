@@ -8,8 +8,8 @@ go 1.27.2
 
 require (
 	github.com/containerd/errdefs v1.0.0
-	github.com/moby/moby/api v1.56.0
-	github.com/moby/moby/client v0.6.0
+	github.com/moby/moby/api v1.56.1
+	github.com/moby/moby/client v0.6.1
 	github.com/prometheus/client_golang v1.24.1
 	golang.org/x/sys v0.48.0
 )
