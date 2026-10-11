@@ -11,6 +11,7 @@ from .common import (
     GIT_COMMAND_TIMEOUT_SECONDS,
     completed_identifier,
     load_json,
+    one_level_too_deep_hint,
     writer_lock,
 )
 
@@ -678,7 +679,9 @@ def probe_sources(
     root: Path, source_map_path: Path, policy: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     if not source_map_path.exists():
-        return {"status": "absent", "reason": f"no source map at {source_map_path}"}
+        absent = {"status": "absent", "reason": f"no source map at {source_map_path}"}
+        hint = one_level_too_deep_hint(source_map_path)
+        return {**absent, "hint": hint.removeprefix("; ")} if hint else absent
     source_map = load_json(source_map_path)
     selection_status = source_map.get("selection_status", "agent-asserted")
     if policy is not None:

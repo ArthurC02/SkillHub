@@ -96,6 +96,8 @@ def sources_under(repo_root: Path, sources: list[Path]) -> list[Path]:
 
 def probe_summary(result: dict, registry_root: Path) -> str:
     where = f"Domain Memory at {registry_root}"
+    if result["status"] == "absent" and "hint" in result:
+        return f"{where}: no source map here, but {result['hint']}."
     if result["status"] == "absent":
         return (
             f"{where}: none. Nothing is initialized here; "

@@ -18,7 +18,7 @@ Run `init-change-package --output <package-root> --requirement-id <id> --proposa
 
 ## Step 1: Discover the primary Context
 
-For each candidate term, run `resolve-terms --query <text>`. Then run `get-context --id <id>` for the selected primary Context. Record the cited asset IDs and source locations. If a term has more than one valid definition, retain the ambiguity in the requirement rather than choosing one. No match is a knowledge gap.
+For each candidate term, run `resolve-terms --query <text>`. Then run `get-context --id <id>` for the selected primary Context. Record the cited asset IDs and source locations. If a term has more than one valid definition, retain the ambiguity in the requirement rather than choosing one. No match is a knowledge gap, and so is a match whose `match_kind` is `definition`. A `synonym` match names the preferred term to use instead.
 
 ## Step 2: Discover adjacent Contexts
 

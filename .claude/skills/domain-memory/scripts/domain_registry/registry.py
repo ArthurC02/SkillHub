@@ -317,7 +317,53 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
     errors.extend(_validate_asset_records(root, records, require_reviewed))
     errors.extend(_validate_confirmed_absences(records))
     errors.extend(_validate_context_references(records))
+    errors.extend(_validate_term_labels(records.get("vocabulary.json", [])))
     errors.extend(_validate_evidence(records, repo_root))
+    return errors
+
+
+def _labels(entry: dict[str, Any], field: str) -> list[Any] | None:
+    labels = entry.get(field, [])
+    if not isinstance(labels, list) or not all(
+        isinstance(label, str) and label.strip() for label in labels
+    ):
+        return None
+    return labels
+
+
+def _validate_term_labels(terms: list[dict[str, Any]]) -> list[str]:
+    errors: list[str] = []
+    term_ids = {term.get("id") for term in terms}
+    for term in terms:
+        where = f"vocabulary.json:{term.get('id')}"
+        synonyms = _labels(term, "synonyms")
+        look_alikes = _labels(term, "not_same_as")
+        if synonyms is None or look_alikes is None:
+            errors.append(f"{where} synonyms and not_same_as must be lists of non-empty strings")
+            continue
+        errors.extend(_synonym_errors(where, term, synonyms, terms))
+        if set(look_alikes) - term_ids or term.get("id") in look_alikes:
+            errors.append(f"{where} not_same_as must name other vocabulary term ids")
+    return errors
+
+
+def _synonym_errors(
+    where: str, term: dict[str, Any], synonyms: list[str], terms: list[dict[str, Any]]
+) -> list[str]:
+    folded = [synonym.casefold() for synonym in synonyms]
+    errors = []
+    if len(set(folded)) != len(folded):
+        errors.append(f"{where} repeats a synonym")
+    if str(term.get("name", "")).casefold() in folded:
+        errors.append(f"{where} lists its own name as a synonym")
+    contexts = set(term.get("contexts") or [])
+    errors.extend(
+        f"{where} synonym {other.get('name')!r} is the name of {other.get('id')} in a shared context"
+        for other in terms
+        if other is not term
+        and str(other.get("name", "")).casefold() in folded
+        and contexts & set(other.get("contexts") or [])
+    )
     return errors
 
 
@@ -508,19 +554,32 @@ def record_by_id(root: Path, asset: str, identifier: str) -> dict[str, Any] | No
     )
 
 
+MATCH_KINDS = ("name", "synonym", "definition")
+
+
+def _match_kind(term: dict[str, Any], needle: str) -> str | None:
+    labels = {
+        "name": [str(term.get(field, "")).casefold() for field in ("id", "name")],
+        "synonym": [str(label).casefold() for label in term.get("synonyms") or []],
+    }
+    for kind, values in labels.items():
+        if any(value and (value in needle or needle in value) for value in values):
+            return kind
+    if needle in str(term.get("definition", "")).casefold():
+        return "definition"
+    return None
+
+
 def resolve_terms(root: Path, query: str, context: str | None) -> list[dict[str, Any]]:
     needle = query.casefold()
     matches = []
     for term in asset_records(root, "vocabulary.json"):
-        contexts = term.get("contexts", [])
-        if context is not None and context not in contexts:
+        if context is not None and context not in term.get("contexts", []):
             continue
-        searchable = " ".join(
-            str(term.get(field, "")) for field in ("id", "name", "definition")
-        ).casefold()
-        named = [str(term.get(field, "")).casefold() for field in ("id", "name")]
-        if needle in searchable or any(name and name in needle for name in named):
-            matches.append(term)
+        kind = _match_kind(term, needle)
+        if kind is not None:
+            matches.append({**term, "match_kind": kind})
+    matches.sort(key=lambda match: MATCH_KINDS.index(match["match_kind"]))
     return matches[: query_result_limit(root)]
 
 

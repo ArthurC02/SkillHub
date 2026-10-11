@@ -1546,6 +1546,8 @@ class DomainRegistryTest(unittest.TestCase):
     def test_each_record_and_reference_defect_is_named(self) -> None:
         orders = {"id": "orders", "name": "Orders", "responsibility": "Own orders."}
         billing = {"id": "billing", "name": "Billing", "responsibility": "Own invoices."}
+        order_term = {"id": "order", "name": "Order", "contexts": ["orders"]}
+        invoice_term = {"id": "invoice", "name": "Invoice", "contexts": ["orders"]}
         cases = [
             ("duplicate id", "contexts.json", [orders, dict(orders)], "contexts.json contains duplicate id"),
             ("blank id", "contexts.json", [orders, {**billing, "id": ""}], "contexts.json entries require non-empty id"),
@@ -1560,6 +1562,23 @@ class DomainRegistryTest(unittest.TestCase):
              [{"id": "r", "contexts": ["orders"], "statement": "s", "review": {"p": 1}, "status": "reviewed"}],
              "rules.json:r is reviewed but lacks evidence"),
             ("term without contexts", "vocabulary.json", [{"id": "t", "contexts": []}], "vocabulary.json:t requires contexts"),
+            ("synonyms not a list", "vocabulary.json", [{**order_term, "synonyms": "purchase"}],
+             "vocabulary.json:order synonyms and not_same_as must be lists of non-empty strings"),
+            ("blank synonym", "vocabulary.json", [{**order_term, "synonyms": [" "]}],
+             "vocabulary.json:order synonyms and not_same_as must be lists of non-empty strings"),
+            ("look-alikes not a list", "vocabulary.json", [{**order_term, "not_same_as": "invoice"}],
+             "vocabulary.json:order synonyms and not_same_as must be lists of non-empty strings"),
+            ("repeated synonym", "vocabulary.json", [{**order_term, "synonyms": ["Purchase", "purchase"]}],
+             "vocabulary.json:order repeats a synonym"),
+            ("own name as synonym", "vocabulary.json", [{**order_term, "synonyms": ["order"]}],
+             "vocabulary.json:order lists its own name as a synonym"),
+            ("synonym naming a term of the same context", "vocabulary.json",
+             [{**order_term, "synonyms": ["Invoice"]}, invoice_term],
+             "vocabulary.json:order synonym 'Invoice' is the name of invoice in a shared context"),
+            ("unknown look-alike", "vocabulary.json", [{**order_term, "not_same_as": ["ghost"]}],
+             "vocabulary.json:order not_same_as must name other vocabulary term ids"),
+            ("itself as a look-alike", "vocabulary.json", [{**order_term, "not_same_as": ["order"]}],
+             "vocabulary.json:order not_same_as must name other vocabulary term ids"),
             ("rule in unknown context", "rules.json", [{"id": "r", "contexts": ["ghost"]}],
              "rules.json:r references unknown context"),
             ("aggregate in unknown context", "aggregates.json", [{"id": "a", "context": "ghost"}],
@@ -1594,6 +1613,19 @@ class DomainRegistryTest(unittest.TestCase):
                 (registry / asset).write_text(text, encoding="utf-8")
             self.seed("contexts.json", [orders])
             self.assertIn("contexts.json:orders is not reviewed", validate(self.repo / "memory", None, True))
+
+    def test_term_labels_may_reuse_a_name_from_another_context_and_point_at_a_look_alike(self) -> None:
+        self.seed("contexts.json", [
+            {"id": "orders", "name": "Orders", "responsibility": "Own orders."},
+            {"id": "billing", "name": "Billing", "responsibility": "Own invoices."},
+        ])
+        self.seed("vocabulary.json", [
+            {"id": "order", "name": "Order", "contexts": ["orders"],
+             "synonyms": ["Purchase", "Invoice"], "not_same_as": ["invoice"]},
+            {"id": "invoice", "name": "Invoice", "contexts": ["billing"]},
+            {"id": "line", "name": "Order Line", "contexts": ["orders"]},
+        ])
+        self.assertEqual([], validate(self.repo / "memory", None, False))
 
     def test_audit_rejects_reserved_fields_before_writing(self) -> None:
         root = self.repo / "memory"
@@ -2959,7 +2991,35 @@ class DomainRegistryTest(unittest.TestCase):
     def test_a_word_from_the_definition_still_resolves_the_term(self) -> None:
         self.defined_term()
         matches = resolve_terms(self.repo / "memory", "test case", None)
-        self.assertEqual([term["id"] for term in matches], ["run"])
+        self.assertEqual([(term["id"], term["match_kind"]) for term in matches], [("run", "definition")])
+
+    def test_a_name_in_the_query_is_a_name_match(self) -> None:
+        self.defined_term()
+        matches = resolve_terms(self.repo / "memory", "a run", None)
+        self.assertEqual([(term["id"], term["match_kind"]) for term in matches], [("run", "name")])
+
+    def test_a_synonym_in_the_query_is_a_synonym_match(self) -> None:
+        self.seed("vocabulary.json", [
+            {"id": "run", "name": "Run", "definition": "One trial.", "contexts": ["trial"],
+             "synonyms": ["Execution"]},
+        ])
+        self.allow_results(10)
+        matches = resolve_terms(self.repo / "memory", "retry the execution", None)
+        self.assertEqual([(term["id"], term["match_kind"]) for term in matches], [("run", "synonym")])
+
+    def test_name_matches_come_before_synonym_and_definition_matches(self) -> None:
+        self.seed("vocabulary.json", [
+            {"id": "attempt", "name": "Attempt", "definition": "One execution of a Run.", "contexts": ["trial"]},
+            {"id": "job", "name": "Job", "definition": "Queued work.", "contexts": ["trial"],
+             "synonyms": ["Run request"]},
+            {"id": "run", "name": "Run", "definition": "One trial.", "contexts": ["trial"]},
+        ])
+        self.allow_results(10)
+        matches = resolve_terms(self.repo / "memory", "run", None)
+        self.assertEqual(
+            [(term["id"], term["match_kind"]) for term in matches],
+            [("run", "name"), ("job", "synonym"), ("attempt", "definition")],
+        )
 
     def test_a_file_holding_several_records_says_how_many_it_should_hold(self) -> None:
         record = self.write_record("many.json", [{"id": "orders"}, {"id": "billing"}])
@@ -3058,9 +3118,20 @@ class DomainRegistryTest(unittest.TestCase):
             "invalid", verify_source_map(self.repo, path, policy)["status"]
         )
 
+    def test_the_probe_on_a_root_one_level_too_deep_names_the_likely_root(self) -> None:
+        self.committed_source_map()
+        deeper = self.repo / "memory" / "registry"
+        result = probe_sources(self.repo, deeper / "source-map.json")
+        self.assertEqual("absent", result["status"])
+        self.assertIn(f"{self.repo / 'memory' / 'source-map.json'} exists", result["hint"])
+        summary = self.run_cli("probe", "--repo-root", str(self.repo), "--registry-root", str(deeper))
+        self.assertEqual(2, summary.returncode)
+        self.assertIn("points one directory too deep", summary.stdout)
+        self.assertNotIn("Nothing is initialized here", summary.stdout)
+
     def test_the_probe_answers_absent_invalid_and_hashed_cases_without_git(self) -> None:
         missing = self.repo / "memory" / "no-map.json"
-        self.assertEqual("absent", probe_sources(self.repo, missing)["status"])
+        self.assertEqual({"status": "absent", "reason": f"no source map at {missing}"}, probe_sources(self.repo, missing))
         path = self.committed_source_map()
         policy = stored_policy_of(self.repo)
         with self.subTest("an invalid policy"):
@@ -3960,6 +4031,16 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertEqual(result["state"], "dead")
         self.assertEqual(result["confidence"], "medium")
         self.assertTrue(result["blocks"])
+
+    def test_readiness_on_a_root_one_level_too_deep_names_the_likely_root(self) -> None:
+        self.committed_source_map()
+        result = assess_readiness(self.repo, self.repo / "memory" / "registry")
+        self.assertEqual(len(result["blocks"]), 1)
+        self.assertIn("points one directory too deep", result["blocks"][0])
+
+    def test_readiness_on_a_memory_without_a_source_map_gives_no_root_hint(self) -> None:
+        result = assess_readiness(self.repo, self.repo / "memory")
+        self.assertEqual(result["blocks"], ["Domain Memory exists without a source map."])
 
     def test_readiness_routes_a_valid_registry_with_domain_records_to_greenfield(
         self,
