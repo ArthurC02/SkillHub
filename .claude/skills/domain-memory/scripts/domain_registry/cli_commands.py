@@ -158,7 +158,12 @@ def handle_demote_local_reviews(args: argparse.Namespace) -> int:
 
 
 def handle_resolve_terms(args: argparse.Namespace) -> int:
-    print_json(resolve_terms(args.registry_root.resolve(), args.query, args.context))
+    root = args.registry_root.resolve()
+    print_json([
+        {**match, "query": query}
+        for query in args.query
+        for match in resolve_terms(root, query, args.context)
+    ])
     return 0
 
 
