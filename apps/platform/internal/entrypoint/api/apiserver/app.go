@@ -35,6 +35,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
@@ -188,7 +189,7 @@ func NewApp(cfg Config) (*App, error) {
 func newTestLab(pool *pgxpool.Pool, identitySvc *identity.Service) *testlab.Service {
 	return &testlab.Service{
 		Pool: pool, MayStoreObjects: identitySvc.MayStoreObjects, ClearSightings: objreconcile.ClearDatasetSightings,
-		ValidateCheck: (&eval.GraderService{Pool: pool}).ValidateCheck,
+		ValidateCheck: (&eval.CheckValidator{Pool: pool}).ValidateCheck,
 	}
 }
 
@@ -347,7 +348,7 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 		Trace:           &trace.Handler{Svc: app.TraceSvc, Identity: auth.Service},
 		Eval:            &eval.Handler{Svc: evalSvc, Identity: auth.Service},
 		EvalBatches:     &batch.BatchHandler{Svc: app.EvalBatches, Identity: auth.Service},
-		Graders:         &eval.GraderHandler{Svc: &eval.GraderService{Pool: cfg.Pool}, Identity: auth.Service},
+		Graders:         &eval.GraderHandler{Svc: &graders.Service{Pool: cfg.Pool}, Identity: auth.Service},
 		Packaging:       &packaging.Handler{Svc: app.PackagingSvc, Identity: auth.Service},
 		Activity:        &activityHandler{Svc: app.ActivitySvc, Identity: identitySvc},
 		Credits: &creditsHandler{

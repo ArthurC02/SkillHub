@@ -6,12 +6,13 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
 )
 
 const toneV2 = "0b6f9c1e-0000-4000-8000-000000000002"
 
 func graded(m material) material {
-	m.graders = map[string]graderVersion{toneV2: {name: "語氣", version: 2, instructions: "fail when {item} sounds curt"}}
+	m.graders = map[string]graders.Version{toneV2: {Name: "語氣", Number: 2, Instructions: "fail when {item} sounds curt"}}
 	return m
 }
 

@@ -250,14 +250,14 @@ func (promptGraderNode) kind() CheckKind {
 }
 
 func (promptGraderNode) evaluate(s checkScope, n testlab.Check, path string) outcome {
-	g, found := s.m.graders[n.Values[0]]
+	version, found := s.m.graders[n.Values[0]]
 	if !found {
 		return outcome{result: ResultUndetermined, reason: "the grader version this check names is not available to this workspace"}
 	}
 	o := s.modelVerdict(judgeItem{
-		key: s.criterion.ID + "@" + path, text: s.criterion.Text, instructions: s.withItem([]string{g.instructions})[0],
+		key: s.criterion.ID + "@" + path, text: s.criterion.Text, instructions: s.withItem([]string{version.Instructions})[0],
 	})
-	o.reason = fmt.Sprintf("%s v%d: %s", g.name, g.version, o.reason)
+	o.reason = fmt.Sprintf("%s v%d: %s", version.Name, version.Number, o.reason)
 	return o
 }
 

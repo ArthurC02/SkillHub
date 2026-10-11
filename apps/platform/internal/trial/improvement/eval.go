@@ -18,6 +18,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
@@ -310,7 +311,7 @@ type material struct {
 
 	rubric *testlab.Rubric
 
-	graders      map[string]graderVersion
+	graders      map[string]graders.Version
 	instructions map[string]string
 
 	advanced  trace.AdvancedView
@@ -564,7 +565,7 @@ func (s *Service) gatherTestCase(ctx context.Context, workspaceID pgtype.UUID, m
 	if m.criteria, err = testlab.DecodeCriteria(m.snapshot.AcceptanceCriteria); err != nil {
 		return err
 	}
-	if m.graders, err = loadGraderVersions(ctx, s.queries(), workspaceID, referencedGraderVersions(m.criteria)); err != nil {
+	if m.graders, err = graders.Versions(ctx, s.Pool, workspaceID, referencedGraderVersions(m.criteria)); err != nil {
 		return err
 	}
 	m.rubric, err = testlab.DecodeRubric(m.snapshot.Rubric)
