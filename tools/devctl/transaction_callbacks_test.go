@@ -36,7 +36,7 @@ func TestShapesThatDoNotHandATransactionAcrossAreIgnored(t *testing.T) {
 	}{
 		{"an unexported field", "type Params struct {\n\tsame func(pgx.Tx) error\n}\n"},
 		{"an unexported func type", "type hook func(pgx.Tx) error\n"},
-		{"an unexported function","func do(fn func(pgx.Tx) error) {}\n"},
+		{"an unexported function", "func do(fn func(pgx.Tx) error) {}\n"},
 		{"a transaction passed as a value", "func Do(tx pgx.Tx) {}\n"},
 		{"a callback over another package's Tx", "func Do(fn func(other.Tx) error) {}\n"},
 	}
