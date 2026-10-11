@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -20,6 +21,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
 const (
@@ -35,9 +37,9 @@ const (
 )
 
 const (
-	MaxNameBytes      = 200
-	MaxPromptBytes    = 32 << 10
-	MaxCriterionBytes = 2000
+	MaxNameChars      = limits.CreateTestCaseBodyNameMaxLength
+	MaxPromptChars    = limits.CreateTestCaseBodyUserPromptMaxLength
+	MaxCriterionChars = limits.AcceptanceCriterionTextMaxLength
 	MaxCriteria       = 50
 
 	maxConfirmedCreationCriteria = 12
@@ -138,9 +140,9 @@ type RubricItem struct {
 	EvidenceRequired bool `json:"evidence_required"`
 }
 
-const MaxRubricItems = 50
+const MaxRubricItems = limits.RubricItemsMaxItems
 
-const MaxRubricVersionBytes = 200
+const MaxRubricVersionChars = limits.RubricVersionMaxLength
 
 type TestCaseEdit struct {
 	Name, Prompt       *string
@@ -224,8 +226,8 @@ func validateRubric(r Rubric, criteria []Criterion) (Rubric, error) {
 	switch {
 	case r.Version == "":
 		return Rubric{}, fmt.Errorf("%w: rubric 的 version 不能空白", ErrInvalid)
-	case len(r.Version) > MaxRubricVersionBytes:
-		return Rubric{}, fmt.Errorf("%w: rubric 的 version 最多 %d bytes", ErrInvalid, MaxRubricVersionBytes)
+	case utf8.RuneCountInString(r.Version) > MaxRubricVersionChars:
+		return Rubric{}, fmt.Errorf("%w: rubric 的 version 最多 %d 個字", ErrInvalid, MaxRubricVersionChars)
 	case len(r.Items) == 0:
 
 		return Rubric{}, fmt.Errorf("%w: rubric 至少要有一條；要移除 rubric 請送 null", ErrInvalid)
@@ -249,8 +251,8 @@ func validateRubric(r Rubric, criteria []Criterion) (Rubric, error) {
 			return Rubric{}, fmt.Errorf("%w: 驗收條件 %q 有兩條 rubric", ErrInvalid, it.ID)
 		case it.Text == "":
 			return Rubric{}, fmt.Errorf("%w: rubric 條目的文字不能空白", ErrInvalid)
-		case len(it.Text) > MaxCriterionBytes:
-			return Rubric{}, fmt.Errorf("%w: rubric 條目的文字最多 %d bytes", ErrInvalid, MaxCriterionBytes)
+		case utf8.RuneCountInString(it.Text) > MaxCriterionChars:
+			return Rubric{}, fmt.Errorf("%w: rubric 條目的文字最多 %d 個字", ErrInvalid, MaxCriterionChars)
 		}
 		seen[it.ID] = true
 		items = append(items, it)
@@ -529,24 +531,24 @@ func validateDraft(name, prompt string) (string, string, error) {
 	switch {
 	case name == "":
 		return "", "", fmt.Errorf("%w: 名稱不能空白", ErrInvalid)
-	case len(name) > MaxNameBytes:
-		return "", "", fmt.Errorf("%w: 名稱最多 %d bytes", ErrInvalid, MaxNameBytes)
+	case utf8.RuneCountInString(name) > MaxNameChars:
+		return "", "", fmt.Errorf("%w: 名稱最多 %d 個字", ErrInvalid, MaxNameChars)
 
 	case prompt == "":
 		return "", "", fmt.Errorf("%w: Prompt 不能空白", ErrInvalid)
-	case len(prompt) > MaxPromptBytes:
-		return "", "", fmt.Errorf("%w: Prompt 最多 %d bytes", ErrInvalid, MaxPromptBytes)
+	case utf8.RuneCountInString(prompt) > MaxPromptChars:
+		return "", "", fmt.Errorf("%w: Prompt 最多 %d 個字", ErrInvalid, MaxPromptChars)
 	}
 	return name, prompt, nil
 }
 
 const (
-	MaxSimulatedUserFacts      = 10
-	MaxSimulatedUserFactsBytes = 1500
+	MaxSimulatedUserFacts      = limits.SimulatedUserFactsMaxItems
+	MaxSimulatedUserFactsChars = 1500
 )
 
-var ErrSimulatedUserFacts = fmt.Errorf("%w: 模擬使用者的事實最多 %d 條、每條不能空白、合計最多 %d bytes",
-	ErrInvalid, MaxSimulatedUserFacts, MaxSimulatedUserFactsBytes)
+var ErrSimulatedUserFacts = fmt.Errorf("%w: 模擬使用者的事實最多 %d 條、每條不能空白、合計最多 %d 個字",
+	ErrInvalid, MaxSimulatedUserFacts, MaxSimulatedUserFactsChars)
 
 func validSimulatedUserFacts(edited *[]string, current []string) ([]string, error) {
 	if edited == nil {
@@ -559,10 +561,10 @@ func validSimulatedUserFacts(edited *[]string, current []string) ([]string, erro
 		if fact == "" {
 			return nil, ErrSimulatedUserFacts
 		}
-		total += len(fact)
+		total += utf8.RuneCountInString(fact)
 		facts = append(facts, fact)
 	}
-	if len(facts) > MaxSimulatedUserFacts || total > MaxSimulatedUserFactsBytes {
+	if len(facts) > MaxSimulatedUserFacts || total > MaxSimulatedUserFactsChars {
 		return nil, ErrSimulatedUserFacts
 	}
 	return facts, nil
@@ -774,8 +776,8 @@ func validateCriterion(text string) (string, error) {
 	if text == "" {
 		return "", fmt.Errorf("%w: 驗收條件的文字不能空白", ErrInvalid)
 	}
-	if len(text) > MaxCriterionBytes {
-		return "", fmt.Errorf("%w: 驗收條件的文字最多 %d bytes", ErrInvalid, MaxCriterionBytes)
+	if utf8.RuneCountInString(text) > MaxCriterionChars {
+		return "", fmt.Errorf("%w: 驗收條件的文字最多 %d 個字", ErrInvalid, MaxCriterionChars)
 	}
 	return text, nil
 }

@@ -1,3 +1,4 @@
+import { RubricVersionMaxLength } from "@skillhub/api-client-ts/limits";
 import { useState } from "react";
 import { useUpdateTestCase } from "../../testcases.service";
 import type { RubricItem, TestCase } from "../../testcases.service";
@@ -50,7 +51,7 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
               }}
               readOnly={save.isPending}
               size={40}
-              maxLength={200}
+              maxLength={RubricVersionMaxLength}
               placeholder="例如 content-007/writing/v1"
             />
             <br />

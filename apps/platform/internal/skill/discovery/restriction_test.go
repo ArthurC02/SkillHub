@@ -32,7 +32,7 @@ func TestRestrictionServiceRejectsInvalidInputBeforeDatabase(t *testing.T) {
 			return err
 		}, "note is required"},
 		{"long set note", func() error {
-			_, err := svc.SetRestriction(context.Background(), zeroUUID, zeroUUID, "license-review", strings.Repeat("x", maxOperatorNoteBytes+1))
+			_, err := svc.SetRestriction(context.Background(), zeroUUID, zeroUUID, "license-review", strings.Repeat("x", maxOperatorNoteChars+1))
 			return err
 		}, "note is too long"},
 		{"blank clear note", func() error {
@@ -40,7 +40,7 @@ func TestRestrictionServiceRejectsInvalidInputBeforeDatabase(t *testing.T) {
 			return err
 		}, "note is required"},
 		{"long clear note", func() error {
-			_, err := svc.ClearRestriction(context.Background(), zeroUUID, zeroUUID, strings.Repeat("x", maxOperatorNoteBytes+1))
+			_, err := svc.ClearRestriction(context.Background(), zeroUUID, zeroUUID, strings.Repeat("x", maxOperatorNoteChars+1))
 			return err
 		}, "note is too long"},
 		{"blank redistribution", func() error {
@@ -84,7 +84,7 @@ func TestALicenceMismatchNamesWhatTheNewestVersionRecords(t *testing.T) {
 }
 
 func TestValidRestrictionNoteAcceptsExactlyTheByteCap(t *testing.T) {
-	if _, err := validRestrictionNote(strings.Repeat("x", maxOperatorNoteBytes)); err != nil {
+	if _, err := validRestrictionNote(strings.Repeat("x", maxOperatorNoteChars)); err != nil {
 		t.Errorf("a note at exactly the byte cap was rejected: %v", err)
 	}
 }

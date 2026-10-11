@@ -17,8 +17,8 @@ func TestEveryQuestionTakesExactlyOneUsableAnswer(t *testing.T) {
 		ok      bool
 	}{
 		{"one answer each", []string{"算", "八點"}, true},
-		{"an answer at the byte limit", []string{strings.Repeat("a", MaxAnswerBytes), "八點"}, true},
-		{"an answer one byte past the limit", []string{strings.Repeat("a", MaxAnswerBytes+1), "八點"}, false},
+		{"an answer at the character limit", []string{strings.Repeat("長", MaxAnswerChars), "八點"}, true},
+		{"an answer one character past the limit", []string{strings.Repeat("長", MaxAnswerChars+1), "八點"}, false},
 		{"one answer short", []string{"算"}, false},
 		{"one answer too many", []string{"算", "八點", "多"}, false},
 		{"a blank answer", []string{"算", " \n"}, false},

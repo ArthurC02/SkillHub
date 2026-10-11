@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -19,6 +20,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
@@ -386,7 +388,7 @@ func (s *Service) publishHaltMetrics(ctx context.Context) {
 	}
 }
 
-const maxHaltNoteBytes = 1000
+const maxHaltNoteChars = limits.DeclareDispatchHaltBodyNoteMaxLength
 
 type haltRequest struct {
 	Provider string `json:"provider"`
@@ -497,7 +499,7 @@ func (h *Handler) decodeHaltRequest(w http.ResponseWriter, r *http.Request) (hal
 			"note is required: halting or resuming the fleet is an operator action nobody can explain later otherwise")
 		return haltRequest{}, false
 	}
-	if len(body.Note) > maxHaltNoteBytes {
+	if utf8.RuneCountInString(body.Note) > maxHaltNoteChars {
 		httpx.WriteError(w, http.StatusBadRequest, "note is too long")
 		return haltRequest{}, false
 	}

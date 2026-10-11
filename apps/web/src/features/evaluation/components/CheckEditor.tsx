@@ -1,3 +1,4 @@
+import { CriterionCheckValuesItemMaxLength } from "@skillhub/api-client-ts/limits";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Loading } from "../../../shared/ui/Loading";
@@ -111,7 +112,7 @@ function ValuesField({
           <input
             id={`${idBase}-value-${i}`}
             value={v}
-            maxLength={200}
+            maxLength={CriterionCheckValuesItemMaxLength}
             onChange={(e) => onChange(values.map((old, j) => (j === i ? e.target.value : old)))}
           />{" "}
           <button

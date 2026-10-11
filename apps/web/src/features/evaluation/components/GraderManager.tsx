@@ -1,3 +1,7 @@
+import {
+  EvaluationGraderDraftNameMaxLength,
+  EvaluationGraderRevisionInstructionsMaxLength,
+} from "@skillhub/api-client-ts/limits";
 import { useState } from "react";
 import { ApiError } from "../../../core/api/client";
 import { Loading } from "../../../shared/ui/Loading";
@@ -12,8 +16,6 @@ import {
 } from "../evaluation.service";
 import "./GraderManager.css";
 
-const MAX_NAME = 100;
-const MAX_INSTRUCTIONS = 4000;
 const SCOPE_LABEL: Record<GraderScope, string> = {
   platform: "平台通用",
   workspace: "這個 Workspace 專用",
@@ -46,7 +48,7 @@ function InstructionsField({
       <textarea
         id={id}
         value={value}
-        maxLength={MAX_INSTRUCTIONS}
+        maxLength={EvaluationGraderRevisionInstructionsMaxLength}
         rows={6}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -164,7 +166,7 @@ function CreateGrader({ scope }: { scope: GraderScope }) {
         <input
           id="grader-create-name"
           value={name}
-          maxLength={MAX_NAME}
+          maxLength={EvaluationGraderDraftNameMaxLength}
           onChange={(e) => setName(e.target.value)}
         />
       </div>

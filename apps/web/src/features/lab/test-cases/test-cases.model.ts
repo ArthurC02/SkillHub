@@ -1,16 +1,16 @@
-export const MAX_NAME_BYTES = 200;
+import {
+  CreateTestCaseBodyNameMaxLength as MAX_NAME_CHARS,
+  CreateTestCaseBodyUserPromptMaxLength as MAX_PROMPT_CHARS,
+} from "@skillhub/api-client-ts/limits";
 
-export const MAX_PROMPT_BYTES = 32768;
+export { MAX_NAME_CHARS, MAX_PROMPT_CHARS };
 
-// UTF-8 byte length, not JS string length (UTF-16 units) — the server's limit is bytes.
-function byteLength(s: string): number {
-  return new TextEncoder().encode(s).length;
-}
+const characterCount = (s: string) => [...s].length;
 
 export function oversizeReason(name: string, prompt: string): string | null {
-  const n = byteLength(name);
-  if (n > MAX_NAME_BYTES) return `名稱最多 ${MAX_NAME_BYTES} bytes，目前 ${n} bytes。`;
-  const p = byteLength(prompt);
-  if (p > MAX_PROMPT_BYTES) return `Prompt 最多 ${MAX_PROMPT_BYTES} bytes，目前 ${p} bytes。`;
+  const n = characterCount(name);
+  if (n > MAX_NAME_CHARS) return `名稱最多 ${MAX_NAME_CHARS} 個字，目前 ${n} 個字。`;
+  const p = characterCount(prompt);
+  if (p > MAX_PROMPT_CHARS) return `Prompt 最多 ${MAX_PROMPT_CHARS} 個字，目前 ${p} 個字。`;
   return null;
 }

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -289,12 +290,12 @@ func (c snapshotContent) hash() (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
-var ErrPromptTooLong = fmt.Errorf("%w: Prompt 最多 %d bytes", ErrInvalid, MaxPromptBytes)
+var ErrPromptTooLong = fmt.Errorf("%w: Prompt 最多 %d 個字", ErrInvalid, MaxPromptChars)
 
 func (s *Service) ContinueSnapshot(
 	ctx context.Context, tx pgx.Tx, workspaceID, fromSnapshotID pgtype.UUID, prompt string,
 ) (Snapshot, error) {
-	if len(prompt) > MaxPromptBytes {
+	if utf8.RuneCountInString(prompt) > MaxPromptChars {
 		return Snapshot{}, ErrPromptTooLong
 	}
 	if tx == nil {

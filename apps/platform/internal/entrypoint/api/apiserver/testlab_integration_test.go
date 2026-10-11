@@ -169,17 +169,17 @@ func assertBlankAndOverLongPromptsRefused(t *testing.T, alice *client, skillID, 
 	}
 
 	code, body := alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
-		fmt.Sprintf(`{"user_prompt":%q}`, strings.Repeat("x", testlab.MaxPromptBytes)))
-	if prompt, _ := body["user_prompt"].(string); code != http.StatusOK || len(prompt) != testlab.MaxPromptBytes {
+		fmt.Sprintf(`{"user_prompt":%q}`, strings.Repeat("x", testlab.MaxPromptChars)))
+	if prompt, _ := body["user_prompt"].(string); code != http.StatusOK || len(prompt) != testlab.MaxPromptChars {
 		t.Errorf("patch with a prompt of exactly the limit: got %d with %d bytes stored, want 200 and the full prompt", code, len(prompt))
 	}
 	code, _ = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
-		fmt.Sprintf(`{"user_prompt":%q}`, strings.Repeat("x", testlab.MaxPromptBytes+1)))
+		fmt.Sprintf(`{"user_prompt":%q}`, strings.Repeat("x", testlab.MaxPromptChars+1)))
 	if code != http.StatusBadRequest {
 		t.Errorf("patch with an over-long prompt: got %d, want 400", code)
 	}
 	code, _ = alice.doJSON(t, http.MethodPost, "/test-cases",
-		fmt.Sprintf(`{"skill_id":%q,"name":"long","user_prompt":%q}`, skillID, strings.Repeat("x", testlab.MaxPromptBytes+1)))
+		fmt.Sprintf(`{"skill_id":%q,"name":"long","user_prompt":%q}`, skillID, strings.Repeat("x", testlab.MaxPromptChars+1)))
 	if code != http.StatusBadRequest {
 		t.Errorf("create with an over-long prompt: got %d, want 400", code)
 	}

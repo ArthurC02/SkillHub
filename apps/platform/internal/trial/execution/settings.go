@@ -5,12 +5,14 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
 const auditReasonKey = "reason"
@@ -18,11 +20,11 @@ const auditReasonKey = "reason"
 const (
 	MinContinuationRounds  = 1
 	MaxContinuationRounds  = 10
-	maxSettingsReasonBytes = 1000
+	maxSettingsReasonChars = limits.SetContinuationRoundsBodyNoteMaxLength
 )
 
 var (
-	ErrSettingsReasonRequired = errors.New("run: a settings change needs a reason of at most 1000 bytes")
+	ErrSettingsReasonRequired = errors.New("run: a settings change needs a reason of at most 1000 characters")
 	ErrRoundsOutOfRange       = errors.New("run: continuation rounds must be between 1 and 10")
 )
 
@@ -52,7 +54,7 @@ func (s *Service) ContinuationRounds(ctx context.Context) (int, error) {
 
 func (s *Service) SetContinuationRounds(ctx context.Context, operator pgtype.UUID, rounds int, reason string) (Settings, error) {
 	reason = strings.TrimSpace(reason)
-	if reason == "" || len(reason) > maxSettingsReasonBytes {
+	if reason == "" || utf8.RuneCountInString(reason) > maxSettingsReasonChars {
 		return Settings{}, ErrSettingsReasonRequired
 	}
 	if rounds < MinContinuationRounds || rounds > MaxContinuationRounds {

@@ -6,15 +6,17 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
 const (
-	maxNoteBytes        = 1000
+	maxNoteChars        = limits.SetPlatformAgentEnabledBodyNoteMaxLength
 	maxRequestBodyBytes = 16 << 10
 )
 
@@ -207,7 +209,7 @@ func requireNote(w http.ResponseWriter, raw string) (string, bool) {
 		httpx.WriteError(w, http.StatusBadRequest, "note is required: say why, so the next operator can find out")
 		return "", false
 	}
-	if len(note) > maxNoteBytes {
+	if utf8.RuneCountInString(note) > maxNoteChars {
 		httpx.WriteError(w, http.StatusBadRequest, "note is too long")
 		return "", false
 	}

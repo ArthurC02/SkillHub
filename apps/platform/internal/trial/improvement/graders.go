@@ -16,12 +16,13 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
 const (
-	MaxGraderNameChars         = 100
-	MaxGraderInstructionsChars = 4000
+	MaxGraderNameChars         = limits.EvaluationGraderDraftNameMaxLength
+	MaxGraderInstructionsChars = limits.EvaluationGraderRevisionInstructionsMaxLength
 )
 
 var (

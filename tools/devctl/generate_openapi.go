@@ -33,7 +33,33 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 	if err != nil {
 		return nil, err
 	}
-	return []generationOutput{ts, py, goOutput}, nil
+	limits, err := generateContractLimits(root, scratch, ts.source, out)
+	if err != nil {
+		return nil, err
+	}
+	return []generationOutput{ts, py, goOutput, limits}, nil
+}
+
+func generateContractLimits(root, scratch, tsSource string, out io.Writer) (generationOutput, error) {
+	goRoot := filepath.Join(scratch, "contractlimits")
+	if err := os.MkdirAll(goRoot, 0o755); err != nil {
+		return generationOutput{}, err
+	}
+	cmd := exec.Command("go", "run", "./cmd/contractlimits",
+		"-contract", filepath.Join(root, "contracts", "openapi", "public.yaml"),
+		"-go", filepath.Join(goRoot, "limits_gen.go"),
+		"-ts", filepath.Join(tsSource, "limits.ts"))
+	cmd.Dir = filepath.Join(root, "apps", "platform")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		_, _ = out.Write(output)
+		return generationOutput{}, fmt.Errorf("contract limits generation: %w", err)
+	}
+	fmt.Fprintln(out, "contract limits generation: complete")
+	return generationOutput{
+		label:  "contract-limits",
+		source: goRoot,
+		target: filepath.Join(root, "apps", "platform", "internal", "shared", "contractlimits", dirGen),
+	}, nil
 }
 
 func generateTypeScriptOpenAPI(root, scratch, tsImage string, out io.Writer) (generationOutput, error) {

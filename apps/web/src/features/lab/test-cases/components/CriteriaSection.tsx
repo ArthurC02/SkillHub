@@ -1,3 +1,4 @@
+import { AcceptanceCriterionTextMaxLength } from "@skillhub/api-client-ts/limits";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -108,7 +109,7 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           size={50}
-          maxLength={2000}
+          maxLength={AcceptanceCriterionTextMaxLength}
         />{" "}
         <button
           type="button"

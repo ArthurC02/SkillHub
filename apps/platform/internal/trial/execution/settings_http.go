@@ -63,7 +63,7 @@ func (h *SettingsHandler) SetContinuationRounds(w http.ResponseWriter, r *http.R
 	settings, err := h.Svc.SetContinuationRounds(r.Context(), operator, *body.Rounds, body.Note)
 	switch {
 	case errors.Is(err, ErrSettingsReasonRequired):
-		httpx.WriteError(w, http.StatusBadRequest, "note is required and at most 1000 bytes")
+		httpx.WriteError(w, http.StatusBadRequest, "note is required and at most 1000 characters")
 	case errors.Is(err, ErrRoundsOutOfRange):
 		httpx.WriteError(w, http.StatusBadRequest, "rounds must be between 1 and 10")
 	case err != nil:

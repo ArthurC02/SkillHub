@@ -38,10 +38,10 @@ func TestACheckIsValidatedByTheInjectedValidatorAndRefusedWithoutOne(t *testing.
 
 func TestAContinuationPromptIsHeldToThePromptLimit(t *testing.T) {
 	svc := &Service{}
-	if _, err := svc.ContinueSnapshot(t.Context(), nil, pgtype.UUID{}, pgtype.UUID{}, strings.Repeat("a", MaxPromptBytes+1)); !errors.Is(err, ErrPromptTooLong) {
+	if _, err := svc.ContinueSnapshot(t.Context(), nil, pgtype.UUID{}, pgtype.UUID{}, strings.Repeat("a", MaxPromptChars+1)); !errors.Is(err, ErrPromptTooLong) {
 		t.Errorf("one byte past the limit: got %v, want ErrPromptTooLong", err)
 	}
-	if _, err := svc.ContinueSnapshot(t.Context(), nil, pgtype.UUID{}, pgtype.UUID{}, strings.Repeat("a", MaxPromptBytes)); errors.Is(err, ErrPromptTooLong) {
+	if _, err := svc.ContinueSnapshot(t.Context(), nil, pgtype.UUID{}, pgtype.UUID{}, strings.Repeat("a", MaxPromptChars)); errors.Is(err, ErrPromptTooLong) {
 		t.Errorf("a prompt at the limit was refused as too long")
 	}
 }

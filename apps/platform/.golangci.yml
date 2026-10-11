@@ -755,6 +755,7 @@ linters:
         shared-kernel:
           files:
             - "**/internal/shared/skillpkg/**"
+            - "**/internal/shared/contractlimits/**"
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity

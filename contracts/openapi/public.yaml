@@ -2680,7 +2680,7 @@ paths:
         "400":
           description: |
             Body is not JSON, `reason` is blank or not a known code, or `note` is
-            blank or over 1000 bytes. The unknown-code message lists the codes
+            blank or over 1000 characters. The unknown-code message lists the codes
             that do exist.
           content:
             application/json:
@@ -2730,7 +2730,7 @@ paths:
             No hold is in force. Also the answer when there was none to lift, so
             there is no body to return either way.
         "400":
-          description: Body is not JSON, or `note` is blank or over 1000 bytes.
+          description: Body is not JSON, or `note` is blank or over 1000 characters.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -2911,7 +2911,7 @@ paths:
                   skill_id: { type: string, format: uuid }
                   taken_down: { type: boolean }
         "400":
-          description: The body is not JSON, or the reason is missing, blank or over 1000 bytes.
+          description: The body is not JSON, or the reason is missing, blank or over 1000 characters.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3076,7 +3076,7 @@ paths:
         "400":
           description: |
             Body is not JSON, `value` is blank, unknown, or one of the two
-            provenance values, or `note` is blank or over 1000 bytes. The
+            provenance values, or `note` is blank or over 1000 characters. The
             provenance case gets its own message explaining why that value is
             not settable rather than the list of ones that are.
           content:
@@ -3155,7 +3155,7 @@ paths:
         "400":
           description: |
             Body is not JSON, `value` is not a tier, `note` is blank or over
-            1000 bytes, or `curated` was asked of a skill outside a catalogue
+            1000 characters, or `curated` was asked of a skill outside a catalogue
             workspace.
           content:
             application/json:
@@ -3297,7 +3297,7 @@ paths:
                     type: string
                     description: What the halt now does, in one sentence.
         "400":
-          description: Body is not JSON, `note` is blank or over 1000 bytes, or `provider` is not configured.
+          description: Body is not JSON, `note` is blank or over 1000 characters, or `provider` is not configured.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3345,7 +3345,7 @@ paths:
             This target is dispatchable. Also the answer when there was nothing
             to lift.
         "400":
-          description: Body is not JSON, `note` is blank or over 1000 bytes, or `provider` is not configured.
+          description: Body is not JSON, `note` is blank or over 1000 characters, or `provider` is not configured.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3415,7 +3415,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/PlatformAgent" }
         "400":
-          description: Body is not JSON, or `note` is blank or over 1000 bytes.
+          description: Body is not JSON, or `note` is blank or over 1000 characters.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3464,7 +3464,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/PlatformAgent" }
         "400":
-          description: Body is not JSON, the cap is missing, not a whole number or out of range, or `note` is blank or over 1000 bytes.
+          description: Body is not JSON, the cap is missing, not a whole number or out of range, or `note` is blank or over 1000 characters.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3539,7 +3539,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/RunSettings" }
         "400":
-          description: Body is not JSON, `rounds` is missing or outside 1–10, or `note` is blank or over 1000 bytes.
+          description: Body is not JSON, `rounds` is missing or outside 1–10, or `note` is blank or over 1000 characters.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3577,7 +3577,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/PlatformSettings" }
         "400":
-          description: Body is not JSON, `enabled` is missing, or `note` is blank or over 1000 bytes.
+          description: Body is not JSON, `enabled` is missing, or `note` is blank or over 1000 characters.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3613,7 +3613,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/PlatformAgentBrake" }
         "400":
-          description: Body is not JSON, or `note` is blank or over 1000 bytes.
+          description: Body is not JSON, or `note` is blank or over 1000 characters.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3645,7 +3645,7 @@ paths:
         "204":
           description: The brake is released.
         "400":
-          description: Body is not JSON, or `note` is blank or over 1000 bytes.
+          description: Body is not JSON, or `note` is blank or over 1000 characters.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3870,7 +3870,7 @@ paths:
         "204":
           description: The finding moved.
         "400":
-          description: The id is not a UUID, the body is not JSON, `status` is not one of the four, or `note` is blank or over 1000 bytes.
+          description: The id is not a UUID, the body is not JSON, `status` is not one of the four, or `note` is blank or over 1000 characters.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3992,7 +3992,7 @@ paths:
         "204":
           description: The decision is recorded.
         "400":
-          description: The id is not a UUID, the body is not JSON, `decision` is not approve or reject, or `note` is blank or over 1000 bytes.
+          description: The id is not a UUID, the body is not JSON, `decision` is not approve or reject, or `note` is blank or over 1000 characters.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -10394,7 +10394,7 @@ components:
         this person with these facts, frozen with the rest of the test case, up
         to the conversation's round limit. An empty list means nobody answers
         for the person, and the trial waits for a real answer. At most 1500
-        bytes in all.
+        characters in all.
     TestCaseListItem:
       description: |
         One row of GET /test-cases: the draft plus the few facts a browsing user

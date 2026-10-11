@@ -28,6 +28,8 @@ type DatasetContent interface {
 	Size() int64
 }
 
+const maxStoredFileNameBytes = 200
+
 func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, testCaseID pgtype.UUID, fileName string, content DatasetContent) (Dataset, error) {
 	file, err := acceptDatasetFile(fileName, content)
 	if err != nil {
@@ -400,8 +402,8 @@ func sanitizeFileName(name string) string {
 		return r
 	}, name)
 
-	if len(name) > MaxNameBytes {
-		name = strings.ToValidUTF8(name[:MaxNameBytes], "")
+	if len(name) > maxStoredFileNameBytes {
+		name = strings.ToValidUTF8(name[:maxStoredFileNameBytes], "")
 	}
 	return name
 }

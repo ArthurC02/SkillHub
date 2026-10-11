@@ -39,7 +39,7 @@ func TestSimulatedUserFactsStayWithinTheirCountAndSize(t *testing.T) {
 	facts := func(n, size int) *[]string {
 		out := make([]string, n)
 		for i := range out {
-			out[i] = strings.Repeat("x", size)
+			out[i] = strings.Repeat("長", size)
 		}
 		return &out
 	}
@@ -50,8 +50,8 @@ func TestSimulatedUserFactsStayWithinTheirCountAndSize(t *testing.T) {
 	}{
 		{"ten facts", facts(10, 1), true},
 		{"eleven facts", facts(11, 1), false},
-		{"exactly the byte budget", facts(1, MaxSimulatedUserFactsBytes), true},
-		{"one byte over the budget", facts(1, MaxSimulatedUserFactsBytes+1), false},
+		{"exactly the character budget", facts(1, MaxSimulatedUserFactsChars), true},
+		{"one character over the budget", facts(1, MaxSimulatedUserFactsChars+1), false},
 		{"a blank fact", &[]string{"本期用水 45 度", "  "}, false},
 		{"an empty list removes the person", &[]string{}, true},
 	}

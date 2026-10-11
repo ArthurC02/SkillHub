@@ -5,17 +5,19 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
-const maxSettingsReasonBytes = 1000
+const maxSettingsReasonChars = limits.SetJudgePanelBodyNoteMaxLength
 
-var ErrSettingsReasonRequired = errors.New("eval: a settings change needs a reason of at most 1000 bytes")
+var ErrSettingsReasonRequired = errors.New("eval: a settings change needs a reason of at most 1000 characters")
 
 type Settings struct {
 	JudgePanel bool
@@ -43,7 +45,7 @@ func (s *Service) JudgePanelEnabled(ctx context.Context) (bool, error) {
 
 func (s *Service) SetJudgePanel(ctx context.Context, operator pgtype.UUID, on bool, reason string) (Settings, error) {
 	reason = strings.TrimSpace(reason)
-	if reason == "" || len(reason) > maxSettingsReasonBytes {
+	if reason == "" || utf8.RuneCountInString(reason) > maxSettingsReasonChars {
 		return Settings{}, ErrSettingsReasonRequired
 	}
 	var updated Settings

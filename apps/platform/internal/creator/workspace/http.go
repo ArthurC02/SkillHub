@@ -12,10 +12,12 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
 const (
@@ -56,7 +58,7 @@ func (h *Handler) Mount(mux *http.ServeMux) {
 }
 
 const (
-	maxDevLoginNameBytes    = 64
+	maxDevLoginNameChars    = limits.DevLoginBodyUserMaxLength
 	maxDevLoginBodyBytes    = 4096
 	loginStateMaxAgeSeconds = 600
 )
@@ -70,7 +72,7 @@ func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = "dev"
 	}
-	if len(name) > maxDevLoginNameBytes {
+	if utf8.RuneCountInString(name) > maxDevLoginNameChars {
 		httpx.WriteError(w, http.StatusBadRequest, "使用者名稱最多 64 個字元")
 		return
 	}

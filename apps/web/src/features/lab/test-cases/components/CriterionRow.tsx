@@ -1,3 +1,4 @@
+import { AcceptanceCriterionTextMaxLength } from "@skillhub/api-client-ts/limits";
 import { formatAt } from "../../../../shared/ui/Timestamp.model";
 import { useState } from "react";
 import { useCriterionAction } from "../../testcases.service";
@@ -40,7 +41,7 @@ export function CriterionRow({
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         size={50}
-        maxLength={2000}
+        maxLength={AcceptanceCriterionTextMaxLength}
       />
       <p className="note">狀態：{criterionState(criterion)}</p>
       <CheckSummary check={criterion.check} />

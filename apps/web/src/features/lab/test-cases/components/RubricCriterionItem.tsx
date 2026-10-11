@@ -1,3 +1,4 @@
+import { RubricItemTextMaxLength } from "@skillhub/api-client-ts/limits";
 import type { RubricItem } from "../../testcases.service";
 
 export function RubricCriterionItem({
@@ -24,7 +25,7 @@ export function RubricCriterionItem({
         id={`rubric-${criterionId}`}
         rows={3}
         cols={60}
-        maxLength={2000}
+        maxLength={RubricItemTextMaxLength}
         value={item?.text ?? ""}
         onChange={(e) => onUpdate({ text: e.target.value })}
         readOnly={pending}

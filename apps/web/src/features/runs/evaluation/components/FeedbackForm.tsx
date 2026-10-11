@@ -1,3 +1,4 @@
+import { SetEvaluationFeedbackBodyCommentMaxLength } from "@skillhub/api-client-ts/limits";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { useState } from "react";
@@ -36,7 +37,7 @@ export function FeedbackForm({
       <textarea
         id="feedback-comment"
         rows={3}
-        maxLength={2000}
+        maxLength={SetEvaluationFeedbackBodyCommentMaxLength}
         value={comment}
         onChange={(e) => setComment(e.target.value)}
       />

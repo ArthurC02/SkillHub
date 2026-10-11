@@ -45,7 +45,7 @@ export interface UpdateTestCaseRequest {
      * this person with these facts, frozen with the rest of the test case, up
      * to the conversation's round limit. An empty list means nobody answers
      * for the person, and the trial waits for a real answer. At most 1500
-     * bytes in all.
+     * characters in all.
      * 
      */
     simulatedUserFacts?: Array<string>;

@@ -1,11 +1,11 @@
+import { ContinueRunBodyAnswersItemMaxLength } from "@skillhub/api-client-ts/limits";
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { useContinueRun } from "../../runs.service";
 import type { TraceSummary } from "../../trace.service";
 
-const MAX_ANSWER_BYTES = 2000;
-const byteLength = (text: string) => new TextEncoder().encode(text).length;
+const characterCount = (text: string) => [...text].length;
 
 const failureMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -21,7 +21,9 @@ export function AnswerQuestions({
   const continuation = useContinueRun(runId);
   const trimmed = answers.map((answer) => answer.trim());
   const blank = trimmed.some((answer) => answer === "");
-  const tooLong = trimmed.some((answer) => byteLength(answer) > MAX_ANSWER_BYTES);
+  const tooLong = trimmed.some(
+    (answer) => characterCount(answer) > ContinueRunBodyAnswersItemMaxLength,
+  );
   const blocked = blank || tooLong;
 
   const setAnswer = (index: number, value: string) => {
@@ -82,7 +84,7 @@ export function AnswerQuestions({
           <p id={`answer-questions-${runId}-why`} className="note">
             {blank
               ? "「送出回答並繼續試跑」要等每一題都回答。"
-              : `每個回答最多 ${MAX_ANSWER_BYTES} 位元組。`}
+              : `每個回答最多 ${ContinueRunBodyAnswersItemMaxLength} 個字。`}
           </p>
         )}
         {continuation.error && (

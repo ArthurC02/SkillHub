@@ -218,11 +218,11 @@ func TestSanitizeFileName(t *testing.T) {
 }
 
 func TestSanitizeFileNameCutsToBytesWithoutHalvingARune(t *testing.T) {
-	long := strings.Repeat("\u9577", MaxNameBytes) + ".csv"
+	long := strings.Repeat("\u9577", maxStoredFileNameBytes) + ".csv"
 
 	got := sanitizeFileName(long)
-	if len(got) > MaxNameBytes {
-		t.Fatalf("name is %d bytes, over the %d cap", len(got), MaxNameBytes)
+	if len(got) > maxStoredFileNameBytes {
+		t.Fatalf("name is %d bytes, over the %d cap", len(got), maxStoredFileNameBytes)
 	}
 	if !utf8.ValidString(got) {
 		t.Fatalf("sanitizeFileName produced invalid UTF-8: %q", got)

@@ -1,9 +1,8 @@
+import { SimulatedUserFactsMaxItems } from "@skillhub/api-client-ts/limits";
 import { useState } from "react";
 import { useUpdateTestCase } from "../../testcases.service";
 import type { TestCase } from "../../testcases.service";
 import { MutationError } from "./MutationError";
-
-const MAX_FACTS = 10;
 
 function factsOf(text: string) {
   return text
@@ -16,7 +15,7 @@ export function SimulatedUserForm({ testCase }: { testCase: TestCase }) {
   const [text, setText] = useState(testCase.simulated_user_facts.join("\n"));
   const save = useUpdateTestCase(testCase.test_case_id);
   const facts = factsOf(text);
-  const tooMany = facts.length > MAX_FACTS;
+  const tooMany = facts.length > SimulatedUserFactsMaxItems;
 
   return (
     <>
@@ -42,8 +41,8 @@ export function SimulatedUserForm({ testCase }: { testCase: TestCase }) {
         <br />
         <span id="simulated-user-limit" className="note" role={tooMany ? "status" : undefined}>
           {tooMany
-            ? `目前 ${facts.length} 行，最多 ${MAX_FACTS} 行。`
-            : `最多 ${MAX_FACTS} 行，合計最多 1500 bytes。`}
+            ? `目前 ${facts.length} 行，最多 ${SimulatedUserFactsMaxItems} 行。`
+            : `最多 ${SimulatedUserFactsMaxItems} 行，合計最多 1500 個字。`}
         </span>
       </p>
       <button

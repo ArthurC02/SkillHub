@@ -3,15 +3,17 @@ package eval
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
 const (
 	MaxCheckNodes      = 50
 	MaxCheckDepth      = 8
-	MaxCheckValues     = 20
-	MaxCheckValueBytes = 200
+	MaxCheckValues     = limits.CriterionCheckValuesMaxItems
+	MaxCheckValueChars = limits.CriterionCheckValuesItemMaxLength
 	CheckItem          = "{item}"
 )
 
@@ -143,8 +145,8 @@ func normalizedValues(raw []string) ([]string, error) {
 		if v == "" {
 			return nil, fmt.Errorf("%w: 檢查的值不能空白", ErrInvalidCheck)
 		}
-		if len(v) > MaxCheckValueBytes {
-			return nil, fmt.Errorf("%w: 每個檢查的值最多 %d bytes", ErrInvalidCheck, MaxCheckValueBytes)
+		if utf8.RuneCountInString(v) > MaxCheckValueChars {
+			return nil, fmt.Errorf("%w: 每個檢查的值最多 %d 個字", ErrInvalidCheck, MaxCheckValueChars)
 		}
 		values = append(values, v)
 	}
