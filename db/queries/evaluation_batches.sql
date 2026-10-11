@@ -29,8 +29,7 @@ FROM evaluation_batch_items i
 JOIN evaluation_batches b ON b.id = i.batch_id AND b.workspace_id = i.workspace_id
 WHERE b.workspace_id = @workspace_id AND b.status = 'launching' AND i.run_id IS NULL
 ORDER BY b.created_at, i.trial, i.position, i.skill_withheld
-LIMIT 1
-FOR UPDATE OF i SKIP LOCKED;
+LIMIT 1;
 
 -- name: LinkBatchItemRun :execrows
 UPDATE evaluation_batch_items SET run_id = @run_id

@@ -45,26 +45,37 @@ func (s *BatchService) settleBatches(ctx context.Context, workspaceID pgtype.UUI
 	if err != nil {
 		return err
 	}
+	var failed []error
 	for _, batch := range batches {
-		open := !batch.launched
-		for _, runID := range batch.runIDs {
-			end := ends[runID]
-			trialOpen, err := s.answerTrial(ctx, workspaceID, batch.actor, end, facts[end.StartSnapshotID])
-			if errors.Is(err, ErrRunMustWait) {
-				return nil
-			}
-			if err != nil {
-				return err
-			}
-			open = open || trialOpen
+		err := s.settleBatch(ctx, workspaceID, batch, ends, facts)
+		if errors.Is(err, ErrRunMustWait) {
+			break
 		}
-		if !open {
-			if _, err := s.queries().MarkBatchSettled(ctx, gen.MarkBatchSettledParams{ID: batch.id, WorkspaceID: workspaceID}); err != nil {
-				return err
-			}
+		if err != nil {
+			failed = append(failed, err)
 		}
 	}
-	return nil
+	return errors.Join(failed...)
+}
+
+func (s *BatchService) settleBatch(
+	ctx context.Context, workspaceID pgtype.UUID, batch *unsettledBatch,
+	ends map[pgtype.UUID]ChainEnd, facts map[pgtype.UUID][]string,
+) error {
+	open := !batch.launched
+	for _, runID := range batch.runIDs {
+		end := ends[runID]
+		trialOpen, err := s.answerTrial(ctx, workspaceID, batch.actor, end, facts[end.StartSnapshotID])
+		if err != nil {
+			return err
+		}
+		open = open || trialOpen
+	}
+	if open {
+		return nil
+	}
+	_, err := s.queries().MarkBatchSettled(ctx, gen.MarkBatchSettledParams{ID: batch.id, WorkspaceID: workspaceID})
+	return err
 }
 
 func (s *BatchService) unsettledBatches(ctx context.Context, workspaceID pgtype.UUID) ([]*unsettledBatch, []pgtype.UUID, error) {

@@ -243,13 +243,18 @@ func (s *Service) HasCurrentEvaluation(ctx context.Context, workspaceID, runID p
 	if s == nil || s.Pool == nil {
 		return false, errors.New("evaluation persistence is not configured")
 	}
-	_, err := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
+	_, found, err := currentEvaluation(ctx, s.queries(), workspaceID, runID)
+	return found, err
+}
+
+func currentEvaluation(ctx context.Context, q *gen.Queries, workspaceID, runID pgtype.UUID) (gen.Evaluation, bool, error) {
+	row, err := q.GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
+		return row, false, nil
 	}
-	return err == nil, err
+	return row, err == nil, err
 }
 
 type evaluationRef struct {
@@ -344,12 +349,12 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 		return nil
 	}
 
-	if current, currentErr := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
-		RunID: runID, WorkspaceID: workspaceID,
-	}); currentErr == nil && Status(current.Status).AwaitsTheJudge() {
+	current, found, err := currentEvaluation(ctx, s.queries(), workspaceID, runID)
+	if err != nil {
+		return err
+	}
+	if found && Status(current.Status).AwaitsTheJudge() {
 		return nil
-	} else if currentErr != nil && !errors.Is(currentErr, pgx.ErrNoRows) {
-		return currentErr
 	}
 
 	ev, err := s.begin(ctx, m)
@@ -434,16 +439,13 @@ func (s *Service) settleJudgement(ctx context.Context, m material, ev gen.Evalua
 }
 
 func (s *Service) recoverAttempt(ctx context.Context, workspaceID, runID pgtype.UUID) error {
-	current, err := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
-		RunID: runID, WorkspaceID: workspaceID,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return s.Evaluate(ctx, workspaceID, runID)
-	}
-	if err != nil {
+	current, found, err := currentEvaluation(ctx, s.queries(), workspaceID, runID)
+	switch {
+	case err != nil:
 		return err
-	}
-	if !Status(current.Status).AwaitsTheJudge() {
+	case !found:
+		return s.Evaluate(ctx, workspaceID, runID)
+	case !Status(current.Status).AwaitsTheJudge():
 		return nil
 	}
 	return s.recoverEvaluation(ctx, workspaceID, current.ID, runID)
@@ -452,17 +454,9 @@ func (s *Service) recoverAttempt(ctx context.Context, workspaceID, runID pgtype.
 func (s *Service) recoverEvaluation(
 	ctx context.Context, workspaceID, evaluationID, runID pgtype.UUID,
 ) error {
-	current, err := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
-		RunID: runID, WorkspaceID: workspaceID,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
+	current, found, err := currentEvaluation(ctx, s.queries(), workspaceID, runID)
+	if err != nil || !found || current.ID != evaluationID || !Status(current.Status).AwaitsTheJudge() {
 		return err
-	}
-	if current.ID != evaluationID || !Status(current.Status).AwaitsTheJudge() {
-		return nil
 	}
 	m, err := s.gather(ctx, workspaceID, runID)
 	if errors.Is(err, ErrNotFound) {

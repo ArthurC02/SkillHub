@@ -3,6 +3,7 @@ package apiserver_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"slices"
 	"strings"
@@ -108,6 +109,28 @@ func TestABatchAnswersAQuestionAsTheSimulatedPersonOnlyWhereTheTestCaseHasFacts(
 	}
 	if batchSettled(t, pool, batchID) {
 		t.Error("the batch settled while the answered trial's next run has not ended")
+	}
+}
+
+func TestOneBatchFailingToAnswerLeavesTheOtherBatchesToSettle(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-simulated-isolated")
+	failing := seedBatchByCreator(t, pool, f, seedFactsAskingRun(t, pool, f, waterFacts, "本期用了幾度？"))
+	mustExec(t, pool, `UPDATE evaluation_batches SET created_at = now() - interval '1 minute' WHERE id = $1`, mustUUID(t, failing))
+	quiet := seedBatchByCreator(t, pool, f, seedAskingRun(t, pool, f, "本期用了幾度？"))
+
+	broken := errors.New("connection reset")
+	isolated := *a.batches
+	isolated.Ports.AnswerRun = func(context.Context, batch.BatchAnswer) error { return broken }
+	if err := isolated.AdvanceBatches(context.Background(), mustUUID(t, f.workspaceID)); !errors.Is(err, broken) {
+		t.Fatalf("advance = %v, want the failed answer returned so the round is retried", err)
+	}
+	if batchSettled(t, pool, failing) {
+		t.Error("the batch whose answer failed settled")
+	}
+	if !batchSettled(t, pool, quiet) {
+		t.Error("the batch that owed no answer did not settle because another batch's answer failed")
 	}
 }
 

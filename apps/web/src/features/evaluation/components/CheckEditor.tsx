@@ -1,5 +1,5 @@
 import { CriterionCheckValuesItemMaxLength } from "@skillhub/api-client-ts/limits";
-import { Suspense, lazy, useState } from "react";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
@@ -17,9 +17,9 @@ import {
   type Path,
 } from "../check.model";
 import { useCheckKinds, useGraders, type Grader } from "../evaluation.service";
+import { CheckFlow } from "./CheckFlow";
+import { KindPicker } from "./KindPicker";
 import "./CheckEditor.css";
-
-const CheckFlow = lazy(() => import("./CheckFlow").then((m) => ({ default: m.CheckFlow })));
 
 type Palette = { kinds: CheckKind[]; byKind: Map<string, CheckKind>; graders: Grader[] };
 
@@ -33,39 +33,6 @@ function describe(node: CheckNode, palette: Palette): string {
   const shown = values.filter((v) => v.trim() !== "").join("、");
   const atLeast = node.at_least ? `（至少 ${node.at_least} 個）` : "";
   return shown ? `${label}：${shown}${atLeast}` : label;
-}
-
-function KindPicker({
-  id,
-  label,
-  kinds,
-  action,
-  onPick,
-}: {
-  id: string;
-  label: string;
-  kinds: CheckKind[];
-  action: string;
-  onPick: (kind: CheckKind) => void;
-}) {
-  const [choice, setChoice] = useState(kinds[0]?.kind ?? "");
-  const kind = kinds.find((k) => k.kind === choice);
-  return (
-    <p className="check-editor-picker">
-      <label htmlFor={id}>{label}</label>{" "}
-      <select id={id} value={choice} onChange={(e) => setChoice(e.target.value)}>
-        {kinds.map((k) => (
-          <option key={k.kind} value={k.kind}>
-            {k.category === "composite" ? `組合：${k.label}` : k.label}
-          </option>
-        ))}
-      </select>{" "}
-      <button type="button" disabled={!kind} onClick={() => kind && onPick(kind)}>
-        {action}
-      </button>
-      {kind && <span className="note"> {kind.description}</span>}
-    </p>
-  );
 }
 
 function ValuesField({
@@ -270,11 +237,11 @@ export function CheckEditor({
   value,
   onChange,
 }: {
-  value: CheckNode | null;
+  value: CheckNode;
   onChange: (next: CheckNode | null) => void;
 }) {
   const kinds = useCheckKinds();
-  const graders = useGraders("workspace", value !== null);
+  const graders = useGraders("workspace");
   const [selected, setSelected] = useState<Path>([]);
 
   if (kinds.isPending) return <Loading what="檢查方式" />;
@@ -286,23 +253,6 @@ export function CheckEditor({
     graders: graders.data?.graders ?? [],
   };
 
-  if (!value) {
-    return (
-      <div className="check-editor">
-        <KindPicker
-          id="check-editor-root"
-          label="從哪一種節點開始"
-          kinds={palette.kinds}
-          action="開始設計"
-          onPick={(kind) => {
-            onChange(emptyNode(kind));
-            setSelected([]);
-          }}
-        />
-      </div>
-    );
-  }
-
   const found = problems(value, palette.kinds, {
     maxNodes: kinds.data.max_nodes,
     maxDepth: kinds.data.max_depth,
@@ -313,15 +263,13 @@ export function CheckEditor({
 
   return (
     <div className="check-editor">
-      <Suspense fallback={<Loading what="檢查的流程圖" />}>
-        <CheckFlow
-          tree={value}
-          describe={describeAt}
-          selected={current}
-          flagged={flagged}
-          onSelect={setSelected}
-        />
-      </Suspense>
+      <CheckFlow
+        tree={value}
+        describe={describeAt}
+        selected={current}
+        flagged={flagged}
+        onSelect={setSelected}
+      />
       <div className="check-editor-panel">
         <ol className="check-editor-outline" aria-label="檢查的結構">
           <Outline
