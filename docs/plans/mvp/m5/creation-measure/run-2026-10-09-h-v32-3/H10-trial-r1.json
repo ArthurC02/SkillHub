@@ -1,0 +1,225 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆計算以下場地包場費用，列出時數費、器材費、小計及套用上限後的應收總額：\n1. 包場 0 小時，器材 0 件\n2. 包場 1 小時，器材 1 件\n3. 包場 2 小時，器材 5 件\n4. 包場 2.5 小時，器材 6 件\n5. 包場 4 小時，器材 10 件\n6. 包場 4.5 小時，器材 11 件\n7. 包場 8 小時，器材 20 件",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 筆（0 小時、0 件）輸出時數費 0 元、器材費 0 元、小計與應收總額皆為 0 元。"
+    },
+    {
+      "text": "試跑輸入第 2、3 筆（分別為 1 小時與 2 小時）均輸出時數費 800 元；其器材費均為 200 元，小計與應收總額均為 1,000 元。"
+    },
+    {
+      "text": "試跑輸入第 4、5 筆（分別為 2.5 小時與 4 小時）均輸出時數費 1,400 元；第 4 筆器材費為 400 元、小計與應收總額為 1,800 元，第 5 筆器材費為 400 元、小計與應收總額為 1,800 元。"
+    },
+    {
+      "text": "試跑輸入第 6、7 筆（分別為 4.5 小時與 8 小時）時數費分別為 1,550 元與 2,600 元，展現超過 4 小時部分按比例加收每小時 300 元。"
+    },
+    {
+      "text": "試跑輸入第 2、3、4、5、6、7 筆（器材件數分別為 1、5、6、10、11、20）器材費依序為 200、200、400、400、450、900 元。"
+    },
+    {
+      "text": "試跑輸入第 6 筆輸出時數費 1,550 元、器材費 450 元、小計與應收總額均為 2,000 元，顯示兩項獨立計費後相加。"
+    },
+    {
+      "text": "試跑輸入第 7 筆輸出時數費 2,600 元、器材費 900 元、小計 3,500 元，並將應收總額封頂為 3,000 元。"
+    }
+  ],
+  "final_output": "| 筆次 | 包場時數 | 器材件數 | 時數費 | 器材費 | 未套上限小計 | 套用上限後應收總額 |\n|---|---:|---:|---:|---:|---:|---:|\n| 1 | 0 小時 | 0 件 | NT$0 | NT$0 | NT$0 | NT$0 |\n| 2 | 1 小時 | 1 件 | NT$800 | NT$200 | NT$1,000 | NT$1,000 |\n| 3 | 2 小時 | 5 件 | NT$800 | NT$200 | NT$1,000 | NT$1,000 |\n| 4 | 2.5 小時 | 6 件 | NT$1,400 | NT$400 | NT$1,800 | NT$1,800 |\n| 5 | 4 小時 | 10 件 | NT$1,400 | NT$400 | NT$1,800 | NT$1,800 |\n| 6 | 4.5 小時 | 11 件 | NT$1,550 | NT$450 | NT$2,000 | NT$2,000 |\n| 7 | 8 小時 | 20 件 | NT$2,600 | NT$900 | NT$3,500 | NT$3,000 |\n\n計費採用已確認的規則，未加入其他費用、折扣或稅金。零時數或零件數的該項費用為零；大於零且不超過兩小時按最低時數級距；小數時數按比例計算超過四小時部分的加收費；器材件數須為整數。上表應收總額已套用上限。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6a3816c7-d35e-4148-b572-98e355919723",
+    "run_id": "852c8b75-1753-49b1-ba27-b52bd82e4d77",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七項驗收標準均通過。最終答覆逐筆列出費用與應收總額，第 7 筆亦正確套用 3,000 元上限。",
+    "criterion_results": [
+      {
+        "criterion_id": "6230de24-6b94-4710-a639-97faeca70abe",
+        "text": "試跑輸入第 1 筆（0 小時、0 件）輸出時數費 0 元、器材費 0 元、小計與應收總額皆為 0 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆的時數費、器材費、小計及應收總額均為 0 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 0 小時 | 0 件 | NT$0 | NT$0 | NT$0 | NT$0 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4efeffb5-fb55-405e-9ce0-0b4297475069",
+        "text": "試跑輸入第 2、3 筆（分別為 1 小時與 2 小時）均輸出時數費 800 元；其器材費均為 200 元，小計與應收總額均為 1,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2、3 筆均列出時數費 800 元、器材費 200 元，小計及應收總額均為 1,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 1 小時 | 1 件 | NT$800 | NT$200 | NT$1,000 | NT$1,000 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 2 小時 | 5 件 | NT$800 | NT$200 | NT$1,000 | NT$1,000 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e1c1b551-105c-40d6-8419-00937c2a5b79",
+        "text": "試跑輸入第 4、5 筆（分別為 2.5 小時與 4 小時）均輸出時數費 1,400 元；第 4 筆器材費為 400 元、小計與應收總額為 1,800 元，第 5 筆器材費為 400 元、小計與應收總額為 1,800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4、5 筆均列出時數費 1,400 元、器材費 400 元，小計及應收總額均為 1,800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 2.5 小時 | 6 件 | NT$1,400 | NT$400 | NT$1,800 | NT$1,800 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 5 | 4 小時 | 10 件 | NT$1,400 | NT$400 | NT$1,800 | NT$1,800 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "de4e9c43-d42f-498d-b8d5-64cb9fb15abc",
+        "text": "試跑輸入第 6、7 筆（分別為 4.5 小時與 8 小時）時數費分別為 1,550 元與 2,600 元，展現超過 4 小時部分按比例加收每小時 300 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6、7 筆的時數費分別為 1,550 元及 2,600 元；相較 4 小時的 1,400 元，超過 4 小時的部分符合每小時按比例加收 300 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 5 | 4 小時 | 10 件 | NT$1,400 | NT$400 | NT$1,800 | NT$1,800 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 6 | 4.5 小時 | 11 件 | NT$1,550 | NT$450 | NT$2,000 | NT$2,000 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 7 | 8 小時 | 20 件 | NT$2,600 | NT$900 | NT$3,500 | NT$3,000 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7e03f335-c150-4890-bcc8-9f7517e235df",
+        "text": "試跑輸入第 2、3、4、5、6、7 筆（器材件數分別為 1、5、6、10、11、20）器材費依序為 200、200、400、400、450、900 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 至第 7 筆的器材費依序為 200、200、400、400、450、900 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 1 小時 | 1 件 | NT$800 | NT$200 | NT$1,000 | NT$1,000 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 2 小時 | 5 件 | NT$800 | NT$200 | NT$1,000 | NT$1,000 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 2.5 小時 | 6 件 | NT$1,400 | NT$400 | NT$1,800 | NT$1,800 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 5 | 4 小時 | 10 件 | NT$1,400 | NT$400 | NT$1,800 | NT$1,800 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 6 | 4.5 小時 | 11 件 | NT$1,550 | NT$450 | NT$2,000 | NT$2,000 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 7 | 8 小時 | 20 件 | NT$2,600 | NT$900 | NT$3,500 | NT$3,000 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1e37acda-349f-4b07-adfd-43a91a188d3f",
+        "text": "試跑輸入第 6 筆輸出時數費 1,550 元、器材費 450 元、小計與應收總額均為 2,000 元，顯示兩項獨立計費後相加。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 筆分列時數費 1,550 元與器材費 450 元，兩者相加的小計及應收總額均為 2,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 6 | 4.5 小時 | 11 件 | NT$1,550 | NT$450 | NT$2,000 | NT$2,000 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "33313d95-9b79-4c36-833e-eb92a3bbcd78",
+        "text": "試跑輸入第 7 筆輸出時數費 2,600 元、器材費 900 元、小計 3,500 元，並將應收總額封頂為 3,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 7 筆分列時數費 2,600 元、器材費 900 元及小計 3,500 元，應收總額封頂為 3,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 7 | 8 小時 | 20 件 | NT$2,600 | NT$900 | NT$3,500 | NT$3,000 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1527 input and 746 output tokens on skillhub-run; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 34,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

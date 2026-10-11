@@ -1,0 +1,201 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下屋主資料製作工程報價提案，並整理師傅丈量聯絡訊息草稿與建材採購清單。\n屋主：林小姐；工程地址：台北市大安區和平東路二段100號。工程：客廳與臥室地磚施工共32平方公尺，施工單價每平方公尺900元；牆面油漆共80平方公尺，施工單價每平方公尺180元；木作收納櫃一式25,000元。報價稅率5%，幣別新台幣。施工日期、付款條件、保固條件尚未提供，請列為待確認。\n丈量師傅：陳師傅，電話0912-345-678。可丈量時段：10月12日上午或10月13日下午，尚未確認哪個時段。\n建材供應商：大成建材。欲採購：地磚32平方公尺，單價每平方公尺550元；乳膠漆4桶，單價每桶900元；水泥10包，單價每包200元。供應商系統帳號、材料品牌規格、運送費及供貨日期尚未提供。工程報價與建材採購金額分開列示。",
+  "acceptance_criteria": [
+    {
+      "text": "對範例輸入產生繁體中文提案，列出工程項目、報價明細、小計、依指定稅率計算的稅額與總額，並將未提供的施工日期、付款條件及保固條件標示為待確認。"
+    },
+    {
+      "text": "對範例輸入的工程報價計算正確：地磚施工32平方公尺×900元＝28,800元，油漆80平方公尺×180元＝14,400元，木作一式25,000元；小計68,200元、5%稅額3,410元、含稅總額71,610元。"
+    },
+    {
+      "text": "產生給陳師傅的丈量聯絡訊息草稿，包含其姓名、電話、屋主提供的可丈量時段及地址；明確標示為待使用者自行聯絡，不表示已撥打或已約定。"
+    },
+    {
+      "text": "產生分開於工程報價的建材採購清單，逐項列出範例中的建材、數量、單位、單價與小計；採購清單金額為地磚17,600元、乳膠漆3,600元、水泥2,000元，合計23,200元，且不把該金額混入工程報價總額。"
+    },
+    {
+      "text": "清楚標示供應商、材料規格或交易條件中範例未提供的內容為待確認；不得聲稱已登入供應商系統或已送出訂單。"
+    }
+  ],
+  "final_output": "# 裝潢工程報價提案\n\n**屋主：**林小姐  \n**工程地址：**台北市大安區和平東路二段100號  \n**幣別：**新台幣（NTD）\n\n## 工程範圍與報價\n\n| 工程項目 | 數量 | 單位 | 單價 | 小計 |\n|---|---:|---|---:|---:|\n| 客廳與臥室地磚施工 | 32 | 平方公尺 | NT$900／平方公尺 | NT$28,800 |\n| 牆面油漆 | 80 | 平方公尺 | NT$180／平方公尺 | NT$14,400 |\n| 木作收納櫃 | 一式 | — | NT$25,000／式 | NT$25,000 |\n\n- **工程小計（不含材料採購）：NT$68,200**\n- **稅率：5%**\n- **稅額：NT$3,410**\n- **工程含稅總額：NT$71,610**\n\n## 待確認事項\n\n- 施工日期：未提供（待確認）\n- 付款條件：未提供（待確認）\n- 保固條件：未提供（待確認）\n- 工程規格：地磚與油漆的品牌、型號或其他規格未提供（待確認）；木作收納櫃的尺寸與規格未提供（待確認）\n- 丈量日期的年份未提供；10月12日上午與10月13日下午兩個時段尚未確認選擇哪一個\n- 建材品牌、規格、運送費、供貨日期及其他交易條件：未提供（待確認）\n\n## 丈量聯絡訊息草稿\n\n\u003e 陳師傅您好，我是林小姐，想請您協助丈量客廳與臥室地磚、牆面油漆及木作收納櫃工程。  \n\u003e   \n\u003e 工程地址：台北市大安區和平東路二段100號  \n\u003e 可丈量時段：10月12日上午或10月13日下午（年份及實際選定時段尚未確認）  \n\u003e   \n\u003e 想請問您哪個時段方便丈量？謝謝。  \n\u003e   \n\u003e 聯絡電話：0912-345-678\n\n## 建材採購清單（與工程報價分開）\n\n**供應商：大成建材**\n\n| 材料 | 數量 | 單位 | 單價 | 小計 |\n|---|---:|---|---:|---:|\n| 地磚 | 32 | 平方公尺 | NT$550／平方公尺 | NT$17,600 |\n| 乳膠漆 | 4 | 桶 | NT$900／桶 | NT$3,600 |\n| 水泥 | 10 | 包 | NT$200／包 | NT$2,000 |\n| **採購金額小計** |  |  |  | **NT$23,200** |\n\n以上採購金額依已提供的材料數量及單價計算，**與工程報價分開列示**；未加入未提供的運送費，也未推定價格是否包含稅額。\n\n- 供應商系統帳號：未提供（待確認）\n- 材料品牌及規格：未提供（待確認）\n- 運送費：未提供（待確認）\n- 供貨日期：未提供（待確認）\n- 其他交易條件：未提供（待確認）\n\n電話聯絡：本提案未代為致電；請使用者自行聯絡陳師傅。  \n供應商系統登入及下單：本提案未登入或下單；請使用者自行處理。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3f354c8a-bbd3-48e7-91ff-770ebf057f27",
+    "run_id": "88462023-7c09-453d-8a6d-fe79bf3e0f19",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收標準均已達成。提案的工程與建材金額計算正確且分開列示，丈量訊息及未提供事項也有適當標示。",
+    "criterion_results": [
+      {
+        "criterion_id": "bd883975-0833-4df9-9764-7a01f3a09331",
+        "text": "對範例輸入產生繁體中文提案，列出工程項目、報價明細、小計、依指定稅率計算的稅額與總額，並將未提供的施工日期、付款條件及保固條件標示為待確認。",
+        "result": "passed",
+        "source": "model",
+        "reason": "提案以繁體中文列出工程項目及報價，並列明小計、5%稅額、含稅總額；施工日期、付款與保固條件均標為待確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 客廳與臥室地磚施工 | 32 | 平方公尺 | NT$900／平方公尺 | NT$28,800 |\n| 牆面油漆 | 80 | 平方公尺 | NT$180／平方公尺 | NT$14,400 |\n| 木作收納櫃 | 一式 | — | NT$25,000／式 | NT$25,000 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **工程小計（不含材料採購）：NT$68,200**\n- **稅率：5%**\n- **稅額：NT$3,410**\n- **工程含稅總額：NT$71,610**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 施工日期：未提供（待確認）\n- 付款條件：未提供（待確認）\n- 保固條件：未提供（待確認）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "354f4cc2-4882-48f6-94ff-c64170f0c4c9",
+        "text": "對範例輸入的工程報價計算正確：地磚施工32平方公尺×900元＝28,800元，油漆80平方公尺×180元＝14,400元，木作一式25,000元；小計68,200元、5%稅額3,410元、含稅總額71,610元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三項工程明細及小計、5%稅額與含稅總額均符合指定計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 客廳與臥室地磚施工 | 32 | 平方公尺 | NT$900／平方公尺 | NT$28,800 |\n| 牆面油漆 | 80 | 平方公尺 | NT$180／平方公尺 | NT$14,400 |\n| 木作收納櫃 | 一式 | — | NT$25,000／式 | NT$25,000 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **工程小計（不含材料採購）：NT$68,200**\n- **稅率：5%**\n- **稅額：NT$3,410**\n- **工程含稅總額：NT$71,610**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1d1b98a0-fdc5-4362-8df6-b3d10e318576",
+        "text": "產生給陳師傅的丈量聯絡訊息草稿，包含其姓名、電話、屋主提供的可丈量時段及地址；明確標示為待使用者自行聯絡，不表示已撥打或已約定。",
+        "result": "passed",
+        "source": "model",
+        "reason": "丈量訊息草稿包含陳師傅、電話、地址和兩個可丈量時段，註明時段尚未選定，並要求使用者自行聯絡。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 丈量聯絡訊息草稿",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "\u003e 陳師傅您好，我是林小姐，想請您協助丈量客廳與臥室地磚、牆面油漆及木作收納櫃工程。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "\u003e 工程地址：台北市大安區和平東路二段100號  \n\u003e 可丈量時段：10月12日上午或10月13日下午（年份及實際選定時段尚未確認）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "\u003e 聯絡電話：0912-345-678",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "電話聯絡：本提案未代為致電；請使用者自行聯絡陳師傅。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1ffaba49-4234-4bff-9e82-4dc904eaf225",
+        "text": "產生分開於工程報價的建材採購清單，逐項列出範例中的建材、數量、單位、單價與小計；採購清單金額為地磚17,600元、乳膠漆3,600元、水泥2,000元，合計23,200元，且不把該金額混入工程報價總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "建材清單與工程報價分開，逐項列出數量、單位、單價及正確小計，合計為 NT$23,200，未併入工程總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 建材採購清單（與工程報價分開）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 地磚 | 32 | 平方公尺 | NT$550／平方公尺 | NT$17,600 |\n| 乳膠漆 | 4 | 桶 | NT$900／桶 | NT$3,600 |\n| 水泥 | 10 | 包 | NT$200／包 | NT$2,000 |\n| **採購金額小計** |  |  |  | **NT$23,200** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "以上採購金額依已提供的材料數量及單價計算，**與工程報價分開列示**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "aca16a7d-c4cf-43ff-9828-b77067b2e8f5",
+        "text": "清楚標示供應商、材料規格或交易條件中範例未提供的內容為待確認；不得聲稱已登入供應商系統或已送出訂單。",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單標示供應商為大成建材，將未提供的系統帳號、材料品牌規格、運送費、供貨日期及其他交易條件列為待確認；沒有聲稱已登入或下單。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**供應商：大成建材**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 供應商系統帳號：未提供（待確認）\n- 材料品牌及規格：未提供（待確認）\n- 運送費：未提供（待確認）\n- 供貨日期：未提供（待確認）\n- 其他交易條件：未提供（待確認）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "供應商系統登入及下單：本提案未登入或下單；請使用者自行處理。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1558 input and 2182 output tokens on skillhub-run; reported cost $0.0046 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 49,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

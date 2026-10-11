@@ -1,0 +1,165 @@
+{
+  "round": 0,
+  "sample_input": "客戶資料：阿昌機車行，車牌 ABC-1234，車主王小姐，上次保養 2026-06-15，下次保養日期 2026-12-15，保養費用 800 元（含機油與濾網），機車行電話 02-2345-6789，地址新北市三重區重新路五段 100 號，營業時間 09:00-19:00。請產生提醒簡訊。",
+  "acceptance_criteria": [
+    {
+      "text": "簡訊全文不超過 50 字（含標點、空白與數字）"
+    },
+    {
+      "text": "包含車牌 ABC-1234"
+    },
+    {
+      "text": "包含下次保養日期 12 月 15 日（2026-12-15、2026/12/15 或 12/15 皆可），而且不是上次保養日期 6 月 15 日"
+    },
+    {
+      "text": "包含保養費用 800 元"
+    },
+    {
+      "text": "包含機車行電話 02-2345-6789"
+    },
+    {
+      "text": "輸出只有簡訊本文，沒有任何說明、標題或字數統計（例如「共 N 字」）"
+    }
+  ],
+  "final_output": "提醒ABC-1234 2026-12-15 800 元（含機油與濾網） 02-2345-6789",
+  "artifacts": [
+    "sms.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "e31b6bc1-1683-4ce0-a5a8-42a27dcf392e",
+    "run_id": "0ce2b3b5-41f3-444d-a04e-bf3229ca63a8",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收標準均已達成；最終簡訊為 48 字元，包含指定車牌、下次保養日期、費用與電話，且沒有附加文字。",
+    "criterion_results": [
+      {
+        "criterion_id": "0824535a-2cfa-43d1-af21-3f50bc033476",
+        "text": "簡訊全文不超過 50 字（含標點、空白與數字）",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊全文共 48 字元，未超過 50 字元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "提醒ABC-1234 2026-12-15 800 元（含機油與濾網） 02-2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d02e143b-b595-47b8-ab17-eda3068b7cd0",
+        "text": "包含車牌 ABC-1234",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊包含車牌 ABC-1234。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "ABC-1234",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "11802808-c76e-4254-87dc-1a24b0c05a40",
+        "text": "包含下次保養日期 12 月 15 日（2026-12-15、2026/12/15 或 12/15 皆可），而且不是上次保養日期 6 月 15 日",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊使用下次保養日期 2026-12-15，未使用上次保養日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "提醒ABC-1234 2026-12-15 800 元（含機油與濾網） 02-2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c397ce9b-c0db-4a27-abc3-cb92fb71c02d",
+        "text": "包含保養費用 800 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊包含保養費用 800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "800 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3b55b90d-5c5b-4af3-b1cb-3e787475a4a5",
+        "text": "包含機車行電話 02-2345-6789",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊包含機車行電話 02-2345-6789。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "02-2345-6789",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "df98f6ea-95dc-4354-83da-9fb703a94f4b",
+        "text": "輸出只有簡訊本文，沒有任何說明、標題或字數統計（例如「共 N 字」）",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有簡訊本文，沒有說明、標題或字數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "提醒ABC-1234 2026-12-15 800 元（含機油與濾網） 02-2345-6789",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): sms.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1623 input and 2800 output tokens on skillhub-run; reported cost $0.0056 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

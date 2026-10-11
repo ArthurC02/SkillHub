@@ -195,7 +195,9 @@ test("TEST-009 沒有驗收條件的試跑紀錄會白跑，而這件事要在�
   expect(text()).toContain("不會產生逐條判定");
 });
 
-async function renderLab(search: { version: string | undefined } = { version: VERSION }) {
+async function renderLab(
+  search: { version: string | undefined; against?: string } = { version: VERSION },
+) {
   const params = new URLSearchParams(
     Object.entries(search).filter(([, v]) => v !== undefined) as [string, string][],
   );
@@ -362,6 +364,20 @@ test("02:TEST-005 confirming sends the hash that was shown, then starts the run"
   expect(result?.textContent).toContain("已開始試跑");
   expect(resultLink?.getAttribute("href")).toBe("/runs/run-1");
   expect(document.activeElement).toBe(resultLink);
+  expect(container.querySelector('a[href^="/runs/run-1/compare"]')).toBeNull();
+});
+
+test("EVAL-003 a rerun of an improved version offers the comparison with the run it came from", async () => {
+  stubPlatform();
+  await renderLab({ version: VERSION, against: "run-before" });
+
+  await clickConfirm();
+  await waitFor(() => text().includes("run-1"));
+
+  const compare = Array.from(container.querySelectorAll("a")).find((link) =>
+    link.textContent?.includes("和改版前的那次試跑逐條比較"),
+  );
+  expect(compare?.getAttribute("href")).toBe("/runs/run-1/compare?against=run-before");
 });
 
 test("02:TEST-005 a permission change forces a fresh confirmation instead of reusing the old one", async () => {

@@ -197,6 +197,20 @@ test('a file this session\'s own command changed can then be edited', async ($, 
   expect(edited).toEqual(['Edit'])
 })
 
+test('a file inside a new folder this session\'s own command created can then be edited', async ($, on) => {
+  let created = false
+  const edited: string[] = []
+  world(on, argv => {
+    if (!argv.includes('--porcelain') || !created) return ''
+    if (argv.includes('--')) return '?? docs/pkg/draft.md\0'
+    return argv.includes('--untracked-files=all') ? '?? docs/pkg/draft.md\0?? docs/pkg/proposal.json\0' : '?? docs/pkg/\0'
+  }, '', tool => { if (tool === 'Bash') created = true; else edited.push(tool) })
+  await $.tool.call({ tool: 'Bash', command: 'python tools.py init-change-package --output docs/pkg' })
+  const result = await $.tool.call({ tool: 'Edit', file_path: `${ROOT}/docs/pkg/draft.md`, old_string: 'a', new_string: 'b' })
+  expect(result.deny).toBeUndefined()
+  expect(edited).toEqual(['Edit'])
+})
+
 test('a file another session had already changed is not attributed even if the command touched it again', () => {
   expect(attributedToCommand(' M apps/a.ts\0', ' M apps/a.ts\0')).toEqual([])
   expect(attributedToCommand(' M apps/a.ts\0', 'MM apps/a.ts\0')).toEqual([])

@@ -1,0 +1,144 @@
+{
+  "round": 1,
+  "sample_input": "請把以下活動資料寫成一則適合社群平台發布的宣傳貼文。\n活動名稱：夜讀與城市：在街角找回閱讀\n日期：2026年11月14日\n時間：14:30–16:00\n地點：木頁獨立書店（台北市大同區迪化街一段88號）\n活動介紹：一起閱讀短篇作品，並聊聊城市街角與日常生活。歡迎喜歡閱讀、也喜歡觀察城市的人來書店度過一個午後。",
+  "acceptance_criteria": [
+    {
+      "text": "面對 sample_input，輸出恰為一則繁體中文社群宣傳貼文，語氣親切文藝且不依賴特定平台格式。"
+    },
+    {
+      "text": "貼文完整且逐字保留 sample_input 中的活動名稱「夜讀與城市：在街角找回閱讀」、日期「2026年11月14日」、時間「14:30–16:00」及地點「木頁獨立書店（台北市大同區迪化街一段88號）」，不得遺漏或改寫這四項硬事實。"
+    },
+    {
+      "text": "貼文忠實表達 sample_input 所給的活動介紹：一起閱讀短篇作品，並聊聊城市街角與日常生活；不得添加介紹未支持的活動內容。"
+    },
+    {
+      "text": "貼文不聲稱有 sample_input 未提供的講者、票價、報名方式、名額或其他活動安排。"
+    }
+  ],
+  "final_output": "夜讀與城市：在街角找回閱讀\n\n一起閱讀短篇作品，聊聊城市街角與日常生活。歡迎喜歡閱讀、也喜歡觀察城市的人，來書店度過一個午後。\n\n日期：2026年11月14日  \n時間：14:30–16:00  \n地點：木頁獨立書店（台北市大同區迪化街一段88號）",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ce229eae-9ef0-4dca-aa11-e4c75991e076",
+    "run_id": "56c792cf-9b14-42c5-af13-435859017cbd",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終回覆是一則可供社群發布的繁體中文活動貼文，完整保留四項硬事實，忠實呈現活動介紹，沒有加入未提供的安排。",
+    "criterion_results": [
+      {
+        "criterion_id": "e9bde213-89f0-4f19-9786-c90e6653c62f",
+        "text": "面對 sample_input，輸出恰為一則繁體中文社群宣傳貼文，語氣親切文藝且不依賴特定平台格式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆只有一則繁體中文宣傳貼文，文字親切、帶有閱讀與城市生活的文藝氣息，未依賴特定平台格式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "一起閱讀短篇作品，聊聊城市街角與日常生活。歡迎喜歡閱讀、也喜歡觀察城市的人，來書店度過一個午後。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fda17bca-53f9-4075-9d7a-d68679a72190",
+        "text": "貼文完整且逐字保留 sample_input 中的活動名稱「夜讀與城市：在街角找回閱讀」、日期「2026年11月14日」、時間「14:30–16:00」及地點「木頁獨立書店（台北市大同區迪化街一段88號）」，不得遺漏或改寫這四項硬事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文逐字保留活動名稱、日期、時間及完整地點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "夜讀與城市：在街角找回閱讀",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "日期：2026年11月14日",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "時間：14:30–16:00",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "地點：木頁獨立書店（台北市大同區迪化街一段88號）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "949525ff-35d3-41b5-868f-4e11d7d106b1",
+        "text": "貼文忠實表達 sample_input 所給的活動介紹：一起閱讀短篇作品，並聊聊城市街角與日常生活；不得添加介紹未支持的活動內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文忠實呈現共讀短篇作品、談城市街角與日常生活，以及邀請讀者到書店度過午後；未增添其他活動內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "一起閱讀短篇作品，聊聊城市街角與日常生活。歡迎喜歡閱讀、也喜歡觀察城市的人，來書店度過一個午後。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e94a63d6-f4ca-4a92-bf2d-1fa74767a4ff",
+        "text": "貼文不聲稱有 sample_input 未提供的講者、票價、報名方式、名額或其他活動安排。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終貼文只描述提供的活動內容與基本資訊，沒有聲稱講者、票價、報名方式、名額或額外安排。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "夜讀與城市：在街角找回閱讀\n\n一起閱讀短篇作品，聊聊城市街角與日常生活。歡迎喜歡閱讀、也喜歡觀察城市的人，來書店度過一個午後。\n\n日期：2026年11月14日  \n時間：14:30–16:00  \n地點：木頁獨立書店（台北市大同區迪化街一段88號）",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1492 input and 380 output tokens on skillhub-run; reported cost $0.0029 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

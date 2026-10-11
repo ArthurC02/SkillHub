@@ -75,7 +75,9 @@ const (
 
 	ActionOperatorRefused = "operator.refused"
 
-	ActionModelBudgetSet = "model_budget.set"
+	ActionModelBudgetSet        = "model_budget.set"
+	ActionEvaluationSettingsSet = "evaluation_settings.set"
+	ActionRunSettingsSet        = "run_settings.set"
 
 	ActionCreditGrant   = "credit.grant"
 	ActionAccountLookup = "account.lookup"
@@ -91,6 +93,7 @@ const (
 	ActionAgentDisable      = "platform_agent.disabled"
 	ActionAgentBrakeEngage  = "platform_agent.brake_engaged"
 	ActionAgentBrakeRelease = "platform_agent.brake_released"
+	ActionAgentSpendCapSet  = "platform_agent.spend_cap_set"
 
 	ActionFindingOpen        = "platform_agent_finding.opened"
 	ActionFindingReopen      = "platform_agent_finding.reopened"
@@ -131,7 +134,9 @@ const (
 
 	ResourceDispatch = "dispatch"
 
-	ResourceModelBudget = "model_budget"
+	ResourceModelBudget        = "model_budget"
+	ResourceEvaluationSettings = "evaluation_settings"
+	ResourceRunSettings        = "run_settings"
 
 	ResourceCreditAccount = "credit_account"
 

@@ -1,0 +1,159 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下社區團購訊息，列出各品項數量、單價、小計與商品總額，並標示無法確定的訂購內容。\n阿美：草莓兩盒，每盒120元；豆腐一盒35元；宅配運費60元。\n阿強：草莓一盒120元；豆腐兩盒，每盒35元。\n小林：蘋果三袋，每袋50元；草莓再加一點，單價120元。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑資料中可確認的品項，輸出表格列出品名、合併數量、單價與小計；草莓為3盒、每盒120元、小計360元；豆腐為3盒、每盒35元、小計105元；蘋果為3袋、每袋50元、小計150元。"
+    },
+    {
+      "text": "將不同成員對相同品名、單位與單價的明確訂購數量合併；試跑資料中的草莓數量須由2盒與1盒合併為3盒，豆腐須由1盒與2盒合併為3盒。"
+    },
+    {
+      "text": "商品總額列為615元，並且不把60元宅配運費加進總額；可確認商品小計須算為360+105+150=615元。"
+    },
+    {
+      "text": "將「草莓再加一點」標示為待確認，不猜測數量，也不把它納入草莓數量或商品總額。"
+    }
+  ],
+  "final_output": "| 品名 | 合併數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 草莓 | 3盒 | 120元／盒 | 360元 |\n| 豆腐 | 3盒 | 35元／盒 | 105元 |\n| 蘋果 | 3袋 | 50元／袋 | 150元 |\n\n**商品總額：615元**（不含宅配運費）\n\n**待確認**\n- 小林的「草莓再加一點」：數量不明；「單價120元」是否以盒計也未明示。請確認數量及計價單位，這筆未納入表格與商品總額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c3ca0fc4-71cc-4362-8a6e-13f218221a9c",
+    "run_id": "2bd6e211-6153-4cdc-a801-5977603c007e",
+    "status": "completed",
+    "overall": "met",
+    "summary": "試跑輸出正確合併可確認的訂購數量、列出各商品小計與615元商品總額，排除宅配運費，並將數量不明的追加草莓列為待確認。",
+    "criterion_results": [
+      {
+        "criterion_id": "abd3343a-bf72-42a1-b06e-bfbe42a6cb14",
+        "text": "對試跑資料中可確認的品項，輸出表格列出品名、合併數量、單價與小計；草莓為3盒、每盒120元、小計360元；豆腐為3盒、每盒35元、小計105元；蘋果為3袋、每袋50元、小計150元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格列出三項可確認商品的合併數量、單價及正確小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 草莓 | 3盒 | 120元／盒 | 360元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 豆腐 | 3盒 | 35元／盒 | 105元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 蘋果 | 3袋 | 50元／袋 | 150元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b2e4f068-daca-41b3-b29b-ee7ff026f748",
+        "text": "將不同成員對相同品名、單位與單價的明確訂購數量合併；試跑資料中的草莓數量須由2盒與1盒合併為3盒，豆腐須由1盒與2盒合併為3盒。",
+        "result": "passed",
+        "source": "model",
+        "reason": "計算輸入分別包含草莓2盒與1盒、豆腐1盒與2盒，輸出各合併為3盒。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "--item '草莓|2|盒|120' --item '豆腐|1|盒|35' --item '草莓|1|盒|120' --item '豆腐|2|盒|35'",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 草莓 | 3盒 | 120元／盒 | 360元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 豆腐 | 3盒 | 35元／盒 | 105元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e1bf53f2-011e-45b7-81d4-fbb2d027dd68",
+        "text": "商品總額列為615元，並且不把60元宅配運費加進總額；可確認商品小計須算為360+105+150=615元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三項商品小計為360、105及150元，合計615元；回覆明確註明不含宅配運費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**商品總額：615元**（不含宅配運費）",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "商品總額：615",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1d24e1df-1ac7-480b-b510-74e9fcbe4685",
+        "text": "將「草莓再加一點」標示為待確認，不猜測數量，也不把它納入草莓數量或商品總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "將小林的追加草莓標為待確認，指出數量不明，且明確表示未計入表格及商品總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**待確認**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "小林的「草莓再加一點」：數量不明；「單價120元」是否以盒計也未明示。請確認數量及計價單位，這筆未納入表格與商品總額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1513 input and 789 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

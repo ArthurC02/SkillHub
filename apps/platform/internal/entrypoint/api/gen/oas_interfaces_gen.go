@@ -33,12 +33,20 @@ type ClearSkillRestrictionRes interface {
 	clearSkillRestrictionRes()
 }
 
+type CompareEvaluationBatchesRes interface {
+	compareEvaluationBatchesRes()
+}
+
 type CompareRunsRes interface {
 	compareRunsRes()
 }
 
 type ConfirmRunPreflightRes interface {
 	confirmRunPreflightRes()
+}
+
+type ContinueRunRes interface {
+	continueRunRes()
 }
 
 type CreateBundleVersionRes interface {
@@ -51,6 +59,10 @@ type CreateCreationSessionRes interface {
 
 type CreateDownloadArtifactRes interface {
 	createDownloadArtifactRes()
+}
+
+type CreateEvaluationBatchRes interface {
+	createEvaluationBatchRes()
 }
 
 type CreateSkillVersionFromSuggestionsRes interface {
@@ -185,6 +197,10 @@ type GetDownloadArtifactRes interface {
 	getDownloadArtifactRes()
 }
 
+type GetEvaluationBatchReportRes interface {
+	getEvaluationBatchReportRes()
+}
+
 type GetExposureCaseRes interface {
 	getExposureCaseRes()
 }
@@ -229,6 +245,10 @@ type GetPlatformAgentRunRes interface {
 	getPlatformAgentRunRes()
 }
 
+type GetPlatformSettingsRes interface {
+	getPlatformSettingsRes()
+}
+
 type GetPublicPublicationRes interface {
 	getPublicPublicationRes()
 }
@@ -247,6 +267,10 @@ type GetRunQuotaRes interface {
 
 type GetRunRes interface {
 	getRunRes()
+}
+
+type GetRunSettingsRes interface {
+	getRunSettingsRes()
 }
 
 type GetRunTraceRes interface {
@@ -293,6 +317,10 @@ type LiftDispatchHaltRes interface {
 	liftDispatchHaltRes()
 }
 
+type ListCheckKindsRes interface {
+	listCheckKindsRes()
+}
+
 type ListCreationSessionsRes interface {
 	listCreationSessionsRes()
 }
@@ -307,6 +335,10 @@ type ListDownloadArtifactsRes interface {
 
 type ListDownloadRecordsRes interface {
 	listDownloadRecordsRes()
+}
+
+type ListEvaluationBatchesRes interface {
+	listEvaluationBatchesRes()
 }
 
 type ListExposureQueueRes interface {
@@ -445,8 +477,16 @@ type SearchSkillsWithCorrectedIntentRes interface {
 	searchSkillsWithCorrectedIntentRes()
 }
 
+type SetContinuationRoundsRes interface {
+	setContinuationRoundsRes()
+}
+
 type SetEvaluationFeedbackRes interface {
 	setEvaluationFeedbackRes()
+}
+
+type SetJudgePanelRes interface {
+	setJudgePanelRes()
 }
 
 type SetModelCallBudgetRes interface {
@@ -455,6 +495,10 @@ type SetModelCallBudgetRes interface {
 
 type SetPlatformAgentEnabledRes interface {
 	setPlatformAgentEnabledRes()
+}
+
+type SetPlatformAgentSpendCapRes interface {
+	setPlatformAgentSpendCapRes()
 }
 
 type SetSkillCategoryRes interface {

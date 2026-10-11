@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "租借清單：起日 2026-06-05，租 2 天。桌子 10 張，椅子 40 張，投影機 1 台。對了後面備註又寫桌子 8 張。幫我算總額。",
+  "acceptance_criteria": [
+    {
+      "text": "指出桌子出現 10 張與 8 張兩個不同數量"
+    },
+    {
+      "text": "請使用者確認桌子的正確數量"
+    },
+    {
+      "text": "沒有選定 10 張或 8 張其中一個來算出最終總額"
+    },
+    {
+      "text": "沒有給出一個含桌子的最終總額"
+    }
+  ],
+  "final_output": "租借清單原文：起日 2026-06-05，租 2 天。桌子 10 張，椅子 40 張，投影機 1 台。對了後面備註又寫桌子 8 張。\n\n固定單價：桌子每張每日 200 元；椅子每張每日 30 元；投影機每台每日 1500 元。\n\n清單 1\n資料檢查：\n- 桌子 出現互相矛盾的值 「10 張」、「8 張」；請由你確認應採用的值。\n此清單有待確認或修正的資料，未計算總額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "54940f63-1666-4df9-bb2b-e093e12b2916",
+    "run_id": "48cb66c4-2c2b-474f-9052-13e4c7ea72f3",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項標準均已達成：回覆指出桌子數量矛盾，要求使用者確認，且沒有計算或提供最終總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "e17942be-1c24-4d3f-8a57-a720b27112c4",
+        "text": "指出桌子出現 10 張與 8 張兩個不同數量",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出桌子有「10 張」與「8 張」兩個互相矛盾的數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "桌子 出現互相矛盾的值 「10 張」、「8 張」",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fc8a876e-4903-48e2-8e47-bcda7176b585",
+        "text": "請使用者確認桌子的正確數量",
+        "result": "passed",
+        "source": "model",
+        "reason": "請使用者確認應採用的桌子數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請由你確認應採用的值。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "af0f25a5-9558-4ddf-913d-3af46f6abe72",
+        "text": "沒有選定 10 張或 8 張其中一個來算出最終總額",
+        "result": "passed",
+        "source": "model",
+        "reason": "沒有選用其中一個桌子數量計算最終總額，而是表示資料待確認、未計算總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "此清單有待確認或修正的資料，未計算總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1a669210-a7d6-444d-8ed7-a2d9eab0f680",
+        "text": "沒有給出一個含桌子的最終總額",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆未給出含桌子的最終總額，並明確表示未計算總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "此清單有待確認或修正的資料，未計算總額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1660 input and 2282 output tokens on skillhub-run; reported cost $0.0060 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 32,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請依規則逐筆判定以下借閱紀錄的處理等級。\n讀者｜證別｜逾期天數｜已回報遺失\n林小安｜兒童證｜0｜是\n陳大文｜一般證｜30｜是\n王小美｜一般證｜0｜否\n張小華｜兒童證｜1｜否\n李小明｜兒童證｜8｜否\n周雅婷｜一般證｜1｜否\n吳志豪｜一般證｜7｜否\n黃怡君｜一般證｜8｜否\n蔡明哲｜一般證｜30｜否",
+  "acceptance_criteria": [
+    {
+      "text": "對兩筆已回報遺失的紀錄，即使證別與逾期天數不同，也都輸出「賠償」；樣例中的兒童證、0 天及一般證、30 天兩筆均符合。"
+    },
+    {
+      "text": "對未遺失且逾期 0 天的紀錄，輸出「免處理」；樣例中的一般證紀錄符合。"
+    },
+    {
+      "text": "對未遺失且逾期至少 1 天的兒童證紀錄，輸出「提醒」，包括樣例中逾期 1 天與 8 天的紀錄；8 天的紀錄須優先判為提醒而非停借。"
+    },
+    {
+      "text": "對未遺失的一般證逾期 1 天及 7 天的紀錄，均輸出「提醒」。"
+    },
+    {
+      "text": "對未遺失的一般證逾期 8 天以上的紀錄，輸出「停借」；樣例中的 8 天及 30 天紀錄均符合。"
+    },
+    {
+      "text": "輸出逐筆保留樣例紀錄順序，列出讀者與且僅列出四種允許處理等級之一。"
+    }
+  ],
+  "final_output": "讀者｜處理等級\n林小安｜賠償\n陳大文｜賠償\n王小美｜免處理\n張小華｜提醒\n李小明｜提醒\n周雅婷｜提醒\n吳志豪｜提醒\n黃怡君｜停借\n蔡明哲｜停借\n\n實際賠償或帳務入帳：此代理無法執行；須由館員依圖書館帳務流程處理。  \n實際停借或變更借閱權限：此代理無法執行；須由館員在圖書館借閱系統處理。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9f66e9f3-5f9d-4ecd-9a86-0d2d0bc6acb2",
+    "run_id": "11dd14a7-1cdd-4bf2-b022-4021e8cb511b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "九筆借閱紀錄均按規則判定，並依原順序列出讀者及允許的處理等級；所有驗收條件均符合。",
+    "criterion_results": [
+      {
+        "criterion_id": "6486a0ce-ff15-4197-9a0a-f58c602b3af1",
+        "text": "對兩筆已回報遺失的紀錄，即使證別與逾期天數不同，也都輸出「賠償」；樣例中的兒童證、0 天及一般證、30 天兩筆均符合。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆已回報遺失的紀錄均判為「賠償」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林小安｜賠償\n陳大文｜賠償",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6cc573f3-9c66-4ac0-89a4-0a6d3af6c29c",
+        "text": "對未遺失且逾期 0 天的紀錄，輸出「免處理」；樣例中的一般證紀錄符合。",
+        "result": "passed",
+        "source": "model",
+        "reason": "未遺失且逾期 0 天的王小美判為「免處理」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王小美｜免處理",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "240260ad-16a6-465c-b907-3265ec89b52e",
+        "text": "對未遺失且逾期至少 1 天的兒童證紀錄，輸出「提醒」，包括樣例中逾期 1 天與 8 天的紀錄；8 天的紀錄須優先判為提醒而非停借。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兒童證逾期 1 天與 8 天的兩筆紀錄均判為「提醒」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "張小華｜提醒\n李小明｜提醒",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8bbf3f4b-87d8-4a9a-b4f8-ecd8f7d63e58",
+        "text": "對未遺失的一般證逾期 1 天及 7 天的紀錄，均輸出「提醒」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "一般證逾期 1 天與 7 天的兩筆紀錄均判為「提醒」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "周雅婷｜提醒\n吳志豪｜提醒",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "18275017-7e03-4637-888f-4bca9f11d33a",
+        "text": "對未遺失的一般證逾期 8 天以上的紀錄，輸出「停借」；樣例中的 8 天及 30 天紀錄均符合。",
+        "result": "passed",
+        "source": "model",
+        "reason": "一般證逾期 8 天與 30 天的兩筆未遺失紀錄均判為「停借」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "黃怡君｜停借\n蔡明哲｜停借",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "99af23d9-e9ae-433f-a94a-9212d49b8f56",
+        "text": "輸出逐筆保留樣例紀錄順序，列出讀者與且僅列出四種允許處理等級之一。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格依樣例順序列出九位讀者，每筆均使用四種允許的處理等級之一；表格後的文字是作業限制說明，未增加其他處理等級。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "讀者｜處理等級\n林小安｜賠償\n陳大文｜賠償\n王小美｜免處理\n張小華｜提醒\n李小明｜提醒\n周雅婷｜提醒\n吳志豪｜提醒\n黃怡君｜停借\n蔡明哲｜停借",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1816 input and 3554 output tokens on skillhub-run; reported cost $0.0073 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 34,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

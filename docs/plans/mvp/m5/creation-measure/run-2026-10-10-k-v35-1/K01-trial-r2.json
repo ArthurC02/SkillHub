@@ -1,0 +1,163 @@
+{
+  "round": 2,
+  "sample_input": "請逐行計算以下每次寄宿的應付金額；每一行視為一次獨立計算，回覆只列金額。\n請計算 25 小時的寄宿費。\n請計算 24 小時的寄宿費。\n請計算 30 小時的寄宿費。\n請計算 48 小時的寄宿費。\n請計算 54 小時的寄宿費。\n請計算 102 小時的寄宿費。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 行的 25 小時應回覆「720 元」：25 小時向上計為 5 單位，費用為 4×150＋1×120。"
+    },
+    {
+      "text": "試跑輸入第 2 行的 24 小時應回覆「600 元」：正好 4 單位，皆按每單位 150 元計費。"
+    },
+    {
+      "text": "試跑輸入第 3 行的 30 小時應回覆「720 元」：5 單位包含前 4 單位 600 元及第 5 單位 120 元。"
+    },
+    {
+      "text": "試跑輸入第 4 行的 48 小時應回覆「1080 元」：8 單位包含 4×150 元及 4×120 元。"
+    },
+    {
+      "text": "試跑輸入第 5 行的 54 小時應回覆「1170 元」：第 9 單位起適用每單位 90 元，合計 4×150＋4×120＋1×90。"
+    },
+    {
+      "text": "試跑輸入第 6 行的 102 小時應回覆「1500 元」：17 單位原始費用為 4×150＋4×120＋9×90＝1890 元，套用上限後為 1500 元；每行回覆只列金額，不附計算說明。"
+    }
+  ],
+  "final_output": "720 元\n600 元\n720 元\n1080 元\n1170 元\n1500 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a5d08eb4-57a3-49e7-ace7-0b93c0cc50f8",
+    "run_id": "c9b6f99b-3aa0-435c-b27d-dd3b9fdf456f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六筆金額均與預期相符，回覆也符合每行只列金額的要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "a2f91141-9b0d-46e8-97d0-ed35f6b9df78",
+        "text": "試跑輸入第 1 行的 25 小時應回覆「720 元」：25 小時向上計為 5 單位，費用為 4×150＋1×120。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 行回覆「720 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "720 元\n600 元\n720 元\n1080 元\n1170 元\n1500 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cdd9e509-96bd-4771-bce1-287f25b1be1a",
+        "text": "試跑輸入第 2 行的 24 小時應回覆「600 元」：正好 4 單位，皆按每單位 150 元計費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 行回覆「600 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "720 元\n600 元\n720 元\n1080 元\n1170 元\n1500 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3b8ee778-fcb0-4f70-9f83-cf7a48f94118",
+        "text": "試跑輸入第 3 行的 30 小時應回覆「720 元」：5 單位包含前 4 單位 600 元及第 5 單位 120 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 行回覆「720 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "720 元\n600 元\n720 元\n1080 元\n1170 元\n1500 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f6b62069-ee20-4f75-ac53-8bf7d39b19ba",
+        "text": "試跑輸入第 4 行的 48 小時應回覆「1080 元」：8 單位包含 4×150 元及 4×120 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 行回覆「1080 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "720 元\n600 元\n720 元\n1080 元\n1170 元\n1500 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e5a204d7-5520-4167-87b6-aa898c2a63dc",
+        "text": "試跑輸入第 5 行的 54 小時應回覆「1170 元」：第 9 單位起適用每單位 90 元，合計 4×150＋4×120＋1×90。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 行回覆「1170 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "720 元\n600 元\n720 元\n1080 元\n1170 元\n1500 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "da105195-913b-441a-baf6-26b8730bee2a",
+        "text": "試跑輸入第 6 行的 102 小時應回覆「1500 元」：17 單位原始費用為 4×150＋4×120＋9×90＝1890 元，套用上限後為 1500 元；每行回覆只列金額，不附計算說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 行回覆「1500 元」，且六行均只列金額，沒有計算說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "720 元\n600 元\n720 元\n1080 元\n1170 元\n1500 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1532 input and 255 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

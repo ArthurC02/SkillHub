@@ -3,11 +3,12 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import sys
 from pathlib import Path
 
-from .attestations import verify_scm
+from .attestations import audit_attestations, verify_scm
 from .audit import verify as verify_audit
-from .changes import init_change_package, validate_change_package
+from .changes import init_change_package, redraft_change_package, validate_change_package
 from .common import load_json
 from .contracts import validate_schema
 from .counterfactual import Mutation, counterfactual
@@ -19,14 +20,17 @@ from .git_hooks import (
     verify_git_governance,
 )
 from .hitl import (
+    ObligationRun,
+    attest_signed_commit,
     finalize_proposal,
     record_approval,
+    record_test_result,
     submit_proposal,
     supersede_proposal,
     verify_proposal,
 )
 from .policy import (
-    amend_policy,
+    amend_policy_fields,
     policy_path,
     validate_policy,
     write_policy,
@@ -61,6 +65,7 @@ from .transaction import recover_interrupted_update
 from .updates import (
     apply_approved_updates,
     demote_local_reviews,
+    promote_candidate,
     retract_candidate,
     upsert_candidate,
 )
@@ -116,7 +121,12 @@ def handle_init(args: argparse.Namespace) -> int:
 
 
 def handle_init_change_package(args: argparse.Namespace) -> int:
-    init_change_package(args.output.resolve())
+    init_change_package(args.output.resolve(), args.requirement_id, args.proposal_id)
+    return 0
+
+
+def handle_redraft_proposal(args: argparse.Namespace) -> int:
+    redraft_change_package(args.package_root.resolve(), args.output.resolve(), args.proposal_id)
     return 0
 
 
@@ -175,11 +185,23 @@ def handle_analyze_boundary(args: argparse.Namespace) -> int:
     return 0
 
 
+OUTSIDE_SOURCES_CONSEQUENCE = (
+    "A candidate may rest on it, but apply-approved-updates refuses to review a record whose evidence rests "
+    "outside the confirmed sources; cite a source the corpus covers, or have the developer confirm this path "
+    "before the record is reviewed."
+)
+
+
 def handle_cite(args: argparse.Namespace) -> int:
     reference = citation(args.repo_root.resolve(), args.path, args.start, args.end)
     if args.registry_root:
         reference = classified(reference, source_map_for(args.registry_root.resolve()))
     print_json(reference)
+    if reference.get("source_kind") == "unclassified":
+        print(
+            f"NOTE: {reference['path']} is outside the confirmed sources. {OUTSIDE_SOURCES_CONSEQUENCE}",
+            file=sys.stderr,
+        )
     return 0
 
 
@@ -192,6 +214,17 @@ def handle_retract_candidate(args: argparse.Namespace) -> int:
         args.reason,
     )
     print("Candidate record retracted.")
+    return 0
+
+
+def handle_promote_candidate(args: argparse.Namespace) -> int:
+    promote_candidate(
+        args.package_root.resolve(), args.registry_root.resolve(), args.asset, args.id
+    )
+    print(
+        f"{args.asset}/{args.id} is in registry_updates; "
+        "apply-approved-updates reviews it once the proposal is approved."
+    )
     return 0
 
 
@@ -208,8 +241,8 @@ def handle_upsert_candidate(args: argparse.Namespace) -> int:
             "NOTE: this record rests on files the confirmed source map does not cover: "
             + ", ".join(outside)
             + ". That is reach, not an error. A Domain Memory that comes to depend on an unconfirmed file loses its "
-            "evidence when that file moves; either have the developer confirm the source, or cite something the "
-            "corpus already covers."
+            "evidence when that file moves. "
+            + OUTSIDE_SOURCES_CONSEQUENCE
         )
     return 0
 
@@ -372,17 +405,29 @@ def handle_refine_sources(args: argparse.Namespace) -> int:
     return 0
 
 
+def policy_assignments(args: argparse.Namespace) -> list[tuple[str, str]]:
+    single = (args.field, args.value)
+    if any(part is not None for part in single):
+        if None in single or args.set:
+            raise ValueError("give --field with --value, or one or more --set FIELD=VALUE, not both")
+        return [single]
+    malformed = [entry for entry in args.set if "=" not in entry]
+    if not args.set or malformed:
+        raise ValueError("each --set takes FIELD=VALUE; give at least one, or --field with --value")
+    return [tuple(entry.split("=", 1)) for entry in args.set]
+
+
 def handle_amend_policy(args: argparse.Namespace) -> int:
-    change = amend_policy(
+    changes = amend_policy_fields(
         args.registry_root.resolve(),
-        args.field,
-        args.value,
+        policy_assignments(args),
         args.reason,
         args.verifier,
     )
+    for change in changes:
+        print(f"{change['field']}: {change['from']} -> {change['to']}")
     print(
-        f"{change['field']}: {change['from']} -> {change['to']}. The Registry revision moved, so every captured "
-        "base revision is now stale and needs fresh approval."
+        "The Registry revision moved once, so every captured base revision is now stale and needs fresh approval."
     )
     return 0
 
@@ -495,6 +540,32 @@ def handle_verify_proposal(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_record_test_result(args: argparse.Namespace) -> int:
+    record_test_result(
+        args.package_root.resolve(), args.registry_root.resolve(), args.repo_root.resolve(),
+        ObligationRun(args.obligation, args.obligation_command, args.command_profile), args.timeout,
+    )
+    print(f"Recorded a passing result for {args.obligation}.")
+    return 0
+
+
+def handle_attest_signed_commit(args: argparse.Namespace) -> int:
+    commit = attest_signed_commit(
+        args.package_root.resolve(), args.registry_root.resolve(), args.repo_root.resolve(),
+        args.commit,
+    )
+    print(f"Attested with signed commit {commit}.")
+    return 0
+
+
+def handle_audit_attestations(args: argparse.Namespace) -> int:
+    findings = audit_attestations(
+        args.repo_root.resolve(), args.changes_root.resolve(), args.verification_token_env
+    )
+    print(json.dumps(findings, indent=2, ensure_ascii=False))
+    return 0 if all(finding["verdict"] == "carried" for finding in findings) else 1
+
+
 def handle_finalize_proposal(args: argparse.Namespace) -> int:
     if args.registry_root is None or args.repo_root is None:
         raise ValueError("finalize-proposal requires --registry-root and --repo-root")
@@ -512,8 +583,11 @@ def handle_validate_change_package(args: argparse.Namespace) -> int:
     errors = validate_change_package(
         args.package_root.resolve(),
         args.registry_root.resolve() if args.registry_root else None,
+        args.as_status,
     )
-    return report_errors(errors, "Change package is valid.")
+    if args.as_status is None:
+        return report_errors(errors, "Change package is valid.")
+    return report_errors(errors, f"Change package has everything {args.as_status} requires.")
 
 
 def handle_coverage(args: argparse.Namespace) -> int:
@@ -542,6 +616,7 @@ HANDLERS = {
     "counterfactual": handle_counterfactual,
     "init": handle_init,
     "init-change-package": handle_init_change_package,
+    "redraft-proposal": handle_redraft_proposal,
     "validate": handle_validate,
     "coverage": handle_coverage,
     "lookup": handle_lookup,
@@ -553,6 +628,7 @@ HANDLERS = {
     "cite": handle_cite,
     "upsert-candidate": handle_upsert_candidate,
     "retract-candidate": handle_retract_candidate,
+    "promote-candidate": handle_promote_candidate,
     "apply-approved-updates": handle_apply_approved_updates,
     "demote-local-reviews": handle_demote_local_reviews,
     "discover-sources": handle_discover_sources,
@@ -580,6 +656,9 @@ HANDLERS = {
     "record-approval": handle_record_approval,
     "supersede-proposal": handle_supersede_proposal,
     "verify-proposal": handle_verify_proposal,
+    "record-test-result": handle_record_test_result,
+    "attest-signed-commit": handle_attest_signed_commit,
+    "audit-attestations": handle_audit_attestations,
     "finalize-proposal": handle_finalize_proposal,
     "validate-change-package": handle_validate_change_package,
 }

@@ -129,6 +129,12 @@ FROM trace_events
 WHERE run_id = @run_id AND workspace_id = @workspace_id
   AND source = @source AND attempt = @attempt AND seq = @seq;
 
+-- name: GetTraceEventQuestions :one
+SELECT COALESCE(payload->'questions', '[]'::jsonb)::jsonb AS questions
+FROM trace_events
+WHERE run_id = @run_id AND workspace_id = @workspace_id
+  AND source = @source AND attempt = @attempt AND seq = @seq;
+
 -- name: LockTraceIngestRun :exec
 -- Takes the global trace-writer lock before any per-stream lock; the insert trigger
 -- re-enters it.

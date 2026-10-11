@@ -1,0 +1,164 @@
+{
+  "round": 1,
+  "sample_input": "請依規則分類以下學員的學費退費資格，逐筆輸出分類與簡短理由：\n學員代號｜考照狀態｜繳費至今天數\n甲｜已通過路考並取得駕照｜12\n乙｜已通過路考並取得駕照｜100\n丙｜尚未通過路考｜0\n丁｜尚未通過路考｜30\n戊｜尚未通過路考｜31",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑資料第 1、2 筆，即使繳費天數分別為 12 天及 100 天，均輸出「不得退費」，理由指出已通過路考並取得駕照，且不受繳費天數影響。"
+    },
+    {
+      "text": "對試跑資料第 3、4 筆，未通過路考且分別繳費 0 天及 30 天，均輸出「全額退費」。"
+    },
+    {
+      "text": "對試跑資料第 5 筆，未通過路考且繳費 31 天，輸出「退七成學費」。"
+    },
+    {
+      "text": "輸出逐筆對應全部 5 筆輸入，包含學員代號、上述三種分類之一及簡短判定理由，不計算退款金額。"
+    }
+  ],
+  "final_output": "| 學員代號 | 分類 | 簡短理由 |\n|---|---|---|\n| 甲 | 不得退費 | 已通過路考並取得駕照，不受繳費天數影響。 |\n| 乙 | 不得退費 | 已通過路考並取得駕照，不受繳費天數影響。 |\n| 丙 | 全額退費 | 尚未通過路考，繳費 0 天，屬 30 天以內（含 30 天）。 |\n| 丁 | 全額退費 | 尚未通過路考，繳費 30 天，屬 30 天以內（含 30 天）。 |\n| 戊 | 退七成學費 | 尚未通過路考，繳費 31 天，已超過 30 天。 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3a704844-90d0-44f0-b932-1037e88f372e",
+    "run_id": "4957a805-16a0-4444-aca0-fe17b50b0df9",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆學員資料均逐筆正確分類並附簡短理由；已取得駕照者不受繳費天數影響，未通過路考者依 30 天界線分類。未計算退款金額。",
+    "criterion_results": [
+      {
+        "criterion_id": "ef7bb390-82bb-40fd-9f17-ffbbfd87ed4b",
+        "text": "對試跑資料第 1、2 筆，即使繳費天數分別為 12 天及 100 天，均輸出「不得退費」，理由指出已通過路考並取得駕照，且不受繳費天數影響。",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲、乙均判為「不得退費」，理由均指出已通過路考並取得駕照，且不受繳費天數影響。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 甲 | 不得退費 | 已通過路考並取得駕照，不受繳費天數影響。 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 乙 | 不得退費 | 已通過路考並取得駕照，不受繳費天數影響。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e8dd5468-e32a-4352-8ff8-bb550e82fdfd",
+        "text": "對試跑資料第 3、4 筆，未通過路考且分別繳費 0 天及 30 天，均輸出「全額退費」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "丙繳費 0 天、丁繳費 30 天，兩筆均判為「全額退費」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 丙 | 全額退費 | 尚未通過路考，繳費 0 天，屬 30 天以內（含 30 天）。 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 丁 | 全額退費 | 尚未通過路考，繳費 30 天，屬 30 天以內（含 30 天）。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "007e0823-a819-4ff8-a395-ef900f77b48d",
+        "text": "對試跑資料第 5 筆，未通過路考且繳費 31 天，輸出「退七成學費」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "戊尚未通過路考、繳費 31 天，判為「退七成學費」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 戊 | 退七成學費 | 尚未通過路考，繳費 31 天，已超過 30 天。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b6533ba3-2b03-4ca7-861a-97430e51f66e",
+        "text": "輸出逐筆對應全部 5 筆輸入，包含學員代號、上述三種分類之一及簡短判定理由，不計算退款金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐筆列出甲至戊，均包含學員代號、指定分類及簡短理由，未計算退款金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 學員代號 | 分類 | 簡短理由 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 甲 | 不得退費 | 已通過路考並取得駕照，不受繳費天數影響。 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 乙 | 不得退費 | 已通過路考並取得駕照，不受繳費天數影響。 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 丙 | 全額退費 | 尚未通過路考，繳費 0 天，屬 30 天以內（含 30 天）。 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 丁 | 全額退費 | 尚未通過路考，繳費 30 天，屬 30 天以內（含 30 天）。 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 戊 | 退七成學費 | 尚未通過路考，繳費 31 天，已超過 30 天。 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1522 input and 566 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

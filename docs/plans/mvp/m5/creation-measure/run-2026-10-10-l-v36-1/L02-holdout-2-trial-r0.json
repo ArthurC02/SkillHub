@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "再判三筆：\nD 訂單是客製刻字鋼筆，2026-03-02 到貨，2026-03-04 申請，筆身有瑕疵。\nE 訂單是一般筆記本，2026-03-02 到貨，2026-04-01 申請，封面有瑕疵。\nF 訂單是一般筆記本，2026-03-02 到貨，2026-04-02 申請，封面有瑕疵。",
+  "acceptance_criteria": [
+    {
+      "text": "D 訂單的結果是不受理（客製商品優先，即使 2 天內且有瑕疵）"
+    },
+    {
+      "text": "E 訂單的結果是換貨（第 30 天仍在範圍內）"
+    },
+    {
+      "text": "F 訂單的結果是不受理（第 31 天已超過）"
+    }
+  ],
+  "final_output": "依規則，三筆都缺少「使用狀態」，因此資料不完整；未執行判定程式，以下均**未判定**。日期差已按日曆日計算：\n\n| 訂單 | 已知資料 | 未提供 | 結果 |\n|---|---|---|---|\n| D | 客製；到貨 2026-03-02；申請 2026-03-04（相隔 2 天）；有瑕疵 | 使用狀態 | 未判定 |\n| E | 非客製；到貨 2026-03-02；申請 2026-04-01（相隔 30 天）；有瑕疵 | 使用狀態 | 未判定 |\n| F | 非客製；到貨 2026-03-02；申請 2026-04-02（相隔 31 天）；有瑕疵 | 使用狀態 | 未判定 |\n\n補齊模板：`訂單編號｜到貨日｜申請日｜商品種類｜使用狀態｜瑕疵狀態`",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6758a640-7ae8-4c2e-a458-a6da9a597133",
+    "run_id": "0511ecb1-d1c2-45a6-b35f-6c77e9fc7455",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "回覆算出了三筆訂單的日期差，但以缺少使用狀態為由，將 D、E、F 全部列為「未判定」。三項要求的判定結果均未給出。",
+    "criterion_results": [
+      {
+        "criterion_id": "8cd1b3f2-b9e3-4b65-814a-09551c164e93",
+        "text": "D 訂單的結果是不受理（客製商品優先，即使 2 天內且有瑕疵）",
+        "result": "failed",
+        "source": "model",
+        "reason": "D 訂單的結果被列為「未判定」，而非要求的「不受理」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| D | 客製；到貨 2026-03-02；申請 2026-03-04（相隔 2 天）；有瑕疵 | 使用狀態 | 未判定 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a6c87a1a-d5fc-4c65-b433-d571d97133bd",
+        "text": "E 訂單的結果是換貨（第 30 天仍在範圍內）",
+        "result": "failed",
+        "source": "model",
+        "reason": "E 訂單的結果被列為「未判定」，而非要求的「換貨」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| E | 非客製；到貨 2026-03-02；申請 2026-04-01（相隔 30 天）；有瑕疵 | 使用狀態 | 未判定 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7f0c7adc-c1f9-483f-a84c-98abb358d011",
+        "text": "F 訂單的結果是不受理（第 31 天已超過）",
+        "result": "failed",
+        "source": "model",
+        "reason": "F 訂單的結果被列為「未判定」，而非要求的「不受理」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| F | 非客製；到貨 2026-03-02；申請 2026-04-02（相隔 31 天）；有瑕疵 | 使用狀態 | 未判定 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1531 input and 2326 output tokens on skillhub-run; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

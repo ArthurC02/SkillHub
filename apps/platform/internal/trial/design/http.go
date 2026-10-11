@@ -350,11 +350,13 @@ func (h *Handler) AddCriterion(w http.ResponseWriter, r *http.Request) {
 		Text string `json:"text"`
 
 		Source string `json:"source"`
+
+		Check *Check `json:"check"`
 	}
 	if !decodeJSON(w, r, &body) {
 		return
 	}
-	tc, err := h.Svc.AddCriterion(r.Context(), ws, id, body.Text, body.Source)
+	tc, err := h.Svc.AddCriterion(r.Context(), ws, id, NewCriterion{Text: body.Text, Source: body.Source, Check: body.Check})
 	if err != nil {
 		fail(w, err, "新增驗收條件失敗")
 		return

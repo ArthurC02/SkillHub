@@ -1,0 +1,151 @@
+{
+  "round": 0,
+  "sample_input": "嗨老闆～我想訂玫瑰一打，一支 45 啦，尤加利葉 5 把一把 80，麵包花環 2 個一個 350，另外卡片幫我附 1 張免費的，外送車資 200 司機來我再給他",
+  "acceptance_criteria": [
+    {
+      "text": "玫瑰數量為 12、小計 540 元"
+    },
+    {
+      "text": "尤加利葉小計 400 元"
+    },
+    {
+      "text": "麵包花環小計 700 元"
+    },
+    {
+      "text": "卡片列為贈品，小計 0 元"
+    },
+    {
+      "text": "品項總額為 1,640 元，沒有把外送車資 200 元算進去"
+    }
+  ],
+  "final_output": "| 品項 | 數量 | 單位 | 單價 | 小計 |\n|---|---:|---|---:|---:|\n| 玫瑰 | 12 | 支 | 45元 | 540元 |\n| 尤加利葉 | 5 | 把 | 80元 | 400元 |\n| 麵包花環 | 2 | 個 | 350元 | 700元 |\n| 卡片 | 1 | 張 | 免費 | 0元 |\n\n**已確認品項總額：1640元**\n\n備註：外送車資 200元，由司機到府當面另收；不計入品項總額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f9b051af-57cd-453e-9551-dc1bf03f5182",
+    "run_id": "332fb063-0368-4e95-94db-d1cf1850015d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收標準均已達成：各品項數量與小計正確，卡片免費，且 1640 元的品項總額未包含另收的外送車資。",
+    "criterion_results": [
+      {
+        "criterion_id": "6e1d3fbf-74d0-4332-95e0-a90d548da7a7",
+        "text": "玫瑰數量為 12、小計 540 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "玫瑰列為 12 支，小計 540 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 玫瑰 | 12 | 支 | 45元 | 540元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7a3fa05a-03fd-4b0c-8a4f-62d2829e9ee5",
+        "text": "尤加利葉小計 400 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "尤加利葉小計為 400 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 尤加利葉 | 5 | 把 | 80元 | 400元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3b77a3e9-b511-4327-9bfa-37a11758655e",
+        "text": "麵包花環小計 700 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "麵包花環小計為 700 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 麵包花環 | 2 | 個 | 350元 | 700元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ca78edb7-23d1-46c0-805a-f2bc93827bd5",
+        "text": "卡片列為贈品，小計 0 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "卡片標為免費，小計 0 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 卡片 | 1 | 張 | 免費 | 0元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f0fcf515-c84b-4dce-b761-3839bb52b7dd",
+        "text": "品項總額為 1,640 元，沒有把外送車資 200 元算進去",
+        "result": "passed",
+        "source": "model",
+        "reason": "已確認品項總額為 1640 元，並註明外送車資 200 元另收、不計入品項總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**已確認品項總額：1640元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "備註：外送車資 200元，由司機到府當面另收；不計入品項總額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1534 input and 828 output tokens on skillhub-run; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

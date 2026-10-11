@@ -18,6 +18,8 @@ Run `readiness --repo-root <repo>` first. It distinguishes an empty repository, 
 
 Treat only `reviewed` records as facts. A `candidate` is handoff material and authorizes no implementation. `reviewed-empty` means there is no model to depend on yet, so go back to the decisions, contracts, code, and tests.
 
+Not every package is a Context. A Context owns domain rules and the data they decide about. A package that only serves others, such as persistence, transport, a shared loop, or the client of an outside system, is recorded by the repository's own architecture records, not in the Registry. Moving such a package changes no Registry fact while the rules and their data stay with the Context that owns them.
+
 ## Choosing what to do
 
 [SKILL.md](SKILL.md) beside this file is where the work is chosen. In the complete package it routes the four lifecycle capabilities and the hygiene check to a page under `skills/`; in a standalone bundle it is the one capability the bundle carries. It is plain Markdown, so read it whether or not your host has a concept of Skills.
@@ -28,7 +30,7 @@ Treat only `reviewed` records as facts. A `candidate` is handoff material and au
 
 The reviewed facts say what must stay true. These six hold for every change to source, and they are stated here because this page is the one every Agent reads:
 
-1. Run `quality-gates --repo-root <repo>`. The checks it lists must pass, and a check met by a change of form alone is not met: when one forces a change, remove the cause it points at. When `standard` is `none`, say so in your report and claim no standard the repository does not enforce.
+1. Run `quality-gates --repo-root <repo>`. The checks it lists must pass, and a check met by a change of form alone is not met: when one forces a change, remove the cause it points at. A flag kept as a keyword argument or a default is a change of form; when it chooses between kinds the domain names, including a kind the handoff says is coming, name that concept in this change. When `standard` is `none`, say so in your report and claim no standard the repository does not enforce.
 2. Search for what already exists, and use it or extend it.
 3. Take names from the reviewed terms. A business number, such as a threshold, a rate, or a limit, gets the domain's name and one home, and every place it appears uses that name.
 4. Every rule you add or move ends with a test in the repository that fails when the rule is broken. Prove it with `counterfactual`, once for each rule: `survived` means no test protects that rule, so write the test and run it again. A comparison you run once and discard does not count. Report each rule that survived before you wrote its test.

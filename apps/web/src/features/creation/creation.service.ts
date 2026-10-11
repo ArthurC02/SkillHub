@@ -80,6 +80,7 @@ export interface CreationSnapshot {
   brief_confirmed: boolean;
   acceptance_criteria: string[];
   sample_input?: string;
+  challenge_cases?: { name: string; prompt: string; criteria: string[] }[];
   model_changed?: CreationModelChange;
   diagram_understanding: string;
   diagram_description?: string;
@@ -116,7 +117,13 @@ export interface CreationSnapshot {
     blocked: boolean;
   };
   previous_draft?: CreationSnapshot["draft"];
-  candidate?: { skill_id: string; version_id: string; run_id?: string; test_case_id?: string };
+  candidate?: {
+    skill_id: string;
+    version_id: string;
+    run_id?: string;
+    test_case_id?: string;
+    challenge_test_case_ids?: string[];
+  };
   diagram_fingerprint?: string;
   diagram_media_type?: string;
   diagram_bytes?: number;

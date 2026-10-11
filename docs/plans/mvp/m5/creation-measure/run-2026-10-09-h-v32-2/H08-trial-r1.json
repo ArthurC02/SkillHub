@@ -1,0 +1,206 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下二手服飾收購紀錄，列出逐筆金額、每日小計與總金額：\n2026-10-01，牛仔外套，數量 2，收購單價 NT$150\n2026-10-02，襯衫，數量 4，收購單價 NT$50\n2026-10-01，針織衫，數量 3，收購單價 NT$80\n2026-10-02，長褲，數量 2，收購單價 NT$120\n2026-10-01，牛仔外套，數量 1，收購單價 NT$150",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸出包含 5 筆紀錄，逐筆列出日期、品項、數量、單價及金額，且不合併同一日期的相同品項。"
+    },
+    {
+      "text": "2026-10-01 的三筆金額分別為 NT$300、NT$240、NT$150，日期小計為 NT$690。"
+    },
+    {
+      "text": "2026-10-02 的兩筆金額分別為 NT$200、NT$240，日期小計為 NT$440。"
+    },
+    {
+      "text": "清單按日期由早到晚排列，且同日期紀錄維持輸入順序。"
+    },
+    {
+      "text": "清單最後的總金額為 NT$1,130，等於兩日小計 NT$690 + NT$440。"
+    }
+  ],
+  "final_output": "## 二手服飾收購驗收清單\n\n| 日期 | 品項 | 數量 | 收購單價 | 逐筆金額 |\n|---|---|---:|---:|---:|\n| 2026-10-01 | 牛仔外套 | 2 | NT$150 | NT$300 |\n| 2026-10-01 | 針織衫 | 3 | NT$80 | NT$240 |\n| 2026-10-01 | 牛仔外套 | 1 | NT$150 | NT$150 |\n| 2026-10-02 | 襯衫 | 4 | NT$50 | NT$200 |\n| 2026-10-02 | 長褲 | 2 | NT$120 | NT$240 |\n\n**每日小計**\n- 2026-10-01：NT$690\n- 2026-10-02：NT$440\n\n**總金額：NT$1,130**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8f863539-b4df-43cd-9bdc-a986f87ce584",
+    "run_id": "7351f6c3-0f61-4da6-a65a-4d6450d4d2d4",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收標準均已達成：五筆紀錄分別列示、日期與同日順序正確，逐筆金額、每日小計及總金額皆相符。",
+    "criterion_results": [
+      {
+        "criterion_id": "88cd417f-a8b8-4262-9678-f739d0fe7492",
+        "text": "試跑輸出包含 5 筆紀錄，逐筆列出日期、品項、數量、單價及金額，且不合併同一日期的相同品項。",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單有五筆紀錄，每筆均列出日期、品項、數量、單價及金額；兩筆 2026-10-01 的牛仔外套分開列示。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 日期 | 品項 | 數量 | 收購單價 | 逐筆金額 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 牛仔外套 | 2 | NT$150 | NT$300 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 針織衫 | 3 | NT$80 | NT$240 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 牛仔外套 | 1 | NT$150 | NT$150 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-02 | 襯衫 | 4 | NT$50 | NT$200 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-02 | 長褲 | 2 | NT$120 | NT$240 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "68577851-496f-4445-a671-3759b9f395fa",
+        "text": "2026-10-01 的三筆金額分別為 NT$300、NT$240、NT$150，日期小計為 NT$690。",
+        "result": "passed",
+        "source": "model",
+        "reason": "2026-10-01 的三筆金額依序為 NT$300、NT$240、NT$150，小計為 NT$690。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 牛仔外套 | 2 | NT$150 | NT$300 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 針織衫 | 3 | NT$80 | NT$240 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 牛仔外套 | 1 | NT$150 | NT$150 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-10-01：NT$690",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "af83f4f2-bbbe-4a79-9e02-0f41ac9ba736",
+        "text": "2026-10-02 的兩筆金額分別為 NT$200、NT$240，日期小計為 NT$440。",
+        "result": "passed",
+        "source": "model",
+        "reason": "2026-10-02 的兩筆金額依序為 NT$200、NT$240，小計為 NT$440。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-02 | 襯衫 | 4 | NT$50 | NT$200 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-02 | 長褲 | 2 | NT$120 | NT$240 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-10-02：NT$440",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bcd61ea9-5a11-42ba-8089-c12b2036c10e",
+        "text": "清單按日期由早到晚排列，且同日期紀錄維持輸入順序。",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單先列 2026-10-01、再列 2026-10-02；各日期內的品項順序也與輸入順序一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-10-01 | 牛仔外套 | 2 | NT$150 | NT$300 |\n| 2026-10-01 | 針織衫 | 3 | NT$80 | NT$240 |\n| 2026-10-01 | 牛仔外套 | 1 | NT$150 | NT$150 |\n| 2026-10-02 | 襯衫 | 4 | NT$50 | NT$200 |\n| 2026-10-02 | 長褲 | 2 | NT$120 | NT$240 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "32ab8c17-c23a-4a47-849e-283d9daf000f",
+        "text": "清單最後的總金額為 NT$1,130，等於兩日小計 NT$690 + NT$440。",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單最後標示總金額 NT$1,130，與兩日小計 NT$690 加 NT$440 相符。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-10-01：NT$690",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-10-02：NT$440",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**總金額：NT$1,130**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1529 input and 647 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 30,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -79,6 +79,11 @@ import {
     ClearSkillRestrictionRequestToJSON,
 } from '../models/ClearSkillRestrictionRequest';
 import {
+    type CompareEvaluationBatches200Response,
+    CompareEvaluationBatches200ResponseFromJSON,
+    CompareEvaluationBatches200ResponseToJSON,
+} from '../models/CompareEvaluationBatches200Response';
+import {
     type ConfirmRunPreflight201Response,
     ConfirmRunPreflight201ResponseFromJSON,
     ConfirmRunPreflight201ResponseToJSON,
@@ -88,6 +93,11 @@ import {
     ConfirmRunPreflightRequestFromJSON,
     ConfirmRunPreflightRequestToJSON,
 } from '../models/ConfirmRunPreflightRequest';
+import {
+    type ContinueRunRequest,
+    ContinueRunRequestFromJSON,
+    ContinueRunRequestToJSON,
+} from '../models/ContinueRunRequest';
 import {
     type CorrectedSearchRequest,
     CorrectedSearchRequestFromJSON,
@@ -123,6 +133,16 @@ import {
     CreateDownloadArtifactRequestFromJSON,
     CreateDownloadArtifactRequestToJSON,
 } from '../models/CreateDownloadArtifactRequest';
+import {
+    type CreateEvaluationBatch422Response,
+    CreateEvaluationBatch422ResponseFromJSON,
+    CreateEvaluationBatch422ResponseToJSON,
+} from '../models/CreateEvaluationBatch422Response';
+import {
+    type CreateEvaluationBatchRequest,
+    CreateEvaluationBatchRequestFromJSON,
+    CreateEvaluationBatchRequestToJSON,
+} from '../models/CreateEvaluationBatchRequest';
 import {
     type CreateSkillVersionFromSuggestions201Response,
     CreateSkillVersionFromSuggestions201ResponseFromJSON,
@@ -254,6 +274,16 @@ import {
     EvaluationToJSON,
 } from '../models/Evaluation';
 import {
+    type EvaluationBatch,
+    EvaluationBatchFromJSON,
+    EvaluationBatchToJSON,
+} from '../models/EvaluationBatch';
+import {
+    type EvaluationBatchReport,
+    EvaluationBatchReportFromJSON,
+    EvaluationBatchReportToJSON,
+} from '../models/EvaluationBatchReport';
+import {
     type ExposureCase,
     ExposureCaseFromJSON,
     ExposureCaseToJSON,
@@ -364,6 +394,11 @@ import {
     LiftDispatchHaltRequestToJSON,
 } from '../models/LiftDispatchHaltRequest';
 import {
+    type ListCheckKinds200Response,
+    ListCheckKinds200ResponseFromJSON,
+    ListCheckKinds200ResponseToJSON,
+} from '../models/ListCheckKinds200Response';
+import {
     type ListDatasets200Response,
     ListDatasets200ResponseFromJSON,
     ListDatasets200ResponseToJSON,
@@ -378,6 +413,11 @@ import {
     ListDownloadRecords200ResponseFromJSON,
     ListDownloadRecords200ResponseToJSON,
 } from '../models/ListDownloadRecords200Response';
+import {
+    type ListEvaluationBatches200Response,
+    ListEvaluationBatches200ResponseFromJSON,
+    ListEvaluationBatches200ResponseToJSON,
+} from '../models/ListEvaluationBatches200Response';
 import {
     type ListExposureQueue200Response,
     ListExposureQueue200ResponseFromJSON,
@@ -519,6 +559,11 @@ import {
     PlatformAgentRunToJSON,
 } from '../models/PlatformAgentRun';
 import {
+    type PlatformSettings,
+    PlatformSettingsFromJSON,
+    PlatformSettingsToJSON,
+} from '../models/PlatformSettings';
+import {
     type PublicPublication,
     PublicPublicationFromJSON,
     PublicPublicationToJSON,
@@ -589,6 +634,11 @@ import {
     RunQuotaToJSON,
 } from '../models/RunQuota';
 import {
+    type RunSettings,
+    RunSettingsFromJSON,
+    RunSettingsToJSON,
+} from '../models/RunSettings';
+import {
     type SandboxTraceEvent,
     SandboxTraceEventFromJSON,
     SandboxTraceEventToJSON,
@@ -598,6 +648,11 @@ import {
     SearchSkills200ResponseFromJSON,
     SearchSkills200ResponseToJSON,
 } from '../models/SearchSkills200Response';
+import {
+    type SetContinuationRoundsRequest,
+    SetContinuationRoundsRequestFromJSON,
+    SetContinuationRoundsRequestToJSON,
+} from '../models/SetContinuationRoundsRequest';
 import {
     type SetEvaluationFeedbackRequest,
     SetEvaluationFeedbackRequestFromJSON,
@@ -613,6 +668,11 @@ import {
     SetPlatformAgentEnabledRequestFromJSON,
     SetPlatformAgentEnabledRequestToJSON,
 } from '../models/SetPlatformAgentEnabledRequest';
+import {
+    type SetPlatformAgentSpendCapRequest,
+    SetPlatformAgentSpendCapRequestFromJSON,
+    SetPlatformAgentSpendCapRequestToJSON,
+} from '../models/SetPlatformAgentSpendCapRequest';
 import {
     type SetSkillCategoryRequest,
     SetSkillCategoryRequestFromJSON,
@@ -830,6 +890,21 @@ export interface ClearSkillRestrictionOperationRequest {
     clearSkillRestrictionRequest: ClearSkillRestrictionRequest;
 }
 
+export interface CompareEvaluationBatchesRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * The candidate batch.
+     */
+    batchId: string;
+    /**
+     * The baseline batch.
+     */
+    against: string;
+}
+
 export interface CompareRunsRequest {
     /**
      * 
@@ -850,6 +925,17 @@ export interface ConfirmRunPreflightOperationRequest {
      * 
      */
     confirmRunPreflightRequest: ConfirmRunPreflightRequest;
+}
+
+export interface ContinueRunOperationRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    continueRunRequest: ContinueRunRequest;
 }
 
 export interface CreateBundleVersionOperationRequest {
@@ -879,6 +965,17 @@ export interface CreateDownloadArtifactOperationRequest {
      * 
      */
     createDownloadArtifactRequest: CreateDownloadArtifactRequest;
+}
+
+export interface CreateEvaluationBatchOperationRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    createEvaluationBatchRequest: CreateEvaluationBatchRequest;
 }
 
 export interface CreateSkillVersionFromSuggestionsOperationRequest {
@@ -1117,6 +1214,17 @@ export interface GetDownloadArtifactRequest {
     artifactId: string;
 }
 
+export interface GetEvaluationBatchReportRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    batchId: string;
+}
+
 export interface GetExposureCaseRequest {
     /**
      * 
@@ -1341,6 +1449,13 @@ export interface ListDownloadRecordsRequest {
      * 
      */
     artifactId: string;
+}
+
+export interface ListEvaluationBatchesRequest {
+    /**
+     * 
+     */
+    id: string;
 }
 
 export interface ListOperatorAuditLogRequest {
@@ -1700,6 +1815,13 @@ export interface SearchSkillsWithCorrectedIntentRequest {
     correctedSearchRequest: CorrectedSearchRequest;
 }
 
+export interface SetContinuationRoundsOperationRequest {
+    /**
+     * 
+     */
+    setContinuationRoundsRequest: SetContinuationRoundsRequest;
+}
+
 export interface SetEvaluationFeedbackOperationRequest {
     /**
      * 
@@ -1709,6 +1831,13 @@ export interface SetEvaluationFeedbackOperationRequest {
      * 
      */
     setEvaluationFeedbackRequest: SetEvaluationFeedbackRequest;
+}
+
+export interface SetJudgePanelRequest {
+    /**
+     * 
+     */
+    setPlatformAgentEnabledRequest: SetPlatformAgentEnabledRequest;
 }
 
 export interface SetModelCallBudgetOperationRequest {
@@ -1733,6 +1862,17 @@ export interface SetPlatformAgentEnabledOperationRequest {
      * 
      */
     setPlatformAgentEnabledRequest: SetPlatformAgentEnabledRequest;
+}
+
+export interface SetPlatformAgentSpendCapOperationRequest {
+    /**
+     * 
+     */
+    name: string;
+    /**
+     * 
+     */
+    setPlatformAgentSpendCapRequest: SetPlatformAgentSpendCapRequest;
 }
 
 export interface SetSkillCategoryOperationRequest {
@@ -2098,6 +2238,34 @@ export interface DefaultApiInterface {
     clearSkillRestriction(requestParameters: ClearSkillRestrictionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
+     * Creates request options for compareEvaluationBatches without sending the request
+     * @param {string} id 
+     * @param {string} batchId The candidate batch.
+     * @param {string} against The baseline batch.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    compareEvaluationBatchesRequestOpts(requestParameters: CompareEvaluationBatchesRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Each test case judged in both batches is one pair; its difference is this batch\'s pass rate on that test case minus the other\'s. The result is the mean difference with a 95% interval from the paired standard error, so test cases that are hard for both versions do not widen it. Test cases judged in only one batch are counted as unpaired and left out. The interval needs at least two pairs. 
+     * @summary This batch against another of the same skill, test case by test case (EVAL-014)
+     * @param {string} id 
+     * @param {string} batchId The candidate batch.
+     * @param {string} against The baseline batch.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    compareEvaluationBatchesRaw(requestParameters: CompareEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CompareEvaluationBatches200Response>>;
+
+    /**
+     * Each test case judged in both batches is one pair; its difference is this batch\'s pass rate on that test case minus the other\'s. The result is the mean difference with a 95% interval from the paired standard error, so test cases that are hard for both versions do not widen it. Test cases judged in only one batch are counted as unpaired and left out. The interval needs at least two pairs. 
+     * This batch against another of the same skill, test case by test case (EVAL-014)
+     */
+    compareEvaluationBatches(requestParameters: CompareEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompareEvaluationBatches200Response>;
+
+    /**
      * Creates request options for compareRuns without sending the request
      * @param {string} id 
      * @param {string} against The other run. Must be in the caller\&#39;s workspace.
@@ -2148,6 +2316,32 @@ export interface DefaultApiInterface {
      * Record agreement to a permission summary (TEST-009)
      */
     confirmRunPreflight(requestParameters: ConfirmRunPreflightOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ConfirmRunPreflight201Response>;
+
+    /**
+     * Creates request options for continueRun without sending the request
+     * @param {string} id 
+     * @param {ContinueRunRequest} continueRunRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    continueRunRequestOpts(requestParameters: ContinueRunOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * The run must have succeeded by asking the person, and the trace summary lists its questions. One answer per question, in the same order. A new run starts on the same skill version with a new test case snapshot whose prompt is the asking run\'s prompt followed by every question and answer; the criteria, files and rubric are the asking run\'s. Both runs stay immutable, and the link between them is recorded once: answering the same questions twice is refused. The new run is admitted and charged like any run, and a conversation may hold only as many answered rounds as the operator setting allows. 
+     * @summary Answer the questions a run ended with and start the run that continues it (GEN-014)
+     * @param {string} id 
+     * @param {ContinueRunRequest} continueRunRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    continueRunRaw(requestParameters: ContinueRunOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Run>>;
+
+    /**
+     * The run must have succeeded by asking the person, and the trace summary lists its questions. One answer per question, in the same order. A new run starts on the same skill version with a new test case snapshot whose prompt is the asking run\'s prompt followed by every question and answer; the criteria, files and rubric are the asking run\'s. Both runs stay immutable, and the link between them is recorded once: answering the same questions twice is refused. The new run is admitted and charged like any run, and a conversation may hold only as many answered rounds as the operator setting allows. 
+     * Answer the questions a run ended with and start the run that continues it (GEN-014)
+     */
+    continueRun(requestParameters: ContinueRunOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Run>;
 
     /**
      * Creates request options for createBundleVersion without sending the request
@@ -2223,6 +2417,32 @@ export interface DefaultApiInterface {
      * Build a downloadable package from one immutable version (PACK-001)
      */
     createDownloadArtifact(requestParameters: CreateDownloadArtifactOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateDownloadArtifact201Response>;
+
+    /**
+     * Creates request options for createEvaluationBatch without sending the request
+     * @param {string} id 
+     * @param {CreateEvaluationBatchRequest} createEvaluationBatchRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createEvaluationBatchRequestOpts(requestParameters: CreateEvaluationBatchOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Every test case must already have its current run permissions confirmed; the batch keeps each confirmed summary and starts the runs one after another as the workspace\'s run slot frees. Each run is admitted and charged like any run. A refusal that waiting fixes (a busy slot, a halted dispatch, a scan not yet available) makes the batch wait; any other refusal stops it. 
+     * @summary Run a set of test cases against one skill version, each several times (EVAL-014)
+     * @param {string} id 
+     * @param {CreateEvaluationBatchRequest} createEvaluationBatchRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createEvaluationBatchRaw(requestParameters: CreateEvaluationBatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationBatch>>;
+
+    /**
+     * Every test case must already have its current run permissions confirmed; the batch keeps each confirmed summary and starts the runs one after another as the workspace\'s run slot frees. Each run is admitted and charged like any run. A refusal that waiting fixes (a busy slot, a halted dispatch, a scan not yet available) makes the batch wait; any other refusal stops it. 
+     * Run a set of test cases against one skill version, each several times (EVAL-014)
+     */
+    createEvaluationBatch(requestParameters: CreateEvaluationBatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationBatch>;
 
     /**
      * Creates request options for createSkillVersionFromSuggestions without sending the request
@@ -3042,6 +3262,32 @@ export interface DefaultApiInterface {
     getDownloadArtifact(requestParameters: GetDownloadArtifactRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DownloadArtifact>;
 
     /**
+     * Creates request options for getEvaluationBatchReport without sending the request
+     * @param {string} id 
+     * @param {string} batchId 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getEvaluationBatchReportRequestOpts(requestParameters: GetEvaluationBatchReportRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * A trial passes when the evaluation of its whole conversation is `met`. Only met, partially met and not met count as judged; a trial still running, awaiting an answer, undetermined or not evaluated is shown but left out of every rate. 
+     * @summary How often each test case passed across its trials (EVAL-014)
+     * @param {string} id 
+     * @param {string} batchId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getEvaluationBatchReportRaw(requestParameters: GetEvaluationBatchReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationBatchReport>>;
+
+    /**
+     * A trial passes when the evaluation of its whole conversation is `met`. Only met, partially met and not met count as judged; a trial still running, awaiting an answer, undetermined or not evaluated is shown but left out of every rate. 
+     * How often each test case passed across its trials (EVAL-014)
+     */
+    getEvaluationBatchReport(requestParameters: GetEvaluationBatchReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationBatchReport>;
+
+    /**
      * Creates request options for getExposureCase without sending the request
      * @param {string} publisher 
      * @param {string} name 
@@ -3316,6 +3562,28 @@ export interface DefaultApiInterface {
     getPlatformAgentRun(requestParameters: GetPlatformAgentRunRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgentRun>;
 
     /**
+     * Creates request options for getPlatformSettings without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getPlatformSettingsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Each setting shows its current value and, once an operator has changed it, who did, when and why. A setting nobody has changed is at its default. 
+     * @summary Platform settings an operator can change (02:OPS-011)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getPlatformSettingsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformSettings>>;
+
+    /**
+     * Operator only. Each setting shows its current value and, once an operator has changed it, who did, when and why. A setting nobody has changed is at its default. 
+     * Platform settings an operator can change (02:OPS-011)
+     */
+    getPlatformSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformSettings>;
+
+    /**
      * Creates request options for getPublicPublication without sending the request
      * @param {string} publisher 
      * @param {string} name 
@@ -3462,6 +3730,28 @@ export interface DefaultApiInterface {
      * How much of the free run allowance is left (PDM-010)
      */
     getRunQuota(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunQuota>;
+
+    /**
+     * Creates request options for getRunSettings without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getRunSettingsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. How many answered rounds one conversation may hold: a run that asks, the run that continues it, and so on. A setting nobody has changed is at its default. 
+     * @summary Run settings an operator can change (GEN-014)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getRunSettingsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>>;
+
+    /**
+     * Operator only. How many answered rounds one conversation may hold: a run that asks, the run that continues it, and so on. A setting nobody has changed is at its default. 
+     * Run settings an operator can change (GEN-014)
+     */
+    getRunSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings>;
 
     /**
      * Creates request options for getRunTrace without sending the request
@@ -3735,6 +4025,28 @@ export interface DefaultApiInterface {
     liftDispatchHalt(requestParameters: LiftDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
+     * Creates request options for listCheckKinds without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listCheckKindsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * The palette an editor builds from: each kind\'s label, whether it is a grader or a composite, and how many values and children it takes. Adding a kind on the platform adds it here with no client change. 
+     * @summary Every node a criterion\'s check tree may use (EVAL-014)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listCheckKindsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListCheckKinds200Response>>;
+
+    /**
+     * The palette an editor builds from: each kind\'s label, whether it is a grader or a composite, and how many values and children it takes. Adding a kind on the platform adds it here with no client change. 
+     * Every node a criterion\'s check tree may use (EVAL-014)
+     */
+    listCheckKinds(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListCheckKinds200Response>;
+
+    /**
      * Creates request options for listCreationSessions without sending the request
      * @param {string} [versionId] Optional immutable Skill Version whose still-retained Studio context should be returned. This is a Creation-owned lookup and does not make Skill Registry depend on Creation.
      * @throws {RequiredError}
@@ -3826,6 +4138,29 @@ export interface DefaultApiInterface {
      * Who took a copy of this package, and when (WS-004)
      */
     listDownloadRecords(requestParameters: ListDownloadRecordsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDownloadRecords200Response>;
+
+    /**
+     * Creates request options for listEvaluationBatches without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listEvaluationBatchesRequestOpts(requestParameters: ListEvaluationBatchesRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @summary The skill\'s evaluation batches, newest first (EVAL-014)
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listEvaluationBatchesRaw(requestParameters: ListEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListEvaluationBatches200Response>>;
+
+    /**
+     * The skill\'s evaluation batches, newest first (EVAL-014)
+     */
+    listEvaluationBatches(requestParameters: ListEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListEvaluationBatches200Response>;
 
     /**
      * Creates request options for listExposureQueue without sending the request
@@ -4700,6 +5035,30 @@ export interface DefaultApiInterface {
     searchSkillsWithCorrectedIntent(requestParameters: SearchSkillsWithCorrectedIntentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicSearchResponse>;
 
     /**
+     * Creates request options for setContinuationRounds without sending the request
+     * @param {SetContinuationRoundsRequest} setContinuationRoundsRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setContinuationRoundsRequestOpts(requestParameters: SetContinuationRoundsOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. The next continuation reads the new value; conversations already past it keep their runs but cannot add another round. Writes the change and its audit event in one transaction. 
+     * @summary Set how many answered rounds a conversation may hold (GEN-014)
+     * @param {SetContinuationRoundsRequest} setContinuationRoundsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setContinuationRoundsRaw(requestParameters: SetContinuationRoundsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>>;
+
+    /**
+     * Operator only. The next continuation reads the new value; conversations already past it keep their runs but cannot add another round. Writes the change and its audit event in one transaction. 
+     * Set how many answered rounds a conversation may hold (GEN-014)
+     */
+    setContinuationRounds(requestParameters: SetContinuationRoundsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings>;
+
+    /**
      * Creates request options for setEvaluationFeedback without sending the request
      * @param {string} id 
      * @param {SetEvaluationFeedbackRequest} setEvaluationFeedbackRequest 
@@ -4724,6 +5083,30 @@ export interface DefaultApiInterface {
      * Say whether the judgement was helpful (EVAL-001)
      */
     setEvaluationFeedback(requestParameters: SetEvaluationFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Evaluation>;
+
+    /**
+     * Creates request options for setJudgePanel without sending the request
+     * @param {SetPlatformAgentEnabledRequest} setPlatformAgentEnabledRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setJudgePanelRequestOpts(requestParameters: SetJudgePanelRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. On, every evaluation is judged by three independent calls and each criterion takes the strict majority; judging then costs about three times as much. The next evaluation reads the new value. Writes the change and its audit event in one transaction. 
+     * @summary Switch the judge panel on or off (02:EVAL-002)
+     * @param {SetPlatformAgentEnabledRequest} setPlatformAgentEnabledRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setJudgePanelRaw(requestParameters: SetJudgePanelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformSettings>>;
+
+    /**
+     * Operator only. On, every evaluation is judged by three independent calls and each criterion takes the strict majority; judging then costs about three times as much. The next evaluation reads the new value. Writes the change and its audit event in one transaction. 
+     * Switch the judge panel on or off (02:EVAL-002)
+     */
+    setJudgePanel(requestParameters: SetJudgePanelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformSettings>;
 
     /**
      * Creates request options for setModelCallBudget without sending the request
@@ -4776,6 +5159,32 @@ export interface DefaultApiInterface {
      * Enable or disable one agent (02:OPS-011)
      */
     setPlatformAgentEnabled(requestParameters: SetPlatformAgentEnabledOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgent>;
+
+    /**
+     * Creates request options for setPlatformAgentSpendCap without sending the request
+     * @param {string} name 
+     * @param {SetPlatformAgentSpendCapRequest} setPlatformAgentSpendCapRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setPlatformAgentSpendCapRequestOpts(requestParameters: SetPlatformAgentSpendCapOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. A number replaces the cap the agent is defined with; null returns it to that default. The next run reads the new cap before its key is issued; a run already in progress keeps the cap it started with. Writes the change and its audit event, with the cap before and after, in one transaction. 
+     * @summary Set or clear one agent\'s daily spend cap (02:OPS-011)
+     * @param {string} name 
+     * @param {SetPlatformAgentSpendCapRequest} setPlatformAgentSpendCapRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setPlatformAgentSpendCapRaw(requestParameters: SetPlatformAgentSpendCapOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformAgent>>;
+
+    /**
+     * Operator only. A number replaces the cap the agent is defined with; null returns it to that default. The next run reads the new cap before its key is issued; a run already in progress keeps the cap it started with. Writes the change and its audit event, with the cap before and after, in one transaction. 
+     * Set or clear one agent\'s daily spend cap (02:OPS-011)
+     */
+    setPlatformAgentSpendCap(requestParameters: SetPlatformAgentSpendCapOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgent>;
 
     /**
      * Creates request options for setSkillCategory without sending the request
@@ -5594,6 +6003,72 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for compareEvaluationBatches without sending the request
+     */
+    async compareEvaluationBatchesRequestOpts(requestParameters: CompareEvaluationBatchesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling compareEvaluationBatches().'
+            );
+        }
+
+        if (requestParameters['batchId'] == null) {
+            throw new runtime.RequiredError(
+                'batchId',
+                'Required parameter "batchId" was null or undefined when calling compareEvaluationBatches().'
+            );
+        }
+
+        if (requestParameters['against'] == null) {
+            throw new runtime.RequiredError(
+                'against',
+                'Required parameter "against" was null or undefined when calling compareEvaluationBatches().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['against'] != null) {
+            queryParameters['against'] = requestParameters['against'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/skills/{id}/evaluation-batches/{batchId}/comparison`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{batchId}', encodeURIComponent(String(requestParameters['batchId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Each test case judged in both batches is one pair; its difference is this batch\'s pass rate on that test case minus the other\'s. The result is the mean difference with a 95% interval from the paired standard error, so test cases that are hard for both versions do not widen it. Test cases judged in only one batch are counted as unpaired and left out. The interval needs at least two pairs. 
+     * This batch against another of the same skill, test case by test case (EVAL-014)
+     */
+    async compareEvaluationBatchesRaw(requestParameters: CompareEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CompareEvaluationBatches200Response>> {
+        const requestOptions = await this.compareEvaluationBatchesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CompareEvaluationBatches200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Each test case judged in both batches is one pair; its difference is this batch\'s pass rate on that test case minus the other\'s. The result is the mean difference with a 95% interval from the paired standard error, so test cases that are hard for both versions do not widen it. Test cases judged in only one batch are counted as unpaired and left out. The interval needs at least two pairs. 
+     * This batch against another of the same skill, test case by test case (EVAL-014)
+     */
+    async compareEvaluationBatches(requestParameters: CompareEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompareEvaluationBatches200Response> {
+        const response = await this.compareEvaluationBatchesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for compareRuns without sending the request
      */
     async compareRunsRequestOpts(requestParameters: CompareRunsRequest): Promise<runtime.RequestOpts> {
@@ -5705,6 +6180,63 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async confirmRunPreflight(requestParameters: ConfirmRunPreflightOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ConfirmRunPreflight201Response> {
         const response = await this.confirmRunPreflightRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for continueRun without sending the request
+     */
+    async continueRunRequestOpts(requestParameters: ContinueRunOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling continueRun().'
+            );
+        }
+
+        if (requestParameters['continueRunRequest'] == null) {
+            throw new runtime.RequiredError(
+                'continueRunRequest',
+                'Required parameter "continueRunRequest" was null or undefined when calling continueRun().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/runs/{id}/continuations`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ContinueRunRequestToJSON(requestParameters['continueRunRequest']),
+        };
+    }
+
+    /**
+     * The run must have succeeded by asking the person, and the trace summary lists its questions. One answer per question, in the same order. A new run starts on the same skill version with a new test case snapshot whose prompt is the asking run\'s prompt followed by every question and answer; the criteria, files and rubric are the asking run\'s. Both runs stay immutable, and the link between them is recorded once: answering the same questions twice is refused. The new run is admitted and charged like any run, and a conversation may hold only as many answered rounds as the operator setting allows. 
+     * Answer the questions a run ended with and start the run that continues it (GEN-014)
+     */
+    async continueRunRaw(requestParameters: ContinueRunOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Run>> {
+        const requestOptions = await this.continueRunRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RunFromJSON(jsonValue));
+    }
+
+    /**
+     * The run must have succeeded by asking the person, and the trace summary lists its questions. One answer per question, in the same order. A new run starts on the same skill version with a new test case snapshot whose prompt is the asking run\'s prompt followed by every question and answer; the criteria, files and rubric are the asking run\'s. Both runs stay immutable, and the link between them is recorded once: answering the same questions twice is refused. The new run is admitted and charged like any run, and a conversation may hold only as many answered rounds as the operator setting allows. 
+     * Answer the questions a run ended with and start the run that continues it (GEN-014)
+     */
+    async continueRun(requestParameters: ContinueRunOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Run> {
+        const response = await this.continueRunRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -5866,6 +6398,63 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async createDownloadArtifact(requestParameters: CreateDownloadArtifactOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateDownloadArtifact201Response> {
         const response = await this.createDownloadArtifactRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for createEvaluationBatch without sending the request
+     */
+    async createEvaluationBatchRequestOpts(requestParameters: CreateEvaluationBatchOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling createEvaluationBatch().'
+            );
+        }
+
+        if (requestParameters['createEvaluationBatchRequest'] == null) {
+            throw new runtime.RequiredError(
+                'createEvaluationBatchRequest',
+                'Required parameter "createEvaluationBatchRequest" was null or undefined when calling createEvaluationBatch().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/skills/{id}/evaluation-batches`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateEvaluationBatchRequestToJSON(requestParameters['createEvaluationBatchRequest']),
+        };
+    }
+
+    /**
+     * Every test case must already have its current run permissions confirmed; the batch keeps each confirmed summary and starts the runs one after another as the workspace\'s run slot frees. Each run is admitted and charged like any run. A refusal that waiting fixes (a busy slot, a halted dispatch, a scan not yet available) makes the batch wait; any other refusal stops it. 
+     * Run a set of test cases against one skill version, each several times (EVAL-014)
+     */
+    async createEvaluationBatchRaw(requestParameters: CreateEvaluationBatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationBatch>> {
+        const requestOptions = await this.createEvaluationBatchRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EvaluationBatchFromJSON(jsonValue));
+    }
+
+    /**
+     * Every test case must already have its current run permissions confirmed; the batch keeps each confirmed summary and starts the runs one after another as the workspace\'s run slot frees. Each run is admitted and charged like any run. A refusal that waiting fixes (a busy slot, a halted dispatch, a scan not yet available) makes the batch wait; any other refusal stops it. 
+     * Run a set of test cases against one skill version, each several times (EVAL-014)
+     */
+    async createEvaluationBatch(requestParameters: CreateEvaluationBatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationBatch> {
+        const response = await this.createEvaluationBatchRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -7489,6 +8078,61 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for getEvaluationBatchReport without sending the request
+     */
+    async getEvaluationBatchReportRequestOpts(requestParameters: GetEvaluationBatchReportRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getEvaluationBatchReport().'
+            );
+        }
+
+        if (requestParameters['batchId'] == null) {
+            throw new runtime.RequiredError(
+                'batchId',
+                'Required parameter "batchId" was null or undefined when calling getEvaluationBatchReport().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/skills/{id}/evaluation-batches/{batchId}`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{batchId}', encodeURIComponent(String(requestParameters['batchId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * A trial passes when the evaluation of its whole conversation is `met`. Only met, partially met and not met count as judged; a trial still running, awaiting an answer, undetermined or not evaluated is shown but left out of every rate. 
+     * How often each test case passed across its trials (EVAL-014)
+     */
+    async getEvaluationBatchReportRaw(requestParameters: GetEvaluationBatchReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationBatchReport>> {
+        const requestOptions = await this.getEvaluationBatchReportRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EvaluationBatchReportFromJSON(jsonValue));
+    }
+
+    /**
+     * A trial passes when the evaluation of its whole conversation is `met`. Only met, partially met and not met count as judged; a trial still running, awaiting an answer, undetermined or not evaluated is shown but left out of every rate. 
+     * How often each test case passed across its trials (EVAL-014)
+     */
+    async getEvaluationBatchReport(requestParameters: GetEvaluationBatchReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationBatchReport> {
+        const response = await this.getEvaluationBatchReportRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getExposureCase without sending the request
      */
     async getExposureCaseRequestOpts(requestParameters: GetExposureCaseRequest): Promise<runtime.RequestOpts> {
@@ -8005,6 +8649,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for getPlatformSettings without sending the request
+     */
+    async getPlatformSettingsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/settings`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. Each setting shows its current value and, once an operator has changed it, who did, when and why. A setting nobody has changed is at its default. 
+     * Platform settings an operator can change (02:OPS-011)
+     */
+    async getPlatformSettingsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformSettings>> {
+        const requestOptions = await this.getPlatformSettingsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformSettingsFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Each setting shows its current value and, once an operator has changed it, who did, when and why. A setting nobody has changed is at its default. 
+     * Platform settings an operator can change (02:OPS-011)
+     */
+    async getPlatformSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformSettings> {
+        const response = await this.getPlatformSettingsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getPublicPublication without sending the request
      */
     async getPublicPublicationRequestOpts(requestParameters: GetPublicPublicationRequest): Promise<runtime.RequestOpts> {
@@ -8301,6 +8984,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getRunQuota(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunQuota> {
         const response = await this.getRunQuotaRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getRunSettings without sending the request
+     */
+    async getRunSettingsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/settings/runs`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. How many answered rounds one conversation may hold: a run that asks, the run that continues it, and so on. A setting nobody has changed is at its default. 
+     * Run settings an operator can change (GEN-014)
+     */
+    async getRunSettingsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>> {
+        const requestOptions = await this.getRunSettingsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RunSettingsFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. How many answered rounds one conversation may hold: a run that asks, the run that continues it, and so on. A setting nobody has changed is at its default. 
+     * Run settings an operator can change (GEN-014)
+     */
+    async getRunSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings> {
+        const response = await this.getRunSettingsRaw(initOverrides);
         return await response.value();
     }
 
@@ -8843,6 +9565,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for listCheckKinds without sending the request
+     */
+    async listCheckKindsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/evaluation/check-kinds`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The palette an editor builds from: each kind\'s label, whether it is a grader or a composite, and how many values and children it takes. Adding a kind on the platform adds it here with no client change. 
+     * Every node a criterion\'s check tree may use (EVAL-014)
+     */
+    async listCheckKindsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListCheckKinds200Response>> {
+        const requestOptions = await this.listCheckKindsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListCheckKinds200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The palette an editor builds from: each kind\'s label, whether it is a grader or a composite, and how many values and children it takes. Adding a kind on the platform adds it here with no client change. 
+     * Every node a criterion\'s check tree may use (EVAL-014)
+     */
+    async listCheckKinds(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListCheckKinds200Response> {
+        const response = await this.listCheckKindsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listCreationSessions without sending the request
      */
     async listCreationSessionsRequestOpts(requestParameters: ListCreationSessionsRequest): Promise<runtime.RequestOpts> {
@@ -9013,6 +9774,51 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async listDownloadRecords(requestParameters: ListDownloadRecordsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDownloadRecords200Response> {
         const response = await this.listDownloadRecordsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listEvaluationBatches without sending the request
+     */
+    async listEvaluationBatchesRequestOpts(requestParameters: ListEvaluationBatchesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listEvaluationBatches().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/skills/{id}/evaluation-batches`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The skill\'s evaluation batches, newest first (EVAL-014)
+     */
+    async listEvaluationBatchesRaw(requestParameters: ListEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListEvaluationBatches200Response>> {
+        const requestOptions = await this.listEvaluationBatchesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListEvaluationBatches200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The skill\'s evaluation batches, newest first (EVAL-014)
+     */
+    async listEvaluationBatches(requestParameters: ListEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListEvaluationBatches200Response> {
+        const response = await this.listEvaluationBatchesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -10711,6 +11517,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for setContinuationRounds without sending the request
+     */
+    async setContinuationRoundsRequestOpts(requestParameters: SetContinuationRoundsOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['setContinuationRoundsRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setContinuationRoundsRequest',
+                'Required parameter "setContinuationRoundsRequest" was null or undefined when calling setContinuationRounds().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/settings/runs/continuation-rounds`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetContinuationRoundsRequestToJSON(requestParameters['setContinuationRoundsRequest']),
+        };
+    }
+
+    /**
+     * Operator only. The next continuation reads the new value; conversations already past it keep their runs but cannot add another round. Writes the change and its audit event in one transaction. 
+     * Set how many answered rounds a conversation may hold (GEN-014)
+     */
+    async setContinuationRoundsRaw(requestParameters: SetContinuationRoundsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>> {
+        const requestOptions = await this.setContinuationRoundsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RunSettingsFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. The next continuation reads the new value; conversations already past it keep their runs but cannot add another round. Writes the change and its audit event in one transaction. 
+     * Set how many answered rounds a conversation may hold (GEN-014)
+     */
+    async setContinuationRounds(requestParameters: SetContinuationRoundsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings> {
+        const response = await this.setContinuationRoundsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for setEvaluationFeedback without sending the request
      */
     async setEvaluationFeedbackRequestOpts(requestParameters: SetEvaluationFeedbackOperationRequest): Promise<runtime.RequestOpts> {
@@ -10764,6 +11619,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async setEvaluationFeedback(requestParameters: SetEvaluationFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Evaluation> {
         const response = await this.setEvaluationFeedbackRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setJudgePanel without sending the request
+     */
+    async setJudgePanelRequestOpts(requestParameters: SetJudgePanelRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['setPlatformAgentEnabledRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setPlatformAgentEnabledRequest',
+                'Required parameter "setPlatformAgentEnabledRequest" was null or undefined when calling setJudgePanel().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/settings/judge-panel`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetPlatformAgentEnabledRequestToJSON(requestParameters['setPlatformAgentEnabledRequest']),
+        };
+    }
+
+    /**
+     * Operator only. On, every evaluation is judged by three independent calls and each criterion takes the strict majority; judging then costs about three times as much. The next evaluation reads the new value. Writes the change and its audit event in one transaction. 
+     * Switch the judge panel on or off (02:EVAL-002)
+     */
+    async setJudgePanelRaw(requestParameters: SetJudgePanelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformSettings>> {
+        const requestOptions = await this.setJudgePanelRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformSettingsFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. On, every evaluation is judged by three independent calls and each criterion takes the strict majority; judging then costs about three times as much. The next evaluation reads the new value. Writes the change and its audit event in one transaction. 
+     * Switch the judge panel on or off (02:EVAL-002)
+     */
+    async setJudgePanel(requestParameters: SetJudgePanelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformSettings> {
+        const response = await this.setJudgePanelRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -10878,6 +11782,63 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async setPlatformAgentEnabled(requestParameters: SetPlatformAgentEnabledOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgent> {
         const response = await this.setPlatformAgentEnabledRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setPlatformAgentSpendCap without sending the request
+     */
+    async setPlatformAgentSpendCapRequestOpts(requestParameters: SetPlatformAgentSpendCapOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['name'] == null) {
+            throw new runtime.RequiredError(
+                'name',
+                'Required parameter "name" was null or undefined when calling setPlatformAgentSpendCap().'
+            );
+        }
+
+        if (requestParameters['setPlatformAgentSpendCapRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setPlatformAgentSpendCapRequest',
+                'Required parameter "setPlatformAgentSpendCapRequest" was null or undefined when calling setPlatformAgentSpendCap().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/agents/{name}/spend-cap`;
+        urlPath = urlPath.replace('{name}', encodeURIComponent(String(requestParameters['name'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetPlatformAgentSpendCapRequestToJSON(requestParameters['setPlatformAgentSpendCapRequest']),
+        };
+    }
+
+    /**
+     * Operator only. A number replaces the cap the agent is defined with; null returns it to that default. The next run reads the new cap before its key is issued; a run already in progress keeps the cap it started with. Writes the change and its audit event, with the cap before and after, in one transaction. 
+     * Set or clear one agent\'s daily spend cap (02:OPS-011)
+     */
+    async setPlatformAgentSpendCapRaw(requestParameters: SetPlatformAgentSpendCapOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformAgent>> {
+        const requestOptions = await this.setPlatformAgentSpendCapRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformAgentFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. A number replaces the cap the agent is defined with; null returns it to that default. The next run reads the new cap before its key is issued; a run already in progress keeps the cap it started with. Writes the change and its audit event, with the cap before and after, in one transaction. 
+     * Set or clear one agent\'s daily spend cap (02:OPS-011)
+     */
+    async setPlatformAgentSpendCap(requestParameters: SetPlatformAgentSpendCapOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformAgent> {
+        const response = await this.setPlatformAgentSpendCapRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

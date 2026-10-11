@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "租了 170 分鐘，費用多少？",
+  "acceptance_criteria": [
+    {
+      "text": "170 分鐘為 17 個單位，不需再進位"
+    },
+    {
+      "text": "總費用為 58 元（18 + 24 + 8 個單位 × 2 元 = 16）"
+    },
+    {
+      "text": "沒有被封頂成 60 元"
+    }
+  ],
+  "final_output": "租了 170 分鐘，計費 17 個單位，封頂前金額 58 元，最終費用 **58 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ef3e1d69-ecfa-411c-8f68-7ffb42d766ed",
+    "run_id": "04795261-ddf1-4ada-8211-184279cb4c91",
+    "status": "completed",
+    "overall": "met",
+    "summary": "本次回覆將 170 分鐘計為 17 個單位，最終費用為 58 元，符合全部三項驗收條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "9bf64eff-7fad-40ac-b18c-bce1353f5fdc",
+        "text": "170 分鐘為 17 個單位，不需再進位",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將 170 分鐘計為 17 個單位，沒有再進位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "租了 170 分鐘，計費 17 個單位",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a39b4599-cf75-4e98-a8e8-97db15ecab45",
+        "text": "總費用為 58 元（18 + 24 + 8 個單位 × 2 元 = 16）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆的總費用為 58 元；雖未列出級距算式，金額符合驗收條件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "封頂前金額 58 元，最終費用 **58 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fc9d0738-7eb3-4013-ae42-1d32eb6edf16",
+        "text": "沒有被封頂成 60 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "封頂前與最終費用均為 58 元，沒有被封頂成 60 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "封頂前金額 58 元，最終費用 **58 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1527 input and 207 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

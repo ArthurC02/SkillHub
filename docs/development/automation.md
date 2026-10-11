@@ -185,6 +185,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `dependency-policy` | Dockerfile 的 FROM、compose 與 workflow 的 `image:` 都釘 digest；`uses:` 釘 40 碼 SHA 並寫 `# vX`；每個 npm 專案有 `.npmrc` 的 `ignore-scripts=true`；每個 uv 專案有 `exclude-newer`；每個有 lockfile、Dockerfile、compose 或 composite action 的目錄都列在 `.github/dependabot.yml`；compose 與 workflow、`tools/ci/*.sh` 用到同一個映像時引用完全相同；node、go、python、uv、task、golangci-lint 在每個位置版本一致（見〈依賴的准入、更新與閘門〉） | `tools/devctl/dependency_policy.go` |
 | `harness` | `.claude/skills/` 不得引用 ADR 編號或需求 ID；`.claude/agents/` 每個角色必須指定 `model`（不得 fable／sol／inherit；預設是各角色 frontmatter 的低階模型，簡報依任務難度升級）與 `effort`（low／medium／high／xhigh／max）；根 `AGENTS.md` 不得超過 16 KiB（Codex 讀到 32 KiB 就靜默截斷；上限是棘輪，貼著現況而不是貼著懸崖）；`.claude/workflows/*.js` 以 `export const meta = { name }` 開頭、`name` 等於檔名，且每個 `agent(` 呼叫同一行要有 `model:`、字面值不得 fable／sol／inherit（裸 `agent()` 會繼承派工者的旗艦級）。**技能的 frontmatter 是否合 Agent Skills 規格，由產品自己的驗證器管**：`apps/platform/internal/shared/skillpkg/repo_skills_test.go` 把 `skillpkg.Validate` 跑在 `.claude/skills/` 上 | `tools/devctl/harness.go` |
 | `comment-budget` | 手寫程式與設定檔（Go／TS／JS／Python／SQL／YAML／TOML／shell／Dockerfile／`.env.example`，含 `doc.go`；不含 generated 檔與 `go:`／`one-number:`／`-- name:` 等機器標記）的兩種註解：超過 3 行的區塊，以及帶需求／裁定編號、日期或 `§` 的施工日誌。`comment-lint <路徑>` 逐行列出。零容忍、沒有存量清單（全 repo 清理後歸零）。規則本體是根 `AGENTS.md`〈慣例〉 | `tools/devctl/comment_budget.go` |
+| `domain-memory-release` | Domain Memory 外掛的發行檔（不含 `evals/`、`scripts/test_*.py`）內容一變，`plugin.json` 的版本就要跟著升，並以 `go -C tools/devctl run . domain-memory-release` 更新 `tools/devctl/domain-memory-release.json` 的版本與內容摘要（行尾正規化後計算）；版本沒升時那支指令拒絕寫入。已安裝的複本只在版本變動時更新，內容變了而版本沒變，它就會靜默停在舊版 | `tools/devctl/domain_memory_release.go` |
 | `complexity-exemptions` | 三個 Go module（`apps/platform`、`apps/sandbox`、`tools/devctl`）的 `.golangci.yml` 都啟用 gocognit 且 `min-complexity` 不超過登記的門檻；任何逐函式的 gocognit 豁免都不允許——函式太複雜就拆，不以名字放行 | `tools/devctl/complexity_exemptions.go` |
 
 ### 新增一個 `.env.example` 變數，要同批說出它擋什麼
@@ -495,10 +496,10 @@ docker run --rm --network container:skillhub-postgres-1 \
 **怎麼裝 `golangci-lint`，以及為什麼不能照著它官網那一行裝**：
 
 ```bash
-GOTOOLCHAIN=go1.27.1 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+GOTOOLCHAIN=go1.27.2 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
 ```
 
-版本 `v2.13.2` 來自 [`tools/toolchain.yaml`](../../tools/toolchain.yaml) 的 `golangci_lint`，CI 的 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 讀同一個欄位、跑同一個 `go install`；模組代理與 sumdb 會驗 checksum，所以上游再發版也不會讓一棵沒動過的樹變紅。**`GOTOOLCHAIN=go1.27.1` 那個前綴是必要的，不是保險**：`golangci-lint` 會拒絕載入一份「目標 Go 版本比它自己編譯時用的 Go 還新」的設定，而本 repo 四個模組的 `go` 指示都是 **1.27.1**。CI 為此付過一次代價，錯誤訊息與四天八個 commit 的損失逐字記在 `b255333c` 的 commit message 裡——**它當時的形狀不是 lint 紅了，是同一個 job 裡後面五個 `- run:` 全部被跳過**，所以那段時間每一句「套件全綠」的意思都是「在某人的筆電上是綠的」。本機的 `go version` 比 1.27 舊沒有關係（`GOTOOLCHAIN=auto` 會自己抓），**沒有寫這個前綴才有關係**。
+版本 `v2.14.0` 來自 [`tools/toolchain.yaml`](../../tools/toolchain.yaml) 的 `golangci_lint`，CI 的 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 讀同一個欄位、跑同一個 `go install`；模組代理與 sumdb 會驗 checksum，所以上游再發版也不會讓一棵沒動過的樹變紅。**`GOTOOLCHAIN=go1.27.2` 那個前綴是必要的，不是保險**：`golangci-lint` 會拒絕載入一份「目標 Go 版本比它自己編譯時用的 Go 還新」的設定，而本 repo 四個模組的 `go` 指示都是 **1.27.2**。CI 為此付過一次代價，錯誤訊息與四天八個 commit 的損失逐字記在 `b255333c` 的 commit message 裡——**它當時的形狀不是 lint 紅了，是同一個 job 裡後面五個 `- run:` 全部被跳過**，所以那段時間每一句「套件全綠」的意思都是「在某人的筆電上是綠的」。本機的 `go version` 比 1.27 舊沒有關係（`GOTOOLCHAIN=auto` 會自己抓），**沒有寫這個前綴才有關係**。
 
 裝完之後 `go env GOPATH`／`bin` 要在 `PATH` 上，`devctl doctor` 的 `golangci-lint` 那一列才會 PASS。**那一列從一開始就在 doctor 裡**——[開工守則第 1 條](../../AGENTS.md)「先診斷再修改」指的就是這件事：格式紅燈的成因通常不是缺工具，是沒有人先跑 doctor。
 

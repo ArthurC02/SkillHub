@@ -1,0 +1,100 @@
+{
+  "round": 0,
+  "sample_input": "客戶要洗 3 台分離式、1 台窗型，不用加急，報價多少？",
+  "acceptance_criteria": [
+    {
+      "text": "總價為 6200 元"
+    },
+    {
+      "text": "沒有向使用者詢問加成幅度，也沒有要求補充加急設定"
+    }
+  ],
+  "final_output": "冷氣清洗報價（不加急）\n\n- 分離式 3 台、窗型 1 台\n- 折扣前小計：NT$6,600\n- 台數折扣：NT$400\n- 折扣後小計：NT$6,200\n- 加急費：NT$0\n- **總價：NT$6,200**\n\n假設加急加成為 20%（可用 --rush-percent 修改）。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "36547d32-e5bf-46e8-a5e1-5de549f69a1b",
+    "run_id": "6f9b9c07-e73a-4881-bb84-8e2e6b753755",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均達成：總價為 NT$6,200，且沒有要求使用者補充加急設定。",
+    "criterion_results": [
+      {
+        "criterion_id": "c081c748-9155-4a55-b297-76967a56821a",
+        "text": "總價為 6200 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終報價列出的總價為 NT$6,200。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**總價：NT$6,200**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8c8fae64-02d6-4bce-a0ac-eec8bab96b2f",
+        "text": "沒有向使用者詢問加成幅度，也沒有要求補充加急設定",
+        "result": "passed",
+        "source": "model",
+        "reason": "使用者已說明不加急；最終回覆直接提供不加急報價，雖提及加急加成假設，但沒有詢問加成幅度或要求補充加急設定。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "冷氣清洗報價（不加急）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "假設加急加成為 20%（可用 --rush-percent 修改）。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1521 input and 324 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

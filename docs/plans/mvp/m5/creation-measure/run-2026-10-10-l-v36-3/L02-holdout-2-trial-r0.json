@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "再判三筆：\nD 訂單是客製刻字鋼筆，2026-03-02 到貨，2026-03-04 申請，筆身有瑕疵。\nE 訂單是一般筆記本，2026-03-02 到貨，2026-04-01 申請，封面有瑕疵。\nF 訂單是一般筆記本，2026-03-02 到貨，2026-04-02 申請，封面有瑕疵。",
+  "acceptance_criteria": [
+    {
+      "text": "D 訂單的結果是不受理（客製商品優先，即使 2 天內且有瑕疵）"
+    },
+    {
+      "text": "E 訂單的結果是換貨（第 30 天仍在範圍內）"
+    },
+    {
+      "text": "F 訂單的結果是不受理（第 31 天已超過）"
+    }
+  ],
+  "final_output": "錯誤：訂單 D 的使用狀態值無法使用：''。\n\n使用狀態未提供，請確認 D、E、F 各自是「是」或「否」。以下依序為編號、到貨日、申請日、客製、已使用、有瑕疵、判定；空白欄待補。\n\nD | 2026-03-02 | 2026-03-04 | 是 |  | 是 | \nE | 2026-03-02 | 2026-04-01 | 否 |  | 是 | \nF | 2026-03-02 | 2026-04-02 | 否 |  | 是 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ca689d4a-1bd9-4a61-8295-cb35b4b9bb78",
+    "run_id": "81331ca3-05c1-4d2b-9d21-f3eb3f5fd817",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "這次回覆要求補充使用狀態，但沒有判定 D、E、F 任一訂單的退貨結果；三項驗收標準均未達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "d18d7acf-810b-46e2-9f44-c5e6054be7e1",
+        "text": "D 訂單的結果是不受理（客製商品優先，即使 2 天內且有瑕疵）",
+        "result": "failed",
+        "source": "model",
+        "reason": "D 訂單的判定欄為空白，未給出「不受理」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "D | 2026-03-02 | 2026-03-04 | 是 |  | 是 | ",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8aa899cd-079e-4c9d-a8fb-ba23e4adeb39",
+        "text": "E 訂單的結果是換貨（第 30 天仍在範圍內）",
+        "result": "failed",
+        "source": "model",
+        "reason": "E 訂單的判定欄為空白，未給出「換貨」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "E | 2026-03-02 | 2026-04-01 | 否 |  | 是 | ",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "09c7e9c9-c5da-4cc4-b6a2-0b6ed77e2e95",
+        "text": "F 訂單的結果是不受理（第 31 天已超過）",
+        "result": "failed",
+        "source": "model",
+        "reason": "F 訂單的判定欄為空白，未給出「不受理」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "F | 2026-03-02 | 2026-04-02 | 否 | | 是 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1517 input and 5119 output tokens on skillhub-run; reported cost $0.0057 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "request": {
+    "RunID": "7da7f5b2-27b4-45cd-b835-142e87a4a1b6",
+    "EvaluationID": "e213e742-5bf6-4d57-b4ca-25e912829da9",
+    "Skill": {
+      "Name": "maternity-home-visit-fee",
+      "Summary": "依訪視開始時間及使用者提供的國定假日標註，計算單次到府坐月子護理訪視的應收費用。當需要判定平日、夜間或國定假日費率時使用。"
+    },
+    "UserPrompt": "護理師 2026 年 1 月 5 日（一）上午 9 點到府訪視一次，這次應收費用是多少？",
+    "Criteria": [
+      {
+        "ID": "39841c67-ae76-475c-b09a-83fc77ee2e6b",
+        "Text": "應收費用為 1500 元",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "14248dea-0282-44c9-8ffe-bd739c1a981a",
+        "Text": "輸出沒有反問使用者，直接給出金額",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "國定假日標註未提供，依規則不推定是否為假日，因此目前無法計算費用。\n\n請補充：`2026-01-05,09:00,國定假日（是/否）`",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "c2f50709-3863-43ab-8d8e-6ce82bf1e798",
+          "OccurredAt": "2026-10-09T12:09:06.095Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"maternity-home-visit-fee\", \"skill_version_id\": \"6c035b56-0e9d-4086-8f06-6944be818c8f\"}"
+        },
+        {
+          "TraceEventID": "74cae4e1-6bed-4ff4-bb44-b8de13dbe566",
+          "OccurredAt": "2026-10-09T12:09:06.126Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"護理師於 2026 年 1 月 5 日（一）上午 9 點到府訪視一次。計算應收費用。\", \"skill\": \"maternity-home-visit-fee\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 31, \"invocation_id\": \"call_Hz55Irm0PHwHQWCXysxB02HE\", \"result_summary\": \"Launching skill: maternity-home-visit-fee\"}"
+        },
+        {
+          "TraceEventID": "66117c46-92e3-4224-a361-ec7dffb7cb9d",
+          "OccurredAt": "2026-10-09T12:09:09.177Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"國定假日標註未提供，依規則不推定是否為假日，因此目前無法計算費用。\\n\\n請補充：`2026-01-05,09:00,國定假日（是/否）`\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "bab0a097-7c35-4bd7-923c-ed2f2850079f",
+          "OccurredAt": "2026-10-09T12:09:09.475Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"國定假日標註未提供，依規則不推定是否為假日，因此目前無法計算費用。\\n\\n請補充：`2026-01-05,09:00,國定假日（是/否）`\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "e2e40c83-a8ad-440d-a00e-8f9cad9a1718",
+          "OccurredAt": "2026-10-09T12:09:13.535Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.002815965, \"cost_source\": \"gateway\", \"duration_ms\": 10388, \"input_tokens\": 1485, \"token_source\": \"result\", \"output_tokens\": 236, \"cache_read_input_tokens\": 16524, \"cache_write_input_tokens\": 18645}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "39841c67-ae76-475c-b09a-83fc77ee2e6b",
+        "Result": "failed",
+        "Reason": "最終回覆表示目前無法計算費用，沒有給出應收費用 1500 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "因此目前無法計算費用。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "14248dea-0282-44c9-8ffe-bd739c1a981a",
+        "Result": "failed",
+        "Reason": "最終回覆要求使用者補充國定假日標註，並未直接給出金額。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "請補充：`2026-01-05,09:00,國定假日（是/否）`"
+          }
+        ]
+      }
+    ],
+    "Overall": "not_met",
+    "Summary": "這次回覆沒有提供 1500 元，反而要求使用者補充資料。兩項驗收標準均未達成。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2106,
+      "CompletionTokens": 282,
+      "CostUSD": 0.005548900000000001,
+      "CostReported": true
+    }
+  }
+}

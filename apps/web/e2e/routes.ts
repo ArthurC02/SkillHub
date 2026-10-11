@@ -44,6 +44,7 @@ export const ROUTES: [name: string, url: string][] = [
   ["admin-rosters", "/admin/rosters"],
   ["admin-audit-log", "/admin/audit-log"],
   ["admin-model-budgets", "/admin/model-budgets"],
+  ["admin-settings", "/admin/settings"],
   ["admin-cost-statistics", "/admin/cost-statistics"],
   ["admin-trends", "/admin/trends"],
   ["admin-exposure", `/admin/exposure?publication=${PUBLISHER}/${PUBLICATION}`],

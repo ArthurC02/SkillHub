@@ -1,0 +1,151 @@
+{
+  "round": 0,
+  "sample_input": "幫我整理出貨單：出貨日 2026-02-30，250ml 蜂蜜 6 瓶，蜂蠟蠟燭 -3 支。",
+  "acceptance_criteria": [
+    {
+      "text": "指出 2026-02-30 這個日期不存在並請使用者確認"
+    },
+    {
+      "text": "指出蜂蠟蠟燭 -3 支是負數、不合理並請使用者確認"
+    },
+    {
+      "text": "沒有自行把日期改成 2 月 28 日、3 月 2 日等其他日期，也沒有自行把數量改成 3 支"
+    },
+    {
+      "text": "沒有把含蠟燭的訂單總額（如 810 元或 1350 元）當作確定結果輸出"
+    },
+    {
+      "text": "若有列出 250ml 蜂蜜 6 瓶的小計，數字須為 1080 元"
+    }
+  ],
+  "final_output": "出貨單：第 1 筆訂單\n出貨日期：待確認（原文：2026-02-30）\n需由你確認：日期 2026-02-30 不存在或格式無效。\n品項明細：\n- 250ml 蜂蜜：6；單價未提供，小計：無法計算。\n需由你確認：品項 250ml 蜂蜜 不在已提供的價目中。\n- 蜂蠟蠟燭：-3；小計：不計算。\n需由你確認：蜂蠟蠟燭 的數量為 -3，是負數。\n總額：待確認",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b130db1f-db51-409d-b5ac-7e8928871344",
+    "run_id": "c34d2824-9fdf-4a8f-a9f7-8298ee62f364",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆要求確認不存在的日期與負數數量，未擅自更改資料或給出確定總額。蜂蜜小計未列出數字，因此最後一項條件未觸發。",
+    "criterion_results": [
+      {
+        "criterion_id": "e1abb76c-ded6-4b53-9cf2-57f5e75e96eb",
+        "text": "指出 2026-02-30 這個日期不存在並請使用者確認",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出 2026-02-30 不存在，並請使用者確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "需由你確認：日期 2026-02-30 不存在或格式無效。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4be2b095-1e86-45c9-b5f4-279bbb451589",
+        "text": "指出蜂蠟蠟燭 -3 支是負數、不合理並請使用者確認",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出蜂蠟蠟燭數量為負數，並請使用者確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "需由你確認：蜂蠟蠟燭 的數量為 -3，是負數。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fe686bbb-98bd-4462-bd59-a4107fe61c82",
+        "text": "沒有自行把日期改成 2 月 28 日、3 月 2 日等其他日期，也沒有自行把數量改成 3 支",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留原日期與負數數量，未自行改成其他日期或 3 支。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "出貨日期：待確認（原文：2026-02-30）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 蜂蠟蠟燭：-3；小計：不計算。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fa1b3846-5e10-4645-87c8-b987409863dd",
+        "text": "沒有把含蠟燭的訂單總額（如 810 元或 1350 元）當作確定結果輸出",
+        "result": "passed",
+        "source": "model",
+        "reason": "沒有將含蠟燭的訂單總額列為確定金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總額：待確認",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3f0266f6-a57f-4c9c-afac-c73cbfd8ecea",
+        "text": "若有列出 250ml 蜂蜜 6 瓶的小計，數字須為 1080 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "未列出 250ml 蜂蜜 6 瓶的數字小計，因此未出現與 1080 元相牴觸的小計；此條件未觸發。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 250ml 蜂蜜：6；單價未提供，小計：無法計算。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1527 input and 575 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

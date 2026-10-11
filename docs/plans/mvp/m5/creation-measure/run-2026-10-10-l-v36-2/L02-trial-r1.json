@@ -1,0 +1,197 @@
+{
+  "round": 1,
+  "sample_input": "請依規則判定以下每筆訂單的退貨受理結果。\n到貨日 | 申請日 | 商品種類 | 商品狀態\n2026-09-01 | 2026-09-03 | 客製刻字筆 | 未使用、有瑕疵\n2026-09-01 | 2026-09-08 | 一般筆記本 | 未使用、無瑕疵\n2026-09-01 | 2026-09-08 | 一般筆袋 | 已使用、有瑕疵\n2026-09-01 | 2026-09-08 | 一般鋼筆 | 已使用、無瑕疵\n2026-09-01 | 2026-09-09 | 一般紙膠帶 | 已使用、有瑕疵\n2026-09-01 | 2026-10-01 | 一般印章 | 未使用、有瑕疵\n2026-09-01 | 2026-10-02 | 一般筆記本 | 未使用、有瑕疵",
+  "acceptance_criteria": [
+    {
+      "text": "試跑對每筆訂單只產生一個指定結果，並依輸入順序逐筆回覆。"
+    },
+    {
+      "text": "樣本第 1 筆是 2 天內的客製刻字商品，即使未使用且有瑕疵也判為「不受理」，證明客製規則優先。"
+    },
+    {
+      "text": "樣本第 2 筆相隔第 7 天、未使用且無瑕疵，判為「全額退款」。"
+    },
+    {
+      "text": "樣本第 3 筆相隔第 7 天、已使用但有瑕疵，判為「全額退款」。"
+    },
+    {
+      "text": "樣本第 4 筆相隔第 7 天、已使用且無瑕疵，判為「不受理」。"
+    },
+    {
+      "text": "樣本第 5 筆相隔第 8 天且有瑕疵，判為「換貨」。"
+    },
+    {
+      "text": "樣本第 6 筆相隔第 30 天且有瑕疵，判為「換貨」。"
+    },
+    {
+      "text": "樣本第 7 筆相隔第 31 天且有瑕疵，判為「不受理」。"
+    }
+  ],
+  "final_output": "1. 客製刻字筆（未使用、有瑕疵）：不受理\n2. 一般筆記本（未使用、無瑕疵）：全額退款\n3. 一般筆袋（已使用、有瑕疵）：全額退款\n4. 一般鋼筆（已使用、無瑕疵）：不受理\n5. 一般紙膠帶（已使用、有瑕疵）：換貨\n6. 一般印章（未使用、有瑕疵）：換貨\n7. 一般筆記本（未使用、有瑕疵）：不受理",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c2deb302-09bf-4560-a0bb-8fa70b7cfca8",
+    "run_id": "9507852b-aee9-496b-b14f-6ab958a822e5",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七筆訂單均依輸入順序各給出一個結果，且每筆結果皆符合對應的驗收條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "7bd21d76-47b5-41d0-94c6-ae730399cfdc",
+        "text": "試跑對每筆訂單只產生一個指定結果，並依輸入順序逐筆回覆。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆依輸入順序列出七筆訂單，每筆只有一個指定結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 客製刻字筆（未使用、有瑕疵）：不受理\n2. 一般筆記本（未使用、無瑕疵）：全額退款\n3. 一般筆袋（已使用、有瑕疵）：全額退款\n4. 一般鋼筆（已使用、無瑕疵）：不受理\n5. 一般紙膠帶（已使用、有瑕疵）：換貨\n6. 一般印章（未使用、有瑕疵）：換貨\n7. 一般筆記本（未使用、有瑕疵）：不受理",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6dd57db9-a5d7-4808-861e-e9ca53410091",
+        "text": "樣本第 1 筆是 2 天內的客製刻字商品，即使未使用且有瑕疵也判為「不受理」，證明客製規則優先。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆客製刻字筆雖未使用且有瑕疵，仍判為不受理。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 客製刻字筆（未使用、有瑕疵）：不受理",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1b831f5b-10ab-42b3-ae2d-effe4d1af245",
+        "text": "樣本第 2 筆相隔第 7 天、未使用且無瑕疵，判為「全額退款」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆判為全額退款。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 一般筆記本（未使用、無瑕疵）：全額退款",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "af8cf63d-6880-4a9c-ae50-0c240de4c635",
+        "text": "樣本第 3 筆相隔第 7 天、已使用但有瑕疵，判為「全額退款」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆已使用、有瑕疵，判為全額退款。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 一般筆袋（已使用、有瑕疵）：全額退款",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d0ed912d-d9b4-4e16-af69-316c9dd6343f",
+        "text": "樣本第 4 筆相隔第 7 天、已使用且無瑕疵，判為「不受理」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆已使用、無瑕疵，判為不受理。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 一般鋼筆（已使用、無瑕疵）：不受理",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "60f17dfb-a9f0-4714-ba27-2dbc1222f907",
+        "text": "樣本第 5 筆相隔第 8 天且有瑕疵，判為「換貨」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆有瑕疵，判為換貨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5. 一般紙膠帶（已使用、有瑕疵）：換貨",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1b768b48-ac5c-4ca7-8746-a6a3288f770d",
+        "text": "樣本第 6 筆相隔第 30 天且有瑕疵，判為「換貨」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 筆有瑕疵，判為換貨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "6. 一般印章（未使用、有瑕疵）：換貨",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a86deb68-c79e-408d-96d7-04990f5bc47e",
+        "text": "樣本第 7 筆相隔第 31 天且有瑕疵，判為「不受理」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 7 筆有瑕疵，判為不受理。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "7. 一般筆記本（未使用、有瑕疵）：不受理",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1507 input and 516 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

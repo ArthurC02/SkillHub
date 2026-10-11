@@ -1,0 +1,146 @@
+{
+  "round": 0,
+  "sample_input": "我要印 12 個杯子，急件，報價多少？",
+  "acceptance_criteria": [
+    {
+      "text": "加成前的金額為 1800 元（12 × 150，未達 30 個不適用 135 元單價）"
+    },
+    {
+      "text": "直接給出具體的最後報價金額，沒有因為缺少加成比例而只反問或拒絕計算"
+    },
+    {
+      "text": "明講所採用的急件加成比例是預設假設，並說明使用者可以調整"
+    },
+    {
+      "text": "所採用的比例落在常見急件加成的合理範圍（約 10%～50%）"
+    },
+    {
+      "text": "最後報價與其所述比例自洽（1800 元 × (1 + 所述比例)）"
+    }
+  ],
+  "final_output": "12 個急件杯子：單價新台幣 150 元，小計新台幣 1,800 元，急件加成新台幣 360 元，**報價共新台幣 2,160 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b97a91c8-a20e-43e5-8d3e-8771e3304581",
+    "run_id": "8a950343-1403-4e2e-9bda-c0730754503a",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "報價金額與急件加成計算正確，也直接提供了最後報價。但回覆未明示加成比例是可調整的預設假設。",
+    "criterion_results": [
+      {
+        "criterion_id": "438b7671-48e1-4812-890e-312ea35880d3",
+        "text": "加成前的金額為 1800 元（12 × 150，未達 30 個不適用 135 元單價）",
+        "result": "passed",
+        "source": "model",
+        "reason": "報價列出單價 150 元、數量 12 個，加成前小計為 1,800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "12 個急件杯子：單價新台幣 150 元，小計新台幣 1,800 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "067b5e47-cfaa-4f2c-9a4e-d8c5721bcc6c",
+        "text": "直接給出具體的最後報價金額，沒有因為缺少加成比例而只反問或拒絕計算",
+        "result": "passed",
+        "source": "model",
+        "reason": "直接給出了最後報價 2,160 元，沒有只反問或拒絕計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**報價共新台幣 2,160 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4d3795de-0060-44d1-a976-d9205861d7dc",
+        "text": "明講所採用的急件加成比例是預設假設，並說明使用者可以調整",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆只列出急件加成金額，沒有明講加成比例是預設假設，也沒有說明使用者可以調整。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "12 個急件杯子：單價新台幣 150 元，小計新台幣 1,800 元，急件加成新台幣 360 元，**報價共新台幣 2,160 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a28560a9-6a20-4729-aeb2-5667c8869e09",
+        "text": "所採用的比例落在常見急件加成的合理範圍（約 10%～50%）",
+        "result": "passed",
+        "source": "model",
+        "reason": "急件加成 360 元相對於 1,800 元小計，換算為 20%，落在約 10%～50% 的範圍內。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "小計新台幣 1,800 元，急件加成新台幣 360 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c3eb9944-a217-447e-98fd-32a005e9cb9f",
+        "text": "最後報價與其所述比例自洽（1800 元 × (1 + 所述比例)）",
+        "result": "passed",
+        "source": "model",
+        "reason": "雖未明寫百分比，但列出的加成金額對應 20%；1,800 元加上 360 元等於最後報價 2,160 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "小計新台幣 1,800 元，急件加成新台幣 360 元，**報價共新台幣 2,160 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1513 input and 317 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

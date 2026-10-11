@@ -124,6 +124,24 @@ func TestTheJudgeAdapterCarriesTheWholeRequestOntoTheWire(t *testing.T) {
 	assertJudgeRequestArtifactsAndTraceOnTheWire(t, sent)
 }
 
+func TestAPanelMembersRoleTravelsOnTheWireAndALoneJudgeSendsNone(t *testing.T) {
+	var member, alone map[string]any
+	req := aJudgeRequest()
+	req.ModelRole = PanelRoles[2]
+	if _, err := JudgeOrNone(modelOverAWire(t, "/judge-run", &member, llmclient.JudgeRunResponse{})).JudgeRun(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := JudgeOrNone(modelOverAWire(t, "/judge-run", &alone, llmclient.JudgeRunResponse{})).JudgeRun(context.Background(), aJudgeRequest()); err != nil {
+		t.Fatal(err)
+	}
+	if member["model_role"] != PanelRoles[2] {
+		t.Errorf("model_role on the wire = %v, want %s", member["model_role"], PanelRoles[2])
+	}
+	if _, sent := alone["model_role"]; sent {
+		t.Errorf("a lone judge sent model_role %v; the service's own role should answer", alone["model_role"])
+	}
+}
+
 func assertJudgeRequestCoreFieldsOnTheWire(t *testing.T, sent llmclient.JudgeRunRequest) {
 	t.Helper()
 	if sent.RunID != "run-1" || sent.EvaluationID != "eval-1" || sent.UserPrompt != "extract the totals" ||

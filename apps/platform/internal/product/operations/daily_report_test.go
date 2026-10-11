@@ -3,11 +3,14 @@ package operations
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 )
 
-type dailyReportEvals struct {
+type agentEvals struct {
 	Snapshot json.RawMessage `json:"snapshot"`
 	Cases    []struct {
 		Name   string          `json:"name"`
@@ -16,24 +19,52 @@ type dailyReportEvals struct {
 	} `json:"cases"`
 }
 
-func TestDailyReportEvalsAcceptOnlyReportsThatCiteTheSnapshot(t *testing.T) {
-	raw, err := os.ReadFile("testdata/daily_report_evals.json")
-	if err != nil {
-		t.Fatal(err)
+const agentEvalsDir = "../../../../../contracts/agents"
+
+func evalsPath(agent string) string {
+	return filepath.Join(agentEvalsDir, agent+".evals.json")
+}
+
+func TestEveryDefinedAgentHasItsFixedEvals(t *testing.T) {
+	for _, def := range Definitions() {
+		if _, err := os.Stat(evalsPath(def.Name)); err != nil {
+			t.Errorf("agent %q has no fixed evals: %v", def.Name, err)
+		}
 	}
-	var evals dailyReportEvals
-	if err := json.Unmarshal(raw, &evals); err != nil {
-		t.Fatal(err)
+	files, err := filepath.Glob(filepath.Join(agentEvalsDir, "*.evals.json"))
+	if err != nil || len(files) == 0 {
+		t.Fatalf("no evals found in %s: %v", agentEvalsDir, err)
 	}
-	if len(evals.Cases) == 0 {
-		t.Fatal("the eval file has no cases")
+	for _, file := range files {
+		name := strings.TrimSuffix(filepath.Base(file), ".evals.json")
+		if _, ok := Lookup(name); !ok {
+			t.Errorf("%s has fixed evals but no agent is defined under that name", name)
+		}
 	}
-	steps := []StepRecord{{ToolCall: ToolCall{Tool: ToolMaintenanceReport, Arguments: "{}"}, Result: string(evals.Snapshot)}}
-	for _, tc := range evals.Cases {
-		t.Run(tc.Name, func(t *testing.T) {
-			err := CitesOnlyReturnedFacts(tc.Report, steps)
-			if (err == nil) != tc.Passes {
-				t.Errorf("check returned %v, want passes=%v", err, tc.Passes)
+}
+
+func TestEachAgentsEvalsAcceptOnlyReportsThatCiteTheSnapshot(t *testing.T) {
+	for _, def := range Definitions() {
+		t.Run(def.Name, func(t *testing.T) {
+			raw, err := os.ReadFile(evalsPath(def.Name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var evals agentEvals
+			if err := json.Unmarshal(raw, &evals); err != nil {
+				t.Fatal(err)
+			}
+			if len(evals.Cases) == 0 {
+				t.Fatal("the eval file has no cases")
+			}
+			steps := []agentloop.StepRecord{{ToolCall: agentloop.ToolCall{Tool: def.Tools[0], Arguments: "{}"}, Result: string(evals.Snapshot)}}
+			for _, tc := range evals.Cases {
+				t.Run(tc.Name, func(t *testing.T) {
+					err := def.CheckResult(tc.Report, steps)
+					if (err == nil) != tc.Passes {
+						t.Errorf("check returned %v, want passes=%v", err, tc.Passes)
+					}
+				})
 			}
 		})
 	}
@@ -72,9 +103,9 @@ func TestACiteResolvesOnlyToAFactTheDocumentHolds(t *testing.T) {
 }
 
 func TestADailyReportMustBeWellFormedBeforeItsCitesCount(t *testing.T) {
-	steps := []StepRecord{
-		{ToolCall: ToolCall{Tool: ToolMaintenanceReport}, Result: "not json"},
-		{ToolCall: ToolCall{Tool: ToolMaintenanceReport}, Result: `{"x":1,"jobs":{"a":{"action":"run-a"}},"actions":["run-b"]}`},
+	steps := []agentloop.StepRecord{
+		{ToolCall: agentloop.ToolCall{Tool: ToolMaintenanceReport}, Result: "not json"},
+		{ToolCall: agentloop.ToolCall{Tool: ToolMaintenanceReport}, Result: `{"x":1,"jobs":{"a":{"action":"run-a"}},"actions":["run-b"]}`},
 	}
 	cases := []struct {
 		name   string
@@ -88,8 +119,8 @@ func TestADailyReportMustBeWellFormedBeforeItsCitesCount(t *testing.T) {
 		{"unknown status", `{"items":[{"status":"warning","text":"ok","cites":["/x"]}]}`, `status "warning"`},
 		{"blank text", `{"items":[{"status":"fine","text":"  ","cites":["/x"]}]}`, "says nothing"},
 		{"no cites", `{"items":[{"status":"fine","text":"ok"}]}`, "cites no fact"},
-		{"unknown field", `{"items":[],"summary":"x"}`, "not a daily report"},
-		{"not an object", `[]`, "not a daily report"},
+		{"unknown field", `{"items":[],"summary":"x"}`, "not a report of cited items"},
+		{"not an object", `[]`, "not a report of cited items"},
 		{"second item is wrong", `{"items":[{"status":"fine","text":"ok","cites":["/x"]},{"status":"fine","text":"ok","cites":["/y"]}]}`, "item 2"},
 		{"a proposal citing a fact", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":"run-a","reason":"late","cites":["/x"]}]}`, ""},
 		{"a proposal with no action", `{"items":[{"status":"fine","text":"ok","cites":["/x"]}],"proposals":[{"action":" ","reason":"late","cites":["/x"]}]}`, "names no action"},

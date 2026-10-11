@@ -1,0 +1,164 @@
+{
+  "round": 2,
+  "sample_input": "請把以下證照考試資訊寫成給考生的簡訊：\n考試日期：2026 年 11 月 14 日。報到時間：上午 8:10。考場：臺北市中正區考場 A。請考生攜帶身分證及准考證。交通：從捷運古亭站步行約 8 分鐘。午餐：考場不供餐，請自備午餐。規定：考試期間不得使用手機。停車：考場有 12 個付費車位，先到先停；入口在和平西路二段，車位額滿後附近另有收費停車場。置物：考場不提供置物櫃，考生須自行保管物品；大型行李不得帶入試場。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入，輸出包含簡訊本文，本文不超過 3 句；另起一行提供恰好一句取捨說明，且不把說明句算入本文句數。"
+    },
+    {
+      "text": "對試跑輸入，本文完整保留考試日期「2026 年 11 月 14 日」、報到時間「上午 8:10」、考場「臺北市中正區考場 A」，並提醒攜帶身分證及准考證。"
+    },
+    {
+      "text": "對試跑輸入，本文保留可簡潔表達的重要附加資訊：從捷運古亭站步行 8 分鐘、沒有供餐需自備午餐，以及考試期間不得使用手機。"
+    },
+    {
+      "text": "對試跑輸入，本文省略停車位與置物服務的次要細節，並在另起一行的取捨說明中明確提及省略了停車及置物資訊。"
+    },
+    {
+      "text": "輸出不把試跑輸入未提供的資訊寫成事實，也不聲稱已查證考場或考試資訊。"
+    }
+  ],
+  "final_output": "考試日期：2026 年 11 月 14 日，請於上午 8:10 至臺北市中正區考場 A 報到，並攜帶身分證及准考證。從捷運古亭站步行約 8 分鐘；考場不供餐，請自備午餐。考試期間不得使用手機。\n\n已省略停車及置物資訊。",
+  "artifacts": [
+    "answer.txt",
+    "sms_body.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "704527cc-14df-45d8-9ebb-2173acd6a6b5",
+    "run_id": "b387e642-c705-4de8-84c7-624d1559d6d7",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收條件均已達成。簡訊本文為三句，保留必要資訊，並另行說明省略停車及置物資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "506ab695-cc54-4058-be75-5c4bf676333e",
+        "text": "對試跑輸入，輸出包含簡訊本文，本文不超過 3 句；另起一行提供恰好一句取捨說明，且不把說明句算入本文句數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊本文共三句；另起一行的取捨說明只有一句，未計入本文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "考試日期：2026 年 11 月 14 日，請於上午 8:10 至臺北市中正區考場 A 報到，並攜帶身分證及准考證。從捷運古亭站步行約 8 分鐘；考場不供餐，請自備午餐。考試期間不得使用手機。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "已省略停車及置物資訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c6b1e1f6-3c26-4bf8-a153-afad471a792c",
+        "text": "對試跑輸入，本文完整保留考試日期「2026 年 11 月 14 日」、報到時間「上午 8:10」、考場「臺北市中正區考場 A」，並提醒攜帶身分證及准考證。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文完整寫出指定日期、報到時間及考場，並提醒攜帶身分證與准考證。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "考試日期：2026 年 11 月 14 日，請於上午 8:10 至臺北市中正區考場 A 報到，並攜帶身分證及准考證。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "05a472ca-f686-4a3b-9e6a-c44993146a64",
+        "text": "對試跑輸入，本文保留可簡潔表達的重要附加資訊：從捷運古亭站步行 8 分鐘、沒有供餐需自備午餐，以及考試期間不得使用手機。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文保留古亭站步行約八分鐘、不供餐須自備午餐，以及考試期間不得使用手機的資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "從捷運古亭站步行約 8 分鐘；考場不供餐，請自備午餐。考試期間不得使用手機。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d51cea68-c16a-405a-816e-ace2bb6d6d4b",
+        "text": "對試跑輸入，本文省略停車位與置物服務的次要細節，並在另起一行的取捨說明中明確提及省略了停車及置物資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文未列停車位或置物服務細節；另起一行明確說明省略了停車及置物資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "考試日期：2026 年 11 月 14 日，請於上午 8:10 至臺北市中正區考場 A 報到，並攜帶身分證及准考證。從捷運古亭站步行約 8 分鐘；考場不供餐，請自備午餐。考試期間不得使用手機。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "已省略停車及置物資訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c08f05a6-2252-4c6b-a554-8c0eab3dfc47",
+        "text": "輸出不把試跑輸入未提供的資訊寫成事實，也不聲稱已查證考場或考試資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出只陳述輸入提供的考試資訊及取捨，沒有增添未提供的事實，也未聲稱已查證。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "考試日期：2026 年 11 月 14 日，請於上午 8:10 至臺北市中正區考場 A 報到，並攜帶身分證及准考證。從捷運古亭站步行約 8 分鐘；考場不供餐，請自備午餐。考試期間不得使用手機。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "已省略停車及置物資訊。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 2 readable output file(s): answer.txt, sms_body.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1612 input and 1708 output tokens on skillhub-run; reported cost $0.0049 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

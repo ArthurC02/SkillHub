@@ -1,0 +1,148 @@
+{
+  "round": 1,
+  "sample_input": "請試算以下民宿訂房取消的應退款金額：\n1. 入住日期 2026-11-20；取消日期 2026-11-13；房費總額 12,000；訂房方案：標準方案。\n2. 入住日期 2026-11-20；取消日期 2026-11-14；房費總額 14,000；訂房方案：標準方案。\n3. 入住日期 2026-11-20；取消日期 2026-11-17；房費總額 10,000；訂房方案：標準方案。\n4. 入住日期 2026-11-20；取消日期 2026-11-18；房費總額 8,000；訂房方案：標準方案。\n5. 入住日期 2026-11-20；取消日期 2026-11-10；房費總額 9,000；訂房方案：不可退款方案。",
+  "acceptance_criteria": [
+    {
+      "text": "對試算資料第 1 筆（標準方案、7 天、房費 12,000），輸出 12,000 全額退款，並顯示計算天數為 7 天及適用的全額退款規則。"
+    },
+    {
+      "text": "對試算資料第 2 筆（標準方案、6 天、房費 14,000），輸出 7,000 退款，並顯示計算天數為 6 天及適用的 50% 退款規則。"
+    },
+    {
+      "text": "對試算資料第 3 筆（標準方案、3 天、房費 10,000），輸出 5,000 退款，並顯示計算天數為 3 天及適用的 50% 退款規則。"
+    },
+    {
+      "text": "對試算資料第 4 筆（標準方案、2 天、房費 8,000），輸出 0 退款，並顯示計算天數為 2 天及適用的不退款規則。"
+    },
+    {
+      "text": "對試算資料第 5 筆（不可退款方案、10 天、房費 9,000），輸出 0 退款，並顯示不可退款方案優先於天數規則。"
+    }
+  ],
+  "final_output": "試算結果如下：\n\n| 筆數 | 入住日期 | 取消日期 | 房費總額 | 計算天數 | 適用規則 | 應退款金額 |\n|---|---|---|---:|---:|---|---:|\n| 1 | 2026-11-20 | 2026-11-13 | 12,000 | 7 天 | 標準方案：取消距入住 7 天以上（含 7 天），全額退款。 | **12,000** |\n| 2 | 2026-11-20 | 2026-11-14 | 14,000 | 6 天 | 標準方案：取消距入住 3～6 天，退款 50%。 | **7,000** |\n| 3 | 2026-11-20 | 2026-11-17 | 10,000 | 3 天 | 標準方案：取消距入住 3～6 天，退款 50%。 | **5,000** |\n| 4 | 2026-11-20 | 2026-11-18 | 8,000 | 2 天 | 標準方案：取消距入住 2 天以下（含 2 天），不退款。 | **0** |\n| 5 | 2026-11-20 | 2026-11-10 | 9,000 | 10 天 | 不可退款方案優先：不論天數一律不退款。 | **0** |\n\n**應退款合計：24,000**",
+  "artifacts": [
+    "bookings.json"
+  ],
+  "evaluation": {
+    "evaluation_id": "97f54121-9528-44b0-8926-b830398f300c",
+    "run_id": "4224712c-b3ca-402b-a655-80dfbfbec364",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆試算均顯示符合條件的計算天數、適用規則與應退款金額。",
+    "criterion_results": [
+      {
+        "criterion_id": "8dec1afa-b222-4382-916c-ddd53937d2f1",
+        "text": "對試算資料第 1 筆（標準方案、7 天、房費 12,000），輸出 12,000 全額退款，並顯示計算天數為 7 天及適用的全額退款規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆列出 7 天、全額退款規則及退款 12,000。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 2026-11-20 | 2026-11-13 | 12,000 | 7 天 | 標準方案：取消距入住 7 天以上（含 7 天），全額退款。 | **12,000** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6362d1ec-0948-48c8-98f4-948a694bb484",
+        "text": "對試算資料第 2 筆（標準方案、6 天、房費 14,000），輸出 7,000 退款，並顯示計算天數為 6 天及適用的 50% 退款規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆列出 6 天、退款 50% 規則及退款 7,000。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 2026-11-20 | 2026-11-14 | 14,000 | 6 天 | 標準方案：取消距入住 3～6 天，退款 50%。 | **7,000** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "112665ee-72df-43d2-826f-b43dee9777c5",
+        "text": "對試算資料第 3 筆（標準方案、3 天、房費 10,000），輸出 5,000 退款，並顯示計算天數為 3 天及適用的 50% 退款規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆列出 3 天、退款 50% 規則及退款 5,000。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 2026-11-20 | 2026-11-17 | 10,000 | 3 天 | 標準方案：取消距入住 3～6 天，退款 50%。 | **5,000** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6d37a29a-51ee-43ab-97f0-0b7e4d65ab88",
+        "text": "對試算資料第 4 筆（標準方案、2 天、房費 8,000），輸出 0 退款，並顯示計算天數為 2 天及適用的不退款規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆列出 2 天、不退款規則及退款 0。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 2026-11-20 | 2026-11-18 | 8,000 | 2 天 | 標準方案：取消距入住 2 天以下（含 2 天），不退款。 | **0** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c02e3789-7f0f-430c-98c9-a53a88b8e30e",
+        "text": "對試算資料第 5 筆（不可退款方案、10 天、房費 9,000），輸出 0 退款，並顯示不可退款方案優先於天數規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆列出 10 天、不可退款方案優先於天數規則，退款為 0。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 5 | 2026-11-20 | 2026-11-10 | 9,000 | 10 天 | 不可退款方案優先：不論天數一律不退款。 | **0** |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): bookings.json"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1541 input and 1348 output tokens on skillhub-run; reported cost $0.0041 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

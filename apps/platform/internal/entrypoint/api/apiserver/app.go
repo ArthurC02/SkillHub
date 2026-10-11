@@ -95,6 +95,7 @@ type App struct {
 	Auth         *identity.Handler
 	RunSvc       *run.Service
 	EvalSvc      *eval.Service
+	EvalBatches  *eval.BatchService
 	PackagingSvc *packaging.Service
 	Versions     *ingest.Service
 	CreationSvc  *creation.Service
@@ -104,9 +105,7 @@ type App struct {
 
 func NewApp(cfg Config) (*App, error) {
 	identitySvc := &identity.Service{Pool: cfg.Pool, OAuth: identity.ProviderOrNone(cfg.OAuth)}
-	testlabSvc := &testlab.Service{
-		Pool: cfg.Pool, MayStoreObjects: identitySvc.MayStoreObjects, ClearSightings: objreconcile.ClearDatasetSightings,
-	}
+	testlabSvc := newTestLab(cfg.Pool, identitySvc)
 	wireWorkspacePurge(identitySvc, testlabSvc, cfg.Pool)
 	auth := newAuthHandler(cfg, identitySvc)
 
@@ -134,8 +133,7 @@ func NewApp(cfg Config) (*App, error) {
 	evalSvc := &eval.Service{
 		Pool: cfg.Pool, TestLab: testlabSvc, Store: cfg.Store, Versions: versions, Trace: traceSvc,
 	}
-	wiring.WireEvaluationRunReaders(evalSvc, runSvc)
-	wiring.WireEvaluationRegistryReaders(evalSvc, registrySvc)
+	wiring.WireEvaluation(evalSvc, runSvc, registrySvc)
 
 	packagingSvc := newPackagingService(cfg, testlabSvc, identitySvc, evalSvc, versions)
 	wirePackagingRegistryReaders(packagingSvc, registrySvc)
@@ -170,6 +168,7 @@ func NewApp(cfg Config) (*App, error) {
 		Auth:         auth,
 		RunSvc:       runSvc,
 		EvalSvc:      evalSvc,
+		EvalBatches:  wiring.NewEvaluationBatches(cfg.Pool, runSvc, testlabSvc, traceSvc),
 		PackagingSvc: packagingSvc,
 		Versions:     versions,
 		CreationSvc:  creationSvc,
@@ -183,6 +182,13 @@ func NewApp(cfg Config) (*App, error) {
 	app.Deps.Publishing = newPublishingHandler(cfg, publishingSvc, auth)
 	app.Deps.ModelBudgets = &modelbudget.Handler{Svc: budgets, Actor: sessionActorID}
 	return app, nil
+}
+
+func newTestLab(pool *pgxpool.Pool, identitySvc *identity.Service) *testlab.Service {
+	return &testlab.Service{
+		Pool: pool, MayStoreObjects: identitySvc.MayStoreObjects, ClearSightings: objreconcile.ClearDatasetSightings,
+		ValidateCheck: eval.ValidateCheck,
+	}
 }
 
 func wireWorkspacePurge(identitySvc *identity.Service, testlabSvc *testlab.Service, pool *pgxpool.Pool) {
@@ -339,6 +345,7 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 		Runs:            &run.Handler{Svc: runSvc, Identity: auth.Service, RunVerdicts: evalSvc.RunVerdicts},
 		Trace:           &trace.Handler{Svc: app.TraceSvc, Identity: auth.Service},
 		Eval:            &eval.Handler{Svc: evalSvc, Identity: auth.Service},
+		EvalBatches:     &eval.BatchHandler{Svc: app.EvalBatches, Identity: auth.Service},
 		Packaging:       &packaging.Handler{Svc: app.PackagingSvc, Identity: auth.Service},
 		Activity:        &activityHandler{Svc: app.ActivitySvc, Identity: identitySvc},
 		Credits: &creditsHandler{
@@ -348,6 +355,8 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 		},
 		OperatorAudit: &operatorAuditHandler{DB: cfg.Pool},
 		Agents:        &operations.Handler{Svc: &operations.Service{Pool: cfg.Pool}, Actor: sessionActorID},
+		Settings:      &eval.SettingsHandler{Svc: evalSvc, Actor: sessionActorID},
+		RunSettings:   &run.SettingsHandler{Svc: runSvc, Actor: sessionActorID},
 		Trends: &trendsHandler{
 			Credits:            &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
 			DailyRuns:          runSvc.DailyRuns,

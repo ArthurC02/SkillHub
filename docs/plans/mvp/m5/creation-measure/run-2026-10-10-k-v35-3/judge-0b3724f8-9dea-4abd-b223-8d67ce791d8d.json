@@ -1,0 +1,200 @@
+{
+  "request": {
+    "RunID": "0b3724f8-9dea-4abd-b223-8d67ce791d8d",
+    "EvaluationID": "0ef9befd-f5ae-4896-a1ad-8015ad669fba",
+    "Skill": {
+      "Name": "farm-picking-social-post",
+      "Summary": "根據使用者提供的農場採果活動資料，撰寫一則吸引人的繁體中文社群貼文。當使用者需要活動宣傳文案時使用；完整保留所有已提供的硬事實，不改寫、不遺漏，也不補造活動資訊。"
+    },
+    "UserPrompt": "請根據以下資料寫一則吸引人的農場採果活動社群貼文。\n活動名稱：莓好採果日\n日期：2026/6/20\n時間：09:00–12:00\n地點：晴田農場（桃園市大溪區）\n費用：每人 350 元\n補充：親子皆可參加，名額有限，需事先報名。",
+    "Criteria": [
+      {
+        "ID": "d841758c-6346-4aea-9cf2-fa0c6d8a52e9",
+        "Text": "對試跑輸入，輸出恰為一則可直接發布的繁體中文社群貼文，而非多個版本或分析說明。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e941feec-232e-4c26-82fd-7d4bf1aa193c",
+        "Text": "輸出完整且逐字保留活動名稱「莓好採果日」、日期「2026/6/20」、時間「09:00–12:00」、地點「晴田農場（桃園市大溪區）」及費用「每人 350 元」，不得更改其字詞、數字或格式。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "56dad76d-f1a7-4569-ac9a-4c68d6235efd",
+        "Text": "輸出包含輸入中的五項硬事實：活動名稱、日期、時間、地點與費用，沒有遺漏。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "0b33f66c-4ee1-440b-8d4f-d98046681352",
+        "Text": "文案語氣具有邀請感，並且不把輸入沒有提供的資訊寫成活動事實或承諾。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "🍓 **莓好採果日** 🍓\n\n一起到農場享受採果樂趣，親子皆可參加，邀請大小朋友一同來玩！\n\n📅 日期：2026/6/20  \n🕘 時間：09:00–12:00  \n📍 地點：晴田農場（桃園市大溪區）  \n🎟️ 費用：每人 350 元  \n\n名額有限，需事先報名，快來一起度過莓好時光！",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "f15afe1e-6d09-4b8d-93f1-bef4ba3b2359",
+          "OccurredAt": "2026-10-09T21:06:52.344Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"farm-picking-social-post\", \"skill_version_id\": \"b4db0841-5dcc-42bf-a93f-4b1aa21c659f\"}"
+        },
+        {
+          "TraceEventID": "53b2973f-7041-4571-8d4a-9fa9e5f7f5c4",
+          "OccurredAt": "2026-10-09T21:06:52.357Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"farm-picking-social-post\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 14, \"invocation_id\": \"call_xZjMILoA3uMO0wkwCcuoiju0\", \"result_summary\": \"Launching skill: farm-picking-social-post\"}"
+        },
+        {
+          "TraceEventID": "abfa1b41-4558-4de9-87db-22609896ad19",
+          "OccurredAt": "2026-10-09T21:06:56.585Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"🍓 **莓好採果日** 🍓\\n\\n一起到農場享受採果樂趣，親子皆可參加，邀請大小朋友一同來玩！\\n\\n📅 日期：2026/6/20  \\n🕘 時間：09:00–12:00  \\n📍 地點：晴田農場（桃園市大溪區）  \\n🎟️ 費用：每人 350 元  \\n\\n名額有限，需事先報名，快來一起度過莓好時光！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "b4223342-c8bf-46ed-867a-70415651012a",
+          "OccurredAt": "2026-10-09T21:06:56.785Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"🍓 **莓好採果日** 🍓\\n\\n一起到農場享受採果樂趣，親子皆可參加，邀請大小朋友一同來玩！\\n\\n📅 日期：2026/6/20  \\n🕘 時間：09:00–12:00  \\n📍 地點：晴田農場（桃園市大溪區）  \\n🎟️ 費用：每人 350 元  \\n\\n名額有限，需事先報名，快來一起度過莓好時光！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "8f384f8c-64fc-493f-9492-c4e6946677cb",
+          "OccurredAt": "2026-10-09T21:07:00.851Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.00283644, \"cost_source\": \"gateway\", \"duration_ms\": 11346, \"input_tokens\": 1492, \"token_source\": \"result\", \"output_tokens\": 317, \"cache_read_input_tokens\": 16584, \"cache_write_input_tokens\": 18432}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "d841758c-6346-4aea-9cf2-fa0c6d8a52e9",
+        "Result": "passed",
+        "Reason": "輸出只有一則繁體中文活動貼文，沒有提供多個版本或分析說明，可直接發布。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "🍓 **莓好採果日** 🍓"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "名額有限，需事先報名，快來一起度過莓好時光！"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e941feec-232e-4c26-82fd-7d4bf1aa193c",
+        "Result": "passed",
+        "Reason": "活動名稱、日期、時間、地點及費用均以指定字詞、數字與格式逐字呈現。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "莓好採果日"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026/6/20"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "09:00–12:00"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "晴田農場（桃園市大溪區）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "每人 350 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "56dad76d-f1a7-4569-ac9a-4c68d6235efd",
+        "Result": "passed",
+        "Reason": "貼文包含活動名稱及日期、時間、地點、費用，五項硬事實均未遺漏。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "莓好採果日"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "日期：2026/6/20"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "時間：09:00–12:00"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "地點：晴田農場（桃園市大溪區）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "費用：每人 350 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "0b33f66c-4ee1-440b-8d4f-d98046681352",
+        "Result": "passed",
+        "Reason": "「邀請大小朋友一同來玩」等措辭具有邀請感；貼文未將未提供的具體安排或承諾寫成活動事實。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "一起到農場享受採果樂趣，親子皆可參加，邀請大小朋友一同來玩！"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "名額有限，需事先報名，快來一起度過莓好時光！"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "這次輸出是一則可直接發布的繁體中文採果活動貼文，完整保留五項指定資訊，語氣具邀請感，且未增添未提供的活動事實或承諾。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2526,
+      "CompletionTokens": 1155,
+      "CostUSD": 0.015328900000000001,
+      "CostReported": true
+    }
+  }
+}

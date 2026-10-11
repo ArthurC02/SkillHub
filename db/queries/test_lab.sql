@@ -100,7 +100,7 @@ SELECT id FROM test_case_snapshots
 WHERE workspace_id = @workspace_id AND test_case_id = @test_case_id;
 
 -- name: ListSnapshotTestCases :many
-SELECT id, test_case_id FROM test_case_snapshots
+SELECT id, test_case_id, content_hash FROM test_case_snapshots
 WHERE workspace_id = @workspace_id AND id = ANY(@snapshot_ids::uuid[]);
 
 -- name: GetSnapshotInputs :one

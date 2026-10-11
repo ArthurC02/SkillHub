@@ -2,9 +2,104 @@ import { expect, test } from "@playwright/test";
 import {
   ADMIN_AGENT_FINDINGS,
   ADMIN_AGENT_PROPOSALS,
+  ADMIN_AGENTS,
   AGENT_REPORT_RUN,
 } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
+
+test("restoring an Agent spend cap keeps keyboard focus on the result and updates the editor", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 375, height: 900 });
+  await stubPlatform(page);
+  let current = {
+    ...ADMIN_AGENTS.agents[0],
+    daily_spend_cap_usd_micros: 1_000_000,
+    daily_spend_cap_overridden: true,
+  };
+  await page.route("**/admin/agents", (route) => route.fulfill({ json: { agents: [current] } }));
+  await page.route("**/admin/agents/daily-report/spend-cap", async (route) => {
+    expect(route.request().postDataJSON()).toEqual({
+      daily_spend_cap_usd_micros: null,
+      note: "back to normal",
+    });
+    current = { ...ADMIN_AGENTS.agents[0] };
+    await route.fulfill({ json: current });
+  });
+  await page.goto("/admin/settings");
+  await page.getByRole("link", { name: "平台 Agent", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/agents#admin-agent-controls$/);
+  const restore = page.getByText("恢復預設上限（$0.2000）", { exact: true });
+  await restore.focus();
+  await page.keyboard.press("Enter");
+  await page.locator("#admin-agent-daily-report-cap-clear-note").fill("back to normal");
+  await page.getByRole("button", { name: "把 daily-report 的上限改回預設 $0.2000" }).click();
+  const result = page.locator("#admin-agent-daily-report-cap-result");
+  await expect(result).toContainText("目前顯示預設 $0.2000");
+  await expect(result).toBeFocused();
+  await expect(result).toBeInViewport();
+  await expect(restore).toHaveCount(0);
+  await page.getByText("調整每日花費上限", { exact: true }).click();
+  await expect(page.locator("#admin-agent-daily-report-cap")).toHaveValue("0.2");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("admin-cap-result-phone.png"),
+    fullPage: true,
+  });
+});
+
+test("a focused Agent result stays visible when verification reveals additional metadata", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 900 });
+  await stubPlatform(page);
+  let wrote = false;
+  let refreshing = false;
+  let verify: (() => Promise<void>) | undefined;
+  const before = {
+    ...ADMIN_AGENTS.agents[0],
+    daily_spend_cap_usd_micros: 1_000_000,
+    daily_spend_cap_overridden: true,
+  };
+  await page.route("**/admin/agents", (route) => {
+    if (route.request().isNavigationRequest()) return route.fallback();
+    if (wrote && refreshing)
+      return new Promise<void>((resolve) => {
+        verify = async () => {
+          await route.fulfill({
+            json: {
+              agents: [
+                {
+                  ...ADMIN_AGENTS.agents[0],
+                  purpose: "這個 Agent 的用途與執行限制需要較長的說明。".repeat(40),
+                },
+              ],
+            },
+          });
+          resolve();
+        };
+      });
+    return route.fulfill({ json: { agents: [before] } });
+  });
+  await page.route("**/admin/agents/daily-report/spend-cap", (route) => {
+    wrote = true;
+    return route.fulfill({ json: ADMIN_AGENTS.agents[0] });
+  });
+  await page.goto("/admin/agents");
+  await page.getByText("恢復預設上限（$0.2000）", { exact: true }).click();
+  await page.locator("#admin-agent-daily-report-cap-clear-note").fill("back to normal");
+  await page.getByRole("button", { name: "把 daily-report 的上限改回預設 $0.2000" }).click();
+  const result = page.locator("#admin-agent-daily-report-cap-result");
+  await expect(result).toContainText("最新上限尚未確認");
+  refreshing = true;
+  await page.getByRole("button", { name: "重新整理此 Agent 的上限" }).click();
+  await expect.poll(() => Boolean(verify)).toBe(true);
+  await result.focus();
+  await verify!();
+  await expect(result).toContainText("目前顯示預設 $0.2000");
+  await expect(result).toBeFocused();
+  await expect(result).toBeInViewport();
+});
 
 test("agent workbench moves focus between each detail and its queue on a narrow screen", async ({
   page,

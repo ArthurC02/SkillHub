@@ -1,0 +1,201 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆判定以下訂單的受理結果：\n編號 | 到貨日 | 申請日 | 商品種類 | 客製商品 | 已使用 | 有瑕疵\nA | 2026-09-01 | 2026-09-02 | 筆記本 | 是（刻字） | 是 | 否\nB | 2026-09-01 | 2026-09-08 | 原子筆 | 否 | 否 | 否\nC | 2026-09-01 | 2026-09-08 | 鋼筆 | 否 | 是 | 是\nD | 2026-09-01 | 2026-09-08 | 橡皮擦 | 否 | 是 | 否\nE | 2026-09-01 | 2026-09-09 | 鋼筆 | 否 | 是 | 是\nF | 2026-09-01 | 2026-10-01 | 筆記本 | 否 | 是 | 是\nG | 2026-09-01 | 2026-10-01 | 原子筆 | 否 | 否 | 否\nH | 2026-09-01 | 2026-10-02 | 鋼筆 | 否 | 是 | 是\nI | 2026-09-01 | 2026-09-01 | 筆記本 | 否 | 否 | 否",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入 A 為客製商品，即使有瑕疵且在到貨後 1 天申請，結果仍為「不受理」，體現客製規則優先。"
+    },
+    {
+      "text": "試跑輸入 I 為到貨當日申請、未使用且無瑕疵，結果為「全額退款」；輸入 B 為第 7 天申請、未使用且無瑕疵，結果也為「全額退款」。"
+    },
+    {
+      "text": "試跑輸入 C 為第 7 天申請、已使用但有瑕疵，結果為「全額退款」。"
+    },
+    {
+      "text": "試跑輸入 D 為第 7 天申請、已使用且無瑕疵，結果為「不受理」。"
+    },
+    {
+      "text": "試跑輸入 E 為第 8 天申請且有瑕疵、輸入 F 為第 30 天申請且有瑕疵，兩者結果均為「換貨」，確認第 8 天及第 30 天邊界。"
+    },
+    {
+      "text": "試跑輸入 G 為第 30 天申請且無瑕疵，結果為「不受理」。"
+    },
+    {
+      "text": "試跑輸入 H 為第 31 天申請且有瑕疵，結果為「不受理」。"
+    },
+    {
+      "text": "輸出逐一涵蓋 A 至 I，每筆只列訂單編號及一個結果，且結果只使用「全額退款」、「換貨」或「不受理」。"
+    }
+  ],
+  "final_output": "| 編號 | 商品種類 | 受理結果 |\n|---|---|---|\n| A | 筆記本 | 不受理 |\n| B | 原子筆 | 全額退款 |\n| C | 鋼筆 | 全額退款 |\n| D | 橡皮擦 | 不受理 |\n| E | 鋼筆 | 換貨 |\n| F | 筆記本 | 換貨 |\n| G | 原子筆 | 不受理 |\n| H | 鋼筆 | 不受理 |\n| I | 筆記本 | 全額退款 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4d20b728-121b-4ba6-9200-70676e180fee",
+    "run_id": "a2554eab-85af-4798-95a4-389f190da201",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "B 至 I 的判定符合各項結果要求。A 雖判為「不受理」，但原始輸入並無瑕疵，無法驗證瑕疵情況下的客製規則優先性。輸出另加了商品種類欄，不符合指定格式。",
+    "criterion_results": [
+      {
+        "criterion_id": "717b6817-2a26-4dea-a366-75533ead2a36",
+        "text": "試跑輸入 A 為客製商品，即使有瑕疵且在到貨後 1 天申請，結果仍為「不受理」，體現客製規則優先。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "A 的結果雖為「不受理」，但提供的 A 訂單標示「有瑕疵：否」，無法據此驗證「即使有瑕疵」時客製規則仍優先。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "3f739b66-9944-498f-8808-63e452366cd8",
+        "text": "試跑輸入 I 為到貨當日申請、未使用且無瑕疵，結果為「全額退款」；輸入 B 為第 7 天申請、未使用且無瑕疵，結果也為「全額退款」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "I 與 B 均判為「全額退款」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| I | 筆記本 | 全額退款 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| B | 原子筆 | 全額退款 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a192d308-8663-48e6-b065-b5ab10f673f8",
+        "text": "試跑輸入 C 為第 7 天申請、已使用但有瑕疵，結果為「全額退款」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C 判為「全額退款」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| C | 鋼筆 | 全額退款 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ce8bcbb1-1a59-47ef-8abb-b327bce5e4b9",
+        "text": "試跑輸入 D 為第 7 天申請、已使用且無瑕疵，結果為「不受理」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "D 判為「不受理」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| D | 橡皮擦 | 不受理 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d5213dac-50bb-4ccd-b5e5-5c07dc9c88fa",
+        "text": "試跑輸入 E 為第 8 天申請且有瑕疵、輸入 F 為第 30 天申請且有瑕疵，兩者結果均為「換貨」，確認第 8 天及第 30 天邊界。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 8 天申請的 E 與第 30 天申請的 F 均判為「換貨」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| E | 鋼筆 | 換貨 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| F | 筆記本 | 換貨 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3f92dc5a-1a8e-4c3f-8a33-cb65921446e1",
+        "text": "試跑輸入 G 為第 30 天申請且無瑕疵，結果為「不受理」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "G 判為「不受理」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| G | 原子筆 | 不受理 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "663ba729-a90a-40dd-b94f-fd98b7645bdf",
+        "text": "試跑輸入 H 為第 31 天申請且有瑕疵，結果為「不受理」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "H 判為「不受理」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| H | 鋼筆 | 不受理 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fc279d94-268d-4c9f-b130-e7dc0f66a7a3",
+        "text": "輸出逐一涵蓋 A 至 I，每筆只列訂單編號及一個結果，且結果只使用「全額退款」、「換貨」或「不受理」。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出逐一列出 A 至 I，且每筆只有一個指定類別的結果；但另列「商品種類」，不符合每筆只列訂單編號及一個結果的要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 編號 | 商品種類 | 受理結果 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1557 input and 1086 output tokens on skillhub-run; reported cost $0.0042 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

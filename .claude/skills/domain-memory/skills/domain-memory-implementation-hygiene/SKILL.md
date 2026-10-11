@@ -13,7 +13,7 @@ The repository's automation owns formatting and every numeric limit. This check 
 
 The commands below are in [registry_tools.py](../../scripts/registry_tools.py): run `python3 <that file> <command>` from any directory, with Python 3.10 or later and `git`, and nothing to install. These six hold for every change to source:
 
-1. Run `quality-gates --repo-root <repo>`. The checks it lists must pass, and a check met by a change of form alone is not met: when one forces a change, remove the cause it points at. When `standard` is `none`, say so in your report and claim no standard the repository does not enforce.
+1. Run `quality-gates --repo-root <repo>`. The checks it lists must pass, and a check met by a change of form alone is not met: when one forces a change, remove the cause it points at. A flag kept as a keyword argument or a default is a change of form; when it chooses between kinds the domain names, including a kind the handoff says is coming, name that concept in this change. When `standard` is `none`, say so in your report and claim no standard the repository does not enforce.
 2. Search for what already exists, and use it or extend it.
 3. Take names from the reviewed terms. A business number, such as a threshold, a rate, or a limit, gets the domain's name and one home, and every place it appears uses that name.
 4. Every rule you add or move ends with a test in the repository that fails when the rule is broken. Prove it with `counterfactual`, once for each rule: `survived` means no test protects that rule, so write the test and run it again. A comparison you run once and discard does not count. Report each rule that survived before you wrote its test.

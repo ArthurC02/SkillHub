@@ -1,0 +1,182 @@
+{
+  "request": {
+    "RunID": "f575c64f-ac06-4242-8917-c14dd77e199d",
+    "EvaluationID": "f1641086-8b8b-4949-8606-c648e32b3a0e",
+    "Skill": {
+      "Name": "independent-bookshop-event-post",
+      "Summary": "根據店員提供的活動名稱、日期、時間、地點與活動介紹，撰寫一則繁體中文獨立書店活動宣傳貼文。當需要把活動資料整理成平台中立、親切文藝且可供社群發布的文案時使用。"
+    },
+    "UserPrompt": "活動名稱：夜讀・島嶼來信；日期：2026 年 11 月 14 日（週六）；時間：晚上 7:00 到 9:00；地點：巷口書店 2 樓（台南市中西區民權路二段 88 號）；介紹：一起朗讀五封寄自離島的信，現場有熱茶。",
+    "Criteria": [
+      {
+        "ID": "eec9815a-d913-451f-af88-0b7002b80481",
+        "Text": "貼文含完整活動名稱「夜讀・島嶼來信」",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "fcbb3921-75e3-417a-ae08-736cb0e717d2",
+        "Text": "貼文含日期 11 月 14 日（若寫週幾必須是週六）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2ad9b730-60b3-4ef1-b1c1-30a481f982b4",
+        "Text": "貼文含時間晚上 7:00 到 9:00（或 19:00 到 21:00）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "71823832-2be7-447c-9662-3b1a49a43a1b",
+        "Text": "貼文含地點巷口書店 2 樓與台南市中西區民權路二段 88 號",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b006ed16-83e8-4f9b-8377-e390428ed464",
+        "Text": "貼文沒有編造店員沒給的資訊，例如講者、票價、報名方式或優惠",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "夜讀・島嶼來信\n\n日期：2026 年 11 月 14 日（週六）  \n時間：晚上 7:00 到 9:00  \n地點：巷口書店 2 樓（台南市中西區民權路二段 88 號）\n\n一起朗讀五封寄自離島的信，現場有熱茶。邀你在夜裡，一起讀信。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "b58116ab-199c-4b4d-af81-c8e417e432dc",
+          "OccurredAt": "2026-10-09T14:56:40.025Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"independent-bookshop-event-post\", \"skill_version_id\": \"089b78f3-adac-4b74-8205-c88b39098c3c\"}"
+        },
+        {
+          "TraceEventID": "dabdf24e-e87e-41cc-8712-77e30fa2483e",
+          "OccurredAt": "2026-10-09T14:56:40.196Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"independent-bookshop-event-post\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 171, \"invocation_id\": \"call_41K0kF8psbCnQzgo0eMwVAM8\", \"result_summary\": \"Launching skill: independent-bookshop-event-post\"}"
+        },
+        {
+          "TraceEventID": "77a3dacd-7193-47e0-b0dd-bf1635a44d0b",
+          "OccurredAt": "2026-10-09T14:56:46.163Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"夜讀・島嶼來信\\n\\n日期：2026 年 11 月 14 日（週六）  \\n時間：晚上 7:00 到 9:00  \\n地點：巷口書店 2 樓（台南市中西區民權路二段 88 號）\\n\\n一起朗讀五封寄自離島的信，現場有熱茶。邀你在夜裡，一起讀信。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "996f8a9a-776b-4a01-8e4a-81b5a8ddb4c2",
+          "OccurredAt": "2026-10-09T14:56:46.466Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"夜讀・島嶼來信\\n\\n日期：2026 年 11 月 14 日（週六）  \\n時間：晚上 7:00 到 9:00  \\n地點：巷口書店 2 樓（台南市中西區民權路二段 88 號）\\n\\n一起朗讀五封寄自離島的信，現場有熱茶。邀你在夜裡，一起讀信。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "c8a2b5e3-0611-44cb-b686-d48c01ea4baf",
+          "OccurredAt": "2026-10-09T14:56:50.607Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.002944685, \"cost_source\": \"gateway\", \"duration_ms\": 16444, \"input_tokens\": 1492, \"token_source\": \"result\", \"output_tokens\": 513, \"cache_read_input_tokens\": 16581, \"cache_write_input_tokens\": 18511}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "eec9815a-d913-451f-af88-0b7002b80481",
+        "Result": "passed",
+        "Reason": "貼文包含完整活動名稱。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "夜讀・島嶼來信"
+          }
+        ]
+      },
+      {
+        "CriterionID": "fcbb3921-75e3-417a-ae08-736cb0e717d2",
+        "Result": "passed",
+        "Reason": "貼文寫明 11 月 14 日，並正確標示週六。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "日期：2026 年 11 月 14 日（週六）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "2ad9b730-60b3-4ef1-b1c1-30a481f982b4",
+        "Result": "passed",
+        "Reason": "貼文寫明晚上 7:00 到 9:00。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "時間：晚上 7:00 到 9:00"
+          }
+        ]
+      },
+      {
+        "CriterionID": "71823832-2be7-447c-9662-3b1a49a43a1b",
+        "Result": "passed",
+        "Reason": "貼文包含書店樓層及完整地址。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "地點：巷口書店 2 樓（台南市中西區民權路二段 88 號）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "b006ed16-83e8-4f9b-8377-e390428ed464",
+        "Result": "passed",
+        "Reason": "貼文僅使用提供的活動資訊及一般邀請語，未添加講者、票價、報名方式或優惠等資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "夜讀・島嶼來信"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "日期：2026 年 11 月 14 日（週六）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "時間：晚上 7:00 到 9:00"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "地點：巷口書店 2 樓（台南市中西區民權路二段 88 號）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "一起朗讀五封寄自離島的信，現場有熱茶。邀你在夜裡，一起讀信。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "貼文完整呈現活動名稱、日期、時間與地點，且未編造額外活動資訊；五項標準均符合。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2439,
+      "CompletionTokens": 810,
+      "CostUSD": 0.011661400000000002,
+      "CostReported": true
+    }
+  }
+}

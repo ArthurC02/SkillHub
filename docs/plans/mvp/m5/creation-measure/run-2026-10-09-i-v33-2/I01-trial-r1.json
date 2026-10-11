@@ -1,0 +1,180 @@
+{
+  "round": 1,
+  "sample_input": "請依規則計算每次租借的應收費用，並列出計費單位與費用計算。\n本次租借實際使用 30 分鐘。\n本次租借實際使用 31 分鐘。\n本次租借實際使用 120 分鐘。\n本次租借實際使用 150 分鐘。\n本次租借實際使用 240 分鐘。\n本次租借實際使用 270 分鐘。\n本次租借實際使用 300 分鐘。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑第 1 行的 30 分鐘時，輸出 1 個計費單位及 300 元。"
+    },
+    {
+      "text": "試跑第 2 行的 31 分鐘時，無條件進位為 2 個計費單位，輸出 600 元。"
+    },
+    {
+      "text": "試跑第 3 行的 120 分鐘時，輸出 4 個計費單位及 1,200 元。"
+    },
+    {
+      "text": "試跑第 4 行的 150 分鐘時，輸出 5 個計費單位及 1,440 元（1,200 + 240）。"
+    },
+    {
+      "text": "試跑第 5 行的 240 分鐘時，輸出 8 個計費單位及 2,160 元（1,200 + 960）。"
+    },
+    {
+      "text": "試跑第 6 行的 270 分鐘時，輸出 9 個計費單位及 2,340 元（1,200 + 960 + 180）。"
+    },
+    {
+      "text": "試跑第 7 行的 300 分鐘時，算出 10 個計費單位、上限前費用 2,520 元，並將應收金額限制為 2,400 元（1,200 + 960 + 360 = 2,520）。"
+    }
+  ],
+  "final_output": "依每 30 分鐘計 1 單位，不足 30 分鐘進位；費率為第 1–4 單位每單位 300 元、第 5–8 單位每單位 240 元、第 9 單位起每單位 180 元，每次上限 2,400 元。\n\n| 實際使用時間 | 計費單位 | 分級費用計算 | 上限前費用 | 應收金額 |\n|---|---:|---|---:|---:|\n| 30 分鐘 | 1 單位 | 第 1–4 單位：1 × 300 = 300 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 300 元 | **300 元** |\n| 31 分鐘 | 2 單位 | 第 1–4 單位：2 × 300 = 600 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 600 元 | **600 元** |\n| 120 分鐘 | 4 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 1,200 元 | **1,200 元** |\n| 150 分鐘 | 5 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：1 × 240 = 240 元；第 9 單位起：0 元 | 1,440 元 | **1,440 元** |\n| 240 分鐘 | 8 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：0 元 | 2,160 元 | **2,160 元** |\n| 270 分鐘 | 9 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：1 × 180 = 180 元 | 2,340 元 | **2,340 元** |\n| 300 分鐘 | 10 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：2 × 180 = 360 元 | 2,520 元 | **2,400 元**（套用 2,400 元上限） |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0aa60d98-1d69-44f1-81d6-b9c7ef0bcc23",
+    "run_id": "4f32f75f-c96a-441a-abee-f6671eb41f06",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七筆租借均列出正確的計費單位、分級費用與應收金額；300 分鐘的費用也正確套用 2,400 元上限。",
+    "criterion_results": [
+      {
+        "criterion_id": "24525d4d-8b86-4685-af21-967909e9df4f",
+        "text": "試跑第 1 行的 30 分鐘時，輸出 1 個計費單位及 300 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "30 分鐘列為 1 個計費單位，應收 300 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 30 分鐘 | 1 單位 | 第 1–4 單位：1 × 300 = 300 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 300 元 | **300 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "81d0f5ff-59be-432f-8c48-72defb2ee0c9",
+        "text": "試跑第 2 行的 31 分鐘時，無條件進位為 2 個計費單位，輸出 600 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "31 分鐘進位為 2 個計費單位，應收 600 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 31 分鐘 | 2 單位 | 第 1–4 單位：2 × 300 = 600 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 600 元 | **600 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e5f8db7c-2ae3-47e0-b604-833b538a4a6a",
+        "text": "試跑第 3 行的 120 分鐘時，輸出 4 個計費單位及 1,200 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "120 分鐘列為 4 個計費單位，應收 1,200 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 120 分鐘 | 4 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：0 元；第 9 單位起：0 元 | 1,200 元 | **1,200 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "76e575b8-d656-46b2-b039-445da23ee7b0",
+        "text": "試跑第 4 行的 150 分鐘時，輸出 5 個計費單位及 1,440 元（1,200 + 240）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "150 分鐘列為 5 個計費單位，分級費用為 1,200 元加 240 元，應收 1,440 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 150 分鐘 | 5 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：1 × 240 = 240 元；第 9 單位起：0 元 | 1,440 元 | **1,440 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0d5c1f67-4ff5-4edd-a217-074e81039185",
+        "text": "試跑第 5 行的 240 分鐘時，輸出 8 個計費單位及 2,160 元（1,200 + 960）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "240 分鐘列為 8 個計費單位，分級費用為 1,200 元加 960 元，應收 2,160 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 240 分鐘 | 8 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：0 元 | 2,160 元 | **2,160 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "eca33a38-37f1-48c6-9c9a-1098f6a58851",
+        "text": "試跑第 6 行的 270 分鐘時，輸出 9 個計費單位及 2,340 元（1,200 + 960 + 180）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "270 分鐘列為 9 個計費單位，分級費用為 1,200 元、960 元及 180 元，應收 2,340 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 270 分鐘 | 9 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：1 × 180 = 180 元 | 2,340 元 | **2,340 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d4f11976-ac4d-4d2b-965e-e2b314cb6b56",
+        "text": "試跑第 7 行的 300 分鐘時，算出 10 個計費單位、上限前費用 2,520 元，並將應收金額限制為 2,400 元（1,200 + 960 + 360 = 2,520）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "300 分鐘列為 10 個計費單位，上限前費用為 1,200 元加 960 元加 360 元，共 2,520 元；應收金額套用上限後為 2,400 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 300 分鐘 | 10 單位 | 第 1–4 單位：4 × 300 = 1,200 元；第 5–8 單位：4 × 240 = 960 元；第 9 單位起：2 × 180 = 360 元 | 2,520 元 | **2,400 元**（套用 2,400 元上限） |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1517 input and 1418 output tokens on skillhub-run; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 40,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

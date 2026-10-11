@@ -149,6 +149,17 @@ var domainVocabularies = []domainVocabulary{
 		},
 	},
 	{
+		name: "evaluation batch status",
+		sources: []vocabularySource{
+			sqlColumnCheck("evaluation_batches", "status"),
+			goConstEnum("apps/platform/internal/trial/improvement/batch.go", "BatchStatus"),
+			goListedConstEnum(
+				"apps/platform/internal/trial/improvement/batch.go", "AllBatchStatuses",
+				"apps/platform/internal/trial/improvement/batch.go", "BatchStatus"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "EvaluationBatchStatus"),
+		},
+	},
+	{
 		name: "run attempt object grant state",
 		sources: []vocabularySource{
 			sqlColumnCheck("run_attempts", "object_grants_state"),
@@ -358,7 +369,7 @@ var domainVocabularies = []domainVocabulary{
 		name: "platform agent run status",
 		sources: []vocabularySource{
 			sqlColumnCheck("platform_agent_runs", "status"),
-			goConstEnum("apps/platform/internal/product/operations/runs.go", "RunStatus"),
+			goConstEnum("apps/platform/internal/foundation/integration/agentloop/loop.go", "Status"),
 		},
 	},
 	{

@@ -1,0 +1,161 @@
+{
+  "round": 0,
+  "sample_input": "客戶說他要加急，要洗 2 台分離式，幫我報價",
+  "acceptance_criteria": [
+    {
+      "text": "給出一個具體的總價數字，沒有停在反問使用者加成幅度"
+    },
+    {
+      "text": "明確說明所用的加成幅度是自行採用的預設或假設值（例如「暫以 20% 計」）"
+    },
+    {
+      "text": "總價等於 3600 元乘以（1 + 其所述的加成幅度），算術正確"
+    },
+    {
+      "text": "所採加成幅度為正值（大於 0%）"
+    },
+    {
+      "text": "2 台未滿 3 台，沒有套用每台折 100 元的折扣"
+    }
+  ],
+  "final_output": "第 1 筆：\n  分離式：2 台\n  窗型：0 台\n  原價小計：3,600 元\n  折扣：0 元\n  急件加成：720 元\n  總價：4,320 元\n\n假設急件加成 20%，可用 --rush-rate 更改。\n假設未註明急件者視為非急件。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "21a9f40d-d038-4f5b-a877-074919400816",
+    "run_id": "75ad13cc-f78b-438d-a185-40fe30ca6a8d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "本次報價以假設的 20% 急件加成計算，2 台分離式冷氣未套用台數折扣，總價 4,320 元；五項驗收標準均符合。",
+    "criterion_results": [
+      {
+        "criterion_id": "7c2b883b-5c81-42bf-bc62-99ab3e5521a1",
+        "text": "給出一個具體的總價數字，沒有停在反問使用者加成幅度",
+        "result": "passed",
+        "source": "model",
+        "reason": "已給出具體總價 4,320 元，沒有停在反問加成幅度。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總價：4,320 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "507be73a-2750-4087-8bbc-78b8d511e34e",
+        "text": "明確說明所用的加成幅度是自行採用的預設或假設值（例如「暫以 20% 計」）",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確說明急件加成 20% 是假設值。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "假設急件加成 20%",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cd7d05da-d811-47ce-9ef2-39a203e0f9ca",
+        "text": "總價等於 3600 元乘以（1 + 其所述的加成幅度），算術正確",
+        "result": "passed",
+        "source": "model",
+        "reason": "3,600 元乘以（1＋20%）等於 4,320 元，與所報總價一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "原價小計：3,600 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "假設急件加成 20%",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總價：4,320 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ada9bf87-7fb8-4895-ae2f-adc726749804",
+        "text": "所採加成幅度為正值（大於 0%）",
+        "result": "passed",
+        "source": "model",
+        "reason": "採用的 20% 急件加成大於 0%。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "假設急件加成 20%",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c0d07c8c-c6ee-42cc-acce-d728abbc0d20",
+        "text": "2 台未滿 3 台，沒有套用每台折 100 元的折扣",
+        "result": "passed",
+        "source": "model",
+        "reason": "報價為 2 台分離式，折扣列為 0 元，沒有套用台數折扣。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "分離式：2 台",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "折扣：0 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1539 input and 323 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

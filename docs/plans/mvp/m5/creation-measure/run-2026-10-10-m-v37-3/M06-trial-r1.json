@@ -1,0 +1,129 @@
+{
+  "round": 1,
+  "sample_input": "請依規則寫一則試聽確認簡訊。\n試聽日期：5/8\n時間：14:00\n教室編號：3\n試聽費：新台幣300元\n改期截止日：5/6\n其他資訊：請提早15分鐘到場，攜帶身分證並至櫃台填寫資料，家長可陪同。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入，輸出只有一則簡訊本文，不含前言、引號、說明或字數統計。"
+    },
+    {
+      "text": "對試跑輸入，簡訊本文不超過 50 個字元，且中文字、數字、標點符號及空白均各計 1 個字元。"
+    },
+    {
+      "text": "對試跑輸入，簡訊保留試聽日期 5/8、時間 14:00、教室編號 3、試聽費新台幣 300 元及改期截止日 5/6，且不改變這些值。"
+    },
+    {
+      "text": "對試跑輸入，因可選補充資訊無法在保留必要資訊的同時完整放入 50 字元內，簡訊省略該補充資訊。"
+    }
+  ],
+  "final_output": "試聽5/8 14:00教室3，費300元；改期截止5/6。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "de4875b3-67c3-4e61-83ac-b44c66019081",
+    "run_id": "3922f355-cdb9-44c9-9035-ed90a716ab54",
+    "status": "completed",
+    "overall": "met",
+    "summary": "這則簡訊符合單則輸出及 50 字元限制，保留必要的試聽資訊，並省略可選補充資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "f014921b-eeac-43d0-b306-36a401df24c8",
+        "text": "對試跑輸入，輸出只有一則簡訊本文，不含前言、引號、說明或字數統計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有一則簡訊本文，沒有前言、引號、說明或字數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "試聽5/8 14:00教室3，費300元；改期截止5/6。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "813a261d-8ca1-4979-b60d-5b30b5761bf4",
+        "text": "對試跑輸入，簡訊本文不超過 50 個字元，且中文字、數字、標點符號及空白均各計 1 個字元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "依指定方式逐字計算，簡訊共 30 個字元，未超過 50 個。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "試聽5/8 14:00教室3，費300元；改期截止5/6。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ca4af7b5-f04b-46e2-9a11-a763735dbea7",
+        "text": "對試跑輸入，簡訊保留試聽日期 5/8、時間 14:00、教室編號 3、試聽費新台幣 300 元及改期截止日 5/6，且不改變這些值。",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊保留了 5/8、14:00、教室 3、費用 300 元及改期截止日 5/6；「300元」在此語境中是新台幣費用的簡寫。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "試聽5/8 14:00教室3，費300元；改期截止5/6。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "119dfe4a-8997-40e2-9945-5e2a71c4dd6a",
+        "text": "對試跑輸入，因可選補充資訊無法在保留必要資訊的同時完整放入 50 字元內，簡訊省略該補充資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊未加入提早到場、攜帶身分證、櫃台填資料或家長陪同等可選補充資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "試聽5/8 14:00教室3，費300元；改期截止5/6。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1576 input and 1460 output tokens on skillhub-run; reported cost $0.0045 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

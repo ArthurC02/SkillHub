@@ -1,0 +1,100 @@
+{
+  "round": 0,
+  "sample_input": "我 2026-11-10 起租，租 3 天，2 套雪板組，總共多少錢？",
+  "acceptance_criteria": [
+    {
+      "text": "回覆的總租金為 4,800 元"
+    },
+    {
+      "text": "沒有因為加成幅度未定而反問、拒絕報價或在這筆報價加上旺季加成"
+    }
+  ],
+  "final_output": "旺季日數：0 天  \n非旺季日數：3 天  \n計算式：(3 × 800 + 0 × 960) × 2 = 新台幣 4,800 元  \n總租金：新台幣 4,800 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4ce2846c-de2c-4d8a-8f17-4fe4c221a7ae",
+    "run_id": "b9beee8a-14fa-4eae-83ec-8580d22b0baa",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均達成：回覆報價為新台幣 4,800 元，且未加計旺季加成。",
+    "criterion_results": [
+      {
+        "criterion_id": "ecb07b73-8415-46f2-805a-66e6988f33fd",
+        "text": "回覆的總租金為 4,800 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆的總租金為新台幣 4,800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總租金：新台幣 4,800 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d20ec82e-9cbe-437d-8fa6-eb9e4a96b5aa",
+        "text": "沒有因為加成幅度未定而反問、拒絕報價或在這筆報價加上旺季加成",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆直接報價，列出旺季日數為零，計算式也未計入旺季加成；沒有反問或拒絕報價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "旺季日數：0 天",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "計算式：(3 × 800 + 0 × 960) × 2 = 新台幣 4,800 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1515 input and 309 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

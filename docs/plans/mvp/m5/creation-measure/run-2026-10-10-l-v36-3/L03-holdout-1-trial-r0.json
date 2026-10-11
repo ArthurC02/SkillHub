@@ -1,0 +1,100 @@
+{
+  "round": 0,
+  "sample_input": "欸我們公司下週活動，要 30 份雞腿便當一份 120，然後素食的 12 份啦一份 110，飲料也要 42 杯一杯 25，喔對了場地那邊說清潔費 800 要我們直接付給他們，這個你們不用算進去",
+  "acceptance_criteria": [
+    {
+      "text": "餐點總額為 5970 元"
+    },
+    {
+      "text": "總額不含場地清潔費 800 元（不是 6770 元）"
+    }
+  ],
+  "final_output": "| 品項 | 數量 | 單價（新台幣） | 小計（新台幣） |\n|---|---:|---:|---:|\n| 雞腿便當 | 30 份 | NT$120 | NT$3,600 |\n| 素食便當 | 12 份 | NT$110 | NT$1,320 |\n| 飲料 | 42 杯 | NT$25 | NT$1,050 |\n\n**報價總額：NT$5,970**\n\n備註：場地清潔費 NT$800 由您直接支付給場地方，未計入本報價。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "5faf93e6-dfae-40a7-92e2-965e245998aa",
+    "run_id": "681d896b-b44e-40c2-a3d9-cb158b06d3c8",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均已達成：餐飲報價為 NT$5,970，未包含 NT$800 場地清潔費。",
+    "criterion_results": [
+      {
+        "criterion_id": "b2982a1a-fe91-4b17-9e1d-7c1984a072a5",
+        "text": "餐點總額為 5970 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "三項餐飲小計分別為 3,600、1,320、1,050 元，報價總額正確為 5,970 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**報價總額：NT$5,970**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9d8fc343-fc8e-43ac-ad58-2bfda223dc14",
+        "text": "總額不含場地清潔費 800 元（不是 6770 元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "報價總額為 5,970 元，並明確註明 800 元場地清潔費由客戶直接支付、未計入報價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**報價總額：NT$5,970**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "備註：場地清潔費 NT$800 由您直接支付給場地方，未計入本報價。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1540 input and 460 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

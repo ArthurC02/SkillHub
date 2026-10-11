@@ -1,0 +1,78 @@
+{
+  "round": 0,
+  "sample_input": "停車時數 1.1 小時，請算這次的停車費。",
+  "acceptance_criteria": [
+    {
+      "text": "停車費為 120 元"
+    }
+  ],
+  "final_output": "第 1 筆：\n原始時數：1.1 小時\n進位後時數：2 小時\n計算明細：120 元\n應付金額：120 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ba01e09f-0227-4a17-85e1-03e934e34742",
+    "run_id": "c1bc3fbe-6098-4e72-bb7d-3e567dda6f76",
+    "status": "completed",
+    "overall": "met",
+    "summary": "停車 1.1 小時的計費結果為 120 元，符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "4f04938c-6bfe-464e-b11a-2d58c6bcf564",
+        "text": "停車費為 120 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆列出這次停車的應付金額為 120 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "應付金額：120 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1509 input and 282 output tokens on skillhub-run; reported cost $0.0030 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 6,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

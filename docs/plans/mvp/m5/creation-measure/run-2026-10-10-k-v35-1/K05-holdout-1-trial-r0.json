@@ -1,0 +1,154 @@
+{
+  "round": 0,
+  "sample_input": "幫我整理公告，資料如下：\n1. 段考日期 11/10 到 11/12\n2. 學費繳費截止 10/25\n3. 11/2 週日補課，教室在 B 棟 3 樓\n4. 11/11 校車停駛，家長自行接送\n5. 成績單 11/17 發放\n6. 家長日 11/20 晚上 7 點\n7. 段考期間午餐改訂便當，請於 11/5 前訂\n8. 請假一律在系統辦理",
+  "acceptance_criteria": [
+    {
+      "text": "公告本體不超過 3 句話"
+    },
+    {
+      "text": "公告本體包含段考日期 11/10 到 11/12"
+    },
+    {
+      "text": "公告本體包含學費繳費截止日 10/25"
+    },
+    {
+      "text": "公告本體之後另有一句話交代有捨棄或合併事項，且點名被省略或合併的事項（例如補課、校車、成績單、家長日、便當、請假其中的項目），不是只籠統說有省略"
+    },
+    {
+      "text": "那句交代所點名省略的事項，確實沒有出現在公告本體裡"
+    }
+  ],
+  "final_output": "公告本體：\n各位家長您好，段考日期為 11/10 至 11/12，學費繳費截止日為 10/25；11/2（週日）補課，教室在 B 棟 3 樓，請假一律於系統辦理。11/11 校車停駛，請家長自行接送；段考期間午餐改訂便當，請於 11/5 前完成訂購。成績單於 11/17 發放，家長日為 11/20 晚上 7 點。\n\n整理說明：第1項段考日期、第2項學費繳費截止日、第3項補課日期與教室，以及第8項系統請假合併在第一句；第4項校車停駛與自行接送、第7項便當訂購期限合併在第二句；第5項成績單發放、第6項家長日合併在第三句，無遺漏。",
+  "artifacts": [
+    "announcement-check.txt",
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "0d2bc59a-569d-4d88-b8f6-9c4b9cbaebf7",
+    "run_id": "722ed1a0-2192-4943-a0e6-366ed845ec8a",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "公告本體符合三句上限，並包含段考日期與學費截止日；後方也有點名合併事項的說明。但說明未指出任何確實從公告本體省略的事項。",
+    "criterion_results": [
+      {
+        "criterion_id": "65cd9330-e697-45d6-9a91-63ef801f671a",
+        "text": "公告本體不超過 3 句話",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告本體以三個句號分成三句，未超過三句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "各位家長您好，段考日期為 11/10 至 11/12，學費繳費截止日為 10/25；11/2（週日）補課，教室在 B 棟 3 樓，請假一律於系統辦理。11/11 校車停駛，請家長自行接送；段考期間午餐改訂便當，請於 11/5 前完成訂購。成績單於 11/17 發放，家長日為 11/20 晚上 7 點。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9e22f7a9-221e-4597-9023-f27d6241b240",
+        "text": "公告本體包含段考日期 11/10 到 11/12",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告本體載明段考日期為 11/10 至 11/12。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "段考日期為 11/10 至 11/12",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c640daf9-d5bc-4d29-b3ee-a19f0507dad8",
+        "text": "公告本體包含學費繳費截止日 10/25",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告本體載明學費繳費截止日為 10/25。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "學費繳費截止日為 10/25",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dcec825b-1b54-407b-ae20-ea23c182bc53",
+        "text": "公告本體之後另有一句話交代有捨棄或合併事項，且點名被省略或合併的事項（例如補課、校車、成績單、家長日、便當、請假其中的項目），不是只籠統說有省略",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告本體後另有一句整理說明，具體點名補課、校車、便當等事項如何合併。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "整理說明：第1項段考日期、第2項學費繳費截止日、第3項補課日期與教室，以及第8項系統請假合併在第一句；第4項校車停駛與自行接送、第7項便當訂購期限合併在第二句；第5項成績單發放、第6項家長日合併在第三句，無遺漏。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1537dddc-d488-4793-9d0e-f61c085bc130",
+        "text": "那句交代所點名省略的事項，確實沒有出現在公告本體裡",
+        "result": "failed",
+        "source": "model",
+        "reason": "整理說明沒有點名任何實際省略的事項；它點名的補課等合併事項仍出現在公告本體中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第3項補課日期與教室",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "11/2（週日）補課，教室在 B 棟 3 樓",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 2 readable output file(s): announcement-check.txt, answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1566 input and 2702 output tokens on skillhub-run; reported cost $0.0053 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 30,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

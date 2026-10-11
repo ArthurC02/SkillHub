@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "我有 5 件行李，要寄放 7 天，總共多少錢？",
+  "acceptance_criteria": [
+    {
+      "text": "回覆的應收總額為 650 元"
+    },
+    {
+      "text": "沒有把應收總額寫成 800 元作為最終結果"
+    }
+  ],
+  "final_output": "5 件行李寄放 7 天，應收總額 650 元。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4e26a4d7-1436-4322-8bf5-3fd9d0d2b4eb",
+    "run_id": "4c494969-b804-4492-a0ab-4fd8ddddbab2",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終回覆以 650 元作為應收總額，符合兩項驗收條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "9401626f-3105-4109-a99f-347c5b989403",
+        "text": "回覆的應收總額為 650 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將應收總額寫為 650 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5 件行李寄放 7 天，應收總額 650 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3fd77370-8c96-4c62-a3e6-ea42754361bb",
+        "text": "沒有把應收總額寫成 800 元作為最終結果",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆的應收總額是 650 元，並非 800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5 件行李寄放 7 天，應收總額 650 元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1503 input and 154 output tokens on skillhub-run; reported cost $0.0029 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 8,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

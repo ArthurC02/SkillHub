@@ -1,0 +1,206 @@
+{
+  "round": 2,
+  "sample_input": "請依規則計算以下各次租借費用，逐筆列出分鐘數、計費單位與應收金額：\n29 分鐘\n30 分鐘\n31 分鐘\n120 分鐘\n121 分鐘\n240 分鐘\n241 分鐘\n1,200 分鐘",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中的 29、30、31 分鐘紀錄，輸出分別為 1、1、2 個計費單位，應收 300、300、600 元。"
+    },
+    {
+      "text": "對試跑輸入中的 120、121 分鐘紀錄，輸出分別為 4、5 個計費單位，應收 1,200、1,440 元。"
+    },
+    {
+      "text": "對試跑輸入中的 240、241 分鐘紀錄，輸出分別為 8、9 個計費單位，應收 2,160、2,340 元。"
+    },
+    {
+      "text": "對試跑輸入中的 1,200 分鐘紀錄，輸出 40 個計費單位，依級距原計 7,920 元，並將應收金額封頂為 2,400 元。"
+    },
+    {
+      "text": "輸出逐筆列出實際分鐘數、計費單位數及應收金額，且各筆紀錄不合併計費。"
+    }
+  ],
+  "final_output": "實際分鐘數\t計費單位\t封頂前金額（元）\t應收金額（元）\n29\t1\t300\t300\n30\t1\t300\t300\n31\t2\t600\t600\n120\t4\t1200\t1200\n121\t5\t1440\t1440\n240\t8\t2160\t2160\n241\t9\t2340\t2340\n1,200\t40\t7920\t2400",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "77c8466e-0fbb-460d-a7bf-a7fb75398196",
+    "run_id": "dba47fc9-c46b-45c6-9ec6-50187f5dd189",
+    "status": "completed",
+    "overall": "met",
+    "summary": "八筆租借均逐筆列出，計費單位、應收金額及 1,200 分鐘的封頂前金額皆符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "7916139d-c681-41e5-a305-847c32bc1469",
+        "text": "對試跑輸入中的 29、30、31 分鐘紀錄，輸出分別為 1、1、2 個計費單位，應收 300、300、600 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "29、30、31 分鐘分別列為 1、1、2 個計費單位，應收 300、300、600 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "29\t1\t300\t300",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "30\t1\t300\t300",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "31\t2\t600\t600",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8bc3ce7c-932f-4f6c-887d-5f927649f44d",
+        "text": "對試跑輸入中的 120、121 分鐘紀錄，輸出分別為 4、5 個計費單位，應收 1,200、1,440 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "120、121 分鐘分別列為 4、5 個計費單位，應收 1,200、1,440 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "120\t4\t1200\t1200",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "121\t5\t1440\t1440",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d9488e7e-24b1-4536-b844-57ccf6bd2010",
+        "text": "對試跑輸入中的 240、241 分鐘紀錄，輸出分別為 8、9 個計費單位，應收 2,160、2,340 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "240、241 分鐘分別列為 8、9 個計費單位，應收 2,160、2,340 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "240\t8\t2160\t2160",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "241\t9\t2340\t2340",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "daa030da-49d2-4de9-ac16-2bd8adf52509",
+        "text": "對試跑輸入中的 1,200 分鐘紀錄，輸出 40 個計費單位，依級距原計 7,920 元，並將應收金額封頂為 2,400 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "1,200 分鐘列為 40 個計費單位，封頂前金額為 7,920 元，應收金額為 2,400 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1,200\t40\t7920\t2400",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "76d25f4a-57bb-4b8b-a198-8744c65525d9",
+        "text": "輸出逐筆列出實際分鐘數、計費單位數及應收金額，且各筆紀錄不合併計費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以獨立列呈現八筆租借，各列均有實際分鐘數、計費單位及應收金額，未合併計費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "實際分鐘數\t計費單位\t封頂前金額（元）\t應收金額（元）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "29\t1\t300\t300",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "30\t1\t300\t300",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "31\t2\t600\t600",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "120\t4\t1200\t1200",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "121\t5\t1440\t1440",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "240\t8\t2160\t2160",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "241\t9\t2340\t2340",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "1,200\t40\t7920\t2400",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1540 input and 334 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

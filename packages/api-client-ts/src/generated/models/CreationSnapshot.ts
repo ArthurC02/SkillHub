@@ -27,6 +27,13 @@ import {
     CreationAttachmentToJSON,
     CreationAttachmentToJSONTyped,
 } from './CreationAttachment';
+import type { CreationChallengeCase } from './CreationChallengeCase';
+import {
+    CreationChallengeCaseFromJSON,
+    CreationChallengeCaseFromJSONTyped,
+    CreationChallengeCaseToJSON,
+    CreationChallengeCaseToJSONTyped,
+} from './CreationChallengeCase';
 import type { CreationReference } from './CreationReference';
 import {
     CreationReferenceFromJSON,
@@ -92,6 +99,10 @@ export interface CreationSnapshot {
      * The example input proposed with the brief and confirmed by the same confirm_brief; it is the prompt of the candidate's Test Case. Empty until proposed.
      */
     sampleInput?: string;
+    /**
+     * Inputs the sample does not exercise, written by a second call that sees only the brief, the criteria and the sample; confirmed by the same confirm_brief, each becomes its own Test Case at materialize.
+     */
+    challengeCases?: Array<CreationChallengeCase>;
     /**
      * 
      */
@@ -276,6 +287,7 @@ export function CreationSnapshotFromJSONTyped(json: any, ignoreDiscriminator: bo
         'brief': json['brief'],
         'acceptanceCriteria': json['acceptance_criteria'],
         'sampleInput': json['sample_input'] == null ? undefined : json['sample_input'],
+        'challengeCases': json['challenge_cases'] == null ? undefined : ((json['challenge_cases'] as Array<any>).map(CreationChallengeCaseFromJSON)),
         'briefConfirmed': json['brief_confirmed'],
         'modelChanged': json['model_changed'] == null ? undefined : CreationModelChangeFromJSON(json['model_changed']),
         'diagramUnderstanding': json['diagram_understanding'],
@@ -331,6 +343,7 @@ export function CreationSnapshotToJSONTyped(value?: CreationSnapshot | null, ign
         'brief': value['brief'],
         'acceptance_criteria': value['acceptanceCriteria'],
         'sample_input': value['sampleInput'],
+        'challenge_cases': value['challengeCases'] == null ? undefined : ((value['challengeCases'] as Array<any>).map(CreationChallengeCaseToJSON)),
         'brief_confirmed': value['briefConfirmed'],
         'model_changed': CreationModelChangeToJSON(value['modelChanged']),
         'diagram_understanding': value['diagramUnderstanding'],

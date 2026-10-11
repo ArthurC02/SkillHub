@@ -1,0 +1,131 @@
+{
+  "round": 1,
+  "sample_input": "請依下列資料寫一則健檢報告領取通知簡訊。\n領取日期：2026/01/05\n領取時間：09:00-17:00\n自費項目費用：1200元",
+  "acceptance_criteria": [
+    {
+      "text": "對 sample_input，輸出只有一則簡訊本文，沒有說明或字數統計。"
+    },
+    {
+      "text": "對 sample_input，輸出不超過 28 字元，並計入空格、標點、英數字及符號。"
+    },
+    {
+      "text": "對 sample_input，輸出包含領取日期 1/5、完整時間 09:00-17:00，以及自費費用 1200元。"
+    },
+    {
+      "text": "對 sample_input，輸出傳達是健檢報告領取通知。"
+    }
+  ],
+  "final_output": "健檢報告1/5 09:00-17:00領取自費1200元",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "bf765183-91a4-40b9-a0a1-d90d423544f8",
+    "run_id": "383c81fb-2496-42bd-8cda-a2d55063afdc",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成。最終輸出僅有一則 28 字元的簡訊，包含指定的日期、時間、費用及健檢報告領取資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "b4922d2e-2ac9-4beb-a875-fb1d4fc1a4c1",
+        "text": "對 sample_input，輸出只有一則簡訊本文，沒有說明或字數統計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有一則簡訊本文，沒有說明或字數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢報告1/5 09:00-17:00領取自費1200元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1b11b585-411e-4c00-b654-c2d58f1a6a1a",
+        "text": "對 sample_input，輸出不超過 28 字元，並計入空格、標點、英數字及符號。",
+        "result": "passed",
+        "source": "model",
+        "reason": "計入空格、標點、英數字及符號後，簡訊共 28 字元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢報告1/5 09:00-17:00領取自費1200元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4454725f-1962-429e-835c-c004331a517e",
+        "text": "對 sample_input，輸出包含領取日期 1/5、完整時間 09:00-17:00，以及自費費用 1200元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊包含領取日期 1/5、完整時間 09:00-17:00 及自費費用 1200元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢報告1/5 09:00-17:00領取自費1200元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1f04675b-0a5c-462e-ba17-87309cbcf7a2",
+        "text": "對 sample_input，輸出傳達是健檢報告領取通知。",
+        "result": "passed",
+        "source": "model",
+        "reason": "「健檢報告」與「領取」明確傳達健檢報告領取通知。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢報告1/5 09:00-17:00領取自費1200元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1549 input and 1014 output tokens on skillhub-run; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

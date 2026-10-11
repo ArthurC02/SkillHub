@@ -17,6 +17,9 @@ packages:
   - id: llmclient
     kind: Generic
     path: foundation/integration/llmclient
+  - id: agentloop
+    kind: Generic
+    path: foundation/integration/agentloop
   - id: modelbudget
     kind: Generic
     path: foundation/integration/modelbudget

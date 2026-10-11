@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "6 件行李寄放 10 天，要收多少？",
+  "acceptance_criteria": [
+    {
+      "text": "回覆的應收總額為 800 元（相加後套用上限）"
+    },
+    {
+      "text": "沒有把應收總額寫成 830 元作為最終結果"
+    }
+  ],
+  "final_output": "6 件行李寄放 10 天，件數費 240 元、天數費 590 元，未封頂合計 830 元；套用單筆 800 元上限後，**應收 800 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e401680d-92b6-4553-8e27-df9254db38a2",
+    "run_id": "8c8c77aa-4d6e-4e98-b5ea-415a9a310284",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均已達成：回覆區分未封頂合計 830 元與套用上限後的應收金額 800 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "8a826216-8801-46e0-8a0d-0ae04cccb799",
+        "text": "回覆的應收總額為 800 元（相加後套用上限）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將 830 元列為未封頂合計，套用單筆上限後，應收總額為 800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "未封頂合計 830 元；套用單筆 800 元上限後，**應收 800 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ccc91d3c-1000-4504-9940-88ac1b3c26e1",
+        "text": "沒有把應收總額寫成 830 元作為最終結果",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆沒有把 830 元當作最終應收金額，而是明確標示應收 800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "未封頂合計 830 元；套用單筆 800 元上限後，**應收 800 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1508 input and 196 output tokens on skillhub-run; reported cost $0.0029 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 10,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

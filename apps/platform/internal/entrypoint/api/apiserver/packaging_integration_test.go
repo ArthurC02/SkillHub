@@ -491,6 +491,7 @@ func TestAnUploadIntoTheCatalogueIsNotSelfSupplied(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
+	leaveCatalogAtEnd(t, pool, mustUUID(t, c.workspaceID))
 
 	skillID, versionID := importFiles(t, a, pool, c, map[string]string{
 		"SKILL.md": "---\nname: curated-skill\ndescription: Something the platform is handing out.\n---\n\nDo the thing.\n",

@@ -6,3 +6,9 @@ type JobArgs struct {
 }
 
 func (JobArgs) Kind() string { return "evaluate_run" }
+
+type BatchAdvanceArgs struct {
+	WorkspaceID string `json:"workspace_id,omitempty"`
+}
+
+func (BatchAdvanceArgs) Kind() string { return "advance_evaluation_batches" }

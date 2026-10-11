@@ -25,6 +25,12 @@ model_list:
   # The judge must never share a model with what it judges.
   - model_name: skillhub-judge
     litellm_params: *sol
+  # Judge panel members: independent calls, each its own seed; point one at another
+  # vendor's model here to make the panel's errors less alike.
+  - model_name: skillhub-judge-panel-1
+    litellm_params: *sol
+  - model_name: skillhub-judge-panel-2
+    litellm_params: *sol
   - model_name: skillhub-enrich
     litellm_params: *luna
   - model_name: skillhub-intent

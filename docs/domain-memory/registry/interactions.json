@@ -22,19 +22,19 @@
         }
       ],
       "review": {
-        "proposal_id": "run-preflight-facts-follow-the-held-facts",
+        "proposal_id": "run-preflight-facts-held-reattested",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-02T08:47:59.068189Z",
-            "scope": "The citation of the interaction registry-run-preflight-facts, moved to the lines where preflight now refuses without a Registry reader and reads Version facts through it; the interaction itself is unchanged",
+            "approved_at": "2026-10-09T16:39:59.804451Z",
+            "scope": "The interaction registry-run-preflight-facts recorded again unchanged, so a signed commit that carries this proposal attests its review in place of the earlier package whose attested commit carried another proposal",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "b38c98d658122921ed859162d1b456fc83417480",
-              "registry_digest": "sha256:d75493e27760f5054a1ffa592bf40193d910cb0bf71cae4ce535add36d14e15b"
+              "observed_commit": "2f415c043dabe39d09c67d66e87dcd2779c492f3",
+              "registry_digest": "sha256:d905ca4d1d1adeec2e4274054eb507d6df7053973588eaa61ae9d77832faf316"
             }
           }
         ]

@@ -1,0 +1,190 @@
+{
+  "round": 1,
+  "sample_input": "請核對以下倉庫進貨驗收紀錄，列出各品項小計、可確認小計合計，並指出矛盾；有矛盾時不要宣告完整驗收總額。\n品項,數量,單價,驗收日期\n螺絲,12,2.50,2026-10-08\n螺絲,12,2.50,2026-10-08\n手套,3,7.00,2026-10-08\n膠帶,4,1.50,2026-10-08\n膠帶,5,1.50,2026-10-08\n墊圈,2,1.20,2026-10-08\n墊圈,2,1.30,2026-10-08\n濾芯,1,8.00,2026-10-07\n濾芯,1,8.00,2026-10-08\n螺栓,6,0.75,2026-02-30\n清潔劑,-2,4.00,2026-10-08",
+  "acceptance_criteria": [
+    {
+      "text": "試跑中的「螺絲」兩筆紀錄欄位完全一致時，結果將其視為一筆，列出小計 30.00，而非把兩筆數量相加。"
+    },
+    {
+      "text": "試跑中的「手套」列出小計 21.00；因資料另有矛盾品項，輸出可確認小計合計 51.00，並明確不宣告完整驗收總額。"
+    },
+    {
+      "text": "試跑中的「膠帶」數量 4 與 5 不一致時，列出兩個數量、請使用者確認，且不計算該品項小計。"
+    },
+    {
+      "text": "試跑中的「墊圈」單價 1.20 與 1.30 不一致時，列出兩個單價、請使用者確認，且不計算該品項小計。"
+    },
+    {
+      "text": "試跑中的「濾芯」同品項日期 2026-10-07 與 2026-10-08 不一致時，列出兩個日期、請使用者確認，且不計算該品項小計。"
+    },
+    {
+      "text": "試跑中的「螺栓」日期 2026-02-30 不存在時，指出日期無效、請使用者確認，且不計算該品項小計。"
+    },
+    {
+      "text": "試跑中的「清潔劑」數量為 -2 時，指出數量為負、請使用者確認，且不計算該品項小計。"
+    }
+  ],
+  "final_output": "## 倉庫進貨驗收核對結果\n\n| 品項 | 核對結果 | 小計 |\n|---|---|---:|\n| 螺絲 | 兩筆紀錄完全一致，依規則只計算一次：12 × 2.50 | 30.00 |\n| 手套 | 3 × 7.00 | 21.00 |\n| 膠帶 | 數量不一致：4、5；請確認 | 未計算 |\n| 墊圈 | 單價不一致：1.20、1.30；請確認 | 未計算 |\n| 濾芯 | 驗收日期不一致：2026-10-07、2026-10-08；請確認 | 未計算 |\n| 螺栓 | 日期 2026-02-30 不是有效日期；請確認 | 未計算 |\n| 清潔劑 | 數量為負值（-2）；請確認 | 未計算 |\n\n**可確認小計合計：51.00**\n\n由於有矛盾或無效資料，51.00 僅為可確認小計合計，**不是完整驗收總額**。請確認膠帶、墊圈、濾芯、螺栓及清潔劑的資料後再核算。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "72b3268f-4a26-4826-8d94-020f0221ef5a",
+    "run_id": "178635fb-c668-4b2b-9f57-91d7b1a6b818",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七項驗收標準均已達成。回覆只計入可確認品項，逐項標示矛盾或無效資料，且未將 51.00 宣告為完整驗收總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "24627358-d08d-47d3-979a-8a5ff992c55c",
+        "text": "試跑中的「螺絲」兩筆紀錄欄位完全一致時，結果將其視為一筆，列出小計 30.00，而非把兩筆數量相加。",
+        "result": "passed",
+        "source": "model",
+        "reason": "螺絲兩筆相同紀錄只計算一次，小計為 30.00。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 螺絲 | 兩筆紀錄完全一致，依規則只計算一次：12 × 2.50 | 30.00 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2ce6f60e-5777-41bf-ae2d-19b397083374",
+        "text": "試跑中的「手套」列出小計 21.00；因資料另有矛盾品項，輸出可確認小計合計 51.00，並明確不宣告完整驗收總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "手套小計為 21.00，可確認小計合計為 51.00，且明確表示不是完整驗收總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 手套 | 3 × 7.00 | 21.00 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**可確認小計合計：51.00**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "51.00 僅為可確認小計合計，**不是完整驗收總額**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c29f36f8-b637-4c35-b4df-c10e11b13178",
+        "text": "試跑中的「膠帶」數量 4 與 5 不一致時，列出兩個數量、請使用者確認，且不計算該品項小計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "膠帶列出數量 4、5 不一致，請使用者確認，並未計算小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 膠帶 | 數量不一致：4、5；請確認 | 未計算 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "67cdaacd-c468-4d5a-8aaf-3b4dae16e33f",
+        "text": "試跑中的「墊圈」單價 1.20 與 1.30 不一致時，列出兩個單價、請使用者確認，且不計算該品項小計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "墊圈列出單價 1.20、1.30 不一致，請使用者確認，並未計算小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 墊圈 | 單價不一致：1.20、1.30；請確認 | 未計算 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "87a158a8-0aa4-40ba-bbf6-711167c84b06",
+        "text": "試跑中的「濾芯」同品項日期 2026-10-07 與 2026-10-08 不一致時，列出兩個日期、請使用者確認，且不計算該品項小計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "濾芯列出兩個不一致的驗收日期，請使用者確認，並未計算小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 濾芯 | 驗收日期不一致：2026-10-07、2026-10-08；請確認 | 未計算 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5220895f-2687-498b-a1f8-2a058ba4c372",
+        "text": "試跑中的「螺栓」日期 2026-02-30 不存在時，指出日期無效、請使用者確認，且不計算該品項小計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "螺栓的 2026-02-30 被指出不是有效日期，要求確認，並未計算小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 螺栓 | 日期 2026-02-30 不是有效日期；請確認 | 未計算 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "51b0321c-18f9-4df5-8535-0a334097b8ce",
+        "text": "試跑中的「清潔劑」數量為 -2 時，指出數量為負、請使用者確認，且不計算該品項小計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "清潔劑的數量 -2 被指出為負值，要求確認，並未計算小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 清潔劑 | 數量為負值（-2）；請確認 | 未計算 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1536 input and 1046 output tokens on skillhub-run; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

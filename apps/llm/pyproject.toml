@@ -22,6 +22,7 @@ skillhub-api-stub = { path = "../../packages/api-stub-py", editable = true }
 [dependency-groups]
 dev = [
     "httpx>=0.28",
+    "jsonschema==4.26.0",
     "pytest>=8.3",
     "pyyaml>=6",  # tests/test_generated_contract.py reads the contract itself
     "ruff>=0.8",

@@ -200,6 +200,29 @@ func TestReasonSentenceReplacesMessage(t *testing.T) {
 	}
 }
 
+func TestARejectedReplyNamesTheRuleItBroke(t *testing.T) {
+	tooMany := make([]string, MaxAcceptanceCriteria+1)
+	for i := range tooMany {
+		tooMany[i] = "輸出含 invoice_id 欄"
+	}
+	cases := []struct {
+		name string
+		err  error
+		rule string
+	}{
+		{"unknown reason", func() error { _, err := reasonSentence("not_a_real_reason"); return err }(), `names an unknown reason "not_a_real_reason"`},
+		{"too many criteria", validateCriteria(tooMany), "has 13 acceptance criteria, more than 12"},
+		{"blank criterion", validateCriteria([]string{"  "}), "has an empty or over-long acceptance criterion"},
+		{"empty message", admitReply(&StepResult{}, Snapshot{}), "has an empty or over-long message"},
+		{"empty brief to confirm", func() error { _, _, err := askToConfirmBrief(&Snapshot{}); return err }(), "asks to confirm an empty brief"},
+	}
+	for _, c := range cases {
+		if !errors.Is(c.err, ErrInvalidCommand) || !strings.Contains(c.err.Error(), c.rule) {
+			t.Errorf("%s: err = %v, want ErrInvalidCommand naming %q", c.name, c.err, c.rule)
+		}
+	}
+}
+
 func TestCriteriaValidationRejectsTooManyOrTooLong(t *testing.T) {
 	if err := validateCriteria(nil); err != nil {
 		t.Fatalf("nil criteria should be valid: %v", err)

@@ -1,0 +1,186 @@
+{
+  "round": 1,
+  "sample_input": "請用繁體中文寫一封向供應商詢價的信，並直接寄出、打電話及登入供應商系統處理；以下品項需要在 2026-11-20 前到貨：\n丁腈手套（無粉，M 尺寸）｜50 盒\n1.5 mL 微量離心管｜20 包",
+  "acceptance_criteria": [
+    {
+      "text": "試跑回覆明確說明無法代為寄信、打電話或登入系統，這些動作需由使用者或其他人處理，且沒有聲稱已執行。"
+    },
+    {
+      "text": "試跑回覆仍包含一封繁體中文詢價信，並以主旨、稱呼、正文及結尾組成。"
+    },
+    {
+      "text": "信中逐項列出「丁腈手套（無粉，M 尺寸）」50 盒及「1.5 mL 微量離心管」20 包，品名與數量均正確。"
+    },
+    {
+      "text": "信中明確寫出需要在 2026-11-20 前到貨，並詢問報價、庫存及預計交期。"
+    },
+    {
+      "text": "回覆不捏造供應商名稱、聯絡資料、價格或未提供的品項規格。"
+    }
+  ],
+  "final_output": "**主旨：實驗室耗材詢價—丁腈手套及微量離心管**\n\n您好：\n\n想請貴公司協助提供以下品項的報價、目前庫存及預計交期：\n\n- 丁腈手套（無粉，M 尺寸）：50 盒\n- 1.5 mL 微量離心管：20 包\n\n上述品項需於 **2026 年 11 月 20 日前到貨**，敬請告知是否能配合。\n\n謝謝。\n\n敬祝 順心\n\n- 寄出詢價信：此 Skill 無法代為寄信，請由您或您指定的負責人執行。\n- 致電供應商：此 Skill 無法代為打電話，請由您或您指定的負責人執行。\n- 登入供應商系統處理：此 Skill 無法登入或操作供應商系統，請由您或您指定的負責人執行。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "08b06df1-82b9-48c7-ab2a-941777eb9a21",
+    "run_id": "e5fe8ec1-b032-4ce3-8dff-97e899e10ed1",
+    "status": "completed",
+    "overall": "met",
+    "summary": "試跑回覆提供了符合品項、數量及到貨期限的繁體中文詢價信，並清楚說明寄信、致電和登入系統須由使用者或指定人員處理。所有驗收條件均符合。",
+    "criterion_results": [
+      {
+        "criterion_id": "e1418e93-1f23-46e8-878e-789bcd9c47ad",
+        "text": "試跑回覆明確說明無法代為寄信、打電話或登入系統，這些動作需由使用者或其他人處理，且沒有聲稱已執行。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確表示無法代為寄信、打電話或登入供應商系統，並請使用者或指定負責人執行；未聲稱已完成這些動作。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "寄出詢價信：此 Skill 無法代為寄信，請由您或您指定的負責人執行。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "致電供應商：此 Skill 無法代為打電話，請由您或您指定的負責人執行。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "登入供應商系統處理：此 Skill 無法登入或操作供應商系統，請由您或您指定的負責人執行。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "736aa895-a6e3-406d-8dc0-269918319645",
+        "text": "試跑回覆仍包含一封繁體中文詢價信，並以主旨、稱呼、正文及結尾組成。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆包含繁體中文詢價信，具備主旨、稱呼、正文及結尾。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**主旨：實驗室耗材詢價—丁腈手套及微量離心管**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "您好：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "想請貴公司協助提供以下品項的報價、目前庫存及預計交期：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "敬祝 順心",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "105412d3-360d-459e-907e-e94021cdfe36",
+        "text": "信中逐項列出「丁腈手套（無粉，M 尺寸）」50 盒及「1.5 mL 微量離心管」20 包，品名與數量均正確。",
+        "result": "passed",
+        "source": "model",
+        "reason": "信中逐項列出的兩種品項與數量均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "丁腈手套（無粉，M 尺寸）：50 盒",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "1.5 mL 微量離心管：20 包",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "41d3509c-d81d-4363-afca-a6e50f098f94",
+        "text": "信中明確寫出需要在 2026-11-20 前到貨，並詢問報價、庫存及預計交期。",
+        "result": "passed",
+        "source": "model",
+        "reason": "信中寫明須於 2026 年 11 月 20 日前到貨，並詢問報價、目前庫存及預計交期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "想請貴公司協助提供以下品項的報價、目前庫存及預計交期：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "上述品項需於 **2026 年 11 月 20 日前到貨**，敬請告知是否能配合。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "09c90baf-6f21-4df0-941e-341867be5978",
+        "text": "回覆不捏造供應商名稱、聯絡資料、價格或未提供的品項規格。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆以泛稱稱呼供應商，只列出使用者提供的品項規格與數量，未編造供應商名稱、聯絡資料或價格。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "想請貴公司協助提供以下品項的報價、目前庫存及預計交期：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 丁腈手套（無粉，M 尺寸）：50 盒\n- 1.5 mL 微量離心管：20 包",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1491 input and 583 output tokens on skillhub-run; reported cost $0.0030 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

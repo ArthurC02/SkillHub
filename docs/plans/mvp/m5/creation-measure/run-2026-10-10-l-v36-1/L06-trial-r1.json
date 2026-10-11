@@ -1,0 +1,126 @@
+{
+  "round": 1,
+  "sample_input": "請將以下兩組接種資訊各寫成一則 LINE 公告。\n案例 A\n日期：2026/11/2\n時段：09:00-12:00\n費用：600元\n長者免費：65歲以上\n地址：台北市中正區忠孝西路一段50號\n電話：02-2311-1234\n\n案例 B\n日期：2026/11/3\n時段：13:00-17:00\n費用：600元\n長者免費：65歲以上\n地址：台北市中正區忠孝東路一段、二段、三段、四段、五段及六段交界處旁之流感疫苗巡迴接種服務中心第十二號入口地下二樓A區888號8樓之3\n電話：02-2311-1234",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入的案例 A 產生一則公告，逐字保留日期「2026/11/2」、時段「09:00-12:00」、費用「600元」、免費年齡「65歲以上」、地址「台北市中正區忠孝西路一段50號」及電話「02-2311-1234」，且公告全文含標點與空白不超過 80 字。"
+    },
+    {
+      "text": "試跑輸入的案例 B 產生一則公告，完整且正確保留該案例提供的日期、時段、費用、免費年齡、地址及電話；不得為符合 80 字而省略或更動資訊。"
+    },
+    {
+      "text": "試跑輸入中每則公告都只包含公告本文；不含案例標籤、額外說明或字數統計。"
+    }
+  ],
+  "final_output": "日期2026/11/2 時段09:00-12:00 費用600元 65歲以上免費 地址台北市中正區忠孝西路一段50號 電話02-2311-1234\n日期2026/11/3 時段13:00-17:00 費用600元 65歲以上免費 地址台北市中正區忠孝東路一段、二段、三段、四段、五段及六段交界處旁之流感疫苗巡迴接種服務中心第十二號入口地下二樓A區888號8樓之3 電話02-2311-1234",
+  "artifacts": [
+    "announcement-1.txt",
+    "announcement-2.txt",
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "922f2df4-3479-4a57-8dd5-f2c987d3c315",
+    "run_id": "6bc3f9d4-4709-460a-a66d-34f521001838",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項驗收標準均已達成。兩則公告保留各自的完整資訊；案例 A 未超過 80 字，回覆也未加入公告以外的內容。",
+    "criterion_results": [
+      {
+        "criterion_id": "c57076cd-a3c6-4b2e-a620-16a9596e2216",
+        "text": "試跑輸入的案例 A 產生一則公告，逐字保留日期「2026/11/2」、時段「09:00-12:00」、費用「600元」、免費年齡「65歲以上」、地址「台北市中正區忠孝西路一段50號」及電話「02-2311-1234」，且公告全文含標點與空白不超過 80 字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案例 A 的公告逐字保留六項資訊；紀錄顯示本文為 73 字，未超過 80 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期2026/11/2 時段09:00-12:00 費用600元 65歲以上免費 地址台北市中正區忠孝西路一段50號 電話02-2311-1234",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "A: 73 B: 122",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ed782368-3c18-43b1-b687-6958f717b46b",
+        "text": "試跑輸入的案例 B 產生一則公告，完整且正確保留該案例提供的日期、時段、費用、免費年齡、地址及電話；不得為符合 80 字而省略或更動資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案例 B 的公告完整保留日期、時段、費用、免費年齡、地址與電話，沒有為縮短篇幅而刪改地址。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期2026/11/3 時段13:00-17:00 費用600元 65歲以上免費 地址台北市中正區忠孝東路一段、二段、三段、四段、五段及六段交界處旁之流感疫苗巡迴接種服務中心第十二號入口地下二樓A區888號8樓之3 電話02-2311-1234",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bad6dade-5398-4b34-81d1-8d6da1f8e5b9",
+        "text": "試跑輸入中每則公告都只包含公告本文；不含案例標籤、額外說明或字數統計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆只有兩則公告本文，沒有案例標籤、額外說明或字數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期2026/11/2 時段09:00-12:00 費用600元 65歲以上免費 地址台北市中正區忠孝西路一段50號 電話02-2311-1234",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "日期2026/11/3 時段13:00-17:00 費用600元 65歲以上免費 地址台北市中正區忠孝東路一段、二段、三段、四段、五段及六段交界處旁之流感疫苗巡迴接種服務中心第十二號入口地下二樓A區888號8樓之3 電話02-2311-1234",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 3 readable output file(s): announcement-1.txt, announcement-2.txt, answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1515 input and 2244 output tokens on skillhub-run; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

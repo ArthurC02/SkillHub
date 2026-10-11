@@ -1,0 +1,206 @@
+{
+  "request": {
+    "RunID": "8a9a5ed3-d97e-43e5-b06a-2571134281d6",
+    "EvaluationID": "16b63f0c-59d0-488c-b6f6-43f19f2aea80",
+    "Skill": {
+      "Name": "maternity-home-visit-fee",
+      "Summary": "依訪視開始時間及使用者提供的國定假日標註，計算單次到府坐月子護理訪視的應收費用。當需要判定平日、夜間或國定假日費率時使用。"
+    },
+    "UserPrompt": "請分別計算以下每次到府坐月子護理訪視的應收費用，並簡述適用的計費理由：\n2026-10-12 20:59，國定假日=否\n2026-10-12 21:00，國定假日=否\n2026-10-12 06:59，國定假日=否\n2026-10-12 07:00，國定假日=否\n2026-10-12 00:00，國定假日=是\n2026-10-12 23:59，國定假日=是",
+    "Criteria": [
+      {
+        "ID": "9742d05d-b2a7-4f14-a74b-3145421d8396",
+        "Text": "對 sample_input 第 1 行，將非夜間且非國定假日的訪視算為 1,500 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7f9b0058-555e-43db-b599-69ed00aed9e9",
+        "Text": "對 sample_input 第 2 行，將 21:00 開始的訪視算為夜間費用 1,800 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a02b7fdb-626a-4375-a5a1-54a077c799b7",
+        "Text": "對 sample_input 第 3 行，將 06:59 開始的訪視算為夜間費用 1,800 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c0e451b7-80dd-44f3-b0f6-0d28fb838ad1",
+        "Text": "對 sample_input 第 4 行，將 07:00 開始的非國定假日訪視算為 1,500 元，因 07:00 不屬夜間時段。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "6279ffaa-c44b-4ab9-8090-3b351e0fab86",
+        "Text": "對 sample_input 第 5 行，將國定假日 00:00 開始的訪視算為 2,000 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7057314b-0bfb-4b9e-8446-72434f82de06",
+        "Text": "對 sample_input 第 6 行，將國定假日 23:59 開始且同時落在夜間時段的訪視算為 2,000 元，採國定假日費率而非夜間費率。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- **2026-10-12 20:59，國定假日=否：1,500 元** — 平日非加成時段。\n- **2026-10-12 21:00，國定假日=否：1,800 元** — 夜間時段自 21:00 起算。\n- **2026-10-12 06:59，國定假日=否：1,800 元** — 屬於 07:00 前的夜間時段。\n- **2026-10-12 07:00，國定假日=否：1,500 元** — 不在夜間時段內。\n- **2026-10-12 00:00，國定假日=是：2,000 元** — 國定假日全天適用假日費率。\n- **2026-10-12 23:59，國定假日=是：2,000 元** — 國定假日全天適用假日費率。\n\n費率彼此取代而不累加；國定假日時採國定假日費率。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "5c499e2b-0348-4a73-9f82-379f618c471a",
+          "OccurredAt": "2026-10-09T12:07:55.11Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"maternity-home-visit-fee\", \"skill_version_id\": \"6c035b56-0e9d-4086-8f06-6944be818c8f\"}"
+        },
+        {
+          "TraceEventID": "d7062862-0e93-40df-9caa-9e620dd807ab",
+          "OccurredAt": "2026-10-09T12:07:55.147Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"maternity-home-visit-fee\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 37, \"invocation_id\": \"call_oOC0MREu551juPCatPAveEXa\", \"result_summary\": \"Launching skill: maternity-home-visit-fee\"}"
+        },
+        {
+          "TraceEventID": "b9f53533-1a47-49e5-98fc-e0c367d82d59",
+          "OccurredAt": "2026-10-09T12:07:58.472Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/calculate_fee.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "852edffd-ef80-4625-8fea-d1d1f3d558f2",
+          "OccurredAt": "2026-10-09T12:07:58.472Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python scripts/calculate_fee.py --visit '2026-10-12,20:59,否' --visit '2026-10-12,21:00,否' --visit '2026-10-12,06:59,否' --visit '2026-10-12,07:00,否' --visit '2026-10-12,00:00,是' --visit '2026-10-12,23:59,是'\", \"description\": \"Calculate each visit fee\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 242, \"invocation_id\": \"call_hYymIaQ15VX1NsluoXhUvnEL\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/calculate_fee.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "09574d6d-774a-426c-bd4f-d24b255d26dc",
+          "OccurredAt": "2026-10-09T12:08:01.771Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"2026-10-12 20:59，應收 1500 元（平日非加成時段費率；加成費取代基本費）。\\n2026-10-12 21:00，應收 1800 元（夜間費率；加成費取代基本費）。\\n2026-10-12 06:59，應收 1800 元（夜間費率；加成費取代基本費）。\\n2026-10-12 07:00，應收 1500 元（平日非加成時段費率；加成費取代基本費）。\\n2026-10-12 00:00，應收 2000 元（國定假日費率；加成費取代基本費）。\\n2026-10-12 23:59，應收 2000 元（國定假日費率；加成費取代基本費）。\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "cc2c21e4-37ea-4d2a-9330-f9b7c4ead9ab",
+          "OccurredAt": "2026-10-09T12:08:01.771Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/maternity-home-visit-fee \u0026\u0026 python scripts/calculate_fee.py --visit '2026-10-12,20:59,否' --visit '2026-10-12,21:00,否' --visit '2026-10-12,06:59,否' --visit '2026-10-12,07:00,否' --visit '2026-10-12,00:00,是' --visit '2026-10-12,23:59,是'\", \"description\": \"Calculate visit fees with skill script\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 139, \"invocation_id\": \"call_Dz3yMI0l46zAp9lcbl5aCVJh\", \"result_summary\": \"2026-10-12 20:59，應收 1500 元（平日非加成時段費率；加成費取代基本費）。\\n2026-10-12 21:00，應收 1800 元（夜間費率；加成費取代基本費）。\\n2026-10-12 06:59，應收 1800 元（夜間費率；加成費取代基本費）。\\n2026-10-12 07:00，應收 1500 元（平日非加成時段費率；加成費取代基本費）。\\n2026-10-12 00:00，應收 2000 元（國定假日費率；加成費取代基本費）。\\n2026-10-12 23:59，應收 2000 元（國定假日費率；加成費取代基本費）。\"}"
+        },
+        {
+          "TraceEventID": "36ddebe4-2fa6-45a1-aa94-0d674726936e",
+          "OccurredAt": "2026-10-09T12:08:04.562Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- **2026-10-12 20:59，國定假日=否：1,500 元** — 平日非加成時段。\\n- **2026-10-12 21:00，國定假日=否：1,800 元** — 夜間時段自 21:00 起算。\\n- **2026-10-12 06:59，國定假日=否：1,800 元** — 屬於 07:00 前的夜間時段。\\n- **2026-10-12 07:00，國定假日=否：1,500 元** — 不在夜間時段內。\\n- **2026-10-12 00:00，國定假日=是：2,000 元** — 國定假日全天適用假日費率。\\n- **2026-10-12 23:59，國定假日=是：2,000 元** — 國定假日全天適用假日費率。\\n\\n費率彼此取代而不累加；國定假日時採國定假日費率。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "69efcd0e-7148-4a80-9500-8f4b64d3cc10",
+          "OccurredAt": "2026-10-09T12:08:04.745Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- **2026-10-12 20:59，國定假日=否：1,500 元** — 平日非加成時段。\\n- **2026-10-12 21:00，國定假日=否：1,800 元** — 夜間時段自 21:00 起算。\\n- **2026-10-12 06:59，國定假日=否：1,800 元** — 屬於 07:00 前的夜間時段。\\n- **2026-10-12 07:00，國定假日=否：1,500 元** — 不在夜間時段內。\\n- **2026-10-12 00:00，國定假日=是：2,000 元** — 國定假日全天適用假日費率。\\n- **2026-10-12 23:59，國定假日=是：2,000 元** — 國定假日全天適用假日費率。\\n\\n費率彼此取代而不累加；國定假日時採國定假日費率。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "146ed746-03ae-405f-b0db-6144e49fb135",
+          "OccurredAt": "2026-10-09T12:08:08.852Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.00346638, \"cost_source\": \"gateway\", \"duration_ms\": 19210, \"input_tokens\": 1525, \"token_source\": \"result\", \"output_tokens\": 605, \"cache_read_input_tokens\": 54168, \"cache_write_input_tokens\": 19232}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "9742d05d-b2a7-4f14-a74b-3145421d8396",
+        "Result": "passed",
+        "Reason": "20:59 非國定假日訪視列為 1,500 元，理由為非加成時段。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026-10-12 20:59，國定假日=否：1,500 元** — 平日非加成時段。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "7f9b0058-555e-43db-b599-69ed00aed9e9",
+        "Result": "passed",
+        "Reason": "21:00 非國定假日訪視列為夜間費用 1,800 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026-10-12 21:00，國定假日=否：1,800 元** — 夜間時段自 21:00 起算。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a02b7fdb-626a-4375-a5a1-54a077c799b7",
+        "Result": "passed",
+        "Reason": "06:59 非國定假日訪視列為夜間費用 1,800 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026-10-12 06:59，國定假日=否：1,800 元** — 屬於 07:00 前的夜間時段。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c0e451b7-80dd-44f3-b0f6-0d28fb838ad1",
+        "Result": "passed",
+        "Reason": "07:00 非國定假日訪視列為 1,500 元，並說明不屬夜間時段。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026-10-12 07:00，國定假日=否：1,500 元** — 不在夜間時段內。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "6279ffaa-c44b-4ab9-8090-3b351e0fab86",
+        "Result": "passed",
+        "Reason": "國定假日 00:00 訪視列為假日費率 2,000 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026-10-12 00:00，國定假日=是：2,000 元** — 國定假日全天適用假日費率。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "7057314b-0bfb-4b9e-8446-72434f82de06",
+        "Result": "passed",
+        "Reason": "國定假日 23:59 訪視列為 2,000 元，並明確說明採假日費率、不與其他費率累加。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026-10-12 23:59，國定假日=是：2,000 元** — 國定假日全天適用假日費率。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "費率彼此取代而不累加；國定假日時採國定假日費率。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "六次訪視的金額均符合驗收條件；夜間起迄界線及國定假日優先適用費率的理由也已交代。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 4158,
+      "CompletionTokens": 865,
+      "CostUSD": 0.0165089,
+      "CostReported": true
+    }
+  }
+}

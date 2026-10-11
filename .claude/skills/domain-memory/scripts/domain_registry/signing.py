@@ -48,7 +48,7 @@ def _generate(key_file: Path, principal: str) -> None:
 
 
 def _adopt_from_environment(key_file: Path, material: str) -> None:
-    _write_verbatim(key_file, material)
+    _write_verbatim(key_file, material.replace("\r\n", "\n").replace("\r", "\n"))
     _restrict(key_file)
     result = _run(["ssh-keygen", "-y", "-f", str(key_file)])
     if result.returncode != 0:
@@ -73,8 +73,8 @@ def init_signing_key(
     repo_root: Path,
     principal: str,
     key_file: Path | None = None,
-    force: bool = False,
-    sign_every_commit: bool = False,
+    force: bool = False,  # noqa: FBT001, FBT002
+    sign_every_commit: bool = False,  # noqa: FBT001, FBT002
 ) -> dict[str, Any]:
     if not isinstance(principal, str) or not principal.strip():
         raise ValueError(

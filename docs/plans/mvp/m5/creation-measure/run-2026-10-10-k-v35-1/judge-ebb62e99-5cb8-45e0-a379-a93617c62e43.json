@@ -1,0 +1,164 @@
+{
+  "request": {
+    "RunID": "ebb62e99-5cb8-45e0-a379-a93617c62e43",
+    "EvaluationID": "65ad03ac-d15f-4f4c-b557-2598682f9b1b",
+    "Skill": {
+      "Name": "farm-picking-social-post",
+      "Summary": "根據使用者提供的農場採果活動資料，撰寫一則繁體中文、吸引人的社群貼文。當使用者要求為採果活動準備社群宣傳文案時使用；保留已提供的硬事實原文，並清楚標示未提供的資訊。"
+    },
+    "UserPrompt": "請根據以下資料寫一則吸引人的農場採果活動社群貼文。\n活動名稱：秋日紅寶石採果日\n日期：2026年11月7日（星期六）\n時間：上午 9:30 至下午 1:00\n地點：新竹縣峨眉鄉湖光村 12 號\n費用：未提供",
+    "Criteria": [
+      {
+        "ID": "a791fe64-4679-4311-96eb-f76051e134d7",
+        "Text": "對試跑範例中已提供的活動名稱、日期、時間與地址，貼文逐字保留原文，且不遺漏任何一項。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "f6e74a01-6f3d-4efd-8405-be540eead0b4",
+        "Text": "試跑範例未提供費用時，貼文會補上一個合理的建議費用，並明確標示為「建議資訊，請主辦方確認」；不把它寫成已確認費用。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "733adb97-9d94-46b2-bedf-d84d95f27426",
+        "Text": "試跑範例未提供費用時，Skill 直接產出貼文，不先向使用者追問。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7ff6e1d7-f872-4329-8e74-24832f2a5b23",
+        "Text": "輸出包含一則適合社群發布、具有吸引力並鼓勵讀者參加的貼文，且不把其他未提供的活動硬事實寫成已確認資訊。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "🍂✨ **秋日紅寶石採果日** ✨🍂\n\n秋日相約，一起走進農場，享受採果時光！邀請你把這一天留給秋日，和親友一起來參加「秋日紅寶石採果日」❤️\n\n📅 日期：2026年11月7日（星期六）  \n🕤 時間：上午 9:30 至下午 1:00  \n📍 地點：新竹縣峨眉鄉湖光村 12 號  \n💰 費用：【未提供】\n\n邀請親友一起來，期待與你相見！",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "50c8b2a2-bdee-45f2-aaf8-16ba95bcbf68",
+          "OccurredAt": "2026-10-09T19:50:13.593Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"farm-picking-social-post\", \"skill_version_id\": \"37bdae44-97cf-4256-9df0-af05c15edc20\"}"
+        },
+        {
+          "TraceEventID": "e702f65d-7171-4f85-8fb6-04d25b86019a",
+          "OccurredAt": "2026-10-09T19:50:13.605Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"farm-picking-social-post\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 12, \"invocation_id\": \"call_UfXwWVAHoA47AQ2olDQAMqiy\", \"result_summary\": \"Launching skill: farm-picking-social-post\"}"
+        },
+        {
+          "TraceEventID": "d936a4de-91da-417c-861e-aac6244e43c8",
+          "OccurredAt": "2026-10-09T19:50:17.296Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"🍂✨ **秋日紅寶石採果日** ✨🍂\\n\\n秋日相約，一起走進農場，享受採果時光！邀請你把這一天留給秋日，和親友一起來參加「秋日紅寶石採果日」❤️\\n\\n📅 日期：2026年11月7日（星期六）  \\n🕤 時間：上午 9:30 至下午 1:00  \\n📍 地點：新竹縣峨眉鄉湖光村 12 號  \\n💰 費用：【未提供】\\n\\n邀請親友一起來，期待與你相見！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "7274c8f1-6d34-4df4-af71-f200ff128b2d",
+          "OccurredAt": "2026-10-09T19:50:17.596Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"🍂✨ **秋日紅寶石採果日** ✨🍂\\n\\n秋日相約，一起走進農場，享受採果時光！邀請你把這一天留給秋日，和親友一起來參加「秋日紅寶石採果日」❤️\\n\\n📅 日期：2026年11月7日（星期六）  \\n🕤 時間：上午 9:30 至下午 1:00  \\n📍 地點：新竹縣峨眉鄉湖光村 12 號  \\n💰 費用：【未提供】\\n\\n邀請親友一起來，期待與你相見！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "8cd66168-2ff3-4a62-a4da-6cf589b5750a",
+          "OccurredAt": "2026-10-09T19:50:21.661Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.00282741, \"cost_source\": \"gateway\", \"duration_ms\": 10736, \"input_tokens\": 1497, \"token_source\": \"result\", \"output_tokens\": 246, \"cache_read_input_tokens\": 16576, \"cache_write_input_tokens\": 18642}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "a791fe64-4679-4311-96eb-f76051e134d7",
+        "Result": "passed",
+        "Reason": "貼文逐字保留活動名稱、日期、時間與地址，四項均未遺漏。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "秋日紅寶石採果日"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026年11月7日（星期六）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "上午 9:30 至下午 1:00"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "新竹縣峨眉鄉湖光村 12 號"
+          }
+        ]
+      },
+      {
+        "CriterionID": "f6e74a01-6f3d-4efd-8405-be540eead0b4",
+        "Result": "failed",
+        "Reason": "貼文將費用標為「未提供」，沒有補上建議費用，也沒有標示「建議資訊，請主辦方確認」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "💰 費用：【未提供】"
+          }
+        ]
+      },
+      {
+        "CriterionID": "733adb97-9d94-46b2-bedf-d84d95f27426",
+        "Result": "passed",
+        "Reason": "試跑直接產出貼文，沒有先向使用者追問費用。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "🍂✨ **秋日紅寶石採果日** ✨🍂"
+          }
+        ]
+      },
+      {
+        "CriterionID": "7ff6e1d7-f872-4329-8e74-24832f2a5b23",
+        "Result": "passed",
+        "Reason": "輸出是一則邀請讀者與親友參加的社群貼文；未提供的費用明確標為未提供，未見將其他未提供的活動硬事實寫成已確認資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "秋日相約，一起走進農場，享受採果時光！邀請你把這一天留給秋日，和親友一起來參加「秋日紅寶石採果日」❤️"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "💰 費用：【未提供】"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "貼文保留了活動名稱、日期、時間與地址，並直接產出具邀請性的社群文案。但費用只標為未提供，未依標準補上明確註明待主辦方確認的建議費用。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2597,
+      "CompletionTokens": 716,
+      "CostUSD": 0.011116400000000002,
+      "CostReported": true
+    }
+  }
+}

@@ -18,6 +18,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
@@ -53,10 +54,12 @@ type Set struct {
 	Creation       *creation.Service
 	Runs           *run.Service
 	Evaluations    *eval.Service
+	Batches        *eval.BatchService
 	Packaging      *packaging.Service
 	Registry       *registry.Service
 	CreationSearch *catalog.Service
 	RunEvents      *eval.RunEventConsumer
+	BatchEvents    *eval.BatchEventConsumer
 	SkillVersions  *eval.SkillVersionConsumer
 	Events         *outbox.Dispatcher
 	Objects        *objreconcile.Service
@@ -95,6 +98,27 @@ func datasetCandidates(list func(context.Context, int32) ([]testlab.ReconcileCan
 	}
 }
 
+type evaluationReaders struct {
+	registry *registry.Service
+	testlab  *testlab.Service
+	trace    *trace.Service
+	budgets  *modelbudget.Service
+}
+
+func addEvaluationServices(set *Set, pool *pgxpool.Pool, deps Deps, r evaluationReaders) {
+	set.Evaluations = &eval.Service{
+		Pool: pool, Store: deps.Store,
+		Trace: r.trace, TestLab: r.testlab, Budgets: r.budgets,
+	}
+	wiring.WireEvaluation(set.Evaluations, set.Runs, r.registry)
+	wireEvaluationModelAndEvents(set.Evaluations, pool, deps.LLM)
+	set.Batches = wiring.NewEvaluationBatches(pool, set.Runs, r.testlab, r.trace)
+
+	set.RunEvents = &eval.RunEventConsumer{HasCurrentEvaluation: set.Evaluations.HasCurrentEvaluation}
+	set.SkillVersions = &eval.SkillVersionConsumer{}
+	set.BatchEvents = &eval.BatchEventConsumer{HasLaunchingBatch: set.Batches.HasLaunchingBatch}
+}
+
 func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	set := &Set{WorkerKinds: map[string]bool{}, Scheduled: map[string]bool{}}
 	downloads := &packaging.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
@@ -109,21 +133,10 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	traceSvc := wiring.NewTraceService(pool, deps.TraceSigner, set.Runs)
 	set.Runs.Trace = traceSvc
 
-	set.Evaluations = &eval.Service{
-		Pool: pool, Store: deps.Store,
-		Trace: traceSvc, TestLab: testlabSvc,
-	}
-	wiring.WireEvaluationRunReaders(set.Evaluations, set.Runs)
-	wiring.WireEvaluationRegistryReaders(set.Evaluations, registrySvc)
-	wireEvaluationModelAndEvents(set.Evaluations, pool, deps.LLM)
-
 	budgets := wiring.NewModelBudgets(pool)
-	set.Evaluations.Budgets = budgets
+	addEvaluationServices(set, pool, deps, evaluationReaders{registry: registrySvc, testlab: testlabSvc, trace: traceSvc, budgets: budgets})
 
-	set.RunEvents = &eval.RunEventConsumer{HasCurrentEvaluation: set.Evaluations.HasCurrentEvaluation}
-	set.SkillVersions = &eval.SkillVersionConsumer{}
-
-	set.Events = newEventDispatcher(set.RunEvents, set.SkillVersions)
+	set.Events = newEventDispatcher(set.RunEvents, set.SkillVersions, set.BatchEvents)
 	if err := set.Events.Validate(); err != nil {
 		return nil, fmt.Errorf("outbox dispatch wiring: %w", err)
 	}
@@ -186,18 +199,20 @@ func wireEvaluationModelAndEvents(evaluations *eval.Service, pool *pgxpool.Pool,
 		return outbox.EventsOfType(ctx, pool, page)
 	}
 	evaluations.Judge = eval.JudgeOrNone(llm)
+	evaluations.PanelEnabled = evaluations.JudgePanelEnabled
 	evaluations.Suggester = eval.SuggesterOrNone(llm)
 }
 
-func newEventDispatcher(runEvents *eval.RunEventConsumer, skillVersions *eval.SkillVersionConsumer) *outbox.Dispatcher {
+func newEventDispatcher(
+	runEvents *eval.RunEventConsumer, skillVersions *eval.SkillVersionConsumer, batchEvents *eval.BatchEventConsumer,
+) *outbox.Dispatcher {
 	return outbox.NewDispatcher().
 		On("evaluation", runEvents.Deliver, outbox.RunSucceeded, outbox.RunFailed).
 		On("suggestions applied", skillVersions.Deliver, outbox.SkillVersionAdded).
+		On("evaluation batches", batchEvents.Deliver, outbox.RunSucceeded, outbox.RunFailed, outbox.RunCancelled, outbox.RunTimedOut).
 		Ignore("progress announcements: a run that is still moving is read from its own row by the UI, and no worker-side reaction is owed",
 			outbox.RunQueued, outbox.RunProvisioning, outbox.RunPreparing,
 			outbox.RunRunning, outbox.RunEvaluating).
-		Ignore("terminal with nothing to judge: the run was stopped before it could produce what the criteria are about, so evaluation skips it by design",
-			outbox.RunCancelled, outbox.RunTimedOut).
 		Ignore("cleanup outcome is already recorded on the run row and alerted on through metrics; nothing in this process reacts to it",
 			outbox.RunCleanupCleaned, outbox.RunCleanupFailed).
 		Ignore("run bookkeeping: provider, attempts, object grants and cancel requests are read from the run's own rows, and nothing reacts to them yet",
@@ -236,6 +251,7 @@ func addDomainWorkers(set *Set, workers *river.Workers) {
 	addWorker(set, workers, &EvaluationExecuteWorker{Svc: set.Evaluations})
 	addWorker(set, workers, &EvaluationRecoveryWorker{Svc: set.Evaluations})
 	addWorker(set, workers, &SuggestionsAppliedWorker{Svc: set.Evaluations})
+	addWorker(set, workers, &EvaluationBatchAdvanceWorker{Svc: set.Batches})
 }
 
 func newObjectReconciler(
@@ -270,6 +286,7 @@ func periodicJobs(set *Set, deps Deps, outboxWorker *outbox.Worker) []*river.Per
 		scheduleAt(args, river.PeriodicInterval(every), runOnStart)
 	}
 	schedule(EvaluationRecoveryArgs{}, eval.RecoveryInterval, true)
+	schedule(eval.BatchAdvanceArgs{}, eval.BatchAdvanceInterval, true)
 	schedule(RunSuperviseArgs{}, run.SuperviseInterval, true)
 	if deps.CreationLimits.Valid() {
 		schedule(wiring.CreationExpiryArgs{}, time.Minute, true)
@@ -314,6 +331,8 @@ func connectQueue(set *Set, client *river.Client[pgx.Tx]) {
 
 	set.Runs.Queue = wiring.NewRunQueue(client)
 	set.RunEvents.Enqueue = wiring.NewEvaluationEnqueue(client)
+	set.BatchEvents.Enqueue = wiring.NewBatchAdvanceEnqueue(client)
+
 	set.SkillVersions.Enqueue = wiring.NewSuggestionsAppliedEnqueue(client)
 }
 

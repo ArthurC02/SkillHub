@@ -253,8 +253,10 @@ const runPreflightRoute = createRoute({
     () => import("../features/lab/preflight/RunPreflight.page"),
     "RunPreflight",
   ),
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { version?: string; against?: string } => ({
     version: typeof search.version === "string" ? search.version : undefined,
+    against:
+      typeof search.against === "string" && search.against.length > 0 ? search.against : undefined,
   }),
 });
 
@@ -451,6 +453,15 @@ const adminModelBudgetsRoute = createRoute({
   ),
 });
 
+const adminSettingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/settings",
+  component: lazyRouteComponent(
+    () => import("../features/admin/settings/AdminSettings.page"),
+    "AdminSettings",
+  ),
+});
+
 const adminCostStatisticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/cost-statistics",
@@ -557,6 +568,7 @@ const routeTree = rootRoute.addChildren([
   adminRostersRoute,
   adminAuditLogRoute,
   adminModelBudgetsRoute,
+  adminSettingsRoute,
   adminCostStatisticsRoute,
   adminTrendsRoute,
   adminExposureRoute,

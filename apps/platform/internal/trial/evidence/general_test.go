@@ -89,6 +89,23 @@ func TestTheFinalOutputIsTheLastFinalOneAndNotALaterIntermediateOne(t *testing.T
 	}
 }
 
+func TestTheQuestionEventIsKeptApartFromTheFinalOutput(t *testing.T) {
+	rows := []factRow{
+		{EventType: TypeAgentOutput, Kind: outputKindQuestion, Seq: 1},
+		{EventType: TypeAgentOutput, Kind: outputKindFinal, Seq: 2},
+	}
+	fold := foldGeneral(rows)
+	if fold.question == nil || fold.question.Seq != 1 {
+		t.Errorf("question = %+v, want seq 1", fold.question)
+	}
+	if fold.finalOutput == nil || fold.finalOutput.Seq != 2 {
+		t.Errorf("final output = %+v, want seq 2", fold.finalOutput)
+	}
+	if got := foldGeneral(rows[1:]).question; got != nil {
+		t.Errorf("a run that never asked has a question event: %+v", got)
+	}
+}
+
 func TestUsagePrefersAValidRunTotalAndOtherwiseSumsTheRest(t *testing.T) {
 	attempt := func(model, in, out, cost string) factRow {
 		return factRow{EventType: TypeUsage, Scope: "call", Model: model, InputTokens: in, OutputTokens: out, CostUsd: cost, CostSource: "gateway"}

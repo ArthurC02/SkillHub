@@ -81,6 +81,7 @@ def main() -> None:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--note", default="")
     ap.add_argument("--only", help="one sample id, for a cheap smoke pass")
+    ap.add_argument("--model-role", help="gateway role that judges, e.g. a judge panel member")
     args = ap.parse_args()
 
     doc = json.loads(args.samples.read_text(encoding="utf-8"))
@@ -107,6 +108,8 @@ def main() -> None:
     for i, s in enumerate(samples, 1):
         evaluation_id = str(uuid.uuid4())
         request, digest = build(s, evaluation_id)
+        if args.model_role:
+            request["model_role"] = args.model_role
         response = judge(request, args.judge_url)
         results = store(response["verdict"], request, digest,
                         request["artifacts"], request["final_output"])
@@ -123,6 +126,7 @@ def main() -> None:
             "note": args.note,
             "sample_set_version": doc["sample_set_version"],
             "judge_model": response["model"],
+            "model_role": args.model_role,
             "judge_prompt_version": response["prompt_version"],
             "rubric_version": None,
             "truncation_budget": {

@@ -34,6 +34,7 @@ type Deps struct {
 	Runs            *run.Handler
 	Trace           *trace.Handler
 	Eval            *eval.Handler
+	EvalBatches     *eval.BatchHandler
 	Packaging       *packaging.Handler
 	Publishing      *publishing.Handler
 	Activity        *activityHandler
@@ -45,6 +46,10 @@ type Deps struct {
 	ModelBudgets *modelbudget.Handler
 
 	Agents *operations.Handler
+
+	Settings *eval.SettingsHandler
+
+	RunSettings *run.SettingsHandler
 
 	Trends *trendsHandler
 
@@ -208,8 +213,13 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /admin/model-budgets", auth.RequireOperator(d.ModelBudgets.List))
 	mux.HandleFunc("PUT /admin/model-budgets/{kind}", auth.RequireOperator(d.ModelBudgets.Set))
 	mux.HandleFunc("DELETE /admin/model-budgets/{kind}", auth.RequireOperator(d.ModelBudgets.Clear))
+	mux.HandleFunc("GET /admin/settings", auth.RequireOperator(d.Settings.Get))
+	mux.HandleFunc("PUT /admin/settings/judge-panel", auth.RequireOperator(d.Settings.SetJudgePanel))
+	mux.HandleFunc("GET /admin/settings/runs", auth.RequireOperator(d.RunSettings.Get))
+	mux.HandleFunc("PUT /admin/settings/runs/continuation-rounds", auth.RequireOperator(d.RunSettings.SetContinuationRounds))
 	mux.HandleFunc("GET /admin/agents", auth.RequireOperator(d.Agents.List))
 	mux.HandleFunc("PUT /admin/agents/{name}/enabled", auth.RequireOperator(d.Agents.SetEnabled))
+	mux.HandleFunc("PUT /admin/agents/{name}/spend-cap", auth.RequireOperator(d.Agents.SetSpendCap))
 	mux.HandleFunc("PUT /admin/agents/brake", auth.RequireOperator(d.Agents.EngageBrake))
 	mux.HandleFunc("DELETE /admin/agents/brake", auth.RequireOperator(d.Agents.ReleaseBrake))
 	mux.HandleFunc("GET /admin/agents/runs", auth.RequireOperator(d.Agents.Runs))
@@ -265,6 +275,7 @@ func mountRunRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /runs", auth.RequireSession(d.Runs.List))
 	mux.HandleFunc("GET /runs/{id}", auth.RequireSession(d.Runs.Get))
 	mux.HandleFunc("POST /runs/{id}/cancel", auth.RequireSession(d.Runs.Cancel))
+	mux.HandleFunc("POST /runs/{id}/continuations", auth.RequireSession(auth.RequireInvited(d.Runs.Continue)))
 
 	mux.HandleFunc("GET /runs/{id}/artifacts", auth.RequireSession(d.Runs.Artifacts))
 	mux.HandleFunc("DELETE /runs/{id}/artifacts/{artifactId}",
@@ -276,6 +287,7 @@ func mountEvaluationRoutes(mux *http.ServeMux, d Deps) {
 
 	mux.HandleFunc("GET /runs/{id}/trace", auth.RequireSession(d.Trace.Get))
 
+	mux.HandleFunc("GET /evaluation/check-kinds", auth.RequireSession(eval.ListCheckKinds))
 	mux.HandleFunc("GET /runs/{id}/evaluation", auth.RequireSession(d.Eval.Get))
 	mux.HandleFunc("GET /runs/{id}/evaluation/revisions", auth.RequireSession(d.Eval.Revisions))
 	mux.HandleFunc("PUT /runs/{id}/evaluation/feedback", auth.RequireSession(d.Eval.SetFeedback))
@@ -287,6 +299,11 @@ func mountEvaluationRoutes(mux *http.ServeMux, d Deps) {
 		auth.RequireSession(d.Eval.ApplySuggestions))
 
 	mux.HandleFunc("GET /runs/{id}/comparison", auth.RequireSession(d.Eval.Comparison))
+
+	mux.HandleFunc("POST /skills/{id}/evaluation-batches", auth.RequireSession(auth.RequireInvited(d.EvalBatches.CreateBatch)))
+	mux.HandleFunc("GET /skills/{id}/evaluation-batches", auth.RequireSession(d.EvalBatches.ListBatches))
+	mux.HandleFunc("GET /skills/{id}/evaluation-batches/{batchId}", auth.RequireSession(d.EvalBatches.BatchReport))
+	mux.HandleFunc("GET /skills/{id}/evaluation-batches/{batchId}/comparison", auth.RequireSession(d.EvalBatches.CompareBatches))
 }
 
 func mountPackagingRoutes(mux *http.ServeMux, d Deps) {

@@ -1,0 +1,148 @@
+{
+  "round": 0,
+  "sample_input": "活動資訊：「銀髮族防跌運動課」，2026-11-14（六）14:00–15:30，地點幸福里活動中心 3 樓多功能教室（新北市板橋區文化路二段 88 號），免費，限 30 人，報名請電洽 02-8888-0123。幫我寫邀請文案。",
+  "acceptance_criteria": [
+    {
+      "text": "活動名稱「銀髮族防跌運動課」完整出現"
+    },
+    {
+      "text": "日期為 11 月 14 日；若文案提到星期，必須是星期六"
+    },
+    {
+      "text": "時間起訖 14:00 與 15:30 兩端都在且沒有寫錯"
+    },
+    {
+      "text": "地點包含幸福里活動中心 3 樓多功能教室"
+    },
+    {
+      "text": "報名方式為電洽 02-8888-0123，號碼完全正確"
+    }
+  ],
+  "final_output": "誠摯邀請您參加「銀髮族防跌運動課」，一起來參與社區活動！活動日期為 2026-11-14（六），時間 14:00–15:30，地點幸福里活動中心 3 樓多功能教室（新北市板橋區文化路二段 88 號），免費，限 30 人，報名請電洽 02-8888-0123。",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "9fbb66d4-fb0f-47c5-8662-b124f2ae2e62",
+    "run_id": "e03efd18-d1c6-42d5-b458-77cc1a93c88a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "邀請文案完整保留活動名稱、日期與星期、時間、地點及電話報名資訊；五項驗收標準均已達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "3cc13ac6-9f5e-422d-8d4a-bd9b714593fa",
+        "text": "活動名稱「銀髮族防跌運動課」完整出現",
+        "result": "passed",
+        "source": "model",
+        "reason": "文案完整寫出活動名稱。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "銀髮族防跌運動課",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2dd594b3-d674-42d2-8528-4ba12c8065a7",
+        "text": "日期為 11 月 14 日；若文案提到星期，必須是星期六",
+        "result": "passed",
+        "source": "model",
+        "reason": "日期為 11 月 14 日，括號中的「六」表示星期六。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-11-14（六）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "788e9df5-42c0-40cf-9ce4-4cfd4b72fa0a",
+        "text": "時間起訖 14:00 與 15:30 兩端都在且沒有寫錯",
+        "result": "passed",
+        "source": "model",
+        "reason": "開始與結束時間分別為 14:00 和 15:30，均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "14:00–15:30",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d88834af-e485-4638-aa80-064205ac6626",
+        "text": "地點包含幸福里活動中心 3 樓多功能教室",
+        "result": "passed",
+        "source": "model",
+        "reason": "文案包含指定的活動中心、樓層與教室。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "幸福里活動中心 3 樓多功能教室",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "555a3dbe-04a9-4b1e-9098-73de4e972d16",
+        "text": "報名方式為電洽 02-8888-0123，號碼完全正確",
+        "result": "passed",
+        "source": "model",
+        "reason": "報名方式為電洽，電話號碼完全正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "報名請電洽 02-8888-0123",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1575 input and 1839 output tokens on skillhub-run; reported cost $0.0045 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

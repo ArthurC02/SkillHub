@@ -1,0 +1,188 @@
+{
+  "round": 1,
+  "sample_input": "請依規則逐筆計算以下共享會議室租借應收費用，列出實際分鐘數、計費單位數與應收費用。\n30\n31\n120\n121\n240\n241\n300",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1、2 行的 30 分鐘與 31 分鐘，輸出分別為 1 單位、300 元及 2 單位、600 元，能呈現不足 30 分鐘進位的規則。"
+    },
+    {
+      "text": "試跑輸入第 3 行的 120 分鐘，輸出為 4 單位、1,200 元，正確套用第 1–4 單位費率。"
+    },
+    {
+      "text": "試跑輸入第 4 行的 121 分鐘，輸出為 5 單位、1,440 元，正確計入第 5 單位的 240 元費率。"
+    },
+    {
+      "text": "試跑輸入第 5 行的 240 分鐘，輸出為 8 單位、2,160 元，正確計入第 5–8 單位費率。"
+    },
+    {
+      "text": "試跑輸入第 6 行的 241 分鐘，輸出為 9 單位、2,340 元，正確計入第 9 單位起的 180 元費率。"
+    },
+    {
+      "text": "試跑輸入第 7 行的 300 分鐘，輸出為 10 單位、2,400 元；未封頂金額為 2,520 元，應依每筆 2,400 元上限收費。"
+    }
+  ],
+  "final_output": "| 實際分鐘數 | 計費單位數 | 應收費用 |\n|---:|---:|---:|\n| 30 分鐘 | 1 | 300 元 |\n| 31 分鐘 | 2 | 600 元 |\n| 120 分鐘 | 4 | 1,200 元 |\n| 121 分鐘 | 5 | 1,440 元 |\n| 240 分鐘 | 8 | 2,160 元 |\n| 241 分鐘 | 9 | 2,340 元 |\n| 300 分鐘 | 10 | 2,400 元 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "5dd205ca-5f07-4849-a47d-e20529a5ab2c",
+    "run_id": "42257b21-2fa2-4846-b1ce-7304f93ede52",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七筆輸出均列出正確的實際分鐘數、計費單位數與應收費用。300 分鐘的費用符合封頂規則，但回覆沒有另外寫出未封頂的 2,520 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "bf98ab95-8e5a-47f2-a32d-5d5882224786",
+        "text": "試跑輸入第 1、2 行的 30 分鐘與 31 分鐘，輸出分別為 1 單位、300 元及 2 單位、600 元，能呈現不足 30 分鐘進位的規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "30 分鐘列為 1 單位、300 元；31 分鐘列為 2 單位、600 元，呈現不足一個計費單位須進位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 30 分鐘 | 1 | 300 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 31 分鐘 | 2 | 600 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a34957d2-511a-4a7e-b2cc-4cd7e3141920",
+        "text": "試跑輸入第 3 行的 120 分鐘，輸出為 4 單位、1,200 元，正確套用第 1–4 單位費率。",
+        "result": "passed",
+        "source": "model",
+        "reason": "120 分鐘列為 4 單位、1,200 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 120 分鐘 | 4 | 1,200 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b3e776d6-c1b5-40b2-9b8e-913a7614b82b",
+        "text": "試跑輸入第 4 行的 121 分鐘，輸出為 5 單位、1,440 元，正確計入第 5 單位的 240 元費率。",
+        "result": "passed",
+        "source": "model",
+        "reason": "121 分鐘列為 5 單位、1,440 元；相較 4 單位的費用增加 240 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 120 分鐘 | 4 | 1,200 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 121 分鐘 | 5 | 1,440 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6be819a7-f0c7-4f94-83bd-0ee2e3f7eac6",
+        "text": "試跑輸入第 5 行的 240 分鐘，輸出為 8 單位、2,160 元，正確計入第 5–8 單位費率。",
+        "result": "passed",
+        "source": "model",
+        "reason": "240 分鐘列為 8 單位、2,160 元，符合第 5–8 單位每單位 240 元的費率。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 240 分鐘 | 8 | 2,160 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "54be25ab-32a9-4dee-b4a6-c1385b61d31e",
+        "text": "試跑輸入第 6 行的 241 分鐘，輸出為 9 單位、2,340 元，正確計入第 9 單位起的 180 元費率。",
+        "result": "passed",
+        "source": "model",
+        "reason": "241 分鐘列為 9 單位、2,340 元；相較 8 單位增加 180 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 240 分鐘 | 8 | 2,160 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 241 分鐘 | 9 | 2,340 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e3212ae1-e4d6-4e7d-a735-c4e10ba68734",
+        "text": "試跑輸入第 7 行的 300 分鐘，輸出為 10 單位、2,400 元；未封頂金額為 2,520 元，應依每筆 2,400 元上限收費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "300 分鐘列為 10 單位、2,400 元。依已列出的 8 單位費用及第 9 單位增加額推算，10 單位未封頂為 2,520 元，因此輸出符合每筆 2,400 元上限；回覆未另行列明未封頂金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 240 分鐘 | 8 | 2,160 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 241 分鐘 | 9 | 2,340 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 300 分鐘 | 10 | 2,400 元 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1533 input and 322 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

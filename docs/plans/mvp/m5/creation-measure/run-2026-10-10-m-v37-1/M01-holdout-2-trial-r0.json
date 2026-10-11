@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "另一組客人划了 241 分鐘，幫我算租金。",
+  "acceptance_criteria": [
+    {
+      "text": "回覆的應收租金為 1,000 元（套用單次租金上限）"
+    },
+    {
+      "text": "沒有把應收租金寫成 1,100 元作為最終結果"
+    }
+  ],
+  "final_output": "241 分鐘：1000 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "da8f6923-e530-4cd7-b2a3-d59dc8028a90",
+    "run_id": "26958813-23f1-4822-9527-9a5f908277b1",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均達成：最終回覆的租金為 1000 元，並未將 1100 元作為最終結果。",
+    "criterion_results": [
+      {
+        "criterion_id": "02a28b1e-e31e-43f1-8503-9f850577da21",
+        "text": "回覆的應收租金為 1,000 元（套用單次租金上限）",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將 241 分鐘的應收租金列為 1000 元，符合單次上限的結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "241 分鐘：1000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c131a06a-fdef-49b8-8209-298c3208c0ce",
+        "text": "沒有把應收租金寫成 1,100 元作為最終結果",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆寫的是 1000 元，沒有將 1100 元列為最終應收租金。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "241 分鐘：1000 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1520 input and 248 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 9,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

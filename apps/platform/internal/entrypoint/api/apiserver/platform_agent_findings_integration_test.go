@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 )
 
@@ -56,13 +57,13 @@ func removeFindings(t *testing.T, agent string) {
 func (w *findingWorld) report(items ...string) {
 	w.t.Helper()
 	result := `{"items":[` + joinComma(items) + `]}`
-	facts := operations.Tool{
+	facts := agentloop.Tool{
 		Name: "maintenance_report", Description: "facts", Parameters: map[string]any{"type": "object"},
 		Run: func(context.Context, json.RawMessage) (any, error) { return json.RawMessage(findingFacts), nil },
 	}
 	s := &loopScript{t: w.t, answers: answers(intent("maintenance_report"), final(result))}
-	report, err := s.runner(w.svc).Run(context.Background(), w.def, []operations.Tool{facts}, loopLimits)
-	if err != nil || report.Status != operations.RunCompleted {
+	report, err := s.runner(w.svc).Run(context.Background(), w.svc.LoopAgent(w.def, nil), []agentloop.Tool{facts}, loopLimits)
+	if err != nil || report.Status != agentloop.Completed {
 		w.t.Fatalf("report run %+v, err %v", report, err)
 	}
 }
@@ -174,8 +175,8 @@ func TestARunThatFailsLeavesEveryFindingAsItWas(t *testing.T) {
 	w.report(attention("purge is late", "/jobs/purge/overdue"))
 
 	s := &loopScript{t: t, answers: answers(final(`{`))}
-	report, err := s.runner(w.svc).Run(context.Background(), w.def, nil, loopLimits)
-	if err != nil || report.Status != operations.RunFailed {
+	report, err := s.runner(w.svc).Run(context.Background(), w.svc.LoopAgent(w.def, nil), nil, loopLimits)
+	if err != nil || report.Status != agentloop.Failed {
 		t.Fatalf("broken run %+v, err %v, want it failed", report, err)
 	}
 	if got := w.findings(); len(got) != 1 || got[0].status != "open" || got[0].seenCount != 1 {

@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "標準方案，入住日期 2026-11-20，我改成 2026-11-14 取消，房費總額 6400 元，可以退多少？",
+  "acceptance_criteria": [
+    {
+      "text": "天數計為 6 天（11 月 20 日減 11 月 14 日）"
+    },
+    {
+      "text": "適用 3～6 天退款 50%，退款金額為 3200 元"
+    }
+  ],
+  "final_output": "距入住日 **6 個日曆天**取消，標準方案可退 **50%**，因此可退款 **3,200 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9b1c039e-3bb2-4e6d-9216-ea90b1c0ae55",
+    "run_id": "8afb33f5-41ba-43e3-9c0d-a6b6533bfdaa",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項標準均達成：取消時間為入住前 6 天，標準方案退款 50%，可退 3,200 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "3dd7ff90-f01b-4843-9028-62d50839ba7f",
+        "text": "天數計為 6 天（11 月 20 日減 11 月 14 日）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將 2026 年 11 月 14 日至 11 月 20 日計為 6 個日曆天。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "距入住日 **6 個日曆天**取消",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2f0df5f1-15f3-4916-a4a0-7e08d5221500",
+        "text": "適用 3～6 天退款 50%，退款金額為 3200 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "6 天落在 3～6 天區間；回覆採用 50% 退款比例，並算出 3,200 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "距入住日 **6 個日曆天**取消，標準方案可退 **50%**，因此可退款 **3,200 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1508 input and 664 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 10,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

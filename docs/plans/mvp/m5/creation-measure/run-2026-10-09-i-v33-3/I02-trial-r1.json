@@ -1,0 +1,175 @@
+{
+  "round": 1,
+  "sample_input": "請依逾期處理規則逐筆判定以下借閱紀錄，並以表格列出每筆處理等級。\n讀者,證別,逾期天數,是否已回報遺失\n林小安,兒童證,0,是\n陳美玲,一般證,12,是\n王大明,一般證,0,否\n張小雨,兒童證,9,否\n李明哲,一般證,1,否\n周怡君,一般證,7,否\n吳建宏,一般證,8,否",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入中兩筆已回報遺失的紀錄（兒童證、0 天；一般證、12 天）都判定為「賠償」，不受證別或天數影響。"
+    },
+    {
+      "text": "試跑輸入中未遺失、逾期 0 天的一般證紀錄判定為「免處理」。"
+    },
+    {
+      "text": "試跑輸入中未遺失、逾期 9 天的兒童證紀錄判定為「提醒」，不套用一般證的停借規則。"
+    },
+    {
+      "text": "試跑輸入中未遺失、一般證逾期 1 天與 7 天的紀錄都判定為「提醒」。"
+    },
+    {
+      "text": "試跑輸入中未遺失、一般證逾期 8 天的紀錄判定為「停借」。"
+    },
+    {
+      "text": "輸出逐筆列出輸入紀錄，保留各筆讀者資料，且每筆處理等級僅使用「賠償」「停借」「提醒」「免處理」之一。"
+    }
+  ],
+  "final_output": "| 讀者 | 證別 | 逾期天數 | 是否已回報遺失 | 處理等級 |\n|---|---|---:|---|---|\n| 林小安 | 兒童證 | 0 | 是 | 賠償 |\n| 陳美玲 | 一般證 | 12 | 是 | 賠償 |\n| 王大明 | 一般證 | 0 | 否 | 免處理 |\n| 張小雨 | 兒童證 | 9 | 否 | 提醒 |\n| 李明哲 | 一般證 | 1 | 否 | 提醒 |\n| 周怡君 | 一般證 | 7 | 否 | 提醒 |\n| 吳建宏 | 一般證 | 8 | 否 | 停借 |",
+  "artifacts": [
+    "loans.csv"
+  ],
+  "evaluation": {
+    "evaluation_id": "ec3e4652-ee86-4921-8225-e6ff1586cb93",
+    "run_id": "b66b2a04-59d2-4e76-a799-2a5ca401ed51",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七筆借閱紀錄均以表格逐筆列出，資料完整，處理等級符合各項驗收條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "4f9fb5e1-9dce-4ad1-902e-533f049139bb",
+        "text": "試跑輸入中兩筆已回報遺失的紀錄（兒童證、0 天；一般證、12 天）都判定為「賠償」，不受證別或天數影響。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆已回報遺失的紀錄均判定為「賠償」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 林小安 | 兒童證 | 0 | 是 | 賠償 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 陳美玲 | 一般證 | 12 | 是 | 賠償 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "69aa3b87-b00c-44d2-a2db-16cdef09a1fa",
+        "text": "試跑輸入中未遺失、逾期 0 天的一般證紀錄判定為「免處理」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "未遺失、逾期 0 天的一般證紀錄判定為「免處理」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 王大明 | 一般證 | 0 | 否 | 免處理 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b19ed4d6-5bbf-4513-ac54-970f476693ea",
+        "text": "試跑輸入中未遺失、逾期 9 天的兒童證紀錄判定為「提醒」，不套用一般證的停借規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "未遺失、逾期 9 天的兒童證紀錄判定為「提醒」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 張小雨 | 兒童證 | 9 | 否 | 提醒 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d12b1182-8d29-402f-8536-23526d03f611",
+        "text": "試跑輸入中未遺失、一般證逾期 1 天與 7 天的紀錄都判定為「提醒」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "未遺失的一般證紀錄逾期 1 天及 7 天，均判定為「提醒」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 李明哲 | 一般證 | 1 | 否 | 提醒 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 周怡君 | 一般證 | 7 | 否 | 提醒 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "79577c72-f575-4f75-a526-5007c4f41bea",
+        "text": "試跑輸入中未遺失、一般證逾期 8 天的紀錄判定為「停借」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "未遺失、逾期 8 天的一般證紀錄判定為「停借」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 吳建宏 | 一般證 | 8 | 否 | 停借 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "eb5607bb-d5df-4e4b-9db4-9925328f2309",
+        "text": "輸出逐筆列出輸入紀錄，保留各筆讀者資料，且每筆處理等級僅使用「賠償」「停借」「提醒」「免處理」之一。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格逐筆保留全部七筆紀錄的讀者、證別、逾期天數及遺失回報狀態；處理等級均屬指定的四種之一。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 讀者 | 證別 | 逾期天數 | 是否已回報遺失 | 處理等級 |\n|---|---|---:|---|---|\n| 林小安 | 兒童證 | 0 | 是 | 賠償 |\n| 陳美玲 | 一般證 | 12 | 是 | 賠償 |\n| 王大明 | 一般證 | 0 | 否 | 免處理 |\n| 張小雨 | 兒童證 | 9 | 否 | 提醒 |\n| 李明哲 | 一般證 | 1 | 否 | 提醒 |\n| 周怡君 | 一般證 | 7 | 否 | 提醒 |\n| 吳建宏 | 一般證 | 8 | 否 | 停借 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): loans.csv"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1555 input and 1519 output tokens on skillhub-run; reported cost $0.0041 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

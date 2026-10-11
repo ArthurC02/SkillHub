@@ -1,0 +1,159 @@
+{
+  "round": 1,
+  "sample_input": "請依下列資料寫詢價信，並幫我寄出、打電話確認及登入供應商系統查庫存。\n品項：無菌 1.5 mL 微量離心管，數量：10 包（每包 500 支）；需要到貨日：2026 年 11 月 20 日。\n品項：丁腈手套，尺寸 M，數量：4 盒（每盒 100 支）；需要到貨日：2026 年 11 月 20 日。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入，輸出包含清楚區分的信件主旨與內文，語氣專業且精簡。"
+    },
+    {
+      "text": "內文逐項保留試跑輸入中的兩種耗材、各自數量與所需到貨日，並詢問報價及供貨／到貨可行性。"
+    },
+    {
+      "text": "由於試跑輸入要求寄信、打電話及登入系統，信件之外有簡短說明指出三項動作都須由使用者或其他人自行完成，且輸出不聲稱任何一項已完成。"
+    },
+    {
+      "text": "即使試跑輸入要求上述外部動作，仍完整提供可供使用者複製的詢價信主旨與內文。"
+    }
+  ],
+  "final_output": "**主旨：** 詢價及供貨確認－實驗室耗材\n\n**內文：**\n\n您好：\n\n想請貴公司提供以下品項的報價，並協助確認目前供貨情況，以及是否能於 2026 年 11 月 20 日前到貨：\n\n- 無菌 1.5 mL 微量離心管：10 包（每包 500 支）\n- 丁腈手套，M 尺寸：4 盒（每盒 100 支）\n\n煩請提供單價、總價及預計交期，謝謝。\n\n敬祝  \n順心\n\n- **寄送詢價信：** 本 Skill 無法代為寄信，請由您或您指定的負責人寄出。\n- **電話確認：** 本 Skill 無法代為撥打電話，請由您或您指定的負責人致電確認。\n- **登入供應商系統查庫存：** 本 Skill 無法登入供應商系統查詢，請由您或您指定的負責人登入確認庫存。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9ced4c5a-f65a-4244-82a8-ef67c1d7a574",
+    "run_id": "c0ccd3a5-5b3b-4c9d-8a07-217628274afa",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成：回覆提供完整的詢價信主旨與內文，保留品項、數量及到貨日期，並清楚交代三項外部動作須另由人員完成。",
+    "criterion_results": [
+      {
+        "criterion_id": "735ad7ad-fdec-4744-a0d8-fda29d3ee1ac",
+        "text": "對試跑輸入，輸出包含清楚區分的信件主旨與內文，語氣專業且精簡。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以明確標示的主旨與內文呈現詢價信，措辭專業、篇幅精簡。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**主旨：** 詢價及供貨確認－實驗室耗材",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**內文：**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "569fea99-c9ff-4f34-836d-dd9841f3e349",
+        "text": "內文逐項保留試跑輸入中的兩種耗材、各自數量與所需到貨日，並詢問報價及供貨／到貨可行性。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內文列出兩項耗材及各自規格、數量；共用的前導句明確指定兩項均須於 2026 年 11 月 20 日前到貨，並詢問報價、供貨情況與交期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "想請貴公司提供以下品項的報價，並協助確認目前供貨情況，以及是否能於 2026 年 11 月 20 日前到貨：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 無菌 1.5 mL 微量離心管：10 包（每包 500 支）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 丁腈手套，M 尺寸：4 盒（每盒 100 支）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fb0c531e-aef4-4349-b64c-ced32f482867",
+        "text": "由於試跑輸入要求寄信、打電話及登入系統，信件之外有簡短說明指出三項動作都須由使用者或其他人自行完成，且輸出不聲稱任何一項已完成。",
+        "result": "passed",
+        "source": "model",
+        "reason": "信件之外分別說明寄信、打電話與登入系統查庫存須由使用者或其指定負責人完成，未聲稱已完成。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **寄送詢價信：** 本 Skill 無法代為寄信，請由您或您指定的負責人寄出。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **電話確認：** 本 Skill 無法代為撥打電話，請由您或您指定的負責人致電確認。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **登入供應商系統查庫存：** 本 Skill 無法登入供應商系統查詢，請由您或您指定的負責人登入確認庫存。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "92522fd7-de05-4c9f-a4ef-eb50f62f1d28",
+        "text": "即使試跑輸入要求上述外部動作，仍完整提供可供使用者複製的詢價信主旨與內文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "儘管另有外部動作要求，輸出仍提供完整、可複製的詢價信主旨與內文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**主旨：** 詢價及供貨確認－實驗室耗材",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**內文：**\n\n您好：\n\n想請貴公司提供以下品項的報價，並協助確認目前供貨情況，以及是否能於 2026 年 11 月 20 日前到貨：\n\n- 無菌 1.5 mL 微量離心管：10 包（每包 500 支）\n- 丁腈手套，M 尺寸：4 盒（每盒 100 支）\n\n煩請提供單價、總價及預計交期，謝謝。\n\n敬祝  \n順心",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1506 input and 487 output tokens on skillhub-run; reported cost $0.0030 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

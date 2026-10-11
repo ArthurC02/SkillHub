@@ -97,7 +97,7 @@ flowchart LR
 | Python 服務 | FastAPI，uv 管理，模型呼叫以 openai 套件建構的 client 指向模型閘道 |
 | 契約 | OpenAPI-first，Go 為 spec 來源，codegen 產生 TS client 與 Python server／client stub |
 
-`apps/llm` 目前每個端點各自對模型閘道發出一次呼叫，不包任何迴圈；服務的直接依賴只有 FastAPI、Uvicorn、官方模型 SDK 與 Pydantic。多步驟編排（例如互動創作）屬獨立設計，見 [ADR-012](./ADR-012-interactive-creation.md)，未實作前不得假設 `apps/llm` 內有跨請求的持久化工作流狀態。Sandbox 內供 Skill 執行的 Agent Runtime 語言由 Runtime Image 決定，與此處的平台語言選型無關。
+`apps/llm` 的端點各自處理一個請求，不持有跨請求的狀態：多數端點對模型閘道發出一次呼叫；互動創作的一步在請求內以 LangGraph 建圖、每次重建、不留檢查點（[ADR-012](./ADR-012-interactive-creation.md)）；平台 Agent 的一步只決定下一步，迴圈在 Go（[ADR-028](./ADR-028-platform-agents.md)）。服務的直接依賴是 FastAPI、Uvicorn、官方模型 SDK、Pydantic，以及互動創作用的 LangGraph 與 LangSmith（追蹤關閉）。不得假設 `apps/llm` 內有跨請求的持久化工作流狀態。Sandbox 內供 Skill 執行的 Agent Runtime 語言由 Runtime Image 決定，與此處的平台語言選型無關。
 
 ### 決策 6：跨語言邊界守則
 

@@ -27,6 +27,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 func testDeps(t *testing.T) (*pgxpool.Pool, Deps) {
@@ -135,6 +136,12 @@ func assertRunEventAndSkillVersionQueuesWired(t *testing.T, set *Set) {
 	if set.SkillVersions == nil || set.SkillVersions.Enqueue == nil {
 		t.Error("the evaluation's mailbox for skill versions is not wired to the queue")
 	}
+	if set.BatchEvents == nil || set.BatchEvents.HasLaunchingBatch == nil || set.BatchEvents.Enqueue == nil {
+		t.Error("the evaluation batch consumer is not wired to its lookup and the queue")
+	}
+	if set.Batches == nil || set.Batches.Ports.StartRun == nil || set.Batches.Ports.ReadChainEnds == nil {
+		t.Error("evaluation batches cannot start runs or read conversations in this process")
+	}
 }
 
 func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
@@ -160,6 +167,20 @@ func TestBuildWorkersLeavesTheJudgeUnsetWithoutAnLLM(t *testing.T) {
 	}
 	if set.Evaluations.Judge != nil || set.Evaluations.Suggester != nil {
 		t.Error("no LLM service configured, yet the evaluation service holds a judge or a suggester")
+	}
+}
+
+func TestBuildWorkersLetsTheEvaluationServiceReadThePanelSettingEachTime(t *testing.T) {
+	pool, deps := testDeps(t)
+	set, err := BuildWorkers(pool, deps)
+	if err != nil {
+		t.Fatalf("BuildWorkers: %v", err)
+	}
+	if set.Evaluations.PanelEnabled == nil {
+		t.Fatal("the evaluation service cannot read the judge panel setting, so an operator's switch would never take effect")
+	}
+	if _, err := set.Evaluations.PanelEnabled(context.Background()); err == nil {
+		t.Error("the panel setting was answered without reaching the unreachable test database, so it is not read from the settings table")
 	}
 }
 
@@ -231,6 +252,7 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 
 	want := map[string]bool{
 		EvaluationRecoveryArgs{}.Kind():     true,
+		eval.BatchAdvanceArgs{}.Kind():      true,
 		RunSuperviseArgs{}.Kind():           true,
 		RunOrphanScanArgs{}.Kind():          true,
 		outbox.PublishArgs{}.Kind():         true,

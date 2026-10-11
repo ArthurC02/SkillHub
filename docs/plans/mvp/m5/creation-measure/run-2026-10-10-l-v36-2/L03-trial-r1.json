@@ -1,0 +1,166 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下活動餐點報價，依品項列出數量、單價、小計，並計算新台幣總額：\n下週公司聚餐，雞腿便當 12 個，每個 145 元；素食餐盒 3 份一份 180；茶飲兩壺，每壺 250；場地清潔費 800 元我直接付場地方。另外加一盤水果，價格 300 元（數量沒講），再加一盒小點，數量 2，價錢還沒決定。",
+  "acceptance_criteria": [
+    {
+      "text": "收到試跑範例中的訂餐訊息時，輸出逐項報價，將雞腿便當列為 12 份、單價 NT$145、小計 NT$1,740；素食餐盒列為 3 份、單價 NT$180、小計 NT$540；茶飲列為 2 壺、單價 NT$250、小計 NT$500。"
+    },
+    {
+      "text": "收到試跑範例時，將未說明數量的水果按 1 盤處理，列出單價 NT$300、小計 NT$300。"
+    },
+    {
+      "text": "收到試跑範例時，將場地清潔費 NT$800 標示為不納入我方報價，且不加進總額。"
+    },
+    {
+      "text": "收到試跑範例時，將小點列為數量 2、單價待確認；不猜價格、不計入已知金額，並說明總額為暫計。"
+    },
+    {
+      "text": "收到試跑範例時，將有明確單價的餐點與費用小計相加，列出已知暫計總額 NT$3,080。"
+    }
+  ],
+  "final_output": "### 報價明細\n\n| 品項 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 雞腿便當 | 12 個 | NT$145 | NT$1,740 |\n| 素食餐盒 | 3 份 | NT$180 | NT$540 |\n| 茶飲 | 2 壺 | NT$250 | NT$500 |\n| 水果 | 1 盤（數量未提供，暫按 1 份計） | NT$300 | NT$300 |\n\n**已知暫計總額：NT$3,080**（未含待確認的小點價格）\n\n### 待確認\n\n- 小點：2 盒，單價未提供，小計未計入。請確認單價。\n\n### 不納入我方報價\n\n- 場地清潔費：NT$800（由您直接支付場地方）",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f5f79d33-f748-48eb-8f55-8091f9d3c76f",
+    "run_id": "b7b676a5-a260-4328-a884-be3accd90eb4",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收條件均已達成。報價列出已知品項的數量、單價與小計，排除場地清潔費，並將小點價格留待確認。",
+    "criterion_results": [
+      {
+        "criterion_id": "c70fbb09-8e7e-47d0-a927-ccc22ac91ba4",
+        "text": "收到試跑範例中的訂餐訊息時，輸出逐項報價，將雞腿便當列為 12 份、單價 NT$145、小計 NT$1,740；素食餐盒列為 3 份、單價 NT$180、小計 NT$540；茶飲列為 2 壺、單價 NT$250、小計 NT$500。",
+        "result": "passed",
+        "source": "model",
+        "reason": "逐項列出雞腿便當、素食餐盒與茶飲的指定數量、單價及小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 雞腿便當 | 12 個 | NT$145 | NT$1,740 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 素食餐盒 | 3 份 | NT$180 | NT$540 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 茶飲 | 2 壺 | NT$250 | NT$500 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "19d7dc30-97d5-4746-bd79-86b165ca4fa2",
+        "text": "收到試跑範例時，將未說明數量的水果按 1 盤處理，列出單價 NT$300、小計 NT$300。",
+        "result": "passed",
+        "source": "model",
+        "reason": "水果暫按 1 盤計，單價及小計均為 NT$300。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 水果 | 1 盤（數量未提供，暫按 1 份計） | NT$300 | NT$300 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "48358ab7-c0f4-485e-b045-14fc3681fc14",
+        "text": "收到試跑範例時，將場地清潔費 NT$800 標示為不納入我方報價，且不加進總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確標示 NT$800 場地清潔費不納入我方報價；所列暫計總額也未包含該費用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 場地清潔費：NT$800（由您直接支付場地方）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**已知暫計總額：NT$3,080**（未含待確認的小點價格）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "35f733c4-dcbd-409e-93fd-86a4bf13510f",
+        "text": "收到試跑範例時，將小點列為數量 2、單價待確認；不猜價格、不計入已知金額，並說明總額為暫計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "小點列為 2 盒，單價未提供且小計未計入；總額標為已知暫計，未猜測價格。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 小點：2 盒，單價未提供，小計未計入。請確認單價。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**已知暫計總額：NT$3,080**（未含待確認的小點價格）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4eaaaa0f-a2d7-437b-83ee-f79804ad0e3d",
+        "text": "收到試跑範例時，將有明確單價的餐點與費用小計相加，列出已知暫計總額 NT$3,080。",
+        "result": "passed",
+        "source": "model",
+        "reason": "四項已知小計相加為 NT$3,080，與列出的已知暫計總額一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**已知暫計總額：NT$3,080**（未含待確認的小點價格）",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1540 input and 646 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

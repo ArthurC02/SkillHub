@@ -29,6 +29,16 @@ func evaluationOptions() *river.InsertOpts {
 	return &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveEvaluationJobStates}, MaxAttempts: 2, Queue: QueueModel}
 }
 
+func NewBatchAdvanceEnqueue(client *river.Client[pgx.Tx]) func(context.Context, eval.BatchAdvanceArgs) error {
+	if client == nil {
+		return nil
+	}
+	return func(ctx context.Context, args eval.BatchAdvanceArgs) error {
+		_, err := client.Insert(ctx, args, &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveEvaluationJobStates}})
+		return err
+	}
+}
+
 func NewSuggestionsAppliedEnqueue(client *river.Client[pgx.Tx]) func(context.Context, eval.SuggestionsAppliedArgs) error {
 	if client == nil {
 		return nil

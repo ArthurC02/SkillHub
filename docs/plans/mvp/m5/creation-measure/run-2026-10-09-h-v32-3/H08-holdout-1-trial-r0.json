@@ -1,0 +1,144 @@
+{
+  "round": 0,
+  "sample_input": "這是這次收購驗收紀錄：\n牛仔外套 收購日期2026年04月31日，數量10件，單價150元\n絲質洋裝 數量-5件，單價200元\n羊毛大衣 數量20件，單價300元，後面又說其實是25件\n棉質T恤 數量30件，單價80元\n牛仔褲 數量15件，單價120元\n請幫我整理並算出總金額。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出指出「牛仔外套」記錄的收購日期 2026年04月31日 不存在（4月沒有31日），需要人工確認正確日期"
+    },
+    {
+      "text": "輸出指出「絲質洋裝」的收購數量 -5 件不合理，需要人工確認，而不是直接當成負數量計入"
+    },
+    {
+      "text": "輸出指出「羊毛大衣」有兩個不同的收購數量（20件與25件），需要人工確認，而不是自己選一個或相加"
+    },
+    {
+      "text": "在牛仔外套、絲質洋裝、羊毛大衣三項疑義未確認前，輸出沒有給出一個確定的總金額"
+    }
+  ],
+  "final_output": "| 日期 | 品項 | 數量 | 收購單價 | 該筆金額 |\n|---|---|---:|---:|---:|\n| 2026年04月31日（需確認） | 牛仔外套 | 10件 | 150元 | 未計算 |\n| 未提供 | 絲質洋裝 | -5件（需確認） | 200元 | 未計算 |\n| 未提供 | 羊毛大衣 | 20件；後續更正為25件（需確認） | 300元 | 未計算 |\n| 未提供 | 棉質T恤 | 30件 | 80元 | 未計算 |\n| 未提供 | 牛仔褲 | 15件 | 120元 | 未計算 |\n\n需確認：\n- 牛仔外套日期「2026年04月31日」不是有效日曆日期。\n- 絲質洋裝數量「-5件」為負數。\n- 羊毛大衣數量「20件」與後續更正的「25件」互相矛盾。\n\n沒有完整且可計算的紀錄，因此不列總金額；棉質T恤與牛仔褲未提供日期，其餘紀錄則有需確認的日期或數量。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fe074d47-8e0c-4cb1-9d31-2520ea1c3c58",
+    "run_id": "c2a56ff1-8ae7-4678-b599-62406eb9ec47",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收條件均已符合：輸出標示三筆紀錄的疑義，且未在疑義未確認前給出確定總金額。",
+    "criterion_results": [
+      {
+        "criterion_id": "723e6fdd-bae3-4936-a520-7d77d5fc9101",
+        "text": "輸出指出「牛仔外套」記錄的收購日期 2026年04月31日 不存在（4月沒有31日），需要人工確認正確日期",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出指出牛仔外套的日期不是有效日曆日期，並標示需確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "牛仔外套日期「2026年04月31日」不是有效日曆日期。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年04月31日（需確認） | 牛仔外套",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f3b37ebe-1e15-4494-9a3c-a4ebca1f8574",
+        "text": "輸出指出「絲質洋裝」的收購數量 -5 件不合理，需要人工確認，而不是直接當成負數量計入",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將絲質洋裝的負數數量列為需確認，沒有把它計入金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "絲質洋裝數量「-5件」為負數。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "絲質洋裝 | -5件（需確認） | 200元 | 未計算",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8e51689a-d8ee-438c-af3b-9b85a7a57e58",
+        "text": "輸出指出「羊毛大衣」有兩個不同的收購數量（20件與25件），需要人工確認，而不是自己選一個或相加",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出指出羊毛大衣的20件與25件互相矛盾，標示需確認，沒有擅自選用或相加。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "羊毛大衣數量「20件」與後續更正的「25件」互相矛盾。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "羊毛大衣 | 20件；後續更正為25件（需確認） | 300元 | 未計算",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "37fb2cc2-ec78-44ea-9a19-fc2121890044",
+        "text": "在牛仔外套、絲質洋裝、羊毛大衣三項疑義未確認前，輸出沒有給出一個確定的總金額",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出沒有給出確定總金額，並明確說明不列總金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "沒有完整且可計算的紀錄，因此不列總金額",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1495 input and 1739 output tokens on skillhub-run; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,182 @@
+{
+  "request": {
+    "RunID": "c43a2eb1-09e1-4757-8412-2391126c5596",
+    "EvaluationID": "dd7311eb-841b-4f55-94ad-5caff4623139",
+    "Skill": {
+      "Name": "parent-child-baking-line-promo",
+      "Summary": "當使用者提供親子烘焙活動資料並需要 LINE 宣傳文案時，依資料撰寫可直接發布的文案，保留七項硬事實；缺少資訊時補上合理推定值並明確標示。"
+    },
+    "UserPrompt": "幫我寫宣傳文案。活動名稱「小小麵包師」親子烘焙體驗，2026 年 12 月 6 日（日）上午 10:00 到 12:00，地點在幸福社區活動中心 2 樓烘焙教室，費用每組（1 大 1 小）450 元，限額 20 組，11 月 25 日截止報名。",
+    "Criteria": [
+      {
+        "ID": "a9eed8c3-8644-42ba-80bd-d287e6fe95cf",
+        "Text": "活動名稱「小小麵包師」完整出現",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d0672882-bc6e-41f1-aae8-3cb359dbccf1",
+        "Text": "日期 12 月 6 日正確（有寫星期時必須是星期日）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d9bb9b46-6047-4035-8b1d-c676224374f2",
+        "Text": "時間為 10:00 到 12:00（上午 10 點到 12 點等寫法皆可）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "083ca3f5-2683-4c31-a3cb-9ca911c517d1",
+        "Text": "地點為幸福社區活動中心 2 樓烘焙教室",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "da543f7a-4b0e-4557-8f71-af023568fb77",
+        "Text": "費用為每組 450 元，名額為 20 組",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7ff1230e-0a7b-4691-aeb5-efaff4185814",
+        "Text": "報名截止日為 11 月 25 日",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "🥐【小小麵包師】親子烘焙體驗 🥐\n\n和孩子一起動手做烘焙，享受親子共作的美好時光！\n\n📅 日期｜2026 年 12 月 6 日（日）  \n⏰ 時間｜上午 10:00 到 12:00  \n📍 地點｜幸福社區活動中心 2 樓烘焙教室  \n💰 費用｜每組（1 大 1 小）450 元  \n👨‍👧 名額｜限額 20 組  \n📝 報名截止｜11 月 25 日\n\n名額有限，歡迎把握機會報名，一起成為小小麵包師！",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "0057d962-e705-433c-986f-9193a01e2a33",
+          "OccurredAt": "2026-10-10T01:10:27.111Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"parent-child-baking-line-promo\", \"skill_version_id\": \"285c4153-971b-4c9d-b0e0-51d39eccc86e\"}"
+        },
+        {
+          "TraceEventID": "bcc69f5b-fd77-4574-b35a-79a2fb3374da",
+          "OccurredAt": "2026-10-10T01:10:27.134Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"parent-child-baking-line-promo\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 24, \"invocation_id\": \"call_eORfaJyukey1Gd46KO8RSISW\", \"result_summary\": \"Launching skill: parent-child-baking-line-promo\"}"
+        },
+        {
+          "TraceEventID": "950f85b2-63d6-4227-9cba-d353092767b3",
+          "OccurredAt": "2026-10-10T01:10:30.144Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"🥐【小小麵包師】親子烘焙體驗 🥐\\n\\n和孩子一起動手做烘焙，享受親子共作的美好時光！\\n\\n📅 日期｜2026 年 12 月 6 日（日）  \\n⏰ 時間｜上午 10:00 到 12:00  \\n📍 地點｜幸福社區活動中心 2 樓烘焙教室  \\n💰 費用｜每組（1 大 1 小）450 元  \\n👨‍👧 名額｜限額 20 組  \\n📝 報名截止｜11 月 25 日\\n\\n名額有限，歡迎把握機會報名，一起成為小小麵包師！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "9bae9a8f-d53b-4fac-ab89-7506d3ba26dd",
+          "OccurredAt": "2026-10-10T01:10:30.483Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"🥐【小小麵包師】親子烘焙體驗 🥐\\n\\n和孩子一起動手做烘焙，享受親子共作的美好時光！\\n\\n📅 日期｜2026 年 12 月 6 日（日）  \\n⏰ 時間｜上午 10:00 到 12:00  \\n📍 地點｜幸福社區活動中心 2 樓烘焙教室  \\n💰 費用｜每組（1 大 1 小）450 元  \\n👨‍👧 名額｜限額 20 組  \\n📝 報名截止｜11 月 25 日\\n\\n名額有限，歡迎把握機會報名，一起成為小小麵包師！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "9adb5624-c3eb-4aae-9786-c0de8c5a0762",
+          "OccurredAt": "2026-10-10T01:10:34.56Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.002853995, \"cost_source\": \"gateway\", \"duration_ms\": 10961, \"input_tokens\": 1487, \"token_source\": \"result\", \"output_tokens\": 307, \"cache_read_input_tokens\": 16592, \"cache_write_input_tokens\": 18591}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "a9eed8c3-8644-42ba-80bd-d287e6fe95cf",
+        "Result": "passed",
+        "Reason": "文案完整寫出活動名稱「小小麵包師」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "🥐【小小麵包師】親子烘焙體驗 🥐"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d0672882-bc6e-41f1-aae8-3cb359dbccf1",
+        "Result": "passed",
+        "Reason": "日期寫為 2026 年 12 月 6 日，星期日也正確。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "📅 日期｜2026 年 12 月 6 日（日）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d9bb9b46-6047-4035-8b1d-c676224374f2",
+        "Result": "passed",
+        "Reason": "時間寫為上午 10:00 到 12:00。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "⏰ 時間｜上午 10:00 到 12:00"
+          }
+        ]
+      },
+      {
+        "CriterionID": "083ca3f5-2683-4c31-a3cb-9ca911c517d1",
+        "Result": "passed",
+        "Reason": "地點完整寫為幸福社區活動中心 2 樓烘焙教室。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "📍 地點｜幸福社區活動中心 2 樓烘焙教室"
+          }
+        ]
+      },
+      {
+        "CriterionID": "da543f7a-4b0e-4557-8f71-af023568fb77",
+        "Result": "passed",
+        "Reason": "費用為每組 450 元，名額為 20 組。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "💰 費用｜每組（1 大 1 小）450 元"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "👨‍👧 名額｜限額 20 組"
+          }
+        ]
+      },
+      {
+        "CriterionID": "7ff1230e-0a7b-4691-aeb5-efaff4185814",
+        "Result": "passed",
+        "Reason": "報名截止日寫為 11 月 25 日。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "📝 報名截止｜11 月 25 日"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "文案包含活動名稱、正確日期與時間、完整地點、費用與名額，以及報名截止日；六項驗收條件均符合。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2676,
+      "CompletionTokens": 666,
+      "CostUSD": 0.010813900000000001,
+      "CostReported": true
+    }
+  }
+}

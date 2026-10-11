@@ -1,0 +1,78 @@
+{
+  "round": 0,
+  "sample_input": "這次包場時數 2 小時，器材租借 5 件，請算總費用。",
+  "acceptance_criteria": [
+    {
+      "text": "總費用為 1000 元"
+    }
+  ],
+  "final_output": "第 1 筆：包場費 800 元；器材費 200 元；封頂前合計 1000 元；套用 3,000 元上限後總費用 1000 元。\n\n假設：不足一小時按每開始一小時計費（含超過 4 小時的零碎時數）；器材件數為非負整數；金額為新臺幣整數元，沒有其他費用。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "dce5df63-ffc9-48fb-a818-a8717d17f30c",
+    "run_id": "e7530450-1441-4bb2-9562-d9ef0c946686",
+    "status": "completed",
+    "overall": "met",
+    "summary": "本次回覆的總費用為 1000 元，符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "91f85c67-172e-43c2-9fba-67bcba81f8ba",
+        "text": "總費用為 1000 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆明確列出套用上限後的總費用為 1000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "套用 3,000 元上限後總費用 1000 元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1530 input and 339 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 8,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "再幫我看這四筆：\n1. 小安，兒童證，逾期 30 天，未遺失\n2. 小宇，兒童證，逾期 12 天，已回報遺失\n3. 吳女士，一般證，逾期 3 天，已回報遺失\n4. 小華，兒童證，逾期 0 天，未遺失",
+  "acceptance_criteria": [
+    {
+      "text": "小安（兒童證、逾期 30 天、未遺失）判定為「提醒」，不是「停借」"
+    },
+    {
+      "text": "小宇（兒童證、已回報遺失）判定為「賠償」"
+    },
+    {
+      "text": "吳女士（一般證、逾期 3 天、已回報遺失）判定為「賠償」，不是「提醒」"
+    },
+    {
+      "text": "小華（兒童證、逾期 0 天）判定為「免處理」"
+    }
+  ],
+  "final_output": "| 讀者 | 證別 | 逾期天數 | 是否已回報遺失 | 處理等級 |\n|---|---|---:|---|---|\n| 小安 | 兒童證 | 30 | 否 | 提醒 |\n| 小宇 | 兒童證 | 12 | 是 | 賠償 |\n| 吳女士 | 一般證 | 3 | 是 | 賠償 |\n| 小華 | 兒童證 | 0 | 否 | 免處理 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "5262af18-b141-47e5-83e0-99bee38deef4",
+    "run_id": "28f5932c-cf1f-456f-9cc0-5f9387275793",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四筆紀錄的處理等級均符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "7f21694e-8c6d-425b-a4c0-882ae688c5a9",
+        "text": "小安（兒童證、逾期 30 天、未遺失）判定為「提醒」，不是「停借」",
+        "result": "passed",
+        "source": "model",
+        "reason": "小安判定為「提醒」，不是「停借」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 小安 | 兒童證 | 30 | 否 | 提醒 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "67a152fb-d94c-4b9e-b86b-b44654dfdd18",
+        "text": "小宇（兒童證、已回報遺失）判定為「賠償」",
+        "result": "passed",
+        "source": "model",
+        "reason": "小宇已回報遺失，判定為「賠償」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 小宇 | 兒童證 | 12 | 是 | 賠償 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "60affbd5-6ae8-4eaf-8de3-20b46eeda8b4",
+        "text": "吳女士（一般證、逾期 3 天、已回報遺失）判定為「賠償」，不是「提醒」",
+        "result": "passed",
+        "source": "model",
+        "reason": "吳女士已回報遺失，判定為「賠償」，不是「提醒」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 吳女士 | 一般證 | 3 | 是 | 賠償 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "68a934ef-f162-47e7-ae84-490b9f052747",
+        "text": "小華（兒童證、逾期 0 天）判定為「免處理」",
+        "result": "passed",
+        "source": "model",
+        "reason": "小華逾期 0 天，判定為「免處理」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 小華 | 兒童證 | 0 | 否 | 免處理 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1575 input and 743 output tokens on skillhub-run; reported cost $0.0039 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

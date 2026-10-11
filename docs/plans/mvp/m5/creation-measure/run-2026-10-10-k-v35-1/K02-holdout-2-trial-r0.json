@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "兩筆申請請分類：\nE：購買 2026-05-04，申請 2026-05-07，已領取教材包\nF：購買 2026-05-04，申請 2026-05-07，沒有領教材包",
+  "acceptance_criteria": [
+    {
+      "text": "E 筆分類為不可退費，即使只過 3 天"
+    },
+    {
+      "text": "F 筆分類為全額退費"
+    }
+  ],
+  "final_output": "| 編號 | 購買日 | 申請日 | 日期差 | 已領取教材包 | 分類 |\n|---|---|---|---:|---|---|\n| E | 2026-05-04 | 2026-05-07 | 3 天 | 是 | 不可退費 |\n| F | 2026-05-04 | 2026-05-07 | 3 天 | 否 | 全額退費 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4dfe8c2c-ddd8-4bb9-9ad4-f7b1d5fa84e7",
+    "run_id": "9499d0f7-ea4e-4073-b003-48e5828ed161",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩筆申請皆依要求分類：E 不可退費，F 全額退費。",
+    "criterion_results": [
+      {
+        "criterion_id": "cd95a43c-82d7-49c5-9b20-63d43764c82b",
+        "text": "E 筆分類為不可退費，即使只過 3 天",
+        "result": "passed",
+        "source": "model",
+        "reason": "E 筆日期差為 3 天，已領取教材包，分類為不可退費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| E | 2026-05-04 | 2026-05-07 | 3 天 | 是 | 不可退費 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d2245e82-f42e-4e55-a10a-83fa2cdbc39d",
+        "text": "F 筆分類為全額退費",
+        "result": "passed",
+        "source": "model",
+        "reason": "F 筆未領取教材包，分類為全額退費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| F | 2026-05-04 | 2026-05-07 | 3 天 | 否 | 全額退費 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1523 input and 435 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 10,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -72,6 +72,7 @@ type JudgeRequest struct {
 	Artifacts    []JudgeArtifact
 	TraceDigest  TraceDigest
 	Truncation   []string
+	ModelRole    string
 
 	Within time.Duration
 }

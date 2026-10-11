@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "三筆退貨幫我判一下，都是一般商品：\nA 訂單：2026-03-02 到貨，2026-03-09 申請，沒拆封。\nB 訂單：2026-03-02 到貨，2026-03-10 申請，筆芯有瑕疵。\nC 訂單：2026-03-02 到貨，2026-03-10 申請，沒拆封、無瑕疵。",
+  "acceptance_criteria": [
+    {
+      "text": "A 訂單的結果是全額退款"
+    },
+    {
+      "text": "B 訂單的結果是換貨"
+    },
+    {
+      "text": "C 訂單的結果是不受理"
+    }
+  ],
+  "final_output": "目前三筆的商品狀態都不是判定腳本可接受的值，因此結果留白；請確認各筆商品狀態的可用值。\n\n- **A 訂單**｜到貨：2026-03-02｜申請：2026-03-09｜商品：一般商品｜狀態：沒拆封  \n  結果：【結果留白：待確認商品狀態】  \n  `無法使用的商品狀態：沒拆封`\n\n- **B 訂單**｜到貨：2026-03-02｜申請：2026-03-10｜商品：一般商品｜狀態：筆芯有瑕疵  \n  結果：【結果留白：待確認商品狀態】  \n  `無法使用的商品狀態：筆芯有瑕疵`\n\n- **C 訂單**｜到貨：2026-03-02｜申請：2026-03-10｜商品：一般商品｜狀態：沒拆封、無瑕疵  \n  結果：【結果留白：待確認商品狀態】  \n  `無法使用的商品狀態：沒拆封、無瑕疵`\n\n請提供 A、B、C 各自對應的可用商品狀態值。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "76db0f4f-e656-4a0e-903f-633e724283b4",
+    "run_id": "b1de90e5-ca50-4d8a-bcbe-5c7f81627c5d",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "三筆訂單均未得到要求的退貨判定；最終回覆將結果留白，並要求提供商品狀態的可用值。",
+    "criterion_results": [
+      {
+        "criterion_id": "e425fa23-92b2-4d88-820e-7137787b5e82",
+        "text": "A 訂單的結果是全額退款",
+        "result": "failed",
+        "source": "model",
+        "reason": "A 訂單的結果留白，未判定為全額退款。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **A 訂單**｜到貨：2026-03-02｜申請：2026-03-09｜商品：一般商品｜狀態：沒拆封  \n  結果：【結果留白：待確認商品狀態】",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1fedfdc4-9e55-4b01-a0bb-e3450aa35c6c",
+        "text": "B 訂單的結果是換貨",
+        "result": "failed",
+        "source": "model",
+        "reason": "B 訂單的結果留白，未判定為換貨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **B 訂單**｜到貨：2026-03-02｜申請：2026-03-10｜商品：一般商品｜狀態：筆芯有瑕疵  \n  結果：【結果留白：待確認商品狀態】",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "132c5e9c-b9b6-4cef-ae44-a105385f50d8",
+        "text": "C 訂單的結果是不受理",
+        "result": "failed",
+        "source": "model",
+        "reason": "C 訂單的結果留白，未判定為不受理。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **C 訂單**｜到貨：2026-03-02｜申請：2026-03-10｜商品：一般商品｜狀態：沒拆封、無瑕疵  \n  結果：【結果留白：待確認商品狀態】",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1567 input and 1281 output tokens on skillhub-run; reported cost $0.0042 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

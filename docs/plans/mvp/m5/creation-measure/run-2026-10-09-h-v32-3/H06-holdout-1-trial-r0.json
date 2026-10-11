@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "客戶說：我是張先生，這次健檢加做了胃鏡，想約2026年11月18日星期三上午10點來領報告，自費項目費用是1800元，我電話0933444555。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出只有簡訊本文一行，沒有附加任何字數統計或說明文字"
+    },
+    {
+      "text": "本文總字數（含標點與英數字）不超過 28 字"
+    },
+    {
+      "text": "本文包含日期 11/18（或 2026/11/18 等同表示）與時間 10:00（或上午10點等同表示）"
+    },
+    {
+      "text": "本文包含自費項目費用 1800 元"
+    }
+  ],
+  "final_output": "健檢報告2026/11/18上午10時領取自費1800元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "36c1ea2d-8088-4131-be92-c811a5c0f6c5",
+    "run_id": "d486cfeb-4ea3-4576-96d1-54add45a5265",
+    "status": "completed",
+    "overall": "met",
+    "summary": "簡訊為單行、恰好 28 字，包含指定的領取日期、時間及自費費用；所有驗收條件均已達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "dd8c6978-a569-473a-b170-3700257e7dc3",
+        "text": "輸出只有簡訊本文一行，沒有附加任何字數統計或說明文字",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有一行簡訊本文，沒有字數統計或說明文字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢報告2026/11/18上午10時領取自費1800元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "faeec481-18c5-4759-803f-e41d27a18c66",
+        "text": "本文總字數（含標點與英數字）不超過 28 字",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文含標點與英數字共 28 字，未超過上限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健檢報告2026/11/18上午10時領取自費1800元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "051caa37-6c27-4a2c-b925-32ebe73fbc9e",
+        "text": "本文包含日期 11/18（或 2026/11/18 等同表示）與時間 10:00（或上午10點等同表示）",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文包含日期 2026/11/18，以及等同於上午10點的「上午10時」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026/11/18上午10時",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "417bea30-8b67-41a3-aab7-32ccd526924d",
+        "text": "本文包含自費項目費用 1800 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文包含自費項目費用 1800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "自費1800元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1540 input and 1488 output tokens on skillhub-run; reported cost $0.0040 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "round": 0,
+  "sample_input": "拍 3 小時，修圖 21 張，幫我算報價。",
+  "acceptance_criteria": [
+    {
+      "text": "拍攝費為 8,000 元（2 小時 × 3,000 加 1 小時 × 2,000）"
+    },
+    {
+      "text": "修圖費為 3,100 元（20 張 × 150 加 1 張 × 100）"
+    },
+    {
+      "text": "最終報價為 11,100 元，沒有套用 12,000 元上限"
+    }
+  ],
+  "final_output": "拍攝 3 小時、修圖 21 張：\n\n- 拍攝費：8,000 元\n- 修圖費：3,100 元\n- 封頂前總額：11,100 元\n- 封頂後應收總額：11,100 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3e83b030-3a0b-49b0-9810-a15e4c375861",
+    "run_id": "cc1dc483-0d6d-44a9-a55d-f07ef86b1ea6",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項標準均達成：拍攝費 8,000 元、修圖費 3,100 元，最終應收 11,100 元，未受上限影響。",
+    "criterion_results": [
+      {
+        "criterion_id": "5993ed1b-ac49-4af7-baa5-152cdefb0a79",
+        "text": "拍攝費為 8,000 元（2 小時 × 3,000 加 1 小時 × 2,000）",
+        "result": "passed",
+        "source": "model",
+        "reason": "報價列出的拍攝費為 8,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 拍攝費：8,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6d27b50d-a87f-4730-9e8b-6afbb40add31",
+        "text": "修圖費為 3,100 元（20 張 × 150 加 1 張 × 100）",
+        "result": "passed",
+        "source": "model",
+        "reason": "報價列出的修圖費為 3,100 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 修圖費：3,100 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "74750cbc-098e-4f7d-b052-cf04692bb159",
+        "text": "最終報價為 11,100 元，沒有套用 12,000 元上限",
+        "result": "passed",
+        "source": "model",
+        "reason": "封頂前與封頂後金額均為 11,100 元，表示沒有套用 12,000 元上限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 封頂前總額：11,100 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 封頂後應收總額：11,100 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1542 input and 255 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -400,7 +400,7 @@ func (q *Queries) ListSkillsWithTestCases(ctx context.Context, skillIds []pgtype
 }
 
 const listSnapshotTestCases = `-- name: ListSnapshotTestCases :many
-SELECT id, test_case_id FROM test_case_snapshots
+SELECT id, test_case_id, content_hash FROM test_case_snapshots
 WHERE workspace_id = $1 AND id = ANY($2::uuid[])
 `
 
@@ -410,8 +410,9 @@ type ListSnapshotTestCasesParams struct {
 }
 
 type ListSnapshotTestCasesRow struct {
-	ID         pgtype.UUID
-	TestCaseID pgtype.UUID
+	ID          pgtype.UUID
+	TestCaseID  pgtype.UUID
+	ContentHash string
 }
 
 func (q *Queries) ListSnapshotTestCases(ctx context.Context, arg ListSnapshotTestCasesParams) ([]ListSnapshotTestCasesRow, error) {
@@ -423,7 +424,7 @@ func (q *Queries) ListSnapshotTestCases(ctx context.Context, arg ListSnapshotTes
 	var items []ListSnapshotTestCasesRow
 	for rows.Next() {
 		var i ListSnapshotTestCasesRow
-		if err := rows.Scan(&i.ID, &i.TestCaseID); err != nil {
+		if err := rows.Scan(&i.ID, &i.TestCaseID, &i.ContentHash); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

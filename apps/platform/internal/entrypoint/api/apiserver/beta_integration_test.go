@@ -29,7 +29,7 @@ func betaAPI(
 		if len(invited) > 0 {
 			d.Auth.Invited = map[string]bool{}
 			for _, id := range invited {
-				d.Auth.Invited[id] = true
+				d.Auth.Invited[devAlias(t, id)] = true
 			}
 		}
 		d.Analytics.Svc.Retention = retention
@@ -382,7 +382,7 @@ func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 func TestAdmissionListGatesCreationSessionsAsWell(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
-		d.Auth.Invited = map[string]bool{"alice-creation-invited": true}
+		d.Auth.Invited = map[string]bool{devAlias(t, "alice-creation-invited"): true}
 		d.GenerateExposed = true
 		d.CreationExposed = true
 	})

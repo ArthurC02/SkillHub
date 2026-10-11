@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請依照報價規則計算以下每筆活動攝影服務的拍攝費、修圖費、封頂前總額與封頂後應收總額：\n1. 拍攝 1 小時，修圖 0 張\n2. 拍攝 2 小時，修圖 20 張\n3. 拍攝 3 小時，修圖 21 張\n4. 拍攝 3 小時，修圖 30 張\n5. 拍攝 4 小時，修圖 30 張",
+  "acceptance_criteria": [
+    {
+      "text": "樣本第 1 筆（1 小時、0 張）輸出拍攝費 3,000 元、修圖費 0 元、封頂前總額 3,000 元、應收總額 3,000 元。"
+    },
+    {
+      "text": "樣本第 2 筆（2 小時、20 張）輸出拍攝費 6,000 元、修圖費 3,000 元、封頂前總額 9,000 元、應收總額 9,000 元，正確處理兩個計價級距的起點邊界。"
+    },
+    {
+      "text": "樣本第 3 筆（3 小時、21 張）輸出拍攝費 8,000 元、修圖費 3,100 元、封頂前總額 11,100 元、應收總額 11,100 元，正確計入第 3 小時及第 21 張的較低單價。"
+    },
+    {
+      "text": "樣本第 4 筆（3 小時、30 張）輸出拍攝費 8,000 元、修圖費 4,000 元、封頂前總額 12,000 元、應收總額 12,000 元；總額恰好等於上限時不多收也不改變金額。"
+    },
+    {
+      "text": "樣本第 5 筆（4 小時、30 張）輸出拍攝費 10,000 元、修圖費 4,000 元、封頂前總額 14,000 元、應收總額 12,000 元；超過上限時只收 12,000 元。"
+    }
+  ],
+  "final_output": "1. 拍攝 1 小時，修圖 0 張  \n   - 拍攝費：3,000 元\n   - 修圖費：0 元\n   - 封頂前總額：3,000 元\n   - 封頂後應收總額：3,000 元\n\n2. 拍攝 2 小時，修圖 20 張  \n   - 拍攝費：6,000 元\n   - 修圖費：3,000 元\n   - 封頂前總額：9,000 元\n   - 封頂後應收總額：9,000 元\n\n3. 拍攝 3 小時，修圖 21 張  \n   - 拍攝費：8,000 元\n   - 修圖費：3,100 元\n   - 封頂前總額：11,100 元\n   - 封頂後應收總額：11,100 元\n\n4. 拍攝 3 小時，修圖 30 張  \n   - 拍攝費：8,000 元\n   - 修圖費：4,000 元\n   - 封頂前總額：12,000 元\n   - 封頂後應收總額：12,000 元\n\n5. 拍攝 4 小時，修圖 30 張  \n   - 拍攝費：10,000 元\n   - 修圖費：4,000 元\n   - 封頂前總額：14,000 元\n   - 封頂後應收總額：12,000 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3ea1aa84-d526-4bde-917b-3b1b85252faa",
+    "run_id": "646b9e64-d274-4330-b08c-efe6ec0355c4",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆報價均列出正確的拍攝費、修圖費、封頂前總額與應收總額；級距邊界及 12,000 元上限的處理也符合各項驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "3c44fda9-ba5c-47c9-9f42-e0386b3cb75a",
+        "text": "樣本第 1 筆（1 小時、0 張）輸出拍攝費 3,000 元、修圖費 0 元、封頂前總額 3,000 元、應收總額 3,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆的拍攝費、修圖費及封頂前後總額均符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 拍攝 1 小時，修圖 0 張  \n   - 拍攝費：3,000 元\n   - 修圖費：0 元\n   - 封頂前總額：3,000 元\n   - 封頂後應收總額：3,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "74d88a1a-9024-4cff-986f-8ba6bdc165f3",
+        "text": "樣本第 2 筆（2 小時、20 張）輸出拍攝費 6,000 元、修圖費 3,000 元、封頂前總額 9,000 元、應收總額 9,000 元，正確處理兩個計價級距的起點邊界。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆在 2 小時、20 張的級距邊界，四項金額均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 拍攝 2 小時，修圖 20 張  \n   - 拍攝費：6,000 元\n   - 修圖費：3,000 元\n   - 封頂前總額：9,000 元\n   - 封頂後應收總額：9,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e8606f1a-16fe-4500-a26e-37188a2fb49a",
+        "text": "樣本第 3 筆（3 小時、21 張）輸出拍攝費 8,000 元、修圖費 3,100 元、封頂前總額 11,100 元、應收總額 11,100 元，正確計入第 3 小時及第 21 張的較低單價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆列出的拍攝費、修圖費及兩種總額，均符合第 3 小時與第 21 張的計價結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 拍攝 3 小時，修圖 21 張  \n   - 拍攝費：8,000 元\n   - 修圖費：3,100 元\n   - 封頂前總額：11,100 元\n   - 封頂後應收總額：11,100 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "67adf6b7-b0f9-4545-b74a-7eb60abf73b2",
+        "text": "樣本第 4 筆（3 小時、30 張）輸出拍攝費 8,000 元、修圖費 4,000 元、封頂前總額 12,000 元、應收總額 12,000 元；總額恰好等於上限時不多收也不改變金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆各項金額正確，封頂前總額恰為 12,000 元，應收額未改變。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 拍攝 3 小時，修圖 30 張  \n   - 拍攝費：8,000 元\n   - 修圖費：4,000 元\n   - 封頂前總額：12,000 元\n   - 封頂後應收總額：12,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2c160439-52a2-4e25-b772-93de7f590c96",
+        "text": "樣本第 5 筆（4 小時、30 張）輸出拍攝費 10,000 元、修圖費 4,000 元、封頂前總額 14,000 元、應收總額 12,000 元；超過上限時只收 12,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆各項費用與封頂前總額正確，14,000 元依上限調整為應收 12,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5. 拍攝 4 小時，修圖 30 張  \n   - 拍攝費：10,000 元\n   - 修圖費：4,000 元\n   - 封頂前總額：14,000 元\n   - 封頂後應收總額：12,000 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1542 input and 572 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -3424,6 +3424,168 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/agents/{name}/spend-cap:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      operationId: setPlatformAgentSpendCap
+      summary: Set or clear one agent's daily spend cap (02:OPS-011)
+      description: |
+        Operator only. A number replaces the cap the agent is defined with; null
+        returns it to that default. The next run reads the new cap before its key
+        is issued; a run already in progress keeps the cap it started with. Writes
+        the change and its audit event, with the cap before and after, in one
+        transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [daily_spend_cap_usd_micros, note]
+              properties:
+                daily_spend_cap_usd_micros:
+                  type: [integer, "null"]
+                  format: int64
+                  minimum: 1
+                  maximum: 5000000
+                  description: Micro-dollars a day, at most five dollars; null returns to the defined cap.
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why, in the operator's own words. Whitespace does not satisfy it.
+      responses:
+        "200":
+          description: The agent as it now stands.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformAgent" }
+        "400":
+          description: Body is not JSON, the cap is missing, not a whole number or out of range, or `note` is blank or over 1000 bytes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator, or no agent has this name.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/settings:
+    get:
+      operationId: getPlatformSettings
+      summary: Platform settings an operator can change (02:OPS-011)
+      description: |
+        Operator only. Each setting shows its current value and, once an operator
+        has changed it, who did, when and why. A setting nobody has changed is at
+        its default.
+      responses:
+        "200":
+          description: Every operator-set platform setting.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformSettings" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/settings/runs:
+    get:
+      operationId: getRunSettings
+      summary: Run settings an operator can change (GEN-014)
+      description: |
+        Operator only. How many answered rounds one conversation may hold: a run
+        that asks, the run that continues it, and so on. A setting nobody has
+        changed is at its default.
+      responses:
+        "200":
+          description: Every operator-set run setting.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunSettings" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/settings/runs/continuation-rounds:
+    put:
+      operationId: setContinuationRounds
+      summary: Set how many answered rounds a conversation may hold (GEN-014)
+      description: |
+        Operator only. The next continuation reads the new value; conversations
+        already past it keep their runs but cannot add another round. Writes the
+        change and its audit event in one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rounds, note]
+              properties:
+                rounds: { type: integer, minimum: 1, maximum: 10 }
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why, in the operator's own words. Whitespace does not satisfy it.
+      responses:
+        "200":
+          description: The settings as they now stand.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunSettings" }
+        "400":
+          description: Body is not JSON, `rounds` is missing or outside 1–10, or `note` is blank or over 1000 bytes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/settings/judge-panel:
+    put:
+      operationId: setJudgePanel
+      summary: Switch the judge panel on or off (02:EVAL-002)
+      description: |
+        Operator only. On, every evaluation is judged by three independent calls
+        and each criterion takes the strict majority; judging then costs about
+        three times as much. The next evaluation reads the new value. Writes the
+        change and its audit event in one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled, note]
+              properties:
+                enabled: { type: boolean }
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why, in the operator's own words. Whitespace does not satisfy it.
+      responses:
+        "200":
+          description: The settings as they now stand.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformSettings" }
+        "400":
+          description: Body is not JSON, `enabled` is missing, or `note` is blank or over 1000 bytes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/agents/brake:
     put:
       operationId: engagePlatformAgentBrake
@@ -4840,6 +5002,255 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /runs/{id}/continuations:
+    post:
+      operationId: continueRun
+      summary: Answer the questions a run ended with and start the run that continues it (GEN-014)
+      description: |
+        The run must have succeeded by asking the person, and the trace summary
+        lists its questions. One answer per question, in the same order. A new
+        run starts on the same skill version with a new test case snapshot whose
+        prompt is the asking run's prompt followed by every question and answer;
+        the criteria, files and rubric are the asking run's. Both runs stay
+        immutable, and the link between them is recorded once: answering the
+        same questions twice is refused. The new run is admitted and charged
+        like any run, and a conversation may hold only as many answered rounds
+        as the operator setting allows.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answers]
+              properties:
+                answers:
+                  type: array
+                  minItems: 1
+                  maxItems: 3
+                  items: { type: string, minLength: 1, maxLength: 2000 }
+      responses:
+        "201":
+          description: The continuing run, queued.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+        "400":
+          description: Body is not JSON, or the answers do not match the questions one to one.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's run.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The run did not end by asking, or its questions were already answered.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: |
+            Refused like any run (quota, credit, concurrency, scan, dispatch), or
+            the conversation reached its answered-round limit, or the prompt with
+            every answer would exceed the prompt length limit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/evaluation-batches:
+    post:
+      operationId: createEvaluationBatch
+      summary: Run a set of test cases against one skill version, each several times (EVAL-014)
+      description: |
+        Every test case must already have its current run permissions confirmed;
+        the batch keeps each confirmed summary and starts the runs one after
+        another as the workspace's run slot frees. Each run is admitted and
+        charged like any run. A refusal that waiting fixes (a busy slot, a halted
+        dispatch, a scan not yet available) makes the batch wait; any other
+        refusal stops it.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [skill_version_id, test_case_ids, trials]
+              properties:
+                skill_version_id: { type: string, format: uuid }
+                test_case_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 50
+                  uniqueItems: true
+                  items: { type: string, format: uuid }
+                trials: { type: integer, minimum: 1, maximum: 10 }
+      responses:
+        "201":
+          description: The batch, with its first run started when a slot was free.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EvaluationBatch" }
+        "400":
+          description: Body is not JSON, or the test cases or trials are outside their limits.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The skill, version or a test case is not the caller's, or they do not belong together.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Some test cases need their run permissions confirmed first; `unconfirmed_test_case_ids` lists them.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error, unconfirmed_test_case_ids]
+                properties:
+                  error: { type: string }
+                  unconfirmed_test_case_ids:
+                    type: array
+                    items: { type: string, format: uuid }
+    get:
+      operationId: listEvaluationBatches
+      summary: The skill's evaluation batches, newest first (EVAL-014)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Up to 50 batches.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [batches]
+                properties:
+                  batches:
+                    type: array
+                    items: { $ref: "#/components/schemas/EvaluationBatch" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/evaluation-batches/{batchId}:
+    get:
+      operationId: getEvaluationBatchReport
+      summary: How often each test case passed across its trials (EVAL-014)
+      description: |
+        A trial passes when the evaluation of its whole conversation is `met`.
+        Only met, partially met and not met count as judged; a trial still
+        running, awaiting an answer, undetermined or not evaluated is shown but
+        left out of every rate.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: batchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The report.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EvaluationBatchReport" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's batch, or not this skill's.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/evaluation-batches/{batchId}/comparison:
+    get:
+      operationId: compareEvaluationBatches
+      summary: This batch against another of the same skill, test case by test case (EVAL-014)
+      description: |
+        Each test case judged in both batches is one pair; its difference is
+        this batch's pass rate on that test case minus the other's. The result
+        is the mean difference with a 95% interval from the paired standard
+        error, so test cases that are hard for both versions do not widen it.
+        Test cases judged in only one batch are counted as unpaired and left
+        out. The interval needs at least two pairs.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: batchId
+          in: path
+          required: true
+          description: The candidate batch.
+          schema: { type: string, format: uuid }
+        - name: against
+          in: query
+          required: true
+          description: The baseline batch.
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The paired comparison.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [baseline, candidate, paired, unpaired, candidate_better, baseline_better, tied]
+                properties:
+                  baseline: { $ref: "#/components/schemas/EvaluationBatch" }
+                  candidate: { $ref: "#/components/schemas/EvaluationBatch" }
+                  paired: { type: integer }
+                  unpaired: { type: integer }
+                  difference: { type: number, description: Mean of candidate minus baseline pass rate per test case. }
+                  difference_95:
+                    type: object
+                    required: [low, high]
+                    properties:
+                      low: { type: number }
+                      high: { type: number }
+                  candidate_better: { type: integer }
+                  baseline_better: { type: integer }
+                  tied: { type: integer }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Either batch is not the caller's or not this skill's, or `against` is missing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /runs/{id}/trace:
     get:
       operationId: getRunTrace
@@ -4919,6 +5330,33 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Not the caller's run. Existence is private (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /evaluation/check-kinds:
+    get:
+      operationId: listCheckKinds
+      summary: Every node a criterion's check tree may use (EVAL-014)
+      description: |
+        The palette an editor builds from: each kind's label, whether it is a
+        grader or a composite, and how many values and children it takes.
+        Adding a kind on the platform adds it here with no client change.
+      responses:
+        "200":
+          description: The kinds, in the order an editor lists them.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [kinds, max_nodes, max_depth]
+                properties:
+                  kinds:
+                    type: array
+                    items: { $ref: "#/components/schemas/CheckKind" }
+                  max_nodes: { type: integer }
+                  max_depth: { type: integer }
+        "401":
+          description: No valid session.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -5611,6 +6049,7 @@ paths:
                     a client that drops the label makes that impossible. Editing
                     the text later re-labels it `user`, because by then the words
                     are theirs.
+                check: { $ref: "#/components/schemas/CriterionCheck" }
 
       responses:
         "201":
@@ -6762,7 +7201,7 @@ components:
           enum: [ok]
     PlatformAgent:
       type: object
-      required: [name, purpose, model_role, daily_spend_cap_usd_micros, tools, actions, enabled]
+      required: [name, purpose, model_role, daily_spend_cap_usd_micros, default_daily_spend_cap_usd_micros, daily_spend_cap_overridden, tools, actions, enabled]
       properties:
         name: { type: string }
         purpose: { type: string }
@@ -6773,6 +7212,13 @@ components:
           type: integer
           format: int64
           description: The most this agent may spend in a day, checked before each run's key is issued.
+        default_daily_spend_cap_usd_micros:
+          type: integer
+          format: int64
+          description: The cap the agent is defined with, which applies while no operator has set one.
+        daily_spend_cap_overridden:
+          type: boolean
+          description: True while an operator-set cap replaces the defined one.
         tools:
           type: array
           items: { type: string }
@@ -6786,6 +7232,103 @@ components:
           type: string
           format: uuid
           description: The operator who last enabled or disabled the agent; absent until somebody has.
+    PlatformSettings:
+      type: object
+      required: [judge_panel]
+      properties:
+        judge_panel:
+          type: object
+          required: [enabled]
+          properties:
+            enabled: { type: boolean }
+            reason: { type: string, description: Present once an operator has changed the setting. }
+            set_by_user_id: { type: string, format: uuid }
+            set_at: { type: string, format: date-time }
+    RunSettings:
+      type: object
+      required: [continuation_rounds]
+      properties:
+        continuation_rounds:
+          type: object
+          required: [rounds, min, max]
+          properties:
+            rounds: { type: integer, description: Answered rounds one conversation may hold. }
+            min: { type: integer }
+            max: { type: integer }
+            reason: { type: string, description: Present once an operator has changed the setting. }
+            set_by_user_id: { type: string, format: uuid }
+            set_at: { type: string, format: date-time }
+    EvaluationBatch:
+      type: object
+      required: [id, skill_id, skill_version_id, trials, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        skill_id: { type: string, format: uuid }
+        skill_version_id: { type: string, format: uuid }
+        trials: { type: integer, minimum: 1, maximum: 10 }
+        status:
+          type: string
+          enum: [launching, launched, stopped]
+          description: |
+            `launching` while some trials have not started, `launched` once every
+            trial has its run, `stopped` when a run was refused for a reason that
+            waiting does not fix.
+        stop_reason:
+          type: string
+          description: The run refusal reason that stopped the batch; present only when stopped.
+        created_at: { type: string, format: date-time }
+    EvaluationBatchTrial:
+      type: object
+      required: [trial, outcome]
+      properties:
+        trial: { type: integer, minimum: 1 }
+        run_id: { type: string, format: uuid, description: Absent until the batch starts this trial. }
+        end_run_id:
+          type: string
+          format: uuid
+          description: The last run of the conversation this trial started; the same as run_id when nobody answered a question.
+        outcome:
+          type: string
+          enum: [pending, running, awaiting_answer, met, partially_met, not_met, undetermined, not_evaluated]
+    EvaluationBatchTestCase:
+      type: object
+      required: [test_case_id, trials, passed, judged, prompt_varied_across]
+      properties:
+        test_case_id: { type: string, format: uuid }
+        trials:
+          type: array
+          items: { $ref: "#/components/schemas/EvaluationBatchTrial" }
+        passed: { type: integer, description: Trials whose conversation met every criterion. }
+        judged: { type: integer, description: "Trials judged met, partially met or not met." }
+        pass_at_k:
+          type: boolean
+          description: At least one trial passed; absent until that is known.
+        pass_all_k:
+          type: boolean
+          description: Every trial passed; absent until every trial is judged or one has failed.
+        prompt_varied_across:
+          type: boolean
+          description: The test case was edited while the batch ran, so its trials did not all see the same task.
+    EvaluationBatchReport:
+      type: object
+      required: [batch, test_cases, passed, judged, test_cases_all_passed, test_cases_decided]
+      properties:
+        batch: { $ref: "#/components/schemas/EvaluationBatch" }
+        test_cases:
+          type: array
+          items: { $ref: "#/components/schemas/EvaluationBatchTestCase" }
+        passed: { type: integer }
+        judged: { type: integer }
+        pass_rate: { type: number, description: passed / judged; absent while nothing is judged. }
+        pass_rate_95:
+          type: object
+          description: Wilson score interval at 95% around pass_rate.
+          required: [low, high]
+          properties:
+            low: { type: number }
+            high: { type: number }
+        test_cases_all_passed: { type: integer, description: Test cases that passed every trial. }
+        test_cases_decided: { type: integer, description: Test cases whose every-trial result is known. }
     PlatformAgentBrake:
       type: object
       required: [reason, engaged_at]
@@ -7167,6 +7710,22 @@ components:
             restarts at zero on every page load and would report a stalled run as
             having just moved.
         final_output: { type: string }
+        questions:
+          type: array
+          description: |
+            Present only when the run ended by handing questions back to the
+            person (the ask tool). Each entry says what was asked, why it
+            changes the result, and optional choices. Untrusted content —
+            render as inert text.
+          items:
+            type: object
+            required: [question, why]
+            properties:
+              question: { type: string }
+              why: { type: string }
+              options:
+                type: array
+                items: { type: string }
         usage:
           type: object
           properties:
@@ -9405,6 +9964,62 @@ components:
           description: |
             When the user explicitly agreed to this wording. Null means proposed
             but not confirmed. Editing the text clears it.
+        check: { $ref: "#/components/schemas/CriterionCheck" }
+    CriterionCheck:
+      description: |
+        How a criterion is decided, as a tree. A grader node decides from the
+        run's own records (`contains_values`, `asks`, `does_not_ask`) or asks the
+        judge model about the criterion's text (`judge`); a composite node
+        combines its children in sequence, all, any, if or each. The kinds, the
+        number of values and children each takes, and their labels come from
+        GET /evaluation/check-kinds, so a new kind needs no contract change. A
+        criterion without a check goes to the judge. The result is labelled
+        `rule` unless the judge was consulted.
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string, minLength: 1 }
+        values:
+          type: array
+          maxItems: 20
+          items: { type: string, minLength: 1, maxLength: 200 }
+        children:
+          type: array
+          maxItems: 50
+          items: { $ref: "#/components/schemas/CriterionCheck" }
+        at_least:
+          type: integer
+          minimum: 0
+          description: For `each`, how many items must pass; 0 means every item.
+    CheckKind:
+      type: object
+      required: [kind, category, label, description, values, children, at_least]
+      properties:
+        kind: { type: string }
+        category: { type: string, enum: [grader, composite] }
+        label: { type: string }
+        description: { type: string }
+        values:
+          type: object
+          required: [min, max]
+          properties:
+            min: { type: integer }
+            max: { type: integer }
+        children:
+          type: object
+          required: [min, max]
+          properties:
+            min: { type: integer }
+            max: { type: integer }
+        at_least: { type: boolean, description: Whether the kind takes `at_least`. }
+    CheckStep:
+      type: object
+      required: [path, kind, result, reason]
+      properties:
+        path: { type: string, description: "The node's place in the tree: 0 is the root, 0.1 its second child." }
+        kind: { type: string }
+        result: { type: string, enum: [passed, failed, undetermined] }
+        reason: { type: string }
     AcceptanceCriteriaSuggestions:
       description: |
         What the model proposed for one draft (TEST-002). Text and nothing else:
@@ -10367,6 +10982,10 @@ components:
             response has no such field to fill in. `rule` is a deterministic
             check over the platform's own records, `user` is a person's verdict
             recorded over the automated one.
+        steps:
+          type: array
+          description: For a criterion decided by a check tree, every node that ran, children before their parent.
+          items: { $ref: "#/components/schemas/CheckStep" }
         evidence:
           type: array
           items: { $ref: "#/components/schemas/EvidenceRef" }
@@ -11761,6 +12380,12 @@ components:
           type: "string"
           format: "uuid"
           description: "The Test Case Go created from the confirmed acceptance criteria when this candidate was materialized."
+        challenge_test_case_ids:
+          type: "array"
+          items:
+            type: "string"
+            format: "uuid"
+          description: "One Test Case per confirmed challenge case, created alongside test_case_id when this candidate was materialized."
 
     CreationFetch:
       type: "object"
@@ -11791,6 +12416,19 @@ components:
         sha256:
           type: "string"
           description: "The digest of the bytes that were sent. It is what the platform keeps INSTEAD of them; it is not a URL and nothing serves the picture back."
+    CreationChallengeCase:
+      type: "object"
+      additionalProperties: false
+      required: ["name", "prompt", "criteria"]
+      properties:
+        name:
+          type: "string"
+        prompt:
+          type: "string"
+        criteria:
+          type: "array"
+          items:
+            type: "string"
     CreationSnapshot:
       type: "object"
       additionalProperties: false
@@ -11823,6 +12461,12 @@ components:
         sample_input:
           type: "string"
           description: "The example input proposed with the brief and confirmed by the same confirm_brief; it is the prompt of the candidate's Test Case. Empty until proposed."
+        challenge_cases:
+          type: "array"
+          maxItems: 3
+          description: "Inputs the sample does not exercise, written by a second call that sees only the brief, the criteria and the sample; confirmed by the same confirm_brief, each becomes its own Test Case at materialize."
+          items:
+            $ref: "#/components/schemas/CreationChallengeCase"
         brief_confirmed:
           type: "boolean"
         model_changed:

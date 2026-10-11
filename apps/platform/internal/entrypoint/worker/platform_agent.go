@@ -80,7 +80,8 @@ func addCreditConsumers(set *Set, workers *river.Workers, pool *pgxpool.Pool, de
 	addWorker(set, workers, &CreditRecomputeWorker{Svc: creditSvc})
 	addWorker(set, workers, &ProposalExpiryWorker{Svc: &operations.Service{Pool: pool}})
 	if agentRunsAvailable(deps) {
-		runs := wiring.NewAgentRuns(pool, deps.LLM, deps.Gateway, creditSvc, deps.RestoreRate)
+		tools := wiring.AgentTools(pool, deps.RestoreRate, wiring.NewExposureDocket(pool, set.Registry, set.CreationSearch))
+		runs := wiring.NewAgentRuns(pool, deps.LLM, deps.Gateway, creditSvc, tools)
 		addWorker(set, workers, &PlatformAgentRunWorker{Run: runs})
 	}
 }

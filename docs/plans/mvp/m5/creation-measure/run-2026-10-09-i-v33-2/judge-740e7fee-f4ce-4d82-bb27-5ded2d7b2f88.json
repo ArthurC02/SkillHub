@@ -1,0 +1,176 @@
+{
+  "request": {
+    "RunID": "740e7fee-f4ce-4d82-bb27-5ded2d7b2f88",
+    "EvaluationID": "670e1659-901e-4fe9-82ea-ade1845fa986",
+    "Skill": {
+      "Name": "restaurant-order-organizer",
+      "Summary": "將廚房貼上的口語食材叫貨訊息整理成按叫貨單分列的品項表，計算可確認的小計與總額，並標出資料矛盾。當需要整理餐廳食材叫貨單、核對數量或計算叫貨金額時使用。"
+    },
+    "UserPrompt": "叫貨單：洋蔥 8 袋，一袋 120；牛番茄 -3 箱，一箱 700；到貨日 2026-02-30",
+    "Criteria": [
+      {
+        "ID": "a08ed147-7d41-418d-9d4c-b0821f8b54e9",
+        "Text": "指出牛番茄的數量 -3 箱是負數，請使用者確認",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e7d4e34e-dd6e-4ef2-abc7-63112077e92e",
+        "Text": "指出到貨日 2026-02-30 不存在（2 月沒有 30 日），請使用者確認",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "78128f89-8748-4616-b26e-bdb8adc116ed",
+        "Text": "沒有自行把 -3 改成 3 或自選一個日期後繼續計算",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7a26988e-5058-43a2-a64a-1b11703b6f67",
+        "Text": "沒有給出整張叫貨單的總額數字",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "# 食材叫貨單整理\n\n## 叫貨單：未提供（日期：2026-02-30；日期待確認）\n\n| 品項 | 數量 | 單位 | 單價 | 小計 |\n|---|---:|---|---:|---:|\n| 洋蔥 | 8 袋 | 袋 | 120 | 960 |\n| 牛番茄 | -3 箱 | 箱 | 700 | 待確認 |\n\n- 待確認：日期「2026-02-30」不是有效的公曆日期，待確認。\n- 待確認：品項「牛番茄」數量為負數；待確認。\n**叫貨總額：不列（資料待確認或不完整）**\n\n確認待確認項目：本 Skill 無法代為詢問；如有標記項目，請廚房負責人確認。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "22f2b57f-6d8a-4e95-b130-b772f32f2def",
+          "OccurredAt": "2026-10-09T15:39:06.719Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"restaurant-order-organizer\", \"skill_version_id\": \"85427afb-8c78-405a-bf0a-f2e7dd1fd1d2\"}"
+        },
+        {
+          "TraceEventID": "f8090ed7-769b-47ff-bf80-6b7d717f4fc9",
+          "OccurredAt": "2026-10-09T15:39:06.737Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"restaurant-order-organizer\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 18, \"invocation_id\": \"call_4rHuJUsFxqSGN4DiYSw9AA2U\", \"result_summary\": \"Launching skill: restaurant-order-organizer\"}"
+        },
+        {
+          "TraceEventID": "617e06f7-0cc9-410f-aa66-6b7ca668a172",
+          "OccurredAt": "2026-10-09T15:39:11.217Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"# 食材叫貨單整理\\n\\n## 叫貨單：未提供（日期：2026-02-30；日期待確認）\\n\\n| 品項 | 數量 | 單位 | 單價 | 小計 |\\n|---|---:|---|---:|---:|\\n| 洋蔥 | 8 袋 | 袋 | 120 | 960 |\\n| 牛番茄 | -3 箱 | 箱 | 700 | 待確認 |\\n\\n- 待確認：日期「2026-02-30」不是有效的公曆日期，待確認。\\n- 待確認：品項「牛番茄」數量為負數；待確認。\\n**叫貨總額：不列（資料待確認或不完整）**\\n\\n確認待確認項目：本 Skill 無法代為詢問；如有標記項目，請廚房負責人確認。\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "ca728055-a867-4a09-8e6a-0228fed279d6",
+          "OccurredAt": "2026-10-09T15:39:11.217Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/restaurant-order-organizer \u0026\u0026 cat \u003e /tmp/restaurant-order-input.json \u003c\u003c'JSON'\\n{\\\"orders\\\":[{\\\"name\\\":null,\\\"date\\\":\\\"2026-02-30\\\",\\\"items\\\":[{\\\"item\\\":\\\"洋蔥\\\",\\\"quantity\\\":\\\"8\\\",\\\"unit\\\":\\\"袋\\\",\\\"price\\\":\\\"120\\\",\\\"price_unit\\\":null},{\\\"item\\\":\\\"牛番茄\\\",\\\"quantity\\\":\\\"-3\\\",\\\"unit\\\":\\\"箱\\\",\\\"price\\\":\\\"700\\\",\\\"price_unit\\\":null}]}]}\\nJSON\\npython scripts/order_calc.py --input /tmp/restaurant-order-input.json\", \"description\": \"整理叫貨資料並計算可確認金額\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 119, \"invocation_id\": \"call_ud5zNgw6NLVk8tBEPlVjGmxF\", \"result_summary\": \"# 食材叫貨單整理\\n\\n## 叫貨單：未提供（日期：2026-02-30；日期待確認）\\n\\n| 品項 | 數量 | 單位 | 單價 | 小計 |\\n|---|---:|---|---:|---:|\\n| 洋蔥 | 8 袋 | 袋 | 120 | 960 |\\n| 牛番茄 | -3 箱 | 箱 | 700 | 待確認 |\\n\\n- 待確認：日期「2026-02-30」不是有效的公曆日期，待確認。\\n- 待確認：品項「牛番茄」數量為負數；待確認。\\n**叫貨總額：不列（資料待確認或不完整）**\\n\\n確認待確認項目：本 Skill 無法代為詢問；如有標記項目，請廚房負責人確認。\"}"
+        },
+        {
+          "TraceEventID": "7f669a1f-11a6-4fbd-a8d6-cb2c5c7dba25",
+          "OccurredAt": "2026-10-09T15:39:13.646Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"# 食材叫貨單整理\\n\\n## 叫貨單：未提供（日期：2026-02-30；日期待確認）\\n\\n| 品項 | 數量 | 單位 | 單價 | 小計 |\\n|---|---:|---|---:|---:|\\n| 洋蔥 | 8 袋 | 袋 | 120 | 960 |\\n| 牛番茄 | -3 箱 | 箱 | 700 | 待確認 |\\n\\n- 待確認：日期「2026-02-30」不是有效的公曆日期，待確認。\\n- 待確認：品項「牛番茄」數量為負數；待確認。\\n**叫貨總額：不列（資料待確認或不完整）**\\n\\n確認待確認項目：本 Skill 無法代為詢問；如有標記項目，請廚房負責人確認。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "6b5ce966-2cc6-483e-a361-a8335625b9d8",
+          "OccurredAt": "2026-10-09T15:39:13.973Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"# 食材叫貨單整理\\n\\n## 叫貨單：未提供（日期：2026-02-30；日期待確認）\\n\\n| 品項 | 數量 | 單位 | 單價 | 小計 |\\n|---|---:|---|---:|---:|\\n| 洋蔥 | 8 袋 | 袋 | 120 | 960 |\\n| 牛番茄 | -3 箱 | 箱 | 700 | 待確認 |\\n\\n- 待確認：日期「2026-02-30」不是有效的公曆日期，待確認。\\n- 待確認：品項「牛番茄」數量為負數；待確認。\\n**叫貨總額：不列（資料待確認或不完整）**\\n\\n確認待確認項目：本 Skill 無法代為詢問；如有標記項目，請廚房負責人確認。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "b5cb26bf-e835-464e-81b1-31416239e987",
+          "OccurredAt": "2026-10-09T15:39:18.052Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.00325495, \"cost_source\": \"gateway\", \"duration_ms\": 14596, \"input_tokens\": 1518, \"token_source\": \"result\", \"output_tokens\": 585, \"cache_read_input_tokens\": 35385, \"cache_write_input_tokens\": 19232}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "a08ed147-7d41-418d-9d4c-b0821f8b54e9",
+        "Result": "passed",
+        "Reason": "指出牛番茄的 -3 箱數量為負數，並要求確認待確認項目。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 牛番茄 | -3 箱 | 箱 | 700 | 待確認 |"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 待確認：品項「牛番茄」數量為負數；待確認。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "請廚房負責人確認。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e7d4e34e-dd6e-4ef2-abc7-63112077e92e",
+        "Result": "passed",
+        "Reason": "指出 2026-02-30 不是有效日期，並要求確認；這涵蓋了 2 月沒有 30 日的錯誤。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 待確認：日期「2026-02-30」不是有效的公曆日期，待確認。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "請廚房負責人確認。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "78128f89-8748-4616-b26e-bdb8adc116ed",
+        "Result": "passed",
+        "Reason": "保留 -3 箱與原日期，將牛番茄小計標為待確認；沒有擅自修正後計算。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 叫貨單：未提供（日期：2026-02-30；日期待確認）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 牛番茄 | -3 箱 | 箱 | 700 | 待確認 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "7a26988e-5058-43a2-a64a-1b11703b6f67",
+        "Result": "passed",
+        "Reason": "未給出整張叫貨單的總額數字，明確註明總額不列。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**叫貨總額：不列（資料待確認或不完整）**"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "四項標準均已達成：回覆標示負數數量及無效日期待確認，未擅自修正資料，也未列出整張叫貨單的總額數字。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3406,
+      "CompletionTokens": 741,
+      "CostUSD": 0.013388900000000002,
+      "CostReported": true
+    }
+  }
+}

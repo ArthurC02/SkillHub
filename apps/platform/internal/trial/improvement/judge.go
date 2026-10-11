@@ -37,28 +37,39 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 
 	callCtx, cancel := context.WithTimeout(ctx, judgeTimeout)
 	defer cancel()
-	resp, err := s.Judge.JudgeRun(callCtx, req)
+	answers, err := s.judgeAll(callCtx, req)
 	if err != nil {
 		return verdict{}, err
 	}
-	results := s.merge(m, resp, digest, evidenceCuts{
-		batch:         batchWideCut(truncation),
-		trimmedEvents: trimmedEvents,
-	})
+	cuts := evidenceCuts{batch: batchWideCut(truncation), trimmedEvents: trimmedEvents}
+	perMember := make([][]CriterionResult, len(answers))
+	for i, answer := range answers {
+		perMember[i] = s.merge(m, answer, digest, cuts)
+	}
+	results, split := vote(perMember)
 	v := verdict{
 		overall:          overallFrom(results),
-		summary:          resp.Summary,
+		summary:          answers[0].Summary,
 		results:          results,
 		evidenceComplete: true,
-		model:            orUnknown(resp.Model),
-		promptVersion:    orUnknown(resp.PromptVersion),
+		model:            panelModel(answers),
+		promptVersion:    orUnknown(answers[0].PromptVersion),
 	}
 
 	if req.Rubric != nil && m.rubric != nil {
 		v.rubricVersion = m.rubric.Version
 	}
-	v.costUSD = resp.Usage.ReportedCostUSD()
-	v.usage = resp.Usage
+	v.usage = panelUsage(answers)
+	v.costUSD = v.usage.ReportedCostUSD()
+
+	if len(split) > 0 {
+		v.findings = append(v.findings, Finding{
+			Category: CategoryEffect, Severity: SeverityWarning,
+			Message: "the judges did not agree on " + strings.Join(split, ", ") +
+				"; those criteria are undetermined rather than decided by one judge",
+			Evidence: []EvidenceRef{},
+		})
+	}
 
 	if len(dropped) > 0 {
 		v.findings = append(v.findings, Finding{

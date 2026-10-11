@@ -1,0 +1,151 @@
+{
+  "round": 0,
+  "sample_input": "幫我整理出貨單：出貨日 2026-02-30，250ml 蜂蜜 6 瓶，蜂蠟蠟燭 -3 支。",
+  "acceptance_criteria": [
+    {
+      "text": "指出 2026-02-30 這個日期不存在並請使用者確認"
+    },
+    {
+      "text": "指出蜂蠟蠟燭 -3 支是負數、不合理並請使用者確認"
+    },
+    {
+      "text": "沒有自行把日期改成 2 月 28 日、3 月 2 日等其他日期，也沒有自行把數量改成 3 支"
+    },
+    {
+      "text": "沒有把含蠟燭的訂單總額（如 810 元或 1350 元）當作確定結果輸出"
+    },
+    {
+      "text": "若有列出 250ml 蜂蜜 6 瓶的小計，數字須為 1080 元"
+    }
+  ],
+  "final_output": "### 訂單：未提供\n出貨日期：2026-10-09\n假設：缺少出貨日期，採用 2026-10-09；可用 --today 更改。\n| 品項 | 數量 | 單價（元） | 小計（元） |\n|---|---:|---:|---:|\n| 蜂蠟蠟燭 | -3 支 | 90 | 不計 |\n需你確認：蜂蠟蠟燭 數量為負數（-3），請你確認數量。\n訂單總額：不計（有待確認資料）。\n\n另有以下原文資料需確認，未計入上方出貨單：\n\n- **出貨日：2026-02-30**：此日期無效，且腳本未辨識「出貨日」欄位，所以出貨單暫採執行日 **2026-10-09**。請提供有效的出貨日期。\n- **250ml 蜂蜜 6 瓶**：此寫法未被腳本辨識，因而未列入出貨單。請確認品項與數量；可改寫為「蜂蜜 250ml 6 瓶」以便整理。\n- **蜂蠟蠟燭 -3 支**：請確認數量是否正確。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fc165bce-7c29-4603-8fab-1f205bcc557c",
+    "run_id": "0c5a7e61-578f-49b1-82ac-6ee60999cac5",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆有要求確認無效日期與負數數量，也未把待確認訂單的總額當作定案。不過，出貨單仍自行採用了 2026-10-09 作為出貨日期；蜂蜜品項未被納入，因此沒有蜂蜜小計可核對。",
+    "criterion_results": [
+      {
+        "criterion_id": "df5f20c6-6db0-481a-bd72-aaa7d6a66a88",
+        "text": "指出 2026-02-30 這個日期不存在並請使用者確認",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出 2026-02-30 是無效日期，並請使用者提供有效的出貨日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**出貨日：2026-02-30**：此日期無效，且腳本未辨識「出貨日」欄位，所以出貨單暫採執行日 **2026-10-09**。請提供有效的出貨日期。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0aaa0a33-73e1-4df9-9c6d-0f4e86634250",
+        "text": "指出蜂蠟蠟燭 -3 支是負數、不合理並請使用者確認",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出蠟燭數量 -3 為負數，並請使用者確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "需你確認：蜂蠟蠟燭 數量為負數（-3），請你確認數量。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dfda547b-30ae-4b37-8034-e19663f094d8",
+        "text": "沒有自行把日期改成 2 月 28 日、3 月 2 日等其他日期，也沒有自行把數量改成 3 支",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖未把蠟燭數量改成 3 支，仍在出貨單中自行以 2026-10-09 取代使用者提供的出貨日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "出貨日期：2026-10-09",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "所以出貨單暫採執行日 **2026-10-09**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "99cab0b3-314d-482b-b9a3-affe5f1f7354",
+        "text": "沒有把含蠟燭的訂單總額（如 810 元或 1350 元）當作確定結果輸出",
+        "result": "passed",
+        "source": "model",
+        "reason": "未將含蠟燭的訂單總額列為確定金額，而是標示不計、待確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單總額：不計（有待確認資料）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6d42e87b-bfe7-4b96-b86f-276b1f55ded7",
+        "text": "若有列出 250ml 蜂蜜 6 瓶的小計，數字須為 1080 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "未列出 250ml 蜂蜜 6 瓶的小計，因此沒有列出與 1080 元不符的小計；但蜂蜜也未納入出貨單。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**250ml 蜂蜜 6 瓶**：此寫法未被腳本辨識，因而未列入出貨單。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1525 input and 2156 output tokens on skillhub-run; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

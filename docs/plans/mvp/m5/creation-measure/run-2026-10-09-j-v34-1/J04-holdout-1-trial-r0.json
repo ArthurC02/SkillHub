@@ -1,0 +1,134 @@
+{
+  "round": 0,
+  "sample_input": "我要印 30 個杯子，不急，報價多少？",
+  "acceptance_criteria": [
+    {
+      "text": "適用 30 個以上的單價 135 元"
+    },
+    {
+      "text": "報價為 4050 元（30 × 135）"
+    },
+    {
+      "text": "沒有加收急件加成"
+    },
+    {
+      "text": "直接給出報價，沒有反問使用者任何設定"
+    }
+  ],
+  "final_output": "30 個、非急件：單價 NT$135，商品小計 NT$4,050，急件加成 NT$0，**總價 NT$4,050**。\n\n金額以整數新台幣元呈現；若有零頭則四捨五入。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c9f02eee-0e46-4afe-9487-bd5d7501261d",
+    "run_id": "78178830-e69f-46a1-a32e-d91df8d52524",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成：30 個杯子以每個 NT$135 計算，非急件不加價，直接報出總價 NT$4,050。",
+    "criterion_results": [
+      {
+        "criterion_id": "825be617-2f42-4f55-9e4c-7f70d83129a7",
+        "text": "適用 30 個以上的單價 135 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "30 個杯子的報價採用單價 NT$135。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "30 個、非急件：單價 NT$135",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2871b1ac-79b3-4dfc-8dec-1508a4fb6026",
+        "text": "報價為 4050 元（30 × 135）",
+        "result": "passed",
+        "source": "model",
+        "reason": "報價總價為 NT$4,050，符合 30 × 135。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**總價 NT$4,050**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fb0d2992-6989-4319-b6af-00b6a6211719",
+        "text": "沒有加收急件加成",
+        "result": "passed",
+        "source": "model",
+        "reason": "急件加成列為 NT$0，沒有加收。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "急件加成 NT$0",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "43a81cd7-99f7-4f08-a1e1-585e63a0ce29",
+        "text": "直接給出報價，沒有反問使用者任何設定",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆直接列出單價與總價，沒有反問使用者設定。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "30 個、非急件：單價 NT$135，商品小計 NT$4,050，急件加成 NT$0，**總價 NT$4,050**。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "金額以整數新台幣元呈現；若有零頭則四捨五入。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1508 input and 206 output tokens on skillhub-run; reported cost $0.0030 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

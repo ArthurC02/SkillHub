@@ -1,0 +1,33 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "run-preflight-facts-citation-follows-the-held-facts",
+  "status": "draft",
+  "intent": "Keep the reviewed interaction in which Run reads Registry-owned facts at preflight pointing at the code that performs it after run creation began handing preflight the facts it read before its transaction.",
+  "actor": "coding-agent",
+  "observable_outcome": "An Agent asking how Run and Registry collaborate receives the interaction with a citation that verifies.",
+  "acceptance_criteria": [
+    {
+      "id": "citation-follows-the-held-facts",
+      "statement": "The interaction cites the preflight path that refuses without a Registry reader and reads Version facts through it, at the lines it now occupies."
+    },
+    {
+      "id": "the-interaction-still-holds",
+      "statement": "Preflight reads Version facts only through the Registry reader and refuses to answer when no reader was injected."
+    },
+    {
+      "id": "run-creation-reads-before-its-lock",
+      "statement": "Run creation reads the package and the provider answers before its transaction and hands them to preflight, so nothing is fetched while the test case is locked."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/trial/execution/preflight.go"
+  ]
+}

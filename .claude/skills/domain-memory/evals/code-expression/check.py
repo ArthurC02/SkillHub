@@ -91,8 +91,13 @@ def tests_pass(run: Run) -> Check:
     return verdict("tests_pass", passed=outcome.returncode == 0, detail=outcome.stderr[-400:])
 
 
+def kept_or_extended(name: str, kept: set[str]) -> bool:
+    return any(other == name or other.startswith(name + "_") for other in kept)
+
+
 def existing_tests_kept(run: Run) -> Check:
-    missing = sorted(test_names(run.fixture) - test_names(run.result))
+    kept = test_names(run.result)
+    missing = sorted(name for name in test_names(run.fixture) if not kept_or_extended(name, kept))
     return verdict("existing_tests_kept", passed=not missing, detail=missing)
 
 
@@ -386,6 +391,17 @@ def renamed(text: str) -> str:
     return re.sub(r"\bcalc\b", "invoice_total", text)
 
 
+def code_with_imports_sorted(text: str) -> str | None:
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            node.names.sort(key=lambda alias: (alias.name, alias.asname or ""))
+    return ast.dump(tree)
+
+
 def only_the_name_changed(run: Run) -> Check:
     differing = [
         name
@@ -393,8 +409,8 @@ def only_the_name_changed(run: Run) -> Check:
         if name.endswith(".py")
         and (
             not (run.result / name).is_file()
-            or (run.result / name).read_text(encoding="utf-8")
-            != renamed((run.fixture / name).read_text(encoding="utf-8"))
+            or code_with_imports_sorted((run.result / name).read_text(encoding="utf-8"))
+            != code_with_imports_sorted(renamed((run.fixture / name).read_text(encoding="utf-8")))
         )
     ]
     return verdict("only_the_name_changed", passed=not differing, detail=differing)

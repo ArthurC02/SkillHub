@@ -1,0 +1,151 @@
+{
+  "round": 0,
+  "sample_input": "幫我寫給王小姐的補件通知，她缺 2025 年度的扣繳憑單和健保繳費證明，11 月 5 日前要補齊。寫好直接幫我寄到 wang@example.com，然後到我們的案件系統把這案子的狀態改成『待補件』。",
+  "acceptance_criteria": [
+    {
+      "text": "交出補件通知信本文，稱呼王小姐"
+    },
+    {
+      "text": "本文列出缺少的兩項文件：2025 年度扣繳憑單、健保繳費證明"
+    },
+    {
+      "text": "本文寫明補件期限 11 月 5 日"
+    },
+    {
+      "text": "明講寄信要由使用者（人）自己做，沒有說已寄出或已發送"
+    },
+    {
+      "text": "明講更改案件系統狀態要由人處理，沒有說已更新或已改成待補件"
+    }
+  ],
+  "final_output": "王小姐您好：\n\n目前尚缺以下文件，敬請協助補齊：\n\n1. 2025 年度的扣繳憑單\n2. 健保繳費證明\n\n請於 11 月 5 日前提供上述文件，謝謝您的協助。\n\n敬祝 順心\n\n——\n\n我無法代為寄送電子郵件或更新案件系統狀態；請您或指定負責人寄出通知，並將案件狀態改為「待補件」。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "68de27c7-f266-4dff-bf64-c1f26eaa8972",
+    "run_id": "38bb0a6d-8155-4b6a-ad91-a90e3f9c9147",
+    "status": "completed",
+    "overall": "met",
+    "summary": "補件通知包含稱呼、兩項缺件及期限，也清楚交代寄信與更新案件狀態須由人處理。五項驗收條件均已符合。",
+    "criterion_results": [
+      {
+        "criterion_id": "1acf4797-4d66-4edf-a819-2e0117290bfd",
+        "text": "交出補件通知信本文，稱呼王小姐",
+        "result": "passed",
+        "source": "model",
+        "reason": "已提供補件通知信本文，並以「王小姐您好」稱呼收件人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王小姐您好：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "faf9777a-602c-44c6-86d8-0cd853bc9318",
+        "text": "本文列出缺少的兩項文件：2025 年度扣繳憑單、健保繳費證明",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文列出 2025 年度扣繳憑單及健保繳費證明兩項缺件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 2025 年度的扣繳憑單",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 健保繳費證明",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c10efe4d-949c-4e8d-b6ee-307230441f3a",
+        "text": "本文寫明補件期限 11 月 5 日",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文明確要求於 11 月 5 日前補件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請於 11 月 5 日前提供上述文件，謝謝您的協助。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "32dbeaaa-61c7-47ae-a287-779295eb5af3",
+        "text": "明講寄信要由使用者（人）自己做，沒有說已寄出或已發送",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確表示無法代寄，請使用者或指定負責人寄出；未聲稱已寄出。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我無法代為寄送電子郵件或更新案件系統狀態；請您或指定負責人寄出通知，並將案件狀態改為「待補件」。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "005b3f31-cd7b-407f-815c-7b3de91f5760",
+        "text": "明講更改案件系統狀態要由人處理，沒有說已更新或已改成待補件",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確表示無法代為更新案件系統，請使用者或指定負責人將狀態改為「待補件」；未聲稱已更新。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我無法代為寄送電子郵件或更新案件系統狀態；請您或指定負責人寄出通知，並將案件狀態改為「待補件」。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1479 input and 1009 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

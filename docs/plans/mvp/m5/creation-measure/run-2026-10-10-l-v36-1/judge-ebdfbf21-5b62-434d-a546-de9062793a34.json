@@ -1,0 +1,302 @@
+{
+  "request": {
+    "RunID": "ebdfbf21-5b62-434d-a546-de9062793a34",
+    "EvaluationID": "3a128ce6-9871-43d5-85e2-b0294708f6f8",
+    "Skill": {
+      "Name": "honey-wholesale-shipment-orders",
+      "Summary": "將貼上的蜂蜜批發訂購訊息整理為分筆出貨單並按固定價目計算小計與總額；當使用者提供訂單文字、需要檢查資料矛盾或缺少出貨日期時使用。"
+    },
+    "UserPrompt": "請將以下五筆訂單各自整理成含出貨日期的出貨單，按指定價目計算並標出需確認之處：\n\n訂單：晴日商行\n出貨日期：2026-10-12\n蜂蜜 250ml：2 瓶\n蜂蜜 500ml：1 瓶\n蜂蠟蠟燭：3 支\n\n訂單：山野蜂坊\n蜂蜜 250ml：1 瓶\n\n訂單：河岸雜貨\n出貨日期：2026-02-30\n蜂蜜 500ml：2 瓶\n\n訂單：松林食品\n出貨日期：2026-10-14\n蜂蜜 250ml：2 瓶\n蜂蜜 250ml：3 瓶\n\n訂單：微光選物\n出貨日期：2026-10-15\n蜂蜜 500ml：-1 瓶",
+    "Criteria": [
+      {
+        "ID": "980ba69d-960a-4ec7-9373-3b31aa9a11ea",
+        "Text": "訂單「晴日商行」須列出 250ml 2 瓶小計 360 元、500ml 1 瓶小計 320 元、蠟燭 3 支小計 270 元，訂單總額為 950 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "f6da8ce9-3021-453c-bc54-1e2c221e3783",
+        "Text": "訂單「山野蜂坊」未提供出貨日期時，須採用本次試跑日期 2026-10-09，並計算 250ml 1 瓶總額 180 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2f501e16-1fb2-4f42-a85a-07225eaaf419",
+        "Text": "訂單「河岸雜貨」的 2026-02-30 須被指出為不存在的日期並要求確認；不得替它改日期或輸出依賴該訂單資料的總額。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "cfa99648-a4dd-4461-9eba-3b85acfcf46d",
+        "Text": "訂單「松林食品」同一 250ml 品項列出 2 瓶與 3 瓶時，須指出數量矛盾並要求確認，不得選定其中一個數量或計算該品項金額及訂單總額。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "cfe1caa3-4bc3-42db-8a3e-301dbb9c4a3b",
+        "Text": "訂單「微光選物」的 500ml 數量 -1 須被指出為負數並要求確認，不得計算該品項金額或訂單總額。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "3bcae13a-6a18-4cbe-a44a-324b26419cdf",
+        "Text": "輸出須將五筆訂單分開呈現，並在各訂單中清楚標示出貨日期；需確認的訂單要明確標示待確認。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "### 訂單：晴日商行\n出貨日期：2026-10-12\n| 品項 | 數量 | 單價（元） | 小計（元） |\n|---|---:|---:|---:|\n| 蜂蜜 250ml | 2 瓶 | 180 | 360 |\n| 蜂蜜 500ml | 1 瓶 | 320 | 320 |\n| 蜂蠟蠟燭 | 3 支 | 90 | 270 |\n訂單總額：950 元\n\n### 訂單：山野蜂坊\n出貨日期：2026-10-09\n假設：缺少出貨日期，採用 2026-10-09；可用 --today 更改。\n| 品項 | 數量 | 單價（元） | 小計（元） |\n|---|---:|---:|---:|\n| 蜂蜜 250ml | 1 瓶 | 180 | 180 |\n訂單總額：180 元\n\n### 訂單：河岸雜貨\n出貨日期：2026-02-30\n需你確認：出貨日期「2026-02-30」不是有效日期，請你確認原日期。\n| 品項 | 數量 | 單價（元） | 小計（元） |\n|---|---:|---:|---:|\n| 蜂蜜 500ml | 2 瓶 | 320 | 640 |\n訂單總額：不計（有待確認資料）。\n\n### 訂單：松林食品\n出貨日期：2026-10-14\n| 品項 | 數量 | 單價（元） | 小計（元） |\n|---|---:|---:|---:|\n| 蜂蜜 250ml | 待確認：2 瓶、3 瓶 | 180 | 不計 |\n需你確認：蜂蜜 250ml 出現不同數量（2 瓶、3 瓶），請你確認正確數量。\n訂單總額：不計（有待確認資料）。\n\n### 訂單：微光選物\n出貨日期：2026-10-15\n| 品項 | 數量 | 單價（元） | 小計（元） |\n|---|---:|---:|---:|\n| 蜂蜜 500ml | -1 瓶 | 320 | 不計 |\n需你確認：蜂蜜 500ml 數量為負數（-1），請你確認數量。\n訂單總額：不計（有待確認資料）。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "eacf0538-5e69-4dd1-9fc5-ec6cb3e3e84b",
+          "OccurredAt": "2026-10-09T21:48:47.648Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"honey-wholesale-shipment-orders\", \"skill_version_id\": \"18381f75-d90a-46af-afb8-b97ef75275c0\"}"
+        },
+        {
+          "TraceEventID": "8951a147-0a08-4058-ab47-e9c35d79cb20",
+          "OccurredAt": "2026-10-09T21:48:47.663Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"honey-wholesale-shipment-orders\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 15, \"invocation_id\": \"call_Hwm8ssWwYwOLL80MPvNmm3JF\", \"result_summary\": \"Launching skill: honey-wholesale-shipment-orders\"}"
+        },
+        {
+          "TraceEventID": "08fa6566-b24e-423c-9a85-cbaed2154d11",
+          "OccurredAt": "2026-10-09T21:48:51.299Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/honey_shipment.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "a7a4df4e-491b-4b32-9563-e56a09ba100a",
+          "OccurredAt": "2026-10-09T21:48:51.299Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"ORDER_TEXT='訂單：晴日商行\\n出貨日期：2026-10-12\\n蜂蜜 250ml：2 瓶\\n蜂蜜 500ml：1 瓶\\n蜂蠟蠟燭：3 支\\n\\n訂單：山野蜂坊\\n蜂蜜 250ml：1 瓶\\n\\n訂單：河岸雜貨\\n出貨日期：2026-02-30\\n蜂蜜 500ml：2 瓶\\n\\n訂單：松林食品\\n出貨日期：2026-10-14\\n蜂蜜 250ml：2 瓶\\n蜂蜜 250ml：3 瓶\\n\\n訂單：微光選物\\n出貨日期：2026-10-15\\n蜂蜜 500ml：-1 瓶'; python scripts/honey_shipment.py --text \\\"$ORDER_TEXT\\\"\", \"description\": \"依固定價目整理五筆蜂蜜出貨單\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 80, \"invocation_id\": \"call_lGRX1LeDQ4ZUCYenhZuOwL9K\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/honey_shipment.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "e3f33390-b101-4905-b45e-330607533854",
+          "OccurredAt": "2026-10-09T21:48:54.222Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"### 訂單：晴日商行\\n出貨日期：2026-10-12\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 250ml | 2 瓶 | 180 | 360 |\\n| 蜂蜜 500ml | 1 瓶 | 320 | 320 |\\n| 蜂蠟蠟燭 | 3 支 | 90 | 270 |\\n訂單總額：950 元\\n\\n### 訂單：山野蜂坊\\n出貨日期：2026-10-09\\n假設：缺少出貨日期，採用 2026-10-09；可用 --today 更改。\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 250ml | 1 瓶 | 180 | 180 |\\n訂單總額：180 元\\n\\n### 訂單：河岸雜貨\\n出貨日期：2026-02-30\\n需你確認：出貨日期「2026-02-30」不是有效日期，請你確認原日期。\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 500ml | 2 瓶 | 320 | 640 |\\n訂單總額：不計（有待確認資料）。\\n\\n### 訂單：松林食品\\n出貨日期：2026-10-14\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 250ml | 待確認：2 瓶、3 瓶 | 180 | 不計 |\\n需你確認：蜂蜜 250ml 出現不同數量（2 瓶、3 瓶），請你確認正確數量。\\n訂單總額：不計（有待確認資料）。\\n\\n### 訂單：微光選物\\n出貨日期：2026-10-15\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 500ml | -1 瓶 | 320 | 不計 |\\n需你確認：蜂蜜 500ml 數量為負數（-1），請你確認數量。\\n訂單總額：不計（有待確認資料）。\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "115970ab-87b8-4111-bd5f-a577b2cb46aa",
+          "OccurredAt": "2026-10-09T21:48:54.222Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/honey-wholesale-shipment-orders \u0026\u0026 ORDER_TEXT='訂單：晴日商行\\n出貨日期：2026-10-12\\n蜂蜜 250ml：2 瓶\\n蜂蜜 500ml：1 瓶\\n蜂蠟蠟燭：3 支\\n\\n訂單：山野蜂坊\\n蜂蜜 250ml：1 瓶\\n\\n訂單：河岸雜貨\\n出貨日期：2026-02-30\\n蜂蜜 500ml：2 瓶\\n\\n訂單：松林食品\\n出貨日期：2026-10-14\\n蜂蜜 250ml：2 瓶\\n蜂蜜 250ml：3 瓶\\n\\n訂單：微光選物\\n出貨日期：2026-10-15\\n蜂蜜 500ml：-1 瓶'; python scripts/honey_shipment.py --text \\\"$ORDER_TEXT\\\"\", \"description\": \"執行出貨單計算腳本\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 94, \"invocation_id\": \"call_ytxW44GX30mg4wN59PLHlJGf\", \"result_summary\": \"### 訂單：晴日商行\\n出貨日期：2026-10-12\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 250ml | 2 瓶 | 180 | 360 |\\n| 蜂蜜 500ml | 1 瓶 | 320 | 320 |\\n| 蜂蠟蠟燭 | 3 支 | 90 | 270 |\\n訂單總額：950 元\\n\\n### 訂單：山野蜂坊\\n出貨日期：2026-10-09\\n假設：缺少出貨日期，採用 2026-10-09；可用 --today 更改。\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 250ml | 1 瓶 | 180 | 180 |\\n訂單總額：180 元\\n\\n### 訂單：河岸雜貨\\n出貨日期：2026-02-30\\n需你確認：出貨日期「2026-02-30」不是有效日期，請你確認原日期。\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 500ml | 2 瓶 | 320 | 640 |\\n訂單總額：不計（有待確認資料）。\\n\\n### 訂單：松林食品\\n出貨日期：2026-10-14\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 250ml | 待確認：2 瓶、3 瓶 | 180 | 不計 |\\n需你確認：蜂蜜 250ml 出現不同數量（2 瓶、3 瓶），請你確認正確數量。\\n訂單總額：不計（有待確認資料）。\\n\\n### 訂單：微光選物\\n出貨日期：2026-10-15\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 500ml | -1 瓶 | 320 | 不計 |\\n需你確認：蜂蜜 500ml 數量為負數（-1），請你確認數量。\\n訂單總額：不計（有待確認資料）。\"}"
+        },
+        {
+          "TraceEventID": "0e003e75-cdb3-4e6d-ba21-a7553bb750e2",
+          "OccurredAt": "2026-10-09T21:48:58.388Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"### 訂單：晴日商行\\n出貨日期：2026-10-12\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 250ml | 2 瓶 | 180 | 360 |\\n| 蜂蜜 500ml | 1 瓶 | 320 | 320 |\\n| 蜂蠟蠟燭 | 3 支 | 90 | 270 |\\n訂單總額：950 元\\n\\n### 訂單：山野蜂坊\\n出貨日期：2026-10-09\\n假設：缺少出貨日期，採用 2026-10-09；可用 --today 更改。\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 250ml | 1 瓶 | 180 | 180 |\\n訂單總額：180 元\\n\\n### 訂單：河岸雜貨\\n出貨日期：2026-02-30\\n需你確認：出貨日期「2026-02-30」不是有效日期，請你確認原日期。\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 500ml | 2 瓶 | 320 | 640 |\\n訂單總額：不計（有待確認資料）。\\n\\n### 訂單：松林食品\\n出貨日期：2026-10-14\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 250ml | 待確認：2 瓶、3 瓶 | 180 | 不計 |\\n需你確認：蜂蜜 250ml 出現不同數量（2 瓶、3 瓶），請你確認正確數量。\\n訂單總額：不計（有待確認資料）。\\n\\n### 訂單：微光選物\\n出貨日期：2026-10-15\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 500ml | -1 瓶 | 320 | 不計 |\\n需你確認：蜂蜜 500ml 數量為負數（-1），請你確認數量。\\n訂單總額：不計（有待確認資料）。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "ca22e332-4942-422b-bc8b-e13fe5cb56ae",
+          "OccurredAt": "2026-10-09T21:48:58.766Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"### 訂單：晴日商行\\n出貨日期：2026-10-12\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 250ml | 2 瓶 | 180 | 360 |\\n| 蜂蜜 500ml | 1 瓶 | 320 | 320 |\\n| 蜂蠟蠟燭 | 3 支 | 90 | 270 |\\n訂單總額：950 元\\n\\n### 訂單：山野蜂坊\\n出貨日期：2026-10-09\\n假設：缺少出貨日期，採用 2026-10-09；可用 --today 更改。\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 250ml | 1 瓶 | 180 | 180 |\\n訂單總額：180 元\\n\\n### 訂單：河岸雜貨\\n出貨日期：2026-02-30\\n需你確認：出貨日期「2026-02-30」不是有效日期，請你確認原日期。\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 500ml | 2 瓶 | 320 | 640 |\\n訂單總額：不計（有待確認資料）。\\n\\n### 訂單：松林食品\\n出貨日期：2026-10-14\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 250ml | 待確認：2 瓶、3 瓶 | 180 | 不計 |\\n需你確認：蜂蜜 250ml 出現不同數量（2 瓶、3 瓶），請你確認正確數量。\\n訂單總額：不計（有待確認資料）。\\n\\n### 訂單：微光選物\\n出貨日期：2026-10-15\\n| 品項 | 數量 | 單價（元） | 小計（元） |\\n|---|---:|---:|---:|\\n| 蜂蜜 500ml | -1 瓶 | 320 | 不計 |\\n需你確認：蜂蜜 500ml 數量為負數（-1），請你確認數量。\\n訂單總額：不計（有待確認資料）。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "73638f0e-ee99-4bf9-b809-70d6791272ac",
+          "OccurredAt": "2026-10-09T21:49:02.823Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.00394776, \"cost_source\": \"gateway\", \"duration_ms\": 17581, \"input_tokens\": 1525, \"token_source\": \"result\", \"output_tokens\": 1400, \"cache_read_input_tokens\": 54366, \"cache_write_input_tokens\": 19828}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "980ba69d-960a-4ec7-9373-3b31aa9a11ea",
+        "Result": "passed",
+        "Reason": "晴日商行三項小計分別為 360、320、270 元，訂單總額為 950 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 蜂蜜 250ml | 2 瓶 | 180 | 360 |"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 蜂蜜 500ml | 1 瓶 | 320 | 320 |"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 蜂蠟蠟燭 | 3 支 | 90 | 270 |"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "訂單總額：950 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "f6da8ce9-3021-453c-bc54-1e2c221e3783",
+        "Result": "passed",
+        "Reason": "山野蜂坊採用試跑日期 2026-10-09，250ml 一瓶的總額為 180 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "假設：缺少出貨日期，採用 2026-10-09；可用 --today 更改。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 蜂蜜 250ml | 1 瓶 | 180 | 180 |"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "訂單總額：180 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "2f501e16-1fb2-4f42-a85a-07225eaaf419",
+        "Result": "passed",
+        "Reason": "河岸雜貨保留原填日期，指出該日期無效並要求確認；雖列出品項小計 640 元，但未計算訂單總額。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "需你確認：出貨日期「2026-02-30」不是有效日期，請你確認原日期。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "訂單總額：不計（有待確認資料）。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "cfa99648-a4dd-4461-9eba-3b85acfcf46d",
+        "Result": "passed",
+        "Reason": "松林食品標出兩個互相矛盾的數量並要求確認，品項金額與訂單總額均未計算。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 蜂蜜 250ml | 待確認：2 瓶、3 瓶 | 180 | 不計 |"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "需你確認：蜂蜜 250ml 出現不同數量（2 瓶、3 瓶），請你確認正確數量。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "訂單總額：不計（有待確認資料）。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "cfe1caa3-4bc3-42db-8a3e-301dbb9c4a3b",
+        "Result": "passed",
+        "Reason": "微光選物的負數數量已標出並要求確認，品項金額與訂單總額均未計算。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 蜂蜜 500ml | -1 瓶 | 320 | 不計 |"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "需你確認：蜂蜜 500ml 數量為負數（-1），請你確認數量。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "訂單總額：不計（有待確認資料）。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "3bcae13a-6a18-4cbe-a44a-324b26419cdf",
+        "Result": "passed",
+        "Reason": "五筆訂單各有獨立標題及出貨日期；日期無效、數量矛盾與負數的訂單均明確標示需確認。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "### 訂單：晴日商行\n出貨日期：2026-10-12"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "### 訂單：山野蜂坊\n出貨日期：2026-10-09"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "### 訂單：河岸雜貨\n出貨日期：2026-02-30"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "### 訂單：松林食品\n出貨日期：2026-10-14"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "### 訂單：微光選物\n出貨日期：2026-10-15"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "需你確認：出貨日期「2026-02-30」不是有效日期，請你確認原日期。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "需你確認：蜂蜜 250ml 出現不同數量（2 瓶、3 瓶），請你確認正確數量。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "需你確認：蜂蜜 500ml 數量為負數（-1），請你確認數量。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "五筆出貨單分開呈現，日期與可確定的金額均符合要求。三筆有問題的訂單已要求確認，且未計算其訂單總額。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 6373,
+      "CompletionTokens": 1882,
+      "CostUSD": 0.032216400000000006,
+      "CostReported": true
+    }
+  }
+}

@@ -1,0 +1,164 @@
+{
+  "round": 1,
+  "sample_input": "請把以下證照考試資訊整理成給考生的簡訊通知。\n考試日期：2026年11月14日\n報到時間：08:10\n考場地點：臺北市中正區考試院路1號，考試院大樓3樓301試場\n攜帶物品：身分證、准考證\n交通：捷運古亭站2號出口步行約5分鐘；公車12、18路可到\n停車：停車位有限，需付費\n置物：考場不提供寄物服務\n午餐：考場不供應午餐\n考場規定：不得使用手機或智慧手錶；08:30後不得入場。",
+  "acceptance_criteria": [
+    {
+      "text": "在試跑輸入下，通知本文不超過 3 句，且資訊處理說明另起一行、恰為一句。"
+    },
+    {
+      "text": "通知本文清楚保留輸入中的考試日期「2026年11月14日」、報到時間「08:10」、考場地址與試場，以及攜帶身分證和准考證的要求。"
+    },
+    {
+      "text": "通知只陳述試跑輸入提供的事實，不改動日期、時間、地點或規定，也不補造資訊。"
+    },
+    {
+      "text": "對交通、停車、置物、午餐與考場規定等額外資訊，本文可精簡或合併；凡省略或合併的項目，資訊處理說明都如實、具體交代。"
+    },
+    {
+      "text": "輸出只包含通知本文及其後一行資訊處理說明，不加標題、前言或其他評論。"
+    }
+  ],
+  "final_output": "考試日期：2026年11月14日，報到時間：08:10，考場地點：臺北市中正區考試院路1號，考試院大樓3樓301試場。請攜帶身分證、准考證；不得使用手機或智慧手錶，08:30後不得入場。交通可搭捷運古亭站2號出口步行約5分鐘，或搭公車12、18路；停車位有限且需付費，考場不提供寄物服務及午餐。\n交通、停車、置物及午餐資訊已合併精簡，其餘考試資訊均已保留。",
+  "artifacts": [
+    "answer.txt",
+    "notice.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "f9ee5e04-2c58-4fbf-bfdb-0ecd8064686b",
+    "run_id": "2b44312d-a007-4b44-ad0b-511b1cfa1d7d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收標準均已達成。通知保留必要資訊與考場規定，並以獨立一行說明合併精簡的資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "3766e516-1fca-4473-8270-3e3468fcb85f",
+        "text": "在試跑輸入下，通知本文不超過 3 句，且資訊處理說明另起一行、恰為一句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文共三句；資訊處理說明另起一行，且只有一句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "考試日期：2026年11月14日，報到時間：08:10，考場地點：臺北市中正區考試院路1號，考試院大樓3樓301試場。請攜帶身分證、准考證；不得使用手機或智慧手錶，08:30後不得入場。交通可搭捷運古亭站2號出口步行約5分鐘，或搭公車12、18路；停車位有限且需付費，考場不提供寄物服務及午餐。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "交通、停車、置物及午餐資訊已合併精簡，其餘考試資訊均已保留。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "971be5d9-0f81-4a4a-9082-fe528457b493",
+        "text": "通知本文清楚保留輸入中的考試日期「2026年11月14日」、報到時間「08:10」、考場地址與試場，以及攜帶身分證和准考證的要求。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文保留了指定考試日期、報到時間、完整考場地址與試場，並要求攜帶身分證和准考證。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "考試日期：2026年11月14日，報到時間：08:10，考場地點：臺北市中正區考試院路1號，考試院大樓3樓301試場。請攜帶身分證、准考證",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a3d787f5-615b-4ae6-b1ff-ef8f8a660bc4",
+        "text": "通知只陳述試跑輸入提供的事實，不改動日期、時間、地點或規定，也不補造資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知中的日期、時間、地點、攜帶物品、交通與考場規定均與輸入相符，未見補造資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "考試日期：2026年11月14日，報到時間：08:10，考場地點：臺北市中正區考試院路1號，考試院大樓3樓301試場。請攜帶身分證、准考證；不得使用手機或智慧手錶，08:30後不得入場。交通可搭捷運古亭站2號出口步行約5分鐘，或搭公車12、18路；停車位有限且需付費，考場不提供寄物服務及午餐。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7e8170b5-9b70-4e5b-b2e2-8591e30eec6a",
+        "text": "對交通、停車、置物、午餐與考場規定等額外資訊，本文可精簡或合併；凡省略或合併的項目，資訊處理說明都如實、具體交代。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文合併敘述交通、停車、置物及午餐資訊，說明行具體列出這四項；考場規定則完整保留。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請攜帶身分證、准考證；不得使用手機或智慧手錶，08:30後不得入場。交通可搭捷運古亭站2號出口步行約5分鐘，或搭公車12、18路；停車位有限且需付費，考場不提供寄物服務及午餐。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "交通、停車、置物及午餐資訊已合併精簡，其餘考試資訊均已保留。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "54158629-7a25-4ebf-be56-299be0c9715d",
+        "text": "輸出只包含通知本文及其後一行資訊處理說明，不加標題、前言或其他評論。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出只有通知本文及緊接其後的一行資訊處理說明，沒有標題、前言或其他評論。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "考試日期：2026年11月14日，報到時間：08:10，考場地點：臺北市中正區考試院路1號，考試院大樓3樓301試場。請攜帶身分證、准考證；不得使用手機或智慧手錶，08:30後不得入場。交通可搭捷運古亭站2號出口步行約5分鐘，或搭公車12、18路；停車位有限且需付費，考場不提供寄物服務及午餐。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "交通、停車、置物及午餐資訊已合併精簡，其餘考試資訊均已保留。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 2 readable output file(s): answer.txt, notice.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1562 input and 1474 output tokens on skillhub-run; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 33,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

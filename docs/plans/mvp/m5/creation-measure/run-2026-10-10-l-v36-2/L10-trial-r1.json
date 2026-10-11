@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請依各筆資料計算本月月費，只回覆每筆金額：\n保管箱數量,調閱次數\n10,5\n11,6\n40,20\n41,21\n100,100",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 筆為 10 箱、5 次調閱，輸出中的第 1 個金額是 1400 元。"
+    },
+    {
+      "text": "試跑輸入第 2 筆為 11 箱、6 次調閱，輸出中的第 2 個金額是 1540 元。"
+    },
+    {
+      "text": "試跑輸入第 3 筆為 40 箱、20 次調閱，輸出中的第 3 個金額是 4400 元。"
+    },
+    {
+      "text": "試跑輸入第 4 筆為 41 箱、21 次調閱，輸出中的第 4 個金額是 4495 元。"
+    },
+    {
+      "text": "試跑輸入第 5 筆為 100 箱、100 次調閱，未封頂費用為 11100 元，輸出中的第 5 個金額是封頂後的 6000 元。"
+    },
+    {
+      "text": "輸出依輸入順序只列出五筆月費金額，不列計算明細。"
+    }
+  ],
+  "final_output": "1400\n1540\n4400\n4495\n6000",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6981d75e-03bf-42fb-86a3-0b887bb30300",
+    "run_id": "a496a378-7ab7-475f-a532-32719f68cf07",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆月費金額均符合驗收標準，且輸出僅列金額、未附計算明細。",
+    "criterion_results": [
+      {
+        "criterion_id": "fdebb32d-e602-419b-b786-9c45defaca13",
+        "text": "試跑輸入第 1 筆為 10 箱、5 次調閱，輸出中的第 1 個金額是 1400 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出的第 1 個金額為 1400 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1400",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c275cd75-6839-4c50-adf1-954c80c24870",
+        "text": "試跑輸入第 2 筆為 11 箱、6 次調閱，輸出中的第 2 個金額是 1540 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出的第 2 個金額為 1540 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1540",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2581cc08-4162-4cdb-94e1-5b228a172607",
+        "text": "試跑輸入第 3 筆為 40 箱、20 次調閱，輸出中的第 3 個金額是 4400 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出的第 3 個金額為 4400 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4400",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d83455f0-0056-443b-b278-98c350ec1a72",
+        "text": "試跑輸入第 4 筆為 41 箱、21 次調閱，輸出中的第 4 個金額是 4495 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出的第 4 個金額為 4495 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4495",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a6b37bb6-859b-49c1-b5e5-e37dad12fddf",
+        "text": "試跑輸入第 5 筆為 100 箱、100 次調閱，未封頂費用為 11100 元，輸出中的第 5 個金額是封頂後的 6000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出的第 5 個金額為封頂後的 6000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "6000",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f3b4663c-913f-4a61-aa75-7d91efc9a84a",
+        "text": "輸出依輸入順序只列出五筆月費金額，不列計算明細。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出依輸入順序列出五筆金額，沒有計算明細。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1400\n1540\n4400\n4495\n6000",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1511 input and 217 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

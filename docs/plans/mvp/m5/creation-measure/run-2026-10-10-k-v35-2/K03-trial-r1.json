@@ -1,0 +1,161 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下咖啡豆批發訂單，列出品項、數量、單價與商品總額，非咖啡豆費用排除：衣索比亞豆來 2 公斤啦，一公斤 480 元；另外哥倫比亞豆 3 包，每包 350 元，運費 120 元。",
+  "acceptance_criteria": [
+    {
+      "text": "對樣例中「衣索比亞豆 2 公斤，每公斤 480 元」這筆訂單，輸出數量 2 公斤、單價 480 元／公斤及品項金額 960 元。"
+    },
+    {
+      "text": "對樣例中「哥倫比亞豆 3 包，每包 350 元」這筆訂單，輸出數量 3 包、單價 350 元／包及品項金額 1,050 元。"
+    },
+    {
+      "text": "輸出商品總額為 2,010 元，且計算為 960 元加 1,050 元。"
+    },
+    {
+      "text": "樣例中的 120 元運費不得列入商品總額；不得把商品總額算成 2,130 元。"
+    },
+    {
+      "text": "輸出以繁體中文呈現，並明確標示商品總額。"
+    }
+  ],
+  "final_output": "| 品項 | 數量 | 單價 | 品項金額 |\n|---|---:|---:|---:|\n| 衣索比亞豆 | 2 公斤 | 480 元／公斤 | 960 元 |\n| 哥倫比亞豆 | 3 包 | 350 元／包 | 1,050 元 |\n\n**商品總額：2,010 元**  \n運費 120 元已排除。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "30f202eb-4271-4665-bf93-20327a8078a1",
+    "run_id": "e956ef93-0e80-4433-a2dd-250959fd06ef",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有驗收標準均已達成：兩筆咖啡豆品項的數量、單價與金額正確，商品總額為 2,010 元，且已排除運費。",
+    "criterion_results": [
+      {
+        "criterion_id": "efb90392-c8f7-459e-a543-9d4b8d2e6e75",
+        "text": "對樣例中「衣索比亞豆 2 公斤，每公斤 480 元」這筆訂單，輸出數量 2 公斤、單價 480 元／公斤及品項金額 960 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "衣索比亞豆列出數量 2 公斤、單價 480 元／公斤及品項金額 960 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 衣索比亞豆 | 2 公斤 | 480 元／公斤 | 960 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f30da842-a519-4358-b331-1d4062b84845",
+        "text": "對樣例中「哥倫比亞豆 3 包，每包 350 元」這筆訂單，輸出數量 3 包、單價 350 元／包及品項金額 1,050 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "哥倫比亞豆列出數量 3 包、單價 350 元／包及品項金額 1,050 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 哥倫比亞豆 | 3 包 | 350 元／包 | 1,050 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d1da6e88-0f2f-473c-9978-b35defa5b4d9",
+        "text": "輸出商品總額為 2,010 元，且計算為 960 元加 1,050 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆品項金額分別為 960 元與 1,050 元，合計商品總額為 2,010 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 衣索比亞豆 | 2 公斤 | 480 元／公斤 | 960 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 哥倫比亞豆 | 3 包 | 350 元／包 | 1,050 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**商品總額：2,010 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "739f9035-8400-468c-a427-9c46dcb3ad1b",
+        "text": "樣例中的 120 元運費不得列入商品總額；不得把商品總額算成 2,130 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "商品總額為 2,010 元，並明確說明 120 元運費已排除，沒有算成 2,130 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**商品總額：2,010 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "運費 120 元已排除。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "10ed6219-8d8e-4547-a9d9-61abafa2544b",
+        "text": "輸出以繁體中文呈現，並明確標示商品總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出使用繁體中文，並明確標示「商品總額」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**商品總額：2,010 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1528 input and 448 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

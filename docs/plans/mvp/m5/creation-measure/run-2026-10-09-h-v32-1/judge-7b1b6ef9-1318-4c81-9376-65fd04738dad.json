@@ -1,0 +1,182 @@
+{
+  "request": {
+    "RunID": "7b1b6ef9-1318-4c81-9376-65fd04738dad",
+    "EvaluationID": "b5fd7328-1aa7-4a81-8c84-e45009f9e944",
+    "Skill": {
+      "Name": "postpartum-home-visit-fee",
+      "Summary": "依訪視開始時間及使用者提供的國定假日狀態，計算單次到府坐月子護理訪視應收費用。當你需要判斷一般、夜間或國定假日費率時使用。"
+    },
+    "UserPrompt": "請依規則計算以下每筆單次訪視的應收費用，分別列出金額、費率類別和簡短理由：日期 2026-10-08，開始時間 20:59，國定假日：否。\n請依規則計算以下每筆單次訪視的應收費用，分別列出金額、費率類別和簡短理由：日期 2026-10-08，開始時間 21:00，國定假日：否。\n請依規則計算以下每筆單次訪視的應收費用，分別列出金額、費率類別和簡短理由：日期 2026-10-08，開始時間 00:00，國定假日：否。\n請依規則計算以下每筆單次訪視的應收費用，分別列出金額、費率類別和簡短理由：日期 2026-10-08，開始時間 06:59，國定假日：否。\n請依規則計算以下每筆單次訪視的應收費用，分別列出金額、費率類別和簡短理由：日期 2026-10-08，開始時間 07:00，國定假日：否。\n請依規則計算以下每筆單次訪視的應收費用，分別列出金額、費率類別和簡短理由：日期 2026-10-10，開始時間 14:00，國定假日：是。\n請依規則計算以下每筆單次訪視的應收費用，分別列出金額、費率類別和簡短理由：日期 2026-10-10，開始時間 21:00，國定假日：是。",
+    "Criteria": [
+      {
+        "ID": "a01f7546-1bdb-410a-bd41-b32ade7595ed",
+        "Text": "試跑輸入第 1 行（非國定假日 20:59）須輸出新台幣 1,500 元，並判定為一般時段。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "daeb204d-0a13-46c2-908f-d9abb7a2f309",
+        "Text": "試跑輸入第 2、3、4 行（非國定假日 21:00、00:00、06:59）各須輸出新台幣 1,800 元，並判定為夜間時段。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "31b6da25-35ab-4e3c-93ff-0678f791b1fd",
+        "Text": "試跑輸入第 5 行（非國定假日 07:00）須輸出新台幣 1,500 元，並判定為一般時段；這確認 07:00 整不屬夜間。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a8ca81d7-b0cd-4526-b53c-55d2880f4300",
+        "Text": "試跑輸入第 6 行（國定假日 14:00）須輸出新台幣 2,000 元，並判定為國定假日時段。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "12a6fa19-05aa-40ee-af4b-fd5456e4ddd1",
+        "Text": "試跑輸入第 7 行（國定假日 21:00，夜間與國定假日重疊）須輸出新台幣 2,000 元，並說明採國定假日費率而非累加。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "訪視日期以你提供的國定假日狀態計算：\n\n| 日期 | 開始時間 | 應收費用 | 費率類別 | 簡短理由 |\n|---|---:|---:|---|---|\n| 2026-10-08 | 20:59 | 新台幣 1,500 元 | 一般時段 | 非國定假日，開始時間不在夜間時段。 |\n| 2026-10-08 | 21:00 | 新台幣 1,800 元 | 夜間 | 非國定假日，21:00 起屬夜間時段。 |\n| 2026-10-08 | 00:00 | 新台幣 1,800 元 | 夜間 | 非國定假日，00:00 屬夜間時段。 |\n| 2026-10-08 | 06:59 | 新台幣 1,800 元 | 夜間 | 非國定假日，07:00 前屬夜間時段。 |\n| 2026-10-08 | 07:00 | 新台幣 1,500 元 | 一般時段 | 非國定假日，07:00 整屬一般時段。 |\n| 2026-10-10 | 14:00 | 新台幣 2,000 元 | 國定假日 | 國定假日全天適用此費率。 |\n| 2026-10-10 | 21:00 | 新台幣 2,000 元 | 國定假日 | 國定假日費率取代夜間費率，不累加。 |",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "dc8f412e-09d1-418e-863d-00558e85eb10",
+          "OccurredAt": "2026-10-09T11:29:54.59Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"postpartum-home-visit-fee\", \"skill_version_id\": \"55edbeb0-958d-4fb2-8183-be6d112cad1d\"}"
+        },
+        {
+          "TraceEventID": "5d9a24cc-967e-43c1-8a22-2431183a9d66",
+          "OccurredAt": "2026-10-09T11:29:54.622Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"postpartum-home-visit-fee\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 32, \"invocation_id\": \"call_Di6FCaIFUNIc5CbKsYITQOlk\", \"result_summary\": \"Launching skill: postpartum-home-visit-fee\"}"
+        },
+        {
+          "TraceEventID": "1a7b77b7-522b-4990-81b8-26246c0df1dc",
+          "OccurredAt": "2026-10-09T11:30:00.174Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"訪視日期：2026-10-08\\n開始時間：20:59\\n國定假日：否\\n應收費用：新台幣 1,500 元\\n費率類別：一般時段\\n理由：非國定假日，訪視開始時間不在夜間時段；07:00 整屬一般時段。\\n訪視日期：2026-10-08\\n開始時間：21:00\\n國定假日：否\\n應收費用：新台幣 1,800 元\\n費率類別：夜間\\n理由：非國定假日，訪視開始時間落在 21:00 至隔天 07:00 前的夜間時段。\\n訪視日期：2026-10-08\\n開始時間：00:00\\n國定假日：否\\n應收費用：新台幣 1,800 元\\n費率類別：夜間\\n理由：非國定假日，訪視開始時間落在 21:00 至隔天 07:00 前的夜間時段。\\n訪視日期：2026-10-08\\n開始時間：06:59\\n國定假日：否\\n應收費用：新台幣 1,800 元\\n費率類別：夜間\\n理由：非國定假日，訪視開始時間落在 21:00 至隔天 07:00 前的夜間時段。\\n訪視日期：2026-10-08\\n開始時間：07:00\\n國定假日：否\\n應收費用：新台幣 1,500 元\\n費率類別：一般時段\\n理由：非國定假日，訪視開始時間不在夜間時段；07:00 整屬一般時段。\\n訪視日期：2026-10-10\\n開始時間：14:00\\n國定假日：是\\n應收費用：新台幣 2,000 元\\n費率類別：國定假日\\n理由：訪視開始時間落在國定假日 00:00 至 24:00。\\n訪視日期：2026-10-10\\n開始時間：21:00\\n國定假日：是\\n應收費用：新台幣 2,000 元\\n費率類別：國定假日\\n理由：訪視開始時間落在國定假日全天時段；若同時為夜間，國定假日費率取代夜間費率，不累加。\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "5a4bcc4c-b702-4264-8124-949b0a139ca0",
+          "OccurredAt": "2026-10-09T11:30:00.174Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python /work/.claude/skills/postpartum-home-visit-fee/scripts/calculate_visit_fee.py --date '2026-10-08' --time '20:59' --holiday '否' \u0026\u0026 python /work/.claude/skills/postpartum-home-visit-fee/scripts/calculate_visit_fee.py --date '2026-10-08' --time '21:00' --holiday '否' \u0026\u0026 python /work/.claude/skills/postpartum-home-visit-fee/scripts/calculate_visit_fee.py --date '2026-10-08' --time '00:00' --holiday '否' \u0026\u0026 python /work/.claude/skills/postpartum-home-visit-fee/scripts/calculate_visit_fee.py --date '2026-10-08' --time '06:59' --holiday '否' \u0026\u0026 python /work/.claude/skills/postpartum-home-visit-fee/scripts/calculate_visit_fee.py --date '2026-10-08' --time '07:00' --holiday '否' \u0026\u0026 python /work/.claude/skills/postpartum-home-visit-fee/scripts/calculate_visit_fee.py --date '2026-10-10' --time '14:00' --holiday '是' \u0026\u0026 python /work/.claude/skills/postpartum-home-visit-fee/scripts/calculate_visit_fee.py --date '2026-10-10' --time '21:00' --holiday '是'\", \"description\": \"計算七筆到府訪視費用\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 483, \"invocation_id\": \"call_k8aE7BFi5rfwnoyKHFqWkZCT\", \"result_summary\": \"訪視日期：2026-10-08\\n開始時間：20:59\\n國定假日：否\\n應收費用：新台幣 1,500 元\\n費率類別：一般時段\\n理由：非國定假日，訪視開始時間不在夜間時段；07:00 整屬一般時段。\\n訪視日期：2026-10-08\\n開始時間：21:00\\n國定假日：否\\n應收費用：新台幣 1,800 元\\n費率類別：夜間\\n理由：非國定假日，訪視開始時間落在 21:00 至隔天 07:00 前的夜間時段。\\n訪視日期：2026-10-08\\n開始時間：00:00\\n國定假日：否\\n應收費用：新台幣 1,800 元\\n費率類別：夜間\\n理由：非國定假日，訪視開始時間落在 21:00 至隔天 07:00 前的夜間時段。\\n訪視日期：2026-10-08\\n開始時間：06:59\\n國定假日：否\\n應收費用：新台幣 1,800 元\\n費率類別：夜間\\n理由：非國定假日，訪視開始時間落在 21:00 至隔天 07:00 前的夜間時段。\\n訪視日期：2026-10-08\\n開始時間：07:00\\n國定假日：否\\n應收費用：新台幣 1,500 元\\n費率類別：一般時段\\n理由：非國定假日，訪視開始時間不在夜間時段；07:00 整屬一般時段。\\n訪視日期：2026-10-10\\n開始時間：14:00\\n國定假日：是\\n應收費用：新台幣 2,000 元\\n費率類別：國定假日\\n理由：訪視開始時間落在國定假日 00:00 至 24:00。\\n訪視日期：2026-10-10\\n開始時間：21:00\\n國定假日：是\\n應收費用：新台幣 2,000 元\\n費率類別：國定假日\\n理由：訪視開始時間落在國定假日全天時段；若同時為夜間，國定假日費率取代夜間費率，不累加。\"}"
+        },
+        {
+          "TraceEventID": "88cecf49-fa78-4c27-9b8c-8c366ceda8b3",
+          "OccurredAt": "2026-10-09T11:30:03.566Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"訪視日期以你提供的國定假日狀態計算：\\n\\n| 日期 | 開始時間 | 應收費用 | 費率類別 | 簡短理由 |\\n|---|---:|---:|---|---|\\n| 2026-10-08 | 20:59 | 新台幣 1,500 元 | 一般時段 | 非國定假日，開始時間不在夜間時段。 |\\n| 2026-10-08 | 21:00 | 新台幣 1,800 元 | 夜間 | 非國定假日，21:00 起屬夜間時段。 |\\n| 2026-10-08 | 00:00 | 新台幣 1,800 元 | 夜間 | 非國定假日，00:00 屬夜間時段。 |\\n| 2026-10-08 | 06:59 | 新台幣 1,800 元 | 夜間 | 非國定假日，07:00 前屬夜間時段。 |\\n| 2026-10-08 | 07:00 | 新台幣 1,500 元 | 一般時段 | 非國定假日，07:00 整屬一般時段。 |\\n| 2026-10-10 | 14:00 | 新台幣 2,000 元 | 國定假日 | 國定假日全天適用此費率。 |\\n| 2026-10-10 | 21:00 | 新台幣 2,000 元 | 國定假日 | 國定假日費率取代夜間費率，不累加。 |\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "acbd2eee-efce-41c1-a007-30b54f3a182e",
+          "OccurredAt": "2026-10-09T11:30:03.822Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"訪視日期以你提供的國定假日狀態計算：\\n\\n| 日期 | 開始時間 | 應收費用 | 費率類別 | 簡短理由 |\\n|---|---:|---:|---|---|\\n| 2026-10-08 | 20:59 | 新台幣 1,500 元 | 一般時段 | 非國定假日，開始時間不在夜間時段。 |\\n| 2026-10-08 | 21:00 | 新台幣 1,800 元 | 夜間 | 非國定假日，21:00 起屬夜間時段。 |\\n| 2026-10-08 | 00:00 | 新台幣 1,800 元 | 夜間 | 非國定假日，00:00 屬夜間時段。 |\\n| 2026-10-08 | 06:59 | 新台幣 1,800 元 | 夜間 | 非國定假日，07:00 前屬夜間時段。 |\\n| 2026-10-08 | 07:00 | 新台幣 1,500 元 | 一般時段 | 非國定假日，07:00 整屬一般時段。 |\\n| 2026-10-10 | 14:00 | 新台幣 2,000 元 | 國定假日 | 國定假日全天適用此費率。 |\\n| 2026-10-10 | 21:00 | 新台幣 2,000 元 | 國定假日 | 國定假日費率取代夜間費率，不累加。 |\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "04fa1aa1-daec-4079-8b1d-ffdcf63fec63",
+          "OccurredAt": "2026-10-09T11:30:09.403Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.00352023, \"cost_source\": \"gateway\", \"duration_ms\": 18742, \"input_tokens\": 1505, \"token_source\": \"result\", \"output_tokens\": 905, \"cache_read_input_tokens\": 35728, \"cache_write_input_tokens\": 19754}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "a01f7546-1bdb-410a-bd41-b32ade7595ed",
+        "Result": "passed",
+        "Reason": "第 1 筆 20:59 列為新台幣 1,500 元、一般時段。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 2026-10-08 | 20:59 | 新台幣 1,500 元 | 一般時段 | 非國定假日，開始時間不在夜間時段。 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "daeb204d-0a13-46c2-908f-d9abb7a2f309",
+        "Result": "passed",
+        "Reason": "第 2、3、4 筆均列為新台幣 1,800 元、夜間。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 2026-10-08 | 21:00 | 新台幣 1,800 元 | 夜間 | 非國定假日，21:00 起屬夜間時段。 |"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 2026-10-08 | 00:00 | 新台幣 1,800 元 | 夜間 | 非國定假日，00:00 屬夜間時段。 |"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 2026-10-08 | 06:59 | 新台幣 1,800 元 | 夜間 | 非國定假日，07:00 前屬夜間時段。 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "31b6da25-35ab-4e3c-93ff-0678f791b1fd",
+        "Result": "passed",
+        "Reason": "第 5 筆 07:00 列為新台幣 1,500 元、一般時段，並指出 07:00 整屬一般時段。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 2026-10-08 | 07:00 | 新台幣 1,500 元 | 一般時段 | 非國定假日，07:00 整屬一般時段。 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a8ca81d7-b0cd-4526-b53c-55d2880f4300",
+        "Result": "passed",
+        "Reason": "第 6 筆國定假日 14:00 列為新台幣 2,000 元、國定假日費率。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 2026-10-10 | 14:00 | 新台幣 2,000 元 | 國定假日 | 國定假日全天適用此費率。 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "12a6fa19-05aa-40ee-af4b-fd5456e4ddd1",
+        "Result": "passed",
+        "Reason": "第 7 筆國定假日 21:00 列為新台幣 2,000 元，並明確說明國定假日費率取代夜間費率、不累加。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 2026-10-10 | 21:00 | 新台幣 2,000 元 | 國定假日 | 國定假日費率取代夜間費率，不累加。 |"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "七筆訪視的金額與費率類別均符合驗收條件；07:00 的時段邊界及國定假日與夜間重疊時不累加的處理也正確。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 5346,
+      "CompletionTokens": 916,
+      "CostUSD": 0.019988900000000004,
+      "CostReported": true
+    }
+  }
+}

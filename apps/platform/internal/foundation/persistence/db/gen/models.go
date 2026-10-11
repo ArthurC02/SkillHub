@@ -421,6 +421,30 @@ type Evaluation struct {
 	SupersededAt          pgtype.Timestamptz
 }
 
+// One evaluation set run against one skill version, every test case the given number of trials.
+type EvaluationBatch struct {
+	ID             pgtype.UUID
+	WorkspaceID    pgtype.UUID
+	SkillID        pgtype.UUID
+	SkillVersionID pgtype.UUID
+	Trials         int32
+	Status         string
+	StopReason     *string
+	CreatedBy      pgtype.UUID
+	CreatedAt      pgtype.Timestamptz
+}
+
+// One trial of one test case in a batch; the run is linked once the batch starts it.
+type EvaluationBatchItem struct {
+	BatchID     pgtype.UUID
+	WorkspaceID pgtype.UUID
+	TestCaseID  pgtype.UUID
+	Position    int32
+	Trial       int32
+	SummaryHash string
+	RunID       pgtype.UUID
+}
+
 type EvaluationModelUsage struct {
 	ID               pgtype.UUID
 	EvaluationID     pgtype.UUID
@@ -433,6 +457,15 @@ type EvaluationModelUsage struct {
 	CostUsd          pgtype.Numeric
 	CostSource       *string
 	CreatedAt        pgtype.Timestamptz
+}
+
+// Operator-set evaluation policy. An absent row means every setting is at its default: one judge, no panel.
+type EvaluationSetting struct {
+	Singleton  bool
+	JudgePanel bool
+	Reason     string
+	SetBy      pgtype.UUID
+	SetAt      pgtype.Timestamptz
 }
 
 type EvaluationSuggestion struct {
@@ -547,6 +580,8 @@ type PlatformAgent struct {
 	Enabled             bool
 	OwnerID             pgtype.UUID
 	RegisteredAt        pgtype.Timestamptz
+	// An operator-set daily spend cap that replaces the one defined in code; null means the defined cap applies.
+	DailySpendCapOverrideMicros *int64
 }
 
 type PlatformAgentBrake struct {
@@ -719,6 +754,17 @@ type RunAttempt struct {
 	ProviderUnreachableSince pgtype.Timestamptz
 }
 
+// A run started from the questions another run ended with and the person's answers to them; one continuation per asking run.
+type RunContinuation struct {
+	RunID          pgtype.UUID
+	WorkspaceID    pgtype.UUID
+	ContinuesRunID pgtype.UUID
+	Questions      []byte
+	Answers        []byte
+	AnsweredBy     pgtype.UUID
+	CreatedAt      pgtype.Timestamptz
+}
+
 type RunPermissionConfirmation struct {
 	ID             pgtype.UUID
 	WorkspaceID    pgtype.UUID
@@ -727,6 +773,15 @@ type RunPermissionConfirmation struct {
 	SummaryHash    string
 	ConfirmedBy    pgtype.UUID
 	ConfirmedAt    pgtype.Timestamptz
+}
+
+// Operator-set run policy. An absent row means every setting is at its default.
+type RunSetting struct {
+	Singleton          bool
+	ContinuationRounds int32
+	Reason             string
+	SetBy              pgtype.UUID
+	SetAt              pgtype.Timestamptz
 }
 
 type RunSnapshot struct {

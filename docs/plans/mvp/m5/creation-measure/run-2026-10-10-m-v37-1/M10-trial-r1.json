@@ -1,0 +1,139 @@
+{
+  "round": 1,
+  "sample_input": "請試算以下每筆車站行李寄放的應收總額，並列出簡短計算式。\n件數,天數\n3,3\n4,4\n20,20",
+  "acceptance_criteria": [
+    {
+      "text": "對「3 件、3 天」的資料，輸出件數費 150 元、天數費 240 元及應收總額 390 元，顯示兩項費用相加的計算式。"
+    },
+    {
+      "text": "對「4 件、4 天」的資料，輸出件數費 180 元、天數費 290 元及應收總額 470 元，正確計入第 4 件與第 4 天的費率。"
+    },
+    {
+      "text": "對「20 件、20 天」的資料，輸出件數費 660 元、天數費 1,090 元、未封頂合計 1,750 元，並將應收總額封頂為 800 元。"
+    },
+    {
+      "text": "對試跑輸入中的每筆資料分別回覆一個以元表示的應收總額，並附可核對件數費與天數費的簡短計算式。"
+    }
+  ],
+  "final_output": "| 件數 | 天數 | 計算式 | 應收總額 |\n|---:|---:|---|---:|\n| 3 | 3 | 件數費 150 元 + 天數費 240 元 = 390 元 | **390 元** |\n| 4 | 4 | 件數費 180 元 + 天數費 290 元 = 470 元 | **470 元** |\n| 20 | 20 | 件數費 660 元 + 天數費 1,090 元 = 1,750 元；套用單筆上限：min(1,750, 800) | **800 元** |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "5a60f6ae-1d94-41ef-8543-c40db60e713a",
+    "run_id": "783bba6a-375b-4afd-93e4-9262f9342e28",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三筆試算均列出正確的費用與應收總額；20 件、20 天的資料亦正確套用 800 元上限。",
+    "criterion_results": [
+      {
+        "criterion_id": "1fb33300-677f-478e-9681-8dbe26ca8495",
+        "text": "對「3 件、3 天」的資料，輸出件數費 150 元、天數費 240 元及應收總額 390 元，顯示兩項費用相加的計算式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "3 件、3 天列出件數費 150 元、天數費 240 元，相加後應收 390 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 3 | 件數費 150 元 + 天數費 240 元 = 390 元 | **390 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "47f3ca12-87d9-4422-8398-e0b17cb1333c",
+        "text": "對「4 件、4 天」的資料，輸出件數費 180 元、天數費 290 元及應收總額 470 元，正確計入第 4 件與第 4 天的費率。",
+        "result": "passed",
+        "source": "model",
+        "reason": "4 件、4 天列出件數費 180 元、天數費 290 元，應收 470 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 4 | 件數費 180 元 + 天數費 290 元 = 470 元 | **470 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "31e995e8-620f-4c3e-b8b5-3d1724a1b823",
+        "text": "對「20 件、20 天」的資料，輸出件數費 660 元、天數費 1,090 元、未封頂合計 1,750 元，並將應收總額封頂為 800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "20 件、20 天列出件數費 660 元、天數費 1,090 元、未封頂合計 1,750 元，並以單筆上限計得應收 800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 20 | 20 | 件數費 660 元 + 天數費 1,090 元 = 1,750 元；套用單筆上限：min(1,750, 800) | **800 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e59c8c2c-50fd-41e5-a057-4b3d7b22ea10",
+        "text": "對試跑輸入中的每筆資料分別回覆一個以元表示的應收總額，並附可核對件數費與天數費的簡短計算式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三筆資料均分別列出以元表示的應收總額，並附有可核對件數費與天數費的簡短計算式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 3 | 件數費 150 元 + 天數費 240 元 = 390 元 | **390 元** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 4 | 件數費 180 元 + 天數費 290 元 = 470 元 | **470 元** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 20 | 20 | 件數費 660 元 + 天數費 1,090 元 = 1,750 元；套用單筆上限：min(1,750, 800) | **800 元** |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1528 input and 321 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

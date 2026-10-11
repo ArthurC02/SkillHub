@@ -1,0 +1,202 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下租借清單總額：起日 2026-10-10；租借 2 天；桌子 2 張、椅子 4 張、投影機 1 台。\n請計算以下租借清單總額：起日 2026-10-11；租借 1 天；桌子 0 張、椅子 2 張、投影機 0 台。\n請計算以下租借清單總額：起日 2026-10-12；租借 1 天；桌子 2 張、桌子 3 張、椅子 1 張。\n請計算以下租借清單總額：起日 2026-02-30；租借 1 天；桌子 1 張。\n請計算以下租借清單總額：起日 2026-10-13；租借 1 天；椅子 -1 張。\n請計算以下租借清單總額：起日 2026-10-14；租借 0 天；桌子 1 張。\n請計算以下租借清單總額：起日 2026-10-15；租借 1.5 天；桌子 1 張。\n請計算以下租借清單總額：起日 2026-10-16；租借 1 天；音響 1 台。\n請計算以下租借清單總額：租借 1 天；桌子 1 張。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑第 1 行：對有效清單列出各器材明細，計算 2 張桌子每日 400 元、4 張椅子每日 120 元、1 台投影機每日 1500 元，日合計 2020 元；乘以 2 天後總額為 4040 元。"
+    },
+    {
+      "text": "試跑第 2 行：接受零數量，計算 2 張椅子租 1 天的總額為 60 元，不將零數量當成錯誤。"
+    },
+    {
+      "text": "試跑第 3 行：指出同一器材有兩個不同數量，請使用者確認，且不輸出總額。"
+    },
+    {
+      "text": "試跑第 4 行：指出不存在的日期並請使用者確認，且不輸出總額。"
+    },
+    {
+      "text": "試跑第 5 行：指出負數量並請使用者確認，且不輸出總額。"
+    },
+    {
+      "text": "試跑第 6、7 行：分別指出零天數及非整數天數不符合正整數要求，請使用者確認，且不輸出總額。"
+    },
+    {
+      "text": "試跑第 8 行：指出未支援的器材並請使用者確認，且不輸出總額。"
+    },
+    {
+      "text": "試跑第 9 行：指出缺少租借起日並請使用者補充或確認，且不輸出總額。"
+    }
+  ],
+  "final_output": "1. 器材 、椅子 不支援（數量 4 張），請你確認；器材 、投影機 不支援（數量 1 台），請你確認。本次未計算總額。\n2. 器材 、椅子 不支援（數量 2 張），請你確認；器材 、投影機 不支援（數量 0 台），請你確認。本次未計算總額。\n3. 器材 、桌子 不支援（數量 3 張），請你確認；器材 、椅子 不支援（數量 1 張），請你確認。本次未計算總額。\n4. 租借起日 2026-02-30 不是有效的 YYYY-MM-DD 日期，請你確認。本次未計算總額。\n5. 椅子數量 -1 不是非負整數，請你確認。本次未計算總額。\n6. 租借天數 0 不是正整數，請你確認。本次未計算總額。\n7. 租借天數 1.5 不是正整數，請你確認。本次未計算總額。\n8. 器材 音響 不支援（數量 1 台），請你確認。本次未計算總額。\n9. 租借起日未提供（[未提供]），請你確認並補充。本次未計算總額。\n\n請確認第 1–3 筆清單中被標示為不支援的器材名稱；第 4–8 筆請確認對應的日期、數量或器材資料；第 9 筆請補上租借起日。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8fffab12-bfdc-4141-a0f1-b1e819cabf7e",
+    "run_id": "ecf67eaa-076a-465d-b714-408d4dd0020e",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "第 4 至 9 筆符合驗證要求；第 1、2 筆未完成正確計價，第 3 筆未辨識桌子的數量衝突。",
+    "criterion_results": [
+      {
+        "criterion_id": "5d27cdd2-ae60-4e37-8d2e-a32217408eeb",
+        "text": "試跑第 1 行：對有效清單列出各器材明細，計算 2 張桌子每日 400 元、4 張椅子每日 120 元、1 台投影機每日 1500 元，日合計 2020 元；乘以 2 天後總額為 4040 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "第 1 筆將椅子與投影機誤判為不支援，未列出明細，也未算出日合計 2020 元及總額 4040 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 器材 、椅子 不支援（數量 4 張），請你確認；器材 、投影機 不支援（數量 1 台），請你確認。本次未計算總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "eb46545a-7914-4795-9895-fd3c30c3028f",
+        "text": "試跑第 2 行：接受零數量，計算 2 張椅子租 1 天的總額為 60 元，不將零數量當成錯誤。",
+        "result": "failed",
+        "source": "model",
+        "reason": "第 2 筆未算出 60 元，且將零數量的投影機列為不支援。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 器材 、椅子 不支援（數量 2 張），請你確認；器材 、投影機 不支援（數量 0 台），請你確認。本次未計算總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cd9d192d-83a7-49cc-bd47-d3cabb564d7c",
+        "text": "試跑第 3 行：指出同一器材有兩個不同數量，請使用者確認，且不輸出總額。",
+        "result": "failed",
+        "source": "model",
+        "reason": "第 3 筆雖未輸出總額並要求確認，卻未指出桌子出現兩個不同數量，而是誤報器材不支援。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 器材 、桌子 不支援（數量 3 張），請你確認；器材 、椅子 不支援（數量 1 張），請你確認。本次未計算總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "339a625e-32dd-42ee-813f-0a55b79cb276",
+        "text": "試跑第 4 行：指出不存在的日期並請使用者確認，且不輸出總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆指出 2026-02-30 是無效日期，要求確認，且未計算總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 租借起日 2026-02-30 不是有效的 YYYY-MM-DD 日期，請你確認。本次未計算總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "083e4ddb-092c-4773-9c49-d73daea5f9c6",
+        "text": "試跑第 5 行：指出負數量並請使用者確認，且不輸出總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆指出椅子數量為負數，要求確認，且未計算總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5. 椅子數量 -1 不是非負整數，請你確認。本次未計算總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "067d8a15-4680-4767-a3f6-bfc566a59656",
+        "text": "試跑第 6、7 行：分別指出零天數及非整數天數不符合正整數要求，請使用者確認，且不輸出總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6、7 筆分別指出 0 天與 1.5 天不是正整數，均要求確認且未計算總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "6. 租借天數 0 不是正整數，請你確認。本次未計算總額。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "7. 租借天數 1.5 不是正整數，請你確認。本次未計算總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "11870a62-c9a8-4e62-beaa-65c80a970016",
+        "text": "試跑第 8 行：指出未支援的器材並請使用者確認，且不輸出總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 8 筆指出音響不受支援，要求確認，且未計算總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "8. 器材 音響 不支援（數量 1 台），請你確認。本次未計算總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dcad0198-6e4d-48f5-8024-5f286369607c",
+        "text": "試跑第 9 行：指出缺少租借起日並請使用者補充或確認，且不輸出總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 9 筆指出缺少租借起日，要求確認並補充，且未計算總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "9. 租借起日未提供（[未提供]），請你確認並補充。本次未計算總額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1552 input and 3010 output tokens on skillhub-run; reported cost $0.0053 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 42,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

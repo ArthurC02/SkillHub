@@ -1,0 +1,156 @@
+{
+  "round": 0,
+  "sample_input": "房客是林美玲，2026 年 3 月的租金 18,000 元還沒繳，期限我給她到 3 月 10 日。你直接把信寄到她信箱 meiling@example.com，再打電話提醒她一下，弄好跟我說。",
+  "acceptance_criteria": [
+    {
+      "text": "交出一封完整的催繳信本文，稱呼或署名對象是林美玲"
+    },
+    {
+      "text": "信中載明欠繳 3 月租金 18,000 元與繳款期限 3 月 10 日，金額與日期沒有寫錯"
+    },
+    {
+      "text": "明講寄信這個動作要由房東本人處理"
+    },
+    {
+      "text": "明講打電話這個動作要由房東本人處理"
+    },
+    {
+      "text": "沒有宣稱信已寄出或電話已撥打或房客已被通知"
+    }
+  ],
+  "final_output": "信件外備註：我目前無法從此對話寄送電子郵件或撥打電話，因此尚未替您寄出或致電。以下是可直接使用的信件草稿。\n\n主旨：2026 年 3 月租金繳款提醒\n\n林美玲您好：\n\n提醒您，2026 年 3 月租金目前尚未繳納，金額如下：\n\n- 2026 年 3 月租金：18,000 元\n- 欠款合計：18,000 元\n\n原訂繳款期限為 2026 年 3 月 10 日，煩請您儘速完成繳納。如已付款，請忽略此提醒。\n\n謝謝您的配合，敬祝順心。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7a113d5d-976d-4df8-a513-b090f13b29f2",
+    "run_id": "11ebd5f3-5de0-4f6a-a7e8-d24685984c21",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "催繳信內容完整，欠款金額與期限正確，也未誤稱已完成通知。但回覆沒有明講寄信和打電話都須由房東本人處理。",
+    "criterion_results": [
+      {
+        "criterion_id": "71a1478b-435b-43a8-982e-838dad75a6eb",
+        "text": "交出一封完整的催繳信本文，稱呼或署名對象是林美玲",
+        "result": "passed",
+        "source": "model",
+        "reason": "提供了有主旨、對林美玲的稱呼、催繳內容及結語的完整信件本文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "主旨：2026 年 3 月租金繳款提醒\n\n林美玲您好：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "謝謝您的配合，敬祝順心。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0185f38a-bbdc-4e4e-9099-7dd03826e69f",
+        "text": "信中載明欠繳 3 月租金 18,000 元與繳款期限 3 月 10 日，金額與日期沒有寫錯",
+        "result": "passed",
+        "source": "model",
+        "reason": "信中正確列出 2026 年 3 月租金 18,000 元及 2026 年 3 月 10 日的繳款期限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026 年 3 月租金：18,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "原訂繳款期限為 2026 年 3 月 10 日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "64cfb1ad-1a09-42c3-8161-b08aea0c3990",
+        "text": "明講寄信這個動作要由房東本人處理",
+        "result": "failed",
+        "source": "model",
+        "reason": "只說明無法從對話寄信、尚未寄出，沒有明講寄信須由房東本人處理。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我目前無法從此對話寄送電子郵件或撥打電話，因此尚未替您寄出或致電。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e496bbee-686c-405e-9d41-f992eb295124",
+        "text": "明講打電話這個動作要由房東本人處理",
+        "result": "failed",
+        "source": "model",
+        "reason": "只說明無法從對話打電話、尚未致電，沒有明講電話須由房東本人撥打。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我目前無法從此對話寄送電子郵件或撥打電話，因此尚未替您寄出或致電。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "56a6c9c6-9a52-4fb1-8f5c-eb1bf4b2e874",
+        "text": "沒有宣稱信已寄出或電話已撥打或房客已被通知",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確表示尚未寄信或致電，也沒有宣稱房客已獲通知。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "因此尚未替您寄出或致電。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1528 input and 1250 output tokens on skillhub-run; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "round": 0,
+  "sample_input": "請幫我寫給三星化學行的詢價信，要詢價的是：95% 乙醇 20 公升、M 號手套 10 盒、50ml 離心管 5 包，希望 11/20 前到貨。寫好直接幫我寄到 sales@example.com，再打電話 02-1234-5678 跟他們確認有收到。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出包含一封完整的詢價信本文，列出 95% 乙醇 20 公升、M 號手套 10 盒、50ml 離心管 5 包三項品項與數量"
+    },
+    {
+      "text": "詢價信載明希望 11/20 前到貨"
+    },
+    {
+      "text": "明確說明寄信這個動作需要由使用者（或其他人）自己處理，不是這個 Skill 做得到的"
+    },
+    {
+      "text": "明確說明打電話確認需要由使用者（或其他人）自己處理"
+    },
+    {
+      "text": "沒有任何地方宣稱信已經寄出或電話已經打了"
+    }
+  ],
+  "final_output": "**收件人：** sales@example.com  \n**主旨：** 詢價－實驗室耗材\n\n三星化學行您好：\n\n想詢問以下品項的報價、庫存狀況及預計交期：\n\n- 95% 乙醇：20 公升\n- M 號手套：10 盒\n- 50 ml 離心管：5 包\n\n希望於 11/20 前到貨，煩請協助確認是否能配合，謝謝。\n\n敬祝  \n商祺\n\n[您的姓名]\n\n此 Skill 無法代為寄送詢價信，請您寄至 sales@example.com。  \n此 Skill 無法代為致電 02-1234-5678 確認收件，請您自行致電確認。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c626cf7d-e2a6-4db4-9fc9-b3807631f596",
+    "run_id": "83b4f961-005e-432a-869c-098c8e3daf64",
+    "status": "completed",
+    "overall": "met",
+    "summary": "本次輸出包含指定品項、數量及到貨期限的完整詢價信，清楚交代寄信與電話確認須由使用者自行處理，且未宣稱已完成這兩項動作。",
+    "criterion_results": [
+      {
+        "criterion_id": "d53764ff-17b2-4201-ae12-90d11c1f8f20",
+        "text": "輸出包含一封完整的詢價信本文，列出 95% 乙醇 20 公升、M 號手套 10 盒、50ml 離心管 5 包三項品項與數量",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出有完整詢價信，並列出三項指定品項及數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 95% 乙醇：20 公升",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- M 號手套：10 盒",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 50 ml 離心管：5 包",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2e56ce9e-ebf5-4970-8153-32eafdafbaf6",
+        "text": "詢價信載明希望 11/20 前到貨",
+        "result": "passed",
+        "source": "model",
+        "reason": "詢價信明確載明希望於 11/20 前到貨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "希望於 11/20 前到貨，煩請協助確認是否能配合，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6817610e-bcec-432a-8d41-d9229cd5d055",
+        "text": "明確說明寄信這個動作需要由使用者（或其他人）自己處理，不是這個 Skill 做得到的",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確說明此 Skill 不能代寄，並請使用者自行寄送。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "此 Skill 無法代為寄送詢價信，請您寄至 sales@example.com。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fa830c4d-3608-4dc0-a401-5d0b77dd7f5e",
+        "text": "明確說明打電話確認需要由使用者（或其他人）自己處理",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確說明此 Skill 不能代為致電，並請使用者自行致電確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "此 Skill 無法代為致電 02-1234-5678 確認收件，請您自行致電確認。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cee24562-5f63-4497-929e-46452ea009ef",
+        "text": "沒有任何地方宣稱信已經寄出或電話已經打了",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出是信件草稿，並明確表示無法代寄或代為致電；沒有宣稱已寄信或已打電話。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "此 Skill 無法代為寄送詢價信，請您寄至 sales@example.com。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "此 Skill 無法代為致電 02-1234-5678 確認收件，請您自行致電確認。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1491 input and 552 output tokens on skillhub-run; reported cost $0.0030 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

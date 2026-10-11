@@ -1,0 +1,187 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下社區團購訂單，列出品項、數量、單價、小計與商品總額：\n阿美：蘋果 2 斤，每斤 NT$30；雞蛋 1 盒 NT$90；宅配運費 NT$60。\n小李：蘋果 1 斤 NT$30；豆腐 2 盒，每盒 NT$25；香蕉 1 串。\n阿珍：雞蛋 1 盒 NT$90；豆腐 1 盒 NT$25；海帶，NT$40/包。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中的蘋果，輸出合併後數量為 3 斤、單價為 NT$30／斤、小計為 NT$90。"
+    },
+    {
+      "text": "對試跑輸入中的雞蛋，輸出合併後數量為 2 盒、單價為 NT$90／盒、小計為 NT$180。"
+    },
+    {
+      "text": "對試跑輸入中的豆腐，輸出合併後數量為 3 盒、單價為 NT$25／盒、小計為 NT$75。"
+    },
+    {
+      "text": "對試跑輸入中數量省略但單價明確的海帶，按 1 包計，輸出小計 NT$40。"
+    },
+    {
+      "text": "對試跑輸入中缺少單價的香蕉，標註單價待確認，不臆造小計，也不納入可計算商品總額。"
+    },
+    {
+      "text": "輸出可計算商品總額 NT$385，並指出此金額尚未包含香蕉；計算為 NT$90 + NT$180 + NT$75 + NT$40 = NT$385。"
+    },
+    {
+      "text": "不把試跑輸入中的 NT$60 宅配運費納入商品總額。"
+    }
+  ],
+  "final_output": "| 品項 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 海帶（包） | 1 包 | NT$40/包 | NT$40 |\n| 蘋果（斤） | 3 斤 | NT$30/斤 | NT$90 |\n| 豆腐（盒） | 3 盒 | NT$25/盒 | NT$75 |\n| 雞蛋（盒） | 2 盒 | NT$90/盒 | NT$180 |\n\n**商品總額：NT$385**（尚未完整，未計入待確認項目）\n\n**待確認：**香蕉 1 串的單價與幣別未提供，尚未計入總額。阿美的宅配運費 NT$60 為運費，未列入商品金額。",
+  "artifacts": [
+    "order_records.json"
+  ],
+  "evaluation": {
+    "evaluation_id": "517e1112-a69e-47df-a84f-1d5b830aef7d",
+    "run_id": "72ba8b60-f142-4653-82fc-c25bfa454ce7",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七項驗收條件均符合。輸出正確合併品項、計算可計商品總額 NT$385，並將香蕉列為待確認、排除宅配運費。",
+    "criterion_results": [
+      {
+        "criterion_id": "977b4ed8-fe08-4c91-b071-2a119e384c58",
+        "text": "對試跑輸入中的蘋果，輸出合併後數量為 3 斤、單價為 NT$30／斤、小計為 NT$90。",
+        "result": "passed",
+        "source": "model",
+        "reason": "蘋果合併為 3 斤，單價 NT$30／斤，小計 NT$90。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 蘋果（斤） | 3 斤 | NT$30/斤 | NT$90 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "84cd26b8-7b7a-426e-a536-270157e29559",
+        "text": "對試跑輸入中的雞蛋，輸出合併後數量為 2 盒、單價為 NT$90／盒、小計為 NT$180。",
+        "result": "passed",
+        "source": "model",
+        "reason": "雞蛋合併為 2 盒，單價 NT$90／盒，小計 NT$180。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 雞蛋（盒） | 2 盒 | NT$90/盒 | NT$180 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9f876fd5-163f-4666-81ab-05e4772a12cf",
+        "text": "對試跑輸入中的豆腐，輸出合併後數量為 3 盒、單價為 NT$25／盒、小計為 NT$75。",
+        "result": "passed",
+        "source": "model",
+        "reason": "豆腐合併為 3 盒，單價 NT$25／盒，小計 NT$75。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 豆腐（盒） | 3 盒 | NT$25/盒 | NT$75 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cfc275cf-b29a-4459-b581-32b1b3cc4659",
+        "text": "對試跑輸入中數量省略但單價明確的海帶，按 1 包計，輸出小計 NT$40。",
+        "result": "passed",
+        "source": "model",
+        "reason": "海帶按 1 包計，小計 NT$40。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 海帶（包） | 1 包 | NT$40/包 | NT$40 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c35db6bc-19b4-4230-91c9-52f3d50d3a5e",
+        "text": "對試跑輸入中缺少單價的香蕉，標註單價待確認，不臆造小計，也不納入可計算商品總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "香蕉標註單價未提供，未臆造小計，也未計入總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**待確認：**香蕉 1 串的單價與幣別未提供，尚未計入總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fa263f01-e788-453b-895e-338b69f61e20",
+        "text": "輸出可計算商品總額 NT$385，並指出此金額尚未包含香蕉；計算為 NT$90 + NT$180 + NT$75 + NT$40 = NT$385。",
+        "result": "passed",
+        "source": "model",
+        "reason": "四項可計算商品的小計合為 NT$385，輸出並註明尚未計入香蕉。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**商品總額：NT$385**（尚未完整，未計入待確認項目）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "香蕉 1 串的單價與幣別未提供，尚未計入總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "68bb9a01-72ac-49f5-aadb-c5158bcd4de2",
+        "text": "不把試跑輸入中的 NT$60 宅配運費納入商品總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出 NT$60 宅配運費未列入商品金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "阿美的宅配運費 NT$60 為運費，未列入商品金額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): order_records.json"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1552 input and 1291 output tokens on skillhub-run; reported cost $0.0039 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

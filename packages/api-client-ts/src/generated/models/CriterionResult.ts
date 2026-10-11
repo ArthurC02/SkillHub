@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { CheckStep } from './CheckStep';
+import {
+    CheckStepFromJSON,
+    CheckStepFromJSONTyped,
+    CheckStepToJSON,
+    CheckStepToJSONTyped,
+} from './CheckStep';
 import type { EvidenceRef } from './EvidenceRef';
 import {
     EvidenceRefFromJSON,
@@ -62,6 +69,10 @@ export interface CriterionResult {
      * 
      */
     source: CriterionResultSourceEnum;
+    /**
+     * For a criterion decided by a check tree, every node that ran, children before their parent.
+     */
+    steps?: Array<CheckStep>;
     /**
      * What the verdict rests on. Every reference a model returns is
      * re-checked server-side before it is stored; one that does not
@@ -127,6 +138,7 @@ export function CriterionResultFromJSONTyped(json: any, ignoreDiscriminator: boo
         'text': json['text'],
         'result': json['result'],
         'source': json['source'],
+        'steps': json['steps'] == null ? undefined : ((json['steps'] as Array<any>).map(CheckStepFromJSON)),
         'evidence': ((json['evidence'] as Array<any>).map(EvidenceRefFromJSON)),
         'reason': json['reason'],
     };
@@ -147,6 +159,7 @@ export function CriterionResultToJSONTyped(value?: CriterionResult | null, ignor
         'text': value['text'],
         'result': value['result'],
         'source': value['source'],
+        'steps': value['steps'] == null ? undefined : ((value['steps'] as Array<any>).map(CheckStepToJSON)),
         'evidence': ((value['evidence'] as Array<any>).map(EvidenceRefToJSON)),
         'reason': value['reason'],
     };

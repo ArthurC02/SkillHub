@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/jobruns"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
@@ -46,7 +47,7 @@ func TestTheMaintenanceFactsNameTablesAndJobsSoACiteCanReachThem(t *testing.T) {
 
 	report := `{"items":[{"status":"attention","text":"x","cites":[` +
 		`"/capacity/table_bytes/runs","/maintenance_jobs/purge-audit/overdue_ratio","/capacity/days_until_budget"]}]}`
-	steps := []operations.StepRecord{{ToolCall: operations.ToolCall{Tool: operations.ToolMaintenanceReport}, Result: string(encoded)}}
+	steps := []agentloop.StepRecord{{ToolCall: agentloop.ToolCall{Tool: operations.ToolMaintenanceReport}, Result: string(encoded)}}
 	if err := operations.CitesOnlyReturnedFacts(json.RawMessage(report), steps); err != nil {
 		t.Errorf("a report citing the tool's own names was rejected: %v", err)
 	}

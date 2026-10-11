@@ -1,0 +1,158 @@
+{
+  "request": {
+    "RunID": "255e7d7e-7f42-4e83-96a7-8ce9fb32ae4c",
+    "EvaluationID": "ad402647-3071-4225-ad71-4c1967446df6",
+    "Skill": {
+      "Name": "community-health-talk-invitation",
+      "Summary": "根據使用者提供的活動資訊，撰寫一段親切的社區健康講座邀請文案。當使用者需要邀請文案時使用，並逐字保留活動名稱、日期、時間、地點及報名方式。"
+    },
+    "UserPrompt": "活動資訊：「銀髮族防跌運動課」，2026-11-14（六）14:00–15:30，地點幸福里活動中心 3 樓多功能教室（新北市板橋區文化路二段 88 號），免費，限 30 人，報名請電洽 02-8888-0123。幫我寫邀請文案。",
+    "Criteria": [
+      {
+        "ID": "dcdadd65-bdb8-4a9c-aee7-bb82f596c708",
+        "Text": "活動名稱「銀髮族防跌運動課」完整出現",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "6a1fd907-f496-4cd8-badd-2b3cef07b3f6",
+        "Text": "日期為 11 月 14 日；若文案提到星期，必須是星期六",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a9e967be-7c31-496c-889f-df0660c62116",
+        "Text": "時間起訖 14:00 與 15:30 兩端都在且沒有寫錯",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "015e515c-32dc-4cfd-95f5-bb1781ecc60f",
+        "Text": "地點包含幸福里活動中心 3 樓多功能教室",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "958d668e-edbc-466c-8994-fdb098f6a212",
+        "Text": "報名方式為電洽 02-8888-0123，號碼完全正確",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "誠摯邀請您參加「銀髮族防跌運動課」！活動時間為2026-11-14（六）14:00–15:30，地點在幸福里活動中心 3 樓多功能教室（新北市板橋區文化路二段 88 號）。活動免費，限 30 人，報名請電洽 02-8888-0123，歡迎踴躍報名參加！",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "98369fbd-57c4-40fd-8b42-c595939cc0ca",
+          "OccurredAt": "2026-10-09T18:19:58.962Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"community-health-talk-invitation\", \"skill_version_id\": \"ead1d9b6-1d82-4730-80a4-d8b35f2d97c9\"}"
+        },
+        {
+          "TraceEventID": "5323db60-5eda-4e89-8a37-f1451beb0ed0",
+          "OccurredAt": "2026-10-09T18:19:58.983Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"community-health-talk-invitation\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 21, \"invocation_id\": \"call_lkEc5IYQf8QlpDJ1WJgVv8IB\", \"result_summary\": \"Launching skill: community-health-talk-invitation\"}"
+        },
+        {
+          "TraceEventID": "86539c82-d4f9-43a1-aff1-f35534c5bf5e",
+          "OccurredAt": "2026-10-09T18:20:03.948Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"誠摯邀請您參加「銀髮族防跌運動課」！活動時間為2026-11-14（六）14:00–15:30，地點在幸福里活動中心 3 樓多功能教室（新北市板橋區文化路二段 88 號）。活動免費，限 30 人，報名請電洽 02-8888-0123，歡迎踴躍報名參加！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "4c0fa8fa-2808-41e7-8148-88d4f4132083",
+          "OccurredAt": "2026-10-09T18:20:04.146Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"誠摯邀請您參加「銀髮族防跌運動課」！活動時間為2026-11-14（六）14:00–15:30，地點在幸福里活動中心 3 樓多功能教室（新北市板橋區文化路二段 88 號）。活動免費，限 30 人，報名請電洽 02-8888-0123，歡迎踴躍報名參加！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "8c0b65d3-b2ed-46f9-970d-c9f682a72a37",
+          "OccurredAt": "2026-10-09T18:20:08.231Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.002896095, \"cost_source\": \"gateway\", \"duration_ms\": 12834, \"input_tokens\": 1485, \"token_source\": \"result\", \"output_tokens\": 411, \"cache_read_input_tokens\": 16582, \"cache_write_input_tokens\": 18511}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "dcdadd65-bdb8-4a9c-aee7-bb82f596c708",
+        "Result": "passed",
+        "Reason": "文案完整寫出活動名稱「銀髮族防跌運動課」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "「銀髮族防跌運動課」"
+          }
+        ]
+      },
+      {
+        "CriterionID": "6a1fd907-f496-4cd8-badd-2b3cef07b3f6",
+        "Result": "passed",
+        "Reason": "日期寫為 2026 年 11 月 14 日，星期標示為「六」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026-11-14（六）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a9e967be-7c31-496c-889f-df0660c62116",
+        "Result": "passed",
+        "Reason": "時間起訖正確寫為 14:00 至 15:30。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "14:00–15:30"
+          }
+        ]
+      },
+      {
+        "CriterionID": "015e515c-32dc-4cfd-95f5-bb1781ecc60f",
+        "Result": "passed",
+        "Reason": "地點包含幸福里活動中心 3 樓多功能教室。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "幸福里活動中心 3 樓多功能教室"
+          }
+        ]
+      },
+      {
+        "CriterionID": "958d668e-edbc-466c-8994-fdb098f6a212",
+        "Result": "passed",
+        "Reason": "報名方式為電洽，電話號碼 02-8888-0123 完全正確。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "報名請電洽 02-8888-0123"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "邀請文案完整保留活動名稱、日期與星期、時間、地點及報名電話；五項驗收標準皆符合。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2422,
+      "CompletionTokens": 542,
+      "CostUSD": 0.0089389,
+      "CostReported": true
+    }
+  }
+}

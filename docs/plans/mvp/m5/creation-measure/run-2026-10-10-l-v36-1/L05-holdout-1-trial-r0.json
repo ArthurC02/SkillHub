@@ -1,0 +1,182 @@
+{
+  "round": 0,
+  "sample_input": "考試資訊：2026 年 11 月 14 日（星期六）網路架構師證照筆試，08:30 報到，09:00 開始作答。地點：北區職訓中心 3 樓 305 教室。請帶身分證與准考證，另需自備 2B 鉛筆與橡皮擦。計算機只能用無程式功能的。遲到超過 15 分鐘不得入場。現場沒有停車位，建議搭捷運，3 號出口步行 5 分鐘。置物櫃要自備鎖頭。中午沒有供餐，要自己帶。成績 12 月 10 日公布。",
+  "acceptance_criteria": [
+    {
+      "text": "通知本文不超過 3 句話（不含本文之後交代捨棄或合併的那一句）"
+    },
+    {
+      "text": "本文保留考試日期 2026 年 11 月 14 日（11/14 等價寫法亦可）"
+    },
+    {
+      "text": "本文保留報到時間 08:30"
+    },
+    {
+      "text": "本文保留考場地點：北區職訓中心 3 樓 305 教室（3F-305 等價寫法亦可）"
+    },
+    {
+      "text": "本文要求攜帶身分證與准考證"
+    },
+    {
+      "text": "本文之後有一句話交代捨棄或合併了哪些資訊；說捨棄或說合併都可接受"
+    },
+    {
+      "text": "交代句與本文相符：交代句點名的捨棄項目，本文確實沒有出現；交代句點名的合併項目，本文確實以精簡形式出現；交代句沒有聲稱保留了本文沒有的資訊"
+    }
+  ],
+  "final_output": "網路架構師證照筆試：2026 年 11 月 14 日（星期六），08:30 報到，09:00 開始作答，地點：北區職訓中心 3 樓 305 教室；請帶身分證與准考證，另需自備 2B 鉛筆與橡皮擦；計算機只能用無程式功能的。遲到超過 15 分鐘不得入場；現場沒有停車位，建議搭捷運，3 號出口步行 5 分鐘；置物櫃要自備鎖頭；中午沒有供餐，要自己帶；成績 12 月 10 日公布。已合併考試基本資訊、應攜物品及各項提醒，未捨棄其他資訊。",
+  "artifacts": [
+    "exam-reminder.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "6f5df6be-5af1-451b-a208-be577ab77c25",
+    "run_id": "86d0a339-8e40-412a-b360-3acfa4da5d3e",
+    "status": "completed",
+    "overall": "met",
+    "summary": "通知本文共兩句，保留日期、報到時間、地點及應攜證件。文後的合併說明與本文內容相符，七項標準均達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "81236239-5590-42f9-b6b5-25af5b5b2f72",
+        "text": "通知本文不超過 3 句話（不含本文之後交代捨棄或合併的那一句）",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文為兩句，後面另有一句交代合併資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "置物櫃要自備鎖頭；中午沒有供餐，要自己帶；成績 12 月 10 日公布。已合併考試基本資訊、應攜物品及各項提醒",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6f41c85c-afbc-4691-ae7d-04c0defcce9d",
+        "text": "本文保留考試日期 2026 年 11 月 14 日（11/14 等價寫法亦可）",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文保留了考試日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026 年 11 月 14 日（星期六）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "07066224-6200-47e4-b0d0-19c6b4554f94",
+        "text": "本文保留報到時間 08:30",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文保留了 08:30 報到時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "08:30 報到",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f286919d-b9a1-479d-85f4-cf0fe0e4d8b3",
+        "text": "本文保留考場地點：北區職訓中心 3 樓 305 教室（3F-305 等價寫法亦可）",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文保留了指定考場地點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "北區職訓中心 3 樓 305 教室",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5127831c-c14f-4dfa-a0bf-a56fb8fc0d4d",
+        "text": "本文要求攜帶身分證與准考證",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文要求攜帶身分證與准考證。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請帶身分證與准考證",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ef3cb8c2-a7ac-4cf8-8915-61c250275e90",
+        "text": "本文之後有一句話交代捨棄或合併了哪些資訊；說捨棄或說合併都可接受",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文後有一句話交代合併了哪些資訊，並說明未捨棄其他資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "已合併考試基本資訊、應攜物品及各項提醒，未捨棄其他資訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "32dbf13c-e962-4376-80c9-e903e591134f",
+        "text": "交代句與本文相符：交代句點名的捨棄項目，本文確實沒有出現；交代句點名的合併項目，本文確實以精簡形式出現；交代句沒有聲稱保留了本文沒有的資訊",
+        "result": "passed",
+        "source": "model",
+        "reason": "交代句所稱的基本資訊、應攜物品及提醒都在本文中合併呈現；本文也涵蓋原始資訊，與「未捨棄其他資訊」相符。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "網路架構師證照筆試：2026 年 11 月 14 日（星期六），08:30 報到，09:00 開始作答，地點：北區職訓中心 3 樓 305 教室；請帶身分證與准考證，另需自備 2B 鉛筆與橡皮擦；計算機只能用無程式功能的。遲到超過 15 分鐘不得入場；現場沒有停車位，建議搭捷運，3 號出口步行 5 分鐘；置物櫃要自備鎖頭；中午沒有供餐，要自己帶；成績 12 月 10 日公布。已合併考試基本資訊、應攜物品及各項提醒，未捨棄其他資訊。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): exam-reminder.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1544 input and 1709 output tokens on skillhub-run; reported cost $0.0041 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "round": 0,
+  "sample_input": "搬運距離 7.2 公里，搬到 5 樓，沒有電梯，搬運費多少？",
+  "acceptance_criteria": [
+    {
+      "text": "距離進位為 8 公里，距離費為 275 元（5 × 40 + 3 × 25）"
+    },
+    {
+      "text": "需爬 4 層，樓層費為 500 元（2 × 100 + 2 × 150）"
+    },
+    {
+      "text": "搬運費總額為 775 元"
+    }
+  ],
+  "final_output": "搬運距離 7.2 公里進位為 8 公里，搬到 5 樓且沒有電梯：\n\n- 距離費：275 元\n- 樓層費：500 元\n- 上限前小計：775 元\n- **最終搬運費：775 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "30e9a7f7-fb60-4102-89a9-0dc99fcd0833",
+    "run_id": "2b57a341-c284-4ce3-8951-e1af7a3e5a1c",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項標準均已達成：距離進位為 8 公里、距離費 275 元、樓層費 500 元，最終搬運費為 775 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "d5b8f8eb-68ff-4636-bea3-9103da1b5f40",
+        "text": "距離進位為 8 公里，距離費為 275 元（5 × 40 + 3 × 25）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將 7.2 公里進位為 8 公里，距離費為 275 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "搬運距離 7.2 公里進位為 8 公里",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "距離費：275 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c17ca4ef-4b15-49d7-a164-b78abb7fb58d",
+        "text": "需爬 4 層，樓層費為 500 元（2 × 100 + 2 × 150）",
+        "result": "passed",
+        "source": "model",
+        "reason": "搬到 5 樓且沒有電梯，需從 1 樓爬 4 層；回覆的樓層費為 500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "搬到 5 樓且沒有電梯",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "樓層費：500 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "98edce4d-62a5-4faa-87e3-1f85d861058e",
+        "text": "搬運費總額為 775 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆的最終搬運費為 775 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**最終搬運費：775 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1520 input and 375 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

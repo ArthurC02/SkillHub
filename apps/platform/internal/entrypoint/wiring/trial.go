@@ -111,6 +111,7 @@ func WireEvaluationRunReaders(service *eval.Service, runs *run.Service) {
 		}
 		return eval.EvaluationInput{
 			Run: evalRunFacts(input.Run), Artifacts: artifacts, LatestAttempt: input.LatestAttempt,
+			EarlierQuestions: input.EarlierQuestions,
 			Absent: eval.ArtifactAbsence{
 				Deleted: input.Absent.Deleted,
 				Expired: input.Absent.Expired,

@@ -16,8 +16,11 @@ import { test } from "node:test";
 import { crc32, deflateRawSync } from "node:zlib";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { z } from "zod";
 import {
+  ASK_PERSON_TOOL,
   agentOptions,
+  askPersonServer,
   declaredSkillRoot,
   extractPackage,
   installSkillFromArchive,
@@ -25,6 +28,7 @@ import {
   outputContract,
   packageRoot,
   provisionPackage,
+  renderQuestions,
 } from "./run.mjs";
 
 test("gateway spend lookup times out instead of blocking run completion", async () => {
@@ -1329,9 +1333,15 @@ function runWorkload(script, extraEnv = {}) {
     const sdk = join(root, "fake-sdk.mjs");
     writeFileSync(
       sdk,
-      "export async function* query() {\n" +
+      "export function createSdkMcpServer(options) { return options; }\n" +
+        "export function tool(name, description, shape, handler) { return { name, handler }; }\n" +
+        "export async function* query({ options }) {\n" +
         `  for (const step of ${JSON.stringify(script)}) {\n` +
         "    if (step.throw) throw new Error(step.throw);\n" +
+        "    if (step.ask) {\n" +
+        "      await options.mcpServers.skillhub.tools[0].handler({ questions: step.ask });\n" +
+        "      if (options.abortController.signal.aborted) throw new Error('aborted');\n" +
+        "    }\n" +
         "    yield step;\n" +
         "  }\n" +
         "}\n",
@@ -1528,4 +1538,82 @@ test("a turn whose stream fails reports accumulated usage, then the failure", ()
   assert.equal(run.events[0].payload.output_tokens, 4);
   assert.deepEqual(run.events[1].payload, { category: "execution", code: "agent_turn_failed", message: "stream broke", retryable: false });
   assert.deepEqual(run.result, { status: "failed", error: "stream broke" });
+});
+
+const fakeSdk = {
+  createSdkMcpServer: (options) => options,
+  tool: (name, _description, shape, handler) => ({ name, shape, handler }),
+};
+
+function askTool(onAsk = () => {}) {
+  return askPersonServer(fakeSdk, z, onAsk).tools[0];
+}
+
+test("the ask tool takes one to three questions, each with what and why", () => {
+  const schema = z.object(askTool().shape);
+  const one = { question: "剩下的堂數要併入折扣嗎？", why: "併入與否會改變折扣" };
+
+  assert.equal(schema.safeParse({ questions: [one] }).success, true);
+  assert.equal(schema.safeParse({ questions: [one, one, one] }).success, true);
+  assert.equal(schema.safeParse({ questions: [] }).success, false);
+  assert.equal(schema.safeParse({ questions: [one, one, one, one] }).success, false);
+  assert.equal(schema.safeParse({ questions: [{ question: "要併入嗎？", why: "" }] }).success, false);
+});
+
+test("calling the ask tool hands the questions over and says the run ends", async () => {
+  let handed = null;
+  const questions = [{ question: "小孩算不算人數？", why: "會改變訂金", options: ["算", "不算"] }];
+
+  const result = await askTool((q) => { handed = q; }).handler({ questions });
+
+  assert.deepEqual(handed, questions);
+  assert.match(result.content[0].text, /run ends here/);
+});
+
+test("questions are rendered numbered, with their options and reason", () => {
+  assert.equal(
+    renderQuestions([
+      { question: "小孩算不算人數？", why: "會改變訂金", options: ["算", "不算"] },
+      { question: "最低應繳以哪個金額計？", why: "兩種基準結果不同" },
+    ]),
+    "1. 小孩算不算人數？（算／不算）\n   會改變訂金\n2. 最低應繳以哪個金額計？\n   兩種基準結果不同",
+  );
+});
+
+test("the ask tool is offered only when its server is passed", () => {
+  const server = { name: "skillhub" };
+  const withAsk = agentOptions("/out/artifacts", server);
+
+  assert.deepEqual(withAsk.mcpServers, { skillhub: server });
+  assert.ok(withAsk.allowedTools.includes(ASK_PERSON_TOOL));
+  assert.equal(ASK_PERSON_TOOL, "mcp__skillhub__ask_person");
+  assert.ok(!("mcpServers" in agentOptions("/out/artifacts")));
+  assert.ok(!agentOptions("/out/artifacts").allowedTools.includes(ASK_PERSON_TOOL));
+});
+
+test("a turn that asks the person ends there, succeeded, with the questions as its answer", () => {
+  const questions = [{ question: "小孩算不算人數？", why: "會改變訂金" }];
+  const { status, events, result } = runWorkload([
+    startEvent({ input_tokens: 10, output_tokens: 1 }),
+    { type: "assistant", message: { content: [{ type: "text", text: "need to ask" }] }, ask: questions },
+    { type: "result", result: "guessed 1600 anyway", usage: { input_tokens: 10, output_tokens: 5 } },
+  ]);
+
+  assert.equal(status, 0);
+  assert.equal(result.status, "succeeded");
+  assert.deepEqual(result.questions, questions);
+  assert.equal(result.agent_output, "1. 小孩算不算人數？\n   會改變訂金");
+  const outputs = events.filter((e) => e.type === "agent_output").map((e) => e.payload);
+  assert.deepEqual(outputs.find((p) => p.kind === "question").questions, questions);
+  assert.equal(outputs.find((p) => p.kind === "final").text, "1. 小孩算不算人數？\n   會改變訂金");
+  assert.ok(!outputs.some((p) => p.text === "guessed 1600 anyway"), "the turn went on after asking");
+});
+
+test("a turn that never asks carries no questions", () => {
+  const { result } = runWorkload([
+    { type: "result", result: "1600 元", usage: { input_tokens: 1, output_tokens: 1 } },
+  ]);
+
+  assert.equal(result.agent_output, "1600 元");
+  assert.ok(!("questions" in result));
 });

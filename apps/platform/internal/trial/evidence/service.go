@@ -374,10 +374,17 @@ type Summary struct {
 	ErrorsTotal  int             `json:"errors_total"`
 	Truncated    bool            `json:"summary_truncated"`
 	FinalOutput  string          `json:"final_output,omitempty"`
+	Questions    []Question      `json:"questions,omitempty"`
 	Usage        *UsageSummary   `json:"usage,omitempty"`
 	Steps        []ProgressStep  `json:"steps"`
 
 	LastEventAt string `json:"last_event_at,omitempty"`
+}
+
+type Question struct {
+	Question string   `json:"question"`
+	Why      string   `json:"why"`
+	Options  []string `json:"options,omitempty"`
 }
 
 type SkillUse struct {
@@ -669,6 +676,17 @@ func (s *Service) readGeneralFold(ctx context.Context, workspaceID, runID pgtype
 		})
 		if err != nil {
 			return generalFold{}, err
+		}
+	}
+	if asked := fold.question; asked != nil {
+		raw, err := q.GetTraceEventQuestions(ctx, gen.GetTraceEventQuestionsParams{
+			RunID: runID, WorkspaceID: workspaceID, Source: asked.Source, Attempt: asked.Attempt, Seq: asked.Seq,
+		})
+		if err != nil {
+			return generalFold{}, err
+		}
+		if err := json.Unmarshal(raw, &fold.summary.Questions); err != nil {
+			return generalFold{}, fmt.Errorf("the run's question event does not hold a question list: %w", err)
 		}
 	}
 	return fold, nil

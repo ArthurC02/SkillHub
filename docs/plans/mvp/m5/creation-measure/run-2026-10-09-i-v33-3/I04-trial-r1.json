@@ -1,0 +1,199 @@
+{
+  "round": 1,
+  "sample_input": "請依照字數和交件時限計算以下三筆翻譯報價。\n案件 A：原文 300 字，要求 48 小時內交件。\n案件 B：原文 300 字，要求 24 小時內交件。\n案件 C：原文 1,000 字，要求 12 小時內交件。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中的 300 字、48 小時案件，輸出一般件，基本金額 NT$600、急件加成 NT$0、總報價 NT$600。"
+    },
+    {
+      "text": "對試跑輸入中的 300 字、24 小時案件，將剛好 24 小時判定為急件，輸出基本金額 NT$600、加成 NT$300、總報價 NT$900。"
+    },
+    {
+      "text": "對試跑輸入中的 1,000 字、12 小時案件，判定為急件，輸出基本金額 NT$2,000、加成 NT$1,000、總報價 NT$3,000。"
+    },
+    {
+      "text": "輸出逐筆列出字數、交件時限、案件類型、基本金額、急件加成及總報價，且幣別標示為新台幣。"
+    }
+  ],
+  "final_output": "案件：案件 A\n原文字數：300\n要求交件時限：48 小時\n案件類型：一般件\n一般件金額：NT$600\n急件加成：NT$0\n總報價：NT$600\n案件：案件 B\n原文字數：300\n要求交件時限：24 小時\n案件類型：急件\n一般件金額：NT$600\n急件加成：NT$300\n總報價：NT$900\n案件：案件 C\n原文字數：1000\n要求交件時限：12 小時\n案件類型：急件\n一般件金額：NT$2000\n急件加成：NT$1000\n總報價：NT$3000",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "25d82236-5b17-445e-9cf3-537bf326e89c",
+    "run_id": "c99f1c80-7710-4eec-84eb-e8c02c076c15",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三筆翻譯報價的案件類型與金額皆符合要求，且逐筆列明報價資訊並以新台幣標示。",
+    "criterion_results": [
+      {
+        "criterion_id": "a9400044-259d-4453-afbd-e416fb4c19cf",
+        "text": "對試跑輸入中的 300 字、48 小時案件，輸出一般件，基本金額 NT$600、急件加成 NT$0、總報價 NT$600。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件 A 列為 300 字、48 小時的一般件，金額與總報價均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "要求交件時限：48 小時",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "案件類型：一般件",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "一般件金額：NT$600",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "急件加成：NT$0",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總報價：NT$600",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1461ba2c-cb6e-432e-a37a-828e1f641324",
+        "text": "對試跑輸入中的 300 字、24 小時案件，將剛好 24 小時判定為急件，輸出基本金額 NT$600、加成 NT$300、總報價 NT$900。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件 B 的 24 小時交件被列為急件，基本金額、加成及總報價均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "要求交件時限：24 小時",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "案件類型：急件",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "急件加成：NT$300",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總報價：NT$900",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "58cddfd1-26c3-4e61-875c-0f040a545aba",
+        "text": "對試跑輸入中的 1,000 字、12 小時案件，判定為急件，輸出基本金額 NT$2,000、加成 NT$1,000、總報價 NT$3,000。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件 C 列為 1,000 字、12 小時的急件，基本金額、加成及總報價均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "原文字數：1000",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "要求交件時限：12 小時",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "一般件金額：NT$2000",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "急件加成：NT$1000",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總報價：NT$3000",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dab6d6b6-531b-43e0-8355-7095cf3b3f50",
+        "text": "輸出逐筆列出字數、交件時限、案件類型、基本金額、急件加成及總報價，且幣別標示為新台幣。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三筆案件均逐筆列出字數、交件時限、類型與各項金額，金額以 NT$ 標示新台幣。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案件：案件 A",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "案件：案件 B",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "案件：案件 C",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總報價：NT$3000",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1525 input and 437 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

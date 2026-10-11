@@ -54,6 +54,15 @@ type ClearSkillRestrictionParams struct {
 	ID uuid.UUID
 }
 
+// CompareEvaluationBatchesParams is parameters of compareEvaluationBatches operation.
+type CompareEvaluationBatchesParams struct {
+	ID uuid.UUID
+	// The candidate batch.
+	BatchId uuid.UUID
+	// The baseline batch.
+	Against uuid.UUID
+}
+
 // CompareRunsParams is parameters of compareRuns operation.
 type CompareRunsParams struct {
 	ID uuid.UUID
@@ -66,11 +75,21 @@ type ConfirmRunPreflightParams struct {
 	ID uuid.UUID
 }
 
+// ContinueRunParams is parameters of continueRun operation.
+type ContinueRunParams struct {
+	ID uuid.UUID
+}
+
 // CreateDownloadArtifactParams is parameters of createDownloadArtifact operation.
 type CreateDownloadArtifactParams struct {
 	// Skill id. The version must belong to this skill.
 	ID        uuid.UUID
 	VersionId uuid.UUID
+}
+
+// CreateEvaluationBatchParams is parameters of createEvaluationBatch operation.
+type CreateEvaluationBatchParams struct {
+	ID uuid.UUID
 }
 
 // CreateSkillVersionFromSuggestionsParams is parameters of createSkillVersionFromSuggestions operation.
@@ -196,6 +215,12 @@ type GetCreditTrendParams struct {
 // GetDownloadArtifactParams is parameters of getDownloadArtifact operation.
 type GetDownloadArtifactParams struct {
 	ArtifactId uuid.UUID
+}
+
+// GetEvaluationBatchReportParams is parameters of getEvaluationBatchReport operation.
+type GetEvaluationBatchReportParams struct {
+	ID      uuid.UUID
+	BatchId uuid.UUID
 }
 
 // GetExposureCaseParams is parameters of getExposureCase operation.
@@ -334,6 +359,11 @@ type ListDatasetsParams struct {
 // ListDownloadRecordsParams is parameters of listDownloadRecords operation.
 type ListDownloadRecordsParams struct {
 	ArtifactId uuid.UUID
+}
+
+// ListEvaluationBatchesParams is parameters of listEvaluationBatches operation.
+type ListEvaluationBatchesParams struct {
+	ID uuid.UUID
 }
 
 // ListOperatorAuditLogParams is parameters of listOperatorAuditLog operation.
@@ -547,6 +577,11 @@ type SetModelCallBudgetParams struct {
 
 // SetPlatformAgentEnabledParams is parameters of setPlatformAgentEnabled operation.
 type SetPlatformAgentEnabledParams struct {
+	Name string
+}
+
+// SetPlatformAgentSpendCapParams is parameters of setPlatformAgentSpendCap operation.
+type SetPlatformAgentSpendCapParams struct {
 	Name string
 }
 

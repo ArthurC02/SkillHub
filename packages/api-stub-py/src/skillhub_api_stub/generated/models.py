@@ -371,6 +371,10 @@ class JudgeRunRequest(BaseModel):
         None,
         description="A ceiling this caller wants, honoured only when it is BELOW the\nservice's own (the handler takes `min()` of the two). It cannot buy\na longer call.\n\nWhich caller gets which deadline stays a Go decision (Iron Rule 6).\nWithout this field the service's own constant is the only ceiling,\nso a Go deadline set below it expires first: Go records a timeout\nwhile the gateway call keeps running and keeps billing.\n",
     )
+    model_role: constr(pattern=r'^skillhub-judge(-panel-[1-9])?$') | None = Field(
+        None,
+        description="Which gateway judge role answers. Go names one per panel member so\nthe members are independent calls; the panel's size and how its\nverdicts are combined stay Go decisions. Without it the service's\nown judge role answers.\n",
+    )
 
 
 class Kind(Enum):
@@ -722,6 +726,19 @@ class Reason(Enum):
     fetch_url_missing = 'fetch_url_missing'
 
 
+class Criterion(RootModel[constr(min_length=1, max_length=500)]):
+    root: constr(min_length=1, max_length=500)
+
+
+class CreationChallengeCase(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    name: constr(min_length=1, max_length=60)
+    prompt: constr(min_length=1, max_length=4000)
+    criteria: list[Criterion] = Field(..., max_length=4, min_length=1)
+
+
 class AgentTool(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -939,6 +956,11 @@ class CreationStepRequest(BaseModel):
         description='One realistic, complete example of what a user would hand the Skill (the content itself, not a description of it), proposed and confirmed with the brief. It becomes the prompt of the Test Case the criteria are judged against; without it the trial run has nothing to work on and every criterion comes back undetermined. Empty until the model proposes it.',
     )
     brief_confirmed: bool
+    challenge_cases: list[CreationChallengeCase] | None = Field(
+        None,
+        description='The challenge cases confirmed together with the brief. Go turns each into its own Test Case at materialize, so the trial also runs inputs the creator did not hand over.',
+        max_length=3,
+    )
     diagram_understanding: constr(max_length=20000) = Field(
         ...,
         description='Empty before interpretation; otherwise a JSON-encoded object with exactly nodes, conditions, branches and uncertainties string arrays. Nodes must be nonempty. Legacy plain text must be reinterpreted and reconfirmed.',
@@ -984,6 +1006,11 @@ class CreationStepResponse(BaseModel):
     sample_input: constr(max_length=4000) = Field(
         ...,
         description='The example input that accompanies the brief in this proposal; empty means unchanged.',
+    )
+    challenge_cases: list[CreationChallengeCase] | None = Field(
+        None,
+        description='Inputs written by a second call that sees only the brief, the criteria and the sample, each aimed at a condition the sample does not exercise. Present only with confirm_brief; empty means none.',
+        max_length=3,
     )
     diagram_understanding: constr(max_length=20000) = Field(
         ...,

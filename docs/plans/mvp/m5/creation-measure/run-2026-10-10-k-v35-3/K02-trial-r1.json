@@ -1,0 +1,185 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆計算申請日與購買日的日數差，並依退費規則列出每筆的識別名稱、日數差和分類。\n甲：購買日 2025-01-01；申請日 2025-01-01；已領取實體教材包：否\n乙：購買日 2025-01-01；申請日 2025-01-08；已領取實體教材包：否\n丙：購買日 2025-01-01；申請日 2025-01-09；已領取實體教材包：否\n丁：購買日 2025-01-01；申請日 2025-01-31；已領取實體教材包：否\n戊：購買日 2025-01-01；申請日 2025-02-01；已領取實體教材包：否\n己：購買日 2025-01-01；申請日 2025-01-03；已領取實體教材包：是",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中的「甲」申請，日期差為 0 天且未領取教材包，輸出「全額退費」。"
+    },
+    {
+      "text": "對試跑輸入中的「乙」申請，日期差為 7 天且未領取教材包，輸出「全額退費」。"
+    },
+    {
+      "text": "對試跑輸入中的「丙」申請，日期差為 8 天且未領取教材包，輸出「退一半」。"
+    },
+    {
+      "text": "對試跑輸入中的「丁」申請，日期差為 30 天且未領取教材包，輸出「退一半」。"
+    },
+    {
+      "text": "對試跑輸入中的「戊」申請，日期差為 31 天且未領取教材包，輸出「不可退費」。"
+    },
+    {
+      "text": "對試跑輸入中的「己」申請，日期差為 2 天但已領取教材包，仍輸出「不可退費」，顯示教材包規則優先。"
+    },
+    {
+      "text": "輸出涵蓋試跑輸入中的全部六筆申請，且每筆都列出識別名稱、正確日數差與三種指定分類之一。"
+    }
+  ],
+  "final_output": "| 識別名稱 | 日數差 | 分類 |\n|---|---:|---|\n| 甲 | 0 天 | 全額退費 |\n| 乙 | 7 天 | 全額退費 |\n| 丙 | 8 天 | 退一半 |\n| 丁 | 30 天 | 退一半 |\n| 戊 | 31 天 | 不可退費 |\n| 己 | 2 天 | 不可退費 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f7b5204a-094d-4e4d-90ca-c65b8812bec0",
+    "run_id": "e0df4676-269b-4fd8-8bd1-4cb6ae0d4ea2",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六筆申請的日數差與退費分類均正確，輸出也完整列出所需欄位。",
+    "criterion_results": [
+      {
+        "criterion_id": "c6026201-781d-447c-a9f4-0b94edbaa69e",
+        "text": "對試跑輸入中的「甲」申請，日期差為 0 天且未領取教材包，輸出「全額退費」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲的日數差為 0 天，輸出分類為「全額退費」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 甲 | 0 天 | 全額退費 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cd8fba8e-232c-44dd-b89b-3a2fa71a7dc6",
+        "text": "對試跑輸入中的「乙」申請，日期差為 7 天且未領取教材包，輸出「全額退費」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "乙的日數差為 7 天，輸出分類為「全額退費」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 乙 | 7 天 | 全額退費 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "63426beb-1621-4357-bcb3-5dbf585ccb82",
+        "text": "對試跑輸入中的「丙」申請，日期差為 8 天且未領取教材包，輸出「退一半」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "丙的日數差為 8 天，輸出分類為「退一半」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 丙 | 8 天 | 退一半 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "36966405-9dab-4e51-ad2e-efb2170ded62",
+        "text": "對試跑輸入中的「丁」申請，日期差為 30 天且未領取教材包，輸出「退一半」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "丁的日數差為 30 天，輸出分類為「退一半」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 丁 | 30 天 | 退一半 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a105a5ec-de9d-4466-bd5c-8212a1362221",
+        "text": "對試跑輸入中的「戊」申請，日期差為 31 天且未領取教材包，輸出「不可退費」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "戊的日數差為 31 天，輸出分類為「不可退費」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 戊 | 31 天 | 不可退費 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "134c20b3-584b-46dc-9590-6b57ac56c47a",
+        "text": "對試跑輸入中的「己」申請，日期差為 2 天但已領取教材包，仍輸出「不可退費」，顯示教材包規則優先。",
+        "result": "passed",
+        "source": "model",
+        "reason": "己已領取實體教材包；儘管日數差僅 2 天，輸出仍分類為「不可退費」。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "己：日數差 2 天；已領取實體教材包：是；分類：不可退費",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 己 | 2 天 | 不可退費 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "00a98f63-8402-4af4-90dd-3add981a31f3",
+        "text": "輸出涵蓋試跑輸入中的全部六筆申請，且每筆都列出識別名稱、正確日數差與三種指定分類之一。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出涵蓋全部六筆申請；每筆均列出識別名稱、正確日數差及指定分類之一。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 識別名稱 | 日數差 | 分類 |\n|---|---:|---|\n| 甲 | 0 天 | 全額退費 |\n| 乙 | 7 天 | 全額退費 |\n| 丙 | 8 天 | 退一半 |\n| 丁 | 30 天 | 退一半 |\n| 戊 | 31 天 | 不可退費 |\n| 己 | 2 天 | 不可退費 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1532 input and 670 output tokens on skillhub-run; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

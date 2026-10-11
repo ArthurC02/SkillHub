@@ -1,0 +1,182 @@
+{
+  "round": 1,
+  "sample_input": "請依以下兩場活動資料，各寫一則適合發在 LINE 的親子烘焙活動宣傳文案；若有缺漏資料，請依合理假設補上並清楚標示為暫定、待主辦確認。\n\n活動名稱：小熊奶油餅乾親子烘焙日\n日期：2026年11月8日\n時間：14:00–16:00\n地點：台北市大安區和平東路二段100號\n費用：每組親子800元\n名額：8組親子\n報名截止日：2026年11月1日\n\n活動名稱：秋日蘋果派親子烘焙\n日期：2026年11月15日\n時間：10:00–12:30\n地點：台北市中山區南京東路三段50號\n名額：10組親子",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中的「小熊奶油餅乾親子烘焙日」，文案完整保留活動名稱、2026年11月8日、14:00–16:00、台北市大安區和平東路二段100號、每組親子800元、8組親子及2026年11月1日截止報名，且不改動這些資料。"
+    },
+    {
+      "text": "對試跑輸入中的「秋日蘋果派親子烘焙」，文案包含地點、費用、名額與報名截止日；其中輸入未提供的費用與報名截止日須以合理暫定值補上，並清楚標為暫定、待主辦確認，而非已核實資訊。"
+    },
+    {
+      "text": "輸出分別提供兩則可供 LINE 使用的繁體中文宣傳文案，語氣親切活潑，且每則都包含該活動的名稱、日期、時間、地點、費用、名額與報名截止日。"
+    }
+  ],
+  "final_output": "### 🐻 小熊奶油餅乾親子烘焙日\n\n和孩子一起動手做小熊奶油餅乾，享受親子烘焙時光！🐻🍪\n\n📅 日期：2026年11月8日  \n🕑 時間：14:00–16:00  \n📍 地點：台北市大安區和平東路二段100號  \n💰 費用：每組親子800元  \n👨‍👩‍👧 名額：8組親子  \n📝 報名截止日：2026年11月1日  \n🔗 報名方式／連結：〔未提供，請主辦補上〕\n\n名額有限，歡迎親子一起來烘焙！✨\n\n---\n\n### 🍎 秋日蘋果派親子烘焙\n\n一起動手烘焙，和孩子度過暖暖的親子時光！🍎🥧\n\n📅 日期：2026年11月15日  \n🕙 時間：10:00–12:30  \n📍 地點：台北市中山區南京東路三段50號  \n👨‍👩‍👧 名額：10組親子  \n💰 費用：**暫定每組親子800元，待主辦確認**  \n📝 報名截止日：**暫定2026年11月8日，待主辦確認**  \n🔗 報名方式／連結：〔未提供，請主辦補上〕\n\n費用與報名截止日為暫定假設：參考第一場活動的每組親子800元費用，並以活動前一週推估截止日。正式發布前請主辦確認。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c112add3-7b3a-4739-9d6c-87b7bb4c7db0",
+    "run_id": "f95de533-43f6-49a8-8fe3-63440767842d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩則文案均涵蓋所需活動資訊。第一場保留原始資料；第二場的費用與報名截止日以合理假設補足，並清楚標示待主辦確認。",
+    "criterion_results": [
+      {
+        "criterion_id": "cacef659-761c-4a2b-84e6-3a3bdb5b8d0d",
+        "text": "對試跑輸入中的「小熊奶油餅乾親子烘焙日」，文案完整保留活動名稱、2026年11月8日、14:00–16:00、台北市大安區和平東路二段100號、每組親子800元、8組親子及2026年11月1日截止報名，且不改動這些資料。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第一則文案完整且未改動小熊奶油餅乾活動的名稱、日期、時間、地點、費用、名額及報名截止日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "小熊奶油餅乾親子烘焙日",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "📅 日期：2026年11月8日",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "🕑 時間：14:00–16:00",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "📍 地點：台北市大安區和平東路二段100號",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "💰 費用：每組親子800元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "👨‍👩‍👧 名額：8組親子",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "📝 報名截止日：2026年11月1日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e66dbc1b-db8a-4cc6-b098-e14f615ddc48",
+        "text": "對試跑輸入中的「秋日蘋果派親子烘焙」，文案包含地點、費用、名額與報名截止日；其中輸入未提供的費用與報名截止日須以合理暫定值補上，並清楚標為暫定、待主辦確認，而非已核實資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第二則文案列出地點與名額，並為缺漏的費用及報名截止日補上合理假設；兩者均明確標示「暫定」及「待主辦確認」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "📍 地點：台北市中山區南京東路三段50號",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "👨‍👩‍👧 名額：10組親子",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "💰 費用：**暫定每組親子800元，待主辦確認**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "📝 報名截止日：**暫定2026年11月8日，待主辦確認**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c3276c2a-0f61-44bf-ba79-7d76cc57629a",
+        "text": "輸出分別提供兩則可供 LINE 使用的繁體中文宣傳文案，語氣親切活潑，且每則都包含該活動的名稱、日期、時間、地點、費用、名額與報名截止日。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出分為兩則繁體中文文案，語氣親切活潑；每則均列出活動名稱、日期、時間、地點、費用、名額與報名截止日。報名連結未提供也有註明，不影響列明的要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 🐻 小熊奶油餅乾親子烘焙日",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "和孩子一起動手做小熊奶油餅乾，享受親子烘焙時光！🐻🍪",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### 🍎 秋日蘋果派親子烘焙",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "一起動手烘焙，和孩子度過暖暖的親子時光！🍎🥧",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "📅 日期：2026年11月15日",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "🕙 時間：10:00–12:30",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1485 input and 1331 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

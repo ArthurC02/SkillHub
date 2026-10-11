@@ -299,8 +299,16 @@ function OperationsSection() {
               <strong>平台 Agent</strong>
             </Link>
             <p className="note">
-              最近的維運日報、每次執行的步驟與花費，以及每個 Agent 的啟停與全域煞車。
+              最近的維運日報、每次執行的步驟與花費，以及每個 Agent 的啟停、每日花費上限與全域煞車。
             </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <Link to="/admin/settings">
+              <strong>平台設定</strong>
+            </Link>
+            <p className="note">調整評審團開關與對話回答輪數，查看目前生效的平台政策。</p>
           </div>
         </li>
       </ul>

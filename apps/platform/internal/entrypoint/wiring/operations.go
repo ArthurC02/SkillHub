@@ -11,10 +11,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/capacity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
@@ -26,26 +28,29 @@ const (
 	agentMaxOutputToken = 4_000
 )
 
-var AgentLimits = operations.Limits{
+var AgentLimits = agentloop.Limits{
 	MaxSteps: agentMaxSteps, MaxTokens: agentMaxTokens, Deadline: agentDeadline,
 	StepTimeout: agentStepTimeout, MaxOutputTokens: agentMaxOutputToken,
 }
 
-func AgentTools(pool *pgxpool.Pool, rate capacity.RestoreRate) []operations.Tool {
-	return []operations.Tool{MaintenanceReportTool(pool, rate, time.Now)}
+func AgentTools(
+	pool *pgxpool.Pool, rate capacity.RestoreRate, docket func(context.Context) ([]publishing.DocketEntry, error),
+) []agentloop.Tool {
+	return []agentloop.Tool{MaintenanceReportTool(pool, rate, time.Now), ExposureQueueTool(docket)}
 }
 
 func NewAgentRuns(
-	pool *pgxpool.Pool, llm *llmclient.Client, gateway *run.Gateway, credits *credit.Service, rate capacity.RestoreRate,
+	pool *pgxpool.Pool, llm *llmclient.Client, gateway *run.Gateway, credits *credit.Service, tools []agentloop.Tool,
 ) func(ctx context.Context, agent string) error {
-	tools := AgentTools(pool, rate)
 	return func(ctx context.Context, agent string) error {
 		def, ok := operations.Lookup(agent)
 		if !ok {
 			return fmt.Errorf("%w: %s", operations.ErrUnknownAgent, agent)
 		}
-		report, err := NewAgentRunner(pool, llm, gateway, credits, def).Run(ctx, def, tools, AgentLimits)
-		if errors.Is(err, operations.ErrAgentHalted) {
+		svc := &operations.Service{Pool: pool}
+		loopAgent := svc.LoopAgent(def, MaintenanceActions(pool))
+		report, err := NewAgentRunner(svc, llm, gateway, credits, def.ModelRole).Run(ctx, loopAgent, tools, AgentLimits)
+		if errors.Is(err, agentloop.ErrHalted) {
 			return nil
 		}
 		if err == nil {
@@ -56,27 +61,26 @@ func NewAgentRuns(
 }
 
 func NewAgentRunner(
-	pool *pgxpool.Pool, llm *llmclient.Client, gateway *run.Gateway, credits *credit.Service, def operations.Definition,
-) *operations.Runner {
-	return &operations.Runner{
-		Svc:  &operations.Service{Pool: pool},
-		Step: operations.StepThrough(llm),
+	journal *operations.Service, llm *llmclient.Client, gateway *run.Gateway, credits *credit.Service, modelRole string,
+) *agentloop.Runner {
+	return &agentloop.Runner{
+		Journal: journal,
+		Step:    agentloop.StepThrough(llm),
 		IssueKey: func(ctx context.Context, runID string, budgetUSD float64, ttl time.Duration) (string, error) {
-			grant, err := gateway.IssueAgentRun(ctx, runID, run.CreationKeyTerms{TTL: ttl, BudgetUSD: budgetUSD, Model: def.ModelRole})
+			grant, err := gateway.IssueAgentRun(ctx, runID, run.CreationKeyTerms{TTL: ttl, BudgetUSD: budgetUSD, Model: modelRole})
 			if err != nil {
 				return "", err
 			}
 			return grant.VirtualKey, nil
 		},
 		RevokeKey:  gateway.Revoke,
-		RecordCost: AgentCostRecorder(pool, credits),
+		RecordCost: AgentCostRecorder(journal.Pool, credits),
 		Now:        time.Now,
-		Actions:    MaintenanceActions(pool),
 	}
 }
 
-func AgentCostRecorder(pool *pgxpool.Pool, credits *credit.Service) func(context.Context, pgtype.UUID, int, operations.ModelCall) error {
-	return func(ctx context.Context, runID pgtype.UUID, seq int, call operations.ModelCall) error {
+func AgentCostRecorder(pool *pgxpool.Pool, credits *credit.Service) func(context.Context, pgtype.UUID, int, agentloop.ModelCall) error {
+	return func(ctx context.Context, runID pgtype.UUID, seq int, call agentloop.ModelCall) error {
 		e := credit.CostEvent{
 			Kind: credit.KindPlatformAgent, Model: call.Model, PromptVersion: call.PromptVersion,
 			PromptTokens: call.PromptTokens, CompletionTokens: call.CompletionTokens,

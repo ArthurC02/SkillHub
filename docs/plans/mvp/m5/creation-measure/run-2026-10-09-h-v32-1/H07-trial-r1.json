@@ -1,0 +1,221 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下屋主資料，製作工程報價提案、丈量聯絡話術及建材採購資料。\n屋主：陳小姐；電話：0912-000-000。工程地址：台北市大安區和平東路一段100號。工程範圍與報價：拆除舊地磚，12平方公尺，每平方公尺800元；浴室防水施工，8平方公尺，每平方公尺1,500元；浴室磁磚鋪設，8平方公尺，每平方公尺2,200元；新增插座，2點，每點1,800元。單價為新臺幣，尚未提供稅率、付款條件或工期。丈量聯絡對象：林師傅；請聯絡他提議2026/10/16上午9:00至11:00到場丈量上述地址，並請他確認。指定採購建材：AquaSeal AS-20防水材，2桶，每桶1,350元；白磚T-600磁磚，9箱，每箱680元；灰色填縫劑G-2，3包，每包220元。請送至工程地址；供應商帳號由人員自行使用。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑資料中的四項工程，提案正確列出各項金額：9,600、12,000、17,600、3,600 元，工程小計為 42,800 元；未輸入稅率時不得自行加計稅額。"
+    },
+    {
+      "text": "丈量聯絡話術須向林師傅提出 2026/10/16 上午 9:00–11:00 到場丈量，說明地址與丈量目的，並請對方確認；不得表示已通話或已確認。"
+    },
+    {
+      "text": "採購資料須列出三種建材、各自數量與單價，正確算出金額 2,700、6,120、660 元及採購小計 9,480 元；須包含配送地址，且不得表示已登入或下單。"
+    },
+    {
+      "text": "提案須將工程報價小計 42,800 元與採購資料小計 9,480 元分開呈現，不得混加成同一報價總額。"
+    },
+    {
+      "text": "對輸入未提供的付款條件、稅額與工期，明確標示待確認，不自行補造。"
+    }
+  ],
+  "final_output": "# 裝潢工程報價提案暨建材採購資料\n\n**屋主：**陳小姐  \n**聯絡電話：**0912-000-000  \n**工程地址／建材配送地址：**台北市大安區和平東路一段100號  \n**幣別：**新臺幣（依本次提供資料假設）\n\n\u003e 以下數量與金額為依屋主提供的數量、單價整理之**草案**，請於現場丈量及人工核實後確認。各項小計僅計算已提供的項目，工程與建材採購分開列示。\n\n## 一、工程報價草案\n\n| 工程項目 | 計價單位 | 數量（草案） | 單價（新臺幣） | 金額（新臺幣，草案） |\n|---|---:|---:|---:|---:|\n| 拆除舊地磚 | 平方公尺 | 12 | 800 | 9,600 |\n| 浴室防水施工 | 平方公尺 | 8 | 1,500 | 12,000 |\n| 浴室磁磚鋪設 | 平方公尺 | 8 | 2,200 | 17,600 |\n| 新增插座 | 點 | 2 | 1,800 | 3,600 |\n| **工程小計** |  |  |  | **42,800** |\n\n**稅額：**未計列；稅率未提供。  \n**付款條件：**未提供。  \n**工期：**未提供。\n\n## 二、建材採購草案\n\n| 建材品名／規格 | 單位 | 數量（草案） | 單價（新臺幣） | 金額（新臺幣，草案） |\n|---|---:|---:|---:|---:|\n| AquaSeal AS-20防水材 | 桶 | 2 | 1,350 | 2,700 |\n| 白磚T-600磁磚 | 箱 | 9 | 680 | 6,120 |\n| 灰色填縫劑G-2 | 包 | 3 | 220 | 660 |\n| **建材採購小計** |  |  |  | **9,480** |\n\n**配送地址：**台北市大安區和平東路一段100號  \n**供應商帳號：**由獲授權人員自行使用。  \n**採購狀態：**尚未下單；請人員核實品名、規格、數量及配送資訊後自行輸入並下單。\n\n## 三、丈量聯絡話術\n\n\u003e 林師傅您好，我是陳小姐這邊的承辦人員，想和您確認是否方便於 **2026年10月16日（星期五）上午9:00至11:00**，到 **台北市大安區和平東路一段100號** 進行工程丈量，核對拆除舊地磚、浴室防水、浴室磁磚鋪設及新增插座的施工範圍與數量。請問這個時段是否可以安排？再麻煩您回覆確認，謝謝。\n\n**聯絡對象：**林師傅  \n**丈量日期與時段：**2026年10月16日上午9:00至11:00（建議時段，尚未確認）  \n**實際聯絡狀態：**尚未聯絡；請屋主或承辦人員使用上述話術聯繫。\n\n## 四、需確認與注意事項\n\n- 工程數量及金額均為草案，需丈量並由人員核實。\n- 稅率及稅額計算方式未提供，因此未加計稅額。\n- 付款條件、工期未提供。\n- 丈量時段尚待林師傅確認。\n- 本提案未代為撥打或傳送聯絡內容，也未登入供應商系統或下單。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e3cba920-2268-4df6-95ea-36e786776d49",
+    "run_id": "8a296993-9415-4995-bbfc-8b5d4a031664",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收標準均已達成。提案正確分列工程及建材採購金額，提供待確認的丈量聯絡話術，並未補造稅額、付款條件或工期。",
+    "criterion_results": [
+      {
+        "criterion_id": "1ee878b2-fd08-4977-ac7f-42ba3c798f1c",
+        "text": "對試跑資料中的四項工程，提案正確列出各項金額：9,600、12,000、17,600、3,600 元，工程小計為 42,800 元；未輸入稅率時不得自行加計稅額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "四項工程金額及工程小計均正確；稅率未提供，提案未加計稅額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 拆除舊地磚 | 平方公尺 | 12 | 800 | 9,600 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 浴室防水施工 | 平方公尺 | 8 | 1,500 | 12,000 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 浴室磁磚鋪設 | 平方公尺 | 8 | 2,200 | 17,600 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 新增插座 | 點 | 2 | 1,800 | 3,600 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| **工程小計** |  |  |  | **42,800** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**稅額：**未計列；稅率未提供。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "de16072b-32c9-4112-aea5-a2023e5986b5",
+        "text": "丈量聯絡話術須向林師傅提出 2026/10/16 上午 9:00–11:00 到場丈量，說明地址與丈量目的，並請對方確認；不得表示已通話或已確認。",
+        "result": "passed",
+        "source": "model",
+        "reason": "話術向林師傅提出指定丈量時段、地址及丈量目的，請他回覆確認；另註明尚未聯絡或確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林師傅您好，我是陳小姐這邊的承辦人員，想和您確認是否方便於 **2026年10月16日（星期五）上午9:00至11:00**，到 **台北市大安區和平東路一段100號** 進行工程丈量，核對拆除舊地磚、浴室防水、浴室磁磚鋪設及新增插座的施工範圍與數量。請問這個時段是否可以安排？再麻煩您回覆確認，謝謝。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**實際聯絡狀態：**尚未聯絡；請屋主或承辦人員使用上述話術聯繫。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e11079c8-5686-44a5-bb32-5b508ac713b7",
+        "text": "採購資料須列出三種建材、各自數量與單價，正確算出金額 2,700、6,120、660 元及採購小計 9,480 元；須包含配送地址，且不得表示已登入或下單。",
+        "result": "passed",
+        "source": "model",
+        "reason": "採購資料列明三項建材的數量、單價及正確金額，小計為9,480元；載有配送地址，並明示尚未下單、未登入供應商系統。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| AquaSeal AS-20防水材 | 桶 | 2 | 1,350 | 2,700 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 白磚T-600磁磚 | 箱 | 9 | 680 | 6,120 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 灰色填縫劑G-2 | 包 | 3 | 220 | 660 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| **建材採購小計** |  |  |  | **9,480** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**配送地址：**台北市大安區和平東路一段100號",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "本提案未代為撥打或傳送聯絡內容，也未登入供應商系統或下單。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8913379d-9d84-4e97-b1c4-542a6f53fc79",
+        "text": "提案須將工程報價小計 42,800 元與採購資料小計 9,480 元分開呈現，不得混加成同一報價總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "工程與建材採購分節列示各自小計，未合併成同一報價總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "各項小計僅計算已提供的項目，工程與建材採購分開列示。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| **工程小計** |  |  |  | **42,800** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| **建材採購小計** |  |  |  | **9,480** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b142131d-c395-4c06-aa96-4b33338211df",
+        "text": "對輸入未提供的付款條件、稅額與工期，明確標示待確認，不自行補造。",
+        "result": "passed",
+        "source": "model",
+        "reason": "提案將未提供的稅率及稅額、付款條件與工期列為需確認事項，沒有自行補造。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 四、需確認與注意事項",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 稅率及稅額計算方式未提供，因此未加計稅額。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 付款條件、工期未提供。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1550 input and 1937 output tokens on skillhub-run; reported cost $0.0043 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 38,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

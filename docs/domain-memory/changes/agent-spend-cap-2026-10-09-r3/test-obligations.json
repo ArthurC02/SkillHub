@@ -1,0 +1,70 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "operators-set-agent-spend-caps",
+  "proposal_id": "operations-agent-spend-cap-override-r3",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "override-within-ceiling",
+      "expected_outcome": "The validator accepts the promoted rule.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "acceptance-criterion",
+      "source_id": "operator-only-and-audited",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "override-bounds",
+      "source_type": "acceptance-criterion",
+      "source_id": "override-within-ceiling",
+      "expected_outcome": "Zero, 5000001, a fraction, a missing cap and a blank note are 400 with no audit; 5000000 is accepted over a default of 1, survives re-registration, and clearing returns to 1.",
+      "level": "integration",
+      "status": "executed",
+      "check": "go test ./internal/entrypoint/api/apiserver/ -run TestAnOperatorSetsAnAgentsDailySpendCapWithinTheCeilingAndClearsItBackToTheDefault"
+    },
+    {
+      "id": "next-run-budget",
+      "source_type": "acceptance-criterion",
+      "source_id": "next-run-uses-effective-cap",
+      "expected_outcome": "After an operator sets the cap, the next run's gateway key budget is computed from it.",
+      "level": "integration",
+      "status": "executed",
+      "check": "go test ./internal/entrypoint/api/apiserver/ -run TestAnOperatorsSpendCapReplacesTheDefinedOneForTheNextRun"
+    },
+    {
+      "id": "operator-only",
+      "source_type": "acceptance-criterion",
+      "source_id": "operator-only-and-audited",
+      "expected_outcome": "Anonymous and member callers get 404 on the spend cap route and the cap does not change.",
+      "level": "integration",
+      "status": "executed",
+      "check": "go test ./internal/entrypoint/api/apiserver/ -run TestPlatformAgentRoutesAreInvisibleWithoutTheOperatorRole"
+    },
+    {
+      "id": "override-survives",
+      "source_type": "acceptance-criterion",
+      "source_id": "override-survives-registration",
+      "expected_outcome": "Registering the definitions again keeps the operator's 5000000; clearing returns the effective cap to the default of 1 and audits 5000000 to 1.",
+      "level": "integration",
+      "status": "executed",
+      "check": "go test ./internal/entrypoint/api/apiserver/ -run TestAnOperatorSetsAnAgentsDailySpendCapWithinTheCeilingAndClearsItBackToTheDefault"
+    },
+    {
+      "id": "rule-effective-cap",
+      "source_type": "rule",
+      "source_id": "agent-daily-spend-cap-is-operator-adjustable-under-a-ceiling",
+      "expected_outcome": "The effective cap the runner reads is the override when set and the default otherwise, bounded by the ceiling.",
+      "level": "integration",
+      "status": "executed",
+      "check": "go test ./internal/entrypoint/api/apiserver/ -run 'TestAnOperatorSetsAnAgentsDailySpendCapWithinTheCeilingAndClearsItBackToTheDefault|TestAnOperatorsSpendCapReplacesTheDefinedOneForTheNextRun'"
+    }
+  ]
+}

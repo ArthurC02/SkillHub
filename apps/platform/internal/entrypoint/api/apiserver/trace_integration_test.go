@@ -158,6 +158,11 @@ type generalView struct {
 	ErrorsTotal int    `json:"errors_total"`
 	Truncated   bool   `json:"summary_truncated"`
 	FinalOutput string `json:"final_output"`
+	Questions   []struct {
+		Question string   `json:"question"`
+		Why      string   `json:"why"`
+		Options  []string `json:"options"`
+	} `json:"questions"`
 	LastEventAt string `json:"last_event_at"`
 	Usage       *struct {
 		InputTokens int64  `json:"input_tokens"`
@@ -918,6 +923,39 @@ func assertGeneralSummaryCounts(t *testing.T, view generalView) {
 	}
 	if view.FinalOutput != "Removed 17 duplicate rows." {
 		t.Errorf("final output = %q", view.FinalOutput)
+	}
+	if view.Questions != nil {
+		t.Errorf("a run that never asked reports questions: %+v", view.Questions)
+	}
+}
+
+func TestGeneralModeCarriesTheQuestionsARunEndedWith(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "trace-question-owner")
+	skillID := seedSkill(t, pool, owner.workspaceID, "trace-question-skill")
+	runID := seedRun(t, pool, owner.workspaceID, skillID)
+
+	events := []string{
+		event(runID, 1, 1, "agent_output", `{"kind":"question","text":"1. 小孩算不算人數？（算／不算）\n   會改變訂金","truncated":false,"questions":[{"question":"小孩算不算人數？","why":"會改變訂金","options":["算","不算"]}]}`),
+		event(runID, 1, 2, "agent_output", `{"kind":"final","text":"1. 小孩算不算人數？（算／不算）\n   會改變訂金","truncated":false}`),
+	}
+	if code, report := a.ingest(t, runID, 1, events...); code != http.StatusAccepted || report.Stored != len(events) {
+		t.Fatalf("push: got %d %+v", code, report)
+	}
+
+	status, view := owner.generalTrace(t, runID)
+	if status != http.StatusOK {
+		t.Fatalf("GET trace: got %d", status)
+	}
+	if len(view.Questions) != 1 {
+		t.Fatalf("questions = %+v, want the one the run asked", view.Questions)
+	}
+	if q := view.Questions[0]; q.Question != "小孩算不算人數？" || q.Why != "會改變訂金" || len(q.Options) != 2 || q.Options[1] != "不算" {
+		t.Errorf("question = %+v", q)
+	}
+	if view.FinalOutput != "1. 小孩算不算人數？（算／不算）\n   會改變訂金" {
+		t.Errorf("final output = %q, want the rendered questions", view.FinalOutput)
 	}
 }
 

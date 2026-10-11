@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請計算這次寄宿的應付金額，只回覆金額。\n總小時數：6\n請計算這次寄宿的應付金額，只回覆金額。\n總小時數：24\n請計算這次寄宿的應付金額，只回覆金額。\n總小時數：25\n請計算這次寄宿的應付金額，只回覆金額。\n總小時數：48\n請計算這次寄宿的應付金額，只回覆金額。\n總小時數：49\n請計算這次寄宿的應付金額，只回覆金額。\n總小時數：100",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 行為 6 小時（1 個單位），輸出必須只有「150 元」。"
+    },
+    {
+      "text": "試跑輸入第 2 行為 24 小時（4 個單位），輸出必須只有「600 元」。"
+    },
+    {
+      "text": "試跑輸入第 3 行為 25 小時，向上取整為 5 個單位，輸出必須只有「720 元」。"
+    },
+    {
+      "text": "試跑輸入第 4 行為 48 小時（8 個單位），輸出必須只有「1080 元」。"
+    },
+    {
+      "text": "試跑輸入第 5 行為 49 小時，向上取整為 9 個單位，輸出必須只有「1170 元」。"
+    },
+    {
+      "text": "試跑輸入第 6 行為 100 小時，向上取整為 17 個單位；未封頂費用為 600 + 480 + 810 = 1890 元，套用上限後輸出必須只有「1500 元」。"
+    }
+  ],
+  "final_output": "150 元\n600 元\n720 元\n1080 元\n1170 元\n1500 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "90e1bd91-2d59-4f57-8b6f-6e168a310e0e",
+    "run_id": "9f615bad-3ea7-4d45-b518-bee9d3c3ae9a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終回覆依序列出六筆金額，各行均符合對應的驗收標準，沒有其他文字。",
+    "criterion_results": [
+      {
+        "criterion_id": "df8e7c37-d483-469e-823e-ff39d74da38f",
+        "text": "試跑輸入第 1 行為 6 小時（1 個單位），輸出必須只有「150 元」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 行只輸出「150 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "150 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f5e1b5c3-d78b-4898-a1c6-e1e28a635e7e",
+        "text": "試跑輸入第 2 行為 24 小時（4 個單位），輸出必須只有「600 元」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 行只輸出「600 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "600 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2faa5632-fc96-4f17-837f-4e862e51e0ae",
+        "text": "試跑輸入第 3 行為 25 小時，向上取整為 5 個單位，輸出必須只有「720 元」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 行只輸出「720 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "720 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "57cf1e8e-2728-4b5b-a609-13e8599194f1",
+        "text": "試跑輸入第 4 行為 48 小時（8 個單位），輸出必須只有「1080 元」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 行只輸出「1080 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1080 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cf9d048a-6668-41da-bf13-04762a7efc17",
+        "text": "試跑輸入第 5 行為 49 小時，向上取整為 9 個單位，輸出必須只有「1170 元」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 行只輸出「1170 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1170 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ebf8b9c4-dc42-4493-96e8-8ecb66ace21d",
+        "text": "試跑輸入第 6 行為 100 小時，向上取整為 17 個單位；未封頂費用為 600 + 480 + 810 = 1890 元，套用上限後輸出必須只有「1500 元」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 行只輸出封頂金額「1500 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1500 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1529 input and 206 output tokens on skillhub-run; reported cost $0.0030 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

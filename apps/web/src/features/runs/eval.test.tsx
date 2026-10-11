@@ -540,6 +540,7 @@ test("EVAL-011 the rerun link keeps object context in the path and the new versi
   const params = new URLSearchParams(href.slice(href.indexOf("?")));
   expect(href.split("?")[0]).toBe(`/skills/${SKILL}/test-cases/${TEST_CASE}/runs/new`);
   expect(params.get("version")).toBe(NEW_VERSION);
+  expect(params.get("against")).toBe(RUN);
   const versionLink = container.querySelector(`a[href="/skills/${SKILL}/versions/${NEW_VERSION}"]`);
   expect(versionLink).not.toBeNull();
   expect(versionLink?.textContent).toContain("開啟剛建立的版本");

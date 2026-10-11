@@ -1,0 +1,146 @@
+{
+  "round": 0,
+  "sample_input": "驗收日期 2026-02-30。紀錄：墊片 -5 個，單價 12；電線 8 條，單價 50。請算驗收總額。",
+  "acceptance_criteria": [
+    {
+      "text": "指出驗收日期 2026-02-30 不存在（2026 年 2 月只有 28 天）"
+    },
+    {
+      "text": "指出墊片數量 -5 為負數"
+    },
+    {
+      "text": "請使用者確認日期與墊片數量"
+    },
+    {
+      "text": "沒有給出驗收總額數字（不論是含 -60 的 340 元，或自行改成正數後的 460 元）"
+    },
+    {
+      "text": "若有給出電線小計，必須是 400 元"
+    }
+  ],
+  "final_output": "驗收單名稱「驗收單 1」是方便整理使用的名稱。\n\n| 驗收單 | 品項 | 數量 | 單價 | 驗收日期 |\n|---|---|---:|---:|---|\n| 驗收單 1 | 墊片 | -5 | 12 | 2026-02-30 |\n| 驗收單 1 | 電線 | 8 | 50 | 2026-02-30 |\n\n核對結果如下（依腳本輸出）：\n\n```text\n驗收單：驗收單 1\n  第 1 筆：品項=墊片；數量=-5；單價=12；日期=2026-02-30；金額=未計算；數量為負，待確認, 日期待確認\n  第 2 筆：品項=電線；數量=8；單價=50；日期=2026-02-30；金額=400；日期待確認\n  品項小計：墊片＝未提供（負數數量，待確認）\n  品項小計：電線＝400\n  待確認：品項「墊片」第 1 筆數量為負數 -5，請確認。\n  待確認：品項「墊片」第 1 筆日期 '2026-02-30' 不存在或格式不是 YYYY-MM-DD，請確認。\n  待確認：品項「電線」第 2 筆日期 '2026-02-30' 不存在或格式不是 YYYY-MM-DD，請確認。\n  驗收總額：未提供（仍有待確認問題或缺漏金額資料）。\n```\n\n電線小計為 **400**；墊片數量為負，該品項小計未提供。兩筆日期「2026-02-30」都不是有效日期。因仍有待確認事項，**驗收總額未提供**；請確認墊片數量及兩筆日期。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3b94e3c5-2383-46ff-a5f4-b00253d1d570",
+    "run_id": "13309dfa-4ed6-4127-907b-e4d5ab325db8",
+    "status": "completed",
+    "overall": "met",
+    "summary": "本次回覆指出日期無效及墊片數量為負，要求確認兩者；電線小計為 400，且未給出驗收總額數字。五項驗收標準均符合。",
+    "criterion_results": [
+      {
+        "criterion_id": "68909527-3043-4d9a-bb4e-4f269cea42e8",
+        "text": "指出驗收日期 2026-02-30 不存在（2026 年 2 月只有 28 天）",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出 2026-02-30 不是有效日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "兩筆日期「2026-02-30」都不是有效日期。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2b45e7b0-5c5a-4c3e-ad77-08bd69e6a0db",
+        "text": "指出墊片數量 -5 為負數",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出墊片數量 -5 為負數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "待確認：品項「墊片」第 1 筆數量為負數 -5，請確認。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c9a8e7c6-87b0-4a9a-8d0d-d0015ba8b1e6",
+        "text": "請使用者確認日期與墊片數量",
+        "result": "passed",
+        "source": "model",
+        "reason": "請使用者確認墊片數量及兩筆日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請確認墊片數量及兩筆日期。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "802924c6-5583-4ee9-94d7-be12d4e360f6",
+        "text": "沒有給出驗收總額數字（不論是含 -60 的 340 元，或自行改成正數後的 460 元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "驗收總額標為未提供，沒有給出驗收總額數字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "驗收總額：未提供（仍有待確認問題或缺漏金額資料）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8096601b-316a-4155-abea-9577397144bc",
+        "text": "若有給出電線小計，必須是 400 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "給出的電線小計為 400。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "品項小計：電線＝400",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1518 input and 899 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

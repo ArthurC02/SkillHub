@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 
+from .changes import PREVIEW_STATUSES
 from .common import ASSET_KEYS
 from .counterfactual import DEFAULT_TIMEOUT_SECONDS
 from .policy import AMENDABLE_FIELDS
@@ -8,7 +9,7 @@ from .policy import AMENDABLE_FIELDS
 ASSET_CHOICES = [name.removesuffix(".json") for name in ASSET_KEYS]
 
 
-def add_path(parser: argparse.ArgumentParser, name: str, required: bool = True) -> None:
+def add_path(parser: argparse.ArgumentParser, name: str, required: bool = True) -> None:  # noqa: FBT001, FBT002
     parser.add_argument(name, required=required, type=Path)
 
 
@@ -21,12 +22,27 @@ def build_parser() -> argparse.ArgumentParser:
         description="Initialize, validate, or assess a file-backed Domain Registry."
     )
     commands = parser.add_subparsers(dest="command", required=True)
+    for add_commands in (
+        _add_registry_commands, _add_record_and_source_commands, _add_governance_commands,
+        _add_review_governance_commands, _add_proposal_commands, _add_proposal_check_commands,
+    ):
+        add_commands(commands)
+    return parser
+
+
+def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     init_parser = commands.add_parser("init")
     add_path(init_parser, "--output")
     migrate_parser = commands.add_parser("migrate-registry")
     add_path(migrate_parser, "--registry-root")
     package_init_parser = commands.add_parser("init-change-package")
     add_path(package_init_parser, "--output")
+    package_init_parser.add_argument("--requirement-id")
+    package_init_parser.add_argument("--proposal-id")
+    redraft_parser = commands.add_parser("redraft-proposal")
+    add_path(redraft_parser, "--package-root")
+    add_path(redraft_parser, "--output")
+    redraft_parser.add_argument("--proposal-id", required=True)
     validate_parser = commands.add_parser("validate")
     add_path(validate_parser, "--registry-root")
     add_path(validate_parser, "--repo-root", required=False)
@@ -55,6 +71,9 @@ def build_parser() -> argparse.ArgumentParser:
     add_path(boundary_parser, "--registry-root")
     boundary_parser.add_argument("--source-context", required=True)
     boundary_parser.add_argument("--target-context", required=True)
+
+
+def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> None:
     cite_parser = commands.add_parser("cite")
     add_path(cite_parser, "--repo-root")
     cite_parser.add_argument("--path", required=True)
@@ -72,6 +91,11 @@ def build_parser() -> argparse.ArgumentParser:
     add_asset(retract_parser)
     retract_parser.add_argument("--id", required=True)
     retract_parser.add_argument("--reason", required=True)
+    promote_parser = commands.add_parser("promote-candidate")
+    add_path(promote_parser, "--package-root")
+    add_path(promote_parser, "--registry-root")
+    add_asset(promote_parser)
+    promote_parser.add_argument("--id", required=True)
     apply_updates_parser = commands.add_parser("apply-approved-updates")
     add_path(apply_updates_parser, "--package-root")
     add_path(apply_updates_parser, "--registry-root")
@@ -99,6 +123,9 @@ def build_parser() -> argparse.ArgumentParser:
     recovery_parser = commands.add_parser("recover-registry-update")
     add_path(recovery_parser, "--registry-root")
     recovery_parser.add_argument("--force", action="store_true")
+
+
+def _add_governance_commands(commands: argparse._SubParsersAction) -> None:
     memory_init_parser = commands.add_parser("init-domain-memory")
     add_path(memory_init_parser, "--repo-root")
     add_path(memory_init_parser, "--output")
@@ -142,12 +169,14 @@ def build_parser() -> argparse.ArgumentParser:
     refine_parser.add_argument("--source", required=True, action="append", type=Path)
     amend_parser = commands.add_parser("amend-policy")
     add_path(amend_parser, "--registry-root")
-    amend_parser.add_argument(
-        "--field", required=True, choices=sorted(AMENDABLE_FIELDS)
-    )
-    amend_parser.add_argument("--value", required=True)
+    amend_parser.add_argument("--field", choices=sorted(AMENDABLE_FIELDS))
+    amend_parser.add_argument("--value")
+    amend_parser.add_argument("--set", action="append", default=[], metavar="FIELD=VALUE")
     amend_parser.add_argument("--reason", required=True)
     amend_parser.add_argument("--verifier")
+
+
+def _add_review_governance_commands(commands: argparse._SubParsersAction) -> None:
     signing_parser = commands.add_parser("init-signing-key")
     add_path(signing_parser, "--repo-root")
     signing_parser.add_argument("--principal", required=True)
@@ -175,6 +204,9 @@ def build_parser() -> argparse.ArgumentParser:
     add_path(governance_parser, "--repo-root")
     audit_parser = commands.add_parser("verify-audit")
     add_path(audit_parser, "--registry-root")
+
+
+def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:
     submit_parser = commands.add_parser("submit-proposal")
     add_path(submit_parser, "--package-root")
     add_path(submit_parser, "--registry-root")
@@ -193,6 +225,26 @@ def build_parser() -> argparse.ArgumentParser:
     add_path(verify_parser, "--package-root")
     add_path(verify_parser, "--registry-root")
     add_path(verify_parser, "--repo-root")
+    result_parser = commands.add_parser("record-test-result")
+    add_path(result_parser, "--package-root")
+    add_path(result_parser, "--registry-root")
+    add_path(result_parser, "--repo-root")
+    result_parser.add_argument("--obligation", required=True)
+    result_parser.add_argument("--command", dest="obligation_command", required=True)
+    result_parser.add_argument("--command-profile", required=True)
+    result_parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT_SECONDS)
+    attest_parser = commands.add_parser("attest-signed-commit")
+    add_path(attest_parser, "--package-root")
+    add_path(attest_parser, "--registry-root")
+    add_path(attest_parser, "--repo-root")
+    attest_parser.add_argument("--commit", required=True)
+
+
+def _add_proposal_check_commands(commands: argparse._SubParsersAction) -> None:
+    audit_attestations_parser = commands.add_parser("audit-attestations")
+    add_path(audit_attestations_parser, "--repo-root")
+    add_path(audit_attestations_parser, "--changes-root")
+    audit_attestations_parser.add_argument("--verification-token-env", default="GITHUB_TOKEN")
     finalize_parser = commands.add_parser("finalize-proposal")
     add_path(finalize_parser, "--package-root")
     add_path(finalize_parser, "--registry-root", required=False)
@@ -212,4 +264,4 @@ def build_parser() -> argparse.ArgumentParser:
     package_validate_parser = commands.add_parser("validate-change-package")
     add_path(package_validate_parser, "--package-root")
     add_path(package_validate_parser, "--registry-root", required=False)
-    return parser
+    package_validate_parser.add_argument("--as-status", choices=PREVIEW_STATUSES)

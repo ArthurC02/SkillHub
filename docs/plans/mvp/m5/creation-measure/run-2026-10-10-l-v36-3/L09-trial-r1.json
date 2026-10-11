@@ -1,0 +1,147 @@
+{
+  "round": 1,
+  "sample_input": "請把以下活動資訊寫成一則輕鬆親切的 Instagram 宣傳貼文，並附上 hashtag 與報名行動呼籲：\n活動名稱：秋日手捏陶杯體驗\n日期：2026年11月14日（星期六）\n時間：14:00–16:30\n地點：青禾陶藝工作室｜台北市大安區和平東路二段88號\n費用：每人 NT$1,200\n報名截止日：2026年11月7日",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑範例，輸出是一則可直接發布的繁體中文 Instagram 活動貼文，語氣輕鬆親切。"
+    },
+    {
+      "text": "對試跑範例，貼文完整且原樣包含活動名稱「秋日手捏陶杯體驗」、日期「2026年11月14日（星期六）」、時間「14:00–16:30」、地點「青禾陶藝工作室｜台北市大安區和平東路二段88號」、費用「每人 NT$1,200」、報名截止日「2026年11月7日」。"
+    },
+    {
+      "text": "對試跑範例，貼文附有相關 hashtag 和明確的報名行動呼籲；不得捏造報名連結、聯絡方式或其他未提供的活動資訊。"
+    }
+  ],
+  "final_output": "🍂 秋天一起來捏陶吧！  \n歡迎參加「秋日手捏陶杯體驗」，一起享受秋日陶藝時光✨\n\n📅 日期：2026年11月14日（星期六）  \n🕑 時間：14:00–16:30  \n📍 地點：青禾陶藝工作室｜台北市大安區和平東路二段88號  \n💰 費用：每人 NT$1,200  \n📝 報名截止日：2026年11月7日\n\n記得把握時間，在報名截止日前完成報名，期待和你一起度過秋日陶藝時光！\n\n#秋日手捏陶杯體驗 #手捏陶 #陶藝體驗 #陶藝 #手作時光 #台北陶藝",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "d8463b72-a423-4ff0-ad5f-9ce297a62a7f",
+    "run_id": "7f324bd1-32ff-4014-a103-a1ba74d4693f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "這則貼文語氣輕鬆親切，完整保留指定活動資訊，並附上報名呼籲與相關 hashtag；三項驗收標準均已達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "b371d159-8351-456f-b2a3-494c75ed17b1",
+        "text": "對試跑範例，輸出是一則可直接發布的繁體中文 Instagram 活動貼文，語氣輕鬆親切。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為可直接發布的繁體中文 Instagram 貼文，開場語氣輕鬆親切。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "🍂 秋天一起來捏陶吧！",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "歡迎參加「秋日手捏陶杯體驗」，一起享受秋日陶藝時光✨",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d74e7151-d4ca-4a74-bb71-d79a28242e71",
+        "text": "對試跑範例，貼文完整且原樣包含活動名稱「秋日手捏陶杯體驗」、日期「2026年11月14日（星期六）」、時間「14:00–16:30」、地點「青禾陶藝工作室｜台北市大安區和平東路二段88號」、費用「每人 NT$1,200」、報名截止日「2026年11月7日」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文原樣包含指定的活動名稱、日期、時間、地點、費用及報名截止日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "秋日手捏陶杯體驗",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年11月14日（星期六）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "14:00–16:30",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "青禾陶藝工作室｜台北市大安區和平東路二段88號",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "每人 NT$1,200",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年11月7日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b06eca83-fbb8-4a6a-9141-d47c9565623e",
+        "text": "對試跑範例，貼文附有相關 hashtag 和明確的報名行動呼籲；不得捏造報名連結、聯絡方式或其他未提供的活動資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文附有相關 hashtag，並呼籲讀者在截止日前完成報名；未見捏造的報名連結、聯絡方式或其他活動資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "記得把握時間，在報名截止日前完成報名，期待和你一起度過秋日陶藝時光！",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "#秋日手捏陶杯體驗 #手捏陶 #陶藝體驗 #陶藝 #手作時光 #台北陶藝",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1489 input and 585 output tokens on skillhub-run; reported cost $0.0030 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

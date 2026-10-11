@@ -1,0 +1,151 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下資料寫一則適合社群平台的獨立書店活動宣傳貼文。\n活動名稱：夜讀與城市散步\n日期：2026年11月14日\n時間：晚上7:00至8:30\n地點：頁邊獨立書店\n活動介紹：一起讀幾段描寫城市夜晚的文字，聊聊閱讀如何改變我們看待熟悉街區的方式。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入，輸出恰好一則繁體中文、可直接發布的一般社群宣傳貼文，不附分析或第二個版本。"
+    },
+    {
+      "text": "貼文完整且正確保留輸入中的活動名稱、日期、時間和地點。"
+    },
+    {
+      "text": "貼文傳達活動介紹的核心內容，且不加入輸入未提供的事實，包括講者、票價或報名方式。"
+    },
+    {
+      "text": "貼文以宣傳活動的語氣呈現，且不把任何硬事實改成其他內容。"
+    }
+  ],
+  "final_output": "🌙 夜讀與城市散步\n\n一起讀幾段描寫城市夜晚的文字，聊聊閱讀如何改變我們看待熟悉街區的方式。邀你在夜色中，與文字和城市相遇。\n\n📅 2026年11月14日  \n🕖 晚上7:00至8:30  \n📍 頁邊獨立書店",
+  "artifacts": [
+    "post.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "ca8499e8-cc3f-4f28-be9f-09dce13b2c96",
+    "run_id": "938244db-711c-46dc-8b79-dfa00ca17a1a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "這次輸出是一則可直接發布的繁體中文活動貼文，保留全部指定資訊與活動核心內容，沒有增添未提供的事實。",
+    "criterion_results": [
+      {
+        "criterion_id": "fae6fdd3-fea6-427e-83e4-ad0ca6f1d79c",
+        "text": "對試跑輸入，輸出恰好一則繁體中文、可直接發布的一般社群宣傳貼文，不附分析或第二個版本。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有一則繁體中文社群貼文，沒有分析或第二個版本，可直接發布。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "🌙 夜讀與城市散步\n\n一起讀幾段描寫城市夜晚的文字，聊聊閱讀如何改變我們看待熟悉街區的方式。邀你在夜色中，與文字和城市相遇。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f23706c0-6367-4278-aefd-01553521103f",
+        "text": "貼文完整且正確保留輸入中的活動名稱、日期、時間和地點。",
+        "result": "passed",
+        "source": "model",
+        "reason": "活動名稱、日期、時間及地點均與輸入一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "夜讀與城市散步",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年11月14日",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "晚上7:00至8:30",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "頁邊獨立書店",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "261d0daa-822a-4e53-928d-5752088d8f2e",
+        "text": "貼文傳達活動介紹的核心內容，且不加入輸入未提供的事實，包括講者、票價或報名方式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文傳達共讀城市夜晚文字、討論閱讀如何改變對熟悉街區看法的核心內容；未加入講者、票價、報名方式或其他未提供的事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "一起讀幾段描寫城市夜晚的文字，聊聊閱讀如何改變我們看待熟悉街區的方式。邀你在夜色中，與文字和城市相遇。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f2b2a4d1-01a4-4b95-b5bc-f8df46fab396",
+        "text": "貼文以宣傳活動的語氣呈現，且不把任何硬事實改成其他內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文案以邀請讀者參與的宣傳語氣呈現，活動硬事實未被改動。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "邀你在夜色中，與文字和城市相遇。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "📅 2026年11月14日  \n🕖 晚上7:00至8:30  \n📍 頁邊獨立書店",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): post.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1538 input and 829 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

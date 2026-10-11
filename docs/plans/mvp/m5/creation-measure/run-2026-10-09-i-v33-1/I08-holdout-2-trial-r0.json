@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "叫貨單：洋蔥 8 袋，一袋 120；牛番茄 -3 箱，一箱 700；到貨日 2026-02-30",
+  "acceptance_criteria": [
+    {
+      "text": "指出牛番茄的數量 -3 箱是負數，請使用者確認"
+    },
+    {
+      "text": "指出到貨日 2026-02-30 不存在（2 月沒有 30 日），請使用者確認"
+    },
+    {
+      "text": "沒有自行把 -3 改成 3 或自選一個日期後繼續計算"
+    },
+    {
+      "text": "沒有給出整張叫貨單的總額數字"
+    }
+  ],
+  "final_output": "## 叫貨清單\n\n| 日期（原文） | 品項 | 數量 | 單位 | 單價 | 幣別 | 小計 |\n|---|---|---:|---|---:|---|---:|\n| 2026-02-30（無效日期） | 洋蔥 | 8 | 袋 | 120 | 未提供 | 960 |\n| 2026-02-30（無效日期） | 牛番茄 | -3 | 箱 | 700 | 未提供 | 無法計算 |\n\n**叫貨總額：無法計算。** 這組資料含無效日期及負數數量；洋蔥的小計 960 不代表整組叫貨總額。\n\n### 待確認事項\n- **日期：** `2026-02-30` 不是有效的公曆日期，請確認兩筆叫貨的正確到貨日。\n- **牛番茄：** 數量為 `-3 箱`，負數數量無法計算小計，請確認數量。\n- **幣別：** 兩項單價都未提供幣別，請補上幣別。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "213a2530-4c88-4f03-9332-480d773fa043",
+    "run_id": "830fcf30-2af1-4f35-9dbb-ca62ed41a96c",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成：回覆要求確認負數數量及無效日期，沒有擅自修正資料，也沒有給出整張叫貨單的總額數字。",
+    "criterion_results": [
+      {
+        "criterion_id": "9c6df538-d529-42d7-812d-7ceff3e6bc85",
+        "text": "指出牛番茄的數量 -3 箱是負數，請使用者確認",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出牛番茄為負數數量 -3 箱，並請使用者確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **牛番茄：** 數量為 `-3 箱`，負數數量無法計算小計，請確認數量。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ba9b8c41-df60-4be8-b445-2fedd9fb7d5e",
+        "text": "指出到貨日 2026-02-30 不存在（2 月沒有 30 日），請使用者確認",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出 2026-02-30 不是有效日期，並請使用者確認正確到貨日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **日期：** `2026-02-30` 不是有效的公曆日期，請確認兩筆叫貨的正確到貨日。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "55b198ca-8e79-450b-a064-8dbb1354d8ec",
+        "text": "沒有自行把 -3 改成 3 或自選一個日期後繼續計算",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留原來的 -3 箱與無效日期，沒有改成正數或另選日期；牛番茄小計也未據此計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-02-30（無效日期） | 牛番茄 | -3 | 箱 | 700 | 未提供 | 無法計算 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "39262c94-fc52-4a85-9723-2fbc917120fe",
+        "text": "沒有給出整張叫貨單的總額數字",
+        "result": "passed",
+        "source": "model",
+        "reason": "整張叫貨單的總額標為無法計算；列出的 960 僅是洋蔥小計，並非總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**叫貨總額：無法計算。** 這組資料含無效日期及負數數量；洋蔥的小計 960 不代表整組叫貨總額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1581 input and 1310 output tokens on skillhub-run; reported cost $0.0042 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

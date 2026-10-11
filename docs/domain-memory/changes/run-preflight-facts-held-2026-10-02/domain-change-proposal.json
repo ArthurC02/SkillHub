@@ -3,7 +3,7 @@
   "proposal_id": "run-preflight-facts-follow-the-held-facts",
   "proposer": "domain-memory-agent",
   "requirement_id": "run-preflight-facts-citation-follows-the-held-facts",
-  "status": "applied",
+  "status": "superseded",
   "change_classification": "material",
   "submitted_at": "2026-10-02T08:47:58.175924Z",
   "verified_at": "2026-10-02T08:48:08.421423Z",
@@ -114,5 +114,9 @@
   "applied_registry_revision": {
     "observed_commit": "b38c98d658122921ed859162d1b456fc83417480",
     "registry_digest": "sha256:4753e318f345f11f0c0456ebe1d735503901e04718fdd0ef8d8e72901c2a3a8d"
-  }
+  },
+  "superseded_from_status": "applied",
+  "superseded_at": "2026-10-09T15:00:09.860700Z",
+  "superseded_reason": "its scm_attestation names commit 98060068, which carries another package and not this one, so no signature covers this review",
+  "superseded_by": "run-preflight-facts-held-reattested"
 }

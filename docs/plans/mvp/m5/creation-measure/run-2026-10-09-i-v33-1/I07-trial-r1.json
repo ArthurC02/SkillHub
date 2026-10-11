@@ -1,0 +1,166 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下資料寫一封可直接貼上寄出的房租催繳通知信：\n房客姓名：林怡君\n欠繳月份與金額：2026 年 7 月 NT$12,000；2026 年 8 月 NT$12,000；2026 年 9 月 NT$12,000\n繳款期限：2026 年 10 月 20 日",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸出為一封繁體中文催繳通知信，包含適合寄出的稱呼、正文及結尾。"
+    },
+    {
+      "text": "試跑信件逐項列出 2026 年 7 月、8 月、9 月各欠繳 NT$12,000，且明確標示欠繳總額為 NT$36,000（12,000＋12,000＋12,000）。"
+    },
+    {
+      "text": "試跑信件明確稱呼房客林怡君，並寫出繳款期限為 2026 年 10 月 20 日。"
+    },
+    {
+      "text": "試跑信件語氣禮貌而明確，要求房客於期限前繳清欠款。"
+    },
+    {
+      "text": "試跑信件不加入輸入未提供的聯絡方式、付款資訊或其他事實，也不引用特定法律。"
+    }
+  ],
+  "final_output": "主旨：欠繳租金通知\n\n林怡君小姐您好：\n\n提醒您，以下租金尚未繳清：\n\n- 2026 年 7 月：NT$12,000\n- 2026 年 8 月：NT$12,000\n- 2026 年 9 月：NT$12,000\n\n已知欠繳金額合計：NT$36,000。\n\n請於繳款期限前繳清；期限為 2026 年 10 月 20 日〔待確認：________〕。\n\n房東 敬上\n\n需房東確認：繳款期限「2026 年 10 月 20 日」；腳本訊息：日期格式無法辨識：2026 10 20\n\n寄送：本 Skill 無法替你寄出通知；房東需自行將信件貼上並寄送。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "be0c48d8-682b-44df-b592-a8b94578b3dc",
+    "run_id": "af2294c0-60a9-4ad0-8767-3ea3dfdac9a0",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "信件列出的欠租月份、金額、總額、房客姓名及期限均正確，也有禮貌的催繳要求。但期限旁留下待確認空格，信後又附有內部說明，因此整份輸出無法直接貼上寄出。",
+    "criterion_results": [
+      {
+        "criterion_id": "daf76663-cbcd-4b72-ae40-e5dc73f737a9",
+        "text": "試跑輸出為一封繁體中文催繳通知信，包含適合寄出的稱呼、正文及結尾。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出雖有繁體中文稱呼、正文與結尾，但信內留有「待確認」空格，結尾後還附上給房東的確認事項及寄送說明，整份輸出不適合直接貼上寄出。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請於繳款期限前繳清；期限為 2026 年 10 月 20 日〔待確認：________〕。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "需房東確認：繳款期限「2026 年 10 月 20 日」；腳本訊息：日期格式無法辨識：2026 10 20",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f3b98c80-3e6d-4b9c-95d3-e5499c307325",
+        "text": "試跑信件逐項列出 2026 年 7 月、8 月、9 月各欠繳 NT$12,000，且明確標示欠繳總額為 NT$36,000（12,000＋12,000＋12,000）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "逐項列出三個月份各 NT$12,000，並標示合計 NT$36,000。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026 年 7 月：NT$12,000\n- 2026 年 8 月：NT$12,000\n- 2026 年 9 月：NT$12,000",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "已知欠繳金額合計：NT$36,000。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c27d355d-ccc1-4c05-91b5-f11020e7b022",
+        "text": "試跑信件明確稱呼房客林怡君，並寫出繳款期限為 2026 年 10 月 20 日。",
+        "result": "passed",
+        "source": "model",
+        "reason": "信件稱呼林怡君，且寫出 2026 年 10 月 20 日的繳款期限；期限旁另有待確認標記。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林怡君小姐您好：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "期限為 2026 年 10 月 20 日〔待確認：________〕",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d3b30dc5-58ac-42e1-a155-44ddc10752dd",
+        "text": "試跑信件語氣禮貌而明確，要求房客於期限前繳清欠款。",
+        "result": "passed",
+        "source": "model",
+        "reason": "措辭禮貌，並明確請房客於繳款期限前繳清欠款，儘管期限旁不必要的待確認標記削弱了可直接寄出的程度。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "提醒您，以下租金尚未繳清：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "請於繳款期限前繳清；期限為 2026 年 10 月 20 日〔待確認：________〕。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1b91dedd-2a6d-4d8e-a6dd-cd1a13410214",
+        "text": "試跑信件不加入輸入未提供的聯絡方式、付款資訊或其他事實，也不引用特定法律。",
+        "result": "passed",
+        "source": "model",
+        "reason": "信件未添加聯絡方式、付款資訊、其他欠租事實或特定法律引用；信後的腳本訊息雖不適合隨信寄出，但不是信件所主張的欠租事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林怡君小姐您好：\n\n提醒您，以下租金尚未繳清：\n\n- 2026 年 7 月：NT$12,000\n- 2026 年 8 月：NT$12,000\n- 2026 年 9 月：NT$12,000\n\n已知欠繳金額合計：NT$36,000。\n\n請於繳款期限前繳清；期限為 2026 年 10 月 20 日〔待確認：________〕。\n\n房東 敬上",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1527 input and 1780 output tokens on skillhub-run; reported cost $0.0040 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 30,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

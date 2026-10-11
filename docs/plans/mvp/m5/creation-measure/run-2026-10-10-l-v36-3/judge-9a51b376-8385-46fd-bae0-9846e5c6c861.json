@@ -1,0 +1,218 @@
+{
+  "request": {
+    "RunID": "9a51b376-8385-46fd-bae0-9846e5c6c861",
+    "EvaluationID": "ff549e68-7916-4983-811a-b40a3f9498cb",
+    "Skill": {
+      "Name": "ceramics-event-instagram-post",
+      "Summary": "將陶藝工作室活動資訊整理成輕鬆親切、可直接使用的繁體中文 Instagram 宣傳貼文，並附上 hashtag 與報名行動呼籲。當使用者貼上活動資料並要求撰寫活動貼文時使用。"
+    },
+    "UserPrompt": "活動資訊：『秋季拉坯體驗日』，2026 年 11 月 7 日（星期六），分兩場：10:00–12:00 與 14:00–16:00。地點：河岸陶坊，高雄市鹽埕區大勇路 28 號。費用每人 800 元，含材料與一件作品燒製。報名到 10 月 31 日截止。",
+    "Criteria": [
+      {
+        "ID": "e2e27eb3-0ac0-42a5-b2d4-91e946bacd5b",
+        "Text": "活動名稱「秋季拉坯體驗日」完整出現",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "afc74089-e70a-4c35-905b-687c75665e1b",
+        "Text": "日期 11 月 7 日且標明星期六",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "eaebae1b-2d2c-40c4-a0db-b0f3ea5a6c61",
+        "Text": "兩場時間 10:00–12:00 與 14:00–16:00 都出現",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "4983d798-bac4-4318-a880-ecd14e3aae0c",
+        "Text": "地點河岸陶坊與地址高雄市鹽埕區大勇路 28 號完整出現",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "fd335248-a1a1-4af4-bb32-927dce1d9018",
+        "Text": "費用每人 800 元",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "98187321-7201-4f55-b6ec-958960110d2b",
+        "Text": "報名截止日 10 月 31 日",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "405d4f19-0265-48f4-8c20-24bc0332ede2",
+        "Text": "沒有編造與提供資訊不同的日期、時間、地址或金額",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "秋天一起來體驗拉坯，享受親手創作的樂趣吧 🍂\n\n『秋季拉坯體驗日』\n\n日期｜2026 年 11 月 7 日（星期六）  \n場次｜分兩場：10:00–12:00 與 14:00–16:00。  \n地點｜河岸陶坊，高雄市鹽埕區大勇路 28 號。  \n費用｜每人 800 元，含材料與一件作品燒製。  \n報名截止｜報名到 10 月 31 日截止。  \n報名方式｜未提供\n\n把握截止日，記得完成報名，期待和你一起享受拉坯時光！\n\n#陶藝 #拉坯 #陶藝體驗 #手作時光 #高雄活動",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "246fea46-1ba6-4d30-ad69-1f5b196f0b50",
+          "OccurredAt": "2026-10-09T23:05:28.04Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"ceramics-event-instagram-post\", \"skill_version_id\": \"ed7881e9-a021-486d-8159-b5524209a70d\"}"
+        },
+        {
+          "TraceEventID": "245f8ea4-3f78-4535-a560-71b70ce13ea4",
+          "OccurredAt": "2026-10-09T23:05:28.056Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"ceramics-event-instagram-post\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 16, \"invocation_id\": \"call_5GAkduSM49s8ah7CE0M2TV0E\", \"result_summary\": \"Launching skill: ceramics-event-instagram-post\"}"
+        },
+        {
+          "TraceEventID": "8b051cb8-a6b3-45fd-9f42-ad54c7157121",
+          "OccurredAt": "2026-10-09T23:05:37.211Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"秋天一起來體驗拉坯，享受親手創作的樂趣吧 🍂\\n\\n『秋季拉坯體驗日』\\n\\n日期｜2026 年 11 月 7 日（星期六）  \\n場次｜分兩場：10:00–12:00 與 14:00–16:00。  \\n地點｜河岸陶坊，高雄市鹽埕區大勇路 28 號。  \\n費用｜每人 800 元，含材料與一件作品燒製。  \\n報名截止｜報名到 10 月 31 日截止。  \\n報名方式｜未提供\\n\\n把握截止日，記得完成報名，期待和你一起享受拉坯時光！\\n\\n#陶藝 #拉坯 #陶藝體驗 #手作時光 #高雄活動\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "f900469a-83e3-4b97-b900-aa4854bedfd4",
+          "OccurredAt": "2026-10-09T23:05:37.377Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"秋天一起來體驗拉坯，享受親手創作的樂趣吧 🍂\\n\\n『秋季拉坯體驗日』\\n\\n日期｜2026 年 11 月 7 日（星期六）  \\n場次｜分兩場：10:00–12:00 與 14:00–16:00。  \\n地點｜河岸陶坊，高雄市鹽埕區大勇路 28 號。  \\n費用｜每人 800 元，含材料與一件作品燒製。  \\n報名截止｜報名到 10 月 31 日截止。  \\n報名方式｜未提供\\n\\n把握截止日，記得完成報名，期待和你一起享受拉坯時光！\\n\\n#陶藝 #拉坯 #陶藝體驗 #手作時光 #高雄活動\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "ab78d1ce-e40b-409d-81cb-dae5c50630b4",
+          "OccurredAt": "2026-10-09T23:05:41.432Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.003169415, \"cost_source\": \"gateway\", \"duration_ms\": 15898, \"input_tokens\": 1489, \"token_source\": \"result\", \"output_tokens\": 883, \"cache_read_input_tokens\": 16594, \"cache_write_input_tokens\": 18823}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "ModelRole": "",
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "e2e27eb3-0ac0-42a5-b2d4-91e946bacd5b",
+        "Result": "passed",
+        "Reason": "貼文完整寫出活動名稱。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "『秋季拉坯體驗日』"
+          }
+        ]
+      },
+      {
+        "CriterionID": "afc74089-e70a-4c35-905b-687c75665e1b",
+        "Result": "passed",
+        "Reason": "貼文標明 11 月 7 日為星期六。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "日期｜2026 年 11 月 7 日（星期六）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "eaebae1b-2d2c-40c4-a0db-b0f3ea5a6c61",
+        "Result": "passed",
+        "Reason": "兩場時間均完整出現。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "場次｜分兩場：10:00–12:00 與 14:00–16:00。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "4983d798-bac4-4318-a880-ecd14e3aae0c",
+        "Result": "passed",
+        "Reason": "貼文完整列出陶坊名稱與地址。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "地點｜河岸陶坊，高雄市鹽埕區大勇路 28 號。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "fd335248-a1a1-4af4-bb32-927dce1d9018",
+        "Result": "passed",
+        "Reason": "貼文載明費用為每人 800 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "費用｜每人 800 元，含材料與一件作品燒製。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "98187321-7201-4f55-b6ec-958960110d2b",
+        "Result": "passed",
+        "Reason": "貼文載明報名於 10 月 31 日截止。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "報名截止｜報名到 10 月 31 日截止。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "405d4f19-0265-48f4-8c20-24bc0332ede2",
+        "Result": "passed",
+        "Reason": "貼文中的日期、場次時間、地址和金額均與提供資訊一致，未見編造或相互矛盾的資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "日期｜2026 年 11 月 7 日（星期六）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "場次｜分兩場：10:00–12:00 與 14:00–16:00。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "地點｜河岸陶坊，高雄市鹽埕區大勇路 28 號。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "費用｜每人 800 元，含材料與一件作品燒製。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "報名截止｜報名到 10 月 31 日截止。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "七項驗收標準均已達成。貼文完整呈現活動名稱、日期與星期、兩場時間、地點、費用及報名截止日，且未見與提供資訊不符的日期、時間、地址或金額。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2776,
+      "CompletionTokens": 987,
+      "CostUSD": 0.014273900000000003,
+      "CostReported": true
+    }
+  }
+}

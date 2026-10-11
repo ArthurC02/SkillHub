@@ -1,0 +1,139 @@
+{
+  "round": 0,
+  "sample_input": "客人有一份 1,500 字的原稿，明天中午前就要交，算急件，幫我報個價。",
+  "acceptance_criteria": [
+    {
+      "text": "給出一個明確的報價金額，而不是只反問加成比例"
+    },
+    {
+      "text": "報價高於基本費 3,000 元（1,500 字 × 2 元）"
+    },
+    {
+      "text": "報價金額與它自己所說的加成比例相符"
+    },
+    {
+      "text": "明講加成比例是預設或假設，使用者可以調整"
+    }
+  ],
+  "final_output": "案件：案件標籤未提供\n原文字數：1500\n要求交件時限：未提供 小時\n案件類型：未提供足夠資料\n一般件金額：未提供\n急件加成：未提供\n總報價：未提供\n\n目前只有日期，沒有現在的時間或時區，無法換算「明天中午前」還剩幾小時。請告訴我距離交件還有幾小時，或提供你所在地的現在時間與時區，我就能重新計算報價。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9cdafac4-f152-454d-a9be-daa7b3e37f49",
+    "run_id": "1e19f31d-5631-4116-94b4-95e00911e1f0",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "這次回覆沒有提供報價或急件加成比例，而是要求補充時間資料；四項驗收標準均未達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "5f562775-99f2-438d-8842-495c3789b21a",
+        "text": "給出一個明確的報價金額，而不是只反問加成比例",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終回覆未給出明確報價金額，而是要求補充交件時限資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總報價：未提供",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "請告訴我距離交件還有幾小時，或提供你所在地的現在時間與時區，我就能重新計算報價。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "38d2b76c-d3f1-41c9-bc6f-07e1f277c2e7",
+        "text": "報價高於基本費 3,000 元（1,500 字 × 2 元）",
+        "result": "failed",
+        "source": "model",
+        "reason": "沒有報價金額，因此未給出高於基本費 3,000 元的報價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總報價：未提供",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b78465d8-c691-4d0b-aa39-9498965e024f",
+        "text": "報價金額與它自己所說的加成比例相符",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終回覆沒有報價金額，也沒有加成比例，未能給出兩者相符的報價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "急件加成：未提供",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總報價：未提供",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "886a55d4-79f6-47b5-99c9-46a742b149a2",
+        "text": "明講加成比例是預設或假設，使用者可以調整",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終回覆未提出加成比例，也未說明比例是可調整的預設或假設。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "急件加成：未提供",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1505 input and 1142 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下團購訊息，列出各品項數量、單價、小計及商品總額：\n\n小美：雞蛋 2 盒，一盒 90 元；豆腐 1 盒 35 元。宅配運費 80 元。\n阿宏：雞蛋再加 3 盒，單價一樣 90 元；豆腐也要一盒，35 元一盒。\n小芳：青菜一把 50 元，香菇 2 包。香菇價格還沒問到。",
+  "acceptance_criteria": [
+    {
+      "text": "對樣本中兩位成員購買的「雞蛋」，輸出合併數量 5 盒、單價 NT$90、小計 NT$450。"
+    },
+    {
+      "text": "對樣本中的「豆腐」，輸出數量 2 盒、單價 NT$35、小計 NT$70。"
+    },
+    {
+      "text": "對樣本中的「青菜」，輸出數量 1 把、單價 NT$50、小計 NT$50；未標數量但明確表示要一份的項目按 1 件處理。"
+    },
+    {
+      "text": "樣本商品總額為 NT$570，且 NT$80 宅配運費未計入。"
+    },
+    {
+      "text": "對樣本中缺少單價的「香菇」，標示待確認，不臆測小計，且不把它計入商品總額。"
+    }
+  ],
+  "final_output": "| 品項 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 雞蛋 | 5 盒 | 90 元／盒 | 450 元 |\n| 豆腐 | 2 盒 | 35 元／盒 | 70 元 |\n| 青菜 | 1 把 | 50 元／把 | 50 元 |\n\n**商品總額：570 元**  \n以上金額未標幣別，暫按新台幣；可更改。\n\n**待確認：**香菇 2 包，單價尚未詢問，因此未計入商品總額。宅配運費 80 元不計入商品總額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e91b268c-83a6-4c1d-978e-f1fae34719d3",
+    "run_id": "8746a6a4-9604-48d7-869d-7cc22629f9a6",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收標準均符合：各品項數量與金額正確，商品總額排除運費及價格未定的香菇。",
+    "criterion_results": [
+      {
+        "criterion_id": "6405adb1-1e7e-47f2-9c85-0f24acc08152",
+        "text": "對樣本中兩位成員購買的「雞蛋」，輸出合併數量 5 盒、單價 NT$90、小計 NT$450。",
+        "result": "passed",
+        "source": "model",
+        "reason": "雞蛋合併為 5 盒，單價 90 元，小計 450 元；回覆說明金額暫按新台幣。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 雞蛋 | 5 盒 | 90 元／盒 | 450 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "以上金額未標幣別，暫按新台幣；可更改。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "01ba1eea-1d08-43e2-82a9-dc4b37c1a552",
+        "text": "對樣本中的「豆腐」，輸出數量 2 盒、單價 NT$35、小計 NT$70。",
+        "result": "passed",
+        "source": "model",
+        "reason": "豆腐列為 2 盒，單價 35 元，小計 70 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 豆腐 | 2 盒 | 35 元／盒 | 70 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "79f5d6cb-d9c4-494d-bdf2-67d76446d62e",
+        "text": "對樣本中的「青菜」，輸出數量 1 把、單價 NT$50、小計 NT$50；未標數量但明確表示要一份的項目按 1 件處理。",
+        "result": "passed",
+        "source": "model",
+        "reason": "青菜列為 1 把，單價 50 元，小計 50 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 青菜 | 1 把 | 50 元／把 | 50 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "df44b4dc-3c29-4c0c-b034-1f4193eda0b0",
+        "text": "樣本商品總額為 NT$570，且 NT$80 宅配運費未計入。",
+        "result": "passed",
+        "source": "model",
+        "reason": "商品總額為 570 元，並明確排除 80 元宅配運費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**商品總額：570 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "宅配運費 80 元不計入商品總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b89fc67f-b962-4807-ac6d-2d4ea5297526",
+        "text": "對樣本中缺少單價的「香菇」，標示待確認，不臆測小計，且不把它計入商品總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "香菇 2 包標示待確認，未臆測小計，也未計入商品總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**待確認：**香菇 2 包，單價尚未詢問，因此未計入商品總額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1518 input and 623 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -106,8 +106,9 @@ func TestAccountLookupAuditsAHitAndNothingElse(t *testing.T) {
 
 	email := meEmail(t, member)
 	departedEmail := meEmail(t, departed)
-	if stored := meEmail(t, a.login(t, "BO-Lookup-Mixed-Case")); stored != "bo-lookup-mixed-case@dev.local" {
-		t.Errorf("a mixed-case sign-up email was stored as %q, want its lower-case form", stored)
+	mixedCase := a.login(t, "BO-Lookup-Mixed-Case")
+	if stored, want := meEmail(t, mixedCase), strings.ToLower(devAlias(t, "BO-Lookup-Mixed-Case"))+"@dev.local"; stored != want {
+		t.Errorf("a mixed-case sign-up email was stored as %q, want its lower-case form %q", stored, want)
 	}
 	lookups := func() int {
 		return countRow(t, pool, `SELECT count(*) FROM audit_events

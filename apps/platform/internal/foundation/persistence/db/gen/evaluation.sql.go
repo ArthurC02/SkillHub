@@ -437,6 +437,23 @@ func (q *Queries) GetEvaluationRevision(ctx context.Context, arg GetEvaluationRe
 	return i, err
 }
 
+const getEvaluationSettings = `-- name: GetEvaluationSettings :one
+SELECT singleton, judge_panel, reason, set_by, set_at FROM evaluation_settings
+`
+
+func (q *Queries) GetEvaluationSettings(ctx context.Context) (EvaluationSetting, error) {
+	row := q.db.QueryRow(ctx, getEvaluationSettings)
+	var i EvaluationSetting
+	err := row.Scan(
+		&i.Singleton,
+		&i.JudgePanel,
+		&i.Reason,
+		&i.SetBy,
+		&i.SetAt,
+	)
+	return i, err
+}
+
 const getEvaluationSuggestion = `-- name: GetEvaluationSuggestion :one
 SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at FROM evaluation_suggestions
 WHERE id = $1 AND workspace_id = $2
@@ -978,6 +995,33 @@ func (q *Queries) SetEvaluationFeedback(ctx context.Context, arg SetEvaluationFe
 		&i.CostIsLowerBound,
 		&i.EvaluatedAt,
 		&i.SupersededAt,
+	)
+	return i, err
+}
+
+const setEvaluationSettings = `-- name: SetEvaluationSettings :one
+INSERT INTO evaluation_settings (judge_panel, reason, set_by)
+VALUES ($1, $2, $3)
+ON CONFLICT (singleton) DO UPDATE
+SET judge_panel = EXCLUDED.judge_panel, reason = EXCLUDED.reason, set_by = EXCLUDED.set_by, set_at = now()
+RETURNING singleton, judge_panel, reason, set_by, set_at
+`
+
+type SetEvaluationSettingsParams struct {
+	JudgePanel bool
+	Reason     string
+	SetBy      pgtype.UUID
+}
+
+func (q *Queries) SetEvaluationSettings(ctx context.Context, arg SetEvaluationSettingsParams) (EvaluationSetting, error) {
+	row := q.db.QueryRow(ctx, setEvaluationSettings, arg.JudgePanel, arg.Reason, arg.SetBy)
+	var i EvaluationSetting
+	err := row.Scan(
+		&i.Singleton,
+		&i.JudgePanel,
+		&i.Reason,
+		&i.SetBy,
+		&i.SetAt,
 	)
 	return i, err
 }

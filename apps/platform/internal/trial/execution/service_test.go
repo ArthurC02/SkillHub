@@ -3,6 +3,7 @@ package run
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -142,8 +143,10 @@ func TestMaskingActivityRefusesWithoutTraceService(t *testing.T) {
 }
 
 func TestPermissionSummaryRefusesWithoutRegistryRead(t *testing.T) {
-	if _, err := (&Service{}).PermissionSummaryFor(t.Context(), gen.Workspace{}.ID, gen.Workspace{}.ID, gen.Workspace{}.ID, gen.Workspace{}.ID); err == nil {
-		t.Error("PermissionSummaryFor succeeded without Registry's version reader")
+	id := gen.Workspace{}.ID
+	_, err := (&Service{TestLab: &testlab.Service{}}).PermissionSummaryFor(t.Context(), id, id, id, id)
+	if !errors.Is(err, errRegistryReadNotConfigured) {
+		t.Errorf("PermissionSummaryFor without Registry's version reader = %v, want %v", err, errRegistryReadNotConfigured)
 	}
 }
 

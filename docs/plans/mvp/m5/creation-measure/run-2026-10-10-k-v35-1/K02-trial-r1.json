@@ -1,0 +1,205 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆計算申請日與購買日的天數差，並依退費規則列出天數差及分類。\n編號,購買日,申請日,已領取實體教材包\n1,2026-01-01,2026-01-01,否\n2,2026-01-01,2026-01-08,否\n3,2026-01-01,2026-01-09,否\n4,2026-01-01,2026-01-31,否\n5,2026-01-01,2026-02-01,否\n6,2026-01-01,2026-01-01,是",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 筆的日期差為 0 天，且輸出分類為「全額退費」。"
+    },
+    {
+      "text": "試跑輸入第 2 筆的日期差為 7 天，且輸出分類為「全額退費」。"
+    },
+    {
+      "text": "試跑輸入第 3 筆的日期差為 8 天，且輸出分類為「退一半」。"
+    },
+    {
+      "text": "試跑輸入第 4 筆的日期差為 30 天，且輸出分類為「退一半」。"
+    },
+    {
+      "text": "試跑輸入第 5 筆的日期差為 31 天，且輸出分類為「不可退費」。"
+    },
+    {
+      "text": "試跑輸入第 6 筆雖然日期差為 0 天，但因已領取實體教材包，輸出分類為「不可退費」，優先規則生效。"
+    },
+    {
+      "text": "輸出包含輸入中的全部六筆申請，並為每筆列出正確的日期差與一個指定分類。"
+    }
+  ],
+  "final_output": "| 編號 | 購買日 | 申請日 | 天數差 | 已領取實體教材包 | 分類 |\n|---:|---|---|---:|---|---|\n| 1 | 2026-01-01 | 2026-01-01 | 0 天 | 否 | 全額退費 |\n| 2 | 2026-01-01 | 2026-01-08 | 7 天 | 否 | 全額退費 |\n| 3 | 2026-01-01 | 2026-01-09 | 8 天 | 否 | 退一半 |\n| 4 | 2026-01-01 | 2026-01-31 | 30 天 | 否 | 退一半 |\n| 5 | 2026-01-01 | 2026-02-01 | 31 天 | 否 | 不可退費 |\n| 6 | 2026-01-01 | 2026-01-01 | 0 天 | 是 | 不可退費 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ba9e50b6-4ad8-49eb-9167-61fa2997c061",
+    "run_id": "17c84fd3-4ae2-4e29-ae32-bfe056510ca5",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七項驗收標準皆已達成。六筆申請均列有正確的天數差與退費分類。",
+    "criterion_results": [
+      {
+        "criterion_id": "95577cbe-f4c6-4fe6-8844-5fb869dc9470",
+        "text": "試跑輸入第 1 筆的日期差為 0 天，且輸出分類為「全額退費」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆列出天數差 0 天，分類為「全額退費」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 2026-01-01 | 2026-01-01 | 0 天 | 否 | 全額退費 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "50cac06f-4537-4f9a-b7d8-649b0929f447",
+        "text": "試跑輸入第 2 筆的日期差為 7 天，且輸出分類為「全額退費」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆列出天數差 7 天，分類為「全額退費」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 2026-01-01 | 2026-01-08 | 7 天 | 否 | 全額退費 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "20a29fbe-9f15-42ab-8b08-1f51692cfe1a",
+        "text": "試跑輸入第 3 筆的日期差為 8 天，且輸出分類為「退一半」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆列出天數差 8 天，分類為「退一半」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 2026-01-01 | 2026-01-09 | 8 天 | 否 | 退一半 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "978a6c4d-5607-4bdc-b833-3fbc9ca9ce9d",
+        "text": "試跑輸入第 4 筆的日期差為 30 天，且輸出分類為「退一半」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆列出天數差 30 天，分類為「退一半」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 2026-01-01 | 2026-01-31 | 30 天 | 否 | 退一半 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fc376a1f-7311-42f1-9582-731e2bd31d28",
+        "text": "試跑輸入第 5 筆的日期差為 31 天，且輸出分類為「不可退費」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆列出天數差 31 天，分類為「不可退費」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 5 | 2026-01-01 | 2026-02-01 | 31 天 | 否 | 不可退費 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "166844eb-b88c-46eb-8ab5-fe7925e1aa46",
+        "text": "試跑輸入第 6 筆雖然日期差為 0 天，但因已領取實體教材包，輸出分類為「不可退費」，優先規則生效。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 筆天數差為 0 天，已領取實體教材包，分類仍為「不可退費」，符合優先規則。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 6 | 2026-01-01 | 2026-01-01 | 0 天 | 是 | 不可退費 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4d3627be-09c6-48f6-9702-1a1c7d0ea953",
+        "text": "輸出包含輸入中的全部六筆申請，並為每筆列出正確的日期差與一個指定分類。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含全部六筆；每筆的天數差與分類均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 2026-01-01 | 2026-01-01 | 0 天 | 否 | 全額退費 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 2026-01-01 | 2026-01-08 | 7 天 | 否 | 全額退費 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 2026-01-01 | 2026-01-09 | 8 天 | 否 | 退一半 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 2026-01-01 | 2026-01-31 | 30 天 | 否 | 退一半 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 5 | 2026-01-01 | 2026-02-01 | 31 天 | 否 | 不可退費 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 6 | 2026-01-01 | 2026-01-01 | 0 天 | 是 | 不可退費 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1523 input and 639 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

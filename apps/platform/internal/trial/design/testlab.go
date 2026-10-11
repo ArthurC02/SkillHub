@@ -75,6 +75,8 @@ type Service struct {
 
 	ClearSightings func(ctx context.Context, tx pgx.Tx, ids []pgtype.UUID) error
 
+	ValidateCheck CheckValidator
+
 	LLM CriteriaSuggester
 
 	Budgets *modelbudget.Service
@@ -89,6 +91,8 @@ type Criterion struct {
 	Source string `json:"source"`
 
 	ConfirmedAt *time.Time `json:"confirmed_at"`
+
+	Check *Check `json:"check,omitempty"`
 }
 
 type TestCase struct {
@@ -567,13 +571,24 @@ func (s *Service) DeleteTestCase(ctx context.Context, ws identity.Workspace, id 
 	return DeleteResult{DatasetsDeleted: len(removed)}, nil
 }
 
+type NewCriterion struct {
+	Text   string
+	Source string
+	Check  *Check
+}
+
 func (s *Service) AddCriterion(
-	ctx context.Context, ws identity.Workspace, id pgtype.UUID, text, source string,
+	ctx context.Context, ws identity.Workspace, id pgtype.UUID, added NewCriterion,
 ) (TestCase, error) {
-	text, err := validateCriterion(text)
+	text, err := validateCriterion(added.Text)
 	if err != nil {
 		return TestCase{}, err
 	}
+	check, err := s.validateCheck(added.Check)
+	if err != nil {
+		return TestCase{}, err
+	}
+	source := added.Source
 	if source != SourceSuggested {
 		source = SourceUser
 	}
@@ -581,7 +596,7 @@ func (s *Service) AddCriterion(
 		if len(list) >= MaxCriteria {
 			return nil, fmt.Errorf("%w: 一個 Test Case 最多 %d 條驗收條件", ErrLimitExceeded, MaxCriteria)
 		}
-		return append(list, Criterion{ID: newCriterionID(), Text: text, Source: source}), nil
+		return append(list, Criterion{ID: newCriterionID(), Text: text, Source: source, Check: check}), nil
 	})
 }
 

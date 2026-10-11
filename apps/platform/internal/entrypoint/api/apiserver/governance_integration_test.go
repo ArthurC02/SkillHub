@@ -114,6 +114,7 @@ func makeCatalog(t *testing.T, pool *pgxpool.Pool, workspaceID string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	leaveCatalogAtEnd(t, pool, mustUUID(t, workspaceID))
 }
 
 func postJSON(t *testing.T, c *client, path, body string) (int, map[string]any) {
@@ -277,12 +278,12 @@ func TestPurgeStartRevokesExistingSessionAndRefusesRelogin(t *testing.T) {
 		t.Fatalf("existing session after purge start = %d, want 401", resp.StatusCode)
 	}
 	_, err = a.auth.Service.LoginOrSignup(ctx, identity.ExternalIdentity{
-		Provider: "dev", ProviderUserID: name, Email: name + "@dev.local", Name: name, Login: name,
+		Provider: "dev", ProviderUserID: devAlias(t, name), Email: devAlias(t, name) + "@dev.local", Name: devAlias(t, name), Login: devAlias(t, name),
 	})
 	if !errors.Is(err, identity.ErrAccountPurging) {
 		t.Fatalf("relogin during purge = %v, want ErrAccountPurging", err)
 	}
-	if got := countRow(t, pool, "SELECT count(*) FROM users WHERE email = $1", name+"@dev.local"); got != 1 {
+	if got := countRow(t, pool, "SELECT count(*) FROM users WHERE email = $1", devAlias(t, name)+"@dev.local"); got != 1 {
 		t.Fatalf("relogin created a replacement account: %d users", got)
 	}
 	if allowed, err := a.auth.Service.MayStoreObjects(ctx, pool, mustUUID(t, alice.workspaceID)); err != nil || allowed {
@@ -307,7 +308,7 @@ func TestADeletedAccountCannotBeLoggedIntoOrStoreObjects(t *testing.T) {
 	})
 
 	if _, err := a.auth.Service.LoginOrSignup(ctx, identity.ExternalIdentity{
-		Provider: "dev", ProviderUserID: name, Email: name + "@dev.local", Name: name, Login: name,
+		Provider: "dev", ProviderUserID: devAlias(t, name), Email: devAlias(t, name) + "@dev.local", Name: devAlias(t, name), Login: devAlias(t, name),
 	}); !errors.Is(err, identity.ErrAccountGone) {
 		t.Fatalf("logging in through a deleted account's identity = %v, want ErrAccountGone", err)
 	}

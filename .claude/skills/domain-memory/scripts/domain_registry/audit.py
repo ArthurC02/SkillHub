@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .common import MAX_JSON_BYTES, load_json, reject_duplicate_keys, writer_lock
+from .common import MAX_JSON_BYTES, load_json, registry_dir, reject_duplicate_keys, writer_lock
 
 MANIFEST_FORMAT = "domain-memory-audit/v1"
 
@@ -45,7 +45,7 @@ def read_events(root: Path) -> list[dict[str, Any]]:
         except (json.JSONDecodeError, ValueError) as error:
             raise ValueError(f"audit event {index} is invalid JSON") from error
         if not isinstance(value, dict):
-            raise ValueError(f"audit event {index} must be an object")  # noqa: TRY004
+            raise ValueError(f"audit event {index} must be an object")
         events.append(value)
     return events
 
@@ -86,7 +86,7 @@ def append_locked(root: Path, event: dict[str, Any]) -> None:
         **event,
     }
     value["event_sha256"] = event_digest(value)
-    with events_path(root).open("a", encoding="utf-8") as output:
+    with events_path(root).open("a", encoding="utf-8", newline="\n") as output:
         output.write(json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n")
         output.flush()
         os.fsync(output.fileno())
@@ -97,7 +97,7 @@ def append_locked(root: Path, event: dict[str, Any]) -> None:
     }
     temporary = audit_manifest_path(root).with_suffix(".json.tmp")
     temporary.write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
     )
     temporary.replace(audit_manifest_path(root))
 
@@ -111,32 +111,53 @@ def _invalid(reason: str) -> dict[str, Any]:
     return {"status": "invalid", "reason": reason}
 
 
-def verify(root: Path) -> dict[str, Any]:
-    try:
-        events = read_events(root)
-    except ValueError as error:
-        return _invalid(str(error))
+def _event_error(event: dict[str, Any], sequence: int, previous: str | None) -> str | None:
+    unsigned = {key: value for key, value in event.items() if key != "event_sha256"}
+    if event.get("sequence") != sequence:
+        return f"audit sequence is invalid at event {sequence}"
+    if event.get("previous_event_sha256") != previous:
+        return f"audit chain is broken at event {sequence}"
+    if event.get("event_sha256") != event_digest(unsigned):
+        return f"audit digest is invalid at event {sequence}"
+    return None
+
+
+def _chain_head(events: list[dict[str, Any]]) -> str | None:
     previous = None
     for sequence, event in enumerate(events, start=1):
-        stored_digest = event.get("event_sha256")
-        unsigned = {key: value for key, value in event.items() if key != "event_sha256"}
-        if event.get("sequence") != sequence:
-            return _invalid(f"audit sequence is invalid at event {sequence}")
-        if event.get("previous_event_sha256") != previous:
-            return _invalid(f"audit chain is broken at event {sequence}")
-        if stored_digest != event_digest(unsigned):
-            return _invalid(f"audit digest is invalid at event {sequence}")
-        previous = stored_digest
+        error = _event_error(event, sequence, previous)
+        if error:
+            raise ValueError(error)
+        previous = event["event_sha256"]
+    return previous
+
+
+def _manifest_error(root: Path, events: int, head: str | None) -> str | None:
     manifest_path = audit_manifest_path(root)
-    if manifest_path.is_file():
-        try:
-            manifest = load_json(manifest_path)
-        except ValueError as error:
-            return _invalid(str(error))
-        if (
-            manifest.get("format") != MANIFEST_FORMAT
-            or manifest.get("events") != len(events)
-            or manifest.get("head_sha256") != previous
-        ):
-            return _invalid("audit manifest does not match the event log")
-    return {"status": "valid", "events": len(events), "head_sha256": previous}
+    if not manifest_path.is_file():
+        return None
+    manifest = load_json(manifest_path)
+    if (
+        manifest.get("format") != MANIFEST_FORMAT
+        or manifest.get("events") != events
+        or manifest.get("head_sha256") != head
+    ):
+        return "audit manifest does not match the event log"
+    return None
+
+
+def verify(root: Path) -> dict[str, Any]:
+    if not (registry_dir(root) / "manifest.json").is_file():
+        return _invalid(
+            f"no Domain Memory Registry at {root}; point --registry-root at the directory "
+            "that holds registry/manifest.json"
+        )
+    try:
+        events = read_events(root)
+        head = _chain_head(events)
+        error = _manifest_error(root, len(events), head)
+    except ValueError as failure:
+        return _invalid(str(failure))
+    if error:
+        return _invalid(error)
+    return {"status": "valid", "events": len(events), "head_sha256": head}

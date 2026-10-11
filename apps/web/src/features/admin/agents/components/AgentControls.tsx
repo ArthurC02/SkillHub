@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   usd,
+  usePlatformAgentSpendCap,
   usePlatformAgentSwitch,
   type usePlatformAgentBrake,
   type PlatformAgent,
@@ -9,11 +10,49 @@ import {
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { ActionForm } from "../../components/ActionForm";
 import { actionLabel } from "./proposalLabels";
+import { SpendCapControls, SpendCapResult } from "./SpendCapControls";
 import "./AgentControls.css";
 
 function switchResult(name: string, enabled: boolean, unverified: boolean) {
   if (unverified) return `已送出${enabled ? "啟用" : "停用"} ${name}；最新狀態尚未確認。`;
   return enabled ? "已啟用，下一次排程會執行。" : "已停用，執行中的那一次會在下一步之前停下。";
+}
+
+function AgentSummary({ agent }: { agent: PlatformAgent }) {
+  return (
+    <>
+      <p className="badge-row">
+        <span className={agent.enabled ? "badge" : "badge badge-danger"}>
+          {agent.enabled ? "啟用中" : "停用中"}
+        </span>
+      </p>
+      <p>{agent.purpose}</p>
+      <p className="note">
+        每日花費上限 {usd(agent.daily_spend_cap_usd_micros)}
+        {agent.daily_spend_cap_overridden
+          ? `（營運者設定；預設 ${usd(agent.default_daily_spend_cap_usd_micros)}）`
+          : "（預設）"}
+        ；可讀：{agent.tools.join("、") || "無"}
+      </p>
+      <p className="note">可提案：{agent.actions.map(actionLabel).join("、") || "無"}</p>
+      <p className="note">模型角色：{agent.model_role}</p>
+      <p className="note">
+        負責營運者：
+        {agent.owner_user_id ? (
+          <code className="agent-owner-id">{agent.owner_user_id}</code>
+        ) : (
+          "未記錄"
+        )}
+      </p>
+    </>
+  );
+}
+
+function hasDifferentSpendCap(first: PlatformAgent, second: PlatformAgent) {
+  return (
+    first.daily_spend_cap_usd_micros !== second.daily_spend_cap_usd_micros ||
+    first.daily_spend_cap_overridden !== second.daily_spend_cap_overridden
+  );
 }
 
 function AgentRow({
@@ -28,8 +67,13 @@ function AgentRow({
   refresh: () => void;
 }) {
   const toggle = usePlatformAgentSwitch();
+  const capChange = usePlatformAgentSpendCap();
+  const [completedCap, setCompletedCap] = useState<PlatformAgent | null>(null);
   const next = !agent.enabled;
   const unverified = toggle.isSuccess && (!readable || agent.enabled !== toggle.variables.enabled);
+  const capMismatch = Boolean(completedCap && hasDifferentSpendCap(agent, completedCap));
+  const capUnverified = Boolean(completedCap && (!readable || fetching || capMismatch));
+  const controlsReadable = readable && !unverified && !capMismatch;
   const result = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (toggle.isSuccess) {
@@ -37,34 +81,21 @@ function AgentRow({
       result.current?.scrollIntoView?.({ block: "center" });
     }
   }, [toggle.isSuccess]);
-  if (!readable && !toggle.isSuccess) return null;
+  if (!readable && !toggle.isSuccess && !completedCap) return null;
   return (
-    <li className="download-item" onInput={() => toggle.reset()}>
+    <li
+      className="download-item"
+      onInput={() => {
+        toggle.reset();
+        setCompletedCap(null);
+      }}
+    >
       <p>
         <strong>{agent.name}</strong>
       </p>
-      {readable && !unverified && (
+      {controlsReadable && (
         <>
-          <p className="badge-row">
-            <span className={agent.enabled ? "badge" : "badge badge-danger"}>
-              {agent.enabled ? "啟用中" : "停用中"}
-            </span>
-          </p>
-          <p>{agent.purpose}</p>
-          <p className="note">
-            每日花費上限 {usd(agent.daily_spend_cap_usd_micros)}；可讀：
-            {agent.tools.join("、") || "無"}
-          </p>
-          <p className="note">可提案：{agent.actions.map(actionLabel).join("、") || "無"}</p>
-          <p className="note">模型角色：{agent.model_role}</p>
-          <p className="note">
-            負責營運者：
-            {agent.owner_user_id ? (
-              <code className="agent-owner-id">{agent.owner_user_id}</code>
-            ) : (
-              "未記錄"
-            )}
-          </p>
+          <AgentSummary agent={agent} />
           <ActionForm
             id={`admin-agent-${agent.name}`}
             submitLabel={next ? `啟用 ${agent.name}` : `停用 ${agent.name}`}
@@ -74,6 +105,23 @@ function AgentRow({
             onSubmit={(note) => toggle.mutate({ name: agent.name, enabled: next, note })}
           />
         </>
+      )}
+      <SpendCapControls
+        agent={agent}
+        readable={controlsReadable}
+        change={capChange}
+        onCompleted={(current) => {
+          toggle.reset();
+          setCompletedCap(current);
+        }}
+      />
+      {completedCap && (
+        <SpendCapResult
+          completed={completedCap}
+          unverified={capUnverified}
+          fetching={fetching}
+          refresh={refresh}
+        />
       )}
       {toggle.isSuccess && (
         <p

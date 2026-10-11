@@ -92,6 +92,9 @@ type sessionRow struct {
 	Rounds   int `json:"rounds,omitempty"`
 	MetRound int `json:"met_round,omitempty"`
 
+	ChallengeCases  int `json:"challenge_cases,omitempty"`
+	ChallengePassed int `json:"challenge_passed,omitempty"`
+
 	CriteriaChangedBeforeMet *bool `json:"criteria_changed_before_met,omitempty"`
 
 	HoldoutMet    *bool    `json:"holdout_met,omitempty"`
@@ -193,6 +196,7 @@ type measureTask struct {
 	ID          string
 	Kind        string
 	Description string
+	AuthorFacts []string
 	Diagram     *ingest.GenerateDiagram
 
 	DiagramNodes []string
@@ -587,6 +591,33 @@ func TestTheMeasureHarnessCountsAnyTrialInputChangeAsARevision(t *testing.T) {
 	}
 }
 
+func TestTheMeasureHarnessAttachesTheMainRunUntilItIsMetThenAnUnmetChallenge(t *testing.T) {
+	cases := []struct {
+		name       string
+		mainMet    *bool
+		challenges challengeRound
+		attach     string
+		met        bool
+	}{
+		{"main unmet, challenges unmet", boolp(false), challengeRound{cases: 2, unmetRunID: "challenge"}, "main", false},
+		{"main unjudged, no challenges", nil, challengeRound{}, "main", false},
+		{"main met, one challenge unmet", boolp(true), challengeRound{cases: 2, passed: 1, unmetRunID: "challenge"}, "challenge", false},
+		{"main met, every challenge met", boolp(true), challengeRound{cases: 2, passed: 2}, "main", true},
+		{"main met, no challenges", boolp(true), challengeRound{}, "main", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := trialRevision{last: trialOutcome{runID: "main", met: tc.mainMet}, challenges: tc.challenges}
+			if got := r.runToAttach(); got != tc.attach {
+				t.Errorf("attached %q, want %q", got, tc.attach)
+			}
+			if got := r.roundMet(); got != tc.met {
+				t.Errorf("round met = %v, want %v", got, tc.met)
+			}
+		})
+	}
+}
+
 func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *creation.Service, trial *trialRun, v creation.View, row sessionRow, outDir string) (sessionRow, creation.View) {
 	t.Helper()
 	rounds := measureRounds(os.Getenv("CREATION_MEASURE_ROUNDS"))
@@ -601,7 +632,8 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 		session: measureSession{t: t, a: a, ctx: ctx, c: c, s: s, trial: trial, outDir: outDir},
 		row:     row, v: v, last: last, firstCriteria: last.record.criteriaTexts(),
 	}
-	if last.met != nil && *last.met {
+	r.challenges = r.runChallenges(1)
+	if r.roundMet() {
 		r.row.MetRound = 1
 	}
 	for round := 2; round <= rounds && r.row.MetRound == 0; round++ {
@@ -635,14 +667,55 @@ type trialRevision struct {
 	row           sessionRow
 	v             creation.View
 	last          trialOutcome
+	challenges    challengeRound
 	firstCriteria []string
+}
+
+type challengeRound struct {
+	cases, passed int
+	unmetRunID    string
+}
+
+func (r *trialRevision) runChallenges(round int) challengeRound {
+	m := r.session
+	var out challengeRound
+	candidate := r.v.Snapshot.Candidate
+	if candidate == nil || os.Getenv("CREATION_MEASURE_SKIP_CHALLENGES") != "" {
+		return out
+	}
+	for i, id := range candidate.ChallengeTestCaseIDs {
+		challenge := *candidate
+		challenge.TestCaseID = id
+		trialled := trialCandidate(m.t, m.a, m.ctx, m.c, m.trial, &challenge)
+		writeTrialRecord(m.t, m.outDir, fmt.Sprintf("%s-challenge-%d", r.row.ID, i+1), round, trialled.record)
+		out.cases++
+		switch {
+		case trialled.met != nil && *trialled.met:
+			out.passed++
+		case out.unmetRunID == "":
+			out.unmetRunID = trialled.runID
+		}
+	}
+	r.row.ChallengeCases, r.row.ChallengePassed = out.cases, out.passed
+	return out
+}
+
+func (r *trialRevision) roundMet() bool {
+	return r.last.met != nil && *r.last.met && r.challenges.passed == r.challenges.cases
+}
+
+func (r *trialRevision) runToAttach() string {
+	if r.last.met != nil && *r.last.met && r.challenges.unmetRunID != "" {
+		return r.challenges.unmetRunID
+	}
+	return r.last.runID
 }
 
 func (r *trialRevision) reviseAndRun(round int) bool {
 	m := r.session
 	t := m.t
 	before := trialInputsOf(r.v.Snapshot)
-	r.v = creationAttachRun(t, m.c, r.v, r.last.runID)
+	r.v = creationAttachRun(t, m.c, r.v, r.runToAttach())
 	r.v = settleRevision(m, r.v, &r.row)
 	revised := !before.equal(trialInputsOf(r.v.Snapshot))
 	if round == 2 {
@@ -667,7 +740,8 @@ func (r *trialRevision) reviseAndRun(round int) bool {
 	}
 	r.row.Rounds = round
 	writeTrialRecord(t, m.outDir, r.row.ID, round, r.last.record)
-	if r.last.met != nil && *r.last.met {
+	r.challenges = r.runChallenges(round)
+	if r.roundMet() {
 		r.row.MetRound = round
 		changed := !slices.Equal(r.firstCriteria, r.last.record.criteriaTexts())
 		r.row.CriteriaChangedBeforeMet = &changed
@@ -820,7 +894,7 @@ func summarizeCreationMeasure(interactive []sessionRow, singleShot []singleShotR
 func textMeasureTasks(references []modesReference) []measureTask {
 	var tasks []measureTask
 	for _, r := range references {
-		tasks = append(tasks, measureTask{ID: r.ID, Kind: "text", Description: r.Description, Holdout: r.Holdout})
+		tasks = append(tasks, measureTask{ID: r.ID, Kind: "text", Description: r.Description, AuthorFacts: r.AuthorFacts, Holdout: r.Holdout})
 	}
 	return tasks
 }
@@ -828,7 +902,7 @@ func textMeasureTasks(references []modesReference) []measureTask {
 func referenceMeasureTasks(references []modesReference) []measureTask {
 	var tasks []measureTask
 	for _, r := range references {
-		tasks = append(tasks, measureTask{ID: r.ID, Kind: "reference", Description: r.Description, ReferenceMD: r.Reference.SkillMD, Holdout: r.Holdout})
+		tasks = append(tasks, measureTask{ID: r.ID, Kind: "reference", Description: r.Description, AuthorFacts: r.AuthorFacts, ReferenceMD: r.Reference.SkillMD, Holdout: r.Holdout})
 	}
 	return tasks
 }
@@ -1122,8 +1196,24 @@ func (m *interactiveSession) clarify() sessionTurn {
 	}
 	m.clarifications++
 	m.row.Clarifications++
-	m.v = creationMessage(m.t, m.c, m.v, "請依合理假設補上缺的資訊，然後繼續。")
+	m.v = creationMessage(m.t, m.c, m.v, authorReply(m.task.AuthorFacts))
 	return turnCounted
+}
+
+func authorReply(facts []string) string {
+	if len(facts) == 0 {
+		return "我沒有其他規則了，請照一般做法處理，並在 Skill 裡寫明你採用的做法。"
+	}
+	return "補充我剛才沒講的規則：" + strings.Join(facts, "；") + "。其他照我前面說的。"
+}
+
+func TestTheSimulatedAuthorAnswersWithTheFactsTheTaskHid(t *testing.T) {
+	if got := authorReply([]string{"剩餘堂數不併入折扣", "退款不扣除"}); got != "補充我剛才沒講的規則：剩餘堂數不併入折扣；退款不扣除。其他照我前面說的。" {
+		t.Errorf("with hidden facts the author said %q", got)
+	}
+	if got := authorReply(nil); got != "我沒有其他規則了，請照一般做法處理，並在 Skill 裡寫明你採用的做法。" {
+		t.Errorf("with no hidden facts the author said %q", got)
+	}
 }
 
 func (m *interactiveSession) materializeAndTrial() sessionTurn {

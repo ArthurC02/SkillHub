@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -225,7 +226,7 @@ func TestCreationJourneyPreservesConfirmedCandidateAndWorkspace(t *testing.T) {
 	}
 	candidate := *v.Snapshot.Candidate
 	v = creationAct(t, alice, v, "finalize")
-	if v.State != "saved" || *v.Snapshot.Candidate != candidate || v.Snapshot.Draft.ContentHash != draftHash || calls.Load() != 2 {
+	if v.State != "saved" || !reflect.DeepEqual(*v.Snapshot.Candidate, candidate) || v.Snapshot.Draft.ContentHash != draftHash || calls.Load() != 2 {
 		t.Fatalf("finalize regenerated candidate: %+v calls=%d", v, calls.Load())
 	}
 	creationPost(t, alice, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "confirm_brief"}, 422)

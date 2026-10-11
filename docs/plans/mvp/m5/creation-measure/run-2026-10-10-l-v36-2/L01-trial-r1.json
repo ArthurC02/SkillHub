@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請依規則計算每行列印時間的單件列印費，依序只回覆金額（元）。\n9小時1分鐘\n10小時1分鐘\n20小時\n31小時",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 行「9小時1分鐘」向上取整為 9.5 小時，輸出為「1,140 元」。"
+    },
+    {
+      "text": "試跑輸入第 2 行「10小時1分鐘」向上取整為 10.5 小時，輸出為「1,250 元」。"
+    },
+    {
+      "text": "試跑輸入第 3 行「20小時」輸出為「2,200 元」。"
+    },
+    {
+      "text": "試跑輸入第 4 行「31小時」按規則計算後套用上限，輸出為「2,500 元」。"
+    },
+    {
+      "text": "輸出依試跑輸入各行順序逐筆列出金額，不包含計算過程或其他說明。"
+    }
+  ],
+  "final_output": "1,140 元\n1,250 元\n2,200 元\n2,500 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "61b9d3e1-e25a-4119-8c54-394413aaeec2",
+    "run_id": "9dd0dcf3-e90e-449f-9797-ba40fbdd5abb",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四筆輸出金額均符合驗收標準，且回覆僅依序列出金額。",
+    "criterion_results": [
+      {
+        "criterion_id": "9fa96614-d3e6-4340-85b3-77b02b1f170e",
+        "text": "試跑輸入第 1 行「9小時1分鐘」向上取整為 9.5 小時，輸出為「1,140 元」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆輸出為「1,140 元」，符合指定金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1,140 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9c54a0b9-37bb-477d-b3e7-1b2aad19011e",
+        "text": "試跑輸入第 2 行「10小時1分鐘」向上取整為 10.5 小時，輸出為「1,250 元」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆輸出為「1,250 元」，符合指定金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1,250 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b265d3a1-cfcd-4213-8772-8cafb2a8efb8",
+        "text": "試跑輸入第 3 行「20小時」輸出為「2,200 元」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆輸出為「2,200 元」，符合指定金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2,200 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a59b0d26-75ae-4adc-a1f4-c8a8e8906a9a",
+        "text": "試跑輸入第 4 行「31小時」按規則計算後套用上限，輸出為「2,500 元」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆輸出為上限金額「2,500 元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2,500 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f79d20f3-012a-4bd4-a9fb-b99a80edc0f7",
+        "text": "輸出依試跑輸入各行順序逐筆列出金額，不包含計算過程或其他說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆依輸入順序逐行列出四筆金額，沒有計算過程或其他說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1,140 元\n1,250 元\n2,200 元\n2,500 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1500 input and 316 output tokens on skillhub-run; reported cost $0.0031 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

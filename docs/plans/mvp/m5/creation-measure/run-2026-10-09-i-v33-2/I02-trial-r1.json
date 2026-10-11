@@ -1,0 +1,175 @@
+{
+  "round": 1,
+  "sample_input": "請依規則判定以下借閱紀錄，逐筆輸出處理等級與判定理由。\n讀者｜證別｜逾期天數｜已回報遺失\n林安｜兒童證｜0｜是\n陳美｜一般證｜12｜是\n王平｜一般證｜0｜否\n周晴｜兒童證｜30｜否\n李明｜一般證｜1｜否\n張雅｜一般證｜7｜否\n吳健｜一般證｜8｜否",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸出為表格，欄位依序為「讀者、處理等級、判定理由」，並按輸入順序輸出全部 7 筆紀錄。"
+    },
+    {
+      "text": "試跑第 1、2 筆即使證別與天數不同，仍各判「賠償」，理由指出已回報遺失優先於其他規則。"
+    },
+    {
+      "text": "試跑第 3 筆未遺失且逾期 0 天，判「免處理」，理由指出逾期 0 天規則。"
+    },
+    {
+      "text": "試跑第 4 筆兒童證逾期 30 天且未遺失，判「提醒」，理由指出兒童證優先於停借門檻。"
+    },
+    {
+      "text": "試跑第 5、6 筆一般證逾期分別為 1 天及 7 天且未遺失，均判「提醒」，理由指出一般證 1–7 天規則。"
+    },
+    {
+      "text": "試跑第 7 筆一般證逾期 8 天且未遺失，判「停借」，理由指出一般證逾期 8 天以上規則。"
+    }
+  ],
+  "final_output": "| 讀者 | 處理等級 | 判定理由 |\n|---|---|---|\n| 林安 | 賠償 | 已回報遺失，優先判為賠償 |\n| 陳美 | 賠償 | 已回報遺失，優先判為賠償 |\n| 王平 | 免處理 | 未遺失且逾期 0 天 |\n| 周晴 | 提醒 | 未遺失且逾期至少 1 天；兒童證優先於停借門檻 |\n| 李明 | 提醒 | 一般證未遺失，逾期 1–7 天 |\n| 張雅 | 提醒 | 一般證未遺失，逾期 1–7 天 |\n| 吳健 | 停借 | 一般證未遺失，逾期 8 天以上 |",
+  "artifacts": [
+    "records.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "482c2c9f-e5ab-4e4b-b15c-da67c008dc06",
+    "run_id": "c23d1ada-6f59-467e-b3b3-7393fa7e6422",
+    "status": "completed",
+    "overall": "met",
+    "summary": "全部 6 項驗收條件均符合；輸出完整列出 7 筆紀錄，處理等級與判定理由符合各項要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "776fae4d-c54a-445b-be0f-601faee1e51d",
+        "text": "試跑輸出為表格，欄位依序為「讀者、處理等級、判定理由」，並按輸入順序輸出全部 7 筆紀錄。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為指定欄位順序的表格，且依輸入順序列出全部 7 筆紀錄。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 讀者 | 處理等級 | 判定理由 |\n|---|---|---|\n| 林安 | 賠償 | 已回報遺失，優先判為賠償 |\n| 陳美 | 賠償 | 已回報遺失，優先判為賠償 |\n| 王平 | 免處理 | 未遺失且逾期 0 天 |\n| 周晴 | 提醒 | 未遺失且逾期至少 1 天；兒童證優先於停借門檻 |\n| 李明 | 提醒 | 一般證未遺失，逾期 1–7 天 |\n| 張雅 | 提醒 | 一般證未遺失，逾期 1–7 天 |\n| 吳健 | 停借 | 一般證未遺失，逾期 8 天以上 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d08b0860-1b4c-48eb-9b6a-3ec7d29d200d",
+        "text": "試跑第 1、2 筆即使證別與天數不同，仍各判「賠償」，理由指出已回報遺失優先於其他規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1、2 筆均判為「賠償」，理由均指出已回報遺失優先。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 林安 | 賠償 | 已回報遺失，優先判為賠償 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 陳美 | 賠償 | 已回報遺失，優先判為賠償 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9207b851-36ba-4b70-9342-76a9ff24f43e",
+        "text": "試跑第 3 筆未遺失且逾期 0 天，判「免處理」，理由指出逾期 0 天規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆判為「免處理」，理由指出未遺失且逾期 0 天。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 王平 | 免處理 | 未遺失且逾期 0 天 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "72894c2b-05b8-4643-bcef-55250f320fa3",
+        "text": "試跑第 4 筆兒童證逾期 30 天且未遺失，判「提醒」，理由指出兒童證優先於停借門檻。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆判為「提醒」，理由指出兒童證優先於停借門檻。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 周晴 | 提醒 | 未遺失且逾期至少 1 天；兒童證優先於停借門檻 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1cda1595-8ea9-437c-bf4a-96a5089e1f22",
+        "text": "試跑第 5、6 筆一般證逾期分別為 1 天及 7 天且未遺失，均判「提醒」，理由指出一般證 1–7 天規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5、6 筆均判為「提醒」，理由指出一般證未遺失、逾期 1–7 天的規則。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 李明 | 提醒 | 一般證未遺失，逾期 1–7 天 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 張雅 | 提醒 | 一般證未遺失，逾期 1–7 天 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9bc39457-389d-4064-bb3c-603c7ae32100",
+        "text": "試跑第 7 筆一般證逾期 8 天且未遺失，判「停借」，理由指出一般證逾期 8 天以上規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 7 筆判為「停借」，理由指出一般證未遺失、逾期 8 天以上的規則。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 吳健 | 停借 | 一般證未遺失，逾期 8 天以上 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): records.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1522 input and 786 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

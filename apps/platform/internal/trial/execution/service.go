@@ -364,7 +364,7 @@ func (s *Service) auditRefusal(ctx context.Context, p CreateParams, err error) {
 		Action:       audit.ActionRunRefused,
 		ResourceType: audit.ResourceVersion,
 		ResourceID:   p.VersionID,
-		Metadata:     map[string]any{"reason": r.reason},
+		Metadata:     map[string]any{auditReasonKey: r.reason},
 	}); logErr != nil {
 		slog.Error("recording a refused run failed", "reason", r.reason, "error", logErr)
 	}
@@ -391,6 +391,20 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		return gen.Run{}, err
 	}
 
+	run, err := s.launch(ctx, tx, p, admitted, snapshotID)
+	if err != nil {
+		return gen.Run{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return gen.Run{}, err
+	}
+	metrics.RunCreated.Inc()
+	return run, nil
+}
+
+func (s *Service) launch(
+	ctx context.Context, tx pgx.Tx, p CreateParams, admitted admittedRun, snapshotID pgtype.UUID,
+) (gen.Run, error) {
 	requested := startRun(gen.Run{
 		WorkspaceID:        p.WorkspaceID,
 		SkillVersionID:     admitted.version.ID,
@@ -407,10 +421,6 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 			return gen.Run{}, err
 		}
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return gen.Run{}, err
-	}
-	metrics.RunCreated.Inc()
 	return run, nil
 }
 

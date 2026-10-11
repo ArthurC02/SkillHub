@@ -1,0 +1,180 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下每筆租借的進位後計費單位數與費用：\n1 分鐘\n30 分鐘\n31 分鐘\n90 分鐘\n91 分鐘\n180 分鐘\n190 分鐘",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 筆 1 分鐘時，輸出 1 個計費單位、費用 6 元。"
+    },
+    {
+      "text": "試跑輸入第 2 筆 30 分鐘時，輸出 3 個計費單位、費用 18 元。"
+    },
+    {
+      "text": "試跑輸入第 3 筆 31 分鐘時，無條件進位為 4 個計費單位，費用為 22 元（18+4）。"
+    },
+    {
+      "text": "試跑輸入第 4 筆 90 分鐘時，輸出 9 個計費單位、費用 42 元（18+24）。"
+    },
+    {
+      "text": "試跑輸入第 5 筆 91 分鐘時，無條件進位為 10 個計費單位，費用為 44 元（18+24+2）。"
+    },
+    {
+      "text": "試跑輸入第 6 筆 180 分鐘時，輸出 18 個計費單位、費用 60 元（18+24+18）。"
+    },
+    {
+      "text": "試跑輸入第 7 筆 190 分鐘時，輸出 19 個計費單位，未封頂費用為 62 元並依上限輸出 60 元。"
+    }
+  ],
+  "final_output": "| 租借時長 | 進位後計費單位數 | 未封頂費用 | 實收費用 |\n|---:|---:|---:|---:|\n| 1 分鐘 | 1 | 6 元 | 6 元 |\n| 30 分鐘 | 3 | 18 元 | 18 元 |\n| 31 分鐘 | 4 | 22 元 | 22 元 |\n| 90 分鐘 | 9 | 42 元 | 42 元 |\n| 91 分鐘 | 10 | 44 元 | 44 元 |\n| 180 分鐘 | 18 | 60 元 | 60 元 |\n| 190 分鐘 | 19 | 62 元 | 60 元 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3de8fa0e-c369-40af-b76b-604438d58cff",
+    "run_id": "d35db1d3-98a6-4269-8fb1-35696499bb4f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七筆租借的計費單位與費用均符合驗收標準；190 分鐘的費用亦正確封頂為 60 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "bef543db-cbf4-471e-b29d-c56bf17f74f7",
+        "text": "試跑輸入第 1 筆 1 分鐘時，輸出 1 個計費單位、費用 6 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆 1 分鐘，輸出 1 個計費單位，實收 6 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 分鐘 | 1 | 6 元 | 6 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "32674a54-d26b-4aec-87bd-d2418aeaa68c",
+        "text": "試跑輸入第 2 筆 30 分鐘時，輸出 3 個計費單位、費用 18 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆 30 分鐘，輸出 3 個計費單位，實收 18 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 30 分鐘 | 3 | 18 元 | 18 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cf636932-0606-4b97-96e4-4253b9f7a61c",
+        "text": "試跑輸入第 3 筆 31 分鐘時，無條件進位為 4 個計費單位，費用為 22 元（18+4）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆 31 分鐘，進位後為 4 個計費單位，實收 22 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 31 分鐘 | 4 | 22 元 | 22 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fd39a9a2-9b91-4a4c-8a80-8356deddca58",
+        "text": "試跑輸入第 4 筆 90 分鐘時，輸出 9 個計費單位、費用 42 元（18+24）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆 90 分鐘，輸出 9 個計費單位，實收 42 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 90 分鐘 | 9 | 42 元 | 42 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2f26a7ca-e8fc-4790-88ab-755c82a9ddeb",
+        "text": "試跑輸入第 5 筆 91 分鐘時，無條件進位為 10 個計費單位，費用為 44 元（18+24+2）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆 91 分鐘，進位後為 10 個計費單位，實收 44 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 91 分鐘 | 10 | 44 元 | 44 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5dcc36d6-3096-4706-bbbf-a95b34402c17",
+        "text": "試跑輸入第 6 筆 180 分鐘時，輸出 18 個計費單位、費用 60 元（18+24+18）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 筆 180 分鐘，輸出 18 個計費單位，實收 60 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 180 分鐘 | 18 | 60 元 | 60 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e6780149-0fec-4b6b-97fd-adb7cb08a14c",
+        "text": "試跑輸入第 7 筆 190 分鐘時，輸出 19 個計費單位，未封頂費用為 62 元並依上限輸出 60 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 7 筆 190 分鐘，輸出 19 個計費單位、未封頂費用 62 元及實收費用 60 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 190 分鐘 | 19 | 62 元 | 60 元 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1523 input and 331 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

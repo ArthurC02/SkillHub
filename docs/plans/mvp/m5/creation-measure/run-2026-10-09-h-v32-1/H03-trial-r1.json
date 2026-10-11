@@ -1,0 +1,171 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下團購訂單，列出品項、數量、單價、小計及飲料金額，外送費另外列出。\n阿明：珍珠奶茶，半糖、少冰，2杯，每杯65元。\n阿美：珍珠奶茶，半糖、少冰，1杯，每杯65元。\n小林：珍珠奶茶，全糖、去冰，1杯，每杯65元。\n小周：烏龍奶茶，微糖、少冰，2杯，單價未提供。\n店家外送費：35元。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出清單須列出各品項的品名與規格、數量、單價及小計；無法取得的單價或小計須明確標示。"
+    },
+    {
+      "text": "測試輸入中兩筆「珍珠奶茶、半糖、少冰、每杯65元」須合併為3杯，小計195元。"
+    },
+    {
+      "text": "測試輸入中「珍珠奶茶、全糖、去冰」須與半糖少冰的品項分開列出，數量1杯、小計65元。"
+    },
+    {
+      "text": "測試輸入中烏龍奶茶的單價須標示「未提供」、小計標示「無法計算」，且須提醒飲料總額不完整。"
+    },
+    {
+      "text": "已知飲料金額合計須為260元（195元＋65元）；外送費須另列35元，且不得計入該合計。"
+    }
+  ],
+  "final_output": "訂購清單：\n- 品項：珍珠奶茶；規格：半糖、少冰；數量：3；單價：65 元；小計：195 元\n- 品項：珍珠奶茶；規格：全糖、去冰；數量：1；單價：65 元；小計：65 元\n- 品項：烏龍奶茶；規格：微糖、少冰；數量：2；單價：未提供；小計：無法計算\n\n已知飲料金額合計：260 元  \n飲料總額不完整：烏龍奶茶單價未提供。  \n外送費（不計入飲料金額）：35 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "754443c0-86ca-411c-84e2-37d1fb16298b",
+    "run_id": "e8d8174d-1b36-44c3-a63c-3f9f9f2ff4d4",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收條件均符合。訂單依品項與規格整理，已知飲料金額和外送費分開列示，並註明缺少單價使飲料總額不完整。",
+    "criterion_results": [
+      {
+        "criterion_id": "f726d128-6b11-48d6-87f4-01979fe4f789",
+        "text": "輸出清單須列出各品項的品名與規格、數量、單價及小計；無法取得的單價或小計須明確標示。",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單逐項列出品名、規格、數量、單價及小計；烏龍奶茶缺少的單價與小計也已明確標示。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：珍珠奶茶；規格：半糖、少冰；數量：3；單價：65 元；小計：195 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：珍珠奶茶；規格：全糖、去冰；數量：1；單價：65 元；小計：65 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：烏龍奶茶；規格：微糖、少冰；數量：2；單價：未提供；小計：無法計算",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "90415f3c-fc07-42b2-b96b-8f22d675bb29",
+        "text": "測試輸入中兩筆「珍珠奶茶、半糖、少冰、每杯65元」須合併為3杯，小計195元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "半糖、少冰的珍珠奶茶合併列為3杯，小計195元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：珍珠奶茶；規格：半糖、少冰；數量：3；單價：65 元；小計：195 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4d03956f-cbdb-46ad-91d1-265764ffc503",
+        "text": "測試輸入中「珍珠奶茶、全糖、去冰」須與半糖少冰的品項分開列出，數量1杯、小計65元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "全糖、去冰的珍珠奶茶另列一項，數量1杯，小計65元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：珍珠奶茶；規格：全糖、去冰；數量：1；單價：65 元；小計：65 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：珍珠奶茶；規格：半糖、少冰；數量：3；單價：65 元；小計：195 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9ea54995-bc86-4b63-a95e-c5ce04aa9d26",
+        "text": "測試輸入中烏龍奶茶的單價須標示「未提供」、小計標示「無法計算」，且須提醒飲料總額不完整。",
+        "result": "passed",
+        "source": "model",
+        "reason": "烏龍奶茶單價標為「未提供」、小計標為「無法計算」，並提醒飲料總額不完整。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：烏龍奶茶；規格：微糖、少冰；數量：2；單價：未提供；小計：無法計算",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "飲料總額不完整：烏龍奶茶單價未提供。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4050f2d0-7748-4d14-857b-8252ae80d29e",
+        "text": "已知飲料金額合計須為260元（195元＋65元）；外送費須另列35元，且不得計入該合計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "已知飲料金額合計為260元；外送費35元另列，且明示不計入飲料金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "已知飲料金額合計：260 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "外送費（不計入飲料金額）：35 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1594 input and 955 output tokens on skillhub-run; reported cost $0.0045 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

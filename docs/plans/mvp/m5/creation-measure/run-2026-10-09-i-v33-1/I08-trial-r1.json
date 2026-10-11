@@ -1,0 +1,213 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下叫貨訊息，列出品項、數量、單價、小計、叫貨總額及需確認事項：\n2026/10/08：番茄 2 公斤，單價 80 元；番茄 3 公斤，單價 80 元；雞蛋 2 盒，單價 90 元。\n2026/02/30：洋蔥 -1 公斤，單價 40 元；馬鈴薯 1 公斤，單價 50 元。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入按日期列出資料，並讓每筆可辨識的資料呈現品項、數量、單價、小計；另列出可計算的叫貨總額或明確說明為何不能計算。"
+    },
+    {
+      "text": "對 2026/10/08 的番茄兩筆不同數量（2 公斤與 3 公斤）指出矛盾並請人確認；不替番茄選數量、不計算番茄小計，且不計算依賴番茄資料的該日總額。"
+    },
+    {
+      "text": "對 2026/10/08 的雞蛋計算小計為 2 × 90 = 180 元；由於同日番茄資料矛盾，不把 180 元當作該日叫貨總額。"
+    },
+    {
+      "text": "指出 2026/02/30 是不存在的公曆日期並請人確認；不計算依賴該日期叫貨資料的總額。"
+    },
+    {
+      "text": "指出洋蔥數量為負數並請人確認；不計算洋蔥小計，也不計算依賴該筆資料的總額。"
+    },
+    {
+      "text": "對 2026/02/30 的馬鈴薯列出可直接計算的小計 1 × 50 = 50 元，但不把它當作該日叫貨總額。"
+    }
+  ],
+  "final_output": "## 叫貨清單\n\n| 日期 | 品項 | 數量 | 單位 | 單價 | 幣別 | 小計 |\n|---|---|---:|---|---:|---|---:|\n| 2026/10/08 | 番茄 | 2 | 公斤 | 80 | 元 | 無法計算：同日番茄另有不同數量，需先確認 |\n| 2026/10/08 | 番茄 | 3 | 公斤 | 80 | 元 | 無法計算：同日番茄另有不同數量，需先確認 |\n| 2026/10/08 | 雞蛋 | 2 | 盒 | 90 | 元 | 180 元 |\n| 2026/02/30 | 洋蔥 | -1 | 公斤 | 40 | 元 | 無法計算：日期無效且數量為負數 |\n| 2026/02/30 | 馬鈴薯 | 1 | 公斤 | 50 | 元 | 50 元 |\n\n## 叫貨總額\n\n- **2026/10/08（元）：無法計算。** 番茄數量有矛盾，該日期總額不能確定。\n- **2026/02/30（元）：無法計算。** 日期無效，且洋蔥數量為負數，該日期總額不能確定。\n\n## 需確認事項\n\n1. **2026/10/08 番茄：** 同日列出 2 公斤與 3 公斤，請確認是兩筆分開叫貨、其中一筆數量有誤，或其他情況。\n2. **2026/02/30 日期：** 此日期不是有效公曆日期，請確認洋蔥與馬鈴薯的正確叫貨日期。\n3. **2026/02/30 洋蔥：** 數量為 -1 公斤，請確認是否為誤植或其他數量情況。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9ca5cbbb-ee90-4abb-8917-717cf059e070",
+    "run_id": "bd9eb2f5-a91b-4b5d-b3de-637cb208cc61",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收標準均已達成。回覆列出各筆資料及可計算的小計，並對番茄數量矛盾、無效日期和洋蔥負數數量提出確認事項；兩日總額均未誤算。",
+    "criterion_results": [
+      {
+        "criterion_id": "c9f335a0-8d2a-4f2e-bfb1-27814f3feca3",
+        "text": "對試跑輸入按日期列出資料，並讓每筆可辨識的資料呈現品項、數量、單價、小計；另列出可計算的叫貨總額或明確說明為何不能計算。",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單按日期列出五筆資料的品項、數量、單價及小計或不能計算的原因，並分別說明兩日叫貨總額無法計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 日期 | 品項 | 數量 | 單位 | 單價 | 幣別 | 小計 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **2026/10/08（元）：無法計算。** 番茄數量有矛盾，該日期總額不能確定。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **2026/02/30（元）：無法計算。** 日期無效，且洋蔥數量為負數，該日期總額不能確定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3b7506b9-6a01-4789-bae7-fc48379403e9",
+        "text": "對 2026/10/08 的番茄兩筆不同數量（2 公斤與 3 公斤）指出矛盾並請人確認；不替番茄選數量、不計算番茄小計，且不計算依賴番茄資料的該日總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "指出番茄的 2 公斤與 3 公斤需確認，沒有替它選定數量或計算小計，也沒有計算該日總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/10/08 | 番茄 | 2 | 公斤 | 80 | 元 | 無法計算：同日番茄另有不同數量，需先確認 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/10/08 | 番茄 | 3 | 公斤 | 80 | 元 | 無法計算：同日番茄另有不同數量，需先確認 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "同日列出 2 公斤與 3 公斤，請確認是兩筆分開叫貨、其中一筆數量有誤，或其他情況。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **2026/10/08（元）：無法計算。** 番茄數量有矛盾，該日期總額不能確定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d8c75313-1731-4ede-9a6d-93311cc4c6d0",
+        "text": "對 2026/10/08 的雞蛋計算小計為 2 × 90 = 180 元；由於同日番茄資料矛盾，不把 180 元當作該日叫貨總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "雞蛋以 2 盒、每盒 90 元列出 180 元小計；該日總額因番茄矛盾而未計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/10/08 | 雞蛋 | 2 | 盒 | 90 | 元 | 180 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **2026/10/08（元）：無法計算。** 番茄數量有矛盾，該日期總額不能確定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4dc9d6bd-0774-441a-88ac-02042ad33767",
+        "text": "指出 2026/02/30 是不存在的公曆日期並請人確認；不計算依賴該日期叫貨資料的總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出 2026/02/30 不是有效公曆日期，要求確認正確日期，且未計算該日總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "此日期不是有效公曆日期，請確認洋蔥與馬鈴薯的正確叫貨日期。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **2026/02/30（元）：無法計算。** 日期無效，且洋蔥數量為負數，該日期總額不能確定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a9d56513-6e87-4f58-aa46-cee1e82ddbdb",
+        "text": "指出洋蔥數量為負數並請人確認；不計算洋蔥小計，也不計算依賴該筆資料的總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "標示洋蔥數量為 -1 公斤並請人確認；未計算洋蔥小計，也未計算包含該筆的日期總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/02/30 | 洋蔥 | -1 | 公斤 | 40 | 元 | 無法計算：日期無效且數量為負數 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "數量為 -1 公斤，請確認是否為誤植或其他數量情況。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **2026/02/30（元）：無法計算。** 日期無效，且洋蔥數量為負數，該日期總額不能確定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2ba63cec-5ba6-42e7-ad15-c1deced3d4b7",
+        "text": "對 2026/02/30 的馬鈴薯列出可直接計算的小計 1 × 50 = 50 元，但不把它當作該日叫貨總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "馬鈴薯以 1 公斤、單價 50 元列出 50 元小計，但沒有將其當作該日叫貨總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/02/30 | 馬鈴薯 | 1 | 公斤 | 50 | 元 | 50 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **2026/02/30（元）：無法計算。** 日期無效，且洋蔥數量為負數，該日期總額不能確定。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1581 input and 1631 output tokens on skillhub-run; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 46,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

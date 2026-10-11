@@ -5,6 +5,8 @@ import (
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
 )
 
 func TestASightingJoinsTheFindingItSharesACiteWith(t *testing.T) {
@@ -42,7 +44,7 @@ func TestASightingJoinsTheFindingItSharesACiteWith(t *testing.T) {
 }
 
 func TestOnlyAttentionItemsBecomeSightingsWithTheValuesTheyCite(t *testing.T) {
-	steps := []StepRecord{{Result: `{"jobs":{"purge":{"overdue":2.5}},"size":10}`}}
+	steps := []agentloop.StepRecord{{Result: `{"jobs":{"purge":{"overdue":2.5}},"size":10}`}}
 	result := json.RawMessage(`{"items":[
 		{"status":"fine","text":"size ok","cites":["/size"]},
 		{"status":"attention","text":"purge late","cites":["/jobs/purge/overdue","/missing"]}

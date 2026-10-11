@@ -9,6 +9,32 @@ import {
 } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
+test("platform policies lead with both current settings and reveal an editor by keyboard", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 900 });
+  await stubPlatform(page);
+  await page.route("**/admin/settings/runs/continuation-rounds", async (route) => {
+    expect(route.request().postDataJSON()).toEqual({ rounds: 5, note: "longer interviews" });
+    await route.fulfill({ json: { continuation_rounds: { rounds: 5, min: 1, max: 10 } } });
+  });
+  await page.goto("/admin/settings");
+  await expect(page.getByText("關閉：一個判定（預設）", { exact: true })).toBeInViewport();
+  await expect(page.getByText("目前：3 輪（可設 1–10 輪）", { exact: true })).toBeInViewport();
+  await expect(page.locator("#admin-settings-rounds-value")).toBeHidden();
+  const edit = page.getByText("調整回答輪數上限", { exact: true });
+  await edit.focus();
+  await page.keyboard.press("Enter");
+  await page.locator("#admin-settings-rounds-value").fill("5");
+  await page.locator("#admin-settings-rounds-note").fill("longer interviews");
+  await page.getByRole("button", { name: "改輪數", exact: true }).click();
+  await expect(page.locator("#admin-settings-rounds-result")).toBeFocused();
+  await expect(page.locator("#admin-settings-rounds-result")).toContainText("已改為 5 輪");
+  const report = await new AxeBuilder({ page }).analyze();
+  expect(report.violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test("an Agent proposal read can recover in place on a phone", async ({ page }, testInfo) => {
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 900 });

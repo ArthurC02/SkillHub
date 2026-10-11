@@ -33,7 +33,7 @@ Remove the cause, trying these in order:
 1. Remove repetition. A shared function for a shape written several times shortens and simplifies more than any split.
 2. Extract a rule under the name of the rule it decides.
 3. Name values that travel together as the concept they are, and use its fields directly.
-4. Replace a flag with the two operations it selects, each named for what it does.
+4. Replace a flag with the two operations it selects, each named for what it does. When it selects between kinds of something the domain names, name that concept and let the functions read it; that is the fix the check asked for, not a redesign beyond it.
 5. Name a value only when the name says what the value does not, and replace every occurrence.
 
 Each of these moves meets a check in form only, and leaves a tell you can search for in your own change:
@@ -41,6 +41,7 @@ Each of these moves meets a check in form only, and leaves a tell you can search
 | Move | Tell |
 | --- | --- |
 | Bundling arguments into an object that has no meaning of its own | The function's first statement copies the fields back into locals |
+| Keeping a flag but moving it to a keyword argument or a default | The parameter is still a boolean, now passed by name or given a default |
 | Wrapping a flag in a new type, or in an enum that is only ever asked yes or no | The value is turned back into a boolean, or compared with one member, where it is read |
 | Naming a constant after its value or its field | The name contains the number, or the literal still appears in a message or a case label |
 | Splitting a loop so two functions share its state | A helper returns nothing and changes an argument, or caller and helper both update the same field |

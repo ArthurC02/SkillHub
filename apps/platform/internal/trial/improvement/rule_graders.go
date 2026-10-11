@@ -1,0 +1,190 @@
+package eval
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+)
+
+const runSucceeded = "succeeded"
+
+type ruleGrader func(m material, values []string) (result, reason string)
+
+func gradeContainsValues(m material, values []string) (string, string) {
+	missing := []string{}
+	for _, v := range values {
+		if !mentions(m.summary.FinalOutput, v) {
+			missing = append(missing, v)
+		}
+	}
+	if len(missing) > 0 {
+		return ResultFailed, "the final output does not mention " + strings.Join(missing, ", ")
+	}
+	return ResultPassed, "the final output mentions " + strings.Join(values, ", ")
+}
+
+func (m material) askedInConversation() []trace.Question {
+	return append(append([]trace.Question{}, m.earlierQuestions...), m.summary.Questions...)
+}
+
+func gradeAsks(m material, values []string) (string, string) {
+	questions := m.askedInConversation()
+	if len(questions) == 0 {
+		return ResultFailed, "the conversation ended without asking the person anything"
+	}
+	asked := questionText(questions)
+	missing := []string{}
+	for _, v := range values {
+		if !mentions(asked, v) {
+			missing = append(missing, v)
+		}
+	}
+	if len(missing) > 0 {
+		return ResultFailed, fmt.Sprintf("the conversation asked %d question(s), none about %s",
+			len(questions), strings.Join(missing, ", "))
+	}
+	return ResultPassed, fmt.Sprintf("the conversation asked %d question(s)", len(questions))
+}
+
+func gradeDoesNotAsk(m material, _ []string) (string, string) {
+	if m.run.Status != runSucceeded {
+		return ResultFailed, "the run ended as " + m.run.Status + " without an answer"
+	}
+	if n := len(m.askedInConversation()); n > 0 {
+		return ResultFailed, fmt.Sprintf("the conversation asked %d question(s) instead of answering", n)
+	}
+	return ResultPassed, "the run answered without asking the person"
+}
+
+func questionText(questions []trace.Question) string {
+	var b strings.Builder
+	for _, q := range questions {
+		b.WriteString(q.Question)
+		b.WriteString("\n")
+		b.WriteString(q.Why)
+		b.WriteString("\n")
+		b.WriteString(strings.Join(q.Options, "\n"))
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+func inCriteriaOrder(criteria []testlab.Criterion, results []CriterionResult) []CriterionResult {
+	byID := make(map[string]CriterionResult, len(results))
+	for _, r := range results {
+		byID[r.CriterionID] = r
+	}
+	out := make([]CriterionResult, 0, len(byID))
+	for _, c := range criteria {
+		if r, ok := byID[c.ID]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+var (
+	isoDate = regexp.MustCompile(`^(\d{4})-(\d{2})-(\d{2})$`)
+	clock   = regexp.MustCompile(`^(\d{1,3}):(\d{2})$`)
+	decimal = regexp.MustCompile(`^-?\d+(?:\.\d+)?$`)
+	spaces  = regexp.MustCompile(`\s+`)
+)
+
+func mentions(output, value string) bool {
+	text := spaces.ReplaceAllString(output, "")
+	for _, form := range writtenForms(value) {
+		if containsStandalone(text, form) {
+			return true
+		}
+	}
+	return false
+}
+
+func writtenForms(value string) []string {
+	if m := isoDate.FindStringSubmatch(value); m != nil {
+		month, _ := strconv.Atoi(m[2])
+		day, _ := strconv.Atoi(m[3])
+		return []string{
+			value,
+			fmt.Sprintf("%s/%02d/%02d", m[1], month, day),
+			fmt.Sprintf("%s/%d/%d", m[1], month, day),
+			fmt.Sprintf("%s年%d月%d日", m[1], month, day),
+			fmt.Sprintf("%d月%d日", month, day),
+			fmt.Sprintf("%d/%d", month, day),
+			fmt.Sprintf("%02d/%02d", month, day),
+		}
+	}
+	if m := clock.FindStringSubmatch(value); m != nil {
+		hours, _ := strconv.Atoi(m[1])
+		minutes, _ := strconv.Atoi(m[2])
+		forms := []string{value, fmt.Sprintf("%d小時%d分", hours, minutes)}
+		if minutes == 0 {
+			forms = append(forms, fmt.Sprintf("%d小時", hours))
+		}
+		return forms
+	}
+	if decimal.MatchString(value) {
+		return []string{value, grouped(value)}
+	}
+	return []string{value}
+}
+
+const digitsPerGroup = 3
+
+func grouped(number string) string {
+	sign, digits := "", number
+	if strings.HasPrefix(number, "-") {
+		sign, digits = "-", number[1:]
+	}
+	whole, fraction, hasFraction := strings.Cut(digits, ".")
+	for i := len(whole) - digitsPerGroup; i > 0; i -= digitsPerGroup {
+		whole = whole[:i] + "," + whole[i:]
+	}
+	if hasFraction {
+		whole += "." + fraction
+	}
+	return sign + whole
+}
+
+// A numeric form must not be part of a longer number: "12" is not in "120"
+// or "3.12", and "1,200" is not in "1,200.5".
+func containsStandalone(text, form string) bool {
+	numericStart := form[0] == '-' || isDigit(form[0])
+	numericEnd := isDigit(form[len(form)-1])
+	for from := 0; ; {
+		i := strings.Index(text[from:], form)
+		if i < 0 {
+			return false
+		}
+		start, end := from+i, from+i+len(form)
+		joined := (numericStart && joinsBefore(text, start)) || (numericEnd && joinsAfter(text, end))
+		if !joined {
+			return true
+		}
+		from = start + 1
+	}
+}
+
+func joinsBefore(text string, start int) bool {
+	if start == 0 {
+		return false
+	}
+	c := text[start-1]
+	return isDigit(c) || c == '.' || c == ','
+}
+
+func joinsAfter(text string, end int) bool {
+	if end >= len(text) {
+		return false
+	}
+	if isDigit(text[end]) {
+		return true
+	}
+	return (text[end] == '.' || text[end] == ',') && end+1 < len(text) && isDigit(text[end+1])
+}
+
+func isDigit(c byte) bool { return c >= '0' && c <= '9' }

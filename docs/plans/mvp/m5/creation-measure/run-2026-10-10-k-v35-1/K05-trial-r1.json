@@ -1,0 +1,195 @@
+{
+  "round": 1,
+  "sample_input": "請把以下三組段考事項分別整理成家長群組公告，每組各自輸出公告本體與一句獨立的整理說明；依缺漏情況標示待確認，不要編造日期。\n甲組：段考日期為11月18日至19日；學費繳費截止日為11月10日；請帶學生證；範圍是第一至第五課；11月17日停課；11月16日晚上6點至8點有自習；請提早15分鐘到；教室內手機請關機；補考日期為11月20日；請家長提醒孩子準備文具。\n乙組：學費繳費截止日為12月3日；考前需複習第二至第四課；請帶學生證；考試當天提早10分鐘到。\n丙組：段考日期為12月12日；請帶學生證；考試當天提早10分鐘到；考前需複習第一至第三課。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入甲組的輸出包含一則公告本體及其後獨立的一句整理說明；公告本體不超過 3 句，整理說明不算入句數。"
+    },
+    {
+      "text": "甲組公告保留段考日期「11月18日至19日」及學費繳費截止日「11月10日」，不得改成其他日期。"
+    },
+    {
+      "text": "甲組凡被合併或捨棄的事項，都在整理說明中如實列明；不得聲稱保留了實際已捨棄的事項，也不得把未提供的事項說成已合併或捨棄。"
+    },
+    {
+      "text": "試跑輸入乙組缺少段考日期；乙組輸出明確以「待確認」標示日期缺漏，不得自行填入日期，並提醒使用者補充。"
+    },
+    {
+      "text": "試跑輸入丙組缺少學費繳費截止日；丙組輸出明確以「待確認」標示期限缺漏，不得自行填入日期，並提醒使用者補充。"
+    },
+    {
+      "text": "甲、乙、丙三組各自產生公告及整理說明，不得把不同組別的日期或事項混在一起。"
+    }
+  ],
+  "final_output": "甲組  \n公告本體：各位家長您好，甲組段考日期為11月18日至19日，學費繳費截止日為11月10日。請孩子攜帶學生證、準備文具，考試範圍為第一至第五課，並提早15分鐘到；教室內手機請關機。11月16日晚上6點至8點有自習，11月17日停課，補考日期為11月20日。  \n整理說明：無（已列出所提供事項，未合併或捨棄）。\n\n乙組  \n公告本體：各位家長您好，乙組段考日期為待確認，學費繳費截止日為12月3日。考前請孩子複習第二至第四課、攜帶學生證，並於考試當天提早10分鐘到。  \n整理說明：段考日期未提供，請補充；無事項合併或捨棄。\n\n丙組  \n公告本體：各位家長您好，丙組段考日期為12月12日，學費繳費截止日為待確認。考前請孩子複習第一至第三課、攜帶學生證，並於考試當天提早10分鐘到。  \n整理說明：學費繳費截止日未提供，請補充；無事項合併或捨棄。",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "4de027fd-25d5-4d28-8636-42199fe25d3e",
+    "run_id": "c5ebdd79-0cdc-4c0a-a2df-5b7e59ec7238",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "三組公告分別呈現，日期及缺漏標示符合要求；甲組公告也符合句數限制。但甲組將多項事項合併表述，整理說明卻稱未合併，未符合如實說明的要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "300b21ff-2bb9-4fd6-a4da-1364e01e0bf6",
+        "text": "試跑輸入甲組的輸出包含一則公告本體及其後獨立的一句整理說明；公告本體不超過 3 句，整理說明不算入句數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲組公告本體共三句，其後另有獨立的一句整理說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "公告本體：各位家長您好，甲組段考日期為11月18日至19日，學費繳費截止日為11月10日。請孩子攜帶學生證、準備文具，考試範圍為第一至第五課，並提早15分鐘到；教室內手機請關機。11月16日晚上6點至8點有自習，11月17日停課，補考日期為11月20日。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "整理說明：無（已列出所提供事項，未合併或捨棄）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6bf2a1c1-b5e3-4c21-a5d5-950d09684f15",
+        "text": "甲組公告保留段考日期「11月18日至19日」及學費繳費截止日「11月10日」，不得改成其他日期。",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲組公告保留了指定的段考日期和學費繳費截止日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "甲組段考日期為11月18日至19日，學費繳費截止日為11月10日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3853531f-3953-4859-a6e2-c6f9d554e22b",
+        "text": "甲組凡被合併或捨棄的事項，都在整理說明中如實列明；不得聲稱保留了實際已捨棄的事項，也不得把未提供的事項說成已合併或捨棄。",
+        "result": "failed",
+        "source": "model",
+        "reason": "甲組公告將攜帶學生證與準備文具等不同事項合併表述，整理說明卻稱「未合併或捨棄」，未如實列明合併事項。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請孩子攜帶學生證、準備文具，考試範圍為第一至第五課，並提早15分鐘到；教室內手機請關機。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "整理說明：無（已列出所提供事項，未合併或捨棄）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d6078849-f9c8-49a8-ad3c-577eebeb7cc6",
+        "text": "試跑輸入乙組缺少段考日期；乙組輸出明確以「待確認」標示日期缺漏，不得自行填入日期，並提醒使用者補充。",
+        "result": "passed",
+        "source": "model",
+        "reason": "乙組將缺少的段考日期標為「待確認」，沒有填入日期，並請求補充。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "乙組段考日期為待確認，學費繳費截止日為12月3日。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "整理說明：段考日期未提供，請補充；無事項合併或捨棄。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dbd1d33b-1600-49f1-95d3-09c3cad184dd",
+        "text": "試跑輸入丙組缺少學費繳費截止日；丙組輸出明確以「待確認」標示期限缺漏，不得自行填入日期，並提醒使用者補充。",
+        "result": "passed",
+        "source": "model",
+        "reason": "丙組將缺少的學費繳費截止日標為「待確認」，沒有填入日期，並請求補充。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "丙組段考日期為12月12日，學費繳費截止日為待確認。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "整理說明：學費繳費截止日未提供，請補充；無事項合併或捨棄。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bf4e6732-82d2-4511-b9a9-92d4c079318b",
+        "text": "甲、乙、丙三組各自產生公告及整理說明，不得把不同組別的日期或事項混在一起。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三組各有自己的公告本體與整理說明；所列日期及事項均屬於對應組別，未見混用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "甲組  \n公告本體：各位家長您好，甲組段考日期為11月18日至19日，學費繳費截止日為11月10日。請孩子攜帶學生證、準備文具，考試範圍為第一至第五課，並提早15分鐘到；教室內手機請關機。11月16日晚上6點至8點有自習，11月17日停課，補考日期為11月20日。  \n整理說明：無（已列出所提供事項，未合併或捨棄）。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "乙組  \n公告本體：各位家長您好，乙組段考日期為待確認，學費繳費截止日為12月3日。考前請孩子複習第二至第四課、攜帶學生證，並於考試當天提早10分鐘到。  \n整理說明：段考日期未提供，請補充；無事項合併或捨棄。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "丙組  \n公告本體：各位家長您好，丙組段考日期為12月12日，學費繳費截止日為待確認。考前請孩子複習第一至第三課、攜帶學生證，並於考試當天提早10分鐘到。  \n整理說明：學費繳費截止日未提供，請補充；無事項合併或捨棄。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1728 input and 2425 output tokens on skillhub-run; reported cost $0.0059 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 42,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "round": 0,
+  "sample_input": "幫我濃縮這份通知：\n【停水通知】本社區將於 2026 年 11 月 3 日（週二）上午 9:00 至下午 5:00 進行水塔清洗，A 棟與 B 棟全面停水，C 棟不受影響。施工單位為恆安水電行。11 月 2 日晚上 10:00 起部分樓層水壓可能變小。請住戶提前儲水，每戶建議至少備水 20 公升。復水後請先放水 5 分鐘再使用。如有疑問請洽管理室 02-2345-1100。管理委員會 敬啟",
+  "acceptance_criteria": [
+    {
+      "text": "公告本文不超過 3 句"
+    },
+    {
+      "text": "公告保留停水日期 2026 年 11 月 3 日（或 11/3，若寫週幾則必須是週二）"
+    },
+    {
+      "text": "公告保留停水時段上午 9:00 至下午 5:00（或 09:00 到 17:00）"
+    },
+    {
+      "text": "公告保留受影響棟別為 A 棟與 B 棟"
+    },
+    {
+      "text": "公告之外另有一句話交代捨棄或合併了哪些資訊，且所說的資訊確實在公告中被省略或合併"
+    },
+    {
+      "text": "公告沒有與原通知矛盾或原通知沒有的事實"
+    }
+  ],
+  "final_output": "住戶群組公告  \n停水日期：2026 年 11 月 3 日（週二）；停水時段：上午 9:00 至下午 5:00；受影響棟別：A 棟與 B 棟全面停水，C 棟不受影響。  \n11 月 2 日晚上 10:00 起部分樓層水壓可能變小，請提前儲水，每戶建議至少備水 20 公升；復水後請先放水 5 分鐘再使用，如有疑問請洽管理室 02-2345-1100。\n\n整理說明：省略水塔清洗原因、施工單位「恆安水電行」及落款「管理委員會 敬啟」；合併水壓提醒、儲水建議、復水後放水方式及管理室聯絡資訊。",
+  "artifacts": [
+    "output.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "07c125b8-bf94-402d-ada3-08a339f30313",
+    "run_id": "c3cd5dd9-92b9-476e-bd4a-34a0ed7ad4ed",
+    "status": "completed",
+    "overall": "met",
+    "summary": "公告以兩句保留停水日期、時段及受影響棟別，內容與原通知一致；公告外也交代了省略及合併的資訊。六項驗收標準均已達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "51a51423-25c2-4e1f-9dc5-08065f5f1b29",
+        "text": "公告本文不超過 3 句",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告本文共兩句，不超過三句；整理說明另列於公告之外。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "停水日期：2026 年 11 月 3 日（週二）；停水時段：上午 9:00 至下午 5:00；受影響棟別：A 棟與 B 棟全面停水，C 棟不受影響。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "11 月 2 日晚上 10:00 起部分樓層水壓可能變小，請提前儲水，每戶建議至少備水 20 公升；復水後請先放水 5 分鐘再使用，如有疑問請洽管理室 02-2345-1100。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7a2a6516-2b55-46a5-aece-c2fa1fcb16d3",
+        "text": "公告保留停水日期 2026 年 11 月 3 日（或 11/3，若寫週幾則必須是週二）",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告保留 2026 年 11 月 3 日，並正確標示週二。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "停水日期：2026 年 11 月 3 日（週二）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f4425018-91e1-44e0-9d85-97f1c657cb65",
+        "text": "公告保留停水時段上午 9:00 至下午 5:00（或 09:00 到 17:00）",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告保留上午 9:00 至下午 5:00 的停水時段。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "停水時段：上午 9:00 至下午 5:00",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "90e97ecd-d997-4d73-962f-37349e115a59",
+        "text": "公告保留受影響棟別為 A 棟與 B 棟",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告明確指出 A 棟與 B 棟全面停水。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "受影響棟別：A 棟與 B 棟全面停水，C 棟不受影響。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d4d0fc75-0be1-4efc-b56d-bf42542e713f",
+        "text": "公告之外另有一句話交代捨棄或合併了哪些資訊，且所說的資訊確實在公告中被省略或合併",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告外另有一句整理說明；其中所列水塔清洗原因、施工單位及落款確實未放入公告，並說明合併呈現的提醒資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "整理說明：省略水塔清洗原因、施工單位「恆安水電行」及落款「管理委員會 敬啟」；合併水壓提醒、儲水建議、復水後放水方式及管理室聯絡資訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bdd52467-e02e-4327-9e69-da1085a3ada7",
+        "text": "公告沒有與原通知矛盾或原通知沒有的事實",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告中的日期、時段、棟別、水壓提醒、備水建議、復水後處置及聯絡電話均與原通知一致，未見新增或矛盾的事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "停水日期：2026 年 11 月 3 日（週二）；停水時段：上午 9:00 至下午 5:00；受影響棟別：A 棟與 B 棟全面停水，C 棟不受影響。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "11 月 2 日晚上 10:00 起部分樓層水壓可能變小，請提前儲水，每戶建議至少備水 20 公升；復水後請先放水 5 分鐘再使用，如有疑問請洽管理室 02-2345-1100。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): output.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1582 input and 2127 output tokens on skillhub-run; reported cost $0.0049 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

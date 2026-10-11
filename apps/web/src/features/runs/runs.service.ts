@@ -49,6 +49,19 @@ export function useCancelRun(runId: string) {
   });
 }
 
+export function useContinueRun(runId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (answers: string[]) =>
+      apiFetch<Run>(`/runs/${runId}/continuations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers }),
+      }),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.trace.run(runId) }),
+  });
+}
+
 export type RunListItem = {
   run_id: string;
   status: string;

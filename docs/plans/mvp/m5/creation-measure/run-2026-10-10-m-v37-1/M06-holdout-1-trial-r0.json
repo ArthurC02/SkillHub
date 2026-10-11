@@ -1,0 +1,182 @@
+{
+  "round": 0,
+  "sample_input": "幫我寫：王同學要來試聽鋼琴。日期 2026 年 11 月 21 日，下午 2 點半，在 B203 教室，老師是陳老師，地址台北市中山路 12 號 3 樓，試聽費 300 元，現場付現，要改期的話請在 11 月 19 日前回覆這則簡訊，停車請停對面立體停車場，記得帶琴譜。",
+  "acceptance_criteria": [
+    {
+      "text": "簡訊全文不超過 50 個字（含標點、數字與空白）"
+    },
+    {
+      "text": "保留試聽日期 11 月 21 日（11/21 等寫法皆可）"
+    },
+    {
+      "text": "保留試聽時間 14:30（下午 2 點半、2:30 PM 等寫法皆可）"
+    },
+    {
+      "text": "保留教室編號 B203"
+    },
+    {
+      "text": "保留試聽費 300 元"
+    },
+    {
+      "text": "保留改期截止日 11 月 19 日（11/19 等寫法皆可）"
+    },
+    {
+      "text": "輸出只有簡訊本文，沒有附加的說明文字、前言或字數統計"
+    }
+  ],
+  "final_output": "2026 年 11 月 21 日下午 2 點半，B203試聽300 元；改期11 月 19 日前回覆",
+  "artifacts": [
+    "sms.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "87377848-e51a-4437-99fb-26dbc48ad630",
+    "run_id": "12dfcc10-d99b-4c75-a97e-9c909b5c31b7",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七項驗收條件均符合。簡訊恰好 50 個字，並保留指定日期、時間、教室、費用及改期截止日。",
+    "criterion_results": [
+      {
+        "criterion_id": "2e989201-91dc-48f0-82d2-afa9950fb4bd",
+        "text": "簡訊全文不超過 50 個字（含標點、數字與空白）",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊全文含標點、數字與空白共 50 個字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026 年 11 月 21 日下午 2 點半，B203試聽300 元；改期11 月 19 日前回覆",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e1545204-b2c8-48d4-a4b1-6c4ea6a7b2ea",
+        "text": "保留試聽日期 11 月 21 日（11/21 等寫法皆可）",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留了試聽日期 11 月 21 日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026 年 11 月 21 日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1d4c40e5-ebb8-4c66-9f44-ed2258cec157",
+        "text": "保留試聽時間 14:30（下午 2 點半、2:30 PM 等寫法皆可）",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留了試聽時間下午 2 點半。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "下午 2 點半",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e20202ec-fa97-472a-99a9-0d5f30bc291a",
+        "text": "保留教室編號 B203",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留了教室編號 B203。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "B203",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6221a3b5-3078-4483-989b-d2413e260af5",
+        "text": "保留試聽費 300 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留了試聽費 300 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "試聽300 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5f75cd3c-dbe2-4c72-9337-08601117040b",
+        "text": "保留改期截止日 11 月 19 日（11/19 等寫法皆可）",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留了改期截止日 11 月 19 日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "改期11 月 19 日前回覆",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5e290629-6239-45f9-9020-d793f3f4949f",
+        "text": "輸出只有簡訊本文，沒有附加的說明文字、前言或字數統計",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有簡訊本文，沒有附加說明、前言或字數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026 年 11 月 21 日下午 2 點半，B203試聽300 元；改期11 月 19 日前回覆",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): sms.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1529 input and 8702 output tokens on skillhub-run; reported cost $0.0075 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

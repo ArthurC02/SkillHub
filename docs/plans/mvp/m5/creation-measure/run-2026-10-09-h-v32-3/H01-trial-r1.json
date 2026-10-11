@@ -1,0 +1,180 @@
+{
+  "round": 1,
+  "sample_input": "請依停車場規則計算以下每筆停車費，逐筆列出原始時數、進位後時數、計算明細與應付金額。\n0.5 小時\n1 小時\n1.2 小時\n3 小時\n3.1 小時\n8 小時",
+  "acceptance_criteria": [
+    {
+      "text": "試跑資料第 1 筆 0.5 小時應進位為 1 小時，費用為 50 元。"
+    },
+    {
+      "text": "試跑資料第 2 筆恰為 1 小時應進位為 1 小時，費用為 50 元。"
+    },
+    {
+      "text": "試跑資料第 3 筆 1.2 小時應進位為 2 小時，費用為 120 元。"
+    },
+    {
+      "text": "試跑資料第 4 筆恰為 3 小時應進位為 3 小時，費用為 120 元。"
+    },
+    {
+      "text": "試跑資料第 5 筆 3.1 小時應進位為 4 小時，費用明細為 120 + (4−3)×40 = 160 元。"
+    },
+    {
+      "text": "試跑資料第 6 筆 8 小時應進位為 8 小時，未套上限前為 120 + (8−3)×40 = 320 元，應付金額為 300 元。"
+    },
+    {
+      "text": "對每筆試跑資料，回覆都應以可辨識的逐筆格式同時呈現原始時數、進位後時數、計算明細及應付金額。"
+    }
+  ],
+  "final_output": "第 1 筆：\n原始時數：0.5 小時\n進位後時數：1 小時\n計算明細：50 元\n應付金額：50 元\n第 2 筆：\n原始時數：1 小時\n進位後時數：1 小時\n計算明細：50 元\n應付金額：50 元\n第 3 筆：\n原始時數：1.2 小時\n進位後時數：2 小時\n計算明細：120 元\n應付金額：120 元\n第 4 筆：\n原始時數：3 小時\n進位後時數：3 小時\n計算明細：120 元\n應付金額：120 元\n第 5 筆：\n原始時數：3.1 小時\n進位後時數：4 小時\n計算明細：120 + (4−3)×40 = 160 元\n應付金額：160 元\n第 6 筆：\n原始時數：8 小時\n進位後時數：8 小時\n計算明細：120 + (8−3)×40 = 320；套用單次上限 300 元\n應付金額：300 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1f73c2f6-452c-4852-acf3-0c67bf423918",
+    "run_id": "d6fc5d4a-93e1-4a57-9769-75f304e57fd6",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六筆停車費的進位時數、計算明細與應付金額均符合驗收標準，且已逐筆完整呈現。",
+    "criterion_results": [
+      {
+        "criterion_id": "11172233-d85a-4880-9aa5-361c9fa82954",
+        "text": "試跑資料第 1 筆 0.5 小時應進位為 1 小時，費用為 50 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆原始時數為 0.5 小時，進位為 1 小時，應付 50 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 筆：\n原始時數：0.5 小時\n進位後時數：1 小時\n計算明細：50 元\n應付金額：50 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bb19aaf9-b3d3-49df-a418-c7e5853af3b7",
+        "text": "試跑資料第 2 筆恰為 1 小時應進位為 1 小時，費用為 50 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆原始時數與進位後時數均為 1 小時，應付 50 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 2 筆：\n原始時數：1 小時\n進位後時數：1 小時\n計算明細：50 元\n應付金額：50 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a3486e8f-b217-424d-a9bc-c61019ceee33",
+        "text": "試跑資料第 3 筆 1.2 小時應進位為 2 小時，費用為 120 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆 1.2 小時進位為 2 小時，應付 120 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 3 筆：\n原始時數：1.2 小時\n進位後時數：2 小時\n計算明細：120 元\n應付金額：120 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "be53dba2-24cb-4691-91cf-02d3a9d95a04",
+        "text": "試跑資料第 4 筆恰為 3 小時應進位為 3 小時，費用為 120 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆原始時數與進位後時數均為 3 小時，應付 120 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 4 筆：\n原始時數：3 小時\n進位後時數：3 小時\n計算明細：120 元\n應付金額：120 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7613718d-6545-4c61-a33d-c348d2307d57",
+        "text": "試跑資料第 5 筆 3.1 小時應進位為 4 小時，費用明細為 120 + (4−3)×40 = 160 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆 3.1 小時進位為 4 小時，列出指定算式並得出應付 160 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 5 筆：\n原始時數：3.1 小時\n進位後時數：4 小時\n計算明細：120 + (4−3)×40 = 160 元\n應付金額：160 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "95ab2818-dc65-4376-9378-323d46d1fec5",
+        "text": "試跑資料第 6 筆 8 小時應進位為 8 小時，未套上限前為 120 + (8−3)×40 = 320 元，應付金額為 300 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 筆進位後仍為 8 小時，明細列出上限前的 320 元，套用上限後應付 300 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 6 筆：\n原始時數：8 小時\n進位後時數：8 小時\n計算明細：120 + (8−3)×40 = 320；套用單次上限 300 元\n應付金額：300 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e4ed1dd3-ccd7-458e-b89a-3e8bbb11bb15",
+        "text": "對每筆試跑資料，回覆都應以可辨識的逐筆格式同時呈現原始時數、進位後時數、計算明細及應付金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆以第 1 至第 6 筆分段；每筆均同時列出原始時數、進位後時數、計算明細及應付金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 筆：\n原始時數：0.5 小時\n進位後時數：1 小時\n計算明細：50 元\n應付金額：50 元\n第 2 筆：\n原始時數：1 小時\n進位後時數：1 小時\n計算明細：50 元\n應付金額：50 元\n第 3 筆：\n原始時數：1.2 小時\n進位後時數：2 小時\n計算明細：120 元\n應付金額：120 元\n第 4 筆：\n原始時數：3 小時\n進位後時數：3 小時\n計算明細：120 元\n應付金額：120 元\n第 5 筆：\n原始時數：3.1 小時\n進位後時數：4 小時\n計算明細：120 + (4−3)×40 = 160 元\n應付金額：160 元\n第 6 筆：\n原始時數：8 小時\n進位後時數：8 小時\n計算明細：120 + (8−3)×40 = 320；套用單次上限 300 元\n應付金額：300 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1509 input and 521 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 32,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

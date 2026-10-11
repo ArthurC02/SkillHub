@@ -1,0 +1,148 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下資料寫一篇同事退休歡送會邀請文。\n歡送會名稱：林雅雯同事退休歡送會\n活動日期：2026年11月20日\n集合時間：下午5:30\n地點：松月樓二樓牡丹廳",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸出是一篇繁體中文的退休歡送會邀請文。"
+    },
+    {
+      "text": "輸出逐字包含歡送會名稱「林雅雯同事退休歡送會」。"
+    },
+    {
+      "text": "輸出逐字包含活動日期「2026年11月20日」、集合時間「下午5:30」及地點「松月樓二樓牡丹廳」，且沒有更改或省略這些事實。"
+    },
+    {
+      "text": "邀請文語氣呈現溫馨與感恩。"
+    },
+    {
+      "text": "邀請文沒有添加試跑資料未提供的活動事實。"
+    }
+  ],
+  "final_output": "親愛的同事們：\n\n誠摯邀請您參加林雅雯同事退休歡送會，一同向林雅雯表達感謝與祝福，共度溫馨時刻。\n\n歡送會名稱：林雅雯同事退休歡送會\n活動日期：2026年11月20日\n集合時間：下午5:30\n地點：松月樓二樓牡丹廳\n\n期待與您相聚，一同為林雅雯送上誠摯的祝福！",
+  "artifacts": [
+    "invitation.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "4f3da5c0-5fd9-4d93-877a-d369aa2319d0",
+    "run_id": "8d829cd2-1d9e-45a3-9631-0ada61533748",
+    "status": "completed",
+    "overall": "met",
+    "summary": "試跑輸出符合全部五項標準：邀請文以繁體中文呈現，語氣溫馨感恩，指定資訊完整且未增添其他活動事實。",
+    "criterion_results": [
+      {
+        "criterion_id": "70db8fdc-5404-4a2d-b266-457ef3dc1da4",
+        "text": "試跑輸出是一篇繁體中文的退休歡送會邀請文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以繁體中文撰寫，並明確邀請同事參加退休歡送會。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "親愛的同事們：\n\n誠摯邀請您參加林雅雯同事退休歡送會",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d2c95e23-f832-4129-9315-3d3908567421",
+        "text": "輸出逐字包含歡送會名稱「林雅雯同事退休歡送會」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐字包含指定的歡送會名稱。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "歡送會名稱：林雅雯同事退休歡送會",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "91d69175-52ac-4367-b0e6-943929fcd7df",
+        "text": "輸出逐字包含活動日期「2026年11月20日」、集合時間「下午5:30」及地點「松月樓二樓牡丹廳」，且沒有更改或省略這些事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "活動日期、集合時間及地點均逐字保留，沒有更改或省略。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "活動日期：2026年11月20日\n集合時間：下午5:30\n地點：松月樓二樓牡丹廳",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "05de99db-f39a-48e7-8029-61628e05fa15",
+        "text": "邀請文語氣呈現溫馨與感恩。",
+        "result": "passed",
+        "source": "model",
+        "reason": "邀請文表達感謝與祝福，語氣溫馨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "一同向林雅雯表達感謝與祝福，共度溫馨時刻。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d04ed8e8-0a08-4371-a9bb-a5d0a9a6d9a4",
+        "text": "邀請文沒有添加試跑資料未提供的活動事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "全文除指定活動資訊外，只有邀請及祝福措辭，未添加其他活動事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "親愛的同事們：\n\n誠摯邀請您參加林雅雯同事退休歡送會，一同向林雅雯表達感謝與祝福，共度溫馨時刻。\n\n歡送會名稱：林雅雯同事退休歡送會\n活動日期：2026年11月20日\n集合時間：下午5:30\n地點：松月樓二樓牡丹廳\n\n期待與您相聚，一同為林雅雯送上誠摯的祝福！",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): invitation.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1523 input and 1307 output tokens on skillhub-run; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

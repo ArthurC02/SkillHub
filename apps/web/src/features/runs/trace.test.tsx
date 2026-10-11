@@ -22,6 +22,7 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
+const navigations: { to?: string; params?: unknown }[] = [];
 const searchListeners = new Set<() => void>();
 let search: Record<string, string | undefined> = {};
 
@@ -42,7 +43,11 @@ vi.mock("@tanstack/react-router", async () => {
         },
         () => search,
       ),
-    useNavigate: () => (options: { search?: unknown }) => {
+    useNavigate: () => (options: { to?: string; params?: unknown; search?: unknown }) => {
+      if (options.search === undefined) {
+        navigations.push({ to: options.to, params: options.params });
+        return Promise.resolve();
+      }
       const next =
         typeof options.search === "function"
           ? (options.search as (prev: typeof search) => typeof search)(search)
@@ -75,7 +80,10 @@ vi.mock("@tanstack/react-router", async () => {
   };
 });
 
-beforeEach(() => setSearch({}));
+beforeEach(() => {
+  setSearch({});
+  navigations.length = 0;
+});
 
 function stubTrace(
   general: TraceSummary,
@@ -802,3 +810,177 @@ test("returning to the general view does not ask for the trace again", async () 
     vi.useRealTimers();
   }
 });
+
+const RUN_ID = summary.run_id;
+const NEXT_RUN_ID = "5c2f8e10-0b7a-4d63-9a41-7e3d2b1c9f44";
+const asking: TraceSummary = {
+  ...summary,
+  status: "succeeded",
+  questions: [
+    { question: "要處理哪個工作表？", why: "不同工作表欄位不同", options: ["Sheet1", "Sheet2"] },
+    { question: "重複列要保留哪一筆？", why: "決定去重的方向" },
+  ],
+};
+
+function stubContinuation(reply: { status: number; body: unknown }) {
+  const posts: { url: string; body: unknown }[] = [];
+  const underlying = globalThis.fetch;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (init?.method === "POST" && String(input).endsWith(`/runs/${RUN_ID}/continuations`)) {
+      posts.push({ url: String(input), body: JSON.parse(String(init.body)) });
+      return Promise.resolve(
+        new Response(JSON.stringify(reply.body), {
+          status: reply.status,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    return underlying(input);
+  });
+  return posts;
+}
+
+async function fill(selector: string, value: string) {
+  const el = container.querySelector<HTMLTextAreaElement>(selector)!;
+  expect(el, `no element matches ${selector}`).not.toBeNull();
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(el, value);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+const submitButton = () =>
+  Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "送出回答並繼續試跑",
+  );
+
+async function chooseOption(label: string) {
+  const radio = Array.from(
+    container.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
+  ).find((r) => r.parentElement?.textContent?.trim() === label)!;
+  expect(radio, `no option reads ${label}`).toBeDefined();
+  await act(async () => radio.click());
+}
+
+test("a run that ended by asking shows each question with its reason and choices", async () => {
+  stubTrace(asking, advanced);
+  await render();
+
+  expect(container.querySelector("h3#answer-questions-" + RUN_ID)?.textContent).toBe(
+    "這次試跑需要你回答",
+  );
+  const legends = Array.from(container.querySelectorAll("legend"), (l) => l.textContent);
+  expect(legends).toEqual(["要處理哪個工作表？", "重複列要保留哪一筆？"]);
+  const form = container.querySelector("form")!;
+  expect(form.textContent).toContain("不同工作表欄位不同");
+  expect(form.textContent).toContain("決定去重的方向");
+  expect(
+    Array.from(container.querySelectorAll('input[type="radio"]'), (r) =>
+      r.parentElement?.textContent?.trim(),
+    ),
+  ).toEqual(["Sheet1", "Sheet2"]);
+  expect(container.querySelectorAll("textarea")).toHaveLength(2);
+});
+
+test("a run without questions, or with an empty list, shows no answer form", async () => {
+  for (const questions of [undefined, []]) {
+    stubTrace({ ...summary, status: "succeeded", questions }, advanced);
+    await render();
+    expect(container.querySelector("form"), JSON.stringify(questions)).toBeNull();
+    expect(container.textContent).not.toContain("這次試跑需要你回答");
+    await act(async () => root.unmount());
+    queryClient.clear();
+    container.replaceChildren();
+  }
+});
+
+test("submitting sends a picked option and a typed answer in question order, then opens the new run", async () => {
+  stubTrace(asking, advanced);
+  const posts = stubContinuation({ status: 201, body: { run_id: NEXT_RUN_ID } });
+  await render();
+
+  await chooseOption("Sheet2");
+  await fill(`#answer-${RUN_ID}-1`, "  保留最新的一筆  ");
+  await act(async () => submitButton()!.click());
+  await waitFor(() => navigations.length > 0);
+
+  expect(posts).toEqual([
+    {
+      url: `/runs/${RUN_ID}/continuations`,
+      body: { answers: ["Sheet2", "保留最新的一筆"] },
+    },
+  ]);
+  expect(navigations).toEqual([{ to: "/runs/$runId", params: { runId: NEXT_RUN_ID } }]);
+});
+
+test("free text replaces a picked option for the same question", async () => {
+  stubTrace(asking, advanced);
+  const posts = stubContinuation({ status: 201, body: { run_id: NEXT_RUN_ID } });
+  await render();
+
+  await chooseOption("Sheet1");
+  await fill(`#answer-${RUN_ID}-0`, "Sheet3");
+  await fill(`#answer-${RUN_ID}-1`, "第一筆");
+  await act(async () => submitButton()!.click());
+  await waitFor(() => navigations.length > 0);
+
+  expect((posts[0].body as { answers: string[] }).answers).toEqual(["Sheet3", "第一筆"]);
+});
+
+test("the submit button waits for every question and says so, and sends nothing while blocked", async () => {
+  stubTrace(asking, advanced);
+  const posts = stubContinuation({ status: 201, body: { run_id: NEXT_RUN_ID } });
+  await render();
+
+  expect(submitButton()!.disabled).toBe(true);
+  expect(container.textContent).toContain("要等每一題都回答");
+  await fill(`#answer-${RUN_ID}-0`, "Sheet1");
+  await fill(`#answer-${RUN_ID}-1`, "   ");
+  expect(submitButton()!.disabled).toBe(true);
+  await act(async () => {
+    container
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  expect(posts).toEqual([]);
+  expect(navigations).toEqual([]);
+  await fill(`#answer-${RUN_ID}-1`, "x");
+  expect(submitButton()!.disabled).toBe(false);
+});
+
+test("an answer is accepted at 2000 bytes and refused at 2001, counting bytes not characters", async () => {
+  stubTrace(asking, advanced);
+  await render();
+  await fill(`#answer-${RUN_ID}-1`, "ok");
+
+  for (const [label, text, blocked] of [
+    ["2000 ascii", "a".repeat(2000), false],
+    ["2001 ascii", "a".repeat(2001), true],
+    ["666 cjk = 1998 bytes", "字".repeat(666), false],
+    ["667 cjk = 2001 bytes", "字".repeat(667), true],
+  ] as const) {
+    await fill(`#answer-${RUN_ID}-0`, text);
+    expect(submitButton()!.disabled, label).toBe(blocked);
+    expect(container.textContent?.includes("每個回答最多 2000 位元組"), label).toBe(blocked);
+  }
+});
+
+test.each([
+  [409, "這一輪的問題已經回答過了。"],
+  [422, "這段對話已經到回答輪數的上限。"],
+])(
+  "a %i from the server is shown as its own sentence and does not navigate",
+  async (status, message) => {
+    stubTrace(asking, advanced);
+    stubContinuation({ status, body: { error: message } });
+    await render();
+
+    await fill(`#answer-${RUN_ID}-0`, "Sheet1");
+    await fill(`#answer-${RUN_ID}-1`, "第一筆");
+    await act(async () => submitButton()!.click());
+    await waitFor(() => container.querySelector('[role="alert"]')?.textContent === message);
+
+    expect(navigations).toEqual([]);
+    expect(container.querySelector("form")).not.toBeNull();
+  },
+);

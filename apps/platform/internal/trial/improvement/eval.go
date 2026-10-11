@@ -33,7 +33,10 @@ const (
 	ResultUndetermined = "undetermined"
 )
 
-const SourceModel = "model"
+const (
+	SourceModel = "model"
+	SourceRule  = "rule"
+)
 
 type Range struct {
 	Start int `json:"start"`
@@ -80,6 +83,7 @@ type CriterionResult struct {
 	Source      string        `json:"source"`
 	Evidence    []EvidenceRef `json:"evidence"`
 	Reason      string        `json:"reason"`
+	Steps       []CheckStep   `json:"steps,omitempty"`
 }
 
 type Finding struct {
@@ -147,6 +151,7 @@ type Service struct {
 	ReadRuntimeCompatibility func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error)
 
 	JudgeModel         string
+	PanelEnabled       func(context.Context) (bool, error)
 	JudgePromptVersion string
 }
 
@@ -214,6 +219,8 @@ type EvaluationInput struct {
 	Artifacts     []ArtifactFacts
 	Absent        ArtifactAbsence
 	LatestAttempt int
+
+	EarlierQuestions []trace.Question
 }
 
 var errRunReaderNotConfigured = errors.New("evaluation run reader is not configured")
@@ -307,11 +314,13 @@ type material struct {
 	summary   trace.Summary
 	artifacts []ArtifactFacts
 
-	absent   ArtifactAbsence
-	compat   *RuntimeCompatibility
-	report   skillpkg.Report
-	reportOK bool
-	attempt  int
+	absent ArtifactAbsence
+	compat *RuntimeCompatibility
+
+	earlierQuestions []trace.Question
+	report           skillpkg.Report
+	reportOK         bool
+	attempt          int
 }
 
 func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) error {
@@ -321,6 +330,9 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	}
 	if err != nil {
 		return err
+	}
+	if m.awaitsAnswer() {
+		return nil
 	}
 
 	if current, currentErr := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
@@ -355,14 +367,48 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 		})
 	}
 
-	v, err := s.judge(ctx, m, ev)
+	plan := planCriteria(m)
+	if len(plan.toJudge) == 0 {
+		return s.completeAndSuggest(ctx, m, ev, verdict{
+			overall: overallFrom(plan.decided),
+			summary: "every acceptance criterion of this run carries a check the platform " +
+				"decided from the run's own records, so no model was asked",
+			results:          inCriteriaOrder(m.criteria, plan.decided),
+			findings:         findings,
+			evidenceComplete: evidenceComplete,
+		})
+	}
+
+	v, err := s.judge(ctx, m.judging(plan), ev)
 	if err != nil {
 
 		return s.fail(ctx, m, ev, gatheredEvidence{findings: findings, complete: evidenceComplete}, err)
 	}
+	v.results = plan.finish(m, v.results)
+	v.overall = overallFrom(v.results)
 	v.findings = append(findings, v.findings...)
 	v.evidenceComplete = evidenceComplete && v.evidenceComplete
 	return s.settleJudgement(ctx, m, ev, v)
+}
+
+func (m material) judging(p criteriaPlan) material {
+	m.criteria = p.toJudge
+	if m.rubric == nil {
+		return m
+	}
+	decided := map[string]bool{}
+	for _, r := range p.decided {
+		decided[r.CriterionID] = true
+	}
+	rubric := *m.rubric
+	rubric.Items = nil
+	for _, it := range m.rubric.Items {
+		if !decided[it.ID] {
+			rubric.Items = append(rubric.Items, it)
+		}
+	}
+	m.rubric = &rubric
+	return m
 }
 
 func (s *Service) settleJudgement(ctx context.Context, m material, ev gen.Evaluation, v verdict) error {
@@ -455,6 +501,7 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 	}
 	m.run, m.artifacts, m.attempt = input.Run, input.Artifacts, input.LatestAttempt
 	m.absent = input.Absent
+	m.earlierQuestions = input.EarlierQuestions
 	if !m.run.Terminal {
 		return m, errRunStillGoing
 	}
@@ -748,6 +795,10 @@ func costSource(cost *float64) *string {
 	}
 	source := string(credit.CostSourceGateway)
 	return &source
+}
+
+func (m material) awaitsAnswer() bool {
+	return m.run.Status == runSucceeded && len(m.summary.Questions) > 0
 }
 
 func (m material) evidenceComplete() bool { return m.advanced.Complete && !m.absent.Any() }

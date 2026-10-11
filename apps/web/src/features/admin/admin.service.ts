@@ -329,6 +329,8 @@ export type PlatformAgent = {
   purpose: string;
   model_role: string;
   daily_spend_cap_usd_micros: number;
+  default_daily_spend_cap_usd_micros: number;
+  daily_spend_cap_overridden: boolean;
   tools: string[];
   actions: string[];
   enabled: boolean;
@@ -387,6 +389,76 @@ export function usePlatformAgentSwitch() {
         send("PUT", body),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agents }),
+  });
+}
+
+export const MAX_AGENT_SPEND_CAP_MICROS = 5_000_000;
+
+export function usePlatformAgentSpendCap() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      name,
+      ...body
+    }: {
+      name: string;
+      daily_spend_cap_usd_micros: number | null;
+      note: string;
+    }) =>
+      apiFetch<PlatformAgent>(
+        `/admin/agents/${encodeURIComponent(name)}/spend-cap`,
+        send("PUT", body),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agents }),
+  });
+}
+
+export type PlatformSettings = {
+  judge_panel: { enabled: boolean; reason?: string; set_by_user_id?: string; set_at?: string };
+};
+
+export function usePlatformSettings() {
+  return useQuery({
+    queryKey: queryKeys.admin.settings,
+    queryFn: () => apiFetch<PlatformSettings>("/admin/settings"),
+    enabled: useOperator(),
+  });
+}
+
+export function useJudgePanelSwitch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { enabled: boolean; note: string }) =>
+      apiFetch<PlatformSettings>("/admin/settings/judge-panel", send("PUT", body)),
+    onSuccess: (settings) => queryClient.setQueryData(queryKeys.admin.settings, settings),
+  });
+}
+
+export type RunSettings = {
+  continuation_rounds: {
+    rounds: number;
+    min: number;
+    max: number;
+    reason?: string;
+    set_by_user_id?: string;
+    set_at?: string;
+  };
+};
+
+export function useRunSettings() {
+  return useQuery({
+    queryKey: queryKeys.admin.runSettings,
+    queryFn: () => apiFetch<RunSettings>("/admin/settings/runs"),
+    enabled: useOperator(),
+  });
+}
+
+export function useContinuationRounds() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { rounds: number; note: string }) =>
+      apiFetch<RunSettings>("/admin/settings/runs/continuation-rounds", send("PUT", body)),
+    onSuccess: (settings) => queryClient.setQueryData(queryKeys.admin.runSettings, settings),
   });
 }
 

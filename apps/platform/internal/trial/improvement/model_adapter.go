@@ -36,6 +36,7 @@ func (a modelOverHTTP) JudgeRun(ctx context.Context, req JudgeRequest) (*Judgeme
 		Artifacts:    wireArtifacts(req.Artifacts),
 		TraceDigest:  wireDigest(req.TraceDigest),
 		Truncation:   req.Truncation,
+		ModelRole:    req.ModelRole,
 
 		TimeoutSeconds: req.Within.Seconds(),
 	})

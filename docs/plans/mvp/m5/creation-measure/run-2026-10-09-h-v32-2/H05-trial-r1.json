@@ -1,0 +1,161 @@
+{
+  "round": 1,
+  "sample_input": "請為以下兩位會員分別撰寫健身中心會籍到期續約通知：\n會員甲：到期日期＝2026年11月30日；續約優惠價＝NT$2,400。\n會員乙：姓名＝林怡君；到期日期＝2026年12月15日；續約優惠價＝NT$1,800；優惠期限＝2026年12月20日前；聯絡方式＝請至櫃檯洽詢；其他優惠＝續約贈兩堂私人教練課、可免費凍結會籍一次、贈運動毛巾、推薦親友續約可獲飲品券。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 位會員的通知本文不超過 2 句，並包含輸入中的到期日期「2026年11月30日」及優惠價「NT$2,400」；沒有資訊被合併或省略時，不額外列出說明句。"
+    },
+    {
+      "text": "試跑輸入第 2 位會員的通知本文不超過 2 句，並包含輸入中的到期日期「2026年12月15日」及優惠價「NT$1,800」。"
+    },
+    {
+      "text": "第 2 位會員的通知若合併或省略任何選填資訊，另用一句話指出實際被合併或省略的資訊；該說明與通知本文分開呈現，不計入本文句數。"
+    },
+    {
+      "text": "兩位會員的輸出均不新增或改動輸入中的日期、價格、優惠期限、聯絡方式及優惠內容。"
+    },
+    {
+      "text": "輸出能清楚區分兩位會員各自的通知及其合併／省略說明。"
+    }
+  ],
+  "final_output": "會員甲\n會員甲您好，您的健身中心會籍將於2026年11月30日到期，續約優惠價為NT$2,400，歡迎續約！\n\n林怡君\n林怡君您好，您的健身中心會籍將於2026年12月15日到期，續約優惠價為NT$1,800，優惠期限為2026年12月20日前。續約贈兩堂私人教練課、可免費凍結會籍一次、贈運動毛巾；推薦親友續約可獲飲品券，請至櫃檯洽詢。\n已合併優惠期限、櫃檯洽詢方式、續約贈兩堂私人教練課、免費凍結會籍一次、贈運動毛巾及推薦親友續約可獲飲品券等資訊。",
+  "artifacts": [
+    "notice-body-1.txt",
+    "notice-body-2.txt",
+    "會員乙.txt",
+    "會員甲.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "fd331fb9-d38c-4ed3-bae9-d1cc096b5d4f",
+    "run_id": "25d40e41-8756-47b3-aa8f-c4f2b5ecf979",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩位會員的通知均符合兩句以內的限制，並保留指定資料。會員乙的合併資訊另有說明，兩則通知也能清楚區分。",
+    "criterion_results": [
+      {
+        "criterion_id": "4e379cbd-e3f9-4623-9256-6e322cd80599",
+        "text": "試跑輸入第 1 位會員的通知本文不超過 2 句，並包含輸入中的到期日期「2026年11月30日」及優惠價「NT$2,400」；沒有資訊被合併或省略時，不額外列出說明句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "會員甲的通知本文只有一句，包含指定到期日期與優惠價，且未另列合併或省略說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "會員甲您好，您的健身中心會籍將於2026年11月30日到期，續約優惠價為NT$2,400，歡迎續約！",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3e17929a-a59c-455e-a02e-628cac0fad31",
+        "text": "試跑輸入第 2 位會員的通知本文不超過 2 句，並包含輸入中的到期日期「2026年12月15日」及優惠價「NT$1,800」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "林怡君的通知本文為兩句，包含指定到期日期與優惠價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "林怡君您好，您的健身中心會籍將於2026年12月15日到期，續約優惠價為NT$1,800，優惠期限為2026年12月20日前。續約贈兩堂私人教練課、可免費凍結會籍一次、贈運動毛巾；推薦親友續約可獲飲品券，請至櫃檯洽詢。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "86b3b607-2c2d-4ac3-81d0-5a018a6a81a7",
+        "text": "第 2 位會員的通知若合併或省略任何選填資訊，另用一句話指出實際被合併或省略的資訊；該說明與通知本文分開呈現，不計入本文句數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "會員乙的選填資訊合併於通知本文；本文之後另有一句說明，逐項指出合併的優惠期限、聯絡方式及優惠內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "已合併優惠期限、櫃檯洽詢方式、續約贈兩堂私人教練課、免費凍結會籍一次、贈運動毛巾及推薦親友續約可獲飲品券等資訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "54fdb93c-24c6-400f-9e26-d2a7e76e55d8",
+        "text": "兩位會員的輸出均不新增或改動輸入中的日期、價格、優惠期限、聯絡方式及優惠內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩則通知保留了各自輸入的日期與價格；會員乙的優惠期限、聯絡方式及各項優惠內容也未見新增或改動。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "會員甲您好，您的健身中心會籍將於2026年11月30日到期，續約優惠價為NT$2,400，歡迎續約！",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "林怡君您好，您的健身中心會籍將於2026年12月15日到期，續約優惠價為NT$1,800，優惠期限為2026年12月20日前。續約贈兩堂私人教練課、可免費凍結會籍一次、贈運動毛巾；推薦親友續約可獲飲品券，請至櫃檯洽詢。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7caea987-bffd-4395-a574-8e03f1da701c",
+        "text": "輸出能清楚區分兩位會員各自的通知及其合併／省略說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以「會員甲」與「林怡君」分段；會員乙的合併說明置於其通知本文之後，會員甲則無須說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "會員甲\n會員甲您好，您的健身中心會籍將於2026年11月30日到期，續約優惠價為NT$2,400，歡迎續約！",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "林怡君\n林怡君您好，您的健身中心會籍將於2026年12月15日到期，續約優惠價為NT$1,800，優惠期限為2026年12月20日前。續約贈兩堂私人教練課、可免費凍結會籍一次、贈運動毛巾；推薦親友續約可獲飲品券，請至櫃檯洽詢。\n已合併優惠期限、櫃檯洽詢方式、續約贈兩堂私人教練課、免費凍結會籍一次、贈運動毛巾及推薦親友續約可獲飲品券等資訊。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 4 readable output file(s): notice-body-1.txt, notice-body-2.txt, 會員乙.txt, 會員甲.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1774 input and 5594 output tokens on skillhub-run; reported cost $0.0078 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 43,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

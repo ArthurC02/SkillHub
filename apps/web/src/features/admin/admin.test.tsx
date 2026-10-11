@@ -7,7 +7,7 @@ import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
 import { createAppRouter } from "../../app/router";
 import { ApiError } from "../../core/api/client";
-import { daysOf, seriesOf, usd } from "./admin.service";
+import { daysOf, seriesOf, usd, type PlatformAgent } from "./admin.service";
 import { WriteFailure } from "./components/WriteFailure";
 import {
   ADMIN_AGENT_FINDING,
@@ -154,6 +154,7 @@ const ADMIN_PATHS = [
   "/admin/cost-statistics",
   "/admin/exposure",
   "/admin/agents",
+  "/admin/settings",
 ];
 
 test("OPS-001: the account menu offers 後台 to an operator", async () => {
@@ -1373,6 +1374,343 @@ test("OPS-009: an empty configured-call roster names the absence", async () => {
   await mountAt("/admin/model-budgets");
   await waitFor(has("目前沒有可設定的模型呼叫"));
   expect(container.querySelector("li.download-item")).toBeNull();
+});
+
+test("OPS-011: switching the judge panel on sends the choice with its reason and shows the new state", async () => {
+  let enabled = false;
+  stub(true, (path, method) => {
+    if (path === "/admin/settings/judge-panel" && method === "PUT") {
+      enabled = true;
+      return {
+        body: {
+          judge_panel: { enabled, reason: "measure agreement", set_at: "2026-10-09T08:00:00Z" },
+        },
+        status: 200,
+      };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/settings");
+  await waitFor(has("關閉：一個判定（預設）"));
+  expect(button("開啟評審團").disabled).toBe(true);
+
+  await type("#admin-settings-judge-panel-note", "measure agreement");
+  await click(button("開啟評審團"));
+  await waitFor(has("已開啟，需要模型判定的條件由三個判定投票。"));
+  expect(calls.find((c) => c.method === "PUT")).toEqual({
+    method: "PUT",
+    url: "/admin/settings/judge-panel",
+    body: { enabled: true, note: "measure agreement" },
+  });
+  expect(has("開啟：三個判定逐條多數決")()).toBe(true);
+  expect(has("理由：measure agreement")()).toBe(true);
+  expect(button("關閉評審團")).toBeDefined();
+});
+
+test("a judge panel change focuses its result and editing the next reason clears the old confirmation", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/settings/judge-panel" && method === "PUT"
+      ? { body: { judge_panel: { enabled: true } }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/settings");
+  await waitFor(has("關閉：一個判定（預設）"));
+  await type("#admin-settings-judge-panel-note", "measure agreement");
+  await submit("#admin-settings-judge-panel-note");
+  await waitFor(has("已開啟，需要模型判定的條件由三個判定投票。"));
+  expect(document.activeElement).toBe(field<HTMLElement>("#admin-settings-judge-panel-result"));
+  await type("#admin-settings-judge-panel-note", "back to baseline");
+  expect(has("已開啟，需要模型判定的條件由三個判定投票。")()).toBe(false);
+  expect(button("關閉評審團").disabled).toBe(false);
+});
+
+test("unreadable cached platform settings hide their controls and retry each setting in place", async () => {
+  let unavailable = false;
+  stub(true, (path) => {
+    if (path === "/admin/settings" || path === "/admin/settings/runs") {
+      if (unavailable) return { body: { error: "settings unavailable" }, status: 503 };
+      return {
+        body:
+          path === "/admin/settings"
+            ? { judge_panel: { enabled: false } }
+            : { continuation_rounds: { rounds: 3, min: 1, max: 10 } },
+        status: 200,
+      };
+    }
+    return undefined;
+  });
+  await mountAt("/admin/settings");
+  await waitFor(has("目前：3 輪"));
+  unavailable = true;
+  await act(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.settings }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.runSettings }),
+    ]);
+  });
+  await waitFor(has("暫時無法讀取試跑設定"));
+  expect(container.querySelector("#admin-settings-judge-panel-note")).toBeNull();
+  expect(container.querySelector("#admin-settings-rounds-value")).toBeNull();
+  expect(has("關閉：一個判定（預設）")()).toBe(false);
+  unavailable = false;
+  await click(button("再讀取平台設定"));
+  await waitFor(has("關閉：一個判定（預設）"));
+  expect(container.querySelector("#admin-settings-rounds-value")).toBeNull();
+  await click(button("再讀取試跑設定"));
+  await waitFor(has("目前：3 輪"));
+  expect(field<HTMLInputElement>("#admin-settings-rounds-value").value).toBe("3");
+});
+
+test("a refreshed answer-round limit replaces a stale draft with the current value", async () => {
+  let rounds = 3;
+  stub(true, (path) =>
+    path === "/admin/settings/runs"
+      ? { body: { continuation_rounds: { rounds, min: 1, max: 10 } }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/settings");
+  await waitFor(has("目前：3 輪"));
+  await type("#admin-settings-rounds-value", "4");
+  rounds = 5;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.runSettings });
+  });
+  await waitFor(has("目前：5 輪"));
+  expect(field<HTMLInputElement>("#admin-settings-rounds-value").value).toBe("5");
+  expect(has("輪數已變更；草稿改為目前的 5 輪，請確認後再送出。")()).toBe(true);
+  expect(calls.filter((call) => call.method === "PUT")).toHaveLength(0);
+});
+
+test("OPS-011: an agent's daily spend cap accepts up to five dollars and sends micro-dollars", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/agents/daily-report/spend-cap" && method === "PUT"
+      ? { body: ADMIN_AGENTS.agents[0], status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/agents");
+  await waitFor(has("（預設）"));
+  await type("#admin-agent-daily-report-cap-set-note", "busy week");
+
+  for (const refused of ["0", "5.000001", "0.0000001", "abc", ""]) {
+    await type("#admin-agent-daily-report-cap", refused);
+    expect(button("改 daily-report 的每日上限").disabled, refused).toBe(true);
+  }
+  await type("#admin-agent-daily-report-cap", "5");
+  expect(button("改 daily-report 的每日上限").disabled).toBe(false);
+  await click(button("改 daily-report 的每日上限"));
+  await waitFor(() => calls.some((c) => c.method === "PUT"));
+  expect(calls.find((c) => c.method === "PUT")).toEqual({
+    method: "PUT",
+    url: "/admin/agents/daily-report/spend-cap",
+    body: { daily_spend_cap_usd_micros: 5_000_000, note: "busy week" },
+  });
+});
+
+test("OPS-011: an operator-set cap shows the default it replaced and can be cleared back to it", async () => {
+  stub(true, (path, method) => {
+    if (path === "/admin/agents" && method === "GET")
+      return {
+        body: {
+          agents: [
+            {
+              ...ADMIN_AGENTS.agents[0],
+              daily_spend_cap_usd_micros: 1_000_000,
+              daily_spend_cap_overridden: true,
+            },
+          ],
+        },
+        status: 200,
+      };
+    if (path === "/admin/agents/daily-report/spend-cap")
+      return { body: ADMIN_AGENTS.agents[0], status: 200 };
+    return undefined;
+  });
+  await mountAt("/admin/agents");
+  await waitFor(has("（營運者設定；預設 $0.2000）"));
+  await type("#admin-agent-daily-report-cap-clear-note", "back to normal");
+  await click(button("把 daily-report 的上限改回預設 $0.2000"));
+  await waitFor(() => calls.some((c) => c.method === "PUT"));
+  expect(calls.find((c) => c.method === "PUT")?.body).toEqual({
+    daily_spend_cap_usd_micros: null,
+    note: "back to normal",
+  });
+});
+
+test("restoring an Agent cap updates its input and retains a focused result after the form disappears", async () => {
+  let current = {
+    ...ADMIN_AGENTS.agents[0],
+    daily_spend_cap_usd_micros: 1_000_000,
+    daily_spend_cap_overridden: true,
+  };
+  stub(true, (path, method) => {
+    if (path === "/admin/agents/daily-report/spend-cap" && method === "PUT") {
+      current = { ...ADMIN_AGENTS.agents[0] };
+      return { body: current, status: 200 };
+    }
+    if (path === "/admin/agents") return { body: { agents: [current] }, status: 200 };
+    return undefined;
+  });
+  await mountAt("/admin/agents");
+  await waitFor(has("（營運者設定；預設 $0.2000）"));
+  expect(field<HTMLInputElement>("#admin-agent-daily-report-cap").value).toBe("1");
+  await type("#admin-agent-daily-report-cap-clear-note", "back to normal");
+  await submit("#admin-agent-daily-report-cap-clear-note");
+  await waitFor(has("目前顯示預設 $0.2000"));
+  expect(field<HTMLInputElement>("#admin-agent-daily-report-cap").value).toBe("0.2");
+  expect(container.querySelector("#admin-agent-daily-report-cap-clear-note")).toBeNull();
+  expect(document.activeElement).toBe(field<HTMLElement>("#admin-agent-daily-report-cap-result"));
+  await type("#admin-agent-daily-report-cap", "0.5");
+  expect(container.querySelector("#admin-agent-daily-report-cap-result")).toBeNull();
+});
+
+test.each(["stale", "unavailable"] as const)(
+  "a restored Agent cap keeps its result and hides controls when the readback is %s",
+  async (readback) => {
+    let sent = false;
+    let verified = false;
+    stub(true, (path, method) => {
+      if (path === "/admin/agents/daily-report/spend-cap" && method === "PUT") {
+        sent = true;
+        return { body: ADMIN_AGENTS.agents[0], status: 200 };
+      }
+      if (path === "/admin/agents") {
+        if (sent && !verified && readback === "unavailable") {
+          return { body: { error: "agent status unavailable" }, status: 503 };
+        }
+        return {
+          body: {
+            agents: [
+              {
+                ...ADMIN_AGENTS.agents[0],
+                daily_spend_cap_usd_micros: verified ? 200_000 : 1_000_000,
+                daily_spend_cap_overridden: !verified,
+              },
+            ],
+          },
+          status: 200,
+        };
+      }
+      return undefined;
+    });
+    await mountAt("/admin/agents");
+    await waitFor(has("（營運者設定；預設 $0.2000）"));
+    await type("#admin-agent-daily-report-cap-clear-note", "back to normal");
+    await submit("#admin-agent-daily-report-cap-clear-note");
+    await waitFor(has("每日花費上限的變更請求已完成；最新上限尚未確認。"));
+    const cap = field<HTMLInputElement>("#admin-agent-daily-report-cap");
+    expect(cap.readOnly).toBe(true);
+    expect(cap.closest<HTMLElement>("[hidden]")?.hidden).toBe(true);
+    expect(document.activeElement).toBe(field<HTMLElement>("#admin-agent-daily-report-cap-result"));
+    verified = true;
+    await click(button("重新整理此 Agent 的上限"));
+    await waitFor(has("目前顯示預設 $0.2000"));
+    expect(field<HTMLInputElement>("#admin-agent-daily-report-cap").value).toBe("0.2");
+  },
+);
+
+test("normalizing an Agent cap keeps the completed request blocked until a user edits", async () => {
+  let current: PlatformAgent = { ...ADMIN_AGENTS.agents[0] };
+  stub(true, (path, method) => {
+    if (path === "/admin/agents/daily-report/spend-cap" && method === "PUT") {
+      current = {
+        ...current,
+        daily_spend_cap_usd_micros: 1_000_000,
+        daily_spend_cap_overridden: true,
+      };
+      return { body: current, status: 200 };
+    }
+    if (path === "/admin/agents") return { body: { agents: [current] }, status: 200 };
+    return undefined;
+  });
+  await mountAt("/admin/agents");
+  await waitFor(has("（預設）"));
+  await type("#admin-agent-daily-report-cap", "1.00");
+  await type("#admin-agent-daily-report-cap-set-note", "busy week");
+  await submit("#admin-agent-daily-report-cap-set-note");
+  await waitFor(has("目前顯示營運者設定 $1.0000"));
+  expect(field<HTMLInputElement>("#admin-agent-daily-report-cap").value).toBe("1");
+  expect(field<HTMLTextAreaElement>("#admin-agent-daily-report-cap-set-note").value).toBe(
+    "busy week",
+  );
+  expect(button("改 daily-report 的每日上限").disabled).toBe(true);
+  await submit("#admin-agent-daily-report-cap-set-note");
+  expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1);
+  await type("#admin-agent-daily-report-cap", "2");
+  expect(button("改 daily-report 的每日上限").disabled).toBe(false);
+});
+
+test("an unchanged Agent cap is still unconfirmed when its refresh fails", async () => {
+  let sent = false;
+  const current = {
+    ...ADMIN_AGENTS.agents[0],
+    daily_spend_cap_usd_micros: 1_000_000,
+    daily_spend_cap_overridden: true,
+  };
+  stub(true, (path, method) => {
+    if (path === "/admin/agents/daily-report/spend-cap" && method === "PUT") {
+      sent = true;
+      return { body: current, status: 200 };
+    }
+    if (path === "/admin/agents")
+      return sent
+        ? { body: { error: "agent status unavailable" }, status: 503 }
+        : { body: { agents: [current] }, status: 200 };
+    return undefined;
+  });
+  await mountAt("/admin/agents");
+  await waitFor(has("（營運者設定；預設 $0.2000）"));
+  await type("#admin-agent-daily-report-cap-set-note", "reviewed the limit");
+  await submit("#admin-agent-daily-report-cap-set-note");
+  await waitFor(has("每日花費上限的變更請求已完成；最新上限尚未確認。"));
+  expect(has("目前顯示營運者設定 $1.0000")()).toBe(false);
+  const cap = field<HTMLInputElement>("#admin-agent-daily-report-cap");
+  expect(cap.readOnly).toBe(true);
+  expect(cap.closest<HTMLElement>("[hidden]")?.hidden).toBe(true);
+});
+
+test("an Agent cap change blocks a competing restore until the request finishes", async () => {
+  let current = { ...ADMIN_AGENTS.agents[0], daily_spend_cap_overridden: true };
+  stub(true, (path, method) => {
+    if (path === "/admin/agents")
+      return {
+        body: { agents: [current] },
+        status: 200,
+      };
+    if (path === "/admin/agents/daily-report/spend-cap" && method === "PUT") {
+      current = { ...current, daily_spend_cap_usd_micros: 2_000_000 };
+      return { body: current, status: 200 };
+    }
+    return undefined;
+  });
+  const originalFetch = fetch;
+  const finishes: Array<() => void> = [];
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const reply = originalFetch(input, init);
+    if (String(input).endsWith("/daily-report/spend-cap") && init?.method === "PUT") {
+      return new Promise<Response>((resolve) => {
+        finishes.push(() => void reply.then(resolve));
+      });
+    }
+    return reply;
+  });
+  await mountAt("/admin/agents");
+  await waitFor(has("（營運者設定；預設 $0.2000）"));
+  await type("#admin-agent-daily-report-cap", "2");
+  await type("#admin-agent-daily-report-cap-set-note", "busy week");
+  await type("#admin-agent-daily-report-cap-clear-note", "restore");
+  await submit("#admin-agent-daily-report-cap-set-note");
+  await waitFor(() => finishes.length > 0);
+  try {
+    expect(field<HTMLTextAreaElement>("#admin-agent-daily-report-cap-clear-note").readOnly).toBe(
+      true,
+    );
+    expect(button("把 daily-report 的上限改回預設 $0.2000").disabled).toBe(true);
+    await submit("#admin-agent-daily-report-cap-clear-note");
+    expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1);
+  } finally {
+    finishes.forEach((finish) => finish());
+  }
+  await waitFor(() => !field<HTMLInputElement>("#admin-agent-daily-report-cap").readOnly);
 });
 
 test("OPS-004: a restriction is set with the known reason code and lifted by the same form", async () => {
@@ -4755,4 +5093,91 @@ test("agent and brake controls disappear when their refreshed status cannot be r
   await waitFor(() => Boolean(container.querySelector('[role="alert"]')));
   expect(has("拉下 Agent 煞車")()).toBe(false);
   expect(has("停用 daily-report")()).toBe(false);
+});
+
+const RUN_SETTINGS = { continuation_rounds: { rounds: 3, min: 1, max: 10 } };
+
+function stubRunSettings(put: { body: unknown; status: number }) {
+  stub(true, (path, method) => {
+    if (path === "/admin/settings/runs" && method === "GET") {
+      return { body: RUN_SETTINGS, status: 200 };
+    }
+    if (path === "/admin/settings/runs/continuation-rounds" && method === "PUT") return put;
+    return undefined;
+  });
+}
+
+test("the answered-rounds setting shows the current value and its range, and sends the new value with its reason", async () => {
+  stubRunSettings({
+    body: {
+      continuation_rounds: {
+        rounds: 5,
+        min: 1,
+        max: 10,
+        reason: "longer interviews",
+        set_at: "2026-10-10T08:00:00Z",
+      },
+    },
+    status: 200,
+  });
+  await mountAt("/admin/settings");
+  await waitFor(has("一段對話可以回答幾輪"));
+  expect(has("目前：3 輪（可設 1–10 輪）")()).toBe(true);
+  expect(field<HTMLInputElement>("#admin-settings-rounds-value").value).toBe("3");
+
+  await type("#admin-settings-rounds-value", "5");
+  await type("#admin-settings-rounds-note", "longer interviews");
+  await click(button("改輪數"));
+  await waitFor(has("已改為 5 輪，下一次回答就照這個值。"));
+
+  expect(calls.find((c) => c.method === "PUT")).toEqual({
+    method: "PUT",
+    url: "/admin/settings/runs/continuation-rounds",
+    body: { rounds: 5, note: "longer interviews" },
+  });
+  expect(has("目前：5 輪（可設 1–10 輪）")()).toBe(true);
+  expect(has("理由：longer interviews")()).toBe(true);
+});
+
+test("the answered-rounds input accepts the range edges and refuses one past them", async () => {
+  stubRunSettings({ body: RUN_SETTINGS, status: 200 });
+  await mountAt("/admin/settings");
+  await waitFor(has("一段對話可以回答幾輪"));
+  await type("#admin-settings-rounds-note", "boundary check");
+
+  for (const [value, refused] of [
+    ["0", true],
+    ["1", false],
+    ["10", false],
+    ["11", true],
+    ["2.5", true],
+    ["", true],
+    ["abc", true],
+  ] as const) {
+    await type("#admin-settings-rounds-value", value);
+    expect(button("改輪數").disabled, JSON.stringify(value)).toBe(refused);
+  }
+});
+
+test("a refused answered-rounds change shows the server's sentence and keeps the old value", async () => {
+  stubRunSettings({ body: { error: "輪數要在 1 到 10 之間。" }, status: 400 });
+  await mountAt("/admin/settings");
+  await waitFor(has("一段對話可以回答幾輪"));
+
+  await type("#admin-settings-rounds-value", "4");
+  await type("#admin-settings-rounds-note", "try");
+  await click(button("改輪數"));
+  await waitFor(has("操作未被接受：輪數要在 1 到 10 之間。"));
+
+  expect(has("目前：3 輪（可設 1–10 輪）")()).toBe(true);
+  expect(has("已改為")()).toBe(false);
+});
+
+test("an unreadable answered-rounds setting says so instead of drawing a form", async () => {
+  stub(true, (path) =>
+    path === "/admin/settings/runs" ? { body: { error: "not found" }, status: 404 } : undefined,
+  );
+  await mountAt("/admin/settings");
+  await waitFor(has("暫時無法讀取試跑設定"));
+  expect(container.querySelector("#admin-settings-rounds-value")).toBeNull();
 });

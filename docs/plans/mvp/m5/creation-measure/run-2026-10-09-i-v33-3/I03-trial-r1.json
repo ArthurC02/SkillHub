@@ -1,0 +1,193 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下花店訂單，列出每個品項的數量、單價、小計、品項總額及備註：\n我要訂玫瑰一打，每枝 80 元；向日葵 3 枝，每枝 50 元；滿天星 2 把，每把 120 元；贈送尤加利 1 把，免費；贈品小卡 2 張，0 元；再加康乃馨，每枝 40 元；另加桔梗 1 把；外送車資 150 元，司機到府另收。",
+  "acceptance_criteria": [
+    {
+      "text": "將玫瑰「一打、每枝 80 元」換算為 12 枝，小計 960 元；將向日葵 3 枝、每枝 50 元列為小計 150 元；將滿天星 2 把、每把 120 元列為小計 240 元。"
+    },
+    {
+      "text": "將標示「免費」的尤加利贈品及標示「0 元」的小卡贈品都列出，且各自小計為 0 元。"
+    },
+    {
+      "text": "對未提供數量、但有單價的康乃馨，採用數量 1，並計算小計 40 元。"
+    },
+    {
+      "text": "對未提供單價的桔梗列出品項並標示「待確認」，不得自行猜價或計入可計算總額；須指出品項總額尚未包含桔梗。"
+    },
+    {
+      "text": "品項總額顯示為 1,390 元（960 + 150 + 240 + 0 + 0 + 40），不包含待確認價格的桔梗。"
+    },
+    {
+      "text": "將外送車資 150 元只寫在備註，且不納入任何品項小計或品項總額。"
+    }
+  ],
+  "final_output": "花店訂單報價  \n品名｜數量｜單位｜單價｜小計  \n玫瑰｜12｜枝｜80 元｜960 元  \n向日葵｜3｜枝｜50 元｜150 元  \n滿天星｜2｜把｜120 元｜240 元  \n尤加利｜1｜把｜免費｜0 元  \n贈品小卡｜2｜張｜0 元｜0 元  \n康乃馨｜1｜枝｜40 元｜40 元  \n桔梗｜1｜把｜待確認｜待確認（單價未提供）  \n品項總額：1,390 元（不含需確認或待確認品項）  \n備註：外送車資 150 元，司機到府另收、不計入品項總額。  \n尚未計入品項：桔梗。\n\n康乃馨數量未提供，依預設以 1 計。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b5a78af0-be19-4632-abd8-720c5469c0a0",
+    "run_id": "750ef433-dde4-43ac-a47d-3dc302f0fcd7",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收標準均已符合。各品項小計與品項總額正確；桔梗價格待確認，外送車資僅列於備註。",
+    "criterion_results": [
+      {
+        "criterion_id": "6b802ea0-7165-4fae-a7fc-1cadfe91fa8e",
+        "text": "將玫瑰「一打、每枝 80 元」換算為 12 枝，小計 960 元；將向日葵 3 枝、每枝 50 元列為小計 150 元；將滿天星 2 把、每把 120 元列為小計 240 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "玫瑰一打換算為 12 枝、960 元；向日葵及滿天星的小計也正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "玫瑰｜12｜枝｜80 元｜960 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "向日葵｜3｜枝｜50 元｜150 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "滿天星｜2｜把｜120 元｜240 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f7d08cf9-26cb-4c47-8472-7d9a25e84ea5",
+        "text": "將標示「免費」的尤加利贈品及標示「0 元」的小卡贈品都列出，且各自小計為 0 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "尤加利及贈品小卡均已列出，小計各為 0 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "尤加利｜1｜把｜免費｜0 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "贈品小卡｜2｜張｜0 元｜0 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f019e32d-c38f-4fde-b0e3-68815b6ad972",
+        "text": "對未提供數量、但有單價的康乃馨，採用數量 1，並計算小計 40 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "康乃馨按 1 枝、每枝 40 元計算，小計 40 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "康乃馨｜1｜枝｜40 元｜40 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "康乃馨數量未提供，依預設以 1 計。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7e678025-ad3f-4004-b33a-50b1ed87d42b",
+        "text": "對未提供單價的桔梗列出品項並標示「待確認」，不得自行猜價或計入可計算總額；須指出品項總額尚未包含桔梗。",
+        "result": "passed",
+        "source": "model",
+        "reason": "桔梗的單價及小計標為待確認，並明確指出未計入品項總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "桔梗｜1｜把｜待確認｜待確認（單價未提供）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "尚未計入品項：桔梗。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "416119e6-76a4-49e6-a1ac-f415c7e4e6c0",
+        "text": "品項總額顯示為 1,390 元（960 + 150 + 240 + 0 + 0 + 40），不包含待確認價格的桔梗。",
+        "result": "passed",
+        "source": "model",
+        "reason": "品項總額為 1,390 元，與各已知小計相加一致，且註明不含待確認品項。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "品項總額：1,390 元（不含需確認或待確認品項）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "882a51f5-7880-4e2e-b578-b1a960cfacf8",
+        "text": "將外送車資 150 元只寫在備註，且不納入任何品項小計或品項總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "外送車資僅列於備註，明確註明司機到府另收、不計入品項總額；各品項小計亦未包含車資。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "備註：外送車資 150 元，司機到府另收、不計入品項總額。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "品項總額：1,390 元（不含需確認或待確認品項）",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1506 input and 760 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

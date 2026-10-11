@@ -1,23 +1,43 @@
 from __future__ import annotations
 
+import argparse
+import base64
+import hashlib
 import json
+import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+from urllib.error import HTTPError
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.attestations import verify_external_scm, verify_git_signed_commit, verify_scm
+from domain_registry.attestations import (
+    audit_attestations,
+    commit_carries_proposal,
+    github_commit_carries_proposal,
+    verify_external_scm,
+    verify_git_signed_commit,
+    verify_scm,
+)
 from domain_registry.audit import append as append_audit
 from domain_registry.audit import read_events as read_audit_events
+from domain_registry.audit import event_digest as audit_event_digest
 from domain_registry.audit import verify as verify_audit
-from domain_registry.changes import init_change_package, validate_change_package
-from domain_registry.common import ASSET_KEYS, load_json
+from domain_registry.changes import _requirement_and_proposal_errors as requirement_and_proposal_errors
+from domain_registry.changes import (
+    implementation_design_errors,
+    init_change_package,
+    redraft_change_package,
+    validate_change_package,
+)
+from domain_registry.common import ASSET_KEYS, RISK_FLAGS, load_json
 from domain_registry.contracts import validate_schema
 from domain_registry.evidence import (
     citation,
@@ -27,14 +47,20 @@ from domain_registry.evidence import (
     verify,
 )
 from domain_registry.hitl import (
+    ObligationRun,
+    attest_signed_commit,
     finalize_proposal,
+    missing_attestation_message,
+    record_test_result,
     record_approval,
     submit_proposal,
     supersede_proposal,
     verify_proposal,
 )
 from domain_registry.git_hooks import governance_readiness, install_pre_push_hook
-from domain_registry.policy import amend_policy, validate_policy
+from domain_registry.cli_commands import HANDLERS, policy_assignments
+from domain_registry.cli_parser import build_parser
+from domain_registry.policy import amend_policy, amend_policy_fields, validate_policy
 from domain_registry.readiness import assess_readiness
 from domain_registry.registry import (
     boundary_analysis,
@@ -71,10 +97,11 @@ from domain_registry.sources import (
 )
 from domain_registry.sources import discover_ci_tools
 from domain_registry.sources import test_locations as discovered_test_locations
-from domain_registry.transaction import recover_interrupted_update, transaction_path
+from domain_registry.transaction import recover_interrupted_update, remove_tree, transaction_path
 from domain_registry.updates import (
     apply_approved_updates,
     demote_local_reviews,
+    promote_candidate,
     reconcile_pending_update,
     retract_candidate,
     upsert_candidate,
@@ -214,6 +241,103 @@ class DomainRegistryTest(unittest.TestCase):
             require_current_registry_revision(
                 {"base_registry_revision": expected}, self.repo / "memory", self.repo
             )
+
+    def edit_registry(self, name: str, change) -> None:
+        path = self.repo / "memory" / "registry" / name
+        value = json.loads(path.read_text(encoding="utf-8"))
+        change(value)
+        path.write_text(json.dumps(value), encoding="utf-8")
+
+    def test_a_stale_base_holds_only_while_what_the_proposal_touches_is_unchanged(self) -> None:
+        def billing_renamed(value):
+            value["contexts"][1]["name"] = "Invoicing"
+
+        def orders_renamed(value):
+            value["contexts"][0]["name"] = "Purchases"
+
+        def rule_written(value):
+            value["rules"].append({"id": "order-total", "contexts": ["orders"]})
+
+        def context_list_annotated(value):
+            value["note"] = "changed"
+
+        cases = [
+            ("an untouched record changed", "contexts.json", billing_renamed, None),
+            ("a record it references changed", "contexts.json", orders_renamed, "contexts/orders"),
+            ("the record it writes changed", "rules.json", rule_written, "rules/order-total"),
+            ("an asset changed outside its records", "contexts.json", context_list_annotated,
+             "contexts.json changed outside its records"),
+        ]
+        for label, name, change, refusal in cases:
+            with self.subTest(label):
+                self.two_contexts()
+                self.seed("rules.json", [])
+                self.commit_everything("base")
+                proposal = {
+                    "base_registry_revision": current_registry_revision(self.repo / "memory", self.repo),
+                    "registry_updates": [{
+                        "operation": "upsert", "asset": "rules",
+                        "record": {"id": "order-total", "contexts": ["orders"]},
+                    }],
+                }
+                self.edit_registry(name, change)
+                if refusal is None:
+                    self.assertEqual(
+                        registry_digest(self.repo / "memory"),
+                        require_current_registry_revision(proposal, self.repo / "memory", self.repo),
+                    )
+                else:
+                    with self.assertRaisesRegex(ValueError, f"stale.*{refusal}"):
+                        require_current_registry_revision(proposal, self.repo / "memory", self.repo)
+
+    def test_a_stale_base_that_was_never_committed_cannot_be_compared(self) -> None:
+        self.two_contexts()
+        proposal = {
+            "base_registry_revision": current_registry_revision(self.repo / "memory", self.repo),
+            "registry_updates": [{"operation": "upsert", "asset": "rules", "record": {"id": "order-total"}}],
+        }
+        self.edit_registry("contexts.json", lambda value: value["contexts"][1].update(name="Invoicing"))
+        with self.assertRaisesRegex(ValueError, "stale.*cannot be rebuilt"):
+            require_current_registry_revision(proposal, self.repo / "memory", self.repo)
+
+    def test_an_unrelated_apply_does_not_void_a_submitted_proposal(self) -> None:
+        package = self.draft_package()
+        self.commit_everything("draft")
+        submit_proposal(package, self.repo / "memory", self.repo)
+        submitted = self.proposal_in(package)
+        self.edit_registry(
+            "contexts.json",
+            lambda value: value["contexts"].append(
+                {"id": "billing", "name": "Billing", "responsibility": "Own invoices."}
+            ),
+        )
+        self.commit_everything("another proposal applied")
+        current = registry_digest(self.repo / "memory")
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        evidence_path = package / "evidence-bundle.json"
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        evidence["scm_attestation"] = {
+            "provider": "github",
+            "pull_request": "https://github.example/repo/pull/1",
+            "checks_url": "https://github.example/repo/actions/runs/1",
+            "commit": "a" * 40,
+            "status": "approved",
+            "proposal_revision": 1,
+            "base_registry_revision": submitted["base_registry_revision"],
+        }
+        evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+        verify_proposal(package, self.repo / "memory", self.repo)
+        with patch("domain_registry.hitl.verify_external_scm", return_value=[]), \
+                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=[]):
+            finalize_proposal(package, self.repo / "memory", self.repo)
+        apply_approved_updates(package, self.repo / "memory", self.repo)
+        self.assertEqual("applied", self.proposal_in(package)["status"])
+        events = (self.repo / "memory" / "audit" / "events.jsonl").read_text(encoding="utf-8")
+        applied = json.loads(events.splitlines()[-1])
+        self.assertEqual(
+            (current, submitted["base_registry_revision"]),
+            (applied["from_revision"]["registry_digest"], applied["proposal_base_revision"]),
+        )
 
     def test_invalid_candidate_does_not_change_registry(self) -> None:
         before = (self.repo / "memory" / "registry" / "vocabulary.json").read_text(
@@ -567,6 +691,40 @@ class DomainRegistryTest(unittest.TestCase):
                     verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"),
                 )
 
+    def test_each_external_scm_defect_is_named(self) -> None:
+        attestation = {"provider": "github", "pull_request": "https://github.com/acme/skills/pull/7", "commit": "a" * 40}
+        merged = {"state": "closed", "merged_at": "2026-01-01T00:00:00Z", "head": {"sha": "a" * 40}}
+        approved = [{"user": {"login": "reviewer"}, "state": "APPROVED"}]
+        green = {"check_runs": [{"status": "completed", "conclusion": "success"}]}
+        cases = [
+            ("open", [{**merged, "state": "open"}, approved, green], "SCM pull request is not merged"),
+            ("unmerged close", [{**merged, "merged_at": None}, approved, green], "SCM pull request is not merged"),
+            ("other head", [{**merged, "head": {"sha": "b" * 40}}, approved, green],
+             "SCM pull request head does not match the attested commit"),
+            ("no reviews", [merged, [], green], "SCM pull request has no current approval"),
+            ("approval withdrawn",
+             [merged, [*approved, {"user": {"login": "reviewer"}, "state": "CHANGES_REQUESTED"}, 7], green],
+             "SCM pull request has no current approval"),
+            ("no checks", [merged, approved, {"check_runs": []}], "SCM attested commit has no check runs"),
+            ("running check", [merged, approved, {"check_runs": [{"status": "in_progress", "conclusion": None}]}],
+             "SCM attested commit has incomplete or unsuccessful checks"),
+            ("unreachable", OSError("network down"), "SCM governance verification failed: network down"),
+        ]
+        with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
+            for label, responses, message in cases:
+                with self.subTest(label), patch("domain_registry.attestations.github_json", side_effect=responses):
+                    self.assertEqual([message], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"))
+            with self.subTest("another provider"):
+                self.assertEqual(
+                    ["SCM governance verification currently supports GitHub only"],
+                    verify_external_scm({**attestation, "provider": "gitlab"}, "DOMAIN_MEMORY_SCM_TOKEN"),
+                )
+        with self.subTest("no token"), patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": ""}):
+            self.assertEqual(
+                ["SCM governance verification requires DOMAIN_MEMORY_SCM_TOKEN"],
+                verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"),
+            )
+
     def test_external_scm_verification_can_make_ci_optional(self) -> None:
         attestation = {"provider": "github", "pull_request": "https://github.com/acme/skills/pull/7", "commit": "a" * 40}
         responses = [
@@ -591,6 +749,299 @@ class DomainRegistryTest(unittest.TestCase):
             ["git", "rev-parse", "HEAD"], cwd=self.repo,
             capture_output=True, text=True, check=True,
         ).stdout.strip()
+
+    def commit_everything(self, message: str, signed: bool = False) -> str:
+        subprocess.run(["git", "add", "-A"], cwd=self.repo, check=True)
+        subprocess.run(
+            ["git", "-c", "user.name=Probe", "-c", "user.email=probe@example.com",
+             "-c", f"commit.gpgsign={'true' if signed else 'false'}", "commit", "--allow-empty", "-qm", message],
+            cwd=self.repo, check=True,
+        )
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo,
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+
+    def test_an_attesting_commit_must_carry_this_proposal_revision(self) -> None:
+        earlier = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True
+        ).stdout.strip()
+        package = self.draft_package()
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        carrying = self.commit_everything("adds the Change Package")
+        self.assertEqual([], commit_carries_proposal(self.repo, carrying, package, proposal))
+        [missing] = commit_carries_proposal(self.repo, earlier, package, proposal)
+        self.assertIn("does not carry this Change Package at proposal", missing)
+        [other] = commit_carries_proposal(
+            self.repo, carrying, package, {**proposal, "proposal_revision": 2}
+        )
+        self.assertIn("another proposal or revision", other)
+
+    def test_attesting_a_signed_commit_that_carries_the_package_lets_it_finalize(self) -> None:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            key = init_signing_key(self.repo, "probe@example.com", self.repo / "keys" / "signing-key")
+        policy_path = self.repo / "memory" / "domain-memory-policy.json"
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        policy["review_governance"].update(
+            verifier="git-signed-commit", trigger="git-push", authorized_signers=[key["fingerprint"]]
+        )
+        policy_path.write_text(json.dumps(policy), encoding="utf-8")
+        unsigned = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True
+        ).stdout.strip()
+        signed_before = self.commit_everything("signs the policy before the package", signed=True)
+        package = self.draft_package()
+        submit_proposal(package, self.repo / "memory", self.repo)
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        with self.assertRaisesRegex(ValueError, "cannot attest this proposal: Git commit signature is invalid"):
+            attest_signed_commit(package, self.repo / "memory", self.repo, unsigned)
+        with self.assertRaisesRegex(ValueError, "does not carry this Change Package"):
+            attest_signed_commit(package, self.repo / "memory", self.repo, signed_before)
+        signed = self.commit_everything("adds the Change Package", signed=True)
+        self.assertEqual(signed, attest_signed_commit(package, self.repo / "memory", self.repo, signed[:12]))
+        evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            {"provider": "git-signed-commit", "commit": signed, "status": "approved",
+             "proposal_revision": 1, "base_registry_revision": proposal["base_registry_revision"]},
+            evidence["scm_attestation"],
+        )
+        verify_proposal(package, self.repo / "memory", self.repo)
+        finalize_proposal(package, self.repo / "memory", self.repo)
+        finalized = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        self.assertEqual("approved", finalized["status"])
+
+    def test_attesting_needs_the_signed_commit_verifier_and_a_submitted_proposal(self) -> None:
+        package = self.draft_package()
+        with self.assertRaisesRegex(ValueError, "this policy uses github-pr"):
+            attest_signed_commit(package, self.repo / "memory", self.repo, "HEAD")
+        policy_path = self.repo / "memory" / "domain-memory-policy.json"
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        policy["review_governance"].update(
+            verifier="git-signed-commit", trigger="git-push", authorized_signers=["probe@example.com"]
+        )
+        policy_path.write_text(json.dumps(policy), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "submit the proposal first"):
+            attest_signed_commit(package, self.repo / "memory", self.repo, "HEAD")
+
+    def run_writing(self, text: str, exit_code: int = 0) -> str:
+        script = f"import sys; sys.stdout.write({text!r}); sys.exit({exit_code})"
+        return f'"{sys.executable}" -c "{script}"'
+
+    def test_a_passing_run_replaces_the_obligation_result_with_its_output_digest(self) -> None:
+        package = self.draft_package()
+        record_test_result(
+            package, self.repo / "memory", self.repo,
+            ObligationRun("OB-1", self.run_writing("ok"), "unit"), 60,
+        )
+        evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
+        [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
+        self.assertEqual(
+            ("passed", 0, "unit", "sha256:" + hashlib.sha256(b"ok").hexdigest()),
+            (result["status"], result["exit_code"], result["command_profile"], result["output_sha256"]),
+        )
+
+    def test_the_command_line_records_the_run_it_was_given(self) -> None:
+        package = self.draft_package()
+        completed = subprocess.run(
+            [
+                sys.executable, str(Path(__file__).resolve().parent / "registry_tools.py"),
+                "record-test-result", "--package-root", str(package),
+                "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+                "--obligation", "OB-1", "--command", self.run_writing("cli"),
+                "--command-profile", "unit",
+            ],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
+        [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
+        self.assertEqual("sha256:" + hashlib.sha256(b"cli").hexdigest(), result["output_sha256"])
+
+    def test_a_recorded_command_passes_shell_characters_through_unchanged(self) -> None:
+        package = self.draft_package()
+        echo = "import sys; sys.stdout.write(sys.argv[1])"
+        record_test_result(
+            package, self.repo / "memory", self.repo,
+            ObligationRun("OB-1", f'"{sys.executable}" -c "{echo}" ^(A|B)$', "unit"), 60,
+        )
+        evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
+        [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
+        self.assertEqual("sha256:" + hashlib.sha256(b"^(A|B)$").hexdigest(), result["output_sha256"])
+
+    def test_a_command_that_cannot_start_records_nothing(self) -> None:
+        package = self.draft_package()
+        before = (package / "evidence-bundle.json").read_bytes()
+        with self.assertRaisesRegex(ValueError, "could not start"):
+            record_test_result(
+                package, self.repo / "memory", self.repo,
+                ObligationRun("OB-1", "no-such-program-for-domain-memory --version", "unit"), 60,
+            )
+        self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
+
+    def test_a_policy_without_approved_profiles_accepts_any_profile(self) -> None:
+        package = self.draft_package()
+        policy_path = self.repo / "memory" / "domain-memory-policy.json"
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        policy["approved_command_profiles"] = []
+        policy_path.write_text(json.dumps(policy), encoding="utf-8")
+        record_test_result(
+            package, self.repo / "memory", self.repo,
+            ObligationRun("OB-1", self.run_writing("ok"), "release"), 60,
+        )
+        evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
+        [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
+        self.assertEqual("release", result["command_profile"])
+
+    def test_a_failing_run_and_an_unknown_obligation_or_profile_record_nothing(self) -> None:
+        package = self.draft_package()
+        before = (package / "evidence-bundle.json").read_bytes()
+        cases = [
+            ("OB-1", self.run_writing("broken", 3), "unit", "exited 3; only a passing run is recorded"),
+            ("OB-9", self.run_writing("ok"), "unit", "no obligation OB-9"),
+            ("OB-1", self.run_writing("ok"), "release", "release is not approved"),
+        ]
+        for obligation, command, profile, refusal in cases:
+            with self.subTest(refusal=refusal):
+                with self.assertRaisesRegex(ValueError, refusal):
+                    record_test_result(
+                        package, self.repo / "memory", self.repo,
+                        ObligationRun(obligation, command, profile), 60,
+                    )
+                self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
+
+    def changed_package(self, name: str, status: str, attestation: dict | None) -> None:
+        package = self.repo / "changes" / name
+        package.mkdir(parents=True)
+        proposal = {"proposal_id": name, "proposal_revision": 1, "status": status}
+        (package / "domain-change-proposal.json").write_text(json.dumps(proposal), encoding="utf-8")
+        evidence = {"scm_attestation": attestation}
+        (package / "evidence-bundle.json").write_text(json.dumps(evidence), encoding="utf-8")
+
+    def test_the_attestation_audit_tells_carried_from_not_carried_from_unconfirmed(self) -> None:
+        earlier = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True, text=True, check=True
+        ).stdout.strip()
+        self.changed_package("carried", "applied", None)
+        self.changed_package("draft", "draft", None)
+        carrying = self.commit_everything("adds the carried package")
+        evidence_path = self.repo / "changes" / "carried" / "evidence-bundle.json"
+        evidence_path.write_text(
+            json.dumps({"scm_attestation": {"provider": "git-signed-commit", "commit": carrying}}),
+            encoding="utf-8",
+        )
+        self.changed_package("reused", "approved", {"provider": "git-signed-commit", "commit": earlier})
+        self.changed_package("unfetched", "applied", {"provider": "git-signed-commit", "commit": "f" * 40})
+        self.changed_package("remote", "applied", {
+            "provider": "github", "commit": "e" * 40,
+            "pull_request": "https://github.com/acme/shop/pull/7",
+        })
+        self.changed_package("unattested", "applied", None)
+        with patch.dict("os.environ", {"GITHUB_TOKEN": ""}):
+            findings = audit_attestations(self.repo, self.repo / "changes", "GITHUB_TOKEN")
+        self.assertEqual(
+            [("carried", "carried"), ("remote", "unconfirmed"), ("reused", "not carried"),
+             ("unattested", "not carried"), ("unfetched", "unconfirmed")],
+            [(finding["proposal_id"], finding["verdict"]) for finding in findings],
+        )
+
+    def test_finalizing_refuses_a_merged_pull_request_that_does_not_carry_the_package(self) -> None:
+        package = self.draft_package()
+        submit_proposal(package, self.repo / "memory", self.repo)
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        submitted = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        evidence_path = package / "evidence-bundle.json"
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        evidence["scm_attestation"] = {
+            "provider": "github", "pull_request": "https://github.com/acme/shop/pull/7",
+            "checks_url": "https://github.com/acme/shop/actions/runs/1", "commit": "a" * 40,
+            "status": "approved", "proposal_revision": 1,
+            "base_registry_revision": submitted["base_registry_revision"],
+        }
+        evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+        verify_proposal(package, self.repo / "memory", self.repo)
+        absent = ["Git commit does not carry this Change Package at proposal"]
+        with patch("domain_registry.hitl.verify_external_scm", return_value=[]), \
+                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=absent):
+            with self.assertRaisesRegex(ValueError, "not externally verified: Git commit does not carry"):
+                finalize_proposal(package, self.repo / "memory", self.repo)
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        self.assertEqual("verified", proposal["status"])
+
+    def test_a_github_pull_request_head_must_carry_this_proposal_revision(self) -> None:
+        package = self.draft_package()
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        attestation = {"pull_request": "https://github.com/acme/shop/pull/7", "commit": "c" * 40}
+
+        def served(document: dict) -> dict:
+            encoded = base64.b64encode(json.dumps(document).encode("utf-8")).decode("ascii")
+            return {"encoding": "base64", "content": encoded}
+
+        def not_found(*_: object) -> None:
+            raise HTTPError("url", 404, "Not Found", {}, None)
+
+        def unavailable(*_: object) -> None:
+            raise HTTPError("url", 503, "Service Unavailable", {}, None)
+
+        cases = [
+            ("carried", lambda *_: served(proposal), None),
+            ("other revision", lambda *_: served({**proposal, "proposal_revision": 2}), "another proposal or revision"),
+            ("absent", not_found, "does not carry this Change Package at proposal"),
+            ("unavailable", unavailable, "verification failed: HTTP Error 503"),
+        ]
+        for name, provider, refusal in cases:
+            with self.subTest(name=name), patch.dict("os.environ", {"GITHUB_TOKEN": "t"}), \
+                    patch("domain_registry.attestations.github_json", side_effect=provider) as fetch:
+                errors = github_commit_carries_proposal(
+                    attestation, "GITHUB_TOKEN", self.repo, package, proposal
+                )
+                self.assertEqual(
+                    "https://api.github.com/repos/acme/shop/contents/proposal/domain-change-proposal.json"
+                    f"?ref={'c' * 40}",
+                    fetch.call_args.args[0],
+                )
+                if refusal is None:
+                    self.assertEqual([], errors)
+                else:
+                    [error] = errors
+                    self.assertIn(refusal, error)
+        with patch.dict("os.environ", {"GITHUB_TOKEN": ""}):
+            self.assertEqual(
+                ["SCM governance verification requires GITHUB_TOKEN"],
+                github_commit_carries_proposal(attestation, "GITHUB_TOKEN", self.repo, package, proposal),
+            )
+
+    def test_finalizing_refuses_a_signed_commit_that_predates_the_change_package(self) -> None:
+        policy_path = self.repo / "memory" / "domain-memory-policy.json"
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        policy["review_governance"].update(
+            verifier="git-signed-commit", trigger="git-push", authorized_signers=["probe@example.com"]
+        )
+        policy_path.write_text(json.dumps(policy), encoding="utf-8")
+        earlier = self.commit_everything("a signed Domain Memory commit from before")
+        package = self.draft_package()
+        submit_proposal(package, self.repo / "memory", self.repo)
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+
+        def attest(commit: str) -> None:
+            evidence_path = package / "evidence-bundle.json"
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+            evidence["scm_attestation"] = {
+                "provider": "git-signed-commit", "commit": commit, "status": "approved",
+                "proposal_revision": 1, "base_registry_revision": proposal["base_registry_revision"],
+            }
+            evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+
+        attest(earlier)
+        verify_proposal(package, self.repo / "memory", self.repo)
+        with patch("domain_registry.hitl.verify_git_signed_commit", return_value=[]):
+            with self.assertRaisesRegex(ValueError, "does not carry this Change Package"):
+                finalize_proposal(package, self.repo / "memory", self.repo)
+            attest(self.commit_everything("adds the verified Change Package"))
+            finalize_proposal(package, self.repo / "memory", self.repo)
+        finalized = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        self.assertEqual("approved", finalized["status"])
 
     def test_a_generated_signing_key_signs_a_commit_git_can_verify(self) -> None:
         with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
@@ -622,6 +1073,22 @@ class DomainRegistryTest(unittest.TestCase):
         elsewhere = self.repo / "elsewhere"
         subprocess.run(["git", "init", "-q", str(elsewhere)], check=True)
         with patch.dict("os.environ", {SIGNING_KEY_ENV: material}):
+            second = init_signing_key(
+                elsewhere, "probe@example.com", elsewhere / "keys" / "signing-key"
+            )
+        self.assertEqual("environment", second["source"])
+        self.assertEqual(first["fingerprint"], second["fingerprint"])
+
+    def test_key_material_with_crlf_line_endings_and_no_final_newline_rebuilds(self) -> None:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            first = init_signing_key(
+                self.repo, "probe@example.com", self.repo / "keys" / "signing-key"
+            )
+        material = (self.repo / "keys" / "signing-key").read_text(encoding="utf-8")
+        pasted = material.rstrip("\n").replace("\n", "\r\n")
+        elsewhere = self.repo / "elsewhere"
+        subprocess.run(["git", "init", "-q", str(elsewhere)], check=True)
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: pasted}):
             second = init_signing_key(
                 elsewhere, "probe@example.com", elsewhere / "keys" / "signing-key"
             )
@@ -895,6 +1362,14 @@ class DomainRegistryTest(unittest.TestCase):
         path = self.write_record("attestation.json", {"provider": "git-signed-commit", "commit": "a" * 40, "status": "approved", "proposal_revision": 1, "base_registry_revision": proposal["base_registry_revision"]})
         self.assertEqual([], verify_scm(path, proposal))
 
+    def test_an_audit_chain_where_no_registry_exists_is_not_called_valid(self) -> None:
+        self.assertEqual(
+            ("valid", 0), tuple(verify_audit(self.repo / "memory")[key] for key in ("status", "events"))
+        )
+        result = verify_audit(self.repo / "nowhere")
+        self.assertEqual("invalid", result["status"])
+        self.assertIn("no Domain Memory Registry", result["reason"])
+
     def test_audit_chain_detects_tampering(self) -> None:
         append_audit(self.repo / "memory", {"operation": "first"})
         append_audit(self.repo / "memory", {"operation": "second"})
@@ -919,6 +1394,206 @@ class DomainRegistryTest(unittest.TestCase):
             encoding="utf-8",
         )
         self.assertEqual("invalid", verify_audit(self.repo / "memory")["status"])
+
+    def test_each_way_an_audit_chain_breaks_is_named(self) -> None:
+        root = self.repo / "memory"
+        for operation in ("first", "second", "third"):
+            append_audit(root, {"operation": operation})
+        events_file = root / "audit" / "events.jsonl"
+        manifest_file = root / "audit" / "manifest.json"
+        events = [json.loads(line) for line in events_file.read_text(encoding="utf-8").splitlines()]
+        manifest = manifest_file.read_text(encoding="utf-8")
+
+        def resigned(event):
+            unsigned = {key: value for key, value in event.items() if key != "event_sha256"}
+            return {**unsigned, "event_sha256": audit_event_digest(unsigned)}
+
+        relinked = resigned({**events[1], "previous_event_sha256": "sha256:" + "0" * 64})
+        cases = [
+            ("renumbered", [events[0], resigned({**events[1], "sequence": 5}), events[2]], manifest,
+             "audit sequence is invalid at event 2"),
+            ("relinked", [events[0], relinked, events[2]], manifest, "audit chain is broken at event 2"),
+            ("edited", [events[0], {**events[1], "operation": "changed"}, events[2]], manifest,
+             "audit digest is invalid at event 2"),
+            ("truncated", events[:2], manifest, "audit manifest does not match the event log"),
+            ("miscounted", events, json.dumps({**json.loads(manifest), "events": 4}),
+             "audit manifest does not match the event log"),
+            ("other head", events, json.dumps({**json.loads(manifest), "head_sha256": events[1]["event_sha256"]}),
+             "audit manifest does not match the event log"),
+            ("unreadable manifest", events, "{", None),
+            ("unreadable event", None, manifest, "audit event 2 is invalid JSON"),
+        ]
+        for label, chain, manifest_text, reason in cases:
+            with self.subTest(label):
+                lines = [json.dumps(event) for event in chain] if chain is not None else [
+                    json.dumps(events[0]), "{", json.dumps(events[2])]
+                events_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                manifest_file.write_text(manifest_text, encoding="utf-8")
+                result = verify_audit(root)
+                self.assertEqual("invalid", result["status"])
+                if reason is not None:
+                    self.assertEqual(reason, result["reason"])
+        events_file.write_text("\n".join(json.dumps(event) for event in events) + "\n", encoding="utf-8")
+        manifest_file.write_text(manifest, encoding="utf-8")
+        self.assertEqual(("valid", 3), (verify_audit(root)["status"], verify_audit(root)["events"]))
+
+    def test_each_evidence_defect_gets_its_verdict(self) -> None:
+        source = self.repo / "fact.md"
+        source.write_text("one\ntwo\nthree\n", encoding="utf-8")
+        cited = citation(self.repo, "fact.md", 2, 3)
+        cases = [
+            ("legacy text", "fact.md:2", {"status": "legacy-unverified", "reference": "fact.md:2"}),
+            ("not an object", 7, {"status": "invalid", "reason": "evidence must be an object"}),
+            ("no lines", {"path": "fact.md"}, {"status": "invalid", "reason": "evidence requires path and lines"}),
+            ("line zero", {**cited, "lines": {"start": 0, "end": 1}},
+             {"status": "invalid", "reason": "evidence line range is invalid"}),
+            ("end before start", {**cited, "lines": {"start": 3, "end": 2}},
+             {"status": "invalid", "reason": "evidence line range is invalid"}),
+            ("outside", {**cited, "path": "../fact.md"},
+             {"status": "invalid", "reason": "evidence path escapes repository"}),
+            ("absent", {**cited, "path": "gone.md"}, {"status": "missing", "path": "gone.md"}),
+            ("past the end", {**cited, "lines": {"start": 3, "end": 4}},
+             {"status": "invalid", "reason": "evidence line range exceeds source", "path": "fact.md"}),
+            ("last line", {**cited, "lines": {"start": 3, "end": 3}}, {"status": "stale", "path": "fact.md"}),
+        ]
+        for label, reference, expected in cases:
+            with self.subTest(label):
+                self.assertEqual(expected, verify(reference, self.repo))
+        self.assertEqual("current", verify(cited, self.repo)["status"])
+        with self.subTest("oversized"), patch("domain_registry.evidence.MAX_EVIDENCE_BYTES", 4):
+            self.assertEqual(
+                {"status": "invalid", "reason": "evidence source exceeds 4 bytes", "path": "fact.md"},
+                verify(cited, self.repo),
+            )
+
+    def test_each_implementation_design_defect_is_named(self) -> None:
+        design = {
+            "domain_forces": ["force"], "decision": "decide", "invariants_preserved": ["kept"],
+            "rejected_alternatives": ["other"], "proof_obligations": ["OB-1"], "counterfactual_check": "break it",
+        }
+        material = {"change_classification": "material", "implementation_design": design}
+        cases = [
+            ("complete", material, []),
+            ("unknown classification", {**material, "change_classification": "minor"},
+             ["domain-change-proposal.json has an invalid change_classification"]),
+            ("material without design", {"change_classification": "material"},
+             ["a material proposal requires implementation_design with domain forces, decision, invariants, "
+              "alternatives, proof obligations, and counterfactual check"]),
+            ("routine without design", {"change_classification": "routine"}, []),
+            ("blank force", {**material, "implementation_design": {**design, "domain_forces": [""]}},
+             ["implementation_design requires a valid domain_forces list"]),
+            ("no invariants", {**material, "implementation_design": {**design, "invariants_preserved": "kept"}},
+             ["implementation_design requires a valid invariants_preserved list"]),
+            ("no alternatives", {**material, "implementation_design": {**design, "rejected_alternatives": None}},
+             ["implementation_design requires a valid rejected_alternatives list"]),
+            ("no decision", {**material, "implementation_design": {**design, "decision": " "}},
+             ["implementation_design requires a completed decision"]),
+            ("no obligation ids", {**material, "implementation_design": {**design, "proof_obligations": "OB-1"}},
+             ["implementation_design requires proof obligation IDs"]),
+            ("unknown obligation", {**material, "implementation_design": {**design, "proof_obligations": ["OB-9"]}},
+             ["implementation_design references an unknown proof obligation"]),
+            ("no counterfactual", {**material, "implementation_design": {**design, "counterfactual_check": ""}},
+             ["implementation_design requires a counterfactual check"]),
+            ("material without obligations", {**material, "implementation_design": {**design, "proof_obligations": []}},
+             ["a material proposal requires at least one proof obligation"]),
+            ("routine without obligations",
+             {"change_classification": "routine", "implementation_design": {**design, "proof_obligations": []}}, []),
+        ]
+        for label, proposal, expected in cases:
+            with self.subTest(label):
+                self.assertEqual(expected, implementation_design_errors(proposal, {"OB-1"}))
+
+    def test_each_requirement_and_proposal_defect_is_named(self) -> None:
+        requirement = {"acceptance_criteria": [{"id": "AC-1", "statement": "Totals hold."}], "risk_flags": []}
+        proposal = {"status": "draft", "proposal_revision": 1, "affected_contexts": ["orders"], "risk_flags": []}
+        flagged = sorted(RISK_FLAGS)[0]
+        cases = [
+            ("complete", {}, {}, []),
+            ("no criteria", {"acceptance_criteria": []}, {},
+             ["requirement-normalization.json requires acceptance_criteria"]),
+            ("blank criterion", {"acceptance_criteria": [{"id": "AC-1", "statement": ""}]}, {},
+             ["each acceptance criterion requires a completed id and statement"]),
+            ("unknown requirement flag", {"risk_flags": ["comet"]}, {},
+             ["requirement-normalization.json has an unknown risk flag",
+              "domain-change-proposal.json must retain requirement risk flags"]),
+            ("unknown proposal flag", {}, {"risk_flags": ["comet"]},
+             ["domain-change-proposal.json has an unknown risk flag"]),
+            ("dropped flag", {"risk_flags": [flagged]}, {},
+             ["domain-change-proposal.json must retain requirement risk flags"]),
+            ("kept flag", {"risk_flags": [flagged]}, {"risk_flags": [flagged]}, []),
+            ("status", {}, {"status": "shipped"}, ["domain-change-proposal.json has an invalid status"]),
+            ("revision zero", {}, {"proposal_revision": 0},
+             ["domain-change-proposal.json requires a positive proposal_revision"]),
+            ("no contexts", {}, {"affected_contexts": []}, ["domain-change-proposal.json requires affected_contexts"]),
+            ("rule ids", {}, {"rule_ids": [""]}, ["domain-change-proposal.json has invalid rule_ids"]),
+            ("contract ids", {}, {"contract_ids": "c"}, ["domain-change-proposal.json has invalid contract_ids"]),
+        ]
+        for label, requirement_change, proposal_change, expected in cases:
+            with self.subTest(label):
+                errors, criteria = requirement_and_proposal_errors(
+                    {**requirement, **requirement_change}, {**proposal, **proposal_change}
+                )
+                self.assertEqual(expected, errors)
+        self.assertEqual(
+            {"AC-1", "AC-2"},
+            requirement_and_proposal_errors(
+                {**requirement, "acceptance_criteria": [
+                    {"id": "AC-1", "statement": "a"}, 7, {"id": "AC-2", "statement": "b"}]},
+                proposal,
+            )[1],
+        )
+
+    def test_each_record_and_reference_defect_is_named(self) -> None:
+        orders = {"id": "orders", "name": "Orders", "responsibility": "Own orders."}
+        billing = {"id": "billing", "name": "Billing", "responsibility": "Own invoices."}
+        cases = [
+            ("duplicate id", "contexts.json", [orders, dict(orders)], "contexts.json contains duplicate id"),
+            ("blank id", "contexts.json", [orders, {**billing, "id": ""}], "contexts.json entries require non-empty id"),
+            ("unknown status", "contexts.json", [{**orders, "status": "pending"}, billing],
+             "contexts.json:orders has an invalid status"),
+            ("decision review status", "decisions.json", [{"id": "d", "review_status": "bogus", "status": "candidate"}],
+             "decisions.json:d has an invalid status"),
+            ("reviewed without fields", "rules.json",
+             [{"id": "r", "contexts": ["orders"], "status": "reviewed", "evidence": ["x"]}],
+             "rules.json:r is reviewed but missing statement, review"),
+            ("reviewed without evidence", "rules.json",
+             [{"id": "r", "contexts": ["orders"], "statement": "s", "review": {"p": 1}, "status": "reviewed"}],
+             "rules.json:r is reviewed but lacks evidence"),
+            ("term without contexts", "vocabulary.json", [{"id": "t", "contexts": []}], "vocabulary.json:t requires contexts"),
+            ("rule in unknown context", "rules.json", [{"id": "r", "contexts": ["ghost"]}],
+             "rules.json:r references unknown context"),
+            ("aggregate in unknown context", "aggregates.json", [{"id": "a", "context": "ghost"}],
+             "aggregates.json:a references unknown context"),
+            ("unknown consumer", "interactions.json",
+             [{"id": "i", "producer_context": "orders", "consumer_context": "ghost"}],
+             "interactions.json:i references unknown context"),
+            ("policy to unknown context", "dependency-policies.json",
+             [{"id": "p", "from_context": "orders", "to_context": "ghost"}],
+             "dependency-policies.json:p references unknown context"),
+            ("contract producer", "contracts.json", [{"id": "c", "producer_context": "ghost", "consumer_contexts": []}],
+             "contracts.json:c references unknown producer context"),
+            ("contract consumer", "contracts.json",
+             [{"id": "c", "producer_context": "orders", "consumer_contexts": ["ghost"]}],
+             "contracts.json:c references unknown consumer context"),
+            ("unknown contract", "interactions.json",
+             [{"id": "i", "producer_context": "orders", "consumer_context": "billing", "contract_id": "none"}],
+             "interactions.json:i references unknown contract"),
+        ]
+        registry = self.repo / "memory" / "registry"
+        pristine = {name: (registry / name).read_text(encoding="utf-8") for name in ASSET_KEYS}
+        for label, name, records, message in cases:
+            with self.subTest(label):
+                for asset, text in pristine.items():
+                    (registry / asset).write_text(text, encoding="utf-8")
+                if name != "contexts.json":
+                    self.seed("contexts.json", [orders, billing])
+                self.seed(name, records)
+                self.assertIn(message, validate(self.repo / "memory", None, False))
+        with self.subTest("candidate where reviewed is required"):
+            for asset, text in pristine.items():
+                (registry / asset).write_text(text, encoding="utf-8")
+            self.seed("contexts.json", [orders])
+            self.assertIn("contexts.json:orders is not reviewed", validate(self.repo / "memory", None, True))
 
     def test_audit_rejects_reserved_fields_before_writing(self) -> None:
         root = self.repo / "memory"
@@ -947,6 +1622,27 @@ class DomainRegistryTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "audit log is invalid"):
             append_audit(root, {"operation": "second"})
         self.assertEqual(1, len(events.read_text(encoding="utf-8").splitlines()))
+
+    def test_a_registry_root_one_directory_too_deep_is_named_as_such(self) -> None:
+        inner = self.repo / "memory" / "registry"
+        self.assertEqual(
+            [
+                f"missing manifest: {inner / 'registry' / 'manifest.json'}; {inner / 'manifest.json'} exists, "
+                "so a root option probably points one directory too deep: a registry root holds registry/, "
+                "source-map.json, and the policy"
+            ],
+            validate(inner, self.repo, False),
+        )
+        with self.assertRaisesRegex(ValueError, "points one directory too deep"):
+            load_json(inner / "domain-memory-policy.json")
+
+    def test_a_missing_file_with_nothing_nearby_gets_no_hint(self) -> None:
+        missing = self.repo / "memory" / "nowhere.json"
+        with self.assertRaises(ValueError) as refused:
+            load_json(missing)
+        self.assertEqual(f"JSON file required: {missing}", str(refused.exception))
+        elsewhere = self.repo / "elsewhere"
+        self.assertEqual([f"missing manifest: {elsewhere / 'registry' / 'manifest.json'}"], validate(elsewhere, None, False))
 
     def test_json_loader_rejects_duplicate_keys(self) -> None:
         path = self.repo / "duplicate.json"
@@ -1039,6 +1735,60 @@ class DomainRegistryTest(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "manual reconciliation"):
             recover_interrupted_update(root, False)
+
+    def interrupted_transaction(self, phase: str) -> tuple[Path, Path, Path]:
+        root = self.repo / "memory"
+        backup = root / ".domain-registry-backup-op"
+        staging = root / ".domain-registry-stage-op"
+        shutil.copytree(root / "registry", backup)
+        staging.mkdir()
+        (root / "registry" / "manifest.json").write_text("{}\n", encoding="utf-8")
+        transaction_path(root).write_text(
+            json.dumps({
+                "format": "domain-registry-transaction/v2", "operation_id": "op",
+                "phase": phase, "backup": backup.name, "staging": staging.name,
+            }),
+            encoding="utf-8",
+        )
+        return root, backup, staging
+
+    def test_recovery_discards_a_prepared_or_audited_transaction_and_keeps_the_registry(self) -> None:
+        for phase in ("prepared", "audited"):
+            with self.subTest(phase):
+                root, backup, staging = self.interrupted_transaction(phase)
+                recover_interrupted_update(root, False)
+                self.assertEqual(
+                    ("{}\n", False, False, False),
+                    (
+                        (root / "registry" / "manifest.json").read_text(encoding="utf-8"),
+                        backup.exists(), staging.exists(), transaction_path(root).exists(),
+                    ),
+                )
+
+    def test_recovery_refuses_a_transaction_marked_for_reconciliation_or_in_an_unknown_phase(self) -> None:
+        for phase, refusal in (
+            ("reconciliation-required", "manual reconciliation"), ("halfway", "invalid phase"),
+        ):
+            with self.subTest(phase):
+                root, backup, _ = self.interrupted_transaction(phase)
+                with self.assertRaisesRegex(ValueError, refusal):
+                    recover_interrupted_update(root, False)
+                self.assertEqual((True, True), (backup.exists(), transaction_path(root).exists()))
+                remove_tree(backup)
+                remove_tree(root / ".domain-registry-stage-op")
+                transaction_path(root).unlink()
+
+    def test_recovery_restores_the_backup_when_an_unaudited_install_left_no_registry(self) -> None:
+        root, backup, _ = self.interrupted_transaction("installed")
+        remove_tree(root / "registry")
+        recover_interrupted_update(root, False)
+        self.assertEqual(
+            ("domain-registry/v1", False, False),
+            (
+                json.loads((root / "registry" / "manifest.json").read_text(encoding="utf-8"))["format"],
+                backup.exists(), transaction_path(root).exists(),
+            ),
+        )
 
     def test_structured_evidence_detects_source_drift(self) -> None:
         source = self.repo / "evidence.md"
@@ -1189,6 +1939,10 @@ class DomainRegistryTest(unittest.TestCase):
         return package
 
     def approve_and_apply(self, package: Path) -> None:
+        self.approve_and_finalize(package)
+        apply_approved_updates(package, self.repo / "memory", self.repo)
+
+    def approve_and_finalize(self, package: Path) -> None:
         submit_proposal(package, self.repo / "memory", self.repo)
         record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
         submitted = json.loads(
@@ -1207,9 +1961,9 @@ class DomainRegistryTest(unittest.TestCase):
         }
         evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
         verify_proposal(package, self.repo / "memory", self.repo)
-        with patch("domain_registry.hitl.verify_external_scm", return_value=[]):
+        with patch("domain_registry.hitl.verify_external_scm", return_value=[]), \
+                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=[]):
             finalize_proposal(package, self.repo / "memory", self.repo)
-        apply_approved_updates(package, self.repo / "memory", self.repo)
 
     def redraft_package(
         self, package: Path, proposal_id: str, statement: str, supersedes: str | None
@@ -1424,6 +2178,122 @@ class DomainRegistryTest(unittest.TestCase):
         )
         self.assertEqual([], coverage(self.repo / "memory")["evidence_gaps"])
 
+    def package_with_a_candidate_rule(self, statement: str) -> Path:
+        package = self.draft_package()
+        proposal_file = package / "domain-change-proposal.json"
+        proposal = json.loads(proposal_file.read_text(encoding="utf-8"))
+        proposal["registry_updates"] = []
+        proposal_file.write_text(json.dumps(proposal), encoding="utf-8")
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        record = self.write_record(
+            "rule.json",
+            {"id": "order-total", "contexts": ["orders"], "statement": statement, "evidence": ["README.md:1"]},
+        )
+        upsert_candidate(self.repo / "memory", self.repo, "rules", record)
+        return package
+
+    def registry_updates(self, package: Path) -> list[dict]:
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        return proposal["registry_updates"]
+
+    def test_what_the_plugin_writes_ends_lines_with_lf_on_every_platform(self) -> None:
+        package = self.draft_package()
+        self.approve_and_apply(package)
+        written = [
+            self.repo / "memory" / "registry" / "manifest.json",
+            self.repo / "memory" / "audit" / "events.jsonl",
+            self.repo / "memory" / "registry" / "rules.json",
+            package / "domain-change-proposal.json",
+        ]
+        for path in written:
+            with self.subTest(path=path.name):
+                content = path.read_bytes()
+                self.assertIn(b"\n", content)
+                self.assertNotIn(b"\r\n", content)
+
+    def test_a_superseded_proposal_redrafts_into_a_package_that_applies(self) -> None:
+        stuck = self.draft_package()
+        submit_proposal(stuck, self.repo / "memory", self.repo)
+        supersede_proposal(stuck, "verified before its approval was recorded", None)
+        redraft = self.repo / "redraft"
+        redraft_change_package(stuck, redraft, "PRO-2")
+        proposal = json.loads((redraft / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            ("draft", None, [], None),
+            (proposal["status"], proposal["submitted_at"], proposal["approvals"],
+             proposal["base_registry_revision"]),
+        )
+        self.assertFalse([key for key in proposal if key.startswith("superseded")])
+        for name in ("domain-change-proposal.json", "test-obligations.json", "evidence-bundle.json"):
+            with self.subTest(name=name):
+                document = json.loads((redraft / name).read_text(encoding="utf-8"))
+                self.assertEqual("PRO-2", document["proposal_id"])
+        self.approve_and_apply(redraft)
+        self.assertEqual(["order-total"], self.rule_ids())
+
+    def test_redrafting_refuses_a_live_proposal_and_a_used_output(self) -> None:
+        package = self.draft_package()
+        with self.assertRaisesRegex(ValueError, "only a superseded proposal is redrafted"):
+            redraft_change_package(package, self.repo / "redraft", "PRO-2")
+        supersede_proposal(package, "replaced", None)
+        (self.repo / "used").mkdir()
+        (self.repo / "used" / "note.txt").write_text("kept", encoding="utf-8")
+        with self.assertRaises(FileExistsError):
+            redraft_change_package(package, self.repo / "used", "PRO-2")
+
+    def test_a_submitted_package_ends_lines_with_lf_on_every_platform(self) -> None:
+        package = self.draft_package()
+        submit_proposal(package, self.repo / "memory", self.repo)
+        for name in ("domain-change-proposal.json", "evidence-bundle.json"):
+            with self.subTest(name=name):
+                content = (package / name).read_bytes()
+                self.assertIn(b"\n", content)
+                self.assertNotIn(b"\r\n", content)
+
+    def test_a_promoted_candidate_is_applied_as_the_reviewed_record(self) -> None:
+        package = self.package_with_a_candidate_rule("An order total is non-negative.")
+        promote_candidate(package, self.repo / "memory", "rules", "order-total")
+        [update] = self.registry_updates(package)
+        self.assertEqual(("upsert", "rules"), (update["operation"], update["asset"]))
+        self.assertNotIn("status", update["record"])
+        self.approve_and_apply(package)
+        rules = json.loads((self.repo / "memory" / "registry" / "rules.json").read_text(encoding="utf-8"))
+        [rule] = rules["rules"]
+        self.assertEqual(("order-total", "reviewed", "An order total is non-negative."),
+                         (rule["id"], rule["status"], rule["statement"]))
+
+    def test_promoting_again_replaces_the_entry_with_the_current_candidate(self) -> None:
+        package = self.package_with_a_candidate_rule("First wording.")
+        promote_candidate(package, self.repo / "memory", "rules", "order-total")
+        record = self.write_record(
+            "rule.json",
+            {"id": "order-total", "contexts": ["orders"], "statement": "Second wording.", "evidence": ["README.md:1"]},
+        )
+        upsert_candidate(self.repo / "memory", self.repo, "rules", record)
+        promote_candidate(package, self.repo / "memory", "rules", "order-total")
+        self.assertEqual(["Second wording."], [entry["record"]["statement"] for entry in self.registry_updates(package)])
+
+    def test_promoting_refuses_what_cannot_become_a_reviewed_update(self) -> None:
+        package = self.package_with_a_candidate_rule("An order total is non-negative.")
+        with self.assertRaisesRegex(ValueError, "no rules/missing in the Registry"):
+            promote_candidate(package, self.repo / "memory", "rules", "missing")
+        promote_candidate(package, self.repo / "memory", "rules", "order-total")
+        self.approve_and_apply(package)
+        again = self.redraft_target()
+        with self.assertRaisesRegex(ValueError, "already reviewed"):
+            promote_candidate(again, self.repo / "memory", "rules", "order-total")
+        with self.assertRaisesRegex(ValueError, "added while the proposal is a draft"):
+            promote_candidate(package, self.repo / "memory", "rules", "order-total")
+
+    def redraft_target(self) -> Path:
+        package = self.repo / "second"
+        shutil.copytree(self.repo / "proposal", package)
+        proposal_file = package / "domain-change-proposal.json"
+        proposal = json.loads(proposal_file.read_text(encoding="utf-8"))
+        proposal["status"] = "draft"
+        proposal_file.write_text(json.dumps(proposal), encoding="utf-8")
+        return package
+
     def rule_ids(self) -> list[str]:
         document = json.loads(
             (self.repo / "memory" / "registry" / "rules.json").read_text(
@@ -1458,6 +2328,58 @@ class DomainRegistryTest(unittest.TestCase):
             self.approve_and_apply(package)
         self.assertEqual(self.rule_ids(), ["order-total"])
 
+    def drafted_with_updates(self, updates: list) -> Path:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        proposal["registry_updates"] = updates
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+        return package
+
+    def test_an_update_naming_an_unknown_asset_is_refused_and_writes_nothing(self) -> None:
+        package = self.drafted_with_updates(
+            [{"operation": "upsert", "asset": "nonsense", "record": {"id": "x"}}]
+        )
+        with self.assertRaisesRegex(ValueError, "registry update has an invalid asset or record"):
+            self.approve_and_apply(package)
+        self.assertEqual(self.rule_ids(), [])
+
+    def test_a_proposal_without_updates_is_refused(self) -> None:
+        package = self.drafted_with_updates([])
+        with self.assertRaisesRegex(ValueError, "approved proposal has no registry_updates"):
+            self.approve_and_apply(package)
+
+    def test_only_a_finalized_proposal_applies(self) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        submit_proposal(package, self.repo / "memory", self.repo)
+        with self.assertRaisesRegex(ValueError, "only a finalized approved proposal may apply"):
+            apply_approved_updates(package, self.repo / "memory", self.repo)
+
+    def test_a_finalized_proposal_superseded_before_it_applied_does_not_apply(self) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.approve_and_finalize(package)
+        supersede_proposal(package, "A later proposal records this rule differently.", None)
+        with self.assertRaisesRegex(ValueError, "only a finalized approved proposal may apply"):
+            apply_approved_updates(package, self.repo / "memory", self.repo)
+        self.assertEqual(self.rule_ids(), [])
+
+    def test_an_invalid_package_is_refused_before_anything_applies(self) -> None:
+        package = self.draft_package()
+        (package / "test-obligations.json").unlink()
+        with self.assertRaisesRegex(ValueError, "change package is invalid"):
+            apply_approved_updates(package, self.repo / "memory", self.repo)
+
+    def test_applying_requires_an_scm_verified_policy(self) -> None:
+        package = self.draft_package()
+        amend_policy(
+            self.repo / "memory", "review_mode", "local-draft-only", "No external verifier is configured."
+        )
+        with self.assertRaisesRegex(ValueError, "reviewed updates require an scm-verified"):
+            apply_approved_updates(package, self.repo / "memory", self.repo)
+
     def test_a_registry_update_that_is_neither_an_upsert_nor_a_remove_is_refused(
         self,
     ) -> None:
@@ -1472,6 +2394,201 @@ class DomainRegistryTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must be an upsert or a remove"):
             self.approve_and_apply(package)
         self.assertEqual(self.rule_ids(), ["order-total"])
+
+    def package_documents(self, package: Path) -> dict[str, dict]:
+        return {
+            path.name: json.loads(path.read_text(encoding="utf-8"))
+            for path in package.glob("*.json")
+        }
+
+    def test_a_package_started_with_its_identifiers_carries_them_in_every_file(self) -> None:
+        package = self.repo / "named"
+        result = self.run_cli(
+            "init-change-package", "--output", str(package),
+            "--requirement-id", "REQ-7", "--proposal-id", "PRO-7",
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        documents = self.package_documents(package)
+        self.assertEqual(
+            {
+                "requirement-normalization.json": ("REQ-7", None),
+                "domain-change-proposal.json": ("REQ-7", "PRO-7"),
+                "test-obligations.json": ("REQ-7", "PRO-7"),
+                "evidence-bundle.json": ("REQ-7", "PRO-7"),
+            },
+            {
+                name: (document.get("requirement_id"), document.get("proposal_id"))
+                for name, document in documents.items()
+            },
+        )
+        errors = "; ".join(validate_change_package(package, self.repo / "memory", "submitted"))
+        for gone in ("must reference the requirement_id", "must reference the proposal_id",
+                     "requires a completed requirement_id", "requires a completed proposal_id"):
+            with self.subTest(gone=gone):
+                self.assertNotIn(gone, errors)
+
+    def test_a_package_started_without_identifiers_is_the_plain_template(self) -> None:
+        package = self.repo / "plain"
+        init_change_package(package)
+        templates = Path(__file__).resolve().parent.parent / "templates"
+        for path in package.iterdir():
+            with self.subTest(file=path.name):
+                self.assertEqual((templates / path.name).read_bytes(), path.read_bytes())
+
+    def test_a_blank_identifier_is_refused_before_anything_is_written(self) -> None:
+        package = self.repo / "blank"
+        with self.assertRaisesRegex(ValueError, "proposal_id must not be blank"):
+            init_change_package(package, "REQ-7", " ")
+        self.assertFalse(package.exists())
+
+    def test_a_fresh_package_is_not_asked_for_test_results_before_they_exist(self) -> None:
+        package = self.repo / "fresh"
+        init_change_package(package)
+        errors = validate_change_package(package, self.repo / "memory", "submitted")
+        self.assertNotIn("each test result requires a passed obligation_id and evidence", errors)
+        self.assertNotIn("a test result references an unknown obligation", errors)
+        self.assertNotIn("an approval requires role, reviewer, approved_at, and scope", errors)
+
+    def test_previewing_approved_lists_every_missing_piece_of_that_stage_at_once(self) -> None:
+        package = self.draft_package()
+        errors = validate_change_package(package, self.repo / "memory", "approved")
+        self.assertEqual(
+            [
+                "an approved or applied proposal lacks required approvals: domain-owner",
+                "an approved or applied proposal requires SCM attestation",
+            ],
+            errors,
+        )
+        self.assertEqual([], validate_change_package(package, self.repo / "memory"))
+
+    def test_verifying_before_the_required_approval_names_the_role_and_keeps_it_submitted(self) -> None:
+        package = self.draft_package()
+        submit_proposal(package, self.repo / "memory", self.repo)
+        with self.assertRaisesRegex(ValueError, "run record-approval for each of: domain-owner$"):
+            verify_proposal(package, self.repo / "memory", self.repo)
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        self.assertEqual("submitted", proposal["status"])
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        verify_proposal(package, self.repo / "memory", self.repo)
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        self.assertEqual("verified", proposal["status"])
+
+    def test_an_approval_of_another_revision_does_not_satisfy_verification(self) -> None:
+        package = self.draft_package()
+        submit_proposal(package, self.repo / "memory", self.repo)
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        proposal["approvals"][0]["proposal_revision"] = 0
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "each of: domain-owner$"):
+            verify_proposal(package, self.repo / "memory", self.repo)
+
+    def test_each_approval_and_lifecycle_defect_is_named(self) -> None:
+        package = self.draft_package()
+        files = {
+            name: json.loads((package / name).read_text(encoding="utf-8"))
+            for name in ("requirement-normalization.json", "domain-change-proposal.json", "evidence-bundle.json")
+        }
+        revision = {"observed_commit": None, "registry_digest": "sha256:" + "1" * 64}
+        other = {"observed_commit": None, "registry_digest": "sha256:" + "2" * 64}
+        complete = {
+            "role": "domain-owner", "reviewer": "reviewer", "decision": "approved",
+            "approved_at": "2026-10-10T00:00:00Z", "scope": "entire proposal", "proposal_revision": 1,
+        }
+        cases = [
+            ("roles", {"requirement-normalization.json": {"required_approval_roles": [""]}},
+             "requirement-normalization.json has invalid required_approval_roles"),
+            ("approvals", {"domain-change-proposal.json": {"approvals": "all"}},
+             "domain-change-proposal.json has invalid approvals"),
+            ("entry", {"domain-change-proposal.json": {"approvals": [7]}},
+             "domain-change-proposal.json has invalid approval entry"),
+            ("fields", {"domain-change-proposal.json": {"approvals": [{**complete, "scope": ""}]}},
+             "an approval requires role, reviewer, approved_at, and scope"),
+            ("binding", {"domain-change-proposal.json": {"approvals": [{**complete, "base_registry_revision": other}]}},
+             "an approval must bind to the proposal base_registry_revision"),
+            ("base", {"domain-change-proposal.json": {"status": "submitted"}},
+             "a submitted, approved, or applied proposal requires a Registry digest base revision"),
+            ("retained", {"domain-change-proposal.json": {"status": "submitted", "base_registry_revision": revision},
+                          "evidence-bundle.json": {"registry_revision": other}},
+             "evidence-bundle.json must retain the proposal base_registry_revision"),
+            ("missing role", {"domain-change-proposal.json": {"status": "approved"}},
+             "an approved or applied proposal lacks required approvals: domain-owner"),
+            ("verified_at", {"domain-change-proposal.json": {"status": "verified"}},
+             "a verified proposal requires verified_at"),
+            ("applied_at", {"domain-change-proposal.json": {"status": "applied"}},
+             "an applied proposal requires applied_at"),
+            ("applied revision", {"domain-change-proposal.json": {"status": "applied"}},
+             "an applied proposal requires applied_registry_revision"),
+        ]
+        for label, changes, message in cases:
+            with self.subTest(label):
+                for name, value in files.items():
+                    (package / name).write_text(json.dumps({**value, **changes.get(name, {})}), encoding="utf-8")
+                self.assertIn(message, validate_change_package(package, self.repo / "memory"))
+        other_revision = {**complete, "scope": "", "proposal_revision": 2}
+        for name, value in files.items():
+            changed = {"approvals": [other_revision]} if name == "domain-change-proposal.json" else {}
+            (package / name).write_text(json.dumps({**value, **changed}), encoding="utf-8")
+        self.assertNotIn(
+            "an approval requires role, reviewer, approved_at, and scope",
+            validate_change_package(package, self.repo / "memory"),
+        )
+
+    def test_previewing_does_not_ask_for_fields_the_stage_commands_write(self) -> None:
+        package = self.draft_package()
+        for status in ("submitted", "verified", "applied"):
+            with self.subTest(status=status):
+                errors = "; ".join(
+                    validate_change_package(package, self.repo / "memory", status)
+                )
+                for written_by_the_command in (
+                    "Registry digest base revision",
+                    "retain the proposal base_registry_revision",
+                    "requires verified_at",
+                    "requires applied_at",
+                    "requires applied_registry_revision",
+                ):
+                    self.assertNotIn(written_by_the_command, errors)
+
+    def test_previewing_keeps_the_base_revision_a_submitted_proposal_already_has(self) -> None:
+        package = self.draft_package()
+        submit_proposal(package, self.repo / "memory", self.repo)
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        self.assertEqual(
+            ["an approved or applied proposal requires SCM attestation"],
+            validate_change_package(package, self.repo / "memory", "approved"),
+        )
+
+    def test_finalizing_without_scm_attestation_names_the_fields_and_the_step(self) -> None:
+        package = self.draft_package()
+        submit_proposal(package, self.repo / "memory", self.repo)
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        verify_proposal(package, self.repo / "memory", self.repo)
+        with self.assertRaises(ValueError) as refused:
+            finalize_proposal(package, self.repo / "memory", self.repo)
+        message = str(refused.exception)
+        for expected in (
+            "after the pull request merges",
+            'add scm_attestation to evidence-bundle.json with provider "github"',
+            "pull_request and checks_url",
+            "base_registry_revision copied from domain-change-proposal.json",
+            "verify-scm-attestation",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, message)
+        proposal = json.loads(
+            (package / "domain-change-proposal.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual("verified", proposal["status"])
+
+    def test_the_missing_attestation_message_follows_the_policy_verifier(self) -> None:
+        signed = missing_attestation_message("git-signed-commit")
+        self.assertIn("after the signed commit that adds this Change Package and changes the Domain Memory files exists", signed)
+        self.assertIn('provider "git-signed-commit"', signed)
+        self.assertIn("run attest-signed-commit --commit", signed)
+        self.assertNotIn("pull_request", signed)
+        self.assertIn("names no review verifier", missing_attestation_message("none"))
 
     def test_approved_package_applies_against_its_exact_revision(self) -> None:
         package = self.draft_package()
@@ -1493,7 +2610,8 @@ class DomainRegistryTest(unittest.TestCase):
         }
         evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
         verify_proposal(package, self.repo / "memory", self.repo)
-        with patch("domain_registry.hitl.verify_external_scm", return_value=[]) as verify_scm:
+        with patch("domain_registry.hitl.verify_external_scm", return_value=[]) as verify_scm, \
+                patch("domain_registry.hitl.github_commit_carries_proposal", return_value=[]):
             finalize_proposal(package, self.repo / "memory", self.repo)
         verify_scm.assert_called_once_with(evidence["scm_attestation"], "GITHUB_TOKEN", True)
         apply_approved_updates(package, self.repo / "memory", self.repo)
@@ -1869,6 +2987,48 @@ class DomainRegistryTest(unittest.TestCase):
         kept.unlink()
         self.assertEqual(verify_source_map(self.repo, path)["status"], "stale")
 
+    def test_each_structural_problem_in_a_source_map_gets_its_own_verdict_and_reason(self) -> None:
+        path = self.committed_source_map()
+        sound = json.loads(path.read_text(encoding="utf-8"))
+        policy = stored_policy_of(self.repo)
+
+        def escaping(value):
+            value["selected_paths"] = ["../outside"]
+            value["source_snapshots"][0]["path"] = "../outside"
+
+        cases = [
+            ("no snapshots", lambda value: value.pop("source_snapshots"), None,
+             "unverified", "source map has no snapshots"),
+            ("a snapshot that is not an object", lambda value: value["source_snapshots"].append(7), None,
+             "unverified", "source map has an invalid snapshot"),
+            ("a path selected twice", lambda value: value["selected_paths"].append("docs"), None,
+             "unverified", "source map snapshots do not match selected_paths"),
+            ("a path outside the repository", escaping, None,
+             "invalid", "source path escapes repository: ../outside"),
+            ("a policy selecting other paths", lambda value: None, ["other"],
+             "invalid", "policy selected_paths do not match the source map"),
+        ]
+        for label, change, policy_paths, status, reason in cases:
+            with self.subTest(label):
+                value = json.loads(json.dumps(sound))
+                change(value)
+                path.write_text(json.dumps(value), encoding="utf-8")
+                chosen = None
+                if policy_paths is not None:
+                    chosen = json.loads(json.dumps(policy))
+                    chosen["source_policy"]["selected_paths"] = policy_paths
+                result = verify_source_map(self.repo, path, chosen)
+                self.assertEqual((status, reason), (result["status"], result["reason"]))
+
+    def test_a_selected_path_that_disappeared_makes_the_map_stale_and_is_named_missing(self) -> None:
+        path = self.committed_source_map()
+        remove_tree(self.repo / "docs")
+        result = verify_source_map(self.repo, path)
+        self.assertEqual(
+            ("stale", [{"path": "docs", "status": "missing"}]),
+            (result["status"], result["changed_sources"]),
+        )
+
     def test_a_map_without_snapshots_cannot_answer_the_question(self) -> None:
         path = self.write_record(
             "source-map.json",
@@ -1896,6 +3056,34 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertEqual(result["status"], "invalid")
         self.assertEqual(
             "invalid", verify_source_map(self.repo, path, policy)["status"]
+        )
+
+    def test_the_probe_answers_absent_invalid_and_hashed_cases_without_git(self) -> None:
+        missing = self.repo / "memory" / "no-map.json"
+        self.assertEqual("absent", probe_sources(self.repo, missing)["status"])
+        path = self.committed_source_map()
+        policy = stored_policy_of(self.repo)
+        with self.subTest("an invalid policy"):
+            result = probe_sources(self.repo, path, {**policy, "storage_mode": "cloud"})
+            self.assertEqual(("invalid", "policy has an invalid storage_mode"), (result["status"], result["reason"]))
+        with self.subTest("a policy report that cannot be built"), \
+                patch("domain_registry.sources.source_policy_report", side_effect=OSError("disk gone")):
+            result = probe_sources(self.repo, path, policy)
+            self.assertEqual(("invalid", "disk gone"), (result["status"], result["reason"]))
+        with self.subTest("a map recorded with dirty sources"):
+            value = json.loads(path.read_text(encoding="utf-8"))
+            value["git_state"]["dirty_sources"] = ["docs/kept.md"]
+            path.write_text(json.dumps(value), encoding="utf-8")
+            self.assertEqual(("current", "hash"), tuple(probe_sources(self.repo, path)[key] for key in ("status", "checked")))
+
+    def test_a_committed_source_change_sends_the_probe_back_to_hashing(self) -> None:
+        path = self.committed_source_map()
+        (self.repo / "docs" / "kept.md").write_text("kept, then edited", encoding="utf-8")
+        self.commit_all("edit a source")
+        result = probe_sources(self.repo, path)
+        self.assertEqual(
+            ("hash", [{"path": "docs", "status": "content-changed"}]),
+            (result["checked"], result["content_changed"]),
         )
 
     def test_an_uncommitted_source_sends_the_probe_back_to_hashing(self) -> None:
@@ -2086,6 +3274,54 @@ class DomainRegistryTest(unittest.TestCase):
         with self.subTest("CI discovered"):
             candidates = discover_sources(self.repo)["governance_candidates"]
             self.assertEqual([], validate_policy(policy_from(candidates)))
+
+    def test_each_policy_defect_is_named_and_governance_reports_only_its_first(self) -> None:
+        sound = stored_policy_of(self.repo)
+        self.assertEqual([], validate_policy(sound))
+        signed = {"verifier": "git-signed-commit", "trigger": "git-push", "ci_requirement": "none",
+                  "authorized_signers": ["SHA256:key"]}
+        cases = [
+            ("format", {"format": "domain-memory-policy/v2"}, "policy has an invalid format"),
+            ("storage", {"storage_mode": "cloud"}, "policy has an invalid storage_mode"),
+            ("classification", {"data_classification": "secret"}, "policy has an invalid data_classification"),
+            ("review mode", {"review_mode": "maybe"}, "policy has an invalid review_mode"),
+            ("no governance", {"review_governance": None}, "policy requires review_governance"),
+            ("unknown verifier", {"review_governance": {**sound["review_governance"], "verifier": "fax"}},
+             "policy has invalid review_governance"),
+            ("blank signer", {"review_governance": {**signed, "authorized_signers": [" "]}},
+             "policy has invalid review_governance"),
+            ("local with verifier", {"review_mode": "local-draft-only"},
+             "local-draft-only policy must not select a review verifier"),
+            ("scm without verifier",
+             {"review_governance": {**sound["review_governance"], "verifier": "none", "trigger": "none"}},
+             "scm-verified policy requires a review verifier"),
+            ("signed without signers", {"review_governance": {**signed, "authorized_signers": []}},
+             "git-signed-commit policy requires authorized_signers"),
+            ("signed without push", {"review_governance": {**signed, "trigger": "git-commit"}},
+             "git-signed-commit policy requires git-push enforcement"),
+            ("signed without signers or push",
+             {"review_governance": {**signed, "authorized_signers": [], "trigger": "git-commit"}},
+             "git-signed-commit policy requires authorized_signers"),
+            ("local with an unsigned verifier",
+             {"review_mode": "local-draft-only", "review_governance": {**signed, "authorized_signers": []}},
+             "local-draft-only policy must not select a review verifier"),
+            ("no authority", {"source_policy": {**sound["source_policy"], "authority": " "}},
+             "policy requires selected source paths and authority"),
+            ("no sources", {"source_policy": {**sound["source_policy"], "selected_paths": []}},
+             "policy requires selected source paths and authority"),
+            ("no include", {"source_policy": {**sound["source_policy"], "include": []}},
+             "policy requires include patterns and valid exclude patterns"),
+            ("limit below one", {"limits": {**sound["limits"], "max_file_count": 0}}, "policy has invalid limits"),
+            ("limit not a number", {"limits": {**sound["limits"], "max_query_results": "9"}},
+             "policy has invalid limits"),
+        ]
+        for label, change, message in cases:
+            with self.subTest(label):
+                self.assertEqual([message], validate_policy({**sound, **change}))
+        with self.subTest("a limit of one"):
+            self.assertEqual([], validate_policy({**sound, "limits": {**sound["limits"], "max_file_count": 1}}))
+        with self.subTest("a signed-commit policy that is complete"):
+            self.assertEqual([], validate_policy({**sound, "review_governance": signed}))
 
     def test_resolve_terms_reads_the_definition_and_not_the_rest_of_the_record(
         self,
@@ -2601,6 +3837,55 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertEqual("incomplete", report["status"])
         self.assertEqual("resource-limit", report["skipped"][0]["reason"])
 
+    def test_a_secret_scan_reports_what_it_read_and_why_it_skipped_the_rest(self) -> None:
+        secrets = self.repo / "leaky"
+        (secrets / "node_modules").mkdir(parents=True)
+        (secrets / "node_modules" / "vendored.env").write_bytes(b"ghp_" + b"e" * 30)
+        (secrets / "clean.md").write_bytes(b"one\n")
+        (secrets / "ci.env").write_bytes(b"first\nghp_" + b"f" * 30 + b"\n")
+        report = scan_report(secrets)
+        self.assertEqual(
+            ("complete", [{"path": "ci.env", "line": 2, "kind": "github-token"}], 2, 4 + 6 + 35, 0),
+            (report["status"], report["findings"], report["scanned_files"], report["scanned_bytes"],
+             report["skipped_count"]),
+        )
+        with self.subTest("symlink and unreadable"), \
+                patch.object(Path, "is_symlink", lambda path: path.name == "clean.md"), \
+                patch.object(Path, "open", side_effect=OSError("denied")):
+            report = scan_report(secrets)
+            self.assertEqual(
+                ("incomplete", [{"path": "ci.env", "reason": "unreadable"}, {"path": "clean.md", "reason": "symlink"}]),
+                (report["status"], sorted(report["skipped"], key=lambda skip: skip["path"])),
+            )
+        failing = MagicMock()
+        failing.__enter__.return_value = MagicMock(__iter__=MagicMock(side_effect=OSError("device lost")))
+        with self.subTest("a file that fails while it is read"), patch.object(Path, "open", return_value=failing):
+            report = scan_report(secrets)
+            self.assertEqual(
+                ("incomplete", {"unreadable"}), (report["status"], {skip["reason"] for skip in report["skipped"]})
+            )
+        with self.subTest("a file of exactly the per-file limit"), \
+                patch("domain_registry.security.MAX_FILE_BYTES", 41):
+            self.assertEqual("complete", scan_report(secrets)["status"])
+        with self.subTest("one byte over the per-file limit"), \
+                patch("domain_registry.security.MAX_FILE_BYTES", 40):
+            self.assertEqual(
+                [{"path": "ci.env", "reason": "file-too-large"}], scan_report(secrets)["skipped"]
+            )
+        with self.subTest("the byte budget is inclusive"), patch("domain_registry.security.MAX_SCAN_BYTES", 45):
+            self.assertEqual("complete", scan_report(secrets)["status"])
+        with self.subTest("one byte over the budget"), patch("domain_registry.security.MAX_SCAN_BYTES", 44):
+            self.assertEqual("resource-limit", scan_report(secrets)["skipped"][0]["reason"])
+        with self.subTest("the scan stops at the first file past the budget"), \
+                patch("domain_registry.security.MAX_SCAN_FILES", 0):
+            report = scan_report(secrets)
+            self.assertEqual((1, 0), (report["skipped_count"], report["scanned_files"]))
+        with self.subTest("reported skips are capped but all are counted"), \
+                patch("domain_registry.security.MAX_REPORTED_SKIPS", 1), \
+                patch("domain_registry.security.MAX_FILE_BYTES", 0):
+            report = scan_report(secrets)
+            self.assertEqual((1, 2), (len(report["skipped"]), report["skipped_count"]))
+
     def test_secret_scan_reports_oversized_files_as_incomplete(self) -> None:
         secrets = self.repo / "leaky"
         secrets.mkdir()
@@ -2625,6 +3910,20 @@ class DomainRegistryTest(unittest.TestCase):
             text=True,
             check=False,
         )
+
+    def test_every_parsed_command_has_a_handler_and_every_handler_a_command(self) -> None:
+        subcommands = next(
+            action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)
+        )
+        self.assertEqual(set(HANDLERS), set(subcommands.choices))
+
+    def test_a_file_system_error_ends_in_one_error_line_instead_of_a_traceback(self) -> None:
+        occupied = self.repo / "occupied.txt"
+        occupied.write_text("not a directory\n", encoding="utf-8")
+        result = self.run_cli("init-change-package", "--output", str(occupied))
+        self.assertEqual(1, result.returncode)
+        self.assertNotIn("Traceback", result.stdout + result.stderr)
+        self.assertTrue(result.stdout.startswith("ERROR: "), result.stdout)
 
     def test_the_module_entry_point_runs_the_command_instead_of_exiting_quietly(
         self,
@@ -2841,6 +4140,24 @@ class DomainRegistryTest(unittest.TestCase):
         recover_interrupted_update(root, False)
         self.assertTrue((root / "registry" / "contexts.json").is_file())
         self.assertFalse(transaction_path(root).exists())
+
+    def test_recovery_discards_a_backup_whose_folders_are_read_only(self) -> None:
+        root = self.repo / "memory"
+        backup = root / ".domain-registry-backup-abc"
+        shutil.copytree(root / "registry", backup)
+        read_only = stat.S_IREAD | stat.S_IEXEC
+        for path in [*backup.iterdir(), backup]:
+            os.chmod(path, read_only)
+        transaction_path(root).write_text(
+            json.dumps(
+                {"backup": backup.name, "staging": ".domain-registry-stage-abc"}
+            ),
+            encoding="utf-8",
+        )
+        recover_interrupted_update(root, False)
+        self.assertFalse(backup.exists())
+        self.assertFalse(transaction_path(root).exists())
+        self.assertTrue((root / "registry" / "contexts.json").is_file())
 
     def test_recovery_discards_a_backup_once_the_registry_is_already_in_place(
         self,
@@ -3106,6 +4423,91 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertIn("reviewer", recorded["reason"])
         self.assertEqual("valid", verify_audit(self.repo / "memory")["status"])
 
+    def audit_lines(self) -> list[dict]:
+        return [
+            json.loads(line)
+            for line in (self.repo / "memory" / "audit" / "events.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
+        ]
+
+    def test_one_amendment_moves_review_and_its_authority_together(self) -> None:
+        root = self.repo / "memory"
+        amend_policy(root, "review_mode", "local-draft-only", "Drafting alone.")
+        recorded_before = len(self.audit_lines())
+        changes = amend_policy_fields(
+            root,
+            [
+                ("review_verifier", "github-pr"),
+                ("review_trigger", "external-scm"),
+                ("ci_requirement", "required"),
+                ("review_mode", "scm-verified"),
+            ],
+            "A reviewer and CI exist now.",
+        )
+        policy = self.stored_policy()
+        self.assertEqual("scm-verified", policy["review_mode"])
+        self.assertEqual(
+            ("github-pr", "external-scm", "required"),
+            tuple(policy["review_governance"][key] for key in ("verifier", "trigger", "ci_requirement")),
+        )
+        self.assertEqual(
+            [
+                ("review_mode", "local-draft-only", "scm-verified"),
+                ("review_verifier", "none", "github-pr"),
+                ("review_trigger", "none", "external-scm"),
+                ("ci_requirement", "none", "required"),
+            ],
+            [(change["field"], change["from"], change["to"]) for change in changes],
+        )
+        appended = self.audit_lines()[recorded_before:]
+        self.assertEqual([change["field"] for change in changes], [event["field"] for event in appended])
+        self.assertEqual("valid", verify_audit(root)["status"])
+
+    def test_an_amendment_whose_final_policy_is_invalid_writes_nothing(self) -> None:
+        root = self.repo / "memory"
+        amend_policy(root, "review_mode", "local-draft-only", "Drafting alone.")
+        policy_before = (root / "domain-memory-policy.json").read_bytes()
+        recorded_before = len(self.audit_lines())
+        with self.assertRaisesRegex(ValueError, "amended policy is invalid"):
+            amend_policy_fields(
+                root,
+                [("review_mode", "scm-verified"), ("review_verifier", "none")],
+                "A reviewer exists now.",
+            )
+        self.assertEqual(policy_before, (root / "domain-memory-policy.json").read_bytes())
+        self.assertEqual(recorded_before, len(self.audit_lines()))
+
+    def test_an_amendment_naming_a_field_twice_is_refused(self) -> None:
+        with self.assertRaisesRegex(ValueError, "ci_requirement is named more than once"):
+            amend_policy_fields(
+                self.repo / "memory",
+                [("ci_requirement", "required"), ("ci_requirement", "none")],
+                "Undecided.",
+            )
+
+    def test_the_command_line_takes_one_field_or_several_sets_but_not_both(self) -> None:
+        def parsed(**values) -> argparse.Namespace:
+            return argparse.Namespace(**{"field": None, "value": None, "set": [], **values})
+
+        self.assertEqual(
+            [("ci_requirement", "required")],
+            policy_assignments(parsed(field="ci_requirement", value="required")),
+        )
+        self.assertEqual(
+            [("review_mode", "scm-verified"), ("authorized_signers", "a=b,c")],
+            policy_assignments(parsed(set=["review_mode=scm-verified", "authorized_signers=a=b,c"])),
+        )
+        for refused in (
+            parsed(),
+            parsed(field="ci_requirement"),
+            parsed(field="ci_requirement", value="required", set=["review_mode=scm-verified"]),
+            parsed(set=["review_mode"]),
+        ):
+            with self.subTest(refused=vars(refused)):
+                with self.assertRaises(ValueError):
+                    policy_assignments(refused)
+
     def test_a_policy_can_leave_local_draft_only_for_external_review(self) -> None:
         amend_policy(
             self.repo / "memory",
@@ -3288,6 +4690,26 @@ class DomainRegistryTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)["source_kind"], "decisions")
+        self.assertEqual("", result.stderr)
+
+    def test_citing_outside_the_confirmed_sources_says_review_will_refuse_it(self) -> None:
+        self.cited_file()
+        write_source_map(
+            self.repo / "memory" / "source-map.json",
+            selected_source_map(self.repo, [self.repo / "docs" / "adr"]),
+        )
+        (self.repo / "db").mkdir()
+        (self.repo / "db" / "queries.sql").write_text("select 1;\n", encoding="utf-8")
+        result = self.run_cli(
+            "cite", "--repo-root", str(self.repo), "--path", "db/queries.sql",
+            "--start", "1", "--end", "1", "--registry-root", str(self.repo / "memory"),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        reference = json.loads(result.stdout)
+        self.assertEqual("unclassified", reference["source_kind"])
+        self.assertEqual({"path", "lines", "content_sha256", "excerpt_sha256", "source_kind"}, set(reference))
+        self.assertIn("db/queries.sql is outside the confirmed sources", result.stderr)
+        self.assertIn("apply-approved-updates refuses to review", result.stderr)
 
     def confirmed_corpus(self) -> None:
         self.cited_file()
@@ -3312,6 +4734,26 @@ class DomainRegistryTest(unittest.TestCase):
             upsert_candidate(self.repo / "memory", self.repo, "contexts", record),
             ["notes.md"],
         )
+
+    def test_the_upsert_command_says_review_will_refuse_an_unconfirmed_file(self) -> None:
+        self.confirmed_corpus()
+        (self.repo / "notes.md").write_text("Orders owns pricing.", encoding="utf-8")
+        record = self.write_record(
+            "context.json",
+            {
+                "id": "orders",
+                "name": "Orders",
+                "responsibility": "Own orders.",
+                "evidence": [citation(self.repo, "notes.md", 1, 1)],
+            },
+        )
+        result = self.run_cli(
+            "upsert-candidate", "--registry-root", str(self.repo / "memory"),
+            "--repo-root", str(self.repo), "--asset", "contexts", "--record-file", str(record),
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("files the confirmed source map does not cover: notes.md", result.stdout)
+        self.assertIn("apply-approved-updates refuses to review", result.stdout)
 
     def test_a_candidate_inside_the_confirmed_corpus_raises_no_reach_warning(
         self,

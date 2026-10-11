@@ -121,10 +121,11 @@
 | `/admin/rosters` | `AdminRosters` | 02:OPS-005 | 產品營運／**營運後台** |
 | `/admin/audit-log` | `AdminAuditLog` | 02:OPS-006 | 產品營運／**營運後台** |
 | `/admin/model-budgets` | `AdminModelBudgets` | 02:OPS-009 | 產品營運／**營運後台** |
+| `/admin/settings` | `AdminSettings` | 02:OPS-011／GEN-014 | 產品營運／**營運後台**〔平台政策：評估判定的評審團與對話回答輪數上限；每次改動要理由並進動作紀錄，可直達 Agent 花費上限與啟停〕 |
 | `/admin/cost-statistics` | `AdminCostStatistics` | 02:OPS-007 | 產品營運／**營運後台** |
 | `/admin/trends` | `AdminTrends` | 02:OPS-008 | 產品營運／**營運後台**〔圖表見 [營運後台](../adr/README.md#營運後台)〕 |
 | `/admin/exposure` | `AdminExposure` | 02:DISC-007 | 產品營運／**營運後台**〔發佈物的曝光審核：待審清單與一筆的精確快照〕 |
-| `/admin/agents` | `AdminAgents` | 02:OPS-011／OPS-012／OPS-013 | 產品營運／**營運後台**〔平台 Agent：待核准的提案（點開看會發生什麼、依據與決定）、日報回報的待辦收件匣（一件事一列，點開看依據、經過與處理）、日報與執行紀錄、啟停與全域煞車〕 |
+| `/admin/agents` | `AdminAgents` | 02:OPS-011／OPS-012／OPS-013 | 產品營運／**營運後台**〔平台 Agent：待核准的提案（點開看會發生什麼、依據與決定）、日報回報的待辦收件匣（一件事一列，點開看依據、經過與處理）、日報與執行紀錄、每日花費上限、啟停與全域煞車〕 |
 
 > **營運後台是組裝層，不是 Bounded Context**（[營運後台](../adr/README.md#營運後台)）——上表 `/admin/*` 那幾列的「價值流／Bounded Context」欄寫的是它服務的價值流。
 >
@@ -180,7 +181,7 @@ TestCases ──────► /lab/test-cases/$id, /lab/test-cases/$id/dataset
                   /runs/$id/compare, /skills/$id, /skills/$id/files
 DatasetUpload ──► /lab/test-cases/$id, /skills/$id, /skills/$id/files,
                   /skills/$id/versions/$id
-RunPreflight ───► /lab/test-cases, /runs/$id, /skills/$id, /skills/$id/files
+RunPreflight ───► /lab/test-cases, /runs/$id, /runs/$id/compare, /skills/$id, /skills/$id/files
 RunTrace ───────► /runs/$id/compare, /lab/test-cases, /skills/$id,
                   /skills/$id/files
 RunCompare ─────► /skills/$id/test-cases/$id/runs/new, /runs/$id, /lab/test-cases, /skills/$id,
@@ -195,6 +196,7 @@ CreateHub ──────► /, /workspace/import        （渲染在 /librar
 CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/$id,
                   /skills/$id/versions/$versionId, /library
                                               （渲染在 /workspace/creations 之內）
+AdminSettings ──► /admin/agents
 ```
 
 > **`/library` 的新增入口（`features/creation/components/CreateHub.tsx`）。** 它把三條接納路徑收在同一處：**匯入現成的套件** → `/workspace/import`（該頁唯一的 `.action`，system.md §4.6.3）、**從 Catalog Fork** → `/`（Fork 需要封測邀請，入口旁直接說）、**依任務描述創作** → 旗標後面的 Studio（§2.4），不新增邊。首頁的 hero 指著 `/library#create`。
@@ -231,13 +233,13 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 | ---: | --- | --- |
 | **0** | （無） | ✅ 沒有孤兒頁 |
 | **1** | `/compare`、`/lab/test-cases/$testCaseId/datasets` | ✅ 兩項都是 R3 的「具名」那一支（IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7 |
-| 2 | `/workspace`、`/workspace/account`、`/workspace/creations`、`/policy`、`/runs/$runId/compare`、`/admin`、`/admin/accounts`、`/admin/dispatch`、`/admin/rosters`、`/admin/model-budgets`、`/admin/cost-statistics` | ✅ |
+| 2 | `/workspace`、`/workspace/account`、`/workspace/creations`、`/policy`、`/runs/$runId/compare`、`/admin`、`/admin/accounts`、`/admin/dispatch`、`/admin/rosters`、`/admin/model-budgets`、`/admin/settings`、`/admin/cost-statistics` | ✅ |
 | 3 | `/skills/$skillId/files`、`/skills/$skillId/package`、`/p/$publisher/$name`、`/workspace/runs`、`/admin/skills`、`/admin/audit-log`、`/admin/trends`、`/admin/exposure` | ✅ |
 | 4 | `/workspace/import`、`/skills/$skillId/test-cases/$testCaseId/runs/new` | ✅ |
 | 5 | `/lab/test-cases/$testCaseId` | ✅ |
 | 7 | `/`、`/library` | ✅ |
 | 8 | `/runs/$runId` | ✅ |
-| 9 | `/workspace/downloads` | ✅ |
+| 9 | `/workspace/downloads`、`/admin/agents` | ✅ |
 | 9 | `/lab/test-cases` | ✅ |
 | 12 | `/skills/$skillId/versions/$versionId` | ✅ |
 | 16 | `/skills/$skillId` | ✅ 全 app 的匯流點 |
@@ -292,7 +294,7 @@ Catalog landing `/` 的 `<h1>` 是名詞化的產品承諾 `探索能直接採�
 | `/skills/$id/package` | `version` | PACK-001／002：版本是路徑之外的另一個「哪一份」 |
 | `/workspace/creations` | `session`（須為 UUID） | 目前正在續作哪一場可變創作會話；選擇歷程或建立成功都改寫同一個值，重載後向伺服器取回該 session 的最新 revision。它不把 revision 放進網址，也不把 session 當成正式 Skill Version |
 | `/workspace/downloads` | `artifact`（須為 UUID）、`publication`（須為 `發佈者/名稱`）、`bundleVersion`（須為 UUID） | 發佈與交付空間裡正在續接哪一筆保存紀錄或哪一個 Bundle 成員版本。`artifact` 指向一個不可變打包成品，`publication` 指向一筆 Skill Publication，`bundleVersion` 指向使用者剛選定且 owner 版本清單確實包含的不可變 Skill Version；三者都只使用 owner API 已回傳的識別，不把 Workspace 識別或前一頁脈絡塞進網址。打包、公開取得或 Bundle 匯出一旦收到 `artifact_id`，產生結果的連結就必須帶回該值；版本內的 Publication 操作同樣使用回應中的 `publisher/name`；「加入 Bundle」則保留當下的精確 Version，不得只把人送到泛用清單，也不得改選最新版本。資料成功載入且找到精確項目後才定位；成功載入但找不到時說明目前工作區找不到這筆，讀取失敗仍是讀取失敗。兩個以上參數同時出現是含糊連結，頁面不任選一筆，也不移動焦點。Bundle Publication 不在 `/me/publications`，不由這一批參數假裝支援 |
-| `/skills/$skillId/test-cases/$testCaseId/runs/new` | `version` | TEST-008／009：Skill 與 Test Case 是建立 Run 的固定工作脈絡；只有可替換的 Version 留在網址狀態並由頁面選擇 |
+| `/skills/$skillId/test-cases/$testCaseId/runs/new` | `version`、`against` | TEST-008／009：Skill 與 Test Case 是建立 Run 的固定工作脈絡；只有可替換的 Version 留在網址狀態並由頁面選擇。`against` 是改版前那次 Run：從改善建議建立新版本後重跑同一題時帶著它，試跑開始後頁面多給一條到 `/runs/$id/compare?against=` 的連結，讓使用者自己確認建議有沒有真的改善；它不改變確認流程，也不自動開跑 |
 | `/lab/run` | `skill`、`version`、`test_case` | 舊深連結的相容輸入；帶齊 Skill 與 Test Case 後改寫成上列 canonical URL，沒有足夠脈絡時回到 Test Case 清單或單筆，不渲染第二份 preflight |
 | `/lab/test-cases/$testCaseId/datasets` | `version`（須為 UUID） | Test Case 已固定在路徑；精確 Version 留在網址，讓 Dataset、Test Case 與後續 preflight 共用同一個不可變版本脈絡 |
 | `/lab/datasets` | `test_case`、`version`（後者須為 UUID） | 舊深連結的相容輸入；有 Test Case 就改寫成上列 canonical URL，沒有就回到 Test Case 清單，不渲染第二份 Dataset 畫面 |

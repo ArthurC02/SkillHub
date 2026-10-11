@@ -178,6 +178,24 @@ SELECT must_fail($$DELETE FROM runs WHERE id = '77777777-7777-7777-7777-77777777
 UPDATE runs SET cleanup_status = 'cleaned', cleanup_at = now()
 WHERE id = '77777777-7777-7777-7777-777777777777';
 
+INSERT INTO runs (id, workspace_id, skill_version_id, test_case_snapshot_id, provider)
+VALUES ('78787878-7878-7878-7878-787878787878', '22222222-2222-2222-2222-222222222222',
+        '44444444-4444-4444-4444-444444444444', '66666666-6666-6666-6666-666666666666', 'self-hosted');
+INSERT INTO run_continuations (run_id, workspace_id, continues_run_id, questions, answers)
+VALUES ('78787878-7878-7878-7878-787878787878', '22222222-2222-2222-2222-222222222222',
+        '77777777-7777-7777-7777-777777777777', '[{"question":"q","why":"w"}]'::jsonb, '["a"]'::jsonb);
+SELECT must_fail($$UPDATE run_continuations SET answers = '["rewritten"]'::jsonb
+                   WHERE run_id = '78787878-7878-7878-7878-787878787878'$$);
+SELECT must_violate_check($$INSERT INTO run_continuations (run_id, workspace_id, continues_run_id, questions, answers)
+                            VALUES ('77777777-7777-7777-7777-777777777777', '22222222-2222-2222-2222-222222222222',
+                                    '78787878-7878-7878-7878-787878787878', '[{"question":"q"}]'::jsonb, '[]'::jsonb)$$);
+INSERT INTO runs (id, workspace_id, skill_version_id, test_case_snapshot_id, provider)
+VALUES ('79797979-7979-7979-7979-797979797979', '22222222-2222-2222-2222-222222222222',
+        '44444444-4444-4444-4444-444444444444', '66666666-6666-6666-6666-666666666666', 'self-hosted');
+SELECT must_violate_unique($$INSERT INTO run_continuations (run_id, workspace_id, continues_run_id, questions, answers)
+                             VALUES ('79797979-7979-7979-7979-797979797979', '22222222-2222-2222-2222-222222222222',
+                                     '77777777-7777-7777-7777-777777777777', '[{"question":"q"}]'::jsonb, '["a"]'::jsonb)$$);
+
 INSERT INTO audit_events (action, resource_type) VALUES ('test.event', 'test');
 SELECT must_fail($$UPDATE audit_events SET action = 'tampered' WHERE action = 'test.event'$$);
 SELECT must_fail($$DELETE FROM audit_events WHERE action = 'test.event'$$);

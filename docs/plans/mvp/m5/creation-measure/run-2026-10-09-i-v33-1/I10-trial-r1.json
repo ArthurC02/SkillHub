@@ -1,0 +1,139 @@
+{
+  "round": 1,
+  "sample_input": "請分別計算以下活動攝影報價：\n拍攝 2 小時，修圖 20 張。\n拍攝 3 小時，修圖 21 張。\n拍攝 5 小時，修圖 30 張。",
+  "acceptance_criteria": [
+    {
+      "text": "對試算第 1 行，拍攝費為 6,000 元、修圖費為 3,000 元、未封頂合計與應付總額皆為 9,000 元。"
+    },
+    {
+      "text": "對試算第 2 行，拍攝費為 8,000 元、修圖費為 3,100 元、未封頂合計與應付總額皆為 11,100 元。"
+    },
+    {
+      "text": "對試算第 3 行，拍攝費為 12,000 元、修圖費為 4,000 元、未封頂合計為 16,000 元、應付總額為 12,000 元。"
+    },
+    {
+      "text": "三行結果皆清楚標示拍攝費、修圖費、未封頂合計及應付總額，並以新台幣金額呈現。"
+    }
+  ],
+  "final_output": "### 活動攝影報價\n\n**拍攝 2 小時，修圖 20 張**\n- 拍攝費：新台幣 6,000 元\n- 修圖費：新台幣 3,000 元\n- 未封頂合計：新台幣 9,000 元\n- 應付總額：新台幣 9,000 元\n\n**拍攝 3 小時，修圖 21 張**\n- 拍攝費：新台幣 8,000 元\n- 修圖費：新台幣 3,100 元\n- 未封頂合計：新台幣 11,100 元\n- 應付總額：新台幣 11,100 元\n\n**拍攝 5 小時，修圖 30 張**\n- 拍攝費：新台幣 12,000 元\n- 修圖費：新台幣 4,000 元\n- 未封頂合計：新台幣 16,000 元\n- 應付總額：新台幣 12,000 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "cb2a0533-ebe7-4c35-8654-64db91470b89",
+    "run_id": "24d612ff-a184-4cbf-b504-a808c0a194b0",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三組活動攝影報價的四項金額均符合驗收條件，且逐項以新台幣清楚呈現。",
+    "criterion_results": [
+      {
+        "criterion_id": "0a29563e-b8e5-4abb-96fe-c4ce247df179",
+        "text": "對試算第 1 行，拍攝費為 6,000 元、修圖費為 3,000 元、未封頂合計與應付總額皆為 9,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 行列出的拍攝費、修圖費、未封頂合計及應付總額均符合指定金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**拍攝 2 小時，修圖 20 張**\n- 拍攝費：新台幣 6,000 元\n- 修圖費：新台幣 3,000 元\n- 未封頂合計：新台幣 9,000 元\n- 應付總額：新台幣 9,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "534e2c1c-ba28-4a35-802c-47818f4c5a18",
+        "text": "對試算第 2 行，拍攝費為 8,000 元、修圖費為 3,100 元、未封頂合計與應付總額皆為 11,100 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 行列出的拍攝費、修圖費、未封頂合計及應付總額均符合指定金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**拍攝 3 小時，修圖 21 張**\n- 拍攝費：新台幣 8,000 元\n- 修圖費：新台幣 3,100 元\n- 未封頂合計：新台幣 11,100 元\n- 應付總額：新台幣 11,100 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f537dcf7-763e-49ef-b459-d686d624c099",
+        "text": "對試算第 3 行，拍攝費為 12,000 元、修圖費為 4,000 元、未封頂合計為 16,000 元、應付總額為 12,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 行列出的拍攝費、修圖費、未封頂合計及應付總額均符合指定金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**拍攝 5 小時，修圖 30 張**\n- 拍攝費：新台幣 12,000 元\n- 修圖費：新台幣 4,000 元\n- 未封頂合計：新台幣 16,000 元\n- 應付總額：新台幣 12,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2f5fcea1-6093-45c5-a00d-bd751b28f1c9",
+        "text": "三行結果皆清楚標示拍攝費、修圖費、未封頂合計及應付總額，並以新台幣金額呈現。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三行結果各自清楚標示四項費用，且所有金額均以新台幣呈現。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**拍攝 2 小時，修圖 20 張**\n- 拍攝費：新台幣 6,000 元\n- 修圖費：新台幣 3,000 元\n- 未封頂合計：新台幣 9,000 元\n- 應付總額：新台幣 9,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**拍攝 3 小時，修圖 21 張**\n- 拍攝費：新台幣 8,000 元\n- 修圖費：新台幣 3,100 元\n- 未封頂合計：新台幣 11,100 元\n- 應付總額：新台幣 11,100 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**拍攝 5 小時，修圖 30 張**\n- 拍攝費：新台幣 12,000 元\n- 修圖費：新台幣 4,000 元\n- 未封頂合計：新台幣 16,000 元\n- 應付總額：新台幣 12,000 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1509 input and 559 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

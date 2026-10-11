@@ -1,0 +1,206 @@
+{
+  "round": 1,
+  "sample_input": "請分別檢查並計算以下租借清單；若資料有問題，請指出問題並請我確認或修正。\n清單 A\n租借起日：2026-11-03\n租借天數：2\n桌子：3 張\n椅子：4 張\n投影機：1 台\n\n清單 B\n租借起日：2026-02-30\n租借天數：2\n桌子：-1 張\n椅子：4 張\n椅子：5 張",
+  "acceptance_criteria": [
+    {
+      "text": "對「清單 A」，Skill 將 2026-11-03 判定為有效日期，列出桌子 3 張、椅子 4 張、投影機 1 台的每日小計 2,220 元，並以 2 天計算總額 4,440 元。"
+    },
+    {
+      "text": "對「清單 B」，Skill 將 2026-02-30 指出為不存在的日期，並請使用者修正或確認，不輸出該清單總額。"
+    },
+    {
+      "text": "對「清單 B」，Skill 指出椅子同時列有 4 張與 5 張的數量矛盾，並請使用者確認，不自行選值或輸出該清單總額。"
+    },
+    {
+      "text": "對「清單 B」，Skill 指出桌子數量 -1 為負數，並請使用者修正或確認，不輸出該清單總額。"
+    },
+    {
+      "text": "Skill 對清單 A 與清單 B 分別處理：清單 B 的問題不妨礙清單 A 顯示其計算結果，但清單 B 不得產生總額。"
+    }
+  ],
+  "final_output": "固定單價：桌子每張每日 200 元；椅子每張每日 30 元；投影機每台每日 1500 元。\n\n清單 A  \n資料檢查：\n- 通過；起日為有效日期，天數與數量符合規則。\n- 桌子：3；單價 200 元／件／日；每日小計 600 元。\n- 椅子：4；單價 30 元／件／日；每日小計 120 元。\n- 投影機：1；單價 1500 元／件／日；每日小計 1500 元。\n- 租借起日：2026-11-03。\n- 租借天數：2 天。\n- 每日小計：2220 元。\n- 總額：2220 × 2 = 4440 元。\n\n清單 B  \n資料檢查：\n- 租借起日值「2026-02-30」不是有效的 YYYY-MM-DD 日曆日期；請確認或修正。\n- 桌子數量「-1 張」是負數；請確認或修正。\n- 椅子出現互相矛盾的值「4 張」、「5 張」；請確認應採用的值。\n\n此清單有待確認或修正的資料，未計算總額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "bd966550-96fe-4369-a3d9-914b0b5d2156",
+    "run_id": "00318dcd-933b-4c7d-888b-8434b59c596a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "清單 A 的日期驗證與費用計算正確。清單 B 的無效日期、負數數量及椅子數量矛盾均已指出並請求確認或修正，且沒有產生總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "b663882c-0a08-4ab0-ba18-7720d6a4ce44",
+        "text": "對「清單 A」，Skill 將 2026-11-03 判定為有效日期，列出桌子 3 張、椅子 4 張、投影機 1 台的每日小計 2,220 元，並以 2 天計算總額 4,440 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單 A 的起日被判定有效；桌子 3 張、椅子 4 張、投影機 1 台的每日小計合計 2220 元，租借 2 天的總額為 4440 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 通過；起日為有效日期，天數與數量符合規則。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 桌子：3；單價 200 元／件／日；每日小計 600 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 椅子：4；單價 30 元／件／日；每日小計 120 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 投影機：1；單價 1500 元／件／日；每日小計 1500 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 租借起日：2026-11-03。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 每日小計：2220 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 總額：2220 × 2 = 4440 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a56ca5bb-9298-48e5-b1d3-bb16ac4b43e4",
+        "text": "對「清單 B」，Skill 將 2026-02-30 指出為不存在的日期，並請使用者修正或確認，不輸出該清單總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單 B 指出 2026-02-30 不是有效日期，請使用者確認或修正，且未計算該清單總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 租借起日值「2026-02-30」不是有效的 YYYY-MM-DD 日曆日期；請確認或修正。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "此清單有待確認或修正的資料，未計算總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6e709c07-d579-4d65-a5f3-65368e2e4971",
+        "text": "對「清單 B」，Skill 指出椅子同時列有 4 張與 5 張的數量矛盾，並請使用者確認，不自行選值或輸出該清單總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單 B 指出椅子同時列有 4 張和 5 張，請使用者確認採用的數量；未自行選值或計算總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 椅子出現互相矛盾的值「4 張」、「5 張」；請確認應採用的值。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "此清單有待確認或修正的資料，未計算總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8e60c2d8-cc2e-4153-abea-7fc41c1cac82",
+        "text": "對「清單 B」，Skill 指出桌子數量 -1 為負數，並請使用者修正或確認，不輸出該清單總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單 B 指出桌子數量 -1 為負數，請使用者確認或修正，且未計算總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 桌子數量「-1 張」是負數；請確認或修正。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "此清單有待確認或修正的資料，未計算總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "105310b3-d793-412f-82d6-873cf1be9891",
+        "text": "Skill 對清單 A 與清單 B 分別處理：清單 B 的問題不妨礙清單 A 顯示其計算結果，但清單 B 不得產生總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆分別處理兩份清單：清單 A 顯示總額 4440 元，清單 B 則因資料待確認而未計算總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "清單 A",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 總額：2220 × 2 = 4440 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "清單 B",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "此清單有待確認或修正的資料，未計算總額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1580 input and 1173 output tokens on skillhub-run; reported cost $0.0042 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 30,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -20,6 +20,7 @@ var wireTypes = map[string]reflect.Type{
 	"AgentToolIntent":               reflect.TypeOf(AgentToolIntent{}),
 	"AnalyzeSearchIntentRequest":    reflect.TypeOf(AnalyzeIntentRequest{}),
 	"AnalyzeSearchIntentResponse":   reflect.TypeOf(AnalyzeIntentResponse{}),
+	"CreationChallengeCase":         reflect.TypeOf(CreationChallengeCase{}),
 	"CreationDraftValidation":       reflect.TypeOf(CreationDraftValidation{}),
 	"CreationDiagramDecomposition":  reflect.TypeOf(DiagramDecomposition{}),
 	"CreationDiagramInterpretation": reflect.TypeOf(DiagramInterpretation{}),

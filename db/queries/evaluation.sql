@@ -166,3 +166,13 @@ SELECT run_id, status, overall, created_at, evaluated_at
 FROM evaluations
 WHERE workspace_id = @workspace_id AND superseded_at IS NULL
 ORDER BY created_at DESC, id;
+
+-- name: GetEvaluationSettings :one
+SELECT * FROM evaluation_settings;
+
+-- name: SetEvaluationSettings :one
+INSERT INTO evaluation_settings (judge_panel, reason, set_by)
+VALUES (@judge_panel, @reason, sqlc.narg(set_by))
+ON CONFLICT (singleton) DO UPDATE
+SET judge_panel = EXCLUDED.judge_panel, reason = EXCLUDED.reason, set_by = EXCLUDED.set_by, set_at = now()
+RETURNING *;

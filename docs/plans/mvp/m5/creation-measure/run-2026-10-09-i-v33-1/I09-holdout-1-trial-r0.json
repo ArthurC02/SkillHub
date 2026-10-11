@@ -1,0 +1,166 @@
+{
+  "round": 0,
+  "sample_input": "活動名稱：夜讀・島嶼來信；日期：2026 年 11 月 14 日（週六）；時間：晚上 7:00 到 9:00；地點：巷口書店 2 樓（台南市中西區民權路二段 88 號）；介紹：一起朗讀五封寄自離島的信，現場有熱茶。",
+  "acceptance_criteria": [
+    {
+      "text": "貼文含完整活動名稱「夜讀・島嶼來信」"
+    },
+    {
+      "text": "貼文含日期 11 月 14 日（若寫週幾必須是週六）"
+    },
+    {
+      "text": "貼文含時間晚上 7:00 到 9:00（或 19:00 到 21:00）"
+    },
+    {
+      "text": "貼文含地點巷口書店 2 樓與台南市中西區民權路二段 88 號"
+    },
+    {
+      "text": "貼文沒有編造店員沒給的資訊，例如講者、票價、報名方式或優惠"
+    }
+  ],
+  "final_output": "夜讀・島嶼來信\n\n日期：2026 年 11 月 14 日（週六）  \n時間：晚上 7:00 到 9:00  \n地點：巷口書店 2 樓（台南市中西區民權路二段 88 號）\n\n一起朗讀五封寄自離島的信，現場有熱茶。邀你在夜裡，一起讀信。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f1641086-8b8b-4949-8606-c648e32b3a0e",
+    "run_id": "f575c64f-ac06-4242-8917-c14dd77e199d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "貼文完整呈現活動名稱、日期、時間與地點，且未編造額外活動資訊；五項標準均符合。",
+    "criterion_results": [
+      {
+        "criterion_id": "eec9815a-d913-451f-af88-0b7002b80481",
+        "text": "貼文含完整活動名稱「夜讀・島嶼來信」",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文包含完整活動名稱。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "夜讀・島嶼來信",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fcbb3921-75e3-417a-ae08-736cb0e717d2",
+        "text": "貼文含日期 11 月 14 日（若寫週幾必須是週六）",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文寫明 11 月 14 日，並正確標示週六。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "日期：2026 年 11 月 14 日（週六）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2ad9b730-60b3-4ef1-b1c1-30a481f982b4",
+        "text": "貼文含時間晚上 7:00 到 9:00（或 19:00 到 21:00）",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文寫明晚上 7:00 到 9:00。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "時間：晚上 7:00 到 9:00",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "71823832-2be7-447c-9662-3b1a49a43a1b",
+        "text": "貼文含地點巷口書店 2 樓與台南市中西區民權路二段 88 號",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文包含書店樓層及完整地址。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "地點：巷口書店 2 樓（台南市中西區民權路二段 88 號）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b006ed16-83e8-4f9b-8377-e390428ed464",
+        "text": "貼文沒有編造店員沒給的資訊，例如講者、票價、報名方式或優惠",
+        "result": "passed",
+        "source": "model",
+        "reason": "貼文僅使用提供的活動資訊及一般邀請語，未添加講者、票價、報名方式或優惠等資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "夜讀・島嶼來信",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "日期：2026 年 11 月 14 日（週六）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "時間：晚上 7:00 到 9:00",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "地點：巷口書店 2 樓（台南市中西區民權路二段 88 號）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "一起朗讀五封寄自離島的信，現場有熱茶。邀你在夜裡，一起讀信。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1492 input and 513 output tokens on skillhub-run; reported cost $0.0029 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

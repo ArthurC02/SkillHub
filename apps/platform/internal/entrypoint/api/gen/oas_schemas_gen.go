@@ -59,7 +59,8 @@ type AcceptanceCriterion struct {
 	Source AcceptanceCriterionSource `json:"source"`
 	// When the user explicitly agreed to this wording. Null means proposed but not confirmed. Editing the
 	// text clears it.
-	ConfirmedAt NilDateTime `json:"confirmed_at"`
+	ConfirmedAt NilDateTime       `json:"confirmed_at"`
+	Check       OptCriterionCheck `json:"check"`
 }
 
 // GetID returns the value of ID.
@@ -82,6 +83,11 @@ func (s *AcceptanceCriterion) GetConfirmedAt() NilDateTime {
 	return s.ConfirmedAt
 }
 
+// GetCheck returns the value of Check.
+func (s *AcceptanceCriterion) GetCheck() OptCriterionCheck {
+	return s.Check
+}
+
 // SetID sets the value of ID.
 func (s *AcceptanceCriterion) SetID(val string) {
 	s.ID = val
@@ -100,6 +106,11 @@ func (s *AcceptanceCriterion) SetSource(val AcceptanceCriterionSource) {
 // SetConfirmedAt sets the value of ConfirmedAt.
 func (s *AcceptanceCriterion) SetConfirmedAt(val NilDateTime) {
 	s.ConfirmedAt = val
+}
+
+// SetCheck sets the value of Check.
+func (s *AcceptanceCriterion) SetCheck(val OptCriterionCheck) {
+	s.Check = val
 }
 
 // Who proposed the condition. `suggested` is reserved for TEST-002's automatic suggestion so EVAL-001
@@ -431,6 +442,7 @@ type AddAcceptanceCriterionReq struct {
 	// drops the label makes that impossible. Editing the text later re-labels it `user`, because by then
 	// the words are theirs.
 	Source OptAddAcceptanceCriterionReqSource `json:"source"`
+	Check  OptCriterionCheck                  `json:"check"`
 }
 
 // GetText returns the value of Text.
@@ -443,6 +455,11 @@ func (s *AddAcceptanceCriterionReq) GetSource() OptAddAcceptanceCriterionReqSour
 	return s.Source
 }
 
+// GetCheck returns the value of Check.
+func (s *AddAcceptanceCriterionReq) GetCheck() OptCriterionCheck {
+	return s.Check
+}
+
 // SetText sets the value of Text.
 func (s *AddAcceptanceCriterionReq) SetText(val string) {
 	s.Text = val
@@ -451,6 +468,11 @@ func (s *AddAcceptanceCriterionReq) SetText(val string) {
 // SetSource sets the value of Source.
 func (s *AddAcceptanceCriterionReq) SetSource(val OptAddAcceptanceCriterionReqSource) {
 	s.Source = val
+}
+
+// SetCheck sets the value of Check.
+func (s *AddAcceptanceCriterionReq) SetCheck(val OptCriterionCheck) {
+	s.Check = val
 }
 
 // Who wrote the wording. `suggested` is for text taken verbatim from a suggestion — EVAL-001 reads
@@ -1669,6 +1691,276 @@ func (s *CategorizedFindings) SetInfos(val []Finding) {
 
 func (*CategorizedFindings) saveSkillVersionRes() {}
 
+// Ref: #/components/schemas/CheckKind
+type CheckKind struct {
+	Kind        string            `json:"kind"`
+	Category    CheckKindCategory `json:"category"`
+	Label       string            `json:"label"`
+	Description string            `json:"description"`
+	Values      CheckKindValues   `json:"values"`
+	Children    CheckKindChildren `json:"children"`
+	// Whether the kind takes `at_least`.
+	AtLeast bool `json:"at_least"`
+}
+
+// GetKind returns the value of Kind.
+func (s *CheckKind) GetKind() string {
+	return s.Kind
+}
+
+// GetCategory returns the value of Category.
+func (s *CheckKind) GetCategory() CheckKindCategory {
+	return s.Category
+}
+
+// GetLabel returns the value of Label.
+func (s *CheckKind) GetLabel() string {
+	return s.Label
+}
+
+// GetDescription returns the value of Description.
+func (s *CheckKind) GetDescription() string {
+	return s.Description
+}
+
+// GetValues returns the value of Values.
+func (s *CheckKind) GetValues() CheckKindValues {
+	return s.Values
+}
+
+// GetChildren returns the value of Children.
+func (s *CheckKind) GetChildren() CheckKindChildren {
+	return s.Children
+}
+
+// GetAtLeast returns the value of AtLeast.
+func (s *CheckKind) GetAtLeast() bool {
+	return s.AtLeast
+}
+
+// SetKind sets the value of Kind.
+func (s *CheckKind) SetKind(val string) {
+	s.Kind = val
+}
+
+// SetCategory sets the value of Category.
+func (s *CheckKind) SetCategory(val CheckKindCategory) {
+	s.Category = val
+}
+
+// SetLabel sets the value of Label.
+func (s *CheckKind) SetLabel(val string) {
+	s.Label = val
+}
+
+// SetDescription sets the value of Description.
+func (s *CheckKind) SetDescription(val string) {
+	s.Description = val
+}
+
+// SetValues sets the value of Values.
+func (s *CheckKind) SetValues(val CheckKindValues) {
+	s.Values = val
+}
+
+// SetChildren sets the value of Children.
+func (s *CheckKind) SetChildren(val CheckKindChildren) {
+	s.Children = val
+}
+
+// SetAtLeast sets the value of AtLeast.
+func (s *CheckKind) SetAtLeast(val bool) {
+	s.AtLeast = val
+}
+
+type CheckKindCategory string
+
+const (
+	CheckKindCategoryGrader    CheckKindCategory = "grader"
+	CheckKindCategoryComposite CheckKindCategory = "composite"
+)
+
+// AllValues returns all CheckKindCategory values.
+func (CheckKindCategory) AllValues() []CheckKindCategory {
+	return []CheckKindCategory{
+		CheckKindCategoryGrader,
+		CheckKindCategoryComposite,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CheckKindCategory) MarshalText() ([]byte, error) {
+	switch s {
+	case CheckKindCategoryGrader:
+		return []byte(s), nil
+	case CheckKindCategoryComposite:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CheckKindCategory) UnmarshalText(data []byte) error {
+	switch CheckKindCategory(data) {
+	case CheckKindCategoryGrader:
+		*s = CheckKindCategoryGrader
+		return nil
+	case CheckKindCategoryComposite:
+		*s = CheckKindCategoryComposite
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type CheckKindChildren struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
+}
+
+// GetMin returns the value of Min.
+func (s *CheckKindChildren) GetMin() int {
+	return s.Min
+}
+
+// GetMax returns the value of Max.
+func (s *CheckKindChildren) GetMax() int {
+	return s.Max
+}
+
+// SetMin sets the value of Min.
+func (s *CheckKindChildren) SetMin(val int) {
+	s.Min = val
+}
+
+// SetMax sets the value of Max.
+func (s *CheckKindChildren) SetMax(val int) {
+	s.Max = val
+}
+
+type CheckKindValues struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
+}
+
+// GetMin returns the value of Min.
+func (s *CheckKindValues) GetMin() int {
+	return s.Min
+}
+
+// GetMax returns the value of Max.
+func (s *CheckKindValues) GetMax() int {
+	return s.Max
+}
+
+// SetMin sets the value of Min.
+func (s *CheckKindValues) SetMin(val int) {
+	s.Min = val
+}
+
+// SetMax sets the value of Max.
+func (s *CheckKindValues) SetMax(val int) {
+	s.Max = val
+}
+
+// Ref: #/components/schemas/CheckStep
+type CheckStep struct {
+	// The node's place in the tree: 0 is the root, 0.1 its second child.
+	Path   string          `json:"path"`
+	Kind   string          `json:"kind"`
+	Result CheckStepResult `json:"result"`
+	Reason string          `json:"reason"`
+}
+
+// GetPath returns the value of Path.
+func (s *CheckStep) GetPath() string {
+	return s.Path
+}
+
+// GetKind returns the value of Kind.
+func (s *CheckStep) GetKind() string {
+	return s.Kind
+}
+
+// GetResult returns the value of Result.
+func (s *CheckStep) GetResult() CheckStepResult {
+	return s.Result
+}
+
+// GetReason returns the value of Reason.
+func (s *CheckStep) GetReason() string {
+	return s.Reason
+}
+
+// SetPath sets the value of Path.
+func (s *CheckStep) SetPath(val string) {
+	s.Path = val
+}
+
+// SetKind sets the value of Kind.
+func (s *CheckStep) SetKind(val string) {
+	s.Kind = val
+}
+
+// SetResult sets the value of Result.
+func (s *CheckStep) SetResult(val CheckStepResult) {
+	s.Result = val
+}
+
+// SetReason sets the value of Reason.
+func (s *CheckStep) SetReason(val string) {
+	s.Reason = val
+}
+
+type CheckStepResult string
+
+const (
+	CheckStepResultPassed       CheckStepResult = "passed"
+	CheckStepResultFailed       CheckStepResult = "failed"
+	CheckStepResultUndetermined CheckStepResult = "undetermined"
+)
+
+// AllValues returns all CheckStepResult values.
+func (CheckStepResult) AllValues() []CheckStepResult {
+	return []CheckStepResult{
+		CheckStepResultPassed,
+		CheckStepResultFailed,
+		CheckStepResultUndetermined,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CheckStepResult) MarshalText() ([]byte, error) {
+	switch s {
+	case CheckStepResultPassed:
+		return []byte(s), nil
+	case CheckStepResultFailed:
+		return []byte(s), nil
+	case CheckStepResultUndetermined:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CheckStepResult) UnmarshalText(data []byte) error {
+	switch CheckStepResult(data) {
+	case CheckStepResultPassed:
+		*s = CheckStepResultPassed
+		return nil
+	case CheckStepResultFailed:
+		*s = CheckStepResultFailed
+		return nil
+	case CheckStepResultUndetermined:
+		*s = CheckStepResultUndetermined
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type ClearModelCallBudgetBadRequest Error
 
 func (*ClearModelCallBudgetBadRequest) clearModelCallBudgetRes() {}
@@ -1723,6 +2015,144 @@ func (s *ClearSkillRestrictionReq) GetNote() string {
 func (s *ClearSkillRestrictionReq) SetNote(val string) {
 	s.Note = val
 }
+
+type CompareEvaluationBatchesNotFound Error
+
+func (*CompareEvaluationBatchesNotFound) compareEvaluationBatchesRes() {}
+
+type CompareEvaluationBatchesOK struct {
+	Baseline  EvaluationBatch `json:"baseline"`
+	Candidate EvaluationBatch `json:"candidate"`
+	Paired    int             `json:"paired"`
+	Unpaired  int             `json:"unpaired"`
+	// Mean of candidate minus baseline pass rate per test case.
+	Difference      OptFloat64                                `json:"difference"`
+	Difference95    OptCompareEvaluationBatchesOKDifference95 `json:"difference_95"`
+	CandidateBetter int                                       `json:"candidate_better"`
+	BaselineBetter  int                                       `json:"baseline_better"`
+	Tied            int                                       `json:"tied"`
+}
+
+// GetBaseline returns the value of Baseline.
+func (s *CompareEvaluationBatchesOK) GetBaseline() EvaluationBatch {
+	return s.Baseline
+}
+
+// GetCandidate returns the value of Candidate.
+func (s *CompareEvaluationBatchesOK) GetCandidate() EvaluationBatch {
+	return s.Candidate
+}
+
+// GetPaired returns the value of Paired.
+func (s *CompareEvaluationBatchesOK) GetPaired() int {
+	return s.Paired
+}
+
+// GetUnpaired returns the value of Unpaired.
+func (s *CompareEvaluationBatchesOK) GetUnpaired() int {
+	return s.Unpaired
+}
+
+// GetDifference returns the value of Difference.
+func (s *CompareEvaluationBatchesOK) GetDifference() OptFloat64 {
+	return s.Difference
+}
+
+// GetDifference95 returns the value of Difference95.
+func (s *CompareEvaluationBatchesOK) GetDifference95() OptCompareEvaluationBatchesOKDifference95 {
+	return s.Difference95
+}
+
+// GetCandidateBetter returns the value of CandidateBetter.
+func (s *CompareEvaluationBatchesOK) GetCandidateBetter() int {
+	return s.CandidateBetter
+}
+
+// GetBaselineBetter returns the value of BaselineBetter.
+func (s *CompareEvaluationBatchesOK) GetBaselineBetter() int {
+	return s.BaselineBetter
+}
+
+// GetTied returns the value of Tied.
+func (s *CompareEvaluationBatchesOK) GetTied() int {
+	return s.Tied
+}
+
+// SetBaseline sets the value of Baseline.
+func (s *CompareEvaluationBatchesOK) SetBaseline(val EvaluationBatch) {
+	s.Baseline = val
+}
+
+// SetCandidate sets the value of Candidate.
+func (s *CompareEvaluationBatchesOK) SetCandidate(val EvaluationBatch) {
+	s.Candidate = val
+}
+
+// SetPaired sets the value of Paired.
+func (s *CompareEvaluationBatchesOK) SetPaired(val int) {
+	s.Paired = val
+}
+
+// SetUnpaired sets the value of Unpaired.
+func (s *CompareEvaluationBatchesOK) SetUnpaired(val int) {
+	s.Unpaired = val
+}
+
+// SetDifference sets the value of Difference.
+func (s *CompareEvaluationBatchesOK) SetDifference(val OptFloat64) {
+	s.Difference = val
+}
+
+// SetDifference95 sets the value of Difference95.
+func (s *CompareEvaluationBatchesOK) SetDifference95(val OptCompareEvaluationBatchesOKDifference95) {
+	s.Difference95 = val
+}
+
+// SetCandidateBetter sets the value of CandidateBetter.
+func (s *CompareEvaluationBatchesOK) SetCandidateBetter(val int) {
+	s.CandidateBetter = val
+}
+
+// SetBaselineBetter sets the value of BaselineBetter.
+func (s *CompareEvaluationBatchesOK) SetBaselineBetter(val int) {
+	s.BaselineBetter = val
+}
+
+// SetTied sets the value of Tied.
+func (s *CompareEvaluationBatchesOK) SetTied(val int) {
+	s.Tied = val
+}
+
+func (*CompareEvaluationBatchesOK) compareEvaluationBatchesRes() {}
+
+type CompareEvaluationBatchesOKDifference95 struct {
+	Low  float64 `json:"low"`
+	High float64 `json:"high"`
+}
+
+// GetLow returns the value of Low.
+func (s *CompareEvaluationBatchesOKDifference95) GetLow() float64 {
+	return s.Low
+}
+
+// GetHigh returns the value of High.
+func (s *CompareEvaluationBatchesOKDifference95) GetHigh() float64 {
+	return s.High
+}
+
+// SetLow sets the value of Low.
+func (s *CompareEvaluationBatchesOKDifference95) SetLow(val float64) {
+	s.Low = val
+}
+
+// SetHigh sets the value of High.
+func (s *CompareEvaluationBatchesOKDifference95) SetHigh(val float64) {
+	s.High = val
+}
+
+type CompareEvaluationBatchesUnauthorized Error
+
+func (*CompareEvaluationBatchesUnauthorized) compareEvaluationBatchesRes() {}
 
 type CompareRunsBadRequest Error
 
@@ -1826,6 +2256,40 @@ func (*ConfirmRunPreflightUnauthorized) confirmRunPreflightRes() {}
 type ConfirmRunPreflightUnprocessableEntity Error
 
 func (*ConfirmRunPreflightUnprocessableEntity) confirmRunPreflightRes() {}
+
+type ContinueRunBadRequest Error
+
+func (*ContinueRunBadRequest) continueRunRes() {}
+
+type ContinueRunConflict Error
+
+func (*ContinueRunConflict) continueRunRes() {}
+
+type ContinueRunNotFound Error
+
+func (*ContinueRunNotFound) continueRunRes() {}
+
+type ContinueRunReq struct {
+	Answers []string `json:"answers"`
+}
+
+// GetAnswers returns the value of Answers.
+func (s *ContinueRunReq) GetAnswers() []string {
+	return s.Answers
+}
+
+// SetAnswers sets the value of Answers.
+func (s *ContinueRunReq) SetAnswers(val []string) {
+	s.Answers = val
+}
+
+type ContinueRunUnauthorized Error
+
+func (*ContinueRunUnauthorized) continueRunRes() {}
+
+type ContinueRunUnprocessableEntity Error
+
+func (*ContinueRunUnprocessableEntity) continueRunRes() {}
 
 // Ref: #/components/schemas/CorrectedSearchRequest
 type CorrectedSearchRequest struct {
@@ -2605,6 +3069,81 @@ func (s *CreateDownloadArtifactUnprocessableEntity) SetValidation(val OptPackage
 
 func (*CreateDownloadArtifactUnprocessableEntity) createDownloadArtifactRes() {}
 
+type CreateEvaluationBatchBadRequest Error
+
+func (*CreateEvaluationBatchBadRequest) createEvaluationBatchRes() {}
+
+type CreateEvaluationBatchNotFound Error
+
+func (*CreateEvaluationBatchNotFound) createEvaluationBatchRes() {}
+
+type CreateEvaluationBatchReq struct {
+	SkillVersionID uuid.UUID   `json:"skill_version_id"`
+	TestCaseIds    []uuid.UUID `json:"test_case_ids"`
+	Trials         int         `json:"trials"`
+}
+
+// GetSkillVersionID returns the value of SkillVersionID.
+func (s *CreateEvaluationBatchReq) GetSkillVersionID() uuid.UUID {
+	return s.SkillVersionID
+}
+
+// GetTestCaseIds returns the value of TestCaseIds.
+func (s *CreateEvaluationBatchReq) GetTestCaseIds() []uuid.UUID {
+	return s.TestCaseIds
+}
+
+// GetTrials returns the value of Trials.
+func (s *CreateEvaluationBatchReq) GetTrials() int {
+	return s.Trials
+}
+
+// SetSkillVersionID sets the value of SkillVersionID.
+func (s *CreateEvaluationBatchReq) SetSkillVersionID(val uuid.UUID) {
+	s.SkillVersionID = val
+}
+
+// SetTestCaseIds sets the value of TestCaseIds.
+func (s *CreateEvaluationBatchReq) SetTestCaseIds(val []uuid.UUID) {
+	s.TestCaseIds = val
+}
+
+// SetTrials sets the value of Trials.
+func (s *CreateEvaluationBatchReq) SetTrials(val int) {
+	s.Trials = val
+}
+
+type CreateEvaluationBatchUnauthorized Error
+
+func (*CreateEvaluationBatchUnauthorized) createEvaluationBatchRes() {}
+
+type CreateEvaluationBatchUnprocessableEntity struct {
+	Error                  string      `json:"error"`
+	UnconfirmedTestCaseIds []uuid.UUID `json:"unconfirmed_test_case_ids"`
+}
+
+// GetError returns the value of Error.
+func (s *CreateEvaluationBatchUnprocessableEntity) GetError() string {
+	return s.Error
+}
+
+// GetUnconfirmedTestCaseIds returns the value of UnconfirmedTestCaseIds.
+func (s *CreateEvaluationBatchUnprocessableEntity) GetUnconfirmedTestCaseIds() []uuid.UUID {
+	return s.UnconfirmedTestCaseIds
+}
+
+// SetError sets the value of Error.
+func (s *CreateEvaluationBatchUnprocessableEntity) SetError(val string) {
+	s.Error = val
+}
+
+// SetUnconfirmedTestCaseIds sets the value of UnconfirmedTestCaseIds.
+func (s *CreateEvaluationBatchUnprocessableEntity) SetUnconfirmedTestCaseIds(val []uuid.UUID) {
+	s.UnconfirmedTestCaseIds = val
+}
+
+func (*CreateEvaluationBatchUnprocessableEntity) createEvaluationBatchRes() {}
+
 type CreateSkillVersionFromSuggestionsBadRequest Error
 
 func (*CreateSkillVersionFromSuggestionsBadRequest) createSkillVersionFromSuggestionsRes() {}
@@ -3232,6 +3771,9 @@ type CreationCandidate struct {
 	// The Test Case Go created from the confirmed acceptance criteria when this candidate was
 	// materialized.
 	TestCaseID OptUUID `json:"test_case_id"`
+	// One Test Case per confirmed challenge case, created alongside test_case_id when this candidate was
+	// materialized.
+	ChallengeTestCaseIds []uuid.UUID `json:"challenge_test_case_ids"`
 }
 
 // GetSkillID returns the value of SkillID.
@@ -3254,6 +3796,11 @@ func (s *CreationCandidate) GetTestCaseID() OptUUID {
 	return s.TestCaseID
 }
 
+// GetChallengeTestCaseIds returns the value of ChallengeTestCaseIds.
+func (s *CreationCandidate) GetChallengeTestCaseIds() []uuid.UUID {
+	return s.ChallengeTestCaseIds
+}
+
 // SetSkillID sets the value of SkillID.
 func (s *CreationCandidate) SetSkillID(val uuid.UUID) {
 	s.SkillID = val
@@ -3272,6 +3819,48 @@ func (s *CreationCandidate) SetRunID(val OptUUID) {
 // SetTestCaseID sets the value of TestCaseID.
 func (s *CreationCandidate) SetTestCaseID(val OptUUID) {
 	s.TestCaseID = val
+}
+
+// SetChallengeTestCaseIds sets the value of ChallengeTestCaseIds.
+func (s *CreationCandidate) SetChallengeTestCaseIds(val []uuid.UUID) {
+	s.ChallengeTestCaseIds = val
+}
+
+// Ref: #/components/schemas/CreationChallengeCase
+type CreationChallengeCase struct {
+	Name     string   `json:"name"`
+	Prompt   string   `json:"prompt"`
+	Criteria []string `json:"criteria"`
+}
+
+// GetName returns the value of Name.
+func (s *CreationChallengeCase) GetName() string {
+	return s.Name
+}
+
+// GetPrompt returns the value of Prompt.
+func (s *CreationChallengeCase) GetPrompt() string {
+	return s.Prompt
+}
+
+// GetCriteria returns the value of Criteria.
+func (s *CreationChallengeCase) GetCriteria() []string {
+	return s.Criteria
+}
+
+// SetName sets the value of Name.
+func (s *CreationChallengeCase) SetName(val string) {
+	s.Name = val
+}
+
+// SetPrompt sets the value of Prompt.
+func (s *CreationChallengeCase) SetPrompt(val string) {
+	s.Prompt = val
+}
+
+// SetCriteria sets the value of Criteria.
+func (s *CreationChallengeCase) SetCriteria(val []string) {
+	s.Criteria = val
 }
 
 // Ref: #/components/schemas/CreationDiagramInterpretation
@@ -4216,9 +4805,12 @@ type CreationSnapshot struct {
 	AcceptanceCriteria []string `json:"acceptance_criteria"`
 	// The example input proposed with the brief and confirmed by the same confirm_brief; it is the prompt
 	// of the candidate's Test Case. Empty until proposed.
-	SampleInput    OptString              `json:"sample_input"`
-	BriefConfirmed bool                   `json:"brief_confirmed"`
-	ModelChanged   OptCreationModelChange `json:"model_changed"`
+	SampleInput OptString `json:"sample_input"`
+	// Inputs the sample does not exercise, written by a second call that sees only the brief, the criteria
+	// and the sample; confirmed by the same confirm_brief, each becomes its own Test Case at materialize.
+	ChallengeCases []CreationChallengeCase `json:"challenge_cases"`
+	BriefConfirmed bool                    `json:"brief_confirmed"`
+	ModelChanged   OptCreationModelChange  `json:"model_changed"`
 	// Legacy one-phase diagram interpretation. It remains readable for an existing session but cannot
 	// authorize a draft; upload the image again to use the checkpointed flow.
 	DiagramUnderstanding string `json:"diagram_understanding"`
@@ -4310,6 +4902,11 @@ func (s *CreationSnapshot) GetAcceptanceCriteria() []string {
 // GetSampleInput returns the value of SampleInput.
 func (s *CreationSnapshot) GetSampleInput() OptString {
 	return s.SampleInput
+}
+
+// GetChallengeCases returns the value of ChallengeCases.
+func (s *CreationSnapshot) GetChallengeCases() []CreationChallengeCase {
+	return s.ChallengeCases
 }
 
 // GetBriefConfirmed returns the value of BriefConfirmed.
@@ -4515,6 +5112,11 @@ func (s *CreationSnapshot) SetAcceptanceCriteria(val []string) {
 // SetSampleInput sets the value of SampleInput.
 func (s *CreationSnapshot) SetSampleInput(val OptString) {
 	s.SampleInput = val
+}
+
+// SetChallengeCases sets the value of ChallengeCases.
+func (s *CreationSnapshot) SetChallengeCases(val []CreationChallengeCase) {
+	s.ChallengeCases = val
 }
 
 // SetBriefConfirmed sets the value of BriefConfirmed.
@@ -5214,6 +5816,61 @@ func (s *CreditTrend) SetBalanceTotal(val int64) {
 
 func (*CreditTrend) getCreditTrendRes() {}
 
+// How a criterion is decided, as a tree. A grader node decides from the run's own records
+// (`contains_values`, `asks`, `does_not_ask`) or asks the judge model about the criterion's text
+// (`judge`); a composite node combines its children in sequence, all, any, if or each. The kinds, the
+// number of values and children each takes, and their labels come from GET /evaluation/check-kinds, so
+// a new kind needs no contract change. A criterion without a check goes to the judge. The result is
+// labelled `rule` unless the judge was consulted.
+// Ref: #/components/schemas/CriterionCheck
+type CriterionCheck struct {
+	Kind     string           `json:"kind"`
+	Values   []string         `json:"values"`
+	Children []CriterionCheck `json:"children"`
+	// For `each`, how many items must pass; 0 means every item.
+	AtLeast OptInt `json:"at_least"`
+}
+
+// GetKind returns the value of Kind.
+func (s *CriterionCheck) GetKind() string {
+	return s.Kind
+}
+
+// GetValues returns the value of Values.
+func (s *CriterionCheck) GetValues() []string {
+	return s.Values
+}
+
+// GetChildren returns the value of Children.
+func (s *CriterionCheck) GetChildren() []CriterionCheck {
+	return s.Children
+}
+
+// GetAtLeast returns the value of AtLeast.
+func (s *CriterionCheck) GetAtLeast() OptInt {
+	return s.AtLeast
+}
+
+// SetKind sets the value of Kind.
+func (s *CriterionCheck) SetKind(val string) {
+	s.Kind = val
+}
+
+// SetValues sets the value of Values.
+func (s *CriterionCheck) SetValues(val []string) {
+	s.Values = val
+}
+
+// SetChildren sets the value of Children.
+func (s *CriterionCheck) SetChildren(val []CriterionCheck) {
+	s.Children = val
+}
+
+// SetAtLeast sets the value of AtLeast.
+func (s *CriterionCheck) SetAtLeast(val OptInt) {
+	s.AtLeast = val
+}
+
 // One acceptance criterion's verdict. `criterion_id` refers to the run's frozen test case snapshot, so
 // editing the draft afterwards cannot rewrite what was judged (iron rule 4).
 // Ref: #/components/schemas/CriterionResult
@@ -5234,6 +5891,8 @@ type CriterionResult struct {
 	// deterministic check over the platform's own records, `user` is a person's verdict recorded over the
 	// automated one.
 	Source CriterionResultSource `json:"source"`
+	// For a criterion decided by a check tree, every node that ran, children before their parent.
+	Steps []CheckStep `json:"steps"`
 	// What the verdict rests on. Every reference a model returns is re-checked server-side before it is
 	// stored; one that does not resolve drops the verdict to `undetermined` instead of being passed
 	// through as given.
@@ -5261,6 +5920,11 @@ func (s *CriterionResult) GetResult() CriterionResultResult {
 // GetSource returns the value of Source.
 func (s *CriterionResult) GetSource() CriterionResultSource {
 	return s.Source
+}
+
+// GetSteps returns the value of Steps.
+func (s *CriterionResult) GetSteps() []CheckStep {
+	return s.Steps
 }
 
 // GetEvidence returns the value of Evidence.
@@ -5291,6 +5955,11 @@ func (s *CriterionResult) SetResult(val CriterionResultResult) {
 // SetSource sets the value of Source.
 func (s *CriterionResult) SetSource(val CriterionResultSource) {
 	s.Source = val
+}
+
+// SetSteps sets the value of Steps.
+func (s *CriterionResult) SetSteps(val []CheckStep) {
+	s.Steps = val
 }
 
 // SetEvidence sets the value of Evidence.
@@ -7200,9 +7869,13 @@ func (*Error) getDispatchStatusRes()               {}
 func (*Error) getExposureCaseRes()                 {}
 func (*Error) getMeRes()                           {}
 func (*Error) getOperatorRostersRes()              {}
+func (*Error) getPlatformSettingsRes()             {}
 func (*Error) getPublicPublicationRes()            {}
+func (*Error) getRunSettingsRes()                  {}
 func (*Error) getSkillImportLimitsRes()            {}
+func (*Error) listCheckKindsRes()                  {}
 func (*Error) listDownloadArtifactsRes()           {}
+func (*Error) listEvaluationBatchesRes()           {}
 func (*Error) listExposureQueueRes()               {}
 func (*Error) listModelCallBudgetsRes()            {}
 func (*Error) listOwnBundleOverviewRes()           {}
@@ -7455,6 +8128,486 @@ func (s *Evaluation) SetSupersededAt(val OptNilDateTime) {
 
 func (*Evaluation) getRunEvaluationRes()      {}
 func (*Evaluation) setEvaluationFeedbackRes() {}
+
+// Ref: #/components/schemas/EvaluationBatch
+type EvaluationBatch struct {
+	ID             uuid.UUID `json:"id"`
+	SkillID        uuid.UUID `json:"skill_id"`
+	SkillVersionID uuid.UUID `json:"skill_version_id"`
+	Trials         int       `json:"trials"`
+	// `launching` while some trials have not started, `launched` once every trial has its run, `stopped`
+	// when a run was refused for a reason that waiting does not fix.
+	Status EvaluationBatchStatus `json:"status"`
+	// The run refusal reason that stopped the batch; present only when stopped.
+	StopReason OptString `json:"stop_reason"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+// GetID returns the value of ID.
+func (s *EvaluationBatch) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *EvaluationBatch) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetSkillVersionID returns the value of SkillVersionID.
+func (s *EvaluationBatch) GetSkillVersionID() uuid.UUID {
+	return s.SkillVersionID
+}
+
+// GetTrials returns the value of Trials.
+func (s *EvaluationBatch) GetTrials() int {
+	return s.Trials
+}
+
+// GetStatus returns the value of Status.
+func (s *EvaluationBatch) GetStatus() EvaluationBatchStatus {
+	return s.Status
+}
+
+// GetStopReason returns the value of StopReason.
+func (s *EvaluationBatch) GetStopReason() OptString {
+	return s.StopReason
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *EvaluationBatch) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// SetID sets the value of ID.
+func (s *EvaluationBatch) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *EvaluationBatch) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetSkillVersionID sets the value of SkillVersionID.
+func (s *EvaluationBatch) SetSkillVersionID(val uuid.UUID) {
+	s.SkillVersionID = val
+}
+
+// SetTrials sets the value of Trials.
+func (s *EvaluationBatch) SetTrials(val int) {
+	s.Trials = val
+}
+
+// SetStatus sets the value of Status.
+func (s *EvaluationBatch) SetStatus(val EvaluationBatchStatus) {
+	s.Status = val
+}
+
+// SetStopReason sets the value of StopReason.
+func (s *EvaluationBatch) SetStopReason(val OptString) {
+	s.StopReason = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *EvaluationBatch) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+func (*EvaluationBatch) createEvaluationBatchRes() {}
+
+// Ref: #/components/schemas/EvaluationBatchReport
+type EvaluationBatchReport struct {
+	Batch     EvaluationBatch           `json:"batch"`
+	TestCases []EvaluationBatchTestCase `json:"test_cases"`
+	Passed    int                       `json:"passed"`
+	Judged    int                       `json:"judged"`
+	// Passed / judged; absent while nothing is judged.
+	PassRate OptFloat64 `json:"pass_rate"`
+	// Wilson score interval at 95% around pass_rate.
+	PassRate95 OptEvaluationBatchReportPassRate95 `json:"pass_rate_95"`
+	// Test cases that passed every trial.
+	TestCasesAllPassed int `json:"test_cases_all_passed"`
+	// Test cases whose every-trial result is known.
+	TestCasesDecided int `json:"test_cases_decided"`
+}
+
+// GetBatch returns the value of Batch.
+func (s *EvaluationBatchReport) GetBatch() EvaluationBatch {
+	return s.Batch
+}
+
+// GetTestCases returns the value of TestCases.
+func (s *EvaluationBatchReport) GetTestCases() []EvaluationBatchTestCase {
+	return s.TestCases
+}
+
+// GetPassed returns the value of Passed.
+func (s *EvaluationBatchReport) GetPassed() int {
+	return s.Passed
+}
+
+// GetJudged returns the value of Judged.
+func (s *EvaluationBatchReport) GetJudged() int {
+	return s.Judged
+}
+
+// GetPassRate returns the value of PassRate.
+func (s *EvaluationBatchReport) GetPassRate() OptFloat64 {
+	return s.PassRate
+}
+
+// GetPassRate95 returns the value of PassRate95.
+func (s *EvaluationBatchReport) GetPassRate95() OptEvaluationBatchReportPassRate95 {
+	return s.PassRate95
+}
+
+// GetTestCasesAllPassed returns the value of TestCasesAllPassed.
+func (s *EvaluationBatchReport) GetTestCasesAllPassed() int {
+	return s.TestCasesAllPassed
+}
+
+// GetTestCasesDecided returns the value of TestCasesDecided.
+func (s *EvaluationBatchReport) GetTestCasesDecided() int {
+	return s.TestCasesDecided
+}
+
+// SetBatch sets the value of Batch.
+func (s *EvaluationBatchReport) SetBatch(val EvaluationBatch) {
+	s.Batch = val
+}
+
+// SetTestCases sets the value of TestCases.
+func (s *EvaluationBatchReport) SetTestCases(val []EvaluationBatchTestCase) {
+	s.TestCases = val
+}
+
+// SetPassed sets the value of Passed.
+func (s *EvaluationBatchReport) SetPassed(val int) {
+	s.Passed = val
+}
+
+// SetJudged sets the value of Judged.
+func (s *EvaluationBatchReport) SetJudged(val int) {
+	s.Judged = val
+}
+
+// SetPassRate sets the value of PassRate.
+func (s *EvaluationBatchReport) SetPassRate(val OptFloat64) {
+	s.PassRate = val
+}
+
+// SetPassRate95 sets the value of PassRate95.
+func (s *EvaluationBatchReport) SetPassRate95(val OptEvaluationBatchReportPassRate95) {
+	s.PassRate95 = val
+}
+
+// SetTestCasesAllPassed sets the value of TestCasesAllPassed.
+func (s *EvaluationBatchReport) SetTestCasesAllPassed(val int) {
+	s.TestCasesAllPassed = val
+}
+
+// SetTestCasesDecided sets the value of TestCasesDecided.
+func (s *EvaluationBatchReport) SetTestCasesDecided(val int) {
+	s.TestCasesDecided = val
+}
+
+func (*EvaluationBatchReport) getEvaluationBatchReportRes() {}
+
+// Wilson score interval at 95% around pass_rate.
+type EvaluationBatchReportPassRate95 struct {
+	Low  float64 `json:"low"`
+	High float64 `json:"high"`
+}
+
+// GetLow returns the value of Low.
+func (s *EvaluationBatchReportPassRate95) GetLow() float64 {
+	return s.Low
+}
+
+// GetHigh returns the value of High.
+func (s *EvaluationBatchReportPassRate95) GetHigh() float64 {
+	return s.High
+}
+
+// SetLow sets the value of Low.
+func (s *EvaluationBatchReportPassRate95) SetLow(val float64) {
+	s.Low = val
+}
+
+// SetHigh sets the value of High.
+func (s *EvaluationBatchReportPassRate95) SetHigh(val float64) {
+	s.High = val
+}
+
+// `launching` while some trials have not started, `launched` once every trial has its run, `stopped`
+// when a run was refused for a reason that waiting does not fix.
+type EvaluationBatchStatus string
+
+const (
+	EvaluationBatchStatusLaunching EvaluationBatchStatus = "launching"
+	EvaluationBatchStatusLaunched  EvaluationBatchStatus = "launched"
+	EvaluationBatchStatusStopped   EvaluationBatchStatus = "stopped"
+)
+
+// AllValues returns all EvaluationBatchStatus values.
+func (EvaluationBatchStatus) AllValues() []EvaluationBatchStatus {
+	return []EvaluationBatchStatus{
+		EvaluationBatchStatusLaunching,
+		EvaluationBatchStatusLaunched,
+		EvaluationBatchStatusStopped,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s EvaluationBatchStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case EvaluationBatchStatusLaunching:
+		return []byte(s), nil
+	case EvaluationBatchStatusLaunched:
+		return []byte(s), nil
+	case EvaluationBatchStatusStopped:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *EvaluationBatchStatus) UnmarshalText(data []byte) error {
+	switch EvaluationBatchStatus(data) {
+	case EvaluationBatchStatusLaunching:
+		*s = EvaluationBatchStatusLaunching
+		return nil
+	case EvaluationBatchStatusLaunched:
+		*s = EvaluationBatchStatusLaunched
+		return nil
+	case EvaluationBatchStatusStopped:
+		*s = EvaluationBatchStatusStopped
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/EvaluationBatchTestCase
+type EvaluationBatchTestCase struct {
+	TestCaseID uuid.UUID              `json:"test_case_id"`
+	Trials     []EvaluationBatchTrial `json:"trials"`
+	// Trials whose conversation met every criterion.
+	Passed int `json:"passed"`
+	// Trials judged met, partially met or not met.
+	Judged int `json:"judged"`
+	// At least one trial passed; absent until that is known.
+	PassAtK OptBool `json:"pass_at_k"`
+	// Every trial passed; absent until every trial is judged or one has failed.
+	PassAllK OptBool `json:"pass_all_k"`
+	// The test case was edited while the batch ran, so its trials did not all see the same task.
+	PromptVariedAcross bool `json:"prompt_varied_across"`
+}
+
+// GetTestCaseID returns the value of TestCaseID.
+func (s *EvaluationBatchTestCase) GetTestCaseID() uuid.UUID {
+	return s.TestCaseID
+}
+
+// GetTrials returns the value of Trials.
+func (s *EvaluationBatchTestCase) GetTrials() []EvaluationBatchTrial {
+	return s.Trials
+}
+
+// GetPassed returns the value of Passed.
+func (s *EvaluationBatchTestCase) GetPassed() int {
+	return s.Passed
+}
+
+// GetJudged returns the value of Judged.
+func (s *EvaluationBatchTestCase) GetJudged() int {
+	return s.Judged
+}
+
+// GetPassAtK returns the value of PassAtK.
+func (s *EvaluationBatchTestCase) GetPassAtK() OptBool {
+	return s.PassAtK
+}
+
+// GetPassAllK returns the value of PassAllK.
+func (s *EvaluationBatchTestCase) GetPassAllK() OptBool {
+	return s.PassAllK
+}
+
+// GetPromptVariedAcross returns the value of PromptVariedAcross.
+func (s *EvaluationBatchTestCase) GetPromptVariedAcross() bool {
+	return s.PromptVariedAcross
+}
+
+// SetTestCaseID sets the value of TestCaseID.
+func (s *EvaluationBatchTestCase) SetTestCaseID(val uuid.UUID) {
+	s.TestCaseID = val
+}
+
+// SetTrials sets the value of Trials.
+func (s *EvaluationBatchTestCase) SetTrials(val []EvaluationBatchTrial) {
+	s.Trials = val
+}
+
+// SetPassed sets the value of Passed.
+func (s *EvaluationBatchTestCase) SetPassed(val int) {
+	s.Passed = val
+}
+
+// SetJudged sets the value of Judged.
+func (s *EvaluationBatchTestCase) SetJudged(val int) {
+	s.Judged = val
+}
+
+// SetPassAtK sets the value of PassAtK.
+func (s *EvaluationBatchTestCase) SetPassAtK(val OptBool) {
+	s.PassAtK = val
+}
+
+// SetPassAllK sets the value of PassAllK.
+func (s *EvaluationBatchTestCase) SetPassAllK(val OptBool) {
+	s.PassAllK = val
+}
+
+// SetPromptVariedAcross sets the value of PromptVariedAcross.
+func (s *EvaluationBatchTestCase) SetPromptVariedAcross(val bool) {
+	s.PromptVariedAcross = val
+}
+
+// Ref: #/components/schemas/EvaluationBatchTrial
+type EvaluationBatchTrial struct {
+	Trial int `json:"trial"`
+	// Absent until the batch starts this trial.
+	RunID OptUUID `json:"run_id"`
+	// The last run of the conversation this trial started; the same as run_id when nobody answered a
+	// question.
+	EndRunID OptUUID                     `json:"end_run_id"`
+	Outcome  EvaluationBatchTrialOutcome `json:"outcome"`
+}
+
+// GetTrial returns the value of Trial.
+func (s *EvaluationBatchTrial) GetTrial() int {
+	return s.Trial
+}
+
+// GetRunID returns the value of RunID.
+func (s *EvaluationBatchTrial) GetRunID() OptUUID {
+	return s.RunID
+}
+
+// GetEndRunID returns the value of EndRunID.
+func (s *EvaluationBatchTrial) GetEndRunID() OptUUID {
+	return s.EndRunID
+}
+
+// GetOutcome returns the value of Outcome.
+func (s *EvaluationBatchTrial) GetOutcome() EvaluationBatchTrialOutcome {
+	return s.Outcome
+}
+
+// SetTrial sets the value of Trial.
+func (s *EvaluationBatchTrial) SetTrial(val int) {
+	s.Trial = val
+}
+
+// SetRunID sets the value of RunID.
+func (s *EvaluationBatchTrial) SetRunID(val OptUUID) {
+	s.RunID = val
+}
+
+// SetEndRunID sets the value of EndRunID.
+func (s *EvaluationBatchTrial) SetEndRunID(val OptUUID) {
+	s.EndRunID = val
+}
+
+// SetOutcome sets the value of Outcome.
+func (s *EvaluationBatchTrial) SetOutcome(val EvaluationBatchTrialOutcome) {
+	s.Outcome = val
+}
+
+type EvaluationBatchTrialOutcome string
+
+const (
+	EvaluationBatchTrialOutcomePending        EvaluationBatchTrialOutcome = "pending"
+	EvaluationBatchTrialOutcomeRunning        EvaluationBatchTrialOutcome = "running"
+	EvaluationBatchTrialOutcomeAwaitingAnswer EvaluationBatchTrialOutcome = "awaiting_answer"
+	EvaluationBatchTrialOutcomeMet            EvaluationBatchTrialOutcome = "met"
+	EvaluationBatchTrialOutcomePartiallyMet   EvaluationBatchTrialOutcome = "partially_met"
+	EvaluationBatchTrialOutcomeNotMet         EvaluationBatchTrialOutcome = "not_met"
+	EvaluationBatchTrialOutcomeUndetermined   EvaluationBatchTrialOutcome = "undetermined"
+	EvaluationBatchTrialOutcomeNotEvaluated   EvaluationBatchTrialOutcome = "not_evaluated"
+)
+
+// AllValues returns all EvaluationBatchTrialOutcome values.
+func (EvaluationBatchTrialOutcome) AllValues() []EvaluationBatchTrialOutcome {
+	return []EvaluationBatchTrialOutcome{
+		EvaluationBatchTrialOutcomePending,
+		EvaluationBatchTrialOutcomeRunning,
+		EvaluationBatchTrialOutcomeAwaitingAnswer,
+		EvaluationBatchTrialOutcomeMet,
+		EvaluationBatchTrialOutcomePartiallyMet,
+		EvaluationBatchTrialOutcomeNotMet,
+		EvaluationBatchTrialOutcomeUndetermined,
+		EvaluationBatchTrialOutcomeNotEvaluated,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s EvaluationBatchTrialOutcome) MarshalText() ([]byte, error) {
+	switch s {
+	case EvaluationBatchTrialOutcomePending:
+		return []byte(s), nil
+	case EvaluationBatchTrialOutcomeRunning:
+		return []byte(s), nil
+	case EvaluationBatchTrialOutcomeAwaitingAnswer:
+		return []byte(s), nil
+	case EvaluationBatchTrialOutcomeMet:
+		return []byte(s), nil
+	case EvaluationBatchTrialOutcomePartiallyMet:
+		return []byte(s), nil
+	case EvaluationBatchTrialOutcomeNotMet:
+		return []byte(s), nil
+	case EvaluationBatchTrialOutcomeUndetermined:
+		return []byte(s), nil
+	case EvaluationBatchTrialOutcomeNotEvaluated:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *EvaluationBatchTrialOutcome) UnmarshalText(data []byte) error {
+	switch EvaluationBatchTrialOutcome(data) {
+	case EvaluationBatchTrialOutcomePending:
+		*s = EvaluationBatchTrialOutcomePending
+		return nil
+	case EvaluationBatchTrialOutcomeRunning:
+		*s = EvaluationBatchTrialOutcomeRunning
+		return nil
+	case EvaluationBatchTrialOutcomeAwaitingAnswer:
+		*s = EvaluationBatchTrialOutcomeAwaitingAnswer
+		return nil
+	case EvaluationBatchTrialOutcomeMet:
+		*s = EvaluationBatchTrialOutcomeMet
+		return nil
+	case EvaluationBatchTrialOutcomePartiallyMet:
+		*s = EvaluationBatchTrialOutcomePartiallyMet
+		return nil
+	case EvaluationBatchTrialOutcomeNotMet:
+		*s = EvaluationBatchTrialOutcomeNotMet
+		return nil
+	case EvaluationBatchTrialOutcomeUndetermined:
+		*s = EvaluationBatchTrialOutcomeUndetermined
+		return nil
+	case EvaluationBatchTrialOutcomeNotEvaluated:
+		*s = EvaluationBatchTrialOutcomeNotEvaluated
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 // What this judgement cost: the platform's own model call, and nothing else. It is never added to the
 // run's cost — they are spent by different workloads under different keys, and the run's figure is a
@@ -10534,6 +11687,14 @@ type GetDownloadArtifactUnauthorized Error
 
 func (*GetDownloadArtifactUnauthorized) getDownloadArtifactRes() {}
 
+type GetEvaluationBatchReportNotFound Error
+
+func (*GetEvaluationBatchReportNotFound) getEvaluationBatchReportRes() {}
+
+type GetEvaluationBatchReportUnauthorized Error
+
+func (*GetEvaluationBatchReportUnauthorized) getEvaluationBatchReportRes() {}
+
 type GetFunnelTrendBadRequest Error
 
 func (*GetFunnelTrendBadRequest) getFunnelTrendRes() {}
@@ -11911,6 +13072,44 @@ func (s *LiftDispatchHaltReq) SetNote(val string) {
 	s.Note = val
 }
 
+type ListCheckKindsOK struct {
+	Kinds    []CheckKind `json:"kinds"`
+	MaxNodes int         `json:"max_nodes"`
+	MaxDepth int         `json:"max_depth"`
+}
+
+// GetKinds returns the value of Kinds.
+func (s *ListCheckKindsOK) GetKinds() []CheckKind {
+	return s.Kinds
+}
+
+// GetMaxNodes returns the value of MaxNodes.
+func (s *ListCheckKindsOK) GetMaxNodes() int {
+	return s.MaxNodes
+}
+
+// GetMaxDepth returns the value of MaxDepth.
+func (s *ListCheckKindsOK) GetMaxDepth() int {
+	return s.MaxDepth
+}
+
+// SetKinds sets the value of Kinds.
+func (s *ListCheckKindsOK) SetKinds(val []CheckKind) {
+	s.Kinds = val
+}
+
+// SetMaxNodes sets the value of MaxNodes.
+func (s *ListCheckKindsOK) SetMaxNodes(val int) {
+	s.MaxNodes = val
+}
+
+// SetMaxDepth sets the value of MaxDepth.
+func (s *ListCheckKindsOK) SetMaxDepth(val int) {
+	s.MaxDepth = val
+}
+
+func (*ListCheckKindsOK) listCheckKindsRes() {}
+
 type ListCreationSessionsBadRequest Error
 
 func (*ListCreationSessionsBadRequest) listCreationSessionsRes() {}
@@ -12042,6 +13241,22 @@ func (s *ListDownloadRecordsOKRecordsItem) SetActor(val string) {
 type ListDownloadRecordsUnauthorized Error
 
 func (*ListDownloadRecordsUnauthorized) listDownloadRecordsRes() {}
+
+type ListEvaluationBatchesOK struct {
+	Batches []EvaluationBatch `json:"batches"`
+}
+
+// GetBatches returns the value of Batches.
+func (s *ListEvaluationBatchesOK) GetBatches() []EvaluationBatch {
+	return s.Batches
+}
+
+// SetBatches sets the value of Batches.
+func (s *ListEvaluationBatchesOK) SetBatches(val []EvaluationBatch) {
+	s.Batches = val
+}
+
+func (*ListEvaluationBatchesOK) listEvaluationBatchesRes() {}
 
 type ListExposureQueueOK struct {
 	Publications []ExposureQueueEntry `json:"publications"`
@@ -13987,6 +15202,52 @@ func (o OptBrowseCatalogValidation) Or(d BrowseCatalogValidation) BrowseCatalogV
 	return d
 }
 
+// NewOptCompareEvaluationBatchesOKDifference95 returns new OptCompareEvaluationBatchesOKDifference95 with value set to v.
+func NewOptCompareEvaluationBatchesOKDifference95(v CompareEvaluationBatchesOKDifference95) OptCompareEvaluationBatchesOKDifference95 {
+	return OptCompareEvaluationBatchesOKDifference95{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptCompareEvaluationBatchesOKDifference95 is optional CompareEvaluationBatchesOKDifference95.
+type OptCompareEvaluationBatchesOKDifference95 struct {
+	Value CompareEvaluationBatchesOKDifference95
+	Set   bool
+}
+
+// IsSet returns true if OptCompareEvaluationBatchesOKDifference95 was set.
+func (o OptCompareEvaluationBatchesOKDifference95) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptCompareEvaluationBatchesOKDifference95) Reset() {
+	var v CompareEvaluationBatchesOKDifference95
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptCompareEvaluationBatchesOKDifference95) SetTo(v CompareEvaluationBatchesOKDifference95) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptCompareEvaluationBatchesOKDifference95) Get() (v CompareEvaluationBatchesOKDifference95, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptCompareEvaluationBatchesOKDifference95) Or(d CompareEvaluationBatchesOKDifference95) CompareEvaluationBatchesOKDifference95 {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptCreationCandidate returns new OptCreationCandidate with value set to v.
 func NewOptCreationCandidate(v CreationCandidate) OptCreationCandidate {
 	return OptCreationCandidate{
@@ -14263,6 +15524,52 @@ func (o OptCreationReferenceTier) Or(d CreationReferenceTier) CreationReferenceT
 	return d
 }
 
+// NewOptCriterionCheck returns new OptCriterionCheck with value set to v.
+func NewOptCriterionCheck(v CriterionCheck) OptCriterionCheck {
+	return OptCriterionCheck{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptCriterionCheck is optional CriterionCheck.
+type OptCriterionCheck struct {
+	Value CriterionCheck
+	Set   bool
+}
+
+// IsSet returns true if OptCriterionCheck was set.
+func (o OptCriterionCheck) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptCriterionCheck) Reset() {
+	var v CriterionCheck
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptCriterionCheck) SetTo(v CriterionCheck) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptCriterionCheck) Get() (v CriterionCheck, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptCriterionCheck) Or(d CriterionCheck) CriterionCheck {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptDateTime returns new OptDateTime with value set to v.
 func NewOptDateTime(v time.Time) OptDateTime {
 	return OptDateTime{
@@ -14349,6 +15656,52 @@ func (o OptDevLoginReq) Get() (v DevLoginReq, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptDevLoginReq) Or(d DevLoginReq) DevLoginReq {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptEvaluationBatchReportPassRate95 returns new OptEvaluationBatchReportPassRate95 with value set to v.
+func NewOptEvaluationBatchReportPassRate95(v EvaluationBatchReportPassRate95) OptEvaluationBatchReportPassRate95 {
+	return OptEvaluationBatchReportPassRate95{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptEvaluationBatchReportPassRate95 is optional EvaluationBatchReportPassRate95.
+type OptEvaluationBatchReportPassRate95 struct {
+	Value EvaluationBatchReportPassRate95
+	Set   bool
+}
+
+// IsSet returns true if OptEvaluationBatchReportPassRate95 was set.
+func (o OptEvaluationBatchReportPassRate95) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptEvaluationBatchReportPassRate95) Reset() {
+	var v EvaluationBatchReportPassRate95
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptEvaluationBatchReportPassRate95) SetTo(v EvaluationBatchReportPassRate95) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptEvaluationBatchReportPassRate95) Get() (v EvaluationBatchReportPassRate95, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptEvaluationBatchReportPassRate95) Or(d EvaluationBatchReportPassRate95) EvaluationBatchReportPassRate95 {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -19748,6 +21101,10 @@ type PlatformAgent struct {
 	ModelRole string `json:"model_role"`
 	// The most this agent may spend in a day, checked before each run's key is issued.
 	DailySpendCapUsdMicros int64 `json:"daily_spend_cap_usd_micros"`
+	// The cap the agent is defined with, which applies while no operator has set one.
+	DefaultDailySpendCapUsdMicros int64 `json:"default_daily_spend_cap_usd_micros"`
+	// True while an operator-set cap replaces the defined one.
+	DailySpendCapOverridden bool `json:"daily_spend_cap_overridden"`
 	// The read-only facts the agent may ask for.
 	Tools []string `json:"tools"`
 	// The actions the agent may propose.
@@ -19775,6 +21132,16 @@ func (s *PlatformAgent) GetModelRole() string {
 // GetDailySpendCapUsdMicros returns the value of DailySpendCapUsdMicros.
 func (s *PlatformAgent) GetDailySpendCapUsdMicros() int64 {
 	return s.DailySpendCapUsdMicros
+}
+
+// GetDefaultDailySpendCapUsdMicros returns the value of DefaultDailySpendCapUsdMicros.
+func (s *PlatformAgent) GetDefaultDailySpendCapUsdMicros() int64 {
+	return s.DefaultDailySpendCapUsdMicros
+}
+
+// GetDailySpendCapOverridden returns the value of DailySpendCapOverridden.
+func (s *PlatformAgent) GetDailySpendCapOverridden() bool {
+	return s.DailySpendCapOverridden
 }
 
 // GetTools returns the value of Tools.
@@ -19817,6 +21184,16 @@ func (s *PlatformAgent) SetDailySpendCapUsdMicros(val int64) {
 	s.DailySpendCapUsdMicros = val
 }
 
+// SetDefaultDailySpendCapUsdMicros sets the value of DefaultDailySpendCapUsdMicros.
+func (s *PlatformAgent) SetDefaultDailySpendCapUsdMicros(val int64) {
+	s.DefaultDailySpendCapUsdMicros = val
+}
+
+// SetDailySpendCapOverridden sets the value of DailySpendCapOverridden.
+func (s *PlatformAgent) SetDailySpendCapOverridden(val bool) {
+	s.DailySpendCapOverridden = val
+}
+
 // SetTools sets the value of Tools.
 func (s *PlatformAgent) SetTools(val []string) {
 	s.Tools = val
@@ -19837,7 +21214,8 @@ func (s *PlatformAgent) SetOwnerUserID(val OptUUID) {
 	s.OwnerUserID = val
 }
 
-func (*PlatformAgent) setPlatformAgentEnabledRes() {}
+func (*PlatformAgent) setPlatformAgentEnabledRes()  {}
+func (*PlatformAgent) setPlatformAgentSpendCapRes() {}
 
 // Ref: #/components/schemas/PlatformAgentBrake
 type PlatformAgentBrake struct {
@@ -21164,6 +22542,72 @@ func (s *PlatformAgentStep) SetUsdMicros(val OptInt64) {
 // SetCreatedAt sets the value of CreatedAt.
 func (s *PlatformAgentStep) SetCreatedAt(val time.Time) {
 	s.CreatedAt = val
+}
+
+// Ref: #/components/schemas/PlatformSettings
+type PlatformSettings struct {
+	JudgePanel PlatformSettingsJudgePanel `json:"judge_panel"`
+}
+
+// GetJudgePanel returns the value of JudgePanel.
+func (s *PlatformSettings) GetJudgePanel() PlatformSettingsJudgePanel {
+	return s.JudgePanel
+}
+
+// SetJudgePanel sets the value of JudgePanel.
+func (s *PlatformSettings) SetJudgePanel(val PlatformSettingsJudgePanel) {
+	s.JudgePanel = val
+}
+
+func (*PlatformSettings) getPlatformSettingsRes() {}
+func (*PlatformSettings) setJudgePanelRes()       {}
+
+type PlatformSettingsJudgePanel struct {
+	Enabled bool `json:"enabled"`
+	// Present once an operator has changed the setting.
+	Reason      OptString   `json:"reason"`
+	SetByUserID OptUUID     `json:"set_by_user_id"`
+	SetAt       OptDateTime `json:"set_at"`
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *PlatformSettingsJudgePanel) GetEnabled() bool {
+	return s.Enabled
+}
+
+// GetReason returns the value of Reason.
+func (s *PlatformSettingsJudgePanel) GetReason() OptString {
+	return s.Reason
+}
+
+// GetSetByUserID returns the value of SetByUserID.
+func (s *PlatformSettingsJudgePanel) GetSetByUserID() OptUUID {
+	return s.SetByUserID
+}
+
+// GetSetAt returns the value of SetAt.
+func (s *PlatformSettingsJudgePanel) GetSetAt() OptDateTime {
+	return s.SetAt
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *PlatformSettingsJudgePanel) SetEnabled(val bool) {
+	s.Enabled = val
+}
+
+// SetReason sets the value of Reason.
+func (s *PlatformSettingsJudgePanel) SetReason(val OptString) {
+	s.Reason = val
+}
+
+// SetSetByUserID sets the value of SetByUserID.
+func (s *PlatformSettingsJudgePanel) SetSetByUserID(val OptUUID) {
+	s.SetByUserID = val
+}
+
+// SetSetAt sets the value of SetAt.
+func (s *PlatformSettingsJudgePanel) SetSetAt(val OptDateTime) {
+	s.SetAt = val
 }
 
 // Ref: #/components/schemas/PluginContents
@@ -23758,8 +25202,9 @@ func (s *Run) SetAttempts(val []RunAttemptsItem) {
 	s.Attempts = val
 }
 
-func (*Run) getRunRes()   {}
-func (*Run) startRunRes() {}
+func (*Run) continueRunRes() {}
+func (*Run) getRunRes()      {}
+func (*Run) startRunRes()    {}
 
 // One file a run produced, as a manifest row. The bytes are never served here: the archive is a
 // sandbox's output and the control plane does not open it (iron rule 1).
@@ -25916,6 +27361,95 @@ func (s *RunResourceLimitsTokenBudget) SetMaxOutputTokens(val int) {
 	s.MaxOutputTokens = val
 }
 
+// Ref: #/components/schemas/RunSettings
+type RunSettings struct {
+	ContinuationRounds RunSettingsContinuationRounds `json:"continuation_rounds"`
+}
+
+// GetContinuationRounds returns the value of ContinuationRounds.
+func (s *RunSettings) GetContinuationRounds() RunSettingsContinuationRounds {
+	return s.ContinuationRounds
+}
+
+// SetContinuationRounds sets the value of ContinuationRounds.
+func (s *RunSettings) SetContinuationRounds(val RunSettingsContinuationRounds) {
+	s.ContinuationRounds = val
+}
+
+func (*RunSettings) getRunSettingsRes()        {}
+func (*RunSettings) setContinuationRoundsRes() {}
+
+type RunSettingsContinuationRounds struct {
+	// Answered rounds one conversation may hold.
+	Rounds int `json:"rounds"`
+	Min    int `json:"min"`
+	Max    int `json:"max"`
+	// Present once an operator has changed the setting.
+	Reason      OptString   `json:"reason"`
+	SetByUserID OptUUID     `json:"set_by_user_id"`
+	SetAt       OptDateTime `json:"set_at"`
+}
+
+// GetRounds returns the value of Rounds.
+func (s *RunSettingsContinuationRounds) GetRounds() int {
+	return s.Rounds
+}
+
+// GetMin returns the value of Min.
+func (s *RunSettingsContinuationRounds) GetMin() int {
+	return s.Min
+}
+
+// GetMax returns the value of Max.
+func (s *RunSettingsContinuationRounds) GetMax() int {
+	return s.Max
+}
+
+// GetReason returns the value of Reason.
+func (s *RunSettingsContinuationRounds) GetReason() OptString {
+	return s.Reason
+}
+
+// GetSetByUserID returns the value of SetByUserID.
+func (s *RunSettingsContinuationRounds) GetSetByUserID() OptUUID {
+	return s.SetByUserID
+}
+
+// GetSetAt returns the value of SetAt.
+func (s *RunSettingsContinuationRounds) GetSetAt() OptDateTime {
+	return s.SetAt
+}
+
+// SetRounds sets the value of Rounds.
+func (s *RunSettingsContinuationRounds) SetRounds(val int) {
+	s.Rounds = val
+}
+
+// SetMin sets the value of Min.
+func (s *RunSettingsContinuationRounds) SetMin(val int) {
+	s.Min = val
+}
+
+// SetMax sets the value of Max.
+func (s *RunSettingsContinuationRounds) SetMax(val int) {
+	s.Max = val
+}
+
+// SetReason sets the value of Reason.
+func (s *RunSettingsContinuationRounds) SetReason(val OptString) {
+	s.Reason = val
+}
+
+// SetSetByUserID sets the value of SetByUserID.
+func (s *RunSettingsContinuationRounds) SetSetByUserID(val OptUUID) {
+	s.SetByUserID = val
+}
+
+// SetSetAt sets the value of SetAt.
+func (s *RunSettingsContinuationRounds) SetSetAt(val OptDateTime) {
+	s.SetAt = val
+}
+
 // The standard lifecycle of RUN-002. `cleaning_up` is not in here: cleanup happens after a terminal
 // state and is reported separately in `cleanup_status`, so "the run failed" and "its sandbox was torn
 // down" stay two distinct facts.
@@ -27255,6 +28789,40 @@ func (s *SessionCookie) SetRoles(val []string) {
 	s.Roles = val
 }
 
+type SetContinuationRoundsBadRequest Error
+
+func (*SetContinuationRoundsBadRequest) setContinuationRoundsRes() {}
+
+type SetContinuationRoundsNotFound Error
+
+func (*SetContinuationRoundsNotFound) setContinuationRoundsRes() {}
+
+type SetContinuationRoundsReq struct {
+	Rounds int `json:"rounds"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetRounds returns the value of Rounds.
+func (s *SetContinuationRoundsReq) GetRounds() int {
+	return s.Rounds
+}
+
+// GetNote returns the value of Note.
+func (s *SetContinuationRoundsReq) GetNote() string {
+	return s.Note
+}
+
+// SetRounds sets the value of Rounds.
+func (s *SetContinuationRoundsReq) SetRounds(val int) {
+	s.Rounds = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetContinuationRoundsReq) SetNote(val string) {
+	s.Note = val
+}
+
 type SetEvaluationFeedbackBadRequest Error
 
 func (*SetEvaluationFeedbackBadRequest) setEvaluationFeedbackRes() {}
@@ -27292,6 +28860,40 @@ func (s *SetEvaluationFeedbackReq) SetComment(val OptString) {
 type SetEvaluationFeedbackUnauthorized Error
 
 func (*SetEvaluationFeedbackUnauthorized) setEvaluationFeedbackRes() {}
+
+type SetJudgePanelBadRequest Error
+
+func (*SetJudgePanelBadRequest) setJudgePanelRes() {}
+
+type SetJudgePanelNotFound Error
+
+func (*SetJudgePanelNotFound) setJudgePanelRes() {}
+
+type SetJudgePanelReq struct {
+	Enabled bool `json:"enabled"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *SetJudgePanelReq) GetEnabled() bool {
+	return s.Enabled
+}
+
+// GetNote returns the value of Note.
+func (s *SetJudgePanelReq) GetNote() string {
+	return s.Note
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *SetJudgePanelReq) SetEnabled(val bool) {
+	s.Enabled = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetJudgePanelReq) SetNote(val string) {
+	s.Note = val
+}
 
 type SetModelCallBudgetBadRequest Error
 
@@ -27359,6 +28961,41 @@ func (s *SetPlatformAgentEnabledReq) SetEnabled(val bool) {
 
 // SetNote sets the value of Note.
 func (s *SetPlatformAgentEnabledReq) SetNote(val string) {
+	s.Note = val
+}
+
+type SetPlatformAgentSpendCapBadRequest Error
+
+func (*SetPlatformAgentSpendCapBadRequest) setPlatformAgentSpendCapRes() {}
+
+type SetPlatformAgentSpendCapNotFound Error
+
+func (*SetPlatformAgentSpendCapNotFound) setPlatformAgentSpendCapRes() {}
+
+type SetPlatformAgentSpendCapReq struct {
+	// Micro-dollars a day, at most five dollars; null returns to the defined cap.
+	DailySpendCapUsdMicros NilInt64 `json:"daily_spend_cap_usd_micros"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetDailySpendCapUsdMicros returns the value of DailySpendCapUsdMicros.
+func (s *SetPlatformAgentSpendCapReq) GetDailySpendCapUsdMicros() NilInt64 {
+	return s.DailySpendCapUsdMicros
+}
+
+// GetNote returns the value of Note.
+func (s *SetPlatformAgentSpendCapReq) GetNote() string {
+	return s.Note
+}
+
+// SetDailySpendCapUsdMicros sets the value of DailySpendCapUsdMicros.
+func (s *SetPlatformAgentSpendCapReq) SetDailySpendCapUsdMicros(val NilInt64) {
+	s.DailySpendCapUsdMicros = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetPlatformAgentSpendCapReq) SetNote(val string) {
 	s.Note = val
 }
 
@@ -31555,9 +33192,13 @@ type TraceSummary struct {
 	// A watching screen needs this and cannot derive it from the counters: a wedged run's counters simply
 	// stop, and stopping looks exactly like finishing. Client-side timing cannot stand in either, because
 	// it restarts at zero on every page load and would report a stalled run as having just moved.
-	LastEventAt OptDateTime          `json:"last_event_at"`
-	FinalOutput OptString            `json:"final_output"`
-	Usage       OptTraceSummaryUsage `json:"usage"`
+	LastEventAt OptDateTime `json:"last_event_at"`
+	FinalOutput OptString   `json:"final_output"`
+	// Present only when the run ended by handing questions back to the person (the ask tool). Each entry
+	// says what was asked, why it changes the result, and optional choices. Untrusted content — render
+	// as inert text.
+	Questions []TraceSummaryQuestionsItem `json:"questions"`
+	Usage     OptTraceSummaryUsage        `json:"usage"`
 	// Progress, taken from run_status_transitions - the authoritative history - and never reconstructed by
 	// replaying run_lifecycle events (iron rule 5).
 	//
@@ -31632,6 +33273,11 @@ func (s *TraceSummary) GetLastEventAt() OptDateTime {
 // GetFinalOutput returns the value of FinalOutput.
 func (s *TraceSummary) GetFinalOutput() OptString {
 	return s.FinalOutput
+}
+
+// GetQuestions returns the value of Questions.
+func (s *TraceSummary) GetQuestions() []TraceSummaryQuestionsItem {
+	return s.Questions
 }
 
 // GetUsage returns the value of Usage.
@@ -31709,6 +33355,11 @@ func (s *TraceSummary) SetFinalOutput(val OptString) {
 	s.FinalOutput = val
 }
 
+// SetQuestions sets the value of Questions.
+func (s *TraceSummary) SetQuestions(val []TraceSummaryQuestionsItem) {
+	s.Questions = val
+}
+
 // SetUsage sets the value of Usage.
 func (s *TraceSummary) SetUsage(val OptTraceSummaryUsage) {
 	s.Usage = val
@@ -31753,6 +33404,42 @@ func (s *TraceSummaryErrorsItem) SetCode(val OptString) {
 // SetMessage sets the value of Message.
 func (s *TraceSummaryErrorsItem) SetMessage(val OptString) {
 	s.Message = val
+}
+
+type TraceSummaryQuestionsItem struct {
+	Question string   `json:"question"`
+	Why      string   `json:"why"`
+	Options  []string `json:"options"`
+}
+
+// GetQuestion returns the value of Question.
+func (s *TraceSummaryQuestionsItem) GetQuestion() string {
+	return s.Question
+}
+
+// GetWhy returns the value of Why.
+func (s *TraceSummaryQuestionsItem) GetWhy() string {
+	return s.Why
+}
+
+// GetOptions returns the value of Options.
+func (s *TraceSummaryQuestionsItem) GetOptions() []string {
+	return s.Options
+}
+
+// SetQuestion sets the value of Question.
+func (s *TraceSummaryQuestionsItem) SetQuestion(val string) {
+	s.Question = val
+}
+
+// SetWhy sets the value of Why.
+func (s *TraceSummaryQuestionsItem) SetWhy(val string) {
+	s.Why = val
+}
+
+// SetOptions sets the value of Options.
+func (s *TraceSummaryQuestionsItem) SetOptions(val []string) {
+	s.Options = val
 }
 
 type TraceSummarySkillsItem struct {
