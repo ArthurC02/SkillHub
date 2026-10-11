@@ -3,12 +3,12 @@
   "proposal_id": "eval-run-verdicts-recite-r2",
   "proposer": "domain-memory-agent",
   "requirement_id": "eval-run-verdicts-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-11T18:26:00.463826Z",
   "verified_at": "2026-10-11T18:26:43.526914Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-11T18:26:46.744308Z",
+  "applied_at": "2026-10-11T18:26:47.689734Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "42af6c8ec739c64be4c80a58311ba72e293cc9da",
@@ -127,5 +127,9 @@
       }
     }
   ],
-  "supersedes": "eval-run-collaboration-r2"
+  "supersedes": "eval-run-collaboration-r2",
+  "applied_registry_revision": {
+    "observed_commit": "02cf8c525da653fcfe8dd580767147424dc91946",
+    "registry_digest": "sha256:4dbc629a4a5e19ab13c3cc3feedd6349ec065d5c2d0b4584e862568a5a6a24ae"
+  }
 }

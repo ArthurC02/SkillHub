@@ -1,0 +1,43 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "evaluation-batch-terms-move",
+  "proposal_id": "evaluation-batch-terms-move",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "terms-follow-the-owner",
+      "expected_outcome": "The Registry validates.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry validate"
+    },
+    {
+      "id": "package-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "terms-follow-the-owner",
+      "expected_outcome": "The package validates and both terms reference reviewed Contexts.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry validate-change-package"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "approval-path-is-external",
+      "source_type": "acceptance-criterion",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "Governance readiness reports ready.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry governance-readiness"
+    }
+  ]
+}

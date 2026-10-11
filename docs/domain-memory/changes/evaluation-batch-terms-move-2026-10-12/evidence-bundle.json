@@ -1,0 +1,64 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "evaluation-batch-terms-move",
+  "proposal_id": "evaluation-batch-terms-move",
+  "registry_revision": {
+    "observed_commit": "02cf8c525da653fcfe8dd580767147424dc91946",
+    "registry_digest": "sha256:4dbc629a4a5e19ab13c3cc3feedd6349ec065d5c2d0b4584e862568a5a6a24ae"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "registry-structurally-valid",
+    "mutated_protection": "Registry validation that every term names a known Context",
+    "failure_evidence": "On a copy of the Registry with Reference batch naming an unknown Context batchx, validate failed with 'vocabulary.json:reference-batch references unknown context'; the copy was discarded. validate-change-package accepted the same mistake in a package copy, so the Registry check is the protection.",
+    "restored": true
+  },
+  "sources": [
+    "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+    "apps/platform/internal/trial/batch/batch.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:eb9efcdfd94e49e427f5da2056f49c54431bbdfe62005f100e94dd7971087a05",
+      "finished_at": "2026-10-11T18:29:57.417084Z"
+    },
+    {
+      "obligation_id": "package-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate-change-package --package-root docs/domain-memory/changes/evaluation-batch-terms-move-2026-10-12 --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f59ed0f5e58f24af697fc460db7a190345b22c6e6c8a2fdbf184d0f488d61a0f",
+      "finished_at": "2026-10-11T18:29:58.282190Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:97ab2a0fd5cb34867c72c03d2ae57a5e9c832edb3096a81b2683276d1913ee6a",
+      "finished_at": "2026-10-11T18:29:59.039981Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py governance-readiness --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:2b6a3a27f1223e6cc1dc91aae0d304d9226040ff5508b5e8d4133a1df04930ec",
+      "finished_at": "2026-10-11T18:29:59.962806Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
