@@ -40,6 +40,9 @@ export function AdminNav() {
       <Link to="/admin/settings" className="chip">
         平台設定
       </Link>
+      <Link to="/admin/graders" className="chip">
+        平台評分器
+      </Link>
       <NavScrollCue />
     </nav>
   );

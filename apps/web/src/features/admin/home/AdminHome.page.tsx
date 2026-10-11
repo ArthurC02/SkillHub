@@ -162,6 +162,17 @@ function OperationsSection() {
             <p className="note">影響整個平台的開關，例如評估判定要不要由三個判定投票。</p>
           </div>
         </li>
+        <li>
+          <span className="admin-home-index" aria-hidden="true">
+            12
+          </span>
+          <div>
+            <Link to="/admin/graders">
+              <strong>平台評分器</strong>
+            </Link>
+            <p className="note">每個 Workspace 都能選用的 Prompt 評分器，修改存成新版本。</p>
+          </div>
+        </li>
       </ul>
     </section>
   );

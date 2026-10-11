@@ -111,6 +111,11 @@ export const queryKeys = {
     bundleOverview: ["bundles", "overview"],
     ownBundlePublication: (bundle: string) => ["bundles", bundle, "publication"],
   },
+  checks: {
+    all: ["checks"],
+    kinds: ["checks", "kinds"],
+    graders: (scope: string) => ["checks", "graders", scope],
+  },
   admin: {
     account: (email: string) => ["admin", "account", email],
     ledger: (workspaceId: string) => ["admin", "ledger", workspaceId],

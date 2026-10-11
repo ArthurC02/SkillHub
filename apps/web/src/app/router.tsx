@@ -390,6 +390,15 @@ const testCaseDetailRoute = createRoute({
   }),
 });
 
+const evaluationGradersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/lab/graders",
+  component: lazyRouteComponent(
+    () => import("../features/evaluation/graders/EvaluationGraders.page"),
+    "EvaluationGraders",
+  ),
+});
+
 const adminHomeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin",
@@ -459,6 +468,15 @@ const adminSettingsRoute = createRoute({
   component: lazyRouteComponent(
     () => import("../features/admin/settings/AdminSettings.page"),
     "AdminSettings",
+  ),
+});
+
+const adminGradersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/graders",
+  component: lazyRouteComponent(
+    () => import("../features/admin/graders/AdminGraders.page"),
+    "AdminGraders",
   ),
 });
 
@@ -561,6 +579,7 @@ const routeTree = rootRoute.addChildren([
   legacyDatasetUploadRoute,
   testCaseListRoute,
   testCaseDetailRoute,
+  evaluationGradersRoute,
   adminHomeRoute,
   adminAccountsRoute,
   adminSkillsRoute,
@@ -569,6 +588,7 @@ const routeTree = rootRoute.addChildren([
   adminAuditLogRoute,
   adminModelBudgetsRoute,
   adminSettingsRoute,
+  adminGradersRoute,
   adminCostStatisticsRoute,
   adminTrendsRoute,
   adminExposureRoute,

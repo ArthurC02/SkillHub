@@ -2,12 +2,14 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { apiFetch } from "../../core/api/client";
 import type { Dataset } from "./lab.service";
 import { queryKeys } from "../../core/api/queryKeys";
+import type { CheckNode } from "../evaluation";
 
 export type AcceptanceCriterion = {
   id: string;
   text: string;
   source: "user" | "suggested";
   confirmed_at: string | null;
+  check?: CheckNode;
 };
 
 export type RubricItem = {
@@ -98,23 +100,20 @@ export function useUpdateTestCase(testCaseId: string) {
   });
 }
 
-export function addCriterion(
-  testCaseId: string,
-  text: string,
-  source: "user" | "suggested" = "user",
-) {
+export type NewCriterion = { text: string; source?: "user" | "suggested"; check?: CheckNode };
+
+export function addCriterion(testCaseId: string, criterion: NewCriterion) {
   return apiFetch<TestCase>(`/test-cases/${testCaseId}/criteria`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, source }),
+    body: JSON.stringify({ source: "user", ...criterion }),
   });
 }
 
 export function useAddCriterion(testCaseId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ text, source }: { text: string; source?: "user" | "suggested" }) =>
-      addCriterion(testCaseId, text, source),
+    mutationFn: (criterion: NewCriterion) => addCriterion(testCaseId, criterion),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.testCases.all }),
   });
 }

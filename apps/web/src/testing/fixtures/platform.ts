@@ -40,6 +40,7 @@ import type {
 } from "../../features/publishing/publishing.service";
 import type { DownloadArtifact } from "../../features/packaging/packaging.service";
 import type { ActivityPage } from "../../features/activity/activity.service";
+import type { CheckKinds, Grader } from "../../features/evaluation/evaluation.service";
 
 export const SKILL = "11111111-1111-1111-1111-111111111111";
 export const SKILL_B = "aaaaaaaa-2222-2222-2222-222222222222";
@@ -1425,6 +1426,79 @@ export const ADMIN_AGENT_FINDING = {
   ],
 } satisfies { finding: PlatformAgentFinding; events: PlatformAgentFindingEvent[] };
 
+export const CHECK_KINDS = {
+  kinds: [
+    {
+      kind: "contains_values",
+      category: "grader",
+      label: "回答提到指定的值",
+      description: "最終回答提到每個值；數字與日期認常見寫法",
+      values: { min: 1, max: 20 },
+      children: { min: 0, max: 0 },
+      at_least: false,
+    },
+    {
+      kind: "judge",
+      category: "grader",
+      label: "評審判定",
+      description: "交給評審模型依這條驗收條件的文字判定",
+      values: { min: 0, max: 0 },
+      children: { min: 0, max: 0 },
+      at_least: false,
+    },
+    {
+      kind: "prompt_grader",
+      category: "grader",
+      label: "Prompt 評分器",
+      description: "依選定評分器版本的評分指示，請評審模型判定這條驗收條件；值是評分器版本的 id",
+      values: { min: 1, max: 1 },
+      children: { min: 0, max: 0 },
+      at_least: false,
+    },
+    {
+      kind: "sequence",
+      category: "composite",
+      label: "串聯",
+      description: "依序執行，前一步沒通過就停下，後面的步驟不執行",
+      values: { min: 0, max: 0 },
+      children: { min: 1, max: 50 },
+      at_least: false,
+    },
+    {
+      kind: "each",
+      category: "composite",
+      label: "Fan-Out",
+      description:
+        "對每個值各執行一次子節點（子節點的值可用 {item} 代入），至少 at_least 個通過才算通過；at_least 為 0 表示全部",
+      values: { min: 1, max: 20 },
+      children: { min: 1, max: 1 },
+      at_least: true,
+    },
+  ],
+  max_nodes: 50,
+  max_depth: 8,
+} satisfies CheckKinds;
+
+export const WORKSPACE_GRADER = {
+  id: "6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b",
+  name: "語氣",
+  scope: "workspace",
+  version_id: "7a2e3d4c-5b6f-4071-9b8c-0d1e2f3a4b5c",
+  version: 2,
+  instructions: "回覆聽起來簡短或冷淡就判定沒通過。",
+  revised_at: "2026-10-10T08:00:00Z",
+} satisfies Grader;
+
+export const PLATFORM_GRADER = {
+  id: "8b3f4e5d-6c70-4182-8c9d-1e2f3a4b5c6d",
+  name: "引用出處",
+  scope: "platform",
+  version_id: "9c405f6e-7d81-4293-9dae-2f3a4b5c6d7e",
+  version: 1,
+  instructions: "回答引用的每個事實都要附出處；缺一個就判定沒通過。",
+  revised_at: "2026-10-09T08:00:00Z",
+} satisfies Grader;
+
 type RouteResult = { body: unknown; status: number };
 
 function ok(body: unknown, status = 200): RouteResult {
@@ -1446,6 +1520,12 @@ const ROUTES: RouteMatcher[] = [
   (path) => (path === "/admin/exposure-reviews" ? ok(ADMIN_EXPOSURE_QUEUE) : undefined),
   (path) => (path === "/admin/agents" ? ok(ADMIN_AGENTS) : undefined),
   (path) => (path === "/admin/settings" ? ok(ADMIN_SETTINGS) : undefined),
+  (path) => (path === "/evaluation/check-kinds" ? ok(CHECK_KINDS) : undefined),
+  (path) =>
+    path === "/evaluation/graders"
+      ? ok({ graders: [PLATFORM_GRADER, WORKSPACE_GRADER] })
+      : undefined,
+  (path) => (path === "/admin/evaluation/graders" ? ok({ graders: [PLATFORM_GRADER] }) : undefined),
   (path) => (path === "/admin/agents/runs" ? ok(ADMIN_AGENT_RUNS) : undefined),
   (path) => {
     const run = ADMIN_AGENT_RUNS.runs.find((item) => path === `/admin/agents/runs/${item.id}`);

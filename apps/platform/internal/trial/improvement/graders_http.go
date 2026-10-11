@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -130,9 +131,9 @@ func writeGraders(w http.ResponseWriter, graders []Grader, err error) {
 func writeGrader(w http.ResponseWriter, g Grader, err error) {
 	switch {
 	case errors.Is(err, ErrGraderShape):
-		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		httpx.WriteError(w, http.StatusBadRequest, reasonOf(err, ErrGraderShape))
 	case errors.Is(err, ErrGraderConflict):
-		httpx.WriteError(w, http.StatusConflict, err.Error())
+		httpx.WriteError(w, http.StatusConflict, reasonOf(err, ErrGraderConflict))
 	case errors.Is(err, ErrNotFound):
 		httpx.WriteError(w, http.StatusNotFound, "grader not found")
 	case err != nil:
@@ -140,4 +141,8 @@ func writeGrader(w http.ResponseWriter, g Grader, err error) {
 	default:
 		httpx.WriteJSON(w, http.StatusCreated, viewOfGrader(g))
 	}
+}
+
+func reasonOf(err, sentinel error) string {
+	return strings.TrimPrefix(err.Error(), sentinel.Error()+": ")
 }

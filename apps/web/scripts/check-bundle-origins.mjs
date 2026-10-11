@@ -12,6 +12,11 @@ const STOCK = [
   "http://www.w3.org/XML/1998/namespace",
   "https://react.dev/errors/",
   "http://localhost",
+  "http://www.w3.org/1999/xhtml",
+  "http://www.w3.org/2000/xmlns/",
+  "https://${e}flow.dev/error#001",
+  "https://reactflow.dev?utm_source=attribution",
+  "https://reactflow.dev/",
 ];
 
 const relativeOrigin = /["'`](\/\/[A-Za-z0-9][A-Za-z0-9._-]*(?::\d+)?)(?=[/"'`?#])/g;

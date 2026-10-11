@@ -1,0 +1,78 @@
+.check-editor {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  margin-block: 16px;
+}
+
+@media (max-width: 800px) {
+  .check-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.check-editor > .check-editor-picker {
+  grid-column: 1 / -1;
+}
+
+.check-flow {
+  min-height: 320px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  --xy-edge-stroke: var(--border-strong);
+  --xy-node-background-color: var(--bg);
+  --xy-node-border: 1px solid var(--border-strong);
+  --xy-node-color: var(--text);
+  --xy-handle-background-color: var(--border-strong);
+  --xy-handle-border-color: var(--bg);
+}
+
+.check-flow .check-flow-node {
+  max-width: 200px;
+  padding: 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.check-flow .check-flow-node.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-border);
+}
+
+.check-flow .check-flow-flagged {
+  border-color: var(--warning);
+  background: var(--warning-bg);
+}
+
+.check-editor-panel {
+  min-width: 0;
+}
+
+.check-editor-outline,
+.check-editor-outline ol {
+  margin-block: 0 8px;
+  padding-inline-start: 24px;
+}
+
+.check-editor-outline .check-editor-outline-node[aria-current="true"] {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.check-editor-node {
+  margin-block-start: 16px;
+  padding: 16px;
+  border-top: 3px solid var(--border-strong);
+}
+
+.check-editor-node .check-editor-problems {
+  color: var(--warning);
+}
+
+.check-editor-values {
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+}
