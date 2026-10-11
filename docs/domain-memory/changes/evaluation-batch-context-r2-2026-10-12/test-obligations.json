@@ -1,0 +1,79 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "evaluation-batch-context",
+  "proposal_id": "evaluation-batch-context-r2",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "batch-is-its-own-context",
+      "expected_outcome": "The package validates as applied: every update references existing assets and the staged Registry it produces is valid.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry validate-change-package --as-status applied"
+    },
+    {
+      "id": "boundaries-enforced",
+      "source_type": "acceptance-criterion",
+      "source_id": "batch-is-its-own-context",
+      "expected_outcome": "depguard accepts the batch package, which imports no Context but identity.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "golangci-lint run ./internal/trial/batch/"
+    },
+    {
+      "id": "report-uses-verdict-port",
+      "source_type": "acceptance-criterion",
+      "source_id": "batch-reads-verdicts-through-eval",
+      "expected_outcome": "The batch report counts each trial at its standing verdict.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -run TestTheBatchReportCountsEachConversationAtItsEnd ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "batch-suite-passes",
+      "source_type": "acceptance-criterion",
+      "source_id": "batch-behaviour-unchanged",
+      "expected_outcome": "Every batch unit and integration test passes after the move.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -run Batch|Trial|Simulated|OriginKey ./internal/trial/batch/ ./internal/entrypoint/..."
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "approval-path-is-external",
+      "source_type": "acceptance-criterion",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "Governance readiness reports ready.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry governance-readiness"
+    },
+    {
+      "id": "batch-waits-or-stops",
+      "source_type": "rule",
+      "source_id": "batch-waits-only-on-a-passing-refusal",
+      "expected_outcome": "A batch waits while the run slot is taken and stops with the reason on a refusal waiting cannot fix.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -run TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait|TestARefusalThatWaitingCannotFixStopsTheBatch ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "trial-port-contract",
+      "source_type": "contract",
+      "source_id": "run-batch-trials-v1",
+      "expected_outcome": "Replay returns the same run, another version under the key is refused, only passing refusals pass.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -run TestATrialWhoseRunWasAlreadyStartedUnderItsKey|TestAnOriginKeyThatStartedOne|TestOnlyRefusalsThatWillPass ./internal/..."
+    }
+  ]
+}
