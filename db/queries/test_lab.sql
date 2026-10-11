@@ -33,6 +33,11 @@ UPDATE test_cases SET rubric = $3, updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 RETURNING *;
 
+-- name: UpdateTestCaseSimulatedUserFacts :one
+UPDATE test_cases SET simulated_user_facts = @simulated_user_facts::text[], updated_at = now()
+WHERE id = @id AND workspace_id = @workspace_id AND deleted_at IS NULL
+RETURNING *;
+
 -- name: SoftDeleteTestCase :one
 UPDATE test_cases SET deleted_at = now(), updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
@@ -87,8 +92,9 @@ RETURNING *;
 
 -- name: CreateTestCaseSnapshot :one
 INSERT INTO test_case_snapshots (
-    workspace_id, test_case_id, user_prompt, acceptance_criteria, dataset_refs, content_hash, rubric
-) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    workspace_id, test_case_id, user_prompt, acceptance_criteria, dataset_refs, content_hash, rubric,
+    simulated_user_facts
+) VALUES ($1, $2, $3, $4, $5, $6, $7, sqlc.arg(simulated_user_facts)::text[])
 RETURNING *;
 
 -- name: GetTestCaseSnapshot :one
@@ -102,6 +108,10 @@ WHERE workspace_id = @workspace_id AND test_case_id = @test_case_id;
 -- name: ListSnapshotTestCases :many
 SELECT id, test_case_id, content_hash FROM test_case_snapshots
 WHERE workspace_id = @workspace_id AND id = ANY(@snapshot_ids::uuid[]);
+
+-- name: ListSnapshotSimulatedUserFacts :many
+SELECT id, simulated_user_facts FROM test_case_snapshots
+WHERE workspace_id = @workspace_id AND id = ANY(@snapshot_ids::uuid[]) AND cardinality(simulated_user_facts) > 0;
 
 -- name: GetSnapshotInputs :one
 SELECT s.dataset_refs, tc.deleted_at AS test_case_deleted_at

@@ -6127,7 +6127,7 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
     patch:
       operationId: updateTestCase
-      summary: Edit a test case's name, prompt or rubric (TEST-001, CONTENT-007)
+      summary: Edit a test case's name, prompt, rubric or simulated person (TEST-001, CONTENT-007)
       description: |
         Omitted fields keep their stored value.
 
@@ -6136,6 +6136,9 @@ paths:
         removes it. There is no "empty rubric" — a rubric with no items is
         refused, because "this test case has no rubric" and "this test case has a
         rubric that says nothing" would otherwise be the same bytes.
+
+        `simulated_user_facts` replaces the whole list; an empty list removes
+        the simulated person.
 
         Editing here never rewrites a past run: a run freezes the rubric along
         with the prompt and the criteria, so an edit is the standard for the
@@ -6153,6 +6156,7 @@ paths:
                   oneOf:
                     - $ref: "#/components/schemas/Rubric"
                     - type: "null"
+                simulated_user_facts: { $ref: "#/components/schemas/SimulatedUserFacts" }
       responses:
         "200":
           description: Updated draft.
@@ -6160,7 +6164,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/TestCase" }
         "400":
-          description: Blank or over-long name or prompt.
+          description: Blank or over-long name or prompt, or simulated person facts outside their limits.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -10361,7 +10365,7 @@ components:
     TestCase:
       type: object
       required:
-        [test_case_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at]
+        [test_case_id, skill_id, name, user_prompt, acceptance_criteria, simulated_user_facts, created_at, updated_at]
       properties:
         test_case_id: { type: string, format: uuid }
         skill_id: { type: string, format: uuid }
@@ -10377,8 +10381,20 @@ components:
             Absent means this test case has no rubric — never that it uses a
             default one. The copy a run was judged against is the one frozen in
             its snapshot, which is what `Evaluation.rubric_version` names.
+        simulated_user_facts: { $ref: "#/components/schemas/SimulatedUserFacts" }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+    SimulatedUserFacts:
+      type: array
+      maxItems: 10
+      items: { type: string, minLength: 1 }
+      description: |
+        What the person in this test case knows but did not say. When a run in
+        an evaluation batch ends by asking a question, the batch answers it as
+        this person with these facts, frozen with the rest of the test case, up
+        to the conversation's round limit. An empty list means nobody answers
+        for the person, and the trial waits for a real answer. At most 1500
+        bytes in all.
     TestCaseListItem:
       description: |
         One row of GET /test-cases: the draft plus the few facts a browsing user

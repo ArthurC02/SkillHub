@@ -505,6 +505,7 @@ export const TEST_CASE_DRAFT = {
     version: "content-007/writing/v1",
     items: [{ id: "c1", text: "引出顯示列數變少的那一句。", weight: 2, evidence_required: true }],
   },
+  simulated_user_facts: ["重複的判斷只看第一欄的訂單編號"],
   created_at: "2026-08-17T00:00:00Z",
   updated_at: "2026-08-17T01:00:00Z",
 };

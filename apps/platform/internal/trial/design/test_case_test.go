@@ -2,6 +2,9 @@ package testlab
 
 import (
 	"bytes"
+	"errors"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,5 +32,39 @@ func TestTestCaseOfPreservesThePersistentTestCase(t *testing.T) {
 		got.UpdatedAt != updatedAt || got.DeletedAt != deletedAt ||
 		!bytes.Equal(got.AcceptanceCriteria, row.AcceptanceCriteria) || !bytes.Equal(got.Rubric, row.Rubric) {
 		t.Fatalf("testCaseOf() = %+v, want all TestCase fields preserved", got)
+	}
+}
+
+func TestSimulatedUserFactsStayWithinTheirCountAndSize(t *testing.T) {
+	facts := func(n, size int) *[]string {
+		out := make([]string, n)
+		for i := range out {
+			out[i] = strings.Repeat("x", size)
+		}
+		return &out
+	}
+	cases := []struct {
+		name   string
+		edited *[]string
+		accept bool
+	}{
+		{"ten facts", facts(10, 1), true},
+		{"eleven facts", facts(11, 1), false},
+		{"exactly the byte budget", facts(1, MaxSimulatedUserFactsBytes), true},
+		{"one byte over the budget", facts(1, MaxSimulatedUserFactsBytes+1), false},
+		{"a blank fact", &[]string{"本期用水 45 度", "  "}, false},
+		{"an empty list removes the person", &[]string{}, true},
+	}
+	for _, c := range cases {
+		_, err := validSimulatedUserFacts(c.edited, nil)
+		if (err == nil) != c.accept || (err != nil && !errors.Is(err, ErrSimulatedUserFacts)) {
+			t.Errorf("%s: err = %v, want accepted %v", c.name, err, c.accept)
+		}
+	}
+	if got, _ := validSimulatedUserFacts(&[]string{" 本期用水 45 度 "}, nil); !slices.Equal(got, []string{"本期用水 45 度"}) {
+		t.Errorf("a fact is stored as %q, want it trimmed", got)
+	}
+	if got, _ := validSimulatedUserFacts(nil, []string{"stored"}); !slices.Equal(got, []string{"stored"}) {
+		t.Errorf("an edit without facts keeps %q, want the stored facts", got)
 	}
 }

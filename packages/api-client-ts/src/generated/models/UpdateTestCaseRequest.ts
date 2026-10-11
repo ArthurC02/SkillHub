@@ -39,6 +39,16 @@ export interface UpdateTestCaseRequest {
      * 
      */
     rubric?: Rubric | null;
+    /**
+     * What the person in this test case knows but did not say. When a run in
+     * an evaluation batch ends by asking a question, the batch answers it as
+     * this person with these facts, frozen with the rest of the test case, up
+     * to the conversation's round limit. An empty list means nobody answers
+     * for the person, and the trial waits for a real answer. At most 1500
+     * bytes in all.
+     * 
+     */
+    simulatedUserFacts?: Array<string>;
 }
 
 /**
@@ -61,6 +71,7 @@ export function UpdateTestCaseRequestFromJSONTyped(json: any, ignoreDiscriminato
         'name': json['name'] == null ? undefined : json['name'],
         'userPrompt': json['user_prompt'] == null ? undefined : json['user_prompt'],
         'rubric': json['rubric'] === undefined ? undefined : json['rubric'] === null ? null : RubricFromJSON(json['rubric']),
+        'simulatedUserFacts': json['simulated_user_facts'] == null ? undefined : json['simulated_user_facts'],
     };
 }
 
@@ -78,6 +89,7 @@ export function UpdateTestCaseRequestToJSONTyped(value?: UpdateTestCaseRequest |
         'name': value['name'],
         'user_prompt': value['userPrompt'],
         'rubric': RubricToJSON(value['rubric']),
+        'simulated_user_facts': value['simulatedUserFacts'],
     };
 }
 

@@ -11577,6 +11577,51 @@ func (s *SetSkillRestrictionReq) Validate() error {
 	return nil
 }
 
+func (s SimulatedUserFacts) Validate() error {
+	alias := ([]string)(s)
+	if alias == nil {
+		return nil // optional
+	}
+	if err := (validate.Array{
+		MinLength:    0,
+		MinLengthSet: false,
+		MaxLength:    10,
+		MaxLengthSet: true,
+	}).ValidateLength(len(alias)); err != nil {
+		return errors.Wrap(err, "array")
+	}
+	var failures []validate.FieldError
+	for i, elem := range alias {
+		if err := func() error {
+			if err := (validate.String{
+				MinLength:     1,
+				MinLengthSet:  true,
+				MaxLength:     0,
+				MaxLengthSet:  false,
+				Email:         false,
+				Hostname:      false,
+				Regex:         nil,
+				MinNumeric:    0,
+				MinNumericSet: false,
+				MaxNumeric:    0,
+				MaxNumericSet: false,
+			}).Validate(string(elem)); err != nil {
+				return errors.Wrap(err, "string")
+			}
+			return nil
+		}(); err != nil {
+			failures = append(failures, validate.FieldError{
+				Name:  fmt.Sprintf("[%d]", i),
+				Error: err,
+			})
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
 func (s *Skill) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -12408,6 +12453,17 @@ func (s *TestCase) Validate() error {
 			Error: err,
 		})
 	}
+	if err := func() error {
+		if err := s.SimulatedUserFacts.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "simulated_user_facts",
+			Error: err,
+		})
+	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
 	}
@@ -12463,6 +12519,17 @@ func (s *TestCaseListItem) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "rubric",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if err := s.SimulatedUserFacts.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "simulated_user_facts",
 			Error: err,
 		})
 	}
@@ -13164,6 +13231,17 @@ func (s *UpdateTestCaseReq) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "rubric",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if err := s.SimulatedUserFacts.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "simulated_user_facts",
 			Error: err,
 		})
 	}

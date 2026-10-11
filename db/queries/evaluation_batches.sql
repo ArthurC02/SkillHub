@@ -49,10 +49,22 @@ WHERE b.workspace_id = @workspace_id AND b.status = 'launching'
       WHERE i.batch_id = b.id AND i.workspace_id = b.workspace_id AND i.run_id IS NULL
   );
 
--- name: HasLaunchingBatch :one
+-- name: HasUnsettledBatch :one
 SELECT EXISTS (
-    SELECT 1 FROM evaluation_batches WHERE workspace_id = @workspace_id AND status = 'launching'
-) AS launching;
+    SELECT 1 FROM evaluation_batches
+    WHERE workspace_id = @workspace_id AND status <> 'stopped' AND settled_at IS NULL
+) AS unsettled;
 
--- name: ListWorkspacesWithLaunchingBatches :many
-SELECT DISTINCT workspace_id FROM evaluation_batches WHERE status = 'launching';
+-- name: ListWorkspacesWithUnsettledBatches :many
+SELECT DISTINCT workspace_id FROM evaluation_batches WHERE status <> 'stopped' AND settled_at IS NULL;
+
+-- name: ListUnsettledBatchTrials :many
+SELECT b.id AS batch_id, b.status, b.created_by, i.run_id
+FROM evaluation_batches b
+JOIN evaluation_batch_items i ON i.batch_id = b.id AND i.workspace_id = b.workspace_id
+WHERE b.workspace_id = @workspace_id AND b.status <> 'stopped' AND b.settled_at IS NULL
+ORDER BY b.created_at, b.id;
+
+-- name: MarkBatchSettled :execrows
+UPDATE evaluation_batches SET settled_at = now()
+WHERE id = @id AND workspace_id = @workspace_id AND status = 'launched' AND settled_at IS NULL;

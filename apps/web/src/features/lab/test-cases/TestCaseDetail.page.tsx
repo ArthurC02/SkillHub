@@ -9,6 +9,7 @@ import { useRuns } from "../../runs";
 import { RunHistory } from "./components/RunHistory";
 import { DeleteTestCase } from "./components/DeleteTestCase";
 import { PromptForm } from "./components/PromptForm";
+import { SimulatedUserForm } from "./components/SimulatedUserForm";
 import { CriteriaSection } from "./components/CriteriaSection";
 import { RubricSection } from "./components/RubricSection";
 import { DatasetSection } from "./components/DatasetSection";
@@ -91,6 +92,9 @@ export function TestCaseDetail() {
         <div className="test-case-design">
           <section className="test-case-work-panel" aria-label="任務提示設計">
             <PromptForm testCase={testCase.data} />
+          </section>
+          <section className="test-case-work-panel" aria-label="模擬使用者設計">
+            <SimulatedUserForm testCase={testCase.data} />
           </section>
           <section className="test-case-work-panel" aria-label="驗收與評分設計">
             <CriteriaSection testCase={testCase.data} />

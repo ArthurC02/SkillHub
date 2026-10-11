@@ -49,7 +49,7 @@ func (q *Queries) ClaimNextBatchItem(ctx context.Context, workspaceID pgtype.UUI
 }
 
 const getEvaluationBatch = `-- name: GetEvaluationBatch :one
-SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline FROM evaluation_batches WHERE id = $1 AND workspace_id = $2
+SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at FROM evaluation_batches WHERE id = $1 AND workspace_id = $2
 `
 
 type GetEvaluationBatchParams struct {
@@ -71,27 +71,29 @@ func (q *Queries) GetEvaluationBatch(ctx context.Context, arg GetEvaluationBatch
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.WithBaseline,
+		&i.SettledAt,
 	)
 	return i, err
 }
 
-const hasLaunchingBatch = `-- name: HasLaunchingBatch :one
+const hasUnsettledBatch = `-- name: HasUnsettledBatch :one
 SELECT EXISTS (
-    SELECT 1 FROM evaluation_batches WHERE workspace_id = $1 AND status = 'launching'
-) AS launching
+    SELECT 1 FROM evaluation_batches
+    WHERE workspace_id = $1 AND status <> 'stopped' AND settled_at IS NULL
+) AS unsettled
 `
 
-func (q *Queries) HasLaunchingBatch(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
-	row := q.db.QueryRow(ctx, hasLaunchingBatch, workspaceID)
-	var launching bool
-	err := row.Scan(&launching)
-	return launching, err
+func (q *Queries) HasUnsettledBatch(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasUnsettledBatch, workspaceID)
+	var unsettled bool
+	err := row.Scan(&unsettled)
+	return unsettled, err
 }
 
 const insertEvaluationBatch = `-- name: InsertEvaluationBatch :one
 INSERT INTO evaluation_batches (workspace_id, skill_id, skill_version_id, trials, with_baseline, created_by)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline
+RETURNING id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at
 `
 
 type InsertEvaluationBatchParams struct {
@@ -124,6 +126,7 @@ func (q *Queries) InsertEvaluationBatch(ctx context.Context, arg InsertEvaluatio
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.WithBaseline,
+		&i.SettledAt,
 	)
 	return i, err
 }
@@ -229,7 +232,7 @@ func (q *Queries) ListEvaluationBatchItems(ctx context.Context, arg ListEvaluati
 }
 
 const listEvaluationBatches = `-- name: ListEvaluationBatches :many
-SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline FROM evaluation_batches
+SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at FROM evaluation_batches
 WHERE workspace_id = $1 AND skill_id = $2
 ORDER BY created_at DESC
 LIMIT 50
@@ -260,6 +263,7 @@ func (q *Queries) ListEvaluationBatches(ctx context.Context, arg ListEvaluationB
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.WithBaseline,
+			&i.SettledAt,
 		); err != nil {
 			return nil, err
 		}
@@ -271,12 +275,52 @@ func (q *Queries) ListEvaluationBatches(ctx context.Context, arg ListEvaluationB
 	return items, nil
 }
 
-const listWorkspacesWithLaunchingBatches = `-- name: ListWorkspacesWithLaunchingBatches :many
-SELECT DISTINCT workspace_id FROM evaluation_batches WHERE status = 'launching'
+const listUnsettledBatchTrials = `-- name: ListUnsettledBatchTrials :many
+SELECT b.id AS batch_id, b.status, b.created_by, i.run_id
+FROM evaluation_batches b
+JOIN evaluation_batch_items i ON i.batch_id = b.id AND i.workspace_id = b.workspace_id
+WHERE b.workspace_id = $1 AND b.status <> 'stopped' AND b.settled_at IS NULL
+ORDER BY b.created_at, b.id
 `
 
-func (q *Queries) ListWorkspacesWithLaunchingBatches(ctx context.Context) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, listWorkspacesWithLaunchingBatches)
+type ListUnsettledBatchTrialsRow struct {
+	BatchID   pgtype.UUID
+	Status    string
+	CreatedBy pgtype.UUID
+	RunID     pgtype.UUID
+}
+
+func (q *Queries) ListUnsettledBatchTrials(ctx context.Context, workspaceID pgtype.UUID) ([]ListUnsettledBatchTrialsRow, error) {
+	rows, err := q.db.Query(ctx, listUnsettledBatchTrials, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUnsettledBatchTrialsRow
+	for rows.Next() {
+		var i ListUnsettledBatchTrialsRow
+		if err := rows.Scan(
+			&i.BatchID,
+			&i.Status,
+			&i.CreatedBy,
+			&i.RunID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWorkspacesWithUnsettledBatches = `-- name: ListWorkspacesWithUnsettledBatches :many
+SELECT DISTINCT workspace_id FROM evaluation_batches WHERE status <> 'stopped' AND settled_at IS NULL
+`
+
+func (q *Queries) ListWorkspacesWithUnsettledBatches(ctx context.Context) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listWorkspacesWithUnsettledBatches)
 	if err != nil {
 		return nil, err
 	}
@@ -293,6 +337,24 @@ func (q *Queries) ListWorkspacesWithLaunchingBatches(ctx context.Context) ([]pgt
 		return nil, err
 	}
 	return items, nil
+}
+
+const markBatchSettled = `-- name: MarkBatchSettled :execrows
+UPDATE evaluation_batches SET settled_at = now()
+WHERE id = $1 AND workspace_id = $2 AND status = 'launched' AND settled_at IS NULL
+`
+
+type MarkBatchSettledParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) MarkBatchSettled(ctx context.Context, arg MarkBatchSettledParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markBatchSettled, arg.ID, arg.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const markBatchesLaunched = `-- name: MarkBatchesLaunched :execrows

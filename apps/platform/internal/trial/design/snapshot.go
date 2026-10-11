@@ -49,7 +49,8 @@ type snapshotContent struct {
 	AcceptanceCriteria []Criterion  `json:"acceptance_criteria"`
 	DatasetRefs        []DatasetRef `json:"dataset_refs"`
 
-	Rubric *Rubric `json:"rubric,omitempty"`
+	Rubric             *Rubric  `json:"rubric,omitempty"`
+	SimulatedUserFacts []string `json:"simulated_user_facts,omitempty"`
 }
 
 func LockDraft(ctx context.Context, tx pgx.Tx, workspaceID, testCaseID pgtype.UUID) (Draft, error) {
@@ -141,6 +142,28 @@ func (s *Service) SnapshotContentHashes(
 	return hashes, nil
 }
 
+func (s *Service) SimulatedUserFacts(
+	ctx context.Context, workspaceID pgtype.UUID, snapshotIDs []pgtype.UUID,
+) (map[pgtype.UUID][]string, error) {
+	if s == nil || s.Pool == nil {
+		return nil, errPersistenceNotConfigured
+	}
+	facts := make(map[pgtype.UUID][]string, len(snapshotIDs))
+	if len(snapshotIDs) == 0 {
+		return facts, nil
+	}
+	rows, err := gen.New(s.Pool).ListSnapshotSimulatedUserFacts(ctx, gen.ListSnapshotSimulatedUserFactsParams{
+		WorkspaceID: workspaceID, SnapshotIds: snapshotIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		facts[row.ID] = row.SimulatedUserFacts
+	}
+	return facts, nil
+}
+
 func (s *Service) SnapshotInputsAvailable(ctx context.Context, workspaceID, snapshotID pgtype.UUID) (bool, error) {
 	if s == nil || s.Pool == nil {
 		return false, errPersistenceNotConfigured
@@ -227,6 +250,7 @@ func (s *Service) CreateSnapshot(ctx context.Context, tx pgx.Tx, workspaceID, te
 		AcceptanceCriteria: criteria,
 		DatasetRefs:        refs,
 		Rubric:             rubric,
+		SimulatedUserFacts: tc.SimulatedUserFacts,
 	}.hash()
 	if err != nil {
 		return Snapshot{}, err
@@ -247,8 +271,8 @@ func (s *Service) CreateSnapshot(ctx context.Context, tx pgx.Tx, workspaceID, te
 		AcceptanceCriteria: encodedCriteria,
 		DatasetRefs:        encodedRefs,
 		ContentHash:        hash,
-
-		Rubric: tc.Rubric,
+		Rubric:             tc.Rubric,
+		SimulatedUserFacts: tc.SimulatedUserFacts,
 	})
 	if err != nil {
 		return Snapshot{}, err
@@ -298,6 +322,7 @@ func (s *Service) ContinueSnapshot(
 	}
 	hash, err := snapshotContent{
 		UserPrompt: prompt, AcceptanceCriteria: criteria, DatasetRefs: refs, Rubric: rubric,
+		SimulatedUserFacts: from.SimulatedUserFacts,
 	}.hash()
 	if err != nil {
 		return Snapshot{}, err
@@ -310,6 +335,7 @@ func (s *Service) ContinueSnapshot(
 		DatasetRefs:        from.DatasetRefs,
 		ContentHash:        hash,
 		Rubric:             from.Rubric,
+		SimulatedUserFacts: from.SimulatedUserFacts,
 	})
 	if err != nil {
 		return Snapshot{}, err

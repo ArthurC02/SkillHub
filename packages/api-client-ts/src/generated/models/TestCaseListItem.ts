@@ -67,6 +67,16 @@ export interface TestCaseListItem {
      */
     rubric?: Rubric;
     /**
+     * What the person in this test case knows but did not say. When a run in
+     * an evaluation batch ends by asking a question, the batch answers it as
+     * this person with these facts, frozen with the rest of the test case, up
+     * to the conversation's round limit. An empty list means nobody answers
+     * for the person, and the trial waits for a real answer. At most 1500
+     * bytes in all.
+     * 
+     */
+    simulatedUserFacts: Array<string>;
+    /**
      * 
      */
     createdAt: Date;
@@ -111,6 +121,7 @@ export function instanceOfTestCaseListItem(value: object): value is TestCaseList
     if (!('name' in value) || value['name'] === undefined) return false;
     if ((!('userPrompt' in (value as Record<string, any>)) && !('user_prompt' in (value as Record<string, any>))) || ((value as Record<string, any>)['userPrompt'] === undefined && (value as Record<string, any>)['user_prompt'] === undefined)) return false;
     if ((!('acceptanceCriteria' in (value as Record<string, any>)) && !('acceptance_criteria' in (value as Record<string, any>))) || ((value as Record<string, any>)['acceptanceCriteria'] === undefined && (value as Record<string, any>)['acceptance_criteria'] === undefined)) return false;
+    if ((!('simulatedUserFacts' in (value as Record<string, any>)) && !('simulated_user_facts' in (value as Record<string, any>))) || ((value as Record<string, any>)['simulatedUserFacts'] === undefined && (value as Record<string, any>)['simulated_user_facts'] === undefined)) return false;
     if ((!('createdAt' in (value as Record<string, any>)) && !('created_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['createdAt'] === undefined && (value as Record<string, any>)['created_at'] === undefined)) return false;
     if ((!('updatedAt' in (value as Record<string, any>)) && !('updated_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['updatedAt'] === undefined && (value as Record<string, any>)['updated_at'] === undefined)) return false;
     if ((!('skillName' in (value as Record<string, any>)) && !('skill_name' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillName'] === undefined && (value as Record<string, any>)['skill_name'] === undefined)) return false;
@@ -136,6 +147,7 @@ export function TestCaseListItemFromJSONTyped(json: any, ignoreDiscriminator: bo
         'userPrompt': json['user_prompt'],
         'acceptanceCriteria': ((json['acceptance_criteria'] as Array<any>).map(AcceptanceCriterionFromJSON)),
         'rubric': json['rubric'] == null ? undefined : RubricFromJSON(json['rubric']),
+        'simulatedUserFacts': json['simulated_user_facts'],
         'createdAt': (json['created_at'] == null ? json['created_at'] : parseDateTime(json['created_at'])),
         'updatedAt': (json['updated_at'] == null ? json['updated_at'] : parseDateTime(json['updated_at'])),
         'skillName': json['skill_name'],
@@ -162,6 +174,7 @@ export function TestCaseListItemToJSONTyped(value?: TestCaseListItem | null, ign
         'user_prompt': value['userPrompt'],
         'acceptance_criteria': ((value['acceptanceCriteria'] as Array<any>).map(AcceptanceCriterionToJSON)),
         'rubric': RubricToJSON(value['rubric']),
+        'simulated_user_facts': value['simulatedUserFacts'],
         'created_at': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
         'updated_at': value['updatedAt'] == null ? value['updatedAt'] : serializeDateTime(value['updatedAt']),
         'skill_name': value['skillName'],

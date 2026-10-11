@@ -582,6 +582,9 @@ jobs:
       - name: Creation frozen-set comparison
         run: python tools/eval-regression/test_creation_frozen_compare.py
 
+      - name: Capability-set import into test cases
+        run: python tools/eval-regression/skill-capability/test_import_test_cases.py
+
       - name: Tools scripts — complexity gate
         run: |
           pip install ruff==0.16.7

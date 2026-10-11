@@ -40,17 +40,17 @@ func (c *RunEventConsumer) Deliver(ctx context.Context, event outbox.Event) erro
 }
 
 type BatchEventConsumer struct {
-	HasLaunchingBatch func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
+	HasUnsettledBatch func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
 
 	Enqueue func(context.Context, BatchAdvanceArgs) error
 }
 
 func (c *BatchEventConsumer) Deliver(ctx context.Context, event outbox.Event) error {
-	if c.HasLaunchingBatch == nil || c.Enqueue == nil {
+	if c.HasUnsettledBatch == nil || c.Enqueue == nil {
 		return errors.New("evaluation batch event consumer is not configured")
 	}
-	launching, err := c.HasLaunchingBatch(ctx, event.WorkspaceID)
-	if err != nil || !launching {
+	unsettled, err := c.HasUnsettledBatch(ctx, event.WorkspaceID)
+	if err != nil || !unsettled {
 		return err
 	}
 	return c.Enqueue(ctx, BatchAdvanceArgs{WorkspaceID: pgconv.UUIDString(event.WorkspaceID)})

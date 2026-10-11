@@ -777,7 +777,7 @@ func (q *Queries) ListSkillVersionsInDownloads(ctx context.Context, versionIds [
 }
 
 const listTestCasesForSkill = `-- name: ListTestCasesForSkill :many
-SELECT id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric FROM test_cases
+SELECT id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric, simulated_user_facts FROM test_cases
 WHERE skill_id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 ORDER BY created_at, id
 `
@@ -807,6 +807,7 @@ func (q *Queries) ListTestCasesForSkill(ctx context.Context, arg ListTestCasesFo
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.Rubric,
+			&i.SimulatedUserFacts,
 		); err != nil {
 			return nil, err
 		}

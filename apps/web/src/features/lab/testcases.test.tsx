@@ -74,6 +74,7 @@ const draft: TestCase = {
       confirmed_at: "2026-08-17T01:00:00Z",
     },
   ],
+  simulated_user_facts: [],
   created_at: "2026-08-17T00:00:00Z",
   updated_at: "2026-08-17T01:00:00Z",
 };
@@ -456,6 +457,34 @@ test("CONTENT-007 a rubric line is written against a criterion and saved with it
   expect(saved?.body).toContain('"version":"content-007/writing/v1"');
   expect(saved?.body).toContain('"id":"c1"');
   expect(saved?.body).toContain('"evidence_required":true');
+});
+
+test("the simulated person's facts are saved one per line with blank lines dropped", async () => {
+  const calls = stubPlatform({ testCase: { ...draft, simulated_user_facts: ["本期用水 45 度"] } });
+  await render();
+
+  const box = container.querySelector<HTMLTextAreaElement>("#simulated-user-facts")!;
+  expect(box.value).toBe("本期用水 45 度");
+  await act(async () => setValue(box, " 本期用水 45 度 \n\n上期沒有欠費"));
+  await act(async () => button("儲存模擬使用者").click());
+
+  const saved = calls.find((c) => c.method === "PATCH" && c.body?.includes("simulated_user_facts"));
+  expect(JSON.parse(saved?.body ?? "{}")).toEqual({
+    simulated_user_facts: ["本期用水 45 度", "上期沒有欠費"],
+  });
+});
+
+test("eleven facts cannot be saved and the screen says how many lines there are", async () => {
+  stubPlatform();
+  await render();
+
+  const box = container.querySelector<HTMLTextAreaElement>("#simulated-user-facts")!;
+  const lines = (n: number) => Array.from({ length: n }, (_, i) => `事實 ${i + 1}`).join("\n");
+  await act(async () => setValue(box, lines(10)));
+  expect(button("儲存模擬使用者").disabled).toBe(false);
+  await act(async () => setValue(box, lines(11)));
+  expect(button("儲存模擬使用者").disabled).toBe(true);
+  expect(text()).toContain("目前 11 行，最多 10 行。");
 });
 
 test("a changed prompt is not labelled as saved by the previous request", async () => {

@@ -16,6 +16,13 @@
 | `holdout[].reference_answer` | 參考解答，證明這題可解 |
 | `holdout[].expected_numbers` | 任何正確答案都會出現的數字或日期，供程式判分 |
 
+## 匯入平台
+
+`import_test_cases.py` 把一個任務的 `holdout[]` 建成某個 Skill 的 Test Case：`prompt` 是題目、`criteria` 依序成為驗收條件、`user_facts` 成為模擬使用者的事實。驗收條件寫到全部 `expected_numbers` 的，先由程式檢查回答提到這些數字再交給評審；`ask` 案例的第一條，先檢查對話有提問再交給評審。建好之後在批次評估加開對照，就能看到這個 Skill 比不載入它多做到什麼。
+
+    python import_test_cases.py --task SC01 --skill <Skill UUID> --dry-run
+    SKILLHUB_SESSION=<sh_session cookie> python import_test_cases.py --task SC01 --skill <Skill UUID>
+
 ## 規則
 
 - 新任務只從**讀過逐場紀錄、確認錯在 Skill 而不是考題或評分**的失敗寫成，`origin` 寫明來源。

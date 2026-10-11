@@ -106,6 +106,7 @@ type TestCase struct {
 	UpdatedAt          pgtype.Timestamptz
 	DeletedAt          pgtype.Timestamptz
 	Rubric             []byte
+	SimulatedUserFacts []string
 }
 
 func testCaseOf(row gen.TestCase) TestCase {
@@ -114,6 +115,7 @@ func testCaseOf(row gen.TestCase) TestCase {
 		Name: row.Name, UserPrompt: row.UserPrompt,
 		AcceptanceCriteria: row.AcceptanceCriteria, CreatedAt: row.CreatedAt,
 		UpdatedAt: row.UpdatedAt, DeletedAt: row.DeletedAt, Rubric: row.Rubric,
+		SimulatedUserFacts: row.SimulatedUserFacts,
 	}
 }
 
@@ -141,9 +143,10 @@ const MaxRubricItems = 50
 const MaxRubricVersionBytes = 200
 
 type TestCaseEdit struct {
-	Name, Prompt  *string
-	ReplaceRubric bool
-	Rubric        *Rubric
+	Name, Prompt       *string
+	ReplaceRubric      bool
+	Rubric             *Rubric
+	SimulatedUserFacts *[]string
 }
 
 func (s *Service) EditTestCase(ctx context.Context, ws identity.Workspace, id pgtype.UUID, edit TestCaseEdit) (TestCase, error) {
@@ -171,9 +174,20 @@ func (s *Service) EditTestCase(ctx context.Context, ws identity.Workspace, id pg
 			return TestCase{}, err
 		}
 	}
+	facts, err := validSimulatedUserFacts(edit.SimulatedUserFacts, tc.SimulatedUserFacts)
+	if err != nil {
+		return TestCase{}, err
+	}
 	updated, err := q.UpdateTestCase(ctx, gen.UpdateTestCaseParams{ID: tc.ID, WorkspaceID: ws.ID, Name: name, UserPrompt: prompt})
 	if err != nil {
 		return TestCase{}, err
+	}
+	if edit.SimulatedUserFacts != nil {
+		if updated, err = q.UpdateTestCaseSimulatedUserFacts(ctx, gen.UpdateTestCaseSimulatedUserFactsParams{
+			ID: tc.ID, WorkspaceID: ws.ID, SimulatedUserFacts: facts,
+		}); err != nil {
+			return TestCase{}, err
+		}
 	}
 	if edit.ReplaceRubric {
 		if updated, err = q.UpdateTestCaseRubric(ctx, gen.UpdateTestCaseRubricParams{ID: tc.ID, WorkspaceID: ws.ID, Rubric: rubric}); err != nil {
@@ -524,6 +538,34 @@ func validateDraft(name, prompt string) (string, string, error) {
 		return "", "", fmt.Errorf("%w: Prompt 最多 %d bytes", ErrInvalid, MaxPromptBytes)
 	}
 	return name, prompt, nil
+}
+
+const (
+	MaxSimulatedUserFacts      = 10
+	MaxSimulatedUserFactsBytes = 1500
+)
+
+var ErrSimulatedUserFacts = fmt.Errorf("%w: 模擬使用者的事實最多 %d 條、每條不能空白、合計最多 %d bytes",
+	ErrInvalid, MaxSimulatedUserFacts, MaxSimulatedUserFactsBytes)
+
+func validSimulatedUserFacts(edited *[]string, current []string) ([]string, error) {
+	if edited == nil {
+		return current, nil
+	}
+	facts := make([]string, 0, len(*edited))
+	total := 0
+	for _, fact := range *edited {
+		fact = strings.TrimSpace(fact)
+		if fact == "" {
+			return nil, ErrSimulatedUserFacts
+		}
+		total += len(fact)
+		facts = append(facts, fact)
+	}
+	if len(facts) > MaxSimulatedUserFacts || total > MaxSimulatedUserFactsBytes {
+		return nil, ErrSimulatedUserFacts
+	}
+	return facts, nil
 }
 
 type DeleteResult struct {
