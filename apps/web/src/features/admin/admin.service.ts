@@ -416,6 +416,34 @@ export function useJudgePanelSwitch() {
   });
 }
 
+export type RunSettings = {
+  continuation_rounds: {
+    rounds: number;
+    min: number;
+    max: number;
+    reason?: string;
+    set_by_user_id?: string;
+    set_at?: string;
+  };
+};
+
+export function useRunSettings() {
+  return useQuery({
+    queryKey: queryKeys.admin.runSettings,
+    queryFn: () => apiFetch<RunSettings>("/admin/settings/runs"),
+    enabled: useOperator(),
+  });
+}
+
+export function useContinuationRounds() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { rounds: number; note: string }) =>
+      apiFetch<RunSettings>("/admin/settings/runs/continuation-rounds", send("PUT", body)),
+    onSuccess: (settings) => queryClient.setQueryData(queryKeys.admin.runSettings, settings),
+  });
+}
+
 export function usePlatformAgentBrake(method: "PUT" | "DELETE") {
   const queryClient = useQueryClient();
   return useMutation({

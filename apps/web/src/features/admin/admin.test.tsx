@@ -2028,3 +2028,88 @@ test("agent and brake controls disappear when their refreshed status cannot be r
   expect(has("拉下 Agent 煞車")()).toBe(false);
   expect(has("停用 daily-report")()).toBe(false);
 });
+
+const RUN_SETTINGS = { continuation_rounds: { rounds: 3, min: 1, max: 10 } };
+
+function stubRunSettings(put: { body: unknown; status: number }) {
+  stub(true, (path, method) => {
+    if (path === "/admin/settings/runs" && method === "GET") {
+      return { body: RUN_SETTINGS, status: 200 };
+    }
+    if (path === "/admin/settings/runs/continuation-rounds" && method === "PUT") return put;
+    return undefined;
+  });
+}
+
+test("the answered-rounds setting shows the current value and its range, and sends the new value with its reason", async () => {
+  stubRunSettings({
+    body: {
+      continuation_rounds: {
+        rounds: 5,
+        min: 1,
+        max: 10,
+        reason: "longer interviews",
+        set_at: "2026-10-10T08:00:00Z",
+      },
+    },
+    status: 200,
+  });
+  await mountAt("/admin/settings");
+  await waitFor(has("一段對話可以回答幾輪"));
+  expect(has("目前：3 輪（可設 1–10 輪）")()).toBe(true);
+  expect(field<HTMLInputElement>("#admin-settings-rounds-value").value).toBe("3");
+
+  await type("#admin-settings-rounds-value", "5");
+  await type("#admin-settings-rounds-note", "longer interviews");
+  await click(button("改輪數"));
+  await waitFor(has("已改為 5 輪，下一次回答就照這個值。"));
+
+  expect(calls.find((c) => c.method === "PUT")).toEqual({
+    method: "PUT",
+    url: "/admin/settings/runs/continuation-rounds",
+    body: { rounds: 5, note: "longer interviews" },
+  });
+  expect(has("目前：5 輪（可設 1–10 輪）")()).toBe(true);
+  expect(has("理由：longer interviews")()).toBe(true);
+});
+
+test("the answered-rounds input accepts the range edges and refuses one past them", async () => {
+  stubRunSettings({ body: RUN_SETTINGS, status: 200 });
+  await mountAt("/admin/settings");
+  await waitFor(has("一段對話可以回答幾輪"));
+  await type("#admin-settings-rounds-note", "boundary check");
+
+  for (const [value, refused] of [
+    ["0", true],
+    ["1", false],
+    ["10", false],
+    ["11", true],
+    ["2.5", true],
+    ["", true],
+    ["abc", true],
+  ] as const) {
+    await type("#admin-settings-rounds-value", value);
+    expect(button("改輪數").disabled, JSON.stringify(value)).toBe(refused);
+  }
+});
+
+test("a refused answered-rounds change shows the server's sentence and keeps the old value", async () => {
+  stubRunSettings({ body: { error: "輪數要在 1 到 10 之間。" }, status: 400 });
+  await mountAt("/admin/settings");
+  await waitFor(has("一段對話可以回答幾輪"));
+
+  await type("#admin-settings-rounds-value", "4");
+  await type("#admin-settings-rounds-note", "try");
+  await click(button("改輪數"));
+  await waitFor(has("沒有完成，伺服器說：輪數要在 1 到 10 之間。"));
+
+  expect(has("目前：3 輪（可設 1–10 輪）")()).toBe(true);
+  expect(has("已改為")()).toBe(false);
+});
+
+test("an unreadable answered-rounds setting says so instead of drawing a form", async () => {
+  stub(true);
+  await mountAt("/admin/settings");
+  await waitFor(has("暫時無法讀取試跑設定"));
+  expect(container.querySelector("#admin-settings-rounds-value")).toBeNull();
+});

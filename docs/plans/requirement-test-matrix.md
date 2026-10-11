@@ -100,7 +100,7 @@
 | GEN-010 | 有測試 | `TestSavingNeedsAConfirmedUnblockedDraftWithTheSameHash`、`TestAnExistingCandidateIsSavedWithoutMaterializingAgain` | |
 | GEN-011 | 有測試 | `TestCreationBatchForeignSessionIDIsNotAnOracle` | |
 | GEN-013 | 未實作 | | 創作端的知識缺口檢查、`references/`／`assets/` 產出與隨附的正反評估案例都還沒有 |
-| GEN-014 | 部分 | `a turn that asks the person ends there, succeeded, with the questions as its answer`、`TestGeneralModeCarriesTheQuestionsARunEndedWith`、`TestAnsweringARunsQuestionsStartsTheRunThatContinuesIt`、`TestAConversationStopsAtTheOperatorsRoundLimit` | 畫面還不會顯示問題與作答；執行時的搜尋工具還沒有 |
+| GEN-014 | 部分 | `a turn that asks the person ends there, succeeded, with the questions as its answer`、`TestGeneralModeCarriesTheQuestionsARunEndedWith`、`TestAnsweringARunsQuestionsStartsTheRunThatContinuesIt`、`TestAConversationStopsAtTheOperatorsRoundLimit`、`submitting sends a picked option and a typed answer in question order, then opens the new run` | 執行時的搜尋工具還沒有 |
 | GEN-012 | 有測試 | `TestCreationBudgetOutOfBandNamesTheBand`、`TestCreationLimitsEndpoint`、`TestCreationMeasureFifteenSessionsAgainstSingleShot` | |
 
 ## 可攜與乾淨測試模式

@@ -1,4 +1,12 @@
-import { useJudgePanelSwitch, usePlatformSettings, type PlatformSettings } from "../admin.service";
+import { useState } from "react";
+import {
+  useContinuationRounds,
+  useJudgePanelSwitch,
+  usePlatformSettings,
+  useRunSettings,
+  type PlatformSettings,
+  type RunSettings,
+} from "../admin.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
@@ -48,8 +56,70 @@ function JudgePanel({ panel }: { panel: PlatformSettings["judge_panel"] }) {
   );
 }
 
+function ContinuationRounds({ setting }: { setting: RunSettings["continuation_rounds"] }) {
+  const set = useContinuationRounds();
+  const [value, setValue] = useState(String(setting.rounds));
+  const rounds = Number(value);
+  const valid =
+    value.trim() !== "" &&
+    Number.isInteger(rounds) &&
+    rounds >= setting.min &&
+    rounds <= setting.max;
+  return (
+    <section aria-labelledby="admin-settings-rounds-heading">
+      <h2 id="admin-settings-rounds-heading">一段對話可以回答幾輪</h2>
+      <p>
+        目前：<strong>{setting.rounds}</strong> 輪（可設 {setting.min}–{setting.max} 輪）
+      </p>
+      <p className="note">
+        一次試跑問了問題、你回答、接著的新試跑再問，算一輪。下一次回答就讀新的設定；已經超過的對話保留原有的試跑，但不能再加一輪。
+      </p>
+      {setting.reason && (
+        <>
+          <p>理由：{setting.reason}</p>
+          {setting.set_at && (
+            <p>
+              設定於 <Timestamp at={setting.set_at} />
+            </p>
+          )}
+        </>
+      )}
+      <ActionForm
+        id="admin-settings-rounds"
+        submitLabel="改輪數"
+        pending={set.isPending}
+        error={set.error}
+        ready={valid}
+        contextKey={value}
+        done={set.isSuccess && `已改為 ${set.variables.rounds} 輪，下一次回答就照這個值。`}
+        onSubmit={(note) => valid && set.mutate({ rounds, note })}
+      >
+        <div className="field">
+          <label htmlFor="admin-settings-rounds-value">
+            輪數（{setting.min}–{setting.max}）
+          </label>
+          <input
+            id="admin-settings-rounds-value"
+            type="number"
+            min={setting.min}
+            max={setting.max}
+            step={1}
+            value={value}
+            onChange={(event) => {
+              setValue(event.target.value);
+              set.reset();
+            }}
+            readOnly={set.isPending}
+          />
+        </div>
+      </ActionForm>
+    </section>
+  );
+}
+
 export function AdminSettings() {
   const settings = usePlatformSettings();
+  const runSettings = useRunSettings();
   return (
     <AdminPage heading="平台設定">
       <p className="note">
@@ -59,6 +129,9 @@ export function AdminSettings() {
       {settings.isPending && <Loading what="平台設定" />}
       <ReadFailure error={settings.error} what="平台設定" />
       {settings.data && <JudgePanel panel={settings.data.judge_panel} />}
+      {runSettings.isPending && <Loading what="試跑設定" />}
+      <ReadFailure error={runSettings.error} what="試跑設定" />
+      {runSettings.data && <ContinuationRounds setting={runSettings.data.continuation_rounds} />}
     </AdminPage>
   );
 }
