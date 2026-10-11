@@ -317,6 +317,7 @@ const SCANNED_ROUTES = [
   "/lab/test-cases",
   "/lab/test-cases/$testCaseId",
   "/lab/test-cases/$testCaseId/datasets",
+  "/lab/graders",
   "/runs/$runId",
   "/runs/$runId/compare",
   "/activity",
@@ -340,6 +341,7 @@ const SCANNED_ROUTES = [
   "/admin/exposure",
   "/admin/agents",
   "/admin/settings",
+  "/admin/graders",
 ];
 
 function stubOperator() {
@@ -360,6 +362,7 @@ for (const [to, heading] of [
   ["/admin/audit-log", "授予點數"],
   ["/admin/model-budgets", "模型呼叫逾時"],
   ["/admin/settings", "一段對話可以回答幾輪"],
+  ["/admin/graders", "回答引用的每個事實都要附出處"],
   ["/admin/cost-statistics", "搜尋理由"],
   ["/admin/trends", "全平台目前餘額總和"],
   ["/admin/agents", "分割表輪替從來沒有成功過，已經超過兩個週期。"],
@@ -618,6 +621,16 @@ test("QA-009: 測試題列表", async () => {
   });
   await waitFor(has("建立新的測試題"));
   await scan("/lab/test-cases");
+}, 30000);
+
+test("QA-009: 評分器", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/lab/graders" });
+  });
+  await waitFor(has("回覆聽起來簡短或冷淡就判定沒通過。"));
+  await scan("/lab/graders");
 }, 30000);
 
 test("QA-009: 測試題詳情", async () => {

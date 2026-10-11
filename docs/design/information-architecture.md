@@ -109,6 +109,7 @@
 | `/lab/test-cases` | `TestCaseList` | 03:TEST-012 | 試跑與改善／**試跑情境設計** |
 | `/lab/test-cases/$testCaseId` | `TestCaseDetail` | TEST | 試跑與改善／試跑情境設計 |
 | `/lab/test-cases/$testCaseId/datasets` | `DatasetUpload` | 02:TEST-002／03:TEST-004 | 試跑與改善／單一 Test Case 的 Dataset |
+| `/lab/graders` | `EvaluationGraders` | 02:EVAL-014 | 試跑與改善／**成果判定**〔這個 Workspace 專用的 Prompt 評分器；平台通用的唯讀列出〕 |
 | `/lab/datasets` | 相容導向 | 02:TEST-002／03:TEST-004 | 舊深連結；帶 Test Case 時改寫成上列 canonical URL，否則回到 Test Case 清單 |
 | `/skills/$skillId/test-cases/$testCaseId/runs/new` | `RunPreflight` | 03:TEST-008／009（＋02:TEST-005 的同意綁定） | 試跑與改善／**指定 Skill 與 Test Case 的 Run 建立前確認** |
 | `/lab/run` | 相容導向 | 03:TEST-008／009 | 舊連結帶齊 Skill 與 Test Case 時導向上列；缺 Test Case 時回到情境清單，缺 Skill 時若有 Test Case 則回單筆，不渲染另一份 preflight |
@@ -122,6 +123,7 @@
 | `/admin/audit-log` | `AdminAuditLog` | 02:OPS-006 | 產品營運／**營運後台** |
 | `/admin/model-budgets` | `AdminModelBudgets` | 02:OPS-009 | 產品營運／**營運後台** |
 | `/admin/settings` | `AdminSettings` | 02:OPS-011／GEN-014 | 產品營運／**營運後台**〔平台政策：評估判定的評審團與對話回答輪數上限；每次改動要理由並進動作紀錄，可直達 Agent 花費上限與啟停〕 |
+| `/admin/graders` | `AdminGraders` | 02:EVAL-014 | 產品營運／**營運後台**〔每個 Workspace 都能選用的平台評分器；每一版要理由並進動作紀錄〕 |
 | `/admin/cost-statistics` | `AdminCostStatistics` | 02:OPS-007 | 產品營運／**營運後台** |
 | `/admin/trends` | `AdminTrends` | 02:OPS-008 | 產品營運／**營運後台**〔圖表見 [營運後台](../adr/README.md#營運後台)〕 |
 | `/admin/exposure` | `AdminExposure` | 02:DISC-007 | 產品營運／**營運後台**〔發佈物的曝光審核：待審清單與一筆的精確快照〕 |
@@ -178,7 +180,9 @@ Activity ────────► /runs/$id, /workspace/creations, /workspace
 WorkspaceRuns ──► /activity, /runs/$id, /skills/$id, /skills/$id/versions/$id,
                   /lab/test-cases/$id, /lab/test-cases, /workspace
 TestCases ──────► /lab/test-cases/$id, /lab/test-cases/$id/datasets, /skills/$id/test-cases/$id/runs/new, /runs/$id,
-                  /runs/$id/compare, /skills/$id, /skills/$id/files
+                  /runs/$id/compare, /skills/$id, /skills/$id/files, /lab/graders
+CheckEditor ────► /lab/graders                （渲染在 /lab/test-cases/$id 的驗收條件之內）
+EvaluationGraders ► /lab/test-cases
 DatasetUpload ──► /lab/test-cases/$id, /skills/$id, /skills/$id/files,
                   /skills/$id/versions/$id
 RunPreflight ───► /lab/test-cases, /runs/$id, /runs/$id/compare, /skills/$id, /skills/$id/files
@@ -233,7 +237,7 @@ AdminSettings ──► /admin/agents
 | ---: | --- | --- |
 | **0** | （無） | ✅ 沒有孤兒頁 |
 | **1** | `/compare`、`/lab/test-cases/$testCaseId/datasets` | ✅ 兩項都是 R3 的「具名」那一支（IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7 |
-| 2 | `/workspace`、`/workspace/account`、`/workspace/creations`、`/policy`、`/runs/$runId/compare`、`/admin`、`/admin/accounts`、`/admin/dispatch`、`/admin/rosters`、`/admin/model-budgets`、`/admin/settings`、`/admin/cost-statistics` | ✅ |
+| 2 | `/workspace`、`/workspace/account`、`/workspace/creations`、`/policy`、`/runs/$runId/compare`、`/admin`、`/admin/accounts`、`/admin/dispatch`、`/admin/rosters`、`/admin/model-budgets`、`/admin/settings`、`/admin/graders`、`/admin/cost-statistics`、`/lab/graders` | ✅ |
 | 3 | `/skills/$skillId/files`、`/skills/$skillId/package`、`/p/$publisher/$name`、`/workspace/runs`、`/admin/skills`、`/admin/audit-log`、`/admin/trends`、`/admin/exposure` | ✅ |
 | 4 | `/workspace/import`、`/skills/$skillId/test-cases/$testCaseId/runs/new` | ✅ |
 | 5 | `/lab/test-cases/$testCaseId` | ✅ |

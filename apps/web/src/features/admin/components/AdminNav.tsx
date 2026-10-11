@@ -12,6 +12,7 @@ export function AdminNav({ currentPage }: { currentPage: string }) {
     "trends",
     "agents",
     "settings",
+    "graders",
   ].includes(section);
   return (
     <nav aria-label="後台" className="admin-nav">
@@ -62,6 +63,9 @@ export function AdminNav({ currentPage }: { currentPage: string }) {
           </Link>
           <Link to="/admin/settings" className="chip">
             平台設定
+          </Link>
+          <Link to="/admin/graders" className="chip">
+            平台評分器
           </Link>
         </div>
       </details>

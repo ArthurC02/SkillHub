@@ -4,10 +4,16 @@ import { useCriterionAction } from "../../testcases.service";
 import { ConfirmDelete } from "../../../../shared/ui/ConfirmDelete";
 import type { AcceptanceCriterion } from "../../testcases.service";
 import { MutationError } from "./MutationError";
+import { countNodes, type CheckNode } from "../../../evaluation";
 
 function criterionState(c: AcceptanceCriterion): string {
   if (c.confirmed_at) return `已確認（${formatAt(c.confirmed_at)}）`;
   return c.source === "suggested" ? "系統建議，尚未確認" : "尚未確認";
+}
+
+function CheckSummary({ check }: { check?: CheckNode }) {
+  if (!check) return null;
+  return <p className="note">判定方式：依設計的檢查（{countNodes(check)} 個節點）</p>;
 }
 
 export function CriterionRow({
@@ -37,6 +43,7 @@ export function CriterionRow({
         maxLength={2000}
       />
       <p className="note">狀態：{criterionState(criterion)}</p>
+      <CheckSummary check={criterion.check} />
       {edited && (
         <p className="note" id={`criterion-edited-${criterion.id}`}>
           {criterion.confirmed_at

@@ -7,6 +7,7 @@ import { TestCaseDetail } from "./test-cases/TestCaseDetail.page";
 import { TestCaseList } from "./test-cases/TestCaseList.page";
 import type { TestCase } from "./testcases.service";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { CHECK_KINDS, PLATFORM_GRADER, WORKSPACE_GRADER } from "../../testing/fixtures/platform";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -30,6 +31,8 @@ const SKILL = "11111111-1111-1111-1111-111111111111";
 const VERSION = "22222222-2222-2222-2222-222222222222";
 const OTHER_VERSION = "55555555-5555-5555-5555-555555555555";
 const OTHER_SKILL = "44444444-4444-4444-4444-444444444444";
+
+vi.mock("../evaluation/components/CheckFlow", () => ({ CheckFlow: () => null }));
 
 let listSearch: { skill?: string; version?: string } = {};
 const navigations: unknown[] = [];
@@ -133,6 +136,12 @@ type PlatformRequest = { url: string; path: string; method: string };
 
 function platformHandlers(over: Overrides, removedRef: { removed: boolean }) {
   return [
+    (req: PlatformRequest) =>
+      req.path === "/evaluation/check-kinds" ? json(CHECK_KINDS) : undefined,
+    (req: PlatformRequest) =>
+      req.path === "/evaluation/graders"
+        ? json({ graders: [PLATFORM_GRADER, WORKSPACE_GRADER] })
+        : undefined,
     (req: PlatformRequest) => {
       if (!req.url.includes("/criteria/suggest")) return undefined;
       if (over.suggestResponse) return over.suggestResponse;
@@ -384,6 +393,7 @@ test("02:TEST-001 第 3 條 a user can add, delete and withdraw the confirmation
   await act(async () => button("新增").click());
   const added = calls.find((c) => c.method === "POST" && c.url.endsWith("/criteria"));
   expect(added?.body).toContain("不得改動其他欄位");
+  expect(added?.body).not.toContain('"check"');
 
   await act(async () => button("取消確認").click());
   const withdrawn = calls.find((c) => c.method === "PATCH" && c.url.includes("/criteria/c1"));
@@ -393,6 +403,40 @@ test("02:TEST-001 第 3 條 a user can add, delete and withdraw the confirmation
   expect(calls.some((c) => c.method === "DELETE")).toBe(false);
   await act(async () => button("確認刪除這一條").click());
   expect(calls.some((c) => c.method === "DELETE" && c.url.includes("/criteria/c1"))).toBe(true);
+});
+
+test("EVAL-014 a criterion is added with its designed check only once every node is complete", async () => {
+  const calls = stubPlatform();
+  await render();
+
+  await act(async () =>
+    setValue(container.querySelector<HTMLInputElement>("#new-criterion")!, "提到總數"),
+  );
+  await waitFor(() => container.querySelector("#check-editor-root") !== null);
+  await act(async () =>
+    selectValue(
+      container.querySelector<HTMLSelectElement>("#check-editor-root")!,
+      "contains_values",
+    ),
+  );
+  await act(async () => button("開始設計").click());
+
+  expect(button("新增").disabled).toBe(true);
+  expect(container.textContent).toContain("檢查還有節點要修正");
+  expect(container.textContent).toContain("有空白的值");
+
+  await act(async () =>
+    setValue(container.querySelector<HTMLInputElement>("#check-node-0-value-0")!, " 42 "),
+  );
+  expect(button("新增").disabled).toBe(false);
+  await act(async () => button("新增").click());
+
+  const added = calls.find((c) => c.method === "POST" && c.url.endsWith("/criteria"));
+  expect(JSON.parse(added!.body!)).toEqual({
+    source: "user",
+    text: "提到總數",
+    check: { kind: "contains_values", values: ["42"] },
+  });
 });
 
 test("CONTENT-007 a rubric line is written against a criterion and saved with its version", async () => {
@@ -499,19 +543,7 @@ test("TEST-002 an adopted suggestion is listed as 系統建議，尚未確認", 
       { id: "c9", text: "保留欄位標題列", source: "suggested", confirmed_at: null },
     ],
   };
-  const json = (body: unknown) =>
-    Promise.resolve(
-      new Response(JSON.stringify(body), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-  vi.stubGlobal("fetch", (input: string) => {
-    const url = String(input).replace(/^https?:\/\/[^/]+/, "");
-    if (url.split("?")[0] === "/runs") return json({ runs: [] });
-    if (url.includes("/datasets")) return json({ datasets: [], total_bytes: 0 });
-    return json(withSuggested);
-  });
+  stubPlatform({ testCase: withSuggested });
   await render();
 
   expect(container.textContent).toContain("系統建議，尚未確認");

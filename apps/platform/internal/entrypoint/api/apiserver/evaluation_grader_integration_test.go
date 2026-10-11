@@ -96,6 +96,22 @@ func TestAWorkspaceGraderIsVersionedSeenOnlyByItsWorkspaceAndAudited(t *testing.
 	}
 }
 
+func TestARefusedGraderSaysOnlyTheReasonAPersonCanActOn(t *testing.T) {
+	pool := requireDB(t)
+	alice := newAPI(t, pool).login(t, freshName("grader-refused"))
+	createGrader(t, alice, "/evaluation/graders", "語氣", "x")
+
+	cases := []struct{ name, body, want string }{
+		{"a taken name", `{"name":"語氣","instructions":"x","reason":"y"}`, "已經有同名的評分器"},
+		{"no reason", `{"name":"另一個","instructions":"x","reason":" "}`, "要說明這一版改了什麼"},
+	}
+	for _, c := range cases {
+		if _, body := alice.doJSON(t, http.MethodPost, "/evaluation/graders", c.body); body["error"] != c.want {
+			t.Errorf("%s: says %v, want %q", c.name, body["error"], c.want)
+		}
+	}
+}
+
 func TestAPlatformGraderIsDefinedByOperatorsAndUsableByEveryWorkspace(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

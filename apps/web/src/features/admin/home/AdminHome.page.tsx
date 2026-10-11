@@ -311,6 +311,14 @@ function OperationsSection() {
             <p className="note">調整評審團開關與對話回答輪數，查看目前生效的平台政策。</p>
           </div>
         </li>
+        <li>
+          <div>
+            <Link to="/admin/graders">
+              <strong>平台評分器</strong>
+            </Link>
+            <p className="note">每個 Workspace 都能選用的 Prompt 評分器，修改存成新版本。</p>
+          </div>
+        </li>
       </ul>
     </section>
   );
