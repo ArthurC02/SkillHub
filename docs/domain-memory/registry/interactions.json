@@ -235,6 +235,78 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "run-eval-batch-trials",
+      "producer_context": "run",
+      "consumer_context": "eval",
+      "contract_id": "run-eval-batch-trials-v1",
+      "consistency": "synchronous request, idempotent by origin key; the batch records the trial in its own transaction afterwards",
+      "delivery": "composition-root port",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+          "lines": {
+            "start": 28,
+            "end": 69
+          },
+          "content_sha256": "sha256:27973ebe2bd1e880d90c45df8e1ce72530f89d34786544f834026c8b88dddda0",
+          "excerpt_sha256": "sha256:e3b343967e4e165846a18977f4dbb46fa929482932993d721d746c578ecbd07a",
+          "source_kind": "implementation"
+        },
+        {
+          "path": "apps/platform/internal/trial/improvement/batch.go",
+          "lines": {
+            "start": 234,
+            "end": 272
+          },
+          "content_sha256": "sha256:ec65bba8b764d25c604a14eed9784fa4d45311408f7eb2e99e0f3172bc97ae35",
+          "excerpt_sha256": "sha256:599eaa4fe2bcb84f8e205ff5f280ca7ea04038344e75a0bb5bf3976f687f7431",
+          "source_kind": "implementation"
+        }
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "run-eval-run-facts",
+      "producer_context": "run",
+      "consumer_context": "eval",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/trial.go",
+          "lines": {
+            "start": 98,
+            "end": 121
+          },
+          "content_sha256": "sha256:1881a4fe5066ba814f159bf2a8c9db2d6e4efb1964c51681f5cf3da602d5a9d5",
+          "excerpt_sha256": "sha256:738ee12fc6379079b9a7598972b08b1e936ec35ddefafea36e6b430615a881ed",
+          "source_kind": "implementation"
+        }
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "eval-run-verdicts",
+      "producer_context": "eval",
+      "consumer_context": "run",
+      "contract_id": "eval-run-verdicts-v1",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/trial/execution/http.go",
+          "lines": {
+            "start": 465,
+            "end": 482
+          },
+          "content_sha256": "sha256:a657b6f0a93975e38152002b78c0c98d869936f838dc6585eeb82b733f8cd294",
+          "excerpt_sha256": "sha256:562bb58b302958352ef06f8e051bd6972094206bf5c857dc537ba861c1af5544",
+          "source_kind": "implementation"
+        }
+      ],
+      "status": "candidate"
     }
   ]
 }

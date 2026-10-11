@@ -482,3 +482,27 @@ func near(got any, want float64) bool {
 	value, ok := got.(float64)
 	return ok && math.Abs(value-want) < 0.0005
 }
+
+func TestTheRunListShowsEachRunsCurrentVerdictAndSaysNotEvaluatedOtherwise(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-run-list-verdicts")
+	judged := seedFinishedRun(t, pool, f, finishedRun{testCaseID: f.testCaseID, criteria: doesNotAsk, contentHash: "sha256:judged"})
+	unjudged := seedFinishedRun(t, pool, f, finishedRun{testCaseID: f.testCaseID, criteria: doesNotAsk, contentHash: "sha256:unjudged"})
+	mustExec(t, pool, `
+		INSERT INTO evaluations (workspace_id, run_id, status, overall, evidence_complete)
+		VALUES ($1, $2, 'completed', 'met', true)`, mustUUID(t, f.workspaceID), mustUUID(t, judged))
+
+	code, body := f.doJSON(t, http.MethodGet, "/runs?test_case_id="+f.testCaseID, "")
+	if code != http.StatusOK {
+		t.Fatalf("list: got %d %v", code, body)
+	}
+	verdicts := map[string]any{}
+	for _, item := range body["runs"].([]any) {
+		row := item.(map[string]any)
+		verdicts[row["run_id"].(string)] = row["evaluation"].(map[string]any)["value"]
+	}
+	if verdicts[judged] != "met" || verdicts[unjudged] != "not_evaluated" {
+		t.Errorf("verdicts = %v, want %s met and %s not_evaluated", verdicts, judged, unjudged)
+	}
+}

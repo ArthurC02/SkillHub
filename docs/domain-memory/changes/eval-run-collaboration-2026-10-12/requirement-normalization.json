@@ -1,0 +1,38 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "eval-run-collaboration",
+  "status": "draft",
+  "intent": "Record how eval and run collaborate now that a batch starts trials through an idempotent origin key instead of borrowing run's transaction, so the next change to either side meets a reviewed boundary.",
+  "actor": "coding-agent",
+  "observable_outcome": "analyze-boundary between eval and run reports the trial port (with its idempotency), the run-fact reader and the verdict reader; the wait-or-stop policy is a reviewed eval Rule; wiring-interactions no longer needs eval->run or run->eval held in its baseline.",
+  "acceptance_criteria": [
+    {
+      "id": "trial-port-is-idempotent",
+      "statement": "Asking run twice with the same origin key yields one Run; the same key with another Skill Version is refused."
+    },
+    {
+      "id": "fact-and-policy-have-one-home",
+      "statement": "Which refusals pass is run's published fact; whether a batch waits or stops on it is eval's Rule."
+    },
+    {
+      "id": "wiring-edges-are-registered",
+      "statement": "The eval->run and run->eval wiring edges match reviewed interactions, so they leave the wiring_edges baseline."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that makes the records reviewed is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+    "apps/platform/internal/trial/execution/service.go",
+    "apps/platform/internal/trial/improvement/batch.go"
+  ]
+}

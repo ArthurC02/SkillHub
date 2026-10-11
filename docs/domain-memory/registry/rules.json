@@ -160,6 +160,50 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "eval-batch-waits-only-on-a-passing-refusal",
+      "contexts": [
+        "eval"
+      ],
+      "statement": "An evaluation batch waits when Run refuses a trial with a refusal Run says will pass on its own, and stops with that reason recorded on any other refusal.",
+      "examples": [
+        "The workspace is already running as many runs as it may: the batch tries the trial again on its next advance.",
+        "The credit balance is too low: the batch stops and records credit_balance as its reason."
+      ],
+      "evidence": [
+        {
+          "path": "apps/platform/internal/trial/improvement/batch.go",
+          "lines": {
+            "start": 252,
+            "end": 257
+          },
+          "content_sha256": "sha256:ec65bba8b764d25c604a14eed9784fa4d45311408f7eb2e99e0f3172bc97ae35",
+          "excerpt_sha256": "sha256:091e6b79f949da9fcf2248fefa28e0b76b6321faf1a521cadce058006a54f330",
+          "source_kind": "implementation"
+        },
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+          "lines": {
+            "start": 91,
+            "end": 105
+          },
+          "content_sha256": "sha256:27973ebe2bd1e880d90c45df8e1ce72530f89d34786544f834026c8b88dddda0",
+          "excerpt_sha256": "sha256:9a3ecee9a3d15f9b441344e29c06d58f37e01a3984c409062a076d6d6ea2c76b",
+          "source_kind": "implementation"
+        },
+        {
+          "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+          "lines": {
+            "start": 104,
+            "end": 104
+          },
+          "content_sha256": "sha256:5072e5e57a47566f4b966a1b8d1d4c313fef8d3e82de0bcd38e1be7124b5bd12",
+          "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd",
+          "source_kind": "decisions"
+        }
+      ],
+      "status": "candidate"
     }
   ]
 }

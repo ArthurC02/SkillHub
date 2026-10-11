@@ -1,0 +1,113 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "eval-run-collaboration",
+  "proposal_id": "eval-run-collaboration",
+  "registry_revision": {
+    "observed_commit": "7ae276dc85afa0672a63370516232830a78fba90",
+    "registry_digest": "sha256:e4956b01b8c9a332b3b21be4e9e786dbde33ad7441d7bc95044f4b49a52553d5"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "origin-key-replay-returns-the-run",
+    "mutated_protection": "the origin-key lookup before admission in run.Service.create",
+    "failure_evidence": "With the lookup removed, TestATrialWhoseRunWasAlreadyStartedUnderItsKeyIsLinkedToThatRunNeverASecond failed: the replay was refused for workspace concurrency and trial 2 stayed unlinked; the file was restored byte for byte (cmp).",
+    "restored": true
+  },
+  "sources": [
+    "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+    "apps/platform/internal/trial/execution/service.go",
+    "apps/platform/internal/trial/improvement/batch.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:eb9efcdfd94e49e427f5da2056f49c54431bbdfe62005f100e94dd7971087a05",
+      "finished_at": "2026-10-11T17:27:52.031215Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:9bfdd3e696bd7d9be09168af535906e82fd8c072696ae955244402bbad5e2faa",
+      "finished_at": "2026-10-11T17:27:54.076623Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py governance-readiness --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:2b6a3a27f1223e6cc1dc91aae0d304d9226040ff5508b5e8d4133a1df04930ec",
+      "finished_at": "2026-10-11T17:27:55.135607Z"
+    },
+    {
+      "obligation_id": "reviewed-interaction-registers-edge",
+      "status": "passed",
+      "evidence": "go -C tools/devctl test -count=1 -run TestAReviewedInteractionRegistersItsConsumerToProducerEdge .",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:892ec8531ab8e1218653c97867369ec764822a0cbcebccd15f17b0e7edd6d80c",
+      "finished_at": "2026-10-11T17:28:04.134215Z"
+    },
+    {
+      "obligation_id": "passing-refusals-published",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -run TestOnlyRefusalsThatWillPass ./internal/trial/execution/",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:fe54395427aa26bb0f4e7ad59106020c72a29ec7af0093d54f84839ad10641a3",
+      "finished_at": "2026-10-11T17:28:13.584677Z"
+    },
+    {
+      "obligation_id": "origin-key-replay-returns-the-run",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -run TestATrialWhoseRunWasAlreadyStartedUnderItsKey|TestAnOriginKeyThatStartedOne ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:0ccb3d4a5caf8ac35284938b9e30b34dd0144750682fd9f904a30a6ca88d83fa",
+      "finished_at": "2026-10-11T17:28:31.648057Z"
+    },
+    {
+      "obligation_id": "batch-waits-or-stops",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -run TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait|TestARefusalThatWaitingCannotFixStopsTheBatch ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:7543be9676be953e466f19c50929cb1a7ad9193c83c6dfc62a9b2d540d4380db",
+      "finished_at": "2026-10-11T17:28:54.232960Z"
+    },
+    {
+      "obligation_id": "trial-port-contract",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -run TestATrialWhoseRunWasAlreadyStartedUnderItsKey|TestAnOriginKeyThatStartedOne|TestOnlyRefusalsThatWillPass ./internal/...",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:6daffa207ad6de78f2fc2614afec9e4f64952520d2fe47c0ea1e67d359518e9e",
+      "finished_at": "2026-10-11T17:29:59.672347Z"
+    },
+    {
+      "obligation_id": "verdict-reader-contract",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -run TestTheRunListShowsEachRunsCurrentVerdictAndSaysNotEvaluatedOtherwise ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:f019a2e761d8b688368fac90d73886cdfadf563c4b8694e2c296634f2a73d72d",
+      "finished_at": "2026-10-11T17:30:15.619396Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "The unique-violation fallback for two concurrent first starts has no deterministic test; with one run per workspace the slot check refuses the twin first."
+  ]
+}
