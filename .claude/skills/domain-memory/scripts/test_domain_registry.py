@@ -12,7 +12,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
 
@@ -63,6 +63,7 @@ from domain_registry.cli_parser import build_parser
 from domain_registry.impact import boundary_impact
 from domain_registry.policy import amend_policy, amend_policy_fields, validate_policy
 from domain_registry.readiness import assess_readiness
+from domain_registry.relocate import relocate_evidence
 from domain_registry.registry import (
     asset_records,
     boundary_analysis,
@@ -2212,7 +2213,7 @@ class DomainRegistryTest(unittest.TestCase):
             finalize_proposal(package, self.repo / "memory", self.repo)
 
     def redraft_package(
-        self, package: Path, proposal_id: str, statement: str, supersedes: str | None
+        self, package: Path, proposal_id: str, statement: str, supersedes: str | list[str] | None
     ) -> None:
         for name in (
             "domain-change-proposal.json",
@@ -2253,7 +2254,7 @@ class DomainRegistryTest(unittest.TestCase):
         (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
         self.approve_and_apply(package)
         self.redraft_package(package, "PRO-2", "An order total may be negative.", None)
-        with self.assertRaisesRegex(ValueError, "must supersede PRO-1"):
+        with self.assertRaisesRegex(ValueError, "must list PRO-1 in supersedes"):
             self.approve_and_apply(package)
         self.assertEqual(
             self.reviewed_order_total()["statement"], "An order total is non-negative."
@@ -2268,7 +2269,7 @@ class DomainRegistryTest(unittest.TestCase):
         self.redraft_package(
             package, "PRO-2", "An order total may be negative.", "PRO-UNRELATED"
         )
-        with self.assertRaisesRegex(ValueError, "must supersede PRO-1"):
+        with self.assertRaisesRegex(ValueError, "must list PRO-1 in supersedes"):
             self.approve_and_apply(package)
         self.assertEqual(
             self.reviewed_order_total()["statement"], "An order total is non-negative."
@@ -2474,6 +2475,15 @@ class DomainRegistryTest(unittest.TestCase):
             with self.subTest(name=name):
                 document = json.loads((redraft / name).read_text(encoding="utf-8"))
                 self.assertEqual("PRO-2", document["proposal_id"])
+        evidence_path = redraft / "evidence-bundle.json"
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        self.assertEqual((None, []), (evidence["counterfactual_check"], evidence["test_results"]))
+        stuck_evidence = json.loads((stuck / "evidence-bundle.json").read_text(encoding="utf-8"))
+        evidence["counterfactual_check"] = stuck_evidence["counterfactual_check"]
+        evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+        record_test_result(
+            redraft, self.repo / "memory", self.repo, ObligationRun("OB-1", self.run_writing("ok"), "unit"), 60
+        )
         self.approve_and_apply(redraft)
         self.assertEqual(["order-total"], self.rule_ids())
 
@@ -2555,7 +2565,7 @@ class DomainRegistryTest(unittest.TestCase):
         (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
         self.approve_and_apply(package)
         self.redraft_removal(package, "PRO-2", "order-total", None)
-        with self.assertRaisesRegex(ValueError, "must supersede PRO-1"):
+        with self.assertRaisesRegex(ValueError, "must list PRO-1 in supersedes"):
             self.approve_and_apply(package)
         self.assertEqual(self.rule_ids(), ["order-total"])
 
@@ -5143,6 +5153,233 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertEqual(
             upsert_candidate(self.repo / "memory", self.repo, "contexts", record), []
         )
+
+    def counterfactual_verdicts(self, check: dict, status: str = "verified", updates: list | None = None) -> list[str]:
+        package = self.draft_package()
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        proposal["status"] = status
+        if updates is not None:
+            proposal["registry_updates"] = updates
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+        evidence_path = package / "evidence-bundle.json"
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        evidence["counterfactual_check"] = check
+        evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+        return [error for error in validate_change_package(package, None) if "counterfactual" in error]
+
+    def vocabulary_update(self) -> list[dict]:
+        record = {"id": "order", "name": "Order", "contexts": ["orders"], "definition": "A purchase."}
+        return [{"operation": "upsert", "asset": "vocabulary", "record": record}]
+
+    def test_a_not_applicable_counterfactual_is_refused_when_a_rule_changes(self) -> None:
+        verdicts = self.counterfactual_verdicts({"status": "not_applicable", "reason": "only renames a term"})
+        self.assertEqual(1, len(verdicts), verdicts)
+        self.assertIn("may be not_applicable only when the proposal changes no rule", verdicts[0])
+
+    def test_a_not_applicable_counterfactual_needs_a_reason_when_no_behavior_changes(self) -> None:
+        self.assertEqual(
+            ["a not_applicable counterfactual_check requires a reason"],
+            self.counterfactual_verdicts({"status": "not_applicable"}, updates=self.vocabulary_update()),
+        )
+
+    def test_a_reasoned_not_applicable_counterfactual_passes_when_no_behavior_changes(self) -> None:
+        check = {"status": "not_applicable", "reason": "only renames a term"}
+        self.assertEqual([], self.counterfactual_verdicts(check, updates=self.vocabulary_update()))
+
+    UNPLANNED_CHECK: ClassVar[dict] = {
+        "status": "passed", "obligation_id": "OB-2", "mutated_protection": "x", "failure_evidence": "y",
+        "restored": True,
+    }
+    UNPLANNED_MESSAGE = "counterfactual_check must target one of implementation_design's proof_obligations"
+
+    def test_a_counterfactual_must_target_a_planned_proof_obligation(self) -> None:
+        self.assertIn(self.UNPLANNED_MESSAGE, self.counterfactual_verdicts(self.UNPLANNED_CHECK))
+
+    def test_an_applied_package_is_not_held_to_the_planned_proof_obligation_rule(self) -> None:
+        self.assertNotIn(self.UNPLANNED_MESSAGE, self.counterfactual_verdicts(self.UNPLANNED_CHECK, status="applied"))
+
+    def test_supersedes_takes_one_id_or_a_list_of_distinct_ids(self) -> None:
+        package = self.draft_package()
+        requirement = json.loads((package / "requirement-normalization.json").read_text(encoding="utf-8"))
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        message = "domain-change-proposal.json supersedes must be a proposal id or a list of distinct proposal ids"
+        for value, refused in (
+            ("PRO-0", False), (["PRO-0"], False), (["PRO-0", "PRO-1"], False),
+            ([], True), (["PRO-0", "PRO-0"], True), (["PRO-0", ""], True), (7, True),
+        ):
+            with self.subTest(supersedes=value):
+                errors, _ = requirement_and_proposal_errors(requirement, proposal | {"supersedes": value})
+                self.assertEqual(refused, message in errors)
+
+    def test_superseding_a_list_that_names_the_reviewing_proposal_replaces_a_reviewed_record(self) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.approve_and_apply(package)
+        self.redraft_package(package, "PRO-2", "An order total is never below zero.", ["PRO-0", "PRO-1"])
+        self.approve_and_apply(package)
+        self.assertEqual("An order total is never below zero.", self.reviewed_order_total()["statement"])
+
+    def proposal_reference_errors(self, status: str, **fields: Any) -> list[str]:
+        package = self.draft_package()
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8")) | fields | {"status": status}
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+        return validate_change_package(package, self.repo / "memory")
+
+    def test_ids_the_package_itself_adds_count_as_known(self) -> None:
+        shipping = {"id": "shipping", "name": "Shipping", "responsibility": "Own parcels."}
+        rule = {"id": "order-total", "contexts": ["orders"], "statement": "An order total is non-negative."}
+        errors = self.proposal_reference_errors(
+            "draft",
+            affected_contexts=["orders", "shipping"],
+            rule_ids=["order-total"],
+            registry_updates=[
+                {"operation": "upsert", "asset": "contexts", "record": shipping},
+                {"operation": "upsert", "asset": "rules", "record": rule},
+            ],
+        )
+        self.assertFalse([error for error in errors if "unknown registry" in error], errors)
+
+    def test_an_id_neither_registered_nor_added_by_the_package_is_unknown(self) -> None:
+        errors = self.proposal_reference_errors("draft", affected_contexts=["orders", "ghost"])
+        self.assertIn("domain-change-proposal.json references an unknown registry context", errors)
+
+    def test_an_applied_package_may_name_an_id_the_registry_later_retired(self) -> None:
+        errors = self.proposal_reference_errors("applied", contract_ids=["retired-v1"])
+        self.assertNotIn("domain-change-proposal.json references an unknown registry contract", errors)
+
+    def test_a_draft_reports_what_its_updates_would_break_once_applied(self) -> None:
+        rule = {"id": "order-total", "contexts": ["ghost"], "statement": "An order total is non-negative."}
+        errors = self.proposal_reference_errors(
+            "draft", registry_updates=[{"operation": "upsert", "asset": "rules", "record": rule}]
+        )
+        self.assertIn("once applied: rules.json:order-total references unknown context", errors)
+
+    def test_a_draft_does_not_repeat_an_error_the_registry_already_has(self) -> None:
+        self.seed("rules.json", [{"id": "old", "contexts": ["ghost"], "statement": "Kept."}])
+        errors = self.proposal_reference_errors("draft")
+        self.assertFalse([error for error in errors if error.startswith("once applied:")], errors)
+
+    def updated_rule_citing(self, reference: Any) -> Path:
+        package = self.draft_package()
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        proposal["registry_updates"][0]["record"]["evidence"] = [reference]
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+        return package
+
+    def test_with_a_repo_root_a_draft_must_cite_current_evidence_in_its_updates(self) -> None:
+        source = self.repo / "fact.md"
+        source.write_text("fact\n", encoding="utf-8")
+        package = self.updated_rule_citing(citation(self.repo, "fact.md", 1, 1))
+        source.write_text("changed\n", encoding="utf-8")
+        message = "registry update rules/order-total cites evidence that is stale: fact.md"
+        self.assertIn(message, validate_change_package(package, self.repo / "memory", repo_root=self.repo))
+        self.assertNotIn(message, validate_change_package(package, self.repo / "memory"))
+
+    def test_with_a_repo_root_current_evidence_in_the_updates_passes(self) -> None:
+        (self.repo / "fact.md").write_text("fact\n", encoding="utf-8")
+        package = self.updated_rule_citing(citation(self.repo, "fact.md", 1, 1))
+        errors = validate_change_package(package, self.repo / "memory", repo_root=self.repo)
+        self.assertFalse([error for error in errors if "cites evidence" in error], errors)
+
+    def test_an_update_keeps_a_registry_error_it_found_but_refuses_a_new_one(self) -> None:
+        self.seed("rules.json", [{"id": "old", "contexts": ["ghost"], "statement": "Kept."}])
+        self.add_context()
+        self.assertEqual(["orders"], [entry["id"] for entry in asset_records(self.repo / "memory", "contexts.json")])
+        record = self.write_record("rule.json", {"id": "new", "contexts": ["phantom"], "statement": "Refused."})
+        with self.assertRaisesRegex(ValueError, "rules.json:new references unknown context"):
+            upsert_candidate(self.repo / "memory", self.repo, "rules", record)
+
+    def evidence_moved(self, old_text: str, new_path: str, new_text: str) -> Path:
+        (self.repo / "src").mkdir()
+        (self.repo / "src" / "a.py").write_text(old_text, encoding="utf-8")
+        reference = citation(self.repo, "src/a.py", 2, 2)
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.seed(
+            "rules.json",
+            [
+                {"id": "reviewed-rule", "contexts": ["orders"], "statement": "S.", "status": "reviewed",
+                 "evidence": [reference], "review": {"proposal_id": "PRO-1"}},
+                {"id": "candidate-rule", "contexts": ["orders"], "statement": "S.", "status": "candidate",
+                 "evidence": [reference]},
+            ],
+        )
+        (self.repo / "src" / "a.py").unlink()
+        target = self.repo / new_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(new_text, encoding="utf-8")
+        return target
+
+    def test_relocating_a_directory_recites_evidence_where_the_excerpt_now_sits(self) -> None:
+        self.evidence_moved("one\ntwo\nthree\n", "lib/a.py", "zero\none\ntwo\nthree\n")
+        moved = relocate_evidence(self.repo / "memory", self.repo, "src", "lib")
+        [update] = moved["registry_updates"]
+        [reference] = update["record"]["evidence"]
+        self.assertEqual(
+            ("rules", "reviewed-rule", "lib/a.py", {"start": 3, "end": 3}, "current"),
+            (update["asset"], update["record"]["id"], reference["path"], reference["lines"],
+             verify(reference, self.repo)["status"]),
+        )
+        self.assertNotIn("review", update["record"])
+        self.assertEqual(["PRO-1"], moved["supersedes"])
+        self.assertEqual(["candidate-rule"], [candidate["record"]["id"] for candidate in moved["candidates"]])
+        self.assertEqual([], moved["unmatched"])
+
+    def test_relocating_a_single_file_recites_its_evidence(self) -> None:
+        self.evidence_moved("one\ntwo\n", "lib/b.py", "two\n")
+        moved = relocate_evidence(self.repo / "memory", self.repo, "src/a.py", "lib/b.py")
+        [update] = moved["registry_updates"]
+        self.assertEqual(
+            {"path": "lib/b.py", "lines": {"start": 1, "end": 1}},
+            {key: update["record"]["evidence"][0][key] for key in ("path", "lines")},
+        )
+
+    def test_relocating_leaves_a_citation_unmatched_when_its_excerpt_is_absent_or_repeated(self) -> None:
+        for text, found in (("one\nother\n", 0), ("two\ntwo\n", 2)):
+            with self.subTest(found=found):
+                self.tearDown()
+                self.setUp()
+                self.evidence_moved("one\ntwo\n", "lib/a.py", text)
+                moved = relocate_evidence(self.repo / "memory", self.repo, "src", "lib")
+                self.assertEqual(([], []), (moved["registry_updates"], moved["candidates"]))
+                self.assertEqual(
+                    [("reviewed-rule", found), ("candidate-rule", found)],
+                    [(problem["id"], problem["found"]) for problem in moved["unmatched"]],
+                )
+
+    def test_relocating_ignores_a_path_that_only_shares_the_prefix(self) -> None:
+        self.evidence_moved("one\ntwo\n", "srcx/a.py", "one\ntwo\n")
+        moved = relocate_evidence(self.repo / "memory", self.repo, "sr", "srcx")
+        self.assertEqual(([], [], []), (moved["registry_updates"], moved["candidates"], moved["unmatched"]))
+
+    def test_a_test_run_in_a_subdirectory_records_where_it_ran(self) -> None:
+        package = self.draft_package()
+        (self.repo / "apps" / "web").mkdir(parents=True)
+        command = self.run_writing("ok").replace(
+            "sys.stdout.write('ok')", "import os; sys.stdout.write(os.path.basename(os.getcwd()))"
+        )
+        record_test_result(
+            package, self.repo / "memory", self.repo, ObligationRun("OB-1", command, "unit", cwd="apps/web"), 60
+        )
+        evidence = json.loads((package / "evidence-bundle.json").read_text(encoding="utf-8"))
+        [result] = [entry for entry in evidence["test_results"] if entry["obligation_id"] == "OB-1"]
+        self.assertEqual(
+            ("apps/web", "sha256:" + hashlib.sha256(b"web").hexdigest()),
+            (result["working_directory"], result["output_sha256"]),
+        )
+
+    def test_a_test_run_refuses_a_directory_outside_the_repository_or_missing(self) -> None:
+        package = self.draft_package()
+        before = (package / "evidence-bundle.json").read_bytes()
+        for cwd in ("..", "missing"):
+            with self.subTest(cwd=cwd), self.assertRaisesRegex(ValueError, "--cwd must name a directory inside"):
+                record_test_result(
+                    package, self.repo / "memory", self.repo,
+                    ObligationRun("OB-1", self.run_writing("ok"), "unit", cwd=cwd), 60,
+                )
+        self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
 
 
 if __name__ == "__main__":

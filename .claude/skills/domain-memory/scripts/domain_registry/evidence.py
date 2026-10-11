@@ -90,6 +90,18 @@ def citation(repo_root: Path, relative: str, start: int, end: int) -> dict[str, 
     }
 
 
+def excerpt_starts(repo_root: Path, relative: str, length: int, excerpt_sha256: str) -> list[int]:
+    path = (repo_root / relative).resolve()
+    if _source_verdict(path, relative, repo_root):
+        return []
+    _, rows = _read_lines(path)
+    return [
+        start
+        for start in range(1, len(rows) - length + 2)
+        if digest(_excerpt(rows, start, start + length - 1)) == excerpt_sha256
+    ]
+
+
 def hash_all(value: Any, repo_root: Path) -> Any:
     if isinstance(value, dict):
         return {

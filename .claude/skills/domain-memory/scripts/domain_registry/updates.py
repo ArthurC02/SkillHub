@@ -1,10 +1,9 @@
 import json
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .changes import PROPOSAL_FILE, validate_change_package
+from .changes import PROPOSAL_FILE, ParsedUpdate, parsed_update, superseded_ids, validate_change_package
 from .common import (
     ASSET_KEYS,
     completed_identifier,
@@ -252,44 +251,16 @@ def retract_candidate(
     )
 
 
-@dataclass(frozen=True)
-class ParsedUpdate:
-    asset: str
-    record_id: str
-    record: dict[str, Any] | None
-
-    @property
-    def document_name(self) -> str:
-        return f"{self.asset}.json"
-
-
-def parsed_update(update: Any) -> ParsedUpdate:
-    if not isinstance(update, dict) or update.get("operation") not in ("upsert", "remove"):
-        raise ValueError("each registry update must be an upsert or a remove")
-    removing = update.get("operation") == "remove"
-    asset = update.get("asset")
-    record = None if removing else update.get("record")
-    record_id = update.get("id") if removing else (record or {}).get("id")
-    if (
-        not isinstance(asset, str)
-        or f"{asset}.json" not in ASSET_KEYS
-        or (not removing and not isinstance(record, dict))
-        or not completed_identifier(record_id)
-    ):
-        raise ValueError("registry update has an invalid asset or record")
-    return ParsedUpdate(asset, record_id, record)
-
-
 def _refuse_unsuperseded_overwrite(
     update: ParsedUpdate, document: dict[str, Any], existing: Any, proposal: dict[str, Any]
 ) -> None:
     if not is_reviewed(update.asset, document, existing):
         return
     reviewed_by = (existing.get("review") or {}).get("proposal_id")
-    if not reviewed_by or proposal.get("supersedes") != reviewed_by:
+    if not reviewed_by or reviewed_by not in (superseded_ids(proposal) or set()):
         raise ValueError(
             f"cannot overwrite reviewed record: {update.record_id}; a proposal that "
-            f"replaces it must supersede {reviewed_by or 'the proposal that reviewed it'}"
+            f"replaces it must list {reviewed_by or 'the proposal that reviewed it'} in supersedes"
         )
 
 

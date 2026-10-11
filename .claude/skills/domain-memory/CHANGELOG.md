@@ -2,6 +2,26 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.16.0
+
+### Added
+
+- `relocate-evidence --from --to` re-cites the evidence under a moved file or directory by its excerpt digest and prints the Change Package updates, the proposals to supersede, the candidates, and the citations it could not place.
+- `validate-change-package` validates the Registry as a draft's updates would leave it, prefixing each new error with `once applied:`, and with `--repo-root` requires the updated records' citations to be current.
+- `supersedes` may list several proposals, for a package that replaces records reviewed by more than one.
+- `record-test-result --cwd <directory>` runs the command in a directory inside the repository and records it.
+- A material proposal that changes no Rule, Contract or Aggregate may record its counterfactual check as `not_applicable` with a reason.
+
+### Changed
+
+- A counterfactual check must target one of the design's `proof_obligations`.
+- `redraft-proposal` resets the test results and recorded checks, which proved the superseded proposal.
+
+### Fixed
+
+- A Context, Rule or Contract the package itself adds is no longer reported as unknown, and an applied package is no longer checked against ids the Registry retired later.
+- A registry update is refused only for errors it introduces, not for ones the Registry already had.
+
 ## 0.15.0
 
 ### Added

@@ -37,6 +37,7 @@ from .policy import (
 )
 from .readiness import assess_readiness
 from .impact import boundary_impact
+from .relocate import relocate_evidence
 from .registry import (
     boundary_analysis,
     context_model,
@@ -187,6 +188,15 @@ def handle_get_record(args: argparse.Namespace) -> int:
 
 def handle_boundary_impact(args: argparse.Namespace) -> int:
     print_json(boundary_impact(args.registry_root.resolve(), args.repo_root.resolve(), args.base))
+    return 0
+
+
+def handle_relocate_evidence(args: argparse.Namespace) -> int:
+    print_json(
+        relocate_evidence(
+            args.registry_root.resolve(), args.repo_root.resolve(), args.moved_from, args.moved_to
+        )
+    )
     return 0
 
 
@@ -569,7 +579,7 @@ def handle_verify_proposal(args: argparse.Namespace) -> int:
 def handle_record_test_result(args: argparse.Namespace) -> int:
     record_test_result(
         args.package_root.resolve(), args.registry_root.resolve(), args.repo_root.resolve(),
-        ObligationRun(args.obligation, args.obligation_command, args.command_profile), args.timeout,
+        ObligationRun(args.obligation, args.obligation_command, args.command_profile, args.cwd), args.timeout,
     )
     print(f"Recorded a passing result for {args.obligation}.")
     return 0
@@ -610,6 +620,7 @@ def handle_validate_change_package(args: argparse.Namespace) -> int:
         args.package_root.resolve(),
         args.registry_root.resolve() if args.registry_root else None,
         args.as_status,
+        args.repo_root.resolve() if args.repo_root else None,
     )
     if args.as_status is None:
         return report_errors(errors, "Change package is valid.")
@@ -652,6 +663,7 @@ HANDLERS = {
     "get-record": handle_get_record,
     "analyze-boundary": handle_analyze_boundary,
     "boundary-impact": handle_boundary_impact,
+    "relocate-evidence": handle_relocate_evidence,
     "cite": handle_cite,
     "upsert-candidate": handle_upsert_candidate,
     "retract-candidate": handle_retract_candidate,

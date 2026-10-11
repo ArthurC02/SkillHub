@@ -152,6 +152,17 @@ class ObligationRun:
     obligation_id: str
     command: str
     command_profile: str
+    cwd: str | None = None
+
+
+def _working_directory(repo_root: Path, cwd: str | None) -> Path:
+    if cwd is None:
+        return repo_root
+    root = repo_root.resolve()
+    directory = (root / cwd).resolve()
+    if not directory.is_relative_to(root) or not directory.is_dir():
+        raise ValueError(f"--cwd must name a directory inside the repository: {cwd}")
+    return directory
 
 
 def record_test_result(
@@ -161,6 +172,7 @@ def record_test_result(
     obligations = load_json(root / "test-obligations.json").get("obligations", [])
     if not any(isinstance(entry, dict) and entry.get("id") == obligation_id for entry in obligations):
         raise ValueError(f"test-obligations.json has no obligation {obligation_id}")
+    working_directory = _working_directory(repo_root, run.cwd)
     profiles = approved_command_profiles(registry_root)
     if profiles and command_profile not in profiles:
         raise ValueError(
@@ -169,7 +181,7 @@ def record_test_result(
         )
     try:
         completed = subprocess.run(
-            shlex.split(command), cwd=repo_root, capture_output=True, timeout=timeout, check=False
+            shlex.split(command), cwd=working_directory, capture_output=True, timeout=timeout, check=False
         )
     except subprocess.TimeoutExpired as error:
         raise ValueError(f"{command} gave no result within {timeout} seconds; nothing recorded") from error
@@ -190,6 +202,8 @@ def record_test_result(
         "output_sha256": digest(completed.stdout + completed.stderr),
         "finished_at": now(),
     }
+    if run.cwd is not None:
+        result["working_directory"] = working_directory.relative_to(repo_root.resolve()).as_posix()
     evidence_path = root / "evidence-bundle.json"
     evidence = load_json(evidence_path)
     kept = [

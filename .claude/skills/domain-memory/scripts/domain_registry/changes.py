@@ -1,10 +1,12 @@
 import json
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from .attestations import verify_scm_value
 from .common import (
+    ASSET_KEYS,
     CHANGE_CLASSIFICATIONS,
     CHANGE_PACKAGE_FILES,
     CHANGE_PACKAGE_FORMATS,
@@ -18,7 +20,8 @@ from .common import (
     load_json,
 )
 from .policy import approved_command_profiles
-from .registry import asset_records
+from .evidence import all_references, verify
+from .registry import asset_records, cross_reference_errors
 from .revision import DIGEST_HEX_LENGTH, DIGEST_PREFIX, valid_registry_revision
 
 SUBMITTED_OR_LATER = {"submitted", "verified", "approved", "applied"}
@@ -29,6 +32,34 @@ PROPOSAL_FILE = "domain-change-proposal.json"
 EVIDENCE_FILE = "evidence-bundle.json"
 STAND_IN_REVISION = {"observed_commit": None, "registry_digest": DIGEST_PREFIX + "0" * DIGEST_HEX_LENGTH}
 STAND_IN_TIME = "1970-01-01T00:00:00Z"
+
+
+@dataclass(frozen=True)
+class ParsedUpdate:
+    asset: str
+    record_id: str
+    record: dict[str, Any] | None
+
+    @property
+    def document_name(self) -> str:
+        return f"{self.asset}.json"
+
+
+def parsed_update(update: Any) -> ParsedUpdate:
+    if not isinstance(update, dict) or update.get("operation") not in ("upsert", "remove"):
+        raise ValueError("each registry update must be an upsert or a remove")
+    removing = update.get("operation") == "remove"
+    asset = update.get("asset")
+    record = None if removing else update.get("record")
+    record_id = update.get("id") if removing else (record or {}).get("id")
+    if (
+        not isinstance(asset, str)
+        or f"{asset}.json" not in ASSET_KEYS
+        or (not removing and not isinstance(record, dict))
+        or not completed_identifier(record_id)
+    ):
+        raise ValueError("registry update has an invalid asset or record")
+    return ParsedUpdate(asset, record_id, record)
 
 
 def as_if_moved_to(status: str, documents: dict[str, Any]) -> dict[str, Any]:
@@ -145,7 +176,10 @@ REVIEW_STATE = {
         "status", "proposal_revision", "submitted_at", "verified_at", "finalized_at", "applied_at",
         "base_registry_revision", "approvals",
     ),
-    EVIDENCE_FILE: ("registry_revision", "approvals", "scm_attestation"),
+    EVIDENCE_FILE: (
+        "registry_revision", "approvals", "scm_attestation", "counterfactual_check", "test_results",
+        "contract_checks", "architecture_checks", "security_checks",
+    ),
 }
 STATE_AFTER_SUBMISSION = (
     "applied_registry_revision", "superseded_from_status", "superseded_at", "superseded_reason",
@@ -215,12 +249,43 @@ def _design_field_errors(
     return errors
 
 
+BEHAVIOR_ASSETS = {"rules", "contracts", "aggregates"}
+
+
+SETTLED_STATUSES = {"applied", "superseded"}
+
+
+def _changes_behavior(proposal: dict[str, Any]) -> bool:
+    updates = proposal.get("registry_updates")
+    return bool(proposal.get("rule_ids") or proposal.get("contract_ids")) or any(
+        isinstance(update, dict) and update.get("asset") in BEHAVIOR_ASSETS
+        for update in (updates if isinstance(updates, list) else [])
+    )
+
+
+def _inapplicable_counterfactual_errors(check: dict[str, Any], proposal: dict[str, Any]) -> list[str]:
+    if _changes_behavior(proposal):
+        return [
+            "counterfactual_check may be not_applicable only when the proposal changes no rule, "
+            "contract, or aggregate; a changed rule needs a test shown to fail without it"
+        ]
+    if not completed_identifier(check.get("reason")):
+        return ["a not_applicable counterfactual_check requires a reason"]
+    return []
+
+
 def counterfactual_errors(
-    evidence: dict[str, Any], obligation_ids: set[str]
+    evidence: dict[str, Any], obligation_ids: set[str], proposal: dict[str, Any]
 ) -> list[str]:
     check = evidence.get("counterfactual_check")
     if not isinstance(check, dict):
         return ["a material verified proposal requires counterfactual_check evidence"]
+    if check.get("status") == "not_applicable":
+        return _inapplicable_counterfactual_errors(check, proposal)
+    design = proposal.get("implementation_design")
+    planned = design.get("proof_obligations") if isinstance(design, dict) else None
+    if proposal.get("status") not in SETTLED_STATUSES and isinstance(planned, list) and check.get("obligation_id") not in planned:
+        return ["counterfactual_check must target one of implementation_design's proof_obligations"]
     if (
         check.get("status") != "passed"
         or check.get("restored") is not True
@@ -417,19 +482,15 @@ def _evidence_result_errors(
     return errors
 
 
-def _registry_reference_errors(
-    registry_root: Path,
-    affected_contexts: Any,
-    rule_ids: Any,
-    contract_ids: Any,
-) -> list[str]:
+def _registry_reference_errors(registry_root: Path, proposal: dict[str, Any]) -> list[str]:
     errors: list[str] = []
+    staged = staged_records(registry_root, proposal)
     for asset, kind, referenced in (
-        ("contexts.json", "context", affected_contexts),
-        ("rules.json", "rule", rule_ids),
-        ("contracts.json", "contract", contract_ids),
+        ("contexts.json", "context", proposal.get("affected_contexts")),
+        ("rules.json", "rule", proposal.get("rule_ids", [])),
+        ("contracts.json", "contract", proposal.get("contract_ids", [])),
     ):
-        known = {entry.get("id") for entry in asset_records(registry_root, asset)}
+        known = {entry.get("id") for entry in staged[asset]}
         if isinstance(referenced, list) and set(referenced) - known:
             errors.append(
                 f"domain-change-proposal.json references an unknown registry {kind}"
@@ -521,7 +582,22 @@ def _proposal_field_errors(proposal: dict[str, Any]) -> list[str]:
         errors.append("domain-change-proposal.json has invalid rule_ids")
     if not completed_identifiers(proposal.get("contract_ids", [])):
         errors.append("domain-change-proposal.json has invalid contract_ids")
+    if superseded_ids(proposal) is None:
+        errors.append(
+            "domain-change-proposal.json supersedes must be a proposal id or a list of distinct proposal ids"
+        )
     return errors
+
+
+def superseded_ids(proposal: dict[str, Any]) -> set[str] | None:
+    value = proposal.get("supersedes")
+    if value is None:
+        return set()
+    if completed_identifier(value):
+        return {value}
+    if completed_identifiers(value) and value and len(set(value)) == len(value):
+        return set(value)
+    return None
 
 
 def _requirement_and_proposal_errors(
@@ -533,7 +609,7 @@ def _requirement_and_proposal_errors(
 
 
 def validate_change_package(
-    root: Path, registry_root: Path | None, as_status: str | None = None
+    root: Path, registry_root: Path | None, as_status: str | None = None, repo_root: Path | None = None
 ) -> list[str]:
     errors = [
         f"missing change package file: {root / name}"
@@ -553,7 +629,6 @@ def validate_change_package(
     errors.extend(proposal_errors)
     status = proposal.get("status")
     revision = proposal.get("proposal_revision")
-    affected_contexts = proposal.get("affected_contexts")
     rule_ids = proposal.get("rule_ids", [])
     contract_ids = proposal.get("contract_ids", [])
     obligation_errors, obligation_ids = _obligation_errors(
@@ -571,17 +646,59 @@ def validate_change_package(
     if status in VERIFIED_OR_LATER:
         errors.extend(test_attestation_errors(evidence, obligation_ids, registry_root))
         if proposal.get("change_classification") == "material":
-            errors.extend(counterfactual_errors(evidence, obligation_ids))
+            errors.extend(counterfactual_errors(evidence, obligation_ids, proposal))
     if status in APPROVED_OR_LATER:
         attestation = evidence.get("scm_attestation")
         if not isinstance(attestation, dict):
             errors.append("an approved or applied proposal requires SCM attestation")
         else:
             errors.extend(verify_scm_value(attestation, proposal))
-    if registry_root is not None:
-        errors.extend(
-            _registry_reference_errors(
-                registry_root, affected_contexts, rule_ids, contract_ids
-            )
-        )
+    if registry_root is not None and status not in SETTLED_STATUSES:
+        errors.extend(_registry_reference_errors(registry_root, proposal))
+        errors.extend(staged_registry_errors(registry_root, proposal, repo_root))
+    return errors
+
+
+def staged_records(registry_root: Path, proposal: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    records = {name: list(asset_records(registry_root, name)) for name in ASSET_KEYS}
+    updates = proposal.get("registry_updates")
+    for raw in updates if isinstance(updates, list) else []:
+        try:
+            update = parsed_update(raw)
+        except ValueError:
+            continue
+        entries = records[update.document_name]
+        entries[:] = [entry for entry in entries if entry.get("id") != update.record_id]
+        if update.record is not None:
+            entries.append(update.record)
+    return records
+
+
+def staged_registry_errors(
+    registry_root: Path, proposal: dict[str, Any], repo_root: Path | None
+) -> list[str]:
+    before = set(cross_reference_errors({name: asset_records(registry_root, name) for name in ASSET_KEYS}))
+    errors = [
+        f"once applied: {error}"
+        for error in cross_reference_errors(staged_records(registry_root, proposal))
+        if error not in before
+    ]
+    if repo_root is not None:
+        errors.extend(_updated_evidence_errors(proposal, repo_root))
+    return errors
+
+
+def _updated_evidence_errors(proposal: dict[str, Any], repo_root: Path) -> list[str]:
+    updates = proposal.get("registry_updates")
+    errors = []
+    for raw in updates if isinstance(updates, list) else []:
+        if not isinstance(raw, dict) or not isinstance(raw.get("record"), dict):
+            continue
+        for reference in all_references(raw["record"]):
+            result = verify(reference, repo_root)
+            if result["status"] != "current":
+                errors.append(
+                    f"registry update {raw.get('asset')}/{raw['record'].get('id')} cites evidence that is "
+                    f"{result['status']}: {result.get('reason') or result.get('path') or result.get('reference')}"
+                )
     return errors
