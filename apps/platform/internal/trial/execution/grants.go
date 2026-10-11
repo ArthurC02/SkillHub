@@ -69,8 +69,9 @@ func (s *Service) grantsFor(
 		})
 	}
 
+	datasets := datasetGranter{lab: s.TestLab, store: store, ttl: ttl}
 	for i, ref := range refs {
-		grant, err := s.datasetGrant(ctx, run.WorkspaceID, ref, ttl)
+		grant, err := datasets.grant(ctx, run.WorkspaceID, ref)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -98,16 +99,22 @@ func (s *Service) grantsFor(
 	return grants, datasetKeys, nil
 }
 
-func (s *Service) datasetGrant(ctx context.Context, workspaceID pgtype.UUID, ref testlab.DatasetRef, ttl time.Duration) (ObjectGrant, error) {
+type datasetGranter struct {
+	lab   *testlab.Service
+	store ObjectStore
+	ttl   time.Duration
+}
+
+func (g datasetGranter) grant(ctx context.Context, workspaceID pgtype.UUID, ref testlab.DatasetRef) (ObjectGrant, error) {
 	var id pgtype.UUID
 	if err := id.Scan(ref.DatasetID); err != nil {
 		return ObjectGrant{}, unbuildable(fmt.Errorf("grant dataset %s: %w", ref.FileName, err))
 	}
-	dataset, err := s.TestLab.ReadDataset(ctx, workspaceID, id)
+	dataset, err := g.lab.ReadDataset(ctx, workspaceID, id)
 	if err != nil {
 		return ObjectGrant{}, unbuildableWhenGone(fmt.Errorf("dataset %s is no longer available for this run: %w", ref.FileName, err))
 	}
-	url, err := s.Store.PresignGet(ctx, dataset.ObjectKey, ttl)
+	url, err := g.store.PresignGet(ctx, dataset.ObjectKey, g.ttl)
 	if err != nil {
 		return ObjectGrant{}, fmt.Errorf("grant dataset %s: %w", ref.FileName, err)
 	}
