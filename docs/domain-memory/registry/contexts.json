@@ -656,6 +656,36 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "batch",
+      "name": "Evaluation Batches",
+      "responsibility": "Runs one Skill Version against chosen Test Cases a set number of times, answers their questions as each Test Case's simulated user, and reports pass rates with intervals, with the Skill withheld and against a reference batch.",
+      "subdomain": "core",
+      "implementation_path": "trial/batch",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/trial/batch/doc.go",
+          "lines": {
+            "start": 1,
+            "end": 3
+          },
+          "source_kind": "bounded_contexts",
+          "content_sha256": "sha256:2721350710064f27d081442ed78f8d4335d4e4a299dd41d0a7d204569cb61193",
+          "excerpt_sha256": "sha256:02bde1e2e9957c0079a8304181f31e437c3e80a056a4dc874b400f33f0cabc6a"
+        },
+        {
+          "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+          "lines": {
+            "start": 104,
+            "end": 104
+          },
+          "source_kind": "decisions",
+          "content_sha256": "sha256:5072e5e57a47566f4b966a1b8d1d4c313fef8d3e82de0bcd38e1be7124b5bd12",
+          "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd"
+        }
+      ],
+      "status": "candidate"
     }
   ]
 }

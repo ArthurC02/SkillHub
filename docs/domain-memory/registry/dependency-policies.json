@@ -1132,6 +1132,27 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "batch-may-use-identity",
+      "from_context": "batch",
+      "to_context": "identity",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Every batch request resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "source_kind": "decisions",
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4"
+        }
+      ],
+      "status": "candidate"
     }
   ]
 }

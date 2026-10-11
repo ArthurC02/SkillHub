@@ -247,38 +247,38 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
           "lines": {
-            "start": 28,
-            "end": 69
+            "start": 44,
+            "end": 85
           },
-          "content_sha256": "sha256:27973ebe2bd1e880d90c45df8e1ce72530f89d34786544f834026c8b88dddda0",
-          "excerpt_sha256": "sha256:e3b343967e4e165846a18977f4dbb46fa929482932993d721d746c578ecbd07a",
+          "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
+          "excerpt_sha256": "sha256:841e644127179fb6e6aa42ceee21c36a0deaa6f747b23747323bb7dacf06c1a9",
           "source_kind": "implementation"
         },
         {
-          "path": "apps/platform/internal/trial/improvement/batch.go",
+          "path": "apps/platform/internal/trial/batch/batch.go",
           "lines": {
-            "start": 234,
-            "end": 272
+            "start": 236,
+            "end": 273
           },
-          "content_sha256": "sha256:ec65bba8b764d25c604a14eed9784fa4d45311408f7eb2e99e0f3172bc97ae35",
-          "excerpt_sha256": "sha256:599eaa4fe2bcb84f8e205ff5f280ca7ea04038344e75a0bb5bf3976f687f7431",
+          "content_sha256": "sha256:b853fee91e1573854727b97f1480e74329d5670579403683326cee5cb2d2019a",
+          "excerpt_sha256": "sha256:08221039e4930fb55c53b74afa48b858ee0e30615b657ab610936664171417cf",
           "source_kind": "implementation"
         }
       ],
       "review": {
-        "proposal_id": "eval-run-collaboration-r2",
+        "proposal_id": "evaluation-batch-evidence-move",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T17:35:11.366282Z",
-            "scope": "The eval and run collaboration: run's trial port with its origin-key idempotency and passing-refusal fact, run's fact reader for judging, eval's verdict reader for the run list, and eval's wait-or-stop rule",
+            "approved_at": "2026-10-11T18:13:50.962192Z",
+            "scope": "Re-cite the trial-port interaction and the wait-or-stop rule at trial/batch/batch.go, where the same code moved; the records' statements are unchanged",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "7ae276dc85afa0672a63370516232830a78fba90",
-              "registry_digest": "sha256:7735d13dfcdb3a462c8b4d65265fd62d6fed592669cca700643a0accc382302c"
+              "observed_commit": "d90e045275c2287e9565cc8b3e2a1f544b7ddcf4",
+              "registry_digest": "sha256:f199a6fe2dbd75cc6dbd6e5e4703e224221e8e9e997d302fbd9d14b2810f3758"
             }
           }
         ]
@@ -361,6 +361,97 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "run-batch-trials",
+      "producer_context": "run",
+      "consumer_context": "batch",
+      "contract_id": "run-batch-trials-v1",
+      "consistency": "synchronous request, idempotent by origin key; the batch records the trial in its own statement afterwards",
+      "delivery": "composition-root port",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+          "lines": {
+            "start": 44,
+            "end": 85
+          },
+          "source_kind": "implementation",
+          "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
+          "excerpt_sha256": "sha256:841e644127179fb6e6aa42ceee21c36a0deaa6f747b23747323bb7dacf06c1a9"
+        },
+        {
+          "path": "apps/platform/internal/trial/batch/batch.go",
+          "lines": {
+            "start": 236,
+            "end": 273
+          },
+          "source_kind": "implementation",
+          "content_sha256": "sha256:b853fee91e1573854727b97f1480e74329d5670579403683326cee5cb2d2019a",
+          "excerpt_sha256": "sha256:08221039e4930fb55c53b74afa48b858ee0e30615b657ab610936664171417cf"
+        }
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "eval-batch-standing-verdicts",
+      "producer_context": "eval",
+      "consumer_context": "batch",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+          "lines": {
+            "start": 23,
+            "end": 42
+          },
+          "source_kind": "implementation",
+          "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
+          "excerpt_sha256": "sha256:a3de7bd4935a3b482bf5f75698c3ebaeca04830587949b15a59a3b1293b4d600"
+        }
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "testlab-batch-snapshot-facts",
+      "producer_context": "testlab",
+      "consumer_context": "batch",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+          "lines": {
+            "start": 71,
+            "end": 76
+          },
+          "source_kind": "implementation",
+          "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
+          "excerpt_sha256": "sha256:8567f6207d7908c1c98f907701c6db2bff9c5b319372f587eece2b3cb7f4863f"
+        }
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "trace-batch-question-count",
+      "producer_context": "trace",
+      "consumer_context": "batch",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+          "lines": {
+            "start": 72,
+            "end": 75
+          },
+          "source_kind": "implementation",
+          "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
+          "excerpt_sha256": "sha256:552f303644ead7a30c043aa3a279db7d1f8151546b2384b735ec55f735726801"
+        }
+      ],
+      "status": "candidate"
     }
   ]
 }

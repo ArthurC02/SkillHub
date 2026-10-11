@@ -3,12 +3,12 @@
   "proposal_id": "evaluation-batch-evidence-move",
   "proposer": "domain-memory-agent",
   "requirement_id": "evaluation-batch-evidence-move",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-11T18:13:11.606323Z",
   "verified_at": "2026-10-11T18:13:51.546574Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-11T18:14:08.663216Z",
+  "applied_at": "2026-10-11T18:14:09.927390Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "d90e045275c2287e9565cc8b3e2a1f544b7ddcf4",
@@ -156,5 +156,9 @@
       }
     }
   ],
-  "supersedes": "eval-run-collaboration-r2"
+  "supersedes": "eval-run-collaboration-r2",
+  "applied_registry_revision": {
+    "observed_commit": "71ed9d92f42305ee34c84ab39b83332c0d4d8b03",
+    "registry_digest": "sha256:47bf22163a0e14f5dd5491904e89ad116901ecf3aa8802030635fb01b7f0d219"
+  }
 }

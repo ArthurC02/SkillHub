@@ -383,6 +383,66 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "run-batch-trials-v1",
+      "kind": "internal-port",
+      "producer_context": "run",
+      "consumer_contexts": [
+        "batch"
+      ],
+      "version": "v1",
+      "compatibility_policy": "Run starts and continues trials for an evaluation batch through the ports the composition root fills; Run publishes whether a refusal passes on its own and never hands its transaction to the batch.",
+      "data_classification": "internal",
+      "idempotency": {
+        "key": "origin key: the batch, the Test Case, the trial number and whether the Skill is withheld",
+        "scope": "per Workspace",
+        "on_replay": "returns the Run already started under that key, without admitting or charging again",
+        "on_conflict": "refused when the key already started a Run of a different Skill Version"
+      },
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+          "lines": {
+            "start": 44,
+            "end": 85
+          },
+          "source_kind": "implementation",
+          "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
+          "excerpt_sha256": "sha256:841e644127179fb6e6aa42ceee21c36a0deaa6f747b23747323bb7dacf06c1a9"
+        },
+        {
+          "path": "apps/platform/internal/trial/execution/service.go",
+          "lines": {
+            "start": 909,
+            "end": 926
+          },
+          "source_kind": "implementation",
+          "content_sha256": "sha256:2559a814174ef782b9386066e34d404ba781cb67e2804837865668a35d95bb38",
+          "excerpt_sha256": "sha256:b33d744e5dc035dd07b22002b8fd5e71cba0dd4fb652efe02fe1d92a6a91ae62"
+        },
+        {
+          "path": "apps/platform/internal/trial/execution/batch_facts.go",
+          "lines": {
+            "start": 61,
+            "end": 72
+          },
+          "source_kind": "implementation",
+          "content_sha256": "sha256:ea064d7f8550e8ced8c3307690d9d745407ccffaaa7136442e250dfa856bd257",
+          "excerpt_sha256": "sha256:c4b8a8c925f6d49224e57170964aca0958132aee6512a1d31443ef0a8b8db1d8"
+        },
+        {
+          "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+          "lines": {
+            "start": 104,
+            "end": 104
+          },
+          "source_kind": "decisions",
+          "content_sha256": "sha256:5072e5e57a47566f4b966a1b8d1d4c313fef8d3e82de0bcd38e1be7124b5bd12",
+          "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd"
+        }
+      ],
+      "status": "candidate"
     }
   ]
 }

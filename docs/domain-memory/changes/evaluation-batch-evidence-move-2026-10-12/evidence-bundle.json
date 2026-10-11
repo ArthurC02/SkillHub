@@ -7,7 +7,16 @@
     "registry_digest": "sha256:f199a6fe2dbd75cc6dbd6e5e4703e224221e8e9e997d302fbd9d14b2810f3758"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "71ed9d92f42305ee34c84ab39b83332c0d4d8b03",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "d90e045275c2287e9565cc8b3e2a1f544b7ddcf4",
+      "registry_digest": "sha256:f199a6fe2dbd75cc6dbd6e5e4703e224221e8e9e997d302fbd9d14b2810f3758"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "batch-waits-or-stops",
