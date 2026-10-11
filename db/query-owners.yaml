@@ -18,6 +18,7 @@ files:
   testschema.sql: testschema
   reconcile.sql:
   run_permissions.sql: run
+  run_continuations.sql: run
   runs.sql:
   search.sql: catalog
   skill_fork.sql: registry
@@ -278,6 +279,7 @@ scope:
   SetPlatformAgentSpendCapOverride: platform-wide
   GetPlatformAgentSpendCap: platform-wide
   SetEvaluationSettings: platform-wide
+  SetRunSettings: platform-wide
   EngagePlatformAgentBrake: platform-wide
   StartPlatformAgentRun: platform-wide
   GetPlatformAgentRunGate: platform-wide
@@ -538,6 +540,8 @@ tables:
   evaluation_suggestion_applications: eval
   evaluation_model_usage: eval
   evaluation_settings: eval
+  run_continuations: run
+  run_settings: run
   trace_events: trace
   object_reconcile_sightings: objreconcile
   credit_accounts: credit
@@ -589,6 +593,8 @@ retention:
   dispatch_halts: keep operator declarations
   model_call_budgets: keep operator configuration
   evaluation_settings: keep operator configuration
+  run_continuations: keep the link between two permanent runs
+  run_settings: keep operator configuration
   artifacts: expire objects past retention, maintenance purge-run-artifacts marks the row
   download_artifacts: expire objects past DOWNLOAD_ARTIFACT_RETENTION, the row stays
   download_records: keep

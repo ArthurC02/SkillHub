@@ -77,6 +77,7 @@ const (
 
 	ActionModelBudgetSet        = "model_budget.set"
 	ActionEvaluationSettingsSet = "evaluation_settings.set"
+	ActionRunSettingsSet        = "run_settings.set"
 
 	ActionCreditGrant   = "credit.grant"
 	ActionAccountLookup = "account.lookup"
@@ -135,6 +136,7 @@ const (
 
 	ResourceModelBudget        = "model_budget"
 	ResourceEvaluationSettings = "evaluation_settings"
+	ResourceRunSettings        = "run_settings"
 
 	ResourceCreditAccount = "credit_account"
 

@@ -3492,6 +3492,62 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/settings/runs:
+    get:
+      operationId: getRunSettings
+      summary: Run settings an operator can change (GEN-014)
+      description: |
+        Operator only. How many answered rounds one conversation may hold: a run
+        that asks, the run that continues it, and so on. A setting nobody has
+        changed is at its default.
+      responses:
+        "200":
+          description: Every operator-set run setting.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunSettings" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/settings/runs/continuation-rounds:
+    put:
+      operationId: setContinuationRounds
+      summary: Set how many answered rounds a conversation may hold (GEN-014)
+      description: |
+        Operator only. The next continuation reads the new value; conversations
+        already past it keep their runs but cannot add another round. Writes the
+        change and its audit event in one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rounds, note]
+              properties:
+                rounds: { type: integer, minimum: 1, maximum: 10 }
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why, in the operator's own words. Whitespace does not satisfy it.
+      responses:
+        "200":
+          description: The settings as they now stand.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunSettings" }
+        "400":
+          description: Body is not JSON, `rounds` is missing or outside 1–10, or `note` is blank or over 1000 bytes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/settings/judge-panel:
     put:
       operationId: setJudgePanel
@@ -4923,6 +4979,72 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "409":
           description: The run already finished; there is nothing left to cancel.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /runs/{id}/continuations:
+    post:
+      operationId: continueRun
+      summary: Answer the questions a run ended with and start the run that continues it (GEN-014)
+      description: |
+        The run must have succeeded by asking the person, and the trace summary
+        lists its questions. One answer per question, in the same order. A new
+        run starts on the same skill version with a new test case snapshot whose
+        prompt is the asking run's prompt followed by every question and answer;
+        the criteria, files and rubric are the asking run's. Both runs stay
+        immutable, and the link between them is recorded once: answering the
+        same questions twice is refused. The new run is admitted and charged
+        like any run, and a conversation may hold only as many answered rounds
+        as the operator setting allows.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answers]
+              properties:
+                answers:
+                  type: array
+                  minItems: 1
+                  maxItems: 3
+                  items: { type: string, minLength: 1, maxLength: 2000 }
+      responses:
+        "201":
+          description: The continuing run, queued.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+        "400":
+          description: Body is not JSON, or the answers do not match the questions one to one.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's run.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The run did not end by asking, or its questions were already answered.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: |
+            Refused like any run (quota, credit, concurrency, scan, dispatch), or
+            the conversation reached its answered-round limit, or the prompt with
+            every answer would exceed the prompt length limit.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -6889,6 +7011,20 @@ components:
           required: [enabled]
           properties:
             enabled: { type: boolean }
+            reason: { type: string, description: Present once an operator has changed the setting. }
+            set_by_user_id: { type: string, format: uuid }
+            set_at: { type: string, format: date-time }
+    RunSettings:
+      type: object
+      required: [continuation_rounds]
+      properties:
+        continuation_rounds:
+          type: object
+          required: [rounds, min, max]
+          properties:
+            rounds: { type: integer, description: Answered rounds one conversation may hold. }
+            min: { type: integer }
+            max: { type: integer }
             reason: { type: string, description: Present once an operator has changed the setting. }
             set_by_user_id: { type: string, format: uuid }
             set_at: { type: string, format: date-time }

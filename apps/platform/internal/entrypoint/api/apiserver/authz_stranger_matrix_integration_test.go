@@ -87,6 +87,7 @@ var strangerRoutes = []strangerCase{
 	{pattern: "DELETE /test-cases/{id}/datasets/{datasetId}", want: http.StatusNotFound},
 
 	{pattern: "POST /runs/{id}/cancel", want: http.StatusNotFound},
+	{pattern: "POST /runs/{id}/continuations", body: `{"answers":["a stranger answers"]}`, want: http.StatusNotFound},
 	{pattern: "DELETE /runs/{id}/artifacts/{artifactId}", want: http.StatusNoContent},
 	{pattern: "DELETE /downloads/{artifactId}", want: http.StatusNoContent},
 	{pattern: "POST /skills/{id}/versions/{versionId}/packaging",

@@ -60,7 +60,7 @@
 | EVAL-001 | 有測試 | `TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun`、`TestFeedbackIsRecordedAndCanBeChanged`、`TestAFailedVerdictIsFrozenLikeASettledOne` | |
 | EVAL-002 | 有測試 | `TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone`、`TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot` | |
 | EVAL-003 | 有測試 | `TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink`、`TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight` | |
-| EVAL-014 | 未實作 | | 能力評估集、評審校準、模擬使用者的多輪量測都還沒有；`test_the_paired_difference_counts_discordant_cases_and_brackets_the_estimate` 只證明逐題配對的統計工具 |
+| EVAL-014 | 部分 | `TestCriteriaWithChecksAreDecidedWithoutAJudge`、`TestOnlyCriteriaWithoutAChecksReachTheJudge` | 程式先判已在平台上；評估集進平台、評審校準、模擬使用者的多輪量測與整套評估都還沒有，`test_the_paired_difference_counts_discordant_cases_and_brackets_the_estimate` 只證明逐題配對的統計工具 |
 | EVAL-013 | 部分 | `test_a_passed_verdict_on_an_incomplete_trace_is_downgraded`、`test_a_verdict_citing_an_unresolvable_reference_is_downgraded` | 降級機制有測試；一份用這把尺量出來的完整回歸讀數（符合率、逐筆歸因）還沒跑過 |
 
 ## 打包與下載
@@ -100,7 +100,7 @@
 | GEN-010 | 有測試 | `TestSavingNeedsAConfirmedUnblockedDraftWithTheSameHash`、`TestAnExistingCandidateIsSavedWithoutMaterializingAgain` | |
 | GEN-011 | 有測試 | `TestCreationBatchForeignSessionIDIsNotAnOracle` | |
 | GEN-013 | 未實作 | | 創作端的知識缺口檢查、`references/`／`assets/` 產出與隨附的正反評估案例都還沒有 |
-| GEN-014 | 未實作 | | 提問工具、接續 Run 與執行時的搜尋都還沒有 |
+| GEN-014 | 部分 | `a turn that asks the person ends there, succeeded, with the questions as its answer`、`TestGeneralModeCarriesTheQuestionsARunEndedWith`、`TestAnsweringARunsQuestionsStartsTheRunThatContinuesIt`、`TestAConversationStopsAtTheOperatorsRoundLimit` | 畫面還不會顯示問題與作答；執行時的搜尋工具還沒有 |
 | GEN-012 | 有測試 | `TestCreationBudgetOutOfBandNamesTheBand`、`TestCreationLimitsEndpoint`、`TestCreationMeasureFifteenSessionsAgainstSingleShot` | |
 
 ## 可攜與乾淨測試模式

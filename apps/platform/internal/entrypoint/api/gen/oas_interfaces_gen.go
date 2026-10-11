@@ -41,6 +41,10 @@ type ConfirmRunPreflightRes interface {
 	confirmRunPreflightRes()
 }
 
+type ContinueRunRes interface {
+	continueRunRes()
+}
+
 type CreateBundleVersionRes interface {
 	createBundleVersionRes()
 }
@@ -253,6 +257,10 @@ type GetRunRes interface {
 	getRunRes()
 }
 
+type GetRunSettingsRes interface {
+	getRunSettingsRes()
+}
+
 type GetRunTraceRes interface {
 	getRunTraceRes()
 }
@@ -447,6 +455,10 @@ type SearchSkillsRes interface {
 
 type SearchSkillsWithCorrectedIntentRes interface {
 	searchSkillsWithCorrectedIntentRes()
+}
+
+type SetContinuationRoundsRes interface {
+	setContinuationRoundsRes()
 }
 
 type SetEvaluationFeedbackRes interface {

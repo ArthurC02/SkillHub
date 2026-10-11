@@ -89,6 +89,11 @@ import {
     ConfirmRunPreflightRequestToJSON,
 } from '../models/ConfirmRunPreflightRequest';
 import {
+    type ContinueRunRequest,
+    ContinueRunRequestFromJSON,
+    ContinueRunRequestToJSON,
+} from '../models/ContinueRunRequest';
+import {
     type CorrectedSearchRequest,
     CorrectedSearchRequestFromJSON,
     CorrectedSearchRequestToJSON,
@@ -594,6 +599,11 @@ import {
     RunQuotaToJSON,
 } from '../models/RunQuota';
 import {
+    type RunSettings,
+    RunSettingsFromJSON,
+    RunSettingsToJSON,
+} from '../models/RunSettings';
+import {
     type SandboxTraceEvent,
     SandboxTraceEventFromJSON,
     SandboxTraceEventToJSON,
@@ -603,6 +613,11 @@ import {
     SearchSkills200ResponseFromJSON,
     SearchSkills200ResponseToJSON,
 } from '../models/SearchSkills200Response';
+import {
+    type SetContinuationRoundsRequest,
+    SetContinuationRoundsRequestFromJSON,
+    SetContinuationRoundsRequestToJSON,
+} from '../models/SetContinuationRoundsRequest';
 import {
     type SetEvaluationFeedbackRequest,
     SetEvaluationFeedbackRequestFromJSON,
@@ -860,6 +875,17 @@ export interface ConfirmRunPreflightOperationRequest {
      * 
      */
     confirmRunPreflightRequest: ConfirmRunPreflightRequest;
+}
+
+export interface ContinueRunOperationRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    continueRunRequest: ContinueRunRequest;
 }
 
 export interface CreateBundleVersionOperationRequest {
@@ -1702,6 +1728,13 @@ export interface SearchSkillsWithCorrectedIntentRequest {
     correctedSearchRequest: CorrectedSearchRequest;
 }
 
+export interface SetContinuationRoundsOperationRequest {
+    /**
+     * 
+     */
+    setContinuationRoundsRequest: SetContinuationRoundsRequest;
+}
+
 export interface SetEvaluationFeedbackOperationRequest {
     /**
      * 
@@ -2168,6 +2201,32 @@ export interface DefaultApiInterface {
      * Record agreement to a permission summary (TEST-009)
      */
     confirmRunPreflight(requestParameters: ConfirmRunPreflightOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ConfirmRunPreflight201Response>;
+
+    /**
+     * Creates request options for continueRun without sending the request
+     * @param {string} id 
+     * @param {ContinueRunRequest} continueRunRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    continueRunRequestOpts(requestParameters: ContinueRunOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * The run must have succeeded by asking the person, and the trace summary lists its questions. One answer per question, in the same order. A new run starts on the same skill version with a new test case snapshot whose prompt is the asking run\'s prompt followed by every question and answer; the criteria, files and rubric are the asking run\'s. Both runs stay immutable, and the link between them is recorded once: answering the same questions twice is refused. The new run is admitted and charged like any run, and a conversation may hold only as many answered rounds as the operator setting allows. 
+     * @summary Answer the questions a run ended with and start the run that continues it (GEN-014)
+     * @param {string} id 
+     * @param {ContinueRunRequest} continueRunRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    continueRunRaw(requestParameters: ContinueRunOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Run>>;
+
+    /**
+     * The run must have succeeded by asking the person, and the trace summary lists its questions. One answer per question, in the same order. A new run starts on the same skill version with a new test case snapshot whose prompt is the asking run\'s prompt followed by every question and answer; the criteria, files and rubric are the asking run\'s. Both runs stay immutable, and the link between them is recorded once: answering the same questions twice is refused. The new run is admitted and charged like any run, and a conversation may hold only as many answered rounds as the operator setting allows. 
+     * Answer the questions a run ended with and start the run that continues it (GEN-014)
+     */
+    continueRun(requestParameters: ContinueRunOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Run>;
 
     /**
      * Creates request options for createBundleVersion without sending the request
@@ -3506,6 +3565,28 @@ export interface DefaultApiInterface {
     getRunQuota(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunQuota>;
 
     /**
+     * Creates request options for getRunSettings without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getRunSettingsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. How many answered rounds one conversation may hold: a run that asks, the run that continues it, and so on. A setting nobody has changed is at its default. 
+     * @summary Run settings an operator can change (GEN-014)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getRunSettingsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>>;
+
+    /**
+     * Operator only. How many answered rounds one conversation may hold: a run that asks, the run that continues it, and so on. A setting nobody has changed is at its default. 
+     * Run settings an operator can change (GEN-014)
+     */
+    getRunSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings>;
+
+    /**
      * Creates request options for getRunTrace without sending the request
      * @param {string} id The platform run_id. A provider\&#39;s ephemeral id never appears in a URL (iron rule 10).
      * @param {'general' | 'advanced'} [mode] 
@@ -4738,6 +4819,30 @@ export interface DefaultApiInterface {
     searchSkillsWithCorrectedIntent(requestParameters: SearchSkillsWithCorrectedIntentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicSearchResponse>;
 
     /**
+     * Creates request options for setContinuationRounds without sending the request
+     * @param {SetContinuationRoundsRequest} setContinuationRoundsRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setContinuationRoundsRequestOpts(requestParameters: SetContinuationRoundsOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. The next continuation reads the new value; conversations already past it keep their runs but cannot add another round. Writes the change and its audit event in one transaction. 
+     * @summary Set how many answered rounds a conversation may hold (GEN-014)
+     * @param {SetContinuationRoundsRequest} setContinuationRoundsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setContinuationRoundsRaw(requestParameters: SetContinuationRoundsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>>;
+
+    /**
+     * Operator only. The next continuation reads the new value; conversations already past it keep their runs but cannot add another round. Writes the change and its audit event in one transaction. 
+     * Set how many answered rounds a conversation may hold (GEN-014)
+     */
+    setContinuationRounds(requestParameters: SetContinuationRoundsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings>;
+
+    /**
      * Creates request options for setEvaluationFeedback without sending the request
      * @param {string} id 
      * @param {SetEvaluationFeedbackRequest} setEvaluationFeedbackRequest 
@@ -5793,6 +5898,63 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async confirmRunPreflight(requestParameters: ConfirmRunPreflightOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ConfirmRunPreflight201Response> {
         const response = await this.confirmRunPreflightRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for continueRun without sending the request
+     */
+    async continueRunRequestOpts(requestParameters: ContinueRunOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling continueRun().'
+            );
+        }
+
+        if (requestParameters['continueRunRequest'] == null) {
+            throw new runtime.RequiredError(
+                'continueRunRequest',
+                'Required parameter "continueRunRequest" was null or undefined when calling continueRun().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/runs/{id}/continuations`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ContinueRunRequestToJSON(requestParameters['continueRunRequest']),
+        };
+    }
+
+    /**
+     * The run must have succeeded by asking the person, and the trace summary lists its questions. One answer per question, in the same order. A new run starts on the same skill version with a new test case snapshot whose prompt is the asking run\'s prompt followed by every question and answer; the criteria, files and rubric are the asking run\'s. Both runs stay immutable, and the link between them is recorded once: answering the same questions twice is refused. The new run is admitted and charged like any run, and a conversation may hold only as many answered rounds as the operator setting allows. 
+     * Answer the questions a run ended with and start the run that continues it (GEN-014)
+     */
+    async continueRunRaw(requestParameters: ContinueRunOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Run>> {
+        const requestOptions = await this.continueRunRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RunFromJSON(jsonValue));
+    }
+
+    /**
+     * The run must have succeeded by asking the person, and the trace summary lists its questions. One answer per question, in the same order. A new run starts on the same skill version with a new test case snapshot whose prompt is the asking run\'s prompt followed by every question and answer; the criteria, files and rubric are the asking run\'s. Both runs stay immutable, and the link between them is recorded once: answering the same questions twice is refused. The new run is admitted and charged like any run, and a conversation may hold only as many answered rounds as the operator setting allows. 
+     * Answer the questions a run ended with and start the run that continues it (GEN-014)
+     */
+    async continueRun(requestParameters: ContinueRunOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Run> {
+        const response = await this.continueRunRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -8432,6 +8594,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for getRunSettings without sending the request
+     */
+    async getRunSettingsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/settings/runs`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. How many answered rounds one conversation may hold: a run that asks, the run that continues it, and so on. A setting nobody has changed is at its default. 
+     * Run settings an operator can change (GEN-014)
+     */
+    async getRunSettingsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>> {
+        const requestOptions = await this.getRunSettingsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RunSettingsFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. How many answered rounds one conversation may hold: a run that asks, the run that continues it, and so on. A setting nobody has changed is at its default. 
+     * Run settings an operator can change (GEN-014)
+     */
+    async getRunSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings> {
+        const response = await this.getRunSettingsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getRunTrace without sending the request
      */
     async getRunTraceRequestOpts(requestParameters: GetRunTraceRequest): Promise<runtime.RequestOpts> {
@@ -10826,6 +11027,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async searchSkillsWithCorrectedIntent(requestParameters: SearchSkillsWithCorrectedIntentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicSearchResponse> {
         const response = await this.searchSkillsWithCorrectedIntentRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setContinuationRounds without sending the request
+     */
+    async setContinuationRoundsRequestOpts(requestParameters: SetContinuationRoundsOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['setContinuationRoundsRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setContinuationRoundsRequest',
+                'Required parameter "setContinuationRoundsRequest" was null or undefined when calling setContinuationRounds().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/settings/runs/continuation-rounds`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetContinuationRoundsRequestToJSON(requestParameters['setContinuationRoundsRequest']),
+        };
+    }
+
+    /**
+     * Operator only. The next continuation reads the new value; conversations already past it keep their runs but cannot add another round. Writes the change and its audit event in one transaction. 
+     * Set how many answered rounds a conversation may hold (GEN-014)
+     */
+    async setContinuationRoundsRaw(requestParameters: SetContinuationRoundsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RunSettings>> {
+        const requestOptions = await this.setContinuationRoundsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RunSettingsFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. The next continuation reads the new value; conversations already past it keep their runs but cannot add another round. Writes the change and its audit event in one transaction. 
+     * Set how many answered rounds a conversation may hold (GEN-014)
+     */
+    async setContinuationRounds(requestParameters: SetContinuationRoundsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunSettings> {
+        const response = await this.setContinuationRoundsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

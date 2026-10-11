@@ -730,6 +730,17 @@ type RunAttempt struct {
 	ProviderUnreachableSince pgtype.Timestamptz
 }
 
+// A run started from the questions another run ended with and the person's answers to them; one continuation per asking run.
+type RunContinuation struct {
+	RunID          pgtype.UUID
+	WorkspaceID    pgtype.UUID
+	ContinuesRunID pgtype.UUID
+	Questions      []byte
+	Answers        []byte
+	AnsweredBy     pgtype.UUID
+	CreatedAt      pgtype.Timestamptz
+}
+
 type RunPermissionConfirmation struct {
 	ID             pgtype.UUID
 	WorkspaceID    pgtype.UUID
@@ -738,6 +749,15 @@ type RunPermissionConfirmation struct {
 	SummaryHash    string
 	ConfirmedBy    pgtype.UUID
 	ConfirmedAt    pgtype.Timestamptz
+}
+
+// Operator-set run policy. An absent row means every setting is at its default.
+type RunSetting struct {
+	Singleton          bool
+	ContinuationRounds int32
+	Reason             string
+	SetBy              pgtype.UUID
+	SetAt              pgtype.Timestamptz
 }
 
 type RunSnapshot struct {

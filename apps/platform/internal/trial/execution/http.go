@@ -221,6 +221,16 @@ var refusedRuns = []refusedRun{
 		"這個 Skill 的來源授權還在審查中，審查期間不能試跑。"},
 	{policy.ErrQuotaExceeded, http.StatusUnprocessableEntity,
 		"這個 Workspace 的免費試跑額度已經用完了。"},
+	{ErrNothingToAnswer, http.StatusConflict,
+		"這次試跑沒有以提問結束，沒有可以回答的問題。"},
+	{ErrAnswersDoNotFit, http.StatusBadRequest,
+		"每個問題都要有一個回答，回答不能空白，最多 2000 bytes。"},
+	{ErrAlreadyContinued, http.StatusConflict,
+		"這次試跑的問題已經回答過了，請到接續的那次試跑查看。"},
+	{ErrContinuationLimit, http.StatusUnprocessableEntity,
+		"這段對話回答的輪數已經到上限，請把需要的資訊補進 Test Case 的 Prompt 再重新試跑。"},
+	{ErrContinuationTooLarge, http.StatusUnprocessableEntity,
+		"加上所有回答之後，請求超過 Prompt 的長度上限，請縮短回答。"},
 }
 
 // whatDidNotFit keeps the specific reason a refusal carries without letting the
@@ -329,6 +339,43 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	resp := toRunResponse(run)
 	resp.SkillID, resp.TestCaseID = pgconv.UUIDString(skillID), pgconv.UUIDString(testCaseID)
+	httpx.WriteJSON(w, http.StatusCreated, resp)
+}
+
+func (h *Handler) Continue(w http.ResponseWriter, r *http.Request) {
+	ws, user, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	var runID pgtype.UUID
+	if err := runID.Scan(r.PathValue("id")); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
+		return
+	}
+	var body struct {
+		Answers []string `json:"answers"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)).Decode(&body); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with answers")
+		return
+	}
+	run, err := h.Svc.Continue(r.Context(), ContinueParams{
+		WorkspaceID: ws.ID, Actor: user.ID, RunID: runID, Answers: body.Answers,
+	})
+	if refusal, ok := refusalFor(err); ok {
+		httpx.WriteError(w, refusal.status, refusal.message+whatDidNotFit(err))
+		return
+	}
+	if err != nil {
+		slog.Error("run continuation failed", "error", err)
+		httpx.WriteError(w, http.StatusInternalServerError,
+			"接續的試跑沒有建立起來，問題在平台這一側，請稍後再試。")
+		return
+	}
+	resp := toRunResponse(run)
+	if !h.fillLinkage(w, r, ws.ID, run.ID, &resp) {
+		return
+	}
 	httpx.WriteJSON(w, http.StatusCreated, resp)
 }
 

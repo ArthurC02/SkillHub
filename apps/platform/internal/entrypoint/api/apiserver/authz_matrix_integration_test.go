@@ -116,6 +116,8 @@ var anonymousRoutes = []anonCase{
 	{pattern: "PUT /admin/agents/{name}/spend-cap", want: http.StatusNotFound},
 	{pattern: "GET /admin/settings", want: http.StatusNotFound},
 	{pattern: "PUT /admin/settings/judge-panel", want: http.StatusNotFound},
+	{pattern: "GET /admin/settings/runs", want: http.StatusNotFound},
+	{pattern: "PUT /admin/settings/runs/continuation-rounds", want: http.StatusNotFound},
 	{pattern: "PUT /admin/agents/brake", want: http.StatusNotFound},
 	{pattern: "DELETE /admin/agents/brake", want: http.StatusNotFound},
 	{pattern: "GET /admin/agents/runs", want: http.StatusNotFound},
@@ -161,6 +163,7 @@ var anonymousRoutes = []anonCase{
 	{pattern: "GET /runs", want: http.StatusUnauthorized},
 	{pattern: "GET /runs/{id}", want: http.StatusUnauthorized},
 	{pattern: "POST /runs/{id}/cancel", want: http.StatusUnauthorized},
+	{pattern: "POST /runs/{id}/continuations", want: http.StatusUnauthorized},
 	{pattern: "GET /runs/{id}/artifacts", want: http.StatusUnauthorized},
 	{pattern: "DELETE /runs/{id}/artifacts/{artifactId}", want: http.StatusUnauthorized},
 

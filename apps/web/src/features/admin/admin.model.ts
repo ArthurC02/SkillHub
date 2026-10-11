@@ -22,6 +22,7 @@ export const ACTION_LABEL: Record<string, string> = {
   "platform_agent.brake_released": "放開 Agent 煞車",
   "platform_agent.spend_cap_set": "調整 Agent 每日花費上限",
   "evaluation_settings.set": "調整評估設定",
+  "run_settings.set": "調整試跑設定",
   "platform_agent_finding.opened": "開了一筆待辦",
   "platform_agent_finding.reopened": "重新打開待辦",
   "platform_agent_finding.recovered": "待辦自行恢復",

@@ -162,7 +162,7 @@ func (s *Service) DeclareHalt(
 
 			"source":           halt.Source,
 			"requested_source": source,
-			"reason":           halt.Reason,
+			auditReasonKey:     halt.Reason,
 		},
 	}); err != nil {
 		return DispatchHalt{}, err

@@ -1849,6 +1849,40 @@ type ConfirmRunPreflightUnprocessableEntity Error
 
 func (*ConfirmRunPreflightUnprocessableEntity) confirmRunPreflightRes() {}
 
+type ContinueRunBadRequest Error
+
+func (*ContinueRunBadRequest) continueRunRes() {}
+
+type ContinueRunConflict Error
+
+func (*ContinueRunConflict) continueRunRes() {}
+
+type ContinueRunNotFound Error
+
+func (*ContinueRunNotFound) continueRunRes() {}
+
+type ContinueRunReq struct {
+	Answers []string `json:"answers"`
+}
+
+// GetAnswers returns the value of Answers.
+func (s *ContinueRunReq) GetAnswers() []string {
+	return s.Answers
+}
+
+// SetAnswers sets the value of Answers.
+func (s *ContinueRunReq) SetAnswers(val []string) {
+	s.Answers = val
+}
+
+type ContinueRunUnauthorized Error
+
+func (*ContinueRunUnauthorized) continueRunRes() {}
+
+type ContinueRunUnprocessableEntity Error
+
+func (*ContinueRunUnprocessableEntity) continueRunRes() {}
+
 // Ref: #/components/schemas/CorrectedSearchRequest
 type CorrectedSearchRequest struct {
 	Query    string         `json:"query"`
@@ -7366,6 +7400,7 @@ func (*Error) getMeRes()                           {}
 func (*Error) getOperatorRostersRes()              {}
 func (*Error) getPlatformSettingsRes()             {}
 func (*Error) getPublicPublicationRes()            {}
+func (*Error) getRunSettingsRes()                  {}
 func (*Error) getSkillImportLimitsRes()            {}
 func (*Error) listDownloadArtifactsRes()           {}
 func (*Error) listExposureQueueRes()               {}
@@ -23950,8 +23985,9 @@ func (s *Run) SetAttempts(val []RunAttemptsItem) {
 	s.Attempts = val
 }
 
-func (*Run) getRunRes()   {}
-func (*Run) startRunRes() {}
+func (*Run) continueRunRes() {}
+func (*Run) getRunRes()      {}
+func (*Run) startRunRes()    {}
 
 // One file a run produced, as a manifest row. The bytes are never served here: the archive is a
 // sandbox's output and the control plane does not open it (iron rule 1).
@@ -26108,6 +26144,95 @@ func (s *RunResourceLimitsTokenBudget) SetMaxOutputTokens(val int) {
 	s.MaxOutputTokens = val
 }
 
+// Ref: #/components/schemas/RunSettings
+type RunSettings struct {
+	ContinuationRounds RunSettingsContinuationRounds `json:"continuation_rounds"`
+}
+
+// GetContinuationRounds returns the value of ContinuationRounds.
+func (s *RunSettings) GetContinuationRounds() RunSettingsContinuationRounds {
+	return s.ContinuationRounds
+}
+
+// SetContinuationRounds sets the value of ContinuationRounds.
+func (s *RunSettings) SetContinuationRounds(val RunSettingsContinuationRounds) {
+	s.ContinuationRounds = val
+}
+
+func (*RunSettings) getRunSettingsRes()        {}
+func (*RunSettings) setContinuationRoundsRes() {}
+
+type RunSettingsContinuationRounds struct {
+	// Answered rounds one conversation may hold.
+	Rounds int `json:"rounds"`
+	Min    int `json:"min"`
+	Max    int `json:"max"`
+	// Present once an operator has changed the setting.
+	Reason      OptString   `json:"reason"`
+	SetByUserID OptUUID     `json:"set_by_user_id"`
+	SetAt       OptDateTime `json:"set_at"`
+}
+
+// GetRounds returns the value of Rounds.
+func (s *RunSettingsContinuationRounds) GetRounds() int {
+	return s.Rounds
+}
+
+// GetMin returns the value of Min.
+func (s *RunSettingsContinuationRounds) GetMin() int {
+	return s.Min
+}
+
+// GetMax returns the value of Max.
+func (s *RunSettingsContinuationRounds) GetMax() int {
+	return s.Max
+}
+
+// GetReason returns the value of Reason.
+func (s *RunSettingsContinuationRounds) GetReason() OptString {
+	return s.Reason
+}
+
+// GetSetByUserID returns the value of SetByUserID.
+func (s *RunSettingsContinuationRounds) GetSetByUserID() OptUUID {
+	return s.SetByUserID
+}
+
+// GetSetAt returns the value of SetAt.
+func (s *RunSettingsContinuationRounds) GetSetAt() OptDateTime {
+	return s.SetAt
+}
+
+// SetRounds sets the value of Rounds.
+func (s *RunSettingsContinuationRounds) SetRounds(val int) {
+	s.Rounds = val
+}
+
+// SetMin sets the value of Min.
+func (s *RunSettingsContinuationRounds) SetMin(val int) {
+	s.Min = val
+}
+
+// SetMax sets the value of Max.
+func (s *RunSettingsContinuationRounds) SetMax(val int) {
+	s.Max = val
+}
+
+// SetReason sets the value of Reason.
+func (s *RunSettingsContinuationRounds) SetReason(val OptString) {
+	s.Reason = val
+}
+
+// SetSetByUserID sets the value of SetByUserID.
+func (s *RunSettingsContinuationRounds) SetSetByUserID(val OptUUID) {
+	s.SetByUserID = val
+}
+
+// SetSetAt sets the value of SetAt.
+func (s *RunSettingsContinuationRounds) SetSetAt(val OptDateTime) {
+	s.SetAt = val
+}
+
 // The standard lifecycle of RUN-002. `cleaning_up` is not in here: cleanup happens after a terminal
 // state and is reported separately in `cleanup_status`, so "the run failed" and "its sandbox was torn
 // down" stay two distinct facts.
@@ -27445,6 +27570,40 @@ func (s *SessionCookie) SetAPIKey(val string) {
 // SetRoles sets the value of Roles.
 func (s *SessionCookie) SetRoles(val []string) {
 	s.Roles = val
+}
+
+type SetContinuationRoundsBadRequest Error
+
+func (*SetContinuationRoundsBadRequest) setContinuationRoundsRes() {}
+
+type SetContinuationRoundsNotFound Error
+
+func (*SetContinuationRoundsNotFound) setContinuationRoundsRes() {}
+
+type SetContinuationRoundsReq struct {
+	Rounds int `json:"rounds"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetRounds returns the value of Rounds.
+func (s *SetContinuationRoundsReq) GetRounds() int {
+	return s.Rounds
+}
+
+// GetNote returns the value of Note.
+func (s *SetContinuationRoundsReq) GetNote() string {
+	return s.Note
+}
+
+// SetRounds sets the value of Rounds.
+func (s *SetContinuationRoundsReq) SetRounds(val int) {
+	s.Rounds = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetContinuationRoundsReq) SetNote(val string) {
+	s.Note = val
 }
 
 type SetEvaluationFeedbackBadRequest Error

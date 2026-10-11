@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func values(n int) []string {
@@ -60,5 +62,15 @@ func TestNoCheckStaysNoCheckAndValuesAreTrimmed(t *testing.T) {
 	}
 	if got, _ := validateCheck(&Check{Kind: CheckAsks, Values: []string{}}); got.Values != nil {
 		t.Errorf("an empty value list is stored as none, got %q", got.Values)
+	}
+}
+
+func TestAContinuationPromptIsHeldToThePromptLimit(t *testing.T) {
+	svc := &Service{}
+	if _, err := svc.ContinueSnapshot(t.Context(), nil, pgtype.UUID{}, pgtype.UUID{}, strings.Repeat("a", MaxPromptBytes+1)); !errors.Is(err, ErrPromptTooLong) {
+		t.Errorf("one byte past the limit: got %v, want ErrPromptTooLong", err)
+	}
+	if _, err := svc.ContinueSnapshot(t.Context(), nil, pgtype.UUID{}, pgtype.UUID{}, strings.Repeat("a", MaxPromptBytes)); errors.Is(err, ErrPromptTooLong) {
+		t.Errorf("a prompt at the limit was refused as too long")
 	}
 }

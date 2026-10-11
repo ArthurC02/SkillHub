@@ -66,6 +66,11 @@ type ConfirmRunPreflightParams struct {
 	ID uuid.UUID
 }
 
+// ContinueRunParams is parameters of continueRun operation.
+type ContinueRunParams struct {
+	ID uuid.UUID
+}
+
 // CreateDownloadArtifactParams is parameters of createDownloadArtifact operation.
 type CreateDownloadArtifactParams struct {
 	// Skill id. The version must belong to this skill.

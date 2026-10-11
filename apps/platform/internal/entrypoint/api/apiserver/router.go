@@ -48,6 +48,8 @@ type Deps struct {
 
 	Settings *eval.SettingsHandler
 
+	RunSettings *run.SettingsHandler
+
 	Trends *trendsHandler
 
 	Analytics *analytics.Handler
@@ -212,6 +214,8 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("DELETE /admin/model-budgets/{kind}", auth.RequireOperator(d.ModelBudgets.Clear))
 	mux.HandleFunc("GET /admin/settings", auth.RequireOperator(d.Settings.Get))
 	mux.HandleFunc("PUT /admin/settings/judge-panel", auth.RequireOperator(d.Settings.SetJudgePanel))
+	mux.HandleFunc("GET /admin/settings/runs", auth.RequireOperator(d.RunSettings.Get))
+	mux.HandleFunc("PUT /admin/settings/runs/continuation-rounds", auth.RequireOperator(d.RunSettings.SetContinuationRounds))
 	mux.HandleFunc("GET /admin/agents", auth.RequireOperator(d.Agents.List))
 	mux.HandleFunc("PUT /admin/agents/{name}/enabled", auth.RequireOperator(d.Agents.SetEnabled))
 	mux.HandleFunc("PUT /admin/agents/{name}/spend-cap", auth.RequireOperator(d.Agents.SetSpendCap))
@@ -270,6 +274,7 @@ func mountRunRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /runs", auth.RequireSession(d.Runs.List))
 	mux.HandleFunc("GET /runs/{id}", auth.RequireSession(d.Runs.Get))
 	mux.HandleFunc("POST /runs/{id}/cancel", auth.RequireSession(d.Runs.Cancel))
+	mux.HandleFunc("POST /runs/{id}/continuations", auth.RequireSession(auth.RequireInvited(d.Runs.Continue)))
 
 	mux.HandleFunc("GET /runs/{id}/artifacts", auth.RequireSession(d.Runs.Artifacts))
 	mux.HandleFunc("DELETE /runs/{id}/artifacts/{artifactId}",

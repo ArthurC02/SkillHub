@@ -200,17 +200,15 @@ func (s *Service) CreateSnapshot(ctx context.Context, tx pgx.Tx, workspaceID, te
 		return Snapshot{}, err
 	}
 
-	content := snapshotContent{
+	hash, err := snapshotContent{
 		UserPrompt:         tc.UserPrompt,
 		AcceptanceCriteria: criteria,
 		DatasetRefs:        refs,
 		Rubric:             rubric,
-	}
-	body, err := json.Marshal(content)
+	}.hash()
 	if err != nil {
 		return Snapshot{}, err
 	}
-	sum := sha256.Sum256(body)
 
 	encodedCriteria, err := json.Marshal(criteria)
 	if err != nil {
@@ -226,9 +224,70 @@ func (s *Service) CreateSnapshot(ctx context.Context, tx pgx.Tx, workspaceID, te
 		UserPrompt:         tc.UserPrompt,
 		AcceptanceCriteria: encodedCriteria,
 		DatasetRefs:        encodedRefs,
-		ContentHash:        hex.EncodeToString(sum[:]),
+		ContentHash:        hash,
 
 		Rubric: tc.Rubric,
+	})
+	if err != nil {
+		return Snapshot{}, err
+	}
+	return snapshotDTO(row), nil
+}
+
+func (c snapshotContent) hash() (string, error) {
+	body, err := json.Marshal(c)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(body)
+	return hex.EncodeToString(sum[:]), nil
+}
+
+var ErrPromptTooLong = fmt.Errorf("%w: Prompt 最多 %d bytes", ErrInvalid, MaxPromptBytes)
+
+func (s *Service) ContinueSnapshot(
+	ctx context.Context, tx pgx.Tx, workspaceID, fromSnapshotID pgtype.UUID, prompt string,
+) (Snapshot, error) {
+	if len(prompt) > MaxPromptBytes {
+		return Snapshot{}, ErrPromptTooLong
+	}
+	if tx == nil {
+		return Snapshot{}, errPersistenceNotConfigured
+	}
+	q := gen.New(tx)
+	from, err := q.GetTestCaseSnapshot(ctx, gen.GetTestCaseSnapshotParams{ID: fromSnapshotID, WorkspaceID: workspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Snapshot{}, ErrNotFound
+	}
+	if err != nil {
+		return Snapshot{}, err
+	}
+	criteria, err := DecodeCriteria(from.AcceptanceCriteria)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	refs, err := DecodeDatasetRefs(from.DatasetRefs)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	rubric, err := DecodeRubric(from.Rubric)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	hash, err := snapshotContent{
+		UserPrompt: prompt, AcceptanceCriteria: criteria, DatasetRefs: refs, Rubric: rubric,
+	}.hash()
+	if err != nil {
+		return Snapshot{}, err
+	}
+	row, err := q.CreateTestCaseSnapshot(ctx, gen.CreateTestCaseSnapshotParams{
+		WorkspaceID:        workspaceID,
+		TestCaseID:         from.TestCaseID,
+		UserPrompt:         prompt,
+		AcceptanceCriteria: from.AcceptanceCriteria,
+		DatasetRefs:        from.DatasetRefs,
+		ContentHash:        hash,
+		Rubric:             from.Rubric,
 	})
 	if err != nil {
 		return Snapshot{}, err
