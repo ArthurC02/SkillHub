@@ -901,9 +901,13 @@ try {
   const haltedDispatch = await (
     await operator.request.get(`${base}/admin/dispatch`)
   ).json();
+  await operatorPage.locator("#admin-halt-lift-target").selectOption("pool");
   await operatorPage
     .locator("#admin-halt-lift-note")
     .fill("browser smoke resume");
+  await operatorPage
+    .getByRole("button", { name: "恢復派送", exact: true })
+    .click();
   const resumeResponse = await Promise.all([
     operatorPage.waitForResponse(
       (response) =>
@@ -911,9 +915,7 @@ try {
         response.request().method() === "DELETE",
     ),
     operatorPage
-      .locator("#admin-halt-lift-note")
-      .locator("xpath=ancestor::form")
-      .locator('button[type="submit"]')
+      .getByRole("button", { name: "確認恢復派送", exact: true })
       .click(),
   ]).then(([response]) => response);
   const resumedDispatch = await (
@@ -955,6 +957,9 @@ try {
   await budgetResponse;
   if (modelBudget?.kind) {
     const seconds = modelBudget.min_seconds;
+    await budgetPage
+      .locator(`#admin-budget-${modelBudget.kind}-set summary`)
+      .click();
     const secondsInput = budgetPage.locator(
       `#admin-budget-${modelBudget.kind}-seconds`,
     );
@@ -985,6 +990,9 @@ try {
     const clearForm = budgetPage.locator(
       `#admin-budget-${modelBudget.kind}-clear-note`,
     );
+    await budgetPage
+      .locator(`#admin-budget-${modelBudget.kind}-clear summary`)
+      .click();
     await clearForm.fill("browser smoke restore default");
     const clearBudgetResponse = await Promise.all([
       budgetPage.waitForResponse(
@@ -1040,6 +1048,7 @@ try {
       { waitUntil: "networkidle" },
     );
     await governanceRead;
+    await governancePage.locator("#admin-skill-restriction summary").click();
     const restrictionNote = governancePage.locator("#admin-restriction-note");
     await restrictionNote.waitFor({ state: "visible" });
     await restrictionNote.fill("browser smoke licensing review");
@@ -1088,6 +1097,7 @@ try {
       }),
     );
 
+    await governancePage.locator("#admin-skill-takedown summary").click();
     await governancePage
       .locator("#admin-takedown-reason")
       .fill("browser smoke takedown");

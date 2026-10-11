@@ -1420,6 +1420,7 @@ test("a judge panel change focuses its result and editing the next reason clears
   await waitFor(has("已開啟，需要模型判定的條件由三個判定投票。"));
   expect(document.activeElement).toBe(field<HTMLElement>("#admin-settings-judge-panel-result"));
   await type("#admin-settings-judge-panel-note", "back to baseline");
+  await waitFor(() => !has("已開啟，需要模型判定的條件由三個判定投票。")());
   expect(has("已開啟，需要模型判定的條件由三個判定投票。")()).toBe(false);
   expect(button("關閉評審團").disabled).toBe(false);
 });
@@ -1701,6 +1702,9 @@ test("an Agent cap change blocks a competing restore until the request finishes"
   await submit("#admin-agent-daily-report-cap-set-note");
   await waitFor(() => finishes.length > 0);
   try {
+    await waitFor(
+      () => field<HTMLTextAreaElement>("#admin-agent-daily-report-cap-clear-note").readOnly,
+    );
     expect(field<HTMLTextAreaElement>("#admin-agent-daily-report-cap-clear-note").readOnly).toBe(
       true,
     );
@@ -2210,6 +2214,7 @@ test("OPS-005: a pending release prevents a conflicting halt declaration", async
   await click(button("恢復派送"));
   await click(button("確認恢復派送"));
   await waitFor(() => Boolean(finishRelease));
+  await waitFor(has("正在解除煞車"));
 
   expect(button("停止派送").disabled).toBe(true);
   expect(has("正在解除煞車")()).toBe(true);
@@ -2243,6 +2248,7 @@ test("OPS-005: a pending halt declaration prevents a prepared release confirmati
   await type("#admin-halt-declare-note", "new incident");
   await click(button("停止派送"));
   await waitFor(() => Boolean(finishDeclaration));
+  await waitFor(has("正在停止派送"));
 
   expect(button("確認恢復派送").disabled).toBe(true);
   expect(field<HTMLSelectElement>("#admin-halt-lift-target").disabled).toBe(true);
@@ -3061,6 +3067,7 @@ test("editing a new exposure reason clears the previous review result", async ()
   await click(button("送出核准"));
   await waitFor(has("這筆曝光審核已核准。"));
   await type("#admin-exposure-review-note", "需要重新確認");
+  await waitFor(() => !has("這筆曝光審核已核准。")());
   expect(has("這筆曝光審核已核准。")()).toBe(false);
 });
 

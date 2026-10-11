@@ -2085,7 +2085,7 @@ test("an Agent finding move keeps its result when detail refresh fails", async (
 
   await expect(page.getByRole("alert")).toContainText("暫時無法讀取這件事");
   await expect(page.locator("#admin-finding-result")).toContainText("最新狀態尚未確認");
-  await expect(page.getByRole("button", { name: "重新整理這件事" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "再試一次", exact: true })).toBeVisible();
   await expect(page.locator("#admin-finding-result")).toBeFocused();
   await expect(page.locator("#admin-finding-note")).toHaveCount(0);
   const resultTop = await page
@@ -2478,7 +2478,9 @@ for (const refreshFails of [false, true]) {
       await expect(page.getByText("目前：90 秒（已調整）")).toHaveCount(0);
     } else {
       await expect(page.getByText("目前：預設 130 秒")).toBeVisible();
-      await expect(result).toContainText("目前顯示程式預設 130 秒；下次呼叫將使用此設定。");
+      await expect(result).toContainText(
+        "目前顯示程式預設 130 秒；下次呼叫平台會送出此值，模型服務可能採用更短的上限。",
+      );
     }
     await expect(page.locator("#admin-budget-judge-run-clear")).toHaveCount(0);
     await expect(result).toBeFocused();
