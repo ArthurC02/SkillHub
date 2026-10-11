@@ -3,11 +3,11 @@
   "proposal_id": "eval-trace-write-mode",
   "proposer": "domain-memory-agent",
   "requirement_id": "eval-trace-write-mode",
-  "status": "verified",
+  "status": "approved",
   "change_classification": "material",
   "submitted_at": "2026-10-11T20:09:30.818034Z",
   "verified_at": "2026-10-11T20:09:35.357023Z",
-  "finalized_at": null,
+  "finalized_at": "2026-10-11T20:09:50.206237Z",
   "applied_at": null,
   "proposal_revision": 1,
   "base_registry_revision": {
