@@ -184,7 +184,7 @@ func TestTheAuditFailsOnlyOnFixableFindings(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			var out bytes.Buffer
-			err := reportAudit(tc.fail, tc.note, &out)
+			err := reportAudit(tc.fail, tc.note, nil, &out)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("err = %v, wantErr %v", err, tc.wantErr)
 			}

@@ -473,6 +473,8 @@ docker run --rm --network container:skillhub-postgres-1 \
 - 出貨依賴的授權不在允許清單 → 換一個依賴。確認授權其實可以接受（例如分類器認不出的 MIT 變體）時，在 `tools/devctl/license_audit.go` 的 `acceptedLicenses` 加一筆，附上理由，並在 commit message 說明你讀過的授權原文。
 - zizmor 的 medium 以上 → 照訊息裡的連結修 workflow。本機沒有 `GH_TOKEN` 時只跑離線稽核，CI 會多跑連網的幾項。
 
+Go 全掃仍保留模組層級 advisory。有修補版仍是 `FAIL`；沒有修補版且已匯入受影響套件時是 `NOTE`。只有 source 掃描明確完成 package／symbol 分析、且 advisory 僅有模組層級證據時，才以 `INFO` 說明受影響套件未匯入；缺少分析能力資訊時不作這個判定。同一筆 advisory 有多份證據，以較高可達性為準。已停止維護的 OpenPGP 套件另外由 Go 出貨依賴檢查禁止引入，不以安裝另一個未使用的套件來取代。
+
 **映像不在 `dep-audit` 裡，它讀的是 lockfile**（見[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理)）。 映像由 [`tools/ci/scan-images.sh`](../../tools/ci/scan-images.sh) 掃，掛在 `image-scan.yml`（改到 compose 或四個應用映像時跑、每週排程、可手動觸發），`runtime-agent-sdk` 仍留在自己的 `runtime-image.yml`。**清單從 compose 讀出來，不另抄一份**——抄一份就會漂，而這個缺口本來就是漂出來的。
 
 **閘門分三層，照「誰能修」與「會不會被部署」畫**：會被部署的 `platform`／`web`／`llm` 出現**有修補版的** Critical／High 就紅（修法在我們手上：換基底、升依賴，或像 `runtime-agent-sdk` 與 `llm` 那樣對單一套件 `--only-upgrade`）；compose 拉下來的上游四顆只報，**只有排程那一跑設 `FAIL_ON_UPSTREAM=1` 才紅**，所以每週有人被通知而沒有人的 PR 被擋，處置是**升那個 pin 或換 tag**，不是把閘門關掉；開發容器 `devtools` **永不紅**——它不部署，而它兩萬多列的發現絕大多數住在第三方工具的編譯產物裡，擋了也沒有人做得出對應的修正。

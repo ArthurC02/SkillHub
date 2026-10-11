@@ -45,9 +45,20 @@ type auditScope struct {
 }
 
 type vulnFinding struct {
-	subject string
-	id      string
-	fix     string
+	subject    string
+	id         string
+	fix        string
+	unimported bool
+}
+
+func (finding vulnFinding) auditStatus() string {
+	if finding.fix != "" {
+		return statusFail
+	}
+	if finding.unimported {
+		return "INFO"
+	}
+	return "NOTE"
 }
 
 func depAudit(root string, args []string, out io.Writer) error {
@@ -65,7 +76,7 @@ func depAudit(root string, args []string, out io.Writer) error {
 		}
 	}
 	scope := auditScope{full: full}
-	var fail, note []string
+	var fail, note, info []string
 	for _, target := range auditTargets {
 		if !scope.full && !target.shipped {
 			continue
@@ -75,14 +86,10 @@ func depAudit(root string, args []string, out io.Writer) error {
 			return fmt.Errorf("%s %s: %w", target.ecosystem, target.dir, err)
 		}
 		fmt.Fprintf(out, "scanned %s %s\n", target.ecosystem, target.dir)
-		for _, finding := range findings {
-			line := fmt.Sprintf("%s %s: %s %s", target.ecosystem, target.dir, finding.subject, finding.id)
-			if finding.fix == "" {
-				note = append(note, line+" (no fix yet)")
-			} else {
-				fail = append(fail, line+" (fix: "+finding.fix+")")
-			}
-		}
+		findingFail, findingNote, findingInfo := classifyVulnerabilityFindings(target, findings)
+		fail = append(fail, findingFail...)
+		note = append(note, findingNote...)
+		info = append(info, findingInfo...)
 	}
 	workflowFindings, err := scanWorkflows(root, toolchain)
 	if err != nil {
@@ -99,7 +106,22 @@ func depAudit(root string, args []string, out io.Writer) error {
 	fmt.Fprintln(out, "checked the licenses of shipped dependencies")
 	fail = append(fail, licenseFail...)
 	note = append(note, licenseNote...)
-	return reportAudit(fail, note, out)
+	return reportAudit(fail, note, info, out)
+}
+
+func classifyVulnerabilityFindings(target auditTarget, findings []vulnFinding) (fail, note, info []string) {
+	for _, finding := range findings {
+		line := fmt.Sprintf("%s %s: %s %s", target.ecosystem, target.dir, finding.subject, finding.id)
+		switch finding.auditStatus() {
+		case "INFO":
+			info = append(info, line+" (module advisory; affected packages not imported; no fix yet)")
+		case "NOTE":
+			note = append(note, line+" (no fix yet)")
+		default:
+			fail = append(fail, line+" (fix: "+finding.fix+")")
+		}
+	}
+	return fail, note, info
 }
 
 func parseFullFlag(args []string) (bool, error) {
@@ -112,7 +134,10 @@ func parseFullFlag(args []string) (bool, error) {
 	return false, errors.New("usage: devctl dep-audit [--full]")
 }
 
-func reportAudit(fail, note []string, out io.Writer) error {
+func reportAudit(fail, note, info []string, out io.Writer) error {
+	for _, line := range info {
+		fmt.Fprintln(out, "INFO", line)
+	}
 	for _, line := range note {
 		fmt.Fprintln(out, "NOTE", line)
 	}
@@ -190,7 +215,7 @@ func auditToolOutput(dir, name string, args ...string) ([]byte, error) {
 	cmd.Stderr = &stderr
 	data, err := cmd.Output()
 	var exit *exec.ExitError
-	exitedWithAReport := errors.As(err, &exit) && len(bytes.TrimSpace(data)) > 0
+	exitedWithAReport := name != "go" && errors.As(err, &exit) && len(bytes.TrimSpace(data)) > 0
 	if err != nil && !exitedWithAReport {
 		return nil, fmt.Errorf("%s %s: %w\n%s", name, strings.Join(args, " "), err, stderr.String())
 	}
@@ -243,21 +268,53 @@ func npmAdvisories(via []json.RawMessage) string {
 	return strings.Join(urls, " ")
 }
 
+type govulncheckConfig struct {
+	ScanLevel string `json:"scan_level"`
+	ScanMode  string `json:"scan_mode"`
+}
+
+type govulncheckFrame struct {
+	Module   string          `json:"module"`
+	Package  string          `json:"package"`
+	Function string          `json:"function"`
+	Receiver string          `json:"receiver"`
+	Position json.RawMessage `json:"position"`
+}
+
+type govulncheckFinding struct {
+	OSV          string             `json:"osv"`
+	FixedVersion string             `json:"fixed_version"`
+	Trace        []govulncheckFrame `json:"trace"`
+}
+
+func (config govulncheckConfig) confirmsUnimported(finding govulncheckFinding) bool {
+	if config.ScanMode != "source" || (config.ScanLevel != "symbol" && config.ScanLevel != "package") || len(finding.Trace) != 1 {
+		return false
+	}
+	frame := finding.Trace[0]
+	return frame.Module != "" && frame.Package == "" && frame.Function == "" && frame.Receiver == "" && frame.Position == nil
+}
+
+func mergeVulnerabilityEvidence(previous, next vulnFinding) vulnFinding {
+	if previous.id == "" {
+		return next
+	}
+	next.unimported = next.unimported && previous.unimported
+	if next.fix == "" {
+		next.fix = previous.fix
+	}
+	return next
+}
+
 func govulncheckFindings(data []byte, scope auditScope) ([]vulnFinding, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	sawConfig := false
+	var config govulncheckConfig
 	byOSV := map[string]vulnFinding{}
 	for {
 		var message struct {
-			Config  json.RawMessage `json:"config"`
-			Finding *struct {
-				OSV          string `json:"osv"`
-				FixedVersion string `json:"fixed_version"`
-				Trace        []struct {
-					Module   string `json:"module"`
-					Function string `json:"function"`
-				} `json:"trace"`
-			} `json:"finding"`
+			Config  *govulncheckConfig  `json:"config"`
+			Finding *govulncheckFinding `json:"finding"`
 		}
 		err := decoder.Decode(&message)
 		if errors.Is(err, io.EOF) {
@@ -266,17 +323,25 @@ func govulncheckFindings(data []byte, scope auditScope) ([]vulnFinding, error) {
 		if err != nil {
 			return nil, fmt.Errorf("govulncheck output: %w", err)
 		}
+		if message.Config != nil && sawConfig {
+			return nil, errors.New("govulncheck output contains multiple scan configurations")
+		}
 		if message.Config != nil {
 			sawConfig = true
+			config = *message.Config
 		}
 		finding := message.Finding
-		if finding == nil || len(finding.Trace) == 0 {
+		if finding == nil {
 			continue
+		}
+		if len(finding.Trace) == 0 {
+			return nil, errors.New("govulncheck finding has no trace")
 		}
 		if !scope.full && finding.Trace[0].Function == "" {
 			continue
 		}
-		byOSV[finding.OSV] = vulnFinding{subject: finding.Trace[0].Module, id: finding.OSV, fix: finding.FixedVersion}
+		candidate := vulnFinding{subject: finding.Trace[0].Module, id: finding.OSV, fix: finding.FixedVersion, unimported: config.confirmsUnimported(*finding)}
+		byOSV[finding.OSV] = mergeVulnerabilityEvidence(byOSV[finding.OSV], candidate)
 	}
 	if !sawConfig {
 		return nil, errors.New("govulncheck output has no config message, so no scan ran")
