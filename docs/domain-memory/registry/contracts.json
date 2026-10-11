@@ -407,9 +407,9 @@
             "start": 44,
             "end": 85
           },
-          "source_kind": "implementation",
           "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
-          "excerpt_sha256": "sha256:841e644127179fb6e6aa42ceee21c36a0deaa6f747b23747323bb7dacf06c1a9"
+          "excerpt_sha256": "sha256:841e644127179fb6e6aa42ceee21c36a0deaa6f747b23747323bb7dacf06c1a9",
+          "source_kind": "implementation"
         },
         {
           "path": "apps/platform/internal/trial/execution/service.go",
@@ -417,9 +417,9 @@
             "start": 909,
             "end": 926
           },
-          "source_kind": "implementation",
           "content_sha256": "sha256:2559a814174ef782b9386066e34d404ba781cb67e2804837865668a35d95bb38",
-          "excerpt_sha256": "sha256:b33d744e5dc035dd07b22002b8fd5e71cba0dd4fb652efe02fe1d92a6a91ae62"
+          "excerpt_sha256": "sha256:b33d744e5dc035dd07b22002b8fd5e71cba0dd4fb652efe02fe1d92a6a91ae62",
+          "source_kind": "implementation"
         },
         {
           "path": "apps/platform/internal/trial/execution/batch_facts.go",
@@ -427,9 +427,9 @@
             "start": 61,
             "end": 72
           },
-          "source_kind": "implementation",
           "content_sha256": "sha256:ea064d7f8550e8ced8c3307690d9d745407ccffaaa7136442e250dfa856bd257",
-          "excerpt_sha256": "sha256:c4b8a8c925f6d49224e57170964aca0958132aee6512a1d31443ef0a8b8db1d8"
+          "excerpt_sha256": "sha256:c4b8a8c925f6d49224e57170964aca0958132aee6512a1d31443ef0a8b8db1d8",
+          "source_kind": "implementation"
         },
         {
           "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
@@ -437,12 +437,30 @@
             "start": 104,
             "end": 104
           },
-          "source_kind": "decisions",
           "content_sha256": "sha256:5072e5e57a47566f4b966a1b8d1d4c313fef8d3e82de0bcd38e1be7124b5bd12",
-          "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd"
+          "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd",
+          "source_kind": "decisions"
         }
       ],
-      "status": "candidate"
+      "review": {
+        "proposal_id": "evaluation-batch-context-r3",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-11T18:23:06.041403Z",
+            "scope": "The batch Context: its identity-only dependency policy, run's idempotent trial port, eval's standing verdicts, testlab's snapshot facts and trace's question count reached through the composition root, and its wait-or-stop rule; the eval-owned interaction and rule they replace are removed",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "71ed9d92f42305ee34c84ab39b83332c0d4d8b03",
+              "registry_digest": "sha256:3b5fb280627b81560b7db5cfe325eed368a9908078fb3c09c4c83199da8dfd93"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }

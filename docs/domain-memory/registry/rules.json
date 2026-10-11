@@ -162,9 +162,9 @@
       "status": "reviewed"
     },
     {
-      "id": "eval-batch-waits-only-on-a-passing-refusal",
+      "id": "batch-waits-only-on-a-passing-refusal",
       "contexts": [
-        "eval"
+        "batch"
       ],
       "statement": "An evaluation batch waits when Run refuses a trial with a refusal Run says will pass on its own, and stops with that reason recorded on any other refusal.",
       "examples": [
@@ -204,68 +204,24 @@
         }
       ],
       "review": {
-        "proposal_id": "evaluation-batch-evidence-move",
+        "proposal_id": "evaluation-batch-context-r3",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T18:13:50.962192Z",
-            "scope": "Re-cite the trial-port interaction and the wait-or-stop rule at trial/batch/batch.go, where the same code moved; the records' statements are unchanged",
+            "approved_at": "2026-10-11T18:23:06.041403Z",
+            "scope": "The batch Context: its identity-only dependency policy, run's idempotent trial port, eval's standing verdicts, testlab's snapshot facts and trace's question count reached through the composition root, and its wait-or-stop rule; the eval-owned interaction and rule they replace are removed",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "d90e045275c2287e9565cc8b3e2a1f544b7ddcf4",
-              "registry_digest": "sha256:f199a6fe2dbd75cc6dbd6e5e4703e224221e8e9e997d302fbd9d14b2810f3758"
+              "observed_commit": "71ed9d92f42305ee34c84ab39b83332c0d4d8b03",
+              "registry_digest": "sha256:3b5fb280627b81560b7db5cfe325eed368a9908078fb3c09c4c83199da8dfd93"
             }
           }
         ]
       },
       "status": "reviewed"
-    },
-    {
-      "id": "batch-waits-only-on-a-passing-refusal",
-      "contexts": [
-        "batch"
-      ],
-      "statement": "An evaluation batch waits when Run refuses a trial with a refusal Run says will pass on its own, and stops with that reason recorded on any other refusal.",
-      "examples": [
-        "The workspace is already running as many runs as it may: the batch tries the trial again on its next advance.",
-        "The credit balance is too low: the batch stops and records credit_balance as its reason."
-      ],
-      "evidence": [
-        {
-          "path": "apps/platform/internal/trial/batch/batch.go",
-          "lines": {
-            "start": 254,
-            "end": 259
-          },
-          "source_kind": "implementation",
-          "content_sha256": "sha256:b853fee91e1573854727b97f1480e74329d5670579403683326cee5cb2d2019a",
-          "excerpt_sha256": "sha256:091e6b79f949da9fcf2248fefa28e0b76b6321faf1a521cadce058006a54f330"
-        },
-        {
-          "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
-          "lines": {
-            "start": 107,
-            "end": 121
-          },
-          "source_kind": "implementation",
-          "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
-          "excerpt_sha256": "sha256:b1ce72bf4728455794da7f09dfcf1047ae13f11ba52e243baec0fb0dfb4bfca4"
-        },
-        {
-          "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
-          "lines": {
-            "start": 104,
-            "end": 104
-          },
-          "source_kind": "decisions",
-          "content_sha256": "sha256:5072e5e57a47566f4b966a1b8d1d4c313fef8d3e82de0bcd38e1be7124b5bd12",
-          "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd"
-        }
-      ],
-      "status": "candidate"
     }
   ]
 }

@@ -7,7 +7,16 @@
     "registry_digest": "sha256:3b5fb280627b81560b7db5cfe325eed368a9908078fb3c09c4c83199da8dfd93"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "42af6c8ec739c64be4c80a58311ba72e293cc9da",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "71ed9d92f42305ee34c84ab39b83332c0d4d8b03",
+      "registry_digest": "sha256:3b5fb280627b81560b7db5cfe325eed368a9908078fb3c09c4c83199da8dfd93"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "report-uses-verdict-port",

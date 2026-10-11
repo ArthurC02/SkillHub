@@ -1147,12 +1147,30 @@
             "start": 42,
             "end": 42
           },
-          "source_kind": "decisions",
           "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
-          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4"
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
         }
       ],
-      "status": "candidate"
+      "review": {
+        "proposal_id": "evaluation-batch-context-r3",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-11T18:23:06.041403Z",
+            "scope": "The batch Context: its identity-only dependency policy, run's idempotent trial port, eval's standing verdicts, testlab's snapshot facts and trace's question count reached through the composition root, and its wait-or-stop rule; the eval-owned interaction and rule they replace are removed",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "71ed9d92f42305ee34c84ab39b83332c0d4d8b03",
+              "registry_digest": "sha256:3b5fb280627b81560b7db5cfe325eed368a9908078fb3c09c4c83199da8dfd93"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }

@@ -1,0 +1,27 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "eval-run-verdicts-recite",
+  "proposal_id": "eval-run-verdicts-recite",
+  "registry_revision": {
+    "observed_commit": "42af6c8ec739c64be4c80a58311ba72e293cc9da",
+    "registry_digest": "sha256:05b8761c0ee928faade99e58aa936d10d4d7f26d6463a4ac5f1941226ad84fc4"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "run-list-shows-verdicts",
+    "mutated_protection": "StandingVerdicts translating each current evaluation row into a verdict",
+    "failure_evidence": "With the loop ranging over no rows, TestTheRunListShowsEachRunsCurrentVerdictAndSaysNotEvaluatedOtherwise failed: the judged run read not_evaluated instead of met; the file was restored byte for byte (cmp).",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/trial/improvement/verdicts.go",
+    "apps/platform/internal/trial/execution/http.go"
+  ],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
