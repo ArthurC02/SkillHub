@@ -317,6 +317,10 @@ type LiftDispatchHaltRes interface {
 	liftDispatchHaltRes()
 }
 
+type ListCheckKindsRes interface {
+	listCheckKindsRes()
+}
+
 type ListCreationSessionsRes interface {
 	listCreationSessionsRes()
 }

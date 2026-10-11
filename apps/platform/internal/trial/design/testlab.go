@@ -75,6 +75,8 @@ type Service struct {
 
 	ClearSightings func(ctx context.Context, tx pgx.Tx, ids []pgtype.UUID) error
 
+	ValidateCheck CheckValidator
+
 	LLM CriteriaSuggester
 
 	Budgets *modelbudget.Service
@@ -582,7 +584,7 @@ func (s *Service) AddCriterion(
 	if err != nil {
 		return TestCase{}, err
 	}
-	check, err := validateCheck(added.Check)
+	check, err := s.validateCheck(added.Check)
 	if err != nil {
 		return TestCase{}, err
 	}

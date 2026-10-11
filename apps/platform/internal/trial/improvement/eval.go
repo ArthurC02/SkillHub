@@ -83,6 +83,7 @@ type CriterionResult struct {
 	Source      string        `json:"source"`
 	Evidence    []EvidenceRef `json:"evidence"`
 	Reason      string        `json:"reason"`
+	Steps       []CheckStep   `json:"steps,omitempty"`
 }
 
 type Finding struct {
@@ -366,39 +367,38 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 		})
 	}
 
-	ruled, judged := splitByRule(m.criteria)
-	ruledResults := gradeByRule(m, ruled)
-	if len(judged) == 0 {
+	plan := planCriteria(m)
+	if len(plan.toJudge) == 0 {
 		return s.completeAndSuggest(ctx, m, ev, verdict{
-			overall: overallFrom(ruledResults),
+			overall: overallFrom(plan.decided),
 			summary: "every acceptance criterion of this run carries a check the platform " +
-				"decides from the run's own records, so no model was asked",
-			results:          ruledResults,
+				"decided from the run's own records, so no model was asked",
+			results:          inCriteriaOrder(m.criteria, plan.decided),
 			findings:         findings,
 			evidenceComplete: evidenceComplete,
 		})
 	}
 
-	v, err := s.judge(ctx, m.withoutRuled(ruled, judged), ev)
+	v, err := s.judge(ctx, m.judging(plan), ev)
 	if err != nil {
 
 		return s.fail(ctx, m, ev, gatheredEvidence{findings: findings, complete: evidenceComplete}, err)
 	}
-	v.results = inCriteriaOrder(m.criteria, ruledResults, v.results)
+	v.results = plan.finish(m, v.results)
 	v.overall = overallFrom(v.results)
 	v.findings = append(findings, v.findings...)
 	v.evidenceComplete = evidenceComplete && v.evidenceComplete
 	return s.settleJudgement(ctx, m, ev, v)
 }
 
-func (m material) withoutRuled(ruled, judged []testlab.Criterion) material {
-	m.criteria = judged
+func (m material) judging(p criteriaPlan) material {
+	m.criteria = p.toJudge
 	if m.rubric == nil {
 		return m
 	}
 	decided := map[string]bool{}
-	for _, c := range ruled {
-		decided[c.ID] = true
+	for _, r := range p.decided {
+		decided[r.CriterionID] = true
 	}
 	rubric := *m.rubric
 	rubric.Items = nil

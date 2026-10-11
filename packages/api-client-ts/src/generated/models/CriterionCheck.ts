@@ -14,12 +14,14 @@
 
 import { mapValues } from '../runtime';
 /**
- * A check the platform decides from the run's own records instead of asking
- * the judge model; the result is labelled `rule`. `contains_values`: the
- * final output mentions every value (numbers and dates in their common
- * written forms). `asks`: the run ended by asking the person, and the
- * questions mention every value given. `does_not_ask`: the run succeeded
- * and answered without asking. A criterion without a check goes to the judge.
+ * How a criterion is decided, as a tree. A grader node decides from the
+ * run's own records (`contains_values`, `asks`, `does_not_ask`) or asks the
+ * judge model about the criterion's text (`judge`); a composite node
+ * combines its children in sequence, all, any, if or each. The kinds, the
+ * number of values and children each takes, and their labels come from
+ * GET /evaluation/check-kinds, so a new kind needs no contract change. A
+ * criterion without a check goes to the judge. The result is labelled
+ * `rule` unless the judge was consulted.
  * 
  * @export
  * @interface CriterionCheck
@@ -28,24 +30,20 @@ export interface CriterionCheck {
     /**
      * 
      */
-    kind: CriterionCheckKindEnum;
+    kind: string;
     /**
      * 
      */
     values?: Array<string>;
+    /**
+     * 
+     */
+    children?: Array<CriterionCheck>;
+    /**
+     * For `each`, how many items must pass; 0 means every item.
+     */
+    atLeast?: number;
 }
-
-
-/**
- * @export
- */
-export const CriterionCheckKindEnum = {
-    ContainsValues: 'contains_values',
-    Asks: 'asks',
-    DoesNotAsk: 'does_not_ask',
-} as const;
-export type CriterionCheckKindEnum = typeof CriterionCheckKindEnum[keyof typeof CriterionCheckKindEnum];
-
 
 /**
  * Check if a given object implements the CriterionCheck interface.
@@ -67,6 +65,8 @@ export function CriterionCheckFromJSONTyped(json: any, ignoreDiscriminator: bool
         
         'kind': json['kind'],
         'values': json['values'] == null ? undefined : json['values'],
+        'children': json['children'] == null ? undefined : ((json['children'] as Array<any>).map(CriterionCheckFromJSON)),
+        'atLeast': json['at_least'] == null ? undefined : json['at_least'],
     };
 }
 
@@ -83,6 +83,8 @@ export function CriterionCheckToJSONTyped(value?: CriterionCheck | null, ignoreD
         
         'kind': value['kind'],
         'values': value['values'],
+        'children': value['children'] == null ? undefined : ((value['children'] as Array<any>).map(CriterionCheckToJSON)),
+        'at_least': value['atLeast'],
     };
 }
 

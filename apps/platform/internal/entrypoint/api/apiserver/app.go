@@ -105,9 +105,7 @@ type App struct {
 
 func NewApp(cfg Config) (*App, error) {
 	identitySvc := &identity.Service{Pool: cfg.Pool, OAuth: identity.ProviderOrNone(cfg.OAuth)}
-	testlabSvc := &testlab.Service{
-		Pool: cfg.Pool, MayStoreObjects: identitySvc.MayStoreObjects, ClearSightings: objreconcile.ClearDatasetSightings,
-	}
+	testlabSvc := newTestLab(cfg.Pool, identitySvc)
 	wireWorkspacePurge(identitySvc, testlabSvc, cfg.Pool)
 	auth := newAuthHandler(cfg, identitySvc)
 
@@ -184,6 +182,13 @@ func NewApp(cfg Config) (*App, error) {
 	app.Deps.Publishing = newPublishingHandler(cfg, publishingSvc, auth)
 	app.Deps.ModelBudgets = &modelbudget.Handler{Svc: budgets, Actor: sessionActorID}
 	return app, nil
+}
+
+func newTestLab(pool *pgxpool.Pool, identitySvc *identity.Service) *testlab.Service {
+	return &testlab.Service{
+		Pool: pool, MayStoreObjects: identitySvc.MayStoreObjects, ClearSightings: objreconcile.ClearDatasetSightings,
+		ValidateCheck: eval.ValidateCheck,
+	}
 }
 
 func wireWorkspacePurge(identitySvc *identity.Service, testlabSvc *testlab.Service, pool *pgxpool.Pool) {

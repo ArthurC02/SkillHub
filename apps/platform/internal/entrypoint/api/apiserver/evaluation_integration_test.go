@@ -115,7 +115,12 @@ type evaluationBody struct {
 		Result      string `json:"result"`
 		Source      string `json:"source"`
 		Reason      string `json:"reason"`
-		Evidence    []struct {
+		Steps       []struct {
+			Path   string `json:"path"`
+			Kind   string `json:"kind"`
+			Result string `json:"result"`
+		} `json:"steps"`
+		Evidence []struct {
 			Kind      string `json:"kind"`
 			Excerpt   string `json:"excerpt"`
 			Available bool   `json:"available"`

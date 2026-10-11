@@ -394,6 +394,11 @@ import {
     LiftDispatchHaltRequestToJSON,
 } from '../models/LiftDispatchHaltRequest';
 import {
+    type ListCheckKinds200Response,
+    ListCheckKinds200ResponseFromJSON,
+    ListCheckKinds200ResponseToJSON,
+} from '../models/ListCheckKinds200Response';
+import {
     type ListDatasets200Response,
     ListDatasets200ResponseFromJSON,
     ListDatasets200ResponseToJSON,
@@ -4010,6 +4015,28 @@ export interface DefaultApiInterface {
      * Resume dispatching (SEC-012)
      */
     liftDispatchHalt(requestParameters: LiftDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for listCheckKinds without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listCheckKindsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * The palette an editor builds from: each kind\'s label, whether it is a grader or a composite, and how many values and children it takes. Adding a kind on the platform adds it here with no client change. 
+     * @summary Every node a criterion\'s check tree may use (EVAL-014)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listCheckKindsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListCheckKinds200Response>>;
+
+    /**
+     * The palette an editor builds from: each kind\'s label, whether it is a grader or a composite, and how many values and children it takes. Adding a kind on the platform adds it here with no client change. 
+     * Every node a criterion\'s check tree may use (EVAL-014)
+     */
+    listCheckKinds(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListCheckKinds200Response>;
 
     /**
      * Creates request options for listCreationSessions without sending the request
@@ -9523,6 +9550,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async liftDispatchHalt(requestParameters: LiftDispatchHaltOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.liftDispatchHaltRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for listCheckKinds without sending the request
+     */
+    async listCheckKindsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/evaluation/check-kinds`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The palette an editor builds from: each kind\'s label, whether it is a grader or a composite, and how many values and children it takes. Adding a kind on the platform adds it here with no client change. 
+     * Every node a criterion\'s check tree may use (EVAL-014)
+     */
+    async listCheckKindsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListCheckKinds200Response>> {
+        const requestOptions = await this.listCheckKindsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListCheckKinds200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The palette an editor builds from: each kind\'s label, whether it is a grader or a composite, and how many values and children it takes. Adding a kind on the platform adds it here with no client change. 
+     * Every node a criterion\'s check tree may use (EVAL-014)
+     */
+    async listCheckKinds(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListCheckKinds200Response> {
+        const response = await this.listCheckKindsRaw(initOverrides);
+        return await response.value();
     }
 
     /**

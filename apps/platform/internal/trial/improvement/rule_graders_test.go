@@ -63,58 +63,62 @@ func TestEachRuleCheckDecidesFromTheRunsOwnRecords(t *testing.T) {
 		want string
 	}{
 		{"every value is in the answer", ruledMaterial("訂金 1,200 元，10月3日出發", nil, "succeeded", true),
-			criterion("c", testlab.CheckContainsValues, "1200", "2026-10-03"), ResultPassed},
+			criterion("c", "contains_values", "1200", "2026-10-03"), ResultPassed},
 		{"one value is missing from the answer", ruledMaterial("訂金 1,200 元", nil, "succeeded", true),
-			criterion("c", testlab.CheckContainsValues, "1200", "2026-10-03"), ResultFailed},
+			criterion("c", "contains_values", "1200", "2026-10-03"), ResultFailed},
 		{"the run asked", ruledMaterial("", askedAboutChildren, "succeeded", true),
-			criterion("c", testlab.CheckAsks), ResultPassed},
+			criterion("c", "asks"), ResultPassed},
 		{"the run asked about the named fact", ruledMaterial("", askedAboutChildren, "succeeded", true),
-			criterion("c", testlab.CheckAsks, "小孩"), ResultPassed},
+			criterion("c", "asks", "小孩"), ResultPassed},
 		{"the run asked about something else", ruledMaterial("", askedAboutChildren, "succeeded", true),
-			criterion("c", testlab.CheckAsks, "預算"), ResultFailed},
+			criterion("c", "asks", "預算"), ResultFailed},
 		{"the run did not ask", ruledMaterial("訂金 1,200 元", nil, "succeeded", true),
-			criterion("c", testlab.CheckAsks), ResultFailed},
+			criterion("c", "asks"), ResultFailed},
 		{"the run answered without asking", ruledMaterial("訂金 1,200 元", nil, "succeeded", true),
-			criterion("c", testlab.CheckDoesNotAsk), ResultPassed},
+			criterion("c", "does_not_ask"), ResultPassed},
 		{"the run asked when it should have answered", ruledMaterial("", askedAboutChildren, "succeeded", true),
-			criterion("c", testlab.CheckDoesNotAsk), ResultFailed},
+			criterion("c", "does_not_ask"), ResultFailed},
 		{"a failed run did not answer either", ruledMaterial("", nil, "failed", true),
-			criterion("c", testlab.CheckDoesNotAsk), ResultFailed},
+			criterion("c", "does_not_ask"), ResultFailed},
 		{"a pass on incomplete evidence is not recorded as passed", ruledMaterial("訂金 1,200 元", nil, "succeeded", false),
-			criterion("c", testlab.CheckContainsValues, "1200"), ResultUndetermined},
+			criterion("c", "contains_values", "1200"), ResultUndetermined},
 		{"a fail on incomplete evidence stays failed", ruledMaterial("訂金 1,200 元", nil, "succeeded", false),
-			criterion("c", testlab.CheckContainsValues, "999"), ResultFailed},
+			criterion("c", "contains_values", "999"), ResultFailed},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := gradeByRule(c.m, []testlab.Criterion{c.c})
-			if len(got) != 1 || got[0].Result != c.want || got[0].Source != SourceRule || got[0].Reason == "" {
-				t.Fatalf("got %+v, want one %s result from the rule with a reason", got, c.want)
+			got, decided := treeResult(c.m, c.c, nil)
+			if !decided || got.Result != c.want || got.Source != SourceRule || got.Reason == "" {
+				t.Fatalf("got %+v (decided %v), want one %s result from the rule with a reason", got, decided, c.want)
 			}
 		})
 	}
 }
 
-func TestOnlyCriteriaWithAKnownCheckSkipTheJudge(t *testing.T) {
-	criteria := []testlab.Criterion{
-		{ID: "plain", Text: "reads well"},
-		criterion("ruled", testlab.CheckDoesNotAsk),
-		{ID: "unknown", Text: "x", Check: &testlab.Check{Kind: "regex"}},
+func TestOnlyCriteriaWhoseCheckNeedsNoJudgeSkipTheJudge(t *testing.T) {
+	judgedAfterARule := testlab.Criterion{ID: "gated", Text: "gated", Check: &testlab.Check{
+		Kind: "sequence", Children: []testlab.Check{{Kind: "does_not_ask"}, {Kind: "judge"}},
+	}}
+	criteria := []testlab.Criterion{{ID: "plain", Text: "reads well"}, criterion("ruled", "does_not_ask"), judgedAfterARule}
+	m := ruledMaterial("訂金 1,200 元", nil, "succeeded", true)
+	m.criteria = criteria
+	p := planCriteria(m)
+	if len(p.decided) != 1 || p.decided[0].CriterionID != "ruled" {
+		t.Errorf("decided = %+v", p.decided)
 	}
-	ruled, judged := splitByRule(criteria)
-	if len(ruled) != 1 || ruled[0].ID != "ruled" {
-		t.Errorf("ruled = %+v", ruled)
+	if len(p.toJudge) != 2 || p.toJudge[0].ID != "plain" || p.toJudge[1].ID != "gated" {
+		t.Errorf("to judge = %+v", p.toJudge)
 	}
-	if len(judged) != 2 || judged[0].ID != "plain" || judged[1].ID != "unknown" {
-		t.Errorf("judged = %+v", judged)
+	if len(p.pendingTrees) != 1 || p.pendingTrees[0].ID != "gated" {
+		t.Errorf("pending trees = %+v", p.pendingTrees)
 	}
 }
 
 func TestResultsComeBackInTheSnapshotsCriterionOrder(t *testing.T) {
 	criteria := []testlab.Criterion{{ID: "a"}, {ID: "b"}, {ID: "c"}}
-	got := inCriteriaOrder(criteria,
-		[]CriterionResult{{CriterionID: "c", Source: SourceRule}, {CriterionID: "a", Source: SourceRule}},
-		[]CriterionResult{{CriterionID: "b", Source: SourceModel}})
+	got := inCriteriaOrder(criteria, []CriterionResult{
+		{CriterionID: "c", Source: SourceRule}, {CriterionID: "a", Source: SourceRule}, {CriterionID: "b", Source: SourceModel},
+	})
 	if len(got) != 3 || got[0].CriterionID != "a" || got[1].CriterionID != "b" || got[2].CriterionID != "c" {
 		t.Errorf("order = %+v", got)
 	}
@@ -122,12 +126,12 @@ func TestResultsComeBackInTheSnapshotsCriterionOrder(t *testing.T) {
 
 func TestTheJudgeLosesOnlyTheRubricItemsOfRuledCriteria(t *testing.T) {
 	m := material{
-		criteria: []testlab.Criterion{{ID: "plain"}, criterion("ruled", testlab.CheckDoesNotAsk)},
+		criteria: []testlab.Criterion{{ID: "plain"}, criterion("ruled", "does_not_ask")},
 		rubric: &testlab.Rubric{Version: "r1", Items: []testlab.RubricItem{
 			{ID: "plain"}, {ID: "ruled"}, {ID: "orphan"},
 		}},
 	}
-	judged := m.withoutRuled(m.criteria[1:], m.criteria[:1])
+	judged := m.judging(planCriteria(m))
 	if len(judged.criteria) != 1 || judged.criteria[0].ID != "plain" {
 		t.Errorf("judged criteria = %+v", judged.criteria)
 	}
@@ -147,15 +151,15 @@ func TestQuestionChecksReadTheWholeConversation(t *testing.T) {
 		c    testlab.Criterion
 		want string
 	}{
-		{"an earlier round asked", criterion("c", testlab.CheckAsks), ResultPassed},
-		{"an earlier round asked about the named fact", criterion("c", testlab.CheckAsks, "小孩"), ResultPassed},
-		{"an earlier round asked about something else", criterion("c", testlab.CheckAsks, "預算"), ResultFailed},
-		{"an earlier round asked when none should have", criterion("c", testlab.CheckDoesNotAsk), ResultFailed},
+		{"an earlier round asked", criterion("c", "asks"), ResultPassed},
+		{"an earlier round asked about the named fact", criterion("c", "asks", "小孩"), ResultPassed},
+		{"an earlier round asked about something else", criterion("c", "asks", "預算"), ResultFailed},
+		{"an earlier round asked when none should have", criterion("c", "does_not_ask"), ResultFailed},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := gradeByRule(answered, []testlab.Criterion{c.c}); got[0].Result != c.want {
-				t.Fatalf("got %+v, want %s", got[0], c.want)
+			if got, _ := treeResult(answered, c.c, nil); got.Result != c.want {
+				t.Fatalf("got %+v, want %s", got, c.want)
 			}
 		})
 	}

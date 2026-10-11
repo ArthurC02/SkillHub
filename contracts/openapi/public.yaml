@@ -5313,6 +5313,33 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /evaluation/check-kinds:
+    get:
+      operationId: listCheckKinds
+      summary: Every node a criterion's check tree may use (EVAL-014)
+      description: |
+        The palette an editor builds from: each kind's label, whether it is a
+        grader or a composite, and how many values and children it takes.
+        Adding a kind on the platform adds it here with no client change.
+      responses:
+        "200":
+          description: The kinds, in the order an editor lists them.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [kinds, max_nodes, max_depth]
+                properties:
+                  kinds:
+                    type: array
+                    items: { $ref: "#/components/schemas/CheckKind" }
+                  max_nodes: { type: integer }
+                  max_depth: { type: integer }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /runs/{id}/evaluation:
     get:
       operationId: getRunEvaluation
@@ -9913,22 +9940,59 @@ components:
         check: { $ref: "#/components/schemas/CriterionCheck" }
     CriterionCheck:
       description: |
-        A check the platform decides from the run's own records instead of asking
-        the judge model; the result is labelled `rule`. `contains_values`: the
-        final output mentions every value (numbers and dates in their common
-        written forms). `asks`: the run ended by asking the person, and the
-        questions mention every value given. `does_not_ask`: the run succeeded
-        and answered without asking. A criterion without a check goes to the judge.
+        How a criterion is decided, as a tree. A grader node decides from the
+        run's own records (`contains_values`, `asks`, `does_not_ask`) or asks the
+        judge model about the criterion's text (`judge`); a composite node
+        combines its children in sequence, all, any, if or each. The kinds, the
+        number of values and children each takes, and their labels come from
+        GET /evaluation/check-kinds, so a new kind needs no contract change. A
+        criterion without a check goes to the judge. The result is labelled
+        `rule` unless the judge was consulted.
       type: object
       required: [kind]
       properties:
-        kind:
-          type: string
-          enum: [contains_values, asks, does_not_ask]
+        kind: { type: string, minLength: 1 }
         values:
           type: array
           maxItems: 20
           items: { type: string, minLength: 1, maxLength: 200 }
+        children:
+          type: array
+          maxItems: 50
+          items: { $ref: "#/components/schemas/CriterionCheck" }
+        at_least:
+          type: integer
+          minimum: 0
+          description: For `each`, how many items must pass; 0 means every item.
+    CheckKind:
+      type: object
+      required: [kind, category, label, description, values, children, at_least]
+      properties:
+        kind: { type: string }
+        category: { type: string, enum: [grader, composite] }
+        label: { type: string }
+        description: { type: string }
+        values:
+          type: object
+          required: [min, max]
+          properties:
+            min: { type: integer }
+            max: { type: integer }
+        children:
+          type: object
+          required: [min, max]
+          properties:
+            min: { type: integer }
+            max: { type: integer }
+        at_least: { type: boolean, description: Whether the kind takes `at_least`. }
+    CheckStep:
+      type: object
+      required: [path, kind, result, reason]
+      properties:
+        path: { type: string, description: "The node's place in the tree: 0 is the root, 0.1 its second child." }
+        kind: { type: string }
+        result: { type: string, enum: [passed, failed, undetermined] }
+        reason: { type: string }
     AcceptanceCriteriaSuggestions:
       description: |
         What the model proposed for one draft (TEST-002). Text and nothing else:
@@ -10891,6 +10955,10 @@ components:
             response has no such field to fill in. `rule` is a deterministic
             check over the platform's own records, `user` is a person's verdict
             recorded over the automated one.
+        steps:
+          type: array
+          description: For a criterion decided by a check tree, every node that ran, children before their parent.
+          items: { $ref: "#/components/schemas/CheckStep" }
         evidence:
           type: array
           items: { $ref: "#/components/schemas/EvidenceRef" }

@@ -287,6 +287,7 @@ func mountEvaluationRoutes(mux *http.ServeMux, d Deps) {
 
 	mux.HandleFunc("GET /runs/{id}/trace", auth.RequireSession(d.Trace.Get))
 
+	mux.HandleFunc("GET /evaluation/check-kinds", auth.RequireSession(eval.ListCheckKinds))
 	mux.HandleFunc("GET /runs/{id}/evaluation", auth.RequireSession(d.Eval.Get))
 	mux.HandleFunc("GET /runs/{id}/evaluation/revisions", auth.RequireSession(d.Eval.Revisions))
 	mux.HandleFunc("PUT /runs/{id}/evaluation/feedback", auth.RequireSession(d.Eval.SetFeedback))

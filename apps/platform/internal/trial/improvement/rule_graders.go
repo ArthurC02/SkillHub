@@ -14,39 +14,6 @@ const runSucceeded = "succeeded"
 
 type ruleGrader func(m material, values []string) (result, reason string)
 
-var ruleGraders = map[string]ruleGrader{
-	testlab.CheckContainsValues: gradeContainsValues,
-	testlab.CheckAsks:           gradeAsks,
-	testlab.CheckDoesNotAsk:     gradeDoesNotAsk,
-}
-
-func splitByRule(criteria []testlab.Criterion) (ruled, judged []testlab.Criterion) {
-	for _, c := range criteria {
-		if c.Check != nil && ruleGraders[c.Check.Kind] != nil {
-			ruled = append(ruled, c)
-		} else {
-			judged = append(judged, c)
-		}
-	}
-	return ruled, judged
-}
-
-func gradeByRule(m material, criteria []testlab.Criterion) []CriterionResult {
-	out := make([]CriterionResult, 0, len(criteria))
-	for _, c := range criteria {
-		result, reason := ruleGraders[c.Check.Kind](m, c.Check.Values)
-		if result == ResultPassed && !m.evidenceComplete() {
-			result = ResultUndetermined
-			reason += "; the run's evidence is incomplete, so this is not recorded as passed"
-		}
-		out = append(out, CriterionResult{
-			CriterionID: c.ID, Text: c.Text, Result: result,
-			Source: SourceRule, Evidence: []EvidenceRef{}, Reason: reason,
-		})
-	}
-	return out
-}
-
 func gradeContainsValues(m material, values []string) (string, string) {
 	missing := []string{}
 	for _, v := range values {
@@ -106,12 +73,10 @@ func questionText(questions []trace.Question) string {
 	return b.String()
 }
 
-func inCriteriaOrder(criteria []testlab.Criterion, groups ...[]CriterionResult) []CriterionResult {
-	byID := map[string]CriterionResult{}
-	for _, g := range groups {
-		for _, r := range g {
-			byID[r.CriterionID] = r
-		}
+func inCriteriaOrder(criteria []testlab.Criterion, results []CriterionResult) []CriterionResult {
+	byID := make(map[string]CriterionResult, len(results))
+	for _, r := range results {
+		byID[r.CriterionID] = r
 	}
 	out := make([]CriterionResult, 0, len(byID))
 	for _, c := range criteria {

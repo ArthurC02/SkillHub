@@ -1691,6 +1691,276 @@ func (s *CategorizedFindings) SetInfos(val []Finding) {
 
 func (*CategorizedFindings) saveSkillVersionRes() {}
 
+// Ref: #/components/schemas/CheckKind
+type CheckKind struct {
+	Kind        string            `json:"kind"`
+	Category    CheckKindCategory `json:"category"`
+	Label       string            `json:"label"`
+	Description string            `json:"description"`
+	Values      CheckKindValues   `json:"values"`
+	Children    CheckKindChildren `json:"children"`
+	// Whether the kind takes `at_least`.
+	AtLeast bool `json:"at_least"`
+}
+
+// GetKind returns the value of Kind.
+func (s *CheckKind) GetKind() string {
+	return s.Kind
+}
+
+// GetCategory returns the value of Category.
+func (s *CheckKind) GetCategory() CheckKindCategory {
+	return s.Category
+}
+
+// GetLabel returns the value of Label.
+func (s *CheckKind) GetLabel() string {
+	return s.Label
+}
+
+// GetDescription returns the value of Description.
+func (s *CheckKind) GetDescription() string {
+	return s.Description
+}
+
+// GetValues returns the value of Values.
+func (s *CheckKind) GetValues() CheckKindValues {
+	return s.Values
+}
+
+// GetChildren returns the value of Children.
+func (s *CheckKind) GetChildren() CheckKindChildren {
+	return s.Children
+}
+
+// GetAtLeast returns the value of AtLeast.
+func (s *CheckKind) GetAtLeast() bool {
+	return s.AtLeast
+}
+
+// SetKind sets the value of Kind.
+func (s *CheckKind) SetKind(val string) {
+	s.Kind = val
+}
+
+// SetCategory sets the value of Category.
+func (s *CheckKind) SetCategory(val CheckKindCategory) {
+	s.Category = val
+}
+
+// SetLabel sets the value of Label.
+func (s *CheckKind) SetLabel(val string) {
+	s.Label = val
+}
+
+// SetDescription sets the value of Description.
+func (s *CheckKind) SetDescription(val string) {
+	s.Description = val
+}
+
+// SetValues sets the value of Values.
+func (s *CheckKind) SetValues(val CheckKindValues) {
+	s.Values = val
+}
+
+// SetChildren sets the value of Children.
+func (s *CheckKind) SetChildren(val CheckKindChildren) {
+	s.Children = val
+}
+
+// SetAtLeast sets the value of AtLeast.
+func (s *CheckKind) SetAtLeast(val bool) {
+	s.AtLeast = val
+}
+
+type CheckKindCategory string
+
+const (
+	CheckKindCategoryGrader    CheckKindCategory = "grader"
+	CheckKindCategoryComposite CheckKindCategory = "composite"
+)
+
+// AllValues returns all CheckKindCategory values.
+func (CheckKindCategory) AllValues() []CheckKindCategory {
+	return []CheckKindCategory{
+		CheckKindCategoryGrader,
+		CheckKindCategoryComposite,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CheckKindCategory) MarshalText() ([]byte, error) {
+	switch s {
+	case CheckKindCategoryGrader:
+		return []byte(s), nil
+	case CheckKindCategoryComposite:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CheckKindCategory) UnmarshalText(data []byte) error {
+	switch CheckKindCategory(data) {
+	case CheckKindCategoryGrader:
+		*s = CheckKindCategoryGrader
+		return nil
+	case CheckKindCategoryComposite:
+		*s = CheckKindCategoryComposite
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type CheckKindChildren struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
+}
+
+// GetMin returns the value of Min.
+func (s *CheckKindChildren) GetMin() int {
+	return s.Min
+}
+
+// GetMax returns the value of Max.
+func (s *CheckKindChildren) GetMax() int {
+	return s.Max
+}
+
+// SetMin sets the value of Min.
+func (s *CheckKindChildren) SetMin(val int) {
+	s.Min = val
+}
+
+// SetMax sets the value of Max.
+func (s *CheckKindChildren) SetMax(val int) {
+	s.Max = val
+}
+
+type CheckKindValues struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
+}
+
+// GetMin returns the value of Min.
+func (s *CheckKindValues) GetMin() int {
+	return s.Min
+}
+
+// GetMax returns the value of Max.
+func (s *CheckKindValues) GetMax() int {
+	return s.Max
+}
+
+// SetMin sets the value of Min.
+func (s *CheckKindValues) SetMin(val int) {
+	s.Min = val
+}
+
+// SetMax sets the value of Max.
+func (s *CheckKindValues) SetMax(val int) {
+	s.Max = val
+}
+
+// Ref: #/components/schemas/CheckStep
+type CheckStep struct {
+	// The node's place in the tree: 0 is the root, 0.1 its second child.
+	Path   string          `json:"path"`
+	Kind   string          `json:"kind"`
+	Result CheckStepResult `json:"result"`
+	Reason string          `json:"reason"`
+}
+
+// GetPath returns the value of Path.
+func (s *CheckStep) GetPath() string {
+	return s.Path
+}
+
+// GetKind returns the value of Kind.
+func (s *CheckStep) GetKind() string {
+	return s.Kind
+}
+
+// GetResult returns the value of Result.
+func (s *CheckStep) GetResult() CheckStepResult {
+	return s.Result
+}
+
+// GetReason returns the value of Reason.
+func (s *CheckStep) GetReason() string {
+	return s.Reason
+}
+
+// SetPath sets the value of Path.
+func (s *CheckStep) SetPath(val string) {
+	s.Path = val
+}
+
+// SetKind sets the value of Kind.
+func (s *CheckStep) SetKind(val string) {
+	s.Kind = val
+}
+
+// SetResult sets the value of Result.
+func (s *CheckStep) SetResult(val CheckStepResult) {
+	s.Result = val
+}
+
+// SetReason sets the value of Reason.
+func (s *CheckStep) SetReason(val string) {
+	s.Reason = val
+}
+
+type CheckStepResult string
+
+const (
+	CheckStepResultPassed       CheckStepResult = "passed"
+	CheckStepResultFailed       CheckStepResult = "failed"
+	CheckStepResultUndetermined CheckStepResult = "undetermined"
+)
+
+// AllValues returns all CheckStepResult values.
+func (CheckStepResult) AllValues() []CheckStepResult {
+	return []CheckStepResult{
+		CheckStepResultPassed,
+		CheckStepResultFailed,
+		CheckStepResultUndetermined,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CheckStepResult) MarshalText() ([]byte, error) {
+	switch s {
+	case CheckStepResultPassed:
+		return []byte(s), nil
+	case CheckStepResultFailed:
+		return []byte(s), nil
+	case CheckStepResultUndetermined:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CheckStepResult) UnmarshalText(data []byte) error {
+	switch CheckStepResult(data) {
+	case CheckStepResultPassed:
+		*s = CheckStepResultPassed
+		return nil
+	case CheckStepResultFailed:
+		*s = CheckStepResultFailed
+		return nil
+	case CheckStepResultUndetermined:
+		*s = CheckStepResultUndetermined
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type ClearModelCallBudgetBadRequest Error
 
 func (*ClearModelCallBudgetBadRequest) clearModelCallBudgetRes() {}
@@ -5546,19 +5816,23 @@ func (s *CreditTrend) SetBalanceTotal(val int64) {
 
 func (*CreditTrend) getCreditTrendRes() {}
 
-// A check the platform decides from the run's own records instead of asking the judge model; the
-// result is labelled `rule`. `contains_values`: the final output mentions every value (numbers and
-// dates in their common written forms). `asks`: the run ended by asking the person, and the questions
-// mention every value given. `does_not_ask`: the run succeeded and answered without asking. A
-// criterion without a check goes to the judge.
+// How a criterion is decided, as a tree. A grader node decides from the run's own records
+// (`contains_values`, `asks`, `does_not_ask`) or asks the judge model about the criterion's text
+// (`judge`); a composite node combines its children in sequence, all, any, if or each. The kinds, the
+// number of values and children each takes, and their labels come from GET /evaluation/check-kinds, so
+// a new kind needs no contract change. A criterion without a check goes to the judge. The result is
+// labelled `rule` unless the judge was consulted.
 // Ref: #/components/schemas/CriterionCheck
 type CriterionCheck struct {
-	Kind   CriterionCheckKind `json:"kind"`
-	Values []string           `json:"values"`
+	Kind     string           `json:"kind"`
+	Values   []string         `json:"values"`
+	Children []CriterionCheck `json:"children"`
+	// For `each`, how many items must pass; 0 means every item.
+	AtLeast OptInt `json:"at_least"`
 }
 
 // GetKind returns the value of Kind.
-func (s *CriterionCheck) GetKind() CriterionCheckKind {
+func (s *CriterionCheck) GetKind() string {
 	return s.Kind
 }
 
@@ -5567,8 +5841,18 @@ func (s *CriterionCheck) GetValues() []string {
 	return s.Values
 }
 
+// GetChildren returns the value of Children.
+func (s *CriterionCheck) GetChildren() []CriterionCheck {
+	return s.Children
+}
+
+// GetAtLeast returns the value of AtLeast.
+func (s *CriterionCheck) GetAtLeast() OptInt {
+	return s.AtLeast
+}
+
 // SetKind sets the value of Kind.
-func (s *CriterionCheck) SetKind(val CriterionCheckKind) {
+func (s *CriterionCheck) SetKind(val string) {
 	s.Kind = val
 }
 
@@ -5577,52 +5861,14 @@ func (s *CriterionCheck) SetValues(val []string) {
 	s.Values = val
 }
 
-type CriterionCheckKind string
-
-const (
-	CriterionCheckKindContainsValues CriterionCheckKind = "contains_values"
-	CriterionCheckKindAsks           CriterionCheckKind = "asks"
-	CriterionCheckKindDoesNotAsk     CriterionCheckKind = "does_not_ask"
-)
-
-// AllValues returns all CriterionCheckKind values.
-func (CriterionCheckKind) AllValues() []CriterionCheckKind {
-	return []CriterionCheckKind{
-		CriterionCheckKindContainsValues,
-		CriterionCheckKindAsks,
-		CriterionCheckKindDoesNotAsk,
-	}
+// SetChildren sets the value of Children.
+func (s *CriterionCheck) SetChildren(val []CriterionCheck) {
+	s.Children = val
 }
 
-// MarshalText implements encoding.TextMarshaler.
-func (s CriterionCheckKind) MarshalText() ([]byte, error) {
-	switch s {
-	case CriterionCheckKindContainsValues:
-		return []byte(s), nil
-	case CriterionCheckKindAsks:
-		return []byte(s), nil
-	case CriterionCheckKindDoesNotAsk:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *CriterionCheckKind) UnmarshalText(data []byte) error {
-	switch CriterionCheckKind(data) {
-	case CriterionCheckKindContainsValues:
-		*s = CriterionCheckKindContainsValues
-		return nil
-	case CriterionCheckKindAsks:
-		*s = CriterionCheckKindAsks
-		return nil
-	case CriterionCheckKindDoesNotAsk:
-		*s = CriterionCheckKindDoesNotAsk
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
+// SetAtLeast sets the value of AtLeast.
+func (s *CriterionCheck) SetAtLeast(val OptInt) {
+	s.AtLeast = val
 }
 
 // One acceptance criterion's verdict. `criterion_id` refers to the run's frozen test case snapshot, so
@@ -5645,6 +5891,8 @@ type CriterionResult struct {
 	// deterministic check over the platform's own records, `user` is a person's verdict recorded over the
 	// automated one.
 	Source CriterionResultSource `json:"source"`
+	// For a criterion decided by a check tree, every node that ran, children before their parent.
+	Steps []CheckStep `json:"steps"`
 	// What the verdict rests on. Every reference a model returns is re-checked server-side before it is
 	// stored; one that does not resolve drops the verdict to `undetermined` instead of being passed
 	// through as given.
@@ -5672,6 +5920,11 @@ func (s *CriterionResult) GetResult() CriterionResultResult {
 // GetSource returns the value of Source.
 func (s *CriterionResult) GetSource() CriterionResultSource {
 	return s.Source
+}
+
+// GetSteps returns the value of Steps.
+func (s *CriterionResult) GetSteps() []CheckStep {
+	return s.Steps
 }
 
 // GetEvidence returns the value of Evidence.
@@ -5702,6 +5955,11 @@ func (s *CriterionResult) SetResult(val CriterionResultResult) {
 // SetSource sets the value of Source.
 func (s *CriterionResult) SetSource(val CriterionResultSource) {
 	s.Source = val
+}
+
+// SetSteps sets the value of Steps.
+func (s *CriterionResult) SetSteps(val []CheckStep) {
+	s.Steps = val
 }
 
 // SetEvidence sets the value of Evidence.
@@ -7615,6 +7873,7 @@ func (*Error) getPlatformSettingsRes()             {}
 func (*Error) getPublicPublicationRes()            {}
 func (*Error) getRunSettingsRes()                  {}
 func (*Error) getSkillImportLimitsRes()            {}
+func (*Error) listCheckKindsRes()                  {}
 func (*Error) listDownloadArtifactsRes()           {}
 func (*Error) listEvaluationBatchesRes()           {}
 func (*Error) listExposureQueueRes()               {}
@@ -12772,6 +13031,44 @@ func (s *LiftDispatchHaltReq) SetProvider(val OptString) {
 func (s *LiftDispatchHaltReq) SetNote(val string) {
 	s.Note = val
 }
+
+type ListCheckKindsOK struct {
+	Kinds    []CheckKind `json:"kinds"`
+	MaxNodes int         `json:"max_nodes"`
+	MaxDepth int         `json:"max_depth"`
+}
+
+// GetKinds returns the value of Kinds.
+func (s *ListCheckKindsOK) GetKinds() []CheckKind {
+	return s.Kinds
+}
+
+// GetMaxNodes returns the value of MaxNodes.
+func (s *ListCheckKindsOK) GetMaxNodes() int {
+	return s.MaxNodes
+}
+
+// GetMaxDepth returns the value of MaxDepth.
+func (s *ListCheckKindsOK) GetMaxDepth() int {
+	return s.MaxDepth
+}
+
+// SetKinds sets the value of Kinds.
+func (s *ListCheckKindsOK) SetKinds(val []CheckKind) {
+	s.Kinds = val
+}
+
+// SetMaxNodes sets the value of MaxNodes.
+func (s *ListCheckKindsOK) SetMaxNodes(val int) {
+	s.MaxNodes = val
+}
+
+// SetMaxDepth sets the value of MaxDepth.
+func (s *ListCheckKindsOK) SetMaxDepth(val int) {
+	s.MaxDepth = val
+}
+
+func (*ListCheckKindsOK) listCheckKindsRes() {}
 
 type ListCreationSessionsBadRequest Error
 
