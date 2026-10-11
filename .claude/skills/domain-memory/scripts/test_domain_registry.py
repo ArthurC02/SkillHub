@@ -60,6 +60,7 @@ from domain_registry.hitl import (
 from domain_registry.git_hooks import governance_readiness, install_pre_push_hook
 from domain_registry.cli_commands import HANDLERS, policy_assignments
 from domain_registry.cli_parser import build_parser
+from domain_registry.impact import boundary_impact
 from domain_registry.policy import amend_policy, amend_policy_fields, validate_policy
 from domain_registry.readiness import assess_readiness
 from domain_registry.registry import (
@@ -1656,6 +1657,112 @@ class DomainRegistryTest(unittest.TestCase):
                 (registry / asset).write_text(text, encoding="utf-8")
             self.seed("contexts.json", [orders])
             self.assertIn("contexts.json:orders is not reviewed", validate(self.repo / "memory", None, True))
+
+    def two_mapped_contexts(self, **collaborations: list[dict]) -> None:
+        self.seed("contexts.json", [
+            {"id": "orders", "name": "Orders", "responsibility": "Own orders.", "implementation_path": "src/orders"},
+            {"id": "billing", "name": "Billing", "responsibility": "Own invoices.", "implementation_path": "src/billing"},
+        ])
+        for name, records in collaborations.items():
+            self.seed(f"{name.replace('_', '-')}.json", records)
+        for path in ("src/orders/port.py", "src/billing/invoice.py"):
+            (self.repo / path).parent.mkdir(parents=True, exist_ok=True)
+            (self.repo / path).write_text("v1\n", encoding="utf-8")
+        self.commit_all("mapped contexts")
+
+    def change(self, *paths: str) -> dict:
+        for path in paths:
+            (self.repo / path).parent.mkdir(parents=True, exist_ok=True)
+            (self.repo / path).write_text("v2\n", encoding="utf-8")
+        return boundary_impact(self.repo / "memory", self.repo, "HEAD")
+
+    def test_a_change_across_two_contexts_without_a_collaboration_is_unregistered(self) -> None:
+        self.two_mapped_contexts()
+        impact = self.change("src/orders/port.py", "src/billing/invoice.py")
+        self.assertEqual("unregistered-co-change", impact["verdict"])
+        self.assertEqual({"billing": ["src/billing/invoice.py"], "orders": ["src/orders/port.py"]},
+                         impact["contexts_touched"])
+        self.assertEqual([{"contexts": ["billing", "orders"], "collaborations": []}], impact["co_changed_pairs"])
+
+    def test_a_change_across_two_collaborating_contexts_names_the_collaboration(self) -> None:
+        self.two_mapped_contexts(dependency_policies=[
+            {"id": "orders-may-use-billing", "from_context": "orders", "to_context": "billing", "status": "reviewed"},
+        ])
+        impact = self.change("src/orders/port.py", "src/billing/invoice.py")
+        self.assertEqual("registered-co-change", impact["verdict"])
+        self.assertEqual(
+            [{"asset": "dependency-policies", "id": "orders-may-use-billing", "status": "reviewed"}],
+            impact["co_changed_pairs"][0]["collaborations"],
+        )
+
+    def test_a_contract_between_two_contexts_registers_their_collaboration(self) -> None:
+        self.two_mapped_contexts(contracts=[
+            {"id": "invoice-v1", "producer_context": "billing", "consumer_contexts": ["orders"]},
+        ])
+        impact = self.change("src/orders/port.py", "src/billing/invoice.py")
+        self.assertEqual(
+            ("registered-co-change", [{"asset": "contracts", "id": "invoice-v1", "status": "candidate"}]),
+            (impact["verdict"], impact["co_changed_pairs"][0]["collaborations"]),
+        )
+
+    def test_a_changed_file_cited_by_a_boundary_record_is_named(self) -> None:
+        self.two_mapped_contexts(interactions=[
+            {"id": "orders-bill", "producer_context": "orders", "consumer_context": "billing",
+             "evidence": [{"path": "src/orders/port.py", "lines": {"start": 1, "end": 1}}]},
+        ])
+        impact = self.change("src/orders/port.py")
+        self.assertEqual("boundary-evidence-changed", impact["verdict"])
+        self.assertEqual(
+            [{"asset": "interactions", "id": "orders-bill", "status": "candidate", "changed_evidence": ["src/orders/port.py"]}],
+            impact["boundary_evidence_changed"],
+        )
+
+    def test_a_change_inside_one_context_crosses_no_boundary(self) -> None:
+        self.two_mapped_contexts()
+        impact = self.change("src/orders/port.py", "README.md")
+        self.assertEqual(("no-cross-context-change", 2, []), (impact["verdict"], impact["changed_files"], impact["co_changed_pairs"]))
+
+    def test_without_any_implementation_path_the_impact_is_unknown(self) -> None:
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.commit_all("unmapped")
+        self.assertEqual("unknown", self.change("src/orders/port.py")["verdict"])
+
+    def test_an_untracked_file_and_a_nested_path_count_but_a_sibling_prefix_does_not(self) -> None:
+        self.two_mapped_contexts()
+        impact = self.change("lib/src/billing/new.py", "src/orders_archive/old.py", "x/src/orders")
+        self.assertEqual({"billing": ["lib/src/billing/new.py"]}, impact["contexts_touched"])
+
+    def test_an_unknown_base_is_an_error_not_a_quiet_result(self) -> None:
+        self.two_mapped_contexts()
+        with self.assertRaisesRegex(ValueError, "git could not list the changes since no-such-revision"):
+            boundary_impact(self.repo / "memory", self.repo, "no-such-revision")
+
+    def test_boundary_impact_runs_from_the_command_line(self) -> None:
+        self.two_mapped_contexts()
+        (self.repo / "src/billing/invoice.py").write_text("v2\n", encoding="utf-8")
+        result = self.run_cli("boundary-impact", "--registry-root", str(self.repo / "memory"),
+                              "--repo-root", str(self.repo), "--base", "HEAD")
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertEqual("no-cross-context-change", json.loads(result.stdout)["verdict"])
+
+    def test_contract_idempotency_states_each_part_in_text(self) -> None:
+        sound = {"key": "origin key", "scope": "per Workspace", "on_replay": "same Run", "on_conflict": "refused"}
+        cases = [
+            ("not an object", "origin key", "contracts.json:c idempotency must be an object"),
+            ("missing parts", {"key": "origin key"}, "contracts.json:c idempotency lacks scope, on_replay, on_conflict"),
+            ("unknown part", {**sound, "on_retry": "x"}, "contracts.json:c idempotency has unknown fields on_retry"),
+            ("blank part", {**sound, "scope": " "}, "contracts.json:c idempotency fields must be non-empty text: scope"),
+            ("blank expiry", {**sound, "expiry": ""}, "contracts.json:c idempotency fields must be non-empty text: expiry"),
+        ]
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        contract = {"id": "c", "producer_context": "orders", "consumer_contexts": []}
+        for label, idempotency, message in cases:
+            with self.subTest(label):
+                self.seed("contracts.json", [{**contract, "idempotency": idempotency}])
+                self.assertIn(message, validate(self.repo / "memory", None, False))
+        with self.subTest("sound, with an expiry"):
+            self.seed("contracts.json", [{**contract, "idempotency": {**sound, "expiry": "24 hours"}}])
+            self.assertEqual([], validate(self.repo / "memory", None, False))
 
     def test_term_labels_may_reuse_a_name_from_another_context_and_point_at_a_look_alike(self) -> None:
         self.seed("contexts.json", [

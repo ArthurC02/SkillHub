@@ -318,7 +318,37 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
     errors.extend(_validate_confirmed_absences(records))
     errors.extend(_validate_context_references(records))
     errors.extend(_validate_term_labels(records.get("vocabulary.json", [])))
+    errors.extend(_validate_idempotency(records.get("contracts.json", [])))
     errors.extend(_validate_evidence(records, repo_root))
+    return errors
+
+
+IDEMPOTENCY_FIELDS = ("key", "scope", "on_replay", "on_conflict")
+OPTIONAL_IDEMPOTENCY_FIELDS = ("expiry",)
+
+
+def _validate_idempotency(contracts: list[dict[str, Any]]) -> list[str]:
+    errors = []
+    for contract in contracts:
+        idempotency = contract.get("idempotency")
+        if idempotency is None:
+            continue
+        where = f"contracts.json:{contract.get('id')}"
+        if not isinstance(idempotency, dict):
+            errors.append(f"{where} idempotency must be an object")
+            continue
+        missing = [field for field in IDEMPOTENCY_FIELDS if field not in idempotency]
+        unknown = sorted(set(idempotency) - {*IDEMPOTENCY_FIELDS, *OPTIONAL_IDEMPOTENCY_FIELDS})
+        blank = sorted(
+            field for field, value in idempotency.items()
+            if field not in unknown and not (isinstance(value, str) and value.strip())
+        )
+        if missing:
+            errors.append(f"{where} idempotency lacks {', '.join(missing)}")
+        if unknown:
+            errors.append(f"{where} idempotency has unknown fields {', '.join(unknown)}")
+        if blank:
+            errors.append(f"{where} idempotency fields must be non-empty text: {', '.join(blank)}")
     return errors
 
 

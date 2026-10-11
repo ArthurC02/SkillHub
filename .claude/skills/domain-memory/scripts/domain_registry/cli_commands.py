@@ -36,6 +36,7 @@ from .policy import (
     write_policy,
 )
 from .readiness import assess_readiness
+from .impact import boundary_impact
 from .registry import (
     boundary_analysis,
     context_model,
@@ -181,6 +182,11 @@ def handle_get_record(args: argparse.Namespace) -> int:
     if result is None:
         raise ValueError(f"{args.asset} record not found: {args.id}")
     print_json(result)
+    return 0
+
+
+def handle_boundary_impact(args: argparse.Namespace) -> int:
+    print_json(boundary_impact(args.registry_root.resolve(), args.repo_root.resolve(), args.base))
     return 0
 
 
@@ -645,6 +651,7 @@ HANDLERS = {
     "get-context": handle_get_context,
     "get-record": handle_get_record,
     "analyze-boundary": handle_analyze_boundary,
+    "boundary-impact": handle_boundary_impact,
     "cite": handle_cite,
     "upsert-candidate": handle_upsert_candidate,
     "retract-candidate": handle_retract_candidate,

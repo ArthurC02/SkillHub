@@ -71,6 +71,10 @@ def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     add_path(boundary_parser, "--registry-root")
     boundary_parser.add_argument("--source-context", required=True)
     boundary_parser.add_argument("--target-context", required=True)
+    impact_parser = commands.add_parser("boundary-impact")
+    add_path(impact_parser, "--registry-root")
+    add_path(impact_parser, "--repo-root")
+    impact_parser.add_argument("--base", required=True)
 
 
 def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> None:
