@@ -64361,6 +64361,63 @@ func (s *SetSkillRestrictionReq) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes SimulatedUserFacts as json.
+func (s SimulatedUserFacts) Encode(e *jx.Encoder) {
+	unwrapped := []string(s)
+	if unwrapped == nil {
+		e.ArrEmpty()
+		return
+	}
+	if unwrapped != nil {
+		e.ArrStart()
+		for _, elem := range unwrapped {
+			e.Str(elem)
+		}
+		e.ArrEnd()
+	}
+}
+
+// Decode decodes SimulatedUserFacts from json.
+func (s *SimulatedUserFacts) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SimulatedUserFacts to nil")
+	}
+	var unwrapped []string
+	if err := func() error {
+		unwrapped = make([]string, 0)
+		if err := d.Arr(func(d *jx.Decoder) error {
+			var elem string
+			v, err := d.Str()
+			elem = string(v)
+			if err != nil {
+				return err
+			}
+			unwrapped = append(unwrapped, elem)
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = SimulatedUserFacts(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SimulatedUserFacts) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SimulatedUserFacts) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode implements json.Marshaler.
 func (s *Skill) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -70350,6 +70407,12 @@ func (s *TestCase) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.SimulatedUserFacts != nil {
+			e.FieldStart("simulated_user_facts")
+			s.SimulatedUserFacts.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("created_at")
 		json.EncodeDateTime(e, s.CreatedAt)
 	}
@@ -70359,15 +70422,16 @@ func (s *TestCase) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTestCase = [8]string{
+var jsonFieldsNameOfTestCase = [9]string{
 	0: "test_case_id",
 	1: "skill_id",
 	2: "name",
 	3: "user_prompt",
 	4: "acceptance_criteria",
 	5: "rubric",
-	6: "created_at",
-	7: "updated_at",
+	6: "simulated_user_facts",
+	7: "created_at",
+	8: "updated_at",
 }
 
 // Decode decodes TestCase from json.
@@ -70375,7 +70439,7 @@ func (s *TestCase) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode TestCase to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -70455,8 +70519,18 @@ func (s *TestCase) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"rubric\"")
 			}
-		case "created_at":
+		case "simulated_user_facts":
 			requiredBitSet[0] |= 1 << 6
+			if err := func() error {
+				if err := s.SimulatedUserFacts.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"simulated_user_facts\"")
+			}
+		case "created_at":
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -70468,7 +70542,7 @@ func (s *TestCase) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"created_at\"")
 			}
 		case "updated_at":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.UpdatedAt = v
@@ -70488,8 +70562,9 @@ func (s *TestCase) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
+	for i, mask := range [2]uint8{
 		0b11011111,
+		0b00000001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -70575,6 +70650,12 @@ func (s *TestCaseListItem) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.SimulatedUserFacts != nil {
+			e.FieldStart("simulated_user_facts")
+			s.SimulatedUserFacts.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("created_at")
 		json.EncodeDateTime(e, s.CreatedAt)
 	}
@@ -70600,19 +70681,20 @@ func (s *TestCaseListItem) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTestCaseListItem = [12]string{
+var jsonFieldsNameOfTestCaseListItem = [13]string{
 	0:  "test_case_id",
 	1:  "skill_id",
 	2:  "name",
 	3:  "user_prompt",
 	4:  "acceptance_criteria",
 	5:  "rubric",
-	6:  "created_at",
-	7:  "updated_at",
-	8:  "skill_name",
-	9:  "criteria_confirmed",
-	10: "criteria_total",
-	11: "has_rubric",
+	6:  "simulated_user_facts",
+	7:  "created_at",
+	8:  "updated_at",
+	9:  "skill_name",
+	10: "criteria_confirmed",
+	11: "criteria_total",
+	12: "has_rubric",
 }
 
 // Decode decodes TestCaseListItem from json.
@@ -70700,8 +70782,18 @@ func (s *TestCaseListItem) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"rubric\"")
 			}
-		case "created_at":
+		case "simulated_user_facts":
 			requiredBitSet[0] |= 1 << 6
+			if err := func() error {
+				if err := s.SimulatedUserFacts.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"simulated_user_facts\"")
+			}
+		case "created_at":
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -70713,7 +70805,7 @@ func (s *TestCaseListItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"created_at\"")
 			}
 		case "updated_at":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.UpdatedAt = v
@@ -70725,7 +70817,7 @@ func (s *TestCaseListItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"updated_at\"")
 			}
 		case "skill_name":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				v, err := d.Str()
 				s.SkillName = string(v)
@@ -70737,7 +70829,7 @@ func (s *TestCaseListItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"skill_name\"")
 			}
 		case "criteria_confirmed":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				v, err := d.Int()
 				s.CriteriaConfirmed = int(v)
@@ -70749,7 +70841,7 @@ func (s *TestCaseListItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"criteria_confirmed\"")
 			}
 		case "criteria_total":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				v, err := d.Int()
 				s.CriteriaTotal = int(v)
@@ -70761,7 +70853,7 @@ func (s *TestCaseListItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"criteria_total\"")
 			}
 		case "has_rubric":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				v, err := d.Bool()
 				s.HasRubric = bool(v)
@@ -70783,7 +70875,7 @@ func (s *TestCaseListItem) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b11011111,
-		0b00001111,
+		0b00011111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -73424,12 +73516,19 @@ func (s *UpdateTestCaseReq) encodeFields(e *jx.Encoder) {
 			s.Rubric.Encode(e)
 		}
 	}
+	{
+		if s.SimulatedUserFacts != nil {
+			e.FieldStart("simulated_user_facts")
+			s.SimulatedUserFacts.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfUpdateTestCaseReq = [3]string{
+var jsonFieldsNameOfUpdateTestCaseReq = [4]string{
 	0: "name",
 	1: "user_prompt",
 	2: "rubric",
+	3: "simulated_user_facts",
 }
 
 // Decode decodes UpdateTestCaseReq from json.
@@ -73469,6 +73568,15 @@ func (s *UpdateTestCaseReq) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"rubric\"")
+			}
+		case "simulated_user_facts":
+			if err := func() error {
+				if err := s.SimulatedUserFacts.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"simulated_user_facts\"")
 			}
 		default:
 			return d.Skip()

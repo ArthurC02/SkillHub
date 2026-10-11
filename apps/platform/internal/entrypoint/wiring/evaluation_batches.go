@@ -53,11 +53,38 @@ func evaluationBatchPorts(runs *run.Service, testlabSvc *testlab.Service, traceS
 			return out, err
 		},
 		ReadSnapshotContents: testlabSvc.SnapshotContentHashes,
-		ReadEndedWithQuestion: func(ctx context.Context, workspaceID, runID pgtype.UUID) (bool, error) {
+		ReadQuestionCount: func(ctx context.Context, workspaceID, runID pgtype.UUID) (int, error) {
 			summary, err := traceSvc.General(ctx, workspaceID, runID)
-			return len(summary.Questions) > 0, err
+			return len(summary.Questions), err
+		},
+		ReadSimulatedUser: testlabSvc.SimulatedUserFacts,
+		AnswerRun: func(ctx context.Context, a eval.BatchAnswer) error {
+			_, err := runs.Continue(ctx, run.ContinueParams{
+				WorkspaceID: a.WorkspaceID, Actor: a.Actor, RunID: a.RunID, Answers: a.Answers,
+			})
+			return batchAnswerError(err)
 		},
 	}
+}
+
+var noFurtherRound = []error{
+	run.ErrNothingToAnswer, run.ErrAnswersDoNotFit, run.ErrContinuationLimit, run.ErrContinuationTooLarge,
+}
+
+func batchAnswerError(err error) error {
+	if errors.Is(err, run.ErrAlreadyContinued) {
+		return nil
+	}
+	for _, final := range noFurtherRound {
+		if errors.Is(err, final) {
+			return eval.ErrNoFurtherRound
+		}
+	}
+	mapped := batchRunError(err)
+	if _, refused := errors.AsType[eval.RunRefusedError](mapped); refused {
+		return eval.ErrNoFurtherRound
+	}
+	return mapped
 }
 
 var batchWaitsOn = map[string]bool{

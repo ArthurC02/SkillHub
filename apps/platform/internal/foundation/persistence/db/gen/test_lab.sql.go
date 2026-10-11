@@ -90,7 +90,7 @@ func (q *Queries) CreateDatasetCleanupIntent(ctx context.Context, arg CreateData
 const createTestCase = `-- name: CreateTestCase :one
 INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt, acceptance_criteria)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric
+RETURNING id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric, simulated_user_facts
 `
 
 type CreateTestCaseParams struct {
@@ -121,15 +121,17 @@ func (q *Queries) CreateTestCase(ctx context.Context, arg CreateTestCaseParams) 
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Rubric,
+		&i.SimulatedUserFacts,
 	)
 	return i, err
 }
 
 const createTestCaseSnapshot = `-- name: CreateTestCaseSnapshot :one
 INSERT INTO test_case_snapshots (
-    workspace_id, test_case_id, user_prompt, acceptance_criteria, dataset_refs, content_hash, rubric
-) VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, workspace_id, test_case_id, user_prompt, acceptance_criteria, dataset_refs, content_hash, created_at, rubric
+    workspace_id, test_case_id, user_prompt, acceptance_criteria, dataset_refs, content_hash, rubric,
+    simulated_user_facts
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::text[])
+RETURNING id, workspace_id, test_case_id, user_prompt, acceptance_criteria, dataset_refs, content_hash, created_at, rubric, simulated_user_facts
 `
 
 type CreateTestCaseSnapshotParams struct {
@@ -140,6 +142,7 @@ type CreateTestCaseSnapshotParams struct {
 	DatasetRefs        []byte
 	ContentHash        string
 	Rubric             []byte
+	SimulatedUserFacts []string
 }
 
 func (q *Queries) CreateTestCaseSnapshot(ctx context.Context, arg CreateTestCaseSnapshotParams) (TestCaseSnapshot, error) {
@@ -151,6 +154,7 @@ func (q *Queries) CreateTestCaseSnapshot(ctx context.Context, arg CreateTestCase
 		arg.DatasetRefs,
 		arg.ContentHash,
 		arg.Rubric,
+		arg.SimulatedUserFacts,
 	)
 	var i TestCaseSnapshot
 	err := row.Scan(
@@ -163,6 +167,7 @@ func (q *Queries) CreateTestCaseSnapshot(ctx context.Context, arg CreateTestCase
 		&i.ContentHash,
 		&i.CreatedAt,
 		&i.Rubric,
+		&i.SimulatedUserFacts,
 	)
 	return i, err
 }
@@ -239,7 +244,7 @@ func (q *Queries) GetSnapshotInputs(ctx context.Context, arg GetSnapshotInputsPa
 }
 
 const getTestCase = `-- name: GetTestCase :one
-SELECT id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric FROM test_cases
+SELECT id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric, simulated_user_facts FROM test_cases
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 `
 
@@ -262,12 +267,13 @@ func (q *Queries) GetTestCase(ctx context.Context, arg GetTestCaseParams) (TestC
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Rubric,
+		&i.SimulatedUserFacts,
 	)
 	return i, err
 }
 
 const getTestCaseSnapshot = `-- name: GetTestCaseSnapshot :one
-SELECT id, workspace_id, test_case_id, user_prompt, acceptance_criteria, dataset_refs, content_hash, created_at, rubric FROM test_case_snapshots
+SELECT id, workspace_id, test_case_id, user_prompt, acceptance_criteria, dataset_refs, content_hash, created_at, rubric, simulated_user_facts FROM test_case_snapshots
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -289,6 +295,7 @@ func (q *Queries) GetTestCaseSnapshot(ctx context.Context, arg GetTestCaseSnapsh
 		&i.ContentHash,
 		&i.CreatedAt,
 		&i.Rubric,
+		&i.SimulatedUserFacts,
 	)
 	return i, err
 }
@@ -399,6 +406,41 @@ func (q *Queries) ListSkillsWithTestCases(ctx context.Context, skillIds []pgtype
 	return items, nil
 }
 
+const listSnapshotSimulatedUserFacts = `-- name: ListSnapshotSimulatedUserFacts :many
+SELECT id, simulated_user_facts FROM test_case_snapshots
+WHERE workspace_id = $1 AND id = ANY($2::uuid[]) AND cardinality(simulated_user_facts) > 0
+`
+
+type ListSnapshotSimulatedUserFactsParams struct {
+	WorkspaceID pgtype.UUID
+	SnapshotIds []pgtype.UUID
+}
+
+type ListSnapshotSimulatedUserFactsRow struct {
+	ID                 pgtype.UUID
+	SimulatedUserFacts []string
+}
+
+func (q *Queries) ListSnapshotSimulatedUserFacts(ctx context.Context, arg ListSnapshotSimulatedUserFactsParams) ([]ListSnapshotSimulatedUserFactsRow, error) {
+	rows, err := q.db.Query(ctx, listSnapshotSimulatedUserFacts, arg.WorkspaceID, arg.SnapshotIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSnapshotSimulatedUserFactsRow
+	for rows.Next() {
+		var i ListSnapshotSimulatedUserFactsRow
+		if err := rows.Scan(&i.ID, &i.SimulatedUserFacts); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSnapshotTestCases = `-- name: ListSnapshotTestCases :many
 SELECT id, test_case_id, content_hash FROM test_case_snapshots
 WHERE workspace_id = $1 AND id = ANY($2::uuid[])
@@ -490,7 +532,7 @@ func (q *Queries) ListTestCaseSnapshotIDs(ctx context.Context, arg ListTestCaseS
 }
 
 const listTestCases = `-- name: ListTestCases :many
-SELECT id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric FROM test_cases
+SELECT id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric, simulated_user_facts FROM test_cases
 WHERE workspace_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC, id DESC
 LIMIT $2 OFFSET $3
@@ -522,6 +564,7 @@ func (q *Queries) ListTestCases(ctx context.Context, arg ListTestCasesParams) ([
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.Rubric,
+			&i.SimulatedUserFacts,
 		); err != nil {
 			return nil, err
 		}
@@ -576,7 +619,7 @@ func (q *Queries) LockDatasetWorkspaceObjects(ctx context.Context, workspaceID p
 }
 
 const lockTestCase = `-- name: LockTestCase :one
-SELECT id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric FROM test_cases
+SELECT id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric, simulated_user_facts FROM test_cases
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 FOR UPDATE
 `
@@ -600,6 +643,7 @@ func (q *Queries) LockTestCase(ctx context.Context, arg LockTestCaseParams) (Tes
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Rubric,
+		&i.SimulatedUserFacts,
 	)
 	return i, err
 }
@@ -686,7 +730,7 @@ func (q *Queries) SoftDeleteDatasetsByTestCase(ctx context.Context, arg SoftDele
 const softDeleteTestCase = `-- name: SoftDeleteTestCase :one
 UPDATE test_cases SET deleted_at = now(), updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-RETURNING id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric
+RETURNING id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric, simulated_user_facts
 `
 
 type SoftDeleteTestCaseParams struct {
@@ -708,6 +752,7 @@ func (q *Queries) SoftDeleteTestCase(ctx context.Context, arg SoftDeleteTestCase
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Rubric,
+		&i.SimulatedUserFacts,
 	)
 	return i, err
 }
@@ -761,7 +806,7 @@ func (q *Queries) UnlockDatasetWorkspaceObjects(ctx context.Context, workspaceID
 const updateTestCase = `-- name: UpdateTestCase :one
 UPDATE test_cases SET name = $3, user_prompt = $4, updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-RETURNING id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric
+RETURNING id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric, simulated_user_facts
 `
 
 type UpdateTestCaseParams struct {
@@ -790,6 +835,7 @@ func (q *Queries) UpdateTestCase(ctx context.Context, arg UpdateTestCaseParams) 
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Rubric,
+		&i.SimulatedUserFacts,
 	)
 	return i, err
 }
@@ -797,7 +843,7 @@ func (q *Queries) UpdateTestCase(ctx context.Context, arg UpdateTestCaseParams) 
 const updateTestCaseCriteria = `-- name: UpdateTestCaseCriteria :one
 UPDATE test_cases SET acceptance_criteria = $3, updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-RETURNING id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric
+RETURNING id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric, simulated_user_facts
 `
 
 type UpdateTestCaseCriteriaParams struct {
@@ -820,6 +866,7 @@ func (q *Queries) UpdateTestCaseCriteria(ctx context.Context, arg UpdateTestCase
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Rubric,
+		&i.SimulatedUserFacts,
 	)
 	return i, err
 }
@@ -827,7 +874,7 @@ func (q *Queries) UpdateTestCaseCriteria(ctx context.Context, arg UpdateTestCase
 const updateTestCaseRubric = `-- name: UpdateTestCaseRubric :one
 UPDATE test_cases SET rubric = $3, updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-RETURNING id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric
+RETURNING id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric, simulated_user_facts
 `
 
 type UpdateTestCaseRubricParams struct {
@@ -850,6 +897,38 @@ func (q *Queries) UpdateTestCaseRubric(ctx context.Context, arg UpdateTestCaseRu
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Rubric,
+		&i.SimulatedUserFacts,
+	)
+	return i, err
+}
+
+const updateTestCaseSimulatedUserFacts = `-- name: UpdateTestCaseSimulatedUserFacts :one
+UPDATE test_cases SET simulated_user_facts = $1::text[], updated_at = now()
+WHERE id = $2 AND workspace_id = $3 AND deleted_at IS NULL
+RETURNING id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric, simulated_user_facts
+`
+
+type UpdateTestCaseSimulatedUserFactsParams struct {
+	SimulatedUserFacts []string
+	ID                 pgtype.UUID
+	WorkspaceID        pgtype.UUID
+}
+
+func (q *Queries) UpdateTestCaseSimulatedUserFacts(ctx context.Context, arg UpdateTestCaseSimulatedUserFactsParams) (TestCase, error) {
+	row := q.db.QueryRow(ctx, updateTestCaseSimulatedUserFacts, arg.SimulatedUserFacts, arg.ID, arg.WorkspaceID)
+	var i TestCase
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.SkillID,
+		&i.Name,
+		&i.UserPrompt,
+		&i.AcceptanceCriteria,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Rubric,
+		&i.SimulatedUserFacts,
 	)
 	return i, err
 }

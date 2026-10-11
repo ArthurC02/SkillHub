@@ -5689,8 +5689,8 @@ export interface DefaultApiInterface {
     updateTestCaseRequestOpts(requestParameters: UpdateTestCaseOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Omitted fields keep their stored value.  `rubric` is three-valued and each value is a different statement: absent keeps the stored rubric, an object replaces it, and an explicit `null` removes it. There is no \"empty rubric\" — a rubric with no items is refused, because \"this test case has no rubric\" and \"this test case has a rubric that says nothing\" would otherwise be the same bytes.  Editing here never rewrites a past run: a run freezes the rubric along with the prompt and the criteria, so an edit is the standard for the *next* run (iron rule 4). 
-     * @summary Edit a test case\'s name, prompt or rubric (TEST-001, CONTENT-007)
+     * Omitted fields keep their stored value.  `rubric` is three-valued and each value is a different statement: absent keeps the stored rubric, an object replaces it, and an explicit `null` removes it. There is no \"empty rubric\" — a rubric with no items is refused, because \"this test case has no rubric\" and \"this test case has a rubric that says nothing\" would otherwise be the same bytes.  `simulated_user_facts` replaces the whole list; an empty list removes the simulated person.  Editing here never rewrites a past run: a run freezes the rubric along with the prompt and the criteria, so an edit is the standard for the *next* run (iron rule 4). 
+     * @summary Edit a test case\'s name, prompt, rubric or simulated person (TEST-001, CONTENT-007)
      * @param {string} id 
      * @param {UpdateTestCaseRequest} updateTestCaseRequest 
      * @param {*} [options] Override http request option.
@@ -5700,8 +5700,8 @@ export interface DefaultApiInterface {
     updateTestCaseRaw(requestParameters: UpdateTestCaseOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>>;
 
     /**
-     * Omitted fields keep their stored value.  `rubric` is three-valued and each value is a different statement: absent keeps the stored rubric, an object replaces it, and an explicit `null` removes it. There is no \"empty rubric\" — a rubric with no items is refused, because \"this test case has no rubric\" and \"this test case has a rubric that says nothing\" would otherwise be the same bytes.  Editing here never rewrites a past run: a run freezes the rubric along with the prompt and the criteria, so an edit is the standard for the *next* run (iron rule 4). 
-     * Edit a test case\'s name, prompt or rubric (TEST-001, CONTENT-007)
+     * Omitted fields keep their stored value.  `rubric` is three-valued and each value is a different statement: absent keeps the stored rubric, an object replaces it, and an explicit `null` removes it. There is no \"empty rubric\" — a rubric with no items is refused, because \"this test case has no rubric\" and \"this test case has a rubric that says nothing\" would otherwise be the same bytes.  `simulated_user_facts` replaces the whole list; an empty list removes the simulated person.  Editing here never rewrites a past run: a run freezes the rubric along with the prompt and the criteria, so an edit is the standard for the *next* run (iron rule 4). 
+     * Edit a test case\'s name, prompt, rubric or simulated person (TEST-001, CONTENT-007)
      */
     updateTestCase(requestParameters: UpdateTestCaseOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase>;
 
@@ -12995,8 +12995,8 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Omitted fields keep their stored value.  `rubric` is three-valued and each value is a different statement: absent keeps the stored rubric, an object replaces it, and an explicit `null` removes it. There is no \"empty rubric\" — a rubric with no items is refused, because \"this test case has no rubric\" and \"this test case has a rubric that says nothing\" would otherwise be the same bytes.  Editing here never rewrites a past run: a run freezes the rubric along with the prompt and the criteria, so an edit is the standard for the *next* run (iron rule 4). 
-     * Edit a test case\'s name, prompt or rubric (TEST-001, CONTENT-007)
+     * Omitted fields keep their stored value.  `rubric` is three-valued and each value is a different statement: absent keeps the stored rubric, an object replaces it, and an explicit `null` removes it. There is no \"empty rubric\" — a rubric with no items is refused, because \"this test case has no rubric\" and \"this test case has a rubric that says nothing\" would otherwise be the same bytes.  `simulated_user_facts` replaces the whole list; an empty list removes the simulated person.  Editing here never rewrites a past run: a run freezes the rubric along with the prompt and the criteria, so an edit is the standard for the *next* run (iron rule 4). 
+     * Edit a test case\'s name, prompt, rubric or simulated person (TEST-001, CONTENT-007)
      */
     async updateTestCaseRaw(requestParameters: UpdateTestCaseOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
         const requestOptions = await this.updateTestCaseRequestOpts(requestParameters);
@@ -13006,8 +13006,8 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Omitted fields keep their stored value.  `rubric` is three-valued and each value is a different statement: absent keeps the stored rubric, an object replaces it, and an explicit `null` removes it. There is no \"empty rubric\" — a rubric with no items is refused, because \"this test case has no rubric\" and \"this test case has a rubric that says nothing\" would otherwise be the same bytes.  Editing here never rewrites a past run: a run freezes the rubric along with the prompt and the criteria, so an edit is the standard for the *next* run (iron rule 4). 
-     * Edit a test case\'s name, prompt or rubric (TEST-001, CONTENT-007)
+     * Omitted fields keep their stored value.  `rubric` is three-valued and each value is a different statement: absent keeps the stored rubric, an object replaces it, and an explicit `null` removes it. There is no \"empty rubric\" — a rubric with no items is refused, because \"this test case has no rubric\" and \"this test case has a rubric that says nothing\" would otherwise be the same bytes.  `simulated_user_facts` replaces the whole list; an empty list removes the simulated person.  Editing here never rewrites a past run: a run freezes the rubric along with the prompt and the criteria, so an edit is the standard for the *next* run (iron rule 4). 
+     * Edit a test case\'s name, prompt, rubric or simulated person (TEST-001, CONTENT-007)
      */
     async updateTestCase(requestParameters: UpdateTestCaseOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase> {
         const response = await this.updateTestCaseRaw(requestParameters, initOverrides);

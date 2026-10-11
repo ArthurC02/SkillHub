@@ -79,9 +79,10 @@ type testCaseResponse struct {
 	UserPrompt         string      `json:"user_prompt"`
 	AcceptanceCriteria []Criterion `json:"acceptance_criteria"`
 
-	Rubric    *Rubric `json:"rubric,omitempty"`
-	CreatedAt string  `json:"created_at"`
-	UpdatedAt string  `json:"updated_at"`
+	Rubric             *Rubric  `json:"rubric,omitempty"`
+	SimulatedUserFacts []string `json:"simulated_user_facts"`
+	CreatedAt          string   `json:"created_at"`
+	UpdatedAt          string   `json:"updated_at"`
 }
 
 func toTestCaseResponse(tc TestCase) testCaseResponse {
@@ -100,6 +101,7 @@ func toTestCaseResponse(tc TestCase) testCaseResponse {
 		UserPrompt:         tc.UserPrompt,
 		AcceptanceCriteria: criteria,
 		Rubric:             rubric,
+		SimulatedUserFacts: append([]string{}, tc.SimulatedUserFacts...),
 		CreatedAt:          tc.CreatedAt.Time.UTC().Format(time.RFC3339),
 		UpdatedAt:          tc.UpdatedAt.Time.UTC().Format(time.RFC3339),
 	}
@@ -290,14 +292,18 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body := struct {
-		Name       *string         `json:"name"`
-		UserPrompt *string         `json:"user_prompt"`
-		Rubric     json.RawMessage `json:"rubric"`
+		Name               *string         `json:"name"`
+		UserPrompt         *string         `json:"user_prompt"`
+		Rubric             json.RawMessage `json:"rubric"`
+		SimulatedUserFacts *[]string       `json:"simulated_user_facts"`
 	}{}
 	if !decodeJSON(w, r, &body) {
 		return
 	}
-	edit := TestCaseEdit{Name: body.Name, Prompt: body.UserPrompt, ReplaceRubric: len(body.Rubric) > 0}
+	edit := TestCaseEdit{
+		Name: body.Name, Prompt: body.UserPrompt, ReplaceRubric: len(body.Rubric) > 0,
+		SimulatedUserFacts: body.SimulatedUserFacts,
+	}
 	if edit.ReplaceRubric && strings.TrimSpace(string(body.Rubric)) != "null" {
 		edit.Rubric = &Rubric{}
 		if err := json.Unmarshal(body.Rubric, edit.Rubric); err != nil {

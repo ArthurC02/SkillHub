@@ -30441,6 +30441,8 @@ func (s *SetSkillRestrictionReq) SetNote(val string) {
 	s.Note = val
 }
 
+type SimulatedUserFacts []string
+
 // Ref: #/components/schemas/Skill
 type Skill struct {
 	SkillID uuid.UUID `json:"skill_id"`
@@ -33020,9 +33022,10 @@ type TestCase struct {
 	AcceptanceCriteria []AcceptanceCriterion `json:"acceptance_criteria"`
 	// Absent means this test case has no rubric — never that it uses a default one. The copy a run was
 	// judged against is the one frozen in its snapshot, which is what `Evaluation.rubric_version` names.
-	Rubric    OptRubric `json:"rubric"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Rubric             OptRubric          `json:"rubric"`
+	SimulatedUserFacts SimulatedUserFacts `json:"simulated_user_facts"`
+	CreatedAt          time.Time          `json:"created_at"`
+	UpdatedAt          time.Time          `json:"updated_at"`
 }
 
 // GetTestCaseID returns the value of TestCaseID.
@@ -33053,6 +33056,11 @@ func (s *TestCase) GetAcceptanceCriteria() []AcceptanceCriterion {
 // GetRubric returns the value of Rubric.
 func (s *TestCase) GetRubric() OptRubric {
 	return s.Rubric
+}
+
+// GetSimulatedUserFacts returns the value of SimulatedUserFacts.
+func (s *TestCase) GetSimulatedUserFacts() SimulatedUserFacts {
+	return s.SimulatedUserFacts
 }
 
 // GetCreatedAt returns the value of CreatedAt.
@@ -33095,6 +33103,11 @@ func (s *TestCase) SetRubric(val OptRubric) {
 	s.Rubric = val
 }
 
+// SetSimulatedUserFacts sets the value of SimulatedUserFacts.
+func (s *TestCase) SetSimulatedUserFacts(val SimulatedUserFacts) {
+	s.SimulatedUserFacts = val
+}
+
 // SetCreatedAt sets the value of CreatedAt.
 func (s *TestCase) SetCreatedAt(val time.Time) {
 	s.CreatedAt = val
@@ -33122,9 +33135,10 @@ type TestCaseListItem struct {
 	AcceptanceCriteria []AcceptanceCriterion `json:"acceptance_criteria"`
 	// Absent means this test case has no rubric — never that it uses a default one. The copy a run was
 	// judged against is the one frozen in its snapshot, which is what `Evaluation.rubric_version` names.
-	Rubric    OptRubric `json:"rubric"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Rubric             OptRubric          `json:"rubric"`
+	SimulatedUserFacts SimulatedUserFacts `json:"simulated_user_facts"`
+	CreatedAt          time.Time          `json:"created_at"`
+	UpdatedAt          time.Time          `json:"updated_at"`
 	// The skill this draft is bound to, so a list is readable without a bare UUID. Empty when the skill is
 	// no longer visible to the caller — an empty string is "we cannot name it", which the UI renders as
 	// unknown rather than as a name.
@@ -33166,6 +33180,11 @@ func (s *TestCaseListItem) GetAcceptanceCriteria() []AcceptanceCriterion {
 // GetRubric returns the value of Rubric.
 func (s *TestCaseListItem) GetRubric() OptRubric {
 	return s.Rubric
+}
+
+// GetSimulatedUserFacts returns the value of SimulatedUserFacts.
+func (s *TestCaseListItem) GetSimulatedUserFacts() SimulatedUserFacts {
+	return s.SimulatedUserFacts
 }
 
 // GetCreatedAt returns the value of CreatedAt.
@@ -33226,6 +33245,11 @@ func (s *TestCaseListItem) SetAcceptanceCriteria(val []AcceptanceCriterion) {
 // SetRubric sets the value of Rubric.
 func (s *TestCaseListItem) SetRubric(val OptRubric) {
 	s.Rubric = val
+}
+
+// SetSimulatedUserFacts sets the value of SimulatedUserFacts.
+func (s *TestCaseListItem) SetSimulatedUserFacts(val SimulatedUserFacts) {
+	s.SimulatedUserFacts = val
 }
 
 // SetCreatedAt sets the value of CreatedAt.
@@ -34512,9 +34536,10 @@ type UpdateTestCaseNotFound Error
 func (*UpdateTestCaseNotFound) updateTestCaseRes() {}
 
 type UpdateTestCaseReq struct {
-	Name       OptString    `json:"name"`
-	UserPrompt OptString    `json:"user_prompt"`
-	Rubric     OptNilRubric `json:"rubric"`
+	Name               OptString          `json:"name"`
+	UserPrompt         OptString          `json:"user_prompt"`
+	Rubric             OptNilRubric       `json:"rubric"`
+	SimulatedUserFacts SimulatedUserFacts `json:"simulated_user_facts"`
 }
 
 // GetName returns the value of Name.
@@ -34532,6 +34557,11 @@ func (s *UpdateTestCaseReq) GetRubric() OptNilRubric {
 	return s.Rubric
 }
 
+// GetSimulatedUserFacts returns the value of SimulatedUserFacts.
+func (s *UpdateTestCaseReq) GetSimulatedUserFacts() SimulatedUserFacts {
+	return s.SimulatedUserFacts
+}
+
 // SetName sets the value of Name.
 func (s *UpdateTestCaseReq) SetName(val OptString) {
 	s.Name = val
@@ -34545,6 +34575,11 @@ func (s *UpdateTestCaseReq) SetUserPrompt(val OptString) {
 // SetRubric sets the value of Rubric.
 func (s *UpdateTestCaseReq) SetRubric(val OptNilRubric) {
 	s.Rubric = val
+}
+
+// SetSimulatedUserFacts sets the value of SimulatedUserFacts.
+func (s *UpdateTestCaseReq) SetSimulatedUserFacts(val SimulatedUserFacts) {
+	s.SimulatedUserFacts = val
 }
 
 type UpdateTestCaseUnauthorized Error

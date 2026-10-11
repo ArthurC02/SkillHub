@@ -434,6 +434,8 @@ type EvaluationBatch struct {
 	CreatedAt      pgtype.Timestamptz
 	// Every trial is also run once with the skill withheld, so the report can show what the skill adds.
 	WithBaseline bool
+	// Every trial has ended and no simulated answer is still owed.
+	SettledAt pgtype.Timestamptz
 }
 
 // One trial of one test case in a batch; the run is linked once the batch starts it.
@@ -959,6 +961,8 @@ type TestCase struct {
 	UpdatedAt          pgtype.Timestamptz
 	DeletedAt          pgtype.Timestamptz
 	Rubric             []byte
+	// What the person in this test case knows but did not say; a batch answers the skill's questions with them.
+	SimulatedUserFacts []string
 }
 
 type TestCaseSnapshot struct {
@@ -971,6 +975,8 @@ type TestCaseSnapshot struct {
 	ContentHash        string
 	CreatedAt          pgtype.Timestamptz
 	Rubric             []byte
+	// The simulated person's facts, frozen with the rest of the test case.
+	SimulatedUserFacts []string
 }
 
 type TraceEvent struct {

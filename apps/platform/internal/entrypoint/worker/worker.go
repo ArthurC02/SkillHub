@@ -116,7 +116,7 @@ func addEvaluationServices(set *Set, pool *pgxpool.Pool, deps Deps, r evaluation
 
 	set.RunEvents = &eval.RunEventConsumer{HasCurrentEvaluation: set.Evaluations.HasCurrentEvaluation}
 	set.SkillVersions = &eval.SkillVersionConsumer{}
-	set.BatchEvents = &eval.BatchEventConsumer{HasLaunchingBatch: set.Batches.HasLaunchingBatch}
+	set.BatchEvents = &eval.BatchEventConsumer{HasUnsettledBatch: set.Batches.HasUnsettledBatch}
 }
 
 func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {

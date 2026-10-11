@@ -186,8 +186,8 @@ func (s *BatchService) trialOutcome(
 	case evaluated:
 		return TrialRunning, nil
 	case end.Status == runSucceeded:
-		asked, err := s.Ports.ReadEndedWithQuestion(ctx, workspaceID, end.RunID)
-		if err != nil || !asked {
+		questions, err := s.Ports.ReadQuestionCount(ctx, workspaceID, end.RunID)
+		if err != nil || questions == 0 {
 			return TrialRunning, err
 		}
 		return TrialAwaitingAnswer, nil

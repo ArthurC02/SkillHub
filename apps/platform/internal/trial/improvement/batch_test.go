@@ -97,12 +97,12 @@ func show(b *bool) any {
 	return *b
 }
 
-func TestATerminalRunAsksForABatchAdvanceOnlyWhereABatchIsLaunching(t *testing.T) {
+func TestATerminalRunAsksForABatchAdvanceOnlyWhereABatchIsUnsettled(t *testing.T) {
 	workspace := pgtype.UUID{Bytes: [16]byte{7}, Valid: true}
 	for _, launching := range []bool{false, true} {
 		var enqueued []BatchAdvanceArgs
 		c := &BatchEventConsumer{
-			HasLaunchingBatch: func(context.Context, pgtype.UUID) (bool, error) { return launching, nil },
+			HasUnsettledBatch: func(context.Context, pgtype.UUID) (bool, error) { return launching, nil },
 			Enqueue: func(_ context.Context, args BatchAdvanceArgs) error {
 				enqueued = append(enqueued, args)
 				return nil
@@ -123,7 +123,7 @@ func TestATerminalRunAsksForABatchAdvanceOnlyWhereABatchIsLaunching(t *testing.T
 		t.Error("an unwired consumer delivered silently, want an error")
 	}
 	failing := &BatchEventConsumer{
-		HasLaunchingBatch: func(context.Context, pgtype.UUID) (bool, error) { return false, errors.New("db down") },
+		HasUnsettledBatch: func(context.Context, pgtype.UUID) (bool, error) { return false, errors.New("db down") },
 		Enqueue:           func(context.Context, BatchAdvanceArgs) error { return nil },
 	}
 	if err := failing.Deliver(context.Background(), outbox.Event{}); err == nil {

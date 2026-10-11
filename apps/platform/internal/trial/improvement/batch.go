@@ -37,10 +37,11 @@ func AllBatchStatuses() []BatchStatus {
 const stopReasonCreatorGone = "creator_gone"
 
 var (
-	ErrBatchShape  = errors.New("an evaluation batch needs 1 to 50 distinct test cases and 1 to 10 trials")
-	ErrRunMustWait = errors.New("the workspace cannot start a run right now; the batch waits for its turn")
-	errBatchPorts  = errors.New("eval: batch run ports are not injected")
-	errItemTaken   = errors.New("eval: another advance already started this trial")
+	ErrBatchShape     = errors.New("an evaluation batch needs 1 to 50 distinct test cases and 1 to 10 trials")
+	ErrRunMustWait    = errors.New("the workspace cannot start a run right now; the batch waits for its turn")
+	ErrNoFurtherRound = errors.New("this trial's conversation cannot take another answer")
+	errBatchPorts     = errors.New("eval: batch run ports are not injected")
+	errItemTaken      = errors.New("eval: another advance already started this trial")
 )
 
 type UnconfirmedTestCasesError struct{ TestCaseIDs []pgtype.UUID }
@@ -76,16 +77,19 @@ type ChainEnd struct {
 }
 
 type BatchPorts struct {
-	StartRun              func(ctx context.Context, run BatchRun) (pgtype.UUID, error)
-	ConfirmedSummaryHash  func(ctx context.Context, workspaceID, skillID, versionID, testCaseID pgtype.UUID) (string, bool, error)
-	ReadChainEnds         func(ctx context.Context, workspaceID pgtype.UUID, runIDs []pgtype.UUID) (map[pgtype.UUID]ChainEnd, error)
-	ReadSnapshotContents  func(ctx context.Context, workspaceID pgtype.UUID, snapshotIDs []pgtype.UUID) (map[pgtype.UUID]string, error)
-	ReadEndedWithQuestion func(ctx context.Context, workspaceID, runID pgtype.UUID) (bool, error)
+	StartRun             func(ctx context.Context, run BatchRun) (pgtype.UUID, error)
+	ConfirmedSummaryHash func(ctx context.Context, workspaceID, skillID, versionID, testCaseID pgtype.UUID) (string, bool, error)
+	ReadChainEnds        func(ctx context.Context, workspaceID pgtype.UUID, runIDs []pgtype.UUID) (map[pgtype.UUID]ChainEnd, error)
+	ReadSnapshotContents func(ctx context.Context, workspaceID pgtype.UUID, snapshotIDs []pgtype.UUID) (map[pgtype.UUID]string, error)
+	ReadQuestionCount    func(ctx context.Context, workspaceID, runID pgtype.UUID) (int, error)
+	ReadSimulatedUser    func(ctx context.Context, workspaceID pgtype.UUID, snapshotIDs []pgtype.UUID) (map[pgtype.UUID][]string, error)
+	AnswerRun            func(ctx context.Context, answer BatchAnswer) error
 }
 
 func (p BatchPorts) ready() error {
 	if p.StartRun == nil || p.ConfirmedSummaryHash == nil || p.ReadChainEnds == nil ||
-		p.ReadSnapshotContents == nil || p.ReadEndedWithQuestion == nil {
+		p.ReadSnapshotContents == nil || p.ReadQuestionCount == nil ||
+		p.ReadSimulatedUser == nil || p.AnswerRun == nil {
 		return errBatchPorts
 	}
 	return nil
@@ -197,12 +201,12 @@ func (s *BatchService) confirmedHashes(ctx context.Context, n NewBatch) ([]strin
 	return hashes, nil
 }
 
-func (s *BatchService) HasLaunchingBatch(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
-	return s.queries().HasLaunchingBatch(ctx, workspaceID)
+func (s *BatchService) HasUnsettledBatch(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+	return s.queries().HasUnsettledBatch(ctx, workspaceID)
 }
 
 func (s *BatchService) AdvanceAllBatches(ctx context.Context) error {
-	workspaces, err := s.queries().ListWorkspacesWithLaunchingBatches(ctx)
+	workspaces, err := s.queries().ListWorkspacesWithUnsettledBatches(ctx)
 	if err != nil {
 		return err
 	}
@@ -219,8 +223,11 @@ func (s *BatchService) AdvanceBatches(ctx context.Context, workspaceID pgtype.UU
 	}
 	for {
 		started, err := s.startNextTrial(ctx, workspaceID)
-		if err != nil || !started {
+		if err != nil {
 			return err
+		}
+		if !started {
+			return s.settleBatches(ctx, workspaceID)
 		}
 	}
 }

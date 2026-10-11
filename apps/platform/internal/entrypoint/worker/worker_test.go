@@ -136,7 +136,7 @@ func assertRunEventAndSkillVersionQueuesWired(t *testing.T, set *Set) {
 	if set.SkillVersions == nil || set.SkillVersions.Enqueue == nil {
 		t.Error("the evaluation's mailbox for skill versions is not wired to the queue")
 	}
-	if set.BatchEvents == nil || set.BatchEvents.HasLaunchingBatch == nil || set.BatchEvents.Enqueue == nil {
+	if set.BatchEvents == nil || set.BatchEvents.HasUnsettledBatch == nil || set.BatchEvents.Enqueue == nil {
 		t.Error("the evaluation batch consumer is not wired to its lookup and the queue")
 	}
 	if set.Batches == nil || set.Batches.Ports.StartRun == nil || set.Batches.Ports.ReadChainEnds == nil {

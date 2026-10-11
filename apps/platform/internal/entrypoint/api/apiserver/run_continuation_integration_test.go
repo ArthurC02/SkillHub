@@ -20,6 +20,7 @@ type finishedRun struct {
 	criteria    string
 	contentHash string
 	policy      string
+	facts       []string
 }
 
 func seedFinishedRun(t *testing.T, pool *pgxpool.Pool, f fixture, r finishedRun) string {
@@ -27,8 +28,9 @@ func seedFinishedRun(t *testing.T, pool *pgxpool.Pool, f fixture, r finishedRun)
 	var runID string
 	if err := pool.QueryRow(context.Background(), `
 		WITH snap AS (
-			INSERT INTO test_case_snapshots (workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
-			VALUES ($1, $3, $4, $5::jsonb, $6)
+			INSERT INTO test_case_snapshots (workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash,
+			                                 simulated_user_facts)
+			VALUES ($1, $3, $4, $5::jsonb, $6, COALESCE($8::text[], '{}'))
 			RETURNING id),
 		r AS (
 			INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, status, started_at, finished_at)
@@ -38,7 +40,7 @@ func seedFinishedRun(t *testing.T, pool *pgxpool.Pool, f fixture, r finishedRun)
 			SELECT id, workspace_id, COALESCE(NULLIF($7, '')::jsonb, '{}'::jsonb) FROM r)
 		SELECT id::text FROM r`,
 		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, r.testCaseID), askingPrompt,
-		r.criteria, r.contentHash, r.policy,
+		r.criteria, r.contentHash, r.policy, r.facts,
 	).Scan(&runID); err != nil {
 		t.Fatal(err)
 	}
@@ -78,13 +80,18 @@ func seedQuestions(t *testing.T, pool *pgxpool.Pool, workspaceID, runID string, 
 func seedAnsweredRound(t *testing.T, pool *pgxpool.Pool, f fixture, asking string, questions ...string) string {
 	t.Helper()
 	next := seedAskingRun(t, pool, f, questions...)
+	linkContinuation(t, pool, f.workspaceID, asking, next)
+	return next
+}
+
+func linkContinuation(t *testing.T, pool *pgxpool.Pool, workspaceID, asking, next string) {
+	t.Helper()
 	if _, err := pool.Exec(context.Background(), `
 		INSERT INTO run_continuations (run_id, workspace_id, continues_run_id, questions, answers)
 		VALUES ($1, $2, $3, '[{"question":"q","why":"w"}]'::jsonb, '["a"]'::jsonb)`,
-		mustUUID(t, next), mustUUID(t, f.workspaceID), mustUUID(t, asking)); err != nil {
+		mustUUID(t, next), mustUUID(t, workspaceID), mustUUID(t, asking)); err != nil {
 		t.Fatal(err)
 	}
-	return next
 }
 
 func resetRunSettings(t *testing.T, pool *pgxpool.Pool) {

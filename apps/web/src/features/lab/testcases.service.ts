@@ -28,6 +28,7 @@ export type TestCase = {
   user_prompt: string;
   acceptance_criteria: AcceptanceCriterion[];
   rubric?: Rubric;
+  simulated_user_facts: string[];
   created_at: string;
   updated_at: string;
 };
@@ -82,7 +83,12 @@ export function useCreateTestCase() {
   });
 }
 
-export type TestCasePatch = { name?: string; user_prompt?: string; rubric?: Rubric | null };
+export type TestCasePatch = {
+  name?: string;
+  user_prompt?: string;
+  rubric?: Rubric | null;
+  simulated_user_facts?: string[];
+};
 
 export function updateTestCase(testCaseId: string, patch: TestCasePatch) {
   return apiFetch<TestCase>(`/test-cases/${testCaseId}`, {
