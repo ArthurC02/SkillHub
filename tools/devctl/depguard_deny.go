@@ -394,7 +394,7 @@ func reviewedDependencyPermissions(root string, problems []string) (map[string]m
 	permitted := map[string]map[string]bool{}
 	counted := 0
 	for _, entry := range doc.Dependencies {
-		if entry.Status != "reviewed" {
+		if entry.Status != registryReviewed {
 			problems = append(problems, fmt.Sprintf(
 				"depguard-deny: %s:%s is %q; only a reviewed policy permits a collaboration",
 				dependencyPoliciesFile, entry.ID, entry.Status))

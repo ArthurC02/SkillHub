@@ -165,6 +165,7 @@ func documentCheckers() []namedChecker {
 		{"complexity-exemptions", complexityExemptionProblems},
 		{"architecture-budget", architectureBudgetProblems},
 		{"transaction-callbacks", transactionCallbackProblems},
+		{"wiring-interactions", wiringInteractionProblems},
 	}
 }
 

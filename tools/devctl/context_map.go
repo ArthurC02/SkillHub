@@ -194,7 +194,7 @@ func reviewedContextEntries(data string, problems []string) ([]identityEntry, []
 	}
 	var entries []identityEntry
 	for _, context := range doc.Contexts {
-		if context.Status != "reviewed" {
+		if context.Status != registryReviewed {
 			problems = append(problems, fmt.Sprintf(
 				"%s:%s is %q; only a reviewed Context carries an architecture identity",
 				registryContextsFile, context.ID, context.Status))
