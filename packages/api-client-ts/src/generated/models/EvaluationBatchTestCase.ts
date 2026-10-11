@@ -40,7 +40,7 @@ export interface EvaluationBatchTestCase {
      */
     passed: number;
     /**
-     * Trials judged met
+     * Trials judged met, partially met or not met.
      */
     judged: number;
     /**

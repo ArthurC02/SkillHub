@@ -17,6 +17,8 @@ export * from './CatalogResponse';
 export * from './CategorizedFindings';
 export * from './ClearModelCallBudgetRequest';
 export * from './ClearSkillRestrictionRequest';
+export * from './CompareEvaluationBatches200Response';
+export * from './CompareEvaluationBatches200ResponseDifference95';
 export * from './ConfirmRunPreflight201Response';
 export * from './ConfirmRunPreflightRequest';
 export * from './ContinueRunRequest';

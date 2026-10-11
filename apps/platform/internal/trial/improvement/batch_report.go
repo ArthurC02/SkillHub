@@ -27,7 +27,7 @@ func (o TrialOutcome) judged() bool {
 }
 
 const (
-	wilsonZ95 = 1.959963984540054
+	normalZ95 = 1.959963984540054
 	runFailed = "failed"
 )
 
@@ -248,9 +248,9 @@ func passRate(passed, judged int) (*float64, *Interval) {
 	n, p := float64(judged), float64(passed)/float64(judged)
 	// Wilson score interval: the normal approximation recentred and shrunk toward 1/2,
 	// so it stays inside [0,1] and keeps its coverage at small n or p near 0 or 1.
-	z2 := wilsonZ95 * wilsonZ95
+	z2 := normalZ95 * normalZ95
 	denominator := 1 + z2/n
 	centre := (p + z2/(2*n)) / denominator
-	half := wilsonZ95 * math.Sqrt(p*(1-p)/n+z2/(4*n*n)) / denominator
+	half := normalZ95 * math.Sqrt(p*(1-p)/n+z2/(4*n*n)) / denominator
 	return &p, &Interval{Low: centre - half, High: centre + half}
 }

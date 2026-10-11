@@ -5172,6 +5172,65 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/evaluation-batches/{batchId}/comparison:
+    get:
+      operationId: compareEvaluationBatches
+      summary: This batch against another of the same skill, test case by test case (EVAL-014)
+      description: |
+        Each test case judged in both batches is one pair; its difference is
+        this batch's pass rate on that test case minus the other's. The result
+        is the mean difference with a 95% interval from the paired standard
+        error, so test cases that are hard for both versions do not widen it.
+        Test cases judged in only one batch are counted as unpaired and left
+        out. The interval needs at least two pairs.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: batchId
+          in: path
+          required: true
+          description: The candidate batch.
+          schema: { type: string, format: uuid }
+        - name: against
+          in: query
+          required: true
+          description: The baseline batch.
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The paired comparison.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [baseline, candidate, paired, unpaired, candidate_better, baseline_better, tied]
+                properties:
+                  baseline: { $ref: "#/components/schemas/EvaluationBatch" }
+                  candidate: { $ref: "#/components/schemas/EvaluationBatch" }
+                  paired: { type: integer }
+                  unpaired: { type: integer }
+                  difference: { type: number, description: Mean of candidate minus baseline pass rate per test case. }
+                  difference_95:
+                    type: object
+                    required: [low, high]
+                    properties:
+                      low: { type: number }
+                      high: { type: number }
+                  candidate_better: { type: integer }
+                  baseline_better: { type: integer }
+                  tied: { type: integer }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Either batch is not the caller's or not this skill's, or `against` is missing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /runs/{id}/trace:
     get:
       operationId: getRunTrace
@@ -7193,7 +7252,7 @@ components:
           type: array
           items: { $ref: "#/components/schemas/EvaluationBatchTrial" }
         passed: { type: integer, description: Trials whose conversation met every criterion. }
-        judged: { type: integer, description: Trials judged met, partially met or not met. }
+        judged: { type: integer, description: "Trials judged met, partially met or not met." }
         pass_at_k:
           type: boolean
           description: At least one trial passed; absent until that is known.

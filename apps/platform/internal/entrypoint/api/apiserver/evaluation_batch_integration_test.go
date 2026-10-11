@@ -217,6 +217,78 @@ func checkTwoOfThreePassed(t *testing.T, report map[string]any) {
 	}
 }
 
+type seededTrial struct {
+	testCaseID string
+	runID      string
+}
+
+func seedBatchOfOneTrial(t *testing.T, pool *pgxpool.Pool, f fixture, trials ...seededTrial) string {
+	t.Helper()
+	ctx := context.Background()
+	var batchID string
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO evaluation_batches (workspace_id, skill_id, skill_version_id, trials, status)
+		VALUES ($1, $2, $3, 1, 'launched') RETURNING id::text`,
+		mustUUID(t, f.workspaceID), mustUUID(t, f.skillID), mustUUID(t, f.versionID)).Scan(&batchID); err != nil {
+		t.Fatal(err)
+	}
+	for position, trial := range trials {
+		mustExec(t, pool, `
+			INSERT INTO evaluation_batch_items (batch_id, workspace_id, test_case_id, position, trial, summary_hash, run_id)
+			VALUES ($1, $2, $3, $4, 1, 'sha256:summary', $5)`,
+			mustUUID(t, batchID), mustUUID(t, f.workspaceID), mustUUID(t, trial.testCaseID), position, mustUUID(t, trial.runID))
+	}
+	return batchID
+}
+
+func (f fixture) evaluatedRun(t *testing.T, a *api, pool *pgxpool.Pool, testCaseID string, met bool) string {
+	t.Helper()
+	criteria := asksFirst
+	if met {
+		criteria = doesNotAsk
+	}
+	runID := seedFinishedRun(t, pool, f, finishedRun{testCaseID: testCaseID, criteria: criteria, contentHash: "sha256:" + testCaseID})
+	seedFinalOutput(t, pool, f.workspaceID, runID, "共四位。")
+	if err := a.evaluations.Evaluate(context.Background(), mustUUID(t, f.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatal(err)
+	}
+	return runID
+}
+
+func TestTwoBatchesAreComparedOnlyOnTheTestCasesBothJudged(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-batch-compare")
+	improved, steady := f.testCaseID, seedTestCase(t, pool, f.workspaceID, f.skillID)
+	added := seedTestCase(t, pool, f.workspaceID, f.skillID)
+	waiting := seedTestCase(t, pool, f.workspaceID, f.skillID)
+	asking := seedFinishedRun(t, pool, f, finishedRun{testCaseID: waiting, criteria: asksFirst, contentHash: "sha256:waiting"})
+	seedQuestions(t, pool, f.workspaceID, asking, "幾點出發？")
+
+	baseline := seedBatchOfOneTrial(t, pool, f,
+		seededTrial{improved, f.evaluatedRun(t, a, pool, improved, false)},
+		seededTrial{steady, f.evaluatedRun(t, a, pool, steady, true)},
+		seededTrial{waiting, f.evaluatedRun(t, a, pool, waiting, true)})
+	candidate := seedBatchOfOneTrial(t, pool, f,
+		seededTrial{improved, f.evaluatedRun(t, a, pool, improved, true)},
+		seededTrial{steady, f.evaluatedRun(t, a, pool, steady, true)},
+		seededTrial{added, f.evaluatedRun(t, a, pool, added, true)},
+		seededTrial{waiting, asking})
+
+	path := "/skills/" + f.skillID + "/evaluation-batches/" + candidate + "/comparison?against=" + baseline
+	code, body := f.doJSON(t, http.MethodGet, path, "")
+	interval, _ := body["difference_95"].(map[string]any)
+	if code != http.StatusOK || body["paired"] != float64(2) || body["unpaired"] != float64(2) ||
+		body["candidate_better"] != float64(1) || body["tied"] != float64(1) || body["baseline_better"] != float64(0) ||
+		!near(body["difference"], 0.5) || !near(interval["low"], -0.48) || !near(interval["high"], 1.48) {
+		t.Fatalf("comparison: got %d %v, want 2 pairs (an awaiting trial leaves its test case unpaired), one better and one tied, 0.5 within [-0.48, 1.48]", code, body)
+	}
+
+	if code, _ := f.doJSON(t, http.MethodGet, "/skills/"+f.skillID+"/evaluation-batches/"+candidate+"/comparison", ""); code != http.StatusNotFound {
+		t.Errorf("no baseline named: got %d, want 404", code)
+	}
+}
+
 type batchTestCaseWant struct {
 	testCaseID     string
 	outcomes       []string

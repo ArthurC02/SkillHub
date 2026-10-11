@@ -50,6 +50,7 @@ var strangerRoutes = []strangerCase{
 	{pattern: "GET /runs/{id}/comparison", query: "?against=" + anotherRunID, want: http.StatusNotFound},
 	{pattern: "GET /skills/{id}/evaluation-batches", want: http.StatusOK},
 	{pattern: "GET /skills/{id}/evaluation-batches/{batchId}", want: http.StatusNotFound},
+	{pattern: "GET /skills/{id}/evaluation-batches/{batchId}/comparison", query: "?against={batchId}", want: http.StatusNotFound},
 
 	{pattern: "GET /downloads/{artifactId}", want: http.StatusNotFound},
 	{pattern: "GET /downloads/{artifactId}/records", want: http.StatusNotFound},

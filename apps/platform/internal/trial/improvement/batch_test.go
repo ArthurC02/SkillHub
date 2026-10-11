@@ -129,3 +129,16 @@ func TestATerminalRunAsksForABatchAdvanceOnlyWhereABatchIsLaunching(t *testing.T
 		t.Error("a failed lookup was swallowed, want it returned so the event is retried")
 	}
 }
+
+func TestThePairedDifferenceCarriesItsStandardErrorInterval(t *testing.T) {
+	if mean, interval := pairedDifference(nil); mean != nil || interval != nil {
+		t.Errorf("no pair: %v %v, want neither", mean, interval)
+	}
+	if mean, interval := pairedDifference([]float64{0.5}); mean == nil || *mean != 0.5 || interval != nil {
+		t.Errorf("one pair: %v %v, want the difference without an interval", mean, interval)
+	}
+	mean, interval := pairedDifference([]float64{1, 0, 0.5, -0.5})
+	if math.Abs(*mean-0.25) > 1e-9 || math.Abs(interval.Low+0.3826) > 5e-4 || math.Abs(interval.High-0.8826) > 5e-4 {
+		t.Errorf("four pairs: mean %v interval %+v, want 0.25 [-0.3826, 0.8826]", *mean, *interval)
+	}
+}

@@ -33,6 +33,10 @@ type ClearSkillRestrictionRes interface {
 	clearSkillRestrictionRes()
 }
 
+type CompareEvaluationBatchesRes interface {
+	compareEvaluationBatchesRes()
+}
+
 type CompareRunsRes interface {
 	compareRunsRes()
 }

@@ -150,6 +150,48 @@ func (h *Handler) BatchReport(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, viewOfReport(report))
 }
 
+type batchComparisonView struct {
+	Baseline        batchView     `json:"baseline"`
+	Candidate       batchView     `json:"candidate"`
+	Paired          int           `json:"paired"`
+	Unpaired        int           `json:"unpaired"`
+	Difference      *float64      `json:"difference,omitempty"`
+	Difference95    *intervalView `json:"difference_95,omitempty"`
+	CandidateBetter int           `json:"candidate_better"`
+	BaselineBetter  int           `json:"baseline_better"`
+	Tied            int           `json:"tied"`
+}
+
+func (h *Handler) CompareBatches(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	ids, ok := uuids([]string{r.PathValue("id"), r.PathValue("batchId"), r.URL.Query().Get("against")})
+	if !ok {
+		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		return
+	}
+	comparison, err := h.Svc.CompareBatches(r.Context(), ws.ID, ids[0], ids[1], ids[2])
+	if errors.Is(err, ErrNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		return
+	}
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "batch comparison failed")
+		return
+	}
+	view := batchComparisonView{
+		Baseline: viewOfBatch(comparison.Baseline), Candidate: viewOfBatch(comparison.Candidate),
+		Paired: comparison.Paired, Unpaired: comparison.Unpaired, Difference: comparison.Difference,
+		CandidateBetter: comparison.CandidateBetter, BaselineBetter: comparison.BaselineBetter, Tied: comparison.Tied,
+	}
+	if comparison.Difference95 != nil {
+		view.Difference95 = &intervalView{Low: comparison.Difference95.Low, High: comparison.Difference95.High}
+	}
+	httpx.WriteJSON(w, http.StatusOK, view)
+}
+
 func (h *Handler) sessionWorkspace(w http.ResponseWriter, r *http.Request) (identity.Workspace, pgtype.UUID, bool) {
 	user, _ := identity.SessionUser(r.Context())
 	ws, ok := h.workspace(w, r)

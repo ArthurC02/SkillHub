@@ -79,6 +79,11 @@ import {
     ClearSkillRestrictionRequestToJSON,
 } from '../models/ClearSkillRestrictionRequest';
 import {
+    type CompareEvaluationBatches200Response,
+    CompareEvaluationBatches200ResponseFromJSON,
+    CompareEvaluationBatches200ResponseToJSON,
+} from '../models/CompareEvaluationBatches200Response';
+import {
     type ConfirmRunPreflight201Response,
     ConfirmRunPreflight201ResponseFromJSON,
     ConfirmRunPreflight201ResponseToJSON,
@@ -878,6 +883,21 @@ export interface ClearSkillRestrictionOperationRequest {
      * 
      */
     clearSkillRestrictionRequest: ClearSkillRestrictionRequest;
+}
+
+export interface CompareEvaluationBatchesRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * The candidate batch.
+     */
+    batchId: string;
+    /**
+     * The baseline batch.
+     */
+    against: string;
 }
 
 export interface CompareRunsRequest {
@@ -2203,6 +2223,34 @@ export interface DefaultApiInterface {
      * Lift the licensing hold on a skill (SEC-011)
      */
     clearSkillRestriction(requestParameters: ClearSkillRestrictionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for compareEvaluationBatches without sending the request
+     * @param {string} id 
+     * @param {string} batchId The candidate batch.
+     * @param {string} against The baseline batch.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    compareEvaluationBatchesRequestOpts(requestParameters: CompareEvaluationBatchesRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Each test case judged in both batches is one pair; its difference is this batch\'s pass rate on that test case minus the other\'s. The result is the mean difference with a 95% interval from the paired standard error, so test cases that are hard for both versions do not widen it. Test cases judged in only one batch are counted as unpaired and left out. The interval needs at least two pairs. 
+     * @summary This batch against another of the same skill, test case by test case (EVAL-014)
+     * @param {string} id 
+     * @param {string} batchId The candidate batch.
+     * @param {string} against The baseline batch.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    compareEvaluationBatchesRaw(requestParameters: CompareEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CompareEvaluationBatches200Response>>;
+
+    /**
+     * Each test case judged in both batches is one pair; its difference is this batch\'s pass rate on that test case minus the other\'s. The result is the mean difference with a 95% interval from the paired standard error, so test cases that are hard for both versions do not widen it. Test cases judged in only one batch are counted as unpaired and left out. The interval needs at least two pairs. 
+     * This batch against another of the same skill, test case by test case (EVAL-014)
+     */
+    compareEvaluationBatches(requestParameters: CompareEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompareEvaluationBatches200Response>;
 
     /**
      * Creates request options for compareRuns without sending the request
@@ -5913,6 +5961,72 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async clearSkillRestriction(requestParameters: ClearSkillRestrictionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.clearSkillRestrictionRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for compareEvaluationBatches without sending the request
+     */
+    async compareEvaluationBatchesRequestOpts(requestParameters: CompareEvaluationBatchesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling compareEvaluationBatches().'
+            );
+        }
+
+        if (requestParameters['batchId'] == null) {
+            throw new runtime.RequiredError(
+                'batchId',
+                'Required parameter "batchId" was null or undefined when calling compareEvaluationBatches().'
+            );
+        }
+
+        if (requestParameters['against'] == null) {
+            throw new runtime.RequiredError(
+                'against',
+                'Required parameter "against" was null or undefined when calling compareEvaluationBatches().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['against'] != null) {
+            queryParameters['against'] = requestParameters['against'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/skills/{id}/evaluation-batches/{batchId}/comparison`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{batchId}', encodeURIComponent(String(requestParameters['batchId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Each test case judged in both batches is one pair; its difference is this batch\'s pass rate on that test case minus the other\'s. The result is the mean difference with a 95% interval from the paired standard error, so test cases that are hard for both versions do not widen it. Test cases judged in only one batch are counted as unpaired and left out. The interval needs at least two pairs. 
+     * This batch against another of the same skill, test case by test case (EVAL-014)
+     */
+    async compareEvaluationBatchesRaw(requestParameters: CompareEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CompareEvaluationBatches200Response>> {
+        const requestOptions = await this.compareEvaluationBatchesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CompareEvaluationBatches200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Each test case judged in both batches is one pair; its difference is this batch\'s pass rate on that test case minus the other\'s. The result is the mean difference with a 95% interval from the paired standard error, so test cases that are hard for both versions do not widen it. Test cases judged in only one batch are counted as unpaired and left out. The interval needs at least two pairs. 
+     * This batch against another of the same skill, test case by test case (EVAL-014)
+     */
+    async compareEvaluationBatches(requestParameters: CompareEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompareEvaluationBatches200Response> {
+        const response = await this.compareEvaluationBatchesRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**

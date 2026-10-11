@@ -54,6 +54,15 @@ type ClearSkillRestrictionParams struct {
 	ID uuid.UUID
 }
 
+// CompareEvaluationBatchesParams is parameters of compareEvaluationBatches operation.
+type CompareEvaluationBatchesParams struct {
+	ID uuid.UUID
+	// The candidate batch.
+	BatchId uuid.UUID
+	// The baseline batch.
+	Against uuid.UUID
+}
+
 // CompareRunsParams is parameters of compareRuns operation.
 type CompareRunsParams struct {
 	ID uuid.UUID

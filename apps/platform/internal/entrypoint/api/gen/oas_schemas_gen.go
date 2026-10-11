@@ -1746,6 +1746,144 @@ func (s *ClearSkillRestrictionReq) SetNote(val string) {
 	s.Note = val
 }
 
+type CompareEvaluationBatchesNotFound Error
+
+func (*CompareEvaluationBatchesNotFound) compareEvaluationBatchesRes() {}
+
+type CompareEvaluationBatchesOK struct {
+	Baseline  EvaluationBatch `json:"baseline"`
+	Candidate EvaluationBatch `json:"candidate"`
+	Paired    int             `json:"paired"`
+	Unpaired  int             `json:"unpaired"`
+	// Mean of candidate minus baseline pass rate per test case.
+	Difference      OptFloat64                                `json:"difference"`
+	Difference95    OptCompareEvaluationBatchesOKDifference95 `json:"difference_95"`
+	CandidateBetter int                                       `json:"candidate_better"`
+	BaselineBetter  int                                       `json:"baseline_better"`
+	Tied            int                                       `json:"tied"`
+}
+
+// GetBaseline returns the value of Baseline.
+func (s *CompareEvaluationBatchesOK) GetBaseline() EvaluationBatch {
+	return s.Baseline
+}
+
+// GetCandidate returns the value of Candidate.
+func (s *CompareEvaluationBatchesOK) GetCandidate() EvaluationBatch {
+	return s.Candidate
+}
+
+// GetPaired returns the value of Paired.
+func (s *CompareEvaluationBatchesOK) GetPaired() int {
+	return s.Paired
+}
+
+// GetUnpaired returns the value of Unpaired.
+func (s *CompareEvaluationBatchesOK) GetUnpaired() int {
+	return s.Unpaired
+}
+
+// GetDifference returns the value of Difference.
+func (s *CompareEvaluationBatchesOK) GetDifference() OptFloat64 {
+	return s.Difference
+}
+
+// GetDifference95 returns the value of Difference95.
+func (s *CompareEvaluationBatchesOK) GetDifference95() OptCompareEvaluationBatchesOKDifference95 {
+	return s.Difference95
+}
+
+// GetCandidateBetter returns the value of CandidateBetter.
+func (s *CompareEvaluationBatchesOK) GetCandidateBetter() int {
+	return s.CandidateBetter
+}
+
+// GetBaselineBetter returns the value of BaselineBetter.
+func (s *CompareEvaluationBatchesOK) GetBaselineBetter() int {
+	return s.BaselineBetter
+}
+
+// GetTied returns the value of Tied.
+func (s *CompareEvaluationBatchesOK) GetTied() int {
+	return s.Tied
+}
+
+// SetBaseline sets the value of Baseline.
+func (s *CompareEvaluationBatchesOK) SetBaseline(val EvaluationBatch) {
+	s.Baseline = val
+}
+
+// SetCandidate sets the value of Candidate.
+func (s *CompareEvaluationBatchesOK) SetCandidate(val EvaluationBatch) {
+	s.Candidate = val
+}
+
+// SetPaired sets the value of Paired.
+func (s *CompareEvaluationBatchesOK) SetPaired(val int) {
+	s.Paired = val
+}
+
+// SetUnpaired sets the value of Unpaired.
+func (s *CompareEvaluationBatchesOK) SetUnpaired(val int) {
+	s.Unpaired = val
+}
+
+// SetDifference sets the value of Difference.
+func (s *CompareEvaluationBatchesOK) SetDifference(val OptFloat64) {
+	s.Difference = val
+}
+
+// SetDifference95 sets the value of Difference95.
+func (s *CompareEvaluationBatchesOK) SetDifference95(val OptCompareEvaluationBatchesOKDifference95) {
+	s.Difference95 = val
+}
+
+// SetCandidateBetter sets the value of CandidateBetter.
+func (s *CompareEvaluationBatchesOK) SetCandidateBetter(val int) {
+	s.CandidateBetter = val
+}
+
+// SetBaselineBetter sets the value of BaselineBetter.
+func (s *CompareEvaluationBatchesOK) SetBaselineBetter(val int) {
+	s.BaselineBetter = val
+}
+
+// SetTied sets the value of Tied.
+func (s *CompareEvaluationBatchesOK) SetTied(val int) {
+	s.Tied = val
+}
+
+func (*CompareEvaluationBatchesOK) compareEvaluationBatchesRes() {}
+
+type CompareEvaluationBatchesOKDifference95 struct {
+	Low  float64 `json:"low"`
+	High float64 `json:"high"`
+}
+
+// GetLow returns the value of Low.
+func (s *CompareEvaluationBatchesOKDifference95) GetLow() float64 {
+	return s.Low
+}
+
+// GetHigh returns the value of High.
+func (s *CompareEvaluationBatchesOKDifference95) GetHigh() float64 {
+	return s.High
+}
+
+// SetLow sets the value of Low.
+func (s *CompareEvaluationBatchesOKDifference95) SetLow(val float64) {
+	s.Low = val
+}
+
+// SetHigh sets the value of High.
+func (s *CompareEvaluationBatchesOKDifference95) SetHigh(val float64) {
+	s.High = val
+}
+
+type CompareEvaluationBatchesUnauthorized Error
+
+func (*CompareEvaluationBatchesUnauthorized) compareEvaluationBatchesRes() {}
+
 type CompareRunsBadRequest Error
 
 func (*CompareRunsBadRequest) compareRunsRes() {}
@@ -7998,7 +8136,7 @@ type EvaluationBatchTestCase struct {
 	Trials     []EvaluationBatchTrial `json:"trials"`
 	// Trials whose conversation met every criterion.
 	Passed int `json:"passed"`
-	// Trials judged met.
+	// Trials judged met, partially met or not met.
 	Judged int `json:"judged"`
 	// At least one trial passed; absent until that is known.
 	PassAtK OptBool `json:"pass_at_k"`
@@ -14697,6 +14835,52 @@ func (o OptBrowseCatalogValidation) Get() (v BrowseCatalogValidation, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptBrowseCatalogValidation) Or(d BrowseCatalogValidation) BrowseCatalogValidation {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptCompareEvaluationBatchesOKDifference95 returns new OptCompareEvaluationBatchesOKDifference95 with value set to v.
+func NewOptCompareEvaluationBatchesOKDifference95(v CompareEvaluationBatchesOKDifference95) OptCompareEvaluationBatchesOKDifference95 {
+	return OptCompareEvaluationBatchesOKDifference95{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptCompareEvaluationBatchesOKDifference95 is optional CompareEvaluationBatchesOKDifference95.
+type OptCompareEvaluationBatchesOKDifference95 struct {
+	Value CompareEvaluationBatchesOKDifference95
+	Set   bool
+}
+
+// IsSet returns true if OptCompareEvaluationBatchesOKDifference95 was set.
+func (o OptCompareEvaluationBatchesOKDifference95) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptCompareEvaluationBatchesOKDifference95) Reset() {
+	var v CompareEvaluationBatchesOKDifference95
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptCompareEvaluationBatchesOKDifference95) SetTo(v CompareEvaluationBatchesOKDifference95) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptCompareEvaluationBatchesOKDifference95) Get() (v CompareEvaluationBatchesOKDifference95, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptCompareEvaluationBatchesOKDifference95) Or(d CompareEvaluationBatchesOKDifference95) CompareEvaluationBatchesOKDifference95 {
 	if v, ok := o.Get(); ok {
 		return v
 	}
