@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.12.0
+
+### Added
+
+- `resolve-terms` takes `--query` more than once and answers every query in one call; each match names the `query` it answers.
+
 ## 0.11.0
 
 ### Added

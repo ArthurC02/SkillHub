@@ -58,7 +58,7 @@ def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     lookup_parser.add_argument("--query", required=True)
     term_parser = commands.add_parser("resolve-terms")
     add_path(term_parser, "--registry-root")
-    term_parser.add_argument("--query", required=True)
+    term_parser.add_argument("--query", required=True, action="append")
     term_parser.add_argument("--context")
     context_parser = commands.add_parser("get-context")
     add_path(context_parser, "--registry-root")

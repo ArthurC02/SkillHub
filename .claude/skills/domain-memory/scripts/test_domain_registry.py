@@ -2993,6 +2993,18 @@ class DomainRegistryTest(unittest.TestCase):
         matches = resolve_terms(self.repo / "memory", "test case", None)
         self.assertEqual([(term["id"], term["match_kind"]) for term in matches], [("run", "definition")])
 
+    def test_resolve_terms_answers_each_repeated_query_in_order(self) -> None:
+        self.defined_term()
+        result = self.run_cli(
+            "resolve-terms", "--registry-root", str(self.repo / "memory"),
+            "--query", "test case", "--query", "budget", "--query", "a run",
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(
+            [("test case", "run", "definition"), ("a run", "run", "name")],
+            [(match["query"], match["id"], match["match_kind"]) for match in json.loads(result.stdout)],
+        )
+
     def test_a_name_in_the_query_is_a_name_match(self) -> None:
         self.defined_term()
         matches = resolve_terms(self.repo / "memory", "a run", None)
