@@ -50,10 +50,10 @@ def rebased_revisions(
     }
 
 
-def reconcile_pending_update(registry_root: Path, repo_root: Path) -> None:
+def reconcile_pending_update(registry_root: Path, repo_root: Path) -> str | None:
     marker_path = reconciliation_path(registry_root)
     if not marker_path.is_file():
-        return
+        return None
     marker = load_json(marker_path)
     relative = marker.get("package")
     proposal_id = marker.get("proposal_id")
@@ -70,24 +70,33 @@ def reconcile_pending_update(registry_root: Path, repo_root: Path) -> None:
     proposal = load_json(proposal_path)
     if proposal.get("proposal_id") != proposal_id:
         raise ValueError("registry reconciliation marker does not match its proposal")
-    if proposal.get("status") == "applied":
-        marker_path.unlink()
-        return
-    if proposal.get("status") != "approved":
-        raise ValueError("registry reconciliation requires an approved proposal")
+    outcome = _reconciled(proposal_path, proposal, registry_root, repo_root)
+    marker_path.unlink()
+    return outcome
+
+
+def _was_applied(registry_root: Path, proposal_id: str) -> bool:
     from .audit import read_events
 
-    events = read_events(registry_root)
-    if (
-        not events
-        or events[-1].get("operation") != "apply-approved-updates"
-        or events[-1].get("proposal_id") != proposal_id
-    ):
+    return any(
+        event.get("operation") == "apply-approved-updates" and event.get("proposal_id") == proposal_id
+        for event in read_events(registry_root)
+    )
+
+
+def _reconciled(proposal_path: Path, proposal: dict[str, Any], registry_root: Path, repo_root: Path) -> str:
+    proposal_id = proposal["proposal_id"]
+    if proposal.get("status") == "applied":
+        return f"{proposal_id} was already marked applied"
+    if not _was_applied(registry_root, proposal_id):
+        return f"{proposal_id} was never applied: the audit log holds no apply for it, so the Registry is unchanged"
+    if proposal.get("status") != "approved":
         raise ValueError(
-            "registry reconciliation cannot prove the approved update was committed"
+            f"the audit log records an apply of {proposal_id}, but its proposal is "
+            f"{proposal.get('status')}; reconcile the package with the Registry by hand"
         )
     mark_applied(proposal_path, proposal, registry_root, repo_root)
-    marker_path.unlink()
+    return f"{proposal_id} was applied before an interruption and is now marked applied"
 
 
 def review_field(asset: str) -> str:
@@ -354,18 +363,23 @@ def apply_approved_updates(
             "proposal_id": proposal["proposal_id"],
         },
     )
-    mutate_registry(
-        registry_root,
-        repo_root,
-        mutate,
-        accepted_digest,
-        audit_event=lambda: {
-            "operation": "apply-approved-updates",
-            "proposal_id": proposal["proposal_id"],
-            **rebased_revisions(base_revision, accepted_digest, registry_root, repo_root),
-            "to_revision": current_registry_revision(registry_root, repo_root),
-        },
-    )
+    try:
+        mutate_registry(
+            registry_root,
+            repo_root,
+            mutate,
+            accepted_digest,
+            audit_event=lambda: {
+                "operation": "apply-approved-updates",
+                "proposal_id": proposal["proposal_id"],
+                **rebased_revisions(base_revision, accepted_digest, registry_root, repo_root),
+                "to_revision": current_registry_revision(registry_root, repo_root),
+            },
+        )
+    except Exception:
+        if not _was_applied(registry_root, proposal["proposal_id"]):
+            reconciliation_path(registry_root).unlink(missing_ok=True)
+        raise
     mark_applied(package_root / "domain-change-proposal.json", proposal, registry_root, repo_root)
     reconciliation_path(registry_root).unlink(missing_ok=True)
 

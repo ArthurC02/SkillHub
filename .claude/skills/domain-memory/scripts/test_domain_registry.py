@@ -63,7 +63,7 @@ from domain_registry.cli_parser import build_parser
 from domain_registry.impact import boundary_impact
 from domain_registry.policy import amend_policy, amend_policy_fields, validate_policy
 from domain_registry.readiness import assess_readiness
-from domain_registry.relocate import relocate_evidence
+from domain_registry.relocate import Recitation, recite, relocate_evidence
 from domain_registry.registry import (
     asset_records,
     boundary_analysis,
@@ -2599,7 +2599,7 @@ class DomainRegistryTest(unittest.TestCase):
         package = self.drafted_with_updates(
             [{"operation": "upsert", "asset": "nonsense", "record": {"id": "x"}}]
         )
-        with self.assertRaisesRegex(ValueError, "registry update has an invalid asset or record"):
+        with self.assertRaisesRegex(ValueError, "registry update names unknown asset 'nonsense'"):
             self.approve_and_apply(package)
         self.assertEqual(self.rule_ids(), [])
 
@@ -5380,6 +5380,172 @@ class DomainRegistryTest(unittest.TestCase):
                     ObligationRun("OB-1", self.run_writing("ok"), "unit", cwd=cwd), 60,
                 )
         self.assertEqual(before, (package / "evidence-bundle.json").read_bytes())
+
+    def update_errors(self, updates: Any) -> list[str]:
+        package = self.drafted_with_updates(updates)
+        return [error for error in validate_change_package(package, self.repo / "memory") if "registry update" in error]
+
+    def test_validation_names_a_list_key_given_as_an_asset_and_the_asset_that_holds_it(self) -> None:
+        [error] = self.update_errors([{"operation": "upsert", "asset": "dependencies", "record": {"id": "x"}}])
+        self.assertIn("registry update names unknown asset 'dependencies'; valid assets: aggregates,", error)
+        self.assertIn("'dependencies' is the list inside dependency-policies.json, whose asset is 'dependency-policies'", error)
+
+    def test_validation_names_an_unknown_asset_without_a_holder_hint(self) -> None:
+        [error] = self.update_errors([{"operation": "remove", "asset": "nonsense", "id": "x"}])
+        self.assertIn("registry update names unknown asset 'nonsense'; valid assets:", error)
+        self.assertNotIn("is the list inside", error)
+
+    def test_validation_names_the_asset_of_an_update_without_a_record(self) -> None:
+        self.assertEqual(
+            ["registry update for rules needs a record with an id, or a remove with an id"],
+            self.update_errors([{"operation": "upsert", "asset": "rules"}]),
+        )
+
+    def test_validation_refuses_registry_updates_that_are_not_a_list(self) -> None:
+        package = self.drafted_with_updates({"operation": "upsert"})
+        self.assertIn(
+            "domain-change-proposal.json registry_updates must be a list",
+            validate_change_package(package, self.repo / "memory"),
+        )
+
+    def marker(self) -> Path:
+        return self.repo / "memory" / ".domain-registry-reconciliation.json"
+
+    def test_an_apply_that_fails_before_committing_leaves_no_marker(self) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.redraft_removal(package, "PRO-1", "missing-rule", None)
+        with self.assertRaisesRegex(ValueError, "cannot remove absent record"):
+            self.approve_and_apply(package)
+        self.assertFalse(self.marker().exists())
+
+    def test_an_apply_that_fails_after_its_audit_event_keeps_the_marker(self) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.approve_and_finalize(package)
+
+        def committed_then_failed(root: Path, *_args: Any, **_kwargs: Any) -> None:
+            append_audit(root, {"operation": "apply-approved-updates", "proposal_id": "PRO-1"})
+            raise OSError("disk went away")
+
+        with patch("domain_registry.updates.mutate_registry", side_effect=committed_then_failed), \
+                self.assertRaises(OSError):
+            apply_approved_updates(package, self.repo / "memory", self.repo)
+        self.assertTrue(self.marker().exists())
+
+    def pending_marker(self, status: str, applied: bool) -> Path:
+        package = self.repo / "proposal"
+        package.mkdir()
+        proposal_path = package / "domain-change-proposal.json"
+        proposal_path.write_text(json.dumps({"proposal_id": "PRO-1", "status": status}), encoding="utf-8")
+        self.marker().write_text(json.dumps({"package": "proposal", "proposal_id": "PRO-1"}), encoding="utf-8")
+        if applied:
+            append_audit(self.repo / "memory", {"operation": "apply-approved-updates", "proposal_id": "PRO-1"})
+            append_audit(self.repo / "memory", {"operation": "upsert-candidate", "record_id": "later"})
+        return proposal_path
+
+    def test_reconciling_clears_the_marker_of_a_proposal_that_was_never_applied(self) -> None:
+        for status in ("approved", "superseded"):
+            with self.subTest(status=status):
+                self.tearDown()
+                self.setUp()
+                proposal_path = self.pending_marker(status, applied=False)
+                outcome = reconcile_pending_update(self.repo / "memory", self.repo)
+                self.assertIn("PRO-1 was never applied", outcome)
+                self.assertFalse(self.marker().exists())
+                self.assertEqual(status, json.loads(proposal_path.read_text(encoding="utf-8"))["status"])
+
+    def test_reconciling_marks_applied_when_the_apply_event_is_not_the_latest(self) -> None:
+        proposal_path = self.pending_marker("approved", applied=True)
+        outcome = reconcile_pending_update(self.repo / "memory", self.repo)
+        self.assertIn("now marked applied", outcome)
+        self.assertEqual("applied", json.loads(proposal_path.read_text(encoding="utf-8"))["status"])
+        self.assertFalse(self.marker().exists())
+
+    def test_reconciling_refuses_an_applied_update_whose_proposal_was_superseded(self) -> None:
+        self.pending_marker("superseded", applied=True)
+        with self.assertRaisesRegex(ValueError, "records an apply of PRO-1, but its proposal is superseded"):
+            reconcile_pending_update(self.repo / "memory", self.repo)
+        self.assertTrue(self.marker().exists())
+
+    def test_recovery_reports_that_nothing_was_interrupted_or_pending(self) -> None:
+        result = self.run_cli(
+            "recover-registry-update", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo)
+        )
+        self.assertEqual(
+            (0, ["No interrupted Registry update.", "No pending apply to reconcile."]),
+            (result.returncode, result.stdout.splitlines()),
+        )
+
+    def test_recovery_without_a_repo_root_says_a_pending_apply_remains(self) -> None:
+        self.pending_marker("superseded", applied=False)
+        result = self.run_cli("recover-registry-update", "--registry-root", str(self.repo / "memory"))
+        self.assertEqual(1, result.returncode)
+        self.assertIn("ERROR: a pending apply remains; rerun with --repo-root", result.stdout)
+        self.assertTrue(self.marker().exists())
+
+    def test_recovery_with_a_repo_root_reconciles_a_pending_apply(self) -> None:
+        self.pending_marker("superseded", applied=False)
+        result = self.run_cli(
+            "recover-registry-update", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo)
+        )
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertIn("Pending apply reconciled: PRO-1 was never applied", result.stdout)
+        self.assertFalse(self.marker().exists())
+
+    def cited_rule(self, status: str, *spans: tuple[int, int]) -> None:
+        (self.repo / "src").mkdir()
+        (self.repo / "src" / "a.py").write_text("one\ntwo\nthree\n", encoding="utf-8")
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        rule = {
+            "id": "rule", "contexts": ["orders"], "statement": "S.", "status": status,
+            "evidence": [citation(self.repo, "src/a.py", start, end) for start, end in spans],
+            "review": {"proposal_id": "PRO-1"},
+        }
+        self.seed("rules.json", [rule])
+        (self.repo / "src" / "a.py").write_text("zero\none\ntwo\nthree\n", encoding="utf-8")
+
+    def test_reciting_a_reviewed_record_prints_its_update_and_the_proposal_to_supersede(self) -> None:
+        self.cited_rule("reviewed", (2, 2))
+        result = recite(self.repo / "memory", self.repo, Recitation("rules", "rule", "src/a.py", "3", None))
+        [update] = result["registry_updates"]
+        [reference] = update["record"]["evidence"]
+        self.assertEqual(
+            ({"start": 3, "end": 3}, "current", ["PRO-1"], [], False),
+            (reference["lines"], verify(reference, self.repo)["status"], result["supersedes"],
+             result["candidates"], "review" in update["record"]),
+        )
+
+    def test_reciting_a_candidate_prints_it_as_a_candidate(self) -> None:
+        self.cited_rule("candidate", (2, 2))
+        result = recite(self.repo / "memory", self.repo, Recitation("rules", "rule", "src/a.py", "3-4", None))
+        self.assertEqual(([], []), (result["registry_updates"], result["supersedes"]))
+        self.assertEqual({"start": 3, "end": 4}, result["candidates"][0]["record"]["evidence"][0]["lines"])
+
+    def test_reciting_one_of_several_citations_of_a_file_needs_replace(self) -> None:
+        self.cited_rule("reviewed", (1, 1), (2, 3))
+        with self.assertRaisesRegex(ValueError, "has 2 citations of src/a.py.*It cites: src/a.py:1-1, src/a.py:2-3"):
+            recite(self.repo / "memory", self.repo, Recitation("rules", "rule", "src/a.py", "3-4", None))
+        result = recite(self.repo / "memory", self.repo, Recitation("rules", "rule", "src/a.py", "3-4", "src/a.py:2-3"))
+        self.assertEqual(
+            [{"start": 1, "end": 1}, {"start": 3, "end": 4}],
+            [reference["lines"] for reference in result["registry_updates"][0]["record"]["evidence"]],
+        )
+
+    def test_reciting_refuses_an_unknown_record_and_a_malformed_range(self) -> None:
+        self.cited_rule("reviewed", (2, 2))
+        for record_id, lines, message in (("ghost", "3", "no rules record ghost"), ("rule", "3-x", "lines must be")):
+            with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                recite(self.repo / "memory", self.repo, Recitation("rules", record_id, "src/a.py", lines, None))
+
+    def test_reciting_from_the_command_line_prints_the_update(self) -> None:
+        self.cited_rule("reviewed", (2, 2))
+        result = self.run_cli(
+            "recite", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+            "--asset", "rules", "--id", "rule", "--path", "src/a.py", "--lines", "3",
+        )
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertEqual(["PRO-1"], json.loads(result.stdout)["supersedes"])
 
 
 if __name__ == "__main__":

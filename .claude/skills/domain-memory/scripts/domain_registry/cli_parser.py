@@ -23,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     commands = parser.add_subparsers(dest="command", required=True)
     for add_commands in (
-        _add_registry_commands, _add_record_and_source_commands, _add_governance_commands,
+        _add_registry_commands, _add_recite_command, _add_record_and_source_commands, _add_governance_commands,
         _add_review_governance_commands, _add_proposal_commands, _add_proposal_check_commands,
     ):
         add_commands(commands)
@@ -82,6 +82,17 @@ def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     relocate_parser.add_argument("--to", dest="moved_to", required=True)
 
 
+def _add_recite_command(commands: argparse._SubParsersAction) -> None:
+    recite_parser = commands.add_parser("recite")
+    add_path(recite_parser, "--registry-root")
+    add_path(recite_parser, "--repo-root")
+    add_asset(recite_parser)
+    recite_parser.add_argument("--id", required=True)
+    recite_parser.add_argument("--path", required=True)
+    recite_parser.add_argument("--lines", required=True)
+    recite_parser.add_argument("--replace")
+
+
 def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> None:
     cite_parser = commands.add_parser("cite")
     add_path(cite_parser, "--repo-root")
@@ -131,6 +142,7 @@ def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> Non
     add_path(evidence_migrate_parser, "--repo-root")
     recovery_parser = commands.add_parser("recover-registry-update")
     add_path(recovery_parser, "--registry-root")
+    add_path(recovery_parser, "--repo-root", required=False)
     recovery_parser.add_argument("--force", action="store_true")
 
 

@@ -50,16 +50,39 @@ def parsed_update(update: Any) -> ParsedUpdate:
         raise ValueError("each registry update must be an upsert or a remove")
     removing = update.get("operation") == "remove"
     asset = update.get("asset")
+    if not isinstance(asset, str) or f"{asset}.json" not in ASSET_KEYS:
+        raise ValueError(unknown_asset_message(asset))
     record = None if removing else update.get("record")
     record_id = update.get("id") if removing else (record or {}).get("id")
-    if (
-        not isinstance(asset, str)
-        or f"{asset}.json" not in ASSET_KEYS
-        or (not removing and not isinstance(record, dict))
-        or not completed_identifier(record_id)
-    ):
-        raise ValueError("registry update has an invalid asset or record")
+    if (not removing and not isinstance(record, dict)) or not completed_identifier(record_id):
+        raise ValueError(f"registry update for {asset} needs a record with an id, or a remove with an id")
     return ParsedUpdate(asset, record_id, record)
+
+
+def unknown_asset_message(asset: Any) -> str:
+    valid = sorted(name.removesuffix(".json") for name in ASSET_KEYS)
+    message = f"registry update names unknown asset {asset!r}; valid assets: {', '.join(valid)}"
+    holder = next((name for name, key in ASSET_KEYS.items() if key == asset), None)
+    if holder is not None:
+        message += f"; {asset!r} is the list inside {holder}, whose asset is {holder.removesuffix('.json')!r}"
+    return message
+
+
+def registry_update_errors(proposal: dict[str, Any]) -> list[str]:
+    updates = proposal.get("registry_updates")
+    if updates is None:
+        return []
+    if not isinstance(updates, list):
+        return ["domain-change-proposal.json registry_updates must be a list"]
+    return [error for error in map(_update_error, updates) if error]
+
+
+def _update_error(update: Any) -> str | None:
+    try:
+        parsed_update(update)
+    except ValueError as error:
+        return str(error)
+    return None
 
 
 def as_if_moved_to(status: str, documents: dict[str, Any]) -> dict[str, Any]:
@@ -627,6 +650,7 @@ def validate_change_package(
         requirement, proposal
     )
     errors.extend(proposal_errors)
+    errors.extend(registry_update_errors(proposal))
     status = proposal.get("status")
     revision = proposal.get("proposal_revision")
     rule_ids = proposal.get("rule_ids", [])

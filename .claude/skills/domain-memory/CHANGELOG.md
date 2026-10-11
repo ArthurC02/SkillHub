@@ -2,6 +2,19 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.17.0
+
+### Added
+
+- `recite --asset --id --path --lines [--replace]` re-cites one citation of a record whose code changed in place and prints the update, ready for a Change Package.
+- `recover-registry-update` takes `--repo-root` and with it reconciles a pending apply.
+
+### Fixed
+
+- `validate-change-package` refuses a registry update that names an unknown asset, listing the valid ones, and names the asset whose list key was given instead, such as `dependencies` for `dependency-policies`. Such an update used to pass every stage until apply.
+- A failed apply no longer leaves its reconciliation marker behind. Reconciling reads the whole audit log: a proposal with no apply event is cleared whatever its status, instead of blocking every later apply.
+- `recover-registry-update` says whether there was anything to recover and reports a pending apply that remains, instead of always printing that it recovered.
+
 ## 0.16.0
 
 ### Added

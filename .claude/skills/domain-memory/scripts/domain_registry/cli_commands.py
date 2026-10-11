@@ -37,7 +37,7 @@ from .policy import (
 )
 from .readiness import assess_readiness
 from .impact import boundary_impact
-from .relocate import relocate_evidence
+from .relocate import Recitation, recite, relocate_evidence
 from .registry import (
     boundary_analysis,
     context_model,
@@ -64,11 +64,13 @@ from .sources import (
     verify_source_map,
     write_source_map,
 )
-from .transaction import recover_interrupted_update
+from .transaction import recover_interrupted_update, transaction_path
 from .updates import (
     apply_approved_updates,
     demote_local_reviews,
     promote_candidate,
+    reconcile_pending_update,
+    reconciliation_path,
     retract_candidate,
     upsert_candidate,
 )
@@ -195,6 +197,16 @@ def handle_relocate_evidence(args: argparse.Namespace) -> int:
     print_json(
         relocate_evidence(
             args.registry_root.resolve(), args.repo_root.resolve(), args.moved_from, args.moved_to
+        )
+    )
+    return 0
+
+
+def handle_recite(args: argparse.Namespace) -> int:
+    print_json(
+        recite(
+            args.registry_root.resolve(), args.repo_root.resolve(),
+            Recitation(args.asset, args.id, args.path, args.lines, args.replace),
         )
     )
     return 0
@@ -328,8 +340,17 @@ def handle_migrate_evidence(args: argparse.Namespace) -> int:
 
 
 def handle_recover_registry_update(args: argparse.Namespace) -> int:
-    recover_interrupted_update(args.registry_root.resolve(), args.force)
-    print("Interrupted Registry update recovered.")
+    root = args.registry_root.resolve()
+    interrupted = transaction_path(root).is_file()
+    recover_interrupted_update(root, args.force)
+    print("Interrupted Registry update recovered." if interrupted else "No interrupted Registry update.")
+    if args.repo_root is not None:
+        outcome = reconcile_pending_update(root, args.repo_root.resolve())
+        print(f"Pending apply reconciled: {outcome}." if outcome else "No pending apply to reconcile.")
+        return 0
+    if reconciliation_path(root).is_file():
+        print("ERROR: a pending apply remains; rerun with --repo-root to reconcile it")
+        return 1
     return 0
 
 
@@ -664,6 +685,7 @@ HANDLERS = {
     "analyze-boundary": handle_analyze_boundary,
     "boundary-impact": handle_boundary_impact,
     "relocate-evidence": handle_relocate_evidence,
+    "recite": handle_recite,
     "cite": handle_cite,
     "upsert-candidate": handle_upsert_candidate,
     "retract-candidate": handle_retract_candidate,
