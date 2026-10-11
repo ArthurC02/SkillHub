@@ -1,7 +1,7 @@
 -- name: CreateRun :one
 INSERT INTO runs (
-    workspace_id, skill_version_id, test_case_snapshot_id, provider, status
-) VALUES ($1, $2, $3, $4, $5)
+    workspace_id, skill_version_id, test_case_snapshot_id, provider, status, origin_key
+) VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: InsertRunSnapshots :exec
@@ -16,6 +16,9 @@ SELECT run_id, policy_snapshot FROM run_snapshots WHERE run_id = ANY(@run_ids::u
 
 -- name: GetRun :one
 SELECT * FROM runs WHERE id = $1 AND workspace_id = $2;
+
+-- name: GetRunByOriginKey :one
+SELECT * FROM runs WHERE workspace_id = @workspace_id AND origin_key = @origin_key;
 
 -- name: GetRunCancellation :one
 SELECT status, cancel_requested_at FROM runs WHERE id = $1 AND workspace_id = $2;

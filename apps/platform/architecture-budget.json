@@ -70,10 +70,8 @@
     "trial/design.Service.ClearSightings",
     "trial/design.Service.GuardDatasetObjectRemoval",
     "trial/design.Service.LockLiveSkillForCreate",
-    "trial/execution.CreateParams.SameTransaction",
     "trial/execution.Service.ClearSightings",
-    "trial/execution.Service.GuardArtifactUploadIntentRemoval",
-    "trial/improvement.BatchRun.Link"
+    "trial/execution.Service.GuardArtifactUploadIntentRemoval"
   ],
   "wiring_edges": [
     "analytics->run",

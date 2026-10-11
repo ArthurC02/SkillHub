@@ -246,7 +246,7 @@ func (s *Service) writeCreated(ctx context.Context, w runTx, r *Run, event Statu
 	row, err := q.CreateRun(ctx, gen.CreateRunParams{
 		WorkspaceID: r.row.WorkspaceID, SkillVersionID: r.row.SkillVersionID,
 		TestCaseSnapshotID: r.row.TestCaseSnapshotID, Provider: r.row.Provider,
-		Status: r.row.Status,
+		Status: r.row.Status, OriginKey: r.row.OriginKey,
 	})
 	if err != nil {
 		return err

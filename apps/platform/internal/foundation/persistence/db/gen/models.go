@@ -751,6 +751,8 @@ type Run struct {
 	CleanupAttemptedAt   pgtype.Timestamptz
 	ArtifactsTruncated   bool
 	ActivityUpdatedAt    pgtype.Timestamptz
+	// The caller's name for the request that started this run; asking again with the same name returns this run instead of starting another.
+	OriginKey *string
 }
 
 type RunArtifactUploadIntent struct {
@@ -789,6 +791,8 @@ type RunContinuation struct {
 	Answers        []byte
 	AnsweredBy     pgtype.UUID
 	CreatedAt      pgtype.Timestamptz
+	// The answers were given by a test case's simulated user, not by a person.
+	AnsweredAsSimulatedUser bool
 }
 
 type RunPermissionConfirmation struct {

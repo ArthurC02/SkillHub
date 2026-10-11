@@ -57,3 +57,16 @@ func RefusalReason(err error) (string, bool) {
 	r, isRefusal := errors.AsType[refusal](err)
 	return r.reason, isRefusal
 }
+
+var passingRefusals = map[string]bool{
+	ReasonWorkspaceConcurrency: true,
+	ReasonScanUnavailable:      true,
+}
+
+func RefusalPasses(err error) bool {
+	if errors.Is(err, ErrDispatchHalted) {
+		return true
+	}
+	reason, refused := RefusalReason(err)
+	return refused && passingRefusals[reason]
+}

@@ -148,6 +148,7 @@ queries:
   ListRunPolicies: run
   AccountPurgeReady: run
   GetRun: run
+  GetRunByOriginKey: run
   GetRunCancellation: run
   ListWorkspaceRuns: run
   ListRunActivityFacts: run

@@ -55,18 +55,19 @@ func (q *Queries) GetRunSettings(ctx context.Context) (RunSetting, error) {
 }
 
 const insertRunContinuation = `-- name: InsertRunContinuation :one
-INSERT INTO run_continuations (run_id, workspace_id, continues_run_id, questions, answers, answered_by)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING run_id, workspace_id, continues_run_id, questions, answers, answered_by, created_at
+INSERT INTO run_continuations (run_id, workspace_id, continues_run_id, questions, answers, answered_by, answered_as_simulated_user)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING run_id, workspace_id, continues_run_id, questions, answers, answered_by, created_at, answered_as_simulated_user
 `
 
 type InsertRunContinuationParams struct {
-	RunID          pgtype.UUID
-	WorkspaceID    pgtype.UUID
-	ContinuesRunID pgtype.UUID
-	Questions      []byte
-	Answers        []byte
-	AnsweredBy     pgtype.UUID
+	RunID                   pgtype.UUID
+	WorkspaceID             pgtype.UUID
+	ContinuesRunID          pgtype.UUID
+	Questions               []byte
+	Answers                 []byte
+	AnsweredBy              pgtype.UUID
+	AnsweredAsSimulatedUser bool
 }
 
 func (q *Queries) InsertRunContinuation(ctx context.Context, arg InsertRunContinuationParams) (RunContinuation, error) {
@@ -77,6 +78,7 @@ func (q *Queries) InsertRunContinuation(ctx context.Context, arg InsertRunContin
 		arg.Questions,
 		arg.Answers,
 		arg.AnsweredBy,
+		arg.AnsweredAsSimulatedUser,
 	)
 	var i RunContinuation
 	err := row.Scan(
@@ -87,6 +89,7 @@ func (q *Queries) InsertRunContinuation(ctx context.Context, arg InsertRunContin
 		&i.Answers,
 		&i.AnsweredBy,
 		&i.CreatedAt,
+		&i.AnsweredAsSimulatedUser,
 	)
 	return i, err
 }

@@ -40,9 +40,10 @@ func seedBatchByCreator(t *testing.T, pool *pgxpool.Pool, f fixture, runIDs ...s
 }
 
 type continued struct {
-	prompt  string
-	facts   []string
-	answers []string
+	prompt    string
+	facts     []string
+	answers   []string
+	simulated bool
 }
 
 func continuationOf(t *testing.T, pool *pgxpool.Pool, runID string) (continued, bool) {
@@ -50,11 +51,11 @@ func continuationOf(t *testing.T, pool *pgxpool.Pool, runID string) (continued, 
 	var c continued
 	var raw []byte
 	err := pool.QueryRow(context.Background(), `
-		SELECT s.user_prompt, s.simulated_user_facts, c.answers
+		SELECT s.user_prompt, s.simulated_user_facts, c.answers, c.answered_as_simulated_user
 		FROM run_continuations c
 		JOIN runs r ON r.id = c.run_id
 		JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
-		WHERE c.continues_run_id = $1`, mustUUID(t, runID)).Scan(&c.prompt, &c.facts, &raw)
+		WHERE c.continues_run_id = $1`, mustUUID(t, runID)).Scan(&c.prompt, &c.facts, &raw, &c.simulated)
 	if err != nil {
 		return continued{}, false
 	}
@@ -92,6 +93,9 @@ func TestABatchAnswersAQuestionAsTheSimulatedPersonOnlyWhereTheTestCaseHasFacts(
 	reply := eval.SimulatedUserReply(waterFacts)
 	if !found || !slices.Equal(next.answers, []string{reply, reply}) {
 		t.Fatalf("the trial with facts was answered %v (found %v), want both questions answered with %q", next.answers, found, reply)
+	}
+	if !next.simulated {
+		t.Error("the continuation the batch answered is not marked as answered by the simulated person")
 	}
 	if !strings.Contains(next.prompt, "本期用水 45 度") {
 		t.Errorf("the continuing run's prompt %q does not carry the simulated person's facts", next.prompt)

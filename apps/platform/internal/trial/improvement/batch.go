@@ -41,7 +41,6 @@ var (
 	ErrRunMustWait    = errors.New("the workspace cannot start a run right now; the batch waits for its turn")
 	ErrNoFurtherRound = errors.New("this trial's conversation cannot take another answer")
 	errBatchPorts     = errors.New("eval: batch run ports are not injected")
-	errItemTaken      = errors.New("eval: another advance already started this trial")
 )
 
 type UnconfirmedTestCasesError struct{ TestCaseIDs []pgtype.UUID }
@@ -66,7 +65,7 @@ type BatchRun struct {
 	TestCaseID    pgtype.UUID
 	SummaryHash   string
 	WithholdSkill bool
-	Link          func(ctx context.Context, tx pgx.Tx, runID pgtype.UUID) error
+	OriginKey     string
 }
 
 type ChainEnd struct {
@@ -245,10 +244,10 @@ func (s *BatchService) startNextTrial(ctx context.Context, workspaceID pgtype.UU
 	if !next.CreatedBy.Valid {
 		return true, s.stopBatch(ctx, q, workspaceID, next.BatchID, stopReasonCreatorGone)
 	}
-	_, err = s.Ports.StartRun(ctx, BatchRun{
+	runID, err := s.Ports.StartRun(ctx, BatchRun{
 		WorkspaceID: workspaceID, Actor: next.CreatedBy, SkillID: next.SkillID,
 		VersionID: next.SkillVersionID, TestCaseID: next.TestCaseID, SummaryHash: next.SummaryHash,
-		WithholdSkill: next.SkillWithheld, Link: linkTrial(workspaceID, next),
+		WithholdSkill: next.SkillWithheld, OriginKey: trialOriginKey(next),
 	})
 	if errors.Is(err, ErrRunMustWait) {
 		return false, nil
@@ -256,23 +255,19 @@ func (s *BatchService) startNextTrial(ctx context.Context, workspaceID pgtype.UU
 	if refused, isRefused := errors.AsType[RunRefusedError](err); isRefused {
 		return true, s.stopBatch(ctx, q, workspaceID, next.BatchID, refused.Reason)
 	}
-	if errors.Is(err, errItemTaken) {
-		return true, nil
+	if err != nil {
+		return false, err
 	}
+	_, err = q.LinkBatchItemRun(ctx, gen.LinkBatchItemRunParams{
+		RunID: runID, BatchID: next.BatchID, TestCaseID: next.TestCaseID,
+		Trial: next.Trial, SkillWithheld: next.SkillWithheld, WorkspaceID: workspaceID,
+	})
 	return err == nil, err
 }
 
-func linkTrial(workspaceID pgtype.UUID, item gen.ClaimNextBatchItemRow) func(context.Context, pgx.Tx, pgtype.UUID) error {
-	return func(ctx context.Context, tx pgx.Tx, runID pgtype.UUID) error {
-		linked, err := gen.New(tx).LinkBatchItemRun(ctx, gen.LinkBatchItemRunParams{
-			RunID: runID, BatchID: item.BatchID, TestCaseID: item.TestCaseID,
-			Trial: item.Trial, SkillWithheld: item.SkillWithheld, WorkspaceID: workspaceID,
-		})
-		if err == nil && linked == 0 {
-			return errItemTaken
-		}
-		return err
-	}
+func trialOriginKey(item gen.ClaimNextBatchItemRow) string {
+	return fmt.Sprintf("evaluation-batch/%s/%s/%d/withheld=%t",
+		pgconv.UUIDString(item.BatchID), pgconv.UUIDString(item.TestCaseID), item.Trial, item.SkillWithheld)
 }
 
 func (s *BatchService) stopBatch(ctx context.Context, q *gen.Queries, workspaceID, batchID pgtype.UUID, reason string) error {

@@ -37,6 +37,8 @@ type ContinueParams struct {
 	Actor       pgtype.UUID
 	RunID       pgtype.UUID
 	Answers     []string
+
+	AnsweredAsSimulatedUser bool
 }
 
 type answeredQuestion struct {
@@ -81,7 +83,7 @@ func (s *Service) Continue(ctx context.Context, p ContinueParams) (RunView, erro
 		SkillID: version.SkillID, VersionID: version.ID, TestCaseID: snapshot.TestCaseID,
 		WithholdSkill: withheld,
 	}
-	run, err := s.continueRun(ctx, params, continuation{original: original, answered: answered, actor: p.Actor}, prompt)
+	run, err := s.continueRun(ctx, params, continuation{original: original, answered: answered, actor: p.Actor, simulated: p.AnsweredAsSimulatedUser}, prompt)
 	if err != nil {
 		s.auditRefusal(ctx, params, err)
 	}
@@ -128,9 +130,10 @@ func continuedPrompt(original string, answered []answeredQuestion) string {
 }
 
 type continuation struct {
-	original gen.Run
-	answered []answeredQuestion
-	actor    pgtype.UUID
+	original  gen.Run
+	answered  []answeredQuestion
+	actor     pgtype.UUID
+	simulated bool
 }
 
 func (s *Service) continueRun(ctx context.Context, p CreateParams, c continuation, prompt string) (gen.Run, error) {
@@ -217,6 +220,7 @@ func (c continuation) record(ctx context.Context, q *gen.Queries, run gen.Run) e
 	_, err = q.InsertRunContinuation(ctx, gen.InsertRunContinuationParams{
 		RunID: run.ID, WorkspaceID: run.WorkspaceID, ContinuesRunID: c.original.ID,
 		Questions: encodedQuestions, Answers: encodedAnswers, AnsweredBy: c.actor,
+		AnsweredAsSimulatedUser: c.simulated,
 	})
 	if pgconv.IsUniqueViolation(err) {
 		return ErrAlreadyContinued

@@ -31,7 +31,7 @@ func evaluationBatchPorts(runs *run.Service, testlabSvc *testlab.Service, traceS
 			created, err := runs.Create(ctx, run.CreateParams{
 				WorkspaceID: b.WorkspaceID, Actor: b.Actor, SkillID: b.SkillID,
 				VersionID: b.VersionID, TestCaseID: b.TestCaseID, ConfirmedSummaryHash: b.SummaryHash,
-				WithholdSkill: b.WithholdSkill, SameTransaction: b.Link,
+				WithholdSkill: b.WithholdSkill, OriginKey: b.OriginKey,
 			})
 			return created.ID, batchRunError(err)
 		},
@@ -61,6 +61,7 @@ func evaluationBatchPorts(runs *run.Service, testlabSvc *testlab.Service, traceS
 		AnswerRun: func(ctx context.Context, a eval.BatchAnswer) error {
 			_, err := runs.Continue(ctx, run.ContinueParams{
 				WorkspaceID: a.WorkspaceID, Actor: a.Actor, RunID: a.RunID, Answers: a.Answers,
+				AnsweredAsSimulatedUser: true,
 			})
 			return batchAnswerError(err)
 		},
@@ -87,17 +88,12 @@ func batchAnswerError(err error) error {
 	return mapped
 }
 
-var batchWaitsOn = map[string]bool{
-	run.ReasonWorkspaceConcurrency: true,
-	run.ReasonScanUnavailable:      true,
-}
-
 func batchRunError(err error) error {
 	reason, refused := run.RefusalReason(err)
 	switch {
 	case err == nil:
 		return nil
-	case errors.Is(err, run.ErrDispatchHalted), refused && batchWaitsOn[reason]:
+	case run.RefusalPasses(err):
 		return eval.ErrRunMustWait
 	case refused:
 		return eval.RunRefusedError{Reason: reason, Err: err}
