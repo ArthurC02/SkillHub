@@ -21,6 +21,19 @@ WITH RECURSIVE chain AS (
 )
 SELECT COALESCE(max(depth), 0)::integer AS depth FROM chain;
 
+-- name: ListEarlierQuestions :many
+WITH RECURSIVE chain AS (
+    SELECT c.continues_run_id, c.questions, 1 AS depth
+    FROM run_continuations c
+    WHERE c.run_id = @run_id AND c.workspace_id = @workspace_id
+    UNION ALL
+    SELECT c.continues_run_id, c.questions, chain.depth + 1
+    FROM run_continuations c
+    JOIN chain ON c.run_id = chain.continues_run_id
+    WHERE c.workspace_id = @workspace_id
+)
+SELECT questions FROM chain ORDER BY depth DESC;
+
 -- name: GetRunSettings :one
 SELECT * FROM run_settings;
 

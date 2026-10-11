@@ -138,3 +138,42 @@ func TestTheJudgeLosesOnlyTheRubricItemsOfRuledCriteria(t *testing.T) {
 		t.Errorf("the original rubric was changed: %+v", m.rubric.Items)
 	}
 }
+
+func TestQuestionChecksReadTheWholeConversation(t *testing.T) {
+	answered := ruledMaterial("訂金 1,200 元", nil, "succeeded", true)
+	answered.earlierQuestions = askedAboutChildren
+	cases := []struct {
+		name string
+		c    testlab.Criterion
+		want string
+	}{
+		{"an earlier round asked", criterion("c", testlab.CheckAsks), ResultPassed},
+		{"an earlier round asked about the named fact", criterion("c", testlab.CheckAsks, "小孩"), ResultPassed},
+		{"an earlier round asked about something else", criterion("c", testlab.CheckAsks, "預算"), ResultFailed},
+		{"an earlier round asked when none should have", criterion("c", testlab.CheckDoesNotAsk), ResultFailed},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := gradeByRule(answered, []testlab.Criterion{c.c}); got[0].Result != c.want {
+				t.Fatalf("got %+v, want %s", got[0], c.want)
+			}
+		})
+	}
+}
+
+func TestOnlyARunThatSucceededByAskingWaitsForItsAnswer(t *testing.T) {
+	cases := []struct {
+		name string
+		m    material
+		want bool
+	}{
+		{"succeeded by asking", ruledMaterial("", askedAboutChildren, "succeeded", true), true},
+		{"failed after asking", ruledMaterial("", askedAboutChildren, "failed", true), false},
+		{"succeeded with an answer", ruledMaterial("訂金 1,200 元", nil, "succeeded", true), false},
+	}
+	for _, c := range cases {
+		if got := c.m.awaitsAnswer(); got != c.want {
+			t.Errorf("%s: awaitsAnswer = %v, want %v", c.name, got, c.want)
+		}
+	}
+}

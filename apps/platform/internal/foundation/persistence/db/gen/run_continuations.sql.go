@@ -91,6 +91,45 @@ func (q *Queries) InsertRunContinuation(ctx context.Context, arg InsertRunContin
 	return i, err
 }
 
+const listEarlierQuestions = `-- name: ListEarlierQuestions :many
+WITH RECURSIVE chain AS (
+    SELECT c.continues_run_id, c.questions, 1 AS depth
+    FROM run_continuations c
+    WHERE c.run_id = $1 AND c.workspace_id = $2
+    UNION ALL
+    SELECT c.continues_run_id, c.questions, chain.depth + 1
+    FROM run_continuations c
+    JOIN chain ON c.run_id = chain.continues_run_id
+    WHERE c.workspace_id = $2
+)
+SELECT questions FROM chain ORDER BY depth DESC
+`
+
+type ListEarlierQuestionsParams struct {
+	RunID       pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) ListEarlierQuestions(ctx context.Context, arg ListEarlierQuestionsParams) ([][]byte, error) {
+	rows, err := q.db.Query(ctx, listEarlierQuestions, arg.RunID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items [][]byte
+	for rows.Next() {
+		var questions []byte
+		if err := rows.Scan(&questions); err != nil {
+			return nil, err
+		}
+		items = append(items, questions)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const runWasContinued = `-- name: RunWasContinued :one
 SELECT EXISTS (
     SELECT 1 FROM run_continuations WHERE continues_run_id = $1 AND workspace_id = $2

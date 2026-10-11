@@ -2,6 +2,7 @@ package run
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
 func (s *Service) BelongsToWorkspace(ctx context.Context, workspaceID, runID pgtype.UUID) (bool, error) {
@@ -69,6 +71,8 @@ type EvaluationInput struct {
 
 	Absent        EvaluationArtifactAbsence
 	LatestAttempt int
+
+	EarlierQuestions []trace.Question
 }
 
 type EvaluationArtifactAbsence struct {
@@ -158,12 +162,35 @@ func (s *Service) EvaluationInput(ctx context.Context, workspaceID, runID pgtype
 		return EvaluationInput{}, false, err
 	}
 	artifacts, absent := evaluationArtifacts(rows, time.Now())
+	earlier, err := s.earlierQuestions(ctx, workspaceID, runID)
+	if err != nil {
+		return EvaluationInput{}, false, err
+	}
 	return EvaluationInput{
-		Run:           run,
-		Artifacts:     artifacts,
-		Absent:        absent,
-		LatestAttempt: latestAttempt,
+		Run:              run,
+		Artifacts:        artifacts,
+		Absent:           absent,
+		LatestAttempt:    latestAttempt,
+		EarlierQuestions: earlier,
 	}, true, nil
+}
+
+func (s *Service) earlierQuestions(ctx context.Context, workspaceID, runID pgtype.UUID) ([]trace.Question, error) {
+	rounds, err := s.queries().ListEarlierQuestions(ctx, gen.ListEarlierQuestionsParams{
+		RunID: runID, WorkspaceID: workspaceID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	var earlier []trace.Question
+	for _, raw := range rounds {
+		var asked []trace.Question
+		if err := json.Unmarshal(raw, &asked); err != nil {
+			return nil, err
+		}
+		earlier = append(earlier, asked...)
+	}
+	return earlier, nil
 }
 
 func runArtifactReadableAt(a gen.Artifact, now time.Time) bool {

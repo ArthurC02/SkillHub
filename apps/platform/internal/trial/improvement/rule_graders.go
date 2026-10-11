@@ -60,11 +60,16 @@ func gradeContainsValues(m material, values []string) (string, string) {
 	return ResultPassed, "the final output mentions " + strings.Join(values, ", ")
 }
 
+func (m material) askedInConversation() []trace.Question {
+	return append(append([]trace.Question{}, m.earlierQuestions...), m.summary.Questions...)
+}
+
 func gradeAsks(m material, values []string) (string, string) {
-	if len(m.summary.Questions) == 0 {
-		return ResultFailed, "the run ended without asking the person anything"
+	questions := m.askedInConversation()
+	if len(questions) == 0 {
+		return ResultFailed, "the conversation ended without asking the person anything"
 	}
-	asked := questionText(m.summary.Questions)
+	asked := questionText(questions)
 	missing := []string{}
 	for _, v := range values {
 		if !mentions(asked, v) {
@@ -72,18 +77,18 @@ func gradeAsks(m material, values []string) (string, string) {
 		}
 	}
 	if len(missing) > 0 {
-		return ResultFailed, fmt.Sprintf("the run asked %d question(s), none about %s",
-			len(m.summary.Questions), strings.Join(missing, ", "))
+		return ResultFailed, fmt.Sprintf("the conversation asked %d question(s), none about %s",
+			len(questions), strings.Join(missing, ", "))
 	}
-	return ResultPassed, fmt.Sprintf("the run asked %d question(s)", len(m.summary.Questions))
+	return ResultPassed, fmt.Sprintf("the conversation asked %d question(s)", len(questions))
 }
 
 func gradeDoesNotAsk(m material, _ []string) (string, string) {
 	if m.run.Status != runSucceeded {
 		return ResultFailed, "the run ended as " + m.run.Status + " without an answer"
 	}
-	if n := len(m.summary.Questions); n > 0 {
-		return ResultFailed, fmt.Sprintf("the run asked %d question(s) instead of answering", n)
+	if n := len(m.askedInConversation()); n > 0 {
+		return ResultFailed, fmt.Sprintf("the conversation asked %d question(s) instead of answering", n)
 	}
 	return ResultPassed, "the run answered without asking the person"
 }

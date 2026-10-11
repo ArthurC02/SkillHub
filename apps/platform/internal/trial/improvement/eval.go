@@ -218,6 +218,8 @@ type EvaluationInput struct {
 	Artifacts     []ArtifactFacts
 	Absent        ArtifactAbsence
 	LatestAttempt int
+
+	EarlierQuestions []trace.Question
 }
 
 var errRunReaderNotConfigured = errors.New("evaluation run reader is not configured")
@@ -311,11 +313,13 @@ type material struct {
 	summary   trace.Summary
 	artifacts []ArtifactFacts
 
-	absent   ArtifactAbsence
-	compat   *RuntimeCompatibility
-	report   skillpkg.Report
-	reportOK bool
-	attempt  int
+	absent ArtifactAbsence
+	compat *RuntimeCompatibility
+
+	earlierQuestions []trace.Question
+	report           skillpkg.Report
+	reportOK         bool
+	attempt          int
 }
 
 func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) error {
@@ -325,6 +329,9 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	}
 	if err != nil {
 		return err
+	}
+	if m.awaitsAnswer() {
+		return nil
 	}
 
 	if current, currentErr := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
@@ -494,6 +501,7 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 	}
 	m.run, m.artifacts, m.attempt = input.Run, input.Artifacts, input.LatestAttempt
 	m.absent = input.Absent
+	m.earlierQuestions = input.EarlierQuestions
 	if !m.run.Terminal {
 		return m, errRunStillGoing
 	}
@@ -787,6 +795,10 @@ func costSource(cost *float64) *string {
 	}
 	source := string(credit.CostSourceGateway)
 	return &source
+}
+
+func (m material) awaitsAnswer() bool {
+	return m.run.Status == runSucceeded && len(m.summary.Questions) > 0
 }
 
 func (m material) evidenceComplete() bool { return m.advanced.Complete && !m.absent.Any() }

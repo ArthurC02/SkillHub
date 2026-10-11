@@ -211,3 +211,31 @@ func mustFloat(t *testing.T, s string) float64 {
 	}
 	return f
 }
+
+func TestTheConversationIsEvaluatedAtItsAnswerNotAtItsQuestion(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-continue-eval")
+	asking := seedAskingRun(t, pool, f, "小孩算不算人數？")
+	answered := seedAnsweredRound(t, pool, f, asking)
+	seedFinalOutput(t, pool, f.workspaceID, answered, "算人數，共四位。")
+	ctx := context.Background()
+
+	for _, runID := range []string{asking, answered} {
+		if err := a.evaluations.Evaluate(ctx, mustUUID(t, f.workspaceID), mustUUID(t, runID)); err != nil {
+			t.Fatalf("evaluate %s: %v", runID, err)
+		}
+	}
+
+	var waiting int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM evaluations WHERE run_id = $1`, mustUUID(t, asking)).Scan(&waiting); err != nil || waiting != 0 {
+		t.Errorf("the run waiting for its answer has %d evaluations (%v), want none", waiting, err)
+	}
+	status, body := f.getEvaluation(t, "/runs/"+answered+"/evaluation")
+	if status != http.StatusOK || body.Status != "completed" || len(body.CriterionResults) != 1 {
+		t.Fatalf("answered run: %d %+v", status, body)
+	}
+	if r := body.CriterionResults[0]; r.Source != "rule" || r.Result != "passed" {
+		t.Errorf("asks-first on the answered run = %+v, want passed by the rule from the earlier round", r)
+	}
+}
