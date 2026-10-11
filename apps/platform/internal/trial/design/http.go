@@ -51,7 +51,11 @@ func pathUUID(w http.ResponseWriter, r *http.Request, name string) (pgtype.UUID,
 const messageUnsupportedType = "不支援這種檔案類型"
 
 func stripSentinelPrefix(err, sentinel error) string {
-	return strings.TrimPrefix(err.Error(), sentinel.Error()+": ")
+	message := err.Error()
+	if _, reason, found := strings.Cut(message, sentinel.Error()+": "); found {
+		return reason
+	}
+	return message
 }
 
 func fail(w http.ResponseWriter, err error, generic string) {

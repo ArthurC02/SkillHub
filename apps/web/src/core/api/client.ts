@@ -28,6 +28,13 @@ export function isLastingReadFailure(error: unknown): boolean {
   return error instanceof ApiError && lastingReadFailures.has(error.status);
 }
 
+export function serverReason(error: unknown): string | undefined {
+  if (!(error instanceof ApiError) || error.status < 400 || error.status >= 500) return undefined;
+  if (error.status === 401) return undefined;
+  const reason = errorMessageFromBody(error.body, "");
+  return reason === "" ? undefined : reason;
+}
+
 function errorMessageFromBody(body: unknown, fallback: string): string {
   if (typeof body !== "object" || body === null || !("error" in body)) return fallback;
   const error = (body as { error?: unknown }).error;

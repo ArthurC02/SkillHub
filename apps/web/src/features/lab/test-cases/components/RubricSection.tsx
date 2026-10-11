@@ -92,12 +92,7 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
             </span>
           )}
           {save.isSuccess && <p role="status">已儲存。</p>}
-          <MutationError
-            error={save.error}
-            what="Rubric"
-            fallback="儲存沒有成功，可以再試一次。"
-            serverSaysStatuses={[413]}
-          />
+          <MutationError error={save.error} what="Rubric" fallback="儲存沒有成功，可以再試一次。" />
         </>
       )}
     </>

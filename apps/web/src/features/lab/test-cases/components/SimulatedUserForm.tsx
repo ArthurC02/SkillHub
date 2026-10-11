@@ -54,12 +54,7 @@ export function SimulatedUserForm({ testCase }: { testCase: TestCase }) {
         {save.isPending ? "儲存中…" : "儲存模擬使用者"}
       </button>
       {save.isSuccess && <p role="status">已儲存。</p>}
-      <MutationError
-        error={save.error}
-        what="模擬使用者"
-        fallback="儲存沒有成功，可以再試一次。"
-        serverSaysStatuses={[400]}
-      />
+      <MutationError error={save.error} what="模擬使用者" fallback="儲存沒有成功，可以再試一次。" />
     </>
   );
 }

@@ -33,6 +33,7 @@ var (
 	errRegistryReadNotConfigured = errors.New("run: registry owner read is not configured")
 	errRunLinkMissing            = errors.New("run: its skill version or test case snapshot is gone")
 	errRunRequestUnbuildable     = errors.New("run: this attempt's request can never be built")
+	errSkillPackageMissing       = errors.New("run: the skill version has no stored package and the run does not withhold the skill")
 )
 
 type SkillFacts struct {

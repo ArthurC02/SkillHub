@@ -606,6 +606,23 @@ test("丙-150 建立失敗於 401 走 ReadFailure，印登入而不是 not authe
   expect(calls.some((c) => c.method === "POST" && c.url === "/test-cases")).toBe(true);
 });
 
+test("a refused create shows the server's reason for any 4xx, not only the ones a page listed", async () => {
+  stubPlatform({ create: { status: 404, error: "找不到這個 Test Case" } });
+  await renderList();
+
+  await act(async () =>
+    selectValue(container.querySelector<HTMLSelectElement>("#tc-skill")!, SKILL),
+  );
+  await act(async () => setValue(container.querySelector<HTMLInputElement>("#tc-name")!, "名稱"));
+  await act(async () =>
+    setValue(container.querySelector<HTMLTextAreaElement>("#tc-prompt")!, "prompt"),
+  );
+  await act(async () => button("建立").click());
+  await waitFor(() => (container.textContent ?? "").includes("找不到這個 Test Case"));
+
+  expect(container.textContent).not.toContain("建立沒有成功");
+});
+
 test("丙-155③ 名稱超過 200 bytes 送出前先擋下，不送出請求", async () => {
   const calls = stubPlatform();
   await renderList();

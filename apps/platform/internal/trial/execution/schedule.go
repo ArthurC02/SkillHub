@@ -537,7 +537,7 @@ func (s *Service) buildRunRequest(ctx context.Context, run gen.Run, attempt gen.
 	}
 
 	ttl := time.Duration(policy.ResourceLimits.WallClockHardSeconds)*time.Second + grantSlack
-	grants, datasetKeys, err := s.grantsFor(ctx, run, attempt, runInputs{version: version, datasets: refs}, ttl)
+	grants, datasetKeys, err := s.grantsFor(ctx, run, attempt, runInputs{version: version, datasets: refs, skillWithheld: policy.SkillWithheld}, ttl)
 	if err != nil {
 		return RunRequest{}, err
 	}

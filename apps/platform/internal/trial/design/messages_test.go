@@ -68,6 +68,9 @@ func wireMessageCases(t *testing.T, criteria []Criterion) []wireMessageCase {
 
 	inspectZipErr := zipTooManyFilesErr(t)
 	cases = append(cases, wireMessageCase{"inspectZip too many files", stripSentinelPrefix(inspectZipErr, ErrLimitExceeded)})
+
+	refusedCheck := fmt.Errorf("%w: 檢查最多 8 層", fmt.Errorf("eval: invalid check: %w", ErrInvalid))
+	cases = append(cases, wireMessageCase{"a check its validator refused", stripSentinelPrefix(refusedCheck, ErrInvalid)})
 	return cases
 }
 

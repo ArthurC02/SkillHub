@@ -53,12 +53,7 @@ function Suggestions({
           </li>
         ))}
       </ul>
-      <MutationError
-        error={adopt.error}
-        what="這條建議"
-        fallback="無法採納，可以再試一次。"
-        serverSaysStatuses={[413]}
-      />
+      <MutationError error={adopt.error} what="這條建議" fallback="無法採納，可以再試一次。" />
     </>
   );
 }
@@ -148,12 +143,7 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
         Fan-Out 組合起來；規則能決定的不會再問評審模型。<Link to="/lab/graders">管理評分器</Link>
       </p>
       <CheckEditor value={check} onChange={setCheck} />
-      <MutationError
-        error={add.error}
-        what="這一條驗收條件"
-        fallback="無法新增，可以再試一次。"
-        serverSaysStatuses={[413]}
-      />
+      <MutationError error={add.error} what="這一條驗收條件" fallback="無法新增，可以再試一次。" />
       <ReadFailure error={suggestError} what="建議">
         <p role="alert">
           {suggestError instanceof ApiError && suggestError.status === 503

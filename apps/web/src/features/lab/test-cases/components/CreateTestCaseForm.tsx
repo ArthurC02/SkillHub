@@ -103,12 +103,7 @@ export function CreateTestCaseForm({
           {create.isPending ? "建立中…" : "建立"}
         </button>
       </form>
-      <MutationError
-        error={create.error}
-        what="測試題"
-        fallback="建立沒有成功，可以再按一次。"
-        serverSaysStatuses={[400]}
-      />
+      <MutationError error={create.error} what="測試題" fallback="建立沒有成功，可以再按一次。" />
     </>
   );
 }

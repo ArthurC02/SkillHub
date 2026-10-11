@@ -28,8 +28,9 @@ func artifactUploadIntent(a gen.RunAttempt) gen.RememberRunArtifactUploadIntentP
 }
 
 type runInputs struct {
-	version  VersionFacts
-	datasets []testlab.DatasetRef
+	version       VersionFacts
+	datasets      []testlab.DatasetRef
+	skillWithheld bool
 }
 
 func (s *Service) grantsFor(
@@ -39,10 +40,14 @@ func (s *Service) grantsFor(
 	if err := s.requireTestLab(); err != nil {
 		return nil, nil, unbuildable(err)
 	}
+	needsPackage := !inputs.skillWithheld
+	if needsPackage && version.PackageObjectKey == "" {
+		return nil, nil, unbuildable(errSkillPackageMissing)
+	}
 	store := s.Store
 	datasetKeys = make([]string, len(refs))
 	if store == nil {
-		if version.PackageObjectKey != "" || len(refs) > 0 {
+		if needsPackage || len(refs) > 0 {
 			return nil, nil, unbuildable(errors.New("no object store is configured; this run's inputs cannot be granted"))
 		}
 		if err := s.recordObjectGrantExpiry(ctx, attempt, objectGrantsExpiredOnArrival()); err != nil {
@@ -53,7 +58,7 @@ func (s *Service) grantsFor(
 	expires := time.Now().UTC().Add(ttl)
 	grants = make([]ObjectGrant, 0, len(refs)+2)
 
-	if version.PackageObjectKey != "" {
+	if needsPackage {
 		url, err := store.PresignGet(ctx, version.PackageObjectKey, ttl)
 		if err != nil {
 			return nil, nil, fmt.Errorf("grant skill package: %w", err)
@@ -65,24 +70,12 @@ func (s *Service) grantsFor(
 	}
 
 	for i, ref := range refs {
-		var id pgtype.UUID
-		if err := id.Scan(ref.DatasetID); err != nil {
-			return nil, nil, unbuildable(fmt.Errorf("grant dataset %s: %w", ref.FileName, err))
-		}
-
-		dataset, err := s.TestLab.ReadDataset(ctx, run.WorkspaceID, id)
+		grant, err := s.datasetGrant(ctx, run.WorkspaceID, ref, ttl)
 		if err != nil {
-			return nil, nil, unbuildableWhenGone(fmt.Errorf("dataset %s is no longer available for this run: %w", ref.FileName, err))
+			return nil, nil, err
 		}
-		url, err := store.PresignGet(ctx, dataset.ObjectKey, ttl)
-		if err != nil {
-			return nil, nil, fmt.Errorf("grant dataset %s: %w", ref.FileName, err)
-		}
-		datasetKeys[i] = dataset.ObjectKey
-		grants = append(grants, ObjectGrant{
-			Purpose: "dataset", ObjectKey: dataset.ObjectKey,
-			Access: "read", URL: url, ExpiresAt: expires,
-		})
+		datasetKeys[i] = grant.ObjectKey
+		grants = append(grants, grant)
 	}
 
 	key := artifactObjectKey(pgconv.UUIDString(run.ID), pgconv.UUIDString(attempt.ID))
@@ -103,4 +96,20 @@ func (s *Service) grantsFor(
 		return nil, nil, fmt.Errorf("record object grant expiry: %w", err)
 	}
 	return grants, datasetKeys, nil
+}
+
+func (s *Service) datasetGrant(ctx context.Context, workspaceID pgtype.UUID, ref testlab.DatasetRef, ttl time.Duration) (ObjectGrant, error) {
+	var id pgtype.UUID
+	if err := id.Scan(ref.DatasetID); err != nil {
+		return ObjectGrant{}, unbuildable(fmt.Errorf("grant dataset %s: %w", ref.FileName, err))
+	}
+	dataset, err := s.TestLab.ReadDataset(ctx, workspaceID, id)
+	if err != nil {
+		return ObjectGrant{}, unbuildableWhenGone(fmt.Errorf("dataset %s is no longer available for this run: %w", ref.FileName, err))
+	}
+	url, err := s.Store.PresignGet(ctx, dataset.ObjectKey, ttl)
+	if err != nil {
+		return ObjectGrant{}, fmt.Errorf("grant dataset %s: %w", ref.FileName, err)
+	}
+	return ObjectGrant{Purpose: "dataset", ObjectKey: dataset.ObjectKey, Access: "read", URL: url}, nil
 }

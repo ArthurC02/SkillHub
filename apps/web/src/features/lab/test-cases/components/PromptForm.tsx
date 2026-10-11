@@ -84,7 +84,6 @@ export function PromptForm({ testCase }: { testCase: TestCase }) {
         error={save.error}
         what="名稱與 User Prompt"
         fallback="儲存沒有成功，可以再試一次。"
-        serverSaysStatuses={[400]}
       />
     </>
   );
