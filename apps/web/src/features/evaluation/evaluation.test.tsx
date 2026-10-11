@@ -137,6 +137,15 @@ test("an empty composite is flagged, and a child added to it becomes the selecte
   expect(container.textContent).not.toContain("要 1 到 50 個子節點");
 });
 
+test("the graders are asked for only once a check is being designed", async () => {
+  await renderEditor();
+  expect(calls.map((c) => c.url)).not.toContain("/evaluation/graders");
+
+  await act(async () => setValue(field("#check-editor-root"), "judge"));
+  await act(async () => button("開始設計").click());
+  await waitFor(() => calls.some((c) => c.url === "/evaluation/graders"));
+});
+
 test("a prompt grader picks a version from both the platform's and the workspace's graders", async () => {
   await renderEditor({ kind: "prompt_grader", values: [""] });
   await waitFor(() => container.textContent!.includes("語氣 v2"));

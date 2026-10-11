@@ -189,7 +189,7 @@ func (r ruleLeaf) kind() CheckKind { return r.info }
 
 func (r ruleLeaf) evaluate(s checkScope, n testlab.Check, _ string) outcome {
 	result, reason := r.grade(s.m, s.withItem(n.Values))
-	if result == ResultPassed && !s.m.evidenceComplete() {
+	if s.m.cannotRecordPass(result) {
 		result = ResultUndetermined
 		reason += "; the run's evidence is incomplete, so this is not recorded as passed"
 	}

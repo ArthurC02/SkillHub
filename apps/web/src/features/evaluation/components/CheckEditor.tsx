@@ -1,5 +1,5 @@
 import { CriterionCheckValuesItemMaxLength } from "@skillhub/api-client-ts/limits";
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
@@ -17,8 +17,9 @@ import {
   type Path,
 } from "../check.model";
 import { useCheckKinds, useGraders, type Grader } from "../evaluation.service";
-import { CheckFlow } from "./CheckFlow";
 import "./CheckEditor.css";
+
+const CheckFlow = lazy(() => import("./CheckFlow").then((m) => ({ default: m.CheckFlow })));
 
 type Palette = { kinds: CheckKind[]; byKind: Map<string, CheckKind>; graders: Grader[] };
 
@@ -273,7 +274,7 @@ export function CheckEditor({
   onChange: (next: CheckNode | null) => void;
 }) {
   const kinds = useCheckKinds();
-  const graders = useGraders("workspace");
+  const graders = useGraders("workspace", value !== null);
   const [selected, setSelected] = useState<Path>([]);
 
   if (kinds.isPending) return <Loading what="檢查方式" />;
@@ -312,13 +313,15 @@ export function CheckEditor({
 
   return (
     <div className="check-editor">
-      <CheckFlow
-        tree={value}
-        describe={describeAt}
-        selected={current}
-        flagged={flagged}
-        onSelect={setSelected}
-      />
+      <Suspense fallback={<Loading what="檢查的流程圖" />}>
+        <CheckFlow
+          tree={value}
+          describe={describeAt}
+          selected={current}
+          flagged={flagged}
+          onSelect={setSelected}
+        />
+      </Suspense>
       <div className="check-editor-panel">
         <ol className="check-editor-outline" aria-label="檢查的結構">
           <Outline

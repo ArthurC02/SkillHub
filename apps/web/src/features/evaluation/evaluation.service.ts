@@ -41,12 +41,12 @@ export function useCheckKinds() {
   });
 }
 
-export function useGraders(scope: GraderScope) {
+export function useGraders(scope: GraderScope, wanted = true) {
   const operator = useMe().data?.operator === true;
   return useQuery({
     queryKey: queryKeys.checks.graders(scope),
     queryFn: () => apiFetch<{ graders: Grader[] }>(GRADER_PATHS[scope]),
-    enabled: scope === "workspace" || operator,
+    enabled: wanted && (scope === "workspace" || operator),
   });
 }
 

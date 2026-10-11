@@ -94,6 +94,10 @@ type Finding struct {
 	Evidence []EvidenceRef `json:"evidence"`
 }
 
+func finding(category, severity, message string, evidence ...EvidenceRef) Finding {
+	return Finding{Category: category, Severity: severity, Message: message, Evidence: orEmpty(evidence)}
+}
+
 const (
 	CategorySpec          = "spec"
 	CategoryActivation    = "activation"
@@ -547,11 +551,7 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 }
 
 func (s *Service) existingEvaluationInput(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationInput, error) {
-	input, found, err := s.ReadEvaluationInput(ctx, workspaceID, runID)
-	if !found && err == nil {
-		return input, ErrNotFound
-	}
-	return input, err
+	return required(ctx, s.ReadEvaluationInput, workspaceID, runID)
 }
 
 func (s *Service) gatherTestCase(ctx context.Context, workspaceID pgtype.UUID, m *material) error {
@@ -703,14 +703,10 @@ func (s *Service) fail(ctx context.Context, m material, ev gen.Evaluation, gathe
 }
 
 func (s *Service) packageReport(ctx context.Context, stored skillpkg.StoredSkill) (skillpkg.Report, bool) {
-	if s.Store == nil || stored.ObjectKey == "" {
+	if stored.ObjectKey == "" {
 		return skillpkg.Report{}, false
 	}
-	data, err := s.Store.Get(ctx, stored.ObjectKey)
-	if err != nil {
-		return skillpkg.Report{}, false
-	}
-	fsys, err := stored.Open(data)
+	fsys, _, err := s.readPackage(ctx, stored)
 	if err != nil {
 		return skillpkg.Report{}, false
 	}
@@ -755,14 +751,7 @@ func (s *Service) runFacts(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	if s.ReadRunFacts == nil {
 		return RunFacts{}, errRunReaderNotConfigured
 	}
-	run, found, err := s.ReadRunFacts(ctx, workspaceID, runID)
-	if err != nil {
-		return RunFacts{}, err
-	}
-	if !found {
-		return RunFacts{}, ErrNotFound
-	}
-	return run, nil
+	return required(ctx, s.ReadRunFacts, workspaceID, runID)
 }
 
 func nonNilFindings(f []Finding) []Finding {
@@ -817,3 +806,7 @@ func (m material) awaitsAnswer() bool {
 }
 
 func (m material) evidenceComplete() bool { return m.advanced.Complete && !m.absent.Any() }
+
+func (m material) cannotRecordPass(result string) bool {
+	return result == ResultPassed && !m.evidenceComplete()
+}

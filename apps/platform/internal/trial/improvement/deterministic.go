@@ -24,12 +24,9 @@ func (s *Service) deterministicFindings(m material) []Finding {
 func specFindings(m material) []Finding {
 	if !m.reportOK {
 
-		return []Finding{{
-			Category: CategorySpec, Severity: SeverityWarning,
-			Message: "the skill package could not be read back, so its specification " +
-				"could not be re-validated for this evaluation; this is not the same as a clean result",
-			Evidence: []EvidenceRef{},
-		}}
+		return []Finding{finding(CategorySpec, SeverityWarning,
+			"the skill package could not be read back, so its specification "+
+				"could not be re-validated for this evaluation; this is not the same as a clean result")}
 	}
 	out := []Finding{}
 	for _, f := range m.report.Findings {
@@ -41,10 +38,7 @@ func specFindings(m material) []Finding {
 		if f.Path != "" {
 			message = f.Code + " (" + f.Path + "): " + f.Message
 		}
-		out = append(out, Finding{
-			Category: CategorySpec, Severity: string(f.Severity),
-			Message: message, Evidence: []EvidenceRef{},
-		})
+		out = append(out, finding(CategorySpec, string(f.Severity), message))
 	}
 	return out
 }
@@ -77,25 +71,16 @@ func activationFindings(m material) []Finding {
 	mounted := pgconv.UUIDString(m.run.SkillVersionID)
 	switch {
 	case activated[mounted]:
-		return []Finding{{
-			Category: CategoryActivation, Severity: SeverityInfo,
-			Message:  "the skill version mounted for this run was activated",
-			Evidence: orEmpty(evidence),
-		}}
+		return []Finding{finding(CategoryActivation, SeverityInfo,
+			"the skill version mounted for this run was activated", evidence...)}
 	case skipped[mounted]:
-		return []Finding{{
-			Category: CategoryActivation, Severity: SeverityWarning,
-			Message:  "the run trace records the skill version as skipped",
-			Evidence: orEmpty(evidence),
-		}}
+		return []Finding{finding(CategoryActivation, SeverityWarning,
+			"the run trace records the skill version as skipped", evidence...)}
 	default:
-		return []Finding{{
-			Category: CategoryActivation, Severity: SeverityWarning,
-			Message: "no activation event appeared for the skill version mounted for this run. " +
-				"That is all the trace can say: whether the agent saw the skill and used " +
-				"something else instead is not observable in the message stream (TRACE-002)",
-			Evidence: orEmpty(evidence),
-		}}
+		return []Finding{finding(CategoryActivation, SeverityWarning,
+			"no activation event appeared for the skill version mounted for this run. "+
+				"That is all the trace can say: whether the agent saw the skill and used "+
+				"something else instead is not observable in the message stream (TRACE-002)", evidence...)}
 	}
 }
 
@@ -114,10 +99,7 @@ func executionFindings(m material) []Finding {
 			message += ": " + *m.run.StatusReason
 		}
 	}
-	out = append(out, Finding{
-		Category: CategoryExecution, Severity: severity,
-		Message: message, Evidence: []EvidenceRef{},
-	})
+	out = append(out, finding(CategoryExecution, severity, message))
 
 	for _, e := range m.advanced.Events {
 		if e.Type != trace.TypeError {
@@ -131,20 +113,14 @@ func executionFindings(m material) []Finding {
 		if json.Unmarshal(e.Payload, &p) != nil {
 			continue
 		}
-		out = append(out, Finding{
-			Category: CategoryExecution, Severity: SeverityError,
-			Message:  fmt.Sprintf("error event (%s/%s): %s", p.Category, p.Code, p.Message),
-			Evidence: []EvidenceRef{traceRef(e, e.Type)},
-		})
+		out = append(out, finding(CategoryExecution, SeverityError,
+			fmt.Sprintf("error event (%s/%s): %s", p.Category, p.Code, p.Message), traceRef(e, e.Type)))
 	}
 
 	if !m.advanced.Complete {
-		out = append(out, Finding{
-			Category: CategoryExecution, Severity: SeverityWarning,
-			Message: "the run trace has gaps, so the evidence behind every judgement below " +
-				"may be incomplete; no criterion may be recorded as passed on it",
-			Evidence: []EvidenceRef{},
-		})
+		out = append(out, finding(CategoryExecution, SeverityWarning,
+			"the run trace has gaps, so the evidence behind every judgement below "+
+				"may be incomplete; no criterion may be recorded as passed on it"))
 	}
 	return out
 }
@@ -152,26 +128,20 @@ func executionFindings(m material) []Finding {
 func artifactFindings(m material) []Finding {
 	var out []Finding
 	if m.absent.Any() {
-		out = append(out, Finding{
-			Category: CategoryExecution, Severity: SeverityWarning,
-			Message: fmt.Sprintf("this run's output manifest has %d file(s) this evaluation cannot read (%s). "+
+		out = append(out, finding(CategoryExecution, SeverityWarning,
+			fmt.Sprintf("this run's output manifest has %d file(s) this evaluation cannot read (%s). "+
 				"The run recorded them, so this is not a run that produced nothing, and nothing below "+
 				"may be judged from their absence (02:EVAL-001, NFR-002a)",
-				m.absent.Deleted+m.absent.Expired, absenceReasons(m.absent)),
-			Evidence: []EvidenceRef{},
-		})
+				m.absent.Deleted+m.absent.Expired, absenceReasons(m.absent))))
 	}
 	if len(m.artifacts) == 0 {
 		if m.absent.Any() || !m.run.Succeeded {
 
 			return out
 		}
-		return []Finding{{
-			Category: CategoryExecution, Severity: SeverityWarning,
-			Message: "the run reported success and no output files were recorded for it. " +
-				"Whether the task needed a file is for the criteria below to say",
-			Evidence: []EvidenceRef{},
-		}}
+		return []Finding{finding(CategoryExecution, SeverityWarning,
+			"the run reported success and no output files were recorded for it. "+
+				"Whether the task needed a file is for the criteria below to say")}
 	}
 	names := make([]string, 0, len(m.artifacts))
 	evidence := make([]EvidenceRef, 0, len(m.artifacts))
@@ -179,11 +149,8 @@ func artifactFindings(m material) []Finding {
 		names = append(names, a.FileName)
 		evidence = append(evidence, artifactRef(a))
 	}
-	return append(out, Finding{
-		Category: CategoryExecution, Severity: SeverityInfo,
-		Message:  fmt.Sprintf("the run recorded %d readable output file(s): %s", len(names), strings.Join(names, ", ")),
-		Evidence: evidence,
-	})
+	return append(out, finding(CategoryExecution, SeverityInfo,
+		fmt.Sprintf("the run recorded %d readable output file(s): %s", len(names), strings.Join(names, ", ")), evidence...))
 }
 
 func absenceReasons(a ArtifactAbsence) string {
@@ -203,12 +170,9 @@ const capabilityActivated capability = "activated"
 
 func compatibilityFindings(m material) []Finding {
 	if m.compat == nil {
-		return []Finding{{
-			Category: CategoryCompatibility, Severity: SeverityInfo,
-			Message: "no compatibility measurement exists for this skill version, " +
-				"so nothing is claimed about it either way",
-			Evidence: []EvidenceRef{},
-		}}
+		return []Finding{finding(CategoryCompatibility, SeverityInfo,
+			"no compatibility measurement exists for this skill version, "+
+				"so nothing is claimed about it either way")}
 	}
 	severity := SeverityInfo
 	if capability(m.compat.Capability) != capabilityActivated {
@@ -218,20 +182,14 @@ func compatibilityFindings(m material) []Finding {
 		"compatibility measured as %q on runtime image %s (%s); this run records no runtime image, "+
 			"so whether the measurement covers it is not claimed",
 		m.compat.Capability, m.compat.RuntimeImage, m.compat.Runtime)
-	return []Finding{{
-		Category: CategoryCompatibility, Severity: severity,
-		Message: message, Evidence: []EvidenceRef{},
-	}}
+	return []Finding{finding(CategoryCompatibility, severity, message)}
 }
 
 func costFindings(m material) []Finding {
 	if m.summary.Usage == nil {
-		return []Finding{{
-			Category: CategoryCost, Severity: SeverityWarning,
-			Message: "this run reported no usage at all, so its cost is unknown rather than zero. " +
-				"The authoritative figure is the gateway's per-key spend",
-			Evidence: []EvidenceRef{},
-		}}
+		return []Finding{finding(CategoryCost, SeverityWarning,
+			"this run reported no usage at all, so its cost is unknown rather than zero. "+
+				"The authoritative figure is the gateway's per-key spend")}
 	}
 	u := m.summary.Usage
 	message := fmt.Sprintf("the run used %d input and %d output tokens on %s",
@@ -244,10 +202,7 @@ func costFindings(m material) []Finding {
 	message += ". This total is a lower bound: a response still in flight when the " +
 		"stream ended is not in it, and the authoritative figure is the gateway's " +
 		"per-key spend"
-	return []Finding{{
-		Category: CategoryCost, Severity: SeverityInfo,
-		Message: message, Evidence: []EvidenceRef{},
-	}}
+	return []Finding{finding(CategoryCost, SeverityInfo, message)}
 }
 
 func traceRef(e trace.EventView, kind string) EvidenceRef {
