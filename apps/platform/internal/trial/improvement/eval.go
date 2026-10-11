@@ -149,6 +149,8 @@ type Service struct {
 	ReadSkill                func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
 	ReadRuntimeCompatibility func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error)
 
+	Batches BatchPorts
+
 	JudgeModel         string
 	PanelEnabled       func(context.Context) (bool, error)
 	JudgePromptVersion string

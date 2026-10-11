@@ -134,8 +134,7 @@ func NewApp(cfg Config) (*App, error) {
 	evalSvc := &eval.Service{
 		Pool: cfg.Pool, TestLab: testlabSvc, Store: cfg.Store, Versions: versions, Trace: traceSvc,
 	}
-	wiring.WireEvaluationRunReaders(evalSvc, runSvc)
-	wiring.WireEvaluationRegistryReaders(evalSvc, registrySvc)
+	wiring.WireEvaluation(evalSvc, runSvc, registrySvc, testlabSvc, traceSvc)
 
 	packagingSvc := newPackagingService(cfg, testlabSvc, identitySvc, evalSvc, versions)
 	wirePackagingRegistryReaders(packagingSvc, registrySvc)

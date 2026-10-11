@@ -57,6 +57,10 @@ type CreateDownloadArtifactRes interface {
 	createDownloadArtifactRes()
 }
 
+type CreateEvaluationBatchRes interface {
+	createEvaluationBatchRes()
+}
+
 type CreateSkillVersionFromSuggestionsRes interface {
 	createSkillVersionFromSuggestionsRes()
 }
@@ -189,6 +193,10 @@ type GetDownloadArtifactRes interface {
 	getDownloadArtifactRes()
 }
 
+type GetEvaluationBatchReportRes interface {
+	getEvaluationBatchReportRes()
+}
+
 type GetExposureCaseRes interface {
 	getExposureCaseRes()
 }
@@ -319,6 +327,10 @@ type ListDownloadArtifactsRes interface {
 
 type ListDownloadRecordsRes interface {
 	listDownloadRecordsRes()
+}
+
+type ListEvaluationBatchesRes interface {
+	listEvaluationBatchesRes()
 }
 
 type ListExposureQueueRes interface {

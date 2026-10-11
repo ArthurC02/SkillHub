@@ -34,6 +34,25 @@ WITH RECURSIVE chain AS (
 )
 SELECT questions FROM chain ORDER BY depth DESC;
 
+-- name: ListContinuationChainEnds :many
+WITH RECURSIVE chain AS (
+    SELECT r.id AS start_id, r.id AS run_id, 0 AS depth
+    FROM runs r
+    WHERE r.workspace_id = @workspace_id AND r.id = ANY(sqlc.arg(run_ids)::uuid[])
+    UNION ALL
+    SELECT chain.start_id, c.run_id, chain.depth + 1
+    FROM run_continuations c
+    JOIN chain ON c.continues_run_id = chain.run_id
+    WHERE c.workspace_id = @workspace_id
+)
+SELECT DISTINCT ON (chain.start_id)
+    chain.start_id, start_run.test_case_snapshot_id AS start_snapshot_id,
+    r.id AS end_id, r.status AS end_status
+FROM chain
+JOIN runs r ON r.id = chain.run_id AND r.workspace_id = @workspace_id
+JOIN runs start_run ON start_run.id = chain.start_id AND start_run.workspace_id = @workspace_id
+ORDER BY chain.start_id, chain.depth DESC;
+
 -- name: GetRunSettings :one
 SELECT * FROM run_settings;
 

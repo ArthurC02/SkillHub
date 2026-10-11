@@ -2661,6 +2661,81 @@ func (s *CreateDownloadArtifactUnprocessableEntity) SetValidation(val OptPackage
 
 func (*CreateDownloadArtifactUnprocessableEntity) createDownloadArtifactRes() {}
 
+type CreateEvaluationBatchBadRequest Error
+
+func (*CreateEvaluationBatchBadRequest) createEvaluationBatchRes() {}
+
+type CreateEvaluationBatchNotFound Error
+
+func (*CreateEvaluationBatchNotFound) createEvaluationBatchRes() {}
+
+type CreateEvaluationBatchReq struct {
+	SkillVersionID uuid.UUID   `json:"skill_version_id"`
+	TestCaseIds    []uuid.UUID `json:"test_case_ids"`
+	Trials         int         `json:"trials"`
+}
+
+// GetSkillVersionID returns the value of SkillVersionID.
+func (s *CreateEvaluationBatchReq) GetSkillVersionID() uuid.UUID {
+	return s.SkillVersionID
+}
+
+// GetTestCaseIds returns the value of TestCaseIds.
+func (s *CreateEvaluationBatchReq) GetTestCaseIds() []uuid.UUID {
+	return s.TestCaseIds
+}
+
+// GetTrials returns the value of Trials.
+func (s *CreateEvaluationBatchReq) GetTrials() int {
+	return s.Trials
+}
+
+// SetSkillVersionID sets the value of SkillVersionID.
+func (s *CreateEvaluationBatchReq) SetSkillVersionID(val uuid.UUID) {
+	s.SkillVersionID = val
+}
+
+// SetTestCaseIds sets the value of TestCaseIds.
+func (s *CreateEvaluationBatchReq) SetTestCaseIds(val []uuid.UUID) {
+	s.TestCaseIds = val
+}
+
+// SetTrials sets the value of Trials.
+func (s *CreateEvaluationBatchReq) SetTrials(val int) {
+	s.Trials = val
+}
+
+type CreateEvaluationBatchUnauthorized Error
+
+func (*CreateEvaluationBatchUnauthorized) createEvaluationBatchRes() {}
+
+type CreateEvaluationBatchUnprocessableEntity struct {
+	Error                  string      `json:"error"`
+	UnconfirmedTestCaseIds []uuid.UUID `json:"unconfirmed_test_case_ids"`
+}
+
+// GetError returns the value of Error.
+func (s *CreateEvaluationBatchUnprocessableEntity) GetError() string {
+	return s.Error
+}
+
+// GetUnconfirmedTestCaseIds returns the value of UnconfirmedTestCaseIds.
+func (s *CreateEvaluationBatchUnprocessableEntity) GetUnconfirmedTestCaseIds() []uuid.UUID {
+	return s.UnconfirmedTestCaseIds
+}
+
+// SetError sets the value of Error.
+func (s *CreateEvaluationBatchUnprocessableEntity) SetError(val string) {
+	s.Error = val
+}
+
+// SetUnconfirmedTestCaseIds sets the value of UnconfirmedTestCaseIds.
+func (s *CreateEvaluationBatchUnprocessableEntity) SetUnconfirmedTestCaseIds(val []uuid.UUID) {
+	s.UnconfirmedTestCaseIds = val
+}
+
+func (*CreateEvaluationBatchUnprocessableEntity) createEvaluationBatchRes() {}
+
 type CreateSkillVersionFromSuggestionsBadRequest Error
 
 func (*CreateSkillVersionFromSuggestionsBadRequest) createSkillVersionFromSuggestionsRes() {}
@@ -7403,6 +7478,7 @@ func (*Error) getPublicPublicationRes()            {}
 func (*Error) getRunSettingsRes()                  {}
 func (*Error) getSkillImportLimitsRes()            {}
 func (*Error) listDownloadArtifactsRes()           {}
+func (*Error) listEvaluationBatchesRes()           {}
 func (*Error) listExposureQueueRes()               {}
 func (*Error) listModelCallBudgetsRes()            {}
 func (*Error) listOwnBundleOverviewRes()           {}
@@ -7655,6 +7731,486 @@ func (s *Evaluation) SetSupersededAt(val OptNilDateTime) {
 
 func (*Evaluation) getRunEvaluationRes()      {}
 func (*Evaluation) setEvaluationFeedbackRes() {}
+
+// Ref: #/components/schemas/EvaluationBatch
+type EvaluationBatch struct {
+	ID             uuid.UUID `json:"id"`
+	SkillID        uuid.UUID `json:"skill_id"`
+	SkillVersionID uuid.UUID `json:"skill_version_id"`
+	Trials         int       `json:"trials"`
+	// `launching` while some trials have not started, `launched` once every trial has its run, `stopped`
+	// when a run was refused for a reason that waiting does not fix.
+	Status EvaluationBatchStatus `json:"status"`
+	// The run refusal reason that stopped the batch; present only when stopped.
+	StopReason OptString `json:"stop_reason"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+// GetID returns the value of ID.
+func (s *EvaluationBatch) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *EvaluationBatch) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetSkillVersionID returns the value of SkillVersionID.
+func (s *EvaluationBatch) GetSkillVersionID() uuid.UUID {
+	return s.SkillVersionID
+}
+
+// GetTrials returns the value of Trials.
+func (s *EvaluationBatch) GetTrials() int {
+	return s.Trials
+}
+
+// GetStatus returns the value of Status.
+func (s *EvaluationBatch) GetStatus() EvaluationBatchStatus {
+	return s.Status
+}
+
+// GetStopReason returns the value of StopReason.
+func (s *EvaluationBatch) GetStopReason() OptString {
+	return s.StopReason
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *EvaluationBatch) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// SetID sets the value of ID.
+func (s *EvaluationBatch) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *EvaluationBatch) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetSkillVersionID sets the value of SkillVersionID.
+func (s *EvaluationBatch) SetSkillVersionID(val uuid.UUID) {
+	s.SkillVersionID = val
+}
+
+// SetTrials sets the value of Trials.
+func (s *EvaluationBatch) SetTrials(val int) {
+	s.Trials = val
+}
+
+// SetStatus sets the value of Status.
+func (s *EvaluationBatch) SetStatus(val EvaluationBatchStatus) {
+	s.Status = val
+}
+
+// SetStopReason sets the value of StopReason.
+func (s *EvaluationBatch) SetStopReason(val OptString) {
+	s.StopReason = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *EvaluationBatch) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+func (*EvaluationBatch) createEvaluationBatchRes() {}
+
+// Ref: #/components/schemas/EvaluationBatchReport
+type EvaluationBatchReport struct {
+	Batch     EvaluationBatch           `json:"batch"`
+	TestCases []EvaluationBatchTestCase `json:"test_cases"`
+	Passed    int                       `json:"passed"`
+	Judged    int                       `json:"judged"`
+	// Passed / judged; absent while nothing is judged.
+	PassRate OptFloat64 `json:"pass_rate"`
+	// Wilson score interval at 95% around pass_rate.
+	PassRate95 OptEvaluationBatchReportPassRate95 `json:"pass_rate_95"`
+	// Test cases that passed every trial.
+	TestCasesAllPassed int `json:"test_cases_all_passed"`
+	// Test cases whose every-trial result is known.
+	TestCasesDecided int `json:"test_cases_decided"`
+}
+
+// GetBatch returns the value of Batch.
+func (s *EvaluationBatchReport) GetBatch() EvaluationBatch {
+	return s.Batch
+}
+
+// GetTestCases returns the value of TestCases.
+func (s *EvaluationBatchReport) GetTestCases() []EvaluationBatchTestCase {
+	return s.TestCases
+}
+
+// GetPassed returns the value of Passed.
+func (s *EvaluationBatchReport) GetPassed() int {
+	return s.Passed
+}
+
+// GetJudged returns the value of Judged.
+func (s *EvaluationBatchReport) GetJudged() int {
+	return s.Judged
+}
+
+// GetPassRate returns the value of PassRate.
+func (s *EvaluationBatchReport) GetPassRate() OptFloat64 {
+	return s.PassRate
+}
+
+// GetPassRate95 returns the value of PassRate95.
+func (s *EvaluationBatchReport) GetPassRate95() OptEvaluationBatchReportPassRate95 {
+	return s.PassRate95
+}
+
+// GetTestCasesAllPassed returns the value of TestCasesAllPassed.
+func (s *EvaluationBatchReport) GetTestCasesAllPassed() int {
+	return s.TestCasesAllPassed
+}
+
+// GetTestCasesDecided returns the value of TestCasesDecided.
+func (s *EvaluationBatchReport) GetTestCasesDecided() int {
+	return s.TestCasesDecided
+}
+
+// SetBatch sets the value of Batch.
+func (s *EvaluationBatchReport) SetBatch(val EvaluationBatch) {
+	s.Batch = val
+}
+
+// SetTestCases sets the value of TestCases.
+func (s *EvaluationBatchReport) SetTestCases(val []EvaluationBatchTestCase) {
+	s.TestCases = val
+}
+
+// SetPassed sets the value of Passed.
+func (s *EvaluationBatchReport) SetPassed(val int) {
+	s.Passed = val
+}
+
+// SetJudged sets the value of Judged.
+func (s *EvaluationBatchReport) SetJudged(val int) {
+	s.Judged = val
+}
+
+// SetPassRate sets the value of PassRate.
+func (s *EvaluationBatchReport) SetPassRate(val OptFloat64) {
+	s.PassRate = val
+}
+
+// SetPassRate95 sets the value of PassRate95.
+func (s *EvaluationBatchReport) SetPassRate95(val OptEvaluationBatchReportPassRate95) {
+	s.PassRate95 = val
+}
+
+// SetTestCasesAllPassed sets the value of TestCasesAllPassed.
+func (s *EvaluationBatchReport) SetTestCasesAllPassed(val int) {
+	s.TestCasesAllPassed = val
+}
+
+// SetTestCasesDecided sets the value of TestCasesDecided.
+func (s *EvaluationBatchReport) SetTestCasesDecided(val int) {
+	s.TestCasesDecided = val
+}
+
+func (*EvaluationBatchReport) getEvaluationBatchReportRes() {}
+
+// Wilson score interval at 95% around pass_rate.
+type EvaluationBatchReportPassRate95 struct {
+	Low  float64 `json:"low"`
+	High float64 `json:"high"`
+}
+
+// GetLow returns the value of Low.
+func (s *EvaluationBatchReportPassRate95) GetLow() float64 {
+	return s.Low
+}
+
+// GetHigh returns the value of High.
+func (s *EvaluationBatchReportPassRate95) GetHigh() float64 {
+	return s.High
+}
+
+// SetLow sets the value of Low.
+func (s *EvaluationBatchReportPassRate95) SetLow(val float64) {
+	s.Low = val
+}
+
+// SetHigh sets the value of High.
+func (s *EvaluationBatchReportPassRate95) SetHigh(val float64) {
+	s.High = val
+}
+
+// `launching` while some trials have not started, `launched` once every trial has its run, `stopped`
+// when a run was refused for a reason that waiting does not fix.
+type EvaluationBatchStatus string
+
+const (
+	EvaluationBatchStatusLaunching EvaluationBatchStatus = "launching"
+	EvaluationBatchStatusLaunched  EvaluationBatchStatus = "launched"
+	EvaluationBatchStatusStopped   EvaluationBatchStatus = "stopped"
+)
+
+// AllValues returns all EvaluationBatchStatus values.
+func (EvaluationBatchStatus) AllValues() []EvaluationBatchStatus {
+	return []EvaluationBatchStatus{
+		EvaluationBatchStatusLaunching,
+		EvaluationBatchStatusLaunched,
+		EvaluationBatchStatusStopped,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s EvaluationBatchStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case EvaluationBatchStatusLaunching:
+		return []byte(s), nil
+	case EvaluationBatchStatusLaunched:
+		return []byte(s), nil
+	case EvaluationBatchStatusStopped:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *EvaluationBatchStatus) UnmarshalText(data []byte) error {
+	switch EvaluationBatchStatus(data) {
+	case EvaluationBatchStatusLaunching:
+		*s = EvaluationBatchStatusLaunching
+		return nil
+	case EvaluationBatchStatusLaunched:
+		*s = EvaluationBatchStatusLaunched
+		return nil
+	case EvaluationBatchStatusStopped:
+		*s = EvaluationBatchStatusStopped
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/EvaluationBatchTestCase
+type EvaluationBatchTestCase struct {
+	TestCaseID uuid.UUID              `json:"test_case_id"`
+	Trials     []EvaluationBatchTrial `json:"trials"`
+	// Trials whose conversation met every criterion.
+	Passed int `json:"passed"`
+	// Trials judged met.
+	Judged int `json:"judged"`
+	// At least one trial passed; absent until that is known.
+	PassAtK OptBool `json:"pass_at_k"`
+	// Every trial passed; absent until every trial is judged or one has failed.
+	PassAllK OptBool `json:"pass_all_k"`
+	// The test case was edited while the batch ran, so its trials did not all see the same task.
+	PromptVariedAcross bool `json:"prompt_varied_across"`
+}
+
+// GetTestCaseID returns the value of TestCaseID.
+func (s *EvaluationBatchTestCase) GetTestCaseID() uuid.UUID {
+	return s.TestCaseID
+}
+
+// GetTrials returns the value of Trials.
+func (s *EvaluationBatchTestCase) GetTrials() []EvaluationBatchTrial {
+	return s.Trials
+}
+
+// GetPassed returns the value of Passed.
+func (s *EvaluationBatchTestCase) GetPassed() int {
+	return s.Passed
+}
+
+// GetJudged returns the value of Judged.
+func (s *EvaluationBatchTestCase) GetJudged() int {
+	return s.Judged
+}
+
+// GetPassAtK returns the value of PassAtK.
+func (s *EvaluationBatchTestCase) GetPassAtK() OptBool {
+	return s.PassAtK
+}
+
+// GetPassAllK returns the value of PassAllK.
+func (s *EvaluationBatchTestCase) GetPassAllK() OptBool {
+	return s.PassAllK
+}
+
+// GetPromptVariedAcross returns the value of PromptVariedAcross.
+func (s *EvaluationBatchTestCase) GetPromptVariedAcross() bool {
+	return s.PromptVariedAcross
+}
+
+// SetTestCaseID sets the value of TestCaseID.
+func (s *EvaluationBatchTestCase) SetTestCaseID(val uuid.UUID) {
+	s.TestCaseID = val
+}
+
+// SetTrials sets the value of Trials.
+func (s *EvaluationBatchTestCase) SetTrials(val []EvaluationBatchTrial) {
+	s.Trials = val
+}
+
+// SetPassed sets the value of Passed.
+func (s *EvaluationBatchTestCase) SetPassed(val int) {
+	s.Passed = val
+}
+
+// SetJudged sets the value of Judged.
+func (s *EvaluationBatchTestCase) SetJudged(val int) {
+	s.Judged = val
+}
+
+// SetPassAtK sets the value of PassAtK.
+func (s *EvaluationBatchTestCase) SetPassAtK(val OptBool) {
+	s.PassAtK = val
+}
+
+// SetPassAllK sets the value of PassAllK.
+func (s *EvaluationBatchTestCase) SetPassAllK(val OptBool) {
+	s.PassAllK = val
+}
+
+// SetPromptVariedAcross sets the value of PromptVariedAcross.
+func (s *EvaluationBatchTestCase) SetPromptVariedAcross(val bool) {
+	s.PromptVariedAcross = val
+}
+
+// Ref: #/components/schemas/EvaluationBatchTrial
+type EvaluationBatchTrial struct {
+	Trial int `json:"trial"`
+	// Absent until the batch starts this trial.
+	RunID OptUUID `json:"run_id"`
+	// The last run of the conversation this trial started; the same as run_id when nobody answered a
+	// question.
+	EndRunID OptUUID                     `json:"end_run_id"`
+	Outcome  EvaluationBatchTrialOutcome `json:"outcome"`
+}
+
+// GetTrial returns the value of Trial.
+func (s *EvaluationBatchTrial) GetTrial() int {
+	return s.Trial
+}
+
+// GetRunID returns the value of RunID.
+func (s *EvaluationBatchTrial) GetRunID() OptUUID {
+	return s.RunID
+}
+
+// GetEndRunID returns the value of EndRunID.
+func (s *EvaluationBatchTrial) GetEndRunID() OptUUID {
+	return s.EndRunID
+}
+
+// GetOutcome returns the value of Outcome.
+func (s *EvaluationBatchTrial) GetOutcome() EvaluationBatchTrialOutcome {
+	return s.Outcome
+}
+
+// SetTrial sets the value of Trial.
+func (s *EvaluationBatchTrial) SetTrial(val int) {
+	s.Trial = val
+}
+
+// SetRunID sets the value of RunID.
+func (s *EvaluationBatchTrial) SetRunID(val OptUUID) {
+	s.RunID = val
+}
+
+// SetEndRunID sets the value of EndRunID.
+func (s *EvaluationBatchTrial) SetEndRunID(val OptUUID) {
+	s.EndRunID = val
+}
+
+// SetOutcome sets the value of Outcome.
+func (s *EvaluationBatchTrial) SetOutcome(val EvaluationBatchTrialOutcome) {
+	s.Outcome = val
+}
+
+type EvaluationBatchTrialOutcome string
+
+const (
+	EvaluationBatchTrialOutcomePending        EvaluationBatchTrialOutcome = "pending"
+	EvaluationBatchTrialOutcomeRunning        EvaluationBatchTrialOutcome = "running"
+	EvaluationBatchTrialOutcomeAwaitingAnswer EvaluationBatchTrialOutcome = "awaiting_answer"
+	EvaluationBatchTrialOutcomeMet            EvaluationBatchTrialOutcome = "met"
+	EvaluationBatchTrialOutcomePartiallyMet   EvaluationBatchTrialOutcome = "partially_met"
+	EvaluationBatchTrialOutcomeNotMet         EvaluationBatchTrialOutcome = "not_met"
+	EvaluationBatchTrialOutcomeUndetermined   EvaluationBatchTrialOutcome = "undetermined"
+	EvaluationBatchTrialOutcomeNotEvaluated   EvaluationBatchTrialOutcome = "not_evaluated"
+)
+
+// AllValues returns all EvaluationBatchTrialOutcome values.
+func (EvaluationBatchTrialOutcome) AllValues() []EvaluationBatchTrialOutcome {
+	return []EvaluationBatchTrialOutcome{
+		EvaluationBatchTrialOutcomePending,
+		EvaluationBatchTrialOutcomeRunning,
+		EvaluationBatchTrialOutcomeAwaitingAnswer,
+		EvaluationBatchTrialOutcomeMet,
+		EvaluationBatchTrialOutcomePartiallyMet,
+		EvaluationBatchTrialOutcomeNotMet,
+		EvaluationBatchTrialOutcomeUndetermined,
+		EvaluationBatchTrialOutcomeNotEvaluated,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s EvaluationBatchTrialOutcome) MarshalText() ([]byte, error) {
+	switch s {
+	case EvaluationBatchTrialOutcomePending:
+		return []byte(s), nil
+	case EvaluationBatchTrialOutcomeRunning:
+		return []byte(s), nil
+	case EvaluationBatchTrialOutcomeAwaitingAnswer:
+		return []byte(s), nil
+	case EvaluationBatchTrialOutcomeMet:
+		return []byte(s), nil
+	case EvaluationBatchTrialOutcomePartiallyMet:
+		return []byte(s), nil
+	case EvaluationBatchTrialOutcomeNotMet:
+		return []byte(s), nil
+	case EvaluationBatchTrialOutcomeUndetermined:
+		return []byte(s), nil
+	case EvaluationBatchTrialOutcomeNotEvaluated:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *EvaluationBatchTrialOutcome) UnmarshalText(data []byte) error {
+	switch EvaluationBatchTrialOutcome(data) {
+	case EvaluationBatchTrialOutcomePending:
+		*s = EvaluationBatchTrialOutcomePending
+		return nil
+	case EvaluationBatchTrialOutcomeRunning:
+		*s = EvaluationBatchTrialOutcomeRunning
+		return nil
+	case EvaluationBatchTrialOutcomeAwaitingAnswer:
+		*s = EvaluationBatchTrialOutcomeAwaitingAnswer
+		return nil
+	case EvaluationBatchTrialOutcomeMet:
+		*s = EvaluationBatchTrialOutcomeMet
+		return nil
+	case EvaluationBatchTrialOutcomePartiallyMet:
+		*s = EvaluationBatchTrialOutcomePartiallyMet
+		return nil
+	case EvaluationBatchTrialOutcomeNotMet:
+		*s = EvaluationBatchTrialOutcomeNotMet
+		return nil
+	case EvaluationBatchTrialOutcomeUndetermined:
+		*s = EvaluationBatchTrialOutcomeUndetermined
+		return nil
+	case EvaluationBatchTrialOutcomeNotEvaluated:
+		*s = EvaluationBatchTrialOutcomeNotEvaluated
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 // What this judgement cost: the platform's own model call, and nothing else. It is never added to the
 // run's cost — they are spent by different workloads under different keys, and the run's figure is a
@@ -10694,6 +11250,14 @@ type GetDownloadArtifactUnauthorized Error
 
 func (*GetDownloadArtifactUnauthorized) getDownloadArtifactRes() {}
 
+type GetEvaluationBatchReportNotFound Error
+
+func (*GetEvaluationBatchReportNotFound) getEvaluationBatchReportRes() {}
+
+type GetEvaluationBatchReportUnauthorized Error
+
+func (*GetEvaluationBatchReportUnauthorized) getEvaluationBatchReportRes() {}
+
 type GetFunnelTrendBadRequest Error
 
 func (*GetFunnelTrendBadRequest) getFunnelTrendRes() {}
@@ -12202,6 +12766,22 @@ func (s *ListDownloadRecordsOKRecordsItem) SetActor(val string) {
 type ListDownloadRecordsUnauthorized Error
 
 func (*ListDownloadRecordsUnauthorized) listDownloadRecordsRes() {}
+
+type ListEvaluationBatchesOK struct {
+	Batches []EvaluationBatch `json:"batches"`
+}
+
+// GetBatches returns the value of Batches.
+func (s *ListEvaluationBatchesOK) GetBatches() []EvaluationBatch {
+	return s.Batches
+}
+
+// SetBatches sets the value of Batches.
+func (s *ListEvaluationBatchesOK) SetBatches(val []EvaluationBatch) {
+	s.Batches = val
+}
+
+func (*ListEvaluationBatchesOK) listEvaluationBatchesRes() {}
 
 type ListExposureQueueOK struct {
 	Publications []ExposureQueueEntry `json:"publications"`
@@ -14531,6 +15111,52 @@ func (o OptDevLoginReq) Get() (v DevLoginReq, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptDevLoginReq) Or(d DevLoginReq) DevLoginReq {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptEvaluationBatchReportPassRate95 returns new OptEvaluationBatchReportPassRate95 with value set to v.
+func NewOptEvaluationBatchReportPassRate95(v EvaluationBatchReportPassRate95) OptEvaluationBatchReportPassRate95 {
+	return OptEvaluationBatchReportPassRate95{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptEvaluationBatchReportPassRate95 is optional EvaluationBatchReportPassRate95.
+type OptEvaluationBatchReportPassRate95 struct {
+	Value EvaluationBatchReportPassRate95
+	Set   bool
+}
+
+// IsSet returns true if OptEvaluationBatchReportPassRate95 was set.
+func (o OptEvaluationBatchReportPassRate95) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptEvaluationBatchReportPassRate95) Reset() {
+	var v EvaluationBatchReportPassRate95
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptEvaluationBatchReportPassRate95) SetTo(v EvaluationBatchReportPassRate95) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptEvaluationBatchReportPassRate95) Get() (v EvaluationBatchReportPassRate95, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptEvaluationBatchReportPassRate95) Or(d EvaluationBatchReportPassRate95) EvaluationBatchReportPassRate95 {
 	if v, ok := o.Get(); ok {
 		return v
 	}

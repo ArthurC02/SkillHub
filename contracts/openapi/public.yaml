@@ -5048,6 +5048,130 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/evaluation-batches:
+    post:
+      operationId: createEvaluationBatch
+      summary: Run a set of test cases against one skill version, each several times (EVAL-014)
+      description: |
+        Every test case must already have its current run permissions confirmed;
+        the batch keeps each confirmed summary and starts the runs one after
+        another as the workspace's run slot frees. Each run is admitted and
+        charged like any run. A refusal that waiting fixes (a busy slot, a halted
+        dispatch, a scan not yet available) makes the batch wait; any other
+        refusal stops it.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [skill_version_id, test_case_ids, trials]
+              properties:
+                skill_version_id: { type: string, format: uuid }
+                test_case_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 50
+                  uniqueItems: true
+                  items: { type: string, format: uuid }
+                trials: { type: integer, minimum: 1, maximum: 10 }
+      responses:
+        "201":
+          description: The batch, with its first run started when a slot was free.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EvaluationBatch" }
+        "400":
+          description: Body is not JSON, or the test cases or trials are outside their limits.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The skill, version or a test case is not the caller's, or they do not belong together.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Some test cases need their run permissions confirmed first; `unconfirmed_test_case_ids` lists them.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error, unconfirmed_test_case_ids]
+                properties:
+                  error: { type: string }
+                  unconfirmed_test_case_ids:
+                    type: array
+                    items: { type: string, format: uuid }
+    get:
+      operationId: listEvaluationBatches
+      summary: The skill's evaluation batches, newest first (EVAL-014)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Up to 50 batches.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [batches]
+                properties:
+                  batches:
+                    type: array
+                    items: { $ref: "#/components/schemas/EvaluationBatch" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/evaluation-batches/{batchId}:
+    get:
+      operationId: getEvaluationBatchReport
+      summary: How often each test case passed across its trials (EVAL-014)
+      description: |
+        A trial passes when the evaluation of its whole conversation is `met`.
+        Only met, partially met and not met count as judged; a trial still
+        running, awaiting an answer, undetermined or not evaluated is shown but
+        left out of every rate.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: batchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The report.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EvaluationBatchReport" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's batch, or not this skill's.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /runs/{id}/trace:
     get:
       operationId: getRunTrace
@@ -7028,6 +7152,77 @@ components:
             reason: { type: string, description: Present once an operator has changed the setting. }
             set_by_user_id: { type: string, format: uuid }
             set_at: { type: string, format: date-time }
+    EvaluationBatch:
+      type: object
+      required: [id, skill_id, skill_version_id, trials, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        skill_id: { type: string, format: uuid }
+        skill_version_id: { type: string, format: uuid }
+        trials: { type: integer, minimum: 1, maximum: 10 }
+        status:
+          type: string
+          enum: [launching, launched, stopped]
+          description: |
+            `launching` while some trials have not started, `launched` once every
+            trial has its run, `stopped` when a run was refused for a reason that
+            waiting does not fix.
+        stop_reason:
+          type: string
+          description: The run refusal reason that stopped the batch; present only when stopped.
+        created_at: { type: string, format: date-time }
+    EvaluationBatchTrial:
+      type: object
+      required: [trial, outcome]
+      properties:
+        trial: { type: integer, minimum: 1 }
+        run_id: { type: string, format: uuid, description: Absent until the batch starts this trial. }
+        end_run_id:
+          type: string
+          format: uuid
+          description: The last run of the conversation this trial started; the same as run_id when nobody answered a question.
+        outcome:
+          type: string
+          enum: [pending, running, awaiting_answer, met, partially_met, not_met, undetermined, not_evaluated]
+    EvaluationBatchTestCase:
+      type: object
+      required: [test_case_id, trials, passed, judged, prompt_varied_across]
+      properties:
+        test_case_id: { type: string, format: uuid }
+        trials:
+          type: array
+          items: { $ref: "#/components/schemas/EvaluationBatchTrial" }
+        passed: { type: integer, description: Trials whose conversation met every criterion. }
+        judged: { type: integer, description: Trials judged met, partially met or not met. }
+        pass_at_k:
+          type: boolean
+          description: At least one trial passed; absent until that is known.
+        pass_all_k:
+          type: boolean
+          description: Every trial passed; absent until every trial is judged or one has failed.
+        prompt_varied_across:
+          type: boolean
+          description: The test case was edited while the batch ran, so its trials did not all see the same task.
+    EvaluationBatchReport:
+      type: object
+      required: [batch, test_cases, passed, judged, test_cases_all_passed, test_cases_decided]
+      properties:
+        batch: { $ref: "#/components/schemas/EvaluationBatch" }
+        test_cases:
+          type: array
+          items: { $ref: "#/components/schemas/EvaluationBatchTestCase" }
+        passed: { type: integer }
+        judged: { type: integer }
+        pass_rate: { type: number, description: passed / judged; absent while nothing is judged. }
+        pass_rate_95:
+          type: object
+          description: Wilson score interval at 95% around pass_rate.
+          required: [low, high]
+          properties:
+            low: { type: number }
+            high: { type: number }
+        test_cases_all_passed: { type: integer, description: Test cases that passed every trial. }
+        test_cases_decided: { type: integer, description: Test cases whose every-trial result is known. }
     PlatformAgentBrake:
       type: object
       required: [reason, engaged_at]

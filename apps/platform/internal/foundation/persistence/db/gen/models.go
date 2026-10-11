@@ -421,6 +421,30 @@ type Evaluation struct {
 	SupersededAt          pgtype.Timestamptz
 }
 
+// One evaluation set run against one skill version, every test case the given number of trials.
+type EvaluationBatch struct {
+	ID             pgtype.UUID
+	WorkspaceID    pgtype.UUID
+	SkillID        pgtype.UUID
+	SkillVersionID pgtype.UUID
+	Trials         int32
+	Status         string
+	StopReason     *string
+	CreatedBy      pgtype.UUID
+	CreatedAt      pgtype.Timestamptz
+}
+
+// One trial of one test case in a batch; the run is linked once the batch starts it.
+type EvaluationBatchItem struct {
+	BatchID     pgtype.UUID
+	WorkspaceID pgtype.UUID
+	TestCaseID  pgtype.UUID
+	Position    int32
+	Trial       int32
+	SummaryHash string
+	RunID       pgtype.UUID
+}
+
 type EvaluationModelUsage struct {
 	ID               pgtype.UUID
 	EvaluationID     pgtype.UUID

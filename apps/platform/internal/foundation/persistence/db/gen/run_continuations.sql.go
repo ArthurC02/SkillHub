@@ -91,6 +91,63 @@ func (q *Queries) InsertRunContinuation(ctx context.Context, arg InsertRunContin
 	return i, err
 }
 
+const listContinuationChainEnds = `-- name: ListContinuationChainEnds :many
+WITH RECURSIVE chain AS (
+    SELECT r.id AS start_id, r.id AS run_id, 0 AS depth
+    FROM runs r
+    WHERE r.workspace_id = $1 AND r.id = ANY($2::uuid[])
+    UNION ALL
+    SELECT chain.start_id, c.run_id, chain.depth + 1
+    FROM run_continuations c
+    JOIN chain ON c.continues_run_id = chain.run_id
+    WHERE c.workspace_id = $1
+)
+SELECT DISTINCT ON (chain.start_id)
+    chain.start_id, start_run.test_case_snapshot_id AS start_snapshot_id,
+    r.id AS end_id, r.status AS end_status
+FROM chain
+JOIN runs r ON r.id = chain.run_id AND r.workspace_id = $1
+JOIN runs start_run ON start_run.id = chain.start_id AND start_run.workspace_id = $1
+ORDER BY chain.start_id, chain.depth DESC
+`
+
+type ListContinuationChainEndsParams struct {
+	WorkspaceID pgtype.UUID
+	RunIds      []pgtype.UUID
+}
+
+type ListContinuationChainEndsRow struct {
+	StartID         pgtype.UUID
+	StartSnapshotID pgtype.UUID
+	EndID           pgtype.UUID
+	EndStatus       RunStatus
+}
+
+func (q *Queries) ListContinuationChainEnds(ctx context.Context, arg ListContinuationChainEndsParams) ([]ListContinuationChainEndsRow, error) {
+	rows, err := q.db.Query(ctx, listContinuationChainEnds, arg.WorkspaceID, arg.RunIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListContinuationChainEndsRow
+	for rows.Next() {
+		var i ListContinuationChainEndsRow
+		if err := rows.Scan(
+			&i.StartID,
+			&i.StartSnapshotID,
+			&i.EndID,
+			&i.EndStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEarlierQuestions = `-- name: ListEarlierQuestions :many
 WITH RECURSIVE chain AS (
     SELECT c.continues_run_id, c.questions, 1 AS depth

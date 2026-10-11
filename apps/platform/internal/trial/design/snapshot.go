@@ -119,6 +119,28 @@ func (s *Service) SnapshotTestCases(
 	return testCases, nil
 }
 
+func (s *Service) SnapshotContentHashes(
+	ctx context.Context, workspaceID pgtype.UUID, snapshotIDs []pgtype.UUID,
+) (map[pgtype.UUID]string, error) {
+	if s == nil || s.Pool == nil {
+		return nil, errPersistenceNotConfigured
+	}
+	hashes := make(map[pgtype.UUID]string, len(snapshotIDs))
+	if len(snapshotIDs) == 0 {
+		return hashes, nil
+	}
+	rows, err := gen.New(s.Pool).ListSnapshotTestCases(ctx, gen.ListSnapshotTestCasesParams{
+		WorkspaceID: workspaceID, SnapshotIds: snapshotIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		hashes[row.ID] = row.ContentHash
+	}
+	return hashes, nil
+}
+
 func (s *Service) SnapshotInputsAvailable(ctx context.Context, workspaceID, snapshotID pgtype.UUID) (bool, error) {
 	if s == nil || s.Pool == nil {
 		return false, errPersistenceNotConfigured

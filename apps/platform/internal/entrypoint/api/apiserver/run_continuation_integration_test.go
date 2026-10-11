@@ -13,14 +13,21 @@ import (
 
 const askingPrompt = "summarise the attached csv"
 
-func seedAskingRun(t *testing.T, pool *pgxpool.Pool, f fixture, questions ...string) string {
+const asksFirst = `[{"id":"c1","text":"asks first","check":{"kind":"asks"}}]`
+
+type finishedRun struct {
+	testCaseID  string
+	criteria    string
+	contentHash string
+}
+
+func seedFinishedRun(t *testing.T, pool *pgxpool.Pool, f fixture, r finishedRun) string {
 	t.Helper()
-	ctx := context.Background()
 	var runID string
-	if err := pool.QueryRow(ctx, `
+	if err := pool.QueryRow(context.Background(), `
 		WITH snap AS (
 			INSERT INTO test_case_snapshots (workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
-			VALUES ($1, $3, $4, '[{"id":"c1","text":"asks first","check":{"kind":"asks"}}]'::jsonb, 'sha256:asking')
+			VALUES ($1, $3, $4, $5::jsonb, $6)
 			RETURNING id),
 		r AS (
 			INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, status, started_at, finished_at)
@@ -28,10 +35,17 @@ func seedAskingRun(t *testing.T, pool *pgxpool.Pool, f fixture, questions ...str
 			RETURNING id, workspace_id),
 		s AS (INSERT INTO run_snapshots (run_id, workspace_id) SELECT id, workspace_id FROM r)
 		SELECT id::text FROM r`,
-		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, f.testCaseID), askingPrompt,
+		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, r.testCaseID), askingPrompt,
+		r.criteria, r.contentHash,
 	).Scan(&runID); err != nil {
 		t.Fatal(err)
 	}
+	return runID
+}
+
+func seedAskingRun(t *testing.T, pool *pgxpool.Pool, f fixture, questions ...string) string {
+	t.Helper()
+	runID := seedFinishedRun(t, pool, f, finishedRun{testCaseID: f.testCaseID, criteria: asksFirst, contentHash: "sha256:asking"})
 	if len(questions) > 0 {
 		seedQuestions(t, pool, f.workspaceID, runID, questions...)
 	}

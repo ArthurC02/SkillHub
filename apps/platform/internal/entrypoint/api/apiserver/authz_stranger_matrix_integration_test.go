@@ -12,6 +12,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 )
 
@@ -47,6 +48,8 @@ var strangerRoutes = []strangerCase{
 	{pattern: "GET /runs/{id}/evaluation/revisions", want: http.StatusNotFound},
 	{pattern: "GET /runs/{id}/suggestions", want: http.StatusNotFound},
 	{pattern: "GET /runs/{id}/comparison", query: "?against=" + anotherRunID, want: http.StatusNotFound},
+	{pattern: "GET /skills/{id}/evaluation-batches", want: http.StatusOK},
+	{pattern: "GET /skills/{id}/evaluation-batches/{batchId}", want: http.StatusNotFound},
 
 	{pattern: "GET /downloads/{artifactId}", want: http.StatusNotFound},
 	{pattern: "GET /downloads/{artifactId}/records", want: http.StatusNotFound},
@@ -118,6 +121,8 @@ var strangerRoutes = []strangerCase{
 	{pattern: "POST /skills/{id}/runs/preflight/confirm",
 		body: `{"version_id":"{versionId}","test_case_id":"{testCaseId}","summary_hash":"` +
 			strangerGuessedHash + `"}`, want: http.StatusNotFound},
+	{pattern: "POST /skills/{id}/evaluation-batches",
+		body: `{"skill_version_id":"{versionId}","test_case_ids":["{testCaseId}"],"trials":1}`, want: http.StatusNotFound},
 	{pattern: "POST /skills/{id}/runs",
 		body: `{"version_id":"{versionId}","test_case_id":"{testCaseId}","confirmed_summary_hash":"` +
 			strangerGuessedHash + `"}`, want: http.StatusNotFound},
@@ -155,6 +160,7 @@ type aliceWorld struct {
 	runArtifactID string
 	workspaceID   string
 	bundleName    string
+	batchID       string
 
 	secrets map[string]string
 }
@@ -182,6 +188,7 @@ func (w aliceWorld) resolve(path string) string {
 		{"{workspace_id}", w.workspaceID},
 		{"{runId}", w.runID},
 		{"{name}", w.bundleName},
+		{"{batchId}", w.batchID},
 	}
 	for _, r := range replacements {
 		path = strings.ReplaceAll(path, r.placeholder, r.value)
@@ -299,16 +306,19 @@ func newAliceWorld(t *testing.T, a *api, pool *pgxpool.Pool) (aliceWorld, *clien
 		t.Fatalf("POST bundle: got %d, body %v", code, body)
 	}
 
+	batchID := seedAlicesBatch(t, pool, alice, skillID, versionID)
 	world := aliceWorld{
 		skillID: skillID, versionID: versionID, testCaseID: testCaseID, criterionID: criterionID,
 		datasetID: datasetID, runID: created.RunID, liveRunID: liveRunID, artifactID: artifactID, runArtifactID: runArtifactID,
 		workspaceID: alice.workspaceID, bundleName: aliceBundleName,
+		batchID: batchID,
 		secrets: map[string]string{
 			"the version id":      versionID,
 			"the test case id":    testCaseID,
 			"the criterion id":    criterionID,
 			"the dataset id":      datasetID,
 			"the run id":          created.RunID,
+			"the batch id":        batchID,
 			"the artifact id":     artifactID,
 			"the run artifact id": runArtifactID,
 			"the skill name":      aliceSkillName,
@@ -466,4 +476,16 @@ func ownersRows(t *testing.T, pool *pgxpool.Pool, w aliceWorld) map[string]strin
 		rows[p.name] = js
 	}
 	return rows
+}
+
+func seedAlicesBatch(t *testing.T, pool *pgxpool.Pool, alice *client, skillID, versionID string) string {
+	t.Helper()
+	batch, err := gen.New(pool).InsertEvaluationBatch(context.Background(), gen.InsertEvaluationBatchParams{
+		WorkspaceID: mustUUID(t, alice.workspaceID), SkillID: mustUUID(t, skillID),
+		SkillVersionID: mustUUID(t, versionID), Trials: 1, CreatedBy: mustUUID(t, alice.userID),
+	})
+	if err != nil {
+		t.Fatalf("seed Alice's evaluation batch: %v", err)
+	}
+	return pgconv.UUIDString(batch.ID)
 }

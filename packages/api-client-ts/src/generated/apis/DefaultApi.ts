@@ -129,6 +129,16 @@ import {
     CreateDownloadArtifactRequestToJSON,
 } from '../models/CreateDownloadArtifactRequest';
 import {
+    type CreateEvaluationBatch422Response,
+    CreateEvaluationBatch422ResponseFromJSON,
+    CreateEvaluationBatch422ResponseToJSON,
+} from '../models/CreateEvaluationBatch422Response';
+import {
+    type CreateEvaluationBatchRequest,
+    CreateEvaluationBatchRequestFromJSON,
+    CreateEvaluationBatchRequestToJSON,
+} from '../models/CreateEvaluationBatchRequest';
+import {
     type CreateSkillVersionFromSuggestions201Response,
     CreateSkillVersionFromSuggestions201ResponseFromJSON,
     CreateSkillVersionFromSuggestions201ResponseToJSON,
@@ -259,6 +269,16 @@ import {
     EvaluationToJSON,
 } from '../models/Evaluation';
 import {
+    type EvaluationBatch,
+    EvaluationBatchFromJSON,
+    EvaluationBatchToJSON,
+} from '../models/EvaluationBatch';
+import {
+    type EvaluationBatchReport,
+    EvaluationBatchReportFromJSON,
+    EvaluationBatchReportToJSON,
+} from '../models/EvaluationBatchReport';
+import {
     type ExposureCase,
     ExposureCaseFromJSON,
     ExposureCaseToJSON,
@@ -383,6 +403,11 @@ import {
     ListDownloadRecords200ResponseFromJSON,
     ListDownloadRecords200ResponseToJSON,
 } from '../models/ListDownloadRecords200Response';
+import {
+    type ListEvaluationBatches200Response,
+    ListEvaluationBatches200ResponseFromJSON,
+    ListEvaluationBatches200ResponseToJSON,
+} from '../models/ListEvaluationBatches200Response';
 import {
     type ListExposureQueue200Response,
     ListExposureQueue200ResponseFromJSON,
@@ -917,6 +942,17 @@ export interface CreateDownloadArtifactOperationRequest {
     createDownloadArtifactRequest: CreateDownloadArtifactRequest;
 }
 
+export interface CreateEvaluationBatchOperationRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    createEvaluationBatchRequest: CreateEvaluationBatchRequest;
+}
+
 export interface CreateSkillVersionFromSuggestionsOperationRequest {
     /**
      * Skill id. The evaluation's run must belong to a version of this skill.
@@ -1153,6 +1189,17 @@ export interface GetDownloadArtifactRequest {
     artifactId: string;
 }
 
+export interface GetEvaluationBatchReportRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    batchId: string;
+}
+
 export interface GetExposureCaseRequest {
     /**
      * 
@@ -1377,6 +1424,13 @@ export interface ListDownloadRecordsRequest {
      * 
      */
     artifactId: string;
+}
+
+export interface ListEvaluationBatchesRequest {
+    /**
+     * 
+     */
+    id: string;
 }
 
 export interface ListOperatorAuditLogRequest {
@@ -2304,6 +2358,32 @@ export interface DefaultApiInterface {
     createDownloadArtifact(requestParameters: CreateDownloadArtifactOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateDownloadArtifact201Response>;
 
     /**
+     * Creates request options for createEvaluationBatch without sending the request
+     * @param {string} id 
+     * @param {CreateEvaluationBatchRequest} createEvaluationBatchRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createEvaluationBatchRequestOpts(requestParameters: CreateEvaluationBatchOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Every test case must already have its current run permissions confirmed; the batch keeps each confirmed summary and starts the runs one after another as the workspace\'s run slot frees. Each run is admitted and charged like any run. A refusal that waiting fixes (a busy slot, a halted dispatch, a scan not yet available) makes the batch wait; any other refusal stops it. 
+     * @summary Run a set of test cases against one skill version, each several times (EVAL-014)
+     * @param {string} id 
+     * @param {CreateEvaluationBatchRequest} createEvaluationBatchRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createEvaluationBatchRaw(requestParameters: CreateEvaluationBatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationBatch>>;
+
+    /**
+     * Every test case must already have its current run permissions confirmed; the batch keeps each confirmed summary and starts the runs one after another as the workspace\'s run slot frees. Each run is admitted and charged like any run. A refusal that waiting fixes (a busy slot, a halted dispatch, a scan not yet available) makes the batch wait; any other refusal stops it. 
+     * Run a set of test cases against one skill version, each several times (EVAL-014)
+     */
+    createEvaluationBatch(requestParameters: CreateEvaluationBatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationBatch>;
+
+    /**
      * Creates request options for createSkillVersionFromSuggestions without sending the request
      * @param {string} id Skill id. The evaluation\&#39;s run must belong to a version of this skill.
      * @param {CreateSkillVersionFromSuggestionsRequest} createSkillVersionFromSuggestionsRequest 
@@ -3119,6 +3199,32 @@ export interface DefaultApiInterface {
      * One download artifact, with its expiry and download count (WS-002)
      */
     getDownloadArtifact(requestParameters: GetDownloadArtifactRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DownloadArtifact>;
+
+    /**
+     * Creates request options for getEvaluationBatchReport without sending the request
+     * @param {string} id 
+     * @param {string} batchId 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getEvaluationBatchReportRequestOpts(requestParameters: GetEvaluationBatchReportRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * A trial passes when the evaluation of its whole conversation is `met`. Only met, partially met and not met count as judged; a trial still running, awaiting an answer, undetermined or not evaluated is shown but left out of every rate. 
+     * @summary How often each test case passed across its trials (EVAL-014)
+     * @param {string} id 
+     * @param {string} batchId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getEvaluationBatchReportRaw(requestParameters: GetEvaluationBatchReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationBatchReport>>;
+
+    /**
+     * A trial passes when the evaluation of its whole conversation is `met`. Only met, partially met and not met count as judged; a trial still running, awaiting an answer, undetermined or not evaluated is shown but left out of every rate. 
+     * How often each test case passed across its trials (EVAL-014)
+     */
+    getEvaluationBatchReport(requestParameters: GetEvaluationBatchReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationBatchReport>;
 
     /**
      * Creates request options for getExposureCase without sending the request
@@ -3949,6 +4055,29 @@ export interface DefaultApiInterface {
      * Who took a copy of this package, and when (WS-004)
      */
     listDownloadRecords(requestParameters: ListDownloadRecordsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDownloadRecords200Response>;
+
+    /**
+     * Creates request options for listEvaluationBatches without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listEvaluationBatchesRequestOpts(requestParameters: ListEvaluationBatchesRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @summary The skill\'s evaluation batches, newest first (EVAL-014)
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listEvaluationBatchesRaw(requestParameters: ListEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListEvaluationBatches200Response>>;
+
+    /**
+     * The skill\'s evaluation batches, newest first (EVAL-014)
+     */
+    listEvaluationBatches(requestParameters: ListEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListEvaluationBatches200Response>;
 
     /**
      * Creates request options for listExposureQueue without sending the request
@@ -6120,6 +6249,63 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for createEvaluationBatch without sending the request
+     */
+    async createEvaluationBatchRequestOpts(requestParameters: CreateEvaluationBatchOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling createEvaluationBatch().'
+            );
+        }
+
+        if (requestParameters['createEvaluationBatchRequest'] == null) {
+            throw new runtime.RequiredError(
+                'createEvaluationBatchRequest',
+                'Required parameter "createEvaluationBatchRequest" was null or undefined when calling createEvaluationBatch().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/skills/{id}/evaluation-batches`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateEvaluationBatchRequestToJSON(requestParameters['createEvaluationBatchRequest']),
+        };
+    }
+
+    /**
+     * Every test case must already have its current run permissions confirmed; the batch keeps each confirmed summary and starts the runs one after another as the workspace\'s run slot frees. Each run is admitted and charged like any run. A refusal that waiting fixes (a busy slot, a halted dispatch, a scan not yet available) makes the batch wait; any other refusal stops it. 
+     * Run a set of test cases against one skill version, each several times (EVAL-014)
+     */
+    async createEvaluationBatchRaw(requestParameters: CreateEvaluationBatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationBatch>> {
+        const requestOptions = await this.createEvaluationBatchRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EvaluationBatchFromJSON(jsonValue));
+    }
+
+    /**
+     * Every test case must already have its current run permissions confirmed; the batch keeps each confirmed summary and starts the runs one after another as the workspace\'s run slot frees. Each run is admitted and charged like any run. A refusal that waiting fixes (a busy slot, a halted dispatch, a scan not yet available) makes the batch wait; any other refusal stops it. 
+     * Run a set of test cases against one skill version, each several times (EVAL-014)
+     */
+    async createEvaluationBatch(requestParameters: CreateEvaluationBatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationBatch> {
+        const response = await this.createEvaluationBatchRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for createSkillVersionFromSuggestions without sending the request
      */
     async createSkillVersionFromSuggestionsRequestOpts(requestParameters: CreateSkillVersionFromSuggestionsOperationRequest): Promise<runtime.RequestOpts> {
@@ -7739,6 +7925,61 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for getEvaluationBatchReport without sending the request
+     */
+    async getEvaluationBatchReportRequestOpts(requestParameters: GetEvaluationBatchReportRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getEvaluationBatchReport().'
+            );
+        }
+
+        if (requestParameters['batchId'] == null) {
+            throw new runtime.RequiredError(
+                'batchId',
+                'Required parameter "batchId" was null or undefined when calling getEvaluationBatchReport().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/skills/{id}/evaluation-batches/{batchId}`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace('{batchId}', encodeURIComponent(String(requestParameters['batchId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * A trial passes when the evaluation of its whole conversation is `met`. Only met, partially met and not met count as judged; a trial still running, awaiting an answer, undetermined or not evaluated is shown but left out of every rate. 
+     * How often each test case passed across its trials (EVAL-014)
+     */
+    async getEvaluationBatchReportRaw(requestParameters: GetEvaluationBatchReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EvaluationBatchReport>> {
+        const requestOptions = await this.getEvaluationBatchReportRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => EvaluationBatchReportFromJSON(jsonValue));
+    }
+
+    /**
+     * A trial passes when the evaluation of its whole conversation is `met`. Only met, partially met and not met count as judged; a trial still running, awaiting an answer, undetermined or not evaluated is shown but left out of every rate. 
+     * How often each test case passed across its trials (EVAL-014)
+     */
+    async getEvaluationBatchReport(requestParameters: GetEvaluationBatchReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EvaluationBatchReport> {
+        const response = await this.getEvaluationBatchReportRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getExposureCase without sending the request
      */
     async getExposureCaseRequestOpts(requestParameters: GetExposureCaseRequest): Promise<runtime.RequestOpts> {
@@ -9341,6 +9582,51 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async listDownloadRecords(requestParameters: ListDownloadRecordsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDownloadRecords200Response> {
         const response = await this.listDownloadRecordsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listEvaluationBatches without sending the request
+     */
+    async listEvaluationBatchesRequestOpts(requestParameters: ListEvaluationBatchesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listEvaluationBatches().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/skills/{id}/evaluation-batches`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The skill\'s evaluation batches, newest first (EVAL-014)
+     */
+    async listEvaluationBatchesRaw(requestParameters: ListEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListEvaluationBatches200Response>> {
+        const requestOptions = await this.listEvaluationBatchesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListEvaluationBatches200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The skill\'s evaluation batches, newest first (EVAL-014)
+     */
+    async listEvaluationBatches(requestParameters: ListEvaluationBatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListEvaluationBatches200Response> {
+        const response = await this.listEvaluationBatchesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

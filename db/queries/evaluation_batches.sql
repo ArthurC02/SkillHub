@@ -1,0 +1,57 @@
+-- name: InsertEvaluationBatch :one
+INSERT INTO evaluation_batches (workspace_id, skill_id, skill_version_id, trials, created_by)
+VALUES (@workspace_id, @skill_id, @skill_version_id, @trials, @created_by)
+RETURNING *;
+
+-- name: InsertEvaluationBatchTrials :exec
+INSERT INTO evaluation_batch_items (batch_id, workspace_id, test_case_id, position, trial, summary_hash)
+SELECT @batch_id, @workspace_id, @test_case_id, @position, trial, @summary_hash
+FROM generate_series(1, sqlc.arg(trials)::integer) AS trial;
+
+-- name: GetEvaluationBatch :one
+SELECT * FROM evaluation_batches WHERE id = @id AND workspace_id = @workspace_id;
+
+-- name: ListEvaluationBatches :many
+SELECT * FROM evaluation_batches
+WHERE workspace_id = @workspace_id AND skill_id = @skill_id
+ORDER BY created_at DESC
+LIMIT 50;
+
+-- name: ListEvaluationBatchItems :many
+SELECT * FROM evaluation_batch_items
+WHERE batch_id = @batch_id AND workspace_id = @workspace_id
+ORDER BY position, trial;
+
+-- name: ClaimNextBatchItem :one
+SELECT i.batch_id, i.test_case_id, i.trial, i.summary_hash, b.skill_id, b.skill_version_id, b.created_by
+FROM evaluation_batch_items i
+JOIN evaluation_batches b ON b.id = i.batch_id AND b.workspace_id = i.workspace_id
+WHERE b.workspace_id = @workspace_id AND b.status = 'launching' AND i.run_id IS NULL
+ORDER BY b.created_at, i.trial, i.position
+LIMIT 1
+FOR UPDATE OF i SKIP LOCKED;
+
+-- name: LinkBatchItemRun :execrows
+UPDATE evaluation_batch_items SET run_id = @run_id
+WHERE batch_id = @batch_id AND test_case_id = @test_case_id AND trial = @trial
+  AND workspace_id = @workspace_id AND run_id IS NULL;
+
+-- name: StopEvaluationBatch :execrows
+UPDATE evaluation_batches SET status = 'stopped', stop_reason = @stop_reason
+WHERE id = @id AND workspace_id = @workspace_id AND status = 'launching';
+
+-- name: MarkBatchesLaunched :execrows
+UPDATE evaluation_batches b SET status = 'launched'
+WHERE b.workspace_id = @workspace_id AND b.status = 'launching'
+  AND NOT EXISTS (
+      SELECT 1 FROM evaluation_batch_items i
+      WHERE i.batch_id = b.id AND i.workspace_id = b.workspace_id AND i.run_id IS NULL
+  );
+
+-- name: HasLaunchingBatch :one
+SELECT EXISTS (
+    SELECT 1 FROM evaluation_batches WHERE workspace_id = @workspace_id AND status = 'launching'
+) AS launching;
+
+-- name: ListWorkspacesWithLaunchingBatches :many
+SELECT DISTINCT workspace_id FROM evaluation_batches WHERE status = 'launching';

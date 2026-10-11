@@ -60,7 +60,7 @@
 | EVAL-001 | 有測試 | `TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun`、`TestFeedbackIsRecordedAndCanBeChanged`、`TestAFailedVerdictIsFrozenLikeASettledOne` | |
 | EVAL-002 | 有測試 | `TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone`、`TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot` | |
 | EVAL-003 | 有測試 | `TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink`、`TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight` | |
-| EVAL-014 | 部分 | `TestCriteriaWithChecksAreDecidedWithoutAJudge`、`TestOnlyCriteriaWithoutAChecksReachTheJudge` | 程式先判已在平台上；評估集進平台、評審校準、模擬使用者的多輪量測與整套評估都還沒有，`test_the_paired_difference_counts_discordant_cases_and_brackets_the_estimate` 只證明逐題配對的統計工具 |
+| EVAL-014 | 部分 | `TestCriteriaWithChecksAreDecidedWithoutAJudge`、`TestOnlyCriteriaWithoutAChecksReachTheJudge`、`TestTheBatchReportCountsEachConversationAtItsEnd`、`TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait` | 程式先判與每題多次的評估批次已在平台上；評估集進平台、評審校準、模擬使用者的多輪量測、兩版配對比較與不載入 Skill 的對照都還沒有，`test_the_paired_difference_counts_discordant_cases_and_brackets_the_estimate` 只證明逐題配對的統計工具 |
 | EVAL-013 | 部分 | `test_a_passed_verdict_on_an_incomplete_trace_is_downgraded`、`test_a_verdict_citing_an_unresolvable_reference_is_downgraded` | 降級機制有測試；一份用這把尺量出來的完整回歸讀數（符合率、逐筆歸因）還沒跑過 |
 
 ## 打包與下載

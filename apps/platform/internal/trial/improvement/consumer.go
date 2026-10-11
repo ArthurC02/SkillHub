@@ -38,3 +38,20 @@ func (c *RunEventConsumer) Deliver(ctx context.Context, event outbox.Event) erro
 	})
 	return err
 }
+
+type BatchEventConsumer struct {
+	HasLaunchingBatch func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
+
+	Enqueue func(context.Context, BatchAdvanceArgs) error
+}
+
+func (c *BatchEventConsumer) Deliver(ctx context.Context, event outbox.Event) error {
+	if c.HasLaunchingBatch == nil || c.Enqueue == nil {
+		return errors.New("evaluation batch event consumer is not configured")
+	}
+	launching, err := c.HasLaunchingBatch(ctx, event.WorkspaceID)
+	if err != nil || !launching {
+		return err
+	}
+	return c.Enqueue(ctx, BatchAdvanceArgs{WorkspaceID: pgconv.UUIDString(event.WorkspaceID)})
+}

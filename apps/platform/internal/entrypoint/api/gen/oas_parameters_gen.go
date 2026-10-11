@@ -78,6 +78,11 @@ type CreateDownloadArtifactParams struct {
 	VersionId uuid.UUID
 }
 
+// CreateEvaluationBatchParams is parameters of createEvaluationBatch operation.
+type CreateEvaluationBatchParams struct {
+	ID uuid.UUID
+}
+
 // CreateSkillVersionFromSuggestionsParams is parameters of createSkillVersionFromSuggestions operation.
 type CreateSkillVersionFromSuggestionsParams struct {
 	// Skill id. The evaluation's run must belong to a version of this skill.
@@ -201,6 +206,12 @@ type GetCreditTrendParams struct {
 // GetDownloadArtifactParams is parameters of getDownloadArtifact operation.
 type GetDownloadArtifactParams struct {
 	ArtifactId uuid.UUID
+}
+
+// GetEvaluationBatchReportParams is parameters of getEvaluationBatchReport operation.
+type GetEvaluationBatchReportParams struct {
+	ID      uuid.UUID
+	BatchId uuid.UUID
 }
 
 // GetExposureCaseParams is parameters of getExposureCase operation.
@@ -339,6 +350,11 @@ type ListDatasetsParams struct {
 // ListDownloadRecordsParams is parameters of listDownloadRecords operation.
 type ListDownloadRecordsParams struct {
 	ArtifactId uuid.UUID
+}
+
+// ListEvaluationBatchesParams is parameters of listEvaluationBatches operation.
+type ListEvaluationBatchesParams struct {
+	ID uuid.UUID
 }
 
 // ListOperatorAuditLogParams is parameters of listOperatorAuditLog operation.
