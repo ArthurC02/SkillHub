@@ -95,11 +95,9 @@ func contractKeyNames(path string) (map[string]string, error) {
 		return nil, err
 	}
 	names := map[string]string{}
-	for i, line := range strings.Split(string(data), "\n") {
+	for _, line := range strings.Split(string(data), "\n") {
 		if m := yamlKeyPattern.FindStringSubmatch(line); m != nil {
-			if _, seen := names[m[1]]; !seen {
-				names[m[1]] = fmt.Sprintf("%s:%d %s", publicContractFile, i+1, m[1])
-			}
+			names[m[1]] = publicContractFile + " " + m[1]
 		}
 	}
 	return names, nil

@@ -50,14 +50,14 @@ func TestASynonymUseOutsideTheBaselineFailsAndAStaleEntryMustGo(t *testing.T) {
 		{Name: "Reference batch", Synonyms: []string{"baseline"}},
 	}
 	names := map[string]string{
-		"with_baseline":  "public.yaml:7461 with_baseline",
+		"with_baseline":  "public.yaml with_baseline",
 		"WithoutSkill":   "eval.WithoutSkill",
-		"skill_withheld": "public.yaml:11018 skill_withheld",
+		"skill_withheld": "public.yaml skill_withheld",
 	}
 	uses := synonymUses(terms, names, nil)
 	p := synonymProblems(uses, []string{"eval.WithoutSkill without skill", "eval.Gone baseline"})
 	want := []string{
-		`public.yaml:7461 with_baseline says "baseline", a name the Registry's vocabulary asks to avoid; say "Reference batch" or "Skill withheld" instead`,
+		`public.yaml with_baseline says "baseline", a name the Registry's vocabulary asks to avoid; say "Reference batch" or "Skill withheld" instead`,
 		`"eval.Gone baseline" no longer uses that synonym`,
 	}
 	if len(p) != len(want) {
@@ -111,6 +111,18 @@ func (b Batch) RunWithoutSkill(baselineID int) {}
 	}
 	if _, ok := names["TestOnlyBaseline"]; ok {
 		t.Error("a test file's declarations were scanned")
+	}
+}
+
+func TestAContractKeyIsNamedWithoutItsLineSoTheBaselineSurvivesEdits(t *testing.T) {
+	root := t.TempDir()
+	writeAt(t, root, publicContractFile, "paths:\n  /a:\n    with_baseline: 1\nschemas:\n  B:\n    with_baseline: 2\n")
+	names, err := contractKeyNames(root + "/" + publicContractFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := names["with_baseline"]; got != publicContractFile+" with_baseline" {
+		t.Errorf("with_baseline: %q, want it named by file and key only", got)
 	}
 }
 

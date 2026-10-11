@@ -69,7 +69,25 @@
           "source_kind": "decisions"
         }
       ],
-      "status": "candidate"
+      "review": {
+        "proposal_id": "evaluation-batch-terms",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-11T15:17:03.770477Z",
+            "scope": "Two evaluation-batch terms, Skill withheld and Reference batch, each with the names to avoid, defined by the decision that owns evaluation batches",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "d56959503faccdc9ff4a422e08bbb39ddd3e815f",
+              "registry_digest": "sha256:029b02570f6aac0428b2d49b361c9f3b19db49c42af94b80d6bef0187a34c940"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     },
     {
       "id": "reference-batch",
@@ -96,7 +114,25 @@
           "source_kind": "decisions"
         }
       ],
-      "status": "candidate"
+      "review": {
+        "proposal_id": "evaluation-batch-terms",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-11T15:17:03.770477Z",
+            "scope": "Two evaluation-batch terms, Skill withheld and Reference batch, each with the names to avoid, defined by the decision that owns evaluation batches",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "d56959503faccdc9ff4a422e08bbb39ddd3e815f",
+              "registry_digest": "sha256:029b02570f6aac0428b2d49b361c9f3b19db49c42af94b80d6bef0187a34c940"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }

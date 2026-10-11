@@ -117,5 +117,19 @@
     "testlab->registry",
     "trace->credit",
     "trace->run"
+  ],
+  "synonym_uses": [
+    "contracts/openapi/public.yaml baseline baseline",
+    "contracts/openapi/public.yaml baseline_better baseline",
+    "contracts/openapi/public.yaml with_baseline baseline",
+    "contracts/openapi/public.yaml without_skill without skill",
+    "trial/execution.baselineMaxUSD baseline",
+    "trial/execution.baselineMeanUSD baseline",
+    "trial/execution.baselineMedianUSD baseline",
+    "trial/improvement.Baseline baseline",
+    "trial/improvement.BaselineBetter baseline",
+    "trial/improvement.WithBaseline baseline",
+    "trial/improvement.WithoutSkill without skill",
+    "trial/improvement.baselineID baseline"
   ]
 }
