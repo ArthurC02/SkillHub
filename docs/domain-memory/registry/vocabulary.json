@@ -40,6 +40,63 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "skill-withheld",
+      "name": "Skill withheld",
+      "definition": "A Run that does not load the Skill under evaluation, so it measures the same Test Case without that Skill; an evaluation batch can run one beside every trial and compare the two. Not the same thing as a Reference batch.",
+      "contexts": [
+        "run",
+        "eval"
+      ],
+      "synonyms": [
+        "baseline",
+        "without skill",
+        "no skill"
+      ],
+      "not_same_as": [
+        "reference-batch"
+      ],
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+          "lines": {
+            "start": 106,
+            "end": 106
+          },
+          "content_sha256": "sha256:1f087623836ef51ac55b272cdaf7519f61643ff29cf1a3c9705941d5e48527e5",
+          "excerpt_sha256": "sha256:40fefc08b1e5050078f2fb1354d08863a75f0f9dc5448044d1a21752cf20f23d",
+          "source_kind": "decisions"
+        }
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "reference-batch",
+      "name": "Reference batch",
+      "definition": "The evaluation batch that a comparison of two batches measures against; the other side is the candidate batch. An earlier set of trials, not a Run with the Skill withheld.",
+      "contexts": [
+        "eval"
+      ],
+      "synonyms": [
+        "baseline"
+      ],
+      "not_same_as": [
+        "skill-withheld"
+      ],
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+          "lines": {
+            "start": 108,
+            "end": 108
+          },
+          "content_sha256": "sha256:1f087623836ef51ac55b272cdaf7519f61643ff29cf1a3c9705941d5e48527e5",
+          "excerpt_sha256": "sha256:f087f767470a4d8fc96a5c3aa99511e0e4d0e57a62f6356dfe7f79e64fb8c46b",
+          "source_kind": "decisions"
+        }
+      ],
+      "status": "candidate"
     }
   ]
 }

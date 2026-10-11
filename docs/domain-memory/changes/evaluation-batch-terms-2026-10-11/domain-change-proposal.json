@@ -1,0 +1,147 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "evaluation-batch-terms",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "evaluation-batch-terms",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-11T15:16:24.935738Z",
+  "verified_at": "2026-10-11T15:17:04.361896Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "d56959503faccdc9ff4a422e08bbb39ddd3e815f",
+    "registry_digest": "sha256:029b02570f6aac0428b2d49b361c9f3b19db49c42af94b80d6bef0187a34c940"
+  },
+  "affected_contexts": [
+    "run",
+    "eval"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "eval",
+    "invariant": "An evaluation batch compares trials with and without the Skill, and compares two batches, as two separate measurements.",
+    "evidence": [
+      "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md:104"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "None new. The terms name what eval already measures; a Skill withheld Run is still a Run that run executes under its frozen policy.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md:106",
+      "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md:108"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The contract and code call both the Skill-withheld trials and the earlier batch of a comparison baseline (with_baseline, baseline, baseline_better), so a reader cannot tell which measurement a field belongs to.",
+      "The same idea also goes by without_skill, WithoutSkill, skill_withheld and WithholdSkill.",
+      "control, the decision's own word for the Skill-withheld trial, already means control plane and UI control in the contract."
+    ],
+    "decision": "Two reviewed terms, Skill withheld and Reference batch, defined by the decision that owns evaluation batches, each listing the names to avoid; the vocabulary-synonyms gate holds today's uses in a baseline that may only shrink, and the renames follow in code.",
+    "invariants_preserved": [
+      "A Skill withheld Run is a Run: the run Context still owns its lifecycle and its frozen policy."
+    ],
+    "rejected_alternatives": [
+      "Call the Skill-withheld trial control: control already means control plane and UI control in the contract.",
+      "Keep baseline for one of the two: whichever keeps it, readers of the other still guess.",
+      "Rename the code first and record the terms later: a rename with no recorded vocabulary has nothing to hold the next author to it."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "cited-evidence-current",
+      "avoided-name-resolves-as-synonym",
+      "synonym-use-is-flagged",
+      "audit-chain-intact",
+      "approval-path-is-external"
+    ],
+    "counterfactual_check": "synonym-use-is-flagged"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "vocabulary",
+      "record": {
+        "id": "skill-withheld",
+        "name": "Skill withheld",
+        "definition": "A Run that does not load the Skill under evaluation, so it measures the same Test Case without that Skill; an evaluation batch can run one beside every trial and compare the two. Not the same thing as a Reference batch.",
+        "contexts": [
+          "run",
+          "eval"
+        ],
+        "synonyms": [
+          "baseline",
+          "without skill",
+          "no skill"
+        ],
+        "not_same_as": [
+          "reference-batch"
+        ],
+        "evidence": [
+          {
+            "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+            "lines": {
+              "start": 106,
+              "end": 106
+            },
+            "content_sha256": "sha256:1f087623836ef51ac55b272cdaf7519f61643ff29cf1a3c9705941d5e48527e5",
+            "excerpt_sha256": "sha256:40fefc08b1e5050078f2fb1354d08863a75f0f9dc5448044d1a21752cf20f23d",
+            "source_kind": "decisions"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "vocabulary",
+      "record": {
+        "id": "reference-batch",
+        "name": "Reference batch",
+        "definition": "The evaluation batch that a comparison of two batches measures against; the other side is the candidate batch. An earlier set of trials, not a Run with the Skill withheld.",
+        "contexts": [
+          "eval"
+        ],
+        "synonyms": [
+          "baseline"
+        ],
+        "not_same_as": [
+          "skill-withheld"
+        ],
+        "evidence": [
+          {
+            "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+            "lines": {
+              "start": 108,
+              "end": 108
+            },
+            "content_sha256": "sha256:1f087623836ef51ac55b272cdaf7519f61643ff29cf1a3c9705941d5e48527e5",
+            "excerpt_sha256": "sha256:f087f767470a4d8fc96a5c3aa99511e0e4d0e57a62f6356dfe7f79e64fb8c46b",
+            "source_kind": "decisions"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-11T15:17:03.770477Z",
+      "scope": "Two evaluation-batch terms, Skill withheld and Reference batch, each with the names to avoid, defined by the decision that owns evaluation batches",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "d56959503faccdc9ff4a422e08bbb39ddd3e815f",
+        "registry_digest": "sha256:029b02570f6aac0428b2d49b361c9f3b19db49c42af94b80d6bef0187a34c940"
+      }
+    }
+  ]
+}

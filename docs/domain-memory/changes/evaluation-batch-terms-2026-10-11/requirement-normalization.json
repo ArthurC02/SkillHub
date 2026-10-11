@@ -1,0 +1,40 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "evaluation-batch-terms",
+  "status": "draft",
+  "intent": "Give the two evaluation-batch ideas that both get called baseline one name each, so code, contract and documents stop using one word for two things.",
+  "actor": "coding-agent",
+  "observable_outcome": "An Agent that asks what baseline means is told it is a name to avoid and is pointed at Skill withheld or Reference batch, each with a reviewed definition; the vocabulary-synonyms gate then fails any new use of the avoided names.",
+  "acceptance_criteria": [
+    {
+      "id": "each-meaning-has-one-name",
+      "statement": "The Run that does not load the Skill and the batch a comparison measures against are two reviewed terms, each defined by the decision that owns evaluation batches."
+    },
+    {
+      "id": "avoided-names-resolve-to-the-terms",
+      "statement": "Asking for baseline, without skill or no skill returns the terms as synonym matches, not as names."
+    },
+    {
+      "id": "new-uses-are-refused",
+      "statement": "Once the terms are reviewed, a contract key or an identifier in their Contexts that uses an avoided name fails automation-check unless it is held in the baseline."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that makes the terms reviewed is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [
+    "Skill withheld",
+    "Reference batch"
+  ],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+    "contracts/openapi/public.yaml",
+    "tools/devctl/vocabulary_synonyms.go"
+  ]
+}

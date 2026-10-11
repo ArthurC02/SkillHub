@@ -32,6 +32,7 @@
       "apps/platform/internal/trial/execution/statemachine.go",
       "apps/platform/internal/trial/improvement/doc.go",
       "docs/adr/ADR-003-run-orchestration-and-async-workflows.md",
+      "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
       "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
       "docs/design/platform-experience.md",
       "docs/development/platform-ddd-convergence.md"
