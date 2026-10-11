@@ -458,9 +458,7 @@ def confirm_sources(
     return source_map
 
 
-def refresh_sources(
-    root: Path, repo_root: Path, policy: dict[str, Any] | None = None
-) -> dict[str, Any]:
+def _selected_paths(root: Path) -> list[str]:
     path = root / "source-map.json"
     if not path.is_file():
         raise ValueError(
@@ -472,6 +470,27 @@ def refresh_sources(
         isinstance(item, str) and item.strip() for item in selected
     ):
         raise ValueError("source map has no valid selected paths to refresh")
+    return selected
+
+
+def adjusted_selection(
+    root: Path, repo_root: Path, add: list[Path], remove: list[Path]
+) -> list[Path]:
+    selected = _selected_paths(root)
+    repo = repo_root.resolve()
+    removing = {relative(repo, path.resolve()) for path in remove}
+    unselected = sorted(removing - set(selected))
+    if unselected:
+        raise ValueError(
+            "cannot remove a source that is not selected: " + ", ".join(unselected)
+        )
+    return [repo / item for item in selected if item not in removing] + add
+
+
+def refresh_sources(
+    root: Path, repo_root: Path, policy: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    selected = _selected_paths(root)
     source_map = selected_source_map(
         repo_root, [repo_root / item for item in selected], policy
     )

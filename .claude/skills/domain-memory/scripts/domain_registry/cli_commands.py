@@ -52,6 +52,7 @@ from .registry import (
 from .security import scan_report
 from .signing import init_signing_key
 from .sources import (
+    adjusted_selection,
     confirm_sources,
     discover_sources,
     probe_sources,
@@ -240,7 +241,7 @@ def handle_upsert_candidate(args: argparse.Namespace) -> int:
         args.registry_root.resolve(),
         args.repo_root.resolve(),
         args.asset,
-        args.record_file.resolve(),
+        *(path.resolve() for path in args.record_file),
     )
     print("Candidate record updated.")
     if outside:
@@ -399,11 +400,23 @@ def handle_refresh_sources(args: argparse.Namespace) -> int:
 def handle_refine_sources(args: argparse.Namespace) -> int:
     registry_root = args.registry_root.resolve()
     repo_root = args.repo_root.resolve()
+    changes = args.add or args.remove
+    if bool(args.source) == bool(changes):
+        raise ValueError(
+            "give the whole selection with --source, or change it with --add and --remove, not both"
+        )
+    sources = (
+        adjusted_selection(
+            registry_root,
+            repo_root,
+            sources_under(repo_root, args.add),
+            sources_under(repo_root, args.remove),
+        )
+        if changes
+        else sources_under(repo_root, args.source)
+    )
     source_map = refine_sources(
-        registry_root,
-        repo_root,
-        sources_under(repo_root, args.source),
-        load_json(policy_path(registry_root)),
+        registry_root, repo_root, sources, load_json(policy_path(registry_root))
     )
     print(
         "Focused sources selected and require developer confirmation: "

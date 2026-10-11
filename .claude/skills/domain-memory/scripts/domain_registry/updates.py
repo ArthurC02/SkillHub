@@ -159,16 +159,28 @@ def read_update(path: Path) -> dict[str, Any]:
         raise ValueError(
             f"{path} must hold one record object with a completed id, such as "
             '{"id": "orders", "name": "Orders", "responsibility": "..."} — not a list of records, '
-            "not a Change Package, and not the whole asset file. One record per call."
+            "not a Change Package, and not the whole asset file. One record per file; "
+            "give --record-file once for each record that belongs to the same change."
         )
     return value
 
 
+def _batch_records(record_paths: tuple[Path, ...]) -> list[dict[str, Any]]:
+    if not record_paths:
+        raise ValueError("upserting a candidate requires at least one record file")
+    records = [read_update(path) for path in record_paths]
+    ids = [record["id"] for record in records]
+    repeated = sorted({identifier for identifier in ids if ids.count(identifier) > 1})
+    if repeated:
+        raise ValueError(f"one batch names a record more than once: {', '.join(repeated)}")
+    return records
+
+
 def upsert_candidate(
-    root: Path, repo_root: Path | None, asset: str, record_path: Path
+    root: Path, repo_root: Path | None, asset: str, *record_paths: Path
 ) -> list[str]:
     name = asset_file_name(asset)
-    record = read_update(record_path)
+    batch = _batch_records(record_paths)
     source_map = source_map_for(root)
     outside: list[str] = []
 
@@ -176,25 +188,27 @@ def upsert_candidate(
         path = registry_dir(staging) / name
         document = load_json(path)
         records = document[ASSET_KEYS[name]]
-        existing = find_record(records, record["id"])
-        if is_reviewed(asset, document, existing):
-            raise ValueError(f"cannot overwrite reviewed record: {record['id']}")
-        candidate = classify_all(dict(record), source_map)
-        outside.extend(unclassified_paths(candidate))
-        candidate.pop("review", None)
-        candidate[review_field(asset)] = "candidate"
-        put_record(records, existing, candidate)
+        for record in batch:
+            existing = find_record(records, record["id"])
+            if is_reviewed(asset, document, existing):
+                raise ValueError(f"cannot overwrite reviewed record: {record['id']}")
+            candidate = classify_all(dict(record), source_map)
+            outside.extend(unclassified_paths(candidate))
+            candidate.pop("review", None)
+            candidate[review_field(asset)] = "candidate"
+            put_record(records, existing, candidate)
         write_json(path, document)
 
+    identity = (
+        {"record_id": batch[0]["id"]}
+        if len(batch) == 1
+        else {"record_ids": [record["id"] for record in batch]}
+    )
     mutate_registry(
         root,
         repo_root,
         mutate,
-        audit_event=lambda: {
-            "operation": "upsert-candidate",
-            "asset": asset,
-            "record_id": record["id"],
-        },
+        audit_event=lambda: {"operation": "upsert-candidate", "asset": asset, **identity},
     )
     return sorted(set(outside))
 

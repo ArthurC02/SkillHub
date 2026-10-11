@@ -24,7 +24,7 @@ A Context's abilities live in the Capability asset, one record each, not in a fi
 
 A Context may say where it lives and what it owns in the surrounding process. `subdomain` is one of `core`, `supporting`, `generic` or `shared-kernel`, the strategic classification that decides how much the boundary is worth defending. `implementation_path` is the directory its code occupies; two Contexts may not claim the same path or a path inside another's, because code belongs to one Context, while sibling directories that merely share a name prefix do not overlap. `requirement_prefixes` lists the requirement-ID prefixes the Context owns. All three are optional; a Registry that does not track code layout omits them.
 
-`upsert-candidate --record-file` reads one record object, not a list and not a Change Package, and writes one record per call:
+`upsert-candidate --record-file` reads one record object per file, not a list and not a Change Package. Give `--record-file` once for each record of the same asset that belongs to one change, such as two terms that name each other in `not_same_as`: the records are validated together and written in one audited update, or none of them is written:
 
 ```json
 {

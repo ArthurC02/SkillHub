@@ -63,6 +63,7 @@ from domain_registry.cli_parser import build_parser
 from domain_registry.policy import amend_policy, amend_policy_fields, validate_policy
 from domain_registry.readiness import assess_readiness
 from domain_registry.registry import (
+    asset_records,
     boundary_analysis,
     context_model,
     coverage,
@@ -508,6 +509,48 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertEqual(result["selected_paths"], ["fact.md"])
         self.assertEqual(result["selection_status"], "agent-asserted")
         self.assertEqual(stored_policy_of(self.repo)["source_policy"]["selected_paths"], ["fact.md"])
+
+    def refine(self, *arguments: str) -> subprocess.CompletedProcess:
+        return self.run_cli(
+            "refine-sources", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo), *arguments
+        )
+
+    def selection_with_two_sources(self) -> None:
+        self.committed_source_map()
+        policy = stored_policy_of(self.repo)
+        policy["limits"] = {**policy["limits"], "max_file_count": 10, "max_file_bytes": 10, "max_total_bytes": 100}
+        (self.repo / "memory" / "domain-memory-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+        (self.repo / "fact.md").write_text("x", encoding="utf-8")
+        (self.repo / "adr.md").write_text("y", encoding="utf-8")
+
+    def test_adding_a_source_keeps_the_rest_of_the_selection(self) -> None:
+        self.selection_with_two_sources()
+        result = self.refine("--add", "fact.md", "--add", "adr.md")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(["adr.md", "docs", "fact.md"], stored_policy_of(self.repo)["source_policy"]["selected_paths"])
+
+    def test_removing_a_source_keeps_the_rest_of_the_selection(self) -> None:
+        self.selection_with_two_sources()
+        self.refine("--add", "fact.md")
+        result = self.refine("--remove", "docs")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(["fact.md"], stored_policy_of(self.repo)["source_policy"]["selected_paths"])
+
+    def test_removing_a_source_that_is_not_selected_changes_nothing(self) -> None:
+        self.selection_with_two_sources()
+        before = (self.repo / "memory" / "source-map.json").read_bytes()
+        result = self.refine("--remove", "fact.md")
+        self.assertEqual(1, result.returncode)
+        self.assertIn("cannot remove a source that is not selected: fact.md", result.stdout)
+        self.assertEqual(before, (self.repo / "memory" / "source-map.json").read_bytes())
+
+    def test_refining_takes_a_whole_selection_or_changes_to_it_but_not_both(self) -> None:
+        self.selection_with_two_sources()
+        for label, arguments in (("both", ("--source", "fact.md", "--add", "adr.md")), ("neither", ())):
+            with self.subTest(label):
+                result = self.refine(*arguments)
+                self.assertEqual(1, result.returncode)
+                self.assertIn("with --source, or change it with --add and --remove, not both", result.stdout)
 
     def test_a_source_map_with_mismatched_snapshot_paths_is_unverified(self) -> None:
         source = self.repo / "docs"
@@ -3035,8 +3078,71 @@ class DomainRegistryTest(unittest.TestCase):
 
     def test_a_file_holding_several_records_says_how_many_it_should_hold(self) -> None:
         record = self.write_record("many.json", [{"id": "orders"}, {"id": "billing"}])
-        with self.assertRaisesRegex(ValueError, "One record per call"):
+        with self.assertRaisesRegex(ValueError, "One record per file; give --record-file once for each record"):
             upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
+
+    def look_alike_terms(self) -> tuple[Path, Path]:
+        self.add_context()
+        return (
+            self.write_record("order.json", {"id": "order", "name": "Order", "contexts": ["orders"],
+                                             "not_same_as": ["order-line"]}),
+            self.write_record("line.json", {"id": "order-line", "name": "Order Line", "contexts": ["orders"],
+                                            "not_same_as": ["order"]}),
+        )
+
+    def audit_events(self) -> list[dict]:
+        events = (self.repo / "memory" / "audit" / "events.jsonl").read_text(encoding="utf-8")
+        return [json.loads(line) for line in events.splitlines()]
+
+    def test_terms_that_name_each_other_are_upserted_together_in_one_audited_change(self) -> None:
+        order, line = self.look_alike_terms()
+        upsert_candidate(self.repo / "memory", self.repo, "vocabulary", order, line)
+        self.assertEqual(
+            [("order", ["order-line"]), ("order-line", ["order"])],
+            [(term["id"], term["not_same_as"]) for term in asset_records(self.repo / "memory", "vocabulary.json")],
+        )
+        last = self.audit_events()[-1]
+        self.assertEqual(("upsert-candidate", ["order", "order-line"]), (last["operation"], last["record_ids"]))
+        self.assertNotIn("record_id", last)
+
+    def test_a_single_upsert_keeps_naming_its_record_id(self) -> None:
+        self.add_context()
+        last = self.audit_events()[-1]
+        self.assertEqual(("upsert-candidate", "orders"), (last["operation"], last["record_id"]))
+        self.assertNotIn("record_ids", last)
+
+    def test_one_term_naming_a_missing_look_alike_is_refused_alone(self) -> None:
+        order, _ = self.look_alike_terms()
+        with self.assertRaisesRegex(ValueError, "not_same_as must name other vocabulary term ids"):
+            upsert_candidate(self.repo / "memory", self.repo, "vocabulary", order)
+
+    def test_a_batch_with_one_invalid_record_writes_none_of_them(self) -> None:
+        order, line = self.look_alike_terms()
+        stray = self.write_record("stray.json", {"id": "stray", "name": "Stray", "contexts": ["ghost"]})
+        events = len(self.audit_events())
+        with self.assertRaisesRegex(ValueError, "vocabulary.json:stray references unknown context"):
+            upsert_candidate(self.repo / "memory", self.repo, "vocabulary", order, line, stray)
+        self.assertEqual([], asset_records(self.repo / "memory", "vocabulary.json"))
+        self.assertEqual(events, len(self.audit_events()))
+
+    def test_an_upsert_without_a_record_file_is_refused(self) -> None:
+        with self.assertRaisesRegex(ValueError, "requires at least one record file"):
+            upsert_candidate(self.repo / "memory", self.repo, "vocabulary")
+
+    def test_a_batch_naming_one_record_twice_is_refused(self) -> None:
+        order, _ = self.look_alike_terms()
+        with self.assertRaisesRegex(ValueError, "names a record more than once: order"):
+            upsert_candidate(self.repo / "memory", self.repo, "vocabulary", order, order)
+
+    def test_upsert_candidate_takes_record_file_more_than_once_from_the_command_line(self) -> None:
+        order, line = self.look_alike_terms()
+        result = self.run_cli(
+            "upsert-candidate", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+            "--asset", "vocabulary", "--record-file", str(order), "--record-file", str(line),
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(["order", "order-line"],
+                         [term["id"] for term in asset_records(self.repo / "memory", "vocabulary.json")])
 
     def test_a_change_package_offered_as_a_record_is_refused(self) -> None:
         record = self.write_record(
