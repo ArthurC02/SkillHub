@@ -425,7 +425,7 @@ func TestEvaluationTraversesGoPythonAndGateway(t *testing.T) {
 	if body.Status != "completed" || body.Overall != "met" {
 		t.Fatalf("evaluation = status %q, overall %q, want completed met", body.Status, body.Overall)
 	}
-	if body.JudgeModel != "fixture-model" || body.JudgePromptVersion != "judge-run/v3" {
+	if body.JudgeModel != "fixture-model" || body.JudgePromptVersion != "judge-run/v4" {
 		t.Errorf("judge provenance = %q / %q", body.JudgeModel, body.JudgePromptVersion)
 	}
 	if len(body.CriterionResults) != 2 || len(body.CriterionResults[0].Evidence) == 0 || len(body.CriterionResults[1].Evidence) == 0 {

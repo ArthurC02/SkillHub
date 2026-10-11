@@ -280,7 +280,7 @@ func TestWorkerDeliversEvaluationThroughGoPythonAndGateway(t *testing.T) {
 	if body.Summary != marker {
 		t.Fatalf("worker evaluation summary = %q, want the gateway's unique response %q", body.Summary, marker)
 	}
-	if body.JudgeModel != "fixture-model" || body.JudgePromptVersion != "judge-run/v3" {
+	if body.JudgeModel != "fixture-model" || body.JudgePromptVersion != "judge-run/v4" {
 		t.Errorf("judge provenance = %q / %q", body.JudgeModel, body.JudgePromptVersion)
 	}
 	assertEvaluationTraceEvents(t, pool, created.RunID, "ok")
