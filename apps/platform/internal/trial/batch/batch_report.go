@@ -26,11 +26,7 @@ func (o TrialOutcome) judged() bool {
 	return o == TrialMet || o == TrialPartiallyMet || o == TrialNotMet
 }
 
-const (
-	normalZ95    = 1.959963984540054
-	runFailed    = "failed"
-	runSucceeded = "succeeded"
-)
+const normalZ95 = 1.959963984540054
 
 type Verdict struct {
 	Judged  bool
@@ -186,13 +182,13 @@ func (s *BatchService) trialOutcome(
 		return TrialNotEvaluated, nil
 	case evaluated:
 		return TrialRunning, nil
-	case end.Status == runSucceeded:
+	case end.Succeeded:
 		questions, err := s.Ports.ReadQuestionCount(ctx, workspaceID, end.RunID)
 		if err != nil || questions == 0 {
 			return TrialRunning, err
 		}
 		return TrialAwaitingAnswer, nil
-	case end.Status == runFailed:
+	case end.Failed:
 		return TrialRunning, nil
 	default:
 		return TrialNotEvaluated, nil

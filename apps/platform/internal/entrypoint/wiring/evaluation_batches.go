@@ -3,6 +3,7 @@ package wiring
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -63,7 +64,8 @@ func evaluationBatchPorts(runs *run.Service, testlabSvc *testlab.Service, traceS
 			out := make(map[pgtype.UUID]batch.ChainEnd, len(ends))
 			for start, end := range ends {
 				out[start] = batch.ChainEnd{
-					StartSnapshotID: end.StartSnapshotID, RunID: end.RunID, Status: end.Status, Terminal: end.Terminal,
+					StartSnapshotID: end.StartSnapshotID, RunID: end.RunID, Terminal: end.Terminal,
+					Succeeded: end.Succeeded, Failed: end.Failed,
 				}
 			}
 			return out, err
@@ -98,7 +100,7 @@ func batchAnswerError(err error) error {
 		}
 	}
 	mapped := batchRunError(err)
-	if _, refused := errors.AsType[batch.RunRefusedError](mapped); refused {
+	if _, refused := errors.AsType[batch.RunRefusedError](mapped); refused || errors.Is(mapped, batch.ErrTargetGone) {
 		return batch.ErrNoFurtherRound
 	}
 	return mapped
@@ -114,7 +116,7 @@ func batchRunError(err error) error {
 	case refused:
 		return batch.RunRefusedError{Reason: reason, Err: err}
 	case errors.Is(err, run.ErrNotFound), errors.Is(err, run.ErrPreflightTargetNotFound):
-		return batch.RunRefusedError{Reason: "target_gone", Err: err}
+		return fmt.Errorf("%w: %w", batch.ErrTargetGone, err)
 	default:
 		return err
 	}

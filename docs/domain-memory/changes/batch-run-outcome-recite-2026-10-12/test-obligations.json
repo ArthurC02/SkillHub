@@ -1,0 +1,52 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "batch-run-outcome-recite",
+  "proposal_id": "batch-run-outcome-recite",
+  "obligations": [
+    {
+      "id": "package-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "The package validates as applied, with current citations.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry validate-change-package --repo-root"
+    },
+    {
+      "id": "batch-waits-or-stops",
+      "source_type": "rule",
+      "source_id": "batch-waits-only-on-a-passing-refusal",
+      "expected_outcome": "A batch waits on a passing refusal and stops with a reason on any other, including a gone target.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait|TestARefusalThatWaitingCannotFixStopsTheBatch|TestABatchWhoseTestCaseWasDeletedStopsAsTargetGone ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "trial-port-contract",
+      "source_type": "contract",
+      "source_id": "run-batch-trials-v1",
+      "expected_outcome": "Run reports a chain end's success and failure, and the batch reads its trials by them.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestTheBatchReportCountsEachConversationAtItsEnd|TestATrialReadsAsItsVerdict|TestABatchWhoseTestCaseWasDeletedStopsAsTargetGone ./internal/entrypoint/api/apiserver/ ./internal/trial/batch/"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "approval-path-is-external",
+      "source_type": "acceptance-criterion",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "Governance readiness reports ready.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry governance-readiness"
+    }
+  ]
+}

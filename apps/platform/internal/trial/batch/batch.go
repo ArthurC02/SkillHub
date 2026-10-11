@@ -34,13 +34,17 @@ func AllBatchStatuses() []BatchStatus {
 	return []BatchStatus{BatchLaunching, BatchLaunched, BatchStopped}
 }
 
-const stopReasonCreatorGone = "creator_gone"
+const (
+	stopReasonCreatorGone = "creator_gone"
+	stopReasonTargetGone  = "target_gone"
+)
 
 var (
 	ErrNotFound       = errors.New("evaluation not found")
 	ErrBatchShape     = errors.New("an evaluation batch needs 1 to 50 distinct test cases and 1 to 10 trials")
 	ErrRunMustWait    = errors.New("the workspace cannot start a run right now; the batch waits for its turn")
 	ErrNoFurtherRound = errors.New("this trial's conversation cannot take another answer")
+	ErrTargetGone     = errors.New("the skill, version or test case this trial runs is gone")
 	errBatchPorts     = errors.New("batch: run ports are not injected")
 )
 
@@ -72,8 +76,9 @@ type BatchRun struct {
 type ChainEnd struct {
 	StartSnapshotID pgtype.UUID
 	RunID           pgtype.UUID
-	Status          string
 	Terminal        bool
+	Succeeded       bool
+	Failed          bool
 }
 
 type BatchPorts struct {
@@ -253,6 +258,9 @@ func (s *BatchService) startNextTrial(ctx context.Context, workspaceID pgtype.UU
 	})
 	if errors.Is(err, ErrRunMustWait) {
 		return false, nil
+	}
+	if errors.Is(err, ErrTargetGone) {
+		return true, s.stopBatch(ctx, q, workspaceID, next.BatchID, stopReasonTargetGone)
 	}
 	if refused, isRefused := errors.AsType[RunRefusedError](err); isRefused {
 		return true, s.stopBatch(ctx, q, workspaceID, next.BatchID, refused.Reason)

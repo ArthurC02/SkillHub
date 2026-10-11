@@ -45,7 +45,7 @@ func ruledMaterial(final string, questions []trace.Question, status string, comp
 		advanced: trace.AdvancedView{Complete: complete},
 		summary:  trace.Summary{FinalOutput: final, Questions: questions},
 	}
-	m.run.Status = status
+	m.run.Status, m.run.Succeeded = status, status == "succeeded"
 	return m
 }
 

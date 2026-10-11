@@ -155,6 +155,6 @@ func evalRunFacts(facts run.EvaluationRun) eval.RunFacts {
 		SkillVersionID: facts.SkillVersionID, TestCaseSnapshotID: facts.TestCaseSnapshotID,
 		Status: facts.Status, StatusReason: facts.StatusReason, RuntimeSnapshot: facts.RuntimeSnapshot,
 		StartedAt: facts.StartedAt, FinishedAt: facts.FinishedAt, FailureClass: facts.FailureClass,
-		Terminal: facts.Terminal,
+		Terminal: facts.Terminal, Succeeded: facts.Succeeded,
 	}
 }

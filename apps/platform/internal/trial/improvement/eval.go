@@ -175,6 +175,7 @@ type RunFacts struct {
 	FinishedAt         *time.Time
 	FailureClass       *string
 	Terminal           bool
+	Succeeded          bool
 }
 
 type SkillFacts struct {
@@ -812,7 +813,7 @@ func costSource(cost *float64) *string {
 }
 
 func (m material) awaitsAnswer() bool {
-	return m.run.Status == runSucceeded && len(m.summary.Questions) > 0
+	return m.run.Succeeded && len(m.summary.Questions) > 0
 }
 
 func (m material) evidenceComplete() bool { return m.advanced.Complete && !m.absent.Any() }

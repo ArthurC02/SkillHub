@@ -306,6 +306,38 @@ func TestARefusalThatWaitingCannotFixStopsTheBatch(t *testing.T) {
 	}
 }
 
+func TestABatchWhoseTestCaseWasDeletedStopsAsTargetGone(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-batch-gone")
+	f.confirmPermissions(t)
+
+	code, body := f.doJSON(t, http.MethodPost, "/skills/"+f.skillID+"/evaluation-batches", batchBody(f.versionID, 2, f.testCaseID))
+	if code != http.StatusCreated {
+		t.Fatalf("create: %d %v", code, body)
+	}
+	batchID := body["id"].(string)
+	first := batchTrialRuns(t, pool, batchID)[f.testCaseID+"#1"]
+	mustExec(t, pool, `UPDATE runs SET status = 'failed', finished_at = now() WHERE id = $1`, mustUUID(t, first))
+	mustExec(t, pool, `UPDATE test_cases SET deleted_at = now() WHERE id = $1`, mustUUID(t, f.testCaseID))
+
+	if err := a.batches.AdvanceBatches(context.Background(), mustUUID(t, f.workspaceID)); err != nil {
+		t.Fatal(err)
+	}
+	code, report := f.doJSON(t, http.MethodGet, "/skills/"+f.skillID+"/evaluation-batches/"+batchID, "")
+	batch, _ := report["batch"].(map[string]any)
+	if code != http.StatusOK || batch["status"] != "stopped" || batch["stop_reason"] != "target_gone" {
+		t.Fatalf("after the test case was deleted: got %d %v, want stopped as target_gone", code, batch)
+	}
+	if got := started(batchTrialRuns(t, pool, batchID)); len(got) != 1 {
+		t.Errorf("a stopped batch started %v, want only its first trial", got)
+	}
+	trial := report["test_cases"].([]any)[0].(map[string]any)["trials"].([]any)[0].(map[string]any)
+	if trial["outcome"] != "running" {
+		t.Errorf("the failed first trial = %v, want running until its judging lands", trial)
+	}
+}
+
 func TestTheBatchReportCountsEachConversationAtItsEnd(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

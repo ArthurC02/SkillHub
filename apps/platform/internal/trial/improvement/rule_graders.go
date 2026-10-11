@@ -10,8 +10,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
-const runSucceeded = "succeeded"
-
 type ruleGrader func(m material, values []string) (result, reason string)
 
 func gradeContainsValues(m material, values []string) (string, string) {
@@ -51,7 +49,7 @@ func gradeAsks(m material, values []string) (string, string) {
 }
 
 func gradeDoesNotAsk(m material, _ []string) (string, string) {
-	if m.run.Status != runSucceeded {
+	if !m.run.Succeeded {
 		return ResultFailed, "the run ended as " + m.run.Status + " without an answer"
 	}
 	if n := len(m.askedInConversation()); n > 0 {

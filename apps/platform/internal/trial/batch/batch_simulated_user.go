@@ -95,7 +95,7 @@ func (s *BatchService) answerTrial(
 	if !end.Terminal {
 		return true, nil
 	}
-	if end.Status != runSucceeded || len(facts) == 0 || !actor.Valid {
+	if !end.Succeeded || len(facts) == 0 || !actor.Valid {
 		return false, nil
 	}
 	questions, err := s.Ports.ReadQuestionCount(ctx, workspaceID, end.RunID)

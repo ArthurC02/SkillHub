@@ -49,12 +49,12 @@ DDD 在這裡首先是**產品事實與規則的 owner boundary**，不是把每
 上表第一列在程式裡有兩種寫法，**判準是對方回給你的是不是 generated row，或建立在 generated row 之上的型別**：
 
 - **owner 的公開面本身就是領域語言** → consumer 直接持有 `*owner.Service` 欄位，呼叫那個窄方法（例如 Evaluation 持有 `TestLab` 取不可變快照）。
-- **owner 的回傳是 sqlc row 或以它為基礎的型別，或直接 import 會成環** → consumer **自己宣告 `XxxFacts` 與 `Read*` 函式欄位**，由 `apiserver.NewApp` 裡的 `wireXxxReaders(...)` 翻譯後注入；領域檔因此完全不 import 對方。Catalog、Packaging、Evaluation 的 Registry 讀取都是這一種。這是 [Query 與寫入所有權](../adr/README.md#query-與寫入所有權) 裡跨 context 寫入以反轉關係收斂的**讀取側鏡像**——寫入側用同一手法拆掉 `registry -> catalog` 的編譯期環。
+- **owner 的回傳是 sqlc row 或以它為基礎的型別、直接 import 會成環，或沒有已審查的 dependency policy 允許這個 import** → consumer **自己宣告 `XxxFacts` 與 `Read*` 函式欄位**（多個欄位可以收成一個結構，例如評估批次的 `BatchPorts`），由 composition root（`entrypoint/wiring` 的 `WireXxx(...)`／`NewXxx(...)`，經 `apiserver.NewApp` 呼叫）翻譯後注入；領域檔因此完全不 import 對方。Catalog、Packaging、Evaluation 的 Registry 讀取，以及評估批次對 run、testlab、trace、eval 的讀寫都是這一種。這是 [Query 與寫入所有權](../adr/README.md#query-與寫入所有權) 裡跨 context 寫入以反轉關係收斂的**讀取側鏡像**——寫入側用同一手法拆掉 `registry -> catalog` 的編譯期環。
 
 兩件容易做錯的事：
 
 - **Facts 只放你真的會用到的欄位。** 同樣是讀 Skill，`catalog.SkillFacts` 抄了十幾個欄位，`eval.SkillFacts` 只有四個。把 owner 的欄位抄滿，等於把它的形狀複製一份放在自己家，對方改欄位你還是得跟著改——ACL 的意義就沒了。
-- **翻譯只發生在 composition root。** `wireXxxReaders(...)` 與 `xxxFacts(...)` 轉換函式住在 `app.go`；一旦下放到領域套件，那個套件就得 import 對方，整個做法就白做了。
+- **翻譯只發生在 composition root。** 注入與 `xxxFacts(...)` 轉換函式住在 `entrypoint/wiring`；一旦下放到領域套件，那個套件就得 import 對方，整個做法就白做了。
 
 同理，**不要靠讀合作者的內部欄位來確認它接好了**（`s.TestLab.Pool != nil` 這種寫法）：知道對方有一個 `Pool`，就是知道對方怎麼實作。守衛只判 `s.TestLab == nil`。
 
