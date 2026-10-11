@@ -297,7 +297,7 @@ def _validate_evidence(
     return [
         f"evidence {result['status']}: {result.get('reason', result.get('path'))}"
         for result in results
-        if result["status"] in {"invalid", "missing"}
+        if result["status"] in {"invalid", "missing", "unhashed"}
     ]
 
 
@@ -407,7 +407,7 @@ def verify_evidence(root: Path, repo_root: Path) -> dict[str, Any]:
     ]
     summary: dict[str, Any] = {
         status: sum(item["status"] == status for item in results)
-        for status in ("current", "stale", "missing", "invalid", "legacy-unverified")
+        for status in ("current", "stale", "unhashed", "missing", "invalid", "legacy-unverified")
     }
     kinds = sorted({item["source_kind"] for item in results if "source_kind" in item})
     summary["by_source_kind"] = {

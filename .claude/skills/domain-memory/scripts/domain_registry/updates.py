@@ -13,7 +13,7 @@ from .common import (
     registry_dir,
     reject_duplicate_keys,
 )
-from .evidence import classify_all, source_map_for, unclassified_paths
+from .evidence import classify_all, hash_all, source_map_for, unclassified_paths
 from .policy import review_mode
 from .revision import (
     current_registry_revision,
@@ -181,6 +181,8 @@ def upsert_candidate(
 ) -> list[str]:
     name = asset_file_name(asset)
     batch = _batch_records(record_paths)
+    if repo_root is not None:
+        batch = [hash_all(record, repo_root) for record in batch]
     source_map = source_map_for(root)
     outside: list[str] = []
 
@@ -404,7 +406,8 @@ def promote_candidate(
     if proposal.get("status") != "draft":
         raise ValueError(
             "registry updates are added while the proposal is a draft; a submitted proposal's "
-            "content is what its approvals cover"
+            "content is what its approvals cover. To change it, run supersede-proposal, then "
+            "redraft-proposal into a new package, and promote into that draft"
         )
     name = asset_file_name(asset)
     document = load_json(registry_dir(registry_root) / name)

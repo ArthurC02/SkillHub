@@ -102,6 +102,7 @@ def boundary_impact(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
         for one, other in combinations(sorted(touched), 2)
     ]
     evidence = _evidence_touched(root, set(paths))
+    owned = {path for files in touched.values() for path in files}
     return {
         "base": base,
         "changed_files": len(paths),
@@ -109,4 +110,5 @@ def boundary_impact(root: Path, repo_root: Path, base: str) -> dict[str, Any]:
         "contexts_touched": touched,
         "co_changed_pairs": pairs,
         "boundary_evidence_changed": evidence,
+        "outside_every_context": [path for path in paths if path not in owned],
     }

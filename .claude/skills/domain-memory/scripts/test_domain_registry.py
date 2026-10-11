@@ -1658,6 +1658,69 @@ class DomainRegistryTest(unittest.TestCase):
             self.seed("contexts.json", [orders])
             self.assertIn("contexts.json:orders is not reviewed", validate(self.repo / "memory", None, True))
 
+    def two_line_rule(self) -> Path:
+        (self.repo / "rule.md").write_text("one\ntwo\n", encoding="utf-8")
+        return self.repo / "rule.md"
+
+    def test_a_citation_without_an_excerpt_hash_is_unhashed_not_stale(self) -> None:
+        self.two_line_rule()
+        result = verify({"path": "rule.md", "lines": {"start": 1, "end": 1}}, self.repo)
+        self.assertEqual(
+            {"status": "unhashed", "path": "rule.md",
+             "reason": "rule.md was cited without an excerpt hash; regenerate the citation with cite"},
+            result,
+        )
+
+    def test_validate_refuses_an_unhashed_citation(self) -> None:
+        self.two_line_rule()
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders.",
+                                      "evidence": [{"path": "rule.md", "lines": {"start": 1, "end": 1}}]}])
+        self.assertIn(
+            "evidence unhashed: rule.md was cited without an excerpt hash; regenerate the citation with cite",
+            validate(self.repo / "memory", self.repo, False),
+        )
+        self.assertEqual(1, verify_evidence(self.repo / "memory", self.repo)["summary"]["unhashed"])
+
+    def test_an_upserted_citation_without_hashes_gets_the_hashes_cite_gives(self) -> None:
+        self.two_line_rule()
+        record = self.write_record("context.json", {
+            "id": "orders", "name": "Orders", "responsibility": "Own orders.",
+            "evidence": [{"path": "rule.md", "lines": {"start": 2, "end": 2}, "source_kind": "decisions"}],
+        })
+        upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
+        stored = asset_records(self.repo / "memory", "contexts.json")[0]["evidence"][0]
+        self.assertEqual({**citation(self.repo, "rule.md", 2, 2), "source_kind": stored["source_kind"]}, stored)
+        self.assertEqual("current", verify(stored, self.repo)["status"])
+
+    def test_a_citation_nested_in_a_list_is_hashed_too(self) -> None:
+        self.two_line_rule()
+        record = self.write_record("context.json", {
+            "id": "orders", "name": "Orders", "responsibility": "Own orders.",
+            "confirmed_absences": [{"asset": "contracts", "reason": "Orders publishes nothing.",
+                                    "evidence": [{"path": "rule.md", "lines": {"start": 1, "end": 1}}]}],
+        })
+        upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
+        stored = asset_records(self.repo / "memory", "contexts.json")[0]["confirmed_absences"][0]["evidence"][0]
+        self.assertEqual(citation(self.repo, "rule.md", 1, 1)["excerpt_sha256"], stored["excerpt_sha256"])
+
+    def test_an_upserted_citation_keeps_the_hash_it_was_given(self) -> None:
+        self.two_line_rule()
+        given = {"path": "rule.md", "lines": {"start": 1, "end": 1}, "excerpt_sha256": "sha256:recorded-earlier"}
+        record = self.write_record("context.json", {
+            "id": "orders", "name": "Orders", "responsibility": "Own orders.", "evidence": [given],
+        })
+        upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
+        self.assertEqual("sha256:recorded-earlier",
+                         asset_records(self.repo / "memory", "contexts.json")[0]["evidence"][0]["excerpt_sha256"])
+
+    def test_an_upserted_citation_of_a_missing_file_is_refused(self) -> None:
+        record = self.write_record("context.json", {
+            "id": "orders", "name": "Orders", "responsibility": "Own orders.",
+            "evidence": [{"path": "gone.md", "lines": {"start": 1, "end": 1}}],
+        })
+        with self.assertRaisesRegex(ValueError, "no such file to cite: gone.md"):
+            upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
+
     def two_mapped_contexts(self, **collaborations: list[dict]) -> None:
         self.seed("contexts.json", [
             {"id": "orders", "name": "Orders", "responsibility": "Own orders.", "implementation_path": "src/orders"},
@@ -1721,6 +1784,7 @@ class DomainRegistryTest(unittest.TestCase):
         self.two_mapped_contexts()
         impact = self.change("src/orders/port.py", "README.md")
         self.assertEqual(("no-cross-context-change", 2, []), (impact["verdict"], impact["changed_files"], impact["co_changed_pairs"]))
+        self.assertEqual(["README.md"], impact["outside_every_context"])
 
     def test_without_any_implementation_path_the_impact_is_unknown(self) -> None:
         self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
@@ -2464,7 +2528,9 @@ class DomainRegistryTest(unittest.TestCase):
         again = self.redraft_target()
         with self.assertRaisesRegex(ValueError, "already reviewed"):
             promote_candidate(again, self.repo / "memory", "rules", "order-total")
-        with self.assertRaisesRegex(ValueError, "added while the proposal is a draft"):
+        with self.assertRaisesRegex(
+            ValueError, "added while the proposal is a draft.*run supersede-proposal, then redraft-proposal"
+        ):
             promote_candidate(package, self.repo / "memory", "rules", "order-total")
 
     def redraft_target(self) -> Path:

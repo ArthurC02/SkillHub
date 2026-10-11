@@ -308,7 +308,7 @@ def handle_verify_evidence(args: argparse.Namespace) -> int:
     result = verify_evidence(args.registry_root.resolve(), args.repo_root.resolve())
     print_json(result)
     summary = result["summary"]
-    return int(any(summary[status] for status in ("stale", "missing", "invalid")))
+    return int(any(summary[status] for status in ("stale", "unhashed", "missing", "invalid")))
 
 
 def handle_migrate_evidence(args: argparse.Namespace) -> int:
