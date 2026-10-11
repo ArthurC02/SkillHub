@@ -3,7 +3,7 @@
   "proposal_id": "eval-trace-write-mode",
   "proposer": "domain-memory-agent",
   "requirement_id": "eval-trace-write-mode",
-  "status": "approved",
+  "status": "superseded",
   "change_classification": "material",
   "submitted_at": "2026-10-11T20:09:30.818034Z",
   "verified_at": "2026-10-11T20:09:35.357023Z",
@@ -107,5 +107,9 @@
   ],
   "supersedes": [
     "dependency-policies-match-the-guard"
-  ]
+  ],
+  "superseded_from_status": "approved",
+  "superseded_at": "2026-10-11T20:10:13.808292Z",
+  "superseded_reason": "approved with the asset named dependencies; apply refused it as invalid, the Registry asset is dependency-policies",
+  "superseded_by": "eval-trace-write-mode-r2"
 }
