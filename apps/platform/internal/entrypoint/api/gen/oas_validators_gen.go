@@ -4637,8 +4637,15 @@ func (s *EvidenceRef) Validate() error {
 		})
 	}
 	if err := func() error {
-		if err := s.Match.Validate(); err != nil {
-			return err
+		if value, ok := s.Match.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
 		}
 		return nil
 	}(); err != nil {

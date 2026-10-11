@@ -44,6 +44,9 @@ export interface EvidenceRef {
      */
     kind: EvidenceRefKindEnum;
     /**
+     * Absent on a report produced before citations were verified: that
+     * report never recorded how its excerpts were found.
+     * 
      * How the excerpt was found in the source it names. This is
      * the platform's own answer, never the judge's — a citation is verified
      * **by content**, not by the source it was filed under.
@@ -74,7 +77,7 @@ export interface EvidenceRef {
      *   item with `evidence_required` is not satisfied by it.
      * 
      */
-    match: EvidenceRefMatchEnum;
+    match?: EvidenceRefMatchEnum;
     /**
      * Present when the quote was found, but **not in the source the judge
      * named** — `kind` is corrected to where it actually is and this
@@ -171,7 +174,6 @@ export type EvidenceRefReattributedFromEnum = typeof EvidenceRefReattributedFrom
  */
 export function instanceOfEvidenceRef(value: object): value is EvidenceRef {
     if (!('kind' in value) || value['kind'] === undefined) return false;
-    if (!('match' in value) || value['match'] === undefined) return false;
     if (!('excerpt' in value) || value['excerpt'] === undefined) return false;
     if ((!('excerptTruncated' in (value as Record<string, any>)) && !('excerpt_truncated' in (value as Record<string, any>))) || ((value as Record<string, any>)['excerptTruncated'] === undefined && (value as Record<string, any>)['excerpt_truncated'] === undefined)) return false;
     if (!('available' in value) || value['available'] === undefined) return false;
@@ -189,7 +191,7 @@ export function EvidenceRefFromJSONTyped(json: any, ignoreDiscriminator: boolean
     return {
         
         'kind': json['kind'],
-        'match': json['match'],
+        'match': json['match'] == null ? undefined : json['match'],
         'reattributedFrom': json['reattributed_from'] == null ? undefined : json['reattributed_from'],
         'traceEventId': json['trace_event_id'] == null ? undefined : json['trace_event_id'],
         'occurredAt': json['occurred_at'] == null ? undefined : (parseDateTime(json['occurred_at'])),

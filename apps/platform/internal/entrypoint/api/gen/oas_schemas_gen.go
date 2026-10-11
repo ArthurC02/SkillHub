@@ -9535,6 +9535,9 @@ func (s *EvaluationStatus) UnmarshalText(data []byte) error {
 // Ref: #/components/schemas/EvidenceRef
 type EvidenceRef struct {
 	Kind EvidenceRefKind `json:"kind"`
+	// Absent on a report produced before citations were verified: that report never recorded how its
+	// excerpts were found.
+	//
 	// How the excerpt was found in the source it names. This is the platform's own answer, never the
 	// judge's — a citation is verified by content, not by the source it was filed under.
 	//
@@ -9557,7 +9560,7 @@ type EvidenceRef struct {
 	//    `excerpt`.
 	//    Like `not_found` it never counts as verified evidence, so a rubric item with `evidence_required`
 	//    is not satisfied by it.
-	Match EvidenceRefMatch `json:"match"`
+	Match OptEvidenceRefMatch `json:"match"`
 	// Present when the quote was found, but not in the source the judge named — `kind` is corrected to
 	// where it actually is and this records where it was filed. The core point: mis-filed and fabricated
 	// are different failures and one string search tells them apart, so the platform stopped treating them
@@ -9592,7 +9595,7 @@ func (s *EvidenceRef) GetKind() EvidenceRefKind {
 }
 
 // GetMatch returns the value of Match.
-func (s *EvidenceRef) GetMatch() EvidenceRefMatch {
+func (s *EvidenceRef) GetMatch() OptEvidenceRefMatch {
 	return s.Match
 }
 
@@ -9647,7 +9650,7 @@ func (s *EvidenceRef) SetKind(val EvidenceRefKind) {
 }
 
 // SetMatch sets the value of Match.
-func (s *EvidenceRef) SetMatch(val EvidenceRefMatch) {
+func (s *EvidenceRef) SetMatch(val OptEvidenceRefMatch) {
 	s.Match = val
 }
 
@@ -9796,6 +9799,9 @@ func (s *EvidenceRefKind) UnmarshalText(data []byte) error {
 	}
 }
 
+// Absent on a report produced before citations were verified: that report never recorded how its
+// excerpts were found.
+//
 // How the excerpt was found in the source it names. This is the platform's own answer, never the
 // judge's — a citation is verified by content, not by the source it was filed under.
 //
@@ -16559,6 +16565,52 @@ func (o OptEvidenceRefCharRange) Get() (v EvidenceRefCharRange, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptEvidenceRefCharRange) Or(d EvidenceRefCharRange) EvidenceRefCharRange {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptEvidenceRefMatch returns new OptEvidenceRefMatch with value set to v.
+func NewOptEvidenceRefMatch(v EvidenceRefMatch) OptEvidenceRefMatch {
+	return OptEvidenceRefMatch{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptEvidenceRefMatch is optional EvidenceRefMatch.
+type OptEvidenceRefMatch struct {
+	Value EvidenceRefMatch
+	Set   bool
+}
+
+// IsSet returns true if OptEvidenceRefMatch was set.
+func (o OptEvidenceRefMatch) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptEvidenceRefMatch) Reset() {
+	var v EvidenceRefMatch
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptEvidenceRefMatch) SetTo(v EvidenceRefMatch) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptEvidenceRefMatch) Get() (v EvidenceRefMatch, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptEvidenceRefMatch) Or(d EvidenceRefMatch) EvidenceRefMatch {
 	if v, ok := o.Get(); ok {
 		return v
 	}

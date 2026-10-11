@@ -30,6 +30,12 @@ export type CriterionResult = {
   source: VerdictSource;
   evidence: EvidenceRef[];
   reason: string;
+  steps?: Array<{
+    path: string;
+    kind: string;
+    result: "passed" | "failed" | "undetermined";
+    reason: string;
+  }>;
 };
 
 export type DeterministicFinding = {

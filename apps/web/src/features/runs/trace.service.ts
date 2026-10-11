@@ -46,7 +46,7 @@ export type TraceStream = {
   late_events: number;
 };
 
-export type TraceEvent = {
+export type TraceEventView = {
   event_id: string;
   attempt: number;
   seq: number;
@@ -63,7 +63,7 @@ export type TraceAdvanced = {
   run_id: string;
   complete: boolean;
   streams: TraceStream[];
-  events: TraceEvent[];
+  events: TraceEventView[];
   next_after: number;
   has_more: boolean;
 };

@@ -46,7 +46,7 @@ type Range struct {
 type EvidenceRef struct {
 	Kind string `json:"kind"`
 
-	Match string `json:"match"`
+	Match string `json:"match,omitempty"`
 
 	ReattributedFrom string `json:"reattributed_from,omitempty"`
 	TraceEventID     string `json:"trace_event_id,omitempty"`

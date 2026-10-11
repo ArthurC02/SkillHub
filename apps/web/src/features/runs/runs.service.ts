@@ -1,16 +1,31 @@
 import type { Labelled } from "../../core/api/types";
+import type { RunStatus } from "./trace.service";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 
 export type Run = {
   run_id: string;
+  status: RunStatus;
+  skill_withheld?: boolean;
+  status_reason?: string;
   skill_id: string;
   skill_version_id: string;
   test_case_snapshot_id: string;
   test_case_id?: string;
+  provider: string;
   failure_class?: Labelled;
   cleanup_status: Labelled;
+  cancel_requested_at?: string;
+  created_at: string;
+  started_at?: string;
+  finished_at?: string;
+  transitions?: Array<{
+    from_status?: string;
+    to_status: string;
+    reason?: string;
+    occurred_at: string;
+  }>;
   attempts?: Array<{
     run_attempt_id: string;
     attempt_number: number;

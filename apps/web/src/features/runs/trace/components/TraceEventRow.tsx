@@ -1,8 +1,8 @@
 import { Timestamp } from "../../../../shared/ui/Timestamp";
-import type { TraceEvent } from "../../trace.service";
+import type { TraceEventView } from "../../trace.service";
 import { Reveal } from "../../../../shared/ui/Reveal";
 
-export function TraceEventRow({ event }: { event: TraceEvent }) {
+export function TraceEventRow({ event }: { event: TraceEventView }) {
   return (
     <li>
       <p>

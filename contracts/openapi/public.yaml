@@ -11297,7 +11297,7 @@ components:
         is read long after. Only the pointer would turn old reports into empty
         citations; only the excerpt would make fresh ones unverifiable.
       type: object
-      required: [kind, excerpt, excerpt_truncated, available, match]
+      required: [kind, excerpt, excerpt_truncated, available]
       properties:
         kind:
           type: string
@@ -11306,6 +11306,9 @@ components:
           type: string
           enum: [exact, normalized, not_found, not_checked]
           description: |
+            Absent on a report produced before citations were verified: that
+            report never recorded how its excerpts were found.
+
             How the excerpt was found in the source it names. This is
             the platform's own answer, never the judge's — a citation is verified
             **by content**, not by the source it was filed under.

@@ -1,6 +1,33 @@
 package eval
 
-import "testing"
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
+
+func TestACitationStoredBeforeVerificationIsServedWithNoMatch(t *testing.T) {
+	cases := []struct {
+		name, stored, want string
+		present            bool
+	}{
+		{"never recorded", `{"kind":"trace_event","excerpt":"x","excerpt_truncated":false,"available":true}`, `"match"`, false},
+		{"recorded", `{"kind":"artifact","match":"not_checked","excerpt":"","excerpt_truncated":false,"available":true}`, `"match":"not_checked"`, true},
+	}
+	for _, c := range cases {
+		var ref EvidenceRef
+		if err := json.Unmarshal([]byte(c.stored), &ref); err != nil {
+			t.Fatal(err)
+		}
+		served, err := json.Marshal(ref)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Contains(string(served), c.want); got != c.present {
+			t.Errorf("%s: served %s, want %s present = %v", c.name, served, c.want, c.present)
+		}
+	}
+}
 
 func TestACitationIsFoundWhicheverEncodingItWasQuotedIn(t *testing.T) {
 	payload := []byte(`{"tool_name":"Read",` +

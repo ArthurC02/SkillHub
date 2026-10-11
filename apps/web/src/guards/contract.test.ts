@@ -38,7 +38,7 @@ function fieldsOf(body: string, name: string): Fields | null {
 
   const fields: Fields = new Map();
   let nest = 0;
-  for (const line of inner.split("\n")) {
+  for (const line of inner.split(/[;\n]/)) {
     const trimmed = line.trim();
     if (nest === 0 && !trimmed.startsWith("[")) {
       const m = /^([A-Za-z_]\w*)(\??)\s*:/.exec(trimmed);
@@ -87,7 +87,9 @@ function handWrittenSources(dir: string): string[] {
 
 test("鐵律 12: every hand-written interface with a generated twin has the same fields", () => {
   const types = handWrittenSources(src).join("\n");
-  const names = [...types.matchAll(/^export interface (\w+)/gm)].map((m) => m[1]);
+  const names = [...types.matchAll(/^export (?:interface (\w+)|type (\w+)\s*=\s*\{)/gm)].map(
+    (m) => m[1] ?? m[2],
+  );
   expect(
     names.length,
     "the hand-written type scan parsed no interfaces — the scan broke",
