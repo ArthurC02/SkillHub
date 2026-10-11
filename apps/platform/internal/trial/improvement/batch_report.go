@@ -64,8 +64,8 @@ type BatchReport struct {
 	TestCasesDecided int
 }
 
-func (s *Service) BatchReport(ctx context.Context, workspaceID, skillID, batchID pgtype.UUID) (BatchReport, error) {
-	if err := s.Batches.ready(); err != nil {
+func (s *BatchService) BatchReport(ctx context.Context, workspaceID, skillID, batchID pgtype.UUID) (BatchReport, error) {
+	if err := s.Ports.ready(); err != nil {
 		return BatchReport{}, err
 	}
 	batch, err := s.batch(ctx, workspaceID, batchID)
@@ -100,7 +100,7 @@ type resolvedTrial struct {
 	prompt  string
 }
 
-func (s *Service) trialOutcomes(ctx context.Context, workspaceID pgtype.UUID, items []gen.EvaluationBatchItem) (map[pgtype.UUID]resolvedTrial, error) {
+func (s *BatchService) trialOutcomes(ctx context.Context, workspaceID pgtype.UUID, items []gen.EvaluationBatchItem) (map[pgtype.UUID]resolvedTrial, error) {
 	var runIDs []pgtype.UUID
 	for _, item := range items {
 		if item.RunID.Valid {
@@ -111,7 +111,7 @@ func (s *Service) trialOutcomes(ctx context.Context, workspaceID pgtype.UUID, it
 	if len(runIDs) == 0 {
 		return resolved, nil
 	}
-	ends, err := s.Batches.ReadChainEnds(ctx, workspaceID, runIDs)
+	ends, err := s.Ports.ReadChainEnds(ctx, workspaceID, runIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (s *Service) trialOutcomes(ctx context.Context, workspaceID pgtype.UUID, it
 	for _, row := range evaluations {
 		verdicts[row.RunID] = row
 	}
-	prompts, err := s.Batches.ReadSnapshotContents(ctx, workspaceID, snapshotIDs)
+	prompts, err := s.Ports.ReadSnapshotContents(ctx, workspaceID, snapshotIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func (s *Service) trialOutcomes(ctx context.Context, workspaceID pgtype.UUID, it
 	return resolved, nil
 }
 
-func (s *Service) trialOutcome(
+func (s *BatchService) trialOutcome(
 	ctx context.Context, workspaceID pgtype.UUID, end ChainEnd, evaluation gen.ListCurrentEvaluationsRow, evaluated bool,
 ) (TrialOutcome, error) {
 	switch {
@@ -159,7 +159,7 @@ func (s *Service) trialOutcome(
 	case evaluated:
 		return TrialRunning, nil
 	case end.Status == runSucceeded:
-		asked, err := s.Batches.ReadEndedWithQuestion(ctx, workspaceID, end.RunID)
+		asked, err := s.Ports.ReadEndedWithQuestion(ctx, workspaceID, end.RunID)
 		if err != nil || !asked {
 			return TrialRunning, err
 		}

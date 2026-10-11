@@ -19,7 +19,7 @@ type BatchComparison struct {
 	Tied            int
 }
 
-func (s *Service) CompareBatches(ctx context.Context, workspaceID, skillID, candidateID, baselineID pgtype.UUID) (BatchComparison, error) {
+func (s *BatchService) CompareBatches(ctx context.Context, workspaceID, skillID, candidateID, baselineID pgtype.UUID) (BatchComparison, error) {
 	candidate, err := s.BatchReport(ctx, workspaceID, skillID, candidateID)
 	if err != nil {
 		return BatchComparison{}, err

@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	testlab "github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
@@ -13,17 +14,19 @@ import (
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
-func WireEvaluation(
-	service *eval.Service, runs *run.Service, registryService *registry.Service,
-	testlabSvc *testlab.Service, traceSvc *trace.Service,
-) {
+func WireEvaluation(service *eval.Service, runs *run.Service, registryService *registry.Service) {
 	WireEvaluationRunReaders(service, runs)
 	WireEvaluationRegistryReaders(service, registryService)
-	WireEvaluationBatches(service, runs, testlabSvc, traceSvc)
 }
 
-func WireEvaluationBatches(service *eval.Service, runs *run.Service, testlabSvc *testlab.Service, traceSvc *trace.Service) {
-	service.Batches = eval.BatchPorts{
+func NewEvaluationBatches(
+	pool *pgxpool.Pool, runs *run.Service, testlabSvc *testlab.Service, traceSvc *trace.Service,
+) *eval.BatchService {
+	return &eval.BatchService{Pool: pool, Ports: evaluationBatchPorts(runs, testlabSvc, traceSvc)}
+}
+
+func evaluationBatchPorts(runs *run.Service, testlabSvc *testlab.Service, traceSvc *trace.Service) eval.BatchPorts {
+	return eval.BatchPorts{
 		StartRun: func(ctx context.Context, b eval.BatchRun) (pgtype.UUID, error) {
 			created, err := runs.Create(ctx, run.CreateParams{
 				WorkspaceID: b.WorkspaceID, Actor: b.Actor, SkillID: b.SkillID,

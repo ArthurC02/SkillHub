@@ -11,7 +11,7 @@ import (
 
 type EvaluationBatchAdvanceWorker struct {
 	river.WorkerDefaults[eval.BatchAdvanceArgs]
-	Svc *eval.Service
+	Svc *eval.BatchService
 }
 
 func (w *EvaluationBatchAdvanceWorker) Work(ctx context.Context, job *river.Job[eval.BatchAdvanceArgs]) error {

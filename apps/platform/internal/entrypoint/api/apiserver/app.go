@@ -95,6 +95,7 @@ type App struct {
 	Auth         *identity.Handler
 	RunSvc       *run.Service
 	EvalSvc      *eval.Service
+	EvalBatches  *eval.BatchService
 	PackagingSvc *packaging.Service
 	Versions     *ingest.Service
 	CreationSvc  *creation.Service
@@ -134,7 +135,7 @@ func NewApp(cfg Config) (*App, error) {
 	evalSvc := &eval.Service{
 		Pool: cfg.Pool, TestLab: testlabSvc, Store: cfg.Store, Versions: versions, Trace: traceSvc,
 	}
-	wiring.WireEvaluation(evalSvc, runSvc, registrySvc, testlabSvc, traceSvc)
+	wiring.WireEvaluation(evalSvc, runSvc, registrySvc)
 
 	packagingSvc := newPackagingService(cfg, testlabSvc, identitySvc, evalSvc, versions)
 	wirePackagingRegistryReaders(packagingSvc, registrySvc)
@@ -169,6 +170,7 @@ func NewApp(cfg Config) (*App, error) {
 		Auth:         auth,
 		RunSvc:       runSvc,
 		EvalSvc:      evalSvc,
+		EvalBatches:  wiring.NewEvaluationBatches(cfg.Pool, runSvc, testlabSvc, traceSvc),
 		PackagingSvc: packagingSvc,
 		Versions:     versions,
 		CreationSvc:  creationSvc,
@@ -338,6 +340,7 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 		Runs:            &run.Handler{Svc: runSvc, Identity: auth.Service, RunVerdicts: evalSvc.RunVerdicts},
 		Trace:           &trace.Handler{Svc: app.TraceSvc, Identity: auth.Service},
 		Eval:            &eval.Handler{Svc: evalSvc, Identity: auth.Service},
+		EvalBatches:     &eval.BatchHandler{Svc: app.EvalBatches, Identity: auth.Service},
 		Packaging:       &packaging.Handler{Svc: app.PackagingSvc, Identity: auth.Service},
 		Activity:        &activityHandler{Svc: app.ActivitySvc, Identity: identitySvc},
 		Credits: &creditsHandler{

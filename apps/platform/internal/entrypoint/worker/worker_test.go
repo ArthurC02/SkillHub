@@ -139,7 +139,7 @@ func assertRunEventAndSkillVersionQueuesWired(t *testing.T, set *Set) {
 	if set.BatchEvents == nil || set.BatchEvents.HasLaunchingBatch == nil || set.BatchEvents.Enqueue == nil {
 		t.Error("the evaluation batch consumer is not wired to its lookup and the queue")
 	}
-	if set.Evaluations.Batches.StartRun == nil || set.Evaluations.Batches.ReadChainEnds == nil {
+	if set.Batches == nil || set.Batches.Ports.StartRun == nil || set.Batches.Ports.ReadChainEnds == nil {
 		t.Error("evaluation batches cannot start runs or read conversations in this process")
 	}
 }

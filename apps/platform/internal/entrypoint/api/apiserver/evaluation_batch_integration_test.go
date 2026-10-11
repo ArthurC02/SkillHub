@@ -81,7 +81,7 @@ func TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait
 		t.Fatalf("started trials = %v, want only the first trial of the first test case", got)
 	}
 
-	if err := a.evaluations.AdvanceBatches(context.Background(), mustUUID(t, f.workspaceID)); err != nil {
+	if err := a.batches.AdvanceBatches(context.Background(), mustUUID(t, f.workspaceID)); err != nil {
 		t.Fatal(err)
 	}
 	if got := started(batchTrialRuns(t, pool, batchID)); len(got) != 1 {
@@ -122,7 +122,7 @@ func TestARefusalThatWaitingCannotFixStopsTheBatch(t *testing.T) {
 	mustExec(t, pool, `UPDATE runs SET status = 'cancelled', finished_at = now() WHERE id = $1`, mustUUID(t, first))
 	mustExec(t, pool, `DELETE FROM run_permission_confirmations WHERE workspace_id = $1`, mustUUID(t, f.workspaceID))
 
-	if err := a.evaluations.AdvanceBatches(ctx, mustUUID(t, f.workspaceID)); err != nil {
+	if err := a.batches.AdvanceBatches(ctx, mustUUID(t, f.workspaceID)); err != nil {
 		t.Fatal(err)
 	}
 	code, report := f.doJSON(t, http.MethodGet, "/skills/"+f.skillID+"/evaluation-batches/"+batchID, "")

@@ -198,6 +198,7 @@ type api struct {
 	traceSigner *trace.Signer
 
 	evaluations *eval.Service
+	batches     *eval.BatchService
 
 	versions *ingest.Service
 
@@ -278,7 +279,7 @@ func newAPITuned(
 	return &api{
 		creditPool: pool, startingCredits: betaGrantCredits,
 		Server: srv, auth: app.Auth, packages: packages, runs: app.RunSvc,
-		traceSigner: traceSigner, handler: handler, evaluations: app.EvalSvc,
+		traceSigner: traceSigner, handler: handler, evaluations: app.EvalSvc, batches: app.EvalBatches,
 		packaging: app.PackagingSvc, versions: app.Versions, app: app,
 	}
 }

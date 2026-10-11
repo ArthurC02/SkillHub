@@ -15,6 +15,11 @@ import (
 
 const maxBatchBodyBytes = 8 << 10
 
+type BatchHandler struct {
+	Svc      *BatchService
+	Identity *identity.Service
+}
+
 type batchView struct {
 	ID             string      `json:"id"`
 	SkillID        string      `json:"skill_id"`
@@ -58,8 +63,8 @@ type batchReportView struct {
 	TestCasesDecided   int                 `json:"test_cases_decided"`
 }
 
-func (h *Handler) CreateBatch(w http.ResponseWriter, r *http.Request) {
-	ws, user, ok := h.sessionWorkspace(w, r)
+func (h *BatchHandler) CreateBatch(w http.ResponseWriter, r *http.Request) {
+	ws, user, ok := h.sessionUser(w, r)
 	if !ok {
 		return
 	}
@@ -103,8 +108,8 @@ func (h *Handler) CreateBatch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) ListBatches(w http.ResponseWriter, r *http.Request) {
-	ws, ok := h.workspace(w, r)
+func (h *BatchHandler) ListBatches(w http.ResponseWriter, r *http.Request) {
+	ws, ok := sessionWorkspace(h.Identity, w, r)
 	if !ok {
 		return
 	}
@@ -124,8 +129,8 @@ func (h *Handler) ListBatches(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"batches": views})
 }
 
-func (h *Handler) BatchReport(w http.ResponseWriter, r *http.Request) {
-	ws, ok := h.workspace(w, r)
+func (h *BatchHandler) BatchReport(w http.ResponseWriter, r *http.Request) {
+	ws, ok := sessionWorkspace(h.Identity, w, r)
 	if !ok {
 		return
 	}
@@ -162,8 +167,8 @@ type batchComparisonView struct {
 	Tied            int           `json:"tied"`
 }
 
-func (h *Handler) CompareBatches(w http.ResponseWriter, r *http.Request) {
-	ws, ok := h.workspace(w, r)
+func (h *BatchHandler) CompareBatches(w http.ResponseWriter, r *http.Request) {
+	ws, ok := sessionWorkspace(h.Identity, w, r)
 	if !ok {
 		return
 	}
@@ -192,9 +197,9 @@ func (h *Handler) CompareBatches(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, view)
 }
 
-func (h *Handler) sessionWorkspace(w http.ResponseWriter, r *http.Request) (identity.Workspace, pgtype.UUID, bool) {
+func (h *BatchHandler) sessionUser(w http.ResponseWriter, r *http.Request) (identity.Workspace, pgtype.UUID, bool) {
 	user, _ := identity.SessionUser(r.Context())
-	ws, ok := h.workspace(w, r)
+	ws, ok := sessionWorkspace(h.Identity, w, r)
 	return ws, user.ID, ok
 }
 

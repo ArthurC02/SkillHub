@@ -18,6 +18,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
@@ -53,6 +54,7 @@ type Set struct {
 	Creation       *creation.Service
 	Runs           *run.Service
 	Evaluations    *eval.Service
+	Batches        *eval.BatchService
 	Packaging      *packaging.Service
 	Registry       *registry.Service
 	CreationSearch *catalog.Service
@@ -96,6 +98,27 @@ func datasetCandidates(list func(context.Context, int32) ([]testlab.ReconcileCan
 	}
 }
 
+type evaluationReaders struct {
+	registry *registry.Service
+	testlab  *testlab.Service
+	trace    *trace.Service
+	budgets  *modelbudget.Service
+}
+
+func addEvaluationServices(set *Set, pool *pgxpool.Pool, deps Deps, r evaluationReaders) {
+	set.Evaluations = &eval.Service{
+		Pool: pool, Store: deps.Store,
+		Trace: r.trace, TestLab: r.testlab, Budgets: r.budgets,
+	}
+	wiring.WireEvaluation(set.Evaluations, set.Runs, r.registry)
+	wireEvaluationModelAndEvents(set.Evaluations, pool, deps.LLM)
+	set.Batches = wiring.NewEvaluationBatches(pool, set.Runs, r.testlab, r.trace)
+
+	set.RunEvents = &eval.RunEventConsumer{HasCurrentEvaluation: set.Evaluations.HasCurrentEvaluation}
+	set.SkillVersions = &eval.SkillVersionConsumer{}
+	set.BatchEvents = &eval.BatchEventConsumer{HasLaunchingBatch: set.Batches.HasLaunchingBatch}
+}
+
 func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	set := &Set{WorkerKinds: map[string]bool{}, Scheduled: map[string]bool{}}
 	downloads := &packaging.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
@@ -110,19 +133,8 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	traceSvc := wiring.NewTraceService(pool, deps.TraceSigner, set.Runs)
 	set.Runs.Trace = traceSvc
 
-	set.Evaluations = &eval.Service{
-		Pool: pool, Store: deps.Store,
-		Trace: traceSvc, TestLab: testlabSvc,
-	}
-	wiring.WireEvaluation(set.Evaluations, set.Runs, registrySvc, testlabSvc, traceSvc)
-	wireEvaluationModelAndEvents(set.Evaluations, pool, deps.LLM)
-
 	budgets := wiring.NewModelBudgets(pool)
-	set.Evaluations.Budgets = budgets
-
-	set.RunEvents = &eval.RunEventConsumer{HasCurrentEvaluation: set.Evaluations.HasCurrentEvaluation}
-	set.SkillVersions = &eval.SkillVersionConsumer{}
-	set.BatchEvents = &eval.BatchEventConsumer{HasLaunchingBatch: set.Evaluations.HasLaunchingBatch}
+	addEvaluationServices(set, pool, deps, evaluationReaders{registry: registrySvc, testlab: testlabSvc, trace: traceSvc, budgets: budgets})
 
 	set.Events = newEventDispatcher(set.RunEvents, set.SkillVersions, set.BatchEvents)
 	if err := set.Events.Validate(); err != nil {
@@ -239,7 +251,7 @@ func addDomainWorkers(set *Set, workers *river.Workers) {
 	addWorker(set, workers, &EvaluationExecuteWorker{Svc: set.Evaluations})
 	addWorker(set, workers, &EvaluationRecoveryWorker{Svc: set.Evaluations})
 	addWorker(set, workers, &SuggestionsAppliedWorker{Svc: set.Evaluations})
-	addWorker(set, workers, &EvaluationBatchAdvanceWorker{Svc: set.Evaluations})
+	addWorker(set, workers, &EvaluationBatchAdvanceWorker{Svc: set.Batches})
 }
 
 func newObjectReconciler(

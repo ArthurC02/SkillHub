@@ -34,6 +34,7 @@ type Deps struct {
 	Runs            *run.Handler
 	Trace           *trace.Handler
 	Eval            *eval.Handler
+	EvalBatches     *eval.BatchHandler
 	Packaging       *packaging.Handler
 	Publishing      *publishing.Handler
 	Activity        *activityHandler
@@ -298,10 +299,10 @@ func mountEvaluationRoutes(mux *http.ServeMux, d Deps) {
 
 	mux.HandleFunc("GET /runs/{id}/comparison", auth.RequireSession(d.Eval.Comparison))
 
-	mux.HandleFunc("POST /skills/{id}/evaluation-batches", auth.RequireSession(auth.RequireInvited(d.Eval.CreateBatch)))
-	mux.HandleFunc("GET /skills/{id}/evaluation-batches", auth.RequireSession(d.Eval.ListBatches))
-	mux.HandleFunc("GET /skills/{id}/evaluation-batches/{batchId}", auth.RequireSession(d.Eval.BatchReport))
-	mux.HandleFunc("GET /skills/{id}/evaluation-batches/{batchId}/comparison", auth.RequireSession(d.Eval.CompareBatches))
+	mux.HandleFunc("POST /skills/{id}/evaluation-batches", auth.RequireSession(auth.RequireInvited(d.EvalBatches.CreateBatch)))
+	mux.HandleFunc("GET /skills/{id}/evaluation-batches", auth.RequireSession(d.EvalBatches.ListBatches))
+	mux.HandleFunc("GET /skills/{id}/evaluation-batches/{batchId}", auth.RequireSession(d.EvalBatches.BatchReport))
+	mux.HandleFunc("GET /skills/{id}/evaluation-batches/{batchId}/comparison", auth.RequireSession(d.EvalBatches.CompareBatches))
 }
 
 func mountPackagingRoutes(mux *http.ServeMux, d Deps) {

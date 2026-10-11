@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -87,6 +88,13 @@ func (p BatchPorts) ready() error {
 	return nil
 }
 
+type BatchService struct {
+	Pool  *pgxpool.Pool
+	Ports BatchPorts
+}
+
+func (s *BatchService) queries() *gen.Queries { return gen.New(s.Pool) }
+
 type Batch struct {
 	ID         pgtype.UUID
 	SkillID    pgtype.UUID
@@ -123,8 +131,8 @@ func (n NewBatch) validShape() bool {
 	return true
 }
 
-func (s *Service) CreateBatch(ctx context.Context, n NewBatch) (Batch, error) {
-	if err := s.Batches.ready(); err != nil {
+func (s *BatchService) CreateBatch(ctx context.Context, n NewBatch) (Batch, error) {
+	if err := s.Ports.ready(); err != nil {
 		return Batch{}, err
 	}
 	if !n.validShape() {
@@ -164,11 +172,11 @@ func (s *Service) CreateBatch(ctx context.Context, n NewBatch) (Batch, error) {
 	return s.batch(ctx, n.WorkspaceID, created.ID)
 }
 
-func (s *Service) confirmedHashes(ctx context.Context, n NewBatch) ([]string, error) {
+func (s *BatchService) confirmedHashes(ctx context.Context, n NewBatch) ([]string, error) {
 	hashes := make([]string, len(n.TestCaseIDs))
 	var unconfirmed []pgtype.UUID
 	for i, testCaseID := range n.TestCaseIDs {
-		hash, confirmed, err := s.Batches.ConfirmedSummaryHash(ctx, n.WorkspaceID, n.SkillID, n.VersionID, testCaseID)
+		hash, confirmed, err := s.Ports.ConfirmedSummaryHash(ctx, n.WorkspaceID, n.SkillID, n.VersionID, testCaseID)
 		if err != nil {
 			return nil, err
 		}
@@ -183,11 +191,11 @@ func (s *Service) confirmedHashes(ctx context.Context, n NewBatch) ([]string, er
 	return hashes, nil
 }
 
-func (s *Service) HasLaunchingBatch(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+func (s *BatchService) HasLaunchingBatch(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
 	return s.queries().HasLaunchingBatch(ctx, workspaceID)
 }
 
-func (s *Service) AdvanceAllBatches(ctx context.Context) error {
+func (s *BatchService) AdvanceAllBatches(ctx context.Context) error {
 	workspaces, err := s.queries().ListWorkspacesWithLaunchingBatches(ctx)
 	if err != nil {
 		return err
@@ -199,8 +207,8 @@ func (s *Service) AdvanceAllBatches(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-func (s *Service) AdvanceBatches(ctx context.Context, workspaceID pgtype.UUID) error {
-	if err := s.Batches.ready(); err != nil {
+func (s *BatchService) AdvanceBatches(ctx context.Context, workspaceID pgtype.UUID) error {
+	if err := s.Ports.ready(); err != nil {
 		return err
 	}
 	for {
@@ -211,7 +219,7 @@ func (s *Service) AdvanceBatches(ctx context.Context, workspaceID pgtype.UUID) e
 	}
 }
 
-func (s *Service) startNextTrial(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+func (s *BatchService) startNextTrial(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
 	started := false
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		q := gen.New(tx)
@@ -227,7 +235,7 @@ func (s *Service) startNextTrial(ctx context.Context, workspaceID pgtype.UUID) (
 			started = true
 			return s.stopBatch(ctx, q, workspaceID, next.BatchID, stopReasonCreatorGone)
 		}
-		runID, err := s.Batches.StartRun(ctx, BatchRun{
+		runID, err := s.Ports.StartRun(ctx, BatchRun{
 			WorkspaceID: workspaceID, Actor: next.CreatedBy, SkillID: next.SkillID,
 			VersionID: next.SkillVersionID, TestCaseID: next.TestCaseID, SummaryHash: next.SummaryHash,
 		})
@@ -251,14 +259,14 @@ func (s *Service) startNextTrial(ctx context.Context, workspaceID pgtype.UUID) (
 	return started, err
 }
 
-func (s *Service) stopBatch(ctx context.Context, q *gen.Queries, workspaceID, batchID pgtype.UUID, reason string) error {
+func (s *BatchService) stopBatch(ctx context.Context, q *gen.Queries, workspaceID, batchID pgtype.UUID, reason string) error {
 	_, err := q.StopEvaluationBatch(ctx, gen.StopEvaluationBatchParams{
 		ID: batchID, WorkspaceID: workspaceID, StopReason: &reason,
 	})
 	return err
 }
 
-func (s *Service) ListBatches(ctx context.Context, workspaceID, skillID pgtype.UUID) ([]Batch, error) {
+func (s *BatchService) ListBatches(ctx context.Context, workspaceID, skillID pgtype.UUID) ([]Batch, error) {
 	rows, err := s.queries().ListEvaluationBatches(ctx, gen.ListEvaluationBatchesParams{
 		WorkspaceID: workspaceID, SkillID: skillID,
 	})
@@ -272,7 +280,7 @@ func (s *Service) ListBatches(ctx context.Context, workspaceID, skillID pgtype.U
 	return out, nil
 }
 
-func (s *Service) batch(ctx context.Context, workspaceID, batchID pgtype.UUID) (Batch, error) {
+func (s *BatchService) batch(ctx context.Context, workspaceID, batchID pgtype.UUID) (Batch, error) {
 	row, err := s.queries().GetEvaluationBatch(ctx, gen.GetEvaluationBatchParams{ID: batchID, WorkspaceID: workspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Batch{}, ErrNotFound
