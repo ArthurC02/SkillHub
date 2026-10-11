@@ -10,7 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 )
 
 var waterFacts = []string{"本期用水 45 度", "上期沒有欠費"}
@@ -90,7 +90,7 @@ func TestABatchAnswersAQuestionAsTheSimulatedPersonOnlyWhereTheTestCaseHasFacts(
 	}
 
 	next, found := continuationOf(t, pool, withFacts)
-	reply := eval.SimulatedUserReply(waterFacts)
+	reply := batch.SimulatedUserReply(waterFacts)
 	if !found || !slices.Equal(next.answers, []string{reply, reply}) {
 		t.Fatalf("the trial with facts was answered %v (found %v), want both questions answered with %q", next.answers, found, reply)
 	}

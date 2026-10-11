@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 	testlab "github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	trace "github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -21,13 +22,28 @@ func WireEvaluation(service *eval.Service, runs *run.Service, registryService *r
 
 func NewEvaluationBatches(
 	pool *pgxpool.Pool, runs *run.Service, testlabSvc *testlab.Service, traceSvc *trace.Service,
-) *eval.BatchService {
-	return &eval.BatchService{Pool: pool, Ports: evaluationBatchPorts(runs, testlabSvc, traceSvc)}
+) *batch.BatchService {
+	ports := evaluationBatchPorts(runs, testlabSvc, traceSvc)
+	ports.ReadVerdicts = standingVerdictReader(pool)
+	return &batch.BatchService{Pool: pool, Ports: ports}
 }
 
-func evaluationBatchPorts(runs *run.Service, testlabSvc *testlab.Service, traceSvc *trace.Service) eval.BatchPorts {
-	return eval.BatchPorts{
-		StartRun: func(ctx context.Context, b eval.BatchRun) (pgtype.UUID, error) {
+func standingVerdictReader(pool *pgxpool.Pool) func(context.Context, pgtype.UUID, []pgtype.UUID) (map[pgtype.UUID]batch.Verdict, error) {
+	return func(ctx context.Context, workspaceID pgtype.UUID, runIDs []pgtype.UUID) (map[pgtype.UUID]batch.Verdict, error) {
+		standing, err := eval.StandingVerdicts(ctx, pool, workspaceID, runIDs)
+		out := make(map[pgtype.UUID]batch.Verdict, len(standing))
+		for runID, v := range standing {
+			out[runID] = batch.Verdict{
+				Judged: v.Status == eval.StatusCompleted, Failed: v.Status == eval.StatusFailed, Overall: string(v.Overall),
+			}
+		}
+		return out, err
+	}
+}
+
+func evaluationBatchPorts(runs *run.Service, testlabSvc *testlab.Service, traceSvc *trace.Service) batch.BatchPorts {
+	return batch.BatchPorts{
+		StartRun: func(ctx context.Context, b batch.BatchRun) (pgtype.UUID, error) {
 			created, err := runs.Create(ctx, run.CreateParams{
 				WorkspaceID: b.WorkspaceID, Actor: b.Actor, SkillID: b.SkillID,
 				VersionID: b.VersionID, TestCaseID: b.TestCaseID, ConfirmedSummaryHash: b.SummaryHash,
@@ -38,15 +54,15 @@ func evaluationBatchPorts(runs *run.Service, testlabSvc *testlab.Service, traceS
 		ConfirmedSummaryHash: func(ctx context.Context, workspaceID, skillID, versionID, testCaseID pgtype.UUID) (string, bool, error) {
 			hash, confirmed, err := runs.ConfirmedPermissionHash(ctx, workspaceID, skillID, versionID, testCaseID)
 			if errors.Is(err, run.ErrNotFound) || errors.Is(err, run.ErrPreflightTargetNotFound) {
-				return "", false, eval.ErrNotFound
+				return "", false, batch.ErrNotFound
 			}
 			return hash, confirmed, err
 		},
-		ReadChainEnds: func(ctx context.Context, workspaceID pgtype.UUID, runIDs []pgtype.UUID) (map[pgtype.UUID]eval.ChainEnd, error) {
+		ReadChainEnds: func(ctx context.Context, workspaceID pgtype.UUID, runIDs []pgtype.UUID) (map[pgtype.UUID]batch.ChainEnd, error) {
 			ends, err := runs.ChainEnds(ctx, workspaceID, runIDs)
-			out := make(map[pgtype.UUID]eval.ChainEnd, len(ends))
+			out := make(map[pgtype.UUID]batch.ChainEnd, len(ends))
 			for start, end := range ends {
-				out[start] = eval.ChainEnd{
+				out[start] = batch.ChainEnd{
 					StartSnapshotID: end.StartSnapshotID, RunID: end.RunID, Status: end.Status, Terminal: end.Terminal,
 				}
 			}
@@ -58,7 +74,7 @@ func evaluationBatchPorts(runs *run.Service, testlabSvc *testlab.Service, traceS
 			return len(summary.Questions), err
 		},
 		ReadSimulatedUser: testlabSvc.SimulatedUserFacts,
-		AnswerRun: func(ctx context.Context, a eval.BatchAnswer) error {
+		AnswerRun: func(ctx context.Context, a batch.BatchAnswer) error {
 			_, err := runs.Continue(ctx, run.ContinueParams{
 				WorkspaceID: a.WorkspaceID, Actor: a.Actor, RunID: a.RunID, Answers: a.Answers,
 				AnsweredAsSimulatedUser: true,
@@ -78,12 +94,12 @@ func batchAnswerError(err error) error {
 	}
 	for _, final := range noFurtherRound {
 		if errors.Is(err, final) {
-			return eval.ErrNoFurtherRound
+			return batch.ErrNoFurtherRound
 		}
 	}
 	mapped := batchRunError(err)
-	if _, refused := errors.AsType[eval.RunRefusedError](mapped); refused {
-		return eval.ErrNoFurtherRound
+	if _, refused := errors.AsType[batch.RunRefusedError](mapped); refused {
+		return batch.ErrNoFurtherRound
 	}
 	return mapped
 }
@@ -94,11 +110,11 @@ func batchRunError(err error) error {
 	case err == nil:
 		return nil
 	case run.RefusalPasses(err):
-		return eval.ErrRunMustWait
+		return batch.ErrRunMustWait
 	case refused:
-		return eval.RunRefusedError{Reason: reason, Err: err}
+		return batch.RunRefusedError{Reason: reason, Err: err}
 	case errors.Is(err, run.ErrNotFound), errors.Is(err, run.ErrPreflightTargetNotFound):
-		return eval.RunRefusedError{Reason: "target_gone", Err: err}
+		return batch.RunRefusedError{Reason: "target_gone", Err: err}
 	default:
 		return err
 	}

@@ -30,6 +30,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -95,7 +96,7 @@ type App struct {
 	Auth         *identity.Handler
 	RunSvc       *run.Service
 	EvalSvc      *eval.Service
-	EvalBatches  *eval.BatchService
+	EvalBatches  *batch.BatchService
 	PackagingSvc *packaging.Service
 	Versions     *ingest.Service
 	CreationSvc  *creation.Service
@@ -345,7 +346,7 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 		Runs:            &run.Handler{Svc: runSvc, Identity: auth.Service, RunVerdicts: evalSvc.RunVerdicts},
 		Trace:           &trace.Handler{Svc: app.TraceSvc, Identity: auth.Service},
 		Eval:            &eval.Handler{Svc: evalSvc, Identity: auth.Service},
-		EvalBatches:     &eval.BatchHandler{Svc: app.EvalBatches, Identity: auth.Service},
+		EvalBatches:     &batch.BatchHandler{Svc: app.EvalBatches, Identity: auth.Service},
 		Graders:         &eval.GraderHandler{Svc: &eval.GraderService{Pool: cfg.Pool}, Identity: auth.Service},
 		Packaging:       &packaging.Handler{Svc: app.PackagingSvc, Identity: auth.Service},
 		Activity:        &activityHandler{Svc: app.ActivitySvc, Identity: identitySvc},

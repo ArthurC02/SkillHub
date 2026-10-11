@@ -7,6 +7,7 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
@@ -29,11 +30,11 @@ func evaluationOptions() *river.InsertOpts {
 	return &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveEvaluationJobStates}, MaxAttempts: 2, Queue: QueueModel}
 }
 
-func NewBatchAdvanceEnqueue(client *river.Client[pgx.Tx]) func(context.Context, eval.BatchAdvanceArgs) error {
+func NewBatchAdvanceEnqueue(client *river.Client[pgx.Tx]) func(context.Context, batch.BatchAdvanceArgs) error {
 	if client == nil {
 		return nil
 	}
-	return func(ctx context.Context, args eval.BatchAdvanceArgs) error {
+	return func(ctx context.Context, args batch.BatchAdvanceArgs) error {
 		_, err := client.Insert(ctx, args, &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveEvaluationJobStates}})
 		return err
 	}

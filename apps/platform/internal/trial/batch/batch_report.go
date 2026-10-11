@@ -1,4 +1,4 @@
-package eval
+package batch
 
 import (
 	"context"
@@ -27,9 +27,16 @@ func (o TrialOutcome) judged() bool {
 }
 
 const (
-	normalZ95 = 1.959963984540054
-	runFailed = "failed"
+	normalZ95    = 1.959963984540054
+	runFailed    = "failed"
+	runSucceeded = "succeeded"
 )
+
+type Verdict struct {
+	Judged  bool
+	Failed  bool
+	Overall string
+}
 
 type TrialResult struct {
 	Trial    int
@@ -66,8 +73,8 @@ type ArmReport struct {
 type BatchReport struct {
 	Batch Batch
 	ArmReport
-	WithoutSkill *ArmReport
-	SkillEffect  *PairedDifference
+	SkillWithheld *ArmReport
+	SkillEffect   *PairedDifference
 }
 
 func (s *BatchService) BatchReport(ctx context.Context, workspaceID, skillID, batchID pgtype.UUID) (BatchReport, error) {
@@ -93,10 +100,10 @@ func (s *BatchService) BatchReport(ctx context.Context, workspaceID, skillID, ba
 	}
 	withSkill, withheld := splitByArm(items)
 	report := BatchReport{Batch: batch, ArmReport: armReport(withSkill, outcomes, batch.Trials)}
-	if batch.WithBaseline {
+	if batch.WithSkillWithheld {
 		without := armReport(withheld, outcomes, batch.Trials)
 		effect := pairArms(report.ArmReport, without)
-		report.WithoutSkill, report.SkillEffect = &without, &effect
+		report.SkillWithheld, report.SkillEffect = &without, &effect
 	}
 	return report, nil
 }
@@ -148,15 +155,9 @@ func (s *BatchService) trialOutcomes(ctx context.Context, workspaceID pgtype.UUI
 		endIDs = append(endIDs, end.RunID)
 		snapshotIDs = append(snapshotIDs, end.StartSnapshotID)
 	}
-	evaluations, err := s.queries().ListCurrentEvaluations(ctx, gen.ListCurrentEvaluationsParams{
-		WorkspaceID: workspaceID, RunIds: endIDs,
-	})
+	verdicts, err := s.Ports.ReadVerdicts(ctx, workspaceID, endIDs)
 	if err != nil {
 		return nil, err
-	}
-	verdicts := make(map[pgtype.UUID]gen.ListCurrentEvaluationsRow, len(evaluations))
-	for _, row := range evaluations {
-		verdicts[row.RunID] = row
 	}
 	prompts, err := s.Ports.ReadSnapshotContents(ctx, workspaceID, snapshotIDs)
 	if err != nil {
@@ -174,14 +175,14 @@ func (s *BatchService) trialOutcomes(ctx context.Context, workspaceID pgtype.UUI
 }
 
 func (s *BatchService) trialOutcome(
-	ctx context.Context, workspaceID pgtype.UUID, end ChainEnd, evaluation gen.ListCurrentEvaluationsRow, evaluated bool,
+	ctx context.Context, workspaceID pgtype.UUID, end ChainEnd, evaluation Verdict, evaluated bool,
 ) (TrialOutcome, error) {
 	switch {
 	case !end.Terminal:
 		return TrialRunning, nil
-	case evaluated && Status(evaluation.Status) == StatusCompleted:
+	case evaluated && evaluation.Judged:
 		return TrialOutcome(evaluation.Overall), nil
-	case evaluated && Status(evaluation.Status) == StatusFailed:
+	case evaluated && evaluation.Failed:
 		return TrialNotEvaluated, nil
 	case evaluated:
 		return TrialRunning, nil

@@ -29,6 +29,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
@@ -198,7 +199,7 @@ type api struct {
 	traceSigner *trace.Signer
 
 	evaluations *eval.Service
-	batches     *eval.BatchService
+	batches     *batch.BatchService
 
 	versions *ingest.Service
 

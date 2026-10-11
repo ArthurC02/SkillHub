@@ -14,9 +14,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
-	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 const doesNotAsk = `[{"id":"c1","text":"answers without asking","check":{"kind":"does_not_ask"}}]`
@@ -144,7 +144,7 @@ func TestATrialWhoseRunWasAlreadyStartedUnderItsKeyIsLinkedToThatRunNeverASecond
 	ports := a.batches.Ports
 	start := ports.StartRun
 	var earlier pgtype.UUID
-	ports.StartRun = func(ctx context.Context, b eval.BatchRun) (pgtype.UUID, error) {
+	ports.StartRun = func(ctx context.Context, b batch.BatchRun) (pgtype.UUID, error) {
 		if !earlier.Valid {
 			var err error
 			if earlier, err = start(ctx, b); err != nil {
@@ -153,7 +153,7 @@ func TestATrialWhoseRunWasAlreadyStartedUnderItsKeyIsLinkedToThatRunNeverASecond
 		}
 		return start(ctx, b)
 	}
-	replaying := &eval.BatchService{Pool: pool, Ports: ports}
+	replaying := &batch.BatchService{Pool: pool, Ports: ports}
 	if err := replaying.AdvanceBatches(ctx, mustUUID(t, f.workspaceID)); err != nil {
 		t.Fatalf("starting a trial a second time is not an error: %v", err)
 	}

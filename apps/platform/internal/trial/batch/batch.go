@@ -1,4 +1,4 @@
-package eval
+package batch
 
 import (
 	"context"
@@ -37,10 +37,11 @@ func AllBatchStatuses() []BatchStatus {
 const stopReasonCreatorGone = "creator_gone"
 
 var (
+	ErrNotFound       = errors.New("evaluation not found")
 	ErrBatchShape     = errors.New("an evaluation batch needs 1 to 50 distinct test cases and 1 to 10 trials")
 	ErrRunMustWait    = errors.New("the workspace cannot start a run right now; the batch waits for its turn")
 	ErrNoFurtherRound = errors.New("this trial's conversation cannot take another answer")
-	errBatchPorts     = errors.New("eval: batch run ports are not injected")
+	errBatchPorts     = errors.New("batch: run ports are not injected")
 )
 
 type UnconfirmedTestCasesError struct{ TestCaseIDs []pgtype.UUID }
@@ -83,12 +84,13 @@ type BatchPorts struct {
 	ReadQuestionCount    func(ctx context.Context, workspaceID, runID pgtype.UUID) (int, error)
 	ReadSimulatedUser    func(ctx context.Context, workspaceID pgtype.UUID, snapshotIDs []pgtype.UUID) (map[pgtype.UUID][]string, error)
 	AnswerRun            func(ctx context.Context, answer BatchAnswer) error
+	ReadVerdicts         func(ctx context.Context, workspaceID pgtype.UUID, runIDs []pgtype.UUID) (map[pgtype.UUID]Verdict, error)
 }
 
 func (p BatchPorts) ready() error {
 	if p.StartRun == nil || p.ConfirmedSummaryHash == nil || p.ReadChainEnds == nil ||
 		p.ReadSnapshotContents == nil || p.ReadQuestionCount == nil ||
-		p.ReadSimulatedUser == nil || p.AnswerRun == nil {
+		p.ReadSimulatedUser == nil || p.AnswerRun == nil || p.ReadVerdicts == nil {
 		return errBatchPorts
 	}
 	return nil
@@ -102,24 +104,24 @@ type BatchService struct {
 func (s *BatchService) queries() *gen.Queries { return gen.New(s.Pool) }
 
 type Batch struct {
-	ID           pgtype.UUID
-	SkillID      pgtype.UUID
-	VersionID    pgtype.UUID
-	Trials       int
-	WithBaseline bool
-	Status       BatchStatus
-	StopReason   string
-	CreatedAt    time.Time
+	ID                pgtype.UUID
+	SkillID           pgtype.UUID
+	VersionID         pgtype.UUID
+	Trials            int
+	WithSkillWithheld bool
+	Status            BatchStatus
+	StopReason        string
+	CreatedAt         time.Time
 }
 
 type NewBatch struct {
-	WorkspaceID  pgtype.UUID
-	Actor        pgtype.UUID
-	SkillID      pgtype.UUID
-	VersionID    pgtype.UUID
-	TestCaseIDs  []pgtype.UUID
-	Trials       int
-	WithBaseline bool
+	WorkspaceID       pgtype.UUID
+	Actor             pgtype.UUID
+	SkillID           pgtype.UUID
+	VersionID         pgtype.UUID
+	TestCaseIDs       []pgtype.UUID
+	Trials            int
+	WithSkillWithheld bool
 }
 
 func (n NewBatch) validShape() bool {
@@ -155,7 +157,7 @@ func (s *BatchService) CreateBatch(ctx context.Context, n NewBatch) (Batch, erro
 		q := gen.New(tx)
 		created, err = q.InsertEvaluationBatch(ctx, gen.InsertEvaluationBatchParams{
 			WorkspaceID: n.WorkspaceID, SkillID: n.SkillID, SkillVersionID: n.VersionID,
-			Trials: int32(n.Trials), WithBaseline: n.WithBaseline, CreatedBy: n.Actor,
+			Trials: int32(n.Trials), WithBaseline: n.WithSkillWithheld, CreatedBy: n.Actor,
 		})
 		if err != nil {
 			return err
@@ -164,7 +166,7 @@ func (s *BatchService) CreateBatch(ctx context.Context, n NewBatch) (Batch, erro
 			if err := q.InsertEvaluationBatchTrials(ctx, gen.InsertEvaluationBatchTrialsParams{
 				BatchID: created.ID, WorkspaceID: n.WorkspaceID, TestCaseID: testCaseID,
 				Position: int32(position), SummaryHash: hashes[position], Trials: int32(n.Trials),
-				WithBaseline: n.WithBaseline,
+				WithBaseline: n.WithSkillWithheld,
 			}); err != nil {
 				return err
 			}
@@ -305,7 +307,7 @@ func (s *BatchService) batch(ctx context.Context, workspaceID, batchID pgtype.UU
 func batchOf(row gen.EvaluationBatch) Batch {
 	b := Batch{
 		ID: row.ID, SkillID: row.SkillID, VersionID: row.SkillVersionID,
-		Trials: int(row.Trials), WithBaseline: row.WithBaseline, Status: BatchStatus(row.Status), CreatedAt: row.CreatedAt.Time,
+		Trials: int(row.Trials), WithSkillWithheld: row.WithBaseline, Status: BatchStatus(row.Status), CreatedAt: row.CreatedAt.Time,
 	}
 	if row.StopReason != nil {
 		b.StopReason = *row.StopReason

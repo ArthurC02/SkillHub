@@ -47,7 +47,7 @@
       "definition": "A Run that does not load the Skill under evaluation, so it measures the same Test Case without that Skill; an evaluation batch can run one beside every trial and compare the two. Not the same thing as a Reference batch.",
       "contexts": [
         "run",
-        "eval"
+        "batch"
       ],
       "synonyms": [
         "baseline",
@@ -70,19 +70,19 @@
         }
       ],
       "review": {
-        "proposal_id": "evaluation-batch-terms",
+        "proposal_id": "evaluation-batch-terms-move",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T15:17:03.770477Z",
-            "scope": "Two evaluation-batch terms, Skill withheld and Reference batch, each with the names to avoid, defined by the decision that owns evaluation batches",
+            "approved_at": "2026-10-11T18:30:00.343897Z",
+            "scope": "Skill withheld is spoken in run and batch, Reference batch in batch; eval no longer speaks either; definitions unchanged",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "d56959503faccdc9ff4a422e08bbb39ddd3e815f",
-              "registry_digest": "sha256:029b02570f6aac0428b2d49b361c9f3b19db49c42af94b80d6bef0187a34c940"
+              "observed_commit": "02cf8c525da653fcfe8dd580767147424dc91946",
+              "registry_digest": "sha256:4dbc629a4a5e19ab13c3cc3feedd6349ec065d5c2d0b4584e862568a5a6a24ae"
             }
           }
         ]
@@ -94,7 +94,7 @@
       "name": "Reference batch",
       "definition": "The evaluation batch that a comparison of two batches measures against; the other side is the candidate batch. An earlier set of trials, not a Run with the Skill withheld.",
       "contexts": [
-        "eval"
+        "batch"
       ],
       "synonyms": [
         "baseline"
@@ -115,19 +115,19 @@
         }
       ],
       "review": {
-        "proposal_id": "evaluation-batch-terms",
+        "proposal_id": "evaluation-batch-terms-move",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T15:17:03.770477Z",
-            "scope": "Two evaluation-batch terms, Skill withheld and Reference batch, each with the names to avoid, defined by the decision that owns evaluation batches",
+            "approved_at": "2026-10-11T18:30:00.343897Z",
+            "scope": "Skill withheld is spoken in run and batch, Reference batch in batch; eval no longer speaks either; definitions unchanged",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "d56959503faccdc9ff4a422e08bbb39ddd3e815f",
-              "registry_digest": "sha256:029b02570f6aac0428b2d49b361c9f3b19db49c42af94b80d6bef0187a34c940"
+              "observed_commit": "02cf8c525da653fcfe8dd580767147424dc91946",
+              "registry_digest": "sha256:4dbc629a4a5e19ab13c3cc3feedd6349ec065d5c2d0b4584e862568a5a6a24ae"
             }
           }
         ]

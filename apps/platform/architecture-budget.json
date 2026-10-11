@@ -3,7 +3,7 @@
     "entrypoint/wiring": 26,
     "skill/discovery": 26,
     "trial/execution": 32,
-    "trial/improvement": 42
+    "trial/improvement": 37
   },
   "types": {
     "creator/creation.Service": {
@@ -121,11 +121,6 @@
     "contracts/openapi/public.yaml without_skill without skill",
     "trial/execution.baselineMaxUSD baseline",
     "trial/execution.baselineMeanUSD baseline",
-    "trial/execution.baselineMedianUSD baseline",
-    "trial/improvement.Baseline baseline",
-    "trial/improvement.BaselineBetter baseline",
-    "trial/improvement.WithBaseline baseline",
-    "trial/improvement.WithoutSkill without skill",
-    "trial/improvement.baselineID baseline"
+    "trial/execution.baselineMedianUSD baseline"
   ]
 }
