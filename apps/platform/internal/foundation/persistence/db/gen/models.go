@@ -432,6 +432,8 @@ type EvaluationBatch struct {
 	StopReason     *string
 	CreatedBy      pgtype.UUID
 	CreatedAt      pgtype.Timestamptz
+	// Every trial is also run once with the skill withheld, so the report can show what the skill adds.
+	WithBaseline bool
 }
 
 // One trial of one test case in a batch; the run is linked once the batch starts it.
@@ -443,6 +445,8 @@ type EvaluationBatchItem struct {
 	Trial       int32
 	SummaryHash string
 	RunID       pgtype.UUID
+	// This trial ran the same test case without loading the skill.
+	SkillWithheld bool
 }
 
 // A named way of judging a criterion with the judge model. No workspace means operators defined it for every workspace.

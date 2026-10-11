@@ -48,6 +48,11 @@ type VersionFacts struct {
 	SourcePath       string
 }
 
+func (v VersionFacts) withoutPackage() VersionFacts {
+	v.PackageObjectKey, v.SourcePath = "", ""
+	return v
+}
+
 func (v VersionFacts) stored() skillpkg.StoredSkill {
 	return skillpkg.StoredSkill{ObjectKey: v.PackageObjectKey, SourcePath: v.SourcePath}
 }
@@ -87,6 +92,7 @@ type RunView struct {
 	StartedAt          *time.Time
 	FinishedAt         *time.Time
 	ArtifactsTruncated bool
+	SkillWithheld      bool
 }
 
 type Linkage struct {
@@ -305,6 +311,7 @@ type policySnapshot struct {
 	Model            string            `json:"model,omitempty"`
 	MinimumIsolation IsolationStrength `json:"minimum_isolation"`
 	CleanMode        bool              `json:"clean_mode"`
+	SkillWithheld    bool              `json:"skill_withheld,omitempty"`
 }
 
 func (p policySnapshot) reachesAModel() bool {
@@ -327,10 +334,6 @@ func defaultPolicy(deployment Deployment) policySnapshot {
 	}
 }
 
-func defaultPolicySnapshot(deployment Deployment) ([]byte, error) {
-	return json.Marshal(defaultPolicy(deployment))
-}
-
 type CreateParams struct {
 	WorkspaceID pgtype.UUID
 	Actor       pgtype.UUID
@@ -339,6 +342,7 @@ type CreateParams struct {
 	TestCaseID  pgtype.UUID
 
 	ConfirmedSummaryHash string
+	WithholdSkill        bool
 	SameTransaction      func(ctx context.Context, tx pgx.Tx, runID pgtype.UUID) error
 }
 
@@ -462,13 +466,10 @@ func (s *Service) admitRun(ctx context.Context, p CreateParams) (admittedRun, er
 		return admittedRun{}, err
 	}
 
-	policy, err := defaultPolicySnapshot(s.Deployment)
+	decoded := defaultPolicy(s.Deployment)
+	decoded.SkillWithheld = p.WithholdSkill
+	policy, err := json.Marshal(decoded)
 	if err != nil {
-		return admittedRun{}, err
-	}
-
-	var decoded policySnapshot
-	if err := json.Unmarshal(policy, &decoded); err != nil {
 		return admittedRun{}, err
 	}
 	if err := s.checkSchedulable(ctx, decoded); err != nil {
@@ -534,7 +535,22 @@ func (s *Service) snapshotConfirmedTestCase(
 
 func (s *Service) Get(ctx context.Context, workspaceID, runID pgtype.UUID) (RunView, error) {
 	run, err := s.load(ctx, workspaceID, runID)
-	return runView(run), err
+	if err != nil {
+		return RunView{}, err
+	}
+	view := runView(run)
+	view.SkillWithheld, err = s.skillWithheld(ctx, run)
+	return view, err
+}
+
+func (s *Service) skillWithheld(ctx context.Context, run gen.Run) (bool, error) {
+	snapshots, err := s.queries().GetRunSnapshots(ctx, gen.GetRunSnapshotsParams{RunID: run.ID, WorkspaceID: run.WorkspaceID})
+	if err != nil {
+		return false, err
+	}
+	var policy policySnapshot
+	err = json.Unmarshal(snapshots.PolicySnapshot, &policy)
+	return policy.SkillWithheld, err
 }
 
 func (s *Service) load(ctx context.Context, workspaceID, runID pgtype.UUID) (gen.Run, error) {

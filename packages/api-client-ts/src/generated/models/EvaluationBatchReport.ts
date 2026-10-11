@@ -13,13 +13,6 @@
  */
 
 import { mapValues } from '../runtime';
-import type { EvaluationBatchReportPassRate95 } from './EvaluationBatchReportPassRate95';
-import {
-    EvaluationBatchReportPassRate95FromJSON,
-    EvaluationBatchReportPassRate95FromJSONTyped,
-    EvaluationBatchReportPassRate95ToJSON,
-    EvaluationBatchReportPassRate95ToJSONTyped,
-} from './EvaluationBatchReportPassRate95';
 import type { EvaluationBatchTestCase } from './EvaluationBatchTestCase';
 import {
     EvaluationBatchTestCaseFromJSON,
@@ -27,6 +20,13 @@ import {
     EvaluationBatchTestCaseToJSON,
     EvaluationBatchTestCaseToJSONTyped,
 } from './EvaluationBatchTestCase';
+import type { EvaluationBatchArmPassRate95 } from './EvaluationBatchArmPassRate95';
+import {
+    EvaluationBatchArmPassRate95FromJSON,
+    EvaluationBatchArmPassRate95FromJSONTyped,
+    EvaluationBatchArmPassRate95ToJSON,
+    EvaluationBatchArmPassRate95ToJSONTyped,
+} from './EvaluationBatchArmPassRate95';
 import type { EvaluationBatch } from './EvaluationBatch';
 import {
     EvaluationBatchFromJSON,
@@ -34,6 +34,20 @@ import {
     EvaluationBatchToJSON,
     EvaluationBatchToJSONTyped,
 } from './EvaluationBatch';
+import type { EvaluationBatchArm } from './EvaluationBatchArm';
+import {
+    EvaluationBatchArmFromJSON,
+    EvaluationBatchArmFromJSONTyped,
+    EvaluationBatchArmToJSON,
+    EvaluationBatchArmToJSONTyped,
+} from './EvaluationBatchArm';
+import type { EvaluationPairedDifference } from './EvaluationPairedDifference';
+import {
+    EvaluationPairedDifferenceFromJSON,
+    EvaluationPairedDifferenceFromJSONTyped,
+    EvaluationPairedDifferenceToJSON,
+    EvaluationPairedDifferenceToJSONTyped,
+} from './EvaluationPairedDifference';
 
 /**
  * 
@@ -41,10 +55,6 @@ import {
  * @interface EvaluationBatchReport
  */
 export interface EvaluationBatchReport {
-    /**
-     * 
-     */
-    batch: EvaluationBatch;
     /**
      * 
      */
@@ -64,7 +74,7 @@ export interface EvaluationBatchReport {
     /**
      * 
      */
-    passRate95?: EvaluationBatchReportPassRate95;
+    passRate95?: EvaluationBatchArmPassRate95;
     /**
      * Test cases that passed every trial.
      */
@@ -73,18 +83,32 @@ export interface EvaluationBatchReport {
      * Test cases whose every-trial result is known.
      */
     testCasesDecided: number;
+    /**
+     * 
+     */
+    batch: EvaluationBatch;
+    /**
+     * The same trials with the skill withheld; present only when the batch was created with a baseline.
+     */
+    withoutSkill?: EvaluationBatchArm;
+    /**
+     * With the skill minus without it, paired by test case; present
+     * only when the batch was created with a baseline.
+     * 
+     */
+    skillEffect?: EvaluationPairedDifference;
 }
 
 /**
  * Check if a given object implements the EvaluationBatchReport interface.
  */
 export function instanceOfEvaluationBatchReport(value: object): value is EvaluationBatchReport {
-    if (!('batch' in value) || value['batch'] === undefined) return false;
     if ((!('testCases' in (value as Record<string, any>)) && !('test_cases' in (value as Record<string, any>))) || ((value as Record<string, any>)['testCases'] === undefined && (value as Record<string, any>)['test_cases'] === undefined)) return false;
     if (!('passed' in value) || value['passed'] === undefined) return false;
     if (!('judged' in value) || value['judged'] === undefined) return false;
     if ((!('testCasesAllPassed' in (value as Record<string, any>)) && !('test_cases_all_passed' in (value as Record<string, any>))) || ((value as Record<string, any>)['testCasesAllPassed'] === undefined && (value as Record<string, any>)['test_cases_all_passed'] === undefined)) return false;
     if ((!('testCasesDecided' in (value as Record<string, any>)) && !('test_cases_decided' in (value as Record<string, any>))) || ((value as Record<string, any>)['testCasesDecided'] === undefined && (value as Record<string, any>)['test_cases_decided'] === undefined)) return false;
+    if (!('batch' in value) || value['batch'] === undefined) return false;
     return true;
 }
 
@@ -98,14 +122,16 @@ export function EvaluationBatchReportFromJSONTyped(json: any, ignoreDiscriminato
     }
     return {
         
-        'batch': EvaluationBatchFromJSON(json['batch']),
         'testCases': ((json['test_cases'] as Array<any>).map(EvaluationBatchTestCaseFromJSON)),
         'passed': json['passed'],
         'judged': json['judged'],
         'passRate': json['pass_rate'] == null ? undefined : json['pass_rate'],
-        'passRate95': json['pass_rate_95'] == null ? undefined : EvaluationBatchReportPassRate95FromJSON(json['pass_rate_95']),
+        'passRate95': json['pass_rate_95'] == null ? undefined : EvaluationBatchArmPassRate95FromJSON(json['pass_rate_95']),
         'testCasesAllPassed': json['test_cases_all_passed'],
         'testCasesDecided': json['test_cases_decided'],
+        'batch': EvaluationBatchFromJSON(json['batch']),
+        'withoutSkill': json['without_skill'] == null ? undefined : EvaluationBatchArmFromJSON(json['without_skill']),
+        'skillEffect': json['skill_effect'] == null ? undefined : EvaluationPairedDifferenceFromJSON(json['skill_effect']),
     };
 }
 
@@ -120,14 +146,16 @@ export function EvaluationBatchReportToJSONTyped(value?: EvaluationBatchReport |
 
     return {
         
-        'batch': EvaluationBatchToJSON(value['batch']),
         'test_cases': ((value['testCases'] as Array<any>).map(EvaluationBatchTestCaseToJSON)),
         'passed': value['passed'],
         'judged': value['judged'],
         'pass_rate': value['passRate'],
-        'pass_rate_95': EvaluationBatchReportPassRate95ToJSON(value['passRate95']),
+        'pass_rate_95': EvaluationBatchArmPassRate95ToJSON(value['passRate95']),
         'test_cases_all_passed': value['testCasesAllPassed'],
         'test_cases_decided': value['testCasesDecided'],
+        'batch': EvaluationBatchToJSON(value['batch']),
+        'without_skill': EvaluationBatchArmToJSON(value['withoutSkill']),
+        'skill_effect': EvaluationPairedDifferenceToJSON(value['skillEffect']),
     };
 }
 

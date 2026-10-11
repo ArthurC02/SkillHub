@@ -58,6 +58,7 @@ type runResponse struct {
 	CreatedAt         string           `json:"created_at"`
 	StartedAt         string           `json:"started_at,omitempty"`
 	FinishedAt        string           `json:"finished_at,omitempty"`
+	SkillWithheld     bool             `json:"skill_withheld,omitempty"`
 	Transitions       []transitionView `json:"transitions,omitempty"`
 	Attempts          []attemptView    `json:"attempts,omitempty"`
 }
@@ -276,6 +277,7 @@ func toRunResponse(run RunView) runResponse {
 		CreatedAt:         formatTime(run.CreatedAt),
 		StartedAt:         formatTime(run.StartedAt),
 		FinishedAt:        formatTime(run.FinishedAt),
+		SkillWithheld:     run.SkillWithheld,
 	}
 }
 

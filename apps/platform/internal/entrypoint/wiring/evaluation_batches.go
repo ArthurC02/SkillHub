@@ -31,7 +31,7 @@ func evaluationBatchPorts(runs *run.Service, testlabSvc *testlab.Service, traceS
 			created, err := runs.Create(ctx, run.CreateParams{
 				WorkspaceID: b.WorkspaceID, Actor: b.Actor, SkillID: b.SkillID,
 				VersionID: b.VersionID, TestCaseID: b.TestCaseID, ConfirmedSummaryHash: b.SummaryHash,
-				SameTransaction: b.Link,
+				WithholdSkill: b.WithholdSkill, SameTransaction: b.Link,
 			})
 			return created.ID, batchRunError(err)
 		},

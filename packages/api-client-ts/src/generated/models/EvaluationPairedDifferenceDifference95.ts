@@ -14,11 +14,11 @@
 
 import { mapValues } from '../runtime';
 /**
- * Wilson score interval at 95% around pass_rate.
+ * Absent with fewer than two pairs.
  * @export
- * @interface EvaluationBatchReportPassRate95
+ * @interface EvaluationPairedDifferenceDifference95
  */
-export interface EvaluationBatchReportPassRate95 {
+export interface EvaluationPairedDifferenceDifference95 {
     /**
      * 
      */
@@ -30,19 +30,19 @@ export interface EvaluationBatchReportPassRate95 {
 }
 
 /**
- * Check if a given object implements the EvaluationBatchReportPassRate95 interface.
+ * Check if a given object implements the EvaluationPairedDifferenceDifference95 interface.
  */
-export function instanceOfEvaluationBatchReportPassRate95(value: object): value is EvaluationBatchReportPassRate95 {
+export function instanceOfEvaluationPairedDifferenceDifference95(value: object): value is EvaluationPairedDifferenceDifference95 {
     if (!('low' in value) || value['low'] === undefined) return false;
     if (!('high' in value) || value['high'] === undefined) return false;
     return true;
 }
 
-export function EvaluationBatchReportPassRate95FromJSON(json: any): EvaluationBatchReportPassRate95 {
-    return EvaluationBatchReportPassRate95FromJSONTyped(json, false);
+export function EvaluationPairedDifferenceDifference95FromJSON(json: any): EvaluationPairedDifferenceDifference95 {
+    return EvaluationPairedDifferenceDifference95FromJSONTyped(json, false);
 }
 
-export function EvaluationBatchReportPassRate95FromJSONTyped(json: any, ignoreDiscriminator: boolean): EvaluationBatchReportPassRate95 {
+export function EvaluationPairedDifferenceDifference95FromJSONTyped(json: any, ignoreDiscriminator: boolean): EvaluationPairedDifferenceDifference95 {
     if (json == null) {
         return json;
     }
@@ -53,11 +53,11 @@ export function EvaluationBatchReportPassRate95FromJSONTyped(json: any, ignoreDi
     };
 }
 
-export function EvaluationBatchReportPassRate95ToJSON(json: any): EvaluationBatchReportPassRate95 {
-    return EvaluationBatchReportPassRate95ToJSONTyped(json, false);
+export function EvaluationPairedDifferenceDifference95ToJSON(json: any): EvaluationPairedDifferenceDifference95 {
+    return EvaluationPairedDifferenceDifference95ToJSONTyped(json, false);
 }
 
-export function EvaluationBatchReportPassRate95ToJSONTyped(value?: EvaluationBatchReportPassRate95 | null, ignoreDiscriminator: boolean = false): any {
+export function EvaluationPairedDifferenceDifference95ToJSONTyped(value?: EvaluationPairedDifferenceDifference95 | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }

@@ -53,8 +53,7 @@ type Interval struct {
 	High float64
 }
 
-type BatchReport struct {
-	Batch            Batch
+type ArmReport struct {
 	TestCases        []TestCaseResult
 	Passed           int
 	Judged           int
@@ -62,6 +61,13 @@ type BatchReport struct {
 	PassRate95       *Interval
 	TestCasesAllK    int
 	TestCasesDecided int
+}
+
+type BatchReport struct {
+	Batch Batch
+	ArmReport
+	WithoutSkill *ArmReport
+	SkillEffect  *PairedDifference
 }
 
 func (s *BatchService) BatchReport(ctx context.Context, workspaceID, skillID, batchID pgtype.UUID) (BatchReport, error) {
@@ -85,13 +91,34 @@ func (s *BatchService) BatchReport(ctx context.Context, workspaceID, skillID, ba
 	if err != nil {
 		return BatchReport{}, err
 	}
-	report := BatchReport{Batch: batch}
-	for _, group := range groupByTestCase(items) {
-		result := testCaseResult(group, outcomes, batch.Trials)
-		report.add(result)
+	withSkill, withheld := splitByArm(items)
+	report := BatchReport{Batch: batch, ArmReport: armReport(withSkill, outcomes, batch.Trials)}
+	if batch.WithBaseline {
+		without := armReport(withheld, outcomes, batch.Trials)
+		effect := pairArms(report.ArmReport, without)
+		report.WithoutSkill, report.SkillEffect = &without, &effect
 	}
-	report.PassRate, report.PassRate95 = passRate(report.Passed, report.Judged)
 	return report, nil
+}
+
+func splitByArm(items []gen.EvaluationBatchItem) (withSkill, withheld []gen.EvaluationBatchItem) {
+	for _, item := range items {
+		if item.SkillWithheld {
+			withheld = append(withheld, item)
+		} else {
+			withSkill = append(withSkill, item)
+		}
+	}
+	return withSkill, withheld
+}
+
+func armReport(items []gen.EvaluationBatchItem, outcomes map[pgtype.UUID]resolvedTrial, trials int) ArmReport {
+	var arm ArmReport
+	for _, group := range groupByTestCase(items) {
+		arm.add(testCaseResult(group, outcomes, trials))
+	}
+	arm.PassRate, arm.PassRate95 = passRate(arm.Passed, arm.Judged)
+	return arm
 }
 
 type resolvedTrial struct {
@@ -229,7 +256,7 @@ func passAllK(passed, judged, trials int) *bool {
 	}
 }
 
-func (r *BatchReport) add(result TestCaseResult) {
+func (r *ArmReport) add(result TestCaseResult) {
 	r.TestCases = append(r.TestCases, result)
 	r.Passed += result.Passed
 	r.Judged += result.Judged

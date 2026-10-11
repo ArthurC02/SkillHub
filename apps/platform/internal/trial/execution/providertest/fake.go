@@ -38,6 +38,7 @@ type Fake struct {
 	runs       map[string]*fakeRun
 	byKey      map[string]string
 	bodies     map[string]string
+	received   map[string]run.RunRequest
 	seq        int
 	dispatches int
 	destroys   int
@@ -72,6 +73,7 @@ func New(name, token string) *Fake {
 		runs:     map[string]*fakeRun{},
 		byKey:    map[string]string{},
 		bodies:   map[string]string{},
+		received: map[string]run.RunRequest{},
 	}
 	f.Server = httptest.NewServer(f.routes())
 	return f
@@ -116,6 +118,13 @@ func DefaultCapability(name string) run.ProviderCapability {
 func (f *Fake) Dispatches() int { f.mu.Lock(); defer f.mu.Unlock(); return f.dispatches }
 
 func (f *Fake) Destroys() int { f.mu.Lock(); defer f.mu.Unlock(); return f.destroys }
+
+func (f *Fake) Request(runID string, attempt int) (run.RunRequest, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	req, ok := f.received[fmt.Sprintf("%s/%d", runID, attempt)]
+	return req, ok
+}
 
 func (f *Fake) Live() int { f.mu.Lock(); defer f.mu.Unlock(); return len(f.runs) }
 
@@ -226,6 +235,7 @@ func (f *Fake) createRun(w http.ResponseWriter, r *http.Request) {
 	created := f.create(req.RunID, req.RunAttemptID, req.Attempt, time.Now())
 	f.byKey[key] = created.providerRunID
 	f.bodies[key] = string(canonical)
+	f.received[key] = req
 	f.dispatches++
 	writeJSON(w, http.StatusCreated, f.view(created))
 }

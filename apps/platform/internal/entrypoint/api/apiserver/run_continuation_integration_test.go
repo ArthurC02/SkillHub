@@ -19,6 +19,7 @@ type finishedRun struct {
 	testCaseID  string
 	criteria    string
 	contentHash string
+	policy      string
 }
 
 func seedFinishedRun(t *testing.T, pool *pgxpool.Pool, f fixture, r finishedRun) string {
@@ -33,10 +34,11 @@ func seedFinishedRun(t *testing.T, pool *pgxpool.Pool, f fixture, r finishedRun)
 			INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, status, started_at, finished_at)
 			SELECT $1, $2, snap.id, 'fake_sandbox', 'succeeded', now() - interval '1 minute', now() FROM snap
 			RETURNING id, workspace_id),
-		s AS (INSERT INTO run_snapshots (run_id, workspace_id) SELECT id, workspace_id FROM r)
+		s AS (INSERT INTO run_snapshots (run_id, workspace_id, policy_snapshot)
+			SELECT id, workspace_id, COALESCE(NULLIF($7, '')::jsonb, '{}'::jsonb) FROM r)
 		SELECT id::text FROM r`,
 		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, r.testCaseID), askingPrompt,
-		r.criteria, r.contentHash,
+		r.criteria, r.contentHash, r.policy,
 	).Scan(&runID); err != nil {
 		t.Fatal(err)
 	}
@@ -122,6 +124,31 @@ func TestAnsweringARunsQuestionsStartsTheRunThatContinuesIt(t *testing.T) {
 
 	if code, _ := f.postJSON(t, "/runs/"+asking+"/continuations", `{"answers":["算","早上八點"]}`); code != http.StatusConflict {
 		t.Errorf("answering the same questions twice: got %d, want 409", code)
+	}
+}
+
+func TestAnsweringABaselineRunContinuesItWithoutTheSkillToo(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-continue-baseline")
+	ordinary := seedAskingRun(t, pool, f, "幾點出發？")
+	baseline := seedFinishedRun(t, pool, f, finishedRun{
+		testCaseID: f.testCaseID, criteria: asksFirst, contentHash: "sha256:baseline", policy: `{"skill_withheld":true}`,
+	})
+	seedQuestions(t, pool, f.workspaceID, baseline, "幾點出發？")
+
+	for _, c := range []struct {
+		name, asking string
+		withheld     any
+	}{{"the baseline", baseline, true}, {"an ordinary run", ordinary, nil}} {
+		code, view := f.postJSON(t, "/runs/"+c.asking+"/continuations", `{"answers":["早上八點"]}`)
+		if code != http.StatusCreated {
+			t.Fatalf("%s: continue got %d %+v", c.name, code, view)
+		}
+		if _, next := f.doJSON(t, http.MethodGet, "/runs/"+view.RunID, ""); next["skill_withheld"] != c.withheld {
+			t.Errorf("%s: its continuation reads skill_withheld=%v, want %v", c.name, next["skill_withheld"], c.withheld)
+		}
+		mustExec(t, pool, `UPDATE runs SET status = 'cancelled', finished_at = now() WHERE id = $1`, mustUUID(t, view.RunID))
 	}
 }
 
