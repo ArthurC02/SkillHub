@@ -175,21 +175,21 @@
         {
           "path": "apps/platform/internal/trial/batch/batch.go",
           "lines": {
-            "start": 254,
-            "end": 259
+            "start": 259,
+            "end": 267
           },
-          "content_sha256": "sha256:b853fee91e1573854727b97f1480e74329d5670579403683326cee5cb2d2019a",
-          "excerpt_sha256": "sha256:091e6b79f949da9fcf2248fefa28e0b76b6321faf1a521cadce058006a54f330",
+          "content_sha256": "sha256:75bf880da521824cfa0b1a043df0c267721491c186e1db32ffa42c3f50caa85c",
+          "excerpt_sha256": "sha256:301abb7b3ab46a7ef94f45ac5aa4113d9137377e16c4ef747deddf46a82b625e",
           "source_kind": "implementation"
         },
         {
           "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
           "lines": {
-            "start": 107,
-            "end": 121
+            "start": 109,
+            "end": 123
           },
-          "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
-          "excerpt_sha256": "sha256:b1ce72bf4728455794da7f09dfcf1047ae13f11ba52e243baec0fb0dfb4bfca4",
+          "content_sha256": "sha256:0ad02e79d2ed21f4470ab1c5034b7b04f8562c6e076dbfcc21816969f626c6a8",
+          "excerpt_sha256": "sha256:d5fd29b1dd40a5647cfceda7ad758c7e3139ba3313362c4ab3732ba5d9959dbb",
           "source_kind": "implementation"
         },
         {
@@ -204,19 +204,19 @@
         }
       ],
       "review": {
-        "proposal_id": "evaluation-batch-context-r3",
+        "proposal_id": "batch-run-outcome-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T18:23:06.041403Z",
-            "scope": "The batch Context: its identity-only dependency policy, run's idempotent trial port, eval's standing verdicts, testlab's snapshot facts and trace's question count reached through the composition root, and its wait-or-stop rule; the eval-owned interaction and rule they replace are removed",
+            "approved_at": "2026-10-11T19:41:24.223707Z",
+            "scope": "Re-cite the six batch records after run began publishing a chain end's success and failure and the batch began naming a gone target itself; no record changes its statement",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "71ed9d92f42305ee34c84ab39b83332c0d4d8b03",
-              "registry_digest": "sha256:3b5fb280627b81560b7db5cfe325eed368a9908078fb3c09c4c83199da8dfd93"
+              "observed_commit": "19fa17487d035a369486d8b51034b49974b3d535",
+              "registry_digest": "sha256:2800ebb312b118161afedc0d875cc097a5f524bd59b7c31481dc2ed79e9379f1"
             }
           }
         ]

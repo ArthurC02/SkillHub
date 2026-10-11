@@ -336,11 +336,21 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
           "lines": {
-            "start": 44,
-            "end": 85
+            "start": 45,
+            "end": 87
           },
-          "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
-          "excerpt_sha256": "sha256:841e644127179fb6e6aa42ceee21c36a0deaa6f747b23747323bb7dacf06c1a9",
+          "content_sha256": "sha256:0ad02e79d2ed21f4470ab1c5034b7b04f8562c6e076dbfcc21816969f626c6a8",
+          "excerpt_sha256": "sha256:863affc772ec19b2f1544904281617ddd8b91ed4e130beba2aca55329580fe67",
+          "source_kind": "implementation"
+        },
+        {
+          "path": "apps/platform/internal/trial/execution/batch_facts.go",
+          "lines": {
+            "start": 64,
+            "end": 75
+          },
+          "content_sha256": "sha256:4b75e3b462abfabd8f05df823c8e36f77c0980ffc0aeda9bec8fa08e3906699d",
+          "excerpt_sha256": "sha256:c4b8a8c925f6d49224e57170964aca0958132aee6512a1d31443ef0a8b8db1d8",
           "source_kind": "implementation"
         },
         {
@@ -351,16 +361,6 @@
           },
           "content_sha256": "sha256:2559a814174ef782b9386066e34d404ba781cb67e2804837865668a35d95bb38",
           "excerpt_sha256": "sha256:b33d744e5dc035dd07b22002b8fd5e71cba0dd4fb652efe02fe1d92a6a91ae62",
-          "source_kind": "implementation"
-        },
-        {
-          "path": "apps/platform/internal/trial/execution/batch_facts.go",
-          "lines": {
-            "start": 61,
-            "end": 72
-          },
-          "content_sha256": "sha256:ea064d7f8550e8ced8c3307690d9d745407ccffaaa7136442e250dfa856bd257",
-          "excerpt_sha256": "sha256:c4b8a8c925f6d49224e57170964aca0958132aee6512a1d31443ef0a8b8db1d8",
           "source_kind": "implementation"
         },
         {
@@ -375,19 +375,19 @@
         }
       ],
       "review": {
-        "proposal_id": "evaluation-batch-context-r3",
+        "proposal_id": "batch-run-outcome-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T18:23:06.041403Z",
-            "scope": "The batch Context: its identity-only dependency policy, run's idempotent trial port, eval's standing verdicts, testlab's snapshot facts and trace's question count reached through the composition root, and its wait-or-stop rule; the eval-owned interaction and rule they replace are removed",
+            "approved_at": "2026-10-11T19:41:24.223707Z",
+            "scope": "Re-cite the six batch records after run began publishing a chain end's success and failure and the batch began naming a gone target itself; no record changes its statement",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "71ed9d92f42305ee34c84ab39b83332c0d4d8b03",
-              "registry_digest": "sha256:3b5fb280627b81560b7db5cfe325eed368a9908078fb3c09c4c83199da8dfd93"
+              "observed_commit": "19fa17487d035a369486d8b51034b49974b3d535",
+              "registry_digest": "sha256:2800ebb312b118161afedc0d875cc097a5f524bd59b7c31481dc2ed79e9379f1"
             }
           }
         ]
