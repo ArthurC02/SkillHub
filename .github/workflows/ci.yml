@@ -266,6 +266,7 @@ jobs:
       - uses: ./.github/actions/golangci-lint
       - name: golangci-lint (an exclusion that matches nothing fails)
         run: |
+          set -o pipefail
           golangci-lint run 2>&1 | tee "$RUNNER_TEMP/golangci-lint.log"
           if grep -F "Skipped 0 issues by rules" "$RUNNER_TEMP/golangci-lint.log"; then
             echo "::error file=apps/platform/.golangci.yml::an exclusion rule matches nothing; delete it"

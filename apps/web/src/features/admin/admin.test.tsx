@@ -1355,6 +1355,7 @@ test("OPS-009: an in-flight timeout change blocks restoring the same call kind",
   await type("#admin-budget-judge-run-clear-note", "恢復預設");
   await click(button("改 評估判定 的秒數"));
   await waitFor(() => finishSet !== undefined);
+  await waitFor(has("這一種呼叫正在調整秒數，完成後才能恢復預設。"));
 
   expect(button("把 評估判定 改回預設").disabled).toBe(true);
   expect(has("這一種呼叫正在調整秒數，完成後才能恢復預設。")()).toBe(true);
@@ -2015,6 +2016,7 @@ test("OPS-005: an unverified release clears when a new halt is declared", async 
 
   await type("#admin-halt-declare-note", "new incident");
   await click(button("停止派送"));
+  await waitFor(() => container.querySelector("#admin-dispatch-lift-result") === null);
   expect(container.querySelector("#admin-dispatch-lift-result")).toBeNull();
 });
 

@@ -67,17 +67,23 @@ type findingDetailResponse struct {
 	Events  []findingEventView `json:"events"`
 }
 
-func (s *Service) Findings(ctx context.Context, statuses []string, beforeAt pgtype.Timestamptz, beforeID pgtype.UUID) ([]gen.ListFindingsRow, map[string]int32, string, error) {
+type findingsPage struct {
+	rows       []gen.ListFindingsRow
+	counts     map[string]int32
+	nextCursor string
+}
+
+func (s *Service) Findings(ctx context.Context, statuses []string, beforeAt pgtype.Timestamptz, beforeID pgtype.UUID) (findingsPage, error) {
 	q := gen.New(s.Pool)
 	rows, err := q.ListFindings(ctx, gen.ListFindingsParams{
 		Statuses: statuses, BeforeAt: beforeAt, BeforeID: beforeID, RowLimit: findingListLimit + 1,
 	})
 	if err != nil {
-		return nil, nil, "", err
+		return findingsPage{}, err
 	}
 	countRows, err := q.CountFindingsByStatus(ctx)
 	if err != nil {
-		return nil, nil, "", err
+		return findingsPage{}, err
 	}
 	counts := make(map[string]int32, len(findingStatuses))
 	for _, status := range findingStatuses {
@@ -92,7 +98,7 @@ func (s *Service) Findings(ctx context.Context, statuses []string, beforeAt pgty
 		last := rows[len(rows)-1]
 		nextCursor = last.LastSeenAt.Time.UTC().Format(time.RFC3339Nano) + "_" + pgconv.UUIDString(last.ID)
 	}
-	return rows, counts, nextCursor, nil
+	return findingsPage{rows: rows, counts: counts, nextCursor: nextCursor}, nil
 }
 
 func findingCursor(raw string) (pgtype.Timestamptz, pgtype.UUID, error) {
@@ -141,13 +147,13 @@ func (h *Handler) Findings(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	rows, counts, nextCursor, err := h.Svc.Findings(r.Context(), statuses, beforeAt, beforeID)
+	page, err := h.Svc.Findings(r.Context(), statuses, beforeAt, beforeID)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "finding lookup failed")
 		return
 	}
-	response := findingsResponse{Findings: make([]findingView, len(rows)), Counts: counts, NextCursor: nextCursor}
-	for i, row := range rows {
+	response := findingsResponse{Findings: make([]findingView, len(page.rows)), Counts: page.counts, NextCursor: page.nextCursor}
+	for i, row := range page.rows {
 		response.Findings[i] = findingBody(gen.GetFindingRow(row))
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)
