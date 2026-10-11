@@ -37,6 +37,8 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		"domain-memory",
 		"domain-memory-release",
 		"complexity-exemptions",
+		"architecture-budget",
+		"transaction-callbacks",
 	}
 	got := make([]string, 0, len(want))
 	for _, checker := range documentCheckers() {

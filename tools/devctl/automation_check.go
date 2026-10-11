@@ -163,6 +163,8 @@ func documentCheckers() []namedChecker {
 		{"domain-memory", domainMemoryProblems},
 		{cmdDomainMemoryRelease, domainMemoryReleaseProblems},
 		{"complexity-exemptions", complexityExemptionProblems},
+		{"architecture-budget", architectureBudgetProblems},
+		{"transaction-callbacks", transactionCallbackProblems},
 	}
 }
 

@@ -1,0 +1,78 @@
+{
+  "packages": {
+    "entrypoint/wiring": 26,
+    "skill/discovery": 26,
+    "trial/execution": 32,
+    "trial/improvement": 42
+  },
+  "types": {
+    "creator/creation.Service": {
+      "methods": 73,
+      "fields": 22
+    },
+    "creator/workspace.Service": {
+      "fields": 14
+    },
+    "product/operations.Service": {
+      "methods": 34
+    },
+    "skill/admission.Service": {
+      "methods": 44
+    },
+    "skill/delivery.Service": {
+      "methods": 41,
+      "fields": 18
+    },
+    "skill/discovery.Service": {
+      "methods": 52,
+      "fields": 19
+    },
+    "skill/library.Service": {
+      "methods": 36
+    },
+    "skill/publishing.Service": {
+      "methods": 41
+    },
+    "trial/design.Service": {
+      "methods": 43
+    },
+    "trial/execution.Service": {
+      "methods": 138,
+      "fields": 22
+    },
+    "trial/execution.driver": {
+      "methods": 40
+    },
+    "trial/execution/providertest.Fake": {
+      "fields": 19
+    },
+    "trial/improvement.Service": {
+      "methods": 68,
+      "fields": 20
+    }
+  },
+  "transaction_callbacks": [
+    "creator/creation.BillingHooks.SessionEndedFunc",
+    "creator/creation.BillingHooks.SettleFunc",
+    "creator/creation.Service.Adopt",
+    "creator/creation.Service.CreateAcceptanceTestCase",
+    "creator/creation.Service.Insert",
+    "creator/workspace.WorkspacePurge",
+    "foundation/integration/agentloop.Recorder",
+    "foundation/storage/objreconcile.MarkFunc",
+    "skill/admission.Service.IndexSkill",
+    "skill/admission.Service.MaterializeGeneratedCandidate",
+    "skill/delivery.Service.ClearSightings",
+    "skill/delivery.Service.GuardArtifactRemoval",
+    "skill/library.Service.IndexSkill",
+    "skill/library.Service.RemoveFromIndex",
+    "skill/publishing.Service.LockSkillForRelease",
+    "trial/design.Service.ClearSightings",
+    "trial/design.Service.GuardDatasetObjectRemoval",
+    "trial/design.Service.LockLiveSkillForCreate",
+    "trial/execution.CreateParams.SameTransaction",
+    "trial/execution.Service.ClearSightings",
+    "trial/execution.Service.GuardArtifactUploadIntentRemoval",
+    "trial/improvement.BatchRun.Link"
+  ]
+}
