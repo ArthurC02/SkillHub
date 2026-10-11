@@ -7,7 +7,16 @@
     "registry_digest": "sha256:48d1084f5f47f7bea29eee3b14bc074b1cae643762565c773801ad4a96a769d2"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "5ffb05e9857f79fdfffdf15b2f1af286040cdf25",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "4552f1db67841f59d32884dff8f5417d91268cd6",
+      "registry_digest": "sha256:48d1084f5f47f7bea29eee3b14bc074b1cae643762565c773801ad4a96a769d2"
+    }
+  },
   "counterfactual_check": {
     "status": "not_applicable",
     "reason": "No rule, contract or aggregate changes; the policy permits the same import and only names its mode correctly."

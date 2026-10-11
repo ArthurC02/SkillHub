@@ -3,12 +3,12 @@
   "proposal_id": "eval-trace-write-mode-r2",
   "proposer": "domain-memory-agent",
   "requirement_id": "eval-trace-write-mode",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-11T20:11:30.423101Z",
   "verified_at": "2026-10-11T20:11:34.379422Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-11T20:11:37.547302Z",
+  "applied_at": "2026-10-11T20:11:38.712533Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "4552f1db67841f59d32884dff8f5417d91268cd6",
@@ -107,5 +107,9 @@
   ],
   "supersedes": [
     "dependency-policies-match-the-guard"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "5ffb05e9857f79fdfffdf15b2f1af286040cdf25",
+    "registry_digest": "sha256:8b578f77b85a625a71566d44abaa8ab854daa88e9217c7b81d8f9685a2104f39"
+  }
 }
