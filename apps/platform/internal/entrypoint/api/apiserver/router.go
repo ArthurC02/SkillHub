@@ -35,6 +35,7 @@ type Deps struct {
 	Trace           *trace.Handler
 	Eval            *eval.Handler
 	EvalBatches     *eval.BatchHandler
+	Graders         *eval.GraderHandler
 	Packaging       *packaging.Handler
 	Publishing      *publishing.Handler
 	Activity        *activityHandler
@@ -214,6 +215,9 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("PUT /admin/model-budgets/{kind}", auth.RequireOperator(d.ModelBudgets.Set))
 	mux.HandleFunc("DELETE /admin/model-budgets/{kind}", auth.RequireOperator(d.ModelBudgets.Clear))
 	mux.HandleFunc("GET /admin/settings", auth.RequireOperator(d.Settings.Get))
+	mux.HandleFunc("GET /admin/evaluation/graders", auth.RequireOperator(d.Graders.ListPlatformGraders))
+	mux.HandleFunc("POST /admin/evaluation/graders", auth.RequireOperator(d.Graders.CreatePlatformGrader))
+	mux.HandleFunc("POST /admin/evaluation/graders/{id}/versions", auth.RequireOperator(d.Graders.RevisePlatformGrader))
 	mux.HandleFunc("PUT /admin/settings/judge-panel", auth.RequireOperator(d.Settings.SetJudgePanel))
 	mux.HandleFunc("GET /admin/settings/runs", auth.RequireOperator(d.RunSettings.Get))
 	mux.HandleFunc("PUT /admin/settings/runs/continuation-rounds", auth.RequireOperator(d.RunSettings.SetContinuationRounds))
@@ -288,6 +292,9 @@ func mountEvaluationRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /runs/{id}/trace", auth.RequireSession(d.Trace.Get))
 
 	mux.HandleFunc("GET /evaluation/check-kinds", auth.RequireSession(eval.ListCheckKinds))
+	mux.HandleFunc("GET /evaluation/graders", auth.RequireSession(d.Graders.ListGraders))
+	mux.HandleFunc("POST /evaluation/graders", auth.RequireSession(auth.RequireInvited(d.Graders.CreateGrader)))
+	mux.HandleFunc("POST /evaluation/graders/{id}/versions", auth.RequireSession(auth.RequireInvited(d.Graders.ReviseGrader)))
 	mux.HandleFunc("GET /runs/{id}/evaluation", auth.RequireSession(d.Eval.Get))
 	mux.HandleFunc("GET /runs/{id}/evaluation/revisions", auth.RequireSession(d.Eval.Revisions))
 	mux.HandleFunc("PUT /runs/{id}/evaluation/feedback", auth.RequireSession(d.Eval.SetFeedback))

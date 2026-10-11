@@ -445,6 +445,26 @@ type EvaluationBatchItem struct {
 	RunID       pgtype.UUID
 }
 
+// A named way of judging a criterion with the judge model. No workspace means operators defined it for every workspace.
+type EvaluationGrader struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	Name        string
+	CreatedBy   pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+}
+
+// The judging instructions of a grader, one immutable row per version; a check names the version it uses.
+type EvaluationGraderVersion struct {
+	ID           pgtype.UUID
+	GraderID     pgtype.UUID
+	Version      int32
+	Instructions string
+	Reason       string
+	CreatedBy    pgtype.UUID
+	CreatedAt    pgtype.Timestamptz
+}
+
 type EvaluationModelUsage struct {
 	ID               pgtype.UUID
 	EvaluationID     pgtype.UUID

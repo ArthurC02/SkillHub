@@ -106,8 +106,8 @@ func TestOnlyCriteriaWhoseCheckNeedsNoJudgeSkipTheJudge(t *testing.T) {
 	if len(p.decided) != 1 || p.decided[0].CriterionID != "ruled" {
 		t.Errorf("decided = %+v", p.decided)
 	}
-	if len(p.toJudge) != 2 || p.toJudge[0].ID != "plain" || p.toJudge[1].ID != "gated" {
-		t.Errorf("to judge = %+v", p.toJudge)
+	if len(p.asks.list) != 2 || p.asks.list[0].key != "plain" || p.asks.list[1].key != "gated" {
+		t.Errorf("to judge = %+v", p.asks.list)
 	}
 	if len(p.pendingTrees) != 1 || p.pendingTrees[0].ID != "gated" {
 		t.Errorf("pending trees = %+v", p.pendingTrees)

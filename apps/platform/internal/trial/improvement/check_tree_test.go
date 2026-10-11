@@ -127,9 +127,9 @@ func TestAtLeastKOfNIsDecidedAsSoonAsTheCountsAllowIt(t *testing.T) {
 	}
 }
 
-func decide(t *testing.T, m material, check testlab.Check, judge *CriterionResult) (CriterionResult, bool) {
+func decide(t *testing.T, m material, check testlab.Check, verdicts map[string]CriterionResult) (CriterionResult, bool) {
 	t.Helper()
-	return treeResult(m, testlab.Criterion{ID: "c", Text: "c", Check: &check}, judge)
+	return treeResult(m, testlab.Criterion{ID: "c", Text: "c", Check: &check}, verdicts)
 }
 
 func TestCompositeChecksCombineTheirChildren(t *testing.T) {
@@ -188,8 +188,8 @@ func TestAJudgeBehindAPassingGateIsAskedAndDecidesTheCriterion(t *testing.T) {
 	if _, decided := decide(t, m, gated, nil); decided {
 		t.Fatal("a judge step behind a passing gate was decided without the judge")
 	}
-	verdict := &CriterionResult{Result: ResultFailed, Reason: "the tone is off", Evidence: []EvidenceRef{{Kind: "output"}}}
-	got, decided := decide(t, m, gated, verdict)
+	verdict := CriterionResult{Result: ResultFailed, Reason: "the tone is off", Evidence: []EvidenceRef{{Kind: "output"}}}
+	got, decided := decide(t, m, gated, map[string]CriterionResult{"c": verdict})
 	if !decided || got.Result != ResultFailed || got.Source != SourceModel || len(got.Evidence) != 1 {
 		t.Errorf("got %+v, want the judge's failure, labelled model, with its evidence", got)
 	}

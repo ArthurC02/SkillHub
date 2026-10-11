@@ -1,8 +1,10 @@
 package testlab
 
 import (
+	"context"
 	"errors"
-	"fmt"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Check struct {
@@ -12,20 +14,16 @@ type Check struct {
 	AtLeast  int      `json:"at_least,omitempty"`
 }
 
-type CheckValidator func(*Check) (*Check, error)
+type CheckValidator func(ctx context.Context, workspaceID pgtype.UUID, c *Check) (*Check, error)
 
 var errChecksUnavailable = errors.New("testlab: no check validator is wired")
 
-func (s *Service) validateCheck(c *Check) (*Check, error) {
+func (s *Service) validateCheck(ctx context.Context, workspaceID pgtype.UUID, c *Check) (*Check, error) {
 	if c == nil {
 		return nil, nil
 	}
 	if s.ValidateCheck == nil {
 		return nil, errChecksUnavailable
 	}
-	validated, err := s.ValidateCheck(c)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
-	}
-	return validated, nil
+	return s.ValidateCheck(ctx, workspaceID, c)
 }

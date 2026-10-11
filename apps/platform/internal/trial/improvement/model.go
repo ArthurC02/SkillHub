@@ -28,6 +28,7 @@ type JudgedSkill struct {
 type JudgeCriterion struct {
 	ID              string
 	Text            string
+	Instructions    string
 	EvidenceExcerpt string
 }
 

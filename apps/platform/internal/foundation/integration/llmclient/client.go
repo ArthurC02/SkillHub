@@ -222,6 +222,7 @@ type JudgeCriterion struct {
 	ID   string `json:"id"`
 	Text string `json:"text"`
 
+	Instructions    string `json:"instructions,omitempty"`
 	EvidenceExcerpt string `json:"evidence_excerpt,omitempty"`
 }
 

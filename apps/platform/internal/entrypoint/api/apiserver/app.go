@@ -187,7 +187,7 @@ func NewApp(cfg Config) (*App, error) {
 func newTestLab(pool *pgxpool.Pool, identitySvc *identity.Service) *testlab.Service {
 	return &testlab.Service{
 		Pool: pool, MayStoreObjects: identitySvc.MayStoreObjects, ClearSightings: objreconcile.ClearDatasetSightings,
-		ValidateCheck: eval.ValidateCheck,
+		ValidateCheck: (&eval.GraderService{Pool: pool}).ValidateCheck,
 	}
 }
 
@@ -346,6 +346,7 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 		Trace:           &trace.Handler{Svc: app.TraceSvc, Identity: auth.Service},
 		Eval:            &eval.Handler{Svc: evalSvc, Identity: auth.Service},
 		EvalBatches:     &eval.BatchHandler{Svc: app.EvalBatches, Identity: auth.Service},
+		Graders:         &eval.GraderHandler{Svc: &eval.GraderService{Pool: cfg.Pool}, Identity: auth.Service},
 		Packaging:       &packaging.Handler{Svc: app.PackagingSvc, Identity: auth.Service},
 		Activity:        &activityHandler{Svc: app.ActivitySvc, Identity: identitySvc},
 		Credits: &creditsHandler{

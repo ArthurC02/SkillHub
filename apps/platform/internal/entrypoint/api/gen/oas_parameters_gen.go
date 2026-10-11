@@ -548,6 +548,16 @@ type ReviewExposureParams struct {
 	Name      string
 }
 
+// ReviseEvaluationGraderParams is parameters of reviseEvaluationGrader operation.
+type ReviseEvaluationGraderParams struct {
+	ID uuid.UUID
+}
+
+// RevisePlatformEvaluationGraderParams is parameters of revisePlatformEvaluationGrader operation.
+type RevisePlatformEvaluationGraderParams struct {
+	ID uuid.UUID
+}
+
 // SaveSkillVersionParams is parameters of saveSkillVersion operation.
 type SaveSkillVersionParams struct {
 	ID uuid.UUID
