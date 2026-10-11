@@ -339,6 +339,7 @@ type CreateParams struct {
 	TestCaseID  pgtype.UUID
 
 	ConfirmedSummaryHash string
+	SameTransaction      func(ctx context.Context, tx pgx.Tx, runID pgtype.UUID) error
 }
 
 func (s *Service) Create(ctx context.Context, p CreateParams) (RunView, error) {
@@ -394,6 +395,11 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	run, err := s.launch(ctx, tx, p, admitted, snapshotID)
 	if err != nil {
 		return gen.Run{}, err
+	}
+	if p.SameTransaction != nil {
+		if err := p.SameTransaction(ctx, tx, run.ID); err != nil {
+			return gen.Run{}, err
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return gen.Run{}, err
