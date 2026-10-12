@@ -12,7 +12,7 @@ python3 scripts/registry_tools.py <command> [options]
 
 Python 3.10 or later, its standard library, and `git` on the path. Nothing to install, no environment to prepare, and the script runs from any working directory. Output is JSON except for success and error lines. A non-zero exit is a refusal that names its reason; read the reason rather than retrying.
 
-Every command below takes `--registry-root <root>`, the directory that holds `registry/`, `source-map.json` and the policy, not `registry/` itself. Commands that read files in the repository also take `--repo-root <repo>`.
+Commands that read or change the Registry take `--registry-root <root>`: the directory that holds `registry/`, `source-map.json` and the policy, not `registry/` itself. Commands that read repository files take `--repo-root <repo>`. Some take only one of the two: `quality-gates` takes only `--repo-root`, `readiness` needs only `--repo-root`, and `coverage` and the read commands take only `--registry-root`. The table below leaves both flags out, and `<command> --help` lists the exact flags.
 
 ## Words you will meet
 
@@ -32,7 +32,8 @@ Every command below takes `--registry-root <root>`, the directory that holds `re
 | --- | --- |
 | Know what this repository has | `readiness --repo-root <repo>` |
 | Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>` |
-| See which boundaries your change touches | `boundary-impact --base <branch point>` |
+| See which boundaries your change touches | `boundary-impact --base <branch point>`; `unknown` means no Context records an `implementation_path`, so it cannot map files to Contexts |
+| Check the Registry's shape and references | `validate`; it does not check that citations still match the code, which is `verify-evidence` |
 | Check the evidence of files you edited | `verify-evidence --path <file>`; `stale` needs `recite`, `shifted` needs `relocate-evidence --from <file> --to <file>` |
 | Re-cite after moving code | `relocate-evidence --from <old> --to <new>` |
 | Re-cite after editing code in place | `recite --asset <asset> --id <id> --path <file> --lines <a>-<b>` |
