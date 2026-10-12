@@ -41,6 +41,7 @@ function TrendOverview({
   actions,
   funnel,
   days,
+  fetching,
 }: {
   cost?: Trend<DailyAmount>;
   credits?: CreditTrend;
@@ -48,6 +49,7 @@ function TrendOverview({
   actions?: Trend;
   funnel?: FunnelTrend;
   days: TrendDays;
+  fetching: boolean;
 }) {
   if (!cost || !credits || !runs || !actions || !funnel) return null;
   if (
@@ -65,23 +67,26 @@ function TrendOverview({
       aria-labelledby="admin-trend-overview-heading"
     >
       <h2 id="admin-trend-overview-heading">本期概覽</h2>
-      <p className="note">只有本期總量，不代表異常；漏斗各段單位不同，請在下方分開看。</p>
-      <dl>
+      <p className="note" role="status">
+        {fetching && "五組趨勢更新中；總量待更新完成後顯示。"}
+        只有本期總量，不代表異常；漏斗各段單位不同，請在下方分開看。
+      </p>
+      <dl aria-busy={fetching}>
         <div>
           <dt>模型成本（含估計）</dt>
-          <dd>{usdAmount(periodTotal(cost, totalOf))}</dd>
+          <dd>{fetching ? "更新中" : usdAmount(periodTotal(cost, totalOf))}</dd>
         </div>
         <div>
           <dt>點數淨異動</dt>
-          <dd>{creditNet > 0 ? `+${creditNet}` : creditNet} 點</dd>
+          <dd>{fetching ? "更新中" : `${creditNet > 0 ? `+${creditNet}` : creditNet} 點`}</dd>
         </div>
         <div>
           <dt>建立 Run</dt>
-          <dd>{periodTotal(runs, countOf)} 筆</dd>
+          <dd>{fetching ? "更新中" : `${periodTotal(runs, countOf)} 筆`}</dd>
         </div>
         <div>
           <dt>後台動作</dt>
-          <dd>{periodTotal(actions, countOf)} 筆</dd>
+          <dd>{fetching ? "更新中" : `${periodTotal(actions, countOf)} 筆`}</dd>
         </div>
       </dl>
     </section>
@@ -218,6 +223,7 @@ export function AdminTrends() {
         actions={actions.error ? undefined : actions.data}
         funnel={funnel.error ? undefined : funnel.data}
         days={days}
+        fetching={fetching}
       />
       <TrendTopics />
       <TrendSection

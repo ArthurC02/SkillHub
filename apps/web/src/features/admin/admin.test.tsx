@@ -2856,6 +2856,42 @@ test("aligned trends put four period totals before the daily charts", async () =
   expect(trendCalls()).toHaveLength(5);
 });
 
+test.each(TREND_PATHS)("trend totals wait for %s to finish refreshing", async (pendingPath) => {
+  stub(true);
+  await mountAt("/admin/trends");
+  await waitFor(has("已取得 5/5 組"));
+  const overview = field<HTMLElement>("#admin-trend-overview");
+  const refresh = button("重新整理");
+  const totals = () => Array.from(overview.querySelectorAll("dd"), (item) => item.textContent);
+  expect(totals()).toEqual(["$0.0936", "+118 點", "6 筆", "2 筆"]);
+
+  const path = `/admin/trends/${pendingPath}`;
+  let finishRead!: (response: Response) => void;
+  const held = new Promise<Response>((resolve) => {
+    finishRead = resolve;
+  });
+  const originalFetch = fetch;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) =>
+    String(input).split("?")[0] === path ? held : originalFetch(input, init),
+  );
+  try {
+    await click(refresh);
+    await waitFor(() => refresh.disabled);
+    expect(totals()).toEqual(["更新中", "更新中", "更新中", "更新中"]);
+    expect(overview.querySelector("dl")?.getAttribute("aria-busy")).toBe("true");
+    expect(overview.querySelector('[role="status"]')?.textContent).toContain("五組趨勢更新中");
+    expect(container.querySelectorAll("figure")).toHaveLength(11);
+  } finally {
+    await act(async () => {
+      finishRead(new Response(JSON.stringify(platformResponse(`${path}?days=30`).body)));
+    });
+  }
+  await waitFor(() => !refresh.disabled);
+  expect(totals()).toEqual(["$0.0936", "+118 點", "6 筆", "2 筆"]);
+  expect(overview.querySelector("dl")?.getAttribute("aria-busy")).toBe("false");
+  expect(overview.textContent).not.toContain("五組趨勢更新中");
+});
+
 test("OPS-008: the range comes before compact read metadata on a complete trends page", async () => {
   stub(true);
   await mountAt("/admin/trends");

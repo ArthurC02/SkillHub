@@ -75,6 +75,61 @@ test("the home priority conclusion waits for every refreshed source on a phone",
   expect(reads).toBe(4);
 });
 
+for (const width of [375, 1280]) {
+  test(`trend summary cards remain identifiable while totals refresh at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await stubPlatform(page);
+    let reads = 0;
+    let finishRead!: () => void;
+    const held = new Promise<void>((resolve) => {
+      finishRead = resolve;
+    });
+    await page.route("**/admin/trends/cost?*", async (route) => {
+      reads += 1;
+      if (reads === 2) await held;
+      if (reads === 3) {
+        return route.fulfill({ status: 503, json: { error: "service unavailable" } });
+      }
+      return route.fallback();
+    });
+    await page.goto("/admin/trends");
+    const overview = page.getByRole("region", { name: "本期概覽" });
+    const totals = overview.locator("dd");
+    await expect(totals).toHaveText(["$0.0936", "+118 點", "6 筆", "2 筆"]);
+    const labels = overview.locator("dt");
+    const headings = ["模型成本（含估計）", "點數淨異動", "建立 Run", "後台動作"];
+    const refresh = page.getByRole("button", { name: "重新整理五組趨勢" });
+    try {
+      await refresh.focus();
+      await page.keyboard.press("Enter");
+      await expect(page.getByRole("button", { name: "重新整理中…" })).toBeDisabled();
+      await expect(totals).toHaveText(["更新中", "更新中", "更新中", "更新中"]);
+      await expect(labels).toHaveText(headings);
+      await expect(overview.getByRole("status")).toContainText("五組趨勢更新中");
+      await expect(overview.locator("dl")).toHaveAttribute("aria-busy", "true");
+      await expect(page.locator("figure")).toHaveCount(11);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      await page.screenshot({ path: testInfo.outputPath("trends-refreshing.png") });
+    } finally {
+      finishRead();
+    }
+    await expect(totals).toHaveText(["$0.0936", "+118 點", "6 筆", "2 筆"]);
+    await expect(overview.locator("dl")).toHaveAttribute("aria-busy", "false");
+    await refresh.click();
+    await expect(page.getByRole("alert")).toContainText("暫時無法讀取每日成本");
+    await expect(overview).toHaveCount(0);
+    await refresh.click();
+    await expect(totals).toHaveText(["$0.0936", "+118 點", "6 筆", "2 筆"]);
+    const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+    expect(accessibility.violations).toEqual([]);
+    expect(reads).toBe(4);
+  });
+}
+
 test("platform policies lead with both current settings and reveal an editor by keyboard", async ({
   page,
 }) => {
