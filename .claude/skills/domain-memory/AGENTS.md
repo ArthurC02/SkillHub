@@ -12,6 +12,44 @@ python3 scripts/registry_tools.py <command> [options]
 
 Python 3.10 or later, its standard library, and `git` on the path. Nothing to install, no environment to prepare, and the script runs from any working directory. Output is JSON except for success and error lines. A non-zero exit is a refusal that names its reason; read the reason rather than retrying.
 
+Every command below takes `--registry-root <root>`, the directory that holds `registry/`, `source-map.json` and the policy, not `registry/` itself. Commands that read files in the repository also take `--repo-root <repo>`.
+
+## Words you will meet
+
+- **Registry**: one JSON file per asset under `<root>/registry/`. The asset name is the file name without `.json`, such as `contexts`, `rules`, `contracts`, `vocabulary` or `dependency-policies`. It is never the list key inside the file.
+- **Record**: one entry in an asset. Its `status` is `candidate` (proposed, authorizes nothing) or `reviewed` (a fact, approved through a Change Package).
+- **Citation**: a record's evidence, `{path, lines, excerpt_sha256}`, always built by `cite`. `verify-evidence` reports each one with one of these statuses:
+  - `current`: the cited lines are unchanged.
+  - `shifted`: the excerpt is unchanged but sits on other lines. This does not fail.
+  - `stale`: the excerpt changed.
+  - `unhashed`: the citation was not built by `cite`.
+  - `missing`: the cited file is gone.
+- **Change Package**: the one way a reviewed record changes. It is a directory of four JSON files whose proposal moves `draft → submitted → verified → approved → applied`, or ends `superseded`. Once submitted, its content is frozen.
+
+## Common tasks
+
+| You want to | Run |
+| --- | --- |
+| Know what this repository has | `readiness --repo-root <repo>` |
+| Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>` |
+| See which boundaries your change touches | `boundary-impact --base <branch point>` |
+| Check the evidence of files you edited | `verify-evidence --path <file>`; `stale` needs `recite`, `shifted` needs `relocate-evidence --from <file> --to <file>` |
+| Re-cite after moving code | `relocate-evidence --from <old> --to <new>` |
+| Re-cite after editing code in place | `recite --asset <asset> --id <id> --path <file> --lines <a>-<b>` |
+| Propose a new fact | `cite`, then `upsert-candidate --asset <asset> --record-file <file>`; give `--record-file` once per record |
+| Change a reviewed fact | `init-change-package`, add `registry_updates`, then `validate-change-package --as-status submitted --repo-root <repo>` before every transition; the lifecycle is in [references/script-api.md](references/script-api.md) |
+| Recover after a crash | `recover-registry-update --repo-root <repo>` |
+
+The two re-cite commands print `registry_updates` and `supersedes` for a Change Package. A record that is not reviewed comes back under `candidates`; pass it to `upsert-candidate`.
+
+## Mistakes that cost a redo
+
+- A wrong asset name, such as `dependencies` for `dependency-policies`, is refused by `validate-change-package`. Run it before you submit; after submission, the only fix is to supersede and redraft.
+- Replacing or removing a reviewed record needs `supersedes` to list the proposal that reviewed it, which is `review.proposal_id` on the record. A package that replaces several takes a list.
+- A submitted proposal cannot be edited. Use `supersede-proposal --reason`, then `redraft-proposal`. A redraft keeps the design but not the test results, so record them again.
+- Never write a citation by hand. Hand-made line splitting verifies as `stale`, and a missing digest as `unhashed`.
+- Errors print `ERROR: <reason>` on stdout and exit non-zero. The reason names the fix, so read it before trying anything else.
+
 ## Before you rely on anything here
 
 Run `readiness --repo-root <repo>` first. It distinguishes an empty repository, a greenfield design, a brownfield implementation, and a memory whose evidence has died. Its signals route your work; they are not domain facts.

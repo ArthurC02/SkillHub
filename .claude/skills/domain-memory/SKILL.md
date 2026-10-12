@@ -7,6 +7,8 @@ description: "Route domain-driven development work to the smallest Domain Memory
 
 Domain Memory is a continuous development loop, not a one-time knowledge dump. The reviewed Registry guides implementation; implementation evidence updates the Registry for the next Agent.
 
+First time here? [AGENTS.md](AGENTS.md) has the vocabulary, a table of common tasks with their commands, and the mistakes that force a redo, in one page.
+
 In an unfamiliar repository, run the read-only `readiness` command first, and treat only reviewed records as facts; candidates are handoff material and authorize no implementation ([AGENTS.md](AGENTS.md#before-you-rely-on-anything-here)). See [readiness](references/readiness.md) for the evidence and output contract.
 
 Choose one focused capability:
