@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -14,10 +15,11 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
-const maxOperatorNoteBytes = 1000
+const maxOperatorNoteChars = limits.SetSkillRestrictionBodyNoteMaxLength
 
 type restrictionRequest struct {
 	Reason string `json:"reason"`
@@ -137,7 +139,7 @@ func validRestrictionNote(note string) (string, error) {
 	if note == "" {
 		return "", restrictionInputError("note is required: an operator action nobody can explain later is not a decision")
 	}
-	if len(note) > maxOperatorNoteBytes {
+	if utf8.RuneCountInString(note) > maxOperatorNoteChars {
 		return "", restrictionInputError("note is too long")
 	}
 	return note, nil

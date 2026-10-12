@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import { CHECK_KINDS, PLATFORM_GRADER, WORKSPACE_GRADER } from "../../testing/fixtures/platform";
-import { CheckEditor } from "./components/CheckEditor";
+import { LazyCheckEditor as CheckEditor } from "./components/LazyCheckEditor";
 import { GraderManager } from "./components/GraderManager";
 import type { CheckNode } from "./check.model";
 
@@ -125,6 +125,7 @@ test("an empty composite is flagged, and a child added to it becomes the selecte
   await renderEditor();
   await act(async () => setValue(field("#check-editor-root"), "sequence"));
   await act(async () => button("開始設計").click());
+  await waitFor(() => container.textContent!.includes("要 1 到 50 個子節點"));
 
   expect(latest).toEqual({ kind: "sequence", children: [] });
   expect(container.textContent).toContain("要 1 到 50 個子節點，現在 0 個");
@@ -135,6 +136,15 @@ test("an empty composite is flagged, and a child added to it becomes the selecte
   expect(latest).toEqual({ kind: "sequence", children: [{ kind: "judge" }] });
   expect(field("#check-node-0-0-heading").textContent).toBe("選取的節點：評審判定");
   expect(container.textContent).not.toContain("要 1 到 50 個子節點");
+});
+
+test("the graders are asked for only once a check is being designed", async () => {
+  await renderEditor();
+  expect(calls.map((c) => c.url)).not.toContain("/evaluation/graders");
+
+  await act(async () => setValue(field("#check-editor-root"), "judge"));
+  await act(async () => button("開始設計").click());
+  await waitFor(() => calls.some((c) => c.url === "/evaluation/graders"));
 });
 
 test("a prompt grader picks a version from both the platform's and the workspace's graders", async () => {

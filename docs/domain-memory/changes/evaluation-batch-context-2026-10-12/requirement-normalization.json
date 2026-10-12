@@ -1,0 +1,38 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "evaluation-batch-context",
+  "status": "draft",
+  "intent": "Give evaluation batches their own Bounded Context, so eval keeps judging one Run and the batch owns running many trials, answering as the simulated user and reporting their pass rates.",
+  "actor": "coding-agent",
+  "observable_outcome": "trial/batch is a reviewed Context with its own depguard rule and query ownership; it reaches run, testlab, trace and eval only through composition-root ports, and eval no longer holds any batch code.",
+  "acceptance_criteria": [
+    {
+      "id": "batch-is-its-own-context",
+      "statement": "The batch package is a reviewed Context whose only import of another Context is identity."
+    },
+    {
+      "id": "batch-reads-verdicts-through-eval",
+      "statement": "The batch report reads each Run's standing verdict through a port eval fills, not by querying evaluation rows."
+    },
+    {
+      "id": "batch-behaviour-unchanged",
+      "statement": "Creating, advancing, answering, reporting and comparing batches behave as before the move."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that makes the records reviewed is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/trial/batch/doc.go",
+    "apps/platform/internal/trial/batch/batch.go",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+    "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md"
+  ]
+}

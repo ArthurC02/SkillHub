@@ -75,6 +75,7 @@
         "apps/platform/internal/skill/discovery/doc.go",
         "apps/platform/internal/skill/library/doc.go",
         "apps/platform/internal/skill/publishing/doc.go",
+        "apps/platform/internal/trial/batch/doc.go",
         "apps/platform/internal/trial/design/doc.go",
         "apps/platform/internal/trial/evidence/doc.go",
         "apps/platform/internal/trial/execution/doc.go",
@@ -506,6 +507,8 @@
         "apps/platform/internal/skill/publishing/exposure_test.go",
         "apps/platform/internal/skill/publishing/lock_characterization_test.go",
         "apps/platform/internal/skill/publishing/publication_test.go",
+        "apps/platform/internal/trial/batch/batch_test.go",
+        "apps/platform/internal/trial/design/char_limits_test.go",
         "apps/platform/internal/trial/design/check_test.go",
         "apps/platform/internal/trial/design/criteria_contract_test.go",
         "apps/platform/internal/trial/design/dataset_characterization_test.go",
@@ -539,6 +542,7 @@
         "apps/platform/internal/trial/execution/continuation_test.go",
         "apps/platform/internal/trial/execution/disk_budget_test.go",
         "apps/platform/internal/trial/execution/gateway_test.go",
+        "apps/platform/internal/trial/execution/grants_intent_test.go",
         "apps/platform/internal/trial/execution/grantstate_test.go",
         "apps/platform/internal/trial/execution/halt_test.go",
         "apps/platform/internal/trial/execution/messages_test.go",
@@ -553,6 +557,7 @@
         "apps/platform/internal/trial/execution/quota_test.go",
         "apps/platform/internal/trial/execution/read_test.go",
         "apps/platform/internal/trial/execution/reassign_test.go",
+        "apps/platform/internal/trial/execution/refusal_passes_test.go",
         "apps/platform/internal/trial/execution/run_events_test.go",
         "apps/platform/internal/trial/execution/run_root_test.go",
         "apps/platform/internal/trial/execution/scan_characterization_test.go",
@@ -570,7 +575,6 @@
         "apps/platform/internal/trial/improvement/aggregate_test.go",
         "apps/platform/internal/trial/improvement/apply_characterization_test.go",
         "apps/platform/internal/trial/improvement/apply_limits_characterization_test.go",
-        "apps/platform/internal/trial/improvement/batch_test.go",
         "apps/platform/internal/trial/improvement/check_tree_test.go",
         "apps/platform/internal/trial/improvement/consumer_test.go",
         "apps/platform/internal/trial/improvement/cost_characterization_test.go",
@@ -756,6 +760,7 @@
         "tools/devctl/comment_budget_test.go",
         "tools/devctl/complexity_exemptions_test.go",
         "tools/devctl/context_map_test.go",
+        "tools/devctl/contract_length_units_test.go",
         "tools/devctl/crypto_dependency_test.go",
         "tools/devctl/dep_audit_test.go",
         "tools/devctl/dependency_policy_characterization_test.go",
@@ -851,6 +856,7 @@
     "apps/platform/internal/creator/creation/doc.go",
     "apps/platform/internal/creator/credit/doc.go",
     "apps/platform/internal/creator/workspace/doc.go",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
     "apps/platform/internal/entrypoint/wiring/trial.go",
     "apps/platform/internal/product/entitlements/doc.go",
     "apps/platform/internal/product/learning/doc.go",
@@ -860,10 +866,14 @@
     "apps/platform/internal/skill/discovery/doc.go",
     "apps/platform/internal/skill/library/doc.go",
     "apps/platform/internal/skill/publishing/doc.go",
+    "apps/platform/internal/trial/batch/batch.go",
+    "apps/platform/internal/trial/batch/doc.go",
     "apps/platform/internal/trial/design/doc.go",
     "apps/platform/internal/trial/evidence/doc.go",
+    "apps/platform/internal/trial/execution/batch_facts.go",
     "apps/platform/internal/trial/execution/doc.go",
     "apps/platform/internal/trial/execution/preflight.go",
+    "apps/platform/internal/trial/execution/service.go",
     "apps/platform/internal/trial/execution/statemachine.go",
     "apps/platform/internal/trial/improvement/doc.go",
     "docs/adr/ADR-003-run-orchestration-and-async-workflows.md",
@@ -873,8 +883,8 @@
     "docs/development/platform-ddd-convergence.md"
   ],
   "source_policy_report": {
-    "files": 23,
-    "total_bytes": 173935,
+    "files": 28,
+    "total_bytes": 217040,
     "oversized_files": [],
     "errors": []
   },
@@ -882,6 +892,7 @@
     "apps/platform/internal/creator/creation/doc.go": "bounded_contexts",
     "apps/platform/internal/creator/credit/doc.go": "bounded_contexts",
     "apps/platform/internal/creator/workspace/doc.go": "bounded_contexts",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go": "unclassified",
     "apps/platform/internal/entrypoint/wiring/trial.go": "unclassified",
     "apps/platform/internal/product/entitlements/doc.go": "bounded_contexts",
     "apps/platform/internal/product/learning/doc.go": "bounded_contexts",
@@ -891,10 +902,14 @@
     "apps/platform/internal/skill/discovery/doc.go": "bounded_contexts",
     "apps/platform/internal/skill/library/doc.go": "bounded_contexts",
     "apps/platform/internal/skill/publishing/doc.go": "bounded_contexts",
+    "apps/platform/internal/trial/batch/batch.go": "unclassified",
+    "apps/platform/internal/trial/batch/doc.go": "bounded_contexts",
     "apps/platform/internal/trial/design/doc.go": "bounded_contexts",
     "apps/platform/internal/trial/evidence/doc.go": "bounded_contexts",
+    "apps/platform/internal/trial/execution/batch_facts.go": "unclassified",
     "apps/platform/internal/trial/execution/doc.go": "bounded_contexts",
     "apps/platform/internal/trial/execution/preflight.go": "unclassified",
+    "apps/platform/internal/trial/execution/service.go": "unclassified",
     "apps/platform/internal/trial/execution/statemachine.go": "unclassified",
     "apps/platform/internal/trial/improvement/doc.go": "bounded_contexts",
     "docs/adr/ADR-003-run-orchestration-and-async-workflows.md": "unclassified",
@@ -903,36 +918,7 @@
     "docs/design/platform-experience.md": "unclassified",
     "docs/development/platform-ddd-convergence.md": "unclassified"
   },
-  "git_state": {
-    "tracked_objects": {
-      "apps/platform/internal/creator/creation/doc.go": "06f3a6ab586afed215d23c6313d2f80e96fced9c",
-      "apps/platform/internal/creator/credit/doc.go": "4088f3f4758f43a2c0a85b2f7b2986699f83220e",
-      "apps/platform/internal/creator/workspace/doc.go": "3400fd7bb000a5d43f762eee2543270e7e847313",
-      "apps/platform/internal/entrypoint/wiring/trial.go": "574c72ff0fdc566df24ce05ad7506ff49b31d40f",
-      "apps/platform/internal/product/entitlements/doc.go": "a14b159c4e30e510d2b72dd6d30b9525170e9da3",
-      "apps/platform/internal/product/learning/doc.go": "4fc3d5db88b3a93284946a3ca323c044e1cae162",
-      "apps/platform/internal/product/operations/doc.go": "827e333f7f0e34cdeffa8944a18a1b0804ea1d15",
-      "apps/platform/internal/skill/admission/doc.go": "b8c4ce050f398e2a6227c32ff7aaeac1971924d6",
-      "apps/platform/internal/skill/delivery/doc.go": "a57768c1c344068620ef42bb18440f503da6103c",
-      "apps/platform/internal/skill/discovery/doc.go": "42d65d6e6de87b6d9500d8cfed5079b80bfe8f9c",
-      "apps/platform/internal/skill/library/doc.go": "7c2ed38bb0ef78b8b980dc4b57db356575eb6720",
-      "apps/platform/internal/skill/publishing/doc.go": "41a7c44def84437ffb5d188fb697caef91a6f334",
-      "apps/platform/internal/trial/design/doc.go": "a93d0952ff016d9ec4b22a70f3859bb7e3263d2e",
-      "apps/platform/internal/trial/evidence/doc.go": "a6413ace7968304bc94cdf7d59bcef054f6e658a",
-      "apps/platform/internal/trial/execution/doc.go": "9feaa4cda0a38b34a100315274cf833692b24fd2",
-      "apps/platform/internal/trial/execution/preflight.go": "4fc47c97b5128a60f240054c39cf02189aeb631e",
-      "apps/platform/internal/trial/execution/statemachine.go": "7481e91e8ba884a70be319c3fa90082521545ffe",
-      "apps/platform/internal/trial/improvement/doc.go": "450b476fecea76e87cd95369f81408deac298873",
-      "docs/adr/ADR-003-run-orchestration-and-async-workflows.md": "fa665b50cce79516b43580542c216ed03874c29c",
-      "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md": "a8f7e4b0b5a6dba8d7f6447c330f934940bd419a",
-      "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md": "e58e6e4742f0a82f50b0841e660936cccc2940f1",
-      "docs/design/platform-experience.md": "c598cc2603c917652ea52d792dd28dea0c7830ef",
-      "docs/development/platform-ddd-convergence.md": "3860f42dd9c23a8d50cb113e462749653ed61285"
-    },
-    "dirty_sources": [
-      " M docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md"
-    ]
-  },
+  "git_state": {},
   "source_snapshots": [
     {
       "path": "apps/platform/internal/creator/creation/doc.go",
@@ -951,6 +937,12 @@
       "file_count": 1,
       "digest": "sha256:29fb5025648a8cdc06767b0a4c87d6395c6801e9beac757de308b11564ac8521",
       "listing_sha256": "sha256:d9f4fffb40bf0a37bfbf90f21ea3e45d206c4a391e040162f1a560e36ff1a33e"
+    },
+    {
+      "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+      "file_count": 1,
+      "digest": "sha256:7582b502a7177487a932c52d1d11d86c1a336a39a58336a634127da3acf4772f",
+      "listing_sha256": "sha256:ff4e6aa5d68ad0970ce1a7b1f81e27b9ca1e6b84b4a5256f9b8ece45190890dc"
     },
     {
       "path": "apps/platform/internal/entrypoint/wiring/trial.go",
@@ -1007,6 +999,18 @@
       "listing_sha256": "sha256:a3920ab2a480f32f0e46d5d4983b67407b68479aa8b7157b136a9992560fadb7"
     },
     {
+      "path": "apps/platform/internal/trial/batch/batch.go",
+      "file_count": 1,
+      "digest": "sha256:93a2e8fc60d05fddf4bb40cf704fa2e2b3c763cc4da6f517a3db5d5f91d27e22",
+      "listing_sha256": "sha256:cd43859ae576ce41090903256bf3ae41b506edfab3128f55818d130f7ed35228"
+    },
+    {
+      "path": "apps/platform/internal/trial/batch/doc.go",
+      "file_count": 1,
+      "digest": "sha256:b2019e84c69cdba3f4178d3d23985cba588556d6238fb60124487c8156bc1543",
+      "listing_sha256": "sha256:b0c70b9ff0b802888452fa528f9b04fb5472aa53c16af5bac533571f8e815be9"
+    },
+    {
       "path": "apps/platform/internal/trial/design/doc.go",
       "file_count": 1,
       "digest": "sha256:b3b9337ee5153c3fc8e9600ae29ba6ce6d94101335d25af904152b47a2bab0af",
@@ -1019,6 +1023,12 @@
       "listing_sha256": "sha256:ed0ee391dbf2d4a4199d83f6da5c8dc02098c78ef683540daa0150da605f7ddc"
     },
     {
+      "path": "apps/platform/internal/trial/execution/batch_facts.go",
+      "file_count": 1,
+      "digest": "sha256:45781bac8fb65431676865a13574335468728ffee17e0d2247f0a9d455978a4f",
+      "listing_sha256": "sha256:0cfbc46b5375f9f1a9ee2ace9796ea3573580fbd484f0196412551964131ec32"
+    },
+    {
       "path": "apps/platform/internal/trial/execution/doc.go",
       "file_count": 1,
       "digest": "sha256:d41d9c23c1314b9483cb58c21273f7f608dba7ec5d4e041e0dbfb966e5a8bf76",
@@ -1029,6 +1039,12 @@
       "file_count": 1,
       "digest": "sha256:8e675793498a595767392d6de2c06a1c56f2a0db157c731332ba98bed6d80dcb",
       "listing_sha256": "sha256:eec107b8d42d3366f1f026cb007d6525ede08a4eef99e82cce85a777d9d44ae1"
+    },
+    {
+      "path": "apps/platform/internal/trial/execution/service.go",
+      "file_count": 1,
+      "digest": "sha256:5d45c95cc05eeebb20683a93b084e91c6ed27419b88011ca392277158c47ea84",
+      "listing_sha256": "sha256:43069a57249b9bfe00764518a1086d6bdc87b7fc32a8ea1f6b10d36644d1d7c4"
     },
     {
       "path": "apps/platform/internal/trial/execution/statemachine.go",
@@ -1051,7 +1067,7 @@
     {
       "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
       "file_count": 1,
-      "digest": "sha256:b7af81c8daaf3715a0f276bc758e9a596a4307009d2657125f0884c38ee08b29",
+      "digest": "sha256:792bc1c2bd8b4e541a1cfe45177c20969c9ca59bde7fa576b5cf81d81455b626",
       "listing_sha256": "sha256:725575543eccf4ff584eb0821432394a1a831e11ad77d47b87cca7df902bcd5e"
     },
     {
@@ -1074,5 +1090,5 @@
     }
   ],
   "confirmed_by": "ArthurC",
-  "confirmed_at": "2026-10-11T15:13:31.308166Z"
+  "confirmed_at": "2026-10-11T18:05:17.378087Z"
 }

@@ -421,6 +421,7 @@ test("EVAL-014 a criterion is added with its designed check only once every node
     ),
   );
   await act(async () => button("開始設計").click());
+  await waitFor(() => container.textContent!.includes("有空白的值"));
 
   expect(button("新增").disabled).toBe(true);
   expect(container.textContent).toContain("檢查還有節點要修正");
@@ -623,7 +624,7 @@ test("a refused create shows the server's reason for any 4xx, not only the ones 
   expect(container.textContent).not.toContain("建立沒有成功");
 });
 
-test("丙-155③ 名稱超過 200 bytes 送出前先擋下，不送出請求", async () => {
+test("名稱超過 200 個字送出前先擋下，不送出請求", async () => {
   const calls = stubPlatform();
   await renderList();
 
@@ -631,18 +632,18 @@ test("丙-155③ 名稱超過 200 bytes 送出前先擋下，不送出請求", a
     selectValue(container.querySelector<HTMLSelectElement>("#tc-skill")!, SKILL),
   );
   await act(async () =>
-    setValue(container.querySelector<HTMLInputElement>("#tc-name")!, "x".repeat(201)),
+    setValue(container.querySelector<HTMLInputElement>("#tc-name")!, "長".repeat(201)),
   );
   await act(async () =>
     setValue(container.querySelector<HTMLTextAreaElement>("#tc-prompt")!, "prompt"),
   );
 
-  expect(container.textContent).toContain("名稱最多 200 bytes，目前 201 bytes。");
+  expect(container.textContent).toContain("名稱最多 200 個字，目前 201 個字。");
   expect(button("建立").disabled).toBe(true);
   expect(calls.some((c) => c.method === "POST" && c.url === "/test-cases")).toBe(false);
 });
 
-test("名稱剛好 200 bytes 不擋，建立按鈕不停用", async () => {
+test("名稱剛好 200 個字（600 bytes）不擋，建立按鈕不停用", async () => {
   stubPlatform();
   await renderList();
 
@@ -650,17 +651,17 @@ test("名稱剛好 200 bytes 不擋，建立按鈕不停用", async () => {
     selectValue(container.querySelector<HTMLSelectElement>("#tc-skill")!, SKILL),
   );
   await act(async () =>
-    setValue(container.querySelector<HTMLInputElement>("#tc-name")!, "x".repeat(200)),
+    setValue(container.querySelector<HTMLInputElement>("#tc-name")!, "長".repeat(200)),
   );
   await act(async () =>
     setValue(container.querySelector<HTMLTextAreaElement>("#tc-prompt")!, "prompt"),
   );
 
-  expect(container.textContent).not.toContain("名稱最多 200 bytes，目前");
+  expect(container.textContent).not.toContain("名稱最多 200 個字，目前");
   expect(button("建立").disabled).toBe(false);
 });
 
-test("Prompt 超過 32768 bytes 送出前先擋下，不送出請求", async () => {
+test("Prompt 超過 32768 個字送出前先擋下，不送出請求", async () => {
   const calls = stubPlatform();
   await renderList();
 
@@ -669,10 +670,10 @@ test("Prompt 超過 32768 bytes 送出前先擋下，不送出請求", async () 
   );
   await act(async () => setValue(container.querySelector<HTMLInputElement>("#tc-name")!, "名稱"));
   await act(async () =>
-    setValue(container.querySelector<HTMLTextAreaElement>("#tc-prompt")!, "x".repeat(32769)),
+    setValue(container.querySelector<HTMLTextAreaElement>("#tc-prompt")!, "長".repeat(32769)),
   );
 
-  expect(container.textContent).toContain("Prompt 最多 32768 bytes，目前 32769 bytes。");
+  expect(container.textContent).toContain("Prompt 最多 32768 個字，目前 32769 個字。");
   expect(button("建立").disabled).toBe(true);
   expect(calls.some((c) => c.method === "POST" && c.url === "/test-cases")).toBe(false);
 });

@@ -103,16 +103,10 @@ func (s *Service) loadVersions(
 	if sc.origin, err = s.existingVersion(ctx, workspaceID, run.SkillVersionID); err != nil {
 		return sc, err
 	}
-	var found bool
-	if sc.skill, found, err = s.ReadSkill(ctx, workspaceID, sc.origin.SkillID); !found && err == nil {
-		return sc, ErrNotFound
-	} else if err != nil {
+	if sc.skill, err = required(ctx, s.ReadSkill, workspaceID, sc.origin.SkillID); err != nil {
 		return sc, err
 	}
-
-	if sc.latest, found, err = s.ReadLatestVersion(ctx, workspaceID, sc.skill.ID); !found && err == nil {
-		return sc, ErrNotFound
-	} else if err != nil {
+	if sc.latest, err = required(ctx, s.ReadLatestVersion, workspaceID, sc.skill.ID); err != nil {
 		return sc, err
 	}
 
@@ -130,11 +124,17 @@ func (s *Service) loadVersions(
 }
 
 func (s *Service) existingVersion(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, error) {
-	version, found, err := s.ReadVersion(ctx, workspaceID, versionID)
-	if !found && err == nil {
-		return version, ErrNotFound
+	return required(ctx, s.ReadVersion, workspaceID, versionID)
+}
+
+func required[T any](
+	ctx context.Context, read func(ctx context.Context, workspaceID, id pgtype.UUID) (T, bool, error), workspaceID, id pgtype.UUID,
+) (T, error) {
+	value, found, err := read(ctx, workspaceID, id)
+	if err == nil && !found {
+		return value, ErrNotFound
 	}
-	return version, err
+	return value, err
 }
 
 func (s *Service) store() ObjectStore { return s.Store }

@@ -18,7 +18,6 @@ JOIN evaluation_batches b ON b.id = i.batch_id AND b.workspace_id = i.workspace_
 WHERE b.workspace_id = $1 AND b.status = 'launching' AND i.run_id IS NULL
 ORDER BY b.created_at, i.trial, i.position, i.skill_withheld
 LIMIT 1
-FOR UPDATE OF i SKIP LOCKED
 `
 
 type ClaimNextBatchItemRow struct {

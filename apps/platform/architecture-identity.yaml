@@ -71,3 +71,6 @@ packages:
   - id: wiring
     kind: Generic
     path: entrypoint/wiring
+  - id: contractlimits
+    kind: Shared Kernel
+    path: shared/contractlimits

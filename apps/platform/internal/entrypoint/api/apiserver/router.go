@@ -15,6 +15,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -34,7 +35,7 @@ type Deps struct {
 	Runs            *run.Handler
 	Trace           *trace.Handler
 	Eval            *eval.Handler
-	EvalBatches     *eval.BatchHandler
+	EvalBatches     *batch.BatchHandler
 	Graders         *eval.GraderHandler
 	Packaging       *packaging.Handler
 	Publishing      *publishing.Handler

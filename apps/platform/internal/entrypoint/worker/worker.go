@@ -27,6 +27,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -54,12 +55,12 @@ type Set struct {
 	Creation       *creation.Service
 	Runs           *run.Service
 	Evaluations    *eval.Service
-	Batches        *eval.BatchService
+	Batches        *batch.BatchService
 	Packaging      *packaging.Service
 	Registry       *registry.Service
 	CreationSearch *catalog.Service
 	RunEvents      *eval.RunEventConsumer
-	BatchEvents    *eval.BatchEventConsumer
+	BatchEvents    *batch.BatchEventConsumer
 	SkillVersions  *eval.SkillVersionConsumer
 	Events         *outbox.Dispatcher
 	Objects        *objreconcile.Service
@@ -116,7 +117,7 @@ func addEvaluationServices(set *Set, pool *pgxpool.Pool, deps Deps, r evaluation
 
 	set.RunEvents = &eval.RunEventConsumer{HasCurrentEvaluation: set.Evaluations.HasCurrentEvaluation}
 	set.SkillVersions = &eval.SkillVersionConsumer{}
-	set.BatchEvents = &eval.BatchEventConsumer{HasUnsettledBatch: set.Batches.HasUnsettledBatch}
+	set.BatchEvents = &batch.BatchEventConsumer{HasUnsettledBatch: set.Batches.HasUnsettledBatch}
 }
 
 func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
@@ -204,7 +205,7 @@ func wireEvaluationModelAndEvents(evaluations *eval.Service, pool *pgxpool.Pool,
 }
 
 func newEventDispatcher(
-	runEvents *eval.RunEventConsumer, skillVersions *eval.SkillVersionConsumer, batchEvents *eval.BatchEventConsumer,
+	runEvents *eval.RunEventConsumer, skillVersions *eval.SkillVersionConsumer, batchEvents *batch.BatchEventConsumer,
 ) *outbox.Dispatcher {
 	return outbox.NewDispatcher().
 		On("evaluation", runEvents.Deliver, outbox.RunSucceeded, outbox.RunFailed).
@@ -286,7 +287,7 @@ func periodicJobs(set *Set, deps Deps, outboxWorker *outbox.Worker) []*river.Per
 		scheduleAt(args, river.PeriodicInterval(every), runOnStart)
 	}
 	schedule(EvaluationRecoveryArgs{}, eval.RecoveryInterval, true)
-	schedule(eval.BatchAdvanceArgs{}, eval.BatchAdvanceInterval, true)
+	schedule(batch.BatchAdvanceArgs{}, batch.BatchAdvanceInterval, true)
 	schedule(RunSuperviseArgs{}, run.SuperviseInterval, true)
 	if deps.CreationLimits.Valid() {
 		schedule(wiring.CreationExpiryArgs{}, time.Minute, true)

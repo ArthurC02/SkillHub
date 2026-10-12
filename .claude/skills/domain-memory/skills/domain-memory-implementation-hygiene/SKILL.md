@@ -48,6 +48,8 @@ Work through [code expression](../../references/code-expression.md):
 
 ## Decide the smallest response
 
+Run `boundary-impact --registry-root <registry> --repo-root <repo> --base <branch point>` first. `unregistered-co-change` means the change touched two Contexts that have no registered collaboration, and `boundary-evidence-changed` means a file a boundary record cites changed: check whether a port, contract, or call between them changed shape, and treat it as the first case below if it did.
+
 1. If the behavior changes an owner, invariant, contract, event, or consistency rule, stop implementation and route it to Design.
 2. If the behavior preserves reviewed facts but the code obscures a role, make the smallest local refactoring that restores it. Add no pattern, interface, layer, or folder without a protected behavior.
 3. If the finding is about formatting or a limit and the code already states the domain clearly, leave it to the repository's tools. Do not record it as Domain Memory.

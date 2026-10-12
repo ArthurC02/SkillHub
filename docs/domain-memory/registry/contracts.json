@@ -253,6 +253,146 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "eval-run-verdicts-v1",
+      "kind": "internal-fact-reader",
+      "producer_context": "eval",
+      "consumer_contexts": [
+        "run"
+      ],
+      "version": "v1",
+      "compatibility_policy": "The run list shows each run's current evaluation verdict as eval serves it; run does not interpret it.",
+      "data_classification": "internal",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/trial/improvement/verdicts.go",
+          "lines": {
+            "start": 18,
+            "end": 32
+          },
+          "content_sha256": "sha256:2de51da635f0e4e71cd04ee7e7e691ed94cbf4111f4235ce0077121fe1ec543e",
+          "excerpt_sha256": "sha256:d2d07e97ba6a33001f0500210de125b6cae48aadf1f773fdb7f08e2b805f809b",
+          "source_kind": "implementation"
+        },
+        {
+          "path": "apps/platform/internal/trial/improvement/verdicts.go",
+          "lines": {
+            "start": 77,
+            "end": 104
+          },
+          "content_sha256": "sha256:2de51da635f0e4e71cd04ee7e7e691ed94cbf4111f4235ce0077121fe1ec543e",
+          "excerpt_sha256": "sha256:c1c17840e5de6188d949b944f58d123d74b859f5b09ac951ac5959e4992b82e7",
+          "source_kind": "implementation"
+        },
+        {
+          "path": "apps/platform/internal/trial/execution/http.go",
+          "lines": {
+            "start": 465,
+            "end": 482
+          },
+          "content_sha256": "sha256:a657b6f0a93975e38152002b78c0c98d869936f838dc6585eeb82b733f8cd294",
+          "excerpt_sha256": "sha256:562bb58b302958352ef06f8e051bd6972094206bf5c857dc537ba861c1af5544",
+          "source_kind": "implementation"
+        }
+      ],
+      "review": {
+        "proposal_id": "eval-run-verdicts-recite-r2",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-11T18:26:42.986300Z",
+            "scope": "Retire run-eval-batch-trials-v1, which the batch Context's trial contract replaced, and re-cite eval-run-verdicts-v1 at the standing-verdict read and the run list",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "42af6c8ec739c64be4c80a58311ba72e293cc9da",
+              "registry_digest": "sha256:05b8761c0ee928faade99e58aa936d10d4d7f26d6463a4ac5f1941226ad84fc4"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "run-batch-trials-v1",
+      "kind": "internal-port",
+      "producer_context": "run",
+      "consumer_contexts": [
+        "batch"
+      ],
+      "version": "v1",
+      "compatibility_policy": "Run starts and continues trials for an evaluation batch through the ports the composition root fills; Run publishes whether a refusal passes on its own and never hands its transaction to the batch.",
+      "data_classification": "internal",
+      "idempotency": {
+        "key": "origin key: the batch, the Test Case, the trial number and whether the Skill is withheld",
+        "scope": "per Workspace",
+        "on_replay": "returns the Run already started under that key, without admitting or charging again",
+        "on_conflict": "refused when the key already started a Run of a different Skill Version"
+      },
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+          "lines": {
+            "start": 45,
+            "end": 87
+          },
+          "content_sha256": "sha256:0ad02e79d2ed21f4470ab1c5034b7b04f8562c6e076dbfcc21816969f626c6a8",
+          "excerpt_sha256": "sha256:863affc772ec19b2f1544904281617ddd8b91ed4e130beba2aca55329580fe67",
+          "source_kind": "implementation"
+        },
+        {
+          "path": "apps/platform/internal/trial/execution/batch_facts.go",
+          "lines": {
+            "start": 64,
+            "end": 75
+          },
+          "content_sha256": "sha256:4b75e3b462abfabd8f05df823c8e36f77c0980ffc0aeda9bec8fa08e3906699d",
+          "excerpt_sha256": "sha256:c4b8a8c925f6d49224e57170964aca0958132aee6512a1d31443ef0a8b8db1d8",
+          "source_kind": "implementation"
+        },
+        {
+          "path": "apps/platform/internal/trial/execution/service.go",
+          "lines": {
+            "start": 909,
+            "end": 926
+          },
+          "content_sha256": "sha256:2559a814174ef782b9386066e34d404ba781cb67e2804837865668a35d95bb38",
+          "excerpt_sha256": "sha256:b33d744e5dc035dd07b22002b8fd5e71cba0dd4fb652efe02fe1d92a6a91ae62",
+          "source_kind": "implementation"
+        },
+        {
+          "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+          "lines": {
+            "start": 104,
+            "end": 104
+          },
+          "content_sha256": "sha256:5072e5e57a47566f4b966a1b8d1d4c313fef8d3e82de0bcd38e1be7124b5bd12",
+          "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "batch-run-outcome-recite",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-11T19:41:24.223707Z",
+            "scope": "Re-cite the six batch records after run began publishing a chain end's success and failure and the batch began naming a gone target itself; no record changes its statement",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "19fa17487d035a369486d8b51034b49974b3d535",
+              "registry_digest": "sha256:2800ebb312b118161afedc0d875cc097a5f524bd59b7c31481dc2ed79e9379f1"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }

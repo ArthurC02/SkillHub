@@ -111,12 +111,13 @@ func TestAnsweringARunsQuestionsStartsTheRunThatContinuesIt(t *testing.T) {
 	}
 
 	var prompt, continues, questions, answers string
+	var simulated bool
 	if err := pool.QueryRow(context.Background(), `
-		SELECT s.user_prompt, c.continues_run_id::text, c.questions::text, c.answers::text
+		SELECT s.user_prompt, c.continues_run_id::text, c.questions::text, c.answers::text, c.answered_as_simulated_user
 		FROM runs r
 		JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
 		JOIN run_continuations c ON c.run_id = r.id
-		WHERE r.id = $1`, mustUUID(t, view.RunID)).Scan(&prompt, &continues, &questions, &answers); err != nil {
+		WHERE r.id = $1`, mustUUID(t, view.RunID)).Scan(&prompt, &continues, &questions, &answers, &simulated); err != nil {
 		t.Fatal(err)
 	}
 	const wantPrompt = askingPrompt + "\n\n你先前提出的問題與我的回答：" +
@@ -124,6 +125,9 @@ func TestAnsweringARunsQuestionsStartsTheRunThatContinuesIt(t *testing.T) {
 		"\n2. 問：幾點出發？\n   答：早上八點"
 	if prompt != wantPrompt {
 		t.Errorf("prompt = %q\nwant %q", prompt, wantPrompt)
+	}
+	if simulated {
+		t.Error("a person's own answers are marked as answered by a simulated person")
 	}
 	if continues != asking || answers != `["算", "早上八點"]` {
 		t.Errorf("link = %s answers = %s", continues, answers)

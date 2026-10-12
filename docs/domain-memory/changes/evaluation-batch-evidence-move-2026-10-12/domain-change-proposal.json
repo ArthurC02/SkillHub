@@ -1,0 +1,164 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "evaluation-batch-evidence-move",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "evaluation-batch-evidence-move",
+  "status": "applied",
+  "change_classification": "material",
+  "submitted_at": "2026-10-11T18:13:11.606323Z",
+  "verified_at": "2026-10-11T18:13:51.546574Z",
+  "finalized_at": "2026-10-11T18:14:08.663216Z",
+  "applied_at": "2026-10-11T18:14:09.927390Z",
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "d90e045275c2287e9565cc8b3e2a1f544b7ddcf4",
+    "registry_digest": "sha256:f199a6fe2dbd75cc6dbd6e5e4703e224221e8e9e997d302fbd9d14b2810f3758"
+  },
+  "affected_contexts": [
+    "eval",
+    "run"
+  ],
+  "rule_ids": [
+    "eval-batch-waits-only-on-a-passing-refusal"
+  ],
+  "contract_ids": [
+    "run-eval-batch-trials-v1"
+  ],
+  "ownership_decision": {
+    "owner_context": "eval",
+    "invariant": "A batch waits on a passing refusal and stops on any other.",
+    "evidence": [
+      "apps/platform/internal/trial/batch/batch.go:254"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: run provides the trial port; only the cited file moved.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/entrypoint/wiring/evaluation_batches.go:44"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The batch code moved to trial/batch, so two reviewed records cite a file that no longer exists and the Registry refuses every write."
+    ],
+    "decision": "Re-cite the same lines at their new path; change nothing else.",
+    "invariants_preserved": [
+      "Each record states the same fact as before."
+    ],
+    "rejected_alternatives": [
+      "Restoring the old file for the length of the registration: it breaks the build of the package it would sit in."
+    ],
+    "proof_obligations": [
+      "package-valid"
+    ],
+    "counterfactual_check": "Turn the wait branch into a stop; the batch wait test must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-eval-batch-trials",
+        "producer_context": "run",
+        "consumer_context": "eval",
+        "contract_id": "run-eval-batch-trials-v1",
+        "consistency": "synchronous request, idempotent by origin key; the batch records the trial in its own transaction afterwards",
+        "delivery": "composition-root port",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 44,
+              "end": 85
+            },
+            "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
+            "excerpt_sha256": "sha256:841e644127179fb6e6aa42ceee21c36a0deaa6f747b23747323bb7dacf06c1a9",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 236,
+              "end": 273
+            },
+            "content_sha256": "sha256:b853fee91e1573854727b97f1480e74329d5670579403683326cee5cb2d2019a",
+            "excerpt_sha256": "sha256:08221039e4930fb55c53b74afa48b858ee0e30615b657ab610936664171417cf",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "eval-batch-waits-only-on-a-passing-refusal",
+        "contexts": [
+          "eval"
+        ],
+        "statement": "An evaluation batch waits when Run refuses a trial with a refusal Run says will pass on its own, and stops with that reason recorded on any other refusal.",
+        "examples": [
+          "The workspace is already running as many runs as it may: the batch tries the trial again on its next advance.",
+          "The credit balance is too low: the batch stops and records credit_balance as its reason."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 254,
+              "end": 259
+            },
+            "content_sha256": "sha256:b853fee91e1573854727b97f1480e74329d5670579403683326cee5cb2d2019a",
+            "excerpt_sha256": "sha256:091e6b79f949da9fcf2248fefa28e0b76b6321faf1a521cadce058006a54f330",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 107,
+              "end": 121
+            },
+            "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
+            "excerpt_sha256": "sha256:b1ce72bf4728455794da7f09dfcf1047ae13f11ba52e243baec0fb0dfb4bfca4",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+            "lines": {
+              "start": 104,
+              "end": 104
+            },
+            "content_sha256": "sha256:5072e5e57a47566f4b966a1b8d1d4c313fef8d3e82de0bcd38e1be7124b5bd12",
+            "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd",
+            "source_kind": "decisions"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-11T18:13:50.962192Z",
+      "scope": "Re-cite the trial-port interaction and the wait-or-stop rule at trial/batch/batch.go, where the same code moved; the records' statements are unchanged",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "d90e045275c2287e9565cc8b3e2a1f544b7ddcf4",
+        "registry_digest": "sha256:f199a6fe2dbd75cc6dbd6e5e4703e224221e8e9e997d302fbd9d14b2810f3758"
+      }
+    }
+  ],
+  "supersedes": "eval-run-collaboration-r2",
+  "applied_registry_revision": {
+    "observed_commit": "71ed9d92f42305ee34c84ab39b83332c0d4d8b03",
+    "registry_digest": "sha256:47bf22163a0e14f5dd5491904e89ad116901ecf3aa8802030635fb01b7f0d219"
+  }
+}

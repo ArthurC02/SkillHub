@@ -235,6 +235,246 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "run-eval-run-facts",
+      "producer_context": "run",
+      "consumer_context": "eval",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/trial.go",
+          "lines": {
+            "start": 98,
+            "end": 121
+          },
+          "content_sha256": "sha256:1881a4fe5066ba814f159bf2a8c9db2d6e4efb1964c51681f5cf3da602d5a9d5",
+          "excerpt_sha256": "sha256:738ee12fc6379079b9a7598972b08b1e936ec35ddefafea36e6b430615a881ed",
+          "source_kind": "implementation"
+        }
+      ],
+      "review": {
+        "proposal_id": "eval-run-collaboration-r2",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-11T17:35:11.366282Z",
+            "scope": "The eval and run collaboration: run's trial port with its origin-key idempotency and passing-refusal fact, run's fact reader for judging, eval's verdict reader for the run list, and eval's wait-or-stop rule",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "7ae276dc85afa0672a63370516232830a78fba90",
+              "registry_digest": "sha256:7735d13dfcdb3a462c8b4d65265fd62d6fed592669cca700643a0accc382302c"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "eval-run-verdicts",
+      "producer_context": "eval",
+      "consumer_context": "run",
+      "contract_id": "eval-run-verdicts-v1",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/trial/execution/http.go",
+          "lines": {
+            "start": 465,
+            "end": 482
+          },
+          "content_sha256": "sha256:a657b6f0a93975e38152002b78c0c98d869936f838dc6585eeb82b733f8cd294",
+          "excerpt_sha256": "sha256:562bb58b302958352ef06f8e051bd6972094206bf5c857dc537ba861c1af5544",
+          "source_kind": "implementation"
+        }
+      ],
+      "review": {
+        "proposal_id": "eval-run-collaboration-r2",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-11T17:35:11.366282Z",
+            "scope": "The eval and run collaboration: run's trial port with its origin-key idempotency and passing-refusal fact, run's fact reader for judging, eval's verdict reader for the run list, and eval's wait-or-stop rule",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "7ae276dc85afa0672a63370516232830a78fba90",
+              "registry_digest": "sha256:7735d13dfcdb3a462c8b4d65265fd62d6fed592669cca700643a0accc382302c"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "run-batch-trials",
+      "producer_context": "run",
+      "consumer_context": "batch",
+      "contract_id": "run-batch-trials-v1",
+      "consistency": "synchronous request, idempotent by origin key; the batch records the trial in its own statement afterwards",
+      "delivery": "composition-root port",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+          "lines": {
+            "start": 45,
+            "end": 87
+          },
+          "content_sha256": "sha256:0ad02e79d2ed21f4470ab1c5034b7b04f8562c6e076dbfcc21816969f626c6a8",
+          "excerpt_sha256": "sha256:863affc772ec19b2f1544904281617ddd8b91ed4e130beba2aca55329580fe67",
+          "source_kind": "implementation"
+        },
+        {
+          "path": "apps/platform/internal/trial/batch/batch.go",
+          "lines": {
+            "start": 241,
+            "end": 276
+          },
+          "content_sha256": "sha256:75bf880da521824cfa0b1a043df0c267721491c186e1db32ffa42c3f50caa85c",
+          "excerpt_sha256": "sha256:996de9b7df93c2757e36a819495da716a9e18bc1424916d68be8216cc09b1d14",
+          "source_kind": "implementation"
+        }
+      ],
+      "review": {
+        "proposal_id": "batch-run-outcome-recite",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-11T19:41:24.223707Z",
+            "scope": "Re-cite the six batch records after run began publishing a chain end's success and failure and the batch began naming a gone target itself; no record changes its statement",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "19fa17487d035a369486d8b51034b49974b3d535",
+              "registry_digest": "sha256:2800ebb312b118161afedc0d875cc097a5f524bd59b7c31481dc2ed79e9379f1"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "eval-batch-standing-verdicts",
+      "producer_context": "eval",
+      "consumer_context": "batch",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+          "lines": {
+            "start": 24,
+            "end": 43
+          },
+          "content_sha256": "sha256:0ad02e79d2ed21f4470ab1c5034b7b04f8562c6e076dbfcc21816969f626c6a8",
+          "excerpt_sha256": "sha256:a3de7bd4935a3b482bf5f75698c3ebaeca04830587949b15a59a3b1293b4d600",
+          "source_kind": "implementation"
+        }
+      ],
+      "review": {
+        "proposal_id": "batch-run-outcome-recite",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-11T19:41:24.223707Z",
+            "scope": "Re-cite the six batch records after run began publishing a chain end's success and failure and the batch began naming a gone target itself; no record changes its statement",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "19fa17487d035a369486d8b51034b49974b3d535",
+              "registry_digest": "sha256:2800ebb312b118161afedc0d875cc097a5f524bd59b7c31481dc2ed79e9379f1"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "testlab-batch-snapshot-facts",
+      "producer_context": "testlab",
+      "consumer_context": "batch",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+          "lines": {
+            "start": 73,
+            "end": 78
+          },
+          "content_sha256": "sha256:0ad02e79d2ed21f4470ab1c5034b7b04f8562c6e076dbfcc21816969f626c6a8",
+          "excerpt_sha256": "sha256:8567f6207d7908c1c98f907701c6db2bff9c5b319372f587eece2b3cb7f4863f",
+          "source_kind": "implementation"
+        }
+      ],
+      "review": {
+        "proposal_id": "batch-run-outcome-recite",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-11T19:41:24.223707Z",
+            "scope": "Re-cite the six batch records after run began publishing a chain end's success and failure and the batch began naming a gone target itself; no record changes its statement",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "19fa17487d035a369486d8b51034b49974b3d535",
+              "registry_digest": "sha256:2800ebb312b118161afedc0d875cc097a5f524bd59b7c31481dc2ed79e9379f1"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "trace-batch-question-count",
+      "producer_context": "trace",
+      "consumer_context": "batch",
+      "consistency": "synchronous",
+      "delivery": "composition-root fact reader",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+          "lines": {
+            "start": 74,
+            "end": 77
+          },
+          "content_sha256": "sha256:0ad02e79d2ed21f4470ab1c5034b7b04f8562c6e076dbfcc21816969f626c6a8",
+          "excerpt_sha256": "sha256:552f303644ead7a30c043aa3a279db7d1f8151546b2384b735ec55f735726801",
+          "source_kind": "implementation"
+        }
+      ],
+      "review": {
+        "proposal_id": "batch-run-outcome-recite",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-11T19:41:24.223707Z",
+            "scope": "Re-cite the six batch records after run began publishing a chain end's success and failure and the batch began naming a gone target itself; no record changes its statement",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "19fa17487d035a369486d8b51034b49974b3d535",
+              "registry_digest": "sha256:2800ebb312b118161afedc0d875cc097a5f524bd59b7c31481dc2ed79e9379f1"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }

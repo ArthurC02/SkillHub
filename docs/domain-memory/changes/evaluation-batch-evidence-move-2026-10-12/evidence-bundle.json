@@ -1,0 +1,83 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "evaluation-batch-evidence-move",
+  "proposal_id": "evaluation-batch-evidence-move",
+  "registry_revision": {
+    "observed_commit": "d90e045275c2287e9565cc8b3e2a1f544b7ddcf4",
+    "registry_digest": "sha256:f199a6fe2dbd75cc6dbd6e5e4703e224221e8e9e997d302fbd9d14b2810f3758"
+  },
+  "approvals": [],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "71ed9d92f42305ee34c84ab39b83332c0d4d8b03",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "d90e045275c2287e9565cc8b3e2a1f544b7ddcf4",
+      "registry_digest": "sha256:f199a6fe2dbd75cc6dbd6e5e4703e224221e8e9e997d302fbd9d14b2810f3758"
+    }
+  },
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "batch-waits-or-stops",
+    "mutated_protection": "the batch treating ErrRunMustWait as a wait",
+    "failure_evidence": "With the wait branch disabled, TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait failed with the wait error surfacing from AdvanceBatches; the file was restored byte for byte (cmp).",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/trial/batch/batch.go",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+    "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "package-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate-change-package --package-root docs/domain-memory/changes/evaluation-batch-evidence-move-2026-10-12 --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f59ed0f5e58f24af697fc460db7a190345b22c6e6c8a2fdbf184d0f488d61a0f",
+      "finished_at": "2026-10-11T18:13:13.403036Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:4375b10b60a3b19e6b4e1110cf5e02b4379f6e78aa44cadcfef94cccb2cdc6dc",
+      "finished_at": "2026-10-11T18:13:15.455639Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py governance-readiness --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:2b6a3a27f1223e6cc1dc91aae0d304d9226040ff5508b5e8d4133a1df04930ec",
+      "finished_at": "2026-10-11T18:13:16.439246Z"
+    },
+    {
+      "obligation_id": "batch-waits-or-stops",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -run TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait|TestARefusalThatWaitingCannotFixStopsTheBatch ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:8b130581ade5156acf4102298ea6d7e99b489cdb5c465febf919ecb44890d659",
+      "finished_at": "2026-10-11T18:13:33.806873Z"
+    },
+    {
+      "obligation_id": "trial-port-contract",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -run TestATrialWhoseRunWasAlreadyStartedUnderItsKey|TestAnOriginKeyThatStartedOne ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:98f87cbbce52bd7a37d1fc7a1aa5623e80de17c0928cdabf929a5bf294f5aaf0",
+      "finished_at": "2026-10-11T18:13:50.515457Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

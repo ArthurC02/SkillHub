@@ -2,7 +2,6 @@ package eval
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 
@@ -38,19 +37,11 @@ func (c *SkillVersionConsumer) Deliver(ctx context.Context, event outbox.Event) 
 	if c.Enqueue == nil {
 		return errors.New("suggestions-applied consumer is not configured")
 	}
-	var added versionAdded
-	if err := json.Unmarshal(event.Payload, &added); err != nil {
+	args, improved, err := suggestionsApplied(event)
+	if err != nil || !improved {
 		return err
 	}
-	if added.ImprovedBy == nil {
-		return nil
-	}
-	err := c.Enqueue(ctx, SuggestionsAppliedArgs{
-		EventID:     event.EventID,
-		WorkspaceID: event.WorkspaceID, SkillID: event.AggregateID, SkillVersionID: added.VersionID,
-		EvaluationID: added.ImprovedBy.EvaluationID, SuggestionIDs: added.ImprovedBy.SuggestionIDs,
-	})
-	return err
+	return c.Enqueue(ctx, args)
 }
 
 type SuggestionsAppliedArgs struct {

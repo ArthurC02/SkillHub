@@ -3,6 +3,7 @@ package apiserver_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -12,9 +13,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
-	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 const doesNotAsk = `[{"id":"c1","text":"answers without asking","check":{"kind":"does_not_ask"}}]`
@@ -123,7 +125,7 @@ func runsOfTestCase(t *testing.T, pool *pgxpool.Pool, testCaseID string) int {
 	return n
 }
 
-func TestATrialAnotherAdvanceStartedFirstNeverGetsASecondRun(t *testing.T) {
+func TestATrialWhoseRunWasAlreadyStartedUnderItsKeyIsLinkedToThatRunNeverASecond(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-batch-race")
@@ -137,26 +139,56 @@ func TestATrialAnotherAdvanceStartedFirstNeverGetsASecondRun(t *testing.T) {
 	batchID := body["id"].(string)
 	first := batchTrialRuns(t, pool, batchID)[f.testCaseID+"#1"]
 	mustExec(t, pool, `UPDATE runs SET status = 'cancelled', finished_at = now() WHERE id = $1`, mustUUID(t, first))
-	competitor := seedFinishedRun(t, pool, f, finishedRun{testCaseID: f.testCaseID, criteria: doesNotAsk, contentHash: "sha256:race"})
 	before := runsOfTestCase(t, pool, f.testCaseID)
 
 	ports := a.batches.Ports
 	start := ports.StartRun
-	ports.StartRun = func(ctx context.Context, b eval.BatchRun) (pgtype.UUID, error) {
-		mustExec(t, pool, `UPDATE evaluation_batch_items SET run_id = $1 WHERE batch_id = $2 AND trial = 2`,
-			mustUUID(t, competitor), mustUUID(t, batchID))
+	var earlier pgtype.UUID
+	ports.StartRun = func(ctx context.Context, b batch.BatchRun) (pgtype.UUID, error) {
+		if !earlier.Valid {
+			var err error
+			if earlier, err = start(ctx, b); err != nil {
+				t.Fatalf("the earlier advance could not start the trial: %v", err)
+			}
+		}
 		return start(ctx, b)
 	}
-	racing := &eval.BatchService{Pool: pool, Ports: ports}
-	if err := racing.AdvanceBatches(ctx, mustUUID(t, f.workspaceID)); err != nil {
-		t.Fatalf("losing the race is not an error: %v", err)
+	replaying := &batch.BatchService{Pool: pool, Ports: ports}
+	if err := replaying.AdvanceBatches(ctx, mustUUID(t, f.workspaceID)); err != nil {
+		t.Fatalf("starting a trial a second time is not an error: %v", err)
 	}
 
-	if after := runsOfTestCase(t, pool, f.testCaseID); after != before {
-		t.Errorf("runs for the test case went from %d to %d, want the losing run rolled back", before, after)
+	if after := runsOfTestCase(t, pool, f.testCaseID); after != before+1 {
+		t.Errorf("runs for the test case went from %d to %d, want exactly one new run", before, after)
 	}
-	if got := batchTrialRuns(t, pool, batchID)[f.testCaseID+"#2"]; got != competitor {
-		t.Errorf("trial 2 is linked to %q, want the competitor's run %s", got, competitor)
+	if got := batchTrialRuns(t, pool, batchID)[f.testCaseID+"#2"]; got != pgconv.UUIDString(earlier) {
+		t.Errorf("trial 2 is linked to %q, want the run the earlier advance started, %s", got, pgconv.UUIDString(earlier))
+	}
+}
+
+func TestAnOriginKeyThatStartedOneSkillVersionCannotStartAnother(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-origin-reuse")
+	hash := f.confirmPermissions(t)
+	ctx := context.Background()
+	params := run.CreateParams{
+		WorkspaceID: mustUUID(t, f.workspaceID), Actor: mustUUID(t, f.userID), SkillID: mustUUID(t, f.skillID),
+		VersionID: mustUUID(t, f.versionID), TestCaseID: mustUUID(t, f.testCaseID),
+		ConfirmedSummaryHash: hash, OriginKey: "caller/one",
+	}
+	created, err := a.runs.Create(ctx, params)
+	if err != nil {
+		t.Fatalf("first start: %v", err)
+	}
+	again, err := a.runs.Create(ctx, params)
+	if err != nil || again.ID != created.ID {
+		t.Fatalf("same key again: got %v, %v; want the run %v back", again.ID, err, created.ID)
+	}
+
+	params.VersionID = mustUUID(t, seedSkillVersion(t, pool, f.workspaceID, f.skillID))
+	if _, err := a.runs.Create(ctx, params); !errors.Is(err, run.ErrOriginKeyReused) {
+		t.Fatalf("same key, another version: %v, want ErrOriginKeyReused", err)
 	}
 }
 
@@ -271,6 +303,38 @@ func TestARefusalThatWaitingCannotFixStopsTheBatch(t *testing.T) {
 	trial := report["test_cases"].([]any)[0].(map[string]any)["trials"].([]any)[0].(map[string]any)
 	if trial["outcome"] != "not_evaluated" {
 		t.Errorf("the cancelled first trial = %v, want not_evaluated", trial)
+	}
+}
+
+func TestABatchWhoseTestCaseWasDeletedStopsAsTargetGone(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-batch-gone")
+	f.confirmPermissions(t)
+
+	code, body := f.doJSON(t, http.MethodPost, "/skills/"+f.skillID+"/evaluation-batches", batchBody(f.versionID, 2, f.testCaseID))
+	if code != http.StatusCreated {
+		t.Fatalf("create: %d %v", code, body)
+	}
+	batchID := body["id"].(string)
+	first := batchTrialRuns(t, pool, batchID)[f.testCaseID+"#1"]
+	mustExec(t, pool, `UPDATE runs SET status = 'failed', finished_at = now() WHERE id = $1`, mustUUID(t, first))
+	mustExec(t, pool, `UPDATE test_cases SET deleted_at = now() WHERE id = $1`, mustUUID(t, f.testCaseID))
+
+	if err := a.batches.AdvanceBatches(context.Background(), mustUUID(t, f.workspaceID)); err != nil {
+		t.Fatal(err)
+	}
+	code, report := f.doJSON(t, http.MethodGet, "/skills/"+f.skillID+"/evaluation-batches/"+batchID, "")
+	batch, _ := report["batch"].(map[string]any)
+	if code != http.StatusOK || batch["status"] != "stopped" || batch["stop_reason"] != "target_gone" {
+		t.Fatalf("after the test case was deleted: got %d %v, want stopped as target_gone", code, batch)
+	}
+	if got := started(batchTrialRuns(t, pool, batchID)); len(got) != 1 {
+		t.Errorf("a stopped batch started %v, want only its first trial", got)
+	}
+	trial := report["test_cases"].([]any)[0].(map[string]any)["trials"].([]any)[0].(map[string]any)
+	if trial["outcome"] != "running" {
+		t.Errorf("the failed first trial = %v, want running until its judging lands", trial)
 	}
 }
 
@@ -449,4 +513,28 @@ func (w batchTestCaseWant) check(t *testing.T, got map[string]any) {
 func near(got any, want float64) bool {
 	value, ok := got.(float64)
 	return ok && math.Abs(value-want) < 0.0005
+}
+
+func TestTheRunListShowsEachRunsCurrentVerdictAndSaysNotEvaluatedOtherwise(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-run-list-verdicts")
+	judged := seedFinishedRun(t, pool, f, finishedRun{testCaseID: f.testCaseID, criteria: doesNotAsk, contentHash: "sha256:judged"})
+	unjudged := seedFinishedRun(t, pool, f, finishedRun{testCaseID: f.testCaseID, criteria: doesNotAsk, contentHash: "sha256:unjudged"})
+	mustExec(t, pool, `
+		INSERT INTO evaluations (workspace_id, run_id, status, overall, evidence_complete)
+		VALUES ($1, $2, 'completed', 'met', true)`, mustUUID(t, f.workspaceID), mustUUID(t, judged))
+
+	code, body := f.doJSON(t, http.MethodGet, "/runs?test_case_id="+f.testCaseID, "")
+	if code != http.StatusOK {
+		t.Fatalf("list: got %d %v", code, body)
+	}
+	verdicts := map[string]any{}
+	for _, item := range body["runs"].([]any) {
+		row := item.(map[string]any)
+		verdicts[row["run_id"].(string)] = row["evaluation"].(map[string]any)["value"]
+	}
+	if verdicts[judged] != "met" || verdicts[unjudged] != "not_evaluated" {
+		t.Errorf("verdicts = %v, want %s met and %s not_evaluated", verdicts, judged, unjudged)
+	}
 }

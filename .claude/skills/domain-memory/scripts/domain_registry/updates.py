@@ -1,10 +1,9 @@
 import json
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .changes import PROPOSAL_FILE, validate_change_package
+from .changes import PROPOSAL_FILE, ParsedUpdate, parsed_update, superseded_ids, validate_change_package
 from .common import (
     ASSET_KEYS,
     completed_identifier,
@@ -13,7 +12,7 @@ from .common import (
     registry_dir,
     reject_duplicate_keys,
 )
-from .evidence import classify_all, source_map_for, unclassified_paths
+from .evidence import classify_all, hash_all, source_map_for, unclassified_paths
 from .policy import review_mode
 from .revision import (
     current_registry_revision,
@@ -51,10 +50,10 @@ def rebased_revisions(
     }
 
 
-def reconcile_pending_update(registry_root: Path, repo_root: Path) -> None:
+def reconcile_pending_update(registry_root: Path, repo_root: Path) -> str | None:
     marker_path = reconciliation_path(registry_root)
     if not marker_path.is_file():
-        return
+        return None
     marker = load_json(marker_path)
     relative = marker.get("package")
     proposal_id = marker.get("proposal_id")
@@ -71,24 +70,33 @@ def reconcile_pending_update(registry_root: Path, repo_root: Path) -> None:
     proposal = load_json(proposal_path)
     if proposal.get("proposal_id") != proposal_id:
         raise ValueError("registry reconciliation marker does not match its proposal")
-    if proposal.get("status") == "applied":
-        marker_path.unlink()
-        return
-    if proposal.get("status") != "approved":
-        raise ValueError("registry reconciliation requires an approved proposal")
+    outcome = _reconciled(proposal_path, proposal, registry_root, repo_root)
+    marker_path.unlink()
+    return outcome
+
+
+def _was_applied(registry_root: Path, proposal_id: str) -> bool:
     from .audit import read_events
 
-    events = read_events(registry_root)
-    if (
-        not events
-        or events[-1].get("operation") != "apply-approved-updates"
-        or events[-1].get("proposal_id") != proposal_id
-    ):
+    return any(
+        event.get("operation") == "apply-approved-updates" and event.get("proposal_id") == proposal_id
+        for event in read_events(registry_root)
+    )
+
+
+def _reconciled(proposal_path: Path, proposal: dict[str, Any], registry_root: Path, repo_root: Path) -> str:
+    proposal_id = proposal["proposal_id"]
+    if proposal.get("status") == "applied":
+        return f"{proposal_id} was already marked applied"
+    if not _was_applied(registry_root, proposal_id):
+        return f"{proposal_id} was never applied: the audit log holds no apply for it, so the Registry is unchanged"
+    if proposal.get("status") != "approved":
         raise ValueError(
-            "registry reconciliation cannot prove the approved update was committed"
+            f"the audit log records an apply of {proposal_id}, but its proposal is "
+            f"{proposal.get('status')}; reconcile the package with the Registry by hand"
         )
     mark_applied(proposal_path, proposal, registry_root, repo_root)
-    marker_path.unlink()
+    return f"{proposal_id} was applied before an interruption and is now marked applied"
 
 
 def review_field(asset: str) -> str:
@@ -181,6 +189,8 @@ def upsert_candidate(
 ) -> list[str]:
     name = asset_file_name(asset)
     batch = _batch_records(record_paths)
+    if repo_root is not None:
+        batch = [hash_all(record, repo_root) for record in batch]
     source_map = source_map_for(root)
     outside: list[str] = []
 
@@ -250,44 +260,16 @@ def retract_candidate(
     )
 
 
-@dataclass(frozen=True)
-class ParsedUpdate:
-    asset: str
-    record_id: str
-    record: dict[str, Any] | None
-
-    @property
-    def document_name(self) -> str:
-        return f"{self.asset}.json"
-
-
-def parsed_update(update: Any) -> ParsedUpdate:
-    if not isinstance(update, dict) or update.get("operation") not in ("upsert", "remove"):
-        raise ValueError("each registry update must be an upsert or a remove")
-    removing = update.get("operation") == "remove"
-    asset = update.get("asset")
-    record = None if removing else update.get("record")
-    record_id = update.get("id") if removing else (record or {}).get("id")
-    if (
-        not isinstance(asset, str)
-        or f"{asset}.json" not in ASSET_KEYS
-        or (not removing and not isinstance(record, dict))
-        or not completed_identifier(record_id)
-    ):
-        raise ValueError("registry update has an invalid asset or record")
-    return ParsedUpdate(asset, record_id, record)
-
-
 def _refuse_unsuperseded_overwrite(
     update: ParsedUpdate, document: dict[str, Any], existing: Any, proposal: dict[str, Any]
 ) -> None:
     if not is_reviewed(update.asset, document, existing):
         return
     reviewed_by = (existing.get("review") or {}).get("proposal_id")
-    if not reviewed_by or proposal.get("supersedes") != reviewed_by:
+    if not reviewed_by or reviewed_by not in (superseded_ids(proposal) or set()):
         raise ValueError(
             f"cannot overwrite reviewed record: {update.record_id}; a proposal that "
-            f"replaces it must supersede {reviewed_by or 'the proposal that reviewed it'}"
+            f"replaces it must list {reviewed_by or 'the proposal that reviewed it'} in supersedes"
         )
 
 
@@ -381,18 +363,23 @@ def apply_approved_updates(
             "proposal_id": proposal["proposal_id"],
         },
     )
-    mutate_registry(
-        registry_root,
-        repo_root,
-        mutate,
-        accepted_digest,
-        audit_event=lambda: {
-            "operation": "apply-approved-updates",
-            "proposal_id": proposal["proposal_id"],
-            **rebased_revisions(base_revision, accepted_digest, registry_root, repo_root),
-            "to_revision": current_registry_revision(registry_root, repo_root),
-        },
-    )
+    try:
+        mutate_registry(
+            registry_root,
+            repo_root,
+            mutate,
+            accepted_digest,
+            audit_event=lambda: {
+                "operation": "apply-approved-updates",
+                "proposal_id": proposal["proposal_id"],
+                **rebased_revisions(base_revision, accepted_digest, registry_root, repo_root),
+                "to_revision": current_registry_revision(registry_root, repo_root),
+            },
+        )
+    except Exception:
+        if not _was_applied(registry_root, proposal["proposal_id"]):
+            reconciliation_path(registry_root).unlink(missing_ok=True)
+        raise
     mark_applied(package_root / "domain-change-proposal.json", proposal, registry_root, repo_root)
     reconciliation_path(registry_root).unlink(missing_ok=True)
 
@@ -404,7 +391,8 @@ def promote_candidate(
     if proposal.get("status") != "draft":
         raise ValueError(
             "registry updates are added while the proposal is a draft; a submitted proposal's "
-            "content is what its approvals cover"
+            "content is what its approvals cover. To change it, run supersede-proposal, then "
+            "redraft-proposal into a new package, and promote into that draft"
         )
     name = asset_file_name(asset)
     document = load_json(registry_dir(registry_root) / name)

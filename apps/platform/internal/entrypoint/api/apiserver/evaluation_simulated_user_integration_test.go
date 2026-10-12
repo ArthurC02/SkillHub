@@ -3,6 +3,7 @@ package apiserver_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"slices"
 	"strings"
@@ -10,7 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 )
 
 var waterFacts = []string{"本期用水 45 度", "上期沒有欠費"}
@@ -40,9 +41,10 @@ func seedBatchByCreator(t *testing.T, pool *pgxpool.Pool, f fixture, runIDs ...s
 }
 
 type continued struct {
-	prompt  string
-	facts   []string
-	answers []string
+	prompt    string
+	facts     []string
+	answers   []string
+	simulated bool
 }
 
 func continuationOf(t *testing.T, pool *pgxpool.Pool, runID string) (continued, bool) {
@@ -50,11 +52,11 @@ func continuationOf(t *testing.T, pool *pgxpool.Pool, runID string) (continued, 
 	var c continued
 	var raw []byte
 	err := pool.QueryRow(context.Background(), `
-		SELECT s.user_prompt, s.simulated_user_facts, c.answers
+		SELECT s.user_prompt, s.simulated_user_facts, c.answers, c.answered_as_simulated_user
 		FROM run_continuations c
 		JOIN runs r ON r.id = c.run_id
 		JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
-		WHERE c.continues_run_id = $1`, mustUUID(t, runID)).Scan(&c.prompt, &c.facts, &raw)
+		WHERE c.continues_run_id = $1`, mustUUID(t, runID)).Scan(&c.prompt, &c.facts, &raw, &c.simulated)
 	if err != nil {
 		return continued{}, false
 	}
@@ -89,9 +91,12 @@ func TestABatchAnswersAQuestionAsTheSimulatedPersonOnlyWhereTheTestCaseHasFacts(
 	}
 
 	next, found := continuationOf(t, pool, withFacts)
-	reply := eval.SimulatedUserReply(waterFacts)
+	reply := batch.SimulatedUserReply(waterFacts)
 	if !found || !slices.Equal(next.answers, []string{reply, reply}) {
 		t.Fatalf("the trial with facts was answered %v (found %v), want both questions answered with %q", next.answers, found, reply)
+	}
+	if !next.simulated {
+		t.Error("the continuation the batch answered is not marked as answered by the simulated person")
 	}
 	if !strings.Contains(next.prompt, "本期用水 45 度") {
 		t.Errorf("the continuing run's prompt %q does not carry the simulated person's facts", next.prompt)
@@ -104,6 +109,28 @@ func TestABatchAnswersAQuestionAsTheSimulatedPersonOnlyWhereTheTestCaseHasFacts(
 	}
 	if batchSettled(t, pool, batchID) {
 		t.Error("the batch settled while the answered trial's next run has not ended")
+	}
+}
+
+func TestOneBatchFailingToAnswerLeavesTheOtherBatchesToSettle(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-simulated-isolated")
+	failing := seedBatchByCreator(t, pool, f, seedFactsAskingRun(t, pool, f, waterFacts, "本期用了幾度？"))
+	mustExec(t, pool, `UPDATE evaluation_batches SET created_at = now() - interval '1 minute' WHERE id = $1`, mustUUID(t, failing))
+	quiet := seedBatchByCreator(t, pool, f, seedAskingRun(t, pool, f, "本期用了幾度？"))
+
+	broken := errors.New("connection reset")
+	isolated := *a.batches
+	isolated.Ports.AnswerRun = func(context.Context, batch.BatchAnswer) error { return broken }
+	if err := isolated.AdvanceBatches(context.Background(), mustUUID(t, f.workspaceID)); !errors.Is(err, broken) {
+		t.Fatalf("advance = %v, want the failed answer returned so the round is retried", err)
+	}
+	if batchSettled(t, pool, failing) {
+		t.Error("the batch whose answer failed settled")
+	}
+	if !batchSettled(t, pool, quiet) {
+		t.Error("the batch that owed no answer did not settle because another batch's answer failed")
 	}
 }
 

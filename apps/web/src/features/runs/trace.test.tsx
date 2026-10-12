@@ -948,20 +948,20 @@ test("the submit button waits for every question and says so, and sends nothing 
   expect(submitButton()!.disabled).toBe(false);
 });
 
-test("an answer is accepted at 2000 bytes and refused at 2001, counting bytes not characters", async () => {
+test("an answer is accepted at 2000 characters and refused at 2001, counting characters not bytes or UTF-16 units", async () => {
   stubTrace(asking, advanced);
   await render();
   await fill(`#answer-${RUN_ID}-1`, "ok");
 
   for (const [label, text, blocked] of [
-    ["2000 ascii", "a".repeat(2000), false],
-    ["2001 ascii", "a".repeat(2001), true],
-    ["666 cjk = 1998 bytes", "字".repeat(666), false],
-    ["667 cjk = 2001 bytes", "字".repeat(667), true],
+    ["2000 cjk = 6000 bytes", "字".repeat(2000), false],
+    ["2001 cjk", "字".repeat(2001), true],
+    ["2000 emoji = 4000 UTF-16 units", "🙂".repeat(2000), false],
+    ["2001 emoji", "🙂".repeat(2001), true],
   ] as const) {
     await fill(`#answer-${RUN_ID}-0`, text);
     expect(submitButton()!.disabled, label).toBe(blocked);
-    expect(container.textContent?.includes("每個回答最多 2000 位元組"), label).toBe(blocked);
+    expect(container.textContent?.includes("每個回答最多 2000 個字"), label).toBe(blocked);
   }
 });
 

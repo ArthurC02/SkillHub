@@ -1,0 +1,115 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "eval-trace-write-mode",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "eval-trace-write-mode",
+  "status": "superseded",
+  "change_classification": "material",
+  "submitted_at": "2026-10-11T20:09:30.818034Z",
+  "verified_at": "2026-10-11T20:09:35.357023Z",
+  "finalized_at": "2026-10-11T20:09:50.206237Z",
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "aa601842278408101cb7162ca7a64d54c78c47ef",
+    "registry_digest": "sha256:48d1084f5f47f7bea29eee3b14bc074b1cae643762565c773801ad4a96a769d2"
+  },
+  "affected_contexts": [
+    "eval",
+    "trace"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "trace",
+    "invariant": "trace owns its events; eval records orchestrator events only through trace's own function.",
+    "evidence": [
+      "apps/platform/internal/trial/improvement/eval.go:607"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "eval reads a run's trace and records its own judging events through trace.RecordOrchestratorEvent in eval's transaction.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/improvement/eval.go:607"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The policy called the collaboration a query while eval records orchestrator events."
+    ],
+    "decision": "Mark the policy synchronous-write and cite the write.",
+    "invariants_preserved": [
+      "The import it permits is unchanged."
+    ],
+    "rejected_alternatives": [
+      "Moving the write out of eval: the event must commit with the evaluation row it reports."
+    ],
+    "proof_obligations": [
+      "package-valid"
+    ],
+    "counterfactual_check": "Not applicable: the record corrects how an allowed import is described."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "dependencies",
+      "record": {
+        "id": "eval-may-use-trace",
+        "from_context": "eval",
+        "to_context": "trace",
+        "mode": "synchronous-write",
+        "policy": "allowed",
+        "rationale": "Judging and comparing Runs reads their recorded evidence, and an evaluation records its own start and end as orchestrator events in its transaction.",
+        "evidence": [
+          {
+            "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+            "lines": {
+              "start": 42,
+              "end": 42
+            },
+            "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+            "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+            "source_kind": "decisions"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/eval.go",
+            "lines": {
+              "start": 607,
+              "end": 612
+            },
+            "content_sha256": "sha256:1e5b77b8e9df4384aa3e38e8a9bea15a8301f4d560301062c8229b1c1320dbfe",
+            "excerpt_sha256": "sha256:2c67608cb0e43cc73ff69664aa9c3871daa7c7b2d16ab306886952d04fceb7ab",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-11T20:09:34.594266Z",
+      "scope": "eval-may-use-trace becomes synchronous-write: eval records its judging start and end as trace orchestrator events in its own transaction; the permitted import is unchanged",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "aa601842278408101cb7162ca7a64d54c78c47ef",
+        "registry_digest": "sha256:48d1084f5f47f7bea29eee3b14bc074b1cae643762565c773801ad4a96a769d2"
+      }
+    }
+  ],
+  "supersedes": [
+    "dependency-policies-match-the-guard"
+  ],
+  "superseded_from_status": "approved",
+  "superseded_at": "2026-10-11T20:10:13.808292Z",
+  "superseded_reason": "approved with the asset named dependencies; apply refused it as invalid, the Registry asset is dependency-policies",
+  "superseded_by": "eval-trace-write-mode-r2"
+}

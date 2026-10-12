@@ -3,15 +3,17 @@ package eval
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
 const (
 	MaxCheckNodes      = 50
 	MaxCheckDepth      = 8
-	MaxCheckValues     = 20
-	MaxCheckValueBytes = 200
+	MaxCheckValues     = limits.CriterionCheckValuesMaxItems
+	MaxCheckValueChars = limits.CriterionCheckValuesItemMaxLength
 	CheckItem          = "{item}"
 )
 
@@ -143,8 +145,8 @@ func normalizedValues(raw []string) ([]string, error) {
 		if v == "" {
 			return nil, fmt.Errorf("%w: 檢查的值不能空白", ErrInvalidCheck)
 		}
-		if len(v) > MaxCheckValueBytes {
-			return nil, fmt.Errorf("%w: 每個檢查的值最多 %d bytes", ErrInvalidCheck, MaxCheckValueBytes)
+		if utf8.RuneCountInString(v) > MaxCheckValueChars {
+			return nil, fmt.Errorf("%w: 每個檢查的值最多 %d 個字", ErrInvalidCheck, MaxCheckValueChars)
 		}
 		values = append(values, v)
 	}
@@ -187,7 +189,7 @@ func (r ruleLeaf) kind() CheckKind { return r.info }
 
 func (r ruleLeaf) evaluate(s checkScope, n testlab.Check, _ string) outcome {
 	result, reason := r.grade(s.m, s.withItem(n.Values))
-	if result == ResultPassed && !s.m.evidenceComplete() {
+	if s.m.cannotRecordPass(result) {
 		result = ResultUndetermined
 		reason += "; the run's evidence is incomplete, so this is not recorded as passed"
 	}
@@ -248,14 +250,14 @@ func (promptGraderNode) kind() CheckKind {
 }
 
 func (promptGraderNode) evaluate(s checkScope, n testlab.Check, path string) outcome {
-	g, found := s.m.graders[n.Values[0]]
+	version, found := s.m.graders[n.Values[0]]
 	if !found {
 		return outcome{result: ResultUndetermined, reason: "the grader version this check names is not available to this workspace"}
 	}
 	o := s.modelVerdict(judgeItem{
-		key: s.criterion.ID + "@" + path, text: s.criterion.Text, instructions: s.withItem([]string{g.instructions})[0],
+		key: s.criterion.ID + "@" + path, text: s.criterion.Text, instructions: s.withItem([]string{version.Instructions})[0],
 	})
-	o.reason = fmt.Sprintf("%s v%d: %s", g.name, g.version, o.reason)
+	o.reason = fmt.Sprintf("%s v%d: %s", version.Name, version.Number, o.reason)
 	return o
 }
 

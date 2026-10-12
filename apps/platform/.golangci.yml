@@ -62,6 +62,8 @@ linters:
             - "**/internal/product/activity/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
               desc: "activity consumes facts through readers injected by the composition root"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -106,6 +108,8 @@ linters:
             - "**/internal/creator/creation/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
@@ -146,6 +150,8 @@ linters:
             - "**/internal/creator/credit/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing
@@ -191,6 +197,8 @@ linters:
             - "**/internal/creator/workspace/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
@@ -235,6 +243,8 @@ linters:
             - "**/internal/product/learning/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
@@ -277,6 +287,8 @@ linters:
             - "**/internal/skill/discovery/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -313,6 +325,8 @@ linters:
             - "**/internal/trial/improvement/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -341,12 +355,58 @@ linters:
               desc: "composition root; contexts must not import it"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
               desc: "generic subdomain; contexts must not import it"
+        batch:
+          files:
+            - "**/internal/trial/batch/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/learning
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/operations
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/library
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver
+              desc: "presentation layer / composition root; contexts must not import it"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker
+              desc: "composition root; contexts must not import it"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring
+              desc: "composition root; contexts must not import it"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile
+              desc: "generic subdomain; contexts must not import it"
+
 
         ingest:
           files:
             - "**/internal/skill/admission/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation
@@ -383,6 +443,8 @@ linters:
             - "**/internal/skill/delivery/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
@@ -421,6 +483,8 @@ linters:
             - "**/internal/skill/publishing/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
@@ -463,6 +527,8 @@ linters:
             - "**/internal/product/operations/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing
@@ -507,6 +573,8 @@ linters:
             - "**/internal/product/entitlements/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
@@ -551,6 +619,8 @@ linters:
             - "**/internal/skill/library/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
@@ -593,6 +663,8 @@ linters:
             - "**/internal/trial/execution/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
@@ -629,6 +701,8 @@ linters:
             - "**/internal/trial/design/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
@@ -671,6 +745,8 @@ linters:
             - "**/internal/trial/evidence/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
@@ -713,6 +789,8 @@ linters:
             - "**/internal/foundation/storage/objreconcile/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
@@ -755,8 +833,11 @@ linters:
         shared-kernel:
           files:
             - "**/internal/shared/skillpkg/**"
+            - "**/internal/shared/contractlimits/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "shared kernel must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit
@@ -819,6 +900,8 @@ linters:
             - "**/internal/foundation/runtime/literalgate/**"
             - "!$test"
           deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch
+              desc: "generic subdomain must not import a bounded context"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/activity
               desc: "cross-context import forbidden; see docs/domain-memory/registry/dependency-policies.json"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit

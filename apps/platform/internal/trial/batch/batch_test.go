@@ -1,4 +1,4 @@
-package eval
+package batch
 
 import (
 	"context"
@@ -177,5 +177,60 @@ func TestTheSkillEffectPairsEachTestCaseWithItsOwnTrialsWithoutTheSkill(t *testi
 	}
 	if effect.Difference == nil || math.Abs(*effect.Difference-0.5) > 1e-9 {
 		t.Errorf("difference = %v, want 0.5", effect.Difference)
+	}
+}
+
+func TestATrialReadsAsItsVerdictOnceJudgedAndOtherwiseByHowItsRunEnded(t *testing.T) {
+	asked := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
+	s := &BatchService{Ports: BatchPorts{ReadQuestionCount: func(_ context.Context, _, runID pgtype.UUID) (int, error) {
+		if runID == asked {
+			return 1, nil
+		}
+		return 0, nil
+	}}}
+	succeeded := ChainEnd{Terminal: true, Succeeded: true}
+	cases := []struct {
+		name      string
+		end       ChainEnd
+		verdict   Verdict
+		evaluated bool
+		want      TrialOutcome
+	}{
+		{"the run is still going", ChainEnd{}, Verdict{}, false, TrialRunning},
+		{"the judge decided", succeeded, Verdict{Judged: true, Overall: "partially_met"}, true, TrialPartiallyMet},
+		{"the judging failed", succeeded, Verdict{Failed: true}, true, TrialNotEvaluated},
+		{"the judging is under way", succeeded, Verdict{}, true, TrialRunning},
+		{"a finished run that asked a question", ChainEnd{Terminal: true, Succeeded: true, RunID: asked}, Verdict{}, false, TrialAwaitingAnswer},
+		{"a finished run that asked nothing waits for its judging", succeeded, Verdict{}, false, TrialRunning},
+		{"a failed run waits for its judging", ChainEnd{Terminal: true, Failed: true}, Verdict{}, false, TrialRunning},
+		{"a cancelled run is never judged", ChainEnd{Terminal: true}, Verdict{}, false, TrialNotEvaluated},
+	}
+	for _, c := range cases {
+		got, err := s.trialOutcome(context.Background(), pgtype.UUID{}, c.end, c.verdict, c.evaluated)
+		if err != nil || got != c.want {
+			t.Errorf("%s: got %q %v, want %q", c.name, got, err, c.want)
+		}
+	}
+}
+
+func TestEachPairedTestCaseCountsOnceAsBetterWorseOrTied(t *testing.T) {
+	cases := distinctTestCases(4)
+	candidate := ArmReport{TestCases: []TestCaseResult{
+		{TestCaseID: cases[0], Passed: 2, Judged: 2},
+		{TestCaseID: cases[1], Passed: 0, Judged: 2},
+		{TestCaseID: cases[2], Passed: 1, Judged: 2},
+		{TestCaseID: cases[3], Passed: 1, Judged: 1},
+	}}
+	reference := ArmReport{TestCases: []TestCaseResult{
+		{TestCaseID: cases[0], Passed: 1, Judged: 2},
+		{TestCaseID: cases[1], Passed: 2, Judged: 2},
+		{TestCaseID: cases[2], Passed: 1, Judged: 2},
+	}}
+	p := pairArms(candidate, reference)
+	if p.Paired != 3 || p.Unpaired != 1 || p.Better != 1 || p.Worse != 1 || p.Tied != 1 {
+		t.Errorf("pairing = %+v, want one better, one worse, one tied and one unpaired", p)
+	}
+	if p.Difference == nil || math.Abs(*p.Difference+0.1666667) > 1e-6 {
+		t.Errorf("difference = %v, want -0.1667 (the reference wins by more than it loses)", p.Difference)
 	}
 }

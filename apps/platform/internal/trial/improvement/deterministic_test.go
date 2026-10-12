@@ -75,3 +75,17 @@ func TestCompatibilityFindingsMakeNoClaimAboutARunsOwnRuntime(t *testing.T) {
 		t.Errorf("severity = %q, want %q (only capability decides severity)", findings[0].Severity, SeverityInfo)
 	}
 }
+
+func TestAFindingWithNoEvidenceCarriesAnEmptyListNotNull(t *testing.T) {
+	findings := compatibilityFindings(compatMaterial(nil, nil))
+	if len(findings) != 1 {
+		t.Fatalf("got %d findings, want 1", len(findings))
+	}
+	encoded, err := json.Marshal(findings[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(encoded), `"evidence":[]`) {
+		t.Errorf("finding = %s, want evidence as an empty list", encoded)
+	}
+}

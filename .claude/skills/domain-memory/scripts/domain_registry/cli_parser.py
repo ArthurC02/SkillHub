@@ -23,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     commands = parser.add_subparsers(dest="command", required=True)
     for add_commands in (
-        _add_registry_commands, _add_record_and_source_commands, _add_governance_commands,
+        _add_registry_commands, _add_recite_command, _add_record_and_source_commands, _add_governance_commands,
         _add_review_governance_commands, _add_proposal_commands, _add_proposal_check_commands,
     ):
         add_commands(commands)
@@ -71,6 +71,26 @@ def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     add_path(boundary_parser, "--registry-root")
     boundary_parser.add_argument("--source-context", required=True)
     boundary_parser.add_argument("--target-context", required=True)
+    impact_parser = commands.add_parser("boundary-impact")
+    add_path(impact_parser, "--registry-root")
+    add_path(impact_parser, "--repo-root")
+    impact_parser.add_argument("--base", required=True)
+    relocate_parser = commands.add_parser("relocate-evidence")
+    add_path(relocate_parser, "--registry-root")
+    add_path(relocate_parser, "--repo-root")
+    relocate_parser.add_argument("--from", dest="moved_from", required=True)
+    relocate_parser.add_argument("--to", dest="moved_to", required=True)
+
+
+def _add_recite_command(commands: argparse._SubParsersAction) -> None:
+    recite_parser = commands.add_parser("recite")
+    add_path(recite_parser, "--registry-root")
+    add_path(recite_parser, "--repo-root")
+    add_asset(recite_parser)
+    recite_parser.add_argument("--id", required=True)
+    recite_parser.add_argument("--path", required=True)
+    recite_parser.add_argument("--lines", required=True)
+    recite_parser.add_argument("--replace")
 
 
 def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> None:
@@ -122,6 +142,7 @@ def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> Non
     add_path(evidence_migrate_parser, "--repo-root")
     recovery_parser = commands.add_parser("recover-registry-update")
     add_path(recovery_parser, "--registry-root")
+    add_path(recovery_parser, "--repo-root", required=False)
     recovery_parser.add_argument("--force", action="store_true")
 
 
@@ -235,6 +256,7 @@ def _add_proposal_commands(commands: argparse._SubParsersAction) -> None:
     result_parser.add_argument("--command", dest="obligation_command", required=True)
     result_parser.add_argument("--command-profile", required=True)
     result_parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT_SECONDS)
+    result_parser.add_argument("--cwd")
     attest_parser = commands.add_parser("attest-signed-commit")
     add_path(attest_parser, "--package-root")
     add_path(attest_parser, "--registry-root")
@@ -267,3 +289,4 @@ def _add_proposal_check_commands(commands: argparse._SubParsersAction) -> None:
     add_path(package_validate_parser, "--package-root")
     add_path(package_validate_parser, "--registry-root", required=False)
     package_validate_parser.add_argument("--as-status", choices=PREVIEW_STATUSES)
+    add_path(package_validate_parser, "--repo-root", required=False)

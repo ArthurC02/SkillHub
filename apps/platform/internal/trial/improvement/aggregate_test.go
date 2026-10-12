@@ -167,7 +167,7 @@ func seedNamedRun(t *testing.T, pool *pgxpool.Pool, tag string) material {
 	if err != nil {
 		t.Fatalf("seed run: %v", err)
 	}
-	run.Status = "succeeded"
+	run.Status, run.Succeeded = "succeeded", true
 	return material{run: run, attempt: 1}
 }
 

@@ -25,9 +25,9 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 func testDeps(t *testing.T) (*pgxpool.Pool, Deps) {
@@ -252,7 +252,7 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 
 	want := map[string]bool{
 		EvaluationRecoveryArgs{}.Kind():     true,
-		eval.BatchAdvanceArgs{}.Kind():      true,
+		batch.BatchAdvanceArgs{}.Kind():     true,
 		RunSuperviseArgs{}.Kind():           true,
 		RunOrphanScanArgs{}.Kind():          true,
 		outbox.PublishArgs{}.Kind():         true,

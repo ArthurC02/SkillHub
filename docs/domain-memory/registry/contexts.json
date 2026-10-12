@@ -656,6 +656,54 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "batch",
+      "name": "Evaluation Batches",
+      "responsibility": "Runs one Skill Version against chosen Test Cases a set number of times, answers their questions as each Test Case's simulated user, and reports pass rates with intervals, with the Skill withheld and against a reference batch.",
+      "subdomain": "core",
+      "implementation_path": "trial/batch",
+      "evidence": [
+        {
+          "path": "apps/platform/internal/trial/batch/doc.go",
+          "lines": {
+            "start": 1,
+            "end": 3
+          },
+          "content_sha256": "sha256:2721350710064f27d081442ed78f8d4335d4e4a299dd41d0a7d204569cb61193",
+          "excerpt_sha256": "sha256:02bde1e2e9957c0079a8304181f31e437c3e80a056a4dc874b400f33f0cabc6a",
+          "source_kind": "bounded_contexts"
+        },
+        {
+          "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+          "lines": {
+            "start": 104,
+            "end": 104
+          },
+          "content_sha256": "sha256:5072e5e57a47566f4b966a1b8d1d4c313fef8d3e82de0bcd38e1be7124b5bd12",
+          "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "evaluation-batch-context-r3",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-10-11T18:23:06.041403Z",
+            "scope": "The batch Context: its identity-only dependency policy, run's idempotent trial port, eval's standing verdicts, testlab's snapshot facts and trace's question count reached through the composition root, and its wait-or-stop rule; the eval-owned interaction and rule they replace are removed",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "71ed9d92f42305ee34c84ab39b83332c0d4d8b03",
+              "registry_digest": "sha256:3b5fb280627b81560b7db5cfe325eed368a9908078fb3c09c4c83199da8dfd93"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }

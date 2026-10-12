@@ -18,6 +18,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
@@ -91,6 +92,10 @@ type Finding struct {
 	Severity string        `json:"severity"`
 	Message  string        `json:"message"`
 	Evidence []EvidenceRef `json:"evidence"`
+}
+
+func finding(category, severity, message string, evidence ...EvidenceRef) Finding {
+	return Finding{Category: category, Severity: severity, Message: message, Evidence: orEmpty(evidence)}
 }
 
 const (
@@ -174,6 +179,7 @@ type RunFacts struct {
 	FinishedAt         *time.Time
 	FailureClass       *string
 	Terminal           bool
+	Succeeded          bool
 }
 
 type SkillFacts struct {
@@ -237,13 +243,18 @@ func (s *Service) HasCurrentEvaluation(ctx context.Context, workspaceID, runID p
 	if s == nil || s.Pool == nil {
 		return false, errors.New("evaluation persistence is not configured")
 	}
-	_, err := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
+	_, found, err := currentEvaluation(ctx, s.queries(), workspaceID, runID)
+	return found, err
+}
+
+func currentEvaluation(ctx context.Context, q *gen.Queries, workspaceID, runID pgtype.UUID) (gen.Evaluation, bool, error) {
+	row, err := q.GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
+		return row, false, nil
 	}
-	return err == nil, err
+	return row, err == nil, err
 }
 
 type evaluationRef struct {
@@ -310,7 +321,7 @@ type material struct {
 
 	rubric *testlab.Rubric
 
-	graders      map[string]graderVersion
+	graders      map[string]graders.Version
 	instructions map[string]string
 
 	advanced  trace.AdvancedView
@@ -338,12 +349,12 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 		return nil
 	}
 
-	if current, currentErr := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
-		RunID: runID, WorkspaceID: workspaceID,
-	}); currentErr == nil && Status(current.Status).AwaitsTheJudge() {
+	current, found, err := currentEvaluation(ctx, s.queries(), workspaceID, runID)
+	if err != nil {
+		return err
+	}
+	if found && Status(current.Status).AwaitsTheJudge() {
 		return nil
-	} else if currentErr != nil && !errors.Is(currentErr, pgx.ErrNoRows) {
-		return currentErr
 	}
 
 	ev, err := s.begin(ctx, m)
@@ -428,16 +439,13 @@ func (s *Service) settleJudgement(ctx context.Context, m material, ev gen.Evalua
 }
 
 func (s *Service) recoverAttempt(ctx context.Context, workspaceID, runID pgtype.UUID) error {
-	current, err := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
-		RunID: runID, WorkspaceID: workspaceID,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return s.Evaluate(ctx, workspaceID, runID)
-	}
-	if err != nil {
+	current, found, err := currentEvaluation(ctx, s.queries(), workspaceID, runID)
+	switch {
+	case err != nil:
 		return err
-	}
-	if !Status(current.Status).AwaitsTheJudge() {
+	case !found:
+		return s.Evaluate(ctx, workspaceID, runID)
+	case !Status(current.Status).AwaitsTheJudge():
 		return nil
 	}
 	return s.recoverEvaluation(ctx, workspaceID, current.ID, runID)
@@ -446,17 +454,9 @@ func (s *Service) recoverAttempt(ctx context.Context, workspaceID, runID pgtype.
 func (s *Service) recoverEvaluation(
 	ctx context.Context, workspaceID, evaluationID, runID pgtype.UUID,
 ) error {
-	current, err := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
-		RunID: runID, WorkspaceID: workspaceID,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
+	current, found, err := currentEvaluation(ctx, s.queries(), workspaceID, runID)
+	if err != nil || !found || current.ID != evaluationID || !Status(current.Status).AwaitsTheJudge() {
 		return err
-	}
-	if current.ID != evaluationID || !Status(current.Status).AwaitsTheJudge() {
-		return nil
 	}
 	m, err := s.gather(ctx, workspaceID, runID)
 	if errors.Is(err, ErrNotFound) {
@@ -545,11 +545,7 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 }
 
 func (s *Service) existingEvaluationInput(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationInput, error) {
-	input, found, err := s.ReadEvaluationInput(ctx, workspaceID, runID)
-	if !found && err == nil {
-		return input, ErrNotFound
-	}
-	return input, err
+	return required(ctx, s.ReadEvaluationInput, workspaceID, runID)
 }
 
 func (s *Service) gatherTestCase(ctx context.Context, workspaceID pgtype.UUID, m *material) error {
@@ -564,7 +560,7 @@ func (s *Service) gatherTestCase(ctx context.Context, workspaceID pgtype.UUID, m
 	if m.criteria, err = testlab.DecodeCriteria(m.snapshot.AcceptanceCriteria); err != nil {
 		return err
 	}
-	if m.graders, err = loadGraderVersions(ctx, s.queries(), workspaceID, referencedGraderVersions(m.criteria)); err != nil {
+	if m.graders, err = graders.Versions(ctx, s.Pool, workspaceID, referencedGraderVersions(m.criteria)); err != nil {
 		return err
 	}
 	m.rubric, err = testlab.DecodeRubric(m.snapshot.Rubric)
@@ -701,14 +697,10 @@ func (s *Service) fail(ctx context.Context, m material, ev gen.Evaluation, gathe
 }
 
 func (s *Service) packageReport(ctx context.Context, stored skillpkg.StoredSkill) (skillpkg.Report, bool) {
-	if s.Store == nil || stored.ObjectKey == "" {
+	if stored.ObjectKey == "" {
 		return skillpkg.Report{}, false
 	}
-	data, err := s.Store.Get(ctx, stored.ObjectKey)
-	if err != nil {
-		return skillpkg.Report{}, false
-	}
-	fsys, err := stored.Open(data)
+	fsys, _, err := s.readPackage(ctx, stored)
 	if err != nil {
 		return skillpkg.Report{}, false
 	}
@@ -753,14 +745,7 @@ func (s *Service) runFacts(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	if s.ReadRunFacts == nil {
 		return RunFacts{}, errRunReaderNotConfigured
 	}
-	run, found, err := s.ReadRunFacts(ctx, workspaceID, runID)
-	if err != nil {
-		return RunFacts{}, err
-	}
-	if !found {
-		return RunFacts{}, ErrNotFound
-	}
-	return run, nil
+	return required(ctx, s.ReadRunFacts, workspaceID, runID)
 }
 
 func nonNilFindings(f []Finding) []Finding {
@@ -811,7 +796,11 @@ func costSource(cost *float64) *string {
 }
 
 func (m material) awaitsAnswer() bool {
-	return m.run.Status == runSucceeded && len(m.summary.Questions) > 0
+	return m.run.Succeeded && len(m.summary.Questions) > 0
 }
 
 func (m material) evidenceComplete() bool { return m.advanced.Complete && !m.absent.Any() }
+
+func (m material) cannotRecordPass(result string) bool {
+	return result == ResultPassed && !m.evidenceComplete()
+}

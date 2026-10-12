@@ -1,4 +1,4 @@
-package eval
+package batch
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 )
 
 type BatchComparison struct {
-	Baseline  Batch
+	Reference Batch
 	Candidate Batch
 	PairedDifference
 }
@@ -23,18 +23,18 @@ type PairedDifference struct {
 	Tied         int
 }
 
-func (s *BatchService) CompareBatches(ctx context.Context, workspaceID, skillID, candidateID, baselineID pgtype.UUID) (BatchComparison, error) {
+func (s *BatchService) CompareBatches(ctx context.Context, workspaceID, skillID, candidateID, referenceID pgtype.UUID) (BatchComparison, error) {
 	candidate, err := s.BatchReport(ctx, workspaceID, skillID, candidateID)
 	if err != nil {
 		return BatchComparison{}, err
 	}
-	baseline, err := s.BatchReport(ctx, workspaceID, skillID, baselineID)
+	reference, err := s.BatchReport(ctx, workspaceID, skillID, referenceID)
 	if err != nil {
 		return BatchComparison{}, err
 	}
 	return BatchComparison{
-		Baseline: baseline.Batch, Candidate: candidate.Batch,
-		PairedDifference: pairArms(candidate.ArmReport, baseline.ArmReport),
+		Reference: reference.Batch, Candidate: candidate.Batch,
+		PairedDifference: pairArms(candidate.ArmReport, reference.ArmReport),
 	}, nil
 }
 

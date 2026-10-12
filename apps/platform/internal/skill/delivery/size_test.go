@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -45,8 +46,8 @@ func TestTheProducedHeadroomFitsWhatPackagingCanAdd(t *testing.T) {
 		}
 	}
 
-	perCase := testlab.MaxNameBytes + testlab.MaxPromptBytes +
-		testlab.MaxCriteria*testlab.MaxCriterionBytes
+	perCase := utf8.UTFMax * (testlab.MaxNameChars + testlab.MaxPromptChars +
+		testlab.MaxCriteria*testlab.MaxCriterionChars)
 	if headroom < largestInstall+perCase {
 		t.Errorf("headroom is %d bytes; INSTALL.md alone is up to %d and one test case at "+
 			"PDM-005 §5.1's text ceiling is %d", headroom, largestInstall, perCase)

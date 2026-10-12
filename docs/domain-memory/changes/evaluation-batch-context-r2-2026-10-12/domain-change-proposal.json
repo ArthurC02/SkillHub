@@ -1,0 +1,367 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "evaluation-batch-context-r2",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "evaluation-batch-context",
+  "status": "superseded",
+  "change_classification": "material",
+  "submitted_at": "2026-10-11T18:08:35.961098Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "d90e045275c2287e9565cc8b3e2a1f544b7ddcf4",
+    "registry_digest": "sha256:f199a6fe2dbd75cc6dbd6e5e4703e224221e8e9e997d302fbd9d14b2810f3758"
+  },
+  "affected_contexts": [
+    "batch",
+    "eval",
+    "run",
+    "testlab",
+    "trace",
+    "identity"
+  ],
+  "rule_ids": [
+    "batch-waits-only-on-a-passing-refusal"
+  ],
+  "contract_ids": [
+    "run-batch-trials-v1"
+  ],
+  "ownership_decision": {
+    "owner_context": "batch",
+    "invariant": "Only the batch Context writes evaluation_batches and evaluation_batch_items; eval writes none of them.",
+    "evidence": [
+      "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md:104",
+      "apps/platform/internal/trial/batch/doc.go:1"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "batch consumes run's trial port, testlab's snapshot facts, trace's question count and eval's standing verdicts through composition-root ports; it imports only identity.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "batch importing eval, run, testlab or trace",
+      "eval reading or writing evaluation batch tables"
+    ],
+    "evidence": [
+      "apps/platform/internal/entrypoint/wiring/evaluation_batches.go:23"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "eval had grown to 42 files mixing one-Run judgement with many-trial measurement.",
+      "The batch report read evaluation rows directly, so eval's storage was a second contract."
+    ],
+    "decision": "Move the batch code, its event consumer and job arguments into trial/batch; eval exposes StandingVerdicts and the composition root translates it into the batch's Verdict.",
+    "invariants_preserved": [
+      "The River job kind advance_evaluation_batches is unchanged, so queued jobs still run.",
+      "The public contract keys are unchanged."
+    ],
+    "rejected_alternatives": [
+      "A batch subpackage inside eval: keeps two owners of one package boundary and hides the dependency from depguard."
+    ],
+    "proof_obligations": [
+      "report-uses-verdict-port",
+      "batch-suite-passes",
+      "boundaries-enforced"
+    ],
+    "counterfactual_check": "Make the verdict port report every run as not judged; the batch report test must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "batch",
+        "name": "Evaluation Batches",
+        "responsibility": "Runs one Skill Version against chosen Test Cases a set number of times, answers their questions as each Test Case's simulated user, and reports pass rates with intervals, with the Skill withheld and against a reference batch.",
+        "subdomain": "core",
+        "implementation_path": "trial/batch",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 3
+            },
+            "content_sha256": "sha256:2721350710064f27d081442ed78f8d4335d4e4a299dd41d0a7d204569cb61193",
+            "excerpt_sha256": "sha256:02bde1e2e9957c0079a8304181f31e437c3e80a056a4dc874b400f33f0cabc6a",
+            "source_kind": "bounded_contexts"
+          },
+          {
+            "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+            "lines": {
+              "start": 104,
+              "end": 104
+            },
+            "content_sha256": "sha256:5072e5e57a47566f4b966a1b8d1d4c313fef8d3e82de0bcd38e1be7124b5bd12",
+            "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd",
+            "source_kind": "decisions"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "dependency-policies",
+      "record": {
+        "id": "batch-may-use-identity",
+        "from_context": "batch",
+        "to_context": "identity",
+        "mode": "synchronous-query",
+        "policy": "allowed",
+        "rationale": "Every batch request resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+        "evidence": [
+          {
+            "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+            "lines": {
+              "start": 42,
+              "end": 42
+            },
+            "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+            "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+            "source_kind": "decisions"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contracts",
+      "record": {
+        "id": "run-batch-trials-v1",
+        "kind": "internal-port",
+        "producer_context": "run",
+        "consumer_contexts": [
+          "batch"
+        ],
+        "version": "v1",
+        "compatibility_policy": "Run starts and continues trials for an evaluation batch through the ports the composition root fills; Run publishes whether a refusal passes on its own and never hands its transaction to the batch.",
+        "data_classification": "internal",
+        "idempotency": {
+          "key": "origin key: the batch, the Test Case, the trial number and whether the Skill is withheld",
+          "scope": "per Workspace",
+          "on_replay": "returns the Run already started under that key, without admitting or charging again",
+          "on_conflict": "refused when the key already started a Run of a different Skill Version"
+        },
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 44,
+              "end": 85
+            },
+            "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
+            "excerpt_sha256": "sha256:841e644127179fb6e6aa42ceee21c36a0deaa6f747b23747323bb7dacf06c1a9",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/service.go",
+            "lines": {
+              "start": 909,
+              "end": 926
+            },
+            "content_sha256": "sha256:2559a814174ef782b9386066e34d404ba781cb67e2804837865668a35d95bb38",
+            "excerpt_sha256": "sha256:b33d744e5dc035dd07b22002b8fd5e71cba0dd4fb652efe02fe1d92a6a91ae62",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/batch_facts.go",
+            "lines": {
+              "start": 61,
+              "end": 72
+            },
+            "content_sha256": "sha256:ea064d7f8550e8ced8c3307690d9d745407ccffaaa7136442e250dfa856bd257",
+            "excerpt_sha256": "sha256:c4b8a8c925f6d49224e57170964aca0958132aee6512a1d31443ef0a8b8db1d8",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+            "lines": {
+              "start": 104,
+              "end": 104
+            },
+            "content_sha256": "sha256:5072e5e57a47566f4b966a1b8d1d4c313fef8d3e82de0bcd38e1be7124b5bd12",
+            "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd",
+            "source_kind": "decisions"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-batch-trials",
+        "producer_context": "run",
+        "consumer_context": "batch",
+        "contract_id": "run-batch-trials-v1",
+        "consistency": "synchronous request, idempotent by origin key; the batch records the trial in its own statement afterwards",
+        "delivery": "composition-root port",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 44,
+              "end": 85
+            },
+            "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
+            "excerpt_sha256": "sha256:841e644127179fb6e6aa42ceee21c36a0deaa6f747b23747323bb7dacf06c1a9",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 236,
+              "end": 273
+            },
+            "content_sha256": "sha256:b853fee91e1573854727b97f1480e74329d5670579403683326cee5cb2d2019a",
+            "excerpt_sha256": "sha256:08221039e4930fb55c53b74afa48b858ee0e30615b657ab610936664171417cf",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "eval-batch-standing-verdicts",
+        "producer_context": "eval",
+        "consumer_context": "batch",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 23,
+              "end": 42
+            },
+            "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
+            "excerpt_sha256": "sha256:a3de7bd4935a3b482bf5f75698c3ebaeca04830587949b15a59a3b1293b4d600",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "testlab-batch-snapshot-facts",
+        "producer_context": "testlab",
+        "consumer_context": "batch",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 71,
+              "end": 76
+            },
+            "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
+            "excerpt_sha256": "sha256:8567f6207d7908c1c98f907701c6db2bff9c5b319372f587eece2b3cb7f4863f",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "trace-batch-question-count",
+        "producer_context": "trace",
+        "consumer_context": "batch",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 72,
+              "end": 75
+            },
+            "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
+            "excerpt_sha256": "sha256:552f303644ead7a30c043aa3a279db7d1f8151546b2384b735ec55f735726801",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "batch-waits-only-on-a-passing-refusal",
+        "contexts": [
+          "batch"
+        ],
+        "statement": "An evaluation batch waits when Run refuses a trial with a refusal Run says will pass on its own, and stops with that reason recorded on any other refusal.",
+        "examples": [
+          "The workspace is already running as many runs as it may: the batch tries the trial again on its next advance.",
+          "The credit balance is too low: the batch stops and records credit_balance as its reason."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch.go",
+            "lines": {
+              "start": 254,
+              "end": 259
+            },
+            "content_sha256": "sha256:b853fee91e1573854727b97f1480e74329d5670579403683326cee5cb2d2019a",
+            "excerpt_sha256": "sha256:091e6b79f949da9fcf2248fefa28e0b76b6321faf1a521cadce058006a54f330",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+            "lines": {
+              "start": 107,
+              "end": 121
+            },
+            "content_sha256": "sha256:5ebc9f461f6cbbf52a1185dbaa110924e68cec18595b6f56fbc58dc176798ae6",
+            "excerpt_sha256": "sha256:b1ce72bf4728455794da7f09dfcf1047ae13f11ba52e243baec0fb0dfb4bfca4",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+            "lines": {
+              "start": 104,
+              "end": 104
+            },
+            "content_sha256": "sha256:5072e5e57a47566f4b966a1b8d1d4c313fef8d3e82de0bcd38e1be7124b5bd12",
+            "excerpt_sha256": "sha256:1d20da8f4fdd83214a82079afecabba38bed668a1673d0a25d0dcdad2d694efd",
+            "source_kind": "decisions"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "remove",
+      "asset": "interactions",
+      "id": "run-eval-batch-trials"
+    },
+    {
+      "operation": "remove",
+      "asset": "rules",
+      "id": "eval-batch-waits-only-on-a-passing-refusal"
+    },
+    {
+      "operation": "remove",
+      "asset": "contracts",
+      "id": "run-eval-batch-trials-v1"
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": "eval-run-collaboration-r2",
+  "superseded_from_status": "submitted",
+  "superseded_at": "2026-10-11T18:11:53.379934Z",
+  "superseded_reason": "Its new Context, rule and contract cannot be referenced while two reviewed records still cite the batch code's old path; a smaller proposal re-cites those first, and the Context follows once the Registry is valid.",
+  "superseded_by": "evaluation-batch-evidence-move"
+}

@@ -1,0 +1,52 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "eval-run-verdicts-recite",
+  "proposal_id": "eval-run-verdicts-recite-r2",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "replaced-contract-retired",
+      "expected_outcome": "The Registry validates without the retired contract.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry validate"
+    },
+    {
+      "id": "package-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "verdict-contract-current",
+      "expected_outcome": "The package validates and its re-cited contract holds hashed, current citations.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry validate-change-package"
+    },
+    {
+      "id": "run-list-shows-verdicts",
+      "source_type": "contract",
+      "source_id": "eval-run-verdicts-v1",
+      "expected_outcome": "The run list shows each run's current verdict and says not evaluated otherwise.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -run TestTheRunListShowsEachRunsCurrentVerdictAndSaysNotEvaluatedOtherwise ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "approval-path-is-external",
+      "source_type": "acceptance-criterion",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "Governance readiness reports ready.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry governance-readiness"
+    }
+  ]
+}

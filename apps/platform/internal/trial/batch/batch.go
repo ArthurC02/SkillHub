@@ -1,4 +1,4 @@
-package eval
+package batch
 
 import (
 	"context"
@@ -34,14 +34,18 @@ func AllBatchStatuses() []BatchStatus {
 	return []BatchStatus{BatchLaunching, BatchLaunched, BatchStopped}
 }
 
-const stopReasonCreatorGone = "creator_gone"
+const (
+	stopReasonCreatorGone = "creator_gone"
+	stopReasonTargetGone  = "target_gone"
+)
 
 var (
+	ErrNotFound       = errors.New("evaluation not found")
 	ErrBatchShape     = errors.New("an evaluation batch needs 1 to 50 distinct test cases and 1 to 10 trials")
 	ErrRunMustWait    = errors.New("the workspace cannot start a run right now; the batch waits for its turn")
 	ErrNoFurtherRound = errors.New("this trial's conversation cannot take another answer")
-	errBatchPorts     = errors.New("eval: batch run ports are not injected")
-	errItemTaken      = errors.New("eval: another advance already started this trial")
+	ErrTargetGone     = errors.New("the skill, version or test case this trial runs is gone")
+	errBatchPorts     = errors.New("batch: run ports are not injected")
 )
 
 type UnconfirmedTestCasesError struct{ TestCaseIDs []pgtype.UUID }
@@ -66,14 +70,15 @@ type BatchRun struct {
 	TestCaseID    pgtype.UUID
 	SummaryHash   string
 	WithholdSkill bool
-	Link          func(ctx context.Context, tx pgx.Tx, runID pgtype.UUID) error
+	OriginKey     string
 }
 
 type ChainEnd struct {
 	StartSnapshotID pgtype.UUID
 	RunID           pgtype.UUID
-	Status          string
 	Terminal        bool
+	Succeeded       bool
+	Failed          bool
 }
 
 type BatchPorts struct {
@@ -84,12 +89,13 @@ type BatchPorts struct {
 	ReadQuestionCount    func(ctx context.Context, workspaceID, runID pgtype.UUID) (int, error)
 	ReadSimulatedUser    func(ctx context.Context, workspaceID pgtype.UUID, snapshotIDs []pgtype.UUID) (map[pgtype.UUID][]string, error)
 	AnswerRun            func(ctx context.Context, answer BatchAnswer) error
+	ReadVerdicts         func(ctx context.Context, workspaceID pgtype.UUID, runIDs []pgtype.UUID) (map[pgtype.UUID]Verdict, error)
 }
 
 func (p BatchPorts) ready() error {
 	if p.StartRun == nil || p.ConfirmedSummaryHash == nil || p.ReadChainEnds == nil ||
 		p.ReadSnapshotContents == nil || p.ReadQuestionCount == nil ||
-		p.ReadSimulatedUser == nil || p.AnswerRun == nil {
+		p.ReadSimulatedUser == nil || p.AnswerRun == nil || p.ReadVerdicts == nil {
 		return errBatchPorts
 	}
 	return nil
@@ -103,24 +109,24 @@ type BatchService struct {
 func (s *BatchService) queries() *gen.Queries { return gen.New(s.Pool) }
 
 type Batch struct {
-	ID           pgtype.UUID
-	SkillID      pgtype.UUID
-	VersionID    pgtype.UUID
-	Trials       int
-	WithBaseline bool
-	Status       BatchStatus
-	StopReason   string
-	CreatedAt    time.Time
+	ID                pgtype.UUID
+	SkillID           pgtype.UUID
+	VersionID         pgtype.UUID
+	Trials            int
+	WithSkillWithheld bool
+	Status            BatchStatus
+	StopReason        string
+	CreatedAt         time.Time
 }
 
 type NewBatch struct {
-	WorkspaceID  pgtype.UUID
-	Actor        pgtype.UUID
-	SkillID      pgtype.UUID
-	VersionID    pgtype.UUID
-	TestCaseIDs  []pgtype.UUID
-	Trials       int
-	WithBaseline bool
+	WorkspaceID       pgtype.UUID
+	Actor             pgtype.UUID
+	SkillID           pgtype.UUID
+	VersionID         pgtype.UUID
+	TestCaseIDs       []pgtype.UUID
+	Trials            int
+	WithSkillWithheld bool
 }
 
 func (n NewBatch) validShape() bool {
@@ -156,7 +162,7 @@ func (s *BatchService) CreateBatch(ctx context.Context, n NewBatch) (Batch, erro
 		q := gen.New(tx)
 		created, err = q.InsertEvaluationBatch(ctx, gen.InsertEvaluationBatchParams{
 			WorkspaceID: n.WorkspaceID, SkillID: n.SkillID, SkillVersionID: n.VersionID,
-			Trials: int32(n.Trials), WithBaseline: n.WithBaseline, CreatedBy: n.Actor,
+			Trials: int32(n.Trials), WithBaseline: n.WithSkillWithheld, CreatedBy: n.Actor,
 		})
 		if err != nil {
 			return err
@@ -165,7 +171,7 @@ func (s *BatchService) CreateBatch(ctx context.Context, n NewBatch) (Batch, erro
 			if err := q.InsertEvaluationBatchTrials(ctx, gen.InsertEvaluationBatchTrialsParams{
 				BatchID: created.ID, WorkspaceID: n.WorkspaceID, TestCaseID: testCaseID,
 				Position: int32(position), SummaryHash: hashes[position], Trials: int32(n.Trials),
-				WithBaseline: n.WithBaseline,
+				WithBaseline: n.WithSkillWithheld,
 			}); err != nil {
 				return err
 			}
@@ -245,34 +251,33 @@ func (s *BatchService) startNextTrial(ctx context.Context, workspaceID pgtype.UU
 	if !next.CreatedBy.Valid {
 		return true, s.stopBatch(ctx, q, workspaceID, next.BatchID, stopReasonCreatorGone)
 	}
-	_, err = s.Ports.StartRun(ctx, BatchRun{
+	runID, err := s.Ports.StartRun(ctx, BatchRun{
 		WorkspaceID: workspaceID, Actor: next.CreatedBy, SkillID: next.SkillID,
 		VersionID: next.SkillVersionID, TestCaseID: next.TestCaseID, SummaryHash: next.SummaryHash,
-		WithholdSkill: next.SkillWithheld, Link: linkTrial(workspaceID, next),
+		WithholdSkill: next.SkillWithheld, OriginKey: trialOriginKey(next),
 	})
 	if errors.Is(err, ErrRunMustWait) {
 		return false, nil
 	}
+	if errors.Is(err, ErrTargetGone) {
+		return true, s.stopBatch(ctx, q, workspaceID, next.BatchID, stopReasonTargetGone)
+	}
 	if refused, isRefused := errors.AsType[RunRefusedError](err); isRefused {
 		return true, s.stopBatch(ctx, q, workspaceID, next.BatchID, refused.Reason)
 	}
-	if errors.Is(err, errItemTaken) {
-		return true, nil
+	if err != nil {
+		return false, err
 	}
+	_, err = q.LinkBatchItemRun(ctx, gen.LinkBatchItemRunParams{
+		RunID: runID, BatchID: next.BatchID, TestCaseID: next.TestCaseID,
+		Trial: next.Trial, SkillWithheld: next.SkillWithheld, WorkspaceID: workspaceID,
+	})
 	return err == nil, err
 }
 
-func linkTrial(workspaceID pgtype.UUID, item gen.ClaimNextBatchItemRow) func(context.Context, pgx.Tx, pgtype.UUID) error {
-	return func(ctx context.Context, tx pgx.Tx, runID pgtype.UUID) error {
-		linked, err := gen.New(tx).LinkBatchItemRun(ctx, gen.LinkBatchItemRunParams{
-			RunID: runID, BatchID: item.BatchID, TestCaseID: item.TestCaseID,
-			Trial: item.Trial, SkillWithheld: item.SkillWithheld, WorkspaceID: workspaceID,
-		})
-		if err == nil && linked == 0 {
-			return errItemTaken
-		}
-		return err
-	}
+func trialOriginKey(item gen.ClaimNextBatchItemRow) string {
+	return fmt.Sprintf("evaluation-batch/%s/%s/%d/withheld=%t",
+		pgconv.UUIDString(item.BatchID), pgconv.UUIDString(item.TestCaseID), item.Trial, item.SkillWithheld)
 }
 
 func (s *BatchService) stopBatch(ctx context.Context, q *gen.Queries, workspaceID, batchID pgtype.UUID, reason string) error {
@@ -310,7 +315,7 @@ func (s *BatchService) batch(ctx context.Context, workspaceID, batchID pgtype.UU
 func batchOf(row gen.EvaluationBatch) Batch {
 	b := Batch{
 		ID: row.ID, SkillID: row.SkillID, VersionID: row.SkillVersionID,
-		Trials: int(row.Trials), WithBaseline: row.WithBaseline, Status: BatchStatus(row.Status), CreatedAt: row.CreatedAt.Time,
+		Trials: int(row.Trials), WithSkillWithheld: row.WithBaseline, Status: BatchStatus(row.Status), CreatedAt: row.CreatedAt.Time,
 	}
 	if row.StopReason != nil {
 		b.StopReason = *row.StopReason

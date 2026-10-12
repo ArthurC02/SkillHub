@@ -6,15 +6,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 )
 
 type EvaluationBatchAdvanceWorker struct {
-	river.WorkerDefaults[eval.BatchAdvanceArgs]
-	Svc *eval.BatchService
+	river.WorkerDefaults[batch.BatchAdvanceArgs]
+	Svc *batch.BatchService
 }
 
-func (w *EvaluationBatchAdvanceWorker) Work(ctx context.Context, job *river.Job[eval.BatchAdvanceArgs]) error {
+func (w *EvaluationBatchAdvanceWorker) Work(ctx context.Context, job *river.Job[batch.BatchAdvanceArgs]) error {
 	if job.Args.WorkspaceID == "" {
 		return w.Svc.AdvanceAllBatches(ctx)
 	}

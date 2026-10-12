@@ -11,12 +11,13 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
 )
 
 const maxGraderBodyBytes = 32 << 10
 
 type GraderHandler struct {
-	Svc      *GraderService
+	Svc      *graders.Service
 	Identity *identity.Service
 }
 
@@ -30,7 +31,7 @@ type graderView struct {
 	RevisedAt    string `json:"revised_at"`
 }
 
-func viewOfGrader(g Grader) graderView {
+func viewOfGrader(g graders.Grader) graderView {
 	scope := "workspace"
 	if g.Platform {
 		scope = "platform"
@@ -46,8 +47,8 @@ func (h *GraderHandler) ListGraders(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	graders, err := h.Svc.List(r.Context(), ws.ID)
-	writeGraders(w, graders, err)
+	catalog, err := h.Svc.List(r.Context(), ws.ID)
+	writeGraders(w, catalog, err)
 }
 
 func (h *GraderHandler) CreateGrader(w http.ResponseWriter, r *http.Request) {
@@ -67,8 +68,8 @@ func (h *GraderHandler) ReviseGrader(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *GraderHandler) ListPlatformGraders(w http.ResponseWriter, r *http.Request) {
-	graders, err := h.Svc.ListPlatform(r.Context())
-	writeGraders(w, graders, err)
+	catalog, err := h.Svc.ListPlatform(r.Context())
+	writeGraders(w, catalog, err)
 }
 
 func (h *GraderHandler) CreatePlatformGrader(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +104,7 @@ func (h *GraderHandler) revise(w http.ResponseWriter, r *http.Request, workspace
 	writeGrader(w, g, err)
 }
 
-func decodeGraderDraft(w http.ResponseWriter, r *http.Request) (GraderDraft, bool) {
+func decodeGraderDraft(w http.ResponseWriter, r *http.Request) (graders.Draft, bool) {
 	var body struct {
 		Name         string `json:"name"`
 		Instructions string `json:"instructions"`
@@ -111,30 +112,30 @@ func decodeGraderDraft(w http.ResponseWriter, r *http.Request) (GraderDraft, boo
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxGraderBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with `instructions` and `reason`")
-		return GraderDraft{}, false
+		return graders.Draft{}, false
 	}
-	return GraderDraft(body), true
+	return graders.Draft(body), true
 }
 
-func writeGraders(w http.ResponseWriter, graders []Grader, err error) {
+func writeGraders(w http.ResponseWriter, catalog []graders.Grader, err error) {
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "grader lookup failed")
 		return
 	}
-	views := make([]graderView, len(graders))
-	for i, g := range graders {
+	views := make([]graderView, len(catalog))
+	for i, g := range catalog {
 		views[i] = viewOfGrader(g)
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"graders": views})
 }
 
-func writeGrader(w http.ResponseWriter, g Grader, err error) {
+func writeGrader(w http.ResponseWriter, g graders.Grader, err error) {
 	switch {
-	case errors.Is(err, ErrGraderShape):
-		httpx.WriteError(w, http.StatusBadRequest, reasonOf(err, ErrGraderShape))
-	case errors.Is(err, ErrGraderConflict):
-		httpx.WriteError(w, http.StatusConflict, reasonOf(err, ErrGraderConflict))
-	case errors.Is(err, ErrNotFound):
+	case errors.Is(err, graders.ErrShape):
+		httpx.WriteError(w, http.StatusBadRequest, reasonOf(err, graders.ErrShape))
+	case errors.Is(err, graders.ErrConflict):
+		httpx.WriteError(w, http.StatusConflict, reasonOf(err, graders.ErrConflict))
+	case errors.Is(err, graders.ErrNotFound):
 		httpx.WriteError(w, http.StatusNotFound, "grader not found")
 	case err != nil:
 		httpx.WriteError(w, http.StatusInternalServerError, "the grader could not be saved")

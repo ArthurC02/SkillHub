@@ -1,0 +1,29 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "evaluation-batch-evidence-move",
+  "status": "draft",
+  "intent": "Point the two reviewed records that cite the evaluation batch code at the file it moved to, so the Registry is valid again before the batch gets its own Context.",
+  "actor": "coding-agent",
+  "observable_outcome": "validate and verify-evidence report every citation current; the records say the same as before.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-follow-the-code",
+      "statement": "The trial-port interaction and the wait-or-stop rule cite trial/batch/batch.go at the lines that now hold the same code."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that makes the records reviewed is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/trial/batch/batch.go",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+    "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md"
+  ]
+}

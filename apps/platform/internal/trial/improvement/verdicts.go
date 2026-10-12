@@ -10,6 +10,27 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
+type StandingVerdict struct {
+	Status  Status
+	Overall Overall
+}
+
+func StandingVerdicts(
+	ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID, runIDs []pgtype.UUID,
+) (map[pgtype.UUID]StandingVerdict, error) {
+	rows, err := gen.New(db).ListCurrentEvaluations(ctx, gen.ListCurrentEvaluationsParams{
+		WorkspaceID: workspaceID, RunIds: runIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[pgtype.UUID]StandingVerdict, len(rows))
+	for _, row := range rows {
+		out[row.RunID] = StandingVerdict{Status: Status(row.Status), Overall: Overall(row.Overall)}
+	}
+	return out, nil
+}
+
 type labelled struct {
 	Value string `json:"value"`
 	Label string `json:"label"`
@@ -68,18 +89,16 @@ func (s *Service) RunVerdicts(
 		return out, nil
 	}
 
-	rows, err := gen.New(s.Pool).ListCurrentEvaluations(ctx, gen.ListCurrentEvaluationsParams{
-		WorkspaceID: workspaceID, RunIds: runIDs,
-	})
+	judgements, err := StandingVerdicts(ctx, s.Pool, workspaceID, runIDs)
 	if err != nil {
 		return nil, err
 	}
-	for _, row := range rows {
-		blob, err := json.Marshal(verdictOf(Status(row.Status), Overall(row.Overall)))
+	for runID, j := range judgements {
+		blob, err := json.Marshal(verdictOf(j.Status, j.Overall))
 		if err != nil {
 			return nil, err
 		}
-		out[pgconv.UUIDString(row.RunID)] = blob
+		out[pgconv.UUIDString(runID)] = blob
 	}
 	return out, nil
 }

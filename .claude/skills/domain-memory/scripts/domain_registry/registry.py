@@ -128,8 +128,17 @@ def _validate_asset_records(
         for entry in entries:
             status = entry.get(status_field, asset.get("status"))
             errors.extend(_entry_status_errors(name, entry, status, require_reviewed))
-    errors.extend(_context_placement_problems(records.get("contexts.json", [])))
     return errors
+
+
+def cross_reference_errors(records: dict[str, list[dict[str, Any]]]) -> list[str]:
+    return [
+        *_context_placement_problems(records.get("contexts.json", [])),
+        *_validate_confirmed_absences(records),
+        *_validate_context_references(records),
+        *_validate_term_labels(records.get("vocabulary.json", [])),
+        *_validate_idempotency(records.get("contracts.json", [])),
+    ]
 
 
 def _context_placement_problems(entries: list[dict[str, Any]]) -> list[str]:
@@ -297,7 +306,7 @@ def _validate_evidence(
     return [
         f"evidence {result['status']}: {result.get('reason', result.get('path'))}"
         for result in results
-        if result["status"] in {"invalid", "missing"}
+        if result["status"] in {"invalid", "missing", "unhashed"}
     ]
 
 
@@ -315,10 +324,37 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
     records, load_errors = _load_registry_assets(root)
     errors.extend(load_errors)
     errors.extend(_validate_asset_records(root, records, require_reviewed))
-    errors.extend(_validate_confirmed_absences(records))
-    errors.extend(_validate_context_references(records))
-    errors.extend(_validate_term_labels(records.get("vocabulary.json", [])))
+    errors.extend(cross_reference_errors(records))
     errors.extend(_validate_evidence(records, repo_root))
+    return errors
+
+
+IDEMPOTENCY_FIELDS = ("key", "scope", "on_replay", "on_conflict")
+OPTIONAL_IDEMPOTENCY_FIELDS = ("expiry",)
+
+
+def _validate_idempotency(contracts: list[dict[str, Any]]) -> list[str]:
+    errors = []
+    for contract in contracts:
+        idempotency = contract.get("idempotency")
+        if idempotency is None:
+            continue
+        where = f"contracts.json:{contract.get('id')}"
+        if not isinstance(idempotency, dict):
+            errors.append(f"{where} idempotency must be an object")
+            continue
+        missing = [field for field in IDEMPOTENCY_FIELDS if field not in idempotency]
+        unknown = sorted(set(idempotency) - {*IDEMPOTENCY_FIELDS, *OPTIONAL_IDEMPOTENCY_FIELDS})
+        blank = sorted(
+            field for field, value in idempotency.items()
+            if field not in unknown and not (isinstance(value, str) and value.strip())
+        )
+        if missing:
+            errors.append(f"{where} idempotency lacks {', '.join(missing)}")
+        if unknown:
+            errors.append(f"{where} idempotency has unknown fields {', '.join(unknown)}")
+        if blank:
+            errors.append(f"{where} idempotency fields must be non-empty text: {', '.join(blank)}")
     return errors
 
 
@@ -377,7 +413,7 @@ def verify_evidence(root: Path, repo_root: Path) -> dict[str, Any]:
     ]
     summary: dict[str, Any] = {
         status: sum(item["status"] == status for item in results)
-        for status in ("current", "stale", "missing", "invalid", "legacy-unverified")
+        for status in ("current", "stale", "unhashed", "missing", "invalid", "legacy-unverified")
     }
     kinds = sorted({item["source_kind"] for item in results if "source_kind" in item})
     summary["by_source_kind"] = {

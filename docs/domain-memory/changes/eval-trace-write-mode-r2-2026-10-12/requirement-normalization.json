@@ -1,0 +1,27 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "eval-trace-write-mode",
+  "status": "draft",
+  "intent": "Say that eval writes to trace as well as reading it, as its code does.",
+  "actor": "coding-agent",
+  "observable_outcome": "eval-may-use-trace is a synchronous write and cites the orchestrator event eval records.",
+  "acceptance_criteria": [
+    {
+      "id": "mode-matches-code",
+      "statement": "The policy mode is synchronous-write and its evidence includes an orchestrator event eval records."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that makes the record reviewed is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/trial/improvement/eval.go"
+  ]
+}

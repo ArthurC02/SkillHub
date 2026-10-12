@@ -1,3 +1,4 @@
+import { DevLoginBodyUserMaxLength } from "@skillhub/api-client-ts/limits";
 import { useId, useState } from "react";
 import { API_BASE_URL, ApiError } from "../../core/api/client";
 import { useDevLogin, useDevSignIn } from "../../core/session/me.service";
@@ -33,7 +34,7 @@ function OfflineSignIn() {
         value={user}
         onChange={(e) => setUser(e.target.value)}
         autoComplete="off"
-        maxLength={64}
+        maxLength={DevLoginBodyUserMaxLength}
       />{" "}
       <button type="submit" disabled={signIn.isPending}>
         登入

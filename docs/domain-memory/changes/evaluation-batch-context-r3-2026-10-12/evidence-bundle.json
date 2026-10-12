@@ -1,0 +1,111 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "evaluation-batch-context",
+  "proposal_id": "evaluation-batch-context-r3",
+  "registry_revision": {
+    "observed_commit": "71ed9d92f42305ee34c84ab39b83332c0d4d8b03",
+    "registry_digest": "sha256:3b5fb280627b81560b7db5cfe325eed368a9908078fb3c09c4c83199da8dfd93"
+  },
+  "approvals": [],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "42af6c8ec739c64be4c80a58311ba72e293cc9da",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "71ed9d92f42305ee34c84ab39b83332c0d4d8b03",
+      "registry_digest": "sha256:3b5fb280627b81560b7db5cfe325eed368a9908078fb3c09c4c83199da8dfd93"
+    }
+  },
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "report-uses-verdict-port",
+    "mutated_protection": "the composition root translating eval's completed status into the batch Verdict's Judged",
+    "failure_evidence": "With Judged forced false, TestTheBatchReportCountsEachConversationAtItsEnd failed: every trial read as running and judged dropped to 0; the file was restored byte for byte (cmp).",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/trial/batch/doc.go",
+    "apps/platform/internal/trial/batch/batch.go",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go",
+    "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:eb9efcdfd94e49e427f5da2056f49c54431bbdfe62005f100e94dd7971087a05",
+      "finished_at": "2026-10-11T18:18:20.530791Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:24bc9f8176e2252a769145435814a44b6c192e55d65be0cb28abaaf24d4bc430",
+      "finished_at": "2026-10-11T18:18:21.559736Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py governance-readiness --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:2b6a3a27f1223e6cc1dc91aae0d304d9226040ff5508b5e8d4133a1df04930ec",
+      "finished_at": "2026-10-11T18:18:23.034335Z"
+    },
+    {
+      "obligation_id": "report-uses-verdict-port",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -run TestTheBatchReportCountsEachConversationAtItsEnd ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:f1d1fae53573c30d7b3f93eb69e151b6deb4c93fe7f71148cdcf97463cdbeb3c",
+      "finished_at": "2026-10-11T18:18:52.020095Z"
+    },
+    {
+      "obligation_id": "batch-suite-passes",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -run Batch|Trial|Simulated|OriginKey ./internal/trial/batch/ ./internal/entrypoint/...",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:1ef027f6640e5b7403d9a927a1e66e48f25c00f120e00c0d3b8e6854241c9aa3",
+      "finished_at": "2026-10-11T18:19:24.003444Z"
+    },
+    {
+      "obligation_id": "batch-waits-or-stops",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -run TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait|TestARefusalThatWaitingCannotFixStopsTheBatch ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:1e7f859e82a69afb2b6a0d1f2565eacc8e9ccf862371f6ffae21ab9ab263bf4a",
+      "finished_at": "2026-10-11T18:19:38.663062Z"
+    },
+    {
+      "obligation_id": "trial-port-contract",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -run TestATrialWhoseRunWasAlreadyStartedUnderItsKey|TestAnOriginKeyThatStartedOne|TestOnlyRefusalsThatWillPass ./internal/...",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:7eccf3082af5ac6ae05f7ddcd94cd36e225f072dbc63dc8f4a0af45ddba5fb7c",
+      "finished_at": "2026-10-11T18:20:37.913318Z"
+    },
+    {
+      "obligation_id": "boundaries-enforced",
+      "status": "passed",
+      "evidence": "'C:/Program Files/Git/usr/bin/bash.exe' -c 'cd apps/platform && golangci-lint run ./internal/trial/batch/ && echo lint-ran'",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:3a0a1c1d1fab07b41f19aa3f89efe7a51a9d6b0bbdfd90e01805efbb4b89ce0b",
+      "finished_at": "2026-10-11T18:22:48.859556Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

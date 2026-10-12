@@ -20,25 +20,25 @@ func wireMessageCases(t *testing.T, criteria []Criterion) []wireMessageCase {
 			return validateDraft("", "prompt")
 		})},
 		{"validateDraft oversize name", mustErr(t, func() (string, string, error) {
-			return validateDraft(bigString(MaxNameBytes+1), "prompt")
+			return validateDraft(bigString(MaxNameChars+1), "prompt")
 		})},
 		{"validateDraft blank prompt", mustErr(t, func() (string, string, error) {
 			return validateDraft("name", "")
 		})},
 		{"validateDraft oversize prompt", mustErr(t, func() (string, string, error) {
-			return validateDraft("name", bigString(MaxPromptBytes+1))
+			return validateDraft("name", bigString(MaxPromptChars+1))
 		})},
 		{"validateCriterion blank text", mustErr2(t, func() (string, error) {
 			return validateCriterion("")
 		})},
 		{"validateCriterion oversize text", mustErr2(t, func() (string, error) {
-			return validateCriterion(bigString(MaxCriterionBytes + 1))
+			return validateCriterion(bigString(MaxCriterionChars + 1))
 		})},
 		{"validateRubric blank version", mustErrRubric(t, func() (Rubric, error) {
 			return validateRubric(Rubric{Version: "", Items: []RubricItem{{ID: "c1", Text: "x"}}}, criteria)
 		})},
 		{"validateRubric oversize version", mustErrRubric(t, func() (Rubric, error) {
-			return validateRubric(Rubric{Version: bigString(MaxRubricVersionBytes + 1), Items: []RubricItem{{ID: "c1", Text: "x"}}}, criteria)
+			return validateRubric(Rubric{Version: bigString(MaxRubricVersionChars + 1), Items: []RubricItem{{ID: "c1", Text: "x"}}}, criteria)
 		})},
 		{"validateRubric empty items", mustErrRubric(t, func() (Rubric, error) {
 			return validateRubric(Rubric{Version: "v1", Items: nil}, criteria)

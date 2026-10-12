@@ -225,7 +225,7 @@ var refusedRuns = []refusedRun{
 	{ErrNothingToAnswer, http.StatusConflict,
 		"這次試跑沒有以提問結束，沒有可以回答的問題。"},
 	{ErrAnswersDoNotFit, http.StatusBadRequest,
-		"每個問題都要有一個回答，回答不能空白，最多 2000 bytes。"},
+		"每個問題都要有一個回答，回答不能空白，最多 2000 個字。"},
 	{ErrAlreadyContinued, http.StatusConflict,
 		"這次試跑的問題已經回答過了，請到接續的那次試跑查看。"},
 	{ErrContinuationLimit, http.StatusUnprocessableEntity,

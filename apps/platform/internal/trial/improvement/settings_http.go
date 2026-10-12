@@ -60,7 +60,7 @@ func (h *SettingsHandler) SetJudgePanel(w http.ResponseWriter, r *http.Request) 
 	}
 	settings, err := h.Svc.SetJudgePanel(r.Context(), operator, *body.Enabled, body.Note)
 	if errors.Is(err, ErrSettingsReasonRequired) {
-		httpx.WriteError(w, http.StatusBadRequest, "note is required and at most 1000 bytes")
+		httpx.WriteError(w, http.StatusBadRequest, "note is required and at most 1000 characters")
 		return
 	}
 	if err != nil {

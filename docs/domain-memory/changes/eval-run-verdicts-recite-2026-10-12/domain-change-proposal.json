@@ -1,0 +1,122 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "eval-run-verdicts-recite",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "eval-run-verdicts-recite",
+  "status": "superseded",
+  "change_classification": "material",
+  "submitted_at": "2026-10-11T18:25:11.745406Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "42af6c8ec739c64be4c80a58311ba72e293cc9da",
+    "registry_digest": "sha256:05b8761c0ee928faade99e58aa936d10d4d7f26d6463a4ac5f1941226ad84fc4"
+  },
+  "affected_contexts": [
+    "eval",
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [
+    "eval-run-verdicts-v1"
+  ],
+  "ownership_decision": {
+    "owner_context": "eval",
+    "invariant": "Only eval decides a run's verdict; run shows it without interpreting it.",
+    "evidence": [
+      "apps/platform/internal/trial/improvement/verdicts.go:77"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: run reads eval's verdicts for its list; the batch trial port now belongs to the batch Context.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/execution/http.go:465"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The batch Context took over run's trial port, so the eval-owned contract for it describes a consumer that no longer exists.",
+      "The verdict read moved into StandingVerdicts, so the verdict contract cites lines that changed."
+    ],
+    "decision": "Remove the retired contract and re-cite the verdict contract; change nothing else.",
+    "invariants_preserved": [
+      "The run list shows the same verdicts as before."
+    ],
+    "rejected_alternatives": [
+      "Keeping the old contract beside run-batch-trials-v1: two reviewed contracts would describe one port with different consumers."
+    ],
+    "proof_obligations": [
+      "run-list-shows-verdicts",
+      "evidence-current"
+    ],
+    "counterfactual_check": "Make StandingVerdicts return no rows; the run-list verdict test must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "remove",
+      "asset": "contracts",
+      "id": "run-eval-batch-trials-v1"
+    },
+    {
+      "operation": "upsert",
+      "asset": "contracts",
+      "record": {
+        "id": "eval-run-verdicts-v1",
+        "kind": "internal-fact-reader",
+        "producer_context": "eval",
+        "consumer_contexts": [
+          "run"
+        ],
+        "version": "v1",
+        "compatibility_policy": "The run list shows each run's current evaluation verdict as eval serves it; run does not interpret it.",
+        "data_classification": "internal",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/verdicts.go",
+            "lines": {
+              "start": 18,
+              "end": 32
+            },
+            "content_sha256": "sha256:2de51da635f0e4e71cd04ee7e7e691ed94cbf4111f4235ce0077121fe1ec543e",
+            "excerpt_sha256": "sha256:d2d07e97ba6a33001f0500210de125b6cae48aadf1f773fdb7f08e2b805f809b",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/verdicts.go",
+            "lines": {
+              "start": 77,
+              "end": 104
+            },
+            "content_sha256": "sha256:2de51da635f0e4e71cd04ee7e7e691ed94cbf4111f4235ce0077121fe1ec543e",
+            "excerpt_sha256": "sha256:c1c17840e5de6188d949b944f58d123d74b859f5b09ac951ac5959e4992b82e7",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/http.go",
+            "lines": {
+              "start": 465,
+              "end": 482
+            },
+            "content_sha256": "sha256:a657b6f0a93975e38152002b78c0c98d869936f838dc6585eeb82b733f8cd294",
+            "excerpt_sha256": "sha256:562bb58b302958352ef06f8e051bd6972094206bf5c857dc537ba861c1af5544",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": "eval-run-collaboration-r2",
+  "superseded_from_status": "submitted",
+  "superseded_at": "2026-10-11T18:25:56.748666Z",
+  "superseded_reason": "evidence-current can pass only after the update is applied, so it cannot be recorded before approval; the redraft proves the package valid instead",
+  "superseded_by": "eval-run-verdicts-recite-r2"
+}

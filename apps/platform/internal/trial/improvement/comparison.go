@@ -178,10 +178,7 @@ func (s *Service) comparisonSide(
 	}
 	detail := sideDetail{runID: side.RunID, results: map[string]CriterionResult{}}
 
-	version, found, err := s.ReadVersion(ctx, workspaceID, run.SkillVersionID)
-	if !found && err == nil {
-		return comparisonSide{}, sideDetail{}, ErrNotFound
-	}
+	version, err := s.existingVersion(ctx, workspaceID, run.SkillVersionID)
 	if err != nil {
 		return comparisonSide{}, sideDetail{}, err
 	}

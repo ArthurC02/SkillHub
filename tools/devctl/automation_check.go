@@ -167,6 +167,7 @@ func documentCheckers() []namedChecker {
 		{"transaction-callbacks", transactionCallbackProblems},
 		{"wiring-interactions", wiringInteractionProblems},
 		{"vocabulary-synonyms", vocabularySynonymProblems},
+		{"contract-length-units", contractLengthUnitProblems},
 	}
 }
 

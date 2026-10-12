@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -13,18 +14,19 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
 const (
 	DefaultContinuationRounds = 3
-	MaxAnswerBytes            = 2000
+	MaxAnswerChars            = limits.ContinueRunBodyAnswersItemMaxLength
 )
 
 var (
 	ErrNothingToAnswer      = errors.New("this run did not end by asking the person anything")
-	ErrAnswersDoNotFit      = errors.New("every question needs one non-blank answer of at most 2000 bytes")
+	ErrAnswersDoNotFit      = errors.New("every question needs one non-blank answer of at most 2000 characters")
 	ErrAlreadyContinued     = errors.New("this run's questions have already been answered")
 	ErrContinuationLimit    = errors.New("this conversation has reached its limit of answered rounds")
 	ErrContinuationTooLarge = errors.New("the request with every answer so far is longer than a prompt may be")
@@ -35,6 +37,8 @@ type ContinueParams struct {
 	Actor       pgtype.UUID
 	RunID       pgtype.UUID
 	Answers     []string
+
+	AnsweredAsSimulatedUser bool
 }
 
 type answeredQuestion struct {
@@ -79,7 +83,7 @@ func (s *Service) Continue(ctx context.Context, p ContinueParams) (RunView, erro
 		SkillID: version.SkillID, VersionID: version.ID, TestCaseID: snapshot.TestCaseID,
 		WithholdSkill: withheld,
 	}
-	run, err := s.continueRun(ctx, params, continuation{original: original, answered: answered, actor: p.Actor}, prompt)
+	run, err := s.continueRun(ctx, params, continuation{original: original, answered: answered, actor: p.Actor, simulated: p.AnsweredAsSimulatedUser}, prompt)
 	if err != nil {
 		s.auditRefusal(ctx, params, err)
 	}
@@ -107,7 +111,7 @@ func pairAnswers(questions []trace.Question, answers []string) ([]answeredQuesti
 	out := make([]answeredQuestion, 0, len(questions))
 	for i, q := range questions {
 		answer := strings.TrimSpace(answers[i])
-		if answer == "" || len(answer) > MaxAnswerBytes {
+		if answer == "" || utf8.RuneCountInString(answer) > MaxAnswerChars {
 			return nil, ErrAnswersDoNotFit
 		}
 		out = append(out, answeredQuestion{Question: q, Answer: answer})
@@ -126,9 +130,10 @@ func continuedPrompt(original string, answered []answeredQuestion) string {
 }
 
 type continuation struct {
-	original gen.Run
-	answered []answeredQuestion
-	actor    pgtype.UUID
+	original  gen.Run
+	answered  []answeredQuestion
+	actor     pgtype.UUID
+	simulated bool
 }
 
 func (s *Service) continueRun(ctx context.Context, p CreateParams, c continuation, prompt string) (gen.Run, error) {
@@ -215,6 +220,7 @@ func (c continuation) record(ctx context.Context, q *gen.Queries, run gen.Run) e
 	_, err = q.InsertRunContinuation(ctx, gen.InsertRunContinuationParams{
 		RunID: run.ID, WorkspaceID: run.WorkspaceID, ContinuesRunID: c.original.ID,
 		Questions: encodedQuestions, Answers: encodedAnswers, AnsweredBy: c.actor,
+		AnsweredAsSimulatedUser: c.simulated,
 	})
 	if pgconv.IsUniqueViolation(err) {
 		return ErrAlreadyContinued

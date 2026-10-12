@@ -1,0 +1,28 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "evaluation-batch-terms-move",
+  "status": "draft",
+  "intent": "Name the batch Context as where the two evaluation-batch terms are spoken, now that eval no longer runs batches.",
+  "actor": "coding-agent",
+  "observable_outcome": "Skill withheld belongs to run and batch; Reference batch belongs to batch; their definitions and the names to avoid are unchanged.",
+  "acceptance_criteria": [
+    {
+      "id": "terms-follow-the-owner",
+      "statement": "Both terms list batch, and neither lists eval."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that makes the records reviewed is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/adr/ADR-009-evaluation-verdicts-and-judge-trust.md",
+    "apps/platform/internal/trial/batch/batch.go"
+  ]
+}

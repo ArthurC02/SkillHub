@@ -344,7 +344,7 @@ type CreateParams struct {
 
 	ConfirmedSummaryHash string
 	WithholdSkill        bool
-	SameTransaction      func(ctx context.Context, tx pgx.Tx, runID pgtype.UUID) error
+	OriginKey            string
 }
 
 func (s *Service) Create(ctx context.Context, p CreateParams) (RunView, error) {
@@ -377,6 +377,9 @@ func (s *Service) auditRefusal(ctx context.Context, p CreateParams, err error) {
 }
 
 func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
+	if existing, found, err := runFromOrigin(ctx, s.queries(), p); found || err != nil {
+		return existing, err
+	}
 	admitted, err := s.admitRun(ctx, p)
 	if err != nil {
 		return gen.Run{}, err
@@ -398,13 +401,13 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	}
 
 	run, err := s.launch(ctx, tx, p, admitted, snapshotID)
+	if constraint, violated := pgconv.UniqueViolation(err); violated && constraint == originKeyConstraint {
+		_ = tx.Rollback(ctx)
+		existing, _, err := runFromOrigin(ctx, s.queries(), p)
+		return existing, err
+	}
 	if err != nil {
 		return gen.Run{}, err
-	}
-	if p.SameTransaction != nil {
-		if err := p.SameTransaction(ctx, tx, run.ID); err != nil {
-			return gen.Run{}, err
-		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return gen.Run{}, err
@@ -421,6 +424,7 @@ func (s *Service) launch(
 		SkillVersionID:     admitted.version.ID,
 		TestCaseSnapshotID: snapshotID,
 		Provider:           providerUnassigned,
+		OriginKey:          originKey(p.OriginKey),
 	}, runSnapshots{runtime: []byte("{}"), policy: admitted.policy})
 	if err := s.saveRun(ctx, tx, requested, p.Actor); err != nil {
 		return gen.Run{}, err
@@ -889,4 +893,34 @@ func unbuildableWhenGone(err error) error {
 		return unbuildable(err)
 	}
 	return err
+}
+
+const originKeyConstraint = "runs_workspace_origin_key"
+
+var ErrOriginKeyReused = errors.New("run: this origin key already started a run of a different skill version")
+
+func originKey(key string) *string {
+	if key == "" {
+		return nil
+	}
+	return &key
+}
+
+func runFromOrigin(ctx context.Context, q *gen.Queries, p CreateParams) (gen.Run, bool, error) {
+	if p.OriginKey == "" {
+		return gen.Run{}, false, nil
+	}
+	existing, err := q.GetRunByOriginKey(ctx, gen.GetRunByOriginKeyParams{
+		WorkspaceID: p.WorkspaceID, OriginKey: &p.OriginKey,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.Run{}, false, nil
+	}
+	if err != nil {
+		return gen.Run{}, true, err
+	}
+	if existing.SkillVersionID != p.VersionID {
+		return gen.Run{}, true, ErrOriginKeyReused
+	}
+	return existing, true, nil
 }

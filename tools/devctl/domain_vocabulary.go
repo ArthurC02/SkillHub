@@ -152,10 +152,10 @@ var domainVocabularies = []domainVocabulary{
 		name: "evaluation batch status",
 		sources: []vocabularySource{
 			sqlColumnCheck("evaluation_batches", "status"),
-			goConstEnum("apps/platform/internal/trial/improvement/batch.go", "BatchStatus"),
+			goConstEnum("apps/platform/internal/trial/batch/batch.go", "BatchStatus"),
 			goListedConstEnum(
-				"apps/platform/internal/trial/improvement/batch.go", "AllBatchStatuses",
-				"apps/platform/internal/trial/improvement/batch.go", "BatchStatus"),
+				"apps/platform/internal/trial/batch/batch.go", "AllBatchStatuses",
+				"apps/platform/internal/trial/batch/batch.go", "BatchStatus"),
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "EvaluationBatchStatus"),
 		},
 	},

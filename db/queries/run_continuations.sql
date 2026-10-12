@@ -1,6 +1,6 @@
 -- name: InsertRunContinuation :one
-INSERT INTO run_continuations (run_id, workspace_id, continues_run_id, questions, answers, answered_by)
-VALUES (@run_id, @workspace_id, @continues_run_id, @questions, @answers, @answered_by)
+INSERT INTO run_continuations (run_id, workspace_id, continues_run_id, questions, answers, answered_by, answered_as_simulated_user)
+VALUES (@run_id, @workspace_id, @continues_run_id, @questions, @answers, @answered_by, @answered_as_simulated_user)
 RETURNING *;
 
 -- name: RunWasContinued :one

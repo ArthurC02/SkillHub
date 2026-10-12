@@ -812,7 +812,7 @@ func TestJudgeCallHonoursTheCallersCancellation(t *testing.T) {
 
 func TestActivationNeverClaimsTheModelChoseNotToUseTheSkill(t *testing.T) {
 	m, _ := fixtureMaterial(true)
-	m.run = RunFacts{Status: "succeeded"}
+	m.run = RunFacts{Status: "succeeded", Succeeded: true}
 	findings := activationFindings(m)
 	if len(findings) != 1 || findings[0].Category != CategoryActivation {
 		t.Fatalf("one activation finding expected, got %+v", findings)
@@ -828,14 +828,14 @@ func TestActivationNeverClaimsTheModelChoseNotToUseTheSkill(t *testing.T) {
 
 func TestASuccessfulRunWithNoOutputFilesIsReported(t *testing.T) {
 	m, _ := fixtureMaterial(true)
-	m.run = RunFacts{Status: "succeeded"}
+	m.run = RunFacts{Status: "succeeded", Succeeded: true}
 	m.artifacts = nil
 	findings := artifactFindings(m)
 	if len(findings) != 1 || findings[0].Severity != SeverityWarning {
 		t.Fatalf("handoff 丙-5's case has to be visible, got %+v", findings)
 	}
 
-	m.run.Status = "failed"
+	m.run.Status, m.run.Succeeded = "failed", false
 	if got := artifactFindings(m); len(got) != 0 {
 		t.Errorf("no finding for a run that did not finish, got %+v", got)
 	}
@@ -860,7 +860,7 @@ func TestCostIsReportedAsALowerBoundAndUnreportedIsNotZero(t *testing.T) {
 func TestAnEmptyManifestNeverReadsAsAnEmptyRun(t *testing.T) {
 	said := func(mutate func(*material)) string {
 		m, _ := fixtureMaterial(true)
-		m.run.Status = "succeeded"
+		m.run.Status, m.run.Succeeded = "succeeded", true
 		mutate(&m)
 		parts := []string{}
 		for _, f := range artifactFindings(m) {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useUpdateTestCase } from "../../testcases.service";
 import type { TestCase } from "../../testcases.service";
-import { MAX_NAME_BYTES, MAX_PROMPT_BYTES, oversizeReason } from "../test-cases.model";
+import { MAX_NAME_CHARS, MAX_PROMPT_CHARS, oversizeReason } from "../test-cases.model";
 import { MutationError } from "./MutationError";
 
 export function PromptForm({ testCase }: { testCase: TestCase }) {
@@ -25,7 +25,7 @@ export function PromptForm({ testCase }: { testCase: TestCase }) {
           readOnly={save.isPending}
           size={40}
         />{" "}
-        <span className="note">名稱最多 {MAX_NAME_BYTES} bytes。</span>
+        <span className="note">名稱最多 {MAX_NAME_CHARS} 個字。</span>
       </p>
       <p className="field">
         <label htmlFor="edit-prompt">User Prompt</label>
@@ -41,7 +41,7 @@ export function PromptForm({ testCase }: { testCase: TestCase }) {
           readOnly={save.isPending}
         />
         <br />
-        <span className="note">User Prompt 最多 {MAX_PROMPT_BYTES} bytes。</span>
+        <span className="note">User Prompt 最多 {MAX_PROMPT_CHARS} 個字。</span>
       </p>
       <button
         type="button"

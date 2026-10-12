@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
 // Margin is how far below the caller's own deadline a sent ceiling must stay:
@@ -23,7 +25,7 @@ const Margin = 5 * time.Second
 
 const (
 	MinSeconds = 1
-	maxReason  = 1000
+	maxReason  = limits.SetModelCallBudgetBodyReasonMaxLength
 )
 
 var (
@@ -144,8 +146,8 @@ func (s *Service) Set(ctx context.Context, kind string, seconds int, reason stri
 	if reason == "" {
 		return Setting{}, ErrReasonRequired
 	}
-	if len(reason) > maxReason {
-		return Setting{}, fmt.Errorf("%w: at most %d bytes", ErrReasonRequired, maxReason)
+	if utf8.RuneCountInString(reason) > maxReason {
+		return Setting{}, fmt.Errorf("%w: at most %d characters", ErrReasonRequired, maxReason)
 	}
 	if !e.valid(seconds) {
 		return Setting{}, fmt.Errorf("%w: %s accepts %d to %d seconds",

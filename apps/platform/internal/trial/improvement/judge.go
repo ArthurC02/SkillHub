@@ -63,32 +63,23 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 	v.costUSD = v.usage.ReportedCostUSD()
 
 	if len(split) > 0 {
-		v.findings = append(v.findings, Finding{
-			Category: CategoryEffect, Severity: SeverityWarning,
-			Message: "the judges did not agree on " + strings.Join(split, ", ") +
-				"; those criteria are undetermined rather than decided by one judge",
-			Evidence: []EvidenceRef{},
-		})
+		v.findings = append(v.findings, finding(CategoryEffect, SeverityWarning,
+			"the judges did not agree on "+strings.Join(split, ", ")+
+				"; those criteria are undetermined rather than decided by one judge"))
 	}
 
 	if len(dropped) > 0 {
-		v.findings = append(v.findings, Finding{
-			Category: CategoryEffect, Severity: SeverityWarning,
-			Message: "these rubric items name no acceptance criterion of this run's snapshot and " +
-				"were not sent for judgement (" + strings.Join(dropped, ", ") + "); a rubric item's " +
-				"id is the criterion it strengthens",
-			Evidence: []EvidenceRef{},
-		})
+		v.findings = append(v.findings, finding(CategoryEffect, SeverityWarning,
+			"these rubric items name no acceptance criterion of this run's snapshot and "+
+				"were not sent for judgement ("+strings.Join(dropped, ", ")+"); a rubric item's "+
+				"id is the criterion it strengthens"))
 	}
 
 	if len(truncation) > 0 {
 		v.evidenceComplete = false
-		v.findings = append(v.findings, Finding{
-			Category: CategoryEffect, Severity: SeverityWarning,
-			Message: "the material sent for judgement was truncated (" +
-				strings.Join(truncation, ", ") + "); criteria depending on it are undetermined rather than passed",
-			Evidence: []EvidenceRef{},
-		})
+		v.findings = append(v.findings, finding(CategoryEffect, SeverityWarning,
+			"the material sent for judgement was truncated ("+
+				strings.Join(truncation, ", ")+"); criteria depending on it are undetermined rather than passed"))
 	}
 	return v, nil
 }
@@ -279,11 +270,7 @@ func (s *Service) merge(
 
 	out := make([]CriterionResult, 0, len(m.criteria))
 	for _, c := range m.criteria {
-		result := CriterionResult{
-			CriterionID: c.ID, Text: c.Text,
-			Result: ResultUndetermined, Source: SourceModel, Evidence: []EvidenceRef{},
-			Reason: "the judge returned no verdict for this criterion",
-		}
+		result := noVerdict(c)
 		cv, answered := answers[c.ID]
 		if !answered {
 			out = append(out, result)
@@ -300,7 +287,7 @@ func (s *Service) merge(
 				"The judge's own reasoning was: " + cv.Reason
 		}
 
-		if result.Result == ResultPassed && (!m.advanced.Complete || cuts.batch || cuts.restsOnATrimmedSource(result.Evidence)) {
+		if m.cannotRecordPass(result.Result) || (result.Result == ResultPassed && (cuts.batch || cuts.restsOnATrimmedSource(result.Evidence))) {
 			result.Result = ResultUndetermined
 			result.Reason = "judged on incomplete evidence (the trace has gaps or the input " +
 				"was truncated), so a pass cannot be recorded. The judge's own reasoning was: " + cv.Reason

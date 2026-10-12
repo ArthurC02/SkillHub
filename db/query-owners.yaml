@@ -11,7 +11,7 @@ files:
   model_budget.sql: modelbudget
   rate_limit.sql: httpx
   evaluation.sql: eval
-  evaluation_batches.sql: eval
+  evaluation_batches.sql: batch
   evaluation_graders.sql: eval
   governance.sql:
   packaging.sql: packaging
@@ -148,6 +148,7 @@ queries:
   ListRunPolicies: run
   AccountPurgeReady: run
   GetRun: run
+  GetRunByOriginKey: run
   GetRunCancellation: run
   ListWorkspaceRuns: run
   ListRunActivityFacts: run
@@ -543,8 +544,8 @@ tables:
   evaluation_suggestion_applications: eval
   evaluation_model_usage: eval
   evaluation_settings: eval
-  evaluation_batches: eval
-  evaluation_batch_items: eval
+  evaluation_batches: batch
+  evaluation_batch_items: batch
   evaluation_graders: eval
   evaluation_grader_versions: eval
   run_continuations: run

@@ -1,0 +1,97 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "eval-run-collaboration",
+  "proposal_id": "eval-run-collaboration-r2",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "trial-port-is-idempotent",
+      "expected_outcome": "The validator accepts both contracts (with idempotency), three interactions and the rule.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry validate"
+    },
+    {
+      "id": "cited-evidence-current",
+      "source_type": "invariant",
+      "source_id": "fact-and-policy-have-one-home",
+      "expected_outcome": "Every cited line hashes to what the records were written against.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry verify-evidence"
+    },
+    {
+      "id": "origin-key-replay-returns-the-run",
+      "source_type": "acceptance-criterion",
+      "source_id": "trial-port-is-idempotent",
+      "expected_outcome": "A trial already started under its key is linked to that run and no second run exists; another version under the same key is refused.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -run 'TestATrialWhoseRunWasAlreadyStartedUnderItsKey|TestAnOriginKeyThatStartedOne' ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "passing-refusals-published",
+      "source_type": "acceptance-criterion",
+      "source_id": "fact-and-policy-have-one-home",
+      "expected_outcome": "Only concurrency, scan-unavailable and dispatch-halt refusals are reported as passing.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -run TestOnlyRefusalsThatWillPass ./internal/trial/execution/"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "approval-path-is-external",
+      "source_type": "acceptance-criterion",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "Governance readiness reports ready, so a signature can decide the change.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry governance-readiness"
+    },
+    {
+      "id": "reviewed-interaction-registers-edge",
+      "source_type": "acceptance-criterion",
+      "source_id": "wiring-edges-are-registered",
+      "expected_outcome": "A wiring edge whose consumer and producer match a reviewed interaction is allowed without a baseline entry.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "go -C tools/devctl test -run TestAReviewedInteractionRegistersItsConsumerToProducerEdge ."
+    },
+    {
+      "id": "batch-waits-or-stops",
+      "source_type": "rule",
+      "source_id": "eval-batch-waits-only-on-a-passing-refusal",
+      "expected_outcome": "A batch keeps waiting while the run slot is taken and stops with the reason on a refusal waiting cannot fix.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -run 'TestABatchNeedsEveryTestCaseConfirmedAndStartsItsFirstTrialWhileTheRestWait|TestARefusalThatWaitingCannotFixStopsTheBatch' ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "trial-port-contract",
+      "source_type": "contract",
+      "source_id": "run-eval-batch-trials-v1",
+      "expected_outcome": "Replay returns the same run, another version under the key is refused, and only passing refusals are reported as passing.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -run 'TestATrialWhoseRunWasAlreadyStartedUnderItsKey|TestAnOriginKeyThatStartedOne|TestOnlyRefusalsThatWillPass' ./internal/..."
+    },
+    {
+      "id": "verdict-reader-contract",
+      "source_type": "contract",
+      "source_id": "eval-run-verdicts-v1",
+      "expected_outcome": "The run list shows each run's current verdict and not_evaluated for a run with none.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -run TestTheRunListShowsEachRunsCurrentVerdictAndSaysNotEvaluatedOtherwise ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

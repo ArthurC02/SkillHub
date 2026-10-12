@@ -1,0 +1,60 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "eval-trace-write-mode-recite",
+  "proposal_id": "eval-trace-write-mode-r3",
+  "registry_revision": {
+    "observed_commit": "c74abf779367a7688da636c84d901e11d97e98c7",
+    "registry_digest": "sha256:8b578f77b85a625a71566d44abaa8ab854daa88e9217c7b81d8f9685a2104f39"
+  },
+  "approvals": [],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "9c340376cd1672d8a27e6638f0daf44a5d0b8397",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "c74abf779367a7688da636c84d901e11d97e98c7",
+      "registry_digest": "sha256:8b578f77b85a625a71566d44abaa8ab854daa88e9217c7b81d8f9685a2104f39"
+    }
+  },
+  "counterfactual_check": {
+    "status": "not_applicable",
+    "reason": "No rule, contract or aggregate changes; the policy permits the same import and only names its mode correctly."
+  },
+  "sources": [
+    "apps/platform/internal/trial/improvement/eval.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "package-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate-change-package --package-root docs/domain-memory/changes/eval-trace-write-mode-r3-2026-10-12 --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f59ed0f5e58f24af697fc460db7a190345b22c6e6c8a2fdbf184d0f488d61a0f",
+      "finished_at": "2026-10-11T20:35:54.927733Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f52be61fdb890cd07ae0225a267545f62df09a1b3afecc96e7b9b05ebe64013a",
+      "finished_at": "2026-10-11T20:35:55.756424Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py governance-readiness --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:2b6a3a27f1223e6cc1dc91aae0d304d9226040ff5508b5e8d4133a1df04930ec",
+      "finished_at": "2026-10-11T20:35:56.689015Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

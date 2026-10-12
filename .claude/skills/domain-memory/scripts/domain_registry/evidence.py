@@ -90,6 +90,38 @@ def citation(repo_root: Path, relative: str, start: int, end: int) -> dict[str, 
     }
 
 
+def excerpt_starts(repo_root: Path, relative: str, length: int, excerpt_sha256: str) -> list[int]:
+    path = (repo_root / relative).resolve()
+    if _source_verdict(path, relative, repo_root):
+        return []
+    _, rows = _read_lines(path)
+    return [
+        start
+        for start in range(1, len(rows) - length + 2)
+        if digest(_excerpt(rows, start, start + length - 1)) == excerpt_sha256
+    ]
+
+
+def hash_all(value: Any, repo_root: Path) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: [_hashed(reference, repo_root) for reference in child]
+            if key == "evidence" and isinstance(child, list)
+            else hash_all(child, repo_root)
+            for key, child in value.items()
+        }
+    if isinstance(value, list):
+        return [hash_all(child, repo_root) for child in value]
+    return value
+
+
+def _hashed(reference: Any, repo_root: Path) -> Any:
+    if _shape_error(reference) or "excerpt_sha256" in reference:
+        return reference
+    lines = reference["lines"]
+    return {**reference, **citation(repo_root, reference["path"], lines["start"], lines["end"])}
+
+
 def unclassified_paths(value: Any) -> list[str]:
     return sorted(
         {
@@ -133,17 +165,27 @@ def verify(reference: Any, repo_root: Path) -> dict[str, Any]:
     if shape:
         return {"status": "invalid", "reason": shape}
     path_text = reference["path"]
-    start, end = reference["lines"]["start"], reference["lines"]["end"]
     path = (repo_root / path_text).resolve()
     problem = _source_verdict(path, path_text, repo_root)
     if problem:
         return problem
     _, rows = _read_lines(path)
+    return _cited_lines_verdict(reference, path_text, rows)
+
+
+def _cited_lines_verdict(reference: dict[str, Any], path_text: str, rows: list[str]) -> dict[str, Any]:
+    start, end = reference["lines"]["start"], reference["lines"]["end"]
     if end > len(rows):
         return {
             "status": "invalid",
             "reason": "evidence line range exceeds source",
             "path": path_text,
+        }
+    if "excerpt_sha256" not in reference:
+        return {
+            "status": "unhashed",
+            "path": path_text,
+            "reason": f"{path_text} was cited without an excerpt hash; regenerate the citation with cite",
         }
     if reference.get("excerpt_sha256") != digest(_excerpt(rows, start, end)):
         return {"status": "stale", "path": path_text}

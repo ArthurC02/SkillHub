@@ -41,6 +41,7 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		"transaction-callbacks",
 		"wiring-interactions",
 		"vocabulary-synonyms",
+		"contract-length-units",
 	}
 	got := make([]string, 0, len(want))
 	for _, checker := range documentCheckers() {
@@ -156,6 +157,8 @@ func writeAutomationCheckProductCodeFixture(t *testing.T, root string) {
 		"package x\n\nconst t = 135 * time.Second // budget-over: nothing.PAIRS_WITH_THIS\n")
 	writeTestFile(t, root, "apps/platform/internal/fake/decided.go",
 		"package fake\n\nimport _ \""+modelWirePackage+"\"\n\n// Decided in R-74.\nvar decided = true\n")
+	writeTestFile(t, root, "apps/platform/internal/fake/length.go",
+		"package fake\n\nimport limits \""+contractLimitsImport+"\"\n\nvar tooLong = len(\"x\") > limits.NoteMaxLength\n")
 	writeTestFile(t, root, "apps/platform/internal/fake/main_test.go", `package fake
 
 import (

@@ -15,6 +15,8 @@ type ChainEnd struct {
 	RunID           pgtype.UUID
 	Status          string
 	Terminal        bool
+	Succeeded       bool
+	Failed          bool
 }
 
 func (s *Service) ChainEnds(ctx context.Context, workspaceID pgtype.UUID, runIDs []pgtype.UUID) (map[pgtype.UUID]ChainEnd, error) {
@@ -32,6 +34,7 @@ func (s *Service) ChainEnds(ctx context.Context, workspaceID pgtype.UUID, runIDs
 		ends[row.StartID] = ChainEnd{
 			StartSnapshotID: row.StartSnapshotID, RunID: row.EndID,
 			Status: string(row.EndStatus), Terminal: IsTerminal(row.EndStatus),
+			Succeeded: row.EndStatus == gen.RunStatusSucceeded, Failed: row.EndStatus == gen.RunStatusFailed,
 		}
 	}
 	return ends, nil
@@ -56,4 +59,17 @@ func (s *Service) ConfirmedPermissionHash(
 func RefusalReason(err error) (string, bool) {
 	r, isRefusal := errors.AsType[refusal](err)
 	return r.reason, isRefusal
+}
+
+var passingRefusals = map[string]bool{
+	ReasonWorkspaceConcurrency: true,
+	ReasonScanUnavailable:      true,
+}
+
+func RefusalPasses(err error) bool {
+	if errors.Is(err, ErrDispatchHalted) {
+		return true
+	}
+	reason, refused := RefusalReason(err)
+	return refused && passingRefusals[reason]
 }
