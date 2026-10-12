@@ -35,6 +35,81 @@ test("platform policies lead with both current settings and reveal an editor by 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
+for (const policy of ["judge panel", "answer rounds"] as const) {
+  test(`a changed ${policy} can be reviewed after a failed reread without losing keyboard context`, async ({
+    page,
+  }, testInfo) => {
+    const judge = policy === "judge panel";
+    const id = judge ? "admin-settings-judge-panel" : "admin-settings-rounds";
+    const editLabel = judge ? "調整評審團" : "調整回答輪數上限";
+    const reviewLabel = judge ? "檢視目前的評審團設定" : "檢視目前的回答輪數";
+    let unavailable = false;
+    let writes = 0;
+    await page.setViewportSize({ width: 375, height: 900 });
+    await stubPlatform(page);
+    await page.route(judge ? "**/admin/settings" : "**/admin/settings/runs", (route) => {
+      if (route.request().isNavigationRequest() || !unavailable) return route.fallback();
+      return route.fulfill({ status: 503, json: { error: "service unavailable" } });
+    });
+    await page.route(
+      judge ? "**/admin/settings/judge-panel" : "**/admin/settings/runs/continuation-rounds",
+      (route) => {
+        writes += 1;
+        expect(route.request().postDataJSON()).toEqual(
+          judge ? { enabled: true, note: "first decision" } : { rounds: 5, note: "first decision" },
+        );
+        return route.fulfill({
+          json: judge
+            ? { judge_panel: { enabled: true } }
+            : { continuation_rounds: { rounds: 5, min: 1, max: 10 } },
+        });
+      },
+    );
+    await page.goto("/admin/settings");
+    await page.getByText(editLabel, { exact: true }).focus();
+    await page.keyboard.press("Enter");
+    if (!judge) await page.locator(`#${id}-value`).fill("5");
+    await page.locator(`#${id}-note`).fill("first decision");
+    await page.getByRole("button", { name: judge ? "開啟評審團" : "改輪數", exact: true }).click();
+    const result = page.locator(`#${id}-result`);
+    await expect(result).toBeFocused();
+    await page.getByRole("button", { name: "重新整理設定" }).click();
+    await expect(result).toContainText("目前設定尚未確認");
+    await expect(page.locator(`#${id}-note`)).toHaveCount(0);
+    await result.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`${policy}-unverified-phone.png`) });
+
+    unavailable = true;
+    await page.getByRole("button", { name: "重新整理設定" }).click();
+    await expect(page.getByRole("alert")).toContainText(
+      judge ? "暫時無法讀取平台設定" : "暫時無法讀取試跑設定",
+    );
+    await expect(page.getByRole("button", { name: reviewLabel })).toHaveCount(0);
+    unavailable = false;
+    await page.getByRole("button", { name: judge ? "再讀取平台設定" : "再讀取試跑設定" }).click();
+    await page.getByRole("button", { name: reviewLabel }).focus();
+    await page.keyboard.press("Enter");
+    const heading = page.locator(`#${id}-heading`);
+    await expect(heading).toBeFocused();
+    await expect(heading).toBeInViewport();
+    await expect(result).toHaveCount(0);
+    await page.getByText(editLabel, { exact: true }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator(`#${id}-note`)).toBeVisible();
+    await expect(page.locator(`#${id}-note`)).toHaveValue("");
+    await expect(page.locator(judge ? `#${id}-note` : `#${id}-value`)).toHaveValue(
+      judge ? "" : "3",
+    );
+    expect(writes).toBe(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+    expect(accessibility.violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath(`${policy}-recovered-phone.png`) });
+  });
+}
+
 test("an Agent proposal read can recover in place on a phone", async ({ page }, testInfo) => {
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 900 });

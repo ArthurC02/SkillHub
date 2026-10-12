@@ -44,9 +44,11 @@ function SettingsResult({
 function JudgePanel({
   panel,
   readable,
+  refreshing,
 }: {
   panel: PlatformSettings["judge_panel"];
   readable: boolean;
+  refreshing: boolean;
 }) {
   const toggle = useJudgePanelSwitch();
   const next = !panel.enabled;
@@ -57,7 +59,9 @@ function JudgePanel({
       aria-labelledby="admin-settings-judge-panel-heading"
       onInput={() => toggle.reset()}
     >
-      <h2 id="admin-settings-judge-panel-heading">評估判定的評審團</h2>
+      <h2 id="admin-settings-judge-panel-heading" tabIndex={-1}>
+        評估判定的評審團
+      </h2>
       {readable && !unverified && (
         <>
           <p className="badge-row">
@@ -102,6 +106,19 @@ function JudgePanel({
               : "已關閉，下一次評估回到一個判定。"}
         </SettingsResult>
       )}
+      {unverified && readable && (
+        <button
+          type="button"
+          disabled={refreshing}
+          aria-describedby="admin-settings-judge-panel-result"
+          onClick={() => {
+            toggle.reset();
+            document.getElementById("admin-settings-judge-panel-heading")?.focus();
+          }}
+        >
+          {refreshing ? "讀取目前設定中…" : "檢視目前的評審團設定"}
+        </button>
+      )}
     </section>
   );
 }
@@ -109,9 +126,11 @@ function JudgePanel({
 function ContinuationRounds({
   setting,
   readable,
+  refreshing,
 }: {
   setting: RunSettings["continuation_rounds"];
   readable: boolean;
+  refreshing: boolean;
 }) {
   const set = useContinuationRounds();
   const [value, setValue] = useState(String(setting.rounds));
@@ -131,7 +150,9 @@ function ContinuationRounds({
       aria-labelledby="admin-settings-rounds-heading"
       onInput={() => set.reset()}
     >
-      <h2 id="admin-settings-rounds-heading">一段對話可以回答幾輪</h2>
+      <h2 id="admin-settings-rounds-heading" tabIndex={-1}>
+        一段對話可以回答幾輪
+      </h2>
       {readable && !unverified && (
         <>
           <p>
@@ -196,6 +217,21 @@ function ContinuationRounds({
             : `已改為 ${set.variables.rounds} 輪，下一次回答就照這個值。`}
         </SettingsResult>
       )}
+      {unverified && readable && (
+        <button
+          type="button"
+          disabled={refreshing}
+          aria-describedby="admin-settings-rounds-result"
+          onClick={() => {
+            setValue(String(setting.rounds));
+            setSourceRounds(setting.rounds);
+            set.reset();
+            document.getElementById("admin-settings-rounds-heading")?.focus();
+          }}
+        >
+          {refreshing ? "讀取目前設定中…" : "檢視目前的回答輪數"}
+        </button>
+      )}
     </section>
   );
 }
@@ -236,7 +272,11 @@ export function AdminSettings() {
             </button>
           </ReadFailure>
           {settings.data && (
-            <JudgePanel panel={settings.data.judge_panel} readable={!settings.error} />
+            <JudgePanel
+              panel={settings.data.judge_panel}
+              readable={!settings.error}
+              refreshing={settings.isFetching}
+            />
           )}
         </div>
         <div>
@@ -255,6 +295,7 @@ export function AdminSettings() {
             <ContinuationRounds
               setting={runSettings.data.continuation_rounds}
               readable={!runSettings.error}
+              refreshing={runSettings.isFetching}
             />
           )}
         </div>

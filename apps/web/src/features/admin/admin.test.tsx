@@ -1,7 +1,7 @@
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
-import { focusManager } from "@tanstack/react-query";
+import { focusManager, notifyManager } from "@tanstack/react-query";
 import App from "../../app/App";
 import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
@@ -1425,6 +1425,91 @@ test("a judge panel change focuses its result and editing the next reason clears
   expect(has("已開啟，需要模型判定的條件由三個判定投票。")()).toBe(false);
   expect(button("關閉評審團").disabled).toBe(false);
 });
+
+test.each(["judge panel", "answer rounds"] as const)(
+  "a changed %s can be reviewed and edited again without leaving settings",
+  async (policy) => {
+    const judge = policy === "judge panel";
+    const id = judge ? "admin-settings-judge-panel" : "admin-settings-rounds";
+    const writePath = judge
+      ? "/admin/settings/judge-panel"
+      : "/admin/settings/runs/continuation-rounds";
+    stub(true, (path, method) =>
+      path === writePath && method === "PUT"
+        ? {
+            body: judge
+              ? { judge_panel: { enabled: true } }
+              : { continuation_rounds: { rounds: 5, min: 1, max: 10 } },
+            status: 200,
+          }
+        : undefined,
+    );
+    await mountAt("/admin/settings");
+    await waitFor(has("目前：3 輪"));
+    if (!judge) await type(`#${id}-value`, "5");
+    await type(`#${id}-note`, "first decision");
+    await submit(`#${id}-note`);
+    await waitFor(has(judge ? "已開啟，需要模型判定的條件" : "已改為 5 輪，下一次回答"));
+
+    await click(button("重新整理設定"));
+    await waitFor(has("目前設定尚未確認"));
+    expect(container.querySelector(`#${id}-note`)).toBeNull();
+    expect(field<HTMLElement>(`#${id}-result`).classList.contains("notice-success")).toBe(false);
+    const reviewLabel = judge ? "檢視目前的評審團設定" : "檢視目前的回答輪數";
+    const review = button(reviewLabel);
+
+    const fetch = window.fetch;
+    const readPath = judge ? "/admin/settings" : "/admin/settings/runs";
+    let finishRead!: (response: Response) => void;
+    const held = new Promise<Response>((resolve) => {
+      finishRead = resolve;
+    });
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) =>
+      String(input).endsWith(readPath) && (!init?.method || init.method === "GET")
+        ? held
+        : fetch(input, init),
+    );
+    try {
+      await click(button("重新整理設定"));
+      await waitFor(has("重新整理中…"));
+      expect(review.disabled).toBe(true);
+      await click(review);
+      expect(container.querySelector(`#${id}-note`)).toBeNull();
+      expect(container.querySelector(`#${id}-result`)).not.toBeNull();
+    } finally {
+      await act(async () => {
+        finishRead(
+          new Response(JSON.stringify({ error: "settings unavailable" }), { status: 503 }),
+        );
+      });
+    }
+    await waitFor(has(judge ? "暫時無法讀取平台設定" : "暫時無法讀取試跑設定"));
+    expect(container.querySelector(`#${id}-note`)).toBeNull();
+    expect(container.contains(review)).toBe(false);
+
+    vi.stubGlobal("fetch", fetch);
+    await click(button(judge ? "再讀取平台設定" : "再讀取試跑設定"));
+    await waitFor(has(reviewLabel));
+    expect(container.querySelector(`#${id}-note`)).toBeNull();
+    expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1);
+    const currentReview = button(reviewLabel);
+    await act(async () => {
+      currentReview.click();
+      await new Promise<void>((resolve) => notifyManager.schedule(resolve));
+    });
+
+    expect(document.activeElement).toBe(field<HTMLElement>(`#${id}-heading`));
+    expect(container.querySelector(`#${id}-result`)).toBeNull();
+    expect(field<HTMLInputElement | HTMLTextAreaElement>(`#${id}-note`).value).toBe("");
+    expect(has(judge ? "關閉：一個判定（預設）" : "目前：3 輪（可設 1–10 輪）")()).toBe(true);
+    const edit = field<HTMLInputElement | HTMLTextAreaElement>(
+      judge ? `#${id}-note` : `#${id}-value`,
+    );
+    expect(edit.value).toBe(judge ? "" : "3");
+    expect(button(judge ? "開啟評審團" : "改輪數").disabled).toBe(true);
+    expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1);
+  },
+);
 
 test("unreadable cached platform settings hide their controls and retry each setting in place", async () => {
   let unavailable = false;
