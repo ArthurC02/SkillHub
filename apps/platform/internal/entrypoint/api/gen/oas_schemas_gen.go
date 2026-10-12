@@ -1063,8 +1063,8 @@ type CancelRunAccepted struct {
 	// never writes back into. A surface showing this value alone must word it as execution (執行完成 /
 	// 執行失敗) and must not present it as a pass.
 	Status CancelRunAcceptedStatus `json:"status"`
-	// The run deliberately executed the test case without loading the skill, as the baseline an evaluation
-	// batch compares against. Absent for an ordinary run.
+	// The run deliberately executed the test case without loading the skill, as the skill-withheld arm of
+	// an evaluation batch. Absent for an ordinary run.
 	SkillWithheld OptBool `json:"skill_withheld"`
 	// Why the run entered this status. Masked and safe to display.
 	//
@@ -2034,16 +2034,27 @@ type CompareEvaluationBatchesNotFound Error
 func (*CompareEvaluationBatchesNotFound) compareEvaluationBatchesRes() {}
 
 type CompareEvaluationBatchesOK struct {
+	Reference EvaluationBatch `json:"reference"`
+	// The former name of reference.
 	Baseline  EvaluationBatch `json:"baseline"`
 	Candidate EvaluationBatch `json:"candidate"`
 	Paired    int             `json:"paired"`
 	Unpaired  int             `json:"unpaired"`
-	// Mean of candidate minus baseline pass rate per test case.
+	// Mean of candidate minus reference pass rate per test case.
 	Difference      OptFloat64                                `json:"difference"`
 	Difference95    OptCompareEvaluationBatchesOKDifference95 `json:"difference_95"`
 	CandidateBetter int                                       `json:"candidate_better"`
-	BaselineBetter  int                                       `json:"baseline_better"`
-	Tied            int                                       `json:"tied"`
+	ReferenceBetter int                                       `json:"reference_better"`
+	// The former name of reference_better.
+	//
+	// Deprecated: schema marks this property as deprecated.
+	BaselineBetter int `json:"baseline_better"`
+	Tied           int `json:"tied"`
+}
+
+// GetReference returns the value of Reference.
+func (s *CompareEvaluationBatchesOK) GetReference() EvaluationBatch {
+	return s.Reference
 }
 
 // GetBaseline returns the value of Baseline.
@@ -2081,6 +2092,11 @@ func (s *CompareEvaluationBatchesOK) GetCandidateBetter() int {
 	return s.CandidateBetter
 }
 
+// GetReferenceBetter returns the value of ReferenceBetter.
+func (s *CompareEvaluationBatchesOK) GetReferenceBetter() int {
+	return s.ReferenceBetter
+}
+
 // GetBaselineBetter returns the value of BaselineBetter.
 func (s *CompareEvaluationBatchesOK) GetBaselineBetter() int {
 	return s.BaselineBetter
@@ -2089,6 +2105,11 @@ func (s *CompareEvaluationBatchesOK) GetBaselineBetter() int {
 // GetTied returns the value of Tied.
 func (s *CompareEvaluationBatchesOK) GetTied() int {
 	return s.Tied
+}
+
+// SetReference sets the value of Reference.
+func (s *CompareEvaluationBatchesOK) SetReference(val EvaluationBatch) {
+	s.Reference = val
 }
 
 // SetBaseline sets the value of Baseline.
@@ -2124,6 +2145,11 @@ func (s *CompareEvaluationBatchesOK) SetDifference95(val OptCompareEvaluationBat
 // SetCandidateBetter sets the value of CandidateBetter.
 func (s *CompareEvaluationBatchesOK) SetCandidateBetter(val int) {
 	s.CandidateBetter = val
+}
+
+// SetReferenceBetter sets the value of ReferenceBetter.
+func (s *CompareEvaluationBatchesOK) SetReferenceBetter(val int) {
+	s.ReferenceBetter = val
 }
 
 // SetBaselineBetter sets the value of BaselineBetter.
@@ -3096,6 +3122,10 @@ type CreateEvaluationBatchReq struct {
 	Trials         int         `json:"trials"`
 	// Also run every trial with the skill withheld, under the same admission and billing, so the report
 	// can show what the skill adds (EVAL-014).
+	WithSkillWithheld OptBool `json:"with_skill_withheld"`
+	// The former name of with_skill_withheld; refused when both are sent and differ.
+	//
+	// Deprecated: schema marks this property as deprecated.
 	WithBaseline OptBool `json:"with_baseline"`
 }
 
@@ -3112,6 +3142,11 @@ func (s *CreateEvaluationBatchReq) GetTestCaseIds() []uuid.UUID {
 // GetTrials returns the value of Trials.
 func (s *CreateEvaluationBatchReq) GetTrials() int {
 	return s.Trials
+}
+
+// GetWithSkillWithheld returns the value of WithSkillWithheld.
+func (s *CreateEvaluationBatchReq) GetWithSkillWithheld() OptBool {
+	return s.WithSkillWithheld
 }
 
 // GetWithBaseline returns the value of WithBaseline.
@@ -3132,6 +3167,11 @@ func (s *CreateEvaluationBatchReq) SetTestCaseIds(val []uuid.UUID) {
 // SetTrials sets the value of Trials.
 func (s *CreateEvaluationBatchReq) SetTrials(val int) {
 	s.Trials = val
+}
+
+// SetWithSkillWithheld sets the value of WithSkillWithheld.
+func (s *CreateEvaluationBatchReq) SetWithSkillWithheld(val OptBool) {
+	s.WithSkillWithheld = val
 }
 
 // SetWithBaseline sets the value of WithBaseline.
@@ -8194,6 +8234,10 @@ type EvaluationBatch struct {
 	SkillVersionID uuid.UUID `json:"skill_version_id"`
 	Trials         int       `json:"trials"`
 	// Every trial also runs with the skill withheld.
+	WithSkillWithheld bool `json:"with_skill_withheld"`
+	// The former name of with_skill_withheld.
+	//
+	// Deprecated: schema marks this property as deprecated.
 	WithBaseline bool `json:"with_baseline"`
 	// `launching` while some trials have not started, `launched` once every trial has its run, `stopped`
 	// when a run was refused for a reason that waiting does not fix.
@@ -8221,6 +8265,11 @@ func (s *EvaluationBatch) GetSkillVersionID() uuid.UUID {
 // GetTrials returns the value of Trials.
 func (s *EvaluationBatch) GetTrials() int {
 	return s.Trials
+}
+
+// GetWithSkillWithheld returns the value of WithSkillWithheld.
+func (s *EvaluationBatch) GetWithSkillWithheld() bool {
+	return s.WithSkillWithheld
 }
 
 // GetWithBaseline returns the value of WithBaseline.
@@ -8261,6 +8310,11 @@ func (s *EvaluationBatch) SetSkillVersionID(val uuid.UUID) {
 // SetTrials sets the value of Trials.
 func (s *EvaluationBatch) SetTrials(val int) {
 	s.Trials = val
+}
+
+// SetWithSkillWithheld sets the value of WithSkillWithheld.
+func (s *EvaluationBatch) SetWithSkillWithheld(val bool) {
+	s.WithSkillWithheld = val
 }
 
 // SetWithBaseline sets the value of WithBaseline.
@@ -8411,10 +8465,13 @@ type EvaluationBatchReport struct {
 	// Test cases whose every-trial result is known.
 	TestCasesDecided int             `json:"test_cases_decided"`
 	Batch            EvaluationBatch `json:"batch"`
-	// The same trials with the skill withheld; present only when the batch was created with a baseline.
+	// The same trials with the skill withheld; present only when the batch was created with the skill
+	// withheld.
+	SkillWithheld OptEvaluationBatchArm `json:"skill_withheld"`
+	// The former name of skill_withheld.
 	WithoutSkill OptEvaluationBatchArm `json:"without_skill"`
-	// With the skill minus without it, paired by test case; present only when the batch was created with a
-	// baseline.
+	// With the skill minus without it, paired by test case; present only when the batch was created with
+	// the skill withheld.
 	SkillEffect OptEvaluationPairedDifference `json:"skill_effect"`
 }
 
@@ -8456,6 +8513,11 @@ func (s *EvaluationBatchReport) GetTestCasesDecided() int {
 // GetBatch returns the value of Batch.
 func (s *EvaluationBatchReport) GetBatch() EvaluationBatch {
 	return s.Batch
+}
+
+// GetSkillWithheld returns the value of SkillWithheld.
+func (s *EvaluationBatchReport) GetSkillWithheld() OptEvaluationBatchArm {
+	return s.SkillWithheld
 }
 
 // GetWithoutSkill returns the value of WithoutSkill.
@@ -8506,6 +8568,11 @@ func (s *EvaluationBatchReport) SetTestCasesDecided(val int) {
 // SetBatch sets the value of Batch.
 func (s *EvaluationBatchReport) SetBatch(val EvaluationBatch) {
 	s.Batch = val
+}
+
+// SetSkillWithheld sets the value of SkillWithheld.
+func (s *EvaluationBatchReport) SetSkillWithheld(val OptEvaluationBatchArm) {
+	s.SkillWithheld = val
 }
 
 // SetWithoutSkill sets the value of WithoutSkill.
@@ -25789,8 +25856,8 @@ type Run struct {
 	// never writes back into. A surface showing this value alone must word it as execution (執行完成 /
 	// 執行失敗) and must not present it as a pass.
 	Status RunStatus `json:"status"`
-	// The run deliberately executed the test case without loading the skill, as the baseline an evaluation
-	// batch compares against. Absent for an ordinary run.
+	// The run deliberately executed the test case without loading the skill, as the skill-withheld arm of
+	// an evaluation batch. Absent for an ordinary run.
 	SkillWithheld OptBool `json:"skill_withheld"`
 	// Why the run entered this status. Masked and safe to display.
 	//

@@ -59,7 +59,7 @@ type CompareEvaluationBatchesParams struct {
 	ID uuid.UUID
 	// The candidate batch.
 	BatchId uuid.UUID
-	// The baseline batch.
+	// The reference batch the candidate is measured against.
 	Against uuid.UUID
 }
 

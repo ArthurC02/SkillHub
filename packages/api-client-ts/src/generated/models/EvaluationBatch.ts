@@ -38,6 +38,11 @@ export interface EvaluationBatch {
     /**
      * Every trial also runs with the skill withheld.
      */
+    withSkillWithheld: boolean;
+    /**
+     * The former name of with_skill_withheld.
+     * @deprecated
+     */
     withBaseline: boolean;
     /**
      * `launching` while some trials have not started, `launched` once every
@@ -76,6 +81,7 @@ export function instanceOfEvaluationBatch(value: object): value is EvaluationBat
     if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
     if ((!('skillVersionId' in (value as Record<string, any>)) && !('skill_version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillVersionId'] === undefined && (value as Record<string, any>)['skill_version_id'] === undefined)) return false;
     if (!('trials' in value) || value['trials'] === undefined) return false;
+    if ((!('withSkillWithheld' in (value as Record<string, any>)) && !('with_skill_withheld' in (value as Record<string, any>))) || ((value as Record<string, any>)['withSkillWithheld'] === undefined && (value as Record<string, any>)['with_skill_withheld'] === undefined)) return false;
     if ((!('withBaseline' in (value as Record<string, any>)) && !('with_baseline' in (value as Record<string, any>))) || ((value as Record<string, any>)['withBaseline'] === undefined && (value as Record<string, any>)['with_baseline'] === undefined)) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
     if ((!('createdAt' in (value as Record<string, any>)) && !('created_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['createdAt'] === undefined && (value as Record<string, any>)['created_at'] === undefined)) return false;
@@ -96,6 +102,7 @@ export function EvaluationBatchFromJSONTyped(json: any, ignoreDiscriminator: boo
         'skillId': json['skill_id'],
         'skillVersionId': json['skill_version_id'],
         'trials': json['trials'],
+        'withSkillWithheld': json['with_skill_withheld'],
         'withBaseline': json['with_baseline'],
         'status': json['status'],
         'stopReason': json['stop_reason'] == null ? undefined : json['stop_reason'],
@@ -118,6 +125,7 @@ export function EvaluationBatchToJSONTyped(value?: EvaluationBatch | null, ignor
         'skill_id': value['skillId'],
         'skill_version_id': value['skillVersionId'],
         'trials': value['trials'],
+        'with_skill_withheld': value['withSkillWithheld'],
         'with_baseline': value['withBaseline'],
         'status': value['status'],
         'stop_reason': value['stopReason'],

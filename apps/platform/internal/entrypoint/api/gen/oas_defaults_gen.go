@@ -30,6 +30,6 @@ func (s *CreateDownloadArtifactReq) setDefaults() {
 func (s *CreateEvaluationBatchReq) setDefaults() {
 	{
 		val := bool(false)
-		s.WithBaseline.SetTo(val)
+		s.WithSkillWithheld.SetTo(val)
 	}
 }

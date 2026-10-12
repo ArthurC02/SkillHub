@@ -37,6 +37,11 @@ export interface CreateEvaluationBatchRequest {
      * adds (EVAL-014).
      * 
      */
+    withSkillWithheld?: boolean;
+    /**
+     * The former name of with_skill_withheld; refused when both are sent and differ.
+     * @deprecated
+     */
     withBaseline?: boolean;
 }
 
@@ -63,6 +68,7 @@ export function CreateEvaluationBatchRequestFromJSONTyped(json: any, ignoreDiscr
         'skillVersionId': json['skill_version_id'],
         'testCaseIds': new Set(json['test_case_ids']),
         'trials': json['trials'],
+        'withSkillWithheld': json['with_skill_withheld'] == null ? undefined : json['with_skill_withheld'],
         'withBaseline': json['with_baseline'] == null ? undefined : json['with_baseline'],
     };
 }
@@ -81,6 +87,7 @@ export function CreateEvaluationBatchRequestToJSONTyped(value?: CreateEvaluation
         'skill_version_id': value['skillVersionId'],
         'test_case_ids': Array.from(value['testCaseIds'] as Set<any>),
         'trials': value['trials'],
+        'with_skill_withheld': value['withSkillWithheld'],
         'with_baseline': value['withBaseline'],
     };
 }

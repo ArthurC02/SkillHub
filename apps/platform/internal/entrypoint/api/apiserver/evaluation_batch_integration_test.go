@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"reflect"
 	"testing"
 	"time"
 
@@ -240,9 +241,9 @@ func TestABaselineBatchRunsEveryTrialAgainWithTheSkillWithheld(t *testing.T) {
 	f := newFixture(t, a, pool, "alice-batch-baseline")
 	f.confirmPermissions(t)
 	code, body := f.doJSON(t, http.MethodPost, "/skills/"+f.skillID+"/evaluation-batches",
-		`{"skill_version_id":"`+f.versionID+`","test_case_ids":["`+f.testCaseID+`"],"trials":1,"with_baseline":true}`)
-	if code != http.StatusCreated || body["with_baseline"] != true {
-		t.Fatalf("create: got %d %v, want 201 with a baseline", code, body)
+		`{"skill_version_id":"`+f.versionID+`","test_case_ids":["`+f.testCaseID+`"],"trials":1,"with_skill_withheld":true}`)
+	if code != http.StatusCreated || body["with_skill_withheld"] != true || body["with_baseline"] != true {
+		t.Fatalf("create: got %d %v, want 201 withholding the skill under both names", code, body)
 	}
 	batchID := body["id"].(string)
 
@@ -265,8 +266,16 @@ func TestABaselineBatchRunsEveryTrialAgainWithTheSkillWithheld(t *testing.T) {
 	}
 
 	_, report := f.doJSON(t, http.MethodGet, "/skills/"+f.skillID+"/evaluation-batches/"+batchID, "")
-	if without, _ := report["without_skill"].(map[string]any); without == nil || len(without["test_cases"].([]any)) != 1 {
-		t.Errorf("report without_skill = %v, want the withheld arm with its one test case", report["without_skill"])
+	expectWithheldArmOfOneTestCase(t, report)
+}
+
+func expectWithheldArmOfOneTestCase(t *testing.T, report map[string]any) {
+	t.Helper()
+	if without, _ := report["skill_withheld"].(map[string]any); without == nil || len(without["test_cases"].([]any)) != 1 {
+		t.Errorf("report skill_withheld = %v, want the withheld arm with its one test case", report["skill_withheld"])
+	}
+	if !reflect.DeepEqual(report["without_skill"], report["skill_withheld"]) {
+		t.Errorf("report without_skill = %v, want the former name to carry the same arm", report["without_skill"])
 	}
 	if report["skill_effect"] == nil {
 		t.Error("report has no skill_effect, want the paired difference")
@@ -478,9 +487,16 @@ func TestTwoBatchesAreComparedOnlyOnTheTestCasesBothJudged(t *testing.T) {
 	code, body := f.doJSON(t, http.MethodGet, path, "")
 	interval, _ := body["difference_95"].(map[string]any)
 	if code != http.StatusOK || body["paired"] != float64(2) || body["unpaired"] != float64(2) ||
-		body["candidate_better"] != float64(1) || body["tied"] != float64(1) || body["baseline_better"] != float64(0) ||
+		body["candidate_better"] != float64(1) || body["tied"] != float64(1) || body["reference_better"] != float64(0) ||
 		!near(body["difference"], 0.5) || !near(interval["low"], -0.48) || !near(interval["high"], 1.48) {
 		t.Fatalf("comparison: got %d %v, want 2 pairs (an awaiting trial leaves its test case unpaired), one better and one tied, 0.5 within [-0.48, 1.48]", code, body)
+	}
+	if reference, _ := body["reference"].(map[string]any); reference["id"] != baseline {
+		t.Errorf("comparison reference = %v, want batch %s", body["reference"], baseline)
+	}
+	if !reflect.DeepEqual(body["baseline"], body["reference"]) || body["baseline_better"] != body["reference_better"] {
+		t.Errorf("comparison former names baseline=%v baseline_better=%v, want them to repeat reference and reference_better",
+			body["baseline"], body["baseline_better"])
 	}
 
 	if code, _ := f.doJSON(t, http.MethodGet, "/skills/"+f.skillID+"/evaluation-batches/"+candidate+"/comparison", ""); code != http.StatusNotFound {

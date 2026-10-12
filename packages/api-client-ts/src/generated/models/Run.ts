@@ -65,7 +65,7 @@ export interface Run {
     status: RunStatusEnum;
     /**
      * The run deliberately executed the test case without loading the
-     * skill, as the baseline an evaluation batch compares against. Absent
+     * skill, as the skill-withheld arm of an evaluation batch. Absent
      * for an ordinary run.
      * 
      */

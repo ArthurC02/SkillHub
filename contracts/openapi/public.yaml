@@ -5100,13 +5100,17 @@ paths:
                   uniqueItems: true
                   items: { type: string, format: uuid }
                 trials: { type: integer, minimum: 1, maximum: 10 }
-                with_baseline:
+                with_skill_withheld:
                   type: boolean
                   default: false
                   description: |
                     Also run every trial with the skill withheld, under the same
                     admission and billing, so the report can show what the skill
                     adds (EVAL-014).
+                with_baseline:
+                  type: boolean
+                  deprecated: true
+                  description: The former name of with_skill_withheld; refused when both are sent and differ.
       responses:
         "201":
           description: The batch, with its first run started when a slot was free.
@@ -5223,7 +5227,7 @@ paths:
         - name: against
           in: query
           required: true
-          description: The baseline batch.
+          description: The reference batch the candidate is measured against.
           schema: { type: string, format: uuid }
       responses:
         "200":
@@ -5232,13 +5236,17 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [baseline, candidate, paired, unpaired, candidate_better, baseline_better, tied]
+                required: [reference, baseline, candidate, paired, unpaired, candidate_better, reference_better, baseline_better, tied]
                 properties:
-                  baseline: { $ref: "#/components/schemas/EvaluationBatch" }
+                  reference: { $ref: "#/components/schemas/EvaluationBatch" }
+                  baseline:
+                    $ref: "#/components/schemas/EvaluationBatch"
+                    deprecated: true
+                    description: The former name of reference.
                   candidate: { $ref: "#/components/schemas/EvaluationBatch" }
                   paired: { type: integer }
                   unpaired: { type: integer }
-                  difference: { type: number, description: Mean of candidate minus baseline pass rate per test case. }
+                  difference: { type: number, description: Mean of candidate minus reference pass rate per test case. }
                   difference_95:
                     type: object
                     required: [low, high]
@@ -5246,7 +5254,8 @@ paths:
                       low: { type: number }
                       high: { type: number }
                   candidate_better: { type: integer }
-                  baseline_better: { type: integer }
+                  reference_better: { type: integer }
+                  baseline_better: { type: integer, deprecated: true, description: The former name of reference_better. }
                   tied: { type: integer }
         "401":
           description: No valid session.
@@ -7452,13 +7461,14 @@ components:
             set_at: { type: string, format: date-time }
     EvaluationBatch:
       type: object
-      required: [id, skill_id, skill_version_id, trials, with_baseline, status, created_at]
+      required: [id, skill_id, skill_version_id, trials, with_skill_withheld, with_baseline, status, created_at]
       properties:
         id: { type: string, format: uuid }
         skill_id: { type: string, format: uuid }
         skill_version_id: { type: string, format: uuid }
         trials: { type: integer, minimum: 1, maximum: 10 }
-        with_baseline: { type: boolean, description: Every trial also runs with the skill withheld. }
+        with_skill_withheld: { type: boolean, description: Every trial also runs with the skill withheld. }
+        with_baseline: { type: boolean, deprecated: true, description: The former name of with_skill_withheld. }
         status:
           type: string
           enum: [launching, launched, stopped]
@@ -7509,14 +7519,18 @@ components:
           required: [batch]
           properties:
             batch: { $ref: "#/components/schemas/EvaluationBatch" }
+            skill_withheld:
+              $ref: "#/components/schemas/EvaluationBatchArm"
+              description: The same trials with the skill withheld; present only when the batch was created with the skill withheld.
             without_skill:
               $ref: "#/components/schemas/EvaluationBatchArm"
-              description: The same trials with the skill withheld; present only when the batch was created with a baseline.
+              deprecated: true
+              description: The former name of skill_withheld.
             skill_effect:
               $ref: "#/components/schemas/EvaluationPairedDifference"
               description: |
                 With the skill minus without it, paired by test case; present
-                only when the batch was created with a baseline.
+                only when the batch was created with the skill withheld.
     EvaluationPairedDifference:
       type: object
       description: |
@@ -11019,7 +11033,7 @@ components:
           type: boolean
           description: |
             The run deliberately executed the test case without loading the
-            skill, as the baseline an evaluation batch compares against. Absent
+            skill, as the skill-withheld arm of an evaluation batch. Absent
             for an ordinary run.
         status_reason:
           type: string

@@ -48,7 +48,8 @@ type batchView struct {
 	SkillID           string      `json:"skill_id"`
 	SkillVersionID    string      `json:"skill_version_id"`
 	Trials            int         `json:"trials"`
-	WithSkillWithheld bool        `json:"with_baseline"`
+	WithSkillWithheld bool        `json:"with_skill_withheld"`
+	FormerWithheld    bool        `json:"with_baseline"`
 	Status            BatchStatus `json:"status"`
 	StopReason        string      `json:"stop_reason,omitempty"`
 	CreatedAt         string      `json:"created_at"`
@@ -99,8 +100,9 @@ type pairedView struct {
 type batchReportView struct {
 	Batch batchView `json:"batch"`
 	armView
-	SkillWithheld *armView    `json:"without_skill,omitempty"`
-	SkillEffect   *pairedView `json:"skill_effect,omitempty"`
+	SkillWithheld       *armView    `json:"skill_withheld,omitempty"`
+	FormerSkillWithheld *armView    `json:"without_skill,omitempty"`
+	SkillEffect         *pairedView `json:"skill_effect,omitempty"`
 }
 
 func (h *BatchHandler) CreateBatch(w http.ResponseWriter, r *http.Request) {
@@ -116,10 +118,16 @@ func (h *BatchHandler) CreateBatch(w http.ResponseWriter, r *http.Request) {
 		SkillVersionID    string   `json:"skill_version_id"`
 		TestCaseIDs       []string `json:"test_case_ids"`
 		Trials            int      `json:"trials"`
-		WithSkillWithheld bool     `json:"with_baseline"`
+		WithSkillWithheld *bool    `json:"with_skill_withheld"`
+		FormerWithheld    *bool    `json:"with_baseline"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBatchBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with `skill_version_id`, `test_case_ids` and `trials`")
+		return
+	}
+	withheld, ok := eitherName(body.WithSkillWithheld, body.FormerWithheld)
+	if !ok {
+		httpx.WriteError(w, http.StatusBadRequest, "`with_skill_withheld` and its former name `with_baseline` disagree")
 		return
 	}
 	ids, ok := uuids(append([]string{body.SkillVersionID}, body.TestCaseIDs...))
@@ -129,7 +137,7 @@ func (h *BatchHandler) CreateBatch(w http.ResponseWriter, r *http.Request) {
 	}
 	batch, err := h.Svc.CreateBatch(r.Context(), NewBatch{
 		WorkspaceID: ws.ID, Actor: user, SkillID: skillID,
-		VersionID: ids[0], TestCaseIDs: ids[1:], Trials: body.Trials, WithSkillWithheld: body.WithSkillWithheld,
+		VersionID: ids[0], TestCaseIDs: ids[1:], Trials: body.Trials, WithSkillWithheld: withheld,
 	})
 	if unconfirmed, isUnconfirmed := errors.AsType[UnconfirmedTestCasesError](err); isUnconfirmed {
 		httpx.WriteJSON(w, http.StatusUnprocessableEntity, map[string]any{
@@ -197,15 +205,17 @@ func (h *BatchHandler) BatchReport(w http.ResponseWriter, r *http.Request) {
 }
 
 type batchComparisonView struct {
-	Reference       batchView     `json:"baseline"`
-	Candidate       batchView     `json:"candidate"`
-	Paired          int           `json:"paired"`
-	Unpaired        int           `json:"unpaired"`
-	Difference      *float64      `json:"difference,omitempty"`
-	Difference95    *intervalView `json:"difference_95,omitempty"`
-	CandidateBetter int           `json:"candidate_better"`
-	ReferenceBetter int           `json:"baseline_better"`
-	Tied            int           `json:"tied"`
+	Reference             batchView     `json:"reference"`
+	FormerReference       batchView     `json:"baseline"`
+	Candidate             batchView     `json:"candidate"`
+	Paired                int           `json:"paired"`
+	Unpaired              int           `json:"unpaired"`
+	Difference            *float64      `json:"difference,omitempty"`
+	Difference95          *intervalView `json:"difference_95,omitempty"`
+	CandidateBetter       int           `json:"candidate_better"`
+	ReferenceBetter       int           `json:"reference_better"`
+	FormerReferenceBetter int           `json:"baseline_better"`
+	Tied                  int           `json:"tied"`
 }
 
 func (h *BatchHandler) CompareBatches(w http.ResponseWriter, r *http.Request) {
@@ -227,11 +237,13 @@ func (h *BatchHandler) CompareBatches(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "batch comparison failed")
 		return
 	}
+	reference := viewOfBatch(comparison.Reference)
 	view := batchComparisonView{
-		Reference: viewOfBatch(comparison.Reference), Candidate: viewOfBatch(comparison.Candidate),
+		Reference: reference, FormerReference: reference, Candidate: viewOfBatch(comparison.Candidate),
 		Paired: comparison.Paired, Unpaired: comparison.Unpaired, Difference: comparison.Difference,
 		Difference95:    viewOfInterval(comparison.Difference95),
-		CandidateBetter: comparison.Better, ReferenceBetter: comparison.Worse, Tied: comparison.Tied,
+		CandidateBetter: comparison.Better, ReferenceBetter: comparison.Worse, FormerReferenceBetter: comparison.Worse,
+		Tied: comparison.Tied,
 	}
 	httpx.WriteJSON(w, http.StatusOK, view)
 }
@@ -240,6 +252,19 @@ func (h *BatchHandler) sessionUser(w http.ResponseWriter, r *http.Request) (iden
 	user, _ := identity.SessionUser(r.Context())
 	ws, ok := sessionWorkspace(h.Identity, w, r)
 	return ws, user.ID, ok
+}
+
+func eitherName(current, former *bool) (bool, bool) {
+	switch {
+	case current == nil && former == nil:
+		return false, true
+	case current == nil:
+		return *former, true
+	case former == nil:
+		return *current, true
+	default:
+		return *current, *current == *former
+	}
 }
 
 func uuids(raw []string) ([]pgtype.UUID, bool) {
@@ -270,7 +295,7 @@ func optionalUUIDString(id pgtype.UUID) string {
 func viewOfBatch(b Batch) batchView {
 	return batchView{
 		ID: pgconv.UUIDString(b.ID), SkillID: pgconv.UUIDString(b.SkillID), SkillVersionID: pgconv.UUIDString(b.VersionID),
-		Trials: b.Trials, WithSkillWithheld: b.WithSkillWithheld, Status: b.Status, StopReason: b.StopReason,
+		Trials: b.Trials, WithSkillWithheld: b.WithSkillWithheld, FormerWithheld: b.WithSkillWithheld, Status: b.Status, StopReason: b.StopReason,
 		CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }
@@ -286,7 +311,7 @@ func viewOfReport(report BatchReport) batchReportView {
 	view := batchReportView{Batch: viewOfBatch(report.Batch), armView: viewOfArm(report.ArmReport)}
 	if report.SkillWithheld != nil {
 		without := viewOfArm(*report.SkillWithheld)
-		view.SkillWithheld = &without
+		view.SkillWithheld, view.FormerSkillWithheld = &without, &without
 	}
 	if p := report.SkillEffect; p != nil {
 		view.SkillEffect = &pairedView{

@@ -920,7 +920,7 @@ export interface CompareEvaluationBatchesRequest {
      */
     batchId: string;
     /**
-     * The baseline batch.
+     * The reference batch the candidate is measured against.
      */
     against: string;
 }
@@ -2297,7 +2297,7 @@ export interface DefaultApiInterface {
      * Creates request options for compareEvaluationBatches without sending the request
      * @param {string} id 
      * @param {string} batchId The candidate batch.
-     * @param {string} against The baseline batch.
+     * @param {string} against The reference batch the candidate is measured against.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
@@ -2308,7 +2308,7 @@ export interface DefaultApiInterface {
      * @summary This batch against another of the same skill, test case by test case (EVAL-014)
      * @param {string} id 
      * @param {string} batchId The candidate batch.
-     * @param {string} against The baseline batch.
+     * @param {string} against The reference batch the candidate is measured against.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface

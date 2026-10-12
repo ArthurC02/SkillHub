@@ -783,6 +783,17 @@ func (s *CompareEvaluationBatchesOK) Validate() error {
 
 	var failures []validate.FieldError
 	if err := func() error {
+		if err := s.Reference.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "reference",
+			Error: err,
+		})
+	}
+	if err := func() error {
 		if err := s.Baseline.Validate(); err != nil {
 			return err
 		}
@@ -3960,6 +3971,24 @@ func (s *EvaluationBatchReport) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "batch",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if value, ok := s.SkillWithheld.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "skill_withheld",
 			Error: err,
 		})
 	}
