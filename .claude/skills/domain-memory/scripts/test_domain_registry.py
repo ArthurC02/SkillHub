@@ -5547,6 +5547,64 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stdout)
         self.assertEqual(["PRO-1"], json.loads(result.stdout)["supersedes"])
 
+    def citation_after_edit(self, before: str, cited: int, after: str, last: int | None = None) -> dict:
+        source = self.repo / "fact.md"
+        source.write_text(before, encoding="utf-8")
+        reference = citation(self.repo, "fact.md", cited, last or cited)
+        source.write_text(after, encoding="utf-8")
+        return verify(reference, self.repo)
+
+    def test_cited_lines_pushed_down_by_an_insertion_are_shifted_to_where_they_now_sit(self) -> None:
+        result = self.citation_after_edit("a\nfact\n", 2, "new\na\nfact\n")
+        self.assertEqual(("shifted", {"start": 3, "end": 3}), (result["status"], result["lines"]))
+        spanning = self.citation_after_edit("a\nfact\n", 1, "new\na\nfact\n", last=2)
+        self.assertEqual(("shifted", {"start": 2, "end": 3}), (spanning["status"], spanning["lines"]))
+        self.assertIn("relocate-evidence --from fact.md --to fact.md", result["reason"])
+
+    def test_cited_lines_that_now_appear_twice_or_not_at_all_are_stale(self) -> None:
+        for after in ("fact\nnew\nfact\n", "a\nchanged\n"):
+            with self.subTest(after=after):
+                self.assertEqual("stale", self.citation_after_edit("a\nfact\n", 2, after)["status"])
+
+    def seed_two_cited_rules(self) -> None:
+        (self.repo / "fact.md").write_text("a\nfact\n", encoding="utf-8")
+        (self.repo / "other.md").write_text("other\n", encoding="utf-8")
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        self.seed(
+            "rules.json",
+            [
+                {"id": "moved", "contexts": ["orders"], "statement": "S.", "status": "reviewed",
+                 "evidence": [citation(self.repo, "fact.md", 2, 2)], "review": {"proposal_id": "PRO-1"}},
+                {"id": "kept", "contexts": ["orders"], "statement": "S.", "status": "reviewed",
+                 "evidence": [citation(self.repo, "fact.md", 1, 1), citation(self.repo, "other.md", 1, 1)],
+                 "review": {"proposal_id": "PRO-2"}},
+            ],
+        )
+        (self.repo / "fact.md").write_text("a\nnew\nfact\n", encoding="utf-8")
+
+    def test_verify_evidence_names_the_record_of_each_citation_and_filters_by_path(self) -> None:
+        self.seed_two_cited_rules()
+        report = verify_evidence(self.repo / "memory", self.repo, ["fact.md"])
+        self.assertEqual(
+            [("rules", "moved", "shifted"), ("rules", "kept", "current")],
+            [(item["asset"], item["id"], item["status"]) for item in report["results"]],
+        )
+        self.assertEqual(3, len(verify_evidence(self.repo / "memory", self.repo)["results"]))
+
+    def test_a_shifted_citation_does_not_fail_verify_evidence(self) -> None:
+        self.seed_two_cited_rules()
+        result = self.run_cli("verify-evidence", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))
+        self.assertEqual((0, 1), (result.returncode, json.loads(result.stdout)["summary"]["shifted"]))
+
+    def test_relocating_a_file_onto_itself_recites_only_its_shifted_citations(self) -> None:
+        self.seed_two_cited_rules()
+        moved = relocate_evidence(self.repo / "memory", self.repo, "fact.md", "fact.md")
+        self.assertEqual(
+            [("moved", {"start": 3, "end": 3})],
+            [(update["record"]["id"], update["record"]["evidence"][0]["lines"]) for update in moved["registry_updates"]],
+        )
+        self.assertEqual(["PRO-1"], moved["supersedes"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -23,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     commands = parser.add_subparsers(dest="command", required=True)
     for add_commands in (
-        _add_registry_commands, _add_recite_command, _add_record_and_source_commands, _add_governance_commands,
+        _add_registry_commands, _add_evidence_commands, _add_record_and_source_commands, _add_governance_commands,
         _add_review_governance_commands, _add_proposal_commands, _add_proposal_check_commands,
     ):
         add_commands(commands)
@@ -82,7 +82,11 @@ def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     relocate_parser.add_argument("--to", dest="moved_to", required=True)
 
 
-def _add_recite_command(commands: argparse._SubParsersAction) -> None:
+def _add_evidence_commands(commands: argparse._SubParsersAction) -> None:
+    evidence_verify_parser = commands.add_parser("verify-evidence")
+    add_path(evidence_verify_parser, "--registry-root")
+    add_path(evidence_verify_parser, "--repo-root")
+    evidence_verify_parser.add_argument("--path", action="append")
     recite_parser = commands.add_parser("recite")
     add_path(recite_parser, "--registry-root")
     add_path(recite_parser, "--repo-root")
@@ -134,9 +138,6 @@ def _add_record_and_source_commands(commands: argparse._SubParsersAction) -> Non
     add_path(probe_parser, "--repo-root")
     add_path(probe_parser, "--registry-root")
     add_path(probe_parser, "--policy", required=False)
-    evidence_verify_parser = commands.add_parser("verify-evidence")
-    add_path(evidence_verify_parser, "--registry-root")
-    add_path(evidence_verify_parser, "--repo-root")
     evidence_migrate_parser = commands.add_parser("migrate-evidence")
     add_path(evidence_migrate_parser, "--registry-root")
     add_path(evidence_migrate_parser, "--repo-root")

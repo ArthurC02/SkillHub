@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from .common import ASSET_KEYS, load_json, registry_dir
-from .evidence import all_references, citation, classified, excerpt_starts, source_map_for
+from .evidence import all_references, citation, classified, excerpt_starts, source_map_for, verify
 
 
 def with_references(value: Any, change: Callable[[Any], Any]) -> Any:
@@ -39,7 +39,7 @@ class Relocation:
 
     def reference(self, reference: Any) -> Any:
         target = self.target(reference.get("path", "")) if isinstance(reference, dict) else None
-        if target is None:
+        if target is None or (target == reference.get("path") and verify(reference, self.repo_root)["status"] == "current"):
             return reference
         lines = reference.get("lines") or {}
         length = lines.get("end", 0) - lines.get("start", 0) + 1

@@ -403,17 +403,21 @@ def _synonym_errors(
     return errors
 
 
-def verify_evidence(root: Path, repo_root: Path) -> dict[str, Any]:
+EVIDENCE_STATUSES = ("current", "shifted", "stale", "unhashed", "missing", "invalid", "legacy-unverified")
+
+
+def verify_evidence(root: Path, repo_root: Path, paths: list[str] | None = None) -> dict[str, Any]:
     source_map = source_map_for(root)
     results = [
-        verify(classified(reference, source_map), repo_root)
-        for reference in all_references(
-            {name: asset_records(root, name) for name in ASSET_KEYS}
-        )
+        {"asset": name.removesuffix(".json"), "id": entry.get("id"),
+         **verify(classified(reference, source_map), repo_root)}
+        for name in ASSET_KEYS
+        for entry in asset_records(root, name)
+        for reference in all_references(entry)
+        if not paths or (isinstance(reference, dict) and reference.get("path") in paths)
     ]
     summary: dict[str, Any] = {
-        status: sum(item["status"] == status for item in results)
-        for status in ("current", "stale", "unhashed", "missing", "invalid", "legacy-unverified")
+        status: sum(item["status"] == status for item in results) for status in EVIDENCE_STATUSES
     }
     kinds = sorted({item["source_kind"] for item in results if "source_kind" in item})
     summary["by_source_kind"] = {

@@ -327,7 +327,7 @@ def handle_readiness(args: argparse.Namespace) -> int:
 
 
 def handle_verify_evidence(args: argparse.Namespace) -> int:
-    result = verify_evidence(args.registry_root.resolve(), args.repo_root.resolve())
+    result = verify_evidence(args.registry_root.resolve(), args.repo_root.resolve(), args.path)
     print_json(result)
     summary = result["summary"]
     return int(any(summary[status] for status in ("stale", "unhashed", "missing", "invalid")))

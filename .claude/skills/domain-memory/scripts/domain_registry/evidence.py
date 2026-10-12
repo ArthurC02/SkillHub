@@ -95,11 +95,7 @@ def excerpt_starts(repo_root: Path, relative: str, length: int, excerpt_sha256: 
     if _source_verdict(path, relative, repo_root):
         return []
     _, rows = _read_lines(path)
-    return [
-        start
-        for start in range(1, len(rows) - length + 2)
-        if digest(_excerpt(rows, start, start + length - 1)) == excerpt_sha256
-    ]
+    return _starts_of(rows, length, excerpt_sha256)
 
 
 def hash_all(value: Any, repo_root: Path) -> Any:
@@ -188,11 +184,32 @@ def _cited_lines_verdict(reference: dict[str, Any], path_text: str, rows: list[s
             "reason": f"{path_text} was cited without an excerpt hash; regenerate the citation with cite",
         }
     if reference.get("excerpt_sha256") != digest(_excerpt(rows, start, end)):
-        return {"status": "stale", "path": path_text}
+        return _moved_or_stale(reference["excerpt_sha256"], path_text, rows, end - start + 1)
     return {
         "status": "current",
         "path": path_text,
         "source_kind": reference.get("source_kind", "unclassified"),
+    }
+
+
+def _starts_of(rows: list[str], length: int, excerpt_sha256: str) -> list[int]:
+    return [
+        start
+        for start in range(1, len(rows) - length + 2)
+        if digest(_excerpt(rows, start, start + length - 1)) == excerpt_sha256
+    ]
+
+
+def _moved_or_stale(excerpt_sha256: str, path_text: str, rows: list[str], length: int) -> dict[str, Any]:
+    starts = _starts_of(rows, length, excerpt_sha256)
+    if len(starts) != 1:
+        return {"status": "stale", "path": path_text}
+    return {
+        "status": "shifted",
+        "path": path_text,
+        "lines": {"start": starts[0], "end": starts[0] + length - 1},
+        "reason": f"the cited lines are unchanged but now sit elsewhere in {path_text}; "
+        f"relocate-evidence --from {path_text} --to {path_text} re-cites them",
     }
 
 
