@@ -58,7 +58,11 @@ function PrioritySummary({
   ].filter(Boolean).length;
   return (
     <p className="admin-home-summary" role="status" aria-busy={fetching}>
-      {attention > 0 ? `目前有 ${attention} 類狀態需留意。` : "這四項目前沒有需留意的狀態。"}
+      {fetching
+        ? "正在更新四項狀態；完成後再判斷是否有待處理事項。"
+        : attention > 0
+          ? `目前有 ${attention} 類狀態需留意。`
+          : "這四項目前沒有需留意的狀態。"}
     </p>
   );
 }

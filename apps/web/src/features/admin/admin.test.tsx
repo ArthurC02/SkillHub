@@ -329,6 +329,65 @@ test("the admin home can refresh operational state without leaving the page", as
   expect(dispatchReads).toBe(2);
 });
 
+test.each([
+  "/admin/dispatch",
+  "/admin/agents/proposals",
+  "/admin/agents/findings",
+  "/admin/exposure-reviews",
+])("the admin home waits for %s before renewing its priority conclusion", async (pendingPath) => {
+  const clear: Record<string, unknown> = {
+    "/admin/dispatch": { dispatching: true, halts: [] },
+    "/admin/agents/proposals": { proposals: [], total: 0 },
+    "/admin/agents/findings": {
+      findings: [],
+      counts: { open: 0, acknowledged: 0, resolved: 0, dismissed: 0, recovered: 0 },
+    },
+    "/admin/exposure-reviews": { publications: [] },
+  };
+  stub(true, (path) => (path in clear ? { body: clear[path], status: 200 } : undefined));
+  await mountAt("/admin");
+  await waitFor(has("已取得 4/4 項狀態"));
+  const summary = field<HTMLElement>(".admin-home-summary");
+  const refresh = button("重新整理狀態");
+  expect(summary.textContent).toBe("這四項目前沒有需留意的狀態。");
+
+  let finishRead!: (response: Response) => void;
+  const held = new Promise<Response>((resolve) => {
+    finishRead = resolve;
+  });
+  const originalFetch = fetch;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) =>
+    String(input).split("?")[0] === pendingPath ? held : originalFetch(input, init),
+  );
+  try {
+    await click(refresh);
+    await waitFor(() => refresh.disabled);
+    expect(summary.getAttribute("aria-busy")).toBe("true");
+    expect(summary.textContent).toBe("正在更新四項狀態；完成後再判斷是否有待處理事項。");
+    expect(button("更新中…").disabled).toBe(true);
+    expect(container.querySelectorAll(".admin-home-priority")).toHaveLength(4);
+  } finally {
+    await act(async () => {
+      finishRead(new Response(JSON.stringify(platformResponse(pendingPath).body)));
+    });
+  }
+  await waitFor(() => !refresh.disabled);
+  expect(summary.getAttribute("aria-busy")).toBe("false");
+  expect(summary.textContent).toBe("目前有 1 類狀態需留意。");
+  expect(button("重新整理狀態").disabled).toBe(false);
+  stub(true, (path) =>
+    path === pendingPath
+      ? { body: { error: "service unavailable" }, status: 503 }
+      : path in clear
+        ? { body: clear[path], status: 200 }
+        : undefined,
+  );
+  await click(button("重新整理狀態"));
+  await waitFor(has("1 項狀態無法取得"));
+  expect(container.querySelector(".admin-home-summary")).toBeNull();
+  expect(has("這四項目前沒有需留意的狀態。")()).toBe(false);
+});
+
 test("OPS-001: the admin page stays loading while the operator check is pending", async () => {
   vi.stubGlobal("fetch", () => new Promise<Response>(() => {}));
   await mountAt("/admin");

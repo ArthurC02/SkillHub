@@ -9,6 +9,72 @@ import {
 } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
+test("the home priority conclusion waits for every refreshed source on a phone", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 375, height: 900 });
+  await stubPlatform(page);
+  await page.route("**/admin/dispatch", (route) =>
+    route.fulfill({ json: { dispatching: true, halts: [] } }),
+  );
+  await page.route("**/admin/exposure-reviews", (route) =>
+    route.fulfill({ json: { publications: [] } }),
+  );
+  await page.route("**/admin/agents/findings", (route) =>
+    route.fulfill({
+      json: {
+        findings: [],
+        counts: { open: 0, acknowledged: 0, resolved: 0, dismissed: 0, recovered: 0 },
+      },
+    }),
+  );
+  let reads = 0;
+  let finishRead!: () => void;
+  const held = new Promise<void>((resolve) => {
+    finishRead = resolve;
+  });
+  await page.route("**/admin/agents/proposals?*", async (route) => {
+    reads += 1;
+    if (reads === 2) {
+      await held;
+      return route.fulfill({ json: ADMIN_AGENT_PROPOSALS });
+    }
+    if (reads === 3) {
+      return route.fulfill({ status: 503, json: { error: "service unavailable" } });
+    }
+    return route.fulfill({ json: { proposals: [], total: 0 } });
+  });
+  await page.goto("/admin");
+  const priorities = page.getByRole("region", { name: "目前需留意" });
+  const summary = priorities.getByRole("status");
+  await expect(summary).toHaveText("這四項目前沒有需留意的狀態。");
+  const refresh = priorities.getByRole("button", { name: "重新整理狀態" });
+  try {
+    await refresh.focus();
+    await page.keyboard.press("Enter");
+    await expect(summary).toHaveAttribute("aria-busy", "true");
+    await expect(summary).toHaveText("正在更新四項狀態；完成後再判斷是否有待處理事項。");
+    await expect(priorities.getByRole("button", { name: "更新中…" })).toBeDisabled();
+    await expect(priorities.getByRole("link")).toHaveCount(4);
+    await expect(summary).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath("home-priorities-refreshing-phone.png") });
+  } finally {
+    finishRead();
+  }
+  await expect(summary).toHaveAttribute("aria-busy", "false");
+  await expect(summary).toHaveText("目前有 1 類狀態需留意。");
+  await refresh.click();
+  await expect(priorities.getByRole("alert")).toContainText("1 項狀態無法取得");
+  await expect(summary).toHaveCount(0);
+  await expect(priorities.getByRole("link", { name: "平台 Agent 提案 無法取得" })).toBeVisible();
+  await refresh.click();
+  await expect(summary).toHaveText("這四項目前沒有需留意的狀態。");
+  const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+  expect(accessibility.violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(reads).toBe(4);
+});
+
 test("platform policies lead with both current settings and reveal an editor by keyboard", async ({
   page,
 }) => {
