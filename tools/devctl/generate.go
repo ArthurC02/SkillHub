@@ -57,6 +57,7 @@ func generate(root string, args []string, out io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
+	pruneOldScratch(filepath.Join(root, ".devctl"), time.Now())
 	scratch, err := os.MkdirTemp(filepath.Join(root, ".devctl"), "generate-")
 	if err != nil {
 		return err
@@ -157,15 +158,74 @@ func driftedOutputs(outputs []generationOutput, out io.Writer) ([]driftedOutput,
 }
 
 func installDriftedOutputs(pending []driftedOutput, out io.Writer) error {
+	var failures []error
 	for _, output := range pending {
-		if err := atomicReplaceDir(output.source, output.target); err != nil {
-			return fmt.Errorf("replace %s output: %w", output.label, err)
+		if err := installOutput(output); err != nil {
+			failures = append(failures, fmt.Errorf(
+				"replace %s output: %w; a process may hold a file under %s open, such as an editor, a dev server "+
+					"or a test watcher; close it and rerun", output.label, err, output.target))
+			continue
 		}
 		for _, path := range output.drift {
 			fmt.Fprintln(out, "UPDATED", output.label, filepath.ToSlash(path))
 		}
 	}
+	return errors.Join(failures...)
+}
+
+func installOutput(output driftedOutput) error {
+	replaceErr := atomicReplaceDir(output.source, output.target)
+	if replaceErr == nil || !isDir(output.source) || !isDir(output.target) {
+		return replaceErr
+	}
+	if err := syncDriftedFiles(output.source, output.target, output.drift); err != nil {
+		return errors.Join(replaceErr, err)
+	}
 	return nil
+}
+
+func isDir(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
+func syncDriftedFiles(source, target string, drift []string) error {
+	for _, rel := range drift {
+		from := filepath.Join(source, filepath.FromSlash(rel))
+		to := filepath.Join(target, filepath.FromSlash(rel))
+		data, err := os.ReadFile(from)
+		if errors.Is(err, os.ErrNotExist) {
+			if err := os.Remove(to); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return err
+			}
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(to, data, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+const scratchMaxAge = 7 * 24 * time.Hour
+
+func pruneOldScratch(dir string, now time.Time) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err == nil && entry.IsDir() && strings.HasPrefix(entry.Name(), "generate-") && now.Sub(info.ModTime()) > scratchMaxAge {
+			_ = os.RemoveAll(filepath.Join(dir, entry.Name()))
+		}
+	}
 }
 
 func acquireGenerationLock(root string, now time.Time) (func(), error) {

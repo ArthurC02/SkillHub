@@ -166,7 +166,7 @@ test('the Bash hook refuses a subagent\'s commit before it runs', async ($, on) 
 test('the Bash hook refuses a heredoc that writes backslashes into a code file', async ($, on) => {
   const ran: string[] = []
   world(on, () => '', '', tool => ran.push(tool))
-  const result = await $.tool.call({ tool: 'Bash', command: "cat > /tmp/m.mjs <<'EOF'\nconst r = /\\d+/\nEOF" })
+  const result = await $.tool.call({ tool: 'Bash', command: "cat > /tmp/m.mjs <<'EOF'\nconst r = '\\\\d+'\nEOF" })
   expect(result.deny).toMatch(/write the file with the Write tool/)
   expect(ran).toEqual([])
 })

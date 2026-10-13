@@ -88,7 +88,7 @@ const HEREDOC_INTO_CODE = new RegExp(
 
 export const heredocWritesCodeWithBackslash = (command: string): boolean => {
   const header = command.indexOf('\n')
-  return header >= 0 && HEREDOC_INTO_CODE.test(command.slice(0, header)) && command.slice(header).includes('\\')
+  return header >= 0 && HEREDOC_INTO_CODE.test(command.slice(0, header)) && command.slice(header).includes('\\\\')
 }
 
 export const repoRelative = (root: string, path: string): string => {

@@ -247,8 +247,9 @@ export const register: Register = on => {
     }
 
     if (heredocWritesCodeWithBackslash(e.command)) {
-      return { deny: 'skillhub-guards: this heredoc writes a code file whose body holds backslashes, and the shell ' +
-        'layer has halved them before, with a quoted delimiter too; write the file with the Write tool instead.' }
+      return { deny: 'skillhub-guards: this heredoc writes a code file whose body holds a doubled backslash, which ' +
+        'the shell layer halves even with a quoted delimiter (a single one arrives intact); write the file with the ' +
+        'Write tool instead.' }
     }
 
     if (needsSignature(e.command)) {

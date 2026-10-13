@@ -50,10 +50,15 @@ test('a red CI message names each failing job, a green one only the commit', () 
   expect(ciMessage('aff79dc4700b014f', 'green', 'aff79dc (aff79dc4700b014f): green')).toBe('CI aff79dc4: green')
 })
 
-test('a heredoc that writes a code file with a backslash in its body is caught, either redirect order', () => {
-  expect(heredocWritesCodeWithBackslash("cat > /tmp/m.mjs <<'EOF'\nconst r = /\\d+/\nEOF")).toBe(true)
-  expect(heredocWritesCodeWithBackslash("cat <<'EOF' > scratch/fake.sh\necho \"a\\nb\"\nEOF")).toBe(true)
-  expect(heredocWritesCodeWithBackslash("tee -a x.go <<EOF\ns := \"\\t\"\nEOF")).toBe(true)
+test('a heredoc that writes a code file with a doubled backslash in its body is caught, either redirect order', () => {
+  expect(heredocWritesCodeWithBackslash("cat > /tmp/m.mjs <<'EOF'\nconst r = '\\\\d+'\nEOF")).toBe(true)
+  expect(heredocWritesCodeWithBackslash("cat <<'EOF' > scratch/fake.sh\necho \"a\\\\nb\"\nEOF")).toBe(true)
+  expect(heredocWritesCodeWithBackslash("tee -a x.go <<EOF\ns := \"\\\\t\"\nEOF")).toBe(true)
+})
+
+test('a single backslash reaches the file intact, so it is left alone', () => {
+  expect(heredocWritesCodeWithBackslash("cat > /tmp/m.mjs <<'EOF'\nconst r = /\\d+/\nEOF")).toBe(false)
+  expect(heredocWritesCodeWithBackslash("cat > x.py <<'EOF'\nprint('a\\nb')\nEOF")).toBe(false)
 })
 
 test('a heredoc without a backslash, into a non-code file, or feeding a command is left alone', () => {
