@@ -34,7 +34,7 @@ Commands that read or change the Registry take `--registry-root <root>`: the dir
 | Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`; a `mentioned` match is prose in a reviewed record, not a term |
 | See which boundaries your change touches | `boundary-impact --base <branch point>`; `unknown` means no Context records an `implementation_path`, so it cannot map files to Contexts |
 | Check the Registry's shape and references | `validate`; it does not check that citations still match the code, which is `verify-evidence` |
-| Check the evidence of files you edited | `verify-evidence --path <file>`; `stale` needs `recite`, `shifted` needs `relocate-evidence --from <file> --to <file>` |
+| Check the evidence of files you edited | `verify-evidence --path <file>`; `stale` needs `recite` after you check the fact, `shifted` needs `relocate-evidence --from <file> --to <file>`; give a directory, or `.` for the whole repository, to re-cite every shifted citation under it in one Change Package |
 | Re-cite after moving code | `relocate-evidence --from <old> --to <new>` |
 | Re-cite after editing code in place | `recite --asset <asset> --id <id> --path <file> --lines <a>-<b>` |
 | Propose a new fact | `cite`, then `upsert-candidate --asset <asset> --record-file <file>`; give `--record-file` once per record |

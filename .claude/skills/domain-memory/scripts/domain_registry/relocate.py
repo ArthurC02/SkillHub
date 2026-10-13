@@ -30,6 +30,8 @@ class Relocation:
 
     def target(self, path: str) -> str | None:
         old, new = self.old.rstrip("/"), self.new.rstrip("/")
+        if old in ("", ".") and new in ("", "."):
+            return path
         if path == old:
             return new
         return new + path[len(old):] if path.startswith(old + "/") else None
@@ -46,7 +48,12 @@ class Relocation:
         excerpt = reference.get("excerpt_sha256")
         starts = excerpt_starts(self.repo_root, target, length, excerpt) if excerpt and length > 0 else []
         if len(starts) != 1:
-            self.unmatched.append({"path": reference.get("path"), "lines": lines, "target": target, "found": len(starts)})
+            self.unmatched.append({
+                "path": reference.get("path"), "lines": lines, "target": target, "found": len(starts),
+                "reason": f"the cited excerpt occurs {len(starts)} times in {target}; "
+                + ("its content changed, so check the fact and recite it" if not starts
+                   else "recite it with the lines that hold the fact"),
+            })
             return reference
         recited = citation(self.repo_root, target, starts[0], starts[0] + length - 1)
         kept = {key: value for key, value in reference.items() if key != "source_kind"}

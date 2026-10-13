@@ -171,6 +171,8 @@ def verify(reference: Any, repo_root: Path) -> dict[str, Any]:
 
 def _cited_lines_verdict(reference: dict[str, Any], path_text: str, rows: list[str]) -> dict[str, Any]:
     start, end = reference["lines"]["start"], reference["lines"]["end"]
+    if end > len(rows) and "excerpt_sha256" in reference:
+        return _moved_or_stale(reference["excerpt_sha256"], path_text, rows, end - start + 1)
     if end > len(rows):
         return {
             "status": "invalid",
@@ -203,7 +205,12 @@ def _starts_of(rows: list[str], length: int, excerpt_sha256: str) -> list[int]:
 def _moved_or_stale(excerpt_sha256: str, path_text: str, rows: list[str], length: int) -> dict[str, Any]:
     starts = _starts_of(rows, length, excerpt_sha256)
     if len(starts) != 1:
-        return {"status": "stale", "path": path_text}
+        return {
+            "status": "stale",
+            "path": path_text,
+            "reason": f"the cited excerpt is {'repeated' if starts else 'no longer'} in {path_text}; "
+            "check that the fact still holds, then recite it",
+        }
     return {
         "status": "shifted",
         "path": path_text,

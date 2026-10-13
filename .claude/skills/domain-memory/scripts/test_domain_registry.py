@@ -1497,11 +1497,20 @@ class DomainRegistryTest(unittest.TestCase):
             ("outside", {**cited, "path": "../fact.md"},
              {"status": "invalid", "reason": "evidence path escapes repository"}),
             ("absent", {**cited, "path": "gone.md"}, {"status": "missing", "path": "gone.md"}),
-            ("past the end", {**cited, "lines": {"start": 3, "end": 4}},
+            ("past the end without a digest", {"path": "fact.md", "lines": {"start": 3, "end": 4}},
              {"cited_lines": {"start": 3, "end": 4}, "status": "invalid",
               "reason": "evidence line range exceeds source", "path": "fact.md"}),
+            ("past the end, excerpt earlier in the file", {**cited, "lines": {"start": 3, "end": 4}},
+             {"cited_lines": {"start": 3, "end": 4}, "status": "shifted", "path": "fact.md",
+              "lines": {"start": 2, "end": 3},
+              "reason": "the cited lines are unchanged but now sit elsewhere in fact.md; "
+              "relocate-evidence --from fact.md --to fact.md re-cites them"}),
+            ("past the end, excerpt gone", {**cited, "lines": {"start": 3, "end": 5}},
+             {"cited_lines": {"start": 3, "end": 5}, "status": "stale", "path": "fact.md",
+              "reason": "the cited excerpt is no longer in fact.md; check that the fact still holds, then recite it"}),
             ("last line", {**cited, "lines": {"start": 3, "end": 3}},
-             {"cited_lines": {"start": 3, "end": 3}, "status": "stale", "path": "fact.md"}),
+             {"cited_lines": {"start": 3, "end": 3}, "status": "stale", "path": "fact.md",
+              "reason": "the cited excerpt is no longer in fact.md; check that the fact still holds, then recite it"}),
         ]
         for label, reference, expected in cases:
             with self.subTest(label):
@@ -5276,7 +5285,10 @@ class DomainRegistryTest(unittest.TestCase):
         source.write_text("fact\n", encoding="utf-8")
         package = self.updated_rule_citing(citation(self.repo, "fact.md", 1, 1))
         source.write_text("changed\n", encoding="utf-8")
-        message = "registry update rules/order-total cites evidence that is stale: fact.md"
+        message = (
+            "registry update rules/order-total cites evidence that is stale: the cited excerpt is no longer "
+            "in fact.md; check that the fact still holds, then recite it"
+        )
         self.assertIn(message, validate_change_package(package, self.repo / "memory", repo_root=self.repo))
         self.assertNotIn(message, validate_change_package(package, self.repo / "memory"))
 
@@ -5659,6 +5671,36 @@ class DomainRegistryTest(unittest.TestCase):
         result = self.citation_after_edit("a\nfact\n", 2, "new\na\nfact\n")
         self.assertEqual(
             ({"start": 2, "end": 2}, {"start": 3, "end": 3}), (result["cited_lines"], result["lines"])
+        )
+
+    def test_a_repeated_excerpt_is_stale_and_says_so(self) -> None:
+        result = self.citation_after_edit("a\nfact\n", 2, "fact\nnew\nfact\n")
+        self.assertEqual(
+            "the cited excerpt is repeated in fact.md; check that the fact still holds, then recite it",
+            result["reason"],
+        )
+
+    def test_an_unmatched_relocation_says_why(self) -> None:
+        for text, reason in (
+            ("one\nother\n", "the cited excerpt occurs 0 times in lib/a.py; its content changed, so check the fact and recite it"),
+            ("two\ntwo\n", "the cited excerpt occurs 2 times in lib/a.py; recite it with the lines that hold the fact"),
+        ):
+            with self.subTest(reason=reason):
+                self.tearDown()
+                self.setUp()
+                self.evidence_moved("one\ntwo\n", "lib/a.py", text)
+                moved = relocate_evidence(self.repo / "memory", self.repo, "src", "lib")
+                self.assertEqual({reason}, {problem["reason"] for problem in moved["unmatched"]})
+
+    def test_relocating_a_directory_onto_itself_recites_every_shifted_citation_under_it(self) -> None:
+        self.seed_two_cited_rules()
+        (self.repo / "other.md").write_text("new\nother\n", encoding="utf-8")
+        moved = relocate_evidence(self.repo / "memory", self.repo, ".", ".")
+        self.assertEqual(["PRO-1", "PRO-2"], moved["supersedes"])
+        self.assertEqual(
+            {"moved": [{"start": 3, "end": 3}], "kept": [{"start": 1, "end": 1}, {"start": 2, "end": 2}]},
+            {update["record"]["id"]: [reference["lines"] for reference in update["record"]["evidence"]]
+             for update in moved["registry_updates"]},
         )
 
 
