@@ -1,7 +1,7 @@
 import json
 import shutil
 from collections.abc import Callable
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .common import (
@@ -408,6 +408,7 @@ EVIDENCE_STATUSES = ("current", "shifted", "stale", "unhashed", "missing", "inva
 
 def verify_evidence(root: Path, repo_root: Path, paths: list[str] | None = None) -> dict[str, Any]:
     source_map = source_map_for(root)
+    paths = [PurePosixPath(Path(path).as_posix()).as_posix() for path in paths] if paths else None
     results = [
         {"asset": name.removesuffix(".json"), "id": entry.get("id"),
          **verify(classified(reference, source_map), repo_root)}
@@ -423,7 +424,16 @@ def verify_evidence(root: Path, repo_root: Path, paths: list[str] | None = None)
     summary["by_source_kind"] = {
         kind: sum(item.get("source_kind") == kind for item in results) for kind in kinds
     }
-    return {"results": results, "summary": summary}
+    report: dict[str, Any] = {"results": results, "summary": summary}
+    if paths:
+        report["paths"] = {
+            path: {
+                "citations": sum(item.get("path") == path for item in results),
+                "exists": (repo_root / path).is_file(),
+            }
+            for path in paths
+        }
+    return report
 
 
 def migrate_evidence(root: Path, repo_root: Path) -> int:
@@ -620,7 +630,26 @@ def resolve_terms(root: Path, query: str, context: str | None) -> list[dict[str,
         if kind is not None:
             matches.append({**term, "match_kind": kind})
     matches.sort(key=lambda match: MATCH_KINDS.index(match["match_kind"]))
-    return matches[: query_result_limit(root)]
+    return (matches or prose_mentions(root, needle))[: query_result_limit(root)]
+
+
+def _reviewed_entries(root: Path, name: str) -> list[dict[str, Any]]:
+    document = load_json(registry_dir(root) / name)
+    field = "review_status" if name == "decisions.json" else "status"
+    default = document.get("status")
+    return [entry for entry in document.get(ASSET_KEYS[name], []) if entry.get(field, default) == "reviewed"]
+
+
+def prose_mentions(root: Path, needle: str) -> list[dict[str, Any]]:
+    return [
+        {"match_kind": "mentioned", "authoritative": False, "asset": name.removesuffix(".json"),
+         "id": entry.get("id"), "field": field}
+        for name in sorted(ASSET_KEYS)
+        if (registry_dir(root) / name).is_file()
+        for entry in _reviewed_entries(root, name)
+        for field, value in entry.items()
+        if field not in ("id", "status", "review_status") and isinstance(value, str) and needle in value.casefold()
+    ]
 
 
 def _records_where(

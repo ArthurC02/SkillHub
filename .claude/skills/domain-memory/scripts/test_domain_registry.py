@@ -5605,6 +5605,43 @@ class DomainRegistryTest(unittest.TestCase):
         )
         self.assertEqual(["PRO-1"], moved["supersedes"])
 
+    def contexts_mentioning_suggestions(self) -> None:
+        self.allow_results(10)
+        self.seed(
+            "contexts.json",
+            [
+                {"id": "eval", "name": "Eval", "responsibility": "Applies accepted Suggestions.", "status": "reviewed"},
+                {"id": "draft", "name": "Draft", "responsibility": "Drafts suggestions.", "status": "candidate"},
+            ],
+        )
+
+    def test_a_query_no_term_matches_lists_reviewed_records_that_mention_it(self) -> None:
+        self.contexts_mentioning_suggestions()
+        self.assertEqual(
+            [{"match_kind": "mentioned", "authoritative": False, "asset": "contexts", "id": "eval",
+              "field": "responsibility"}],
+            resolve_terms(self.repo / "memory", "suggestion", None),
+        )
+
+    def test_a_mention_search_ignores_the_status_field(self) -> None:
+        self.contexts_mentioning_suggestions()
+        self.assertEqual([], resolve_terms(self.repo / "memory", "reviewed", None))
+
+    def test_a_matching_term_hides_prose_mentions(self) -> None:
+        self.contexts_mentioning_suggestions()
+        self.seed("vocabulary.json", [{"id": "suggestion", "name": "Suggestion", "contexts": ["eval"]}])
+        self.assertEqual(["name"], [match["match_kind"] for match in resolve_terms(self.repo / "memory", "suggestion", None)])
+
+    def test_verify_evidence_reports_each_requested_path_and_whether_it_exists(self) -> None:
+        self.seed_two_cited_rules()
+        report = verify_evidence(self.repo / "memory", self.repo, ["./other.md", "fact.md", "typo.md"])
+        self.assertEqual(
+            {"other.md": {"citations": 1, "exists": True}, "fact.md": {"citations": 2, "exists": True},
+             "typo.md": {"citations": 0, "exists": False}},
+            report["paths"],
+        )
+        self.assertNotIn("paths", verify_evidence(self.repo / "memory", self.repo))
+
 
 if __name__ == "__main__":
     unittest.main()

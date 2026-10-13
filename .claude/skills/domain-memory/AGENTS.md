@@ -31,7 +31,7 @@ Commands that read or change the Registry take `--registry-root <root>`: the dir
 | You want to | Run |
 | --- | --- |
 | Know what this repository has | `readiness --repo-root <repo>` |
-| Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>` |
+| Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`; a `mentioned` match is prose in a reviewed record, not a term |
 | See which boundaries your change touches | `boundary-impact --base <branch point>`; `unknown` means no Context records an `implementation_path`, so it cannot map files to Contexts |
 | Check the Registry's shape and references | `validate`; it does not check that citations still match the code, which is `verify-evidence` |
 | Check the evidence of files you edited | `verify-evidence --path <file>`; `stale` needs `recite`, `shifted` needs `relocate-evidence --from <file> --to <file>` |
