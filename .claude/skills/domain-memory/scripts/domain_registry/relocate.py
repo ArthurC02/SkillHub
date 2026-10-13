@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .common import ASSET_KEYS, load_json, registry_dir
+from .common import ASSET_KEYS, load_json, record_status, registry_dir
 from .evidence import all_references, citation, classified, excerpt_starts, source_map_for, verify
 
 
@@ -60,15 +60,10 @@ class Relocation:
         return classified({**kept, **recited}, self.source_map)
 
 
-def _status(name: str, document: dict[str, Any], entry: dict[str, Any]) -> Any:
-    field_name = "review_status" if name == "decisions.json" else "status"
-    return entry.get(field_name, document.get("status"))
-
-
 def _record_update(name: str, document: dict[str, Any], entry: dict[str, Any], changed: dict[str, Any]) -> dict[str, Any]:
     record = {key: value for key, value in changed.items() if key != "review"}
     asset = name.removesuffix(".json")
-    if _status(name, document, entry) == "reviewed":
+    if record_status(asset, document, entry) == "reviewed":
         return {
             "registry_updates": [{"operation": "upsert", "asset": asset, "record": record}],
             "supersedes": [proposal for proposal in [(entry.get("review") or {}).get("proposal_id")] if proposal],

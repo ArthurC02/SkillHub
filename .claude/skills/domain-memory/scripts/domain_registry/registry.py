@@ -13,8 +13,10 @@ from .common import (
     REVIEW_REQUIRED_FIELDS,
     load_json,
     one_level_too_deep_hint,
+    record_status,
     registry_dir,
     template_dir,
+    write_json,
 )
 from .evidence import all_references, classified, migrate_legacy, source_map_for, verify
 from .policy import query_result_limit, review_mode
@@ -52,9 +54,7 @@ def migrate_registry(root: Path) -> list[str]:
     for name in ASSET_KEYS:
         if name not in artifacts:
             artifacts.append(name)
-    (target / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
-    )
+    write_json(target / "manifest.json", manifest)
     return created
 
 
@@ -125,9 +125,8 @@ def _validate_asset_records(
     for name, entries in records.items():
         asset = load_json(registry_dir(root) / name)
         errors.extend(_asset_header_errors(name, asset, entries))
-        status_field = "review_status" if name == "decisions.json" else "status"
         for entry in entries:
-            status = entry.get(status_field, asset.get("status"))
+            status = record_status(name.removesuffix(".json"), asset, entry)
             errors.extend(_entry_status_errors(name, entry, status, require_reviewed))
     return errors
 
@@ -636,9 +635,11 @@ def resolve_terms(root: Path, query: str, context: str | None) -> list[dict[str,
 
 def _reviewed_entries(root: Path, name: str) -> list[dict[str, Any]]:
     document = load_json(registry_dir(root) / name)
-    field = "review_status" if name == "decisions.json" else "status"
-    default = document.get("status")
-    return [entry for entry in document.get(ASSET_KEYS[name], []) if entry.get(field, default) == "reviewed"]
+    asset = name.removesuffix(".json")
+    return [
+        entry for entry in document.get(ASSET_KEYS[name], [])
+        if record_status(asset, document, entry) == "reviewed"
+    ]
 
 
 DEFINING_FIELDS = ("name", "responsibility", "statement", "definition", "description")

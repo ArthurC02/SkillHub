@@ -9,8 +9,10 @@ from .common import (
     completed_identifier,
     iso_timestamp,
     load_json,
+    record_status,
     registry_dir,
     reject_duplicate_keys,
+    review_field,
 )
 from .evidence import classify_all, hash_all, source_map_for, unclassified_paths
 from .policy import review_mode
@@ -99,18 +101,10 @@ def _reconciled(proposal_path: Path, proposal: dict[str, Any], registry_root: Pa
     return f"{proposal_id} was applied before an interruption and is now marked applied"
 
 
-def review_field(asset: str) -> str:
-    return "review_status" if asset == "decisions" else "status"
-
-
 def is_reviewed(
     asset: str, document: dict[str, Any], record: dict[str, Any] | None
 ) -> bool:
-    return (
-        record is not None
-        and record.get(review_field(asset), document.get("status", "candidate"))
-        == "reviewed"
-    )
+    return record is not None and record_status(asset, document, record) == "reviewed"
 
 
 def asset_file_name(asset: str) -> str:

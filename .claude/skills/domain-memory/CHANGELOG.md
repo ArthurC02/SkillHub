@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.21.2
+
+### Fixed
+
+- `readiness`, `discover-sources` and `quality-gates` walk the repository once and skip dependency directories and nested checkouts without descending into them: on a large repository they drop from about 25 seconds to about 2.
+- `audit-attestations` reads every attested commit through one Git process instead of two per package.
+- `verify-sources` resolves each selected path once instead of once per file.
+- A repository checked out under a directory named like an excluded one (`build`, `dist`, `vendor` and the rest) no longer loses all its source files: only directories inside the repository are excluded.
+- Every command starts faster: the network modules load only when a GitHub attestation is checked.
+- Every JSON document the plugin writes goes through one atomic write, so an interrupted write never leaves a half-written policy, source map or manifest.
+
 ## 0.21.1
 
 ### Fixed

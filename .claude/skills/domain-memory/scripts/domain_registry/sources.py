@@ -1,6 +1,6 @@
 import fnmatch
 import hashlib
-import json
+import os
 import subprocess
 from collections.abc import Iterable
 from datetime import datetime, timezone
@@ -12,6 +12,7 @@ from .common import (
     completed_identifier,
     load_json,
     one_level_too_deep_hint,
+    write_json,
     writer_lock,
 )
 
@@ -74,45 +75,49 @@ def relative(root: Path, path: Path) -> str:
         return path.resolve().relative_to(root.resolve()).as_posix()
 
 
-def in_excluded_directory(path: Path) -> bool:
-    return any(part in EXCLUDED_DIRECTORIES for part in path.parts)
+def in_excluded_directory(relative_path: str) -> bool:
+    return any(part in EXCLUDED_DIRECTORIES for part in PurePosixPath(relative_path).parts)
 
 
 def existing_directories(root: Path, candidates: tuple[str, ...]) -> list[str]:
     return [candidate for candidate in candidates if (root / candidate).is_dir()]
 
 
-def in_nested_checkout(root: Path, entry: str) -> bool:
-    return any(
-        (root / parent / ".git").exists()
-        for parent in PurePosixPath(entry).parents[:-1]
-    )
+def repository_files(root: Path) -> list[str]:
+    found = []
+    for directory, children, files in os.walk(root):
+        if directory != str(root) and (".git" in children or ".git" in files):
+            children[:] = []
+            continue
+        children[:] = [name for name in children if name not in EXCLUDED_DIRECTORIES]
+        base = Path(directory).relative_to(root).as_posix()
+        prefix = "" if base == "." else f"{base}/"
+        found.extend(prefix + name for name in files)
+    return found
 
 
 def without_ignored(root: Path, relatives: list[str]) -> list[str]:
-    kept = [entry for entry in relatives if not in_nested_checkout(root, entry)]
-    ignored = git_ignored(root, [root / entry for entry in kept])
-    return [entry for entry in kept if (root / entry) not in ignored]
+    ignored = git_ignored(root, [root / entry for entry in relatives])
+    return [entry for entry in relatives if (root / entry) not in ignored]
 
 
-def instruction_files(root: Path) -> list[str]:
-    files = {
-        relative(root, path)
-        for name in ("AGENTS.md", "CLAUDE.md")
-        for path in root.rglob(name)
-        if not in_excluded_directory(path)
-    }
-    return without_ignored(root, sorted(files))
+def instruction_files(root: Path, files: list[str]) -> list[str]:
+    names = {"AGENTS.md", "CLAUDE.md"}
+    return without_ignored(
+        root, sorted(entry for entry in files if PurePosixPath(entry).name in names)
+    )
 
 
-def boundary_files(root: Path) -> list[str]:
-    files = [
-        relative(root, path)
-        for base in existing_directories(root, IMPLEMENTATION_ROOTS)
-        for path in (root / base).rglob("doc.go")
-        if not in_excluded_directory(path)
-    ]
-    return without_ignored(root, sorted(files))
+def boundary_files(root: Path, files: list[str]) -> list[str]:
+    bases = tuple(f"{base}/" for base in IMPLEMENTATION_ROOTS)
+    return without_ignored(
+        root,
+        sorted(
+            entry
+            for entry in files
+            if entry.startswith(bases) and PurePosixPath(entry).name == "doc.go"
+        ),
+    )
 
 
 def is_test_file(name: str) -> bool:
@@ -124,35 +129,23 @@ def is_test_file(name: str) -> bool:
     )
 
 
-def test_locations(root: Path) -> list[str]:
-    candidates = [
+def test_locations(root: Path, files: list[str]) -> list[str]:
+    return without_ignored(
         root,
-        *(
-            root / name
-            for name in ("tests", "test", "e2e", "integration", *IMPLEMENTATION_ROOTS)
-        ),
-    ]
-    locations = {
-        relative(root, path)
-        for directory in candidates
-        if directory.is_dir()
-        for path in directory.rglob("*")
-        if not in_excluded_directory(path)
-        and path.is_file()
-        and is_test_file(path.name)
-    }
-    return without_ignored(root, sorted(locations))
+        sorted(entry for entry in files if is_test_file(PurePosixPath(entry).name)),
+    )
 
 
 def discover_sources(root: Path) -> dict[str, Any]:
     root = root.resolve()
     ci_tools = discover_ci_tools(root)
+    files = repository_files(root)
     groups = [
         {
             "kind": "repository_instructions",
             "authority": "instructions to coding agents, not a statement of the business domain",
             "caution": "These files exist to steer agents working in this repository. They are rewritten whenever the workflow changes, and a Domain Memory that rests on one loses its evidence when it is. Select them only for a domain fact no other source states, and record the gap.",
-            "paths": instruction_files(root),
+            "paths": instruction_files(root, files),
         },
         {
             "kind": "decisions",
@@ -183,7 +176,7 @@ def discover_sources(root: Path) -> dict[str, Any]:
         {
             "kind": "bounded_contexts",
             "authority": "candidate technical boundaries requiring domain review",
-            "paths": boundary_files(root),
+            "paths": boundary_files(root, files),
         },
         {
             "kind": "implementation",
@@ -193,7 +186,7 @@ def discover_sources(root: Path) -> dict[str, Any]:
         {
             "kind": "tests",
             "authority": "evidence that a specific behavior is checked",
-            "paths": test_locations(root),
+            "paths": test_locations(root, files),
         },
     ]
     return {
@@ -240,13 +233,11 @@ def source_files(
     for resolved in roots:
         candidates = [resolved] if resolved.is_file() else resolved.rglob("*")
         for candidate in candidates:
-            if (
-                candidate.is_file()
-                and not candidate.is_symlink()
-                and not in_excluded_directory(candidate)
-            ):
+            if candidate.is_file() and not candidate.is_symlink():
                 relative_path = relative(root, candidate)
-                if policy_matches(relative_path, include, exclude):
+                if not in_excluded_directory(relative_path) and policy_matches(
+                    relative_path, include, exclude
+                ):
                     files.add(candidate)
     return sorted(files - git_ignored(root, sorted(files)))
 
@@ -290,13 +281,16 @@ def owned_source_files(
     root: Path, selected: list[str], policy: dict[str, Any] | None = None
 ) -> dict[str, list[Path]]:
     files = source_files(root, [root / path for path in selected], policy)
+    resolved = [
+        (path, (root / path).resolve(), (root / path).is_dir()) for path in selected
+    ]
     owner = {}
     for file in files:
-        for path in selected:
-            selected_path = (root / path).resolve()
+        parents = set(file.parents)
+        for path, selected_path, is_directory in resolved:
             if (
                 file == selected_path
-                or (selected_path.is_dir() and selected_path in file.parents)
+                or (is_directory and selected_path in parents)
             ) and len(path) > len(owner.get(file, "")):
                 owner[file] = path
     return {
@@ -514,9 +508,7 @@ def refine_sources(
     source_map = selected_source_map(repo_root, selected_paths, policy)
     policy["source_policy"]["selected_paths"] = source_map["selected_paths"]
     with writer_lock(root):
-        (root / "domain-memory-policy.json").write_text(
-            json.dumps(policy, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
-        )
+        write_json(root / "domain-memory-policy.json", policy)
         write_and_audit(
             root,
             source_map,
@@ -619,9 +611,7 @@ def verify_source_map(
 
 def write_source_map(path: Path, source_map: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(source_map, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
-    )
+    write_json(path, source_map)
 
 
 def write_and_audit(

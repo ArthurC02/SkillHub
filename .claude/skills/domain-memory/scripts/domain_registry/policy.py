@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
-from .common import load_json, writer_lock
+from .common import load_json, write_json, writer_lock
 
 STORAGE_MODES = {"tracked", "ignored", "external"}
 CLASSIFICATIONS = {"public", "internal", "confidential", "restricted"}
@@ -104,12 +103,6 @@ def _default_governance(review_mode: str) -> dict[str, Any]:
     }
 
 
-def _write_policy_file(path: Path, value: dict[str, Any]) -> None:
-    path.write_text(
-        json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
-    )
-
-
 def write_policy(  # noqa: PLR0913, PLR0917
     root: Path,
     source_map: dict[str, Any],
@@ -136,7 +129,7 @@ def write_policy(  # noqa: PLR0913, PLR0917
     errors = validate_policy(value)
     if errors:
         raise ValueError("invalid policy: " + "; ".join(errors))
-    _write_policy_file(policy_path(root), value)
+    write_json(policy_path(root), value)
 
 
 AMENDABLE_FIELDS = {
@@ -151,12 +144,6 @@ AMENDABLE_FIELDS = {
 }
 
 LIST_FIELDS = {"authorized_signers"}
-
-
-def amend_policy(
-    root: Path, field: str, value: str, reason: str, verifier: str | None = None
-) -> dict[str, Any]:
-    return amend_policy_fields(root, [(field, value)], reason, verifier)[0]
 
 
 def _amended_value(field: str, value: str) -> Any:
@@ -233,7 +220,7 @@ def amend_policy_fields(
     if errors:
         raise ValueError("amended policy is invalid: " + "; ".join(errors))
     with writer_lock(root):
-        _write_policy_file(path, document)
+        write_json(path, document)
         for change in changes:
             append_locked(root, change)
     return changes

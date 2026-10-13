@@ -1,4 +1,3 @@
-import json
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,6 +17,7 @@ from .common import (
     completed_identifier,
     iso_timestamp,
     load_json,
+    write_json,
 )
 from .policy import approved_command_profiles
 from .evidence import all_references, verify
@@ -189,9 +189,7 @@ def _fill_identifiers(output: Path, given: dict[str, str]) -> None:
     for name in CHANGE_PACKAGE_FORMATS:
         document = load_json(output / name)
         document.update({key: value for key, value in given.items() if key in document})
-        (output / name).write_text(
-            json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
-        )
+        write_json(output / name, document)
 
 
 REVIEW_STATE = {
@@ -229,9 +227,7 @@ def redraft_change_package(source: Path, output: Path, proposal_id: str) -> None
         document.update({field: template[field] for field in fields})
         for field in STATE_AFTER_SUBMISSION:
             document.pop(field, None)
-        (output / name).write_text(
-            json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
-        )
+        write_json(output / name, document)
 
 
 def implementation_design_errors(

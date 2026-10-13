@@ -61,7 +61,7 @@ from domain_registry.git_hooks import governance_readiness, install_pre_push_hoo
 from domain_registry.cli_commands import HANDLERS, policy_assignments
 from domain_registry.cli_parser import build_parser
 from domain_registry.impact import boundary_impact
-from domain_registry.policy import amend_policy, amend_policy_fields, validate_policy
+from domain_registry.policy import amend_policy_fields, validate_policy
 from domain_registry.readiness import assess_readiness
 from domain_registry.relocate import Recitation, recite, relocate_evidence
 from domain_registry.registry import (
@@ -99,6 +99,7 @@ from domain_registry.sources import (
     write_source_map,
 )
 from domain_registry.sources import discover_ci_tools
+from domain_registry.sources import repository_files, source_snapshots
 from domain_registry.sources import test_locations as discovered_test_locations
 from domain_registry.transaction import recover_interrupted_update, remove_tree, transaction_path
 from domain_registry.updates import (
@@ -109,6 +110,12 @@ from domain_registry.updates import (
     retract_candidate,
     upsert_candidate,
 )
+
+
+def amend_policy(
+    root: Path, field: str, value: str, reason: str, verifier: str | None = None
+) -> dict:
+    return amend_policy_fields(root, [(field, value)], reason, verifier)[0]
 
 
 def stored_policy_of(repo: Path) -> dict:
@@ -427,6 +434,21 @@ class DomainRegistryTest(unittest.TestCase):
             "current", verify_source_map(self.repo, source_map_path)["status"]
         )
         return source_map_path
+
+    def test_a_repository_inside_a_directory_named_build_still_has_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as parent:
+            root = Path(parent) / "build" / "repo"
+            (root / "docs").mkdir(parents=True)
+            (root / "docs" / "rules.md").write_text("a rule\n", encoding="utf-8")
+            [snapshot] = source_snapshots(root, ["docs"])
+        self.assertEqual(snapshot["file_count"], 1)
+
+    def test_a_dependency_directory_inside_a_selected_source_is_skipped(self) -> None:
+        (self.repo / "docs" / "node_modules").mkdir(parents=True)
+        (self.repo / "docs" / "rules.md").write_text("a rule\n", encoding="utf-8")
+        (self.repo / "docs" / "node_modules" / "readme.md").write_text("x\n", encoding="utf-8")
+        [snapshot] = source_snapshots(self.repo, ["docs"])
+        self.assertEqual(snapshot["file_count"], 1)
 
     def test_editing_a_selected_source_is_content_drift_not_selection_drift(
         self,
@@ -989,6 +1011,33 @@ class DomainRegistryTest(unittest.TestCase):
              ("unattested", "not carried"), ("unfetched", "unconfirmed")],
             [(finding["proposal_id"], finding["verdict"]) for finding in findings],
         )
+
+    def test_the_attestation_audit_does_not_read_a_commit_split_across_lines(self) -> None:
+        self.changed_package("carried", "applied", None)
+        carrying = self.commit_everything("adds the carried package")
+        self.changed_package("split", "applied", {
+            "provider": "git-signed-commit", "commit": f"{carrying}\n{'f' * 40}",
+        })
+        findings = audit_attestations(self.repo, self.repo / "changes", "GITHUB_TOKEN")
+        self.assertEqual(
+            [("carried", "not carried"), ("split", "unconfirmed")],
+            [(finding["proposal_id"], finding["verdict"]) for finding in findings],
+        )
+
+    def test_the_attestation_audit_outside_a_git_repository_confirms_nothing(self) -> None:
+        with tempfile.TemporaryDirectory() as plain:
+            root = Path(plain)
+            package = root / "changes" / "attested"
+            package.mkdir(parents=True)
+            (package / "domain-change-proposal.json").write_text(
+                json.dumps({"proposal_id": "attested", "status": "applied"}), encoding="utf-8"
+            )
+            (package / "evidence-bundle.json").write_text(
+                json.dumps({"scm_attestation": {"provider": "git-signed-commit", "commit": "a" * 40}}),
+                encoding="utf-8",
+            )
+            [finding] = audit_attestations(root, root / "changes", "GITHUB_TOKEN")
+        self.assertEqual(finding["verdict"], "unconfirmed")
 
     def test_finalizing_refuses_a_merged_pull_request_that_does_not_carry_the_package(self) -> None:
         package = self.draft_package()
@@ -3211,6 +3260,23 @@ class DomainRegistryTest(unittest.TestCase):
             "package cache\n", encoding="utf-8"
         )
 
+    def test_discovery_lists_both_instruction_file_names(self) -> None:
+        (self.repo / "AGENTS.md").write_text("How agents work here.", encoding="utf-8")
+        (self.repo / "web").mkdir()
+        (self.repo / "web" / "CLAUDE.md").write_text("@AGENTS.md", encoding="utf-8")
+        self.assertEqual(
+            self.discovery_groups("repository_instructions"),
+            ["AGENTS.md", "web/CLAUDE.md"],
+        )
+
+    def test_a_package_doc_outside_the_implementation_roots_is_not_a_boundary(
+        self,
+    ) -> None:
+        for directory in ("apps/core", "tools/devctl"):
+            (self.repo / directory).mkdir(parents=True)
+            (self.repo / directory / "doc.go").write_text("package x\n", encoding="utf-8")
+        self.assertEqual(self.discovery_groups("bounded_contexts"), ["apps/core/doc.go"])
+
     def test_discovery_gives_no_file_a_role_by_its_project_specific_name(self) -> None:
         guidance = self.repo / "docs" / "development" / "platform-context-map.md"
         guidance.parent.mkdir(parents=True)
@@ -3638,7 +3704,8 @@ class DomainRegistryTest(unittest.TestCase):
         (self.repo / "apps" / "svc" / "thing_test.go").write_text("x", encoding="utf-8")
         (self.repo / "apps" / "svc" / "thing.go").write_text("x", encoding="utf-8")
         self.assertEqual(
-            discovered_test_locations(self.repo), ["apps/svc/thing_test.go"]
+            discovered_test_locations(self.repo, repository_files(self.repo)),
+            ["apps/svc/thing_test.go"],
         )
 
     def test_stored_evidence_records_the_kind_of_source_it_came_from(self) -> None:

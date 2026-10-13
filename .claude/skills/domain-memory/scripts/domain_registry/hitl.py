@@ -1,4 +1,3 @@
-import json
 import shlex
 import subprocess
 from dataclasses import dataclass
@@ -12,18 +11,10 @@ from .attestations import (
     verify_external_scm,
     verify_git_signed_commit,
 )
-from .common import completed_identifier, iso_timestamp, load_json
+from .common import completed_identifier, iso_timestamp, load_json, write_json
 from .counterfactual import OUTPUT_TAIL, digest
 from .policy import approved_command_profiles, review_governance
 from .revision import current_registry_revision, require_current_registry_revision
-
-
-def write_document(path: Path, value: dict) -> None:
-    temporary = path.with_suffix(f"{path.suffix}.tmp")
-    temporary.write_text(
-        json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
-    )
-    temporary.replace(path)
 
 
 def now() -> str:
@@ -50,8 +41,8 @@ def submit_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
         raise ValueError("draft proposal is invalid: " + "; ".join(errors))
     proposal["status"] = "submitted"
     proposal["submitted_at"] = now()
-    write_document(proposal_path(root), proposal)
-    write_document(evidence_path, evidence)
+    write_json(proposal_path(root), proposal)
+    write_json(evidence_path, evidence)
 
 
 SUPERSEDABLE_STATUSES = {"draft", "submitted", "verified", "approved", "applied"}
@@ -77,7 +68,7 @@ def supersede_proposal(root: Path, reason: str, superseded_by: str | None) -> No
     proposal["superseded_reason"] = reason
     if superseded_by is not None:
         proposal["superseded_by"] = superseded_by
-    write_document(path, proposal)
+    write_json(path, proposal)
 
 
 def record_approval(
@@ -111,7 +102,7 @@ def record_approval(
             "base_registry_revision": proposal.get("base_registry_revision"),
         }
     )
-    write_document(proposal_path(root), proposal)
+    write_json(proposal_path(root), proposal)
 
 
 def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
@@ -138,12 +129,12 @@ def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
         raise ValueError("proposal lacks verified test evidence: " + "; ".join(errors))
     proposal["status"] = "verified"
     proposal["verified_at"] = now()
-    write_document(path, proposal)
+    write_json(path, proposal)
     errors = validate_change_package(root, registry_root)
     if errors:
         proposal["status"] = "submitted"
         proposal["verified_at"] = None
-        write_document(path, proposal)
+        write_json(path, proposal)
         raise ValueError("verified proposal is invalid: " + "; ".join(errors))
 
 
@@ -211,7 +202,7 @@ def record_test_result(
         if not (isinstance(entry, dict) and entry.get("obligation_id") == obligation_id)
     ]
     evidence["test_results"] = [*kept, result]
-    write_document(evidence_path, evidence)
+    write_json(evidence_path, evidence)
 
 
 def attest_signed_commit(root: Path, registry_root: Path, repo_root: Path, commit: str) -> str:
@@ -245,7 +236,7 @@ def attest_signed_commit(root: Path, registry_root: Path, repo_root: Path, commi
         "proposal_revision": proposal.get("proposal_revision"),
         "base_registry_revision": proposal["base_registry_revision"],
     }
-    write_document(evidence_path, evidence)
+    write_json(evidence_path, evidence)
     return full
 
 
@@ -302,12 +293,12 @@ def finalize_proposal(
         raise ValueError("SCM governance is not externally verified: " + "; ".join(errors))
     proposal["status"] = "approved"
     proposal["finalized_at"] = now()
-    write_document(path, proposal)
+    write_json(path, proposal)
     errors = validate_change_package(root, registry_root)
     if errors:
         proposal["status"] = "submitted"
         proposal.pop("finalized_at", None)
-        write_document(path, proposal)
+        write_json(path, proposal)
         raise ValueError(
             "proposal lacks required approvals or traceability, and is submitted again so it "
             "can be corrected, then verified and finalized again: " + "; ".join(errors)

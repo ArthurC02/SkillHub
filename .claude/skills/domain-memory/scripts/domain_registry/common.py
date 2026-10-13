@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -40,6 +41,24 @@ ASSET_FORMATS = {
     "value-objects.json": "domain-value-objects/v1",
     "dependency-policies.json": "domain-dependencies/v1",
 }
+
+
+def write_json(path: Path, value: dict) -> None:
+    temporary = path.with_suffix(f"{path.suffix}.tmp")
+    with temporary.open("w", encoding="utf-8", newline="\n") as output:
+        output.write(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
+        output.flush()
+        os.fsync(output.fileno())
+    temporary.replace(path)
+
+
+def review_field(asset: str) -> str:
+    return "review_status" if asset == "decisions" else "status"
+
+
+def record_status(asset: str, document: dict[str, Any], record: dict[str, Any]) -> Any:
+    return record.get(review_field(asset), document.get("status"))
+
 
 CHANGE_PACKAGE_FILES = (
     "requirement-normalization.json",

@@ -6,10 +6,8 @@ import os
 import re
 import subprocess
 from pathlib import Path
-from typing import Any
-from urllib.error import HTTPError
+from typing import Any, NamedTuple
 from urllib.parse import quote, urlparse
-from urllib.request import Request, urlopen
 
 HTTP_NOT_FOUND = 404
 
@@ -27,6 +25,8 @@ def github_api_path(pull_request: str) -> str:
 
 
 def github_json(url: str, token: str) -> Any:
+    from urllib.request import Request, urlopen
+
     request = Request(
         url,
         headers={
@@ -209,6 +209,8 @@ def _proposal_at_pull_request_commit(value: dict[str, Any], token: str, relative
         f"https://api.github.com/{repository}/contents/"
         f"{quote(relative)}/domain-change-proposal.json?ref={value.get('commit')}"
     )
+    from urllib.error import HTTPError
+
     try:
         content = github_json(url, token)
     except HTTPError as error:
@@ -224,14 +226,59 @@ AUDITED_STATUSES = {"approved", "applied"}
 UNVERIFIED_PREFIX = "SCM governance verification"
 
 
+def _read_objects(repo_root: Path, names: list[str]) -> dict[str, bytes]:
+    asked = [name for name in dict.fromkeys(names) if "\n" not in name]
+    if not asked:
+        return {}
+    result = subprocess.run(
+        ["git", "-C", str(repo_root), "cat-file", "--batch"],
+        input="".join(f"{name}\n" for name in asked).encode("utf-8"),
+        capture_output=True, check=False,
+    )
+    if result.returncode != 0:
+        return {}
+    found, output, offset = {}, result.stdout, 0
+    for name in asked:
+        header_end = output.index(b"\n", offset)
+        last_field = output[offset:header_end].rsplit(b" ", 1)[-1]
+        offset = header_end + 1
+        if last_field.isdigit():
+            size = int(last_field)
+            found[name] = output[offset:offset + size]
+            offset += size + 1
+    return found
+
+
+def _proposal_object(commit: str, relative: str) -> str:
+    return f"{commit}:{relative}/domain-change-proposal.json"
+
+
+def _attested_commit(attestation: Any) -> str | None:
+    commit = attestation.get("commit") if isinstance(attestation, dict) else None
+    return commit if isinstance(commit, str) else None
+
+
+class AuditedPackage(NamedTuple):
+    package: Path
+    proposal: dict[str, Any]
+    attestation: Any
+
+
 def _attestation_verdict(
-    repo_root: Path, package: Path, proposal: dict[str, Any], attestation: Any, token_env: str
+    repo_root: Path, audited: AuditedPackage, token_env: str, objects: dict[str, bytes]
 ) -> tuple[str, str]:
-    if not isinstance(attestation, dict) or not isinstance(attestation.get("commit"), str):
+    package, proposal, attestation = audited
+    commit = _attested_commit(attestation)
+    if commit is None:
         return "not carried", "the package has no scm_attestation commit"
-    commit = attestation["commit"]
-    if _git(repo_root, "cat-file", "-e", f"{commit}^{{commit}}").returncode == 0:
-        errors = commit_carries_proposal(repo_root, commit, package, proposal)
+    relative = package_path_in(repo_root, package)
+    if f"{commit}^{{commit}}" in objects:
+        if relative is None:
+            errors = [OUTSIDE_THE_REPOSITORY]
+        else:
+            shown = objects.get(_proposal_object(commit, relative))
+            text = None if shown is None else shown.decode("utf-8", "replace")
+            errors = carried_proposal_errors(text, relative, proposal)
     elif attestation.get("provider") == "github":
         errors = github_commit_carries_proposal(attestation, token_env, repo_root, package, proposal)
     else:
@@ -244,7 +291,7 @@ def _attestation_verdict(
 
 
 def audit_attestations(repo_root: Path, changes_root: Path, token_env: str) -> list[dict[str, str]]:
-    findings = []
+    audited = []
     for proposal_file in sorted(changes_root.glob("*/domain-change-proposal.json")):
         package = proposal_file.parent
         proposal = load_json(proposal_file)
@@ -252,11 +299,23 @@ def audit_attestations(repo_root: Path, changes_root: Path, token_env: str) -> l
             continue
         evidence_file = package / "evidence-bundle.json"
         attestation = load_json(evidence_file).get("scm_attestation") if evidence_file.is_file() else None
-        verdict, detail = _attestation_verdict(repo_root, package, proposal, attestation, token_env)
+        audited.append(AuditedPackage(package, proposal, attestation))
+    names = []
+    for package, _, attestation in audited:
+        commit = _attested_commit(attestation)
+        relative = package_path_in(repo_root, package)
+        if commit is not None:
+            names.append(f"{commit}^{{commit}}")
+            if relative is not None:
+                names.append(_proposal_object(commit, relative))
+    objects = _read_objects(repo_root, names)
+    findings = []
+    for entry in audited:
+        verdict, detail = _attestation_verdict(repo_root, entry, token_env, objects)
         findings.append({
-            "package": package_path_in(repo_root, package) or str(package),
-            "proposal_id": str(proposal.get("proposal_id")),
-            "status": str(proposal.get("status")),
+            "package": package_path_in(repo_root, entry.package) or str(entry.package),
+            "proposal_id": str(entry.proposal.get("proposal_id")),
+            "status": str(entry.proposal.get("status")),
             "verdict": verdict,
             "detail": detail,
         })

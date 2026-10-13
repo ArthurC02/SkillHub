@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .common import MAX_JSON_BYTES, load_json, registry_dir, reject_duplicate_keys, writer_lock
+from .common import MAX_JSON_BYTES, load_json, registry_dir, reject_duplicate_keys, write_json, writer_lock
 
 MANIFEST_FORMAT = "domain-memory-audit/v1"
 
@@ -95,11 +95,7 @@ def append_locked(root: Path, event: dict[str, Any]) -> None:
         "events": value["sequence"],
         "head_sha256": value["event_sha256"],
     }
-    temporary = audit_manifest_path(root).with_suffix(".json.tmp")
-    temporary.write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
-    )
-    temporary.replace(audit_manifest_path(root))
+    write_json(audit_manifest_path(root), manifest)
 
 
 def append(root: Path, event: dict[str, Any]) -> None:

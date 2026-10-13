@@ -15,19 +15,11 @@ from .common import (
     MAX_JSON_BYTES,
     registry_dir,
     reject_duplicate_keys,
+    write_json,
     writer_lock,
 )
 from .registry import validate
 from .revision import registry_digest
-
-
-def write_json(path: Path, value: dict) -> None:
-    temporary = path.with_suffix(f"{path.suffix}.tmp")
-    with temporary.open("w", encoding="utf-8", newline="\n") as output:
-        output.write(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
-        output.flush()
-        os.fsync(output.fileno())
-    temporary.replace(path)
 
 
 def transaction_path(root: Path) -> Path:
