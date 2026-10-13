@@ -28,7 +28,7 @@ function describe(node: CheckNode, palette: Palette): string {
   const values = node.values ?? [];
   if (node.kind === PROMPT_GRADER) {
     const grader = palette.graders.find((g) => g.version_id === values[0]);
-    return `${label}：${grader ? `${grader.name} v${grader.version}` : "還沒選評分器"}`;
+    return `${label}：${grader ? `${grader.name} v${grader.version}` : values[0] ? "已指定版本（名稱未知）" : "還沒選評分器"}`;
   }
   const shown = values.filter((v) => v.trim() !== "").join("、");
   const atLeast = node.at_least ? `（至少 ${node.at_least} 個）` : "";
@@ -50,6 +50,7 @@ function ValuesField({
 }) {
   const values = node.values ?? [];
   if (node.kind === PROMPT_GRADER) {
+    const missingGrader = Boolean(values[0] && !graders.some((g) => g.version_id === values[0]));
     return (
       <p>
         <label htmlFor={`${idBase}-grader`}>評分器版本</label>{" "}
@@ -59,6 +60,7 @@ function ValuesField({
           onChange={(e) => onChange([e.target.value])}
         >
           <option value="">選一個評分器</option>
+          {missingGrader && <option value={values[0]}>已指定的版本（名稱未知）</option>}
           {graders.map((g) => (
             <option key={g.version_id} value={g.version_id}>
               {g.name} v{g.version}（{g.scope === "platform" ? "平台通用" : "這個 Workspace"}）
@@ -66,6 +68,14 @@ function ValuesField({
           ))}
         </select>{" "}
         <Link to="/lab/graders">管理評分器</Link>
+        {missingGrader && (
+          <>
+            <br />
+            <span className="note">
+              這份檢查已指定一個版本；名稱尚未取得，重新選取才會更換版本。
+            </span>
+          </>
+        )}
       </p>
     );
   }

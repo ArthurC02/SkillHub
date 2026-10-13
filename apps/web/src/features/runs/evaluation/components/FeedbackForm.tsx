@@ -39,7 +39,11 @@ export function FeedbackForm({
         rows={3}
         maxLength={SetEvaluationFeedbackBodyCommentMaxLength}
         value={comment}
-        onChange={(e) => setComment(e.target.value)}
+        onChange={(e) => {
+          setComment(e.target.value);
+          submit.reset();
+        }}
+        readOnly={submit.isPending}
       />
       <p>
         <button

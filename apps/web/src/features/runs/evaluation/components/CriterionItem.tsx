@@ -42,6 +42,36 @@ export function CriterionItem({
         c.source !== shared && <p className="note">判定來源：{SOURCE_LABEL[c.source]}</p>
       )}
       {c.reason && <p>{c.reason}</p>}
+      {c.steps && c.steps.length > 0 && (
+        <details>
+          <summary>檢查節點結果（{c.steps.length} 項）</summary>
+          <p className="note">只列出執行過的檢查節點；最終判定以上方的驗收條件為準。</p>
+          <ul>
+            {c.steps.map((step, index) => (
+              <li key={`${step.path}-${index}`}>
+                <p>
+                  <span className={`badge badge-criterion-${step.result}`}>
+                    <StateIcon
+                      state={
+                        step.result === "passed"
+                          ? "pass"
+                          : step.result === "failed"
+                            ? "fail"
+                            : "unknown"
+                      }
+                    />
+                    {CRITERION_LABEL[step.result]}
+                  </span>{" "}
+                  {step.reason}
+                </p>
+                <p className="note">
+                  節點 <code>{step.path}</code> · 檢查種類 <code>{step.kind}</code>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       <EvidenceList evidence={c.evidence} />
     </li>
   );

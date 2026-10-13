@@ -869,6 +869,48 @@ function revisionOf(source: Evaluation, supersededAt: string | null) {
   };
 }
 
+test("switching cached evaluation revisions does not reuse another revision's feedback draft", async () => {
+  stubPlatform({ evaluated: true });
+  const second: Evaluation = {
+    ...evaluation,
+    evaluation_id: "eval-new",
+    summary: "second revision summary",
+    feedback: {
+      helpful: true,
+      comment: "second saved comment",
+      submitted_at: "2026-10-13T12:00:00Z",
+    },
+  };
+  const originalFetch = globalThis.fetch;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) =>
+    String(input).includes("revision=eval-new") ? json(second) : originalFetch(input, init),
+  );
+  queryClient.setQueryData(["evaluation", RUN, "eval-new"], second);
+  await render("succeeded");
+  const comment = () => container.querySelector<HTMLTextAreaElement>("#feedback-comment")!;
+  await waitFor(() => comment() !== null);
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
+      comment(),
+      "unsent first draft",
+    );
+    comment().dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(comment().value).toBe("unsent first draft");
+  await act(async () => {
+    setSearch({ evaluation: "eval-new" });
+    root.render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <EvaluationPanel runId={RUN} runStatus="succeeded" />
+        </QueryClientProvider>
+      </StrictMode>,
+    );
+  });
+  await waitFor(() => container.textContent!.includes("second revision summary"));
+  expect(comment().value).toBe("second saved comment");
+});
+
 test("R4: the evaluation revision comes from the address, and the switcher writes it back", async () => {
   const superseded = { ...evaluation, evaluation_id: "eval-1", summary: "被取代的那一份判定。" };
   const current = { ...evaluation, evaluation_id: "eval-2", summary: "重評之後的判定。" };

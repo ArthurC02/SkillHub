@@ -160,6 +160,19 @@ test("a prompt grader picks a version from both the platform's and the workspace
   expect(latest).toEqual({ kind: "prompt_grader", values: [WORKSPACE_GRADER.version_id] });
 });
 
+test("a check keeps its pinned grader version when the latest list does not contain it", async () => {
+  await renderEditor({ kind: "prompt_grader", values: ["11111111-2222-4333-8444-555555555555"] });
+  await waitFor(() => container.textContent!.includes("語氣 v2"));
+  const picker = field<HTMLSelectElement>("#check-node-0-grader");
+  expect(picker.value).toBe("11111111-2222-4333-8444-555555555555");
+  expect(picker.selectedOptions[0].textContent).toBe("已指定的版本（名稱未知）");
+  expect(field("#check-node-0-heading").textContent).toContain("已指定版本（名稱未知）");
+  expect(latest).toEqual({
+    kind: "prompt_grader",
+    values: ["11111111-2222-4333-8444-555555555555"],
+  });
+});
+
 test("a fan-out needing more passes than it has values is flagged; at the count it is not", async () => {
   await renderEditor({
     kind: "each",
@@ -227,3 +240,30 @@ test("an operator's new grader goes to the platform list, and a refused name say
   await waitFor(() => container.querySelector('[role="alert"]') !== null);
   expect(field('[role="alert"]').textContent).toBe("已經有同名的評分器");
 });
+
+test.each(["workspace", "platform"] as const)(
+  "a new %s grader keeps a named result and clears it for the next draft",
+  async (scope) => {
+    const grader = scope === "workspace" ? WORKSPACE_GRADER : PLATFORM_GRADER;
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+      if (init?.method === "POST") return json({ ...grader, name: "新評分器", version: 1 }, 201);
+      return originalFetch(input, init);
+    });
+    await renderNode(<GraderManager scope={scope} />);
+    await waitFor(() => container.textContent!.includes(grader.name));
+    await act(async () => {
+      field("#grader-create-heading").closest("details")!.open = true;
+      setValue(field("#grader-create-name"), "新評分器");
+      setValue(field("#grader-create-instructions"), "要附出處");
+      setValue(field("#grader-create-reason"), "第一版");
+    });
+    await act(async () => button("新增評分器").click());
+    await waitFor(() => field<HTMLInputElement>("#grader-create-name").value === "");
+    expect(field("#grader-result").textContent).toContain("已儲存「新評分器」v1");
+    expect(document.activeElement).toBe(field("#grader-result"));
+    expect(field<HTMLInputElement>("#grader-create-name").value).toBe("");
+    await act(async () => setValue(field("#grader-create-name"), "另一個草稿"));
+    expect(container.querySelector("#grader-result")).toBeNull();
+  },
+);

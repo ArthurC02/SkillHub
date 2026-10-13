@@ -58,12 +58,19 @@ export function useCreateGrader(scope: GraderScope) {
   });
 }
 
-export function useReviseGrader(scope: GraderScope, graderId: string) {
+export function useReviseGrader(
+  scope: GraderScope,
+  graderId: string,
+  onCompleted: (grader: Grader) => void,
+) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (revision: { instructions: string; reason: string }) =>
       apiFetch<Grader>(`${GRADER_PATHS[scope]}/${graderId}/versions`, send(revision)),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.checks.all }),
+    onSuccess: (grader) => {
+      onCompleted(grader);
+      return client.invalidateQueries({ queryKey: queryKeys.checks.all });
+    },
   });
 }
 

@@ -8,7 +8,7 @@ import { ApplyFailureBody } from "./ApplyFailureBody";
 import { SuggestionItem } from "./SuggestionItem";
 import { AppliedResult } from "./AppliedResult";
 
-export function SuggestionsPanel({ runId }: { runId: string }) {
+export function SuggestionsPanel({ runId, evaluationId }: { runId: string; evaluationId: string }) {
   const suggestions = useRunSuggestions(runId);
   const run = useRun(runId).data;
   const skillId = run?.skill_id;
@@ -20,7 +20,32 @@ export function SuggestionsPanel({ runId }: { runId: string }) {
   if (suggestions.isPending) return <Loading what="改善建議" />;
   if (notFound) return null;
   if (suggestions.error) {
-    return <ReadFailure error={suggestions.error} what="改善建議" />;
+    return (
+      <ReadFailure
+        error={suggestions.error}
+        what="改善建議"
+        retry={() => void suggestions.refetch()}
+        retrying={suggestions.isFetching}
+      />
+    );
+  }
+
+  if (suggestions.data.evaluation_id !== evaluationId) {
+    return (
+      <section>
+        <h3>改善建議</h3>
+        <p className="notice notice-warning" role="status">
+          取得的改善建議屬於另一份評估，不能作為這份判定的改善依據。可重新讀取，或回到目前的判定。
+        </p>
+        <button
+          type="button"
+          disabled={suggestions.isFetching}
+          onClick={() => void suggestions.refetch()}
+        >
+          {suggestions.isFetching ? "重新讀取中…" : "重新讀取改善建議"}
+        </button>
+      </section>
+    );
   }
 
   const accepted = suggestions.data.suggestions.filter((s) => s.decision === "accepted");
