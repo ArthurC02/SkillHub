@@ -1387,6 +1387,50 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("Git commit signature is invalid", result.stdout + result.stderr)
 
+    def interpreters_on_path(self, *, python: bool, python3: bool) -> dict[str, str]:
+        shims = self.repo / "shims"
+        shims.mkdir()
+        real = Path(sys.executable).as_posix()
+        for name, works in (("python", python), ("python3", python3)):
+            body = f'#!/bin/sh\nexec "{real}" "$@"\n' if works else "#!/bin/sh\nexit 1\n"
+            shim = shims / name
+            shim.write_bytes(body.encode("utf-8"))
+            shim.chmod(0o755)
+        return {**os.environ, "PATH": str(shims) + os.pathsep + os.environ["PATH"]}
+
+    def pushed_with(self, environment: dict[str, str]) -> subprocess.CompletedProcess:
+        hook, _ = self.push_fixture()
+        head = self.commit_file("memory/registry/extra.json")
+        return subprocess.run(
+            ["sh", str(hook), "origin", "unused"], cwd=self.repo, env=environment,
+            input=f"refs/heads/feature {head} refs/heads/feature {'0' * 40}\n",
+            capture_output=True, text=True, check=False,
+        )
+
+    def test_the_pre_push_hook_runs_python3_where_python_does_not_work(self) -> None:
+        result = self.pushed_with(self.interpreters_on_path(python=False, python3=True))
+        self.assertIn("Git commit signature is invalid", result.stdout + result.stderr)
+
+    def test_the_pre_push_hook_runs_python_where_python3_does_not_work(self) -> None:
+        result = self.pushed_with(self.interpreters_on_path(python=True, python3=False))
+        self.assertIn("Git commit signature is invalid", result.stdout + result.stderr)
+
+    def test_a_push_without_memory_commits_needs_no_interpreter(self) -> None:
+        environment = self.interpreters_on_path(python=False, python3=False)
+        hook, _ = self.push_fixture()
+        head = self.commit_file("elsewhere/readme.txt")
+        result = subprocess.run(
+            ["sh", str(hook), "origin", "unused"], cwd=self.repo, env=environment,
+            input=f"refs/heads/feature {head} refs/heads/feature {'0' * 40}\n",
+            capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_the_pre_push_hook_names_a_missing_interpreter(self) -> None:
+        result = self.pushed_with(self.interpreters_on_path(python=False, python3=False))
+        self.assertEqual(1, result.returncode)
+        self.assertIn("no Python 3.10 or later on PATH as python3 or python", result.stderr)
+
     def test_an_existing_branch_checks_only_the_range_after_the_remote_tip(self) -> None:
         hook, remote_tip = self.push_fixture()
         head = self.commit_file("elsewhere/readme.txt")

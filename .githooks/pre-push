@@ -4,6 +4,14 @@ tool='.claude/skills/domain-memory/scripts/registry_tools.py'
 memory='docs/domain-memory'
 existing='.githooks/pre-push.domain-memory-existing'
 refs=$(cat)
+python_for_tool() {
+  for candidate in python3 python; do
+    "$candidate" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2>/dev/null && echo "$candidate" && return 0
+  done
+  echo 'domain-memory pre-push: no Python 3.10 or later on PATH as python3 or python' >&2
+  return 1
+}
+py=''
 if [ -x "$existing" ]; then
   printf '%s\n' "$refs" | "$existing" "$@" || exit 1
 fi
@@ -13,6 +21,7 @@ printf '%s\n' "$refs" | while read local_ref local_sha remote_ref remote_sha; do
   range="$local_sha --not --remotes"
   test "$remote_sha" = "0000000000000000000000000000000000000000" || range=$remote_sha..$local_sha
   for commit in $(git rev-list $range -- "$memory"); do
-    python "$tool" verify-git-governance --registry-root "$memory" --repo-root . --commit "$commit" || exit 1
+    test -n "$py" || py=$(python_for_tool) || exit 1
+    "$py" "$tool" verify-git-governance --registry-root "$memory" --repo-root . --commit "$commit" || exit 1
   done
 done || exit 1

@@ -10,7 +10,7 @@ Nothing here is specific to one Agent or one host. The durable state is JSON fil
 python3 scripts/registry_tools.py <command> [options]
 ```
 
-Python 3.10 or later, its standard library, and `git` on the path. Nothing to install, no environment to prepare, and the script runs from any working directory. Output is JSON except for success and error lines. A non-zero exit is a refusal that names its reason; read the reason rather than retrying.
+Python 3.10 or later, its standard library, and `git` on the path. Call the interpreter by the name your system gives it: `python3` on most Linux and macOS systems, `python` on Windows, where `python3` is often a store stub. Nothing to install, no environment to prepare, and the script runs from any working directory. Output is JSON except for success and error lines. A non-zero exit is a refusal that names its reason; read the reason rather than retrying.
 
 Commands that read or change the Registry take `--registry-root <root>`: the directory that holds `registry/`, `source-map.json` and the policy, not `registry/` itself. Commands that read repository files take `--repo-root <repo>`. Some take only one of the two: `quality-gates` takes only `--repo-root`, `readiness` needs only `--repo-root`, and `coverage` and the read commands take only `--registry-root`. The table below leaves both flags out, and `<command> --help` lists the exact flags.
 

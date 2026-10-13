@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.21.1
+
+### Fixed
+
+- The pre-push hook no longer calls `python` by that name, which most Linux systems do not provide. It runs the first of `python3` and `python` that is Python 3.10 or later, looks for one only when the push carries a Domain Memory commit, and names a missing interpreter instead of failing as an unsigned commit would. Reinstall it with `install-git-hitl-hook`.
+- `AGENTS.md` says which interpreter name to use on Linux, macOS and Windows.
+
 ## 0.21.0
 
 ### Added
