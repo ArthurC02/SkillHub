@@ -13,15 +13,20 @@ import (
 
 func TestEvaluationReceivesTheOwnersTerminalVerdict(t *testing.T) {
 	for _, tc := range []struct {
-		status   string
-		finished bool
+		status    string
+		finished  bool
+		succeeded bool
 	}{
-		{"succeeded", false},
-		{"running", true},
+		{"succeeded", false, false},
+		{"running", true, true},
 	} {
 		t.Run(tc.status, func(t *testing.T) {
-			if got := evalRunFacts(run.EvaluationRun{Status: tc.status, Terminal: tc.finished}).Terminal; got != tc.finished {
-				t.Errorf("evaluation sees %s as finished = %v, want %v", tc.status, got, tc.finished)
+			got := evalRunFacts(run.EvaluationRun{Status: tc.status, Terminal: tc.finished, Succeeded: tc.succeeded})
+			if got.Terminal != tc.finished {
+				t.Errorf("evaluation sees %s as finished = %v, want %v", tc.status, got.Terminal, tc.finished)
+			}
+			if got.Succeeded != tc.succeeded {
+				t.Errorf("evaluation sees %s as succeeded = %v, want the owner's %v", tc.status, got.Succeeded, tc.succeeded)
 			}
 		})
 	}
