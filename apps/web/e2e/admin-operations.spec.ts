@@ -4,10 +4,179 @@ import {
   ADMIN_AGENT_PROPOSAL,
   ADMIN_AGENT_PROPOSALS,
   ADMIN_DISPATCH,
+  ADMIN_EXPOSURE_CASE,
   ADMIN_MODEL_BUDGETS,
+  ADMIN_SKILLS,
   AGENT_PROPOSAL,
+  PUBLICATION,
+  PUBLISHER,
+  SKILL,
 } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
+
+for (const width of [375, 1280]) {
+  test(`exposure refresh replaces stale approval drafts at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width, height: 900 });
+    let reads = 0;
+    let finishRead!: () => void;
+    const held = new Promise<void>((resolve) => {
+      finishRead = resolve;
+    });
+    await page.route(
+      `**/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`,
+      async (route) => {
+        reads += 1;
+        if (reads === 1) return route.fulfill({ json: ADMIN_EXPOSURE_CASE });
+        await held;
+        return route.fulfill({
+          json: {
+            ...ADMIN_EXPOSURE_CASE,
+            sequence: 3,
+            approval: {
+              allowed: false,
+              refusal: { reason: "snapshot_pending", error: "這一版的搜尋內容還在補充" },
+            },
+            snapshot: {
+              ...ADMIN_EXPOSURE_CASE.snapshot,
+              enriched: false,
+              enriched_summary: "新版本摘要",
+              digest: "sha256:snap-cc",
+            },
+          },
+        });
+      },
+    );
+    await page.goto(
+      `/admin/exposure?publication=${encodeURIComponent(`${PUBLISHER}/${PUBLICATION}`)}`,
+    );
+    const approval = page.getByRole("radio", { name: "核准", exact: true });
+    await approval.check();
+    await page.locator("#admin-exposure-review-note").fill("old snapshot decision");
+    await expect(page.getByRole("button", { name: "送出核准" })).toBeEnabled();
+    const refresh = page.getByRole("button", { name: "重新整理審核資料" });
+    await refresh.focus();
+    await page.keyboard.press("Enter");
+    try {
+      await expect(
+        page.getByRole("status").filter({ hasText: "載入這一筆的曝光審核資料中" }),
+      ).toBeVisible();
+      await expect(approval).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "送出核准" })).toHaveCount(0);
+      await expect(
+        page.getByText("把 PDF 整理成重點摘要，附上引用頁碼。", { exact: true }),
+      ).toHaveCount(0);
+      await expect(page.getByText("審核資料上次取得於", { exact: false })).toHaveCount(0);
+      await page.keyboard.press("Enter");
+      expect(reads).toBe(2);
+      await page.screenshot({ path: testInfo.outputPath(`exposure-refreshing-${width}.png`) });
+    } finally {
+      finishRead();
+    }
+    await expect(page.getByText("新版本摘要", { exact: true })).toBeVisible();
+    await expect(approval).toBeDisabled();
+    await expect(approval).not.toBeChecked();
+    await expect(page.locator("#admin-exposure-review-note")).toHaveValue("");
+    await expect(page.getByRole("button", { name: "送出審核結論" })).toBeDisabled();
+    await expect(page.getByText("這一版的搜尋內容還在補充", { exact: true })).toBeVisible();
+    await expect(refresh).toBeFocused();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+    expect(accessibility.violations).toEqual([]);
+    await page.screenshot({
+      path: testInfo.outputPath(`exposure-recovered-${width}.png`),
+      fullPage: true,
+    });
+  });
+}
+
+test("governance refresh and recovery withhold stale decisions on a phone", async ({
+  page,
+}, testInfo) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+  let reads = 0;
+  let finishRead!: () => void;
+  let held = new Promise<void>((resolve) => {
+    finishRead = resolve;
+  });
+  await page.route("**/admin/skills?*", async (route) => {
+    if (route.request().isNavigationRequest()) return route.fallback();
+    reads += 1;
+    if (reads === 1) return route.fulfill({ json: ADMIN_SKILLS });
+    await held;
+    return reads === 2
+      ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
+      : route.fulfill({
+          json: {
+            skills: [
+              {
+                ...ADMIN_SKILLS.skills[0],
+                takedown_at: "2026-09-11T10:00:00Z",
+                takedown_reason: "DMCA notice",
+              },
+            ],
+          },
+        });
+  });
+  await page.goto(`/admin/skills?q=${SKILL}`);
+  const actions = page.getByRole("heading", { name: "對「PDF Summariser」的動作" });
+  await expect(actions).toBeVisible();
+  await page.locator("#admin-skill-takedown summary").click();
+  await page.locator("#admin-takedown-reason").fill("old decision");
+  await page.getByRole("button", { name: "下架", exact: true }).click();
+  await expect(page.getByRole("button", { name: "確認下架" })).toBeVisible();
+  const refresh = page.getByRole("button", { name: "重新整理治理狀態" });
+  await refresh.focus();
+  await page.keyboard.press("Enter");
+  try {
+    await expect(
+      page.getByRole("status").filter({ hasText: "載入小工具治理狀態中" }),
+    ).toBeVisible();
+    await expect(actions).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "確認下架" })).toHaveCount(0);
+    await expect(page.getByText("未下架", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("治理狀態上次取得於", { exact: false })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "重新整理中…" })).toBeDisabled();
+    await page.keyboard.press("Enter");
+    expect(reads).toBe(2);
+    await page.screenshot({ path: testInfo.outputPath("governance-refreshing-phone.png") });
+  } finally {
+    finishRead();
+  }
+  await expect(page.getByRole("alert")).toContainText("請重新整理治理狀態後再操作");
+  await expect(refresh).toBeFocused();
+  await page.screenshot({ path: testInfo.outputPath("governance-read-failed-phone.png") });
+  held = new Promise<void>((resolve) => {
+    finishRead = resolve;
+  });
+  await page.keyboard.press("Enter");
+  try {
+    await expect.poll(() => reads).toBe(3);
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(actions).toHaveCount(0);
+    await expect(
+      page.getByRole("status").filter({ hasText: "載入小工具治理狀態中" }),
+    ).toBeVisible();
+  } finally {
+    finishRead();
+  }
+  await expect(page.getByText("已下架", { exact: true })).toBeVisible();
+  await expect(page.getByText("DMCA notice", { exact: false })).toBeVisible();
+  await expect(actions).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "確認下架" })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const accessibility = await new AxeBuilder({ page }).include("main").analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.screenshot({
+    path: testInfo.outputPath("governance-recovered-phone.png"),
+    fullPage: true,
+  });
+});
 
 test("the home priority conclusion waits for every refreshed source on a phone", async ({
   page,

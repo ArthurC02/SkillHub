@@ -1072,7 +1072,7 @@ test("OPS-004: editing a governance query hides the prior skill and actions unti
   expect(calls.some((call) => call.url === "/admin/skills?q=other")).toBe(false);
 
   await type("#admin-skill-q", SKILL);
-  expect(has("對「PDF Summariser」的動作")()).toBe(true);
+  await waitFor(has("對「PDF Summariser」的動作"));
   await type("#admin-skill-q", "other");
   await submit("#admin-skill-q");
   await waitFor(has("對「Other Tool」的動作"));

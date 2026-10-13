@@ -30,6 +30,7 @@ function reviewPremiseChanged(
 
 function ExposureCaseSection({ publication }: { publication: string }) {
   const exposureCase = useExposureCase(publication);
+  const readable = !exposureCase.error && !exposureCase.isFetching;
   const review = useReviewExposure(publication);
   const result = useRef<HTMLParagraphElement>(null);
   const showResult =
@@ -41,7 +42,7 @@ function ExposureCaseSection({ publication }: { publication: string }) {
   const reloadedAfterConflict =
     review.error instanceof ApiError &&
     review.error.status === 409 &&
-    !exposureCase.error &&
+    readable &&
     reviewPremiseChanged(exposureCase.data, review.variables);
   useEffect(() => {
     if (showResult) result.current?.focus();
@@ -57,7 +58,7 @@ function ExposureCaseSection({ publication }: { publication: string }) {
         </Link>
       </p>
       <p className="note">
-        {exposureCase.data && !exposureCase.error && (
+        {exposureCase.data && readable && (
           <>
             審核資料上次取得於{" "}
             <Timestamp at={new Date(exposureCase.dataUpdatedAt).toISOString()} relative />。{" "}
@@ -65,13 +66,17 @@ function ExposureCaseSection({ publication }: { publication: string }) {
         )}
         <button
           type="button"
-          disabled={exposureCase.isFetching}
-          onClick={() => void exposureCase.refetch()}
+          aria-disabled={exposureCase.isFetching}
+          onClick={() => {
+            if (!exposureCase.isFetching) void exposureCase.refetch();
+          }}
         >
           {exposureCase.isFetching ? "重新整理中…" : "重新整理審核資料"}
         </button>
+        <br />
+        資料更新時會清除未送出的審核草稿。
       </p>
-      {exposureCase.isPending && <Loading what="這一筆的曝光審核資料" />}
+      {exposureCase.isFetching && <Loading what="這一筆的曝光審核資料" />}
       {showResult && (
         <p
           id="admin-exposure-result"
@@ -90,8 +95,11 @@ function ExposureCaseSection({ publication }: { publication: string }) {
           案件已更新，請重新檢查內容後再決定。
         </p>
       )}
-      <ReadFailure error={exposureCase.error} what="這一筆的曝光審核資料" />
-      {exposureCase.data && !exposureCase.error && (
+      <ReadFailure
+        error={exposureCase.isFetching ? undefined : exposureCase.error}
+        what="這一筆的曝光審核資料"
+      />
+      {exposureCase.data && readable && (
         <ExposureReview
           exposureCase={exposureCase.data}
           publication={publication}

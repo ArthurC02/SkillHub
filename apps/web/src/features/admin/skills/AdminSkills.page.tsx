@@ -70,7 +70,8 @@ function GovernanceResult({
 
 function GovernanceResults({ q }: { q: string }) {
   const skills = useGovernance(q);
-  const found = q !== "" && !skills.error ? (skills.data?.skills ?? []) : [];
+  const readable = q !== "" && !skills.error && !skills.isFetching;
+  const found = readable ? (skills.data?.skills ?? []) : [];
   const [completed, setCompleted] = useState<{
     id: string;
     message: string;
@@ -80,25 +81,34 @@ function GovernanceResults({ q }: { q: string }) {
   return (
     <>
       {q === "" && <p className="note">輸入 ID 或名稱，查詢所有工作區的小工具。</p>}
-      {q !== "" && skills.isPending && <Loading what="小工具" />}
+      {q !== "" && skills.isFetching && <Loading what="小工具治理狀態" />}
       <GovernanceResult completed={completed} skills={skills.data?.skills} />
-      <ReadFailure error={skills.error} what="小工具" />
+      <ReadFailure error={skills.isFetching ? undefined : skills.error} what="小工具">
+        <p role="alert">暫時無法讀取小工具。請重新整理治理狀態後再操作。</p>
+      </ReadFailure>
       {q !== "" && (
         <p className="note">
-          {skills.data && !skills.error && (
+          {skills.data && readable && (
             <>
               治理狀態上次取得於{" "}
               <Timestamp at={new Date(skills.dataUpdatedAt).toISOString()} relative />。{" "}
             </>
           )}
-          <button type="button" disabled={skills.isFetching} onClick={() => void skills.refetch()}>
+          <button
+            type="button"
+            aria-disabled={skills.isFetching}
+            onClick={() => {
+              if (!skills.isFetching) void skills.refetch();
+            }}
+          >
             {skills.isFetching ? "重新整理中…" : "重新整理治理狀態"}
           </button>
+          <br />
+          狀態更新時會清除未送出的操作草稿。
         </p>
       )}
-      {q !== "" &&
-        skills.data &&
-        !skills.error &&
+      {skills.data &&
+        readable &&
         (found.length === 0 ? (
           <p>沒有符合「{q}」的小工具：0 筆。已刪除的小工具不會出現。</p>
         ) : (
