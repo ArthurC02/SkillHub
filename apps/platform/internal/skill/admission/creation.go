@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -163,7 +164,7 @@ func (s *Service) findCreationReference(ctx context.Context, ws identity.Workspa
 	if err != nil {
 		return creationReference{}, err
 	}
-	text, truncated := cutRunes(strings.ToValidUTF8(string(md), ""), generateMaxReferenceChars-utf8.RuneCountInString(referenceTruncationMarker))
+	text, truncated := textx.CutRunes(strings.ToValidUTF8(string(md), ""), generateMaxReferenceChars-utf8.RuneCountInString(referenceTruncationMarker))
 	if truncated {
 		text += referenceTruncationMarker
 	}

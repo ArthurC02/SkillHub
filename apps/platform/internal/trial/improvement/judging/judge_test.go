@@ -572,16 +572,6 @@ func TestDigestKeepsTheTailAndSaysWhenItCut(t *testing.T) {
 	}
 }
 
-func TestExcerptsAreCutOnRunesNotBytes(t *testing.T) {
-	got, truncated := cut("驗收條件通過了", 3)
-	if !truncated || got != "驗收條" {
-		t.Errorf("cut on runes: got %q truncated=%v", got, truncated)
-	}
-	if got, truncated := cut("short", 99); truncated || got != "short" {
-		t.Error("nothing under the budget is cut")
-	}
-}
-
 func TestDigestReportsAnExcerptCutAsTruncation(t *testing.T) {
 	view := trace.AdvancedView{Complete: true, Events: []trace.EventView{{
 		EventID: eventID, Type: trace.TypeAgentOutput,

@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 )
 
 type Fetch struct {
@@ -239,11 +241,10 @@ func withoutCutRune(b []byte) []byte {
 }
 
 func truncateRunes(s string, n int) string {
-	if utf8.RuneCountInString(s) <= n {
-		return s
+	if cut, truncated := textx.CutRunes(s, n); truncated {
+		return cut + "…"
 	}
-	runes := []rune(s)
-	return string(runes[:n]) + "…"
+	return s
 }
 
 func fetchObservation(rec Fetch, text string) string {

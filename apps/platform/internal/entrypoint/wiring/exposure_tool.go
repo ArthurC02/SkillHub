@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/agentloop"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
@@ -73,11 +74,10 @@ func searchTextFacts(snapshot *publishing.SearchSnapshot, releasedVersion pgtype
 }
 
 func clip(text string) string {
-	runes := []rune(text)
-	if len(runes) <= searchTextRunes {
-		return text
+	if cut, truncated := textx.CutRunes(text, searchTextRunes); truncated {
+		return cut + "…"
 	}
-	return string(runes[:searchTextRunes]) + "…"
+	return text
 }
 
 func ExposureQueueTool(docket func(context.Context) ([]publishing.DocketEntry, error)) agentloop.Tool {

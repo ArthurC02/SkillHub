@@ -53,6 +53,9 @@ packages:
   - id: httpx
     kind: Generic
     path: foundation/runtime/httpx
+  - id: textx
+    kind: Generic
+    path: foundation/runtime/textx
   - id: literalgate
     kind: Generic
     path: foundation/runtime/literalgate

@@ -396,14 +396,6 @@ func (s *Service) resolveReference(
 	return found.content, referenceProvenance{SkillID: found.skillID, VersionID: found.versionID, Name: found.content.Name}, nil
 }
 
-func cutRunes(s string, limit int) (string, bool) {
-	runes := []rune(s)
-	if len(runes) <= limit {
-		return s, false
-	}
-	return string(runes[:limit]), true
-}
-
 type generationInputsDiagram struct {
 	MediaType string `json:"media_type"`
 	SHA256    string `json:"sha256"`

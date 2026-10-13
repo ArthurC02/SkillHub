@@ -14,6 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
@@ -92,7 +93,7 @@ func (s *Service) storeProposals(ctx context.Context, ev gen.Evaluation, proposa
 		if err != nil || len(evidence) == 0 {
 
 			quote := strings.TrimSpace(p.Evidence)
-			head, _ := cut(quote, loggedQuoteHeadRunes)
+			head, _ := textx.CutRunes(quote, loggedQuoteHeadRunes)
 			slog.Warn("improvement proposal has no matching verified evidence",
 				"evaluation_id", pgconv.UUIDString(ev.ID), "category", p.Category,
 				"quote_runes", utf8.RuneCountInString(quote), "candidate_refs", len(refs),
@@ -234,7 +235,7 @@ func suggestionDigest(m facts.Material, v assessment) (string, []verdict.Evidenc
 			}
 			refs = append(refs, r)
 			if b.Len() < maxDigestChars {
-				excerpt, _ := cut(r.Excerpt, digestExcerptRunes)
+				excerpt, _ := textx.CutRunes(r.Excerpt, digestExcerptRunes)
 
 				fmt.Fprintf(&b, "    evidence (%s):\n      %s\n", r.Kind, excerpt)
 			}
@@ -272,7 +273,7 @@ func suggestionDigest(m facts.Material, v assessment) (string, []verdict.Evidenc
 		addRefs(f.Evidence)
 	}
 
-	digest, _ := cut(b.String(), maxDigestChars)
+	digest, _ := textx.CutRunes(b.String(), maxDigestChars)
 	return digest, refs
 }
 
@@ -324,7 +325,7 @@ func skillEntryFirst(tree []string) []string {
 }
 
 func firstChars(s string, limit int) string {
-	out, truncated := cut(s, limit)
+	out, truncated := textx.CutRunes(s, limit)
 	if truncated {
 		return out + "…[truncated]"
 	}

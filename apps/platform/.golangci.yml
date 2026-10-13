@@ -898,6 +898,7 @@ linters:
             - "**/internal/foundation/runtime/envx/**"
             - "**/internal/foundation/runtime/httpx/**"
             - "**/internal/foundation/runtime/literalgate/**"
+            - "**/internal/foundation/runtime/textx/**"
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch

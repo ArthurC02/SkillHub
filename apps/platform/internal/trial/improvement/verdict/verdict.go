@@ -1,5 +1,7 @@
 package verdict
 
+import "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
+
 const (
 	ResultPassed       = "passed"
 	ResultFailed       = "failed"
@@ -48,11 +50,7 @@ const (
 const ExcerptLimit = 1000 // one-number: excerptLimit - what a stored EvidenceRef keeps of its source
 
 func Excerpt(source string) (excerpt string, truncated bool) {
-	runes := []rune(source)
-	if len(runes) <= ExcerptLimit {
-		return source, false
-	}
-	return string(runes[:ExcerptLimit]), true
+	return textx.CutRunes(source, ExcerptLimit)
 }
 
 func VerifiedQuote(match string) bool {

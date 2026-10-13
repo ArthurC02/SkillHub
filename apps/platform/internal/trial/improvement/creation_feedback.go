@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -70,17 +71,17 @@ func (s *Service) CreationFeedback(
 func cutFeedbackItems(criteria []verdict.CriterionResult, findings []verdict.Finding) (itemsTruncated bool) {
 	for i := range criteria {
 		var t bool
-		if criteria[i].Text, t = cut(criteria[i].Text, creationFeedbackMaxItem); t {
+		if criteria[i].Text, t = textx.CutRunes(criteria[i].Text, creationFeedbackMaxItem); t {
 			itemsTruncated = true
 		}
-		if criteria[i].Reason, t = cut(withoutLinks(criteria[i].Reason), creationFeedbackMaxItem); t {
+		if criteria[i].Reason, t = textx.CutRunes(withoutLinks(criteria[i].Reason), creationFeedbackMaxItem); t {
 			itemsTruncated = true
 		}
 		criteria[i].Evidence = evidenceWithoutLinks(criteria[i].Evidence)
 	}
 	for i := range findings {
 
-		msg, t := cut(withoutLinks(findings[i].Message), creationFeedbackMaxItem)
+		msg, t := textx.CutRunes(withoutLinks(findings[i].Message), creationFeedbackMaxItem)
 		findings[i].Message = msg
 		findings[i].Evidence = evidenceWithoutLinks(findings[i].Evidence)
 		if t {
@@ -91,7 +92,7 @@ func cutFeedbackItems(criteria []verdict.CriterionResult, findings []verdict.Fin
 }
 
 func marshalCreationFeedback(view evaluationView) (json.RawMessage, error) {
-	summary, summaryTruncated := cut(withoutLinks(view.Summary), creationFeedbackMaxSummary)
+	summary, summaryTruncated := textx.CutRunes(withoutLinks(view.Summary), creationFeedbackMaxSummary)
 	criteria := append([]verdict.CriterionResult(nil), view.CriterionResults...)
 	if criteria == nil {
 		criteria = []verdict.CriterionResult{}

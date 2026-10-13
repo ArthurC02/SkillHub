@@ -596,14 +596,6 @@ func orUnknown(s string) string {
 	return s
 }
 
-func cut(s string, limit int) (string, bool) {
-	runes := []rune(s)
-	if len(runes) <= limit {
-		return s, false
-	}
-	return string(runes[:limit]), true
-}
-
 func derefString(s *string) string {
 	if s == nil {
 		return ""

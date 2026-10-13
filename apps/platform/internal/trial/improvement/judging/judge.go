@@ -12,6 +12,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/checks"
@@ -109,7 +110,7 @@ type sentForJudgement struct {
 func buildRequest(m facts.Material, evaluationID string) (modelport.JudgeRequest, sentForJudgement) {
 	truncation := []string{}
 
-	final, cutOutput := cut(m.Summary.FinalOutput, maxFinalOutput)
+	final, cutOutput := textx.CutRunes(m.Summary.FinalOutput, maxFinalOutput)
 	if cutOutput {
 		truncation = append(truncation, "final_output")
 	}
@@ -223,7 +224,7 @@ func buildDigest(view trace.AdvancedView) ([]modelport.TraceDigestEntry, map[str
 	entries := make([]modelport.TraceDigestEntry, 0, len(citable))
 	digest := make(map[string]trace.EventView, len(citable))
 	for _, e := range citable {
-		excerpt, cutExcerpt := cut(string(e.Payload), maxDigestEntry)
+		excerpt, cutExcerpt := textx.CutRunes(string(e.Payload), maxDigestEntry)
 		entries = append(entries, modelport.TraceDigestEntry{
 			TraceEventID: e.EventID,
 			OccurredAt:   e.OccurredAt,
@@ -607,14 +608,6 @@ func verifiedText(quote, match string) string {
 		return normalizeQuote(quote)
 	}
 	return quote
-}
-
-func cut(s string, limit int) (string, bool) {
-	runes := []rune(s)
-	if len(runes) <= limit {
-		return s, false
-	}
-	return string(runes[:limit]), true
 }
 
 func derefString(s *string) string {
