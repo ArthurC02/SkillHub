@@ -1216,6 +1216,15 @@ test("受限展示完成後顯示結果，反向操作從空白理由開始", as
     .locator(".app-header")
     .evaluate((element) => element.getBoundingClientRect().bottom);
   expect(resultTop).toBeGreaterThanOrEqual(headerBottom);
+  await expect(page.getByRole("heading", { name: "解除受限展示", exact: true })).toBeVisible();
+  if (
+    !(await page
+      .locator("#admin-skill-restriction")
+      .evaluate((element) => (element as HTMLDetailsElement).open))
+  ) {
+    await page.locator("#admin-skill-restriction summary").focus();
+    await page.keyboard.press("Enter");
+  }
   await expect(page.getByRole("button", { name: "解除受限", exact: true })).toBeDisabled();
   await expect(page.locator("#admin-restriction-note")).toBeEmpty();
   await page.screenshot({
@@ -2314,9 +2323,12 @@ test("an exposure decision does not show the old exposure state while rereading"
   try {
     await expect.poll(() => rereads).toBeGreaterThan(0);
     await expect(page.locator("#admin-exposure-result")).toBeVisible();
-    await expect(page.getByText("目前曝光中：搜尋與目錄看得到它。")).toBeVisible();
+    await expect(page.getByText("目前曝光中：搜尋與目錄看得到它。")).toHaveCount(0);
     await expect(page.getByText("目前未曝光：搜尋與目錄看不到它。")).toHaveCount(0);
-    await expect(page.getByText("核准：看過了，符合規範")).toBeVisible();
+    await expect(page.getByRole("radio", { name: "核准" })).toHaveCount(0);
+    await expect(
+      page.getByRole("status").filter({ hasText: "載入這一筆的曝光審核資料中" }),
+    ).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath("exposure-review-readback-phone.png"),
       fullPage: true,
@@ -2325,6 +2337,7 @@ test("an exposure decision does not show the old exposure state while rereading"
     finishReread();
   }
   await expect(page.getByText("目前曝光中：搜尋與目錄看得到它。")).toBeVisible();
+  await expect(page.getByText("核准：看過了，符合規範")).toBeVisible();
 });
 
 test("exposure review explains an unavailable approval beside its control on mobile", async ({

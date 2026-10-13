@@ -1067,6 +1067,16 @@ try {
     const restrictedSkills = await (
       await operator.request.get(`${base}/admin/skills?q=${imported.skill_id}`)
     ).json();
+    await governancePage
+      .getByRole("heading", { name: "解除受限展示", exact: true })
+      .waitFor();
+    if (
+      !(await governancePage
+        .locator("#admin-skill-restriction")
+        .evaluate((element) => element.open))
+    ) {
+      await governancePage.locator("#admin-skill-restriction summary").click();
+    }
     await governancePage.getByRole("button", { name: "解除受限" }).waitFor();
     await governancePage
       .locator("#admin-restriction-note")
