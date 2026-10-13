@@ -32,6 +32,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/evalsettings"
 )
 
 type Deps struct {
@@ -200,7 +201,7 @@ func wireEvaluationModelAndEvents(evaluations *eval.Service, pool *pgxpool.Pool,
 		return outbox.EventsOfType(ctx, pool, page)
 	}
 	evaluations.Judge = eval.JudgeOrNone(llm)
-	evaluations.PanelEnabled = evaluations.JudgePanelEnabled
+	evaluations.PanelEnabled = (&evalsettings.Service{Pool: pool}).JudgePanelEnabled
 	evaluations.Suggester = eval.SuggesterOrNone(llm)
 }
 

@@ -1,4 +1,4 @@
-package eval
+package evalsettings
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ import (
 
 const maxSettingsBodyBytes = 16 << 10
 
-type SettingsHandler struct {
+type Handler struct {
 	Svc   *Service
 	Actor func(*http.Request) (pgtype.UUID, bool)
 }
@@ -30,7 +30,7 @@ type settingsView struct {
 	JudgePanel judgePanelView `json:"judge_panel"`
 }
 
-func (h *SettingsHandler) Get(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	settings, err := h.Svc.Settings(r.Context())
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "settings lookup failed")
@@ -39,7 +39,7 @@ func (h *SettingsHandler) Get(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, viewOfSettings(settings))
 }
 
-func (h *SettingsHandler) SetJudgePanel(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) SetJudgePanel(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Enabled *bool  `json:"enabled"`
 		Note    string `json:"note"`

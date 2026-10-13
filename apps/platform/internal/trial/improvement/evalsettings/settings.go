@@ -1,4 +1,4 @@
-package eval
+package evalsettings
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -16,6 +17,10 @@ import (
 )
 
 const maxSettingsReasonChars = limits.SetJudgePanelBodyNoteMaxLength
+
+type Service struct {
+	Pool *pgxpool.Pool
+}
 
 var ErrSettingsReasonRequired = errors.New("eval: a settings change needs a reason of at most 1000 characters")
 

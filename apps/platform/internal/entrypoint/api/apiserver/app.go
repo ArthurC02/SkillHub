@@ -35,6 +35,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/evalsettings"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
@@ -358,7 +359,7 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 		},
 		OperatorAudit: &operatorAuditHandler{DB: cfg.Pool},
 		Agents:        &operations.Handler{Svc: &operations.Service{Pool: cfg.Pool}, Actor: sessionActorID},
-		Settings:      &eval.SettingsHandler{Svc: evalSvc, Actor: sessionActorID},
+		Settings:      &evalsettings.Handler{Svc: &evalsettings.Service{Pool: cfg.Pool}, Actor: sessionActorID},
 		RunSettings:   &run.SettingsHandler{Svc: runSvc, Actor: sessionActorID},
 		Trends: &trendsHandler{
 			Credits:            &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},

@@ -20,6 +20,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/evalsettings"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
@@ -49,7 +50,7 @@ type Deps struct {
 
 	Agents *operations.Handler
 
-	Settings *eval.SettingsHandler
+	Settings *evalsettings.Handler
 
 	RunSettings *run.SettingsHandler
 

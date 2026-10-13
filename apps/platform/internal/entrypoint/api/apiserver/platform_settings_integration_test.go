@@ -9,7 +9,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
-	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/evalsettings"
 )
 
 func spendCapAudit(t *testing.T, pool *pgxpool.Pool, name string) (from, to float64, count int) {
@@ -125,7 +125,7 @@ func TestAnOperatorSwitchesTheJudgePanelAndTheNextEvaluationReadsIt(t *testing.T
 	a := newAPI(t, pool)
 	operator := a.login(t, freshName("operator-judge-panel"))
 	a.auth.Operators = map[string]bool{operator.userID: true}
-	svc := &eval.Service{Pool: pool}
+	svc := &evalsettings.Service{Pool: pool}
 
 	code, settings := operatorCall(t, operator, http.MethodGet, "/admin/settings", "")
 	panel, _ := settings["judge_panel"].(map[string]any)
