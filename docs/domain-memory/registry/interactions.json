@@ -246,33 +246,33 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/trial.go",
           "lines": {
-            "start": 98,
-            "end": 121
+            "start": 99,
+            "end": 122
           },
-          "content_sha256": "sha256:1881a4fe5066ba814f159bf2a8c9db2d6e4efb1964c51681f5cf3da602d5a9d5",
-          "excerpt_sha256": "sha256:738ee12fc6379079b9a7598972b08b1e936ec35ddefafea36e6b430615a881ed",
+          "content_sha256": "sha256:c60926fedc26af6db001df227f107aae903383a02e963528408da8d31370301f",
+          "excerpt_sha256": "sha256:44b6f2013bf1287a619e2552b88c8149d0d56bbcccecbff5e77f62b33e64a2f9",
           "source_kind": "implementation"
         }
       ],
+      "status": "reviewed",
       "review": {
-        "proposal_id": "eval-run-collaboration-r2",
+        "proposal_id": "eval-checks-facts-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T17:35:11.366282Z",
-            "scope": "The eval and run collaboration: run's trial port with its origin-key idempotency and passing-refusal fact, run's fact reader for judging, eval's verdict reader for the run list, and eval's wait-or-stop rule",
+            "approved_at": "2026-10-13T06:52:59.836386Z",
+            "scope": "Re-cite eval-may-use-trace and run-eval-run-facts after eval's check engine and inputs moved into the checks and facts subpackages; neither record changes its statement",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "7ae276dc85afa0672a63370516232830a78fba90",
-              "registry_digest": "sha256:7735d13dfcdb3a462c8b4d65265fd62d6fed592669cca700643a0accc382302c"
+              "observed_commit": "1b425e141e22f10da5fe276ba119feeb1c50a349",
+              "registry_digest": "sha256:ceaf5f05cfc564ed1066b1bf5239a58f63ecac32b364b1a1bf3ea4221c4a6fb0"
             }
           }
         ]
-      },
-      "status": "reviewed"
+      }
     },
     {
       "id": "eval-run-verdicts",

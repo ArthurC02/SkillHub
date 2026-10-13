@@ -374,33 +374,33 @@
         {
           "path": "apps/platform/internal/trial/improvement/eval.go",
           "lines": {
-            "start": 601,
-            "end": 606
+            "start": 405,
+            "end": 410
           },
-          "content_sha256": "sha256:aa86ec342f4f60a28bc5ed6b75c0ad49c97060a9d95ce1e65d95a8bc73d4c93b",
-          "excerpt_sha256": "sha256:2c67608cb0e43cc73ff69664aa9c3871daa7c7b2d16ab306886952d04fceb7ab",
+          "content_sha256": "sha256:83d123affad4da5a5d08890604d7e6fa5484b6b78ed7b1cc3b34de7fc4bbe4bd",
+          "excerpt_sha256": "sha256:8e4497ec3cdbf2478f1c7c57bb68071cc444ccf76a09177495a2d9c9426e96c5",
           "source_kind": "implementation"
         }
       ],
+      "status": "reviewed",
       "review": {
-        "proposal_id": "eval-trace-write-mode-r3",
+        "proposal_id": "eval-checks-facts-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T20:35:57.228304Z",
-            "scope": "Re-cite eval-may-use-trace at eval.go:601, where the orchestrator event moved; the policy says the same",
+            "approved_at": "2026-10-13T06:52:59.836386Z",
+            "scope": "Re-cite eval-may-use-trace and run-eval-run-facts after eval's check engine and inputs moved into the checks and facts subpackages; neither record changes its statement",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "c74abf779367a7688da636c84d901e11d97e98c7",
-              "registry_digest": "sha256:8b578f77b85a625a71566d44abaa8ab854daa88e9217c7b81d8f9685a2104f39"
+              "observed_commit": "1b425e141e22f10da5fe276ba119feeb1c50a349",
+              "registry_digest": "sha256:ceaf5f05cfc564ed1066b1bf5239a58f63ecac32b364b1a1bf3ea4221c4a6fb0"
             }
           }
         ]
-      },
-      "status": "reviewed"
+      }
     },
     {
       "id": "eval-may-use-ingest",
