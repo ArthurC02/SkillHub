@@ -1,7 +1,6 @@
 import shlex
 import subprocess
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 
 from .changes import missing_approval_roles, test_attestation_errors, validate_change_package
@@ -11,14 +10,11 @@ from .attestations import (
     verify_external_scm,
     verify_git_signed_commit,
 )
-from .common import completed_identifier, iso_timestamp, load_json, write_json
-from .counterfactual import OUTPUT_TAIL, digest
+from .common import completed_identifier, iso_timestamp, load_json, utc_now, write_json
+from .counterfactual import OUTPUT_TAIL
+from .evidence import digest
 from .policy import approved_command_profiles, review_governance
 from .revision import current_registry_revision, require_current_registry_revision
-
-
-def now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def proposal_path(root: Path) -> Path:
@@ -40,7 +36,7 @@ def submit_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
     if errors:
         raise ValueError("draft proposal is invalid: " + "; ".join(errors))
     proposal["status"] = "submitted"
-    proposal["submitted_at"] = now()
+    proposal["submitted_at"] = utc_now()
     write_json(proposal_path(root), proposal)
     write_json(evidence_path, evidence)
 
@@ -64,7 +60,7 @@ def supersede_proposal(root: Path, reason: str, superseded_by: str | None) -> No
         raise ValueError("superseded_by must name the proposal that replaces this one")
     proposal["superseded_from_status"] = status
     proposal["status"] = "superseded"
-    proposal["superseded_at"] = now()
+    proposal["superseded_at"] = utc_now()
     proposal["superseded_reason"] = reason
     if superseded_by is not None:
         proposal["superseded_by"] = superseded_by
@@ -81,7 +77,7 @@ def record_approval(
         raise ValueError("approval requires role, reviewer, and scope")
     if reviewer == proposal.get("proposer"):
         raise ValueError("the proposer cannot approve the proposal")
-    timestamp = approved_at or now()
+    timestamp = approved_at or utc_now()
     if not iso_timestamp(timestamp):
         raise ValueError("approved_at must be an ISO-8601 timestamp")
     approvals = proposal.setdefault("approvals", [])
@@ -128,7 +124,7 @@ def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
     if errors:
         raise ValueError("proposal lacks verified test evidence: " + "; ".join(errors))
     proposal["status"] = "verified"
-    proposal["verified_at"] = now()
+    proposal["verified_at"] = utc_now()
     write_json(path, proposal)
     errors = validate_change_package(root, registry_root)
     if errors:
@@ -191,7 +187,7 @@ def record_test_result(
         "command_profile": command_profile,
         "exit_code": 0,
         "output_sha256": digest(completed.stdout + completed.stderr),
-        "finished_at": now(),
+        "finished_at": utc_now(),
     }
     if run.cwd is not None:
         result["working_directory"] = working_directory.relative_to(repo_root.resolve()).as_posix()
@@ -292,7 +288,7 @@ def finalize_proposal(
     if errors:
         raise ValueError("SCM governance is not externally verified: " + "; ".join(errors))
     proposal["status"] = "approved"
-    proposal["finalized_at"] = now()
+    proposal["finalized_at"] = utc_now()
     write_json(path, proposal)
     errors = validate_change_package(root, registry_root)
     if errors:

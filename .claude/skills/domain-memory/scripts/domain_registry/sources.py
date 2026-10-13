@@ -3,7 +3,6 @@ import hashlib
 import os
 import subprocess
 from collections.abc import Iterable
-from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -13,6 +12,7 @@ from .common import (
     load_json,
     one_level_too_deep_hint,
     write_json,
+    utc_now,
     writer_lock,
 )
 
@@ -436,9 +436,7 @@ def confirm_sources(
     source_map = load_json(path)
     source_map["selection_status"] = "developer-confirmed"
     source_map["confirmed_by"] = confirmed_by
-    source_map["confirmed_at"] = (
-        datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    )
+    source_map["confirmed_at"] = utc_now()
     with writer_lock(root):
         write_and_audit(
             root,

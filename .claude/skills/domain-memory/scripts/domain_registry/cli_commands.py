@@ -31,6 +31,7 @@ from .hitl import (
 )
 from .policy import (
     amend_policy_fields,
+    existing_policy,
     policy_path,
     validate_policy,
     write_policy,
@@ -88,11 +89,6 @@ def report_errors(errors: list[str], success_message: str) -> int:
 
 def print_json(value: object, indent: int | None = 2) -> None:
     print(json.dumps(value, indent=indent, ensure_ascii=False))
-
-
-def existing_policy(registry_root: Path) -> dict | None:
-    policy = policy_path(registry_root)
-    return load_json(policy) if policy.is_file() else None
 
 
 def sources_under(repo_root: Path, sources: list[Path]) -> list[Path]:

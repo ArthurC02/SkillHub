@@ -1,23 +1,17 @@
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from .common import ASSET_KEYS, load_json, record_status, registry_dir
-from .evidence import all_references, citation, classified, excerpt_starts, source_map_for, verify
-
-
-def with_references(value: Any, change: Callable[[Any], Any]) -> Any:
-    if isinstance(value, dict):
-        return {
-            key: [change(item) for item in child]
-            if key == "evidence" and isinstance(child, list)
-            else with_references(child, change)
-            for key, child in value.items()
-        }
-    if isinstance(value, list):
-        return [with_references(child, change) for child in value]
-    return value
+from .evidence import (
+    all_references,
+    citation,
+    classified,
+    excerpt_starts,
+    source_map_for,
+    verify,
+    with_references,
+)
 
 
 @dataclass

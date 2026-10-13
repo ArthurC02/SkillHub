@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -47,19 +48,23 @@ def classified(reference: Any, source_map: dict[str, Any]) -> Any:
     return reference | {"source_kind": source_kind_for(source_map, reference["path"])}
 
 
-def classify_all(value: Any, source_map: dict[str, Any], depth: int = 0) -> Any:
+def with_references(value: Any, change: Callable[[Any], Any], depth: int = 0) -> Any:
     if depth > MAX_NESTING_DEPTH:
         raise ValueError(f"evidence document exceeds nesting depth {MAX_NESTING_DEPTH}")
     if isinstance(value, dict):
         return {
-            key: [classified(item, source_map) for item in child]
+            key: [change(item) for item in child]
             if key == "evidence" and isinstance(child, list)
-            else classify_all(child, source_map, depth + 1)
+            else with_references(child, change, depth + 1)
             for key, child in value.items()
         }
     if isinstance(value, list):
-        return [classify_all(child, source_map, depth + 1) for child in value]
+        return [with_references(child, change, depth + 1) for child in value]
     return value
+
+
+def classify_all(value: Any, source_map: dict[str, Any]) -> Any:
+    return with_references(value, lambda reference: classified(reference, source_map))
 
 
 def citation(repo_root: Path, relative: str, start: int, end: int) -> dict[str, Any]:
@@ -99,16 +104,7 @@ def excerpt_starts(repo_root: Path, relative: str, length: int, excerpt_sha256: 
 
 
 def hash_all(value: Any, repo_root: Path) -> Any:
-    if isinstance(value, dict):
-        return {
-            key: [_hashed(reference, repo_root) for reference in child]
-            if key == "evidence" and isinstance(child, list)
-            else hash_all(child, repo_root)
-            for key, child in value.items()
-        }
-    if isinstance(value, list):
-        return [hash_all(child, repo_root) for child in value]
-    return value
+    return with_references(value, lambda reference: _hashed(reference, repo_root))
 
 
 def _hashed(reference: Any, repo_root: Path) -> Any:

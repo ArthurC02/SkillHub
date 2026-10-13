@@ -22,7 +22,7 @@ from .common import (
 from .policy import approved_command_profiles
 from .evidence import all_references, verify
 from .registry import asset_records, cross_reference_errors
-from .revision import DIGEST_HEX_LENGTH, DIGEST_PREFIX, valid_registry_revision
+from .revision import DIGEST_HEX_LENGTH, DIGEST_PREFIX, valid_digest, valid_registry_revision
 
 SUBMITTED_OR_LATER = {"submitted", "verified", "approved", "applied"}
 VERIFIED_OR_LATER = {"verified", "approved", "applied"}
@@ -99,15 +99,6 @@ def as_if_moved_to(status: str, documents: dict[str, Any]) -> dict[str, Any]:
         if not valid_registry_revision(proposal.get("applied_registry_revision")):
             proposal["applied_registry_revision"] = STAND_IN_REVISION
     return {**documents, PROPOSAL_FILE: proposal, EVIDENCE_FILE: evidence}
-
-
-def valid_digest(value: Any) -> bool:
-    return (
-        isinstance(value, str)
-        and len(value) == 71  # noqa: PLR2004
-        and value.startswith("sha256:")
-        and all(character in "0123456789abcdef" for character in value[7:])
-    )
 
 
 def completed_identifiers(values: Any) -> bool:

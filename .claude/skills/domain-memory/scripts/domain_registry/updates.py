@@ -1,5 +1,4 @@
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +12,7 @@ from .common import (
     registry_dir,
     reject_duplicate_keys,
     review_field,
+    utc_now,
 )
 from .evidence import classify_all, hash_all, source_map_for, unclassified_paths
 from .policy import review_mode
@@ -32,9 +32,7 @@ def mark_applied(
     proposal_path: Path, proposal: dict[str, Any], registry_root: Path, repo_root: Path
 ) -> None:
     proposal["status"] = "applied"
-    proposal["applied_at"] = (
-        datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    )
+    proposal["applied_at"] = utc_now()
     proposal["applied_registry_revision"] = current_registry_revision(
         registry_root, repo_root
     )

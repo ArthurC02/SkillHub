@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.21.3
+
+### Fixed
+
+- The rules for a registry digest, a commit id and a UTC timestamp, the walk over every `evidence` list, and the "read the policy if there is one" step each live in one place; the copies that restated them are gone, with no change to what any command prints or writes.
+- Two helpers only the tests used, `security.scan` and `audit.append`, moved into the tests.
+
 ## 0.21.2
 
 ### Fixed

@@ -3,11 +3,17 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .common import MAX_JSON_BYTES, load_json, registry_dir, reject_duplicate_keys, write_json, writer_lock
+from .common import (
+    MAX_JSON_BYTES,
+    load_json,
+    registry_dir,
+    reject_duplicate_keys,
+    utc_now,
+    write_json,
+)
 
 MANIFEST_FORMAT = "domain-memory-audit/v1"
 
@@ -82,7 +88,7 @@ def append_locked(root: Path, event: dict[str, Any]) -> None:
     value = {
         "sequence": sequence,
         "previous_event_sha256": previous,
-        "recorded_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "recorded_at": utc_now(),
         **event,
     }
     value["event_sha256"] = event_digest(value)
@@ -96,11 +102,6 @@ def append_locked(root: Path, event: dict[str, Any]) -> None:
         "head_sha256": value["event_sha256"],
     }
     write_json(audit_manifest_path(root), manifest)
-
-
-def append(root: Path, event: dict[str, Any]) -> None:
-    with writer_lock(root):
-        append_locked(root, event)
 
 
 def _invalid(reason: str) -> dict[str, Any]:

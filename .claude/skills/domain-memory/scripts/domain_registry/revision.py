@@ -12,7 +12,7 @@ from .common import (
     load_json,
     registry_dir,
 )
-from .policy import policy_path
+from .policy import existing_policy, policy_path
 
 COMMIT_LENGTH = 40
 DIGEST_PREFIX = "sha256:"
@@ -72,8 +72,7 @@ def _current_documents(root: Path) -> tuple[dict[str, Any], Any]:
                 f"registry asset is missing while calculating revision: {path}"
             )
         documents[name] = load_json(path)
-    policy = policy_path(root)
-    return documents, load_json(policy) if policy.is_file() else None
+    return documents, existing_policy(root)
 
 
 def registry_digest(root: Path) -> str:
@@ -94,19 +93,24 @@ def current_registry_revision(root: Path, repo_root: Path) -> dict[str, str | No
     }
 
 
+def valid_digest(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and value.startswith(DIGEST_PREFIX)
+        and _is_lowercase_hex(value.removeprefix(DIGEST_PREFIX), DIGEST_HEX_LENGTH)
+    )
+
+
+def valid_commit(value: Any) -> bool:
+    return isinstance(value, str) and _is_lowercase_hex(value, COMMIT_LENGTH)
+
+
 def valid_registry_revision(value: Any) -> TypeGuard[dict[str, Any]]:
     if not isinstance(value, dict):
         return False
     commit = value.get("observed_commit")
-    digest = value.get("registry_digest")
-    return (
-        (
-            commit is None
-            or (isinstance(commit, str) and _is_lowercase_hex(commit, COMMIT_LENGTH))
-        )
-        and isinstance(digest, str)
-        and digest.startswith(DIGEST_PREFIX)
-        and _is_lowercase_hex(digest.removeprefix(DIGEST_PREFIX), DIGEST_HEX_LENGTH)
+    return (commit is None or valid_commit(commit)) and valid_digest(
+        value.get("registry_digest")
     )
 
 

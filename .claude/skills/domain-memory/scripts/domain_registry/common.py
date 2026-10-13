@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -199,6 +199,10 @@ def change_template_dir() -> Path:
 
 def completed_identifier(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip()) and not value.startswith("<")
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def iso_timestamp(value: Any) -> bool:

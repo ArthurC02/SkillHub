@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import os
 import subprocess
 import time
@@ -8,6 +7,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from .evidence import digest
 
 FORMAT = "domain-memory-counterfactual/v1"
 SIDECAR_SUFFIX = ".counterfactual-original"
@@ -35,10 +36,6 @@ class TestRun:
     @property
     def timed_out(self) -> bool:
         return self.exit_code is None
-
-
-def digest(content: bytes) -> str:
-    return "sha256:" + hashlib.sha256(content).hexdigest()
 
 
 def run_tests(repo_root: Path, command: str, timeout: int) -> TestRun:

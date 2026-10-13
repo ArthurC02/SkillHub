@@ -18,7 +18,14 @@ from .common import (
     template_dir,
     write_json,
 )
-from .evidence import all_references, classified, migrate_legacy, source_map_for, verify
+from .evidence import (
+    all_references,
+    classified,
+    migrate_legacy,
+    source_map_for,
+    verify,
+    with_references,
+)
 from .policy import query_result_limit, review_mode
 
 STANDARD_FILES = (*ASSET_KEYS, "manifest.json")
@@ -442,27 +449,14 @@ def migrate_evidence(root: Path, repo_root: Path) -> int:
     migrated = 0
     source_map = source_map_for(root)
 
-    def transform(value: Any) -> Any:
+    def migrated_reference(reference: Any) -> Any:
         nonlocal migrated
-        if isinstance(value, dict):
-            result = {}
-            for key, child in value.items():
-                if key == "evidence" and isinstance(child, list):
-                    replacement = [
-                        classified(migrate_legacy(item, repo_root), source_map)
-                        for item in child
-                    ]
-                    migrated += sum(
-                        before != after
-                        for before, after in zip(child, replacement, strict=True)
-                    )
-                    result[key] = replacement
-                else:
-                    result[key] = transform(child)
-            return result
-        if isinstance(value, list):
-            return [transform(child) for child in value]
-        return value
+        after = classified(migrate_legacy(reference, repo_root), source_map)
+        migrated += reference != after
+        return after
+
+    def transform(value: Any) -> Any:
+        return with_references(value, migrated_reference)
 
     def mutate(staging: Path) -> None:
         for name in ASSET_KEYS:

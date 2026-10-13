@@ -26,7 +26,7 @@ from domain_registry.attestations import (
     verify_git_signed_commit,
     verify_scm,
 )
-from domain_registry.audit import append as append_audit
+from domain_registry.audit import append_locked
 from domain_registry.audit import read_events as read_audit_events
 from domain_registry.audit import event_digest as audit_event_digest
 from domain_registry.audit import verify as verify_audit
@@ -37,7 +37,7 @@ from domain_registry.changes import (
     redraft_change_package,
     validate_change_package,
 )
-from domain_registry.common import ASSET_KEYS, RISK_FLAGS, load_json
+from domain_registry.common import ASSET_KEYS, RISK_FLAGS, load_json, writer_lock
 from domain_registry.contracts import validate_schema
 from domain_registry.evidence import (
     citation,
@@ -82,8 +82,10 @@ from domain_registry.revision import (
     current_registry_revision,
     registry_digest,
     require_current_registry_revision,
+    valid_commit,
+    valid_digest,
+    valid_registry_revision,
 )
-from domain_registry.security import scan as scan_secrets
 from domain_registry.security import scan_report
 from domain_registry.signing import SIGNING_KEY_ENV, init_signing_key
 from domain_registry.sources import (
@@ -110,6 +112,15 @@ from domain_registry.updates import (
     retract_candidate,
     upsert_candidate,
 )
+
+
+def append_audit(root: Path, event: dict) -> None:
+    with writer_lock(root):
+        append_locked(root, event)
+
+
+def scan_secrets(root: Path) -> list[dict]:
+    return scan_report(root)["findings"]
 
 
 def amend_policy(
@@ -690,6 +701,57 @@ class DomainRegistryTest(unittest.TestCase):
             if event["operation"] == "migrate-evidence"
         ]
         self.assertEqual([1], migrations)
+
+    def test_migrated_evidence_is_classified_by_the_source_map(self) -> None:
+        self.seed_line_reference_evidence()
+        write_source_map(
+            self.repo / "memory" / "source-map.json",
+            {"selected_paths": ["source.md"],
+             "source_groups": [{"kind": "decisions", "paths": ["source.md"]}]},
+        )
+        migrate_evidence(self.repo / "memory", self.repo)
+        stored = load_json(self.repo / "memory" / "registry" / "contexts.json")
+        self.assertEqual("decisions", stored["contexts"][0]["evidence"][0]["source_kind"])
+
+    def test_a_registry_digest_is_sha256_and_64_lowercase_hex(self) -> None:
+        hexes = "a" * 64
+        for value, accepted in (
+            (f"sha256:{hexes}", True),
+            (f"sha256:{hexes[:-1]}", False),
+            (f"sha256:{hexes}a", False),
+            (f"sha256:{'A' * 64}", False),
+            (f"sha512:{hexes}", False),
+            (hexes, False),
+            (hexes + "abcdefg", False),
+            (None, False),
+        ):
+            with self.subTest(value=value):
+                self.assertIs(accepted, valid_digest(value))
+
+    def test_a_commit_is_40_lowercase_hex(self) -> None:
+        for value, accepted in (
+            ("f" * 40, True),
+            ("f" * 39, False),
+            ("f" * 41, False),
+            ("F" * 40, False),
+            ("g" * 40, False),
+            (40, False),
+            (10**39, False),
+        ):
+            with self.subTest(value=value):
+                self.assertIs(accepted, valid_commit(value))
+
+    def test_a_registry_revision_needs_a_valid_digest_and_an_absent_or_valid_commit(self) -> None:
+        digest_value = "sha256:" + "0" * 64
+        for value, accepted in (
+            ({"observed_commit": None, "registry_digest": digest_value}, True),
+            ({"observed_commit": "a" * 40, "registry_digest": digest_value}, True),
+            ({"observed_commit": "a" * 39, "registry_digest": digest_value}, False),
+            ({"observed_commit": None, "registry_digest": "sha256:0"}, False),
+            ("sha256:" + "0" * 64, False),
+        ):
+            with self.subTest(value=value):
+                self.assertIs(accepted, valid_registry_revision(value))
 
     def test_scm_attestation_requires_the_same_revision(self) -> None:
         proposal = {
@@ -2008,6 +2070,16 @@ class DomainRegistryTest(unittest.TestCase):
         for _ in range(101):
             child: dict[str, Any] = {}
             nested["child"] = child
+            nested = child
+        with self.assertRaisesRegex(ValueError, "nesting depth"):
+            classify_all(value, {})
+
+    def test_evidence_classification_rejects_excessive_list_nesting(self) -> None:
+        value: list[Any] = []
+        nested = value
+        for _ in range(101):
+            child: list[Any] = []
+            nested.append(child)
             nested = child
         with self.assertRaisesRegex(ValueError, "nesting depth"):
             classify_all(value, {})
@@ -5113,6 +5185,14 @@ class DomainRegistryTest(unittest.TestCase):
             "Drafting alone for now.",
         )
         self.assertNotEqual(before, registry_digest(self.repo / "memory"))
+
+    def test_a_registry_without_a_policy_still_has_a_revision(self) -> None:
+        policy = self.repo / "memory" / "domain-memory-policy.json"
+        with_policy = registry_digest(self.repo / "memory")
+        policy.unlink()
+        without_policy = registry_digest(self.repo / "memory")
+        self.assertTrue(valid_digest(without_policy))
+        self.assertNotEqual(with_policy, without_policy)
 
     def test_a_captured_revision_goes_stale_after_a_hand_edited_policy(self) -> None:
         captured = {

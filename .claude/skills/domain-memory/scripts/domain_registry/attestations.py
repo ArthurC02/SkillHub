@@ -12,6 +12,7 @@ from urllib.parse import quote, urlparse
 HTTP_NOT_FOUND = 404
 
 from .common import completed_identifier, load_json
+from .revision import valid_commit
 
 
 def github_api_path(pull_request: str) -> str:
@@ -338,8 +339,7 @@ def verify_scm_value(value: dict[str, Any], proposal: dict[str, Any]) -> list[st
             for key in ("pull_request", "checks_url")
             if not isinstance(value.get(key), str) or not value[key].startswith("https://")
         )
-    commit = value.get("commit")
-    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
+    if not valid_commit(value.get("commit")):
         errors.append("SCM attestation requires a pinned 40-character commit")
     if value.get("proposal_revision") != proposal.get("proposal_revision"):
         errors.append("SCM attestation proposal revision does not match")

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .common import load_json, write_json, writer_lock
+from .common import change_template_dir, load_json, write_json, writer_lock
 
 STORAGE_MODES = {"tracked", "ignored", "external"}
 CLASSIFICATIONS = {"public", "internal", "confidential", "restricted"}
@@ -11,6 +11,11 @@ REVIEW_MODES = {"local-draft-only", "scm-verified"}
 GOVERNANCE_VERIFIERS = {"github-pr", "git-signed-commit", "none"}
 GOVERNANCE_TRIGGERS = {"external-scm", "git-commit", "git-push", "none"}
 CI_REQUIREMENTS = {"required", "optional", "none"}
+
+
+def existing_policy(root: Path) -> dict[str, Any] | None:
+    path = policy_path(root)
+    return load_json(path) if path.is_file() else None
 
 
 def policy_path(root: Path) -> Path:
@@ -114,7 +119,7 @@ def write_policy(  # noqa: PLR0913, PLR0917
     exclude: list[str] | None = None,
     governance: dict[str, Any] | None = None,
 ) -> None:
-    template = Path(__file__).parents[2] / "templates" / "domain-memory-policy.json"
+    template = change_template_dir() / "domain-memory-policy.json"
     value = load_json(template)
     value["storage_mode"] = storage_mode
     value["data_classification"] = data_classification

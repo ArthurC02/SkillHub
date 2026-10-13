@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import cast
 
 PATTERNS = {
     "private-key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
@@ -90,6 +89,3 @@ def scan_report(root: Path) -> dict[str, object]:
         "scanned_bytes": scan.scanned_bytes,
     }
 
-
-def scan(root: Path) -> list[dict[str, str | int]]:
-    return cast(list[dict[str, str | int]], scan_report(root)["findings"])

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from .common import load_json, one_level_too_deep_hint
+from .policy import existing_policy
 from .registry import coverage, validate
 from .sources import discover_sources, verify_source_map
 
@@ -28,9 +29,8 @@ def registry_condition(
         return "unverified", 0, [
             f"Domain Memory exists without a source map{one_level_too_deep_hint(source_map)}."
         ]
-    policy_path = registry_path / "domain-memory-policy.json"
     try:
-        policy = load_json(policy_path) if policy_path.is_file() else None
+        policy = existing_policy(registry_path)
         source_result = verify_source_map(repo_root, source_map, policy)
     except ValueError as error:
         return "invalid", 0, [f"Domain Memory source map cannot be read: {error}"]
