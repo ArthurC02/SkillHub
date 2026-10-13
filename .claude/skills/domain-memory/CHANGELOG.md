@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.21.0
+
+### Added
+
+- `init-change-package --proposer` fills the proposer, as `--requirement-id` and `--proposal-id` fill theirs.
+
+### Changed
+
+- A `shifted` citation's reason says that a reviewed record's re-cite goes through a Change Package listing the printed `supersedes`.
+
 ## 0.20.1
 
 ### Fixed

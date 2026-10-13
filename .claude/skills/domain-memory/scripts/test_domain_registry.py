@@ -1504,7 +1504,8 @@ class DomainRegistryTest(unittest.TestCase):
              {"cited_lines": {"start": 3, "end": 4}, "status": "shifted", "path": "fact.md",
               "lines": {"start": 2, "end": 3},
               "reason": "the cited lines are unchanged but now sit elsewhere in fact.md; "
-              "relocate-evidence --from fact.md --to fact.md re-cites them"}),
+              "relocate-evidence --from fact.md --to fact.md re-cites them; a reviewed record's update goes "
+              "through a Change Package that lists the printed supersedes"}),
             ("past the end, excerpt gone", {**cited, "lines": {"start": 3, "end": 5}},
              {"cited_lines": {"start": 3, "end": 5}, "status": "stale", "path": "fact.md",
               "reason": "the cited excerpt is no longer in fact.md; check that the fact still holds, then recite it"}),
@@ -2708,7 +2709,19 @@ class DomainRegistryTest(unittest.TestCase):
         package = self.repo / "blank"
         with self.assertRaisesRegex(ValueError, "proposal_id must not be blank"):
             init_change_package(package, "REQ-7", " ")
+        with self.assertRaisesRegex(ValueError, "proposer must not be blank"):
+            init_change_package(package, "REQ-7", "PRO-7", " ")
         self.assertFalse(package.exists())
+
+    def test_a_package_started_with_a_proposer_is_not_asked_for_one(self) -> None:
+        package = self.repo / "named"
+        init_change_package(package, "REQ-7", "PRO-7", "agent-1")
+        proposal = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
+        self.assertEqual("agent-1", proposal["proposer"])
+        self.assertNotIn(
+            "domain-change-proposal.json requires a completed proposer",
+            validate_change_package(package, self.repo / "memory"),
+        )
 
     def test_a_fresh_package_is_not_asked_for_test_results_before_they_exist(self) -> None:
         package = self.repo / "fresh"

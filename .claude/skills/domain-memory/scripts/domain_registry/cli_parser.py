@@ -39,6 +39,7 @@ def _add_registry_commands(commands: argparse._SubParsersAction) -> None:
     add_path(package_init_parser, "--output")
     package_init_parser.add_argument("--requirement-id")
     package_init_parser.add_argument("--proposal-id")
+    package_init_parser.add_argument("--proposer")
     redraft_parser = commands.add_parser("redraft-proposal")
     add_path(redraft_parser, "--package-root")
     add_path(redraft_parser, "--output")

@@ -38,7 +38,7 @@ Commands that read or change the Registry take `--registry-root <root>`: the dir
 | Re-cite after moving code | `relocate-evidence --from <old> --to <new>` |
 | Re-cite after editing code in place | `recite --asset <asset> --id <id> --path <file> --lines <a>-<b>` |
 | Propose a new fact | `cite`, then `upsert-candidate --asset <asset> --record-file <file>`; give `--record-file` once per record |
-| Change a reviewed fact | `init-change-package`, add `registry_updates`, then `validate-change-package --as-status submitted --repo-root <repo>` before every transition; the lifecycle is in [references/script-api.md](references/script-api.md) |
+| Change a reviewed fact | `init-change-package --requirement-id <id> --proposal-id <id> --proposer <you>`, add `registry_updates`, then `validate-change-package --as-status submitted --repo-root <repo>` before every transition; the lifecycle is in [references/script-api.md](references/script-api.md) |
 | Recover after a crash | `recover-registry-update --repo-root <repo>` |
 
 The two re-cite commands print `registry_updates` and `supersedes` for a Change Package. A record that is not reviewed comes back under `candidates`; pass it to `upsert-candidate`.

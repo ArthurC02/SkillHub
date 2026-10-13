@@ -164,9 +164,9 @@ def test_attestation_errors(
 
 
 def init_change_package(
-    output: Path, requirement_id: str | None = None, proposal_id: str | None = None
+    output: Path, requirement_id: str | None = None, proposal_id: str | None = None, proposer: str | None = None
 ) -> None:
-    identifiers = {"requirement_id": requirement_id, "proposal_id": proposal_id}
+    identifiers = {"requirement_id": requirement_id, "proposal_id": proposal_id, "proposer": proposer}
     blank = [
         key
         for key, value in identifiers.items()

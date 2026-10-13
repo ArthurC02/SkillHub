@@ -128,7 +128,7 @@ def handle_init(args: argparse.Namespace) -> int:
 
 
 def handle_init_change_package(args: argparse.Namespace) -> int:
-    init_change_package(args.output.resolve(), args.requirement_id, args.proposal_id)
+    init_change_package(args.output.resolve(), args.requirement_id, args.proposal_id, args.proposer)
     return 0
 
 
