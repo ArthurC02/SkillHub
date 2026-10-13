@@ -1,0 +1,128 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "eval-verdict-package-recite",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "eval-verdict-package-recite",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-13T05:56:04.132177Z",
+  "verified_at": "2026-10-13T05:56:47.160200Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "c7d3315a6a53e781af86f315ba4ef63ff8db8523",
+    "registry_digest": "sha256:b1f43818776c082dedbf38577238e671327e9f5699e7380aec91fd140c72081a"
+  },
+  "affected_contexts": [
+    "eval",
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [
+    "eval-run-verdicts-v1"
+  ],
+  "ownership_decision": {
+    "owner_context": "eval",
+    "invariant": "Only eval decides what a run's standing verdict is; the run list shows the label eval gives it.",
+    "evidence": [
+      "apps/platform/internal/trial/improvement/verdicts.go:19"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: run reads standing verdicts through the composition-root port.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/improvement/verdicts.go:19"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "eval's value objects (criterion results, findings, evidence references, the overall verdict) were declared beside the evaluation pipeline, so the check engine and the judge could only live in the same package."
+    ],
+    "decision": "Move the value objects into the leaf subpackage trial/improvement/verdict inside the eval Context; StandingVerdict now names verdict.Overall; re-cite the contract's two verdicts.go citations.",
+    "invariants_preserved": [
+      "The contract states the same fact as before.",
+      "The stored and served JSON of criterion results, findings and evidence references is byte-identical."
+    ],
+    "rejected_alternatives": [
+      "Type aliases in eval for the moved types: two names for one concept, which the vocabulary check exists to prevent."
+    ],
+    "proof_obligations": [
+      "standing-verdicts"
+    ],
+    "counterfactual_check": "Make verdictOf label a not-met evaluation with the met value; TestEveryVerdictTheDatabaseAllowsHasItsOwnSentence must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "contracts",
+      "record": {
+        "id": "eval-run-verdicts-v1",
+        "kind": "internal-fact-reader",
+        "producer_context": "eval",
+        "consumer_contexts": [
+          "run"
+        ],
+        "version": "v1",
+        "compatibility_policy": "The run list shows each run's current evaluation verdict as eval serves it; run does not interpret it.",
+        "data_classification": "internal",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/verdicts.go",
+            "lines": {
+              "start": 19,
+              "end": 33
+            },
+            "content_sha256": "sha256:ba4cd0c7db838b13bf4771a97b45522587f9f117f6e157a64558f0c99a0738f8",
+            "excerpt_sha256": "sha256:57e0fb6c434b5987b727382051fe6118347651df4a83ca63357e17f80b887105",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/verdicts.go",
+            "lines": {
+              "start": 78,
+              "end": 105
+            },
+            "content_sha256": "sha256:ba4cd0c7db838b13bf4771a97b45522587f9f117f6e157a64558f0c99a0738f8",
+            "excerpt_sha256": "sha256:c1c17840e5de6188d949b944f58d123d74b859f5b09ac951ac5959e4992b82e7",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/http.go",
+            "lines": {
+              "start": 465,
+              "end": 482
+            },
+            "content_sha256": "sha256:a657b6f0a93975e38152002b78c0c98d869936f838dc6585eeb82b733f8cd294",
+            "excerpt_sha256": "sha256:562bb58b302958352ef06f8e051bd6972094206bf5c857dc537ba861c1af5544",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-13T05:56:46.247322Z",
+      "scope": "Re-cite the eval-run-verdicts contract after eval's value objects moved into the verdict subpackage; the contract states the same fact",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "c7d3315a6a53e781af86f315ba4ef63ff8db8523",
+        "registry_digest": "sha256:b1f43818776c082dedbf38577238e671327e9f5699e7380aec91fd140c72081a"
+      }
+    }
+  ],
+  "supersedes": [
+    "eval-run-verdicts-recite-r2"
+  ]
+}
