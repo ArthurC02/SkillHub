@@ -166,7 +166,7 @@ def verify(reference: Any, repo_root: Path) -> dict[str, Any]:
     if problem:
         return problem
     _, rows = _read_lines(path)
-    return _cited_lines_verdict(reference, path_text, rows)
+    return {"cited_lines": dict(reference["lines"]), **_cited_lines_verdict(reference, path_text, rows)}
 
 
 def _cited_lines_verdict(reference: dict[str, Any], path_text: str, rows: list[str]) -> dict[str, Any]:

@@ -1498,8 +1498,10 @@ class DomainRegistryTest(unittest.TestCase):
              {"status": "invalid", "reason": "evidence path escapes repository"}),
             ("absent", {**cited, "path": "gone.md"}, {"status": "missing", "path": "gone.md"}),
             ("past the end", {**cited, "lines": {"start": 3, "end": 4}},
-             {"status": "invalid", "reason": "evidence line range exceeds source", "path": "fact.md"}),
-            ("last line", {**cited, "lines": {"start": 3, "end": 3}}, {"status": "stale", "path": "fact.md"}),
+             {"cited_lines": {"start": 3, "end": 4}, "status": "invalid",
+              "reason": "evidence line range exceeds source", "path": "fact.md"}),
+            ("last line", {**cited, "lines": {"start": 3, "end": 3}},
+             {"cited_lines": {"start": 3, "end": 3}, "status": "stale", "path": "fact.md"}),
         ]
         for label, reference, expected in cases:
             with self.subTest(label):
@@ -1667,7 +1669,7 @@ class DomainRegistryTest(unittest.TestCase):
         self.two_line_rule()
         result = verify({"path": "rule.md", "lines": {"start": 1, "end": 1}}, self.repo)
         self.assertEqual(
-            {"status": "unhashed", "path": "rule.md",
+            {"cited_lines": {"start": 1, "end": 1}, "status": "unhashed", "path": "rule.md",
              "reason": "rule.md was cited without an excerpt hash; regenerate the citation with cite"},
             result,
         )
@@ -5641,6 +5643,23 @@ class DomainRegistryTest(unittest.TestCase):
             report["paths"],
         )
         self.assertNotIn("paths", verify_evidence(self.repo / "memory", self.repo))
+
+    def test_mentions_match_whole_words_and_list_defining_fields_first(self) -> None:
+        self.allow_results(10)
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Owns checkpoints.", "status": "reviewed"}])
+        self.seed("capabilities.json", [{"id": "audit", "rationale": "Runs checks.", "status": "reviewed"}])
+        self.seed("value-objects.json", [{"id": "gauge", "description": "A precheck value.", "status": "reviewed"}])
+        self.seed("rules.json", [{"id": "gate", "contexts": ["orders"], "statement": "A check gates release.", "status": "reviewed"}])
+        self.assertEqual(
+            [("rules", "gate", "statement"), ("capabilities", "audit", "rationale")],
+            [(match["asset"], match["id"], match["field"]) for match in resolve_terms(self.repo / "memory", "check", None)],
+        )
+
+    def test_verify_reports_the_cited_lines_beside_the_lines_it_found(self) -> None:
+        result = self.citation_after_edit("a\nfact\n", 2, "new\na\nfact\n")
+        self.assertEqual(
+            ({"start": 2, "end": 2}, {"start": 3, "end": 3}), (result["cited_lines"], result["lines"])
+        )
 
 
 if __name__ == "__main__":

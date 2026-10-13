@@ -1,4 +1,5 @@
 import json
+import re
 import shutil
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
@@ -640,16 +641,21 @@ def _reviewed_entries(root: Path, name: str) -> list[dict[str, Any]]:
     return [entry for entry in document.get(ASSET_KEYS[name], []) if entry.get(field, default) == "reviewed"]
 
 
+DEFINING_FIELDS = ("name", "responsibility", "statement", "definition", "description")
+
+
 def prose_mentions(root: Path, needle: str) -> list[dict[str, Any]]:
-    return [
+    word = re.compile(rf"\b{re.escape(needle)}(?:e?s)?\b")
+    mentions = [
         {"match_kind": "mentioned", "authoritative": False, "asset": name.removesuffix(".json"),
          "id": entry.get("id"), "field": field}
         for name in sorted(ASSET_KEYS)
         if (registry_dir(root) / name).is_file()
         for entry in _reviewed_entries(root, name)
         for field, value in entry.items()
-        if field not in ("id", "status", "review_status") and isinstance(value, str) and needle in value.casefold()
+        if field not in ("id", "status", "review_status") and isinstance(value, str) and word.search(value.casefold())
     ]
+    return sorted(mentions, key=lambda mention: mention["field"] not in DEFINING_FIELDS)
 
 
 def _records_where(
