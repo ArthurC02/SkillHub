@@ -5107,10 +5107,6 @@ paths:
                     Also run every trial with the skill withheld, under the same
                     admission and billing, so the report can show what the skill
                     adds (EVAL-014).
-                with_baseline:
-                  type: boolean
-                  deprecated: true
-                  description: The former name of with_skill_withheld; refused when both are sent and differ.
       responses:
         "201":
           description: The batch, with its first run started when a slot was free.
@@ -5236,13 +5232,9 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [reference, baseline, candidate, paired, unpaired, candidate_better, reference_better, baseline_better, tied]
+                required: [reference, candidate, paired, unpaired, candidate_better, reference_better, tied]
                 properties:
                   reference: { $ref: "#/components/schemas/EvaluationBatch" }
-                  baseline:
-                    $ref: "#/components/schemas/EvaluationBatch"
-                    deprecated: true
-                    description: The former name of reference.
                   candidate: { $ref: "#/components/schemas/EvaluationBatch" }
                   paired: { type: integer }
                   unpaired: { type: integer }
@@ -5255,7 +5247,6 @@ paths:
                       high: { type: number }
                   candidate_better: { type: integer }
                   reference_better: { type: integer }
-                  baseline_better: { type: integer, deprecated: true, description: The former name of reference_better. }
                   tied: { type: integer }
         "401":
           description: No valid session.
@@ -7461,14 +7452,13 @@ components:
             set_at: { type: string, format: date-time }
     EvaluationBatch:
       type: object
-      required: [id, skill_id, skill_version_id, trials, with_skill_withheld, with_baseline, status, created_at]
+      required: [id, skill_id, skill_version_id, trials, with_skill_withheld, status, created_at]
       properties:
         id: { type: string, format: uuid }
         skill_id: { type: string, format: uuid }
         skill_version_id: { type: string, format: uuid }
         trials: { type: integer, minimum: 1, maximum: 10 }
         with_skill_withheld: { type: boolean, description: Every trial also runs with the skill withheld. }
-        with_baseline: { type: boolean, deprecated: true, description: The former name of with_skill_withheld. }
         status:
           type: string
           enum: [launching, launched, stopped]
@@ -7522,10 +7512,6 @@ components:
             skill_withheld:
               $ref: "#/components/schemas/EvaluationBatchArm"
               description: The same trials with the skill withheld; present only when the batch was created with the skill withheld.
-            without_skill:
-              $ref: "#/components/schemas/EvaluationBatchArm"
-              deprecated: true
-              description: The former name of skill_withheld.
             skill_effect:
               $ref: "#/components/schemas/EvaluationPairedDifference"
               description: |

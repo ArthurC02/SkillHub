@@ -234,26 +234,3 @@ func TestEachPairedTestCaseCountsOnceAsBetterWorseOrTied(t *testing.T) {
 		t.Errorf("difference = %v, want -0.1667 (the reference wins by more than it loses)", p.Difference)
 	}
 }
-
-func TestTheFormerNameForWithholdingTheSkillIsHonouredUnlessItContradictsTheCurrentOne(t *testing.T) {
-	yes, no := true, false
-	cases := []struct {
-		name            string
-		current, former *bool
-		want, accepted  bool
-	}{
-		{"neither sent", nil, nil, false, true},
-		{"only the current name", &yes, nil, true, true},
-		{"only the former name", nil, &yes, true, true},
-		{"both agree", &yes, &yes, true, true},
-		{"both disagree", &no, &yes, false, false},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			got, accepted := eitherName(c.current, c.former)
-			if accepted != c.accepted || (accepted && got != c.want) {
-				t.Errorf("eitherName = %v, %v; want %v, %v", got, accepted, c.want, c.accepted)
-			}
-		})
-	}
-}

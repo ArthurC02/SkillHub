@@ -92,11 +92,6 @@ export interface EvaluationBatchReport {
      */
     skillWithheld?: EvaluationBatchArm;
     /**
-     * The former name of skill_withheld.
-     * @deprecated
-     */
-    withoutSkill?: EvaluationBatchArm;
-    /**
      * With the skill minus without it, paired by test case; present
      * only when the batch was created with the skill withheld.
      * 
@@ -136,7 +131,6 @@ export function EvaluationBatchReportFromJSONTyped(json: any, ignoreDiscriminato
         'testCasesDecided': json['test_cases_decided'],
         'batch': EvaluationBatchFromJSON(json['batch']),
         'skillWithheld': json['skill_withheld'] == null ? undefined : EvaluationBatchArmFromJSON(json['skill_withheld']),
-        'withoutSkill': json['without_skill'] == null ? undefined : EvaluationBatchArmFromJSON(json['without_skill']),
         'skillEffect': json['skill_effect'] == null ? undefined : EvaluationPairedDifferenceFromJSON(json['skill_effect']),
     };
 }
@@ -161,7 +155,6 @@ export function EvaluationBatchReportToJSONTyped(value?: EvaluationBatchReport |
         'test_cases_decided': value['testCasesDecided'],
         'batch': EvaluationBatchToJSON(value['batch']),
         'skill_withheld': EvaluationBatchArmToJSON(value['skillWithheld']),
-        'without_skill': EvaluationBatchArmToJSON(value['withoutSkill']),
         'skill_effect': EvaluationPairedDifferenceToJSON(value['skillEffect']),
     };
 }

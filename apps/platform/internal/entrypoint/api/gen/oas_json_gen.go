@@ -4881,10 +4881,6 @@ func (s *CompareEvaluationBatchesOK) encodeFields(e *jx.Encoder) {
 		s.Reference.Encode(e)
 	}
 	{
-		e.FieldStart("baseline")
-		s.Baseline.Encode(e)
-	}
-	{
 		e.FieldStart("candidate")
 		s.Candidate.Encode(e)
 	}
@@ -4917,27 +4913,21 @@ func (s *CompareEvaluationBatchesOK) encodeFields(e *jx.Encoder) {
 		e.Int(s.ReferenceBetter)
 	}
 	{
-		e.FieldStart("baseline_better")
-		e.Int(s.BaselineBetter)
-	}
-	{
 		e.FieldStart("tied")
 		e.Int(s.Tied)
 	}
 }
 
-var jsonFieldsNameOfCompareEvaluationBatchesOK = [11]string{
-	0:  "reference",
-	1:  "baseline",
-	2:  "candidate",
-	3:  "paired",
-	4:  "unpaired",
-	5:  "difference",
-	6:  "difference_95",
-	7:  "candidate_better",
-	8:  "reference_better",
-	9:  "baseline_better",
-	10: "tied",
+var jsonFieldsNameOfCompareEvaluationBatchesOK = [9]string{
+	0: "reference",
+	1: "candidate",
+	2: "paired",
+	3: "unpaired",
+	4: "difference",
+	5: "difference_95",
+	6: "candidate_better",
+	7: "reference_better",
+	8: "tied",
 }
 
 // Decode decodes CompareEvaluationBatchesOK from json.
@@ -4959,18 +4949,8 @@ func (s *CompareEvaluationBatchesOK) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"reference\"")
 			}
-		case "baseline":
-			requiredBitSet[0] |= 1 << 1
-			if err := func() error {
-				if err := s.Baseline.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"baseline\"")
-			}
 		case "candidate":
-			requiredBitSet[0] |= 1 << 2
+			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
 				if err := s.Candidate.Decode(d); err != nil {
 					return err
@@ -4980,7 +4960,7 @@ func (s *CompareEvaluationBatchesOK) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"candidate\"")
 			}
 		case "paired":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
 				v, err := d.Int()
 				s.Paired = int(v)
@@ -4992,7 +4972,7 @@ func (s *CompareEvaluationBatchesOK) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"paired\"")
 			}
 		case "unpaired":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				v, err := d.Int()
 				s.Unpaired = int(v)
@@ -5024,7 +5004,7 @@ func (s *CompareEvaluationBatchesOK) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"difference_95\"")
 			}
 		case "candidate_better":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				v, err := d.Int()
 				s.CandidateBetter = int(v)
@@ -5036,7 +5016,7 @@ func (s *CompareEvaluationBatchesOK) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"candidate_better\"")
 			}
 		case "reference_better":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := d.Int()
 				s.ReferenceBetter = int(v)
@@ -5047,20 +5027,8 @@ func (s *CompareEvaluationBatchesOK) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"reference_better\"")
 			}
-		case "baseline_better":
-			requiredBitSet[1] |= 1 << 1
-			if err := func() error {
-				v, err := d.Int()
-				s.BaselineBetter = int(v)
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"baseline_better\"")
-			}
 		case "tied":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Int()
 				s.Tied = int(v)
@@ -5081,8 +5049,8 @@ func (s *CompareEvaluationBatchesOK) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
-		0b10011111,
-		0b00000111,
+		0b11001111,
+		0b00000001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -8380,20 +8348,13 @@ func (s *CreateEvaluationBatchReq) encodeFields(e *jx.Encoder) {
 			s.WithSkillWithheld.Encode(e)
 		}
 	}
-	{
-		if s.WithBaseline.Set {
-			e.FieldStart("with_baseline")
-			s.WithBaseline.Encode(e)
-		}
-	}
 }
 
-var jsonFieldsNameOfCreateEvaluationBatchReq = [5]string{
+var jsonFieldsNameOfCreateEvaluationBatchReq = [4]string{
 	0: "skill_version_id",
 	1: "test_case_ids",
 	2: "trials",
 	3: "with_skill_withheld",
-	4: "with_baseline",
 }
 
 // Decode decodes CreateEvaluationBatchReq from json.
@@ -8459,16 +8420,6 @@ func (s *CreateEvaluationBatchReq) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"with_skill_withheld\"")
-			}
-		case "with_baseline":
-			if err := func() error {
-				s.WithBaseline.Reset()
-				if err := s.WithBaseline.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"with_baseline\"")
 			}
 		default:
 			return d.Skip()
@@ -20286,10 +20237,6 @@ func (s *EvaluationBatch) encodeFields(e *jx.Encoder) {
 		e.Bool(s.WithSkillWithheld)
 	}
 	{
-		e.FieldStart("with_baseline")
-		e.Bool(s.WithBaseline)
-	}
-	{
 		e.FieldStart("status")
 		s.Status.Encode(e)
 	}
@@ -20305,16 +20252,15 @@ func (s *EvaluationBatch) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfEvaluationBatch = [9]string{
+var jsonFieldsNameOfEvaluationBatch = [8]string{
 	0: "id",
 	1: "skill_id",
 	2: "skill_version_id",
 	3: "trials",
 	4: "with_skill_withheld",
-	5: "with_baseline",
-	6: "status",
-	7: "stop_reason",
-	8: "created_at",
+	5: "status",
+	6: "stop_reason",
+	7: "created_at",
 }
 
 // Decode decodes EvaluationBatch from json.
@@ -20322,7 +20268,7 @@ func (s *EvaluationBatch) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode EvaluationBatch to nil")
 	}
-	var requiredBitSet [2]uint8
+	var requiredBitSet [1]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -20386,20 +20332,8 @@ func (s *EvaluationBatch) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"with_skill_withheld\"")
 			}
-		case "with_baseline":
-			requiredBitSet[0] |= 1 << 5
-			if err := func() error {
-				v, err := d.Bool()
-				s.WithBaseline = bool(v)
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"with_baseline\"")
-			}
 		case "status":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				if err := s.Status.Decode(d); err != nil {
 					return err
@@ -20419,7 +20353,7 @@ func (s *EvaluationBatch) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"stop_reason\"")
 			}
 		case "created_at":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -20439,9 +20373,8 @@ func (s *EvaluationBatch) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [2]uint8{
-		0b01111111,
-		0b00000001,
+	for i, mask := range [1]uint8{
+		0b10111111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -20864,12 +20797,6 @@ func (s *EvaluationBatchReport) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
-		if s.WithoutSkill.Set {
-			e.FieldStart("without_skill")
-			s.WithoutSkill.Encode(e)
-		}
-	}
-	{
 		if s.SkillEffect.Set {
 			e.FieldStart("skill_effect")
 			s.SkillEffect.Encode(e)
@@ -20877,18 +20804,17 @@ func (s *EvaluationBatchReport) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfEvaluationBatchReport = [11]string{
-	0:  "test_cases",
-	1:  "passed",
-	2:  "judged",
-	3:  "pass_rate",
-	4:  "pass_rate_95",
-	5:  "test_cases_all_passed",
-	6:  "test_cases_decided",
-	7:  "batch",
-	8:  "skill_withheld",
-	9:  "without_skill",
-	10: "skill_effect",
+var jsonFieldsNameOfEvaluationBatchReport = [10]string{
+	0: "test_cases",
+	1: "passed",
+	2: "judged",
+	3: "pass_rate",
+	4: "pass_rate_95",
+	5: "test_cases_all_passed",
+	6: "test_cases_decided",
+	7: "batch",
+	8: "skill_withheld",
+	9: "skill_effect",
 }
 
 // Decode decodes EvaluationBatchReport from json.
@@ -21005,16 +20931,6 @@ func (s *EvaluationBatchReport) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"skill_withheld\"")
-			}
-		case "without_skill":
-			if err := func() error {
-				s.WithoutSkill.Reset()
-				if err := s.WithoutSkill.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"without_skill\"")
 			}
 		case "skill_effect":
 			if err := func() error {

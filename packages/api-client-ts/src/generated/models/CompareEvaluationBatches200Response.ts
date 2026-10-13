@@ -39,11 +39,6 @@ export interface CompareEvaluationBatches200Response {
      */
     reference: EvaluationBatch;
     /**
-     * The former name of reference.
-     * @deprecated
-     */
-    baseline: EvaluationBatch;
-    /**
      * 
      */
     candidate: EvaluationBatch;
@@ -72,11 +67,6 @@ export interface CompareEvaluationBatches200Response {
      */
     referenceBetter: number;
     /**
-     * The former name of reference_better.
-     * @deprecated
-     */
-    baselineBetter: number;
-    /**
      * 
      */
     tied: number;
@@ -87,13 +77,11 @@ export interface CompareEvaluationBatches200Response {
  */
 export function instanceOfCompareEvaluationBatches200Response(value: object): value is CompareEvaluationBatches200Response {
     if (!('reference' in value) || value['reference'] === undefined) return false;
-    if (!('baseline' in value) || value['baseline'] === undefined) return false;
     if (!('candidate' in value) || value['candidate'] === undefined) return false;
     if (!('paired' in value) || value['paired'] === undefined) return false;
     if (!('unpaired' in value) || value['unpaired'] === undefined) return false;
     if ((!('candidateBetter' in (value as Record<string, any>)) && !('candidate_better' in (value as Record<string, any>))) || ((value as Record<string, any>)['candidateBetter'] === undefined && (value as Record<string, any>)['candidate_better'] === undefined)) return false;
     if ((!('referenceBetter' in (value as Record<string, any>)) && !('reference_better' in (value as Record<string, any>))) || ((value as Record<string, any>)['referenceBetter'] === undefined && (value as Record<string, any>)['reference_better'] === undefined)) return false;
-    if ((!('baselineBetter' in (value as Record<string, any>)) && !('baseline_better' in (value as Record<string, any>))) || ((value as Record<string, any>)['baselineBetter'] === undefined && (value as Record<string, any>)['baseline_better'] === undefined)) return false;
     if (!('tied' in value) || value['tied'] === undefined) return false;
     return true;
 }
@@ -109,7 +97,6 @@ export function CompareEvaluationBatches200ResponseFromJSONTyped(json: any, igno
     return {
         
         'reference': EvaluationBatchFromJSON(json['reference']),
-        'baseline': EvaluationBatchFromJSON(json['baseline']),
         'candidate': EvaluationBatchFromJSON(json['candidate']),
         'paired': json['paired'],
         'unpaired': json['unpaired'],
@@ -117,7 +104,6 @@ export function CompareEvaluationBatches200ResponseFromJSONTyped(json: any, igno
         'difference95': json['difference_95'] == null ? undefined : CompareEvaluationBatches200ResponseDifference95FromJSON(json['difference_95']),
         'candidateBetter': json['candidate_better'],
         'referenceBetter': json['reference_better'],
-        'baselineBetter': json['baseline_better'],
         'tied': json['tied'],
     };
 }
@@ -134,7 +120,6 @@ export function CompareEvaluationBatches200ResponseToJSONTyped(value?: CompareEv
     return {
         
         'reference': EvaluationBatchToJSON(value['reference']),
-        'baseline': EvaluationBatchToJSON(value['baseline']),
         'candidate': EvaluationBatchToJSON(value['candidate']),
         'paired': value['paired'],
         'unpaired': value['unpaired'],
@@ -142,7 +127,6 @@ export function CompareEvaluationBatches200ResponseToJSONTyped(value?: CompareEv
         'difference_95': CompareEvaluationBatches200ResponseDifference95ToJSON(value['difference95']),
         'candidate_better': value['candidateBetter'],
         'reference_better': value['referenceBetter'],
-        'baseline_better': value['baselineBetter'],
         'tied': value['tied'],
     };
 }

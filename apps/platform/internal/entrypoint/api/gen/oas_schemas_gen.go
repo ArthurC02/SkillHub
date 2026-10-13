@@ -2035,8 +2035,6 @@ func (*CompareEvaluationBatchesNotFound) compareEvaluationBatchesRes() {}
 
 type CompareEvaluationBatchesOK struct {
 	Reference EvaluationBatch `json:"reference"`
-	// The former name of reference.
-	Baseline  EvaluationBatch `json:"baseline"`
 	Candidate EvaluationBatch `json:"candidate"`
 	Paired    int             `json:"paired"`
 	Unpaired  int             `json:"unpaired"`
@@ -2045,21 +2043,12 @@ type CompareEvaluationBatchesOK struct {
 	Difference95    OptCompareEvaluationBatchesOKDifference95 `json:"difference_95"`
 	CandidateBetter int                                       `json:"candidate_better"`
 	ReferenceBetter int                                       `json:"reference_better"`
-	// The former name of reference_better.
-	//
-	// Deprecated: schema marks this property as deprecated.
-	BaselineBetter int `json:"baseline_better"`
-	Tied           int `json:"tied"`
+	Tied            int                                       `json:"tied"`
 }
 
 // GetReference returns the value of Reference.
 func (s *CompareEvaluationBatchesOK) GetReference() EvaluationBatch {
 	return s.Reference
-}
-
-// GetBaseline returns the value of Baseline.
-func (s *CompareEvaluationBatchesOK) GetBaseline() EvaluationBatch {
-	return s.Baseline
 }
 
 // GetCandidate returns the value of Candidate.
@@ -2097,11 +2086,6 @@ func (s *CompareEvaluationBatchesOK) GetReferenceBetter() int {
 	return s.ReferenceBetter
 }
 
-// GetBaselineBetter returns the value of BaselineBetter.
-func (s *CompareEvaluationBatchesOK) GetBaselineBetter() int {
-	return s.BaselineBetter
-}
-
 // GetTied returns the value of Tied.
 func (s *CompareEvaluationBatchesOK) GetTied() int {
 	return s.Tied
@@ -2110,11 +2094,6 @@ func (s *CompareEvaluationBatchesOK) GetTied() int {
 // SetReference sets the value of Reference.
 func (s *CompareEvaluationBatchesOK) SetReference(val EvaluationBatch) {
 	s.Reference = val
-}
-
-// SetBaseline sets the value of Baseline.
-func (s *CompareEvaluationBatchesOK) SetBaseline(val EvaluationBatch) {
-	s.Baseline = val
 }
 
 // SetCandidate sets the value of Candidate.
@@ -2150,11 +2129,6 @@ func (s *CompareEvaluationBatchesOK) SetCandidateBetter(val int) {
 // SetReferenceBetter sets the value of ReferenceBetter.
 func (s *CompareEvaluationBatchesOK) SetReferenceBetter(val int) {
 	s.ReferenceBetter = val
-}
-
-// SetBaselineBetter sets the value of BaselineBetter.
-func (s *CompareEvaluationBatchesOK) SetBaselineBetter(val int) {
-	s.BaselineBetter = val
 }
 
 // SetTied sets the value of Tied.
@@ -3123,10 +3097,6 @@ type CreateEvaluationBatchReq struct {
 	// Also run every trial with the skill withheld, under the same admission and billing, so the report
 	// can show what the skill adds (EVAL-014).
 	WithSkillWithheld OptBool `json:"with_skill_withheld"`
-	// The former name of with_skill_withheld; refused when both are sent and differ.
-	//
-	// Deprecated: schema marks this property as deprecated.
-	WithBaseline OptBool `json:"with_baseline"`
 }
 
 // GetSkillVersionID returns the value of SkillVersionID.
@@ -3149,11 +3119,6 @@ func (s *CreateEvaluationBatchReq) GetWithSkillWithheld() OptBool {
 	return s.WithSkillWithheld
 }
 
-// GetWithBaseline returns the value of WithBaseline.
-func (s *CreateEvaluationBatchReq) GetWithBaseline() OptBool {
-	return s.WithBaseline
-}
-
 // SetSkillVersionID sets the value of SkillVersionID.
 func (s *CreateEvaluationBatchReq) SetSkillVersionID(val uuid.UUID) {
 	s.SkillVersionID = val
@@ -3172,11 +3137,6 @@ func (s *CreateEvaluationBatchReq) SetTrials(val int) {
 // SetWithSkillWithheld sets the value of WithSkillWithheld.
 func (s *CreateEvaluationBatchReq) SetWithSkillWithheld(val OptBool) {
 	s.WithSkillWithheld = val
-}
-
-// SetWithBaseline sets the value of WithBaseline.
-func (s *CreateEvaluationBatchReq) SetWithBaseline(val OptBool) {
-	s.WithBaseline = val
 }
 
 type CreateEvaluationBatchUnauthorized Error
@@ -8235,10 +8195,6 @@ type EvaluationBatch struct {
 	Trials         int       `json:"trials"`
 	// Every trial also runs with the skill withheld.
 	WithSkillWithheld bool `json:"with_skill_withheld"`
-	// The former name of with_skill_withheld.
-	//
-	// Deprecated: schema marks this property as deprecated.
-	WithBaseline bool `json:"with_baseline"`
 	// `launching` while some trials have not started, `launched` once every trial has its run, `stopped`
 	// when a run was refused for a reason that waiting does not fix.
 	Status EvaluationBatchStatus `json:"status"`
@@ -8270,11 +8226,6 @@ func (s *EvaluationBatch) GetTrials() int {
 // GetWithSkillWithheld returns the value of WithSkillWithheld.
 func (s *EvaluationBatch) GetWithSkillWithheld() bool {
 	return s.WithSkillWithheld
-}
-
-// GetWithBaseline returns the value of WithBaseline.
-func (s *EvaluationBatch) GetWithBaseline() bool {
-	return s.WithBaseline
 }
 
 // GetStatus returns the value of Status.
@@ -8315,11 +8266,6 @@ func (s *EvaluationBatch) SetTrials(val int) {
 // SetWithSkillWithheld sets the value of WithSkillWithheld.
 func (s *EvaluationBatch) SetWithSkillWithheld(val bool) {
 	s.WithSkillWithheld = val
-}
-
-// SetWithBaseline sets the value of WithBaseline.
-func (s *EvaluationBatch) SetWithBaseline(val bool) {
-	s.WithBaseline = val
 }
 
 // SetStatus sets the value of Status.
@@ -8468,8 +8414,6 @@ type EvaluationBatchReport struct {
 	// The same trials with the skill withheld; present only when the batch was created with the skill
 	// withheld.
 	SkillWithheld OptEvaluationBatchArm `json:"skill_withheld"`
-	// The former name of skill_withheld.
-	WithoutSkill OptEvaluationBatchArm `json:"without_skill"`
 	// With the skill minus without it, paired by test case; present only when the batch was created with
 	// the skill withheld.
 	SkillEffect OptEvaluationPairedDifference `json:"skill_effect"`
@@ -8520,11 +8464,6 @@ func (s *EvaluationBatchReport) GetSkillWithheld() OptEvaluationBatchArm {
 	return s.SkillWithheld
 }
 
-// GetWithoutSkill returns the value of WithoutSkill.
-func (s *EvaluationBatchReport) GetWithoutSkill() OptEvaluationBatchArm {
-	return s.WithoutSkill
-}
-
 // GetSkillEffect returns the value of SkillEffect.
 func (s *EvaluationBatchReport) GetSkillEffect() OptEvaluationPairedDifference {
 	return s.SkillEffect
@@ -8573,11 +8512,6 @@ func (s *EvaluationBatchReport) SetBatch(val EvaluationBatch) {
 // SetSkillWithheld sets the value of SkillWithheld.
 func (s *EvaluationBatchReport) SetSkillWithheld(val OptEvaluationBatchArm) {
 	s.SkillWithheld = val
-}
-
-// SetWithoutSkill sets the value of WithoutSkill.
-func (s *EvaluationBatchReport) SetWithoutSkill(val OptEvaluationBatchArm) {
-	s.WithoutSkill = val
 }
 
 // SetSkillEffect sets the value of SkillEffect.

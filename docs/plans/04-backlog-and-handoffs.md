@@ -28,7 +28,7 @@
 | --- | --- | --- |
 | 甲 | **5** | 部署期驗收：沙箱逃逸與資源測項、生產出口強制層、映像掃描門檻的節點查證、節點 IaC 與上線最低配。**全部在等同一件事——一台真實的 Linux 節點**，不因程式面收斂而放寬一分 <!-- open: 1,2,3,4,5 --> |
 | 乙 | **4** | 待負責人決策：受測者同意書、跨工作區證據彙總的隱私前置、策展範例資料的交付路徑、平台增強產物要不要進交付物 <!-- open: 16,19,28,30 --> |
-| 丙 | **13** | 實作與資料工作：回報與分析事件的關聯決策、demo 的能力服務執行期、互動創作後續驗收、搜尋 F1 的生產重跑、Credit 金流、上游映像漏洞、曝光審核的範圍邊界、判定的一致性、Skill 對外部工具的宣告與執行、評估批次的舊欄位名 <!-- open: 78, 113, 166, 175, 178, 179, 180, 185, 236, 237, 238, 239, 286 --> |
+| 丙 | **12** | 實作與資料工作：回報與分析事件的關聯決策、demo 的能力服務執行期、互動創作後續驗收、搜尋 F1 的生產重跑、Credit 金流、上游映像漏洞、曝光審核的範圍邊界、判定的一致性、Skill 對外部工具的宣告與執行 <!-- open: 78, 113, 166, 175, 178, 179, 180, 185, 236, 237, 238, 239 --> |
 
 ## 甲、部署期驗收
 
@@ -67,7 +67,6 @@
 | 丙-237 | **曝光審核的三個已知範圍邊界** | 發佈、取得、Bundle 與 Plugin 匯出、曝光審核都已落地（`03` PACK-014～018、DISC-013）。曝光中的判定在每一次公開讀取的同一個查詢裡核對版本與搜尋文字摘要，新 Release、未發佈的新上傳、重新增強、撤銷或治理變化都在下一次讀取時退出搜尋。<br>**刻意留下的三件**：①Bundle 不是搜尋單位，永遠不曝光，只有公開位址；②Worker 裡互動創作的參考搜尋仍只看平台目錄，不含曝光中的發佈物（API 行程的公開搜尋已含）——審核看的是搜尋文字，創作參考放進提示的卻是 `SKILL.md` 本文，審核涵蓋本文之前收進來就是 `SEC-013` 的投毒通道；③每次公開搜尋對每個曝光中的發佈物各讀一次治理事實，曝光數量變大時要改成一次批次讀 | `publishing/exposure.go`、`discovery/exposure.go`、`worker/worker.go` 的 creationSearch |
 | 丙-238 | **判定模型對同一類情形判法不一致，也判反過** | 條件寫「當 X 時…」而試跑沒出現 X：有時給「無法判定」，有時照樣給過。依合理預設算對的輸出被判不過（「自行假設」），改稿後整排「無法計算」的輸出反而全過。樣本裡一天工時 31 小時沒被指出；有一次少判一條條件。這些都讓 `met` 偏高或偏低，而且方向不固定（[報告](mvp/m5/creation-measure/report.md) §18.4）。<br>**把存下的輸出拿去重判，誤判重放不出來**：整排「無法計算」的那一場連續 6 次都被正確判不過；「當背景資訊不足時」連續 6 次判過，但理由站得住。明文規定這兩種情形的判定提示分數完全相同，沒有採用（[報告](mvp/m5/creation-measure/report.md) §19.4、[`judge-adversarial-samples-v1.json`](../../tools/eval-regression/judge-adversarial-samples-v1.json)）。<br>**剩**：量測 harness 已存下每一次判定的完整請求，引文把不相鄰的兩段接成一句已由判定提示修掉（[報告](mvp/m5/creation-measure/report.md) §20.3）；上面那幾種不一致還沒在存下的請求上重放出來，下次量測遇到時用該場的 `judge-<run_id>.json` 重建成樣本。判定陪審團（營運後台「平台設定」的開關，三個獨立判定逐條多數決，[評估判定與 Judge](../adr/README.md#評估判定與-judge-信任邊界)）已量過、維持關閉：判錯樣本集 6 個樣本 13 條條件，三個同模型成員各跑 5 次，每條條件 15 次判法完全一致，唯一判錯的「當背景資訊不足時」（`ja-02` c2）三個成員每次都判過，多數決與單一 Judge 都是 60/65；三個成員合計 $0.36，單一 Judge 約 $0.12（[`judge-adversarial-results.jsonl`](../../tools/eval-regression/judge-adversarial-results.jsonl)）。剩下的是模型層級的系統性判法，要壓低得換掉其中一個成員的模型或改判定提示，換了再量 | `evaluate.py` 的判定提示與結果校驗、`creation_measure_batch_test.go` |
 | 丙-239 | **創作出的 Skill 只會用沙箱內建的檔案與 shell，還不能宣告並呼叫外部工具** | 負責人裁定 Skill 是「該用什麼工具」的推薦：規則計算交給自帶的 `scripts/`（已落地，見 [報告](mvp/m5/creation-measure/report.md) §23），下一步是能宣告並呼叫 MCP 工具。現況：Skill 的 `allowed-tools` 只被套件驗證讀來顯示，試跑的沙箱工具是固定的一組（`Skill`／`Read`／`Write`／`Edit`／`Glob`／`Grep`／`Bash`），沒有任何 MCP server，容器無外網。<br>**剩**：要先裁定 [`05` R-58](05-pending-rulings.md)——平台提供哪些 MCP server、憑證由誰持有與注入、試跑時的 egress 與計費——才能改沙箱契約與創作提示；憑證不得進套件、Log 或 Trace（現行紅線） | `contracts/openapi/sandbox-provider.yaml`、`infra/images/runtime-agent-sdk/run.mjs`、`creation.py` 的 compose 提示 |
-| 丙-286 | **評估批次的公開契約還帶著舊欄位名** | 批次的建立、回應、報告與比較已改用詞彙表的名字（`with_skill_withheld`、`skill_withheld`、`reference`、`reference_better`），舊名（`with_baseline`、`without_skill`、`baseline`、`baseline_better`）在 `public.yaml` 標成 `deprecated` 並與新名同值輸出；建立時兩個名字都送且不一致就回 400。前端從未讀過舊名。<br>**剩**：確認沒有外部呼叫者仍讀舊名後，從契約與 `batch_http.go` 刪掉，並把 `architecture-budget.json` 的 `synonym_uses` 對應四條一起刪 | `contracts/openapi/public.yaml`、`trial/batch/batch_http.go` |
 
 ## 移交下一階段（封測期與 MVP 之後）
 

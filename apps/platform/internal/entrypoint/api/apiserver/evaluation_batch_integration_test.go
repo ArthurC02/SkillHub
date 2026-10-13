@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"reflect"
 	"testing"
 	"time"
 
@@ -242,8 +241,8 @@ func TestABaselineBatchRunsEveryTrialAgainWithTheSkillWithheld(t *testing.T) {
 	f.confirmPermissions(t)
 	code, body := f.doJSON(t, http.MethodPost, "/skills/"+f.skillID+"/evaluation-batches",
 		`{"skill_version_id":"`+f.versionID+`","test_case_ids":["`+f.testCaseID+`"],"trials":1,"with_skill_withheld":true}`)
-	if code != http.StatusCreated || body["with_skill_withheld"] != true || body["with_baseline"] != true {
-		t.Fatalf("create: got %d %v, want 201 withholding the skill under both names", code, body)
+	if _, former := body["with_baseline"]; code != http.StatusCreated || body["with_skill_withheld"] != true || former {
+		t.Fatalf("create: got %d %v, want 201 withholding the skill under its current name only", code, body)
 	}
 	batchID := body["id"].(string)
 
@@ -274,8 +273,8 @@ func expectWithheldArmOfOneTestCase(t *testing.T, report map[string]any) {
 	if without, _ := report["skill_withheld"].(map[string]any); without == nil || len(without["test_cases"].([]any)) != 1 {
 		t.Errorf("report skill_withheld = %v, want the withheld arm with its one test case", report["skill_withheld"])
 	}
-	if !reflect.DeepEqual(report["without_skill"], report["skill_withheld"]) {
-		t.Errorf("report without_skill = %v, want the former name to carry the same arm", report["without_skill"])
+	if _, former := report["without_skill"]; former {
+		t.Errorf("report still carries the former name without_skill: %v", report["without_skill"])
 	}
 	if report["skill_effect"] == nil {
 		t.Error("report has no skill_effect, want the paired difference")
@@ -494,9 +493,10 @@ func TestTwoBatchesAreComparedOnlyOnTheTestCasesBothJudged(t *testing.T) {
 	if reference, _ := body["reference"].(map[string]any); reference["id"] != baseline {
 		t.Errorf("comparison reference = %v, want batch %s", body["reference"], baseline)
 	}
-	if !reflect.DeepEqual(body["baseline"], body["reference"]) || body["baseline_better"] != body["reference_better"] {
-		t.Errorf("comparison former names baseline=%v baseline_better=%v, want them to repeat reference and reference_better",
-			body["baseline"], body["baseline_better"])
+	for _, former := range []string{"baseline", "baseline_better"} {
+		if _, sent := body[former]; sent {
+			t.Errorf("comparison still carries the former name %s: %v", former, body[former])
+		}
 	}
 
 	if code, _ := f.doJSON(t, http.MethodGet, "/skills/"+f.skillID+"/evaluation-batches/"+candidate+"/comparison", ""); code != http.StatusNotFound {

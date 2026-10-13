@@ -38,11 +38,6 @@ export interface CreateEvaluationBatchRequest {
      * 
      */
     withSkillWithheld?: boolean;
-    /**
-     * The former name of with_skill_withheld; refused when both are sent and differ.
-     * @deprecated
-     */
-    withBaseline?: boolean;
 }
 
 /**
@@ -69,7 +64,6 @@ export function CreateEvaluationBatchRequestFromJSONTyped(json: any, ignoreDiscr
         'testCaseIds': new Set(json['test_case_ids']),
         'trials': json['trials'],
         'withSkillWithheld': json['with_skill_withheld'] == null ? undefined : json['with_skill_withheld'],
-        'withBaseline': json['with_baseline'] == null ? undefined : json['with_baseline'],
     };
 }
 
@@ -88,7 +82,6 @@ export function CreateEvaluationBatchRequestToJSONTyped(value?: CreateEvaluation
         'test_case_ids': Array.from(value['testCaseIds'] as Set<any>),
         'trials': value['trials'],
         'with_skill_withheld': value['withSkillWithheld'],
-        'with_baseline': value['withBaseline'],
     };
 }
 

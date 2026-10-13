@@ -114,10 +114,6 @@
     "trace->run"
   ],
   "synonym_uses": [
-    "contracts/openapi/public.yaml baseline baseline",
-    "contracts/openapi/public.yaml baseline_better baseline",
-    "contracts/openapi/public.yaml with_baseline baseline",
-    "contracts/openapi/public.yaml without_skill without skill",
     "trial/execution.baselineMaxUSD baseline",
     "trial/execution.baselineMeanUSD baseline",
     "trial/execution.baselineMedianUSD baseline"
