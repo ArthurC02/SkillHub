@@ -2,7 +2,9 @@ package verdict
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestTheStoredShapeOfACriterionResultAndAFindingDoesNotChange(t *testing.T) {
@@ -41,6 +43,26 @@ func TestTheStoredShapeOfACriterionResultAndAFindingDoesNotChange(t *testing.T) 
 			}
 			if string(got) != c.want {
 				t.Errorf("stored as\n%s\nwant\n%s", got, c.want)
+			}
+		})
+	}
+}
+
+func TestAStoredExcerptKeepsAtMostTheLimitInCharacters(t *testing.T) {
+	cases := []struct {
+		name          string
+		source        string
+		wantRunes     int
+		wantTruncated bool
+	}{
+		{"at the limit", strings.Repeat("字", ExcerptLimit), ExcerptLimit, false},
+		{"one past the limit", strings.Repeat("字", ExcerptLimit+1), ExcerptLimit, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, truncated := Excerpt(c.source)
+			if n := utf8.RuneCountInString(got); n != c.wantRunes || truncated != c.wantTruncated {
+				t.Errorf("Excerpt kept %d characters, truncated=%v; want %d, %v", n, truncated, c.wantRunes, c.wantTruncated)
 			}
 		})
 	}

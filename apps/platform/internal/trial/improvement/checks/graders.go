@@ -1,4 +1,4 @@
-package eval
+package checks
 
 import (
 	"context"
@@ -36,7 +36,7 @@ func (v *CheckValidator) ValidateCheck(ctx context.Context, workspaceID pgtype.U
 	return normalized, nil
 }
 
-func referencedGraderVersions(criteria []testlab.Criterion) []string {
+func ReferencedGraderVersions(criteria []testlab.Criterion) []string {
 	var ids []string
 	for _, c := range criteria {
 		if c.Check != nil {

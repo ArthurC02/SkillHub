@@ -20,6 +20,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/checks"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/evalsettings"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
@@ -293,7 +294,7 @@ func mountEvaluationRoutes(mux *http.ServeMux, d Deps) {
 
 	mux.HandleFunc("GET /runs/{id}/trace", auth.RequireSession(d.Trace.Get))
 
-	mux.HandleFunc("GET /evaluation/check-kinds", auth.RequireSession(eval.ListCheckKinds))
+	mux.HandleFunc("GET /evaluation/check-kinds", auth.RequireSession(checks.ListCheckKinds))
 	mux.HandleFunc("GET /evaluation/graders", auth.RequireSession(d.Graders.ListGraders))
 	mux.HandleFunc("POST /evaluation/graders", auth.RequireSession(auth.RequireInvited(d.Graders.CreateGrader)))
 	mux.HandleFunc("POST /evaluation/graders/{id}/versions", auth.RequireSession(auth.RequireInvited(d.Graders.ReviseGrader)))

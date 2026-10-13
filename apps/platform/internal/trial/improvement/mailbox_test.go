@@ -26,8 +26,8 @@ func TestLostSuggestionProvenanceIsAuditedOnlyWhenTheLastTryStillFails(t *testin
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
 	evaluation := beginAndComplete(t, s, m, aVerdict("complete", verdict.OverallMet))
-	suggestion := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
-	version := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-improved")
+	suggestion := seedSuggestion(t, s, m.Run.WorkspaceID, evaluation.ID, "X")
+	version := seedImprovedVersion(t, s.Pool, m.Run.ID, 2, t.Name()+"-improved")
 	ctx := context.Background()
 
 	var unknown pgtype.UUID
@@ -35,21 +35,21 @@ func TestLostSuggestionProvenanceIsAuditedOnlyWhenTheLastTryStillFails(t *testin
 		t.Fatal(err)
 	}
 	lost := SuggestionsAppliedArgs{
-		WorkspaceID: m.run.WorkspaceID, SkillID: m.run.ID, SkillVersionID: version,
+		WorkspaceID: m.Run.WorkspaceID, SkillID: m.Run.ID, SkillVersionID: version,
 		EvaluationID: unknown, SuggestionIDs: []pgtype.UUID{suggestion.ID},
 	}
 
 	if err := s.ConsumeSuggestionsApplied(ctx, lost); err == nil {
 		t.Fatal("an unknown evaluation was consumed without an error; the delivery would never be retried")
 	}
-	if got := auditedProvenanceLosses(t, s, m.run.WorkspaceID); got != 0 {
+	if got := auditedProvenanceLosses(t, s, m.Run.WorkspaceID); got != 0 {
 		t.Fatalf("%d provenance losses audited after a try that can still be repeated, want 0", got)
 	}
 
 	if err := s.ConsumeSuggestionsAppliedOnLastTry(ctx, lost); err == nil {
 		t.Fatal("the last try reported success although the evaluation is unknown")
 	}
-	if got := auditedProvenanceLosses(t, s, m.run.WorkspaceID); got != 1 {
+	if got := auditedProvenanceLosses(t, s, m.Run.WorkspaceID); got != 1 {
 		t.Fatalf("%d provenance losses audited after the last try failed, want 1", got)
 	}
 
@@ -58,7 +58,7 @@ func TestLostSuggestionProvenanceIsAuditedOnlyWhenTheLastTryStillFails(t *testin
 	if err := s.ConsumeSuggestionsAppliedOnLastTry(ctx, applied); err != nil {
 		t.Fatalf("recording the applied suggestions on the last try: %v", err)
 	}
-	if got := auditedProvenanceLosses(t, s, m.run.WorkspaceID); got != 1 {
+	if got := auditedProvenanceLosses(t, s, m.Run.WorkspaceID); got != 1 {
 		t.Fatalf("%d provenance losses audited after a successful last try, want the earlier 1 and no more", got)
 	}
 }
@@ -66,7 +66,7 @@ func TestLostSuggestionProvenanceIsAuditedOnlyWhenTheLastTryStillFails(t *testin
 func TestTheAuditOnlyWaitsUntilTheDeliveryHasNoTryLeft(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
-	version := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-improved")
+	version := seedImprovedVersion(t, s.Pool, m.Run.ID, 2, t.Name()+"-improved")
 	ctx := context.Background()
 
 	var unknown pgtype.UUID
@@ -74,7 +74,7 @@ func TestTheAuditOnlyWaitsUntilTheDeliveryHasNoTryLeft(t *testing.T) {
 		t.Fatal(err)
 	}
 	args := SuggestionsAppliedArgs{
-		WorkspaceID: m.run.WorkspaceID, SkillID: m.run.ID, SkillVersionID: version, EvaluationID: unknown,
+		WorkspaceID: m.Run.WorkspaceID, SkillID: m.Run.ID, SkillVersionID: version, EvaluationID: unknown,
 	}
 	work := func(attempt int) {
 		t.Helper()
@@ -88,12 +88,12 @@ func TestTheAuditOnlyWaitsUntilTheDeliveryHasNoTryLeft(t *testing.T) {
 	}
 
 	work(SuggestionsAppliedAttempts - 1)
-	if got := auditedProvenanceLosses(t, s, m.run.WorkspaceID); got != 0 {
+	if got := auditedProvenanceLosses(t, s, m.Run.WorkspaceID); got != 0 {
 		t.Fatalf("%d provenance losses audited while one delivery attempt is left, want 0", got)
 	}
 
 	work(SuggestionsAppliedAttempts)
-	if got := auditedProvenanceLosses(t, s, m.run.WorkspaceID); got != 1 {
+	if got := auditedProvenanceLosses(t, s, m.Run.WorkspaceID); got != 1 {
 		t.Fatalf("%d provenance losses audited on the final attempt, want 1", got)
 	}
 }

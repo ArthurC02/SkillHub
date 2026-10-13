@@ -1,10 +1,11 @@
-package eval
+package checks
 
 import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -41,12 +42,12 @@ func TestAValueIsMentionedInAnyOfItsCommonWrittenForms(t *testing.T) {
 	}
 }
 
-func ruledMaterial(final string, questions []trace.Question, status string, complete bool) material {
-	m := material{
-		advanced: trace.AdvancedView{Complete: complete},
-		summary:  trace.Summary{FinalOutput: final, Questions: questions},
+func ruledMaterial(final string, questions []trace.Question, status string, complete bool) facts.Material {
+	m := facts.Material{
+		Advanced: trace.AdvancedView{Complete: complete},
+		Summary:  trace.Summary{FinalOutput: final, Questions: questions},
 	}
-	m.run.Status, m.run.Succeeded = status, status == "succeeded"
+	m.Run.Status, m.Run.Succeeded = status, status == "succeeded"
 	return m
 }
 
@@ -59,7 +60,7 @@ var askedAboutChildren = []trace.Question{{Question: "小孩算不算人數？",
 func TestEachRuleCheckDecidesFromTheRunsOwnRecords(t *testing.T) {
 	cases := []struct {
 		name string
-		m    material
+		m    facts.Material
 		c    testlab.Criterion
 		want string
 	}{
@@ -102,8 +103,8 @@ func TestOnlyCriteriaWhoseCheckNeedsNoJudgeSkipTheJudge(t *testing.T) {
 	}}
 	criteria := []testlab.Criterion{{ID: "plain", Text: "reads well"}, criterion("ruled", "does_not_ask"), judgedAfterARule}
 	m := ruledMaterial("訂金 1,200 元", nil, "succeeded", true)
-	m.criteria = criteria
-	p := planCriteria(m)
+	m.Criteria = criteria
+	p := PlanCriteria(m)
 	if len(p.decided) != 1 || p.decided[0].CriterionID != "ruled" {
 		t.Errorf("decided = %+v", p.decided)
 	}
@@ -117,7 +118,7 @@ func TestOnlyCriteriaWhoseCheckNeedsNoJudgeSkipTheJudge(t *testing.T) {
 
 func TestResultsComeBackInTheSnapshotsCriterionOrder(t *testing.T) {
 	criteria := []testlab.Criterion{{ID: "a"}, {ID: "b"}, {ID: "c"}}
-	got := inCriteriaOrder(criteria, []verdict.CriterionResult{
+	got := InCriteriaOrder(criteria, []verdict.CriterionResult{
 		{CriterionID: "c", Source: verdict.SourceRule}, {CriterionID: "a", Source: verdict.SourceRule}, {CriterionID: "b", Source: verdict.SourceModel},
 	})
 	if len(got) != 3 || got[0].CriterionID != "a" || got[1].CriterionID != "b" || got[2].CriterionID != "c" {
@@ -126,27 +127,27 @@ func TestResultsComeBackInTheSnapshotsCriterionOrder(t *testing.T) {
 }
 
 func TestTheJudgeLosesOnlyTheRubricItemsOfRuledCriteria(t *testing.T) {
-	m := material{
-		criteria: []testlab.Criterion{{ID: "plain"}, criterion("ruled", "does_not_ask")},
-		rubric: &testlab.Rubric{Version: "r1", Items: []testlab.RubricItem{
+	m := facts.Material{
+		Criteria: []testlab.Criterion{{ID: "plain"}, criterion("ruled", "does_not_ask")},
+		Rubric: &testlab.Rubric{Version: "r1", Items: []testlab.RubricItem{
 			{ID: "plain"}, {ID: "ruled"}, {ID: "orphan"},
 		}},
 	}
-	judged := m.judging(planCriteria(m))
-	if len(judged.criteria) != 1 || judged.criteria[0].ID != "plain" {
-		t.Errorf("judged criteria = %+v", judged.criteria)
+	judged := PlanCriteria(m).MaterialForJudge(m)
+	if len(judged.Criteria) != 1 || judged.Criteria[0].ID != "plain" {
+		t.Errorf("judged criteria = %+v", judged.Criteria)
 	}
-	if items := judged.rubric.Items; len(items) != 2 || items[0].ID != "plain" || items[1].ID != "orphan" {
+	if items := judged.Rubric.Items; len(items) != 2 || items[0].ID != "plain" || items[1].ID != "orphan" {
 		t.Errorf("judged rubric = %+v, want plain and the orphan the judge path reports", items)
 	}
-	if len(m.rubric.Items) != 3 {
-		t.Errorf("the original rubric was changed: %+v", m.rubric.Items)
+	if len(m.Rubric.Items) != 3 {
+		t.Errorf("the original rubric was changed: %+v", m.Rubric.Items)
 	}
 }
 
 func TestQuestionChecksReadTheWholeConversation(t *testing.T) {
 	answered := ruledMaterial("訂金 1,200 元", nil, "succeeded", true)
-	answered.earlierQuestions = askedAboutChildren
+	answered.EarlierQuestions = askedAboutChildren
 	cases := []struct {
 		name string
 		c    testlab.Criterion
@@ -169,7 +170,7 @@ func TestQuestionChecksReadTheWholeConversation(t *testing.T) {
 func TestOnlyARunThatSucceededByAskingWaitsForItsAnswer(t *testing.T) {
 	cases := []struct {
 		name string
-		m    material
+		m    facts.Material
 		want bool
 	}{
 		{"succeeded by asking", ruledMaterial("", askedAboutChildren, "succeeded", true), true},
@@ -177,7 +178,7 @@ func TestOnlyARunThatSucceededByAskingWaitsForItsAnswer(t *testing.T) {
 		{"succeeded with an answer", ruledMaterial("訂金 1,200 元", nil, "succeeded", true), false},
 	}
 	for _, c := range cases {
-		if got := c.m.awaitsAnswer(); got != c.want {
+		if got := c.m.AwaitsAnswer(); got != c.want {
 			t.Errorf("%s: awaitsAnswer = %v, want %v", c.name, got, c.want)
 		}
 	}

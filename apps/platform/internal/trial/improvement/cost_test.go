@@ -9,6 +9,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -22,7 +23,7 @@ func (f *fakeLedger) RecordCost(_ context.Context, _ credit.DBTX, e credit.CostE
 	return "id", false, f.err
 }
 
-func beginAndSettleJudgement(t *testing.T, s *Service, m material, v assessment) gen.Evaluation {
+func beginAndSettleJudgement(t *testing.T, s *Service, m facts.Material, v assessment) gen.Evaluation {
 	t.Helper()
 	ev, err := s.begin(context.Background(), m)
 	if err != nil {
@@ -101,12 +102,12 @@ func TestJudgingRecordsExactlyOneReviewCostEvent(t *testing.T) {
 	if e.UsdMicros != 3100 || e.Estimated {
 		t.Errorf("usd_micros = %d estimated = %v, want 3100 / false", e.UsdMicros, e.Estimated)
 	}
-	if e.WorkspaceID != m.run.WorkspaceID {
+	if e.WorkspaceID != m.Run.WorkspaceID {
 		t.Errorf("workspace = %v, want the run's", e.WorkspaceID)
 	}
 
-	if e.RefType != credit.RefRun || e.RefID != m.run.ID {
-		t.Errorf("ref = %q/%v, want run/%v", e.RefType, e.RefID, m.run.ID)
+	if e.RefType != credit.RefRun || e.RefID != m.Run.ID {
+		t.Errorf("ref = %q/%v, want run/%v", e.RefType, e.RefID, m.Run.ID)
 	}
 
 	if !strings.Contains(e.IdempotencyKey, pgconv.UUIDString(ev.ID)) {
@@ -179,7 +180,7 @@ func TestAHeldSkillIsNeitherSentToTheModelNorChargedForSuggestions(t *testing.T)
 	m := seedRun(t, s.Pool)
 	ev := beginAndComplete(t, s, m, aVerdict("not met", verdict.OverallNotMet))
 	ledger.events = nil
-	m.skill.AccessRestricted = true
+	m.Skill.AccessRestricted = true
 
 	s.suggest(context.Background(), m, ev, costTestVerdict())
 

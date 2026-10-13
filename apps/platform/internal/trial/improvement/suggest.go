@@ -15,6 +15,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
@@ -36,8 +37,8 @@ var SuggestImprovementsBudget = modelbudget.Endpoint{
 	Kind: "suggest-improvements", Deadline: suggestTimeout,
 }
 
-func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v assessment) {
-	if s.Suggester == nil || m.skill.AccessRestricted || !worthSuggesting(v) {
+func (s *Service) suggest(ctx context.Context, m facts.Material, ev gen.Evaluation, v assessment) {
+	if s.Suggester == nil || m.Skill.AccessRestricted || !worthSuggesting(v) {
 		return
 	}
 
@@ -64,7 +65,7 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 			"evaluation_id", pgconv.UUIDString(ev.ID), "error", err)
 		return
 	}
-	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.run.ID}
+	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.Run.ID}
 	call := modelCall{model: resp.Model, promptVersion: resp.PromptVersion, usage: resp.Usage}
 	if err := s.recordModelUsage(ctx, s.queries(), ref, "suggest", call); err != nil {
 		slog.Warn("evaluation suggestion usage not stored",
@@ -222,7 +223,7 @@ const (
 	digestExplanationRunes   = 800
 )
 
-func suggestionDigest(m material, v assessment) (string, []verdict.EvidenceRef) {
+func suggestionDigest(m facts.Material, v assessment) (string, []verdict.EvidenceRef) {
 	var b strings.Builder
 	refs := make([]verdict.EvidenceRef, 0, maxDigestEvidence)
 	addRefs := func(in []verdict.EvidenceRef) {
@@ -240,8 +241,8 @@ func suggestionDigest(m material, v assessment) (string, []verdict.EvidenceRef) 
 	}
 
 	fmt.Fprintf(&b, "run %s finished as %s; task verdict: %s\n",
-		pgconv.UUIDString(m.run.ID), m.run.Status, v.overall)
-	fmt.Fprintf(&b, "user prompt: %s\n", firstChars(m.snapshot.UserPrompt, 1000))
+		pgconv.UUIDString(m.Run.ID), m.Run.Status, v.overall)
+	fmt.Fprintf(&b, "user prompt: %s\n", firstChars(m.Snapshot.UserPrompt, 1000))
 	if v.summary != "" {
 		fmt.Fprintf(&b, "summary: %s\n", firstChars(v.summary, 1000))
 	}
@@ -274,11 +275,11 @@ func suggestionDigest(m material, v assessment) (string, []verdict.EvidenceRef) 
 	return digest, refs
 }
 
-func (s *Service) packageFiles(ctx context.Context, m material) ([]string, []TargetFile) {
-	if s.Store == nil || m.version.PackageObjectKey == "" {
+func (s *Service) packageFiles(ctx context.Context, m facts.Material) ([]string, []TargetFile) {
+	if s.Store == nil || m.Version.PackageObjectKey == "" {
 		return nil, nil
 	}
-	fsys, _, err := s.readPackage(ctx, m.version.stored())
+	fsys, _, err := s.readPackage(ctx, m.Version.Stored())
 	if err != nil {
 		slog.Warn("suggestion inputs unavailable", "error", err)
 		return nil, nil

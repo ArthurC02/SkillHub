@@ -10,6 +10,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/checks"
 )
 
 func TestCriteriaWithChecksAreDecidedWithoutAJudge(t *testing.T) {
@@ -184,7 +185,7 @@ func TestTheCheckKindsAnEditorCanOfferAreListed(t *testing.T) {
 			t.Errorf("kind %s = %q, want %q", name, got[name], category)
 		}
 	}
-	if body["max_nodes"] != float64(eval.MaxCheckNodes) || body["max_depth"] != float64(eval.MaxCheckDepth) {
+	if body["max_nodes"] != float64(checks.MaxCheckNodes) || body["max_depth"] != float64(checks.MaxCheckDepth) {
 		t.Errorf("limits = %v / %v", body["max_nodes"], body["max_depth"])
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/riverqueue/river/rivertype"
 
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 )
 
 func TestTheEvaluationWorkerReadsTheRunOnlyOnItsFirstAttempt(t *testing.T) {
@@ -34,18 +35,18 @@ func TestTheEvaluationWorkerReadsTheRunOnlyOnItsFirstAttempt(t *testing.T) {
 			asked := false
 			svc := &eval.Service{
 				Pool: pool,
-				ReadEvaluationInput: func(context.Context, pgtype.UUID, pgtype.UUID) (eval.EvaluationInput, bool, error) {
+				ReadEvaluationInput: func(context.Context, pgtype.UUID, pgtype.UUID) (facts.EvaluationInput, bool, error) {
 					asked = true
-					return eval.EvaluationInput{}, false, unreadable
+					return facts.EvaluationInput{}, false, unreadable
 				},
-				ReadVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (eval.VersionFacts, bool, error) {
-					return eval.VersionFacts{}, false, nil
+				ReadVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (facts.Version, bool, error) {
+					return facts.Version{}, false, nil
 				},
-				ReadSkill: func(context.Context, pgtype.UUID, pgtype.UUID) (eval.SkillFacts, bool, error) {
-					return eval.SkillFacts{}, false, nil
+				ReadSkill: func(context.Context, pgtype.UUID, pgtype.UUID) (facts.Skill, bool, error) {
+					return facts.Skill{}, false, nil
 				},
-				ReadRuntimeCompatibility: func(context.Context, pgtype.UUID) (eval.RuntimeCompatibility, bool, error) {
-					return eval.RuntimeCompatibility{}, false, nil
+				ReadRuntimeCompatibility: func(context.Context, pgtype.UUID) (facts.RuntimeCompatibility, bool, error) {
+					return facts.RuntimeCompatibility{}, false, nil
 				},
 			}
 			job := &river.Job[eval.JobArgs]{

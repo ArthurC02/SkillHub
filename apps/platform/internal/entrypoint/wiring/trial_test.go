@@ -8,7 +8,7 @@ import (
 
 	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
-	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 )
 
 func TestEvaluationReceivesTheOwnersTerminalVerdict(t *testing.T) {
@@ -35,7 +35,7 @@ func TestTrialContextsSeeTheOwnersRestrictionVerdict(t *testing.T) {
 	if got, want := runSkillFacts(held), (run.SkillFacts{AccessRestricted: true, AccessRestrictionReason: hold}); got != want {
 		t.Errorf("run facts for a held skill = %+v, want %+v", got, want)
 	}
-	if got, want := evalSkillFacts(held), (eval.SkillFacts{ID: id, Name: "name", Summary: &summary, AccessRestricted: true}); !reflect.DeepEqual(got, want) {
+	if got, want := evalSkillFacts(held), (facts.Skill{ID: id, Name: "name", Summary: &summary, AccessRestricted: true}); !reflect.DeepEqual(got, want) {
 		t.Errorf("evaluation facts for a held skill = %+v, want %+v", got, want)
 	}
 	if got := runSkillFacts(registry.Skill{}); got != (run.SkillFacts{}) {

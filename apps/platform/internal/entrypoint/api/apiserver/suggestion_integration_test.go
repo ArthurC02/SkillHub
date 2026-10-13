@@ -21,6 +21,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 )
 
 func packagedSkillMD(name string) string {
@@ -814,8 +815,8 @@ func TestSuggestionsAppliedToAVersionThatIsNoLongerTheNewestAreRefused(t *testin
 		t.Fatalf("upload a newer version: %d", resp.StatusCode)
 	}
 	live := a.evaluations.ReadLatestVersion
-	readAs := func(v eval.VersionFacts) {
-		a.evaluations.ReadLatestVersion = func(context.Context, pgtype.UUID, pgtype.UUID) (eval.VersionFacts, bool, error) {
+	readAs := func(v facts.Version) {
+		a.evaluations.ReadLatestVersion = func(context.Context, pgtype.UUID, pgtype.UUID) (facts.Version, bool, error) {
 			return v, true, nil
 		}
 	}
@@ -839,7 +840,7 @@ func TestSuggestionsAppliedToAVersionThatIsNoLongerTheNewestAreRefused(t *testin
 
 func assertReappliedOnTheNewestThenRecognisedAsTheSame(
 	t *testing.T, c *client, skillID, evaluationID, suggestionID string,
-	live func(context.Context, pgtype.UUID, pgtype.UUID) (eval.VersionFacts, bool, error), readAs func(eval.VersionFacts),
+	live func(context.Context, pgtype.UUID, pgtype.UUID) (facts.Version, bool, error), readAs func(facts.Version),
 ) {
 	t.Helper()
 	uploaded, _, err := live(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, skillID))

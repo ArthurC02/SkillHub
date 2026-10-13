@@ -18,6 +18,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/checks"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 
@@ -63,13 +65,13 @@ type Service struct {
 
 	ReadEventsOfType func(ctx context.Context, page outbox.EventPage) ([]outbox.Event, error)
 
-	ReadRunFacts        func(ctx context.Context, workspaceID, runID pgtype.UUID) (RunFacts, bool, error)
-	ReadEvaluationInput func(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationInput, bool, error)
+	ReadRunFacts        func(ctx context.Context, workspaceID, runID pgtype.UUID) (facts.Run, bool, error)
+	ReadEvaluationInput func(ctx context.Context, workspaceID, runID pgtype.UUID) (facts.EvaluationInput, bool, error)
 
-	ReadVersion              func(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error)
-	ReadLatestVersion        func(ctx context.Context, workspaceID, skillID pgtype.UUID) (VersionFacts, bool, error)
-	ReadSkill                func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
-	ReadRuntimeCompatibility func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error)
+	ReadVersion              func(ctx context.Context, workspaceID, versionID pgtype.UUID) (facts.Version, bool, error)
+	ReadLatestVersion        func(ctx context.Context, workspaceID, skillID pgtype.UUID) (facts.Version, bool, error)
+	ReadSkill                func(ctx context.Context, workspaceID, skillID pgtype.UUID) (facts.Skill, bool, error)
+	ReadRuntimeCompatibility func(context.Context, pgtype.UUID) (facts.RuntimeCompatibility, bool, error)
 
 	JudgeModel         string
 	PanelEnabled       func(context.Context) (bool, error)
@@ -81,68 +83,6 @@ func (s *Service) requireTestLab() error {
 		return errors.New("eval: test lab service not injected")
 	}
 	return nil
-}
-
-type RunFacts struct {
-	ID                 pgtype.UUID
-	WorkspaceID        pgtype.UUID
-	SkillVersionID     pgtype.UUID
-	TestCaseSnapshotID pgtype.UUID
-	Status             string
-	StatusReason       *string
-	RuntimeSnapshot    []byte
-	StartedAt          *time.Time
-	FinishedAt         *time.Time
-	FailureClass       *string
-	Terminal           bool
-	Succeeded          bool
-}
-
-type SkillFacts struct {
-	ID               pgtype.UUID
-	Name             string
-	Summary          *string
-	AccessRestricted bool
-}
-
-type VersionFacts struct {
-	ID               pgtype.UUID
-	SkillID          pgtype.UUID
-	PackageObjectKey string
-	SourcePath       string
-}
-
-func (v VersionFacts) stored() skillpkg.StoredSkill {
-	return skillpkg.StoredSkill{ObjectKey: v.PackageObjectKey, SourcePath: v.SourcePath}
-}
-
-type RuntimeCompatibility struct {
-	Capability   string
-	Runtime      string
-	RuntimeImage string
-}
-
-type ArtifactFacts struct {
-	FileName    string
-	ContentType string
-	SizeBytes   int64
-	ContentHash string
-}
-
-type ArtifactAbsence struct {
-	Deleted int
-	Expired int
-}
-
-func (a ArtifactAbsence) Any() bool { return a.Deleted+a.Expired > 0 }
-
-type EvaluationInput struct {
-	Run           RunFacts
-	Artifacts     []ArtifactFacts
-	Absent        ArtifactAbsence
-	LatestAttempt int
-
-	EarlierQuestions []trace.Question
 }
 
 var errRunReaderNotConfigured = errors.New("evaluation run reader is not configured")
@@ -228,31 +168,6 @@ func (s *Service) declaredJudge() (model, promptVersion string) {
 	return s.judgeModel(), s.JudgePromptVersion
 }
 
-type material struct {
-	run      RunFacts
-	version  VersionFacts
-	skill    SkillFacts
-	snapshot testlab.Snapshot
-	criteria []testlab.Criterion
-
-	rubric *testlab.Rubric
-
-	graders      map[string]graders.Version
-	instructions map[string]string
-
-	advanced  trace.AdvancedView
-	summary   trace.Summary
-	artifacts []ArtifactFacts
-
-	absent ArtifactAbsence
-	compat *RuntimeCompatibility
-
-	earlierQuestions []trace.Question
-	report           skillpkg.Report
-	reportOK         bool
-	attempt          int
-}
-
 func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) error {
 	m, err := s.gather(ctx, workspaceID, runID)
 	if errors.Is(err, ErrNotFound) || errors.Is(err, errRunStillGoing) {
@@ -261,7 +176,7 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	if err != nil {
 		return err
 	}
-	if m.awaitsAnswer() {
+	if m.AwaitsAnswer() {
 		return nil
 	}
 
@@ -281,11 +196,11 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 		return err
 	}
 
-	findings := s.deterministicFindings(m)
+	findings := checks.Findings(m)
 
-	evidenceComplete := m.evidenceComplete()
+	evidenceComplete := m.EvidenceComplete()
 
-	if len(m.criteria) == 0 {
+	if len(m.Criteria) == 0 {
 
 		return s.completeAndSuggest(ctx, m, ev, assessment{
 			overall: verdict.OverallUndetermined,
@@ -297,59 +212,32 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 		})
 	}
 
-	plan := planCriteria(m)
-	if len(plan.asks.list) == 0 {
+	plan := checks.PlanCriteria(m)
+	if !plan.NeedsJudge() {
 		return s.completeAndSuggest(ctx, m, ev, assessment{
-			overall: verdict.OverallFrom(plan.decided),
+			overall: verdict.OverallFrom(plan.Decided()),
 			summary: "every acceptance criterion of this run carries a check the platform " +
 				"decided from the run's own records, so no model was asked",
-			results:          inCriteriaOrder(m.criteria, plan.decided),
+			results:          checks.InCriteriaOrder(m.Criteria, plan.Decided()),
 			findings:         findings,
 			evidenceComplete: evidenceComplete,
 		})
 	}
 
-	v, err := s.judge(ctx, m.judging(plan), ev)
+	v, err := s.judge(ctx, plan.MaterialForJudge(m), ev)
 	if err != nil {
 
 		return s.fail(ctx, m, ev, gatheredEvidence{findings: findings, complete: evidenceComplete}, err)
 	}
-	v.results = plan.finish(m, v.results)
+	v.results = plan.Finish(m, v.results)
 	v.overall = verdict.OverallFrom(v.results)
 	v.findings = append(findings, v.findings...)
 	v.evidenceComplete = evidenceComplete && v.evidenceComplete
 	return s.settleJudgement(ctx, m, ev, v)
 }
 
-func (m material) judging(p criteriaPlan) material {
-	isCriterion := make(map[string]bool, len(m.criteria))
-	for _, c := range m.criteria {
-		isCriterion[c.ID] = true
-	}
-	m.criteria = make([]testlab.Criterion, len(p.asks.list))
-	m.instructions = map[string]string{}
-	for i, it := range p.asks.list {
-		m.criteria[i] = testlab.Criterion{ID: it.key, Text: it.text}
-		if it.instructions != "" {
-			m.instructions[it.key] = it.instructions
-		}
-	}
-	if m.rubric == nil {
-		return m
-	}
-	rubric := *m.rubric
-	rubric.Items = nil
-	for _, it := range m.rubric.Items {
-		if p.asks.seen[it.ID] || !isCriterion[it.ID] {
-			rubric.Items = append(rubric.Items, it)
-		}
-	}
-	m.rubric = &rubric
-	return m
-}
-
-func (s *Service) settleJudgement(ctx context.Context, m material, ev gen.Evaluation, v assessment) error {
-	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.run.ID}
+func (s *Service) settleJudgement(ctx context.Context, m facts.Material, ev gen.Evaluation, v assessment) error {
+	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.Run.ID}
 	s.recordEvalCost(ctx, s.Pool, credit.KindReview, ref, modelCall{model: v.model, promptVersion: v.promptVersion, usage: v.usage})
 	return s.completeAndSuggest(ctx, m, ev, v)
 }
@@ -381,13 +269,13 @@ func (s *Service) recoverEvaluation(
 	if err != nil {
 		return err
 	}
-	findings := s.deterministicFindings(m)
-	return s.fail(ctx, m, current, gatheredEvidence{findings: findings, complete: m.evidenceComplete()},
+	findings := checks.Findings(m)
+	return s.fail(ctx, m, current, gatheredEvidence{findings: findings, complete: m.EvidenceComplete()},
 		errors.New("the previous evaluation attempt was interrupted before its verdict committed"))
 }
 
 func (s *Service) completeAndSuggest(
-	ctx context.Context, m material, ev gen.Evaluation, v assessment,
+	ctx context.Context, m facts.Material, ev gen.Evaluation, v assessment,
 ) error {
 	if err := s.complete(ctx, m, ev, v); err != nil {
 		if errors.Is(err, errEvaluationSettled) {
@@ -413,8 +301,8 @@ type assessment struct {
 	usage *ModelUsage
 }
 
-func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (material, error) {
-	m := material{}
+func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (facts.Material, error) {
+	m := facts.Material{}
 	if s.ReadEvaluationInput == nil {
 		return m, errRunReaderNotConfigured
 	}
@@ -425,65 +313,65 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 	if err != nil {
 		return m, err
 	}
-	m.run, m.artifacts, m.attempt = input.Run, input.Artifacts, input.LatestAttempt
-	m.absent = input.Absent
-	m.earlierQuestions = input.EarlierQuestions
-	if !m.run.Terminal {
+	m.Run, m.Artifacts, m.Attempt = input.Run, input.Artifacts, input.LatestAttempt
+	m.Absent = input.Absent
+	m.EarlierQuestions = input.EarlierQuestions
+	if !m.Run.Terminal {
 		return m, errRunStillGoing
 	}
 
-	if m.version, err = s.existingVersion(ctx, workspaceID, m.run.SkillVersionID); err != nil {
+	if m.Version, err = s.existingVersion(ctx, workspaceID, m.Run.SkillVersionID); err != nil {
 		return m, err
 	}
-	if m.skill, _, err = s.ReadSkill(ctx, workspaceID, m.version.SkillID); err != nil {
+	if m.Skill, _, err = s.ReadSkill(ctx, workspaceID, m.Version.SkillID); err != nil {
 		return m, err
 	}
 	if err := s.gatherTestCase(ctx, workspaceID, &m); err != nil {
 		return m, err
 	}
 
-	if m.advanced, err = s.Trace.AdvancedAll(ctx, workspaceID, runID); err != nil {
+	if m.Advanced, err = s.Trace.AdvancedAll(ctx, workspaceID, runID); err != nil {
 		return m, err
 	}
-	if m.summary, err = s.Trace.General(ctx, workspaceID, runID); err != nil {
+	if m.Summary, err = s.Trace.General(ctx, workspaceID, runID); err != nil {
 		return m, err
 	}
-	compat, found, err := s.ReadRuntimeCompatibility(ctx, m.run.SkillVersionID)
+	compat, found, err := s.ReadRuntimeCompatibility(ctx, m.Run.SkillVersionID)
 	if err != nil {
 		return m, err
 	}
 	if found {
-		m.compat = &compat
+		m.Compat = &compat
 	}
 
-	m.report, m.reportOK = s.packageReport(ctx, m.version.stored())
+	m.Report, m.ReportOK = s.packageReport(ctx, m.Version.Stored())
 	return m, nil
 }
 
-func (s *Service) existingEvaluationInput(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationInput, error) {
+func (s *Service) existingEvaluationInput(ctx context.Context, workspaceID, runID pgtype.UUID) (facts.EvaluationInput, error) {
 	return required(ctx, s.ReadEvaluationInput, workspaceID, runID)
 }
 
-func (s *Service) gatherTestCase(ctx context.Context, workspaceID pgtype.UUID, m *material) error {
+func (s *Service) gatherTestCase(ctx context.Context, workspaceID pgtype.UUID, m *facts.Material) error {
 	if err := s.requireTestLab(); err != nil {
 		return err
 	}
 	var err error
-	if m.snapshot, err = s.TestLab.ReadSnapshot(ctx, workspaceID, m.run.TestCaseSnapshotID); err != nil {
+	if m.Snapshot, err = s.TestLab.ReadSnapshot(ctx, workspaceID, m.Run.TestCaseSnapshotID); err != nil {
 		return err
 	}
 
-	if m.criteria, err = testlab.DecodeCriteria(m.snapshot.AcceptanceCriteria); err != nil {
+	if m.Criteria, err = testlab.DecodeCriteria(m.Snapshot.AcceptanceCriteria); err != nil {
 		return err
 	}
-	if m.graders, err = graders.Versions(ctx, s.Pool, workspaceID, referencedGraderVersions(m.criteria)); err != nil {
+	if m.Graders, err = graders.Versions(ctx, s.Pool, workspaceID, checks.ReferencedGraderVersions(m.Criteria)); err != nil {
 		return err
 	}
-	m.rubric, err = testlab.DecodeRubric(m.snapshot.Rubric)
+	m.Rubric, err = testlab.DecodeRubric(m.Snapshot.Rubric)
 	return err
 }
 
-func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error) {
+func (s *Service) begin(ctx context.Context, m facts.Material) (gen.Evaluation, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return gen.Evaluation{}, err
@@ -494,34 +382,34 @@ func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error)
 	// Transaction-scoped advisory lock hashed from the run's key, released
 	// automatically on commit or rollback, so concurrent callers for the same
 	// run serialize here instead of racing on the current-row check below.
-	lockKey := "evaluation:" + pgconv.UUIDString(m.run.WorkspaceID) + ":" + pgconv.UUIDString(m.run.ID)
+	lockKey := "evaluation:" + pgconv.UUIDString(m.Run.WorkspaceID) + ":" + pgconv.UUIDString(m.Run.ID)
 	if _, err := tx.Exec(ctx,
 		"SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", lockKey,
 	); err != nil {
 		return gen.Evaluation{}, err
 	}
-	if err := supersedeCurrent(ctx, tx, q, m.run.WorkspaceID, m.run.ID); err != nil {
+	if err := supersedeCurrent(ctx, tx, q, m.Run.WorkspaceID, m.Run.ID); err != nil {
 		return gen.Evaluation{}, err
 	}
 
 	declaredModel, declaredPromptVersion := s.declaredJudge()
-	next := startEvaluation(m.run.WorkspaceID, m.run.ID, EvaluationStarted{
+	next := startEvaluation(m.Run.WorkspaceID, m.Run.ID, EvaluationStarted{
 		JudgeModel:         strPtr(declaredModel),
 		JudgePromptVersion: strPtr(declaredPromptVersion),
-		RubricVersion:      strPtr(rubricVersionOf(m.rubric)),
+		RubricVersion:      strPtr(rubricVersionOf(m.Rubric)),
 	})
 	if err := saveEvaluation(ctx, tx, next); err != nil {
 		return gen.Evaluation{}, err
 	}
 	ev := next.row
 	if err := trace.RecordOrchestratorEvent(ctx, tx, trace.OrchestratorEvent{
-		WorkspaceID: m.run.WorkspaceID, RunID: m.run.ID, Attempt: m.attempt,
+		WorkspaceID: m.Run.WorkspaceID, RunID: m.Run.ID, Attempt: m.Attempt,
 		Type: trace.TypeEvaluationStarted, Status: "ok", Payload: map[string]any{
 			trace.PayloadEvaluationID: pgconv.UUIDString(ev.ID),
 			"judge_model":             s.judgeModel(),
 			"judge_prompt_version":    s.judgePromptVersion(),
 
-			"rubric_version": rubricVersion(m.rubric),
+			"rubric_version": rubricVersion(m.Rubric),
 		},
 	}); err != nil {
 		return gen.Evaluation{}, err
@@ -529,7 +417,7 @@ func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error)
 	return ev, tx.Commit(ctx)
 }
 
-func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v assessment) error {
+func (s *Service) complete(ctx context.Context, m facts.Material, ev gen.Evaluation, v assessment) error {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -541,7 +429,7 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 		return err
 	}
 
-	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.run.ID}
+	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.Run.ID}
 	call := modelCall{model: v.model, promptVersion: v.promptVersion, usage: v.usage}
 	if err := s.recordModelUsage(ctx, q, ref, "judge", call); err != nil {
 		return err
@@ -549,7 +437,7 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 
 	passed, failed, undetermined := verdict.Tally(v.results)
 	if err := trace.RecordOrchestratorEvent(ctx, tx, trace.OrchestratorEvent{
-		WorkspaceID: m.run.WorkspaceID, RunID: m.run.ID, Attempt: m.attempt,
+		WorkspaceID: m.Run.WorkspaceID, RunID: m.Run.ID, Attempt: m.Attempt,
 		Type: trace.TypeEvaluationCompleted, Status: "ok", Payload: map[string]any{
 			trace.PayloadEvaluationID: pgconv.UUIDString(ev.ID),
 			"overall":                 v.overall,
@@ -572,7 +460,7 @@ type gatheredEvidence struct {
 	complete bool
 }
 
-func (s *Service) fail(ctx context.Context, m material, ev gen.Evaluation, gathered gatheredEvidence, cause error) error {
+func (s *Service) fail(ctx context.Context, m facts.Material, ev gen.Evaluation, gathered gatheredEvidence, cause error) error {
 	findings, evidenceComplete := gathered.findings, gathered.complete
 
 	const summary = "這次判定沒有跑完：模型閘道或證據讀取失敗。原因已記在這個 Run 的執行紀錄（進階模式）裡。"
@@ -594,14 +482,14 @@ func (s *Service) fail(ctx context.Context, m material, ev gen.Evaluation, gathe
 	}
 
 	if err := trace.RecordOrchestratorEvent(ctx, tx, trace.OrchestratorEvent{
-		WorkspaceID: m.run.WorkspaceID, RunID: m.run.ID, Attempt: m.attempt,
+		WorkspaceID: m.Run.WorkspaceID, RunID: m.Run.ID, Attempt: m.Attempt,
 		Type: trace.TypeEvaluationCompleted, Status: "error", Payload: map[string]any{
 			trace.PayloadEvaluationID: pgconv.UUIDString(ev.ID),
 			"overall":                 verdict.OverallUndetermined,
-			"criteria_total":          len(m.criteria),
+			"criteria_total":          len(m.Criteria),
 			"criteria_passed":         0,
 			"criteria_failed":         0,
-			"criteria_undetermined":   len(m.criteria),
+			"criteria_undetermined":   len(m.Criteria),
 			"evidence_complete":       evidenceComplete,
 			"cost_usd":                nil,
 			"failure_reason":          reason,
@@ -623,9 +511,9 @@ func (s *Service) packageReport(ctx context.Context, stored skillpkg.StoredSkill
 	return skillpkg.Validate(fsys), true
 }
 
-func (s *Service) runFacts(ctx context.Context, workspaceID, runID pgtype.UUID) (RunFacts, error) {
+func (s *Service) runFacts(ctx context.Context, workspaceID, runID pgtype.UUID) (facts.Run, error) {
 	if s.ReadRunFacts == nil {
-		return RunFacts{}, errRunReaderNotConfigured
+		return facts.Run{}, errRunReaderNotConfigured
 	}
 	return required(ctx, s.ReadRunFacts, workspaceID, runID)
 }
@@ -677,12 +565,9 @@ func costSource(cost *float64) *string {
 	return &source
 }
 
-func (m material) awaitsAnswer() bool {
-	return m.run.Succeeded && len(m.summary.Questions) > 0
-}
-
-func (m material) evidenceComplete() bool { return m.advanced.Complete && !m.absent.Any() }
-
-func (m material) cannotRecordPass(result string) bool {
-	return result == verdict.ResultPassed && !m.evidenceComplete()
+func orUnknown(s string) string {
+	if s == "" {
+		return "unknown"
+	}
+	return s
 }

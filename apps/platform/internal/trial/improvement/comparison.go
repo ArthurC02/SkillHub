@@ -12,6 +12,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -151,7 +152,7 @@ func (s *Service) describeFromTrace(side *comparisonSide, summary trace.Summary)
 	}
 }
 
-func durationMS(run RunFacts) *int64 {
+func durationMS(run facts.Run) *int64 {
 	if run.StartedAt == nil || run.FinishedAt == nil {
 		return nil
 	}

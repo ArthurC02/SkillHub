@@ -1,4 +1,4 @@
-package eval
+package checks
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -128,7 +129,7 @@ func TestAtLeastKOfNIsDecidedAsSoonAsTheCountsAllowIt(t *testing.T) {
 	}
 }
 
-func decide(t *testing.T, m material, check testlab.Check, verdicts map[string]verdict.CriterionResult) (verdict.CriterionResult, bool) {
+func decide(t *testing.T, m facts.Material, check testlab.Check, verdicts map[string]verdict.CriterionResult) (verdict.CriterionResult, bool) {
 	t.Helper()
 	return treeResult(m, testlab.Criterion{ID: "c", Text: "c", Check: &check}, verdicts)
 }

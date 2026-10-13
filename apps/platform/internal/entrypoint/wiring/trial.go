@@ -10,6 +10,7 @@ import (
 	trace "github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 )
 
 func WireRunRegistryReaders(runs *run.Service, registryService *registry.Service) {
@@ -96,23 +97,23 @@ func NewTraceService(pool *pgxpool.Pool, signer *trace.Signer, runs *run.Service
 }
 
 func WireEvaluationRunReaders(service *eval.Service, runs *run.Service) {
-	service.ReadRunFacts = func(ctx context.Context, workspaceID, runID pgtype.UUID) (eval.RunFacts, bool, error) {
-		facts, found, err := runs.EvaluationRun(ctx, workspaceID, runID)
-		return evalRunFacts(facts), found, err
+	service.ReadRunFacts = func(ctx context.Context, workspaceID, runID pgtype.UUID) (facts.Run, bool, error) {
+		evaluated, found, err := runs.EvaluationRun(ctx, workspaceID, runID)
+		return evalRunFacts(evaluated), found, err
 	}
-	service.ReadEvaluationInput = func(ctx context.Context, workspaceID, runID pgtype.UUID) (eval.EvaluationInput, bool, error) {
+	service.ReadEvaluationInput = func(ctx context.Context, workspaceID, runID pgtype.UUID) (facts.EvaluationInput, bool, error) {
 		input, found, err := runs.EvaluationInput(ctx, workspaceID, runID)
-		artifacts := make([]eval.ArtifactFacts, len(input.Artifacts))
+		artifacts := make([]facts.Artifact, len(input.Artifacts))
 		for i, artifact := range input.Artifacts {
-			artifacts[i] = eval.ArtifactFacts{
+			artifacts[i] = facts.Artifact{
 				FileName: artifact.FileName, ContentType: artifact.ContentType,
 				SizeBytes: artifact.SizeBytes, ContentHash: artifact.ContentHash,
 			}
 		}
-		return eval.EvaluationInput{
+		return facts.EvaluationInput{
 			Run: evalRunFacts(input.Run), Artifacts: artifacts, LatestAttempt: input.LatestAttempt,
 			EarlierQuestions: input.EarlierQuestions,
-			Absent: eval.ArtifactAbsence{
+			Absent: facts.ArtifactAbsence{
 				Deleted: input.Absent.Deleted,
 				Expired: input.Absent.Expired,
 			},
@@ -121,40 +122,40 @@ func WireEvaluationRunReaders(service *eval.Service, runs *run.Service) {
 }
 
 func WireEvaluationRegistryReaders(service *eval.Service, registryService *registry.Service) {
-	service.ReadVersion = func(ctx context.Context, workspaceID, versionID pgtype.UUID) (eval.VersionFacts, bool, error) {
+	service.ReadVersion = func(ctx context.Context, workspaceID, versionID pgtype.UUID) (facts.Version, bool, error) {
 		version, found, err := registryService.WorkspaceVersion(ctx, workspaceID, versionID)
-		return eval.VersionFacts{ID: version.ID, SkillID: version.SkillID,
+		return facts.Version{ID: version.ID, SkillID: version.SkillID,
 			PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath}, found, err
 	}
-	service.ReadLatestVersion = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (eval.VersionFacts, bool, error) {
+	service.ReadLatestVersion = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (facts.Version, bool, error) {
 		version, found, err := registryService.LatestVersion(ctx, workspaceID, skillID)
-		return eval.VersionFacts{ID: version.ID, SkillID: version.SkillID,
+		return facts.Version{ID: version.ID, SkillID: version.SkillID,
 			PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath}, found, err
 	}
-	service.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (eval.SkillFacts, bool, error) {
+	service.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (facts.Skill, bool, error) {
 		skill, found, err := registryService.WorkspaceSkill(ctx, workspaceID, skillID)
 		return evalSkillFacts(skill), found, err
 	}
-	service.ReadRuntimeCompatibility = func(ctx context.Context, versionID pgtype.UUID) (eval.RuntimeCompatibility, bool, error) {
+	service.ReadRuntimeCompatibility = func(ctx context.Context, versionID pgtype.UUID) (facts.RuntimeCompatibility, bool, error) {
 		compat, found, err := registryService.RuntimeCompatibility(ctx, versionID)
-		return eval.RuntimeCompatibility{
+		return facts.RuntimeCompatibility{
 			Capability: compat.Capability, Runtime: compat.Runtime, RuntimeImage: compat.RuntimeImage,
 		}, found, err
 	}
 }
 
-func evalSkillFacts(skill registry.Skill) eval.SkillFacts {
-	return eval.SkillFacts{
+func evalSkillFacts(skill registry.Skill) facts.Skill {
+	return facts.Skill{
 		ID: skill.ID, Name: skill.Name, Summary: skill.Summary, AccessRestricted: skill.Restriction().InEffect(),
 	}
 }
 
-func evalRunFacts(facts run.EvaluationRun) eval.RunFacts {
-	return eval.RunFacts{
-		ID: facts.ID, WorkspaceID: facts.WorkspaceID,
-		SkillVersionID: facts.SkillVersionID, TestCaseSnapshotID: facts.TestCaseSnapshotID,
-		Status: facts.Status, StatusReason: facts.StatusReason, RuntimeSnapshot: facts.RuntimeSnapshot,
-		StartedAt: facts.StartedAt, FinishedAt: facts.FinishedAt, FailureClass: facts.FailureClass,
-		Terminal: facts.Terminal, Succeeded: facts.Succeeded,
+func evalRunFacts(evaluated run.EvaluationRun) facts.Run {
+	return facts.Run{
+		ID: evaluated.ID, WorkspaceID: evaluated.WorkspaceID,
+		SkillVersionID: evaluated.SkillVersionID, TestCaseSnapshotID: evaluated.TestCaseSnapshotID,
+		Status: evaluated.Status, StatusReason: evaluated.StatusReason, RuntimeSnapshot: evaluated.RuntimeSnapshot,
+		StartedAt: evaluated.StartedAt, FinishedAt: evaluated.FinishedAt, FailureClass: evaluated.FailureClass,
+		Terminal: evaluated.Terminal, Succeeded: evaluated.Succeeded,
 	}
 }

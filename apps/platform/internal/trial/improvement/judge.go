@@ -14,6 +14,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/checks"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -24,10 +26,9 @@ const (
 	maxDigestEntry  = 8000 // one-number: maxDigestEntry
 	maxDigestCount  = 100  // one-number: maxDigestCount
 	maxArtifactRows = 500  // one-number: maxArtifactRows
-	excerptLimit    = 1000 // one-number: excerptLimit - what a stored EvidenceRef keeps of its source
 )
 
-func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (assessment, error) {
+func (s *Service) judge(ctx context.Context, m facts.Material, ev gen.Evaluation) (assessment, error) {
 	if s.Judge == nil {
 		return assessment{}, fmt.Errorf("no judge service is configured for this deployment")
 	}
@@ -57,8 +58,8 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ass
 		promptVersion:    orUnknown(answers[0].PromptVersion),
 	}
 
-	if req.Rubric != nil && m.rubric != nil {
-		v.rubricVersion = m.rubric.Version
+	if req.Rubric != nil && m.Rubric != nil {
+		v.rubricVersion = m.Rubric.Version
 	}
 	v.usage = panelUsage(answers)
 	v.costUSD = v.usage.ReportedCostUSD()
@@ -92,25 +93,25 @@ type sentForJudgement struct {
 	trimmedEvents map[string]bool
 }
 
-func (s *Service) buildRequest(m material, ev gen.Evaluation) (JudgeRequest, sentForJudgement) {
+func (s *Service) buildRequest(m facts.Material, ev gen.Evaluation) (JudgeRequest, sentForJudgement) {
 	truncation := []string{}
 
-	final, cutOutput := cut(m.summary.FinalOutput, maxFinalOutput)
+	final, cutOutput := cut(m.Summary.FinalOutput, maxFinalOutput)
 	if cutOutput {
 		truncation = append(truncation, "final_output")
 	}
 
 	criteria := make([]JudgeCriterion, 0, maxCriteria)
-	for _, c := range m.criteria {
+	for _, c := range m.Criteria {
 		if len(criteria) == maxCriteria {
 			truncation = append(truncation, "criteria")
 			break
 		}
-		criteria = append(criteria, JudgeCriterion{ID: c.ID, Text: c.Text, Instructions: m.instructions[c.ID]})
+		criteria = append(criteria, JudgeCriterion{ID: c.ID, Text: c.Text, Instructions: m.Instructions[c.ID]})
 	}
 
-	artifacts := make([]JudgeArtifact, 0, len(m.artifacts))
-	for _, a := range m.artifacts {
+	artifacts := make([]JudgeArtifact, 0, len(m.Artifacts))
+	for _, a := range m.Artifacts {
 		if len(artifacts) == maxArtifactRows {
 			truncation = append(truncation, "artifacts")
 			break
@@ -121,12 +122,12 @@ func (s *Service) buildRequest(m material, ev gen.Evaluation) (JudgeRequest, sen
 		})
 	}
 
-	if m.absent.Any() {
+	if m.Absent.Any() {
 		truncation = append(truncation, "artifacts.unreadable")
 	}
 
-	entries, digest, cuts := buildDigest(m.advanced)
-	if m.advanced.EvaluationTruncated {
+	entries, digest, cuts := buildDigest(m.Advanced)
+	if m.Advanced.EvaluationTruncated {
 		truncation = append(truncation, "trace_events")
 	}
 
@@ -138,22 +139,22 @@ func (s *Service) buildRequest(m material, ev gen.Evaluation) (JudgeRequest, sen
 	}
 
 	req := JudgeRequest{
-		RunID:        pgconv.UUIDString(m.run.ID),
+		RunID:        pgconv.UUIDString(m.Run.ID),
 		EvaluationID: pgconv.UUIDString(ev.ID),
-		UserPrompt:   m.snapshot.UserPrompt,
+		UserPrompt:   m.Snapshot.UserPrompt,
 		Criteria:     criteria,
 		FinalOutput:  final,
 		Artifacts:    artifacts,
 		TraceDigest: TraceDigest{
-			Complete: m.advanced.Complete,
+			Complete: m.Advanced.Complete,
 			Entries:  entries,
 		},
 		Truncation: truncation,
 	}
-	if m.skill.Name != "" {
-		req.Skill = &JudgedSkill{Name: m.skill.Name, Summary: derefString(m.skill.Summary)}
+	if m.Skill.Name != "" {
+		req.Skill = &JudgedSkill{Name: m.Skill.Name, Summary: derefString(m.Skill.Summary)}
 	}
-	rubric, dropped := rubricFor(m.rubric, criteria)
+	rubric, dropped := rubricFor(m.Rubric, criteria)
 	req.Rubric = rubric
 	return req, sentForJudgement{digest: digest, truncation: truncation, dropped: dropped, trimmedEvents: cuts.TrimmedEvents}
 }
@@ -253,12 +254,12 @@ func batchWideCut(truncation []string) bool {
 }
 
 func (s *Service) merge(
-	m material, v *Judgement, digest map[string]trace.EventView, cuts evidenceCuts,
+	m facts.Material, v *Judgement, digest map[string]trace.EventView, cuts evidenceCuts,
 ) []verdict.CriterionResult {
 
 	evidenceRequired := map[string]bool{}
-	if m.rubric != nil {
-		for _, it := range m.rubric.Items {
+	if m.Rubric != nil {
+		for _, it := range m.Rubric.Items {
 			evidenceRequired[it.ID] = it.EvidenceRequired
 		}
 	}
@@ -269,9 +270,9 @@ func (s *Service) merge(
 		answers[cv.CriterionID] = cv
 	}
 
-	out := make([]verdict.CriterionResult, 0, len(m.criteria))
-	for _, c := range m.criteria {
-		result := noVerdict(c)
+	out := make([]verdict.CriterionResult, 0, len(m.Criteria))
+	for _, c := range m.Criteria {
+		result := checks.NoVerdict(c)
 		cv, answered := answers[c.ID]
 		if !answered {
 			out = append(out, result)
@@ -288,7 +289,7 @@ func (s *Service) merge(
 				"The judge's own reasoning was: " + cv.Reason
 		}
 
-		if m.cannotRecordPass(result.Result) || (result.Result == verdict.ResultPassed && (cuts.batch || cuts.restsOnATrimmedSource(result.Evidence))) {
+		if m.CannotRecordPass(result.Result) || (result.Result == verdict.ResultPassed && (cuts.batch || cuts.restsOnATrimmedSource(result.Evidence))) {
 			result.Result = verdict.ResultUndetermined
 			result.Reason = "judged on incomplete evidence (the trace has gaps or the input " +
 				"was truncated), so a pass cannot be recorded. The judge's own reasoning was: " + cv.Reason
@@ -299,7 +300,7 @@ func (s *Service) merge(
 }
 
 func withVerifiedEvidence(
-	result verdict.CriterionResult, cv CriterionVerdict, m material, digest map[string]trace.EventView,
+	result verdict.CriterionResult, cv CriterionVerdict, m facts.Material, digest map[string]trace.EventView,
 ) verdict.CriterionResult {
 	result.Result = normaliseResult(cv.Result)
 	result.Reason = cv.Reason
@@ -360,7 +361,7 @@ func unsettledCitation(namedFailure string) citationCheck {
 }
 
 func verify(
-	ref Citation, m material, digest map[string]trace.EventView,
+	ref Citation, m facts.Material, digest map[string]trace.EventView,
 ) (verdict.EvidenceRef, string) {
 	check := checkWhereCited(ref, m, digest)
 	if check.settled {
@@ -379,7 +380,7 @@ func verify(
 	return verdict.EvidenceRef{}, check.why + ", and it is in no other verifiable source of this run"
 }
 
-func checkWhereCited(ref Citation, m material, digest map[string]trace.EventView) citationCheck {
+func checkWhereCited(ref Citation, m facts.Material, digest map[string]trace.EventView) citationCheck {
 	switch ref.Kind {
 	case verdict.KindTraceEvent:
 		return checkTraceEventCitation(ref, digest)
@@ -388,8 +389,8 @@ func checkWhereCited(ref Citation, m material, digest map[string]trace.EventView
 		if ref.Quote == "" {
 			return settledCitation(verdict.EvidenceRef{}, "an agent output reference was cited with no quote to locate")
 		}
-		if match, idx, ok := locate(m.summary.FinalOutput, ref.Quote); ok {
-			return settledCitation(outputRef(m.summary.FinalOutput, ref.Quote, idx, match), "")
+		if match, idx, ok := locate(m.Summary.FinalOutput, ref.Quote); ok {
+			return settledCitation(outputRef(m.Summary.FinalOutput, ref.Quote, idx, match), "")
 		}
 		return unsettledCitation("the quote cited from the agent's final output is not in it")
 
@@ -413,7 +414,7 @@ func checkTraceEventCitation(ref Citation, digest map[string]trace.EventView) ci
 		}
 		return unsettledCitation(fmt.Sprintf("cited trace event %q was not in the digest", id))
 	case ref.Quote == "":
-		out := traceRef(event, event.Type)
+		out := checks.TraceRef(event, event.Type)
 		out.Match = verdict.MatchNotChecked
 		return settledCitation(out, "")
 	default:
@@ -424,7 +425,7 @@ func checkTraceEventCitation(ref Citation, digest map[string]trace.EventView) ci
 	}
 }
 
-func reattributedQuote(ref Citation, m material, digest map[string]trace.EventView) (verdict.EvidenceRef, bool) {
+func reattributedQuote(ref Citation, m facts.Material, digest map[string]trace.EventView) (verdict.EvidenceRef, bool) {
 	found, ok := findQuote(ref.Quote, verifiableSources(m, digest))
 	if !ok {
 		return verdict.EvidenceRef{}, false
@@ -439,12 +440,12 @@ func reattributedQuote(ref Citation, m material, digest map[string]trace.EventVi
 	return out, true
 }
 
-func artifactInManifest(ref Citation, m material) (verdict.EvidenceRef, string) {
+func artifactInManifest(ref Citation, m facts.Material) (verdict.EvidenceRef, string) {
 	path := derefString(ref.ArtifactPath)
-	for _, a := range m.artifacts {
+	for _, a := range m.Artifacts {
 		if a.FileName == path {
 
-			out := artifactRef(a)
+			out := checks.ArtifactRef(a)
 			out.Match = verdict.MatchNotChecked
 			return out, ""
 		}
@@ -458,12 +459,12 @@ type source struct {
 	event trace.EventView
 }
 
-func verifiableSources(m material, digest map[string]trace.EventView) []source {
+func verifiableSources(m facts.Material, digest map[string]trace.EventView) []source {
 	out := make([]source, 0, len(digest)+1)
-	if m.summary.FinalOutput != "" {
-		out = append(out, source{kind: verdict.KindAgentOutput, text: m.summary.FinalOutput})
+	if m.Summary.FinalOutput != "" {
+		out = append(out, source{kind: verdict.KindAgentOutput, text: m.Summary.FinalOutput})
 	}
-	for _, e := range m.advanced.Events {
+	for _, e := range m.Advanced.Events {
 		if de, ok := digest[e.EventID]; ok {
 			out = append(out, source{kind: verdict.KindTraceEvent, text: traceSearchText(de.Payload), event: de})
 		}
@@ -566,14 +567,14 @@ func normalizeQuote(s string) string {
 const structuralPunctuation = "}]),;\"'`「」『』 "
 
 func traceQuoteRef(e trace.EventView, quote, match string) verdict.EvidenceRef {
-	out := traceRef(e, e.Type)
-	out.Excerpt, out.ExcerptTruncated = cut(verifiedText(quote, match), excerptLimit)
+	out := checks.TraceRef(e, e.Type)
+	out.Excerpt, out.ExcerptTruncated = verdict.Excerpt(verifiedText(quote, match))
 	out.Match = match
 	return out
 }
 
 func outputRef(final, quote string, idx int, match string) verdict.EvidenceRef {
-	excerpt, truncated := cut(verifiedText(quote, match), excerptLimit)
+	excerpt, truncated := verdict.Excerpt(verifiedText(quote, match))
 	out := verdict.EvidenceRef{
 		Kind:             verdict.KindAgentOutput,
 		Match:            match,

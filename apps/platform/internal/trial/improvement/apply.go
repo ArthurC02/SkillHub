@@ -21,6 +21,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 )
 
 const (
@@ -50,9 +51,9 @@ var errNoStore = errors.New("no object store is configured, so package contents 
 
 type suggestionCtx struct {
 	suggestion gen.EvaluationSuggestion
-	skill      SkillFacts
-	origin     VersionFacts
-	latest     VersionFacts
+	skill      facts.Skill
+	origin     facts.Version
+	latest     facts.Version
 	latestZip  []byte
 	originFS   fs.FS
 	latestFS   fs.FS
@@ -111,7 +112,7 @@ func (s *Service) loadVersions(
 	}
 
 	var originData []byte
-	if sc.originFS, originData, err = s.readPackage(ctx, sc.origin.stored()); err != nil {
+	if sc.originFS, originData, err = s.readPackage(ctx, sc.origin.Stored()); err != nil {
 		return sc, err
 	}
 
@@ -119,11 +120,11 @@ func (s *Service) loadVersions(
 		sc.latestFS, sc.latestZip = sc.originFS, originData
 		return sc, nil
 	}
-	sc.latestFS, sc.latestZip, err = s.readPackage(ctx, sc.latest.stored())
+	sc.latestFS, sc.latestZip, err = s.readPackage(ctx, sc.latest.Stored())
 	return sc, err
 }
 
-func (s *Service) existingVersion(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, error) {
+func (s *Service) existingVersion(ctx context.Context, workspaceID, versionID pgtype.UUID) (facts.Version, error) {
 	return required(ctx, s.ReadVersion, workspaceID, versionID)
 }
 

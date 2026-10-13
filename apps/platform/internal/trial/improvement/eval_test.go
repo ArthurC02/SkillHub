@@ -17,6 +17,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -31,7 +32,7 @@ const (
 	finalOutput = "結果 ✅：Removed 17 duplicate rows and saved the result to output.xlsx."
 )
 
-func fixtureMaterial(complete bool) (material, map[string]trace.EventView) {
+func fixtureMaterial(complete bool) (facts.Material, map[string]trace.EventView) {
 	event := trace.EventView{
 		EventID:    eventID,
 		Attempt:    1,
@@ -41,14 +42,14 @@ func fixtureMaterial(complete bool) (material, map[string]trace.EventView) {
 		Type:       trace.TypeToolCall,
 		Payload:    json.RawMessage(`{"tool_name":"bash","outcome":"succeeded","duration_ms":3412}`),
 	}
-	m := material{
-		criteria: []testlab.Criterion{
+	m := facts.Material{
+		Criteria: []testlab.Criterion{
 			{ID: "c1", Text: "the duplicates are removed"},
 			{ID: "c2", Text: "an xlsx file is produced"},
 		},
-		advanced: trace.AdvancedView{Complete: complete, Events: []trace.EventView{event}},
-		summary:  trace.Summary{FinalOutput: finalOutput},
-		artifacts: []ArtifactFacts{
+		Advanced: trace.AdvancedView{Complete: complete, Events: []trace.EventView{event}},
+		Summary:  trace.Summary{FinalOutput: finalOutput},
+		Artifacts: []facts.Artifact{
 			{FileName: "output.xlsx", SizeBytes: 4096, ContentType: "application/vnd.ms-excel", ContentHash: "sha256:abc"},
 		},
 	}
@@ -67,26 +68,26 @@ func TestRunReadersFailClosedAndHideMissingRuns(t *testing.T) {
 		t.Errorf("evaluation input without owner reader: %v", err)
 	}
 
-	svc.ReadRunFacts = func(context.Context, pgtype.UUID, pgtype.UUID) (RunFacts, bool, error) {
-		return RunFacts{}, false, nil
+	svc.ReadRunFacts = func(context.Context, pgtype.UUID, pgtype.UUID) (facts.Run, bool, error) {
+		return facts.Run{}, false, nil
 	}
 	if _, err := svc.runFacts(ctx, pgtype.UUID{}, pgtype.UUID{}); !errors.Is(err, ErrNotFound) {
 		t.Errorf("missing run facts: %v", err)
 	}
-	svc.ReadEvaluationInput = func(context.Context, pgtype.UUID, pgtype.UUID) (EvaluationInput, bool, error) {
-		return EvaluationInput{}, false, nil
+	svc.ReadEvaluationInput = func(context.Context, pgtype.UUID, pgtype.UUID) (facts.EvaluationInput, bool, error) {
+		return facts.EvaluationInput{}, false, nil
 	}
 	if _, err := svc.gather(ctx, pgtype.UUID{}, pgtype.UUID{}); !errors.Is(err, errRegistryReadNotConfigured) {
 		t.Errorf("evaluation input without Registry readers: %v", err)
 	}
-	svc.ReadVersion = func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error) {
-		return VersionFacts{}, false, nil
+	svc.ReadVersion = func(context.Context, pgtype.UUID, pgtype.UUID) (facts.Version, bool, error) {
+		return facts.Version{}, false, nil
 	}
-	svc.ReadSkill = func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error) {
-		return SkillFacts{}, false, nil
+	svc.ReadSkill = func(context.Context, pgtype.UUID, pgtype.UUID) (facts.Skill, bool, error) {
+		return facts.Skill{}, false, nil
 	}
-	svc.ReadRuntimeCompatibility = func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error) {
-		return RuntimeCompatibility{}, false, nil
+	svc.ReadRuntimeCompatibility = func(context.Context, pgtype.UUID) (facts.RuntimeCompatibility, bool, error) {
+		return facts.RuntimeCompatibility{}, false, nil
 	}
 	if _, err := svc.gather(ctx, pgtype.UUID{}, pgtype.UUID{}); !errors.Is(err, ErrNotFound) {
 		t.Errorf("missing evaluation input: %v", err)
@@ -166,7 +167,7 @@ func assertAgentOutputCharRangeSelectsTheQuote(t *testing.T, got verdict.Evidenc
 	}
 }
 
-func assertVerifyOutcome(t *testing.T, c verifyCase, m material, digest map[string]trace.EventView) {
+func assertVerifyOutcome(t *testing.T, c verifyCase, m facts.Material, digest map[string]trace.EventView) {
 	t.Helper()
 	got, why := verify(c.ref, m, digest)
 	if c.wantErr {
@@ -326,7 +327,7 @@ func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 	}
 
 	weight := 2.0
-	m.rubric = &testlab.Rubric{Version: "v1", Items: []testlab.RubricItem{
+	m.Rubric = &testlab.Rubric{Version: "v1", Items: []testlab.RubricItem{
 		{ID: "c1", Text: "quote the sentence that shows it", Weight: &weight, EvidenceRequired: true},
 		{ID: "c2", Text: "an xlsx file is produced", EvidenceRequired: false},
 	}}
@@ -358,7 +359,7 @@ func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 func TestATraceCitationWithoutAQuoteDoesNotPassAnItemRequiringOne(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	bare := Citation{Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID)}
-	m.rubric = &testlab.Rubric{Version: "v1", Items: []testlab.RubricItem{
+	m.Rubric = &testlab.Rubric{Version: "v1", Items: []testlab.RubricItem{
 		{ID: "c1", Text: "quote the command that removed them", EvidenceRequired: true},
 		{ID: "c2", Text: "a tool ran", EvidenceRequired: false},
 	}}
@@ -554,7 +555,7 @@ func TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete(t *testing.T) {
 func TestTheRubricIsSentOnlyForTheCriteriaTheRequestCarries(t *testing.T) {
 	m, _ := fixtureMaterial(true)
 	weight := 3.0
-	m.rubric = &testlab.Rubric{
+	m.Rubric = &testlab.Rubric{
 		Version: "content-007/writing/v1",
 		Items: []testlab.RubricItem{
 			{ID: "c1", Text: "quote the sentence that shows it", Weight: &weight, EvidenceRequired: true},
@@ -604,7 +605,7 @@ func TestARunWithNoRubricSendsNoneAndRecordsNoVersion(t *testing.T) {
 
 func TestARubricWithNothingLeftToSendIsNotRecordedAsInForce(t *testing.T) {
 	m, _ := fixtureMaterial(true)
-	m.rubric = &testlab.Rubric{
+	m.Rubric = &testlab.Rubric{
 		Version: "content-007/writing/v1",
 		Items:   []testlab.RubricItem{{ID: "nobody", Text: "x"}},
 	}
@@ -744,8 +745,8 @@ func TestAJudgeFailureIsAnErrorAndNotALenientVerdict(t *testing.T) {
 	}
 
 	svc := &Service{Judge: JudgeOrNone(client)}
-	if _, err := svc.judge(context.Background(), material{
-		criteria: []testlab.Criterion{{ID: "c1", Text: "x"}},
+	if _, err := svc.judge(context.Background(), facts.Material{
+		Criteria: []testlab.Criterion{{ID: "c1", Text: "x"}},
 	}, gen.Evaluation{}); err == nil {
 		t.Fatal("judge() propagates the failure so Evaluate can record status=failed")
 	}
@@ -771,8 +772,8 @@ func TestAJudgeCallCostsOnlyWhatTheGatewayReported(t *testing.T) {
 				},
 				Usage: &llmclient.GatewayUsage{PromptTokens: 10, CostUSD: &cost, CostSource: tc.source},
 			}, nil)
-			v, err := (&Service{Judge: JudgeOrNone(client)}).judge(context.Background(), material{
-				criteria: []testlab.Criterion{{ID: "c1", Text: "x"}},
+			v, err := (&Service{Judge: JudgeOrNone(client)}).judge(context.Background(), facts.Material{
+				Criteria: []testlab.Criterion{{ID: "c1", Text: "x"}},
 			}, gen.Evaluation{})
 			if err != nil {
 				t.Fatalf("judge: %v", err)
@@ -786,7 +787,7 @@ func TestAJudgeCallCostsOnlyWhatTheGatewayReported(t *testing.T) {
 
 func TestNoJudgeConfiguredIsAFailureAndNotASilentPass(t *testing.T) {
 	svc := &Service{}
-	if _, err := svc.judge(context.Background(), material{}, gen.Evaluation{}); err == nil {
+	if _, err := svc.judge(context.Background(), facts.Material{}, gen.Evaluation{}); err == nil {
 		t.Fatal("a deployment with no judge cannot produce a task verdict, and must say so")
 	}
 }
@@ -811,108 +812,10 @@ func TestJudgeCallHonoursTheCallersCancellation(t *testing.T) {
 	}
 }
 
-func TestActivationNeverClaimsTheModelChoseNotToUseTheSkill(t *testing.T) {
-	m, _ := fixtureMaterial(true)
-	m.run = RunFacts{Status: "succeeded", Succeeded: true}
-	findings := activationFindings(m)
-	if len(findings) != 1 || findings[0].Category != verdict.CategoryActivation {
-		t.Fatalf("one activation finding expected, got %+v", findings)
-	}
-
-	for _, forbidden := range []string{"chose", "declined", "ignored", "decided not"} {
-		if strings.Contains(strings.ToLower(findings[0].Message), forbidden) {
-			t.Errorf("the message claims something the trace cannot show (%q): %s",
-				forbidden, findings[0].Message)
-		}
-	}
-}
-
-func TestASuccessfulRunWithNoOutputFilesIsReported(t *testing.T) {
-	m, _ := fixtureMaterial(true)
-	m.run = RunFacts{Status: "succeeded", Succeeded: true}
-	m.artifacts = nil
-	findings := artifactFindings(m)
-	if len(findings) != 1 || findings[0].Severity != verdict.SeverityWarning {
-		t.Fatalf("handoff 丙-5's case has to be visible, got %+v", findings)
-	}
-
-	m.run.Status, m.run.Succeeded = "failed", false
-	if got := artifactFindings(m); len(got) != 0 {
-		t.Errorf("no finding for a run that did not finish, got %+v", got)
-	}
-}
-
-func TestCostIsReportedAsALowerBoundAndUnreportedIsNotZero(t *testing.T) {
-	m, _ := fixtureMaterial(true)
-	m.summary.Usage = nil
-	if got := costFindings(m); !strings.Contains(got[0].Message, "rather than zero") {
-		t.Errorf("an absent usage event is unknown, not $0: %s", got[0].Message)
-	}
-	cost := 0.0142
-	m.summary.Usage = &trace.UsageSummary{
-		Model: "gpt-5.4-mini", InputTokens: 100, OutputTokens: 20,
-		CostUSD: &cost, CostSource: "gateway",
-	}
-	if got := costFindings(m); !strings.Contains(got[0].Message, "lower bound") {
-		t.Errorf("handoff 丙-3 requires the total to be labelled a lower bound: %s", got[0].Message)
-	}
-}
-
-func TestAnEmptyManifestNeverReadsAsAnEmptyRun(t *testing.T) {
-	said := func(mutate func(*material)) string {
-		m, _ := fixtureMaterial(true)
-		m.run.Status, m.run.Succeeded = "succeeded", true
-		mutate(&m)
-		parts := []string{}
-		for _, f := range artifactFindings(m) {
-			parts = append(parts, f.Message)
-		}
-		return strings.Join(parts, " | ")
-	}
-	states := map[string]string{
-		"present":        said(func(*material) {}),
-		"never recorded": said(func(m *material) { m.artifacts = nil }),
-		"deleted":        said(func(m *material) { m.artifacts, m.absent = nil, ArtifactAbsence{Deleted: 2} }),
-		"expired":        said(func(m *material) { m.artifacts, m.absent = nil, ArtifactAbsence{Expired: 2} }),
-		"one of each":    said(func(m *material) { m.absent = ArtifactAbsence{Deleted: 1} }),
-	}
-	seen := map[string]string{}
-	for name, sentence := range states {
-		if sentence == "" {
-			t.Fatalf("%s: no sentence at all is the silent judgement the clause forbids", name)
-		}
-		if other, dup := seen[sentence]; dup {
-			t.Errorf("%q and %q share one sentence: %s", name, other, sentence)
-		}
-		seen[sentence] = name
-	}
-
-	if strings.Contains(states["never recorded"], "cannot read") {
-		t.Errorf("a run that recorded nothing has nothing to have lost: %s", states["never recorded"])
-	}
-	for _, name := range []string{"deleted", "expired"} {
-		if strings.Contains(states[name], "no output files were recorded") {
-			t.Errorf("%s reads as a run that produced nothing: %s", name, states[name])
-		}
-	}
-	if !strings.Contains(states["deleted"], "deleted from this workspace") ||
-		strings.Contains(states["deleted"], "retention") {
-		t.Errorf("deleted has to name deletion and only deletion: %s", states["deleted"])
-	}
-	if !strings.Contains(states["expired"], "past the retention") ||
-		strings.Contains(states["expired"], "deleted") {
-		t.Errorf("expired has to name retention and only retention: %s", states["expired"])
-	}
-	if !strings.Contains(states["one of each"], "output.xlsx") ||
-		!strings.Contains(states["one of each"], "cannot read") {
-		t.Errorf("a manifest that is part readable says both halves: %s", states["one of each"])
-	}
-}
-
 func TestUnreadableOutputsReachTheJudgeAndCannotSupportAPass(t *testing.T) {
 	s := &Service{}
 	m, digest := fixtureMaterial(true)
-	m.artifacts, m.absent = nil, ArtifactAbsence{Deleted: 1}
+	m.Artifacts, m.Absent = nil, facts.ArtifactAbsence{Deleted: 1}
 
 	req, sent := s.buildRequest(m, gen.Evaluation{})
 	truncation := sent.truncation
@@ -980,17 +883,17 @@ func TestEvaluateLeavesARunThatHasNotFinishedAlone(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := &Service{
-				ReadEvaluationInput: func(context.Context, pgtype.UUID, pgtype.UUID) (EvaluationInput, bool, error) {
-					return EvaluationInput{Run: RunFacts{Terminal: tc.finished}}, true, nil
+				ReadEvaluationInput: func(context.Context, pgtype.UUID, pgtype.UUID) (facts.EvaluationInput, bool, error) {
+					return facts.EvaluationInput{Run: facts.Run{Terminal: tc.finished}}, true, nil
 				},
-				ReadVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error) {
-					return VersionFacts{}, true, nil
+				ReadVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (facts.Version, bool, error) {
+					return facts.Version{}, true, nil
 				},
-				ReadSkill: func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error) {
-					return SkillFacts{}, true, nil
+				ReadSkill: func(context.Context, pgtype.UUID, pgtype.UUID) (facts.Skill, bool, error) {
+					return facts.Skill{}, true, nil
 				},
-				ReadRuntimeCompatibility: func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error) {
-					return RuntimeCompatibility{}, false, nil
+				ReadRuntimeCompatibility: func(context.Context, pgtype.UUID) (facts.RuntimeCompatibility, bool, error) {
+					return facts.RuntimeCompatibility{}, false, nil
 				},
 			}
 			if err := svc.Evaluate(t.Context(), id, id); (err != nil) != tc.wantErr {

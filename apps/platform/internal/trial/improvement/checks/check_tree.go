@@ -1,4 +1,4 @@
-package eval
+package checks
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 
 	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -47,7 +48,7 @@ type outcome struct {
 }
 
 type checkScope struct {
-	m         material
+	m         facts.Material
 	criterion testlab.Criterion
 	verdicts  map[string]verdict.CriterionResult
 	asking    *judgeItems
@@ -183,7 +184,7 @@ func (r ruleLeaf) kind() CheckKind { return r.info }
 
 func (r ruleLeaf) evaluate(s checkScope, n testlab.Check, _ string) outcome {
 	result, reason := r.grade(s.m, s.withItem(n.Values))
-	if s.m.cannotRecordPass(result) {
+	if s.m.CannotRecordPass(result) {
 		result = verdict.ResultUndetermined
 		reason += "; the run's evidence is incomplete, so this is not recorded as passed"
 	}
@@ -244,7 +245,7 @@ func (promptGraderNode) kind() CheckKind {
 }
 
 func (promptGraderNode) evaluate(s checkScope, n testlab.Check, path string) outcome {
-	version, found := s.m.graders[n.Values[0]]
+	version, found := s.m.Graders[n.Values[0]]
 	if !found {
 		return outcome{result: verdict.ResultUndetermined, reason: "the grader version this check names is not available to this workspace"}
 	}

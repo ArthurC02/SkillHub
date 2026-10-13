@@ -460,7 +460,7 @@ var domainVocabularies = []domainVocabulary{
 				"apps/platform/internal/skill/library/compatibility.go", "Capability"),
 		},
 		readers: []vocabularySource{
-			goConstEnum("apps/platform/internal/trial/improvement/deterministic.go", "capability"),
+			goConstEnum("apps/platform/internal/trial/improvement/checks/deterministic.go", "capability"),
 		},
 	},
 }

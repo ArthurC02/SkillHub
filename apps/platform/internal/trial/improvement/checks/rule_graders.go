@@ -1,4 +1,4 @@
-package eval
+package checks
 
 import (
 	"fmt"
@@ -8,15 +8,16 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
-type ruleGrader func(m material, values []string) (result, reason string)
+type ruleGrader func(m facts.Material, values []string) (result, reason string)
 
-func gradeContainsValues(m material, values []string) (string, string) {
+func gradeContainsValues(m facts.Material, values []string) (string, string) {
 	missing := []string{}
 	for _, v := range values {
-		if !mentions(m.summary.FinalOutput, v) {
+		if !mentions(m.Summary.FinalOutput, v) {
 			missing = append(missing, v)
 		}
 	}
@@ -26,12 +27,12 @@ func gradeContainsValues(m material, values []string) (string, string) {
 	return verdict.ResultPassed, "the final output mentions " + strings.Join(values, ", ")
 }
 
-func (m material) askedInConversation() []trace.Question {
-	return append(append([]trace.Question{}, m.earlierQuestions...), m.summary.Questions...)
+func askedInConversation(m facts.Material) []trace.Question {
+	return append(append([]trace.Question{}, m.EarlierQuestions...), m.Summary.Questions...)
 }
 
-func gradeAsks(m material, values []string) (string, string) {
-	questions := m.askedInConversation()
+func gradeAsks(m facts.Material, values []string) (string, string) {
+	questions := askedInConversation(m)
 	if len(questions) == 0 {
 		return verdict.ResultFailed, "the conversation ended without asking the person anything"
 	}
@@ -49,11 +50,11 @@ func gradeAsks(m material, values []string) (string, string) {
 	return verdict.ResultPassed, fmt.Sprintf("the conversation asked %d question(s)", len(questions))
 }
 
-func gradeDoesNotAsk(m material, _ []string) (string, string) {
-	if !m.run.Succeeded {
-		return verdict.ResultFailed, "the run ended as " + m.run.Status + " without an answer"
+func gradeDoesNotAsk(m facts.Material, _ []string) (string, string) {
+	if !m.Run.Succeeded {
+		return verdict.ResultFailed, "the run ended as " + m.Run.Status + " without an answer"
 	}
-	if n := len(m.askedInConversation()); n > 0 {
+	if n := len(askedInConversation(m)); n > 0 {
 		return verdict.ResultFailed, fmt.Sprintf("the conversation asked %d question(s) instead of answering", n)
 	}
 	return verdict.ResultPassed, "the run answered without asking the person"
@@ -72,7 +73,7 @@ func questionText(questions []trace.Question) string {
 	return b.String()
 }
 
-func inCriteriaOrder(criteria []testlab.Criterion, results []verdict.CriterionResult) []verdict.CriterionResult {
+func InCriteriaOrder(criteria []testlab.Criterion, results []verdict.CriterionResult) []verdict.CriterionResult {
 	byID := make(map[string]verdict.CriterionResult, len(results))
 	for _, r := range results {
 		byID[r.CriterionID] = r

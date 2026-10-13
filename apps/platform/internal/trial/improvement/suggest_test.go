@@ -13,11 +13,12 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 func TestAHeldSkillBlocksASuggestionBeforeAnyFileIsRead(t *testing.T) {
-	if _, blocked := check(suggestionCtx{skill: SkillFacts{AccessRestricted: true}}); blocked == nil || blocked.Reason != BlockedAccessRestricted {
+	if _, blocked := check(suggestionCtx{skill: facts.Skill{AccessRestricted: true}}); blocked == nil || blocked.Reason != BlockedAccessRestricted {
 		t.Errorf("a held skill: blocked = %+v, want %s", blocked, BlockedAccessRestricted)
 	}
 	if _, blocked := check(suggestionCtx{}); blocked == nil || blocked.Reason != BlockedPathOutOfBounds {
@@ -34,7 +35,7 @@ func TestSuggestionDigestNeverShowsEvidenceOutsideItsAllowlist(t *testing.T) {
 			Kind: verdict.KindAgentOutput, Excerpt: strings.Repeat(string(rune('a'+i)), 20), Available: true,
 		})
 	}
-	digest, refs := suggestionDigest(material{}, v)
+	digest, refs := suggestionDigest(facts.Material{}, v)
 	if len(refs) != maxDigestEvidence {
 		t.Fatalf("allowlist has %d refs, want %d", len(refs), maxDigestEvidence)
 	}
@@ -49,7 +50,7 @@ func TestTheDigestKeepsItsOwnLabelsOffTheQuotableLines(t *testing.T) {
 		Category: verdict.CategoryEffect, Severity: verdict.SeverityWarning, Message: "needs work",
 		Evidence: []verdict.EvidenceRef{{Kind: verdict.KindAgentOutput, Excerpt: excerpt, Available: true}},
 	}}}
-	digest, refs := suggestionDigest(material{}, v)
+	digest, refs := suggestionDigest(facts.Material{}, v)
 	if len(refs) != 1 {
 		t.Fatalf("this fixture stopped producing one ref: %d", len(refs))
 	}
@@ -419,7 +420,7 @@ func TestTheProposalCountersAreEmittedEvenWhenNothingWasDropped(t *testing.T) {
 			s := &Service{Suggester: stubSuggester{resp: Improvements{
 				Proposals: tc.suggestions, Model: "test", PromptVersion: "test",
 			}}}
-			s.suggest(context.Background(), material{}, gen.Evaluation{}, newVerdict())
+			s.suggest(context.Background(), facts.Material{}, gen.Evaluation{}, newVerdict())
 
 			rec := findRecord(t, buf, "improvement proposals")
 			for key, want := range tc.want {

@@ -9,23 +9,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 )
 
 func TestASuggestionWhoseRunVersionIsGoneIsNotFound(t *testing.T) {
 	svc := Service{
-		ReadRunFacts: func(context.Context, pgtype.UUID, pgtype.UUID) (RunFacts, bool, error) {
-			return RunFacts{}, true, nil
+		ReadRunFacts: func(context.Context, pgtype.UUID, pgtype.UUID) (facts.Run, bool, error) {
+			return facts.Run{}, true, nil
 		},
-		ReadVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error) {
-			return VersionFacts{}, false, nil
+		ReadVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (facts.Version, bool, error) {
+			return facts.Version{}, false, nil
 		},
-		ReadSkill: func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error) {
+		ReadSkill: func(context.Context, pgtype.UUID, pgtype.UUID) (facts.Skill, bool, error) {
 			t.Fatal("the skill was read although its version is gone")
-			return SkillFacts{}, false, nil
+			return facts.Skill{}, false, nil
 		},
-		ReadLatestVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error) {
+		ReadLatestVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (facts.Version, bool, error) {
 			t.Fatal("the latest version was read although the run's version is gone")
-			return VersionFacts{}, false, nil
+			return facts.Version{}, false, nil
 		},
 	}
 

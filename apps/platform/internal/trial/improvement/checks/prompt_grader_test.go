@@ -1,4 +1,4 @@
-package eval
+package checks
 
 import (
 	"slices"
@@ -6,22 +6,23 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 const toneV2 = "0b6f9c1e-0000-4000-8000-000000000002"
 
-func graded(m material) material {
-	m.graders = map[string]graders.Version{toneV2: {Name: "語氣", Number: 2, Instructions: "fail when {item} sounds curt"}}
+func graded(m facts.Material) facts.Material {
+	m.Graders = map[string]graders.Version{toneV2: {Name: "語氣", Number: 2, Instructions: "fail when {item} sounds curt"}}
 	return m
 }
 
-func keysAsked(t *testing.T, m material, check testlab.Check) []string {
+func keysAsked(t *testing.T, m facts.Material, check testlab.Check) []string {
 	t.Helper()
-	m.criteria = []testlab.Criterion{{ID: "c", Text: "reads well", Check: &check}}
+	m.Criteria = []testlab.Criterion{{ID: "c", Text: "reads well", Check: &check}}
 	var keys []string
-	for _, it := range planCriteria(m).asks.list {
+	for _, it := range PlanCriteria(m).asks.list {
 		keys = append(keys, it.key)
 	}
 	return keys
@@ -65,8 +66,8 @@ func TestEachPromptGraderLeafGetsItsOwnInstructionsAndVerdict(t *testing.T) {
 	m := graded(ruledMaterial("訂金 1,200 元", nil, "succeeded", true))
 	fanOut := testlab.Check{Kind: "each", Values: []string{"the greeting", "the closing"}, AtLeast: 1,
 		Children: []testlab.Check{leaf(promptGraderKind, toneV2)}}
-	m.criteria = []testlab.Criterion{{ID: "c", Text: "reads well", Check: &fanOut}}
-	asks := planCriteria(m).asks.list
+	m.Criteria = []testlab.Criterion{{ID: "c", Text: "reads well", Check: &fanOut}}
+	asks := PlanCriteria(m).asks.list
 	if len(asks) != 2 || asks[0].key != "c@0.0" || asks[0].instructions != "fail when the greeting sounds curt" ||
 		asks[1].key != "c@0.1" || asks[1].instructions != "fail when the closing sounds curt" {
 		t.Fatalf("asked %+v, want one item per value with {item} filled in", asks)
@@ -87,21 +88,21 @@ func TestEachPromptGraderLeafGetsItsOwnInstructionsAndVerdict(t *testing.T) {
 func TestTheJudgeIsSentEachAskedItemWithItsInstructionsAndOnlyTheRubricItemsItCanUse(t *testing.T) {
 	gate := node("sequence", leaf("does_not_ask"), leaf(promptGraderKind, toneV2))
 	m := graded(ruledMaterial("訂金 1,200 元", nil, "succeeded", true))
-	m.criteria = []testlab.Criterion{
+	m.Criteria = []testlab.Criterion{
 		{ID: "plain", Text: "is correct"}, {ID: "graded", Text: "reads well", Check: &gate}, criterion("ruled", "does_not_ask"),
 	}
-	m.rubric = &testlab.Rubric{Items: []testlab.RubricItem{{ID: "plain"}, {ID: "graded"}, {ID: "ruled"}, {ID: "orphan"}}}
+	m.Rubric = &testlab.Rubric{Items: []testlab.RubricItem{{ID: "plain"}, {ID: "graded"}, {ID: "ruled"}, {ID: "orphan"}}}
 
-	judged := m.judging(planCriteria(m))
+	judged := PlanCriteria(m).MaterialForJudge(m)
 
-	if len(judged.criteria) != 2 || judged.criteria[0].ID != "plain" || judged.criteria[1].ID != "graded@0.1" {
-		t.Fatalf("sent %+v", judged.criteria)
+	if len(judged.Criteria) != 2 || judged.Criteria[0].ID != "plain" || judged.Criteria[1].ID != "graded@0.1" {
+		t.Fatalf("sent %+v", judged.Criteria)
 	}
-	if judged.instructions["graded@0.1"] != "fail when {item} sounds curt" || judged.instructions["plain"] != "" {
-		t.Errorf("instructions = %v", judged.instructions)
+	if judged.Instructions["graded@0.1"] != "fail when {item} sounds curt" || judged.Instructions["plain"] != "" {
+		t.Errorf("instructions = %v", judged.Instructions)
 	}
 	var kept []string
-	for _, it := range judged.rubric.Items {
+	for _, it := range judged.Rubric.Items {
 		kept = append(kept, it.ID)
 	}
 	if !slices.Equal(kept, []string{"plain", "orphan"}) {

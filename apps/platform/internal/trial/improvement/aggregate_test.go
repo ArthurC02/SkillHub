@@ -22,6 +22,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/testschema"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -126,18 +127,18 @@ func requireEvalDB(t *testing.T) *pgxpool.Pool {
 	return aggregatePool
 }
 
-func seedRun(t *testing.T, pool *pgxpool.Pool) material {
+func seedRun(t *testing.T, pool *pgxpool.Pool) facts.Material {
 	t.Helper()
 	tag := strings.ReplaceAll(t.Name(), "/", "-")
 	return seedNamedRun(t, pool, tag)
 }
 
-func seedNamedRun(t *testing.T, pool *pgxpool.Pool, tag string) material {
+func seedNamedRun(t *testing.T, pool *pgxpool.Pool, tag string) facts.Material {
 	t.Helper()
 	tag += "-" + uuid.NewString()
 	ctx := context.Background()
 
-	var run RunFacts
+	var run facts.Run
 	err := pool.QueryRow(ctx, `
 		WITH u AS (
 			INSERT INTO users (email, display_name) VALUES ($1 || '@example.test', $1)
@@ -169,7 +170,7 @@ func seedNamedRun(t *testing.T, pool *pgxpool.Pool, tag string) material {
 		t.Fatalf("seed run: %v", err)
 	}
 	run.Status, run.Succeeded = "succeeded", true
-	return material{run: run, attempt: 1}
+	return facts.Material{Run: run, Attempt: 1}
 }
 
 func aVerdict(summary string, overall verdict.Overall) assessment {
@@ -208,10 +209,10 @@ func frozen(ev gen.Evaluation) judgement {
 	}
 }
 
-func reload(t *testing.T, s *Service, m material, id pgtype.UUID) gen.Evaluation {
+func reload(t *testing.T, s *Service, m facts.Material, id pgtype.UUID) gen.Evaluation {
 	t.Helper()
 	ev, err := s.queries().GetEvaluationRevision(context.Background(), gen.GetEvaluationRevisionParams{
-		ID: id, RunID: m.run.ID, WorkspaceID: m.run.WorkspaceID,
+		ID: id, RunID: m.Run.ID, WorkspaceID: m.Run.WorkspaceID,
 	})
 	if err != nil {
 		t.Fatalf("reload evaluation: %v", err)
@@ -219,7 +220,7 @@ func reload(t *testing.T, s *Service, m material, id pgtype.UUID) gen.Evaluation
 	return ev
 }
 
-func beginAndComplete(t *testing.T, s *Service, m material, v assessment) gen.Evaluation {
+func beginAndComplete(t *testing.T, s *Service, m facts.Material, v assessment) gen.Evaluation {
 	t.Helper()
 	ev, err := s.begin(context.Background(), m)
 	if err != nil {
@@ -274,13 +275,13 @@ func appliedTargetPaths(t *testing.T, s *Service, workspaceID, versionID pgtype.
 	return paths
 }
 
-func assertSuggestionApplicationWitnesses(t *testing.T, s *Service, m material, x, y gen.EvaluationSuggestion, evaluation gen.Evaluation, versionA, versionB pgtype.UUID, firstVersionA bool) {
+func assertSuggestionApplicationWitnesses(t *testing.T, s *Service, m facts.Material, x, y gen.EvaluationSuggestion, evaluation gen.Evaluation, versionA, versionB pgtype.UUID, firstVersionA bool) {
 	t.Helper()
 	var pairs, appliedEvents int
 	var xWitness, yWitness pgtype.UUID
 	if err := s.Pool.QueryRow(context.Background(), `
 		SELECT count(*) FROM evaluation_suggestion_applications
-		WHERE workspace_id = $1 AND suggestion_id = ANY($2)`, m.run.WorkspaceID, []pgtype.UUID{x.ID, y.ID}).Scan(&pairs); err != nil {
+		WHERE workspace_id = $1 AND suggestion_id = ANY($2)`, m.Run.WorkspaceID, []pgtype.UUID{x.ID, y.ID}).Scan(&pairs); err != nil {
 		t.Fatalf("count application pairs: %v", err)
 	}
 	if err := s.Pool.QueryRow(context.Background(), `
@@ -309,14 +310,14 @@ func runSuggestionApplicationScenario(t *testing.T, firstVersionA bool) {
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
 	evaluation := beginAndComplete(t, s, m, aVerdict("complete", verdict.OverallMet))
-	x := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
-	y := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "Y")
-	versionA := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-a")
-	versionB := seedImprovedVersion(t, s.Pool, m.run.ID, 3, t.Name()+"-b")
+	x := seedSuggestion(t, s, m.Run.WorkspaceID, evaluation.ID, "X")
+	y := seedSuggestion(t, s, m.Run.WorkspaceID, evaluation.ID, "Y")
+	versionA := seedImprovedVersion(t, s.Pool, m.Run.ID, 2, t.Name()+"-a")
+	versionB := seedImprovedVersion(t, s.Pool, m.Run.ID, 3, t.Name()+"-b")
 
 	apply := func(versionID pgtype.UUID, suggestionIDs []pgtype.UUID) {
 		t.Helper()
-		if err := s.RecordSuggestionsApplied(context.Background(), m.run.WorkspaceID, evaluation.ID, versionID, suggestionIDs); err != nil {
+		if err := s.RecordSuggestionsApplied(context.Background(), m.Run.WorkspaceID, evaluation.ID, versionID, suggestionIDs); err != nil {
 			t.Fatalf("record suggestions applied: %v", err)
 		}
 	}
@@ -330,10 +331,10 @@ func runSuggestionApplicationScenario(t *testing.T, firstVersionA bool) {
 	apply(versionA, []pgtype.UUID{x.ID})
 	apply(versionB, []pgtype.UUID{x.ID, y.ID})
 
-	if got, want := appliedTargetPaths(t, s, m.run.WorkspaceID, versionA), []string{"X"}; !reflect.DeepEqual(got, want) {
+	if got, want := appliedTargetPaths(t, s, m.Run.WorkspaceID, versionA), []string{"X"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("suggestions applied to A = %v, want %v", got, want)
 	}
-	if got, want := appliedTargetPaths(t, s, m.run.WorkspaceID, versionB), []string{"X", "Y"}; !reflect.DeepEqual(got, want) {
+	if got, want := appliedTargetPaths(t, s, m.Run.WorkspaceID, versionB), []string{"X", "Y"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("suggestions applied to B = %v, want %v", got, want)
 	}
 
@@ -358,15 +359,15 @@ func TestApplyingSuggestionsAcceptsThePendingOneAndKeepsAnEarlierAcceptanceTime(
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
 	evaluation := beginAndComplete(t, s, m, aVerdict("complete", verdict.OverallMet))
-	accepted := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
-	pending := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "Y")
+	accepted := seedSuggestion(t, s, m.Run.WorkspaceID, evaluation.ID, "X")
+	pending := seedSuggestion(t, s, m.Run.WorkspaceID, evaluation.ID, "Y")
 	ctx := context.Background()
-	decided, err := s.Decide(ctx, m.run.WorkspaceID, accepted.ID, DecisionAccepted)
+	decided, err := s.Decide(ctx, m.Run.WorkspaceID, accepted.ID, DecisionAccepted)
 	if err != nil {
 		t.Fatalf("accept X: %v", err)
 	}
-	version := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-improved")
-	if err := s.RecordSuggestionsApplied(ctx, m.run.WorkspaceID, evaluation.ID, version, []pgtype.UUID{accepted.ID, pending.ID}); err != nil {
+	version := seedImprovedVersion(t, s.Pool, m.Run.ID, 2, t.Name()+"-improved")
+	if err := s.RecordSuggestionsApplied(ctx, m.Run.WorkspaceID, evaluation.ID, version, []pgtype.UUID{accepted.ID, pending.ID}); err != nil {
 		t.Fatalf("record suggestions applied: %v", err)
 	}
 	decision := func(id pgtype.UUID) (string, pgtype.Timestamptz) {
@@ -390,15 +391,15 @@ func TestSuggestionApplicationRejectsAVersionFromAnotherWorkspace(t *testing.T) 
 	s := &Service{Pool: requireEvalDB(t)}
 	first := seedRun(t, s.Pool)
 	evaluation := beginAndComplete(t, s, first, aVerdict("complete", verdict.OverallMet))
-	suggestion := seedSuggestion(t, s, first.run.WorkspaceID, evaluation.ID, "X")
+	suggestion := seedSuggestion(t, s, first.Run.WorkspaceID, evaluation.ID, "X")
 	second := seedNamedRun(t, s.Pool, t.Name()+"-foreign")
 	var foreignVersion pgtype.UUID
-	if err := s.Pool.QueryRow(context.Background(), "SELECT skill_version_id FROM runs WHERE id = $1", second.run.ID).Scan(&foreignVersion); err != nil {
+	if err := s.Pool.QueryRow(context.Background(), "SELECT skill_version_id FROM runs WHERE id = $1", second.Run.ID).Scan(&foreignVersion); err != nil {
 		t.Fatalf("read foreign version: %v", err)
 	}
 	if _, err := s.Pool.Exec(context.Background(), `
 		INSERT INTO evaluation_suggestion_applications (workspace_id, suggestion_id, skill_version_id)
-		VALUES ($1, $2, $3)`, first.run.WorkspaceID, suggestion.ID, foreignVersion); err == nil {
+		VALUES ($1, $2, $3)`, first.Run.WorkspaceID, suggestion.ID, foreignVersion); err == nil {
 		t.Fatal("an application accepted a skill version from another workspace")
 	} else {
 		var databaseError *pgconn.PgError
@@ -412,12 +413,12 @@ func TestSuggestionApplicationsAreImmutableUntilTheirVersionIsPurged(t *testing.
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
 	evaluation := beginAndComplete(t, s, m, aVerdict("complete", verdict.OverallMet))
-	suggestion := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
-	first := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-first")
-	second := seedImprovedVersion(t, s.Pool, m.run.ID, 3, t.Name()+"-second")
+	suggestion := seedSuggestion(t, s, m.Run.WorkspaceID, evaluation.ID, "X")
+	first := seedImprovedVersion(t, s.Pool, m.Run.ID, 2, t.Name()+"-first")
+	second := seedImprovedVersion(t, s.Pool, m.Run.ID, 3, t.Name()+"-second")
 	ctx := context.Background()
 	for _, version := range []pgtype.UUID{first, second} {
-		if err := s.RecordSuggestionsApplied(ctx, m.run.WorkspaceID, evaluation.ID, version, []pgtype.UUID{suggestion.ID}); err != nil {
+		if err := s.RecordSuggestionsApplied(ctx, m.Run.WorkspaceID, evaluation.ID, version, []pgtype.UUID{suggestion.ID}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -459,9 +460,9 @@ func TestSuggestionVersionProvenanceMigrationBackfillsLegacyScalarAndKeepsPurgeF
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
 	evaluation := beginAndComplete(t, s, m, aVerdict("complete", verdict.OverallMet))
-	suggestion := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
-	legacyVersion := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-legacy")
-	fencedVersion := seedImprovedVersion(t, s.Pool, m.run.ID, 3, t.Name()+"-fenced")
+	suggestion := seedSuggestion(t, s, m.Run.WorkspaceID, evaluation.ID, "X")
+	legacyVersion := seedImprovedVersion(t, s.Pool, m.Run.ID, 2, t.Name()+"-legacy")
+	fencedVersion := seedImprovedVersion(t, s.Pool, m.Run.ID, 3, t.Name()+"-fenced")
 	ctx := context.Background()
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -482,7 +483,7 @@ func TestSuggestionVersionProvenanceMigrationBackfillsLegacyScalarAndKeepsPurgeF
 		}
 	}
 	if _, err := tx.Exec(ctx, `UPDATE users SET purge_started_at = now()
-		WHERE id = (SELECT owner_user_id FROM workspaces WHERE id = $1)`, m.run.WorkspaceID); err != nil {
+		WHERE id = (SELECT owner_user_id FROM workspaces WHERE id = $1)`, m.Run.WorkspaceID); err != nil {
 		t.Fatalf("prepare legacy migration state: %v", err)
 	}
 	body, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "..", "db", "migrations", "0071_suggestion_version_provenance.sql"))
@@ -496,7 +497,7 @@ func TestSuggestionVersionProvenanceMigrationBackfillsLegacyScalarAndKeepsPurgeF
 	var backfilled pgtype.UUID
 	if err := tx.QueryRow(ctx, `
 		SELECT skill_version_id FROM evaluation_suggestion_applications
-		WHERE workspace_id = $1 AND suggestion_id = $2`, m.run.WorkspaceID, suggestion.ID).Scan(&backfilled); err != nil {
+		WHERE workspace_id = $1 AND suggestion_id = $2`, m.Run.WorkspaceID, suggestion.ID).Scan(&backfilled); err != nil {
 		t.Fatalf("read backfilled application: %v", err)
 	}
 	if backfilled != legacyVersion {
@@ -504,7 +505,7 @@ func TestSuggestionVersionProvenanceMigrationBackfillsLegacyScalarAndKeepsPurgeF
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO evaluation_suggestion_applications (workspace_id, suggestion_id, skill_version_id)
-		VALUES ($1, $2, $3)`, m.run.WorkspaceID, suggestion.ID, fencedVersion); err == nil {
+		VALUES ($1, $2, $3)`, m.Run.WorkspaceID, suggestion.ID, fencedVersion); err == nil {
 		t.Fatal("migration left a provenance write path open during account purge")
 	} else {
 		var databaseError *pgconn.PgError
@@ -535,7 +536,7 @@ func TestReEvaluationAppendsARevisionInsteadOfOverwriting(t *testing.T) {
 		t.Fatal("the previous revision was not marked superseded")
 	}
 
-	current, err := s.Current(ctx, m.run.WorkspaceID, m.run.ID)
+	current, err := s.Current(ctx, m.Run.WorkspaceID, m.Run.ID)
 	if err != nil {
 		t.Fatalf("current: %v", err)
 	}
@@ -546,7 +547,7 @@ func TestReEvaluationAppendsARevisionInsteadOfOverwriting(t *testing.T) {
 		t.Fatal("the newest revision was marked superseded")
 	}
 
-	revisions, err := s.Revisions(ctx, m.run.WorkspaceID, m.run.ID)
+	revisions, err := s.Revisions(ctx, m.Run.WorkspaceID, m.Run.ID)
 	if err != nil {
 		t.Fatalf("revisions: %v", err)
 	}
@@ -712,12 +713,12 @@ func TestFeedbackIsWritableAndOnlyOnTheCurrentRevision(t *testing.T) {
 	ctx := context.Background()
 
 	first := beginAndComplete(t, s, m, aVerdict("first", verdict.OverallMet))
-	if _, err := s.SetFeedback(ctx, m.run.WorkspaceID, m.run.ID, true, "useful"); err != nil {
+	if _, err := s.SetFeedback(ctx, m.Run.WorkspaceID, m.Run.ID, true, "useful"); err != nil {
 		t.Fatalf("set feedback: %v", err)
 	}
 	before := frozen(reload(t, s, m, first.ID))
 
-	if _, err := s.SetFeedback(ctx, m.run.WorkspaceID, m.run.ID, false, ""); err != nil {
+	if _, err := s.SetFeedback(ctx, m.Run.WorkspaceID, m.Run.ID, false, ""); err != nil {
 		t.Fatalf("change feedback: %v", err)
 	}
 	changed := reload(t, s, m, first.ID)
@@ -732,7 +733,7 @@ func TestFeedbackIsWritableAndOnlyOnTheCurrentRevision(t *testing.T) {
 	}
 
 	second := beginAndComplete(t, s, m, aVerdict("second", verdict.OverallNotMet))
-	if _, err := s.SetFeedback(ctx, m.run.WorkspaceID, m.run.ID, true, "the new one is better"); err != nil {
+	if _, err := s.SetFeedback(ctx, m.Run.WorkspaceID, m.Run.ID, true, "the new one is better"); err != nil {
 		t.Fatalf("set feedback after re-evaluation: %v", err)
 	}
 	stale := reload(t, s, m, first.ID)
@@ -751,7 +752,7 @@ func TestAVerdictDoesNotTouchTheRunsRow(t *testing.T) {
 
 	var before string
 	if err := s.Pool.QueryRow(ctx,
-		"SELECT to_jsonb(runs)::text FROM runs WHERE id = $1", m.run.ID).Scan(&before); err != nil {
+		"SELECT to_jsonb(runs)::text FROM runs WHERE id = $1", m.Run.ID).Scan(&before); err != nil {
 		t.Fatalf("read run: %v", err)
 	}
 
@@ -759,7 +760,7 @@ func TestAVerdictDoesNotTouchTheRunsRow(t *testing.T) {
 
 	var after string
 	if err := s.Pool.QueryRow(ctx,
-		"SELECT to_jsonb(runs)::text FROM runs WHERE id = $1", m.run.ID).Scan(&after); err != nil {
+		"SELECT to_jsonb(runs)::text FROM runs WHERE id = $1", m.Run.ID).Scan(&after); err != nil {
 		t.Fatalf("read run: %v", err)
 	}
 	if after != before {
@@ -772,7 +773,7 @@ func TestAVerdictDoesNotTouchTheRunsRow(t *testing.T) {
 	}
 }
 
-func recordFailedRevision(t *testing.T, s *Service, m material) gen.Evaluation {
+func recordFailedRevision(t *testing.T, s *Service, m facts.Material) gen.Evaluation {
 	t.Helper()
 	ctx := context.Background()
 	ev, err := s.begin(ctx, m)
@@ -795,7 +796,7 @@ func assertDeclaredConditionsSurviveTheFailure(t *testing.T, pool *pgxpool.Pool)
 		JudgeModel: "gpt-6-sol", JudgePromptVersion: "judge-run@v1",
 	}
 	m := seedRun(t, s.Pool)
-	m.rubric = &testlab.Rubric{Version: "content-007/writing/v1"}
+	m.Rubric = &testlab.Rubric{Version: "content-007/writing/v1"}
 
 	got := recordFailedRevision(t, s, m)
 	if derefString(got.JudgeModel) != "gpt-6-sol" ||
@@ -844,7 +845,7 @@ func assertCompletedRowReportsWhatRanNotWhatWasDeclared(t *testing.T, pool *pgxp
 		JudgeModel: "declared-and-never-used", JudgePromptVersion: "declared-prompt",
 	}
 	m := seedRun(t, s.Pool)
-	m.rubric = &testlab.Rubric{Version: "declared-rubric"}
+	m.Rubric = &testlab.Rubric{Version: "declared-rubric"}
 
 	ev := beginAndComplete(t, s, m, aVerdict("what actually ran", verdict.OverallMet))
 	got := reload(t, s, m, ev.ID)
@@ -881,26 +882,26 @@ func TestEveryEvaluationCommandLeavesItsEventInTheOutbox(t *testing.T) {
 
 	first := beginAndComplete(t, s, m, aVerdict("first", verdict.OverallMet))
 	second := beginAndComplete(t, s, m, aVerdict("second", verdict.OverallNotMet))
-	if _, err := s.SetFeedback(ctx, m.run.WorkspaceID, m.run.ID, true, "useful"); err != nil {
+	if _, err := s.SetFeedback(ctx, m.Run.WorkspaceID, m.Run.ID, true, "useful"); err != nil {
 		t.Fatalf("set feedback: %v", err)
 	}
 	suggestion, err := s.queries().CreateEvaluationSuggestion(ctx, gen.CreateEvaluationSuggestionParams{
-		WorkspaceID: m.run.WorkspaceID, EvaluationID: second.ID, Category: string(SuggestionSkill),
+		WorkspaceID: m.Run.WorkspaceID, EvaluationID: second.ID, Category: string(SuggestionSkill),
 		Problem: "the steps are vague", Evidence: []byte(`[]`), TargetPath: "SKILL.md",
 		ProposedContent: "clearer steps", ExpectedImpact: "fewer retries",
 	})
 	if err != nil {
 		t.Fatalf("seed suggestion: %v", err)
 	}
-	if _, err := s.Decide(ctx, m.run.WorkspaceID, suggestion.ID, DecisionAccepted); err != nil {
+	if _, err := s.Decide(ctx, m.Run.WorkspaceID, suggestion.ID, DecisionAccepted); err != nil {
 		t.Fatalf("decide: %v", err)
 	}
 	var version pgtype.UUID
-	if err := s.Pool.QueryRow(ctx, `SELECT skill_version_id FROM runs WHERE id = $1`, m.run.ID).Scan(&version); err != nil {
+	if err := s.Pool.QueryRow(ctx, `SELECT skill_version_id FROM runs WHERE id = $1`, m.Run.ID).Scan(&version); err != nil {
 		t.Fatalf("read the run's version: %v", err)
 	}
 	for range 2 {
-		if err := s.RecordSuggestionsApplied(ctx, m.run.WorkspaceID, second.ID, version,
+		if err := s.RecordSuggestionsApplied(ctx, m.Run.WorkspaceID, second.ID, version,
 			[]pgtype.UUID{suggestion.ID}); err != nil {
 			t.Fatalf("record applied: %v", err)
 		}
@@ -911,7 +912,7 @@ func TestEveryEvaluationCommandLeavesItsEventInTheOutbox(t *testing.T) {
 
 	rows, err := s.Pool.Query(ctx, `
 		SELECT event_type, aggregate_id FROM outbox_events
-		WHERE correlation_id = $1 AND aggregate_type = 'evaluation'`, m.run.ID)
+		WHERE correlation_id = $1 AND aggregate_type = 'evaluation'`, m.Run.ID)
 	if err != nil {
 		t.Fatalf("read outbox: %v", err)
 	}
@@ -952,23 +953,23 @@ func TestTheMailboxRecordsOnlySuggestionsItsOwnEvaluationHolds(t *testing.T) {
 	first := beginAndComplete(t, s, m, aVerdict("first", verdict.OverallMet))
 	second := beginAndComplete(t, s, m, aVerdict("second", verdict.OverallMet))
 	earlier, err := s.queries().CreateEvaluationSuggestion(ctx, gen.CreateEvaluationSuggestionParams{
-		WorkspaceID: m.run.WorkspaceID, EvaluationID: first.ID, Category: string(SuggestionSkill),
+		WorkspaceID: m.Run.WorkspaceID, EvaluationID: first.ID, Category: string(SuggestionSkill),
 		Problem: "the steps are vague", Evidence: []byte(`[]`), TargetPath: "SKILL.md",
 		ProposedContent: "clearer steps", ExpectedImpact: "fewer retries",
 	})
 	if err != nil {
 		t.Fatalf("seed suggestion: %v", err)
 	}
-	if _, err := s.Decide(ctx, m.run.WorkspaceID, earlier.ID, DecisionAccepted); err != nil {
+	if _, err := s.Decide(ctx, m.Run.WorkspaceID, earlier.ID, DecisionAccepted); err != nil {
 		t.Fatalf("decide: %v", err)
 	}
 	var version pgtype.UUID
-	if err := s.Pool.QueryRow(ctx, `SELECT skill_version_id FROM runs WHERE id = $1`, m.run.ID).Scan(&version); err != nil {
+	if err := s.Pool.QueryRow(ctx, `SELECT skill_version_id FROM runs WHERE id = $1`, m.Run.ID).Scan(&version); err != nil {
 		t.Fatalf("read the run's version: %v", err)
 	}
 	nowhere := pgtype.UUID{Bytes: [16]byte{0xde, 0xad}, Valid: true}
 
-	if err := s.RecordSuggestionsApplied(ctx, m.run.WorkspaceID, second.ID, version,
+	if err := s.RecordSuggestionsApplied(ctx, m.Run.WorkspaceID, second.ID, version,
 		[]pgtype.UUID{earlier.ID, nowhere}); err != nil {
 		t.Fatalf("a letter naming suggestions the evaluation does not hold: %v", err)
 	}
@@ -978,7 +979,7 @@ func TestTheMailboxRecordsOnlySuggestionsItsOwnEvaluationHolds(t *testing.T) {
 	if err := s.Pool.QueryRow(ctx, `
 		SELECT (SELECT applied_skill_version_id FROM evaluation_suggestions WHERE id = $1),
 		       (SELECT count(*) FROM outbox_events WHERE event_type = 'evaluation.suggestions_applied'
-		        AND correlation_id = $2)`, earlier.ID, m.run.ID).Scan(&applied, &recorded); err != nil {
+		        AND correlation_id = $2)`, earlier.ID, m.Run.ID).Scan(&applied, &recorded); err != nil {
 		t.Fatalf("read back: %v", err)
 	}
 	if applied.Valid || recorded != 0 {

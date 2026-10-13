@@ -35,6 +35,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/checks"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/evalsettings"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
 
@@ -190,7 +191,7 @@ func NewApp(cfg Config) (*App, error) {
 func newTestLab(pool *pgxpool.Pool, identitySvc *identity.Service) *testlab.Service {
 	return &testlab.Service{
 		Pool: pool, MayStoreObjects: identitySvc.MayStoreObjects, ClearSightings: objreconcile.ClearDatasetSightings,
-		ValidateCheck: (&eval.CheckValidator{Pool: pool}).ValidateCheck,
+		ValidateCheck: (&checks.CheckValidator{Pool: pool}).ValidateCheck,
 	}
 }
 
