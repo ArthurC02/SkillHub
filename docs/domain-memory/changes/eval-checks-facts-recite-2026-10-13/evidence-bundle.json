@@ -1,0 +1,76 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "eval-checks-facts-recite",
+  "proposal_id": "eval-checks-facts-recite",
+  "registry_revision": {
+    "observed_commit": "1b425e141e22f10da5fe276ba119feeb1c50a349",
+    "registry_digest": "sha256:ceaf5f05cfc564ed1066b1bf5239a58f63ecac32b364b1a1bf3ea4221c4a6fb0"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "run-facts-reach-eval",
+    "mutated_protection": "evalRunFacts copying the owner's Succeeded",
+    "failure_evidence": "With Succeeded dropped from evalRunFacts, TestEvaluationReceivesTheOwnersTerminalVerdict/running failed: evaluation sees running as succeeded = false, want the owner's true; restored byte for byte (cmp).",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/trial/improvement/eval.go",
+    "apps/platform/internal/entrypoint/wiring/trial.go",
+    "apps/platform/internal/trial/improvement/facts/facts.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "package-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate-change-package --package-root docs/domain-memory/changes/eval-checks-facts-recite-2026-10-13 --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f59ed0f5e58f24af697fc460db7a190345b22c6e6c8a2fdbf184d0f488d61a0f",
+      "finished_at": "2026-10-13T06:52:10.103578Z"
+    },
+    {
+      "obligation_id": "run-facts-reach-eval",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestEvaluationReceivesTheOwnersTerminalVerdict|TestTrialContextsSeeTheOwnersRestrictionVerdict ./internal/entrypoint/wiring/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:c4c75d7b4bc62afb9442d14af29306d34da83f0a69f5a48accf86206d3c51952",
+      "finished_at": "2026-10-13T06:52:24.316450Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "evaluation-trace-written",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestEvaluationTraversesGoPythonAndGateway ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:47f4be7c9169027b0107d313ca5490a3153212b95ac8787f940236cafa3a521c",
+      "finished_at": "2026-10-13T06:52:44.033742Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:dc2e3f0777821bd1e85c46f04f1f70bb8b5ab38967b1756756075c86bb98829a",
+      "finished_at": "2026-10-13T06:52:45.019503Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py governance-readiness --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:2b6a3a27f1223e6cc1dc91aae0d304d9226040ff5508b5e8d4133a1df04930ec",
+      "finished_at": "2026-10-13T06:52:46.314618Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
