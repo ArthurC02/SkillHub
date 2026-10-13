@@ -9,17 +9,18 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 type panelOfFakes struct {
 	mu      sync.Mutex
-	byRole  map[string]*Judgement
+	byRole  map[string]*modelport.Judgement
 	failing string
 	asked   []string
 }
 
-func (p *panelOfFakes) JudgeRun(_ context.Context, req JudgeRequest) (*Judgement, error) {
+func (p *panelOfFakes) JudgeRun(_ context.Context, req modelport.JudgeRequest) (*modelport.Judgement, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.asked = append(p.asked, req.ModelRole)
@@ -31,23 +32,23 @@ func (p *panelOfFakes) JudgeRun(_ context.Context, req JudgeRequest) (*Judgement
 
 func panelOn(context.Context) (bool, error) { return true, nil }
 
-var realQuote = []Citation{{Kind: verdict.KindAgentOutput, Quote: "Removed 17 duplicate rows"}}
+var realQuote = []modelport.Citation{{Kind: verdict.KindAgentOutput, Quote: "Removed 17 duplicate rows"}}
 
-var realFile = []Citation{{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")}}
+var realFile = []modelport.Citation{{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")}}
 
-func said(model, c1 string, c1Cites []Citation, c2 string, c2Cites []Citation) *Judgement {
-	return &Judgement{
+func said(model, c1 string, c1Cites []modelport.Citation, c2 string, c2Cites []modelport.Citation) *modelport.Judgement {
+	return &modelport.Judgement{
 		Model: model, PromptVersion: "judge-run/v3", Summary: model + " summary",
-		Criteria: []CriterionVerdict{
+		Criteria: []modelport.CriterionVerdict{
 			{CriterionID: "c1", Result: c1, Reason: model + " on c1", Citations: c1Cites},
 			{CriterionID: "c2", Result: c2, Reason: model + " on c2", Citations: c2Cites},
 		},
 	}
 }
 
-func judgedByPanel(t *testing.T, members ...*Judgement) (assessment, *panelOfFakes) {
+func judgedByPanel(t *testing.T, members ...*modelport.Judgement) (assessment, *panelOfFakes) {
 	t.Helper()
-	fakes := &panelOfFakes{byRole: map[string]*Judgement{}}
+	fakes := &panelOfFakes{byRole: map[string]*modelport.Judgement{}}
 	for i, member := range members {
 		fakes.byRole[PanelRoles[i]] = member
 	}
@@ -108,7 +109,7 @@ func TestACriterionThePanelSplitsOnIsUndeterminedAndNamed(t *testing.T) {
 }
 
 func TestThePanelVotesOnVerifiedResultsNotOnWhatTheMembersClaimed(t *testing.T) {
-	invented := []Citation{{Kind: verdict.KindAgentOutput, Quote: "every row was checked by hand"}}
+	invented := []modelport.Citation{{Kind: verdict.KindAgentOutput, Quote: "every row was checked by hand"}}
 	v, _ := judgedByPanel(t,
 		said("a", verdict.ResultPassed, realQuote, verdict.ResultFailed, realFile),
 		said("b", verdict.ResultPassed, invented, verdict.ResultFailed, realFile),
@@ -120,7 +121,7 @@ func TestThePanelVotesOnVerifiedResultsNotOnWhatTheMembersClaimed(t *testing.T) 
 }
 
 func TestAPanelMemberThatDoesNotAnswerLeavesThePanelWithoutAVerdict(t *testing.T) {
-	fakes := &panelOfFakes{failing: PanelRoles[1], byRole: map[string]*Judgement{
+	fakes := &panelOfFakes{failing: PanelRoles[1], byRole: map[string]*modelport.Judgement{
 		PanelRoles[0]: said("a", verdict.ResultPassed, realQuote, verdict.ResultFailed, realFile),
 		PanelRoles[2]: said("c", verdict.ResultPassed, realQuote, verdict.ResultFailed, realFile),
 	}}
@@ -131,7 +132,7 @@ func TestAPanelMemberThatDoesNotAnswerLeavesThePanelWithoutAVerdict(t *testing.T
 }
 
 func TestWithoutAPanelTheJudgeIsAskedOnceInItsOwnRole(t *testing.T) {
-	fakes := &panelOfFakes{byRole: map[string]*Judgement{
+	fakes := &panelOfFakes{byRole: map[string]*modelport.Judgement{
 		"": said("solo", verdict.ResultPassed, realQuote, verdict.ResultFailed, realFile),
 	}}
 	m, _ := fixtureMaterial(true)
@@ -145,7 +146,7 @@ func TestWithoutAPanelTheJudgeIsAskedOnceInItsOwnRole(t *testing.T) {
 }
 
 func TestAPanelSwitchedOffAsksTheJudgeOnceInItsOwnRole(t *testing.T) {
-	fakes := &panelOfFakes{byRole: map[string]*Judgement{
+	fakes := &panelOfFakes{byRole: map[string]*modelport.Judgement{
 		"": said("solo", verdict.ResultPassed, realQuote, verdict.ResultFailed, realFile),
 	}}
 	off := func(context.Context) (bool, error) { return false, nil }
@@ -159,7 +160,7 @@ func TestAPanelSwitchedOffAsksTheJudgeOnceInItsOwnRole(t *testing.T) {
 }
 
 func TestAnUnreadablePanelSettingLeavesTheEvaluationWithoutAVerdict(t *testing.T) {
-	fakes := &panelOfFakes{byRole: map[string]*Judgement{}}
+	fakes := &panelOfFakes{byRole: map[string]*modelport.Judgement{}}
 	unreadable := func(context.Context) (bool, error) { return false, errors.New("settings unreadable") }
 	m, _ := fixtureMaterial(true)
 	if _, err := (&Service{Judge: fakes, PanelEnabled: unreadable}).judge(context.Background(), m, gen.Evaluation{}); err == nil {
@@ -180,18 +181,18 @@ func TestAnEvenSplitIsNotAMajority(t *testing.T) {
 }
 
 func TestPanelUsageAddsTheMembersAndAnUnpricedMemberLeavesTheCostUnknown(t *testing.T) {
-	priced := func(tokens int64, usd float64) *Judgement {
-		return &Judgement{Usage: &ModelUsage{PromptTokens: tokens, CompletionTokens: 1, CostUSD: &usd, CostReported: true}}
+	priced := func(tokens int64, usd float64) *modelport.Judgement {
+		return &modelport.Judgement{Usage: &modelport.ModelUsage{PromptTokens: tokens, CompletionTokens: 1, CostUSD: &usd, CostReported: true}}
 	}
-	sum := panelUsage([]*Judgement{priced(10, 0.25), priced(20, 0.5)})
+	sum := panelUsage([]*modelport.Judgement{priced(10, 0.25), priced(20, 0.5)})
 	if sum.PromptTokens != 30 || sum.CompletionTokens != 2 || sum.ReportedCostUSD() == nil || *sum.ReportedCostUSD() != 0.75 {
 		t.Errorf("sum = %+v, want 30/2 tokens and 0.75 USD", sum)
 	}
-	unpriced := &Judgement{Usage: &ModelUsage{PromptTokens: 5}}
-	if got := panelUsage([]*Judgement{priced(10, 0.25), unpriced}); got.ReportedCostUSD() != nil || got.PromptTokens != 15 {
+	unpriced := &modelport.Judgement{Usage: &modelport.ModelUsage{PromptTokens: 5}}
+	if got := panelUsage([]*modelport.Judgement{priced(10, 0.25), unpriced}); got.ReportedCostUSD() != nil || got.PromptTokens != 15 {
 		t.Errorf("with an unpriced member got %+v, want tokens counted and the cost unknown", got)
 	}
-	if got := panelUsage([]*Judgement{priced(10, 0.25), {}}); got.ReportedCostUSD() != nil {
+	if got := panelUsage([]*modelport.Judgement{priced(10, 0.25), {}}); got.ReportedCostUSD() != nil {
 		t.Errorf("a member with no usage at all still left a cost: %+v", got)
 	}
 }

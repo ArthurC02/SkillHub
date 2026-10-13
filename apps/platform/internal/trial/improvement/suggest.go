@@ -16,6 +16,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
@@ -53,7 +54,7 @@ func (s *Service) suggest(ctx context.Context, m facts.Material, ev gen.Evaluati
 
 	callCtx, cancel := context.WithTimeout(ctx, suggestTimeout)
 	defer cancel()
-	resp, err := s.Suggester.SuggestImprovements(callCtx, ImprovementRequest{
+	resp, err := s.Suggester.SuggestImprovements(callCtx, modelport.ImprovementRequest{
 		EvaluationID:     pgconv.UUIDString(ev.ID),
 		EvaluationDigest: digest,
 		FileTree:         tree,
@@ -78,7 +79,7 @@ func (s *Service) suggest(ctx context.Context, m facts.Material, ev gen.Evaluati
 	s.storeProposals(ctx, ev, resp.Proposals, refs)
 }
 
-func (s *Service) storeProposals(ctx context.Context, ev gen.Evaluation, proposals []ImprovementProposal, refs []verdict.EvidenceRef) {
+func (s *Service) storeProposals(ctx context.Context, ev gen.Evaluation, proposals []modelport.ImprovementProposal, refs []verdict.EvidenceRef) {
 	q := s.queries()
 
 	stored, noEvidence, unstorable, writeFailed, overCap := 0, 0, 0, 0, 0
@@ -147,7 +148,7 @@ func worthSuggesting(v assessment) bool {
 	return false
 }
 
-func storable(p ImprovementProposal) bool {
+func storable(p modelport.ImprovementProposal) bool {
 	if !SuggestionCategory(p.Category).actionable() {
 		return false
 	}
@@ -161,7 +162,7 @@ func storable(p ImprovementProposal) bool {
 	return ok
 }
 
-func suggestionEvidence(p ImprovementProposal, refs []verdict.EvidenceRef) ([]byte, error) {
+func suggestionEvidence(p modelport.ImprovementProposal, refs []verdict.EvidenceRef) ([]byte, error) {
 	out := make([]verdict.EvidenceRef, 0, maxStoredEvidence)
 	for _, quote := range evidenceQuotes(p.Evidence) {
 		for _, ref := range refs {
@@ -275,7 +276,7 @@ func suggestionDigest(m facts.Material, v assessment) (string, []verdict.Evidenc
 	return digest, refs
 }
 
-func (s *Service) packageFiles(ctx context.Context, m facts.Material) ([]string, []TargetFile) {
+func (s *Service) packageFiles(ctx context.Context, m facts.Material) ([]string, []modelport.TargetFile) {
 	if s.Store == nil || m.Version.PackageObjectKey == "" {
 		return nil, nil
 	}
@@ -293,7 +294,7 @@ func (s *Service) packageFiles(ctx context.Context, m facts.Material) ([]string,
 	})
 	sort.Strings(tree)
 
-	files := make([]TargetFile, 0, maxTargetFiles)
+	files := make([]modelport.TargetFile, 0, maxTargetFiles)
 	for _, p := range skillEntryFirst(tree) {
 		if len(files) == maxTargetFiles {
 			break
@@ -302,7 +303,7 @@ func (s *Service) packageFiles(ctx context.Context, m facts.Material) ([]string,
 		if err != nil || content == "" || len([]rune(content)) > maxTargetFileChars {
 			continue
 		}
-		files = append(files, TargetFile{Path: p, Content: content})
+		files = append(files, modelport.TargetFile{Path: p, Content: content})
 	}
 	return tree, files
 }

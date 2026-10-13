@@ -23,6 +23,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/testschema"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/llmadapter"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -792,7 +793,7 @@ func recordFailedRevision(t *testing.T, s *Service, m facts.Material) gen.Evalua
 
 func assertDeclaredConditionsSurviveTheFailure(t *testing.T, pool *pgxpool.Pool) {
 	s := &Service{
-		Pool: pool, Judge: JudgeOrNone(&llmclient.Client{}),
+		Pool: pool, Judge: llmadapter.JudgeOrNone(&llmclient.Client{}),
 		JudgeModel: "gpt-6-sol", JudgePromptVersion: "judge-run@v1",
 	}
 	m := seedRun(t, s.Pool)
@@ -825,7 +826,7 @@ func assertNoJudgeRecordsNullNotAModelName(t *testing.T, pool *pgxpool.Pool) {
 }
 
 func assertUndeclaredPromptVersionStaysNullWhileModelIsRecorded(t *testing.T, pool *pgxpool.Pool) {
-	s := &Service{Pool: pool, Judge: JudgeOrNone(&llmclient.Client{})}
+	s := &Service{Pool: pool, Judge: llmadapter.JudgeOrNone(&llmclient.Client{})}
 	m := seedRun(t, s.Pool)
 
 	got := recordFailedRevision(t, s, m)
@@ -841,7 +842,7 @@ func assertUndeclaredPromptVersionStaysNullWhileModelIsRecorded(t *testing.T, po
 
 func assertCompletedRowReportsWhatRanNotWhatWasDeclared(t *testing.T, pool *pgxpool.Pool) {
 	s := &Service{
-		Pool: pool, Judge: JudgeOrNone(&llmclient.Client{}),
+		Pool: pool, Judge: llmadapter.JudgeOrNone(&llmclient.Client{}),
 		JudgeModel: "declared-and-never-used", JudgePromptVersion: "declared-prompt",
 	}
 	m := seedRun(t, s.Pool)

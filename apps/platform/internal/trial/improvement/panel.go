@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -23,16 +24,16 @@ func (s *Service) panelRoles(ctx context.Context) ([]string, error) {
 	return PanelRoles, nil
 }
 
-func (s *Service) judgeAll(ctx context.Context, req JudgeRequest) ([]*Judgement, error) {
+func (s *Service) judgeAll(ctx context.Context, req modelport.JudgeRequest) ([]*modelport.Judgement, error) {
 	roles, err := s.panelRoles(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if len(roles) == 0 {
 		resp, err := s.Judge.JudgeRun(ctx, req)
-		return []*Judgement{resp}, err
+		return []*modelport.Judgement{resp}, err
 	}
-	answers := make([]*Judgement, len(roles))
+	answers := make([]*modelport.Judgement, len(roles))
 	failures := make([]error, len(roles))
 	var wg sync.WaitGroup
 	for i, role := range roles {
@@ -94,7 +95,7 @@ func undecided(first verdict.CriterionResult, counts map[string]int) verdict.Cri
 	return first
 }
 
-func panelModel(answers []*Judgement) string {
+func panelModel(answers []*modelport.Judgement) string {
 	models := make([]string, len(answers))
 	for i, a := range answers {
 		models[i] = orUnknown(a.Model)
@@ -102,11 +103,11 @@ func panelModel(answers []*Judgement) string {
 	return strings.Join(models, " + ")
 }
 
-func panelUsage(answers []*Judgement) *ModelUsage {
+func panelUsage(answers []*modelport.Judgement) *modelport.ModelUsage {
 	if len(answers) == 1 {
 		return answers[0].Usage
 	}
-	total := &ModelUsage{CostReported: true}
+	total := &modelport.ModelUsage{CostReported: true}
 	var cost float64
 	for _, a := range answers {
 		u := a.Usage

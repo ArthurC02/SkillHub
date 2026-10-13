@@ -34,7 +34,8 @@ import (
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/llmadapter"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 )
 
 func creationMeasureLimits() creation.Limits {
@@ -244,11 +245,11 @@ func TestAHoldoutCountsAsMetOnlyWhenEveryCaseRanAndMet(t *testing.T) {
 }
 
 type cannedJudge struct {
-	judgement *eval.Judgement
+	judgement *modelport.Judgement
 	err       error
 }
 
-func (c cannedJudge) JudgeRun(context.Context, eval.JudgeRequest) (*eval.Judgement, error) {
+func (c cannedJudge) JudgeRun(context.Context, modelport.JudgeRequest) (*modelport.Judgement, error) {
 	return c.judgement, c.err
 }
 
@@ -258,13 +259,13 @@ func TestTheMeasureHarnessKeepsEveryJudgeRequestItSends(t *testing.T) {
 		judge     cannedJudge
 		wantError string
 	}{
-		{"the judge answers", cannedJudge{judgement: &eval.Judgement{Overall: "met"}}, ""},
+		{"the judge answers", cannedJudge{judgement: &modelport.Judgement{Overall: "met"}}, ""},
 		{"the judge fails", cannedJudge{err: fmt.Errorf("judge unavailable")}, "judge unavailable"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
-			req := eval.JudgeRequest{RunID: "run-1", UserPrompt: "summarise this", FinalOutput: "a summary"}
+			req := modelport.JudgeRequest{RunID: "run-1", UserPrompt: "summarise this", FinalOutput: "a summary"}
 			got, err := recordingJudge{next: tc.judge, outDir: dir}.JudgeRun(context.Background(), req)
 			if got != tc.judge.judgement || !errors.Is(err, tc.judge.err) {
 				t.Fatalf("the recorder changed what the judge returned: %v, %v", got, err)
@@ -355,17 +356,17 @@ type trialRun struct {
 }
 
 type recordingJudge struct {
-	next   eval.Judge
+	next   modelport.Judge
 	outDir string
 }
 
 type judgeRecord struct {
-	Request   eval.JudgeRequest `json:"request"`
-	Judgement *eval.Judgement   `json:"judgement"`
-	Error     string            `json:"error,omitempty"`
+	Request   modelport.JudgeRequest `json:"request"`
+	Judgement *modelport.Judgement   `json:"judgement"`
+	Error     string                 `json:"error,omitempty"`
 }
 
-func (j recordingJudge) JudgeRun(ctx context.Context, req eval.JudgeRequest) (*eval.Judgement, error) {
+func (j recordingJudge) JudgeRun(ctx context.Context, req modelport.JudgeRequest) (*modelport.Judgement, error) {
 	got, err := j.next.JudgeRun(ctx, req)
 	record := judgeRecord{Request: req, Judgement: got}
 	if err != nil {
@@ -426,7 +427,7 @@ func withTrialRunning(t *testing.T, a *api, pool *pgxpool.Pool, llmURL string, t
 
 	judging := *a.evaluations
 	judging.Judge = recordingJudge{
-		next:   eval.JudgeOrNone(&llmclient.Client{BaseURL: llmURL, Token: os.Getenv("LLM_SERVICE_TOKEN")}),
+		next:   llmadapter.JudgeOrNone(&llmclient.Client{BaseURL: llmURL, Token: os.Getenv("LLM_SERVICE_TOKEN")}),
 		outDir: outDir,
 	}
 	startWorkerWith(t, a.runs, &judging)

@@ -33,6 +33,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/evalsettings"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/llmadapter"
 )
 
 type Deps struct {
@@ -200,9 +201,9 @@ func wireEvaluationModelAndEvents(evaluations *eval.Service, pool *pgxpool.Pool,
 	evaluations.ReadEventsOfType = func(ctx context.Context, page outbox.EventPage) ([]outbox.Event, error) {
 		return outbox.EventsOfType(ctx, pool, page)
 	}
-	evaluations.Judge = eval.JudgeOrNone(llm)
+	evaluations.Judge = llmadapter.JudgeOrNone(llm)
 	evaluations.PanelEnabled = (&evalsettings.Service{Pool: pool}).JudgePanelEnabled
-	evaluations.Suggester = eval.SuggesterOrNone(llm)
+	evaluations.Suggester = llmadapter.SuggesterOrNone(llm)
 }
 
 func newEventDispatcher(

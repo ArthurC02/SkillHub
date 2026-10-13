@@ -1,30 +1,31 @@
-package eval
+package llmadapter
 
 import (
 	"context"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 )
 
 type modelOverHTTP struct{ client *llmclient.Client }
 
 // A nil *Client inside a non-nil interface passes every `== nil` guard and
 // panics on the first call.
-func JudgeOrNone(c *llmclient.Client) Judge {
+func JudgeOrNone(c *llmclient.Client) modelport.Judge {
 	if c == nil {
 		return nil
 	}
 	return modelOverHTTP{client: c}
 }
 
-func SuggesterOrNone(c *llmclient.Client) Suggester {
+func SuggesterOrNone(c *llmclient.Client) modelport.Suggester {
 	if c == nil {
 		return nil
 	}
 	return modelOverHTTP{client: c}
 }
 
-func (a modelOverHTTP) JudgeRun(ctx context.Context, req JudgeRequest) (*Judgement, error) {
+func (a modelOverHTTP) JudgeRun(ctx context.Context, req modelport.JudgeRequest) (*modelport.Judgement, error) {
 	resp, err := a.client.JudgeRun(ctx, llmclient.JudgeRunRequest{
 		RunID:        req.RunID,
 		EvaluationID: req.EvaluationID,
@@ -43,7 +44,7 @@ func (a modelOverHTTP) JudgeRun(ctx context.Context, req JudgeRequest) (*Judgeme
 	if err != nil {
 		return nil, err
 	}
-	return &Judgement{
+	return &modelport.Judgement{
 		Criteria:      criteriaFromWire(resp.Verdict.CriterionResults),
 		Overall:       resp.Verdict.Overall,
 		Summary:       resp.Verdict.Summary,
@@ -53,7 +54,7 @@ func (a modelOverHTTP) JudgeRun(ctx context.Context, req JudgeRequest) (*Judgeme
 	}, nil
 }
 
-func (a modelOverHTTP) SuggestImprovements(ctx context.Context, req ImprovementRequest) (*Improvements, error) {
+func (a modelOverHTTP) SuggestImprovements(ctx context.Context, req modelport.ImprovementRequest) (*modelport.Improvements, error) {
 	files := make([]llmclient.TargetFile, 0, len(req.TargetFiles))
 	for _, f := range req.TargetFiles {
 		files = append(files, llmclient.TargetFile{Path: f.Path, Content: f.Content})
@@ -68,14 +69,14 @@ func (a modelOverHTTP) SuggestImprovements(ctx context.Context, req ImprovementR
 	if err != nil {
 		return nil, err
 	}
-	out := &Improvements{
-		Proposals:     make([]ImprovementProposal, 0, len(resp.Suggestions)),
+	out := &modelport.Improvements{
+		Proposals:     make([]modelport.ImprovementProposal, 0, len(resp.Suggestions)),
 		Model:         resp.Model,
 		PromptVersion: resp.PromptVersion,
 		Usage:         usageFromWire(resp.Usage),
 	}
 	for _, p := range resp.Suggestions {
-		out.Proposals = append(out.Proposals, ImprovementProposal{
+		out.Proposals = append(out.Proposals, modelport.ImprovementProposal{
 			Category:        p.Category,
 			Problem:         p.Problem,
 			Evidence:        p.Evidence,
@@ -87,11 +88,11 @@ func (a modelOverHTTP) SuggestImprovements(ctx context.Context, req ImprovementR
 	return out, nil
 }
 
-func usageFromWire(u *llmclient.GatewayUsage) *ModelUsage {
+func usageFromWire(u *llmclient.GatewayUsage) *modelport.ModelUsage {
 	if u == nil {
 		return nil
 	}
-	return &ModelUsage{
+	return &modelport.ModelUsage{
 		PromptTokens:     u.PromptTokens,
 		CompletionTokens: u.CompletionTokens,
 		CostUSD:          u.CostUSD,
@@ -99,14 +100,14 @@ func usageFromWire(u *llmclient.GatewayUsage) *ModelUsage {
 	}
 }
 
-func wireSkill(s *JudgedSkill) *llmclient.JudgeSkill {
+func wireSkill(s *modelport.JudgedSkill) *llmclient.JudgeSkill {
 	if s == nil {
 		return nil
 	}
 	return &llmclient.JudgeSkill{Name: s.Name, Summary: s.Summary}
 }
 
-func wireCriteria(criteria []JudgeCriterion) []llmclient.JudgeCriterion {
+func wireCriteria(criteria []modelport.JudgeCriterion) []llmclient.JudgeCriterion {
 	out := make([]llmclient.JudgeCriterion, 0, len(criteria))
 	for _, c := range criteria {
 		out = append(out, llmclient.JudgeCriterion{
@@ -116,7 +117,7 @@ func wireCriteria(criteria []JudgeCriterion) []llmclient.JudgeCriterion {
 	return out
 }
 
-func wireArtifacts(artifacts []JudgeArtifact) []llmclient.JudgeArtifact {
+func wireArtifacts(artifacts []modelport.JudgeArtifact) []llmclient.JudgeArtifact {
 	out := make([]llmclient.JudgeArtifact, 0, len(artifacts))
 	for _, a := range artifacts {
 		out = append(out, llmclient.JudgeArtifact{
@@ -127,7 +128,7 @@ func wireArtifacts(artifacts []JudgeArtifact) []llmclient.JudgeArtifact {
 	return out
 }
 
-func wireDigest(d TraceDigest) llmclient.TraceDigest {
+func wireDigest(d modelport.TraceDigest) llmclient.TraceDigest {
 	entries := make([]llmclient.TraceDigestEntry, 0, len(d.Entries))
 	for _, e := range d.Entries {
 		entries = append(entries, llmclient.TraceDigestEntry{
@@ -138,7 +139,7 @@ func wireDigest(d TraceDigest) llmclient.TraceDigest {
 	return llmclient.TraceDigest{Complete: d.Complete, Entries: entries}
 }
 
-func wireRubric(r *JudgeRubric) *llmclient.Rubric {
+func wireRubric(r *modelport.JudgeRubric) *llmclient.Rubric {
 	if r == nil {
 		return nil
 	}
@@ -151,17 +152,17 @@ func wireRubric(r *JudgeRubric) *llmclient.Rubric {
 	return &llmclient.Rubric{Items: items}
 }
 
-func criteriaFromWire(results []llmclient.CriterionVerdict) []CriterionVerdict {
-	out := make([]CriterionVerdict, 0, len(results))
+func criteriaFromWire(results []llmclient.CriterionVerdict) []modelport.CriterionVerdict {
+	out := make([]modelport.CriterionVerdict, 0, len(results))
 	for _, cv := range results {
-		v := CriterionVerdict{
+		v := modelport.CriterionVerdict{
 			CriterionID: cv.CriterionID,
 			Result:      cv.Result,
 			Reason:      cv.Reason,
-			Citations:   make([]Citation, 0, len(cv.EvidenceRefs)),
+			Citations:   make([]modelport.Citation, 0, len(cv.EvidenceRefs)),
 		}
 		for _, ref := range cv.EvidenceRefs {
-			v.Citations = append(v.Citations, Citation{
+			v.Citations = append(v.Citations, modelport.Citation{
 				Kind:         ref.Kind,
 				TraceEventID: ref.TraceEventID,
 				ArtifactPath: ref.ArtifactPath,

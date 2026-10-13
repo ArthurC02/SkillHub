@@ -3,7 +3,7 @@
     "entrypoint/wiring": 26,
     "skill/discovery": 26,
     "trial/execution": 32,
-    "trial/improvement": 28
+    "trial/improvement": 26
   },
   "types": {
     "creator/creation.Service": {

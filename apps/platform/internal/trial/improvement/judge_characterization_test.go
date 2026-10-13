@@ -3,12 +3,13 @@ package eval
 import (
 	"testing"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 func TestACitedTraceEventWithoutAQuoteResolvesButIsNotACheckedQuote(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	got, why := verify(Citation{Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID)}, m, digest)
+	got, why := verify(modelport.Citation{Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID)}, m, digest)
 	if why != "" {
 		t.Fatalf("a cited event that is in the digest resolves: %q", why)
 	}
@@ -19,7 +20,7 @@ func TestACitedTraceEventWithoutAQuoteResolvesButIsNotACheckedQuote(t *testing.T
 
 func TestAQuoteFoundInTheCitedEventIsNotReattributed(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	got, why := verify(Citation{Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`}, m, digest)
+	got, why := verify(modelport.Citation{Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`}, m, digest)
 	if why != "" {
 		t.Fatalf("a quote inside the cited event resolves: %q", why)
 	}
@@ -30,7 +31,7 @@ func TestAQuoteFoundInTheCitedEventIsNotReattributed(t *testing.T) {
 
 func TestAnAgentOutputQuoteThatIsOnlyInTheTraceIsReattributedToTheTrace(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	got, why := verify(Citation{Kind: verdict.KindAgentOutput, Quote: `"tool_name":"bash"`}, m, digest)
+	got, why := verify(modelport.Citation{Kind: verdict.KindAgentOutput, Quote: `"tool_name":"bash"`}, m, digest)
 	if why != "" {
 		t.Fatalf("the quote is in this run's trace, so the citation holds: %q", why)
 	}
@@ -41,7 +42,7 @@ func TestAnAgentOutputQuoteThatIsOnlyInTheTraceIsReattributedToTheTrace(t *testi
 
 func TestATraceEventOutsideTheDigestStillResolvesWhenItsQuoteIsElsewhere(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	got, why := verify(Citation{
+	got, why := verify(modelport.Citation{
 		Kind: verdict.KindTraceEvent, TraceEventID: strp("11111111-1111-4111-8111-111111111111"), Quote: "Removed 17 duplicate rows",
 	}, m, digest)
 	if why != "" {
@@ -54,7 +55,7 @@ func TestATraceEventOutsideTheDigestStillResolvesWhenItsQuoteIsElsewhere(t *test
 
 func TestAReattributedQuoteThatOnlyMatchesAfterNormalisationSaysSo(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	got, why := verify(Citation{
+	got, why := verify(modelport.Citation{
 		Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx"), Quote: "Removed 17  duplicate rows and saved}],",
 	}, m, digest)
 	if why != "" {

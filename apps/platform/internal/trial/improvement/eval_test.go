@@ -18,6 +18,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/llmadapter"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -137,7 +139,7 @@ func TestOverallIsRecomputedFromTheStoredCriteria(t *testing.T) {
 
 type verifyCase struct {
 	name    string
-	ref     Citation
+	ref     modelport.Citation
 	wantErr bool
 	check   func(*testing.T, verdict.EvidenceRef)
 }
@@ -193,48 +195,48 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 	cases := []verifyCase{
 		{
 			name: "a trace event in the digest, quoted correctly",
-			ref: Citation{
+			ref: modelport.Citation{
 				Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`,
 			},
 			check: assertTraceEventCarriesIDAndOccurredAt,
 		},
 		{
 			name: "an event id the model invented",
-			ref: Citation{
+			ref: modelport.Citation{
 				Kind: verdict.KindTraceEvent, TraceEventID: strp("11111111-1111-4111-8111-111111111111"),
 			},
 			wantErr: true,
 		},
 		{
 			name: "a real event with a quote that is not in it",
-			ref: Citation{
+			ref: modelport.Citation{
 				Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID), Quote: "the skill worked perfectly",
 			},
 			wantErr: true,
 		},
 		{
 			name:  "an artifact that is in the manifest",
-			ref:   Citation{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")},
+			ref:   modelport.Citation{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")},
 			check: assertArtifactHasNoByteRangeAndReportsManifestLine,
 		},
 		{
 			name:    "an artifact nobody produced",
-			ref:     Citation{Kind: verdict.KindArtifact, ArtifactPath: strp("report.pdf")},
+			ref:     modelport.Citation{Kind: verdict.KindArtifact, ArtifactPath: strp("report.pdf")},
 			wantErr: true,
 		},
 		{
 			name:  "a quote from the agent's final output",
-			ref:   Citation{Kind: verdict.KindAgentOutput, Quote: "✅：Removed 17 duplicate rows"},
+			ref:   modelport.Citation{Kind: verdict.KindAgentOutput, Quote: "✅：Removed 17 duplicate rows"},
 			check: assertAgentOutputCharRangeSelectsTheQuote,
 		},
 		{
 			name:    "a quote the final output does not contain",
-			ref:     Citation{Kind: verdict.KindAgentOutput, Quote: "I could not do it"},
+			ref:     modelport.Citation{Kind: verdict.KindAgentOutput, Quote: "I could not do it"},
 			wantErr: true,
 		},
 		{
 			name:    "a kind this platform has never heard of",
-			ref:     Citation{Kind: "database_row", Quote: "x"},
+			ref:     modelport.Citation{Kind: "database_row", Quote: "x"},
 			wantErr: true,
 		},
 	}
@@ -248,7 +250,7 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 
 func TestAVerbatimQuoteIsRecordedAsAnExactMatch(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	got, why := verify(Citation{
+	got, why := verify(modelport.Citation{
 		Kind: verdict.KindAgentOutput, Quote: "Removed 17 duplicate rows",
 	}, m, digest)
 
@@ -268,7 +270,7 @@ func TestAVerbatimQuoteIsRecordedAsAnExactMatch(t *testing.T) {
 
 func TestAQuoteThatOnlyMatchesAfterNormalisationSaysSo(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	got, why := verify(Citation{
+	got, why := verify(modelport.Citation{
 
 		Kind: verdict.KindAgentOutput, Quote: "Removed 17  duplicate rows and saved}],",
 	}, m, digest)
@@ -290,7 +292,7 @@ func TestAQuoteThatOnlyMatchesAfterNormalisationSaysSo(t *testing.T) {
 
 func TestAQuoteFiledUnderTheWrongSourceIsCorrectedInsteadOfRefused(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	got, why := verify(Citation{
+	got, why := verify(modelport.Citation{
 		Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx"), Quote: `"tool_name":"bash"`,
 	}, m, digest)
 
@@ -311,7 +313,7 @@ func TestAQuoteFiledUnderTheWrongSourceIsCorrectedInsteadOfRefused(t *testing.T)
 
 func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	ref := Citation{
+	ref := modelport.Citation{
 		Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx"),
 		Quote: "the duplicates were removed by hand",
 	}
@@ -331,12 +333,12 @@ func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 		{ID: "c1", Text: "quote the sentence that shows it", Weight: &weight, EvidenceRequired: true},
 		{ID: "c2", Text: "an xlsx file is produced", EvidenceRequired: false},
 	}}
-	results := (&Service{}).merge(m, &Judgement{
-		Criteria: []CriterionVerdict{
+	results := (&Service{}).merge(m, &modelport.Judgement{
+		Criteria: []modelport.CriterionVerdict{
 			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "it says so",
-				Citations: []Citation{ref}},
+				Citations: []modelport.Citation{ref}},
 			{CriterionID: "c2", Result: verdict.ResultPassed, Reason: "the file is there",
-				Citations: []Citation{
+				Citations: []modelport.Citation{
 					{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")}}},
 		},
 	}, digest, evidenceCuts{})
@@ -358,15 +360,15 @@ func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 
 func TestATraceCitationWithoutAQuoteDoesNotPassAnItemRequiringOne(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	bare := Citation{Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID)}
+	bare := modelport.Citation{Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID)}
 	m.Rubric = &testlab.Rubric{Version: "v1", Items: []testlab.RubricItem{
 		{ID: "c1", Text: "quote the command that removed them", EvidenceRequired: true},
 		{ID: "c2", Text: "a tool ran", EvidenceRequired: false},
 	}}
-	results := (&Service{}).merge(m, &Judgement{
-		Criteria: []CriterionVerdict{
-			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "bash ran", Citations: []Citation{bare}},
-			{CriterionID: "c2", Result: verdict.ResultPassed, Reason: "bash ran", Citations: []Citation{bare}},
+	results := (&Service{}).merge(m, &modelport.Judgement{
+		Criteria: []modelport.CriterionVerdict{
+			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "bash ran", Citations: []modelport.Citation{bare}},
+			{CriterionID: "c2", Result: verdict.ResultPassed, Reason: "bash ran", Citations: []modelport.Citation{bare}},
 		},
 	}, digest, evidenceCuts{})
 
@@ -385,7 +387,7 @@ func TestAShortQuoteIsNotHandedTheLoosenedComparison(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	short := `"Removed 17"`
 
-	if _, why := verify(Citation{
+	if _, why := verify(modelport.Citation{
 		Kind: verdict.KindAgentOutput, Quote: short,
 	}, m, digest); why == "" {
 		t.Error("a quote below the length floor may only be accepted verbatim")
@@ -401,14 +403,14 @@ func TestAShortQuoteIsNotHandedTheLoosenedComparison(t *testing.T) {
 func TestUnverifiableEvidenceDowngradesTheVerdictRatherThanBeingStored(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	s := &Service{}
-	results := s.merge(m, &Judgement{
-		Criteria: []CriterionVerdict{
+	results := s.merge(m, &modelport.Judgement{
+		Criteria: []modelport.CriterionVerdict{
 			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "trust me",
-				Citations: []Citation{
+				Citations: []modelport.Citation{
 					{Kind: verdict.KindTraceEvent, TraceEventID: strp("22222222-2222-4222-8222-222222222222")},
 				}},
 			{CriterionID: "c2", Result: verdict.ResultFailed, Reason: "no xlsx",
-				Citations: []Citation{
+				Citations: []modelport.Citation{
 					{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")},
 				}},
 		},
@@ -439,10 +441,10 @@ func TestUnverifiableEvidenceDowngradesTheVerdictRatherThanBeingStored(t *testin
 func TestOneUnverifiableCitationDowngradesAVerdictThatAlsoCitesSomethingReal(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	s := &Service{}
-	results := s.merge(m, &Judgement{
-		Criteria: []CriterionVerdict{
+	results := s.merge(m, &modelport.Judgement{
+		Criteria: []modelport.CriterionVerdict{
 			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "both of these check out",
-				Citations: []Citation{
+				Citations: []modelport.Citation{
 
 					{Kind: verdict.KindAgentOutput, Quote: "Removed 17 duplicate rows"},
 
@@ -450,7 +452,7 @@ func TestOneUnverifiableCitationDowngradesAVerdictThatAlsoCitesSomethingReal(t *
 						Quote: "the deduplicator ran twice and agreed with itself"},
 				}},
 			{CriterionID: "c2", Result: verdict.ResultFailed, Reason: "no xlsx",
-				Citations: []Citation{
+				Citations: []modelport.Citation{
 					{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")},
 				}},
 		},
@@ -471,10 +473,10 @@ func TestOneUnverifiableCitationDowngradesAVerdictThatAlsoCitesSomethingReal(t *
 func TestACriterionTheJudgeDidNotAnswerIsUndeterminedAndStillListed(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	s := &Service{}
-	results := s.merge(m, &Judgement{
-		Criteria: []CriterionVerdict{
+	results := s.merge(m, &modelport.Judgement{
+		Criteria: []modelport.CriterionVerdict{
 			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "the duplicates are gone",
-				Citations: []Citation{
+				Citations: []modelport.Citation{
 					{Kind: verdict.KindAgentOutput, Quote: "Removed 17 duplicate rows"},
 				}},
 
@@ -503,8 +505,8 @@ func TestACriterionTheJudgeDidNotAnswerIsUndeterminedAndStillListed(t *testing.T
 
 func TestVerdictWithoutVerifiedEvidenceIsUndetermined(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	results := (&Service{}).merge(m, &Judgement{
-		Criteria: []CriterionVerdict{
+	results := (&Service{}).merge(m, &modelport.Judgement{
+		Criteria: []modelport.CriterionVerdict{
 			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "trust me"},
 			{CriterionID: "c2", Result: verdict.ResultFailed, Reason: "also trust me"},
 		},
@@ -521,12 +523,12 @@ func TestVerdictWithoutVerifiedEvidenceIsUndetermined(t *testing.T) {
 }
 
 func TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete(t *testing.T) {
-	pass := Judgement{
-		Criteria: []CriterionVerdict{
+	pass := modelport.Judgement{
+		Criteria: []modelport.CriterionVerdict{
 			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "looks right",
-				Citations: []Citation{{Kind: verdict.KindAgentOutput, Quote: "Removed 17 duplicate rows"}}},
+				Citations: []modelport.Citation{{Kind: verdict.KindAgentOutput, Quote: "Removed 17 duplicate rows"}}},
 			{CriterionID: "c2", Result: verdict.ResultFailed, Reason: "no file",
-				Citations: []Citation{{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")}}},
+				Citations: []modelport.Citation{{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")}}},
 		},
 	}
 	s := &Service{}
@@ -744,7 +746,7 @@ func TestAJudgeFailureIsAnErrorAndNotALenientVerdict(t *testing.T) {
 		t.Fatal("a 502 from the judge must surface as an error")
 	}
 
-	svc := &Service{Judge: JudgeOrNone(client)}
+	svc := &Service{Judge: llmadapter.JudgeOrNone(client)}
 	if _, err := svc.judge(context.Background(), facts.Material{
 		Criteria: []testlab.Criterion{{ID: "c1", Text: "x"}},
 	}, gen.Evaluation{}); err == nil {
@@ -772,7 +774,7 @@ func TestAJudgeCallCostsOnlyWhatTheGatewayReported(t *testing.T) {
 				},
 				Usage: &llmclient.GatewayUsage{PromptTokens: 10, CostUSD: &cost, CostSource: tc.source},
 			}, nil)
-			v, err := (&Service{Judge: JudgeOrNone(client)}).judge(context.Background(), facts.Material{
+			v, err := (&Service{Judge: llmadapter.JudgeOrNone(client)}).judge(context.Background(), facts.Material{
 				Criteria: []testlab.Criterion{{ID: "c1", Text: "x"}},
 			}, gen.Evaluation{})
 			if err != nil {
@@ -823,9 +825,9 @@ func TestUnreadableOutputsReachTheJudgeAndCannotSupportAPass(t *testing.T) {
 		t.Fatalf("the judge got an empty artifact list with nothing said about it: %v", req.Truncation)
 	}
 
-	pass := Judgement{Criteria: []CriterionVerdict{
+	pass := modelport.Judgement{Criteria: []modelport.CriterionVerdict{
 		{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "looks right",
-			Citations: []Citation{
+			Citations: []modelport.Citation{
 				{Kind: verdict.KindAgentOutput, Quote: "Removed 17 duplicate rows"},
 			}},
 	}}
@@ -836,14 +838,14 @@ func TestUnreadableOutputsReachTheJudgeAndCannotSupportAPass(t *testing.T) {
 }
 
 func TestATrimmedExcerptOnlySilencesTheCriterionThatCitesIt(t *testing.T) {
-	judgement := Judgement{
-		Criteria: []CriterionVerdict{
+	judgement := modelport.Judgement{
+		Criteria: []modelport.CriterionVerdict{
 
 			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "the tool call shows it",
-				Citations: []Citation{{Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`}}},
+				Citations: []modelport.Citation{{Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`}}},
 
 			{CriterionID: "c2", Result: verdict.ResultPassed, Reason: "the file is there",
-				Citations: []Citation{{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")}}},
+				Citations: []modelport.Citation{{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")}}},
 		},
 	}
 	m, digest := fixtureMaterial(true)

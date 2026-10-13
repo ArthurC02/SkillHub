@@ -9,8 +9,9 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/checks"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/llmadapter"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 )
 
 func TestCriteriaWithChecksAreDecidedWithoutAJudge(t *testing.T) {
@@ -76,7 +77,7 @@ func TestOnlyCriteriaWithoutAChecksReachTheJudge(t *testing.T) {
 		})
 	}))
 	t.Cleanup(srv.Close)
-	a.evaluations.Judge = eval.JudgeOrNone(&llmclient.Client{BaseURL: srv.URL})
+	a.evaluations.Judge = llmadapter.JudgeOrNone(&llmclient.Client{BaseURL: srv.URL})
 
 	if err := a.evaluations.Evaluate(context.Background(),
 		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
@@ -190,7 +191,7 @@ func TestTheCheckKindsAnEditorCanOfferAreListed(t *testing.T) {
 	}
 }
 
-func countingJudge(t *testing.T, verdict llmclient.CriterionVerdict) (eval.Judge, *[]llmclient.JudgeRunRequest) {
+func countingJudge(t *testing.T, verdict llmclient.CriterionVerdict) (modelport.Judge, *[]llmclient.JudgeRunRequest) {
 	t.Helper()
 	var sent []llmclient.JudgeRunRequest
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -204,7 +205,7 @@ func countingJudge(t *testing.T, verdict llmclient.CriterionVerdict) (eval.Judge
 		})
 	}))
 	t.Cleanup(srv.Close)
-	return eval.JudgeOrNone(&llmclient.Client{BaseURL: srv.URL}), &sent
+	return llmadapter.JudgeOrNone(&llmclient.Client{BaseURL: srv.URL}), &sent
 }
 
 const gatedByAValue = `[{"id":"c1","text":"reports %s rows removed and reads well","source":"user",

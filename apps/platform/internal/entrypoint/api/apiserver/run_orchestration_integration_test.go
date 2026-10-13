@@ -27,6 +27,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/llmadapter"
 )
 
 func withProvider(
@@ -260,7 +261,7 @@ func TestWorkerDeliversEvaluationThroughGoPythonAndGateway(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	evaluator := *a.evaluations
-	evaluator.Judge = eval.JudgeOrNone(&llmclient.Client{BaseURL: pythonURL, Token: "test-service"})
+	evaluator.Judge = llmadapter.JudgeOrNone(&llmclient.Client{BaseURL: pythonURL, Token: "test-service"})
 	f := newFixture(t, a, pool, "worker-go-python-evaluation")
 	withProvider(t, a, pool, providertest.Plan{CreatingPolls: 1, RunningPolls: 1}, &evaluator)
 

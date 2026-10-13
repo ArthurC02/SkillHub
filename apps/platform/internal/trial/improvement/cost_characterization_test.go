@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -12,9 +13,9 @@ func TestAStoredModelUsageNamesTheModelAndPromptThatAnswered(t *testing.T) {
 	s := &Service{
 		Pool:   requireEvalDB(t),
 		Credit: &fakeLedger{},
-		Suggester: stubSuggester{resp: Improvements{
+		Suggester: stubSuggester{resp: modelport.Improvements{
 			Model: "suggest-model", PromptVersion: "suggest/v2",
-			Usage: &ModelUsage{PromptTokens: 3000, CompletionTokens: 900, CostUSD: &cost, CostReported: true},
+			Usage: &modelport.ModelUsage{PromptTokens: 3000, CompletionTokens: 900, CostUSD: &cost, CostReported: true},
 		}},
 	}
 	m := seedRun(t, s.Pool)

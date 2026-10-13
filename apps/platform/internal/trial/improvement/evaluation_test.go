@@ -11,6 +11,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -66,7 +67,7 @@ func assertCompletedAndFailedResultsKeepNestedEvidenceAndCostCopies(t *testing.T
 	v := assessment{
 		results:  []verdict.CriterionResult{{CriterionID: "criterion-original", Evidence: []verdict.EvidenceRef{{Kind: "result-evidence", ByteRange: byteRange, CharRange: charRange}}}},
 		findings: []verdict.Finding{{Message: "finding-original", Evidence: []verdict.EvidenceRef{{Kind: "finding-evidence", ByteRange: byteRange}}}},
-		costUSD:  &cost, usage: &ModelUsage{CostUSD: &usageCost},
+		costUSD:  &cost, usage: &modelport.ModelUsage{CostUSD: &usageCost},
 	}
 	e := revisionIn(StatusPending, false)
 	e.Complete(v)

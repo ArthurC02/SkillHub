@@ -10,6 +10,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -38,7 +39,7 @@ func beginAndSettleJudgement(t *testing.T, s *Service, m facts.Material, v asses
 func paidJudgement(summary string) assessment {
 	cost := 0.0031
 	v := aVerdict(summary, verdict.OverallMet)
-	v.usage = &ModelUsage{PromptTokens: 4000, CompletionTokens: 600, CostUSD: &cost, CostReported: true}
+	v.usage = &modelport.ModelUsage{PromptTokens: 4000, CompletionTokens: 600, CostUSD: &cost, CostReported: true}
 	return v
 }
 
@@ -139,9 +140,9 @@ func TestSuggestingRecordsExactlyOneSuggestionCostEvent(t *testing.T) {
 	s := &Service{
 		Pool:   requireEvalDB(t),
 		Credit: ledger,
-		Suggester: stubSuggester{resp: Improvements{
+		Suggester: stubSuggester{resp: modelport.Improvements{
 			Model: "suggest-model", PromptVersion: "suggest/v2",
-			Usage: &ModelUsage{
+			Usage: &modelport.ModelUsage{
 				PromptTokens: 3000, CompletionTokens: 900, CostUSD: &cost, CostReported: true},
 		}},
 	}
@@ -172,9 +173,9 @@ func TestAHeldSkillIsNeitherSentToTheModelNorChargedForSuggestions(t *testing.T)
 	s := &Service{
 		Pool:   requireEvalDB(t),
 		Credit: ledger,
-		Suggester: stubSuggester{resp: Improvements{
+		Suggester: stubSuggester{resp: modelport.Improvements{
 			Model: "suggest-model", PromptVersion: "suggest/v2",
-			Usage: &ModelUsage{PromptTokens: 3000, CostUSD: &cost, CostReported: true},
+			Usage: &modelport.ModelUsage{PromptTokens: 3000, CostUSD: &cost, CostReported: true},
 		}},
 	}
 	m := seedRun(t, s.Pool)
@@ -204,9 +205,9 @@ func TestACallTheGatewayDidNotPriceIsRecordedAsEstimatedRatherThanFree(t *testin
 	s := &Service{
 		Pool:   requireEvalDB(t),
 		Credit: ledger,
-		Suggester: stubSuggester{resp: Improvements{
+		Suggester: stubSuggester{resp: modelport.Improvements{
 			Model: "m", PromptVersion: "v",
-			Usage: &ModelUsage{PromptTokens: 10, CostUSD: &cost, CostReported: false},
+			Usage: &modelport.ModelUsage{PromptTokens: 10, CostUSD: &cost, CostReported: false},
 		}},
 	}
 	m := seedRun(t, s.Pool)

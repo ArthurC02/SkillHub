@@ -21,6 +21,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/checks"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
@@ -45,11 +46,11 @@ const EvaluationJobTimeout = judgeTimeout + suggestTimeout + time.Minute
 type Service struct {
 	Pool *pgxpool.Pool
 
-	Judge Judge
+	Judge modelport.Judge
 
 	Budgets *modelbudget.Service
 
-	Suggester Suggester
+	Suggester modelport.Suggester
 
 	Credits CreditsForUSD
 
@@ -122,7 +123,7 @@ type evaluationRef struct {
 type modelCall struct {
 	model         string
 	promptVersion string
-	usage         *ModelUsage
+	usage         *modelport.ModelUsage
 }
 
 func (s *Service) recordModelUsage(
@@ -298,7 +299,7 @@ type assessment struct {
 	rubricVersion    string
 	costUSD          *float64
 
-	usage *ModelUsage
+	usage *modelport.ModelUsage
 }
 
 func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (facts.Material, error) {

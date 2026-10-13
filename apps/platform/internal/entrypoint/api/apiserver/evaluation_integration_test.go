@@ -14,6 +14,8 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/llmadapter"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 )
 
 const twoJudgedCriteria = `[{"id":"c1","text":"duplicates are removed","source":"user"},
@@ -90,7 +92,7 @@ func seedFinalOutput(t *testing.T, pool *pgxpool.Pool, workspaceID, runID, text 
 	}
 }
 
-func judgeServer(t *testing.T, verdict llmclient.JudgeVerdict, promptVersion string) eval.Judge {
+func judgeServer(t *testing.T, verdict llmclient.JudgeVerdict, promptVersion string) modelport.Judge {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -100,7 +102,7 @@ func judgeServer(t *testing.T, verdict llmclient.JudgeVerdict, promptVersion str
 		})
 	}))
 	t.Cleanup(srv.Close)
-	return eval.JudgeOrNone(&llmclient.Client{BaseURL: srv.URL})
+	return llmadapter.JudgeOrNone(&llmclient.Client{BaseURL: srv.URL})
 }
 
 type evaluationBody struct {
@@ -179,7 +181,7 @@ func TestEvaluationRetryDoesNotRepeatACompletedJudgeCall(t *testing.T) {
 		})
 	}))
 	defer srv.Close()
-	a.evaluations.Judge = eval.JudgeOrNone(&llmclient.Client{BaseURL: srv.URL})
+	a.evaluations.Judge = llmadapter.JudgeOrNone(&llmclient.Client{BaseURL: srv.URL})
 
 	if err := a.evaluations.Evaluate(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
 		t.Fatal(err)
@@ -410,7 +412,7 @@ func TestEvaluationTraversesGoPythonAndGateway(t *testing.T) {
 	skillID := seedSkill(t, pool, c.workspaceID, "eval-go-python-gateway")
 	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
 	seedFinalOutput(t, pool, c.workspaceID, runID, "Removed 17 duplicate rows and saved output.xlsx.")
-	a.evaluations.Judge = eval.JudgeOrNone(&llmclient.Client{BaseURL: pythonURL, Token: "test-service"})
+	a.evaluations.Judge = llmadapter.JudgeOrNone(&llmclient.Client{BaseURL: pythonURL, Token: "test-service"})
 
 	if err := a.evaluations.Evaluate(t.Context(), mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
 		t.Fatalf("evaluate through Python: %v", err)
@@ -503,7 +505,7 @@ func TestEvaluationEventsUseTheLatestPersistedAttempt(t *testing.T) {
 	}
 }
 
-func capturingJudgeServer(t *testing.T, verdict llmclient.JudgeVerdict, capture *llmclient.JudgeRunRequest) eval.Judge {
+func capturingJudgeServer(t *testing.T, verdict llmclient.JudgeVerdict, capture *llmclient.JudgeRunRequest) modelport.Judge {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewDecoder(r.Body).Decode(capture); err != nil {
@@ -515,7 +517,7 @@ func capturingJudgeServer(t *testing.T, verdict llmclient.JudgeVerdict, capture 
 		})
 	}))
 	t.Cleanup(srv.Close)
-	return eval.JudgeOrNone(&llmclient.Client{BaseURL: srv.URL})
+	return llmadapter.JudgeOrNone(&llmclient.Client{BaseURL: srv.URL})
 }
 
 func rubricVersionOfStartedEvent(t *testing.T, pool *pgxpool.Pool, runID string) (any, bool) {
@@ -772,7 +774,7 @@ func TestAJudgeFailureIsRecordedAsAFailedEvaluation(t *testing.T) {
 		http.Error(w, `{"error":"gateway unavailable"}`, http.StatusBadGateway)
 	}))
 	defer srv.Close()
-	a.evaluations.Judge = eval.JudgeOrNone(&llmclient.Client{BaseURL: srv.URL})
+	a.evaluations.Judge = llmadapter.JudgeOrNone(&llmclient.Client{BaseURL: srv.URL})
 
 	if err := a.evaluations.Evaluate(context.Background(),
 		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
@@ -1034,7 +1036,7 @@ func TestARunWithNoAcceptanceCriteriaIsUndeterminedAndNeverReachesTheJudge(t *te
 		_, _ = fmt.Fprint(w, `{}`)
 	}))
 	defer srv.Close()
-	a.evaluations.Judge = eval.JudgeOrNone(&llmclient.Client{BaseURL: srv.URL})
+	a.evaluations.Judge = llmadapter.JudgeOrNone(&llmclient.Client{BaseURL: srv.URL})
 
 	if err := a.evaluations.Evaluate(context.Background(),
 		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {

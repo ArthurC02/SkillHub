@@ -1,4 +1,4 @@
-package eval
+package llmadapter
 
 import (
 	"context"
@@ -8,22 +8,25 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
+const panelMemberRole = "skillhub-judge-panel-2"
+
 type fakeModel struct {
-	judged    *Judgement
-	suggested *Improvements
-	askedTo   JudgeRequest
-	askedFor  ImprovementRequest
+	judged    *modelport.Judgement
+	suggested *modelport.Improvements
+	askedTo   modelport.JudgeRequest
+	askedFor  modelport.ImprovementRequest
 }
 
-func (f *fakeModel) JudgeRun(_ context.Context, req JudgeRequest) (*Judgement, error) {
+func (f *fakeModel) JudgeRun(_ context.Context, req modelport.JudgeRequest) (*modelport.Judgement, error) {
 	f.askedTo = req
 	return f.judged, nil
 }
 
-func (f *fakeModel) SuggestImprovements(_ context.Context, req ImprovementRequest) (*Improvements, error) {
+func (f *fakeModel) SuggestImprovements(_ context.Context, req modelport.ImprovementRequest) (*modelport.Improvements, error) {
 	f.askedFor = req
 	return f.suggested, nil
 }
@@ -45,30 +48,30 @@ func modelOverAWire(t *testing.T, path string, capture any, reply any) *llmclien
 	return &llmclient.Client{BaseURL: srv.URL}
 }
 
-func aJudgeRequest() JudgeRequest {
-	return JudgeRequest{
+func aJudgeRequest() modelport.JudgeRequest {
+	return modelport.JudgeRequest{
 		RunID:        "run-1",
 		EvaluationID: "eval-1",
-		Skill:        &JudgedSkill{Name: "invoice reader", Summary: "reads invoices"},
+		Skill:        &modelport.JudgedSkill{Name: "invoice reader", Summary: "reads invoices"},
 		UserPrompt:   "extract the totals",
-		Criteria:     []JudgeCriterion{{ID: "c1", Text: "the total is a number"}},
-		Rubric: &JudgeRubric{Items: []JudgeRubricItem{
+		Criteria:     []modelport.JudgeCriterion{{ID: "c1", Text: "the total is a number"}},
+		Rubric: &modelport.JudgeRubric{Items: []modelport.JudgeRubricItem{
 			{ID: "c1", Text: "quote the figure", EvidenceRequired: true},
 		}},
 		FinalOutput: "total: 42",
-		Artifacts:   []JudgeArtifact{{Path: "out.csv", SizeBytes: 12, ContentType: "text/csv"}},
-		TraceDigest: TraceDigest{Complete: true, Entries: []TraceDigestEntry{
+		Artifacts:   []modelport.JudgeArtifact{{Path: "out.csv", SizeBytes: 12, ContentType: "text/csv"}},
+		TraceDigest: modelport.TraceDigest{Complete: true, Entries: []modelport.TraceDigestEntry{
 			{TraceEventID: "ev-1", OccurredAt: "2026-09-20T00:00:00Z", Type: "tool_call", Excerpt: "read"},
 		}},
 		Truncation: []string{},
 	}
 }
 
-func aJudgement() *Judgement {
-	return &Judgement{
-		Criteria: []CriterionVerdict{{
+func aJudgement() *modelport.Judgement {
+	return &modelport.Judgement{
+		Criteria: []modelport.CriterionVerdict{{
 			CriterionID: "c1", Result: verdict.ResultPassed, Reason: "the figure is there",
-			Citations: []Citation{{Kind: verdict.KindAgentOutput, Quote: "total: 42"}},
+			Citations: []modelport.Citation{{Kind: verdict.KindAgentOutput, Quote: "total: 42"}},
 		}},
 		Overall: string(verdict.OverallMet), Summary: "the criteria were met",
 		Model: "a-model", PromptVersion: "judge@1",
@@ -88,7 +91,7 @@ func TestEveryJudgeAnswersInTheDomainsOwnWords(t *testing.T) {
 		Model: "a-model", PromptVersion: "judge@1",
 	}))
 
-	for name, judge := range map[string]Judge{"fake": &fakeModel{judged: want}, "http adapter": overTheWire} {
+	for name, judge := range map[string]modelport.Judge{"fake": &fakeModel{judged: want}, "http adapter": overTheWire} {
 		t.Run(name, func(t *testing.T) {
 			got, err := judge.JudgeRun(context.Background(), aJudgeRequest())
 			if err != nil {
@@ -128,15 +131,15 @@ func TestTheJudgeAdapterCarriesTheWholeRequestOntoTheWire(t *testing.T) {
 func TestAPanelMembersRoleTravelsOnTheWireAndALoneJudgeSendsNone(t *testing.T) {
 	var member, alone map[string]any
 	req := aJudgeRequest()
-	req.ModelRole = PanelRoles[2]
+	req.ModelRole = panelMemberRole
 	if _, err := JudgeOrNone(modelOverAWire(t, "/judge-run", &member, llmclient.JudgeRunResponse{})).JudgeRun(context.Background(), req); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := JudgeOrNone(modelOverAWire(t, "/judge-run", &alone, llmclient.JudgeRunResponse{})).JudgeRun(context.Background(), aJudgeRequest()); err != nil {
 		t.Fatal(err)
 	}
-	if member["model_role"] != PanelRoles[2] {
-		t.Errorf("model_role on the wire = %v, want %s", member["model_role"], PanelRoles[2])
+	if member["model_role"] != panelMemberRole {
+		t.Errorf("model_role on the wire = %v, want %s", member["model_role"], panelMemberRole)
 	}
 	if _, sent := alone["model_role"]; sent {
 		t.Errorf("a lone judge sent model_role %v; the service's own role should answer", alone["model_role"])
@@ -176,9 +179,9 @@ func assertJudgeRequestArtifactsAndTraceOnTheWire(t *testing.T, sent llmclient.J
 }
 
 func TestEverySuggesterAnswersInTheDomainsOwnWords(t *testing.T) {
-	want := &Improvements{
-		Proposals: []ImprovementProposal{{
-			Category: string(SuggestionSkill), Problem: "the total is never stated",
+	want := &modelport.Improvements{
+		Proposals: []modelport.ImprovementProposal{{
+			Category: "skill", Problem: "the total is never stated",
 			Evidence: "total: 42", TargetPath: "SKILL.md",
 			ProposedContent: "always state the total", ExpectedImpact: "the criterion passes",
 		}},
@@ -187,21 +190,21 @@ func TestEverySuggesterAnswersInTheDomainsOwnWords(t *testing.T) {
 	overTheWire := SuggesterOrNone(modelOverAWire(t, "/suggest-improvements", nil,
 		llmclient.SuggestImprovementsResponse{
 			Suggestions: []llmclient.ImprovementProposal{{
-				Category: string(SuggestionSkill), Problem: "the total is never stated",
+				Category: "skill", Problem: "the total is never stated",
 				Evidence: "total: 42", TargetPath: "SKILL.md",
 				ProposedContent: "always state the total", ExpectedImpact: "the criterion passes",
 			}},
 			Model: "a-model", PromptVersion: "suggest@1",
 		}))
 
-	for name, suggester := range map[string]Suggester{
+	for name, suggester := range map[string]modelport.Suggester{
 		"fake": &fakeModel{suggested: want}, "http adapter": overTheWire,
 	} {
 		t.Run(name, func(t *testing.T) {
-			got, err := suggester.SuggestImprovements(context.Background(), ImprovementRequest{
+			got, err := suggester.SuggestImprovements(context.Background(), modelport.ImprovementRequest{
 				EvaluationID: "eval-1", EvaluationDigest: "what went wrong",
 				FileTree:    []string{"SKILL.md"},
-				TargetFiles: []TargetFile{{Path: "SKILL.md", Content: "# skill"}},
+				TargetFiles: []modelport.TargetFile{{Path: "SKILL.md", Content: "# skill"}},
 			})
 			if err != nil {
 				t.Fatalf("suggesting improvements: %v", err)
@@ -224,10 +227,10 @@ func TestTheSuggesterAdapterCarriesTheWholeRequestOntoTheWire(t *testing.T) {
 	suggester := SuggesterOrNone(modelOverAWire(t, "/suggest-improvements", &sent,
 		llmclient.SuggestImprovementsResponse{}))
 
-	_, err := suggester.SuggestImprovements(context.Background(), ImprovementRequest{
+	_, err := suggester.SuggestImprovements(context.Background(), modelport.ImprovementRequest{
 		EvaluationID: "eval-1", EvaluationDigest: "what went wrong",
 		FileTree:    []string{"SKILL.md"},
-		TargetFiles: []TargetFile{{Path: "SKILL.md", Content: "# skill"}},
+		TargetFiles: []modelport.TargetFile{{Path: "SKILL.md", Content: "# skill"}},
 	})
 	if err != nil {
 		t.Fatalf("suggesting improvements: %v", err)

@@ -9,6 +9,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -295,7 +296,7 @@ func cloneEvidenceRefs(refs []verdict.EvidenceRef) []verdict.EvidenceRef {
 	return cloned
 }
 
-func cloneUsage(usage *ModelUsage) *ModelUsage {
+func cloneUsage(usage *modelport.ModelUsage) *modelport.ModelUsage {
 	cloned := pgconv.Clone(usage)
 	if cloned != nil {
 		cloned.CostUSD = pgconv.Clone(usage.CostUSD)

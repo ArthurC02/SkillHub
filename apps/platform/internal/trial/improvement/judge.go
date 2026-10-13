@@ -16,6 +16,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/checks"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -93,7 +94,7 @@ type sentForJudgement struct {
 	trimmedEvents map[string]bool
 }
 
-func (s *Service) buildRequest(m facts.Material, ev gen.Evaluation) (JudgeRequest, sentForJudgement) {
+func (s *Service) buildRequest(m facts.Material, ev gen.Evaluation) (modelport.JudgeRequest, sentForJudgement) {
 	truncation := []string{}
 
 	final, cutOutput := cut(m.Summary.FinalOutput, maxFinalOutput)
@@ -101,23 +102,23 @@ func (s *Service) buildRequest(m facts.Material, ev gen.Evaluation) (JudgeReques
 		truncation = append(truncation, "final_output")
 	}
 
-	criteria := make([]JudgeCriterion, 0, maxCriteria)
+	criteria := make([]modelport.JudgeCriterion, 0, maxCriteria)
 	for _, c := range m.Criteria {
 		if len(criteria) == maxCriteria {
 			truncation = append(truncation, "criteria")
 			break
 		}
-		criteria = append(criteria, JudgeCriterion{ID: c.ID, Text: c.Text, Instructions: m.Instructions[c.ID]})
+		criteria = append(criteria, modelport.JudgeCriterion{ID: c.ID, Text: c.Text, Instructions: m.Instructions[c.ID]})
 	}
 
-	artifacts := make([]JudgeArtifact, 0, len(m.Artifacts))
+	artifacts := make([]modelport.JudgeArtifact, 0, len(m.Artifacts))
 	for _, a := range m.Artifacts {
 		if len(artifacts) == maxArtifactRows {
 			truncation = append(truncation, "artifacts")
 			break
 		}
 
-		artifacts = append(artifacts, JudgeArtifact{
+		artifacts = append(artifacts, modelport.JudgeArtifact{
 			Path: a.FileName, SizeBytes: a.SizeBytes, ContentType: a.ContentType,
 		})
 	}
@@ -138,28 +139,28 @@ func (s *Service) buildRequest(m facts.Material, ev gen.Evaluation) (JudgeReques
 		truncation = append(truncation, "trace_digest.entries[].excerpt")
 	}
 
-	req := JudgeRequest{
+	req := modelport.JudgeRequest{
 		RunID:        pgconv.UUIDString(m.Run.ID),
 		EvaluationID: pgconv.UUIDString(ev.ID),
 		UserPrompt:   m.Snapshot.UserPrompt,
 		Criteria:     criteria,
 		FinalOutput:  final,
 		Artifacts:    artifacts,
-		TraceDigest: TraceDigest{
+		TraceDigest: modelport.TraceDigest{
 			Complete: m.Advanced.Complete,
 			Entries:  entries,
 		},
 		Truncation: truncation,
 	}
 	if m.Skill.Name != "" {
-		req.Skill = &JudgedSkill{Name: m.Skill.Name, Summary: derefString(m.Skill.Summary)}
+		req.Skill = &modelport.JudgedSkill{Name: m.Skill.Name, Summary: derefString(m.Skill.Summary)}
 	}
 	rubric, dropped := rubricFor(m.Rubric, criteria)
 	req.Rubric = rubric
 	return req, sentForJudgement{digest: digest, truncation: truncation, dropped: dropped, trimmedEvents: cuts.TrimmedEvents}
 }
 
-func rubricFor(r *testlab.Rubric, criteria []JudgeCriterion) (*JudgeRubric, []string) {
+func rubricFor(r *testlab.Rubric, criteria []modelport.JudgeCriterion) (*modelport.JudgeRubric, []string) {
 	if r == nil || len(r.Items) == 0 {
 		return nil, nil
 	}
@@ -167,21 +168,21 @@ func rubricFor(r *testlab.Rubric, criteria []JudgeCriterion) (*JudgeRubric, []st
 	for _, c := range criteria {
 		sent[c.ID] = true
 	}
-	items := make([]JudgeRubricItem, 0, len(r.Items))
+	items := make([]modelport.JudgeRubricItem, 0, len(r.Items))
 	var dropped []string
 	for _, it := range r.Items {
 		if !sent[it.ID] {
 			dropped = append(dropped, it.ID)
 			continue
 		}
-		items = append(items, JudgeRubricItem{
+		items = append(items, modelport.JudgeRubricItem{
 			ID: it.ID, Text: it.Text, Weight: it.Weight, EvidenceRequired: it.EvidenceRequired,
 		})
 	}
 	if len(items) == 0 {
 		return nil, dropped
 	}
-	return &JudgeRubric{Items: items}, dropped
+	return &modelport.JudgeRubric{Items: items}, dropped
 }
 
 type digestCuts struct {
@@ -192,7 +193,7 @@ type digestCuts struct {
 	TrimmedEvents map[string]bool
 }
 
-func buildDigest(view trace.AdvancedView) ([]TraceDigestEntry, map[string]trace.EventView, digestCuts) {
+func buildDigest(view trace.AdvancedView) ([]modelport.TraceDigestEntry, map[string]trace.EventView, digestCuts) {
 	citable := make([]trace.EventView, 0, len(view.Events))
 	for _, e := range view.Events {
 		switch e.Type {
@@ -207,11 +208,11 @@ func buildDigest(view trace.AdvancedView) ([]TraceDigestEntry, map[string]trace.
 		cuts.DroppedEvents = true
 	}
 
-	entries := make([]TraceDigestEntry, 0, len(citable))
+	entries := make([]modelport.TraceDigestEntry, 0, len(citable))
 	digest := make(map[string]trace.EventView, len(citable))
 	for _, e := range citable {
 		excerpt, cutExcerpt := cut(string(e.Payload), maxDigestEntry)
-		entries = append(entries, TraceDigestEntry{
+		entries = append(entries, modelport.TraceDigestEntry{
 			TraceEventID: e.EventID,
 			OccurredAt:   e.OccurredAt,
 			Type:         e.Type,
@@ -254,7 +255,7 @@ func batchWideCut(truncation []string) bool {
 }
 
 func (s *Service) merge(
-	m facts.Material, v *Judgement, digest map[string]trace.EventView, cuts evidenceCuts,
+	m facts.Material, v *modelport.Judgement, digest map[string]trace.EventView, cuts evidenceCuts,
 ) []verdict.CriterionResult {
 
 	evidenceRequired := map[string]bool{}
@@ -264,7 +265,7 @@ func (s *Service) merge(
 		}
 	}
 
-	answers := make(map[string]CriterionVerdict, len(v.Criteria))
+	answers := make(map[string]modelport.CriterionVerdict, len(v.Criteria))
 	for _, cv := range v.Criteria {
 
 		answers[cv.CriterionID] = cv
@@ -300,7 +301,7 @@ func (s *Service) merge(
 }
 
 func withVerifiedEvidence(
-	result verdict.CriterionResult, cv CriterionVerdict, m facts.Material, digest map[string]trace.EventView,
+	result verdict.CriterionResult, cv modelport.CriterionVerdict, m facts.Material, digest map[string]trace.EventView,
 ) verdict.CriterionResult {
 	result.Result = normaliseResult(cv.Result)
 	result.Reason = cv.Reason
@@ -361,7 +362,7 @@ func unsettledCitation(namedFailure string) citationCheck {
 }
 
 func verify(
-	ref Citation, m facts.Material, digest map[string]trace.EventView,
+	ref modelport.Citation, m facts.Material, digest map[string]trace.EventView,
 ) (verdict.EvidenceRef, string) {
 	check := checkWhereCited(ref, m, digest)
 	if check.settled {
@@ -380,7 +381,7 @@ func verify(
 	return verdict.EvidenceRef{}, check.why + ", and it is in no other verifiable source of this run"
 }
 
-func checkWhereCited(ref Citation, m facts.Material, digest map[string]trace.EventView) citationCheck {
+func checkWhereCited(ref modelport.Citation, m facts.Material, digest map[string]trace.EventView) citationCheck {
 	switch ref.Kind {
 	case verdict.KindTraceEvent:
 		return checkTraceEventCitation(ref, digest)
@@ -403,7 +404,7 @@ func checkWhereCited(ref Citation, m facts.Material, digest map[string]trace.Eve
 	}
 }
 
-func checkTraceEventCitation(ref Citation, digest map[string]trace.EventView) citationCheck {
+func checkTraceEventCitation(ref modelport.Citation, digest map[string]trace.EventView) citationCheck {
 	id := derefString(ref.TraceEventID)
 	event, inDigest := digest[id]
 	switch {
@@ -425,7 +426,7 @@ func checkTraceEventCitation(ref Citation, digest map[string]trace.EventView) ci
 	}
 }
 
-func reattributedQuote(ref Citation, m facts.Material, digest map[string]trace.EventView) (verdict.EvidenceRef, bool) {
+func reattributedQuote(ref modelport.Citation, m facts.Material, digest map[string]trace.EventView) (verdict.EvidenceRef, bool) {
 	found, ok := findQuote(ref.Quote, verifiableSources(m, digest))
 	if !ok {
 		return verdict.EvidenceRef{}, false
@@ -440,7 +441,7 @@ func reattributedQuote(ref Citation, m facts.Material, digest map[string]trace.E
 	return out, true
 }
 
-func artifactInManifest(ref Citation, m facts.Material) (verdict.EvidenceRef, string) {
+func artifactInManifest(ref modelport.Citation, m facts.Material) (verdict.EvidenceRef, string) {
 	path := derefString(ref.ArtifactPath)
 	for _, a := range m.Artifacts {
 		if a.FileName == path {

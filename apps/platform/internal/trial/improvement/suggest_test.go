@@ -14,6 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
@@ -69,7 +70,7 @@ func TestTheDigestKeepsItsOwnLabelsOffTheQuotableLines(t *testing.T) {
 		t.Fatal("the excerpt itself is gone; the split dropped what it was meant to isolate")
 	}
 
-	if raw, _ := suggestionEvidence(ImprovementProposal{
+	if raw, _ := suggestionEvidence(modelport.ImprovementProposal{
 		Evidence: `"evidence (agent_output): ` + excerpt + `"`,
 	}, refs); raw != nil {
 		t.Fatal("a quote carrying the platform's own label resolved; if that ever " +
@@ -95,7 +96,7 @@ func TestTargetPathsThatLeaveThePackageAreRefusedNotRepaired(t *testing.T) {
 }
 
 func TestOnlyProposalsThePlatformCanActOnAreStored(t *testing.T) {
-	ok := ImprovementProposal{
+	ok := modelport.ImprovementProposal{
 		Category: "skill", Problem: "the description does not mention xlsx",
 		TargetPath: "SKILL.md", ProposedContent: "new", ExpectedImpact: "activation improves",
 	}
@@ -103,14 +104,14 @@ func TestOnlyProposalsThePlatformCanActOnAreStored(t *testing.T) {
 		t.Fatal("a complete, in-bounds proposal must be storable")
 	}
 
-	cases := map[string]func(p *ImprovementProposal){
+	cases := map[string]func(p *modelport.ImprovementProposal){
 
-		"mcp category":     func(p *ImprovementProposal) { p.Category = "mcp" },
-		"unknown category": func(p *ImprovementProposal) { p.Category = "prompt" },
-		"escaping path":    func(p *ImprovementProposal) { p.TargetPath = "../x" },
-		"no problem":       func(p *ImprovementProposal) { p.Problem = "  " },
-		"no impact":        func(p *ImprovementProposal) { p.ExpectedImpact = "" },
-		"no content":       func(p *ImprovementProposal) { p.ProposedContent = "" },
+		"mcp category":     func(p *modelport.ImprovementProposal) { p.Category = "mcp" },
+		"unknown category": func(p *modelport.ImprovementProposal) { p.Category = "prompt" },
+		"escaping path":    func(p *modelport.ImprovementProposal) { p.TargetPath = "../x" },
+		"no problem":       func(p *modelport.ImprovementProposal) { p.Problem = "  " },
+		"no impact":        func(p *modelport.ImprovementProposal) { p.ExpectedImpact = "" },
+		"no content":       func(p *modelport.ImprovementProposal) { p.ProposedContent = "" },
 	}
 	for name, mutate := range cases {
 		p := ok
@@ -139,7 +140,7 @@ func TestSuggestionEvidenceIsAlwaysMintedByThePlatform(t *testing.T) {
 		{Kind: verdict.KindArtifact, ArtifactPath: "output.xlsx", Excerpt: "output.xlsx (4096 bytes)", Available: true},
 	}
 
-	raw, err := suggestionEvidence(ImprovementProposal{Evidence: "bash exited 1"}, refs)
+	raw, err := suggestionEvidence(modelport.ImprovementProposal{Evidence: "bash exited 1"}, refs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,18 +152,18 @@ func TestSuggestionEvidenceIsAlwaysMintedByThePlatform(t *testing.T) {
 		t.Fatalf("a quote found in a verified reference keeps it, got %+v", got)
 	}
 
-	raw, _ = suggestionEvidence(ImprovementProposal{
+	raw, _ = suggestionEvidence(modelport.ImprovementProposal{
 		Evidence: "the model is quite sure something went wrong",
 	}, refs)
 	if raw != nil {
 		t.Fatalf("an unmatched quote must make the proposal unstorable, got %s", raw)
 	}
-	raw, _ = suggestionEvidence(ImprovementProposal{Evidence: "e"}, refs)
+	raw, _ = suggestionEvidence(modelport.ImprovementProposal{Evidence: "e"}, refs)
 	if raw != nil {
 		t.Fatalf("a generic one-character substring must not become evidence: %s", raw)
 	}
 
-	raw, _ = suggestionEvidence(ImprovementProposal{Evidence: "x"}, nil)
+	raw, _ = suggestionEvidence(modelport.ImprovementProposal{Evidence: "x"}, nil)
 	if raw != nil {
 		t.Errorf("no evidence available must make the proposal unstorable, got %s", raw)
 	}
@@ -179,7 +180,7 @@ func TestAProposalMayExplainItselfAroundTheQuoteItCites(t *testing.T) {
 		`"完整 artifact manifest 明確顯示本次 run 未寫入任何檔案" and the summary agrees.`,
 		`“完整 artifact manifest 明確顯示本次 run 未寫入任何檔案” — nothing was saved.`,
 	} {
-		raw, err := suggestionEvidence(ImprovementProposal{Evidence: evidence}, refs)
+		raw, err := suggestionEvidence(modelport.ImprovementProposal{Evidence: evidence}, refs)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -200,7 +201,7 @@ func TestAProposalMayExplainItselfAroundTheQuoteItCites(t *testing.T) {
 		`no quotation marks here, and none of this text is in any excerpt either`,
 		`「too short」`,
 	} {
-		if raw, _ := suggestionEvidence(ImprovementProposal{Evidence: evidence}, refs); raw != nil {
+		if raw, _ := suggestionEvidence(modelport.ImprovementProposal{Evidence: evidence}, refs); raw != nil {
 			t.Errorf("unverifiable evidence must stay unstorable, got %s for %s", raw, evidence)
 		}
 	}
@@ -331,12 +332,12 @@ func TestPatchingIsDeterministicForTheSameInput(t *testing.T) {
 }
 
 type stubSuggester struct {
-	resp Improvements
+	resp modelport.Improvements
 }
 
 func (s stubSuggester) SuggestImprovements(
-	context.Context, ImprovementRequest,
-) (*Improvements, error) {
+	context.Context, modelport.ImprovementRequest,
+) (*modelport.Improvements, error) {
 	r := s.resp
 	return &r, nil
 }
@@ -382,7 +383,7 @@ func TestTheProposalCountersAreEmittedEvenWhenNothingWasDropped(t *testing.T) {
 
 	for _, tc := range []struct {
 		name        string
-		suggestions []ImprovementProposal
+		suggestions []modelport.ImprovementProposal
 		want        map[string]float64
 	}{{
 
@@ -394,7 +395,7 @@ func TestTheProposalCountersAreEmittedEvenWhenNothingWasDropped(t *testing.T) {
 	}, {
 
 		name: "one refused before storage",
-		suggestions: []ImprovementProposal{{
+		suggestions: []modelport.ImprovementProposal{{
 			Category: "mcp", Problem: "remote MCP would help", Evidence: excerpt,
 			TargetPath: "SKILL.md", ProposedContent: "new", ExpectedImpact: "better",
 		}},
@@ -405,7 +406,7 @@ func TestTheProposalCountersAreEmittedEvenWhenNothingWasDropped(t *testing.T) {
 	}, {
 
 		name: "one uncitable",
-		suggestions: []ImprovementProposal{{
+		suggestions: []modelport.ImprovementProposal{{
 			Category: "skill", Problem: "the description is vague",
 			Evidence:   "the model is quite sure something went wrong somewhere",
 			TargetPath: "SKILL.md", ProposedContent: "new", ExpectedImpact: "better",
@@ -417,7 +418,7 @@ func TestTheProposalCountersAreEmittedEvenWhenNothingWasDropped(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			buf := captureLogs(t)
-			s := &Service{Suggester: stubSuggester{resp: Improvements{
+			s := &Service{Suggester: stubSuggester{resp: modelport.Improvements{
 				Proposals: tc.suggestions, Model: "test", PromptVersion: "test",
 			}}}
 			s.suggest(context.Background(), facts.Material{}, gen.Evaluation{}, newVerdict())

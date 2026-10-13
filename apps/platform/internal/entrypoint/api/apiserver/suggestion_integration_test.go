@@ -22,6 +22,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/llmadapter"
 )
 
 func packagedSkillMD(name string) string {
@@ -134,8 +135,8 @@ func evaluateWithSuggestions(
 	seedFinalOutput(t, pool, c.workspaceID, runID, suggestionFinalOutput)
 
 	llm := llmServer(t, failedBoth, proposals)
-	a.evaluations.Judge = eval.JudgeOrNone(llm)
-	a.evaluations.Suggester = eval.SuggesterOrNone(llm)
+	a.evaluations.Judge = llmadapter.JudgeOrNone(llm)
+	a.evaluations.Suggester = llmadapter.SuggesterOrNone(llm)
 	if err := a.evaluations.Evaluate(context.Background(),
 		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
 		t.Fatalf("evaluate: %v", err)
@@ -496,7 +497,7 @@ func TestSuggestionsThatRebuildAnExistingVersionAreRecordedAgainstThatVersion(t 
 		runID := seedRunForVersion(t, pool, c.workspaceID, seed.skillID, versionID)
 		seedFinalOutput(t, pool, c.workspaceID, runID, suggestionFinalOutput)
 		llm := llmServer(t, failedBoth, proposal(content))
-		a.evaluations.Judge, a.evaluations.Suggester = eval.JudgeOrNone(llm), eval.SuggesterOrNone(llm)
+		a.evaluations.Judge, a.evaluations.Suggester = llmadapter.JudgeOrNone(llm), llmadapter.SuggesterOrNone(llm)
 		if err := a.evaluations.Evaluate(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
 			t.Fatalf("evaluating version %s: %v", versionID, err)
 		}
