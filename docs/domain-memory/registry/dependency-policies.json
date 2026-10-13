@@ -374,29 +374,29 @@
         {
           "path": "apps/platform/internal/trial/improvement/eval.go",
           "lines": {
-            "start": 405,
-            "end": 410
+            "start": 429,
+            "end": 434
           },
-          "content_sha256": "sha256:83d123affad4da5a5d08890604d7e6fa5484b6b78ed7b1cc3b34de7fc4bbe4bd",
+          "content_sha256": "sha256:998f22acbef106e26b8ce4f99e5ea48352aa6671bdd348dcdeed81acb4804e3c",
           "excerpt_sha256": "sha256:8e4497ec3cdbf2478f1c7c57bb68071cc444ccf76a09177495a2d9c9426e96c5",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "eval-checks-facts-recite",
+        "proposal_id": "eval-judging-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-13T06:52:59.836386Z",
-            "scope": "Re-cite eval-may-use-trace and run-eval-run-facts after eval's check engine and inputs moved into the checks and facts subpackages; neither record changes its statement",
+            "approved_at": "2026-10-13T07:59:14.973768Z",
+            "scope": "Re-cite eval-may-use-trace after eval's judge moved into the judging subpackage, and registry-run-facts-v1 after its version copy became runVersionFacts; neither record changes its statement",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "1b425e141e22f10da5fe276ba119feeb1c50a349",
-              "registry_digest": "sha256:ceaf5f05cfc564ed1066b1bf5239a58f63ecac32b364b1a1bf3ea4221c4a6fb0"
+              "observed_commit": "9dc1bb746dec22b2c5e9d75fa0a9dde4a58ac392",
+              "registry_digest": "sha256:9de48a8e4bfd1482a324a9b316f7f602843bc2aca315d95421c4371562c17ac1"
             }
           }
         ]

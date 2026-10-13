@@ -16,33 +16,33 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/trial.go",
           "lines": {
-            "start": 15,
-            "end": 30
+            "start": 16,
+            "end": 35
           },
-          "content_sha256": "sha256:420c2c0cda05872ea6908d5fc6604927d5b79a19e25f6ffb9e299b3fd25ebf27",
-          "excerpt_sha256": "sha256:bcd1b51a81a93063be5b17e9caeed784478b0c1fc6e55c7886a419371c6aa457",
+          "content_sha256": "sha256:9410b2e6ceb256d7eaf608c5ce2c538edc91db39d08dce1becd0af2c4a9f6b3b",
+          "excerpt_sha256": "sha256:5ebb45f646375d626ddc502f9acf3ce51086ecc092d30a845a2674e52e8d2822",
           "source_kind": "implementation"
         }
       ],
+      "status": "reviewed",
       "review": {
-        "proposal_id": "registry-run-facts-with-source-path",
+        "proposal_id": "eval-judging-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-26T06:14:08.128459Z",
-            "scope": "Registry-to-Run version facts: the recorded root of a Skill Version inside its stored package",
+            "approved_at": "2026-10-13T07:59:14.973768Z",
+            "scope": "Re-cite eval-may-use-trace after eval's judge moved into the judging subpackage, and registry-run-facts-v1 after its version copy became runVersionFacts; neither record changes its statement",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "a6a691175c04fc2b6cb458811f12d8b82a2d9359",
-              "registry_digest": "sha256:a6ee144bc2a069628c9fb821835cd5a5493852cce846618496487724bf89f6bc"
+              "observed_commit": "9dc1bb746dec22b2c5e9d75fa0a9dde4a58ac392",
+              "registry_digest": "sha256:9de48a8e4bfd1482a324a9b316f7f602843bc2aca315d95421c4371562c17ac1"
             }
           }
         ]
-      },
-      "status": "reviewed"
+      }
     },
     {
       "id": "run-activity-facts-v1",

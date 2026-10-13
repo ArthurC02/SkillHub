@@ -3,12 +3,12 @@
   "proposal_id": "eval-judging-recite",
   "proposer": "domain-memory-agent",
   "requirement_id": "eval-judging-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-13T07:58:30.561377Z",
   "verified_at": "2026-10-13T07:59:15.611884Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-13T07:59:26.688725Z",
+  "applied_at": "2026-10-13T07:59:28.576566Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "9dc1bb746dec22b2c5e9d75fa0a9dde4a58ac392",
@@ -142,5 +142,9 @@
   "supersedes": [
     "eval-checks-facts-recite",
     "registry-run-facts-with-source-path"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "80ae9ab501a99d08bfa2f3c1bcb86ffd609cb01e",
+    "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+  }
 }
