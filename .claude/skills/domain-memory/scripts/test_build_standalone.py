@@ -22,7 +22,8 @@ class BuildStandaloneTest(unittest.TestCase):
                 (output / "templates/domain-change-proposal.json").is_file()
             )
             self.assertTrue((output / "scripts/registry_tools.py").is_file())
-            self.assertFalse((output / "scripts/test_domain_registry.py").exists())
+            self.assertTrue((plugin / "scripts/test_support.py").is_file())
+            self.assertEqual([], [path.name for path in (output / "scripts").glob("test_*.py")])
 
     def test_bundle_carries_the_entry_point_for_a_host_without_skills(self) -> None:
         plugin = Path(__file__).parents[1]

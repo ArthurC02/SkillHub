@@ -1,0 +1,886 @@
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+
+from domain_registry.common import ASSET_KEYS, load_json
+from domain_registry.contracts import validate_schema
+from domain_registry.cli_commands import HANDLERS, policy_assignments
+from domain_registry.cli_parser import build_parser
+from domain_registry.registry import (
+    boundary_analysis,
+    context_model,
+    coverage,
+    lookup,
+    migrate_evidence,
+    migrate_registry,
+    record_by_id,
+    resolve_terms,
+    validate,
+    verify_evidence,
+)
+from test_support import RegistryTestCase, append_audit, scan_secrets, amend_policy
+
+
+class RegistryTest(RegistryTestCase):
+    def test_lookup_honors_policy_result_limit(self) -> None:
+        document = self.repo / "memory" / "registry" / "contexts.json"
+        value = json.loads(document.read_text(encoding="utf-8"))
+        value["contexts"] = [
+            {"id": "one", "name": "One", "responsibility": "First."},
+            {"id": "two", "name": "Two", "responsibility": "Second."},
+        ]
+        document.write_text(json.dumps(value), encoding="utf-8")
+        policy_path = self.repo / "memory" / "domain-memory-policy.json"
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        policy["limits"]["max_query_results"] = 1
+        policy_path.write_text(json.dumps(policy), encoding="utf-8")
+        self.assertEqual(1, len(lookup(self.repo / "memory", "contexts", "")))
+
+    def test_migrate_evidence_upgrades_existing_line_reference(self) -> None:
+        self.seed_line_reference_evidence()
+        self.assertEqual(1, migrate_evidence(self.repo / "memory", self.repo))
+        self.assertEqual(
+            1, verify_evidence(self.repo / "memory", self.repo)["summary"]["current"]
+        )
+
+    def test_each_record_and_reference_defect_is_named(self) -> None:
+        orders = {"id": "orders", "name": "Orders", "responsibility": "Own orders."}
+        billing = {"id": "billing", "name": "Billing", "responsibility": "Own invoices."}
+        order_term = {"id": "order", "name": "Order", "contexts": ["orders"]}
+        invoice_term = {"id": "invoice", "name": "Invoice", "contexts": ["orders"]}
+        cases = [
+            ("duplicate id", "contexts.json", [orders, dict(orders)], "contexts.json contains duplicate id"),
+            ("blank id", "contexts.json", [orders, {**billing, "id": ""}], "contexts.json entries require non-empty id"),
+            ("unknown status", "contexts.json", [{**orders, "status": "pending"}, billing],
+             "contexts.json:orders has an invalid status"),
+            ("decision review status", "decisions.json", [{"id": "d", "review_status": "bogus", "status": "candidate"}],
+             "decisions.json:d has an invalid status"),
+            ("reviewed without fields", "rules.json",
+             [{"id": "r", "contexts": ["orders"], "status": "reviewed", "evidence": ["x"]}],
+             "rules.json:r is reviewed but missing statement, review"),
+            ("reviewed without evidence", "rules.json",
+             [{"id": "r", "contexts": ["orders"], "statement": "s", "review": {"p": 1}, "status": "reviewed"}],
+             "rules.json:r is reviewed but lacks evidence"),
+            ("term without contexts", "vocabulary.json", [{"id": "t", "contexts": []}], "vocabulary.json:t requires contexts"),
+            ("synonyms not a list", "vocabulary.json", [{**order_term, "synonyms": "purchase"}],
+             "vocabulary.json:order synonyms and not_same_as must be lists of non-empty strings"),
+            ("blank synonym", "vocabulary.json", [{**order_term, "synonyms": [" "]}],
+             "vocabulary.json:order synonyms and not_same_as must be lists of non-empty strings"),
+            ("look-alikes not a list", "vocabulary.json", [{**order_term, "not_same_as": "invoice"}],
+             "vocabulary.json:order synonyms and not_same_as must be lists of non-empty strings"),
+            ("repeated synonym", "vocabulary.json", [{**order_term, "synonyms": ["Purchase", "purchase"]}],
+             "vocabulary.json:order repeats a synonym"),
+            ("own name as synonym", "vocabulary.json", [{**order_term, "synonyms": ["order"]}],
+             "vocabulary.json:order lists its own name as a synonym"),
+            ("synonym naming a term of the same context", "vocabulary.json",
+             [{**order_term, "synonyms": ["Invoice"]}, invoice_term],
+             "vocabulary.json:order synonym 'Invoice' is the name of invoice in a shared context"),
+            ("unknown look-alike", "vocabulary.json", [{**order_term, "not_same_as": ["ghost"]}],
+             "vocabulary.json:order not_same_as must name other vocabulary term ids"),
+            ("itself as a look-alike", "vocabulary.json", [{**order_term, "not_same_as": ["order"]}],
+             "vocabulary.json:order not_same_as must name other vocabulary term ids"),
+            ("rule in unknown context", "rules.json", [{"id": "r", "contexts": ["ghost"]}],
+             "rules.json:r references unknown context"),
+            ("aggregate in unknown context", "aggregates.json", [{"id": "a", "context": "ghost"}],
+             "aggregates.json:a references unknown context"),
+            ("unknown consumer", "interactions.json",
+             [{"id": "i", "producer_context": "orders", "consumer_context": "ghost"}],
+             "interactions.json:i references unknown context"),
+            ("policy to unknown context", "dependency-policies.json",
+             [{"id": "p", "from_context": "orders", "to_context": "ghost"}],
+             "dependency-policies.json:p references unknown context"),
+            ("contract producer", "contracts.json", [{"id": "c", "producer_context": "ghost", "consumer_contexts": []}],
+             "contracts.json:c references unknown producer context"),
+            ("contract consumer", "contracts.json",
+             [{"id": "c", "producer_context": "orders", "consumer_contexts": ["ghost"]}],
+             "contracts.json:c references unknown consumer context"),
+            ("unknown contract", "interactions.json",
+             [{"id": "i", "producer_context": "orders", "consumer_context": "billing", "contract_id": "none"}],
+             "interactions.json:i references unknown contract"),
+        ]
+        registry = self.repo / "memory" / "registry"
+        pristine = {name: (registry / name).read_text(encoding="utf-8") for name in ASSET_KEYS}
+        for label, name, records, message in cases:
+            with self.subTest(label):
+                for asset, text in pristine.items():
+                    (registry / asset).write_text(text, encoding="utf-8")
+                if name != "contexts.json":
+                    self.seed("contexts.json", [orders, billing])
+                self.seed(name, records)
+                self.assertIn(message, validate(self.repo / "memory", None, False))
+        with self.subTest("candidate where reviewed is required"):
+            for asset, text in pristine.items():
+                (registry / asset).write_text(text, encoding="utf-8")
+            self.seed("contexts.json", [orders])
+            self.assertIn("contexts.json:orders is not reviewed", validate(self.repo / "memory", None, True))
+
+    def test_validate_refuses_an_unhashed_citation(self) -> None:
+        self.two_line_rule()
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders.",
+                                      "evidence": [{"path": "rule.md", "lines": {"start": 1, "end": 1}}]}])
+        self.assertIn(
+            "evidence unhashed: rule.md was cited without an excerpt hash; regenerate the citation with cite",
+            validate(self.repo / "memory", self.repo, False),
+        )
+        self.assertEqual(1, verify_evidence(self.repo / "memory", self.repo)["summary"]["unhashed"])
+
+    def test_contract_idempotency_states_each_part_in_text(self) -> None:
+        sound = {"key": "origin key", "scope": "per Workspace", "on_replay": "same Run", "on_conflict": "refused"}
+        cases = [
+            ("not an object", "origin key", "contracts.json:c idempotency must be an object"),
+            ("missing parts", {"key": "origin key"}, "contracts.json:c idempotency lacks scope, on_replay, on_conflict"),
+            ("unknown part", {**sound, "on_retry": "x"}, "contracts.json:c idempotency has unknown fields on_retry"),
+            ("blank part", {**sound, "scope": " "}, "contracts.json:c idempotency fields must be non-empty text: scope"),
+            ("blank expiry", {**sound, "expiry": ""}, "contracts.json:c idempotency fields must be non-empty text: expiry"),
+        ]
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}])
+        contract = {"id": "c", "producer_context": "orders", "consumer_contexts": []}
+        for label, idempotency, message in cases:
+            with self.subTest(label):
+                self.seed("contracts.json", [{**contract, "idempotency": idempotency}])
+                self.assertIn(message, validate(self.repo / "memory", None, False))
+        with self.subTest("sound, with an expiry"):
+            self.seed("contracts.json", [{**contract, "idempotency": {**sound, "expiry": "24 hours"}}])
+            self.assertEqual([], validate(self.repo / "memory", None, False))
+
+    def test_term_labels_may_reuse_a_name_from_another_context_and_point_at_a_look_alike(self) -> None:
+        self.seed("contexts.json", [
+            {"id": "orders", "name": "Orders", "responsibility": "Own orders."},
+            {"id": "billing", "name": "Billing", "responsibility": "Own invoices."},
+        ])
+        self.seed("vocabulary.json", [
+            {"id": "order", "name": "Order", "contexts": ["orders"],
+             "synonyms": ["Purchase", "Invoice"], "not_same_as": ["invoice"]},
+            {"id": "invoice", "name": "Invoice", "contexts": ["billing"]},
+            {"id": "line", "name": "Order Line", "contexts": ["orders"]},
+        ])
+        self.assertEqual([], validate(self.repo / "memory", None, False))
+
+    def test_audit_refuses_to_extend_a_corrupt_log(self) -> None:
+        root = self.repo / "memory"
+        append_audit(root, {"operation": "first"})
+        events = root / "audit" / "events.jsonl"
+        events.write_text(
+            events.read_text(encoding="utf-8").replace("first", "tampered"),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "audit log is invalid"):
+            append_audit(root, {"operation": "second"})
+        self.assertEqual(1, len(events.read_text(encoding="utf-8").splitlines()))
+
+    def test_a_registry_root_one_directory_too_deep_is_named_as_such(self) -> None:
+        inner = self.repo / "memory" / "registry"
+        self.assertEqual(
+            [
+                f"missing manifest: {inner / 'registry' / 'manifest.json'}; {inner / 'manifest.json'} exists, "
+                "so a root option probably points one directory too deep: a registry root holds registry/, "
+                "source-map.json, and the policy"
+            ],
+            validate(inner, self.repo, False),
+        )
+        with self.assertRaisesRegex(ValueError, "points one directory too deep"):
+            load_json(inner / "domain-memory-policy.json")
+
+    def test_a_missing_file_with_nothing_nearby_gets_no_hint(self) -> None:
+        missing = self.repo / "memory" / "nowhere.json"
+        with self.assertRaises(ValueError) as refused:
+            load_json(missing)
+        self.assertEqual(f"JSON file required: {missing}", str(refused.exception))
+        elsewhere = self.repo / "elsewhere"
+        self.assertEqual([f"missing manifest: {elsewhere / 'registry' / 'manifest.json'}"], validate(elsewhere, None, False))
+
+    def test_json_loader_rejects_duplicate_keys(self) -> None:
+        path = self.repo / "duplicate.json"
+        path.write_text('{"status":"approved","status":"rejected"}\n', encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "invalid JSON"):
+            load_json(path)
+
+    def test_coverage_names_a_reviewed_record_with_no_evidence(self) -> None:
+        self.select_docs_as_sources()
+        self.reviewed_rule([])
+        self.assertEqual(
+            [{"asset": "rules", "id": "order-total", "reason": "no evidence"}],
+            coverage(self.repo / "memory")["evidence_gaps"],
+        )
+
+    def test_coverage_says_nothing_about_a_candidate_without_evidence(self) -> None:
+        self.select_docs_as_sources()
+        self.reviewed_rule([])
+        self.seed(
+            "rules.json",
+            [
+                {
+                    "id": "order-total",
+                    "contexts": ["orders"],
+                    "statement": "An order total is non-negative.",
+                    "evidence": [],
+                    "status": "candidate",
+                }
+            ],
+        )
+        self.assertEqual([], coverage(self.repo / "memory")["evidence_gaps"])
+
+    def test_a_requirement_sentence_resolves_the_terms_it_names(self) -> None:
+        self.defined_term()
+        matches = resolve_terms(
+            self.repo / "memory", "Who starts the Evaluation once a Run succeeds?", None
+        )
+        self.assertEqual([term["id"] for term in matches], ["run"])
+
+    def test_a_sentence_naming_no_registered_term_still_resolves_to_nothing(
+        self,
+    ) -> None:
+        self.defined_term()
+        self.assertEqual(
+            resolve_terms(
+                self.repo / "memory", "Who signs off on the quarterly budget?", None
+            ),
+            [],
+        )
+
+    def test_a_word_from_the_definition_still_resolves_the_term(self) -> None:
+        self.defined_term()
+        matches = resolve_terms(self.repo / "memory", "test case", None)
+        self.assertEqual([(term["id"], term["match_kind"]) for term in matches], [("run", "definition")])
+
+    def test_a_name_in_the_query_is_a_name_match(self) -> None:
+        self.defined_term()
+        matches = resolve_terms(self.repo / "memory", "a run", None)
+        self.assertEqual([(term["id"], term["match_kind"]) for term in matches], [("run", "name")])
+
+    def test_a_synonym_in_the_query_is_a_synonym_match(self) -> None:
+        self.seed("vocabulary.json", [
+            {"id": "run", "name": "Run", "definition": "One trial.", "contexts": ["trial"],
+             "synonyms": ["Execution"]},
+        ])
+        self.allow_results(10)
+        matches = resolve_terms(self.repo / "memory", "retry the execution", None)
+        self.assertEqual([(term["id"], term["match_kind"]) for term in matches], [("run", "synonym")])
+
+    def test_name_matches_come_before_synonym_and_definition_matches(self) -> None:
+        self.seed("vocabulary.json", [
+            {"id": "attempt", "name": "Attempt", "definition": "One execution of a Run.", "contexts": ["trial"]},
+            {"id": "job", "name": "Job", "definition": "Queued work.", "contexts": ["trial"],
+             "synonyms": ["Run request"]},
+            {"id": "run", "name": "Run", "definition": "One trial.", "contexts": ["trial"]},
+        ])
+        self.allow_results(10)
+        matches = resolve_terms(self.repo / "memory", "run", None)
+        self.assertEqual(
+            [(term["id"], term["match_kind"]) for term in matches],
+            [("run", "name"), ("job", "synonym"), ("attempt", "definition")],
+        )
+
+    def test_resolve_terms_reads_the_definition_and_not_the_rest_of_the_record(
+        self,
+    ) -> None:
+        self.two_contexts()
+        self.seed(
+            "vocabulary.json",
+            [
+                {
+                    "id": "order",
+                    "name": "Order",
+                    "definition": "A confirmed purchase.",
+                    "contexts": ["orders"],
+                },
+                {
+                    "id": "invoice",
+                    "name": "Invoice",
+                    "definition": "A demand for payment.",
+                    "contexts": ["billing"],
+                    "note": "A confirmed purchase becomes this.",
+                },
+            ],
+        )
+        self.allow_results(10)
+        found = [
+            term["id"]
+            for term in resolve_terms(self.repo / "memory", "confirmed purchase", None)
+        ]
+        self.assertEqual(found, ["order"])
+
+    def test_resolve_terms_matches_regardless_of_letter_case(self) -> None:
+        self.two_contexts()
+        self.seed(
+            "vocabulary.json",
+            [
+                {
+                    "id": "order",
+                    "name": "Order",
+                    "definition": "A purchase.",
+                    "contexts": ["orders"],
+                }
+            ],
+        )
+        self.assertEqual(len(resolve_terms(self.repo / "memory", "ORDER", None)), 1)
+
+    def test_resolve_terms_excludes_a_term_that_does_not_belong_to_the_named_context(
+        self,
+    ) -> None:
+        self.two_contexts()
+        self.seed(
+            "vocabulary.json",
+            [
+                {
+                    "id": "order",
+                    "name": "Order",
+                    "definition": "A purchase.",
+                    "contexts": ["orders"],
+                }
+            ],
+        )
+        self.assertEqual(
+            resolve_terms(self.repo / "memory", "order", "orders")[0]["id"], "order"
+        )
+        self.assertEqual(resolve_terms(self.repo / "memory", "order", "billing"), [])
+
+    def test_resolve_terms_stops_at_the_policy_result_limit(self) -> None:
+        self.two_contexts()
+        self.seed(
+            "vocabulary.json",
+            [
+                {
+                    "id": "order",
+                    "name": "Order",
+                    "definition": "A purchase.",
+                    "contexts": ["orders"],
+                },
+                {
+                    "id": "order-line",
+                    "name": "Order line",
+                    "definition": "A purchase line.",
+                    "contexts": ["orders"],
+                },
+            ],
+        )
+        self.allow_results(1)
+        self.assertEqual(len(resolve_terms(self.repo / "memory", "purchase", None)), 1)
+
+    def test_an_absent_record_is_reported_as_absent_rather_than_raised(self) -> None:
+        self.two_contexts()
+        record = record_by_id(self.repo / "memory", "contexts", "orders")
+        self.assertIsNotNone(record)
+        assert record is not None
+        self.assertEqual(record["name"], "Orders")
+        self.assertIsNone(record_by_id(self.repo / "memory", "contexts", "shipping"))
+
+    def test_an_unknown_context_has_no_model(self) -> None:
+        self.two_contexts()
+        self.assertIsNone(context_model(self.repo / "memory", "shipping"))
+
+    def test_a_context_model_carries_the_contracts_it_consumes_as_well_as_those_it_produces(
+        self,
+    ) -> None:
+        self.two_contexts()
+        self.seed(
+            "contracts.json",
+            [
+                {
+                    "id": "invoice-api",
+                    "producer_context": "billing",
+                    "consumer_contexts": ["orders"],
+                },
+                {
+                    "id": "order-api",
+                    "producer_context": "orders",
+                    "consumer_contexts": [],
+                },
+                {
+                    "id": "shipping-api",
+                    "producer_context": "billing",
+                    "consumer_contexts": [],
+                },
+            ],
+        )
+        model = context_model(self.repo / "memory", "orders")
+        self.assertIsNotNone(model)
+        assert model is not None
+        self.assertEqual(model["usage"], "constraint")
+        self.assertEqual(
+            sorted(entry["id"] for entry in model["contracts"]),
+            ["invoice-api", "order-api"],
+        )
+
+    def test_a_local_draft_context_model_is_working_memory(self) -> None:
+        amend_policy(
+            self.repo / "memory", "review_mode", "local-draft-only", "No external verifier is configured."
+        )
+        self.two_contexts()
+        model = context_model(self.repo / "memory", "orders")
+        self.assertIsNotNone(model)
+        assert model is not None
+        self.assertEqual(model["usage"], "working-memory")
+
+    def test_local_draft_memory_cannot_satisfy_reviewed_validation(self) -> None:
+        amend_policy(
+            self.repo / "memory", "review_mode", "local-draft-only", "No external verifier is configured."
+        )
+        errors = validate(self.repo / "memory", self.repo, True)
+        self.assertTrue(any("cannot satisfy" in error for error in errors), errors)
+
+    def test_two_contexts_cannot_claim_the_same_code(self) -> None:
+        errors = self.placed_contexts(("orders", "sales/orders"), ("billing", "sales/orders"))
+        self.assertTrue(any("overlaps" in error for error in errors), errors)
+
+    def test_a_context_cannot_claim_code_inside_another_context(self) -> None:
+        errors = self.placed_contexts(("sales", "sales"), ("orders", "sales/orders"))
+        self.assertTrue(any("overlaps" in error for error in errors), errors)
+
+    def test_sibling_paths_that_share_a_name_prefix_do_not_overlap(self) -> None:
+        errors = self.placed_contexts(("orders", "sales/order"), ("ordering", "sales/ordering"))
+        self.assertEqual([error for error in errors if "overlaps" in error], [])
+
+    def test_a_context_subdomain_is_a_closed_set(self) -> None:
+        self.seed(
+            "contexts.json",
+            [
+                {
+                    "id": "orders",
+                    "name": "Orders",
+                    "responsibility": "Own orders.",
+                    "subdomain": "strategic",
+                }
+            ],
+        )
+        errors = validate(self.repo / "memory", self.repo, False)
+        self.assertTrue(any("unknown subdomain" in error for error in errors), errors)
+
+    def test_a_known_subdomain_is_accepted(self) -> None:
+        for subdomain in ("core", "supporting", "generic", "shared-kernel"):
+            with self.subTest(subdomain=subdomain):
+                self.seed(
+                    "contexts.json",
+                    [
+                        {
+                            "id": "orders",
+                            "name": "Orders",
+                            "responsibility": "Own orders.",
+                            "subdomain": subdomain,
+                        }
+                    ],
+                )
+                errors = validate(self.repo / "memory", self.repo, False)
+                self.assertEqual(
+                    [error for error in errors if "subdomain" in error], []
+                )
+
+    def test_requirement_prefixes_must_be_a_list_of_names(self) -> None:
+        self.seed(
+            "contexts.json",
+            [
+                {
+                    "id": "orders",
+                    "name": "Orders",
+                    "responsibility": "Own orders.",
+                    "requirement_prefixes": "ORD",
+                }
+            ],
+        )
+        errors = validate(self.repo / "memory", self.repo, False)
+        self.assertTrue(
+            any("requirement_prefixes" in error for error in errors), errors
+        )
+
+    def test_a_candidate_record_is_named_by_reviewed_validation(self) -> None:
+        self.two_contexts()
+        errors = validate(self.repo / "memory", self.repo, True)
+        self.assertIn("contexts.json:orders is not reviewed", errors)
+
+    def test_a_registry_of_reviewed_records_satisfies_reviewed_validation(self) -> None:
+        self.seed(
+            "contexts.json",
+            [
+                {
+                    "id": "orders",
+                    "name": "Orders",
+                    "responsibility": "Own orders.",
+                    "status": "reviewed",
+                    "review": {"proposal_id": "P-1"},
+                    "evidence": ["docs/kept.md:1"],
+                }
+            ],
+        )
+        errors = validate(self.repo / "memory", self.repo, True)
+        self.assertEqual([error for error in errors if "not reviewed" in error], [])
+
+    def test_two_contexts_without_registered_collaboration_say_so(self) -> None:
+        self.two_contexts()
+        self.assertEqual(
+            boundary_analysis(self.repo / "memory", "orders", "billing")["status"],
+            "no_registered_collaboration",
+        )
+
+    def test_a_registered_interaction_makes_a_boundary_known(self) -> None:
+        self.two_contexts()
+        self.seed(
+            "interactions.json",
+            [
+                {
+                    "id": "order-billed",
+                    "producer_context": "orders",
+                    "consumer_context": "billing",
+                }
+            ],
+        )
+        self.assertEqual(
+            boundary_analysis(self.repo / "memory", "orders", "billing")["status"],
+            "known",
+        )
+
+    def test_a_registered_interaction_does_not_make_the_reverse_direction_known(
+        self,
+    ) -> None:
+        self.two_contexts()
+        self.seed(
+            "interactions.json",
+            [
+                {
+                    "id": "order-billed",
+                    "producer_context": "orders",
+                    "consumer_context": "billing",
+                }
+            ],
+        )
+        self.assertEqual(
+            boundary_analysis(self.repo / "memory", "billing", "orders")["status"],
+            "no_registered_collaboration",
+        )
+
+    def test_a_dependency_policy_alone_does_not_register_a_collaboration(self) -> None:
+        self.two_contexts()
+        self.seed(
+            "dependency-policies.json",
+            [
+                {
+                    "id": "orders-billing",
+                    "from_context": "orders",
+                    "to_context": "billing",
+                }
+            ],
+        )
+        analysis = boundary_analysis(self.repo / "memory", "orders", "billing")
+        self.assertEqual(len(analysis["dependencies"]), 1)
+        self.assertEqual(analysis["status"], "no_registered_collaboration")
+
+    def test_coverage_reports_a_context_only_under_the_asset_it_lacks(self) -> None:
+        self.seed(
+            "contexts.json",
+            [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}],
+        )
+        self.seed(
+            "vocabulary.json",
+            [
+                {
+                    "id": "order",
+                    "name": "Order",
+                    "definition": "A purchase.",
+                    "contexts": ["orders"],
+                }
+            ],
+        )
+        gaps = coverage(self.repo / "memory")["gaps"]
+        self.assertEqual(gaps["without_vocabulary"], [])
+        self.assertEqual(gaps["without_aggregate"], ["orders"])
+        self.assertEqual(gaps["without_rule"], ["orders"])
+        self.assertEqual(gaps["without_contract"], ["orders"])
+
+    def test_requiring_reviewed_records_rejects_a_candidate_registry(self) -> None:
+        self.seed(
+            "contexts.json",
+            [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}],
+        )
+        self.assertEqual(validate(self.repo / "memory", None, False), [])
+        errors = validate(self.repo / "memory", None, True)
+        self.assertTrue(
+            any("contexts.json:orders is not reviewed" in error for error in errors)
+        )
+
+    def test_a_reviewed_record_without_evidence_is_rejected(self) -> None:
+        self.seed(
+            "contexts.json",
+            [
+                {
+                    "id": "orders",
+                    "name": "Orders",
+                    "responsibility": "Own orders.",
+                    "status": "reviewed",
+                    "review": {"proposal_id": "p-1"},
+                }
+            ],
+        )
+        errors = validate(self.repo / "memory", None, False)
+        self.assertTrue(
+            any(
+                "contexts.json:orders is reviewed but lacks evidence" in error
+                for error in errors
+            )
+        )
+
+    def test_a_non_json_contract_is_reported_unverified_instead_of_valid(self) -> None:
+        path = self.repo / "openapi.yaml"
+        path.write_text("openapi: 3.0.0", encoding="utf-8")
+        self.assertEqual(validate_schema(path)["status"], "unverified")
+
+    def test_a_malformed_json_contract_is_invalid(self) -> None:
+        path = self.repo / "broken.json"
+        path.write_text("{not json", encoding="utf-8")
+        self.assertEqual(validate_schema(path)["status"], "invalid")
+
+    def test_an_openapi_document_is_recognized_as_a_contract(self) -> None:
+        path = self.repo / "public.json"
+        path.write_text(json.dumps({"openapi": "3.0.0", "paths": {}}), encoding="utf-8")
+        self.assertEqual(
+            validate_schema(path),
+            {"status": "valid", "kind": "openapi", "path": str(path)},
+        )
+
+    def test_the_secret_scanner_finds_each_kind_it_claims_to_find(self) -> None:
+        secrets = self.repo / "leaky"
+        secrets.mkdir()
+        label = "PRIVATE KEY"
+        (secrets / "key.pem").write_text(
+            f"-----BEGIN RSA {label}-----", encoding="utf-8"
+        )
+        (secrets / "ci.env").write_text("ghp_" + "a" * 30, encoding="utf-8")
+        (secrets / "app.conf").write_text("api_key = " + "b" * 20, encoding="utf-8")
+        (secrets / "clean.md").write_text("A token is a word.", encoding="utf-8")
+        found = {finding["kind"] for finding in scan_secrets(secrets)}
+        self.assertEqual(found, {"private-key", "github-token", "generic-secret"})
+
+    def test_a_secret_finding_never_carries_the_secret(self) -> None:
+        secrets = self.repo / "leaky"
+        secrets.mkdir()
+        (secrets / "ci.env").write_text("ghp_" + "c" * 30, encoding="utf-8")
+        finding = scan_secrets(secrets)[0]
+        self.assertEqual(sorted(finding), ["kind", "line", "path"])
+        self.assertNotIn("c" * 30, json.dumps(finding))
+
+    def test_every_parsed_command_has_a_handler_and_every_handler_a_command(self) -> None:
+        subcommands = next(
+            action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)
+        )
+        self.assertEqual(set(HANDLERS), set(subcommands.choices))
+
+    def test_migrating_restores_a_missing_asset_without_touching_the_others(
+        self,
+    ) -> None:
+        self.seed(
+            "contexts.json",
+            [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}],
+        )
+        (self.repo / "memory" / "registry" / "events.json").unlink()
+        created = migrate_registry(self.repo / "memory")
+        self.assertEqual(created, ["events.json"])
+        record = record_by_id(self.repo / "memory", "contexts", "orders")
+        self.assertIsNotNone(record)
+        assert record is not None
+        self.assertEqual(record["name"], "Orders")
+
+    def test_an_examined_context_leaves_the_gap_list_but_an_unexamined_one_stays(
+        self,
+    ) -> None:
+        self.context_declaring(
+            "aggregates",
+            "Invariants are thin here; a transaction script is the declared pattern.",
+        )
+        report = coverage(self.repo / "memory")
+        self.assertEqual(report["gaps"]["without_aggregate"], ["billing"])
+        self.assertEqual(report["confirmed_absent"]["without_aggregate"], ["orders"])
+
+    def test_an_absence_confirmed_for_one_asset_does_not_answer_another(self) -> None:
+        self.context_declaring("aggregates", "Invariants are thin here.")
+        report = coverage(self.repo / "memory")
+        self.assertIn("orders", report["gaps"]["without_rule"])
+        self.assertEqual(report["confirmed_absent"]["without_rule"], [])
+
+    def test_a_confirmed_absence_without_a_reason_is_rejected(self) -> None:
+        self.context_declaring("aggregates", "   ")
+        errors = validate(self.repo / "memory", None, False)
+        self.assertTrue(any("without a reason" in error for error in errors), errors)
+
+    def test_a_confirmed_absence_the_records_contradict_is_rejected(self) -> None:
+        self.context_declaring(
+            "rules", "No business rule is written down for this context."
+        )
+        self.seed(
+            "rules.json",
+            [
+                {
+                    "id": "order-total",
+                    "contexts": ["orders"],
+                    "statement": "An order total is non-negative.",
+                }
+            ],
+        )
+        errors = validate(self.repo / "memory", None, False)
+        self.assertTrue(
+            any("rules records name it" in error for error in errors), errors
+        )
+
+    def test_a_confirmed_absence_of_an_unknown_asset_names_the_ones_allowed(
+        self,
+    ) -> None:
+        self.context_declaring("events", "Events are elsewhere.")
+        errors = validate(self.repo / "memory", None, False)
+        named = next(error for error in errors if "unknown asset" in error)
+        for allowed in ("aggregates", "contracts", "rules", "vocabulary"):
+            self.assertIn(allowed, named)
+
+    def test_the_command_line_takes_one_field_or_several_sets_but_not_both(self) -> None:
+        def parsed(**values) -> argparse.Namespace:
+            return argparse.Namespace(**{"field": None, "value": None, "set": [], **values})
+
+        self.assertEqual(
+            [("ci_requirement", "required")],
+            policy_assignments(parsed(field="ci_requirement", value="required")),
+        )
+        self.assertEqual(
+            [("review_mode", "scm-verified"), ("authorized_signers", "a=b,c")],
+            policy_assignments(parsed(set=["review_mode=scm-verified", "authorized_signers=a=b,c"])),
+        )
+        for refused in (
+            parsed(),
+            parsed(field="ci_requirement"),
+            parsed(field="ci_requirement", value="required", set=["review_mode=scm-verified"]),
+            parsed(set=["review_mode"]),
+        ):
+            with self.subTest(refused=vars(refused)):
+                with self.assertRaises(ValueError):
+                    policy_assignments(refused)
+
+    def test_a_policy_can_leave_local_draft_only_for_external_review(self) -> None:
+        amend_policy(
+            self.repo / "memory",
+            "review_mode",
+            "local-draft-only",
+            "Drafting alone until a reviewer exists.",
+        )
+        with self.assertRaisesRegex(ValueError, "requires the verifier"):
+            amend_policy(
+                self.repo / "memory",
+                "review_mode",
+                "scm-verified",
+                "A reviewer exists now.",
+            )
+        self.assertEqual(self.stored_policy()["review_mode"], "local-draft-only")
+        amend_policy(
+            self.repo / "memory",
+            "review_mode",
+            "scm-verified",
+            "A reviewer exists now.",
+            verifier="github-pr",
+        )
+        self.assertEqual(self.stored_policy()["review_mode"], "scm-verified")
+        self.assertEqual(
+            self.stored_policy()["review_governance"]["verifier"], "github-pr"
+        )
+
+    def test_a_repository_without_ci_can_adopt_and_rotate_a_signer(self) -> None:
+        root = self.repo / "memory"
+        amend_policy(
+            root, "authorized_signers", "SHA256:first", "Register the maintainer key."
+        )
+        amend_policy(root, "review_trigger", "git-push", "Signing is enforced on push.")
+        amend_policy(
+            root,
+            "review_verifier",
+            "git-signed-commit",
+            "No CI reviewer exists, so the maintainer signs instead.",
+        )
+        governance = self.stored_policy()["review_governance"]
+        self.assertEqual("git-signed-commit", governance["verifier"])
+        self.assertEqual(["SHA256:first"], governance["authorized_signers"])
+        amend_policy(
+            root, "authorized_signers", "SHA256:second", "Rotate a compromised key."
+        )
+        self.assertEqual(
+            ["SHA256:second"],
+            self.stored_policy()["review_governance"]["authorized_signers"],
+        )
+        with self.assertRaisesRegex(ValueError, "amended policy is invalid"):
+            amend_policy(root, "authorized_signers", "   ", "Leave nobody able to sign.")
+        self.assertEqual(
+            ["SHA256:second"],
+            self.stored_policy()["review_governance"]["authorized_signers"],
+        )
+
+    def test_amending_without_a_reason_leaves_the_policy_alone(self) -> None:
+        with self.assertRaisesRegex(ValueError, "requires a reason"):
+            amend_policy(self.repo / "memory", "review_mode", "local-draft-only", "   ")
+        self.assertEqual(self.stored_policy()["review_mode"], "scm-verified")
+
+    def test_an_unamendable_field_names_the_ones_that_are(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            amend_policy(self.repo / "memory", "limits", "0", "Loosen the limits.")
+        for amendable in (
+            "review_mode",
+            "storage_mode",
+            "data_classification",
+            "source_authority",
+        ):
+            self.assertIn(amendable, str(raised.exception))
+
+    def test_an_invalid_value_is_refused_before_anything_is_written(self) -> None:
+        with self.assertRaisesRegex(ValueError, "amended policy is invalid"):
+            amend_policy(
+                self.repo / "memory", "review_mode", "whatever-i-like", "Try it."
+            )
+        self.assertEqual(self.stored_policy()["review_mode"], "scm-verified")
+
+    def test_verify_evidence_names_the_record_of_each_citation_and_filters_by_path(self) -> None:
+        self.seed_two_cited_rules()
+        report = verify_evidence(self.repo / "memory", self.repo, ["fact.md"])
+        self.assertEqual(
+            [("rules", "moved", "shifted"), ("rules", "kept", "current")],
+            [(item["asset"], item["id"], item["status"]) for item in report["results"]],
+        )
+        self.assertEqual(3, len(verify_evidence(self.repo / "memory", self.repo)["results"]))
+
+    def test_a_query_no_term_matches_lists_reviewed_records_that_mention_it(self) -> None:
+        self.contexts_mentioning_suggestions()
+        self.assertEqual(
+            [{"match_kind": "mentioned", "authoritative": False, "asset": "contexts", "id": "eval",
+              "field": "responsibility"}],
+            resolve_terms(self.repo / "memory", "suggestion", None),
+        )
+
+    def test_a_mention_search_ignores_the_status_field(self) -> None:
+        self.contexts_mentioning_suggestions()
+        self.assertEqual([], resolve_terms(self.repo / "memory", "reviewed", None))
+
+    def test_a_matching_term_hides_prose_mentions(self) -> None:
+        self.contexts_mentioning_suggestions()
+        self.seed("vocabulary.json", [{"id": "suggestion", "name": "Suggestion", "contexts": ["eval"]}])
+        self.assertEqual(["name"], [match["match_kind"] for match in resolve_terms(self.repo / "memory", "suggestion", None)])
+
+    def test_verify_evidence_reports_each_requested_path_and_whether_it_exists(self) -> None:
+        self.seed_two_cited_rules()
+        report = verify_evidence(self.repo / "memory", self.repo, ["./other.md", "fact.md", "typo.md"])
+        self.assertEqual(
+            {"other.md": {"citations": 1, "exists": True}, "fact.md": {"citations": 2, "exists": True},
+             "typo.md": {"citations": 0, "exists": False}},
+            report["paths"],
+        )
+        self.assertNotIn("paths", verify_evidence(self.repo / "memory", self.repo))
+
+    def test_mentions_match_whole_words_and_list_defining_fields_first(self) -> None:
+        self.allow_results(10)
+        self.seed("contexts.json", [{"id": "orders", "name": "Orders", "responsibility": "Owns checkpoints.", "status": "reviewed"}])
+        self.seed("capabilities.json", [{"id": "audit", "rationale": "Runs checks.", "status": "reviewed"}])
+        self.seed("value-objects.json", [{"id": "gauge", "description": "A precheck value.", "status": "reviewed"}])
+        self.seed("rules.json", [{"id": "gate", "contexts": ["orders"], "statement": "A check gates release.", "status": "reviewed"}])
+        self.assertEqual(
+            [("rules", "gate", "statement"), ("capabilities", "audit", "rationale")],
+            [(match["asset"], match["id"], match["field"]) for match in resolve_terms(self.repo / "memory", "check", None)],
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
