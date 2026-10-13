@@ -268,20 +268,20 @@
         {
           "path": "apps/platform/internal/trial/improvement/verdicts.go",
           "lines": {
-            "start": 18,
-            "end": 32
+            "start": 19,
+            "end": 33
           },
-          "content_sha256": "sha256:2de51da635f0e4e71cd04ee7e7e691ed94cbf4111f4235ce0077121fe1ec543e",
-          "excerpt_sha256": "sha256:d2d07e97ba6a33001f0500210de125b6cae48aadf1f773fdb7f08e2b805f809b",
+          "content_sha256": "sha256:ba4cd0c7db838b13bf4771a97b45522587f9f117f6e157a64558f0c99a0738f8",
+          "excerpt_sha256": "sha256:57e0fb6c434b5987b727382051fe6118347651df4a83ca63357e17f80b887105",
           "source_kind": "implementation"
         },
         {
           "path": "apps/platform/internal/trial/improvement/verdicts.go",
           "lines": {
-            "start": 77,
-            "end": 104
+            "start": 78,
+            "end": 105
           },
-          "content_sha256": "sha256:2de51da635f0e4e71cd04ee7e7e691ed94cbf4111f4235ce0077121fe1ec543e",
+          "content_sha256": "sha256:ba4cd0c7db838b13bf4771a97b45522587f9f117f6e157a64558f0c99a0738f8",
           "excerpt_sha256": "sha256:c1c17840e5de6188d949b944f58d123d74b859f5b09ac951ac5959e4992b82e7",
           "source_kind": "implementation"
         },
@@ -296,25 +296,25 @@
           "source_kind": "implementation"
         }
       ],
+      "status": "reviewed",
       "review": {
-        "proposal_id": "eval-run-verdicts-recite-r2",
+        "proposal_id": "eval-verdict-package-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-11T18:26:42.986300Z",
-            "scope": "Retire run-eval-batch-trials-v1, which the batch Context's trial contract replaced, and re-cite eval-run-verdicts-v1 at the standing-verdict read and the run list",
+            "approved_at": "2026-10-13T05:56:46.247322Z",
+            "scope": "Re-cite the eval-run-verdicts contract after eval's value objects moved into the verdict subpackage; the contract states the same fact",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "42af6c8ec739c64be4c80a58311ba72e293cc9da",
-              "registry_digest": "sha256:05b8761c0ee928faade99e58aa936d10d4d7f26d6463a4ac5f1941226ad84fc4"
+              "observed_commit": "c7d3315a6a53e781af86f315ba4ef63ff8db8523",
+              "registry_digest": "sha256:b1f43818776c082dedbf38577238e671327e9f5699e7380aec91fd140c72081a"
             }
           }
         ]
-      },
-      "status": "reviewed"
+      }
     },
     {
       "id": "run-batch-trials-v1",
