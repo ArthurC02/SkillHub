@@ -1,16 +1,16 @@
-package eval
+package judging
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"golang.org/x/text/unicode/norm"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
@@ -29,58 +29,70 @@ const (
 	maxArtifactRows = 500  // one-number: maxArtifactRows
 )
 
-func (s *Service) judge(ctx context.Context, m facts.Material, ev gen.Evaluation) (assessment, error) {
-	if s.Judge == nil {
-		return assessment{}, fmt.Errorf("no judge service is configured for this deployment")
+type Outcome struct {
+	Summary          string
+	Results          []verdict.CriterionResult
+	Findings         []verdict.Finding
+	EvidenceComplete bool
+	Model            string
+	PromptVersion    string
+	RubricVersion    string
+	Usage            *modelport.ModelUsage
+}
+
+type Judges struct {
+	Judge        modelport.Judge
+	PanelEnabled func(context.Context) (bool, error)
+}
+
+func (j Judges) Assess(ctx context.Context, m facts.Material, evaluationID string, within time.Duration) (Outcome, error) {
+	if j.Judge == nil {
+		return Outcome{}, fmt.Errorf("no judge service is configured for this deployment")
 	}
 
-	req, sent := s.buildRequest(m, ev)
+	req, sent := buildRequest(m, evaluationID)
 	digest, truncation, dropped, trimmedEvents := sent.digest, sent.truncation, sent.dropped, sent.trimmedEvents
-	req.Within = s.Budgets.Within(ctx, JudgeBudget)
+	req.Within = within
 
-	callCtx, cancel := context.WithTimeout(ctx, judgeTimeout)
-	defer cancel()
-	answers, err := s.judgeAll(callCtx, req)
+	answers, err := j.judgeAll(ctx, req)
 	if err != nil {
-		return assessment{}, err
+		return Outcome{}, err
 	}
 	cuts := evidenceCuts{batch: batchWideCut(truncation), trimmedEvents: trimmedEvents}
 	perMember := make([][]verdict.CriterionResult, len(answers))
 	for i, answer := range answers {
-		perMember[i] = s.merge(m, answer, digest, cuts)
+		perMember[i] = merge(m, answer, digest, cuts)
 	}
 	results, split := vote(perMember)
-	v := assessment{
-		overall:          verdict.OverallFrom(results),
-		summary:          answers[0].Summary,
-		results:          results,
-		evidenceComplete: true,
-		model:            panelModel(answers),
-		promptVersion:    orUnknown(answers[0].PromptVersion),
+	v := Outcome{
+		Summary:          answers[0].Summary,
+		Results:          results,
+		EvidenceComplete: true,
+		Model:            panelModel(answers),
+		PromptVersion:    orUnknown(answers[0].PromptVersion),
+		Usage:            panelUsage(answers),
 	}
 
 	if req.Rubric != nil && m.Rubric != nil {
-		v.rubricVersion = m.Rubric.Version
+		v.RubricVersion = m.Rubric.Version
 	}
-	v.usage = panelUsage(answers)
-	v.costUSD = v.usage.ReportedCostUSD()
 
 	if len(split) > 0 {
-		v.findings = append(v.findings, verdict.NewFinding(verdict.CategoryEffect, verdict.SeverityWarning,
+		v.Findings = append(v.Findings, verdict.NewFinding(verdict.CategoryEffect, verdict.SeverityWarning,
 			"the judges did not agree on "+strings.Join(split, ", ")+
 				"; those criteria are undetermined rather than decided by one judge"))
 	}
 
 	if len(dropped) > 0 {
-		v.findings = append(v.findings, verdict.NewFinding(verdict.CategoryEffect, verdict.SeverityWarning,
+		v.Findings = append(v.Findings, verdict.NewFinding(verdict.CategoryEffect, verdict.SeverityWarning,
 			"these rubric items name no acceptance criterion of this run's snapshot and "+
 				"were not sent for judgement ("+strings.Join(dropped, ", ")+"); a rubric item's "+
 				"id is the criterion it strengthens"))
 	}
 
 	if len(truncation) > 0 {
-		v.evidenceComplete = false
-		v.findings = append(v.findings, verdict.NewFinding(verdict.CategoryEffect, verdict.SeverityWarning,
+		v.EvidenceComplete = false
+		v.Findings = append(v.Findings, verdict.NewFinding(verdict.CategoryEffect, verdict.SeverityWarning,
 			"the material sent for judgement was truncated ("+
 				strings.Join(truncation, ", ")+"); criteria depending on it are undetermined rather than passed"))
 	}
@@ -94,7 +106,7 @@ type sentForJudgement struct {
 	trimmedEvents map[string]bool
 }
 
-func (s *Service) buildRequest(m facts.Material, ev gen.Evaluation) (modelport.JudgeRequest, sentForJudgement) {
+func buildRequest(m facts.Material, evaluationID string) (modelport.JudgeRequest, sentForJudgement) {
 	truncation := []string{}
 
 	final, cutOutput := cut(m.Summary.FinalOutput, maxFinalOutput)
@@ -141,7 +153,7 @@ func (s *Service) buildRequest(m facts.Material, ev gen.Evaluation) (modelport.J
 
 	req := modelport.JudgeRequest{
 		RunID:        pgconv.UUIDString(m.Run.ID),
-		EvaluationID: pgconv.UUIDString(ev.ID),
+		EvaluationID: evaluationID,
 		UserPrompt:   m.Snapshot.UserPrompt,
 		Criteria:     criteria,
 		FinalOutput:  final,
@@ -254,7 +266,7 @@ func batchWideCut(truncation []string) bool {
 	return false
 }
 
-func (s *Service) merge(
+func merge(
 	m facts.Material, v *modelport.Judgement, digest map[string]trace.EventView, cuts evidenceCuts,
 ) []verdict.CriterionResult {
 
@@ -610,4 +622,11 @@ func derefString(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+func orUnknown(s string) string {
+	if s == "" {
+		return "unknown"
+	}
+	return s
 }

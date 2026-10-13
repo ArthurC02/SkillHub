@@ -2,8 +2,7 @@
   "packages": {
     "entrypoint/wiring": 26,
     "skill/discovery": 26,
-    "trial/execution": 32,
-    "trial/improvement": 26
+    "trial/execution": 32
   },
   "types": {
     "creator/creation.Service": {
@@ -47,7 +46,7 @@
       "fields": 19
     },
     "trial/improvement.Service": {
-      "methods": 64,
+      "methods": 60,
       "fields": 20
     }
   },

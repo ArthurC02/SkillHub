@@ -21,6 +21,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/checks"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/judging"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 
@@ -302,6 +303,28 @@ type assessment struct {
 	usage *modelport.ModelUsage
 }
 
+func (s *Service) judge(ctx context.Context, m facts.Material, ev gen.Evaluation) (assessment, error) {
+	within := s.Budgets.Within(ctx, JudgeBudget)
+	callCtx, cancel := context.WithTimeout(ctx, judgeTimeout)
+	defer cancel()
+	judges := judging.Judges{Judge: s.Judge, PanelEnabled: s.PanelEnabled}
+	o, err := judges.Assess(callCtx, m, pgconv.UUIDString(ev.ID), within)
+	if err != nil {
+		return assessment{}, err
+	}
+	return assessment{
+		summary:          o.Summary,
+		results:          o.Results,
+		findings:         o.Findings,
+		evidenceComplete: o.EvidenceComplete,
+		model:            o.Model,
+		promptVersion:    o.PromptVersion,
+		rubricVersion:    o.RubricVersion,
+		costUSD:          o.Usage.ReportedCostUSD(),
+		usage:            o.Usage,
+	}, nil
+}
+
 func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (facts.Material, error) {
 	m := facts.Material{}
 	if s.ReadEvaluationInput == nil {
@@ -571,4 +594,19 @@ func orUnknown(s string) string {
 		return "unknown"
 	}
 	return s
+}
+
+func cut(s string, limit int) (string, bool) {
+	runes := []rune(s)
+	if len(runes) <= limit {
+		return s, false
+	}
+	return string(runes[:limit]), true
+}
+
+func derefString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

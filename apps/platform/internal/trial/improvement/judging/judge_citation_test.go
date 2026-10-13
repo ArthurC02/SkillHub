@@ -1,4 +1,4 @@
-package eval
+package judging
 
 import (
 	"encoding/json"

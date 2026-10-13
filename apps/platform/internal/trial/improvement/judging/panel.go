@@ -1,4 +1,4 @@
-package eval
+package judging
 
 import (
 	"context"
@@ -13,24 +13,24 @@ import (
 
 var PanelRoles = []string{"skillhub-judge", "skillhub-judge-panel-1", "skillhub-judge-panel-2"}
 
-func (s *Service) panelRoles(ctx context.Context) ([]string, error) {
-	if s.PanelEnabled == nil {
+func (j Judges) panelRoles(ctx context.Context) ([]string, error) {
+	if j.PanelEnabled == nil {
 		return nil, nil
 	}
-	on, err := s.PanelEnabled(ctx)
+	on, err := j.PanelEnabled(ctx)
 	if err != nil || !on {
 		return nil, err
 	}
 	return PanelRoles, nil
 }
 
-func (s *Service) judgeAll(ctx context.Context, req modelport.JudgeRequest) ([]*modelport.Judgement, error) {
-	roles, err := s.panelRoles(ctx)
+func (j Judges) judgeAll(ctx context.Context, req modelport.JudgeRequest) ([]*modelport.Judgement, error) {
+	roles, err := j.panelRoles(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if len(roles) == 0 {
-		resp, err := s.Judge.JudgeRun(ctx, req)
+		resp, err := j.Judge.JudgeRun(ctx, req)
 		return []*modelport.Judgement{resp}, err
 	}
 	answers := make([]*modelport.Judgement, len(roles))
@@ -40,7 +40,7 @@ func (s *Service) judgeAll(ctx context.Context, req modelport.JudgeRequest) ([]*
 		wg.Go(func() {
 			member := req
 			member.ModelRole = role
-			answers[i], failures[i] = s.Judge.JudgeRun(ctx, member)
+			answers[i], failures[i] = j.Judge.JudgeRun(ctx, member)
 		})
 	}
 	wg.Wait()
