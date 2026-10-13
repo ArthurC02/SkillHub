@@ -50,3 +50,15 @@ func TestTrialContextsSeeTheOwnersRestrictionVerdict(t *testing.T) {
 		t.Errorf("evaluation facts for a skill under no hold = %+v", got)
 	}
 }
+
+func TestRunReceivesTheVersionFactsTheRegistryRecorded(t *testing.T) {
+	version := registry.Version{
+		ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}, SkillID: pgtype.UUID{Bytes: [16]byte{2}, Valid: true},
+		ContentHash: "sha256:abc", PackageObjectKey: "packages/abc.zip", SourcePath: "skills/report",
+	}
+	want := run.VersionFacts{ID: version.ID, SkillID: version.SkillID, ContentHash: "sha256:abc",
+		PackageObjectKey: "packages/abc.zip", SourcePath: "skills/report"}
+	if got := runVersionFacts(version); got != want {
+		t.Errorf("run facts for a version = %+v, want %+v", got, want)
+	}
+}

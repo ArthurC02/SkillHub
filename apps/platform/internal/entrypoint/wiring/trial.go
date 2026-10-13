@@ -26,8 +26,12 @@ func (r runRegistryReader) Skill(ctx context.Context, workspaceID, skillID pgtyp
 
 func (r runRegistryReader) Version(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.VersionFacts, bool, error) {
 	version, found, err := r.service.WorkspaceVersion(ctx, workspaceID, versionID)
+	return runVersionFacts(version), found, err
+}
+
+func runVersionFacts(version registry.Version) run.VersionFacts {
 	return run.VersionFacts{ID: version.ID, SkillID: version.SkillID, ContentHash: version.ContentHash,
-		PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath}, found, err
+		PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath}
 }
 
 func (r runRegistryReader) VersionSummaries(
