@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 type ActivityFact struct {
@@ -32,7 +33,7 @@ func (s *Service) ActivityFacts(ctx context.Context, workspaceID pgtype.UUID) ([
 }
 
 func evaluationActivityFact(row gen.ListEvaluationActivityFactsRow) ActivityFact {
-	classification, label, supported := classifyEvaluationActivity(Status(row.Status), Overall(row.Overall))
+	classification, label, supported := classifyEvaluationActivity(Status(row.Status), verdict.Overall(row.Overall))
 	activityAt := row.CreatedAt.Time
 	if row.Status != string(StatusPending) && row.EvaluatedAt.Valid {
 		activityAt = row.EvaluatedAt.Time
@@ -47,25 +48,25 @@ func evaluationActivityFact(row gen.ListEvaluationActivityFactsRow) ActivityFact
 	}
 }
 
-func classifyEvaluationActivity(status Status, overall Overall) (string, string, bool) {
+func classifyEvaluationActivity(status Status, overall verdict.Overall) (string, string, bool) {
 	switch status {
 	case StatusPending:
-		if overall == OverallUndetermined {
+		if overall == verdict.OverallUndetermined {
 			return "in_progress", "評估中", true
 		}
 	case StatusFailed:
-		if overall == OverallUndetermined {
+		if overall == verdict.OverallUndetermined {
 			return evaluationNeedsAttention, "評估失敗", true
 		}
 	case StatusCompleted:
 		switch overall {
-		case OverallMet:
+		case verdict.OverallMet:
 			return "recent", "符合驗收標準", true
-		case OverallPartiallyMet:
+		case verdict.OverallPartiallyMet:
 			return evaluationNeedsAttention, "部分符合驗收標準", true
-		case OverallNotMet:
+		case verdict.OverallNotMet:
 			return evaluationNeedsAttention, "未符合驗收標準", true
-		case OverallUndetermined:
+		case verdict.OverallUndetermined:
 			return evaluationNeedsAttention, "無法判定評估結果", true
 		}
 	}

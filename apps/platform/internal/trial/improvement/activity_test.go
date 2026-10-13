@@ -7,24 +7,25 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 func TestEvaluationActivityDecisionTable(t *testing.T) {
 	tests := []struct {
 		name      string
 		status    Status
-		overall   Overall
+		overall   verdict.Overall
 		want      string
 		supported bool
 	}{
-		{"pending", StatusPending, OverallUndetermined, "in_progress", true},
-		{"failed", StatusFailed, OverallUndetermined, "needs_attention", true},
-		{"met", StatusCompleted, OverallMet, "recent", true},
-		{"partially met", StatusCompleted, OverallPartiallyMet, "needs_attention", true},
-		{"not met", StatusCompleted, OverallNotMet, "needs_attention", true},
-		{"undetermined", StatusCompleted, OverallUndetermined, "needs_attention", true},
-		{"illegal pending result", StatusPending, OverallMet, "needs_attention", false},
-		{"future state", Status("future"), OverallUndetermined, "needs_attention", false},
+		{"pending", StatusPending, verdict.OverallUndetermined, "in_progress", true},
+		{"failed", StatusFailed, verdict.OverallUndetermined, "needs_attention", true},
+		{"met", StatusCompleted, verdict.OverallMet, "recent", true},
+		{"partially met", StatusCompleted, verdict.OverallPartiallyMet, "needs_attention", true},
+		{"not met", StatusCompleted, verdict.OverallNotMet, "needs_attention", true},
+		{"undetermined", StatusCompleted, verdict.OverallUndetermined, "needs_attention", true},
+		{"illegal pending result", StatusPending, verdict.OverallMet, "needs_attention", false},
+		{"future state", Status("future"), verdict.OverallUndetermined, "needs_attention", false},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -52,7 +53,7 @@ func TestEvaluationActivityUsesStatusSpecificOwnerTime(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fact := evaluationActivityFact(gen.ListEvaluationActivityFactsRow{
-				Status: string(test.status), Overall: string(OverallUndetermined),
+				Status: string(test.status), Overall: string(verdict.OverallUndetermined),
 				CreatedAt: pgtype.Timestamptz{Time: created, Valid: true}, EvaluatedAt: test.evaluated,
 			})
 			if !fact.ActivityAt.Equal(test.want) || fact.StatusLabel != test.label {

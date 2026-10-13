@@ -19,6 +19,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
@@ -27,91 +28,6 @@ var ErrNotFound = errors.New("evaluation not found")
 
 var errEvaluationInProgress = errors.New("evaluation already in progress")
 var errEvaluationSettled = errors.New("evaluation already settled")
-
-const (
-	ResultPassed       = "passed"
-	ResultFailed       = "failed"
-	ResultUndetermined = "undetermined"
-)
-
-const (
-	SourceModel = "model"
-	SourceRule  = "rule"
-)
-
-type Range struct {
-	Start int `json:"start"`
-	End   int `json:"end"`
-}
-
-type EvidenceRef struct {
-	Kind string `json:"kind"`
-
-	Match string `json:"match,omitempty"`
-
-	ReattributedFrom string `json:"reattributed_from,omitempty"`
-	TraceEventID     string `json:"trace_event_id,omitempty"`
-	OccurredAt       string `json:"occurred_at,omitempty"`
-	ArtifactPath     string `json:"artifact_path,omitempty"`
-	ByteRange        *Range `json:"byte_range,omitempty"`
-	CharRange        *Range `json:"char_range,omitempty"`
-	Excerpt          string `json:"excerpt"`
-	ExcerptTruncated bool   `json:"excerpt_truncated"`
-	Available        bool   `json:"available"`
-}
-
-const (
-	KindTraceEvent  = "trace_event"
-	KindArtifact    = "artifact"
-	KindAgentOutput = "agent_output"
-)
-
-const (
-	MatchExact      = "exact"
-	MatchNormalized = "normalized"
-	MatchNotFound   = "not_found"
-	MatchNotChecked = "not_checked"
-)
-
-func verifiedQuote(match string) bool {
-	return match == MatchExact || match == MatchNormalized
-}
-
-type CriterionResult struct {
-	CriterionID string        `json:"criterion_id"`
-	Text        string        `json:"text"`
-	Result      string        `json:"result"`
-	Source      string        `json:"source"`
-	Evidence    []EvidenceRef `json:"evidence"`
-	Reason      string        `json:"reason"`
-	Steps       []CheckStep   `json:"steps,omitempty"`
-}
-
-type Finding struct {
-	Category string        `json:"category"`
-	Severity string        `json:"severity"`
-	Message  string        `json:"message"`
-	Evidence []EvidenceRef `json:"evidence"`
-}
-
-func finding(category, severity, message string, evidence ...EvidenceRef) Finding {
-	return Finding{Category: category, Severity: severity, Message: message, Evidence: orEmpty(evidence)}
-}
-
-const (
-	CategorySpec          = "spec"
-	CategoryActivation    = "activation"
-	CategoryExecution     = "execution"
-	CategoryEffect        = "effect"
-	CategoryCompatibility = "compatibility"
-	CategoryCost          = "cost"
-)
-
-const (
-	SeverityError   = "error"
-	SeverityWarning = "warning"
-	SeverityInfo    = "info"
-)
 
 type ObjectStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)
@@ -371,11 +287,11 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 
 	if len(m.criteria) == 0 {
 
-		return s.completeAndSuggest(ctx, m, ev, verdict{
-			overall: OverallUndetermined,
+		return s.completeAndSuggest(ctx, m, ev, assessment{
+			overall: verdict.OverallUndetermined,
 			summary: "this run's test case snapshot carries no acceptance criteria, " +
 				"so no task verdict could be reached; the checks below still apply",
-			results:          []CriterionResult{},
+			results:          []verdict.CriterionResult{},
 			findings:         findings,
 			evidenceComplete: evidenceComplete,
 		})
@@ -383,8 +299,8 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 
 	plan := planCriteria(m)
 	if len(plan.asks.list) == 0 {
-		return s.completeAndSuggest(ctx, m, ev, verdict{
-			overall: overallFrom(plan.decided),
+		return s.completeAndSuggest(ctx, m, ev, assessment{
+			overall: verdict.OverallFrom(plan.decided),
 			summary: "every acceptance criterion of this run carries a check the platform " +
 				"decided from the run's own records, so no model was asked",
 			results:          inCriteriaOrder(m.criteria, plan.decided),
@@ -399,7 +315,7 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 		return s.fail(ctx, m, ev, gatheredEvidence{findings: findings, complete: evidenceComplete}, err)
 	}
 	v.results = plan.finish(m, v.results)
-	v.overall = overallFrom(v.results)
+	v.overall = verdict.OverallFrom(v.results)
 	v.findings = append(findings, v.findings...)
 	v.evidenceComplete = evidenceComplete && v.evidenceComplete
 	return s.settleJudgement(ctx, m, ev, v)
@@ -432,7 +348,7 @@ func (m material) judging(p criteriaPlan) material {
 	return m
 }
 
-func (s *Service) settleJudgement(ctx context.Context, m material, ev gen.Evaluation, v verdict) error {
+func (s *Service) settleJudgement(ctx context.Context, m material, ev gen.Evaluation, v assessment) error {
 	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.run.ID}
 	s.recordEvalCost(ctx, s.Pool, credit.KindReview, ref, modelCall{model: v.model, promptVersion: v.promptVersion, usage: v.usage})
 	return s.completeAndSuggest(ctx, m, ev, v)
@@ -471,7 +387,7 @@ func (s *Service) recoverEvaluation(
 }
 
 func (s *Service) completeAndSuggest(
-	ctx context.Context, m material, ev gen.Evaluation, v verdict,
+	ctx context.Context, m material, ev gen.Evaluation, v assessment,
 ) error {
 	if err := s.complete(ctx, m, ev, v); err != nil {
 		if errors.Is(err, errEvaluationSettled) {
@@ -483,11 +399,11 @@ func (s *Service) completeAndSuggest(
 	return nil
 }
 
-type verdict struct {
-	overall          Overall
+type assessment struct {
+	overall          verdict.Overall
 	summary          string
-	results          []CriterionResult
-	findings         []Finding
+	results          []verdict.CriterionResult
+	findings         []verdict.Finding
 	evidenceComplete bool
 	model            string
 	promptVersion    string
@@ -613,7 +529,7 @@ func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error)
 	return ev, tx.Commit(ctx)
 }
 
-func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v verdict) error {
+func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v assessment) error {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -631,7 +547,7 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 		return err
 	}
 
-	passed, failed, undetermined := tally(v.results)
+	passed, failed, undetermined := verdict.Tally(v.results)
 	if err := trace.RecordOrchestratorEvent(ctx, tx, trace.OrchestratorEvent{
 		WorkspaceID: m.run.WorkspaceID, RunID: m.run.ID, Attempt: m.attempt,
 		Type: trace.TypeEvaluationCompleted, Status: "ok", Payload: map[string]any{
@@ -652,7 +568,7 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 }
 
 type gatheredEvidence struct {
-	findings []Finding
+	findings []verdict.Finding
 	complete bool
 }
 
@@ -681,7 +597,7 @@ func (s *Service) fail(ctx context.Context, m material, ev gen.Evaluation, gathe
 		WorkspaceID: m.run.WorkspaceID, RunID: m.run.ID, Attempt: m.attempt,
 		Type: trace.TypeEvaluationCompleted, Status: "error", Payload: map[string]any{
 			trace.PayloadEvaluationID: pgconv.UUIDString(ev.ID),
-			"overall":                 OverallUndetermined,
+			"overall":                 verdict.OverallUndetermined,
 			"criteria_total":          len(m.criteria),
 			"criteria_passed":         0,
 			"criteria_failed":         0,
@@ -707,40 +623,6 @@ func (s *Service) packageReport(ctx context.Context, stored skillpkg.StoredSkill
 	return skillpkg.Validate(fsys), true
 }
 
-func overallFrom(results []CriterionResult) Overall {
-	if len(results) == 0 {
-		return OverallUndetermined
-	}
-	passed, failed, _ := tally(results)
-	switch {
-	case passed == len(results):
-		return OverallMet
-	case failed == len(results):
-		return OverallNotMet
-	case passed > 0:
-		return OverallPartiallyMet
-	case failed > 0:
-
-		return OverallNotMet
-	default:
-		return OverallUndetermined
-	}
-}
-
-func tally(results []CriterionResult) (passed, failed, undetermined int) {
-	for _, r := range results {
-		switch r.Result {
-		case ResultPassed:
-			passed++
-		case ResultFailed:
-			failed++
-		default:
-			undetermined++
-		}
-	}
-	return passed, failed, undetermined
-}
-
 func (s *Service) runFacts(ctx context.Context, workspaceID, runID pgtype.UUID) (RunFacts, error) {
 	if s.ReadRunFacts == nil {
 		return RunFacts{}, errRunReaderNotConfigured
@@ -748,9 +630,9 @@ func (s *Service) runFacts(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	return required(ctx, s.ReadRunFacts, workspaceID, runID)
 }
 
-func nonNilFindings(f []Finding) []Finding {
+func nonNilFindings(f []verdict.Finding) []verdict.Finding {
 	if f == nil {
-		return []Finding{}
+		return []verdict.Finding{}
 	}
 	return f
 }
@@ -802,5 +684,5 @@ func (m material) awaitsAnswer() bool {
 func (m material) evidenceComplete() bool { return m.advanced.Complete && !m.absent.Any() }
 
 func (m material) cannotRecordPass(result string) bool {
-	return result == ResultPassed && !m.evidenceComplete()
+	return result == verdict.ResultPassed && !m.evidenceComplete()
 }

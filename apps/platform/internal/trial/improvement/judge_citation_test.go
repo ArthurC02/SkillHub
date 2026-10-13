@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 func TestACitationStoredBeforeVerificationIsServedWithNoMatch(t *testing.T) {
@@ -15,7 +17,7 @@ func TestACitationStoredBeforeVerificationIsServedWithNoMatch(t *testing.T) {
 		{"recorded", `{"kind":"artifact","match":"not_checked","excerpt":"","excerpt_truncated":false,"available":true}`, `"match":"not_checked"`, true},
 	}
 	for _, c := range cases {
-		var ref EvidenceRef
+		var ref verdict.EvidenceRef
 		if err := json.Unmarshal([]byte(c.stored), &ref); err != nil {
 			t.Fatal(err)
 		}

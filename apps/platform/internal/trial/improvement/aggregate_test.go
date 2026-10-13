@@ -22,6 +22,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/testschema"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 const aggregateDBURLEnv = "SKILLHUB_TEST_DATABASE_URL"
@@ -171,18 +172,18 @@ func seedNamedRun(t *testing.T, pool *pgxpool.Pool, tag string) material {
 	return material{run: run, attempt: 1}
 }
 
-func aVerdict(summary string, overall Overall) verdict {
-	return verdict{
+func aVerdict(summary string, overall verdict.Overall) assessment {
+	return assessment{
 		overall: overall,
 		summary: summary,
-		results: []CriterionResult{{
-			CriterionID: "c1", Text: "the file is written", Result: ResultPassed,
-			Source: SourceModel, Reason: summary,
-			Evidence: []EvidenceRef{{
-				Kind: KindAgentOutput, Excerpt: "wrote report.md", Available: true,
+		results: []verdict.CriterionResult{{
+			CriterionID: "c1", Text: "the file is written", Result: verdict.ResultPassed,
+			Source: verdict.SourceModel, Reason: summary,
+			Evidence: []verdict.EvidenceRef{{
+				Kind: verdict.KindAgentOutput, Excerpt: "wrote report.md", Available: true,
 			}},
 		}},
-		findings:         []Finding{},
+		findings:         []verdict.Finding{},
 		evidenceComplete: true,
 		model:            "gpt-6-sol",
 		promptVersion:    "judge-v1",
@@ -218,7 +219,7 @@ func reload(t *testing.T, s *Service, m material, id pgtype.UUID) gen.Evaluation
 	return ev
 }
 
-func beginAndComplete(t *testing.T, s *Service, m material, v verdict) gen.Evaluation {
+func beginAndComplete(t *testing.T, s *Service, m material, v assessment) gen.Evaluation {
 	t.Helper()
 	ev, err := s.begin(context.Background(), m)
 	if err != nil {
@@ -307,7 +308,7 @@ func assertSuggestionApplicationWitnesses(t *testing.T, s *Service, m material, 
 func runSuggestionApplicationScenario(t *testing.T, firstVersionA bool) {
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
-	evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
+	evaluation := beginAndComplete(t, s, m, aVerdict("complete", verdict.OverallMet))
 	x := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
 	y := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "Y")
 	versionA := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-a")
@@ -356,7 +357,7 @@ func TestSuggestionApplicationsRetainEveryVersionAndRejectReplays(t *testing.T) 
 func TestApplyingSuggestionsAcceptsThePendingOneAndKeepsAnEarlierAcceptanceTime(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
-	evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
+	evaluation := beginAndComplete(t, s, m, aVerdict("complete", verdict.OverallMet))
 	accepted := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
 	pending := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "Y")
 	ctx := context.Background()
@@ -388,7 +389,7 @@ func TestApplyingSuggestionsAcceptsThePendingOneAndKeepsAnEarlierAcceptanceTime(
 func TestSuggestionApplicationRejectsAVersionFromAnotherWorkspace(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	first := seedRun(t, s.Pool)
-	evaluation := beginAndComplete(t, s, first, aVerdict("complete", OverallMet))
+	evaluation := beginAndComplete(t, s, first, aVerdict("complete", verdict.OverallMet))
 	suggestion := seedSuggestion(t, s, first.run.WorkspaceID, evaluation.ID, "X")
 	second := seedNamedRun(t, s.Pool, t.Name()+"-foreign")
 	var foreignVersion pgtype.UUID
@@ -410,7 +411,7 @@ func TestSuggestionApplicationRejectsAVersionFromAnotherWorkspace(t *testing.T) 
 func TestSuggestionApplicationsAreImmutableUntilTheirVersionIsPurged(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
-	evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
+	evaluation := beginAndComplete(t, s, m, aVerdict("complete", verdict.OverallMet))
 	suggestion := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
 	first := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-first")
 	second := seedImprovedVersion(t, s.Pool, m.run.ID, 3, t.Name()+"-second")
@@ -457,7 +458,7 @@ func TestSuggestionApplicationsAreImmutableUntilTheirVersionIsPurged(t *testing.
 func TestSuggestionVersionProvenanceMigrationBackfillsLegacyScalarAndKeepsPurgeFence(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
-	evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
+	evaluation := beginAndComplete(t, s, m, aVerdict("complete", verdict.OverallMet))
 	suggestion := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
 	legacyVersion := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-legacy")
 	fencedVersion := seedImprovedVersion(t, s.Pool, m.run.ID, 3, t.Name()+"-fenced")
@@ -518,10 +519,10 @@ func TestReEvaluationAppendsARevisionInsteadOfOverwriting(t *testing.T) {
 	m := seedRun(t, s.Pool)
 	ctx := context.Background()
 
-	first := beginAndComplete(t, s, m, aVerdict("under the first rubric", OverallMet))
+	first := beginAndComplete(t, s, m, aVerdict("under the first rubric", verdict.OverallMet))
 	before := frozen(reload(t, s, m, first.ID))
 
-	second := beginAndComplete(t, s, m, aVerdict("under the second rubric", OverallNotMet))
+	second := beginAndComplete(t, s, m, aVerdict("under the second rubric", verdict.OverallNotMet))
 	if second.ID == first.ID {
 		t.Fatal("the second evaluation reused the first row; re-evaluation must append")
 	}
@@ -559,10 +560,10 @@ func TestASettledVerdictCannotBeRewritten(t *testing.T) {
 	m := seedRun(t, s.Pool)
 	ctx := context.Background()
 
-	ev := beginAndComplete(t, s, m, aVerdict("the original verdict", OverallMet))
+	ev := beginAndComplete(t, s, m, aVerdict("the original verdict", verdict.OverallMet))
 	before := frozen(reload(t, s, m, ev.ID))
 
-	err := s.complete(ctx, m, ev, aVerdict("a second opinion", OverallNotMet))
+	err := s.complete(ctx, m, ev, aVerdict("a second opinion", verdict.OverallNotMet))
 	if !errors.Is(err, errEvaluationSettled) {
 		t.Fatalf("re-completing a settled evaluation: want errEvaluationSettled, got %v", err)
 	}
@@ -571,7 +572,7 @@ func TestASettledVerdictCannotBeRewritten(t *testing.T) {
 	}
 
 	for column, value := range map[string]any{
-		"overall":           OverallNotMet,
+		"overall":           verdict.OverallNotMet,
 		"summary":           "edited afterwards",
 		"criterion_results": []byte(`[]`),
 		"judge_model":       "something-cheaper",
@@ -605,7 +606,7 @@ func TestAFailedVerdictIsFrozenLikeASettledOne(t *testing.T) {
 
 	for column, value := range map[string]any{
 		"status":            string(StatusCompleted),
-		"overall":           OverallMet,
+		"overall":           verdict.OverallMet,
 		"summary":           "edited afterwards",
 		"evidence_complete": true,
 	} {
@@ -636,7 +637,7 @@ func TestARevisionSettlesOnce(t *testing.T) {
 
 	t.Run("fail after complete leaves the verdict standing", func(t *testing.T) {
 		m := seedRun(t, s.Pool)
-		ev := beginAndComplete(t, s, m, aVerdict("a real verdict", OverallMet))
+		ev := beginAndComplete(t, s, m, aVerdict("a real verdict", verdict.OverallMet))
 		before := frozen(reload(t, s, m, ev.ID))
 
 		if err := s.fail(ctx, m, ev, gatheredEvidence{findings: nil, complete: false}, errors.New("recovery sweep was late")); err != nil {
@@ -656,7 +657,7 @@ func TestARevisionSettlesOnce(t *testing.T) {
 		if err := s.fail(ctx, m, ev, gatheredEvidence{findings: nil, complete: false}, errors.New("the judge was unreachable")); err != nil {
 			t.Fatalf("fail: %v", err)
 		}
-		if err := s.complete(ctx, m, ev, aVerdict("late arrival", OverallMet)); !errors.Is(err, errEvaluationSettled) {
+		if err := s.complete(ctx, m, ev, aVerdict("late arrival", verdict.OverallMet)); !errors.Is(err, errEvaluationSettled) {
 			t.Fatalf("completing a failed revision: want errEvaluationSettled, got %v", err)
 		}
 		if got := reload(t, s, m, ev.ID); got.Status != string(StatusFailed) {
@@ -670,14 +671,14 @@ func TestSupersededAtIsStampedOnceAndNeverCleared(t *testing.T) {
 	m := seedRun(t, s.Pool)
 	ctx := context.Background()
 
-	first := beginAndComplete(t, s, m, aVerdict("first", OverallMet))
-	beginAndComplete(t, s, m, aVerdict("second", OverallNotMet))
+	first := beginAndComplete(t, s, m, aVerdict("first", verdict.OverallMet))
+	beginAndComplete(t, s, m, aVerdict("second", verdict.OverallNotMet))
 	stamped := reload(t, s, m, first.ID).SupersededAt
 	if !stamped.Valid {
 		t.Fatal("the first revision was not superseded")
 	}
 
-	beginAndComplete(t, s, m, aVerdict("third", OverallPartiallyMet))
+	beginAndComplete(t, s, m, aVerdict("third", verdict.OverallPartiallyMet))
 	if again := reload(t, s, m, first.ID).SupersededAt; again.Time != stamped.Time {
 		t.Fatalf("a third evaluation re-stamped the first revision: %v -> %v", stamped.Time, again.Time)
 	}
@@ -710,7 +711,7 @@ func TestFeedbackIsWritableAndOnlyOnTheCurrentRevision(t *testing.T) {
 	m := seedRun(t, s.Pool)
 	ctx := context.Background()
 
-	first := beginAndComplete(t, s, m, aVerdict("first", OverallMet))
+	first := beginAndComplete(t, s, m, aVerdict("first", verdict.OverallMet))
 	if _, err := s.SetFeedback(ctx, m.run.WorkspaceID, m.run.ID, true, "useful"); err != nil {
 		t.Fatalf("set feedback: %v", err)
 	}
@@ -730,7 +731,7 @@ func TestFeedbackIsWritableAndOnlyOnTheCurrentRevision(t *testing.T) {
 		t.Fatalf("feedback rewrote the judgement:\n before %+v\n after  %+v", before, got)
 	}
 
-	second := beginAndComplete(t, s, m, aVerdict("second", OverallNotMet))
+	second := beginAndComplete(t, s, m, aVerdict("second", verdict.OverallNotMet))
 	if _, err := s.SetFeedback(ctx, m.run.WorkspaceID, m.run.ID, true, "the new one is better"); err != nil {
 		t.Fatalf("set feedback after re-evaluation: %v", err)
 	}
@@ -754,7 +755,7 @@ func TestAVerdictDoesNotTouchTheRunsRow(t *testing.T) {
 		t.Fatalf("read run: %v", err)
 	}
 
-	beginAndComplete(t, s, m, aVerdict("the task was not achieved", OverallNotMet))
+	beginAndComplete(t, s, m, aVerdict("the task was not achieved", verdict.OverallNotMet))
 
 	var after string
 	if err := s.Pool.QueryRow(ctx,
@@ -845,7 +846,7 @@ func assertCompletedRowReportsWhatRanNotWhatWasDeclared(t *testing.T, pool *pgxp
 	m := seedRun(t, s.Pool)
 	m.rubric = &testlab.Rubric{Version: "declared-rubric"}
 
-	ev := beginAndComplete(t, s, m, aVerdict("what actually ran", OverallMet))
+	ev := beginAndComplete(t, s, m, aVerdict("what actually ran", verdict.OverallMet))
 	got := reload(t, s, m, ev.ID)
 	if derefString(got.JudgeModel) != "gpt-6-sol" ||
 		derefString(got.JudgePromptVersion) != "judge-v1" ||
@@ -878,8 +879,8 @@ func TestEveryEvaluationCommandLeavesItsEventInTheOutbox(t *testing.T) {
 	m := seedRun(t, s.Pool)
 	ctx := context.Background()
 
-	first := beginAndComplete(t, s, m, aVerdict("first", OverallMet))
-	second := beginAndComplete(t, s, m, aVerdict("second", OverallNotMet))
+	first := beginAndComplete(t, s, m, aVerdict("first", verdict.OverallMet))
+	second := beginAndComplete(t, s, m, aVerdict("second", verdict.OverallNotMet))
 	if _, err := s.SetFeedback(ctx, m.run.WorkspaceID, m.run.ID, true, "useful"); err != nil {
 		t.Fatalf("set feedback: %v", err)
 	}
@@ -904,7 +905,7 @@ func TestEveryEvaluationCommandLeavesItsEventInTheOutbox(t *testing.T) {
 			t.Fatalf("record applied: %v", err)
 		}
 	}
-	if err := s.complete(ctx, m, second, aVerdict("a refused second opinion", OverallMet)); !errors.Is(err, errEvaluationSettled) {
+	if err := s.complete(ctx, m, second, aVerdict("a refused second opinion", verdict.OverallMet)); !errors.Is(err, errEvaluationSettled) {
 		t.Fatalf("re-completing: want errEvaluationSettled, got %v", err)
 	}
 
@@ -948,8 +949,8 @@ func TestTheMailboxRecordsOnlySuggestionsItsOwnEvaluationHolds(t *testing.T) {
 	m := seedRun(t, s.Pool)
 	ctx := context.Background()
 
-	first := beginAndComplete(t, s, m, aVerdict("first", OverallMet))
-	second := beginAndComplete(t, s, m, aVerdict("second", OverallMet))
+	first := beginAndComplete(t, s, m, aVerdict("first", verdict.OverallMet))
+	second := beginAndComplete(t, s, m, aVerdict("second", verdict.OverallMet))
 	earlier, err := s.queries().CreateEvaluationSuggestion(ctx, gen.CreateEvaluationSuggestionParams{
 		WorkspaceID: m.run.WorkspaceID, EvaluationID: first.ID, Category: string(SuggestionSkill),
 		Problem: "the steps are vague", Evidence: []byte(`[]`), TargetPath: "SKILL.md",

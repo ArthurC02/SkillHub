@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 var PanelRoles = []string{"skillhub-judge", "skillhub-judge-panel-1", "skillhub-judge-panel-2"}
@@ -47,8 +49,8 @@ func (s *Service) judgeAll(ctx context.Context, req JudgeRequest) ([]*Judgement,
 	return answers, nil
 }
 
-func vote(members [][]CriterionResult) (results []CriterionResult, split []string) {
-	results = make([]CriterionResult, len(members[0]))
+func vote(members [][]verdict.CriterionResult) (results []verdict.CriterionResult, split []string) {
+	results = make([]verdict.CriterionResult, len(members[0]))
 	for i := range members[0] {
 		counts := map[string]int{}
 		for _, m := range members {
@@ -79,15 +81,15 @@ func majority(counts map[string]int, voters int) (string, bool) {
 	return "", false
 }
 
-func undecided(first CriterionResult, counts map[string]int) CriterionResult {
+func undecided(first verdict.CriterionResult, counts map[string]int) verdict.CriterionResult {
 	tally := make([]string, 0, len(counts))
-	for _, result := range []string{ResultPassed, ResultFailed, ResultUndetermined} {
+	for _, result := range []string{verdict.ResultPassed, verdict.ResultFailed, verdict.ResultUndetermined} {
 		if counts[result] > 0 {
 			tally = append(tally, fmt.Sprintf("%s by %d", result, counts[result]))
 		}
 	}
-	first.Result = ResultUndetermined
-	first.Evidence = []EvidenceRef{}
+	first.Result = verdict.ResultUndetermined
+	first.Evidence = []verdict.EvidenceRef{}
 	first.Reason = "the judges did not agree (" + strings.Join(tally, ", ") + "), so no result is recorded"
 	return first
 }

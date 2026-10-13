@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 type panelOfFakes struct {
@@ -30,9 +31,9 @@ func (p *panelOfFakes) JudgeRun(_ context.Context, req JudgeRequest) (*Judgement
 
 func panelOn(context.Context) (bool, error) { return true, nil }
 
-var realQuote = []Citation{{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"}}
+var realQuote = []Citation{{Kind: verdict.KindAgentOutput, Quote: "Removed 17 duplicate rows"}}
 
-var realFile = []Citation{{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}
+var realFile = []Citation{{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")}}
 
 func said(model, c1 string, c1Cites []Citation, c2 string, c2Cites []Citation) *Judgement {
 	return &Judgement{
@@ -44,7 +45,7 @@ func said(model, c1 string, c1Cites []Citation, c2 string, c2Cites []Citation) *
 	}
 }
 
-func judgedByPanel(t *testing.T, members ...*Judgement) (verdict, *panelOfFakes) {
+func judgedByPanel(t *testing.T, members ...*Judgement) (assessment, *panelOfFakes) {
 	t.Helper()
 	fakes := &panelOfFakes{byRole: map[string]*Judgement{}}
 	for i, member := range members {
@@ -61,17 +62,17 @@ func judgedByPanel(t *testing.T, members ...*Judgement) (verdict, *panelOfFakes)
 
 func TestAPanelRecordsTheMajorityResultWithTheEvidenceOfAMemberWhoGaveIt(t *testing.T) {
 	v, fakes := judgedByPanel(t,
-		said("a", ResultFailed, realQuote, ResultFailed, realFile),
-		said("b", ResultPassed, realQuote, ResultFailed, realFile),
-		said("c", ResultPassed, realQuote, ResultPassed, realFile),
+		said("a", verdict.ResultFailed, realQuote, verdict.ResultFailed, realFile),
+		said("b", verdict.ResultPassed, realQuote, verdict.ResultFailed, realFile),
+		said("c", verdict.ResultPassed, realQuote, verdict.ResultPassed, realFile),
 	)
 	if got := slices.Sorted(slices.Values(fakes.asked)); !slices.Equal(got, PanelRoles) {
 		t.Fatalf("asked roles %v, want each panel role once", got)
 	}
-	if v.results[0].Result != ResultPassed || v.results[0].Reason != "b on c1" || len(v.results[0].Evidence) == 0 {
+	if v.results[0].Result != verdict.ResultPassed || v.results[0].Reason != "b on c1" || len(v.results[0].Evidence) == 0 {
 		t.Errorf("c1 = %+v, want b's verified pass", v.results[0])
 	}
-	if v.results[1].Result != ResultFailed || v.results[1].Reason != "a on c2" {
+	if v.results[1].Result != verdict.ResultFailed || v.results[1].Reason != "a on c2" {
 		t.Errorf("c2 = %+v, want a's failure", v.results[1])
 	}
 	if len(v.findings) != 0 {
@@ -84,44 +85,44 @@ func TestAPanelRecordsTheMajorityResultWithTheEvidenceOfAMemberWhoGaveIt(t *test
 
 func TestACriterionThePanelSplitsOnIsUndeterminedAndNamed(t *testing.T) {
 	v, _ := judgedByPanel(t,
-		said("a", ResultPassed, realQuote, ResultFailed, realFile),
-		said("b", ResultFailed, realQuote, ResultFailed, realFile),
-		said("c", ResultUndetermined, nil, ResultFailed, realFile),
+		said("a", verdict.ResultPassed, realQuote, verdict.ResultFailed, realFile),
+		said("b", verdict.ResultFailed, realQuote, verdict.ResultFailed, realFile),
+		said("c", verdict.ResultUndetermined, nil, verdict.ResultFailed, realFile),
 	)
 	c1 := v.results[0]
-	if c1.Result != ResultUndetermined || len(c1.Evidence) != 0 {
+	if c1.Result != verdict.ResultUndetermined || len(c1.Evidence) != 0 {
 		t.Fatalf("c1 = %+v, want undetermined with no one member's evidence", c1)
 	}
 	if !strings.Contains(c1.Reason, "passed by 1, failed by 1, undetermined by 1") {
 		t.Errorf("c1 reason %q does not give the tally", c1.Reason)
 	}
-	if v.results[1].Result != ResultFailed {
+	if v.results[1].Result != verdict.ResultFailed {
 		t.Errorf("c2 = %+v, want the unanimous failure", v.results[1])
 	}
 	if len(v.findings) != 1 || !strings.Contains(v.findings[0].Message, "c1") || strings.Contains(v.findings[0].Message, "c2") {
 		t.Errorf("findings %+v, want one naming only c1", v.findings)
 	}
-	if v.overall != overallFrom(v.results) {
+	if v.overall != verdict.OverallFrom(v.results) {
 		t.Errorf("overall %q is not recomputed from the voted results", v.overall)
 	}
 }
 
 func TestThePanelVotesOnVerifiedResultsNotOnWhatTheMembersClaimed(t *testing.T) {
-	invented := []Citation{{Kind: KindAgentOutput, Quote: "every row was checked by hand"}}
+	invented := []Citation{{Kind: verdict.KindAgentOutput, Quote: "every row was checked by hand"}}
 	v, _ := judgedByPanel(t,
-		said("a", ResultPassed, realQuote, ResultFailed, realFile),
-		said("b", ResultPassed, invented, ResultFailed, realFile),
-		said("c", ResultPassed, invented, ResultFailed, realFile),
+		said("a", verdict.ResultPassed, realQuote, verdict.ResultFailed, realFile),
+		said("b", verdict.ResultPassed, invented, verdict.ResultFailed, realFile),
+		said("c", verdict.ResultPassed, invented, verdict.ResultFailed, realFile),
 	)
-	if v.results[0].Result != ResultUndetermined || strings.Contains(v.results[0].Reason, "did not agree") {
+	if v.results[0].Result != verdict.ResultUndetermined || strings.Contains(v.results[0].Reason, "did not agree") {
 		t.Errorf("c1 = %+v, want the two unverifiable passes to outvote the verified one", v.results[0])
 	}
 }
 
 func TestAPanelMemberThatDoesNotAnswerLeavesThePanelWithoutAVerdict(t *testing.T) {
 	fakes := &panelOfFakes{failing: PanelRoles[1], byRole: map[string]*Judgement{
-		PanelRoles[0]: said("a", ResultPassed, realQuote, ResultFailed, realFile),
-		PanelRoles[2]: said("c", ResultPassed, realQuote, ResultFailed, realFile),
+		PanelRoles[0]: said("a", verdict.ResultPassed, realQuote, verdict.ResultFailed, realFile),
+		PanelRoles[2]: said("c", verdict.ResultPassed, realQuote, verdict.ResultFailed, realFile),
 	}}
 	m, _ := fixtureMaterial(true)
 	if _, err := (&Service{Judge: fakes, PanelEnabled: panelOn}).judge(context.Background(), m, gen.Evaluation{}); err == nil {
@@ -131,7 +132,7 @@ func TestAPanelMemberThatDoesNotAnswerLeavesThePanelWithoutAVerdict(t *testing.T
 
 func TestWithoutAPanelTheJudgeIsAskedOnceInItsOwnRole(t *testing.T) {
 	fakes := &panelOfFakes{byRole: map[string]*Judgement{
-		"": said("solo", ResultPassed, realQuote, ResultFailed, realFile),
+		"": said("solo", verdict.ResultPassed, realQuote, verdict.ResultFailed, realFile),
 	}}
 	m, _ := fixtureMaterial(true)
 	v, err := (&Service{Judge: fakes}).judge(context.Background(), m, gen.Evaluation{})
@@ -145,7 +146,7 @@ func TestWithoutAPanelTheJudgeIsAskedOnceInItsOwnRole(t *testing.T) {
 
 func TestAPanelSwitchedOffAsksTheJudgeOnceInItsOwnRole(t *testing.T) {
 	fakes := &panelOfFakes{byRole: map[string]*Judgement{
-		"": said("solo", ResultPassed, realQuote, ResultFailed, realFile),
+		"": said("solo", verdict.ResultPassed, realQuote, verdict.ResultFailed, realFile),
 	}}
 	off := func(context.Context) (bool, error) { return false, nil }
 	m, _ := fixtureMaterial(true)
@@ -170,10 +171,10 @@ func TestAnUnreadablePanelSettingLeavesTheEvaluationWithoutAVerdict(t *testing.T
 }
 
 func TestAnEvenSplitIsNotAMajority(t *testing.T) {
-	passed := CriterionResult{CriterionID: "c1", Result: ResultPassed}
-	failed := CriterionResult{CriterionID: "c1", Result: ResultFailed}
-	results, split := vote([][]CriterionResult{{passed}, {failed}})
-	if results[0].Result != ResultUndetermined || !slices.Equal(split, []string{"c1"}) {
+	passed := verdict.CriterionResult{CriterionID: "c1", Result: verdict.ResultPassed}
+	failed := verdict.CriterionResult{CriterionID: "c1", Result: verdict.ResultFailed}
+	results, split := vote([][]verdict.CriterionResult{{passed}, {failed}})
+	if results[0].Result != verdict.ResultUndetermined || !slices.Equal(split, []string{"c1"}) {
 		t.Fatalf("one pass against one failure gave %+v, split %v; want undetermined", results[0], split)
 	}
 }

@@ -8,10 +8,11 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
-func (s *Service) deterministicFindings(m material) []Finding {
-	out := []Finding{}
+func (s *Service) deterministicFindings(m material) []verdict.Finding {
+	out := []verdict.Finding{}
 	out = append(out, specFindings(m)...)
 	out = append(out, activationFindings(m)...)
 	out = append(out, executionFindings(m)...)
@@ -21,14 +22,14 @@ func (s *Service) deterministicFindings(m material) []Finding {
 	return out
 }
 
-func specFindings(m material) []Finding {
+func specFindings(m material) []verdict.Finding {
 	if !m.reportOK {
 
-		return []Finding{finding(CategorySpec, SeverityWarning,
+		return []verdict.Finding{verdict.NewFinding(verdict.CategorySpec, verdict.SeverityWarning,
 			"the skill package could not be read back, so its specification "+
 				"could not be re-validated for this evaluation; this is not the same as a clean result")}
 	}
-	out := []Finding{}
+	out := []verdict.Finding{}
 	for _, f := range m.report.Findings {
 		if f.Severity == skillpkg.SeverityInfo {
 
@@ -38,15 +39,15 @@ func specFindings(m material) []Finding {
 		if f.Path != "" {
 			message = f.Code + " (" + f.Path + "): " + f.Message
 		}
-		out = append(out, finding(CategorySpec, string(f.Severity), message))
+		out = append(out, verdict.NewFinding(verdict.CategorySpec, string(f.Severity), message))
 	}
 	return out
 }
 
-func activationFindings(m material) []Finding {
+func activationFindings(m material) []verdict.Finding {
 	activated := map[string]bool{}
 	skipped := map[string]bool{}
-	var evidence []EvidenceRef
+	var evidence []verdict.EvidenceRef
 	for _, e := range m.advanced.Events {
 		if e.Type != trace.TypeSkillActivation {
 			continue
@@ -71,26 +72,26 @@ func activationFindings(m material) []Finding {
 	mounted := pgconv.UUIDString(m.run.SkillVersionID)
 	switch {
 	case activated[mounted]:
-		return []Finding{finding(CategoryActivation, SeverityInfo,
+		return []verdict.Finding{verdict.NewFinding(verdict.CategoryActivation, verdict.SeverityInfo,
 			"the skill version mounted for this run was activated", evidence...)}
 	case skipped[mounted]:
-		return []Finding{finding(CategoryActivation, SeverityWarning,
+		return []verdict.Finding{verdict.NewFinding(verdict.CategoryActivation, verdict.SeverityWarning,
 			"the run trace records the skill version as skipped", evidence...)}
 	default:
-		return []Finding{finding(CategoryActivation, SeverityWarning,
+		return []verdict.Finding{verdict.NewFinding(verdict.CategoryActivation, verdict.SeverityWarning,
 			"no activation event appeared for the skill version mounted for this run. "+
 				"That is all the trace can say: whether the agent saw the skill and used "+
 				"something else instead is not observable in the message stream (TRACE-002)", evidence...)}
 	}
 }
 
-func executionFindings(m material) []Finding {
-	out := []Finding{}
-	severity := SeverityInfo
+func executionFindings(m material) []verdict.Finding {
+	out := []verdict.Finding{}
+	severity := verdict.SeverityInfo
 	message := "the workload ran to its own end and reported success. That is an " +
 		"execution outcome and not a task verdict"
 	if !m.run.Succeeded {
-		severity = SeverityError
+		severity = verdict.SeverityError
 		message = fmt.Sprintf("the run ended as %s", m.run.Status)
 		if m.run.FailureClass != nil && *m.run.FailureClass != "" {
 			message += ", classified " + *m.run.FailureClass
@@ -99,7 +100,7 @@ func executionFindings(m material) []Finding {
 			message += ": " + *m.run.StatusReason
 		}
 	}
-	out = append(out, finding(CategoryExecution, severity, message))
+	out = append(out, verdict.NewFinding(verdict.CategoryExecution, severity, message))
 
 	for _, e := range m.advanced.Events {
 		if e.Type != trace.TypeError {
@@ -113,22 +114,22 @@ func executionFindings(m material) []Finding {
 		if json.Unmarshal(e.Payload, &p) != nil {
 			continue
 		}
-		out = append(out, finding(CategoryExecution, SeverityError,
+		out = append(out, verdict.NewFinding(verdict.CategoryExecution, verdict.SeverityError,
 			fmt.Sprintf("error event (%s/%s): %s", p.Category, p.Code, p.Message), traceRef(e, e.Type)))
 	}
 
 	if !m.advanced.Complete {
-		out = append(out, finding(CategoryExecution, SeverityWarning,
+		out = append(out, verdict.NewFinding(verdict.CategoryExecution, verdict.SeverityWarning,
 			"the run trace has gaps, so the evidence behind every judgement below "+
 				"may be incomplete; no criterion may be recorded as passed on it"))
 	}
 	return out
 }
 
-func artifactFindings(m material) []Finding {
-	var out []Finding
+func artifactFindings(m material) []verdict.Finding {
+	var out []verdict.Finding
 	if m.absent.Any() {
-		out = append(out, finding(CategoryExecution, SeverityWarning,
+		out = append(out, verdict.NewFinding(verdict.CategoryExecution, verdict.SeverityWarning,
 			fmt.Sprintf("this run's output manifest has %d file(s) this evaluation cannot read (%s). "+
 				"The run recorded them, so this is not a run that produced nothing, and nothing below "+
 				"may be judged from their absence (02:EVAL-001, NFR-002a)",
@@ -139,17 +140,17 @@ func artifactFindings(m material) []Finding {
 
 			return out
 		}
-		return []Finding{finding(CategoryExecution, SeverityWarning,
+		return []verdict.Finding{verdict.NewFinding(verdict.CategoryExecution, verdict.SeverityWarning,
 			"the run reported success and no output files were recorded for it. "+
 				"Whether the task needed a file is for the criteria below to say")}
 	}
 	names := make([]string, 0, len(m.artifacts))
-	evidence := make([]EvidenceRef, 0, len(m.artifacts))
+	evidence := make([]verdict.EvidenceRef, 0, len(m.artifacts))
 	for _, a := range m.artifacts {
 		names = append(names, a.FileName)
 		evidence = append(evidence, artifactRef(a))
 	}
-	return append(out, finding(CategoryExecution, SeverityInfo,
+	return append(out, verdict.NewFinding(verdict.CategoryExecution, verdict.SeverityInfo,
 		fmt.Sprintf("the run recorded %d readable output file(s): %s", len(names), strings.Join(names, ", ")), evidence...))
 }
 
@@ -168,26 +169,26 @@ type capability string
 
 const capabilityActivated capability = "activated"
 
-func compatibilityFindings(m material) []Finding {
+func compatibilityFindings(m material) []verdict.Finding {
 	if m.compat == nil {
-		return []Finding{finding(CategoryCompatibility, SeverityInfo,
+		return []verdict.Finding{verdict.NewFinding(verdict.CategoryCompatibility, verdict.SeverityInfo,
 			"no compatibility measurement exists for this skill version, "+
 				"so nothing is claimed about it either way")}
 	}
-	severity := SeverityInfo
+	severity := verdict.SeverityInfo
 	if capability(m.compat.Capability) != capabilityActivated {
-		severity = SeverityWarning
+		severity = verdict.SeverityWarning
 	}
 	message := fmt.Sprintf(
 		"compatibility measured as %q on runtime image %s (%s); this run records no runtime image, "+
 			"so whether the measurement covers it is not claimed",
 		m.compat.Capability, m.compat.RuntimeImage, m.compat.Runtime)
-	return []Finding{finding(CategoryCompatibility, severity, message)}
+	return []verdict.Finding{verdict.NewFinding(verdict.CategoryCompatibility, severity, message)}
 }
 
-func costFindings(m material) []Finding {
+func costFindings(m material) []verdict.Finding {
 	if m.summary.Usage == nil {
-		return []Finding{finding(CategoryCost, SeverityWarning,
+		return []verdict.Finding{verdict.NewFinding(verdict.CategoryCost, verdict.SeverityWarning,
 			"this run reported no usage at all, so its cost is unknown rather than zero. "+
 				"The authoritative figure is the gateway's per-key spend")}
 	}
@@ -202,14 +203,14 @@ func costFindings(m material) []Finding {
 	message += ". This total is a lower bound: a response still in flight when the " +
 		"stream ended is not in it, and the authoritative figure is the gateway's " +
 		"per-key spend"
-	return []Finding{finding(CategoryCost, SeverityInfo, message)}
+	return []verdict.Finding{verdict.NewFinding(verdict.CategoryCost, verdict.SeverityInfo, message)}
 }
 
-func traceRef(e trace.EventView, kind string) EvidenceRef {
+func traceRef(e trace.EventView, kind string) verdict.EvidenceRef {
 	excerpt, truncated := cut(string(e.Payload), excerptLimit)
-	return EvidenceRef{
-		Kind:             KindTraceEvent,
-		Match:            MatchExact,
+	return verdict.EvidenceRef{
+		Kind:             verdict.KindTraceEvent,
+		Match:            verdict.MatchExact,
 		TraceEventID:     e.EventID,
 		OccurredAt:       e.OccurredAt,
 		Excerpt:          kind + " " + excerpt,
@@ -218,22 +219,15 @@ func traceRef(e trace.EventView, kind string) EvidenceRef {
 	}
 }
 
-func artifactRef(a ArtifactFacts) EvidenceRef {
-	return EvidenceRef{
-		Kind:         KindArtifact,
-		Match:        MatchNotChecked,
+func artifactRef(a ArtifactFacts) verdict.EvidenceRef {
+	return verdict.EvidenceRef{
+		Kind:         verdict.KindArtifact,
+		Match:        verdict.MatchNotChecked,
 		ArtifactPath: a.FileName,
 		Excerpt: fmt.Sprintf("%s (%d bytes, %s, %s)",
 			a.FileName, a.SizeBytes, orUnknown(a.ContentType), a.ContentHash),
 		Available: true,
 	}
-}
-
-func orEmpty(refs []EvidenceRef) []EvidenceRef {
-	if refs == nil {
-		return []EvidenceRef{}
-	}
-	return refs
 }
 
 func orUnknown(s string) string {

@@ -6,6 +6,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 func auditedProvenanceLosses(t *testing.T, s *Service, workspaceID pgtype.UUID) int {
@@ -23,7 +25,7 @@ func auditedProvenanceLosses(t *testing.T, s *Service, workspaceID pgtype.UUID) 
 func TestLostSuggestionProvenanceIsAuditedOnlyWhenTheLastTryStillFails(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
-	evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
+	evaluation := beginAndComplete(t, s, m, aVerdict("complete", verdict.OverallMet))
 	suggestion := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
 	version := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-improved")
 	ctx := context.Background()

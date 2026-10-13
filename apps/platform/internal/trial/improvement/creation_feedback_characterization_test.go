@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 func TestAnyFeedbackItemCutAtItsLimitMarksTheReportTruncatedAndIncomplete(t *testing.T) {
@@ -22,10 +24,10 @@ func TestAnyFeedbackItemCutAtItsLimitMarksTheReportTruncatedAndIncomplete(t *tes
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := marshalCreationFeedback(evaluationView{
-				EvaluationID: "e1", Status: StatusCompleted, Overall: string(OverallNotMet),
+				EvaluationID: "e1", Status: StatusCompleted, Overall: string(verdict.OverallNotMet),
 				Summary: short, EvidenceComplete: true,
-				CriterionResults:      []CriterionResult{{CriterionID: "c1", Text: tc.text, Reason: tc.reason}},
-				DeterministicFindings: []Finding{{Category: CategoryCost, Severity: SeverityWarning, Message: tc.message}},
+				CriterionResults:      []verdict.CriterionResult{{CriterionID: "c1", Text: tc.text, Reason: tc.reason}},
+				DeterministicFindings: []verdict.Finding{{Category: verdict.CategoryCost, Severity: verdict.SeverityWarning, Message: tc.message}},
 			})
 			if err != nil {
 				t.Fatal(err)

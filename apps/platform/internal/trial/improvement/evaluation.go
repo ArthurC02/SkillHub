@@ -9,6 +9,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 type Refusal string
@@ -56,8 +57,8 @@ type EvaluationStarted struct {
 type EvaluationSuperseded struct{}
 
 type EvaluationCompleted struct {
-	Overall          Overall `json:"overall"`
-	EvidenceComplete bool    `json:"evidence_complete"`
+	Overall          verdict.Overall `json:"overall"`
+	EvidenceComplete bool            `json:"evidence_complete"`
 }
 
 type EvaluationFailed struct {
@@ -93,7 +94,7 @@ func (SuggestionDecided) eventType() string    { return outbox.EvaluationSuggest
 
 type failure struct {
 	summary          string
-	findings         []Finding
+	findings         []verdict.Finding
 	evidenceComplete bool
 }
 
@@ -101,7 +102,7 @@ type Evaluation struct {
 	row         gen.Evaluation
 	suggestions map[pgtype.UUID]gen.EvaluationSuggestion
 	applied     map[pgtype.UUID]map[pgtype.UUID]struct{}
-	verdict     verdict
+	verdict     assessment
 	failure     failure
 	events      []Event
 }
@@ -109,7 +110,7 @@ type Evaluation struct {
 func startEvaluation(workspaceID, runID pgtype.UUID, declared EvaluationStarted) *Evaluation {
 	declared = cloneEvaluationStarted(declared)
 	e := &Evaluation{row: gen.Evaluation{
-		WorkspaceID: workspaceID, RunID: runID, Status: string(StatusPending), Overall: string(OverallUndetermined),
+		WorkspaceID: workspaceID, RunID: runID, Status: string(StatusPending), Overall: string(verdict.OverallUndetermined),
 		JudgeModel: declared.JudgeModel, JudgePromptVersion: declared.JudgePromptVersion,
 		RubricVersion: declared.RubricVersion,
 	}}
@@ -142,7 +143,7 @@ func (e *Evaluation) Supersede() {
 	}
 }
 
-func (e *Evaluation) Complete(v verdict) {
+func (e *Evaluation) Complete(v assessment) {
 	if !e.Status().AwaitsTheJudge() {
 		e.refuse(RefusedSettled)
 		return
@@ -253,7 +254,7 @@ func cloneEvent(event Event) Event {
 	return event
 }
 
-func cloneVerdict(v verdict) verdict {
+func cloneVerdict(v assessment) assessment {
 	v.results = cloneCriterionResults(v.results)
 	v.findings = cloneFindings(v.findings)
 	v.costUSD = pgconv.Clone(v.costUSD)
@@ -266,7 +267,7 @@ func cloneFailure(f failure) failure {
 	return f
 }
 
-func cloneCriterionResults(results []CriterionResult) []CriterionResult {
+func cloneCriterionResults(results []verdict.CriterionResult) []verdict.CriterionResult {
 	cloned := slices.Clone(results)
 	for i, result := range results {
 		result.Evidence = cloneEvidenceRefs(result.Evidence)
@@ -275,7 +276,7 @@ func cloneCriterionResults(results []CriterionResult) []CriterionResult {
 	return cloned
 }
 
-func cloneFindings(findings []Finding) []Finding {
+func cloneFindings(findings []verdict.Finding) []verdict.Finding {
 	cloned := slices.Clone(findings)
 	for i, finding := range findings {
 		finding.Evidence = cloneEvidenceRefs(finding.Evidence)
@@ -284,7 +285,7 @@ func cloneFindings(findings []Finding) []Finding {
 	return cloned
 }
 
-func cloneEvidenceRefs(refs []EvidenceRef) []EvidenceRef {
+func cloneEvidenceRefs(refs []verdict.EvidenceRef) []verdict.EvidenceRef {
 	cloned := slices.Clone(refs)
 	for i, ref := range refs {
 		ref.ByteRange = pgconv.Clone(ref.ByteRange)

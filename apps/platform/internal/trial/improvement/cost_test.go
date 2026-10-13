@@ -9,6 +9,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 type fakeLedger struct {
@@ -21,7 +22,7 @@ func (f *fakeLedger) RecordCost(_ context.Context, _ credit.DBTX, e credit.CostE
 	return "id", false, f.err
 }
 
-func beginAndSettleJudgement(t *testing.T, s *Service, m material, v verdict) gen.Evaluation {
+func beginAndSettleJudgement(t *testing.T, s *Service, m material, v assessment) gen.Evaluation {
 	t.Helper()
 	ev, err := s.begin(context.Background(), m)
 	if err != nil {
@@ -33,9 +34,9 @@ func beginAndSettleJudgement(t *testing.T, s *Service, m material, v verdict) ge
 	return ev
 }
 
-func paidJudgement(summary string) verdict {
+func paidJudgement(summary string) assessment {
 	cost := 0.0031
-	v := aVerdict(summary, OverallMet)
+	v := aVerdict(summary, verdict.OverallMet)
 	v.usage = &ModelUsage{PromptTokens: 4000, CompletionTokens: 600, CostUSD: &cost, CostReported: true}
 	return v
 }
@@ -58,7 +59,7 @@ func TestAPaidJudgementIsRecordedEvenWhenItsEvaluationWasSettledFirst(t *testing
 	if err != nil {
 		t.Fatalf("begin: %v", err)
 	}
-	if err := s.complete(context.Background(), m, ev, aVerdict("settled elsewhere", OverallMet)); err != nil {
+	if err := s.complete(context.Background(), m, ev, aVerdict("settled elsewhere", verdict.OverallMet)); err != nil {
 		t.Fatalf("settle elsewhere: %v", err)
 	}
 
@@ -76,7 +77,7 @@ func TestAnEvaluationThatNeverCalledTheJudgeRecordsNoReviewCost(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t), Credit: ledger}
 	m := seedRun(t, s.Pool)
 
-	beginAndComplete(t, s, m, aVerdict("no acceptance criteria", OverallUndetermined))
+	beginAndComplete(t, s, m, aVerdict("no acceptance criteria", verdict.OverallUndetermined))
 
 	if got := reviewEvents(ledger); len(got) != 0 {
 		t.Errorf("review cost events = %+v, want none: no judge was called", got)
@@ -144,7 +145,7 @@ func TestSuggestingRecordsExactlyOneSuggestionCostEvent(t *testing.T) {
 		}},
 	}
 	m := seedRun(t, s.Pool)
-	ev := beginAndComplete(t, s, m, aVerdict("not met", OverallNotMet))
+	ev := beginAndComplete(t, s, m, aVerdict("not met", verdict.OverallNotMet))
 	ledger.events = nil
 
 	s.suggest(context.Background(), m, ev, costTestVerdict())
@@ -176,7 +177,7 @@ func TestAHeldSkillIsNeitherSentToTheModelNorChargedForSuggestions(t *testing.T)
 		}},
 	}
 	m := seedRun(t, s.Pool)
-	ev := beginAndComplete(t, s, m, aVerdict("not met", OverallNotMet))
+	ev := beginAndComplete(t, s, m, aVerdict("not met", verdict.OverallNotMet))
 	ledger.events = nil
 	m.skill.AccessRestricted = true
 
@@ -208,7 +209,7 @@ func TestACallTheGatewayDidNotPriceIsRecordedAsEstimatedRatherThanFree(t *testin
 		}},
 	}
 	m := seedRun(t, s.Pool)
-	ev := beginAndComplete(t, s, m, aVerdict("not met", OverallNotMet))
+	ev := beginAndComplete(t, s, m, aVerdict("not met", verdict.OverallNotMet))
 	ledger.events = nil
 
 	s.suggest(context.Background(), m, ev, costTestVerdict())
@@ -232,9 +233,9 @@ func TestACallTheGatewayDidNotPriceIsRecordedAsEstimatedRatherThanFree(t *testin
 	}
 }
 
-func costTestVerdict() verdict {
-	return verdict{overall: OverallNotMet, findings: []Finding{{
-		Category: CategoryEffect, Severity: SeverityWarning, Message: "needs work",
-		Evidence: []EvidenceRef{{Kind: KindAgentOutput, Excerpt: "wrote report.md", Available: true}},
+func costTestVerdict() assessment {
+	return assessment{overall: verdict.OverallNotMet, findings: []verdict.Finding{{
+		Category: verdict.CategoryEffect, Severity: verdict.SeverityWarning, Message: "needs work",
+		Evidence: []verdict.EvidenceRef{{Kind: verdict.KindAgentOutput, Excerpt: "wrote report.md", Available: true}},
 	}}}
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 func TestAHeldSkillBlocksASuggestionBeforeAnyFileIsRead(t *testing.T) {
@@ -25,12 +26,12 @@ func TestAHeldSkillBlocksASuggestionBeforeAnyFileIsRead(t *testing.T) {
 }
 
 func TestSuggestionDigestNeverShowsEvidenceOutsideItsAllowlist(t *testing.T) {
-	v := verdict{overall: OverallNotMet, findings: []Finding{{
-		Category: CategoryEffect, Severity: SeverityWarning, Message: "needs work",
+	v := assessment{overall: verdict.OverallNotMet, findings: []verdict.Finding{{
+		Category: verdict.CategoryEffect, Severity: verdict.SeverityWarning, Message: "needs work",
 	}}}
 	for i := 0; i < maxDigestEvidence+1; i++ {
-		v.findings[0].Evidence = append(v.findings[0].Evidence, EvidenceRef{
-			Kind: KindAgentOutput, Excerpt: strings.Repeat(string(rune('a'+i)), 20), Available: true,
+		v.findings[0].Evidence = append(v.findings[0].Evidence, verdict.EvidenceRef{
+			Kind: verdict.KindAgentOutput, Excerpt: strings.Repeat(string(rune('a'+i)), 20), Available: true,
 		})
 	}
 	digest, refs := suggestionDigest(material{}, v)
@@ -44,9 +45,9 @@ func TestSuggestionDigestNeverShowsEvidenceOutsideItsAllowlist(t *testing.T) {
 
 func TestTheDigestKeepsItsOwnLabelsOffTheQuotableLines(t *testing.T) {
 	const excerpt = "bash exited 1 while writing output.xlsx"
-	v := verdict{overall: OverallNotMet, findings: []Finding{{
-		Category: CategoryEffect, Severity: SeverityWarning, Message: "needs work",
-		Evidence: []EvidenceRef{{Kind: KindAgentOutput, Excerpt: excerpt, Available: true}},
+	v := assessment{overall: verdict.OverallNotMet, findings: []verdict.Finding{{
+		Category: verdict.CategoryEffect, Severity: verdict.SeverityWarning, Message: "needs work",
+		Evidence: []verdict.EvidenceRef{{Kind: verdict.KindAgentOutput, Excerpt: excerpt, Available: true}},
 	}}}
 	digest, refs := suggestionDigest(material{}, v)
 	if len(refs) != 1 {
@@ -132,16 +133,16 @@ func TestEveryCategoryButMCPIsOneThePlatformCanActOn(t *testing.T) {
 }
 
 func TestSuggestionEvidenceIsAlwaysMintedByThePlatform(t *testing.T) {
-	refs := []EvidenceRef{
-		{Kind: KindTraceEvent, TraceEventID: eventID, Excerpt: "tool_call bash exited 1", Available: true},
-		{Kind: KindArtifact, ArtifactPath: "output.xlsx", Excerpt: "output.xlsx (4096 bytes)", Available: true},
+	refs := []verdict.EvidenceRef{
+		{Kind: verdict.KindTraceEvent, TraceEventID: eventID, Excerpt: "tool_call bash exited 1", Available: true},
+		{Kind: verdict.KindArtifact, ArtifactPath: "output.xlsx", Excerpt: "output.xlsx (4096 bytes)", Available: true},
 	}
 
 	raw, err := suggestionEvidence(ImprovementProposal{Evidence: "bash exited 1"}, refs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got []EvidenceRef
+	var got []verdict.EvidenceRef
 	if err := json.Unmarshal(raw, &got); err != nil {
 		t.Fatal(err)
 	}
@@ -167,8 +168,8 @@ func TestSuggestionEvidenceIsAlwaysMintedByThePlatform(t *testing.T) {
 }
 
 func TestAProposalMayExplainItselfAroundTheQuoteItCites(t *testing.T) {
-	refs := []EvidenceRef{
-		{Kind: KindTraceEvent, TraceEventID: eventID, Available: true,
+	refs := []verdict.EvidenceRef{
+		{Kind: verdict.KindTraceEvent, TraceEventID: eventID, Available: true,
 			Excerpt: "artifact manifest: 完整 artifact manifest 明確顯示本次 run 未寫入任何檔案"},
 	}
 
@@ -181,7 +182,7 @@ func TestAProposalMayExplainItselfAroundTheQuoteItCites(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var got []EvidenceRef
+		var got []verdict.EvidenceRef
 		if raw == nil {
 			t.Fatalf("a verbatim quote with reasoning around it must still be citable: %s", evidence)
 		}
@@ -205,14 +206,14 @@ func TestAProposalMayExplainItselfAroundTheQuoteItCites(t *testing.T) {
 }
 
 func TestAdviceIsNotPaidForOnARunThatMetEverything(t *testing.T) {
-	met := verdict{overall: OverallMet, findings: []Finding{{Severity: SeverityInfo}}}
+	met := assessment{overall: verdict.OverallMet, findings: []verdict.Finding{{Severity: verdict.SeverityInfo}}}
 	if worthSuggesting(met) {
 		t.Error("a met verdict with nothing but disclosures has nothing to improve")
 	}
-	if !worthSuggesting(verdict{overall: OverallMet, findings: []Finding{{Severity: SeverityWarning}}}) {
+	if !worthSuggesting(assessment{overall: verdict.OverallMet, findings: []verdict.Finding{{Severity: verdict.SeverityWarning}}}) {
 		t.Error("a met verdict with a warning still deserves advice")
 	}
-	if !worthSuggesting(verdict{overall: OverallNotMet}) {
+	if !worthSuggesting(assessment{overall: verdict.OverallNotMet}) {
 		t.Error("an unmet verdict is exactly the case suggestions exist for")
 	}
 }
@@ -371,10 +372,10 @@ func findRecord(t *testing.T, buf *bytes.Buffer, msg string) map[string]any {
 
 func TestTheProposalCountersAreEmittedEvenWhenNothingWasDropped(t *testing.T) {
 	const excerpt = "bash exited 1 while writing output.xlsx"
-	newVerdict := func() verdict {
-		return verdict{overall: OverallNotMet, findings: []Finding{{
-			Category: CategoryEffect, Severity: SeverityWarning, Message: "needs work",
-			Evidence: []EvidenceRef{{Kind: KindAgentOutput, Excerpt: excerpt, Available: true}},
+	newVerdict := func() assessment {
+		return assessment{overall: verdict.OverallNotMet, findings: []verdict.Finding{{
+			Category: verdict.CategoryEffect, Severity: verdict.SeverityWarning, Message: "needs work",
+			Evidence: []verdict.EvidenceRef{{Kind: verdict.KindAgentOutput, Excerpt: excerpt, Available: true}},
 		}}}
 	}
 

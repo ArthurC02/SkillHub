@@ -7,6 +7,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/graders"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 const toneV2 = "0b6f9c1e-0000-4000-8000-000000000002"
@@ -55,7 +56,7 @@ func TestAGraderVersionTheWorkspaceCannotSeeIsUndeterminedWithoutAsking(t *testi
 		t.Errorf("asked %v for a grader this workspace cannot see", keys)
 	}
 	got, decided := decide(t, m, leaf(promptGraderKind, toneV2), nil)
-	if !decided || got.Result != ResultUndetermined || got.Source != SourceRule {
+	if !decided || got.Result != verdict.ResultUndetermined || got.Source != verdict.SourceRule {
 		t.Errorf("got %+v (decided %v), want undetermined without the judge", got, decided)
 	}
 }
@@ -71,11 +72,11 @@ func TestEachPromptGraderLeafGetsItsOwnInstructionsAndVerdict(t *testing.T) {
 		t.Fatalf("asked %+v, want one item per value with {item} filled in", asks)
 	}
 
-	got, decided := decide(t, m, fanOut, map[string]CriterionResult{
-		"c@0.0": {Result: ResultFailed, Reason: "curt"},
-		"c@0.1": {Result: ResultPassed, Reason: "warm"},
+	got, decided := decide(t, m, fanOut, map[string]verdict.CriterionResult{
+		"c@0.0": {Result: verdict.ResultFailed, Reason: "curt"},
+		"c@0.1": {Result: verdict.ResultPassed, Reason: "warm"},
 	})
-	if !decided || got.Result != ResultPassed || got.Source != SourceModel {
+	if !decided || got.Result != verdict.ResultPassed || got.Source != verdict.SourceModel {
 		t.Fatalf("got %+v, want passed from the model with one of two items", got)
 	}
 	if !strings.HasPrefix(got.Steps[0].Reason, "語氣 v2: ") {

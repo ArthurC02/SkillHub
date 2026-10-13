@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 func repeated(n int, v string) []string {
@@ -113,11 +114,11 @@ func TestAtLeastKOfNIsDecidedAsSoonAsTheCountsAllowIt(t *testing.T) {
 		k, n int
 		want string
 	}{
-		{"enough passes", counts{passed: 2, failed: 1}, 2, 3, ResultPassed},
-		{"one pass short with nothing left", counts{passed: 1, failed: 2}, 2, 3, ResultFailed},
-		{"failures make k unreachable while the judge is pending", counts{failed: 2, pending: 1}, 2, 3, ResultFailed},
+		{"enough passes", counts{passed: 2, failed: 1}, 2, 3, verdict.ResultPassed},
+		{"one pass short with nothing left", counts{passed: 1, failed: 2}, 2, 3, verdict.ResultFailed},
+		{"failures make k unreachable while the judge is pending", counts{failed: 2, pending: 1}, 2, 3, verdict.ResultFailed},
 		{"still reachable through a pending branch", counts{passed: 1, failed: 1, pending: 1}, 2, 3, resultPending},
-		{"still reachable only through an undetermined branch", counts{passed: 1, failed: 1, undetermined: 1}, 2, 3, ResultUndetermined},
+		{"still reachable only through an undetermined branch", counts{passed: 1, failed: 1, undetermined: 1}, 2, 3, verdict.ResultUndetermined},
 		{"pending outranks undetermined", counts{passed: 1, undetermined: 1, pending: 1}, 3, 3, resultPending},
 	}
 	for _, c := range cases {
@@ -127,7 +128,7 @@ func TestAtLeastKOfNIsDecidedAsSoonAsTheCountsAllowIt(t *testing.T) {
 	}
 }
 
-func decide(t *testing.T, m material, check testlab.Check, verdicts map[string]CriterionResult) (CriterionResult, bool) {
+func decide(t *testing.T, m material, check testlab.Check, verdicts map[string]verdict.CriterionResult) (verdict.CriterionResult, bool) {
 	t.Helper()
 	return treeResult(m, testlab.Criterion{ID: "c", Text: "c", Check: &check}, verdicts)
 }
@@ -139,21 +140,21 @@ func TestCompositeChecksCombineTheirChildren(t *testing.T) {
 		check testlab.Check
 		want  string
 	}{
-		{"all with one failing branch", node("all", leaf("contains_values", "1200"), leaf("asks")), ResultFailed},
-		{"any with one passing branch", node("any", leaf("contains_values", "999"), leaf("does_not_ask")), ResultPassed},
-		{"any with no passing branch", node("any", leaf("contains_values", "999"), leaf("asks")), ResultFailed},
-		{"if whose condition held takes its branch", node("if", leaf("does_not_ask"), leaf("contains_values", "999")), ResultFailed},
-		{"if whose condition failed takes its else", node("if", leaf("asks"), leaf("judge"), leaf("contains_values", "1200")), ResultPassed},
-		{"if whose condition failed with no else requires nothing", node("if", leaf("asks"), leaf("contains_values", "999")), ResultPassed},
+		{"all with one failing branch", node("all", leaf("contains_values", "1200"), leaf("asks")), verdict.ResultFailed},
+		{"any with one passing branch", node("any", leaf("contains_values", "999"), leaf("does_not_ask")), verdict.ResultPassed},
+		{"any with no passing branch", node("any", leaf("contains_values", "999"), leaf("asks")), verdict.ResultFailed},
+		{"if whose condition held takes its branch", node("if", leaf("does_not_ask"), leaf("contains_values", "999")), verdict.ResultFailed},
+		{"if whose condition failed takes its else", node("if", leaf("asks"), leaf("judge"), leaf("contains_values", "1200")), verdict.ResultPassed},
+		{"if whose condition failed with no else requires nothing", node("if", leaf("asks"), leaf("contains_values", "999")), verdict.ResultPassed},
 		{"each needs two of three items", testlab.Check{Kind: "each", Values: []string{"1200", "2026-10-03", "999"}, AtLeast: 2,
-			Children: []testlab.Check{leaf("contains_values", CheckItem)}}, ResultPassed},
+			Children: []testlab.Check{leaf("contains_values", CheckItem)}}, verdict.ResultPassed},
 		{"each needs every item by default", testlab.Check{Kind: "each", Values: []string{"1200", "999"},
-			Children: []testlab.Check{leaf("contains_values", CheckItem)}}, ResultFailed},
+			Children: []testlab.Check{leaf("contains_values", CheckItem)}}, verdict.ResultFailed},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			got, decided := decide(t, answered, c.check, nil)
-			if !decided || got.Result != c.want || got.Source != SourceRule {
+			if !decided || got.Result != c.want || got.Source != verdict.SourceRule {
 				t.Fatalf("got %+v (decided %v), want %s from the rules", got, decided, c.want)
 			}
 		})
@@ -163,7 +164,7 @@ func TestCompositeChecksCombineTheirChildren(t *testing.T) {
 func TestASequenceStopsAtItsFirstStepThatDidNotPass(t *testing.T) {
 	m := ruledMaterial("訂金 1,200 元", nil, "succeeded", true)
 	got, decided := decide(t, m, node("sequence", leaf("contains_values", "999"), leaf("judge"), leaf("asks")), nil)
-	if !decided || got.Result != ResultFailed || got.Source != SourceRule {
+	if !decided || got.Result != verdict.ResultFailed || got.Source != verdict.SourceRule {
 		t.Fatalf("got %+v, want failed by the rule without waiting for the judge", got)
 	}
 	if len(got.Steps) != 2 || got.Steps[0].Path != "0.0" || got.Steps[1].Path != "0" {
@@ -174,7 +175,7 @@ func TestASequenceStopsAtItsFirstStepThatDidNotPass(t *testing.T) {
 func TestABranchLeftForTheJudgeIsNotRecordedWhenTheRulesAlreadyDecided(t *testing.T) {
 	m := ruledMaterial("訂金 1,200 元", nil, "succeeded", true)
 	got, decided := decide(t, m, node("any", leaf("contains_values", "1200"), leaf("judge")), nil)
-	if !decided || got.Result != ResultPassed || got.Source != SourceRule {
+	if !decided || got.Result != verdict.ResultPassed || got.Source != verdict.SourceRule {
 		t.Fatalf("got %+v (decided %v), want passed by the rule without the judge", got, decided)
 	}
 	if len(got.Steps) != 2 || got.Steps[0].Path != "0.0" || got.Steps[1].Path != "0" {
@@ -188,9 +189,9 @@ func TestAJudgeBehindAPassingGateIsAskedAndDecidesTheCriterion(t *testing.T) {
 	if _, decided := decide(t, m, gated, nil); decided {
 		t.Fatal("a judge step behind a passing gate was decided without the judge")
 	}
-	verdict := CriterionResult{Result: ResultFailed, Reason: "the tone is off", Evidence: []EvidenceRef{{Kind: "output"}}}
-	got, decided := decide(t, m, gated, map[string]CriterionResult{"c": verdict})
-	if !decided || got.Result != ResultFailed || got.Source != SourceModel || len(got.Evidence) != 1 {
+	judged := verdict.CriterionResult{Result: verdict.ResultFailed, Reason: "the tone is off", Evidence: []verdict.EvidenceRef{{Kind: "output"}}}
+	got, decided := decide(t, m, gated, map[string]verdict.CriterionResult{"c": judged})
+	if !decided || got.Result != verdict.ResultFailed || got.Source != verdict.SourceModel || len(got.Evidence) != 1 {
 		t.Errorf("got %+v, want the judge's failure, labelled model, with its evidence", got)
 	}
 }

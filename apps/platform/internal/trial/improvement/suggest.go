@@ -15,6 +15,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
@@ -35,7 +36,7 @@ var SuggestImprovementsBudget = modelbudget.Endpoint{
 	Kind: "suggest-improvements", Deadline: suggestTimeout,
 }
 
-func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v verdict) {
+func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v assessment) {
 	if s.Suggester == nil || m.skill.AccessRestricted || !worthSuggesting(v) {
 		return
 	}
@@ -76,7 +77,7 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 	s.storeProposals(ctx, ev, resp.Proposals, refs)
 }
 
-func (s *Service) storeProposals(ctx context.Context, ev gen.Evaluation, proposals []ImprovementProposal, refs []EvidenceRef) {
+func (s *Service) storeProposals(ctx context.Context, ev gen.Evaluation, proposals []ImprovementProposal, refs []verdict.EvidenceRef) {
 	q := s.queries()
 
 	stored, noEvidence, unstorable, writeFailed, overCap := 0, 0, 0, 0, 0
@@ -133,12 +134,12 @@ func (s *Service) storeProposals(ctx context.Context, ev gen.Evaluation, proposa
 		"dropped_over_cap", overCap)
 }
 
-func worthSuggesting(v verdict) bool {
-	if v.overall != OverallMet {
+func worthSuggesting(v assessment) bool {
+	if v.overall != verdict.OverallMet {
 		return true
 	}
 	for _, f := range v.findings {
-		if f.Severity != SeverityInfo {
+		if f.Severity != verdict.SeverityInfo {
 			return true
 		}
 	}
@@ -159,8 +160,8 @@ func storable(p ImprovementProposal) bool {
 	return ok
 }
 
-func suggestionEvidence(p ImprovementProposal, refs []EvidenceRef) ([]byte, error) {
-	out := make([]EvidenceRef, 0, maxStoredEvidence)
+func suggestionEvidence(p ImprovementProposal, refs []verdict.EvidenceRef) ([]byte, error) {
+	out := make([]verdict.EvidenceRef, 0, maxStoredEvidence)
 	for _, quote := range evidenceQuotes(p.Evidence) {
 		for _, ref := range refs {
 			if strings.Contains(ref.Excerpt, quote) {
@@ -221,10 +222,10 @@ const (
 	digestExplanationRunes   = 800
 )
 
-func suggestionDigest(m material, v verdict) (string, []EvidenceRef) {
+func suggestionDigest(m material, v assessment) (string, []verdict.EvidenceRef) {
 	var b strings.Builder
-	refs := make([]EvidenceRef, 0, maxDigestEvidence)
-	addRefs := func(in []EvidenceRef) {
+	refs := make([]verdict.EvidenceRef, 0, maxDigestEvidence)
+	addRefs := func(in []verdict.EvidenceRef) {
 		for _, r := range in {
 			if len(refs) >= maxDigestEvidence {
 				return
@@ -248,7 +249,7 @@ func suggestionDigest(m material, v verdict) (string, []EvidenceRef) {
 	b.WriteString("\nacceptance criteria that did not pass:\n")
 	unmet := 0
 	for _, r := range v.results {
-		if r.Result == ResultPassed {
+		if r.Result == verdict.ResultPassed {
 			continue
 		}
 		unmet++
@@ -262,7 +263,7 @@ func suggestionDigest(m material, v verdict) (string, []EvidenceRef) {
 
 	b.WriteString("\nchecks the platform ran on this run:\n")
 	for _, f := range v.findings {
-		if f.Severity == SeverityInfo {
+		if f.Severity == verdict.SeverityInfo {
 			continue
 		}
 		fmt.Fprintf(&b, "  [%s/%s] %s\n", f.Category, f.Severity, firstChars(f.Message, digestExplanationRunes))

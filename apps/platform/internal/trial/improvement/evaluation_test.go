@@ -11,6 +11,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 func revisionIn(status Status, superseded bool) *Evaluation {
@@ -36,7 +37,7 @@ func TestAStartedEvaluationAwaitsTheJudgeAndDeclaresWhatItWillBeJudgedWith(t *te
 	if e.Status() != StatusPending || e.Superseded() {
 		t.Fatalf("a new revision is %q (superseded %v), want pending and current", e.Status(), e.Superseded())
 	}
-	if e.row.Overall != string(OverallUndetermined) || e.row.EvidenceComplete {
+	if e.row.Overall != string(verdict.OverallUndetermined) || e.row.EvidenceComplete {
 		t.Fatalf("a new revision reads %q with complete evidence %v, want undetermined without it", e.row.Overall, e.row.EvidenceComplete)
 	}
 	assertEvents(t, e, declared)
@@ -60,19 +61,19 @@ func assertDeclaredJudgeDataAndEventsKeepIndependentPointers(t *testing.T) {
 }
 
 func assertCompletedAndFailedResultsKeepNestedEvidenceAndCostCopies(t *testing.T) {
-	byteRange, charRange := &Range{Start: 1, End: 2}, &Range{Start: 3, End: 4}
+	byteRange, charRange := &verdict.Range{Start: 1, End: 2}, &verdict.Range{Start: 3, End: 4}
 	cost, usageCost := 1.5, 2.5
-	v := verdict{
-		results:  []CriterionResult{{CriterionID: "criterion-original", Evidence: []EvidenceRef{{Kind: "result-evidence", ByteRange: byteRange, CharRange: charRange}}}},
-		findings: []Finding{{Message: "finding-original", Evidence: []EvidenceRef{{Kind: "finding-evidence", ByteRange: byteRange}}}},
+	v := assessment{
+		results:  []verdict.CriterionResult{{CriterionID: "criterion-original", Evidence: []verdict.EvidenceRef{{Kind: "result-evidence", ByteRange: byteRange, CharRange: charRange}}}},
+		findings: []verdict.Finding{{Message: "finding-original", Evidence: []verdict.EvidenceRef{{Kind: "finding-evidence", ByteRange: byteRange}}}},
 		costUSD:  &cost, usage: &ModelUsage{CostUSD: &usageCost},
 	}
 	e := revisionIn(StatusPending, false)
 	e.Complete(v)
-	v.results[0].Evidence[0] = EvidenceRef{Kind: "result-evidence-changed"}
-	v.results[0] = CriterionResult{CriterionID: "criterion-changed"}
-	v.findings[0].Evidence[0] = EvidenceRef{Kind: "finding-evidence-changed"}
-	v.findings[0] = Finding{Message: "finding-changed"}
+	v.results[0].Evidence[0] = verdict.EvidenceRef{Kind: "result-evidence-changed"}
+	v.results[0] = verdict.CriterionResult{CriterionID: "criterion-changed"}
+	v.findings[0].Evidence[0] = verdict.EvidenceRef{Kind: "finding-evidence-changed"}
+	v.findings[0] = verdict.Finding{Message: "finding-changed"}
 	byteRange.Start, charRange.End, cost, usageCost = 9, 9, 9.5, 9.5
 	if e.verdict.results[0].CriterionID != "criterion-original" || e.verdict.results[0].Evidence[0].Kind != "result-evidence" ||
 		e.verdict.results[0].Evidence[0].ByteRange.Start != 1 || e.verdict.results[0].Evidence[0].CharRange.End != 4 ||
@@ -81,14 +82,14 @@ func assertCompletedAndFailedResultsKeepNestedEvidenceAndCostCopies(t *testing.T
 		t.Fatalf("completed verdict after input mutation = %+v, want original nested data", e.verdict)
 	}
 
-	failureRange := &Range{Start: 5, End: 6}
-	f := failure{findings: []Finding{{Category: CategoryExecution, Message: "failure-finding-original", Evidence: []EvidenceRef{{Kind: "failure-evidence", ByteRange: failureRange}}}}}
+	failureRange := &verdict.Range{Start: 5, End: 6}
+	f := failure{findings: []verdict.Finding{{Category: verdict.CategoryExecution, Message: "failure-finding-original", Evidence: []verdict.EvidenceRef{{Kind: "failure-evidence", ByteRange: failureRange}}}}}
 	failed := revisionIn(StatusPending, false)
 	failed.Fail(f)
-	f.findings[0].Evidence[0] = EvidenceRef{Kind: "failure-evidence-changed"}
-	f.findings[0] = Finding{Message: "failure-finding-changed"}
+	f.findings[0].Evidence[0] = verdict.EvidenceRef{Kind: "failure-evidence-changed"}
+	f.findings[0] = verdict.Finding{Message: "failure-finding-changed"}
 	failureRange.Start = 9
-	if failed.failure.findings[0].Category != CategoryExecution || failed.failure.findings[0].Message != "failure-finding-original" ||
+	if failed.failure.findings[0].Category != verdict.CategoryExecution || failed.failure.findings[0].Message != "failure-finding-original" ||
 		failed.failure.findings[0].Evidence[0].Kind != "failure-evidence" || failed.failure.findings[0].Evidence[0].ByteRange.Start != 5 {
 		t.Fatalf("failure after input mutation = %+v, want original nested evidence", failed.failure)
 	}
@@ -148,7 +149,7 @@ func TestOnlyASettledCurrentRevisionCanBeSuperseded(t *testing.T) {
 }
 
 func TestOnlyAPendingRevisionSettles(t *testing.T) {
-	v := aVerdict("the file is written", OverallMet)
+	v := aVerdict("the file is written", verdict.OverallMet)
 	f := failure{summary: "the judge was unreachable", evidenceComplete: true}
 	commands := []struct {
 		name   string
@@ -157,7 +158,7 @@ func TestOnlyAPendingRevisionSettles(t *testing.T) {
 		event  Event
 	}{
 		{"complete", func(e *Evaluation) { e.Complete(v) }, StatusCompleted,
-			EvaluationCompleted{Overall: OverallMet, EvidenceComplete: true}},
+			EvaluationCompleted{Overall: verdict.OverallMet, EvidenceComplete: true}},
 		{"fail", func(e *Evaluation) { e.Fail(f) }, StatusFailed, EvaluationFailed{EvidenceComplete: true}},
 	}
 	for _, command := range commands {
@@ -347,7 +348,7 @@ func TestEachRefusalAnswersWithItsOwnError(t *testing.T) {
 
 func TestARefusedCommandIsAnsweredWithoutTouchingTheTransaction(t *testing.T) {
 	e := revisionIn(StatusCompleted, false)
-	e.Complete(aVerdict("a second opinion", OverallNotMet))
+	e.Complete(aVerdict("a second opinion", verdict.OverallNotMet))
 
 	if err := saveUnlessRefused(t.Context(), nil, e); !errors.Is(err, errEvaluationSettled) {
 		t.Fatalf("saving a refused completion: want errEvaluationSettled, got %v", err)

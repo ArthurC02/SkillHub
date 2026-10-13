@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"unicode"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 func TestAnEvaluationThatDidNotFinishIsNotAVerdictAboutTheTask(t *testing.T) {
@@ -68,7 +70,7 @@ func TestEveryVerdictTheDatabaseAllowsHasItsOwnSentence(t *testing.T) {
 	seen := map[string]string{}
 	for _, m := range found {
 		overall := m[1]
-		got := verdictOf(StatusCompleted, Overall(overall))
+		got := verdictOf(StatusCompleted, verdict.Overall(overall))
 		if got.Value != overall {
 			t.Errorf("verdictOf(\"completed\", %q).Value = %q; a completed evaluation must "+
 				"carry the verdict the database stored, not a fallback", overall, got.Value)

@@ -12,6 +12,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 func readsEventsFrom(pool *pgxpool.Pool) func(context.Context, outbox.EventPage) ([]outbox.Event, error) {
@@ -68,7 +69,7 @@ func TestProvenanceThatRanOutOfDeliveryTriesIsStillRecordedByTheSweep(t *testing
 	s := &Service{Pool: requireEvalDB(t)}
 	s.ReadEventsOfType = readsEventsFrom(s.Pool)
 	m := seedRun(t, s.Pool)
-	evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
+	evaluation := beginAndComplete(t, s, m, aVerdict("complete", verdict.OverallMet))
 	suggestion := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
 	version := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-improved")
 
@@ -104,7 +105,7 @@ func TestTheSweepReachesALostDeliveryBehindAFullPageOfOlderVersions(t *testing.T
 	s := &Service{Pool: requireEvalDB(t)}
 	s.ReadEventsOfType = readsEventsFrom(s.Pool)
 	m := seedRun(t, s.Pool)
-	evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
+	evaluation := beginAndComplete(t, s, m, aVerdict("complete", verdict.OverallMet))
 	suggestion := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
 	version := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-improved")
 
@@ -128,7 +129,7 @@ func TestTheSweepLeavesADeliveryThatStillHasTimeAlone(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	s.ReadEventsOfType = readsEventsFrom(s.Pool)
 	m := seedRun(t, s.Pool)
-	evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
+	evaluation := beginAndComplete(t, s, m, aVerdict("complete", verdict.OverallMet))
 	suggestion := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
 	version := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-improved")
 
@@ -180,7 +181,7 @@ func TestAStaleEvaluationThatCannotBeRecoveredDoesNotStarveTheProvenanceSweep(t 
 		t.Fatal(err)
 	}
 	m := seedRun(t, s.Pool)
-	evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
+	evaluation := beginAndComplete(t, s, m, aVerdict("complete", verdict.OverallMet))
 	suggestion := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
 	version := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-improved")
 	publishVersionAdded(t, s, m, version, evaluation.ID, []pgtype.UUID{suggestion.ID},

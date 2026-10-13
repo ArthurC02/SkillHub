@@ -8,11 +8,12 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 type StandingVerdict struct {
 	Status  Status
-	Overall Overall
+	Overall verdict.Overall
 }
 
 func StandingVerdicts(
@@ -26,7 +27,7 @@ func StandingVerdicts(
 	}
 	out := make(map[pgtype.UUID]StandingVerdict, len(rows))
 	for _, row := range rows {
-		out[row.RunID] = StandingVerdict{Status: Status(row.Status), Overall: Overall(row.Overall)}
+		out[row.RunID] = StandingVerdict{Status: Status(row.Status), Overall: verdict.Overall(row.Overall)}
 	}
 	return out, nil
 }
@@ -43,7 +44,7 @@ var notEvaluated = labelled{
 	Note:  "這個 Run 還沒有任務判定。執行狀態說的是工作負載跑完了沒有,不是任務有沒有做到。",
 }
 
-func verdictOf(status Status, overall Overall) labelled {
+func verdictOf(status Status, overall verdict.Overall) labelled {
 	switch status {
 	case StatusPending:
 		return labelled{
@@ -59,17 +60,17 @@ func verdictOf(status Status, overall Overall) labelled {
 		}
 	}
 	switch overall {
-	case OverallMet:
-		return labelled{Value: string(OverallMet), Label: "符合",
+	case verdict.OverallMet:
+		return labelled{Value: string(verdict.OverallMet), Label: "符合",
 			Note: "依這個 Run 當時的驗收條件判定為符合。"}
-	case OverallPartiallyMet:
-		return labelled{Value: string(OverallPartiallyMet), Label: "部分符合",
+	case verdict.OverallPartiallyMet:
+		return labelled{Value: string(verdict.OverallPartiallyMet), Label: "部分符合",
 			Note: "部分驗收條件通過,部分沒有;逐條結果在這個 Run 的評估頁面。"}
-	case OverallNotMet:
-		return labelled{Value: string(OverallNotMet), Label: "未符合",
+	case verdict.OverallNotMet:
+		return labelled{Value: string(verdict.OverallNotMet), Label: "未符合",
 			Note: "依這個 Run 當時的驗收條件判定為未符合。"}
 	default:
-		return labelled{Value: string(OverallUndetermined), Label: "無法判斷",
+		return labelled{Value: string(verdict.OverallUndetermined), Label: "無法判斷",
 			Note: "判定跑完了,而證據不足以下結論——這是判定的結果,不是判定沒跑。"}
 	}
 }

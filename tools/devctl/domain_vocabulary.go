@@ -137,10 +137,10 @@ var domainVocabularies = []domainVocabulary{
 		name: "evaluation overall",
 		sources: []vocabularySource{
 			sqlColumnCheck("evaluations", "overall"),
-			goConstEnum("apps/platform/internal/trial/improvement/overall.go", "Overall"),
+			goConstEnum("apps/platform/internal/trial/improvement/verdict/overall.go", "Overall"),
 			goListedConstEnum(
-				"apps/platform/internal/trial/improvement/overall.go", "AllOveralls",
-				"apps/platform/internal/trial/improvement/overall.go", "Overall"),
+				"apps/platform/internal/trial/improvement/verdict/overall.go", "AllOveralls",
+				"apps/platform/internal/trial/improvement/verdict/overall.go", "Overall"),
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "EvaluationOverall"),
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "RunComparisonRunsItemEvaluationOverall"),
 		},

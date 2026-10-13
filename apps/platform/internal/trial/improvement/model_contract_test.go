@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 type fakeModel struct {
@@ -66,10 +67,10 @@ func aJudgeRequest() JudgeRequest {
 func aJudgement() *Judgement {
 	return &Judgement{
 		Criteria: []CriterionVerdict{{
-			CriterionID: "c1", Result: ResultPassed, Reason: "the figure is there",
-			Citations: []Citation{{Kind: KindAgentOutput, Quote: "total: 42"}},
+			CriterionID: "c1", Result: verdict.ResultPassed, Reason: "the figure is there",
+			Citations: []Citation{{Kind: verdict.KindAgentOutput, Quote: "total: 42"}},
 		}},
-		Overall: string(OverallMet), Summary: "the criteria were met",
+		Overall: string(verdict.OverallMet), Summary: "the criteria were met",
 		Model: "a-model", PromptVersion: "judge@1",
 	}
 }
@@ -79,10 +80,10 @@ func TestEveryJudgeAnswersInTheDomainsOwnWords(t *testing.T) {
 	overTheWire := JudgeOrNone(modelOverAWire(t, "/judge-run", nil, llmclient.JudgeRunResponse{
 		Verdict: llmclient.JudgeVerdict{
 			CriterionResults: []llmclient.CriterionVerdict{{
-				CriterionID: "c1", Result: ResultPassed, Reason: "the figure is there",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: KindAgentOutput, Quote: "total: 42"}},
+				CriterionID: "c1", Result: verdict.ResultPassed, Reason: "the figure is there",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: verdict.KindAgentOutput, Quote: "total: 42"}},
 			}},
-			Overall: string(OverallMet), Summary: "the criteria were met",
+			Overall: string(verdict.OverallMet), Summary: "the criteria were met",
 		},
 		Model: "a-model", PromptVersion: "judge@1",
 	}))
@@ -101,7 +102,7 @@ func TestEveryJudgeAnswersInTheDomainsOwnWords(t *testing.T) {
 				t.Fatalf("criterion verdicts = %d, want 1", len(got.Criteria))
 			}
 			cv := got.Criteria[0]
-			if cv.CriterionID != "c1" || cv.Result != ResultPassed || cv.Reason != "the figure is there" {
+			if cv.CriterionID != "c1" || cv.Result != verdict.ResultPassed || cv.Reason != "the figure is there" {
 				t.Errorf("criterion verdict = %+v, want c1 passed", cv)
 			}
 			if len(cv.Citations) != 1 || cv.Citations[0].Quote != "total: 42" {

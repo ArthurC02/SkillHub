@@ -11,18 +11,19 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 type suggestionView struct {
-	SuggestionID          string        `json:"suggestion_id"`
-	Category              string        `json:"category"`
-	Problem               string        `json:"problem"`
-	Evidence              []EvidenceRef `json:"evidence"`
-	TargetPath            string        `json:"target_path"`
-	ExpectedImpact        string        `json:"expected_impact"`
-	Decision              string        `json:"decision"`
-	DecidedAt             string        `json:"decided_at,omitempty"`
-	AppliedSkillVersionID string        `json:"applied_skill_version_id,omitempty"`
+	SuggestionID          string                `json:"suggestion_id"`
+	Category              string                `json:"category"`
+	Problem               string                `json:"problem"`
+	Evidence              []verdict.EvidenceRef `json:"evidence"`
+	TargetPath            string                `json:"target_path"`
+	ExpectedImpact        string                `json:"expected_impact"`
+	Decision              string                `json:"decision"`
+	DecidedAt             string                `json:"decided_at,omitempty"`
+	AppliedSkillVersionID string                `json:"applied_skill_version_id,omitempty"`
 }
 
 type suggestionListResponse struct {
@@ -31,12 +32,12 @@ type suggestionListResponse struct {
 }
 
 func toSuggestionView(row Suggestion) suggestionView {
-	var evidence []EvidenceRef
+	var evidence []verdict.EvidenceRef
 	if len(row.Evidence) > 0 {
 		_ = json.Unmarshal(row.Evidence, &evidence)
 	}
 	if evidence == nil {
-		evidence = []EvidenceRef{}
+		evidence = []verdict.EvidenceRef{}
 	}
 	out := suggestionView{
 		SuggestionID:   pgconv.UUIDString(row.ID),
@@ -81,7 +82,7 @@ func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := make([]suggestionView, 0, len(rows))
-	sets := make([][]EvidenceRef, 0, len(rows))
+	sets := make([][]verdict.EvidenceRef, 0, len(rows))
 	for _, row := range rows {
 		v := toSuggestionView(row)
 		out = append(out, v)

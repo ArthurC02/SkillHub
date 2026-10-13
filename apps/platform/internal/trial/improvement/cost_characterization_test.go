@@ -3,6 +3,8 @@ package eval
 import (
 	"context"
 	"testing"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 func TestAStoredModelUsageNamesTheModelAndPromptThatAnswered(t *testing.T) {
@@ -16,7 +18,7 @@ func TestAStoredModelUsageNamesTheModelAndPromptThatAnswered(t *testing.T) {
 		}},
 	}
 	m := seedRun(t, s.Pool)
-	ev := beginAndComplete(t, s, m, aVerdict("not met", OverallNotMet))
+	ev := beginAndComplete(t, s, m, aVerdict("not met", verdict.OverallNotMet))
 
 	s.suggest(context.Background(), m, ev, costTestVerdict())
 

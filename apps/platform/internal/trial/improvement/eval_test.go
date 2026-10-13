@@ -17,6 +17,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 func TestRequireTestLabDoesNotInspectOwnerInternals(t *testing.T) {
@@ -94,11 +95,11 @@ func TestRunReadersFailClosedAndHideMissingRuns(t *testing.T) {
 
 func TestResultOutsideTheValueDomainReadsAsUndetermined(t *testing.T) {
 	for _, in := range []string{"", "PASSED", "probably", "met", "true"} {
-		if got := normaliseResult(in); got != ResultUndetermined {
-			t.Errorf("normaliseResult(%q) = %q, want %q", in, got, ResultUndetermined)
+		if got := normaliseResult(in); got != verdict.ResultUndetermined {
+			t.Errorf("normaliseResult(%q) = %q, want %q", in, got, verdict.ResultUndetermined)
 		}
 	}
-	for _, in := range []string{ResultPassed, ResultFailed, ResultUndetermined} {
+	for _, in := range []string{verdict.ResultPassed, verdict.ResultFailed, verdict.ResultUndetermined} {
 		if got := normaliseResult(in); got != in {
 			t.Errorf("normaliseResult(%q) = %q, want it unchanged", in, got)
 		}
@@ -106,28 +107,28 @@ func TestResultOutsideTheValueDomainReadsAsUndetermined(t *testing.T) {
 }
 
 func TestOverallIsRecomputedFromTheStoredCriteria(t *testing.T) {
-	res := func(results ...string) []CriterionResult {
-		out := make([]CriterionResult, 0, len(results))
+	res := func(results ...string) []verdict.CriterionResult {
+		out := make([]verdict.CriterionResult, 0, len(results))
 		for i, r := range results {
-			out = append(out, CriterionResult{CriterionID: string(rune('a' + i)), Result: r})
+			out = append(out, verdict.CriterionResult{CriterionID: string(rune('a' + i)), Result: r})
 		}
 		return out
 	}
 	cases := []struct {
 		name string
-		in   []CriterionResult
-		want Overall
+		in   []verdict.CriterionResult
+		want verdict.Overall
 	}{
-		{"no criteria at all", nil, OverallUndetermined},
-		{"all passed", res(ResultPassed, ResultPassed), OverallMet},
-		{"all failed", res(ResultFailed, ResultFailed), OverallNotMet},
-		{"some of each", res(ResultPassed, ResultFailed), OverallPartiallyMet},
-		{"a pass and an unknown", res(ResultPassed, ResultUndetermined), OverallPartiallyMet},
-		{"a failure and an unknown, nothing passed", res(ResultFailed, ResultUndetermined), OverallNotMet},
-		{"nothing but unknowns", res(ResultUndetermined, ResultUndetermined), OverallUndetermined},
+		{"no criteria at all", nil, verdict.OverallUndetermined},
+		{"all passed", res(verdict.ResultPassed, verdict.ResultPassed), verdict.OverallMet},
+		{"all failed", res(verdict.ResultFailed, verdict.ResultFailed), verdict.OverallNotMet},
+		{"some of each", res(verdict.ResultPassed, verdict.ResultFailed), verdict.OverallPartiallyMet},
+		{"a pass and an unknown", res(verdict.ResultPassed, verdict.ResultUndetermined), verdict.OverallPartiallyMet},
+		{"a failure and an unknown, nothing passed", res(verdict.ResultFailed, verdict.ResultUndetermined), verdict.OverallNotMet},
+		{"nothing but unknowns", res(verdict.ResultUndetermined, verdict.ResultUndetermined), verdict.OverallUndetermined},
 	}
 	for _, c := range cases {
-		if got := overallFrom(c.in); got != c.want {
+		if got := verdict.OverallFrom(c.in); got != c.want {
 			t.Errorf("%s: overallFrom = %q, want %q", c.name, got, c.want)
 		}
 	}
@@ -137,16 +138,16 @@ type verifyCase struct {
 	name    string
 	ref     Citation
 	wantErr bool
-	check   func(*testing.T, EvidenceRef)
+	check   func(*testing.T, verdict.EvidenceRef)
 }
 
-func assertTraceEventCarriesIDAndOccurredAt(t *testing.T, got EvidenceRef) {
+func assertTraceEventCarriesIDAndOccurredAt(t *testing.T, got verdict.EvidenceRef) {
 	if got.TraceEventID != eventID || got.OccurredAt == "" {
 		t.Errorf("a trace ref must carry both id and occurred_at: %+v", got)
 	}
 }
 
-func assertArtifactHasNoByteRangeAndReportsManifestLine(t *testing.T, got EvidenceRef) {
+func assertArtifactHasNoByteRangeAndReportsManifestLine(t *testing.T, got verdict.EvidenceRef) {
 	if got.ByteRange != nil {
 		t.Error("no artifact bytes were sent, so there is no byte range to report")
 	}
@@ -155,7 +156,7 @@ func assertArtifactHasNoByteRangeAndReportsManifestLine(t *testing.T, got Eviden
 	}
 }
 
-func assertAgentOutputCharRangeSelectsTheQuote(t *testing.T, got EvidenceRef) {
+func assertAgentOutputCharRangeSelectsTheQuote(t *testing.T, got verdict.EvidenceRef) {
 	if got.CharRange == nil {
 		t.Fatal("Go computes the char range itself; it must be present")
 	}
@@ -192,42 +193,42 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 		{
 			name: "a trace event in the digest, quoted correctly",
 			ref: Citation{
-				Kind: KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`,
+				Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`,
 			},
 			check: assertTraceEventCarriesIDAndOccurredAt,
 		},
 		{
 			name: "an event id the model invented",
 			ref: Citation{
-				Kind: KindTraceEvent, TraceEventID: strp("11111111-1111-4111-8111-111111111111"),
+				Kind: verdict.KindTraceEvent, TraceEventID: strp("11111111-1111-4111-8111-111111111111"),
 			},
 			wantErr: true,
 		},
 		{
 			name: "a real event with a quote that is not in it",
 			ref: Citation{
-				Kind: KindTraceEvent, TraceEventID: strp(eventID), Quote: "the skill worked perfectly",
+				Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID), Quote: "the skill worked perfectly",
 			},
 			wantErr: true,
 		},
 		{
 			name:  "an artifact that is in the manifest",
-			ref:   Citation{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")},
+			ref:   Citation{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")},
 			check: assertArtifactHasNoByteRangeAndReportsManifestLine,
 		},
 		{
 			name:    "an artifact nobody produced",
-			ref:     Citation{Kind: KindArtifact, ArtifactPath: strp("report.pdf")},
+			ref:     Citation{Kind: verdict.KindArtifact, ArtifactPath: strp("report.pdf")},
 			wantErr: true,
 		},
 		{
 			name:  "a quote from the agent's final output",
-			ref:   Citation{Kind: KindAgentOutput, Quote: "✅：Removed 17 duplicate rows"},
+			ref:   Citation{Kind: verdict.KindAgentOutput, Quote: "✅：Removed 17 duplicate rows"},
 			check: assertAgentOutputCharRangeSelectsTheQuote,
 		},
 		{
 			name:    "a quote the final output does not contain",
-			ref:     Citation{Kind: KindAgentOutput, Quote: "I could not do it"},
+			ref:     Citation{Kind: verdict.KindAgentOutput, Quote: "I could not do it"},
 			wantErr: true,
 		},
 		{
@@ -247,14 +248,14 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 func TestAVerbatimQuoteIsRecordedAsAnExactMatch(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	got, why := verify(Citation{
-		Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows",
+		Kind: verdict.KindAgentOutput, Quote: "Removed 17 duplicate rows",
 	}, m, digest)
 
 	if why != "" {
 		t.Fatalf("a verbatim quote resolves: %q", why)
 	}
-	if got.Match != MatchExact {
-		t.Errorf("match = %q, want %q", got.Match, MatchExact)
+	if got.Match != verdict.MatchExact {
+		t.Errorf("match = %q, want %q", got.Match, verdict.MatchExact)
 	}
 	if got.ReattributedFrom != "" {
 		t.Errorf("the judge filed this one correctly, so nothing was re-attributed: %q", got.ReattributedFrom)
@@ -268,15 +269,15 @@ func TestAQuoteThatOnlyMatchesAfterNormalisationSaysSo(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	got, why := verify(Citation{
 
-		Kind: KindAgentOutput, Quote: "Removed 17  duplicate rows and saved}],",
+		Kind: verdict.KindAgentOutput, Quote: "Removed 17  duplicate rows and saved}],",
 	}, m, digest)
 
 	if why != "" {
 		t.Fatalf("a quote that is verbatim correct but for its wrapping resolves: %q", why)
 	}
-	if got.Match != MatchNormalized {
+	if got.Match != verdict.MatchNormalized {
 		t.Errorf("match = %q, want %q: a widened comparison is an auditable fact, not a silent success",
-			got.Match, MatchNormalized)
+			got.Match, verdict.MatchNormalized)
 	}
 	if got.Excerpt != "Removed 17 duplicate rows and saved" {
 		t.Errorf("the excerpt is the string that was actually verified, got %q", got.Excerpt)
@@ -289,28 +290,28 @@ func TestAQuoteThatOnlyMatchesAfterNormalisationSaysSo(t *testing.T) {
 func TestAQuoteFiledUnderTheWrongSourceIsCorrectedInsteadOfRefused(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	got, why := verify(Citation{
-		Kind: KindArtifact, ArtifactPath: strp("output.xlsx"), Quote: `"tool_name":"bash"`,
+		Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx"), Quote: `"tool_name":"bash"`,
 	}, m, digest)
 
 	if why != "" {
 		t.Fatalf("the quote is in this run's trace, so the citation holds: %q", why)
 	}
-	if got.Kind != KindTraceEvent || got.TraceEventID != eventID {
+	if got.Kind != verdict.KindTraceEvent || got.TraceEventID != eventID {
 		t.Errorf("kind is corrected to where the quote actually is, got %+v", got)
 	}
-	if got.ReattributedFrom != KindArtifact {
+	if got.ReattributedFrom != verdict.KindArtifact {
 		t.Errorf("reattributed_from = %q, want %q: the report has to show the label was wrong",
-			got.ReattributedFrom, KindArtifact)
+			got.ReattributedFrom, verdict.KindArtifact)
 	}
-	if got.Match != MatchExact {
-		t.Errorf("match = %q, want %q", got.Match, MatchExact)
+	if got.Match != verdict.MatchExact {
+		t.Errorf("match = %q, want %q", got.Match, verdict.MatchExact)
 	}
 }
 
 func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	ref := Citation{
-		Kind: KindArtifact, ArtifactPath: strp("output.xlsx"),
+		Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx"),
 		Quote: "the duplicates were removed by hand",
 	}
 
@@ -319,9 +320,9 @@ func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 		t.Fatalf("the manifest row is still checkable, so the citation is kept: %q", why)
 	}
 
-	if got.Match != MatchNotChecked {
+	if got.Match != verdict.MatchNotChecked {
 		t.Errorf("match = %q, want %q: nothing verified this quote, and nothing looked either",
-			got.Match, MatchNotChecked)
+			got.Match, verdict.MatchNotChecked)
 	}
 
 	weight := 2.0
@@ -331,15 +332,15 @@ func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 	}}
 	results := (&Service{}).merge(m, &Judgement{
 		Criteria: []CriterionVerdict{
-			{CriterionID: "c1", Result: ResultPassed, Reason: "it says so",
+			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "it says so",
 				Citations: []Citation{ref}},
-			{CriterionID: "c2", Result: ResultPassed, Reason: "the file is there",
+			{CriterionID: "c2", Result: verdict.ResultPassed, Reason: "the file is there",
 				Citations: []Citation{
-					{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}},
+					{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")}}},
 		},
 	}, digest, evidenceCuts{})
 
-	if results[0].Result != ResultUndetermined {
+	if results[0].Result != verdict.ResultUndetermined {
 		t.Errorf("an item requiring evidence cannot be passed on a quote nothing verified: %+v", results[0])
 	}
 	if !strings.HasPrefix(results[0].Reason, "evidence_unverifiable:") {
@@ -349,32 +350,32 @@ func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 		t.Error("the citation is still stored; the reader is shown what was offered and why it was not enough")
 	}
 
-	if results[1].Result != ResultPassed {
+	if results[1].Result != verdict.ResultPassed {
 		t.Errorf("an item that never asked for a quote is not downgraded for lacking one: %+v", results[1])
 	}
 }
 
 func TestATraceCitationWithoutAQuoteDoesNotPassAnItemRequiringOne(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	bare := Citation{Kind: KindTraceEvent, TraceEventID: strp(eventID)}
+	bare := Citation{Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID)}
 	m.rubric = &testlab.Rubric{Version: "v1", Items: []testlab.RubricItem{
 		{ID: "c1", Text: "quote the command that removed them", EvidenceRequired: true},
 		{ID: "c2", Text: "a tool ran", EvidenceRequired: false},
 	}}
 	results := (&Service{}).merge(m, &Judgement{
 		Criteria: []CriterionVerdict{
-			{CriterionID: "c1", Result: ResultPassed, Reason: "bash ran", Citations: []Citation{bare}},
-			{CriterionID: "c2", Result: ResultPassed, Reason: "bash ran", Citations: []Citation{bare}},
+			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "bash ran", Citations: []Citation{bare}},
+			{CriterionID: "c2", Result: verdict.ResultPassed, Reason: "bash ran", Citations: []Citation{bare}},
 		},
 	}, digest, evidenceCuts{})
 
-	if results[0].Result != ResultUndetermined || !strings.HasPrefix(results[0].Reason, "evidence_unverifiable:") {
+	if results[0].Result != verdict.ResultUndetermined || !strings.HasPrefix(results[0].Reason, "evidence_unverifiable:") {
 		t.Errorf("an event's existence passed an item that requires a quote: %+v", results[0])
 	}
-	if len(results[0].Evidence) != 1 || results[0].Evidence[0].Match != MatchNotChecked {
+	if len(results[0].Evidence) != 1 || results[0].Evidence[0].Match != verdict.MatchNotChecked {
 		t.Errorf("evidence = %+v, want the event kept and marked not_checked: nothing was quoted to compare", results[0].Evidence)
 	}
-	if results[1].Result != ResultPassed {
+	if results[1].Result != verdict.ResultPassed {
 		t.Errorf("an item that never asked for a quote is not downgraded for lacking one: %+v", results[1])
 	}
 }
@@ -384,7 +385,7 @@ func TestAShortQuoteIsNotHandedTheLoosenedComparison(t *testing.T) {
 	short := `"Removed 17"`
 
 	if _, why := verify(Citation{
-		Kind: KindAgentOutput, Quote: short,
+		Kind: verdict.KindAgentOutput, Quote: short,
 	}, m, digest); why == "" {
 		t.Error("a quote below the length floor may only be accepted verbatim")
 	}
@@ -401,13 +402,13 @@ func TestUnverifiableEvidenceDowngradesTheVerdictRatherThanBeingStored(t *testin
 	s := &Service{}
 	results := s.merge(m, &Judgement{
 		Criteria: []CriterionVerdict{
-			{CriterionID: "c1", Result: ResultPassed, Reason: "trust me",
+			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "trust me",
 				Citations: []Citation{
-					{Kind: KindTraceEvent, TraceEventID: strp("22222222-2222-4222-8222-222222222222")},
+					{Kind: verdict.KindTraceEvent, TraceEventID: strp("22222222-2222-4222-8222-222222222222")},
 				}},
-			{CriterionID: "c2", Result: ResultFailed, Reason: "no xlsx",
+			{CriterionID: "c2", Result: verdict.ResultFailed, Reason: "no xlsx",
 				Citations: []Citation{
-					{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")},
+					{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")},
 				}},
 		},
 	}, digest, evidenceCuts{})
@@ -415,7 +416,7 @@ func TestUnverifiableEvidenceDowngradesTheVerdictRatherThanBeingStored(t *testin
 	if len(results) != 2 {
 		t.Fatalf("expected one entry per snapshot criterion, got %d", len(results))
 	}
-	if results[0].Result != ResultUndetermined {
+	if results[0].Result != verdict.ResultUndetermined {
 		t.Errorf("a pass resting on an invented event id must not be stored as a pass: %+v", results[0])
 	}
 	if !strings.HasPrefix(results[0].Reason, "evidence_unverifiable:") {
@@ -424,11 +425,11 @@ func TestUnverifiableEvidenceDowngradesTheVerdictRatherThanBeingStored(t *testin
 	if len(results[0].Evidence) != 0 {
 		t.Error("a reference that did not resolve must not be stored as evidence")
 	}
-	if results[1].Result != ResultFailed || len(results[1].Evidence) != 1 {
+	if results[1].Result != verdict.ResultFailed || len(results[1].Evidence) != 1 {
 		t.Errorf("a verifiable failure survives intact: %+v", results[1])
 	}
 	for _, r := range results {
-		if r.Source != SourceModel {
+		if r.Source != verdict.SourceModel {
 			t.Errorf("everything from the judge is labelled model, got %q", r.Source)
 		}
 	}
@@ -439,22 +440,22 @@ func TestOneUnverifiableCitationDowngradesAVerdictThatAlsoCitesSomethingReal(t *
 	s := &Service{}
 	results := s.merge(m, &Judgement{
 		Criteria: []CriterionVerdict{
-			{CriterionID: "c1", Result: ResultPassed, Reason: "both of these check out",
+			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "both of these check out",
 				Citations: []Citation{
 
-					{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"},
+					{Kind: verdict.KindAgentOutput, Quote: "Removed 17 duplicate rows"},
 
-					{Kind: KindTraceEvent, TraceEventID: strp("33333333-3333-4333-8333-333333333333"),
+					{Kind: verdict.KindTraceEvent, TraceEventID: strp("33333333-3333-4333-8333-333333333333"),
 						Quote: "the deduplicator ran twice and agreed with itself"},
 				}},
-			{CriterionID: "c2", Result: ResultFailed, Reason: "no xlsx",
+			{CriterionID: "c2", Result: verdict.ResultFailed, Reason: "no xlsx",
 				Citations: []Citation{
-					{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")},
+					{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")},
 				}},
 		},
 	}, digest, evidenceCuts{})
 
-	if results[0].Result != ResultUndetermined {
+	if results[0].Result != verdict.ResultUndetermined {
 		t.Errorf("a verdict half of whose citations were invented was stored as %q", results[0].Result)
 	}
 	if !strings.HasPrefix(results[0].Reason, "evidence_unverifiable:") {
@@ -471,22 +472,22 @@ func TestACriterionTheJudgeDidNotAnswerIsUndeterminedAndStillListed(t *testing.T
 	s := &Service{}
 	results := s.merge(m, &Judgement{
 		Criteria: []CriterionVerdict{
-			{CriterionID: "c1", Result: ResultPassed, Reason: "the duplicates are gone",
+			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "the duplicates are gone",
 				Citations: []Citation{
-					{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"},
+					{Kind: verdict.KindAgentOutput, Quote: "Removed 17 duplicate rows"},
 				}},
 
-			{CriterionID: "c99", Result: ResultPassed, Reason: "invented"},
+			{CriterionID: "c99", Result: verdict.ResultPassed, Reason: "invented"},
 		},
 	}, digest, evidenceCuts{})
 
 	if len(results) != 2 {
 		t.Fatalf("the report has one entry per snapshot criterion, got %d", len(results))
 	}
-	if results[0].Result != ResultPassed {
+	if results[0].Result != verdict.ResultPassed {
 		t.Errorf("the answered criterion keeps its verdict: %+v", results[0])
 	}
-	if results[1].CriterionID != "c2" || results[1].Result != ResultUndetermined {
+	if results[1].CriterionID != "c2" || results[1].Result != verdict.ResultUndetermined {
 		t.Errorf("the unanswered criterion is listed as undetermined, got %+v", results[1])
 	}
 	for _, r := range results {
@@ -494,8 +495,8 @@ func TestACriterionTheJudgeDidNotAnswerIsUndeterminedAndStillListed(t *testing.T
 			t.Error("a criterion id that was never sent must be dropped")
 		}
 	}
-	if overallFrom(results) != OverallPartiallyMet {
-		t.Errorf("one pass and one unknown is partially met, got %q", overallFrom(results))
+	if verdict.OverallFrom(results) != verdict.OverallPartiallyMet {
+		t.Errorf("one pass and one unknown is partially met, got %q", verdict.OverallFrom(results))
 	}
 }
 
@@ -503,13 +504,13 @@ func TestVerdictWithoutVerifiedEvidenceIsUndetermined(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	results := (&Service{}).merge(m, &Judgement{
 		Criteria: []CriterionVerdict{
-			{CriterionID: "c1", Result: ResultPassed, Reason: "trust me"},
-			{CriterionID: "c2", Result: ResultFailed, Reason: "also trust me"},
+			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "trust me"},
+			{CriterionID: "c2", Result: verdict.ResultFailed, Reason: "also trust me"},
 		},
 	}, digest, evidenceCuts{})
 
 	for _, result := range results {
-		if result.Result != ResultUndetermined {
+		if result.Result != verdict.ResultUndetermined {
 			t.Errorf("zero-evidence verdict survived: %+v", result)
 		}
 		if !strings.Contains(result.Reason, "no verifiable evidence") {
@@ -521,31 +522,31 @@ func TestVerdictWithoutVerifiedEvidenceIsUndetermined(t *testing.T) {
 func TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete(t *testing.T) {
 	pass := Judgement{
 		Criteria: []CriterionVerdict{
-			{CriterionID: "c1", Result: ResultPassed, Reason: "looks right",
-				Citations: []Citation{{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"}}},
-			{CriterionID: "c2", Result: ResultFailed, Reason: "no file",
-				Citations: []Citation{{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}},
+			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "looks right",
+				Citations: []Citation{{Kind: verdict.KindAgentOutput, Quote: "Removed 17 duplicate rows"}}},
+			{CriterionID: "c2", Result: verdict.ResultFailed, Reason: "no file",
+				Citations: []Citation{{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")}}},
 		},
 	}
 	s := &Service{}
 
 	incomplete, digest := fixtureMaterial(false)
 	got := s.merge(incomplete, &pass, digest, evidenceCuts{})
-	if got[0].Result != ResultUndetermined {
+	if got[0].Result != verdict.ResultUndetermined {
 		t.Errorf("a trace with holes cannot support a pass (丙-1), got %q", got[0].Result)
 	}
-	if got[1].Result != ResultFailed {
+	if got[1].Result != verdict.ResultFailed {
 		t.Error("a failure is not softened by missing evidence: what is there still contradicts the criterion")
 	}
 
 	complete, digest := fixtureMaterial(true)
 	got = s.merge(complete, &pass, digest, evidenceCuts{batch: true})
-	if got[0].Result != ResultUndetermined {
+	if got[0].Result != verdict.ResultUndetermined {
 		t.Errorf("judging on truncated input cannot support a pass (§6.3), got %q", got[0].Result)
 	}
 
 	got = s.merge(complete, &pass, digest, evidenceCuts{})
-	if got[0].Result != ResultPassed {
+	if got[0].Result != verdict.ResultPassed {
 		t.Error("with complete, untruncated evidence a pass is a pass")
 	}
 }
@@ -707,9 +708,9 @@ func TestJudgeRunSendsTheContractShapeAndReturnsTheVerdict(t *testing.T) {
 	client := fakeJudge(t, http.StatusOK, llmclient.JudgeRunResponse{
 		Verdict: llmclient.JudgeVerdict{
 			CriterionResults: []llmclient.CriterionVerdict{
-				{CriterionID: "c1", Result: ResultPassed, Reason: "done", EvidenceRefs: nil},
+				{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "done", EvidenceRefs: nil},
 			},
-			Overall: string(OverallMet), Summary: "the task was completed",
+			Overall: string(verdict.OverallMet), Summary: "the task was completed",
 		},
 		Model: "gpt-6-sol", PromptVersion: "judge-run@2026-08-17",
 	}, &got)
@@ -764,9 +765,9 @@ func TestAJudgeCallCostsOnlyWhatTheGatewayReported(t *testing.T) {
 			client := fakeJudge(t, http.StatusOK, llmclient.JudgeRunResponse{
 				Verdict: llmclient.JudgeVerdict{
 					CriterionResults: []llmclient.CriterionVerdict{
-						{CriterionID: "c1", Result: ResultPassed, Reason: "done"},
+						{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "done"},
 					},
-					Overall: string(OverallMet),
+					Overall: string(verdict.OverallMet),
 				},
 				Usage: &llmclient.GatewayUsage{PromptTokens: 10, CostUSD: &cost, CostSource: tc.source},
 			}, nil)
@@ -814,7 +815,7 @@ func TestActivationNeverClaimsTheModelChoseNotToUseTheSkill(t *testing.T) {
 	m, _ := fixtureMaterial(true)
 	m.run = RunFacts{Status: "succeeded", Succeeded: true}
 	findings := activationFindings(m)
-	if len(findings) != 1 || findings[0].Category != CategoryActivation {
+	if len(findings) != 1 || findings[0].Category != verdict.CategoryActivation {
 		t.Fatalf("one activation finding expected, got %+v", findings)
 	}
 
@@ -831,7 +832,7 @@ func TestASuccessfulRunWithNoOutputFilesIsReported(t *testing.T) {
 	m.run = RunFacts{Status: "succeeded", Succeeded: true}
 	m.artifacts = nil
 	findings := artifactFindings(m)
-	if len(findings) != 1 || findings[0].Severity != SeverityWarning {
+	if len(findings) != 1 || findings[0].Severity != verdict.SeverityWarning {
 		t.Fatalf("handoff 丙-5's case has to be visible, got %+v", findings)
 	}
 
@@ -920,35 +921,35 @@ func TestUnreadableOutputsReachTheJudgeAndCannotSupportAPass(t *testing.T) {
 	}
 
 	pass := Judgement{Criteria: []CriterionVerdict{
-		{CriterionID: "c1", Result: ResultPassed, Reason: "looks right",
+		{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "looks right",
 			Citations: []Citation{
-				{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"},
+				{Kind: verdict.KindAgentOutput, Quote: "Removed 17 duplicate rows"},
 			}},
 	}}
 	got := s.merge(m, &pass, digest, evidenceCuts{batch: batchWideCut(truncation)})
-	if got[0].Result != ResultUndetermined {
+	if got[0].Result != verdict.ResultUndetermined {
 		t.Errorf("a pass judged with the run's outputs unreadable was stored as a pass: %+v", got[0])
 	}
 }
 
 func TestATrimmedExcerptOnlySilencesTheCriterionThatCitesIt(t *testing.T) {
-	verdict := Judgement{
+	judgement := Judgement{
 		Criteria: []CriterionVerdict{
 
-			{CriterionID: "c1", Result: ResultPassed, Reason: "the tool call shows it",
-				Citations: []Citation{{Kind: KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`}}},
+			{CriterionID: "c1", Result: verdict.ResultPassed, Reason: "the tool call shows it",
+				Citations: []Citation{{Kind: verdict.KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`}}},
 
-			{CriterionID: "c2", Result: ResultPassed, Reason: "the file is there",
-				Citations: []Citation{{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}},
+			{CriterionID: "c2", Result: verdict.ResultPassed, Reason: "the file is there",
+				Citations: []Citation{{Kind: verdict.KindArtifact, ArtifactPath: strp("output.xlsx")}}},
 		},
 	}
 	m, digest := fixtureMaterial(true)
-	got := (&Service{}).merge(m, &verdict, digest, evidenceCuts{trimmedEvents: map[string]bool{eventID: true}})
+	got := (&Service{}).merge(m, &judgement, digest, evidenceCuts{trimmedEvents: map[string]bool{eventID: true}})
 
-	if got[0].Result != ResultUndetermined {
+	if got[0].Result != verdict.ResultUndetermined {
 		t.Errorf("a verdict resting on a trimmed excerpt cannot be a pass, got %q", got[0].Result)
 	}
-	if got[1].Result != ResultPassed {
+	if got[1].Result != verdict.ResultPassed {
 		t.Errorf("a verdict resting on something nothing trimmed keeps its pass, got %q: %s", got[1].Result, got[1].Reason)
 	}
 }

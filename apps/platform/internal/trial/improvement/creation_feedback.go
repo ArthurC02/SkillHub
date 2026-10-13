@@ -8,6 +8,8 @@ import (
 	"sort"
 
 	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 const (
@@ -25,8 +27,8 @@ func withoutLinks(s string) string {
 	return linkPattern.ReplaceAllString(s, linkPlaceholder)
 }
 
-func evidenceWithoutLinks(refs []EvidenceRef) []EvidenceRef {
-	cleaned := make([]EvidenceRef, len(refs))
+func evidenceWithoutLinks(refs []verdict.EvidenceRef) []verdict.EvidenceRef {
+	cleaned := make([]verdict.EvidenceRef, len(refs))
 	for i, ref := range refs {
 		ref.Excerpt = withoutLinks(ref.Excerpt)
 		cleaned[i] = ref
@@ -35,17 +37,17 @@ func evidenceWithoutLinks(refs []EvidenceRef) []EvidenceRef {
 }
 
 type creationFeedbackPayload struct {
-	EvaluationAvailable   bool              `json:"evaluation_available"`
-	EvaluationID          string            `json:"evaluation_id"`
-	Status                Status            `json:"status"`
-	Overall               string            `json:"overall"`
-	Summary               string            `json:"summary"`
-	CriterionResults      []CriterionResult `json:"criterion_results"`
-	DeterministicFindings []Finding         `json:"deterministic_findings"`
-	EvidenceComplete      bool              `json:"evidence_complete"`
-	Truncated             bool              `json:"truncated"`
-	OmittedCriteria       int               `json:"omitted_criteria"`
-	OmittedFindings       int               `json:"omitted_findings"`
+	EvaluationAvailable   bool                      `json:"evaluation_available"`
+	EvaluationID          string                    `json:"evaluation_id"`
+	Status                Status                    `json:"status"`
+	Overall               string                    `json:"overall"`
+	Summary               string                    `json:"summary"`
+	CriterionResults      []verdict.CriterionResult `json:"criterion_results"`
+	DeterministicFindings []verdict.Finding         `json:"deterministic_findings"`
+	EvidenceComplete      bool                      `json:"evidence_complete"`
+	Truncated             bool                      `json:"truncated"`
+	OmittedCriteria       int                       `json:"omitted_criteria"`
+	OmittedFindings       int                       `json:"omitted_findings"`
 }
 
 func (s *Service) CreationFeedback(
@@ -65,7 +67,7 @@ func (s *Service) CreationFeedback(
 	return marshalCreationFeedback(view)
 }
 
-func cutFeedbackItems(criteria []CriterionResult, findings []Finding) (itemsTruncated bool) {
+func cutFeedbackItems(criteria []verdict.CriterionResult, findings []verdict.Finding) (itemsTruncated bool) {
 	for i := range criteria {
 		var t bool
 		if criteria[i].Text, t = cut(criteria[i].Text, creationFeedbackMaxItem); t {
@@ -90,13 +92,13 @@ func cutFeedbackItems(criteria []CriterionResult, findings []Finding) (itemsTrun
 
 func marshalCreationFeedback(view evaluationView) (json.RawMessage, error) {
 	summary, summaryTruncated := cut(withoutLinks(view.Summary), creationFeedbackMaxSummary)
-	criteria := append([]CriterionResult(nil), view.CriterionResults...)
+	criteria := append([]verdict.CriterionResult(nil), view.CriterionResults...)
 	if criteria == nil {
-		criteria = []CriterionResult{}
+		criteria = []verdict.CriterionResult{}
 	}
-	findings := append([]Finding(nil), view.DeterministicFindings...)
+	findings := append([]verdict.Finding(nil), view.DeterministicFindings...)
 	if findings == nil {
-		findings = []Finding{}
+		findings = []verdict.Finding{}
 	}
 
 	itemsTruncated := cutFeedbackItems(criteria, findings)
@@ -161,15 +163,15 @@ func marshalCreationFeedback(view evaluationView) (json.RawMessage, error) {
 	return blob, err
 }
 
-func criterionDropFirst(c CriterionResult) int {
-	if c.Result == ResultPassed {
+func criterionDropFirst(c verdict.CriterionResult) int {
+	if c.Result == verdict.ResultPassed {
 		return 1
 	}
 	return 0
 }
 
-func findingDropFirst(f Finding) int {
-	if f.Severity == SeverityWarning || f.Severity == SeverityError {
+func findingDropFirst(f verdict.Finding) int {
+	if f.Severity == verdict.SeverityWarning || f.Severity == verdict.SeverityError {
 		return 0
 	}
 	return 1

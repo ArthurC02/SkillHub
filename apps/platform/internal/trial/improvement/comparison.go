@@ -12,6 +12,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 const runCostAuthority = "模型閘道對這個 Run 的 per-key 實付"
@@ -106,7 +107,7 @@ type sideDetail struct {
 	runID    string
 	skillID  pgtype.UUID
 	criteria []testlab.Criterion
-	results  map[string]CriterionResult
+	results  map[string]verdict.CriterionResult
 }
 
 type RunPair struct {
@@ -176,7 +177,7 @@ func (s *Service) comparisonSide(
 		Errors:         []trace.ErrorSummary{},
 		Cost:           runCostView{IsLowerBound: true, AuthoritativeSource: runCostAuthority},
 	}
-	detail := sideDetail{runID: side.RunID, results: map[string]CriterionResult{}}
+	detail := sideDetail{runID: side.RunID, results: map[string]verdict.CriterionResult{}}
 
 	version, err := s.existingVersion(ctx, workspaceID, run.SkillVersionID)
 	if err != nil {
@@ -228,14 +229,14 @@ func (s *Service) comparisonSide(
 	return side, detail, nil
 }
 
-func criterionResultsByID(raw []byte) (map[string]CriterionResult, error) {
-	var results []CriterionResult
+func criterionResultsByID(raw []byte) (map[string]verdict.CriterionResult, error) {
+	var results []verdict.CriterionResult
 	if len(raw) > 0 {
 		if err := json.Unmarshal(raw, &results); err != nil {
 			return nil, err
 		}
 	}
-	byID := make(map[string]CriterionResult, len(results))
+	byID := make(map[string]verdict.CriterionResult, len(results))
 	for _, r := range results {
 		byID[r.CriterionID] = r
 	}

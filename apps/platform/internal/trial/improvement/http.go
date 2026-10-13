@@ -12,6 +12,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 type Handler struct {
@@ -38,21 +39,21 @@ func sessionWorkspace(identities *identity.Service, w http.ResponseWriter, r *ht
 }
 
 type evaluationView struct {
-	EvaluationID          string            `json:"evaluation_id"`
-	RunID                 string            `json:"run_id"`
-	Status                Status            `json:"status"`
-	Overall               string            `json:"overall"`
-	Summary               string            `json:"summary,omitempty"`
-	CriterionResults      []CriterionResult `json:"criterion_results"`
-	DeterministicFindings []Finding         `json:"deterministic_findings"`
-	JudgeModel            string            `json:"judge_model"`
-	JudgePromptVersion    string            `json:"judge_prompt_version"`
-	RubricVersion         string            `json:"rubric_version,omitempty"`
-	EvidenceComplete      bool              `json:"evidence_complete"`
-	Cost                  costView          `json:"cost"`
-	Feedback              *feedbackView     `json:"feedback,omitempty"`
-	EvaluatedAt           *string           `json:"evaluated_at"`
-	SupersededAt          *string           `json:"superseded_at"`
+	EvaluationID          string                    `json:"evaluation_id"`
+	RunID                 string                    `json:"run_id"`
+	Status                Status                    `json:"status"`
+	Overall               string                    `json:"overall"`
+	Summary               string                    `json:"summary,omitempty"`
+	CriterionResults      []verdict.CriterionResult `json:"criterion_results"`
+	DeterministicFindings []verdict.Finding         `json:"deterministic_findings"`
+	JudgeModel            string                    `json:"judge_model"`
+	JudgePromptVersion    string                    `json:"judge_prompt_version"`
+	RubricVersion         string                    `json:"rubric_version,omitempty"`
+	EvidenceComplete      bool                      `json:"evidence_complete"`
+	Cost                  costView                  `json:"cost"`
+	Feedback              *feedbackView             `json:"feedback,omitempty"`
+	EvaluatedAt           *string                   `json:"evaluated_at"`
+	SupersededAt          *string                   `json:"superseded_at"`
 }
 
 type costView struct {
@@ -200,20 +201,20 @@ func (h *Handler) SetFeedback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev EvaluationRecord) (evaluationView, error) {
-	var results []CriterionResult
+	var results []verdict.CriterionResult
 	if len(ev.CriterionResults) > 0 {
 		if err := json.Unmarshal(ev.CriterionResults, &results); err != nil {
 			return evaluationView{}, err
 		}
 	}
-	var findings []Finding
+	var findings []verdict.Finding
 	if len(ev.DeterministicFindings) > 0 {
 		if err := json.Unmarshal(ev.DeterministicFindings, &findings); err != nil {
 			return evaluationView{}, err
 		}
 	}
 
-	sets := make([][]EvidenceRef, 0, len(results)+len(findings))
+	sets := make([][]verdict.EvidenceRef, 0, len(results)+len(findings))
 	for i := range results {
 		sets = append(sets, results[i].Evidence)
 	}
@@ -261,16 +262,16 @@ type liveEvidence struct {
 	finalOutput bool
 }
 
-func wantedEvidence(sets [][]EvidenceRef) (live liveEvidence, wantArtifacts, wantOutput bool) {
+func wantedEvidence(sets [][]verdict.EvidenceRef) (live liveEvidence, wantArtifacts, wantOutput bool) {
 	live = liveEvidence{traceEvents: map[string]bool{}, artifacts: map[string]bool{}}
 	for _, refs := range sets {
 		for _, ref := range refs {
 			switch {
-			case ref.Kind == KindTraceEvent && ref.TraceEventID != "":
+			case ref.Kind == verdict.KindTraceEvent && ref.TraceEventID != "":
 				live.traceEvents[ref.TraceEventID] = false
-			case ref.Kind == KindArtifact && ref.ArtifactPath != "":
+			case ref.Kind == verdict.KindArtifact && ref.ArtifactPath != "":
 				wantArtifacts = true
-			case ref.Kind == KindAgentOutput:
+			case ref.Kind == verdict.KindAgentOutput:
 				wantOutput = true
 			}
 		}
@@ -316,7 +317,7 @@ func (s *Service) confirmLiveArtifacts(ctx context.Context, workspaceID, runID p
 }
 
 func (s *Service) resolveEvidence(
-	ctx context.Context, workspaceID, runID pgtype.UUID, sets ...[]EvidenceRef,
+	ctx context.Context, workspaceID, runID pgtype.UUID, sets ...[]verdict.EvidenceRef,
 ) (liveEvidence, error) {
 	live, wantArtifacts, wantOutput := wantedEvidence(sets)
 
@@ -341,14 +342,14 @@ func (s *Service) resolveEvidence(
 	return live, nil
 }
 
-func markAvailability(refs []EvidenceRef, live liveEvidence) {
+func markAvailability(refs []verdict.EvidenceRef, live liveEvidence) {
 	for i := range refs {
 		switch {
-		case refs[i].Kind == KindTraceEvent && refs[i].TraceEventID != "":
+		case refs[i].Kind == verdict.KindTraceEvent && refs[i].TraceEventID != "":
 			refs[i].Available = live.traceEvents[refs[i].TraceEventID]
-		case refs[i].Kind == KindArtifact && refs[i].ArtifactPath != "":
+		case refs[i].Kind == verdict.KindArtifact && refs[i].ArtifactPath != "":
 			refs[i].Available = live.artifacts[refs[i].ArtifactPath]
-		case refs[i].Kind == KindAgentOutput:
+		case refs[i].Kind == verdict.KindAgentOutput:
 			refs[i].Available = live.finalOutput
 		}
 	}
@@ -378,9 +379,9 @@ func costViewOf(ev EvaluationRecord, credits func(float64) (int64, bool)) costVi
 	return v
 }
 
-func orEmptyResults(r []CriterionResult) []CriterionResult {
+func orEmptyResults(r []verdict.CriterionResult) []verdict.CriterionResult {
 	if r == nil {
-		return []CriterionResult{}
+		return []verdict.CriterionResult{}
 	}
 	return r
 }

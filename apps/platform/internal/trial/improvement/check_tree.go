@@ -7,6 +7,7 @@ import (
 
 	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
 const (
@@ -42,23 +43,16 @@ type outcome struct {
 	result   string
 	reason   string
 	judged   bool
-	evidence []EvidenceRef
+	evidence []verdict.EvidenceRef
 }
 
 type checkScope struct {
 	m         material
 	criterion testlab.Criterion
-	verdicts  map[string]CriterionResult
+	verdicts  map[string]verdict.CriterionResult
 	asking    *judgeItems
 	item      string
-	steps     *[]CheckStep
-}
-
-type CheckStep struct {
-	Path   string `json:"path"`
-	Kind   string `json:"kind"`
-	Result string `json:"result"`
-	Reason string `json:"reason"`
+	steps     *[]verdict.CheckStep
 }
 
 type checkNode interface {
@@ -158,11 +152,11 @@ func within(n int, b Bounds) bool { return n >= b.Min && n <= b.Max }
 func evaluateCheck(s checkScope, n testlab.Check, path string) outcome {
 	node, known := checkNodes[n.Kind]
 	if !known {
-		return outcome{result: ResultUndetermined, reason: fmt.Sprintf("the check kind %q is not one this platform knows", n.Kind)}
+		return outcome{result: verdict.ResultUndetermined, reason: fmt.Sprintf("the check kind %q is not one this platform knows", n.Kind)}
 	}
 	o := node.evaluate(s, n, path)
 	if s.steps != nil && o.result != resultPending {
-		*s.steps = append(*s.steps, CheckStep{Path: path, Kind: n.Kind, Result: o.result, Reason: o.reason})
+		*s.steps = append(*s.steps, verdict.CheckStep{Path: path, Kind: n.Kind, Result: o.result, Reason: o.reason})
 	}
 	return o
 }
@@ -190,7 +184,7 @@ func (r ruleLeaf) kind() CheckKind { return r.info }
 func (r ruleLeaf) evaluate(s checkScope, n testlab.Check, _ string) outcome {
 	result, reason := r.grade(s.m, s.withItem(n.Values))
 	if s.m.cannotRecordPass(result) {
-		result = ResultUndetermined
+		result = verdict.ResultUndetermined
 		reason += "; the run's evidence is incomplete, so this is not recorded as passed"
 	}
 	return outcome{result: result, reason: reason}
@@ -252,7 +246,7 @@ func (promptGraderNode) kind() CheckKind {
 func (promptGraderNode) evaluate(s checkScope, n testlab.Check, path string) outcome {
 	version, found := s.m.graders[n.Values[0]]
 	if !found {
-		return outcome{result: ResultUndetermined, reason: "the grader version this check names is not available to this workspace"}
+		return outcome{result: verdict.ResultUndetermined, reason: "the grader version this check names is not available to this workspace"}
 	}
 	o := s.modelVerdict(judgeItem{
 		key: s.criterion.ID + "@" + path, text: s.criterion.Text, instructions: s.withItem([]string{version.Instructions})[0],
@@ -270,7 +264,7 @@ func (s checkScope) modelVerdict(it judgeItem) outcome {
 	}
 	v, answered := s.verdicts[it.key]
 	if !answered {
-		return outcome{result: ResultUndetermined, reason: "the judge returned no verdict for this check"}
+		return outcome{result: verdict.ResultUndetermined, reason: "the judge returned no verdict for this check"}
 	}
 	return outcome{result: v.Result, reason: v.Reason, judged: true, evidence: v.Evidence}
 }
@@ -288,7 +282,7 @@ func (sequenceNode) evaluate(s checkScope, n testlab.Check, path string) outcome
 	for i, child := range n.Children {
 		o := evaluateCheck(s, child, childPath(path, i))
 		merged = merged.joinedWith(o)
-		if o.result == ResultPassed {
+		if o.result == verdict.ResultPassed {
 			continue
 		}
 		if o.result == resultPending && s.asking != nil {
@@ -305,7 +299,7 @@ func (sequenceNode) evaluate(s checkScope, n testlab.Check, path string) outcome
 		merged.result, merged.reason = resultPending, "a step is waiting for the judge"
 		return merged
 	}
-	merged.result, merged.reason = ResultPassed, fmt.Sprintf("all %d steps passed", len(n.Children))
+	merged.result, merged.reason = verdict.ResultPassed, fmt.Sprintf("all %d steps passed", len(n.Children))
 	return merged
 }
 
@@ -357,12 +351,12 @@ func (ifNode) kind() CheckKind {
 func (ifNode) evaluate(s checkScope, n testlab.Check, path string) outcome {
 	condition := evaluateCheck(s, n.Children[0], childPath(path, 0))
 	switch condition.result {
-	case ResultPassed:
+	case verdict.ResultPassed:
 		o := evaluateCheck(s, n.Children[1], childPath(path, 1))
 		return condition.joinedWith(o).as(o.result, "the condition held: "+o.reason)
-	case ResultFailed:
+	case verdict.ResultFailed:
 		if len(n.Children) <= ifElseBranch {
-			return condition.as(ResultPassed, "the condition did not hold, so nothing else was required")
+			return condition.as(verdict.ResultPassed, "the condition did not hold, so nothing else was required")
 		}
 		o := evaluateCheck(s, n.Children[ifElseBranch], childPath(path, ifElseBranch))
 		return condition.joinedWith(o).as(o.result, "the condition did not hold: "+o.reason)
@@ -407,9 +401,9 @@ type counts struct{ passed, failed, undetermined, pending int }
 
 func (c *counts) add(result string) {
 	switch result {
-	case ResultPassed:
+	case verdict.ResultPassed:
 		c.passed++
-	case ResultFailed:
+	case verdict.ResultFailed:
 		c.failed++
 	case resultPending:
 		c.pending++
@@ -430,13 +424,13 @@ func disjunction(c counts) string { return c.atLeast(1, c.passed+c.failed+c.unde
 func (c counts) atLeast(k, n int) string {
 	switch {
 	case c.passed >= k:
-		return ResultPassed
+		return verdict.ResultPassed
 	case n-c.failed < k:
-		return ResultFailed
+		return verdict.ResultFailed
 	case c.pending > 0:
 		return resultPending
 	default:
-		return ResultUndetermined
+		return verdict.ResultUndetermined
 	}
 }
 
