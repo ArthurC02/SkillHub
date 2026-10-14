@@ -52,12 +52,13 @@ export function Home() {
   const loggedIn = !!useMe().data;
 
   const filters: SearchFilters = filtersFromSearch(search);
-  const { data, isFetching, error } = useCorrectedSkillSearch(
+  const result = useCorrectedSkillSearch(
     search.q ?? "",
     filters,
     search.q !== undefined,
     search.correction,
   );
+  const data = result.error || search.q === undefined ? undefined : result.data;
   const effectiveFilters = data?.interpretation?.filters ?? filters;
   const currentCorrection = data?.interpretation && {
     intent: data.interpretation.intent,
@@ -156,8 +157,7 @@ export function Home() {
         />
       )}
 
-      {!browsing && isFetching && <p role="status">搜尋中…</p>}
-      {!browsing && <ReadFailure error={error} what="搜尋結果" />}
+      {!browsing && <SearchReadState query={result} />}
 
       {!browsing && data && (
         <SearchResultsSection
@@ -171,5 +171,20 @@ export function Home() {
         />
       )}
     </section>
+  );
+}
+
+function SearchReadState({ query }: { query: ReturnType<typeof useCorrectedSkillSearch> }) {
+  return (
+    <>
+      {query.isFetching && <p role="status">搜尋中…</p>}
+      <ReadFailure
+        error={query.error}
+        what="搜尋結果"
+        retry={() => void query.refetch()}
+        retrying={query.isFetching}
+        focusTarget="catalog-search-heading"
+      />
+    </>
   );
 }

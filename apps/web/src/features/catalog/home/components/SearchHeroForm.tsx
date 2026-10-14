@@ -16,7 +16,9 @@ export function SearchHeroForm({
   return (
     <div className="hero">
       <p className="hero-kicker">小工具目錄</p>
-      <h1>{compact ? "搜尋 Agent 小工具" : "探索能直接採用的 Agent 小工具"}</h1>
+      <h1 id="catalog-search-heading" tabIndex={-1}>
+        {compact ? "搜尋 Agent 小工具" : "探索能直接採用的 Agent 小工具"}
+      </h1>
       <p className="hero-lede">先看平台收錄的能力，再用任務、輸入或輸出縮小範圍。</p>
       <form aria-label="搜尋小工具目錄" onSubmit={onSubmit}>
         <input

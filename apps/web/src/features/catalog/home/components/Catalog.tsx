@@ -81,7 +81,16 @@ export function Catalog({
   tierFiltered: boolean;
 }) {
   if (query.isPending) return <Loading what="目錄" />;
-  if (query.error) return <ReadFailure error={query.error} what="目錄" />;
+  if (query.error)
+    return (
+      <ReadFailure
+        error={query.error}
+        what="目錄"
+        retry={() => void query.refetch()}
+        retrying={query.isFetching}
+        focusTarget="catalog-search-heading"
+      />
+    );
   if (!query.data) return null;
 
   const { results, total, truncated } = query.data;
