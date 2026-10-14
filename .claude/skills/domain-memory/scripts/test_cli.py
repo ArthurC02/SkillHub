@@ -498,6 +498,39 @@ class CliTest(RegistryTestCase):
         )
         self.assertEqual(0, result.returncode, result.stdout)
         self.assertEqual(["PRO-1"], json.loads(result.stdout)["supersedes"])
+        self.assertEqual("", result.stderr)
+
+    def test_reciting_lines_that_repeat_in_the_file_says_to_widen_them(self) -> None:
+        self.cited_rule("reviewed", (2, 2))
+        (self.repo / "src" / "a.py").write_text("zero\none\ntwo\ntwo\n", encoding="utf-8")
+        result = self.run_cli(
+            "recite", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+            "--asset", "rules", "--id", "rule", "--path", "src/a.py", "--lines", "3",
+        )
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertIn("the text of src/a.py:3-3 also starts at line 4", result.stderr)
+        self.assertIn("Widen the citation to the enclosing block", result.stderr)
+
+    def test_citing_lines_that_repeat_in_the_file_says_where_else_they_start(self) -> None:
+        (self.repo / "fact.md").write_text("same\nother\nsame\nsame\n", encoding="utf-8")
+        result = self.run_cli(
+            "cite", "--repo-root", str(self.repo), "--path", "fact.md", "--start", "3", "--end", "3",
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual({"start": 3, "end": 3}, json.loads(result.stdout)["lines"])
+        self.assertIn("the text of fact.md:3-3 also starts at line 1, 4", result.stderr)
+
+    def test_a_package_started_without_identifiers_names_the_flags_still_blank(self) -> None:
+        result = self.run_cli("init-change-package", "--output", str(self.repo / "blank"))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("Still blank: --requirement-id, --proposal-id, --proposer;", result.stdout)
+
+    def test_a_package_started_with_every_identifier_prints_nothing(self) -> None:
+        result = self.run_cli(
+            "init-change-package", "--output", str(self.repo / "full"),
+            "--requirement-id", "REQ-1", "--proposal-id", "PRO-1", "--proposer", "dev",
+        )
+        self.assertEqual((0, ""), (result.returncode, result.stdout))
 
     def test_a_shifted_citation_does_not_fail_verify_evidence(self) -> None:
         self.seed_two_cited_rules()

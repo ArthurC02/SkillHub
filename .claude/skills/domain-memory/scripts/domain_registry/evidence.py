@@ -9,6 +9,9 @@ from .common import MAX_EVIDENCE_BYTES, MAX_NESTING_DEPTH, load_json
 from .sources import source_kind_for
 
 
+WIDEN_TO_UNIQUE = "Widen the citation to the enclosing block, so its lines occur once in the file."
+
+
 def digest(value: bytes) -> str:
     return f"sha256:{hashlib.sha256(value).hexdigest()}"
 
@@ -101,6 +104,22 @@ def excerpt_starts(repo_root: Path, relative: str, length: int, excerpt_sha256: 
         return []
     _, rows = _read_lines(path)
     return _starts_of(rows, length, excerpt_sha256)
+
+
+def repeated_note(repo_root: Path, cited: dict[str, Any]) -> str | None:
+    start, end = cited["lines"]["start"], cited["lines"]["end"]
+    others = [
+        line
+        for line in excerpt_starts(repo_root, cited["path"], end - start + 1, cited["excerpt_sha256"])
+        if line != start
+    ]
+    if not others:
+        return None
+    return (
+        f"NOTE: the text of {cited['path']}:{start}-{end} also starts at line "
+        f"{', '.join(map(str, others))}, so a later edit cannot tell the copies apart. "
+        f"{WIDEN_TO_UNIQUE}"
+    )
 
 
 def hash_all(value: Any, repo_root: Path) -> Any:
@@ -205,7 +224,7 @@ def _moved_or_stale(excerpt_sha256: str, path_text: str, rows: list[str], length
             "status": "stale",
             "path": path_text,
             "reason": f"the cited excerpt is {'repeated' if starts else 'no longer'} in {path_text}; "
-            "check that the fact still holds, then recite it",
+            "check that the fact still holds, then recite it" + (f". {WIDEN_TO_UNIQUE}" if starts else ""),
         }
     return {
         "status": "shifted",

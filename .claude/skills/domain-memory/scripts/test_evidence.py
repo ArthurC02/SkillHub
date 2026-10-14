@@ -314,14 +314,16 @@ class EvidenceTest(RegistryTestCase):
     def test_a_repeated_excerpt_is_stale_and_says_so(self) -> None:
         result = self.citation_after_edit("a\nfact\n", 2, "fact\nnew\nfact\n")
         self.assertEqual(
-            "the cited excerpt is repeated in fact.md; check that the fact still holds, then recite it",
+            "the cited excerpt is repeated in fact.md; check that the fact still holds, then recite it. "
+            "Widen the citation to the enclosing block, so its lines occur once in the file.",
             result["reason"],
         )
 
     def test_an_unmatched_relocation_says_why(self) -> None:
         for text, reason in (
             ("one\nother\n", "the cited excerpt occurs 0 times in lib/a.py; its content changed, so check the fact and recite it"),
-            ("two\ntwo\n", "the cited excerpt occurs 2 times in lib/a.py; recite it with the lines that hold the fact"),
+            ("two\ntwo\n", "the cited excerpt occurs 2 times in lib/a.py; recite it with the lines that hold the fact. "
+             "Widen the citation to the enclosing block, so its lines occur once in the file."),
         ):
             with self.subTest(reason=reason):
                 self.tearDown()

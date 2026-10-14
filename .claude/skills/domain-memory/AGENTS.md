@@ -81,6 +81,7 @@ The two re-cite commands print `registry_updates` and `supersedes` for a Change 
 - A wrong asset name, such as `dependencies` for `dependency-policies`, is refused by `validate-change-package`. Run it before you submit; after submission, the only fix is to supersede and redraft.
 - Replacing or removing a reviewed record needs `supersedes` to list the proposal that reviewed it, which is `review.proposal_id` on the record. A package that replaces several takes a list.
 - A submitted proposal cannot be edited. Use `supersede-proposal --reason`, then `redraft-proposal`. A redraft keeps the design but not the test results, so record them again.
+- Cite lines whose text occurs once in the file. A citation whose text repeats elsewhere in the file goes `stale` at the next edit, because nothing can tell the copies apart. `cite` and `recite` print a NOTE when that happens; widen the span to the enclosing block.
 - Never write a citation by hand. Hand-made line splitting verifies as `stale`, and a missing digest as `unhashed`.
 - Errors print `ERROR: <reason>` on stdout and exit non-zero. The reason names the fix, so read it before trying anything else.
 

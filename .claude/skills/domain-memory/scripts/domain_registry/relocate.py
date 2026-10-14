@@ -4,6 +4,7 @@ from typing import Any
 
 from .common import ASSET_KEYS, load_json, record_status, registry_dir
 from .evidence import (
+    WIDEN_TO_UNIQUE,
     all_references,
     citation,
     classified,
@@ -46,7 +47,7 @@ class Relocation:
                 "path": reference.get("path"), "lines": lines, "target": target, "found": len(starts),
                 "reason": f"the cited excerpt occurs {len(starts)} times in {target}; "
                 + ("its content changed, so check the fact and recite it" if not starts
-                   else "recite it with the lines that hold the fact"),
+                   else f"recite it with the lines that hold the fact. {WIDEN_TO_UNIQUE}"),
             })
             return reference
         recited = citation(self.repo_root, target, starts[0], starts[0] + length - 1)

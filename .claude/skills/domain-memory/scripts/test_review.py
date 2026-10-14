@@ -287,7 +287,7 @@ class ReviewTest(RegistryTestCase):
     def test_a_command_that_cannot_start_records_nothing(self) -> None:
         package = self.draft_package()
         before = (package / "evidence-bundle.json").read_bytes()
-        with self.assertRaisesRegex(ValueError, "could not start"):
+        with self.assertRaisesRegex(ValueError, "could not start: .*runs as written, with no shell and no aliases"):
             record_test_result(
                 package, self.repo / "memory", self.repo,
                 ObligationRun("OB-1", "no-such-program-for-domain-memory --version", "unit"), 60,

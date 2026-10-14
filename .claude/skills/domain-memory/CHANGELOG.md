@@ -2,6 +2,18 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.22.0
+
+### Added
+
+- `cite` and `recite` print a NOTE on stderr when the cited text also occurs elsewhere in the file, naming where, so an ambiguous citation is caught when it is written instead of going `stale` at the next edit.
+- `init-change-package` without identifiers prints the flags still blank.
+
+### Changed
+
+- A `stale` citation whose excerpt repeats, and an `unmatched` relocation that found it more than once, say to widen the citation to the enclosing block.
+- A test command that cannot start says that it runs as written, with no shell and no aliases, and shows a full invocation.
+
 ## 0.21.7
 
 ### Changed

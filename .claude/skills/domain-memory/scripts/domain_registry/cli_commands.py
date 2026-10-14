@@ -12,7 +12,7 @@ from .changes import init_change_package, redraft_change_package, validate_chang
 from .common import load_json
 from .contracts import validate_schema
 from .counterfactual import Mutation, counterfactual
-from .evidence import citation, classified, source_map_for
+from .evidence import citation, classified, repeated_note, source_map_for
 from .gates import quality_gates
 from .git_hooks import (
     governance_readiness,
@@ -38,7 +38,7 @@ from .policy import (
 )
 from .readiness import assess_readiness
 from .impact import boundary_impact
-from .relocate import Recitation, recite, relocate_evidence
+from .relocate import Recitation, line_range, recite, relocate_evidence
 from .registry import (
     boundary_analysis,
     context_model,
@@ -125,6 +125,17 @@ def handle_init(args: argparse.Namespace) -> int:
 
 def handle_init_change_package(args: argparse.Namespace) -> int:
     init_change_package(args.output.resolve(), args.requirement_id, args.proposal_id, args.proposer)
+    missing = [
+        flag for flag, value in (
+            ("--requirement-id", args.requirement_id), ("--proposal-id", args.proposal_id),
+            ("--proposer", args.proposer),
+        ) if value is None
+    ]
+    if missing:
+        print(
+            f"Created {args.output}. Still blank: {', '.join(missing)}; validate-change-package "
+            "refuses the package until they are filled, so pass them here next time or fill them now."
+        )
     return 0
 
 
@@ -199,13 +210,21 @@ def handle_relocate_evidence(args: argparse.Namespace) -> int:
 
 
 def handle_recite(args: argparse.Namespace) -> int:
+    repo_root = args.repo_root.resolve()
     print_json(
         recite(
-            args.registry_root.resolve(), args.repo_root.resolve(),
+            args.registry_root.resolve(), repo_root,
             Recitation(args.asset, args.id, args.path, args.lines, args.replace),
         )
     )
+    _note_repeated(repo_root, citation(repo_root, args.path, *line_range(args.lines)))
     return 0
+
+
+def _note_repeated(repo_root: Path, cited: dict) -> None:
+    note = repeated_note(repo_root, cited)
+    if note:
+        print(note, file=sys.stderr)
 
 
 def handle_analyze_boundary(args: argparse.Namespace) -> int:
@@ -229,6 +248,7 @@ def handle_cite(args: argparse.Namespace) -> int:
     if args.registry_root:
         reference = classified(reference, source_map_for(args.registry_root.resolve()))
     print_json(reference)
+    _note_repeated(args.repo_root.resolve(), reference)
     if reference.get("source_kind") == "unclassified":
         print(
             f"NOTE: {reference['path']} is outside the confirmed sources. {OUTSIDE_SOURCES_CONSEQUENCE}",
