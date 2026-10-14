@@ -12,6 +12,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/halt"
 )
 
 func attemptOn(provider string, errClass string) gen.RunAttempt {
@@ -40,7 +41,7 @@ func TestOnlyALostAttemptCountsAsALoss(t *testing.T) {
 }
 
 func TestAProviderThatLostThisRunIsKeptOutOfTheNextPlacement(t *testing.T) {
-	drained := map[string]gen.DispatchHalt{"gamma": {Provider: "gamma", Source: "operator"}}
+	drained := []halt.Halt{{Provider: "gamma", Source: "operator"}}
 	avoid := lostProviders([]gen.RunAttempt{
 		attemptOn("alpha", errClassProviderLost),
 		attemptOn("beta", errClassExecution),
@@ -54,9 +55,6 @@ func TestAProviderThatLostThisRunIsKeptOutOfTheNextPlacement(t *testing.T) {
 	}
 	if _, ok := avoid["gamma"]; !ok {
 		t.Error("the drained provider was dropped from the exclusions")
-	}
-	if len(drained) != 1 {
-		t.Errorf("the halt map grew to %d entries; it must not be written through", len(drained))
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/halt"
 )
 
 type destroyRecorder struct {
@@ -50,7 +51,7 @@ func attemptInSandbox(provider string) gen.RunAttempt {
 	}
 }
 
-func noHalts() haltState { return haltState{byTarget: map[string]gen.DispatchHalt{}} }
+func noHalts() halt.State { return halt.StateOf() }
 
 func TestReleasingAnAttemptDestroysItsSandboxAndReportsNothing(t *testing.T) {
 	sandbox := &destroyRecorder{name: "alpha"}
@@ -66,7 +67,7 @@ func TestReleasingAnAttemptDestroysItsSandboxAndReportsNothing(t *testing.T) {
 func TestAnIncidentHaltKeepsTheSandboxAndCountsTheAttemptAsHeld(t *testing.T) {
 	sandbox := &destroyRecorder{name: "alpha"}
 	s := &Service{Providers: NewRegistry(sandbox)}
-	halts := haltState{byTarget: map[string]gen.DispatchHalt{"alpha": {Provider: "alpha", Source: string(HaltSourceIncident)}}}
+	halts := halt.StateOf(gen.DispatchHalt{Provider: "alpha", Source: string(halt.Incident)})
 
 	failures, held := s.releaseAttempt(context.Background(), attemptInSandbox("alpha"), halts)
 

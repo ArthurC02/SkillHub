@@ -505,6 +505,14 @@ func NewProviderWithClient(name, baseURL, token string, client *http.Client) San
 	return &httpProvider{name: name, baseURL: baseURL, token: token, HTTP: client}
 }
 
+func (r *Registry) Names() []string {
+	names := make([]string, len(r.Providers))
+	for i, p := range r.Providers {
+		names[i] = p.Name()
+	}
+	return names
+}
+
 func (r *Registry) Lookup(name string) SandboxProvider {
 	for _, p := range r.Providers {
 		if p.Name() == name {

@@ -153,8 +153,8 @@ func (d *driver) dispatch(ctx context.Context) error {
 		return err
 	}
 
-	halts := d.svc.haltsFailClosed(ctx)
-	if halts.dispatchPaused(d.svc.providers()) {
+	halts := d.svc.halts().FailClosed(ctx)
+	if halts.DispatchPaused(d.svc.providers().Names()) {
 		slog.Warn("dispatch paused; leaving the run queued",
 			"run_id", pgconv.UUIDString(d.cur.ID), "status", d.cur.Status)
 		return nil
@@ -181,7 +181,7 @@ func (d *driver) dispatch(ctx context.Context) error {
 			d.reasonFor(failureProvider, err))
 	}
 
-	placements, placed, err := d.place(ctx, req, lostProviders(attempts, halts.byTarget))
+	placements, placed, err := d.place(ctx, req, lostProviders(attempts, halts.Halts()))
 	if !placed {
 		return err
 	}

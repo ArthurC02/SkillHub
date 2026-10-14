@@ -355,10 +355,10 @@ var domainVocabularies = []domainVocabulary{
 		name: "dispatch halt source",
 		sources: []vocabularySource{
 			sqlColumnCheck("dispatch_halts", "source"),
-			goConstEnum("apps/platform/internal/trial/execution/halt.go", "HaltSource"),
+			goConstEnum("apps/platform/internal/trial/execution/halt/source.go", "Source"),
 			goListedConstEnum(
-				"apps/platform/internal/trial/execution/halt.go", "AllHaltSources",
-				"apps/platform/internal/trial/execution/halt.go", "HaltSource"),
+				"apps/platform/internal/trial/execution/halt/source.go", "AllSources",
+				"apps/platform/internal/trial/execution/halt/source.go", "Source"),
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "GetDispatchStatusOKHaltsItemSource"),
 		},
 		readers: []vocabularySource{

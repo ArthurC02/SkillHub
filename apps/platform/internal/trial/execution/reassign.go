@@ -9,6 +9,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/halt"
 )
 
 const (
@@ -34,10 +35,10 @@ type SetAsideProvider struct {
 	MayComeBack bool
 }
 
-func lostProviders(attempts []gen.RunAttempt, halted map[string]gen.DispatchHalt) map[string]SetAsideProvider {
+func lostProviders(attempts []gen.RunAttempt, halted []halt.Halt) map[string]SetAsideProvider {
 	avoid := make(map[string]SetAsideProvider, len(halted)+len(attempts))
-	for name, halt := range halted {
-		avoid[name] = SetAsideProvider{Why: "drained (" + halt.Source + ")", MayComeBack: true}
+	for _, drained := range halted {
+		avoid[drained.Provider] = SetAsideProvider{Why: "drained (" + string(drained.Source) + ")", MayComeBack: true}
 	}
 	for _, a := range attempts {
 		if a.ErrorClass != nil && *a.ErrorClass == errClassProviderLost {

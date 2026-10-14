@@ -12,7 +12,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/halt"
 )
 
 func TestAP1OnTheOnlyProviderRefusesRunCreationLikeAPoolHaltDoes(t *testing.T) {
@@ -28,8 +28,8 @@ func TestAP1OnTheOnlyProviderRefusesRunCreationLikeAPoolHaltDoes(t *testing.T) {
 		t.Fatalf("precondition: creating a run before the halt got %d (%s)", code, view.Error)
 	}
 
-	if _, err := svc.DeclareHalt(
-		context.Background(), fake.Name, run.HaltSourceIncident,
+	if _, err := (halt.Ledger{Pool: svc.Pool}).Declare(
+		context.Background(), fake.Name, halt.Incident,
 		"P-02: a sandbox reached an address it must never reach", pgtype.UUID{},
 	); err != nil {
 		t.Fatal(err)
@@ -85,7 +85,7 @@ func TestAFailingSuperviseRunDoesNotSwitchOffTheP1Detectors(t *testing.T) {
 	if err := pool.QueryRow(ctx,
 
 		`SELECT reason FROM dispatch_halts WHERE provider = '' AND source = $1 AND lifted_at IS NULL`,
-		string(run.HaltSourceIncident),
+		string(halt.Incident),
 	).Scan(&reason); err != nil {
 		t.Fatalf("no fleet-wide P1 was declared: the masking detector never ran, because one run failed to supervise (%v)", err)
 	}

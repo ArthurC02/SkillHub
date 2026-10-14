@@ -134,7 +134,7 @@ func (s *Service) PublishGauges(ctx context.Context) error {
 	for _, provider := range s.providers().Providers {
 		errs = append(errs, s.publishPersistentOrphans(ctx, provider.Name()))
 	}
-	s.publishHaltMetrics(ctx)
+	s.halts().PublishMetrics(ctx)
 	return errors.Join(errs...)
 }
 

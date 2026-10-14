@@ -13,6 +13,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/halt"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -64,8 +65,8 @@ func (s *Service) settleLateSpend(ctx context.Context, run gen.Run) error {
 func (s *Service) cleanup(ctx context.Context, run gen.Run) error {
 	defer metrics.ObserveSince(metrics.CleanupDuration, time.Now())
 
-	halts := s.haltsFailClosed(ctx)
-	if halts.incidentHeld(haltPool) {
+	halts := s.halts().FailClosed(ctx)
+	if halts.IncidentHeld(halt.Pool) {
 
 		slog.Warn("cleanup held: a P1 halt is preserving the scene", "run_id", pgconv.UUIDString(run.ID))
 		return nil
@@ -109,7 +110,7 @@ func (s *Service) cleanup(ctx context.Context, run gen.Run) error {
 	return nil
 }
 
-func (s *Service) releaseAttempt(ctx context.Context, attempt gen.RunAttempt, halts haltState) (failures []string, held bool) {
+func (s *Service) releaseAttempt(ctx context.Context, attempt gen.RunAttempt, halts halt.State) (failures []string, held bool) {
 	if s.Gateway != nil {
 		if err := s.Gateway.Revoke(ctx, pgconv.UUIDString(attempt.ID)); err != nil {
 
@@ -122,7 +123,7 @@ func (s *Service) releaseAttempt(ctx context.Context, attempt gen.RunAttempt, ha
 		return failures, false
 	}
 
-	if halts.incidentHeld(attempt.Provider) {
+	if halts.IncidentHeld(attempt.Provider) {
 		return failures, true
 	}
 	provider := s.providers().Lookup(attempt.Provider)
@@ -227,7 +228,7 @@ func (s *Service) scanProvider(ctx context.Context, provider SandboxProvider) er
 		observed = time.Now()
 	}
 
-	preserveScene := s.haltsFailClosed(ctx).incidentHeld(provider.Name())
+	preserveScene := s.halts().FailClosed(ctx).IncidentHeld(provider.Name())
 
 	stillPresent := []string{}
 	var failures []string

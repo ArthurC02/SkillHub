@@ -12,6 +12,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/halt"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 )
 
@@ -161,7 +162,7 @@ func declareP1Halt(t *testing.T, operator *client, note string) {
 	}
 	if dispatching, halts := dispatchStatus(t, operator); dispatching || len(halts) != 1 {
 		t.Fatalf("status after the halt: dispatching=%v, halts=%v", dispatching, halts)
-	} else if halts[0]["source"] != string(run.HaltSourceIncident) || halts[0]["automatic_recovery"] != false {
+	} else if halts[0]["source"] != string(halt.Incident) || halts[0]["automatic_recovery"] != false {
 		t.Errorf("halt reported as %v; a P1 is never lifted automatically", halts[0])
 	}
 }
@@ -362,7 +363,7 @@ func assertSelfClearingThresholdHaltsIncludeThePool(t *testing.T, halts []map[st
 	t.Helper()
 	var sawPool bool
 	for _, h := range halts {
-		if h["source"] != string(run.HaltSourceOrphanThreshold) {
+		if h["source"] != string(halt.OrphanThreshold) {
 			t.Errorf("halt %v was not attributed to the X-04 threshold", h)
 		}
 		if h["automatic_recovery"] != true {
@@ -379,35 +380,35 @@ func assertSelfClearingThresholdHaltsIncludeThePool(t *testing.T, halts []map[st
 
 func TestAnIncidentTakesOverACapacityPauseAndIsNeverDowngraded(t *testing.T) {
 	pool := requireDB(t)
-	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
+	ledger := halt.Ledger{Pool: pool}
 	ctx := context.Background()
 	operator := mustUUID(t, newAPI(t, pool).login(t, "operator-escalation").userID)
 
-	if _, err := svc.DeclareHalt(ctx, "", run.HaltSourceOrphanThreshold, "leaks", nil2uuid()); err != nil {
+	if _, err := ledger.Declare(ctx, "", halt.OrphanThreshold, "leaks", nil2uuid()); err != nil {
 		t.Fatal(err)
 	}
-	halt, err := svc.DeclareHalt(ctx, "", run.HaltSourceIncident, "escape suspicion", operator)
+	declared, err := ledger.Declare(ctx, "", halt.Incident, "escape suspicion", operator)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if halt.Source != run.HaltSourceIncident || halt.Reason != "escape suspicion" {
-		t.Fatalf("halt after the P1 = %s/%q, want the incident to have taken over", halt.Source, halt.Reason)
+	if declared.Source != halt.Incident || declared.Reason != "escape suspicion" {
+		t.Fatalf("halt after the P1 = %s/%q, want the incident to have taken over", declared.Source, declared.Reason)
 	}
 
-	if _, lifted, err := svc.LiftHalt(ctx, "", "clear", nil2uuid(),
-		[]run.HaltSource{run.HaltSourceOrphanThreshold}); err != nil || lifted {
+	if _, lifted, err := ledger.Lift(ctx, "", "clear", nil2uuid(),
+		[]halt.Source{halt.OrphanThreshold}); err != nil || lifted {
 		t.Fatalf("the reconciler released a P1: lifted=%v err=%v", lifted, err)
 	}
-	again, err := svc.DeclareHalt(ctx, "", run.HaltSourceOrphanThreshold, "leaks again", nil2uuid())
+	again, err := ledger.Declare(ctx, "", halt.OrphanThreshold, "leaks again", nil2uuid())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if again.Source != run.HaltSourceIncident || again.Reason != "escape suspicion" {
+	if again.Source != halt.Incident || again.Reason != "escape suspicion" {
 		t.Errorf("a threshold breach downgraded the P1 to %s/%q", again.Source, again.Reason)
 	}
 
-	if _, lifted, err := svc.LiftHalt(ctx, "", "investigation closed", operator,
-		[]run.HaltSource{run.HaltSourceIncident, run.HaltSourceOrphanThreshold}); err != nil || !lifted {
+	if _, lifted, err := ledger.Lift(ctx, "", "investigation closed", operator,
+		[]halt.Source{halt.Incident, halt.OrphanThreshold}); err != nil || !lifted {
 		t.Fatalf("the operator could not release the P1: lifted=%v err=%v", lifted, err)
 	}
 }
