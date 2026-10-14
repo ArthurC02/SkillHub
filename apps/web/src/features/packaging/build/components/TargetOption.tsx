@@ -6,15 +6,24 @@ export function TargetOption({
   target,
   selected,
   onSelect,
+  disabled,
 }: {
   target: PackagingTarget;
   selected: boolean;
   onSelect: () => void;
+  disabled: boolean;
 }) {
   return (
     <li className="packaging-target">
       <label>
-        <input type="radio" name="packaging-target" checked={selected} onChange={onSelect} />{" "}
+        <input
+          type="radio"
+          name="packaging-target"
+          checked={selected}
+          onChange={onSelect}
+          disabled={disabled}
+          aria-describedby={disabled ? "packaging-targets-refresh-status" : undefined}
+        />{" "}
         <strong>{target.display_name}</strong>{" "}
         <span className="badge">
           {target.kind === "standard_package" ? "標準套件" : "安裝 Profile"}

@@ -19,6 +19,13 @@ test("resolveTarget is empty when nothing is chosen and no targets loaded yet", 
   expect(resolveTarget("", undefined)).toBe("");
 });
 
+test.each([undefined, [], TARGETS.slice(0, 1)])(
+  "an unavailable explicit target remains unresolved instead of silently selecting another",
+  (targets) => {
+    expect(resolveTarget("claude-code", targets)).toBe("");
+  },
+);
+
 const ARTIFACT = {
   artifact_id: "a-1",
   skill_id: "skill-1",

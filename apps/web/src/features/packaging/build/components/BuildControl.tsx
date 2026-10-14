@@ -37,7 +37,7 @@ export function BuildControl({
         <button
           type="button"
           className="action"
-          disabled={!preview.data?.allowed || build.isPending}
+          disabled={Boolean(deadReason) || !preview.data?.allowed || build.isPending}
           onClick={onBuild}
           aria-describedby={deadReason ? DEAD_REASON_ID : undefined}
         >

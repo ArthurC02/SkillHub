@@ -57,25 +57,55 @@ function buildButtonReason({
   pending,
   target,
   targetsPending,
+  targetsError,
+  targetsFetching,
+  targetMissing,
   preview,
 }: {
   pending: boolean;
   target: string;
   targetsPending: boolean;
-  preview: { isPending: boolean; error: unknown; data: PackagingPreview | undefined };
+  targetsError: unknown;
+  targetsFetching: boolean;
+  targetMissing: boolean;
+  preview: {
+    isPending: boolean;
+    isFetching: boolean;
+    error: unknown;
+    data: PackagingPreview | undefined;
+  };
 }): string {
   if (pending) return "";
+  if (targetsError) return "打包目標目前無法確認，請先恢復目標清單的讀取。";
+  if (targetsFetching && !targetsPending) return "正在重新確認打包目標，請等讀取完成後再建立套件。";
+  if (targetMissing) return "選擇的打包目標已不在可用清單，請重新選擇。";
   if (target === "") {
     return targetsPending
       ? "還在讀打包目標清單。讀到之前沒有目標可以送出，所以按鈕還不能按。"
-      : "讀不到任何打包目標，所以沒有設定可以送出——上面那行錯誤就是原因。這不是「這個版本不能打包」，是平台這一刻答不出來。";
+      : "目前沒有可用的打包目標，無法送出設定。";
   }
+  if (preview.isPending) return "打包預覽還在計算，算完才知道這些設定能不能打包。";
+  if (preview.isFetching) return "正在重新確認打包預覽，請等讀取完成後再建立套件。";
   if (preview.error) {
     return "打包預覽讀不到，因此無法確認這些設定能不能打包。沒有確認過就不會打包。";
   }
-  if (preview.isPending) return "打包預覽還在計算，算完才知道這些設定能不能打包。";
   if (!preview.data) return "還沒有打包預覽可以依據，所以按鈕還不能按。";
   return "";
+}
+
+function isSelectedTargetMissing(
+  chosen: string,
+  target: string,
+  targets: ReturnType<typeof usePackagingTargets>,
+) {
+  return Boolean(chosen && targets.data && !targets.error && target === "");
+}
+
+function readableTarget(
+  chosen: PackagingTargetId | "",
+  targets: ReturnType<typeof usePackagingTargets>,
+) {
+  return targets.error || targets.isFetching ? "" : resolveTarget(chosen, targets.data?.targets);
 }
 
 export function Packaging() {
@@ -89,7 +119,7 @@ export function Packaging() {
   const [includeTestCases, setIncludeTestCases] = useState(false);
 
   const versionId = version || skill.data?.version?.version_id || "";
-  const target = resolveTarget(chosen, targets.data?.targets);
+  const target = readableTarget(chosen, targets);
   const preview = usePackagingPreview(skillId, versionId, target, includeTestCases);
 
   const build = useCreateDownload(skillId);
@@ -111,6 +141,9 @@ export function Packaging() {
     pending: build.isPending,
     target,
     targetsPending: targets.isPending,
+    targetsError: targets.error,
+    targetsFetching: targets.isFetching,
+    targetMissing: isSelectedTargetMissing(chosen, target, targets),
     preview,
   });
 
@@ -157,7 +190,11 @@ export function Packaging() {
 
           <CompatibilitySection compatibility={skill.data.compatibility} />
 
-          <PackagingTargetsSection targets={targets} selected={target} onSelect={setChosen} />
+          <PackagingTargetsSection
+            targets={targets}
+            selected={resolveTarget(chosen, targets.data?.targets)}
+            onSelect={setChosen}
+          />
 
           <IncludeTestCasesSection checked={includeTestCases} onChange={setIncludeTestCases} />
 

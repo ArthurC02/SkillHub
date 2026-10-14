@@ -8,7 +8,8 @@ export function resolveTarget(
   chosen: PackagingTargetId | "",
   targets: PackagingTarget[] | undefined,
 ): PackagingTargetId | "" {
-  return chosen || (targets?.[0]?.id ?? "");
+  if (chosen) return targets?.some((target) => target.id === chosen) ? chosen : "";
+  return targets?.[0]?.id ?? "";
 }
 
 export function matchingBuiltArtifact(

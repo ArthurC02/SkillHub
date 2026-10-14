@@ -1106,7 +1106,7 @@ test("丙-150 部署沒有設定打包目標時，503 說沒有預覽而不是�
     return json({ error: "not found" }, 404);
   });
   await render(<Packaging />, () => text().includes("標準 Agent 小工具套件"));
-  await waitFor(() => text().includes("這個部署沒有設定任何打包目標，所以沒有預覽。"));
+  await waitFor(() => text().includes("打包服務目前不可用，無法確認預覽。請再試一次。"));
 
   expect(text()).not.toContain("no packaging targets are configured");
 });
