@@ -47,7 +47,8 @@ export function TestCaseDetail() {
   }
 
   if (testCase.isPending) return <Loading what="測試題" />;
-  if (testCase.error) return <TestCaseReadFailure query={testCase} />;
+  if (!testCase.data || (testCase.error && !canPreserveEditor(testCase)))
+    return <TestCaseReadFailure query={testCase} />;
 
   const history = readableRunHistory(runs);
   const lastMatchingRun = history.find(
@@ -60,72 +61,80 @@ export function TestCaseDetail() {
   const versionSource = version ? "url" : lastMatchingRun ? "run" : "none";
 
   return (
-    <section key={testCaseId} className="test-case-detail-page">
-      <header className="test-case-header">
-        <p className="page-eyebrow">Evaluation workbench</p>
-        <h1>{testCase.data.name}</h1>
-        <p>在同一個小工具與 Version 脈絡裡維護驗證設計、試跑與歷史證據。</p>
-      </header>
-      <SkillWorkspaceNav
-        skillId={skillId}
-        versionId={selectedVersion?.version_id}
-        testCaseId={testCaseId}
-      />
-      <TestCaseContext
-        testCaseName={testCase.data.name}
-        testCaseId={testCaseId}
-        skillId={skillId}
-        skill={skill}
-        versions={versions}
-        requestedVersion={requestedVersion}
-        selectedVersion={selectedVersion}
-        versionSource={versionSource}
-        runsPending={runs.isPending}
-        runsError={runs.error}
-      />
-      <div className="test-case-detail-layout">
-        <div className="test-case-design">
-          <section className="test-case-work-panel" aria-label="任務提示設計">
-            <PromptForm testCase={testCase.data} />
-          </section>
-          <section className="test-case-work-panel" aria-label="模擬使用者設計">
-            <SimulatedUserForm testCase={testCase.data} />
-          </section>
-          <section className="test-case-work-panel" aria-label="驗收與評分設計">
-            <CriteriaSection testCase={testCase.data} />
-            <RubricSection testCase={testCase.data} />
-          </section>
+    <>
+      {testCase.error && <TestCaseReadFailure query={testCase} preserved />}
+      <section
+        key={testCaseId}
+        className="test-case-detail-page"
+        hidden={Boolean(testCase.error)}
+        inert={Boolean(testCase.error)}
+      >
+        <header className="test-case-header">
+          <p className="page-eyebrow">Evaluation workbench</p>
+          <h1>{testCase.data.name}</h1>
+          <p>在同一個小工具與 Version 脈絡裡維護驗證設計、試跑與歷史證據。</p>
+        </header>
+        <SkillWorkspaceNav
+          skillId={skillId}
+          versionId={selectedVersion?.version_id}
+          testCaseId={testCaseId}
+        />
+        <TestCaseContext
+          testCaseName={testCase.data.name}
+          testCaseId={testCaseId}
+          skillId={skillId}
+          skill={skill}
+          versions={versions}
+          requestedVersion={requestedVersion}
+          selectedVersion={selectedVersion}
+          versionSource={versionSource}
+          runsPending={runs.isPending}
+          runsError={runs.error}
+        />
+        <div className="test-case-detail-layout">
+          <div className="test-case-design">
+            <section className="test-case-work-panel" aria-label="任務提示設計">
+              <PromptForm testCase={testCase.data} />
+            </section>
+            <section className="test-case-work-panel" aria-label="模擬使用者設計">
+              <SimulatedUserForm testCase={testCase.data} />
+            </section>
+            <section className="test-case-work-panel" aria-label="驗收與評分設計">
+              <CriteriaSection testCase={testCase.data} />
+              <RubricSection testCase={testCase.data} />
+            </section>
+          </div>
+          <aside className="test-case-detail-rail" aria-label="測試資料與下一步">
+            <section className="test-case-work-panel" aria-label="測試資料">
+              <DatasetSection testCaseId={testCaseId} versionId={selectedVersion?.version_id} />
+            </section>
+            <section className="test-case-next-step" aria-labelledby="test-case-next-step-title">
+              <p className="page-eyebrow">Ready to validate</p>
+              <h2 id="test-case-next-step-title">下一步：試跑這個驗證設計</h2>
+              <p>
+                <Link
+                  className="action"
+                  to="/skills/$skillId/test-cases/$testCaseId/runs/new"
+                  params={{ skillId, testCaseId }}
+                  search={{ version: selectedVersion?.version_id }}
+                >
+                  {selectedVersion ? "用這個版本試跑" : "選擇 Version 並確認權限"}
+                </Link>
+              </p>
+              <p className="note" data-role="evidence">
+                開始試跑前會再次顯示權限摘要並要求確認。
+              </p>
+            </section>
+          </aside>
         </div>
-        <aside className="test-case-detail-rail" aria-label="測試資料與下一步">
-          <section className="test-case-work-panel" aria-label="測試資料">
-            <DatasetSection testCaseId={testCaseId} versionId={selectedVersion?.version_id} />
-          </section>
-          <section className="test-case-next-step" aria-labelledby="test-case-next-step-title">
-            <p className="page-eyebrow">Ready to validate</p>
-            <h2 id="test-case-next-step-title">下一步：試跑這個驗證設計</h2>
-            <p>
-              <Link
-                className="action"
-                to="/skills/$skillId/test-cases/$testCaseId/runs/new"
-                params={{ skillId, testCaseId }}
-                search={{ version: selectedVersion?.version_id }}
-              >
-                {selectedVersion ? "用這個版本試跑" : "選擇 Version 並確認權限"}
-              </Link>
-            </p>
-            <p className="note" data-role="evidence">
-              開始試跑前會再次顯示權限摘要並要求確認。
-            </p>
-          </section>
-        </aside>
-      </div>
-      <section className="test-case-history-panel" aria-label="執行歷史">
-        <RunHistory runs={runs} history={history} />
+        <section className="test-case-history-panel" aria-label="執行歷史">
+          <RunHistory runs={runs} history={history} />
+        </section>
+        <section className="test-case-danger-panel" aria-label="刪除測試題">
+          <DeleteTestCase testCaseId={testCaseId} onDeleted={setDeleted} />
+        </section>
       </section>
-      <section className="test-case-danger-panel" aria-label="刪除測試題">
-        <DeleteTestCase testCaseId={testCaseId} onDeleted={setDeleted} />
-      </section>
-    </section>
+    </>
   );
 }
 
@@ -250,17 +259,38 @@ function TestCaseContext({
   );
 }
 
-function TestCaseReadFailure({ query }: { query: ReturnType<typeof useTestCase> }) {
+function canPreserveEditor(query: ReturnType<typeof useTestCase>) {
+  return Boolean(
+    query.data &&
+    query.error &&
+    (!(query.error instanceof ApiError) ||
+      query.error.status >= 500 ||
+      query.error.status === 408 ||
+      query.error.status === 429),
+  );
+}
+
+function TestCaseReadFailure({
+  query,
+  preserved = false,
+}: {
+  query: ReturnType<typeof useTestCase>;
+  preserved?: boolean;
+}) {
   const missing = query.error instanceof ApiError && query.error.status === 404;
   return (
     <PageReadFailure
       heading="測試題"
-      error={query.error}
+      error={query.error ?? new Error()}
       what="測試題"
       retry={missing ? undefined : () => void query.refetch()}
       retrying={query.isFetching}
     >
-      {missing ? <p role="alert">找不到這個測試題。</p> : undefined}
+      {missing ? (
+        <p role="alert">找不到這個測試題。</p>
+      ) : preserved ? (
+        <p role="alert">暫時無法讀取測試題。尚未儲存的輸入已保留，請先再試一次。</p>
+      ) : undefined}
     </PageReadFailure>
   );
 }
