@@ -23,6 +23,7 @@ from skillhub_llm.gateway import (
     client,
     completion_usage,
     request_metadata,
+    require_budgeted_key,
     served_model,
 )
 from skillhub_llm.generate import (
@@ -1418,10 +1419,7 @@ async def creation_step(
     request: Request,
     x_creation_gateway_key: str | None = Header(default=None),
 ) -> CreationStepResponse:
-    if not x_creation_gateway_key or x_creation_gateway_key == os.getenv("LITELLM_MASTER_KEY"):
-        raise HTTPException(
-            status_code=503, detail="creation requires a scoped gateway Virtual Key"
-        )
+    await require_budgeted_key(x_creation_gateway_key)
 
     async def disconnected():
         while not await request.is_disconnected():

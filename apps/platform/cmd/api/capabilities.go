@@ -281,10 +281,13 @@ func probeLLMService(client *http.Client) func(context.Context) error {
 		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 			return fmt.Errorf("apps/llm 的 /readyz 回了讀不懂的內容：%w", err)
 		}
-		if body.Status != llmclient.ReadinessReady {
+		if body.Status == llmclient.ReadinessReady {
+			return nil
+		}
+		if len(body.Missing) > 0 {
 			return fmt.Errorf("apps/llm 起來了但還不能用，它自己缺：%s", strings.Join(body.Missing, "、"))
 		}
-		return nil
+		return errors.New("apps/llm 起來了但還不能用：閘道無法確認它的 LITELLM_API_KEY 是有預算的 Virtual Key")
 	}
 }
 

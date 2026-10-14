@@ -30,10 +30,12 @@ paths:
       operationId: getReadiness
       summary: Whether this service can take model work
       description: |
-        Checks configuration only and never calls the gateway. The Go control
-        plane's startup capability table reads it: a valid token and a
-        configured gateway report `ready`; a missing gateway variable reports
-        `not_ready` and names it in `missing`.
+        The Go control plane's startup capability table reads it. `ready`
+        needs a configured gateway and a service key the gateway confirms
+        carries a finite, unspent budget, which only a Virtual Key has; the
+        gateway's admin key has none. A missing gateway variable is named in
+        `missing`; an unconfirmed key reports `key_budgeted: false`. A
+        confirmed key is remembered for the life of the process.
       responses:
         "200":
           description: The service answered; `status` says whether it can take work.
@@ -607,10 +609,15 @@ components:
           back to (Iron Rule 8). Only this process knows this one, and its
           symptom on the Go side is search degrading to FTS-only for as long as
           the misconfiguration lasts - which is why it must not arrive as a 502.
+        - **gateway key not a Virtual Key** - the gateway could not confirm
+          that the key this request would spend (LITELLM_API_KEY, or the
+          scoped key a creation or agent step carries) has a finite, unspent
+          budget. The admin key has none, so this is also how holding the
+          admin key is refused.
 
-        The two causes must be told apart by whoever reads this, and they
-        arrive as one response object rather than two because OpenAPI gives a
-        status code exactly one, and both causes reach every model-backed
+        The causes must be told apart by whoever reads this, and they
+        arrive as one response object rather than one per cause because OpenAPI gives a
+        status code exactly one, and every cause reaches every model-backed
         endpoint.
       content:
         application/json:
@@ -631,13 +638,19 @@ components:
           enum: [ok]
     Readiness:
       type: object
-      required: [status, gateway_configured, missing]
+      required: [status, gateway_configured, key_budgeted, missing]
       properties:
         status:
           type: string
           enum: [ready, not_ready]
         gateway_configured:
           type: boolean
+        key_budgeted:
+          type: boolean
+          description: |
+            The gateway confirmed LITELLM_API_KEY has a finite budget it has
+            not spent. False when the gateway is not configured, unreachable,
+            or answers for a key without a budget.
         missing:
           type: array
           description: Names of the unset gateway variables; empty when ready.

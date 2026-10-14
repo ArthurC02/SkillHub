@@ -12,7 +12,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from skillhub_llm import creation, generate
+from skillhub_llm import creation, gateway, generate
 from skillhub_llm.app import app
 
 client = TestClient(app, headers={"Authorization": "Bearer test-service-token"})
@@ -858,10 +858,10 @@ def test_a_creation_request_is_bounded(changes, status):
 def test_service_and_scoped_key_required(monkeypatch):
     assert TestClient(app).post("/v1/creation/step", json=request()).status_code == 401
     assert client.post("/v1/creation/step", json=request()).status_code == 503
-    monkeypatch.setenv("LITELLM_MASTER_KEY", "master")
+    monkeypatch.setattr(gateway, "key_has_finite_budget", unbudgeted)
     assert (
         client.post(
-            "/v1/creation/step", headers={"X-Creation-Gateway-Key": "master"}, json=request()
+            "/v1/creation/step", headers={"X-Creation-Gateway-Key": "sk-admin"}, json=request()
         ).status_code
         == 503
     )
@@ -1551,3 +1551,7 @@ def test_draft_outcome_without_a_draft_is_a_clarification_not_a_502():
     assert body["outcome"] == "clarification"
     assert body["reason"] == "draft_missing"
     assert body["draft"] is None
+
+
+async def unbudgeted(base_url, key, transport=None):
+    return False

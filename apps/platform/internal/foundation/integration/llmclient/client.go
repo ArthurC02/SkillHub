@@ -92,6 +92,7 @@ type EmbedRequest struct {
 type Readiness struct {
 	Status            string   `json:"status"`
 	GatewayConfigured bool     `json:"gateway_configured"`
+	KeyBudgeted       bool     `json:"key_budgeted"`
 	Missing           []string `json:"missing"`
 }
 

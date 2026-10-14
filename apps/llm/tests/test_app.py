@@ -671,6 +671,55 @@ def test_readyz_names_what_is_missing_rather_than_reporting_ready(monkeypatch):
     assert body["missing"] == ["LITELLM_API_KEY"]
 
 
+def test_readyz_is_not_ready_when_the_gateway_cannot_confirm_the_key(monkeypatch):
+    async def unbudgeted(base_url, key, transport=None):
+        return False
+
+    monkeypatch.setattr(gateway, "key_has_finite_budget", unbudgeted)
+    response = client.get("/readyz")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "not_ready"
+    assert body["gateway_configured"] is True
+    assert body["key_budgeted"] is False
+    assert body["missing"] == []
+
+
+def test_readyz_does_not_ask_the_gateway_when_it_is_not_configured(monkeypatch):
+    async def never(base_url, key, transport=None):
+        raise AssertionError("asked the gateway although it is not configured")
+
+    monkeypatch.setattr(gateway, "key_has_finite_budget", never)
+    monkeypatch.delenv("LITELLM_BASE_URL", raising=False)
+    body = client.get("/readyz").json()
+    assert (body["status"], body["key_budgeted"]) == ("not_ready", False)
+
+
+SCOPED_KEY_ROUTES = {"/v1/agent/step", "/v1/creation/step", "/readyz"}
+SERVICE_KEY_ROUTES = [(p, m) for p, m in GUARDED if p not in SCOPED_KEY_ROUTES]
+
+
+@pytest.mark.parametrize(
+    "path, method", SERVICE_KEY_ROUTES, ids=[f"{m} {p}" for p, m in SERVICE_KEY_ROUTES]
+)
+def test_no_capability_runs_on_a_service_key_without_a_budget(monkeypatch, path, method):
+    async def unbudgeted(base_url, key, transport=None):
+        return False
+
+    monkeypatch.setattr(gateway, "key_has_finite_budget", unbudgeted)
+    response = client.request(method, path, json={})
+    assert response.status_code == 503, response.text
+    assert "Virtual Key" in response.json()["detail"]
+
+
+def test_the_service_token_is_checked_before_the_gateway_is_asked(monkeypatch):
+    async def never(base_url, key, transport=None):
+        raise AssertionError("asked the gateway for an unauthenticated caller")
+
+    monkeypatch.setattr(gateway, "key_has_finite_budget", never)
+    assert TestClient(app).post("/embed", json={"texts": ["x"]}).status_code == 401
+
+
 def test_readyz_is_behind_the_service_token_so_one_request_measures_three_things():
     assert TestClient(app).get("/readyz").status_code == 401
     assert (

@@ -23,7 +23,9 @@ from skillhub_llm.gateway import (
     close_client,
     completion_usage,
     embedding_usage,
+    key_is_budgeted,
     request_metadata,
+    require_budgeted_service_key,
     served_model,
     within,
 )
@@ -67,12 +69,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 protected = [Depends(require_service_token)]
-app.include_router(enrich_router, dependencies=protected)
-app.include_router(evaluate_router, dependencies=protected)
-app.include_router(generate_router, dependencies=protected)
+budgeted = [Depends(require_service_token), Depends(require_budgeted_service_key)]
+app.include_router(enrich_router, dependencies=budgeted)
+app.include_router(evaluate_router, dependencies=budgeted)
+app.include_router(generate_router, dependencies=budgeted)
 app.include_router(creation_router, dependencies=protected)
 app.include_router(agent_router, dependencies=protected)
-app.include_router(intent_router, dependencies=protected)
+app.include_router(intent_router, dependencies=budgeted)
 logger = logging.getLogger("skillhub_llm")
 
 
@@ -116,14 +119,16 @@ GatewayVariable = Literal["LITELLM_BASE_URL", "LITELLM_API_KEY"]
 class Readiness(BaseModel):
     status: Literal["ready", "not_ready"]
     gateway_configured: bool
+    key_budgeted: bool
     missing: list[GatewayVariable]
 
 
 @app.get("/readyz", dependencies=[Depends(require_service_token)])
-def readyz() -> Readiness:
-    """Readiness: is the service token valid and is the gateway configured.
+async def readyz() -> Readiness:
+    """Readiness: valid service token, configured gateway, and a budgeted key.
 
-    Checks configuration only; it does not call the gateway.
+    Asks the gateway about this service's own key once; a confirmed key is
+    remembered, so later probes do not call the gateway again.
     """
     base_url = os.getenv("LITELLM_BASE_URL", "")
     api_key = os.getenv("LITELLM_API_KEY", "")
@@ -132,9 +137,11 @@ def readyz() -> Readiness:
         ("LITELLM_API_KEY", api_key),
     )
     missing = [name for name, value in gateway_variables if not value]
+    budgeted = not missing and await key_is_budgeted(api_key)
     return Readiness(
-        status="ready" if not missing else "not_ready",
+        status="ready" if budgeted else "not_ready",
         gateway_configured=not missing,
+        key_budgeted=budgeted,
         missing=missing,
     )
 
@@ -151,7 +158,7 @@ class EmbedResponse(BaseModel):
     usage: GatewayUsage | None = None
 
 
-@app.post("/embed", response_model=EmbedResponse, dependencies=protected)
+@app.post("/embed", response_model=EmbedResponse, dependencies=budgeted)
 async def embed(req: EmbedRequest) -> EmbedResponse:
     """Generate embeddings for one or more texts via text-embedding-3-small."""
     client = _client(within(EMBED_TIMEOUT_SECONDS, req.timeout_seconds))
@@ -224,7 +231,7 @@ class MatchReasonsResponse(MatchReasons):
     usage: GatewayUsage | None = None
 
 
-@app.post("/match-reasons", response_model=MatchReasonsResponse, dependencies=protected)
+@app.post("/match-reasons", response_model=MatchReasonsResponse, dependencies=budgeted)
 async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
     """Generate human-readable match reasons for search result candidates.
 
@@ -355,7 +362,7 @@ class SuggestCriteriaResponse(SuggestedCriteria):
     usage: GatewayUsage | None = None
 
 
-@app.post("/suggest-criteria", response_model=SuggestCriteriaResponse, dependencies=protected)
+@app.post("/suggest-criteria", response_model=SuggestCriteriaResponse, dependencies=budgeted)
 async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaResponse:
     """Propose acceptance criteria for one test case.
 

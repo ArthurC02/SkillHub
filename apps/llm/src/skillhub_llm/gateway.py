@@ -6,12 +6,15 @@ request rather than a crash at startup.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import math
 import os
 from functools import lru_cache
+from http import HTTPStatus
 from typing import Literal
 
+import httpx
 from fastapi import HTTPException
 from openai import AsyncOpenAI
 from pydantic import BaseModel, ConfigDict, Field
@@ -36,22 +39,69 @@ def gateway() -> tuple[str, str]:
             status_code=503,
             detail="LiteLLM gateway not configured: set LITELLM_BASE_URL and LITELLM_API_KEY",
         )
-    # An unset master key is None, and api_key already passed the truthiness
-    # check above, so an unset master key can never match here.
-    if api_key == os.getenv("LITELLM_MASTER_KEY"):
+    return base_url, api_key
+
+
+KEY_CHECK_TIMEOUT = 5.0
+_budgeted_keys: set[str] = set()
+
+
+def _fingerprint(key: str) -> str:
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
+async def key_has_finite_budget(
+    base_url: str, key: str, transport: httpx.AsyncBaseTransport | None = None
+) -> bool:
+    """Ask the gateway whether this key carries a finite budget it has not spent.
+
+    Only a Virtual Key has one; the gateway's admin key has none, so this tells
+    the two apart without this process ever holding the admin key.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=KEY_CHECK_TIMEOUT, transport=transport) as http:
+            response = await http.get(
+                f"{base_url.rstrip('/')}/key/info", headers={"Authorization": f"Bearer {key}"}
+            )
+        if response.status_code != HTTPStatus.OK:
+            return False
+        info = response.json().get("info") or {}
+    except httpx.HTTPError, ValueError, AttributeError:
+        return False
+    budget, spend = info.get("max_budget"), info.get("spend")
+    numbers = all(
+        isinstance(v, int | float) and not isinstance(v, bool) and math.isfinite(v)
+        for v in (budget, spend)
+    )
+    return numbers and budget > 0 and 0 <= spend < budget
+
+
+async def key_is_budgeted(key: str) -> bool:
+    base_url, _ = gateway()
+    fingerprint = _fingerprint(key)
+    if fingerprint in _budgeted_keys:
+        return True
+    if not await key_has_finite_budget(base_url, key):
+        return False
+    _budgeted_keys.add(fingerprint)
+    return True
+
+
+async def require_budgeted_key(key: str | None) -> None:
+    if not key or not await key_is_budgeted(key):
         logger.error(
-            "LITELLM_API_KEY is the gateway master key. It must be a Virtual Key "
-            "with its own budget and model allowlist; the master key "
-            "is the gateway's admin credential and this process must not hold it."
+            "a gateway key without a finite, unspent budget was refused; it must be a "
+            "Virtual Key with its own budget and model allowlist, never the admin key"
         )
         raise HTTPException(
             status_code=503,
-            detail=(
-                "LITELLM_API_KEY 是閘道的 master key；"
-                "這個服務只能拿有預算與模型白名單的 Virtual Key"
-            ),
+            detail="這個閘道金鑰不是有預算與模型白名單的 Virtual Key，或閘道無法確認它",
         )
-    return base_url, api_key
+
+
+async def require_budgeted_service_key() -> None:
+    _, api_key = gateway()
+    await require_budgeted_key(api_key)
 
 
 def within(ceiling: float, requested: float | None) -> float:

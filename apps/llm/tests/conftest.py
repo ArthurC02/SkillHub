@@ -16,3 +16,20 @@ def litellm_gateway(monkeypatch: pytest.MonkeyPatch) -> None:
     # connection refused instead of waiting on a real network call.
     monkeypatch.setenv("LITELLM_BASE_URL", "http://127.0.0.1:9")
     monkeypatch.setenv("LITELLM_API_KEY", "sk-test-not-a-real-key")
+
+
+@pytest.fixture(autouse=True)
+def gateway_confirms_every_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The gateway answering "this key has a budget" is the normal case here.
+
+    Tests of the budget check itself call `key_has_finite_budget` through
+    `gateway._real_key_check` or override this patch.
+    """
+    from skillhub_llm import gateway
+
+    async def confirmed(base_url: str, key: str, transport=None) -> bool:
+        return True
+
+    monkeypatch.setattr(gateway, "_real_key_check", gateway.key_has_finite_budget, raising=False)
+    monkeypatch.setattr(gateway, "key_has_finite_budget", confirmed)
+    gateway._budgeted_keys.clear()

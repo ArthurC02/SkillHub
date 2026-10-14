@@ -42,6 +42,10 @@ class MissingEnum(Enum):
 class Readiness(BaseModel):
     status: Status1
     gateway_configured: bool
+    key_budgeted: bool = Field(
+        ...,
+        description='The gateway confirmed LITELLM_API_KEY has a finite budget it has\nnot spent. False when the gateway is not configured, unreachable,\nor answers for a key without a budget.\n',
+    )
     missing: list[MissingEnum] = Field(
         ..., description='Names of the unset gateway variables; empty when ready.'
     )

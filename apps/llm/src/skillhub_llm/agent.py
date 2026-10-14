@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 from typing import Literal
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -21,6 +20,7 @@ from skillhub_llm.gateway import (
     client,
     completion_usage,
     request_metadata,
+    require_budgeted_key,
     served_model,
 )
 from skillhub_llm.untrusted import data_block_rules, fence, scrub
@@ -198,10 +198,7 @@ async def agent_step(
     request: Request,
     x_agent_gateway_key: str | None = Header(default=None),
 ) -> AgentStepResponse:
-    if not x_agent_gateway_key or x_agent_gateway_key == os.getenv("LITELLM_MASTER_KEY"):
-        raise HTTPException(
-            status_code=503, detail="an agent step requires a scoped gateway Virtual Key"
-        )
+    await require_budgeted_key(x_agent_gateway_key)
 
     instructions = INSTRUCTIONS.get(req.agent)
     if instructions is None:

@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from skillhub_llm import agent
+from skillhub_llm import agent, gateway
 from skillhub_llm.app import app
 
 client = TestClient(app, headers={"Authorization": "Bearer test-service-token"})
@@ -145,9 +145,9 @@ def test_an_agent_without_instructions_is_refused_before_any_model_call():
 def test_the_service_token_and_a_scoped_key_are_both_required(monkeypatch):
     assert TestClient(app).post("/v1/agent/step", json=request()).status_code == 401
     assert client.post("/v1/agent/step", json=request()).status_code == 503
-    monkeypatch.setenv("LITELLM_MASTER_KEY", "master")
-    master = {"X-Agent-Gateway-Key": "master"}
-    assert client.post("/v1/agent/step", headers=master, json=request()).status_code == 503
+    monkeypatch.setattr(gateway, "key_has_finite_budget", unbudgeted)
+    admin = {"X-Agent-Gateway-Key": "sk-admin"}
+    assert client.post("/v1/agent/step", headers=admin, json=request()).status_code == 503
 
 
 def test_the_daily_report_finishes_with_cited_items():
@@ -157,3 +157,7 @@ def test_the_daily_report_finishes_with_cited_items():
     item = calls[0]["tools"][-1]["function"]["parameters"]["properties"]["items"]["items"]
     assert item["properties"]["status"]["enum"] == ["fine", "attention"]
     assert item["properties"]["cites"]["minItems"] == 1
+
+
+async def unbudgeted(base_url, key, transport=None):
+    return False

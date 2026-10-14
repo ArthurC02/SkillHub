@@ -10,6 +10,7 @@ import logging
 import os
 from collections.abc import Callable
 
+import httpx
 import pytest
 from fastapi import HTTPException
 from openai import AsyncOpenAI
@@ -44,45 +45,126 @@ def test_the_client_makes_one_attempt_with_the_declared_ceiling(
     assert str(client.base_url).rstrip("/") == os.environ["LITELLM_BASE_URL"].rstrip("/"), name
 
 
-def test_the_master_key_is_rejected(monkeypatch, caplog) -> None:
-    """A process handling untrusted content must never hold the gateway's
-    admin credential.
-    """
-    monkeypatch.setenv("LITELLM_API_KEY", "sk-fake-master")
-    monkeypatch.setenv("LITELLM_MASTER_KEY", "sk-fake-master")
-
-    with caplog.at_level(logging.ERROR, logger="skillhub_llm.gateway"):
-        with pytest.raises(HTTPException) as excinfo:
-            gateway.gateway()
-
-    assert excinfo.value.status_code == 503
-    assert "master key" in excinfo.value.detail
-    assert any("master key" in r.message for r in caplog.records), caplog.text
-
-
-def test_a_virtual_key_is_returned(monkeypatch, caplog) -> None:
-    """The other half: a correct deployment must stay quiet and pass through, or
-    the message becomes noise and stops being read."""
+def test_gateway_returns_the_configured_url_and_key(monkeypatch) -> None:
     monkeypatch.setenv("LITELLM_API_KEY", "sk-fake-virtual-key")
-    monkeypatch.setenv("LITELLM_MASTER_KEY", "sk-fake-master-key")
-
-    with caplog.at_level(logging.ERROR, logger="skillhub_llm.gateway"):
-        base_url, api_key = gateway.gateway()
-
-    assert (base_url, api_key) == (os.environ["LITELLM_BASE_URL"], "sk-fake-virtual-key")
-    assert caplog.records == []
-
-
-def test_an_unset_master_key_does_not_match_a_real_virtual_key(monkeypatch) -> None:
-    """`os.getenv` returns None for an unset var, and `api_key == None` is False
-    for any real key - so a deployment that never set LITELLM_MASTER_KEY must
-    not have its Virtual Key rejected."""
-    monkeypatch.setenv("LITELLM_API_KEY", "sk-fake-virtual-key")
-    monkeypatch.delenv("LITELLM_MASTER_KEY", raising=False)
 
     base_url, api_key = gateway.gateway()
 
     assert (base_url, api_key) == (os.environ["LITELLM_BASE_URL"], "sk-fake-virtual-key")
+
+
+def key_info(status: int, body: object) -> httpx.MockTransport:
+    def answer(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/key/info", request.url
+        assert request.headers["Authorization"] == "Bearer sk-asked"
+        if isinstance(body, Exception):
+            raise body
+        if isinstance(body, str):
+            return httpx.Response(status, text=body)
+        return httpx.Response(status, json=body)
+
+    return httpx.MockTransport(answer)
+
+
+def budget_check(status: int, body: object) -> bool:
+    return asyncio.run(
+        gateway._real_key_check(
+            "http://gateway:4000/", "sk-asked", transport=key_info(status, body)
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    "status, body, budgeted",
+    [
+        (200, {"info": {"max_budget": 10.0, "spend": 1.0}}, True),
+        (200, {"info": {"max_budget": 10, "spend": 0}}, True),
+        (200, {"info": {"max_budget": 10.0, "spend": 9.99}}, True),
+        (200, {"info": {"max_budget": 10.0, "spend": 10.0}}, False),
+        (200, {"info": {"max_budget": None, "spend": 0.0}}, False),
+        (200, {"info": {"spend": 0.0}}, False),
+        (200, {"info": {"max_budget": 0, "spend": 0}}, False),
+        (200, {"info": {"max_budget": 10.0, "spend": -1.0}}, False),
+        (200, {"info": {"max_budget": True, "spend": 0}}, False),
+        (200, {"info": {"max_budget": "10", "spend": 0}}, False),
+        (200, {"info": {"max_budget": float("inf"), "spend": 0}}, False),
+        (200, {}, False),
+        (200, ["not", "an", "object"], False),
+        (200, "not json", False),
+        (401, {"info": {"max_budget": 10.0, "spend": 1.0}}, False),
+        (200, httpx.ConnectError("refused"), False),
+    ],
+    ids=[
+        "virtual-key",
+        "whole-numbers",
+        "just-under-budget",
+        "budget-spent",
+        "admin-key-no-budget",
+        "budget-absent",
+        "zero-budget",
+        "negative-spend",
+        "boolean-budget",
+        "string-budget",
+        "infinite-budget",
+        "no-info",
+        "not-an-object",
+        "not-json",
+        "refused",
+        "unreachable",
+    ],
+)
+def test_only_a_key_with_a_finite_unspent_budget_is_confirmed(status, body, budgeted) -> None:
+    assert budget_check(status, body) is budgeted
+
+
+def test_a_confirmed_key_is_not_asked_about_again(monkeypatch) -> None:
+    asked = []
+
+    async def check(base_url, key, transport=None):
+        asked.append(key)
+        return True
+
+    monkeypatch.setattr(gateway, "key_has_finite_budget", check)
+    assert asyncio.run(gateway.key_is_budgeted("sk-a")) is True
+    assert asyncio.run(gateway.key_is_budgeted("sk-a")) is True
+    assert asked == ["sk-a"]
+
+
+def test_a_refused_key_is_asked_about_again(monkeypatch) -> None:
+    asked = []
+
+    async def check(base_url, key, transport=None):
+        asked.append(key)
+        return len(asked) > 1
+
+    monkeypatch.setattr(gateway, "key_has_finite_budget", check)
+    assert asyncio.run(gateway.key_is_budgeted("sk-a")) is False
+    assert asyncio.run(gateway.key_is_budgeted("sk-a")) is True
+    assert asked == ["sk-a", "sk-a"]
+
+
+def test_an_unconfirmed_key_is_refused_and_logged(monkeypatch, caplog) -> None:
+    async def refused(base_url, key, transport=None):
+        return False
+
+    monkeypatch.setattr(gateway, "key_has_finite_budget", refused)
+    with caplog.at_level(logging.ERROR, logger="skillhub_llm.gateway"):
+        with pytest.raises(HTTPException) as excinfo:
+            asyncio.run(gateway.require_budgeted_service_key())
+
+    assert excinfo.value.status_code == 503
+    assert "Virtual Key" in excinfo.value.detail
+    assert any("Virtual Key" in r.message for r in caplog.records), caplog.text
+
+
+def test_a_missing_scoped_key_is_refused_without_asking_the_gateway(monkeypatch) -> None:
+    async def never(base_url, key, transport=None):
+        raise AssertionError("asked the gateway about no key")
+
+    monkeypatch.setattr(gateway, "key_has_finite_budget", never)
+    with pytest.raises(HTTPException) as excinfo:
+        asyncio.run(gateway.require_budgeted_key(None))
+    assert excinfo.value.status_code == 503
 
 
 def test_every_ceiling_is_a_real_number() -> None:
