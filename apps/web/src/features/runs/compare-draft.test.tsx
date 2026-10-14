@@ -109,12 +109,12 @@ test("a failed comparison gives a local next step instead of the server error", 
   });
   for (
     let attempts = 0;
-    attempts < 200 && !container.textContent?.includes("請稍後再試一次");
+    attempts < 200 && !container.textContent?.includes("暫時無法讀取比較結果");
     attempts += 1
   ) {
     await act(async () => new Promise((resolve) => setTimeout(resolve, 5)));
   }
 
-  expect(container.textContent).toContain("請稍後再試一次");
+  expect(container.textContent).toContain("暫時無法讀取比較結果");
   expect(container.textContent).not.toContain("database unavailable");
 });

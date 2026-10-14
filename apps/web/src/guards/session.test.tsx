@@ -141,6 +141,33 @@ test("IA-6 ReadFailure renders nothing when there is no error", async () => {
   expect(text()).toBe("");
 });
 
+test("custom read failures keep their retry action and continuation focus", async () => {
+  const retry = vi.fn();
+  await render(
+    <>
+      <h1 id="retry-heading" tabIndex={-1}>
+        比較結果
+      </h1>
+      <ReadFailure
+        error={new ApiError(503, "service unavailable")}
+        what="比較結果"
+        retry={retry}
+        focusTarget="retry-heading"
+      >
+        <p role="alert">有一個項目讀取失敗，請再試一次。</p>
+      </ReadFailure>
+    </>,
+    () => text().length > 0,
+  );
+  expect(container.querySelectorAll('[role="alert"]')).toHaveLength(1);
+  expect(text()).not.toContain("暫時無法讀取");
+  const button = container.querySelector("button");
+  expect(button?.textContent).toBe("再試一次");
+  await act(async () => button!.click());
+  expect(retry).toHaveBeenCalledOnce();
+  expect(document.activeElement).toBe(container.querySelector("h1"));
+});
+
 test("IA-6 a page's own non-401 wording survives; the 401 branch replaces it", async () => {
   const own = <p role="alert">無法比較：伺服器忙碌</p>;
   await render(

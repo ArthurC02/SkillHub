@@ -8,50 +8,84 @@ import type { RunListItem } from "../../runs.service";
 import { RunVerdict } from "../../components/RunVerdict";
 import { runStatusLabel } from "../../runs.model";
 
-function CandidateList({
-  selfPending,
-  selfError,
-  testCaseId,
-  siblingsPending,
-  siblingsError,
-  candidates,
-  hasMoreCandidates,
-  loadingMoreCandidates,
-  onLoadMoreCandidates,
-  versionsPending,
-  versionsError,
-  versions,
-  onPick,
-}: {
+type CandidateListProps = {
   selfPending: boolean;
   selfError: Error | null;
+  onRetrySelf: () => void;
   testCaseId: string | undefined;
   siblingsPending: boolean;
   siblingsError: Error | null;
+  onRetrySiblings: () => void;
   candidates: RunListItem[];
   hasMoreCandidates: boolean;
   loadingMoreCandidates: boolean;
   onLoadMoreCandidates: () => void;
   versionsPending: boolean;
   versionsError: Error | null;
+  onRetryVersions: () => void;
   versions: SkillVersionSummary[];
   onPick: (id: string) => void;
-}) {
+};
+
+function CandidateList({
+  selfPending,
+  selfError,
+  onRetrySelf,
+  testCaseId,
+  siblingsPending,
+  siblingsError,
+  onRetrySiblings,
+  candidates,
+  hasMoreCandidates,
+  loadingMoreCandidates,
+  onLoadMoreCandidates,
+  versionsPending,
+  versionsError,
+  onRetryVersions,
+  versions,
+  onPick,
+}: CandidateListProps) {
   if (selfPending) return <Loading what="目前這次試跑" />;
-  if (selfError) return <ReadFailure error={selfError} what="目前這次試跑" />;
+  if (selfError)
+    return (
+      <ReadFailure
+        error={selfError}
+        what="目前這次試跑"
+        retry={onRetrySelf}
+        focusTarget="run-comparison-heading"
+      />
+    );
   if (!testCaseId) {
     return <p>這次試跑的測試題已無法解析，因此無法列出同一個測試題的其他試跑紀錄。</p>;
   }
   if (siblingsPending) return <Loading what="可比較的試跑紀錄" />;
-  if (siblingsError) return <ReadFailure error={siblingsError} what="可比較的試跑紀錄" />;
+  if (siblingsError)
+    return (
+      <ReadFailure
+        error={siblingsError}
+        what="可比較的試跑紀錄"
+        retry={onRetrySiblings}
+        focusTarget="run-comparison-heading"
+      />
+    );
   if (candidates.length === 0) {
     return <p>這個測試題目前只有這一次試跑紀錄，沒有同一個測試題的其他試跑紀錄可選。</p>;
   }
 
   return (
     <>
+      {hasMoreCandidates && (
+        <p className="note">
+          目前僅列出已載入的紀錄；更早的試跑可繼續載入，不能據此判定沒有其他紀錄。
+        </p>
+      )}
       {versionsPending && <Loading what="候選試跑紀錄的 Version 編號" />}
-      <ReadFailure error={versionsError} what="候選試跑紀錄的 Version 編號" />
+      <ReadFailure
+        error={versionsError}
+        what="候選試跑紀錄的 Version 編號"
+        retry={onRetryVersions}
+        focusTarget="run-comparison-heading"
+      />
       <ul className="download-list">
         {candidates.map((run) => {
           const version = versions.find(
@@ -109,50 +143,43 @@ function CandidateList({
 export function CompareCandidatesPicker({
   selfPending,
   selfError,
+  onRetrySelf,
   testCaseId,
   siblingsPending,
   siblingsError,
+  onRetrySiblings,
   candidates,
   hasMoreCandidates,
   loadingMoreCandidates,
   onLoadMoreCandidates,
   versionsPending,
   versionsError,
+  onRetryVersions,
   versions,
   draft,
   onDraftChange,
   onPick,
-}: {
-  selfPending: boolean;
-  selfError: Error | null;
-  testCaseId: string | undefined;
-  siblingsPending: boolean;
-  siblingsError: Error | null;
-  candidates: RunListItem[];
-  hasMoreCandidates: boolean;
-  loadingMoreCandidates: boolean;
-  onLoadMoreCandidates: () => void;
-  versionsPending: boolean;
-  versionsError: Error | null;
-  versions: SkillVersionSummary[];
+}: CandidateListProps & {
   draft: string;
   onDraftChange: (value: string) => void;
-  onPick: (id: string) => void;
 }) {
   return (
     <>
       <CandidateList
         selfPending={selfPending}
         selfError={selfError}
+        onRetrySelf={onRetrySelf}
         testCaseId={testCaseId}
         siblingsPending={siblingsPending}
         siblingsError={siblingsError}
+        onRetrySiblings={onRetrySiblings}
         candidates={candidates}
         hasMoreCandidates={hasMoreCandidates}
         loadingMoreCandidates={loadingMoreCandidates}
         onLoadMoreCandidates={onLoadMoreCandidates}
         versionsPending={versionsPending}
         versionsError={versionsError}
+        onRetryVersions={onRetryVersions}
         versions={versions}
         onPick={onPick}
       />

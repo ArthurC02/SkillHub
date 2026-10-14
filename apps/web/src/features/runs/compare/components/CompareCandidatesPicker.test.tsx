@@ -45,15 +45,18 @@ afterEach(async () => {
 const BASE = {
   selfPending: false,
   selfError: null,
+  onRetrySelf: () => {},
   testCaseId: "tc-1",
   siblingsPending: false,
   siblingsError: null,
+  onRetrySiblings: () => {},
   candidates: [] as RunListItem[],
   hasMoreCandidates: false,
   loadingMoreCandidates: false,
   onLoadMoreCandidates: () => {},
   versionsPending: false,
   versionsError: null as Error | null,
+  onRetryVersions: () => {},
   versions: [] as SkillVersionSummary[],
   draft: "",
   onDraftChange: () => {},
@@ -190,6 +193,7 @@ test("offers older Runs when the current 測試題 has another page", async () =
     hasMoreCandidates: true,
     onLoadMoreCandidates,
   });
+  expect(text()).toContain("目前僅列出已載入的紀錄");
 
   const loadMore = Array.from(container.querySelectorAll("button")).find(
     (item) => item.textContent === "載入更早的試跑紀錄",

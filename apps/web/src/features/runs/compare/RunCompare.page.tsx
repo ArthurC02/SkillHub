@@ -2,7 +2,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { LoginRequired, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { useMe } from "../../../core/session/me.service";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useRunComparison } from "../evaluation.service";
 import { useRun, useRuns } from "../runs.service";
@@ -40,16 +40,19 @@ export function RunCompare() {
     <CompareCandidatesPicker
       selfPending={self.isPending}
       selfError={self.error}
+      onRetrySelf={() => void self.refetch()}
       testCaseId={testCaseId}
       siblingsPending={siblings.isPending}
       siblingsError={siblings.error}
+      onRetrySiblings={() => void siblings.refetch()}
       candidates={candidates}
       hasMoreCandidates={siblings.hasNextPage}
       loadingMoreCandidates={siblings.isFetchingNextPage}
       onLoadMoreCandidates={() => void siblings.fetchNextPage()}
       versionsPending={versions.isPending}
       versionsError={versions.error}
-      versions={versions.data?.versions ?? []}
+      onRetryVersions={() => void versions.refetch()}
+      versions={versions.error ? [] : (versions.data?.versions ?? [])}
       draft={draft}
       onDraftChange={setDraft}
       onPick={pick}
@@ -58,7 +61,9 @@ export function RunCompare() {
 
   return (
     <section>
-      <h1>試跑比較</h1>
+      <h1 id="run-comparison-heading" tabIndex={-1}>
+        試跑比較
+      </h1>
       {self.data && (
         <SkillWorkspaceNav
           skillId={self.data.skill_id}
@@ -67,34 +72,28 @@ export function RunCompare() {
         />
       )}
 
-      {comparison.data && <ComparisonLead data={comparison.data} />}
-
-      <details>
-        <summary>進階資訊（試跑紀錄識別碼）</summary>
-        <ul>
-          <li>
-            這一邊：<code>{runId}</code>
-          </li>
-          <li>另一邊：{against === "" ? "尚未選擇" : <code>{against}</code>}</li>
-        </ul>
-      </details>
-
-      {loggedOut ? (
-        <LoginRequired what="試跑比較" />
-      ) : comparison.data ? (
+      <ComparisonResult comparison={comparison} against={against}>
         <details>
-          <summary>換一個要比較的試跑紀錄</summary>
-          {pickForm}
+          <summary>進階資訊（試跑紀錄識別碼）</summary>
+          <ul>
+            <li>
+              這一邊：<code>{runId}</code>
+            </li>
+            <li>另一邊：{against === "" ? "尚未選擇" : <code>{against}</code>}</li>
+          </ul>
         </details>
-      ) : (
-        pickForm
-      )}
 
-      {comparison.isPending && against !== "" && <Loading what="比較" />}
-      <ReadFailure error={comparison.error} what="比較結果">
-        <p role="alert">比較結果暫時讀不到，請稍後再試一次。</p>
-      </ReadFailure>
-      {comparison.data && <ComparisonTables data={comparison.data} />}
+        {loggedOut ? (
+          <LoginRequired what="試跑比較" />
+        ) : comparison.data ? (
+          <details>
+            <summary>換一個要比較的試跑紀錄</summary>
+            {pickForm}
+          </details>
+        ) : (
+          pickForm
+        )}
+      </ComparisonResult>
 
       <p className="note">
         <Link to="/runs/$runId" params={{ runId }}>
@@ -102,5 +101,41 @@ export function RunCompare() {
         </Link>
       </p>
     </section>
+  );
+}
+
+function ComparisonResult({
+  comparison,
+  against,
+  children,
+}: {
+  comparison: ReturnType<typeof useRunComparison>;
+  against: string;
+  children: ReactNode;
+}) {
+  if (against === "") return <>{children}</>;
+  const report = comparison.error || comparison.isFetching ? undefined : comparison.data;
+  return (
+    <>
+      {report && <ComparisonLead data={report} />}
+      <button
+        type="button"
+        aria-disabled={comparison.isFetching}
+        onClick={() => {
+          if (!comparison.isFetching) void comparison.refetch();
+        }}
+      >
+        {comparison.isFetching ? "更新比較中…" : "更新比較結果"}
+      </button>
+      {comparison.isFetching && <Loading what="比較" />}
+      <ReadFailure
+        error={comparison.isFetching ? null : comparison.error}
+        what="比較結果"
+        retry={() => void comparison.refetch()}
+        focusTarget="run-comparison-heading"
+      />
+      {children}
+      {report && <ComparisonTables data={report} />}
+    </>
   );
 }
