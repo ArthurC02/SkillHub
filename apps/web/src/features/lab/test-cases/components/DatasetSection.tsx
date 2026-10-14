@@ -16,12 +16,15 @@ export function DatasetSection({
   versionId?: string;
 }) {
   const datasets = useTestCaseDatasets(testCaseId);
+  const readableDatasets = datasets.error ? undefined : datasets.data;
   const [message, setMessage] = useState("");
   const remove = useDeleteDataset(testCaseId);
 
   return (
     <>
-      <h2>測試資料</h2>
+      <h2 id="test-case-datasets-heading" tabIndex={-1}>
+        測試資料
+      </h2>
       <p>
         <Link
           to="/lab/test-cases/$testCaseId/datasets"
@@ -32,18 +35,25 @@ export function DatasetSection({
         </Link>
       </p>
       {datasets.isPending && <Loading what="檔案清單" />}
-      <ReadFailure error={datasets.error} what="檔案清單" />
-      {datasets.data &&
-        (datasets.data.datasets.length === 0 ? (
+      <ReadFailure
+        error={datasets.error}
+        what="檔案清單"
+        retry={() => void datasets.refetch()}
+        retrying={datasets.isFetching}
+        focusTarget="test-case-datasets-heading"
+      />
+      {readableDatasets &&
+        (readableDatasets.datasets.length === 0 ? (
           <p>還沒有上傳任何檔案。</p>
         ) : (
           <>
             <p className="note">
-              目前 {datasets.data.datasets.length} 個檔案，合計 {bytes(datasets.data.total_bytes)}
+              目前 {readableDatasets.datasets.length} 個檔案，合計{" "}
+              {bytes(readableDatasets.total_bytes)}
               。上限在上傳頁的「大小限制」。
             </p>
             <ul className="file-tree" data-role="evidence">
-              {datasets.data.datasets.map((d) => (
+              {readableDatasets.datasets.map((d) => (
                 <li key={d.dataset_id}>
                   {d.file_name}{" "}
                   <span className="note">

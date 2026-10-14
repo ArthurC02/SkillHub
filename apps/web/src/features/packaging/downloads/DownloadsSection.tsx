@@ -23,10 +23,12 @@ export function Downloads({
   selectedArtifact?: string;
 }) {
   const downloads = useDownloads();
+  const readableDownloads = downloads.error ? undefined : downloads.data;
   const [message, setMessage] = useState("");
   const remove = useDeleteDownload();
   const Heading = embedded ? "h2" : "h1";
-  const selected = downloads.data?.downloads.find(
+  const headingId = embedded ? "delivery-history-heading" : "download-history-heading";
+  const selected = readableDownloads?.downloads.find(
     (artifact) => artifact.artifact_id === selectedArtifact,
   );
   const selectedElement = useRef<HTMLLIElement>(null);
@@ -34,14 +36,22 @@ export function Downloads({
 
   return (
     <section id={embedded ? "delivery-history" : undefined}>
-      <Heading>{embedded ? "交付紀錄" : "下載紀錄"}</Heading>
+      <Heading id={headingId} tabIndex={-1}>
+        {embedded ? "交付紀錄" : "下載紀錄"}
+      </Heading>
       <p className="note" data-role="teaching">
         這個工作區打包過的套件，新的在上面。到期的仍然列在這裡並標示已過期——那與「沒有這一筆」是兩個不同的答案。
       </p>
 
       {downloads.isPending && <Loading what="下載紀錄" />}
-      <ReadFailure error={downloads.error} what="下載紀錄" />
-      {downloads.data && selectedArtifact && !selected && (
+      <ReadFailure
+        error={downloads.error}
+        what="下載紀錄"
+        retry={() => void downloads.refetch()}
+        retrying={downloads.isFetching}
+        focusTarget={headingId}
+      />
+      {readableDownloads && selectedArtifact && !selected && (
         <p role="status" className="note">
           這個工作區目前找不到這筆交付紀錄。它可能已刪除，或目前帳號無法檢視。{" "}
           <Link to="/workspace/downloads" search={{}}>
@@ -54,8 +64,8 @@ export function Downloads({
         <p role="alert">沒有刪成，可以再按一次。</p>
       </ReadFailure>
 
-      {downloads.data &&
-        (downloads.data.downloads.length === 0 ? (
+      {readableDownloads &&
+        (readableDownloads.downloads.length === 0 ? (
           <p>
             還沒有打包過任何套件。這裡是空的，代表你還沒有打包過東西，不是紀錄被清掉了。
             要打包，先從 <Link to="/library">資產庫</Link> 挑一個。
@@ -63,7 +73,7 @@ export function Downloads({
         ) : (
           <>
             <ul className="download-list" data-role="evidence">
-              {downloads.data.downloads.map((artifact) => {
+              {readableDownloads.downloads.map((artifact) => {
                 const current = artifact === selected;
                 return (
                   <li
@@ -117,10 +127,12 @@ export function Downloads({
 function DownloadHistory({ artifact }: { artifact: DownloadArtifact }) {
   const [open, setOpen] = useState(false);
   const records = useDownloadRecords(artifact.artifact_id, open && artifact.download_count > 0);
+  const readableRecords = records.error ? undefined : records.data;
+  const headingId = `download-records-${artifact.artifact_id}`;
 
   return (
     <details onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
-      <summary>誰下載過、什麼時候（{artifact.download_count}）</summary>
+      <summary id={headingId}>誰下載過、什麼時候（{artifact.download_count}）</summary>
       {artifact.download_count === 0 ? (
         <p className="note">還沒有人下載過這個檔案。建立一個套件不等於取走它。</p>
       ) : (
@@ -132,10 +144,16 @@ function DownloadHistory({ artifact }: { artifact: DownloadArtifact }) {
               載入下載紀錄中…（共 {artifact.download_count} 筆）
             </p>
           )}
-          <ReadFailure error={records.error} what="逐筆下載紀錄" />
-          {records.data && (
+          <ReadFailure
+            error={records.error}
+            what="逐筆下載紀錄"
+            retry={() => void records.refetch()}
+            retrying={records.isFetching}
+            focusTarget={headingId}
+          />
+          {readableRecords && (
             <ul className="note">
-              {records.data.records.map((r) => (
+              {readableRecords.records.map((r) => (
                 <li key={`${r.downloaded_at}-${r.actor}`}>
                   <Timestamp at={r.downloaded_at} />｜{r.actor}
                 </li>
