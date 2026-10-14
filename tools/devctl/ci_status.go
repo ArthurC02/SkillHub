@@ -74,13 +74,24 @@ func ciStatus(root string, args []string, out io.Writer) (int, error) {
 }
 
 func parseCIStatusArgs(args []string) (ref string, wait bool, err error) {
+	usage := errors.New("usage: devctl ci-status [ref | --sha ref] [--wait]")
 	ref = "HEAD"
-	for _, arg := range args {
+	for index := 0; index < len(args); index++ {
+		arg := args[index]
 		switch {
 		case arg == "--wait":
 			wait = true
+		case arg == "--sha":
+			if index+1 == len(args) || strings.HasPrefix(args[index+1], "-") {
+				return "", false, usage
+			}
+		case strings.HasPrefix(arg, "--sha="):
+			ref = strings.TrimPrefix(arg, "--sha=")
+			if ref == "" {
+				return "", false, usage
+			}
 		case strings.HasPrefix(arg, "-"):
-			return "", false, errors.New("usage: devctl ci-status [ref] [--wait]")
+			return "", false, usage
 		default:
 			ref = arg
 		}

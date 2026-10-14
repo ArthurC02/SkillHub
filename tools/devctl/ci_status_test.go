@@ -45,6 +45,11 @@ func TestParseCIStatusArgs(t *testing.T) {
 		{"--wait alone keeps the default ref", []string{"--wait"}, "HEAD", true, false},
 		{"a ref and --wait together", []string{"abc123", "--wait"}, "abc123", true, false},
 		{"an unknown flag is rejected", []string{"--bogus"}, "", false, true},
+		{"--sha names the ref", []string{"--sha", "abc123", "--wait"}, "abc123", true, false},
+		{"--sha= names the ref", []string{"--sha=abc123"}, "abc123", false, false},
+		{"--sha without a value is rejected", []string{"--sha"}, "", false, true},
+		{"--sha followed by a flag is rejected", []string{"--sha", "--wait"}, "", false, true},
+		{"--sha= with an empty value is rejected", []string{"--sha="}, "", false, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
