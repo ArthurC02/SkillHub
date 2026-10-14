@@ -13,7 +13,7 @@ import (
 var docProseSkipDirs = map[string]bool{
 	dirGit: true, dirNodeModules: true, dirVenv: true, dirDevctlCache: true,
 	dirDist: true, dirPycache: true, ".agents": true, ".codex": true,
-	"worktrees": true,
+	dirWorktrees: true,
 }
 
 var docProseSkipTrees = []string{

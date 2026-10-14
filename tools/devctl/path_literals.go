@@ -9,6 +9,7 @@ const (
 	dirBuildOutput = "build"
 	dirGen         = "gen"
 	dirPycache     = "__pycache__"
+	dirWorktrees   = "worktrees"
 
 	extGo   = ".go"
 	extTS   = ".ts"

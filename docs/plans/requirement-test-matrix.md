@@ -45,7 +45,7 @@
 | WS-001 | 有測試 | `TestForkCatalogSkillIntoCallerWorkspace`、`WS-001 the detail page lists the versions, newest first, with the oldest saying why it has no comparison` | |
 | WS-002 | 有測試 | `TestTestCaseCRUDAndPromptValidation`、`TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources` | |
 | TEST-001 | 有測試 | `TestTestCaseCRUDAndPromptValidation`、`02:TEST-001 第 3 條 a user can add, delete and withdraw the confirmation of a criterion` | |
-| TEST-002 | 有測試 | `02:TEST-002 the upload rules are on screen before anything is uploaded`、`02:TEST-002 without the rules there is no upload control at all` | |
+| TEST-002 | 有測試 | `02:TEST-002 the upload rules are on screen before anything is uploaded`、`02:TEST-002 without the rules no file can be sent` | |
 | TEST-005 | 有測試 | `02:TEST-005 the summary discloses every required item before the run starts`、`02:TEST-005 a permission change forces a fresh confirmation instead of reusing the old one` | |
 | RUN-001 | 有測試 | `TestIncompatibleWorkIsRefusedBeforeItIsQueued`、`TestRetryAddsAttemptWithoutOverwritingTheProviderMapping` | |
 | RUN-002 | 有測試 | `TestRunWalksTheStateMachineAndIsCleanedUp`、`TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe` | |

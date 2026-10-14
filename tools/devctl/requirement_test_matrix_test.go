@@ -137,3 +137,19 @@ func TestRequirementTestMatrixReadsRuntimeScriptTests(t *testing.T) {
 		t.Fatalf("a test named in a .test.mjs suite was not found: %v", problems)
 	}
 }
+
+func TestRequirementTestMatrixIgnoresTestsInAnotherCheckout(t *testing.T) {
+	t.Parallel()
+	root := writeMatrixFixture(t, matrixBothRows+"| DISC-001 | 有測試 | `TestOnlyInAnotherCheckout` |  |\n")
+	elsewhere := filepath.Join(root, ".claude", "worktrees", "agent-1", "apps", "x", "x_test.go")
+	if err := os.MkdirAll(filepath.Dir(elsewhere), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(elsewhere, []byte("func TestOnlyInAnotherCheckout(t *testing.T) {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	problems := strings.Join(requirementTestMatrixProblems(root), "\n")
+	if !strings.Contains(problems, `names "TestOnlyInAnotherCheckout"`) {
+		t.Fatalf("a test that exists only in another checkout counted as proof: %q", problems)
+	}
+}

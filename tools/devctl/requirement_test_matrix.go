@@ -51,7 +51,7 @@ func specRequirementIDs(root string) (required map[string]bool, postMVP map[stri
 func testCorpus(root string) (map[string]bool, string) {
 	paths := map[string]bool{}
 	var corpus strings.Builder
-	skip := map[string]bool{dirGit: true, dirNodeModules: true, dirVenv: true, dirDevctlCache: true, dirDist: true, dirPycache: true}
+	skip := map[string]bool{dirGit: true, dirNodeModules: true, dirVenv: true, dirDevctlCache: true, dirDist: true, dirPycache: true, dirWorktrees: true}
 
 	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
