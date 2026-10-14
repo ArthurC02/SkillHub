@@ -3,7 +3,12 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { ApiError } from "../../../core/api/client";
-import { useDatasetLimits, useUploadDataset, type Dataset } from "../lab.service";
+import {
+  useDatasetLimits,
+  useUploadDataset,
+  type Dataset,
+  type DatasetLimits,
+} from "../lab.service";
 import { useTestCase, useTestCaseDatasets, type TestCase } from "../testcases.service";
 import {
   roundedBytes,
@@ -21,32 +26,50 @@ export function DatasetUpload() {
   const { testCaseId } = useParams({ from: "/lab/test-cases/$testCaseId/datasets" });
   const { version } = useSearch({ strict: false }) as UploadSearch;
   const testCase = useTestCase(testCaseId);
-
-  if (testCase.isPending) return <Loading what="測試題" />;
-  if (testCase.error instanceof ApiError && testCase.error.status === 404) {
-    return <p role="alert">找不到這個測試題。</p>;
-  }
-  if (testCase.error) return <ReadFailure error={testCase.error} what="測試題" />;
-
-  return <DatasetUploadForm key={testCaseId} testCase={testCase.data} version={version} />;
-}
-
-function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?: string }) {
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [message, setMessage] = useState("");
-  const [uploaded, setUploaded] = useState<Dataset[]>([]);
-  const limits = useDatasetLimits();
-  const stored = useTestCaseDatasets(testCase.test_case_id);
-  const upload = useUploadDataset(testCase.test_case_id);
-  const uploadError = upload.error;
-  const used: TestCaseUsage | undefined = stored.data && {
-    fileCount: stored.data.datasets.length,
-    totalBytes: stored.data.total_bytes,
-  };
+  const data = testCase.error ? undefined : testCase.data;
 
   return (
     <section className="dataset-upload-page">
-      <h1>{testCase.name} 的 Dataset</h1>
+      <h1 id="dataset-heading" tabIndex={-1}>
+        {data ? `${data.name} 的 Dataset` : "測試資料"}
+      </h1>
+      {testCase.isPending && <Loading what="測試題" />}
+      <ReadFailure
+        error={testCase.error}
+        what="測試題"
+        retry={() => void testCase.refetch()}
+        retrying={testCase.isFetching}
+        focusTarget="dataset-heading"
+      >
+        {testCase.error instanceof ApiError && testCase.error.status === 404 && (
+          <p role="alert">找不到這個測試題。</p>
+        )}
+      </ReadFailure>
+      {data ? (
+        <DatasetUploadForm key={testCaseId} testCase={data} version={version} />
+      ) : (
+        <p>
+          <Link to="/lab/test-cases/$testCaseId" params={{ testCaseId }} search={{ version }}>
+            回到這個測試題
+          </Link>
+        </p>
+      )}
+    </section>
+  );
+}
+
+function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?: string }) {
+  const limits = useDatasetLimits();
+  const stored = useTestCaseDatasets(testCase.test_case_id);
+  const rules = limits.error ? undefined : limits.data;
+  const storedData = stored.error ? undefined : stored.data;
+  const used: TestCaseUsage | undefined = storedData && {
+    fileCount: storedData.datasets.length,
+    totalBytes: storedData.total_bytes,
+  };
+
+  return (
+    <>
       <SkillWorkspaceNav
         skillId={testCase.skill_id}
         versionId={version}
@@ -61,69 +84,116 @@ function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?
           回到這個測試題
         </Link>
       </p>
-
       {limits.isPending && <Loading what="上傳規則" />}
-      <ReadFailure error={limits.error} what="上傳規則">
-        <p role="alert">暫時無法讀取上傳規則，請稍後重新整理；規則恢復前不會送出檔案。</p>
+      <ReadFailure
+        error={limits.error}
+        what="上傳規則"
+        retry={() => void limits.refetch()}
+        retrying={limits.isFetching}
+        focusTarget="dataset-heading"
+      >
+        <p role="alert">暫時無法讀取上傳規則；規則恢復前不會送出檔案。</p>
       </ReadFailure>
-
-      {limits.data && (
-        <>
-          <section className="dataset-upload-guide" aria-labelledby="dataset-guide-heading">
-            <h2 id="dataset-guide-heading">上傳前請先確認</h2>
-            <UploadRulesFacts limits={limits.data} used={used} testCase={testCase.test_case_id} />
-          </section>
-
-          <section className="dataset-upload-picker" aria-labelledby="dataset-picker-heading">
-            <div className="dataset-upload-picker-copy">
-              <p className="page-eyebrow">Dataset intake</p>
-              <h2 id="dataset-picker-heading">加入測試資料</h2>
-              <p>每次選擇一個檔案；平台會在送出前先檢查目前可用的數量與容量。</p>
-            </div>
-            <div className="field">
-              <label htmlFor="dataset-file">選擇檔案</label>
-              <input id="dataset-file" type="file" ref={fileInput} />
-            </div>
-            <button
-              type="button"
-              disabled={upload.isPending}
-              onClick={() => {
-                const file = fileInput.current?.files?.[0];
-                if (!file) {
-                  setMessage("請先選擇一個檔案。");
-                  return;
-                }
-                if (used) {
-                  const refusal = uploadRefusal(file, limits.data, used);
-                  if (refusal !== "") {
-                    setMessage(refusal);
-                    return;
-                  }
-                }
-                upload.mutate(file, {
-                  onSuccess: (d) => {
-                    setUploaded((prev) => [...prev, d]);
-                    setMessage("");
-                    if (fileInput.current) fileInput.current.value = "";
-                  },
-                });
-              }}
-            >
-              {upload.isPending ? "上傳中…" : "上傳"}
-            </button>
-          </section>
-        </>
+      <ReadFailure
+        error={stored.error}
+        what="測試資料已用容量"
+        retry={() => void stored.refetch()}
+        retrying={stored.isFetching}
+        focusTarget="dataset-heading"
+      />
+      {rules && (
+        <section className="dataset-upload-guide" aria-labelledby="dataset-guide-heading">
+          <h2 id="dataset-guide-heading">上傳前請先確認</h2>
+          <UploadRulesFacts
+            limits={rules}
+            used={used}
+            usageFailed={Boolean(stored.error)}
+            testCase={testCase.test_case_id}
+          />
+        </section>
       )}
+      <DatasetIntake
+        testCaseId={testCase.test_case_id}
+        limits={rules}
+        used={used}
+        waiting={limits.isPending || stored.isPending}
+      />
+    </>
+  );
+}
 
+function DatasetIntake({
+  testCaseId,
+  limits,
+  used,
+  waiting,
+}: {
+  testCaseId: string;
+  limits: DatasetLimits | undefined;
+  used: TestCaseUsage | undefined;
+  waiting: boolean;
+}) {
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [message, setMessage] = useState("");
+  const [uploaded, setUploaded] = useState<Dataset[]>([]);
+  const upload = useUploadDataset(testCaseId);
+  const readUnavailable = !limits || !used;
+
+  return (
+    <>
+      <section className="dataset-upload-picker" aria-labelledby="dataset-picker-heading">
+        <div className="dataset-upload-picker-copy">
+          <p className="page-eyebrow">Dataset intake</p>
+          <h2 id="dataset-picker-heading">加入測試資料</h2>
+          <p>每次選擇一個檔案；平台會在送出前先檢查目前可用的數量與容量。</p>
+        </div>
+        <div className="field">
+          <label htmlFor="dataset-file">選擇檔案</label>
+          <input id="dataset-file" type="file" ref={fileInput} />
+        </div>
+        {readUnavailable && (
+          <p id="upload-read-why" role="status" className="note">
+            {waiting
+              ? "正在確認上傳規則與已用容量；確認後才能上傳。"
+              : "目前無法確認上傳規則或已用容量；請先重試讀取。"}
+          </p>
+        )}
+        <button
+          type="button"
+          disabled={upload.isPending || readUnavailable}
+          aria-describedby={readUnavailable ? "upload-read-why" : undefined}
+          onClick={() => {
+            if (!limits || !used) return;
+            const file = fileInput.current?.files?.[0];
+            if (!file) {
+              setMessage("請先選擇一個檔案。");
+              return;
+            }
+            const refusal = uploadRefusal(file, limits, used);
+            if (refusal !== "") {
+              setMessage(refusal);
+              return;
+            }
+            upload.mutate(file, {
+              onSuccess: (d) => {
+                setUploaded((prev) => [...prev, d]);
+                setMessage("");
+                if (fileInput.current) fileInput.current.value = "";
+              },
+            });
+          }}
+        >
+          {upload.isPending ? "上傳中…" : "上傳"}
+        </button>
+      </section>
       {message && <p role="alert">{message}</p>}
-      <ReadFailure error={uploadError} what="上傳">
+      <ReadFailure error={upload.error} what="上傳">
         <p role="alert">
-          {uploadError instanceof ApiError
-            ? uploadErrorSentence(uploadError.status, uploadError.message)
+          {upload.error instanceof ApiError
+            ? uploadErrorSentence(upload.error.status, upload.error.message)
             : "上傳沒有成功，請檢查檔案類型與大小後再試一次。"}
         </p>
       </ReadFailure>
-
       {uploaded.length > 0 && (
         <section className="dataset-upload-success" role="status" aria-label="上傳完成">
           <h2>已加入的測試資料</h2>
@@ -136,6 +206,6 @@ function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?
           </ul>
         </section>
       )}
-    </section>
+    </>
   );
 }

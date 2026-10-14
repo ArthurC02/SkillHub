@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../../core/api/queryClient";
 import { DatasetUpload } from "./DatasetUpload.page";
+import { pollUntil } from "../../../testing/poll";
 
 const TEST_CASE = "11111111-1111-4111-8111-111111111111";
 const SKILL = "22222222-2222-4222-8222-222222222222";
@@ -100,13 +101,11 @@ async function renderPage() {
       </StrictMode>,
     );
   });
-  const deadline = Date.now() + 2000;
-  while (Date.now() < deadline) {
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-    if (queryClient.isFetching() === 0 && container.querySelector("input[type=file]")) break;
-  }
+  await pollUntil(
+    () => queryClient.isFetching() === 0 && (container.textContent ?? "").includes("已經用掉"),
+    () => container.textContent,
+    2_000,
+  );
 }
 
 async function chooseAndUpload(size: number) {

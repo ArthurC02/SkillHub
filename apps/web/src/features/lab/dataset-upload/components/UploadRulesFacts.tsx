@@ -5,10 +5,12 @@ import { roundedBytes, type TestCaseUsage } from "../upload.model";
 export function UploadRulesFacts({
   limits,
   used,
+  usageFailed = false,
   testCase,
 }: {
   limits: DatasetLimits;
   used: TestCaseUsage | undefined;
+  usageFailed?: boolean;
   testCase: string;
 }) {
   return (
@@ -33,7 +35,11 @@ export function UploadRulesFacts({
             可以逐一刪除。
           </p>
         ) : (
-          <p className="note">正在讀這個測試題已經用掉多少…</p>
+          <p className="note">
+            {usageFailed
+              ? "已用容量讀取失敗，剩餘容量目前無法確認。"
+              : "正在讀這個測試題已經用掉多少…"}
+          </p>
         )}
       </dd>
 
