@@ -1,8 +1,8 @@
-# 受限機器的環境探測：五個問題，十分鐘
+# 受限機器的環境探測：六個問題，十五分鐘
 
 - 日期：2026-08-29
 - 為什麼存在：M6 的每一條路都掛在**同一個沒有人去問的事實**上——那台機器到底准跑什麼。[`m6/README`](README.md) 的啟動條件 2 從 2026-08-28 起就是「未取得」。
-- 誰跑：**任何一個能坐在那台機器前面的人。** 不需要開發環境、不需要管理員、全部唯讀，不安裝任何東西。
+- 誰跑：**任何一個能坐在那台機器前面的人。** 不需要開發環境、不需要管理員、不安裝任何東西；除了 Q6 在暫存目錄建一個虛擬環境、量完即刪，全部唯讀。
 - 結果回填到：[`m6/README`](README.md) 啟動條件 2 與 [淨測試模式](../../../adr/README.md#淨測試模式)的待決策。
 
 > **這份清單不做任何繞過。** 每一項都是「問系統它允不允許」，不是「試著讓它允許」。任何一項失敗都是有價值的答案，**不要想辦法讓它過**。
@@ -86,6 +86,26 @@ foreach ($h in "api.openai.com","github.com","registry.npmjs.org","proxy.golang.
 
 **`registry.npmjs.org` 與 `proxy.golang.org` 特別重要**：不通的話，連把相依帶上去都得另想辦法（離線打包），那是一項**本 repo 目前完全沒有規劃過**的工作。
 
+## Q6：Python 與 uv 跑不跑得起來，能不能建虛擬環境
+
+**為什麼問**：跨語言意圖搜尋、評估判定、匯入增強、推薦理由四項能力都住在 `apps/llm`，平台一律經它呼叫模型，沒有繞過去直連閘道的路。它是 Python ＋ uv ＋ FastAPI，要求 `apps/llm/pyproject.toml` 的 `requires-python`。**Q1～Q5 沒有一題問到 Python**；啟動指令碼 `tools/cleanmode/start.mjs` 也不起 `apps/llm`，離線打包沒有 Python 那一半。這一題是「否」的話，demo 上這四項能力都不會出現。
+
+```powershell
+python --version
+py --version
+uv --version
+python -m venv "$env:TEMP\skillhub-probe-venv"
+& "$env:TEMP\skillhub-probe-venv\Scripts\python.exe" -c "print('venv ok')"
+Remove-Item -Recurse -Force "$env:TEMP\skillhub-probe-venv"
+```
+
+| 結果 | 意思 |
+| --- | --- |
+| 版本符合 `requires-python`，而且印出 `venv ok` | ✅ `apps/llm` 在那台機器上有執行期；接著要問的是 uv 能不能裝或帶上去 |
+| `python` 有，但版本低於 `requires-python` | ⚠️ 要問的是「能不能裝新版」，不是「能不能跑」 |
+| `python` 或 `uv` 是 `不是內部或外部命令` | 沒裝——同 Q1，要問的是能不能裝 |
+| 建虛擬環境或執行 `Scripts\python.exe` 被封鎖 | ❌ `apps/llm` 在那台機器上沒有執行期。退路是播放真實錄下的 Run，或以本機 Driver 現跑策展素材 |
+
 ## 回填
 
 | 問題 | 答案 | 誰答的 | 日期 |
@@ -94,7 +114,8 @@ foreach ($h in "api.openai.com","github.com","registry.npmjs.org","proxy.golang.
 | Q2 未簽章執行檔 | ✅ **可以執行 Go** | 產品負責人 | 2026-08-29 |
 | Q3 政策模式 | | | |
 | Q4 Edge 本機檔案 | | | |
-| Q5 對外連線 | | | |
+| Q5 對外連線 | ⚠️ **不是 Q5 指令的輸出，是負責人答覆 [`05` R-23](../../05-pending-rulings.md) 的實測**：防火牆不能多開網域；前後端所需套件都取得得到；OpenAI API 打得通；網頁搜尋大部分可達。是實測不是保證，見 [README](README.md)「環境的三個事實」 | 產品負責人 | 2026-08-29 |
+| Q6 Python／uv | | | |
 
 ~~**Q1 是唯一一題會改變設計的。**~~ **2026-08-29：Q1 與 Q2 都答了，都是「可以」。**
 
@@ -122,3 +143,5 @@ foreach ($h in "api.openai.com","github.com","registry.npmjs.org","proxy.golang.
 | 被封鎖 | ❌ **今天的啟動形式在那台機器上跑不了**。替代路只有「事先建好的二進位帶上去」，而那是同一道白名單問題的另一種問法——**不是繞過，是同一堵牆的另一面** |
 
 **Q3／Q4／Q5 仍然不擋動工**：Q3 分辨「被擋」與「只被記錄」，Q4 決定前端要不要在該機器上重驗，Q5 決定相依離線打包要做到多徹底。
+
+**Q6 不擋淨測試模式本身，擋的是 demo 上的四項模型能力**：答「否」時改走播放真實錄下的 Run 或本機 Driver 現跑策展素材，不是讓那四項能力在畫面上壞掉。
