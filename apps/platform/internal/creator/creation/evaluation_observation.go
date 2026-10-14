@@ -1,6 +1,8 @@
 package creation
 
 import (
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
+
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -35,9 +37,9 @@ func trialQuestions(observation string) string {
 		if r.Result == criterionUndetermined {
 			label = "尚無法判定"
 		}
-		line := fmt.Sprintf("- 「%s」：%s", truncateRunes(r.Text, maxQuotedCriterionRunes), label)
+		line := fmt.Sprintf("- 「%s」：%s", textx.Ellipsize(r.Text, maxQuotedCriterionRunes), label)
 		if r.Reason != "" {
-			line += "——" + truncateRunes(r.Reason, maxQuotedReasonRunes)
+			line += "——" + textx.Ellipsize(r.Reason, maxQuotedReasonRunes)
 		}
 		lines = append(lines, line)
 	}

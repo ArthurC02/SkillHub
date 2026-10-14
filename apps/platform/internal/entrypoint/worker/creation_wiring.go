@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/webfetch"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
@@ -40,7 +41,7 @@ func knowledgeRankings(ctx context.Context, search *catalog.Service, queries []s
 }
 
 func wireCreationFetch(s *creation.Service) {
-	s.Fetch = creation.NewFetcher().Fetch
+	s.Fetch = webfetch.New().Fetch
 }
 
 func wireCreationGateway(s *creation.Service, gateway *run.Gateway) {

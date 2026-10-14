@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/webfetch"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -340,7 +341,7 @@ func (s *Service) attachFetched(p *Snapshot, fetched *fetchedPage) {
 	}
 	p.PendingFetchURL, p.ApprovedFetchURL = "", ""
 	p.Fetches = append(p.Fetches, fetched.record)
-	p.appendMessage("tool", fetchObservation(fetched.record, s.masked(fetched.text)))
+	p.appendMessage("tool", webfetch.Observation(fetched.record, s.masked(fetched.text)))
 }
 
 func (s *Service) cancelWhenSessionMoves(ctx context.Context, cancel context.CancelFunc, a JobArgs) <-chan struct{} {

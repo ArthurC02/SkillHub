@@ -1,4 +1,4 @@
-package creation
+package webfetch
 
 import (
 	"context"
@@ -14,11 +14,11 @@ import (
 
 func TestValidateFetchURLRefusesWhatMustNeverBeAsked(t *testing.T) {
 	for _, raw := range []string{"ftp://example.com/x", "file:///etc/passwd", "http://user:pw@example.com/", "http://127.0.0.1/", "http://10.1.2.3/", "http://[::1]/", "http://169.254.169.254/latest/meta-data", "example.com/no-scheme", ""} {
-		if _, err := validateFetchURL(raw); err == nil {
+		if _, err := ValidateURL(raw); err == nil {
 			t.Fatalf("%q was accepted", raw)
 		}
 	}
-	got, err := validateFetchURL("  https://Example.com/a?b=1#frag ")
+	got, err := ValidateURL("  https://Example.com/a?b=1#frag ")
 	if err != nil || got != "https://Example.com/a?b=1" {
 		t.Fatalf("got %q err=%v", got, err)
 	}
@@ -82,13 +82,13 @@ func TestFetcherReadsTextAndReportsBlocksWithoutRetry(t *testing.T) {
 		t.Fatalf("missing: %+v", rec)
 	}
 
-	if rec, _ := NewFetcher().Fetch(ctx, srv.URL+"/page"); rec.Status != "blocked" {
+	if rec, _ := New().Fetch(ctx, srv.URL+"/page"); rec.Status != "blocked" {
 		t.Fatalf("loopback must be blocked outside tests: %+v", rec)
 	}
 }
 
 func TestAPageLongerThanTheReadLimitIsReadUpToItsLastWholeCharacter(t *testing.T) {
-	long := strings.Repeat("退", MaxFetchBytes/3+1)
+	long := strings.Repeat("退", MaxBytes/3+1)
 	for _, tc := range []struct {
 		name, body, want string
 	}{
@@ -115,7 +115,7 @@ func TestAPageLongerThanTheReadLimitIsReadUpToItsLastWholeCharacter(t *testing.T
 }
 
 func TestFetchObservationIsJSONWithGoSentence(t *testing.T) {
-	obs := fetchObservation(Fetch{URL: "https://x.test/a", Status: "blocked"}, "")
+	obs := Observation(Record{URL: "https://x.test/a", Status: "blocked"}, "")
 	var parsed map[string]map[string]any
 	if err := json.Unmarshal([]byte(obs), &parsed); err != nil {
 		t.Fatalf("not JSON: %v\n%s", err, obs)

@@ -3,6 +3,7 @@ package creation
 import (
 	"context"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/webfetch"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
 
@@ -59,7 +60,7 @@ func declineFetch(p *Snapshot) (commandOutcome, error) {
 	}
 	rec := Fetch{URL: p.PendingFetchURL, Status: "declined"}
 	p.Fetches = append(p.Fetches, rec)
-	p.appendMessage("tool", fetchObservation(rec, ""))
+	p.appendMessage("tool", webfetch.Observation(rec, ""))
 	p.PendingFetchURL = ""
 	p.PendingAction = NothingPending
 	return stepQueued(), nil

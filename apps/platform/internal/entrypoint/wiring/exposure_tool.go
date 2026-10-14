@@ -73,12 +73,7 @@ func searchTextFacts(snapshot *publishing.SearchSnapshot, releasedVersion pgtype
 	}
 }
 
-func clip(text string) string {
-	if cut, truncated := textx.CutRunes(text, searchTextRunes); truncated {
-		return cut + "…"
-	}
-	return text
-}
+func clip(text string) string { return textx.Ellipsize(text, searchTextRunes) }
 
 func ExposureQueueTool(docket func(context.Context) ([]publishing.DocketEntry, error)) agentloop.Tool {
 	return agentloop.Tool{

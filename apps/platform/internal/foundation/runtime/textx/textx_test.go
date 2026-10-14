@@ -23,3 +23,17 @@ func TestCutRunesKeepsAtMostTheLimitInCharactersNotBytes(t *testing.T) {
 		})
 	}
 }
+
+func TestEllipsizeMarksOnlyATextThatWasCut(t *testing.T) {
+	cases := []struct{ name, in, want string }{
+		{"exactly at the limit", "驗收條", "驗收條"},
+		{"one past the limit", "驗收條件", "驗收條…"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := Ellipsize(c.in, 3); got != c.want {
+				t.Errorf("Ellipsize(%q, 3) = %q, want %q", c.in, got, c.want)
+			}
+		})
+	}
+}

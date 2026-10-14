@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/webfetch"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
@@ -503,7 +504,7 @@ func TestADeclinedFetchIsRecordedAndTheModelIsTold(t *testing.T) {
 	if err != nil || !got.queueStep || p.PendingAction != "" || p.PendingFetchURL != "" || len(p.Fetches) != 1 || p.Fetches[0] != rec {
 		t.Fatalf("outcome = %+v, snapshot = %+v, err = %v", got, p, err)
 	}
-	if last := p.Messages[len(p.Messages)-1]; last.Role != "tool" || last.Content != fetchObservation(rec, "") {
+	if last := p.Messages[len(p.Messages)-1]; last.Role != "tool" || last.Content != webfetch.Observation(rec, "") {
 		t.Fatalf("last message = %+v", last)
 	}
 }

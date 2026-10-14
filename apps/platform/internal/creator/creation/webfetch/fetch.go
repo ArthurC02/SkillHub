@@ -1,4 +1,4 @@
-package creation
+package webfetch
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 )
 
-type Fetch struct {
+type Record struct {
 	URL    string `json:"url"`
 	SHA256 string `json:"sha256,omitempty"`
 	Bytes  int    `json:"bytes,omitempty"`
@@ -26,14 +26,14 @@ type Fetch struct {
 }
 
 const (
-	MaxFetchBytes = 256 * 1024
+	MaxBytes = 256 * 1024
 
-	MaxFetchTextRunes = 8000
-	fetchTimeout      = 15 * time.Second
-	fetchRedirects    = 3
+	MaxTextRunes   = 8000
+	fetchTimeout   = 15 * time.Second
+	fetchRedirects = 3
 )
 
-func validateFetchURL(raw string) (string, error) {
+func ValidateURL(raw string) (string, error) {
 	u, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil {
 		return "", errors.New("not a URL")
@@ -60,7 +60,7 @@ type Fetcher struct {
 	client *http.Client
 }
 
-func NewFetcher() *Fetcher {
+func New() *Fetcher {
 	return fetcherGuardedBy(publicIP)
 }
 
@@ -100,7 +100,7 @@ func fetcherGuardedBy(guard func(ip net.IP) bool) *Fetcher {
 			if len(via) >= fetchRedirects {
 				return errFetchBlocked
 			}
-			if _, err := validateFetchURL(req.URL.String()); err != nil {
+			if _, err := ValidateURL(req.URL.String()); err != nil {
 				return errFetchBlocked
 			}
 			return nil
@@ -111,8 +111,8 @@ func fetcherGuardedBy(guard func(ip net.IP) bool) *Fetcher {
 
 var errFetchBlocked = errors.New("fetch blocked")
 
-func (f *Fetcher) Fetch(ctx context.Context, rawURL string) (Fetch, string) {
-	rec := Fetch{URL: rawURL}
+func (f *Fetcher) Fetch(ctx context.Context, rawURL string) (Record, string) {
+	rec := Record{URL: rawURL}
 	for attempt := 0; attempt < 2; attempt++ {
 		got := f.once(ctx, rawURL)
 		rec.Status, rec.SHA256, rec.Bytes = got.status, got.sha256, got.bytes
@@ -178,7 +178,7 @@ func (f *Fetcher) once(ctx context.Context, rawURL string) fetchAttempt {
 	if strings.HasPrefix(ct, "text/html") {
 		text = htmlToText(text)
 	}
-	text = truncateRunes(strings.TrimSpace(text), MaxFetchTextRunes)
+	text = textx.Ellipsize(strings.TrimSpace(text), MaxTextRunes)
 	return fetchAttempt{status: "ok", text: text, sha256: hex.EncodeToString(sum[:]), bytes: len(body)}
 }
 
@@ -221,8 +221,8 @@ func htmlToText(s string) string {
 }
 
 func readWithinLimit(r io.Reader) ([]byte, error) {
-	body, err := io.ReadAll(io.LimitReader(r, MaxFetchBytes))
-	if err != nil || len(body) < MaxFetchBytes {
+	body, err := io.ReadAll(io.LimitReader(r, MaxBytes))
+	if err != nil || len(body) < MaxBytes {
 		return body, err
 	}
 	return withoutCutRune(body), nil
@@ -240,14 +240,7 @@ func withoutCutRune(b []byte) []byte {
 	return b
 }
 
-func truncateRunes(s string, n int) string {
-	if cut, truncated := textx.CutRunes(s, n); truncated {
-		return cut + "…"
-	}
-	return s
-}
-
-func fetchObservation(rec Fetch, text string) string {
+func Observation(rec Record, text string) string {
 	var why string
 	switch rec.Status {
 	case "ok":

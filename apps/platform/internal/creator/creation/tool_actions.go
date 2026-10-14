@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/webfetch"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
 
@@ -146,7 +147,7 @@ func (s *Service) holdFetch(p *Snapshot, query string) (State, bool, error) {
 }
 
 func fetchableURL(requested string) (string, bool) {
-	clean, err := validateFetchURL(requested)
+	clean, err := webfetch.ValidateURL(requested)
 	return clean, err == nil
 }
 

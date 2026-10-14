@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/webfetch"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
@@ -173,6 +174,8 @@ func (p *Snapshot) appendMessage(role, content string) {
 	now := time.Now().UTC()
 	p.Messages = append(p.Messages, Message{Role: role, Content: content, CreatedAt: &now})
 }
+
+type Fetch = webfetch.Record
 
 type Snapshot struct {
 	Messages []Message `json:"messages"`

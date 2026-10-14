@@ -7,3 +7,10 @@ func CutRunes(s string, limit int) (string, bool) {
 	}
 	return string(runes[:limit]), true
 }
+
+func Ellipsize(s string, limit int) string {
+	if cut, truncated := CutRunes(s, limit); truncated {
+		return cut + "…"
+	}
+	return s
+}

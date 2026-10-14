@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/webfetch"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
@@ -273,7 +274,7 @@ func TestAFetchedPageIsAttachedAndReportedMasked(t *testing.T) {
 	if p.PendingFetchURL != "" || len(p.Fetches) != 1 {
 		t.Fatalf("snapshot = %+v", p)
 	}
-	if want := fetchObservation(p.Fetches[0], "*** page"); len(p.Messages) != 1 || p.Messages[0].Role != "tool" || p.Messages[0].Content != want {
+	if want := webfetch.Observation(p.Fetches[0], "*** page"); len(p.Messages) != 1 || p.Messages[0].Role != "tool" || p.Messages[0].Content != want {
 		t.Fatalf("messages = %+v", p.Messages)
 	}
 }
