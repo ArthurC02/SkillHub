@@ -24,7 +24,7 @@ export function AuthControls() {
       <button type="button" disabled={signOut.isPending} onClick={() => signOut.mutate()}>
         登出
       </button>
-      {signOut.error && <span role="alert">登出沒有完成，可以再試一次。</span>}
+      {signOut.error && <span role="alert">未能確認登出結果，請確認目前登入狀態後再試一次。</span>}
     </div>
   );
 }

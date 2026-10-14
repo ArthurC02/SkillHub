@@ -3,6 +3,52 @@ import { platformResponse } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 import AxeBuilder from "@axe-core/playwright";
 
+for (const response of ["lost", "server-error"]) {
+  for (const currentSession of ["signed-out", "unavailable"]) {
+    test(`an uncertain logout with a ${response} response reconciles a ${currentSession} session without replaying the write`, async ({
+      page,
+    }) => {
+      await stubPlatform(page);
+      let attempted = false;
+      let writes = 0;
+      let reads = 0;
+      await page.route("**/me", (route) => {
+        if (!attempted) return route.fulfill({ json: platformResponse("/me").body });
+        reads += 1;
+        return route.fulfill({
+          status: currentSession === "signed-out" ? 401 : 503,
+          json: { error: currentSession === "signed-out" ? "unauthorized" : "service unavailable" },
+        });
+      });
+      await page.route("**/auth/logout", (route) => {
+        attempted = true;
+        writes += 1;
+        return response === "lost"
+          ? route.abort("failed")
+          : route.fulfill({ status: 500, json: { error: "internal error" } });
+      });
+      await page.goto("/workspace/account");
+      const main = page.getByRole("main");
+      await expect(main.getByText("tester@example.com", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "登出", exact: true }).click();
+      await expect(main.locator(".account-profile")).toHaveCount(0);
+      await expect(main.locator(".account-danger-zone")).toHaveCount(0);
+      if (currentSession === "signed-out") {
+        await expect(main.getByText("帳號資料需要登入。", { exact: false })).toBeVisible();
+        await expect(page.locator(".app-sidebar-context-name")).not.toContainText("tester");
+      } else {
+        await expect(page.locator("[data-auth-controls]").getByRole("alert")).toHaveText(
+          "未能確認登出結果，請確認目前登入狀態後再試一次。",
+        );
+        await expect(main.getByRole("button", { name: "再試一次", exact: true })).toBeVisible();
+      }
+      expect(reads).toBeGreaterThan(0);
+      expect(writes).toBe(1);
+      expect(new URL(page.url()).pathname).toBe("/workspace/account");
+    });
+  }
+}
+
 test("signing out withdraws private account state without requiring navigation", async ({
   page,
 }) => {
@@ -125,7 +171,7 @@ for (const action of ["logout", "login"]) {
       await expect(controls.getByRole("textbox")).toHaveValue("second");
     }
     await expect(controls.getByRole("alert")).toContainText(
-      action === "logout" ? "登出沒有完成" : "登入沒有成功",
+      action === "logout" ? "未能確認登出結果" : "登入沒有成功",
     );
     expect(documents).toBe(1);
     if (action === "logout")

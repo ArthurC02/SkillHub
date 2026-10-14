@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "../api/client";
+import { ApiError, apiFetch } from "../api/client";
 import { queryKeys } from "../api/queryKeys";
 import type { AccountDeletion, Me } from "../api/types";
 
@@ -80,6 +80,20 @@ export function useSignOut() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: logout,
+    onError: async () => {
+      try {
+        await client.fetchQuery({
+          queryKey: queryKeys.me,
+          queryFn: () => apiFetch<Me>("/me"),
+          staleTime: 0,
+        });
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          client.clear();
+          window.location.reload();
+        }
+      }
+    },
     onSuccess: () => {
       client.clear();
       window.location.reload();
