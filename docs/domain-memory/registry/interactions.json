@@ -246,29 +246,29 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/trial.go",
           "lines": {
-            "start": 99,
-            "end": 122
+            "start": 103,
+            "end": 126
           },
-          "content_sha256": "sha256:c60926fedc26af6db001df227f107aae903383a02e963528408da8d31370301f",
+          "content_sha256": "sha256:9410b2e6ceb256d7eaf608c5ce2c538edc91db39d08dce1becd0af2c4a9f6b3b",
           "excerpt_sha256": "sha256:44b6f2013bf1287a619e2552b88c8149d0d56bbcccecbff5e77f62b33e64a2f9",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "eval-checks-facts-recite",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-13T06:52:59.836386Z",
-            "scope": "Re-cite eval-may-use-trace and run-eval-run-facts after eval's check engine and inputs moved into the checks and facts subpackages; neither record changes its statement",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "1b425e141e22f10da5fe276ba119feeb1c50a349",
-              "registry_digest": "sha256:ceaf5f05cfc564ed1066b1bf5239a58f63ecac32b364b1a1bf3ea4221c4a6fb0"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -486,29 +486,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 135,
-            "end": 135
+            "start": 136,
+            "end": 136
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:2de68635d4ca3f19b20a1774f542ef343053ff6bb67acf6909e6b883e3202c6d",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -524,29 +524,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 309,
-            "end": 309
+            "start": 311,
+            "end": 311
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:a69b38bed3b031793abded64a95089c13673c5867806ce5eb5a2e122be238d9e",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -904,29 +904,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 210,
-            "end": 210
+            "start": 212,
+            "end": 212
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:101f269cac55f7df989edf1c7dc2c82040fee75ddce602a015ac897bb9b05068",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -942,29 +942,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 214,
-            "end": 214
+            "start": 216,
+            "end": 216
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:ea89b07811a7efa9e43358783976b8abcd445f7abeec7a8b1153e022588820fd",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -980,29 +980,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 217,
-            "end": 217
+            "start": 219,
+            "end": 219
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:35fa68a17c790b5d0611f76f22885b12bf1fb3c789707cd36fe5b4ec7bb2cdea",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1018,29 +1018,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 213,
-            "end": 213
+            "start": 215,
+            "end": 215
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:70a173d82b2084fc3ef5a8c12d92b0e906fb2377aee147656437a51492fd3066",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1056,29 +1056,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 215,
-            "end": 215
+            "start": 217,
+            "end": 217
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:d2f205a22a1246d5467e82a16fd7304a380fed48ca46ba4d2afd1dd2ede232d6",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1094,29 +1094,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 216,
-            "end": 216
+            "start": 218,
+            "end": 218
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:f4912f71c9d9e65eb60e93bfd40c742fd2e7f362d058b3e80449bea40f8f08bc",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1132,29 +1132,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 212,
-            "end": 212
+            "start": 214,
+            "end": 214
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:d46152cb58f3e63ae83b091a659644a71bb98edaaa9e641779d94f1cde1b0364",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1170,29 +1170,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 211,
-            "end": 211
+            "start": 213,
+            "end": 213
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:1c1fd9c80da744da54ca7a2842316b3c7160e20eb9c631fa6ae9d7adcc0be275",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1208,29 +1208,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 326,
-            "end": 326
+            "start": 328,
+            "end": 328
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:6d18766d44b87b28e7a160d679f08b285c559957eee8c154364c897d4818b8b9",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1246,29 +1246,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 289,
-            "end": 289
+            "start": 291,
+            "end": 291
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:9d1375d862f71c422a5b1f2e1a554f887535e11cf8fe4bf909c1c715950193b7",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1284,29 +1284,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 292,
-            "end": 292
+            "start": 294,
+            "end": 294
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:8255b91a9d3c0926b7c3b39f37e5395da028dadfc0ccc066221fac66ec6dcd7c",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1322,29 +1322,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 454,
-            "end": 454
+            "start": 455,
+            "end": 458
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
-          "excerpt_sha256": "sha256:4db207f80dfa302a6e8936a47e7cc598dab2e07e546f5df3312f8c841f5ee246",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
+          "excerpt_sha256": "sha256:c166a8fb43f2b0d4f415de48b5d5324048c9b19e1d93a9e69023b822dfb2bda7",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1474,29 +1474,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 328,
-            "end": 330
+            "start": 330,
+            "end": 332
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:33d1b4efbccd53ed84846906f4aea9d79e5cc90da265e559fd42498c55bce57c",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1512,29 +1512,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 204,
-            "end": 204
+            "start": 206,
+            "end": 206
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:b4c5215f57c9cca83caa1e475d168f9802150dd8ca33e756b6914a35da7b5e73",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1550,29 +1550,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 205,
-            "end": 205
+            "start": 207,
+            "end": 207
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:7037d57ed2d2592a8edb3a1773b456d4d78a6096b9890836d7b36df52aba69a4",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1588,29 +1588,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 203,
-            "end": 203
+            "start": 205,
+            "end": 205
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:627a19bc1637f2d2ee841e00bb6f806a216432551bed4edd908464352da53e50",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1626,29 +1626,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 206,
-            "end": 206
+            "start": 208,
+            "end": 208
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:9540d7fc0fde98c93bc44f7003339e28665656c3b58d10360b8ab39c069504a8",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1702,29 +1702,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 271,
-            "end": 271
+            "start": 273,
+            "end": 273
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:dda0f12bde0342c977643a52a435fbac71a947ae5d5d2e8d80806f0a69c7dec2",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1778,29 +1778,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 194,
-            "end": 194
+            "start": 196,
+            "end": 196
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:942debeb12cc0b98dbe428769a0b5fccaa90e97b32441e3bc3d1a12e8b9814af",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]
@@ -1816,29 +1816,29 @@
         {
           "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
           "lines": {
-            "start": 252,
-            "end": 252
+            "start": 254,
+            "end": 254
           },
-          "content_sha256": "sha256:8c49db1b8f7f08091356fe12cfcbdfbccde5cbc01731a9ce65dd792fc503e4c9",
+          "content_sha256": "sha256:90d227c1521105b0cdf01379b6b0997fe8182e701354658cab1419a44ee1a58d",
           "excerpt_sha256": "sha256:b58f51ebe34b9f5198448ae8c9a4d3394f3d4006d033a009bcd161c05ae9893c",
           "source_kind": "implementation"
         }
       ],
       "status": "reviewed",
       "review": {
-        "proposal_id": "wiring-collaborations",
+        "proposal_id": "entrypoint-citations-recite",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-10-14T00:15:22.987461Z",
-            "scope": "Record the 38 cross-Context collaborations the composition root already wires as reviewed synchronous interactions citing their wiring lines; no code or dependency policy changes, creation->trace stays in the baseline",
+            "approved_at": "2026-10-14T01:06:54.189577Z",
+            "scope": "Re-cite composition-root interactions after the governance move",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "dc1d255bebd7a8ebc99b903afa050fef6b71a077",
-              "registry_digest": "sha256:b1a611ce0017fb40e1fc5b24034692c291b14a27f133b8da65ffa34637d15b83"
+              "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+              "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
             }
           }
         ]

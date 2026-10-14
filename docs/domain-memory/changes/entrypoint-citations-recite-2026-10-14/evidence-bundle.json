@@ -7,7 +7,16 @@
     "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "30b53918e3c8fec44040bab8a8a685fff7c375b4",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
+      "registry_digest": "sha256:8b67ff9e743c0cb22ded39822c1f8b4d163dbd25b396f0c1cb0bfc7235d96d91"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "app-wiring-complete",

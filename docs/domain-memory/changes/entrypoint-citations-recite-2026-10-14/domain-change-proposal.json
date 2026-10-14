@@ -3,12 +3,12 @@
   "proposal_id": "entrypoint-citations-recite",
   "proposer": "domain-memory-agent",
   "requirement_id": "entrypoint-citations-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-14T01:04:44.687737Z",
   "verified_at": "2026-10-14T01:06:55.209382Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-14T01:06:59.485036Z",
+  "applied_at": "2026-10-14T01:07:01.721041Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "6910e1bd7b1160c7c53837d014959285fd73bbba",
@@ -637,5 +637,9 @@
   "supersedes": [
     "eval-checks-facts-recite",
     "wiring-collaborations"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "30b53918e3c8fec44040bab8a8a685fff7c375b4",
+    "registry_digest": "sha256:9fc86632f6ec7604e4951f81dc9467fa7ad06a8547dbc67e7e4ee4e607181d88"
+  }
 }
