@@ -11,6 +11,7 @@ import { CategoryNav } from "./components/CategoryNav";
 import { FilterBar } from "./components/FilterBar";
 import { SearchHeroForm } from "./components/SearchHeroForm";
 import { SearchResultsSection } from "./components/SearchResultsSection";
+import { CompareBar } from "./components/CompareBar";
 import {
   clearedFilterFields,
   filtersFromSearch,
@@ -132,6 +133,7 @@ export function Home() {
 
       {!browsing && <SearchReadState query={result} />}
       {browsing && catalog.error && catalogView}
+      <CompareBar selected={selected} />
 
       <CategoryNav
         filters={effectiveFilters}

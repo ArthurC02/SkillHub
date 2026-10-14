@@ -14,6 +14,9 @@ export function CompareBar({ selected }: { selected: string[] }) {
       ) : (
         <p className="note">再選 1 個小工具，即可並排比較靜態資料。</p>
       )}
+      <Link to="/" search={(previous) => ({ ...previous, compare: undefined })}>
+        清除比較選擇
+      </Link>
       {selected.length >= MAX_COMPARE && (
         <p className="note" id="compare-limit">
           已經選滿 {MAX_COMPARE}{" "}

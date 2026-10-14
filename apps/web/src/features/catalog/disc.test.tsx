@@ -1048,7 +1048,7 @@ test("DISC-004: 降級自述在 details 外面平鋪，不在裡面當徽章", a
 });
 
 function compareLink() {
-  return container.querySelector<HTMLAnchorElement>(".compare-bar a");
+  return container.querySelector<HTMLAnchorElement>('.compare-bar a[href^="/compare"]');
 }
 
 function pick(index: number) {

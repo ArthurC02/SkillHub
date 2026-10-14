@@ -4,7 +4,6 @@ import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Loading } from "../../../../shared/ui/Loading";
 import { MAX_COMPARE } from "../../../skill";
 import type { PublicSearchResult, SearchFilters } from "../../../../core/api/types";
-import { CompareBar } from "./CompareBar";
 import { CatalogSkillCard } from "./CatalogSkillCard";
 import { SearchFacetNotes } from "./SearchFacetNotes";
 import { MarkerLegend, MarkerWarning } from "./MarkerLegend";
@@ -118,7 +117,6 @@ export function Catalog({
         <CatalogEmptyState narrowing={narrowing} />
       ) : (
         <>
-          <CompareBar selected={selected} />
           {truncated && (
             <p className="note">
               目錄共 {total} 個小工具，這裡列出 {results.length}{" "}
