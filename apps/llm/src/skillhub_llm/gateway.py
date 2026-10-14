@@ -50,6 +50,12 @@ def _fingerprint(key: str) -> str:
     return hashlib.sha256(key.encode()).hexdigest()
 
 
+def gateway_root(base_url: str) -> str:
+    """The gateway's own address; LITELLM_BASE_URL may name its /v1 API instead."""
+    root = base_url.rstrip("/")
+    return root.removesuffix("/v1")
+
+
 async def key_has_finite_budget(
     base_url: str, key: str, transport: httpx.AsyncBaseTransport | None = None
 ) -> bool:
@@ -61,7 +67,7 @@ async def key_has_finite_budget(
     try:
         async with httpx.AsyncClient(timeout=KEY_CHECK_TIMEOUT, transport=transport) as http:
             response = await http.get(
-                f"{base_url.rstrip('/')}/key/info", headers={"Authorization": f"Bearer {key}"}
+                f"{gateway_root(base_url)}/key/info", headers={"Authorization": f"Bearer {key}"}
             )
         if response.status_code != HTTPStatus.OK:
             return False

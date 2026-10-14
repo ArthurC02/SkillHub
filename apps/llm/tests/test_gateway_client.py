@@ -66,6 +66,23 @@ def key_info(status: int, body: object) -> httpx.MockTransport:
     return httpx.MockTransport(answer)
 
 
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "http://gateway:4000",
+        "http://gateway:4000/",
+        "http://gateway:4000/v1",
+        "http://gateway:4000/v1/",
+    ],
+)
+def test_the_key_is_asked_about_at_the_gateway_root_whichever_form_the_url_takes(base_url) -> None:
+    budget = {"info": {"max_budget": 10.0, "spend": 1.0}}
+    checked = asyncio.run(
+        gateway._real_key_check(base_url, "sk-asked", transport=key_info(200, budget))
+    )
+    assert checked is True
+
+
 def budget_check(status: int, body: object) -> bool:
     return asyncio.run(
         gateway._real_key_check(

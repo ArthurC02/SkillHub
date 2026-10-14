@@ -9,6 +9,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -258,8 +260,28 @@ func creationPythonExecutable(t *testing.T) string {
 	return path
 }
 
+func gatewayConfirmingEveryKey(t *testing.T, gatewayURL string) string {
+	t.Helper()
+	target, err := url.Parse(gatewayURL)
+	if err != nil {
+		t.Fatalf("gateway url: %v", err)
+	}
+	forward := httputil.NewSingleHostReverseProxy(target)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/key/info" {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"info": map[string]any{"max_budget": 1.0, "spend": 0.0}})
+			return
+		}
+		forward.ServeHTTP(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL
+}
+
 func startCreationPython(t *testing.T, python, gatewayURL string) string {
 	t.Helper()
+	gatewayURL = gatewayConfirmingEveryKey(t, gatewayURL)
 	root := creationRepoRoot(t)
 	port := freeLoopbackPort(t)
 	ctx, cancel := context.WithCancel(context.Background())
