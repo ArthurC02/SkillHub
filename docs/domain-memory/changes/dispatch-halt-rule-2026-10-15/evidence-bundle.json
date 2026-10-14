@@ -1,0 +1,76 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "dispatch-halt-rule",
+  "proposal_id": "dispatch-halt-rule",
+  "registry_revision": {
+    "observed_commit": "6d3cc02adc18958e4550b0fd7c58d2d491bb0573",
+    "registry_digest": "sha256:bda4ba9358f58539f3b2da1f511b690f5dfe19437579f85548a249dc65c2cf8e"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "redeclaration-keeps-incident",
+    "mutated_protection": "declaration.over keeping an active incident when a capacity pause is redeclared",
+    "failure_evidence": "With the incident guard disabled, TestARedeclarationNeverDowngradesAnIncident failed: 'a capacity pause cannot overwrite an incident: got source=p1_incident reason=\"second\"'; restored byte for byte (cmp).",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/trial/execution/halt/source.go",
+    "apps/platform/internal/trial/execution/halt/ledger.go",
+    "apps/platform/internal/trial/execution/halt/halt_test.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "package-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate-change-package --package-root docs/domain-memory/changes/dispatch-halt-rule-2026-10-15 --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f59ed0f5e58f24af697fc460db7a190345b22c6e6c8a2fdbf184d0f488d61a0f",
+      "finished_at": "2026-10-14T16:59:25.096314Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:0d5b0e840bf23cc3e9f4265d60557bb8005eb4d6fe4e5c81b166a7fb37504718",
+      "finished_at": "2026-10-14T16:59:25.422377Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py governance-readiness --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:2b6a3a27f1223e6cc1dc91aae0d304d9226040ff5508b5e8d4133a1df04930ec",
+      "finished_at": "2026-10-14T16:59:25.781689Z"
+    },
+    {
+      "obligation_id": "redeclaration-keeps-incident",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestARedeclarationNeverDowngradesAnIncident ./internal/trial/execution/halt/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:ca3d9c483f06b064148e7b2ddc466514b7512fce6c826215b9dfaaea6890b6ac",
+      "finished_at": "2026-10-14T16:59:28.723471Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "capacity-only-recovers",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestOnlyACapacityPauseRecoversAutomatically ./internal/trial/execution/halt/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:f045e219bfed80064aa4f491e2f900eb5b081f1bb434d194fd80afa8aab7eec1",
+      "finished_at": "2026-10-14T16:59:31.492634Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

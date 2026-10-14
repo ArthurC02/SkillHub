@@ -1,0 +1,124 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "dispatch-halt-rule",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "dispatch-halt-rule",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-10-14T16:59:24.748059Z",
+  "verified_at": "2026-10-14T16:59:32.003338Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "6d3cc02adc18958e4550b0fd7c58d2d491bb0573",
+    "registry_digest": "sha256:bda4ba9358f58539f3b2da1f511b690f5dfe19437579f85548a249dc65c2cf8e"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Dispatch halts are run's: only run declares, redeclares and lifts them, through the halt ledger.",
+    "evidence": [
+      "apps/platform/internal/trial/execution/halt/source.go:67-79"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "None: the rule lives inside run; operators reach it through run's endpoints.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/execution/halt/ledger.go:155-178"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A P1 must survive automated capacity management, or the reconciler could release an incident scene."
+    ],
+    "decision": "State the precedence and recovery rule as a reviewed rule citing the halt package, where declaration and recovery now live together.",
+    "invariants_preserved": [
+      "A capacity pause never overwrites a P1.",
+      "A P1 never lifts itself."
+    ],
+    "rejected_alternatives": [
+      "Recording the halt as a second aggregate: it shares run's Context and tables, and the reviewed run aggregate already covers that boundary."
+    ],
+    "proof_obligations": [
+      "redeclaration-keeps-incident",
+      "capacity-only-recovers"
+    ],
+    "counterfactual_check": "Disable the incident guard in declaration.over; TestARedeclarationNeverDowngradesAnIncident must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "dispatch-incident-halt-is-never-downgraded",
+        "contexts": [
+          "run"
+        ],
+        "statement": "A dispatch halt declared as a P1 incident outranks a capacity pause on the same target: a later capacity pause replaces neither its source, its reason nor its declarer, and only an operator lifts it. A capacity pause lifts itself after two consecutive clear reconciler rounds.",
+        "examples": [
+          "The orphan threshold trips while a P1 holds the pool: the halt stays a P1 with the responder's reason.",
+          "A P1 arrives while a capacity pause holds a node: the halt becomes the P1 and names the responder.",
+          "Leaks stay below the threshold for two rounds: the capacity pause lifts, while a P1 on the same target stays."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/halt/source.go",
+            "lines": {
+              "start": 67,
+              "end": 79
+            },
+            "content_sha256": "sha256:d90cf346d48d22c7dace70eae961ece4fce5fc688bf27d428a013d424570e2c0",
+            "excerpt_sha256": "sha256:195381d2a6330a0aed57776d7082b2dcf2dfaa4bc23b3a31f3f649e18934ce45",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/halt/source.go",
+            "lines": {
+              "start": 30,
+              "end": 32
+            },
+            "content_sha256": "sha256:d90cf346d48d22c7dace70eae961ece4fce5fc688bf27d428a013d424570e2c0",
+            "excerpt_sha256": "sha256:5e01be527679065645ddff212d2088f1de11330822655e740e3ced773b8839ca",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/halt/ledger.go",
+            "lines": {
+              "start": 155,
+              "end": 178
+            },
+            "content_sha256": "sha256:29b4a90e0e43b31e1b71cbe88a12518a34b04a7a3fd5933bbe514ab83478747c",
+            "excerpt_sha256": "sha256:7fe3f0a99544febb757133b6e56ca4c06b86bd25bbbce0c4ff6c7d7919431c26",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-14T16:59:31.766868Z",
+      "scope": "Record the dispatch halt precedence and recovery rule",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "6d3cc02adc18958e4550b0fd7c58d2d491bb0573",
+        "registry_digest": "sha256:bda4ba9358f58539f3b2da1f511b690f5dfe19437579f85548a249dc65c2cf8e"
+      }
+    }
+  ]
+}
