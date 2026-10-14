@@ -151,13 +151,19 @@ test("02:TEST-002 the upload rules are on screen before anything is uploaded", a
   expect(container.querySelector("input[type=file]")).not.toBeNull();
 });
 
-test("02:TEST-002 without the rules there is no upload control at all", async () => {
+test("02:TEST-002 without the rules no file can be sent", async () => {
   stubPlatform(500);
   await renderUpload();
 
   expect(container.textContent).toContain("無法讀取上傳規則");
   expect(container.textContent).not.toContain("nope");
-  expect(container.querySelector("input[type=file]")).toBeNull();
+  const send = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "上傳",
+  );
+  expect(send?.disabled, "the upload button stays live while the rules are unknown").toBe(true);
+  expect(container.querySelector("#upload-read-why")?.textContent).toBe(
+    "目前無法確認上傳規則或已用容量；請先重試讀取。",
+  );
 });
 
 test("丙-150(e) a 415 upload failure prints the server's own Chinese sentence", async () => {
