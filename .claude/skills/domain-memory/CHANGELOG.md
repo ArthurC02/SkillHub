@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.21.6
+
+### Changed
+
+- `AGENTS.md` opens with how the parts fit together: what lives under the Registry root, the three paths a fact can take (read, candidate, review) with the review commands in order, the one route every write takes, and the four checks that keep facts honest.
+- `README.md` maps the code for anyone changing the plugin: the entry point, which module owns what, and the rules that keep that shape.
+
 ## 0.21.5
 
 ### Changed

@@ -4,6 +4,39 @@ A file-backed Registry of reviewed domain facts, and the commands that read it a
 
 Nothing here is specific to one Agent or one host. The durable state is JSON files in the repository, the behavior is Markdown plus Python, and the review boundary is Git.
 
+## How it fits together
+
+Everything lives under one Registry root, inside the repository:
+
+```text
+<registry-root>/
+  registry/                   the facts: one JSON file per asset, plus manifest.json
+  source-map.json             the repository paths the facts may cite, with a snapshot of each
+  domain-memory-policy.json   who may approve a fact, and how that approval is checked
+  audit/events.jsonl          a hash-chained log of every write
+  changes/<package>/          Change Packages, by convention; any directory inside the repository works
+```
+
+A fact moves along one of three paths, and only the scripts write:
+
+1. **Read.** Lookups, `validate` and `verify-evidence` change nothing. Reviewed records are the facts you may build on.
+2. **Candidate.** `upsert-candidate` adds or revises a candidate at once, with no review. It is handoff material: it never becomes a fact by itself, and it cannot overwrite a reviewed record.
+3. **Review.** A Change Package carries `registry_updates`. Start one with `init-change-package` and write the updates, or copy an existing candidate in with `promote-candidate`; a fact need not be a candidate first. Then run, in order:
+   1. `submit-proposal` freezes the package against the Registry's current revision.
+   2. `record-approval` records each reviewer, and `record-test-result` records each planned test.
+   3. `verify-proposal` checks the test results.
+   4. `finalize-proposal` checks proof from outside the package: a merged pull request or a signed commit, as the policy says.
+   5. `apply-approved-updates` writes the package. Only then is a record `reviewed`.
+
+Every write takes the same route. It takes a lock, copies the Registry aside, applies the change to the copy, and validates the whole copy. A write that adds a new error is refused. A valid copy is swapped in and the write is appended to the audit chain. An interrupted write is finished or rolled back by `recover-registry-update`.
+
+Four checks keep the facts honest over time:
+
+- Each citation pins the cited lines by hash, so `verify-evidence` can tell whether a fact still stands on the code.
+- A proposal goes stale when the records it touches change after it was submitted.
+- The source map's snapshots show when the selected sources have moved since a developer confirmed them.
+- A Registry whose policy is `local-draft-only` names no outside authority, so it holds candidates only.
+
 ## Running the commands
 
 ```bash
