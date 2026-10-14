@@ -58,6 +58,18 @@ func TestATransactionCallbackInTheBaselineIsHeldAndAStaleOneMustBeRemoved(t *tes
 	}
 }
 
+func TestAGenericPackageMayCallItsOwnerBackWithItsTransaction(t *testing.T) {
+	root := t.TempDir()
+	writeAt(t, root, architectureBudgetFile, `{"packages": {}, "types": {}}`)
+	hook := "package a\n\nimport \"github.com/jackc/pgx/v5\"\n\ntype MarkFunc func(pgx.Tx) error\n"
+	writeAt(t, root, platformInternalDir+"/foundation/storage/a/a.go", hook)
+	writeAt(t, root, platformInternalDir+"/foundationlike/a/a.go", hook)
+	p := transactionCallbackProblems(root)
+	if len(p) != 1 || !strings.Contains(p[0], "foundationlike/a.MarkFunc") {
+		t.Errorf("problems = %v, want only the package outside foundation named", p)
+	}
+}
+
 func TestTestFilesMayHandOutTransactions(t *testing.T) {
 	root := t.TempDir()
 	writeAt(t, root, architectureBudgetFile, `{"packages": {}, "types": {}}`)

@@ -60,7 +60,7 @@ func transactionCallbacks(internal string) (map[string]string, error) {
 			return err
 		}
 		pkg := filepath.ToSlash(filepath.Dir(rel))
-		if generatedPackage(pkg) {
+		if generatedPackage(pkg) || genericSubdomain(pkg) {
 			return nil
 		}
 		fset := token.NewFileSet()
@@ -74,6 +74,10 @@ func transactionCallbacks(internal string) (map[string]string, error) {
 		return nil
 	})
 	return found, err
+}
+
+func genericSubdomain(pkg string) bool {
+	return pkg == "foundation" || strings.HasPrefix(pkg, "foundation/")
 }
 
 func exportedTransactionCallbacks(file *ast.File) map[string]token.Pos {

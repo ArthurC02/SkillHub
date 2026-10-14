@@ -57,8 +57,6 @@
     "creator/creation.Service.CreateAcceptanceTestCase",
     "creator/creation.Service.Insert",
     "creator/workspace.WorkspacePurge",
-    "foundation/integration/agentloop.Recorder",
-    "foundation/storage/objreconcile.MarkFunc",
     "skill/admission.Service.IndexSkill",
     "skill/admission.Service.MaterializeGeneratedCandidate",
     "skill/delivery.Service.ClearSightings",
