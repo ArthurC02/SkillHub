@@ -94,7 +94,7 @@ def _add_evidence_commands(commands: argparse._SubParsersAction) -> None:
     add_asset(recite_parser)
     recite_parser.add_argument("--id", required=True)
     recite_parser.add_argument("--path", required=True)
-    recite_parser.add_argument("--lines", required=True)
+    recite_parser.add_argument("--lines")
     recite_parser.add_argument("--replace")
     add_path(recite_parser, "--onto", required=False)
 

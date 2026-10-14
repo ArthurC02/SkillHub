@@ -14,6 +14,7 @@ from domain_registry.changes import (
 )
 from domain_registry.evidence import (
     citation,
+    digest,
 )
 from domain_registry.git_hooks import governance_readiness, install_pre_push_hook
 from domain_registry.registry import (
@@ -510,6 +511,36 @@ class CliTest(RegistryTestCase):
         )
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertEqual(["PRO-1", "PRO-9"], json.loads(result.stdout)["supersedes"])
+
+    def test_reciting_without_lines_re_cites_the_replaced_lines_of_the_same_file(self) -> None:
+        self.cited_rule("reviewed", (1, 1), (2, 2))
+        result = self.run_cli(
+            "recite", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+            "--asset", "rules", "--id", "rule", "--path", "src/a.py", "--replace", "src/a.py:2-2",
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        evidence = json.loads(result.stdout)["registry_updates"][0]["record"]["evidence"]
+        one = digest((self.repo / "src" / "a.py").read_bytes().splitlines(keepends=True)[1])
+        self.assertEqual(
+            [({"start": 1, "end": 1}, one), ({"start": 2, "end": 2}, one)],
+            [(reference["lines"], reference["excerpt_sha256"]) for reference in evidence],
+        )
+
+    def test_reciting_without_lines_is_refused_unless_replace_names_lines_of_the_same_file(self) -> None:
+        self.cited_rule("reviewed", (1, 1), (2, 2))
+        (self.repo / "src" / "b.py").write_text("one\n", encoding="utf-8")
+        for name, replace in (
+            ("no replace", ()),
+            ("replace without lines", ("--replace", "src/a.py")),
+            ("replace in another file", ("--replace", "src/b.py:1-1")),
+        ):
+            with self.subTest(name):
+                result = self.run_cli(
+                    "recite", "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo),
+                    "--asset", "rules", "--id", "rule", "--path", "src/a.py", *replace,
+                )
+                self.assertEqual(1, result.returncode, result.stdout)
+                self.assertIn("recite needs --lines, unless --replace names lines of the same file", result.stdout)
 
     def test_reciting_lines_that_repeat_in_the_file_says_to_widen_them(self) -> None:
         self.cited_rule("reviewed", (2, 2))

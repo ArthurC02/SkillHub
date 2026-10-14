@@ -211,17 +211,28 @@ def handle_relocate_evidence(args: argparse.Namespace) -> int:
 
 def handle_recite(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
+    lines = args.lines or _replaced_lines_in_place(args.path, args.replace)
     print_json(
         recite(
             args.registry_root.resolve(), repo_root,
             Recitation(
-                args.asset, args.id, args.path, args.lines, args.replace,
+                args.asset, args.id, args.path, lines, args.replace,
                 load_json(args.onto.resolve()) if args.onto else None,
             ),
         )
     )
-    _note_repeated(repo_root, citation(repo_root, args.path, *line_range(args.lines)))
+    _note_repeated(repo_root, citation(repo_root, args.path, *line_range(lines)))
     return 0
+
+
+def _replaced_lines_in_place(path: str, replace: str | None) -> str:
+    replaced_path, _, replaced_lines = (replace or "").partition(":")
+    if replaced_path != path or not replaced_lines:
+        raise ValueError(
+            "recite needs --lines, unless --replace names lines of the same file as --path; "
+            "then those lines are re-cited"
+        )
+    return replaced_lines
 
 
 def _note_repeated(repo_root: Path, cited: dict) -> None:

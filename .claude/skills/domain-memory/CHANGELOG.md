@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 0.24.0
+
+### Changed
+
+- `recite` takes `--lines` as optional: without it, the lines `--replace` names are re-cited, when they are in the file `--path` names. Code that changed but kept its lines is re-cited with one range instead of the same range twice.
+
 ## 0.23.0
 
 ### Added
