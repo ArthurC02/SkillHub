@@ -1,0 +1,75 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "receiver-free-recite",
+  "proposal_id": "receiver-free-recite",
+  "registry_revision": {
+    "observed_commit": "1a44ab9a46e4c3971b8f910387737fd00ee338de",
+    "registry_digest": "sha256:d5171e07f8c52fd6aa07588e0612dcec68b005fbb7f2a851176d9ab44acd029b"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "refusal-stops-batch",
+    "mutated_protection": "startNextTrial passing run's refusal reason to stopBatch",
+    "failure_evidence": "With the reason altered, TestARefusalThatWaitingCannotFixStopsTheBatch failed: stop_reason permissions_unconfirmed_mutated, want permissions_unconfirmed; restored byte for byte (cmp).",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/trial/batch/batch.go",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "package-valid",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py validate-change-package --package-root docs/domain-memory/changes/receiver-free-recite-2026-10-15 --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f59ed0f5e58f24af697fc460db7a190345b22c6e6c8a2fdbf184d0f488d61a0f",
+      "finished_at": "2026-10-14T17:33:38.760830Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py verify-audit --registry-root docs/domain-memory",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:3d33ee39aab1c6bcb89f0bb829e0d37671bdf6d754d52203c2aec1fbbd3ac2ac",
+      "finished_at": "2026-10-14T17:33:39.112102Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "python .claude/skills/domain-memory/scripts/registry_tools.py governance-readiness --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:2b6a3a27f1223e6cc1dc91aae0d304d9226040ff5508b5e8d4133a1df04930ec",
+      "finished_at": "2026-10-14T17:33:39.506041Z"
+    },
+    {
+      "obligation_id": "refusal-stops-batch",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestARefusalThatWaitingCannotFixStopsTheBatch ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:dc00cfca23cc25a1c69414abf17892293a2e4fa2729589f3531979166f207348",
+      "finished_at": "2026-10-14T17:33:44.803914Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "deleted-target-stops-batch",
+      "status": "passed",
+      "evidence": "go test -count=1 -run TestABatchWhoseTestCaseWasDeletedStopsAsTargetGone ./internal/entrypoint/api/apiserver/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:eab4d9402d4b20f2fce7b7ebfd972553f68d25588de31a7349bfd79af41a89b4",
+      "finished_at": "2026-10-14T17:33:49.930028Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

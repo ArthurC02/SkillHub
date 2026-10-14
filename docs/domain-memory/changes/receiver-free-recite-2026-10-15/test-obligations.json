@@ -1,0 +1,52 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "receiver-free-recite",
+  "proposal_id": "receiver-free-recite",
+  "obligations": [
+    {
+      "id": "package-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "The package validates as applied, with current citations.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "registry validate-change-package --repo-root"
+    },
+    {
+      "id": "refusal-stops-batch",
+      "source_type": "acceptance-criterion",
+      "source_id": "refusal-stops-with-reason",
+      "expected_outcome": "The batch stops and records the refusal reason.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestARefusalThatWaitingCannotFixStopsTheBatch ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "deleted-target-stops-batch",
+      "source_type": "acceptance-criterion",
+      "source_id": "gone-target-stops",
+      "expected_outcome": "The batch stops as target_gone.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -run TestABatchWhoseTestCaseWasDeletedStopsAsTargetGone ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "approval-path-is-external",
+      "source_type": "acceptance-criterion",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "Governance readiness reports ready.",
+      "level": "security",
+      "status": "planned",
+      "check": "registry governance-readiness"
+    }
+  ]
+}

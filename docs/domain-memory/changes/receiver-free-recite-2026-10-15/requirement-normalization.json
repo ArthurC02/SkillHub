@@ -1,0 +1,36 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "receiver-free-recite",
+  "status": "draft",
+  "intent": "Keep the batch refusal rule and the run-batch interaction citing batch.go after stopBatch became a function.",
+  "actor": "coding-agent",
+  "observable_outcome": "verify-evidence reports both records current; each states the same fact as before.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-current",
+      "statement": "Both records cite the lines that now hold the batch launch."
+    },
+    {
+      "id": "refusal-stops-with-reason",
+      "statement": "A refusal that waiting cannot fix stops the batch with that reason."
+    },
+    {
+      "id": "gone-target-stops",
+      "statement": "A batch whose test case was deleted stops as target gone."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that makes the records reviewed is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/trial/batch/batch.go",
+    "apps/platform/internal/entrypoint/wiring/evaluation_batches.go"
+  ]
+}
